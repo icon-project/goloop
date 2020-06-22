@@ -27,7 +27,6 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
 
     public UserClassMappingVisitor(NamespaceMapper mapper, boolean preserveDebuggability) {
         super(Opcodes.ASM7);
-        
         this.mapper = mapper;
         this.preserveDebuggability = preserveDebuggability;
     }
@@ -38,7 +37,7 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
         String newName = this.mapper.mapType(name, this.preserveDebuggability);
         String newSuperName = this.mapper.mapType(superName, this.preserveDebuggability);
         String[] newInterfaces = this.mapper.mapTypeArray(interfaces, this.preserveDebuggability);
-        
+
         // Just pass in a null signature, instead of updating it (JVM spec 4.3.4: "This kind of type information is needed to support reflection and debugging, and by a Java compiler").
         super.visit(version, access, newName, null, newSuperName, newInterfaces);
     }
@@ -48,10 +47,10 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
         String newName = NamespaceMapper.mapMethodName(name);
         String newDescriptor = this.mapper.mapDescriptor(descriptor, this.preserveDebuggability);
         String[] newExceptions = this.mapper.mapTypeArray(exceptions, this.preserveDebuggability);
-        
+
         // Just pass in a null signature, instead of updating it (JVM spec 4.3.4: "This kind of type information is needed to support reflection and debugging, and by a Java compiler").
         MethodVisitor mv = super.visitMethod(access, newName, newDescriptor, null, newExceptions);
-        
+
         return new MethodVisitor(Opcodes.ASM7, mv) {
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
@@ -60,10 +59,12 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
                 String newDescriptor = UserClassMappingVisitor.this.mapper.mapDescriptor(descriptor, UserClassMappingVisitor.this.preserveDebuggability);
                 super.visitMethodInsn(opcode, newOwner, newName, newDescriptor, isInterface);
             }
+
             @Override
             public void visitTypeInsn(final int opcode, final String type) {
                 super.visitTypeInsn(opcode, UserClassMappingVisitor.this.mapper.mapType(type, UserClassMappingVisitor.this.preserveDebuggability));
             }
+
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                 String newOwner = UserClassMappingVisitor.this.mapper.mapType(owner, UserClassMappingVisitor.this.preserveDebuggability);
@@ -71,6 +72,7 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
                 String newDescriptor = UserClassMappingVisitor.this.mapper.mapDescriptor(descriptor, UserClassMappingVisitor.this.preserveDebuggability);
                 super.visitFieldInsn(opcode, newOwner, newName, newDescriptor);
             }
+
             @Override
             public void visitInvokeDynamicInsn(String methodName, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
                 String newName = NamespaceMapper.mapMethodName(methodName);
@@ -78,11 +80,11 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
 
                 // NOTE: method descriptor can't be replaced, based on Rom's comments
                 Handle newBootstrapMethodHandle = UserClassMappingVisitor.this.mapper.mapHandle(bootstrapMethodHandle, false, UserClassMappingVisitor.this.preserveDebuggability);
-                
-                Object newArgs[] = new Object[bootstrapMethodArguments.length];
+
+                Object[] newArgs = new Object[bootstrapMethodArguments.length];
                 for (int i = 0; i < bootstrapMethodArguments.length; ++i) {
                     Object arg = bootstrapMethodArguments[i];
-                    Object newArg = null;
+                    Object newArg;
                     if (arg instanceof Type) {
                         newArg = UserClassMappingVisitor.this.mapper.mapMethodType((Type) arg, UserClassMappingVisitor.this.preserveDebuggability);
                     } else if (arg instanceof Handle) {
@@ -92,14 +94,15 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
                     }
                     newArgs[i] = newArg;
                 }
-                
                 super.visitInvokeDynamicInsn(newName, newDescriptor, newBootstrapMethodHandle, newArgs);
             }
+
             @Override
             public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
                 String newDescriptor = UserClassMappingVisitor.this.mapper.mapDescriptor(descriptor, UserClassMappingVisitor.this.preserveDebuggability);
                 super.visitMultiANewArrayInsn(newDescriptor, numDimensions);
             }
+
             @Override
             public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
                 String newType = (null != type)
@@ -107,36 +110,39 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
                         : null;
                 super.visitTryCatchBlock(start, end, handler, newType);
             }
+
             @Override
             public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
                 // We might need to adjust types in locals and stack slots.
-                Object[] newLocals = new Object[local.length];
-                for (int i = 0; i < local.length; ++i) {
-                    if (local[i] instanceof String) {
-                        newLocals[i] = UserClassMappingVisitor.this.mapper.mapType((String)local[i], UserClassMappingVisitor.this.preserveDebuggability);
+                Object[] newLocal = getMappedObjects(local);
+                Object[] newStack = getMappedObjects(stack);
+                super.visitFrame(type, nLocal, newLocal, nStack, newStack);
+            }
+
+            private Object[] getMappedObjects(Object[] input) {
+                Object[] newMapping = new Object[input.length];
+                for (int i = 0; i < input.length; ++i) {
+                    if (input[i] instanceof String) {
+                        newMapping[i] = UserClassMappingVisitor.this.mapper.mapType(
+                                (String) input[i], UserClassMappingVisitor.this.preserveDebuggability);
                     } else {
-                        newLocals[i] = local[i];
+                        newMapping[i] = input[i];
                     }
                 }
-                Object[] newStack = new Object[stack.length];
-                for (int i = 0; i < stack.length; ++i) {
-                    if (stack[i] instanceof String) {
-                        newStack[i] = UserClassMappingVisitor.this.mapper.mapType((String)stack[i], UserClassMappingVisitor.this.preserveDebuggability);
-                    } else {
-                        newStack[i] = stack[i];
-                    }
-                }
-                super.visitFrame(type, nLocal, newLocals, nStack, newStack);
+                return newMapping;
             }
 
             @Override
             public void visitLdcInsn(final Object value) {
                 Object valueToWrite = value;
                 if (value instanceof Type) {
-                    if(((Type) value).getSort() == Type.OBJECT){
-                        valueToWrite = Type.getType(UserClassMappingVisitor.this.mapper.mapDescriptor(((Type) value).getDescriptor(), UserClassMappingVisitor.this.preserveDebuggability));
-                    }else if (((Type) value).getSort() == Type.ARRAY){
-                        valueToWrite = Type.getType("L" + ArrayNameMapper.getPreciseArrayWrapperDescriptor(UserClassMappingVisitor.this.mapper.mapDescriptor((((Type) value).getDescriptor()), UserClassMappingVisitor.this.preserveDebuggability)) + ";");
+                    if (((Type) value).getSort() == Type.OBJECT) {
+                        valueToWrite = Type.getType(UserClassMappingVisitor.this.mapper.mapDescriptor(
+                                ((Type) value).getDescriptor(), UserClassMappingVisitor.this.preserveDebuggability));
+                    } else if (((Type) value).getSort() == Type.ARRAY) {
+                        valueToWrite = Type.getType("L" + ArrayNameMapper.getPreciseArrayWrapperDescriptor(
+                                UserClassMappingVisitor.this.mapper.mapDescriptor(
+                                        (((Type) value).getDescriptor()), UserClassMappingVisitor.this.preserveDebuggability)) + ";");
                     }
                 }
                 super.visitLdcInsn(valueToWrite);
@@ -157,7 +163,7 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
     public void visitOuterClass(String owner, String name, String descriptor) {
         String newOwner = this.mapper.mapType(owner, this.preserveDebuggability);
         String newName = NamespaceMapper.mapMethodName(name);
-        String newDescriptor = descriptor == null ? null: this.mapper.mapDescriptor(descriptor, this.preserveDebuggability);
+        String newDescriptor = descriptor == null ? null : this.mapper.mapDescriptor(descriptor, this.preserveDebuggability);
         super.visitOuterClass(newOwner, newName, newDescriptor);
     }
 
