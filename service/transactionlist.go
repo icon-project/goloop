@@ -111,14 +111,16 @@ type txBloom struct {
 
 func (b *txBloom) Add(id []byte) *txBloom {
 	if b.count >= txCountForBloom {
-		ptr := b.next
-		for ptr != nil {
-			if ptr.count < txCountForBloom {
-				return ptr.Add(id)
+		ptr := &b.next
+		for *ptr != nil {
+			bloom := *ptr
+			if bloom.count < txCountForBloom {
+				return bloom.Add(id)
 			}
-			ptr = ptr.next
+			ptr = &bloom.next
 		}
-		return new(txBloom).Add(id)
+		*ptr = new(txBloom).Add(id)
+		return *ptr
 	}
 	if len(id) < crypto.HashLen {
 		id = crypto.SHA3Sum256(id)
