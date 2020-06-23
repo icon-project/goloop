@@ -8,7 +8,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.signature.SignatureVisitor;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -116,10 +120,22 @@ public class JarOptimizer {
 
             ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM7, writer) {
                 @Override
-                public void visitInnerClass(String name, String outerName, String innerName, int access) {
-                    if (visitedClasses.contains(name)) {
-                        super.visitInnerClass(name, outerName, innerName, access);
+                public void visitNestHost(String nestHost) {
+                    if (visitedClasses.contains(Utilities.internalNameToFullyQualifiedName(nestHost))) {
+                        super.visitNestHost(nestHost);
                     }
+                }
+
+                @Override
+                public void visitNestMember(String nestMember) {
+                    if (visitedClasses.contains(Utilities.internalNameToFullyQualifiedName(nestMember))) {
+                        super.visitNestMember(nestMember);
+                    }
+                }
+
+                @Override
+                public void visitInnerClass(String name, String outerName, String innerName, int access) {
+                    // Remove InnerClasses attributes
                 }
             };
             reader.accept(classVisitor, 0);

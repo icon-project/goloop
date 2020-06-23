@@ -15,7 +15,7 @@ import org.objectweb.asm.Type;
  * and ensure that they aren't trying to invade one of our spaces, so we will re-map them all into PackageConstants.kUserDotPrefix, here.
  *
  * The following mechanical transformation has been applied:
- * 1) User-defined code are moved to `org.aion.avm.user`;
+ * 1) User-defined code are moved to `PackageConstants.kUserDotPrefix`;
  * 2) All method declarations and references has been prepended with `avm_`;
  * 3) All fields declarations and references has been prepended with `avm_`;
  *
@@ -157,6 +157,18 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
 
         // Just pass in a null signature, instead of updating it (JVM spec 4.3.4: "This kind of type information is needed to support reflection and debugging, and by a Java compiler").
         return super.visitField(access, newName, newDescriptor, null, value);
+    }
+
+    @Override
+    public void visitNestHost(String nestHost) {
+        String newHost = this.mapper.mapType(nestHost, this.preserveDebuggability);
+        super.visitNestHost(newHost);
+    }
+
+    @Override
+    public void visitNestMember(String nestMember) {
+        String newMember = this.mapper.mapType(nestMember, this.preserveDebuggability);
+        super.visitNestMember(newMember);
     }
 
     @Override
