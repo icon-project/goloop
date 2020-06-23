@@ -208,9 +208,9 @@ public class NamespaceMapper {
             } else if (this.preRenameClassAccessRules.isApiClass(type)) {
                 newType = PackageConstants.kShadowApiSlashPrefix + type;
             } else {
-                // NOTE:  We probably want to make this into a private exception so that this helper can be an isolated utility.
+                // NOTE: We probably want to make this into a private exception so that this helper can be an isolated utility.
                 // We are currently throwing RejectedClassException, directly, since that was the original use in UserClassMappingVisitor.
-                RejectedClassException.nonWhiteListedClass(type);
+                RejectedClassException.notAllowedClass(type);
             }
         }
         return newType;

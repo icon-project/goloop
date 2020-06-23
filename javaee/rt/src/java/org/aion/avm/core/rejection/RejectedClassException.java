@@ -15,12 +15,12 @@ public class RejectedClassException extends PredefinedException {
         throw new RejectedClassException("Unsupported class version: " + version);
     }
 
-    public static void blacklistedOpcode(int opcode) {
-        throw new RejectedClassException("Blacklisted Opcode detected: 0x" + Integer.toHexString(opcode));
+    public static void blockedOpcode(int opcode) {
+        throw new RejectedClassException("Blocked opcode detected: 0x" + Integer.toHexString(opcode));
     }
 
-    public static RejectedClassException nonWhiteListedClass(String className) {
-        throw new RejectedClassException("Class is not on white-list: " + className);
+    public static RejectedClassException notAllowedClass(String className) {
+        throw new RejectedClassException("Class is not on allowlist: " + className);
     }
 
     public static void forbiddenMethodOverride(String methodName) {
@@ -47,7 +47,7 @@ public class RejectedClassException extends PredefinedException {
     }
 
     public static void arrayDimensionTooBig(String desc) {
-        throw new RejectedClassException("Array dimension should not be more than 3." + desc);
+        throw new RejectedClassException("Array dimension should not be more than 3: " + desc);
     }
 
     public static RejectedClassException invokeDynamicBootstrapMethodArguments(String methodDescriptor) {

@@ -6,14 +6,8 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.TypePath;
 
-
 /**
- * Does a simple read-only pass over the loaded class, ensuring it isn't doing anything it isn't allowed to do:
- * -uses bytecode in blacklist
- * -references class not in whitelist
- * -overrides methods which we will not support as the user may expect
- * 
- * When a violation is detected, throws the RejectedClassException.
+ * Filters out annotations since we don't use them.
  */
 public class RejectionFieldVisitor extends FieldVisitor {
     public RejectionFieldVisitor(FieldVisitor visitor) {

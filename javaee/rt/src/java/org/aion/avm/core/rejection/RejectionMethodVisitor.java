@@ -16,10 +16,10 @@ import org.objectweb.asm.TypePath;
 
 /**
  * Does a simple read-only pass over the loaded method, ensuring it isn't doing anything it isn't allowed to do:
- * -uses bytecode in blacklist
- * -references class not in whitelist
- * -overrides methods which we will not support as the user may expect
- * -issue an invoke initially defined on a class not in whitelist
+ * - uses bytecode in blocklist
+ * - references class not in allowlist
+ * - overrides methods which we will not support as the user may expect
+ * - issue an invoke initially defined on a class not in allowlist
  * 
  * When a violation is detected, throws the RejectedClassException.
  */
@@ -111,7 +111,7 @@ public class RejectionMethodVisitor extends MethodVisitor {
                 }
             }
         } else {
-            RejectedClassException.nonWhiteListedClass(owner);
+            RejectedClassException.notAllowedClass(owner);
         }
         checkOpcode(opcode);
         super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
@@ -169,16 +169,16 @@ public class RejectionMethodVisitor extends MethodVisitor {
 
 
     private void checkOpcode(int opcode) {
-        if (false
+        if (
                 // We reject JSR and RET (although these haven't been generated in a long time, anyway, and aren't allowed in new class files).
-                || (Opcodes.JSR == opcode)
+                (Opcodes.JSR == opcode)
                 || (Opcodes.RET == opcode)
-                
+
                 // We also want to reject instructions which could interact with the thread state:  MONITORENTER, MONITOREXIT.
                 || (Opcodes.MONITORENTER == opcode)
                 || (Opcodes.MONITOREXIT == opcode)
         ) {
-            RejectedClassException.blacklistedOpcode(opcode);
+            RejectedClassException.blockedOpcode(opcode);
         }
     }
 

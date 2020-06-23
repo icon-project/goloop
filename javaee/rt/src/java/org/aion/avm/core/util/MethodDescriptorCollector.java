@@ -35,7 +35,7 @@ public class MethodDescriptorCollector {
     }
 
     public static Map<String, List<String>> getClassNameMethodDescriptorMap(List<String> jclClassList, AvmSharedClassLoader classLoader) throws ClassNotFoundException {
-        Map<String, List<String>> whitelistClassMethodMap = new HashMap<>();
+        Map<String, List<String>> allowlistClassMethodMap = new HashMap<>();
         jclClassList.removeAll(omittedClassNames);
 
         // only expecting shadow classes
@@ -57,9 +57,9 @@ public class MethodDescriptorCollector {
                     .map(MethodDescriptorCollector::buildMethodNameDescriptorString)
                     .collect(Collectors.toList()));
 
-            whitelistClassMethodMap.put(c.getName(), Collections.unmodifiableList(methodList));
+            allowlistClassMethodMap.put(c.getName(), Collections.unmodifiableList(methodList));
         }
-        return whitelistClassMethodMap;
+        return allowlistClassMethodMap;
     }
 
     public static String buildMethodNameDescriptorString(String methodName, String methodDescriptor) {

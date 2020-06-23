@@ -1,13 +1,14 @@
 package org.aion.avm.core.shadowing;
 
-import org.aion.avm.core.ClassToolchain;
-import org.aion.avm.core.ClassWhiteList;
-import org.aion.avm.utilities.Utilities;
-
 import i.Helper;
 import i.IObject;
 import i.RuntimeAssertionError;
-import org.objectweb.asm.*;
+import org.aion.avm.core.ClassToolchain;
+import org.aion.avm.utilities.Utilities;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
 import java.util.stream.Stream;
 
@@ -20,15 +21,19 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
 
     private static final String JAVA_LANG_OBJECT = "java/lang/Object";
 
-    private final ClassWhiteList classWhiteList;
+    private final String shadowPackage;
     private final IObjectReplacer replacer;
     private final String postRenameJavaLangObject;
 
     public ClassShadowing(String shadowPackage) {
         super(Opcodes.ASM7);
+        this.shadowPackage = shadowPackage;
         this.replacer = new IObjectReplacer(shadowPackage);
-        this.classWhiteList = new ClassWhiteList();
         this.postRenameJavaLangObject = shadowPackage + JAVA_LANG_OBJECT;
+    }
+
+    public boolean isJdkClass(String slashClassName) {
+        return slashClassName.startsWith(shadowPackage);
     }
 
     @Override
@@ -40,7 +45,7 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
             final String superName,
             final String[] interfaces) {
 
-        RuntimeAssertionError.assertTrue(!this.classWhiteList.isJdkClass(name));
+        RuntimeAssertionError.assertTrue(!isJdkClass(name));
 
         // Note that we can't change the superName if this is an interface (since those all must specify "java/lang/Object").
         boolean isInterface = (0 != (Opcodes.ACC_INTERFACE & access));

@@ -1,23 +1,24 @@
 package org.aion.avm.core;
 
-import java.util.HashSet;
-import java.util.Set;
+import i.PackageConstants;
+import i.RuntimeAssertionError;
 import org.aion.avm.ArrayUtil;
 import org.aion.avm.NameStyle;
 import org.aion.avm.core.arraywrapping.ArrayNameMapper;
 import org.aion.avm.core.rejection.RejectedClassException;
 import org.aion.avm.core.types.CommonType;
-import i.PackageConstants;
-import i.RuntimeAssertionError;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public final class ClassRenamer {
     // ClassRenamer doesn't make use of it, but a convenient way to pass this value around.
     public final boolean preserveDebuggability;
 
     // The naming convention of the names in these sets will be the same as indicated by style.
-    private NameStyle style;
-    private Set<String> preRenameJclExceptions;
-    private Set<String> preRenameUserClasses;
+    private final NameStyle style;
+    private final Set<String> preRenameJclExceptions;
+    private final Set<String> preRenameUserClasses;
 
     // All of our permitted classes, these are set false if any are forbidden in the constructor.
     private boolean jclClassesPermitted = true;
@@ -28,12 +29,12 @@ public final class ClassRenamer {
     private boolean userDefinedClassesPermitted = true;
 
     // All of the prefixes we use, since we can statically determine these in the constructor.
-    private String exceptionWrapperPrefix;
-    private String postRenameApiPrefix;
-    private String preRenameApiPrefix;
-    private String shadowPrefix;
-    private String userPrefix;
-    private String apiImplPrefix;
+    private final String exceptionWrapperPrefix;
+    private final String postRenameApiPrefix;
+    private final String preRenameApiPrefix;
+    private final String shadowPrefix;
+    private final String userPrefix;
+    private final String apiImplPrefix;
 
     public enum ClassCategory { JCL, API, EXCEPTION_WRAPPER, PRECISE_ARRAY, UNIFYING_ARRAY, USER}
 
@@ -109,7 +110,7 @@ public final class ClassRenamer {
      * given name is expected to be the same style that this class was initialized with, and the
      * returned name will be in this same style.
      *
-     * This method will throw a {@link RejectedClassException#nonWhiteListedClass(String)} if the
+     * This method will throw a {@link RejectedClassException#notAllowedClass(String)} if the
      * given name does not match any of our pre-rename name checks.
      *
      * If an array name is given then {@code arrayType} will determine whether or not the post-rename
@@ -167,7 +168,7 @@ public final class ClassRenamer {
             return preRenameClassName;
         } else {
             if (allowClassRejection) {
-                throw RejectedClassException.nonWhiteListedClass(preRenameClassName);
+                throw RejectedClassException.notAllowedClass(preRenameClassName);
             } else {
                 throw RuntimeAssertionError.unreachable("Expected a pre-rename class name: " + preRenameClassName);
             }

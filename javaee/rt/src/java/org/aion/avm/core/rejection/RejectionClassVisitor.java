@@ -1,12 +1,10 @@
 package org.aion.avm.core.rejection;
 
-import java.nio.charset.StandardCharsets;
-
+import i.PackageConstants;
+import i.RuntimeAssertionError;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.miscvisitors.NamespaceMapper;
 import org.aion.avm.core.miscvisitors.PreRenameClassAccessRules;
-import i.PackageConstants;
-import i.RuntimeAssertionError;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.FieldVisitor;
@@ -15,17 +13,18 @@ import org.objectweb.asm.ModuleVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.TypePath;
 
+import java.nio.charset.StandardCharsets;
 
 /**
  * Does a simple read-only pass over the loaded class, ensuring it isn't doing anything it isn't allowed to do:
- * -uses bytecode in blacklist
- * -references class not in whitelist
- * -overrides methods which we will not support as the user may expect
- * 
+ * - uses bytecode in blocklist
+ * - references class not in allowlist
+ * - overrides methods which we will not support as the user may expect
+ *
  * When a violation is detected, throws the RejectedClassException.
  */
 public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor {
-    // The names of the classes that the user defined in their JAR (note:  this does NOT include interfaces).
+    // The names of the classes that the user defined in their JAR (note: this does NOT include interfaces).
     private final PreRenameClassAccessRules preRenameClassAccessRules;
     private final NamespaceMapper namespaceMapper;
     private final boolean preserveDebuggability;
@@ -49,7 +48,7 @@ public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor 
         if (!this.preRenameClassAccessRules.canUserSubclass(superName)) {
             RejectedClassException.restrictedSuperclass(name, superName);
         }
-        if(name.startsWith(PackageConstants.kPublicApiSlashPrefix)){
+        if (name.startsWith(PackageConstants.kPublicApiSlashPrefix)) {
             RejectedClassException.unsupportedPackageName(name);
         }
 
@@ -87,7 +86,7 @@ public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor 
     @Override
     public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
         // Note that the "value" field is only used for statics and can't be an object other than a String so we are safe with that.
-        
+
         // Null the signature, since we don't use it and don't want to make sure it is safe.
         FieldVisitor fieldVisitor = super.visitField(access, name, descriptor, null, value);
         return new RejectionFieldVisitor(fieldVisitor);
@@ -100,12 +99,12 @@ public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor 
         if ("finalize".equals(name)) {
             RejectedClassException.forbiddenMethodOverride(name);
         }
-        
+
         // Check that this method isn't synchronized, since we don't allow monitor operations.
         if (0 != (Opcodes.ACC_SYNCHRONIZED & access)) {
             RejectedClassException.invalidMethodFlag(name, "ACC_SYNCHRONIZED");
         }
-        
+
         // Null the signature, since we don't use it and don't want to make sure it is safe.
         MethodVisitor mv = super.visitMethod(access, name, descriptor, null, exceptions);
         return new RejectionMethodVisitor(mv, this.preRenameClassAccessRules, this.namespaceMapper, this.preserveDebuggability);

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  */
 public class PreRenameClassAccessRules {
     // This is the hard-coded list of classes, from the JCL, which we allow the user code to subclass.
-    private static final Set<String> SUBCLASS_WHITELIST_SLASH_NAMES = Set.of(
+    private static final Set<String> SUBCLASS_ALLOWLIST_SLASH_NAMES = Set.of(
             Enum.class.getName(),
             Exception.class.getName(),
             Object.class.getName(),
@@ -42,7 +42,7 @@ public class PreRenameClassAccessRules {
     public boolean canUserSubclass(String slashName) {
         RuntimeAssertionError.assertTrue(!slashName.contains("."));
         return internalIsUserDefinedClassOnly(slashName)
-                || internalIsJclSubclassWhitelist(slashName);
+                || internalIsJclSubclassAllowlist(slashName);
     }
 
     /**
@@ -104,7 +104,7 @@ public class PreRenameClassAccessRules {
         return slashName.startsWith(PackageConstants.kPublicApiSlashPrefix);
     }
 
-    private boolean internalIsJclSubclassWhitelist(String slashName) {
-        return SUBCLASS_WHITELIST_SLASH_NAMES.contains(slashName);
+    private boolean internalIsJclSubclassAllowlist(String slashName) {
+        return SUBCLASS_ALLOWLIST_SLASH_NAMES.contains(slashName);
     }
 }
