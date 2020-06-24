@@ -28,6 +28,30 @@ public class AllowlistPopulator {
             e.printStackTrace();
         }
 
+        // Set the inheritance relationships manually
+        ClassInfo comparableInfo = classInfoMap.get("java/lang/Comparable");
+        ClassInfo iterableInfo = classInfoMap.get("java/lang/Iterable");
+        ClassInfo serializableInfo = classInfoMap.get("java/io/Serializable");
+        ClassInfo throwableInfo = classInfoMap.get("java/lang/Throwable");
+        ClassInfo exceptionInfo = classInfoMap.get("java/lang/Exception");
+        ClassInfo runtimeExceptionInfo = classInfoMap.get("java/lang/RuntimeException");
+        ClassInfo enumInfo = classInfoMap.get("java/lang/Enum");
+        ClassInfo collectionInfo = classInfoMap.get("java/util/Collection");
+        ClassInfo setInfo = classInfoMap.get("java/util/Set");
+        ClassInfo listInfo = classInfoMap.get("java/util/List");
+        ClassInfo iteratorInfo = classInfoMap.get("java/util/Iterator");
+        ClassInfo listIteratorInfo = classInfoMap.get("java/util/ListIterator");
+
+        collectionInfo.addToParents(iterableInfo);
+        setInfo.addToParents(collectionInfo);
+        throwableInfo.addToParents(serializableInfo);
+        exceptionInfo.setSuperclass(throwableInfo);
+        enumInfo.addToParents(comparableInfo);
+        enumInfo.addToParents(serializableInfo);
+        listIteratorInfo.addToParents(iteratorInfo);
+        runtimeExceptionInfo.setSuperclass(exceptionInfo);
+        listInfo.addToParents(collectionInfo);
+
         return classInfoMap;
     }
 }
