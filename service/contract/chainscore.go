@@ -471,6 +471,14 @@ var chainMethods = []*chainMethod{
 			scoreapi.Bool,
 		},
 	}, module.Revision8, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMinimizeBlockGen",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, module.Revision8, 0},
 }
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
