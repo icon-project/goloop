@@ -1,9 +1,14 @@
 package foundation.icon.ee.util;
 
 import foundation.icon.ee.types.Address;
+import i.IObject;
+import pi.UnmodifiableArrayList;
+import pi.UnmodifiableArrayMap;
+
+import java.util.ArrayList;
 
 public class Unshadower {
-    public static Object unshadow(s.java.lang.Object so) {
+    public static Object unshadow(IObject so) {
         if (so==null) {
             return null;
         } else if (so instanceof s.java.lang.Boolean) {
@@ -36,22 +41,42 @@ public class Unshadower {
         } else if (so instanceof p.score.Address) {
             var o = (p.score.Address) so;
             return new Address(o.toByteArray());
-        } else if (so instanceof s.java.util.List) {
-            var o = (s.java.util.List) so;
+        } else if (so instanceof UnmodifiableArrayList) {
+            var o = (UnmodifiableArrayList<?>) so;
             var sa = o.getData();
             var oa = new Object[sa.length];
             for (int i = 0; i < sa.length; i++) {
-                oa[i] = Unshadower.unshadow((s.java.lang.Object) sa[i]);
+                oa[i] = Unshadower.unshadow(sa[i]);
             }
             return oa;
-        } else if (so instanceof s.java.util.Map) {
-            var o = (s.java.util.Map) so;
+        } else if (so instanceof s.java.util.List) {
+            var o = (s.java.util.List<?>) so;
+            var l = new ArrayList<>();
+            var it = o.avm_iterator();
+            while (it.avm_hasNext()) {
+                l.add(Unshadower.unshadow(it.avm_next()));
+            }
+            return l.toArray();
+        } else if (so instanceof UnmodifiableArrayMap) {
+            var o = (UnmodifiableArrayMap<?, ?>) so;
             var skv = o.getData();
-            var map = new java.util.HashMap();
+            var map = new java.util.HashMap<>();
             for (int i = 0; i < skv.length; i += 2) {
                 map.put(
-                        Unshadower.unshadow((s.java.lang.Object) skv[i]),
-                        Unshadower.unshadow((s.java.lang.Object) skv[i + 1])
+                        Unshadower.unshadow(skv[i]),
+                        Unshadower.unshadow(skv[i + 1])
+                );
+            }
+            return map;
+        } else if (so instanceof s.java.util.Map) {
+            var o = (s.java.util.Map<?, ?>) so;
+            var map = new java.util.HashMap<>();
+            var it = o.avm_entrySet().avm_iterator();
+            while (it.avm_hasNext()) {
+                var e = it.avm_next();
+                map.put(
+                        Unshadower.unshadow(e.avm_getKey()),
+                        Unshadower.unshadow(e.avm_getValue())
                 );
             }
             return map;

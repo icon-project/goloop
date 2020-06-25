@@ -34,8 +34,6 @@ public interface Collection<E extends IObject> extends Iterable<E>{
 
     int avm_hashCode();
 
-    IObject[] getData();
-
     //Default
 
 

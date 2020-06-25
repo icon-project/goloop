@@ -54,9 +54,6 @@ public interface Map<K extends IObject, V extends IObject> extends IObject {
 
     int avm_hashCode();
 
-    // returns {k1, v1, k2, v2...}
-    IObject[] getData();
-
     private static IObject[] verify(IObject[] kv) {
         for (int i = 0; i < kv.length; i += 2) {
             IObject k = Objects.requireNonNull(kv[i]);
