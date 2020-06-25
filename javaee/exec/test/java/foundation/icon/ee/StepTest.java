@@ -1,5 +1,7 @@
-package foundation.icon.ee.test;
+package foundation.icon.ee;
 
+import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.types.StepCost;
 import org.junit.jupiter.api.BeforeEach;
