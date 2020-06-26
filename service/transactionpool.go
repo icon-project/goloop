@@ -1,7 +1,22 @@
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package service
 
 import (
-	"math/big"
 	"sync"
 	"time"
 
@@ -186,22 +201,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	}
 
 	if invalidNum > 0 {
-		go func(txs []*txElement) {
-			tp.mutex.Lock()
-			defer tp.mutex.Unlock()
-			for _, e := range txs {
-				if tp.list.Remove(e) {
-					tx := e.Value()
-					direct := e.ts != 0
-					if e.err == nil {
-						tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
-					}
-					tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
-					tp.txm.OnTxDrop(tx.ID(), e.err)
-					tp.monitor.OnDropTx(len(tx.Bytes()), direct)
-				}
-			}
-		}(txs[0:invalidNum])
+		go tp.removeTransactions(txs[0:invalidNum])
 	}
 
 	tp.log.Infof("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
@@ -318,23 +318,62 @@ func (tp *TransactionPool) SetPoolCapacityMonitor(pcm PoolCapacityMonitor) {
 	go tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 }
 
-func (tp *TransactionPool) GetBloom() (uint, *big.Int) {
+func (tp *TransactionPool) GetBloom() *TxBloom {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
 	return tp.list.GetBloom()
 }
 
-func (tp *TransactionPool) FilterTransactions(bits uint, value *big.Int, max int) []module.Transaction {
+func (tp *TransactionPool) removeTransactions(txs []*txElement) {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	for _, e := range txs {
+		if tp.list.Remove(e) {
+			tx := e.Value()
+			direct := e.ts != 0
+			if e.err == nil {
+				tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
+			}
+			tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
+			tp.txm.OnTxDrop(tx.ID(), e.err)
+			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
+		}
+	}
+}
+
+func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.Transaction {
 	txs := make([]module.Transaction, 0, max)
+	var invalids []*txElement
 
 	lock := common.Lock(&tp.mutex)
 	defer lock.Unlock()
 
+	var working, skip *txBloomElement
 	for e := tp.list.Front(); e != nil && len(txs) < max; e = e.Next() {
-		if !e.Contained(bits, value) {
-			txs = append(txs, e.Value())
+		if working != e.bloom {
+			if e.bloom == skip {
+				continue
+			}
+			if bloom.ContainsAllOf(&e.bloom.bloom) {
+				skip = e.bloom
+				continue
+			} else {
+				working = e.bloom
+			}
+		}
+		tx := e.Value()
+		id := tx.ID()
+		if !bloom.Contains(id) {
+			if v, err := tp.txdb.Get(id); err == nil && v != nil {
+				e.err = errors.InvalidStateError.New("Already processed")
+				invalids = append(invalids, e)
+				continue
+			}
+			txs = append(txs, tx)
 		}
 	}
+	go tp.removeTransactions(invalids)
 	return txs
 }

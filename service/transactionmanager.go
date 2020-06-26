@@ -1,7 +1,6 @@
 package service
 
 import (
-	"math/big"
 	"sync"
 	"sync/atomic"
 
@@ -229,14 +228,14 @@ func (m *TransactionManager) Wait(wc state.WorldContext, cb func()) bool {
 	return true
 }
 
-func (m *TransactionManager) GetBloomOf(g module.TransactionGroup) (uint, *big.Int) {
+func (m *TransactionManager) GetBloomOf(g module.TransactionGroup) *TxBloom {
 	pool := m.getTxPool(g)
 	return pool.GetBloom()
 }
 
-func (m *TransactionManager) FilterTransactions(g module.TransactionGroup, bits uint, value *big.Int, max int) []module.Transaction {
+func (m *TransactionManager) FilterTransactions(g module.TransactionGroup, bloom *TxBloom, max int) []module.Transaction {
 	pool := m.getTxPool(g)
-	return pool.FilterTransactions(bits, value, max)
+	return pool.FilterTransactions(bloom, max)
 }
 
 func (m *TransactionManager) Logger() log.Logger {

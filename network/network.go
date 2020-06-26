@@ -226,16 +226,14 @@ func (m *manager) broadcast(pi module.ProtocolInfo, spi module.ProtocolInfo, byt
 	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
-	pkt.ttl = byte(bt)
+	pkt.ttl = bt.TTL()
 	pkt.priority = m.priority[pi]
-	if bt == module.BROADCAST_NEIGHBOR {
-		pkt.forceSend = true
-	}
+	pkt.forceSend = bt.ForceSend()
 	return m.p2p.Send(pkt)
 }
 
 func (m *manager) relay(pkt *Packet) error {
-	if pkt.ttl == 1 || pkt.dest == p2pDestPeer {
+	if pkt.ttl != 0 || pkt.dest == p2pDestPeer {
 		return errors.New("not allowed relay")
 	}
 	pkt.priority = m.priority[pkt.protocol]

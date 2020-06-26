@@ -396,13 +396,13 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		}
 
 		isSourcePeer := p.id.Equal(pkt.src)
-		isOneHop := pkt.ttl == 1 || pkt.dest == p2pDestPeer
+		isOneHop := pkt.ttl != 0 || pkt.dest == p2pDestPeer
 		if isOneHop && !isSourcePeer {
 			p2p.logger.Infoln("onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.id, pkt.protocol, pkt.subProtocol)
 			return
 		}
 
-		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl != 1
+		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl == 0
 		if isBroadcast && isSourcePeer && !p.hasRole(p2pRoleRoot, false) {
 			p2p.logger.Infoln("onPacket", "Drop, Not authorized", p.id, pkt.protocol, pkt.subProtocol)
 			return
@@ -852,6 +852,12 @@ Loop:
 						p2p.sendToPeers(ctx, p2p.uncles)
 						p2p.sendToPeers(ctx, p2p.children)
 						p2p.sendToPeers(ctx, p2p.nephews)
+					} else if pkt.ttl == 2 {
+						if r.Has(p2pRoleRoot) {
+							p2p.sendToFriends(ctx)
+						}
+						p2p.sendToPeers(ctx, p2p.children)
+						p2p.sendToPeers(ctx, p2p.nephews)
 					} else {
 						if r.Has(p2pRoleRoot) {
 							p2p.sendToFriends(ctx)
@@ -993,7 +999,7 @@ func (p2p *PeerToPeer) Send(pkt *Packet) error {
 		pkt.src = p2p.self.id
 	}
 
-	if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
+	if pkt.dest == p2pDestAny && pkt.ttl == 0 &&
 		p2p.self.id.Equal(pkt.src) &&
 		!p2p.self.hasRole(p2pRoleRoot, false) {
 		//BROADCAST_ALL && not relay && not has p2pRoleRoot
@@ -1001,7 +1007,7 @@ func (p2p *PeerToPeer) Send(pkt *Packet) error {
 	}
 
 	if !p2p.available(pkt) {
-		if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
+		if pkt.dest == p2pDestAny && pkt.ttl == 0 &&
 			p2p.self.hasRole(p2pRoleNone, true) {
 			return nil
 		}

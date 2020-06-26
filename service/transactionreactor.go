@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
@@ -14,12 +15,14 @@ const (
 const (
 	protoPropagateTransaction = module.ProtocolInfo(0x1001)
 	protoRequestTransaction   = module.ProtocolInfo(0x1100)
+	protoResponseTransaction  = module.ProtocolInfo(0x1200)
 )
 
 var (
 	subProtocols = []module.ProtocolInfo{
 		protoPropagateTransaction,
 		protoRequestTransaction,
+		protoResponseTransaction,
 	}
 )
 
@@ -37,8 +40,8 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 	case protoPropagateTransaction:
 		tx, err := transaction.NewTransaction(buf)
 		if err != nil {
-			r.log.Warn("InvalidPacket(PropagateTransaction)")
-			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
+			r.log.Warnf("InvalidPacket(PropagateTransaction) from=%s", peerId.String())
+			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v", buf, err)
 			return false, err
 		}
 
@@ -46,6 +49,25 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 		return true, nil
+	case protoResponseTransaction:
+		tx, err := transaction.NewTransaction(buf)
+		if err != nil {
+			r.log.Warnf("InvalidPacket(ResponseTransaction) from=%s", peerId.String())
+			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v", buf, err)
+			return false, err
+		}
+
+		if err := r.tm.Add(tx, false); err != nil {
+			r.log.Debugf("Fail to add transaction id=%#x from=%s err=%+v",
+				tx.ID(), peerId.String(), err)
+			return false, err
+		}
+		if err := r.PropagateTransaction(tx); err != nil {
+			if !network.NotAvailableError.Equals(err) {
+				r.log.Debugf("Fail to propagate transaction err=%+v", err)
+			}
+		}
+		return false, nil
 	case protoRequestTransaction:
 		return r.ts.HandleRequestTransaction(buf, peerId)
 	}

@@ -1,44 +1,130 @@
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package service
 
 import (
 	"container/list"
+	"encoding/binary"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
 )
 
 const (
-	taskBufferSize                 = 5
-	handleTxRequestIntervalBase    = time.Millisecond * 100
-	handleTxRequestIntervalMin     = time.Millisecond * 10
-	sendTxRequestIntervalBase      = time.Millisecond * 1000
-	sendTxRequestIntervalMin       = time.Millisecond * 900
-	maxNumberOfTransactionsForSend = 10
-	txRequestActivateWatermark     = 0.1
-	txRequestDeactivateWatermark   = 0.3
+	taskBufferSize              = 5
+	handleTxRequestIntervalBase = time.Millisecond * 100
+	handleTxRequestIntervalMin  = time.Millisecond * 10
+	sendTxRequestIntervalBase   = time.Millisecond * 1000
+	sendTxRequestIntervalMin    = time.Millisecond * 950
+
+	maxNumberOfTransactionsToSend = 50
+	txRequestActivateWatermark    = 0.1
+	txRequestDeactivateWatermark  = 0.3
+	maxTxCountForBloomElement     = 50
+	txBloomBits                   = 12
 )
 
+type TxBloom struct {
+	Bits  uint
+	Bloom big.Int
+}
+
+func (b *TxBloom) Contains(id []byte) bool {
+	var filter big.Int
+	var result big.Int
+	if b.Bits == 0 {
+		return false
+	}
+	if len(id) < crypto.HashLen {
+		id = crypto.SHA3Sum256(id)
+	}
+	mask := (1 << b.Bits) - 1
+	idx1 := int(binary.BigEndian.Uint16(id[:])) & mask
+	idx2 := int(binary.BigEndian.Uint16(id[2:])) & mask
+	idx3 := int(binary.BigEndian.Uint16(id[4:])) & mask
+	filter.SetBit(&filter, idx1, 1)
+	filter.SetBit(&filter, idx2, 1)
+	filter.SetBit(&filter, idx3, 1)
+	result.And(&filter, &b.Bloom)
+	return result.Cmp(&filter) == 0
+}
+
+func (b *TxBloom) Add(id []byte) {
+	if b.Bits == 0 {
+		b.Bits = txBloomBits
+	}
+	if len(id) < crypto.HashLen {
+		id = crypto.SHA3Sum256(id)
+	}
+	idx1 := int(binary.BigEndian.Uint16(id[:])) & ((1 << b.Bits) - 1)
+	idx2 := int(binary.BigEndian.Uint16(id[2:])) & ((1 << b.Bits) - 1)
+	idx3 := int(binary.BigEndian.Uint16(id[4:])) & ((1 << b.Bits) - 1)
+	b.Bloom.SetBit(&b.Bloom, idx1, 1)
+	b.Bloom.SetBit(&b.Bloom, idx2, 1)
+	b.Bloom.SetBit(&b.Bloom, idx3, 1)
+}
+
+func (b *TxBloom) Merge(b2 *TxBloom) {
+	if b2.Bits == 0 {
+		return
+	}
+	if b.Bits != b2.Bits {
+		if b.Bits != 0 {
+			panic("InvalidMerge")
+		}
+		b.Bits = b2.Bits
+	}
+	b.Bloom.Or(&b.Bloom, &b2.Bloom)
+}
+
+func (b *TxBloom) ContainsAllOf(b2 *TxBloom) bool {
+	if b2.Bits == 0 {
+		return true
+	}
+	if b.Bits != b2.Bits {
+		return false
+	}
+	var tmp big.Int
+	tmp.And(&b.Bloom, &b2.Bloom)
+	return tmp.Cmp(&b2.Bloom) == 0
+}
+
 type msgTransactionRequest struct {
-	Peer      common.Address
-	Bits      uint
-	Bloom     []byte
-	Timestamp int64
+	Bits  uint
+	Bloom []byte
 }
 
-func (r *msgTransactionRequest) GetBloom() (uint, *big.Int) {
-	return r.Bits, new(big.Int).SetBytes(common.Decompress(r.Bloom))
+func (r *msgTransactionRequest) GetBloom() *TxBloom {
+	bloom := new(TxBloom)
+	bloom.Bits = r.Bits
+	bloom.Bloom.SetBytes(common.Decompress(r.Bloom))
+	return bloom
 }
 
-func (r *msgTransactionRequest) SetBloom(self module.Address, bits uint, value *big.Int) {
-	r.Peer.SetBytes(self.Bytes())
-	r.Bits = bits
-	r.Bloom = common.Compress(value.Bytes())
-	r.Timestamp = common.UnixMicroFromTime(time.Now())
+func (r *msgTransactionRequest) SetBloom(bloom *TxBloom) {
+	r.Bits = bloom.Bits
+	r.Bloom = common.Compress(bloom.Bloom.Bytes())
 }
 
 func (r *msgTransactionRequest) SetBytes(bs []byte) error {
@@ -58,7 +144,7 @@ type transactionRequest struct {
 	elem *list.Element
 }
 
-func (r *transactionRequest) GetBloom() (uint, *big.Int) {
+func (r *transactionRequest) GetBloom() *TxBloom {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	return r.msg.GetBloom()
@@ -129,21 +215,29 @@ func durationMax(a, b time.Duration) time.Duration {
 }
 
 func (ts *TransactionShare) handleTxRequest() {
-	tr, next := ts.popRequest()
 	current := time.Now()
-	if tr != nil {
-		bits, bloom := tr.GetBloom()
-		ts.log.Debugf("handleTxRequest(bits=%d,peer=%s)", bits, tr.peer)
-		txs := ts.tm.FilterTransactions(module.TransactionGroupNormal,
-			bits, bloom, maxNumberOfTransactionsForSend)
+	sentSum := 0
+	tr, next := ts.popRequest()
+	for tr != nil {
+		bloom := tr.GetBloom()
+		ts.log.Debugf("handleTxRequest(bits=%d,peer=%s)", bloom.Bits, tr.peer)
+		txs := ts.tm.FilterTransactions(module.TransactionGroupNormal, bloom, maxNumberOfTransactionsToSend)
+		sent := 0
 		if len(txs) > 0 {
 			ts.log.Infof("ShareTransactions(txs=%d,to=%s)", len(txs), tr.peer)
 			for i, tx := range txs {
-				if err := ts.ph.Unicast(protoPropagateTransaction, tx.Bytes(), tr.peer); err != nil {
+				if err := ts.ph.Unicast(protoResponseTransaction, tx.Bytes(), tr.peer); err != nil {
 					ts.log.Debugf("Fail to send transaction at=%d err=%+v", i, err)
 					break
 				}
+				sent += 1
 			}
+		}
+		sentSum += sent
+		if sent < maxNumberOfTransactionsToSend && next {
+			tr, next = ts.popRequest()
+		} else {
+			tr = nil
 		}
 	}
 	if next {
@@ -157,11 +251,15 @@ func (ts *TransactionShare) sendTxRequest() {
 	defer ts.lock.Unlock()
 
 	if ts.requestTimerEnabled {
-		bits, bloom := ts.tm.GetBloomOf(module.TransactionGroupNormal)
-		ts.log.Debugf("sendTxRequest(bits=%d)", bits)
+		bloom := ts.tm.GetBloomOf(module.TransactionGroupNormal)
+		ts.log.Debugf("sendTxRequest(bits=%d)", bloom.Bits)
 		var msg msgTransactionRequest
-		msg.SetBloom(ts.self, bits, bloom)
-		ts.ph.Broadcast(protoRequestTransaction, msg.Bytes(), module.BROADCAST_ALL)
+		msg.SetBloom(bloom)
+		if err := ts.ph.Broadcast(protoRequestTransaction, msg.Bytes(), module.BROADCAST_CHILDREN); err != nil {
+			if !network.NotAvailableError.Equals(err) {
+				ts.log.Debugf("Fail to broadcast TxRequest (err=%+v)", err)
+			}
+		}
 
 		ts.requestTimer.Reset(sendTxRequestIntervalBase)
 	}

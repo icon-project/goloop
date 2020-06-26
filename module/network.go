@@ -41,12 +41,36 @@ type BroadcastType byte
 type Role string
 
 const (
-	BROADCAST_ALL      BroadcastType = 0
-	BROADCAST_NEIGHBOR BroadcastType = 1
-	ROLE_VALIDATOR     Role          = "validator"
-	ROLE_SEED          Role          = "seed"
-	ROLE_NORMAL        Role          = "normal"
+	ROLE_VALIDATOR Role = "validator"
+	ROLE_SEED      Role = "seed"
+	ROLE_NORMAL    Role = "normal"
 )
+
+const (
+	BROADCAST_ALL BroadcastType = iota
+	BROADCAST_NEIGHBOR
+	BROADCAST_CHILDREN
+)
+
+func (b BroadcastType) TTL() byte {
+	switch b {
+	case BROADCAST_NEIGHBOR:
+		return 1
+	case BROADCAST_CHILDREN:
+		return 2
+	default:
+		return 0
+	}
+}
+
+func (b BroadcastType) ForceSend() bool {
+	switch b {
+	case BROADCAST_CHILDREN, BROADCAST_NEIGHBOR:
+		return true
+	default:
+		return false
+	}
+}
 
 type PeerID interface {
 	Bytes() []byte

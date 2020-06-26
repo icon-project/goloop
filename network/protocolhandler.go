@@ -99,7 +99,7 @@ Loop:
 					//ph.logger.Debugln("receiveRoutine", err)
 				}
 
-				if r && pkt.ttl != 1 && pkt.dest != p2pDestPeer {
+				if r && pkt.ttl == 0 && pkt.dest != p2pDestPeer {
 					if err := ph.m.relay(pkt); err != nil {
 						ph.onFailure(err, pkt, nil)
 					}
@@ -156,6 +156,8 @@ Loop:
 						case p2pDestAny:
 							if pkt.ttl == 1 {
 								netErr = NewBroadcastError(err, module.BROADCAST_NEIGHBOR)
+							} else if pkt.ttl == 2 {
+								netErr = NewBroadcastError(err, module.BROADCAST_CHILDREN)
 							} else {
 								netErr = NewBroadcastError(err, module.BROADCAST_ALL)
 							}

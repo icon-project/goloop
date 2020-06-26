@@ -1,20 +1,14 @@
 package service
 
 import (
-	"encoding/binary"
-	"math/big"
 	"time"
 
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
 const (
-	txBucketCount   = 256
-	txBloomBits     = 12
-	txBloomSize     = 2 << txBloomBits
-	txCountForBloom = 256
+	txBucketCount = 256
 )
 
 func indexAndBucketKeyFromKey(k string) (int, string) {
@@ -39,7 +33,7 @@ type txElement struct {
 	listNext, listPrev *txElement
 	srcNext, srcPrev   *txElement
 
-	bloom *txBloom
+	bloom *txBloomElement
 }
 
 func (t *txElement) Next() *txElement {
@@ -69,78 +63,53 @@ func (t *txElement) updateBloom() {
 	if t.bloom != nil {
 		return
 	}
-	var bloom *txBloom
+	var bloom *txBloomElement
 	if t.listPrev != nil {
 		bloom = t.listPrev.bloom
 	} else {
-		bloom = new(txBloom)
+		bloom = new(txBloomElement)
 	}
 	t.bloom = bloom.Add(t.value.ID())
 }
 
-func (t *txElement) GetBloom() (uint, *big.Int) {
+func (t *txElement) GetBloom() *TxBloom {
 	return t.bloom.GetBloom()
 }
 
-func BloomContains(bits uint, value *big.Int, id []byte) bool {
-	var filter big.Int
-	var result big.Int
-	if len(id) < crypto.HashLen {
-		id = crypto.SHA3Sum256(id)
-	}
-	mask := (1 << bits) - 1
-	idx1 := int(binary.BigEndian.Uint16(id[:])) & mask
-	idx2 := int(binary.BigEndian.Uint16(id[2:])) & mask
-	idx3 := int(binary.BigEndian.Uint16(id[4:])) & mask
-	filter.SetBit(&filter, idx1, 1)
-	filter.SetBit(&filter, idx2, 1)
-	filter.SetBit(&filter, idx3, 1)
-	result.And(&filter, value)
-	return result.Cmp(&filter) == 0
+func (t *txElement) Contained(bloom *TxBloom) bool {
+	return bloom.Contains(t.value.ID())
 }
 
-func (t *txElement) Contained(bits uint, value *big.Int) bool {
-	return BloomContains(bits, value, t.value.ID())
-}
-
-type txBloom struct {
+type txBloomElement struct {
 	count int
-	value big.Int
-	next  *txBloom
+	bloom TxBloom
+	next  *txBloomElement
 }
 
-func (b *txBloom) Add(id []byte) *txBloom {
-	if b.count >= txCountForBloom {
+func (b *txBloomElement) Add(id []byte) *txBloomElement {
+	if b.count >= maxTxCountForBloomElement {
 		ptr := &b.next
 		for *ptr != nil {
 			bloom := *ptr
-			if bloom.count < txCountForBloom {
+			if bloom.count < maxTxCountForBloomElement {
 				return bloom.Add(id)
 			}
 			ptr = &bloom.next
 		}
-		*ptr = new(txBloom).Add(id)
+		*ptr = new(txBloomElement).Add(id)
 		return *ptr
 	}
-	if len(id) < crypto.HashLen {
-		id = crypto.SHA3Sum256(id)
-	}
-	idx1 := int(binary.BigEndian.Uint16(id[:])) & (txBloomSize - 1)
-	idx2 := int(binary.BigEndian.Uint16(id[2:])) & (txBloomSize - 1)
-	idx3 := int(binary.BigEndian.Uint16(id[4:])) & (txBloomSize - 1)
-	b.value.SetBit(&b.value, idx1, 1)
-	b.value.SetBit(&b.value, idx2, 1)
-	b.value.SetBit(&b.value, idx3, 1)
+	b.bloom.Add(id)
 	b.count += 1
 	return b
 }
 
-func (b *txBloom) GetBloom() (uint, *big.Int) {
-	value := new(big.Int)
+func (b *txBloomElement) GetBloom() *TxBloom {
+	bloom := new(TxBloom)
 	for ptr := b; ptr != nil; ptr = ptr.next {
-		value.Or(value, &ptr.value)
+		bloom.Merge(&ptr.bloom)
 	}
-	return txBloomBits, value
+	return bloom
 }
 
 func (l *transactionList) Add(tx transaction.Transaction, ts bool) error {
@@ -278,9 +247,9 @@ func (l *transactionList) HasTx(id []byte) bool {
 	return ok
 }
 
-func (l *transactionList) GetBloom() (uint, *big.Int) {
+func (l *transactionList) GetBloom() *TxBloom {
 	if l.listFront == nil {
-		return 0, new(big.Int)
+		return &TxBloom{}
 	}
 	return l.listFront.GetBloom()
 }
