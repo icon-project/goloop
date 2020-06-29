@@ -341,7 +341,7 @@ public final class Context {
 
     /**
      * Records a log on the blockchain. It is recommended to use
-     * {@code EventLog} annotation rather than this method directly.
+     * {@link score.annotation.EventLog} annotation rather than this method directly.
      *
      * @param indexed indexed data
      * @param data extra data

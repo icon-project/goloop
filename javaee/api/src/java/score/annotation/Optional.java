@@ -19,6 +19,18 @@ package score.annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
+/**
+ * Annotation that can be used to indicate whether the method parameter is optional.
+ *
+ * <p>If a method parameter is annotated with this {@code Optional}, the parameter can be omitted
+ * in the transaction message.
+ * If optional parameters were omitted when the external method is called, the value of optional parameters
+ * would be their zero values.
+ * The zero value is:
+ *     0 for numeric types,
+ *     false for the boolean type, and
+ *     null for Object types.
+ */
 @Target(ElementType.PARAMETER)
 public @interface Optional {
 }

@@ -19,7 +19,23 @@ package score.annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
+/**
+ * Annotation that can be used to record logs in its TxResult as {@code eventLogs}.
+ *
+ * <p> If the value of an element, named {@code indexed}, is set, the designated number of parameters
+ * of the applied method declaration will be indexed in the order and included in the Bloom filter.
+ * Indexed parameters and non-indexed parameters are separately stored in the TxResult.
+ * At most 3 parameters can be indexed, and the value of {@code indexed} cannot exceed the number of parameters.
+ * Possible data types for method parameters are {@code int}, {@code boolean}, {@code byte[]},
+ * {@code BigInteger}, {@code String}, and {@code Address}.
+ *
+ * <p>It is recommended to declare a method without a implementation body.
+ * Even if the applied method has the body, it does not be executed in runtime.
+ */
 @Target(ElementType.METHOD)
 public @interface EventLog {
+    /**
+     * The number of indexed parameters of the applied method declaration (maximum 3).
+     */
     int indexed() default 0;
 }
