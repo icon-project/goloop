@@ -18,7 +18,9 @@ package score;
 
 /**
  * A variable DB holds one value.
- * @param <E> variable type
+ * @param <E> Variable type. It shall be readable and writable class.
+ * @see ObjectReader
+ * @see ObjectWriter
  */
 public interface VarDB<E> {
     /**

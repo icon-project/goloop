@@ -18,7 +18,9 @@ package score;
 
 /**
  * An array DB holds a sequence of values.
- * @param <E> element type
+ * @param <E> Element type. It shall be readable and writable class.
+ * @see ObjectReader
+ * @see ObjectWriter
  */
 public interface ArrayDB<E> {
     /**

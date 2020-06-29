@@ -20,8 +20,11 @@ package score;
  * A dictionary DB is a hash from key to value.
  * Only values of the dictionary DB is recorded in the DB.
  * Keys are not recorded.
- * @param <K> key type
- * @param <V> value type
+ * @param <K> Key type. It shall be String, byte array, Address,
+ *           Byte, Short, Integer, Long, Character or BigInteger.
+ * @param <V> Value type. It shall be readable and writable class.
+ * @see ObjectReader
+ * @see ObjectWriter
  */
 public interface DictDB<K, V> {
     /**
