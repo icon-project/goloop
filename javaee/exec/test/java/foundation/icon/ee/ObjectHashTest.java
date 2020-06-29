@@ -2,13 +2,13 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.Contract;
 import foundation.icon.ee.test.SimpleTest;
-import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
 import score.RevertException;
+import score.annotation.External;
 
 import java.math.BigInteger;
 

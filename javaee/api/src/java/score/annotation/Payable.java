@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.ee.tooling.abi;
+package score.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;

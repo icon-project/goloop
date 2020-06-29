@@ -9,6 +9,10 @@ import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import score.annotation.EventLog;
+import score.annotation.External;
+import score.annotation.Optional;
+import score.annotation.Payable;
 
 public class ABICompilerFieldVisitor extends FieldVisitor {
     private int access;

@@ -15,6 +15,10 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.ASMifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 import score.Address;
+import score.annotation.EventLog;
+import score.annotation.External;
+import score.annotation.Optional;
+import score.annotation.Payable;
 
 import java.io.PrintWriter;
 import java.math.BigInteger;

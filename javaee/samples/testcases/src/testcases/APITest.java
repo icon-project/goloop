@@ -18,10 +18,10 @@ package testcases;
 
 import score.Address;
 import score.Context;
-import foundation.icon.ee.tooling.abi.External;
-import foundation.icon.ee.tooling.abi.EventLog;
-import foundation.icon.ee.tooling.abi.Optional;
-import foundation.icon.ee.tooling.abi.Payable;
+import score.annotation.EventLog;
+import score.annotation.External;
+import score.annotation.Optional;
+import score.annotation.Payable;
 
 import java.math.BigInteger;
 

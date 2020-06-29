@@ -1,11 +1,11 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.SimpleTest;
-import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Test;
 import score.Context;
 import score.VarDB;
+import score.annotation.External;
 
 import java.math.BigInteger;
 

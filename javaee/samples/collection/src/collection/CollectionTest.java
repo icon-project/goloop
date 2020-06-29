@@ -16,13 +16,13 @@
 
 package collection;
 
-import foundation.icon.ee.tooling.abi.External;
 import score.Address;
 import score.ArrayDB;
+import score.BranchDB;
 import score.Context;
 import score.DictDB;
-import score.BranchDB;
 import score.VarDB;
+import score.annotation.External;
 
 import java.math.BigInteger;
 

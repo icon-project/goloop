@@ -1,6 +1,5 @@
 dependencies {
     implementation project(':api')
-    implementation project(':tooling')
 }
 
 sourceSets {

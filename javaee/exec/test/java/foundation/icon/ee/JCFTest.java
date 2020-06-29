@@ -1,9 +1,9 @@
 package foundation.icon.ee;
 
-import score.Context;
 import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
+import score.Context;
+import score.annotation.External;
 
 import java.util.List;
 import java.util.Map;

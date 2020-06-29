@@ -1,7 +1,6 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.BranchDB;
@@ -9,9 +8,9 @@ import score.Context;
 import score.DictDB;
 import score.ObjectReader;
 import score.ObjectWriter;
+import score.annotation.External;
 
 import java.math.BigInteger;
-import java.util.Objects;
 
 public class KVDBTest extends GoldenTest {
     public static class Score {

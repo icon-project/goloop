@@ -1,11 +1,11 @@
 package foundation.icon.ee;
 
+import foundation.icon.ee.test.GoldenTest;
+import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
-import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
-import foundation.icon.ee.tooling.abi.Optional;
-import org.junit.jupiter.api.Test;
+import score.annotation.External;
+import score.annotation.Optional;
 
 public class IntercallRefTest extends GoldenTest {
     public static class RefScoreA {

@@ -19,9 +19,9 @@ package example;
 import score.Address;
 import score.Context;
 import score.DictDB;
-import foundation.icon.ee.tooling.abi.EventLog;
-import foundation.icon.ee.tooling.abi.External;
-import foundation.icon.ee.tooling.abi.Optional;
+import score.annotation.EventLog;
+import score.annotation.External;
+import score.annotation.Optional;
 
 import java.math.BigInteger;
 

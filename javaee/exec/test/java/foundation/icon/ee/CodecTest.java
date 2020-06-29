@@ -1,12 +1,12 @@
 package foundation.icon.ee;
 
+import foundation.icon.ee.test.GoldenTest;
+import org.junit.jupiter.api.Test;
 import score.Context;
 import score.DictDB;
 import score.ObjectReader;
 import score.ObjectWriter;
-import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
-import org.junit.jupiter.api.Test;
+import score.annotation.External;
 
 public class CodecTest extends GoldenTest {
     public static class User {

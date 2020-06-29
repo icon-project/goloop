@@ -1,13 +1,13 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
 import score.ArrayDB;
+import score.BranchDB;
 import score.Context;
 import score.DictDB;
-import score.BranchDB;
 import score.VarDB;
+import score.annotation.External;
 
 public class QueryTest extends GoldenTest {
     public static class Score {

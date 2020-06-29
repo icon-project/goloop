@@ -1,10 +1,10 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.EventLog;
-import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
 import score.Address;
+import score.annotation.EventLog;
+import score.annotation.External;
 
 import java.math.BigInteger;
 

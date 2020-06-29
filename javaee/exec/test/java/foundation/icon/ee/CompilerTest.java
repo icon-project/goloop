@@ -2,9 +2,9 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.ABICompilerException;
-import foundation.icon.ee.tooling.abi.EventLog;
-import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
+import score.annotation.EventLog;
+import score.annotation.External;
 
 import static org.junit.jupiter.api.Assertions.fail;
 

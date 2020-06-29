@@ -1,12 +1,12 @@
 package foundation.icon.ee;
 
+import foundation.icon.ee.test.GoldenTest;
+import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
 import score.RevertException;
 import score.ScoreRevertException;
-import foundation.icon.ee.test.GoldenTest;
-import foundation.icon.ee.tooling.abi.External;
-import org.junit.jupiter.api.Test;
+import score.annotation.External;
 
 public class ExceptionTest extends GoldenTest {
     public static class RevertScore {

@@ -2,12 +2,12 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.Contract;
 import foundation.icon.ee.test.SimpleTest;
-import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.types.StepCost;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import score.Context;
 import score.VarDB;
+import score.annotation.External;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
