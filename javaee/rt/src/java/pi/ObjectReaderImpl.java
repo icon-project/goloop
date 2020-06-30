@@ -2,9 +2,11 @@ package pi;
 
 import a.ByteArray;
 import foundation.icon.ee.io.DataReader;
+import i.IInstrumentation;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
 import p.score.ObjectReader;
 
@@ -20,9 +22,28 @@ public class ObjectReaderImpl
 
     private DataReader reader;
     private int level = 0;
+    private long lastChargePos = 0;
 
     public ObjectReaderImpl(DataReader reader) {
         this.reader = reader;
+    }
+
+    private void charge() {
+        var pos = reader.getTotalReadBytes();
+        int l = (int)(pos - lastChargePos);
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.ObjectReader_readPricePerByte * l
+        );
+        lastChargePos = pos;
+    }
+
+    private void chargeSkip() {
+        var pos = reader.getTotalReadBytes();
+        int l = (int)(pos - lastChargePos);
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.ObjectReader_skipPricePerByte * l
+        );
+        lastChargePos = pos;
     }
 
     private <T> T wrapRead(Supplier<T> s) {
@@ -30,7 +51,9 @@ public class ObjectReaderImpl
             if (reader == null || !reader.hasNext()) {
                 throw new IllegalStateException();
             }
-            return s.get();
+            T ret =  s.get();
+            charge();
+            return ret;
         } catch (Exception e) {
             reader = null;
             throw e;
@@ -43,6 +66,7 @@ public class ObjectReaderImpl
                 throw new IllegalStateException();
             }
             r.run();
+            charge();
         } catch (Exception e) {
             reader = null;
             throw e;
@@ -57,7 +81,9 @@ public class ObjectReaderImpl
             if (!reader.hasNext()) {
                 return def;
             }
-            return s.get();
+            T ret =  s.get();
+            charge();
+            return ret;
         } catch (Exception e) {
             reader = null;
             throw e;
@@ -147,8 +173,10 @@ public class ObjectReaderImpl
 
     private <T extends IObject> T readNullable(s.java.lang.Class<T> c) {
         if (reader.readNullity()) {
+            charge();
             return null;
         }
+        charge();
         return read(c);
     }
 
@@ -157,6 +185,7 @@ public class ObjectReaderImpl
     }
 
     public void avm_beginList() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_beginBase);
         wrapVoidRead(() -> {
             ++level;
             reader.readListHeader();
@@ -164,6 +193,7 @@ public class ObjectReaderImpl
     }
 
     public void avm_beginMap() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_beginBase);
         wrapVoidRead(() -> {
             ++level;
             reader.readMapHeader();
@@ -171,10 +201,12 @@ public class ObjectReaderImpl
     }
 
     public boolean avm_beginNullableList() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_beginBase);
         return wrapRead(() -> {
             if (reader.readNullity()) {
                 return false;
             }
+            charge();
             ++level;
             reader.readListHeader();
             return true;
@@ -182,10 +214,12 @@ public class ObjectReaderImpl
     }
 
     public boolean avm_beginNullableMap() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_beginBase);
         return wrapRead(() -> {
             if (reader.readNullity()) {
                 return false;
             }
+            charge();
             ++level;
             reader.readMapHeader();
             return true;
@@ -193,6 +227,7 @@ public class ObjectReaderImpl
     }
 
     public boolean avm_hasNext() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_hasNext);
         try {
             if (reader == null) {
                 throw new IllegalStateException();
@@ -205,6 +240,7 @@ public class ObjectReaderImpl
     }
 
     public void avm_end() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectReader_endBase);
         try {
             if (reader == null) {
                 throw new IllegalStateException();
@@ -215,7 +251,9 @@ public class ObjectReaderImpl
             while (reader.hasNext()) {
                 reader.skip(1);
             }
+            chargeSkip();
             reader.readFooter();
+            charge();
             --level;
         } catch (Exception e) {
             reader = null;
@@ -256,6 +294,9 @@ public class ObjectReaderImpl
             }
             return Address.newWithCharge(u);
         } else {
+            IInstrumentation.charge(
+                    RuntimeMethodFeeSchedule.ObjectReader_customMethodBase
+            );
             MethodType mt = MethodType.methodType(c, ObjectReader.class);
             MethodHandle mh;
             try {
@@ -277,11 +318,17 @@ public class ObjectReaderImpl
     }
 
     public void avm_skip() {
-        wrapVoidRead(() -> reader.skip(1));
+        wrapVoidRead(() -> {
+            reader.skip(1);
+            chargeSkip();
+        });
     }
 
     public void avm_skip(int count) {
-        wrapVoidRead(() -> reader.skip(count));
+        wrapVoidRead(() -> {
+            reader.skip(count);
+            chargeSkip();
+        });
     }
 
     public void close() {

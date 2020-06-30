@@ -21,4 +21,5 @@ public interface DataReader {
     void readMapHeader();
     boolean hasNext();
     void readFooter();
+    long getTotalReadBytes();
 }

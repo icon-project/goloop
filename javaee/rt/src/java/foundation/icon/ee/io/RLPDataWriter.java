@@ -176,4 +176,8 @@ public class RLPDataWriter implements DataWriter {
     public byte[] toByteArray() {
         return Arrays.copyOfRange(os.array(), 0, os.size());
     }
+
+    public long getTotalWrittenBytes() {
+        return os.size();
+    }
 }

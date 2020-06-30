@@ -690,9 +690,16 @@ public class RuntimeMethodFeeSchedule {
     public static final int Throwable_Hierarchy_Base_Fee = RT_METHOD_FEE_LEVEL_1;
     public static final int Throwable_avm_toString = RT_METHOD_FEE_LEVEL_2;
 
-    public static final int ValueBuffer_avm_constructor = RT_METHOD_FEE_LEVEL_1;
-    public static final int ValueBuffer_avm_set = RT_METHOD_FEE_LEVEL_1;
-    public static final int ValueBuffer_avm_get = RT_METHOD_FEE_LEVEL_1;
-
     public static final int UnmodifiableArrayContainer_constructor = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int ObjectWriter_writePricePerByte = 2;
+    public static final int ObjectWriter_customMethodBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectWriter_beginBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectWriter_endBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectReader_readPricePerByte = 2;
+    public static final int ObjectReader_skipPricePerByte = 1;
+    public static final int ObjectReader_customMethodBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectReader_beginBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectReader_endBase = RT_METHOD_FEE_LEVEL_1;
+    public static final int ObjectReader_hasNext = RT_METHOD_FEE_LEVEL_1;
 }

@@ -15,7 +15,7 @@ public class RLPDataReader implements DataReader {
     private final byte[] arr;
     private final ArrayList<ListFrame> frames = new ArrayList<>();
     private ListFrame topFrame;
-    private int o; // offset from position
+    private int o;
     private int l;
 
     public RLPDataReader(byte[] data) {
@@ -227,5 +227,9 @@ public class RLPDataReader implements DataReader {
         }
         bb.position(o + l);
         return true;
+    }
+
+    public long getTotalReadBytes() {
+        return bb.position();
     }
 }

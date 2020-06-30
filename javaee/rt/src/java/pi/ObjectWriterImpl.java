@@ -2,10 +2,12 @@ package pi;
 
 import a.ByteArray;
 import foundation.icon.ee.io.DataWriter;
+import i.IInstrumentation;
 import i.IObject;
 import i.IObjectArray;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
 import p.score.ObjectWriter;
 
@@ -21,9 +23,19 @@ public class ObjectWriterImpl
 
     private DataWriter writer;
     private int level = 0;
+    private long lastChargePos = 0;
 
     public ObjectWriterImpl(DataWriter writer) {
         this.writer = writer;
+    }
+
+    private void charge() {
+        var pos = writer.getTotalWrittenBytes();
+        int l = (int)(pos - lastChargePos);
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.ObjectWriter_writePricePerByte * l
+        );
+        lastChargePos = pos;
     }
 
     private void wrapWrite(Runnable r) {
@@ -32,6 +44,7 @@ public class ObjectWriterImpl
                 throw new IllegalStateException();
             }
             r.run();
+            charge();
         } catch (Exception e) {
             writer = null;
             throw e;
@@ -132,7 +145,11 @@ public class ObjectWriterImpl
         } else if (c == Address.class) {
             writer.write(((Address) v).toByteArray());
         } else {
-            MethodType mt = MethodType.methodType(void.class, ObjectWriter.class, c);
+            IInstrumentation.charge(
+                    RuntimeMethodFeeSchedule.ObjectWriter_customMethodBase
+            );
+            MethodType mt = MethodType.methodType(void.class,
+                    ObjectWriter.class, c);
             MethodHandle mh;
             try {
                 mh = lookup.findStatic(c, "avm_writeObject", mt);
@@ -156,8 +173,10 @@ public class ObjectWriterImpl
     private void writeNullable(IObject v) {
         if (v == null) {
             writer.writeNullity(true);
+            charge();
         } else {
             writer.writeNullity(false);
+            charge();
             write(v);
         }
     }
@@ -187,6 +206,7 @@ public class ObjectWriterImpl
     }
 
     public void avm_beginList(int l) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             ++level;
             writer.writeListHeader(l);
@@ -194,35 +214,44 @@ public class ObjectWriterImpl
     }
 
     public void avm_writeListOf(IObjectArray v) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             writer.writeListHeader(v.length());
+            charge();
             for (int i = 0; i < v.length(); i++) {
                 Objects.requireNonNull(v.get(i));
                 write((IObject) v.get(i));
             }
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_endBase);
             writer.writeFooter();
         });
     }
 
     public void avm_writeListOfNullable(IObjectArray v) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             writer.writeListHeader(v.length());
+            charge();
             for (int i = 0; i < v.length(); i++) {
                 writeNullable((IObject) v.get(i));
             }
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_endBase);
             writer.writeFooter();
         });
     }
 
     public void avm_beginNullableList(int l) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             ++level;
             writer.writeNullity(false);
+            charge();
             writer.writeListHeader(l);
         });
     }
 
     public void avm_beginMap(int l) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             ++level;
             writer.writeMapHeader(l);
@@ -230,14 +259,17 @@ public class ObjectWriterImpl
     }
 
     public void avm_beginNullableMap(int l) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_beginBase);
         wrapWrite(() -> {
             ++level;
             writer.writeNullity(false);
+            charge();
             writer.writeMapHeader(l);
         });
     }
 
     public void avm_end() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ObjectWriter_endBase);
         wrapWrite(() -> {
             if (level == 0) {
                 throw new IllegalStateException();

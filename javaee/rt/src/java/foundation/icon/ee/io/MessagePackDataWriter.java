@@ -148,4 +148,8 @@ public class MessagePackDataWriter implements DataWriter {
         flush();
         return packer.toByteArray();
     }
+
+    public long getTotalWrittenBytes() {
+        return packer.getTotalWrittenBytes();
+    }
 }

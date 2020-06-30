@@ -229,4 +229,8 @@ public class MessagePackDataReader implements DataReader {
             throw convert(e);
         }
     }
+
+    public long getTotalReadBytes() {
+        return unpacker.getTotalReadBytes();
+    }
 }

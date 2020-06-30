@@ -22,4 +22,5 @@ public interface DataWriter {
 
     void flush();
     byte[] toByteArray();
+    long getTotalWrittenBytes();
 }
