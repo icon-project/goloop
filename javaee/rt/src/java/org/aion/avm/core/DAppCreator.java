@@ -113,8 +113,10 @@ public class DAppCreator {
 
         // Save back the state before we return.
         byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
-        // Bill for writing this size.
-        threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
+        var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
+                rawGraphData.length);
+        threadInstrumentation.chargeEnergy(
+                effectiveLen * externalState.getStepCost().replace());
         externalState.putObjectGraph(rawGraphData);
 
         long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();

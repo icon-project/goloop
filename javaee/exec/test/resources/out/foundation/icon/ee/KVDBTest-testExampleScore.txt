@@ -2,7 +2,7 @@ Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDes
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
 RECV setObjGraph flag=1 next=7 hash=c8b4767a933484ab9ea228b113cf203f947ae889c8bc27918141026fec3f7173 graphLen=241 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05!foundation.icon.ee.KVDBTest$Score\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08addrList\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dconfirmations\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07counter\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x0ctransactions
-RECV result status=0 stepUsed=784 ret=<null>
+RECV result status=0 stepUsed=19649 ret=<null>
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[]
 RECV getObjGraph flag=1 => next=7 hash=c8b4767a933484ab9ea228b113cf203f947ae889c8bc27918141026fec3f7173 graphLen=241 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05!foundation.icon.ee.KVDBTest$Score\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08addrList\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dconfirmations\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07counter\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x0ctransactions
 RECV setValue 71d1a00136bc5b2c95bce9a798a1d096be5fcd0f4cf8e5f547bdde3f6e10f9f4 isDelete=false 00
@@ -24,4 +24,4 @@ RECV setValue 9638280a18e3a5f8291e26899c3461c6f59fd4bb3c37284e508a1a7d8babc5f7 i
 RECV getValue 9638280a18e3a5f8291e26899c3461c6f59fd4bb3c37284e508a1a7d8babc5f7 => 01
 RECV setValue ec7fae01ed85788dff032408c7bae85b713522d0cd57d05ef6ee740b8bd18d45 isDelete=false ef95000001000000000000000000000000000000000000950000010000000000000000000000000000000000008203e8
 RECV getValue ec7fae01ed85788dff032408c7bae85b713522d0cd57d05ef6ee740b8bd18d45 => ef95000001000000000000000000000000000000000000950000010000000000000000000000000000000000008203e8
-RECV result status=0 stepUsed=201692 ret=<null>
+RECV result status=0 stepUsed=211247 ret=<null>

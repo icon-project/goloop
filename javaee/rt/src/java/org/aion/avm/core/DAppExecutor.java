@@ -75,7 +75,11 @@ public class DAppExecutor {
         try {
             // It is now safe for us to bill for the cost of loading the graph (the cost is the same, whether this came from the caller or the disk).
             // (note that we do this under the try since aborts can happen here)
-            threadInstrumentation.chargeEnergy(StorageFees.READ_PRICE_PER_BYTE * rawGraphDataLength);
+            // Do not charge defaultGet as defaultGet is considered in default
+            // CALL value.
+            threadInstrumentation.chargeEnergy(
+                    externalState.getStepCost().get() * rawGraphDataLength
+            );
 
             // Call the main within the DApp.
             Object ret;
@@ -95,8 +99,10 @@ public class DAppExecutor {
                 newRS = new DAppRuntimeState(newRS, oldRS.getGraph().getNextHash());
             } else {
                 byte[] postCallGraphData = newRS.getGraph().getRawData();
-                // Bill for writing this size.
-                threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
+                var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
+                        postCallGraphData.length);
+                threadInstrumentation.chargeEnergy(
+                        effectiveLen * externalState.getStepCost().replace());
                 if (null == stateToResume) {
                     // Save back the state before we return.
                     externalState.putObjectGraph(postCallGraphData);
