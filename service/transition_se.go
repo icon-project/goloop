@@ -22,7 +22,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		}
 		txo := txi.(transaction.Transaction)
 		t.log.Tracef("START TX <0x%x>", txo.ID())
-		for trial := RetryCount + 1; trial > 0; trial-- {
+		for trial := 0; ; trial++ {
 			txh, err := txo.GetHandler(t.cm)
 			if err != nil {
 				t.log.Errorf("Fail to GetHandler err=%+v", err)
@@ -44,10 +44,14 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				break
 			}
 			if !errors.ExecutionFailError.Equals(err) {
-				t.log.Debugf("Fail to execute transaction err=%+v\n", err)
+				t.log.Warnf("Fail to execute transaction err=%+v", err)
 				return err
 			}
-			t.log.Infof("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+			if trial == RetryCount {
+				t.log.Warnf("Fail to execute transaction retry=%d err=%+v", trial, err)
+				return err
+			}
+			t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
 		}
 		t.log.Tracef("END   TX <0x%x>", txo.ID())
 		cnt++
