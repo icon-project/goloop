@@ -51,6 +51,12 @@ const (
 	ModuleName = "eeproxy"
 )
 
+type CodeState struct {
+	NexHash   int
+	GraphHash []byte
+	PrevEID   int
+}
+
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key []byte, value []byte) ([]byte, error)
@@ -68,8 +74,8 @@ type CallContext interface {
 }
 
 type Proxy interface {
-	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error
-	SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj) error
+	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj, eid int, state *CodeState) error
+	SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj, eid int, last int) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
 	Kill() error
@@ -123,6 +129,8 @@ type invokeMessage struct {
 	Method string          `codec:"method"`
 	Params *codec.TypedObj `codec:"params"`
 	Info   *codec.TypedObj `codec:"info"`
+	EID    int
+	State  *CodeState
 }
 
 type getValueMessage struct {
@@ -192,7 +200,11 @@ func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
 	}
 }
 
-func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
+func (p *proxy) Invoke(
+	ctx CallContext, code string, isQuery bool,
+	from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj,
+	eid int, state *CodeState,
+) error {
 	logger := trace.LoggerOf(ctx.Logger().WithFields(log.Fields{log.FieldKeyEID: p.uid}))
 
 	var m invokeMessage
@@ -206,6 +218,8 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Limit.Set(limit)
 	m.Method = method
 	m.Params = params
+	m.EID = eid
+	m.State = state
 
 	v := ctx.GetInfo()
 	if eo, err := common.EncodeAny(v); err != nil {
@@ -214,7 +228,7 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 		m.Info = eo
 	}
 
-	logger.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s", p, code, isQuery, from, to, value, limit, method)
+	logger.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s eid=%d", p, code, isQuery, from, to, value, limit, method, eid)
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -249,6 +263,8 @@ type resultMessage struct {
 	Status   errors.Code
 	StepUsed common.HexInt
 	Result   *codec.TypedObj
+	EID      int
+	PrevEID  int
 }
 
 func (p *proxy) reserve() bool {
@@ -276,8 +292,8 @@ func (p *proxy) Release() {
 	}
 }
 
-func (p *proxy) SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj) error {
-	p.log.Tracef("Proxy[%p].SendResult status=%v steps=%v", p, status, steps)
+func (p *proxy) SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj, eid int, last int) error {
+	p.log.Tracef("Proxy[%p].SendResult status=%v steps=%v last=%d eid=%d", p, status, steps, last, eid)
 	var m resultMessage
 	m.StepUsed.Set(steps)
 	if status == nil {
@@ -290,6 +306,8 @@ func (p *proxy) SendResult(ctx CallContext, status error, steps *big.Int, result
 		m.Status = errors.CodeOf(status)
 		m.Result = common.MustEncodeAny(status.Error())
 	}
+	m.EID = eid
+	m.PrevEID = last
 	return p.conn.Send(msgRESULT, &m)
 }
 

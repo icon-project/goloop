@@ -2,6 +2,7 @@ package contract
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -45,6 +46,7 @@ type CallHandler struct {
 	cs        ContractStore
 	isSysCall bool
 	isQuery   bool
+	codeID    string
 }
 
 func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
@@ -159,12 +161,19 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	}()
 
 	// Prepare
+	if !h.to.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidAddressForCall(%s)", h.to.String())
+	}
 	h.as = cc.GetAccountState(h.to.ID())
 	c := h.contract(h.as)
 	if c == nil {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
+	h.codeID = fmt.Sprintf("%s-%x", h.to.String(), c.CodeHash())
+	// Before we set the codeID, it gets the last frame.
+	// Otherwise it would return current frameID for the code.
+	cc.SetCodeID(h.codeID)
 
 	// Calculate steps
 	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
@@ -203,11 +212,27 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
 	}
 
+	last := cc.GetLastEIDOf(h.codeID)
+	var state *eeproxy.CodeState
+	if next, objHash, _, err := h.as.GetObjGraph(false); err == nil {
+		state = &eeproxy.CodeState{
+			NexHash:   next,
+			GraphHash: objHash,
+			PrevEID:   last,
+		}
+	} else {
+		if !errors.NotFoundError.Equals(err) {
+			return err
+		}
+	}
+	eid := cc.NewExecution()
 	// Execute
 	h.lock.Lock()
 	if !h.disposed {
+		h.log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
 		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
-			h.value, cc.StepAvailable(), h.method.Name, h.paramObj)
+			h.value, cc.StepAvailable(), h.method.Name, h.paramObj,
+			eid, state)
 	}
 	h.lock.Unlock()
 
@@ -311,7 +336,10 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 			return errors.ExecutionFailError.Errorf(
 				"Don't have a connection for (%s)", h.EEType())
 		}
-		return h.conn.SendResult(h, status, steps, result)
+		last := h.cc.GetReturnEID()
+		eid := h.cc.NewExecution()
+		h.log.Tracef("Execution RESULT last=%d eid=%d", last, eid)
+		return h.conn.SendResult(h, status, steps, result, eid, last)
 	} else {
 		h.cc.OnResult(status, steps, result, nil)
 		return nil

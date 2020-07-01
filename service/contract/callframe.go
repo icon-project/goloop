@@ -18,12 +18,15 @@ type eventLog struct {
 
 type callFrame struct {
 	parent    *callFrame
+	eid       int
+	code      string
 	isQuery   bool
 	snapshot  state.WorldSnapshot
 	handler   ContractHandler
 	stepUsed  big.Int
 	stepLimit *big.Int
 	eventLogs list.List
+	code2EID  map[string]int
 }
 
 func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
@@ -32,6 +35,8 @@ func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
 		isQuery:   (p != nil && p.isQuery) || q,
 		handler:   h,
 		stepLimit: l,
+		code2EID:  make(map[string]int),
+		eid:       unknownEID,
 	}
 	frame.eventLogs.Init()
 	return frame
@@ -98,4 +103,41 @@ func (f *callFrame) enterQueryMode(cc *callContext) {
 		f.eventLogs.Init()
 		f.isQuery = true
 	}
+}
+
+func (f *callFrame) getLastEIDOf(code string) int {
+	for ptr := f; ptr != nil; ptr = ptr.parent {
+		if id, ok := ptr.code2EID[code]; ok {
+			return id
+		}
+		if code == ptr.code && ptr.eid != unknownEID {
+			return ptr.eid
+		}
+	}
+	return unknownEID
+}
+
+func (f *callFrame) setCodeID(code string) {
+	f.code = code
+}
+
+func (f *callFrame) newExecution(eid int) {
+	f.eid = eid
+	delete(f.code2EID, f.code)
+}
+
+func (f *callFrame) mergeLastEIDMap(f2 *callFrame) {
+	for name, id := range f2.code2EID {
+		f.code2EID[name] = id
+	}
+	if f2.code != "" && f2.eid != unknownEID {
+		f.code2EID[f2.code] = f2.eid
+	}
+}
+
+func (f *callFrame) getReturnEID() int {
+	if eid, ok := f.code2EID[f.code]; ok {
+		return eid
+	}
+	return f.eid
 }

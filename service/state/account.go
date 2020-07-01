@@ -297,8 +297,10 @@ func (s *accountSnapshotImpl) APIInfo() (*scoreapi.Info, error) {
 }
 
 func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	var obj *objectGraph
-	obj = s.objGraph
+	obj := s.objGraph
+	if obj == nil {
+		return 0, nil, nil, errors.ErrNotFound
+	}
 	if flags == false {
 		return obj.nextHash, obj.graphHash, nil, nil
 	} else {
@@ -480,8 +482,10 @@ func (o *objectGraph) Equal(o2 *objectGraph) bool {
 }
 
 func (s *accountStateImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	var obj *objectGraph
-	obj = s.objGraph
+	obj := s.objGraph
+	if obj == nil {
+		return 0, nil, nil, errors.ErrNotFound
+	}
 	if flags == false {
 		return obj.nextHash, obj.graphHash, nil, nil
 	} else {

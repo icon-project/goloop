@@ -36,6 +36,10 @@ type (
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
 		EnterQueryMode()
+		SetCodeID(code string)
+		GetLastEIDOf(code string) int
+		NewExecution() int
+		GetReturnEID() int
 	}
 	callResultMessage struct {
 		status   error
@@ -50,10 +54,16 @@ type (
 	}
 )
 
+const (
+	unknownEID = 0
+	initialEID = 1
+)
+
 type callContext struct {
 	Context
 	isQuery  bool
 	executor *eeproxy.Executor
+	nextEID  int
 
 	timer  <-chan time.Time
 	lock   sync.Mutex
@@ -78,6 +88,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	return &callContext{
 		Context: ctx,
 		isQuery: isQuery,
+		nextEID: initialEID,
 		frame:   NewFrame(nil, nil, limit, isQuery),
 
 		waiter: make(chan interface{}, 8),
@@ -118,6 +129,9 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 		} else {
 			cc.Reset(frame.snapshot)
 		}
+	}
+	if success {
+		frame.parent.mergeLastEIDMap(frame)
 	}
 	cc.frame = frame.parent
 	return frame
@@ -395,4 +409,35 @@ func (cc *callContext) EnterQueryMode() {
 	defer cc.lock.Unlock()
 
 	cc.frame.enterQueryMode(cc)
+}
+
+func (cc *callContext) SetCodeID(code string) {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	cc.frame.setCodeID(code)
+}
+
+func (cc *callContext) GetLastEIDOf(code string) int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	return cc.frame.getLastEIDOf(code)
+}
+
+func (cc *callContext) NewExecution() int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	eid := cc.nextEID
+	cc.frame.newExecution(eid)
+	cc.nextEID += 1
+	return eid
+}
+
+func (cc *callContext) GetReturnEID() int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	return cc.frame.getReturnEID()
 }
