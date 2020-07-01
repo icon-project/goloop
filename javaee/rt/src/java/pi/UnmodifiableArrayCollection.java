@@ -1,8 +1,11 @@
 package pi;
 
 import a.ObjectArray;
+import i.IInstrumentation;
 import i.IObject;
 import i.IObjectArray;
+import org.aion.avm.EnergyCalculator;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.lang.Object;
 import s.java.util.Collection;
 import s.java.util.Iterator;
@@ -15,15 +18,18 @@ public class UnmodifiableArrayCollection<E extends IObject>
     }
 
     public int avm_size() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_size);
         return data.length;
     }
 
     public boolean avm_contains(IObject o) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_contains, data.length));
         return indexOf(o) >= 0;
     }
 
     public IObjectArray avm_toArray() {
-        return new ObjectArray(data.clone());
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_toArray, data.length));
+        return ObjectArray.newWithCharge(data.clone());
     }
 
     public boolean avm_add(E e) {
@@ -35,6 +41,7 @@ public class UnmodifiableArrayCollection<E extends IObject>
     }
 
     public boolean avm_containsAll(Collection<? extends IObject> c) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_containsAll);
         var iter = c.avm_iterator();
         while (iter.avm_hasNext()) {
             if (!avm_contains(iter.avm_next())) {
@@ -67,10 +74,12 @@ public class UnmodifiableArrayCollection<E extends IObject>
         }
 
         public boolean avm_hasNext() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_Iter_hasNext);
             return index < data.length;
         }
 
         public E avm_next() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_Iter_next);
             return (E) data[index++];
         }
 
@@ -80,6 +89,7 @@ public class UnmodifiableArrayCollection<E extends IObject>
     }
 
     public Iterator<E> avm_iterator() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_iterator);
         return new Iter();
     }
 

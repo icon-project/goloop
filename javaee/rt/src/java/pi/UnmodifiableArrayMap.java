@@ -1,7 +1,10 @@
 package pi;
 
 import foundation.icon.ee.util.IObjects;
+import i.IInstrumentation;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.util.Collection;
 import s.java.util.Map;
 import s.java.util.Set;
@@ -14,21 +17,26 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
         implements Map<K, V> {
     public UnmodifiableArrayMap(IObject[] keyValue) {
         super(keyValue);
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_constructor);
     }
 
     public int avm_size() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_size);
         return data.length / 2;
     }
 
     public boolean avm_containsKey(IObject key) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsKey, data.length / 2));
         return indexOf(key, 0, 2) >= 0;
     }
 
     public boolean avm_containsValue(IObject value) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsValue, data.length / 2));
         return indexOf(value, 1, 2) >= 0;
     }
 
     public V avm_get(IObject key) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_get, data.length / 2));
         var index = indexOf(key, 0, 2);
         if (index < 0) {
             return null;
@@ -58,14 +66,17 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public Set<K> avm_keySet() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_keySet);
         return new UnmodifiableArraySet<>(collect(0));
     }
 
     public Collection<V> avm_values() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_values);
         return new UnmodifiableArraySet<>(collect(1));
     }
 
     public Set<Map.Entry<K, V>> avm_entrySet() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_entrySet);
         var oa = new IObject[data.length / 2];
         int dst = 0;
         for (int i = 0; i < data.length; i += 2) {
@@ -75,6 +86,7 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public boolean avm_equals(IObject o) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_equals, data.length / 2));
         if (o == this) {
             return true;
         }
@@ -106,6 +118,7 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public int avm_hashCode() {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_hashCode, data.length / 2));
         int hash = 0;
         for (int i = 0; i < data.length; ) {
             var kh = IObjects.hashCode(data[i++]);
@@ -119,6 +132,7 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
 
     @SuppressWarnings("unchecked")
     public static <K extends IObject, V extends IObject> Map<K, V> emptyMap() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_emptyMap);
         return (Map<K, V>) EMPTY_MAP;
     }
 

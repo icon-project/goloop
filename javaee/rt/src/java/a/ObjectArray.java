@@ -55,6 +55,11 @@ public class ObjectArray extends Array implements IObjectArray {
         return new ObjectArray(Arrays.copyOf(underlying, underlying.length));
     }
 
+    public static ObjectArray newWithCharge(Object[] src) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor);
+        return new ObjectArray(src);
+    }
+
     @Override
     public IObject clone() {
         lazyLoad();

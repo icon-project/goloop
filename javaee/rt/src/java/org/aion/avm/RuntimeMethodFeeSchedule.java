@@ -690,12 +690,55 @@ public class RuntimeMethodFeeSchedule {
     public static final int Throwable_Hierarchy_Base_Fee = RT_METHOD_FEE_LEVEL_1;
     public static final int Throwable_avm_toString = RT_METHOD_FEE_LEVEL_2;
 
-    public static final int UnmodifiableArrayContainer_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_size = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_contains = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_toArray = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_containsAll = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_iterator = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_Iter_hasNext = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayCollection_Iter_next = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int UnmodifiableArrayList_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_equals = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_hashCode = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_get = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_indexOf = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_lastIndexOf = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_listIterator = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_subList = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_emptyList = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_ListIter_hasPrevious = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_ListIter_previous = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_ListIter_nextIndex = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayList_ListIter_previousIndex = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int UnmodifiableArrayMap_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_size = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_containsKey = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_containsValue = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_get = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_keySet = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_values = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_entrySet = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_equals = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_hashCode = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArrayMap_emptyMap = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int UnmodifiableArraySet_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArraySet_equals = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableArraySet_hashCode = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int UnmodifiableMapEntry_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableMapEntry_getKey = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableMapEntry_getValue = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableMapEntry_equals = RT_METHOD_FEE_LEVEL_1;
+    public static final int UnmodifiableMapEntry_hashCode = RT_METHOD_FEE_LEVEL_1;
 
     public static final int ObjectWriter_writePricePerByte = 2;
     public static final int ObjectWriter_customMethodBase = RT_METHOD_FEE_LEVEL_1;
     public static final int ObjectWriter_beginBase = RT_METHOD_FEE_LEVEL_1;
     public static final int ObjectWriter_endBase = RT_METHOD_FEE_LEVEL_1;
+
     public static final int ObjectReader_readPricePerByte = 2;
     public static final int ObjectReader_skipPricePerByte = 1;
     public static final int ObjectReader_customMethodBase = RT_METHOD_FEE_LEVEL_1;

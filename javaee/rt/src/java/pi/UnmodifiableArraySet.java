@@ -1,7 +1,10 @@
 package pi;
 
 import foundation.icon.ee.util.IObjects;
+import i.IInstrumentation;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.util.Set;
 
 // iteration order is deterministic
@@ -12,9 +15,11 @@ public class UnmodifiableArraySet<E extends IObject>
         implements Set<E> {
     UnmodifiableArraySet(IObject[] data) {
         super(data);
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArraySet_constructor);
     }
 
     public boolean avm_equals(IObject o) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArraySet_equals);
         if (o == this) {
             return true;
         }
@@ -33,6 +38,7 @@ public class UnmodifiableArraySet<E extends IObject>
     }
 
     public int avm_hashCode() {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArraySet_hashCode, data.length));
         int h = 0;
         for (var e : data) {
             if (e != null) {

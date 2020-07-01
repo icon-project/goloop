@@ -1,7 +1,10 @@
 package pi;
 
 import foundation.icon.ee.util.IObjects;
+import i.IInstrumentation;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.util.Iterator;
 import s.java.util.List;
 import s.java.util.ListIterator;
@@ -11,9 +14,11 @@ public class UnmodifiableArrayList<E extends IObject>
         implements List<E> {
     public UnmodifiableArrayList(IObject[] data) {
         super(data);
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_constructor, data.length));
     }
 
     public boolean avm_equals(IObject o) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_equals);
         if (o == this) {
             return true;
         }
@@ -33,10 +38,12 @@ public class UnmodifiableArrayList<E extends IObject>
     }
 
     public int avm_hashCode() {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_hashCode, data.length));
         return IObjects.hashCode(data);
     }
 
     public E avm_get(int index) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_get);
         return (E) data[index];
     }
 
@@ -53,22 +60,27 @@ public class UnmodifiableArrayList<E extends IObject>
     }
 
     public int avm_indexOf(IObject o) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_indexOf, data.length));
         return indexOf(o);
     }
 
     public int avm_lastIndexOf(IObject o) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_lastIndexOf, data.length));
         return lastIndexOf(o);
     }
 
     public ListIterator<E> avm_listIterator() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_listIterator);
         return new ListIter();
     }
 
     public ListIterator<E> avm_listIterator(int index) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_listIterator);
         return new ListIter(index);
     }
 
     public List<E> avm_subList(int fromIndex, int toIndex) {
+        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_subList, data.length));
         return new UnmodifiableArrayList<>(
                 java.util.Arrays.copyOfRange(data, fromIndex, toIndex));
     }
@@ -84,18 +96,22 @@ public class UnmodifiableArrayList<E extends IObject>
         }
 
         public boolean avm_hasPrevious() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_ListIter_hasPrevious);
             return index > 0;
         }
 
         public E avm_previous() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_ListIter_previous);
             return (E) data[--index];
         }
 
         public int avm_nextIndex() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_ListIter_nextIndex);
             return index;
         }
 
         public int avm_previousIndex() {
+            IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_ListIter_previousIndex);
             return index - 1;
         }
 
@@ -113,6 +129,7 @@ public class UnmodifiableArrayList<E extends IObject>
 
     @SuppressWarnings("unchecked")
     public static <E extends IObject> List<E> emptyList() {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.UnmodifiableArrayList_emptyList);
         return (List<E>) EMPTY_LIST;
     }
 
