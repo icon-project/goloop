@@ -171,10 +171,8 @@ public class StepTest extends TestBase {
             long valSize;
             switch (type) {
                 case TYPE_INT:
-                    int v = Integer.parseInt(val);
-                    long bitLen = BigInteger.valueOf(v).bitLength();
-                    valSize = bitLen / 8 + 1;
-                    // int to byte
+                    var v = new BigInteger(val.substring(2), 16);
+                    valSize = (v.bitLength()+1) / 8 + 1;
                     break;
                 case TYPE_BYTES:
                     if (!val.startsWith("0x")) {
@@ -510,13 +508,13 @@ public class StepTest extends TestBase {
         Address scoreAddr = dbScore.getAddress();
         StepTransaction stx = new StepTransaction();
         String[][] initialParams = {
-                {"v_int", "128"},
+                {"v_int", "0x180"},
                 {"v_str", "tortoise"},
                 {"v_bytes", new Bytes("tortoise".getBytes()).toString()},
                 {"v_addr", testWallets[0].getAddress().toString()},
         };
         String[][] updatedParams = {
-                {"v_int", "821"},
+                {"v_int", "0x335"},
                 {"v_str", "esiotrot"},
                 {"v_bytes", new Bytes("esiotrot".getBytes()).toString()},
                 {"v_addr", testWallets[1].getAddress().toString()},
@@ -557,9 +555,6 @@ public class StepTest extends TestBase {
                             .put("type", new RpcValue(BigInteger.valueOf(i)))
                             .build();
                     String dbVal = dbScore.call("readFromVar", callParam).asString();
-                    if (i == 0) {
-                        dbVal = new BigInteger(dbVal.substring("0x".length()), 16).toString();
-                    }
                     LOG.info("dbVal[" + i + "] : " + dbVal);
                     assertEquals(updatedParams[i][1], dbVal);
                     assertEquals(STEP_PRICE.multiply(stepLimit), stx.getUsedFee());
