@@ -75,8 +75,12 @@ func (cb *transitionCallbackForTrace) OnExecute(tr module.Transition, e error) {
 	cb.info.Callback.OnEnd(e)
 }
 
+type transitionID struct{}
+
 type transition struct {
 	parent *transition
+	pid    *transitionID
+	id     *transitionID
 	bi     module.BlockInfo
 	pbi    module.BlockInfo
 
@@ -140,6 +144,8 @@ func patchTransition(t *transition, patchTXs module.TransactionList) *transition
 	}
 	return &transition{
 		parent:             t.parent,
+		pid:                t.pid,
+		id:                 new(transitionID),
 		bi:                 t.bi,
 		pbi:                nil,
 		patchTransactions:  patchTXs,
@@ -173,6 +179,8 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 	}
 	return &transition{
 		parent:             parent,
+		pid:                parent.id,
+		id:                 new(transitionID),
 		bi:                 bi,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
@@ -202,6 +210,7 @@ func newInitTransition(db db.Database, result []byte,
 	ws := state.NewWorldState(db, tresult.StateHash, validatorList)
 
 	return &transition{
+		id:                 new(transitionID),
 		patchTransactions:  transaction.NewTransactionListFromSlice(db, nil),
 		normalTransactions: transaction.NewTransactionListFromSlice(db, nil),
 		bi:                 &blockInfo{int64(0), int64(0)},
@@ -696,5 +705,5 @@ func (t *transition) Equal(tr module.Transition) bool {
 		t.normalTransactions.Equal(t2.normalTransactions) &&
 		equalBlockInfo(t.bi, t2.bi) &&
 		equalBlockInfo(t.pbi, t2.pbi) &&
-		t.parent.Equal(t2.parent)
+		t.pid == t2.pid
 }
