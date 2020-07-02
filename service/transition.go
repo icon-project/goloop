@@ -688,6 +688,9 @@ func (t *transition) Equal(tr module.Transition) bool {
 	if t == t2 {
 		return true
 	}
+	if t == nil || t2 == nil {
+		return false
+	}
 
 	return t.patchTransactions.Equal(t2.patchTransactions) &&
 		t.normalTransactions.Equal(t2.normalTransactions) &&
