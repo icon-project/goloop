@@ -86,7 +86,7 @@ func (r *TransactionReactor) OnFailure(err error, pi module.ProtocolInfo, b []by
 }
 
 func (r *TransactionReactor) OnJoin(id module.PeerID) {
-	// Nothing to do now.
+	r.ts.HandleJoin(id)
 }
 
 func (r *TransactionReactor) OnLeave(id module.PeerID) {

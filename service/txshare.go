@@ -187,6 +187,7 @@ type TransactionShare struct {
 	updatingRequestTimer bool
 	requestTimerActive   bool
 	requestTimerEnabled  bool
+	emptyHandlers        bool
 
 	tasks chan func()
 }
@@ -250,27 +251,32 @@ func (ts *TransactionShare) sendTxRequest() {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
 
-	if ts.requestTimerEnabled {
+	enabled := ts.requestTimerEnabled && !ts.emptyHandlers
+	if enabled {
 		bloom := ts.tm.GetBloomOf(module.TransactionGroupNormal)
 		ts.log.Debugf("sendTxRequest(bits=%d)", bloom.Bits)
 		var msg msgTransactionRequest
 		msg.SetBloom(bloom)
 		if err := ts.ph.Broadcast(protoRequestTransaction, msg.Bytes(), module.BROADCAST_CHILDREN); err != nil {
-			if !network.NotAvailableError.Equals(err) {
+			if network.NotAvailableError.Equals(err) {
+				ts.emptyHandlers = true
+				enabled = false
+			} else {
 				ts.log.Debugf("Fail to broadcast TxRequest (err=%+v)", err)
 			}
 		}
-
-		ts.requestTimer.Reset(sendTxRequestIntervalBase)
+		if enabled {
+			ts.requestTimer.Reset(sendTxRequestIntervalBase)
+		}
 	}
-	ts.requestTimerActive = ts.requestTimerEnabled
+	ts.requestTimerActive = enabled
 }
 
-func (ts *TransactionShare) updateRequestTimer() {
+func (ts *TransactionShare) handleUpdateRequestTimer() {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
 
-	if ts.requestTimerEnabled && !ts.requestTimerActive {
+	if (ts.requestTimerEnabled && !ts.emptyHandlers) && !ts.requestTimerActive {
 		ts.requestTimer.Reset(0)
 		ts.requestTimerActive = true
 	}
@@ -348,6 +354,16 @@ func (ts *TransactionShare) HandleRequestTransaction(buf []byte, peer module.Pee
 	return false, nil
 }
 
+func (ts *TransactionShare) HandleJoin(peer module.PeerID) {
+	ts.lock.Lock()
+	defer ts.lock.Unlock()
+
+	if ts.emptyHandlers {
+		ts.emptyHandlers = false
+		ts.updateRequestTimerInLock()
+	}
+}
+
 func (ts *TransactionShare) HandleLeave(peer module.PeerID) {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
@@ -362,6 +378,13 @@ func (ts *TransactionShare) HandleLeave(peer module.PeerID) {
 	}
 }
 
+func (ts *TransactionShare) updateRequestTimerInLock() {
+	if ts.requestTimerEnabled && !ts.emptyHandlers && !ts.requestTimerActive && !ts.updatingRequestTimer {
+		ts.updatingRequestTimer = true
+		ts.tasks <- ts.handleUpdateRequestTimer
+	}
+}
+
 func (ts *TransactionShare) EnableTxRequest(yn bool) {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
@@ -369,10 +392,7 @@ func (ts *TransactionShare) EnableTxRequest(yn bool) {
 	if ts.requestTimerEnabled != yn {
 		ts.log.Infof("EnableTxRequest(%v)", yn)
 		ts.requestTimerEnabled = yn
-		if ts.requestTimerEnabled && !ts.requestTimerActive && !ts.updatingRequestTimer {
-			ts.updatingRequestTimer = true
-			ts.tasks <- ts.updateRequestTimer
-		}
+		ts.updateRequestTimerInLock()
 	}
 }
 
