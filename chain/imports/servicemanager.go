@@ -301,15 +301,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		return
 	}
 	txl := blk.NormalTransactions()
-	t.m.finalize(t, module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
-	rl, err := t.m.ReceiptListFromResult(tr.Result(), module.TransactionGroupNormal)
-	if err != nil {
-		t.m.cb.OnError(err)
-		t.cb.OnExecute(t, err)
-		t.errCh <- err
-		t.canceler()
-		return
-	}
+	rl := tr.NormalReceipts()
 	rit := rl.Iterator()
 	for i := txl.Iterator(); i.Has(); i.Next() {
 		tx, _, err := i.Get()
