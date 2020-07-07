@@ -10,18 +10,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class State {
-    private static byte[] defaultHash = Crypto.sha3_256(new byte[0]);
-
     static class Account {
         public Address address;
         public BigInteger balance = BigInteger.ZERO;
         public int nextHash = 0;
-        public byte[] objectGraph = new byte[0];
-        public byte[] objectGraphHash = defaultHash;
+        public byte[] objectGraph = null;
+        public byte[] objectGraphHash = null;
         public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
         public byte[] optimized = null;
         public byte[] transformed = null;
         public Contract contract = null;
+        public int exid = 0;
+        public int eid = 0;
 
         Account(byte[] addr) {
             address = new Address(addr);
@@ -37,6 +37,8 @@ public class State {
             optimized = src.optimized;
             transformed = src.transformed;
             contract = src.contract;
+            exid = src.exid;
+            eid = src.eid;
         }
     }
 

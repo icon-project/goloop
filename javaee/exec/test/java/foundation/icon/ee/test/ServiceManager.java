@@ -37,6 +37,8 @@ public class ServiceManager extends Proxy implements Agent {
     private final Map<String, Object> info = new HashMap<>();
     private final StepCost stepCost;
     private boolean isReadOnly = false;
+    private int eid = 0;
+    private int exid = 0;
 
     private boolean isClassMeteringEnabled = true;
 
@@ -98,6 +100,8 @@ public class ServiceManager extends Proxy implements Agent {
     }
 
     public Contract deploy(Class<?> main, Object ... params) {
+        ++exid;
+        eid = 0;
         byte[] jar = makeJar(main);
         return doDeploy(jar, params);
     }
@@ -107,6 +111,8 @@ public class ServiceManager extends Proxy implements Agent {
     }
 
     public Contract deploy(Class<?>[] all, Object ... params) {
+        ++exid;
+        eid = 0;
         byte[] jar = makeJar(all[0].getName(), all);
         return doDeploy(jar, params);
     }
@@ -122,7 +128,7 @@ public class ServiceManager extends Proxy implements Agent {
             Method[] methods = MethodUnpacker.readFrom(apisBytes);
             current = state.getAccount(scoreAddr);
             info.put(Info.CONTRACT_OWNER, origin);
-            var res = invoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
+            var res = doInvoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
             if (res.getStatus()!=0) {
                 state = prevState;
                 current = state.getAccount(prev.address);
@@ -229,10 +235,14 @@ public class ServiceManager extends Proxy implements Agent {
                     stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
                             to, value, stepLimit, method, params);
-                    var res = invoke(to, value, stepLimit, method, params);
+                    current.eid = eid;
+                    var res = invokeInner(to, value, stepLimit, method, params);
+                    printf("SEND result status=%d stepUsed=%d ret=%s EID=%d prevEID=%d%n",
+                            res.getStatus(), res.getStepUsed(), res.getRet(),
+                            eid, current.eid);
                     sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
                             res.getStepUsed().add(stepsContractCall),
-                            TypedObj.encodeAny(res.getRet()));
+                            TypedObj.encodeAny(res.getRet()), eid, current.eid);
                     break;
                 }
                 case EEProxy.MsgType.EVENT: {
@@ -300,10 +310,24 @@ public class ServiceManager extends Proxy implements Agent {
 
     public Result invoke(Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
-        return invoke(false, to, value, stepLimit, method, params);
+        ++exid;
+        eid = 0;
+        return doInvoke(false, to, value, stepLimit, method, params);
+    }
+
+    private Result invokeInner(Address to, BigInteger value, BigInteger stepLimit,
+                         String method, Object[] params) throws IOException {
+        return doInvoke(false, to, value, stepLimit, method, params);
     }
 
     public Result invoke(boolean query, Address to, BigInteger value, BigInteger stepLimit,
+                         String method, Object[] params) throws IOException {
+        ++exid;
+        eid = 0;
+        return doInvoke(query, to, value, stepLimit, method, params);
+    }
+
+    private Result doInvoke(boolean query, Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
         var prev = current;
         var prevState = new State(state);
@@ -319,7 +343,7 @@ public class ServiceManager extends Proxy implements Agent {
                     BigInteger.ZERO,
                     "Contract not found");
         }
-        var res = invoke(getHexPrefix(to), query, from, to, value, stepLimit, method, params);
+        var res = doInvoke(getHexPrefix(to), query, from, to, value, stepLimit, method, params);
         if (res.getStatus()!=0) {
             state = prevState;
             current = state.getAccount(prev.address);
@@ -329,9 +353,9 @@ public class ServiceManager extends Proxy implements Agent {
         return res;
     }
 
-    private Result invoke(String code, boolean isQuery, Address from,
-                     Address to, BigInteger value, BigInteger stepLimit,
-                     String method, Object[] params) throws IOException {
+    private Result doInvoke(String code, boolean isQuery, Address from,
+                            Address to, BigInteger value, BigInteger stepLimit,
+                            String method, Object[] params) throws IOException {
         boolean readOnlyMethod = false;
         if (!method.equals("<init>")) {
             var m = current.contract.getMethod(method);
@@ -342,11 +366,25 @@ public class ServiceManager extends Proxy implements Agent {
             isReadOnly = true;
         }
         try {
-            printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
+            Object[] codeState = null;
+            ++eid;
+            if (current.objectGraph != null) {
+                if (current.exid != exid) {
+                    current.exid = exid;
+                    current.eid = 0;
+                }
+                codeState = new Object[]{
+                        current.nextHash,
+                        current.objectGraphHash,
+                        current.eid
+                };
+            }
+            printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
                     code, isReadOnly, from, to, value, stepLimit, method,
-                    params);
-            sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from, to, value, stepLimit,
-                    method, TypedObj.encodeAny(params), TypedObj.encodeAny(info));
+                    params, eid, codeState);
+            sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
+                    to, value, stepLimit, method, TypedObj.encodeAny(params),
+                    TypedObj.encodeAny(info), eid, codeState);
             var msg = waitFor(EEProxy.MsgType.RESULT);
             if (msg.type != EEProxy.MsgType.RESULT) {
                 throw new AssertionError(String.format("unexpected message type %d", msg.type));
@@ -355,6 +393,7 @@ public class ServiceManager extends Proxy implements Agent {
             var status = data.get(0).asIntegerValue().asInt();
             var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
             var result = TypedObj.decodeAny(data.get(2));
+            current.eid = eid++;
             printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
             return new Result(status, stepUsed, result);
         } finally {

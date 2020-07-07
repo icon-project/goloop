@@ -121,6 +121,12 @@ public abstract class Proxy {
             for (byte[] bytes : bytesArray) {
                 packByteArray(bytes, packer);
             }
+        } else if (obj instanceof Object[]) {
+            Object[] oa = (Object[]) obj;
+            packer.packArrayHeader(oa.length);
+            for (Object o : oa) {
+                packObject(o, packer);
+            }
         } else {
             throw new IOException("not yet supported: " + obj.getClass());
         }

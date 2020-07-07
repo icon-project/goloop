@@ -1,15 +1,15 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=2 hash=40517cd6d137289076d104c522b9a96927bc93781afdcb825140ffe893010cca graphLen=53 graph=\x03\x00\x00\x00\x00+foundation.icon.ee.DeployTest$NoConstructor\x00\x00\x00\x01
 RECV result status=0 stepUsed=5169 ret=<null>
-SEND invoke code=010002 isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010002 isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV result status=5 stepUsed=0 ret=IllegalFormat
-SEND invoke code=010003 isQuery=false from=000001... to=010003... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010003 isQuery=false from=000001... to=010003... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV result status=5 stepUsed=0 ret=IllegalFormat
-SEND invoke code=010004 isQuery=false from=000001... to=010004... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010004 isQuery=false from=000001... to=010004... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV result status=5 stepUsed=0 ret=IllegalFormat
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010005 isQuery=false from=000001... to=010005... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010005 isQuery=false from=000001... to=010005... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV result status=5 stepUsed=0 ret=IllegalFormat
-SEND invoke code=010006 isQuery=false from=000001... to=010006... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010006 isQuery=false from=000001... to=010006... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV result status=5 stepUsed=0 ret=IllegalFormat

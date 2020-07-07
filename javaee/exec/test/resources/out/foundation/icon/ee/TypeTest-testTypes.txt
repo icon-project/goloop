@@ -10,51 +10,51 @@ Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', d
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=5169 ret=<null>
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mshort params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mshort params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mint params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mint params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mlong params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mlong params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mboolean params=[false]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mboolean params=[false] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=false
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mchar params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mchar params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=2506 ret=0
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=2206 ret=string
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=2006 ret=000102
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=2206 ret=hx0002000000000000000000000000000000000000
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=<null>
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[<null>]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=<null>
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[<null>]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=<null>
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[<null>]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1906 ret=<null>
-SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mvoid params=[]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mvoid params=[] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=1903 ret=<null>
