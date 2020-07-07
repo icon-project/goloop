@@ -56,7 +56,7 @@ public class DBImplBase extends s.java.lang.Object {
         return ins.getFrameContext().getDBStorage();
     }
 
-    private byte[] hash(byte[] data) {
+    private byte[] hashWithCharge(byte[] data) {
         IInstrumentation.charge(
                 RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
                 RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length : 0));
@@ -64,18 +64,21 @@ public class DBImplBase extends s.java.lang.Object {
     }
 
     public byte[] getStorageKey() {
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * id.length);
         if (hash == null) {
-            hash = hash(id);
+            hash = Crypto.sha3_256(id);
         }
         return hash;
     }
 
     public byte[] getStorageKey(IObject key) {
-        return hash(catEncodedKey(id, key));
+        return hashWithCharge(catEncodedKey(id, key));
     }
 
     public byte[] getStorageKey(int key) {
-        return hash(catEncodedKey(id, key));
+        return hashWithCharge(catEncodedKey(id, key));
     }
 
     public byte[] getSubDBID(IObject key) {
