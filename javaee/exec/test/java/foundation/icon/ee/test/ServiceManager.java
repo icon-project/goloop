@@ -334,7 +334,7 @@ public class ServiceManager extends Proxy implements Agent {
                      String method, Object[] params) throws IOException {
         boolean readOnlyMethod = false;
         if (!method.equals("<init>")) {
-            var m = state.getAccount(to).contract.getMethod(method);
+            var m = current.contract.getMethod(method);
             readOnlyMethod = (m.getFlags()&Method.Flags.READONLY) != 0;
         }
         var prevIsReadOnly = isReadOnly;
