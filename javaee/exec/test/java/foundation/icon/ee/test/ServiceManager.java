@@ -130,7 +130,7 @@ public class ServiceManager extends Proxy implements Agent {
             }
             var contract = new Contract(this, scoreAddr, methods);
             current.contract = contract;
-            current = prev;
+            current = state.getAccount(prev.address);
             return contract;
         } catch (IOException e) {
             throw new AssertionError(e);
@@ -312,6 +312,8 @@ public class ServiceManager extends Proxy implements Agent {
         info.put(Info.CONTRACT_OWNER, from);
         var code = getHexPrefix(to) + "/transformed.jar";
         if (state.readFile(code) == null) {
+            state = prevState;
+            current = state.getAccount(prev.address);
             return new Result(
                     Status.ContractNotFound,
                     BigInteger.ZERO,
@@ -322,7 +324,7 @@ public class ServiceManager extends Proxy implements Agent {
             state = prevState;
             current = state.getAccount(prev.address);
         } else {
-            current = prev;
+            current = state.getAccount(prev.address);
         }
         return res;
     }
