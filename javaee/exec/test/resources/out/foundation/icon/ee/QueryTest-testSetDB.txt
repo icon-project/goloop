@@ -5,21 +5,18 @@ Method{type=0, name='setArrayDB', flags=3, indexed=0, inputs=[], output=1, outpu
 Method{type=0, name='setVarDB', flags=3, indexed=0, inputs=[], output=1, outputDescriptor=I}
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=8 hash=bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 graphLen=251 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06"foundation.icon.ee.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
-RECV result status=0 stepUsed=20449 ret=<null>
+RECV result status=0 stepUsed=20129 ret=<null>
 SEND invoke code=010001 isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setDictDB params=[] EID=1 codeState=[8 bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 0]
 RECV getObjGraph flag=1 => next=8 hash=bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 graphLen=251 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06"foundation.icon.ee.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
-RECV result status=0 stepUsed=13887 ret=0
+RECV result status=0 stepUsed=13727 ret=0
 SEND invoke code=010001 isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setBranchDB params=[] EID=1 codeState=[8 bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 0]
-RECV getObjGraph flag=1 => next=8 hash=bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 graphLen=251 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06"foundation.icon.ee.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
-RECV result status=0 stepUsed=14227 ret=0
+RECV result status=0 stepUsed=14067 ret=0
 SEND invoke code=010001 isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setArrayDB params=[] EID=1 codeState=[8 bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 0]
-RECV getObjGraph flag=1 => next=8 hash=bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 graphLen=251 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06"foundation.icon.ee.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
 RECV getValue c03413d86431d40e93ec9095ddc9844df144c244175eaad0545bc894a1695fda => <null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
-RECV result status=0 stepUsed=16084 ret=0
+RECV result status=0 stepUsed=15924 ret=0
 SEND invoke code=010001 isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setVarDB params=[] EID=1 codeState=[8 bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 0]
-RECV getObjGraph flag=1 => next=8 hash=bd3fb724268b72d3daf4e4445a7a019491548e40ae431cce039eb56af8b48d88 graphLen=251 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06"foundation.icon.ee.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
-RECV result status=0 stepUsed=13684 ret=0
+RECV result status=0 stepUsed=13524 ret=0

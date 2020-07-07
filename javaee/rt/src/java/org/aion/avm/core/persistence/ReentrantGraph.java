@@ -13,7 +13,7 @@ public class ReentrantGraph {
     public static ReentrantGraph captureCallerState(IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int maximumSizeInBytes, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass) {
         ByteBuffer buffer = ByteBuffer.allocate(maximumSizeInBytes);
         List<Object> existingObjectIndex = new ArrayList<>();
-        Serializer.serializeEntireGraph(buffer, existingObjectIndex, null, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass);
+        Serializer.serializeEntireGraphAndNextHashCode(buffer, existingObjectIndex, null, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass);
         byte[] finalBytes = new byte[buffer.position()];
         System.arraycopy(buffer.array(), 0, finalBytes, 0, finalBytes.length);
         return new ReentrantGraph(finalBytes, existingObjectIndex, null);
@@ -22,7 +22,7 @@ public class ReentrantGraph {
     public static ReentrantGraph captureCalleeState(IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int maximumSizeInBytes, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass) {
         ByteBuffer calleeBuffer = ByteBuffer.allocate(maximumSizeInBytes);
         List<Integer> calleeToCallerMapping = new ArrayList<>();
-        Serializer.serializeEntireGraph(calleeBuffer, null, calleeToCallerMapping, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass);
+        Serializer.serializeEntireGraphAndNextHashCode(calleeBuffer, null, calleeToCallerMapping, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass);
         byte[] calleeBytes = new byte[calleeBuffer.position()];
         System.arraycopy(calleeBuffer.array(), 0, calleeBytes, 0, calleeBytes.length);
         return new ReentrantGraph(calleeBytes, null, calleeToCallerMapping);

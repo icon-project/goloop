@@ -18,7 +18,6 @@ package foundation.icon.ee.types;
 
 import foundation.icon.ee.util.Crypto;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class ObjectGraph {
@@ -36,19 +35,8 @@ public class ObjectGraph {
         this(newNextHash, base.graphHash, base.getGraphData());
     }
 
-    public static ObjectGraph getInstance(byte[] rawData) {
-        ByteBuffer buffer = ByteBuffer.wrap(rawData);
-        int nextHash = buffer.getInt();
-        byte[] graphData = new byte[buffer.remaining()];
-        buffer.get(graphData);
-        return new ObjectGraph(nextHash, Crypto.sha3_256(graphData), graphData);
-    }
-
-    public byte[] getRawData() {
-        ByteBuffer buffer = ByteBuffer.allocate(4 + this.graphData.length);
-        buffer.putInt(this.nextHash);
-        buffer.put(this.graphData);
-        return buffer.array();
+    public ObjectGraph(int nextHash, byte[] graphData) {
+        this(nextHash, Crypto.sha3_256(graphData), graphData);
     }
 
     public int getNextHash() {

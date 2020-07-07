@@ -37,6 +37,7 @@ import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
 import org.aion.avm.core.ClassRenamerBuilder;
+import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.types.CommonType;
 import org.aion.avm.core.util.DebugNameResolver;
 import p.score.Context;
@@ -98,6 +99,7 @@ public class LoadedDApp {
     private final boolean preserveDebuggability;
 
     private Object mainInstance;
+    private DAppRuntimeState stateCache;
 
     /**
      * Creates the LoadedDApp to represent the classes related to DApp at address.
@@ -207,56 +209,36 @@ public class LoadedDApp {
         }
     }
 
-    /**
-     * Requests that the Classes in the receiver be populated with data from the rawGraphData.
-     * NOTE:  The caller is expected to manage billing - none of that is done in here.
-     * 
-     * @param internedClassMap The interned classes, in case class references need to be instantiated.
-     * @param rawGraphData The data from which to read the graph (note that this must encompass all and only a completely serialized graph.
-     * @return The nextHashCode serialized within the graph.
-     */
-    public int loadEntireGraph(InternedClasses internedClassMap, byte[] rawGraphData) {
-        ByteBuffer inputBuffer = ByteBuffer.wrap(rawGraphData);
-        List<Object> existingObjectIndex = null;
-        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        var buf = new Object[1];
-        var res =  Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
-                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass,
-                buf);
-        mainInstance = buf[0];
-        return res;
+    public DAppRuntimeState loadRuntimeState(IExternalState es) {
+        if (stateCache != null) {
+            var gh = stateCache.getGraph().getGraphHash();
+            if (Arrays.equals(gh, es.getObjectGraphHash())) {
+                stateCache = new DAppRuntimeState(stateCache, es.getNextHash());
+                return stateCache;
+            }
+        }
+        var graph = es.getObjectGraph();
+        var rs = new DAppRuntimeState(null, graph);
+        loadRuntimeState(rs);
+        // to make object list
+        return saveRuntimeState(rs.getGraph().getNextHash(),
+                StorageFees.MAX_GRAPH_SIZE);
     }
 
-    public int loadRuntimeState(DAppRuntimeState state) {
-        ByteBuffer inputBuffer = ByteBuffer.wrap(state.getGraph().getRawData());
+    public void loadRuntimeState(DAppRuntimeState state) {
+        if (stateCache == state) {
+            return;
+        }
+        ByteBuffer inputBuffer = ByteBuffer.wrap(state.getGraph().getGraphData());
         List<Object> existingObjectIndex = state.getObjects();
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClasses, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
         var buf = new Object[1];
-        var res = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
-                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass,
-                buf);
+        Deserializer.deserializeEntireGraph(inputBuffer, existingObjectIndex,
+                resolver, this.fieldCache, classNameMapper,
+                this.sortedUserClasses, this.constantClass, buf);
         mainInstance = buf[0];
-        return res;
-    }
-
-    /**
-     * Requests that the Classes in the receiver be walked and all referenced objects be serialized into a graph.
-     * NOTE:  The caller is expected to manage billing - none of that is done in here.
-     * 
-     * @param nextHashCode The nextHashCode to serialize into the graph so that this can be resumed in the future.
-     * @param maximumSizeInBytes The size limit on the serialized graph size (this is a parameter for testing but also to allow the caller to impose energy-based limits).
-     * @return The enter serialized object graph.
-     */
-    public byte[] saveEntireGraph(int nextHashCode, int maximumSizeInBytes) {
-        ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
-        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, null, null, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
-        byte[] finalBytes = new byte[outputBuffer.position()];
-        System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
-        return finalBytes;
+        stateCache = state;
     }
 
     public DAppRuntimeState saveRuntimeState() {
@@ -269,10 +251,19 @@ public class LoadedDApp {
         List<Object> out_instanceIndex = new ArrayList<>();
         StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, null, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
+        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex,
+                null, resolver, this.fieldCache,
+                classNameMapper, this.sortedUserClasses, this.constantClass,
+                this.mainInstance);
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
-        return new DAppRuntimeState(out_instanceIndex, ObjectGraph.getInstance(finalBytes));
+        stateCache = new DAppRuntimeState(out_instanceIndex,
+                new ObjectGraph(nextHashCode, finalBytes));
+        return stateCache;
+    }
+
+    public void invalidateStateCache() {
+        stateCache = null;
     }
 
     /**
@@ -319,6 +310,7 @@ public class LoadedDApp {
     }
 
     public Object callMethod(String methodName, Object[] params) throws AvmThrowable {
+        stateCache = null;
         var m = nameToMethod.get(methodName);
         if (m == null) {
             throw RuntimeAssertionError.unreachable(

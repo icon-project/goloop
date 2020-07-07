@@ -16,20 +16,21 @@ import i.RuntimeAssertionError;
 
 public class Serializer {
     // (Should make this Map a list since the graph is probably dense?)
-    public static void serializeEntireGraph(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass) {
-        serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass, null);
+    public static void serializeEntireGraphAndNextHashCode(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass) {
+        // We can write the next hash, first, since we already know it.
+        outputBuffer.putInt(nextHashCode);
+        serializeEntireGraph(outputBuffer, out_instanceIndex,
+                out_calleeToCallerIndexMap, resolver, cache, classNameMapper,
+                sortedRoots, constantClass, null);
     }
 
-    public static void serializeEntireGraph(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass, Object mainInstance) {
+    public static void serializeEntireGraph(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass, Object mainInstance) {
         // We define the storage as big-endian.
         RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == outputBuffer.order());
         // We cannot be both serializing to build an index (that is done when serializing caller state before entering a callee frame)
         // and serializing to build a mapping (that is done when serializing the callee frame before using it to interpret remap the caller's graph).
         // In the common case, we are doing neither (these arguments are only used for reentrant calls).
         RuntimeAssertionError.assertTrue((null == out_instanceIndex) || (null == out_calleeToCallerIndexMap));
-        
-        // We can write the next hash, first, since we already know it.
-        outputBuffer.putInt(nextHashCode);
         
         // We are going to perform a breadth-first traversal so we need a queue.
         Queue<Object> toProcessQueue = new LinkedList<>();

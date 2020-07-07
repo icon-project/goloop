@@ -112,12 +112,13 @@ public class DAppCreator {
         }
 
         // Save back the state before we return.
-        byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
+        var og = dapp.saveRuntimeState().getGraph();
+        byte[] rawGraphData = og.getGraphData();
         var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
                 rawGraphData.length);
         threadInstrumentation.chargeEnergy(
                 effectiveLen * externalState.getStepCost().replace());
-        externalState.putObjectGraph(rawGraphData);
+        externalState.putObjectGraph(og);
 
         long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
         return new Result(Status.Success, energyUsed, null);

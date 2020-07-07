@@ -199,6 +199,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var saveItemFinal = saveItems.remove(callerAddr);
         assert saveItemFinal!=null;
         dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
+        dApp.invalidateStateCache();
         inst.forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
         inst.chargeEnergy(res.getStepUsed().intValue());
         int s = res.getStatus();

@@ -1,6 +1,7 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.StepCost;
 
@@ -46,16 +47,25 @@ public interface IExternalState {
      *
      * @param objectGraph The bytes of the object graph.
      */
-    void putObjectGraph(byte[] objectGraph);
+    void putObjectGraph(ObjectGraph objectGraph);
 
     /**
      * Returns the serialized bytes of the object graph associated with current score.
-     *
-     * Returns {@code null} if the address has no object graph.
-     *
-     * @return the serialized bytes of the object graph or null.
+     * @return the serialized bytes of the object graph
      */
-    byte[] getObjectGraph();
+    ObjectGraph getObjectGraph();
+
+    /**
+     * Returns hash of object graph.
+     * @return hash of object graph.
+     */
+    byte[] getObjectGraphHash();
+
+    /**
+     * Returns next hash code of current score.
+     * @return next hash code.
+     */
+    int getNextHash();
 
     /**
      * Saves the specified key-value pairing to the given address.

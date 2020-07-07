@@ -91,7 +91,8 @@ public class ProxyTest {
     }
 
     private static void setInvokeHandler(EEProxy proxy) {
-        proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params, info) -> {
+        proxy.setOnInvokeListener((code, isQuery, from, to, value, limit,
+                method, params, info, eid, nextHash, graphHash, prevEID) -> {
             if (logger.isDebugEnabled()) {
                 logger.debug(">>> code={}", code);
                 logger.debug("    isQuery={}", isQuery);

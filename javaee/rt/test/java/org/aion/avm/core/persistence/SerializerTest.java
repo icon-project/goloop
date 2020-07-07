@@ -80,7 +80,7 @@ public class SerializerTest {
         int nextHashCode = 1;
         Class<?>[] sortedRoots = new Class<?>[]{TargetRoot.class, TargetLeaf.class};
         byte[] finalBytes = serializeDeserializeAsNew(nextHashCode, sortedRoots);
-        Serializer.serializeEntireGraph(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
+        Serializer.serializeEntireGraphAndNextHashCode(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
         Assert.assertArrayEquals(Helpers.hexStringToBytes("00000001030000000000000000000000000a546172676574526f6f740000000103000000010a5461726765744c656166000000020003000000000300000001"), finalBytes);
 
         Assert.assertEquals(1, TargetRoot.root.counter);
@@ -306,7 +306,7 @@ public class SerializerTest {
         long start = System.nanoTime();
         for (int i = 0; i < samples; ++i) {
             serializationBuffer.clear();
-            Serializer.serializeEntireGraph(serializationBuffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
+            Serializer.serializeEntireGraphAndNextHashCode(serializationBuffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
         }
         long end = System.nanoTime();
         long deltaNanosPer = (end - start) / samples;
@@ -353,7 +353,7 @@ public class SerializerTest {
         long start = System.nanoTime();
         for (int i = 0; i < samples; ++i) {
             serializationBuffer.clear();
-            Serializer.serializeEntireGraph(serializationBuffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
+            Serializer.serializeEntireGraphAndNextHashCode(serializationBuffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
         }
         long end = System.nanoTime();
         long deltaNanosPer = (end - start) / samples;
@@ -380,7 +380,7 @@ public class SerializerTest {
         TestGlobalResolver resolver = new TestGlobalResolver();
         TestNameMapper classNameMapper = new TestNameMapper();
 
-        Serializer.serializeEntireGraph(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
+        Serializer.serializeEntireGraphAndNextHashCode(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
 
         Assert.assertTrue(null != sortedRoots[0].getDeclaredField("left").get(null));
         Assert.assertTrue(null != sortedRoots[0].getDeclaredField("right").get(null));
@@ -397,7 +397,7 @@ public class SerializerTest {
         TestGlobalResolver resolver = new TestGlobalResolver();
         TestNameMapper classNameMapper = new TestNameMapper();
 
-        Serializer.serializeEntireGraph(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
+        Serializer.serializeEntireGraphAndNextHashCode(buffer, null, null, resolver, this.cache, classNameMapper, nextHashCode, sortedRoots, EmptyConstantClass.class);
         byte[] finalBytes = new byte[buffer.position()];
         System.arraycopy(buffer.array(), 0, finalBytes, 0, finalBytes.length);
 

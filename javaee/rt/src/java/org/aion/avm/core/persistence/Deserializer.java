@@ -14,16 +14,19 @@ import i.RuntimeAssertionError;
 
 public class Deserializer {
     public static int deserializeEntireGraphAndNextHashCode(ByteBuffer inputBuffer, List<Object> existingObjectIndex, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass) {
-        return deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, cache, classNameMapper, sortedRoots, constantClass, null);
+        int nextHashCode = inputBuffer.getInt();
+        inputBuffer = inputBuffer.slice();
+        deserializeEntireGraph(inputBuffer, existingObjectIndex, resolver,
+                cache, classNameMapper, sortedRoots, constantClass,
+                null);
+        return nextHashCode;
     }
 
-    public static int deserializeEntireGraphAndNextHashCode(ByteBuffer inputBuffer, List<Object> existingObjectIndex, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass, Object[] mainInstanceBuf) {
+    public static void deserializeEntireGraph(ByteBuffer inputBuffer, List<Object> existingObjectIndex, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass, Object[] mainInstanceBuf) {
         // We define the storage as big-endian.
         RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == inputBuffer.order());
         
         // Deserialization requires that we walk the input data twice, since we need to create all the instances on the first pass and attach them all on the second.
-        // So, we skip the hashcode on the first pass.
-        inputBuffer.getInt();
         // Create the pre-pass deserializer, just to walk consistently.
         ByteBufferObjectDeserializer prePassDeserializer = new ByteBufferObjectDeserializer(inputBuffer, null, cache, resolver, classNameMapper);
 
@@ -40,7 +43,6 @@ public class Deserializer {
         // Reset the buffer and read it again.
         inputBuffer.rewind();
         
-        int nextHashCode = inputBuffer.getInt();
         // Create te real deserializer (this one has the instance list for building the connections from that index).
         ByteBufferObjectDeserializer objectDeserializer = new ByteBufferObjectDeserializer(inputBuffer, instanceList, cache, resolver, classNameMapper);
         
@@ -52,8 +54,6 @@ public class Deserializer {
         
         // We can now use the real deserializer to populate all instance fields and connections.
         populateAllInstancesFromBuffer(objectDeserializer, instanceList, cache);
-        
-        return nextHashCode;
     }
 
     public static Object deserializeObject(ByteBuffer inputBuffer, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper) {

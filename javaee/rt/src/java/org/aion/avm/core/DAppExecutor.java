@@ -41,16 +41,15 @@ public class DAppExecutor {
         var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
         DAppRuntimeState oldRS;
         if (saveItem == null) {
-            var raw = externalState.getObjectGraph();
-            var graph = ObjectGraph.getInstance(raw);
-            oldRS = new DAppRuntimeState(null, graph);
+            oldRS = dapp.loadRuntimeState(externalState);
         } else {
             oldRS = saveItem.getRuntimeState();
+            dapp.loadRuntimeState(oldRS);
         }
-        var nextHashCode = dapp.loadRuntimeState(oldRS);
+        var nextHashCode = oldRS.getGraph().getNextHash();
 
         // Used for deserialization billing
-        int rawGraphDataLength = oldRS.getGraph().getGraphData().length + 4;
+        int rawGraphDataLength = oldRS.getGraph().getGraphData().length;
 
         // Note that we need to store the state of this invocation on the reentrant stack in case there is another call into the same app.
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
@@ -98,14 +97,15 @@ public class DAppExecutor {
             if (newRS.getGraph().equalGraphData(oldRS.getGraph())) {
                 newRS = new DAppRuntimeState(newRS, oldRS.getGraph().getNextHash());
             } else {
-                byte[] postCallGraphData = newRS.getGraph().getRawData();
+                var postOG = newRS.getGraph();
+                byte[] postCallGraphData = postOG.getGraphData();
                 var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
                         postCallGraphData.length);
                 threadInstrumentation.chargeEnergy(
                         effectiveLen * externalState.getStepCost().replace());
                 if (null == stateToResume) {
                     // Save back the state before we return.
-                    externalState.putObjectGraph(postCallGraphData);
+                    externalState.putObjectGraph(postOG);
                 }
             }
 

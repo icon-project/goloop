@@ -45,13 +45,15 @@ public class ExternalState implements IExternalState {
     private final Address owner;
     private final String codePath;
     private final FileIO fileIO;
-    private ObjectGraph graphCache;
     private final StepCost stepCost;
+    private final int nextHash;
+    private final byte[] graphHash;
 
     ExternalState(EEProxy proxy, int option, String codePath,
                   FileIO fileIO, BigInteger blockHeight,
                   BigInteger blockTimestamp, Address owner,
-                  Map<String, BigInteger> stepCosts) {
+                  Map<String, BigInteger> stepCosts, int nextHash,
+                  byte[] graphHash) {
         this.proxy = proxy;
         this.option = option;
         this.codePath = codePath;
@@ -60,6 +62,8 @@ public class ExternalState implements IExternalState {
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
         this.stepCost = new StepCost(stepCosts);
+        this.nextHash = nextHash;
+        this.graphHash = graphHash;
     }
 
     @Override
@@ -92,23 +96,11 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getObjectGraph() {
+    public ObjectGraph getObjectGraph() {
         try {
-            ObjectGraph objGraph = null;
-            boolean requestFull = true;
-            if (graphCache != null) {
-                objGraph = proxy.getObjGraph(false);
-                if (graphCache.equalGraphData(objGraph)) {
-                    objGraph = graphCache;
-                    requestFull = false;
-                }
-            }
-            if (requestFull) {
-                objGraph = proxy.getObjGraph(true);
-                graphCache = objGraph;
-            }
+            var objGraph = proxy.getObjGraph(true);
             logger.trace("[getObjectGraph] len={}", objGraph.getGraphData().length);
-            return objGraph.getRawData();
+            return objGraph;
         } catch (IOException e) {
             logger.debug("[getObjectGraph] {}", e.getMessage());
             throw RuntimeAssertionError.unexpected(e);
@@ -116,16 +108,21 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putObjectGraph(byte[] data) {
-        logger.trace("[putObjectGraph] len={}", data.length);
+    public byte[] getObjectGraphHash() {
+        return graphHash;
+    }
+
+    @Override
+    public int getNextHash() {
+        return nextHash;
+    }
+
+    @Override
+    public void putObjectGraph(ObjectGraph objGraph) {
+        logger.trace("[putObjectGraph] len={}", objGraph.getGraphData().length);
         try {
             boolean includeGraph = true;
-            ObjectGraph objGraph = ObjectGraph.getInstance(data);
-            if (graphCache != null && graphCache.equalGraphData(objGraph)) {
-                includeGraph = false;
-            }
             proxy.setObjGraph(includeGraph, objGraph);
-            graphCache = objGraph;
         } catch (IOException e) {
             logger.debug("[putObjectGraph] {}", e.getMessage());
             RuntimeAssertionError.unexpected(e);

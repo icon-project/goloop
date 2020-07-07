@@ -245,7 +245,9 @@ public class EEProxy extends Proxy {
     public interface OnInvokeListener {
         InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
                               BigInteger value, BigInteger limit,
-                              String method, Object[] params, Map<String, Object> info) throws IOException;
+                              String method, Object[] params,
+                              Map<String, Object> info, int eid, int nextHash,
+                              byte[] graphHash, int prevEID) throws IOException;
     }
 
     public void setOnInvokeListener(OnInvokeListener listener) {
@@ -276,10 +278,22 @@ public class EEProxy extends Proxy {
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
             @SuppressWarnings("unchecked")
             var info = (Map<String, Object>) TypedObj.decodeAny(data.get(8));
+            int eid = data.get(9).asIntegerValue().asInt();
+            int nextHash = 0;
+            byte[] graphHash = null;
+            int prevEID = 0;
+            Value state_ = data.get(10);
+            if (state_.isArrayValue()) {
+                var state = state_.asArrayValue();
+                nextHash = state.get(0).asIntegerValue().asInt();
+                graphHash = state.get(1).asRawValue().asByteArray();
+                prevEID = state.get(2).asIntegerValue().asInt();
+            }
 
             if (mOnInvokeListener != null) {
                 InvokeResult result = mOnInvokeListener.onInvoke(
-                        code, isQuery, from, to, value, limit, method, params, info);
+                        code, isQuery, from, to, value, limit, method, params,
+                        info, eid, nextHash, graphHash, prevEID);
                 sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
             } else {
                 throw new IOException("no invoke handler");
