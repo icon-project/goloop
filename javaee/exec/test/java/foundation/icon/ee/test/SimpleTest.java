@@ -43,6 +43,27 @@ public class SimpleTest {
         th.start();
     }
 
+    public void createAndAcceptNewJAVAEE() {
+        var pipes = Pipe.createPair();
+        sm.accept(pipes[0]);
+        Thread th = new Thread(() -> {
+            try {
+                var conf = new AvmConfiguration();
+                conf.enableContextPrintln = true;
+                conf.enableVerboseContractErrors = true;
+                var te = TransactionExecutor.newInstance(pipes[1],
+                        "",
+                        null,
+                        sm.getFileIO(),
+                        conf);
+                te.connectAndRunLoop(sm);
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+        });
+        th.start();
+    }
+
     @AfterEach
     public void tearDown(TestInfo testInfo) {
         sm.close();

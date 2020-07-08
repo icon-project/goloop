@@ -37,7 +37,7 @@ public abstract class Proxy {
     private static final Logger logger = LoggerFactory.getLogger(Proxy.class);
     private final MessageUnpacker unpacker;
 
-    protected static class Message {
+    public static class Message {
         public final int type;
         public final Value value;
 
@@ -52,11 +52,11 @@ public abstract class Proxy {
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
     }
 
-    protected void close() throws IOException {
+    public void close() throws IOException {
         this.client.close();
     }
 
-    protected Message getNextMessage() throws IOException {
+    public Message getNextMessage() throws IOException {
         Value v = unpacker.unpackValue();
         if (v.getValueType() != ARRAY) {
             throw new IOException("should be array type");
@@ -67,7 +67,7 @@ public abstract class Proxy {
         return new Message(type, value);
     }
 
-    protected void sendMessage(int msgType, Object... args) throws IOException {
+    public void sendMessage(int msgType, Object... args) throws IOException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         packer.packArrayHeader(2);
         packer.packInt(msgType);

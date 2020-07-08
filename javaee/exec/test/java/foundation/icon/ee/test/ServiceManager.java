@@ -20,13 +20,16 @@ import org.msgpack.value.ArrayValue;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;
 
-public class ServiceManager extends Proxy implements Agent {
+public class ServiceManager implements Agent {
+    private final ArrayList<MyProxy> allProxies = new ArrayList<>();
+    private MyProxy proxy;
     private State state = new State();
     private int nextScoreAddr = 1;
     private int nextExtAddr = 1;
@@ -39,11 +42,13 @@ public class ServiceManager extends Proxy implements Agent {
     private boolean isReadOnly = false;
     private int eid = 0;
     private int exid = 0;
+    private Indexer indexer;
 
     private boolean isClassMeteringEnabled = true;
 
     public ServiceManager(Connection conn) {
-        super(conn);
+        proxy = new MyProxy(conn);
+        allProxies.add(proxy);
         origin = newExternalAddress();
         info.put(Info.BLOCK_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.BLOCK_HEIGHT, BigInteger.valueOf(10));
@@ -66,6 +71,14 @@ public class ServiceManager extends Proxy implements Agent {
         info.put(Info.STEP_COSTS, stepCosts);
         stepCost = new StepCost(stepCosts);
         current = state.getAccount(origin);
+    }
+
+    public void setIndexer(Indexer indexer) {
+        this.indexer = indexer;
+    }
+
+    public void accept(Connection c) {
+        allProxies.add(new MyProxy(c));
     }
 
     public static byte[] makeJar(Class<?> c) {
@@ -134,7 +147,7 @@ public class ServiceManager extends Proxy implements Agent {
                 current = state.getAccount(prev.address);
                 throw new TransactionException(res);
             }
-            var contract = new Contract(this, scoreAddr, methods);
+            var contract = new Contract(ServiceManager.this, scoreAddr, methods);
             current.contract = contract;
             current = state.getAccount(prev.address);
             return contract;
@@ -167,19 +180,6 @@ public class ServiceManager extends Proxy implements Agent {
         };
     }
 
-    public void close() {
-        try {
-            sendMessage(EEProxy.MsgType.CLOSE);
-            super.close();
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    public void handleMessages() throws IOException {
-        waitFor(EEProxy.MsgType.RESULT);
-    }
-
     private Object[] unpackByteArrayArray(ArrayValue arr) {
         var res = new Object[arr.size()];
         for (int i=0; i<res.length; i++) {
@@ -188,9 +188,9 @@ public class ServiceManager extends Proxy implements Agent {
         return res;
     }
 
-    private Message waitFor(int type) throws IOException {
+    private Proxy.Message waitFor(int type) throws IOException {
         while (true) {
-            Message msg = getNextMessage();
+            Proxy.Message msg = proxy.getNextMessage();
             if (msg.type==type) {
                 return msg;
             }
@@ -199,7 +199,7 @@ public class ServiceManager extends Proxy implements Agent {
                     var key = msg.value.asRawValue().asByteArray();
                     var value = current.storage.get(new ByteArrayWrapper(key));
                     printf("RECV getValue %s => %s%n", key, value);
-                    sendMessage(EEProxy.MsgType.GETVALUE, value!=null, value);
+                    proxy.sendMessage(EEProxy.MsgType.GETVALUE, value!=null, value);
                     break;
                 }
                 case EEProxy.MsgType.SETVALUE: {
@@ -217,9 +217,9 @@ public class ServiceManager extends Proxy implements Agent {
                     }
                     if ((flag & EEProxy.SetValueFlag.OLDVALUE) != 0) {
                         if (old == null) {
-                            sendMessage(EEProxy.MsgType.SETVALUE, false, 0);
+                            proxy.sendMessage(EEProxy.MsgType.SETVALUE, false, 0);
                         } else {
-                            sendMessage(EEProxy.MsgType.SETVALUE, true, old.length);
+                            proxy.sendMessage(EEProxy.MsgType.SETVALUE, true, old.length);
                         }
                     }
                     break;
@@ -240,7 +240,7 @@ public class ServiceManager extends Proxy implements Agent {
                     printf("SEND result status=%d stepUsed=%d ret=%s EID=%d prevEID=%d%n",
                             res.getStatus(), res.getStepUsed(), res.getRet(),
                             eid, current.eid);
-                    sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
+                    proxy.sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
                             res.getStepUsed().add(stepsContractCall),
                             TypedObj.encodeAny(res.getRet()), eid, current.eid);
                     break;
@@ -255,7 +255,7 @@ public class ServiceManager extends Proxy implements Agent {
                 case EEProxy.MsgType.GETBALANCE: {
                     var addr = new Address(msg.value.asRawValue().asByteArray());
                     var balance = state.getAccount(addr).balance;
-                    sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
+                    proxy.sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
                     printf("RECV getBalance %s => %d%n", addr, balance);
                     break;
                 }
@@ -282,10 +282,10 @@ public class ServiceManager extends Proxy implements Agent {
                     if ((flag&1)!=0) {
                         var og = current.objectGraph;
                         printf("RECV getObjGraph flag=%d => next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, ogh, og.length, beautifyObjectGraph(og));
-                        sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh, og);
+                        proxy.sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh, og);
                     } else {
                         printf("RECV getObjGraph flag=%d => next=%d hash=%s%n", flag, nextHash, ogh);
-                        sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh);
+                        proxy.sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh);
                     }
                     break;
                 }
@@ -379,13 +379,23 @@ public class ServiceManager extends Proxy implements Agent {
                         current.eid
                 };
             }
-            printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
-                    code, isReadOnly, from, to, value, stepLimit, method,
-                    params, eid, codeState);
-            sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
+            var prevProxy = proxy;
+            if (indexer != null) {
+                var index = indexer.getIndex(to);
+                proxy = allProxies.get(index);
+                printf("SEND invoke EE=%d code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
+                        index, code, isReadOnly, from, to, value, stepLimit,
+                        method, params, eid, codeState);
+            } else {
+                printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
+                        code, isReadOnly, from, to, value, stepLimit, method,
+                        params, eid, codeState);
+            }
+            proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
                     to, value, stepLimit, method, TypedObj.encodeAny(params),
                     TypedObj.encodeAny(info), eid, codeState);
             var msg = waitFor(EEProxy.MsgType.RESULT);
+            proxy = prevProxy;
             if (msg.type != EEProxy.MsgType.RESULT) {
                 throw new AssertionError(String.format("unexpected message type %d", msg.type));
             }
@@ -503,5 +513,30 @@ public class ServiceManager extends Proxy implements Agent {
 
     public void enableClassMetering(boolean e) {
         isClassMeteringEnabled = e;
+    }
+
+    public void close() {
+        for (var p : allProxies) {
+            p.close();
+        }
+    }
+
+    private class MyProxy extends Proxy {
+        public MyProxy(Connection client) {
+            super(client);
+        }
+
+        public void close() {
+            try {
+                sendMessage(EEProxy.MsgType.CLOSE);
+                super.close();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        public void handleMessages() throws IOException {
+            waitFor(EEProxy.MsgType.RESULT);
+        }
     }
 }
