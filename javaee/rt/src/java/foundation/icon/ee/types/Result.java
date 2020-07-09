@@ -16,25 +16,30 @@
 
 package foundation.icon.ee.types;
 
-import i.AvmException;
-
 import java.math.BigInteger;
 
 public class Result {
     private final int status;
     private final BigInteger stepUsed;
     private final Object ret;
+    private final int eid;
+    private final int prevEID;
 
-    public Result(int status, BigInteger stepUsed, Object ret) {
+    public Result(int status, BigInteger stepUsed, Object ret, int eid,
+            int prevEID) {
         this.status = status;
         this.stepUsed = stepUsed;
         this.ret = ret;
+        this.eid = eid;
+        this.prevEID = prevEID;
+    }
+
+    public Result(int status, BigInteger stepUsed, Object ret) {
+        this(status, stepUsed, ret, 0, 0);
     }
 
     public Result(int status, long stepUsed, Object ret) {
-        this.status = status;
-        this.stepUsed = BigInteger.valueOf(stepUsed);
-        this.ret = ret;
+        this(status, BigInteger.valueOf(stepUsed), ret, 0, 0);
     }
 
     public int getStatus() {
@@ -49,12 +54,22 @@ public class Result {
         return ret;
     }
 
+    public int getEID() {
+        return eid;
+    }
+
+    public int getPrevEID() {
+        return prevEID;
+    }
+
     @Override
     public String toString() {
         return "Result{" +
                 "status=" + status +
                 ", stepUsed=" + stepUsed +
                 ", ret=" + ret +
+                ", eid=" + eid +
+                ", prevEID=" + prevEID +
                 '}';
     }
 }

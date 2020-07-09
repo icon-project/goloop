@@ -2,7 +2,6 @@ package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.DAppRuntimeState;
-import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
@@ -13,7 +12,6 @@ import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
-import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
@@ -38,12 +36,10 @@ public class DAppExecutor {
         // We need to get the interned classes before load the graph since it might need to instantiate class references.
         InternedClasses initialClassWrappers = dapp.getInternedClasses();
 
-        var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
-        DAppRuntimeState oldRS;
-        if (saveItem == null) {
+        var oldRS = task.getReentrantDAppStack().getRuntimeState(task.getPrevEID());
+        if (oldRS == null) {
             oldRS = dapp.loadRuntimeState(externalState);
         } else {
-            oldRS = saveItem.getRuntimeState();
             dapp.loadRuntimeState(oldRS);
         }
         var nextHashCode = oldRS.getGraph().getNextHash();
@@ -55,7 +51,7 @@ public class DAppExecutor {
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
         // instance loader (ReentrantGraphProcessor/ReflectionStructureCodec) can be notified when it becomes active/inactive (since it needs
         // to know if it is loading an instance
-        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode);
+        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp);
         var prevState = task.getReentrantDAppStack().getTop();
         task.getReentrantDAppStack().pushState(thisState);
 
@@ -112,8 +108,8 @@ public class DAppExecutor {
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(Status.Success, energyUsed, ret);
             if (prevState != null) {
-                prevState.getSaveItems().putAll(thisState.getSaveItems());
-                prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, newRS));
+                prevState.inherit(thisState);
+                prevState.setRuntimeState(task.getEID(), newRS, dappAddress);
             }
         } catch (AvmException e) {
             logger.trace("DApp invocation failed: {}", e.getMessage());

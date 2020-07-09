@@ -180,27 +180,38 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var hash = inst.peekNextHashCode();
         int stepLeft = (int)inst.energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
-        var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
         var callerAddr = this.transactionDestination;
-        task.getReentrantDAppStack().getTop().getSaveItems().put(callerAddr, saveItem);
+        var rds = task.getReentrantDAppStack();
+        rds.getTop().setRuntimeState(task.getEID(), rs, callerAddr);
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
         Object[] params = new Object[sparams.length()];
         for (int i=0; i<params.length; i++) {
             params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
         }
+
+        var prevState = rds.getTop();
+        rds.pushState();
         foundation.icon.ee.types.Result res = externalState.call(
                 new Address(targetAddress.toByteArray()),
                 method.getUnderlying(),
                 params,
                 value.getUnderlying(),
                 stepLeft);
+        if (res.getStatus() == 0 && prevState != null) {
+            prevState.inherit(rds.getTop());
+        }
+        rds.popState();
+
+        task.setEID(res.getEID());
+        task.setPrevEID(res.getPrevEID());
+
         InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
-        var saveItems = task.getReentrantDAppStack().getTop().getSaveItems();
-        var saveItemFinal = saveItems.remove(callerAddr);
-        assert saveItemFinal!=null;
-        dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
+        var newRS = rds.getTop().getRuntimeState(task.getPrevEID());
+        rds.getTop().removeRuntimeStatesByAddress(callerAddr);
+        assert newRS!=null;
+        dApp.loadRuntimeState(newRS);
         dApp.invalidateStateCache();
-        inst.forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
+        inst.forceNextHashCode(newRS.getGraph().getNextHash());
         inst.chargeEnergy(res.getStepUsed().intValue());
         int s = res.getStatus();
         if (s == Status.Success) {

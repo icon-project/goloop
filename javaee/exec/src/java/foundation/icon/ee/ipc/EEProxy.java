@@ -314,7 +314,9 @@ public class EEProxy extends Proxy {
         int status = data.get(0).asIntegerValue().asInt();
         BigInteger stepUsed = new BigInteger(getValueAsByteArray(data.get(1)));
         Object res = TypedObj.decodeAny(data.get(2));
-        return new Result(status, stepUsed, res);
+        int eid = data.get(3).asIntegerValue().asInt();
+        int prevEID = data.get(4).asIntegerValue().asInt();
+        return new Result(status, stepUsed, res, eid, prevEID);
     }
 
     private void handleSetValue(Value raw) throws IOException {

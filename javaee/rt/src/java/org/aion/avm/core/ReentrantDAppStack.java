@@ -27,8 +27,12 @@ public class ReentrantDAppStack {
      */
     public void pushState(ReentrantState state) {
         RuntimeAssertionError.assertTrue(null != state);
-        
+
         this.stack.push(state);
+    }
+
+    public void pushState() {
+        this.stack.push(new ReentrantState());
     }
 
     /**
@@ -42,7 +46,7 @@ public class ReentrantDAppStack {
         RuntimeAssertionError.assertTrue(null != address);
         ReentrantState foundState = null;
         for (ReentrantState state : this.stack) {
-            if (state.address.equals(address)) {
+            if (address.equals(state.address)) {
                 foundState = state;
                 break;
             }
@@ -62,13 +66,12 @@ public class ReentrantDAppStack {
                 : this.stack.pop();
     }
 
-    public SaveItem getSaveItem(Address addr) {
-        RuntimeAssertionError.assertTrue(null != addr);
-        for (var iter = stack.iterator(); iter.hasNext(); ) {
-            var rs = iter.next();
-            var saveItem = rs.getSaveItems().get(addr);
-            if (saveItem != null) {
-                return saveItem;
+    public DAppRuntimeState getRuntimeState(int eid) {
+        // top to bottom
+        for (ReentrantState reentrantState : stack) {
+            var rs = reentrantState.getRuntimeState(eid);
+            if (rs != null) {
+                return rs;
             }
         }
         return null;
@@ -82,44 +85,56 @@ public class ReentrantDAppStack {
     public static class ReentrantState {
         public final Address address;
         public final LoadedDApp dApp;
-        private int nextHashCode;
-        private Map<Address, SaveItem> saveItems;
+        private final Map<Integer, SaveItem> saveItems = new HashMap<>();
 
-        public ReentrantState(Address address, LoadedDApp dApp, int nextHashCode) {
+        public ReentrantState() {
+            this.address = null;
+            this.dApp = null;
+        }
+
+        public ReentrantState(Address address, LoadedDApp dApp) {
             this.address = address;
             this.dApp = dApp;
-            this.nextHashCode = nextHashCode;
-            this.saveItems = new HashMap<>();
-        }
-        
-        public int getNextHashCode() {
-            return this.nextHashCode;
         }
 
-        public void updateNextHashCode(int nextHashCode) {
-            this.nextHashCode = nextHashCode;
+        public DAppRuntimeState getRuntimeState(int eid) {
+            var saveItem = saveItems.get(eid);
+            if (saveItem == null) {
+                return null;
+            }
+            return saveItem.getRuntimeState();
         }
 
-        public Map<Address, SaveItem> getSaveItems() {
-            return this.saveItems;
+        public void setRuntimeState(int eid, DAppRuntimeState rs, Address addr) {
+            saveItems.put(eid, new SaveItem(rs, addr));
+        }
+
+        public void removeRuntimeStatesByAddress(Address address) {
+            this.saveItems.entrySet().removeIf((si) ->
+                    si.getValue().getAddress().equals(address)
+            );
+        }
+
+        void inherit(ReentrantState s) {
+            saveItems.putAll(s.saveItems);
         }
     }
 
-    public static class SaveItem {
-        private LoadedDApp dApp;
-        private DAppRuntimeState runtimeState;
+    static class SaveItem {
+        private final DAppRuntimeState runtimeState;
+        private final Address address;
 
-        public SaveItem(LoadedDApp dApp, DAppRuntimeState runtimeState) {
-            this.dApp = dApp;
+        public SaveItem(DAppRuntimeState runtimeState, Address address) {
             this.runtimeState = runtimeState;
-        }
-
-        public LoadedDApp getDApp() {
-            return dApp;
+            this.address = address;
         }
 
         public DAppRuntimeState getRuntimeState() {
             return runtimeState;
+        }
+
+        public Address getAddress() {
+            return address;
         }
     }
 }

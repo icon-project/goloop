@@ -17,6 +17,8 @@ public class TransactionTask {
     private ReentrantDAppStack reentrantDAppStack;
     private Address origin;
     private int depth;
+    private int eid;
+    private int prevEID;
 
     public TransactionTask(IExternalState parentKernel, Transaction tx, Address origin) {
         this.parentKernel = parentKernel;
@@ -88,5 +90,21 @@ public class TransactionTask {
 
     public void decrementTransactionStackDepth() {
         depth--;
+    }
+
+    public int getEID() {
+        return eid;
+    }
+
+    public void setEID(int eid) {
+        this.eid = eid;
+    }
+
+    public int getPrevEID() {
+        return prevEID;
+    }
+
+    public void setPrevEID(int prevEID) {
+        this.prevEID = prevEID;
     }
 }

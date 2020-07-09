@@ -160,7 +160,7 @@ public class TransactionExecutor {
         Transaction tx = new Transaction(from, to, value, nonce,
                 limit.longValue(), method, params, txHash, txIndex, txTimestamp,
                 isInstall);
-        Result result = avmExecutor.run(kernel, tx, origin);
+        Result result = avmExecutor.run(kernel, tx, origin, eid, prevEID);
         return new InvokeResult(result);
     }
 

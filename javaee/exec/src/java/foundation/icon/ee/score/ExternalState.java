@@ -222,7 +222,9 @@ public class ExternalState implements IExternalState {
             // TODO: to be removed
             if (res.getRet() instanceof Address) {
                 var addr = (Address) res.getRet();
-                res = new Result(res.getStatus(), res.getStepUsed(), new score.Address(addr.toByteArray()));
+                res = new Result(res.getStatus(), res.getStepUsed(),
+                        new score.Address(addr.toByteArray()), res.getEID(),
+                        res.getPrevEID());
             }
             logger.trace("[call] result={}", res.toString());
             return res;

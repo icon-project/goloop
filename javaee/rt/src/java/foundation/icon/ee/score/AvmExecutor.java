@@ -55,21 +55,24 @@ public class AvmExecutor {
         InstrumentationHelpers.attachThread(instrumentation);
     }
 
-    public Result run(IExternalState kernel, Transaction transaction, Address origin) {
+    public Result run(IExternalState kernel, Transaction transaction,
+            Address origin, int eid, int prevEID) {
         if (task == null) {
-            return runExternal(kernel, transaction, origin);
+            return runExternal(kernel, transaction, origin, eid, prevEID);
         } else {
-            return runInternal(kernel, transaction);
+            return runInternal(kernel, transaction, eid, prevEID);
         }
     }
 
-    private Result runExternal(IExternalState kernel, Transaction transaction, Address origin) {
+    private Result runExternal(IExternalState kernel, Transaction transaction,
+            Address origin, int eid, int prevEID) {
         // Get the first task
         task = new TransactionTask(kernel, transaction, origin);
 
         task.startNewTransaction();
         task.attachInstrumentationForThread();
-        Result result = runCommon(task.getThisTransactionalKernel(), transaction);
+        Result result = runCommon(task.getThisTransactionalKernel(),
+                transaction, eid, prevEID);
         task.detachInstrumentationForThread();
 
         logger.trace("{}", result);
@@ -77,13 +80,18 @@ public class AvmExecutor {
         return result;
     }
 
-    private Result runInternal(IExternalState kernel, Transaction transaction) {
-        return runCommon(kernel, transaction);
+    private Result runInternal(IExternalState kernel, Transaction transaction,
+            int eid, int prevEID) {
+        return runCommon(kernel, transaction, eid, prevEID);
     }
 
-    private Result runCommon(IExternalState kernel, Transaction tx) {
+    private Result runCommon(IExternalState kernel, Transaction tx, int eid,
+            int prevEID) {
         Address senderAddress = tx.getSender();
         Address recipient = tx.getDestination();
+
+        task.setEID(eid);
+        task.setPrevEID(prevEID);
 
         if (tx.isCreate()) {
             logger.trace("=== DAppCreator ===");
