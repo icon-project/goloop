@@ -21,7 +21,7 @@ from pyexec.icon_constant import REVISION_3
 from pyexec.iconscore.icon_score_base2 import ScoreApiStepRatio
 from pyexec.iconscore.icon_score_base2 import _create_address_with_key, _recover_key
 from pyexec.iconscore.icon_score_base2 import create_address_with_key, recover_key
-from pyexec.iconscore.icon_score_base2 import sha3_256, json_dumps, json_loads
+from pyexec.iconscore.icon_score_base2 import sha3_256, sha_256, json_dumps, json_loads
 from pyexec.iconscore.icon_score_context import ContextContainer
 from pyexec.iconscore.icon_score_context import IconScoreContext, IconScoreContextType
 from pyexec.iconscore.icon_score_step import StepType, IconScoreStepCounter
@@ -223,7 +223,27 @@ class TestIconScoreApi(unittest.TestCase):
             if i % 32 > 0:
                 chunks += 1
 
-            sha3_256(b'\x00' * i)
+            data: bytes = b'\x00' * i
+            hash_value: bytes = sha3_256(data)
+            assert hash_value == hashlib.sha3_256(data).digest()
+
+            expected_step: int = step_cost + step_cost * chunks // 10
+            step_used: int = self.context.step_counter.step_used
+            self.assertEqual(expected_step, step_used)
+
+            self.context.step_counter._step_used = 0
+
+    def test_sha_256_step(self):
+        step_cost: int = self._calc_step_cost(ScoreApiStepRatio.SHA_256)
+
+        for i in range(0, 512):
+            chunks = i // 32
+            if i % 32 > 0:
+                chunks += 1
+
+            data: bytes = b'\x00' * i
+            hash_value: bytes = sha_256(data)
+            assert hash_value == hashlib.sha256(data).digest()
 
             expected_step: int = step_cost + step_cost * chunks // 10
             step_used: int = self.context.step_counter.step_used

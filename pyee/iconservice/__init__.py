@@ -27,5 +27,5 @@ from pyexec.icon_constant import IconServiceFlag
 
 from pyexec.iconscore.icon_container_db import VarDB, DictDB, ArrayDB
 from pyexec.iconscore.icon_score_base import IconScoreBase, interface, eventlog, external, payable, isolated
-from pyexec.iconscore.icon_score_base2 import InterfaceScore, revert, sha3_256, json_loads, json_dumps
+from pyexec.iconscore.icon_score_base2 import InterfaceScore, revert, sha3_256, sha_256, json_loads, json_dumps
 from pyexec.iconscore.icon_score_base2 import recover_key, create_address_with_key

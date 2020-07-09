@@ -122,6 +122,7 @@ class Icx(object):
 
 class ScoreApiStepRatio(IntEnum):
     SHA3_256 = 1000
+    SHA_256 = 1000
     CREATE_ADDRESS_WITH_COMPRESSED_KEY = 15000
     CREATE_ADDRESS_WITH_UNCOMPRESSED_KEY = 1500
     JSON_DUMPS = 5000
@@ -168,11 +169,33 @@ def revert(message: Optional[str] = None, code: int = 0) -> None:
 
 def sha3_256(data: bytes) -> bytes:
     """
-    Computes hash using the input data
+    Computes sha3_256 hash using the input data
 
     :param data: input data
     :return: hashed data in bytes
     """
+    return _hash("sha3_256", data)
+
+
+def sha_256(data: bytes) -> bytes:
+    """
+    Computes sha256 hash using the input data
+
+    :param data: input data
+    :return: hashed data in bytes
+    """
+    return _hash("sha256", data)
+
+
+def _hash(name: str, data: bytes) -> bytes:
+    """Protected hash function
+
+    :param name: hash function name: "sha256" or "sha3_256"
+    :param data: data to hash
+    :return: hashed data in bytes
+    """
+    if name not in ("sha3_256", "sha256"):
+        raise InvalidParamsException(f"Not supported: {name}")
     if not isinstance(data, bytes):
         raise InvalidParamsException("Invalid dataType")
 
@@ -190,7 +213,8 @@ def sha3_256(data: bytes) -> bytes:
 
         context.step_counter.consume_step(StepType.API_CALL, step)
 
-    return hashlib.sha3_256(data).digest()
+    func = getattr(hashlib, name)
+    return func(data).digest()
 
 
 def json_dumps(obj: Any) -> str:
