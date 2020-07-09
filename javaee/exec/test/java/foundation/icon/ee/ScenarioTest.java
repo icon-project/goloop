@@ -266,4 +266,100 @@ public class ScenarioTest extends GoldenTest {
                 .compile()
         );
     }
+
+    @Test
+    public void testDirectRecursion2() {
+        var c1 = sm.deploy(Score.class);
+        c1.invoke("run", (Object)new Compiler()
+                .setSVar("1")
+                .call(c1)
+                    .expectSVar("1")
+                    .setSVar("2")
+                .ret()
+                .expectSVar("2")
+                .call(c1)
+                    .expectSVar("2")
+                    .setSVar("3")
+                .revert()
+                .expectSVar("2")
+                .call(c1)
+                    .expectSVar("2")
+                    .setSVar("4")
+                .ret()
+                .expectSVar("4")
+                .compile()
+        );
+    }
+
+    @Test
+    public void testIndirectRecursion2() {
+        var c1 = sm.deploy(Score.class);
+        var c2 = sm.deploy(Score.class);
+        c1.invoke("run", (Object)new Compiler()
+                .setSVar("1")
+                .call(c2)
+                    .call(c1)
+                        .expectSVar("1")
+                        .setSVar("2")
+                    .ret()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("3")
+                    .revert()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("4")
+                    .ret()
+                .ret()
+                .expectSVar("4")
+                .compile()
+        );
+    }
+
+    @Test
+    public void testIndirectRecursionWithMultiEE() {
+        createAndAcceptNewJAVAEE();
+        var c1 = sm.deploy(Score.class);
+        sm.setIndexer((addr) -> 1);
+        var c2 = sm.deploy(Score.class);
+        sm.setIndexer((addr) -> {
+            if (addr.equals(c1.getAddress())) {
+                return 0;
+            }
+            return 1;
+        });
+        c1.invoke("run", (Object)new Compiler()
+                .setSVar("1")
+                .call(c2)
+                    .call(c1)
+                        .expectSVar("1")
+                        .setSVar("2")
+                    .ret()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("3")
+                    .revert()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("4")
+                    .ret()
+                .revert()
+                .call(c2)
+                    .call(c1)
+                        .expectSVar("1")
+                        .setSVar("2")
+                    .ret()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("3")
+                    .revert()
+                    .call(c1)
+                        .expectSVar("2")
+                        .setSVar("4")
+                    .ret()
+                .ret()
+                .expectSVar("4")
+                .compile()
+        );
+    }
 }
