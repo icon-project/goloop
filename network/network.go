@@ -32,7 +32,7 @@ type manager struct {
 	mtr *metric.NetworkMetric
 }
 
-func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, useNID bool, roles ...module.Role) module.NetworkManager {
+func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
 	channel := strconv.FormatInt(int64(c.NetID()), 16)

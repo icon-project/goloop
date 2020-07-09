@@ -38,16 +38,18 @@ type Chain interface {
 	NetworkManager() NetworkManager
 	Regulator() Regulator
 
-	Init(sync bool) error
-	Start(sync bool) error
-	Stop(sync bool) error
-	Import(src string, height int64, sync bool) error
-	Prune(gs string, dbt string, height int64, sync bool) error
-	Term(sync bool) error
-	State() string
+	Init() error
+	Start() error
+	Stop() error
+	Import(src string, height int64) error
+	Prune(gs string, dbt string, height int64) error
+	Term() error
+	State() (string, int64, error)
+	IsStarted() bool
+	IsStopped() bool
 
-	Reset(sync bool) error
-	Verify(sync bool) error
+	Reset() error
+	Verify() error
 
 	MetricContext() context.Context
 	Logger() log.Logger

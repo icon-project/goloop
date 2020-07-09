@@ -101,7 +101,7 @@ type BlockManager interface {
 	WaitTransactionResult(id []byte) (rc <-chan interface{}, err error)
 
 	// ExportBlock exports blocks assuring specified block ranges.
-	ExportBlocks(from, to int64, dst db.Database) error
+	ExportBlocks(from, to int64, dst db.Database, on func(height int64) error) error
 
 	// ExportGenesis exports genesis to the writer based on the block.
 	ExportGenesis(blk Block, writer GenesisStorageWriter) error

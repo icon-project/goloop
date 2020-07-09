@@ -48,6 +48,14 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 		_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams), "bad event request parameter")
 		return nil
 	}
+
+	bm := wss.chain.BlockManager()
+	sm := wss.chain.ServiceManager()
+	if bm == nil || sm == nil {
+		_ = wss.response(int(jsonrpc.ErrorCodeServer), "Stopped")
+		return nil
+	}
+
 	_ = wss.response(0, "")
 
 	ech := make(chan error)
@@ -55,8 +63,6 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 
 	h := er.Height.Value
 	var bch <-chan module.Block
-	bm := wss.chain.BlockManager()
-	sm := wss.chain.ServiceManager()
 
 loop:
 	for {

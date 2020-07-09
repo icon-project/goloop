@@ -119,7 +119,7 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 	}
 
 	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, n.logger, cfg), cfg, false}
-	if err := c.Init(true); err != nil {
+	if err := c.Init(); err != nil {
 		return nil, err
 	}
 	n.channels[cid] = channel
@@ -128,7 +128,7 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 }
 
 func (n *Node) _remove(c module.Chain) error {
-	if err := c.Term(true); err != nil {
+	if err := c.Term(); err != nil {
 		return err
 	}
 
@@ -328,7 +328,7 @@ func (n *Node) StartChain(cid int) error {
 			return err
 		}
 	}
-	return c.Start(false)
+	return c.Start()
 }
 
 func (n *Node) StopChain(cid int) error {
@@ -339,7 +339,7 @@ func (n *Node) StopChain(cid int) error {
 	if err != nil {
 		return err
 	}
-	return c.Stop(false)
+	return c.Stop()
 }
 
 func (n *Node) ResetChain(cid int) error {
@@ -350,7 +350,7 @@ func (n *Node) ResetChain(cid int) error {
 	if err != nil {
 		return err
 	}
-	return c.Reset(true)
+	return c.Reset()
 }
 
 func (n *Node) VerifyChain(cid int) error {
@@ -361,7 +361,7 @@ func (n *Node) VerifyChain(cid int) error {
 	if err != nil {
 		return err
 	}
-	return c.Verify(true)
+	return c.Verify()
 }
 
 func (n *Node) ImportChain(cid int, s string, height int64) error {
@@ -372,7 +372,7 @@ func (n *Node) ImportChain(cid int, s string, height int64) error {
 	if err != nil {
 		return err
 	}
-	return c.Import(s, height, true)
+	return c.Import(s, height)
 }
 
 func (n *Node) PruneChain(cid int, dbt string, height int64) error {
@@ -385,7 +385,7 @@ func (n *Node) PruneChain(cid int, dbt string, height int64) error {
 	}
 	chainDir := c.cfg.AbsBaseDir()
 	gs := path.Join(chainDir, ChainGenesisZipFileName)
-	return c.Prune(gs, dbt, height, false)
+	return c.Prune(gs, dbt, height)
 }
 
 func (n *Node) ConfigureChain(cid int, key string, value string) error {
@@ -399,7 +399,7 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 
 	hit := false
 	refreshNow := false
-	if c.State() == chain.StateStarted.String() {
+	if c.IsStarted() {
 		switch key {
 		case "seedAddress":
 			c.cfg.SeedAddr = value
@@ -417,7 +417,7 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 		}
 		hit = true
 	}
-	if c.State() == chain.StateStopped.String() {
+	if c.IsStopped() {
 		switch key {
 		case "concurrencyLevel":
 			if intVal, err := strconv.Atoi(value); err != nil {

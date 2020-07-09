@@ -78,6 +78,9 @@ func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) 
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetLastBlock()
 	if err != nil {
@@ -113,6 +116,9 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
@@ -146,6 +152,9 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetBlock(param.Hash.Bytes())
 	if errors.NotFoundError.Equals(err) {
@@ -180,6 +189,9 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetLastBlock()
 	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
@@ -210,6 +222,9 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	var balance common.HexInt
 	block, err := bm.GetLastBlock()
@@ -235,11 +250,14 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 	b, err := bm.GetLastBlock()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	sm := chain.ServiceManager()
 	info, err := sm.GetAPIInfo(b.Result(), param.Address.Address())
 	if service.NoActiveContractError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
@@ -261,11 +279,15 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
 	b, err := bm.GetLastBlock()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	sm := chain.ServiceManager()
 
 	var tsValue common.HexInt
 	ts, err := sm.GetTotalSupply(b.Result())
@@ -292,6 +314,9 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	if errors.NotFoundError.Equals(err) {
@@ -338,6 +363,9 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	if errors.NotFoundError.Equals(err) {
@@ -438,6 +466,9 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
@@ -504,6 +535,9 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetBlock(param.BlockHash.Bytes())
 	if errors.NotFoundError.Equals(err) {
@@ -549,6 +583,9 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	block, err := bm.GetBlock(param.BlockHash.Bytes())
 	if errors.NotFoundError.Equals(err) {
@@ -645,6 +682,9 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	hash, fc, err := bm.SendTransactionAndWait(params.RawMessage())
 	if err != nil {
@@ -688,6 +728,9 @@ func waitTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 	}
 
 	bm := chain.BlockManager()
+	if bm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	hash := param.Hash.Bytes()
 	fc, err := bm.WaitTransactionResult(hash)
@@ -828,6 +871,9 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	if errors.NotFoundError.Equals(err) {

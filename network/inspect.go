@@ -10,7 +10,12 @@ import (
 )
 
 func Inspect(c module.Chain, informal bool) map[string]interface{} {
-	mgr := c.NetworkManager().(*manager)
+	var mgr *manager
+	if nm := c.NetworkManager(); nm == nil {
+		return nil
+	} else {
+		mgr = nm.(*manager)
+	}
 	m := make(map[string]interface{})
 	m["p2p"] = inspectP2P(mgr, informal)
 	if informal {

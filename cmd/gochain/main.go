@@ -459,17 +459,17 @@ func Execute(cmd *cobra.Command, args []string) {
 	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDebug, "", wallet, logger)
 	hex.EncodeToString(wallet.Address().ID())
 	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
-	err = c.Init(true)
+	err = c.Init()
 	if err != nil {
 		log.Panicf("FAIL to initialize Chain err=%+v", err)
 	}
 	if importMode {
-		err = c.Import(importDataSource, importMaxHeight, true)
+		err = c.Import(importDataSource, importMaxHeight)
 		if err != nil {
 			log.Panicf("FAIL to import Chain err=%+v", err)
 		}
 	} else {
-		err = c.Start(true)
+		err = c.Start()
 		if err != nil {
 			log.Panicf("FAIL to start Chain err=%+v", err)
 		}

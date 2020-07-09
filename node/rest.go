@@ -113,20 +113,16 @@ type LastErrorReportor interface {
 }
 
 func NewChainView(c *Chain) *ChainView {
+	state, height, lastErr := c.State()
 	v := &ChainView{
 		CID:     common.HexInt32{Value: int32(c.CID())},
 		NID:     common.HexInt32{Value: int32(c.NID())},
 		Channel: c.Channel(),
-		State:   c.State(),
+		State:   state,
+		Height:  height,
 	}
-	if r, ok := c.Chain.(LastErrorReportor); ok && r.LastError() != nil {
-		v.LastError = r.LastError().Error()
-	}
-
-	if bm := c.BlockManager(); bm != nil {
-		if b, err := bm.GetLastBlock(); err == nil {
-			v.Height = b.Height()
-		}
+	if lastErr != nil {
+		v.LastError = lastErr.Error()
 	}
 	return v
 }
@@ -549,7 +545,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 	}
 	for _, c := range r.n.GetChains() {
 		m := metric.Inspect(c, false)
-		if c.State() != chain.StateStopped.String() {
+		if c.IsStarted() {
 			m["cid"] = common.HexInt32{Value: int32(c.CID())}
 			m["nid"] = common.HexInt32{Value: int32(c.NID())}
 			m["channel"] = c.Channel()

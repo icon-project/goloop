@@ -5,7 +5,12 @@ import (
 )
 
 func Inspect(c module.Chain, informal bool) map[string]interface{} {
-	mgr := c.ServiceManager().(*manager)
+	var mgr *manager
+	if sm := c.ServiceManager(); sm == nil {
+		return nil
+	} else {
+		mgr = sm.(*manager)
+	}
 	m := make(map[string]interface{})
 	m["normalTxPool"] = inspectTxPool(mgr.tm.normalTxPool)
 	m["patchTxPool"] = inspectTxPool(mgr.tm.patchTxPool)

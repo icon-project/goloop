@@ -70,7 +70,7 @@ func (_r *BlockManagerBase) WaitTransactionResult(id []byte) (rc <-chan interfac
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) ExportBlocks(from int64, to int64, dst db.Database) error {
+func (_r *BlockManagerBase) ExportBlocks(from int64, to int64, dst db.Database, on func(height int64) error) error {
 	panic("not implemented")
 }
 

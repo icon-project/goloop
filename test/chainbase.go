@@ -96,39 +96,47 @@ func (_r *ChainBase) Regulator() module.Regulator {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Init(sync bool) error {
+func (_r *ChainBase) Init() error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Start(sync bool) error {
+func (_r *ChainBase) Start() error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Stop(sync bool) error {
+func (_r *ChainBase) Stop() error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Import(src string, height int64, sync bool) error {
+func (_r *ChainBase) Import(src string, height int64) error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Prune(gs string, dbt string, height int64, sync bool) error {
+func (_r *ChainBase) Prune(gs string, dbt string, height int64) error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Term(sync bool) error {
+func (_r *ChainBase) Term() error {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) State() string {
+func (_r *ChainBase) State() (string, int64, error) {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Reset(sync bool) error {
+func (_r *ChainBase) IsStarted() bool {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) Verify(sync bool) error {
+func (_r *ChainBase) IsStopped() bool {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) Reset() error {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) Verify() error {
 	panic("not implemented")
 }
 

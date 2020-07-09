@@ -32,6 +32,7 @@ const (
 	InvalidNetworkError
 	TimeoutError
 	ExecutionFailError
+	InterruptedError
 )
 
 var (
@@ -43,6 +44,7 @@ var (
 	ErrInvalidNetwork  = NewBase(InvalidNetworkError, "InvalidNetwork")
 	ErrTimeout         = NewBase(TimeoutError, "Timeout")
 	ErrExecutionFail   = NewBase(ExecutionFailError, "ExecutionFail")
+	ErrInterrupted     = NewBase(InterruptedError, "Interrupted")
 )
 
 const (

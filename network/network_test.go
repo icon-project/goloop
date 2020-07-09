@@ -282,7 +282,7 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w, nodeLogger)
 		chainLogger := nodeLogger.WithFields(log.Fields{log.FieldKeyCID: "1"})
 		c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
-		nm := NewManager(c, nt, "", false, roles...)
+		nm := NewManager(c, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, 0, t)
 		r.nt = nt
 		if err := r.nt.Listen(); err != nil {

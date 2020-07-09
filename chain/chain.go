@@ -11,8 +11,6 @@ import (
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/gs"
-	"github.com/icon-project/goloop/chain/imports"
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -25,6 +23,53 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
+
+type State int
+
+const (
+	Created State = iota
+	Initializing
+	InitializeFailed
+	Starting
+	Started
+	Stopping
+	Failed
+	Finished
+	Stopped
+	Terminating
+	Terminated
+)
+
+func (s State) String() string {
+	switch s {
+	case Created:
+		return "created"
+	case Initializing:
+		return "initializing"
+	case InitializeFailed:
+		return "initialize failed"
+	case Stopped:
+		return "stopped"
+	case Starting:
+		return "starting"
+	case Started:
+		return "started"
+	case Stopping:
+		return "stopping"
+	case Failed:
+		return "failed"
+	case Finished:
+		return "finished"
+	}
+	return fmt.Sprintf("invalid(%d)", s)
+}
+
+type chainTask interface {
+	DetailOf(s State) (string, bool)
+	Start() error
+	Stop()
+	Wait() error
+}
 
 type singleChain struct {
 	wallet module.Wallet
@@ -47,10 +92,11 @@ type singleChain struct {
 
 	regulator *regulator
 
-	state       State
-	lastErr     error
-	initialized bool
-	mtx         sync.RWMutex
+	state      State
+	lastErr    error
+	mtx        sync.RWMutex
+	task       chainTask
+	termWaiter *sync.Cond
 
 	// monitor
 	metricCtx context.Context
@@ -63,87 +109,6 @@ const (
 	DefaultCacheDir    = "cache"
 	DefaultTmpDBDir    = "tmp"
 )
-
-const (
-	StateCreated State = iota
-	StateInitializing
-	StateInitializeFailed
-	StateStarting
-	StateStartFailed
-	StateStarted
-	StateStopping
-	StateStopped
-	StateTerminating
-	StateTerminated
-	StateVerifyStarting
-	StateVerifyStarted
-	StateVerifyFailed
-	StateImportStarting
-	StateImportStarted
-	StateImportStopping
-	StateImportFailed
-	StateResetting
-	StateResetFailed
-	StatePruneStarting
-	StatePruneStarted
-	StatePruneStopping
-	StatePruneFailed
-)
-
-type State int
-
-func (s State) String() string {
-	switch s {
-	case StateCreated:
-		return "created"
-	case StateInitializing:
-		return "initializing"
-	case StateInitializeFailed:
-		return "initialize failed"
-	case StateStarting:
-		return "starting"
-	case StateStartFailed:
-		return "start failed"
-	case StateStarted:
-		return "started"
-	case StateStopping:
-		return "stopping"
-	case StateStopped:
-		return "stopped"
-	case StateTerminating:
-		return "terminating"
-	case StateTerminated:
-		return "terminated"
-	case StateVerifyStarting:
-		return "verify Starting"
-	case StateVerifyStarted:
-		return "verify started"
-	case StateVerifyFailed:
-		return "verify failed"
-	case StateImportStarting:
-		return "import starting"
-	case StateImportStarted:
-		return "import started"
-	case StateImportStopping:
-		return "import stopping"
-	case StateImportFailed:
-		return "import failed"
-	case StateResetting:
-		return "resetting"
-	case StateResetFailed:
-		return "reset failed"
-	case StatePruneStarting:
-		return "prune starting"
-	case StatePruneStarted:
-		return "prune started"
-	case StatePruneFailed:
-		return "prune failed"
-	case StatePruneStopping:
-		return "prune stopping"
-	default:
-		return fmt.Sprintf("unknown %d", s)
-	}
-}
 
 func (c *singleChain) Database() db.Database {
 	return c.database
@@ -187,10 +152,6 @@ func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 
 func (c *singleChain) PatchDecoder() module.PatchDecoder {
 	return c.pd
-}
-
-func (c *singleChain) EEProxyManager() eeproxy.Manager {
-	return c.pm
 }
 
 func (c *singleChain) BlockManager() module.BlockManager {
@@ -263,33 +224,70 @@ func (c *singleChain) MaxWaitTimeout() time.Duration {
 	return 0
 }
 
-func (c *singleChain) State() string {
-	return c._state().String()
-}
-
-func (c *singleChain) _state() State {
-	defer c.mtx.RUnlock()
+func (c *singleChain) State() (string, int64, error) {
 	c.mtx.RLock()
+	defer c.mtx.RUnlock()
 
-	return c.state
+	switch c.state {
+	case Starting, Started, Stopping, Failed, Finished:
+		var height int64
+		if c.bm != nil {
+			if blk, err := c.bm.GetLastBlock(); err == nil {
+				height = blk.Height()
+			}
+		}
+		if name, ok := c.task.DetailOf(c.state); ok {
+			return name, height, c.lastErr
+		} else {
+			return c.state.String(), height, c.lastErr
+		}
+	default:
+		height := block.GetLastHeightOf(c.database)
+		return c.state.String(), height, c.lastErr
+	}
 }
 
-func (c *singleChain) LastError() error {
-	return c.lastErr
+func (c *singleChain) IsStarted() bool {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.state == Started {
+		if _, ok := c.task.(*taskConsensus); ok {
+			return true
+		}
+	}
+	return false
 }
 
-func (c *singleChain) _setState(s State, err error) {
-	defer c.mtx.Unlock()
+func (c *singleChain) IsStopped() bool {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	switch c.state {
+	case Stopped, Failed, Finished:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *singleChain) _transitOrTerminate(to State, err error, froms ...State) {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 
-	c.state = s
-	c.lastErr = err
+	if !c._transitInLock(to, err, froms...) {
+		c._handleTerminateInLock()
+	}
 }
 
-func (c *singleChain) _setStateIf(to State, err error, froms ...State) (State, bool) {
-	defer c.mtx.Unlock()
+func (c *singleChain) _transit(to State, err error, froms ...State) bool {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 
+	return c._transitInLock(to, err, froms...)
+}
+
+func (c *singleChain) _transitInLock(to State, err error, froms ...State) bool {
 	invalid := true
 	if len(froms) < 1 {
 		if c.state != to {
@@ -304,39 +302,29 @@ func (c *singleChain) _setStateIf(to State, err error, froms ...State) (State, b
 		}
 	}
 	if invalid {
-		return c.state, false
+		return false
 	}
-	prev := c.state
 	c.state = to
 	c.lastErr = err
-	return prev, true
+	return true
 }
 
-func (c *singleChain) _transit(to State, froms ...State) error {
+func (c *singleChain) _setStartingTask(task chainTask) error {
 	defer c.mtx.Unlock()
 	c.mtx.Lock()
 
-	invalid := true
-	if len(froms) < 1 {
-		if c.state != to {
-			invalid = false
-		}
-	} else {
-		for _, f := range froms {
-			if f == c.state {
-				invalid = false
-				break
-			}
-		}
+	switch c.state {
+	case Stopped, Failed, Finished:
+		c.state = Starting
+		c.lastErr = nil
+		c.task = task
+		return nil
+	default:
+		return errors.InvalidStateError.Errorf("InvalidState(state=%s)", c.state.String())
 	}
-	if invalid {
-		return common.ErrInvalidState
-	}
-	c.state = to
-	return nil
 }
 
-func (c *singleChain) _openDatabase(dbDir, dbType string) (db.Database, error) {
+func (c *singleChain) openDatabase(dbDir, dbType string) (db.Database, error) {
 	if dbType != "mapdb" {
 		c.logger.Infof("prepare a directory %s for database", dbDir)
 		if err := os.MkdirAll(dbDir, 0700); err != nil {
@@ -352,9 +340,19 @@ func (c *singleChain) _openDatabase(dbDir, dbType string) (db.Database, error) {
 	}
 }
 
-func (c *singleChain) _prepareDatabase(chainDir string) error {
+func (c *singleChain) ensureDatabase(must bool) error {
+	chainDir := c.cfg.AbsBaseDir()
+	err := c.prepareDatabase(chainDir)
+	if must && err != nil {
+		c.logger.Panicf("Fail to open database chainDir=%s err=%+v",
+			chainDir, err)
+	}
+	return err
+}
+
+func (c *singleChain) prepareDatabase(chainDir string) error {
 	DBDir := path.Join(chainDir, DefaultDBDir)
-	cdb, err := c._openDatabase(DBDir, c.cfg.DBType)
+	cdb, err := c.openDatabase(DBDir, c.cfg.DBType)
 	if err != nil {
 		return err
 	}
@@ -382,6 +380,13 @@ func (c *singleChain) _prepareDatabase(chainDir string) error {
 	return nil
 }
 
+func (c *singleChain) releaseDatabase() {
+	if c.database != nil {
+		c.database.Close()
+		c.database = nil
+	}
+}
+
 func (c *singleChain) _init() error {
 	if c.cfg.Channel == "" {
 		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
@@ -399,7 +404,7 @@ func (c *singleChain) _init() error {
 	chainDir := c.cfg.AbsBaseDir()
 	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
 
-	if err := c._prepareDatabase(chainDir); err != nil {
+	if err := c.prepareDatabase(chainDir); err != nil {
 		return err
 	}
 
@@ -409,10 +414,10 @@ func (c *singleChain) _init() error {
 	return nil
 }
 
-func (c *singleChain) _prepare() error {
+func (c *singleChain) prepareManagers() error {
 	pr := network.PeerRoleFlag(c.cfg.Role)
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, false, pr.ToRoles()...)
-	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
+
 	chainDir := c.cfg.AbsBaseDir()
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
@@ -430,22 +435,7 @@ func (c *singleChain) _prepare() error {
 	return nil
 }
 
-func (c *singleChain) _start() error {
-	if err := c.nm.Start(); err != nil {
-		return err
-	}
-	c.sm.Start()
-	if err := c.cs.Start(); err != nil {
-		return err
-	}
-	c.srv.SetChain(c.cfg.Channel, c)
-
-	return nil
-}
-
-func (c *singleChain) _stop() {
-	c.srv.RemoveChain(c.cfg.Channel)
-
+func (c *singleChain) releaseManagers() {
 	if c.cs != nil {
 		c.cs.Term()
 		c.cs = nil
@@ -464,425 +454,141 @@ func (c *singleChain) _stop() {
 	}
 }
 
-type importCallback struct {
-	c          *singleChain
-	lastHeight int64
-}
-
-func (ic *importCallback) OnError(err error) {
-	if err := ic.c._transit(StateImportStopping, StateImportStarted); err != nil {
-		return
-	}
-	ic.c._stop()
-	log.Errorf("Import failed : %+v\n", err)
-	ic.c._setState(StateImportFailed, err)
-}
-
-func (ic *importCallback) OnEnd(errCh <-chan error) {
-	if err := ic.c._transit(StateStopping, StateImportStarted); err != nil {
-		return
-	}
-
-	if ic.c.cs != nil {
-		ic.c.cs.Term()
-		ic.c.cs = nil
-	}
-	err := <-errCh
-	if err != nil {
-		ic.c._stop()
-		log.Errorf("Import failed : %+v\n", err)
-		ic.c._setState(StateImportFailed, err)
-	}
-	ic.c._stop()
-	ic.c._prepare()
-	ic.c._setState(StateStopped, nil)
-}
-
-func (c *singleChain) _import(src string, height int64) error {
-	pr := network.PeerRoleFlag(c.cfg.Role)
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, false, pr.ToRoles()...)
-	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
-	chainDir := c.cfg.AbsBaseDir()
-	ContractDir := path.Join(chainDir, DefaultContractDir)
-	var err error
-	var ts module.Timestamper
-	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm, ContractDir, src, height, &importCallback{c, height})
-	if err != nil {
+func (c *singleChain) _runTask(task chainTask, wait bool) error {
+	if err := c._setStartingTask(task); err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, ts)
-	if err != nil {
-		return err
-	}
-	blk, err := c.bm.GetLastBlock()
-	if err != nil {
-		return err
-	}
-	if blk.Height() > height {
-		return errors.Errorf("chain already have height %d\n", blk.Height())
+	if err := task.Start(); err != nil {
+		if ok := c._transit(Failed, err, Starting); !ok {
+			c._handleTerminate()
+			return err
+		}
 	}
 
-	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, ts)
-
-	if err := c.nm.Start(); err != nil {
-		return err
+	if ok := c._transit(Started, nil, Starting); !ok {
+		task.Stop()
 	}
-	if err := c.cs.Start(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *singleChain) _execute(sync bool, f func()) error {
-	if sync {
-		f()
-		return c.lastErr
+	if wait {
+		return c._waitResultOf(task)
 	} else {
-		go f()
+		go c._waitResultOf(task)
 		return nil
 	}
 }
 
-func (c *singleChain) Init(sync bool) error {
-	if err := c._transit(StateInitializing, StateCreated, StateStopped); err != nil {
-		return err
-	}
+func (c *singleChain) _waitResultOf(task chainTask) error {
+	result := task.Wait()
 
-	f := func() {
-		s := StateStopped
-		err := c._init()
-		if err != nil {
-			s = StateInitializeFailed
-		} else {
-			err = c._prepare()
-			if err != nil {
-				s = StateInitializeFailed
-			}
-		}
-		c._setState(s, err)
-	}
-	return c._execute(sync, f)
-}
-
-func (c *singleChain) Start(sync bool) error {
-	if err := c._transit(StateStarting, StateStopped); err != nil {
-		return err
-	}
-
-	f := func() {
-		s := StateStarted
-		err := c._start()
-		if err != nil {
-			s = StateStartFailed
-			c._stop()
-			c._prepare()
-		}
-		c._setState(s, err)
-	}
-	return c._execute(sync, f)
-}
-
-func (c *singleChain) Stop(sync bool) error {
-	if err := c._transit(StateStopping, StateStarted, StateStartFailed, StateImportStarted); err != nil {
-		return err
-	}
-	f := func() {
-		c._stop()
-		c._prepare()
-		c._setState(StateStopped, nil)
-	}
-	return c._execute(sync, f)
-}
-
-func (c *singleChain) Import(src string, height int64, sync bool) error {
-	if err := c._transit(StateImportStarting, StateStopped); err != nil {
-		return err
-	}
-	log.Infof("Import src:%s height:%d\n", src, height)
-	f := func() {
-		c._stop()
-		err := c._import(src, height)
-		s := StateImportStarted
-		if err != nil {
-			c._stop()
-			s = StateImportFailed
-			log.Errorf("Import failed %+v\n", err)
-		}
-		c._setState(s, err)
-	}
-	return c._execute(sync, f)
-}
-
-func (c *singleChain) _exportGenesis(blk module.Block, votes module.CommitVoteSet, gsfile string) (rerr error) {
-	os.RemoveAll(gsfile)
-	fd, err := os.OpenFile(gsfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL|os.O_TRUNC, 0700)
-	if err != nil {
-		return err
-	}
-	gsw := gs.NewGenesisStorageWriter(fd)
-	defer func() {
-		gsw.Close()
-		fd.Close()
-		if rerr != nil {
-			os.Remove(gsfile)
-		}
-	}()
-	if err := c.bm.ExportGenesis(blk, gsw); err != nil {
-		return errors.Wrap(err, "fail on exporting genesis storage")
-	}
-	return nil
-}
-
-func (c *singleChain) _copyDatabase(dbpath, dbtype string, from, to int64) (rerr error) {
-	os.RemoveAll(dbpath)
-	dbase, err := c._openDatabase(dbpath, dbtype)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		dbase.Close()
-		if rerr != nil {
-			os.RemoveAll(dbpath)
-		}
-	}()
-	return c.bm.ExportBlocks(from, to, dbase)
-}
-
-func (c *singleChain) _prune(gsfile, dbtype string, height int64) (rerr error) {
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
-	dbpath := path.Join(chainDir, DefaultTmpDBDir)
-	gsTmp := gsfile + ".tmp"
-
-	blk, err := c.bm.GetBlockByHeight(height)
-	if err != nil {
-		return err
-	}
-
-	if cid, err := c.sm.GetChainID(blk.Result()); err != nil {
-		return errors.InvalidStateError.New("No ChainID is recorded (require Revision 8)")
+	if result == nil {
+		c._transitOrTerminate(Finished, nil, Started, Stopping)
+	} else if errors.InterruptedError.Equals(result) {
+		c.task = nil
+		c._transitOrTerminate(Stopped, nil, Stopping)
 	} else {
-		if cid != int64(c.CID()) {
-			return errors.InvalidStateError.Errorf("Invalid chain ID real=%d exp=%d", cid, c.CID())
-		}
+		c._transitOrTerminate(Failed, result, Started, Stopping)
 	}
-
-	nblk, err := c.bm.GetBlockByHeight(height + 1)
-	if err != nil {
-		return errors.InvalidStateError.Errorf("No next block height=%d", height)
-	}
-
-	c.logger.Infof("Export Genesis to=%s from=%d", gsTmp, height)
-	if err := c._exportGenesis(blk, nblk.Votes(), gsTmp); err != nil {
-		return err
-	}
-	defer func() {
-		if rerr != nil {
-			os.Remove(gsTmp)
-		}
-	}()
-
-	lb, err := c.bm.GetLastBlock()
-	if err != nil {
-		return err
-	}
-	targetHeight := lb.Height()
-	c.logger.Infof("Copy Database path=%s type=%s from=%d to=%d",
-		dbpath, dbtype, height, targetHeight)
-	err = c._copyDatabase(dbpath, dbtype, height, targetHeight)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if rerr != nil {
-			os.RemoveAll(dbpath)
-		}
-	}()
-
-	c._stop()
-	target := path.Join(chainDir, DefaultDBDir)
-	c.database.Close()
-	c.database = nil
-
-	dbbk := target + ".bk"
-	gsbk := gsfile + ".bk"
-
-	c.logger.Infof("Replace DB %s -> %s", dbpath, target)
-	os.RemoveAll(dbbk)
-	if err := os.Rename(target, dbbk); err != nil {
-		return errors.UnknownError.Errorf("file on backup %s to %s",
-			target, dbbk)
-	}
-	defer func() {
-		if rerr != nil {
-			os.RemoveAll(target)
-			os.Rename(dbbk, target)
-		} else {
-			os.RemoveAll(dbbk)
-		}
-	}()
-	if err := os.Rename(dbpath, target); err != nil {
-		return errors.UnknownError.Errorf("fail on rename %s to %s",
-			dbpath, target)
-	}
-
-	c.logger.Infof("Replace GS %s -> %s", gsTmp, gsfile)
-	os.RemoveAll(gsbk)
-	if err := os.Rename(gsfile, gsbk); err != nil {
-		return errors.UnknownError.Errorf("fail on backup %s to %s",
-			gsfile, gsbk)
-	}
-	defer func() {
-		if rerr != nil {
-			os.RemoveAll(gsfile)
-			os.Rename(gsbk, gsfile)
-		} else {
-			os.RemoveAll(gsbk)
-		}
-	}()
-	if err := os.Rename(gsTmp, gsfile); err != nil {
-		return errors.UnknownError.Errorf("fail to rename %s to %s",
-			gsTmp, gsfile)
-	}
-
-	// replace genesis
-	fd, err := os.Open(gsfile)
-	if err != nil {
-		return errors.UnknownError.Wrapf(err, "fail to open file=%s", gsfile)
-	}
-	g, err := gs.NewFromFile(fd)
-	if err != nil {
-		return errors.UnknownError.Wrapf(err, "fail to parse gs=%s", gsfile)
-	}
-
-	c.logger.Infof("Reopen DB %s", chainDir)
-	c.cfg.DBType = dbtype
-	if err := c._prepareDatabase(chainDir); err != nil {
-		c.logger.Panicf("_prepareDatabase() fails err=%+v", err)
-	}
-
-	c.cfg.GenesisStorage = g
-	c.cfg.Genesis = g.Genesis()
-	if err := c._prepare(); err != nil {
-		c.logger.Panicf("_prepare() fails err=%+v", err)
-	}
-
-	return nil
+	return result
 }
 
-func (c *singleChain) Prune(gsfile, dbtype string, height int64, sync bool) error {
-	if s, ok := c._setStateIf(StatePruneStarting, nil, StateStopped); !ok {
-		return errors.InvalidStateError.Errorf("InvalidState(state=%s)", s)
+func (c *singleChain) Init() error {
+	if ok := c._transit(Initializing, nil, Created); !ok {
+		return errors.InvalidStateError.Errorf("InvalidState(state=%s)", c.state)
 	}
+	err := c._init()
+	if err != nil {
+		c._transit(InitializeFailed, err)
+	} else {
+		c._transit(Stopped, nil)
+	}
+	return err
+}
+
+func (c *singleChain) Start() error {
+	task := newTaskConsensus(c)
+	return c._runTask(task, false)
+}
+
+func (c *singleChain) Stop() error {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	switch c.state {
+	case Failed, Finished:
+		c.state = Stopped
+		c.lastErr = nil
+		c.task = nil
+		return nil
+	case Started:
+		c.state = Stopping
+		c.lastErr = nil
+		c.task.Stop()
+		return nil
+	default:
+		return errors.InvalidStateError.Errorf(
+			"InvalidStateToStop(status=%s)", c.state.String())
+	}
+}
+
+func (c *singleChain) Import(src string, height int64) error {
+	task := newTaskImport(c, src, height)
+	return c._runTask(task, false)
+}
+
+func (c *singleChain) Prune(gsfile string, dbtype string, height int64) error {
 	if dbtype == "" {
 		dbtype = c.cfg.DBType
 	}
-	log.Infof("Prune gsfile=%s dbtype=%s height:%d",
-		gsfile, dbtype, height)
-	f := func() {
-		c._setState(StatePruneStarted, nil)
-		err := c._prune(gsfile, dbtype, height)
-		if err != nil {
-			if _, ok := c._setStateIf(StatePruneFailed, err, StatePruneStarted); ok {
-				log.Errorf("Prune failed err=%+v", err)
-			} else {
-				c._setStateIf(StateStopped, nil, StatePruneStopping)
-			}
-		} else {
-			c._setState(StateStopped, nil)
-		}
-	}
-	return c._execute(sync, f)
+	task := newTaskPruning(c, gsfile, dbtype, height)
+	return c._runTask(task, false)
 }
 
-func (c *singleChain) Term(sync bool) error {
-	err := c._transit(StateTerminating)
-	if err != nil {
-		return err
-	}
+func (c *singleChain) _handleTerminate() {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
 
-	f := func() {
-		c._stop()
-		c.vld = nil
-		if c.database != nil {
-			err = c.database.Close()
-		}
-		c._setState(StateTerminated, err)
-	}
-	return c._execute(sync, f)
+	c._handleTerminateInLock()
 }
 
-func (c *singleChain) _verify() error {
-	// TODO start verifying operation
-	return fmt.Errorf("not implemented")
+func (c *singleChain) _handleTerminateInLock() {
+	if c.state != Terminating {
+		c.logger.Panicf("InvalidStateForTerminate(state=%s)", c.state.String())
+	}
+	c._terminate()
+	c.state = Terminated
+	if c.termWaiter != nil {
+		c.termWaiter.Broadcast()
+	}
 }
 
-func (c *singleChain) Verify(sync bool) error {
-	if err := c._transit(StateVerifyStarting, StateStopped); err != nil {
-		return err
-	}
-
-	f := func() {
-		s := StateVerifyStarted
-		err := c._verify()
-		if err != nil {
-			// TODO need to cleanup on failure.
-			s = StateVerifyFailed
-		}
-		c._setState(s, err)
-	}
-	return c._execute(sync, f)
+func (c *singleChain) _terminate() {
+	c.releaseDatabase()
 }
 
-func (c *singleChain) _reset() error {
-	if err := c.database.Close(); err != nil {
-		return err
+func (c *singleChain) Term() error {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	switch c.state {
+	case Terminated:
+		return errors.InvalidStateError.New("AlreadyTerminated")
+	case Stopped, Failed, Finished, InitializeFailed:
+		c._terminate()
+		c.state = Terminated
+	case Started:
+		c.task.Stop()
 	}
-	c.database = nil
-	chainDir := c.cfg.AbsBaseDir()
-	DBDir := path.Join(chainDir, DefaultDBDir)
-	if err := os.RemoveAll(DBDir); err != nil {
-		return err
-	}
-	CacheDir := path.Join(chainDir, DefaultCacheDir)
-	if err := os.RemoveAll(CacheDir); err != nil {
-		return err
-	}
+	c.state = Terminating
 
-	if err := c._prepareDatabase(chainDir); err != nil {
-		return err
-	}
-
-	WALDir := path.Join(chainDir, DefaultWALDir)
-	if err := os.RemoveAll(WALDir); err != nil {
-		return err
-	}
-
-	ContractDir := path.Join(chainDir, DefaultContractDir)
-	if err := os.RemoveAll(ContractDir); err != nil {
-		return err
-	}
+	c.termWaiter = sync.NewCond(&c.mtx)
+	c.termWaiter.Wait()
 	return nil
 }
 
-func (c *singleChain) Reset(sync bool) error {
-	if err := c._transit(StateResetting, StateStopped); err != nil {
-		return err
-	}
+func (c *singleChain) Verify() error {
+	return errors.UnsupportedError.New("UnsupportedFeatureVerify")
+}
 
-	f := func() {
-		//TODO [TBD] if each module has Reset(), then doesn't need c._stop(), c._prepare()
-		s := StateStopped
-		c._stop()
-		err := c._reset()
-		if err != nil {
-			s = StateResetFailed
-		}
-		c._prepare()
-		c._setState(s, err)
-	}
-	return c._execute(sync, f)
+func (c *singleChain) Reset() error {
+	task := newTaskReset(c)
+	return c._runTask(task, false)
 }
 
 func (c *singleChain) Logger() log.Logger {

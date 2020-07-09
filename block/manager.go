@@ -1518,14 +1518,14 @@ func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWrite
 	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
 		return errors.Wrap(err, "fail to write votes")
 	}
-	return m._exportBlocks(height, height, gs.NewDatabaseWithWriter(gsw), exportHashable)
+	return m._exportBlocks(height, height, gs.NewDatabaseWithWriter(gsw), exportHashable, nil)
 }
 
-func (m *manager) ExportBlocks(from, to int64, dst db.Database) error {
-	return m._exportBlocks(from, to, dst, exportAll)
+func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64) error) error {
+	return m._exportBlocks(from, to, dst, exportAll, on)
 }
 
-func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int) error {
+func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
 	ctx := merkle.NewCopyContext(m.db(), dst)
 	if hasBits(flag, exportValidator) && from > 0 {
 		blk, err := m.getBlockByHeight(from - 1)
@@ -1537,6 +1537,11 @@ func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int) error
 		}
 	}
 	for h := from; h <= to; h++ {
+		if on != nil {
+			if err := on(h); err != nil {
+				return err
+			}
+		}
 		blk, err := m.GetBlockByHeight(h)
 		if err != nil {
 			return errors.Wrapf(err, "fail to get a block height=%d", h)
@@ -1633,4 +1638,20 @@ func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get block for id=%x", genesis.Block)
 	}
 	return block, voteSetDecoder(bs), nil
+}
+
+func GetLastHeightOf(dbase db.Database) int64 {
+	bk, err := dbase.GetBucket(db.ChainProperty)
+	if err != nil {
+		return 0
+	}
+	bs, err := bk.Get([]byte(keyLastBlockHeight))
+	if err != nil || bs == nil {
+		return 0
+	}
+	var height int64
+	if _, err := dbCodec.UnmarshalFromBytes(bs, &height); err != nil {
+		return 0
+	}
+	return height
 }
