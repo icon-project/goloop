@@ -40,10 +40,11 @@ INDEXED_ARGS_LIMIT = 3
 
 
 def interface(func):
-    """interface decorator
+    """
+    A decorator for the functions of interface SCORE.
 
-    :param func:
-    :return:
+    Declaring this decorator to the function can invoke
+    the same form of the function of the external SCORE.
     """
     cls_name, func_name = str(func.__qualname__).split('.')
     if not isfunction(func):
@@ -73,10 +74,20 @@ def interface(func):
 
 
 def eventlog(func=None, *, indexed=0):
-    """eventlog decorator
+    """
+    Functions with `@eventlog` decorator will include logs in its TxResult as ‘eventlogs’.
+    If indexed parameter is set in the decorator, designated number of parameters in the order of
+    declaration will be indexed and included in the Bloom filter.
+    Indexed parameters and non-indexed parameters are separately stored in TxResult.
+    Possible data types for function parameters are primitive types (int, str, bytes, bool, Address).
 
-    :param func: function name
-    :param indexed: index args
+    It is recommended to declare a function without implementation body.
+    Even if the function has a body, it does not be executed.
+    When declaring a function, type hinting is a must. Without type hinting, transaction will fail.
+    The default value for the parameter can be set.
+    At most 3 parameters can be indexed, And index can’t exceed the number of parameters(will raise an error).
+
+    :param indexed: the number of indexed parameters count(maximum 3)
     """
     if func is None:
         return partial(eventlog, indexed=indexed)
@@ -205,6 +216,19 @@ def __resolve_arguments(function_name, parameters, args, kwargs) -> List[Any]:
 
 
 def external(func=None, *, readonly=False):
+    """
+    A decorator for the function whether the function exposes externally.
+    If declared to the function, EOA or another SCORE can call it.
+    These functions are registered on the exportable API list.
+    Any attempt to call a non-external function from outside the contract will fail.
+
+    If a function is decorated with ‘readonly’ parameters, i.e., `@external(readonly=True)`,
+    the function will have read-only access to the state DB. This is similar to view keyword in Solidity.
+    If the read-only external function is also decorated with `@payable`, the function call will fail.
+    Duplicate declaration of @external will raise an exception on import time.
+
+    :param readonly: True if the function have read-only access to the state DB.
+    """
     if func is None:
         return partial(external, readonly=readonly)
 
@@ -233,6 +257,13 @@ def external(func=None, *, readonly=False):
 
 
 def payable(func):
+    """
+    A decorator for the external function.
+
+    If the decorator is declared to the external function,
+    it can receive the ICXs and process further works for it.
+    If ICXs (msg.value) are passed to a non-payable function, that transaction will fail.
+    """
     cls_name, func_name = str(func.__qualname__).split('.')
     if not isfunction(func):
         raise IllegalFormatException(FORMAT_IS_NOT_FUNCTION_OBJECT.format(func, cls_name))
@@ -336,7 +367,8 @@ class IconScoreBase(IconScoreObject, ContextGetter,
     @abstractmethod
     def on_install(self, **kwargs) -> None:
         """
-        Invoked when the contract is deployed for the first time, and will not be called again on contract update or deletion afterward.
+        Invoked when the contract is deployed for the first time,
+        and will not be called again on contract update or deletion afterward.
         This is the place where you initialize the state DB.
         """
         super().on_install(**kwargs)
@@ -353,6 +385,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
     def __init__(self, db: 'IconScoreDatabase') -> None:
         """
         A Python init function. Invoked when the contract is loaded at each node.
+        Do not put state-changing works in here.
         """
         super().__init__(db)
         self.__db = db
@@ -365,9 +398,11 @@ class IconScoreBase(IconScoreObject, ContextGetter,
 
     def fallback(self) -> None:
         """
-        fallback function can not be decorated with `@external`. (i.e., fallback function is not allowed to be called by external contract or user.)
+        fallback function can not be decorated with `@external`.
+        (i.e., fallback function is not allowed to be called by external contract or user.)
         This fallback function is executed whenever the contract receives plain icx coins without data.
-        If the fallback function is not decorated with `@payable`, the icx coin transfers to the contract will fail.
+        If the fallback function is not decorated with `@payable`,
+        it is not listed on the SCORE APIs also cannot be called.
         """
         pass
 
@@ -466,6 +501,12 @@ class IconScoreBase(IconScoreObject, ContextGetter,
 
     @property
     def block(self) -> 'Block':
+        """
+        Deprecated property
+
+        Use block_height and now() instead.
+        """
+        warnings.warn("Use block_height and now() instead", DeprecationWarning, stacklevel=2)
         return Block(self._context.block.height, self._context.block.timestamp)
 
     @property
@@ -515,7 +556,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
     @property
     def block_height(self) -> int:
         """
-         Current block height
+        Current block height
 
         :return: current block height
         """
@@ -531,10 +572,11 @@ class IconScoreBase(IconScoreObject, ContextGetter,
 
     def call(self, addr_to: 'Address', func_name: str, kw_dict: dict, amount: int = 0):
         """
-        Call external function provided by other IconScore with arguments without fallback
+        Calls an external function provided by another SCORE.
+        `func_name` can be `None` if fallback calls
 
-        :param addr_to: :class:`.Address` the address of other IconScore
-        :param func_name: function name provided by other IconScore
+        :param addr_to: :class:`.Address` the address of another SCORE
+        :param func_name: function name of another SCORE
         :param kw_dict: Arguments of the external function
         :param amount: ICX value to enclose with. in loop.
         :return: returning value of the external function
@@ -543,7 +585,13 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         return InternalCall.message_call(self._context, self.address, addr_to, amount, func_name, None, kw_dict)
 
     @staticmethod
-    def revert(message: Optional[str] = None, code: int = 0) -> None:
+    def revert(message: Optional[str] = None, code: int = 0):
+        """
+        Deprecated method
+
+        Use global function `revert()` instead.
+        """
+        warnings.warn("Use global function revert() instead.", DeprecationWarning, stacklevel=2)
         revert(message, code)
 
     def get_owner(self, score_address: Optional['Address']) -> Optional['Address']:
