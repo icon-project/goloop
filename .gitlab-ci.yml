@@ -404,20 +404,20 @@ pages:IT:goloop:interscore:
 push:goloop:py:
   <<: *push
   variables:
-    - REPO: "${REPO_GOLOOP_PY}"
-    - REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
+    REPO: "${REPO_GOLOOP_PY}"
+    REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
 
 push:goloop:java:
   <<: *push
   variables:
-    - REPO: "${REPO_GOLOOP_JAVA}"
-    - REPO_TAG: "goloop-java:${CI_COMMIT_REF_NAME}"
+    REPO: "${REPO_GOLOOP_JAVA}"
+    REPO_TAG: "goloop-java:${CI_COMMIT_REF_NAME}"
 
 push:goloop:
   <<: *push
   variables:
-    - REPO: "${REPO_GOLOOP}"
-    - REPO_TAG: "goloop:${CI_COMMIT_REF_NAME}"
+    REPO: "${REPO_GOLOOP}"
+    REPO_TAG: "goloop:${CI_COMMIT_REF_NAME}"
 
 .cleanup:integration:
   image: docker:git
