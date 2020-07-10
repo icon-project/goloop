@@ -106,6 +106,11 @@ class IllegalFormatException(IconServiceBaseException):
         super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
 
 
+class InvalidRequestException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
+
+
 class InvalidExternalException(IconServiceBaseException):
     def __init__(self, message: Optional[str]):
         super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)

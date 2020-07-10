@@ -93,6 +93,7 @@ class IconScoreContext(object):
         self.msg: Optional['Message'] = None
         self.owner: Optional['Address'] = None
         self.step_counter: Optional['IconScoreStepCounter'] = None
+        self.fee_sharing_proportion = 0
 
         self.revision: int = 0
         self.func_type: Optional['IconScoreFuncType'] = None

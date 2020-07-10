@@ -23,7 +23,7 @@ from ..base.exception import *
 from ..base.message import Message
 from ..base.transaction import Transaction
 from ..database.db import IconScoreDatabase
-from ..icon_constant import ICX_TRANSFER_EVENT_LOG
+from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType
 from ..utils import get_main_type_from_annotations_type
 
 from .icon_score_base2 import InterfaceScore, Block, Icx, revert, create_interface_score
@@ -612,3 +612,14 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         :return: An instance of given class
         """
         return create_interface_score(addr_to, interface_cls)
+
+    def get_fee_sharing_proportion(self):
+        return self._context.fee_sharing_proportion
+
+    def set_fee_sharing_proportion(self, proportion: int):
+        if self._context.type == IconScoreContextType.QUERY:
+            raise InvalidRequestException("Cannot set fee sharing proportion in read-only context")
+        if proportion < 0 or proportion > 100:
+            raise InvalidRequestException("Invalid proportion: should be between 0 and 100")
+
+        self._context.fee_sharing_proportion = proportion
