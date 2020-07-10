@@ -18,6 +18,7 @@ variables:
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP_PY: "goloop-py/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP_JAVA: "goloop-java/${CI_COMMIT_REF_SLUG}"
+  REGISTRY: "ci.arch.iconloop.com:80"
 
 before_script:
   - env
@@ -384,6 +385,39 @@ pages:IT:goloop:interscore:
   when: on_failure
   dependencies:
     - IT:goloop:interscore
+    
+.push: &push
+  image: docker:git
+  stage: deploy
+  script:
+    - docker tags ${REPO} ${REPO_TAG}
+    - docker rmi ${REPO}
+    - export REGISTRY_REPO_TAG=${REGISTRY}/${REPO_TAG}
+    - docker tags ${REPO_TAG} ${REGISTRY_REPO_TAG}
+    - docker push ${REGISTRY_REPO_TAG}
+    - docker rmi ${REGISTRY_REPO_TAG}
+  tags:
+    - docker-build
+  only:
+    - tags
+
+push:goloop:py:
+  <<: *push
+  variables:
+    - REPO: "${REPO_GOLOOP_PY}"
+    - REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
+
+push:goloop:java:
+  <<: *push
+  variables:
+    - REPO: "${REPO_GOLOOP_JAVA}"
+    - REPO_TAG: "goloop-java:${CI_COMMIT_REF_NAME}"
+
+push:goloop:
+  <<: *push
+  variables:
+    - REPO: "${REPO_GOLOOP}"
+    - REPO_TAG: "goloop:${CI_COMMIT_REF_NAME}"
 
 .cleanup:integration:
   image: docker:git
