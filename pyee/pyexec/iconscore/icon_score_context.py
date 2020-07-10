@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import threading
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, Optional, List, Any
 
 from ..base.address import Address
 from ..base.block import Block
@@ -21,7 +21,6 @@ from ..base.message import Message
 from ..base.transaction import Transaction
 from ..icon_constant import IconScoreFuncType, IconScoreContextType
 from .icon_score_step import IconScoreStepCounter
-from .icon_score_eventlog import EventLog
 
 if TYPE_CHECKING:
     from .icon_score_base import IconScoreBase
@@ -84,22 +83,21 @@ class IconScoreContext(object):
     def __init__(self, typ: IconScoreContextType):
         self.type = typ
 
-        self.code = None
-        self.to = None
-        self.method = None
-        self.params = None
+        self.code: Optional[str] = None
+        self.to: Optional['Address'] = None
+        self.method: Optional[str] = None
+        self.params: Optional[Any] = None
 
-        self.block: 'Block' = None
-        self.tx: 'Transaction' = None
-        self.msg: 'Message' = None
-        self.owner: 'Address' = None
-        self.step_counter: 'IconScoreStepCounter' = None
+        self.block: Optional['Block'] = None
+        self.tx: Optional['Transaction'] = None
+        self.msg: Optional['Message'] = None
+        self.owner: Optional['Address'] = None
+        self.step_counter: Optional['IconScoreStepCounter'] = None
 
         self.revision: int = 0
-        self.func_type: IconScoreFuncType = None
-        self.event_logs: List['EventLog'] = None
+        self.func_type: Optional['IconScoreFuncType'] = None
 
-    def set_invoke_params(self, code, to, method, params):
+    def set_invoke_params(self, code: str, to: 'Address', method: str, params: Any):
         self.code = code
         self.to = to
         self.method = method

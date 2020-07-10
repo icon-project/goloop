@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Optional, Any
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconServiceBaseException
 from ..iconscore.icon_score_constant import STR_FALLBACK
-from ..iconscore.icon_score_step import StepType
 from ..ipc import MethodName
 from ..logger import Logger
 
@@ -44,7 +43,7 @@ class InternalCall(object):
                      addr_from: 'Address',
                      addr_to: 'Address',
                      amount: int,
-                     func_name: str,
+                     func_name: Optional[str],
                      arg_params: Optional[tuple] = None,
                      kw_params: Optional[dict] = None) -> Any:
         if func_name is None or func_name == STR_FALLBACK:
