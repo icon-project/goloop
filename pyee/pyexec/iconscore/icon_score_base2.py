@@ -16,20 +16,17 @@ import hashlib
 import json
 from abc import ABC, ABCMeta
 from enum import IntEnum
-from typing import TYPE_CHECKING, Optional, Any
+from typing import Optional, Any, Callable
 
 from coincurve import PublicKey
 
-from .icon_score_constant import STR_FALLBACK
+from .icon_score_constant import T, FORMAT_IS_NOT_DERIVED_OF_OBJECT
 from .icon_score_context import ContextContainer, IconScoreContext
 from .icon_score_step import StepType
 from .internal_call import InternalCall
 from ..base.address import Address, AddressPrefix
-from ..base.exception import InvalidParamsException, IconScoreException
+from ..base.exception import InvalidParamsException, IconScoreException, InvalidInstanceException
 from ..icon_constant import REVISION_3, CHARSET_ENCODING
-
-if TYPE_CHECKING:
-    from .icon_score_base import IconScoreBase
 
 
 class InterfaceScoreMeta(ABCMeta):
@@ -42,17 +39,16 @@ class InterfaceScoreMeta(ABCMeta):
 
 
 class InterfaceScore(ABC, metaclass=InterfaceScoreMeta):
-    def __init__(self, addr_to: 'Address', from_score: 'IconScoreBase'):
+    def __init__(self, addr_to: 'Address'):
         self.__addr_to = addr_to
-        self.__from_score = from_score
 
     @property
     def addr_to(self) -> 'Address':
         return self.__addr_to
 
     @property
-    def from_score(self) -> 'IconScoreBase':
-        return self.__from_score
+    def context(self) -> 'IconScoreContext':
+        return ContextContainer._get_context()
 
 
 class Block(object):
@@ -353,3 +349,17 @@ def _recover_key(msg_hash: bytes, signature: bytes, compressed: bool) -> Optiona
         return PublicKey.from_signature_and_message(signature, msg_hash, hasher=None).format(compressed)
 
     return None
+
+
+def create_interface_score(addr_to: 'Address',
+                           interface_cls: Callable[['Address'], T]) -> T:
+    """
+    Creates an object, through which you have an access to the designated SCORE’s external functions.
+
+    :param addr_to: SCORE address
+    :param interface_cls: interface class
+    :return: An instance of given class
+    """
+    if interface_cls is InterfaceScore:
+        raise InvalidInstanceException(FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
+    return interface_cls(addr_to)

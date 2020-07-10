@@ -26,7 +26,7 @@ from ..database.db import IconScoreDatabase
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG
 from ..utils import get_main_type_from_annotations_type
 
-from .icon_score_base2 import InterfaceScore, revert, Block, Icx
+from .icon_score_base2 import InterfaceScore, Block, Icx, revert, create_interface_score
 from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, ConstBitFlag, \
     FORMAT_IS_NOT_FUNCTION_OBJECT, FORMAT_IS_NOT_DERIVED_OF_OBJECT, FORMAT_DECORATOR_DUPLICATED, \
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
@@ -57,18 +57,19 @@ def interface(func):
     setattr(func, CONST_BIT_FLAG, bit_flag)
 
     @wraps(func)
-    def __wrapper(calling_obj: Any, *args, **kwargs):
+    def __wrapper(calling_obj: "InterfaceScore", *args, **kwargs):
         if not isinstance(calling_obj, InterfaceScore):
             raise InvalidInstanceException(
                 FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
 
-        score = calling_obj.from_score
+        context = calling_obj.context
         addr_to = calling_obj.addr_to
+        addr_from: 'Address' = context.to
 
         if addr_to is None:
             raise InvalidInterfaceException('Cannot create an interface SCORE with a None address')
 
-        return InternalCall.message_call(score._context, score.address, addr_to, 0, func_name, args, kwargs)
+        return InternalCall.message_call(context, addr_from, addr_to, 0, func_name, args, kwargs)
 
     return __wrapper
 
@@ -116,7 +117,7 @@ def eventlog(func=None, *, indexed=0):
     event_signature = __retrieve_event_signature(func_name, parameters)
 
     @wraps(func)
-    def __wrapper(calling_obj: Any, *args, **kwargs):
+    def __wrapper(calling_obj: 'IconScoreBase', *args, **kwargs):
         if not (isinstance(calling_obj, IconScoreBase)):
             raise InvalidInstanceException(
                 FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(IconScoreBase.__name__))
@@ -600,9 +601,9 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         else:
             return score_address
 
-    def create_interface_score(self,
-                               addr_to: 'Address',
-                               interface_cls: Callable[['Address', callable], T]) -> T:
+    @staticmethod
+    def create_interface_score(addr_to: 'Address',
+                               interface_cls: Callable[['Address'], T]) -> T:
         """
         Creates an object, through which you have an access to the designated SCORE’s external functions.
 
@@ -610,7 +611,4 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         :param interface_cls: interface class
         :return: An instance of given class
         """
-
-        if interface_cls is InterfaceScore:
-            raise InvalidInstanceException(FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
-        return interface_cls(addr_to, self)
+        return create_interface_score(addr_to, interface_cls)
