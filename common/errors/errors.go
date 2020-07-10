@@ -365,3 +365,11 @@ func AsValue(ptr interface{}, err error) bool {
 		}
 	}
 }
+
+func ToString(e error) string {
+	if e == nil {
+		return ""
+	} else {
+		return fmt.Sprintf("%v", e)
+	}
+}

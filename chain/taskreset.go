@@ -34,9 +34,16 @@ var resetStates = map[State]string{
 	Finished: "reset finished",
 }
 
-func (t *taskReset) DetailOf(s State) (string, bool) {
-	name, ok := resetStates[s]
-	return name, ok
+func (t *taskReset) String() string {
+	return "Reset"
+}
+
+func (t *taskReset) DetailOf(s State) string {
+	if name, ok := resetStates[s]; ok {
+		return name
+	} else {
+		return s.String()
+	}
 }
 
 func (t *taskReset) Start() error {

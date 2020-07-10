@@ -65,7 +65,8 @@ func (s State) String() string {
 }
 
 type chainTask interface {
-	DetailOf(s State) (string, bool)
+	String() string
+	DetailOf(s State) string
 	Start() error
 	Stop()
 	Wait() error
@@ -236,11 +237,7 @@ func (c *singleChain) State() (string, int64, error) {
 				height = blk.Height()
 			}
 		}
-		if name, ok := c.task.DetailOf(c.state); ok {
-			return name, height, c.lastErr
-		} else {
-			return c.state.String(), height, c.lastErr
-		}
+		return c.task.DetailOf(c.state), height, c.lastErr
 	default:
 		height := block.GetLastHeightOf(c.database)
 		return c.state.String(), height, c.lastErr
@@ -318,6 +315,7 @@ func (c *singleChain) _setStartingTask(task chainTask) error {
 		c.state = Starting
 		c.lastErr = nil
 		c.task = task
+		c.logger.Infof("STARTING %s", task.String())
 		return nil
 	default:
 		return errors.InvalidStateError.Errorf("InvalidState(state=%s)", c.state.String())
@@ -458,13 +456,14 @@ func (c *singleChain) _runTask(task chainTask, wait bool) error {
 		return err
 	}
 	if err := task.Start(); err != nil {
-		if ok := c._transit(Failed, err, Starting); !ok {
-			c._handleTerminate()
-			return err
-		}
+		c.logger.Infof("Fail to start %s err=%v",
+			task.String(), err)
+		c._transitOrTerminate(Failed, err, Starting)
+		return err
 	}
-
+	c.logger.Infof("STARTED %s", task.String())
 	if ok := c._transit(Started, nil, Starting); !ok {
+		c.logger.Infof("TERMINATING %s", task.String())
 		task.Stop()
 	}
 	if wait {
@@ -477,6 +476,7 @@ func (c *singleChain) _runTask(task chainTask, wait bool) error {
 
 func (c *singleChain) _waitResultOf(task chainTask) error {
 	result := task.Wait()
+	c.logger.Infof("DONE %s err=%v", task.String(), result)
 
 	if result == nil {
 		c._transitOrTerminate(Finished, nil, Started, Stopping)
@@ -519,6 +519,7 @@ func (c *singleChain) Stop() error {
 	case Started:
 		c.state = Stopping
 		c.lastErr = nil
+		c.logger.Infof("STOP %s", c.task.String())
 		c.task.Stop()
 		return nil
 	default:

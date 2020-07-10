@@ -32,9 +32,16 @@ var consensusStates = map[State]string{
 	Failed:   "failed",
 }
 
-func (t *taskConsensus) DetailOf(s State) (string, bool) {
-	name, ok := consensusStates[s]
-	return name, ok
+func (t *taskConsensus) String() string {
+	return "Consensus"
+}
+
+func (t *taskConsensus) DetailOf(s State) string {
+	if name, ok := consensusStates[s]; ok {
+		return name
+	} else {
+		return s.String()
+	}
 }
 
 func (t *taskConsensus) Start() error {

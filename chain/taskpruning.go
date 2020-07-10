@@ -44,14 +44,21 @@ type taskPruning struct {
 	current int64
 }
 
-func (t *taskPruning) DetailOf(s State) (string, bool) {
+func (t *taskPruning) String() string {
+	return fmt.Sprintf("Pruning(height=%d)", t.height)
+}
+
+func (t *taskPruning) DetailOf(s State) string {
 	switch s {
 	case Started:
 		i, a := t._progress()
-		return fmt.Sprintf("pruning %d/%d", i, a), true
+		return fmt.Sprintf("pruning %d/%d", i, a)
 	default:
-		st, ok := pruningStates[s]
-		return st, ok
+		if st, ok := pruningStates[s]; ok {
+			return st
+		} else {
+			return s.String()
+		}
 	}
 }
 

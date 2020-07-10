@@ -42,6 +42,10 @@ type taskImport struct {
 	result resultStore
 }
 
+func (t *taskImport) String() string {
+	return fmt.Sprintf("Import(src=%s,height=%d)", t.src, t.height)
+}
+
 func (t *taskImport) OnError(err error) {
 	t.result.SetValue(err)
 }
@@ -58,14 +62,17 @@ func (t *taskImport) OnEnd(errCh <-chan error) {
 	t.result.SetValue(err)
 }
 
-func (t *taskImport) DetailOf(s State) (string, bool) {
+func (t *taskImport) DetailOf(s State) string {
 	switch s {
 	case Started:
 		i, a := t._progress()
-		return fmt.Sprintf("import %d/%d", i, a), true
+		return fmt.Sprintf("import %d/%d", i, a)
 	default:
-		st, ok := importStates[s]
-		return st, ok
+		if st, ok := importStates[s]; ok {
+			return st
+		} else {
+			return s.String()
+		}
 	}
 }
 
