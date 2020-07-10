@@ -340,14 +340,13 @@ func (c *singleChain) openDatabase(dbDir, dbType string) (db.Database, error) {
 	}
 }
 
-func (c *singleChain) ensureDatabase(must bool) error {
+func (c *singleChain) ensureDatabase() {
 	chainDir := c.cfg.AbsBaseDir()
-	err := c.prepareDatabase(chainDir)
-	if must && err != nil {
+	if err := c.prepareDatabase(chainDir); err != nil {
 		c.logger.Panicf("Fail to open database chainDir=%s err=%+v",
 			chainDir, err)
 	}
-	return err
+	return
 }
 
 func (c *singleChain) prepareDatabase(chainDir string) error {

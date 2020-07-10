@@ -199,7 +199,7 @@ func (t *taskPruning) _prune(gsfile, dbtype string, height int64) (rerr error) {
 
 	c.releaseManagers()
 	c.releaseDatabase()
-	defer c.ensureDatabase(true)
+	defer c.ensureDatabase()
 
 	target := path.Join(chainDir, DefaultDBDir)
 	dbbk := target + ".bk"

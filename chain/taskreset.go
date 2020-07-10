@@ -54,7 +54,7 @@ func (t *taskReset) _reset() error {
 	chainDir := c.cfg.AbsBaseDir()
 
 	c.releaseDatabase()
-	defer c.ensureDatabase(true)
+	defer c.ensureDatabase()
 
 	DBDir := path.Join(chainDir, DefaultDBDir)
 	if err := os.RemoveAll(DBDir); err != nil {
