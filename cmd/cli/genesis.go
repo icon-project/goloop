@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -32,6 +33,53 @@ func mustParseAddress(arg string) module.Address {
 	}
 }
 
+var feeInfoByName = map[string]interface{}{
+	"icon": map[string]interface{}{
+		"stepPrice": "0x0",
+		"stepLimit": map[string]interface{}{
+			"invoke": "0x9502f900",
+			"query":  "0x2faf080",
+		},
+		"stepCosts": map[string]interface{}{
+			"default":          "0x186a0",
+			"contractCall":     "0x61a8",
+			"contractCreate":   "0x3b9aca00",
+			"contractUpdate":   "0x5f5e1000",
+			"contractDestruct": "-0x11170",
+			"contractSet":      "0x7530",
+			"get":              "0x0",
+			"set":              "0x140",
+			"replace":          "0x50",
+			"delete":           "-0xf0",
+			"input":            "0xc8",
+			"eventLog":         "0x64",
+			"apiCall":          "0x2710",
+		},
+	},
+}
+
+func getFeeInfoOf(name string) (interface{}, error) {
+	switch name {
+	case "none":
+		return nil, nil
+	default:
+		if info, ok := feeInfoByName[name]; ok {
+			return info, nil
+		} else {
+			return nil, fmt.Errorf("InvalidFeeName(name=%s)", name)
+		}
+	}
+}
+
+func getFeeNames() []string {
+	names := make([]string, 0, len(feeInfoByName)+1)
+	names = append(names, "none")
+	for k, _ := range feeInfoByName {
+		names = append(names, k)
+	}
+	return names
+}
+
 func newGenesisGenCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [address or keystore...]", c),
@@ -44,6 +92,8 @@ func newGenesisGenCmd(c string) *cobra.Command {
 	supply := flags.StringP("supply", "s", "0x2961fff8ca4a62327800000", "Total supply of the chain")
 	treasury := flags.StringP("treasury", "t", "hx1000000000000000000000000000000000000000", "Treasury address")
 	configs := flags.StringToStringP("config", "c", nil, "Chain configuration")
+	feeName := flags.String("fee", "none",
+		fmt.Sprintf("Fee configuration (%s)", strings.Join(getFeeNames(), ",")))
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		var godAddr module.Address
@@ -80,27 +130,13 @@ func newGenesisGenCmd(c string) *cobra.Command {
 			}
 		}
 		chainConfig["validatorList"] = validators
-		chainConfig["fee"] = map[string]interface{}{
-			"stepPrice": "0x0",
-			"stepLimit": map[string]interface{}{
-				"invoke": "0x9502f900",
-				"query":  "0x2faf080",
-			},
-			"stepCosts": map[string]interface{}{
-				"default":          "0x186a0",
-				"contractCall":     "0x61a8",
-				"contractCreate":   "0x3b9aca00",
-				"contractUpdate":   "0x5f5e1000",
-				"contractDestruct": "-0x11170",
-				"contractSet":      "0x7530",
-				"get":              "0x0",
-				"set":              "0x140",
-				"replace":          "0x50",
-				"delete":           "-0xf0",
-				"input":            "0xc8",
-				"eventLog":         "0x64",
-				"apiCall":          "0x2710",
-			},
+
+		if info, err := getFeeInfoOf(*feeName); err != nil {
+			log.Panicf("Fail to get fee info err=%+v", err)
+		} else {
+			if info != nil {
+				chainConfig["fee"] = info
+			}
 		}
 
 		genesis := map[string]interface{}{
