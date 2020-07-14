@@ -541,13 +541,6 @@ func (c *singleChain) Prune(gsfile string, dbtype string, height int64) error {
 	return c._runTask(task, false)
 }
 
-func (c *singleChain) _handleTerminate() {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-
-	c._handleTerminateInLock()
-}
-
 func (c *singleChain) _handleTerminateInLock() {
 	if c.state != Terminating {
 		c.logger.Panicf("InvalidStateForTerminate(state=%s)", c.state.String())
@@ -572,6 +565,7 @@ func (c *singleChain) Term() error {
 	case Stopped, Failed, Finished, InitializeFailed:
 		c._terminate()
 		c.state = Terminated
+		return nil
 	case Started:
 		c.task.Stop()
 	}
