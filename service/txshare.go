@@ -284,11 +284,12 @@ func (ts *TransactionShare) handleUpdateRequestTimer() {
 }
 
 func (ts *TransactionShare) taskLoop() {
+loop:
 	for {
 		select {
 		case task := <-ts.tasks:
 			if task == nil {
-				break
+				break loop
 			}
 			task()
 		case <-ts.handlerTimer.C:
