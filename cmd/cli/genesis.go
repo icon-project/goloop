@@ -80,6 +80,28 @@ func newGenesisGenCmd(c string) *cobra.Command {
 			}
 		}
 		chainConfig["validatorList"] = validators
+		chainConfig["fee"] = map[string]interface{}{
+			"stepPrice": "0x0",
+			"stepLimit": map[string]interface{}{
+				"invoke": "0x9502f900",
+				"query":  "0x2faf080",
+			},
+			"stepCosts": map[string]interface{}{
+				"default":          "0x186a0",
+				"contractCall":     "0x61a8",
+				"contractCreate":   "0x3b9aca00",
+				"contractUpdate":   "0x5f5e1000",
+				"contractDestruct": "-0x11170",
+				"contractSet":      "0x7530",
+				"get":              "0x0",
+				"set":              "0x140",
+				"replace":          "0x50",
+				"delete":           "-0xf0",
+				"input":            "0xc8",
+				"eventLog":         "0x64",
+				"apiCall":          "0x2710",
+			},
+		}
 
 		genesis := map[string]interface{}{
 			"accounts": []interface{}{
