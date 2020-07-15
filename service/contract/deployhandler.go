@@ -161,10 +161,11 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		return scoreresult.ErrOutOfStep, nil, nil
 	}
 
+	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) {
+		return scoreresult.ErrAccessDenied, nil, nil
+	}
+
 	if update == false {
-		if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) {
-			return scoreresult.ErrAccessDenied, nil, nil
-		}
 		if as.InitContractAccount(h.from) == false {
 			return errors.ErrExecutionFail, nil, nil
 		}
