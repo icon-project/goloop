@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -85,4 +86,23 @@ func (c *Config) CID() int {
 
 func (c *Config) AbsBaseDir() string {
 	return c.ResolveAbsolute(c.BaseDir)
+}
+
+func (c *Config) NetID() int {
+	if c.NIDForP2P {
+		return c.NID
+	} else {
+		return c.CID()
+	}
+}
+
+func (c *Config) GetChannel() string {
+	return GetChannel(c.Channel, c.NID)
+}
+
+func GetChannel(channel string, nid int) string {
+	if channel == "" {
+		return strconv.FormatInt(int64(nid), 16)
+	}
+	return channel
 }

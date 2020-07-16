@@ -219,6 +219,50 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
+  /chain/{cid}/prune:
+    post:
+      operationId:  pruneChain
+      tags:
+        - chain
+      summary: Prune Chain
+      description: Prune chain data from the specific height
+      parameters:
+        - <<: *path__cid
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/PruneParam'
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  /chain/{cid}/backup:
+    post:
+      operationId:  backupChain
+      tags:
+        - chain
+      summary: Backup Chain
+      description: Backup chain data to the specific file
+      parameters:
+        - <<: *path__cid
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: "#/components/schemas/BackupParam"
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
   /chain/{cid}/genesis:
     get:
       operationId: getChainGenesis
@@ -332,6 +376,67 @@ paths:
           'application/json':
             schema:
               $ref: "#/components/schemas/ConfigureParam"
+      responses:
+        "200":
+          description: Success
+        "500":
+          description: Internal Server Error
+  /system/backup:
+    get:
+      operationId: getBackups
+      tags:
+        - node
+      summary: List Backups
+      description: Return list of backups
+      responses:
+        "200":
+          description: Success
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BackupList"
+        "500":
+          description: Internal Server Error
+  /system/restore:
+    get:
+      operationId: getRestoreStatus
+      tags:
+        - node
+      summary: "Restore Status"
+      description: "View the status of restoring"
+      responses:
+        "200":
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: "#/components/schemas/RestoreStatus"
+        "500":
+          description: Internal Server Error
+    post:
+      operationId: startRestore
+      tags:
+        - node
+      summary: "Start Restore"
+      description: "Start to restore chain from the backup"
+      requestBody:
+        required: true
+        description: "Name of backup and options"
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/RestoreParam"
+      responses:
+        "200":
+          description: Success
+        "500":
+          description: Internal Server Error
+    delete:
+      operationId: stopRestore
+      tags:
+        - node
+      summary: "Stop Restore"
+      description: "Stop restoring operation"
       responses:
         "200":
           description: Success
@@ -555,3 +660,98 @@ components:
       required:
         - key
         - value
+
+    PruneParam:
+      type: object
+      properties:
+        dbType:
+          type: string
+          description: "Database type"
+        height:
+          type: int64
+          description: "Block Height"
+      required:
+        - height
+      example:
+        dbType: "goleveldb"
+        height: 1
+
+    BackupParam:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "File name for backup"
+      required:
+        - name
+      example:
+        name: "ch1_main.zip"
+
+    BackupList:
+      type: array
+      items:
+        type: object
+        propertis:
+          name:
+            type: string
+            description: "name of the backup"
+          cid:
+            type: string
+            format: "\"0x\" + lowercase HEX string"
+            description: "chain-id of chain"
+            example: "0x178977"
+          nid:
+            type: string
+            description: "Network ID of the backup"
+          height:
+            type: integer
+            description: "Last block height of the backup"
+          size:
+            type: integer
+            description: "Size of the backup in bytes"
+          codec:
+            type: string
+            description: "Size of the backup in bytes"
+      example:
+        - name: "0x178977_0x1_1_20200715-111057.zip"
+          cid: "0x178977"
+          nid: "0x1"
+          channel: "1"
+          height: 2021
+          codec: "rlp"
+
+    RestoreStatus:
+      type: object
+      properties:
+        state:
+          type: string
+          description: "State of the job (stopped, started N/T, stopping, failed, success)"
+        name:
+          type: string
+          description: "Name of backup"
+        overwrite:
+          type: boolean
+          default: false
+          description: "Whether it replaces existing chain data"
+      required:
+        - state
+      example:
+        name: "0x178977_0x1_1_20200715-111057.zip"
+        overwrite: true
+        state: "started 23/128"
+
+    RestoreParam:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the backup to restore"
+        overwrite:
+          type: boolean
+          description: "Whether it replaces existing chain"
+          default: false
+      required:
+        - name
+      example:
+        name: "0x178977_0x1_1_20200715-111057.zip"
+        overwrite: true

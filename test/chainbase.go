@@ -116,6 +116,10 @@ func (_r *ChainBase) Prune(gs string, dbt string, height int64) error {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) Backup(file string, extra []string) error {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) Term() error {
 	panic("not implemented")
 }

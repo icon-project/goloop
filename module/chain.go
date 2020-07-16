@@ -43,6 +43,7 @@ type Chain interface {
 	Stop() error
 	Import(src string, height int64) error
 	Prune(gs string, dbt string, height int64) error
+	Backup(file string, extra []string) error
 	Term() error
 	State() (string, int64, error)
 	IsStarted() bool

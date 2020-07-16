@@ -95,6 +95,8 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 		"Node data directory (default: [configuration file path]/.chain/[ADDRESS])")
 	rootPFlags.StringP("node_sock", "s", "",
 		"Node Command Line Interface socket path (default: [node_dir]/cli.sock)")
+	rootPFlags.String("backup_dir", "",
+		"Node backup directory (default: [node_dir]/backup")
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
 	//
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
@@ -242,6 +244,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	nodeDir := vc.GetString("node_dir")
 	cliSocket := vc.GetString("node_sock")
 	eeSocket := vc.GetString("ee_socket")
+	backupDir := vc.GetString("backup_dir")
 	lwFilename := vc.GetString("log_writer_filename")
 
 	if cfg.FilePath != "" {
@@ -332,6 +335,9 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	}
 	if eeSocket != "" {
 		cfg.EESocket = cfg.ResolveRelative(eeSocket)
+	}
+	if backupDir != "" {
+		cfg.BackupDir = cfg.ResolveRelative(backupDir)
 	}
 
 	//config.KeyStorePass

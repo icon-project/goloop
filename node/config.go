@@ -25,6 +25,7 @@ type StaticConfig struct {
 	RPCDump       bool   `json:"rpc_dump"`
 	EESocket      string `json:"ee_socket"`
 	Engines       string `json:"engines"`
+	BackupDir     string `json:"backup_dir"`
 
 	AuthSkipIfEmptyUsers bool `json:"auth_skip_if_empty_users,omitempty"`
 	NIDForP2P            bool `json:"nid_for_p2p,omitempty"`
@@ -60,12 +61,19 @@ func (c *StaticConfig) FillEmpty(addr module.Address) {
 	if c.BaseDir == "" {
 		c.BaseDir = path.Join(".", ".chain", addr.String())
 	}
+	if c.BackupDir == "" {
+		c.BackupDir = path.Join(c.BaseDir, "backup")
+	}
 	if c.CliSocket == "" {
 		c.CliSocket = path.Join(c.BaseDir, "cli.sock")
 	}
 	if c.EESocket == "" {
 		c.EESocket = path.Join(c.BaseDir, "ee.sock")
 	}
+}
+
+func (c *StaticConfig) AbsBaseDir() string {
+	return c.ResolveAbsolute(c.BaseDir)
 }
 
 const (

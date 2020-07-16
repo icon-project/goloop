@@ -621,6 +621,20 @@ func JsonPrettyPrintln(w io.Writer, v interface{}) error {
 	return err
 }
 
+func JsonPrettyCopyAndClose(w io.Writer, r io.ReadCloser) error {
+	defer r.Close()
+	bs, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	buf := bytes.NewBuffer(nil)
+	if err := json.Indent(buf, bs, "", "  "); err != nil {
+		return err
+	}
+	_, err = io.Copy(w, buf)
+	return err
+}
+
 func JsonPrettySaveFile(filename string, perm os.FileMode, v interface{}) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {

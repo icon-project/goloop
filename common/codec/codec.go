@@ -19,6 +19,7 @@ type SimpleDecoder interface {
 }
 
 type codecImpl interface {
+	Name() string
 	NewDecoder(r io.Reader) SimpleDecoder
 	NewEncoder(w io.Writer) SimpleEncoder
 }

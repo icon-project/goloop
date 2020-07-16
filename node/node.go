@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
@@ -32,6 +34,7 @@ type Node struct {
 	nt   module.NetworkTransport
 	srv  *server.Manager
 	pm   eeproxy.Manager
+	rsm  RestoreManager
 	cfg  StaticConfig
 	rcfg *RuntimeConfig
 
@@ -51,8 +54,15 @@ type Chain struct {
 	refresh bool
 }
 
-func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
-	b, err := ioutil.ReadFile(filename)
+func (n *Node) loadChainConfig(chainDir string) (*chain.Config, error) {
+	cfgFile := path.Join(chainDir, ChainConfigFileName)
+	if st, err := os.Stat(cfgFile); err != nil || !st.Mode().IsRegular() {
+		return nil, errors.NotFoundError.Errorf(
+			"NoConfigurationFile(name=%s)", cfgFile)
+	}
+	log.Println("Load channel config ", cfgFile)
+
+	b, err := ioutil.ReadFile(cfgFile)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +70,24 @@ func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
 	if err = json.Unmarshal(b, cfg); err != nil {
 		return nil, err
 	}
+
+	cfg.FilePath = cfgFile
+	cfg.NIDForP2P = n.cfg.NIDForP2P
+
+	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
+	genesis, err := ioutil.ReadFile(gsFile)
+	if err != nil {
+		return nil, errors.CriticalIOError.Wrapf(err,
+			"Fail to read chain genesis zip file %s err=%+v", gsFile, err)
+	}
+
+	genesisStorage, err := gs.New(genesis)
+	if err != nil {
+		return nil, errors.CriticalIOError.Wrapf(err,
+			"Fail to parse chain genesis zip file %s err=%+v", gsFile, err)
+	}
+	cfg.GenesisStorage = genesisStorage
+
 	return cfg, nil
 }
 
@@ -80,13 +108,123 @@ func (n *Node) saveChainConfig(cfg *chain.Config, filename string) error {
 	return nil
 }
 
-func (n *Node) _checkNetID(nid int) error {
-	if n.cfg.NIDForP2P {
-		for _, c := range n.chains {
-			if c.NetID() == nid {
-				return errors.Wrapf(ErrAlreadyExists, "P2PNetworkConflict(channel=%d)", nid)
-			}
+func (n *Node) CanAdd(cid, nid int, channel string, overwrite bool) error {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	return n._canAdd(cid, nid, channel, overwrite)
+}
+
+func (n *Node) _canAdd(cid, nid int, channel string, overwrite bool) error {
+	var cidSame, ncSame, chnSame, sidSame *Chain
+	sid, _ := cidOfSelector(channel)
+	for _, c := range n.chains {
+		if c.CID() == cid {
+			cidSame = c
 		}
+		if n.cfg.NIDForP2P && nid == c.NID() {
+			ncSame = c
+		}
+		if c.Channel() == channel {
+			chnSame = c
+		}
+		if sid == c.CID() {
+			sidSame = c
+		}
+	}
+	if cidSame == nil {
+		if ncSame != nil {
+			return errors.IllegalArgumentError.Errorf(
+				"NetIDConflicts(cid=%#x)", ncSame.CID())
+		}
+		if chnSame != nil {
+			return errors.IllegalArgumentError.Errorf(
+				"ChannelConflicts(cid=%#x)", chnSame.CID())
+		}
+		if sidSame != nil {
+			return errors.IllegalArgumentError.Errorf(
+				"ChannelConflicts(cid=%#x)", sidSame.CID())
+		}
+	} else if overwrite {
+		if ncSame != nil && ncSame != cidSame {
+			return errors.IllegalArgumentError.Errorf(
+				"NetIDConflicts(cid=%#x)", ncSame.CID())
+		}
+		if chnSame != nil && chnSame != cidSame {
+			return errors.IllegalArgumentError.Errorf(
+				"ChannelConflicts(cid=%#x)", chnSame.CID())
+		}
+		if sidSame != nil && sidSame != cidSame {
+			return errors.IllegalArgumentError.Errorf(
+				"ChannelConflicts(cid=%#x)", sidSame.CID())
+		}
+	} else {
+		return errors.IllegalArgumentError.Errorf(
+			"CIDConflicts(channel=%s)", cidSame.Channel())
+	}
+	return nil
+}
+
+func (n *Node) restoreChain(tmpDir string, overwrite bool) (ret error) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	cfg, err := n.loadChainConfig(tmpDir)
+	if err != nil {
+		return err
+	}
+
+	if err := n._canAdd(cfg.CID(), cfg.NID, cfg.Channel, overwrite); err != nil {
+		return err
+	}
+
+	channel, exist := n.channels[cfg.CID()]
+	if exist {
+		c := n.chains[channel]
+		if err := n._remove(c); err != nil {
+			return err
+		}
+		defer func() {
+			if ret != nil {
+				n._add(c.cfg)
+			}
+		}()
+
+		backupDir := path.Join(n.cfg.AbsBaseDir(), RestoreDirectoryPrefix)
+		if err := os.RemoveAll(backupDir); err != nil {
+			return err
+		}
+		n.logger.Debugf("Backup existing chain (%s -> %s)",
+			c.cfg.AbsBaseDir(), backupDir)
+		if err := os.Rename(c.cfg.AbsBaseDir(), backupDir); err != nil {
+			return err
+		}
+		defer func() {
+			if ret != nil {
+				if err := os.Rename(backupDir, c.cfg.AbsBaseDir()); err != nil {
+					n.logger.Panic(err)
+				}
+			} else {
+				go os.RemoveAll(backupDir)
+			}
+		}()
+	}
+	chainDir, err := n._renameChainDir(tmpDir, cfg.CID())
+	if err != nil {
+		n.logger.Debugf("Fail to rename chain directory tmp=%s, err=%+v", tmpDir, err)
+		return err
+	}
+	defer func() {
+		if ret != nil {
+			os.Rename(chainDir, tmpDir)
+		}
+	}()
+
+	if cfg, err = n.loadChainConfig(chainDir); err != nil {
+		return err
+	}
+	if _, err := n._add(cfg); err != nil {
+		return err
 	}
 	return nil
 }
@@ -94,27 +232,17 @@ func (n *Node) _checkNetID(nid int) error {
 func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 	nid := cfg.NID
 	cid := cfg.CID()
-	channel := cfg.Channel
-	if channel == "" {
-		channel = strconv.FormatInt(int64(nid), 16)
-	}
+	channel := cfg.GetChannel()
+	nc := network.ChannelOfNetID(cfg.NetID())
 
-	if _, ok := n.channels[cid]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(cid=%#x) already exists", cid)
-	}
-
-	if _, ok := n.chains[channel]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", channel)
-	}
-
-	if err := n._checkNetID(nid); err != nil {
+	if err := n._canAdd(cid, nid, channel, false); err != nil {
 		return nil, err
 	}
 
-	if err := n.nt.SetSecureSuites(channel, cfg.SecureSuites); err != nil {
+	if err := n.nt.SetSecureSuites(nc, cfg.SecureSuites); err != nil {
 		return nil, err
 	}
-	if err := n.nt.SetSecureAeads(channel, cfg.SecureAeads); err != nil {
+	if err := n.nt.SetSecureAeads(nc, cfg.SecureAeads); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +273,7 @@ func (n *Node) _refresh(c *Chain) (*Chain, error) {
 	}
 	if nc, err := n._add(c.cfg); err != nil {
 		err = errors.Wrapf(err, "fail to recreate on add")
-		if cfg, lerr := n.loadChainConfig(c.cfg.FilePath); lerr != nil {
+		if cfg, lerr := n.loadChainConfig(c.cfg.AbsBaseDir()); lerr != nil {
 			err = errors.Wrapf(err, "fail to loadChainConfig on rollback err=%+v", lerr)
 			return nil, err
 		} else {
@@ -160,10 +288,32 @@ func (n *Node) _refresh(c *Chain) (*Chain, error) {
 	}
 }
 
-func (n *Node) ChainDir(cid int) string {
-	nodeDir := n.cfg.ResolveAbsolute(n.cfg.BaseDir)
-	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(cid), 16))
-	return chainDir
+func (n *Node) _renameChainDir(dir string, cid int) (string, error) {
+	nodeDir := n.cfg.AbsBaseDir()
+	chainBase := path.Join(nodeDir, strconv.FormatInt(int64(cid), 16))
+	chainDir := chainBase
+	for idx := 0; idx < 1000; idx++ {
+		if _, err := os.Stat(chainDir); os.IsNotExist(err) {
+			if err := os.Rename(dir, chainDir); err != nil {
+				return "", err
+			} else {
+				return chainDir, nil
+			}
+		} else {
+			chainDir = fmt.Sprintf("%s.%d", chainBase, idx)
+		}
+	}
+	return "", errors.CriticalIOError.New("Fail to rename chain directory")
+}
+
+func (n *Node) _mkChainDir(cid int) (string, error) {
+	nodeDir := n.cfg.AbsBaseDir()
+	chainBase := path.Join(nodeDir, strconv.FormatInt(int64(cid), 16))
+	chainDir := chainBase
+	if _, err := os.Stat(chainDir); os.IsNotExist(err) {
+		return chainDir, nil
+	}
+	return ioutil.TempDir(nodeDir, strconv.FormatInt(int64(cid), 16)+"_")
 }
 
 func (n *Node) _get(cid int) (*Chain, error) {
@@ -231,28 +381,17 @@ func (n *Node) JoinChain(
 		return nil, errors.Wrap(err, "fail to get NID for genesis")
 	}
 
-	if _, ok := n.channels[cid]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(id=%#x) already exists", nid)
-	}
+	channel := chain.GetChannel(p.Channel, nid)
 
-	channel := p.Channel
-	if channel == "" {
-		channel = strconv.FormatInt(int64(nid), 16)
-	}
-
-	if _, ok := n.chains[channel]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", channel)
-	}
-
-	if err := n._checkNetID(nid); err != nil {
+	if err := n._canAdd(cid, nid, channel, false); err != nil {
 		return nil, err
 	}
 
-	chainDir := n.ChainDir(cid)
-	log.Println("ChainDir", chainDir)
-	if err := os.MkdirAll(chainDir, 0700); err != nil {
-		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
+	chainDir, err := n._mkChainDir(cid)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Fail to create directory for cid=%d", cid)
 	}
+	log.Println("ChainDir", chainDir)
 
 	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
 
@@ -388,6 +527,106 @@ func (n *Node) PruneChain(cid int, dbt string, height int64) error {
 	return c.Prune(gs, dbt, height)
 }
 
+func (n *Node) BackupChain(cid int) (string, error) {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(cid)
+	if err != nil {
+		return "", err
+	}
+
+	backupDir := n.cfg.ResolveAbsolute(n.cfg.BackupDir)
+	if err := os.MkdirAll(backupDir, 0700); err != nil {
+		return "", errors.InvalidStateError.Wrapf(err,
+			"Fail to make backup directory=%s", backupDir)
+	}
+	now := time.Now()
+	name := fmt.Sprintf("%#x_%#x_%s_%s.zip", c.CID(), c.NID(), c.Channel(),
+		now.Format("20060102-150405"))
+	file := path.Join(backupDir, name)
+	return name, c.Backup(file, []string{ChainGenesisZipFileName, ChainConfigFileName})
+}
+
+type BackupInfo struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	chain.BackupInfo
+}
+
+func (n *Node) GetBackups() ([]BackupInfo, error) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	backupDir := n.cfg.ResolveAbsolute(n.cfg.BackupDir)
+	fis, err := ioutil.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]BackupInfo, 0, len(fis))
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			if strings.HasPrefix(fi.Name(), chain.TemporalBackupFile) {
+				continue
+			}
+			info, err := chain.GetBackupInfoOf(path.Join(backupDir, fi.Name()))
+			if err != nil {
+				continue
+			}
+			infos = append(infos, BackupInfo{
+				Name:       fi.Name(),
+				Size:       fi.Size(),
+				BackupInfo: *info,
+			})
+		}
+	}
+	return infos, nil
+}
+
+type RestoreView struct {
+	State     string `json:"state"`
+	Name      string `json:"name,omitempty"`
+	Overwrite bool   `json:"overwrite,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+// StartRestore start to restore chain.
+func (n *Node) StartRestore(name string, overwrite bool) (ret error) {
+	baseDir, backupDir := func() (string, string) {
+		n.mtx.Lock()
+		defer n.mtx.Unlock()
+
+		return n.cfg.ResolveAbsolute(n.cfg.BaseDir),
+			n.cfg.ResolveAbsolute(n.cfg.BackupDir)
+	}()
+
+	backupFile := path.Join(backupDir, name)
+
+	return n.rsm.Start(n, backupFile, baseDir, overwrite)
+}
+
+// GetRestore returns state of latest restore operations.
+func (n *Node) GetRestore() *RestoreView {
+	status := n.rsm.GetStatus()
+	if status == nil {
+		return &RestoreView{
+			State: "stopped",
+		}
+	}
+	return &RestoreView{
+		State:     status.State,
+		Name:      path.Base(status.File),
+		Overwrite: status.Overwrite,
+		Error:     errors.ToString(status.Error),
+	}
+}
+
+// StopRestore stops last restore operation.
+// If there is no ongoing restore,then it clears already finished job.
+func (n *Node) StopRestore() error {
+	return n.rsm.Stop()
+}
+
 func (n *Node) ConfigureChain(cid int, key string, value string) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
@@ -461,18 +700,20 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 				c.cfg.MaxWaitTimeout = intVal
 			}
 		case "channel":
-			if _, ok := n.chains[value]; ok {
-				return errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", value)
+			if err := n._canAdd(c.CID(), c.NID(), value, true); err != nil {
+				return err
 			}
 			c.cfg.Channel = value
 			refreshNow = true
 		case "secureSuites":
-			if err := n.nt.SetSecureSuites(c.cfg.Channel, value); err != nil {
+			nc := network.ChannelOfNetID(c.cfg.NetID())
+			if err := n.nt.SetSecureSuites(nc, value); err != nil {
 				return err
 			}
 			c.cfg.SecureSuites = value
 		case "secureAeads":
-			if err := n.nt.SetSecureAeads(c.cfg.Channel, value); err != nil {
+			nc := network.ChannelOfNetID(c.cfg.NetID())
+			if err := n.nt.SetSecureAeads(nc, value); err != nil {
 				return err
 			}
 			c.cfg.SecureAeads = value
@@ -521,11 +762,11 @@ func (n *Node) GetChains() []*Chain {
 	return l
 }
 
-func (n *Node) GetChain(nid int) *Chain {
+func (n *Node) GetChain(cid int) *Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	return n.chains[n.channels[nid]]
+	return n.chains[n.channels[cid]]
 }
 
 func (n *Node) GetChainByChannel(channel string) *Chain {
@@ -533,6 +774,25 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 	n.mtx.RLock()
 
 	return n.chains[channel]
+}
+
+func cidOfSelector(s string) (int, bool) {
+	if cid, err := strconv.ParseInt(s, 0, 32); err == nil {
+		return int(cid), true
+	}
+	return -1, false
+}
+
+func (n *Node) GetChainBySelector(s string) *Chain {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	if cid, ok := cidOfSelector(s); ok {
+		if channel, ok := n.channels[int(cid)]; ok {
+			s = channel
+		}
+	}
+	return n.chains[s]
 }
 
 func (n *Node) Configure(key string, value string) error {
@@ -634,27 +894,25 @@ func NewNode(
 	for _, f := range fs {
 		if f.IsDir() {
 			chainDir := path.Join(nodeDir, f.Name())
-			log.Println("Load from ChainDir", chainDir)
-			cfgFile := path.Join(chainDir, ChainConfigFileName)
-			ccfg, err := n.loadChainConfig(cfgFile)
-			if err != nil {
-				log.Panicf("Fail to load chain config %s err=%+v", cfgFile, err)
-			}
-			ccfg.FilePath = cfgFile
-			ccfg.NIDForP2P = n.cfg.NIDForP2P
 
-			gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-			genesis, err := ioutil.ReadFile(gsFile)
-			if err != nil {
-				log.Panicf("Fail to read chain genesis zip file %s err=%+v", gsFile, err)
+			// remove temporal directories for restore
+			if strings.HasPrefix(f.Name(), RestoreDirectoryPrefix) {
+				log.Infof("Remove temporal directory: %s", chainDir)
+				if err := os.RemoveAll(chainDir); err != nil {
+					log.Warnf("Fail to remove directory: %s err=%+v", chainDir, err)
+				}
+				continue
 			}
-			genesisStorage, err := gs.New(genesis)
+
+			chainCfg, err := n.loadChainConfig(chainDir)
 			if err != nil {
-				log.Panicf("Fail to parse chain genesis zip file %s err=%+v", gsFile, err)
+				if errors.NotFoundError.Equals(err) {
+					continue
+				}
+				log.Panicf("Fail to load chain config chainDir=%s err=%+v", chainDir, err)
 			}
-			ccfg.GenesisStorage = genesisStorage
-			if _, err := n._add(ccfg); err != nil {
-				log.Panicf("Fail to join chain %v err=%+v", ccfg, err)
+			if _, err := n._add(chainCfg); err != nil {
+				log.Panicf("Fail to join chain %v err=%+v", chainCfg, err)
 			}
 		}
 	}

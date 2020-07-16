@@ -41,6 +41,7 @@ Manage chains
 ### Child commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -48,6 +49,7 @@ Manage chains
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -71,6 +73,44 @@ Manage chains
 | [goloop system](#goloop-system) |  System info |
 | [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
+
+## goloop chain backup
+
+### Description
+Start to backup the channel
+
+### Usage
+` goloop chain backup CID `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) |  Manage chains |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
+| [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
+| [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
+| [goloop chain join](#goloop-chain-join) |  Join chain |
+| [goloop chain leave](#goloop-chain-leave) |  Leave chain |
+| [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
+| [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
+| [goloop chain start](#goloop-chain-start) |  Chain start |
+| [goloop chain stop](#goloop-chain-stop) |  Chain stop |
+| [goloop chain verify](#goloop-chain-verify) |  Chain data verify |
 
 ## goloop chain config
 
@@ -96,6 +136,7 @@ Configure chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -103,6 +144,7 @@ Configure chain
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -132,6 +174,7 @@ Download chain genesis file
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -139,6 +182,7 @@ Download chain genesis file
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -174,6 +218,7 @@ Start to import legacy database
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -181,6 +226,7 @@ Start to import legacy database
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -216,6 +262,7 @@ Inspect chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -223,6 +270,7 @@ Inspect chain
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -271,6 +319,7 @@ Join chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -278,6 +327,7 @@ Join chain
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -307,6 +357,7 @@ Leave chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -314,6 +365,7 @@ Leave chain
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -343,6 +395,7 @@ List chains
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -350,6 +403,51 @@ List chains
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
+| [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
+| [goloop chain start](#goloop-chain-start) |  Chain start |
+| [goloop chain stop](#goloop-chain-stop) |  Chain stop |
+| [goloop chain verify](#goloop-chain-verify) |  Chain data verify |
+
+## goloop chain prune
+
+### Description
+Start to prune the database based on the height
+
+### Usage
+` goloop chain prune CID [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --db_type |  |  | Database type(default:original database type) |
+| --height |  | 0 | Block Height |
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) |  Manage chains |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
+| [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
+| [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
+| [goloop chain join](#goloop-chain-join) |  Join chain |
+| [goloop chain leave](#goloop-chain-leave) |  Leave chain |
+| [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -379,6 +477,7 @@ Chain data reset
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -386,6 +485,7 @@ Chain data reset
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -415,6 +515,7 @@ Chain start
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -422,6 +523,7 @@ Chain start
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -451,6 +553,7 @@ Chain stop
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -458,6 +561,7 @@ Chain stop
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -487,6 +591,7 @@ Chain data verify
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain backup](#goloop-chain-backup) |  Start to backup the channel |
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
@@ -494,6 +599,7 @@ Chain data verify
 | [goloop chain join](#goloop-chain-join) |  Join chain |
 | [goloop chain leave](#goloop-chain-leave) |  Leave chain |
 | [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain prune](#goloop-chain-prune) |  Start to prune the database based on the height |
 | [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
 | [goloop chain start](#goloop-chain-start) |  Chain start |
 | [goloop chain stop](#goloop-chain-stop) |  Chain stop |
@@ -569,6 +675,7 @@ Generate genesis transaction
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
 | --config, -c |  | [] | Chain configuration |
+| --fee |  | none | Fee configuration (none,icon) |
 | --god, -g |  |  | Address or keystore of GOD |
 | --out, -o |  | genesis.json | Output file path |
 | --supply, -s |  | 0x2961fff8ca4a62327800000 | Total supply of the chain |
@@ -1677,6 +1784,7 @@ Server management
 ### Options
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
+| --backup_dir | GOLOOP_BACKUP_DIR |  | Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
@@ -1744,6 +1852,7 @@ Save configuration
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
+| --backup_dir | GOLOOP_BACKUP_DIR |  | Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
@@ -1801,6 +1910,7 @@ Start server
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
+| --backup_dir | GOLOOP_BACKUP_DIR |  | Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
@@ -1894,8 +2004,10 @@ System info
 ### Child commands
 |Command | Description|
 |---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
 | [goloop system config](#goloop-system-config) |  Configure system |
 | [goloop system info](#goloop-system-info) |  Get system information |
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
 
 ### Parent command
 |Command | Description|
@@ -1915,6 +2027,66 @@ System info
 | [goloop system](#goloop-system) |  System info |
 | [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
+
+## goloop system backup
+
+### Description
+Manage stored backups
+
+### Usage
+` goloop system backup `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Child commands
+|Command | Description|
+|---|---|
+| [goloop system backup ls](#goloop-system-backup-ls) |  List current backups |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system](#goloop-system) |  System info |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
+| [goloop system config](#goloop-system-config) |  Configure system |
+| [goloop system info](#goloop-system-info) |  Get system information |
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+## goloop system backup ls
+
+### Description
+List current backups
+
+### Usage
+` goloop system backup ls `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c |  |  | Parsing configuration file |
+| --key_store |  |  | KeyStore file for wallet |
+| --node_dir |  |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system backup ls](#goloop-system-backup-ls) |  List current backups |
 
 ## goloop system config
 
@@ -1940,8 +2112,10 @@ Configure system
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
 | [goloop system config](#goloop-system-config) |  Configure system |
 | [goloop system info](#goloop-system-info) |  Get system information |
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
 
 ## goloop system info
 
@@ -1972,8 +2146,135 @@ Get system information
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
 | [goloop system config](#goloop-system-config) |  Configure system |
 | [goloop system info](#goloop-system-info) |  Get system information |
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+## goloop system restore
+
+### Description
+Restore chain from a backup
+
+### Usage
+` goloop system restore `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Child commands
+|Command | Description|
+|---|---|
+| [goloop system restore start](#goloop-system-restore-start) |  Start to restore the specified backup |
+| [goloop system restore status](#goloop-system-restore-status) |  Get restore status |
+| [goloop system restore stop](#goloop-system-restore-stop) |  Stop current restoring job |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system](#goloop-system) |  System info |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system backup](#goloop-system-backup) |  Manage stored backups |
+| [goloop system config](#goloop-system-config) |  Configure system |
+| [goloop system info](#goloop-system-info) |  Get system information |
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+## goloop system restore start
+
+### Description
+Start to restore the specified backup
+
+### Usage
+` goloop system restore start [NAME] `
+
+### Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --overwrite |  | false | Overwrite existing chain |
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c |  |  | Parsing configuration file |
+| --key_store |  |  | KeyStore file for wallet |
+| --node_dir |  |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system restore start](#goloop-system-restore-start) |  Start to restore the specified backup |
+| [goloop system restore status](#goloop-system-restore-status) |  Get restore status |
+| [goloop system restore stop](#goloop-system-restore-stop) |  Stop current restoring job |
+
+## goloop system restore status
+
+### Description
+Get restore status
+
+### Usage
+` goloop system restore status `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c |  |  | Parsing configuration file |
+| --key_store |  |  | KeyStore file for wallet |
+| --node_dir |  |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system restore start](#goloop-system-restore-start) |  Start to restore the specified backup |
+| [goloop system restore status](#goloop-system-restore-status) |  Get restore status |
+| [goloop system restore stop](#goloop-system-restore-stop) |  Stop current restoring job |
+
+## goloop system restore stop
+
+### Description
+Stop current restoring job
+
+### Usage
+` goloop system restore stop `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c |  |  | Parsing configuration file |
+| --key_store |  |  | KeyStore file for wallet |
+| --node_dir |  |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system restore](#goloop-system-restore) |  Restore chain from a backup |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system restore start](#goloop-system-restore-start) |  Start to restore the specified backup |
+| [goloop system restore status](#goloop-system-restore-status) |  Get restore status |
+| [goloop system restore stop](#goloop-system-restore-stop) |  Stop current restoring job |
 
 ## goloop user
 

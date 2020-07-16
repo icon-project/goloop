@@ -433,6 +433,10 @@ func (w *rlpWriter) Close() error {
 	return nil
 }
 
+func (c *rlpCodec) Name() string {
+	return "rlp"
+}
+
 func (c *rlpCodec) NewDecoder(r io.Reader) SimpleDecoder {
 	return NewDecoder(&rlpReader{
 		reader: r,

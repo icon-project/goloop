@@ -142,6 +142,134 @@ Configure system, configurable properties refer to [SystemConfig](#schemasystemc
 This operation does not require authentication
 </aside>
 
+## List Backups
+
+<a id="opIdgetBackups"></a>
+
+> Code samples
+
+`GET /system/backup`
+
+Return list of backups
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "name": "0x178977_0x1_1_20200715-111057.zip",
+    "cid": "0x178977",
+    "nid": "0x1",
+    "channel": "1",
+    "height": 2021,
+    "codec": "rlp"
+  }
+]
+```
+
+<h3 id="list-backups-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[BackupList](#schemabackuplist)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Restore Status
+
+<a id="opIdgetRestoreStatus"></a>
+
+> Code samples
+
+`GET /system/restore`
+
+View the status of restoring
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "name": "0x178977_0x1_1_20200715-111057.zip",
+  "overwrite": true,
+  "state": "started 23/128"
+}
+```
+
+<h3 id="restore-status-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[RestoreStatus](#schemarestorestatus)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Start Restore
+
+<a id="opIdstartRestore"></a>
+
+> Code samples
+
+`POST /system/restore`
+
+Start to restore chain from the backup
+
+> Body parameter
+
+```json
+{
+  "name": "0x178977_0x1_1_20200715-111057.zip",
+  "overwrite": true
+}
+```
+
+<h3 id="start-restore-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|body|body|[RestoreParam](#schemarestoreparam)|true|Name of backup and options|
+
+<h3 id="start-restore-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Stop Restore
+
+<a id="opIdstopRestore"></a>
+
+> Code samples
+
+`DELETE /system/restore`
+
+Stop restoring operation
+
+<h3 id="stop-restore-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 <h1 id="node-management-api-chain">chain</h1>
 
 Chain Management
@@ -502,6 +630,81 @@ Import a chain from legacy database.
 |body|body|[ChainImportParam](#schemachainimportparam)|true|none|
 
 <h3 id="import-chain-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Prune Chain
+
+<a id="opIdpruneChain"></a>
+
+> Code samples
+
+`POST /chain/{cid}/prune`
+
+Prune chain data from the specific height
+
+> Body parameter
+
+```json
+{
+  "dbType": "goleveldb",
+  "height": 1
+}
+```
+
+<h3 id="prune-chain-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
+|body|body|[PruneParam](#schemapruneparam)|true|none|
+
+<h3 id="prune-chain-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Backup Chain
+
+<a id="opIdbackupChain"></a>
+
+> Code samples
+
+`POST /chain/{cid}/backup`
+
+Backup chain data to the specific file
+
+> Body parameter
+
+```json
+{
+  "name": "ch1_main.zip"
+}
+```
+
+<h3 id="backup-chain-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
+|body|body|[BackupParam](#schemabackupparam)|true|none|
+
+<h3 id="backup-chain-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -886,4 +1089,102 @@ This operation does not require authentication
 |---|---|---|---|---|
 |key|string|true|none|configuration field name|
 |value|string|true|none|configuration value|
+
+<h2 id="tocSpruneparam">PruneParam</h2>
+
+<a id="schemapruneparam"></a>
+
+```json
+{
+  "dbType": "goleveldb",
+  "height": 1
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|dbType|string|false|none|Database type|
+|height|int64|true|none|Block Height|
+
+<h2 id="tocSbackupparam">BackupParam</h2>
+
+<a id="schemabackupparam"></a>
+
+```json
+{
+  "name": "ch1_main.zip"
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|name|string|true|none|File name for backup|
+
+<h2 id="tocSbackuplist">BackupList</h2>
+
+<a id="schemabackuplist"></a>
+
+```json
+[
+  {
+    "name": "0x178977_0x1_1_20200715-111057.zip",
+    "cid": "0x178977",
+    "nid": "0x1",
+    "channel": "1",
+    "height": 2021,
+    "codec": "rlp"
+  }
+]
+
+```
+
+### Properties
+
+*None*
+
+<h2 id="tocSrestorestatus">RestoreStatus</h2>
+
+<a id="schemarestorestatus"></a>
+
+```json
+{
+  "name": "0x178977_0x1_1_20200715-111057.zip",
+  "overwrite": true,
+  "state": "started 23/128"
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|state|string|true|none|State of the job (stopped, started N/T, stopping, failed, success)|
+|name|string|false|none|Name of backup|
+|overwrite|boolean|false|none|Whether it replaces existing chain data|
+
+<h2 id="tocSrestoreparam">RestoreParam</h2>
+
+<a id="schemarestoreparam"></a>
+
+```json
+{
+  "name": "0x178977_0x1_1_20200715-111057.zip",
+  "overwrite": true
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|name|string|true|none|Name of the backup to restore|
+|overwrite|boolean|false|none|Whether it replaces existing chain|
 

@@ -35,7 +35,7 @@ type manager struct {
 func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
-	channel := strconv.FormatInt(int64(c.NetID()), 16)
+	channel := ChannelOfNetID(c.NetID())
 	mtr := metric.NewNetworkMetric(c.MetricContext())
 	networkLogger := c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"})
 	networkLogger.Infof("NetworkManager use channel=%s for cid=%#x nid=%#x", channel, c.CID(), c.NID())
@@ -354,4 +354,8 @@ func newNetworkError(err error, op string, opArg interface{}) module.NetworkErro
 		return &Error{err, isTemporary, op, opArg}
 	}
 	return nil
+}
+
+func ChannelOfNetID(id int) string {
+	return strconv.FormatInt(int64(id), 16)
 }

@@ -102,9 +102,18 @@ type ChainPruneParam struct {
 	Height int64  `json:"height"`
 }
 
+type ChainBackupParam struct {
+	Name string `json:"name"`
+}
+
 type ConfigureParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type RestoreBackupParam struct {
+	Name      string `json:"name"`
+	Overwrite bool   `json:"overwrite"`
 }
 
 // TODO [TBD]move to module.Chain ?
@@ -201,6 +210,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/prune", r.PruneChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/backup", r.BackupChain, r.ChainInjector)
 	route := g.GET(UrlChainRes+"/genesis", r.GetChainGenesis, r.ChainInjector)
 	if r.a != nil {
 		r.a.SetSkip(route, false)
@@ -211,15 +221,8 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		var c *Chain
 		p := ctx.Param(ParamCID)
-		if cid, err := strconv.ParseInt(p, 0, 32); err == nil {
-			c = r.n.GetChain(int(cid))
-		}
-		if c == nil {
-			c = r.n.GetChainByChannel(p)
-		}
-
+		c := r.n.GetChainBySelector(p)
 		if c == nil {
 			return ctx.String(http.StatusNotFound,
 				fmt.Sprintf("Chain(%s: cid or channel) not found", p))
@@ -378,6 +381,15 @@ func (r *Rest) PruneChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+func (r *Rest) BackupChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	if name, err := r.n.BackupChain(c.CID()); err != nil {
+		return err
+	} else {
+		return ctx.String(http.StatusOK, name)
+	}
+}
+
 func (r *Rest) GetChainGenesis(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
 	gsFile := path.Join(c.cfg.AbsBaseDir(), ChainGenesisZipFileName)
@@ -405,6 +417,8 @@ func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
 	g.GET("/configure", r.GetSystemConfig)
 	g.POST("/configure", r.ConfigureSystem)
+	r.RegistryBackupHandlers(g.Group("/backup"))
+	r.RegistryRestoreHandlers(g.Group("/restore"))
 }
 
 func (r *Rest) GetSystem(ctx echo.Context) error {
@@ -437,6 +451,47 @@ func (r *Rest) ConfigureSystem(ctx echo.Context) error {
 	}
 
 	if err := r.n.Configure(p.Key, p.Value); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) RegistryBackupHandlers(g *echo.Group) {
+	g.GET("", r.GetBackups)
+}
+
+func (r *Rest) GetBackups(ctx echo.Context) error {
+	backups, err := r.n.GetBackups()
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, backups)
+}
+
+func (r *Rest) RegistryRestoreHandlers(g *echo.Group) {
+	g.POST("", r.RestoreBackup)
+	g.GET("", r.GetRestore)
+	g.DELETE("", r.StopRestore)
+}
+
+func (r *Rest) GetRestore(ctx echo.Context) error {
+	rv := r.n.GetRestore()
+	return ctx.JSON(http.StatusOK, rv)
+}
+
+func (r *Rest) RestoreBackup(ctx echo.Context) error {
+	param := new(RestoreBackupParam)
+	if err := ctx.Bind(param); err != nil {
+		return err
+	}
+	if err := r.n.StartRestore(param.Name, param.Overwrite); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) StopRestore(ctx echo.Context) error {
+	if err := r.n.StopRestore(); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

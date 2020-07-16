@@ -128,11 +128,7 @@ func (c *singleChain) CID() int {
 }
 
 func (c *singleChain) NetID() int {
-	if c.cfg.NIDForP2P {
-		return c.NID()
-	} else {
-		return c.CID()
-	}
+	return c.cfg.NetID()
 }
 
 func (c *singleChain) Channel() string {
@@ -239,9 +235,15 @@ func (c *singleChain) State() (string, int64, error) {
 		}
 		return c.task.DetailOf(c.state), height, c.lastErr
 	default:
-		height := block.GetLastHeightOf(c.database)
-		return c.state.String(), height, c.lastErr
+		return c.state.String(), c.lastBlockHeight(), c.lastErr
 	}
+}
+
+func (c *singleChain) lastBlockHeight() int64 {
+	if c.database == nil {
+		return 0
+	}
+	return block.GetLastHeightOf(c.database)
 }
 
 func (c *singleChain) IsStarted() bool {
@@ -538,6 +540,11 @@ func (c *singleChain) Prune(gsfile string, dbtype string, height int64) error {
 		dbtype = c.cfg.DBType
 	}
 	task := newTaskPruning(c, gsfile, dbtype, height)
+	return c._runTask(task, false)
+}
+
+func (c *singleChain) Backup(file string, extra []string) error {
+	task := newTaskBackup(c, file, extra)
 	return c._runTask(task, false)
 }
 

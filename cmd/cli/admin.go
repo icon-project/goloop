@@ -312,6 +312,23 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	pruneFlags.Int64("height", 0, "Block Height")
 	MarkAnnotationRequired(pruneFlags, "height")
 
+	backupCmd := &cobra.Command{
+		Use:   "backup CID",
+		Short: "Start to backup the channel",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var v string
+			reqUrl := node.UrlChain + "/" + args[0] + "/backup"
+			_, err := adminClient.PostWithJson(reqUrl, nil, &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(backupCmd)
+
 	genesisCmd := &cobra.Command{
 		Use:   "genesis CID FILE",
 		Short: "Download chain genesis file",
@@ -445,7 +462,91 @@ func NewSystemCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comma
 	}
 	rootCmd.AddCommand(configCmd)
 
+	NewBackupCmd(rootCmd, &adminClient)
+	NewRestoreCmd(rootCmd, &adminClient)
+
 	return rootCmd, vc
+}
+
+func NewBackupCmd(parent *cobra.Command, client *node.UnixDomainSockHttpClient) {
+	rootCmd := &cobra.Command{
+		Use:   "backup",
+		Short: "Manage stored backups",
+	}
+	parent.AddCommand(rootCmd)
+
+	listCmd := &cobra.Command{
+		Use:   "ls",
+		Short: "List current backups",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resp, err := client.Get(node.UrlSystem+"/backup", nil)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyCopyAndClose(os.Stdout, resp.Body)
+		},
+	}
+	rootCmd.AddCommand(listCmd)
+}
+
+func NewRestoreCmd(parent *cobra.Command, client *node.UnixDomainSockHttpClient) {
+	rootCmd := &cobra.Command{
+		Use:   "restore",
+		Short: "Restore chain from a backup",
+	}
+	parent.AddCommand(rootCmd)
+
+	statusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Get restore status",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resp, err := client.Get(node.UrlSystem+"/restore", nil)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyCopyAndClose(os.Stdout, resp.Body)
+		},
+	}
+	rootCmd.AddCommand(statusCmd)
+
+	startCmd := &cobra.Command{
+		Use:   "start [NAME]",
+		Short: "Start to restore the specified backup",
+		Args:  cobra.RangeArgs(1, 1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var params node.RestoreBackupParam
+			params.Name = args[0]
+			params.Overwrite, _ = cmd.PersistentFlags().GetBool("overwrite")
+			var v string
+			_, err := client.PostWithJson(node.UrlSystem+"/restore", &params, &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	startFlags := startCmd.PersistentFlags()
+	startFlags.Bool("overwrite", false, "Overwrite existing chain")
+	rootCmd.AddCommand(startCmd)
+
+	stopCmd := &cobra.Command{
+		Use:   "stop",
+		Short: "Stop current restoring job",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var v string
+			_, err := client.Delete(node.UrlSystem+"/restore", &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(stopCmd)
 }
 
 func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command, *viper.Viper) {

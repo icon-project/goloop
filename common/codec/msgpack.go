@@ -238,6 +238,10 @@ func (w *mpWriter) Close() error {
 	return nil
 }
 
+func (c *mpCodec) Name() string {
+	return "msgpack"
+}
+
 func (c *mpCodec) NewDecoder(r io.Reader) SimpleDecoder {
 	return NewDecoder(&mpReader{
 		real: msgpack.NewDecoder(r),
