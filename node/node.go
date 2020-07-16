@@ -308,10 +308,11 @@ func (n *Node) _renameChainDir(dir string, cid int) (string, error) {
 
 func (n *Node) _mkChainDir(cid int) (string, error) {
 	nodeDir := n.cfg.AbsBaseDir()
-	chainBase := path.Join(nodeDir, strconv.FormatInt(int64(cid), 16))
-	chainDir := chainBase
+	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(cid), 16))
 	if _, err := os.Stat(chainDir); os.IsNotExist(err) {
-		return chainDir, nil
+		if err := os.Mkdir(chainDir, 0700); err == nil {
+			return chainDir, nil
+		}
 	}
 	return ioutil.TempDir(nodeDir, strconv.FormatInt(int64(cid), 16)+"_")
 }
