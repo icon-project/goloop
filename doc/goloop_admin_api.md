@@ -689,20 +689,11 @@ This operation does not require authentication
 
 Backup chain data to the specific file
 
-> Body parameter
-
-```json
-{
-  "name": "ch1_main.zip"
-}
-```
-
 <h3 id="backup-chain-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
-|body|body|[BackupParam](#schemabackupparam)|true|none|
 
 <h3 id="backup-chain-responses">Responses</h3>
 
@@ -1108,23 +1099,6 @@ This operation does not require authentication
 |---|---|---|---|---|
 |dbType|string|false|none|Database type|
 |height|int64|true|none|Block Height|
-
-<h2 id="tocSbackupparam">BackupParam</h2>
-
-<a id="schemabackupparam"></a>
-
-```json
-{
-  "name": "ch1_main.zip"
-}
-
-```
-
-### Properties
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|name|string|true|none|File name for backup|
 
 <h2 id="tocSbackuplist">BackupList</h2>
 

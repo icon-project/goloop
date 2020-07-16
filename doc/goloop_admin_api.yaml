@@ -250,12 +250,6 @@ paths:
       description: Backup chain data to the specific file
       parameters:
         - <<: *path__cid
-      requestBody:
-        required: true
-        content:
-          'application/json':
-            schema:
-              $ref: "#/components/schemas/BackupParam"
       responses:
         "200":
           description: Success
@@ -675,17 +669,6 @@ components:
       example:
         dbType: "goleveldb"
         height: 1
-
-    BackupParam:
-      type: object
-      properties:
-        name:
-          type: string
-          description: "File name for backup"
-      required:
-        - name
-      example:
-        name: "ch1_main.zip"
 
     BackupList:
       type: array

@@ -102,10 +102,6 @@ type ChainPruneParam struct {
 	Height int64  `json:"height"`
 }
 
-type ChainBackupParam struct {
-	Name string `json:"name"`
-}
-
 type ConfigureParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
