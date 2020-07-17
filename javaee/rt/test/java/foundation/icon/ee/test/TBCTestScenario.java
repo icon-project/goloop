@@ -1,7 +1,4 @@
-package foundation.icon.test.common;
-
-import foundation.icon.icx.data.Address;
-import test.TBCProtocol;
+package foundation.icon.ee.test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -28,10 +25,9 @@ public class TBCTestScenario {
         return expectCount;
     }
 
-    public TBCTestScenario call(Address addr) {
+    public TBCTestScenario call(byte[] addr) {
         bb.put(TBCProtocol.CALL);
-        bb.put((byte)(addr.getPrefix().ordinal()&0xff));
-        bb.put(addr.getBody());
+        bb.put(addr);
         lengthOffsets.add(bb.position());
         bb.putShort((short) 0);
         return this;

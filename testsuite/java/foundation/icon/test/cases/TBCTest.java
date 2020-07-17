@@ -1,5 +1,7 @@
 package foundation.icon.test.cases;
 
+import foundation.icon.ee.test.TBCProtocol;
+import foundation.icon.ee.test.TBCTestScenarios;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
@@ -7,8 +9,7 @@ import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.TBCTestScenario;
-import test.TBCProtocol;
+import foundation.icon.ee.test.TBCTestScenario;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.TBCInterpreterScore;
@@ -79,151 +80,12 @@ public class TBCTest extends TestBase {
         assertEquals(totalObs, okObs);
     }
 
-    TBCTestScenario newValueScenario(int type, Address a1, Address a2) {
-        return new TBCTestScenario()
-                .set(type, 0, "0")
-                .call(a2)
-                    .call(a1)
-                        .expect(type, 0, "0")
-                        .set(type, 0, "1")
-                    .revert()
-                    .call(a1)
-                        .expect(type, 0, "0")
-                        .set(type, 0, "2")
-                    .ret()
-                    .call(a1)
-                        .expect(type, 0, "2")
-                        .set(type, 0, "3")
-                    .ret()
-                .revert()
-                .expect(type, 0, "0")
-                .call(a2)
-                    .call(a1)
-                        .expect(type, 0, "0")
-                        .set(type, 0, "4")
-                    .revert()
-                    .call(a1)
-                        .expect(type, 0, "0")
-                        .set(type, 0, "5")
-                    .ret()
-                    .call(a1)
-                        .expect(type, 0, "5")
-                        .set(type, 0, "6")
-                    .ret()
-                .ret()
-                .expect(type, 0, "6");
-    }
-
-    TBCTestScenario newRefScenario(int type, Address a1, Address a2) {
-        return new TBCTestScenario()
-                .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                .set(S, TBCProtocol.MAX_VAR-2, "s-2")
-                .set(S, TBCProtocol.MAX_VAR-3, "s-3")
-                .set(S, TBCProtocol.MAX_VAR-4, "s-4")
-                .setRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                .setRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                .setRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .expectRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                    .revert()
-                    .call(a1)
-                        .expectRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                    .ret()
-                    .call(a1)
-                        .expectRefNE(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRefNE(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-4)
-                    .ret()
-                .revert()
-                .expectRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .expectRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                    .revert()
-                    .call(a1)
-                        .expectRef(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                    .ret()
-                    .call(a1)
-                        .expectRefNE(type, 0, S, TBCProtocol.MAX_VAR-1)
-                        .expectRefNE(type, 1, S, TBCProtocol.MAX_VAR-2)
-                        .expectRef(type, 1, S, TBCProtocol.MAX_VAR-3)
-                        .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3)
-                        .setRef(type, 1, S, TBCProtocol.MAX_VAR-4)
-                    .ret()
-                .ret()
-                .expectRefNE(type, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRefNE(type, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(type, 1, S, TBCProtocol.MAX_VAR-4)
-                .expectRef(type, 2, S, TBCProtocol.MAX_VAR-3);
-    }
-
-    TBCTestScenario newLocalRefScenario(Address a1, Address a2) {
-        return new TBCTestScenario()
-                .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                .set(S, TBCProtocol.MAX_VAR-2, "s-2")
-                .set(S, TBCProtocol.MAX_VAR-3, "s-3")
-                .set(S, TBCProtocol.MAX_VAR-4, "s-4")
-                .setRef(L, 0, S, TBCProtocol.MAX_VAR-1)
-                .setRef(L, 1, S, TBCProtocol.MAX_VAR-2)
-                .setRef(L, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(L, 1, S, TBCProtocol.MAX_VAR-4)
-                    .revert()
-                .revert()
-                .expectRef(L, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRef(L, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(L, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(L, 1, S, TBCProtocol.MAX_VAR-4)
-                    .ret()
-                .revert()
-                .expectRef(L, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRef(L, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(L, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(L, 1, S, TBCProtocol.MAX_VAR-4)
-                    .revert()
-                .ret()
-                .expectRef(L, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRef(L, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(L, 2, S, TBCProtocol.MAX_VAR-3)
-                .call(a2)
-                    .call(a1)
-                        .set(S, TBCProtocol.MAX_VAR-1, "s-1")
-                        .setRef(L, 1, S, TBCProtocol.MAX_VAR-4)
-                    .ret()
-                .ret()
-                .expectRefNE(L, 0, S, TBCProtocol.MAX_VAR-1)
-                .expectRefNE(L, 1, S, TBCProtocol.MAX_VAR-2)
-                .expectRef(L, 1, S, TBCProtocol.MAX_VAR-4)
-                .expectRef(L, 2, S, TBCProtocol.MAX_VAR-3);
+    byte[] toByteArray(Address a) {
+        var body = a.getBody();
+        var out = new byte[body.length + 1];
+        out[0] = (byte) (a.getPrefix().ordinal() & 0xff);
+        System.arraycopy(body, 0, out, 1, body.length);
+        return out;
     }
 
     @Tag(Constants.TAG_INTER_SCORE)
@@ -235,21 +97,23 @@ public class TBCTest extends TestBase {
                 "s2", Constants.CONTENT_TYPE_PYTHON);
         LOG.infoEntering("run scenario");
 
-        var a1 = s1.getAddress();
-        var a2 = s2.getAddress();
+        var a1 = toByteArray(s1.getAddress());
+        var a2 = toByteArray(s2.getAddress());
 
-        subcase("Static value direct", newValueScenario(S, a1, a1));
-        subcase("Instance value direct", newValueScenario(I, a1, a1));
-        subcase("Static value indirect", newValueScenario(S, a1, a2));
-        subcase("Instance value indirect", newValueScenario(I, a1, a2));
+        subcase("Static value direct", TBCTestScenarios.newValueScenario(S, a1, a1));
+        subcase("Instance value direct", TBCTestScenarios.newValueScenario(I, a1, a1));
+        subcase("Static value indirect", TBCTestScenarios.newValueScenario(S, a1, a2));
+        subcase("Instance value indirect", TBCTestScenarios.newValueScenario(I, a1, a2));
 
-        subcase("Static ref direct", newRefScenario(S, a1, a1));
-        subcase("Instance ref direct", newRefScenario(I, a1, a1));
-        subcase("Static ref indirect", newRefScenario(S, a1, a2));
-        subcase("Instance ref indirect", newRefScenario(I, a1, a2));
+        subcase("Static ref direct", TBCTestScenarios.newRefScenario(S, a1, a1));
+        subcase("Instance ref direct", TBCTestScenarios.newRefScenario(I, a1, a1));
+        subcase("Static ref indirect", TBCTestScenarios.newRefScenario(S, a1, a2));
+        subcase("Instance ref indirect", TBCTestScenarios.newRefScenario(I, a1, a2));
 
-        subcase("Local ref direct", newRefScenario(S, a1, a1));
-        subcase("Local ref indirect", newRefScenario(S, a1, a2));
+        subcase("Local/Instance ref direct", TBCTestScenarios.newLocalRefScenario(I, a1, a1));
+        subcase("Local/Instance ref indirect", TBCTestScenarios.newLocalRefScenario(I, a1, a2));
+        subcase("Local/Static ref direct", TBCTestScenarios.newLocalRefScenario(S, a1, a1));
+        subcase("Local/Static ref indirect", TBCTestScenarios.newLocalRefScenario(S, a1, a2));
 
         LOG.infoExiting();
     }
