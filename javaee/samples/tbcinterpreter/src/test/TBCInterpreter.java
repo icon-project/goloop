@@ -69,8 +69,8 @@ public class TBCInterpreter {
 
     private void doRunImpl(byte[] code) {
         int offset = 0;
+        final String[] lVar = new String[TBCProtocol.MAX_VAR];
         while (offset < code.length) {
-            final String[] lVar = new String[TBCProtocol.MAX_VAR];
 
             int insn = code[offset++] & 0xff;
             if (insn == TBCProtocol.CALL) {
