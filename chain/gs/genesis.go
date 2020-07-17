@@ -31,6 +31,7 @@ type genesisStorageImpl interface {
 type genesisStorage struct {
 	genesisStorageImpl
 	cid, nid int
+	height   int64
 	gType    module.GenesisType
 }
 
@@ -40,6 +41,7 @@ func (gs *genesisStorage) ensureTypeAndIDs() error {
 			gs.cid = int(pg.CID.Value)
 			gs.nid = int(pg.NID.Value)
 			gs.gType = module.GenesisPruned
+			gs.height = pg.Height.Value
 			return nil
 		}
 		gtx, err := transaction.NewGenesisTransaction(gs.Genesis())
@@ -48,6 +50,7 @@ func (gs *genesisStorage) ensureTypeAndIDs() error {
 		}
 		gs.cid = gtx.CID()
 		gs.nid = gtx.NID()
+		gs.height = 0
 		gs.gType = module.GenesisNormal
 	}
 	return nil
@@ -72,6 +75,13 @@ func (gs *genesisStorage) NID() (int, error) {
 		return 0, err
 	}
 	return gs.nid, nil
+}
+
+func (gs *genesisStorage) Height() int64 {
+	if err := gs.ensureTypeAndIDs(); err != nil {
+		return 0
+	}
+	return gs.height
 }
 
 type genesisStorageWithDataDir struct {

@@ -838,6 +838,10 @@ func (t testGenesisStorage) NID() (int, error) {
 	return 1, nil
 }
 
+func (t testGenesisStorage) Height() int64 {
+	return 0
+}
+
 func (t testGenesisStorage) Type() (module.GenesisType, error) {
 	return module.GenesisNormal, nil
 }

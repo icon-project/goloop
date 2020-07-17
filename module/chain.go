@@ -76,6 +76,7 @@ const (
 type GenesisStorage interface {
 	CID() (int, error)
 	NID() (int, error)
+	Height() int64
 	Type() (GenesisType, error)
 	Genesis() []byte
 	Get(key []byte) ([]byte, error)
