@@ -44,6 +44,7 @@ func main() {
 	cli.NewUserCmd(rootCmd, rootVc)
 	cli.NewStatsCmd(rootCmd, rootVc)
 	cli.NewRpcCmd(rootCmd, nil)
+	cli.NewDebugCmd(rootCmd, nil)
 	rootCmd.AddCommand(
 		cli.NewGStorageCmd("gs"),
 		cli.NewGenesisCmd("gn"),
