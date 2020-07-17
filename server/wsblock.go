@@ -1,10 +1,12 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -43,12 +45,24 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 		return nil
 	}
 
+	h := br.Height.Value
+	if gt, _ := wss.chain.GenesisStorage().Type(); gt == module.GenesisPruned {
+		pg := &gs.PrunedGenesis{}
+		if err := json.Unmarshal(wss.chain.Genesis(), pg); err != nil {
+			return err
+		}
+		if pg.Height.Value > h {
+			_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams),
+				fmt.Sprintf("given height(%d) is lower than pruned(%d)", h, pg.Height.Value))
+			return nil
+		}
+	}
+
 	_ = wss.response(0, "")
 
 	ech := make(chan error)
 	go readLoop(wss.c, ech)
 
-	h := br.Height.Value
 	var bch <-chan module.Block
 	indexes := make([][]common.HexInt32, len(br.EventFilters))
 	events := make([][][]common.HexInt32, len(br.EventFilters))

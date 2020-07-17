@@ -2,9 +2,12 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -56,12 +59,24 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 		return nil
 	}
 
+	h := er.Height.Value
+	if gt, _ := wss.chain.GenesisStorage().Type(); gt == module.GenesisPruned {
+		pg := &gs.PrunedGenesis{}
+		if err := json.Unmarshal(wss.chain.Genesis(), pg); err != nil {
+			return err
+		}
+		if pg.Height.Value > h {
+			_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams),
+				fmt.Sprintf("given height(%d) is lower than pruned(%d)", h, pg.Height.Value))
+			return nil
+		}
+	}
+
 	_ = wss.response(0, "")
 
 	ech := make(chan error)
 	go readLoop(wss.c, ech)
 
-	h := er.Height.Value
 	var bch <-chan module.Block
 
 loop:
