@@ -365,7 +365,7 @@ func GenerateMarkdown(cmd *cobra.Command, parentVc *viper.Viper, w io.Writer) {
 
 	if cmd.HasLocalFlags() || cmd.HasPersistentFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Options"))
-		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Default | Description|"))
+		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Required | Default | Description|"))
 		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
 		cmd.NonInheritedFlags().VisitAll(FlagToMarkdown(buf, vc))
 		buf.WriteString("\n")
@@ -373,7 +373,7 @@ func GenerateMarkdown(cmd *cobra.Command, parentVc *viper.Viper, w io.Writer) {
 
 	if cmd.HasInheritedFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Inherited Options"))
-		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Default | Description|"))
+		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Required | Default | Description|"))
 		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
 		cmd.InheritedFlags().VisitAll(FlagToMarkdown(buf, getVipers(parentVc)...))
 		buf.WriteString("\n")
@@ -428,6 +428,9 @@ func CommandPathToMarkdown(buf *bytes.Buffer, cmd *cobra.Command) {
 
 func FlagToMarkdown(buf *bytes.Buffer, vcs ...*viper.Viper) func(f *pflag.Flag) {
 	return func(f *pflag.Flag) {
+		if f.Hidden {
+			return
+		}
 		name := ""
 		if f.Shorthand != "" && f.ShorthandDeprecated == "" {
 			name = fmt.Sprintf("--%s, -%s", f.Name, f.Shorthand)
@@ -446,7 +449,19 @@ func FlagToMarkdown(buf *bytes.Buffer, vcs ...*viper.Viper) func(f *pflag.Flag) 
 				}
 			}
 		}
-		buf.WriteString(fmt.Sprintln("|", name, "|", envKey, "|", f.DefValue, "|", f.Usage, "|"))
+
+		required := true
+		if ann, found := f.Annotations[cobra.BashCompOneRequiredFlag]; !found || (ann[0] != "true") {
+			if ann, found = f.Annotations[cobra.BashCompCustom]; !found || (ann[0] != FlagAnnotationCustom) {
+				required = false
+			}
+		}
+
+		deprecated := ""
+		if f.Deprecated != "" {
+			deprecated = "[deprecated]"
+		}
+		buf.WriteString(fmt.Sprintln("|", name, "|", envKey, "|", required, "|", f.DefValue, "|", deprecated, f.Usage, "|"))
 	}
 }
 
