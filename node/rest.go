@@ -112,11 +112,6 @@ type RestoreBackupParam struct {
 	Overwrite bool   `json:"overwrite"`
 }
 
-// TODO [TBD]move to module.Chain ?
-type LastErrorReportor interface {
-	LastError() error
-}
-
 func NewChainView(c *Chain) *ChainView {
 	state, height, lastErr := c.State()
 	v := &ChainView{
