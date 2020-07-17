@@ -4,10 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/icon-project/goloop/server/jsonrpc"
+)
+
+const (
+	headerContentType   = "Content-Type"
+	headerAccept        = "Accept"
+	typeApplicationJSON = "application/json"
 )
 
 type JsonRpcClient struct {
@@ -21,6 +28,32 @@ type Response struct {
 	Result  json.RawMessage `json:"result"`
 	Error   *jsonrpc.Error  `json:"error,omitempty"`
 	ID      interface{}     `json:"id"`
+}
+
+type HttpError struct {
+	response string
+	message  string
+}
+
+func (e *HttpError) Error() string {
+	return e.message
+}
+
+func (e *HttpError) Response() string {
+	return e.response
+}
+
+func NewHttpError(r *http.Response) error {
+	var response string
+	if rb, err := ioutil.ReadAll(r.Body); err != nil {
+		response = fmt.Sprintf("Fail to read body err=%+v", err)
+	} else {
+		response = string(rb)
+	}
+	return &HttpError{
+		message:  "HTTP " + r.Status,
+		response: response,
+	}
 }
 
 func NewJsonRpcClient(hc *http.Client, endpoint string) *JsonRpcClient {
@@ -61,8 +94,8 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set(headerContentType, typeApplicationJSON)
+	req.Header.Set(headerAccept, typeApplicationJSON)
 	for k, v := range c.CustomHeader {
 		req.Header.Set(k, v)
 	}
@@ -71,9 +104,13 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 	resp, err := c._do(req)
 	if err != nil {
 		if resp != nil {
-			if jrResp, dErr = decodeResponseBody(resp); dErr != nil {
-				err = fmt.Errorf("fail to decode response body err:%+v, httpErr:%+v, httpResp:%+v",
-					dErr, err, resp)
+			if ct := resp.Header.Get(headerContentType); ct == typeApplicationJSON {
+				if jrResp, dErr = decodeResponseBody(resp); dErr != nil {
+					err = dErr
+					return
+				}
+			} else {
+				err = NewHttpError(resp)
 				return
 			}
 			err = jrResp.Error
@@ -105,8 +142,8 @@ func (c *JsonRpcClient) Raw(reqB []byte) (resp *http.Response, err error) {
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set(headerContentType, typeApplicationJSON)
+	req.Header.Set(headerAccept, typeApplicationJSON)
 	for k, v := range c.CustomHeader {
 		req.Header.Set(k, v)
 	}

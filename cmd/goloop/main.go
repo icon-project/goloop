@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/icon-project/goloop/cmd/cli"
-	"github.com/icon-project/goloop/node"
 	"github.com/spf13/cobra"
+
+	"github.com/icon-project/goloop/cmd/cli"
 )
 
 var (
 	version = "unknown"
 	build   = "unknown"
 )
+
+type ErrorWithResponse interface {
+	Error() string
+	Response() string
+}
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "goloop", "Goloop CLI")
@@ -50,8 +55,8 @@ func main() {
 	rootCmd.SilenceUsage = true
 	err := rootCmd.Execute()
 	if err != nil {
-		if restErr, ok := err.(*node.RestError); ok {
-			response := restErr.Response()
+		if responseError, ok := err.(ErrorWithResponse); ok {
+			response := responseError.Response()
 			if len(response) > 0 {
 				rootCmd.Println(response)
 			}
