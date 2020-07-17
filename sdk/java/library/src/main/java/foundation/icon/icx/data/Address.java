@@ -69,6 +69,10 @@ public class Address {
         return prefix;
     }
 
+    public byte[] getBody() {
+        return this.body.clone();
+    }
+
     public boolean isMalformed() {
         return isMalformed;
     }
