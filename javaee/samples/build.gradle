@@ -9,6 +9,7 @@ sourceSets {
         'multisig/src',
         'sampletoken/src',
         'testcases/src',
+        'tbcinterpreter/src',
     ]
 }
 
