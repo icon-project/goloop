@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -33,6 +34,13 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 			opts := jsonrpc.IconOptions{}
 			opts.SetBool(jsonrpc.IconOptionsDebug, true)
 			rpcClient.CustomHeader[jsonrpc.HeaderKeyIconOptions] = opts.ToHeaderValue()
+			rpcClient.Pre = func(req *http.Request) error {
+				b, err := req.GetBody()
+				if err != nil {
+					return err
+				}
+				return JsonPrettyCopyAndClose(os.Stdout, b)
+			}
 		}
 		return nil
 	}
@@ -42,8 +50,6 @@ func AddRpcRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
 	pFlags.String("uri", "", "URI of JSON-RPC API")
 	pFlags.Bool("debug", false, "JSON-RPC Response with detail information")
-	//TODO dump jsonrpc message
-	//pFlags.Bool("dump", false, "Print JSON-RPC Request and Response")
 	MarkAnnotationCustom(pFlags, "uri")
 }
 

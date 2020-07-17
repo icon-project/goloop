@@ -21,6 +21,7 @@ type JsonRpcClient struct {
 	hc           *http.Client
 	Endpoint     string
 	CustomHeader map[string]string
+	Pre func(req *http.Request) error
 }
 
 type Response struct {
@@ -61,6 +62,11 @@ func NewJsonRpcClient(hc *http.Client, endpoint string) *JsonRpcClient {
 }
 
 func (c *JsonRpcClient) _do(req *http.Request) (resp *http.Response, err error) {
+	if c.Pre != nil {
+		if err = c.Pre(req); err != nil {
+			return nil, err
+		}
+	}
 	resp, err = c.hc.Do(req)
 	if err != nil {
 		return
