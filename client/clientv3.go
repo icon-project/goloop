@@ -250,6 +250,15 @@ func (c *ClientV3) GetProofForResult(param *v3.ProofResultParam) ([][]byte, erro
 	return result, nil
 }
 
+func (c *ClientV3) GetProofForEvents(param *v3.ProofEventsParam) ([][][]byte, error) {
+	var result [][][]byte
+	_, err := c.Do("icx_getProofForEvents", param, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *ClientV3) MonitorBlock(param *server.BlockRequest, cb func(v *server.BlockNotification), cancelCh <-chan bool) error {
 	resp := &server.BlockNotification{}
 	return c.Monitor("/block", param, resp, func(v interface{}) {

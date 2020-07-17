@@ -306,9 +306,37 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				}
 				return JsonPrettyPrintln(os.Stdout, raw)
 			},
+		},
+		&cobra.Command{
+			Use:   "proofforevents BLOCK_HASH TX_INDEX EVENT_INDEXES",
+			Short: "GetProofForEvents",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(3)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				idx, err := intconv.ParseInt(args[1], 64)
+				if err != nil {
+					return err
+				}
+				strs := strings.Split(args[2], ",")
+				evts := make([]jsonrpc.HexInt, len(strs))
+				for i, str := range strs {
+					evt, err := intconv.ParseInt(str, 64)
+					if err != nil {
+						return err
+					}
+					evts[i] = jsonrpc.HexInt(intconv.FormatInt(evt))
+				}
+				param := &v3.ProofEventsParam{
+					BlockHash: jsonrpc.HexBytes(args[0]),
+					Index:     jsonrpc.HexInt(intconv.FormatInt(idx)),
+					Events:    evts,
+				}
+				raw, err := rpcClient.GetProofForEvents(param)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, raw)
+			},
 		})
-
-	//interactive ()
 	return rootCmd, vc
 }
 
