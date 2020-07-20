@@ -366,7 +366,7 @@ func GenerateMarkdown(cmd *cobra.Command, parentVc *viper.Viper, w io.Writer) {
 	if cmd.HasLocalFlags() || cmd.HasPersistentFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Options"))
 		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Required | Default | Description|"))
-		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
+		buf.WriteString(fmt.Sprintln("|---|---|---|---|---|"))
 		cmd.NonInheritedFlags().VisitAll(FlagToMarkdown(buf, vc))
 		buf.WriteString("\n")
 	}
@@ -374,7 +374,7 @@ func GenerateMarkdown(cmd *cobra.Command, parentVc *viper.Viper, w io.Writer) {
 	if cmd.HasInheritedFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Inherited Options"))
 		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Required | Default | Description|"))
-		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
+		buf.WriteString(fmt.Sprintln("|---|---|---|---|---|"))
 		cmd.InheritedFlags().VisitAll(FlagToMarkdown(buf, getVipers(parentVc)...))
 		buf.WriteString("\n")
 	}

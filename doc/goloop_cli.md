@@ -33,7 +33,7 @@ Manage chains
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -86,7 +86,7 @@ Start to backup the channel
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -124,7 +124,7 @@ Configure chain
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -162,7 +162,7 @@ Download chain genesis file
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -200,13 +200,13 @@ Start to import legacy database
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --db_path |  | true |  |  Database path |
 | --height |  | true | 0 |  Block Height |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -244,13 +244,13 @@ Inspect chain
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --format, -f |  | false |  |  Format the output using the given Go template |
 | --informal |  | false | false |  Inspect with informal data |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -288,7 +288,7 @@ Join chain
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --channel |  | false |  |  Channel |
 | --concurrency |  | false | 1 |  Maximum number of executors to be used for concurrency |
 | --db_type |  | false | goleveldb |  Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
@@ -307,7 +307,7 @@ Join chain
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -345,7 +345,7 @@ Leave chain
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -383,7 +383,7 @@ List chains
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -421,13 +421,13 @@ Start to prune the database based on the height
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --db_type |  | false |  |  Database type(default:original database type) |
 | --height |  | true | 0 |  Block Height |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -465,7 +465,7 @@ Chain data reset
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -503,7 +503,7 @@ Chain start
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -541,7 +541,7 @@ Chain stop
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -579,7 +579,7 @@ Chain data verify
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -617,7 +617,7 @@ DEBUG API
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --uri | GOLOOP_DEBUG_URI | true |  |  URI of DEBUG API |
 
 ### Child commands
@@ -655,7 +655,7 @@ Get trace of the transaction
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --uri | GOLOOP_DEBUG_URI | true |  |  URI of DEBUG API |
 
 ### Parent command
@@ -712,7 +712,7 @@ Edit genesis transaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --god, -g |  | false |  |  Address or keystore of GOD |
 | --validator, -v |  | false | [] |  Address or keystore of Validator, [Validator...] |
 
@@ -737,7 +737,7 @@ Generate genesis transaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c |  | false | [] |  Chain configuration |
 | --fee |  | false | none |  Fee configuration (none,icon) |
 | --god, -g |  | false |  |  Address or keystore of GOD |
@@ -800,7 +800,7 @@ Create genesis storage from the template
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --input, -i |  | false | genesis.json |  Input file or directory path |
 | --out, -o |  | false | gs.zip |  Output file path |
 
@@ -825,7 +825,7 @@ Show genesis storage information
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --cid_only, -c |  | false | false |  Showing chain ID only |
 | --nid_only, -n |  | false | false |  Showing network ID only |
 
@@ -883,7 +883,7 @@ Generate keystore
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --out, -o |  | false | keystore.json |  Output file path |
 | --password, -p |  | false | gochain |  Password for the keystore |
 
@@ -907,7 +907,7 @@ JSON-RPC API
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -962,7 +962,7 @@ GetBalance
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1002,7 +1002,7 @@ GetBlockByHash
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1042,7 +1042,7 @@ GetBlockByHeight
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1082,7 +1082,7 @@ GetBlockHeaderByHeight
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1122,7 +1122,7 @@ Call
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --from |  | false |  |  FromAddress |
 | --method |  | false |  |  Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
 | --param |  | false | [] |  key=value, Function parameters, if '--raw' used, will overwrite |
@@ -1131,7 +1131,7 @@ Call
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1171,7 +1171,7 @@ GetDataByHash
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1211,7 +1211,7 @@ GetLastBlock
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1251,11 +1251,11 @@ Monitor
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1301,12 +1301,12 @@ MonitorBlock
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --filter |  | false | [] |  EventFilter raw json file or json string |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1331,7 +1331,7 @@ MonitorEvent
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --addr |  | false |  |  SCORE Address |
 | --data |  | false | [] |  Not indexed Arguments of Event, comma-separated string |
 | --event |  | false |  |  Signature of Event |
@@ -1340,7 +1340,7 @@ MonitorEvent
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1365,7 +1365,7 @@ GetProofForEvents
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1405,7 +1405,7 @@ GetProofForResult
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1445,7 +1445,7 @@ Rpc with raw json file
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1485,7 +1485,7 @@ GetScoreApi
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1525,7 +1525,7 @@ SendTransaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1534,7 +1534,7 @@ SendTransaction
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1582,7 +1582,7 @@ SmartContract Call Transaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --method |  | true |  |  Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
 | --param |  | false | [] |  key=value, Function parameters, if '--raw' used, will overwrite |
 | --raw |  | false |  |  call with 'data' using raw json file or json-string |
@@ -1590,7 +1590,7 @@ SmartContract Call Transaction
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
@@ -1622,14 +1622,14 @@ Deploy Transaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --content_type |  | false | application/zip |  Mime-type of the content |
 | --param |  | false | [] |  key=value, Function parameters will be delivered to on_install() or on_update() |
 | --to |  | false | cx0000000000000000000000000000000000000000 |  ToAddress |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
@@ -1661,7 +1661,7 @@ Send transaction with json file
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
@@ -1693,14 +1693,14 @@ Coin Transfer Transaction
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --message |  | false |  |  Message |
 | --to |  | true |  |  ToAddress |
 | --value |  | true |  |  Value |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
@@ -1732,7 +1732,7 @@ GetTotalSupply
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1772,7 +1772,7 @@ GetTransactionByHash
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1812,7 +1812,7 @@ GetTransactionResult
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1852,7 +1852,7 @@ GetVotesByHeight
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
@@ -1892,7 +1892,7 @@ Server management
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --backup_dir | GOLOOP_BACKUP_DIR | false |  |  Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | false | trace |  Console log level (trace,debug,info,warn,error,fatal,panic) |
@@ -1956,12 +1956,12 @@ Save configuration
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --save_key_store |  | false |  |  KeyStore File path to save |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --backup_dir | GOLOOP_BACKUP_DIR | false |  |  Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | false | trace |  Console log level (trace,debug,info,warn,error,fatal,panic) |
@@ -2010,13 +2010,13 @@ Start server
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --cpuprofile |  | false |  |  CPU Profiling data file |
 | --memprofile |  | false |  |  Memory Profiling data file |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --backup_dir | GOLOOP_BACKUP_DIR | false |  |  Node backup directory (default: [node_dir]/backup |
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | false | trace |  Console log level (trace,debug,info,warn,error,fatal,panic) |
@@ -2065,7 +2065,7 @@ Display a live streams of chains metric-statistics
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --interval | GOLOOP_INTERVAL | false | 1 |  Pull interval |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
@@ -2103,7 +2103,7 @@ System info
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2147,7 +2147,7 @@ Manage stored backups
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2181,7 +2181,7 @@ List current backups
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c |  | false |  |  Parsing configuration file |
 | --key_store |  | false |  |  KeyStore file for wallet |
 | --node_dir |  | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2207,7 +2207,7 @@ Configure system
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2236,12 +2236,12 @@ Get system information
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --format, -f |  | false |  |  Format the output using the given Go template |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2270,7 +2270,7 @@ Restore chain from a backup
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2306,12 +2306,12 @@ Start to restore the specified backup
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --overwrite |  | false | false |  Overwrite existing chain |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c |  | false |  |  Parsing configuration file |
 | --key_store |  | false |  |  KeyStore file for wallet |
 | --node_dir |  | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2339,7 +2339,7 @@ Get restore status
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c |  | false |  |  Parsing configuration file |
 | --key_store |  | false |  |  KeyStore file for wallet |
 | --node_dir |  | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2367,7 +2367,7 @@ Stop current restoring job
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c |  | false |  |  Parsing configuration file |
 | --key_store |  | false |  |  KeyStore file for wallet |
 | --node_dir |  | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2395,7 +2395,7 @@ User management
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2438,7 +2438,7 @@ Add user
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2466,7 +2466,7 @@ List users
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -2494,7 +2494,7 @@ Remove user
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|
+|---|---|---|---|---|
 | --config, -c | GOLOOP_CONFIG | false |  |  Parsing configuration file |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --node_dir | GOLOOP_NODE_DIR | false |  |  Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
