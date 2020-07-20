@@ -37,6 +37,8 @@ import org.aion.avm.utilities.JarBuilder;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -67,8 +69,13 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, String scorePath, Address to, RpcObject params, BigInteger steps)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        byte[] data = ZipFile.zipContent(scorePath);
-        return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
+        if (scorePath.endsWith(".jar")) {
+            byte[] data = Files.readAllBytes(Path.of(scorePath));
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_JAVA));
+        } else {
+            byte[] data = ZipFile.zipContent(scorePath);
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
+        }
     }
 
     public Score deploy(Wallet owner, Class<?> mainClass, RpcObject params)
