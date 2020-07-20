@@ -75,8 +75,9 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 				if err != nil {
 					log.Panicf("Fail to get CID for file=%s err=%+v", arg, err)
 				}
-				fmt.Printf("File       : %s\nNetwork ID : %#x (%[2]d)\nChain   ID : %#x (%[3]d)\nGenesis TX\n%s\n",
-					arg, nid, cid, buf.Bytes())
+				height := gs.Height()
+				fmt.Printf("File       : %s\nNetwork ID : %#x (%[2]d)\nChain   ID : %#x (%[3]d)\nHeight     : %d\nGenesis TX\n%s\n",
+					arg, nid, cid, height, buf.Bytes())
 			}
 		}
 	}
