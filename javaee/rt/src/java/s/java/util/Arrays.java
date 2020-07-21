@@ -1,6 +1,7 @@
 package s.java.util;
 
 import a.ByteArray;
+import a.CharArray;
 import i.IInstrumentation;
 import org.aion.avm.EnergyCalculator;
 import s.java.lang.Object;
@@ -43,7 +44,27 @@ public class Arrays extends Object {
         return new ByteArray(java.util.Arrays.copyOfRange(a.getUnderlying(), start, end));
     }
 
+    public static CharArray avm_copyOfRange(CharArray a, int start, int end) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Arrays_avm_copyOfRange, Math.max(end - start, 0)));
+        return new CharArray(java.util.Arrays.copyOfRange(a.getUnderlying(), start, end));
+    }
+
+    public static void avm_fill(ByteArray a, byte val) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Arrays_avm_fill);
+        java.util.Arrays.fill(a.getUnderlying(), val);
+    }
+
     public static void avm_fill(ByteArray a, int fromIndex, int toIndex, byte val) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Arrays_avm_fill, Math.max(toIndex - fromIndex, 0)));
+        java.util.Arrays.fill(a.getUnderlying(), fromIndex, toIndex, val);
+    }
+
+    public static void avm_fill(CharArray a, char val) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Arrays_avm_fill);
+        java.util.Arrays.fill(a.getUnderlying(), val);
+    }
+
+    public static void avm_fill(CharArray a, int fromIndex, int toIndex, char val) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Arrays_avm_fill, Math.max(toIndex - fromIndex, 0)));
         java.util.Arrays.fill(a.getUnderlying(), fromIndex, toIndex, val);
     }

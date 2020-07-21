@@ -11,7 +11,7 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.io.Serializable;
 
 
-public final class StringBuilder extends Object implements CharSequence, Serializable, Appendable{
+public final class StringBuilder extends Object implements CharSequence, Serializable, Appendable {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -35,7 +35,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         this.v = new java.lang.StringBuilder(str.getUnderlying());
     }
 
-    public StringBuilder(CharSequence seq){
+    public StringBuilder(CharSequence seq) {
         int lengthForBilling = (null != seq)
                 ? seq.avm_length()
                 : 0;
@@ -99,7 +99,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         return this;
     }
 
-    public StringBuilder avm_append(CharSequence s){
+    public StringBuilder avm_append(CharSequence s) {
         int lengthForBilling = (null != s)
                 ? s.avm_length()
                 : 0;
@@ -108,7 +108,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         return this;
     }
 
-    public StringBuilder avm_append(CharSequence s, int start, int end){
+    public StringBuilder avm_append(CharSequence s, int start, int end) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_append_6, java.lang.Math.max(end - start, 0)));
         java.lang.String asString = (null != s)
                 ? s.avm_toString().getUnderlying()
@@ -171,9 +171,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         return this;
     }
 
-    public StringBuilder avm_insert(int index, CharArray str, int offset,
-                                                int len)
-    {
+    public StringBuilder avm_insert(int index, CharArray str, int offset, int len) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_insert, (java.lang.Math.max(len, 0) + java.lang.Math.max(internalLength() - index, 0))));
         this.v.insert(index, str.getUnderlying(), offset, len);
         return this;
@@ -295,7 +293,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         return internalToString();
     }
 
-    public char avm_charAt(int index){
+    public char avm_charAt(int index) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuilder_avm_charAt);
         return this.v.charAt(index);
     }
@@ -303,12 +301,17 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
     public CharSequence avm_subSequence(int start, int end) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_subSequence, java.lang.Math.max(end - start, 0)));
         // Call substring instead of subSequence, since our String wrapper wraps a String, not a CharSequence.
-        return new String (this.getUnderlying().subSequence(start, end).toString());
+        return new String(this.getUnderlying().subSequence(start, end).toString());
     }
 
-    public int avm_length(){
+    public int avm_length() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuilder_avm_length);
         return internalLength();
+    }
+
+    public void avm_setLength(int newLength) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuilder_avm_setLength);
+        this.v.setLength(newLength);
     }
 
     //========================================================
@@ -328,7 +331,6 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(StringBuilder.class, deserializer);
-        
         // We serialize this as a string.
         java.lang.String simpler = CodecIdioms.deserializeString(deserializer);
         this.v = new java.lang.StringBuilder(simpler);
@@ -336,16 +338,15 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
         super.serializeSelf(StringBuilder.class, serializer);
-        
         // We serialize this as a string.
         CodecIdioms.serializeString(serializer, this.v.toString());
     }
 
-    public int internalLength(){
+    public int internalLength() {
         return new java.lang.String(getUnderlying()).length();
     }
 
-    public String internalToString(){
+    public String internalToString() {
         return new String(new java.lang.String(getUnderlying()));
     }
 
@@ -362,13 +363,4 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
                 : null;
         this.v.append(underlying);
     }
-    //========================================================
-    // Methods below are deprecated
-    //========================================================
-
-
-    //========================================================
-    // Methods below are excluded from shadowing
-    //========================================================
-
 }

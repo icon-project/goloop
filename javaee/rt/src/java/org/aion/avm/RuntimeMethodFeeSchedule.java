@@ -441,6 +441,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int StringBuilder_avm_charAt = RT_METHOD_FEE_LEVEL_2; // totalCost - 228; // byte code cost - 128; invoked methods cost - 100;
     public static final int StringBuilder_avm_subSequence = RT_METHOD_FEE_LEVEL_2; // totalCost - 188;
     public static final int StringBuilder_avm_length = RT_METHOD_FEE_LEVEL_1; // totalCost - 176;
+    public static final int StringBuilder_avm_setLength = RT_METHOD_FEE_LEVEL_2;
 
     public static final int System_avm_arraycopy = RT_METHOD_FEE_LEVEL_1; // totalCost - 819; //maximum cost of multiple blocks; // byte code cost - 619; invoked methods cost - 200;
 

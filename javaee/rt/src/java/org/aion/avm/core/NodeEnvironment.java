@@ -62,7 +62,7 @@ public class NodeEnvironment {
 
     public final Map<String, List<String>> shadowClassSlashNameMethodDescriptorMap;
     // The full class hierarchy; we only ever give away deep copies of this object!
-    private ClassHierarchy classHierarchy;
+    private final ClassHierarchy classHierarchy;
 
     private NodeEnvironment() {
         Map<String, byte[]> generatedShadowJDK = CommonGenerators.generateShadowJDK();
@@ -109,6 +109,7 @@ public class NodeEnvironment {
                     , s.java.lang.Integer.class
                     , s.java.lang.Iterable.class
                     , s.java.lang.Long.class
+                    , s.java.lang.Math.class
                     , s.java.lang.Number.class
                     , s.java.lang.Object.class
                     , s.java.lang.Runnable.class
@@ -192,7 +193,7 @@ public class NodeEnvironment {
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
-        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 96);
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 97);
 
         Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
         Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects
