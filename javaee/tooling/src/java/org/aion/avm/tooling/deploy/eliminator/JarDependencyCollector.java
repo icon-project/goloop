@@ -51,9 +51,13 @@ public class JarDependencyCollector {
                 throw new RuntimeException("All classes except Object must have a superclass");
             } else {
                 ClassInfo superInfo = classInfoMap.get(superSlashName);
-                classInfo.setSuperclass(superInfo);
-                superInfo.addToChildren(classInfo);
-                classInfo.addToParents(superInfo);
+                if (superInfo != null) {
+                    classInfo.setSuperclass(superInfo);
+                    superInfo.addToChildren(classInfo);
+                    classInfo.addToParents(superInfo);
+                } else {
+                    System.err.println("<Warning> Unsupported JCL class detected: " + superSlashName);
+                }
             }
 
             // ASM's documentation says it's possible for interfaces to be null, so we check here

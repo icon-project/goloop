@@ -93,7 +93,7 @@ public class JarOptimizer {
         ClassReader reader = new ClassReader(classMap.get(className));
 
         SignatureVisitor signatureVisitor = new SignatureDependencyVisitor(dependencyCollector);
-        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         ClassVisitor classVisitor = new ClassDependencyVisitor(signatureVisitor, dependencyCollector, writer, preserveDebugInfo);
         reader.accept(classVisitor, 0);
 
@@ -116,7 +116,7 @@ public class JarOptimizer {
         // update outer class bytes of removed inner classes
         for (String className : visitedClasses) {
             ClassReader reader = new ClassReader(classMap.get(className));
-            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 
             ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM7, writer) {
                 @Override
