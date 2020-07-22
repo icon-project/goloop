@@ -62,9 +62,6 @@ public static Object call(Address targetAddress, String method, Object... params
 
 public static Object call(BigInteger value,
                           Address targetAddress, String method, Object... params);
-
-public static Object call(BigInteger value, BigInteger stepLimit,
-                          Address targetAddress, String method, Object... params);
 ```
 
 > Example of calling `tokenFallback`

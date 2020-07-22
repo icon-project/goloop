@@ -6,7 +6,7 @@ if [ "$#" -ne 2 ]; then
 fi
 
 die () {
-    echo "$*"
+    echo "Error: $*"
     exit 1
 }
 
@@ -17,7 +17,13 @@ TOPDIR=$(dirname $(realpath $0))
 PARENTDIR=$TOPDIR/..
 
 VERSION=$(grep "^VERSION=" $PARENTDIR/gradle.properties | cut -d= -f2)
-CLASSPATH=$PARENTDIR/tooling/build/libs/tooling-$VERSION.jar:$PARENTDIR/api/build/libs/api-$VERSION.jar
+CLASSPATH=$PARENTDIR/api/build/libs/api-$VERSION.jar
+if [ ! -f $CLASSPATH ]; then
+    CLASSPATH=$PARENTDIR/api/build/libs/api-$VERSION-SNAPSHOT.jar
+    if [ ! -f $CLASSPATH ]; then
+        die "Cannot find $CLASSPATH"
+    fi
+fi
 
 # Determine the Java command to use to start the JVM
 if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/javac" ]]; then
