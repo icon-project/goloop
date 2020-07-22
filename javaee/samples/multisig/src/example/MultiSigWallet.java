@@ -392,6 +392,7 @@ public class MultiSigWallet
                     transaction.method(), transaction.getConvertedParams());
             return true;
         } catch (Exception e) {
+            Context.println("[Exception] " + e.getMessage());
             return false;
         }
     }
@@ -400,32 +401,32 @@ public class MultiSigWallet
      * Events
      */
     @EventLog(indexed=1)
-    private void WalletOwnerAddition(Address _walletOwner) {}
+    protected void WalletOwnerAddition(Address _walletOwner) {}
 
     @EventLog(indexed=1)
-    private void WalletOwnerRemoval(Address _walletOwner) {}
+    protected void WalletOwnerRemoval(Address _walletOwner) {}
 
     @EventLog
-    private void RequirementChange(BigInteger _required) {}
+    protected void RequirementChange(BigInteger _required) {}
 
     @EventLog(indexed=1)
-    private void Submission(BigInteger _transactionId) {}
+    protected void Submission(BigInteger _transactionId) {}
 
     @EventLog(indexed=2)
-    private void Confirmation(Address _sender, BigInteger _transactionId) {}
+    protected void Confirmation(Address _sender, BigInteger _transactionId) {}
 
     @EventLog(indexed=2)
-    private void Revocation(Address _sender, BigInteger _transactionId) {}
+    protected void Revocation(Address _sender, BigInteger _transactionId) {}
 
     @EventLog(indexed=1)
-    private void Execution(BigInteger _transactionId) {}
+    protected void Execution(BigInteger _transactionId) {}
 
     @EventLog(indexed=1)
-    private void ExecutionFailure(BigInteger _transactionId) {}
+    protected void ExecutionFailure(BigInteger _transactionId) {}
 
     @EventLog(indexed=1)
-    private void Deposit(Address _sender, BigInteger _value) {}
+    protected void Deposit(Address _sender, BigInteger _value) {}
 
     @EventLog(indexed=1)
-    private void DepositToken(Address _sender, BigInteger _value, byte[] _data) {}
+    protected void DepositToken(Address _sender, BigInteger _value, byte[] _data) {}
 }

@@ -97,7 +97,7 @@ public class Transaction {
     }
 
     public Object[] getConvertedParams() {
-        if (params == null) {
+        if (params == null || params.equals("")) {
             return null;
         }
         String entries = params.substring(1, params.length() - 1); // strip '[' and ']'
@@ -178,7 +178,7 @@ public class Transaction {
                     return bytes;
                 }
         }
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException("Unknown type");
     }
 
     @Override
