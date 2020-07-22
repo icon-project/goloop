@@ -38,7 +38,7 @@ public class ScenarioTest extends GoldenTest {
         @External
         public void run(byte[] code) {
             var ba = Context.getAddress().toByteArray();
-            int addr = (ba[1] << 8) & 0xff | (ba[2] & 0xff);
+            int addr = ((ba[1] & 0xff) << 8) | (ba[2] & 0xff);
             Context.println("Enter addr=" + addr);
             try {
                 doRunImpl(code);
@@ -59,7 +59,7 @@ public class ScenarioTest extends GoldenTest {
                         ba[1] = code[offset++];
                         ba[2] = code[offset++];
                         var addr = new Address(ba);
-                        int ccodeLen = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                        int ccodeLen = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                         var ccode = Arrays.copyOfRange(code, offset, offset + ccodeLen);
                         offset += ccodeLen;
                         Context.call(addr, "run", (Object) ccode);
@@ -68,24 +68,24 @@ public class ScenarioTest extends GoldenTest {
                     }
                 } else if (insn == REVERT){
                     var ba = Context.getAddress().toByteArray();
-                    int addr = (ba[1] << 8) & 0xff | (ba[2] & 0xff);
+                    int addr = ((ba[1] & 0xff) << 8) | (ba[2] & 0xff);
                     Context.println("Exit by Revert addr=" + addr);
                     Context.revert();
                 } else if (insn == SET_SVAR) {
-                    int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                    int len = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     sVar = s;
                     Context.println("Set sVar=" + sVar);
                 } else if (insn == ADD_TO_SVAR) {
-                    int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                    int len = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     var before = sVar;
                     sVar += s;
                     Context.println("AddTo sVar=" + before + " s=" + s + " => sVar=" + sVar);
                 } else if (insn == EXPECT_SVAR) {
-                    int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                    int len = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     if (s.equals(sVar)) {

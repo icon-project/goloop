@@ -67,6 +67,10 @@ public class TBCInterpreter {
         }
     }
 
+    private static boolean equals(Object a, Object b) {
+        return (a == b) || (a != null && a.equals(b));
+    }
+
     private void doRunImpl(byte[] code) {
         int offset = 0;
         final String[] lVar = new String[TBCProtocol.MAX_VAR];
@@ -79,7 +83,7 @@ public class TBCInterpreter {
                             offset+Address.LENGTH);
                     offset += Address.LENGTH;
                     var addr = new Address(addrBytes);
-                    int ccodeLen = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                    int ccodeLen = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                     var ccode = Arrays.copyOfRange(code, offset, offset + ccodeLen);
                     offset += ccodeLen;
                     String res = (String)Context.call(addr, "run",
@@ -89,13 +93,13 @@ public class TBCInterpreter {
                     Event(e.getMessage());
                 }
             } else if (insn == TBCProtocol.REVERT) {
-                int rcode = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                int rcode = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                 Event("Exit by Revert: " + name);
                 Context.revert(rcode, sb.toString());
             } else if (insn == TBCProtocol.SET) {
                 int t = code[offset++] & 0xff;
                 int id = code[offset++] & 0xff;
-                int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                short len = (short)(((code[offset++]) << 8) | (code[offset++] & 0xff));
                 String val = null;
                 if (len >= 0) {
                     val = new String(code, offset, len);
@@ -118,7 +122,7 @@ public class TBCInterpreter {
             } else if (insn == TBCProtocol.APPEND) {
                 int t = code[offset++] & 0xff;
                 int id = code[offset++] & 0xff;
-                int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                int len = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                 var val = new String(code, offset, len);
                 offset += len;
                 switch (t) {
@@ -138,7 +142,7 @@ public class TBCInterpreter {
             } else if (insn == TBCProtocol.EXPECT) {
                 int t = code[offset++] & 0xff;
                 int id = code[offset++] & 0xff;
-                int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
+                short len = (short)((code[offset++] << 8) | (code[offset++] & 0xff));
                 String val = null;
                 if (len >= 0) {
                     val = new String(code, offset, len);
@@ -146,7 +150,7 @@ public class TBCInterpreter {
                 offset += len;
                 String xvar = getRef(t, id, lVar);
                 boolean eqRes = code[offset++] == TBCProtocol.CMP_EQ;
-                if (val.equals(xvar) == eqRes) {
+                if (equals(val, xvar) == eqRes) {
                     Event("EXPECT [OK] xvar=" + xvar);
                 } else {
                     Event("EXPECT [ERROR] expected=" + val +
@@ -191,4 +195,3 @@ public class TBCInterpreter {
         }
     }
 }
-
