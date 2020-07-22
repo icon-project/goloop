@@ -21,6 +21,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -41,15 +42,21 @@ public class HelloWorld extends Score {
 
     public static HelloWorld install(TransactionHandler txHandler, Wallet wallet)
             throws TransactionFailureException, ResultTimeoutException, IOException {
+        return install(txHandler, wallet, Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    public static HelloWorld install(TransactionHandler txHandler, Wallet wallet, String contentType)
+            throws TransactionFailureException, ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        return install(txHandler, wallet, params);
-    }
-
-    public static HelloWorld install(TransactionHandler txHandler, Wallet wallet, RpcObject params)
-            throws TransactionFailureException, ResultTimeoutException, IOException {
-        return new HelloWorld(txHandler.deploy(wallet, INSTALL_PATH, params));
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            return new HelloWorld(txHandler.deploy(wallet, INSTALL_PATH, params));
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            return new HelloWorld(txHandler.deploy(wallet, testcases.HelloWorld.class, params));
+        } else {
+            throw new IllegalArgumentException("Unknown content type");
+        }
     }
 
     public TransactionResult invokeHello(Wallet from) throws ResultTimeoutException, IOException {

@@ -65,7 +65,7 @@ public class MultiSigWalletTest extends TestBase {
         deployAndStartTest(Constants.CONTENT_TYPE_PYTHON);
     }
 
-    @Tag(Constants.TAG_INTER_SCORE)
+    @Tag(Constants.TAG_JAVA_SCORE)
     @Test
     public void testJava() throws Exception {
         deployAndStartTest(Constants.CONTENT_TYPE_JAVA);
@@ -77,10 +77,10 @@ public class MultiSigWalletTest extends TestBase {
                 wallets[0].getAddress(), wallets[1].getAddress(), wallets[2].getAddress()};
         MultiSigWalletScore multiSigWalletScore = MultiSigWalletScore.mustDeploy(txHandler,
                 wallets[0], walletOwners, 2, contentType);
-        startTest(multiSigWalletScore);
+        startTest(multiSigWalletScore, contentType);
     }
 
-    private void startTest(MultiSigWalletScore multiSigWalletScore) throws Exception {
+    private void startTest(MultiSigWalletScore multiSigWalletScore, String contentType) throws Exception {
         LOG.infoEntering("setup", "initial wallets");
         KeyWallet ownerWallet = wallets[0];
         KeyWallet aliceWallet = wallets[1];
@@ -119,7 +119,7 @@ public class MultiSigWalletTest extends TestBase {
         LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");
         // deploy another sample score to accept icx
         LOG.info("deploy: HelloWorld");
-        HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet);
+        HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet, contentType);
         // tx is initiated by ownerWallet first
         result = multiSigWalletScore.submitIcxTransaction(
                 ownerWallet, helloScore.getAddress(), ICX.multiply(BigInteger.ONE), "send 1 icx to hello");
