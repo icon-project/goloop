@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx;
@@ -34,14 +33,15 @@ public interface Provider {
      * @param <T>       the return type
      * @return a {@code Request} object to be executed
      */
-    <T> Request<T> request(foundation.icon.icx.transport.jsonrpc.Request request, RpcConverter<T> converter) ;
+    <T> Request<T> request(foundation.icon.icx.transport.jsonrpc.Request request, RpcConverter<T> converter);
 
     /**
+     * Prepares a Websocket monitor to get notification
      *
-     * @param spec
-     * @param converter
-     * @param <T>
-     * @return
+     * @param spec      the monitor spec
+     * @param converter the converter for the notification data
+     * @param <T>       the return type
+     * @return a {@code Monitor} object to be used for monitoring
      */
     default <T> Monitor<T> monitor(MonitorSpec spec, RpcConverter<T> converter) {
         throw new UnsupportedOperationException();

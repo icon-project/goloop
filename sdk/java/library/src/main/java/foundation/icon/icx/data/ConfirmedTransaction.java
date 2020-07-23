@@ -23,10 +23,9 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
 import java.math.BigInteger;
 
-
 public class ConfirmedTransaction implements Transaction {
 
-    private RpcObject properties;
+    private final RpcObject properties;
 
     ConfirmedTransaction(RpcObject properties) {
         this.properties = properties;

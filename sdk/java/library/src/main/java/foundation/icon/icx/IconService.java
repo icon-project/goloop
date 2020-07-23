@@ -12,15 +12,28 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx;
 
 import foundation.icon.icx.crypto.IconKeys;
-import foundation.icon.icx.data.*;
-import foundation.icon.icx.transport.jsonrpc.*;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Base64;
+import foundation.icon.icx.data.Block;
+import foundation.icon.icx.data.BlockNotification;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ConfirmedTransaction;
+import foundation.icon.icx.data.Converters;
+import foundation.icon.icx.data.EventNotification;
+import foundation.icon.icx.data.ScoreApi;
+import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.jsonrpc.AnnotatedConverterFactory;
+import foundation.icon.icx.transport.jsonrpc.AnnotationConverter;
+import foundation.icon.icx.transport.jsonrpc.RpcConverter;
 import foundation.icon.icx.transport.jsonrpc.RpcConverter.RpcConverterFactory;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
+import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.icx.transport.monitor.BlockMonitorSpec;
 import foundation.icon.icx.transport.monitor.EventMonitorSpec;
 import foundation.icon.icx.transport.monitor.Monitor;
@@ -39,8 +52,8 @@ import java.util.Map;
 public class IconService {
 
     private Provider provider;
-    private List<RpcConverter.RpcConverterFactory> converterFactories = new ArrayList<>();
-    private Map<Class, RpcConverter<?>> converterMap = new HashMap<>();
+    private final List<RpcConverter.RpcConverterFactory> converterFactories = new ArrayList<>();
+    private final Map<Class<?>, RpcConverter<?>> converterMap = new HashMap<>();
 
     /**
      * Creates an IconService instance
@@ -334,9 +347,10 @@ public class IconService {
     }
 
     /**
+     * Gets a monitor for block notification
      *
-     * @param height
-     * @return
+     * @param height the start height
+     * @return a {@code Monitor} object
      */
     public Monitor<BlockNotification> monitorBlocks(BigInteger height) {
         MonitorSpec ms = new BlockMonitorSpec(height, null);
@@ -344,12 +358,14 @@ public class IconService {
     }
 
     /**
+     * Gets a monitor for event notification
      *
-     * @param height
-     * @param event
-     * @param addr
-     * @param data
-     * @return
+     * @param height the start height
+     * @param event the event signature
+     * @param addr the address of SCORE
+     * @param indexed the array of arguments to match with indexed parameters of event
+     * @param data the array of arguments to match with non-indexed parameters of event
+     * @return a {@code Monitor} object
      */
     public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
         MonitorSpec ms = new EventMonitorSpec(height, event, addr, indexed, data);
@@ -358,7 +374,7 @@ public class IconService {
 
     @SuppressWarnings("unchecked")
     private <T> RpcConverter<T> findConverter(Class<T> type) {
-        RpcConverter converter = converterMap.get(type);
+        RpcConverter<T> converter = (RpcConverter<T>) converterMap.get(type);
         if (converter != null) return converter;
 
         for (RpcConverterFactory factory : converterFactories) {

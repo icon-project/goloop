@@ -16,7 +16,6 @@
 
 package foundation.icon.icx.data;
 
-import foundation.icon.icx.transport.jsonrpc.RpcConverter;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 
@@ -26,10 +25,9 @@ import java.util.List;
 
 import static foundation.icon.icx.data.Converters.CONFIRMED_TRANSACTION;
 
-
 public class Block {
 
-    private RpcObject properties;
+    private final RpcObject properties;
 
     Block(RpcObject properties) {
         this.properties = properties;

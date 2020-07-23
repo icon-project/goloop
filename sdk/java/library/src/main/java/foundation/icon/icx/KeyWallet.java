@@ -12,12 +12,16 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx;
 
-import foundation.icon.icx.crypto.*;
+import foundation.icon.icx.crypto.ECDSASignature;
+import foundation.icon.icx.crypto.IconKeys;
+import foundation.icon.icx.crypto.KeyStoreUtils;
+import foundation.icon.icx.crypto.Keystore;
+import foundation.icon.icx.crypto.KeystoreException;
+import foundation.icon.icx.crypto.KeystoreFile;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 
@@ -36,8 +40,8 @@ import static foundation.icon.icx.TransactionBuilder.checkArgument;
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class KeyWallet implements Wallet {
 
-    private Bytes privateKey;
-    private Bytes publicKey;
+    private final Bytes privateKey;
+    private final Bytes publicKey;
 
     private KeyWallet(Bytes privateKey, Bytes publicKey) {
         this.privateKey = privateKey;
@@ -125,5 +129,4 @@ public class KeyWallet implements Wallet {
     public Bytes getPublicKey() {
         return publicKey;
     }
-
 }

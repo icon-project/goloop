@@ -16,7 +16,6 @@ import org.bouncycastle.util.BigIntegers;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * Original Code
@@ -33,7 +32,7 @@ public class ECDSASignature {
     private final ECDomainParameters curve = new ECDomainParameters(
             curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH());
 
-    private Bytes privateKey;
+    private final Bytes privateKey;
 
     public ECDSASignature(Bytes privateKey) {
         this.privateKey = privateKey;

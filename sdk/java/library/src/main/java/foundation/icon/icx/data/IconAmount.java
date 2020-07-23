@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.data;
@@ -22,8 +21,8 @@ import java.math.BigInteger;
 
 public class IconAmount {
 
-    private BigDecimal value;
-    private int digit;
+    private final BigDecimal value;
+    private final int digit;
 
     public IconAmount(BigDecimal value, int digit) {
         this.value = value;
@@ -103,6 +102,4 @@ public class IconAmount {
     public static IconAmount of(BigInteger loop, Unit unit) {
         return of(new BigDecimal(loop), unit.getValue());
     }
-
-
 }

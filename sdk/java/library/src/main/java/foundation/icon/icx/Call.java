@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx;
@@ -33,14 +32,13 @@ import static foundation.icon.icx.TransactionBuilder.checkArgument;
  */
 public final class Call<T> {
 
-    private RpcObject properties;
-    private Class<T> responseType;
+    private final RpcObject properties;
+    private final Class<T> responseType;
 
     private Call(RpcObject properties, Class<T> responseType) {
         this.properties = properties;
         this.responseType = responseType;
     }
-
 
     RpcObject getProperties() {
         return properties;

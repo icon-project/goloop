@@ -12,29 +12,34 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.transport.http;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import foundation.icon.icx.Provider;
+import foundation.icon.icx.Request;
+import foundation.icon.icx.transport.jsonrpc.RpcConverter;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
+import foundation.icon.icx.transport.jsonrpc.RpcItemDeserializer;
+import foundation.icon.icx.transport.jsonrpc.RpcItemSerializer;
 import foundation.icon.icx.transport.monitor.Monitor;
 import foundation.icon.icx.transport.monitor.MonitorSpec;
-import foundation.icon.icx.Request;
-import foundation.icon.icx.Provider;
-import foundation.icon.icx.transport.jsonrpc.*;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 import okio.BufferedSink;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Map;
 
 /**
  * The {@code HttpProvider} class transports JSON-RPC payloads through HTTP.
@@ -130,7 +135,7 @@ public class HttpProvider implements Provider {
         }
 
         private class WebSocketListenerImpl extends WebSocketListener {
-            private String request;
+            private final String request;
             WebSocketListenerImpl(String request) {
                 this.request = request;
             }
@@ -255,6 +260,6 @@ public class HttpProvider implements Provider {
 
     @Override
     public <T> Monitor<T> monitor(MonitorSpec spec, RpcConverter<T> converter) {
-        return new HttpMonitor<T>(spec, converter);
+        return new HttpMonitor<>(spec, converter);
     }
 }

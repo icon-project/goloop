@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 ICON Foundation.
+ * Copyright 2018 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ public class Bytes {
 
     public static final String HEX_PREFIX = "0x";
 
-    private byte[] data;
+    private final byte[] data;
 
     /**
      * Creates an instance using hex string

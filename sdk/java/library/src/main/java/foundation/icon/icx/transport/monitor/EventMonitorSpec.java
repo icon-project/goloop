@@ -1,22 +1,38 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.icx.transport.monitor;
 
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.icx.transport.monitor.MonitorSpec;
 
 import java.math.BigInteger;
 
 public class EventMonitorSpec extends MonitorSpec {
-    private BigInteger height;
-    private EventFilter filter;
+    private final BigInteger height;
+    private final EventFilter filter;
 
     public static class EventFilter {
-        private String event;
-        private Address addr;
+        private final String event;
+        private final Address addr;
         private String[] indexed;
         private String[] data;
+
         public EventFilter(String event, Address addr, String[] indexed, String[] data) {
             this.event = event;
             this.addr = addr;
@@ -29,6 +45,7 @@ public class EventMonitorSpec extends MonitorSpec {
                 System.arraycopy(data, 0, this.data, 0, data.length);
             }
         }
+
         public void apply(RpcObject.Builder builder) {
             builder.put("event", new RpcValue(event));
             if (this.addr != null) {
@@ -51,17 +68,8 @@ public class EventMonitorSpec extends MonitorSpec {
         }
     }
 
-
-    /**
-     *
-     * @param height
-     * @param event
-     * @param addr
-     * @param data
-     */
     public EventMonitorSpec(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
         this.path = "event";
-
         this.height = height;
         this.filter = new EventFilter(event, addr, indexed, data);
     }

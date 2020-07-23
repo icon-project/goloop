@@ -1,6 +1,5 @@
 package foundation.icon.icx.crypto;
 
-
 import foundation.icon.icx.data.Bytes;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.PKCS5S2ParametersGenerator;
@@ -23,7 +22,6 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import static foundation.icon.icx.crypto.IconKeys.secureRandom;
-
 
 /**
  * Original Code
@@ -79,9 +77,7 @@ public class Keystore {
         byte[] encryptKey = Arrays.copyOfRange(derivedKey, 0, 16);
         byte[] iv = generateRandomBytes(16);
 
-
         byte[] privateKeyBytes = privateKey.toByteArray(IconKeys.PRIVATE_KEY_SIZE);
-
 
         byte[] cipherText = performCipherOperation(
                 Cipher.ENCRYPT_MODE, iv, encryptKey, privateKeyBytes);
@@ -90,7 +86,6 @@ public class Keystore {
 
         return createWalletFile(privateKey, cipherText, iv, salt, mac, n, p);
     }
-
 
     private static KeystoreFile createWalletFile(
             Bytes privateKey, byte[] cipherText, byte[] iv, byte[] salt, byte[] mac,

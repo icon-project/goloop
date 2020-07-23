@@ -1,6 +1,5 @@
 package foundation.icon.icx.crypto;
 
-
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import org.bouncycastle.crypto.RuntimeCryptoException;
@@ -14,10 +13,16 @@ import org.bouncycastle.util.BigIntegers;
 import org.bouncycastle.util.encoders.Hex;
 
 import java.math.BigInteger;
-import java.security.*;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Provider;
+import java.security.SecureRandom;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
-
 
 /**
  * Implementation from
@@ -153,5 +158,4 @@ public class IconKeys {
         }
         return isAndroid == 1;
     }
-
 }

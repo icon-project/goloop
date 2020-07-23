@@ -12,7 +12,6 @@ import java.util.Date;
 import java.util.InputMismatchException;
 import java.util.TimeZone;
 
-
 /**
  * Original Code
  * https://github.com/web3j/web3j/blob/master/crypto/src/main/java/org/web3j/crypto/WalletUtils.java
@@ -28,7 +27,6 @@ public class KeyStoreUtils {
         objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
-
 
     public static String generateWalletFile(
             KeystoreFile file, File destinationDirectory) throws IOException {
@@ -53,5 +51,4 @@ public class KeyStoreUtils {
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         return dateFormat.format(new Date()) + keystoreFile.getAddress() + ".json";
     }
-
 }

@@ -23,7 +23,6 @@ import java.math.BigInteger;
 
 import static foundation.icon.icx.data.Bytes.HEX_PREFIX;
 
-
 /**
  * RpcValue contains a leaf value such as string, bytes, integer, boolean
  */

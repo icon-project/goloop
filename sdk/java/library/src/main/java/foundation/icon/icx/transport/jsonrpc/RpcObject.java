@@ -12,12 +12,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.transport.jsonrpc;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * A read-only data class of RpcObject
@@ -48,7 +51,6 @@ public class RpcObject implements RpcItem {
     public boolean isEmpty() {
         return items == null || items.isEmpty();
     }
-
 
     /**
      * Builder for RpcObject

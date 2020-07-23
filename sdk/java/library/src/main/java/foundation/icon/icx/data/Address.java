@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.data;
@@ -86,7 +85,6 @@ public class Address {
         }
     }
 
-
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -118,7 +116,7 @@ public class Address {
         EOA("hx"),
         CONTRACT("cx");
 
-        private String prefix;
+        private final String prefix;
 
         AddressPrefix(String prefix) {
             this.prefix = prefix;
@@ -139,5 +137,4 @@ public class Address {
             return null;
         }
     }
-
 }

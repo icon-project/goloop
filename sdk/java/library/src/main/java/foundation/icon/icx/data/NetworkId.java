@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.data;
@@ -27,7 +26,7 @@ public enum NetworkId {
     MAIN(new BigInteger("1")),
     TEST(new BigInteger("2"));
 
-    private BigInteger nid;
+    private final BigInteger nid;
 
     NetworkId(BigInteger nid) {
         this.nid = nid;
@@ -36,5 +35,4 @@ public enum NetworkId {
     public BigInteger getValue() {
         return nid;
     }
-
 }

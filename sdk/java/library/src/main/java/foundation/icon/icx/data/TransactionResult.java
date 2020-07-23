@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class TransactionResult {
 
-    private RpcObject properties;
+    private final RpcObject properties;
 
     TransactionResult(RpcObject properties) {
         this.properties = properties;
@@ -184,8 +184,8 @@ public class TransactionResult {
                 '}';
     }
 
-    public class EventLog {
-        private RpcObject properties;
+    public static class EventLog {
+        private final RpcObject properties;
 
         EventLog(RpcObject properties) {
             this.properties = properties;
@@ -215,7 +215,7 @@ public class TransactionResult {
     }
 
     public static class Failure {
-        private RpcObject properties;
+        private final RpcObject properties;
 
         private Failure(RpcObject properties) {
             this.properties = properties;

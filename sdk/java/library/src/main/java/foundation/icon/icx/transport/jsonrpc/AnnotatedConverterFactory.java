@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 ICON Foundation.
+ * Copyright 2018 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class AnnotatedConverterFactory implements RpcConverter.RpcConverterFacto
     private <T> T getClassInstance(Class<T> type) throws IllegalAccessException, InstantiationException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException {
         if (isInnerClass(type)) {
             String className = type.getCanonicalName().subSequence(0, type.getCanonicalName().length() - type.getSimpleName().length() - 1).toString();
-            Class m = Class.forName(className);
+            Class<?> m = Class.forName(className);
             return type.getConstructor(m).newInstance(m.newInstance());
         }
         return type.newInstance();

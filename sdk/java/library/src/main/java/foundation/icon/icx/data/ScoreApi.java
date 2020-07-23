@@ -23,10 +23,9 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class ScoreApi {
 
-    private RpcObject properties;
+    private final RpcObject properties;
 
     ScoreApi(RpcObject properties) {
         this.properties = properties;
@@ -77,8 +76,8 @@ public class ScoreApi {
                 '}';
     }
 
-    public class Param {
-        private RpcObject properties;
+    public static class Param {
+        private final RpcObject properties;
 
         Param(RpcObject properties) {
             this.properties = properties;
