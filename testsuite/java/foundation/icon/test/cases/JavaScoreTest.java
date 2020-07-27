@@ -42,6 +42,7 @@ import testcases.APITest;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -416,33 +417,44 @@ class JavaScoreTest extends TestBase {
     }
 
     @Test
-    public void testAPIForSHA3_256() throws Exception {
+    public void testAPIForHash() throws Exception {
         Score apiScore = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
-        // computeHash
-        LOG.infoEntering("computeHash", "invoke");
-        byte[] data = "Hello world".getBytes();
-        RpcObject params = new RpcObject.Builder()
-                .put("data", new RpcValue(data))
-                .build();
-        tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);
-        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
-        for (TransactionResult.EventLog e : tr.getEventLogs()) {
-            result = e.getData().get(0);
-        }
-        Bytes expected = new Bytes(Crypto.sha3_256(data));
-        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
-        assertEquals(expected.toString(), result.asString());
-        LOG.infoExiting();
+        Map<BigInteger, String> algoMap = Map.of(
+                BigInteger.ZERO, "SHA3_256",
+                BigInteger.ONE, "SHA256"
+        );
+        for (BigInteger algorithm : algoMap.keySet()) {
+            LOG.infoEntering("computeHash", "invoke - " + algoMap.get(algorithm));
+            byte[] data = "Hello world".getBytes();
+            RpcObject params = new RpcObject.Builder()
+                    .put("algorithm", new RpcValue(algorithm))
+                    .put("data", new RpcValue(data))
+                    .build();
+            tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);
+            assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+            for (TransactionResult.EventLog e : tr.getEventLogs()) {
+                result = e.getData().get(0);
+            }
+            Bytes expected;
+            if (algorithm.equals(BigInteger.ZERO)) {
+                expected = new Bytes(Crypto.sha3_256(data));
+            } else {
+                expected = new Bytes(Crypto.sha256(data));
+            }
+            LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+            assertEquals(expected.toString(), result.asString());
+            LOG.infoExiting();
 
-        LOG.infoEntering("computeHash", "query");
-        result = apiScore.call("computeHashQuery", params);
-        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
-        assertEquals(expected.toString(), result.asString());
-        LOG.infoExiting();
+            LOG.infoEntering("computeHash", "query - " + algoMap.get(algorithm));
+            result = apiScore.call("computeHashQuery", params);
+            LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+            assertEquals(expected.toString(), result.asString());
+            LOG.infoExiting();
+        }
     }
 
     @Test
@@ -455,6 +467,7 @@ class JavaScoreTest extends TestBase {
         // invoke a transaction to be verified later
         byte[] data = "Hello world".getBytes();
         RpcObject params = new RpcObject.Builder()
+                .put("algorithm", new RpcValue(BigInteger.ZERO))
                 .put("data", new RpcValue(data))
                 .build();
         tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);

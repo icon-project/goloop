@@ -130,6 +130,11 @@ public interface IBlockchainRuntime {
     ByteArray avm_sha3_256(ByteArray data);
 
     /**
+     * Computes the SHA-256 hash using the input data
+     */
+    ByteArray avm_sha256(ByteArray data);
+
+    /**
      * Recovers the public key from the message hash and the recoverable signature
      */
     ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed);

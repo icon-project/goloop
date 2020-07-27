@@ -257,6 +257,16 @@ public final class Context {
     }
 
     /**
+     * Computes the SHA-256 hash using the input data.
+     *
+     * @param data the input data to be hashed
+     * @return the hashed data in bytes
+     */
+    public static byte[] sha256(byte[] data) throws IllegalArgumentException {
+        return null;
+    }
+
+    /**
      * Recovers the public key from the message hash and the recoverable signature.
      *
      * @param msgHash the 32 bytes hash data

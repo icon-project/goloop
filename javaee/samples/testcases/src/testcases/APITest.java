@@ -185,14 +185,26 @@ public class APITest
     // Crypto
     //================================
 
+    private static final int ALGORITHM_SHA3_256 = 0;
+    private static final int ALGORITHM_SHA_256 = 1;
+
     @External
-    public void computeHash(byte[] data) {
-        EmitEvent(Context.sha3_256(data));
+    public void computeHash(int algorithm, byte[] data) {
+        if (algorithm == ALGORITHM_SHA3_256) {
+            EmitEvent(Context.sha3_256(data));
+        } else if (algorithm == ALGORITHM_SHA_256) {
+            EmitEvent(Context.sha256(data));
+        }
     }
 
     @External(readonly=true)
-    public byte[] computeHashQuery(byte[] data) {
-        return Context.sha3_256(data);
+    public byte[] computeHashQuery(int algorithm, byte[] data) {
+        if (algorithm == ALGORITHM_SHA3_256) {
+            return Context.sha3_256(data);
+        } else if (algorithm == ALGORITHM_SHA_256) {
+            return Context.sha256(data);
+        }
+        return null;
     }
 
     @External

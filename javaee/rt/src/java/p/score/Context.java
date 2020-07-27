@@ -138,6 +138,13 @@ public final class Context extends Object {
         return blockchainRuntime.avm_sha3_256(data);
     }
 
+    public static ByteArray avm_sha256(ByteArray data) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base
+                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length() : 0));
+        return blockchainRuntime.avm_sha256(data);
+    }
+
     public static ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_recoverKey);
         return blockchainRuntime.avm_recoverKey(msgHash, signature, compressed);

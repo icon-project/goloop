@@ -40,6 +40,15 @@ public class Crypto {
         }
     }
 
+    public static byte[] sha256(byte[] msg) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(msg);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static byte[] recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
         BigInteger r = BigIntegers.fromUnsignedByteArray(signature, 0, 32);
         BigInteger s = BigIntegers.fromUnsignedByteArray(signature, 32, 32);

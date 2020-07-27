@@ -273,6 +273,12 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public ByteArray avm_sha256(ByteArray data) {
+        require(null != data, "Input data can't be NULL");
+        return new ByteArray(Crypto.sha256(data.getUnderlying()));
+    }
+
+    @Override
     public ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed) {
         require(null != msgHash && null != signature, "msgHash or signature is NULL");
         byte[] msgBytes = msgHash.getUnderlying();
