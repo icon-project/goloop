@@ -5,14 +5,14 @@ BASE_DIR=$(dirname $0)
 
 build_image() {
     if [ $# -lt 1 ] ; then
-	echo "Usage: $0 <image_name> [<src_dir>] [<build_dir>]"
-	return 1
+        echo "Usage: $0 <image_name> [<src_dir>] [<build_dir>]"
+        return 1
     fi
 
     local TAG=$1
     local SRC_DIR=$2
     if [ -z "${SRC_DIR}" ] ; then
-	SRC_DIR="."
+        SRC_DIR="."
     fi
     local BUILD_DIR=$3
 

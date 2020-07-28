@@ -5,14 +5,14 @@ BASE_DIR=$(dirname $0)
 
 build_image() {
     if [ $# -lt 1 ] ; then
-	echo "Usage: $0 <image_name> [<src_dir>] [<build_dir>]"
-	return 1
+        echo "Usage: $0 <image_name> [<src_dir>] [<build_dir>]"
+        return 1
     fi
 
     local TAG=$1
     local SRC_DIR=$2
     if [ -z "${SRC_DIR}" ] ; then
-	SRC_DIR="."
+        SRC_DIR="."
     fi
     local BUILD_DIR=$3
 
@@ -28,7 +28,6 @@ build_image() {
     # copy required files to ${BUILD_DIR}/dist
     rm -rf ${BUILD_DIR}/dist
 
-    JAVAEE_VERSION=$(grep "^VERSION=" ${SRC_DIR}/javaee/gradle.properties | cut -d= -f2)
     BIN_DIR=${BIN_DIR:-${SRC_DIR}/bin}
 
     mkdir -p ${BUILD_DIR}/dist/bin/

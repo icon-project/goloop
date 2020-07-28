@@ -22,7 +22,6 @@ GOTEST_FLAGS = -test.short
 GL_VERSION ?= $(shell git describe --always --tags --dirty)
 GL_TAG ?= latest
 BUILD_INFO = $(shell go env GOOS)/$(shell go env GOARCH) tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
-JAVAEE_VERSION = $(shell grep "^VERSION=" $(BUILD_ROOT)/javaee/gradle.properties | cut -d= -f2)
 
 #
 # Build scripts for command binaries.
