@@ -8,16 +8,12 @@ stages:
   - cleanup
 
 variables:
-  ALPINE_VERSION: "3.10"
-  GOLANG_VERSION: "1.12.14"
-  PYTHON_VERSION: "3.7.5"
-  JAVA_VERSION: "11.0.4"
-  REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_SLUG}"
-  REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_SLUG}"
-  REPO_JAVA_DEPS: "goloop/java-deps/${CI_COMMIT_REF_SLUG}"
-  REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
-  REPO_GOLOOP_PY: "goloop-py/${CI_COMMIT_REF_SLUG}"
-  REPO_GOLOOP_JAVA: "goloop-java/${CI_COMMIT_REF_SLUG}"
+  IMAGE_GO_DEPS: "goloop/go-deps:${CI_COMMIT_REF_NAME}"
+  IMAGE_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_NAME}"
+  IMAGE_JAVA_DEPS: "goloop/java-deps:${CI_COMMIT_REF_NAME}"
+  IMAGE_GOLOOP: "goloop:${CI_COMMIT_REF_NAME}"
+  IMAGE_GOLOOP_PY: "goloop-py:${CI_COMMIT_REF_NAME}"
+  IMAGE_GOLOOP_JAVA: "goloop-java:${CI_COMMIT_REF_NAME}"
   REGISTRY: "ci.arch.iconloop.com:80"
 
 before_script:
@@ -48,7 +44,7 @@ deps:java:
     - docker-build
 
 unit:go:
-  image: "${REPO_GO_DEPS}"
+  image: "${IMAGE_GO_DEPS}"
   stage: unit
   script:
     - make test
@@ -56,7 +52,7 @@ unit:go:
     - docker
 
 unit:py:
-  image: "${REPO_PY_DEPS}"
+  image: "${IMAGE_PY_DEPS}"
   stage: unit
   script:
     - cd pyee
@@ -65,7 +61,7 @@ unit:py:
     - docker
 
 unit:java:
-  image: "${REPO_JAVA_DEPS}"
+  image: "${IMAGE_JAVA_DEPS}"
   stage: unit
   script:
     - cd javaee
@@ -74,7 +70,7 @@ unit:java:
     - docker
 
 build:go:
-  image: "${REPO_GO_DEPS}"
+  image: "${IMAGE_GO_DEPS}"
   stage: build
   script:
     - make goloop
@@ -87,21 +83,21 @@ build:go:
     - docker
 
 build:pyee:
-  image: "${REPO_PY_DEPS}"
+  image: "${IMAGE_PY_DEPS}"
   stage: build
   script:
     - cd pyee
     - pip3 install wheel
-    - python3 setup.py bdist_wheel
+    - python3 setup.py bdist_wheel -d ../build/pyee/dist
   artifacts:
     expire_in: 1 day
     paths:
-      - pyee/dist/
+      - build/pyee/dist/
   tags:
     - docker
 
 build:java:
-  image: "${REPO_JAVA_DEPS}"
+  image: "${IMAGE_JAVA_DEPS}"
   stage: build
   script:
     - cd javaee
@@ -404,19 +400,19 @@ pages:IT:goloop:interscore:
 push:goloop:py:
   <<: *push
   variables:
-    REPO: "${REPO_GOLOOP_PY}"
+    REPO: "${IMAGE_GOLOOP_PY}"
     REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
 
 push:goloop:java:
   <<: *push
   variables:
-    REPO: "${REPO_GOLOOP_JAVA}"
+    REPO: "${IMAGE_GOLOOP_JAVA}"
     REPO_TAG: "goloop-java:${CI_COMMIT_REF_NAME}"
 
 push:goloop:
   <<: *push
   variables:
-    REPO: "${REPO_GOLOOP}"
+    REPO: "${IMAGE_GOLOOP}"
     REPO_TAG: "goloop:${CI_COMMIT_REF_NAME}"
 
 .cleanup:integration:

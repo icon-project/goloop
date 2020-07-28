@@ -1,5 +1,5 @@
-ARG GOLANG_VERSION=1.12.14
-ARG ALPINE_VERSION=3.10
+ARG GOLANG_VERSION
+ARG ALPINE_VERSION
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
 RUN apk add make git
 ENV GO111MODULE on
@@ -10,4 +10,4 @@ LABEL GOLOOP_GOMOD_SHA="$GOLOOP_GOMOD_SHA"
 ADD go.mod go.sum /goloop/
 WORKDIR /goloop
 
-RUN echo "go mod download $GOMOD_SHA" && go mod download
+RUN echo "go mod download $GOLOOP_GOMOD_SHA" && go mod download

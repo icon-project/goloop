@@ -1,19 +1,22 @@
 #!/bin/sh
 
 BASE_DIR=$(dirname $0)
-PYTHON_VERSION=${PYTHON_VERSION:-3.7.5}
+. ${BASE_DIR}/../version.sh
+. ${BASE_DIR}/../function.sh
+
+LABEL="GOLOOP_PYDEP_SHA"
 
 get_hash_of_dir() {
     local SRC_DIR=$1
-    local SUM=$(cat "${SRC_DIR}/pyee/requirements.txt" \
-                    "${SRC_DIR}/docker/py-deps/Dockerfile" \
-                | sha1sum | cut -d ' ' -f 1)
-    echo "${PYTHON_VERSION}-${SUM}"
+    local SUM=$(get_hash_of_files \
+        "${SRC_DIR}/pyee/requirements.txt" \
+        "${SRC_DIR}/docker/py-deps/Dockerfile")
+    echo "${PYTHON_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
 }
 
 get_hash_of_image() {
-    local TAG=$1
-    docker image inspect -f '{{.Config.Labels.GOLOOP_PYDEP_SHA}}' ${TAG} 2> /dev/null || echo 'none'
+    local IMAGE=$1
+    docker image inspect -f "{{.Config.Labels.${LABEL}}}" ${IMAGE} 2> /dev/null || echo 'none'
 }
 
 update_image() {
@@ -22,17 +25,25 @@ update_image() {
         return 1
     fi
 
-    local TAG=$1
+    local TARGET_IMAGE=$1
+    local TARGET_REPO=${TARGET_IMAGE%%:*}
     local SRC_DIR=$2
     if [ -z "${SRC_DIR}" ] ; then
         SRC_DIR="."
     fi
     local BUILD_DIR=$3
 
-    local GOLOOP_PYDEP_SHA=$(get_hash_of_dir ${SRC_DIR})
-    local IMAGE_PYDEP_SHA=$(get_hash_of_image ${TAG})
+    local HASH_OF_DIR=$(get_hash_of_dir ${SRC_DIR})
+    local HASH_OF_IMAGE=$(get_label_of_image ${LABEL} ${TARGET_IMAGE})
 
-    if [ "${GOLOOP_PYDEP_SHA}" != "${IMAGE_PYDEP_SHA}" ] ; then
+    if [ "${HASH_OF_DIR}" != "${HASH_OF_IMAGE}" ] ; then
+        local IMAGE_ID=$(get_id_with_hash ${TARGET_REPO} ${LABEL} ${HASH_OF_DIR})
+        if [ "${IMAGE_ID}" != "" ]; then
+            echo "Tagging image ${IMAGE_ID} as ${TARGET_IMAGE}"
+            docker tag ${IMAGE_ID} ${TARGET_IMAGE}
+            return $?
+        fi
+
         # Prepare build directory if it's set
         if [ "${BUILD_DIR}" != "" ] ; then
             rm -rf ${BUILD_DIR}
@@ -47,18 +58,19 @@ update_image() {
         CDIR=$(pwd)
         cd ${BUILD_DIR}
 
-        echo "Building image ${TAG} for ${GOLOOP_PYDEP_SHA}"
+        echo "Building image ${TARGET_IMAGE} for ${HASH_OF_DIR}"
         docker build \
-            --build-arg GOLOOP_PYDEP_SHA=${GOLOOP_PYDEP_SHA} \
+            --build-arg ${LABEL}=${HASH_OF_DIR} \
             --build-arg PYTHON_VERSION=${PYTHON_VERSION} \
-            --tag ${TAG} .
+            --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
+            --tag ${TARGET_IMAGE} .
         local result=$?
 
         rm -f requirements.txt
         cd ${CDIR}
         return $result
     else
-        echo "Already exist image ${TAG} for ${GOLOOP_PYDEP_SHA}"
+        echo "Reuse image ${TARGET_IMAGE} for ${HASH_OF_DIR}"
         return 0
     fi
     return 0

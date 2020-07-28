@@ -1,6 +1,5 @@
-ARG REPO_PY_DEPS=goloop/py-deps
-ARG TAG_PY_DEPS=latest
-FROM ${REPO_PY_DEPS}:${TAG_PY_DEPS}
+ARG IMAGE_PY_DEPS
+FROM ${IMAGE_PY_DEPS}
 LABEL MAINTAINER="t_arch@iconloop.com"
 
 # install JRE

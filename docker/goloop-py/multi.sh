@@ -5,7 +5,7 @@ PRE_PWD=$(pwd)
 WORKDIR=$(dirname "$(readlink -f ${0})")
 cd $WORKDIR
 
-REPO_GOLOOP_PY=${REPO_GOLOOP_PY:-goloop-py}
+IMAGE_GOLOOP_PY=${IMAGE_GOLOOP_PY:-goloop-py:latest}
 GOLOOP_DATA=${GOLOOP_DATA:-/goloop/data}
 GOLOOP_DOCKER_REPLICAS=${GOLOOP_DOCKER_REPLICAS:-4}
 GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_net}
@@ -48,7 +48,7 @@ function create(){
           --env GOLOOP_LOGFILE=${GOLOOP_LOGFILE} \
           --env GOLOOP_P2P=${GOLOOP_DOCKER_PREFIX}-${i}:8080 \
           --env GOLOOP_ENGINES=${GOLOOP_ENGINES} \
-          ${REPO_GOLOOP_PY}
+          ${IMAGE_GOLOOP_PY}
 
         set +e
         MAX_RETRY=10

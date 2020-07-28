@@ -1,5 +1,5 @@
-ARG PYTHON_VERSION=3.7.5
-ARG ALPINE_VERSION=3.10
+ARG PYTHON_VERSION
+ARG ALPINE_VERSION
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}
 
 # required by 'pip install coincurve cryptography'

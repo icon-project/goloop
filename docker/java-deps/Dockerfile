@@ -1,4 +1,4 @@
-ARG ALPINE_VERSION=3.10
+ARG ALPINE_VERSION
 FROM alpine:${ALPINE_VERSION}
 
 RUN apk add --no-cache openjdk11-jdk build-base
