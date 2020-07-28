@@ -1,10 +1,10 @@
 package foundation.icon.ee.test;
 
 import foundation.icon.ee.Agent;
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.util.MethodUnpacker;
-import score.Address;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;

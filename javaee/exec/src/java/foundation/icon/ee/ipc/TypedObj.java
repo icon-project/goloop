@@ -115,8 +115,6 @@ public class TypedObj {
             return new TypedObj(BOOL, o ? new byte[]{1} : new byte[]{0});
         } else if (obj instanceof Address) {
             return new TypedObj(ADDRESS, ((Address)obj).toByteArray());
-        } else if (obj instanceof score.Address) {
-            return new TypedObj(ADDRESS, ((score.Address)obj).toByteArray());
         } else if (obj instanceof BigInteger) {
             return new TypedObj(INT, ((BigInteger)obj).toByteArray());
         } else if (obj instanceof Byte) {

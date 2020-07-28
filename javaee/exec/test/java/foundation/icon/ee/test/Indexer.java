@@ -1,6 +1,6 @@
 package foundation.icon.ee.test;
 
-import score.Address;
+import foundation.icon.ee.types.Address;
 
 public interface Indexer {
     int getIndex(Address addr);

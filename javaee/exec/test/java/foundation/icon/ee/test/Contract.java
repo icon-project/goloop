@@ -1,9 +1,9 @@
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import score.Address;
 
 import java.io.IOException;
 import java.math.BigInteger;

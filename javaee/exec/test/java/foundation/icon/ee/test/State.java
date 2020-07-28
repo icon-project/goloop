@@ -1,6 +1,6 @@
 package foundation.icon.ee.test;
 
-import score.Address;
+import foundation.icon.ee.types.Address;
 import org.aion.avm.core.util.ByteArrayWrapper;
 
 import java.math.BigInteger;

@@ -111,7 +111,7 @@ public class ScenarioTest extends GoldenTest {
             return call(c.getAddress());
         }
 
-        public Compiler call(Address addr) {
+        public Compiler call(foundation.icon.ee.types.Address addr) {
             bb.put(Score.CALL);
             var ba = addr.toByteArray();
             bb.put(ba[1]);

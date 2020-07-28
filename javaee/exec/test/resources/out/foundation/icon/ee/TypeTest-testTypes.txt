@@ -33,7 +33,7 @@ RECV result status=0 stepUsed=2046 ret=string
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV result status=0 stepUsed=1846 ret=000102
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=2046 ret=hx0002000000000000000000000000000000000000
+RECV result status=0 stepUsed=2046 ret=000002...
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV result status=0 stepUsed=1746 ret=<null>
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[<null>] EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]

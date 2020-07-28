@@ -1,10 +1,10 @@
 package foundation.icon.ee.util;
 
+import foundation.icon.ee.types.Address;
 import i.IObject;
 import i.RuntimeAssertionError;
 import pi.UnmodifiableArrayList;
 import pi.UnmodifiableArrayMap;
-import score.Address;
 
 import java.math.BigInteger;
 import java.util.Map;
