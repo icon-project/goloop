@@ -3,7 +3,10 @@ package foundation.icon.ee;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TransactionException;
 import foundation.icon.ee.types.Status;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import score.Context;
+import score.annotation.External;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,5 +54,33 @@ public class DeployTest extends SimpleTest {
         e = assertThrows(TransactionException.class,
                 () -> sm.deploy(Interface.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
+    }
+
+    public interface Inf {
+        void run();
+    }
+
+    public static class ClassAccess {
+        @External
+        public void run() {
+            Context.newVarDB("vdb", Inf.class);
+        }
+    }
+
+    public static class ArrayClassAccess {
+        @External
+        public void run() {
+            Context.newVarDB("vdb", Inf[].class);
+        }
+    }
+
+    @Test
+    void testClassAccess() {
+        Assertions.assertDoesNotThrow(() ->
+                sm.deploy(new Class<?>[]{ClassAccess.class, Inf.class})
+        );
+        Assertions.assertDoesNotThrow(() ->
+                sm.deploy(new Class<?>[]{ArrayClassAccess.class, Inf.class})
+        );
     }
 }
