@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.GoldenTest;
+import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TransactionException;
 import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Test;
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class DeployTest extends GoldenTest {
+public class DeployTest extends SimpleTest {
     public static class NoConstructor {
     }
 
