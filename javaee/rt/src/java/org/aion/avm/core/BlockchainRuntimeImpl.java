@@ -174,6 +174,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             sparams = new a.ObjectArray(0);
         }
         require(targetAddress != null, "Destination can't be NULL");
+        Object[] params = new Object[sparams.length()];
+        for (int i=0; i<params.length; i++) {
+            params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
+        }
 
         externalState.waitForCallbacks();
         IInstrumentation inst = IInstrumentation.attachedThreadInstrumentation.get();
@@ -184,10 +188,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var rds = task.getReentrantDAppStack();
         rds.getTop().setRuntimeState(task.getEID(), rs, callerAddr);
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
-        Object[] params = new Object[sparams.length()];
-        for (int i=0; i<params.length; i++) {
-            params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
-        }
 
         var prevState = rds.getTop();
         rds.pushState();
