@@ -63,6 +63,23 @@ public class MethodDependencyVisitor extends MethodVisitor {
     }
 
     @Override
+    public void visitLdcInsn(Object value) {
+        if (value instanceof Type) {
+            Type t = (Type) value;
+            String desc = null;
+            if (t.getSort() == Type.OBJECT) {
+                desc = t.getDescriptor();
+            } else if (t.getSort() == Type.ARRAY) {
+                desc = t.getElementType().getDescriptor();
+            }
+            if (desc != null) {
+                dependencyCollector.addDescriptor(desc);
+            }
+        }
+        super.visitLdcInsn(value);
+    }
+
+    @Override
     public void visitLineNumber(int line, Label start) {
         if (preserveDebugInfo)
             super.visitLineNumber(line, start);
