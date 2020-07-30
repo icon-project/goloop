@@ -27,6 +27,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.Score;
@@ -42,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_SCORE)
-public class ResultTest {
+public class ResultTest extends TestBase {
     private static final String SCORE_RESULT_GEN_PATH = Score.getFilePath("result_gen");
     private static KeyWallet ownerWallet;
     private static Score score1, score2;
@@ -149,6 +150,7 @@ public class ResultTest {
 
     @Test
     void checkExternalReturnValue() throws Exception {
+        LOG.infoEntering("checkExternalReturnValue");
         String[] values = {
                 "HelloWorld", "한글", ""
         };
@@ -174,5 +176,33 @@ public class ResultTest {
             }
             assertEquals(1, checked);
         }
+        LOG.infoExiting();
+    }
+
+    @Test
+    void checkBytesReturns() throws Exception {
+        LOG.infoEntering("checkBytesReturns");
+        String index = "1234";
+        String expected = "Bytes: " + index;
+        RpcObject params = new RpcObject.Builder()
+                .put("addr", new RpcValue(score2.getAddress()))
+                .put("index", new RpcValue(index))
+                .build();
+        assertSuccess(score1.invokeAndWaitResult(ownerWallet, "set_bytes_value", params));
+
+        RpcObject result = score1.call("get_bytes_value", params).asObject();
+        for (String key : result.keySet()) {
+            if ("index".equals(key)) {
+                assertEquals(index, result.getItem(key).asString());
+            } else if ("address".equals(key)) {
+                assertEquals(score2.getAddress(), result.getItem(key).asAddress());
+            } else if ("bytes".equals(key)) {
+                assertEquals(new Bytes(expected.getBytes()).toString(),
+                        result.getItem(key).asString());
+            } else {
+                fail("Unexpected key: " + key + ", value=" + result.getItem(key));
+            }
+        }
+        LOG.infoExiting();
     }
 }

@@ -14,6 +14,7 @@ class ResultGeneratorInterface(InterfaceScore):
 class ResultGenerator(IconScoreBase):
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
+        self._bytes_db = DictDB('bytes_db', db, value_type=bytes, depth=2)
 
     def on_install(self) -> None:
         super().on_install()
@@ -23,11 +24,11 @@ class ResultGenerator(IconScoreBase):
 
     @external
     def callRevertWithIndex(self, index: int) -> None:
-        self.revert(code=index)
+        revert(code=index)
 
     @external(readonly=True)
     def queryRevertWithIndex(self, index: int) -> int:
-        self.revert(code=index)
+        revert(code=index)
         return index
 
     @eventlog
@@ -60,3 +61,16 @@ class ResultGenerator(IconScoreBase):
         s = self.create_interface_score(addr, ResultGeneratorInterface)
         r_value = s.returnStr(value)
         self.ReturnedStr(r_value)
+
+    @external
+    def set_bytes_value(self, addr: Address, index: str):
+        data = f'Bytes: {index}'.encode()
+        self._bytes_db[addr][index] = data
+
+    @external(readonly=True)
+    def get_bytes_value(self, addr: Address, index: str) -> dict:
+        result = dict()
+        result['index'] = index
+        result['address'] = addr
+        result['bytes'] = self._bytes_db[addr][index]
+        return result
