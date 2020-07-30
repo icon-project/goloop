@@ -8,10 +8,37 @@ dependencies {
     runtimeOnly 'org.ow2.asm:asm-analysis:7.0'
 }
 
+ext {
+    nativePath = "${project(':exec').buildDir}/native"
+}
+
 application {
     mainClassName = 'Launcher'
     applicationDefaultJvmArgs = [
-        '-Djava.library.path=' + project(':exec').buildDir + '/native',
-        '-Dfoundation.icon.ee.logger.defaultLogLevel=debug'
+            "-Djava.library.path=${project.ext.nativePath}",
+            '-Dfoundation.icon.ee.logger.defaultLogLevel=debug'
     ]
+}
+
+startScripts {
+    defaultJvmOpts = [
+            "-Djava.library.path=ENV_APP_HOME/native",
+            '-Dfoundation.icon.ee.logger.defaultLogLevel=ENV_JAVAEE_LOG_LEVEL'
+    ]
+    doLast {
+        unixScript.text = unixScript.text.replace('ENV_APP_HOME', '\$APP_HOME')
+        windowsScript.text = windowsScript.text.replace('ENV_APP_HOME', '%APP_HOME%')
+        unixScript.text = unixScript.text.replace('ENV_JAVAEE_LOG_LEVEL', '\$JAVAEE_LOG_LEVEL')
+        windowsScript.text = windowsScript.text.replace('ENV_JAVAEE_LOG_LEVEL', '%JAVAEE_LOG_LEVEL%')
+    }
+}
+
+distributions {
+    main {
+        contents {
+            from("${project.ext.nativePath}") {
+                into 'native'
+            }
+        }
+    }
 }
