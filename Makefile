@@ -66,6 +66,12 @@ GOCHAIN_DOCKER_DIR = $(BUILD_ROOT)/build/gochain
 GOLOOP_IMAGE = goloop:$(GL_TAG)
 GOLOOP_DOCKER_DIR = $(BUILD_ROOT)/build/goloop
 
+GOLOOP_PY_IMAGE = goloop-py:$(GL_TAG)
+GOLOOP_PY_DOCKER_DIR = $(BUILD_ROOT)/build/goloop-py
+
+GOLOOP_JAVA_IMAGE = goloop-java:$(GL_TAG)
+GOLOOP_JAVA_DOCKER_DIR = $(BUILD_ROOT)/build/goloop-java
+
 PYDEPS_IMAGE = goloop/py-deps:$(GL_TAG)
 PYDEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pydeps
 
@@ -134,6 +140,25 @@ goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec
 	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
 	GOLOOP_VERSION=$(GL_VERSION) \
 	$(BUILD_ROOT)/docker/goloop/update.sh $(GOLOOP_IMAGE) $(BUILD_ROOT) $(GOLOOP_DOCKER_DIR)
+
+goloop-py-image: pyrun-pyexec gorun-goloop-linux
+	@ echo "[#] Building image $(GOLOOP_PY_IMAGE) for $(GL_VERSION)"
+	@ rm -rf $(GOLOOP_PY_DOCKER_DIR)
+	@ \
+	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
+	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
+	GOLOOP_VERSION=$(GL_VERSION) \
+	$(BUILD_ROOT)/docker/goloop-py/update.sh \
+	    $(GOLOOP_PY_IMAGE) $(BUILD_ROOT) $(GOLOOP_PY_DOCKER_DIR)
+
+goloop-java-image: gorun-goloop-linux javarun-javaexec
+	@ echo "[#] Building image $(GOLOOP_JAVA_IMAGE) for $(GL_VERSION)"
+	@ rm -rf $(GOLOOP_JAVA_DOCKER_DIR)
+	@ \
+	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
+	GOLOOP_VERSION=$(GL_VERSION) \
+	$(BUILD_ROOT)/docker/goloop-java/update.sh \
+	    $(GOLOOP_JAVA_IMAGE) $(BUILD_ROOT) $(GOLOOP_JAVA_DOCKER_DIR)
 
 gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
 	@ echo "[#] Building image $(GOCHAIN_IMAGE) for $(GL_VERSION)"
