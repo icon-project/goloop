@@ -39,22 +39,46 @@ type StaticConfig struct {
 }
 
 func (c *StaticConfig) ResolveAbsolute(targetPath string) string {
-	if filepath.IsAbs(targetPath) {
-		return targetPath
-	}
-	if c.FilePath == "" {
-		r, _ := filepath.Abs(targetPath)
-		return r
-	}
-	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
+	return ResolveAbsolute(c.FilePath, targetPath)
 }
 
 func (c *StaticConfig) ResolveRelative(targetPath string) string {
 	absPath, _ := filepath.Abs(targetPath)
-	base := filepath.Dir(c.FilePath)
-	base, _ = filepath.Abs(base)
+	base, _ := filepath.Abs(filepath.Dir(c.FilePath))
 	r, _ := filepath.Rel(base, absPath)
 	return r
+}
+
+func ResolveAbsolute(baseFile, targetPath string) string {
+	if filepath.IsAbs(targetPath) {
+		return targetPath
+	}
+	if baseFile == "" {
+		r, _ := filepath.Abs(targetPath)
+		return r
+	}
+	if !filepath.IsAbs(baseFile) {
+		baseFile, _ = filepath.Abs(baseFile)
+	}
+	return filepath.Clean(path.Join(filepath.Dir(baseFile), targetPath))
+}
+
+func (c *StaticConfig) SetFilePath(path string) string {
+	o := c.FilePath
+	c.FilePath, _ = filepath.Abs(path)
+	if c.BaseDir != "" {
+		c.BaseDir = c.ResolveRelative(ResolveAbsolute(o, c.BaseDir))
+	}
+	if c.CliSocket != "" {
+		c.CliSocket = c.ResolveRelative(ResolveAbsolute(o, c.CliSocket))
+	}
+	if c.EESocket != "" {
+		c.EESocket = c.ResolveRelative(ResolveAbsolute(o, c.EESocket))
+	}
+	if c.BackupDir != "" {
+		c.BackupDir = c.ResolveRelative(ResolveAbsolute(o, c.BackupDir))
+	}
+	return o
 }
 
 func (c *StaticConfig) FillEmpty(addr module.Address) {

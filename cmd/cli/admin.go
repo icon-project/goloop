@@ -24,22 +24,21 @@ import (
 func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHttpClient) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		nodeSock := vc.GetString("node_sock")
-		cfgFilePath := vc.GetString("config")
-		if nodeSock == "" && cfgFilePath != "" {
+		if nodeSock == "" {
 			cfg := &ServerConfig{}
-			cfg.FilePath = cfgFilePath
 			if err := MergeWithViper(vc, cfg); err != nil {
 				return err
 			}
-			if cfg.CliSocket == "" {
-				if cfg.addr == nil {
-					return errors.Errorf("not exists keyStore on config %s", cfgFilePath)
+			if cfg.FilePath != "" {
+				if cfg.CliSocket == "" {
+					if cfg.addr == nil {
+						return errors.Errorf("not exists keyStore on config %s", cfg.FilePath)
+					}
+					cfg.FillEmpty(cfg.addr)
 				}
-				cfg.FillEmpty(cfg.addr)
+				nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
+				vc.Set("node_sock", nodeSock)
 			}
-
-			nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
-			vc.Set("node_sock", nodeSock)
 		}
 		if err := ValidateFlagsWithViper(vc, cmd.Flags()); err != nil {
 			return err

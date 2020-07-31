@@ -61,6 +61,14 @@ func (cfg *ServerConfig) MakesureKeyStore() error {
 	return err
 }
 
+func (cfg *ServerConfig) SetFilePath(path string) string {
+	o := cfg.StaticConfig.SetFilePath(path)
+	if cfg.LogWriter != nil && cfg.LogWriter.Filename != ""{
+		cfg.LogWriter.Filename = cfg.ResolveRelative(node.ResolveAbsolute(o, cfg.LogWriter.Filename))
+	}
+	return o
+}
+
 const (
 	DefaultKeyStorePass = "gochain"
 )
@@ -73,7 +81,6 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	cfg.BuildTags = build
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		cfg.FilePath = vc.GetString("config")
 		if err := MergeWithViper(vc, cfg); err != nil {
 			return err
 		}
@@ -129,6 +136,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			saveFilePath := args[0]
+			cfg.SetFilePath(saveFilePath)
 			if err := JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
 				return err
 			}
@@ -240,6 +248,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	if vc.GetString("key_secret") != "" || vc.GetString("key_password") != "" {
 		cfg.isPresentPass = true
 	}
+	cfgFilePath := vc.GetString("config")
 	//relative path from flag, env
 	nodeDir := vc.GetString("node_dir")
 	cliSocket := vc.GetString("node_sock")
@@ -247,8 +256,9 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	backupDir := vc.GetString("backup_dir")
 	lwFilename := vc.GetString("log_writer_filename")
 
-	if cfg.FilePath != "" {
-		f, err := os.Open(cfg.FilePath)
+	if cfgFilePath != "" {
+		cfg.SetFilePath(cfgFilePath)
+		f, err := os.Open(cfgFilePath)
 		if err != nil {
 			return errors.Errorf("fail to open config file=%s err=%+v", cfg.FilePath, err)
 		}
