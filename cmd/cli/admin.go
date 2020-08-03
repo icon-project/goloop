@@ -31,10 +31,11 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 			}
 			if cfg.FilePath != "" {
 				if cfg.CliSocket == "" {
-					if cfg.addr == nil {
-						return errors.Errorf("not exists keyStore on config %s", cfg.FilePath)
+					if addr := cfg.GetAddress(); addr != nil {
+						cfg.FillEmpty(addr)
+					} else {
+						return errors.New("unable to decide node directory")
 					}
-					cfg.FillEmpty(cfg.addr)
 				}
 				nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
 				vc.Set("node_sock", nodeSock)

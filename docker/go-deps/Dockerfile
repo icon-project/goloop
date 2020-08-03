@@ -1,7 +1,7 @@
 ARG GOLANG_VERSION
 ARG ALPINE_VERSION
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
-RUN apk add make git
+RUN apk add make git build-base
 ENV GO111MODULE on
 
 ARG GOLOOP_GOMOD_SHA
