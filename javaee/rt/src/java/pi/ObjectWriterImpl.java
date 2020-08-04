@@ -11,16 +11,13 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
 import p.score.ObjectWriter;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.util.Objects;
 
 public class ObjectWriterImpl
         extends s.java.lang.Object
         implements ObjectWriter, AutoCloseable {
-    private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
-
     private DataWriter writer;
     private int level = 0;
     private long lastChargePos = 0;
@@ -148,23 +145,18 @@ public class ObjectWriterImpl
             IInstrumentation.charge(
                     RuntimeMethodFeeSchedule.ObjectWriter_customMethodBase
             );
-            MethodType mt = MethodType.methodType(void.class,
-                    ObjectWriter.class, c);
-            MethodHandle mh;
             try {
-                mh = lookup.findStatic(c, "avm_writeObject", mt);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
+                var m = c.getDeclaredMethod("avm_writeObject", ObjectWriter.class, c);
+                if ((m.getModifiers()& Modifier.STATIC) == 0
+                        || (m.getModifiers()&Modifier.PUBLIC) == 0) {
+                    throw new IllegalArgumentException();
+                }
+                m.invoke(null, this, v);
+            } catch (NoSuchMethodException
+                    | IllegalAccessException
+                    | InvocationTargetException e) {
                 e.printStackTrace();
                 throw new IllegalArgumentException();
-            }
-            try {
-                mh.invoke(this, v);
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
-            } catch (Throwable t) {
-                t.printStackTrace();
-                throw new IllegalArgumentException(t);
             }
         }
     }

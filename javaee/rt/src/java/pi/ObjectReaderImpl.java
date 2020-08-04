@@ -10,16 +10,13 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
 import p.score.ObjectReader;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.util.function.Supplier;
 
 public class ObjectReaderImpl
         extends s.java.lang.Object
         implements ObjectReader, AutoCloseable {
-    private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
-
     private DataReader reader;
     private int level = 0;
     private long lastChargePos = 0;
@@ -297,22 +294,19 @@ public class ObjectReaderImpl
             IInstrumentation.charge(
                     RuntimeMethodFeeSchedule.ObjectReader_customMethodBase
             );
-            MethodType mt = MethodType.methodType(c, ObjectReader.class);
-            MethodHandle mh;
             try {
-                mh = lookup.findStatic(c, "avm_readObject", mt);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
+                var m = c.getDeclaredMethod("avm_readObject", ObjectReader.class);
+                if ((m.getModifiers()& Modifier.STATIC) == 0
+                        || (m.getModifiers()&Modifier.PUBLIC) == 0) {
+                    throw new IllegalArgumentException();
+                }
+                var res = m.invoke(null, this);
+                return (IObject) res;
+            } catch (NoSuchMethodException
+                    | IllegalAccessException
+                    | InvocationTargetException e) {
                 e.printStackTrace();
                 throw new IllegalArgumentException();
-            }
-            try {
-                return (IObject) mh.invoke(this);
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
-            } catch (Throwable t) {
-                t.printStackTrace();
-                throw new IllegalArgumentException(t);
             }
         }
     }
