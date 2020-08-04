@@ -40,6 +40,7 @@ type Config struct {
 	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
 	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
 	NodeCache        string `json:"node_cache,omitempty"`
+	AutoStart        bool   `json:"auto_start,omitempty"`
 
 	// runtime
 	Channel        string `json:"channel"`

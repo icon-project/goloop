@@ -336,6 +336,17 @@ func (n *Node) Start() {
 	}
 
 	go func() {
+		for channel, chain := range n.chains {
+			if chain.cfg.AutoStart {
+				if err := chain.Start(); err != nil {
+					n.logger.Warnf("fail to start chain channel=%s err=%+v",
+						channel, err)
+				}
+			}
+		}
+	}()
+
+	go func() {
 		if err := n.srv.Start(); err != nil {
 			log.Panicf("fail to server close err=%+v", err)
 		}
@@ -412,6 +423,7 @@ func (n *Node) JoinChain(
 		NodeCache:        p.NodeCache,
 		DefWaitTimeout:   p.DefWaitTimeout,
 		MaxWaitTimeout:   p.MaxWaitTimeout,
+		AutoStart:        p.AutoStart,
 		FilePath:         cfgFile,
 		NIDForP2P:        n.cfg.NIDForP2P,
 	}
@@ -652,6 +664,12 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 			}
 			pr := network.PeerRoleFlag(c.cfg.Role)
 			c.NetworkManager().SetInitialRoles(pr.ToRoles()...)
+		case "autoStart":
+			if as, err := strconv.ParseBool(value); err != nil {
+				return err
+			} else {
+				c.cfg.AutoStart = as
+			}
 		default:
 			return errors.ErrInvalidState
 		}
@@ -725,6 +743,12 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 				return errors.Wrapf(err, "invalid value type")
 			} else {
 				c.cfg.Role = uint(uintVal)
+			}
+		case "autoStart":
+			if as, err := strconv.ParseBool(value); err != nil {
+				return err
+			} else {
+				c.cfg.AutoStart = as
 			}
 		default:
 			return errors.Errorf("not found key %s", key)

@@ -90,6 +90,7 @@ type ChainConfig struct {
 	SecureAeads      string `json:"secureAeads"`
 	DefWaitTimeout   int64  `json:"defaultWaitTimeout"`
 	MaxWaitTimeout   int64  `json:"maxWaitTimeout"`
+	AutoStart        bool   `json:"autoStart"`
 }
 
 type ChainImportParam struct {
@@ -157,6 +158,7 @@ func NewChainConfig(cfg *chain.Config) *ChainConfig {
 		SecureAeads:      cfg.SecureAeads,
 		DefWaitTimeout:   cfg.DefWaitTimeout,
 		MaxWaitTimeout:   cfg.MaxWaitTimeout,
+		AutoStart:        cfg.AutoStart,
 	}
 	return v
 }
