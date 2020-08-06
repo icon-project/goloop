@@ -386,10 +386,10 @@ pages:IT:goloop:interscore:
   image: docker:git
   stage: deploy
   script:
-    - docker tags ${REPO} ${REPO_TAG}
+    - docker tag ${REPO} ${REPO_TAG}
     - docker rmi ${REPO}
     - export REGISTRY_REPO_TAG=${REGISTRY}/${REPO_TAG}
-    - docker tags ${REPO_TAG} ${REGISTRY_REPO_TAG}
+    - docker tag ${REPO_TAG} ${REGISTRY_REPO_TAG}
     - docker push ${REGISTRY_REPO_TAG}
     - docker rmi ${REGISTRY_REPO_TAG}
   tags:
