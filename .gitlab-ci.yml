@@ -386,8 +386,6 @@ pages:IT:goloop:interscore:
   image: docker:git
   stage: deploy
   script:
-    - docker tag ${REPO} ${REPO_TAG}
-    - docker rmi ${REPO}
     - export REGISTRY_REPO_TAG=${REGISTRY}/${REPO_TAG}
     - docker tag ${REPO_TAG} ${REGISTRY_REPO_TAG}
     - docker push ${REGISTRY_REPO_TAG}
@@ -400,19 +398,16 @@ pages:IT:goloop:interscore:
 push:goloop:py:
   <<: *push
   variables:
-    REPO: "${IMAGE_GOLOOP_PY}"
     REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
 
 push:goloop:java:
   <<: *push
   variables:
-    REPO: "${IMAGE_GOLOOP_JAVA}"
     REPO_TAG: "goloop-java:${CI_COMMIT_REF_NAME}"
 
 push:goloop:
   <<: *push
   variables:
-    REPO: "${IMAGE_GOLOOP}"
     REPO_TAG: "goloop:${CI_COMMIT_REF_NAME}"
 
 .cleanup:integration:
