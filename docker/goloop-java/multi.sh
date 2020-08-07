@@ -46,7 +46,6 @@ function create(){
           --env GOLOOP_KEY_SECRET=${GOLOOP_KEY_SECRET} \
           --env GOLOOP_LOGFILE=${GOLOOP_LOGFILE} \
           --env GOLOOP_P2P=${GOLOOP_DOCKER_PREFIX}-${i}:8080 \
-          --env GOLOOP_ENGINES=${GOLOOP_ENGINES} \
           ${IMAGE_GOLOOP_JAVA}
 
         set +e

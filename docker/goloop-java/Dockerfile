@@ -42,7 +42,7 @@ RUN { \
         echo 'set -e'; \
         echo 'if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then'; \
         echo '  UNSET="GOLOOP_CONFIG"' ; \
-        echo '  CMD="goloop server save $GOLOOP_CONFIG --engines=$GOLOOP_ENGINES"'; \
+        echo '  CMD="goloop server save $GOLOOP_CONFIG"'; \
         echo '  if [ "$GOLOOP_KEY_SECRET" != "" ] && [ ! -f "$GOLOOP_KEY_SECRET" ]; then'; \
         echo '    mkdir -p $(dirname $GOLOOP_KEY_SECRET)'; \
         echo '    echo -n $(date|md5sum|head -c16) > $GOLOOP_KEY_SECRET' ; \
