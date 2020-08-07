@@ -39,7 +39,7 @@ ENV GOLOOP_KEY_STORE=/goloop/config/keystore.json
 ENV GOLOOP_KEY_SECRET=/goloop/config/keysecret
 ENV GOLOOP_P2P_LISTEN=":8080"
 ENV GOLOOP_RPC_ADDR=":9080"
-ENV GOLOOP_ENGINES=python
+ENV GOLOOP_ENGINES="python,java"
 
 # entrypoint
 RUN { \
