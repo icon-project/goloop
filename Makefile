@@ -140,6 +140,7 @@ goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
 	GOLOOP_VERSION=$(GL_VERSION) \
+	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/goloop/update.sh $(GOLOOP_IMAGE) $(BUILD_ROOT) $(GOLOOP_DOCKER_DIR)
 
 goloop-py-image: pyrun-pyexec gorun-goloop-linux
@@ -149,6 +150,7 @@ goloop-py-image: pyrun-pyexec gorun-goloop-linux
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
 	GOLOOP_VERSION=$(GL_VERSION) \
+	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/goloop-py/update.sh \
 	    $(GOLOOP_PY_IMAGE) $(BUILD_ROOT) $(GOLOOP_PY_DOCKER_DIR)
 
@@ -158,6 +160,7 @@ goloop-java-image: gorun-goloop-linux javarun-javaexec
 	@ \
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	GOLOOP_VERSION=$(GL_VERSION) \
+	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/goloop-java/update.sh \
 	    $(GOLOOP_JAVA_IMAGE) $(BUILD_ROOT) $(GOLOOP_JAVA_DOCKER_DIR)
 
@@ -168,6 +171,7 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
 	GOCHAIN_VERSION=$(GL_VERSION) \
+	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/gochain/update.sh $(GOCHAIN_IMAGE) $(BUILD_ROOT) $(GOCHAIN_DOCKER_DIR)
 
 .PHONY: test
