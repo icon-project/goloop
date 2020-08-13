@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -151,7 +152,9 @@ func (p *Params) Convert(v interface{}) error {
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return errors.New("v is not pointer type or v is nil")
 	}
-	if err := json.Unmarshal(p.rawMessage, v); err != nil {
+	jd := json.NewDecoder(bytes.NewBuffer(p.rawMessage))
+	jd.DisallowUnknownFields()
+	if err := jd.Decode(v); err != nil {
 		return err
 	}
 	if err := p.validator.Validate(v); err != nil {
