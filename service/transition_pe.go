@@ -91,7 +91,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			ctx.UpdateSystemInfo()
 			wvs := ctx.WorldVirtualState()
 			for trials := RetryCount + 1; trials > 0; trials -= 1 {
-				rct, err := txh.Execute(ctx)
+				rct, err := txh.Execute(ctx, false)
 				txh.Dispose()
 
 				if err == nil {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
@@ -141,6 +142,13 @@ func NewError(code ErrorCode, err error, debug bool) *Error {
 func ErrScore(err error, debug bool) *Error {
 	s, _ := scoreresult.StatusOf(err)
 	return NewError(ErrorCodeScore-ErrorCode(s), err, debug)
+}
+
+func ErrScoreWithStatus(s module.Status) *Error {
+	return &Error{
+		Code:    ErrorCodeScore - ErrorCode(s),
+		Message: s.String(),
+	}
 }
 
 func ErrServer(message ...interface{}) *Error {

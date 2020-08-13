@@ -24,7 +24,7 @@ const (
 
 type Handler interface {
 	Prepare(ctx contract.Context) (state.WorldContext, error)
-	Execute(ctx contract.Context) (txresult.Receipt, error)
+	Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error)
 	Dispose()
 }
 
@@ -81,12 +81,12 @@ func (th *transactionHandler) Prepare(ctx contract.Context) (state.WorldContext,
 	return th.chandler.Prepare(ctx)
 }
 
-func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, error) {
+func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	// Make a copy of initial state
 	wcs := ctx.GetSnapshot()
 
 	limit := th.stepLimit
-	if invokeLimit := ctx.GetStepLimit(LimitTypeInvoke); limit.Cmp(invokeLimit) > 0 {
+	if invokeLimit := ctx.GetStepLimit(LimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
 		limit = invokeLimit
 	}
 

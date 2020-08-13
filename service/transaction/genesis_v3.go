@@ -162,7 +162,7 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
+func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(LimitTypeInvoke), false)
 	defer cc.Dispose()
 	cc.SetTransactionInfo(&state.TransactionInfo{

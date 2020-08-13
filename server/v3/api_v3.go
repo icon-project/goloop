@@ -803,6 +803,7 @@ func DebugMethodRepository() *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
 
 	mr.RegisterMethod("debug_getTrace", getTrace)
+	mr.RegisterMethod("debug_estimateStep", estimateStep)
 
 	return mr
 }
@@ -935,4 +936,55 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 		}
 	}
 	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
+}
+
+func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	var param TransactionParamForEstimate
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("ChannelStopped")
+	}
+
+	// get last block
+	blk, err := bm.GetLastBlock()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	// new block information based on the last
+	oldTS := blk.Timestamp()
+	newTS := common.UnixMicroFromTime(time.Now())
+	if newTS <= oldTS {
+		newTS = oldTS + 1
+	}
+	bi := common.NewBlockInfo(blk.Height()+1, newTS)
+
+	// execute transaction
+	rct, err := sm.ExecuteTransaction(
+		blk.Result(),
+		blk.NextValidators().Hash(),
+		params.RawMessage(),
+		bi,
+	)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	if status := rct.Status(); status != module.StatusSuccess {
+		return nil, jsonrpc.ErrScoreWithStatus(status)
+	}
+	steps := new(common.HexInt)
+	steps.Set(rct.StepUsed())
+	return steps, nil
 }

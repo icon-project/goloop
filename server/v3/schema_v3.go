@@ -40,6 +40,18 @@ type TransactionHashParam struct {
 	Hash jsonrpc.HexBytes `json:"txHash" validate:"required,t_hash"`
 }
 
+type TransactionParamForEstimate struct {
+	Version     jsonrpc.HexInt  `json:"version" validate:"required,t_int"`
+	FromAddress jsonrpc.Address `json:"from" validate:"required,t_addr_eoa"`
+	ToAddress   jsonrpc.Address `json:"to" validate:"required,t_addr"`
+	Value       jsonrpc.HexInt  `json:"value,omitempty" validate:"optional,t_int"`
+	Timestamp   jsonrpc.HexInt  `json:"timestamp" validate:"required,t_int"`
+	NetworkID   jsonrpc.HexInt  `json:"nid" validate:"required,t_int"`
+	Nonce       jsonrpc.HexInt  `json:"nonce,omitempty" validate:"optional,t_int"`
+	DataType    string          `json:"dataType,omitempty" validate:"optional,call|deploy|message"`
+	Data        interface{}     `json:"data,omitempty"`
+}
+
 type TransactionParam struct {
 	Version     jsonrpc.HexInt  `json:"version" validate:"required,t_int"`
 	FromAddress jsonrpc.Address `json:"from" validate:"required,t_addr_eoa"`

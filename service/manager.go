@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/service/scoreresult"
 	ssync "github.com/icon-project/goloop/service/sync"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -598,6 +599,45 @@ func (m *manager) ImportResult(result []byte, vh []byte, src db.Database) error 
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh)
 	return e.Run()
+}
+
+func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi module.BlockInfo) (module.Receipt, error) {
+	tx, err := transaction.NewTransactionFromJSON(js)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Verify(); err != nil && !transaction.InvalidSignatureError.Equals(err) {
+		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidTransaction")
+	}
+
+	txh, err := tx.GetHandler(m.cm)
+	if err != nil {
+		return nil, err
+	}
+	defer txh.Dispose()
+
+	var wc state.WorldContext
+	if wss, err := m.trc.GetWorldSnapshot(result, vh); err == nil {
+		ws, err := state.WorldStateFromSnapshot(wss)
+		if err != nil {
+			return nil, err
+		}
+		wc = state.NewWorldContext(ws, bi)
+	} else {
+		return nil, err
+	}
+	ctx := contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil)
+	ctx.SetTransactionInfo(&state.TransactionInfo{
+		Group:     module.TransactionGroupNormal,
+		Index:     0,
+		Hash:      tx.ID(),
+		From:      tx.From(),
+		Timestamp: tx.Timestamp(),
+		Nonce:     tx.Nonce(),
+	})
+	ctx.UpdateSystemInfo()
+
+	return txh.Execute(ctx, true)
 }
 
 type blockInfo struct {

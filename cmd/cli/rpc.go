@@ -348,6 +348,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 
 func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Command {
 	var rpcClient client.ClientV3
+	var rpcClientSendTx func(w module.Wallet, params *v3.TransactionParam) (interface{}, error)
 	var rpcWallet module.Wallet
 	rootCmd, vc := NewCommand(parentCmd, parentVc, "sendtx", "SendTransaction")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -356,6 +357,35 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		}
 		if err := ValidateFlags(cmd.InheritedFlags()); err != nil {
 			return err
+		}
+
+		if estimate := vc.GetBool("estimate"); estimate {
+			rpcClientSendTx = func(w module.Wallet, p *v3.TransactionParam) (interface{}, error) {
+				params := &v3.TransactionParamForEstimate{
+					Version:     p.Version,
+					FromAddress: p.FromAddress,
+					ToAddress:   p.ToAddress,
+					Value:       p.Value,
+					Timestamp:   p.Timestamp,
+					NetworkID:   p.NetworkID,
+					Nonce:       p.Nonce,
+					DataType:    p.DataType,
+					Data:        p.Data,
+				}
+				step, err := rpcClient.EstimateStep(params)
+				if err != nil {
+					return nil, err
+				}
+				return step, nil
+			}
+		} else {
+			rpcClientSendTx = func(w module.Wallet, p *v3.TransactionParam) (interface{}, error) {
+				txId, err := rpcClient.SendTransaction(w, p)
+				if err != nil {
+					return nil, err
+				}
+				return txId, nil
+			}
 		}
 		var kb, pb []byte
 		var err error
@@ -432,6 +462,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootPFlags.Bool("wait", false, "Wait transaction result")
 	rootPFlags.Int("wait_interval", 1000, "Polling interval(msec) for wait transaction result")
 	rootPFlags.Int("wait_timeout", 10, "Timeout(sec) for wait transaction result")
+	rootPFlags.Bool("estimate", false, "Just estimate steps for the tx")
 	MarkAnnotationCustom(rootPFlags, "key_store", "nid", "step_limit")
 	BindPFlags(vc, rootCmd.PersistentFlags())
 	MarkAnnotationHidden(rootPFlags, "wait", "wait_interval", "wait_timeout")
@@ -476,7 +507,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				param.NetworkID = jsonrpc.HexInt(intconv.FormatInt(nid))
 			}
 
-			txHash, err := rpcClient.SendTransaction(rpcWallet, param)
+			txHash, err := rpcClientSendTx(rpcWallet, param)
 			if err != nil {
 				return err
 			}
@@ -521,7 +552,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				param.Data = jsonrpc.HexBytes("0x" + hex.EncodeToString([]byte(msg)))
 			}
 
-			txHash, err := rpcClient.SendTransaction(rpcWallet, param)
+			txHash, err := rpcClientSendTx(rpcWallet, param)
 			if err != nil {
 				return err
 			}
@@ -582,7 +613,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				param.Data = dataM
 			}
 
-			txHash, err := rpcClient.SendTransaction(rpcWallet, param)
+			txHash, err := rpcClientSendTx(rpcWallet, param)
 			if err != nil {
 				return err
 			}
@@ -645,7 +676,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if len(dataM) > 0 {
 				param.Data = dataM
 			}
-			txHash, err := rpcClient.SendTransaction(rpcWallet, param)
+			txHash, err := rpcClientSendTx(rpcWallet, param)
 			if err != nil {
 				return err
 			}

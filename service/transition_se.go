@@ -37,7 +37,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				From:      txo.From(),
 			})
 			ctx.UpdateSystemInfo()
-			rct, err := txh.Execute(ctx)
+			rct, err := txh.Execute(ctx, false)
 			txh.Dispose()
 			if err == nil {
 				rctBuf[cnt] = rct

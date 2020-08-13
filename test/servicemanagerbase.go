@@ -137,3 +137,7 @@ func (_r *ServiceManagerBase) ExportResult(result []byte, vh []byte, dst db.Data
 func (_r *ServiceManagerBase) ImportResult(result []byte, vh []byte, src db.Database) error {
 	panic("not implemented")
 }
+
+func (_r *ServiceManagerBase) ExecuteTransaction(result []byte, vh []byte, js []byte, bi module.BlockInfo) (module.Receipt, error) {
+	panic("not implemented")
+}

@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server"
@@ -26,12 +29,42 @@ import (
 //response schema Block, ConfirmedTransaction, TransactionResult{EventLog, Failure}, ScoreApi,
 type ClientV3 struct {
 	*JsonRpcClient
+	Debug *JsonRpcClient
 	conns map[string]*websocket.Conn
 }
 
+func guessDebugEndpoint(endpoint string) string {
+	uo, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+	ps := strings.Split(uo.Path, "/")
+	for i, v := range ps {
+		if v == "api" {
+			if len(ps) > i+1 && ps[i+1] == "v3" {
+				ps[i+1] = "v3d"
+				uo.Path = strings.Join(ps, "/")
+				return uo.String()
+			}
+			break
+		}
+	}
+	return ""
+}
+
 func NewClientV3(endpoint string) *ClientV3 {
-	return &ClientV3{JsonRpcClient: NewJsonRpcClient(&http.Client{}, endpoint),
-		conns: make(map[string]*websocket.Conn)}
+	client := new(http.Client)
+	apiClient := NewJsonRpcClient(client, endpoint)
+	var debugClient *JsonRpcClient
+	if ep := guessDebugEndpoint(endpoint); len(ep) > 0 {
+		debugClient = NewJsonRpcClient(client, ep)
+	}
+
+	return &ClientV3{
+		JsonRpcClient: apiClient,
+		Debug:         debugClient,
+		conns:         make(map[string]*websocket.Conn),
+	}
 }
 
 //refer block/blockv2.go blockv2.ToJSON
@@ -377,4 +410,16 @@ func (c *ClientV3) wsReadJSONLoop(conn *websocket.Conn, respPtr interface{}, cb 
 		}
 		cb(ptr)
 	}
+}
+
+func (c *ClientV3) EstimateStep(param *v3.TransactionParamForEstimate) (*common.HexInt, error) {
+	if c.Debug == nil {
+		return nil, errors.InvalidStateError.New("UnavailableDebugEndPoint")
+	}
+	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	var result common.HexInt
+	if _, err := c.Debug.Do("debug_estimateStep", param, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

@@ -109,7 +109,7 @@ func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, erro
 	return ctx.GetFuture(lq), nil
 }
 
-func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error) {
+func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
 	var trans big.Int
 

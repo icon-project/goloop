@@ -368,6 +368,11 @@ type ServiceManager interface {
 	// ImportResult imports all related entries related with the result
 	// should be imported from the database
 	ImportResult(result []byte, vh []byte, src db.Database) error
+
+	// ExecuteTransaction executes the transaction on the specified state.
+	// Then it returns the expected result of the transaction.
+	// It ignores supplied step limit.
+	ExecuteTransaction(result []byte, vh []byte, js []byte, bi BlockInfo) (Receipt, error)
 }
 
 type TraceInfo struct {
