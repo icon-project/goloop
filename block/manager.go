@@ -415,7 +415,7 @@ func (m *manager) _propose(
 	pt.state = executingIn
 	patches := m.sm.GetPatches(
 		bn.in.mtransition(),
-		newBlockInfo(bn.block.Height()+1, votes.Timestamp()),
+		common.NewBlockInfo(bn.block.Height()+1, votes.Timestamp()),
 	)
 	var err error
 	pt.in, err = bn.preexe.patch(patches, nil, pt)
@@ -478,7 +478,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	if pt.manager.timestamper != nil {
 		timestamp = pt.manager.timestamper.GetBlockTimestamp(height, timestamp)
 	}
-	tr, err := pt.in.propose(newBlockInfo(height, timestamp), nil)
+	tr, err := pt.in.propose(common.NewBlockInfo(height, timestamp), nil)
 	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
@@ -873,7 +873,7 @@ func (m *manager) finalizeGenesisBlock(
 	}
 	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
 	m.syncer.begin()
-	gtr, err := in.transit(gtxl, newBlockInfo(0, timestamp), &channelingCB{ch: ch})
+	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), &channelingCB{ch: ch})
 	if err != nil {
 		m.syncer.end()
 		return nil, err

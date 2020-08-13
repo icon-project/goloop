@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
 	"github.com/icon-project/goloop/module"
@@ -38,11 +39,11 @@ func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 	}
 	blk, err := bdb.GetLastBlock()
 	if err != nil {
-		return nil, nil, err;
+		return nil, nil, err
 	}
 	if blk.Height() < height {
 		return nil, nil, errors.Errorf("last height in data source : %d",
-				blk.Height());
+			blk.Height())
 	}
 	m := &managerForImport{
 		ServiceManager: manager,
@@ -81,19 +82,6 @@ func unwrap(tr module.Transition) module.Transition {
 	return tr.(*transitionForImport).Transition
 }
 
-type blockInfo struct {
-	height    int64
-	timestamp int64
-}
-
-func (bi blockInfo) Height() int64 {
-	return bi.height
-}
-
-func (bi blockInfo) Timestamp() int64 {
-	return bi.timestamp
-}
-
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
 	if bi.Height() > m.lastHeight {
 		err := errors.Errorf("height:%d > lastHeight:%d\n", bi.Height(), m.lastHeight)
@@ -106,7 +94,7 @@ func (m *managerForImport) ProposeTransition(parent module.Transition, bi module
 		return nil, err
 	}
 	if bi.Height() == 1 {
-		bi = &blockInfo{1, blk.Timestamp()}
+		bi = common.NewBlockInfo(1, blk.Timestamp())
 	}
 	txl := blk.NormalTransactions()
 	var txs []module.Transaction

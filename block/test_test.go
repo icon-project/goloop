@@ -574,7 +574,7 @@ func (sm *testServiceManager) CreateInitialTransition(result []byte, nextValidat
 	tr.normalTransactions = newTestTransactionList(nil)
 	tr.normalTransactions._effect.WorldState = result
 	tr.normalTransactions._effect.NextValidators = nvl
-	tr._bi = newBlockInfo(-1, 0)
+	tr._bi = common.NewBlockInfo(-1, 0)
 	tr.step = transitionStepSucceed
 	return tr, nil
 }

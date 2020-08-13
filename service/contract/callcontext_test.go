@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -117,7 +118,7 @@ func newCallContext() CallContext {
 		NewContext(
 			state.NewWorldContext(
 				state.NewWorldState(dbo, nil, nil),
-				&blockInfo{},
+				common.NewBlockInfo(0, 0),
 			),
 			nil,
 			nil,
@@ -268,15 +269,4 @@ func (h *syncHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, modul
 		}
 	}
 	return nil, nil, nil
-}
-
-type blockInfo struct {
-}
-
-func (bi *blockInfo) Height() int64 {
-	return 0
-}
-
-func (bi *blockInfo) Timestamp() int64 {
-	return 0
 }

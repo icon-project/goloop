@@ -639,16 +639,3 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 
 	return txh.Execute(ctx, true)
 }
-
-type blockInfo struct {
-	height    int64
-	timestamp int64
-}
-
-func (bi *blockInfo) Height() int64 {
-	return bi.height
-}
-
-func (bi *blockInfo) Timestamp() int64 {
-	return bi.timestamp
-}
