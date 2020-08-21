@@ -975,8 +975,12 @@ func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
 		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
-		if ok := s.cc.GetValidatorState().Remove(v); !ok {
+		vl := s.cc.GetValidatorState()
+		if ok := vl.Remove(v); !ok {
 			return scoreresult.New(StatusNotFound, "NotFound")
+		}
+		if vl.Len() == 0 {
+			return scoreresult.New(StatusIllegalArgument, "OnlyValidator")
 		}
 		return nil
 	} else {
