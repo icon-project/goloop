@@ -8,8 +8,8 @@ type VarDB struct {
 	WritableValue
 }
 
-func NewVarDB(store StateStore, key interface{}) *VarDB {
+func NewVarDB(store StateStore, key ...interface{}) *VarDB {
 	value := NewValueFromStore(store,
-		crypto.SHA3Sum256(ToKey(VarDBPrefix, key)))
+		crypto.SHA3Sum256(ToKey(VarDBPrefix, key...)))
 	return &VarDB{value}
 }
