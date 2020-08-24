@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"time"
 
@@ -21,7 +22,7 @@ type JsonRpcClient struct {
 	hc           *http.Client
 	Endpoint     string
 	CustomHeader map[string]string
-	Pre func(req *http.Request) error
+	Pre          func(req *http.Request) error
 }
 
 type Response struct {
@@ -110,7 +111,10 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 	resp, err := c._do(req)
 	if err != nil {
 		if resp != nil {
-			if ct := resp.Header.Get(headerContentType); ct == typeApplicationJSON {
+			if ct, _, mErr := mime.ParseMediaType(resp.Header.Get(headerContentType)); mErr != nil {
+				err = mErr
+				return
+			} else if ct == typeApplicationJSON {
 				if jrResp, dErr = decodeResponseBody(resp); dErr != nil {
 					err = dErr
 					return
