@@ -413,26 +413,67 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	}
 	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, args []string) error {
 		txHash, ok := vc.Get("txHash").(*jsonrpc.HexBytes)
-		waitInterval := time.Duration(vc.GetInt("wait_interval")) * time.Millisecond
+
 		if vc.GetBool("wait") && ok && txHash != nil {
 			param := &v3.TransactionHashParam{Hash: *txHash}
+
+			//try waitTransactionResult
+			opts := jsonrpc.IconOptions{}
+			if vc.GetBool("debug") {
+				opts.SetBool(jsonrpc.IconOptionsDebug, true)
+			}
+			opts.SetInt(jsonrpc.IconOptionsTimeout, vc.GetInt64("wait_timeout")*1000)
+			rpcClient.CustomHeader[jsonrpc.HeaderKeyIconOptions] = opts.ToHeaderValue()
+
+			//
+			waitInterval := time.Duration(vc.GetInt("wait_interval")) * time.Millisecond
 			waitTimeout := time.Duration(vc.GetInt("wait_timeout")) * time.Second
 			expireTime := time.Now().Add(waitTimeout)
 			toCh := time.After(waitTimeout)
 			done := make(chan interface{})
+			resultFunc := rpcClient.WaitTransactionResult
 			go func() {
 				for {
-					if txResult, err := rpcClient.GetTransactionResult(param); err != nil {
-						if time.Now().After(expireTime) {
-							done <- fmt.Errorf("timeout %v", waitTimeout)
-							return
+					if txResult, err := resultFunc(param); err != nil {
+						je, ok := err.(*jsonrpc.Error)
+						if !ok {
+							if he, ok := err.(*client.HttpError); ok {
+								if he.Response() != "" {
+									jre := &jsonrpc.ErrorResponse{}
+									if uErr := json.Unmarshal([]byte(he.Response()), jre); uErr != nil {
+										done <- fmt.Errorf("fail to unmarshall jsonrpc.ErrorResponse err:%+v httpError:%+v", uErr, he)
+										return
+									}
+									je = jre.Error
+								}
+							}
 						}
-						if _, ok := err.(*jsonrpc.Error); ok {
-							time.Sleep(waitInterval)
-							continue
+						if je != nil {
+							switch je.Code {
+							case jsonrpc.ErrorCodeSystemTimeout:
+								wt := expireTime.Sub(time.Now()).Microseconds()
+								if wt < 1 {
+									done <- fmt.Errorf("timeout %v", waitTimeout)
+									return
+								}
+								opts.SetInt(jsonrpc.IconOptionsTimeout, wt)
+								rpcClient.CustomHeader[jsonrpc.HeaderKeyIconOptions] = opts.ToHeaderValue()
+								continue
+							case jsonrpc.ErrorCodeTimeout:
+								done <- je
+								return
+							case jsonrpc.ErrorCodeMethodNotFound:
+								resultFunc = rpcClient.GetTransactionResult
+								continue
+							case jsonrpc.ErrorCodePending, jsonrpc.ErrorCodeExecuting:
+								if time.Now().After(expireTime) {
+									done <- fmt.Errorf("timeout %v", waitTimeout)
+									return
+								}
+								time.Sleep(waitInterval)
+								continue
+							}
 						}
-						done <- err
-						return
 					} else {
 						done <- txResult
 						return

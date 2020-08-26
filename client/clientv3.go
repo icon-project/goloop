@@ -208,6 +208,14 @@ func (c *ClientV3) GetTransactionResult(param *v3.TransactionHashParam) (*Transa
 	return tr, nil
 }
 
+func (c *ClientV3) WaitTransactionResult(param *v3.TransactionHashParam) (*TransactionResult, error) {
+	tr := &TransactionResult{}
+	if _, err := c.Do("icx_waitTransactionResult", param, tr); err != nil {
+		return nil, err
+	}
+	return tr, nil
+}
+
 func (c *ClientV3) GetTransactionByHash(param *v3.TransactionHashParam) (*Transaction, error) {
 	t := &Transaction{}
 	_, err := c.Do("icx_getTransactionByHash", param, t)
