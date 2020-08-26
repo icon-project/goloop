@@ -273,16 +273,16 @@ func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
 func (s *accountSnapshotImpl) StorageChangedAfter(ass AccountSnapshot) bool {
 	if s2, ok := ass.(*accountSnapshotImpl); ok {
 		if s.store == nil && s2.store == nil {
-			return true
-		}
-		if s.store == nil || s2.store == nil {
 			return false
 		}
-		if s2.store.Equal(s.store, false) {
+		if s.store == nil || s2.store == nil {
 			return true
 		}
+		if s2.store.Equal(s.store, false) {
+			return false
+		}
 	}
-	return false
+	return true
 }
 
 func (s *accountSnapshotImpl) IsContractOwner(owner module.Address) bool {
