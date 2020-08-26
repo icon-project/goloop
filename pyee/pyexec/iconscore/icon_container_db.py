@@ -173,10 +173,14 @@ class ContainerUtil(object):
 class DictDB(object):
     """
     Utility classes wrapping the state DB.
-    DictDB behaves more like python dict. DictDB does not maintain order
+    DictDB behaves more like python dict.
+    DictDB does not maintain order.
+
+    :K: [int, str, Address, bytes]
+    :V: [int, str, Address, bytes, bool]
     """
 
-    def __init__(self, var_key: str, db: 'IconScoreDatabase', value_type: type, depth: int=1) -> None:
+    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type, depth: int = 1) -> None:
         if db.prefix is None:
             prefix = ContainerUtil.create_db_prefix(type(self), var_key)
         else:
@@ -209,7 +213,7 @@ class DictDB(object):
         else:
             return DictDB(key, self._db, self.__value_type, self.__depth - 1)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: K):
         self.__remove(key)
 
     def __contains__(self, key: K):
@@ -227,11 +231,14 @@ class DictDB(object):
 class ArrayDB(object):
     """
     Utility classes wrapping the state DB.
-    supports length and iterator, maintains order
+    ArrayDB supports length and iterator, maintains order.
+
+    :K: [int, str, Address, bytes]
+    :V: [int, str, Address, bytes, bool]
     """
     __SIZE_BYTE_KEY = b''
 
-    def __init__(self, var_key: str, db: 'IconScoreDatabase', value_type: type) -> None:
+    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
         prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
         self._db = db.get_sub_db(prefix)
         self.__value_type = value_type
@@ -262,7 +269,7 @@ class ArrayDB(object):
         self.__set_size(index)
         return last_val
 
-    def get(self, index: int=0) -> V:
+    def get(self, index: int = 0) -> V:
         """
         Gets the value at index
 
@@ -328,10 +335,14 @@ class ArrayDB(object):
 
 class VarDB(object):
     """
-    Utility classes wrapping the state DB. can be used to store simple key-value state
+    Utility classes wrapping the state DB.
+    VarDB can be used to store simple key-value state.
+
+    :K: [int, str, Address, bytes]
+    :V: [int, str, Address, bytes, bool]
     """
 
-    def __init__(self, var_key: str, db: 'IconScoreDatabase', value_type: type) -> None:
+    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
         # Use var_key as a db prefix in the case of VarDB
         self._db = db.get_sub_db(VAR_DB_ID)
         self.__var_byte_key = get_encoded_key(var_key)
