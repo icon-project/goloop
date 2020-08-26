@@ -118,13 +118,8 @@ func (n *nodeBase) flushBaseInLock(m *mpt, nibs []byte) error {
 	return nil
 }
 
-func bytesToNibs(b []byte) []byte {
-	nibbles := make([]byte, len(b)*2)
-	for i, v := range b {
-		nibbles[i*2] = (v >> 4) & 0x0F
-		nibbles[i*2+1] = v & 0x0F
-	}
-	return nibbles
+func clone(b []byte) []byte {
+	return append([]byte(nil), b...)
 }
 
 func keysToBytes(s string) []byte {

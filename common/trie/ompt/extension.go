@@ -110,7 +110,7 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 		if len(keys) == 0 {
 			nb.value = o
 		} else {
-			nb.children[keys[0]] = &leaf{keys: keys[1:], value: o}
+			nb.children[keys[0]] = &leaf{keys: clone(keys[1:]), value: o}
 		}
 		if len(n.keys) == 1 {
 			nb.children[n.keys[0]] = n.next
@@ -130,7 +130,7 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 		if cnt == len(keys) {
 			br.value = o
 		} else {
-			br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+			br.children[keys[cnt]] = &leaf{keys: clone(keys[cnt+1:]), value: o}
 		}
 		return n.getChanged(n.keys[:cnt], br), true, nil, nil
 	default:

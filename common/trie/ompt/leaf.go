@@ -112,7 +112,7 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 			br.value = o
 		} else {
 			br.children[keys[0]] = &leaf{
-				keys:  keys[1:],
+				keys:  clone(keys[1:]),
 				value: o,
 			}
 		}
@@ -125,11 +125,11 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 		return br, true, nil, nil
 	case cnt < len(n.keys):
 		br := &branch{}
-		ext := &extension{keys: keys[:cnt], next: br}
+		ext := &extension{keys: clone(keys[:cnt]), next: br}
 		if cnt == len(keys) {
 			br.value = o
 		} else {
-			br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+			br.children[keys[cnt]] = &leaf{keys: clone(keys[cnt+1:]), value: o}
 		}
 		idx := n.keys[cnt]
 		br.children[idx] = n.getChanged(n.keys[cnt+1:], n.value)
@@ -138,7 +138,7 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 		br := &branch{}
 		ext := &extension{keys: n.keys, next: br}
 		br.value = n.value
-		br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+		br.children[keys[cnt]] = &leaf{keys: clone(keys[cnt+1:]), value: o}
 		return ext, true, nil, nil
 	default:
 		old := n.value

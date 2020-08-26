@@ -39,12 +39,27 @@ type (
 	}
 	mpt struct {
 		mptBase
+		nibs  []byte
 		cache *cache.NodeCache
 		root  node
 		mutex sync.Mutex
 		s     *mptStatics
 	}
 )
+
+func (m *mpt) bytesToNibs(k []byte) []byte {
+	ks := len(k)
+	if cap(m.nibs) < ks*2 {
+		m.nibs = make([]byte, ks*2)
+	}
+	nibs := m.nibs[0 : ks*2]
+
+	for i, v := range k {
+		nibs[i*2] = (v >> 4) & 0x0F
+		nibs[i*2+1] = v & 0x0F
+	}
+	return nibs
+}
 
 func (m *mpt) get(n node, nibs []byte, depth int) (node, trie.Object, error) {
 	if n == nil {
@@ -56,7 +71,7 @@ func (m *mpt) get(n node, nibs []byte, depth int) (node, trie.Object, error) {
 func (m *mpt) set(n node, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	if n == nil {
 		return &leaf{
-			keys:  nibs[depth:],
+			keys:  clone(nibs[depth:]),
 			value: o,
 		}, true, nil, nil
 	}
@@ -121,7 +136,7 @@ func (m *mpt) Get(k []byte) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.get, 1)
 	}
-	root, obj, err := m.get(m.root, bytesToNibs(k), 0)
+	root, obj, err := m.get(m.root, m.bytesToNibs(k), 0)
 	m.root = root
 	return obj, err
 }
@@ -203,7 +218,7 @@ func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, _, old, err := m.set(m.root, bytesToNibs(k), 0, o)
+	root, _, old, err := m.set(m.root, m.bytesToNibs(k), 0, o)
 	m.root = root
 	if debugDump && root != nil {
 		root.dump()
@@ -230,7 +245,7 @@ func (m *mpt) doDelete(k []byte) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, dirty, old, err := m.delete(m.root, bytesToNibs(k), 0)
+	root, dirty, old, err := m.delete(m.root, m.bytesToNibs(k), 0)
 	if dirty {
 		m.root = root
 		if debugDump && root != nil {
@@ -367,10 +382,9 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	// make sure that it's hashed.
 	m.root.getLink(true)
 
-	nibbles := bytesToNibs(k)
 	proofs := [][]byte(nil)
 
-	root, proofs, err := m.root.getProof(m, nibbles, proofs)
+	root, proofs, err := m.root.getProof(m, m.bytesToNibs(k), proofs)
 	if root != m.root {
 		m.root = root
 	}
@@ -390,8 +404,7 @@ func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
 	if m.root == nil {
 		return nil, common.ErrIllegalArgument
 	}
-	nibbles := bytesToNibs(k)
-	root, obj, err := m.root.prove(m, nibbles, proofs)
+	root, obj, err := m.root.prove(m, m.bytesToNibs(k), proofs)
 	if root != m.root {
 		m.root = root
 	}
