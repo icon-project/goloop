@@ -108,40 +108,38 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			param.MaxWaitTimeout, _ = fs.GetInt64("max_wait_timeout")
 			param.AutoStart, _ = fs.GetBool("auto_start")
 
-			var err error
-			var v string
-			reqUrl := node.UrlChain
+			var buf *bytes.Buffer
 			if len(genesisZip) > 0 {
-				file, err2 := os.Open(genesisZip)
-				if err2 != nil {
-					return errors.Errorf("fail to open %s err=%+v", genesisZip, err2)
+				var b []byte
+				var err error
+				if genesisZip == "-" {
+					if b, err = ioutil.ReadAll(os.Stdin); err != nil {
+						return errors.Errorf("fail to read stdin err=%+v", err)
+					}
+				} else {
+					if b, err = ioutil.ReadFile(genesisZip); err != nil {
+						return errors.Errorf("fail to read %s err=%+v", genesisZip, err)
+					}
 				}
-				gs, err2 := gs.NewFromFile(file)
-				if err2 != nil {
-					return errors.Errorf("fail to parse %s err=%+v", genesisZip, err2)
-				}
-				if _, err2 := gs.NID(); err2 != nil {
-					return errors.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
-				}
-				_, err = adminClient.PostWithFile(reqUrl, param, "genesisZip", genesisZip, &v)
+				buf = bytes.NewBuffer(b)
 			} else if len(genesisPath) > 0 {
-				buf := bytes.NewBuffer(nil)
-				err2 := gs.WriteFromPath(buf, genesisPath)
-				if err2 != nil {
-					return errors.Errorf("failed WriteGenesisStorage err=%+v", err2)
+				buf = bytes.NewBuffer(nil)
+				if err := gs.WriteFromPath(buf, genesisPath); err != nil {
+					return errors.Errorf("failed WriteGenesisStorage err=%+v", err)
 				}
-				gs, err2 := gs.New(buf.Bytes())
-				if err2 != nil {
-					return errors.Errorf("fail to parse genesis storage err=%+v", err2)
-				}
-				if _, err2 := gs.NID(); err2 != nil {
-					return errors.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
-				}
-				_, err = adminClient.PostWithReader(reqUrl, param, "genesisZip", buf, &v)
 			} else {
 				return errors.Errorf("required flag --genesis or --genesis_template")
 			}
-			if err != nil {
+
+			if genesisStorage, err := gs.New(buf.Bytes()); err != nil {
+				return errors.Errorf("fail to parse genesis storage err=%+v", err)
+			} else if _, err = genesisStorage.NID(); err != nil {
+				return errors.Errorf("fail to get NID for %s err=%+v", genesisZip, err)
+			}
+
+			var v string
+			reqUrl := node.UrlChain
+			if _, err := adminClient.PostWithReader(reqUrl, param, "genesisZip", buf, &v); err != nil {
 				return err
 			}
 			fmt.Println(v)
