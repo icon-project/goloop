@@ -248,7 +248,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		p2p.onEvent(p2pEventDuplicate, p)
 
 		//'b' is higher (ex : 'b' > 'a'), disconnect lower.outgoing
-		higher := strings.Compare(p2p.self.id.String(), p.id.String()) > 0
+		higher := strings.Compare(p2p.getID().String(), p.id.String()) > 0
 		diff := p.timestamp.Sub(dp.timestamp)
 
 		if diff < DefaultDuplicatedPeerTime && dp.incomming != p.incomming && higher == p.incomming {
@@ -329,11 +329,11 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 	isLeave = false
-	if p.hasRole(p2pRoleSeed, false) {
+	if p.hasRole(p2pRoleSeed) {
 		p2p.removeSeed(p)
 		p2p.seeds.Add(p.netAddress)
 	}
-	if p.hasRole(p2pRoleRoot, false) {
+	if p.hasRole(p2pRoleRoot) {
 		p2p.removeRoot(p)
 		p2p.roots.Add(p.netAddress)
 	}
@@ -390,7 +390,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			return
 		}
 
-		if p2p.self.id.Equal(pkt.src) {
+		if p2p.getID().Equal(pkt.src) {
 			p2p.logger.Infoln("onPacket", "Drop, Invalid self-src", pkt.src, pkt.protocol, pkt.subProtocol)
 			return
 		}
@@ -403,7 +403,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		}
 
 		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl == 0
-		if isBroadcast && isSourcePeer && !p.hasRole(p2pRoleRoot, false) {
+		if isBroadcast && isSourcePeer && !p.hasRole(p2pRoleRoot) {
 			p2p.logger.Infoln("onPacket", "Drop, Not authorized", p.id, pkt.protocol, pkt.subProtocol)
 			return
 		}
@@ -477,8 +477,7 @@ func (p2p *PeerToPeer) removeRoot(p *Peer) {
 	p2p.roots.RemoveByPeer(p)
 }
 func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
-	r := p.getRole()
-	switch r {
+	switch p.getRole() {
 	case p2pRoleNone:
 		p2p.removeRoot(p)
 		p2p.removeSeed(p)
@@ -495,12 +494,12 @@ func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
 }
 
 func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
-	rr := p2p.resolveRole(r, p2p.self.id, false)
+	rr := p2p.resolveRole(r, p2p.getID(), false)
 	if rr != r {
 		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, r)
 		p2p.logger.Debugln("setRole", msg)
 	}
-	if !p2p.self.hasRole(rr, true) {
+	if !p2p.self.equalRole(rr) {
 		p2p.self.setRole(rr)
 		p2p.applyPeerRole(p2p.self)
 	}
@@ -511,35 +510,43 @@ func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
 	switch r {
 	case p2pRoleNone:
 		for _, p := range peers {
-			if !s.Contains(p.ID()) {
+			if !s.Contains(p.id) {
 				p2p.onEvent(p2pEventNotAllowed, p)
 				p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
 			}
 		}
 	default:
 		for _, p := range peers {
-			if p.hasRole(r, false) && !s.Contains(p.ID()) {
+			if p.hasRole(r) && !s.Contains(p.id) {
 				p.removeRole(r)
 				p2p.applyPeerRole(p)
 			}
 		}
-
-		if s.Contains(p2p.self.id) {
-			if !p2p.self.hasRole(r, false) {
+		if has, contains := p2p.hasRole(r), s.Contains(p2p.getID()); has != contains {
+			if contains {
 				p2p.self.addRole(r)
-				p2p.applyPeerRole(p2p.self)
-			}
-		} else {
-			if p2p.self.hasRole(r, false) {
+			} else {
 				p2p.self.removeRole(r)
-				p2p.applyPeerRole(p2p.self)
 			}
+			p2p.applyPeerRole(p2p.self)
 		}
 	}
 }
 
 func (p2p *PeerToPeer) getRole() PeerRoleFlag {
 	return p2p.self.getRole()
+}
+
+func (p2p *PeerToPeer) hasRole(r PeerRoleFlag) bool {
+	return p2p.self.hasRole(r)
+}
+
+func (p2p *PeerToPeer) getID() module.PeerID {
+	return p2p.self.id
+}
+
+func (p2p *PeerToPeer) getNetAddress() NetAddress {
+	return p2p.self.netAddress
 }
 
 func (p2p *PeerToPeer) setParent(p *Peer) {
@@ -558,7 +565,7 @@ func (p2p *PeerToPeer) getParent() *Peer {
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.getRole()}
-	pkt := newPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m), p2p.self.id)
+	pkt := newPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m), p2p.getID())
 	pkt.destPeer = p.id
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -591,7 +598,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		p2p.logger.Infoln("handleQuery", m.Message, p)
 	}
 
-	if !p.hasRole(rr, true) {
+	if !p.equalRole(rr) {
 		p.setRole(rr)
 		p2p.applyPeerRole(p)
 	}
@@ -611,7 +618,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		p2p.logger.Infoln("handleQuery", m.Message, p)
 	}
 
-	rpkt := newPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt := newPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m), p2p.getID())
 	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -639,7 +646,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qrm.Role)
 		p2p.logger.Infoln("handleQueryResult", msg, p)
 	}
-	if !p.hasRole(rr, true) {
+	if !p.equalRole(rr) {
 		p.setRole(rr)
 		p2p.applyPeerRole(p)
 	}
@@ -648,16 +655,14 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		return
 	}
 
+	p2p.seeds.Merge(qrm.Seeds...)
 	r := p2p.getRole()
 	if r.Has(p2pRoleSeed) || r.Has(p2pRoleRoot) {
-		p2p.seeds.Merge(qrm.Seeds...)
 		p2p.roots.Merge(qrm.Roots...)
-	} else {
-		p2p.seeds.Merge(qrm.Seeds...)
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(PROTO_P2P_RTT_REQ, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt := newPacket(PROTO_P2P_RTT_REQ, p2p.encodeMsgpack(m), p2p.getID())
 	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -684,7 +689,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(PROTO_P2P_RTT_RESP, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt := newPacket(PROTO_P2P_RTT_RESP, p2p.encodeMsgpack(m), p2p.getID())
 	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -996,19 +1001,19 @@ func (p2p *PeerToPeer) Send(pkt *Packet) error {
 	}
 
 	if pkt.src == nil {
-		pkt.src = p2p.self.id
+		pkt.src = p2p.getID()
 	}
 
 	if pkt.dest == p2pDestAny && pkt.ttl == 0 &&
-		p2p.self.id.Equal(pkt.src) &&
-		!p2p.self.hasRole(p2pRoleRoot, false) {
+		p2p.getID().Equal(pkt.src) &&
+		!p2p.hasRole(p2pRoleRoot) {
 		//BROADCAST_ALL && not relay && not has p2pRoleRoot
 		return ErrNotAuthorized
 	}
 
 	if !p2p.available(pkt) {
 		if pkt.dest == p2pDestAny && pkt.ttl == 0 &&
-			p2p.self.hasRole(p2pRoleNone, true) {
+			p2p.self.equalRole(p2pRoleNone) {
 			return nil
 		}
 		//p2p.logger.Infoln("Send", "Not Available", pkt.dest, pkt.protocol, pkt.subProtocol)
@@ -1105,7 +1110,7 @@ func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 
 func (p2p *PeerToPeer) hasNetAddresse(na NetAddress) bool {
 	parent := p2p.getParent()
-	return p2p.self.netAddress == na ||
+	return p2p.getNetAddress() == na ||
 		(parent != nil && parent.netAddress == na) ||
 		p2p.uncles.HasNetAddresse(na) ||
 		p2p.children.HasNetAddresse(na) ||
@@ -1116,7 +1121,7 @@ func (p2p *PeerToPeer) hasNetAddresse(na NetAddress) bool {
 
 func (p2p *PeerToPeer) hasNetAddresseAndIncomming(na NetAddress, incomming bool) bool {
 	parent := p2p.getParent()
-	return p2p.self.netAddress == na ||
+	return p2p.getNetAddress() == na ||
 		(parent != nil && parent.netAddress == na) ||
 		p2p.uncles.HasNetAddresseAndIncomming(na, incomming) ||
 		p2p.children.HasNetAddresseAndIncomming(na, incomming) ||
@@ -1227,7 +1232,7 @@ Loop:
 				}
 			} else {
 				for _, p := range seeds {
-					if !p.hasRole(p2pRoleRoot, false) {
+					if !p.hasRole(p2pRoleRoot) {
 						p2p.logger.Debugln("discoverRoutine", "seedTicker", "no need outgoing p2pRoleSeed connection")
 						p.Close("discoverRoutine no need outgoing p2pRoleSeed connection")
 					}
@@ -1336,7 +1341,7 @@ func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
 func (p2p *PeerToPeer) discoverFriends() {
 	ps := p2p.friends.GetByRole(p2pRoleRoot, false)
 	for _, p := range ps {
-		if p.hasRole(p2pRoleSeed, false) {
+		if p.hasRole(p2pRoleSeed) {
 			p2p.logger.Traceln("discoverFriends", "not allowed friend connection", p.id)
 			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
 		} else {
@@ -1351,7 +1356,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 		p2p.updatePeerConnectionType(p, p2pConnTypeFriend)
 	}
 	for _, na := range p2p.roots.Array() {
-		if p2p.self.netAddress != na &&
+		if p2p.getNetAddress() != na &&
 			!p2p.orphanages.HasNetAddresse(na) &&
 			!p2p.friends.HasNetAddresse(na) {
 			p2p.logger.Traceln("discoverFriends", "dial to p2pRoleRoot", na)
@@ -1394,7 +1399,7 @@ func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
-			p2p.logger.Traceln("discoverParent", "try p2pConnTypeParent", p.ID(), p.connType)
+			p2p.logger.Traceln("discoverParent", "try p2pConnTypeParent", p.id, p.connType)
 			return
 		}
 	}
@@ -1433,7 +1438,7 @@ func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
-			p2p.logger.Traceln("discoverUncle", "try p2pConnTypeUncle", p.ID(), p.connType)
+			p2p.logger.Traceln("discoverUncle", "try p2pConnTypeUncle", p.id, p.connType)
 			n--
 		}
 	}
@@ -1529,7 +1534,7 @@ type P2PConnectionResponse struct {
 
 func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m), p2p.self.id)
+	pkt := newPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m), p2p.getID())
 	pkt.destPeer = p.id
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -1572,7 +1577,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	m.ReqConnType = req.ConnType
 	m.ConnType = p.connType
 
-	rpkt := newPacket(PROTO_P2P_CONN_RESP, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt := newPacket(PROTO_P2P_CONN_RESP, p2p.encodeMsgpack(m), p2p.getID())
 	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {

@@ -252,7 +252,7 @@ func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); has == p.hasRole(r, false) {
+		if p := k.(*Peer); has == p.hasRole(r) {
 			l = append(l, p)
 		}
 	}
@@ -265,7 +265,7 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.incomming == in && has == p.hasRole(role, false) {
+		if p := k.(*Peer); p.incomming == in && has == p.hasRole(role) {
 			l = append(l, p)
 		}
 	}

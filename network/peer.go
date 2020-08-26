@@ -294,13 +294,15 @@ func (p *Peer) getRole() PeerRoleFlag {
 	p.roleMtx.RLock()
 	return p.role
 }
-func (p *Peer) hasRole(r PeerRoleFlag, equal bool) bool {
+func (p *Peer) hasRole(r PeerRoleFlag) bool {
 	defer p.roleMtx.RUnlock()
 	p.roleMtx.RLock()
-	if equal {
-		return p.role == r
-	}
 	return p.role.Has(r)
+}
+func (p *Peer) equalRole(r PeerRoleFlag) bool {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.role == r
 }
 func (p *Peer) addRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()
