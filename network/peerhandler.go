@@ -285,14 +285,14 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 	rm := &SecureRequest{}
 	a.decode(pkt.payload, rm)
 	a.logger.Traceln("handleSecureRequest", rm, p)
-
+	p.channel = rm.Channel
 	m := &SecureResponse{
 		Channel:         p.channel,
 		SecureSuite:     SecureSuiteUnknown,
 		SecureAeadSuite: SecureAeadSuiteUnknown,
 	}
 
-	sms := a.secureSuites[rm.Channel]
+	sms := a.secureSuites[p.channel]
 	if len(sms) == 0 {
 		sms = DefaultSecureSuites
 	}
@@ -310,7 +310,7 @@ SecureSuiteLoop:
 		m.SecureError = SecureErrorInvalid
 	}
 
-	sas := a.secureAeads[rm.Channel]
+	sas := a.secureAeads[p.channel]
 	if len(sas) == 0 {
 		sas = DefaultSecureAeadSuites
 	}
@@ -349,7 +349,6 @@ SecureAeadLoop:
 		return
 	}
 
-	p.channel = rm.Channel
 	err := p.secureKey.setup(m.SecureAeadSuite, rm.SecureParam, p.incomming, a.secureKeyNum)
 	if err != nil {
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
@@ -410,7 +409,7 @@ SecureSuiteLoop:
 	}
 
 	var rsa SecureAeadSuite = SecureAeadSuiteUnknown
-	sas := a.secureAeads[rm.Channel]
+	sas := a.secureAeads[p.channel]
 	if len(sas) == 0 {
 		sas = DefaultSecureAeadSuites
 	}
@@ -500,8 +499,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	id, err := a.VerifySignature(rm.PublicKey, rm.Signature, p.secureKey.extra)
 	if err != nil {
 		m = &SignatureResponse{Error: err.Error()}
-	}
-	if id.Equal(a.self) {
+	} else if id.Equal(a.self) {
 		m = &SignatureResponse{Error: "selfAddress"}
 	}
 	p.id = id

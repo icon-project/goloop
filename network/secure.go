@@ -21,8 +21,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-//refer crypto/tls/conn.go
-//refer github.com/tendermint/tendermint/p2p/conn/secret_connection.go
 type SecureConn struct {
 	//*tls.Conn
 	net.Conn
@@ -61,8 +59,6 @@ func NewSecureConn(conn net.Conn, sa SecureAeadSuite, k *secureKey) (*SecureConn
 	} else {
 		return nil, fmt.Errorf("secureKey has not secret")
 	}
-
-	//log.Println("NewSecureConn",conn.LocalAddr(),numOfSecret,"inSecret",hex.EncodeToString(inSecret), "outSecret",hex.EncodeToString(outSecret))
 
 	in, err := newSecureAead(conn, sa, inSecret)
 	if err != nil {
