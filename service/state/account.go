@@ -423,7 +423,8 @@ func (s *accountSnapshotImpl) ClearCache() {
 }
 
 type accountStateImpl struct {
-	cacheID []byte
+	key      []byte
+	useCache bool
 
 	version    int
 	database   db.Database
@@ -724,11 +725,10 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	}
 }
 
-// ensureCache set cache of the store if cacheID is specified.
-// If it didn't enable cache of the accounts, cacheID would be nil.
+// attachCacheForStore enable cache of the store if useCache is true
 func (s *accountStateImpl) attachCacheForStore() {
-	if s.cacheID != nil && s.store != nil {
-		if cache := cache.AccountNodeCacheOf(s.database, s.cacheID); cache != nil {
+	if s.useCache && s.store != nil {
+		if cache := cache.AccountNodeCacheOf(s.database, s.key); cache != nil {
 			ompt.SetCacheOfMutable(s.store, cache)
 		}
 	}
@@ -826,9 +826,10 @@ func (s *accountStateImpl) ClearCache() {
 	}
 }
 
-func newAccountState(database db.Database, snapshot *accountSnapshotImpl, cacheID []byte) AccountState {
+func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []byte, useCache bool) AccountState {
 	s := &accountStateImpl{
-		cacheID:  cacheID,
+		key:      key,
+		useCache: useCache,
 		database: database,
 	}
 	if snapshot != nil {

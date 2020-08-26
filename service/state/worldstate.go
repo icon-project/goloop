@@ -151,11 +151,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	if obj != nil {
 		as = obj.(*accountSnapshotImpl)
 	}
-	var cacheID []byte
-	if ws.nodeCacheEnabled {
-		cacheID = id
-	}
-	ac := newAccountState(ws.database, as, cacheID)
+	ac := newAccountState(ws.database, as, key, ws.nodeCacheEnabled)
 	ws.mutableAccounts[ids] = ac
 	return ac
 }
@@ -164,8 +160,8 @@ func (ws *worldStateImpl) ClearCache() {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
-	for id, as := range ws.mutableAccounts {
-		key := addressIDToKey([]byte(id))
+	for _, as := range ws.mutableAccounts {
+		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
@@ -223,8 +219,8 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
-	for id, as := range ws.mutableAccounts {
-		key := addressIDToKey([]byte(id))
+	for _, as := range ws.mutableAccounts {
+		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
