@@ -431,7 +431,7 @@ func (wvs *worldVirtualState) NodeCacheEnabled() bool {
 }
 
 func (wvs *worldVirtualState) Database() db.Database {
-	return wvs.base.Database()
+	return wvs.real.Database()
 }
 
 func (wvs *worldVirtualState) Ensure() {
