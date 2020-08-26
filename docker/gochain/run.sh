@@ -46,10 +46,13 @@ GOCHAIN_CONFIG=${GOCHAIN_CONFIG:-"./config.json"}
 GOCHAIN_KEYSTORE=${GOCHAIN_KEYSTORE:-"./keystore.json"}
 
 if [ ${GOCHAIN_CLEAN_DATA} == "true" ] ; then
-    rm -rf ${GOCHAIN_DATA} || exit -1
+    rm -rf ${GOCHAIN_DATA} || exit 1
+    if [ "${GOCHAIN_LOGFILE}" != "" ] ; then
+        rm -rf "${GOCHAIN_LOGFILE}" || exit 1
+    fi
 fi
 if [ ! -d ${GOCHAIN_DATA} ] ; then
-    mkdir -p ${GOCHAIN_DATA} || exit -1
+    mkdir -p ${GOCHAIN_DATA} || exit 1
 fi
 
 GOCHAIN_OPTIONS="--chain_dir ${GOCHAIN_DATA}"
