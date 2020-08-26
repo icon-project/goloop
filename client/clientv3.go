@@ -351,6 +351,15 @@ func (c *ClientV3) Cleanup() {
 	}
 }
 
+type wsConnectError struct {
+	error
+	httpErr error
+}
+
+func (we *wsConnectError) Error() string {
+	return fmt.Sprintf("%+v http:%v", we.error, we.httpErr)
+}
+
 func (c *ClientV3) wsConnect(reqUrl string, reqHeader http.Header, reqPtr interface{}) (*websocket.Conn, *server.WSResponse, error) {
 	if reqPtr == nil {
 		return nil, nil, fmt.Errorf("reqPtr cannot be nil")
@@ -359,15 +368,7 @@ func (c *ClientV3) wsConnect(reqUrl string, reqHeader http.Header, reqPtr interf
 	wsEndpoint := strings.Replace(c.Endpoint, "http", "ws", 1)
 	conn, httpResp, err := websocket.DefaultDialer.Dial(wsEndpoint+reqUrl, reqHeader)
 	if err != nil {
-		fmt.Printf("Dial fail %+v", err)
-		if httpResp != nil {
-			defer httpResp.Body.Close()
-			if dErr := json.NewDecoder(httpResp.Body).Decode(wsResp); dErr != nil {
-				return nil, nil, fmt.Errorf("resp:%v, err:%+v", httpResp, err)
-			}
-			return nil, wsResp, err
-		}
-		return nil, nil, err
+		return nil, nil, &wsConnectError{error: err, httpErr: NewHttpError(httpResp)}
 	}
 
 	if err = conn.WriteJSON(reqPtr); err != nil {
