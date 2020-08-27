@@ -17,7 +17,7 @@ import java.math.BigInteger;
 public class RLPCoder {
     private ByteArrayOutputStream bos;
 
-    RLPCoder() {
+    public RLPCoder() {
         bos = new ByteArrayOutputStream();
     }
 
@@ -25,20 +25,20 @@ public class RLPCoder {
     static final int SHORT_LEN_LIMIT = 55;
     static final int LONG_BASE = 0xb7;
 
-    void write(byte[] bs) {
+    public void write(byte[] bs) {
         bos.write(bs, 0, bs.length);
     }
 
-    byte[] toByteArray() {
+    public byte[] toByteArray() {
         return bos.toByteArray();
     }
 
-    void encode(int v) {
+    public void encode(int v) {
         var bs = BigInteger.valueOf(v).toByteArray();
         encode(bs);
     }
 
-    void encode(Object v) {
+    public void encode(Object v) {
         if (v instanceof String) {
             var bs = ((String) v).getUnderlying().getBytes(StandardCharsets.UTF_8);
             encode(bs);

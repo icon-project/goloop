@@ -6,12 +6,12 @@
 package p.score;
 
 import a.ByteArray;
-import i.DBImplBase;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IObject;
 import i.IObjectArray;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import pi.CollectionDBImpl;
 import s.java.lang.Class;
 import s.java.lang.Object;
 import s.java.lang.String;
@@ -157,17 +157,17 @@ public final class Context extends Object {
 
     public static BranchDB avm_newBranchDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);
+        return blockchainRuntime.avm_newCollectionDB(CollectionDBImpl.TYPE_DICT_DB, id, vc);
     }
 
     public static DictDB avm_newDictDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);
+        return blockchainRuntime.avm_newCollectionDB(CollectionDBImpl.TYPE_DICT_DB, id, vc);
     }
 
     public static ArrayDB avm_newArrayDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newArrayDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_ARRAY_DB, id, vc);
+        return blockchainRuntime.avm_newCollectionDB(CollectionDBImpl.TYPE_ARRAY_DB, id, vc);
     }
 
     public static VarDB avm_newVarDB(String id, Class<?> vc) {

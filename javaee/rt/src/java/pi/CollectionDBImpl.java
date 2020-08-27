@@ -1,24 +1,69 @@
 package pi;
 
+import foundation.icon.ee.util.Crypto;
+import foundation.icon.ee.util.ValueCodec;
 import i.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.CollectionDB;
 import s.java.lang.Class;
 import s.java.lang.String;
 
-public class CollectionDBImpl extends DBImplBase implements CollectionDB {
+public class CollectionDBImpl extends s.java.lang.Object implements CollectionDB {
+    public static final int TYPE_ARRAY_DB = 0;
+    public static final int TYPE_DICT_DB = 1;
+    public static final int TYPE_VAR_DB = 2;
+    protected Class<?> leafValue;
+    private byte[] id;
+    private byte[] hash;
+
     public CollectionDBImpl(int type, String id, Class<?> vc) {
-        super(type, id, vc);
+        this(catEncodedKey(new byte[]{(byte) type}, id), vc);
     }
 
     public CollectionDBImpl(byte[] id, Class<?> vc) {
-        super(id, vc);
+        this.id = id;
+        this.leafValue = vc;
     }
 
     public CollectionDBImpl(Void ignore, int readIndex) {
         super(ignore, readIndex);
     }
 
+    private static byte[] encodeKey(Object k) {
+        var c = new RLPCoder();
+        c.encode(k);
+        return c.toByteArray();
+    }
+
+    private static byte[] catEncodedKey(byte[] prefix, Object k) {
+        var c = new RLPCoder();
+        c.write(prefix);
+        c.encode(k);
+        return c.toByteArray();
+    }
+
+    private static byte[] catEncodedKey(byte[] prefix, int k) {
+        var c = new RLPCoder();
+        c.write(prefix);
+        c.encode(k);
+        return c.toByteArray();
+    }
+
+    // VarDB
+    public void avm_set(IObject value) {
+        getDBStorage().setBytes(getStorageKey(), encode(value));
+    }
+
+    public IObject avm_get() {
+        return decode(getDBStorage().getBytes(getStorageKey()));
+    }
+
+    public IObject avm_getOrDefault(IObject defaultValue) {
+        var out = decode(getDBStorage().getBytes(getStorageKey()));
+        return (out != null) ? out : defaultValue;
+    }
+
+    // CollectionDB
     public void avm_set(IObject key, IObject value) {
         getDBStorage().setBytes(getStorageKey(key), encode(value));
     }
@@ -87,5 +132,64 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
 
     public int avm_size() {
         return getDBStorage().getArrayLength(getStorageKey());
+    }
+
+    public IDBStorage getDBStorage() {
+        return IInstrumentation.getCurrentFrameContext().getDBStorage();
+    }
+
+    public IDBStorage chargeAndGetDBStorage(int cost) {
+        IInstrumentation ins = IInstrumentation.attachedThreadInstrumentation.get();
+        ins.chargeEnergy(cost);
+        return ins.getFrameContext().getDBStorage();
+    }
+
+    private byte[] hashWithCharge(byte[] data) {
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length : 0));
+        return Crypto.sha3_256(data);
+    }
+
+    public byte[] getStorageKey() {
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * id.length);
+        if (hash == null) {
+            hash = Crypto.sha3_256(id);
+        }
+        return hash;
+    }
+
+    public byte[] getStorageKey(IObject key) {
+        return hashWithCharge(catEncodedKey(id, key));
+    }
+
+    public byte[] getStorageKey(int key) {
+        return hashWithCharge(catEncodedKey(id, key));
+    }
+
+    public byte[] getSubDBID(IObject key) {
+        return catEncodedKey(id, key);
+    }
+
+    public byte[] encode(IObject obj) {
+        return ValueCodec.encode(obj);
+    }
+
+    public IObject decode(byte[] raw) {
+        return ValueCodec.decode(raw, leafValue);
+    }
+
+    public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
+        super.deserializeSelf(CollectionDBImpl.class, deserializer);
+        this.id = CodecIdioms.deserializeByteArray(deserializer);
+        this.leafValue = (Class<?>) deserializer.readObject();
+    }
+
+    public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
+        super.serializeSelf(CollectionDBImpl.class, serializer);
+        CodecIdioms.serializeByteArray(serializer, this.id);
+        serializer.writeObject(this.leafValue);
     }
 }

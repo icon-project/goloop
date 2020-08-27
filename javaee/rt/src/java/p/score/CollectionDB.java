@@ -16,5 +16,5 @@
 
 package p.score;
 
-public interface CollectionDB extends BranchDB, DictDB, ArrayDB {
+public interface CollectionDB extends VarDB, BranchDB, DictDB, ArrayDB {
 }

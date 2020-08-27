@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import p.score.CollectionDB;
 import p.score.VarDB;
 import pi.CollectionDBImpl;
-import pi.VarDBImpl;
 import score.RevertException;
 import score.ScoreRevertException;
 
@@ -303,7 +302,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
-        return new VarDBImpl(id, vc);
+        return new CollectionDBImpl(CollectionDBImpl.TYPE_VAR_DB, id, vc);
     }
 
     private static boolean isValidEventValue(IObject obj) {
