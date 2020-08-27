@@ -147,7 +147,7 @@ public interface IBlockchainRuntime {
     /**
      * Returns a new AnyDB instance
      */
-    AnyDB avm_newAnyDB(int type, String id, Class<?> vc);
+    AnyDB avm_newAnyDB(String id, Class<?> vc);
 
     /**
      * Emits event logs

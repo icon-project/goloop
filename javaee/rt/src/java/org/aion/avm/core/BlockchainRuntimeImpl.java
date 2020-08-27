@@ -27,7 +27,6 @@ import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.score.AnyDB;
-import p.score.VarDB;
 import pi.AnyDBImpl;
 import score.RevertException;
 import score.ScoreRevertException;
@@ -294,10 +293,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public AnyDB avm_newAnyDB(int type,
-                                            s.java.lang.String id,
-                                            s.java.lang.Class<?> vc) {
-        return new AnyDBImpl(type, id, vc);
+    public AnyDB avm_newAnyDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
+        return new AnyDBImpl(id, vc);
     }
 
     private static boolean isValidEventValue(IObject obj) {
