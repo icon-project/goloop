@@ -55,8 +55,7 @@ class ContainerUtil(object):
 
     @staticmethod
     def create_db_prefix(cls, var_key: K) -> bytes:
-        """Create a prefix used
-        as a parameter of IconScoreDatabase.get_sub_db()
+        """Create a proper prefix for the given container type
 
         :param cls: ArrayDB, DictDB, VarDB
         :param var_key:
@@ -66,6 +65,8 @@ class ContainerUtil(object):
             container_id = ARRAY_DB_ID
         elif cls == DictDB:
             container_id = DICT_DB_ID
+        elif cls == VarDB:
+            container_id = VAR_DB_ID
         else:
             raise InvalidParamsException(f'Unsupported container class: {cls}')
 
@@ -127,47 +128,6 @@ class ContainerUtil(object):
         elif value_type == bytes:
             obj_value = value
         return obj_value
-
-    @staticmethod
-    def remove_prefix_from_iters(iter_items: iter) -> iter:
-        return ((ContainerUtil.__remove_prefix_from_key(key), value) for key, value in iter_items)
-
-    @staticmethod
-    def __remove_prefix_from_key(key_from_bytes: bytes) -> bytes:
-        return key_from_bytes[:-1]
-
-    @staticmethod
-    def put_to_db(db: 'IconScoreDatabase', db_key: str, container: iter) -> None:
-        sub_db = db.get_sub_db(ContainerUtil.encode_key(db_key))
-        if isinstance(container, dict):
-            ContainerUtil.__put_to_db_internal(sub_db, container.items())
-        elif isinstance(container, (list, set, tuple)):
-            ContainerUtil.__put_to_db_internal(sub_db, enumerate(container))
-
-    @staticmethod
-    def get_from_db(db: 'IconScoreDatabase', db_key: str, *args, value_type: type) -> Optional[K]:
-        sub_db = db.get_sub_db(ContainerUtil.encode_key(db_key))
-        *args, last_arg = args
-        for arg in args:
-            sub_db = sub_db.get_sub_db(ContainerUtil.encode_key(arg))
-
-        byte_key = sub_db.get(ContainerUtil.encode_key(last_arg))
-        if byte_key is None:
-            return get_default_value(value_type)
-        return ContainerUtil.decode_object(byte_key, value_type)
-
-    @staticmethod
-    def __put_to_db_internal(db: 'IconScoreDatabase', iters: iter) -> None:
-        for key, value in iters:
-            sub_db = db.get_sub_db(ContainerUtil.encode_key(key))
-            if isinstance(value, dict):
-                ContainerUtil.__put_to_db_internal(sub_db, value.items())
-            elif isinstance(value, (list, set, tuple)):
-                ContainerUtil.__put_to_db_internal(sub_db, enumerate(value))
-            else:
-                db_key = ContainerUtil.encode_key(key)
-                db_value = ContainerUtil.encode_value(value)
-                db.put(db_key, db_value)
 
 
 class DictDB(object):
@@ -343,9 +303,8 @@ class VarDB(object):
     """
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
-        # Use var_key as a db prefix in the case of VarDB
-        self._db = db.get_sub_db(VAR_DB_ID)
-        self.__var_byte_key = get_encoded_key(var_key)
+        prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
+        self._db = db.get_sub_db(prefix)
         self.__value_type = value_type
 
     def set(self, value: V) -> None:
@@ -355,7 +314,7 @@ class VarDB(object):
         :param value: a value to be set
         """
         byte_value = ContainerUtil.encode_value(value)
-        self._db.put(self.__var_byte_key, byte_value)
+        self._db.put(b'', byte_value)
 
     def get(self) -> Optional[V]:
         """
@@ -363,13 +322,13 @@ class VarDB(object):
 
         :return: value of the var db
         """
-        return ContainerUtil.decode_object(self._db.get(self.__var_byte_key), self.__value_type)
+        return ContainerUtil.decode_object(self._db.get(b''), self.__value_type)
 
     def remove(self) -> None:
         """
         Deletes the value
         """
-        self._db.delete(self.__var_byte_key)
+        self._db.delete(b'')
 
 
 def get_default_value(value_type: type) -> Any:
