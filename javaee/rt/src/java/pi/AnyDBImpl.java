@@ -14,28 +14,23 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
     private static final byte TYPE_VAR_DB = 2;
 
     private Class<?> leafValue;
-    // id[0] is set by type during operation
-    // id[0] is set 0 before serialization
-    private byte[] id;
+
+    // <1 byte type buffer> rlp(<id>) rlp(<sub-key>)*
+    // Type buffer is cleared before serialization.
+    private byte[] prefix;
     private byte[] hash;
 
     public AnyDBImpl(String id, Class<?> vc) {
         this(catEncodedKey(new byte[]{(byte) 0}, id), vc);
     }
 
-    private AnyDBImpl(byte[] id, Class<?> vc) {
-        this.id = id;
+    private AnyDBImpl(byte[] prefix, Class<?> vc) {
+        this.prefix = prefix;
         this.leafValue = vc;
     }
 
     public AnyDBImpl(Void ignore, int readIndex) {
         super(ignore, readIndex);
-    }
-
-    private static byte[] encodeKey(Object k) {
-        var c = new RLPCoder();
-        c.encode(k);
-        return c.toByteArray();
     }
 
     private static byte[] catEncodedKey(byte[] prefix, Object k) {
@@ -52,6 +47,64 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
         return c.toByteArray();
     }
 
+    private IDBStorage getDBStorage() {
+        return IInstrumentation.getCurrentFrameContext().getDBStorage();
+    }
+
+    private byte[] hashWithCharge(byte[] data) {
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length : 0));
+        return Crypto.sha3_256(data);
+    }
+
+    private byte[] getStorageKey(byte type) {
+        IInstrumentation.charge(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * prefix.length);
+        if (hash == null) {
+            prefix[0] = type;
+            hash = Crypto.sha3_256(prefix);
+        }
+        return hash;
+    }
+
+    private byte[] getItemStorageKey(IObject key) {
+        prefix[0] = TYPE_DICT_DB;
+        return hashWithCharge(catEncodedKey(prefix, key));
+    }
+
+    private byte[] getItemStorageKey(int key) {
+        prefix[0] = TYPE_ARRAY_DB;
+        return hashWithCharge(catEncodedKey(prefix, key));
+    }
+
+    private byte[] getSubDBID(IObject key) {
+        return catEncodedKey(prefix, key);
+    }
+
+    private byte[] encode(IObject obj) {
+        return ValueCodec.encode(obj);
+    }
+
+    private IObject decode(byte[] raw) {
+        return ValueCodec.decode(raw, leafValue);
+    }
+
+    public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
+        super.deserializeSelf(AnyDBImpl.class, deserializer);
+        this.prefix = CodecIdioms.deserializeByteArray(deserializer);
+        this.leafValue = (Class<?>) deserializer.readObject();
+    }
+
+    public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
+        super.serializeSelf(AnyDBImpl.class, serializer);
+        // to make consistent object graph
+        this.prefix[0] = 0;
+        CodecIdioms.serializeByteArray(serializer, this.prefix);
+        serializer.writeObject(this.leafValue);
+    }
+
     // VarDB
     public void avm_set(IObject value) {
         getDBStorage().setBytes(getStorageKey(TYPE_VAR_DB), encode(value));
@@ -66,15 +119,16 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
         return (out != null) ? out : defaultValue;
     }
 
-    // CollectionDB
-    public void avm_set(IObject key, IObject value) {
-        getDBStorage().setBytes(getItemStorageKey(key), encode(value));
-    }
-
+    // BranchDB
     public IObject avm_at(IObject key) {
         IInstrumentation.attachedThreadInstrumentation.get()
                 .chargeEnergy(RuntimeMethodFeeSchedule.DictDB_avm_at);
         return new AnyDBImpl(getSubDBID(key), leafValue);
+    }
+
+    // DictDB
+    public void avm_set(IObject key, IObject value) {
+        getDBStorage().setBytes(getItemStorageKey(key), encode(value));
     }
 
     public IObject avm_get(IObject key) {
@@ -86,6 +140,7 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
         return (out != null) ? out : defaultValue;
     }
 
+    // ArrayDB
     public void avm_add(IObject value) {
         IDBStorage s = getDBStorage();
         int sz = s.getArrayLength(getStorageKey(TYPE_ARRAY_DB));
@@ -135,69 +190,5 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
 
     public int avm_size() {
         return getDBStorage().getArrayLength(getStorageKey(TYPE_ARRAY_DB));
-    }
-
-    public IDBStorage getDBStorage() {
-        return IInstrumentation.getCurrentFrameContext().getDBStorage();
-    }
-
-    public IDBStorage chargeAndGetDBStorage(int cost) {
-        IInstrumentation ins = IInstrumentation.attachedThreadInstrumentation.get();
-        ins.chargeEnergy(cost);
-        return ins.getFrameContext().getDBStorage();
-    }
-
-    private byte[] hashWithCharge(byte[] data) {
-        IInstrumentation.charge(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length : 0));
-        return Crypto.sha3_256(data);
-    }
-
-    private byte[] getStorageKey(byte type) {
-        IInstrumentation.charge(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * id.length);
-        if (hash == null) {
-            id[0] = type;
-            hash = Crypto.sha3_256(id);
-        }
-        return hash;
-    }
-
-    private byte[] getItemStorageKey(IObject key) {
-        id[0] = TYPE_DICT_DB;
-        return hashWithCharge(catEncodedKey(id, key));
-    }
-
-    private byte[] getItemStorageKey(int key) {
-        id[0] = TYPE_ARRAY_DB;
-        return hashWithCharge(catEncodedKey(id, key));
-    }
-
-    public byte[] getSubDBID(IObject key) {
-        return catEncodedKey(id, key);
-    }
-
-    public byte[] encode(IObject obj) {
-        return ValueCodec.encode(obj);
-    }
-
-    public IObject decode(byte[] raw) {
-        return ValueCodec.decode(raw, leafValue);
-    }
-
-    public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
-        super.deserializeSelf(AnyDBImpl.class, deserializer);
-        this.id = CodecIdioms.deserializeByteArray(deserializer);
-        this.leafValue = (Class<?>) deserializer.readObject();
-    }
-
-    public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
-        super.serializeSelf(AnyDBImpl.class, serializer);
-        // to make consistent object graph
-        this.id[0] = 0;
-        CodecIdioms.serializeByteArray(serializer, this.id);
-        serializer.writeObject(this.leafValue);
     }
 }
