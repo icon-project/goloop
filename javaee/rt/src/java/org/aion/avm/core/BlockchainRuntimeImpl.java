@@ -26,9 +26,9 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import p.score.CollectionDB;
+import p.score.AnyDB;
 import p.score.VarDB;
-import pi.CollectionDBImpl;
+import pi.AnyDBImpl;
 import score.RevertException;
 import score.ScoreRevertException;
 
@@ -294,15 +294,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public CollectionDB avm_newCollectionDB(int type,
+    public AnyDB avm_newAnyDB(int type,
                                             s.java.lang.String id,
                                             s.java.lang.Class<?> vc) {
-        return new CollectionDBImpl(type, id, vc);
-    }
-
-    @Override
-    public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
-        return new CollectionDBImpl(CollectionDBImpl.TYPE_VAR_DB, id, vc);
+        return new AnyDBImpl(type, id, vc);
     }
 
     private static boolean isValidEventValue(IObject obj) {

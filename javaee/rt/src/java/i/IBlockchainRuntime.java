@@ -2,7 +2,7 @@ package i;
 
 import a.ByteArray;
 import p.score.Address;
-import p.score.CollectionDB;
+import p.score.AnyDB;
 import p.score.VarDB;
 import s.java.lang.Class;
 import s.java.lang.String;
@@ -145,14 +145,9 @@ public interface IBlockchainRuntime {
     Address avm_getAddressFromKey(ByteArray publicKey);
 
     /**
-     * Returns a new collection DB instance
+     * Returns a new AnyDB instance
      */
-    CollectionDB avm_newCollectionDB(int type, String id, Class<?> vc);
-
-    /**
-     * Returns a new var DB instance
-     */
-    VarDB avm_newVarDB(String id, Class<?> vc);
+    AnyDB avm_newAnyDB(int type, String id, Class<?> vc);
 
     /**
      * Emits event logs

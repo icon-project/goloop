@@ -4,11 +4,11 @@ import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.ValueCodec;
 import i.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import p.score.CollectionDB;
+import p.score.AnyDB;
 import s.java.lang.Class;
 import s.java.lang.String;
 
-public class CollectionDBImpl extends s.java.lang.Object implements CollectionDB {
+public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
     public static final int TYPE_ARRAY_DB = 0;
     public static final int TYPE_DICT_DB = 1;
     public static final int TYPE_VAR_DB = 2;
@@ -16,16 +16,16 @@ public class CollectionDBImpl extends s.java.lang.Object implements CollectionDB
     private byte[] id;
     private byte[] hash;
 
-    public CollectionDBImpl(int type, String id, Class<?> vc) {
+    public AnyDBImpl(int type, String id, Class<?> vc) {
         this(catEncodedKey(new byte[]{(byte) type}, id), vc);
     }
 
-    public CollectionDBImpl(byte[] id, Class<?> vc) {
+    public AnyDBImpl(byte[] id, Class<?> vc) {
         this.id = id;
         this.leafValue = vc;
     }
 
-    public CollectionDBImpl(Void ignore, int readIndex) {
+    public AnyDBImpl(Void ignore, int readIndex) {
         super(ignore, readIndex);
     }
 
@@ -71,7 +71,7 @@ public class CollectionDBImpl extends s.java.lang.Object implements CollectionDB
     public IObject avm_at(IObject key) {
         IInstrumentation.attachedThreadInstrumentation.get()
                 .chargeEnergy(RuntimeMethodFeeSchedule.DictDB_avm_at);
-        return new CollectionDBImpl(getSubDBID(key), leafValue);
+        return new AnyDBImpl(getSubDBID(key), leafValue);
     }
 
     public IObject avm_get(IObject key) {
@@ -182,13 +182,13 @@ public class CollectionDBImpl extends s.java.lang.Object implements CollectionDB
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
-        super.deserializeSelf(CollectionDBImpl.class, deserializer);
+        super.deserializeSelf(AnyDBImpl.class, deserializer);
         this.id = CodecIdioms.deserializeByteArray(deserializer);
         this.leafValue = (Class<?>) deserializer.readObject();
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
-        super.serializeSelf(CollectionDBImpl.class, serializer);
+        super.serializeSelf(AnyDBImpl.class, serializer);
         CodecIdioms.serializeByteArray(serializer, this.id);
         serializer.writeObject(this.leafValue);
     }
