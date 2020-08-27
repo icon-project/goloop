@@ -90,7 +90,7 @@ type AccountState interface {
 
 type accountSnapshotImpl struct {
 	version     int
-	balance     common.HexInt
+	balance     *common.HexInt
 	fIsContract bool
 	store       trie.Immutable
 	database    db.Database
@@ -134,9 +134,7 @@ func (s *accountSnapshotImpl) IsBlocked() bool {
 }
 
 func (s *accountSnapshotImpl) GetBalance() *big.Int {
-	v := new(big.Int)
-	v.Set(&s.balance.Int)
-	return v
+	return &s.balance.Int
 }
 
 func (s *accountSnapshotImpl) IsContract() bool {
@@ -339,7 +337,7 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	}
 	if err := e2.EncodeMulti(
 		s.version,
-		&s.balance,
+		s.balance,
 		s.fIsContract,
 		storeHash,
 		s.state,
@@ -422,13 +420,21 @@ func (s *accountSnapshotImpl) ClearCache() {
 	}
 }
 
+func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
+	return &accountSnapshotImpl{
+		version:  AccountVersion,
+		balance:  common.HexIntZero,
+		database: dbase,
+	}
+}
+
 type accountStateImpl struct {
 	key      []byte
 	useCache bool
 
 	version    int
 	database   db.Database
-	balance    common.HexInt
+	balance    *common.HexInt
 	isContract bool
 
 	state         int
@@ -675,13 +681,13 @@ func (s *accountStateImpl) SetAPIInfo(apiInfo *scoreapi.Info) {
 }
 
 func (s *accountStateImpl) GetBalance() *big.Int {
-	v := new(big.Int)
-	v.Set(&s.balance.Int)
-	return v
+	return &s.balance.Int
 }
 
 func (s *accountStateImpl) SetBalance(v *big.Int) {
-	s.balance.Set(v)
+	nv := new(common.HexInt)
+	nv.Set(v)
+	s.balance = nv
 }
 
 func (s *accountStateImpl) IsContract() bool {
@@ -713,7 +719,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	return &accountSnapshotImpl{
 		database:      s.database,
 		version:       s.version,
-		balance:       s.balance.Clone(),
+		balance:       s.balance,
 		fIsContract:   s.isContract,
 		store:         store,
 		state:         s.state,
@@ -740,7 +746,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
 	}
 
-	s.balance.Set(&snapshot.balance.Int)
+	s.balance = snapshot.balance
 	s.isContract = snapshot.fIsContract
 	s.version = snapshot.version
 	s.apiInfo = snapshot.apiInfo
@@ -774,7 +780,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 }
 
 func (s *accountStateImpl) Clear() {
-	s.balance.SetInt64(0)
+	s.balance = common.HexIntZero
 	s.isContract = false
 	s.version = AccountVersion
 	s.apiInfo = apiInfoStore{}
@@ -838,6 +844,7 @@ func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []
 		}
 	} else {
 		s.version = AccountVersion
+		s.balance = common.HexIntZero
 	}
 	return s
 }
@@ -931,9 +938,9 @@ func (a *accountROState) SetObjGraph(flags bool, nextHash int, objGraph []byte) 
 	return nil
 }
 
-func newAccountROState(snapshot AccountSnapshot) AccountState {
+func newAccountROState(dbase db.Database, snapshot AccountSnapshot) AccountState {
 	if snapshot == nil {
-		snapshot = new(accountSnapshotImpl)
+		snapshot = newAccountSnapshot(dbase)
 	}
 	return &accountROState{snapshot,
 		newContractROState(snapshot.Contract()),

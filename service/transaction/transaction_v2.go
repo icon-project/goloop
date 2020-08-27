@@ -75,10 +75,7 @@ func (tx *transactionV2) ValidateNetwork(nid int) bool {
 
 func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	// balance >= (fee + value)
-	trans := new(big.Int)
-	trans.Set(&tx.Value.Int)
-	trans.Add(trans, &tx.Fee.Int)
-
+	trans := new(big.Int).Add(&tx.Value.Int, &tx.Fee.Int)
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
@@ -89,10 +86,8 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	if update {
 		as2 := wc.GetAccountState(tx.To().ID())
 		balance2 := as2.GetBalance()
-		balance2.Add(balance2, &tx.Value.Int)
-		balance1.Sub(balance1, trans)
-		as1.SetBalance(balance1)
-		as2.SetBalance(balance2)
+		as1.SetBalance(new(big.Int).Sub(balance1, trans))
+		as2.SetBalance(new(big.Int).Add(balance2, &tx.Value.Int))
 	}
 	return nil
 }
@@ -111,13 +106,10 @@ func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, erro
 
 func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
-	var trans big.Int
-
-	trans.Add(&tx.Value.Int, version2FixedFee)
-
+	trans := new(big.Int).Add(&tx.Value.Int, version2FixedFee)
 	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
-	if bal1.Cmp(&trans) < 0 {
+	if bal1.Cmp(trans) < 0 {
 		stepPrice := version2StepPrice
 		if bal1.Cmp(version2FixedFee) < 0 {
 			stepPrice.SetInt64(0)
@@ -127,13 +119,11 @@ func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.
 			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
 	}
 
-	bal1.Sub(bal1, &trans)
-	as1.SetBalance(bal1)
+	as1.SetBalance(new(big.Int).Sub(bal1, trans))
 
 	as2 := ctx.GetAccountState(tx.To().ID())
 	bal2 := as2.GetBalance()
-	bal2.Add(bal2, &tx.Value.Int)
-	as2.SetBalance(bal2)
+	as2.SetBalance(new(big.Int).Add(bal2, &tx.Value.Int))
 
 	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
 	return r, nil

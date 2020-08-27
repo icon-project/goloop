@@ -1,6 +1,8 @@
 package contract
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -34,8 +36,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	if bal1.Cmp(h.value) < 0 {
 		return scoreresult.ErrOutOfBalance, nil, nil
 	}
-	bal1.Sub(bal1, h.value)
-	as1.SetBalance(bal1)
+	as1.SetBalance(new(big.Int).Sub(bal1, h.value))
 
 	as2 := cc.GetAccountState(h.to.ID())
 	if as2.IsContract() != h.to.IsContract() {
@@ -43,8 +44,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 			"InvalidAddress(%s)", h.to.String()), nil, nil
 	}
 	bal2 := as2.GetBalance()
-	bal2.Add(bal2, h.value)
-	as2.SetBalance(bal2)
+	as2.SetBalance(new(big.Int).Add(bal2, h.value))
 
 	h.log.TSystemf("TRANSFER from=%s to=%s value=%s",
 		h.from, h.to, h.value)

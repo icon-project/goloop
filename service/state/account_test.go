@@ -26,8 +26,7 @@ func TestAccountSnapshot_Equal(t *testing.T) {
 	}
 
 	v1 := s1.GetBalance()
-	v1.Add(v1, big.NewInt(30))
-	as.SetBalance(v1)
+	as.SetBalance(new(big.Int).Add(v1, big.NewInt(30)))
 
 	s3 := as.GetSnapshot()
 	if s1.Equal(s3) {

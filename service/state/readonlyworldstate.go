@@ -24,7 +24,7 @@ func (ws *readOnlyWorldState) GetAccountState(id []byte) AccountState {
 		return as
 	}
 
-	as := newAccountROState(ws.WorldSnapshot.GetAccountSnapshot(id))
+	as := newAccountROState(ws.Database(), ws.WorldSnapshot.GetAccountSnapshot(id))
 	ws.accounts[ids] = as
 
 	return as

@@ -210,9 +210,7 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 		return obj.(*accountSnapshotImpl)
 	}
 
-	ass := new(accountSnapshotImpl)
-	ass.database = ws.database
-	return ass
+	return newAccountSnapshot(ws.database)
 }
 
 func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {

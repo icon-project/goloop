@@ -230,9 +230,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// balance >= (fee + value)
 	stepPrice := wc.StepPrice()
 
-	trans := new(big.Int)
-	trans.Set(&tx.StepLimit.Int)
-	trans.Mul(trans, stepPrice)
+	trans := new(big.Int).Mul(&tx.StepLimit.Int, stepPrice)
 	if tx.Value != nil {
 		trans.Add(trans, &tx.Value.Int)
 	}
@@ -246,13 +244,11 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// for cumulative balance check
 	if update {
 		as2 := wc.GetAccountState(tx.To().ID())
-		balance2 := as2.GetBalance()
+		as1.SetBalance(new(big.Int).Sub(balance1, trans))
 		if tx.Value != nil {
-			balance2.Add(balance2, &tx.Value.Int)
+			balance2 := as2.GetBalance()
+			as2.SetBalance(new(big.Int).Add(balance2, &tx.Value.Int))
 		}
-		balance1.Sub(balance1, trans)
-		as1.SetBalance(balance1)
-		as2.SetBalance(balance2)
 	}
 	return nil
 }

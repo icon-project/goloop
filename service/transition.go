@@ -529,9 +529,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	// save gathered fee to treasury
 	tr := ctx.GetAccountState(ctx.Treasury().ID())
-	trbal := tr.GetBalance()
-	trbal.Add(trbal, gatheredFee)
-	tr.SetBalance(trbal)
+	tb := tr.GetBalance()
+	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
 	t.worldSnapshot = ctx.GetSnapshot()
 

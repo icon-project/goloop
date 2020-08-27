@@ -141,7 +141,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		logger.TSystemf("STEP reset value=%d old=%d msg=%q",
 			minSteps, old, "sustain minimum")
 	}
-	fee := big.NewInt(0).Mul(stepUsed, stepPrice)
+	fee := new(big.Int).Mul(stepUsed, stepPrice)
 
 	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
@@ -156,8 +156,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 			fee.SetInt64(0)
 		}
 	}
-	bal.Sub(bal, fee)
-	as.SetBalance(bal)
+	as.SetBalance(new(big.Int).Sub(bal, fee))
 
 	// Make a receipt
 	receipt := txresult.NewReceipt(ctx.Database(), ctx.Revision(), th.to)

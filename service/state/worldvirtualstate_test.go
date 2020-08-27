@@ -132,8 +132,8 @@ func wvexecuteTransfer(ws WorldState, id1, id2 []byte, value *big.Int) {
 	balance1 := as1.GetBalance()
 	balance2 := as2.GetBalance()
 	if balance1.Cmp(value) >= 0 {
-		balance1.Sub(balance1, value)
-		balance2.Add(balance2, value)
+		as1.SetBalance(new(big.Int).Sub(balance1, value))
+		as2.SetBalance(new(big.Int).Add(balance2, value))
 	}
 }
 
@@ -220,10 +220,8 @@ func TestSequentialExecutionChainedAccount(t *testing.T) {
 			as2 := wvs.GetAccountState(id2)
 			balance1 := as1.GetBalance()
 			balance2 := as2.GetBalance()
-			balance1 = balance1.Sub(balance1, v)
-			balance2 = balance2.Add(balance2, v)
-			as1.SetBalance(balance1)
-			as2.SetBalance(balance2)
+			as1.SetBalance(new(big.Int).Sub(balance1, v))
+			as2.SetBalance(new(big.Int).Add(balance2, v))
 
 			wvs.Commit()
 		}(nwvs, idx, id1, id2, v1)
@@ -291,10 +289,8 @@ func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
 			as2 := wvs.GetAccountState(id2)
 			balance1 := as1.GetBalance()
 			balance2 := as2.GetBalance()
-			balance1 = balance1.Sub(balance1, v)
-			balance2 = balance2.Add(balance2, v)
-			as1.SetBalance(balance1)
-			as2.SetBalance(balance2)
+			as1.SetBalance(new(big.Int).Sub(balance1, v))
+			as2.SetBalance(new(big.Int).Add(balance2, v))
 
 			if (idx % 2) == 1 {
 				if err := wvs.Reset(wvss); err != nil {

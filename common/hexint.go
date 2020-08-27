@@ -8,6 +8,9 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 )
 
+var hexIntZero HexInt
+var HexIntZero = &hexIntZero
+
 type HexInt struct {
 	big.Int
 }

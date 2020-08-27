@@ -126,12 +126,12 @@ func (wvs *worldVirtualState) getAccountStateInLock(id []byte) AccountState {
 	if wvs.worldLock != AccountNoLock {
 		wvs.realizeBaseInLock()
 		if wvs.committed != nil {
-			return newAccountROState(wvs.committed.GetAccountSnapshot(id))
+			return newAccountROState(wvs.Database(), wvs.committed.GetAccountSnapshot(id))
 		}
 		if wvs.worldLock == AccountWriteLock {
 			return wvs.real.GetAccountState(id)
 		} else {
-			return newAccountROState(wvs.base.GetAccountSnapshot(id))
+			return newAccountROState(wvs.Database(), wvs.base.GetAccountSnapshot(id))
 		}
 	}
 	return nil
@@ -139,7 +139,7 @@ func (wvs *worldVirtualState) getAccountStateInLock(id []byte) AccountState {
 
 func (wvs *worldVirtualState) GetAccountROState(id []byte) AccountState {
 	as := wvs.GetAccountState(id)
-	return newAccountROState(as.GetSnapshot())
+	return newAccountROState(wvs.Database(), as.GetSnapshot())
 }
 
 func (wvs *worldVirtualState) GetSnapshot() WorldSnapshot {
@@ -377,7 +377,7 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 			if las.lock == AccountWriteLock {
 				las.state = wvs.real.GetAccountState(idBytes)
 			} else {
-				las.state = newAccountROState(
+				las.state = newAccountROState(wvs.Database(),
 					wvs.real.GetAccountSnapshot(idBytes))
 			}
 		}
@@ -402,7 +402,7 @@ func (wvs *worldVirtualState) Commit() {
 				las.depend = nil
 			} else {
 				ass := las.state.GetSnapshot()
-				las.state = newAccountROState(ass)
+				las.state = newAccountROState(wvs.Database(), ass)
 			}
 		}
 	}
