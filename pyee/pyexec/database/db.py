@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
-from ..iconscore.icon_container_db import get_encoded_key
+from ..iconscore.icon_container_db import get_encoded_key, concat_encoded
 from ..iconscore.icon_score_context import ContextGetter, ContextContainer
 from ..iconscore.icon_score_step import StepType, OutOfStepException
 from ..utils import sha3_256
@@ -209,6 +209,7 @@ class IconScoreDatabase(ContextGetter):
     def __init__(self,
                  address: 'Address',
                  context_db: 'ContextDatabase',
+                 tag: bytes = None,
                  prefix: bytes = None) -> None:
         """Constructor
 
@@ -218,6 +219,7 @@ class IconScoreDatabase(ContextGetter):
         """
         self._address = address
         self._context_db = context_db
+        self._tag = tag
         self._prefix = prefix
 
     @property
@@ -246,26 +248,34 @@ class IconScoreDatabase(ContextGetter):
 
     @property
     def prefix(self) -> bytes:
-        return self._prefix
+        if self._tag is None and self._prefix is None:
+            return None
+        return concat_encoded(self._tag, self._prefix)
 
-    def get_sub_db(self, prefix: bytes, override=False) -> 'IconScoreDatabase':
+    def get_sub_db(self, prefix: bytes, tag: bytes = None) -> 'IconScoreDatabase':
         """
         Returns sub db with a prefix
 
         :param prefix: the prefix used by this sub db.
-        :param override: override the prefix rather than append
+        :param tag: the type tag used by this sub db.
         :return: sub db
         """
         if prefix is None:
             raise InvalidParamsException('prefix is None')
 
-        if not override:
-            prefix = get_encoded_key(prefix)
-            if self._prefix is not None:
-                prefix = b''.join([self._prefix, prefix])
+        prefix = get_encoded_key(prefix)
+
+        if tag is not None and self._tag is None:
+            tag = concat_encoded(tag, prefix)
+            prefix = None
+        else:
+            tag = self._tag
+
+        if self._prefix is not None:
+            prefix = concat_encoded(self._prefix, prefix)
 
         icon_score_database = IconScoreDatabase(
-            self._address, self._context_db, prefix)
+            self._address, self._context_db, tag, prefix)
 
         return icon_score_database
 
@@ -287,6 +297,7 @@ class IconScoreDatabase(ContextGetter):
         :params key: key passed by SCORE
         :return: hashed key bytes
         """
-        if self._prefix is not None:
-            key = self._prefix + key
+        if key is not None:
+            key = get_encoded_key(key)
+        key = concat_encoded(self._tag, self._prefix, key)
         return sha3_256(key)

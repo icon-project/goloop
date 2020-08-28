@@ -51,27 +51,11 @@ def get_encoded_key(key: K) -> bytes:
     return rlp_encode_bytes(bytes_key)
 
 
+def concat_encoded(*args) -> bytes:
+    return b''.join(filter(lambda x: x is not None, args))
+
+
 class ContainerUtil(object):
-
-    @staticmethod
-    def create_db_prefix(cls, var_key: K) -> bytes:
-        """Create a proper prefix for the given container type
-
-        :param cls: ArrayDB, DictDB, VarDB
-        :param var_key:
-        :return:
-        """
-        if cls == ArrayDB:
-            container_id = ARRAY_DB_ID
-        elif cls == DictDB:
-            container_id = DICT_DB_ID
-        elif cls == VarDB:
-            container_id = VAR_DB_ID
-        else:
-            raise InvalidParamsException(f'Unsupported container class: {cls}')
-
-        encoded_key = get_encoded_key(var_key)
-        return b''.join([container_id, encoded_key])
 
     @staticmethod
     def encode_key(key: K) -> bytes:
@@ -151,15 +135,7 @@ class DictDB(object):
     """
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type, depth: int = 1) -> None:
-        if db.prefix is None or db.prefix[0] != DICT_DB_ID[0]:
-            prefix = ContainerUtil.create_db_prefix(type(self), var_key)
-            if db.prefix:
-                prefix = prefix + db.prefix
-            sub_db = db.get_sub_db(prefix, True)
-        else:
-            prefix = ContainerUtil.encode_key(var_key)
-            sub_db = db.get_sub_db(prefix)
-        self._db = sub_db
+        self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=DICT_DB_ID)
         self.__value_type = value_type
         self.__depth = depth
 
@@ -175,14 +151,14 @@ class DictDB(object):
         if self.__depth != 1:
             raise InvalidContainerAccessException('DictDB depth mismatch')
 
-        encoded_key: bytes = get_encoded_key(key)
+        encoded_key: bytes = ContainerUtil.encode_key(key)
         encoded_value: bytes = ContainerUtil.encode_value(value)
 
         self._db.put(encoded_key, encoded_value)
 
     def __getitem__(self, key: K) -> Any:
         if self.__depth == 1:
-            encoded_key: bytes = get_encoded_key(key)
+            encoded_key: bytes = ContainerUtil.encode_key(key)
             return ContainerUtil.decode_object(self._db.get(encoded_key), self.__value_type)
         else:
             return DictDB(key, self._db, self.__value_type, self.__depth - 1)
@@ -193,13 +169,13 @@ class DictDB(object):
     def __contains__(self, key: K):
         # Plyvel doesn't allow setting None value in the DB.
         # so there is no case of returning None value if the key exists.
-        value = self._db.get(get_encoded_key(key))
+        value = self._db.get(ContainerUtil.encode_key(key))
         return value is not None
 
     def __remove(self, key: K) -> None:
         if self.__depth != 1:
             raise InvalidContainerAccessException('DictDB depth mismatch')
-        self._db.delete(get_encoded_key(key))
+        self._db.delete(ContainerUtil.encode_key(key))
 
 
 class ArrayDB(object):
@@ -210,13 +186,9 @@ class ArrayDB(object):
     :K: [int, str, Address, bytes]
     :V: [int, str, Address, bytes, bool]
     """
-    __SIZE_BYTE_KEY = b''
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
-        prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
-        if db.prefix is not None:
-            prefix = prefix + db.prefix
-        self._db = db.get_sub_db(prefix, True)
+        self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=ARRAY_DB_ID)
         self.__value_type = value_type
 
     def put(self, value: V) -> None:
@@ -241,7 +213,7 @@ class ArrayDB(object):
 
         index = size - 1
         last_val = self[index]
-        self._db.delete(get_encoded_key(index))
+        self._db.delete(ContainerUtil.encode_key(index))
         self.__set_size(index)
         return last_val
 
@@ -255,15 +227,15 @@ class ArrayDB(object):
         return self[index]
 
     def __get_size(self) -> int:
-        return ContainerUtil.decode_object(self._db.get(ArrayDB.__SIZE_BYTE_KEY), int)
+        return ContainerUtil.decode_object(self._db.get(None), int)
 
     def __set_size(self, size: int) -> None:
         byte_value = ContainerUtil.encode_value(size)
-        self._db.put(ArrayDB.__SIZE_BYTE_KEY, byte_value)
+        self._db.put(None, byte_value)
 
     def __put(self, index: int, value: V) -> None:
         byte_value = ContainerUtil.encode_value(value)
-        self._db.put(get_encoded_key(index), byte_value)
+        self._db.put(ContainerUtil.encode_key(index), byte_value)
 
     def __iter__(self):
         return self._get_generator(self._db, self.__get_size(), self.__value_type)
@@ -298,7 +270,7 @@ class ArrayDB(object):
         if index < 0:
             index += size
         if 0 <= index < size:
-            key: bytes = get_encoded_key(index)
+            key: bytes = ContainerUtil.encode_key(index)
             return ContainerUtil.decode_object(db.get(key), value_type)
 
         raise InvalidParamsException('ArrayDB out of index')
@@ -319,10 +291,7 @@ class VarDB(object):
     """
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
-        prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
-        if db.prefix is not None:
-            prefix = prefix + db.prefix
-        self._db = db.get_sub_db(prefix, True)
+        self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=VAR_DB_ID)
         self.__value_type = value_type
 
     def set(self, value: V) -> None:
@@ -332,7 +301,7 @@ class VarDB(object):
         :param value: a value to be set
         """
         byte_value = ContainerUtil.encode_value(value)
-        self._db.put(b'', byte_value)
+        self._db.put(None, byte_value)
 
     def get(self) -> Optional[V]:
         """
@@ -340,10 +309,10 @@ class VarDB(object):
 
         :return: value of the var db
         """
-        return ContainerUtil.decode_object(self._db.get(b''), self.__value_type)
+        return ContainerUtil.decode_object(self._db.get(None), self.__value_type)
 
     def remove(self) -> None:
         """
         Deletes the value
         """
-        self._db.delete(b'')
+        self._db.delete(None)
