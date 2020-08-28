@@ -16,12 +16,12 @@ import os
 import unittest
 
 from pyexec.base.address import Address, AddressPrefix
-from pyexec.database.db import IconScoreDatabase, ContextDatabase
+from pyexec.database.db import IconScoreDatabase, get_encoded_key
 from pyexec.database.factory import ContextDatabaseFactory
 from pyexec.icon_constant import IconScoreContextType
 from pyexec.iconscore.icon_container_db import (
     ARRAY_DB_ID, DICT_DB_ID, VAR_DB_ID,
-    ArrayDB, DictDB, VarDB, get_encoded_key, ContainerUtil
+    ArrayDB, DictDB, VarDB, ContainerUtil
 )
 from pyexec.iconscore.icon_score_context import ContextContainer, IconScoreContext
 from pyexec.utils import sha3_256
@@ -40,11 +40,6 @@ class DummyProxy(object):
 
 
 class TestContainerDB(unittest.TestCase):
-    _dict_cases = [
-        ['<name>', ['<sub>'], b'<value>'],
-        ['<name2>', ['<sub1>', '<sub2>'], b'<value2>'],
-        ['<name3>', ['<sub1>', '<sub2>', '<sub3>'], b'<value3>']
-    ]
 
     @staticmethod
     def get_score_db():
@@ -68,12 +63,12 @@ class TestContainerDB(unittest.TestCase):
             keys = c[1]
             ddb = db
             for i in range(len(keys)):
-                ddb = ddb.get_sub_db(keys[i])
+                ddb = ddb.get_sub_db(ContainerUtil.encode_key(keys[i]))
 
             dbase = DictDB(c[0], ddb, value_type=bytes)
             dbase[c[2]] = c[3]
 
-            key = b''.join(map(lambda x: get_encoded_key(x), c[4]))
+            key = b''.join(map(lambda x: get_encoded_key(ContainerUtil.encode_key(x)), c[4]))
             self.assertEqual(c[3], cdb.get(ctx, sha3_256(key)))
 
     def test_array_db(self):
@@ -87,17 +82,17 @@ class TestContainerDB(unittest.TestCase):
             keys = c[1]
             ddb = db
             for i in range(len(keys)):
-                ddb = ddb.get_sub_db(keys[i])
+                ddb = ddb.get_sub_db(ContainerUtil.encode_key(keys[i]))
 
             values = c[2]
             dbase = ArrayDB(c[0], ddb, value_type=bytes)
             for v in values:
                 dbase.put(v)
 
-            key = b''.join(map(lambda x: get_encoded_key(x), c[3]))
+            key = b''.join(map(lambda x: get_encoded_key(ContainerUtil.encode_key(x)), c[3]))
             self.assertEqual(ContainerUtil.encode_value(len(values)), cdb.get(ctx, sha3_256(key)))
             for i in range(len(values)):
-                key2 = key+get_encoded_key(i)
+                key2 = key + get_encoded_key(ContainerUtil.encode_key(i))
                 self.assertEqual(values[i], cdb.get(ctx, sha3_256(key2)))
 
     def test_var_db(self):
@@ -111,12 +106,12 @@ class TestContainerDB(unittest.TestCase):
             keys = c[1]
             ddb = db
             for i in range(len(keys)):
-                ddb = ddb.get_sub_db(keys[i])
+                ddb = ddb.get_sub_db(ContainerUtil.encode_key(keys[i]))
 
             dbase = VarDB(c[0], ddb, value_type=bytes)
             dbase.set(c[2])
 
-            key = b''.join(map(lambda x: get_encoded_key(x), c[3]))
+            key = b''.join(map(lambda x: get_encoded_key(ContainerUtil.encode_key(x)), c[3]))
             self.assertEqual(ContainerUtil.encode_value(c[2]), cdb.get(ctx, sha3_256(key)))
 
     def test_dict_db_vs_sub_db(self):
@@ -140,7 +135,7 @@ class TestContainerDB(unittest.TestCase):
             for sub_depth in range(depth):
                 ddb = db
                 for j in range(sub_depth):
-                    ddb = ddb.get_sub_db(keys[j])
+                    ddb = ddb.get_sub_db(ContainerUtil.encode_key(keys[j]))
 
                 d = DictDB(c[0], ddb, value_type=bytes, depth=depth-sub_depth)
                 for k in range(sub_depth, depth-1):

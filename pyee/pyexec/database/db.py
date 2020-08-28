@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Optional
 
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
-from ..iconscore.icon_container_db import get_encoded_key, concat_encoded
 from ..iconscore.icon_score_context import ContextGetter, ContextContainer
 from ..iconscore.icon_score_step import StepType, OutOfStepException
 from ..utils import sha3_256
@@ -24,6 +23,31 @@ from ..utils import sha3_256
 if TYPE_CHECKING:
     from ..iconscore.icon_score_context import IconScoreContext
     from ..base.address import Address
+
+
+def rlp_encode_bytes(b: bytes) -> bytes:
+    blen = len(b)
+    if blen == 1 and b[0] < 0x80:
+        return b
+    elif blen <= 55:
+        return bytes([blen + 0x80]) + b
+    len_bytes = rlp_get_bytes(blen)
+    return bytes([len(len_bytes) + 0x80 + 55]) + len_bytes + b
+
+
+def rlp_get_bytes(x: int) -> bytes:
+    if x == 0:
+        return b''
+    else:
+        return rlp_get_bytes(int(x / 256)) + bytes([x % 256])
+
+
+def get_encoded_key(bytes_key: bytes) -> bytes:
+    return rlp_encode_bytes(bytes_key)
+
+
+def concat_encoded(*args) -> bytes:
+    return b''.join(filter(lambda x: x is not None, args))
 
 
 def _is_db_writable_on_context(context: 'IconScoreContext'):
@@ -226,7 +250,7 @@ class IconScoreDatabase(ContextGetter):
     def address(self):
         return self._address
 
-    def get(self, key: bytes) -> bytes:
+    def get(self, key: Optional[bytes]) -> bytes:
         """
         Gets the value for the specified key
 
@@ -236,7 +260,7 @@ class IconScoreDatabase(ContextGetter):
         hashed_key = self._hash_key(key)
         return self._context_db.get(self._context, hashed_key)
 
-    def put(self, key: bytes, value: bytes):
+    def put(self, key: Optional[bytes], value: bytes):
         """
         Sets a value for the specified key.
 
@@ -245,12 +269,6 @@ class IconScoreDatabase(ContextGetter):
         """
         hashed_key = self._hash_key(key)
         self._context_db.put(self._context, hashed_key, value)
-
-    @property
-    def prefix(self) -> bytes:
-        if self._tag is None and self._prefix is None:
-            return None
-        return concat_encoded(self._tag, self._prefix)
 
     def get_sub_db(self, prefix: bytes, tag: bytes = None) -> 'IconScoreDatabase':
         """
@@ -279,7 +297,7 @@ class IconScoreDatabase(ContextGetter):
 
         return icon_score_database
 
-    def delete(self, key: bytes):
+    def delete(self, key: Optional[bytes]):
         """
         Deletes the key/value pair for the specified key.
 
@@ -291,7 +309,7 @@ class IconScoreDatabase(ContextGetter):
     def close(self):
         self._context_db.close(self._context)
 
-    def _hash_key(self, key: bytes) -> bytes:
+    def _hash_key(self, key: Optional[bytes]) -> bytes:
         """All key are hashed and stored to StateDB
 
         :params key: key passed by SCORE
