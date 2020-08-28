@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
+from ..iconscore.icon_container_db import get_encoded_key
 from ..iconscore.icon_score_context import ContextGetter, ContextContainer
 from ..iconscore.icon_score_step import StepType, OutOfStepException
 from ..utils import sha3_256
@@ -247,18 +248,21 @@ class IconScoreDatabase(ContextGetter):
     def prefix(self) -> bytes:
         return self._prefix
 
-    def get_sub_db(self, prefix: bytes) -> 'IconScoreDatabase':
+    def get_sub_db(self, prefix: bytes, override=False) -> 'IconScoreDatabase':
         """
         Returns sub db with a prefix
 
-        :param prefix: The prefix used by this sub db.
+        :param prefix: the prefix used by this sub db.
+        :param override: override the prefix rather than append
         :return: sub db
         """
         if prefix is None:
             raise InvalidParamsException('prefix is None')
 
-        if self._prefix is not None:
-            prefix = b''.join([self._prefix, prefix])
+        if not override:
+            prefix = get_encoded_key(prefix)
+            if self._prefix is not None:
+                prefix = b''.join([self._prefix, prefix])
 
         icon_score_database = IconScoreDatabase(
             self._address, self._context_db, prefix)

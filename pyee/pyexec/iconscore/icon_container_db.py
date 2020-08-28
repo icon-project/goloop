@@ -46,7 +46,7 @@ def rlp_get_bytes(x: int) -> bytes:
         return rlp_get_bytes(int(x / 256)) + bytes([x % 256])
 
 
-def get_encoded_key(key: V) -> bytes:
+def get_encoded_key(key: K) -> bytes:
     bytes_key = ContainerUtil.encode_key(key)
     return rlp_encode_bytes(bytes_key)
 
@@ -130,6 +130,16 @@ class ContainerUtil(object):
         return obj_value
 
 
+def get_default_value(value_type: type) -> Any:
+    if value_type == int:
+        return 0
+    elif value_type == str:
+        return ""
+    elif value_type == bool:
+        return False
+    return None
+
+
 class DictDB(object):
     """
     Utility classes wrapping the state DB.
@@ -141,11 +151,15 @@ class DictDB(object):
     """
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type, depth: int = 1) -> None:
-        if db.prefix is None:
+        if db.prefix is None or db.prefix[0] != DICT_DB_ID[0]:
             prefix = ContainerUtil.create_db_prefix(type(self), var_key)
+            if db.prefix:
+                prefix = prefix + db.prefix
+            sub_db = db.get_sub_db(prefix, True)
         else:
-            prefix = get_encoded_key(var_key)
-        self._db = db.get_sub_db(prefix)
+            prefix = ContainerUtil.encode_key(var_key)
+            sub_db = db.get_sub_db(prefix)
+        self._db = sub_db
         self.__value_type = value_type
         self.__depth = depth
 
@@ -200,7 +214,9 @@ class ArrayDB(object):
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
         prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
-        self._db = db.get_sub_db(prefix)
+        if db.prefix is not None:
+            prefix = prefix + db.prefix
+        self._db = db.get_sub_db(prefix, True)
         self.__value_type = value_type
 
     def put(self, value: V) -> None:
@@ -304,7 +320,9 @@ class VarDB(object):
 
     def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
         prefix: bytes = ContainerUtil.create_db_prefix(type(self), var_key)
-        self._db = db.get_sub_db(prefix)
+        if db.prefix is not None:
+            prefix = prefix + db.prefix
+        self._db = db.get_sub_db(prefix, True)
         self.__value_type = value_type
 
     def set(self, value: V) -> None:
@@ -329,13 +347,3 @@ class VarDB(object):
         Deletes the value
         """
         self._db.delete(b'')
-
-
-def get_default_value(value_type: type) -> Any:
-    if value_type == int:
-        return 0
-    elif value_type == str:
-        return ""
-    elif value_type == bool:
-        return False
-    return None
