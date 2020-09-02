@@ -42,12 +42,12 @@ type Monitor interface {
 }
 
 type TxWaiterManager interface {
-	OnTxDrop(id []byte, err error)
+	OnTxDrops([]TxDrop)
 }
 
 type dummyTxWaiterManager struct{}
 
-func (d dummyTxWaiterManager) OnTxDrop(id []byte, err error) {
+func (d dummyTxWaiterManager) OnTxDrops([]TxDrop) {
 	// do nothing
 }
 
@@ -91,10 +91,13 @@ func NewTransactionPool(group module.TransactionGroup, size int, txdb db.Bucket,
 	return pool
 }
 
-func (tp *TransactionPool) RemoveOldTXs(bts int64) {
-	tp.mutex.Lock()
-	defer tp.mutex.Unlock()
+func (tp *TransactionPool) DropOldTXs(bts int64) {
+	lock := common.LockForAutoCall(&tp.mutex)
+	defer lock.Unlock()
+	// tp.mutex.Lock()
+	// defer tp.mutex.Unlock()
 
+	var drops []TxDrop
 	iter := tp.list.Front()
 	for iter != nil {
 		next := iter.Next()
@@ -107,12 +110,15 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 					"ExpiredTransaction(diff=%s)", TimestampToDuration(bts-tx.Timestamp()))
 			}
 			tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
-			tp.txm.OnTxDrop(tx.ID(), iter.err)
+			drops = append(drops, TxDrop{tx.ID(), iter.err})
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 		iter = next
 	}
-
+	lock.CallAfterUnlock(func() {
+		tp.txm.OnTxDrops(drops)
+	})
+	// go tp.txm.OnTxDrops(drops)
 	tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 }
 
@@ -201,7 +207,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	}
 
 	if invalidNum > 0 {
-		go tp.removeTransactions(txs[0:invalidNum])
+		go tp.dropTransactions(txs[0:invalidNum])
 	}
 
 	tp.log.Infof("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
@@ -325,10 +331,11 @@ func (tp *TransactionPool) GetBloom() *TxBloom {
 	return tp.list.GetBloom()
 }
 
-func (tp *TransactionPool) removeTransactions(txs []*txElement) {
-	tp.mutex.Lock()
-	defer tp.mutex.Unlock()
+func (tp *TransactionPool) dropTransactions(txs []*txElement) {
+	lock := common.LockForAutoCall(&tp.mutex)
+	defer lock.Unlock()
 
+	var drops []TxDrop
 	for _, e := range txs {
 		if tp.list.Remove(e) {
 			tx := e.Value()
@@ -337,10 +344,13 @@ func (tp *TransactionPool) removeTransactions(txs []*txElement) {
 				tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
 			}
 			tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
-			tp.txm.OnTxDrop(tx.ID(), e.err)
+			drops = append(drops, TxDrop{tx.ID(), e.err})
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 	}
+	lock.CallAfterUnlock(func() {
+		tp.txm.OnTxDrops(drops)
+	})
 }
 
 func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.Transaction {
@@ -374,6 +384,6 @@ func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.
 			txs = append(txs, tx)
 		}
 	}
-	go tp.removeTransactions(invalids)
+	go tp.dropTransactions(invalids)
 	return txs
 }

@@ -34,14 +34,6 @@ type TransactionManager struct {
 	txWaiters map[hashValue][]chan<- interface{}
 }
 
-func (m *TransactionManager) OnTxDrop(id []byte, err error) {
-	if err == nil {
-		m.log.Panic("no reason to drop the tx=<%#x>", id)
-		return
-	}
-	m.notifyFailure(id, err)
-}
-
 func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPool {
 	switch g {
 	case module.TransactionGroupPatch:
@@ -57,7 +49,7 @@ func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPo
 func (m *TransactionManager) RemoveOldTxByBlockTS(group module.TransactionGroup, bts int64) {
 	ts := bts - m.tsc.TransactionThreshold(group)
 	atomic.StoreInt64(&m.lastTS[group], ts)
-	m.getTxPool(group).RemoveOldTXs(ts)
+	m.getTxPool(group).DropOldTXs(ts)
 }
 
 func (m *TransactionManager) HasTx(id []byte) bool {
@@ -141,11 +133,21 @@ func (m *TransactionManager) removeWaiters(id []byte) []chan<- interface{} {
 	return m.removeWaitersInLock(id)
 }
 
-func (m *TransactionManager) notifyFailure(id []byte, err error) {
-	ws := m.removeWaiters(id)
-	for _, c := range ws {
-		c <- err
-		close(c)
+type TxDrop struct {
+	ID  []byte
+	Err error
+}
+
+func (m *TransactionManager) OnTxDrops(drops []TxDrop) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	for _, drop := range drops {
+		ws := m.removeWaitersInLock(drop.ID)
+		for _, c := range ws {
+			c <- drop.Err
+			close(c)
+		}
 	}
 }
 
