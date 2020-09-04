@@ -161,7 +161,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		return scoreresult.ErrOutOfStep, nil, nil
 	}
 
-	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) {
+	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) && h.preDefinedAddr == nil {
 		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
