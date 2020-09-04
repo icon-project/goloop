@@ -1,6 +1,6 @@
 # GOLOOP
 
-[![build status](https://repo.theloop.co.kr/arch/goloop/badges/master/build.svg)](https://repo.theloop.co.kr/arch/goloop/commits/master)
+[![build status](https://repo.theloop.co.kr/arch/goloop/badges/base/build.svg)](https://repo.theloop.co.kr/arch/goloop/commits/base)
 
 ## Introduction
 

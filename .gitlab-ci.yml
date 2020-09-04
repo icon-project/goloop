@@ -302,7 +302,7 @@ IT:goloop:interscore:
   tags:
     - pages
   only:
-    - dev
+    - base
     - master
     - tags
 
