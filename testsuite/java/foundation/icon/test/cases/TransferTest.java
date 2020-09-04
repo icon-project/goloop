@@ -168,7 +168,7 @@ public class TransferTest extends TestBase {
                 LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
                 assertNotEquals(newDefStepCost, limits[i]);
             } catch (Exception e) {
-                fail();
+                fail(e);
             }
         }
 
@@ -256,7 +256,7 @@ public class TransferTest extends TestBase {
                     return false;
                 }
             } catch (Exception e) {
-                fail();
+                fail(e);
             }
             return true;
         }
