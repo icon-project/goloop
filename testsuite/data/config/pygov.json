@@ -10,6 +10,8 @@
   "p2p_listen": "",
   "role": 2,
   "rpc_addr": ":9081",
+  "rpc_debug": true,
+  "rpc_dump": true,
   "seed_addr": "",
   "key_store": {
     "address": "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd",

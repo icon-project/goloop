@@ -15,6 +15,7 @@ variables:
   IMAGE_GOLOOP_PY: "goloop-py:${CI_COMMIT_REF_NAME}"
   IMAGE_GOLOOP_JAVA: "goloop-java:${CI_COMMIT_REF_NAME}"
   REGISTRY: "ci.arch.iconloop.com:80"
+  RPC_DUMP: "true"
 
 before_script:
   - env
@@ -160,6 +161,7 @@ pack:goloop:
       export GOLOOP_DOCKER_VOLUME=$(docker inspect ${SELF_CONTAINER} --format "${FORMAT_MOUNT_NAME}");
       export GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_${CI_JOB_ID}_net};
       export GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop-${CI_JOB_ID}};
+      export GOLOOP_RPC_DUMP=${RPC_DUMP};
       sh ${GOLOOP_MULTI_SCRIPT} create
     - sh ${GOLOOP_MULTI_SCRIPT} join ${GOLOOP_GENESIS} ${GOLOOP_GOD_KEYSTORE}; cat ${GOLOOP_GENESIS}
     - sh ${GOLOOP_MULTI_SCRIPT} start

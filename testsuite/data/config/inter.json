@@ -10,6 +10,8 @@
   "p2p_listen": "",
   "role": 2,
   "rpc_addr": ":9082",
+  "rpc_debug": true,
+  "rpc_dump": true,
   "seed_addr": "",
   "genesis": {
     "accounts": [
