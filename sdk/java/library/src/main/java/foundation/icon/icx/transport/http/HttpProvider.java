@@ -226,7 +226,7 @@ public class HttpProvider implements Provider {
             try {
                 request = mapper.writeValueAsString(spec.getParams());
             }
-            catch(JsonProcessingException ex) {
+            catch (JsonProcessingException ex) {
                 throw new IllegalArgumentException();
             }
 

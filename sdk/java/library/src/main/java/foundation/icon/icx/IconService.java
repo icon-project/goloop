@@ -240,7 +240,7 @@ public class IconService {
         return provider.request(request, findConverter(Bytes.class));
     }
 
-    // below apis are additional feature for core2
+    // Below APIs are additional features for core2
 
     /**
      * Sends a transaction like {@code sendTransaction}, then waits for some time to get the result.
@@ -278,7 +278,7 @@ public class IconService {
     }
 
     /**
-     * Retrieves data based on the hash algorithm(SHA3-256)
+     * Retrieves data based on the hash algorithm (SHA3-256)
      * Following data can be retrieved by a hash.
      *  - BlockHeader, Validators, Votes ...
      *
@@ -331,7 +331,7 @@ public class IconService {
     /**
      * Gets proof for the receipt
      *
-     * @param hash the hash vlue of the block including the result
+     * @param hash the hash value of the block including the result
      * @param index index of the receipt in the block
      * @return a {@code Request} object that can execute the request
      */
