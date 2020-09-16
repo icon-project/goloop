@@ -177,11 +177,13 @@ func (srv *Manager) Start() error {
 	v3api := g.Group("/v3")
 	v3api.Use(JsonRpc(mr), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
+	v3api.POST("/", mr.Handle, ChainInjector(srv))
 	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
 
 	v3dbg := g.Group("/v3d")
 	v3dbg.Use(srv.CheckDebug(), JsonRpc(dmr), Chunk())
 	v3dbg.POST("", dmr.Handle, ChainInjector(srv))
+	v3dbg.POST("/", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
 	// websocket
