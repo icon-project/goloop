@@ -3,10 +3,13 @@ package ompt
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
@@ -456,5 +459,63 @@ func TestObjectIterate(t *testing.T) {
 		for s, _ := range visited {
 			visited[s] = false
 		}
+	}
+}
+
+func Test_mpt_Filter(t *testing.T) {
+	type fields struct {
+	}
+	type args struct {
+		prefix []byte
+	}
+	tests := []struct {
+		name   string
+		data   []string
+		prefix []byte
+		want   []string
+	}{
+		{"C1", []string{"a", "b", "c"},
+			nil, []string{"a", "b", "c"}},
+		{"C2", []string{"a", "b", "c"},
+			[]byte("b"), []string{"b"}},
+		{"C3", []string{"a", "b", "bc", "bae", "bcf"},
+			[]byte("bc"), []string{"bc", "bcf"}},
+		{"C4", []string{"abc", "b", "bca", "bae", "bcf"},
+			[]byte("bc"), []string{"bca", "bcf"}},
+		{"C5", []string{"abc", "b", "bcdefg", "bae", "bcdefh"},
+			[]byte("bc"), []string{"bcdefg", "bcdefh"}},
+		{"C6",
+			[]string{
+				"\x12\x34",
+				"\x23\x45\x67",
+				"\x21\x34",
+				"\x23\x45\x68",
+			},
+			[]byte{0x23},
+			[]string{
+				"\x23\x45\x67",
+				"\x23\x45\x68",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbase := db.NewMapDB()
+			m := NewMPTForBytes(dbase, nil)
+			for _, s := range tt.data {
+				_, err := m.Set([]byte(s), []byte(s))
+				assert.NoError(t, err)
+			}
+
+			idx := 0
+			for itr := m.Filter(tt.prefix); itr.Has(); itr.Next() {
+				key, value, err := itr.Get()
+				assert.NoError(t, err)
+				assert.True(t, bytes.Equal(key, value))
+				assert.Equal(t, tt.want[idx], string(key))
+				idx += 1
+			}
+			assert.Equal(t, len(tt.want), idx)
+		})
 	}
 }

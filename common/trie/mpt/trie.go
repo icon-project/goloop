@@ -476,6 +476,11 @@ func (m *mpt) Iterator() trie.Iterator {
 	return iter
 }
 
+func (m *mpt) Filter(prefix []byte) trie.Iterator {
+	// TODO implement
+	return nil
+}
+
 func (m *mpt) Reset(immutable trie.Immutable) error {
 	immutableTrie, ok := immutable.(*mpt)
 	if ok == false {

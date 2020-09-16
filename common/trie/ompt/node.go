@@ -17,7 +17,7 @@ type (
 
 	// When it traverses nodes, it can push more nodes for next visit.
 	// It will visit nodes from last to first.
-	nodeScheduler func(string, node)
+	nodeScheduler func(string, node) (node, error)
 
 	node interface {
 		hash() []byte

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -46,6 +47,17 @@ type (
 		s     *mptStatics
 	}
 )
+
+func bytesToNibs(k []byte) []byte {
+	ks := len(k)
+	nibs := make([]byte, ks*2)
+
+	for i, v := range k {
+		nibs[i*2] = (v >> 4) & 0x0F
+		nibs[i*2+1] = v & 0x0F
+	}
+	return nibs
+}
 
 func (m *mpt) bytesToNibs(k []byte) []byte {
 	ks := len(k)
@@ -299,15 +311,56 @@ type iteratorItem struct {
 }
 
 type iterator struct {
-	m     *mpt
-	stack []iteratorItem
-	key   string
-	value trie.Object
-	error error
+	m      *mpt
+	stack  []iteratorItem
+	key    string
+	value  trie.Object
+	error  error
+	prefix string
 }
 
 func (i *iterator) Get() (trie.Object, []byte, error) {
 	return i.value, []byte(i.key), i.error
+}
+
+func (i *iterator) appendItem(k string, n node) (node, error) {
+	realized, err := n.realize(i.m)
+	if err == nil {
+		i.stack = append(i.stack, iteratorItem{k: k, n: realized})
+	}
+	return realized, err
+}
+
+func (i *iterator) checkPrefix(v string, short bool) bool {
+	if short && len(v) < len(i.prefix) {
+		return strings.HasPrefix(i.prefix, v)
+	} else {
+		return strings.HasPrefix(v, i.prefix)
+	}
+}
+
+func (i *iterator) filterItem(k string, n node) (node, error) {
+	if i.checkPrefix(k, true) {
+		return i.appendItem(k, n)
+	} else {
+		return n, nil
+	}
+}
+
+func (i *iterator) traverse(ii iteratorItem) (string, trie.Object, error) {
+	if len(i.prefix) > 0 {
+		if i.checkPrefix(ii.k, false) {
+			return ii.n.traverse(i.m, ii.k, i.appendItem)
+		} else {
+			key, value, err := ii.n.traverse(i.m, ii.k, i.filterItem)
+			if err != nil || !i.checkPrefix(key, false) {
+				return "", nil, err
+			}
+			return key, value, err
+		}
+	} else {
+		return ii.n.traverse(i.m, ii.k, i.appendItem)
+	}
 }
 
 func (i *iterator) Next() error {
@@ -322,9 +375,7 @@ func (i *iterator) Next() error {
 		ii := i.stack[l-1]
 		i.stack = i.stack[0 : l-1]
 
-		i.key, i.value, i.error = ii.n.traverse(i.m, ii.k, func(k string, n node) {
-			i.stack = append(i.stack, iteratorItem{k: k, n: n})
-		})
+		i.key, i.value, i.error = i.traverse(ii)
 
 		if i.error != nil {
 			i.key = ""
@@ -347,6 +398,10 @@ func (i *iterator) Has() bool {
 }
 
 func (m *mpt) Iterator() trie.IteratorForObject {
+	return m.Filter([]byte{})
+}
+
+func (m *mpt) Filter(prefix []byte) trie.IteratorForObject {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -364,8 +419,9 @@ func (m *mpt) Iterator() trie.IteratorForObject {
 		}
 	}
 	i := &iterator{
-		m:     m,
-		stack: []iteratorItem{{k: "", n: root}},
+		m:      m,
+		stack:  []iteratorItem{{k: "", n: root}},
+		prefix: string(bytesToNibs(prefix)),
 	}
 	i.Next()
 	return i

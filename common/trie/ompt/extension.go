@@ -207,14 +207,13 @@ func (n *extension) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Ob
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
-	next, err := n.next.realize(m)
+	next, err := v(k+string(n.keys), n.next)
 	if err != nil {
 		return "", nil, err
 	}
 	if next != n.next {
 		n.next = next
 	}
-	v(k+string(n.keys), n.next)
 	return "", nil, nil
 }
 
