@@ -2,10 +2,6 @@ plugins {
     id 'java-library'
 }
 
-repositories {
-    mavenCentral()
-}
-
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
 }
@@ -16,22 +12,10 @@ ext {
     bouncycastleVersion = '1.60'
     jacksonVersion = '2.9.6'
     okhttpVersion = '3.11.0'
-
-    mavenCentralSync = true
 }
 
 dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncycastleVersion"
     implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
     implementation "com.squareup.okhttp3:okhttp:$okhttpVersion"
-}
-
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
-}
-
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
 }

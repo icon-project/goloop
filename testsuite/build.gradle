@@ -1,15 +1,10 @@
-import org.gradle.api.tasks.TaskAction
-
 import java.util.concurrent.TimeUnit
-
-group 'foundation.icon'
-version '0.9'
 
 allprojects {
     apply plugin: 'java'
 
     repositories {
-        mavenCentral()
+        jcenter()
     }
 }
 
