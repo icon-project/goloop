@@ -18,6 +18,7 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.SignedTransaction;
 import foundation.icon.icx.Transaction;
 import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.data.Address;
@@ -47,8 +48,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_GOV)
@@ -597,6 +600,50 @@ public class StepTest extends TestBase {
         assertEquals(usedFee, stx.expectedFee());
         LOG.infoExiting();
 
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testEstimateStep() throws Exception {
+        LOG.infoEntering("testEstimateStep");
+        IconService iconService = txHandler.getIconService();
+        KeyWallet from = testWallets[3];
+        KeyWallet to = KeyWallet.create();
+
+        TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
+                .nid(txHandler.getNetworkId())
+                .from(from.getAddress())
+                .to(to.getAddress())
+                .value(ICX);
+        Transaction transaction = builder.build();
+        BigInteger estimatedStep = iconService.estimateStep(transaction).execute();
+        assertEquals(StepType.DEFAULT.getSteps(), estimatedStep);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new SignedTransaction(transaction, from);
+        });
+        assertDoesNotThrow(() -> {
+            new SignedTransaction(transaction, from, estimatedStep);
+        });
+
+        SignedTransaction signedTransaction = new SignedTransaction(transaction, from, estimatedStep);
+        Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
+        TransactionResult result = txHandler.getResult(txHash);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertEquals(estimatedStep, result.getStepUsed());
+
+        Transaction transaction2 = builder
+                .stepLimit(estimatedStep)
+                .build();
+        // this should override the existing stepLimit
+        BigInteger customStep = estimatedStep.add(estimatedStep);
+        signedTransaction = new SignedTransaction(transaction2, from, customStep);
+        RpcObject properties = signedTransaction.getProperties();
+        assertEquals(customStep, properties.getItem("stepLimit").asInteger());
+        txHash = iconService.sendTransaction(signedTransaction).execute();
+        result = txHandler.getResult(txHash);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        // the actual stepUsed should still be the estimatedStep
+        assertEquals(estimatedStep, result.getStepUsed());
         LOG.infoExiting();
     }
 }

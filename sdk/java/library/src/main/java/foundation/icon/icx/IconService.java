@@ -240,6 +240,21 @@ public class IconService {
         return provider.request(request, findConverter(Bytes.class));
     }
 
+    /**
+     * Gets an estimated step of how much step is necessary to allow the transaction to complete
+     *
+     * @param transaction a raw transaction without stepLimit and signature information
+     * @return a {@code Request} object that can execute the request (return type is BigInteger)
+     *
+     * @since 0.9.12
+     */
+    public Request<BigInteger> estimateStep(Transaction transaction) {
+        long requestId = System.currentTimeMillis();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "debug_estimateStep", transaction.getProperties());
+        return provider.request(request, findConverter(BigInteger.class));
+    }
+
     // Below APIs are additional features for core2
 
     /**
