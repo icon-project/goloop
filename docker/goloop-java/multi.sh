@@ -63,6 +63,7 @@ function create(){
           sleep 0.5
         done
         echo $RESULT
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system config rpcIncludeDebug true
         set -e
     done
 }
