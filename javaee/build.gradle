@@ -1,10 +1,18 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5'
+    }
+}
+
 subprojects {
     repositories {
         jcenter()
     }
 
     apply plugin: 'java'
-    apply plugin: 'maven-publish'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -19,6 +27,43 @@ subprojects {
     def snapshotSuffix = rootProject.hasProperty('release') ? '' : '-SNAPSHOT'
     group = GROUP
     version = VERSION + snapshotSuffix
+}
+
+configure([project(':api'),  project(':rt'), project(':tooling')]) {
+    apply plugin: 'maven-publish'
+    apply plugin: 'com.jfrog.bintray'
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier 'sources'
+        from sourceSets.main.allSource
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    def projectName = 'javaee-' + project.name
+    def repoUrl = 'https://github.com/icon-project/goloop/tree/master/javaee'
+    def pomConfig = {
+        licenses {
+            license {
+                name "The Apache Software License, Version 2.0"
+                url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution "repo"
+            }
+        }
+        developers {
+            developer {
+                id "iconfoundation"
+                name "icon.foundation"
+                email "foo@icon.foundation"
+            }
+        }
+        scm {
+            url repoUrl
+        }
+    }
 
     publishing {
         repositories {
@@ -32,14 +77,47 @@ subprojects {
                 }
             }
         }
-        afterEvaluate {
-            if (plugins.hasPlugin("java-library")) {
-                publications {
-                    mavenJava(MavenPublication) {
-                        artifactId = 'javaee-' + project.name
-                        from components.java
-                    }
+        publications {
+            mavenJava(MavenPublication) {
+                artifactId projectName
+                from components.java
+                artifact sourcesJar
+                artifact javadocJar
+                pom.withXml {
+                    def root = asNode()
+                    root.appendNode('name', projectName)
+                    root.appendNode('description', 'An Execution Environment for Java SCOREs')
+                    root.appendNode('url', repoUrl)
+                    root.children().last() + pomConfig
                 }
+            }
+        }
+    }
+
+    bintray {
+        user = rootProject.hasProperty('bintrayUser') ? "$bintrayUser" : ''
+        key = rootProject.hasProperty('bintrayKey') ? "$bintrayKey" : ''
+        publications = ['mavenJava']
+        publish = true
+        pkg {
+            userOrg = 'icon'
+            repo = 'javaee'
+            name = projectName
+            licenses = ['Apache-2.0']
+            vcsUrl = 'https://github.com/icon-project/goloop.git'
+            version {
+                name = project.version
+                gpg {
+                    sign = true
+                }
+            }
+        }
+    }
+
+    bintrayUpload { task ->
+        doFirst {
+            if (version.endsWith('SNAPSHOT')) {
+                throw new GradleException('Cannot publish SNAPSHOT versions to Bintray!')
             }
         }
     }
