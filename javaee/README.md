@@ -1,4 +1,6 @@
-# Quick Start
+[![Download](https://api.bintray.com/packages/icon/javaee/javaee-api/images/download.svg)](https://bintray.com/icon/javaee/javaee-api/_latestVersion)
+
+# Java Execution Environment
 
 ## How to Run
 
@@ -32,12 +34,12 @@ The counterpart SM server (`mock_server` or `goloop`) should be run first before
 ### 4. Run Executor Manager
 
 ```bash
-$ gradle app:execman:run --args='/tmp/ee.socket'
+$ ./gradlew app:execman:run --args='/tmp/ee.socket'
 ```
 
-# Java SCORE Structure
+## Java SCORE Structure
 
-## Comparison to Python SCORE
+### Comparison to Python SCORE
 
 | Name | Python | Java |
 |------|--------|------|
@@ -52,7 +54,7 @@ $ gradle app:execman:run --args='/tmp/ee.socket'
 
 **[NOTE]** All external Java methods must have a `public` modifier, and should be instance methods.
 
-## How to invoke a external method of another SCORE
+### How to invoke a external method of another SCORE
 
 One SCORE can invoke a external method of another SCORE using the following APIs.
 
