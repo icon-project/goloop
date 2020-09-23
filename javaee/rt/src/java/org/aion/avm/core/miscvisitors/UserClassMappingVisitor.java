@@ -19,7 +19,7 @@ import org.objectweb.asm.Type;
  * 2) All method declarations and references has been prepended with `avm_`;
  * 3) All fields declarations and references has been prepended with `avm_`;
  *
- * NOTE: String & class constant wrapping is in separate class visitor
+ * NOTE: String and class constant wrapping is in separate class visitor
  */
 public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisitor {
     private final NamespaceMapper mapper;
