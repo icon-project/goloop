@@ -167,8 +167,11 @@ public class TransferTest extends TestBase {
             } catch (RpcError e) {
                 LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
                 assertNotEquals(newDefStepCost, limits[i]);
+            } catch (ResultTimeoutException e) {
+                LOG.info("Expected Timeout: msg=" + e.getMessage());
+                assertNotEquals(newDefStepCost, limits[i]);
             } catch (Exception e) {
-                fail();
+                fail(e);
             }
         }
 
@@ -256,7 +259,7 @@ public class TransferTest extends TestBase {
                     return false;
                 }
             } catch (Exception e) {
-                fail();
+                fail(e);
             }
             return true;
         }

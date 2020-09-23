@@ -137,6 +137,10 @@ public class TransactionHandler {
                 Constants.CONTENT_TYPE_PYTHON);
     }
 
+    public IconService getIconService() {
+        return this.iconService;
+    }
+
     public Env.Chain getChain() {
         return this.chain;
     }

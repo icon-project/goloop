@@ -78,7 +78,7 @@ public class EventMonitorSpec extends MonitorSpec {
     public RpcObject getParams() {
         RpcObject.Builder builder = new RpcObject.Builder()
                 .put("height", new RpcValue(height));
-                this.filter.apply(builder);
+        this.filter.apply(builder);
         return builder.build();
     }
 }

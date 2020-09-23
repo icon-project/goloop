@@ -1,19 +1,15 @@
 plugins {
-    id 'com.gradle.build-scan' version '2.0.2'
-}
-
-allprojects {
-    group GROUP
-    version VERSION_NAME
+    id "maven-publish"
+    id "com.jfrog.artifactory" version "4.17.2"
+    id "com.jfrog.bintray" version "1.8.5"
 }
 
 subprojects {
+    apply plugin: 'java'
+
     repositories {
-        mavenCentral()
+        jcenter()
     }
 }
 
-buildScan {
-    termsOfServiceUrl = 'https://gradle.com/terms-of-service'
-    termsOfServiceAgree = 'yes'
-}
+apply from: 'publish.gradle'

@@ -1,0 +1,141 @@
+/*
+ * Copyright 2018 ICON Foundation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+def snapshotSuffix = rootProject.hasProperty('release') ? '' : '-SNAPSHOT'
+version = VERSION_NAME + snapshotSuffix
+
+def setExtraProperty(String key) {
+    if (project.hasProperty(key)) {
+        project.ext.set(key, project.property(key))
+    } else {
+        project.ext.set(key, System.getenv(key))
+    }
+}
+
+def pomConfig = {
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "iconfoundation"
+            name "icon.foundation"
+            email "foo@icon.foundation"
+        }
+    }
+    scm {
+        url POM_URL
+    }
+}
+
+project(':library') {
+    task propertySetting {
+        setExtraProperty('bintrayUser')
+        setExtraProperty('bintrayKey')
+        setExtraProperty('mavenCentralUser')
+        setExtraProperty('mavenCentralPassword')
+        setExtraProperty('buildNumber')
+    }
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier 'sources'
+        from sourceSets.main.allSource
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+                artifact sourcesJar
+                artifact javadocJar
+                groupId GROUP
+                artifactId POM_ARTIFACT_ID
+                pom.withXml {
+                    def root = asNode()
+                    root.appendNode('name', POM_ARTIFACT_ID)
+                    root.appendNode('description', POM_DESCRIPTION)
+                    root.appendNode('url', POM_URL)
+                    root.children().last() + pomConfig
+
+                    // Iterate over the compile dependencies (we don't want the test ones), adding a <dependency> node for each
+                    configurations.compile.allDependencies.each {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+    }
+
+    bintray {
+        user = bintrayUser
+        key = bintrayKey
+        publications = ['mavenJava']
+        publish = true
+        override = true
+        pkg {
+            userOrg = BINTRAY_USER_ORG
+            repo = BINTRAY_REPO
+            name = BINTRAY_PKG_NAME
+
+            version {
+                name = project.version
+                //Optional configuration for GPG signing
+                gpg {
+                    sign = true //Determines whether to GPG sign the files. The default is false
+                }
+                //Optional configuration for Maven Central sync of the version
+                mavenCentralSync {
+                    sync = true //[Default: true] Determines whether to sync the version to Maven Central.
+                    user = mavenCentralUser //OSS user token: mandatory
+                    password = mavenCentralPassword //OSS user password: mandatory
+                    close = '1' //Optional property. By default the staging repository is closed and artifacts are released to Maven Central. You can optionally turn this behaviour off (by puting 0 as value) and release the version manually.
+                }
+            }
+        }
+    }
+
+    artifactory {
+        contextUrl = 'http://oss.jfrog.org'
+        publish {
+            repository {
+                repoKey = 'oss-snapshot-local'
+                username = bintrayUser
+                password = bintrayKey
+            }
+            defaults {
+                publications('mavenJava')
+                publishArtifacts = true
+                publishPom = true
+            }
+        }
+        resolve {
+            repoKey = 'jcenter'
+        }
+        clientConfig.info.setBuildNumber(project.getProperty('buildNumber'))
+    }
+}

@@ -77,7 +77,11 @@ func (i *iteratorForBytes) Get() ([]byte, []byte, error) {
 }
 
 func (m *mptForBytes) Iterator() trie.Iterator {
-	i := m.mpt.Iterator()
+	return m.Filter(nil)
+}
+
+func (m *mptForBytes) Filter(prefix []byte) trie.Iterator {
+	i := m.mpt.Filter(prefix)
 	if i == nil {
 		return nil
 	}

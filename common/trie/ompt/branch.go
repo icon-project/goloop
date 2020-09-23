@@ -264,14 +264,13 @@ func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Objec
 		if child == nil {
 			continue
 		}
-		nchild, err := child.realize(m)
+		nchild, err := v(k+string([]byte{byte(i)}), child)
 		if err != nil {
 			return "", nil, err
 		}
 		if child != nchild {
 			n.children[i] = nchild
 		}
-		v(k+string([]byte{byte(i)}), nchild)
 	}
 	if n.value != nil {
 		value, changed, err := m.getObject(n.value)

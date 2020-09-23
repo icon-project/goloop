@@ -17,6 +17,7 @@ type (
 		Hash() []byte               // return nil if this Tree is empty
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() Iterator
+		Filter(prefix []byte) Iterator
 		Equal(immutable Immutable, exact bool) bool
 		Prove(k []byte, p [][]byte) ([]byte, error)
 		Resolve(builder merkle.Builder)
@@ -64,6 +65,7 @@ type (
 		Hash() []byte
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() IteratorForObject
+		Filter(prefix []byte) IteratorForObject
 		Equal(object ImmutableForObject, exact bool) bool
 		Prove(k []byte, p [][]byte) (Object, error)
 		Resolve(builder merkle.Builder)

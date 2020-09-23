@@ -13,6 +13,7 @@ GOLOOP_DOCKER_VOLUME=${GOLOOP_DOCKER_VOLUME:-goloop_data}
 GOLOOP_DOCKER_MOUNT=${GOLOOP_DOCKER_MOUNT:-${GOLOOP_DATA}}
 GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop}
 GOLOOP_GENESIS_STORAGE=${GOLOOP_DATA}/gs.zip
+GOLOOP_RPC_DUMP=${GOLOOP_RPC_DUMP:-false}
 
 GSTOOL=${GSTOOL:-../../bin/gstool}
 
@@ -46,6 +47,7 @@ function create(){
           --env GOLOOP_KEY_SECRET=${GOLOOP_KEY_SECRET} \
           --env GOLOOP_LOGFILE=${GOLOOP_LOGFILE} \
           --env GOLOOP_P2P=${GOLOOP_DOCKER_PREFIX}-${i}:8080 \
+          --env GOLOOP_RPC_DUMP=${GOLOOP_RPC_DUMP} \
           ${IMAGE_GOLOOP_JAVA}
 
         set +e
@@ -61,6 +63,7 @@ function create(){
           sleep 0.5
         done
         echo $RESULT
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system config rpcIncludeDebug true
         set -e
     done
 }

@@ -106,6 +106,11 @@ func (m *mptForObj) Iterator() trie.IteratorForObject {
 	return iter
 }
 
+func (m *mptForObj) Filter(prefix []byte) trie.IteratorForObject {
+	// TODO implement
+	return nil
+}
+
 func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
 	immutableTrie, ok := object.(*mptForObj)
 	if ok == false {

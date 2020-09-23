@@ -80,7 +80,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return Height of the block that includes the transaction.
+     * @return Height of the block that includes the transaction
      */
     public BigInteger getBlockHeight() {
         RpcItem item = properties.getItem("blockHeight");
@@ -88,7 +88,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return Hash of the block that includes the transation.
+     * @return Hash of the block that includes the transaction
      */
     public Bytes getBlockHash() {
         RpcItem item = properties.getItem("blockHash");
@@ -96,7 +96,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return Sum of stepUsed by this transaction and all preceeding transactions in the same block.
+     * @return Sum of stepUsed by this transaction and all preceding transactions in the same block
      */
     public BigInteger getCumulativeStepUsed() {
         RpcItem item = properties.getItem("cumulativeStepUsed");
@@ -104,7 +104,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return The amount of step used by this transaction.
+     * @return The amount of step used by this transaction
      */
     public BigInteger getStepUsed() {
         RpcItem item = properties.getItem("stepUsed");
@@ -112,7 +112,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return The step price used by this transaction.
+     * @return The step price used by this transaction
      */
     public BigInteger getStepPrice() {
         RpcItem item = properties.getItem("stepPrice");
@@ -120,7 +120,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return SCORE address if the transaction created a new SCORE.
+     * @return SCORE address if the transaction created a new SCORE
      */
     public String getScoreAddress() {
         RpcItem item = properties.getItem("scoreAddress");
@@ -128,7 +128,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return Bloom filter to quickly retrieve related eventlogs.
+     * @return Bloom filter to quickly retrieve related eventlogs
      */
     public String getLogsBloom() {
         RpcItem item = properties.getItem("logsBloom");
@@ -136,7 +136,7 @@ public class TransactionResult {
     }
 
     /**
-     * @return List of event logs, which this transaction generated.
+     * @return List of event logs that this transaction generated
      */
     public List<EventLog> getEventLogs() {
         RpcItem item = properties.getItem("eventLogs");

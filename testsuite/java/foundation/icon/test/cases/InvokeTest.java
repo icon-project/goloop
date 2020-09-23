@@ -232,7 +232,7 @@ public class InvokeTest extends TestBase {
                     .build();
             txHandler.deploy(govOwner, GovScore.INSTALL_PATH, Constants.GOV_ADDRESS, params, Constants.DEFAULT_STEPS);
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -250,7 +250,7 @@ public class InvokeTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -265,7 +265,7 @@ public class InvokeTest extends TestBase {
             updated = govScore.call("updated", null).asBoolean();
             assertTrue(updated);
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }

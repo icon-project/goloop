@@ -140,7 +140,7 @@ public class DeployTest extends TestBase {
         } catch (ResultTimeoutException e) {
             LOG.info("Expected exception: msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -157,7 +157,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -176,7 +176,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -202,7 +202,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -215,7 +215,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -229,7 +229,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -242,7 +242,7 @@ public class DeployTest extends TestBase {
                     .build();
             assertSuccess(helloScore.invokeAndWaitResult(owner, "helloWithName2", params));
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -359,7 +359,7 @@ public class DeployTest extends TestBase {
         } catch (RpcError e) {
             LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -375,7 +375,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -398,7 +398,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -422,7 +422,7 @@ public class DeployTest extends TestBase {
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
@@ -435,7 +435,7 @@ public class DeployTest extends TestBase {
             updated = updatedGov.call("updated", null).asBoolean();
             assertTrue(updated);
         } catch (Exception e) {
-            fail();
+            fail(e);
         } finally {
             LOG.infoExiting();
         }
