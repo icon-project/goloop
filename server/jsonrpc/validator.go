@@ -9,7 +9,7 @@ import (
 var (
 	eoaAddressRegex   = regexp.MustCompile("^hx[0-9a-f]{40}$")
 	scoreAddressRegex = regexp.MustCompile("^cx[0-9a-f]{40}$")
-	hexInt            = regexp.MustCompile("^0x[0-9a-f]+$")
+	hexInt            = regexp.MustCompile("^0x(0|[1-9a-f][0-9a-f]*)$")
 	hashRegex         = regexp.MustCompile("^0x[0-9a-f]{64}$")
 )
 

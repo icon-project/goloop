@@ -1,9 +1,9 @@
 package scoreapi
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"unicode/utf8"
 
@@ -37,6 +37,157 @@ func (t MethodType) String() string {
 	}
 }
 
+type TypeTag int
+
+const (
+	TUnknown TypeTag = iota
+	TInteger
+	TString
+	TBytes
+	TBool
+	TAddress
+	TList
+	TDict
+	TStruct
+)
+
+const (
+	listDepthOffset = 4
+	listDepthBits   = 4
+	listDepthMask   = (1 << listDepthBits) - 1
+	listDepthCheck  = listDepthMask << listDepthOffset
+	maxListDepth    = listDepthMask
+
+	valueTagBits = 4
+	valueTagMask = (1 << valueTagBits) - 1
+)
+
+func (t TypeTag) String() string {
+	switch t {
+	case TInteger:
+		return "int"
+	case TString:
+		return "str"
+	case TBytes:
+		return "bytes"
+	case TBool:
+		return "bool"
+	case TAddress:
+		return "Address"
+	case TList:
+		return "list"
+	case TDict:
+		return "dict"
+	case TStruct:
+		return "struct"
+	default:
+		return fmt.Sprintf("unknown(%d)", int(t))
+	}
+}
+
+func (t TypeTag) ConvertJSONToTypedObj(bs []byte, fields []Field) (*codec.TypedObj, error) {
+	var value interface{}
+	switch t {
+	case TInteger:
+		var buffer common.HexInt
+		if err := json.Unmarshal(bs, &buffer); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		value = &buffer
+	case TString:
+		var buffer string
+		if err := json.Unmarshal(bs, &buffer); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		value = buffer
+	case TBytes:
+		var buffer common.HexBytes
+		if err := json.Unmarshal(bs, &buffer); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		value = buffer.Bytes()
+	case TBool:
+		var buffer common.HexInt32
+		if err := json.Unmarshal(bs, &buffer); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		if buffer.Value != 0 && buffer.Value != 1 {
+			return nil, scoreresult.InvalidParameterError.Errorf(
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		value = buffer.Value != 0
+	case TAddress:
+		var buffer common.Address
+		if err := json.Unmarshal(bs, &buffer); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		value = &buffer
+	case TStruct:
+		buffer := make(map[string]*codec.TypedObj)
+		var tmp map[string]json.RawMessage
+		if err := json.Unmarshal(bs, &tmp); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		for _, field := range fields {
+			if bs, ok := tmp[field.Name]; ok {
+				if obj, err := field.Type.ConvertJSONToTypedObj(bs, field.Fields, false); err != nil {
+					return nil, err
+				} else {
+					buffer[field.Name] = obj
+				}
+			} else {
+				return nil, scoreresult.InvalidParameterError.Errorf("InvalidParameterNoField(name=%s)", field.Name)
+			}
+		}
+		value = buffer
+	default:
+		return nil, scoreresult.InvalidParameterError.Errorf("UnknownType(%s)", t.String())
+	}
+	if obj, err := common.EncodeAny(value); err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrapf(err,
+			"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+	} else {
+		return obj, nil
+	}
+}
+
+func TypeTagOf(s string) TypeTag {
+	switch s {
+	case "bool":
+		return TBool
+	case "int":
+		return TInteger
+	case "str":
+		return TString
+	case "bytes":
+		return TBytes
+	case "Address":
+		return TAddress
+	case "list":
+		return TList
+	case "dict":
+		return TDict
+	case "struct":
+		return TStruct
+	default:
+		return TUnknown
+	}
+}
+
+type Field struct {
+	Name   string
+	Type   DataType
+	Fields []Field
+}
+
+// DataType composed of following bits.
+// ListDepth(4bits) + TypeTag(4bits)
 type DataType int
 
 const (
@@ -48,165 +199,262 @@ const (
 	Address
 	List
 	Dict
+	Struct
 )
 
-func (t DataType) String() string {
-	switch t {
-	case Integer:
-		return "int"
-	case String:
-		return "str"
-	case Bytes:
-		return "bytes"
-	case Bool:
-		return "bool"
-	case Address:
-		return "Address"
-	case List:
-		return "list"
-	case Dict:
-		return "dict"
-	default:
-		log.Panicf("Fail to convert DataType=%d", t)
-		return "Unknown"
-	}
+func (t DataType) Tag() TypeTag {
+	return TypeTag(t & valueTagMask)
 }
 
-func (t DataType) DecodeForJSON(bs []byte) interface{} {
-	if bs == nil {
-		return nil
+func (t DataType) ListDepth() int {
+	return (int(t) >> listDepthOffset) & listDepthMask
+}
+
+func (t DataType) IsList() bool {
+	return (t & listDepthCheck) != 0
+}
+
+func (t DataType) Elem() DataType {
+	return t - (1 << listDepthOffset)
+}
+
+func ListTypeOf(depth int, t DataType) DataType {
+	return t + (1<<listDepthOffset)*DataType(depth)
+}
+
+func (t DataType) String() string {
+	prefix := strings.Repeat("[]", t.ListDepth())
+	return prefix + t.Tag().String()
+}
+
+// DecodeJSO decode json object comes from JSON.
+func (t DataType) ConvertJSONToTypedObj(bs []byte, fields []Field, nullable bool) (*codec.TypedObj, error) {
+	if nullable && string(bs) == "null" {
+		return codec.Nil, nil
 	}
-	switch t {
-	case Integer:
+
+	if t.ListDepth() > 0 {
+		var values []json.RawMessage
+		if err := json.Unmarshal(bs, &values); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		}
+		typed := make([]*codec.TypedObj, len(values))
+		for i, v := range values {
+			if tv, err := t.Elem().ConvertJSONToTypedObj(v, fields, false); err != nil {
+				return nil, scoreresult.InvalidParameterError.Wrapf(err,
+					"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+			} else {
+				typed[i] = tv
+			}
+		}
+		if obj, err := common.EncodeAny(typed); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		} else {
+			return obj, nil
+		}
+	}
+
+	return t.Tag().ConvertJSONToTypedObj(bs, fields)
+}
+
+// DecodeForJSON convert default bytes and event bytes into JSON value type.
+func (t DataType) ConvertBytesToJSO(bs []byte) (interface{}, error) {
+	if bs == nil {
+		return nil, nil
+	}
+	if t.ListDepth() > 0 {
+		return nil, errors.InvalidStateError.New("UnsupportedListType")
+	}
+	switch t.Tag() {
+	case TInteger:
 		var i common.HexInt
 		i.SetBytes(bs)
-		return &i
-	case String:
-		return string(bs)
-	case Bytes:
-		return common.HexBytes(bs)
-	case Bool:
+		return &i, nil
+	case TString:
+		return string(bs), nil
+	case TBytes:
+		return common.HexBytes(bs), nil
+	case TBool:
 		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
-			return "0x0"
+			return "0x0", nil
 		} else {
-			return "0x1"
+			return "0x1", nil
 		}
-	case Address:
+	case TAddress:
 		addr := new(common.Address)
 		if err := addr.SetBytes(bs); err != nil {
-			return nil
+			return nil, err
 		}
-		return addr
+		return addr, nil
 	default:
-		log.Panicf("Unknown DataType=%d", t)
-		return nil
+		return nil, errors.InvalidStateError.Errorf("UnsupportedType(type=%s)", t.String())
 	}
 }
 
-func (t DataType) Decode(bs []byte) interface{} {
+// Decode convert default bytes into native type
+func (t DataType) ConvertBytesToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	if bs == nil {
-		return nil
+		return codec.Nil, nil
 	}
-	switch t {
-	case Integer:
+	if t.ListDepth() > 0 {
+		return nil, errors.IllegalArgumentError.Errorf("Unsupported Decoding type=%s", t.String())
+	}
+	switch t.Tag() {
+	case TInteger:
 		var i common.HexInt
 		if len(bs) > 0 {
 			i.SetBytes(bs)
 		}
-		return &i
-	case String:
-		return string(bs)
-	case Bytes:
-		return bs
-	case Bool:
+		return common.EncodeAny(&i)
+	case TString:
+		return common.EncodeAny(string(bs))
+	case TBytes:
+		return common.EncodeAny(bs)
+	case TBool:
 		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
-			return false
+			return common.EncodeAny(false)
 		} else {
-			return true
+			return common.EncodeAny(true)
 		}
-	case Address:
+	case TAddress:
 		addr := new(common.Address)
 		if err := addr.SetBytes(bs); err != nil {
-			return nil
+			return nil, err
 		}
-		return addr
+		return common.EncodeAny(addr)
 	default:
-		log.Panicf("Unknown DataType=%d", t)
-		return nil
+		return nil, errors.IllegalArgumentError.Errorf("Unsupported Decoding type=%s", t.String())
 	}
 }
 
-func (t DataType) ValidateBytes(bs []byte) error {
+// ValidateBytes validate event bytes.
+func (t DataType) ValidateEvent(bs []byte) error {
 	if bs == nil {
 		return nil
 	}
-	switch t {
-	case Integer:
+	if t.ListDepth() > 0 {
+		return errors.InvalidStateError.Errorf("InvalidType(type=%s)", t.String())
+	}
+	switch t.Tag() {
+	case TInteger:
 		if len(bs) == 0 {
 			return errors.IllegalArgumentError.New("InvalidIntegerBytes")
 		}
-	case Bool:
+	case TBool:
 		if len(bs) != 1 {
 			return errors.IllegalArgumentError.Errorf("InvalidBoolBytes(bs=<%#x>)", bs)
 		}
 		if bs[0] > 1 {
 			return errors.IllegalArgumentError.Errorf("InvalidBoolBytes(bs=<%#x>)", bs)
 		}
-	case Address:
+	case TAddress:
 		var addr common.Address
 		if err := addr.SetBytes(bs); err != nil {
 			return errors.IllegalArgumentError.New("InvalidAddressBytes")
 		}
-	case String:
+	case TString:
 		if !utf8.Valid(bs) {
 			return errors.IllegalArgumentError.New("InvalidUTF8Chars")
 		}
+	case TStruct:
+		return errors.InvalidStateError.Errorf("InvalidType(type=%s)", t.String())
 	}
 	return nil
 }
 
-var inputTypeTag = map[DataType]uint8{
-	Integer: common.TypeInt,
-	String:  codec.TypeString,
-	Bytes:   codec.TypeBytes,
-	Bool:    codec.TypeBool,
-	Address: common.TypeAddress,
+var inputTypeTag = map[TypeTag]uint8{
+	TInteger: common.TypeInt,
+	TString:  codec.TypeString,
+	TBytes:   codec.TypeBytes,
+	TBool:    codec.TypeBool,
+	TAddress: common.TypeAddress,
 }
 
-var outputTypeTag = map[DataType]struct {
+var outputTypeTag = map[TypeTag]struct {
 	tag      uint8
 	nullable bool
 }{
-	Integer: {common.TypeInt, false},
-	String:  {codec.TypeString, false},
-	Bytes:   {codec.TypeBytes, true},
-	Bool:    {codec.TypeBool, false},
-	Address: {common.TypeAddress, true},
-	List:    {codec.TypeList, true},
-	Dict:    {codec.TypeDict, true},
+	TInteger: {common.TypeInt, false},
+	TString:  {codec.TypeString, false},
+	TBytes:   {codec.TypeBytes, true},
+	TBool:    {codec.TypeBool, false},
+	TAddress: {common.TypeAddress, true},
+	TList:    {codec.TypeList, true},
+	TDict:    {codec.TypeDict, true},
 }
 
-func (t DataType) ValidateInput(obj *codec.TypedObj, nullable bool) error {
-	if typeTag, ok := inputTypeTag[t]; !ok {
-		return errors.IllegalArgumentError.Errorf("UnknownType(%d)", t)
+func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bool) error {
+	if obj == nil {
+		obj = codec.Nil
+	}
+	if obj.Type == codec.TypeNil && nullable {
+		return nil
+	}
+	if t.ListDepth() > 0 {
+		if codec.TypeList != obj.Type {
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidType(exp=list,type=%d)", obj.Type)
+		}
+		children, ok := obj.Object.([]*codec.TypedObj)
+		if !ok {
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidValue(exp=[]*codec.TypedObj,real=%T)", obj.Object)
+		}
+		for _, child := range children {
+			if err := t.Elem().ValidateInput(child, fields, false); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if t.Tag() == TStruct {
+		if obj.Type != codec.TypeDict {
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidType(exp=TypeDict,real=%d)", obj.Type)
+		}
+		childMap, ok := obj.Object.(map[string]*codec.TypedObj)
+		if !ok {
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidValue(exp=[]*codec.TypedObj,real=%T)", obj.Object)
+		}
+		for _, field := range fields {
+			if value, ok := childMap[field.Name]; ok {
+				if err := field.Type.ValidateInput(value, field.Fields, false); err != nil {
+					return err
+				}
+			} else {
+				return errors.IllegalArgumentError.Errorf("NoValueForField(field=%s)", field.Name)
+			}
+		}
+		if len(childMap) > len(fields) {
+			return errors.IllegalArgumentError.Errorf(
+				"UnexpectedFields(n=%d)", len(childMap)-len(fields))
+		}
+		return nil
+	}
+	if typeTag, ok := inputTypeTag[t.Tag()]; !ok {
+		return errors.IllegalArgumentError.Errorf("InvalidType(%s)", t.Tag().String())
 	} else {
 		if typeTag == obj.Type {
 			return nil
 		}
-		if obj.Type == codec.TypeNil && nullable {
-			return nil
-		}
 		return errors.IllegalArgumentError.Errorf(
-			"InvalidType(exp=%s,type=%d)", t, typeTag)
+			"InvalidType(exp=%d,type=%d)", typeTag, obj.Type)
 	}
+	return nil
 }
 
 func (t DataType) ValidateOutput(obj *codec.TypedObj) error {
 	if obj == nil {
 		obj = codec.Nil
 	}
-	if typeTag, ok := outputTypeTag[t]; !ok {
-		return errors.IllegalArgumentError.Errorf("UnknownType(%d)", t)
+	if t.ListDepth() > 0 {
+		return errors.InvalidStateError.Errorf("InvalidTypeForOutput(%s)", t.String())
+	}
+	if typeTag, ok := outputTypeTag[t.Tag()]; !ok {
+		return errors.IllegalArgumentError.Errorf("InvalidType(%s)", t.Tag().String())
 	} else {
 		if typeTag.tag == obj.Type {
 			return nil
@@ -221,24 +469,19 @@ func (t DataType) ValidateOutput(obj *codec.TypedObj) error {
 
 // DataTypeOf returns type for the specified name.
 func DataTypeOf(s string) DataType {
-	switch s {
-	case "bool":
-		return Bool
-	case "int":
-		return Integer
-	case "str":
-		return String
-	case "bytes":
-		return Bytes
-	case "Address":
-		return Address
-	case "list":
-		return List
-	case "dict":
-		return Dict
-	default:
+	depth := 0
+	for strings.HasPrefix(s, "[]") {
+		depth += 1
+		s = s[2:]
+	}
+	if depth > maxListDepth {
 		return Unknown
 	}
+	tag := TypeTagOf(s)
+	if tag == TUnknown {
+		return Unknown
+	}
+	return ListTypeOf(depth, DataType(tag))
 }
 
 const (
@@ -252,6 +495,36 @@ type Parameter struct {
 	Name    string
 	Type    DataType
 	Default []byte
+	Fields  []Field
+}
+
+func (p *Parameter) RLPEncodeSelf(e codec.Encoder) error {
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	if err = e2.EncodeMulti(p.Name, p.Type, p.Default); err != nil {
+		return err
+	}
+	if len(p.Fields) > 0 {
+		return e2.Encode(p.Fields)
+	}
+	return nil
+}
+
+func (p *Parameter) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	if cnt, err := d2.DecodeMulti(&p.Name, &p.Type, &p.Default, &p.Fields); err == nil || err == io.EOF {
+		if cnt < 3 {
+			return errors.Wrap(codec.ErrInvalidFormat, "LessItems")
+		}
+		return nil
+	} else {
+		return err
+	}
 }
 
 type Method struct {
@@ -306,7 +579,11 @@ func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 			}
 		} else {
 			if i >= a.Indexed {
-				io["default"] = input.Type.DecodeForJSON(input.Default)
+				if def, err := input.Type.ConvertBytesToJSO(input.Default); err == nil {
+					io["default"] = def
+				} else {
+					log.Warnf("Fail to decode default bytes err=%+v", def)
+				}
 			}
 		}
 		inputs[i] = io
@@ -349,12 +626,15 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 			if i < len(tol) {
 				to := tol[i]
 				nullable := (i >= a.Indexed) && input.Default == nil
-				if err := inputType.ValidateInput(to, nullable); err != nil {
+				if err := inputType.ValidateInput(to, input.Fields, nullable); err != nil {
 					return nil, err
 				}
 			} else {
-				tolNew = append(tolNew,
-					common.MustEncodeAny(inputType.Decode(input.Default)))
+				if obj, err := inputType.ConvertBytesToTypedObj(input.Default); err != nil {
+					return nil, err
+				} else {
+					tolNew = append(tolNew, obj)
+				}
 			}
 		}
 		paramObj.Object = tolNew
@@ -369,18 +649,23 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		return nil, scoreresult.InvalidParameterError.Errorf(
 			"FailToCastDictToMap(type=%[1]T, obj=%+[1]v)", paramObj.Object)
 	}
-	inputs := make([]interface{}, len(a.Inputs))
+	inputs := make([]*codec.TypedObj, len(a.Inputs))
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
 			nullable := (i >= a.Indexed) && input.Default == nil
-			if err := input.Type.ValidateInput(obj, nullable); err != nil {
+			if err := input.Type.ValidateInput(obj, input.Fields, nullable); err != nil {
 				return nil, scoreresult.InvalidParameterError.Wrapf(err,
 					"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
 			}
 			inputs[i] = obj
 		} else {
 			if i >= a.Indexed {
-				inputs[i] = input.Type.Decode(input.Default)
+				if obj, err := input.Type.ConvertBytesToTypedObj(input.Default); err != nil {
+					return nil, scoreresult.InvalidParameterError.Wrapf(err,
+						"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
+				} else {
+					inputs[i] = obj
+				}
 			} else {
 				return nil, scoreresult.InvalidParameterError.Errorf(
 					"MissingParameter(name=%s)", input.Name)
@@ -415,7 +700,7 @@ func (a *Method) CheckEventData(indexed [][]byte, data [][]byte) error {
 		} else {
 			input = data[i+1-len(indexed)]
 		}
-		if err := p.Type.ValidateBytes(input); err != nil {
+		if err := p.Type.ValidateEvent(input); err != nil {
 			return IllegalEventError.Wrapf(err,
 				"IllegalEvent(sig=%s,idx=%d,data=0x%#x)",
 				a.Signature(), i, input)
@@ -425,66 +710,34 @@ func (a *Method) CheckEventData(indexed [][]byte, data [][]byte) error {
 }
 
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
-	var params map[string]string
+	var params map[string]json.RawMessage
 	if len(bs) > 0 {
 		if err := json.Unmarshal(bs, &params); err != nil {
 			return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 		}
 	}
 	matched := 0
-	inputs := make([]interface{}, len(a.Inputs))
+	inputs := make([]*codec.TypedObj, len(a.Inputs))
 	for i, input := range a.Inputs {
 		param, ok := params[input.Name]
 		if !ok {
 			if i >= a.Indexed {
-				inputs[i] = input.Type.Decode(input.Default)
+				if obj, err := input.Type.ConvertBytesToTypedObj(input.Default); err != nil {
+					return nil, scoreresult.InvalidParameterError.Wrapf(err,
+						"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
+				} else {
+					inputs[i] = obj
+				}
 				continue
 			}
 			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 				"MissingParam(param=%s)", input.Name)
 		}
-
 		matched += 1
-
-		switch input.Type {
-		case Integer:
-			var value common.HexInt
-			if _, ok := value.SetString(param, 0); !ok {
-				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-					"FailToConvertInteger(param=%s,value=%s)", input.Name, param)
-			}
-			inputs[i] = &value
-		case String:
-			inputs[i] = param
-		case Bytes:
-			if len(param) < 2 || param[0:2] != "0x" {
-				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-					"InvalidParam(param=%s)", param)
-			}
-			value, err := hex.DecodeString(param[2:])
-			if err != nil {
-				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
-			}
-			inputs[i] = value
-		case Bool:
-			switch param {
-			case "0x1":
-				inputs[i] = true
-			case "0x0":
-				inputs[i] = false
-			default:
-				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-					"IllegalParamForBool(param=%s)", param)
-			}
-		case Address:
-			var value common.Address
-			if err := value.SetString(param); err != nil {
-				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
-			}
-			inputs[i] = &value
-		default:
-			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-				"UnknownType(%d)", input.Type)
+		if obj, err := input.Type.ConvertJSONToTypedObj(param, input.Fields, false); err != nil {
+			return nil, err
+		} else {
+			inputs[i] = obj
 		}
 	}
 
