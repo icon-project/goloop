@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	configDefaultTxSliceCapacity = 1024
-	configMaxTxCount             = 1500
+	configDefaultMaxTxBytesInABlock = 1024 * 1024
+	configDefaultTxSliceCapacity    = 1024
+	configDefaultMaxTxCount         = 1500
 )
 
 type Monitor interface {
@@ -136,10 +137,10 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	startTS := time.Now()
 
 	if maxBytes <= 0 {
-		maxBytes = ConfigMaxTxBytesInABlock
+		maxBytes = configDefaultMaxTxBytesInABlock
 	}
 	if maxCount <= 0 {
-		maxCount = configMaxTxCount
+		maxCount = configDefaultMaxTxCount
 	}
 
 	tsr := NewTxTimestampRangeFor(wc, tp.group)
