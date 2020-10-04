@@ -243,10 +243,19 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
+	nextEEType := scoreAs.NextContract().EEType()
 	if scoreAs.Contract() == nil {
-		methodStr = scoreAs.NextContract().EEType().InstallMethod()
+		if method, ok := nextEEType.InstallMethod(); !ok {
+			return scoreresult.MethodNotFoundError.New("NoInstallMethod"), nil, nil
+		} else {
+			methodStr = method
+		}
 	} else {
-		methodStr = scoreAs.NextContract().EEType().UpdateMethod()
+		if method, ok := nextEEType.UpdateMethod(scoreAs.ActiveContract().EEType()); !ok {
+			return scoreresult.MethodNotFoundError.New("NoUpdateMethod"), nil, nil
+		} else {
+			methodStr = method
+		}
 	}
 	// GET API
 	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.log))

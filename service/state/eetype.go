@@ -20,25 +20,32 @@ var (
 	}
 	updateMethods = map[EEType]string{
 		PythonEE: "on_update",
-		JavaEE:   "",
-		SystemEE: "",
+		JavaEE:   "<init>",
+		SystemEE: "<Update>",
+	}
+	allowUpdateFromTo = map[EEType]map[EEType]bool{
+		PythonEE: map[EEType]bool{
+			PythonEE: true,
+		},
 	}
 )
 
-func (e EEType) InstallMethod() string {
+func (e EEType) InstallMethod() (string, bool) {
 	if method, ok := installMethods[e]; ok {
-		return method
+		return method, true
 	}
-	log.Errorf("UnexpectedEEType(%s)\n", e)
-	return ""
+	return "", false
 }
 
-func (e EEType) UpdateMethod() string {
-	if method, ok := updateMethods[e]; ok {
-		return method
+func (e EEType) UpdateMethod(from EEType) (string, bool) {
+	if allowTo, ok := allowUpdateFromTo[from]; ok {
+		if allow, ok := allowTo[e]; ok && allow {
+			if method, ok := updateMethods[e]; ok {
+				return method, true
+			}
+		}
 	}
-	log.Errorf("UnexpectedEEType(%s)\n", e)
-	return ""
+	return "", false
 }
 
 func (e EEType) IsInternalMethod(s string) bool {
