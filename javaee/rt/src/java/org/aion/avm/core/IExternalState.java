@@ -148,7 +148,7 @@ public interface IExternalState {
                        String method,
                        Object[] params,
                        BigInteger value,
-                       int stepLimit);
+                       long stepLimit);
 
     int getOption();
 

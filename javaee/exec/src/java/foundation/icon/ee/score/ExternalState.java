@@ -214,7 +214,7 @@ public class ExternalState implements IExternalState {
     }
 
     public Result call(Address address, String method, Object[] params, BigInteger value,
-                       int stepLimit) {
+                       long stepLimit) {
         try {
             logger.trace("[call] target={} method={} params={} value={} limit={}",
                     address, method, params, value, stepLimit);
