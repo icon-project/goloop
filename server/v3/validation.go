@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"fmt"
 	"regexp"
 
 	"gopkg.in/go-playground/validator.v9"
@@ -74,21 +75,33 @@ func DataParamValidation(sl validator.StructLevel) {
 	}
 }
 
+func validateRPCData(sl validator.StructLevel, name string, value interface{}) {
+	switch obj := value.(type) {
+	case string:
+		// param value : string
+	case map[string]interface{}:
+		for k, v := range obj {
+			validateRPCData(sl, fmt.Sprintf("%s.%s", name, k), v)
+		}
+	case []interface{}:
+		for i, v := range obj {
+			validateRPCData(sl, fmt.Sprintf("%s[%d]", name, i), v)
+		}
+	default:
+		sl.ReportError(value, name, "", "data.params", "")
+	}
+}
+
 func validateCallDataParam(sl validator.StructLevel, field interface{}, data map[string]interface{}) {
 	// data.method : required
 	if _, ok := data["method"]; !ok {
-		sl.ReportError(field, "Data", "Data", "data.method", "")
+		sl.ReportError(field, "Data", "data", "data.method", "")
 	}
 	// data.params : optional
 	if params, ok := data["params"]; ok {
 		paramsMap := params.(map[string]interface{})
-		for _, pv := range paramsMap {
-			switch pv.(type) {
-			case string:
-				// param value : string
-			default:
-				sl.ReportError(field, "Data", "Data", "data.params", "")
-			}
+		for k, pv := range paramsMap {
+			validateRPCData(sl, "Data.params."+k, pv)
 		}
 	}
 }
@@ -126,13 +139,8 @@ func validateDeployDataParam(sl validator.StructLevel, field interface{}, data m
 	// data.params : optional
 	if params, ok := data["params"]; ok {
 		paramsMap := params.(map[string]interface{})
-		for _, pv := range paramsMap {
-			switch pv.(type) {
-			case string:
-				// param value : string
-			default:
-				sl.ReportError(field, "Data", "", "data.params", "")
-			}
+		for k, pv := range paramsMap {
+			validateRPCData(sl, "Data.params."+k, pv)
 		}
 	}
 }

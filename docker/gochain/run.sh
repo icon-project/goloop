@@ -12,12 +12,11 @@
 #                   automatically generate one.
 #
 #   GOCHAIN_GENESIS (optional)
-#                   Path to the genesis transaction file. It will overrides
-#                   configuration file.
+#                   Path to the genesis transaction or template file.
+#                   It will override configuration file.
 #
-#   GOCHAIN_GENESIS_DATA (optional)
-#                   Path to the genesis data. If there is extra genesis data,
-#                   then set to specified directory or file.
+#   GOCHAIN_GENESIS_STORAGE (optional)
+#                   Path to the genesis storage.
 #
 #   GOCHAIN_ADDRESS (recommended, default:"$HOST:8080")
 #                   Address for the node, "<host ip or name>:<port>", which is
@@ -64,8 +63,12 @@ if [ "${GOCHAIN_GENESIS}" != "" ] ; then
     GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis ${GOCHAIN_GENESIS}"
 fi
 
-if [ "${GOCHAIN_GENESIS_DATA}" != "" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis_data ${GOCHAIN_GENESIS_DATA}"
+if [ "${GOCHAIN_ENGINES}" != "" ] ; then
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --engines ${GOCHAIN_ENGINES}"
+fi
+
+if [ "${GOCHAIN_GENESIS_STORAGE}" != "" ] ; then
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis_storage ${GOCHAIN_GENESIS_STORAGE}"
 fi
 
 if [ -r "${GOCHAIN_KEYSTORE}" ] ; then

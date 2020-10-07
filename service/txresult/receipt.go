@@ -560,7 +560,7 @@ func DecodeForJSONByType(t string, v []byte) (interface{}, error) {
 	if dt == scoreapi.Unknown {
 		return nil, errors.Errorf("UnknownType(%s)For(<% x>)", t, v)
 	}
-	return dt.DecodeForJSON(v), nil
+	return dt.ConvertBytesToJSO(v)
 }
 
 func EventDataStringToBytesByType(t string, v string) ([]byte, error) {

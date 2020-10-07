@@ -26,9 +26,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-// Maximum size in bytes for transaction in a block.
-// TODO it should be configured or received from block manager
-const ConfigMaxTxBytesInABlock = 1024 * 1024
 const ConfigTransitionResultCacheEntryCount = 10
 const ConfigTransitionResultCacheEntrySize = 1024 * 1024
 

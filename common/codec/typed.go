@@ -130,6 +130,8 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 			}
 		}
 		return newTypedObj(TypeList, l), nil
+	case []*TypedObj:
+		return newTypedObj(TypeList, obj), nil
 	case map[string]interface{}:
 		m := make(map[string]*TypedObj)
 		for k, o := range obj {
@@ -140,6 +142,8 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 			}
 		}
 		return newTypedObj(TypeDict, m), nil
+	case map[string]*TypedObj:
+		return newTypedObj(TypeDict, obj), nil
 	case map[string]int64:
 		m := make(map[string]*TypedObj)
 		for k, o := range obj {
