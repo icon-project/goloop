@@ -55,7 +55,7 @@ Output binaries are placed under `bin/` directory.
 make pyexec
 ```
 
-Output files are placed under `pyee/dist/` directory.
+Output files are placed under `build/pyee/dist/` directory.
 
 ## Quick start
 
@@ -65,18 +65,18 @@ First step, you need to make a configuration for the node.
 ./bin/gochain --save_key_store wallet.json --save config.json
 ```
 
-It stores generated configuration(`config.json`) along with wallet keystore
-(`wallet.json`). If you don't specify any password, it uses `gochain` as 
-password of the keystore. You may apply more options while it generates.
+It generates a configuration file, `config.json`, along with a wallet keystore file, `wallet.json`.
+If you don't specify any password, it uses `gochain` as a default password for the keystore.
+You may apply more options while it generates.
+Please run `./bin/gochain --help` for more information.
 
 Now, you may start the server with it.
 
 ```bash
-./bin/gochain -config config.json
+./bin/gochain --config config.json
 ```
 
-You may send transaction with the wallet (`wallet.json`) for initial balance
-of your wallet.
+You may send transactions with the wallet, `wallet.json`, for the initial balance of other wallets.
 
-This is single node configuration. If you want to make a network with multiple
-nodes, you need to make own genesis and node configurations.
+Note that this is a single node configuration.  If you want to make a network with multiple nodes,
+you need to make your own genesis and node configurations.
