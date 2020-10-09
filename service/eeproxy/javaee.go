@@ -227,10 +227,14 @@ func (e *javaExecutionEngine) newCmd(stdout, stderr io.WriteCloser) *exec.Cmd {
 }
 
 func NewJavaEE(logger log.Logger) (Engine, error) {
+	binPath, ok := os.LookupEnv("JAVAEE_BIN")
+	if !ok {
+		return nil, errors.IllegalArgumentError.Errorf("JAVAEE_BIN not set!")
+	}
 	var e javaExecutionEngine
 	e.instances = make(map[string]*javaInstance)
 	e.java = "/bin/sh"
-	e.args = []string{os.ExpandEnv("$JAVAEE_BIN")}
+	e.args = []string{binPath}
 	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: JavaEE})
 	return &e, nil
 }
