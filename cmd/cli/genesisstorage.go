@@ -20,7 +20,7 @@ func newGStorageGenCmd(c string) *cobra.Command {
 	input := flags.StringP("input", "i", "genesis.json", "Input file or directory path")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Generating %s with %s\n", *out, *input)
-		f, err := os.OpenFile(*out, os.O_CREATE|os.O_RDWR, 0600)
+		f, err := os.OpenFile(*out, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
 		if err != nil {
 			log.Panicf("Fail to open %s for write err=%+v", *out, err)
 		}

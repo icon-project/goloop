@@ -180,7 +180,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         externalState.waitForCallbacks();
         IInstrumentation inst = IInstrumentation.attachedThreadInstrumentation.get();
         var hash = inst.peekNextHashCode();
-        int stepLeft = (int)inst.energyLeft();
+        long stepLeft = inst.energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
         var callerAddr = this.transactionDestination;
         var rds = task.getReentrantDAppStack();
