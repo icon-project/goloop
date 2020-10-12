@@ -6,9 +6,18 @@ Welcome to the Goloop github repository. Goloop is a smart contract enabled ente
 
 This github repository contains the source code of the Goloop software, which will serve as base modules for enterprise blockchains as well as the implementation base for ICON 2.0 protocol.
 
-## Install
+## Introduction
 
-To be updated
+* General
+  - [Build Guide](doc/build.md)
+  - [Tutorial](doc/tutorial.md)
+* API Documents
+  - [JSON RPC v3](doc/jsonrpc_v3.md)
+  - [JSON RPC BTP Extension](doc/btp_extension.md)
+* Others
+  - [`goloop` command line reference](doc/goloop_cli.md)
+  - [Genesis Transaction](doc/genesis_tx.md)
+  - [Genesis Storage](doc/genesis_storage.md)
 
 ## Contribution Guidelines
 
@@ -18,7 +27,7 @@ We will update more detailed guidelines to collaborate with community developers
 
 ## License
 
-Apache License 2.0
+This project is available under the [Apache License, Version 2.0](LICENSE).
 
 ## Community
 
