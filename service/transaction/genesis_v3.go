@@ -205,6 +205,8 @@ func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Recei
 	}
 
 	cc.UpdateSystemInfo()
+	cc.ResetStepLimit(cc.GetStepLimit(LimitTypeInvoke))
+
 	r := txresult.NewReceipt(cc.Database(), cc.Revision(), state.SystemAddress)
 	if err := g.installContracts(cc); err != nil {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
@@ -236,7 +238,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 			status, _, _, _ := cc.Call(handler, cc.StepAvailable())
 			if status != nil {
 				return InvalidGenesisError.Wrapf(status,
-					"FAIL to install pre-installed score addr=%s", acc.Address)
+					"FAIL to install pre-installed score. addr=%s", &acc.Address)
 			}
 		} else if score.ContentID != "" {
 			if strings.HasPrefix(score.ContentID, contentIdHash) == true {
@@ -251,7 +253,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 				status, _, _, _ := cc.Call(handler, cc.StepAvailable())
 				if status != nil {
 					return InvalidGenesisError.Wrapf(status,
-						"FAIL to install pre-installed score. addr=%s", acc.Address)
+						"FAIL to install pre-installed score. addr=%s", &acc.Address)
 				}
 			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
 				// TODO implement for contentCid
