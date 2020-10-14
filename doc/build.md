@@ -2,7 +2,7 @@
 
 ## Platform preparation
 
-* GoLang 1.12+
+* GoLang 1.14+
 
     **Mac OSX**
     ```

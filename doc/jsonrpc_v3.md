@@ -43,7 +43,7 @@ Following is a list of failure codes.
 | OUT_OF_BALANCE            | 11         | Out of balance                                                              |
 | TIMEOUT_ERROR             | 12         | Timeout error                                                               |
 | STACK_OVERFLOW            | 13         | Too deep inter-call                                                         |
-| SKIP_TARANSACTION         | 14         | The transaction is not executed.                                            |
+| SKIP_TRANSACTION          | 14         | The transaction is not executed.                                            |
 | REVERTED                  | 32 ~ 999   | End with revert request.(by Revision5, it was limited to 99)                |
 
 ## JSON-RPC Failure
@@ -101,7 +101,7 @@ You may set HTTP header for extension data of the request.
 
 | Option       | Description                          | Allowed APIs |
 |:-------------|:-------------------------------------|:-------------|
-| timeout      | Timeout for waiting in milli-second  | icx_sendTransactionAndWait <br/> icx_waitTransactionResult |
+| timeout      | Timeout for waiting in millisecond   | icx_sendTransactionAndWait <br/> icx_waitTransactionResult |
 
 
 
@@ -392,7 +392,7 @@ Returns SCORE's external API list.
 
 | KEY     | VALUE type                    | Description                  |
 |:--------|:------------------------------|:-----------------------------|
-| address | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE adress to be examined. |
+| address | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address to be examined.|
 
 > Example responses
 
@@ -548,12 +548,12 @@ Returns the transaction result requested by transaction hash.
 |:-------------------|:-----------------------------------------------------------|:---------------------------------------------------------------------------------------|
 | status             | [T_INT](#T_INT)                                            | 1 on success, 0 on failure.                                                            |
 | to                 | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Recipient address of the transaction                                                   |
-| failure            | JSON object                                                | This field exists when status is 0. Please refer [failure object](#T_FAILURE)      |
+| failure            | JSON object                                                | This field exists when status is 0. Please refer [failure object](#T_FAILURE)          |
 | txHash             | [T_HASH](#T_HASH)                                          | Transaction hash                                                                       |
 | txIndex            | [T_INT](#T_INT)                                            | Transaction index in the block                                                         |
 | blockHeight        | [T_INT](#T_INT)                                            | Height of the block that includes the transaction.                                     |
-| blockHash          | [T_HASH](#T_HASH)                                          | Hash of the block that includes the transation.                                        |
-| cumulativeStepUsed | [T_INT](#T_INT)                                            | Sum of stepUsed by this transaction and all preceeding transactions in the same block. |
+| blockHash          | [T_HASH](#T_HASH)                                          | Hash of the block that includes the transaction.                                       |
+| cumulativeStepUsed | [T_INT](#T_INT)                                            | Sum of stepUsed by this transaction and all preceding transactions in the same block.  |
 | stepUsed           | [T_INT](#T_INT)                                            | The amount of step used by this transaction.                                           |
 | stepPrice          | [T_INT](#T_INT)                                            | The step price used by this transaction.                                               |
 | scoreAddress       | [T_ADDR_SCORE](#T_ADDR_SCORE)                              | SCORE address if the transaction created a new SCORE. (optional)                       |
@@ -623,9 +623,9 @@ Returns the transaction information requested by transaction hash.
 | version     | [T_INT](#T_INT)                                            | Protocol version ("0x3" for V3)                                                                         |
 | from        | [T_ADDR_EOA](#T_ADDR_EOA)                                  | EOA address that created the transaction                                                                |
 | to          | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | EOA address to receive coins, or SCORE address to execute the transaction.                              |
-| value       | [T_INT](#T_INT)                                            | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop)                |
+| value       | [T_INT](#T_INT)                                            | Amount of ICX coins in loop to transfer. When omitted, assumes 0. (1 icx = 1 ^ 18 loop)                 |
 | stepLimit   | [T_INT](#T_INT)                                            | Maximum step allowance that can be used by the transaction.                                             |
-| timestamp   | [T_INT](#T_INT)                                            | Transaction creation time. timestamp is in microsecond.                                                 |
+| timestamp   | [T_INT](#T_INT)                                            | Transaction creation time. Timestamp is in microsecond.                                                 |
 | nid         | [T_INT](#T_INT)                                            | Network ID                                                                                              |
 | nonce       | [T_INT](#T_INT)                                            | An arbitrary number used to prevent transaction hash collision.                                         |
 | txHash      | [T_HASH](#T_HASH)                                          | Transaction hash                                                                                        |
@@ -783,9 +783,9 @@ This function causes state transition.
 | version   | [T_INT](#T_INT)                                            | required | Protocol version ("0x3" for V3)                                                                      |
 | from      | [T_ADDR_EOA](#T_ADDR_EOA)                                  | required | EOA address that created the transaction                                                             |
 | to        | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | required | EOA address to receive coins, or SCORE address to execute the transaction.                           |
-| value     | [T_INT](#T_INT)                                            | optional | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop)             |
+| value     | [T_INT](#T_INT)                                            | optional | Amount of ICX coins in loop to transfer. When omitted, assumes 0. (1 icx = 1 ^ 18 loop)              |
 | stepLimit | [T_INT](#T_INT)                                            | required | Maximum step allowance that can be used by the transaction.                                          |
-| timestamp | [T_INT](#T_INT)                                            | required | Transaction creation time. timestamp is in microsecond.                                              |
+| timestamp | [T_INT](#T_INT)                                            | required | Transaction creation time. Timestamp is in microsecond.                                              |
 | nid       | [T_INT](#T_INT)                                            | required | Network ID ("0x1" for Mainnet, "0x2" for Testnet, etc)                                               |
 | nonce     | [T_INT](#T_INT)                                            | optional | An arbitrary number used to prevent transaction hash collision.                                      |
 | signature | [T_SIG](#T_SIG)                                            | required | Signature of the transaction.                                                                        |
@@ -816,7 +816,7 @@ It is used when installing or updating a SCORE, and `data` has dictionary value 
 
 ##### dataType == message
 
-It is used when transfering a message, and `data` has a HEX string.
+It is used when transferring a message, and `data` has a HEX string.
 
 > Example responses
 

@@ -31,7 +31,7 @@ Node Management
 
 `GET /system`
 
-Return system infomation.
+Return system information.
 
 <h3 id="view-system-parameters">Parameters</h3>
 
