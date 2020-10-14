@@ -82,6 +82,9 @@ JAVADEPS_DOCKER_DIR = $(BUILD_ROOT)/build/javadeps
 GOLOOP_WORK_DIR = /work
 PYEE_DIST_DIR = $(BUILD_ROOT)/build/pyee/dist
 
+$(PYEE_DIST_DIR):
+	@ mkdir -p $@
+
 godeps-image:
 	@ \
 	$(BUILD_ROOT)/docker/go-deps/update.sh \
@@ -102,7 +105,7 @@ pydeps-image:
 	$(BUILD_ROOT)/docker/py-deps/update.sh \
 	    $(PYDEPS_IMAGE) $(BUILD_ROOT) $(PYDEPS_DOCKER_DIR)
 
-pyrun-% : pydeps-image
+pyrun-% : pydeps-image | $(PYEE_DIST_DIR)
 	@ \
 	docker run -it --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
