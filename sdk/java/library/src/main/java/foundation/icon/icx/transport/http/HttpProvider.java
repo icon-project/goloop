@@ -167,8 +167,7 @@ public class HttpProvider implements Provider {
                     if (!"".equals(uri.getPath())) {
                         throw new IllegalArgumentException("Path is not allowed");
                     }
-                    // TODO: consider others than 'default' channel
-                    channel = "default";
+                    channel = "";
                 }
                 serverUri = uri.getScheme() + "://" + uri.getAuthority();
             } catch (URISyntaxException e) {
@@ -181,7 +180,7 @@ public class HttpProvider implements Provider {
             if ("/api/v3".equals(tokens[0])) {
                 return tokens[1];
             } else if ("/api".equals(tokens[0]) && "v3".equals(tokens[1])) {
-                return "default";
+                return "";
             }
             throw new IllegalArgumentException("Invalid URI path");
         }
