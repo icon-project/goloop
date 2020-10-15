@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -63,8 +64,19 @@ type packetCbFunc func(pkt *Packet, p *Peer)
 type errorCbFunc func(err error, p *Peer, pkt *Packet)
 type closeCbFunc func(p *Peer)
 
-//TODO define netAddress as IP:Port
 type NetAddress string
+func (na NetAddress) Validate() error {
+	_,port,err := net.SplitHostPort(string(na))
+	if err != nil {
+		return err
+	}
+	if i, err := strconv.ParseInt(port, 10, 64); err != nil {
+		return err
+	} else if i < 1 || i > 65535 {
+		return fmt.Errorf("invalid port %s", port)
+	}
+	return nil
+}
 
 type PeerRTT struct {
 	last time.Duration
