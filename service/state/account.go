@@ -57,7 +57,7 @@ type AccountSnapshot interface {
 // Of course, it also can be changed by WorldState.
 type AccountState interface {
 	Version() int
-	MigrateForRevision(v int) error
+	MigrateForRevision(rev module.Revision) error
 	GetBalance() *big.Int
 	IsContract() bool
 	GetValue(k []byte) ([]byte, error)
@@ -663,7 +663,7 @@ func (s *accountStateImpl) APIInfo() (*scoreapi.Info, error) {
 	return s.apiInfo.Get()
 }
 
-func (s *accountStateImpl) MigrateForRevision(rev int) error {
+func (s *accountStateImpl) MigrateForRevision(rev module.Revision) error {
 	v := accountVersionForRevision(rev)
 	if v > s.version {
 		if v >= AccountVersion2 {
@@ -902,7 +902,7 @@ func (a *accountROState) Reset(snapshot AccountSnapshot) error {
 	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) MigrateForRevision(v int) error {
+func (a *accountROState) MigrateForRevision(rev module.Revision) error {
 	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
@@ -947,11 +947,10 @@ func newAccountROState(dbase db.Database, snapshot AccountSnapshot) AccountState
 		newContractROState(snapshot.NextContract())}
 }
 
-func accountVersionForRevision(rev int) int {
-	switch {
-	case rev < module.Revision8:
-		return AccountVersion1
-	default:
+func accountVersionForRevision(rev module.Revision) int {
+	if rev.UseCompactAPIInfo() {
 		return AccountVersion2
+	} else {
+		return AccountVersion1
 	}
 }

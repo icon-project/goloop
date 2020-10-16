@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -150,16 +151,24 @@ func (tv *testValidator) Bytes() []byte {
 	return b
 }
 
+type dummyExtensionBuilderType struct{}
+
+func (d dummyExtensionBuilderType) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
+	return nil
+}
+
+var dummyExBuilder Platform = dummyExtensionBuilderType{}
+
 func TestSync_SimpleAccountSync(t *testing.T) {
 	db1 := db.NewMapDB()
 	db2 := db.NewMapDB()
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
-	_ = NewSyncManager(db1, nm, log.New())
-	syncm2 := NewSyncManager(db2, nm2, log.New())
+	_ = NewSyncManager(db1, nm, dummyExBuilder, log.New())
+	syncm2 := NewSyncManager(db2, nm2, dummyExBuilder, log.New())
 
 	nm.join(nm2)
-	ws := state.NewWorldState(db1, nil, nil)
+	ws := state.NewWorldState(db1, nil, nil, nil)
 	ac := ws.GetAccountState([]byte("ABC"))
 	ac.SetValue([]byte("ABC"), []byte("XYZ"))
 	vs := ws.GetValidatorState()
@@ -178,7 +187,7 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	ws.GetSnapshot().Flush()
 	vh := ws.GetValidatorState().GetSnapshot().Hash()
 
-	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh)
+	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh, nil)
 	r := syncer1.ForceSync()
 
 	log.Printf("END\n")
@@ -206,7 +215,7 @@ func TestSync_AccountSync(t *testing.T) {
 	for i := 0; i < cPeers; i++ {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
-		syncM[i] = NewSyncManager(databases[i], nms[i], log.New())
+		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, log.New())
 	}
 
 	for i := 0; i < cPeers; i++ {
@@ -218,7 +227,7 @@ func TestSync_AccountSync(t *testing.T) {
 	var wss [cPeers]state.WorldState
 	var prevHash []byte
 	for i := 0; i < cPeers-cSyncPeers; i++ {
-		wss[i] = state.NewWorldState(databases[i], nil, nil)
+		wss[i] = state.NewWorldState(databases[i], nil, nil, nil)
 		for j := 0; j < 100; j++ {
 			v := []byte{testItems[j]}
 			ac := wss[i].GetAccountState(v)
@@ -239,7 +248,7 @@ func TestSync_AccountSync(t *testing.T) {
 	for i := 0; i < cSyncPeers; i++ {
 		func(index int) {
 			syncM[cPeers-cSyncPeers+index].
-				NewSyncer(prevHash, nil, nil, nil).
+				NewSyncer(prevHash, nil, nil, nil, nil).
 				ForceSync()
 			log.Printf("Finish (%d)\n", index)
 		}(i)
@@ -247,22 +256,24 @@ func TestSync_AccountSync(t *testing.T) {
 	log.Printf("FINISH\n")
 }
 
+var receiptRevisions = []module.Revision{0, module.UseMPTOnEvents}
+
 func TestSync_ReceiptsSync(t *testing.T) {
-	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
+	for _, rev := range receiptRevisions {
 		t.Run(fmt.Sprint("Revision:", rev), func(t *testing.T) {
 			testReceiptSyncByRev(t, rev)
 		})
 	}
 }
 
-func testReceiptSyncByRev(t *testing.T, rev int) {
+func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 	db1 := db.NewMapDB()
 	db2 := db.NewMapDB()
 
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
-	_ = NewSyncManager(db1, nm, log.New())
-	syncm2 := NewSyncManager(db2, nm2, log.New())
+	_ = NewSyncManager(db1, nm, dummyExBuilder, log.New())
+	syncm2 := NewSyncManager(db2, nm2, dummyExBuilder, log.New())
 
 	nm.join(nm2)
 
@@ -299,7 +310,7 @@ func testReceiptSyncByRev(t *testing.T, rev int) {
 	nHash := normalReceiptsList.Hash()
 	normalReceiptsList.Flush()
 
-	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil)
+	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil, nil)
 	syncer.ForceSync()
 	syncer.Finalize()
 

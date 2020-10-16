@@ -44,7 +44,7 @@ type Rest struct {
 type SystemView struct {
 	BuildVersion string `json:"buildVersion"`
 	BuildTags    string `json:"buildTags"`
-	Setting struct {
+	Setting      struct {
 		Address       string `json:"address"`
 		P2PAddr       string `json:"p2p"`
 		P2PListenAddr string `json:"p2pListen"`
@@ -78,6 +78,7 @@ type ChainInspectView struct {
 
 type ChainConfig struct {
 	DBType           string `json:"dbType"`
+	Platform         string `json:"platform"`
 	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrencyLevel,omitempty"`
@@ -146,6 +147,7 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 func NewChainConfig(cfg *chain.Config) *ChainConfig {
 	v := &ChainConfig{
 		DBType:           cfg.DBType,
+		Platform:         cfg.Platform,
 		SeedAddr:         cfg.SeedAddr,
 		Role:             cfg.Role,
 		ConcurrencyLevel: cfg.ConcurrencyLevel,

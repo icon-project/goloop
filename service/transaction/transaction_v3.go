@@ -106,6 +106,7 @@ type transactionV3 struct {
 	transactionV3Data
 	txHash []byte
 	bytes  []byte
+	raw    bool
 }
 
 func (tx *transactionV3) Timestamp() int64 {
@@ -122,6 +123,13 @@ func (tx *transactionV3) verifySignature() error {
 		return nil
 	}
 	return InvalidSignatureError.New("fail to verify signature")
+}
+
+func (tx *transactionV3) calcHash() ([]byte, error) {
+	if tx.raw {
+		return calcHashOfTransactionJSON(tx.bytes, Version3)
+	}
+	return tx.transactionV3Data.calcHash()
 }
 
 func (tx *transactionV3) TxHash() []byte {
@@ -318,6 +326,14 @@ func (tx *transactionV3) To() module.Address {
 }
 
 func (tx *transactionV3) ToJSON(version module.JSONVersion) (interface{}, error) {
+	if tx.raw {
+		var jso map[string]interface{}
+		if err := json.Unmarshal(tx.bytes, &jso); err != nil {
+			return nil, err
+		}
+		jso["txHash"] = common.HexBytes(tx.TxHash())
+		return jso, nil
+	}
 	jso := map[string]interface{}{
 		"version":   &tx.transactionV3Data.Version,
 		"from":      &tx.transactionV3Data.From,
@@ -355,17 +371,61 @@ func (tx *transactionV3) MarshalJSON() ([]byte, error) {
 	}
 }
 
-func newTransactionV3FromJSONObject(jso *transactionV3JSON) (Transaction, error) {
+func checkV3JSON(jso map[string]interface{}) bool {
+	if version, ok := jso["version"]; !ok && version != "0x3" {
+		return false
+	}
+	if _, ok := jso["from"]; !ok {
+		return false
+	}
+	return true
+}
+
+func parseV3JSON(js []byte, raw bool) (Transaction, error) {
+	jso, err := parseTransactionJSON(js)
+	if err != nil {
+		return nil, err
+	}
 	tx := new(transactionV3)
 	tx.transactionV3Data = jso.transactionV3Data
+
+	if !raw {
+		id, err := jso.calcHash(Version3)
+		if err != nil {
+			return nil, err
+		}
+		if !bytes.Equal(id, tx.ID()) {
+			tx.txHash = id
+			raw = true
+		}
+	}
+
+	if raw {
+		tx.raw = true
+		tx.bytes = jso.raw
+	}
 	return tx, nil
 }
 
-func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
+func checkV3Binary(bs []byte) bool {
+	// currently, its only transaction type using binary form
+	return true
+}
+
+func parseV3Binary(bs []byte) (Transaction, error) {
 	tx := new(transactionV3)
 	if err := tx.SetBytes(bs); err != nil {
 		return nil, err
-	} else {
-		return tx, nil
 	}
+	return tx, nil
+}
+
+func init() {
+	RegisterFactory(&Factory{
+		Priority:    20,
+		CheckJSON:   checkV3JSON,
+		ParseJSON:   parseV3JSON,
+		CheckBinary: checkV3Binary,
+		ParseBinary: parseV3Binary,
+	})
 }

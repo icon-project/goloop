@@ -13,14 +13,14 @@ import (
 )
 
 func TestReceiptList(t *testing.T) {
-	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
-		t.Run(fmt.Sprint("Revision:", rev), func(t *testing.T) {
+	for _, rev := range []module.Revision{0, module.UseMPTOnEvents} {
+		t.Run(fmt.Sprintf("Revision:%#x", rev), func(t *testing.T) {
 			testReceiptListByRev(t, rev)
 		})
 	}
 }
 
-func testReceiptListByRev(t *testing.T, rev int) {
+func testReceiptListByRev(t *testing.T, rev module.Revision) {
 	mdb := db.NewMapDB()
 	rslice := make([]Receipt, 0)
 

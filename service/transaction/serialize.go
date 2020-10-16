@@ -141,3 +141,11 @@ func SerializeJSON(s []byte, in map[string]bool, exclude map[string]bool) ([]byt
 	}
 	return data, nil
 }
+
+func SerializeValue(v interface{}) ([]byte, error) {
+	bs, err := serializeValue(v)
+	if err != nil {
+		return nil, err
+	}
+	return bs, nil
+}

@@ -32,6 +32,7 @@ type (
 		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error)
 		GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
+		GetSystemScore(contentID string, cc CallContext, from module.Address) (SystemScore, error)
 	}
 
 	ContractStore interface {
@@ -62,6 +63,33 @@ type (
 		log          log.Logger
 	}
 )
+
+func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
+	cm := cc.ContractManager()
+	sas := cc.GetAccountState(to.ID())
+	sas.InitContractAccount(owner)
+	sas.DeployContract(nil, state.SystemEE, state.CTAppSystem, nil, tid)
+	if err := sas.AcceptContract(tid, tid); err != nil {
+		return err
+	}
+	score, err := cm.GetSystemScore(contentID, cc, owner)
+	if err != nil {
+		return err
+	}
+	if err := score.Install(param); err != nil {
+		return err
+	}
+	if err := CheckMethod(score); err != nil {
+		return err
+	}
+	sas.MigrateForRevision(cc.Revision())
+	sas.SetAPIInfo(score.GetAPI())
+	return nil
+}
+
+func (cm *contractManager) ToRevision(value int) module.Revision {
+	panic("implement me")
+}
 
 const (
 	csInProgress cStatus = iota
@@ -118,7 +146,7 @@ func (cs *contractStoreImpl) notify(err error) {
 
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error) {
 	var handler ContractHandler
-	ch := newCommonHandler(from, to, value, cm.log)
+	ch := NewCommonHandler(from, to, value, cm.log)
 	switch ctype {
 	case CTypeTransfer:
 		if to.IsContract() {
@@ -145,7 +173,7 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 }
 
 func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler {
-	ch := newCommonHandler(from, to, value, cm.log)
+	ch := NewCommonHandler(from, to, value, cm.log)
 	if to.IsContract() {
 		call := newCallHandlerWithTypedObj(ch, method, paramObj, false)
 		if value != nil && value.Sign() == 1 { //value > 0
@@ -227,6 +255,10 @@ func (cm *contractManager) PrepareContractStore(
 		}
 	}()
 	return cs, nil
+}
+
+func (cm *contractManager) GetSystemScore(contentID string, cc CallContext, from module.Address) (SystemScore, error) {
+	return getSystemScore(contentID, cc, from)
 }
 
 func NewContractManager(db db.Database, contractDir string, log log.Logger) (ContractManager, error) {

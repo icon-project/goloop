@@ -125,7 +125,7 @@ func (lc *LoopChainDB) GetReceiptByTransaction(id []byte) (module.Receipt, error
 	if tinfo, err := lc.GetTransactionInfoByTransaction(id); err != nil {
 		return nil, err
 	} else {
-		if r, err := txresult.NewReceiptFromJSON(nil, module.Revision3, tinfo.Receipt); err != nil {
+		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, tinfo.Receipt); err != nil {
 			return nil, err
 		} else {
 			return r, nil

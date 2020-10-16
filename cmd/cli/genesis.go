@@ -14,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/platform/basic"
 )
 
 func mustParseAddress(arg string) module.Address {
@@ -112,8 +113,8 @@ func newGenesisGenCmd(c string) *cobra.Command {
 		}
 
 		chainConfig := make(map[string]interface{})
-		if module.LatestRevision != module.DefaultRevision {
-			chainConfig["revision"] = &common.HexInt32{Value: module.LatestRevision}
+		if basic.LatestRevision != basic.DefaultRevision {
+			chainConfig["revision"] = &common.HexInt32{Value: basic.LatestRevision}
 		}
 		for k, v := range *configs {
 			if len(v) == 0 {

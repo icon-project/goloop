@@ -26,7 +26,7 @@ from .icon_score_step import StepType
 from .internal_call import InternalCall
 from ..base.address import Address, AddressPrefix
 from ..base.exception import InvalidParamsException, IconScoreException, InvalidInstanceException
-from ..icon_constant import REVISION_3, CHARSET_ENCODING
+from ..icon_constant import REVISION_COMPACT_JSON, CHARSET_ENCODING
 
 
 class InterfaceScoreMeta(ABCMeta):
@@ -223,7 +223,7 @@ def json_dumps(obj: Any) -> str:
     context = ContextContainer._get_context()
     assert context
 
-    if context and context.revision >= REVISION_3:
+    if context and (context.revision & REVISION_COMPACT_JSON) != 0:
         ret: str = json.dumps(obj, separators=(',', ':'))
 
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_DUMPS)
@@ -249,7 +249,7 @@ def json_loads(src: str) -> Any:
     context = ContextContainer._get_context()
     assert context
 
-    if context and context.revision >= REVISION_3:
+    if context and (context.revision & REVISION_COMPACT_JSON) != 0:
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_LOADS)
         step: int = step_cost + step_cost * len(src.encode(CHARSET_ENCODING)) // 100
 

@@ -39,6 +39,7 @@ type manager struct {
 	patchMetric  *metric.TxMetric
 	normalMetric *metric.TxMetric
 
+	plt       Platform
 	db        db.Database
 	chain     module.Chain
 	txReactor *TransactionReactor
@@ -54,7 +55,7 @@ type manager struct {
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, contractDir string,
+	eem eeproxy.Manager, plt Platform, contractDir string,
 ) (module.ServiceManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "SV",
@@ -67,7 +68,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
-	cm, err := contract.NewContractManager(chain.Database(), contractDir, logger)
+	cm, err := plt.NewContractManager(chain.Database(), contractDir, logger)
 	if err != nil {
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
@@ -78,7 +79,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		chain.NormalTxPoolSize(), bk, nMetric, logger)
 	tsc := NewTimestampChecker()
 	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, bk, logger)
-	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), logger)
+	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), plt, logger)
 
 	mgr := &manager{
 		patchMetric:  pMetric,
@@ -87,9 +88,10 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           cm,
+		plt:          plt,
 		eem:          eem,
 		syncer:       syncm,
-		trc: newTransitionResultCache(chain.Database(),
+		trc: newTransitionResultCache(chain.Database(), plt,
 			ConfigTransitionResultCacheEntryCount,
 			ConfigTransitionResultCacheEntrySize,
 			logger),
@@ -130,14 +132,21 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	}
 
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := state.NewWorldContext(ws, bi)
+	wc := state.NewWorldContext(ws, bi, m.plt)
 
+	baseTx, err := m.plt.NewBaseTransaction(wc)
+	if err != nil {
+		return nil, err
+	}
 	maxTxCount := m.chain.Regulator().MaxTxCount()
 	txSizeInBlock := m.chain.MaxBlockTxBytes()
 	normalTxs, _ := m.tm.Candidate(module.TransactionGroupNormal, wc, txSizeInBlock, maxTxCount)
+	if baseTx != nil {
+		normalTxs = append([]module.Transaction{baseTx}, normalTxs...)
+	}
 
 	// create transition instance and return it
-	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, nil), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log),
+	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, nil), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log, m.plt),
 		nil
 }
 
@@ -146,7 +155,17 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.tsc)
+	var stateHash []byte
+	var ess state.ExtensionSnapshot
+	if len(result) > 0 {
+		if tr, err := newTransitionResultFromBytes(result); err != nil {
+			return nil, errors.IllegalArgumentError.Wrap(err, "InvalidResultBytes")
+		} else {
+			stateHash = tr.StateHash
+			ess = m.plt.NewExtensionSnapshot(m.db, tr.ExtensionData)
+		}
+	}
+	return newInitTransition(m.db, stateHash, valList, ess, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -160,7 +179,7 @@ func (m *manager) CreateTransition(parent module.Transition,
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txList, bi, false, m.log), nil
+	return newTransition(pt, nil, txList, bi, false, m.log, m.plt), nil
 }
 
 func (m *manager) SendPatch(data module.Patch) error {
@@ -197,7 +216,7 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 		return nil
 	}
 
-	wc := state.NewWorldContext(ws, bi)
+	wc := state.NewWorldContext(ws, bi, m.plt)
 
 	txs, size := m.tm.Candidate(module.TransactionGroupPatch, wc, m.chain.MaxBlockTxBytes(), 0)
 
@@ -243,10 +262,10 @@ func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHas
 		return nil
 	}
 	ntr := newTransition(
-		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, true, m.log)
+		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, true, m.log, m.plt)
 	r, _ := newTransitionResultFromBytes(result)
 	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
-		r.PatchReceiptHash, r.NormalReceiptHash, vlHash)
+		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)
 	return ntr
 }
 
@@ -428,7 +447,7 @@ func (m *manager) Call(resultHash []byte,
 	var wc state.WorldContext
 	if wss, err := m.trc.GetWorldSnapshot(resultHash, vl.Hash()); err == nil {
 		ws := state.NewReadOnlyWorldState(wss)
-		wc = state.NewWorldContext(ws, bi)
+		wc = state.NewWorldContext(ws, bi, m.plt)
 	} else {
 		return nil, err
 	}
@@ -569,7 +588,7 @@ func (m *manager) WaitForTransaction(
 ) bool {
 	pt := parent.(*transition)
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := state.NewWorldContext(ws, bi)
+	wc := state.NewWorldContext(ws, bi, m.plt)
 
 	return m.tm.Wait(wc, cb)
 }
@@ -582,7 +601,8 @@ func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
 	e := merkle.NewCopyContext(m.db, d)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh)
+	ess := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess)
 	return e.Run()
 }
 
@@ -594,7 +614,8 @@ func (m *manager) ImportResult(result []byte, vh []byte, src db.Database) error 
 	e := merkle.NewCopyContext(src, m.db)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh)
+	es := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, es)
 	return e.Run()
 }
 
@@ -619,7 +640,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 		if err != nil {
 			return nil, err
 		}
-		wc = state.NewWorldContext(ws, bi)
+		wc = state.NewWorldContext(ws, bi, m.plt)
 	} else {
 		return nil, err
 	}

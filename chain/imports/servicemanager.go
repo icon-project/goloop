@@ -26,10 +26,10 @@ type managerForImport struct {
 }
 
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, contractDir string, lcDBDir string,
+	eem eeproxy.Manager, plt service.Platform, contractDir string, lcDBDir string,
 	height int64, cb ImportCallback,
 ) (module.ServiceManager, module.Timestamper, error) {
-	manager, err := service.NewManager(chain, nm, eem, contractDir)
+	manager, err := service.NewManager(chain, nm, eem, plt, contractDir)
 	if err != nil {
 		return nil, nil, err
 	}

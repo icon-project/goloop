@@ -13,6 +13,11 @@ type readOnlyWorldState struct {
 	lock           sync.Mutex
 	accounts       map[string]AccountState
 	validatorState ValidatorState
+	extensionState ExtensionState
+}
+
+func (ws *readOnlyWorldState) GetExtensionState() ExtensionState {
+	return ws.extensionState
 }
 
 func (ws *readOnlyWorldState) GetAccountState(id []byte) AccountState {
@@ -86,10 +91,19 @@ func newReadOnlyValidatorState(vss ValidatorSnapshot) ValidatorState {
 	return &readonlyValidatorState{vss}
 }
 
+func newReadOnlyExtensionState(ess ExtensionSnapshot) ExtensionState {
+	if ess == nil {
+		return nil
+	} else {
+		return ess.NewState(true)
+	}
+}
+
 func NewReadOnlyWorldState(wss WorldSnapshot) WorldState {
 	return &readOnlyWorldState{
 		WorldSnapshot:  wss,
 		accounts:       make(map[string]AccountState),
 		validatorState: newReadOnlyValidatorState(wss.GetValidatorSnapshot()),
+		extensionState: newReadOnlyExtensionState(wss.GetExtensionSnapshot()),
 	}
 }

@@ -5,14 +5,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/state"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -27,8 +25,10 @@ type SystemScoreModule struct {
 	New func(cid string, cc CallContext, from module.Address) (SystemScore, error)
 }
 
-var systemScoreModules = map[string]*SystemScoreModule{
-	CID_CHAIN: {NewChainScore},
+var systemScoreModules = map[string]*SystemScoreModule{}
+
+func RegisterSystemScore(id string, m *SystemScoreModule) {
+	systemScoreModules[id] = m
 }
 
 type SystemScore interface {
@@ -37,7 +37,7 @@ type SystemScore interface {
 	GetAPI() *scoreapi.Info
 }
 
-func GetSystemScore(contentID string, cc CallContext, from module.Address) (score SystemScore, err error) {
+func getSystemScore(contentID string, cc CallContext, from module.Address) (score SystemScore, err error) {
 	v, ok := systemScoreModules[contentID]
 	if ok == false {
 		return nil, scoreresult.ContractNotFoundError.Errorf(
@@ -211,27 +211,4 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 		}
 	}
 	return
-}
-
-func InstallChainSCORE(addr []byte, cid string, from module.Address, param []byte, cc CallContext, txHash []byte) error {
-	sas := cc.GetAccountState(addr)
-	sas.InitContractAccount(nil)
-	sas.DeployContract(nil, state.SystemEE, state.CTAppSystem,
-		nil, nil)
-	if err := sas.AcceptContract(nil, nil); err != nil {
-		return err
-	}
-	sysScore, err := GetSystemScore(cid, cc, from)
-	if err != nil {
-		return err
-	}
-	if err := sysScore.Install(param); err != nil {
-		return err
-	}
-	if err := CheckMethod(sysScore); err != nil {
-		return err
-	}
-	sas.MigrateForRevision(cc.Revision())
-	sas.SetAPIInfo(sysScore.GetAPI())
-	return nil
 }

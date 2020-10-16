@@ -178,12 +178,12 @@ func (th *transactionHandler) Dispose() {
 	}
 }
 
-func MeasureBytesOfData(rev int, data []byte) (int, error) {
+func MeasureBytesOfData(rev module.Revision, data []byte) (int, error) {
 	if data == nil {
 		return 0, nil
 	}
 
-	if rev >= module.Revision3 {
+	if rev.InputCostingWithJSON() {
 		return countBytesOfData(data)
 	} else {
 		var idata interface{}

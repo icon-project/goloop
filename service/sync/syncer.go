@@ -66,6 +66,7 @@ type syncer struct {
 
 	client   *client
 	database db.Database
+	plt      Platform
 
 	pool     *peerPool
 	vpool    *peerPool
@@ -79,6 +80,7 @@ type syncer struct {
 
 	ah  []byte
 	vlh []byte
+	ed  []byte
 	prh []byte
 	nrh []byte
 
@@ -481,7 +483,8 @@ func (s *syncer) ForceSync() *Result {
 	builder := merkle.NewBuilder(s.database)
 	s.builder[syncWorldState.toIndex()] = builder
 	s.reqValue[syncWorldState.toIndex()] = make(map[string]bool)
-	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh); err == nil {
+	ess := s.plt.NewExtensionWithBuilder(builder, s.ed)
+	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh, ess); err == nil {
 		s.wss = wss
 	} else {
 		s.log.Panicf("Failed to call NewWorldSnapshotWithBuilder, ah(%#x), vlh(%#x)\n", s.ah, s.vlh)
@@ -541,8 +544,8 @@ func (s *syncer) Finalize() error {
 	return nil
 }
 
-func newSyncer(database db.Database, c *client, p *peerPool,
-	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash []byte,
+func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
+	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte,
 	log log.Logger, cb func(syncing bool)) *syncer {
 	log.Debugf("newSyncer ah(%#x), pReceiptsHash(%#x), nReceiptsHash(%#x), vlh(%#x)\n",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash)
@@ -551,6 +554,7 @@ func newSyncer(database db.Database, c *client, p *peerPool,
 		database: database,
 		pool:     p,
 		client:   c,
+		plt:      plt,
 		vpool:    newPeerPool(log),
 		ivpool:   newPeerPool(log),
 		sentReq:  make(map[module.PeerID]*peer),
@@ -558,6 +562,7 @@ func newSyncer(database db.Database, c *client, p *peerPool,
 		prh:      pReceiptsHash,
 		nrh:      nReceiptsHash,
 		vlh:      validatorListHash,
+		ed:       extensionData,
 		finishCh: make(chan syncType, 3),
 		log:      log,
 		cb:       cb,

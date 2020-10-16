@@ -32,6 +32,7 @@ type transitionResultCache struct {
 	entrySize  int
 
 	database  db.Database
+	platform  Platform
 	stateList *list.List
 	stateMap  map[string]*list.Element
 
@@ -130,7 +131,10 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 		item.worldSnapshot = state.NewWorldSnapshot(
 			item.database,
 			item.transactionResult.StateHash,
-			nil)
+			nil,
+			c.platform.NewExtensionSnapshot(
+				c.database, item.transactionResult.ExtensionData),
+		)
 	}
 	c.reclaimInLock()
 
@@ -170,9 +174,10 @@ func (c *transitionResultCache) TotalBytes() int {
 	return total
 }
 
-func newTransitionResultCache(database db.Database, count int, size int, log log.Logger) *transitionResultCache {
+func newTransitionResultCache(database db.Database, plt Platform, count int, size int, log log.Logger) *transitionResultCache {
 	trc := &transitionResultCache{
 		database:   database,
+		platform:   plt,
 		entryCount: count,
 		entrySize:  size,
 		stateList:  list.New(),

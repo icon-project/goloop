@@ -72,7 +72,8 @@ var (
 
 type WorldContext interface {
 	WorldState
-	Revision() int
+	Revision() module.Revision
+	ToRevision(v int) module.Revision
 	StepsFor(t StepType, n int) int64
 	StepPrice() *big.Int
 	BlockTimeStamp() int64
@@ -135,6 +136,8 @@ type worldContext struct {
 	info map[string]interface{}
 
 	skipTransaction bool
+
+	platform Platform
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
@@ -166,7 +169,7 @@ type systemStorageInfo struct {
 	stepLimit    map[string]int64
 	sysConfig    int64
 	stepCostInfo *codec.TypedObj
-	revision     int
+	revision     module.Revision
 }
 
 func (si *systemStorageInfo) Update(wc *worldContext) bool {
@@ -178,7 +181,8 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	si.ass = ass
 
 	as := scoredb.NewStateStoreWith(ass)
-	si.revision = int(scoredb.NewVarDB(as, VarRevision).Int64())
+	revision := int(scoredb.NewVarDB(as, VarRevision).Int64())
+	si.revision = wc.platform.ToRevision(revision)
 
 	stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
 	si.stepPrice = stepPrice
@@ -212,8 +216,12 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	return true
 }
 
-func (c *worldContext) Revision() int {
+func (c *worldContext) Revision() module.Revision {
 	return c.systemInfo.revision
+}
+
+func (c *worldContext) ToRevision(value int) module.Revision {
+	return c.platform.ToRevision(value)
 }
 
 func (c *worldContext) StepsFor(t StepType, n int) int64 {
@@ -364,7 +372,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 		m[InfoTxTimestamp] = c.txInfo.Timestamp
 		m[InfoTxNonce] = c.txInfo.Nonce
 		m[InfoTxFrom] = c.txInfo.From
-		m[InfoRevision] = c.Revision()
+		m[InfoRevision] = int(c.Revision())
 		m[InfoStepCosts] = c.stepCostInfo()
 		m[InfoContractOwner] = c.contractInfo.Owner
 		c.info = m
@@ -386,7 +394,11 @@ func (c *worldContext) UpdateSystemInfo() {
 	}
 }
 
-func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
+type Platform interface {
+	ToRevision(value int) module.Revision
+}
+
+func NewWorldContext(ws WorldState, bi module.BlockInfo, plt Platform) WorldContext {
 	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
 	as := scoredb.NewStateStoreWith(ass)
@@ -406,6 +418,7 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 		treasury:     treasury,
 		governance:   governance,
 		blockInfo:    BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
+		platform:     plt,
 	}
 	wc.UpdateSystemInfo()
 	return wc

@@ -103,7 +103,7 @@ func (t *taskImport) _import() error {
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
-	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm,
+	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm, c.plt,
 		ContractDir, t.src, t.height, t)
 	if err != nil {
 		return err

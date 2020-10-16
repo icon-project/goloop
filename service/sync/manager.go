@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -23,6 +24,10 @@ type Syncer interface {
 	Finalize() error
 }
 
+type Platform interface {
+	NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot
+}
+
 type Manager struct {
 	log     log.Logger
 	pool    *peerPool
@@ -32,6 +37,7 @@ type Manager struct {
 	syncing bool
 	syncer  *syncer
 	mutex   sync.Mutex
+	plt     Platform
 }
 
 type Result struct {
@@ -95,13 +101,13 @@ func (m *Manager) OnLeave(id module.PeerID) {
 	m.pool.remove(id)
 }
 
-func (m *Manager) NewSyncer(ah, prh, nrh, vh []byte) Syncer {
+func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte) Syncer {
 	m.log.Debugf(
 		"NewSyncer accountHash(%#x), prh(%#x), nrh(%#x), vlh(%#x)\n",
 		ah, prh, nrh, vh)
 	m.syncer = newSyncer(
-		m.db, m.client, m.pool,
-		ah, prh, nrh, vh, m.log,
+		m.db, m.client, m.pool, m.plt,
+		ah, prh, nrh, vh, ed, m.log,
 		func(syncing bool) {
 			m.mutex.Lock()
 			m.syncing = syncing
@@ -113,7 +119,7 @@ func (m *Manager) NewSyncer(ah, prh, nrh, vh []byte) Syncer {
 	return m.syncer
 }
 
-func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger) *Manager {
+func NewSyncManager(db db.Database, nm module.NetworkManager, plt Platform, logger log.Logger) *Manager {
 	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 	ph, err := nm.RegisterReactorForStreams(
@@ -123,6 +129,7 @@ func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger)
 		return nil
 	}
 	m.db = db
+	m.plt = plt
 	m.log = logger
 
 	server := newServer(db, ph, logger)

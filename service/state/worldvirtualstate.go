@@ -1,11 +1,12 @@
 package state
 
 import (
+	"sort"
+	"sync"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"sort"
-	"sync"
 )
 
 const (
@@ -68,6 +69,25 @@ func (wvs *worldVirtualState) GetValidatorState() ValidatorState {
 			return wvs.real.GetValidatorState()
 		} else {
 			return ValidatorStateFromSnapshot(wvs.base.GetValidatorSnapshot())
+		}
+	}
+	return nil
+}
+
+func (wvs *worldVirtualState) GetExtensionState() ExtensionState {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock != AccountNoLock {
+		wvs.realizeBaseInLock()
+
+		if wvs.committed != nil {
+			return wvs.committed.GetExtensionSnapshot().NewState(false)
+		}
+		if wvs.worldLock == AccountWriteLock {
+			return wvs.real.GetExtensionState()
+		} else {
+			return wvs.base.GetExtensionSnapshot().NewState(false)
 		}
 	}
 	return nil
@@ -528,6 +548,20 @@ func (wvss *worldVirtualSnapshot) Database() db.Database {
 func (wvss *worldVirtualSnapshot) GetValidatorSnapshot() ValidatorSnapshot {
 	if wvss.base != nil {
 		return wvss.base.GetValidatorSnapshot()
+	}
+	return nil
+}
+
+func (wvss *worldVirtualSnapshot) GetExtensionSnapshot() ExtensionSnapshot {
+	if wvss.base != nil {
+		wvss.base.GetExtensionSnapshot()
+	}
+	return nil
+}
+
+func (wvss *worldVirtualSnapshot) ExtensionData() []byte {
+	if wvss.base != nil {
+		return wvss.base.ExtensionData()
 	}
 	return nil
 }

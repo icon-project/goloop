@@ -3,11 +3,12 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -20,12 +21,48 @@ var version2StepPrice = big.NewInt(10 * state.GIGA)
 var version2StepUsed = big.NewInt(1000000)
 
 type transactionV2 struct {
-	*transactionV3JSON
-	hash []byte
+	*transactionJSON
+	hash   []byte
+	txHash []byte
+}
+
+func (tx *transactionV2) updateTxHash() error {
+	if tx.txHash == nil {
+		h, err := tx.calcHash(Version2)
+		if err != nil {
+			return err
+		}
+		tx.txHash = h
+	}
+	return nil
+}
+
+func (tx *transactionV2) ID() []byte {
+	if err := tx.updateTxHash(); err != nil {
+		log.Debugf("Fail to calculate TxHash err=%+v", err)
+		return nil
+	}
+	return tx.txHash
+}
+
+func (tx *transactionV2) verifySignature() error {
+	pk, err := tx.Signature.RecoverPublicKey(tx.txHash)
+	if err != nil {
+		return InvalidSignatureError.Wrap(err, "fail to recover public key")
+	}
+	addr := common.NewAccountAddressFromPublicKey(pk)
+	if addr.Equal(&tx.transactionJSON.From) {
+		return nil
+	}
+	return InvalidSignatureError.New("fail to verify signature")
+}
+
+func (tx *transactionJSON) Timestamp() int64 {
+	return tx.TimeStamp.Value
 }
 
 func (tx *transactionV2) From() module.Address {
-	return &tx.transactionV3JSON.From
+	return &tx.transactionJSON.From
 }
 
 func (tx *transactionV2) Version() int {
@@ -62,7 +99,7 @@ func (tx *transactionV2) Verify() error {
 		return InvalidTxValue.Errorf("InvalidHash(%x, %v)", tx.txHash, tx.TxHashV2.Bytes())
 	}
 
-	if err := tx.transactionV3JSON.verifySignature(); err != nil {
+	if err := tx.verifySignature(); err != nil {
 		return err
 	}
 
@@ -153,7 +190,7 @@ func (tx *transactionV2) Hash() []byte {
 }
 
 func (tx *transactionV2) Nonce() *big.Int {
-	if nonce := tx.transactionV3JSON.Nonce; nonce != nil {
+	if nonce := tx.transactionJSON.Nonce; nonce != nil {
 		return &nonce.Int
 	}
 	return nil
@@ -175,6 +212,25 @@ func (tx *transactionV2) MarshalJSON() ([]byte, error) {
 	return tx.raw, nil
 }
 
-func newTransactionV2FromJSONObject(txjs *transactionV3JSON) (Transaction, error) {
-	return &transactionV2{transactionV3JSON: txjs}, nil
+func checkV2(jso map[string]interface{}) bool {
+	if _, ok := jso["version"]; ok {
+		return false
+	}
+	return true
+}
+
+func parseV2(js []byte, raw bool) (Transaction, error) {
+	jso, err := parseTransactionJSON(js)
+	if err != nil {
+		return nil, err
+	}
+	return &transactionV2{transactionJSON: jso}, nil
+}
+
+func init() {
+	RegisterFactory(&Factory{
+		Priority:  30,
+		CheckJSON: checkV2,
+		ParseJSON: parseV2,
+	})
 }

@@ -17,7 +17,7 @@ import hashlib
 import unittest
 
 from pyexec.base.address import Address
-from pyexec.icon_constant import REVISION_3
+from pyexec.icon_constant import REVISION_COMPACT_JSON
 from pyexec.iconscore.icon_score_base2 import ScoreApiStepRatio
 from pyexec.iconscore.icon_score_base2 import _create_address_with_key, _recover_key
 from pyexec.iconscore.icon_score_base2 import create_address_with_key, recover_key
@@ -85,7 +85,7 @@ class TestIconScoreApi(unittest.TestCase):
         step_counter = IconScoreStepCounter(self.step_costs, self.step_limit,
                                             self._dummy_refund_handler)
         context.step_counter = step_counter
-        context.revision = REVISION_3
+        context.revision = REVISION_COMPACT_JSON
         return context
 
     def _dummy_refund_handler(self):

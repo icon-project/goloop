@@ -251,7 +251,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 		}
 	}
 
-	score, err := GetSystemScore(cid, cc, h.from)
+	score, err := cc.ContractManager().GetSystemScore(cid, cc, h.from)
 	if err != nil {
 		return err
 	}
