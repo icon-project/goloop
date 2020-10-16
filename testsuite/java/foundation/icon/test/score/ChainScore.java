@@ -28,6 +28,7 @@ import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +42,10 @@ public class ChainScore extends Score {
 
     public int getRevision() throws IOException {
         return call("getRevision", null).asInteger().intValue();
+    }
+
+    public BigInteger getStepPrice() throws IOException {
+        return call("getStepPrice", null).asInteger();
     }
 
     public int getServiceConfig() throws IOException {

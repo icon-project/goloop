@@ -130,7 +130,7 @@ public class TransferTest extends TestBase {
                 .build();
         BigInteger prevMaxStepLimit = chainScore.call("getMaxStepLimit", params).asInteger();
         BigInteger prevDefStepCost = chainScore.call("getStepCosts", null).asObject().getItem("default").asInteger();
-        BigInteger prevStepPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger prevStepPrice = chainScore.getStepPrice();
 
         final long newDefStepCost = 100;
         final long newStepPrice = 10;

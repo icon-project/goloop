@@ -327,7 +327,7 @@ public class ChainScoreTest extends TestBase {
     @EnumSource(TargetScore.class)
     public void setStepPrice(TargetScore score) throws Exception {
         LOG.infoEntering("setStepPrice");
-        BigInteger originPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger originPrice = chainScore.getStepPrice();
         BigInteger newPrice = originPrice.add(BigInteger.valueOf(1));
         LOG.infoEntering("invoke", "setStepPrice, " + originPrice + " -> " + newPrice);
         RpcObject params = new RpcObject.Builder()
@@ -336,7 +336,7 @@ public class ChainScoreTest extends TestBase {
         invokeAndCheckResult(score.addr, "setStepPrice", params);
         LOG.infoExiting();
 
-        BigInteger resultPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger resultPrice = chainScore.getStepPrice();
         if (score.addr.equals(Constants.GOV_ADDRESS)) {
             assertEquals(newPrice, resultPrice);
             LOG.info("invoke setStepPrice again for revert");
@@ -348,7 +348,7 @@ public class ChainScoreTest extends TestBase {
             assertEquals(originPrice, resultPrice);
             LOG.info("no change");
         }
-        BigInteger curPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger curPrice = chainScore.getStepPrice();
         LOG.info("revertedPrice = " + curPrice);
         LOG.infoExiting();
     }

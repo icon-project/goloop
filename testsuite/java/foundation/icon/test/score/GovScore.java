@@ -187,7 +187,7 @@ public class GovScore extends Score {
         Fee fee = new Fee();
         fee.stepCosts = getStepCosts();
         fee.stepMaxLimits = getMaxStepLimits();
-        fee.stepPrice = this.chainScore.call("getStepPrice", null).asInteger();
+        fee.stepPrice = this.chainScore.getStepPrice();
         return fee;
     }
 
