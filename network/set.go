@@ -158,11 +158,12 @@ func (s *PeerSet) _shuffle() {
 	})
 }
 
-func (s *PeerSet) Add(p *Peer) bool {
+type PeerPredicate func(*Peer) bool
+func (s *PeerSet) _add(p *Peer, f PeerPredicate) bool {
 	defer s.Set.mtx.Unlock()
 	s.Set.mtx.Lock()
 
-	if !s._contains(p) {
+	if !s._contains(p) && (f == nil || f(p)) {
 		if p.incomming {
 			s.incomming.Add(p.id)
 		} else {
@@ -177,6 +178,14 @@ func (s *PeerSet) Add(p *Peer) bool {
 		return true
 	}
 	return false
+}
+
+func (s *PeerSet) Add(p *Peer) bool {
+	return s._add(p, nil)
+}
+
+func (s *PeerSet) AddWithPredicate(p *Peer, f PeerPredicate) bool {
+	return s._add(p, f)
 }
 
 func (s *PeerSet) Remove(p *Peer) bool {

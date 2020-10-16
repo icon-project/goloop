@@ -327,9 +327,11 @@ func (p *Peer) removeRole(r PeerRoleFlag) {
 	p.role.UnSetFlag(r)
 }
 
-func (p *Peer) _close(err error) {
-	if cerr := p.conn.Close(); cerr == nil {
-		atomic.StoreInt32(&p.closed, 1)
+func (p *Peer) _close() (err error) {
+	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
+		if err = p.conn.Close(); err != nil {
+			p.logger.Debugf("Peer[%s]._close err:%+v", p.ConnString(), err)
+		}
 		close(p.close)
 		if cbFunc := p.getCloseCbFunc(); cbFunc != nil {
 			cbFunc(p)
@@ -337,22 +339,27 @@ func (p *Peer) _close(err error) {
 			defaultOnClose(p)
 		}
 	}
+	return
 }
 
-func (p *Peer) Close(reason string) {
+func (p *Peer) IsClosed() bool {
+	return atomic.LoadInt32(&p.closed) == 1
+}
+
+func (p *Peer) Close(reason string) error {
 	p.closeInfoMtx.Lock()
 	defer p.closeInfoMtx.Unlock()
 
 	p.closeReason = append(p.closeReason, reason)
-	p._close(nil)
+	return p._close()
 }
 
-func (p *Peer) CloseByError(err error) {
+func (p *Peer) CloseByError(err error) error {
 	p.closeInfoMtx.Lock()
 	defer p.closeInfoMtx.Unlock()
 
 	p.closeErr = append(p.closeErr, err)
-	p._close(err)
+	return p._close()
 }
 
 func (p *Peer) CloseInfo() string {
@@ -526,7 +533,7 @@ func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
 }
 
 func (p *Peer) send(ctx context.Context) error {
-	if p == nil || atomic.LoadInt32(&p.closed) == 1 {
+	if p == nil || p.IsClosed() {
 		return ErrNotAvailable
 	}
 	c := ctx.Value(p2pContextKeyCounter).(*Counter)
@@ -546,7 +553,7 @@ func (p *Peer) send(ctx context.Context) error {
 }
 
 func (p *Peer) sendPacket(pkt *Packet) error {
-	if p == nil || atomic.LoadInt32(&p.closed) == 1 {
+	if p == nil || p.IsClosed() {
 		return ErrNotAvailable
 	}
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
