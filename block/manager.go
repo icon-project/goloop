@@ -66,7 +66,7 @@ type chainContext struct {
 	syncer  syncer
 	chain   module.Chain
 	sm      module.ServiceManager
-	logger  log.Logger
+	log     log.Logger
 	running bool
 	trtr    RefTracer
 }
@@ -285,10 +285,10 @@ func (it *importTask) Cancel() bool {
 	case validatingOut:
 		it.stop()
 	default:
-		it.manager.logger.Debugf("Cancel Import: Ignored\n")
+		it.manager.log.Debugf("Cancel Import: Ignored\n")
 		return false
 	}
-	it.manager.logger.Debugf("Cancel Import: OK\n")
+	it.manager.log.Debugf("Cancel Import: OK\n")
 	return true
 }
 
@@ -440,10 +440,10 @@ func (pt *proposeTask) Cancel() bool {
 	case executingIn:
 		pt.stop()
 	default:
-		pt.manager.logger.Debugf("Cancel Propose: Ignored\n")
+		pt.manager.log.Debugf("Cancel Propose: Ignored\n")
 		return false
 	}
-	pt.manager.logger.Debugf("Cancel Propose: OK\n")
+	pt.manager.log.Debugf("Cancel Propose: OK\n")
 	return true
 }
 
@@ -531,7 +531,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		chainContext: &chainContext{
 			chain:   chain,
 			sm:      chain.ServiceManager(),
-			logger:  logger,
+			log:     logger,
 			running: true,
 		},
 		nmap:        make(map[string]*bnode),
@@ -620,7 +620,7 @@ func (m *manager) Term() {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Debugf("Term block manager\n")
+	m.log.Debugf("Term block manager\n")
 
 	m.removeNode(m.finalized)
 	m.finalized = nil
@@ -669,7 +669,7 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Debugf("Import(%x)\n", r)
+	m.log.Debugf("Import(%x)\n", r)
 
 	block, err := m.newBlockDataFromReader(r)
 	if err != nil {
@@ -690,7 +690,7 @@ func (m *manager) ImportBlock(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Debugf("ImportBlock(%x)\n", block.ID())
+	m.log.Debugf("ImportBlock(%x)\n", block.ID())
 
 	it, err := m._import(block, flags, cb)
 	if err != nil {
@@ -852,7 +852,7 @@ func (m *manager) finalizeGenesisBlock(
 	timestamp int64,
 	votes module.CommitVoteSet,
 ) (block module.Block, err error) {
-	m.logger.Debugf("FinalizeGenesisBlock()\n")
+	m.log.Debugf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
 		return nil, errors.InvalidStateError.New("InvalidState")
 	}
@@ -928,7 +928,7 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Debugf("Propose(<%x>, %v)\n", parentID, votes)
+	m.log.Debugf("Propose(<%x>, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
@@ -1047,7 +1047,7 @@ func (m *manager) finalize(bn *bnode) error {
 			return err
 		}
 	}
-	m.logger.Debugf("Finalize(%x)\n", block.ID())
+	m.log.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
 		cb := m.finalizationCBs[i]
 		if cb(block) {
