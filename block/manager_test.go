@@ -56,8 +56,8 @@ func (bg *blockGenerator) getBlock(n int64) module.Block {
 func (bg *blockGenerator) getReaderForBlock(n int64) io.Reader {
 	buf := bytes.NewBuffer(nil)
 	blk := bg.getBlock(n)
-	blk.MarshalHeader(buf)
-	blk.MarshalBody(buf)
+	assert.NoError(bg.t, blk.MarshalHeader(buf))
+	assert.NoError(bg.t, blk.MarshalBody(buf))
 	return buf
 }
 
@@ -234,7 +234,8 @@ func TestBlockManager_Propose_ReturnsValidBlock(t *testing.T) {
 	sm := s.sm
 	tx := newTestTransaction()
 	tx.Data.Effect.NextValidators = newRandomTestValidatorList(2)
-	sm.SendTransaction(tx)
+	_ , err := sm.SendTransaction(tx)
+	assert.NoError(t, err)
 	pid := getLastBlockID(t, bm)
 	br := proposeSync(bm, pid, newCommitVoteSet(true))
 	br.assertOK(t)
@@ -285,7 +286,7 @@ func TestBlockManager_Import_OK(t *testing.T) {
 		r := s.bg.getReaderForBlock(i)
 		br := importSync(s.bm, r)
 		br.assertOK(t)
-		s.bm.Finalize(br.blk)
+		assert.NoError(t, s.bm.Finalize(br.blk))
 	}
 }
 
@@ -308,10 +309,10 @@ func TestBlockManager_WaitForBlock_Nonblock(t *testing.T) {
 	r := s.bg.getReaderForBlock(height)
 	br := importSync(s.bm, r)
 	br.assertOK(t)
-	s.bm.Finalize(br.blk)
+	assert.NoError(t, s.bm.Finalize(br.blk))
 	bch, err := s.bm.WaitForBlock(height)
+	assert.NoError(t, err)
 	blk := <-bch
-	assert.Nil(t, err)
 	assert.Equal(t, blk.Height(), height)
 	assert.Equal(t, blk.ID(), br.blk.ID())
 }
@@ -331,9 +332,11 @@ func TestBlockManager_WaitForBlock_Block(t *testing.T) {
 			assert.Failf(t, "unexpected return from WaitForBlock", "blk=%v", blk)
 		default:
 		}
-		s.bm.Finalize(br.blk)
+		assert.NoError(t, s.bm.Finalize(br.blk))
 	}
 	blk := <-bch
 	assert.Equal(t, blk.Height(), height)
-	assert.Equal(t, blk.ID(), br.blk.ID())
+	if assert.NotNil(t, br) && br != nil {
+		assert.Equal(t, blk.ID(), br.blk.ID())
+	}
 }

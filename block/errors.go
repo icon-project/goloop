@@ -3,7 +3,7 @@ package block
 import "github.com/icon-project/goloop/common/errors"
 
 const (
-	ResultNotFinalizedError errors.Code = errors.CodeBlock + iota
+	ResultNotFinalizedError = errors.CodeBlock + iota
 )
 
 var (

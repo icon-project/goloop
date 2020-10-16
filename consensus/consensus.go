@@ -211,7 +211,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 		if cs.members == nil || !cs.members.Equal(nextMembers) {
 			cs.members = nextMembers
 			var peerIDs []module.PeerID
-			for it := nextMembers.Iterator(); it.Has(); it.Next() {
+			for it := nextMembers.Iterator(); it.Has(); cs.log.Must(it.Next()) {
 				addr, _ := it.Get()
 				peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
 			}
@@ -598,8 +598,8 @@ func (cs *consensus) enterPropose() {
 					}
 
 					psb := newPartSetBuffer(configBlockPartSize)
-					blk.MarshalHeader(psb)
-					blk.MarshalBody(psb)
+					cs.log.Must(blk.MarshalHeader(psb))
+					cs.log.Must(blk.MarshalBody(psb))
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
@@ -1611,13 +1611,13 @@ func (cs *consensus) Term() {
 		cs.cancelBlockRequest = nil
 	}
 	if cs.roundWAL != nil {
-		cs.roundWAL.Close()
+		cs.log.Must(cs.roundWAL.Close())
 	}
 	if cs.lockWAL != nil {
-		cs.lockWAL.Close()
+		cs.log.Must(cs.lockWAL.Close())
 	}
 	if cs.commitWAL != nil {
-		cs.commitWAL.Close()
+		cs.log.Must(cs.commitWAL.Close())
 	}
 
 	if cs.log != nil {
@@ -1698,8 +1698,8 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		vl := cvl.voteList(h, b.ID())
 		psb := newPartSetBuffer(configBlockPartSize)
-		b.MarshalHeader(psb)
-		b.MarshalBody(psb)
+		cs.log.Must(b.MarshalHeader(psb))
+		cs.log.Must(b.MarshalBody(psb))
 		bps := psb.PartSet()
 		c = &commit{
 			height:       h,

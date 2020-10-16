@@ -15,6 +15,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 const (
@@ -96,7 +97,10 @@ func readWALInfo(id string) (*walInfo, error) {
 	if err != nil {
 		return nil, errors.Wrapf(os.ErrNotExist, "no dir %v for wal %v", groupDir, id)
 	}
-	defer dir.Close()
+	defer func() {
+		log.Must(dir.Close())
+	}()
+
 	entries, err := dir.Readdir(0)
 	if err != nil {
 		return nil, errors.WithStack(err)

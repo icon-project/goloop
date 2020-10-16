@@ -217,8 +217,8 @@ func (h *sconHandler) updateCurrentTask() {
 		return
 	}
 	h.buf = bytes.NewBuffer(nil)
-	blk.MarshalHeader(h.buf)
-	blk.MarshalBody(h.buf)
+	h.log.Must(blk.MarshalHeader(h.buf))
+	h.log.Must(blk.MarshalBody(h.buf))
 	h.nextMsgPI = protoBlockMetadata
 	h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 		RequestID:   ni.RequestID,

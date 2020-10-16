@@ -712,8 +712,8 @@ func (cb *channelingCB) onExecute(err error) {
 }
 
 func (m *manager) finalizeGenesis() error {
-	gs := m.chain.GenesisStorage()
-	gt, err := gs.Type()
+	gns := m.chain.GenesisStorage()
+	gt, err := gns.Type()
 	if err != nil {
 		return transaction.InvalidGenesisError.Wrap(err, "UnknownGenesisType")
 	}
@@ -751,7 +751,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 	if err != nil {
 		return nil, err
 	}
-	for it := blk.PatchTransactions().Iterator(); it.Has(); it.Next() {
+	for it := blk.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
 		tr, i, err := it.Get()
 		if err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
@@ -765,7 +765,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
 		}
 	}
-	for it := blk.NormalTransactions().Iterator(); it.Has(); it.Next() {
+	for it := blk.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
 		tr, i, err := it.Get()
 		if err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
@@ -1004,7 +1004,7 @@ func (m *manager) finalize(bn *bnode) error {
 		if err != nil {
 			return err
 		}
-		for it := block.PatchTransactions().Iterator(); it.Has(); it.Next() {
+		for it := block.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
 			tr, i, err := it.Get()
 			if err != nil {
 				return err
@@ -1018,7 +1018,7 @@ func (m *manager) finalize(bn *bnode) error {
 				return err
 			}
 		}
-		for it := block.NormalTransactions().Iterator(); it.Has(); it.Next() {
+		for it := block.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
 			tr, i, err := it.Get()
 			if err != nil {
 				return err
@@ -1514,7 +1514,10 @@ func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWrite
 	if err := gsw.WriteGenesis(g); err != nil {
 		return errors.Wrap(err, "fail to write genesis")
 	}
-	defer gsw.Close()
+	defer func() {
+		m.log.Must(gsw.Close())
+	}()
+
 	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
 		return errors.Wrap(err, "fail to write votes")
 	}
@@ -1592,7 +1595,7 @@ func (m *manager) _export(blk module.Block, ctx *merkle.CopyContext, flag int) e
 	}
 	if hasBits(flag, exportIndex|exportTransaction) {
 		txs := blk.NormalTransactions()
-		for itr := txs.Iterator(); itr.Has(); itr.Next() {
+		for itr := txs.Iterator(); itr.Has(); m.log.Must(itr.Next()) {
 			tx, _, err := itr.Get()
 			if err != nil {
 				return err
@@ -1602,7 +1605,7 @@ func (m *manager) _export(blk module.Block, ctx *merkle.CopyContext, flag int) e
 			}
 		}
 		txs = blk.PatchTransactions()
-		for itr := txs.Iterator(); itr.Has(); itr.Next() {
+		for itr := txs.Iterator(); itr.Has(); m.log.Must(itr.Next()) {
 			tx, _, err := itr.Get()
 			if err != nil {
 				return err

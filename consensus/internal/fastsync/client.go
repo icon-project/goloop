@@ -179,13 +179,13 @@ func (cl *client) fetchBlocks(
 	return fr, nil
 }
 
-func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (rebr bool, err error) {
+func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	cl.Lock()
 	defer cl.Unlock()
 
 	fr := cl.fr
 	if fr == nil {
-		return false, nil
+		return
 	}
 	for _, p := range fr.validPeers {
 		if p.f != nil && p.id.Equal(id) {
@@ -193,10 +193,9 @@ func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 			cl.CallAfterUnlock(func() {
 				f.onReceive(pi, b)
 			})
-			return false, nil
+			return
 		}
 	}
-	return false, nil
 }
 
 func (cl *client) onJoin(id module.PeerID) {
@@ -368,6 +367,7 @@ func isNoBlock(err error) bool {
 
 type fstep byte
 
+//goland:noinspection GoUnusedConst
 const (
 	fstepSend fstep = iota
 	fstepWaitResp

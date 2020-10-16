@@ -32,7 +32,7 @@ type raw []byte
 
 func (b *bucket) _marshal(obj interface{}) ([]byte, error) {
 	if bs, ok := obj.(raw); ok {
-		return []byte(bs), nil
+		return bs, nil
 	}
 	buf := bytes.NewBuffer(nil)
 	err := b.codec.Marshal(buf, obj)
@@ -54,7 +54,7 @@ func (b *bucket) getBytes(key interface{}) ([]byte, error) {
 	}
 	bs, err := b.dbBucket.Get(keyBS)
 	if bs == nil && err == nil {
-		err = errors.ErrNotFound
+		err = errors.NotFoundError.Wrap(err, "Not found")
 	}
 	return bs, err
 }
