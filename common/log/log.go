@@ -87,6 +87,7 @@ var systemFields = map[string]bool{
 var Trace, Print, Debug, Info, Warn, Error, Panic, Fatal func(args ...interface{})
 var Tracef, Printf, Debugf, Infof, Warnf, Errorf, Panicf, Fatalf func(format string, args ...interface{})
 var Traceln, Println, Debugln, Infoln, Warnln, Errorln, Panicln, Fatalln func(args ...interface{})
+var Must func(err error)
 
 type Fields logrus.Fields
 
@@ -127,6 +128,8 @@ type Logger interface {
 	Logf(level Level, format string, args ...interface{})
 	Logln(level Level, args ...interface{})
 
+	Must(err error)
+
 	WithFields(Fields) Logger
 	SetReportCaller(yn bool)
 	SetLevel(lv Level)
@@ -144,6 +147,12 @@ type Logger interface {
 
 type entryWrapper struct {
 	*logrus.Entry
+}
+
+func (w entryWrapper) Must(err error) {
+	if err != nil {
+		w.Panicf("%+v", err)
+	}
 }
 
 func (w entryWrapper) addHook(hook logrus.Hook) {
@@ -219,6 +228,12 @@ func (w loggerWrapper) addHook(hook logrus.Hook) {
 func (w loggerWrapper) WithFields(fields Fields) Logger {
 	return &entryWrapper{
 		w.Logger.WithFields(logrus.Fields(fields)),
+	}
+}
+
+func (w loggerWrapper) Must(err error) {
+	if err != nil {
+		w.Panicf("%+v", err)
 	}
 }
 
@@ -319,6 +334,8 @@ func SetGlobalLogger(logger Logger) {
 	Fatal = logger.Fatal
 	Fatalf = logger.Fatalf
 	Fatalln = logger.Fatalln
+
+	Must = logger.Must
 }
 
 func WithFields(fields Fields) Logger {
