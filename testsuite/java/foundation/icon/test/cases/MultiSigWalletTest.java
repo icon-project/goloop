@@ -28,6 +28,7 @@ import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.MultiSigWalletScore;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -53,9 +54,21 @@ public class MultiSigWalletTest extends TestBase {
         txHandler = new TransactionHandler(iconService, chain);
 
         // init wallets
-        wallets = new KeyWallet[3];
+        wallets = new KeyWallet[5];
+        BigInteger amount = ICX.multiply(BigInteger.valueOf(50));
         for (int i = 0; i < wallets.length; i++) {
             wallets[i] = KeyWallet.create();
+            txHandler.transfer(wallets[i].getAddress(), amount);
+        }
+        for (KeyWallet wallet : wallets) {
+            ensureIcxBalance(txHandler, wallet.getAddress(), BigInteger.ZERO, amount);
+        }
+    }
+
+    @AfterAll
+    static void shutdown() throws Exception {
+        for (KeyWallet wallet : wallets) {
+            txHandler.refundAll(wallet);
         }
     }
 
@@ -145,7 +158,7 @@ public class MultiSigWalletTest extends TestBase {
 
         // *** 4. Add new wallet owner (charlie)
         LOG.infoEntering("call", "addWalletOwner(Charlie)");
-        KeyWallet charlieWallet = KeyWallet.create();
+        KeyWallet charlieWallet = wallets[3];
         LOG.info("Address of Charlie: " + charlieWallet.getAddress());
         result = multiSigWalletScore.addWalletOwner(aliceWallet, charlieWallet.getAddress(), "add new wallet owner");
         txId = multiSigWalletScore.getTransactionId(result);
@@ -168,7 +181,7 @@ public class MultiSigWalletTest extends TestBase {
 
         // *** 5. Replace wallet owner (bob -> david)
         LOG.infoEntering("call", "replaceWalletOwner(Bob to David)");
-        KeyWallet davidWallet = KeyWallet.create();
+        KeyWallet davidWallet = wallets[4];
         LOG.info("Address of David: " + davidWallet.getAddress());
         result = multiSigWalletScore.replaceWalletOwner(aliceWallet, bobWallet.getAddress(),
                 davidWallet.getAddress(), "replace wallet owner");

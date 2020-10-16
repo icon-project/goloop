@@ -85,8 +85,8 @@ public class Score {
     }
 
     public Bytes invoke(Wallet wallet, String method, RpcObject params,
-                        long value, long steps) throws IOException {
-        return invoke(wallet, method, params, BigInteger.valueOf(value), BigInteger.valueOf(steps));
+                        BigInteger value) throws IOException {
+        return invoke(wallet, method, params, value, Constants.DEFAULT_STEPS);
     }
 
     public Bytes invoke(Wallet wallet, String method, RpcObject params,
@@ -96,23 +96,22 @@ public class Score {
 
     public Bytes invoke(Wallet wallet, String method, RpcObject params, BigInteger value,
                         BigInteger steps, BigInteger timestamp, BigInteger nonce) throws IOException {
-        Transaction tx = getTransaction(wallet, method, params, value, steps, timestamp, nonce);
-        return this.txHandler.invoke(wallet, tx);
+        Transaction tx = getTransaction(wallet, method, params, value, timestamp, nonce);
+        return this.txHandler.invoke(wallet, tx, steps);
     }
 
     public TransactionResult invokeAndWait(Wallet wallet, String method, RpcObject params,
                                            BigInteger value, BigInteger steps) throws IOException {
-        Transaction tx = getTransaction(wallet, method, params, value, steps, null, null);
-        return this.txHandler.invokeAndWait(wallet, tx);
+        Transaction tx = getTransaction(wallet, method, params, value, null, null);
+        return this.txHandler.invokeAndWait(wallet, tx, steps);
     }
 
     private Transaction getTransaction(Wallet wallet, String method, RpcObject params, BigInteger value,
-                                       BigInteger steps, BigInteger timestamp, BigInteger nonce) {
+                                       BigInteger timestamp, BigInteger nonce) {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(wallet.getAddress())
-                .to(getAddress())
-                .stepLimit(steps);
+                .to(getAddress());
 
         if ((value != null) && value.bitLength() != 0) {
             builder.value(value);
@@ -139,13 +138,7 @@ public class Score {
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params)
             throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet, method, params, null, Constants.DEFAULT_STEPS);
-    }
-
-    public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params,
-                                                 BigInteger steps)
-            throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet, method, params, null, steps);
+        return invokeAndWaitResult(wallet, method, params, BigInteger.ZERO, null);
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params,

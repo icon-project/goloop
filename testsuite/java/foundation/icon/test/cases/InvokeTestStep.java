@@ -65,7 +65,7 @@ public class InvokeTestStep extends TestBase {
 
         owner = KeyWallet.create();
         Address[] addresses = {owner.getAddress(), chain.governorWallet.getAddress()};
-        transferAndCheckResult(txHandler, addresses, Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, addresses, ICX);
 
         govScore = new GovScore(txHandler);
         helloScore = HelloWorld.install(txHandler, owner);
@@ -169,9 +169,9 @@ public class InvokeTestStep extends TestBase {
         LOG.infoExiting();
 
         KeyWallet caller = KeyWallet.create();
-        transferAndCheckResult(txHandler, caller.getAddress(), Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, caller.getAddress(), ICX);
         final long testStep = defaultStep + contractCallStep * 5;
-        BigInteger[] limits = {Constants.DEFAULT_BALANCE, BigInteger.valueOf(testStep)};
+        BigInteger[] limits = {ICX, BigInteger.valueOf(testStep)};
         for (BigInteger limit : limits) {
             LOG.infoEntering("invoke", "with stepLimit=" + limit);
             RpcObject params = new RpcObject.Builder()
@@ -192,7 +192,7 @@ public class InvokeTestStep extends TestBase {
     public void notEnoughBalToCall() throws Exception {
         LOG.infoEntering("notEnoughBalToCall");
         KeyWallet caller = KeyWallet.create();
-        transferAndCheckResult(txHandler, caller.getAddress(), Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, caller.getAddress(), ICX);
         BigInteger prevBal = txHandler.getBalance(caller.getAddress());
 
         final long needStep = defaultStep + contractCallStep;

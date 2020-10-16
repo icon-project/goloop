@@ -75,7 +75,8 @@ public class InvokeTest extends TestBase {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("Alice"))
                 .build();
-        assertFailure(invalidScore.invokeAndWaitResult(callerWallet, "helloWithName", params));
+        assertFailure(invalidScore.invokeAndWaitResult(callerWallet, "helloWithName", params,
+                null, Constants.DEFAULT_STEPS));
         LOG.infoExiting();
     }
 
@@ -111,7 +112,8 @@ public class InvokeTest extends TestBase {
             RpcObject params = new RpcObject.Builder()
                     .put(key, new RpcValue("Alice"))
                     .build();
-            TransactionResult result = helloScore.invokeAndWaitResult(callerWallet, "helloWithName", params);
+            TransactionResult result = helloScore.invokeAndWaitResult(callerWallet, "helloWithName", params,
+                    null, Constants.DEFAULT_STEPS);
             if (key.equals("name")) {
                 assertSuccess(result);
             } else {
@@ -152,7 +154,8 @@ public class InvokeTest extends TestBase {
     @Test
     public void timeoutCallInfiniteLoop() throws Exception {
         LOG.infoEntering("invoke", "infiniteLoop");
-        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "infiniteLoop", null));
+        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "infiniteLoop", null,
+                null, Constants.DEFAULT_STEPS));
         LOG.infoExiting();
     }
 
@@ -163,21 +166,24 @@ public class InvokeTest extends TestBase {
         RpcObject params = new RpcObject.Builder()
                 .put("size", new RpcValue(BigInteger.valueOf(600)))
                 .build();
-        assertSuccess(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        assertSuccess(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params,
+                null, Constants.DEFAULT_STEPS));
         LOG.infoExiting();
 
         LOG.infoEntering("invoke", "failure case");
         params = new RpcObject.Builder()
                 .put("size", new RpcValue(BigInteger.valueOf(1000)))
                 .build();
-        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params,
+                null, Constants.DEFAULT_STEPS));
         LOG.infoExiting();
 
         LOG.infoEntering("cleanup");
         params = new RpcObject.Builder()
                 .put("size", new RpcValue(BigInteger.ONE))
                 .build();
-        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params,
+                null, Constants.DEFAULT_STEPS));
         LOG.infoExiting();
         LOG.infoExiting();
     }

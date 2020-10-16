@@ -56,8 +56,7 @@ public class EventGen extends Score {
                 .put("_int", new RpcValue(i))
                 .put("_bytes", new RpcValue(bytes))
                 .build();
-        return invoke(from, "generate", params,
-                BigInteger.valueOf(0), BigInteger.valueOf(100));
+        return invoke(from, "generate", params);
     }
 
     public TransactionResult invokeGenerateAndWait(Wallet from, Address addr, BigInteger i, byte[] bytes)
@@ -67,7 +66,6 @@ public class EventGen extends Score {
                 .put("_int", new RpcValue(i))
                 .put("_bytes", new RpcValue(bytes))
                 .build();
-        return invokeAndWaitResult(from, "generate", params,
-                BigInteger.valueOf(0), BigInteger.valueOf(100));
+        return invokeAndWaitResult(from, "generate", params);
     }
 }

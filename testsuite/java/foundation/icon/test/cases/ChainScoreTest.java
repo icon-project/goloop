@@ -90,7 +90,7 @@ public class ChainScoreTest extends TestBase {
         govScore = new GovScore(txHandler);
         governorWallet = chain.governorWallet;
         try {
-            Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+            Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), ICX);
             assertSuccess(txHandler.getResult(txHash));
 
             testWallets = new KeyWallet[testWalletNum];
@@ -115,9 +115,9 @@ public class ChainScoreTest extends TestBase {
 
     public void invokeAndCheckResult(Address target, String method, RpcObject params) throws Exception {
         if (target.equals(Constants.GOV_ADDRESS)) {
-            assertSuccess(govScore.invokeAndWaitResult(governorWallet, method, params));
+            assertSuccess(govScore.invokeAndWaitResult(governorWallet, method, params, null, Constants.DEFAULT_STEPS));
         } else {
-            assertFailure(chainScore.invokeAndWaitResult(governorWallet, method, params));
+            assertFailure(chainScore.invokeAndWaitResult(governorWallet, method, params, null, Constants.DEFAULT_STEPS));
         }
     }
 

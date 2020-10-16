@@ -62,12 +62,12 @@ public class CrowdSaleScore extends Score {
 
     public TransactionResult checkGoalReached(Wallet wallet)
             throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet, "checkGoalReached", null, null, Constants.DEFAULT_STEPS);
+        return invokeAndWaitResult(wallet, "checkGoalReached", null);
     }
 
     public TransactionResult safeWithdrawal(Wallet wallet)
             throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, Constants.DEFAULT_STEPS);
+        return invokeAndWaitResult(wallet, "safeWithdrawal", null);
     }
 
     public void ensureCheckGoalReached(Wallet wallet) throws Exception {

@@ -57,7 +57,7 @@ public class ScoreMethodTest {
         txs.add(testScore.invoke(owner, "on_install", null));
         txs.add(testScore.invoke(owner, "on_update", null));
         txs.add(testScore.invoke(owner, "fallback", null));
-        txs.add(testScore.invoke(owner, "fallback", null, 100, 1000));
+        txs.add(testScore.invoke(owner, "fallback", null, BigInteger.valueOf(100)));
         LOG.infoExiting();
 
         LOG.infoEntering("check results");

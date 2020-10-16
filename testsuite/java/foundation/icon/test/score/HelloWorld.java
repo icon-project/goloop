@@ -60,6 +60,6 @@ public class HelloWorld extends Score {
     }
 
     public TransactionResult invokeHello(Wallet from) throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(from, "hello", null);
+        return invokeAndWaitResult(from, "hello", null, null, Constants.DEFAULT_STEPS);
     }
 }

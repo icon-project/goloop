@@ -96,7 +96,7 @@ public class ChainScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(wallet, "disableScore", params);
+        return invokeAndWaitResult(wallet, "disableScore", params, null, Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult enableScore(Wallet wallet, Address address)
@@ -104,6 +104,6 @@ public class ChainScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(wallet, "enableScore", params);
+        return invokeAndWaitResult(wallet, "enableScore", params, null, Constants.DEFAULT_STEPS);
     }
 }
