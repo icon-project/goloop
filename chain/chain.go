@@ -84,6 +84,7 @@ type singleChain struct {
 	srv      *server.Manager
 	nt       module.NetworkTransport
 	nm       module.NetworkManager
+	plt      service.Platform
 
 	cid int
 	cfg Config
@@ -403,6 +404,12 @@ func (c *singleChain) _init() error {
 	chainDir := c.cfg.AbsBaseDir()
 	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
 
+	if plt, err := NewPlatform(c.cfg.Platform, chainDir, c.cid); err != nil {
+		return err
+	} else {
+		c.plt = plt
+	}
+
 	if err := c.prepareDatabase(chainDir); err != nil {
 		return err
 	}
@@ -421,7 +428,7 @@ func (c *singleChain) prepareManagers() error {
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
-	c.sm, err = service.NewManager(c, c.nm, c.pm, ContractDir)
+	c.sm, err = service.NewManager(c, c.nm, c.pm, c.plt, ContractDir)
 	if err != nil {
 		return err
 	}
@@ -561,6 +568,7 @@ func (c *singleChain) _handleTerminateInLock() {
 
 func (c *singleChain) _terminate() {
 	c.releaseDatabase()
+	c.plt.Term()
 }
 
 func (c *singleChain) Term() error {

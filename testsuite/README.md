@@ -55,7 +55,7 @@ Available options
 |:------------|:----------|:-----------------------------------------------|
 | AUDIT       | testPyGov | `true` for testing scores with AUDIT feature   |
 | NO_SERVER   | all       | `true` for disabling auto start `gochain`.     |
-| USER_DOCKER | all       | `true` for enabling docker container for test. |
+| USE_DOCKER  | all       | `true` for enabling docker container for test. |
 
 To use other nodes than `gochain`, start the servers first, then define
 `NO_SERVER` as `true`.

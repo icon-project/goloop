@@ -41,7 +41,7 @@ func Test_serialize(t *testing.T) {
 				return
 			}
 
-			tx, err := newGenesisV3(js)
+			tx, err := parseV3Genesis(js, false)
 			if err != nil {
 				t.Errorf("Fail to make genesis tx with supplied err=%+v", err)
 				return

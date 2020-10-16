@@ -16,15 +16,17 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var receiptRevisions = []module.Revision{0, module.UseMPTOnEvents}
+
 func TestReceipt_JSON(t *testing.T) {
-	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
+	for _, rev := range receiptRevisions {
 		t.Run(fmt.Sprint("Revision", rev), func(t *testing.T) {
 			testReceiptJSONByRev(t, rev)
 		})
 	}
 }
 
-func testReceiptJSONByRev(t *testing.T, rev int) {
+func testReceiptJSONByRev(t *testing.T, rev module.Revision) {
 	database := db.NewMapDB()
 	addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
 	r := NewReceipt(database, rev, addr)

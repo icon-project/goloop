@@ -25,7 +25,7 @@ ICX_TRANSFER_EVENT_LOG = 'ICXTransfer(Address,Address,int)'
 
 # Revisions
 REVISION_2 = 2
-REVISION_3 = 3
+REVISION_COMPACT_JSON = 256
 
 
 class IconServiceFlag(IntFlag):

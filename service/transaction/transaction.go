@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
@@ -87,7 +86,7 @@ func (t *transaction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transaction) UnmarshalJSON(data []byte) error {
-	if tx, err := newTransactionFromJSON(data); err != nil {
+	if tx, err := newTransactionFromJSON(data, false); err != nil {
 		return err
 	} else {
 		t.Transaction = tx
@@ -120,37 +119,20 @@ func NewTransaction(b []byte) (Transaction, error) {
 }
 
 func NewGenesisTransaction(b []byte) (GenesisTransaction, error) {
-	if tx, err := newGenesisV3(b); err != nil {
+	if js, err := jsonCompact(b); err == nil {
+		b = js
+	}
+	if tx, err := parseV3Genesis(b, false); err != nil {
 		return nil, err
 	} else {
 		return &transaction{tx}, nil
 	}
-}
-
-func newTransaction(b []byte) (Transaction, error) {
-	if len(b) < 1 {
-		return nil, errors.New("IllegalTransactionData")
-	}
-	if b[0] == '{' {
-		if tx, err := newTransactionFromJSON(b); err == nil {
-			return tx, nil
-		}
-	}
-	return newTransactionV3FromBytes(b)
 }
 
 func NewTransactionFromJSON(b []byte) (Transaction, error) {
-	if tx, err := newTransactionFromJSON(b); err != nil {
+	if tx, err := newTransactionFromJSON(b, false); err != nil {
 		return nil, err
 	} else {
 		return &transaction{tx}, nil
 	}
-}
-
-func newTransactionFromJSON(b []byte) (Transaction, error) {
-	tx, err := newTransactionV2V3FromJSON(b)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
 }

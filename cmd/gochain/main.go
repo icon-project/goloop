@@ -116,6 +116,7 @@ func main() {
 	flag.StringVar(&genesisStorage, "genesis_storage", "", "Genesis storage path")
 	flag.StringVar(&genesisPath, "genesis", "", "Genesis template directory or file")
 	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system (badgerdb, goleveldb, boltdb, mapdb)")
+	flag.StringVar(&cfg.Platform, "platform", "", "Name of service platform (default: \"\")")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVarP(&eeSocket, "ee_socket", "s", "", "Execution engine socket path (default: .chain/<address>/ee.sock)")
 	flag.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")

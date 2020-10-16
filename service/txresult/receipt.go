@@ -517,15 +517,15 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	return nil
 }
 
-func versionForRevision(revision int) Version {
-	if revision >= module.Revision7 {
+func versionForRevision(revision module.Revision) Version {
+	if revision.UseMPTOnEvents() {
 		return Version2
 	} else {
 		return Version1
 	}
 }
 
-func NewReceiptFromJSON(database db.Database, revision int, bs []byte) (Receipt, error) {
+func NewReceiptFromJSON(database db.Database, revision module.Revision, bs []byte) (Receipt, error) {
 	r := new(receipt)
 	r.version = versionForRevision(revision)
 	r.db = database
@@ -535,7 +535,7 @@ func NewReceiptFromJSON(database db.Database, revision int, bs []byte) (Receipt,
 	return r, nil
 }
 
-func NewReceipt(database db.Database, revision int, to module.Address) Receipt {
+func NewReceipt(database db.Database, revision module.Revision, to module.Address) Receipt {
 	r := new(receipt)
 	r.db = database
 	r.version = versionForRevision(revision)

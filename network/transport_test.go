@@ -116,13 +116,13 @@ func Test_transport(t *testing.T) {
 	l1 := log.WithFields(log.Fields{
 		log.FieldKeyWallet: hex.EncodeToString(w1.Address().ID()),
 	})
-	nt1 := NewTransport(testTransportRandomAddress, w1, l1)
+	nt1 := NewTransport(":8080", w1, l1)
 
 	w2 := walletFromGeneratedPrivateKey()
 	l2 := log.WithFields(log.Fields{
 		log.FieldKeyWallet: hex.EncodeToString(w2.Address().ID()),
 	})
-	nt2 := NewTransport(testTransportRandomAddress, w2, l2)
+	nt2 := NewTransport(":8081", w2, l2)
 
 	wg.Add(1)
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg, nt1.(*transport).logger)

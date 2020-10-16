@@ -165,14 +165,6 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(LimitTypeInvoke), false)
 	defer cc.Dispose()
-	cc.SetTransactionInfo(&state.TransactionInfo{
-		Group:     module.TransactionGroupNormal,
-		Index:     0,
-		Hash:      g.Hash(),
-		From:      state.SystemAddress,
-		Timestamp: 0,
-		Nonce:     nil,
-	})
 
 	as := cc.GetAccountState(state.SystemID)
 
@@ -199,8 +191,8 @@ func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Recei
 		return nil, err
 	}
 
-	if err := contract.InstallChainSCORE(state.SystemID,
-		contract.CID_CHAIN, state.SystemAddress, g.Chain, cc, g.Hash()); err != nil {
+	if err := contract.DeployAndInstallSystemSCORE(cc,
+		contract.CID_CHAIN, nil, state.SystemAddress, g.Chain, nil); err != nil {
 		return nil, InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore")
 	}
 
@@ -288,10 +280,16 @@ func (g *genesisV3) Nonce() *big.Int {
 }
 
 func (g *genesisV3) To() module.Address {
-	return common.NewContractAddress(state.SystemID)
+	return state.SystemAddress
 }
 
-func newGenesisV3(js []byte) (Transaction, error) {
+func checkV3Genesis(jso map[string]interface{}) bool {
+	_, hasAccounts := jso["accounts"]
+	_, hasChain := jso["chain"]
+	return hasAccounts && hasChain
+}
+
+func parseV3Genesis(js []byte, raw bool) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
 		return nil, errors.IllegalArgumentError.Wrapf(err, "Invalid json for genesis(%s)", string(js))
@@ -305,4 +303,12 @@ func newGenesisV3(js []byte) (Transaction, error) {
 		return tx, nil
 	}
 	return nil, errors.IllegalArgumentError.New("NoAccounts")
+}
+
+func init() {
+	RegisterFactory(&Factory{
+		Priority:  10,
+		CheckJSON: checkV3Genesis,
+		ParseJSON: parseV3Genesis,
+	})
 }

@@ -25,6 +25,9 @@ type transport struct {
 
 func NewTransport(address string, w module.Wallet, l log.Logger) module.NetworkTransport {
 	na := NetAddress(address)
+	if err := na.Validate(); err != nil {
+		l.Panicf("invalid P2P Address err:%+v",err)
+	}
 	transportLogger := l.WithFields(log.Fields{log.FieldKeyModule: "TP"})
 	a := newAuthenticator(w, transportLogger)
 	cn := newChannelNegotiator(na, transportLogger)

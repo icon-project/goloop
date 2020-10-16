@@ -161,7 +161,7 @@ func (cc *callContext) addLogToFrame(addr module.Address, indexed [][]byte, data
 }
 
 func (cc *callContext) validateStatus(status error) error {
-	if status != nil && cc.Revision() < module.Revision6 {
+	if status != nil && !cc.Context.Revision().ExpandErrorCode() {
 		code, _ := scoreresult.StatusOf(status)
 		if code > module.StatusLimitRev5 && code <= module.StatusLimit {
 			status = scoreresult.WithStatus(status, module.StatusLimitRev5)

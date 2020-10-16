@@ -36,8 +36,8 @@ Received transactions via p2p and json-rpc
 |:------------------|:-------------------------------------------------|
 | txpool_add_cnt    | accumulated number of add transactions           |
 | txpool_add_sum    | accumulated bytes of add transactions            |
-| txpool_drop_cnt   | accumulated number of dropp invalid-transactions |
-| txpool_drop_sum   | accumulated bytes of dropp invalid-transactions  |
+| txpool_drop_cnt   | accumulated number of drop invalid-transactions  |
+| txpool_drop_sum   | accumulated bytes of drop invalid-transactions   |
 | txpool_remove_cnt | accumulated number of remove valid-transactions  |
 | txpool_remove_sum | accumulated bytes of remove valid-transactions   |
 

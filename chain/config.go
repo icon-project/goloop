@@ -32,6 +32,8 @@ type Config struct {
 	NID    int    `json:"nid"`
 	DBType string `json:"db_type"`
 
+	Platform string `json:"platform,omitempty"`
+
 	// static
 	SeedAddr         string `json:"seed_addr"`
 	Role             uint   `json:"role"`

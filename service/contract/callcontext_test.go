@@ -112,13 +112,20 @@ func (tcc *testCallContext) Reset() {
 	tcc.trail = ""
 }
 
+type dummyPlatformType struct{}
+
+func (d dummyPlatformType) ToRevision(value int) module.Revision {
+	return module.AllRevision
+}
+
 func newCallContext() CallContext {
 	dbo, _ := db.Open("", string(db.MapDBBackend), "map")
 	return NewCallContext(
 		NewContext(
 			state.NewWorldContext(
-				state.NewWorldState(dbo, nil, nil),
+				state.NewWorldState(dbo, nil, nil, nil),
 				common.NewBlockInfo(0, 0),
+				dummyPlatformType{},
 			),
 			nil,
 			nil,

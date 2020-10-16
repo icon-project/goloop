@@ -16,7 +16,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/service/eeproxy"
 	ssync "github.com/icon-project/goloop/service/sync"
 
@@ -92,6 +91,7 @@ type transition struct {
 	eem   eeproxy.Manager
 	chain module.Chain
 	log   log.Logger
+	plt   Platform
 
 	cb module.TransitionCallback
 
@@ -115,29 +115,6 @@ type transition struct {
 	ti *module.TraceInfo
 }
 
-type transitionResult struct {
-	StateHash         []byte
-	PatchReceiptHash  []byte
-	NormalReceiptHash []byte
-}
-
-func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
-	tresult := new(transitionResult)
-	if _, err := codec.UnmarshalFromBytes(bs, tresult); err != nil {
-		return nil, err
-	}
-	return tresult, nil
-}
-
-func (tr *transitionResult) Bytes() []byte {
-	if bs, err := codec.MarshalToBytes(tr); err != nil {
-		log.Debug("Fail to marshal transitionResult")
-		return nil
-	} else {
-		return bs
-	}
-}
-
 func patchTransition(t *transition, patchTXs module.TransactionList) *transition {
 	if patchTXs == nil {
 		patchTXs = transaction.NewTransactionListFromSlice(t.db, nil)
@@ -155,6 +132,7 @@ func patchTransition(t *transition, patchTXs module.TransactionList) *transition
 		eem:                t.eem,
 		chain:              t.chain,
 		log:                t.log,
+		plt:                t.plt,
 		step:               stepInited,
 		tsc:                t.tsc,
 	}
@@ -162,7 +140,7 @@ func patchTransition(t *transition, patchTXs module.TransactionList) *transition
 
 func newTransition(parent *transition, patchtxs module.TransactionList,
 	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
-	logger log.Logger,
+	logger log.Logger, plt Platform,
 ) *transition {
 	var step transitionStep
 	if alreadyValidated {
@@ -191,23 +169,21 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		step:               step,
 		chain:              parent.chain,
 		log:                logger,
+		plt:                plt,
 	}
 }
 
 // all parameters should be valid.
-func newInitTransition(db db.Database, result []byte,
-	validatorList module.ValidatorList, cm contract.ContractManager,
+func newInitTransition(db db.Database,
+	stateHash []byte,
+	validatorList module.ValidatorList,
+	es state.ExtensionSnapshot,
+	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
-	logger log.Logger,
+	logger log.Logger, plt Platform,
 	tsc *TxTimestampChecker,
 ) (*transition, error) {
-	var tresult transitionResult
-	if len(result) > 0 {
-		if _, err := codec.UnmarshalFromBytes(result, &tresult); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("InvalidResult(%x)", result)
-		}
-	}
-	ws := state.NewWorldState(db, tresult.StateHash, validatorList)
+	ws := state.NewWorldState(db, stateHash, validatorList, es)
 
 	return &transition{
 		id:                 new(transitionID),
@@ -221,6 +197,7 @@ func newInitTransition(db db.Database, result []byte,
 		worldSnapshot:      ws.GetSnapshot(),
 		chain:              chain,
 		log:                logger,
+		plt:                plt,
 		tsc:                tsc,
 	}, nil
 }
@@ -358,12 +335,12 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 			return nil, err
 		}
 	} else {
-		ws = state.NewWorldState(t.db, nil, nil)
+		ws = state.NewWorldState(t.db, nil, nil, nil)
 	}
 	if execution {
 		ws.EnableNodeCache()
 	}
-	return state.NewWorldContext(ws, t.bi), nil
+	return state.NewWorldContext(ws, t.bi, t.plt), nil
 }
 
 func (t *transition) reportValidation(e error) bool {
@@ -442,6 +419,7 @@ func (t *transition) doForceSync() {
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
+		t.worldSnapshot.ExtensionData(),
 	}
 	t.result = tresult.Bytes()
 	t.reportExecution(nil)
@@ -506,6 +484,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
+	if err := t.plt.OnExecutionEnd(ctx); err != nil {
+		t.reportExecution(err)
+		return
+	}
 
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
@@ -549,6 +531,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
+		t.worldSnapshot.ExtensionData(),
 	}
 	t.result = tresult.Bytes()
 
@@ -662,6 +645,7 @@ func (t *transition) finalizeResult() error {
 			t.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
 		}
 	}
+	t.plt.OnExtensionSnapshotFinalization(t.worldSnapshot.GetExtensionSnapshot())
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 
 	t.log.Infof("finalizeResult() total=%s world=%s receipts=%s",

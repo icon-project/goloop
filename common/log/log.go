@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	LogTimeLayout = "15:04:05.000000"
+	LogTimeLayout = "20060102-15:04:05.000000"
 )
 
 type Level int

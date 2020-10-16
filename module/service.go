@@ -95,24 +95,6 @@ const (
 	StatusLimit     Status = 999
 )
 
-const (
-	Revision1 = iota + 1
-	Revision2
-	Revision3
-	Revision4
-	Revision5
-	Revision6
-	Revision7
-	Revision8
-	RevisionReserved
-)
-
-const (
-	DefaultRevision = Revision4
-	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision8
-)
-
 func (s Status) String() string {
 	switch s {
 	case StatusSuccess:

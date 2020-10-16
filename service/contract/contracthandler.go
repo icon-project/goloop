@@ -51,7 +51,7 @@ type CommonHandler struct {
 	log      *trace.Logger
 }
 
-func newCommonHandler(from, to module.Address, value *big.Int, log log.Logger) *CommonHandler {
+func NewCommonHandler(from, to module.Address, value *big.Int, log log.Logger) *CommonHandler {
 	return &CommonHandler{
 		from: from, to: to, value: value,
 		log: trace.LoggerOf(log)}

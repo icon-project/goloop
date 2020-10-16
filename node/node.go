@@ -410,6 +410,7 @@ func (n *Node) JoinChain(
 	cfg := &chain.Config{
 		NID:              nid,
 		DBType:           p.DBType,
+		Platform:         p.Platform,
 		Channel:          channel,
 		SecureSuites:     p.SecureSuites,
 		SecureAeads:      p.SecureAeads,
