@@ -17,7 +17,7 @@ func JsonRpc(mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			ctype := c.Request().Header.Get(echo.HeaderContentType)
-			if strings.HasPrefix(ctype, echo.MIMETextPlain) {
+			if !strings.HasPrefix(ctype, echo.MIMEApplicationJSON) {
 				c.Request().Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			}
 			r := new(jsonrpc.Request)
