@@ -165,11 +165,13 @@ func (p2p *PeerToPeer) Stop() {
 	wg.Add(1)
 	go func() {
 	Loop:
-		for {
+		for i := 0; i < DefaultMaxRetryClose; i++ {
 			ps := p2p.getPeers(false)
 			p2p.logger.Debugln("Stop", "try close Peers", len(ps))
 			for _, p := range ps {
-				p.Close("stopCh")
+				if !p.IsClosed() {
+					p.Close("stopCh")
+				}
 			}
 			if len(ps) < 1 {
 				break Loop
@@ -261,7 +263,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		dp.CloseByError(ErrDuplicatedPeer)
 		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
 	}
-	p2p.orphanages.Add(p)
+	p2p.orphanages.AddWithPredicate(p, func(p *Peer) bool { return !p.IsClosed() })
 	if !p.incomming {
 		p2p.sendQuery(p)
 	}

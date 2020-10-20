@@ -124,7 +124,7 @@ type consensus struct {
 	hrs
 
 	c           module.Chain
-	logger      log.Logger
+	log         log.Logger
 	ph          module.ProtocolHandler
 	mutex       common.Mutex
 	syncer      Syncer
@@ -170,7 +170,7 @@ type consensus struct {
 
 func NewConsensus(c module.Chain, walDir string, timestamper module.Timestamper) module.Consensus {
 	cs := newConsensus(c, walDir, defaultWALManager, timestamper)
-	cs.logger.Debugf("NewConsensus\n")
+	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
 
@@ -184,7 +184,7 @@ func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper modu
 		timestamper: timestamper,
 		nid:         codec.MustMarshalToBytes(c.NID()),
 	}
-	cs.logger = c.Logger().WithFields(log.Fields{
+	cs.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
 	})
 
@@ -206,12 +206,12 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	}
 	nextMembers, err := cs.c.ServiceManager().GetMembers(cs.lastBlock.Result())
 	if err != nil {
-		cs.logger.Warnf("cannot get members. error:%+v\n", err)
+		cs.log.Warnf("cannot get members. error:%+v\n", err)
 	} else {
 		if cs.members == nil || !cs.members.Equal(nextMembers) {
 			cs.members = nextMembers
 			var peerIDs []module.PeerID
-			for it := nextMembers.Iterator(); it.Has(); it.Next() {
+			for it := nextMembers.Iterator(); it.Has(); cs.log.Must(it.Next()) {
 				addr, _ := it.Get()
 				peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
 			}
@@ -243,7 +243,7 @@ func (cs *consensus) _resetForNewRound(round int32) {
 	cs.currentBlockParts.Zerofy()
 	cs.round = round
 	cs.hvs.removeLowerRoundExcept(cs.round-1, cs.lockedRound)
-	cs.logger.Infof("enter round Height:%d Round:%d\n", cs.height, cs.round)
+	cs.log.Infof("enter round Height:%d Round:%d\n", cs.height, cs.round)
 	cs.metric.OnRound(cs.round)
 	if cs.cancelBlockRequest != nil {
 		cs.cancelBlockRequest.Cancel()
@@ -286,10 +286,10 @@ func isValidTransition(from step, to step) bool {
 
 func (cs *consensus) beginStep(step step) {
 	if !isValidTransition(cs.step, step) {
-		cs.logger.Panicf("bad step transition %v->%v\n", cs.step, step)
+		cs.log.Panicf("bad step transition %v->%v\n", cs.step, step)
 	}
 	cs.step = step
-	cs.logger.Debugf("enterStep %v\n", cs.hrs)
+	cs.log.Debugf("enterStep %v\n", cs.hrs)
 }
 
 func (cs *consensus) OnReceive(
@@ -306,12 +306,12 @@ func (cs *consensus) OnReceive(
 
 	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
-		cs.logger.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
+		cs.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
-	cs.logger.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
+	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
 	if err = msg.verify(); err != nil {
-		cs.logger.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
+		cs.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
 	switch m := msg.(type) {
@@ -327,22 +327,22 @@ func (cs *consensus) OnReceive(
 		err = errors.Errorf("unexpected broadcast message %v", m)
 	}
 	if err != nil {
-		cs.logger.Warnf("OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
+		cs.log.Warnf("OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
 	return true, nil
 }
 
 func (cs *consensus) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	cs.logger.Debugf("OnFailure(subprotocol:%v,  err:%+v)\n", pi, err)
+	cs.log.Debugf("OnFailure(subprotocol:%v,  err:%+v)\n", pi, err)
 }
 
 func (cs *consensus) OnJoin(id module.PeerID) {
-	cs.logger.Debugf("OnJoin(peer:%v)\n", common.HexPre(id.Bytes()))
+	cs.log.Debugf("OnJoin(peer:%v)\n", common.HexPre(id.Bytes()))
 }
 
 func (cs *consensus) OnLeave(id module.PeerID) {
-	cs.logger.Debugf("OnLeave(peer:%v)\n", common.HexPre(id.Bytes()))
+	cs.log.Debugf("OnLeave(peer:%v)\n", common.HexPre(id.Bytes()))
 }
 
 func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) error {
@@ -392,7 +392,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 	if cs.currentBlockParts.PartSet.IsComplete() {
 		block, err := cs.c.BlockManager().NewBlockDataFromReader(cs.currentBlockParts.NewReader())
 		if err != nil {
-			cs.logger.Warnf("failed to create block. %+v\n", err)
+			cs.log.Warnf("failed to create block. %+v\n", err)
 		} else {
 			cs.currentBlockParts.block = block
 		}
@@ -454,7 +454,7 @@ func (cs *consensus) ReceiveVoteListMessage(msg *voteListMessage, unicast bool) 
 	for i := 0; i < msg.VoteList.Len(); i++ {
 		vmsg := msg.VoteList.Get(i)
 		if _, e := cs.ReceiveVoteMessage(vmsg, unicast); e != nil {
-			cs.logger.Warnf("bad vote in vote list. VoteMessage:%v Error:%+v\n", vmsg, e)
+			cs.log.Warnf("bad vote in vote list. VoteMessage:%v Error:%+v\n", vmsg, e)
 			err = errors.Errorf("bad vote in VoteList. LastError: %+v", e)
 		}
 	}
@@ -592,14 +592,14 @@ func (cs *consensus) enterPropose() {
 					}
 
 					if err != nil {
-						cs.logger.Warnf("propose cb error: %+v\n", err)
+						cs.log.Warnf("propose cb error: %+v\n", err)
 						cs.enterPrevote()
 						return
 					}
 
 					psb := newPartSetBuffer(configBlockPartSize)
-					blk.MarshalHeader(psb)
-					blk.MarshalBody(psb)
+					cs.log.Must(blk.MarshalHeader(psb))
+					cs.log.Must(blk.MarshalBody(psb))
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
@@ -608,7 +608,7 @@ func (cs *consensus) enterPropose() {
 				},
 			)
 			if err != nil {
-				cs.logger.Panicf("propose error: %+v\n", err)
+				cs.log.Panicf("propose error: %+v\n", err)
 			}
 		}
 	}
@@ -660,7 +660,7 @@ func (cs *consensus) enterPrevote() {
 							cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
 						}
 					} else {
-						cs.logger.Warnf("import cb error: %+v\n", err)
+						cs.log.Warnf("import cb error: %+v\n", err)
 						if cs.hrs.step <= stepPrevoteWait {
 							cs.sendVote(voteTypePrevote, nil)
 						}
@@ -668,7 +668,7 @@ func (cs *consensus) enterPrevote() {
 				},
 			)
 			if err != nil {
-				cs.logger.Warnf("import error: %+v\n", err)
+				cs.log.Warnf("import error: %+v\n", err)
 				cs.sendVote(voteTypePrevote, nil)
 				return
 			}
@@ -697,7 +697,7 @@ func (cs *consensus) enterPrevoteWait() {
 	msg := newVoteListMessage()
 	msg.VoteList = prevotes.voteList()
 	if err := cs.roundWAL.writeMessage(msg); err != nil {
-		cs.logger.Errorf("fail to write WAL: %+v\n", err)
+		cs.log.Errorf("fail to write WAL: %+v\n", err)
 	}
 
 	cs.notifySyncer()
@@ -726,25 +726,25 @@ func (cs *consensus) enterPrecommit() {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 
 	if !ok {
-		cs.logger.Traceln("enterPrecommit: no +2/3 precommit")
+		cs.log.Traceln("enterPrecommit: no +2/3 precommit")
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if partSetID == nil {
-		cs.logger.Traceln("enterPrecommit: nil +2/3 precommit")
+		cs.log.Traceln("enterPrecommit: nil +2/3 precommit")
 		cs.lockedRound = -1
 		cs.lockedBlockParts.Zerofy()
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if cs.lockedBlockParts.ID().Equal(partSetID) {
-		cs.logger.Traceln("enterPrecommit: update lock round")
+		cs.log.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(voteTypePrecommit, &cs.lockedBlockParts)
 	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validatedBlock != nil {
-		cs.logger.Traceln("enterPrecommit: update lock")
+		cs.log.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		msg := newVoteListMessage()
 		msg.VoteList = prevotes.voteList()
 		if err := cs.lockWAL.writeMessage(msg); err != nil {
-			cs.logger.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
+			cs.log.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
 		}
 		for i := 0; i < cs.lockedBlockParts.Parts(); i++ {
 			msg := newBlockPartMessage()
@@ -752,16 +752,16 @@ func (cs *consensus) enterPrecommit() {
 			msg.Index = uint16(i)
 			msg.BlockPart = cs.lockedBlockParts.GetPart(i).Bytes()
 			if err := cs.lockWAL.writeMessage(msg); err != nil {
-				cs.logger.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
+				cs.log.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
 			}
 		}
 		if err := cs.lockWAL.Sync(); err != nil {
-			cs.logger.Errorf("fail to sync WAL: enterPrecommit: %+v\n", err)
+			cs.log.Errorf("fail to sync WAL: enterPrecommit: %+v\n", err)
 		}
 		cs.sendVote(voteTypePrecommit, &cs.lockedBlockParts)
 	} else {
 		// polka for a block we don't have
-		cs.logger.Traceln("enterPrecommit: polka for we don't have")
+		cs.log.Traceln("enterPrecommit: polka for we don't have")
 		if !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts.Set(newPartSetFromID(partSetID), nil, nil)
 		}
@@ -788,7 +788,7 @@ func (cs *consensus) enterPrecommitWait() {
 	msg := newVoteListMessage()
 	msg.VoteList = precommits.voteList()
 	if err := cs.roundWAL.writeMessage(msg); err != nil {
-		cs.logger.Errorf("fail to write WAL: enterPrecommitWait: %+v\n", err)
+		cs.log.Errorf("fail to write WAL: enterPrecommitWait: %+v\n", err)
 	}
 
 	cs.notifySyncer()
@@ -799,7 +799,7 @@ func (cs *consensus) enterPrecommitWait() {
 	} else if ok && partSetID == nil {
 		cs.enterNewRound()
 	} else {
-		cs.logger.Traceln("enterPrecommitWait: start timer")
+		cs.log.Traceln("enterPrecommitWait: start timer")
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(timeoutPrecommit, func() {
 			cs.mutex.Lock()
@@ -835,23 +835,23 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				}
 
 				if err != nil {
-					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
+					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
 				cs.currentBlockParts.validatedBlock = blk
 				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 				if err != nil {
-					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
+					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
 				cs.enterNewHeight()
 			},
 		)
 		if err != nil {
-			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
+			cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
 	} else {
 		err := cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 		if err != nil {
-			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
+			cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
 		cs.enterNewHeight()
 	}
@@ -864,10 +864,10 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	msg := newVoteListMessage()
 	msg.VoteList = precommits.voteList()
 	if err := cs.commitWAL.writeMessage(msg); err != nil {
-		cs.logger.Errorf("fail to write WAL: enterCommit: %+v\n", err)
+		cs.log.Errorf("fail to write WAL: enterCommit: %+v\n", err)
 	}
 	if err := cs.commitWAL.Sync(); err != nil {
-		cs.logger.Errorf("fail to sync WAL: cs.enterCommit: %+v\n", err)
+		cs.log.Errorf("fail to sync WAL: cs.enterCommit: %+v\n", err)
 	}
 
 	cs.nextProposeTime = time.Now()
@@ -981,17 +981,17 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		return err
 	}
 	if err := cs.roundWAL.writeMessageBytes(msg.subprotocol(), msgBS); err != nil {
-		cs.logger.Errorf("fail to write WAL: sendProposal: %+v\n", err)
+		cs.log.Errorf("fail to write WAL: sendProposal: %+v\n", err)
 		return err
 	}
 	if err := cs.roundWAL.Sync(); err != nil {
-		cs.logger.Errorf("fail to sync WAL: sendProposal: %+v\n", err)
+		cs.log.Errorf("fail to sync WAL: sendProposal: %+v\n", err)
 		return err
 	}
-	cs.logger.Debugf("sendProposal %v\n", msg)
+	cs.log.Debugf("sendProposal %v\n", msg)
 	err = cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 	if err != nil {
-		cs.logger.Warnf("sendProposal: %+v\n", err)
+		cs.log.Warnf("sendProposal: %+v\n", err)
 		return err
 	}
 
@@ -1000,14 +1000,14 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		vl := prevotes.voteListForOverTwoThirds()
 		vlmsg := newVoteListMessage()
 		vlmsg.VoteList = vl
-		cs.logger.Debugf("sendVoteList %v\n", vlmsg)
+		cs.log.Debugf("sendVoteList %v\n", vlmsg)
 		vlmsgBS, err := msgCodec.MarshalToBytes(vlmsg)
 		if err != nil {
 			return err
 		}
 		err = cs.ph.Multicast(protoVoteList, vlmsgBS, module.ROLE_VALIDATOR)
 		if err != nil {
-			cs.logger.Warnf("sendVoteList: %+v\n", err)
+			cs.log.Warnf("sendVoteList: %+v\n", err)
 			return err
 		}
 	}
@@ -1022,10 +1022,10 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		if err != nil {
 			return err
 		}
-		cs.logger.Debugf("sendBlockPart %v\n", bpmsg)
+		cs.log.Debugf("sendBlockPart %v\n", bpmsg)
 		err = cs.ph.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
 		if err != nil {
-			cs.logger.Warnf("sendBlockPart: %+v\n", err)
+			cs.log.Warnf("sendBlockPart: %+v\n", err)
 			return err
 		}
 	}
@@ -1079,19 +1079,19 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 		return err
 	}
 	if err := cs.roundWAL.writeMessageBytes(msg.subprotocol(), msgBS); err != nil {
-		cs.logger.Errorf("fail to write WAL: sendVote: %+v\n", err)
+		cs.log.Errorf("fail to write WAL: sendVote: %+v\n", err)
 	}
 	if err := cs.roundWAL.Sync(); err != nil {
-		cs.logger.Errorf("fail to sync WAL: sendVote: %+v\n", err)
+		cs.log.Errorf("fail to sync WAL: sendVote: %+v\n", err)
 	}
-	cs.logger.Debugf("sendVote %v\n", msg)
+	cs.log.Debugf("sendVote %v\n", msg)
 	if vt == voteTypePrevote {
 		err = cs.ph.Multicast(protoVote, msgBS, module.ROLE_VALIDATOR)
 	} else {
 		err = cs.ph.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
 	}
 	if err != nil {
-		cs.logger.Warnf("sendVote: %+v\n", err)
+		cs.log.Warnf("sendVote: %+v\n", err)
 	}
 	cs.ReceiveVoteMessage(msg, true)
 	return nil
@@ -1152,7 +1152,7 @@ func (cs *consensus) applyRoundWAL() error {
 			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
-			cs.logger.Warnf("applyRoundWAL: %+v\n", err)
+			cs.log.Warnf("applyRoundWAL: %+v\n", err)
 			err := wr.Repair()
 			if err != nil {
 				return err
@@ -1180,7 +1180,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if !m.address().Equal(cs.c.Wallet().Address()) {
 				continue
 			}
-			cs.logger.Tracef("WAL: my proposal %v\n", m)
+			cs.log.Tracef("WAL: my proposal %v\n", m)
 			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
 				round = m.round()
 				rstep = stepPropose
@@ -1192,7 +1192,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if !m.address().Equal(cs.c.Wallet().Address()) {
 				continue
 			}
-			cs.logger.Tracef("WAL: my vote %v\n", m)
+			cs.log.Tracef("WAL: my vote %v\n", m)
 			index := cs.validators.IndexOf(m.address())
 			if index < 0 {
 				continue
@@ -1214,7 +1214,7 @@ func (cs *consensus) applyRoundWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				cs.logger.Tracef("WAL: round vote %v\n", vmsg)
+				cs.log.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -1263,7 +1263,7 @@ func (cs *consensus) applyLockWAL() error {
 			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
-			cs.logger.Warnf("applyLockWAL: %+v\n", err)
+			cs.log.Warnf("applyLockWAL: %+v\n", err)
 			err := wr.Repair()
 			if err != nil {
 				return err
@@ -1293,7 +1293,7 @@ func (cs *consensus) applyLockWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				cs.logger.Tracef("WAL: round vote %v\n", vmsg)
+				cs.log.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -1307,7 +1307,7 @@ func (cs *consensus) applyLockWAL() error {
 			prevotes := cs.hvs.votesFor(vmsg.Round, voteTypePrevote)
 			psid, ok := prevotes.getOverTwoThirdsPartSetID()
 			if ok && psid != nil {
-				cs.logger.Tracef("WAL: POL R=%v psid=%v\n", vmsg.Round, psid)
+				cs.log.Tracef("WAL: POL R=%v psid=%v\n", vmsg.Round, psid)
 				bpset = newPartSetFromID(psid)
 				bpsetLockRound = vmsg.Round
 			}
@@ -1337,11 +1337,11 @@ func (cs *consensus) applyLockWAL() error {
 				return err
 			}
 			err = bpset.AddPart(bp)
-			cs.logger.Tracef("WAL: blockPart %v\n", m)
+			cs.log.Tracef("WAL: blockPart %v\n", m)
 			if err == nil && bpset.IsComplete() {
 				lastBPSet = bpset
 				lastBPSetLockRound = bpsetLockRound
-				cs.logger.Tracef("WAL: blockPart complete\n")
+				cs.log.Tracef("WAL: blockPart complete\n")
 			}
 		}
 	}
@@ -1371,7 +1371,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
-			cs.logger.Warnf("applyCommitWAL: %+v\n", err)
+			cs.log.Warnf("applyCommitWAL: %+v\n", err)
 			err := wr.Repair()
 			if err != nil {
 				return err
@@ -1400,7 +1400,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 				vs := newVoteSet(prevValidators.Len())
 				for i := 0; i < m.VoteList.Len(); i++ {
 					msg := m.VoteList.Get(i)
-					cs.logger.Tracef("WAL: round vote %v\n", msg)
+					cs.log.Tracef("WAL: round vote %v\n", msg)
 					index := prevValidators.IndexOf(msg.address())
 					if index < 0 {
 						return errors.Errorf("bad voter %v", msg.address())
@@ -1414,7 +1414,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
 					vmsg := m.VoteList.Get(i)
-					cs.logger.Tracef("WAL: round vote %v\n", vmsg)
+					cs.log.Tracef("WAL: round vote %v\n", vmsg)
 					index := cs.validators.IndexOf(vmsg.address())
 					if index < 0 {
 						continue
@@ -1494,7 +1494,7 @@ func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
 	vs := newVoteSet(prevValidators.Len())
 	for i := 0; i < vl.Len(); i++ {
 		msg := vl.Get(i)
-		cs.logger.Tracef("Genesis: round vote %v\n", msg)
+		cs.log.Tracef("Genesis: round vote %v\n", msg)
 		index := prevValidators.IndexOf(msg.address())
 		if index < 0 {
 			return errors.Errorf("bad voter %v", msg.address())
@@ -1569,8 +1569,8 @@ func (cs *consensus) Start() error {
 	cs.commitWAL = &walMessageWriter{ww}
 
 	cs.started = true
-	cs.logger.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
-	cs.syncer = newSyncer(cs, cs.logger, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
+	cs.log.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
+	cs.syncer = newSyncer(cs, cs.log, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
 	cs.syncer.Start()
 	if cs.step == stepNewHeight && cs.round == 0 {
 		cs.enterTransactionWait()
@@ -1611,17 +1611,17 @@ func (cs *consensus) Term() {
 		cs.cancelBlockRequest = nil
 	}
 	if cs.roundWAL != nil {
-		cs.roundWAL.Close()
+		cs.log.Must(cs.roundWAL.Close())
 	}
 	if cs.lockWAL != nil {
-		cs.lockWAL.Close()
+		cs.log.Must(cs.lockWAL.Close())
 	}
 	if cs.commitWAL != nil {
-		cs.commitWAL.Close()
+		cs.log.Must(cs.commitWAL.Close())
 	}
 
-	if cs.logger != nil {
-		cs.logger.Infof("Term consensus.\n")
+	if cs.log != nil {
+		cs.log.Infof("Term consensus.\n")
 	}
 }
 
@@ -1698,8 +1698,8 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		vl := cvl.voteList(h, b.ID())
 		psb := newPartSetBuffer(configBlockPartSize)
-		b.MarshalHeader(psb)
-		b.MarshalBody(psb)
+		cs.log.Must(b.MarshalHeader(psb))
+		cs.log.Must(b.MarshalBody(psb))
 		bps := psb.PartSet()
 		c = &commit{
 			height:       h,
@@ -1715,7 +1715,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 	c, err := cs.getCommit(h)
 	if err != nil {
-		cs.logger.Panicf("cs.GetCommitBlockParts: %+v\n", err)
+		cs.log.Panicf("cs.GetCommitBlockParts: %+v\n", err)
 	}
 	return c.blockPartSet
 }
@@ -1723,7 +1723,7 @@ func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
 	c, err := cs.getCommit(h)
 	if err != nil {
-		cs.logger.Panicf("cs.GetCommitPrecommits: %+v\n", err)
+		cs.log.Panicf("cs.GetCommitPrecommits: %+v\n", err)
 	}
 	return c.votes
 }
@@ -1765,7 +1765,7 @@ func (cs *consensus) Step() step {
 
 func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 	blk := br.Block()
-	cs.logger.Debugf("ReceiveBlock Height:%d\n", blk.Height())
+	cs.log.Debugf("ReceiveBlock Height:%d\n", blk.Height())
 
 	if cs.height < blk.Height() {
 		cs.prefetchItems = append(cs.prefetchItems, br)
@@ -1783,11 +1783,11 @@ func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 
 func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
-		cs.logger.Panicf("shall not happen\n")
+		cs.log.Panicf("shall not happen\n")
 	}
 
 	blk := br.Block()
-	cs.logger.Debugf("processBlock Height:%d\n", blk.Height())
+	cs.log.Debugf("processBlock Height:%d\n", blk.Height())
 
 	cvl := NewCommitVoteSetFromBytes(br.Votes())
 	if cvl == nil {
@@ -1839,7 +1839,7 @@ func (w *walMessageWriter) writeMessage(msg message) error {
 	if err := msgCodec.Marshal(writer, msg); err != nil {
 		return err
 	}
-	//cs.logger.Tracef("write WAL: %+v\n", msg)
+	//cs.log.Tracef("write WAL: %+v\n", msg)
 	_, err := w.WriteBytes(writer.Bytes())
 	return err
 }
@@ -1848,7 +1848,7 @@ func (w *walMessageWriter) writeMessageBytes(sp uint16, msg []byte) error {
 	bs := make([]byte, 2+len(msg))
 	binary.BigEndian.PutUint16(bs, sp)
 	copy(bs[2:], msg)
-	//cs.logger.Tracef("write WAL: %x\n", bs)
+	//cs.log.Tracef("write WAL: %x\n", bs)
 	_, err := w.WriteBytes(bs)
 	return err
 }

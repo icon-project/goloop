@@ -74,6 +74,12 @@ public class GovScore extends Score {
         return this.governorWallet;
     }
 
+    @Override
+    public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params)
+            throws ResultTimeoutException, IOException {
+        return super.invokeAndWaitResult(wallet, method, params, BigInteger.ZERO, Constants.DEFAULT_STEPS);
+    }
+
     public TransactionResult setRevision(int code) throws Exception {
         RpcObject params = new RpcObject.Builder()
                 .put("code", new RpcValue(BigInteger.valueOf(code)))
@@ -187,7 +193,7 @@ public class GovScore extends Score {
         Fee fee = new Fee();
         fee.stepCosts = getStepCosts();
         fee.stepMaxLimits = getMaxStepLimits();
-        fee.stepPrice = this.chainScore.call("getStepPrice", null).asInteger();
+        fee.stepPrice = this.chainScore.getStepPrice();
         return fee;
     }
 

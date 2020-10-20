@@ -48,14 +48,14 @@ type peer struct {
 	id         module.PeerID
 	wakeUpChan chan struct{}
 	stopped    chan struct{}
-	logger     log.Logger
+	log        log.Logger
 
 	running bool
 	*peerRoundState
 }
 
 func newPeer(syncer *syncer, id module.PeerID) *peer {
-	peerLogger := syncer.logger.WithFields(log.Fields{
+	peerLogger := syncer.log.WithFields(log.Fields{
 		"peer": common.HexPre(id.Bytes()),
 	})
 	return &peer{
@@ -63,7 +63,7 @@ func newPeer(syncer *syncer, id module.PeerID) *peer {
 		id:         id,
 		wakeUpChan: make(chan struct{}, 1),
 		stopped:    make(chan struct{}),
-		logger:     peerLogger,
+		log:        peerLogger,
 		running:    true, // TODO better way
 	}
 }
@@ -76,12 +76,12 @@ func (p *peer) setRoundState(prs *peerRoundState) {
 func (p *peer) doSync() (module.ProtocolInfo, message) {
 	e := p.engine
 	if p.peerRoundState == nil {
-		p.logger.Tracef("nil peer round state\n")
+		p.log.Tracef("nil peer round state\n")
 		return 0, nil
 	}
 
 	if !p.peerRoundState.Sync {
-		p.logger.Tracef("peer round state: no sync\n")
+		p.log.Tracef("peer round state: no sync\n")
 		return 0, nil
 	}
 
@@ -91,7 +91,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			p.BlockPartsMask = newBitArray(e.GetCommitBlockParts(p.Height).Parts())
-			p.logger.Tracef("PC for commit %v\n", p.Height)
+			p.log.Tracef("PC for commit %v\n", p.Height)
 			return protoVoteList, msg
 		}
 		partSet := e.GetCommitBlockParts(p.Height)
@@ -100,7 +100,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		mask.AssignAnd(partSet.GetMask())
 		idx := mask.PickRandom()
 		if idx < 0 {
-			p.logger.Tracef("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
+			p.log.Tracef("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
 			return 0, nil
 		}
 		part := partSet.GetPart(idx)
@@ -112,7 +112,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		return protoBlockPart, msg
 	}
 	if p.Height > e.Height() {
-		p.logger.Tracef("higher peer height %v > %v\n", p.Height, e.Height())
+		p.log.Tracef("higher peer height %v > %v\n", p.Height, e.Height())
 		if p.Height > e.Height()+configFastSyncThreshold && p.syncer.fetchCanceler == nil {
 			p.syncer.fetchCanceler, _ = p.syncer.fsm.FetchBlocks(e.Height(), -1, p.syncer)
 		}
@@ -124,7 +124,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.logger.Tracef("PC for round %v\n", e.Round())
+		p.log.Tracef("PC for round %v\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round < e.Round() {
 		// TODO: check peer step
@@ -132,11 +132,11 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.logger.Tracef("PC for round %v (prev round)\n", e.Round())
+		p.log.Tracef("PC for round %v (prev round)\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round == e.Round() {
 		rs := e.GetRoundState()
-		p.logger.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
+		p.log.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
 		pv := p.PrevotesMask.Copy()
 		pv.Flip()
 		pc := p.PrecommitsMask.Copy()
@@ -150,29 +150,29 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		}
 	}
 
-	p.logger.Tracef("nothing to send\n")
+	p.log.Tracef("nothing to send\n")
 	return 0, nil
 }
 
 func (p *peer) sync() {
 	var nextSendTime *time.Time
 
-	p.logger.Debugf("peer start sync\n")
+	p.log.Debugf("peer start sync\n")
 	for {
 		<-p.wakeUpChan
 
-		p.logger.Tracef("peer.wakeUp\n")
+		p.log.Tracef("peer.wakeUp\n")
 		p.mutex.Lock()
 		if !p.running {
 			p.mutex.Unlock()
-			p.logger.Tracef("peer is not running\n")
+			p.log.Tracef("peer is not running\n")
 			p.stopped <- struct{}{}
 			break
 		}
 		now := time.Now()
 		if nextSendTime != nil && now.Before(*nextSendTime) {
 			p.mutex.Unlock()
-			p.logger.Tracef("peer.now=%v nextSendTime=%v\n", now.Format(time.StampMicro), nextSendTime.Format(time.StampMicro))
+			p.log.Tracef("peer.now=%v nextSendTime=%v\n", now.Format(time.StampMicro), nextSendTime.Format(time.StampMicro))
 			continue
 		}
 		proto, msg := p.doSync()
@@ -185,11 +185,11 @@ func (p *peer) sync() {
 
 		msgBS, err := msgCodec.MarshalToBytes(msg)
 		if err != nil {
-			p.logger.Panicf("peer.sync: %v\n", err)
+			p.log.Panicf("peer.sync: %v\n", err)
 		}
-		p.logger.Debugf("sendMessage %v\n", msg)
+		p.log.Debugf("sendMessage %v\n", msg)
 		if err = p.ph.Unicast(proto, msgBS, p.id); err != nil {
-			p.logger.Warnf("peer.sync: %v\n", err)
+			p.log.Warnf("peer.sync: %v\n", err)
 		}
 		if configSendBPS < 0 {
 			p.wakeUp()
@@ -202,7 +202,7 @@ func (p *peer) sync() {
 		next := nextSendTime.Add(delta)
 		nextSendTime = &next
 		waitTime := nextSendTime.Sub(now)
-		p.logger.Tracef("msg size=%v delta=%v waitTime=%v\n", len(msgBS), delta, waitTime)
+		p.log.Tracef("msg size=%v delta=%v waitTime=%v\n", len(msgBS), delta, waitTime)
 		if waitTime > time.Duration(0) {
 			time.AfterFunc(waitTime, func() {
 				p.wakeUp()
@@ -230,7 +230,7 @@ func (p *peer) wakeUp() {
 
 type syncer struct {
 	engine Engine
-	logger log.Logger
+	log    log.Logger
 	nm     module.NetworkManager
 	bm     module.BlockManager
 	mutex  *common.Mutex
@@ -253,7 +253,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 	fsm.StartServer()
 	return &syncer{
 		engine: e,
-		logger: logger,
+		log:    logger,
 		nm:     nm,
 		bm:     bm,
 		mutex:  mutex,
@@ -272,7 +272,7 @@ func (s *syncer) Start() error {
 	peerIDs := s.nm.GetPeers()
 	s.peers = make([]*peer, len(peerIDs))
 	for i, peerID := range peerIDs {
-		s.logger.Debugf("Start: starting peer list %v\n", common.HexPre(peerID.Bytes()))
+		s.log.Debugf("Start: starting peer list %v\n", common.HexPre(peerID.Bytes()))
 		s.peers[i] = newPeer(s, peerID)
 		go s.peers[i].sync()
 	}
@@ -293,10 +293,10 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 
 	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
-		s.logger.Warnf("OnReceive: error=%+v\n", err)
+		s.log.Warnf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
-	s.logger.Debugf("OnReceive %v From:%v\n", msg, common.HexPre(id.Bytes()))
+	s.log.Debugf("OnReceive %v From:%v\n", msg, common.HexPre(id.Bytes()))
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
@@ -323,9 +323,9 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	case *voteListMessage:
 		s.engine.ReceiveVoteListMessage(m, true)
 		rs := s.engine.GetRoundState()
-		s.logger.Tracef("roundState=%+v\n", *rs)
+		s.log.Tracef("roundState=%+v\n", *rs)
 	default:
-		s.logger.Warnf("received unknown message %v\n", msg)
+		s.log.Warnf("received unknown message %v\n", msg)
 	}
 	if err != nil {
 		return false, err
@@ -341,7 +341,7 @@ func (s *syncer) OnFailure(
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.logger.Debugf("OnFailure: subprotocol:%v err:%+v\n", pi, err)
+	s.log.Debugf("OnFailure: subprotocol:%v err:%+v\n", pi, err)
 
 	if !s.running {
 		return
@@ -352,7 +352,7 @@ func (s *syncer) OnJoin(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.logger.Debugf("OnJoin: %v\n", common.HexPre(id.Bytes()))
+	s.log.Debugf("OnJoin: %v\n", common.HexPre(id.Bytes()))
 
 	if !s.running {
 		return
@@ -373,7 +373,7 @@ func (s *syncer) OnLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.logger.Debugf("OnLeave: %v\n", common.HexPre(id.Bytes()))
+	s.log.Debugf("OnLeave: %v\n", common.HexPre(id.Bytes()))
 
 	if !s.running {
 		return
@@ -418,19 +418,19 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	msg.peerRoundState = *e.GetRoundState()
 	bs, err := msgCodec.MarshalToBytes(msg)
 	if err != nil {
-		s.logger.Panicf("doSendRoundStateMessage: %+v\n", err)
+		s.log.Panicf("doSendRoundStateMessage: %+v\n", err)
 	}
 	if id == nil {
 		if len(s.peers) > 0 {
-			s.logger.Debugf("neighborcastRoundState %v\n", msg)
+			s.log.Debugf("neighborcastRoundState %v\n", msg)
 			err = s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
 		}
 	} else {
-		s.logger.Debugf("sendRoundState %v To:%v\n", msg, common.HexPre(id.Bytes()))
+		s.log.Debugf("sendRoundState %v To:%v\n", msg, common.HexPre(id.Bytes()))
 		err = s.ph.Unicast(protoRoundState, bs, id)
 	}
 	if err != nil {
-		s.logger.Warnf("doSendRoundStateMessage: %+v\n", err)
+		s.log.Warnf("doSendRoundStateMessage: %+v\n", err)
 	}
 }
 
@@ -486,7 +486,7 @@ func (s *syncer) OnBlock(br fastsync.BlockResult) {
 		return
 	}
 
-	s.logger.Debugf("syncer.OnBlock %d\n", br.Block().Height())
+	s.log.Debugf("syncer.OnBlock %d\n", br.Block().Height())
 	s.engine.ReceiveBlock(br)
 }
 
@@ -498,6 +498,6 @@ func (s *syncer) OnEnd(err error) {
 		return
 	}
 
-	s.logger.Debugf("syncer.OnEnd %+v\n", err)
+	s.log.Debugf("syncer.OnEnd %+v\n", err)
 	s.fetchCanceler = nil
 }

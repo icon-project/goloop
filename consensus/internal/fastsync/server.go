@@ -29,21 +29,21 @@ type speer struct {
 
 type server struct {
 	common.Mutex
-	nm     module.NetworkManager
-	ph     module.ProtocolHandler
-	bm     module.BlockManager
-	logger log.Logger
-	peers  []*speer
+	nm    module.NetworkManager
+	ph    module.ProtocolHandler
+	bm    module.BlockManager
+	log   log.Logger
+	peers []*speer
 
 	running bool
 }
 
 func newServer(nm module.NetworkManager, ph module.ProtocolHandler, bm module.BlockManager, logger log.Logger) *server {
 	s := &server{
-		nm:     nm,
-		ph:     ph,
-		bm:     bm,
-		logger: logger,
+		nm:  nm,
+		ph:  ph,
+		bm:  bm,
+		log: logger,
 	}
 	return s
 }
@@ -69,7 +69,7 @@ func (s *server) _addPeer(id module.PeerID) {
 		stoppedCh: make(chan struct{}),
 	}
 	s.peers = append(s.peers, speer)
-	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.logger)
+	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.log)
 	go h.handle()
 }
 
@@ -152,7 +152,7 @@ type sconHandler struct {
 	id        module.PeerID
 	ph        module.ProtocolHandler
 	bm        module.BlockManager
-	logger    log.Logger
+	log       log.Logger
 
 	nextItems []*BlockRequest
 	buf       *bytes.Buffer
@@ -177,7 +177,7 @@ func newSConHandler(
 		id:        id,
 		ph:        ph,
 		bm:        bm,
-		logger: logger.WithFields(log.Fields{
+		log: logger.WithFields(log.Fields{
 			"peer": common.HexPre(id.Bytes()),
 		}),
 	}
@@ -217,8 +217,8 @@ func (h *sconHandler) updateCurrentTask() {
 		return
 	}
 	h.buf = bytes.NewBuffer(nil)
-	blk.MarshalHeader(h.buf)
-	blk.MarshalBody(h.buf)
+	h.log.Must(blk.MarshalHeader(h.buf))
+	h.log.Must(blk.MarshalBody(h.buf))
 	h.nextMsgPI = protoBlockMetadata
 	h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 		RequestID:   ni.RequestID,
@@ -245,7 +245,7 @@ func (h *sconHandler) updateNextMsg() {
 		return
 	} else {
 		// n==0 && err!=io.EOF
-		h.logger.Panicf("n=%d, err=%+v\n", n, err)
+		h.log.Panicf("n=%d, err=%+v\n", n, err)
 	}
 	var msg BlockData
 	msg.RequestID = h.requestID
@@ -262,7 +262,7 @@ func (h *sconHandler) processRequestMsg(msgItem *MessageItem) {
 			// TODO log
 			return
 		}
-		h.logger.Debugf("Received BlockRequest %d\n", msg.Height)
+		h.log.Debugf("Received BlockRequest %d\n", msg.Height)
 		h.nextItems = append(h.nextItems, &msg)
 	}
 }
@@ -289,7 +289,7 @@ loop:
 				h.nextMsg = nil
 				h.updateNextMsg()
 			} else if !isTemporary(err) {
-				h.logger.Warnf("unicast error %+v\n", err)
+				h.log.Warnf("unicast error %+v\n", err)
 				h.cancelAllRequests()
 			}
 		}

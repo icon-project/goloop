@@ -175,10 +175,10 @@ type voteBase struct {
 	BlockPartSetID *PartSetID
 }
 
-func (v *voteBase) Equal(v2 *voteBase) bool {
-	return v.Height == v2.Height && v.Round == v2.Round && v.Type == v2.Type &&
-		bytes.Equal(v.BlockID, v2.BlockID) &&
-		v.BlockPartSetID.Equal(v2.BlockPartSetID)
+func (vb *voteBase) Equal(v2 *voteBase) bool {
+	return vb.Height == v2.Height && vb.Round == v2.Round && vb.Type == v2.Type &&
+		bytes.Equal(vb.BlockID, v2.BlockID) &&
+		vb.BlockPartSetID.Equal(v2.BlockPartSetID)
 }
 
 func (vb voteBase) String() string {

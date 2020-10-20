@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
@@ -66,9 +67,8 @@ func (b *blockV2) Version() int {
 
 func (b *blockV2) ID() []byte {
 	if b._id == nil {
-		buf := bytes.NewBuffer(nil)
-		v2Codec.Marshal(buf, b._headerFormat())
-		b._id = crypto.SHA3Sum256(buf.Bytes())
+		bs := v2Codec.MustMarshalToBytes(b._headerFormat())
+		b._id = crypto.SHA3Sum256(bs)
 	}
 	return b._id
 }
@@ -160,7 +160,6 @@ func (b *blockV2) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := make(map[string]interface{})
 	res["version"] = blockV2String
 	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
-	// TODO calc merkle_tree_root_hash
 	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
 	res["time_stamp"] = b.Timestamp()
 	res["confirmed_transaction_list"] = b.NormalTransactions()
@@ -171,14 +170,13 @@ func (b *blockV2) ToJSON(version module.JSONVersion) (interface{}, error) {
 	} else {
 		res["peer_id"] = ""
 	}
-	// TODO add signautre?
 	res["signature"] = ""
 	return res, nil
 }
 
 func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 	var res [][]byte
-	for it := l.Iterator(); it.Has(); it.Next() {
+	for it := l.Iterator(); it.Has(); log.Must(it.Next()) {
 		tr, _, err := it.Get()
 		if err != nil {
 			return nil, err
@@ -190,17 +188,17 @@ func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 }
 
 func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
-	ptbss, err := bssFromTransactionList(b.patchTransactions)
+	ptBss, err := bssFromTransactionList(b.patchTransactions)
 	if err != nil {
 		return nil, err
 	}
-	ntbss, err := bssFromTransactionList(b.normalTransactions)
+	ntBss, err := bssFromTransactionList(b.normalTransactions)
 	if err != nil {
 		return nil, err
 	}
 	return &blockV2BodyFormat{
-		PatchTransactions:  ptbss,
-		NormalTransactions: ntbss,
+		PatchTransactions:  ptBss,
+		NormalTransactions: ntBss,
 		Votes:              b.votes.Bytes(),
 	}, nil
 }

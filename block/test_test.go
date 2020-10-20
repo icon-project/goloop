@@ -314,6 +314,7 @@ func (l *testTransactionList) Equal(l2 module.TransactionList) bool {
 
 type transitionStep int
 
+//goland:noinspection GoUnusedConst
 const (
 	transitionStepUnexecuted transitionStep = iota
 	transitionStepExecuting
@@ -631,13 +632,13 @@ func (sm *testServiceManager) Finalize(transition module.Transition, opt int) er
 		return errors.New("invalid assertion. not testTransition")
 	}
 	if opt&module.FinalizeNormalTransaction != 0 {
-		sm.bucket.put(tr.normalTransactions)
+		log.Must(sm.bucket.put(tr.normalTransactions))
 	}
 	if opt&module.FinalizePatchTransaction != 0 {
-		sm.bucket.put(tr.patchTransactions)
+		log.Must(sm.bucket.put(tr.patchTransactions))
 	}
 	if opt&module.FinalizeResult != 0 {
-		sm.bucket.put(tr.NextValidators())
+		log.Must(sm.bucket.put(tr.NextValidators()))
 	}
 	return nil
 }
@@ -889,9 +890,9 @@ func newWallets(n int) []module.Wallet {
 }
 
 func newMapDB() db.Database {
-	db, err := db.Open("", "mapdb", "")
+	database, err := db.Open("", "mapdb", "")
 	if err != nil {
 		log.Panicf("Fail to open database err=%+v", err)
 	}
-	return db
+	return database
 }

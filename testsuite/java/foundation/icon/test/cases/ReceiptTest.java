@@ -63,7 +63,7 @@ class ReceiptTest extends TestBase {
 
         KeyWallet ownerWallet = KeyWallet.create();
         callerWallet = KeyWallet.create();
-        transferAndCheckResult(txHandler, callerWallet.getAddress(), Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, callerWallet.getAddress(), ICX);
 
         testScore = txHandler.deploy(ownerWallet, SCORE_RECEIPT_PATH, null);
         interCallScore = txHandler.deploy(ownerWallet, SCORE_RECEIPT_PATH, null);
@@ -346,7 +346,7 @@ class ReceiptTest extends TestBase {
         KeyWallet wallet = KeyWallet.create();
         LOG.infoEntering("transfer");
         BigInteger value = BigInteger.valueOf(2);
-        Bytes txHash = txHandler.transfer(callerWallet, wallet.getAddress(), value);
+        Bytes txHash = txHandler.transfer(callerWallet, wallet.getAddress(), value, Constants.DEFAULT_STEPS);
         LOG.infoExiting();
         ConfirmedTransaction ctx = invokeAndGetTxByHash(txHash);
         checkTxParams(ctx, callerWallet.getAddress(), wallet.getAddress(), value,

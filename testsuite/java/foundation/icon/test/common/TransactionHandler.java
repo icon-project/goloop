@@ -31,6 +31,7 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.Score;
 import org.aion.avm.utilities.JarBuilder;
@@ -54,12 +55,18 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        return deploy(owner, scorePath, params, Constants.DEFAULT_INSTALL_STEPS);
+        return deploy(owner, scorePath, params, null);
     }
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON));
+    }
+
+    public Score deploy(Wallet owner, byte[] content, RpcObject params, BigInteger steps)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
+        return getScore(doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params,
+                steps, Constants.CONTENT_TYPE_PYTHON));
     }
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params, BigInteger steps)
@@ -99,7 +106,7 @@ public class TransactionHandler {
 
     private Bytes doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType)
             throws IOException {
-        return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, Constants.DEFAULT_INSTALL_STEPS, contentType);
+        return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, null, contentType);
     }
 
     private Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
@@ -108,11 +115,13 @@ public class TransactionHandler {
                 .nid(getNetworkId())
                 .from(owner.getAddress())
                 .to(to)
-                .stepLimit(steps)
                 .deploy(contentType, content)
                 .params(params)
                 .build();
-        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
+        if (steps == null) {
+            steps = estimateStep(transaction);
+        }
+        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
@@ -132,9 +141,7 @@ public class TransactionHandler {
 
     public Bytes deployOnly(Wallet owner, Address to, String scorePath, RpcObject params) throws IOException {
         byte[] data = ZipFile.zipContent(scorePath);
-        return doDeploy(owner, data, to, params,
-                Constants.DEFAULT_INSTALL_STEPS,
-                Constants.CONTENT_TYPE_PYTHON);
+        return doDeploy(owner, data, to, params, null, Constants.CONTENT_TYPE_PYTHON);
     }
 
     public IconService getIconService() {
@@ -157,6 +164,10 @@ public class TransactionHandler {
         return iconService.getScoreApi(scoreAddress).execute();
     }
 
+    public BigInteger estimateStep(Transaction transaction) throws IOException {
+        return iconService.estimateStep(transaction).execute();
+    }
+
     public RpcItem call(Call<RpcItem> call) throws IOException {
         return this.iconService.call(call).execute();
     }
@@ -165,8 +176,18 @@ public class TransactionHandler {
         return this.iconService.sendTransaction(new SignedTransaction(tx, wallet)).execute();
     }
 
-    public TransactionResult invokeAndWait(Wallet wallet, Transaction tx) throws IOException {
-        return this.iconService.sendTransactionAndWait(new SignedTransaction(tx, wallet)).execute();
+    public Bytes invoke(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
+        if (steps == null) {
+            steps = estimateStep(tx);
+        }
+        return this.iconService.sendTransaction(new SignedTransaction(tx, wallet, steps)).execute();
+    }
+
+    public TransactionResult invokeAndWait(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
+        if (steps == null) {
+            steps = estimateStep(tx);
+        }
+        return this.iconService.sendTransactionAndWait(new SignedTransaction(tx, wallet, steps)).execute();
     }
 
     public TransactionResult waitResult(Bytes txHash) throws IOException {
@@ -208,15 +229,28 @@ public class TransactionHandler {
     }
 
     public Bytes transfer(Wallet owner, Address to, BigInteger amount) throws IOException {
+        return transfer(owner, to, amount, null);
+    }
+
+    public Bytes transfer(Wallet owner, Address to, BigInteger amount, BigInteger steps) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(owner.getAddress())
                 .to(to)
                 .value(amount)
-                .stepLimit(Constants.DEFAULT_STEPS)
                 .build();
-        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
+        if (steps == null) {
+            steps = estimateStep(transaction).add(BigInteger.valueOf(10000));
+        }
+        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
+    }
+
+    public void refundAll(Wallet owner) throws IOException {
+        BigInteger stepPrice = new ChainScore(this).getStepPrice();
+        BigInteger remaining = getBalance(owner.getAddress());
+        BigInteger fee = Constants.DEFAULT_STEPS.multiply(stepPrice);
+        transfer(owner, chain.godWallet.getAddress(), remaining.subtract(fee), Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult acceptScoreIfAuditEnabled(Bytes txHash)

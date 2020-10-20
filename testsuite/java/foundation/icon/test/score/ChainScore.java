@@ -28,6 +28,7 @@ import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +42,10 @@ public class ChainScore extends Score {
 
     public int getRevision() throws IOException {
         return call("getRevision", null).asInteger().intValue();
+    }
+
+    public BigInteger getStepPrice() throws IOException {
+        return call("getStepPrice", null).asInteger();
     }
 
     public int getServiceConfig() throws IOException {
@@ -91,7 +96,7 @@ public class ChainScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(wallet, "disableScore", params);
+        return invokeAndWaitResult(wallet, "disableScore", params, null, Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult enableScore(Wallet wallet, Address address)
@@ -99,6 +104,6 @@ public class ChainScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(wallet, "enableScore", params);
+        return invokeAndWaitResult(wallet, "enableScore", params, null, Constants.DEFAULT_STEPS);
     }
 }

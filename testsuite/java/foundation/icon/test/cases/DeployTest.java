@@ -91,8 +91,8 @@ public class DeployTest extends TestBase {
             testWallets[i] = KeyWallet.create();
             testAddresses[i] = testWallets[i].getAddress();
         }
-        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
-        transferAndCheckResult(txHandler, testAddresses, Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), ICX);
+        transferAndCheckResult(txHandler, testAddresses, ICX);
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
         govScore.setStepPrice(stepPrice);
@@ -283,7 +283,7 @@ public class DeployTest extends TestBase {
             RpcObject params = new RpcObject.Builder()
                     .put("name", new RpcValue("HelloWorld"))
                     .build();
-            Score score = txHandler.deploy(owner, content, params);
+            Score score = txHandler.deploy(owner, content, params, Constants.DEFAULT_STEPS);
             return score.getAddress();
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());

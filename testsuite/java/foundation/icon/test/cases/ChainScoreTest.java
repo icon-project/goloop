@@ -90,7 +90,7 @@ public class ChainScoreTest extends TestBase {
         govScore = new GovScore(txHandler);
         governorWallet = chain.governorWallet;
         try {
-            Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+            Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), ICX);
             assertSuccess(txHandler.getResult(txHash));
 
             testWallets = new KeyWallet[testWalletNum];
@@ -115,9 +115,9 @@ public class ChainScoreTest extends TestBase {
 
     public void invokeAndCheckResult(Address target, String method, RpcObject params) throws Exception {
         if (target.equals(Constants.GOV_ADDRESS)) {
-            assertSuccess(govScore.invokeAndWaitResult(governorWallet, method, params));
+            assertSuccess(govScore.invokeAndWaitResult(governorWallet, method, params, null, Constants.DEFAULT_STEPS));
         } else {
-            assertFailure(chainScore.invokeAndWaitResult(governorWallet, method, params));
+            assertFailure(chainScore.invokeAndWaitResult(governorWallet, method, params, null, Constants.DEFAULT_STEPS));
         }
     }
 
@@ -327,7 +327,7 @@ public class ChainScoreTest extends TestBase {
     @EnumSource(TargetScore.class)
     public void setStepPrice(TargetScore score) throws Exception {
         LOG.infoEntering("setStepPrice");
-        BigInteger originPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger originPrice = chainScore.getStepPrice();
         BigInteger newPrice = originPrice.add(BigInteger.valueOf(1));
         LOG.infoEntering("invoke", "setStepPrice, " + originPrice + " -> " + newPrice);
         RpcObject params = new RpcObject.Builder()
@@ -336,7 +336,7 @@ public class ChainScoreTest extends TestBase {
         invokeAndCheckResult(score.addr, "setStepPrice", params);
         LOG.infoExiting();
 
-        BigInteger resultPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger resultPrice = chainScore.getStepPrice();
         if (score.addr.equals(Constants.GOV_ADDRESS)) {
             assertEquals(newPrice, resultPrice);
             LOG.info("invoke setStepPrice again for revert");
@@ -348,7 +348,7 @@ public class ChainScoreTest extends TestBase {
             assertEquals(originPrice, resultPrice);
             LOG.info("no change");
         }
-        BigInteger curPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger curPrice = chainScore.getStepPrice();
         LOG.info("revertedPrice = " + curPrice);
         LOG.infoExiting();
     }

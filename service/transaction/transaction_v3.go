@@ -225,14 +225,16 @@ func (tx *transactionV3) ValidateNetwork(nid int) bool {
 }
 
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
-	// stepLimit >= default step + input steps
-	cnt, err := MeasureBytesOfData(wc.Revision(), tx.Data)
-	if err != nil {
-		return err
-	}
-	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
-	if tx.StepLimit.Cmp(minStep) < 0 {
-		return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)", tx.StepLimit, minStep)
+	if tx.DataType == nil || *tx.DataType != DataTypePatch {
+		// stepLimit >= default step + input steps
+		cnt, err := MeasureBytesOfData(wc.Revision(), tx.Data)
+		if err != nil {
+			return err
+		}
+		minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
+		if tx.StepLimit.Cmp(minStep) < 0 {
+			return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)", tx.StepLimit, minStep)
+		}
 	}
 
 	// balance >= (fee + value)

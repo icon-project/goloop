@@ -30,8 +30,6 @@ public class Constants {
     public static final BigInteger STATUS_FAILURE = BigInteger.ZERO;
 
     public static final BigInteger DEFAULT_STEPS = BigInteger.valueOf(200000);
-    public static final BigInteger DEFAULT_INSTALL_STEPS = new BigInteger("50000000", 16);
-    public static final BigInteger DEFAULT_BALANCE = new BigInteger("60000000", 16);
     public static final long DEFAULT_WAITING_TIME = 7000;
 
     public static final String CONTENT_TYPE_PYTHON = "application/zip";

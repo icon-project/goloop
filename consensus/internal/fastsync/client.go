@@ -21,10 +21,10 @@ const (
 
 type client struct {
 	common.Mutex
-	nm     module.NetworkManager
-	ph     module.ProtocolHandler
-	bm     module.BlockManager
-	logger log.Logger
+	nm  module.NetworkManager
+	ph  module.ProtocolHandler
+	bm  module.BlockManager
+	log log.Logger
 
 	fetchID uint16
 	fr      *fetchRequest
@@ -51,7 +51,7 @@ func (br *blockResult) Consume() {
 	defer br.cl.Unlock()
 
 	cl := br.cl
-	cl.logger.Tracef("Consume %d\n", br.blk.Height())
+	cl.log.Tracef("Consume %d\n", br.blk.Height())
 	fr := br.fr
 	if cl.fr != fr {
 		return
@@ -63,7 +63,7 @@ func (br *blockResult) Consume() {
 	fr._reschedule()
 	if fr.consumeOffset > fr.heightSet.end || fr.nActivePeers == 0 && fr.pendingResults[0] == nil {
 		cb := fr.cb
-		cl.logger.Tracef("OnEnd Consume %d nActivePeers:%d pendingResult[0]:%p\n", br.blk.Height(), fr.nActivePeers, fr.pendingResults[0])
+		cl.log.Tracef("OnEnd Consume %d nActivePeers:%d pendingResult[0]:%p\n", br.blk.Height(), fr.nActivePeers, fr.pendingResults[0])
 		fr._cancel()
 		go cb.OnEnd(nil)
 		return
@@ -78,7 +78,7 @@ func (br *blockResult) Reject() {
 	defer br.cl.Unlock()
 
 	cl := br.cl
-	cl.logger.Tracef("Reject %d\n", br.blk.Height())
+	cl.log.Tracef("Reject %d\n", br.blk.Height())
 	fr := br.fr
 	if cl.fr != fr {
 		return
@@ -110,7 +110,7 @@ func (br *blockResult) Reject() {
 		fr._reschedule()
 	} else {
 		cb := fr.cb
-		cl.logger.Tracef("OnEnd Reject %d\n", br.blk.Height())
+		cl.log.Tracef("OnEnd Reject %d\n", br.blk.Height())
 		fr._cancel()
 		go cb.OnEnd(nil)
 	}
@@ -140,7 +140,7 @@ func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
 	cl.nm = nm
 	cl.ph = ph
 	cl.bm = bm
-	cl.logger = logger
+	cl.log = logger
 	return cl
 }
 
@@ -152,10 +152,10 @@ func (cl *client) fetchBlocks(
 	cl.Lock()
 	defer cl.Unlock()
 
-	cl.logger.Debugf("fetchBlocks begin:%d end:%d\n", begin, end)
+	cl.log.Debugf("fetchBlocks begin:%d end:%d\n", begin, end)
 
 	if cl.fr != nil {
-		cl.logger.Debugf("fetchBlocks begin:%d end:%d - already in use\n", begin, end)
+		cl.log.Debugf("fetchBlocks begin:%d end:%d - already in use\n", begin, end)
 		return nil, errors.New("already in use")
 	}
 
@@ -179,13 +179,13 @@ func (cl *client) fetchBlocks(
 	return fr, nil
 }
 
-func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (rebr bool, err error) {
+func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	cl.Lock()
 	defer cl.Unlock()
 
 	fr := cl.fr
 	if fr == nil {
-		return false, nil
+		return
 	}
 	for _, p := range fr.validPeers {
 		if p.f != nil && p.id.Equal(id) {
@@ -193,10 +193,9 @@ func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 			cl.CallAfterUnlock(func() {
 				f.onReceive(pi, b)
 			})
-			return false, nil
+			return
 		}
 	}
-	return false, nil
 }
 
 func (cl *client) onJoin(id module.PeerID) {
@@ -285,16 +284,16 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 	defer cl.Unlock()
 
 	if isNoBlock(err) {
-		cl.logger.Debugf("onResult %v\n", err)
+		cl.log.Debugf("onResult %v\n", err)
 	} else if err != nil {
-		cl.logger.Debugf("onResult %+v\n", err)
+		cl.log.Debugf("onResult %+v\n", err)
 	} else {
-		cl.logger.Debugf("onResult %d\n", blk.Height())
+		cl.log.Debugf("onResult %d\n", blk.Height())
 	}
 
 	fr := cl.fr
 	if fr != f.fr {
-		cl.logger.Tracef("onResult: fr %p != f.fr %p\n", fr, f.fr)
+		cl.log.Tracef("onResult: fr %p != f.fr %p\n", fr, f.fr)
 		return
 	}
 
@@ -324,7 +323,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 			cb := fr.cb
 			fr._cancel()
 			cl.CallAfterUnlock(func() {
-				cl.logger.Tracef("OnEnd onResult\n")
+				cl.log.Tracef("OnEnd onResult\n")
 				cb.OnEnd(nil)
 			})
 		}
@@ -334,7 +333,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 	if p == nil {
 		return
 	}
-	cl.logger.Tracef("height=%d consumeOffset=%d\n", f.height, fr.consumeOffset)
+	cl.log.Tracef("height=%d consumeOffset=%d\n", f.height, fr.consumeOffset)
 	offset := f.height - fr.consumeOffset
 	fr.pendingResults[offset] = &blockResult{
 		id:    f.id,
@@ -355,7 +354,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 func (cl *client) notifyBlockResult() {
 	fr := cl.fr
 	br := fr.pendingResults[0]
-	cl.logger.Tracef("onResult: block notification\n")
+	cl.log.Tracef("onResult: block notification\n")
 	cb := fr.cb
 	go cb.OnBlock(br)
 }
@@ -368,6 +367,7 @@ func isNoBlock(err error) bool {
 
 type fstep byte
 
+//goland:noinspection GoUnusedConst
 const (
 	fstepSend fstep = iota
 	fstepWaitResp
@@ -431,7 +431,7 @@ func (f *fetcher) _doSend() {
 	msg.RequestID = f.requestID
 	msg.Height = f.height
 	bs := codec.MustMarshalToBytes(&msg)
-	f.cl.logger.Debugf("Request RequestID:%d, Height:%d\n", f.requestID, f.height)
+	f.cl.log.Debugf("Request RequestID:%d, Height:%d\n", f.requestID, f.height)
 	if f.timer != nil {
 		f.timer.Stop()
 		f.timer = nil
@@ -516,7 +516,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		if msg.RequestID != f.requestID {
 			return
 		}
-		f.cl.logger.Tracef("onReceive BlockMetadata rid=%d, len=%d\n", msg.RequestID, msg.BlockLength)
+		f.cl.log.Tracef("onReceive BlockMetadata rid=%d, len=%d\n", msg.RequestID, msg.BlockLength)
 		if msg.BlockLength < 0 {
 			f.step = fstepFin
 			if f.timer != nil {
@@ -545,7 +545,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		}
 		f.dataList = append(f.dataList, msg.Data)
 		f.left -= int32(len(msg.Data))
-		f.cl.logger.Tracef("onReceive BlockData rid=%d, data len=%d left=%d\n", msg.RequestID, len(msg.Data), f.left)
+		f.cl.log.Tracef("onReceive BlockData rid=%d, data len=%d left=%d\n", msg.RequestID, len(msg.Data), f.left)
 		if f.left == 0 {
 			f.step = fstepFin
 			if f.timer != nil {

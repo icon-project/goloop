@@ -78,6 +78,7 @@ const (
 	DefaultSimplePeerIDSize     = 4
 	UsingSelectiveFlooding      = true
 	DefaultDuplicatedPeerTime   = 1 * time.Second
+	DefaultMaxRetryClose		= 10
 )
 
 var (

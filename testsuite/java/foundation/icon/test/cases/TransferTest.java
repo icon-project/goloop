@@ -77,8 +77,8 @@ public class TransferTest extends TestBase {
             testWallets[i] = wallet;
             addrs[i] = wallet.getAddress();
         }
-        transferAndCheckResult(txHandler, addrs, Constants.DEFAULT_BALANCE);
-        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, addrs, ICX);
+        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), ICX);
     }
 
     @AfterAll
@@ -102,7 +102,8 @@ public class TransferTest extends TestBase {
             wallets[i] = KeyWallet.create();
             balances[i] = txHandler.getBalance(testWallets[i].getAddress());
             // transfer from no balance wallet to test wallets
-            hashes[i] = txHandler.transfer(wallets[i], testWallets[i].getAddress(), BigInteger.valueOf(rand.nextInt(100) + 1));
+            hashes[i] = txHandler.transfer(wallets[i], testWallets[i].getAddress(),
+                    BigInteger.valueOf(rand.nextInt(100) + 1), Constants.DEFAULT_STEPS);
         }
         for (int i = 0; i < hashes.length; i++) {
             try {
@@ -130,7 +131,7 @@ public class TransferTest extends TestBase {
                 .build();
         BigInteger prevMaxStepLimit = chainScore.call("getMaxStepLimit", params).asInteger();
         BigInteger prevDefStepCost = chainScore.call("getStepCosts", null).asObject().getItem("default").asInteger();
-        BigInteger prevStepPrice = chainScore.call("getStepPrice", null).asInteger();
+        BigInteger prevStepPrice = chainScore.getStepPrice();
 
         final long newDefStepCost = 100;
         final long newStepPrice = 10;
@@ -233,7 +234,7 @@ public class TransferTest extends TestBase {
             if (balance.compareTo(value) < 0) {
                 return false;
             }
-            txHash = txHandler.transfer(wallet, account.getAddress(), value);
+            txHash = txHandler.transfer(wallet, account.getAddress(), value, Constants.DEFAULT_STEPS);
             balance = balance.subtract(value);
             acRecord.add("transfer " + value + ", current balance : " + balance);
             account.receive(value, txHash);
@@ -301,7 +302,10 @@ public class TransferTest extends TestBase {
             } while (from == to);
 
             BigInteger bal = testAccounts[from].getBalance();
-            value = rand.nextInt(bal.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ? BigInteger.valueOf(Integer.MAX_VALUE).intValue() : bal.intValue());
+            value = rand.nextInt(bal.compareTo(
+                    BigInteger.valueOf(Integer.MAX_VALUE)) > 0
+                    ? BigInteger.valueOf(Integer.MAX_VALUE).intValue()
+                    : bal.intValue());
             testAccounts[from].transfer(testAccounts[to], BigInteger.valueOf(value));
             transferNum--;
         }
