@@ -17,10 +17,14 @@
 package icon
 
 import (
+	"encoding/json"
 	"math/big"
 
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -30,6 +34,7 @@ import (
 type chainScore struct {
 	cc   contract.CallContext
 	from module.Address
+	log  log.Logger
 }
 
 const (
@@ -75,6 +80,14 @@ func (s *chainScore) Install(param []byte) error {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
 
+	chain := basic.Chain{}
+	if param != nil {
+		if err := json.Unmarshal(param, &chain); err != nil {
+			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
+		}
+	}
+
+	// load validatorList
 	// set block interval 2 seconds
 	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
@@ -114,6 +127,15 @@ func (s *chainScore) Install(param []byte) error {
 			state.StepTypeApiCall:          0x2710,
 		}
 		stepPrice = big.NewInt(0x2e90edd00)
+
+		validators := make([]module.Validator, len(chain.ValidatorList))
+		for i, validator := range chain.ValidatorList {
+			validators[i], _ = state.ValidatorFromAddress(validator)
+			s.log.Debugf("add validator %d: %v", i, validator)
+		}
+		if err := s.cc.GetValidatorState().Set(validators); err != nil {
+			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
+		}
 	}
 
 	if err := applyStepLimits(as, stepLimitsMap); err != nil {
@@ -138,5 +160,5 @@ func (s *chainScore) GetAPI() *scoreapi.Info {
 }
 
 func newChainScore(cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
-	return &chainScore{cc: cc, from: from}, nil
+	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
 }
