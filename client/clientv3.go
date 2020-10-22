@@ -29,8 +29,8 @@ import (
 //response schema Block, ConfirmedTransaction, TransactionResult{EventLog, Failure}, ScoreApi,
 type ClientV3 struct {
 	*JsonRpcClient
-	Debug *JsonRpcClient
-	conns map[string]*websocket.Conn
+	DebugEndPoint string
+	conns         map[string]*websocket.Conn
 }
 
 func guessDebugEndpoint(endpoint string) string {
@@ -55,14 +55,10 @@ func guessDebugEndpoint(endpoint string) string {
 func NewClientV3(endpoint string) *ClientV3 {
 	client := new(http.Client)
 	apiClient := NewJsonRpcClient(client, endpoint)
-	var debugClient *JsonRpcClient
-	if ep := guessDebugEndpoint(endpoint); len(ep) > 0 {
-		debugClient = NewJsonRpcClient(client, ep)
-	}
 
 	return &ClientV3{
 		JsonRpcClient: apiClient,
-		Debug:         debugClient,
+		DebugEndPoint: guessDebugEndpoint(endpoint),
 		conns:         make(map[string]*websocket.Conn),
 	}
 }
@@ -422,12 +418,13 @@ func (c *ClientV3) wsReadJSONLoop(conn *websocket.Conn, respPtr interface{}, cb 
 }
 
 func (c *ClientV3) EstimateStep(param *v3.TransactionParamForEstimate) (*common.HexInt, error) {
-	if c.Debug == nil {
+	if len(c.DebugEndPoint) == 0 {
 		return nil, errors.InvalidStateError.New("UnavailableDebugEndPoint")
 	}
 	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
 	var result common.HexInt
-	if _, err := c.Debug.Do("debug_estimateStep", param, &result); err != nil {
+	if _, err := c.DoURL(c.DebugEndPoint,
+		"debug_estimateStep", param, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
