@@ -121,6 +121,8 @@ func (s Status) String() string {
 		return "OutOfStep"
 	case StatusOutOfBalance:
 		return "OutOfBalance"
+	case StatusTimeout:
+		return "Timeout"
 	case StatusStackOverflow:
 		return "StackOverflow"
 	case StatusSkipTransaction:
