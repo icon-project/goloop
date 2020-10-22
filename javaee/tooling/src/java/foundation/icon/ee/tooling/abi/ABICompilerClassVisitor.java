@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Set;
 
 public class ABICompilerClassVisitor extends ClassVisitor {
-    private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
-    private List<Method> callableInfo = new ArrayList<>();
-    private boolean stripLineNumber;
+    private final List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
+    private final List<Method> callableInfo = new ArrayList<>();
+    private final boolean stripLineNumber;
 
     public ABICompilerClassVisitor(ClassWriter cw, boolean stripLineNumber) {
         super(Opcodes.ASM7, cw);
@@ -32,7 +32,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     }
 
     @Override
-    public void visit(int version, int access, java.lang.String name, java.lang.String signature, java.lang.String superName, java.lang.String[] interfaces) {
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
     }
 

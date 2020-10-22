@@ -1,6 +1,10 @@
 package org.aion.avm.tooling.deploy;
 
-import org.objectweb.asm.*;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
 
@@ -9,7 +13,7 @@ public class ClassDependencyVisitor extends ClassVisitor {
 
     private final DependencyCollector dependencyCollector;
     private final SignatureVisitor signatureVisitor;
-    private boolean preserveDebugInfo;
+    private final boolean preserveDebugInfo;
 
     public ClassDependencyVisitor(SignatureVisitor signatureVisitor, DependencyCollector dependencyCollector, ClassWriter writer, boolean preserveDebugInfo) {
         super(Opcodes.ASM7, writer);
