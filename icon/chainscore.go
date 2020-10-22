@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -31,6 +32,11 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+type chainMethod struct {
+	scoreapi.Method
+	minVer, maxVer int
+}
+
 type chainScore struct {
 	cc   contract.CallContext
 	from module.Address
@@ -40,6 +46,25 @@ type chainScore struct {
 const (
 	CIDForMainNet = 0xaf4e97
 )
+
+var chainMethods = []*chainMethod{
+	{scoreapi.Method{scoreapi.Function, "setStake",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"value", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0 },	// TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getStake",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0 },	// TODO change minVer to Revision5
+}
 
 func applyStepLimits(as state.AccountState, limits map[string]int64) error {
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
@@ -156,9 +181,32 @@ func (s *chainScore) Update(param []byte) error {
 }
 
 func (s *chainScore) GetAPI() *scoreapi.Info {
-	return nil
+	ass := s.cc.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	revision := int(scoredb.NewVarDB(as, state.VarRevision).Int64())
+	mLen := len(chainMethods)
+	methods := make([]*scoreapi.Method, mLen)
+	j := 0
+	for _, m := range chainMethods {
+		if m.minVer <= revision && (m.maxVer == 0 || revision <= m.maxVer) {
+			methods[j] = &m.Method
+			j += 1
+		}
+	}
+
+	return scoreapi.NewInfo(methods[:j])
 }
 
 func newChainScore(cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
 	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
+}
+
+func (s *chainScore) Ex_setStake(value *common.HexInt) error {
+	s.log.Debugf("get setStake request. value=%v", value)
+	return nil
+}
+
+func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
+	s.log.Debugf("get getStake request. address=%v", address)
+	return 10, nil
 }

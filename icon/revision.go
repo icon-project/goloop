@@ -27,6 +27,12 @@ const (
 	Revision6
 	Revision7
 	Revision8
+	Revision9
+	Revision10
+	Revision11
+	Revision12
+	Revision13
+	Revision14
 	RevisionReserved
 )
 
