@@ -168,6 +168,9 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             if (reservedEventNames.contains(methodName)) {
                 throw new ABICompilerException("Reserved event log name", methodName);
             }
+            if (isFallback()) {
+                throw new ABICompilerException("fallback method cannot be eventlog", methodName);
+            }
             var args = Type.getArgumentTypes(methodDescriptor);
             for (Type t : args) {
                 if (!paramTypeMap.containsKey(t.getDescriptor())) {
@@ -333,6 +336,9 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     public void visitEnd() {
         if (isOnInstall() && this.flags != 0) {
             throw new ABICompilerException("<init> method cannot be annotated", methodName);
+        }
+        if (isFallback() && isExternal()) {
+            throw new ABICompilerException("fallback method cannot be external", methodName);
         }
         if (isPayable() && isReadonly()) {
             throw new ABICompilerException("Method annotated @Payable cannot be readonly", methodName);
