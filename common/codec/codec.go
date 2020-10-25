@@ -4,10 +4,12 @@ import (
 	"encoding"
 	"errors"
 	"io"
+	"math/big"
 	"reflect"
 	"sort"
 
 	cerrors "github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 )
 
 type SimpleEncoder interface {
@@ -150,6 +152,8 @@ func (e *encoderImpl) encodeMap() (*encoderImpl, error) {
 	return e.child, nil
 }
 
+var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
+
 var encodeSelferType = reflect.TypeOf((*EncodeSelfer)(nil)).Elem()
 var binaryMarshaler = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
 var codecMarshaler = reflect.TypeOf((*Marshaler)(nil)).Elem()
@@ -180,6 +184,14 @@ func (e *encoderImpl) tryCustom(v reflect.Value) (bool, error) {
 				return true, err
 			}
 			return true, e.real.WriteRaw(b)
+		}
+	}
+	if v.Type().ConvertibleTo(bigIntPtrType) {
+		bi := v.Interface().(*big.Int)
+		if bi != nil {
+			return true, e.Encode(intconv.BigIntToBytes(bi))
+		} else {
+			return true, e.Encode(nil)
 		}
 	}
 	return false, nil
@@ -467,6 +479,18 @@ func (d *decoderImpl) tryCustom(v reflect.Value) (bool, error) {
 			return true, err
 		}
 		return true, u.UnmarshalRLP(b)
+	}
+	if v.Type().ConvertibleTo(bigIntPtrType) {
+		bi := v.Interface().(*big.Int)
+		b, err := d.real.ReadBytes()
+		if err != nil {
+			return true, err
+		}
+		if v := intconv.BigIntSetBytes(bi, b); v != nil {
+			return true, nil
+		} else {
+			return true, ErrInvalidFormat
+		}
 	}
 	return false, nil
 }
