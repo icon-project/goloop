@@ -30,6 +30,9 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 			return err
 		}
 		*rpcClient = *client.NewClientV3(vc.GetString("uri"))
+		if uri := vc.GetString("debug_uri"); len(uri) > 0 {
+			rpcClient.DebugEndPoint = uri
+		}
 		if vc.GetBool("debug") {
 			opts := jsonrpc.IconOptions{}
 			opts.SetBool(jsonrpc.IconOptionsDebug, true)
@@ -46,9 +49,18 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 	}
 }
 
+func readFile(s string) ([]byte, error) {
+	if s == "-" {
+		return ioutil.ReadAll(os.Stdin)
+	} else {
+		return ioutil.ReadFile(s)
+	}
+}
+
 func AddRpcRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
 	pFlags.String("uri", "", "URI of JSON-RPC API")
+	pFlags.String("debug_uri", "", "URI of JSON-RPC Debug API")
 	pFlags.Bool("debug", false, "JSON-RPC Response with detail information")
 	MarkAnnotationCustom(pFlags, "uri")
 }
@@ -188,7 +200,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 					dataBytes = []byte(dataJson)
 				} else {
 					var err error
-					if dataBytes, err = ioutil.ReadFile(dataJson); err != nil {
+					if dataBytes, err = readFile(dataJson); err != nil {
 						return err
 					}
 				}
@@ -232,7 +244,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		Short: "Rpc with raw json file",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			b, err := ioutil.ReadFile(args[0])
+			b, err := readFile(args[0])
 			if err != nil {
 				return err
 			}
@@ -521,7 +533,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		Short: "Send transaction with json file",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			b, err := ioutil.ReadFile(args[0])
+			b, err := readFile(args[0])
 			if err != nil {
 				return err
 			}
@@ -635,7 +647,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 					dataBytes = []byte(dataJson)
 				} else {
 					var err error
-					if dataBytes, err = ioutil.ReadFile(dataJson); err != nil {
+					if dataBytes, err = readFile(dataJson); err != nil {
 						return err
 					}
 				}
@@ -706,7 +718,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 					return fmt.Errorf("fail to zip with directory %s err:%+v", args[0], err)
 				}
 			} else {
-				if b, err = ioutil.ReadFile(args[0]); err != nil {
+				if b, err = readFile(args[0]); err != nil {
 					return fmt.Errorf("fail to read %s err:%+v", args[0], err)
 				}
 			}
@@ -764,7 +776,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 					efBytes = []byte(f)
 				} else {
 					var err error
-					if efBytes, err = ioutil.ReadFile(f); err != nil {
+					if efBytes, err = readFile(f); err != nil {
 						return err
 					}
 				}
@@ -800,7 +812,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 					dataBytes = []byte(rawJson)
 				} else {
 					var err error
-					if dataBytes, err = ioutil.ReadFile(rawJson); err != nil {
+					if dataBytes, err = readFile(rawJson); err != nil {
 						return err
 					}
 				}
