@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 )
@@ -281,6 +283,132 @@ func TestAddress_SetBytes(t *testing.T) {
 			if err := tt.a.SetBytes(tt.args.b); (err != nil) != tt.wantErr {
 				t.Errorf("SetBytes() error = %v, wantErr %v", err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestAddress_SetTypeAndID(t *testing.T) {
+	t.Run("SetSmallID", func(t *testing.T) {
+		addr1 := new(Address)
+		err := addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
+		assert.NoError(t, err)
+		assert.Equal(t,
+			"hx0000000000000000000000000000000000123456",
+			addr1.String())
+	})
+
+	t.Run("SetAgainWithSmallerID", func(t *testing.T) {
+		addr2 := new(Address)
+		err := addr2.SetTypeAndID(false, []byte{
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12,
+		})
+		assert.NoError(t, err)
+
+		addr1 := new(Address)
+		err = addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
+		assert.NoError(t, err)
+
+		err = addr1.SetTypeAndID(false, []byte{0x12})
+		assert.NoError(t, err)
+
+		assert.Equal(t, addr2, addr1)
+	})
+}
+
+func TestAddress_Set(t *testing.T) {
+	addr0 := NewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
+
+	t.Run("SetWithSelf", func(t *testing.T) {
+		addr1 := NewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
+		err := addr1.Set(addr1)
+		assert.NoError(t, err)
+		assert.Equal(t, addr0, addr1)
+	})
+
+	t.Run("SetOtherOnEmpty", func(t *testing.T) {
+		addr2 := new(Address)
+		err := addr2.Set(addr0)
+		assert.NoError(t, err)
+		assert.Equal(t, addr0, addr2)
+	})
+
+	t.Run("SetNil", func(t *testing.T) {
+		addr2 := new(Address)
+		err := addr2.Set(nil)
+		assert.Error(t, err)
+		assert.Equal(t, new(Address), addr2)
+	})
+
+	t.Run("SetOther", func(t *testing.T) {
+		addr1 := NewAddressFromString("hxfa6341b183b48fd460b9a42884db7987a46ea92f")
+		err := addr1.Set(addr0)
+		assert.NoError(t, err)
+		assert.Equal(t, addr0, addr1)
+	})
+}
+
+func TestAddress_ToString(t *testing.T) {
+	type arg struct {
+		contract bool
+		id       []byte
+	}
+	tests := []struct {
+		name string
+		arg  arg
+		want string
+	}{
+		{
+			name: "Treasury",
+			arg:  arg{false, []byte{0x01}},
+			want: "hx0000000000000000000000000000000000000001",
+		},
+		{
+			name: "ChainSCORE1",
+			arg:  arg{true, []byte{}},
+			want: "cx0000000000000000000000000000000000000000",
+		},
+		{
+			name: "ChainSCORE2",
+			arg:  arg{true, []byte{0}},
+			want: "cx0000000000000000000000000000000000000000",
+		},
+		{
+			name: "Governance",
+			arg:  arg{true, []byte{0x01}},
+			want: "cx0000000000000000000000000000000000000001",
+		},
+		{
+			name: "EOA",
+			arg: arg{false, []byte{
+				0xfa, 0x63, 0x41, 0xb1, 0x83, 0xb4, 0x8f, 0xd4, 0x60, 0xb9,
+				0xa4, 0x28, 0x84, 0xdb, 0x79, 0x87, 0xa4, 0x6e, 0xa9, 0x2f,
+			}},
+			want: "hxfa6341b183b48fd460b9a42884db7987a46ea92f",
+		},
+		{
+			name: "Contract",
+			arg: arg{true, []byte{
+				0xfa, 0x63, 0x41, 0xb1, 0x83, 0xb4, 0x8f, 0xd4, 0x60, 0xb9,
+				0xa4, 0x28, 0x84, 0xdb, 0x79, 0x87, 0xa4, 0x6e, 0xa9, 0x2f,
+			}},
+			want: "cxfa6341b183b48fd460b9a42884db7987a46ea92f",
+		},
+		{
+			name: "EOAShort",
+			arg: arg{false, []byte{
+				0xa4, 0x28, 0x84, 0xdb, 0x79, 0x87, 0xa4, 0x6e, 0xa9, 0x2f,
+			}},
+			want: "hx00000000000000000000a42884db7987a46ea92f",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			addr := new(Address)
+			err := addr.SetTypeAndID(test.arg.contract, test.arg.id)
+			assert.NoError(t, err)
+			assert.Equal(t, test.want, addr.String())
 		})
 	}
 }
