@@ -40,7 +40,7 @@ import java.util.Map;
 import static foundation.icon.test.common.Env.LOG;
 
 public class SampleTokenScore extends Score {
-    private static Map<String, Method> expectedMap = new HashMap<>() {{
+    private static final Map<String, Method> expectedMap = new HashMap<>() {{
         put("name", Method.newFunction("name", Method.Flags.READONLY | Method.Flags.EXTERNAL,
                 null, Method.DataType.STRING, "str"));
         put("symbol", Method.newFunction("symbol", Method.Flags.READONLY | Method.Flags.EXTERNAL,
@@ -68,24 +68,37 @@ public class SampleTokenScore extends Score {
                 }));
     }};
 
-    public static SampleTokenScore mustDeploy(TransactionHandler txHandler, Wallet owner,
-                                              BigInteger decimals, BigInteger initialSupply, String contentType)
-            throws ResultTimeoutException, TransactionFailureException, IOException {
-        LOG.infoEntering("deploy", "SampleToken");
-        RpcObject params = new RpcObject.Builder()
+    private static RpcObject getParams(BigInteger decimals, BigInteger initialSupply) {
+        return new RpcObject.Builder()
                 .put("_name", new RpcValue("MySampleToken"))
                 .put("_symbol", new RpcValue("MST"))
                 .put("_decimals", new RpcValue(decimals))
                 .put("_initialSupply", new RpcValue(initialSupply))
                 .build();
+    }
+
+    public static SampleTokenScore mustDeploy(TransactionHandler txHandler, Wallet owner,
+                                              BigInteger decimals, BigInteger initialSupply, String contentType)
+            throws ResultTimeoutException, TransactionFailureException, IOException {
+        LOG.infoEntering("deploy", "SampleToken");
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(owner, getFilePath("sample_token"), params);
+            score = txHandler.deploy(owner, getFilePath("sample_token"), getParams(decimals, initialSupply));
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
-            score = txHandler.deploy(owner, SampleToken.class, params);
+            score = txHandler.deploy(owner, SampleToken.class, getParams(decimals, initialSupply));
         } else {
             throw new IllegalArgumentException("Unknown content type");
         }
+        LOG.info("scoreAddr = " + score.getAddress());
+        LOG.infoExiting();
+        return new SampleTokenScore(score);
+    }
+
+    public static SampleTokenScore mustDeploy(TransactionHandler txHandler, Wallet owner,
+                                              BigInteger decimals, BigInteger initialSupply, Class<?>[] classes)
+            throws ResultTimeoutException, TransactionFailureException, IOException {
+        LOG.infoEntering("deploy", classes[0].getName());
+        Score score = txHandler.deploy(owner, classes, getParams(decimals, initialSupply));
         LOG.info("scoreAddr = " + score.getAddress());
         LOG.infoExiting();
         return new SampleTokenScore(score);

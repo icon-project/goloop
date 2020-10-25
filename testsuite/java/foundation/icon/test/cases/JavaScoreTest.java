@@ -16,6 +16,9 @@
 
 package foundation.icon.test.cases;
 
+import example.InheritedToken;
+import example.token.IRC2;
+import example.token.IRC2Basic;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -90,13 +93,27 @@ class JavaScoreTest extends TestBase {
 
     @Test
     public void testSampleToken() throws Exception {
-        KeyWallet calleeWallet = KeyWallet.create();
-
         // 1. deploy
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
         SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
                 decimals, initialSupply, Constants.CONTENT_TYPE_JAVA);
+        startTokenTest(tokenScore, decimals, initialSupply);
+    }
+
+    @Test
+    public void testInheritedToken() throws Exception {
+        // 1. deploy
+        BigInteger decimals = BigInteger.valueOf(18);
+        BigInteger initialSupply = BigInteger.valueOf(1000);
+        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
+                decimals, initialSupply, new Class<?>[]{InheritedToken.class, IRC2Basic.class, IRC2.class});
+        startTokenTest(tokenScore, decimals, initialSupply);
+    }
+
+    private void startTokenTest(SampleTokenScore tokenScore, BigInteger decimals, BigInteger initialSupply)
+            throws Exception {
+        KeyWallet calleeWallet = KeyWallet.create();
 
         // 2. balanceOf
         LOG.infoEntering("balanceOf", "owner (initial)");
