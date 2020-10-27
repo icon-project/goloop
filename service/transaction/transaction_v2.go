@@ -152,8 +152,7 @@ func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.
 			stepPrice.SetInt64(0)
 		}
 		r.SetResult(module.StatusOutOfBalance, version2StepUsed, stepPrice, nil)
-		return r, scoreresult.Errorf(module.StatusOutOfBalance, "TX Fail balance=%s value=%s fee=%s",
-			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
+		return r, nil
 	}
 
 	as1.SetBalance(new(big.Int).Sub(bal1, trans))
