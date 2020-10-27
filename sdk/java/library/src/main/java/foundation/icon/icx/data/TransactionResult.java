@@ -112,6 +112,14 @@ public class TransactionResult {
     }
 
     /**
+     * @since 0.9.13
+     * @return List of accounts that paid fees for this transaction
+     */
+    public RpcItem getStepUsedDetails() {
+        return properties.getItem("stepUsedDetails");
+    }
+
+    /**
      * @return The step price used by this transaction
      */
     public BigInteger getStepPrice() {
