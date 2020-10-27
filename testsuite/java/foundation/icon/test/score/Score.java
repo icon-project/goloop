@@ -94,6 +94,10 @@ public class Score {
         return invoke(wallet, method, params, value, steps, null, null);
     }
 
+    public Bytes invoke(Wallet wallet, Transaction tx) throws IOException {
+        return this.txHandler.invoke(wallet, tx);
+    }
+
     public Bytes invoke(Wallet wallet, String method, RpcObject params, BigInteger value,
                         BigInteger steps, BigInteger timestamp, BigInteger nonce) throws IOException {
         Transaction tx = getTransaction(wallet, method, params, value, timestamp, nonce);

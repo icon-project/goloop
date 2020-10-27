@@ -90,11 +90,15 @@ public class StepTest extends TestBase {
         transferAndCheckResult(txHandler, addresses, ICX.multiply(BigInteger.valueOf(30)));
 
         LOG.infoEntering("initSteps");
+        initStepCosts(govScore);
+        LOG.infoExiting();
+    }
+
+    static void initStepCosts(GovScore govScore) throws Exception {
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(2_500_000_000L));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(50_000_000L));
         govScore.setStepPrice(STEP_PRICE);
         govScore.setStepCosts(StepType.getStepCosts());
-        LOG.infoExiting();
     }
 
     @AfterAll
