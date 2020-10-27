@@ -1228,15 +1228,15 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 	if cur := as.Contract(); cur != nil {
 		curContract := make(map[string]interface{})
 		curContract["status"] = cur.Status().String()
-		curContract["deployTxHash"] = fmt.Sprintf("%x", cur.DeployTxHash())
-		curContract["auditTxHash"] = fmt.Sprintf("%x", cur.AuditTxHash())
+		curContract["deployTxHash"] = fmt.Sprintf("%#x", cur.DeployTxHash())
+		curContract["auditTxHash"] = fmt.Sprintf("%#x", cur.AuditTxHash())
 		scoreStatus["current"] = curContract
 	}
 
 	if next := as.NextContract(); next != nil {
 		nextContract := make(map[string]interface{})
 		nextContract["status"] = next.Status().String()
-		nextContract["deployTxHash"] = fmt.Sprintf("%x", next.DeployTxHash())
+		nextContract["deployTxHash"] = fmt.Sprintf("%#x", next.DeployTxHash())
 		scoreStatus["next"] = nextContract
 	}
 
