@@ -120,11 +120,14 @@ type Version int
 const (
 	Version1 Version = iota
 	Version2
-	LastVersion = Version2
+	Version3
+	ReservedVersion
+	LastVersion = ReservedVersion - 1
 )
 const (
 	listItemsForVersion1 = 8
 	listItemsForVersion2 = 9
+	listItemsForVersion3 = 10
 )
 
 type receiptData struct {
@@ -136,6 +139,7 @@ type receiptData struct {
 	LogsBloom          LogsBloom
 	EventLogs          []*eventLog
 	SCOREAddress       *common.Address
+	FeeDetail          feeDetail
 }
 
 func (r *receiptData) Equal(r2 *receiptData) bool {
@@ -146,7 +150,8 @@ func (r *receiptData) Equal(r2 *receiptData) bool {
 		r.StepPrice.Cmp(&r2.StepPrice.Int) == 0 &&
 		r.LogsBloom.Equal(&r2.LogsBloom) &&
 		reflect.DeepEqual(r.EventLogs, r2.EventLogs) &&
-		r.SCOREAddress.Equal(r2.SCOREAddress)
+		r.SCOREAddress.Equal(r2.SCOREAddress) &&
+		reflect.DeepEqual(r.FeeDetail, r2.FeeDetail)
 }
 
 type receipt struct {
@@ -179,7 +184,7 @@ func (r *receipt) Reset(s db.Database, k []byte) error {
 }
 
 func (r *receipt) Flush() error {
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		if ss, ok := r.eventLogs.(trie.SnapshotForObject); ok {
 			return ss.Flush()
 		}
@@ -197,15 +202,24 @@ func (r *receipt) Equal(o trie.Object) bool {
 }
 
 func (r *receipt) ClearCache() {
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		r.eventLogs.ClearCache()
 	}
 }
 
 func (r *receipt) RLPEncodeSelf(e codec.Encoder) error {
 	if r.version == Version1 {
-		return e.Encode(&r.data)
-	} else {
+		return e.EncodeListOf(
+			r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			r.data.EventLogs,
+			r.data.SCOREAddress,
+		)
+	} else if r.version == Version2 {
 		hash := r.eventLogs.Hash()
 		return e.EncodeListOf(
 			r.data.Status,
@@ -217,6 +231,20 @@ func (r *receipt) RLPEncodeSelf(e codec.Encoder) error {
 			r.data.EventLogs,
 			r.data.SCOREAddress,
 			hash)
+	} else {
+		hash := r.eventLogs.Hash()
+		return e.EncodeListOf(
+			r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			r.data.EventLogs,
+			r.data.SCOREAddress,
+			hash,
+			r.data.FeeDetail,
+		)
 	}
 }
 
@@ -235,12 +263,18 @@ func (r *receipt) RLPDecodeSelf(d codec.Decoder) error {
 		&r.data.LogsBloom,
 		&r.data.EventLogs,
 		&r.data.SCOREAddress,
-		&hash); err == nil || err == io.EOF {
+		&hash,
+		&r.data.FeeDetail,
+	); err == nil || err == io.EOF {
 		if cnt == listItemsForVersion1 {
 			r.version = Version1
 			r.eventLogs = nil
 		} else if cnt == listItemsForVersion2 {
 			r.version = Version2
+			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
+				reflect.TypeOf((*eventLog)(nil)))
+		} else if cnt == listItemsForVersion3 {
+			r.version = Version3
 			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
 				reflect.TypeOf((*eventLog)(nil)))
 		} else {
@@ -253,7 +287,7 @@ func (r *receipt) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (r *receipt) Resolve(bd merkle.Builder) error {
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		r.eventLogs.Resolve(bd)
 	}
 	return nil
@@ -264,14 +298,14 @@ func (r *receipt) LogsBloom() module.LogsBloom {
 }
 
 func (r *receipt) EventLogIterator() module.EventLogIterator {
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		return &eventLogIteratorV2{r.eventLogs.Iterator()}
 	}
 	return &eventLogIterator{r.data.EventLogs, 0}
 }
 
 func (r *receipt) GetProofOfEvent(i int) ([][]byte, error) {
-	if r.version != Version2 {
+	if r.version < Version2 {
 		return nil, errors.ErrInvalidState
 	}
 	k := codec.BC.MustMarshalToBytes(uint(i))
@@ -280,6 +314,13 @@ func (r *receipt) GetProofOfEvent(i int) ([][]byte, error) {
 		return nil, errors.NotFoundError.Errorf("EventNotFound(idx=%d)", i)
 	}
 	return proof, nil
+}
+
+func (r *receipt) AddPayment(addr module.Address, steps *big.Int) {
+	ok := r.data.FeeDetail.AddPayment(addr, steps)
+	if ok && r.version < Version3 {
+		r.version = Version3
+	}
 }
 
 type eventLogIteratorV2 struct {
@@ -341,6 +382,7 @@ func failureReasonByCode(status module.Status) *failureReason {
 type Receipt interface {
 	module.Receipt
 	AddLog(addr module.Address, indexed, data [][]byte)
+	AddPayment(addr module.Address, steps *big.Int)
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
 	SetResult(status module.Status, used, price *big.Int, addr module.Address)
 }
@@ -355,6 +397,7 @@ type receiptJSON struct {
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
 	LogsBloom          LogsBloom        `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
+	FeeDetail          feeDetail        `json:"stepUsedDetails"`
 }
 
 func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
@@ -379,6 +422,14 @@ func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
 		}
 	}
 	jso["eventLogs"] = logs
+
+	if r.data.FeeDetail.Has() {
+		details, err := r.data.FeeDetail.ToJSON(version)
+		if err != nil {
+			return nil, err
+		}
+		jso["stepUsedDetails"] = details
+	}
 
 	if r.data.Status == module.StatusSuccess {
 		jso["status"] = "0x1"
@@ -427,6 +478,10 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 		}
 	}
 	data.LogsBloom.SetBytes(rjson.LogsBloom.Bytes())
+	data.FeeDetail = rjson.FeeDetail
+	if r.data.FeeDetail.Has() {
+		r.version = Version3
+	}
 	if r.version >= Version2 {
 		r.buildMerkleListOfLogs()
 	}
@@ -467,8 +522,11 @@ func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr mod
 	}
 	r.data.StepUsed.Set(used)
 	r.data.StepPrice.Set(price)
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		r.buildMerkleListOfLogs()
+	}
+	if r.version >= Version3 {
+		r.data.FeeDetail.Normalize()
 	}
 }
 
@@ -505,7 +563,7 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	if r.version != rct2.version {
 		return errors.InvalidStateError.New("VersionMismatch")
 	}
-	if r.version == Version2 {
+	if r.version >= Version2 {
 		if !r.eventLogs.Equal(rct2.eventLogs, true) {
 			return errors.InvalidStateError.New("DifferentEventLogs")
 		}

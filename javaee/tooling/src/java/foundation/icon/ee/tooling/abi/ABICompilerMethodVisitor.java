@@ -29,10 +29,10 @@ import java.util.Map;
 import java.util.Set;
 
 public class ABICompilerMethodVisitor extends MethodVisitor {
-    private int access;
-    private String methodName;
-    private String methodDescriptor;
-    private List<String> paramNames = new ArrayList<>();
+    private final int access;
+    private final String methodName;
+    private final String methodDescriptor;
+    private final List<String> paramNames = new ArrayList<>();
     private boolean[] optional;
     private int flags;
     private int indexed;
@@ -40,7 +40,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private boolean isFallback = false;
     private boolean isEventLog = false;
     private MethodVisitor pmv = null;
-    private boolean stripLineNumber;
+    private final boolean stripLineNumber;
 
     private static final int MAX_INDEXED_COUNT = 3;
     private static final Set<String> reservedEventNames = Set.of(
@@ -167,6 +167,9 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             }
             if (reservedEventNames.contains(methodName)) {
                 throw new ABICompilerException("Reserved event log name", methodName);
+            }
+            if (isFallback()) {
+                throw new ABICompilerException("fallback method cannot be eventlog", methodName);
             }
             var args = Type.getArgumentTypes(methodDescriptor);
             for (Type t : args) {
@@ -333,6 +336,9 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     public void visitEnd() {
         if (isOnInstall() && this.flags != 0) {
             throw new ABICompilerException("<init> method cannot be annotated", methodName);
+        }
+        if (isFallback() && isExternal()) {
+            throw new ABICompilerException("fallback method cannot be external", methodName);
         }
         if (isPayable() && isReadonly()) {
             throw new ABICompilerException("Method annotated @Payable cannot be readonly", methodName);

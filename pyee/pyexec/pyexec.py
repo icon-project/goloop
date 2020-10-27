@@ -186,6 +186,10 @@ class PyExecEngine(object):
         Logger.debug(f"set_value({repr(k)},{repr(v)})", TAG)
         self.__proxy.set_value(k, v, cb)
 
+    def set_fee_proportion(self, pct: int):
+        Logger.debug(f"set_fee_proportion({repr(pct)})", TAG)
+        self.__proxy.set_fee_proportion(pct)
+
     def handle_set_values(self) -> bool:
         return self.__proxy.handle_set_values()
 

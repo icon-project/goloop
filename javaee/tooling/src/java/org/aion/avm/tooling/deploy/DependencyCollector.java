@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class DependencyCollector {
-    private final Set<String> dependencies = new HashSet<String>();
+    private final Set<String> dependencies = new HashSet<>();
 
     Set<String> getDependencies() {
         return dependencies;

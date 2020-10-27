@@ -455,6 +455,11 @@ func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
 	h.log.Panicln("Unexpected OnAPI() call")
 }
 
+func (h *CallHandler) OnSetFeeProportion(addr module.Address, portion int) {
+	h.log.TSystemf("CALL setFeeProportion addr=%s portion=%d", addr, portion)
+	h.cc.SetFeeProportion(addr, portion)
+}
+
 func (h *CallHandler) SetCode(code []byte) error {
 	if h.forDeploy == false {
 		return errors.InvalidStateError.New("Unexpected call SetCode()")

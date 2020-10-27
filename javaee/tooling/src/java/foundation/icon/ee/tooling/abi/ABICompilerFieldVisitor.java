@@ -15,9 +15,9 @@ import score.annotation.Optional;
 import score.annotation.Payable;
 
 public class ABICompilerFieldVisitor extends FieldVisitor {
-    private int access;
-    private String fieldName;
-    private String fieldDescriptor;
+    private final int access;
+    private final String fieldName;
+    private final String fieldDescriptor;
 
     public ABICompilerFieldVisitor(int access, String fieldName, String fieldDescriptor, FieldVisitor fv) {
         super(Opcodes.ASM7, fv);

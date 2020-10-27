@@ -33,6 +33,7 @@ const (
 	VarRoundLimitFactor   = "round_limit_factor"
 	VarMinimizeBlockGen   = "minimize_block_gen"
 	VarTxHashToAddress    = "tx_to_address"
+	VarDepositTerm        = "deposit_term"
 )
 
 const (
@@ -87,7 +88,9 @@ type WorldContext interface {
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
 	GetTransactionInfo(ti *TransactionInfo) bool
+	TransactionID() []byte
 	SetContractInfo(si *ContractInfo)
+	DepositTerm() int64
 	UpdateSystemInfo()
 
 	IsDeployer(addr string) bool
@@ -170,6 +173,7 @@ type systemStorageInfo struct {
 	sysConfig    int64
 	stepCostInfo *codec.TypedObj
 	revision     module.Revision
+	depositTerm  int64
 }
 
 func (si *systemStorageInfo) Update(wc *worldContext) bool {
@@ -213,11 +217,16 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	si.stepLimit = stepLimit
 
 	si.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
+	si.depositTerm = scoredb.NewVarDB(as, VarDepositTerm).Int64()
 	return true
 }
 
 func (c *worldContext) Revision() module.Revision {
 	return c.systemInfo.revision
+}
+
+func (c *worldContext) DepositTerm() int64 {
+	return c.systemInfo.depositTerm
 }
 
 func (c *worldContext) ToRevision(value int) module.Revision {
@@ -348,6 +357,10 @@ func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) bool {
 		return true
 	}
 	return false
+}
+
+func (c *worldContext) TransactionID() []byte {
+	return c.txInfo.Hash
 }
 
 func (c *worldContext) SetContractInfo(si *ContractInfo) {

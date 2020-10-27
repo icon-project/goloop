@@ -92,13 +92,17 @@ func (a *Address) SetBytes(b []byte) error {
 	}
 }
 
+var zeroBuffer [AddressIDBytes]byte
+
 func (a *Address) SetTypeAndID(ic bool, id []byte) error {
 	if id == nil {
 		return ErrIllegalArgument
 	}
 	switch {
 	case len(id) < AddressIDBytes:
-		copy(a[AddressIDBytes-len(id)+1:], id)
+		bp := 1 + AddressIDBytes - len(id)
+		copy(a[1:bp], zeroBuffer[:])
+		copy(a[bp:], id)
 	default:
 		copy(a[1:], id)
 	}
@@ -120,6 +124,28 @@ func NewAddress(b []byte) *Address {
 	a := new(Address)
 	a.SetBytes(b)
 	return a
+}
+
+func (a *Address) Set(address module.Address) error {
+	if address == nil {
+		return ErrIllegalArgument
+	}
+	return a.SetTypeAndID(address.IsContract(), address.ID())
+}
+
+func AddressToPtr(addr module.Address) *Address {
+	if addr == nil {
+		return nil
+	}
+	if addrPtr, ok := addr.(*Address); ok {
+		return addrPtr
+	} else {
+		addrPtr = new(Address)
+		if err := addrPtr.Set(addr); err != nil {
+			return nil
+		}
+		return addrPtr
+	}
 }
 
 func NewContractAddress(b []byte) *Address {

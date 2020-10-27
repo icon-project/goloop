@@ -16,6 +16,9 @@
 
 package foundation.icon.test.cases;
 
+import example.InheritedToken;
+import example.token.IRC2;
+import example.token.IRC2Basic;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -35,6 +38,7 @@ import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.Score;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -54,7 +58,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JavaScoreTest extends TestBase {
     private static IconService iconService;
     private static TransactionHandler txHandler;
-    private static KeyWallet ownerWallet;
+    private static KeyWallet[] wallets;
+    private static KeyWallet ownerWallet, caller;
     private static Score testScore;
 
     @BeforeAll
@@ -65,19 +70,50 @@ class JavaScoreTest extends TestBase {
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
 
-        ownerWallet = KeyWallet.create();
-        transferAndCheckResult(txHandler, ownerWallet.getAddress(), ICX.multiply(BigInteger.valueOf(100)));
+        // init wallets
+        wallets = new KeyWallet[2];
+        BigInteger amount = ICX.multiply(BigInteger.valueOf(100));
+        for (int i = 0; i < wallets.length; i++) {
+            wallets[i] = KeyWallet.create();
+            txHandler.transfer(wallets[i].getAddress(), amount);
+        }
+        for (KeyWallet wallet : wallets) {
+            ensureIcxBalance(txHandler, wallet.getAddress(), BigInteger.ZERO, amount);
+        }
+        ownerWallet = wallets[0];
+        caller = wallets[1];
+    }
+
+    @AfterAll
+    static void shutdown() throws Exception {
+        for (KeyWallet wallet : wallets) {
+            txHandler.refundAll(wallet);
+        }
     }
 
     @Test
     public void testSampleToken() throws Exception {
-        KeyWallet calleeWallet = KeyWallet.create();
-
         // 1. deploy
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
         SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
                 decimals, initialSupply, Constants.CONTENT_TYPE_JAVA);
+        startTokenTest(tokenScore, decimals, initialSupply);
+    }
+
+    @Test
+    public void testInheritedToken() throws Exception {
+        // 1. deploy
+        BigInteger decimals = BigInteger.valueOf(18);
+        BigInteger initialSupply = BigInteger.valueOf(1000);
+        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
+                decimals, initialSupply, new Class<?>[]{InheritedToken.class, IRC2Basic.class, IRC2.class});
+        startTokenTest(tokenScore, decimals, initialSupply);
+    }
+
+    private void startTokenTest(SampleTokenScore tokenScore, BigInteger decimals, BigInteger initialSupply)
+            throws Exception {
+        KeyWallet calleeWallet = KeyWallet.create();
 
         // 2. balanceOf
         LOG.infoEntering("balanceOf", "owner (initial)");
@@ -145,7 +181,6 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForAddress() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
 
         LOG.infoEntering("invoke");
@@ -219,7 +254,6 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForBlock() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
@@ -264,7 +298,6 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForTransaction() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
@@ -353,22 +386,21 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForCoin() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
         // getValue
         LOG.infoEntering("getValue", "invoke");
         BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
-        BigInteger stepLimit = BigInteger.valueOf(100000);
-        tr = apiScore.invokeAndWaitResult(ownerWallet, "getValue", null, ICX, stepLimit);
+        tr = apiScore.invokeAndWaitResult(ownerWallet, "getValue", null, ICX, Constants.DEFAULT_STEPS);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
         }
         LOG.info("expected (" + ICX + "), got (" + result.asInteger() + ")");
         assertEquals(ICX, result.asInteger());
-        ensureIcxBalance(txHandler, ownerWallet.getAddress(), ownerBalance, ownerBalance.subtract(ICX));
+        BigInteger fee = tr.getStepUsed().multiply(tr.getStepPrice());
+        ensureIcxBalance(txHandler, ownerWallet.getAddress(), ownerBalance, ownerBalance.subtract(ICX).subtract(fee));
         ensureIcxBalance(txHandler, apiScore.getAddress(), BigInteger.ZERO, ICX);
         LOG.infoExiting();
 
@@ -384,7 +416,7 @@ class JavaScoreTest extends TestBase {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(ownerWallet.getAddress()))
                 .build();
-        tr = apiScore.invokeAndWaitResult(caller, "getBalance", params, null, stepLimit);
+        tr = apiScore.invokeAndWaitResult(caller, "getBalance", params, null, Constants.DEFAULT_STEPS);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -400,7 +432,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("getBalance", "check score balance");
-        tr = apiScore.invokeAndWaitResult(caller, "getBalance", null, null, stepLimit);
+        tr = apiScore.invokeAndWaitResult(caller, "getBalance", null, null, Constants.DEFAULT_STEPS);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -419,7 +451,6 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForHash() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
@@ -460,7 +491,6 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testAPIForRecoverKey() throws Exception {
         Score apiScore = deployAPITest();
-        KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 

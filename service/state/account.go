@@ -49,6 +49,9 @@ type AccountSnapshot interface {
 	ContractOwner() module.Address
 
 	GetObjGraph(flags bool) (int, []byte, []byte, error)
+
+	CanPay(height int64) bool
+	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
 // AccountState represents mutable account state.
@@ -86,7 +89,18 @@ type AccountState interface {
 
 	GetObjGraph(flags bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
+
+	AddDeposit(dc DepositContext, value *big.Int, period int64) error
+	WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error)
+	PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error)
+	CanPay(height int64) bool
+	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
+
+const (
+	ExObjectGraph int = 1 << iota
+	ExDepositInfo
+)
 
 type accountSnapshotImpl struct {
 	version     int
@@ -102,6 +116,7 @@ type accountSnapshotImpl struct {
 	nextContract  *contractSnapshotImpl
 
 	objGraph *objectGraph
+	deposits depositList
 }
 
 func (s *accountSnapshotImpl) ContractOwner() module.Address {
@@ -235,6 +250,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s.objGraph.Equal(s2.objGraph) == false {
 			return false
 		}
+		if s.deposits.Equal(s2.deposits) == false {
+			return false
+		}
 		if s.store == s2.store {
 			return true
 		}
@@ -325,6 +343,16 @@ func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, erro
 	return obj.nextHash, obj.graphHash, obj.graphData, nil
 }
 
+func (s *accountSnapshotImpl) CanPay(height int64) bool {
+	return s.deposits.CanPay(height)
+}
+
+func (s *accountSnapshotImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
+	map[string]interface{}, error,
+) {
+	return s.deposits.ToJSON(dc, v)
+}
+
 func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	var storeHash []byte
 	if s.store != nil {
@@ -348,15 +376,35 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	); err != nil {
 		return err
 	}
-	if s.objGraph != nil {
-		if err := e2.EncodeMulti(
-			s.objGraph.nextHash,
-			s.objGraph.graphHash,
-		); err != nil {
+
+	flag := s.extensionFlag()
+	if flag != 0 {
+		if err := e2.Encode(flag); err != nil {
 			return err
+		}
+		if (flag & ExObjectGraph) != 0 {
+			if err := e2.Encode(s.objGraph); err != nil {
+				return err
+			}
+		}
+		if (flag & ExDepositInfo) != 0 {
+			if err := e2.Encode(s.deposits); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func (s *accountSnapshotImpl) extensionFlag() int {
+	var flag int
+	if s.objGraph != nil {
+		flag |= ExObjectGraph
+	}
+	if s.deposits.Has() {
+		flag |= ExDepositInfo
+	}
+	return flag
 }
 
 func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
@@ -366,7 +414,6 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	}
 
 	var storeHash []byte
-	var objGraph objectGraph
 	if err := d2.Decode(&s.version); err != nil {
 		return err
 	}
@@ -388,20 +435,6 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 		return errors.Wrap(err, "Fail to decode accountSnapshot")
 	}
 
-	if n, err := d2.DecodeMulti(
-		&objGraph.nextHash,
-		&objGraph.graphHash,
-	); err == nil || err == io.EOF {
-		if n == 2 {
-			s.objGraph = &objGraph
-		} else if n == 0 {
-			s.objGraph = nil
-		} else {
-			return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode accountSnapshot")
-		}
-	} else {
-		return errors.Wrap(err, "Fail to decode accountSnapshot")
-	}
 	if len(storeHash) > 0 {
 		s.store = trie_manager.NewImmutable(s.database, storeHash)
 	}
@@ -410,6 +443,26 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	}
 	if s.nextContract != nil {
 		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
+	}
+
+	var extension int
+	if err := d2.Decode(&extension); err != nil && err != io.EOF {
+		return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode extension")
+	} else if err == nil {
+		if (extension & ExObjectGraph) != 0 {
+			if err := d2.Decode(&s.objGraph); err != nil {
+				return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode objectGraph")
+			}
+			if s.objGraph != nil {
+				s.objGraph.bk, _ = s.database.GetBucket(db.BytesByHash)
+			}
+		}
+
+		if (extension & ExDepositInfo) != 0 {
+			if err := d2.Decode(&s.deposits); err != nil {
+				return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode deposits")
+			}
+		}
 	}
 	return nil
 }
@@ -445,100 +498,20 @@ type accountStateImpl struct {
 	store         trie.Mutable
 
 	objGraph *objectGraph
-}
-
-type objectGraph struct {
-	bk        db.Bucket
-	nextHash  int
-	graphHash []byte
-	graphData []byte
-}
-
-func (o *objectGraph) flush() error {
-	if o.bk == nil || o.graphData == nil {
-		return nil
-	}
-	prevData, err := o.bk.Get(o.graphHash)
-	if err != nil {
-		return err
-	}
-	// already exists
-	if prevData != nil {
-		return nil
-	}
-	if err := o.bk.Set(o.graphHash, o.graphData); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (o *objectGraph) Equal(o2 *objectGraph) bool {
-	if o == o2 {
-		return true
-	}
-	if o == nil || o2 == nil {
-		return false
-	}
-	if o.nextHash != o2.nextHash {
-		return false
-	}
-	if !bytes.Equal(o.graphHash, o2.graphHash) {
-		return false
-	}
-	return true
+	deposits depositList
 }
 
 func (s *accountStateImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	obj := s.objGraph
-	if obj == nil {
-		return 0, nil, nil, errors.ErrNotFound
-	}
-	if flags == false {
-		return obj.nextHash, obj.graphHash, nil, nil
-	} else {
-		if obj.graphData == nil && obj.graphHash != nil {
-			bk, err := s.database.GetBucket(db.BytesByHash)
-			if err != nil {
-				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
-				return 0, nil, nil, err
-			}
-			v, err := bk.Get(obj.graphHash)
-			if err != nil {
-				return 0, nil, nil, err
-			}
-			if v == nil {
-				return 0, nil, nil, errors.NotFoundError.Errorf(
-					"FAIL to find graphData by graphHash(%x)", obj.graphHash)
-			}
-			obj.graphData = v
-		}
-	}
-	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
-		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
-
-	return obj.nextHash, obj.graphHash, obj.graphData, nil
+	return s.objGraph.Get(flags)
 }
 
 func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byte) error {
-	log.Tracef("SetObjGraph flags(%t), nextHash(%d), lenOfObjGraph(%d)\n", flags, nextHash, len(graphData))
-	if flags {
-		hash := sha3.Sum256(graphData)
-		bk, err := s.database.GetBucket(db.BytesByHash)
-		if err != nil {
-			return errors.CriticalIOError.Wrap(err, "FailToGetBucket")
-		}
-		s.objGraph = &objectGraph{
-			bk:        bk,
-			nextHash:  nextHash,
-			graphHash: hash[:],
-			graphData: graphData,
-		}
+	if og, err := s.objGraph.Changed(s.database, flags, nextHash, graphData); err != nil {
+		return err
 	} else {
-		tmp := *s.objGraph
-		tmp.nextHash = nextHash
-		s.objGraph = &tmp
+		s.objGraph = og
+		return nil
 	}
-	return nil
 }
 
 func (s *accountStateImpl) ContractOwner() module.Address {
@@ -665,11 +638,16 @@ func (s *accountStateImpl) APIInfo() (*scoreapi.Info, error) {
 
 func (s *accountStateImpl) MigrateForRevision(rev module.Revision) error {
 	v := accountVersionForRevision(rev)
+	return s.migrate(v)
+}
+
+func (s *accountStateImpl) migrate(v int) error {
 	if v > s.version {
-		if v >= AccountVersion2 {
+		if s.version < AccountVersion2 && v >= AccountVersion2 {
 			if err := s.apiInfo.InitBucket(s.database); err != nil {
 				return err
 			}
+			s.apiInfo.dirty = true
 		}
 		s.version = v
 	}
@@ -728,6 +706,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		curContract:   curContract,
 		nextContract:  nextContract,
 		objGraph:      s.objGraph,
+		deposits:      s.deposits.Clone(),
 	}
 }
 
@@ -764,6 +743,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.nextContract.reset(snapshot.nextContract)
 	}
 	s.objGraph = snapshot.objGraph
+	s.deposits = snapshot.deposits.Clone()
 	if snapshot.store == nil {
 		s.store = nil
 		return nil
@@ -788,6 +768,8 @@ func (s *accountStateImpl) Clear() {
 	s.curContract = nil
 	s.nextContract = nil
 	s.store = nil
+	s.objGraph = nil
+	s.deposits = nil
 }
 
 func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
@@ -830,6 +812,38 @@ func (s *accountStateImpl) ClearCache() {
 	if s.store != nil {
 		s.store.ClearCache()
 	}
+}
+
+func (s *accountStateImpl) AddDeposit(dc DepositContext, value *big.Int, period int64) error {
+	return s.deposits.AddDeposit(dc, value, period)
+}
+
+func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error) {
+	amount, fee, err := s.deposits.WithdrawDeposit(dc, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	balance := new(common.HexInt)
+	balance.Add(&s.balance.Int, amount)
+	s.balance = balance
+	return amount, fee, nil
+}
+
+func (s *accountStateImpl) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
+	if s.deposits.Has() {
+		return s.deposits.PaySteps(dc, steps), nil
+	}
+	return nil, nil
+}
+
+func (s *accountStateImpl) CanPay(height int64) bool {
+	return s.deposits.CanPay(height)
+}
+
+func (s *accountStateImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
+	map[string]interface{}, error,
+) {
+	return s.deposits.ToJSON(dc, v)
 }
 
 func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []byte, useCache bool) AccountState {
@@ -936,6 +950,18 @@ func (a *accountROState) Clear() {
 
 func (a *accountROState) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	return nil
+}
+
+func (a *accountROState) AddDeposit(dc DepositContext, value *big.Int, period int64) error {
+	return errors.InvalidStateError.New("ReadOnlyState")
+}
+
+func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error) {
+	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
+}
+
+func (a *accountROState) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
+	return nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func newAccountROState(dbase db.Database, snapshot AccountSnapshot) AccountState {

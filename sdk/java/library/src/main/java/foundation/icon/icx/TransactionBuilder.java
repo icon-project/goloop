@@ -17,6 +17,7 @@
 package foundation.icon.icx;
 
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.NetworkId;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcItemCreator;
@@ -201,6 +202,16 @@ public final class TransactionBuilder {
         }
 
         /**
+         * Converts the builder to DepositBuilder
+         *
+         * @since 0.9.13
+         * @return {@link DepositBuilder}
+         */
+        public DepositBuilder deposit() {
+            return new DepositBuilder(transactionData);
+        }
+
+        /**
          * Make a new transaction using given properties
          *
          * @return a transaction to send
@@ -321,6 +332,62 @@ public final class TransactionBuilder {
             checkArgument(((RpcObject) transactionData.data).getItem("contentType"), "contentType not found");
             checkArgument(((RpcObject) transactionData.data).getItem("content"), "content not found");
 
+            return transactionData.build();
+        }
+    }
+
+    /**
+     * A Builder for the deposit transaction.
+     *
+     * @since 0.9.13
+     */
+    public static final class DepositBuilder {
+        private TransactionData transactionData;
+        private RpcObject.Builder dataBuilder;
+
+        private DepositBuilder(TransactionData transactionData) {
+            this.transactionData = transactionData;
+            this.transactionData.dataType = "deposit";
+        }
+
+        /**
+         * Adds the deposit in the SCORE for generating virtual steps.
+         *
+         * @return this
+         */
+        public DepositBuilder add() {
+            if (dataBuilder != null) {
+                throw new IllegalArgumentException("action already defined");
+            }
+            dataBuilder = new RpcObject.Builder()
+                    .put("action", new RpcValue("add"));
+            return this;
+        }
+
+        /**
+         * Withdraws the deposited ICX
+         *
+         * @param id the deposit ID (txhash of the add deposit transaction)
+         * @return this
+         */
+        public DepositBuilder withdraw(Bytes id) {
+            if (dataBuilder != null) {
+                throw new IllegalArgumentException("action already defined");
+            }
+            dataBuilder = new RpcObject.Builder()
+                    .put("action", new RpcValue("withdraw"))
+                    .put("id", new RpcValue(id));
+            return this;
+        }
+
+        /**
+         * Builds a new transaction using the given properties
+         *
+         * @return a transaction to send
+         */
+        public Transaction build() {
+            checkArgument(dataBuilder, "action not found");
+            transactionData.data = dataBuilder.build();
             return transactionData.build();
         }
     }

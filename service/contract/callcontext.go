@@ -40,6 +40,10 @@ type (
 		GetLastEIDOf(code string) int
 		NewExecution() int
 		GetReturnEID() int
+		SetFeeProportion(addr module.Address, portion int)
+		RedeemSteps(s *big.Int) (*big.Int, error)
+		GetRedeemLogs(r txresult.Receipt) bool
+		ClearRedeemLogs()
 	}
 	callResultMessage struct {
 		status   error
@@ -69,6 +73,8 @@ type callContext struct {
 	lock   sync.Mutex
 	frame  *callFrame
 	waiter chan interface{}
+
+	payers *stepPayers
 
 	log *trace.Logger
 }
@@ -440,4 +446,69 @@ func (cc *callContext) GetReturnEID() int {
 	defer cc.lock.Unlock()
 
 	return cc.frame.getReturnEID()
+}
+
+func (cc *callContext) SetFeeProportion(addr module.Address, portion int) {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	if cc.frame.eid == initialEID {
+		if portion == 0 {
+			cc.payers = nil
+		} else {
+			cc.payers = &stepPayers{
+				payer: addr, portion: portion,
+			}
+		}
+	}
+}
+
+func (cc *callContext) RedeemSteps(s *big.Int) (*big.Int, error) {
+	if cc.payers != nil {
+		return cc.payers.PaySteps(cc, s)
+	}
+	return nil, nil
+}
+
+func (cc *callContext) GetRedeemLogs(r txresult.Receipt) bool {
+	if cc.payers != nil {
+		return cc.payers.GetLogs(r)
+	}
+	return false
+}
+
+func (cc *callContext) ClearRedeemLogs() {
+	if cc.payers != nil {
+		cc.payers.ClearLogs()
+	}
+}
+
+type stepPayers struct {
+	payer   module.Address
+	portion int
+	payed   *big.Int
+}
+
+func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
+	as := cc.GetAccountState(p.payer.ID())
+	payed, err := as.PaySteps(NewDepositContext(cc), s)
+	if err != nil {
+		return nil, err
+	}
+	if payed != nil && payed.Sign() > 0 {
+		p.payed = payed
+	}
+	return payed, nil
+}
+
+func (p *stepPayers) GetLogs(r txresult.Receipt) bool {
+	if p.payed != nil {
+		r.AddPayment(p.payer, p.payed)
+		return true
+	}
+	return false
+}
+
+func (p *stepPayers) ClearLogs() {
+	p.payed = nil
 }

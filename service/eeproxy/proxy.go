@@ -35,6 +35,7 @@ const (
 	msgSETCODE     = 12
 	msgGETOBJGRAPH = 13
 	msgSETOBJGRAPH = 14
+	msgSETFEEPCT   = 15
 )
 
 type proxyState int
@@ -67,6 +68,7 @@ type CallContext interface {
 	OnResult(status error, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
+	OnSetFeeProportion(owner module.Address, portion int)
 	SetCode(code []byte) error
 	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
@@ -187,6 +189,10 @@ type setObjGraphMessage struct {
 	Flags       int
 	NextHash    int
 	ObjectGraph []byte
+}
+
+type setPortionMessage struct {
+	Portion int
 }
 
 func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
@@ -529,6 +535,19 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return p.frame.ctx.SetObjGraph(m.Flags == 1, m.NextHash, m.ObjectGraph)
 
+	case msgSETFEEPCT:
+		var m setPortionMessage
+		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+			return err
+		}
+		if m.Portion >= 0 || m.Portion <= 100 {
+			p.frame.ctx.OnSetFeeProportion(p.frame.addr, m.Portion)
+		} else {
+			p.log.Warnf("Proxy[%p].SETPORTION: invalid portion=%d",
+				m.Portion)
+		}
+		return nil
+
 	default:
 		p.log.Warnf("Proxy[%p].HandleMessage(msg=%d) UnknownMessage", msg)
 		return errors.ErrIllegalArgument
@@ -623,6 +642,7 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgSETCODE, p)
 	c.SetHandler(msgGETOBJGRAPH, p)
 	c.SetHandler(msgSETOBJGRAPH, p)
+	c.SetHandler(msgSETFEEPCT, p)
 
 	if err := m.onReady(t, p); err != nil {
 		p.state = stateStopped

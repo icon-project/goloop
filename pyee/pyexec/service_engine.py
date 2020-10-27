@@ -92,6 +92,8 @@ class ServiceEngine(ContextContainer):
             status, ret = cls._get_status_from_exception(e)
         finally:
             cls._proxy.handle_set_values()
+            if context.fee_sharing_proportion > 0:
+                cls._proxy.set_fee_proportion(context.fee_sharing_proportion)
             step_used = context.step_counter.step_used
 
         return status, step_used, ret

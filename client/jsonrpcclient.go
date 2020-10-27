@@ -80,6 +80,10 @@ func (c *JsonRpcClient) _do(req *http.Request) (resp *http.Response, err error) 
 }
 
 func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
+	return c.DoURL(c.Endpoint, method, reqPtr, respPtr)
+}
+
+func (c *JsonRpcClient) DoURL(url string, method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
 	jrReq := &jsonrpc.Request{
 		ID:      time.Now().UnixNano() / int64(time.Millisecond),
 		Version: jsonrpc.Version,
@@ -97,7 +101,7 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", c.Endpoint, bytes.NewReader(reqB))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(reqB))
 	if err != nil {
 		return
 	}

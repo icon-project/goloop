@@ -21,6 +21,7 @@ const (
 	CTypeDeploy
 	CTypeCall
 	CTypePatch
+	CTypeDeposit
 )
 
 type (

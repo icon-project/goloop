@@ -3,7 +3,7 @@ package org.aion.avm.tooling.deploy;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.signature.SignatureVisitor;
 
-//todo it's possible to completely remove the signature. 
+// It's possible to completely remove the signature.
 // This would remove the need for a SignatureVisitor and potentially optimize the jar further.
 
 public class SignatureDependencyVisitor extends SignatureVisitor {
@@ -15,7 +15,7 @@ public class SignatureDependencyVisitor extends SignatureVisitor {
         this.dependencyCollector = dependencyCollector;
     }
 
-    //visit signature of a class
+    // visit signature of a class
     @Override
     public void visitClassType(String name) {
         dependencyCollector.addType(name);
@@ -29,5 +29,4 @@ public class SignatureDependencyVisitor extends SignatureVisitor {
         dependencyCollector.addType(mainClassName + "$" + name);
         super.visitInnerClassType(name);
     }
-
 }

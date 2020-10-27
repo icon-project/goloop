@@ -48,6 +48,7 @@ class Message(object):
     GETAPI = 9
     LOG = 10
     CLOSE = 11
+    SETFEEPCT = 15
 
 
 class Log(object):
@@ -473,6 +474,14 @@ class ServiceManagerProxy:
             self.__set_handlers.append((cb, size))
             if len(self.__set_handlers) > MAX_SET_VALUE_HANDLERS:
                 self.__handle_set_values(len(self.__set_handlers) - MAX_SET_VALUE_HANDLERS)
+
+    def set_fee_proportion(self, pct: int):
+        if self.__readonly:
+            raise Exception('NoPermissionToWrite')
+        pct = pct | 0
+        if pct < 0 or pct > 100:
+            raise Exception('InvalidParameter')
+        self.__client.send(Message.SETFEEPCT, [pct])
 
     def get_info(self) -> Any:
         msg, value = self.send_and_receive(Message.GETINFO, b'')

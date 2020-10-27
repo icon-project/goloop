@@ -57,12 +57,12 @@ public class ABICompiler {
 
         ClassReader reader = new ClassReader(mainClassBytes);
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, stripLineNumber);
+        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, classMap, stripLineNumber);
         reader.accept(classVisitor, 0);
 
         callables = classVisitor.getCallableInfo();
         mainClassBytes = classWriter.toByteArray();
-        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, this.classMap);
+        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, classMap);
     }
 
     private void safeLoadFromBytes(InputStream byteReader) throws Exception {

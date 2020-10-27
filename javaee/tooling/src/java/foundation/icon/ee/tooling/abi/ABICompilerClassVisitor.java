@@ -6,6 +6,8 @@
 package foundation.icon.ee.tooling.abi;
 
 import foundation.icon.ee.types.Method;
+import org.aion.avm.utilities.Utilities;
+import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
@@ -15,15 +17,19 @@ import org.objectweb.asm.Opcodes;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ABICompilerClassVisitor extends ClassVisitor {
-    private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
+    private final List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<Method> callableInfo = new ArrayList<>();
-    private boolean stripLineNumber;
+    private final Map<String, byte[]> classMap;
+    private final boolean stripLineNumber;
 
-    public ABICompilerClassVisitor(ClassWriter cw, boolean stripLineNumber) {
+    public ABICompilerClassVisitor(ClassWriter cw, Map<String, byte[]> classMap, boolean stripLineNumber) {
         super(Opcodes.ASM7, cw);
+        this.classMap = classMap;
         this.stripLineNumber = stripLineNumber;
     }
 
@@ -32,7 +38,21 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     }
 
     @Override
-    public void visit(int version, int access, java.lang.String name, java.lang.String signature, java.lang.String superName, java.lang.String[] interfaces) {
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        if (superName != null && !superName.equals("java/lang/Object")) {
+            String superClassName = Utilities.internalNameToFullyQualifiedName(superName);
+            byte[] classBytes = classMap.get(superClassName);
+            if (classBytes == null) {
+                throw new ABICompilerException("Cannot find super class: " + superName);
+            }
+            ClassReader reader = new ClassReader(classBytes);
+            ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            ABICompilerClassVisitor superVisitor = new ABICompilerClassVisitor(classWriter, classMap, stripLineNumber);
+            reader.accept(superVisitor, 0);
+            callableInfo = superVisitor.getCallableInfo();
+            classBytes = classWriter.toByteArray();
+            classMap.replace(superClassName, classBytes);
+        }
         super.visit(version, access, name, signature, superName, interfaces);
     }
 
@@ -63,29 +83,67 @@ public class ABICompilerClassVisitor extends ClassVisitor {
 
     private void postProcess() {
         boolean foundOnInstall = false;
-        Set<String> callableNames = new HashSet<>();
-        Set<String> eventsNames = new HashSet<>();
+        Set<String> currentCallables = new HashSet<>();
+        Set<String> currentEvents = new HashSet<>();
+        Set<String> superCallables = callableInfo.stream()
+                .filter(m -> m.getType() == Method.MethodType.FUNCTION || m.getType() == Method.MethodType.FALLBACK)
+                .map(Method::getName)
+                .collect(Collectors.toSet());
+        Set<String> superEvents = callableInfo.stream()
+                .filter(m -> m.getType() == Method.MethodType.EVENT)
+                .map(Method::getName)
+                .collect(Collectors.toSet());
+
         for (ABICompilerMethodVisitor mv : methodVisitors) {
+            final String methodName = mv.getMethodName();
             if (mv.isExternal()) {
-                if (callableNames.contains(mv.getMethodName())) {
-                    throw new ABICompilerException("Multiple @External methods with the same name", mv.getMethodName());
+                if (currentCallables.contains(methodName)) {
+                    throw new ABICompilerException("Multiple @External methods with the same name", methodName);
                 }
-                callableNames.add(mv.getMethodName());
+                currentCallables.add(methodName);
+                if (superCallables.contains(methodName)) {
+                    Method mth = callableInfo.stream()
+                            .filter(m -> m.getName().equals(methodName))
+                            .findFirst().orElse(null);
+                    if (mth != null && mth.getFlags() != mv.getCallableMethodInfo().getFlags()) {
+                        throw new ABICompilerException("Re-define a @External method with a different flag", methodName);
+                    }
+                    callableInfo.remove(mth);
+                }
                 callableInfo.add(mv.getCallableMethodInfo());
             } else if (mv.isOnInstall()) {
                 if (foundOnInstall) {
-                    throw new ABICompilerException("Multiple public <init> methods", mv.getMethodName());
+                    throw new ABICompilerException("Multiple public <init> methods", methodName);
                 }
                 foundOnInstall = true;
+                callableInfo.removeIf(m -> m.getName().equals(methodName));
                 callableInfo.add(mv.getCallableMethodInfo());
             } else if (mv.isEventLog()) {
-                if (eventsNames.contains(mv.getMethodName())) {
-                    throw new ABICompilerException("Multiple @EventLog methods with the same name", mv.getMethodName());
+                if (currentEvents.contains(methodName)) {
+                    throw new ABICompilerException("Multiple @EventLog methods with the same name", methodName);
                 }
-                eventsNames.add(mv.getMethodName());
+                currentEvents.add(methodName);
+                if (superEvents.contains(methodName)) {
+                    Method mth = callableInfo.stream()
+                            .filter(m -> m.getName().equals(methodName))
+                            .findFirst().orElse(null);
+                    if (mth != null && mth.getIndexed() != mv.getCallableMethodInfo().getIndexed()) {
+                        throw new ABICompilerException("Re-define a @EventLog method with a different indexed", methodName);
+                    }
+                    callableInfo.remove(mth);
+                }
                 callableInfo.add(mv.getCallableMethodInfo());
             } else if (mv.isFallback()) {
-                callableInfo.add(mv.getCallableMethodInfo());
+                if (mv.isPayable()) {
+                    callableInfo.removeIf(m -> m.getName().equals(methodName));
+                    callableInfo.add(mv.getCallableMethodInfo());
+                } else if (superCallables.contains(methodName)) {
+                    throw new ABICompilerException("Invalid fallback method re-definition", methodName);
+                }
+            } else {
+                if (superCallables.contains(methodName) || superEvents.contains(methodName)) {
+                    throw new ABICompilerException("Re-define a method without annotation", methodName);
+                }
             }
         }
     }

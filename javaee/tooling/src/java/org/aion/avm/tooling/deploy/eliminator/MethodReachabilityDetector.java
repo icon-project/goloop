@@ -32,7 +32,15 @@ public class MethodReachabilityDetector {
         for (var m : roots) {
             MethodInfo mi = mainClassInfo.getMethodMap().get(m);
             if (null == mi) {
-                throw new Exception(String.format("Method info %s not found!", m));
+                ClassInfo ci = mainClassInfo;
+                do {
+                    ci = ci.getSuperclass();
+                    if (null == ci) break;
+                    mi = ci.getMethodMap().get(m);
+                } while (null == mi);
+                if (null == mi) {
+                    throw new Exception(String.format("Method info %s not found!", m));
+                }
             }
             mi.isReachable = true;
             methodQueue.add(mi);

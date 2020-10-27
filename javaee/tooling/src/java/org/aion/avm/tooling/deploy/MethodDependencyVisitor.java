@@ -1,6 +1,9 @@
 package org.aion.avm.tooling.deploy;
 
-import org.objectweb.asm.*;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
 
@@ -8,7 +11,7 @@ public class MethodDependencyVisitor extends MethodVisitor {
 
     private final DependencyCollector dependencyCollector;
     private final SignatureVisitor signatureVisitor;
-    private boolean preserveDebugInfo;
+    private final boolean preserveDebugInfo;
 
     public MethodDependencyVisitor(MethodVisitor mv, SignatureVisitor signatureVisitor, DependencyCollector dependencyCollector, boolean preserveDebugInfo) {
         super(Opcodes.ASM7, mv);
