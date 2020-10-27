@@ -48,7 +48,7 @@ type TransactionParamForEstimate struct {
 	Timestamp   jsonrpc.HexInt  `json:"timestamp" validate:"required,t_int"`
 	NetworkID   jsonrpc.HexInt  `json:"nid" validate:"required,t_int"`
 	Nonce       jsonrpc.HexInt  `json:"nonce,omitempty" validate:"optional,t_int"`
-	DataType    string          `json:"dataType,omitempty" validate:"optional,call|deploy|message"`
+	DataType    string          `json:"dataType,omitempty" validate:"optional,call|deploy|message|deposit"`
 	Data        interface{}     `json:"data,omitempty"`
 }
 
@@ -62,7 +62,7 @@ type TransactionParam struct {
 	NetworkID   jsonrpc.HexInt  `json:"nid" validate:"required,t_int"`
 	Nonce       jsonrpc.HexInt  `json:"nonce,omitempty" validate:"optional,t_int"`
 	Signature   string          `json:"signature" validate:"required,t_sig"`
-	DataType    string          `json:"dataType,omitempty" validate:"optional,call|deploy|message"`
+	DataType    string          `json:"dataType,omitempty" validate:"optional,call|deploy|message|deposit"`
 	Data        interface{}     `json:"data,omitempty"`
 }
 

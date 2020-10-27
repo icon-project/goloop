@@ -20,6 +20,7 @@ const (
 	DataTypeCall    = "call"
 	DataTypeDeploy  = "deploy"
 	DataTypePatch   = "patch"
+	DataTypeDeposit = "deposit"
 )
 
 type Handler interface {
@@ -64,6 +65,8 @@ func NewHandler(cm contract.ContractManager, from, to module.Address,
 			ctype = contract.CTypeCall
 		case DataTypePatch:
 			ctype = contract.CTypePatch
+		case DataTypeDeposit:
+			ctype = contract.CTypeDeposit
 		default:
 			return nil, InvalidFormat.Errorf("IllegalDataType(type=%s)", *dataType)
 		}
@@ -141,6 +144,21 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		logger.TSystemf("STEP reset value=%d old=%d msg=%q",
 			minSteps, old, "sustain minimum")
 	}
+
+	stepAll := stepUsed
+	var redeemed *big.Int
+	if stepPrice.Sign() > 0 {
+		var err error
+		redeemed, err = cc.RedeemSteps(stepUsed)
+		if err != nil {
+			logger.TSystemf("TRANSACTION failed on RedeemSteps")
+			return nil, err
+		} else if redeemed != nil {
+			stepUsed = new(big.Int).Sub(stepUsed, redeemed)
+			logger.TSystemf("STEP redeemed value=%d redeemed=%d old=%d",
+				stepUsed, redeemed, stepAll)
+		}
+	}
 	fee := new(big.Int).Mul(stepUsed, stepPrice)
 
 	as := ctx.GetAccountState(th.from.ID())
@@ -148,14 +166,31 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	for bal.Cmp(fee) < 0 {
 		if status == nil {
 			// rollback all changes
+			logger.TSystemf("TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d", bal, fee)
 			status = scoreresult.ErrOutOfBalance
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
+			if redeemed != nil {
+				cc.ClearRedeemLogs()
+				logger.TSystemf("STEP rollback value=%d", stepAll)
+				stepUsed = stepAll
+			}
+			fee.Mul(stepUsed, stepPrice)
 		} else {
-			stepPrice.SetInt64(0)
+			if redeemed != nil {
+				ctx.Reset(wcs)
+				bal = as.GetBalance()
+				cc.ClearRedeemLogs()
+				logger.TSystemf("STEP rollback value=%d", stepAll)
+				stepUsed = stepAll
+			}
+			status = scoreresult.ErrOutOfBalance
+			logger.TSystemf("TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
+			stepPrice = new(big.Int)
 			fee.SetInt64(0)
 		}
 	}
+	logger.TSystemf("TRANSACTION charge fee=%d steps=%d price=%d", fee, stepUsed, stepPrice)
 	as.SetBalance(new(big.Int).Sub(bal, fee))
 
 	// Make a receipt
@@ -164,9 +199,12 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	if status == nil {
 		cc.GetEventLogs(receipt)
 	}
-	receipt.SetResult(s, stepUsed, stepPrice, addr)
+	if redeemed := cc.GetRedeemLogs(receipt); redeemed && stepUsed.Sign() != 0 {
+		receipt.AddPayment(th.from, stepUsed)
+	}
+	receipt.SetResult(s, stepAll, stepPrice, addr)
 
-	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepUsed, stepPrice)
+	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepAll, stepPrice)
 
 	return receipt, nil
 }

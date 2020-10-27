@@ -523,6 +523,7 @@ type chain struct {
 	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
 	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
 	MinimizeBlockGen   *common.HexInt16  `json:"minimizeBlockGen"`
+	DepositTerm        *common.HexInt64  `json:"depositTerm"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
@@ -594,6 +595,12 @@ func (s *ChainScore) Install(param []byte) error {
 	if chain.MinimizeBlockGen != nil {
 		yn := chain.MinimizeBlockGen.Value != 0
 		if err := scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Set(yn); err != nil {
+			return err
+		}
+	}
+
+	if chain.DepositTerm != nil {
+		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(chain.DepositTerm.Value); err != nil {
 			return err
 		}
 	}
@@ -1225,6 +1232,9 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		return nil, scoreresult.New(StatusNotFound, "ContractNotFound")
 	}
 	scoreStatus := make(map[string]interface{})
+
+	scoreStatus["owner"] = as.ContractOwner()
+
 	if cur := as.Contract(); cur != nil {
 		curContract := make(map[string]interface{})
 		curContract["status"] = cur.Status().String()
@@ -1238,6 +1248,13 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		nextContract["status"] = next.Status().String()
 		nextContract["deployTxHash"] = fmt.Sprintf("%#x", next.DeployTxHash())
 		scoreStatus["next"] = nextContract
+	}
+
+	dc := contract.NewDepositContext(s.cc)
+	if di, err := as.GetDepositInfo(dc, module.JSONVersion3); err != nil {
+		return nil, scoreresult.New(module.StatusUnknownFailure, "FailOnDepositInfo")
+	} else if di != nil {
+		scoreStatus["depositInfo"] = di
 	}
 
 	// blocked

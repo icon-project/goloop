@@ -108,6 +108,7 @@ type TransactionResult struct {
 	BlockHeight        jsonrpc.HexInt   `json:"blockHeight" validate:"required,t_int"`
 	TxIndex            jsonrpc.HexInt   `json:"txIndex" validate:"required,t_int"`
 	TxHash             jsonrpc.HexBytes `json:"txHash" validate:"required,t_int"`
+	StepDetails        interface{}      `json:"stepUsedDetails,omitempty"`
 }
 
 //refer service/txresult/receipt.go:29 eventLogJSON

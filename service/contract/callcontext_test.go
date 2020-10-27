@@ -247,6 +247,10 @@ func (h *asyncHandler) OnAPI(status error, info *scoreapi.Info) {
 	panic("implement me")
 }
 
+func (h *asyncHandler) OnSetFeeProportion(addr module.Address, portion int) {
+	panic("implement me")
+}
+
 func (h *asyncHandler) SetCode(code []byte) error {
 	panic("implement me")
 }

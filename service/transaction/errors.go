@@ -12,5 +12,6 @@ const (
 	InvalidFormat
 	NotEnoughStepError
 	NotEnoughBalanceError
+	ContractNotUsable
 	AccessDeniedError
 )

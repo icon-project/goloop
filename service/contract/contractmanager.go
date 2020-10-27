@@ -168,6 +168,8 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 		return newDeployHandler(ch, data)
 	case CTypePatch:
 		return newPatchHandler(ch, data)
+	case CTypeDeposit:
+		return newDepositHandler(ch, data)
 	}
 	return handler, nil
 }

@@ -7,6 +7,7 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/service/contract"
 )
 
 var (
@@ -19,6 +20,7 @@ func RegisterValidationRule(v *jsonrpc.Validator) {
 	v.RegisterValidation("call", isCall)
 	v.RegisterValidation("deploy", isDeploy)
 	v.RegisterValidation("message", isMessage)
+	v.RegisterValidation("deposit", isDeposit)
 
 	// validate : CallParam.Data, TransactionParam.Data
 	v.RegisterStructValidation(DataParamValidation, CallParam{}, TransactionParam{})
@@ -35,6 +37,10 @@ func isDeploy(fl validator.FieldLevel) bool {
 
 func isMessage(fl validator.FieldLevel) bool {
 	return fl.Field().String() == "message"
+}
+
+func isDeposit(fl validator.FieldLevel) bool {
+	return fl.Field().String() == "deposit"
 }
 
 func DataParamValidation(sl validator.StructLevel) {
@@ -67,6 +73,12 @@ func DataParamValidation(sl validator.StructLevel) {
 					if !hexString.MatchString(data) {
 						sl.ReportError(txParam.Data, "Data", "", "data", "")
 					}
+				} else {
+					sl.ReportError(txParam.Data, "Data", "", "data", "")
+				}
+			case "deposit":
+				if data, ok := txParam.Data.(map[string]interface{}); ok {
+					validateDepositDataParam(sl, txParam.Data, data)
 				} else {
 					sl.ReportError(txParam.Data, "Data", "", "data", "")
 				}
@@ -142,5 +154,36 @@ func validateDeployDataParam(sl validator.StructLevel, field interface{}, data m
 		for k, pv := range paramsMap {
 			validateRPCData(sl, "Data.params."+k, pv)
 		}
+	}
+}
+
+func validateDepositDataParam(sl validator.StructLevel, field interface{}, data map[string]interface{}) {
+	action, ok := data["action"]
+	if !ok {
+		sl.ReportError(field, "Data", "action", "data.action", "")
+		return
+	}
+	switch action {
+	case contract.DepositActionAdd:
+		if len(data) > 1 {
+			sl.ReportError(field, "Data", "", "data.unknown", "")
+		}
+	case contract.DepositActionWithdraw:
+		id, ok := data["id"]
+		if !ok {
+			sl.ReportError(field, "Data", "", "data.id", "")
+			return
+		} else {
+			if s, ok := id.(string); ok {
+				if !hexString.MatchString(s) {
+					sl.ReportError(field, "Data", "id", "data.id", "")
+				}
+			} else {
+				sl.ReportError(field, "Data", "id", "data.id", "")
+			}
+		}
+		return
+	default:
+		sl.ReportError(field, "Data", "", "data.action", "")
 	}
 }
