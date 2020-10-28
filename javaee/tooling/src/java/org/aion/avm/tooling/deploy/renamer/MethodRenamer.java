@@ -39,8 +39,9 @@ public class MethodRenamer {
             ClassInfo currentClassInfo = classInfoMap.get(className);
 
             for (MethodNode m : methodNodes) {
-                if (className.equals(mainClass) && externalMethodList.contains(m.name + m.desc))
+                if (externalMethodList.contains(m.name + m.desc)) {
                     continue;
+                }
                 // handle enums
                 if ((e.getValue().superName.equals("java/lang/Enum")) && (m.name.equals("values") || m.name.equals("valueOf"))) {
                     printInfo(e.getKey(), m.name, newMethodMappingsForRemapper.get(makeMethodFullName(className, m)));
@@ -77,7 +78,6 @@ public class MethodRenamer {
 
     private static Set<String> getUsedJclMethodList(Map<String, ClassInfo> classInfoMap) {
         Set<String> jclMethods = new HashSet<>();
-
         for (ClassInfo classInfo : classInfoMap.values()) {
             if (classInfo.isSystemClass()) {
                 continue;
@@ -85,8 +85,11 @@ public class MethodRenamer {
             List<String> parents = classInfo.getParents().stream().map(ClassInfo::getClassName).collect(Collectors.toList());
             for (String p : parents) {
                 if (classInfoMap.containsKey(p)) {
-                    jclMethods.addAll(classInfoMap.get(p).getMethodMap().keySet().stream()
-                            .map(m -> m.substring(0, m.indexOf("("))).collect(Collectors.toSet()));
+                    ClassInfo cip = classInfoMap.get(p);
+                    if (cip.isSystemClass()) {
+                        jclMethods.addAll(cip.getMethodMap().keySet().stream()
+                                .map(m -> m.substring(0, m.indexOf("("))).collect(Collectors.toSet()));
+                    }
                 }
             }
         }
