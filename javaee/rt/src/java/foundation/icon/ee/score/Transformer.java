@@ -63,7 +63,7 @@ public class Transformer {
      * @param classHierarchy     the class hierarchy
      * @return The look-up map of the sizes of user objects
      */
-    public static Map<String, Integer> computeUserObjectSizes(Forest<String, ClassInfo> classHierarchy)
+    private static Map<String, Integer> computeUserObjectSizes(Forest<String, ClassInfo> classHierarchy)
     {
         HeapMemoryCostCalculator objectSizeCalculator = new HeapMemoryCostCalculator();
 
@@ -91,7 +91,7 @@ public class Transformer {
      * @param preserveDebuggability Whether or not debug mode is enabled.
      * @return the transformed classes and any generated classes (names specified in .-style)
      */
-    public static Map<String, byte[]> transformClasses(Map<String, byte[]> inputClasses, Forest<String, ClassInfo> oldPreRenameForest, ClassHierarchy classHierarchy, ClassRenamer classRenamer, boolean preserveDebuggability) {
+    private static Map<String, byte[]> transformClasses(Map<String, byte[]> inputClasses, Forest<String, ClassInfo> oldPreRenameForest, ClassHierarchy classHierarchy, ClassRenamer classRenamer, boolean preserveDebuggability) {
         // Before anything, pass the list of classes through the verifier.
         // (this will throw UncaughtException, on verification failure).
         Verifier.verifyUntrustedClasses(inputClasses);
@@ -180,7 +180,7 @@ public class Transformer {
         return processedClasses;
     }
 
-    public static Map<String, byte[]> stripClinitFromClasses(Map<String, byte[]> transformedClasses){
+    private static Map<String, byte[]> stripClinitFromClasses(Map<String, byte[]> transformedClasses){
         Map<String, byte[]> immortalClasses = new HashMap<>();
         for (Map.Entry<String, byte[]> elt : transformedClasses.entrySet()) {
             String className = elt.getKey();
