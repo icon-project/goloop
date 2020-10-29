@@ -87,6 +87,7 @@ func (t *taskImport) _progress() (int64, int64) {
 
 func (t *taskImport) Start() error {
 	if err := t._import(); err != nil {
+		t.chain.releaseManagers()
 		t.result.SetValue(err)
 		return err
 	}
@@ -133,12 +134,13 @@ func (t *taskImport) _import() error {
 }
 
 func (t *taskImport) Stop() {
-	t.chain.releaseManagers()
 	t.result.SetValue(errors.ErrInterrupted)
 }
 
 func (t *taskImport) Wait() error {
-	return t.result.Wait()
+	result := t.result.Wait()
+	t.chain.releaseManagers()
+	return result
 }
 
 func newTaskImport(chain *singleChain, src string, height int64) chainTask {
