@@ -148,6 +148,7 @@ public class TransactionExecutor {
         long txTimestamp = ((BigInteger) info.get(EEProxy.Info.TX_TIMESTAMP)).longValue();
         Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
+        @SuppressWarnings("unchecked")
         Map<String, BigInteger> stepCosts = (Map<String, BigInteger>) info.get(EEProxy.Info.STEP_COSTS);
 
         int option = 0;
