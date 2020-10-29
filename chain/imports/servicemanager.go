@@ -85,7 +85,6 @@ func unwrap(tr module.Transition) module.Transition {
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
 	if bi.Height() > m.lastHeight {
 		err := errors.Errorf("height:%d > lastHeight:%d\n", bi.Height(), m.lastHeight)
-		m.cb.OnError(err)
 		return nil, err
 	}
 	blk, err := m.bdb.GetBlockByHeight(int(bi.Height()))
