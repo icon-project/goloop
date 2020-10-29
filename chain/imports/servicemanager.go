@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -194,6 +195,12 @@ func (m *managerForImport) Finalize(transition module.Transition, opt int) error
 
 func (m *managerForImport) finalize(transition module.Transition, opt int) error {
 	return m.ServiceManager.Finalize(unwrap(transition), opt)
+}
+
+func (m *managerForImport) Term() {
+	log.Infof("Term ServiceManager for Import\n")
+	log.Must(m.bdb.Close())
+	m.ServiceManager.Term()
 }
 
 type transitionForImport struct {
