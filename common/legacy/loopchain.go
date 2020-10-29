@@ -278,13 +278,13 @@ func OpenDatabase(blockdir, scoredir string) (*LoopChainDB, error) {
 	opt := &opt.Options{
 		ReadOnly: true,
 	}
-	if blockbk, err := leveldb.OpenFile(blockdir, opt); err != nil {
+	if blockbk, err := leveldb.RecoverFile(blockdir, opt); err != nil {
 		return nil, err
 	} else {
 		lcdb.blockbk = blockbk
 	}
 	if scoredir != "" {
-		if scorebk, err := leveldb.OpenFile(scoredir, opt); err != nil {
+		if scorebk, err := leveldb.RecoverFile(scoredir, opt); err != nil {
 			log.Warnf("Fail to open SCORE DB err=%+v (ignore)", err)
 		} else {
 			lcdb.scorebk = scorebk
