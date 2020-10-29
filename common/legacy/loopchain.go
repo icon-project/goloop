@@ -219,7 +219,15 @@ func (lc *LoopChainDB) GetAccount(addr module.Address) (*accountV1, error) {
 }
 
 func (lc *LoopChainDB) Close() error {
-	return lc.blockbk.Close()
+	if err := lc.blockbk.Close(); err != nil {
+		return err
+	}
+	if lc.scorebk != nil {
+		if err := lc.scorebk.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type accountV1Iterator struct {
