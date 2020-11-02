@@ -62,9 +62,7 @@ func (a *Address) SetString(s string) error {
 	if bytes, err := hex.DecodeString(s); err != nil {
 		return err
 	} else {
-		if err := a.SetTypeAndID(isContract, bytes); err != nil {
-			return err
-		}
+		a.SetTypeAndID(isContract, bytes)
 	}
 	return nil
 }
@@ -79,14 +77,13 @@ func (a *Address) ID() []byte {
 }
 
 func (a *Address) SetBytes(b []byte) error {
-	if len(b) == 0 {
+	if len(b) != AddressBytes {
 		return ErrIllegalArgument
 	}
 	switch b[0] {
-	case 0:
-		return a.SetTypeAndID(false, b[1:])
-	case 1:
-		return a.SetTypeAndID(true, b[1:])
+	case 0, 1:
+		copy(a[:], b)
+		return nil
 	default:
 		return ErrIllegalArgument
 	}
@@ -94,10 +91,7 @@ func (a *Address) SetBytes(b []byte) error {
 
 var zeroBuffer [AddressIDBytes]byte
 
-func (a *Address) SetTypeAndID(ic bool, id []byte) error {
-	if id == nil {
-		return ErrIllegalArgument
-	}
+func (a *Address) SetTypeAndID(ic bool, id []byte) {
 	switch {
 	case len(id) < AddressIDBytes:
 		bp := 1 + AddressIDBytes - len(id)
@@ -111,7 +105,6 @@ func (a *Address) SetTypeAndID(ic bool, id []byte) error {
 	} else {
 		a[0] = 0
 	}
-	return nil
 }
 
 func NewAccountAddress(b []byte) *Address {
@@ -120,17 +113,43 @@ func NewAccountAddress(b []byte) *Address {
 	return a
 }
 
-func NewAddress(b []byte) *Address {
+func NewAddress(b []byte) (*Address, error) {
+	if len(b) == 0 {
+		return nil, ErrIllegalArgument
+	}
 	a := new(Address)
-	a.SetBytes(b)
+	if err := a.SetBytes(b); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+func NewAddressWithTypeAndID(isContract bool, id []byte) *Address {
+	a := new(Address)
+	a.SetTypeAndID(isContract, id)
 	return a
 }
 
-func (a *Address) Set(address module.Address) error {
-	if address == nil {
-		return ErrIllegalArgument
+func MustNewAddress(b []byte) *Address {
+	if addr, err := NewAddress(b); err == nil {
+		return addr
+	} else {
+		panic(err)
 	}
-	return a.SetTypeAndID(address.IsContract(), address.ID())
+}
+
+func BytesToAddress(b []byte) (module.Address, error) {
+	if len(b) == 0 {
+		return nil, nil
+	}
+	return NewAddress(b)
+}
+
+func (a *Address) Set(address module.Address) *Address {
+	if address != nil {
+		a.SetTypeAndID(address.IsContract(), address.ID())
+	}
+	return a
 }
 
 func AddressToPtr(addr module.Address) *Address {
@@ -141,9 +160,7 @@ func AddressToPtr(addr module.Address) *Address {
 		return addrPtr
 	} else {
 		addrPtr = new(Address)
-		if err := addrPtr.Set(addr); err != nil {
-			return nil
-		}
+		addrPtr.SetTypeAndID(addr.IsContract(), addr.ID())
 		return addrPtr
 	}
 }
@@ -163,14 +180,12 @@ func NewAddressFromString(s string) *Address {
 }
 
 func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
-	a := new(Address)
 	pk := pubKey.SerializeUncompressed()
 	if pk == nil {
 		log.Panicln("FAIL invalid public key:", pubKey)
 	}
 	digest := crypto.SHA3Sum256(pk[1:])
-	a.SetTypeAndID(false, digest[len(digest)-20:])
-	return a
+	return NewAccountAddress(digest[len(digest)-AddressIDBytes:])
 }
 
 func (a *Address) Equal(a2 module.Address) bool {

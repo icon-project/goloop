@@ -240,7 +240,11 @@ func (aitr *accountV1Iterator) Value() (module.Address, *accountV1, error) {
 		key := aitr.Iterator.Key()
 		var addr module.Address
 		if len(key) == common.AddressBytes {
-			addr = common.NewAddress(key)
+			if ptr, err := common.NewAddress(key); err != nil {
+				return nil, nil, err
+			} else {
+				addr = ptr
+			}
 		} else if len(key) == common.AddressIDBytes {
 			addr = common.NewAccountAddress(key)
 		} else {

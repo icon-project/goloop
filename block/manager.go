@@ -1075,11 +1075,17 @@ func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
 	return dec(bs)
 }
 
-func newAddress(bs []byte) module.Address {
+func newProposer(bs []byte) (module.Address, error) {
 	if bs != nil {
-		return common.NewAddress(bs)
+		addr, err := common.NewAddress(bs)
+		if err != nil {
+			return nil, errors.CriticalFormatError.Wrapf(err,
+				"InvalidProposer(bs=%#x)", bs)
+		} else {
+			return addr, nil
+		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
@@ -1104,10 +1110,14 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	if votes == nil {
 		return nil, errors.Errorf("commitVoteSetFromHash(%x) failed", header.VotesHash)
 	}
+	proposer, err := newProposer(header.Proposer)
+	if err != nil {
+		return nil, err
+	}
 	return &blockV2{
 		height:             header.Height,
 		timestamp:          header.Timestamp,
-		proposer:           newAddress(header.Proposer),
+		proposer:           proposer,
 		prevID:             header.PrevID,
 		logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
 		result:             header.Result,
@@ -1178,10 +1188,14 @@ func (m *manager) newBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
 		return nil, errors.New("bad vote list hash")
 	}
+	proposer, err := newProposer(blockFormat.Proposer)
+	if err != nil {
+		return nil, err
+	}
 	return &blockV2{
 		height:             blockFormat.Height,
 		timestamp:          blockFormat.Timestamp,
-		proposer:           newAddress(blockFormat.Proposer),
+		proposer:           proposer,
 		prevID:             blockFormat.PrevID,
 		logsBloom:          txresult.NewLogsBloomFromCompressed(blockFormat.LogsBloom),
 		result:             blockFormat.Result,

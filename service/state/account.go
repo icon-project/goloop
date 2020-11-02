@@ -681,11 +681,6 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		}
 	}
 
-	var contractOwner *common.Address
-	if s.contractOwner != nil {
-		contractOwner = common.NewAddress(s.contractOwner.Bytes())
-	}
-
 	var curContract *contractSnapshotImpl
 	if s.curContract != nil {
 		curContract = s.curContract.getSnapshot()
@@ -701,7 +696,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		fIsContract:   s.isContract,
 		store:         store,
 		state:         s.state,
-		contractOwner: contractOwner,
+		contractOwner: common.AddressToPtr(s.contractOwner),
 		apiInfo:       s.apiInfo,
 		curContract:   curContract,
 		nextContract:  nextContract,
@@ -730,10 +725,8 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.version = snapshot.version
 	s.apiInfo = snapshot.apiInfo
 	s.state = snapshot.state
+	s.contractOwner = snapshot.contractOwner
 
-	if snapshot.contractOwner != nil {
-		s.contractOwner = common.NewAddress(snapshot.contractOwner.Bytes())
-	}
 	if snapshot.curContract != nil {
 		s.curContract = new(contractImpl)
 		s.curContract.reset(snapshot.curContract)

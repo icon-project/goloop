@@ -14,7 +14,7 @@ func NewPatchTransaction(p module.Patch, nid int, ts int64, w module.Wallet) (Tr
 	// fill data
 	tx := &v3tx.transactionV3Data
 	tx.Version.Value = module.TransactionVersion3
-	tx.From.SetBytes(w.Address().Bytes())
+	tx.From.Set(w.Address())
 	tx.To.SetTypeAndID(true, state.SystemID)
 	tx.TimeStamp.Value = ts
 	tx.NID = &common.HexInt64{Value: int64(nid)}

@@ -216,7 +216,11 @@ func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
 	}
 	b.block.height = header.Height
 	b.block.timestamp = header.Timestamp
-	b.block.proposer = newAddress(header.Proposer)
+	if addr, err := newProposer(header.Proposer); err != nil {
+		return err
+	} else {
+		b.block.proposer = addr
+	}
 	b.block.prevID = header.PrevID
 	b.block.logsBloom = txresult.NewLogsBloomFromCompressed(header.LogsBloom)
 	b.block.patchTransactions = transaction.NewTransactionListWithBuilder(builder, header.PatchTransactionsHash)
