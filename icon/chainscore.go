@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -202,11 +203,46 @@ func newChainScore(cc contract.CallContext, from module.Address) (contract.Syste
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	s.log.Debugf("get setStake request. value=%v", value)
+	var err error
+	as := new(iiss.AccountStateImpl)
+	es := s.cc.GetExtensionState()
+	esi := es.(*iiss.ExtensionStateImpl)
+	aDB := scoredb.NewDictDB(esi, "account", 1)
+	if aDB == nil {
+		return errors.Errorf("Failed to get IISS account DB")
+	}
+	if bs := aDB.Get(s.from); bs != nil {
+		err = as.SetBytes(bs.Bytes())
+		if err != nil {
+			return err
+		}
+	}
+	if err := as.SetStake(value); err != nil {
+		return err
+	}
+	if err := aDB.Set(s.from, as.Bytes()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
-	s.log.Debugf("get getStake request. address=%v", address)
-	return 10, nil
+	esi := &iiss.ExtensionStateImpl{Database: s.cc.Database()}
+	as := new(iiss.AccountStateImpl)
+	es := s.cc.GetExtensionState()
+	if es != nil {
+		esi = es.(*iiss.ExtensionStateImpl)
+	}
+	aDB := scoredb.NewDictDB(esi, "account", 1)
+	if aDB == nil {
+		return 0, errors.Errorf("Failed to get IISS account DB")
+	}
+	if bs := aDB.Get(address); bs != nil {
+		err := as.SetBytes(bs.Bytes())
+		if err != nil {
+			return 0, err
+		}
+	}
+	return as.GetStake().Int64(), nil
 }

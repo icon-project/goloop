@@ -37,7 +37,7 @@ func (p *platform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.Ext
 	// TODO return valid ExtensionSnapshot(not nil) which can return valid ExtensionState.
 	//  with that state, we may change state of extension.
 	//  For initial state, the snapshot returns nil for Bytes() method.
-	return nil
+	return iiss.NewExtensionSnapshot(dbase, raw)
 }
 
 func (p *platform) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
