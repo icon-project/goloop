@@ -14,11 +14,11 @@
 package iiss
 
 import (
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -30,19 +30,19 @@ const (
 type extensionSnapshotImpl struct {
 	database db.Database
 
-	state trie.Immutable	// TODO rename?
-	//front trie.Immutable
-	//back trie.Immutable
-	//base trie.Immutable
+	iissState *snapshotHolder
+	//front *snapshotHolder
+	//back *snapshotHolder
+	//base *snapshotHolder
 }
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
 	// TODO add front, back and base
-	return s.state.Hash()
+	return s.iissState.Bytes()
 }
 
 func (s *extensionSnapshotImpl) Flush() error {
-	if ss, ok := s.state.(trie.Snapshot); ok {
+	if ss, ok := s.iissState.state.(trie.Snapshot); ok {
 		if err := ss.Flush(); err != nil {
 			return err
 		}
@@ -53,7 +53,7 @@ func (s *extensionSnapshotImpl) Flush() error {
 
 func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	es := &ExtensionStateImpl{
-		Database: s.database,
+		database: s.database,
 	}
 	es.Reset(s)
 	return es
@@ -64,30 +64,34 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 		database: database,
 	}
 
-	s.state = trie_manager.NewImmutable(database, hash)
+	// TODO parse hash and add front, back and base snapshot
+	s.iissState = NewSnapshotHolder(database, hash)
 	return s
 }
 
 type ExtensionStateImpl struct {
-	Database db.Database
+	database db.Database
 
-	state		trie.Mutable	// TODO rename?
-	//front trie.Mutable
-	//back trie.Mutable
-	//base trie.Mutable
+	iissState *stateHolder
+	//front *stateHolder
+	//back *stateHolder
+	//base *stateHolder
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
-	var iissState trie.Immutable
-	if s.state != nil {
-		iissState = s.state.GetSnapshot()
-		//if iissState.Empty() {
-		//	iissState = nil
+	is := &snapshotHolder{
+		database: s.database,
+	}
+	if s.iissState != nil {
+		is.state = s.iissState.GetSnapshot()
+		//if iissState.iissState.Empty() {
+		//	iissState.iissState = nil
 		//}
 	}
+	// TODO add front, back and base snapshot
 	return &extensionSnapshotImpl{
-		database: s.Database,
-		state: iissState,
+		database:  s.database,
+		iissState: is,
 	}
 }
 
@@ -98,6 +102,54 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
 	}
 
+	if snapshot.iissState == nil {
+		s.iissState = nil
+	} else if s.iissState == nil {
+		s.iissState = NewStateHolder(snapshot.iissState.database, snapshot.iissState.state)
+	} else {
+		s.iissState.Reset(snapshot.iissState)
+	}
+}
+
+func (s *ExtensionStateImpl) GetIISSStateStore() scoredb.StateStore {
+	return s.iissState
+}
+
+func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
+	s := &ExtensionStateImpl{
+		database: database,
+	}
+	// TODO parse hash and make stateHolders
+	return s
+}
+
+type snapshotHolder struct {
+	database db.Database
+	state trie.Immutable
+}
+
+func (s *snapshotHolder) Bytes() []byte {
+	return s.state.Hash()
+}
+
+func NewSnapshotHolder(database db.Database, hash []byte) *snapshotHolder {
+	s := &snapshotHolder{
+		database: database,
+	}
+	s.state = trie_manager.NewImmutable(database, hash)
+	return s
+}
+
+type stateHolder struct {
+	database db.Database
+	state trie.Mutable
+}
+
+func (s *stateHolder) GetSnapshot() trie.Snapshot {
+	return s.state.GetSnapshot()
+}
+
+func (s *stateHolder) Reset(snapshot *snapshotHolder) {
 	if snapshot.state == nil {
 		s.state = nil
 	} else if s.state == nil {
@@ -107,54 +159,31 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 			log.Panicf("Fail to make ExtensionStateImpl err=%v", err)
 		}
 	}
-	log.Debugf("ExtensionStateImpl.Reset() make state %v", s)
 }
 
-func addressIDToKey(id []byte) []byte {
-	if id == nil {
-		return []byte("genesis")
-	}
-	return crypto.SHA3Sum256(id)
-}
-
-func (s *ExtensionStateImpl) GetAccountState(id []byte) AccountState {
-	//key := addressIDToKey(id)
-	//bs, err := s.state.Get(key)
-	//if err != nil {
-	//	log.Errorf("Fail to get account for %x err=%+v", key, err)
-	//	return nil
-	//}
-	//var as *AccountStateImpl
-	//if bs != nil {
-	//	as = bs.(*AccountStateImpl)
-	//}
-	//ac := newAccountState(ws.Database, as, key, ws.nodeCacheEnabled)
-	//return ac
-	return nil
-}
-
-func (s *ExtensionStateImpl) GetValue(key []byte) ([]byte, error) {
+func (s *stateHolder) GetValue(key []byte) ([]byte, error) {
 	if s.state == nil {
 		return nil, nil
 	}
 	return s.state.Get(key)
 }
 
-func (s *ExtensionStateImpl) SetValue(key []byte, value []byte) ([]byte, error) {
+func (s *stateHolder) SetValue(key []byte, value []byte) ([]byte, error) {
 	if s.state == nil {
-		s.state = trie_manager.NewMutable(s.Database, nil)
+		s.state = trie_manager.NewMutable(s.database, nil)
 	}
 	return s.state.Set(key, value)
 }
 
-func (s *ExtensionStateImpl) DeleteValue(key []byte) ([]byte, error) {
+func (s *stateHolder) DeleteValue(key []byte) ([]byte, error) {
 	return s.state.Delete(key)
 }
 
-func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
-	s := &ExtensionStateImpl{
-		Database: database,
+func NewStateHolder(database db.Database, object trie.Immutable) *stateHolder {
+	s := &stateHolder{
+		database: database,
 	}
-	s.state = trie_manager.NewMutable(database, hash)
-	return nil
+	s.state = trie_manager.NewMutableFromImmutable(object)
+
+	return s
 }

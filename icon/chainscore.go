@@ -162,6 +162,8 @@ func (s *chainScore) Install(param []byte) error {
 		if err := s.cc.GetValidatorState().Set(validators); err != nil {
 			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
 		}
+		// TODO init ExtensionState
+		//s.cc.GetExtensionState().Reset()
 	}
 
 	if err := applyStepLimits(as, stepLimitsMap); err != nil {
@@ -203,17 +205,15 @@ func newChainScore(cc contract.CallContext, from module.Address) (contract.Syste
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	var err error
 	as := new(iiss.AccountStateImpl)
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	aDB := scoredb.NewDictDB(esi, "account", 1)
+	aDB := scoredb.NewDictDB(esi.GetIISSStateStore(), iiss.VarAccount, 1)
 	if aDB == nil {
 		return errors.Errorf("Failed to get IISS account DB")
 	}
 	if bs := aDB.Get(s.from); bs != nil {
-		err = as.SetBytes(bs.Bytes())
-		if err != nil {
+		if err := as.SetBytes(bs.Bytes()); err != nil {
 			return err
 		}
 	}
@@ -228,13 +228,10 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
-	esi := &iiss.ExtensionStateImpl{Database: s.cc.Database()}
 	as := new(iiss.AccountStateImpl)
 	es := s.cc.GetExtensionState()
-	if es != nil {
-		esi = es.(*iiss.ExtensionStateImpl)
-	}
-	aDB := scoredb.NewDictDB(esi, "account", 1)
+	esi := es.(*iiss.ExtensionStateImpl)
+	aDB := scoredb.NewDictDB(esi.GetIISSStateStore(), iiss.VarAccount, 1)
 	if aDB == nil {
 		return 0, errors.Errorf("Failed to get IISS account DB")
 	}
