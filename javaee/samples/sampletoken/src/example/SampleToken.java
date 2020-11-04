@@ -96,16 +96,14 @@ public class SampleToken
     @External
     public void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Context.getCaller();
-        BigInteger fromBalance = safeGetBalance(_from);
-        BigInteger toBalance = safeGetBalance(_to);
 
         // check some basic requirements
         Context.require(_value.compareTo(BigInteger.ZERO) >= 0);
-        Context.require(fromBalance.compareTo(_value) >= 0);
+        Context.require(safeGetBalance(_from).compareTo(_value) >= 0);
 
         // adjust the balances
-        safeSetBalance(_from, fromBalance.subtract(_value));
-        safeSetBalance(_to, toBalance.add(_value));
+        safeSetBalance(_from, safeGetBalance(_from).subtract(_value));
+        safeSetBalance(_to, safeGetBalance(_to).add(_value));
 
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;

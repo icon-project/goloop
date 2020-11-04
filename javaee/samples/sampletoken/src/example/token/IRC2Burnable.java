@@ -22,10 +22,13 @@ import score.annotation.External;
 import java.math.BigInteger;
 
 public abstract class IRC2Burnable extends IRC2Basic {
-    public IRC2Burnable(String _name, String _symbol, BigInteger _decimals, BigInteger _initialSupply) {
-        super(_name, _symbol, _decimals, _initialSupply);
+    public IRC2Burnable(String _name, String _symbol, int _decimals) {
+        super(_name, _symbol, _decimals);
     }
 
+    /**
+     * Destroys `_amount` tokens from the caller.
+     */
     @External
     public void burn(BigInteger _amount) {
         _burn(Context.getCaller(), _amount);

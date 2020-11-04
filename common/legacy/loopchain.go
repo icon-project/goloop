@@ -219,7 +219,15 @@ func (lc *LoopChainDB) GetAccount(addr module.Address) (*accountV1, error) {
 }
 
 func (lc *LoopChainDB) Close() error {
-	return lc.blockbk.Close()
+	if err := lc.blockbk.Close(); err != nil {
+		return err
+	}
+	if lc.scorebk != nil {
+		if err := lc.scorebk.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type accountV1Iterator struct {
@@ -232,7 +240,11 @@ func (aitr *accountV1Iterator) Value() (module.Address, *accountV1, error) {
 		key := aitr.Iterator.Key()
 		var addr module.Address
 		if len(key) == common.AddressBytes {
-			addr = common.NewAddress(key)
+			if ptr, err := common.NewAddress(key); err != nil {
+				return nil, nil, err
+			} else {
+				addr = ptr
+			}
 		} else if len(key) == common.AddressIDBytes {
 			addr = common.NewAccountAddress(key)
 		} else {
@@ -278,13 +290,13 @@ func OpenDatabase(blockdir, scoredir string) (*LoopChainDB, error) {
 	opt := &opt.Options{
 		ReadOnly: true,
 	}
-	if blockbk, err := leveldb.OpenFile(blockdir, opt); err != nil {
+	if blockbk, err := leveldb.RecoverFile(blockdir, opt); err != nil {
 		return nil, err
 	} else {
 		lcdb.blockbk = blockbk
 	}
 	if scoredir != "" {
-		if scorebk, err := leveldb.OpenFile(scoredir, opt); err != nil {
+		if scorebk, err := leveldb.RecoverFile(scoredir, opt); err != nil {
 			log.Warnf("Fail to open SCORE DB err=%+v (ignore)", err)
 		} else {
 			lcdb.scorebk = scorebk

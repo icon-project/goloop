@@ -118,9 +118,8 @@ func (e *valueImpl) Int64() int64 {
 
 func (e *valueImpl) Address() module.Address {
 	if bs := e.Bytes(); bs != nil {
-		var addr common.Address
-		if err := addr.SetBytes(bs); err == nil {
-			return &addr
+		if addr, err := common.NewAddress(bs); err == nil {
+			return addr
 		}
 	}
 	return nil

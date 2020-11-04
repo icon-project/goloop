@@ -257,25 +257,43 @@ func TestAddress_SetBytes(t *testing.T) {
 			name:    "ContractNoID",
 			a:       Address{},
 			args:    args{[]byte{1}},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "EOANoID",
 			a:       Address{},
 			args:    args{[]byte{0}},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
-			name:    "EOAWithID20",
+			name:    "EOA21Bytes",
 			a:       Address{},
 			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
 			wantErr: false,
 		},
 		{
-			name:    "EOAWithID21",
+			name:    "Contract21Bytes",
+			a:       Address{},
+			args:    args{[]byte{1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			wantErr: false,
+		},
+		{
+			name:    "InvalidType21Bytes",
+			a:       Address{},
+			args:    args{[]byte{3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			wantErr: true,
+		},
+		{
+			name:    "EOA22Bytes",
 			a:       Address{},
 			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1}},
-			wantErr: false,
+			wantErr: true,
+		},
+		{
+			name:    "EOA20Bytes",
+			a:       Address{},
+			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -290,8 +308,7 @@ func TestAddress_SetBytes(t *testing.T) {
 func TestAddress_SetTypeAndID(t *testing.T) {
 	t.Run("SetSmallID", func(t *testing.T) {
 		addr1 := new(Address)
-		err := addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
-		assert.NoError(t, err)
+		addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
 		assert.Equal(t,
 			"hx0000000000000000000000000000000000123456",
 			addr1.String())
@@ -299,20 +316,21 @@ func TestAddress_SetTypeAndID(t *testing.T) {
 
 	t.Run("SetAgainWithSmallerID", func(t *testing.T) {
 		addr2 := new(Address)
-		err := addr2.SetTypeAndID(false, []byte{
+		addr2.SetTypeAndID(false, []byte{
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12,
 		})
-		assert.NoError(t, err)
 
 		addr1 := new(Address)
-		err = addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
-		assert.NoError(t, err)
-
-		err = addr1.SetTypeAndID(false, []byte{0x12})
-		assert.NoError(t, err)
+		addr1.SetTypeAndID(false, []byte{0x12, 0x34, 0x56})
+		addr1.SetTypeAndID(false, []byte{0x12})
 
 		assert.Equal(t, addr2, addr1)
+	})
+
+	t.Run("SetNilID", func(t *testing.T) {
+		addr2 := new(Address)
+		addr2.SetTypeAndID(false, nil)
 	})
 }
 
@@ -321,29 +339,25 @@ func TestAddress_Set(t *testing.T) {
 
 	t.Run("SetWithSelf", func(t *testing.T) {
 		addr1 := NewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
-		err := addr1.Set(addr1)
-		assert.NoError(t, err)
+		addr1.Set(addr1)
 		assert.Equal(t, addr0, addr1)
 	})
 
 	t.Run("SetOtherOnEmpty", func(t *testing.T) {
 		addr2 := new(Address)
-		err := addr2.Set(addr0)
-		assert.NoError(t, err)
+		addr2.Set(addr0)
 		assert.Equal(t, addr0, addr2)
 	})
 
 	t.Run("SetNil", func(t *testing.T) {
 		addr2 := new(Address)
-		err := addr2.Set(nil)
-		assert.Error(t, err)
+		addr2.Set(nil)
 		assert.Equal(t, new(Address), addr2)
 	})
 
 	t.Run("SetOther", func(t *testing.T) {
 		addr1 := NewAddressFromString("hxfa6341b183b48fd460b9a42884db7987a46ea92f")
-		err := addr1.Set(addr0)
-		assert.NoError(t, err)
+		addr1.Set(addr0)
 		assert.Equal(t, addr0, addr1)
 	})
 }
@@ -406,8 +420,7 @@ func TestAddress_ToString(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			addr := new(Address)
-			err := addr.SetTypeAndID(test.arg.contract, test.arg.id)
-			assert.NoError(t, err)
+			addr.SetTypeAndID(test.arg.contract, test.arg.id)
 			assert.Equal(t, test.want, addr.String())
 		})
 	}

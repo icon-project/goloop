@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -85,7 +86,6 @@ func unwrap(tr module.Transition) module.Transition {
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
 	if bi.Height() > m.lastHeight {
 		err := errors.Errorf("height:%d > lastHeight:%d\n", bi.Height(), m.lastHeight)
-		m.cb.OnError(err)
 		return nil, err
 	}
 	blk, err := m.bdb.GetBlockByHeight(int(bi.Height()))
@@ -195,6 +195,12 @@ func (m *managerForImport) Finalize(transition module.Transition, opt int) error
 
 func (m *managerForImport) finalize(transition module.Transition, opt int) error {
 	return m.ServiceManager.Finalize(unwrap(transition), opt)
+}
+
+func (m *managerForImport) Term() {
+	log.Infof("Term ServiceManager for Import\n")
+	log.Must(m.bdb.Close())
+	m.ServiceManager.Term()
 }
 
 type transitionForImport struct {

@@ -216,10 +216,8 @@ func (p *proxy) Invoke(
 	var m invokeMessage
 	m.Code = code
 	m.IsQry = isQuery
-	if from != nil {
-		m.From = common.NewAddress(from.Bytes())
-	}
-	m.To.SetBytes(to.Bytes())
+	m.From = common.AddressToPtr(from)
+	m.To.Set(to)
 	m.Value.Set(value)
 	m.Limit.Set(limit)
 	m.Method = method

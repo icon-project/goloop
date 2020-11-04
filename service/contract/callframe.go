@@ -77,7 +77,7 @@ func (f *callFrame) addLog(addr module.Address, indexed, data [][]byte) {
 		return
 	}
 	e := new(eventLog)
-	e.Addr.SetBytes(addr.Bytes())
+	e.Addr.Set(addr)
 	e.Indexed = indexed
 	e.Data = data
 	f.eventLogs.PushBack(e)

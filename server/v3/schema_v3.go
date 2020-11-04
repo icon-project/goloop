@@ -22,7 +22,7 @@ type BlockHashParam struct {
 }
 
 type CallParam struct {
-	FromAddress jsonrpc.Address `json:"from" validate:"optional,t_addr_eoa"`
+	FromAddress jsonrpc.Address `json:"from,omitempty" validate:"optional,t_addr_eoa"`
 	ToAddress   jsonrpc.Address `json:"to" validate:"required,t_addr_score"`
 	DataType    string          `json:"dataType" validate:"required,call"`
 	Data        interface{}     `json:"data"`

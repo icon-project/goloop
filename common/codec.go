@@ -22,7 +22,12 @@ var TypeCodec = &typeCodec{}
 func (*typeCodec) Decode(tag uint8, data []byte) (interface{}, error) {
 	switch tag {
 	case TypeAddress:
-		return NewAddress(data), nil
+		if addr, err := NewAddress(data); err != nil {
+			return nil, errors.CriticalFormatError.Errorf(
+				"InvalidAddressBytes(bytes=%#x)", data)
+		} else {
+			return addr, nil
+		}
 	case TypeInt:
 		i := new(HexInt)
 		i.SetBytes(data)

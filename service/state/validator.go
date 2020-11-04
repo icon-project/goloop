@@ -31,7 +31,11 @@ func (v *validator) RLPDecodeSelf(d codec.Decoder) error {
 		return err
 	}
 	if len(bs) == common.AddressBytes {
-		v.addr = common.NewAddress(bs)
+		if addr, err := common.NewAddress(bs); err != nil {
+			return err
+		} else {
+			v.addr = addr
+		}
 		return nil
 	} else {
 		return v.setPublicKey(bs)
@@ -87,11 +91,7 @@ func ValidatorFromAddress(a module.Address) (module.Validator, error) {
 	}
 	v := &validator{
 		pub:  nil,
-		addr: new(common.Address),
-	}
-	err := v.addr.SetBytes(a.Bytes())
-	if err != nil {
-		return nil, err
+		addr: common.AddressToPtr(a),
 	}
 	return v, nil
 }

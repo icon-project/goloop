@@ -26,45 +26,21 @@ import score.annotation.Optional;
 import java.math.BigInteger;
 
 public abstract class IRC2Basic implements IRC2 {
+    protected static final Address ZERO_ADDRESS = new Address(new byte[Address.LENGTH]);
     private final String name;
     private final String symbol;
     private final int decimals;
-    private final BigInteger totalSupply;
-    private final DictDB<Address, BigInteger> balances;
+    private BigInteger totalSupply = BigInteger.ZERO;
+    private final DictDB<Address, BigInteger> balances = Context.newDictDB("balances", BigInteger.class);
 
-    public IRC2Basic(String _name, String _symbol, BigInteger _decimals, BigInteger _initialSupply) {
+    public IRC2Basic(String _name, String _symbol, int _decimals) {
         this.name = _name;
         this.symbol = _symbol;
-        this.decimals = _decimals.intValue();
+        this.decimals = _decimals;
 
         // decimals must be larger than 0 and less than 21
         Context.require(this.decimals >= 0);
         Context.require(this.decimals <= 21);
-
-        // initialSupply must be larger than 0
-        Context.require(_initialSupply.compareTo(BigInteger.ZERO) >= 0);
-
-        // calculate totalSupply
-        if (_initialSupply.compareTo(BigInteger.ZERO) > 0) {
-            BigInteger oneToken = pow(BigInteger.TEN, this.decimals);
-            this.totalSupply = oneToken.multiply(_initialSupply);
-        } else {
-            this.totalSupply = BigInteger.ZERO;
-        }
-
-        // set the initial balance of the owner
-        this.balances = Context.newDictDB("balances", BigInteger.class);
-        this.balances.set(Context.getOrigin(), this.totalSupply);
-    }
-
-    // BigInteger#pow() is not implemented in the shadow BigInteger.
-    // we need to use our implementation for that.
-    private static BigInteger pow(BigInteger base, int exponent) {
-        BigInteger result = BigInteger.ONE;
-        for (int i = 0; i < exponent; i++) {
-            result = result.multiply(base);
-        }
-        return result;
     }
 
     @External(readonly=true)
@@ -95,16 +71,14 @@ public abstract class IRC2Basic implements IRC2 {
     @External
     public void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Context.getCaller();
-        BigInteger fromBalance = safeGetBalance(_from);
-        BigInteger toBalance = safeGetBalance(_to);
 
         // check some basic requirements
         Context.require(_value.compareTo(BigInteger.ZERO) >= 0);
-        Context.require(fromBalance.compareTo(_value) >= 0);
+        Context.require(safeGetBalance(_from).compareTo(_value) >= 0);
 
         // adjust the balances
-        safeSetBalance(_from, fromBalance.subtract(_value));
-        safeSetBalance(_to, toBalance.add(_value));
+        safeSetBalance(_from, safeGetBalance(_from).subtract(_value));
+        safeSetBalance(_to, safeGetBalance(_to).add(_value));
 
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;
@@ -116,8 +90,29 @@ public abstract class IRC2Basic implements IRC2 {
         Transfer(_from, _to, _value, dataBytes);
     }
 
+    /**
+     * Creates `amount` tokens and assigns them to `owner`, increasing the total supply.
+     */
+    protected void _mint(Address owner, BigInteger amount) {
+        Context.require(!ZERO_ADDRESS.equals(owner));
+        Context.require(amount.compareTo(BigInteger.ZERO) >= 0);
+
+        this.totalSupply = this.totalSupply.add(amount);
+        safeSetBalance(owner, safeGetBalance(owner).add(amount));
+        Transfer(ZERO_ADDRESS, owner, amount, "mint".getBytes());
+    }
+
+    /**
+     * Destroys `amount` tokens from `owner`, reducing the total supply.
+     */
     protected void _burn(Address owner, BigInteger amount) {
-        // TODO: burn
+        Context.require(!ZERO_ADDRESS.equals(owner));
+        Context.require(amount.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(safeGetBalance(owner).compareTo(amount) >= 0);
+
+        safeSetBalance(owner, safeGetBalance(owner).subtract(amount));
+        this.totalSupply = this.totalSupply.subtract(amount);
+        Transfer(owner, ZERO_ADDRESS, amount, "burn".getBytes());
     }
 
     private BigInteger safeGetBalance(Address owner) {

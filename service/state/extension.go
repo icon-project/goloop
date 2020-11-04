@@ -38,12 +38,20 @@ func (n extensionStateHolder) GetSnapshot() ExtensionSnapshot {
 	return nil
 }
 
-func (n extensionStateHolder) Reset(snapshot ExtensionSnapshot) {
+func (n *extensionStateHolder) Reset(snapshot ExtensionSnapshot) {
 	if n.state != nil {
 		n.state.Reset(snapshot)
 	} else {
 		if snapshot != nil {
 			n.state = snapshot.NewState(false)
 		}
+	}
+}
+
+func (n *extensionStateHolder) GetState() ExtensionState {
+	if n.state != nil {
+		return n.state
+	} else {
+		return n
 	}
 }

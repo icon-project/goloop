@@ -283,11 +283,11 @@ func (t DataType) ConvertBytesToJSO(bs []byte) (interface{}, error) {
 			return "0x1", nil
 		}
 	case TAddress:
-		addr := new(common.Address)
-		if err := addr.SetBytes(bs); err != nil {
-			return nil, err
+		if addr, err := common.NewAddress(bs); err != nil {
+			return nil, errors.InvalidStateError.Wrapf(err, "InvalidAddressBytes(bs=%#x)", bs)
+		} else {
+			return addr, nil
 		}
-		return addr, nil
 	default:
 		return nil, errors.InvalidStateError.Errorf("UnsupportedType(type=%s)", t.String())
 	}
@@ -319,11 +319,11 @@ func (t DataType) ConvertBytesToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			return common.EncodeAny(true)
 		}
 	case TAddress:
-		addr := new(common.Address)
-		if err := addr.SetBytes(bs); err != nil {
+		if addr, err := common.NewAddress(bs); err != nil {
 			return nil, err
+		} else {
+			return common.EncodeAny(addr)
 		}
-		return common.EncodeAny(addr)
 	default:
 		return nil, errors.IllegalArgumentError.Errorf("Unsupported Decoding type=%s", t.String())
 	}
@@ -350,8 +350,7 @@ func (t DataType) ValidateEvent(bs []byte) error {
 			return errors.IllegalArgumentError.Errorf("InvalidBoolBytes(bs=<%#x>)", bs)
 		}
 	case TAddress:
-		var addr common.Address
-		if err := addr.SetBytes(bs); err != nil {
+		if _, err := common.NewAddress(bs); err != nil {
 			return errors.IllegalArgumentError.New("InvalidAddressBytes")
 		}
 	case TString:

@@ -490,7 +490,7 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 
 func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 	log := new(eventLog)
-	log.eventLogData.Addr.SetBytes(addr.Bytes())
+	log.eventLogData.Addr.Set(addr)
 	log.eventLogData.Indexed = indexed
 	log.eventLogData.Data = data
 
@@ -518,7 +518,7 @@ func (r *receipt) buildMerkleListOfLogs() {
 func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr module.Address) {
 	r.data.Status = status
 	if status == module.StatusSuccess && addr != nil {
-		r.data.SCOREAddress = common.NewAddress(addr.Bytes())
+		r.data.SCOREAddress = common.AddressToPtr(addr)
 	}
 	r.data.StepUsed.Set(used)
 	r.data.StepPrice.Set(price)
@@ -597,7 +597,7 @@ func NewReceipt(database db.Database, revision module.Revision, to module.Addres
 	r := new(receipt)
 	r.db = database
 	r.version = versionForRevision(revision)
-	r.data.To.SetBytes(to.Bytes())
+	r.data.To.Set(to)
 	return r
 }
 

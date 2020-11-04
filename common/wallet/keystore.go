@@ -123,9 +123,7 @@ func EncryptKeyAsKeyStore(s *crypto.PrivateKey, pw []byte) ([]byte, error) {
 	if addr := common.NewAccountAddressFromPublicKey(s.PublicKey()); addr == nil {
 		return nil, errors.New("FailToMakeAddressForTheKey")
 	} else {
-		if err := ks.Address.SetBytes(addr.Bytes()); err != nil {
-			return nil, err
-		}
+		ks.Address.Set(addr)
 	}
 
 	return json.Marshal(&ks)

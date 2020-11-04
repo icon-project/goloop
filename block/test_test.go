@@ -706,7 +706,7 @@ type testValidator struct {
 
 func newTestValidator(addr module.Address) *testValidator {
 	v := &testValidator{}
-	v.Address_ = common.NewAddress(addr.Bytes())
+	v.Address_ = common.AddressToPtr(addr)
 	return v
 }
 
