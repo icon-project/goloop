@@ -162,8 +162,8 @@ func (s *chainScore) Install(param []byte) error {
 		if err := s.cc.GetValidatorState().Set(validators); err != nil {
 			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
 		}
-		// TODO init ExtensionState
-		//s.cc.GetExtensionState().Reset()
+
+		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	}
 
 	if err := applyStepLimits(as, stepLimitsMap); err != nil {
