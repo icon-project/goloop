@@ -62,7 +62,9 @@ public class ABICompiler {
 
         callables = classVisitor.getCallableInfo();
         mainClassBytes = classWriter.toByteArray();
-        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, classMap);
+        classMap.put(mainClassName, mainClassBytes);
+        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(
+                mainClassName, classMap);
     }
 
     private void safeLoadFromBytes(InputStream byteReader) throws Exception {
@@ -73,7 +75,6 @@ public class ABICompiler {
         if (mainClassBytes == null) {
             throw new ABICompilerException("Cannot find main class: " + mainClassName);
         }
-        classMap.remove(mainClassName);
     }
 
     public List<Method> getCallables() {

@@ -28,6 +28,16 @@ public class JarBuilder {
     // The API Info file name
     private static final String APIS_NAME = "META-INF/APIS";
 
+    private void buildJarImpl(Map<String, byte[]> classMap,
+            Class<?> ...otherClasses) throws IOException {
+        for (Map.Entry<String, byte[]> entry : classMap.entrySet()) {
+            saveClassToStream(entry.getKey(), entry.getValue());
+        }
+        for (Class<?> clazz : otherClasses) {
+            addClassAndInners(clazz);
+        }
+    }
+
     /**
      * Creates the in-memory representation of a JAR with the given class names and direct bytes.
      * @return The bytes representing this JAR.
@@ -36,12 +46,20 @@ public class JarBuilder {
         JarBuilder builder = new JarBuilder(null, mainClassName);
         try {
             builder.saveClassToStream(mainClassName, mainClassBytes);
-            for (Map.Entry<String, byte[]> entry : classMap.entrySet()) {
-                builder.saveClassToStream(entry.getKey(), entry.getValue());
-            }
-            for (Class<?> clazz : otherClasses) {
-                builder.addClassAndInners(clazz);
-            }
+            builder.buildJarImpl(classMap, otherClasses);
+        } catch (IOException e) {
+            // Can't happen - in-memory.
+            throw new AssertionError(e);
+        }
+        return builder.toBytes();
+    }
+
+    public static byte[] buildJarForExplicitClassNamesAndBytecode(
+            String mainClassName, Map<String, byte[]> classMap,
+            Class<?> ...otherClasses) {
+        JarBuilder builder = new JarBuilder(null, mainClassName);
+        try {
+            builder.buildJarImpl(classMap, otherClasses);
         } catch (IOException e) {
             // Can't happen - in-memory.
             throw new AssertionError(e);
@@ -52,12 +70,7 @@ public class JarBuilder {
     public static byte[] buildJarForMainClassAndExplicitClassNamesAndBytecode(Class<?> mainClass, Map<String, byte[]> classMap, Class<?> ...otherClasses) {
         JarBuilder builder = new JarBuilder(mainClass, null);
         try {
-            for (Map.Entry<String, byte[]> entry : classMap.entrySet()) {
-                builder.saveClassToStream(entry.getKey(), entry.getValue());
-            }
-            for (Class<?> clazz : otherClasses) {
-                builder.addClassAndInners(clazz);
-            }
+            builder.buildJarImpl(classMap, otherClasses);
         } catch (IOException e) {
             // Can't happen - in-memory.
             throw new AssertionError(e);
