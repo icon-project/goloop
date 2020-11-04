@@ -1,7 +1,7 @@
 package foundation.icon.ee;
 
 import collection.CollectionTest;
-import example.InheritedToken;
+import example.IRC2BasicToken;
 import example.SampleToken;
 import example.token.IRC2;
 import example.token.IRC2Basic;
@@ -33,7 +33,7 @@ public class SampleTest extends GoldenTest {
     @Test
     public void testInherited() {
         var owner = sm.getOrigin();
-        var app = sm.deploy(new Class<?>[]{InheritedToken.class, IRC2Basic.class, IRC2.class}, "MySampleToken", "MST", 18, 1000);
+        var app = sm.deploy(new Class<?>[]{IRC2BasicToken.class, IRC2Basic.class, IRC2.class}, "MySampleToken", "MST", 18, 1000);
         app.invoke("balanceOf", owner);
         var addr1 = sm.newExternalAddress();
         app.invoke("transfer", addr1, new BigInteger("1000000000000000000"), "Hello".getBytes(StandardCharsets.UTF_8));

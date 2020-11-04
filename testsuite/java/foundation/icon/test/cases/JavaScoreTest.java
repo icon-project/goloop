@@ -16,7 +16,7 @@
 
 package foundation.icon.test.cases;
 
-import example.InheritedToken;
+import example.IRC2BasicToken;
 import example.token.IRC2;
 import example.token.IRC2Basic;
 import foundation.icon.ee.util.Crypto;
@@ -102,12 +102,12 @@ class JavaScoreTest extends TestBase {
     }
 
     @Test
-    public void testInheritedToken() throws Exception {
+    public void testIRC2Token() throws Exception {
         // 1. deploy
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
         SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
-                decimals, initialSupply, new Class<?>[]{InheritedToken.class, IRC2Basic.class, IRC2.class});
+                decimals, initialSupply, new Class<?>[]{IRC2BasicToken.class, IRC2Basic.class, IRC2.class});
         startTokenTest(tokenScore, decimals, initialSupply);
     }
 

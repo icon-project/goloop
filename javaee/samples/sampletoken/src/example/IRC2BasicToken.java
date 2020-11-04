@@ -21,9 +21,8 @@ import score.Context;
 
 import java.math.BigInteger;
 
-public class InheritedToken extends IRC2Basic
-{
-    public InheritedToken(String _name, String _symbol, int _decimals, BigInteger _initialSupply) {
+public class IRC2BasicToken extends IRC2Basic {
+    public IRC2BasicToken(String _name, String _symbol, int _decimals, BigInteger _initialSupply) {
         super(_name, _symbol, _decimals);
 
         // mint the initial token supply here
