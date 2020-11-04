@@ -47,3 +47,11 @@ func (n *extensionStateHolder) Reset(snapshot ExtensionSnapshot) {
 		}
 	}
 }
+
+func (n *extensionStateHolder) GetState() ExtensionState {
+	if n.state != nil {
+		return n.state
+	} else {
+		return n
+	}
+}

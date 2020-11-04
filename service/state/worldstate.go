@@ -121,7 +121,7 @@ func (ws *worldStateImpl) GetValidatorState() ValidatorState {
 }
 
 func (ws *worldStateImpl) GetExtensionState() ExtensionState {
-	return ws.extension.state
+	return ws.extension.GetState()
 }
 
 func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
