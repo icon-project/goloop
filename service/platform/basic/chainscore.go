@@ -1309,7 +1309,7 @@ func (s *ChainScore) Ex_setDeployerWhiteListEnabled(yn bool) error {
 	if yn {
 		confValue |= state.SysConfigDeployerWhiteList
 	} else {
-		confValue &= state.SysConfigMax - state.SysConfigDeployerWhiteList - 1
+		confValue &^= state.SysConfigDeployerWhiteList
 	}
 	return scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue)
 }
