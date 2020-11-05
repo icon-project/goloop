@@ -204,42 +204,33 @@ func newChainScore(cc contract.CallContext, from module.Address) (contract.Syste
 	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
 }
 
+// TODO decide followings - Done
+// 1. transfer stake ICX to system SCORE
+//		- (o) yes : state.AccountState.GetBalance(). transfer with value. need setStake JSON-RPC protocol modification?
+//		- no : state.AccountState.GetBalance() call iiss.AccountState.Getstate() and recalc balance
+// 2. who modify worldstate
+//		- (o) chain SCORE
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	as := new(iiss.AccountStateImpl)
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	aDB := scoredb.NewDictDB(esi.GetIISSStateStore(), iiss.VarAccount, 1)
-	if aDB == nil {
-		return errors.Errorf("Failed to get IISS account DB")
-	}
-	if bs := aDB.Get(s.from); bs != nil {
-		if err := as.SetBytes(bs.Bytes()); err != nil {
-			return err
-		}
-	}
-	if err := as.SetStake(value); err != nil {
+	aDB := esi.GetIISSAccountDB()
+	as, err := esi.GetIISSAccountState(aDB, s.from)
+	if err != nil {
 		return err
 	}
-	if err := aDB.Set(s.from, as.Bytes()); err != nil {
-		return err
+	if err = as.SetStake(s.cc.GetAccountState(s.from.ID()), value); err != nil {
+		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
-
-	return nil
+	return aDB.Set(s.from, as.Bytes())
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
-	as := new(iiss.AccountStateImpl)
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	aDB := scoredb.NewDictDB(esi.GetIISSStateStore(), iiss.VarAccount, 1)
-	if aDB == nil {
-		return 0, errors.Errorf("Failed to get IISS account DB")
-	}
-	if bs := aDB.Get(address); bs != nil {
-		err := as.SetBytes(bs.Bytes())
-		if err != nil {
-			return 0, err
-		}
+	aDB := esi.GetIISSAccountDB()
+	as, err := esi.GetIISSAccountState(aDB, address)
+	if err != nil {
+		return 0, err
 	}
 	return as.GetStake().Int64(), nil
 }

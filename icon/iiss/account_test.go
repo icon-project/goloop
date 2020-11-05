@@ -23,7 +23,7 @@ import (
 )
 
 func TestAccountStateImpl(t *testing.T) {
-	t1 := AccountStateImpl{
+	t1 := accountStateImpl{
 		version: 100,
 		staked: common.NewHexInt(12),
 	}
@@ -31,7 +31,7 @@ func TestAccountStateImpl(t *testing.T) {
 	fmt.Printf("version: %d, staked: %d\n", t1.version, t1.staked.Int.Int64())
 	bs := t1.Bytes()
 	fmt.Printf("bs: %b\n", bs)
-	t2 := new(AccountStateImpl)
+	t2 := new(accountStateImpl)
 	t2.SetBytes(bs)
 
 	assert.Equal(t, t1.version, t2.version)

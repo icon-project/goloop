@@ -17,53 +17,61 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
 	accountVersion1 = iota + 1
 	accountVersion = accountVersion1
+
+	maxUnstake = 100
 )
 
 type AccountState interface {
-	Version() int
-	SetStake(v *common.HexInt) error
-	GetStake() *common.HexInt
 	Bytes() []byte
+	SetBytes(bs []byte) error
+	Version() int
+	SetStake(account state.AccountState, v *common.HexInt) error
+	GetStake() *common.HexInt
 }
 
-type AccountStateImpl struct {
+type accountStateImpl struct {
 	version		int
 	staked		*common.HexInt
 	//delegated	*common.HexInt
-	//unstakes	[]*Unstake
+	unstakes	[]*unstake
 	//delegations []*Delegation
 	//bonds		[]*Bond
 	//unbondings	[]*Unbonding
 }
 
-func (a *AccountStateImpl) Version() int {
+func (a *accountStateImpl) Version() int {
 	return a.version
 }
 
-func (a *AccountStateImpl) SetStake(v *common.HexInt) error {
+func (a *accountStateImpl) SetStake(as state.AccountState, v *common.HexInt) error {
+
 	if a.staked != nil && a.staked.Cmp(&v.Int) == 1 {
-		// TODO update unstakes
-		log.Debugf("update unbondings")
+		//unstakeAmount :=
+		//if len(a.unstakes) < maxUnstake {
+		//	append(a.unstakes, newUnstake())
+		//} else {
+		//
+		//}
 	}
 	a.staked = v
 
 	return nil
 }
 
-func (a *AccountStateImpl) GetStake() *common.HexInt {
+func (a *accountStateImpl) GetStake() *common.HexInt {
 	if a.staked == nil {
 		return common.NewHexInt(0)
 	}
 	return a.staked
 }
 
-func (a *AccountStateImpl) Bytes() []byte {
+func (a *accountStateImpl) Bytes() []byte {
 	if bs, err := codec.BC.MarshalToBytes(a); err != nil {
 		panic(err)
 	} else {
@@ -71,13 +79,13 @@ func (a *AccountStateImpl) Bytes() []byte {
 	}
 }
 
-func (a *AccountStateImpl) SetBytes(bs []byte) error {
+func (a *accountStateImpl) SetBytes(bs []byte) error {
 	_, err := codec.BC.UnmarshalFromBytes(bs, a)
 	return err
 }
 
 
-func (a *AccountStateImpl) RLPEncodeSelf(e codec.Encoder) error {
+func (a *accountStateImpl) RLPEncodeSelf(e codec.Encoder) error {
 	e2, err := e.EncodeList()
 	if err != nil {
 		return err
@@ -91,7 +99,7 @@ func (a *AccountStateImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return nil
 }
 
-func (a *AccountStateImpl) RLPDecodeSelf(d codec.Decoder) error {
+func (a *accountStateImpl) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -104,4 +112,24 @@ func (a *AccountStateImpl) RLPDecodeSelf(d codec.Decoder) error {
 		return errors.Wrap(err, "Fail to decode accountSnapshot")
 	}
 	return nil
+}
+
+func NewAccountState() AccountState {
+	return &accountStateImpl{}
+}
+
+type unstake struct {
+	amount *common.HexInt
+	expireHeight int64
+}
+
+func unstakeLockupPeriod() int64 {
+	return 0
+}
+
+func newUnstake(amount *common.HexInt, blockHeight int64) unstake {
+	return unstake{
+		amount: amount,
+		expireHeight: blockHeight + unstakeLockupPeriod(),
+	}
 }

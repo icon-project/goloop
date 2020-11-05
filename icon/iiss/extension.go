@@ -18,13 +18,14 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
 const (
 	VarAccount = "account"
-	VarPRep = "prep"
+	VarPRep    = "prep"
 )
 
 type extensionSnapshotImpl struct {
@@ -52,6 +53,7 @@ func (s *extensionSnapshotImpl) Flush() error {
 }
 
 func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
+	// TODO readonly?
 	es := &ExtensionStateImpl{
 		database: s.database,
 	}
@@ -96,7 +98,6 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 }
 
 func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
-	log.Debugf("ExtensionStateImpl.Reset() called with %v", isnapshot)
 	snapshot, ok := isnapshot.(*extensionSnapshotImpl)
 	if !ok {
 		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
@@ -111,8 +112,18 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	}
 }
 
-func (s *ExtensionStateImpl) GetIISSStateStore() scoredb.StateStore {
-	return s.iissState
+func (s *ExtensionStateImpl) GetIISSAccountDB() *scoredb.DictDB {
+	return scoredb.NewDictDB(s.iissState, VarAccount, 1)
+}
+
+func (s *ExtensionStateImpl) GetIISSAccountState(database *scoredb.DictDB, address module.Address) (AccountState, error) {
+	as := NewAccountState()
+	if bs := database.Get(address); bs != nil {
+		if err := as.SetBytes(bs.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+	return as, nil
 }
 
 func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
@@ -125,7 +136,7 @@ func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
 
 type snapshotHolder struct {
 	database db.Database
-	state trie.Immutable
+	state    trie.Immutable
 }
 
 func (s *snapshotHolder) Bytes() []byte {
@@ -142,7 +153,7 @@ func NewSnapshotHolder(database db.Database, hash []byte) *snapshotHolder {
 
 type stateHolder struct {
 	database db.Database
-	state trie.Mutable
+	state    trie.Mutable
 }
 
 func (s *stateHolder) GetSnapshot() trie.Snapshot {
