@@ -126,6 +126,20 @@ func (s *ExtensionStateImpl) GetIISSAccountState(database *scoredb.DictDB, addre
 	return as, nil
 }
 
+func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {
+	return scoredb.NewDictDB(s.iissState, VarPRep, 1)
+}
+
+func (s *ExtensionStateImpl) GetIISSPRepState(database *scoredb.DictDB, address module.Address) (PRepState, error) {
+	ps := NewPRepState()
+	if bs := database.Get(address); bs != nil {
+		if err := ps.SetBytes(bs.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+	return ps, nil
+}
+
 func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
 	s := &ExtensionStateImpl{
 		database: database,

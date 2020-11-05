@@ -45,7 +45,9 @@ type chainScore struct {
 }
 
 const (
-	CIDForMainNet = 0xaf4e97
+	CIDForMainNet         = 0xaf4e97
+	StatusIllegalArgument = module.StatusReverted + iota
+	StatusNotFound
 )
 
 var chainMethods = []*chainMethod{
@@ -55,7 +57,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, 0, 0 },	// TODO change minVer to Revision5
+	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{scoreapi.Function, "getStake",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
@@ -64,7 +66,30 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, 0, 0 },	// TODO change minVer to Revision5
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "registerPRep",
+		scoreapi.FlagPayable | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"name", scoreapi.String, nil, nil},
+			{"email", scoreapi.String, nil, nil},
+			{"website", scoreapi.String, nil, nil},
+			{"country", scoreapi.String, nil, nil},
+			{"city", scoreapi.String, nil, nil},
+			{"details", scoreapi.String, nil, nil},
+			{"p2pEndpoint", scoreapi.String, nil, nil},
+			{"nodeAddress", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getPRep",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
 }
 
 func applyStepLimits(as state.AccountState, limits map[string]int64) error {
@@ -233,4 +258,30 @@ func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
 		return 0, err
 	}
 	return as.GetStake().Int64(), nil
+}
+func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
+	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
+	var err error
+	es := s.cc.GetExtensionState()
+	esi := es.(*iiss.ExtensionStateImpl)
+	pDB := esi.GetIISSPRepDB()
+	ps, err := esi.GetIISSPRepState(pDB, s.from)
+	if err != nil {
+		return err
+	}
+	if err = ps.SetPRep(name, email, website, country, city, details, p2pEndpoint, nodeAddress); err != nil {
+		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	}
+	return pDB.Set(s.from, ps.Bytes())
+}
+
+func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState()
+	esi := es.(*iiss.ExtensionStateImpl)
+	pDB := esi.GetIISSPRepDB()
+	ps, err := esi.GetIISSPRepState(pDB, address)
+	if err != nil {
+		return nil, err
+	}
+	return ps.GetPRep(), nil
 }
