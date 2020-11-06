@@ -1,0 +1,77 @@
+foundation/icon/ee/tooling/BasicOptimizerTest$Access -> A$B
+A$B.protectedMethod()V -> b
+A$B.packagePrivateMethod()V -> c
+A$B.privateMethod()V -> d
+A$B.publicMethod()V -> a
+A$B.publicField -> a
+A$B.protectedField -> b
+A$B.privateField -> d
+A$B.packagePrivateField -> c
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='externalMethod', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B {
+
+  // compiled from: BasicOptimizerTest.java
+
+  // access flags 0x1
+  public I a
+
+  // access flags 0x4
+  protected I b
+
+  // access flags 0x0
+  I c
+
+  // access flags 0x2
+  private I d
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public externalMethod()V
+    ALOAD 0
+    INVOKEVIRTUAL A$B.a ()V
+    ALOAD 0
+    INVOKEVIRTUAL A$B.b ()V
+    ALOAD 0
+    INVOKEVIRTUAL A$B.c ()V
+    ALOAD 0
+    INVOKEVIRTUAL A$B.d ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public a()V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 1
+
+  // access flags 0x4
+  protected b()V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 1
+
+  // access flags 0x0
+  c()V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 1
+
+  // access flags 0x2
+  private d()V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 1
+}
