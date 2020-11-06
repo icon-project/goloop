@@ -2,7 +2,9 @@ package foundation.icon.ee.test;
 
 import foundation.icon.ee.logger.EELogger;
 import foundation.icon.ee.score.TransactionExecutor;
+import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import org.aion.avm.core.AvmConfiguration;
+import org.aion.avm.utilities.JarBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,5 +74,14 @@ public class SimpleTest {
     @AfterAll
     public static void afterAll() {
         EELogger.setLogLevel(prevLogLevel);
+    }
+
+    public byte[] makeRelJar(Class<?>... args) {
+        var name = args[0].getName();
+        byte[] preopt = JarBuilder.buildJarForExplicitMainAndClasses(name, args);
+        return new OptimizedJarBuilder(false,
+                preopt, true)
+                .withUnreachableMethodRemover()
+                .withRenamer().getOptimizedBytes();
     }
 }

@@ -69,10 +69,15 @@ public class Renamer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
+    private static void dumpMapping(Map<String, String> mappedNames) {
+        mappedNames.forEach((k, v) -> System.out.format("%s -> %s%n", k, v));
+    }
+
     private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName,
                                                            String[] roots, String[] out_newMainName) throws Exception {
         // rename classes
         Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap);
+        dumpMapping(mappedNames);
         if (out_newMainName != null && out_newMainName.length > 0) {
             out_newMainName[0] = mappedNames.get(mainClassName);
         }
@@ -82,10 +87,12 @@ public class Renamer {
         String newMainClassName = mappedNames.get(mainClassName);
         Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(newMainClassName, getClassBytes(newClassNameMap), roots);
         mappedNames = MethodRenamer.renameMethods(newClassNameMap, classInfoMap, newMainClassName, roots);
+        dumpMapping(mappedNames);
         Map<String, ClassNode> newMethodNameMap = applyMapping(newClassNameMap, mappedNames);
 
         // rename fields
         mappedNames = FieldRenamer.renameFields(newMethodNameMap, classInfoMap);
+        dumpMapping(mappedNames);
         return applyMapping(newMethodNameMap, mappedNames);
     }
 
