@@ -14,12 +14,17 @@
 package iiss
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -126,6 +131,51 @@ func (s *ExtensionStateImpl) GetIISSAccountState(database *scoredb.DictDB, addre
 	return as, nil
 }
 
+func (s *ExtensionStateImpl) SetStake(cc contract.CallContext, from module.Address, v *big.Int) error {
+	aDB := s.GetIISSAccountDB()
+	as, err := s.GetIISSAccountState(aDB, from)
+	if err != nil {
+		return err
+	}
+	//stakeDiff := common.NewHexInt(0)
+	//if a.staked == nil {
+	//	stakeDiff = v
+	//} else {
+	//	stakeDiff.Sub(&v.Int, &a.staked.Int)
+	//}
+	//balance := account.GetBalance()
+	//
+	//switch stakeDiff.Sign() {
+	//case 0:
+	//	return nil
+	//case 1:
+	//	if balance.Cmp(&stakeDiff.Int) == -1 {
+	//		return errors.Errorf("Not enough balance")
+	//	}
+	//	//a.decreaseUnstake(stakeDiff)
+	//case -1:
+	//	//a.increaseUnstake(stakeDiff, )
+	//}
+	//
+	//account.SetBalance(new(big.Int).Sub(balance, &stakeDiff.Int))
+
+	if err = as.SetStake(v); err != nil {
+		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	}
+	return aDB.Set(from, as.Bytes())
+}
+
+func (s *ExtensionStateImpl) GetStake(address module.Address) (map[string]interface{}, error) {
+	aDB := s.GetIISSAccountDB()
+	as, err := s.GetIISSAccountState(aDB, address)
+	if err != nil {
+		return nil, err
+	}
+	data := make(map[string]interface{})
+	data["stake"] = as.GetStake()
+	return data, nil
+}
+
 func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {
 	return scoredb.NewDictDB(s.iissState, VarPRep, 1)
 }
@@ -138,6 +188,29 @@ func (s *ExtensionStateImpl) GetIISSPRepState(database *scoredb.DictDB, address 
 		}
 	}
 	return ps, nil
+}
+
+func (s *ExtensionStateImpl) RegisterPRep(cc contract.CallContext, from module.Address, name string, email string,
+	website string, country string, city string, details string, endpoint string, node module.Address,
+) error {
+	pDB := s.GetIISSPRepDB()
+	ps, err := s.GetIISSPRepState(pDB, from)
+	if err != nil {
+		return err
+	}
+	if err = ps.SetPRep(name, email, website, country, city, details, endpoint, node); err != nil {
+		return err
+	}
+	return pDB.Set(from, ps.Bytes())
+}
+
+func (s *ExtensionStateImpl) GetPRep(address module.Address) (map[string]interface{}, error) {
+	pDB := s.GetIISSPRepDB()
+	ps, err := s.GetIISSPRepState(pDB, address)
+	if err != nil {
+		return nil, err
+	}
+	return ps.GetPRep(), nil
 }
 
 func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {

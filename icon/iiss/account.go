@@ -14,10 +14,11 @@
 package iiss
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -31,7 +32,7 @@ type AccountState interface {
 	Bytes() []byte
 	SetBytes(bs []byte) error
 	Version() int
-	SetStake(account state.AccountState, v *common.HexInt) error
+	SetStake(v *big.Int) error
 	GetStake() *common.HexInt
 }
 
@@ -39,7 +40,7 @@ type accountStateImpl struct {
 	version		int
 	staked		*common.HexInt
 	//delegated	*common.HexInt
-	unstakes	[]*unstake
+	//unstakes	[]*unstake
 	//delegations []*Delegation
 	//bonds		[]*Bond
 	//unbondings	[]*Unbonding
@@ -49,17 +50,11 @@ func (a *accountStateImpl) Version() int {
 	return a.version
 }
 
-func (a *accountStateImpl) SetStake(as state.AccountState, v *common.HexInt) error {
-
-	if a.staked != nil && a.staked.Cmp(&v.Int) == 1 {
-		//unstakeAmount :=
-		//if len(a.unstakes) < maxUnstake {
-		//	append(a.unstakes, newUnstake())
-		//} else {
-		//
-		//}
+func (a *accountStateImpl) SetStake(v *big.Int) error {
+	if v.Sign() == -1 {
+		return errors.Errorf("negative stake is not allowed")
 	}
-	a.staked = v
+	a.staked = common.NewHexInt(v.Int64())
 
 	return nil
 }
@@ -115,21 +110,10 @@ func (a *accountStateImpl) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func NewAccountState() AccountState {
-	return &accountStateImpl{}
+	return &accountStateImpl{version: accountVersion}
 }
 
 type unstake struct {
 	amount *common.HexInt
 	expireHeight int64
-}
-
-func unstakeLockupPeriod() int64 {
-	return 0
-}
-
-func newUnstake(amount *common.HexInt, blockHeight int64) unstake {
-	return unstake{
-		amount: amount,
-		expireHeight: blockHeight + unstakeLockupPeriod(),
-	}
 }

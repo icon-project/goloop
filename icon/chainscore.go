@@ -52,7 +52,7 @@ const (
 
 var chainMethods = []*chainMethod{
 	{scoreapi.Method{scoreapi.Function, "setStake",
-		scoreapi.FlagExternal, 0,
+		scoreapi.FlagExternal | scoreapi.FlagPayable, 0,
 		[]scoreapi.Parameter{
 			{"value", scoreapi.Integer, nil, nil},
 		},
@@ -64,7 +64,7 @@ var chainMethods = []*chainMethod{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		[]scoreapi.DataType{
-			scoreapi.Integer,
+			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{scoreapi.Function, "registerPRep",
@@ -229,59 +229,42 @@ func newChainScore(cc contract.CallContext, from module.Address) (contract.Syste
 	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
 }
 
-// TODO decide followings - Done
+// TODO decide followings
 // 1. transfer stake ICX to system SCORE
-//		- (o) yes : state.AccountState.GetBalance(). transfer with value. need setStake JSON-RPC protocol modification?
-//		- no : state.AccountState.GetBalance() call iiss.AccountState.Getstate() and recalc balance
-// 2. who modify worldstate
-//		- (o) chain SCORE
+//		- yes : via 'addStake' and 'removeStake'
+//		- (o) no : like ICON1 via 'setStake'
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	aDB := esi.GetIISSAccountDB()
-	as, err := esi.GetIISSAccountState(aDB, s.from)
-	if err != nil {
-		return err
-	}
-	if err = as.SetStake(s.cc.GetAccountState(s.from.ID()), value); err != nil {
+	if err := esi.SetStake(s.cc, s.from, &value.Int); err != nil {
 		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
-	return aDB.Set(s.from, as.Bytes())
+	return nil
 }
 
-func (s *chainScore) Ex_getStake(address module.Address) (int64, error) {
+func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	aDB := esi.GetIISSAccountDB()
-	as, err := esi.GetIISSAccountState(aDB, address)
-	if err != nil {
-		return 0, err
+	if ret, err := esi.GetStake(address); err != nil {
+		return nil, scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	} else {
+		return ret, nil
 	}
-	return as.GetStake().Int64(), nil
 }
-func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
-	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
-	var err error
+func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string, city string,
+	details string, p2pEndpoint string, nodeAddress module.Address,
+) error {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	pDB := esi.GetIISSPRepDB()
-	ps, err := esi.GetIISSPRepState(pDB, s.from)
-	if err != nil {
-		return err
-	}
-	if err = ps.SetPRep(name, email, website, country, city, details, p2pEndpoint, nodeAddress); err != nil {
+	if err := esi.RegisterPRep(s.cc, s.from, name, email, website, country, city, details, p2pEndpoint, nodeAddress);
+		err != nil {
 		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
-	return pDB.Set(s.from, ps.Bytes())
+	return nil
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	pDB := esi.GetIISSPRepDB()
-	ps, err := esi.GetIISSPRepState(pDB, address)
-	if err != nil {
-		return nil, err
-	}
-	return ps.GetPRep(), nil
+	return esi.GetPRep(address)
 }
