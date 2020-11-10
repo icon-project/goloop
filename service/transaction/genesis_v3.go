@@ -163,7 +163,7 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 }
 
 func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
-	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(LimitTypeInvoke), false)
+	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(state.StepLimitTypeInvoke), false)
 	defer cc.Dispose()
 
 	as := cc.GetAccountState(state.SystemID)
@@ -197,7 +197,7 @@ func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Recei
 	}
 
 	cc.UpdateSystemInfo()
-	cc.ResetStepLimit(cc.GetStepLimit(LimitTypeInvoke))
+	cc.ResetStepLimit(cc.GetStepLimit(state.StepLimitTypeInvoke))
 
 	r := txresult.NewReceipt(cc.Database(), cc.Revision(), state.SystemAddress)
 	if err := g.installContracts(cc); err != nil {

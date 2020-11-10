@@ -89,7 +89,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	wcs := ctx.GetSnapshot()
 
 	limit := th.stepLimit
-	if invokeLimit := ctx.GetStepLimit(LimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
+	if invokeLimit := ctx.GetStepLimit(state.StepLimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
 		limit = invokeLimit
 	}
 

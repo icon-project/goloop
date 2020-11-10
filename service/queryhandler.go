@@ -46,7 +46,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 		}
 	}
 
-	limit := ctx.GetStepLimit(transaction.LimitTypeCall)
+	limit := ctx.GetStepLimit(state.StepLimitTypeQuery)
 	cc := contract.NewCallContext(ctx, limit, true)
 
 	if !cc.ApplySteps(state.StepTypeDefault, 1) {
