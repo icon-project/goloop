@@ -17,14 +17,13 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -118,11 +117,12 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 }
 
 func (s *ExtensionStateImpl) GetIISSAccountDB() *scoredb.DictDB {
+	// TODO wrap DB API
 	return scoredb.NewDictDB(s.iissState, VarAccount, 1)
 }
 
-func (s *ExtensionStateImpl) GetIISSAccountState(database *scoredb.DictDB, address module.Address) (AccountState, error) {
-	as := NewAccountState()
+func (s *ExtensionStateImpl) GetIISSAccount(database *scoredb.DictDB, address module.Address) (*Account, error) {
+	as := NewAccount()
 	if bs := database.Get(address); bs != nil {
 		if err := as.SetBytes(bs.Bytes()); err != nil {
 			return nil, err
@@ -133,47 +133,47 @@ func (s *ExtensionStateImpl) GetIISSAccountState(database *scoredb.DictDB, addre
 
 func (s *ExtensionStateImpl) SetStake(cc contract.CallContext, from module.Address, v *big.Int) error {
 	aDB := s.GetIISSAccountDB()
-	as, err := s.GetIISSAccountState(aDB, from)
+	ia, err := s.GetIISSAccount(aDB, from)
 	if err != nil {
 		return err
 	}
-	//stakeDiff := common.NewHexInt(0)
-	//if a.staked == nil {
-	//	stakeDiff = v
-	//} else {
-	//	stakeDiff.Sub(&v.Int, &a.staked.Int)
-	//}
-	//balance := account.GetBalance()
-	//
-	//switch stakeDiff.Sign() {
-	//case 0:
-	//	return nil
-	//case 1:
-	//	if balance.Cmp(&stakeDiff.Int) == -1 {
-	//		return errors.Errorf("Not enough balance")
-	//	}
-	//	//a.decreaseUnstake(stakeDiff)
-	//case -1:
-	//	//a.increaseUnstake(stakeDiff, )
-	//}
-	//
-	//account.SetBalance(new(big.Int).Sub(balance, &stakeDiff.Int))
-
-	if err = as.SetStake(v); err != nil {
-		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	staked := ia.GetStake()
+	stakeInc := new(big.Int).Sub(v, staked)
+	if stakeInc.Sign() == 0 {
+		return nil
 	}
-	return aDB.Set(from, as.Bytes())
+	account := cc.GetAccountState(from.ID())
+	balance := account.GetBalance()
+	// TODO check bonding amount
+	avail := new(big.Int).Add(balance, ia.GetUnstakeAmount())
+	if avail.Cmp(stakeInc) == -1 {
+		return errors.Errorf("Not enough balance")
+	}
+
+	expireHeight := s.calcUnstakeLockPeriod(cc.BlockHeight())
+	if err := ia.UpdateUnstake(stakeInc, expireHeight); err != nil {
+		return err
+	}
+	account.SetBalance(new(big.Int).Sub(balance, stakeInc))
+
+	if err = ia.SetStake(v); err != nil {
+		return err
+	}
+	return aDB.Set(from, ia.Bytes())
+}
+
+func (s *ExtensionStateImpl) calcUnstakeLockPeriod(blockHeight int64) int64 {
+	// TODO implement me
+	return blockHeight + 10
 }
 
 func (s *ExtensionStateImpl) GetStake(address module.Address) (map[string]interface{}, error) {
 	aDB := s.GetIISSAccountDB()
-	as, err := s.GetIISSAccountState(aDB, address)
+	as, err := s.GetIISSAccount(aDB, address)
 	if err != nil {
 		return nil, err
 	}
-	data := make(map[string]interface{})
-	data["stake"] = as.GetStake()
-	return data, nil
+	return as.GetStakeInfo()
 }
 
 func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {

@@ -229,10 +229,6 @@ func newChainScore(cc contract.CallContext, from module.Address) (contract.Syste
 	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
 }
 
-// TODO decide followings
-// 1. transfer stake ICX to system SCORE
-//		- yes : via 'addStake' and 'removeStake'
-//		- (o) no : like ICON1 via 'setStake'
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
@@ -251,6 +247,7 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 		return ret, nil
 	}
 }
+
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string, city string,
 	details string, p2pEndpoint string, nodeAddress module.Address,
 ) error {
