@@ -524,6 +524,8 @@ type chain struct {
 	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
 	MinimizeBlockGen   *common.HexInt16  `json:"minimizeBlockGen"`
 	DepositTerm        *common.HexInt64  `json:"depositTerm"`
+	DepositIssueRate   *common.HexInt64  `json:"depositIssueRate"`
+	FeeSharingEnabled  *common.HexInt16  `json:"feeSharingEnabled"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
@@ -559,6 +561,11 @@ func (s *ChainScore) Install(param []byte) error {
 	}
 	if len(chain.MemberList) > 0 {
 		confValue |= state.SysConfigMembership
+	}
+	if chain.FeeSharingEnabled != nil {
+		if chain.FeeSharingEnabled.Value != 0 {
+			confValue |= state.SysConfigFeeSharing
+		}
 	}
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
 		return err
@@ -600,7 +607,19 @@ func (s *ChainScore) Install(param []byte) error {
 	}
 
 	if chain.DepositTerm != nil {
+		if chain.DepositTerm.Value < 0 {
+			return scoreresult.IllegalFormatError.Errorf("InvalidDepositTerm(%s)", chain.DepositTerm)
+		}
 		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(chain.DepositTerm.Value); err != nil {
+			return err
+		}
+	}
+
+	if chain.DepositIssueRate != nil {
+		if chain.DepositIssueRate.Value < 0 {
+			return scoreresult.IllegalFormatError.Errorf("InvalidDepositIssueRate(%s)", chain.DepositIssueRate)
+		}
+		if err := scoredb.NewVarDB(as, state.VarDepositIssueRate).Set(chain.DepositIssueRate.Value); err != nil {
 			return err
 		}
 	}
@@ -1250,8 +1269,7 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		scoreStatus["next"] = nextContract
 	}
 
-	dc := contract.NewDepositContext(s.cc)
-	if di, err := as.GetDepositInfo(dc, module.JSONVersion3); err != nil {
+	if di, err := as.GetDepositInfo(s.cc, module.JSONVersion3); err != nil {
 		return nil, scoreresult.New(module.StatusUnknownFailure, "FailOnDepositInfo")
 	} else if di != nil {
 		scoreStatus["depositInfo"] = di

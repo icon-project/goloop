@@ -633,7 +633,7 @@ Returns the transaction information requested by transaction hash.
 | blockHeight | [T_INT](#T_INT)                                            | Block height where this transaction was in. Null when it is pending.                                    |
 | blockHash   | [T_HASH](#T_HASH)                                          | Hash of the block where this transaction was in. Null when it is pending.                               |
 | signature   | [T_SIG](#T_SIG)                                            | Signature of the transaction.                                                                           |
-| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)                                | Type of data. (call, deploy, or message)                                                                |
+| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)                                | Type of data. (call, deploy, message or deposit)                                                        |
 | data        | JSON object                                                | Contains various type of data depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 ### icx_sendTransaction
@@ -644,6 +644,7 @@ You can do one of the followings using this function.
 * Update the SCORE in the 'to' address.
 * Invoke a function of the SCORE in the 'to' address.
 * Transfer a message.
+* Change deposit of the SCORE.
 
 This function causes state transition.
 
@@ -776,6 +777,29 @@ This function causes state transition.
 }
 ```
 
+> Deposit add
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "icx_sendTransaction",
+    "id": 1234,
+    "params": {
+        "version": "0x3",
+        "from": "hxbe258ceb872e08851f1f59694dac2558708ece11",
+        "timestamp": "0x563a6cf330136",
+        "to": "cx2f501ff91ad48732673adf55a04f36d466cf269c",
+        "stepLimit": "0x50000000",
+        "nid": "0x3",
+        "nonce": "0x1",
+        "value": "0x10f0cf064dd59200000",
+        "dataType": "deposit",
+        "data": {
+            "action": "add",
+        }
+    }
+}
+```
+
 #### Parameters
 
 | KEY       | VALUE type                                                 | Required | Description                                                                                          |
@@ -789,7 +813,7 @@ This function causes state transition.
 | nid       | [T_INT](#T_INT)                                            | required | Network ID ("0x1" for Mainnet, "0x2" for Testnet, etc)                                               |
 | nonce     | [T_INT](#T_INT)                                            | optional | An arbitrary number used to prevent transaction hash collision.                                      |
 | signature | [T_SIG](#T_SIG)                                            | required | Signature of the transaction.                                                                        |
-| dataType  | [T_DATA_TYPE](#T_DATA_TYPE)                                | optional | Type of data. (call, deploy, or message)                                                             |
+| dataType  | [T_DATA_TYPE](#T_DATA_TYPE)                                | optional | Type of data. (call, deploy, message or deposit)                                                     |
 | data      | JSON object                                                | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 #### <a id ="sendtxparameterdata">Parameters - data</a>
@@ -817,6 +841,31 @@ It is used when installing or updating a SCORE, and `data` has dictionary value 
 ##### dataType == message
 
 It is used when transferring a message, and `data` has a HEX string.
+
+##### dataType == deposit
+
+It is used to change deposit.
+
+| KEY    | VALUE type        | Required | Description                     |
+|:-------|:------------------|:--------:|:--------------------------------|
+| action | String            | required | Action to do. ( add, withdraw ) |
+| id     | [T_HASH](#T_HASH) | optional | ID of the deposit to withdraw   |
+| amount | [T_INT](#T_INT)   | optional | Amount of deposit to withdraw   |
+
+While the `action` is `add`, it uses coin value for adding a limited deposit or
+increasing the unlimited deposit.
+The deposit would be used for paying used steps by the transaction.
+
+While the `action` is `withdraw`, `id` must be set for the limited deposit.
+Otherwise, it may set `amount` for partial withdrawal for the unlimited deposit.
+
+| Case                                 | data.action | data.id           | data.amount        | value         |
+|:-------------------------------------|:------------|:-----------------:|:-------------------|:--------------|
+| Add deposit                          | `add`       |                   |                    | amount to add |
+| Withdraw limited deposit             | `withdraw`  | ID of the deposit |                    |               |
+| Withdraw a part of unlimited deposit | `withdraw`  |                   | amount to withdraw |               |
+| Withdraw whole of unlimited deposit  | `withdraw`  |                   |                    |               |
+
 
 > Example responses
 

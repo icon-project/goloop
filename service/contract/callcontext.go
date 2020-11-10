@@ -491,7 +491,7 @@ type stepPayers struct {
 
 func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
 	as := cc.GetAccountState(p.payer.ID())
-	payed, err := as.PaySteps(NewDepositContext(cc), s)
+	payed, err := as.PaySteps(cc, s)
 	if err != nil {
 		return nil, err
 	}

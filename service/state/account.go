@@ -50,7 +50,7 @@ type AccountSnapshot interface {
 
 	GetObjGraph(flags bool) (int, []byte, []byte, error)
 
-	CanPay(height int64) bool
+	CanAcceptTx(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
@@ -90,10 +90,10 @@ type AccountState interface {
 	GetObjGraph(flags bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 
-	AddDeposit(dc DepositContext, value *big.Int, period int64) error
-	WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error)
+	AddDeposit(dc DepositContext, value *big.Int) error
+	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
 	PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error)
-	CanPay(height int64) bool
+	CanAcceptTx(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
@@ -343,8 +343,13 @@ func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, erro
 	return obj.nextHash, obj.graphHash, obj.graphData, nil
 }
 
-func (s *accountSnapshotImpl) CanPay(height int64) bool {
-	return s.deposits.CanPay(height)
+func (s *accountSnapshotImpl) CanAcceptTx(pc PayContext) bool {
+	if pc.FeeSharingEnabled() {
+		if s.deposits.Has() {
+			return s.deposits.CanPay(pc)
+		}
+	}
+	return true
 }
 
 func (s *accountSnapshotImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
@@ -807,12 +812,12 @@ func (s *accountStateImpl) ClearCache() {
 	}
 }
 
-func (s *accountStateImpl) AddDeposit(dc DepositContext, value *big.Int, period int64) error {
-	return s.deposits.AddDeposit(dc, value, period)
+func (s *accountStateImpl) AddDeposit(dc DepositContext, value *big.Int) error {
+	return s.deposits.AddDeposit(dc, value)
 }
 
-func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error) {
-	amount, fee, err := s.deposits.WithdrawDeposit(dc, id)
+func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error) {
+	amount, fee, err := s.deposits.WithdrawDeposit(dc, id, value)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -829,8 +834,13 @@ func (s *accountStateImpl) PaySteps(dc DepositContext, steps *big.Int) (*big.Int
 	return nil, nil
 }
 
-func (s *accountStateImpl) CanPay(height int64) bool {
-	return s.deposits.CanPay(height)
+func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
+	if pc.FeeSharingEnabled() {
+		if s.deposits.Has() {
+			return s.deposits.CanPay(pc)
+		}
+	}
+	return true
 }
 
 func (s *accountStateImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
@@ -945,11 +955,11 @@ func (a *accountROState) SetObjGraph(flags bool, nextHash int, objGraph []byte) 
 	return nil
 }
 
-func (a *accountROState) AddDeposit(dc DepositContext, value *big.Int, period int64) error {
+func (a *accountROState) AddDeposit(dc DepositContext, value *big.Int) error {
 	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error) {
+func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error) {
 	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 

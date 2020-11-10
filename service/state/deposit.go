@@ -19,24 +19,117 @@ package state
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"math/big"
-	"reflect"
 
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
+const (
+	DepositVersion1 int = iota
+	DepositVersion2
+)
+
+type depositImpl interface {
+	GetAvailableSteps(height int64) *big.Int
+	GetAvailableDeposit(height int64) *big.Int
+	GetUsableDeposit(height int64) *big.Int
+	Version() int
+	RLPDecodeFields(d codec.Decoder) error
+	RLPEncodeFields(e codec.Encoder) error
+	IsIdentifiedBy(id []byte) bool
+	ToJSON(version module.JSONVersion) interface{}
+	CanPay(height int64, feeLimit *big.Int) bool
+	Add(rate, price, value *big.Int) error
+	Withdraw(height int64, price, value *big.Int) (*big.Int, *big.Int, bool, error)
+	ConsumeSteps(height int64, steps *big.Int) *big.Int
+	ConsumeDepositLv1(height int64, amount *big.Int) *big.Int
+	ConsumeDepositLv2(height int64, amount *big.Int) *big.Int
+	Clone() depositImpl
+}
+
 type deposit struct {
-	ID             []byte
-	DepositAmount  *big.Int
-	DepositRemains *big.Int
-	CreatedHeight  int64
-	ExpireHeight   int64
-	StepIssued     *big.Int
-	StepRemains    *big.Int
-	NextHeight     int64
+	depositImpl
+}
+
+func (dp *deposit) Clone() *deposit {
+	return &deposit{dp.depositImpl.Clone()}
+}
+
+func (dp *deposit) RLPEncodeSelf(e codec.Encoder) error {
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	if err := e2.Encode(dp.depositImpl.Version()); err != nil {
+		return err
+	}
+	return dp.depositImpl.RLPEncodeFields(e2)
+}
+
+func (dp *deposit) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	var version int
+	if err := d2.Decode(&version); err != nil {
+		return err
+	}
+	switch version {
+	case DepositVersion1:
+		dp.depositImpl = new(depositV1)
+	case DepositVersion2:
+		dp.depositImpl = new(depositV2)
+	default:
+		return errors.CriticalFormatError.Errorf(
+			"InvalidDepositVersion(version=%d)", version)
+	}
+	return dp.depositImpl.RLPDecodeFields(d2)
+}
+
+type depositV1 struct {
+	ID            []byte
+	DepositAmount *big.Int
+	DepositRemain *big.Int
+	ExpireHeight  int64
+	StepIssued    *big.Int
+	StepRemain    *big.Int
+	isExhausted   bool
+}
+
+func (d *depositV1) Version() int {
+	return DepositVersion1
+}
+
+func (d *depositV1) RLPDecodeFields(dec codec.Decoder) error {
+	if _, err := dec.DecodeMulti(
+		&d.ID,
+		&d.DepositAmount,
+		&d.DepositRemain,
+		&d.ExpireHeight,
+		&d.StepIssued,
+		&d.StepRemain,
+	); err != nil {
+		return err
+	}
+	min := minDeposit(d.DepositAmount)
+	d.isExhausted = d.DepositRemain.Cmp(min) <= 0
+	return nil
+}
+
+func (d *depositV1) RLPEncodeFields(e codec.Encoder) error {
+	return e.EncodeMulti(
+		d.ID,
+		d.DepositAmount,
+		d.DepositRemain,
+		d.ExpireHeight,
+		d.StepIssued,
+		d.StepRemain,
+	)
 }
 
 var bigInt10 = big.NewInt(10)
@@ -56,334 +149,251 @@ func calcVirtualSteps(amount, rate, price *big.Int) *big.Int {
 	return issue
 }
 
-func (d *deposit) isInNewTerm(height int64) bool {
-	return d.NextHeight != 0 && height >= d.NextHeight
+func (d *depositV1) expireAt(height int64) bool {
+	return height >= d.ExpireHeight
 }
 
-func (d *deposit) expireAt(height int64) bool {
-	return d.ExpireHeight > 0 && height >= d.ExpireHeight
-}
-
-func (d *deposit) isExhausted() bool {
-	return d.NextHeight == 0
-}
-
-func (d *deposit) updateSteps(height, duration int64, rate, price *big.Int) {
-	if d.isInNewTerm(height) {
-		issue := calcVirtualSteps(d.DepositRemains, rate, price)
-		d.StepIssued = issue
-		d.StepRemains = issue
-
-		if duration != 0 {
-			heightDiff := duration + height - d.NextHeight
-			d.NextHeight += heightDiff - (heightDiff % duration)
-		} else {
-			d.NextHeight = 0
-		}
-	}
-}
-
-func (d *deposit) getAvailableSteps(height int64, rate, price *big.Int) *big.Int {
+func (d *depositV1) GetAvailableSteps(height int64) *big.Int {
 	if d.expireAt(height) {
 		return new(big.Int)
 	}
-	if d.isInNewTerm(height) {
-		return calcVirtualSteps(d.DepositRemains, rate, price)
-	} else {
-		return d.StepRemains
-	}
+	return d.StepRemain
 }
 
 // ConsumeSteps consume virtual steps issuing if it's required.
 // It returns remaining steps to pay
-func (d *deposit) ConsumeSteps(height, duration int64, rate, price, steps *big.Int) *big.Int {
+func (d *depositV1) ConsumeSteps(height int64, steps *big.Int) *big.Int {
 	if d.expireAt(height) {
 		return steps
 	}
 
-	d.updateSteps(height, duration, rate, price)
-	if d.StepRemains.BitLen() == 0 {
+	if d.StepRemain.BitLen() == 0 {
 		return steps
 	}
-	if d.StepRemains.Cmp(steps) < 0 {
-		steps = new(big.Int).Sub(steps, d.StepRemains)
-		d.StepRemains = new(big.Int)
+	if d.StepRemain.Cmp(steps) < 0 {
+		steps = new(big.Int).Sub(steps, d.StepRemain)
+		d.StepRemain = new(big.Int)
 		return steps
 	} else {
-		d.StepRemains = new(big.Int).Sub(d.StepRemains, steps)
+		d.StepRemain = new(big.Int).Sub(d.StepRemain, steps)
 		return new(big.Int)
 	}
 }
 
-func (d *deposit) getAvailableDeposit(height int64) *big.Int {
+func (d *depositV1) GetAvailableDeposit(height int64) *big.Int {
 	if d.expireAt(height) {
 		return new(big.Int)
 	}
-	return d.DepositRemains
+	return d.DepositRemain
 }
 
-func (d *deposit) getUsableDeposit(height int64) *big.Int {
+func (d *depositV1) GetUsableDeposit(height int64) *big.Int {
 	if d.expireAt(height) {
 		return new(big.Int)
 	}
 	min := minDeposit(d.DepositAmount)
-	if d.DepositRemains.Cmp(min) <= 0 {
+	if d.DepositRemain.Cmp(min) <= 0 {
 		return new(big.Int)
 	} else {
-		return new(big.Int).Sub(d.DepositRemains, min)
+		return new(big.Int).Sub(d.DepositRemain, min)
 	}
 }
 
 // ConsumeDepositLv1 pay fee with deposit.
 // It returns remaining fee to consume.
-func (d *deposit) ConsumeDepositLv1(height int64, amount *big.Int) *big.Int {
-	if d.expireAt(height) || d.isExhausted() {
+func (d *depositV1) ConsumeDepositLv1(height int64, amount *big.Int) *big.Int {
+	if d.expireAt(height) || d.isExhausted {
 		return amount
 	}
 
 	min := minDeposit(d.DepositAmount)
-	if d.DepositRemains.Cmp(min) <= 0 {
+	if d.DepositRemain.Cmp(min) <= 0 {
 		return amount
 	}
-	payable := new(big.Int).Sub(d.DepositRemains, min)
-	if payable.Cmp(amount) < 0 {
-		d.DepositRemains = new(big.Int).Sub(d.DepositRemains, payable)
+	payable := new(big.Int).Sub(d.DepositRemain, min)
+	if payable.Cmp(amount) <= 0 {
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, payable)
+		d.isExhausted = true
 		return new(big.Int).Sub(amount, payable)
 	} else {
-		d.DepositRemains = new(big.Int).Sub(d.DepositRemains, amount)
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, amount)
 		return new(big.Int)
 	}
 }
 
-func (d *deposit) ConsumeDepositLv2(height int64, amount *big.Int) *big.Int {
+func (d *depositV1) ConsumeDepositLv2(height int64, amount *big.Int) *big.Int {
 	if d.expireAt(height) {
 		return amount
 	}
-	d.NextHeight = 0
-	if d.DepositRemains.Cmp(amount) < 0 {
-		payable := d.DepositRemains
-		d.DepositRemains = new(big.Int)
+
+	if d.DepositRemain.Cmp(amount) < 0 {
+		payable := d.DepositRemain
+		d.DepositRemain = new(big.Int)
 		return new(big.Int).Sub(amount, payable)
 	} else {
-		d.DepositRemains = new(big.Int).Sub(d.DepositRemains, amount)
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, amount)
 		return new(big.Int)
 	}
 }
 
-func (d *deposit) CanPay(height int64) bool {
-	if d.expireAt(height) || d.isExhausted() {
+func (d *depositV1) CanPay(height int64, feeLimit *big.Int) bool {
+	if d.expireAt(height) || d.isExhausted {
 		return false
 	}
 	return true
 }
 
-func (d *deposit) ToJSON(height int64, rate, price *big.Int, v module.JSONVersion) interface{} {
+func (d *depositV1) ToJSON(v module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 	jso["id"] = "0x" + hex.EncodeToString(d.ID)
 	jso["depositAmount"] = intconv.FormatBigInt(d.DepositAmount)
-	depositUsed := new(big.Int).Sub(d.DepositAmount, d.DepositRemains)
+	depositUsed := new(big.Int).Sub(d.DepositAmount, d.DepositRemain)
 	jso["depositUsed"] = intconv.FormatBigInt(depositUsed)
-	jso["created"] = intconv.FormatInt(d.CreatedHeight)
 	jso["expires"] = intconv.FormatInt(d.ExpireHeight)
-	if d.isInNewTerm(height) && !d.expireAt(height) {
-		issued := intconv.FormatBigInt(d.getAvailableSteps(height, rate, price))
-		jso["virtualStepIssued"] = issued
-		jso["virtualStepUsed"] = "0x0"
-	} else {
-		jso["virtualStepIssued"] = intconv.FormatBigInt(d.StepIssued)
-		stepUsed := new(big.Int).Sub(d.StepIssued, d.StepRemains)
-		jso["virtualStepUsed"] = intconv.FormatBigInt(stepUsed)
-	}
+	jso["virtualStepIssued"] = intconv.FormatBigInt(d.StepIssued)
+	stepUsed := new(big.Int).Sub(d.StepIssued, d.StepRemain)
+	jso["virtualStepUsed"] = intconv.FormatBigInt(stepUsed)
 	return jso
 }
 
-type DepositContext interface {
-	StepPrice() *big.Int
-	BlockHeight() int64
-	DepositTerm() int64
-	DepositIssueRate() *big.Int
-	TransactionID() []byte
+func (d *depositV1) IsIdentifiedBy(id []byte) bool {
+	return bytes.Equal(d.ID, id)
 }
 
-type depositList []deposit
-
-func (dl depositList) Has() bool {
-	return len(dl) > 0
+func (d *depositV1) Add(rate, price, value *big.Int) error {
+	return scoreresult.UnknownFailureError.New("DuplicateDeposit")
 }
 
-func (dl depositList) Equal(di2 depositList) bool {
-	return reflect.DeepEqual([]deposit(dl), []deposit(di2))
-}
-
-func (dl depositList) Clone() depositList {
-	if dl == nil {
-		return nil
+func (d *depositV1) Withdraw(height int64, price, value *big.Int) (*big.Int, *big.Int, bool, error) {
+	if value != nil {
+		return nil, nil, false,
+			scoreresult.InvalidParameterError.New("PartialWithdrawIsDenied")
 	}
-	deposits := make([]deposit, len(dl))
-	copy(deposits, dl)
-	return depositList(deposits)
-}
-
-func (dl *depositList) AddDeposit(dc DepositContext, value *big.Int, period int64) error {
-	for _, dp := range *dl {
-		if bytes.Equal(dp.ID, dc.TransactionID()) {
-			return scoreresult.UnknownFailureError.New("DuplicateDeposit")
-		}
-	}
-	issue := calcVirtualSteps(value, dc.DepositIssueRate(), dc.StepPrice())
-	d := deposit{
-		ID:             dc.TransactionID(),
-		CreatedHeight:  dc.BlockHeight(),
-		ExpireHeight:   dc.BlockHeight() + dc.DepositTerm()*period,
-		NextHeight:     dc.BlockHeight() + dc.DepositTerm(),
-		DepositAmount:  value,
-		DepositRemains: value,
-		StepIssued:     issue,
-		StepRemains:    issue,
-	}
-	*dl = append(*dl, d)
-	return nil
-}
-
-// WithdrawDeposit withdraw the deposit specified by id.
-// It returns amount of deposit, fee to be charged and error object
-func (dl *depositList) WithdrawDeposit(dc DepositContext, id []byte) (*big.Int, *big.Int, error) {
-	deposits := *dl
-	for idx, dp := range deposits {
-		if bytes.Equal(dp.ID, id) {
-			// remove item from the list
-			copy(deposits[idx:], deposits[idx+1:])
-			deposits = deposits[0 : len(deposits)-1]
-			if len(deposits) > 0 {
-				*dl = deposits
-			} else {
-				*dl = nil
-			}
-
-			// refund
-			amount := dp.DepositRemains
-			penalty := new(big.Int)
-			bh := dc.BlockHeight()
-			if !(dp.expireAt(bh) || dp.isInNewTerm(bh)) {
-				penalty.Sub(dp.StepIssued, dp.StepRemains)
-				penalty.Mul(penalty, dc.StepPrice())
-				if penalty.Cmp(amount) <= 0 {
-					amount = new(big.Int).Sub(amount, penalty)
-				} else {
-					penalty = amount
-					amount = new(big.Int)
-				}
-			}
-			return amount, penalty, nil
+	amount := d.DepositRemain
+	penalty := new(big.Int)
+	if !d.expireAt(height) {
+		penalty.Sub(d.StepIssued, d.StepRemain)
+		penalty.Mul(penalty, price)
+		if penalty.Cmp(amount) <= 0 {
+			amount = new(big.Int).Sub(amount, penalty)
 		} else {
-			fmt.Printf("SKIP %#x", dp.ID)
+			penalty = amount
+			amount = new(big.Int)
 		}
 	}
-	return nil, nil, scoreresult.InvalidParameterError.New("DepositNotFound")
+	return amount, penalty, true, nil
 }
 
-func (dl depositList) getAvailableDeposit(bh int64) *big.Int {
-	deposit := new(big.Int)
-	for _, dp := range dl {
-		deposit.Add(deposit, dp.getAvailableDeposit(bh))
-	}
-	return deposit
+func (d *depositV1) Clone() depositImpl {
+	d2 := new(depositV1)
+	*d2 = *d
+	return d2
 }
 
-// PaySteps returns consumes virtual steps and also deposits.
-// It returns payed steps
-func (dl *depositList) PaySteps(dc DepositContext, steps *big.Int) *big.Int {
-	bh := dc.BlockHeight()
-	period := dc.DepositTerm()
-	rate := dc.DepositIssueRate()
-	price := dc.StepPrice()
-
-	// Unable to pay with non positive price or empty deposit list.
-	if price.Sign() <= 0 || !dl.Has() {
-		return nil
-	}
-
-	// pay steps with issued virtual steps
-	remains := steps
-	for idx, _ := range *dl {
-		dp := &(*dl)[idx]
-		remains = dp.ConsumeSteps(bh, period, rate, price, remains)
-		if remains.BitLen() == 0 {
-			return steps
-		}
-	}
-
-	// calculate fee to charge
-	deposit := dl.getAvailableDeposit(bh)
-	payableSteps := new(big.Int).Div(deposit, price)
-	var fee *big.Int
-	if payableSteps.Cmp(remains) < 0 {
-		fee = new(big.Int).Mul(payableSteps, price)
-		remains = new(big.Int).Sub(remains, payableSteps)
-	} else {
-		fee = new(big.Int).Mul(remains, price)
-		remains = new(big.Int)
-	}
-
-	// charge fee
-	for idx, _ := range *dl {
-		dp := &(*dl)[idx]
-		fee = dp.ConsumeDepositLv1(bh, fee)
-		if fee.BitLen() == 0 {
-			break
-		}
-	}
-	if fee.BitLen() != 0 {
-		for idx, _ := range *dl {
-			dp := &(*dl)[idx]
-			fee = dp.ConsumeDepositLv2(bh, fee)
-			if fee.BitLen() == 0 {
-				return steps
-			}
-		}
-	}
-
-	return new(big.Int).Sub(steps, remains)
+func newDepositV1(dc DepositContext, value *big.Int) (*depositV1, error) {
+	issue := calcVirtualSteps(value, dc.DepositIssueRate(), dc.StepPrice())
+	return &depositV1{
+		ID:            dc.TransactionID(),
+		ExpireHeight:  dc.BlockHeight() + dc.DepositTerm(),
+		DepositAmount: value,
+		DepositRemain: value,
+		StepIssued:    issue,
+		StepRemain:    issue,
+	}, nil
 }
 
-func (dl depositList) CanPay(height int64) bool {
-	if len(dl) > 0 {
-		for _, d := range dl {
-			if d.CanPay(height) {
-				return true
-			}
-		}
-		return false
-	}
-	return true
+type depositV2 struct {
+	DepositRemain *big.Int
 }
 
-func (dl depositList) ToJSON(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error) {
-	if len(dl) == 0 {
-		return nil, nil
+func (d *depositV2) ToJSON(version module.JSONVersion) interface{} {
+	return map[string]interface{}{
+		"depositRemain": intconv.FormatBigInt(d.DepositRemain),
 	}
-	jso := make(map[string]interface{})
-	deposits := make([]interface{}, len(dl))
-
-	availSteps := new(big.Int)
-	availDeps := new(big.Int)
-
-	bh := dc.BlockHeight()
-	rate := dc.DepositIssueRate()
-	price := dc.StepPrice()
-
-	for idx, p := range dl {
-		deposits[idx] = p.ToJSON(bh, rate, price, v)
-		availSteps.Add(availSteps, p.getAvailableSteps(bh, rate, price))
-		availDeps.Add(availDeps, p.getUsableDeposit(bh))
-	}
-	jso["deposits"] = deposits
-	jso["availableVirtualStep"] = intconv.FormatBigInt(availSteps)
-	jso["availableDeposit"] = intconv.FormatBigInt(availDeps)
-
-	return jso, nil
 }
 
-func newDepositList() depositList {
+func (d *depositV2) CanPay(height int64, feeLimit *big.Int) bool {
+	return d.DepositRemain.Cmp(feeLimit) >= 0
+}
+
+func (d *depositV2) GetAvailableSteps(height int64) *big.Int {
 	return nil
+}
+
+func (d *depositV2) GetAvailableDeposit(height int64) *big.Int {
+	return d.DepositRemain
+}
+
+func (d *depositV2) GetUsableDeposit(height int64) *big.Int {
+	return d.DepositRemain
+}
+
+func (d *depositV2) RLPDecodeFields(dec codec.Decoder) error {
+	return dec.Decode(&d.DepositRemain)
+}
+
+func (d *depositV2) RLPEncodeFields(e codec.Encoder) error {
+	return e.Encode(d.DepositRemain)
+}
+
+func (d *depositV2) IsIdentifiedBy(id []byte) bool {
+	return len(id) == 0
+}
+
+func (d *depositV2) Add(rate, price, value *big.Int) error {
+	d.DepositRemain = new(big.Int).Add(d.DepositRemain, value)
+	return nil
+}
+
+func (d *depositV2) Withdraw(height int64, price, value *big.Int) (*big.Int, *big.Int, bool, error) {
+	amount := value
+	if amount == nil {
+		amount = d.DepositRemain
+	}
+	if cmp := d.DepositRemain.Cmp(amount); cmp > 0 {
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, value)
+		return value, new(big.Int), false, nil
+	} else if cmp == 0 {
+		if value != nil {
+			d.DepositRemain = new(big.Int)
+		}
+		return amount, new(big.Int), value == nil, nil
+	} else {
+		return nil, nil, false, scoreresult.OutOfBalanceError.New("NotEnoughBalance")
+	}
+}
+
+func (d *depositV2) ConsumeSteps(height int64, steps *big.Int) *big.Int {
+	return steps
+}
+
+func (d *depositV2) ConsumeDepositLv1(height int64, amount *big.Int) *big.Int {
+	if d.DepositRemain.Cmp(amount) <= 0 {
+		remains := new(big.Int).Sub(d.DepositRemain, amount)
+		d.DepositRemain = new(big.Int)
+		return remains
+	} else {
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, amount)
+		return new(big.Int)
+	}
+}
+
+func (d *depositV2) ConsumeDepositLv2(height int64, amount *big.Int) *big.Int {
+	return amount
+}
+
+func (d *depositV2) Version() int {
+	return DepositVersion2
+}
+
+func (d *depositV2) Clone() depositImpl {
+	d2 := new(depositV2)
+	*d2 = *d
+	return d2
+}
+
+func newDepositV2(dc DepositContext, value *big.Int) (*depositV2, error) {
+	return &depositV2{
+		DepositRemain: value,
+	}, nil
 }

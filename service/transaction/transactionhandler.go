@@ -147,7 +147,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 
 	stepAll := stepUsed
 	var redeemed *big.Int
-	if stepPrice.Sign() > 0 {
+	if cc.FeeSharingEnabled() && stepPrice.Sign() > 0 {
 		var err error
 		redeemed, err = cc.RedeemSteps(stepUsed)
 		if err != nil {
