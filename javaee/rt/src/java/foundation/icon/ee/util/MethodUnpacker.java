@@ -24,8 +24,11 @@ import org.msgpack.core.MessageUnpacker;
 import java.io.IOException;
 
 public class MethodUnpacker {
-
     public static Method[] readFrom(byte[] data) throws IOException {
+        return readFrom(data, true);
+    }
+
+    public static Method[] readFrom(byte[] data, boolean longForm) throws IOException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
         int size = unpacker.unpackArrayHeader();
         Method[] methods = new Method[size];
@@ -42,17 +45,23 @@ public class MethodUnpacker {
             Method.Parameter[] params = new Method.Parameter[inputSize];
             if (inputSize > 0) {
                 for (int j = 0; j < indexed; j++) {
-                    params[j] = getParameter(unpacker, false);
+                    params[j] = getParameter(unpacker, false, longForm);
                 }
                 for (int j = indexed; j < inputSize; j++) {
-                    params[j] = getParameter(unpacker, type == MethodType.FUNCTION);
+                    params[j] = getParameter(unpacker,
+                            type == MethodType.FUNCTION, longForm);
                 }
             }
             int output = unpacker.unpackArrayHeader();
             String outputDescriptor = "V";
             if (output != 0) {
                 output = unpacker.unpackInt();
-                outputDescriptor = unpacker.unpackString();
+                if (longForm) {
+                    outputDescriptor = unpacker.unpackString();
+                }
+            }
+            if (!longForm) {
+                outputDescriptor = "";
             }
             if (type == MethodType.FUNCTION) {
                 methods[i] = Method.newFunction(name, flags, inputSize - indexed, params, output, outputDescriptor);
@@ -71,10 +80,14 @@ public class MethodUnpacker {
         return methods;
     }
 
-    private static Method.Parameter getParameter(MessageUnpacker unpacker, boolean optional) throws IOException {
-        unpacker.unpackArrayHeader(); // 4
+    private static Method.Parameter getParameter(MessageUnpacker unpacker,
+            boolean optional, boolean longForm) throws IOException {
+        unpacker.unpackArrayHeader(); // 3 or 4 (longForm)
         String paramName = unpacker.unpackString();
-        String paramDescriptor = unpacker.unpackString();
+        String paramDescriptor = "";
+        if (longForm) {
+            paramDescriptor = unpacker.unpackString();
+        }
         int paramType = unpacker.unpackInt();
         unpacker.unpackValue(); // value ignored
         return new Method.Parameter(paramName, paramDescriptor, paramType, optional);
