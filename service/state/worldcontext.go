@@ -34,6 +34,7 @@ const (
 	VarMinimizeBlockGen   = "minimize_block_gen"
 	VarTxHashToAddress    = "tx_to_address"
 	VarDepositTerm        = "deposit_term"
+	VarDepositIssueRate   = "deposit_issue_rate"
 )
 
 const (
@@ -46,7 +47,7 @@ const (
 	SysConfigDeployerWhiteList
 	SysConfigScorePackageValidator
 	SysConfigMembership
-	SysConfigMax
+	SysConfigFeeSharing
 )
 
 const (
@@ -71,6 +72,10 @@ var (
 	SystemAddress = common.NewContractAddress(SystemID)
 )
 
+var (
+	defaultDepositIssueRate = big.NewInt(8)
+)
+
 type WorldContext interface {
 	WorldState
 	Revision() module.Revision
@@ -90,12 +95,15 @@ type WorldContext interface {
 	GetTransactionInfo(ti *TransactionInfo) bool
 	TransactionID() []byte
 	SetContractInfo(si *ContractInfo)
+	DepositIssueRate() *big.Int
+	FeeLimit() *big.Int
 	DepositTerm() int64
 	UpdateSystemInfo()
 
 	IsDeployer(addr string) bool
 	FeeEnabled() bool
 	AuditEnabled() bool
+	FeeSharingEnabled() bool
 	DeployerWhiteListEnabled() bool
 	PackageValidatorEnabled() bool
 	MembershipEnabled() bool
@@ -173,7 +181,7 @@ type systemStorageInfo struct {
 	sysConfig    int64
 	stepCostInfo *codec.TypedObj
 	revision     module.Revision
-	depositTerm  int64
+	feeLimit     *big.Int
 }
 
 func (si *systemStorageInfo) Update(wc *worldContext) bool {
@@ -215,9 +223,13 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 		}
 	}
 	si.stepLimit = stepLimit
+	if stepPrice == nil || stepPrice.Sign() == 0 {
+		si.feeLimit = new(big.Int)
+	} else {
+		si.feeLimit = new(big.Int).Mul(stepPrice, big.NewInt(stepLimit[StepLimitTypeInvoke]))
+	}
 
 	si.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
-	si.depositTerm = scoredb.NewVarDB(as, VarDepositTerm).Int64()
 	return true
 }
 
@@ -225,8 +237,18 @@ func (c *worldContext) Revision() module.Revision {
 	return c.systemInfo.revision
 }
 
+func (c *worldContext) DepositIssueRate() *big.Int {
+	ss := scoredb.NewStateStoreWith(c.systemInfo.ass)
+	if r := scoredb.NewVarDB(ss, VarDepositIssueRate).BigInt(); r != nil {
+		return r
+	} else {
+		return defaultDepositIssueRate
+	}
+}
+
 func (c *worldContext) DepositTerm() int64 {
-	return c.systemInfo.depositTerm
+	ss := scoredb.NewStateStoreWith(c.systemInfo.ass)
+	return scoredb.NewVarDB(ss, VarDepositTerm).Int64()
 }
 
 func (c *worldContext) ToRevision(value int) module.Revision {
@@ -243,6 +265,10 @@ func (c *worldContext) StepsFor(t StepType, n int) int64 {
 
 func (c *worldContext) StepPrice() *big.Int {
 	return c.systemInfo.stepPrice
+}
+
+func (c *worldContext) FeeLimit() *big.Int {
+	return c.systemInfo.feeLimit
 }
 
 func (c *worldContext) GetStepLimit(t string) *big.Int {
@@ -265,6 +291,10 @@ func (c *worldContext) AuditEnabled() bool {
 		return false
 	}
 	return true
+}
+
+func (c *worldContext) FeeSharingEnabled() bool {
+	return (c.systemInfo.sysConfig & SysConfigFeeSharing) != 0
 }
 
 func (c *worldContext) DeployerWhiteListEnabled() bool {

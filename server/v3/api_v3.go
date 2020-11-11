@@ -17,6 +17,7 @@ import (
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -982,6 +983,11 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	if status := rct.Status(); status != module.StatusSuccess {
+		if rctex, ok := rct.(txresult.Receipt); ok {
+			if err := rctex.Reason(); err != nil {
+				return nil, jsonrpc.ErrScore(rctex.Reason(), debug)
+			}
+		}
 		return nil, jsonrpc.ErrScoreWithStatus(status)
 	}
 	steps := new(common.HexInt)

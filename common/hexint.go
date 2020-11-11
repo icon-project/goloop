@@ -59,6 +59,13 @@ func (i *HexInt) SetBytes(bs []byte) *big.Int {
 	return intconv.BigIntSetBytes(&i.Int, bs)
 }
 
+func (i *HexInt) Value() *big.Int {
+	if i == nil {
+		return nil
+	}
+	return &i.Int
+}
+
 func NewHexInt(v int64) *HexInt {
 	i := new(HexInt)
 	i.SetInt64(v)

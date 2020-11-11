@@ -89,7 +89,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	wcs := ctx.GetSnapshot()
 
 	limit := th.stepLimit
-	if invokeLimit := ctx.GetStepLimit(LimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
+	if invokeLimit := ctx.GetStepLimit(state.StepLimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
 		limit = invokeLimit
 	}
 
@@ -147,7 +147,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 
 	stepAll := stepUsed
 	var redeemed *big.Int
-	if stepPrice.Sign() > 0 {
+	if cc.FeeSharingEnabled() && stepPrice.Sign() > 0 {
 		var err error
 		redeemed, err = cc.RedeemSteps(stepUsed)
 		if err != nil {
@@ -203,6 +203,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		receipt.AddPayment(th.from, stepUsed)
 	}
 	receipt.SetResult(s, stepAll, stepPrice, addr)
+	receipt.SetReason(status)
 
 	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepAll, stepPrice)
 

@@ -19,7 +19,6 @@ package contract
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -37,11 +36,11 @@ const (
 )
 
 var depositMinimumValue, _ = new(big.Int).SetString("5000000000000000000000", 10)
-var depositIssueRate = big.NewInt(8)
 
 type DepositJSON struct {
 	Action string           `json:"action"`
 	ID     *common.HexBytes `json:"id,omitempty"`
+	Amount *common.HexInt   `json:"amount,omitempty"`
 }
 
 func ParseDepositData(data []byte) (*DepositJSON, error) {
@@ -52,18 +51,6 @@ func ParseDepositData(data []byte) (*DepositJSON, error) {
 		return nil, err
 	}
 	return jso, nil
-}
-
-type depositContext struct {
-	CallContext
-}
-
-func (*depositContext) DepositIssueRate() *big.Int {
-	return depositIssueRate
-}
-
-func NewDepositContext(cc CallContext) state.DepositContext {
-	return &depositContext{cc}
 }
 
 type DepositHandler struct {
@@ -114,15 +101,25 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 
 	switch h.data.Action {
 	case DepositActionAdd:
+		if !cc.FeeSharingEnabled() {
+			return scoreresult.MethodNotFoundError.New("NotSupported"), nil, nil
+		}
+
 		if h.data.ID != nil {
 			return scoreresult.InvalidParameterError.New("UnknownField(id)"), nil, nil
 		}
-		if h.value == nil || h.value.Cmp(depositMinimumValue) < 0 {
+		if h.value == nil || h.value.Sign() == -1 {
 			return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
 		}
 
-		if cc.DepositTerm() == 0 {
-			return scoreresult.MethodNotFoundError.New("NotSupported"), nil, nil
+		id := cc.TransactionID()
+		term := cc.DepositTerm()
+		if term > 0 {
+			if h.value.Cmp(depositMinimumValue) < 0 {
+				return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
+			}
+		} else {
+			id = []byte{}
 		}
 
 		bal1 := as1.GetBalance()
@@ -131,36 +128,40 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		}
 
 		as1.SetBalance(new(big.Int).Sub(bal1, h.value))
-		dc := NewDepositContext(cc)
-		period := int64(1)
-		if err := as2.AddDeposit(dc, h.value, period); err != nil {
+		if err := as2.AddDeposit(cc, h.value); err != nil {
 			return err, nil, nil
 		}
 		cc.OnEvent(h.to, [][]byte{
-			[]byte("DepositAdd(bytes,Address,Address,int,int)"),
-			cc.TransactionID(),
+			[]byte("DepositAdded(bytes,Address,Address,int,int)"),
+			id,
 			h.to.Bytes(),
 			h.from.Bytes(),
 		}, [][]byte{
 			intconv.BigIntToBytes(h.value),
-			intconv.Int64ToBytes(dc.DepositTerm() * period),
+			intconv.Int64ToBytes(term),
 		})
 		return nil, nil, nil
 	case DepositActionWithdraw:
-		if h.data.ID == nil {
-			return scoreresult.InvalidParameterError.New("IDNotFoundForWithdraw"), nil, nil
+		if h.value != nil && h.value.Sign() != 0 {
+			return scoreresult.MethodNotPayableError.Errorf(
+				"NotPayable(value=%d)", h.value), nil, nil
 		}
-		fmt.Printf("ID:%#x\n", h.data.ID.Bytes())
-		dc := NewDepositContext(cc)
-		if amount, fee, err := as2.WithdrawDeposit(dc, h.data.ID.Bytes()); err != nil {
+
+		id := h.data.ID.Bytes()
+		value := h.data.Amount.Value()
+		if id == nil {
+			id = []byte{}
+		}
+
+		if amount, fee, err := as2.WithdrawDeposit(cc, id, value); err != nil {
 			return err, nil, nil
 		} else {
 			treasury := cc.GetAccountState(cc.Treasury().ID())
 			treasury.SetBalance(new(big.Int).Add(treasury.GetBalance(), fee))
 
 			cc.OnEvent(h.to, [][]byte{
-				[]byte("DepositWithdraw(bytes,Address,Address,int,int)"),
-				h.data.ID.Bytes(),
+				[]byte("DepositWithdrawn(bytes,Address,Address,int,int)"),
+				id,
 				h.to.Bytes(),
 				h.from.Bytes(),
 			}, [][]byte{

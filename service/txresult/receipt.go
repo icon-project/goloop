@@ -159,6 +159,7 @@ type receipt struct {
 	db        db.Database
 	data      receiptData
 	eventLogs trie.ImmutableForObject
+	reason    error
 }
 
 func (r *receipt) SCOREAddress() module.Address {
@@ -385,6 +386,8 @@ type Receipt interface {
 	AddPayment(addr module.Address, steps *big.Int)
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
 	SetResult(status module.Status, used, price *big.Int, addr module.Address)
+	SetReason(e error)
+	Reason() error
 }
 
 type receiptJSON struct {
@@ -528,6 +531,14 @@ func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr mod
 	if r.version >= Version3 {
 		r.data.FeeDetail.Normalize()
 	}
+}
+
+func (r *receipt) SetReason(e error) {
+	r.reason = e
+}
+
+func (r *receipt) Reason() error {
+	return r.reason
 }
 
 func (r *receipt) CumulativeStepUsed() *big.Int {

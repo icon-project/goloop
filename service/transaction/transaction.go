@@ -13,16 +13,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-const (
-	LimitTypeInvoke = "invoke"
-	LimitTypeCall   = "query"
-)
-
-var AllLimitTypes = []string{
-	LimitTypeInvoke,
-	LimitTypeCall,
-}
-
 // TODO It assumes normal transaction. When supporting patch, add skipping
 // timestamp checking for it at PreValidate().
 type Transaction interface {

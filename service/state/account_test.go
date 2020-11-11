@@ -84,6 +84,7 @@ func TestAccountState_DepositTest(t *testing.T) {
 	tid1 := []byte{0x00}
 	// tid2 := []byte{0x01}
 	dc := &depositContext{
+		rate:   defaultDepositIssueRate,
 		price:  big.NewInt(100),
 		height: 10,
 		period: 100,
@@ -95,7 +96,7 @@ func TestAccountState_DepositTest(t *testing.T) {
 	as := newAccountState(database, nil, nil, false)
 	as.InitContractAccount(sender)
 
-	err := as.AddDeposit(dc, amount, 1)
+	err := as.AddDeposit(dc, amount)
 	assert.NoError(t, err)
 
 	ass := as.GetSnapshot()
@@ -108,7 +109,7 @@ func TestAccountState_DepositTest(t *testing.T) {
 	as2 := newAccountState(database, ass2, nil, false)
 
 	dc.height += 1
-	am, fee, err := as2.WithdrawDeposit(dc, tid1)
+	am, fee, err := as2.WithdrawDeposit(dc, tid1, nil)
 	assert.NoError(t, err)
 	assert.True(t, fee.Sign() == 0)
 	assert.True(t, am.Cmp(amount) == 0)
