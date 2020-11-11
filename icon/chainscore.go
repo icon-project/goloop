@@ -39,9 +39,10 @@ type chainMethod struct {
 }
 
 type chainScore struct {
-	cc   contract.CallContext
-	from module.Address
-	log  log.Logger
+	cc    contract.CallContext
+	log   log.Logger
+	from  module.Address
+	value *big.Int
 }
 
 const (
@@ -72,8 +73,8 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.Parameter{
 			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
-					{"address", scoreapi.String, nil },
-					{"value", scoreapi.Integer, nil },
+					{"address", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
 				},
 			},
 		},
@@ -246,8 +247,8 @@ func (s *chainScore) GetAPI() *scoreapi.Info {
 	return scoreapi.NewInfo(methods[:j])
 }
 
-func newChainScore(cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
-	return &chainScore{cc: cc, from: from, log: cc.Logger()}, nil
+func newChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
+	return &chainScore{cc: cc, from: from, value: value, log: cc.Logger()}, nil
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
@@ -293,8 +294,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 ) error {
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
-	if err := esi.RegisterPRep(s.cc, s.from, name, email, website, country, city, details, p2pEndpoint, nodeAddress);
-		err != nil {
+	if err := esi.RegisterPRep(s.cc, s.from, name, email, website, country, city, details, p2pEndpoint, nodeAddress); err != nil {
 		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
 	return nil
