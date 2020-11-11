@@ -87,7 +87,7 @@ public class Method {
         public String toString() {
             return "Parameter{" +
                     "name='" + name + '\'' +
-                    ", descriptor=" + descriptor +
+                    (descriptor.isEmpty() ? "" : ", descriptor=" + descriptor) +
                     ", type=" + type +
                     ", optional=" + optional +
                     '}';
@@ -167,7 +167,7 @@ public class Method {
                 ", indexed=" + indexed +
                 ", inputs=" + Arrays.toString(inputs) +
                 ", output=" + output +
-                ", outputDescriptor=" + outputDescriptor +
+                (outputDescriptor.isEmpty() ? "" : ", outputDescriptor=" + outputDescriptor) +
                 '}';
     }
 

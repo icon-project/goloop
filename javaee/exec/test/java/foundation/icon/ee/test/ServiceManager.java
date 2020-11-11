@@ -132,17 +132,25 @@ public class ServiceManager implements Agent {
     }
 
     private Method[] getAPI(String path) throws IOException {
+        printf("SEND getAPI %s%n", path);
         proxy.sendMessage(EEProxy.MsgType.GETAPI, path);
         var msg = waitFor(EEProxy.MsgType.GETAPI);
         var packer = MessagePack.newDefaultBufferPacker();
         var arr = msg.value.asArrayValue();
         var status = arr.get(0).asIntegerValue().asInt();
         if (status!=0) {
+            printf("RECV getAPI status=%d%n", status);
             return null;
         }
         var methods = arr.get(1);
         methods.writeTo(packer);
-        return MethodUnpacker.readFrom(packer.toByteArray(), false);
+        var res = MethodUnpacker.readFrom(packer.toByteArray(), false);
+        printf("RECV getAPI status=%d methods=[%n", status);
+        for (var m : res) {
+            printf("    %s%n", m);
+        }
+        printf("]%n");
+        return res;
     }
 
     private Contract doDeploy(byte[] jar, Object ... params) {

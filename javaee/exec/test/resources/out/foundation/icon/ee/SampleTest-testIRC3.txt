@@ -13,6 +13,24 @@ Method{type=2, name='Transfer', flags=0, indexed=3, inputs=[Parameter{name='_fro
 Method{type=2, name='Approval', flags=0, indexed=3, inputs=[Parameter{name='_owner', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_approved', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_tokenId', descriptor=Ljava/math/BigInteger;, type=1, optional=false}], output=0, outputDescriptor=V}
 Method{type=0, name='<init>', flags=0, indexed=2, inputs=[Parameter{name='_name', descriptor=Ljava/lang/String;, type=2, optional=false}, Parameter{name='_symbol', descriptor=Ljava/lang/String;, type=2, optional=false}], output=0, outputDescriptor=V}
 Method{type=0, name='mint', flags=2, indexed=1, inputs=[Parameter{name='_tokenId', descriptor=Ljava/math/BigInteger;, type=1, optional=false}], output=0, outputDescriptor=V}
+SEND getAPI 010001
+RECV getAPI status=0 methods=[
+    Method{type=0, name='name', flags=3, indexed=0, inputs=[], output=2}
+    Method{type=0, name='symbol', flags=3, indexed=0, inputs=[], output=2}
+    Method{type=0, name='balanceOf', flags=3, indexed=1, inputs=[Parameter{name='_owner', type=5, optional=false}], output=1}
+    Method{type=0, name='ownerOf', flags=3, indexed=1, inputs=[Parameter{name='_tokenId', type=1, optional=false}], output=5}
+    Method{type=0, name='getApproved', flags=3, indexed=1, inputs=[Parameter{name='_tokenId', type=1, optional=false}], output=5}
+    Method{type=0, name='approve', flags=2, indexed=2, inputs=[Parameter{name='_to', type=5, optional=false}, Parameter{name='_tokenId', type=1, optional=false}], output=0}
+    Method{type=0, name='transfer', flags=2, indexed=2, inputs=[Parameter{name='_to', type=5, optional=false}, Parameter{name='_tokenId', type=1, optional=false}], output=0}
+    Method{type=0, name='transferFrom', flags=2, indexed=3, inputs=[Parameter{name='_from', type=5, optional=false}, Parameter{name='_to', type=5, optional=false}, Parameter{name='_tokenId', type=1, optional=false}], output=0}
+    Method{type=0, name='totalSupply', flags=3, indexed=0, inputs=[], output=1}
+    Method{type=0, name='tokenByIndex', flags=3, indexed=1, inputs=[Parameter{name='_index', type=1, optional=false}], output=1}
+    Method{type=0, name='tokenOfOwnerByIndex', flags=3, indexed=2, inputs=[Parameter{name='_owner', type=5, optional=false}, Parameter{name='_index', type=1, optional=false}], output=1}
+    Method{type=2, name='Transfer', flags=0, indexed=3, inputs=[Parameter{name='_from', type=5, optional=false}, Parameter{name='_to', type=5, optional=false}, Parameter{name='_tokenId', type=1, optional=false}], output=0, outputDescriptor=V}
+    Method{type=2, name='Approval', flags=0, indexed=3, inputs=[Parameter{name='_owner', type=5, optional=false}, Parameter{name='_approved', type=5, optional=false}, Parameter{name='_tokenId', type=1, optional=false}], output=0, outputDescriptor=V}
+    Method{type=0, name='<init>', flags=0, indexed=2, inputs=[Parameter{name='_name', type=2, optional=false}, Parameter{name='_symbol', type=2, optional=false}], output=0}
+    Method{type=0, name='mint', flags=2, indexed=1, inputs=[Parameter{name='_tokenId', type=1, optional=false}], output=0}
+]
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[MyNFT NFT] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=17 hash=4d0e41997bb6adc299aaece5f915dc19b7aeba0110fe21d30c9ea5200cdc093d graphLen=675 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x16example.IRC3BasicToken\x00\x00\x00\x0b\x03\x00\x00\x00\x08\x03\x00\x00\x00\x09\x03\x00\x00\x00\x0a\x03\x00\x00\x00\x0b\x03\x00\x00\x00\x0c\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x1dApproval(Address,Address,int)\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x12Non-existent token\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x1dTransfer(Address,Address,int)\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x09approvals\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x07holders\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x06owners\x0dscore.Address\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0cpi.AnyDBImpl\x00\x00\x00\x0c\x00\x00\x00\x09\x00\x87holders\x01\x14java.math.BigInteger\x10java.lang.String\x00\x00\x00\x09\x00\x00\x00\x05MyNFT\x10java.lang.String\x00\x00\x00\x0a\x00\x00\x00\x03NFT\x0cpi.AnyDBImpl\x00\x00\x00\x10\x00\x00\x00\x0b\x00\x89approvals\x01\x0dscore.Address\x1dexample.util.EnumerableIntMap\x00\x00\x00\x0d\x03\x00\x00\x00\x0d\x03\x00\x00\x00\x0e\x0cpi.AnyDBImpl\x00\x00\x00\x0e\x00\x00\x00\x08\x00\x86owners\x01\x14java.math.BigInteger\x0cpi.AnyDBImpl\x00\x00\x00\x0f\x00\x00\x00\x08\x00\x86owners\x01\x0dscore.Address
 RECV result status=0 stepUsed=56206 ret=<null>
