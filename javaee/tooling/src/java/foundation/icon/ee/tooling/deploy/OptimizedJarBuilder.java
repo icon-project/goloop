@@ -5,6 +5,7 @@
 
 package foundation.icon.ee.tooling.deploy;
 
+import foundation.icon.ee.struct.Member;
 import foundation.icon.ee.tooling.abi.ABICompiler;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.util.MethodPacker;
@@ -20,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarInputStream;
 
 public class OptimizedJarBuilder {
@@ -29,6 +31,9 @@ public class OptimizedJarBuilder {
     private boolean classAndFieldRenamerEnabled;
     private final byte[] dappBytes;
     private final List<Method> callables;
+    private final Set<String> rootClasses;
+    private final Map<String, List<Member>> keptMethods;
+    private final Map<String, List<Member>> keptFields;
 
     /**
      * Initializes a new instance of OptimizedJarBuilder, which allows desired optimization steps to be enabled and performed
@@ -44,6 +49,9 @@ public class OptimizedJarBuilder {
         ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes, stripLineNumber);
         dappBytes = compiler.getJarFileBytes();
         callables = compiler.getCallables();
+        rootClasses = compiler.getRootClasses();
+        keptMethods = compiler.getKeptMethods();
+        keptFields = compiler.getKeptFields();
     }
 
     /**
@@ -71,19 +79,15 @@ public class OptimizedJarBuilder {
      */
     public byte[] getOptimizedBytes() {
         JarOptimizer jarOptimizer = new JarOptimizer(debugModeEnabled);
-        byte[] optimizedDappBytes = jarOptimizer.optimize(dappBytes);
-        // Do not rename external methods
-        String[] roots = new String[callables.size()];
-        for (int i = 0; i < roots.length; i++) {
-            var c = callables.get(i);
-            roots[i] = c.getName() + c.getDescriptor();
-        }
+        byte[] optimizedDappBytes = jarOptimizer.optimize(dappBytes,
+                rootClasses);
         if (unreachableMethodRemoverEnabled) {
             try {
-                optimizedDappBytes = UnreachableMethodRemover.optimize(optimizedDappBytes, roots);
+                optimizedDappBytes = UnreachableMethodRemover.optimize(optimizedDappBytes, keptMethods);
 
                 // Run class removal optimization again to ensure classes without any referenced methods are removed
-                optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
+                optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes,
+                        rootClasses);
             } catch (UnsupportedOperationException ex) {
                 throw ex;
             } catch (Exception exception) {
@@ -95,7 +99,8 @@ public class OptimizedJarBuilder {
         // Only field and method renaming can work correctly in debug mode, but the new names may cause confusion for users.
         if (classAndFieldRenamerEnabled && !debugModeEnabled) {
             try {
-                optimizedDappBytes = Renamer.rename(optimizedDappBytes, roots);
+                optimizedDappBytes = Renamer.rename(optimizedDappBytes,
+                        keptMethods, keptFields);
             } catch (Exception exception) {
                 System.err.println("Renaming failed, packaging code without this optimization");
                 exception.printStackTrace(System.err);

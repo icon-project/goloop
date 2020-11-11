@@ -174,7 +174,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(targetAddress != null, "Destination can't be NULL");
         Object[] params = new Object[sparams.length()];
         for (int i=0; i<params.length; i++) {
-            params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
+            params[i] = Unshadower.unshadow(sparams.get(i));
         }
 
         externalState.waitForCallbacks();

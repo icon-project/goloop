@@ -90,6 +90,30 @@ public class MethodUnpacker {
         }
         int paramType = unpacker.unpackInt();
         unpacker.unpackValue(); // value ignored
-        return new Method.Parameter(paramName, paramDescriptor, paramType, optional);
+        Method.Field[] sf = null;
+        if ((paramType&Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
+            sf = unpackStructFields(unpacker);
+        }
+        return new Method.Parameter(paramName, paramDescriptor, paramType, sf,
+                optional);
+    }
+
+    private static Method.Field[] unpackStructFields(MessageUnpacker unpacker)
+        throws IOException {
+        int n = unpacker.unpackArrayHeader();
+        var res = new Method.Field[n];
+        for (int i=0; i<n; i++) {
+            unpacker.unpackArrayHeader(); // 3
+            String name = unpacker.unpackString();
+            int t = unpacker.unpackInt();
+            Method.Field[] sf = null;
+            if ((t & Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
+                sf = unpackStructFields(unpacker);
+            } else {
+                unpacker.unpackNil();
+            }
+            res[i] = new Method.Field(name, t, sf);
+        }
+        return res;
     }
 }

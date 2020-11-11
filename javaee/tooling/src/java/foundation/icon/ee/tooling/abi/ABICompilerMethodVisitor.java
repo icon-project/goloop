@@ -5,6 +5,8 @@
 
 package foundation.icon.ee.tooling.abi;
 
+import foundation.icon.ee.score.EEPType;
+import foundation.icon.ee.struct.StructDB;
 import foundation.icon.ee.types.Method;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Label;
@@ -14,18 +16,14 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.ASMifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
-import score.Address;
 import score.annotation.EventLog;
 import score.annotation.External;
 import score.annotation.Optional;
 import score.annotation.Payable;
 
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class ABICompilerMethodVisitor extends MethodVisitor {
@@ -40,6 +38,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private boolean isFallback = false;
     private boolean isEventLog = false;
     private MethodVisitor pmv = null;
+    private final StructDB structDB;
     private final boolean stripLineNumber;
 
     private static final int MAX_INDEXED_COUNT = 3;
@@ -47,64 +46,8 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             "ICXTransfer"
     );
 
-    @SuppressWarnings("unchecked")
-    private static final Map.Entry<String, Integer>[] dataTypeEntries = new Map.Entry[]{
-            // allowed types for both param and return
-            Map.entry("B", Method.DataType.INTEGER),
-            Map.entry("C", Method.DataType.INTEGER),
-            Map.entry("S", Method.DataType.INTEGER),
-            Map.entry("I", Method.DataType.INTEGER),
-            Map.entry("J", Method.DataType.INTEGER),
-            Map.entry("Ljava/math/BigInteger;", Method.DataType.INTEGER),
-            Map.entry("Ljava/lang/String;", Method.DataType.STRING),
-            Map.entry("[B", Method.DataType.BYTES),
-            Map.entry("Z", Method.DataType.BOOL),
-            Map.entry("Lscore/Address;", Method.DataType.ADDRESS),
-            // allowed types only for return
-            Map.entry("V", Method.DataType.NONE),
-            Map.entry("Ljava/util/List;", Method.DataType.LIST),
-            Map.entry("Ljava/util/Map;", Method.DataType.DICT),
-    };
-
-    private static final Map<String, Integer> paramTypeMap = Map.ofEntries(
-            Arrays.copyOfRange(dataTypeEntries, 0, 10)
-    );
-
-    private static final Map<String, Integer> returnTypeMap = Map.ofEntries(
-            dataTypeEntries
-    );
-
-    private static final List<String> returnTypes = List.of(
-            // allowed types for both param and return
-            "Z",
-            "C",
-            "B",
-            "S",
-            "I",
-            "J",
-            Type.getDescriptor(BigInteger.class),
-            Type.getDescriptor(String.class),
-            Type.getDescriptor(Address.class),
-            "[B",
-            // allowed types only for return
-            Type.getDescriptor(List.class),
-            Type.getDescriptor(Map.class),
-            "V"
-    );
-
-    private static final List<String> paramTypes = List.of(
-            Arrays.copyOfRange(returnTypes.toArray(new String[0]), 0, 10)
-    );
-
-    private static boolean isAllowedParamType(Type type) {
-        return paramTypes.contains(type.getDescriptor());
-    }
-
-    private static boolean isAllowedReturnType(Type type) {
-        return returnTypes.contains(type.getDescriptor());
-    }
-
-    public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv, boolean stripLineNumber) {
+    public ABICompilerMethodVisitor(int access, String methodName,
+            String methodDescriptor, MethodVisitor mv, StructDB structDB, boolean stripLineNumber) {
         super(Opcodes.ASM7, mv);
         this.access = access;
         this.methodName = methodName;
@@ -124,6 +67,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             }
             isFallback = true;
         }
+        this.structDB = structDB;
         this.stripLineNumber = stripLineNumber;
     }
 
@@ -173,7 +117,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             }
             var args = Type.getArgumentTypes(methodDescriptor);
             for (Type t : args) {
-                if (!paramTypeMap.containsKey(t.getDescriptor())) {
+                if (!EEPType.isValidEventParameterType(t)) {
                     throw new ABICompilerException("Bad argument type for @EventLog method", methodName);
                 }
             }
@@ -392,13 +336,13 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     private void checkArgumentsAndReturnType() {
         for (Type type : Type.getArgumentTypes(this.methodDescriptor)) {
-            if (!isAllowedParamType(type)) {
+            if (!structDB.isValidParamType(type)) {
                 throw new ABICompilerException(
                     type.getClassName() + " is not an allowed parameter type", methodName);
             }
         }
         Type returnType = Type.getReturnType(methodDescriptor);
-        if (!isAllowedReturnType(returnType)) {
+        if (!structDB.isValidReturnType(returnType)) {
             throw new ABICompilerException(
                 returnType.getClassName() + " is not an allowed return type", methodName);
         }
@@ -407,7 +351,13 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     public Method getCallableMethodInfo() {
         if (isExternal() || isOnInstall()) {
             Type type = Type.getReturnType(this.methodDescriptor);
-            int output = getDataType(returnTypeMap, type);
+            int output;
+            try {
+                output = structDB.getEEPTypeFromReturnType(type);
+            } catch (IllegalArgumentException e) {
+                throw new ABICompilerException("Invalid return type: "
+                        + type.getClassName(), methodName);
+            }
             int optionalCount = 0;
             if (optional != null) {
                 for (int i = optional.length - 1; i >= 0; i--) {
@@ -419,7 +369,13 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                     }
                 }
             }
-            return Method.newFunction(methodName, flags, optionalCount, getMethodParameters(), output, type.getDescriptor());
+            Type[] types = Type.getArgumentTypes(this.methodDescriptor);
+            for (var t : types) {
+                structDB.addParameterType(t);
+            }
+            structDB.addReturnType(type);
+            return Method.newFunction(methodName, flags, optionalCount,
+                    getMethodParameters(), output, type.getDescriptor());
         }
         if (isFallback() && isPayable()) {
             return Method.newFallback();
@@ -437,27 +393,15 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private Method.Parameter[] getMethodParameters() {
         Type[] types = Type.getArgumentTypes(this.methodDescriptor);
         Method.Parameter[] params;
-        if (types.length > 0) {
-            params = new Method.Parameter[types.length];
-            for (int i = 0; i < types.length; i++) {
-                params[i] = new Method.Parameter(
-                        paramNames.get(i),
-                        types[i].getDescriptor(),
-                        getDataType(paramTypeMap, types[i]),
-                        optional != null && optional[i]);
-            }
-        } else {
-            params = new Method.Parameter[0];
+        params = new Method.Parameter[types.length];
+        for (int i = 0; i < types.length; i++) {
+            params[i] = new Method.Parameter(
+                    paramNames.get(i),
+                    types[i].getDescriptor(),
+                    structDB.getDetailFromParameterType(types[i]),
+                    optional != null && optional[i]);
         }
         return params;
-    }
-
-    private int getDataType(Map<String, Integer> map, Type type) {
-        Integer dataType = map.get(type.getDescriptor());
-        if (dataType == null) {
-            throw new ABICompilerException("Unsupported type: " + type.getDescriptor(), methodName);
-        }
-        return dataType;
     }
 
     public boolean isExternal() {
