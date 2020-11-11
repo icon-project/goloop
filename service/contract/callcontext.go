@@ -490,8 +490,10 @@ type stepPayers struct {
 }
 
 func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
+	sp := new(big.Int).SetInt64(int64(p.portion))
+	sp.Mul(sp, s).Div(sp, big.NewInt(100))
 	as := cc.GetAccountState(p.payer.ID())
-	payed, err := as.PaySteps(cc, s)
+	payed, err := as.PaySteps(cc, sp)
 	if err != nil {
 		return nil, err
 	}

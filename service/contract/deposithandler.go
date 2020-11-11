@@ -132,9 +132,8 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 			return err, nil, nil
 		}
 		cc.OnEvent(h.to, [][]byte{
-			[]byte("DepositAdded(bytes,Address,Address,int,int)"),
+			[]byte("DepositAdded(bytes,Address,int,int)"),
 			id,
-			h.to.Bytes(),
 			h.from.Bytes(),
 		}, [][]byte{
 			intconv.BigIntToBytes(h.value),
@@ -156,13 +155,14 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		if amount, fee, err := as2.WithdrawDeposit(cc, id, value); err != nil {
 			return err, nil, nil
 		} else {
+			as1.SetBalance(new(big.Int).Add(as1.GetBalance(), amount))
+
 			treasury := cc.GetAccountState(cc.Treasury().ID())
 			treasury.SetBalance(new(big.Int).Add(treasury.GetBalance(), fee))
 
 			cc.OnEvent(h.to, [][]byte{
-				[]byte("DepositWithdrawn(bytes,Address,Address,int,int)"),
+				[]byte("DepositWithdrawn(bytes,Address,int,int)"),
 				id,
-				h.to.Bytes(),
 				h.from.Bytes(),
 			}, [][]byte{
 				intconv.BigIntToBytes(amount),

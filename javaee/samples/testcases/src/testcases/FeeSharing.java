@@ -20,6 +20,7 @@ import score.Address;
 import score.Context;
 import score.DictDB;
 import score.VarDB;
+import score.annotation.EventLog;
 import score.annotation.External;
 
 public class FeeSharing {
@@ -52,6 +53,11 @@ public class FeeSharing {
     @External
     public void setValue(String value) {
         this.value.set(value);
-        Context.setFeeSharingProportion(getProportion(Context.getCaller()));
+        int proportion = getProportion(Context.getCaller());
+        Context.setFeeSharingProportion(proportion);
+        ValueSet(Context.getCaller(), proportion);
     }
+
+    @EventLog(indexed=1)
+    public void ValueSet(Address address, int proportion) {}
 }

@@ -21,7 +21,10 @@ import foundation.icon.icx.data.TransactionResult;
 import java.util.ArrayList;
 import java.util.List;
 
+import static foundation.icon.test.common.Env.LOG;
+
 public class EventLog {
+    private static final boolean DEBUG = false;
     final private String score;
     final private String[] params;
 
@@ -39,9 +42,11 @@ public class EventLog {
         if (data != null) {
             items.addAll(data);
         }
-        for (int idx = 0 ; idx<params.length ; idx++) {
+        for (int idx = 0; idx < params.length; idx++) {
+            debugInfo(String.format("params[%d] = %s", idx, params[idx]));
             if (params[idx] == null) continue;
             var item = items.get(idx);
+            debugInfo(String.format("     item = %s", item != null ? item.asString() : "null"));
             if (item == null) {
                 return false;
             }
@@ -64,5 +69,11 @@ public class EventLog {
             }
         }
         return false;
+    }
+
+    private void debugInfo(String msg) {
+        if (DEBUG) {
+            LOG.info(msg);
+        }
     }
 }

@@ -28,6 +28,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.EventLog;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.ChainScore;
@@ -40,9 +41,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FeeSharingTest extends TestBase {
     private static TransactionHandler txHandler;
@@ -88,7 +92,7 @@ public class FeeSharingTest extends TestBase {
         BigInteger balance = txHandler.getBalance(address);
         LOG.info("ICX balance of " + address + ": " + balance);
         if (balance.compareTo(val) != 0) {
-            throw new AssertionError("Balance changed!");
+            throw new AssertionError("Balance mismatch!");
         }
         return balance;
     }
@@ -106,15 +110,23 @@ public class FeeSharingTest extends TestBase {
     }
 
     private void deployAndStartTest(String contentType) throws Exception {
-        runTest(FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType));
+        var feeScore = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        for (int proportion : new int[]{0, 50, 100}) {
+            LOG.infoEntering("Proportion: " + proportion);
+            runTest(feeScore, BigInteger.valueOf(proportion));
+            LOG.infoExiting();
+        }
     }
 
     @Test
-    public void runTest(FeeShareScore feeShareOwner) throws Exception {
+    public void runTest(FeeShareScore feeShareOwner, BigInteger proportion) throws Exception {
         // add alice into the white list
         LOG.infoEntering("invoke", "addToWhitelist(alice)");
-        TransactionResult result = feeShareOwner.addToWhitelist(aliceWallet.getAddress(), 100);
+        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
+        TransactionResult result = feeShareOwner.addToWhitelist(aliceWallet.getAddress(), proportion);
         assertSuccess(result);
+        ownerBalance = subtractFee(ownerBalance, result);
+        assertEquals(proportion, feeShareOwner.getProportion(aliceWallet.getAddress()));
         LOG.infoExiting();
 
         // set value before adding deposit (user balance should be decreased)
@@ -125,8 +137,8 @@ public class FeeSharingTest extends TestBase {
         assertSuccess(result);
         LOG.info("value: " + feeShareAlice.getValue());
         // check if the balance was decreased
-        BigInteger fee = result.getStepUsed().multiply(result.getStepPrice());
-        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance.subtract(fee));
+        aliceBalance = subtractFee(aliceBalance, result);
+        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance);
         LOG.infoExiting();
 
         // add deposit to SCORE
@@ -134,28 +146,60 @@ public class FeeSharingTest extends TestBase {
         LOG.infoEntering("addDeposit", depositAmount.toString());
         result = feeShareOwner.addDeposit(depositAmount);
         assertSuccess(result);
+        ownerBalance = subtractFee(ownerBalance, result);
         Bytes depositId = result.getTxHash();
         printDepositInfo(feeShareOwner.getAddress());
+        // check eventlog validity
+        assertTrue(EventLog.checkScenario(List.of(
+                new EventLog(feeShareOwner.getAddress().toString(),
+                        "DepositAdded(bytes,Address,int,int)",
+                        depositId.toString(), ownerWallet.getAddress().toString(),
+                        "0x" + depositAmount.toString(16), "0x20")),
+                result));
         LOG.infoExiting();
 
-        // set value after adding deposit (user balance should NOT be decreased)
+        // set value after adding deposit (user balance should be decreased by the proportion)
         LOG.infoEntering("invoke", "setValue() after adding deposit");
         result = feeShareAlice.setValue("alice #2");
         assertSuccess(result);
-        printStepUsedDetails(result.getStepUsedDetails());
+        printStepUsedDetails(result.getStepUsedDetails(), proportion);
         LOG.info("value: " + feeShareAlice.getValue());
         LOG.info("stepUsed: " + result.getStepUsed());
-        // check if the balance was NOT changed
-        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance);
+
+        // check if the balance was decreased by the proportion
+        var stepUsedByScore = result.getStepUsed().multiply(proportion).divide(BigInteger.valueOf(100));
+        var stepUsedByUser = result.getStepUsed().subtract(stepUsedByScore);
+        var fee = stepUsedByUser.multiply(result.getStepPrice());
+        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance.subtract(fee));
         printDepositInfo(feeShareOwner.getAddress());
+        // check eventlog validity
+        assertTrue(EventLog.checkScenario(List.of(
+                new EventLog(feeShareOwner.getAddress().toString(),
+                        "ValueSet(Address,int)",
+                        aliceWallet.getAddress().toString(), "0x" + proportion.toString(16))),
+                result));
         LOG.infoExiting();
+
+        var penalty = stepUsedByScore.multiply(result.getStepPrice());
+        var returnAmount = depositAmount.subtract(penalty);
 
         // withdraw the deposit
         LOG.infoEntering("withdrawDeposit", depositId.toString());
         result = feeShareOwner.withdrawDeposit(depositId);
         assertSuccess(result);
+        ownerBalance = subtractFee(ownerBalance, result);
         printDepositInfo(feeShareOwner.getAddress());
+        // check eventlog validity
+        assertTrue(EventLog.checkScenario(List.of(
+                new EventLog(feeShareOwner.getAddress().toString(),
+                        "DepositWithdrawn(bytes,Address,int,int)",
+                        depositId.toString(), ownerWallet.getAddress().toString(),
+                        "0x" + returnAmount.toString(16), "0x" + penalty.toString(16))),
+                result));
         LOG.infoExiting();
+
+        // check the owner balance
+        assertEquals(ownerBalance.subtract(penalty), txHandler.getBalance(ownerWallet.getAddress()));
 
         // set value after withdrawing deposit (user balance should be decreased again)
         LOG.infoEntering("invoke", "setValue() after withdrawing deposit");
@@ -163,14 +207,25 @@ public class FeeSharingTest extends TestBase {
         assertSuccess(result);
         LOG.info("value: " + feeShareAlice.getValue());
         // check if the balance was decreased
-        fee = result.getStepUsed().multiply(result.getStepPrice());
-        ensureIcxBalance(aliceWallet.getAddress(), aliceBalance.subtract(fee));
+        ensureIcxBalance(aliceWallet.getAddress(), subtractFee(aliceBalance, result));
         LOG.infoExiting();
     }
 
-    private void printStepUsedDetails(RpcItem stepUsedDetails) {
+    private BigInteger subtractFee(BigInteger balance, TransactionResult result) {
+        BigInteger fee = result.getStepUsed().multiply(result.getStepPrice());
+        return balance.subtract(fee);
+    }
+
+    private void printStepUsedDetails(RpcItem stepUsedDetails, BigInteger proportion) {
+        if (proportion.intValue() == 0)
+            return;
         assertNotNull(stepUsedDetails);
         RpcObject details = stepUsedDetails.asObject();
+        if (proportion.intValue() == 100) {
+            assertEquals(1, details.keySet().size());
+        } else {
+            assertEquals(2, details.keySet().size());
+        }
         LOG.info("stepUsedDetails: {");
         String M1 = "    ";
         for (String key : details.keySet()) {
