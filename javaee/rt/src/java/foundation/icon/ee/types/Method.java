@@ -142,6 +142,20 @@ public class Method {
                             : "") +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Field field = (Field) o;
+            return name.equals(field.name) &&
+                    typeDetail.equals(field.typeDetail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, typeDetail);
+        }
     }
 
     public static class Parameter {
