@@ -337,6 +337,13 @@ public class Method {
         return sb.toString();
     }
 
+    public String getDebugName() {
+        if (outputDescriptor.isEmpty()) {
+            return name;
+        }
+        return name + getDescriptor();
+    }
+
     private static final String validPrimitives = "ZCBSIJ";
 
     public boolean hasValidPrimitiveReturnType() {
