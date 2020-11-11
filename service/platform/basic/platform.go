@@ -17,6 +17,8 @@
 package basic
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -34,11 +36,11 @@ type basicContractManager struct {
 	contract.ContractManager
 }
 
-func (b basicContractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
+func (b basicContractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	if contentID == contract.CID_CHAIN {
-		return NewChainScore(cc, from)
+		return NewChainScore(cc, from, value)
 	}
-	return b.ContractManager.GetSystemScore(contentID, cc, from)
+	return b.ContractManager.GetSystemScore(contentID, cc, from, value)
 }
 
 func (t *platform) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {

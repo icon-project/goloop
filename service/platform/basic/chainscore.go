@@ -39,14 +39,15 @@ type chainMethod struct {
 	minVer, maxVer int
 }
 type ChainScore struct {
-	from module.Address
-	gov  bool
-	cc   contract.CallContext
-	log  log.Logger
+	from  module.Address
+	value *big.Int
+	gov   bool
+	cc    contract.CallContext
+	log   log.Logger
 }
 
-func NewChainScore(cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
-	return &ChainScore{from, cc.Governance().Equal(from), cc, cc.Logger()}, nil
+func NewChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
+	return &ChainScore{from, value, cc.Governance().Equal(from), cc, cc.Logger()}, nil
 }
 
 const (

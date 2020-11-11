@@ -22,7 +22,7 @@ const (
 )
 
 type SystemScoreModule struct {
-	New func(cid string, cc CallContext, from module.Address) (SystemScore, error)
+	New func(cid string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error)
 }
 
 var systemScoreModules = map[string]*SystemScoreModule{}
@@ -37,13 +37,13 @@ type SystemScore interface {
 	GetAPI() *scoreapi.Info
 }
 
-func getSystemScore(contentID string, cc CallContext, from module.Address) (score SystemScore, err error) {
+func getSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (score SystemScore, err error) {
 	v, ok := systemScoreModules[contentID]
 	if ok == false {
 		return nil, scoreresult.ContractNotFoundError.Errorf(
 			"ContractNotFound(cid=%s)", contentID)
 	}
-	return v.New(contentID, cc, from)
+	return v.New(contentID, cc, from, value)
 }
 
 func CheckStruct(t reflect.Type, fields []scoreapi.Field) error {

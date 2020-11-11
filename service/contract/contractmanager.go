@@ -32,7 +32,7 @@ type (
 		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error)
 		GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
-		GetSystemScore(contentID string, cc CallContext, from module.Address) (SystemScore, error)
+		GetSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error)
 	}
 
 	ContractStore interface {
@@ -72,7 +72,7 @@ func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to mod
 	if err := sas.AcceptContract(tid, tid); err != nil {
 		return err
 	}
-	score, err := cm.GetSystemScore(contentID, cc, owner)
+	score, err := cm.GetSystemScore(contentID, cc, owner, new(big.Int))
 	if err != nil {
 		return err
 	}
@@ -259,8 +259,8 @@ func (cm *contractManager) PrepareContractStore(
 	return cs, nil
 }
 
-func (cm *contractManager) GetSystemScore(contentID string, cc CallContext, from module.Address) (SystemScore, error) {
-	return getSystemScore(contentID, cc, from)
+func (cm *contractManager) GetSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error) {
+	return getSystemScore(contentID, cc, from, value)
 }
 
 func NewContractManager(db db.Database, contractDir string, log log.Logger) (ContractManager, error) {
