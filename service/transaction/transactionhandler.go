@@ -203,6 +203,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		receipt.AddPayment(th.from, stepUsed)
 	}
 	receipt.SetResult(s, stepAll, stepPrice, addr)
+	receipt.SetReason(status)
 
 	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepAll, stepPrice)
 
