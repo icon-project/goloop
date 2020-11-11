@@ -46,6 +46,64 @@ func getSystemScore(contentID string, cc CallContext, from module.Address) (scor
 	return v.New(contentID, cc, from)
 }
 
+func CheckStruct(t reflect.Type, fields []scoreapi.Field) error {
+	if t.Kind() != reflect.Map {
+		return scoreresult.InvalidInstanceError.Errorf("NotMapType(%s)", t)
+	}
+	if t.Key().Kind() != reflect.String {
+		return scoreresult.InvalidInstanceError.Errorf("KeyTypeInvalid(%s)", t.Key())
+	}
+	et := t.Elem()
+	if et.Kind() != reflect.Interface || et.NumMethod() != 0 {
+		return scoreresult.InvalidInstanceError.Errorf("ValueTypeInvalid(%s)", et)
+	}
+	return nil
+}
+
+var (
+	typeHexInt = reflect.TypeOf((*common.HexInt)(nil))
+)
+
+func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) error {
+	for i := mt.ListDepth(); i > 0; i-- {
+		if t.Kind() != reflect.Slice {
+			return scoreresult.InvalidInstanceError.Errorf("NotCompatibleType(%s)", t)
+		}
+		t = t.Elem()
+	}
+	switch mt.Tag() {
+	case scoreapi.TInteger:
+		if typeHexInt == t {
+			return nil
+		}
+	case scoreapi.TString:
+		if reflect.TypeOf(string("")) == t {
+			return nil
+		}
+	case scoreapi.TBytes:
+		if reflect.TypeOf([]byte{}) == t {
+			return nil
+		}
+	case scoreapi.TBool:
+		if reflect.TypeOf(bool(false)) == t {
+			return nil
+		}
+	case scoreapi.TAddress:
+		if reflect.TypeOf(&common.Address{}).Implements(t) {
+			return nil
+		}
+	case scoreapi.TStruct:
+		if err := CheckStruct(t, fields); err == nil {
+			return nil
+		} else {
+			return scoreresult.InvalidInstanceError.Wrapf(err, "NotCompatibleType(%s)", t)
+		}
+	default:
+		return scoreresult.UnknownFailureError.Errorf("UnknownTypeTag(tag=%#x)", mt.Tag())
+	}
+	return scoreresult.InvalidInstanceError.Errorf("NotCompatibleType(%s)", t)
+}
+
 func CheckMethod(obj SystemScore) error {
 	numMethod := reflect.ValueOf(obj).NumMethod()
 	methodInfo := obj.GetAPI()
@@ -66,37 +124,14 @@ func CheckMethod(obj SystemScore) error {
 			return scoreresult.InvalidInstanceError.Errorf(
 				"Wrong method input. method[%s]", mName)
 		}
-		var t reflect.Type
 		for j := 1; j < numIn; j++ {
-			t = m.Type.In(j)
-			switch methodInfo.Inputs[j-1].Type {
-			case scoreapi.Integer:
-				if reflect.TypeOf(&common.HexInt{}) != t {
-					invalid = true
-				}
-			case scoreapi.String:
-				if reflect.TypeOf(string("")) != t {
-					invalid = true
-				}
-			case scoreapi.Bytes:
-				if reflect.TypeOf([]byte{}) != t {
-					invalid = true
-				}
-			case scoreapi.Bool:
-				if reflect.TypeOf(bool(false)) != t {
-					invalid = true
-				}
-			case scoreapi.Address:
-				if reflect.TypeOf(&common.Address{}).Implements(t) == false {
-					invalid = true
-				}
-			default:
-				invalid = true
-			}
-			if invalid == true {
-				return scoreresult.InvalidInstanceError.Errorf(
+			t := m.Type.In(j)
+			mt := methodInfo.Inputs[j-1].Type
+			mf := methodInfo.Inputs[j-1].Fields
+			if err := CheckType(t, mt, mf); err != nil {
+				return scoreresult.InvalidInstanceError.Wrapf(err,
 					"wrong system score signature. method : %s, "+
-						"expected input[%d] : %v BUT real type : %v", mName, j-1, methodInfo.Inputs[j-1].Type, t)
+						"expected input[%d] : %v BUT real type : %v", mName, j-1, mt, t)
 			}
 		}
 
@@ -166,17 +201,16 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 
 	var params []interface{}
 	if ps, err := common.DecodeAny(paramObj); err != nil {
-		return scoreresult.ErrInvalidParameter, nil, steps
+		return scoreresult.InvalidParameterError.Wrap(err, "IncompatibleParameter"),
+			nil, steps
 	} else {
-		var ok bool
-		params, ok = ps.([]interface{})
-		if !ok {
-			return scoreresult.ErrInvalidParameter, nil, steps
-		}
+		params = ps.([]interface{})
 	}
 
 	if len(params) != mType.NumIn() {
-		return scoreresult.ErrInvalidParameter, nil, steps
+		return scoreresult.InvalidInstanceError.Errorf(
+			"NotEnoughParameter(exp=%d,real=%d)",
+			mType.NumIn(), len(params)), nil, steps
 	}
 
 	objects := make([]reflect.Value, len(params))
@@ -188,7 +222,9 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 			continue
 		}
 		if !pValue.Type().AssignableTo(oType) {
-			return scoreresult.ErrInvalidParameter, nil, steps
+			return scoreresult.InvalidInstanceError.Errorf(
+					"InCompatibleType(to=%s,with=%s)", oType, pValue.Type()),
+				nil, steps
 		}
 		objects[i] = reflect.New(mType.In(i)).Elem()
 		objects[i].Set(pValue)

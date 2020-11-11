@@ -641,7 +641,8 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	}
 
 	if paramObj.Type != codec.TypeDict {
-		return nil, scoreresult.ErrInvalidParameter
+		return nil, scoreresult.InvalidParameterError.Errorf(
+			"MustBeDictionary(tag=%d)", paramObj.Type)
 	}
 	params, ok := paramObj.Object.(map[string]*codec.TypedObj)
 	if !ok {
