@@ -32,6 +32,13 @@ const (
 	VarPRep    = "prep"
 )
 
+type IconContext struct {
+}
+
+type iconContext struct {
+	contract.CallContext
+}
+
 type extensionSnapshotImpl struct {
 	database db.Database
 
@@ -137,16 +144,19 @@ func (s *ExtensionStateImpl) SetStake(cc contract.CallContext, from module.Addre
 	if err != nil {
 		return err
 	}
-	staked := ia.GetStake()
-	stakeInc := new(big.Int).Sub(v, staked)
+
+	if ia.getVotedPower().Cmp(v) == 1 {
+		return errors.Errorf("Failed to stake: stake < votedPower")
+	}
+
+	stakeInc := new(big.Int).Sub(v, ia.GetStake())
 	if stakeInc.Sign() == 0 {
 		return nil
 	}
+
 	account := cc.GetAccountState(from.ID())
 	balance := account.GetBalance()
-	// TODO check bonding amount
-	avail := new(big.Int).Add(balance, ia.GetUnstakeAmount())
-	if avail.Cmp(stakeInc) == -1 {
+	if balance.Cmp(v) == -1 {
 		return errors.Errorf("Not enough balance")
 	}
 
@@ -155,7 +165,6 @@ func (s *ExtensionStateImpl) SetStake(cc contract.CallContext, from module.Addre
 		return err
 	}
 	account.SetBalance(new(big.Int).Sub(balance, stakeInc))
-
 	if err = ia.SetStake(v); err != nil {
 		return err
 	}
@@ -174,6 +183,29 @@ func (s *ExtensionStateImpl) GetStake(address module.Address) (map[string]interf
 		return nil, err
 	}
 	return as.GetStakeInfo()
+}
+
+func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, param []interface{}) error {
+	aDB := s.GetIISSAccountDB()
+	ia, err := s.GetIISSAccount(aDB, from)
+	if err != nil {
+		return err
+	}
+
+	if err = ia.SetDelegation(param); err != nil {
+		return err
+	}
+
+	return aDB.Set(from, ia.Bytes())
+}
+
+func (s *ExtensionStateImpl) GetDelegation(address module.Address) (map[string]interface{}, error) {
+	aDB := s.GetIISSAccountDB()
+	as, err := s.GetIISSAccount(aDB, address)
+	if err != nil {
+		return nil, err
+	}
+	return as.GetDelegationInfo()
 }
 
 func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {

@@ -14,12 +14,14 @@
 package iiss
 
 import (
+	"encoding/json"
 	"math/big"
 	"reflect"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -27,10 +29,13 @@ const (
 	accountVersion1 = iota + 1
 	accountVersion  = accountVersion1
 
-	maxUnstake = 1000
+	maxUnstake    = 1000
+	maxDelegation = 100
 )
 
+// TODO add icon context
 var maxUnstakeCount = maxUnstake
+var maxDelegationCount = maxUnstake
 
 func getMaxUnstakeCount() int {
 	return maxUnstakeCount
@@ -44,12 +49,25 @@ func setMaxUnstakeCount(v int) {
 	}
 }
 
+func getMaxDelegationCount() int {
+	return maxDelegationCount
+}
+
+func setMaxDelegationCount(v int) {
+	if v == 0 {
+		maxDelegationCount = maxDelegation
+	} else {
+		maxDelegationCount = v
+	}
+}
+
 type Account struct {
 	version     int
 	staked      *big.Int
 	unstakes    unstakeList
 	delegated   *big.Int
 	delegations delegationList
+	bonded      *big.Int
 	bonds       bondList
 	unbondings  unbondingList
 }
@@ -67,9 +85,9 @@ func (a *Account) SetStake(v *big.Int) error {
 	return nil
 }
 
-func (a Account) GetStake() *big.Int {
+func (a *Account) GetStake() *big.Int {
 	if a.staked == nil {
-		return new(big.Int)
+		panic("Account.staked is nil")
 	}
 	return a.staked
 }
@@ -92,14 +110,56 @@ func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64) error {
 // TODO remove unstake via timer
 
 func (a *Account) GetStakeInfo() (map[string]interface{}, error) {
-	data := make(map[string]interface{})
-	data["stake"] = a.GetStake()
+	jso := make(map[string]interface{})
+	jso["stake"] = a.GetStake()
 	if unstakes, err := a.unstakes.ToJSON(module.JSONVersion3); err != nil {
 		return nil, errors.Errorf("Failed to get unstakes Info")
 	} else if unstakes != nil {
-		data["unstakes"] = unstakes
+		jso["unstakes"] = unstakes
 	}
-	return data, nil
+	return jso, nil
+}
+
+func (a *Account) SetDelegation(param []interface{}) error {
+	dl, delegated, err := convertToDelegationList(param)
+	if err != nil {
+		return err
+	}
+
+	if a.delegations.Equal(dl) {
+		return nil
+	}
+
+	if a.staked.Cmp(new(big.Int).Add(delegated, a.bonded)) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+
+	a.delegations = dl
+	a.delegated = delegated
+
+	return nil
+}
+
+func (a Account) GetDelegationInfo() (map[string]interface{}, error) {
+	jso := make(map[string]interface{})
+	jso["totalDelegated"] = a.delegated
+	jso["votingPower"] = new(big.Int).Sub(a.staked, a.getVotedPower())
+
+	if delegations, err := a.delegations.ToJSON(module.JSONVersion3); err != nil {
+		return nil, errors.Errorf("Failed to get delegation Info")
+	} else if delegations != nil {
+		jso["delegations"] = delegations
+	}
+
+	return jso, nil
+}
+
+func (a *Account) getVotingPower() *big.Int {
+	return new(big.Int).Sub(a.staked, a.getVotedPower())
+}
+
+func (a *Account) getVotedPower() *big.Int {
+	return new(big.Int).Add(a.bonded, a.delegated)
 }
 
 func (a *Account) Bytes() []byte {
@@ -120,7 +180,7 @@ func (a *Account) Equal(a2 *Account) bool {
 		return false
 	}
 
-	if (a.staked == nil && a2.staked == nil) || a.staked.Cmp(a2.staked) != 0 {
+	if a.staked.Cmp(a2.staked) != 0 {
 		return false
 	}
 
@@ -128,11 +188,15 @@ func (a *Account) Equal(a2 *Account) bool {
 		return false
 	}
 
-	if (a.delegated == nil && a2.delegated == nil) || a.delegated.Cmp(a2.delegated) != 0 {
+	if a.delegated.Cmp(a2.delegated) != 0 {
 		return false
 	}
 
 	if a.delegations.Equal(a2.delegations) != true {
+		return false
+	}
+
+	if a.bonded.Cmp(a2.bonded) != 0 {
 		return false
 	}
 
@@ -146,6 +210,14 @@ func (a *Account) Equal(a2 *Account) bool {
 	return true
 }
 
+func (a *Account) Clone() *Account {
+	na := new(Account)
+	if err := na.SetBytes(a.Bytes()); err != nil {
+		panic("Failed to clone Account")
+	}
+	return na
+}
+
 func (a *Account) RLPEncodeSelf(e codec.Encoder) error {
 	e2, err := e.EncodeList()
 	if err != nil {
@@ -157,6 +229,7 @@ func (a *Account) RLPEncodeSelf(e codec.Encoder) error {
 		a.unstakes,
 		a.delegated,
 		a.delegations,
+		a.bonded,
 		a.bonds,
 		a.unbondings,
 	); err != nil {
@@ -177,6 +250,7 @@ func (a *Account) RLPDecodeSelf(d codec.Decoder) error {
 		&a.unstakes,
 		&a.delegated,
 		&a.delegations,
+		&a.bonded,
 		&a.bonds,
 		&a.unbondings,
 	); err != nil {
@@ -186,7 +260,12 @@ func (a *Account) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func NewAccount() *Account {
-	return &Account{version: accountVersion}
+	return &Account{
+		version:   accountVersion,
+		staked:    new(big.Int),
+		delegated: new(big.Int),
+		bonded:    new(big.Int),
+	}
 }
 
 type unstake struct {
@@ -230,8 +309,8 @@ func (u *unstake) RLPDecodeSelf(d codec.Decoder) error {
 func (u unstake) ToJSON(v module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 
-	jso["unstake"] = u.amount
-	jso["expireBlockHeight"] = u.expireHeight
+	jso["unstake"] = intconv.FormatBigInt(u.amount)
+	jso["expireBlockHeight"] = intconv.FormatInt(u.expireHeight)
 
 	return jso
 }
@@ -340,12 +419,12 @@ func (ul unstakeList) ToJSON(v module.JSONVersion) ([]interface{}, error) {
 }
 
 type delegation struct {
-	target *common.Address
-	amount *big.Int
+	Address *common.Address `json:"address"`
+	Value   *common.HexInt  `json:"value"`
 }
 
 func (dg *delegation) equal(dg2 *delegation) bool {
-	return dg.target.Equal(dg2.target) && dg.amount.Cmp(dg2.amount) == 0
+	return dg.Address.Equal(dg2.Address) && dg.Value.Cmp(&dg2.Value.Int) == 0
 }
 
 func (dg *delegation) RLPEncodeSelf(e codec.Encoder) error {
@@ -354,8 +433,8 @@ func (dg *delegation) RLPEncodeSelf(e codec.Encoder) error {
 		return err
 	}
 	if err := e2.EncodeMulti(
-		dg.target,
-		dg.amount,
+		dg.Address,
+		dg.Value,
 	); err != nil {
 		return err
 	}
@@ -369,8 +448,8 @@ func (dg *delegation) RLPDecodeSelf(d codec.Decoder) error {
 	}
 
 	if _, err := d2.DecodeMulti(
-		&dg.target,
-		&dg.amount,
+		&dg.Address,
+		&dg.Value,
 	); err != nil {
 		return errors.Wrap(err, "Fail to decode delegation")
 	}
@@ -380,8 +459,8 @@ func (dg *delegation) RLPDecodeSelf(d codec.Decoder) error {
 func (dg delegation) ToJSON(v module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 
-	jso["address"] = dg.target
-	jso["value"] = dg.amount
+	jso["address"] = dg.Address
+	jso["value"] = dg.Value
 
 	return jso
 }
@@ -408,7 +487,7 @@ func (dl delegationList) Clone() delegationList {
 func (dl delegationList) getDelegationAmount() *big.Int {
 	total := new(big.Int)
 	for _, d := range dl {
-		total.Add(total, d.amount)
+		total.Add(total, &d.Value.Int)
 	}
 	return total
 }
@@ -423,6 +502,35 @@ func (dl delegationList) ToJSON(v module.JSONVersion) ([]interface{}, error) {
 		delegations[idx] = d.ToJSON(v)
 	}
 	return delegations, nil
+}
+
+func convertToDelegationList(param []interface{}) (delegationList, *big.Int, error) {
+	count := len(param)
+	if count > getMaxDelegationCount() {
+		return nil, nil, errors.Errorf("Too many delegations %d", count)
+	}
+	targets := make(map[string]struct{}, count)
+	delegations := make([]delegation, 0)
+	delegated := big.NewInt(0)
+	for _, p := range param {
+		dg := new(delegation)
+		bs, err := json.Marshal(p)
+		if err != nil {
+			return nil, nil, errors.Errorf("Failed to get delegation %v", err)
+		}
+		if err = json.Unmarshal(bs, dg); err != nil {
+			return nil, nil, errors.Errorf("Failed to get delegation %v", err)
+		}
+		target := dg.Address.String()
+		if _, ok := targets[target]; ok {
+			return nil, nil, errors.Errorf("Duplicated delegation address")
+		}
+		targets[target] = struct{}{}
+		delegations = append(delegations, *dg)
+		delegated.Add(delegated, &dg.Value.Int)
+	}
+
+	return delegations, delegated, nil
 }
 
 type bond struct {

@@ -67,6 +67,27 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "setDelegation",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"address", scoreapi.String, nil },
+					{"value", scoreapi.Integer, nil },
+				},
+			},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getDelegation",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{scoreapi.Function, "registerPRep",
 		scoreapi.FlagPayable | scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
@@ -242,6 +263,25 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	es := s.cc.GetExtensionState()
 	esi := es.(*iiss.ExtensionStateImpl)
 	if ret, err := esi.GetStake(address); err != nil {
+		return nil, scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	} else {
+		return ret, nil
+	}
+}
+
+func (s *chainScore) Ex_setDelegation(param []interface{}) error {
+	es := s.cc.GetExtensionState()
+	esi := es.(*iiss.ExtensionStateImpl)
+	if err := esi.SetDelegation(s.cc, s.from, param); err != nil {
+		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState()
+	esi := es.(*iiss.ExtensionStateImpl)
+	if ret, err := esi.GetDelegation(address); err != nil {
 		return nil, scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	} else {
 		return ret, nil

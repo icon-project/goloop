@@ -14,7 +14,9 @@
 package iiss
 
 import (
+	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,56 +25,56 @@ import (
 )
 
 var bigOne = big.NewInt(1)
+var t1 = Account{
+	version: 100,
+	staked: big.NewInt(100),
+	unstakes: []unstake{
+		{
+			amount: big.NewInt(5),
+			expireHeight: 10,
+		},
+		{
+			amount: big.NewInt(10),
+			expireHeight: 20,
+		},
+	},
+	delegated: big.NewInt(20),
+	delegations: []delegation{
+		{
+			Address: common.NewAddressFromString("hx1"),
+			Value:   common.NewHexInt(10),
+		},
+		{
+			Address: common.NewAddressFromString("hx2"),
+			Value:   common.NewHexInt(10),
+		},
+	},
+	bonded: big.NewInt(20),
+	bonds: []bond{
+		{
+			target: common.NewAddressFromString("hx3"),
+			amount: big.NewInt(10),
+		},
+		{
+			target: common.NewAddressFromString("hx4"),
+			amount: big.NewInt(10),
+		},
+	},
+	unbondings: []unbonding{
+		{
+			target: common.NewAddressFromString("hx5"),
+			amount: big.NewInt(10),
+			expireHeight: 20,
+		},
+		{
+			target: common.NewAddressFromString("hx6"),
+			amount: big.NewInt(10),
+			expireHeight: 30,
+		},
+	},
+}
 
 func TestAccount(t *testing.T) {
-	t1 := Account{
-		version: 100,
-		staked: big.NewInt(60),
-		unstakes: []unstake{
-			{
-				amount: big.NewInt(5),
-				expireHeight: 10,
-			},
-			{
-				amount: big.NewInt(10),
-				expireHeight: 20,
-			},
-		},
-		delegated: big.NewInt(20),
-		delegations: []delegation{
-			{
-				target: common.NewAddressFromString("hx1"),
-				amount: big.NewInt(10),
-			},
-			{
-				target: common.NewAddressFromString("hx2"),
-				amount: big.NewInt(10),
-			},
-		},
-		bonds: []bond{
-			{
-				target: common.NewAddressFromString("hx3"),
-				amount: big.NewInt(10),
-			},
-			{
-				target: common.NewAddressFromString("hx4"),
-				amount: big.NewInt(10),
-			},
-		},
-		unbondings: []unbonding{
-			{
-				target: common.NewAddressFromString("hx5"),
-				amount: big.NewInt(10),
-				expireHeight: 20,
-			},
-			{
-				target: common.NewAddressFromString("hx6"),
-				amount: big.NewInt(10),
-				expireHeight: 30,
-			},
-		},
-	}
-
 	bs := t1.Bytes()
 
 	t2 := new(Account)
@@ -80,6 +82,10 @@ func TestAccount(t *testing.T) {
 	assert.NoError(t, err, "error %+v", err)
 
 	assert.True(t, t1.Equal(t2))
+}
+
+func TestAccount_GetUnstakeAmount(t *testing.T) {
+	assert.Equal(t, int64(15), t1.GetUnstakeAmount().Int64())
 }
 
 func TestUnstake(t *testing.T) {
@@ -167,4 +173,120 @@ func TestUnstake(t *testing.T) {
 		assert.Equal(t, 0, len(unstakes))
 		assert.Equal(t, int64(0), unstakes.getUnstakeAmount().Int64())
 	})
+}
+
+var d1 = []interface{} {
+	map[string]interface{}{
+		"address": "hx1",
+		"value": "0x1",
+	},
+	map[string]interface{}{
+		"address": "hx2",
+		"value": "0x2",
+	},
+}
+
+func TestAccount_Delegation(t *testing.T) {
+	v1 := 1
+	v2 := 2
+	tests := []struct {
+		name string
+		param []interface{}
+		err bool
+		totalDelegate int
+	}{
+		{"Nil param", nil, false, 0},
+		{"Empty param", []interface{} {}, false, 0},
+		{
+			"Success",
+			[]interface{} {
+				map[string]interface{}{
+					"address": "hx1",
+					"value": fmt.Sprintf("0x%x", v1),
+				},
+				map[string]interface{}{
+					"address": "hx2",
+					"value": fmt.Sprintf("0x%x", v2),
+				},
+			},
+			false,
+			v1 + v2,
+		},
+		{
+			"Not enough voting power",
+			[]interface{} {
+				map[string]interface{}{
+					"address": "hx10000",
+					"value": "0x10000000000000000000",
+				},
+				map[string]interface{}{
+					"address": "hx20000",
+					"value": "0x20000000000000000000",
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"Duplicated target address",
+			[]interface{} {
+				map[string]interface{}{
+					"address": "hx1",
+					"value": fmt.Sprintf("0x%x", v1),
+				},
+				map[string]interface{}{
+					"address": "hx1",
+					"value": fmt.Sprintf("0x%x", v2),
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"Too many delegations",
+			[]interface{} {
+				map[string]interface{}{
+					"address": "hx1",
+					"value": fmt.Sprintf("0x%x", v1),
+				},
+				map[string]interface{}{
+					"address": "hx2",
+					"value": fmt.Sprintf("0x%x", v2),
+				},
+				map[string]interface{}{
+					"address": "hx3",
+					"value": fmt.Sprintf("0x%x", v2),
+				},
+			},
+			true,
+			0,
+		},
+	}
+
+	setMaxDelegationCount(2)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t2 := t1.Clone()
+			err := t2.SetDelegation(tt.param)
+			if tt.err {
+				assert.Error(t, err, "SetDelegation() was not failed for %v.", tt.param)
+			} else {
+				assert.NoError(t, err, "SetDelegation() was failed for %v. err=%v", tt.param, err)
+
+				got, err := t2.GetDelegationInfo()
+				assert.NoError(t, err, "GetDelegationInfo() was failed for %v. err=%v", tt.param, err)
+
+				_, ok := got["delegations"]
+				if tt.totalDelegate == 0 && ok {
+					t.Errorf("GetDelegationIfo() = %v, want %v", got["delegations"], tt.param)
+				}
+				if !reflect.DeepEqual(got["totalDelegated"], big.NewInt(int64(tt.totalDelegate))) {
+					t.Errorf("GetDelegationIfo() = %v, want %v", got["totalDelegated"], tt.param)
+				}
+			}
+		})
+	}
+
+	setMaxDelegationCount(0)
 }
