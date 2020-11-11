@@ -191,10 +191,6 @@ type setObjGraphMessage struct {
 	ObjectGraph []byte
 }
 
-type setPortionMessage struct {
-	Portion int
-}
-
 func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
 	switch lv {
 	case log.DebugLevel:
@@ -534,15 +530,15 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		return p.frame.ctx.SetObjGraph(m.Flags == 1, m.NextHash, m.ObjectGraph)
 
 	case msgSETFEEPCT:
-		var m setPortionMessage
-		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+		var proportion int
+		if _, err := codec.MP.UnmarshalFromBytes(data, &proportion); err != nil {
 			return err
 		}
-		if m.Portion >= 0 || m.Portion <= 100 {
-			p.frame.ctx.OnSetFeeProportion(p.frame.addr, m.Portion)
+		if 0 <= proportion && proportion <= 100 {
+			p.frame.ctx.OnSetFeeProportion(p.frame.addr, proportion)
 		} else {
-			p.log.Warnf("Proxy[%p].SETPORTION: invalid portion=%d",
-				m.Portion)
+			p.log.Warnf("Proxy[%p].OnSetFeeProportion: invalid proportion=%d",
+				proportion)
 		}
 		return nil
 

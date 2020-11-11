@@ -290,6 +290,31 @@ public final class Context {
     }
 
     //===================
+    // Fee Sharing
+    //===================
+
+    /**
+     * Returns the current fee sharing proportion of the SCORE.
+     * 100 means the SCORE will pay 100% of transaction fees on behalf of the transaction sender.
+     *
+     * @return the current fee sharing proportion that the SCORE will pay (0 to 100)
+     */
+    public static int getFeeSharingProportion() {
+        return 0;
+    }
+
+    /**
+     * Sets the proportion of transaction fees that the SCORE will pay.
+     * {@code proportion} should be between 0 to 100.
+     * If this method is invoked multiple times, the last proportion value will be used.
+     *
+     * @param proportion the desired proportion of transaction fees that the SCORE will pay
+     * @throws IllegalArgumentException if the proportion is not between 0 to 100
+     */
+    public static void setFeeSharingProportion(int proportion) {
+    }
+
+    //===================
     // Collection DB
     //===================
 

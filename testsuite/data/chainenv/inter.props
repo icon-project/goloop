@@ -1,0 +1,10 @@
+node0.url=http://localhost:9082
+node0.channel0.nid=0x3
+node0.channel0.name=default
+
+chain0.nid=0x3
+chain0.godWallet=keystore_god.json
+chain0.godPassword=gochain
+chain0.govWallet=keystore_gov.json
+chain0.govPassword=gochain
+chain0.totalSupply=0x2961fff8ca4a62327800000

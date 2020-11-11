@@ -330,6 +330,14 @@ public class ServiceManager implements Agent {
                     }
                     break;
                 }
+                case EEProxy.MsgType.SETFEEPCT: {
+                    var proportion = msg.value.asIntegerValue().asInt();
+                    if (0 <= proportion && proportion <= 100) {
+                        printf("RECV setProportion %d%n", proportion);
+                    } else {
+                        printf("RECV setProportion OutOfRange p=%d%n", proportion);
+                    }
+                }
             }
         }
     }

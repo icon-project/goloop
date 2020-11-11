@@ -68,6 +68,7 @@ public class EEProxy extends Proxy {
         public static final int SETCODE = 12;
         public static final int GETOBJGRAPH = 13;
         public static final int SETOBJGRAPH = 14;
+        public static final int SETFEEPCT = 15;
     }
 
     public static class SetValueFlag {
@@ -224,6 +225,11 @@ public class EEProxy extends Proxy {
     public void log(byte[][]indexed, byte[][] data) throws IOException {
         logger.trace("[LOGEVENT] {}, {}", indexed, data);
         sendMessage(MsgType.EVENT, indexed, data);
+    }
+
+    public void setFeeSharingProportion(int proportion) throws IOException {
+        logger.trace("[SETFEEPCT] {}", proportion);
+        sendMessage(MsgType.SETFEEPCT, proportion);
     }
 
     public interface OnGetApiListener {

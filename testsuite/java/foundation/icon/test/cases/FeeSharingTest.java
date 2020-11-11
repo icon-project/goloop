@@ -42,8 +42,8 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@Tag(Constants.TAG_PY_GOV)
 public class FeeSharingTest extends TestBase {
     private static TransactionHandler txHandler;
     private static GovScore govScore;
@@ -93,14 +93,24 @@ public class FeeSharingTest extends TestBase {
         return balance;
     }
 
+    @Tag(Constants.TAG_PY_GOV)
     @Test
-    public void runTest() throws Exception {
-        LOG.infoEntering("deploy", "FeeSharing");
-        FeeShareScore feeShareOwner = FeeShareScore.mustDeploy(txHandler, ownerWallet);
-        LOG.info("scoreAddr = " + feeShareOwner.getAddress());
-        LOG.info("value: " + feeShareOwner.getValue());
-        LOG.infoExiting();
+    public void testPython() throws Exception {
+        deployAndStartTest(Constants.CONTENT_TYPE_PYTHON);
+    }
 
+    @Tag(Constants.TAG_INTER_SCORE)
+    @Test
+    public void testJava() throws Exception {
+        deployAndStartTest(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    private void deployAndStartTest(String contentType) throws Exception {
+        runTest(FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType));
+    }
+
+    @Test
+    public void runTest(FeeShareScore feeShareOwner) throws Exception {
         // add alice into the white list
         LOG.infoEntering("invoke", "addToWhitelist(alice)");
         TransactionResult result = feeShareOwner.addToWhitelist(aliceWallet.getAddress(), 100);
@@ -159,6 +169,7 @@ public class FeeSharingTest extends TestBase {
     }
 
     private void printStepUsedDetails(RpcItem stepUsedDetails) {
+        assertNotNull(stepUsedDetails);
         RpcObject details = stepUsedDetails.asObject();
         LOG.info("stepUsedDetails: {");
         String M1 = "    ";

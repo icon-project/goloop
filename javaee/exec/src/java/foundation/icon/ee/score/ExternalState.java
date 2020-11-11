@@ -48,6 +48,7 @@ public class ExternalState implements IExternalState {
     private final StepCost stepCost;
     private final int nextHash;
     private final byte[] graphHash;
+    private int feeProportion;
 
     ExternalState(EEProxy proxy, int option, String codePath,
                   FileIO fileIO, BigInteger blockHeight,
@@ -209,6 +210,22 @@ public class ExternalState implements IExternalState {
             logger.trace("[logEvent] {} {}", indexed, data);
         } catch (IOException e) {
             logger.debug("[logEvent] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
+        }
+    }
+
+    @Override
+    public int getFeeSharingProportion() {
+        return this.feeProportion;
+    }
+
+    @Override
+    public void setFeeSharingProportion(int proportion) {
+        this.feeProportion = proportion;
+        try {
+            proxy.setFeeSharingProportion(proportion);
+        } catch (IOException e) {
+            logger.debug("[setFeeSharingProportion] {}", e.getMessage());
             RuntimeAssertionError.unexpected(e);
         }
     }

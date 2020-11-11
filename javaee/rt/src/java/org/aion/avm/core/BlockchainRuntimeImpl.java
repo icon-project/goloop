@@ -293,6 +293,22 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public int avm_getFeeSharingProportion() {
+        return externalState.getFeeSharingProportion();
+    }
+
+    @Override
+    public void avm_setFeeSharingProportion(int proportion) {
+        if (externalState.isReadOnly()) {
+            throw new IllegalStateException();
+        }
+        if (proportion < 0 || 100 < proportion) {
+            throw new IllegalArgumentException();
+        }
+        externalState.setFeeSharingProportion(proportion);
+    }
+
+    @Override
     public AnyDB avm_newAnyDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
         return new AnyDBImpl(id, vc);
     }

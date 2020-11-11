@@ -29,9 +29,12 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
+import testcases.FeeSharing;
 
 import java.io.IOException;
 import java.math.BigInteger;
+
+import static foundation.icon.test.common.Env.LOG;
 
 public class FeeShareScore extends Score {
     private static final BigInteger STEPS = Constants.DEFAULT_STEPS;
@@ -42,10 +45,20 @@ public class FeeShareScore extends Score {
         this.wallet = wallet;
     }
 
-    public static FeeShareScore mustDeploy(TransactionHandler txHandler, Wallet ownerWallet)
+    public static FeeShareScore mustDeploy(TransactionHandler txHandler, Wallet ownerWallet, String contentType)
             throws ResultTimeoutException, TransactionFailureException, IOException {
-        return new FeeShareScore(
-                txHandler.deploy(ownerWallet, getFilePath("fee_sharing"), null), ownerWallet);
+        LOG.infoEntering("deploy", "FeeSharing");
+        Score score;
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            score = txHandler.deploy(ownerWallet, getFilePath("fee_sharing"), null);
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            score = txHandler.deploy(ownerWallet, FeeSharing.class, null);
+        } else {
+            throw new IllegalArgumentException("Unknown content type");
+        }
+        LOG.info("scoreAddr = " + score.getAddress());
+        LOG.infoExiting();
+        return new FeeShareScore(score, ownerWallet);
     }
 
     public String getValue() throws IOException {

@@ -43,7 +43,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     private static final int MAX_INDEXED_COUNT = 3;
     private static final Set<String> reservedEventNames = Set.of(
-            "ICXTransfer"
+            "ICXTransfer",
+            "ICXBurned",
+            "DepositAdded",
+            "DepositWithdrawn"
     );
 
     public ABICompilerMethodVisitor(int access, String methodName,
