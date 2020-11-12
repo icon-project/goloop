@@ -16,11 +16,13 @@
 
 package foundation.icon.ee.ipc;
 
+import foundation.icon.ee.score.ValidationException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
+import i.RuntimeAssertionError;
 import org.msgpack.core.MessageTypeCastException;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
@@ -32,6 +34,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.IntConsumer;
+import java.util.zip.ZipException;
 
 public class EEProxy extends Proxy {
     private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
@@ -65,6 +68,7 @@ public class EEProxy extends Proxy {
         public static final int SETCODE = 12;
         public static final int GETOBJGRAPH = 13;
         public static final int SETOBJGRAPH = 14;
+        public static final int SETFEEPCT = 15;
     }
 
     public static class SetValueFlag {
@@ -223,8 +227,14 @@ public class EEProxy extends Proxy {
         sendMessage(MsgType.EVENT, indexed, data);
     }
 
+    public void setFeeSharingProportion(int proportion) throws IOException {
+        logger.trace("[SETFEEPCT] {}", proportion);
+        sendMessage(MsgType.SETFEEPCT, proportion);
+    }
+
     public interface OnGetApiListener {
-        Method[] onGetApi(String path) throws IOException;
+        Method[] onGetApi(String path) throws ZipException, IOException,
+                ValidationException;
     }
 
     public void setOnGetApiListener(OnGetApiListener listener) {
@@ -232,14 +242,19 @@ public class EEProxy extends Proxy {
     }
 
     private void handleGetApi(String path) throws IOException {
-        if (mOnGetApiListener != null) {
-            Method[] methods = mOnGetApiListener.onGetApi(path);
-            if (methods != null) {
-                sendMessage(MsgType.GETAPI, Status.Success, methods);
-                return;
-            }
+        if (mOnGetApiListener == null) {
+            RuntimeAssertionError.unreachable("no getAPI handler");
         }
-        sendMessage(MsgType.GETAPI, Status.UnknownFailure, null);
+        try {
+            Method[] methods = mOnGetApiListener.onGetApi(path);
+            sendMessage(MsgType.GETAPI, Status.Success, methods);
+        } catch (ZipException e) {
+            e.printStackTrace();
+            sendMessage(MsgType.GETAPI, Status.PackageError, null);
+        } catch (ValidationException e) {
+            e.printStackTrace();
+            sendMessage(MsgType.GETAPI, Status.IllegalFormat, null);
+        }
     }
 
     public interface OnInvokeListener {

@@ -71,6 +71,12 @@ func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) er
 		}
 		t = t.Elem()
 	}
+	if mt.IsList() {
+		if t.Kind() != reflect.Interface || t.NumMethod() != 0 {
+			return scoreresult.InvalidParameterError.Errorf("NotCompatible(exp=interface{},type=%s)", t)
+		}
+		return nil
+	}
 	switch mt.Tag() {
 	case scoreapi.TInteger:
 		if typeHexInt == t {

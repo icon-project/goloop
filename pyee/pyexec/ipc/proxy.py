@@ -481,7 +481,7 @@ class ServiceManagerProxy:
         pct = pct | 0
         if pct < 0 or pct > 100:
             raise Exception('InvalidParameter')
-        self.__client.send(Message.SETFEEPCT, [pct])
+        self.__client.send(Message.SETFEEPCT, pct)
 
     def get_info(self) -> Any:
         msg, value = self.send_and_receive(Message.GETINFO, b'')

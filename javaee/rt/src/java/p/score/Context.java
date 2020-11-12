@@ -154,6 +154,16 @@ public final class Context extends Object {
         return blockchainRuntime.avm_getAddressFromKey(publicKey);
     }
 
+    public static int avm_getFeeSharingProportion() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getFeeSharingProportion);
+        return blockchainRuntime.avm_getFeeSharingProportion();
+    }
+
+    public static void avm_setFeeSharingProportion(int proportion) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_setFeeSharingProportion);
+        blockchainRuntime.avm_setFeeSharingProportion(proportion);
+    }
+
     public static BranchDB avm_newBranchDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
         return blockchainRuntime.avm_newAnyDB(id, vc);

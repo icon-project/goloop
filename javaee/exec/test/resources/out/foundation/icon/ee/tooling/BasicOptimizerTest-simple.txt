@@ -1,0 +1,25 @@
+foundation/icon/ee/tooling/BasicOptimizerTest$Simple -> A$B
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='external1', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B {
+
+  // compiled from: BasicOptimizerTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public external1()V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 1
+}

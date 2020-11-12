@@ -1,26 +1,12 @@
 package org.aion.avm.core.persistence;
 
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import foundation.icon.ee.score.ScoreClass;
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.IllegalFormatException;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.UnknownFailureException;
 import foundation.icon.ee.util.MethodUnpacker;
+import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.AvmThrowable;
 import i.Helper;
@@ -41,6 +27,24 @@ import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.types.CommonType;
 import org.aion.avm.core.util.DebugNameResolver;
 import p.score.Context;
+
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static foundation.icon.ee.types.Method.MethodType;
 
 /**
  * Manages the organization of a DApp's root classes serialized shape as well as how to kick-off the serialization/deserialization
@@ -84,7 +88,8 @@ public class LoadedDApp {
     private final Class<?> constantClass;
     private final String originalMainClassName;
     private final SortedFieldCache fieldCache;
-    private final Map<String, foundation.icon.ee.types.Method> nameToMethod;
+    private final Map<String, Method> nameToMethod;
+    private Constructor<?> ctor = null;
 
     // Other caches of specific pieces of data which are lazily built.
     public final IRuntimeSetup runtimeSetup;
@@ -152,61 +157,35 @@ public class LoadedDApp {
         nameToMethod = new HashMap<>();
         try {
             var methods = MethodUnpacker.readFrom(apis);
+            var sc = new ScoreClass(loadMainClass());
             for (var m : methods) {
-                nameToMethod.put(m.getName(), m);
+                if (m.getType() == MethodType.EVENT) {
+                    continue;
+                }
+                if (m.getName().equals("<init>")) {
+                    ctor = sc.findConstructor(m);
+                } else {
+                    var found = sc.findMethod(m);
+                    if (found == null
+                            || (found.getModifiers() & Modifier.STATIC) != 0
+                            || (found.getModifiers() & Modifier.PUBLIC) == 0) {
+                        throw new IllegalFormatException("Bad external method");
+                    }
+                    nameToMethod.put(m.getName(), found);
+                }
+            }
+            if (ctor == null) {
+                throw new IllegalFormatException("Bad constructor");
             }
         } catch (IOException e) {
             throw RuntimeAssertionError.unexpected(e);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
 
-    private Method getExternalMethod(foundation.icon.ee.types.Method m)
-            throws  ClassNotFoundException, NoSuchMethodException {
-        var paramClasses = m.getParameterClasses();
-        Class<?> clazz = loadMainClass();
-        try {
-            return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
-        } catch (SecurityException e) {
-            throw RuntimeAssertionError.unexpected(e);
-        }
-    }
-
-    private Constructor<?> getConstructor(foundation.icon.ee.types.Method m)
-            throws  ClassNotFoundException, NoSuchMethodException {
-        var paramClasses = m.getParameterClasses();
-        Class<?> clazz = loadMainClass();
-        try {
-            return clazz.getConstructor(paramClasses);
-        } catch (SecurityException e) {
-            throw RuntimeAssertionError.unexpected(e);
-        }
-    }
-
-    public void verifyMethods() throws IllegalFormatException {
-        var m = nameToMethod.get("<init>");
-        if (m == null) {
-            throw new IllegalFormatException("no constructor in APIS");
-        }
-        try {
-            var c = getConstructor(m);
-            int mod = c.getModifiers();
-            if (!Modifier.isPublic(mod)) {
-                throw new IllegalFormatException("bad constructor");
-            }
-            for (var e : nameToMethod.entrySet()) {
-                if (e.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT
-                        && !e.getValue().getName().equals("<init>")) {
-                    Method method = getExternalMethod(e.getValue());
-                    mod = method.getModifiers();
-                    if (Modifier.isStatic(mod) && !Modifier.isPublic(mod)) {
-                        throw new IllegalFormatException(
-                                String.format("bad method %s", e.getKey()));
-                    }
-                }
-            }
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalFormatException("Cannot access method or constructor", e);
-        }
+    private static IllegalFormatException fail(String fmt, Object... args) {
+        throw new IllegalFormatException(String.format(fmt, args));
     }
 
     public DAppRuntimeState loadRuntimeState(IExternalState es) {
@@ -291,13 +270,9 @@ public class LoadedDApp {
     }
 
     public void initMainInstance(Object []params) throws AvmThrowable {
-        var m = nameToMethod.get("<init>");
-        if (m == null) {
-            throw RuntimeAssertionError.unreachable("no construct in APIS");
-        }
         try {
-            Constructor<?> ctor = getConstructor(m);
-            mainInstance = ctor.newInstance(m.convertParameters(params));
+            mainInstance = ctor.newInstance(
+                    Shadower.shadowObjects(params, ctor.getParameterTypes()));
         } catch (InvocationTargetException e) {
             handleUncaughtException(e.getTargetException());
         } catch (ExceptionInInitializerError e) {
@@ -311,25 +286,15 @@ public class LoadedDApp {
 
     public Object callMethod(String methodName, Object[] params) throws AvmThrowable {
         stateCache = null;
-        var m = nameToMethod.get(methodName);
-        if (m == null) {
-            throw RuntimeAssertionError.unreachable(
-                    String.format("method %s is not in APIS", methodName));
-        }
         try {
-            Method method = getExternalMethod(m);
-            Object sres = method.invoke(mainInstance, m.convertParameters(params));
-            Object res;
-            if (m.hasValidPrimitiveReturnType()) {
-                res = sres;
-            } else {
-                try {
-                    res = Unshadower.unshadow((s.java.lang.Object)sres);
-                } catch (IllegalArgumentException e) {
-                    throw new UnknownFailureException("invalid return value");
-                }
+            Method method = nameToMethod.get(methodName);
+            Object sres = method.invoke(mainInstance,
+                    Shadower.shadowObjects(params, method.getParameterTypes()));
+            try {
+                return Unshadower.unshadow(sres);
+            } catch (IllegalArgumentException e) {
+                throw new UnknownFailureException("invalid return value");
             }
-            return res;
         } catch (InvocationTargetException e) {
             handleUncaughtException(e.getTargetException());
         } catch (ExceptionInInitializerError e) {

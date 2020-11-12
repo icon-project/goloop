@@ -3,7 +3,6 @@ package i;
 import a.ByteArray;
 import p.score.Address;
 import p.score.AnyDB;
-import p.score.VarDB;
 import s.java.lang.Class;
 import s.java.lang.String;
 import s.java.math.BigInteger;
@@ -143,6 +142,16 @@ public interface IBlockchainRuntime {
      * Returns the address that is associated with the given public key
      */
     Address avm_getAddressFromKey(ByteArray publicKey);
+
+    /**
+     * Returns the current fee sharing proportion of the SCORE.
+     */
+    int avm_getFeeSharingProportion();
+
+    /**
+     * Sets the proportion of transaction fees that the SCORE will pay.
+     */
+    void avm_setFeeSharingProportion(int proportion);
 
     /**
      * Returns a new AnyDB instance

@@ -142,6 +142,16 @@ public interface IExternalState {
     void log(byte[][] indexed, byte[][]data);
 
     /**
+     * Returns the current fee sharing proportion of the SCORE.
+     */
+    int getFeeSharingProportion();
+
+    /**
+     * Sets the proportion of transaction fees that the SCORE will pay.
+     */
+    void setFeeSharingProportion(int proportion);
+
+    /**
      * Calls external method of target contract.
      */
     Result call(Address address,

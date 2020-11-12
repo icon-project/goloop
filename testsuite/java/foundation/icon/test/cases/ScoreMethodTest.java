@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -87,7 +103,7 @@ public class ScoreMethodTest {
             result = acceptResult;
         }
 
-        assertEquals(true, EventLog.checkScenario(List.of(
+        assertTrue(EventLog.checkScenario(List.of(
                 new EventLog(score_addr, "Called(str,int)", "on_install")
         ), result));
         LOG.infoExiting();
@@ -100,7 +116,7 @@ public class ScoreMethodTest {
         if (acceptResult != null) {
             result = acceptResult;
         }
-        assertEquals(true, EventLog.checkScenario(List.of(
+        assertTrue(EventLog.checkScenario(List.of(
                 new EventLog(score_addr, "Called(str,int)", "on_update")
         ), result));
         LOG.infoExiting();
@@ -108,7 +124,7 @@ public class ScoreMethodTest {
         LOG.infoEntering("fallback");
         Bytes tx = txHandler.transfer(new Address(score_addr), BigInteger.valueOf(1000));
         result = txHandler.getResult(tx);
-        assertEquals(true, EventLog.checkScenario(List.of(
+        assertTrue(EventLog.checkScenario(List.of(
                 new EventLog(score_addr, "Called(str,int)", "fallback")
         ), result));
         LOG.infoExiting();

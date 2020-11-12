@@ -228,7 +228,7 @@ IT:py:pyaudit:
 IT:java:javascore:
   <<: *IT__goloop
   variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_java.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-java/multi.sh
   script:
@@ -264,7 +264,7 @@ IT:goloop:pyscore:
 IT:goloop:javascore:
   <<: *IT__goloop
   variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_java.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   script:
@@ -273,8 +273,8 @@ IT:goloop:javascore:
 IT:goloop:interscore:
   <<: *IT__goloop
   variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_inter.json"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/inter.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   script:
     - ./gradlew testInterScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"

@@ -1,0 +1,77 @@
+foundation/icon/ee/tooling/StructOptimizerTest$ScoreReturnPerson -> A$B
+foundation/icon/ee/tooling/StructOptimizerTest$Person -> C$D
+C$D.age -> b
+C$D.name -> a
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=Lfoundation/icon/ee/tooling/StructOptimizerTest$Person;}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public method()LC$D;
+    NEW C$D
+    DUP
+    LDC "name"
+    BIPUSH 10
+    INVOKESPECIAL C$D.<init> (Ljava/lang/String;I)V
+    ARETURN
+    MAXSTACK = 4
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class C$D {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x2
+  private Ljava/lang/String; a
+
+  // access flags 0x2
+  private I b
+
+  // access flags 0x1
+  public <init>(Ljava/lang/String;I)V
+    // parameter  name
+    // parameter  age
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD C$D.a : Ljava/lang/String;
+    ALOAD 0
+    ILOAD 2
+    PUTFIELD C$D.b : I
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 3
+
+  // access flags 0x1
+  public getName()Ljava/lang/String;
+    ALOAD 0
+    GETFIELD C$D.a : Ljava/lang/String;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public getAge()I
+    ALOAD 0
+    GETFIELD C$D.b : I
+    IRETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}

@@ -569,9 +569,6 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		},
 	}
 	rootCmd.AddCommand(rawCmd)
-	rawFlags := rawCmd.Flags()
-	rawFlags.String("nid", "", "Network ID")
-	rawFlags.Int64("step_limit", 0, "StepLimit")
 
 	transferCmd := &cobra.Command{
 		Use:   "transfer",

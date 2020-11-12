@@ -1,8 +1,10 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import foundation.icon.ee.struct.Member;
 import org.objectweb.asm.Opcodes;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -11,13 +13,13 @@ public class MethodReachabilityDetector {
     private final Map<String, ClassInfo> classInfoMap;
     private final Queue<MethodInfo> methodQueue;
 
-    public static Map<String, ClassInfo> getClassInfoMap(String mainClassName, Map<String, byte[]> classMap, String[] roots)
+    public static Map<String, ClassInfo> getClassInfoMap(String mainClassName, Map<String, byte[]> classMap, Map<String, List<Member>> keptMethods)
             throws Exception {
-        MethodReachabilityDetector detector = new MethodReachabilityDetector(mainClassName, classMap, roots);
+        MethodReachabilityDetector detector = new MethodReachabilityDetector(mainClassName, classMap, keptMethods);
         return detector.getClassInfoMap();
     }
 
-    private MethodReachabilityDetector(String mainClassName, Map<String, byte[]> classMap, String[] roots)
+    private MethodReachabilityDetector(String mainClassName, Map<String, byte[]> classMap, Map<String, List<Member>> keptMethods)
             throws Exception {
         // Use the JarDependencyCollector to build the classInfos we need
         classInfoMap = JarDependencyCollector.getClassInfoMap(classMap);
@@ -29,21 +31,25 @@ public class MethodReachabilityDetector {
         }
 
         methodQueue = new LinkedList<>();
-        for (var m : roots) {
-            MethodInfo mi = mainClassInfo.getMethodMap().get(m);
-            if (null == mi) {
-                ClassInfo ci = mainClassInfo;
-                do {
-                    ci = ci.getSuperclass();
-                    if (null == ci) break;
-                    mi = ci.getMethodMap().get(m);
-                } while (null == mi);
-                if (null == mi) {
-                    throw new Exception(String.format("Method info %s not found!", m));
-                }
+        for (var e : keptMethods.entrySet()) {
+            var ci = classInfoMap.get(e.getKey());
+            if (ci == null) {
+                continue;
             }
-            mi.isReachable = true;
-            methodQueue.add(mi);
+            for (var m : e.getValue()) {
+                var cci = ci;
+                MethodInfo mi = null;
+                while (cci != null) {
+                    mi = cci.getMethodMap().get(m.getMethodID());
+                    if (mi != null) {
+                        break;
+                    }
+                    cci = cci.getSuperclass();
+                }
+                assert mi != null;
+                mi.isReachable = true;
+                methodQueue.add(mi);
+            }
         }
 
         for (ClassInfo classInfo : classInfoMap.values()) {

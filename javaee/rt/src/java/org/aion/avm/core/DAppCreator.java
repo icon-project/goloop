@@ -15,7 +15,6 @@ import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
 import i.OutOfStackException;
 import i.RuntimeAssertionError;
-import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.parallel.TransactionTask;
@@ -43,7 +42,6 @@ public class DAppCreator {
                     transformedDapp,
                     transformer.getAPIsBytes(),
                     conf.preserveDebuggability);
-            dapp.verifyMethods();
             runtimeSetup = dapp.runtimeSetup;
 
             // We start the nextHashCode at 1.

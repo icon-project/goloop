@@ -16,11 +16,9 @@
 
 package foundation.icon.ee.types;
 
-import i.RuntimeAssertionError;
-
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 public class Method {
 
@@ -46,24 +44,145 @@ public class Method {
         public static final int ADDRESS = 5;
         public static final int LIST = 6;
         public static final int DICT = 7;
+        public static final int STRUCT = 8;
+
+        public static final int DIMENSION_SHIFT = 4;
+        public static final int ELEMENT_MASK = (1<< DIMENSION_SHIFT)-1;
+
+        public static int getElement(int type) {
+            return type&ELEMENT_MASK;
+        }
+    }
+
+    public static class TypeDetail {
+        int type;
+        Field[] structFields; // non-null iff type&STRUCT
+
+        public TypeDetail(int type) {
+            this.type = type;
+        }
+
+        public TypeDetail(int type, Field[] structFields) {
+            this.type = type;
+            this.structFields = structFields;
+        }
+
+        public int getType() {
+            return type;
+        }
+
+        public Field[] getStructFields() {
+            return structFields;
+        }
+
+        @Override
+        public String toString() {
+            return "TypeDetail{" +
+                    "type=" + type +
+                    (structFields!=null
+                            ? ", structFields=" + Arrays.toString(structFields)
+                            : "") +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TypeDetail that = (TypeDetail) o;
+            return type == that.type &&
+                    Arrays.equals(structFields, that.structFields);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(type);
+            result = 31 * result + Arrays.hashCode(structFields);
+            return result;
+        }
+    }
+
+    public static class Field {
+        String name;
+        TypeDetail typeDetail;
+
+        public Field(String name, TypeDetail typeDetail) {
+            this.name = name;
+            this.typeDetail = typeDetail;
+        }
+
+        public Field(String name, int type, Field[] structTypes) {
+            this.name = name;
+            this.typeDetail = new TypeDetail(type, structTypes);
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public TypeDetail getTypeDetail() {
+            return typeDetail;
+        }
+
+        public int getType() {
+            return typeDetail.getType();
+        }
+
+        public Field[] getStructFields() {
+            return typeDetail.getStructFields();
+        }
+
+        @Override
+        public String toString() {
+            return "Field{" +
+                    "name='" + name + '\'' +
+                    ", type=" + typeDetail.type +
+                    (typeDetail.structFields!=null
+                            ? ", structFields=" + Arrays.toString(typeDetail.structFields)
+                            : "") +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Field field = (Field) o;
+            return name.equals(field.name) &&
+                    typeDetail.equals(field.typeDetail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, typeDetail);
+        }
     }
 
     public static class Parameter {
         String name;
         String descriptor;
-        int type;
+        TypeDetail typeDetail;
         boolean optional;
 
         public Parameter(String name, String descriptor, int type) {
-            this.name = name;
-            this.descriptor = descriptor;
-            this.type = type;
+            this(name, descriptor, new TypeDetail(type), false);
         }
 
-        public Parameter(String name, String descriptor, int type, boolean optional) {
+        public Parameter(String name, String descriptor, int type,
+                boolean optional) {
+            this(name, descriptor, new TypeDetail(type), optional);
+        }
+
+        public Parameter(String name, String descriptor, int type,
+                Field[] structFields, boolean optional) {
+            this(name, descriptor, new TypeDetail(type, structFields),
+                    optional);
+        }
+
+        public Parameter(String name, String descriptor, TypeDetail typeDetail, boolean optional) {
             this.name = name;
             this.descriptor = descriptor;
-            this.type = type;
+            this.typeDetail = typeDetail;
             this.optional = optional;
         }
 
@@ -76,19 +195,30 @@ public class Method {
         }
 
         public int getType() {
-            return type;
+            return typeDetail.getType();
         }
 
         public boolean isOptional() {
             return optional;
         }
 
+        public Field[] getStructFields() {
+            return typeDetail.getStructFields();
+        }
+
+        public TypeDetail getTypeDetail() {
+            return typeDetail;
+        }
+
         @Override
         public String toString() {
             return "Parameter{" +
                     "name='" + name + '\'' +
-                    ", descriptor=" + descriptor +
-                    ", type=" + type +
+                    (descriptor.isEmpty() ? "" : ", descriptor=" + descriptor) +
+                    ", type=" + typeDetail.type +
+                    (typeDetail.structFields!=null
+                            ? ", structFields=" + Arrays.toString(typeDetail.structFields)
+                            : "") +
                     ", optional=" + optional +
                     '}';
         }
@@ -167,7 +297,7 @@ public class Method {
                 ", indexed=" + indexed +
                 ", inputs=" + Arrays.toString(inputs) +
                 ", output=" + output +
-                ", outputDescriptor=" + outputDescriptor +
+                (outputDescriptor.isEmpty() ? "" : ", outputDescriptor=" + outputDescriptor) +
                 '}';
     }
 
@@ -192,96 +322,6 @@ public class Method {
         return true;
     }
 
-    public Class<?>[] getParameterClasses() {
-        Class<?>[] out = new Class<?>[inputs.length];
-        for (int i=0; i<inputs.length; i++) {
-            out[i] = descToClass.get(inputs[i].getDescriptor());
-        }
-        return out;
-    }
-
-    public Object[] convertParameters(Object[] params) {
-        RuntimeAssertionError.assertTrue(
-            params.length == inputs.length,
-            String.format(
-                    "bad param length=%d input length=%d",
-                    params.length,
-                    inputs.length
-            )
-        );
-
-        Object[] out = new Object[inputs.length];
-        for (int i=0; i<inputs.length; i++) {
-            if (params[i] == null) {
-                out[i] = null;
-                continue;
-            }
-            var d = inputs[i].getDescriptor();
-            switch (d) {
-                case "Z":
-                    out[i] = params[i];
-                    break;
-                case "C": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = (char) p.intValue();
-                    break;
-                }
-                case "B": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = p.byteValue();
-                    break;
-                }
-                case "S": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = p.shortValue();
-                    break;
-                }
-                case "I": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = p.intValue();
-                    break;
-                }
-                case "J": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = p.longValue();
-                    break;
-                }
-                case "Ljava/math/BigInteger;": {
-                    BigInteger p = (BigInteger) params[i];
-                    out[i] = (p != null) ?
-                            s.java.math.BigInteger.newWithCharge(p) :
-                            null;
-                    break;
-                }
-                case "Ljava/lang/String;": {
-                    String p = (String) params[i];
-                    out[i] = (p != null) ?
-                            s.java.lang.String.newWithCharge(p) : null;
-                    break;
-                }
-                case "[B": {
-                    byte[] p = (byte[]) params[i];
-                    out[i] = (p != null) ? a.ByteArray.newWithCharge(p) : null;
-                    break;
-                }
-                case "Lscore/Address;":
-                    Address pa = (Address) params[i];
-                    out[i] = (pa != null) ?
-                            p.score.Address.newWithCharge(pa.toByteArray()) :
-                            null;
-                    break;
-                default:
-                    RuntimeAssertionError.unreachable(String.format(
-                            "bad %d-th param type %s",
-                            i,
-                            params[i].getClass().getName())
-                    );
-                    break;
-            }
-        }
-        return out;
-    }
-
     public String getOutputDescriptor() {
         return outputDescriptor;
     }
@@ -295,6 +335,13 @@ public class Method {
         sb.append(')');
         sb.append(getOutputDescriptor());
         return sb.toString();
+    }
+
+    public String getDebugName() {
+        if (outputDescriptor.isEmpty()) {
+            return name;
+        }
+        return name + getDescriptor();
     }
 
     private static final String validPrimitives = "ZCBSIJ";

@@ -5,6 +5,7 @@
 
 package foundation.icon.ee.tooling.abi;
 
+import foundation.icon.ee.struct.StructDB;
 import foundation.icon.ee.types.Method;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
@@ -25,11 +26,14 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     private final List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<Method> callableInfo = new ArrayList<>();
     private final Map<String, byte[]> classMap;
+    private final StructDB structDB;
     private final boolean stripLineNumber;
 
-    public ABICompilerClassVisitor(ClassWriter cw, Map<String, byte[]> classMap, boolean stripLineNumber) {
+    public ABICompilerClassVisitor(ClassWriter cw, Map<String, byte[]> classMap,
+            StructDB structDB, boolean stripLineNumber) {
         super(Opcodes.ASM7, cw);
         this.classMap = classMap;
+        this.structDB = structDB;
         this.stripLineNumber = stripLineNumber;
     }
 
@@ -47,7 +51,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             }
             ClassReader reader = new ClassReader(classBytes);
             ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-            ABICompilerClassVisitor superVisitor = new ABICompilerClassVisitor(classWriter, classMap, stripLineNumber);
+            ABICompilerClassVisitor superVisitor = new ABICompilerClassVisitor(classWriter, classMap, structDB, stripLineNumber);
             reader.accept(superVisitor, 0);
             callableInfo = superVisitor.getCallableInfo();
             classBytes = classWriter.toByteArray();
@@ -70,7 +74,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             throw new ABICompilerException("main method cannot be defined", name);
         }
         ABICompilerMethodVisitor mv = new ABICompilerMethodVisitor(access, name, descriptor,
-                super.visitMethod(access, name, descriptor, signature, exceptions), stripLineNumber);
+                super.visitMethod(access, name, descriptor, signature, exceptions), structDB, stripLineNumber);
         methodVisitors.add(mv);
         return mv;
     }

@@ -33,12 +33,14 @@ public class MethodPacker {
         if (m.getInputs() != null) {
             packer.packArrayHeader(m.getInputs().length);
             for (Method.Parameter p : m.getInputs()) {
+                boolean isStruct = (p.getType()&Method.DataType.ELEMENT_MASK)==Method.DataType.STRUCT;
+                int additionalFields = isStruct ? 1 : 0;
                 if (longForm) {
-                    packer.packArrayHeader(4);
+                    packer.packArrayHeader(4 + additionalFields);
                     packer.packString(p.getName());
                     packer.packString(p.getDescriptor());
                 } else {
-                    packer.packArrayHeader(3);
+                    packer.packArrayHeader(3 + additionalFields);
                     packer.packString(p.getName());
                 }
                 packer.packInt(p.getType());
@@ -46,6 +48,9 @@ public class MethodPacker {
                     packDefaultValue(packer, p.getType());
                 } else {
                     packer.packNil();
+                }
+                if (isStruct) {
+                    packStructFields(packer, p.getStructFields());
                 }
             }
         } else {
@@ -69,6 +74,22 @@ public class MethodPacker {
             packer.writePayload(ba);
         } else {
             packer.packNil();
+        }
+    }
+
+    private static void packStructFields(MessageBufferPacker packer,
+            Method.Field[] fields) throws IOException {
+        packer.packArrayHeader(fields.length);
+        for (var f : fields) {
+            packer.packArrayHeader(3);
+            packer.packString(f.getName());
+            var t = f.getType();
+            packer.packInt(t);
+            if ((t & Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
+                packStructFields(packer, f.getStructFields());
+            } else {
+                packer.packNil();
+            }
         }
     }
 }

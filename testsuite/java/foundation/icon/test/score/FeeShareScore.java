@@ -22,16 +22,18 @@ import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
-import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
+import testcases.FeeSharing;
 
 import java.io.IOException;
 import java.math.BigInteger;
+
+import static foundation.icon.test.common.Env.LOG;
 
 public class FeeShareScore extends Score {
     private static final BigInteger STEPS = Constants.DEFAULT_STEPS;
@@ -42,23 +44,40 @@ public class FeeShareScore extends Score {
         this.wallet = wallet;
     }
 
-    public static FeeShareScore mustDeploy(TransactionHandler txHandler, Wallet ownerWallet)
+    public static FeeShareScore mustDeploy(TransactionHandler txHandler, Wallet ownerWallet, String contentType)
             throws ResultTimeoutException, TransactionFailureException, IOException {
-        return new FeeShareScore(
-                txHandler.deploy(ownerWallet, getFilePath("fee_sharing"), null), ownerWallet);
+        LOG.infoEntering("deploy", "FeeSharing");
+        Score score;
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            score = txHandler.deploy(ownerWallet, getFilePath("fee_sharing"), null);
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            score = txHandler.deploy(ownerWallet, FeeSharing.class, null);
+        } else {
+            throw new IllegalArgumentException("Unknown content type");
+        }
+        LOG.info("scoreAddr = " + score.getAddress());
+        LOG.infoExiting();
+        return new FeeShareScore(score, ownerWallet);
     }
 
     public String getValue() throws IOException {
-        RpcItem res = this.call("getValue", null);
-        return res.asString();
+        return this.call("getValue", null).asString();
     }
 
-    public TransactionResult addToWhitelist(Address address, int proportion) throws IOException, ResultTimeoutException {
+    public BigInteger getProportion(Address address) throws IOException {
+        var params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return this.call("getProportion", params).asInteger();
+    }
+
+    public TransactionResult addToWhitelist(Address address, BigInteger proportion)
+            throws IOException, ResultTimeoutException {
         return invokeAndWaitResult(wallet,
                 "addToWhitelist",
                 (new RpcObject.Builder())
                         .put("address", new RpcValue(address))
-                        .put("proportion", new RpcValue(BigInteger.valueOf(proportion)))
+                        .put("proportion", new RpcValue(proportion))
                         .build());
     }
 

@@ -39,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.zip.ZipException;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
@@ -110,23 +111,12 @@ public class TransactionExecutor {
         proxy.close();
     }
 
-    private Method[] handleGetApi(String path) throws IOException {
+    private Method[] handleGetApi(String path) throws ZipException,
+            IOException, ValidationException  {
         logger.trace(">>> path={}", path);
         byte[] jarBytes = fileIO.readFile(
                 Path.of(path, ExternalState.CODE_JAR).toString());
-        byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
-        if (null != apis) {
-            Method[] methods = MethodUnpacker.readFrom(apis);
-            for (var m : methods) {
-                if (!m.hasValidParams()) {
-                    logger.debug("Bad param of API {}!", m.getName());
-                    return null;
-                }
-            }
-            return methods;
-        }
-        logger.debug("No API info found!");
-        return null;
+        return Validator.validate(jarBytes);
     }
 
     private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,

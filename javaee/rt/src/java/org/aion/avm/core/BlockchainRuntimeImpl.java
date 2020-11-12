@@ -174,7 +174,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(targetAddress != null, "Destination can't be NULL");
         Object[] params = new Object[sparams.length()];
         for (int i=0; i<params.length; i++) {
-            params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
+            params[i] = Unshadower.unshadow(sparams.get(i));
         }
 
         externalState.waitForCallbacks();
@@ -290,6 +290,22 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public p.score.Address avm_getAddressFromKey(ByteArray publicKey) {
         require(null != publicKey, "publicKey is NULL");
         return new p.score.Address(Crypto.getAddressBytesFromKey(publicKey.getUnderlying()));
+    }
+
+    @Override
+    public int avm_getFeeSharingProportion() {
+        return externalState.getFeeSharingProportion();
+    }
+
+    @Override
+    public void avm_setFeeSharingProportion(int proportion) {
+        if (externalState.isReadOnly()) {
+            throw new IllegalStateException();
+        }
+        if (proportion < 0 || 100 < proportion) {
+            throw new IllegalArgumentException();
+        }
+        externalState.setFeeSharingProportion(proportion);
     }
 
     @Override

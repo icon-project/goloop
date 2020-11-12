@@ -31,7 +31,8 @@ public class Status {
     public static final int OutOfBalance = 11;
     public static final int Timeout = 12;
     public static final int StackOverflow = 13;
-    public static final int SkipTransaction = 14;
+    public static final int PackageError = 14;
+    public static final int SkipTransaction = 15;
 
     public static final int UserReversionStart = 32;
     public static final int UserReversionEnd = 1000;

@@ -1,6 +1,7 @@
 package foundation.icon.ee.io;
 
 import a.ByteArray;
+import foundation.icon.ee.util.Strings;
 import i.IInstrumentation;
 import i.IObject;
 import org.junit.jupiter.api.AfterEach;
@@ -45,18 +46,8 @@ public class ObjectIOForRLPTest {
         return teout;
     }
 
-    private static final String hexDigits = "0123456789abcdef";
-
     private static String hex(byte[] ba) {
-        var sb = new StringBuilder();
-        for (int i=0; i<ba.length; i++) {
-            if (i>0) {
-                sb.append(' ');
-            }
-            sb.append(hexDigits.charAt((ba[i]>>4)&0xf));
-            sb.append(hexDigits.charAt((ba[i])&0xf));
-        }
-        return sb.toString();
+        return Strings.hexFromBytes(ba);
     }
 
     static void assertAvmObjectEquals(IObject a, IObject b) {

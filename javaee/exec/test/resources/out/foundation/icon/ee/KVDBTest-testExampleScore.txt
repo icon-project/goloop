@@ -1,5 +1,10 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND getAPI 010001
+RECV getAPI status=0 methods=[
+    Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
+    Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0}
+]
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=7 hash=c8b4767a933484ab9ea228b113cf203f947ae889c8bc27918141026fec3f7173 graphLen=241 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05!foundation.icon.ee.KVDBTest$Score\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08addrList\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dconfirmations\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07counter\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x0ctransactions
 RECV result status=0 stepUsed=19329 ret=<null>

@@ -16,6 +16,7 @@ import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.util.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.utilities.JarBuilder;
+import org.msgpack.core.MessagePack;
 import org.msgpack.value.ArrayValue;
 
 import java.io.IOException;
@@ -130,6 +131,28 @@ public class ServiceManager implements Agent {
         return doDeploy(jar, params);
     }
 
+    private Method[] getAPI(String path) throws IOException {
+        printf("SEND getAPI %s%n", path);
+        proxy.sendMessage(EEProxy.MsgType.GETAPI, path);
+        var msg = waitFor(EEProxy.MsgType.GETAPI);
+        var packer = MessagePack.newDefaultBufferPacker();
+        var arr = msg.value.asArrayValue();
+        var status = arr.get(0).asIntegerValue().asInt();
+        if (status!=0) {
+            printf("RECV getAPI status=%d%n", status);
+            return null;
+        }
+        var methods = arr.get(1);
+        methods.writeTo(packer);
+        var res = MethodUnpacker.readFrom(packer.toByteArray(), false);
+        printf("RECV getAPI status=%d methods=[%n", status);
+        for (var m : res) {
+            printf("    %s%n", m);
+        }
+        printf("]%n");
+        return res;
+    }
+
     private Contract doDeploy(byte[] jar, Object ... params) {
         Address scoreAddr = newScoreAddress();
         String path = getHexPrefix(scoreAddr);
@@ -137,8 +160,11 @@ public class ServiceManager implements Agent {
             var prev = current;
             var prevState = new State(state);
             state.writeFile(path + "/code.jar", jar);
-            var apisBytes = JarBuilder.getAPIsBytesFromJAR(jar);
-            Method[] methods = MethodUnpacker.readFrom(apisBytes);
+            Method[] methods = getAPI(path);
+            if (methods==null) {
+                throw new TransactionException(new Result(Status.IllegalFormat,
+                        0, null));
+            }
             current = state.getAccount(scoreAddr);
             info.put(Info.CONTRACT_OWNER, origin);
             var res = doInvoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
@@ -303,6 +329,14 @@ public class ServiceManager implements Agent {
                         printf("RECV setObjGraph flag=%d next=%d%n", flag, nextHash);
                     }
                     break;
+                }
+                case EEProxy.MsgType.SETFEEPCT: {
+                    var proportion = msg.value.asIntegerValue().asInt();
+                    if (0 <= proportion && proportion <= 100) {
+                        printf("RECV setProportion %d%n", proportion);
+                    } else {
+                        printf("RECV setProportion OutOfRange p=%d%n", proportion);
+                    }
                 }
             }
         }

@@ -1,0 +1,142 @@
+foundation/icon/ee/tooling/StructOptimizerTest$ScoreParamCourse -> A$B
+foundation/icon/ee/tooling/StructOptimizerTest$Person -> C$D
+foundation/icon/ee/tooling/StructOptimizerTest$Student -> E$F
+foundation/icon/ee/tooling/StructOptimizerTest$Course -> G$H
+C$D.age -> b
+C$D.name -> a
+E$F.name -> a
+E$F.age -> b
+G$H.teacher -> d
+G$H.students -> e
+E$F.major -> c
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=1, inputs=[Parameter{name='p', descriptor=Lfoundation/icon/ee/tooling/StructOptimizerTest$Course;, type=8, structFields=[Field{name='teacher', type=8, structFields=[Field{name='name', type=2}, Field{name='age', type=1}]}, Field{name='students', type=24, structFields=[Field{name='major', type=2}, Field{name='name', type=2}, Field{name='age', type=1}]}], optional=false}], output=0, outputDescriptor=V}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public method(LG$H;)V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 2
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class C$D {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x2
+  private Ljava/lang/String; a
+
+  // access flags 0x2
+  private I b
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public setName(Ljava/lang/String;)V
+    // parameter  name
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD C$D.a : Ljava/lang/String;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+
+  // access flags 0x1
+  public setAge(I)V
+    // parameter  age
+    ALOAD 0
+    ILOAD 1
+    PUTFIELD C$D.b : I
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class E$F extends C$D {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x2
+  private Ljava/lang/String; c
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL C$D.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public setMajor(Ljava/lang/String;)V
+    // parameter  major
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD E$F.c : Ljava/lang/String;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class G$H {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x2
+  private LC$D; d
+
+  // access flags 0x2
+  private [LE$F; e
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public setTeacher(LC$D;)V
+    // parameter  teacher
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD G$H.d : LC$D;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+
+  // access flags 0x1
+  public setStudents([LE$F;)V
+    // parameter  students
+    ALOAD 0
+    ALOAD 1
+    PUTFIELD G$H.e : [LE$F;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+}

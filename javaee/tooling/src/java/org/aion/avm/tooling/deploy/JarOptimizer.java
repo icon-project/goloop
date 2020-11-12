@@ -13,6 +13,7 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +66,26 @@ public class JarOptimizer {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
 
+    public byte[] optimize(byte[] jarBytes, Collection<String> rootClasses) {
+        Map<String, byte[]> classMap;
+        Set<String> visitedClasses = new HashSet<>();
+
+        try {
+            JarInputStream jarReader = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
+            String mainClassName = Utilities.extractMainClassName(jarReader, Utilities.NameStyle.DOT_NAME);
+            classMap = Utilities.extractClasses(jarReader, Utilities.NameStyle.DOT_NAME);
+
+            for (var c : rootClasses) {
+                traverse(c, visitedClasses, classMap);
+            }
+
+            return buildOptimizedJar(visitedClasses, classMap, mainClassName);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     private void traverse(String className, Set<String> visitedClasses, Map<String, byte[]> classMap) {

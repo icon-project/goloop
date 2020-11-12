@@ -5,17 +5,23 @@
 
 package foundation.icon.ee.tooling.abi;
 
+import foundation.icon.ee.struct.Member;
+import foundation.icon.ee.struct.PropertyMember;
+import foundation.icon.ee.struct.StructDB;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.util.ASM;
+import foundation.icon.ee.util.Multimap;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
-import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarInputStream;
 
 public class ABICompiler {
@@ -25,6 +31,11 @@ public class ABICompiler {
     private List<Method> callables;
     private Map<String, byte[]> classMap = new HashMap<>();
     private boolean stripLineNumber;
+    private final Set<String> rootClasses = new HashSet<>();
+
+    // slash name
+    private final Map<String, List<Member>> keptMethods = new HashMap<>();
+    private final Map<String, List<Member>> keptFields = new HashMap<>();
 
     public static ABICompiler compileJar(InputStream byteReader, boolean stripLineNumber) {
         return initCompilerAndCompile(byteReader, stripLineNumber);
@@ -48,6 +59,28 @@ public class ABICompiler {
     private ABICompiler() {
     }
 
+    private static void addKeptProperty(Map<String, List<Member>> map,
+            PropertyMember p) {
+        Multimap.add(map, p.getDeclaringType().getInternalName(),
+                p.getMember());
+    }
+
+    private void collectKeptProperties(List<PropertyMember> props) {
+        for (var p : props) {
+            switch(p.getSort()) {
+                case PropertyMember.FIELD:
+                    addKeptProperty(keptFields, p);
+                    break;
+                case PropertyMember.GETTER:
+                case PropertyMember.SETTER:
+                    addKeptProperty(keptMethods, p);
+                    break;
+                default:
+                    assert false;
+            }
+        }
+    }
+
     private void compile(InputStream byteReader) {
         try {
             safeLoadFromBytes(byteReader);
@@ -55,14 +88,49 @@ public class ABICompiler {
             e.printStackTrace();
         }
 
-        ClassReader reader = new ClassReader(mainClassBytes);
-        ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, classMap, stripLineNumber);
-        reader.accept(classVisitor, 0);
+        var structDB = new StructDB(classMap);
+        var cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        var cv = new ABICompilerClassVisitor(cw, classMap, structDB,
+                stripLineNumber);
+        ASM.accept(mainClassBytes, cv);
 
-        callables = classVisitor.getCallableInfo();
-        mainClassBytes = classWriter.toByteArray();
-        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, classMap);
+        callables = cv.getCallableInfo();
+        mainClassBytes = cw.toByteArray();
+        classMap.put(mainClassName, mainClassBytes);
+
+        rootClasses.add(mainClassName);
+        var internalName = Utilities.fullyQualifiedNameToInternalName(
+                mainClassName);
+        for (var m : callables) {
+            Multimap.add(keptMethods, internalName,
+                    new Member(m.getName(), m.getDescriptor()));
+        }
+
+        var paramStructs = structDB.getParameterStructs();
+        for (var s : paramStructs) {
+            rootClasses.add(s.getClassName());
+            Multimap.add(keptMethods, s.getInternalName(),
+                    new Member("<init>", "()V"));
+            collectKeptProperties(structDB.getWritableProperties(s));
+        }
+        var returnStructs = structDB.getReturnStructs();
+        for (var s : returnStructs) {
+            rootClasses.add(s.getClassName());
+            collectKeptProperties(structDB.getReadableProperties(s));
+        }
+        for (var e : classMap.entrySet()) {
+            var icw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            var icv = ASM.accept(e.getValue(),
+                    new KeptMemberCollector(icw));
+            var name = Utilities.fullyQualifiedNameToInternalName(
+                    e.getKey());
+            Multimap.addAll(keptMethods, name, icv.getKeptMethods());
+            Multimap.addAll(keptFields, name, icv.getKeptFields());
+            classMap.put(e.getKey(), icw.toByteArray());
+        }
+
+        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(
+                mainClassName, classMap);
     }
 
     private void safeLoadFromBytes(InputStream byteReader) throws Exception {
@@ -73,7 +141,6 @@ public class ABICompiler {
         if (mainClassBytes == null) {
             throw new ABICompilerException("Cannot find main class: " + mainClassName);
         }
-        classMap.remove(mainClassName);
     }
 
     public List<Method> getCallables() {
@@ -82,5 +149,17 @@ public class ABICompiler {
 
     public byte[] getJarFileBytes() {
         return outputJarFile;
+    }
+
+    public Set<String> getRootClasses() {
+        return rootClasses;
+    }
+
+    public Map<String, List<Member>> getKeptMethods() {
+        return keptMethods;
+    }
+
+    public Map<String, List<Member>> getKeptFields() {
+        return keptFields;
     }
 }

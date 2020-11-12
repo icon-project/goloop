@@ -10,6 +10,21 @@ Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', d
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND getAPI 010001
+RECV getAPI status=0 methods=[
+    Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
+    Method{type=0, name='mbyte', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mshort', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mint', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mlong', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mboolean', flags=2, indexed=1, inputs=[Parameter{name='v', type=4, optional=false}], output=4}
+    Method{type=0, name='mchar', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mBigInteger', flags=2, indexed=0, inputs=[Parameter{name='v', type=1, optional=true}], output=1}
+    Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', type=2, optional=true}], output=2}
+    Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', type=3, optional=true}], output=3}
+    Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', type=5, optional=true}], output=5}
+    Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0}
+]
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=5169 ret=<null>
@@ -25,6 +40,21 @@ Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', d
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND getAPI 010002
+RECV getAPI status=0 methods=[
+    Method{type=0, name='<init>', flags=0, indexed=1, inputs=[Parameter{name='addr', type=5, optional=false}], output=0}
+    Method{type=0, name='mbyte', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mshort', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mint', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mlong', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mboolean', flags=2, indexed=1, inputs=[Parameter{name='v', type=4, optional=false}], output=4}
+    Method{type=0, name='mchar', flags=2, indexed=1, inputs=[Parameter{name='v', type=1, optional=false}], output=1}
+    Method{type=0, name='mBigInteger', flags=2, indexed=0, inputs=[Parameter{name='v', type=1, optional=true}], output=1}
+    Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', type=2, optional=true}], output=2}
+    Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', type=3, optional=true}], output=3}
+    Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', type=5, optional=true}], output=5}
+    Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0}
+]
 SEND invoke code=010002 isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[010001...] EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=14 hash=48c35af6373f127112c56223199c83fbb09a06b943b4b09b894283de2dfafacd graphLen=501 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x03\x00\x00\x00\x09\x03\x00\x00\x00\x0a\x03\x00\x00\x00\x0b+foundation.icon.ee.IntercallTest$ProxyScore\x00\x00\x00\x0d\x03\x00\x00\x00\x0c\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08mAddress\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0bmBigInteger\x10java.lang.String\x00\x00\x00\x0b\x00\x00\x00\x05mvoid\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0amByteArray\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07mString\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x08mboolean\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x05mbyte\x10java.lang.String\x00\x00\x00\x07\x00\x00\x00\x05mchar\x10java.lang.String\x00\x00\x00\x08\x00\x00\x00\x04mint\x10java.lang.String\x00\x00\x00\x09\x00\x00\x00\x05mlong\x10java.lang.String\x00\x00\x00\x0a\x00\x00\x00\x06mshort\x0dscore.Address\x00\x00\x00\x0c\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 RECV result status=0 stepUsed=40443 ret=<null>
