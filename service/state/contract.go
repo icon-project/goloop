@@ -235,6 +235,9 @@ func (c *contractImpl) SetStatus(state ContractState) {
 }
 
 func (c *contractImpl) getSnapshot() *contractSnapshotImpl {
+	if c == nil {
+		return nil
+	}
 	var snapshot contractSnapshotImpl
 	snapshot = c.contractSnapshotImpl
 	return &snapshot

@@ -686,14 +686,6 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		}
 	}
 
-	var curContract *contractSnapshotImpl
-	if s.curContract != nil {
-		curContract = s.curContract.getSnapshot()
-	}
-	var nextContract *contractSnapshotImpl
-	if s.nextContract != nil {
-		nextContract = s.nextContract.getSnapshot()
-	}
 	return &accountSnapshotImpl{
 		database:      s.database,
 		version:       s.version,
@@ -703,8 +695,8 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		state:         s.state,
 		contractOwner: common.AddressToPtr(s.contractOwner),
 		apiInfo:       s.apiInfo,
-		curContract:   curContract,
-		nextContract:  nextContract,
+		curContract:   s.curContract.getSnapshot(),
+		nextContract:  s.nextContract.getSnapshot(),
 		objGraph:      s.objGraph,
 		deposits:      s.deposits.Clone(),
 	}
@@ -735,10 +727,14 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	if snapshot.curContract != nil {
 		s.curContract = new(contractImpl)
 		s.curContract.reset(snapshot.curContract)
+	} else {
+		s.curContract = nil
 	}
 	if snapshot.nextContract != nil {
 		s.nextContract = new(contractImpl)
 		s.nextContract.reset(snapshot.nextContract)
+	} else {
+		s.nextContract = nil
 	}
 	s.objGraph = snapshot.objGraph
 	s.deposits = snapshot.deposits.Clone()
