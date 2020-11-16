@@ -301,27 +301,6 @@ public class Method {
                 '}';
     }
 
-    private static final Map<String, Class<?>> descToClass = Map.of(
-            "Z", boolean.class,
-            "C", char.class,
-            "B", byte.class,
-            "S", short.class,
-            "I", int.class,
-            "J", long.class,
-            "Ljava/math/BigInteger;", s.java.math.BigInteger.class,
-            "Ljava/lang/String;", s.java.lang.String.class,
-            "[B", a.ByteArray.class,
-            "Lscore/Address;", p.score.Address.class
-    );
-
-    public boolean hasValidParams() {
-        for (Parameter p: inputs) {
-            if (!descToClass.containsKey(p.getDescriptor()))
-                return false;
-        }
-        return true;
-    }
-
     public String getOutputDescriptor() {
         return outputDescriptor;
     }
@@ -342,14 +321,5 @@ public class Method {
             return name;
         }
         return name + getDescriptor();
-    }
-
-    private static final String validPrimitives = "ZCBSIJ";
-
-    public boolean hasValidPrimitiveReturnType() {
-        if (outputDescriptor.length()!=1) {
-            return false;
-        }
-        return validPrimitives.indexOf(outputDescriptor.charAt(0)) >= 0;
     }
 }
