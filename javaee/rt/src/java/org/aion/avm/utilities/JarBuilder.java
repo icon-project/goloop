@@ -223,7 +223,7 @@ public class JarBuilder {
         String internalName = Utilities.fullyQualifiedNameToInternalName(qualifiedClassName);
         if (this.entriesInJar.contains(internalName)) {
             // This is a static usage error.
-            throw new AssertionError("Added class to JAR twice");
+            throw new AssertionError("Added class to JAR twice " + internalName);
         }
         JarEntry entry = new JarEntry(internalName + ".class");
         // AKI-135: While we only use this utility in tests, it is still convenient if we force the timestamp for deterministic JAR creation.
