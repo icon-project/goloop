@@ -49,6 +49,11 @@ public class StructOptimizerTest extends OptimizerGoldenTest {
         }
     }
 
+    public static class PersonF {
+        public String name;
+        public int age;
+    }
+
     public static class Student extends Person {
         private String major;
 
@@ -67,6 +72,10 @@ public class StructOptimizerTest extends OptimizerGoldenTest {
         public void setMajor(String major) {
             this.major = major;
         }
+    }
+
+    public static class StudentF extends PersonF {
+        public String major;
     }
 
     public static class Course {
@@ -96,6 +105,11 @@ public class StructOptimizerTest extends OptimizerGoldenTest {
         public void setStudents(Student[] students) {
             this.students = students;
         }
+    }
+
+    public static class CourseF {
+        public PersonF teacher;
+        public StudentF[] students;
     }
 
     public static class ScoreParamPerson {
@@ -165,5 +179,81 @@ public class StructOptimizerTest extends OptimizerGoldenTest {
     @Test
     void returnCourse() {
         test(ScoreReturnCourse.class, Person.class, Student.class, Course.class);
+    }
+
+    public static class ScoreParamPersonF {
+        @External
+        public void method(PersonF p) {
+        }
+    }
+
+    @Test
+    void paramPersonF() {
+        test(ScoreParamPersonF.class, PersonF.class, StudentF.class, CourseF.class);
+    }
+
+    public static class ScoreParamStudentF {
+        @External
+        public void method(StudentF p) {
+        }
+    }
+
+    @Test
+    void paramStudentF() {
+        test(ScoreParamStudentF.class, PersonF.class, StudentF.class, CourseF.class);
+    }
+
+    public static class ScoreParamCourseF {
+        @External
+        public void method(CourseF p) {
+        }
+    }
+
+    @Test
+    void paramCourseF() {
+        test(ScoreParamCourseF.class, PersonF.class, StudentF.class, CourseF.class);
+    }
+
+    public static class ScoreReturnPersonF {
+        @External
+        public PersonF method() {
+            var ret = new PersonF();
+            ret.name = "name";
+            ret.age = 10;
+            return ret;
+        }
+    }
+
+    @Test
+    void returnPersonF() {
+        test(ScoreReturnPersonF.class, PersonF.class, StudentF.class, CourseF.class);
+    }
+
+    public static class ScoreReturnStudentF {
+        @External
+        public StudentF method() {
+            var ret = new StudentF();
+            ret.name = "name";
+            ret.age = 10;
+            ret.major = "major";
+            return ret;
+        }
+    }
+
+    @Test
+    void returnStudentF() {
+        test(ScoreReturnStudentF.class, PersonF.class, StudentF.class, CourseF.class);
+    }
+
+    public static class ScoreReturnCourseF {
+        @External
+        public CourseF method() {
+            return new CourseF();
+        }
+    }
+
+    @Test
+    void returnCourseF() {
+        test(ScoreReturnCourseF.class, PersonF.class, StudentF.class, CourseF.class);
     }
 }

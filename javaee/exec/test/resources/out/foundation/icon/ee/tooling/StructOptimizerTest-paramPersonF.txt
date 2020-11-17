@@ -1,0 +1,46 @@
+foundation/icon/ee/tooling/StructOptimizerTest$PersonF -> A$B
+foundation/icon/ee/tooling/StructOptimizerTest$ScoreParamPersonF -> C$D
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=1, inputs=[Parameter{name='p', descriptor=LA$B;, type=8, structFields=[Field{name='name', type=2}, Field{name='age', type=1}], optional=false}], output=0, outputDescriptor=V}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public Ljava/lang/String; name
+
+  // access flags 0x1
+  public I age
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class C$D {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public method(LA$B;)V
+    RETURN
+    MAXSTACK = 0
+    MAXLOCALS = 2
+}
