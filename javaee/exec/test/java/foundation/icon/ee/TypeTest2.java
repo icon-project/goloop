@@ -64,6 +64,11 @@ public class TypeTest2 extends SimpleTest {
         }
     }
 
+    public static class PersonF {
+        public String name;
+        public int age;
+    }
+
     public static class Student extends Person {
         private String major;
 
@@ -82,6 +87,10 @@ public class TypeTest2 extends SimpleTest {
         public void setMajor(String major) {
             this.major = major;
         }
+    }
+
+    public static class StudentF extends PersonF {
+        public String major;
     }
 
     public static class Course {
@@ -111,6 +120,11 @@ public class TypeTest2 extends SimpleTest {
         public void setStudents(Student[] students) {
             this.students = students;
         }
+    }
+
+    public static class CourseF {
+        public PersonF teacher;
+        public StudentF[] students;
     }
 
     public static class Score {
@@ -171,6 +185,21 @@ public class TypeTest2 extends SimpleTest {
 
         @External
         public Course mCourse(Course v) {
+            return v;
+        }
+
+        @External
+        public PersonF mPersonF(PersonF v) {
+            return v;
+        }
+
+        @External
+        public StudentF mStudentF(StudentF v) {
+            return v;
+        }
+
+        @External
+        public CourseF mCourseF(CourseF v) {
             return v;
         }
 
@@ -239,6 +268,21 @@ public class TypeTest2 extends SimpleTest {
             return v;
         }
 
+        @External
+        public PersonF[] mPersonFArray(@Optional PersonF[] v) {
+            return v;
+        }
+
+        @External
+        public StudentF[] mStudentFArray(@Optional StudentF[] v) {
+            return v;
+        }
+
+        @External
+        public CourseF[] mCourseFArray(CourseF[] v) {
+            return v;
+        }
+
 
         @External
         public boolean[][] mbooleanArray2D(boolean[][] v) {
@@ -300,6 +344,21 @@ public class TypeTest2 extends SimpleTest {
             return v;
         }
 
+        @External
+        public PersonF[][] mPersonFArray2D(PersonF[][] v) {
+            return v;
+        }
+
+        @External
+        public StudentF[][] mStudentFArray2D(StudentF[][] v) {
+            return v;
+        }
+
+        @External
+        public CourseF[][] mCourseFArray2D(CourseF[][] v) {
+            return v;
+        }
+
 
         @External
         public boolean[][][] mbooleanArray3D(boolean[][][] v) {
@@ -358,6 +417,21 @@ public class TypeTest2 extends SimpleTest {
 
         @External
         public Course[][][] mCourseArray3D(Course[][][] v) {
+            return v;
+        }
+
+        @External
+        public PersonF[][][] mPersonFArray3D(PersonF[][][] v) {
+            return v;
+        }
+
+        @External
+        public StudentF[][][] mStudentFArray3D(StudentF[][][] v) {
+            return v;
+        }
+
+        @External
+        public CourseF[][][] mCourseFArray3D(CourseF[][][] v) {
             return v;
         }
 
@@ -762,7 +836,8 @@ public class TypeTest2 extends SimpleTest {
     @Test
     public void testParamAndReturn() {
         var app = sm.deploy(new Class<?>[]{
-                Score.class, Person.class, Student.class, Course.class
+                Score.class, Person.class, Student.class, Course.class,
+                PersonF.class, StudentF.class, CourseF.class
         });
         testForApp(app);
     }
@@ -828,6 +903,9 @@ public class TypeTest2 extends SimpleTest {
         test(app, personMapArray3D[0][0][0], "mPerson");
         test(app, studentMapArray3D[0][0][0], "mStudent");
         test(app, courseMapArray3D[0][0][0], "mCourse");
+        test(app, personMapArray3D[0][0][0], "mPersonF");
+        test(app, studentMapArray3D[0][0][0], "mStudentF");
+        test(app, courseMapArray3D[0][0][0], "mCourseF");
 
         test(app, booleanArray3D[0][0], "mbooleanArray");
         test(app, byteArray3D[0][0], "mbyteArray");
@@ -841,6 +919,9 @@ public class TypeTest2 extends SimpleTest {
         test(app, personMapArray3D[0][0], "mPersonArray");
         test(app, studentMapArray3D[0][0], "mStudentArray");
         test(app, courseMapArray3D[0][0], "mCourseArray");
+        test(app, personMapArray3D[0][0], "mPersonFArray");
+        test(app, studentMapArray3D[0][0], "mStudentFArray");
+        test(app, courseMapArray3D[0][0], "mCourseFArray");
         Assertions.assertNull(app.invoke("mvoid").getRet());
 
         test(app, booleanArray3D[0], "mbooleanArray2D");
@@ -855,6 +936,9 @@ public class TypeTest2 extends SimpleTest {
         test(app, personMapArray3D[0], "mPersonArray2D");
         test(app, studentMapArray3D[0], "mStudentArray2D");
         test(app, courseMapArray3D[0], "mCourseArray2D");
+        test(app, personMapArray3D[0], "mPersonFArray2D");
+        test(app, studentMapArray3D[0], "mStudentFArray2D");
+        test(app, courseMapArray3D[0], "mCourseFArray2D");
 
         test(app, booleanArray3D, "mbooleanArray3D");
         test(app, byteArray3D, "mbyteArray3D");
@@ -868,6 +952,9 @@ public class TypeTest2 extends SimpleTest {
         test(app, personMapArray3D, "mPersonArray3D");
         test(app, studentMapArray3D, "mStudentArray3D");
         test(app, courseMapArray3D, "mCourseArray3D");
+        test(app, personMapArray3D, "mPersonFArray3D");
+        test(app, studentMapArray3D, "mStudentFArray3D");
+        test(app, courseMapArray3D, "mCourseFArray3D");
 
         var freeList = new Object[]{
                 "string",
