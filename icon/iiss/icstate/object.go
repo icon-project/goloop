@@ -115,7 +115,7 @@ func (o *Object) RLPDecodeSelf(d codec.Decoder) error {
 		return errors.CriticalFormatError.Wrap(err,
 			"FailToCreateObjectImpl")
 	}
-	err = real.RLPDecodeFields(d)
+	err = real.RLPDecodeFields(d2)
 	if err != nil {
 		return err
 	}

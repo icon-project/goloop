@@ -253,8 +253,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	if err := esi.SetStake(s.cc, s.from, &value.Int); err != nil {
+	if err := iiss.NewHandler(s.cc, s.from, s.value, es).SetStake(&value.Int); err != nil {
 		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
 	return nil
@@ -262,18 +261,12 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	if ret, err := esi.GetStake(address); err != nil {
-		return nil, scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
-	} else {
-		return ret, nil
-	}
+	return iiss.NewHandler(s.cc, s.from, s.value, es).GetStake(address)
 }
 
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	if err := esi.SetDelegation(s.cc, s.from, param); err != nil {
+	if err := iiss.NewHandler(s.cc, s.from, s.value, es).SetDelegation(param); err != nil {
 		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
 	}
 	return nil
@@ -281,12 +274,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	if ret, err := esi.GetDelegation(address); err != nil {
-		return nil, scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
-	} else {
-		return ret, nil
-	}
+	return iiss.NewHandler(s.cc, s.from, s.value, es).GetDelegation(address)
 }
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string, city string,

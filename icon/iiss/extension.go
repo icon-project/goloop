@@ -14,13 +14,11 @@
 package iiss
 
 import (
-	"math/big"
-
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -42,7 +40,7 @@ type iconContext struct {
 type extensionSnapshotImpl struct {
 	database db.Database
 
-	iissState *snapshotHolder
+	state *icstate.Snapshot
 	//front *snapshotHolder
 	//back *snapshotHolder
 	//base *snapshotHolder
@@ -50,14 +48,12 @@ type extensionSnapshotImpl struct {
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
 	// TODO add front, back and base
-	return s.iissState.Bytes()
+	return s.state.Bytes()
 }
 
 func (s *extensionSnapshotImpl) Flush() error {
-	if ss, ok := s.iissState.state.(trie.Snapshot); ok {
-		if err := ss.Flush(); err != nil {
-			return err
-		}
+	if err := s.state.Flush(); err != nil {
+		return err
 	}
 	// TODO add front, back and base
 	return nil
@@ -78,33 +74,25 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 	}
 
 	// TODO parse hash and add front, back and base snapshot
-	s.iissState = NewSnapshotHolder(database, hash)
+	s.state = icstate.NewSnapshot(database, hash)
 	return s
 }
 
 type ExtensionStateImpl struct {
 	database db.Database
 
-	iissState *stateHolder
-	//front *stateHolder
-	//back *stateHolder
-	//base *stateHolder
+	state *icstate.State
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
-	is := &snapshotHolder{
-		database: s.database,
-	}
-	if s.iissState != nil {
-		is.state = s.iissState.GetSnapshot()
-		//if iissState.iissState.Empty() {
-		//	iissState.iissState = nil
-		//}
+	var is *icstate.Snapshot
+	if s.state != nil {
+		is = s.state.GetSnapshot()
 	}
 	// TODO add front, back and base snapshot
 	return &extensionSnapshotImpl{
-		database:  s.database,
-		iissState: is,
+		database: s.database,
+		state:    is,
 	}
 }
 
@@ -114,102 +102,18 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
 	}
 
-	if snapshot.iissState == nil {
-		s.iissState = nil
-	} else if s.iissState == nil {
-		s.iissState = NewStateHolder(snapshot.iissState.database, snapshot.iissState.state)
+	if snapshot.state == nil {
+		s.state = nil
+	} else if s.state == nil {
+		s.state = icstate.NewStateFromSnapshot(snapshot.state)
 	} else {
-		s.iissState.Reset(snapshot.iissState)
+		s.state.Reset(snapshot.state)
 	}
-}
-
-func (s *ExtensionStateImpl) GetIISSAccountDB() *scoredb.DictDB {
-	// TODO wrap DB API
-	return scoredb.NewDictDB(s.iissState, VarAccount, 1)
-}
-
-func (s *ExtensionStateImpl) GetIISSAccount(database *scoredb.DictDB, address module.Address) (*Account, error) {
-	as := NewAccount()
-	if bs := database.Get(address); bs != nil {
-		if err := as.SetBytes(bs.Bytes()); err != nil {
-			return nil, err
-		}
-	}
-	return as, nil
-}
-
-func (s *ExtensionStateImpl) SetStake(cc contract.CallContext, from module.Address, v *big.Int) error {
-	aDB := s.GetIISSAccountDB()
-	ia, err := s.GetIISSAccount(aDB, from)
-	if err != nil {
-		return err
-	}
-
-	if ia.getVotedPower().Cmp(v) == 1 {
-		return errors.Errorf("Failed to stake: stake < votedPower")
-	}
-
-	stakeInc := new(big.Int).Sub(v, ia.GetStake())
-	if stakeInc.Sign() == 0 {
-		return nil
-	}
-
-	account := cc.GetAccountState(from.ID())
-	balance := account.GetBalance()
-	if balance.Cmp(v) == -1 {
-		return errors.Errorf("Not enough balance")
-	}
-
-	expireHeight := s.calcUnstakeLockPeriod(cc.BlockHeight())
-	if err := ia.UpdateUnstake(stakeInc, expireHeight); err != nil {
-		return err
-	}
-	account.SetBalance(new(big.Int).Sub(balance, stakeInc))
-	if err = ia.SetStake(v); err != nil {
-		return err
-	}
-	return aDB.Set(from, ia.Bytes())
-}
-
-func (s *ExtensionStateImpl) calcUnstakeLockPeriod(blockHeight int64) int64 {
-	// TODO implement me
-	return blockHeight + 10
-}
-
-func (s *ExtensionStateImpl) GetStake(address module.Address) (map[string]interface{}, error) {
-	aDB := s.GetIISSAccountDB()
-	as, err := s.GetIISSAccount(aDB, address)
-	if err != nil {
-		return nil, err
-	}
-	return as.GetStakeInfo()
-}
-
-func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, param []interface{}) error {
-	aDB := s.GetIISSAccountDB()
-	ia, err := s.GetIISSAccount(aDB, from)
-	if err != nil {
-		return err
-	}
-
-	if err = ia.SetDelegation(param); err != nil {
-		return err
-	}
-
-	return aDB.Set(from, ia.Bytes())
-}
-
-func (s *ExtensionStateImpl) GetDelegation(address module.Address) (map[string]interface{}, error) {
-	aDB := s.GetIISSAccountDB()
-	as, err := s.GetIISSAccount(aDB, address)
-	if err != nil {
-		return nil, err
-	}
-	return as.GetDelegationInfo()
 }
 
 func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {
-	return scoredb.NewDictDB(s.iissState, VarPRep, 1)
+	//return scoredb.NewDictDB(s.state, VarPRep, 1)
+	return nil
 }
 
 func (s *ExtensionStateImpl) GetIISSPRepState(database *scoredb.DictDB, address module.Address) (PRepState, error) {

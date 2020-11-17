@@ -17,8 +17,11 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 type State struct {
@@ -33,6 +36,28 @@ func (s *State) GetSnapshot() *Snapshot {
 	return &Snapshot{
 		trie: s.trie.GetSnapshot(),
 	}
+}
+
+func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
+	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)))
+	if err != nil {
+		return nil, err
+	}
+	as := new(AccountState)
+	if obj != nil {
+		as.Reset(obj.(*Object).Real().(*AccountSnapshot))
+	} else {
+		as.Reset(newAccountSnapshot(MakeTag(TypeAccount, accountVersion)))
+	}
+	return as, nil
+}
+
+
+func (s *State) SetAccountState(addr module.Address, as *AccountState) error {
+	return s.trie.Set(
+		crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)),
+		NewObject(TypeAccount, as.GetSnapshot()),
+	)
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {

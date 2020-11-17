@@ -20,36 +20,52 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
+)
+
+const (
+	accountVersion1 = iota + 1
+	accountVersion  = accountVersion1
 )
 
 type AccountSnapshot struct {
 	NoDatabaseObject
-	stake       *big.Int
+	staked      *big.Int
+	unstakes    Unstakes
 	delegated   *big.Int
 	delegations Delegations
-	unstakes    Unstakes
+	bonded      *big.Int
+	bonds       Bonds
+	unbonds     Unbonds
 }
 
 func (a *AccountSnapshot) Version() int {
-	return 0
+	return accountVersion
 }
 
 func (a *AccountSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
-		&a.stake,
+		&a.staked,
+		&a.unstakes,
 		&a.delegated,
 		&a.delegations,
-		&a.unstakes,
+		&a.bonded,
+		&a.bonds,
+		&a.unbonds,
 	)
 	return err
 }
 
 func (a *AccountSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
-		a.stake,
+		a.staked,
+		a.unstakes,
 		a.delegated,
 		a.delegations,
-		a.unstakes,
+		a.bonded,
+		a.bonds,
+		a.unbonds,
 	)
 }
 
@@ -61,44 +77,145 @@ func (a *AccountSnapshot) Equal(object ObjectImpl) bool {
 	if aa == a {
 		return true
 	}
-	return a.stake.Cmp(aa.stake) == 0 &&
+	return a.staked.Cmp(aa.staked) == 0 &&
+		a.unstakes.Equal(aa.unstakes) &&
 		a.delegated.Cmp(aa.delegated) == 0 &&
 		a.delegations.Equal(aa.delegations) &&
-		a.unstakes.Equal(aa.unstakes)
+		a.bonded.Cmp(aa.bonded) == 0 &&
+		a.bonds.Equal(aa.bonds) &&
+		a.unbonds.Equal(aa.unbonds)
 }
 
 func newAccountSnapshot(tag Tag) *AccountSnapshot {
+	// versioning with tag.Version() if necessary
 	return &AccountSnapshot{
-		stake:     new(big.Int),
+		staked:    new(big.Int),
 		delegated: new(big.Int),
+		bonded:    new(big.Int),
 	}
 }
 
 type AccountState struct {
-	stake       *big.Int
+	staked      *big.Int
+	unstakes    Unstakes
 	delegated   *big.Int
 	delegations Delegations
-	unstakes    Unstakes
+	bonded      *big.Int
+	bonds       Bonds
+	unbonds     Unbonds
 }
 
 func (as *AccountState) Reset(ass *AccountSnapshot) {
-	as.stake = ass.stake
+	as.staked = ass.staked
+	as.unstakes = ass.unstakes.Clone()
 	as.delegated = ass.delegated
 	as.delegations = ass.delegations.Clone()
+	as.bonded = ass.bonded
+	as.bonds = ass.bonds.Clone()
+	as.unbonds = ass.unbonds.Clone()
 }
 
 func (as *AccountState) GetSnapshot() *AccountSnapshot {
 	ass := &AccountSnapshot{}
-	ass.stake = as.stake
+	ass.staked = as.staked
+	ass.unstakes = as.unstakes
 	ass.delegated = as.delegated
 	ass.delegations = as.delegations.Clone()
+	ass.bonded = as.bonded
+	ass.bonds = as.bonds.Clone()
+	ass.unbonds = as.unbonds.Clone()
 	return ass
+}
+
+// SetStake set stake amount
+func (as *AccountState) SetStake(v *big.Int) error {
+	if v.Sign() == -1 {
+		return errors.Errorf("negative stake is not allowed")
+	}
+	as.staked = v
+
+	return nil
+}
+
+// UpdateUnstake update unstakes
+func (as *AccountState) UpdateUnstake(stakeInc *big.Int, expireHeight int64) error {
+	switch stakeInc.Sign() {
+	case 1:
+		if err := as.unstakes.decreaseUnstake(stakeInc); err != nil {
+			return err
+		}
+	case -1:
+		if err := as.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// GetStake return stake amount
+func (as AccountState) GetStake() *big.Int {
+	return as.staked
+}
+
+// GetUnstakeAmount return unstake amount
+func (as AccountState) GetUnstakeAmount() *big.Int {
+	return as.unstakes.GetUnstakeAmount()
+}
+
+// GetTotalStake return stake + unstake amount
+func (as AccountState) GetTotalStake() *big.Int {
+	return new(big.Int).Add(as.staked, as.unstakes.GetUnstakeAmount())
+}
+
+// GetStakeInfo return stake and unstake information as a json format
+func (as AccountState) GetStakeInfo() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["stake"] = as.staked
+	if unstakes := as.unstakes.ToJSON(module.JSONVersion3); unstakes != nil {
+		jso["unstakes"] = unstakes
+	}
+	return jso
+}
+
+
+func (as *AccountState) SetDelegation(ds Delegations) {
+	as.delegated.Set(ds.GetDelegationAmount())
+	as.delegations = ds
+}
+
+func (as AccountState) GetDelegationInfo() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["totalDelegated"] = as.delegated
+	jso["votingPower"] = new(big.Int).Sub(as.staked, as.GetVotedPower())
+
+	if delegations := as.delegations.ToJSON(module.JSONVersion3); delegations != nil {
+		jso["delegations"] = delegations
+	}
+
+	return jso
+}
+
+func (as *AccountState) GetVotingPower() *big.Int {
+	return new(big.Int).Sub(as.staked, as.GetVotedPower())
+}
+
+func (as *AccountState) GetVotedPower() *big.Int {
+	return new(big.Int).Add(as.bonded, as.delegated)
+}
+
+
+func (as *AccountState) GetBond() *big.Int {
+	return as.bonded
 }
 
 func NewAccountStateWithSnapshot(ss *AccountSnapshot) *AccountState {
 	return &AccountState{
-		stake:       ss.stake,
+		staked:      ss.staked,
+		unstakes:    ss.unstakes,
 		delegated:   ss.delegated,
 		delegations: ss.delegations,
+		bonded:      ss.bonded,
+		bonds:       ss.bonds,
+		unbonds:     ss.unbonds,
 	}
 }

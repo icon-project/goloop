@@ -17,17 +17,45 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common"
+	"math/big"
+
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/module"
 )
 
+const (
+	maxUnstakes    = 1000
+)
+
+var maxUnstakeCount = maxUnstakes
+
+func getMaxUnstakeCount() int {
+	return maxUnstakeCount
+}
+
+func setMaxUnstakeCount(v int) {
+	if v == 0 {
+		maxUnstakeCount = maxUnstakes
+	} else {
+		maxUnstakeCount = v
+	}
+}
+
 type Unstake struct {
-	Amount       common.HexInt
+	Amount       *big.Int
 	ExpireHeight int64
 }
 
+func newUnstake() *Unstake {
+	return &Unstake{
+		Amount: new(big.Int),
+	}
+}
+
 func (u *Unstake) Clone() *Unstake {
-	n := new(Unstake)
-	n.Amount.Set(u.Amount.Value())
+	n := newUnstake()
+	n.Amount.Set(u.Amount)
 	n.ExpireHeight = u.ExpireHeight
 	return n
 }
@@ -36,8 +64,17 @@ func (u *Unstake) Equal(u2 *Unstake) bool {
 	if u == u2 {
 		return true
 	}
-	return u.Amount.Cmp(u2.Amount.Value()) == 0 &&
+	return u.Amount.Cmp(u2.Amount) == 0 &&
 		u.ExpireHeight == u2.ExpireHeight
+}
+
+func (u Unstake) ToJSON(v module.JSONVersion) interface{} {
+	jso := make(map[string]interface{})
+
+	jso["unstake"] = intconv.FormatBigInt(u.Amount)
+	jso["expireBlockHeight"] = intconv.FormatInt(u.ExpireHeight)
+
+	return jso
 }
 
 type Unstakes []*Unstake
@@ -63,4 +100,91 @@ func (us Unstakes) Equal(us2 Unstakes) bool {
 		}
 	}
 	return true
+}
+
+func (us Unstakes) Has() bool {
+	return len(us) > 0
+}
+
+// GetUnstakeAmount return unstake amount
+func (us Unstakes) GetUnstakeAmount() *big.Int {
+	total := new(big.Int)
+	for _, u := range us {
+		total.Add(total, u.Amount)
+	}
+	return total
+}
+
+func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
+	if us.Has() == false {
+		return nil
+	}
+	unstakes := make([]interface{}, len(us))
+
+	for idx, p := range us {
+		unstakes[idx] = p.ToJSON(v)
+	}
+	return unstakes
+}
+
+func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
+	if v.Sign() == -1 {
+		return errors.Errorf("Invalid unstake value %v", v)
+	}
+	if len(*us) >= getMaxUnstakeCount() {
+		// update last entry
+		lastIndex := len(*us) - 1
+		last := (*us)[lastIndex]
+		last.Amount.Add(last.Amount, v)
+		if eh > last.ExpireHeight {
+			last.ExpireHeight = eh
+		}
+		// TODO update unstake timer
+	} else {
+		unstake := newUnstake()
+		unstake.Amount.Set(v)
+		unstake.ExpireHeight = eh
+		*us = append(*us, unstake)
+		// TODO add unstake timer
+	}
+
+	return nil
+}
+
+func (us *Unstakes) decreaseUnstake(v *big.Int) error {
+	if v.Sign() == -1 {
+		return errors.Errorf("Invalid unstake value %v", v)
+	}
+	remain := new(big.Int).Set(v)
+	unstakes := *us
+	uLen := len(unstakes)
+	for i := uLen - 1; i >= 0; i-- {
+		u := unstakes[i]
+		switch remain.Cmp(u.Amount) {
+		case 0:
+			copy(unstakes[i:], unstakes[i+1:])
+			unstakes = unstakes[0 : len(unstakes)-1]
+			if len(unstakes) > 0 {
+				*us = unstakes
+			} else {
+				*us = nil
+			}
+			// TODO remove unstake timer
+			return nil
+		case 1:
+			copy(unstakes[i:], unstakes[i+1:])
+			unstakes = unstakes[0 : len(unstakes)-1]
+			if len(unstakes) > 0 {
+				*us = unstakes
+			} else {
+				*us = nil
+			}
+			// TODO remove unstake timer
+			remain.Sub(remain, u.Amount)
+		case -1:
+			u.Amount.Sub(u.Amount, remain)
+			return nil
+		}
+	}
+	return nil
 }

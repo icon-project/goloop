@@ -36,6 +36,17 @@ var (
 	prepStatusPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
 )
 
+func (ss *Snapshot) Bytes() []byte {
+	return ss.trie.Hash()
+}
+
+func (ss *Snapshot) Flush() error {
+	if s, ok := ss.trie.(trie.SnapshotForObject); ok {
+		return s.Flush()
+	}
+	return nil
+}
+
 func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, error) {
 	obj, err := ss.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)))
 	if err != nil {
