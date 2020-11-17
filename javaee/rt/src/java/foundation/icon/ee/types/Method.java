@@ -16,6 +16,8 @@
 
 package foundation.icon.ee.types;
 
+import org.objectweb.asm.commons.Remapper;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -186,6 +188,15 @@ public class Method {
             this.optional = optional;
         }
 
+        public Parameter remap(Remapper remapper) {
+            return new Parameter(
+                    name,
+                    remapper.mapDesc(descriptor),
+                    typeDetail,
+                    optional
+            );
+        }
+
         public String getName() {
             return name;
         }
@@ -240,6 +251,20 @@ public class Method {
         this.inputs = inputs;
         this.output = output;
         this.outputDescriptor = outputDescriptor;
+    }
+
+    public Method remap(Remapper remapper) {
+        return new Method(
+                type,
+                name,
+                flags,
+                indexed,
+                Arrays.stream(inputs)
+                        .map(in -> in.remap(remapper))
+                        .toArray(Parameter[]::new),
+                output,
+                remapper.mapDesc(outputDescriptor)
+        );
     }
 
     public static Method newFunction(String name, int flags, Parameter[] inputs, int output, String outputDescriptor) {

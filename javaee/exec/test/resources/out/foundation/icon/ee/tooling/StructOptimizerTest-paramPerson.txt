@@ -4,7 +4,7 @@ A$B.name -> a
 A$B.age -> b
 
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-Method{type=0, name='method', flags=2, indexed=1, inputs=[Parameter{name='p', descriptor=Lfoundation/icon/ee/tooling/StructOptimizerTest$Person;, type=8, structFields=[Field{name='name', type=2}, Field{name='age', type=1}], optional=false}], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=1, inputs=[Parameter{name='p', descriptor=LA$B;, type=8, structFields=[Field{name='name', type=2}, Field{name='age', type=1}], optional=false}], output=0, outputDescriptor=V}
 
 // class version 55.0 (55)
 // access flags 0x21

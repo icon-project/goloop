@@ -30,7 +30,7 @@ public class OptimizedJarBuilder {
     private boolean unreachableMethodRemoverEnabled;
     private boolean classAndFieldRenamerEnabled;
     private final byte[] dappBytes;
-    private final List<Method> callables;
+    private List<Method> callables;
     private final Set<String> rootClasses;
     private final Map<String, List<Member>> keptMethods;
     private final Map<String, List<Member>> keptFields;
@@ -99,8 +99,10 @@ public class OptimizedJarBuilder {
         // Only field and method renaming can work correctly in debug mode, but the new names may cause confusion for users.
         if (classAndFieldRenamerEnabled && !debugModeEnabled) {
             try {
-                optimizedDappBytes = Renamer.rename(optimizedDappBytes,
-                        keptMethods, keptFields);
+                var res = Renamer.rename(optimizedDappBytes,
+                        callables, keptMethods, keptFields);
+                optimizedDappBytes = res.getJarBytes();
+                callables = res.getCallables();
             } catch (Exception exception) {
                 System.err.println("Renaming failed, packaging code without this optimization");
                 exception.printStackTrace(System.err);

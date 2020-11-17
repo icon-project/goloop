@@ -11,7 +11,7 @@ A$B.age -> e
 E$F.teacher -> b
 
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=Lfoundation/icon/ee/tooling/StructOptimizerTest$Course;}
+Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=LE$F;}
 
 // class version 55.0 (55)
 // access flags 0x21
