@@ -25,8 +25,6 @@ import java.util.List;
 import static i.PackageConstants.kUserDotPrefix;
 
 public interface Property {
-    int METHOD_PREFIX_LEN = 7;
-
     static String decapitalize(String s) {
         if (s.length() > 1 && Character.isUpperCase(s.charAt(0))
                 && Character.isUpperCase(s.charAt(1))) {
@@ -71,18 +69,30 @@ public interface Property {
         return null;
     }
 
+    static boolean isGetter(Method m) {
+        if (!Modifier.isPublic(m.getModifiers())
+                || Modifier.isStatic(m.getModifiers())
+                || m.getParameterCount() != 0) {
+            return false;
+        }
+
+        if ((m.getReturnType() == boolean.class
+                || m.getReturnType() == s.java.lang.Boolean.class)
+                && m.getName().startsWith("avm_is")
+                && m.getName().length() > 6) {
+            return true;
+        }
+        return m.getReturnType() != void.class
+                && m.getName().startsWith("avm_get")
+                && m.getName().length() > 7;
+    }
+
     static List<ReadableProperty> getReadableProperties(Object obj) {
         var cls = obj.getClass();
-        final var prefix = "avm_get";
         var props = new ArrayList<ReadableProperty>();
         while (cls != null && cls.getName().startsWith(kUserDotPrefix)) {
             Arrays.stream(cls.getDeclaredMethods())
-                    .filter(m -> m.getName().startsWith(prefix)
-                            && m.getParameterCount() == 0
-                            && m.getReturnType() != void.class
-                            && !Modifier.isStatic(m.getModifiers())
-                            && Modifier.isPublic(m.getModifiers())
-                    )
+                    .filter(Property::isGetter)
                     .map(ReadableMethodProperty::new)
                     .forEachOrdered(props::add);
             Arrays.stream(cls.getDeclaredFields())

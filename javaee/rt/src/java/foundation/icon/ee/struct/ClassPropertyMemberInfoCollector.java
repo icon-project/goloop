@@ -88,16 +88,20 @@ public class ClassPropertyMemberInfoCollector extends ClassVisitor {
 
     private static boolean isGetter(int access, String name, Type type) {
         if ((access & Opcodes.ACC_PUBLIC) == 0
-                || (access & Opcodes.ACC_STATIC) != 0) {
+                || (access & Opcodes.ACC_STATIC) != 0
+                || type.getArgumentTypes().length != 0) {
             return false;
         }
-        if (name.length() < 4 || !name.startsWith("get")) {
-            return false;
+
+        if ((type.getReturnType()==Type.BOOLEAN_TYPE
+                || type.getReturnType()==Type.getType(Boolean.class))
+                && name.startsWith("is")
+                && name.length() > 2) {
+            return true;
         }
-        if (type.getArgumentTypes().length != 0) {
-            return false;
-        }
-        return type.getReturnType()!=Type.VOID_TYPE;
+        return type.getReturnType()!=Type.VOID_TYPE
+                && name.startsWith("get")
+                && name.length() > 3;
     }
 
     @Override
