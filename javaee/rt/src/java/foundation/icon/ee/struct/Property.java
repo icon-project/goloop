@@ -57,7 +57,7 @@ public interface Property {
                 return new WritableMethodProperty(ma[0]);
             }
             try {
-                var f = cls.getDeclaredField(property);
+                var f = cls.getDeclaredField("avm_" + property);
                 if (!Modifier.isStatic(f.getModifiers())
                         && Modifier.isPublic(f.getModifiers())) {
                     return new FieldProperty(f);
@@ -102,10 +102,10 @@ public interface Property {
                     .filter(f -> {
                         for (var p : props) {
                             if (f.getName().equals(p.getName())) {
-                                return true;
+                                return false;
                             }
                         }
-                        return false;
+                        return true;
                     })
                     .map(FieldProperty::new)
                     .forEachOrdered(props::add);
