@@ -81,7 +81,7 @@ func (s *apiInfoStore) Flush() error {
 	return nil
 }
 
-func (s *apiInfoStore) InitBucket(b db.Database) error {
+func (s *apiInfoStore) ResetDB(b db.Database) error {
 	if bk, err := b.GetBucket(db.BytesByHash); err != nil {
 		return err
 	} else {

@@ -27,25 +27,20 @@ import (
 
 type objectGraph struct {
 	bk        db.Bucket
+	needFlush bool
 	nextHash  int
 	graphHash []byte
 	graphData []byte
 }
 
 func (o *objectGraph) flush() error {
-	if o.bk == nil || o.graphData == nil {
+	if o == nil || o.graphData == nil {
 		return nil
 	}
-	prevData, err := o.bk.Get(o.graphHash)
-	if err != nil {
-		return err
-	}
-	// already exists
-	if prevData != nil {
-		return nil
-	}
-	if err := o.bk.Set(o.graphHash, o.graphData); err != nil {
-		return err
+	if o.needFlush {
+		if err := o.bk.Set(o.graphHash, o.graphData); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -92,9 +87,14 @@ func (o *objectGraph) Changed(
 		if len(graphData) == 0 {
 			n.graphData = nil
 			n.graphHash = nil
+			n.needFlush = false
 		} else {
-			n.graphData = graphData
-			n.graphHash = crypto.SHA3Sum256(graphData)
+			graphHash := crypto.SHA3Sum256(graphData)
+			if !bytes.Equal(graphHash, n.graphHash) {
+				n.graphData = graphData
+				n.graphHash = graphHash
+				n.needFlush = true
+			}
 		}
 	}
 	if n.nextHash == 0 && len(n.graphHash) == 0 {
@@ -125,4 +125,43 @@ func (o *objectGraph) Get(withData bool) (int, []byte, []byte, error) {
 	} else {
 		return o.nextHash, o.graphHash, nil, nil
 	}
+}
+
+func (o *objectGraph) ResetDB(dbase db.Database) error {
+	if o == nil {
+		return nil
+	}
+	if bk, err := dbase.GetBucket(db.BytesByHash); err != nil {
+		return errors.CriticalIOError.Wrap(err, "FailToGetBucket")
+	} else {
+		o.bk = bk
+		return nil
+	}
+}
+
+type objectGraphCache map[string]*objectGraph
+
+func (o objectGraphCache) Clone() objectGraphCache {
+	if o == nil || len(o) == 0 {
+		return nil
+	}
+	n := make(map[string]*objectGraph, len(o))
+	for k, v := range o {
+		n[k] = v
+	}
+	return n
+}
+
+func (o *objectGraphCache) Set(hash []byte, graph *objectGraph) {
+	if *o == nil {
+		*o = make(map[string]*objectGraph)
+	}
+	(*o)[string(hash)] = graph
+}
+
+func (o objectGraphCache) Get(hash []byte) *objectGraph {
+	if o == nil || len(hash) == 0 {
+		return nil
+	}
+	return o[string(hash)]
 }

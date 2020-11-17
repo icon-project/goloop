@@ -47,6 +47,7 @@ type CallHandler struct {
 	isSysCall bool
 	isQuery   bool
 	codeID    string
+	codeHash  []byte
 }
 
 func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
@@ -170,10 +171,11 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
+	h.codeHash = c.CodeHash()
 	h.codeID = fmt.Sprintf("%s-%x", h.to.String(), c.CodeHash())
 	// Before we set the codeID, it gets the last frame.
 	// Otherwise it would return current frameID for the code.
-	cc.SetCodeID(h.codeID)
+	cc.SetFrameCodeID(h.codeID)
 
 	// Calculate steps
 	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
@@ -214,7 +216,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 
 	last := cc.GetLastEIDOf(h.codeID)
 	var state *eeproxy.CodeState
-	if next, objHash, _, err := h.as.GetObjGraph(false); err == nil {
+	if next, objHash, _, err := h.as.GetObjGraph(h.codeHash, false); err == nil {
 		state = &eeproxy.CodeState{
 			NexHash:   next,
 			GraphHash: objHash,
@@ -469,14 +471,14 @@ func (h *CallHandler) SetCode(code []byte) error {
 }
 
 func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	return h.as.GetObjGraph(flags)
+	return h.as.GetObjGraph(h.codeHash, flags)
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	if h.isQuery {
 		return nil
 	}
-	return h.as.SetObjGraph(flags, nextHash, objGraph)
+	return h.as.SetObjGraph(h.codeHash, flags, nextHash, objGraph)
 }
 
 type TransferAndCallHandler struct {

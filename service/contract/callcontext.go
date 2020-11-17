@@ -36,7 +36,7 @@ type (
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
 		EnterQueryMode()
-		SetCodeID(code string)
+		SetFrameCodeID(code string)
 		GetLastEIDOf(code string) int
 		NewExecution() int
 		GetReturnEID() int
@@ -417,7 +417,7 @@ func (cc *callContext) EnterQueryMode() {
 	cc.frame.enterQueryMode(cc)
 }
 
-func (cc *callContext) SetCodeID(code string) {
+func (cc *callContext) SetFrameCodeID(code string) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
