@@ -107,7 +107,9 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	} else if s.state == nil {
 		s.state = icstate.NewStateFromSnapshot(snapshot.state)
 	} else {
-		s.state.Reset(snapshot.state)
+		if err := s.state.Reset(snapshot.state); err != nil {
+			log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
+		}
 	}
 }
 

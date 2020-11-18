@@ -29,6 +29,9 @@ const (
 	accountVersion  = accountVersion1
 )
 
+var bigIntZero big.Int
+var BigIntZero = &bigIntZero
+
 type AccountSnapshot struct {
 	NoDatabaseObject
 	staked      *big.Int
@@ -96,6 +99,7 @@ func newAccountSnapshot(tag Tag) *AccountSnapshot {
 }
 
 type AccountState struct {
+	address		module.Address
 	staked      *big.Int
 	unstakes    Unstakes
 	delegated   *big.Int
@@ -103,6 +107,26 @@ type AccountState struct {
 	bonded      *big.Int
 	bonds       Bonds
 	unbonds     Unbonds
+}
+
+func newAccountState(address module.Address) *AccountState {
+	return &AccountState{
+		address: address,
+		staked: new(big.Int),
+		delegated: new(big.Int),
+		bonded: new(big.Int),
+	}
+
+}
+
+func (as *AccountState) Clear() {
+	as.staked = BigIntZero
+	as.unstakes = nil
+	as.delegated = BigIntZero
+	as.delegations = nil
+	as.bonded = BigIntZero
+	as.bonds = nil
+	as.unbonds = nil
 }
 
 func (as *AccountState) Reset(ass *AccountSnapshot) {
@@ -118,7 +142,7 @@ func (as *AccountState) Reset(ass *AccountSnapshot) {
 func (as *AccountState) GetSnapshot() *AccountSnapshot {
 	ass := &AccountSnapshot{}
 	ass.staked = as.staked
-	ass.unstakes = as.unstakes
+	ass.unstakes = as.unstakes.Clone()
 	ass.delegated = as.delegated
 	ass.delegations = as.delegations.Clone()
 	ass.bonded = as.bonded
@@ -150,6 +174,10 @@ func (as *AccountState) UpdateUnstake(stakeInc *big.Int, expireHeight int64) err
 		}
 	}
 	return nil
+}
+
+func (as AccountState) GetAddress() module.Address {
+	return as.address
 }
 
 // GetStake return stake amount
@@ -208,14 +236,8 @@ func (as *AccountState) GetBond() *big.Int {
 	return as.bonded
 }
 
-func NewAccountStateWithSnapshot(ss *AccountSnapshot) *AccountState {
-	return &AccountState{
-		staked:      ss.staked,
-		unstakes:    ss.unstakes,
-		delegated:   ss.delegated,
-		delegations: ss.delegations,
-		bonded:      ss.bonded,
-		bonds:       ss.bonds,
-		unbonds:     ss.unbonds,
-	}
+func NewAccountStateWithSnapshot(addr module.Address, ss *AccountSnapshot) *AccountState {
+	as := newAccountState(addr)
+	as.Reset(ss)
+	return as
 }

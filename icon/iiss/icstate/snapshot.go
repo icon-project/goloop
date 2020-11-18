@@ -52,7 +52,7 @@ func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, e
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*Object).Real().(*AccountSnapshot), nil
+	return obj.(*Object).Account(), nil
 }
 
 func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {

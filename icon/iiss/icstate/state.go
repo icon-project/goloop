@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
@@ -25,43 +26,65 @@ import (
 )
 
 type State struct {
-	trie trie.MutableForObject
+	mutableAccounts map[string]*AccountState
+	trie            trie.MutableForObject
 }
 
-func (s *State) Reset(ss *Snapshot) {
+func (s *State) Reset(ss *Snapshot) error {
 	s.trie.Reset(ss.trie)
+	// TODO need update? clear map
+	for _, as := range s.mutableAccounts {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
+		value, err := s.trie.Get(key)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			as.Clear()
+		} else {
+			as.Reset(value.(*Object).Account())
+		}
+	}
+	return nil
 }
 
 func (s *State) GetSnapshot() *Snapshot {
+	for _, as := range s.mutableAccounts {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
+		value := NewObject(TypeAccount, as.GetSnapshot())
+
+		if err := s.trie.Set(key, value); err != nil {
+			log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+		}
+	}
 	return &Snapshot{
 		trie: s.trie.GetSnapshot(),
 	}
 }
 
 func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
+	ids := addr.String()
+	if a, ok := s.mutableAccounts[ids]; ok {
+		return a, nil
+	}
 	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)))
 	if err != nil {
 		return nil, err
 	}
-	as := new(AccountState)
+	var ass *AccountSnapshot
 	if obj != nil {
-		as.Reset(obj.(*Object).Real().(*AccountSnapshot))
+		ass = obj.(*Object).Account()
 	} else {
-		as.Reset(newAccountSnapshot(MakeTag(TypeAccount, accountVersion)))
+		ass = newAccountSnapshot(MakeTag(TypeAccount, accountVersion))
 	}
+	as := NewAccountStateWithSnapshot(addr, ass)
+	s.mutableAccounts[ids] = as
 	return as, nil
-}
-
-
-func (s *State) SetAccountState(addr module.Address, as *AccountState) error {
-	return s.trie.Set(
-		crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)),
-		NewObject(TypeAccount, as.GetSnapshot()),
-	)
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	return &State{
+		mutableAccounts: make(map[string]*AccountState),
 		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),
 	}
 }

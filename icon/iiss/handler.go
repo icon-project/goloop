@@ -14,10 +14,10 @@
 package iiss
 
 import (
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -67,11 +67,6 @@ func (h *Handler) SetStake(v *big.Int) error {
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
 
-	// write to mpt
-	if err = h.es.state.SetAccountState(h.from, ia); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -105,8 +100,7 @@ func (h *Handler) SetDelegation(param []interface{}) error {
 
 	ia.SetDelegation(ds)
 
-	// write to mpt
-	return h.es.state.SetAccountState(h.from, ia)
+	return nil
 }
 
 func (h *Handler) GetDelegation(address module.Address) (map[string]interface{}, error) {
