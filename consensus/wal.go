@@ -47,9 +47,11 @@ type WALWriter interface {
 type WALReader interface {
 	Read(v interface{}) (left []byte, err error)
 	ReadBytes() ([]byte, error)
+	// multiple Close is safe
 	Close() error
-	// Repair repairs UnexpectedEOF or CorruptedWAL by truncating.
-	Repair() error
+	// CloseAndRepair closes and repairs UnexpectedEOF or CorruptedWAL by
+	// truncating.
+	CloseAndRepair() error
 }
 
 type WALConfig struct {
@@ -438,8 +440,10 @@ func (w *walReader) Close() error {
 	return nil
 }
 
-func (w *walReader) Repair() error {
-	w.Close()
+func (w *walReader) CloseAndRepair() error {
+	if err := w.Close(); err != nil {
+		return err
+	}
 
 	left := w.validOffset
 	idx := w.wi.headIdx
