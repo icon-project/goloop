@@ -1657,18 +1657,35 @@ func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 	return block, voteSetDecoder(bs), nil
 }
 
-func GetLastHeightOf(dbase db.Database) int64 {
+func GetLastHeight(dbase db.Database) (int64, error) {
 	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 	bs, err := bk.Get([]byte(keyLastBlockHeight))
 	if err != nil || bs == nil {
-		return 0
+		return 0, err
 	}
 	var height int64
 	if _, err := dbCodec.UnmarshalFromBytes(bs, &height); err != nil {
-		return 0
+		return 0, err
 	}
+	return height, nil
+}
+
+func GetLastHeightOf(dbase db.Database) int64 {
+	height, _ := GetLastHeight(dbase)
 	return height
+}
+
+func ResetDB(d db.Database, height int64) error {
+	bk, err := d.GetBucket(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	err = bk.Set([]byte(keyLastBlockHeight), codec.MustMarshalToBytes(height))
+	if err != nil {
+		return err
+	}
+	return nil
 }
