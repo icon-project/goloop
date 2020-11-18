@@ -88,13 +88,12 @@ public class StructHolder {
         }
     }
 
-
     public StructHolder() {
     }
 
     private SimpleStruct simpleStruct;
 
-    @External(readonly = true)
+    @External(readonly=true)
     public SimpleStruct getSimpleStruct() {
         return simpleStruct;
     }
@@ -106,7 +105,7 @@ public class StructHolder {
 
     private ComplexStruct complexStruct;
 
-    @External(readonly = true)
+    @External(readonly=true)
     public ComplexStruct getComplexStruct() {
         return complexStruct;
     }

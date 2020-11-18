@@ -25,7 +25,6 @@ import foundation.icon.test.common.TransactionHandler;
 import testcases.StructHolder;
 
 import java.io.IOException;
-import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 
@@ -51,8 +50,13 @@ public class StructHolderScore extends Score {
         return new StructHolderScore(score);
     }
 
+    public TransactionResult setSimpleStruct(Wallet from, RpcObject params)
+            throws IOException, ResultTimeoutException {
+        return invokeAndWaitResult(from, "setSimpleStruct", params);
+    }
+
     public TransactionResult setComplexStruct(Wallet from, RpcObject params)
             throws IOException, ResultTimeoutException {
-        return this.invokeAndWaitResult(from, "setComplexStruct", params);
+        return invokeAndWaitResult(from, "setComplexStruct", params);
     }
 }

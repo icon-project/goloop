@@ -18,6 +18,8 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
@@ -26,17 +28,22 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.RpcItems;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.score.Score;
 import foundation.icon.test.score.StructHolderScore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigInteger;
+
 import static foundation.icon.test.common.Env.LOG;
 
+@Tag(Constants.TAG_JAVA_SCORE)
 public class StructHolderTest extends TestBase {
     private static TransactionHandler txHandler;
     private static KeyWallet ownerWallet;
+    private static Score testScore;
 
     @BeforeAll
     static void setup() throws Exception {
@@ -48,30 +55,36 @@ public class StructHolderTest extends TestBase {
         ownerWallet = KeyWallet.create();
     }
 
-    @Tag(Constants.TAG_JAVA_SCORE)
+    private StructHolderScore deployScore() throws Exception {
+        if (testScore == null) {
+            testScore = StructHolderScore.mustDeploy(txHandler, ownerWallet);
+        }
+        return (StructHolderScore) testScore;
+    }
+
     @Test
     void testStruct() throws Exception {
-        var s = StructHolderScore.mustDeploy(txHandler, ownerWallet);
+        var s = deployScore();
         LOG.infoEntering("run");
         RpcObject complexStruct = new RpcObject.Builder()
                 .put("string", new RpcValue("stringInComplexStruct"))
-                .put("integer", new RpcValue("0x1"))
-                .put("address", new RpcValue("cx10776ee37f5b45bfaea8cff1d8232fbb6122ec32"))
-                .put("bool", new RpcValue("0x1"))
-                .put("bytes", new RpcValue("0x0001"))
+                .put("integer", new RpcValue(BigInteger.valueOf(100)))
+                .put("address", new RpcValue(new Address("cx10776ee37f5b45bfaea8cff1d8232fbb6122ec32")))
+                .put("bool", new RpcValue(true))
+                .put("bytes", new RpcValue(new Bytes("0xCAFEBABE")))
                 .put("simpleStruct", new RpcObject.Builder()
                         .put("string", new RpcValue("stringInSimpleStruct"))
-                        .put("integer", new RpcValue("0x2"))
-                        .put("address", new RpcValue("cx20776ee37f5b45bfaea8cff1d8232fbb6122ec32"))
-                        .put("bool", new RpcValue("0x0"))
-                        .put("bytes", new RpcValue("0x0002"))
+                        .put("integer", new RpcValue(BigInteger.valueOf(200)))
+                        .put("address", new RpcValue(new Address("cx20776ee37f5b45bfaea8cff1d8232fbb6122ec32")))
+                        .put("bool", new RpcValue(false))
+                        .put("bytes", new RpcValue(new Bytes("0xBABECAFE")))
                         .build()
                 )
                 .build();
         RpcObject params = new RpcObject.Builder()
                 .put("complexStruct", complexStruct)
                 .build();
-        s.invokeAndWaitResult(ownerWallet, "setComplexStruct", params);
+        assertSuccess(s.setComplexStruct(ownerWallet, params));
         var res = s.call("getComplexStruct", null)
                 .asObject();
         LOG.info("getComplexStruct() : " + res.toString());
@@ -79,6 +92,22 @@ public class StructHolderTest extends TestBase {
             // show diff
             Assertions.assertEquals(complexStruct.toString(), res.toString());
         }
+        LOG.infoExiting();
+    }
+
+    @Test
+    void invalidParams() throws Exception {
+        var s = deployScore();
+        LOG.infoEntering("run");
+        RpcObject params = new RpcObject.Builder()
+                .put("simpleStruct", new RpcObject.Builder()
+                        .put("string", new RpcValue("Hello"))
+                        .put("integer", new RpcValue(BigInteger.valueOf(100)))
+                        .put("bool", new RpcValue(true))
+                        .put("bytes", new RpcValue(new Bytes("0xCAFEBABE")))
+                        .build())
+                .build();
+        assertFailure(s.setSimpleStruct(ownerWallet, params));
         LOG.infoExiting();
     }
 }
