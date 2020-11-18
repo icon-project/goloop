@@ -233,6 +233,22 @@ public class Method {
                     ", optional=" + optional +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Parameter parameter = (Parameter) o;
+            return optional == parameter.optional &&
+                    name.equals(parameter.name) &&
+                    descriptor.equals(parameter.descriptor) &&
+                    typeDetail.equals(parameter.typeDetail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, descriptor, typeDetail, optional);
+        }
     }
 
     private final int type;
@@ -346,5 +362,26 @@ public class Method {
             return name;
         }
         return name + getDescriptor();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Method method = (Method) o;
+        return type == method.type &&
+                flags == method.flags &&
+                indexed == method.indexed &&
+                output == method.output &&
+                name.equals(method.name) &&
+                Arrays.equals(inputs, method.inputs) &&
+                outputDescriptor.equals(method.outputDescriptor);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(type, name, flags, indexed, output, outputDescriptor);
+        result = 31 * result + Arrays.hashCode(inputs);
+        return result;
     }
 }

@@ -109,7 +109,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
                     Method mth = callableInfo.stream()
                             .filter(m -> m.getName().equals(methodName))
                             .findFirst().orElse(null);
-                    if (mth != null && mth.getFlags() != mv.getCallableMethodInfo().getFlags()) {
+                    if (mth != null && !mth.equals(mv.getCallableMethodInfo())) {
                         throw new ABICompilerException("Re-define a @External method with a different flag", methodName);
                     }
                     callableInfo.remove(mth);
