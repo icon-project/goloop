@@ -19,6 +19,7 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -78,13 +79,14 @@ public class Renamer {
         var mmap = new HashMap<String, List<Member>>();
         mmap.put(mainClassName, l);
         var fmap = new HashMap<String, List<Member>>();
-        return rename(jarBytes, null, mmap, fmap);
+        return rename(jarBytes, null, mmap, fmap, null);
     }
 
     public static Result rename(byte[] jarBytes,
             List<Method> callables,
             Map<String, List<Member>> keptMethods,
-            Map<String, List<Member>> keptFields) throws Exception {
+            Map<String, List<Member>> keptFields,
+            PrintStream log) throws Exception {
         JarInputStream jarReader = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
         String mainClassName = Utilities.extractMainClassName(jarReader, Utilities.NameStyle.SLASH_NAME);
         Map<String, ClassNode> sortedClassMap = sortBasedOnInnerClassLevel(extractClasses(jarReader));
@@ -92,7 +94,7 @@ public class Renamer {
         String[] newMainNameBuf = new String[1];
         List<Method> outCallables = new ArrayList<>();
         Map<String, ClassNode> renamedNodes = renameClassNodes(sortedClassMap,
-                mainClassName, callables, keptMethods, keptFields,
+                mainClassName, callables, keptMethods, keptFields, log,
                 newMainNameBuf, outCallables);
 
         Map<String, byte[]> classNameByteCodeMap = getClassBytes(renamedNodes);
@@ -114,8 +116,11 @@ public class Renamer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
-    private static void dumpMapping(Map<String, String> mappedNames) {
-        mappedNames.forEach((k, v) -> System.out.format("%s -> %s%n", k, v));
+    private static void dumpMapping(Map<String, String> mappedNames,
+            PrintStream log) {
+        if (log != null) {
+            mappedNames.forEach((k, v) -> log.format("%s -> %s%n", k, v));
+        }
     }
 
     private static Map<String, List<Member>> remap(Map<String, List<Member>> in,
@@ -137,11 +142,12 @@ public class Renamer {
     private static Map<String, ClassNode> renameClassNodes(
             Map<String, ClassNode> sortedClassMap, String mainClassName,
             List<Method> callables, Map<String, List<Member>> keptMethods,
-            Map<String, List<Member>> keptFields, String[] out_newMainName,
-            List<Method> out_newCallables) throws Exception {
+            Map<String, List<Member>> keptFields, PrintStream log,
+            String[] out_newMainName, List<Method> out_newCallables
+    ) throws Exception {
         // rename classes
         Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap);
-        dumpMapping(mappedNames);
+        dumpMapping(mappedNames, log);
         if (out_newMainName != null && out_newMainName.length > 0) {
             out_newMainName[0] = mappedNames.get(mainClassName);
         }
@@ -159,13 +165,13 @@ public class Renamer {
         var roots = Multimap.getAllValues(keptMethods).stream()
                 .map(Member::getMethodID).toArray(String[]::new);
         mappedNames = MethodRenamer.renameMethods(newClassNameMap, classInfoMap, newMainClassName, roots);
-        dumpMapping(mappedNames);
+        dumpMapping(mappedNames, log);
         Map<String, ClassNode> newMethodNameMap = applyMapping(newClassNameMap, mappedNames);
 
         // rename fields
         mappedNames = FieldRenamer.renameFields(newMethodNameMap, classInfoMap,
                 keptFields);
-        dumpMapping(mappedNames);
+        dumpMapping(mappedNames, log);
         return applyMapping(newMethodNameMap, mappedNames);
     }
 

@@ -19,6 +19,7 @@ import org.msgpack.core.MessagePack;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +30,7 @@ public class OptimizedJarBuilder {
     private final boolean debugModeEnabled;
     private boolean unreachableMethodRemoverEnabled;
     private boolean classAndFieldRenamerEnabled;
+    private PrintStream log = null;
     private final byte[] dappBytes;
     private List<Method> callables;
     private final Set<String> rootClasses;
@@ -72,6 +74,11 @@ public class OptimizedJarBuilder {
         return this;
     }
 
+    public OptimizedJarBuilder withLog(PrintStream log) {
+        this.log = log;
+        return this;
+    }
+
     /**
      * Performs selected optimization steps.
      * Unreferenced classes are removed from the Jar for all cases.
@@ -100,7 +107,7 @@ public class OptimizedJarBuilder {
         if (classAndFieldRenamerEnabled && !debugModeEnabled) {
             try {
                 var res = Renamer.rename(optimizedDappBytes,
-                        callables, keptMethods, keptFields);
+                        callables, keptMethods, keptFields, log);
                 optimizedDappBytes = res.getJarBytes();
                 callables = res.getCallables();
             } catch (Exception exception) {

@@ -90,7 +90,7 @@ public class ServiceManager implements Agent {
         byte[] preopt = JarBuilder.buildJarForExplicitMainAndClasses(name, all);
         return new OptimizedJarBuilder(true, preopt, true)
                 .withUnreachableMethodRemover()
-                .withRenamer().getOptimizedBytes();
+                .withRenamer().withLog(System.out).getOptimizedBytes();
     }
 
     public Address newScoreAddress() {
