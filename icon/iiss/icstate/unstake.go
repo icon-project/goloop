@@ -77,6 +77,7 @@ func (u Unstake) ToJSON(v module.JSONVersion) interface{} {
 	return jso
 }
 
+// TODO delete Unstake from Unstakes via timer
 type Unstakes []*Unstake
 
 func (us Unstakes) Clone() Unstakes {

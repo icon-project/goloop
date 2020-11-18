@@ -151,6 +151,10 @@ func (as *AccountState) GetSnapshot() *AccountSnapshot {
 	return ass
 }
 
+func (as AccountState) IsEmpty() bool {
+	return as.staked.BitLen() == 0 && as.unstakes == nil
+}
+
 // SetStake set stake amount
 func (as *AccountState) SetStake(v *big.Int) error {
 	if v.Sign() == -1 {

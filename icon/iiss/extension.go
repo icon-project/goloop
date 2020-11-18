@@ -16,8 +16,6 @@ package iiss
 import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/trie"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -25,25 +23,13 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-const (
-	VarAccount = "account"
-	VarPRep    = "prep"
-)
-
-type IconContext struct {
-}
-
-type iconContext struct {
-	contract.CallContext
-}
-
 type extensionSnapshotImpl struct {
 	database db.Database
 
 	state *icstate.Snapshot
-	//front *snapshotHolder
-	//back *snapshotHolder
-	//base *snapshotHolder
+	//front *icstate.Snapshot
+	//back *icstate.Snapshot
+	//base *icstate.Snapshot
 }
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
@@ -156,70 +142,5 @@ func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
 		database: database,
 	}
 	// TODO parse hash and make stateHolders
-	return s
-}
-
-type snapshotHolder struct {
-	database db.Database
-	state    trie.Immutable
-}
-
-func (s *snapshotHolder) Bytes() []byte {
-	return s.state.Hash()
-}
-
-func NewSnapshotHolder(database db.Database, hash []byte) *snapshotHolder {
-	s := &snapshotHolder{
-		database: database,
-	}
-	s.state = trie_manager.NewImmutable(database, hash)
-	return s
-}
-
-type stateHolder struct {
-	database db.Database
-	state    trie.Mutable
-}
-
-func (s *stateHolder) GetSnapshot() trie.Snapshot {
-	return s.state.GetSnapshot()
-}
-
-func (s *stateHolder) Reset(snapshot *snapshotHolder) {
-	if snapshot.state == nil {
-		s.state = nil
-	} else if s.state == nil {
-		s.state = trie_manager.NewMutableFromImmutable(snapshot.state)
-	} else {
-		if err := s.state.Reset(snapshot.state); err != nil {
-			log.Panicf("Fail to make ExtensionStateImpl err=%v", err)
-		}
-	}
-}
-
-func (s *stateHolder) GetValue(key []byte) ([]byte, error) {
-	if s.state == nil {
-		return nil, nil
-	}
-	return s.state.Get(key)
-}
-
-func (s *stateHolder) SetValue(key []byte, value []byte) ([]byte, error) {
-	if s.state == nil {
-		s.state = trie_manager.NewMutable(s.database, nil)
-	}
-	return s.state.Set(key, value)
-}
-
-func (s *stateHolder) DeleteValue(key []byte) ([]byte, error) {
-	return s.state.Delete(key)
-}
-
-func NewStateHolder(database db.Database, object trie.Immutable) *stateHolder {
-	s := &stateHolder{
-		database: database,
-	}
-	s.state = trie_manager.NewMutableFromImmutable(object)
-
 	return s
 }

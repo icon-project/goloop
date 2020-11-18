@@ -32,7 +32,6 @@ type State struct {
 
 func (s *State) Reset(ss *Snapshot) error {
 	s.trie.Reset(ss.trie)
-	// TODO need update? clear map
 	for _, as := range s.mutableAccounts {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
 		value, err := s.trie.Get(key)
@@ -53,8 +52,14 @@ func (s *State) GetSnapshot() *Snapshot {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
 		value := NewObject(TypeAccount, as.GetSnapshot())
 
-		if err := s.trie.Set(key, value); err != nil {
-			log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+		if as.IsEmpty() {
+			if err := s.trie.Delete(key); err != nil {
+				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
+			}
+		} else {
+			if err := s.trie.Set(key, value); err != nil {
+				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+			}
 		}
 	}
 	return &Snapshot{
