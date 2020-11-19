@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;
 
@@ -44,6 +45,7 @@ public class ServiceManager implements Agent {
     private int eid = 0;
     private int exid = 0;
     private Indexer indexer;
+    private Consumer<String> logger;
 
     private boolean isClassMeteringEnabled = true;
 
@@ -76,6 +78,10 @@ public class ServiceManager implements Agent {
 
     public void setIndexer(Indexer indexer) {
         this.indexer = indexer;
+    }
+
+    public void setLogger(Consumer<String> logger) {
+        this.logger = logger;
     }
 
     public void accept(Connection c) {
@@ -289,8 +295,12 @@ public class ServiceManager implements Agent {
                     var data = msg.value.asArrayValue();
                     var level = data.get(0).asIntegerValue().asInt();
                     var logMsg = data.get(1).asStringValue().asString();
+                    if (logger != null) {
+                        logger.accept(logMsg);
+                    }
                     // filter only Context.println
-                    if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")) {
+                    if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")
+                            || logMsg.startsWith("s.java.lang.Throwable PRT|")) {
                         printf("RECV log level=%d %s%n", level, logMsg);
                     }
                     break;
