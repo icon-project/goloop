@@ -25,6 +25,7 @@ type ExtensionSnapshot interface {
 type ExtensionState interface {
 	GetSnapshot() ExtensionSnapshot
 	Reset(snapshot ExtensionSnapshot)
+	ClearCache()
 }
 
 type extensionStateHolder struct {
@@ -45,6 +46,12 @@ func (n *extensionStateHolder) Reset(snapshot ExtensionSnapshot) {
 		if snapshot != nil {
 			n.state = snapshot.NewState(false)
 		}
+	}
+}
+
+func (n *extensionStateHolder) ClearCache() {
+	if n.state != nil {
+		n.state.ClearCache()
 	}
 }
 
