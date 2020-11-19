@@ -158,7 +158,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException if call target reverts the newly created frame
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
@@ -173,7 +174,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException if call target reverts the newly created frame
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(Address targetAddress, String method, Object... params) {
         return null;
