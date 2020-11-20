@@ -1,0 +1,72 @@
+foundation/icon/ee/tooling/StructOptimizerTest$StudentF -> A$B
+foundation/icon/ee/tooling/StructOptimizerTest$ScoreReturnCourseF -> C$D
+foundation/icon/ee/tooling/StructOptimizerTest$PersonF -> E$F
+foundation/icon/ee/tooling/StructOptimizerTest$CourseF -> G$H
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=LG$H;}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B extends E$F {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public Ljava/lang/String; major
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class C$D {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public method()LG$H;
+    NEW G$H
+    DUP
+    INVOKESPECIAL G$H.<init> ()V
+    ARETURN
+    MAXSTACK = 2
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class E$F {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public Ljava/lang/String; name
+
+  // access flags 0x1
+  public I age
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class G$H {
+
+  // compiled from: StructOptimizerTest.java
+
+  // access flags 0x1
+  public LE$F; teacher
+
+  // access flags 0x1
+  public [LA$B; students
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}

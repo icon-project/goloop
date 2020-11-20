@@ -8,7 +8,7 @@ C$D.major -> a
 A$B.age -> c
 
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=Lfoundation/icon/ee/tooling/StructOptimizerTest$Student;}
+Method{type=0, name='method', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=LC$D;}
 
 // class version 55.0 (55)
 // access flags 0x21

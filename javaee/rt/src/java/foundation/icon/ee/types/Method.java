@@ -16,6 +16,8 @@
 
 package foundation.icon.ee.types;
 
+import org.objectweb.asm.commons.Remapper;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -186,6 +188,15 @@ public class Method {
             this.optional = optional;
         }
 
+        public Parameter remap(Remapper remapper) {
+            return new Parameter(
+                    name,
+                    remapper.mapDesc(descriptor),
+                    typeDetail,
+                    optional
+            );
+        }
+
         public String getName() {
             return name;
         }
@@ -222,6 +233,22 @@ public class Method {
                     ", optional=" + optional +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Parameter parameter = (Parameter) o;
+            return optional == parameter.optional &&
+                    name.equals(parameter.name) &&
+                    descriptor.equals(parameter.descriptor) &&
+                    typeDetail.equals(parameter.typeDetail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, descriptor, typeDetail, optional);
+        }
     }
 
     private final int type;
@@ -240,6 +267,20 @@ public class Method {
         this.inputs = inputs;
         this.output = output;
         this.outputDescriptor = outputDescriptor;
+    }
+
+    public Method remap(Remapper remapper) {
+        return new Method(
+                type,
+                name,
+                flags,
+                indexed,
+                Arrays.stream(inputs)
+                        .map(in -> in.remap(remapper))
+                        .toArray(Parameter[]::new),
+                output,
+                remapper.mapDesc(outputDescriptor)
+        );
     }
 
     public static Method newFunction(String name, int flags, Parameter[] inputs, int output, String outputDescriptor) {
@@ -301,27 +342,6 @@ public class Method {
                 '}';
     }
 
-    private static final Map<String, Class<?>> descToClass = Map.of(
-            "Z", boolean.class,
-            "C", char.class,
-            "B", byte.class,
-            "S", short.class,
-            "I", int.class,
-            "J", long.class,
-            "Ljava/math/BigInteger;", s.java.math.BigInteger.class,
-            "Ljava/lang/String;", s.java.lang.String.class,
-            "[B", a.ByteArray.class,
-            "Lscore/Address;", p.score.Address.class
-    );
-
-    public boolean hasValidParams() {
-        for (Parameter p: inputs) {
-            if (!descToClass.containsKey(p.getDescriptor()))
-                return false;
-        }
-        return true;
-    }
-
     public String getOutputDescriptor() {
         return outputDescriptor;
     }
@@ -344,12 +364,24 @@ public class Method {
         return name + getDescriptor();
     }
 
-    private static final String validPrimitives = "ZCBSIJ";
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Method method = (Method) o;
+        return type == method.type &&
+                flags == method.flags &&
+                indexed == method.indexed &&
+                output == method.output &&
+                name.equals(method.name) &&
+                Arrays.equals(inputs, method.inputs) &&
+                outputDescriptor.equals(method.outputDescriptor);
+    }
 
-    public boolean hasValidPrimitiveReturnType() {
-        if (outputDescriptor.length()!=1) {
-            return false;
-        }
-        return validPrimitives.indexOf(outputDescriptor.charAt(0)) >= 0;
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(type, name, flags, indexed, output, outputDescriptor);
+        result = 31 * result + Arrays.hashCode(inputs);
+        return result;
     }
 }

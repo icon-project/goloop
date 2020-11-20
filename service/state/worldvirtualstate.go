@@ -82,12 +82,12 @@ func (wvs *worldVirtualState) GetExtensionState() ExtensionState {
 		wvs.realizeBaseInLock()
 
 		if wvs.committed != nil {
-			return wvs.committed.GetExtensionSnapshot().NewState(false)
+			return wvs.committed.GetExtensionSnapshot().NewState(true)
 		}
 		if wvs.worldLock == AccountWriteLock {
 			return wvs.real.GetExtensionState()
 		} else {
-			return wvs.base.GetExtensionSnapshot().NewState(false)
+			return wvs.base.GetExtensionSnapshot().NewState(true)
 		}
 	}
 	return nil

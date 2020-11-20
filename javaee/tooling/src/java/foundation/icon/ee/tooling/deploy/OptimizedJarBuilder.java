@@ -19,6 +19,7 @@ import org.msgpack.core.MessagePack;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,8 +30,9 @@ public class OptimizedJarBuilder {
     private final boolean debugModeEnabled;
     private boolean unreachableMethodRemoverEnabled;
     private boolean classAndFieldRenamerEnabled;
+    private PrintStream log = null;
     private final byte[] dappBytes;
-    private final List<Method> callables;
+    private List<Method> callables;
     private final Set<String> rootClasses;
     private final Map<String, List<Member>> keptMethods;
     private final Map<String, List<Member>> keptFields;
@@ -72,6 +74,11 @@ public class OptimizedJarBuilder {
         return this;
     }
 
+    public OptimizedJarBuilder withLog(PrintStream log) {
+        this.log = log;
+        return this;
+    }
+
     /**
      * Performs selected optimization steps.
      * Unreferenced classes are removed from the Jar for all cases.
@@ -99,8 +106,10 @@ public class OptimizedJarBuilder {
         // Only field and method renaming can work correctly in debug mode, but the new names may cause confusion for users.
         if (classAndFieldRenamerEnabled && !debugModeEnabled) {
             try {
-                optimizedDappBytes = Renamer.rename(optimizedDappBytes,
-                        keptMethods, keptFields);
+                var res = Renamer.rename(optimizedDappBytes,
+                        callables, keptMethods, keptFields, log);
+                optimizedDappBytes = res.getJarBytes();
+                callables = res.getCallables();
             } catch (Exception exception) {
                 System.err.println("Renaming failed, packaging code without this optimization");
                 exception.printStackTrace(System.err);

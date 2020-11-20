@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -46,9 +47,11 @@ type WALWriter interface {
 type WALReader interface {
 	Read(v interface{}) (left []byte, err error)
 	ReadBytes() ([]byte, error)
+	// multiple Close is safe
 	Close() error
-	// Repair repairs UnexpectedEOF or CorruptedWAL by truncating.
-	Repair() error
+	// CloseAndRepair closes and repairs UnexpectedEOF or CorruptedWAL by
+	// truncating.
+	CloseAndRepair() error
 }
 
 type WALConfig struct {
@@ -437,8 +440,10 @@ func (w *walReader) Close() error {
 	return nil
 }
 
-func (w *walReader) Repair() error {
-	w.Close()
+func (w *walReader) CloseAndRepair() error {
+	if err := w.Close(); err != nil {
+		return err
+	}
 
 	left := w.validOffset
 	idx := w.wi.headIdx
@@ -497,4 +502,69 @@ func (wm *walManager) OpenForRead(id string) (WALReader, error) {
 
 func (wm *walManager) OpenForWrite(id string, cfg *WALConfig) (WALWriter, error) {
 	return OpenWALForWrite(id, cfg)
+}
+
+func voteListBytesFromWAL(
+	wm WALManager,
+	height int64,
+	dir string,
+)([]byte, error) {
+	wr, err := wm.OpenForRead(path.Join(dir, configCommitWALID))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		log.Must(wr.Close())
+	}()
+	for {
+		bs, err := wr.ReadBytes()
+		if err != nil {
+			return nil, err
+		}
+		if len(bs) < 2 {
+			return nil, errors.Errorf("too short wal message len=%v", len(bs))
+		}
+		sp := binary.BigEndian.Uint16(bs[0:2])
+		msg, err := unmarshalMessage(sp, bs[2:])
+		if err != nil {
+			return nil, err
+		}
+		if err = msg.verify(); err != nil {
+			return nil, err
+		}
+		switch m := msg.(type) {
+		case *voteListMessage:
+			if m.VoteList.Len() == 0 {
+				continue
+			}
+			if m.VoteList.Get(0).height() == height {
+				return bs, nil
+			}
+		}
+	}
+}
+
+func ResetWAL(height int64, dir string) error {
+	wm := defaultWALManager
+	voteListBytes, err := voteListBytesFromWAL(wm, height, dir)
+	if err != nil {
+		return err
+	}
+	if err = os.RemoveAll(dir); err != nil {
+		return err
+	}
+	ww, err := wm.OpenForWrite(path.Join(dir, configCommitWALID), &WALConfig{
+		FileLimit:  configCommitWALDataSize,
+		TotalLimit: configCommitWALDataSize * 3,
+	})
+	defer func() {
+		log.Must(ww.Close())
+	}()
+	if err != nil {
+		return err
+	}
+	if _, err = ww.WriteBytes(voteListBytes); err != nil {
+		return err
+	}
+	return nil
 }

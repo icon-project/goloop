@@ -69,8 +69,9 @@ public class PropertyMember {
             return getOriginalName();
         }
         assert sort==GETTER || sort==SETTER;
+        var pre = getOriginalName().startsWith("is") ? 2 : 3;
         return foundation.icon.ee.struct.Property.decapitalize(
-                getOriginalName().substring(3));
+                getOriginalName().substring(pre));
     }
 
     public Member getMember() {

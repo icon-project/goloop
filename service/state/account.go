@@ -48,7 +48,7 @@ type AccountSnapshot interface {
 	IsBlocked() bool
 	ContractOwner() module.Address
 
-	GetObjGraph(flags bool) (int, []byte, []byte, error)
+	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
 
 	CanAcceptTx(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
@@ -87,8 +87,8 @@ type AccountState interface {
 	IsBlocked() bool
 	ContractOwner() module.Address
 
-	GetObjGraph(flags bool) (int, []byte, []byte, error)
-	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
+	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
+	SetObjGraph(hash []byte, flags bool, nextHash int, objGraph []byte) error
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
@@ -115,6 +115,7 @@ type accountSnapshotImpl struct {
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
 
+	objCache objectGraphCache
 	objGraph *objectGraph
 	deposits depositList
 }
@@ -312,35 +313,9 @@ func (s *accountSnapshotImpl) APIInfo() (*scoreapi.Info, error) {
 	return s.apiInfo.Get()
 }
 
-func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	obj := s.objGraph
-	if obj == nil {
-		return 0, nil, nil, errors.ErrNotFound
-	}
-	if flags == false {
-		return obj.nextHash, obj.graphHash, nil, nil
-	} else {
-		if obj.graphData == nil && obj.graphHash != nil {
-			bk, err := s.database.GetBucket(db.BytesByHash)
-			if err != nil {
-				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
-				return 0, nil, nil, err
-			}
-			v, err := bk.Get(obj.graphHash)
-			if err != nil {
-				return 0, nil, nil, err
-			}
-			if v == nil {
-				return 0, nil, nil, errors.NotFoundError.Errorf(
-					"FAIL to find graphData by graphHash(%x)", obj.graphHash)
-			}
-			obj.graphData = v
-		}
-	}
-	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
-		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
-
-	return obj.nextHash, obj.graphHash, obj.graphData, nil
+func (s *accountSnapshotImpl) GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error) {
+	og := s.objCache.Get(hash)
+	return og.Get(flags)
 }
 
 func (s *accountSnapshotImpl) CanAcceptTx(pc PayContext) bool {
@@ -423,7 +398,7 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 		return err
 	}
 	if s.version >= AccountVersion2 {
-		if err := s.apiInfo.InitBucket(s.database); err != nil {
+		if err := s.apiInfo.ResetDB(s.database); err != nil {
 			return err
 		}
 	}
@@ -443,11 +418,11 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	if len(storeHash) > 0 {
 		s.store = trie_manager.NewImmutable(s.database, storeHash)
 	}
-	if s.curContract != nil {
-		s.curContract.bk, _ = s.database.GetBucket(db.BytesByHash)
+	if err := s.curContract.ResetDB(s.database); err != nil {
+		return err
 	}
-	if s.nextContract != nil {
-		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
+	if err := s.nextContract.ResetDB(s.database); err != nil {
+		return err
 	}
 
 	var extension int
@@ -458,9 +433,10 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 			if err := d2.Decode(&s.objGraph); err != nil {
 				return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode objectGraph")
 			}
-			if s.objGraph != nil {
-				s.objGraph.bk, _ = s.database.GetBucket(db.BytesByHash)
+			if err := s.objGraph.ResetDB(s.database); err != nil {
+				return err
 			}
+			s.objCache.Set(s.curContract.CodeHash(), s.objGraph)
 		}
 
 		if (extension & ExDepositInfo) != 0 {
@@ -502,19 +478,21 @@ type accountStateImpl struct {
 	nextContract  *contractImpl
 	store         trie.Mutable
 
-	objGraph *objectGraph
+	objCache objectGraphCache
 	deposits depositList
 }
 
-func (s *accountStateImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	return s.objGraph.Get(flags)
+func (s *accountStateImpl) GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error) {
+	obj := s.objCache.Get(hash)
+	return obj.Get(flags)
 }
 
-func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byte) error {
-	if og, err := s.objGraph.Changed(s.database, flags, nextHash, graphData); err != nil {
+func (s *accountStateImpl) SetObjGraph(hash []byte, flags bool, nextHash int, objGraph []byte) error {
+	obj := s.objCache.Get(hash)
+	if no, err := obj.Changed(s.database, flags, nextHash, objGraph); err != nil {
 		return err
 	} else {
-		s.objGraph = og
+		s.objCache.Set(hash, no)
 		return nil
 	}
 }
@@ -649,7 +627,7 @@ func (s *accountStateImpl) MigrateForRevision(rev module.Revision) error {
 func (s *accountStateImpl) migrate(v int) error {
 	if v > s.version {
 		if s.version < AccountVersion2 && v >= AccountVersion2 {
-			if err := s.apiInfo.InitBucket(s.database); err != nil {
+			if err := s.apiInfo.ResetDB(s.database); err != nil {
 				return err
 			}
 			s.apiInfo.dirty = true
@@ -685,14 +663,9 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 			store = nil
 		}
 	}
-
-	var curContract *contractSnapshotImpl
+	var objGraph *objectGraph
 	if s.curContract != nil {
-		curContract = s.curContract.getSnapshot()
-	}
-	var nextContract *contractSnapshotImpl
-	if s.nextContract != nil {
-		nextContract = s.nextContract.getSnapshot()
+		objGraph = s.objCache.Get(s.curContract.CodeHash())
 	}
 	return &accountSnapshotImpl{
 		database:      s.database,
@@ -703,9 +676,10 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		state:         s.state,
 		contractOwner: common.AddressToPtr(s.contractOwner),
 		apiInfo:       s.apiInfo,
-		curContract:   curContract,
-		nextContract:  nextContract,
-		objGraph:      s.objGraph,
+		curContract:   s.curContract.getSnapshot(),
+		nextContract:  s.nextContract.getSnapshot(),
+		objGraph:      objGraph,
+		objCache:      s.objCache.Clone(),
 		deposits:      s.deposits.Clone(),
 	}
 }
@@ -735,12 +709,16 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	if snapshot.curContract != nil {
 		s.curContract = new(contractImpl)
 		s.curContract.reset(snapshot.curContract)
+	} else {
+		s.curContract = nil
 	}
 	if snapshot.nextContract != nil {
 		s.nextContract = new(contractImpl)
 		s.nextContract.reset(snapshot.nextContract)
+	} else {
+		s.nextContract = nil
 	}
-	s.objGraph = snapshot.objGraph
+	s.objCache = snapshot.objCache.Clone()
 	s.deposits = snapshot.deposits.Clone()
 	if snapshot.store == nil {
 		s.store = nil
@@ -766,7 +744,6 @@ func (s *accountStateImpl) Clear() {
 	s.curContract = nil
 	s.nextContract = nil
 	s.store = nil
-	s.objGraph = nil
 	s.deposits = nil
 }
 
@@ -951,7 +928,7 @@ func (a *accountROState) Clear() {
 	// nothing to do
 }
 
-func (a *accountROState) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+func (a *accountROState) SetObjGraph(hash []byte, flags bool, nextHash int, objGraph []byte) error {
 	return nil
 }
 

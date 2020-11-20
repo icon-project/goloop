@@ -100,6 +100,9 @@ func (c *contractSnapshotImpl) Equal(s ContractSnapshot) bool {
 }
 
 func (c *contractSnapshotImpl) CodeHash() []byte {
+	if c == nil {
+		return nil
+	}
 	return c.codeHash
 }
 
@@ -221,6 +224,18 @@ func (c *contractSnapshotImpl) Resolve(builder merkle.Builder) error {
 	return nil
 }
 
+func (c *contractSnapshotImpl) ResetDB(dbase db.Database) error {
+	if c == nil {
+		return nil
+	}
+	if bk, err := dbase.GetBucket(db.BytesByHash); err != nil {
+		return errors.CriticalIOError.Wrap(err, "FailToGetBucket")
+	} else {
+		c.bk = bk
+		return nil
+	}
+}
+
 type Contract interface {
 	ContractSnapshot
 	SetStatus(state ContractState)
@@ -235,6 +250,9 @@ func (c *contractImpl) SetStatus(state ContractState) {
 }
 
 func (c *contractImpl) getSnapshot() *contractSnapshotImpl {
+	if c == nil {
+		return nil
+	}
 	var snapshot contractSnapshotImpl
 	snapshot = c.contractSnapshotImpl
 	return &snapshot

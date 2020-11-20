@@ -31,7 +31,9 @@ import org.objectweb.asm.Type;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipException;
 
 public class Validator {
@@ -49,8 +51,6 @@ public class Validator {
      */
     public static Method[] validate(byte[] codeBytes) throws ZipException,
             IOException, ValidationException {
-        // We don't check uniqueness of external method in APIS since it is done
-        // in SM.
         var apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
         if (apisBytes == null) {
             throw fail("Cannot get APIS");
@@ -80,7 +80,12 @@ public class Validator {
             }
             cur = Utilities.internalNameToFullyQualifiedName(cv.getSuperName());
         }
+        Set<String> eeMethodNames = new HashSet<>();
         for (var eem : eeMethods) {
+            if (!eeMethodNames.add(eem.getName())) {
+                throw fail("Duplicated external/event method %s",
+                        eem.getDebugName());
+            }
             if (eem.getType()==Method.MethodType.EVENT) {
                 continue;
             }

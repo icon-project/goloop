@@ -238,6 +238,7 @@ task testInterScore(type: ChainTest, overwrite: true) {
     configFile = "./data/config/inter.json"
     chainDir = ".chain/interscore"
     logFile = ".chain/interscore.log"
+    gsDir = "./data/genesisStorage/genesis_inter.json"
     envFile = "./data/chainenv/inter.props"
     dockerEnv = "interscore"
 

@@ -27,8 +27,8 @@ public class MethodProperty implements Property {
 
     @Override
     public String getName() {
-        return Property.decapitalize(method.getName()
-                .substring(Property.METHOD_PREFIX_LEN));
+        var pre = method.getName().startsWith("avm_is") ? 6 : 7;
+        return Property.decapitalize(method.getName().substring(pre));
     }
 
     @Override

@@ -82,6 +82,6 @@ public class SimpleTest {
         return new OptimizedJarBuilder(false,
                 preopt, true)
                 .withUnreachableMethodRemover()
-                .withRenamer().getOptimizedBytes();
+                .withRenamer().withLog(System.out).getOptimizedBytes();
     }
 }

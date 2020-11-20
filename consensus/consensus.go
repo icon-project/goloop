@@ -1141,19 +1141,18 @@ func (cs *consensus) applyRoundWAL() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		cs.log.Must(wr.Close())
+	}()
 	round := int32(0)
 	rstep := stepNewHeight
 	for {
 		bs, err := wr.ReadBytes()
 		if IsEOF(err) {
-			err = wr.Close()
-			if err != nil {
-				return err
-			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
 			cs.log.Warnf("applyRoundWAL: %+v\n", err)
-			err := wr.Repair()
+			err := wr.CloseAndRepair()
 			if err != nil {
 				return err
 			}
@@ -1250,6 +1249,9 @@ func (cs *consensus) applyLockWAL() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		cs.log.Must(wr.Close())
+	}()
 	var bpset PartSet
 	var bpsetLockRound int32
 	var lastBPSet PartSet
@@ -1257,14 +1259,10 @@ func (cs *consensus) applyLockWAL() error {
 	for {
 		bs, err := wr.ReadBytes()
 		if IsEOF(err) {
-			err = wr.Close()
-			if err != nil {
-				return err
-			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
 			cs.log.Warnf("applyLockWAL: %+v\n", err)
-			err := wr.Repair()
+			err := wr.CloseAndRepair()
 			if err != nil {
 				return err
 			}
@@ -1362,17 +1360,16 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 	if err != nil {
 		return nil
 	}
+	defer func() {
+		cs.log.Must(wr.Close())
+	}()
 	for {
 		bs, err := wr.ReadBytes()
 		if IsEOF(err) {
-			err = wr.Close()
-			if err != nil {
-				return err
-			}
 			break
 		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
 			cs.log.Warnf("applyCommitWAL: %+v\n", err)
-			err := wr.Repair()
+			err := wr.CloseAndRepair()
 			if err != nil {
 				return err
 			}
