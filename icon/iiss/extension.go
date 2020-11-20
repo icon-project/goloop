@@ -14,8 +14,9 @@
 package iiss
 
 import (
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -24,75 +25,92 @@ type extensionSnapshotImpl struct {
 	database db.Database
 
 	state *icstate.Snapshot
-	//front *icstate.Snapshot
-	//back *icstate.Snapshot
+	front *icstage.Snapshot
+	back  *icstage.Snapshot
 	//base *icstate.Snapshot
 }
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
-	// TODO add front, back and base
-	return s.state.Bytes()
+	return codec.BC.MustMarshalToBytes(s)
+}
+
+func (s *extensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
+	return e.EncodeListOf(
+		s.state.Bytes(),
+		s.front.Bytes(),
+		s.back.Bytes(),
+	)
+}
+
+func (s *extensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
+	var stateHash, frontHash, backHash []byte
+	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash); err != nil {
+		return err
+	}
+	s.state = icstate.NewSnapshot(s.database, stateHash)
+	return nil
 }
 
 func (s *extensionSnapshotImpl) Flush() error {
 	if err := s.state.Flush(); err != nil {
 		return err
 	}
-	// TODO add front, back and base
+	if err := s.front.Flush(); err != nil {
+		return err
+	}
+	if err := s.back.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	// TODO readonly?
-	es := &ExtensionStateImpl{
+	return &ExtensionStateImpl{
 		database: s.database,
+		state:    icstate.NewStateFromSnapshot(s.state),
+		front:    icstage.NewStateFromSnapshot(s.front),
+		back:     icstage.NewStateFromSnapshot(s.back),
 	}
-	es.Reset(s)
-	return es
 }
 
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
+	if hash == nil {
+		return &extensionSnapshotImpl{
+			database: database,
+			state:    icstate.NewSnapshot(database, nil),
+		}
+	}
 	s := &extensionSnapshotImpl{
 		database: database,
 	}
-
-	// TODO parse hash and add front, back and base snapshot
-	s.state = icstate.NewSnapshot(database, hash)
+	if _, err := codec.BC.UnmarshalFromBytes(hash, s); err != nil {
+		return nil
+	}
 	return s
 }
 
 type ExtensionStateImpl struct {
 	database db.Database
-
-	state *icstate.State
+	state    *icstate.State
+	front    *icstage.State
+	back     *icstage.State
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
-	var is *icstate.Snapshot
-	if s.state != nil {
-		is = s.state.GetSnapshot()
-	}
 	// TODO add front, back and base snapshot
 	return &extensionSnapshotImpl{
 		database: s.database,
-		state:    is,
+		state:    s.state.GetSnapshot(),
+		front:    s.front.GetSnapshot(),
+		back:     s.back.GetSnapshot(),
 	}
 }
 
 func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
-	snapshot, ok := isnapshot.(*extensionSnapshotImpl)
-	if !ok {
-		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
-	}
-
-	if snapshot.state == nil {
-		s.state = nil
-	} else if s.state == nil {
-		s.state = icstate.NewStateFromSnapshot(snapshot.state)
-	} else {
-		if err := s.state.Reset(snapshot.state); err != nil {
-			log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
-		}
+	snapshot := isnapshot.(*extensionSnapshotImpl)
+	if err := s.state.Reset(snapshot.state); err != nil {
+		panic(err)
 	}
 }
 
