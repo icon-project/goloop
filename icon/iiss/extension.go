@@ -99,6 +99,11 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	}
 }
 
+func (s *ExtensionStateImpl) ClearCache() {
+	// TODO clear cached objects
+	// It is called whenever executing a transaction is done
+}
+
 func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {
 	//return scoredb.NewDictDB(s.state, VarPRep, 1)
 	return nil
