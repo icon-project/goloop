@@ -463,286 +463,325 @@ public class TypeTest2 extends SimpleTest {
 
         @External
         public boolean mboolean(boolean v) {
-            var vv = Context.call(callee, "mboolean", v);
-            return (boolean)vv;
+            var vv = Context.call(boolean.class, callee, "mboolean", v);
+            // assert vv != null : this makes ref to TypeTest2.class
+            return vv;
         }
 
         @External
         public byte mbyte(byte v) {
-            var vv = (BigInteger) Context.call(callee, "mbyte", v);
-            return vv.byteValue();
+            var vv = Context.call(byte.class, callee, "mbyte", v);
+            return vv;
         }
 
         @External
         public char mchar(char v) {
-            var vv = (BigInteger) Context.call(callee, "mchar", v);
-            return (char)vv.intValue();
+            var vv = Context.call(char.class, callee, "mchar", v);
+            return vv;
         }
 
         @External
         public short mshort(short v) {
-            var vv = (BigInteger) Context.call(callee, "mshort", v);
-            return vv.shortValue();
+            var vv = Context.call(short.class, callee, "mshort", v);
+            return vv;
         }
 
         @External
         public int mint(int v) {
-            var vv = (BigInteger) Context.call(callee, "mint", v);
-            return vv.intValue();
+            var vv = Context.call(int.class, callee, "mint", v);
+            return vv;
         }
 
         @External
         public long mlong(long v) {
-            var vv = (BigInteger) Context.call(callee, "mlong", v);
-            return vv.longValue();
+            var vv = Context.call(long.class, callee, "mlong", v);
+            return vv;
         }
 
         @External
         public BigInteger mBigInteger(BigInteger v) {
-            return (BigInteger) Context.call(callee, "mBigInteger", v);
+            return Context.call(BigInteger.class, callee, "mBigInteger", v);
         }
 
         @External
         public String mString(String v) {
-            return (String) Context.call(callee, "mString", v);
+            return Context.call(String.class, callee, "mString", v);
         }
 
         @External
         public Address mAddress(@Optional Address v) {
-            return (Address) Context.call(callee, "mAddress", v);
+            return Context.call(Address.class, callee, "mAddress", v);
         }
 
-        @External
-        public Map<?, ?> mPerson(Person v) {
-            return (Map<?, ?>) Context.call(callee, "mPerson", v);
-        }
-
-        @External
-        public Map<?, ?> mStudent(Student v) {
-            return (Map<?, ?>) Context.call(callee, "mStudent", v);
-        }
-
-        @External
-        public Map<?, ?> mCourse(Course v) {
-            return (Map<?, ?>) Context.call(callee, "mCourse", v);
-        }
-
-        /*
         @External
         public Person mPerson(Person v) {
-            return (Person) Context.call(callee, "mPerson", v);
+            return Context.call(Person.class, callee, "mPerson", v);
         }
 
         @External
         public Student mStudent(Student v) {
-            return (Student) Context.call(callee, "mStudent", v);
+            return Context.call(Student.class, callee, "mStudent", v);
         }
 
         @External
         public Course mCourse(Course v) {
-            return (Course) Context.call(callee, "mCourse", v);
+            return Context.call(Course.class, callee, "mCourse", v);
         }
 
+        @External
+        public PersonF mPersonF(PersonF v) {
+            return Context.call(PersonF.class, callee, "mPersonF", v);
+        }
+
+        @External
+        public StudentF mStudentF(StudentF v) {
+            return Context.call(StudentF.class, callee, "mStudentF", v);
+        }
+
+        @External
+        public CourseF mCourseF(CourseF v) {
+            return Context.call(CourseF.class, callee, "mCourseF", v);
+        }
 
         @External
         public boolean[] mbooleanArray(boolean[] v) {
-            return (boolean[])Context.call(callee, "mbooleanArray", (Object) v);
+            return Context.call(boolean[].class, callee, "mbooleanArray", (Object) v);
         }
 
         @External
         public byte[] mbyteArray(byte[] v) {
-            return (byte[])Context.call(callee, "mbyteArray", (Object) v);
+            return Context.call(byte[].class, callee, "mbyteArray", (Object) v);
         }
 
         @External
         public char[] mcharArray(char[] v) {
-            return (char[])Context.call(callee, "mcharArray", (Object) v);
+            return Context.call(char[].class, callee, "mcharArray", (Object) v);
         }
 
         @External
         public short[] mshortArray(short[] v) {
-            return (short[])Context.call(callee, "mshortArray", (Object) v);
+            return Context.call(short[].class, callee, "mshortArray", (Object) v);
         }
 
         @External
         public int[] mintArray(int[] v) {
-            return (int[])Context.call(callee, "mintArray", (Object) v);
+            return Context.call(int[].class, callee, "mintArray", (Object) v);
         }
 
         @External
         public long[] mlongArray(long[] v) {
-            return (long[])Context.call(callee, "mlongArray", (Object) v);
+            return Context.call(long[].class, callee, "mlongArray", (Object) v);
         }
 
         @External
         public BigInteger[] mBigIntegerArray(BigInteger[] v) {
-            return (BigInteger[])Context.call(callee, "mBigIntegerArray", (Object) v);
+            return Context.call(BigInteger[].class, callee, "mBigIntegerArray", (Object) v);
         }
 
         @External
         public String[] mStringArray(String[] v) {
-            return (String[])Context.call(callee, "mStringArray", (Object) v);
+            return Context.call(String[].class, callee, "mStringArray", (Object) v);
         }
 
         @External
         public Address[] mAddressArray(Address[] v) {
-            return (Address[])Context.call(callee, "mAddressArray", (Object) v);
+            return Context.call(Address[].class, callee, "mAddressArray", (Object) v);
         }
 
-        public List<?> mPersonArray(Person[] v) {
-            return (List<?>)Context.call(callee, "mPersonArray", (Object) v);
+        @External
+        public Person[] mPersonArray(Person[] v) {
+            return Context.call(Person[].class, callee, "mPersonArray", (Object) v);
         }
 
         @External
         public Student[] mStudentArray(Student[] v) {
-            return (Student[])Context.call(callee, "mStudentArray", (Object) v);
+            return Context.call(Student[].class, callee, "mStudentArray", (Object) v);
         }
 
         @External
         public Course[] mCourseArray(Course[] v) {
-            return (Course[])Context.call(callee, "mCourseArray", (Object) v);
+            return Context.call(Course[].class, callee, "mCourseArray", (Object) v);
         }
 
+        @External
+        public PersonF[] mPersonFArray(PersonF[] v) {
+            return Context.call(PersonF[].class, callee, "mPersonFArray", (Object) v);
+        }
+
+        @External
+        public StudentF[] mStudentFArray(StudentF[] v) {
+            return Context.call(StudentF[].class, callee, "mStudentFArray", (Object) v);
+        }
+
+        @External
+        public CourseF[] mCourseFArray(CourseF[] v) {
+            return Context.call(CourseF[].class, callee, "mCourseFArray", (Object) v);
+        }
+
+        @External
+        public void mvoid() {
+            Context.call(callee, "mvoid");
+        }
 
         @External
         public boolean[][] mbooleanArray2D(boolean[][] v) {
-            return v;
+            return Context.call(boolean[][].class, callee, "mbooleanArray2D", (Object) v);
         }
 
         @External
         public byte[][] mbyteArray2D(byte[][] v) {
-            return v;
+            return Context.call(byte[][].class, callee, "mbyteArray2D", (Object) v);
         }
 
         @External
         public char[][] mcharArray2D(char[][] v) {
-            return v;
+            return Context.call(char[][].class, callee, "mcharArray2D", (Object) v);
         }
 
         @External
         public short[][] mshortArray2D(short[][] v) {
-            return v;
+            return Context.call(short[][].class, callee, "mshortArray2D", (Object) v);
         }
 
         @External
         public int[][] mintArray2D(int[][] v) {
-            return v;
+            return Context.call(int[][].class, callee, "mintArray2D", (Object) v);
         }
 
         @External
         public long[][] mlongArray2D(long[][] v) {
-            return v;
+            return Context.call(long[][].class, callee, "mlongArray2D", (Object) v);
         }
 
         @External
         public BigInteger[][] mBigIntegerArray2D(BigInteger[][] v) {
-            return v;
+            return Context.call(BigInteger[][].class, callee, "mBigIntegerArray2D", (Object) v);
         }
 
         @External
         public String[][] mStringArray2D(String[][] v) {
-            return v;
+            return Context.call(String[][].class, callee, "mStringArray2D", (Object) v);
         }
 
         @External
         public Address[][] mAddressArray2D(Address[][] v) {
-            return v;
+            return Context.call(Address[][].class, callee, "mAddressArray2D", (Object) v);
         }
 
         @External
         public Person[][] mPersonArray2D(Person[][] v) {
-            return v;
+            return Context.call(Person[][].class, callee, "mPersonArray2D", (Object) v);
         }
 
         @External
         public Student[][] mStudentArray2D(Student[][] v) {
-            return v;
+            return Context.call(Student[][].class, callee, "mStudentArray2D", (Object) v);
         }
 
         @External
         public Course[][] mCourseArray2D(Course[][] v) {
-            return v;
+            return Context.call(Course[][].class, callee, "mCourseArray2D", (Object) v);
         }
 
+        @External
+        public PersonF[][] mPersonFArray2D(PersonF[][] v) {
+            return Context.call(PersonF[][].class, callee, "mPersonFArray2D", (Object) v);
+        }
+
+        @External
+        public StudentF[][] mStudentFArray2D(StudentF[][] v) {
+            return Context.call(StudentF[][].class, callee, "mStudentFArray2D", (Object) v);
+        }
+
+        @External
+        public CourseF[][] mCourseFArray2D(CourseF[][] v) {
+            return Context.call(CourseF[][].class, callee, "mCourseFArray2D", (Object) v);
+        }
 
         @External
         public boolean[][][] mbooleanArray3D(boolean[][][] v) {
-            return v;
+            return Context.call(boolean[][][].class, callee, "mbooleanArray3D", (Object) v);
         }
 
         @External
         public byte[][][] mbyteArray3D(byte[][][] v) {
-            return v;
+            return Context.call(byte[][][].class, callee, "mbyteArray3D", (Object) v);
         }
 
         @External
         public char[][][] mcharArray3D(char[][][] v) {
-            return v;
+            return Context.call(char[][][].class, callee, "mcharArray3D", (Object) v);
         }
 
         @External
         public short[][][] mshortArray3D(short[][][] v) {
-            return v;
+            return Context.call(short[][][].class, callee, "mshortArray3D", (Object) v);
         }
 
         @External
         public int[][][] mintArray3D(int[][][] v) {
-            return v;
+            return Context.call(int[][][].class, callee, "mintArray3D", (Object) v);
         }
 
         @External
         public long[][][] mlongArray3D(long[][][] v) {
-            return v;
+            return Context.call(long[][][].class, callee, "mlongArray3D", (Object) v);
         }
 
         @External
         public BigInteger[][][] mBigIntegerArray3D(BigInteger[][][] v) {
-            return v;
+            return Context.call(BigInteger[][][].class, callee, "mBigIntegerArray3D", (Object) v);
         }
 
         @External
         public String[][][] mStringArray3D(String[][][] v) {
-            return v;
+            return Context.call(String[][][].class, callee, "mStringArray3D", (Object) v);
         }
 
         @External
         public Address[][][] mAddressArray3D(Address[][][] v) {
-            return v;
+            return Context.call(Address[][][].class, callee, "mAddressArray3D", (Object) v);
         }
 
         @External
         public Person[][][] mPersonArray3D(Person[][][] v) {
-            return v;
+            return Context.call(Person[][][].class, callee, "mPersonArray3D", (Object) v);
         }
 
         @External
         public Student[][][] mStudentArray3D(Student[][][] v) {
-            return v;
+            return Context.call(Student[][][].class, callee, "mStudentArray3D", (Object) v);
         }
 
         @External
         public Course[][][] mCourseArray3D(Course[][][] v) {
-            return v;
+            return Context.call(Course[][][].class, callee, "mCourseArray3D", (Object) v);
+        }
+
+        @External
+        public PersonF[][][] mPersonFArray3D(PersonF[][][] v) {
+            return Context.call(PersonF[][][].class, callee, "mPersonFArray3D", (Object) v);
+        }
+
+        @External
+        public StudentF[][][] mStudentFArray3D(StudentF[][][] v) {
+            return Context.call(StudentF[][][].class, callee, "mStudentFArray3D", (Object) v);
+        }
+
+        @External
+        public CourseF[][][] mCourseFArray3D(CourseF[][][] v) {
+            return Context.call(CourseF[][][].class, callee, "mCourseFArray3D", (Object) v);
         }
 
         @External
         public List<?> mFreeList() {
-            return List.of(
-                    "string",
-                    1,
-                    new Person("name", 1)
-            );
+            return Context.call(List.class, callee, "mFreeList");
         }
 
         @External
         public Map<?, ?> mFreeMap() {
-            return Map.of(
-                    "list", List.of(1, "string"),
-                    "array", new Person[] { new Person("name1", 1)},
-                    "struct", new Person("name1", 1)
-            );
+            return Context.call(Map.class, callee, "mFreeMap");
         }
-         */
     }
 
     private void assertEquals(Object o1, Object o2) {
@@ -842,12 +881,15 @@ public class TypeTest2 extends SimpleTest {
         testForApp(app);
     }
 
+    @Test
     public void testInterncall() {
         var app = sm.deploy(new Class<?>[]{
-                Score.class, Person.class, Student.class, Course.class
+                Score.class, Person.class, Student.class, Course.class,
+                PersonF.class, StudentF.class, CourseF.class
         });
         var caller = sm.deploy(new Class<?>[]{
-                CallerScore.class, Person.class, Student.class, Course.class
+                CallerScore.class, Person.class, Student.class, Course.class,
+                PersonF.class, StudentF.class, CourseF.class
         }, app.getAddress());
         testForApp(caller);
     }
