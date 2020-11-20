@@ -33,6 +33,7 @@ type Snapshot struct {
 
 var (
 	accountPrefix    = scoredb.ToKey(scoredb.DictDBPrefix, "account_db")
+	prepPrefix       = scoredb.ToKey(scoredb.DictDBPrefix, "prep")
 	prepStatusPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
 )
 
@@ -53,6 +54,14 @@ func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, e
 		return nil, err
 	}
 	return obj.(*Object).Account(), nil
+}
+
+func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) {
+	obj, err := ss.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr)))
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*Object).Real().(*PRepSnapshot), nil
 }
 
 func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {

@@ -24,9 +24,9 @@ import (
 
 type Handler struct {
 	state.WorldContext
-	from module.Address
+	from  module.Address
 	value *big.Int
-	es *ExtensionStateImpl
+	es    *ExtensionStateImpl
 }
 
 func (h *Handler) SetStake(v *big.Int) error {
@@ -111,11 +111,28 @@ func (h *Handler) GetDelegation(address module.Address) (map[string]interface{},
 	return ia.GetDelegationInfo(), nil
 }
 
+func (h *Handler) RegisterPRep(name string, email string, website string, country string,
+	city string, details string, p2pEndpoint string, node module.Address) error {
+	ip, err := h.es.state.GetPRepState(h.from)
+	if err != nil {
+		return err
+	}
+	return ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
+}
+
+func (h *Handler) GetPRep(address module.Address) (map[string]interface{}, error) {
+	ip, err := h.es.state.GetPRepState(address)
+	if err != nil {
+		return nil, err
+	}
+	return ip.GetPRep(), nil
+}
+
 func NewHandler(wc state.WorldContext, from module.Address, value *big.Int, es state.ExtensionState) *Handler {
 	return &Handler{
 		WorldContext: wc,
-		from: from,
-		value: value,
-		es: es.(*ExtensionStateImpl),
+		from:         from,
+		value:        value,
+		es:           es.(*ExtensionStateImpl),
 	}
 }

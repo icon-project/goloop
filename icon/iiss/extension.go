@@ -17,9 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -102,44 +99,6 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 func (s *ExtensionStateImpl) ClearCache() {
 	// TODO clear cached objects
 	// It is called whenever executing a transaction is done
-}
-
-func (s *ExtensionStateImpl) GetIISSPRepDB() *scoredb.DictDB {
-	//return scoredb.NewDictDB(s.state, VarPRep, 1)
-	return nil
-}
-
-func (s *ExtensionStateImpl) GetIISSPRepState(database *scoredb.DictDB, address module.Address) (PRepState, error) {
-	ps := NewPRepState()
-	if bs := database.Get(address); bs != nil {
-		if err := ps.SetBytes(bs.Bytes()); err != nil {
-			return nil, err
-		}
-	}
-	return ps, nil
-}
-
-func (s *ExtensionStateImpl) RegisterPRep(cc contract.CallContext, from module.Address, name string, email string,
-	website string, country string, city string, details string, endpoint string, node module.Address,
-) error {
-	pDB := s.GetIISSPRepDB()
-	ps, err := s.GetIISSPRepState(pDB, from)
-	if err != nil {
-		return err
-	}
-	if err = ps.SetPRep(name, email, website, country, city, details, endpoint, node); err != nil {
-		return err
-	}
-	return pDB.Set(from, ps.Bytes())
-}
-
-func (s *ExtensionStateImpl) GetPRep(address module.Address) (map[string]interface{}, error) {
-	pDB := s.GetIISSPRepDB()
-	ps, err := s.GetIISSPRepState(pDB, address)
-	if err != nil {
-		return nil, err
-	}
-	return ps.GetPRep(), nil
 }
 
 func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {

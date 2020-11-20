@@ -26,6 +26,7 @@ import (
 
 const (
 	TypeAccount int = iota
+	TypePRep
 )
 
 type Tag int
@@ -94,6 +95,8 @@ func newObjectImpl(tag Tag) (ObjectImpl, error) {
 	switch tag.Type() {
 	case TypeAccount:
 		return newAccountSnapshot(tag), nil
+	case TypePRep:
+		return newPRepSnapshot(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -148,6 +151,13 @@ func (o *Object) Account() *AccountSnapshot {
 		return nil
 	}
 	return o.real.(*AccountSnapshot)
+}
+
+func (o *Object) PRep() *PRepSnapshot {
+	if o == nil {
+		return nil
+	}
+	return o.real.(*PRepSnapshot)
 }
 
 func NewObject(t int, real ObjectImpl) *Object {

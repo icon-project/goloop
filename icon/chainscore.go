@@ -278,18 +278,13 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 }
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string, city string,
-	details string, p2pEndpoint string, nodeAddress module.Address,
-) error {
+	details string, p2pEndpoint string, nodeAddress module.Address) error {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	if err := esi.RegisterPRep(s.cc, s.from, name, email, website, country, city, details, p2pEndpoint, nodeAddress); err != nil {
-		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
-	}
-	return nil
+	return iiss.NewHandler(s.cc, s.from, s.value, es).RegisterPRep(name, email, website, country, city,
+		details, p2pEndpoint, nodeAddress)
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState()
-	esi := es.(*iiss.ExtensionStateImpl)
-	return esi.GetPRep(address)
+	return iiss.NewHandler(s.cc, s.from, s.value, es).GetPRep(address)
 }

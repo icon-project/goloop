@@ -11,35 +11,29 @@
  * limitations under the License.
  */
 
-package iiss
+package icstate
 
 import (
-	"fmt"
+	"github.com/bmizerany/assert"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/icon-project/goloop/common"
 )
 
-func TestPRepStateImpl(t *testing.T) {
-	address := common.NewAccountAddress([]byte{1,23,4})
-	t1 := PRepStateImpl{
-		"testName",
-		"KOR",
-		"seoul",
-		"test@test.com",
-		"test.com",
-		"test.com/details.json",
-		"test.com:1234",
-		address,
+func TestPRepSnapshot_Bytes(t *testing.T) {
+	ss1 := newPRepSnapshot(MakeTag(TypePRep, prepVersion))
+	n := "name"
+	ss1.name = n
+
+	o1 := NewObject(TypePRep, ss1)
+	serialized := o1.Bytes()
+
+	o2 := new(Object)
+	if err := o2.Reset(nil, serialized); err != nil {
+		t.Errorf("Failed to get object from bytes")
+		return
 	}
 
-	bs := t1.Bytes()
-	fmt.Printf("bs: %b\n", bs)
-	t2 := new(PRepStateImpl)
-	t2.SetBytes(bs)
+	assert.Equal(t, serialized, o2.Bytes())
 
-	assert.Equal(t, t1.name, t2.name)
-	assert.Equal(t, t1.node, t2.node)
+	ss2 := o2.PRep()
+	assert.Equal(t, true, ss1.Equal(ss2))
 }

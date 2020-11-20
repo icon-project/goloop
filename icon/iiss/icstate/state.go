@@ -27,6 +27,7 @@ import (
 
 type State struct {
 	mutableAccounts map[string]*AccountState
+	mutablePReps    map[string]*PRepState
 	trie            trie.MutableForObject
 }
 
@@ -44,6 +45,18 @@ func (s *State) Reset(ss *Snapshot) error {
 			as.Reset(value.(*Object).Account())
 		}
 	}
+	for _, ps := range s.mutablePReps {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.GetAddress()))
+		value, err := s.trie.Get(key)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			ps.Clear()
+		} else {
+			ps.Reset(value.(*Object).PRep())
+		}
+	}
 	return nil
 }
 
@@ -55,6 +68,21 @@ func (s *State) GetSnapshot() *Snapshot {
 		if as.IsEmpty() {
 			if err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
+			}
+		} else {
+			if err := s.trie.Set(key, value); err != nil {
+				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+			}
+		}
+	}
+
+	for _, ps := range s.mutablePReps {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.GetAddress()))
+		value := NewObject(TypePRep, ps.GetSnapshot())
+
+		if ps.IsEmpty() {
+			if err := s.trie.Delete(key); err != nil {
+				log.Errorf("Failed to delete prep key %x, err+%+v", key, err)
 			}
 		} else {
 			if err := s.trie.Set(key, value); err != nil {
@@ -87,9 +115,30 @@ func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
 	return as, nil
 }
 
+func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
+	ids := addr.String()
+	if a, ok := s.mutablePReps[ids]; ok {
+		return a, nil
+	}
+	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr)))
+	if err != nil {
+		return nil, err
+	}
+	var pss *PRepSnapshot
+	if obj != nil {
+		pss = obj.(*Object).PRep()
+	} else {
+		pss = newPRepSnapshot(MakeTag(TypePRep, prepVersion))
+	}
+	ps := NewPRepStateWithSnapshot(addr, pss)
+	s.mutablePReps[ids] = ps
+	return ps, nil
+}
+
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	return &State{
 		mutableAccounts: make(map[string]*AccountState),
-		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		mutablePReps:    make(map[string]*PRepState),
+		trie:            trie_manager.NewMutableFromImmutableForObject(ss.trie),
 	}
 }
