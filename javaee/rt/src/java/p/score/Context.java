@@ -87,15 +87,32 @@ public final class Context extends Object {
     public static IObject avm_call(Address targetAddress,
                                    String method,
                                    IObjectArray params) {
-        return avm_call(null, targetAddress, method, params);
+        return avm_call(null, null, targetAddress, method, params);
+    }
+
+    public static<T extends IObject> T avm_call(Class<T> cls,
+                                                Address targetAddress,
+                                                String method,
+                                                IObjectArray params) {
+        return avm_call(cls, null, targetAddress, method, params);
     }
 
     public static IObject avm_call(BigInteger value,
                                    Address targetAddress,
                                    String method,
                                    IObjectArray params) {
-        return blockchainRuntime.avm_call(value, targetAddress,
+        return avm_call(null, value, targetAddress, method, params);
+    }
+
+    public static<T> T avm_call(Class<T> cls,
+                                BigInteger value,
+                                Address targetAddress,
+                                String method,
+                                IObjectArray params) {
+        @SuppressWarnings("unchecked")
+        T res = (T)blockchainRuntime.avm_call(cls, value, targetAddress,
                 method, params);
+        return res;
     }
 
     public static void avm_transfer(Address targetAddress, BigInteger value) {
