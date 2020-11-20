@@ -20,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -29,7 +30,7 @@ const (
 )
 
 type PRepSnapshot struct {
-	NoDatabaseObject
+	icobject.NoDatabase
 	name        string
 	country     string
 	city        string
@@ -67,7 +68,7 @@ func (p *PRepSnapshot) RLPDecodeFields(d codec.Decoder) error {
 	return nil
 }
 
-func (p *PRepSnapshot) Equal(object ObjectImpl) bool {
+func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 	ps, ok := object.(*PRepSnapshot)
 	if !ok {
 		return false
@@ -84,7 +85,7 @@ func (p *PRepSnapshot) Equal(object ObjectImpl) bool {
 		p.p2pEndpoint == ps.p2pEndpoint
 }
 
-func newPRepSnapshot(tag Tag) *PRepSnapshot {
+func newPRepSnapshot(tag icobject.Tag) *PRepSnapshot {
 	return &PRepSnapshot{}
 }
 

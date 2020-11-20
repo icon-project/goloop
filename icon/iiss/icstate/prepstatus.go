@@ -19,10 +19,11 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 type PRepStatusSnapshot struct {
-	NoDatabaseObject
+	icobject.NoDatabase
 	state     int
 	grade     int
 	delegated common.HexInt
@@ -49,7 +50,7 @@ func (pss *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	)
 }
 
-func (pss *PRepStatusSnapshot) Equal(o ObjectImpl) bool {
+func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
 	pss1, ok := o.(*PRepStatusSnapshot)
 	if !ok {
 		return false
@@ -57,4 +58,8 @@ func (pss *PRepStatusSnapshot) Equal(o ObjectImpl) bool {
 	return pss.state == pss1.state &&
 		pss.grade == pss1.grade &&
 		pss.delegated.Cmp(pss1.delegated.Value()) == 0
+}
+
+func newPRepStatusSnapshot(tag icobject.Tag) *PRepStatusSnapshot {
+	return new(PRepStatusSnapshot)
 }

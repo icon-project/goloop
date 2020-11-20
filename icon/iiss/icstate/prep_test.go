@@ -16,24 +16,28 @@ package icstate
 import (
 	"github.com/bmizerany/assert"
 	"testing"
+
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 func TestPRepSnapshot_Bytes(t *testing.T) {
-	ss1 := newPRepSnapshot(MakeTag(TypePRep, prepVersion))
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	ss1 := newPRepSnapshot(icobject.MakeTag(TypePRep, prepVersion))
 	n := "name"
 	ss1.name = n
 
-	o1 := NewObject(TypePRep, ss1)
+	o1 := icobject.New(TypePRep, ss1)
 	serialized := o1.Bytes()
 
-	o2 := new(Object)
-	if err := o2.Reset(nil, serialized); err != nil {
+	o2 := new(icobject.Object)
+	if err := o2.Reset(database, serialized); err != nil {
 		t.Errorf("Failed to get object from bytes")
 		return
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := o2.PRep()
+	ss2 := ToPRepSnapshot(o2)
 	assert.Equal(t, true, ss1.Equal(ss2))
 }

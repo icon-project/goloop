@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 var t1 = AccountSnapshot{
@@ -58,36 +60,37 @@ var t1 = AccountSnapshot{
 	},
 	unbonds: []*Unbond{
 		{
-			target: common.NewAddressFromString("hx5"),
-			amount: big.NewInt(10),
+			target:       common.NewAddressFromString("hx5"),
+			amount:       big.NewInt(10),
 			expireHeight: 20,
 		},
 		{
-			target: common.NewAddressFromString("hx6"),
-			amount: big.NewInt(10),
+			target:       common.NewAddressFromString("hx6"),
+			amount:       big.NewInt(10),
 			expireHeight: 30,
 		},
 	},
 }
 
 func TestAccountSnapshot_Bytes(t *testing.T) {
-	ss1 := newAccountSnapshot(MakeTag(TypeAccount, accountVersion))
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	ss1 := newAccountSnapshot(icobject.MakeTag(TypeAccount, accountVersion))
 	v1 := big.NewInt(10)
 	ss1.staked = v1
 
-	o1 := NewObject(TypeAccount, ss1)
+	o1 := icobject.New(TypeAccount, ss1)
 	serialized := o1.Bytes()
 
 	t.Logf("Serialized:% X", serialized)
 
-	o2 := new(Object)
-	if err := o2.Reset(nil, serialized); err != nil {
+	o2 := new(icobject.Object)
+	if err := o2.Reset(database, serialized); err != nil {
 		t.Errorf("Failed to get object from bytes")
 		return
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := o2.Account()
+	ss2 := ToAccountSnapshot(o2)
 	assert.Equal(t, true, ss1.Equal(ss2))
 }

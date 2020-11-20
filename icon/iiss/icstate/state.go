@@ -21,6 +21,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 )
@@ -42,7 +43,7 @@ func (s *State) Reset(ss *Snapshot) error {
 		if value == nil {
 			as.Clear()
 		} else {
-			as.Reset(value.(*Object).Account())
+			as.Reset(ToAccountSnapshot(value))
 		}
 	}
 	for _, ps := range s.mutablePReps {
@@ -54,7 +55,7 @@ func (s *State) Reset(ss *Snapshot) error {
 		if value == nil {
 			ps.Clear()
 		} else {
-			ps.Reset(value.(*Object).PRep())
+			ps.Reset(ToPRepSnapshot(value))
 		}
 	}
 	return nil
@@ -63,7 +64,7 @@ func (s *State) Reset(ss *Snapshot) error {
 func (s *State) GetSnapshot() *Snapshot {
 	for _, as := range s.mutableAccounts {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
-		value := NewObject(TypeAccount, as.GetSnapshot())
+		value := icobject.New(TypeAccount, as.GetSnapshot())
 
 		if as.IsEmpty() {
 			if err := s.trie.Delete(key); err != nil {
@@ -78,7 +79,7 @@ func (s *State) GetSnapshot() *Snapshot {
 
 	for _, ps := range s.mutablePReps {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.GetAddress()))
-		value := NewObject(TypePRep, ps.GetSnapshot())
+		value := icobject.New(TypePRep, ps.GetSnapshot())
 
 		if ps.IsEmpty() {
 			if err := s.trie.Delete(key); err != nil {
@@ -106,9 +107,9 @@ func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
 	}
 	var ass *AccountSnapshot
 	if obj != nil {
-		ass = obj.(*Object).Account()
+		ass = ToAccountSnapshot(obj)
 	} else {
-		ass = newAccountSnapshot(MakeTag(TypeAccount, accountVersion))
+		ass = newAccountSnapshot(icobject.MakeTag(TypeAccount, accountVersion))
 	}
 	as := NewAccountStateWithSnapshot(addr, ass)
 	s.mutableAccounts[ids] = as
@@ -126,9 +127,9 @@ func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
 	}
 	var pss *PRepSnapshot
 	if obj != nil {
-		pss = obj.(*Object).PRep()
+		pss = ToPRepSnapshot(obj)
 	} else {
-		pss = newPRepSnapshot(MakeTag(TypePRep, prepVersion))
+		pss = newPRepSnapshot(icobject.MakeTag(TypePRep, prepVersion))
 	}
 	ps := NewPRepStateWithSnapshot(addr, pss)
 	s.mutablePReps[ids] = ps

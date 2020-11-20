@@ -17,12 +17,11 @@
 package icstate
 
 import (
-	"reflect"
-
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 )
@@ -53,7 +52,7 @@ func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, e
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*Object).Account(), nil
+	return ToAccountSnapshot(obj), nil
 }
 
 func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) {
@@ -61,7 +60,7 @@ func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) 
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*Object).Real().(*PRepSnapshot), nil
+	return ToPRepSnapshot(obj), nil
 }
 
 func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {
@@ -69,17 +68,16 @@ func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnaps
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*Object).Real().(*PRepStatusSnapshot), nil
+	return ToPRepStatusSnapshot(obj), nil
 }
 
 func (ss *Snapshot) NewState() *State {
 	return NewStateFromSnapshot(ss)
 }
 
-var objectType = reflect.TypeOf((*Object)(nil))
-
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {
+	dbase = icobject.AttachObjectFactory(dbase, newObjectImpl)
 	return &Snapshot{
-		trie: trie_manager.NewImmutableForObject(dbase, h, objectType),
+		trie: trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType),
 	}
 }

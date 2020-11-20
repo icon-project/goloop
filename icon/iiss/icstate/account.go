@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -33,7 +34,7 @@ var bigIntZero big.Int
 var BigIntZero = &bigIntZero
 
 type AccountSnapshot struct {
-	NoDatabaseObject
+	icobject.NoDatabase
 	staked      *big.Int
 	unstakes    Unstakes
 	delegated   *big.Int
@@ -72,7 +73,7 @@ func (a *AccountSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	)
 }
 
-func (a *AccountSnapshot) Equal(object ObjectImpl) bool {
+func (a *AccountSnapshot) Equal(object icobject.Impl) bool {
 	aa, ok := object.(*AccountSnapshot)
 	if !ok {
 		return false
@@ -89,7 +90,7 @@ func (a *AccountSnapshot) Equal(object ObjectImpl) bool {
 		a.unbonds.Equal(aa.unbonds)
 }
 
-func newAccountSnapshot(tag Tag) *AccountSnapshot {
+func newAccountSnapshot(tag icobject.Tag) *AccountSnapshot {
 	// versioning with tag.Version() if necessary
 	return &AccountSnapshot{
 		staked:    new(big.Int),
@@ -99,7 +100,7 @@ func newAccountSnapshot(tag Tag) *AccountSnapshot {
 }
 
 type AccountState struct {
-	address		module.Address
+	address     module.Address
 	staked      *big.Int
 	unstakes    Unstakes
 	delegated   *big.Int
@@ -111,10 +112,10 @@ type AccountState struct {
 
 func newAccountState(address module.Address) *AccountState {
 	return &AccountState{
-		address: address,
-		staked: new(big.Int),
+		address:   address,
+		staked:    new(big.Int),
 		delegated: new(big.Int),
-		bonded: new(big.Int),
+		bonded:    new(big.Int),
 	}
 
 }
@@ -209,7 +210,6 @@ func (as AccountState) GetStakeInfo() map[string]interface{} {
 	return jso
 }
 
-
 func (as *AccountState) SetDelegation(ds Delegations) {
 	as.delegated.Set(ds.GetDelegationAmount())
 	as.delegations = ds
@@ -234,7 +234,6 @@ func (as *AccountState) GetVotingPower() *big.Int {
 func (as *AccountState) GetVotedPower() *big.Int {
 	return new(big.Int).Add(as.bonded, as.delegated)
 }
-
 
 func (as *AccountState) GetBond() *big.Int {
 	return as.bonded
