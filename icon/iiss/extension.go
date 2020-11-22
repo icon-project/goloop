@@ -18,6 +18,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -125,4 +126,12 @@ func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
 	}
 	// TODO parse hash and make stateHolders
 	return s
+}
+
+func (s *ExtensionStateImpl) GetAccountState(address module.Address) (*icstate.AccountState, error) {
+	return s.state.GetAccountState(address)
+}
+
+func (s *ExtensionStateImpl) GetPRepState(address module.Address) (*icstate.PRepState, error) {
+	return s.state.GetPRepState(address)
 }

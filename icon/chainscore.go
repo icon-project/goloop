@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss"
@@ -249,42 +248,4 @@ func (s *chainScore) GetAPI() *scoreapi.Info {
 
 func newChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	return &chainScore{cc: cc, from: from, value: value, log: cc.Logger()}, nil
-}
-
-func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	es := s.cc.GetExtensionState()
-	if err := iiss.NewHandler(s.cc, s.from, s.value, es).SetStake(&value.Int); err != nil {
-		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
-	}
-	return nil
-}
-
-func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
-	es := s.cc.GetExtensionState()
-	return iiss.NewHandler(s.cc, s.from, s.value, es).GetStake(address)
-}
-
-func (s *chainScore) Ex_setDelegation(param []interface{}) error {
-	es := s.cc.GetExtensionState()
-	if err := iiss.NewHandler(s.cc, s.from, s.value, es).SetDelegation(param); err != nil {
-		return scoreresult.Errorf(basic.StatusIllegalArgument, err.Error())
-	}
-	return nil
-}
-
-func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
-	es := s.cc.GetExtensionState()
-	return iiss.NewHandler(s.cc, s.from, s.value, es).GetDelegation(address)
-}
-
-func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string, city string,
-	details string, p2pEndpoint string, nodeAddress module.Address) error {
-	es := s.cc.GetExtensionState()
-	return iiss.NewHandler(s.cc, s.from, s.value, es).RegisterPRep(name, email, website, country, city,
-		details, p2pEndpoint, nodeAddress)
-}
-
-func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
-	es := s.cc.GetExtensionState()
-	return iiss.NewHandler(s.cc, s.from, s.value, es).GetPRep(address)
 }
