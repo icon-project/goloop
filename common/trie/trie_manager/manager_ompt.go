@@ -1,5 +1,3 @@
-// +build !mapTrie
-
 package trie_manager
 
 import (
