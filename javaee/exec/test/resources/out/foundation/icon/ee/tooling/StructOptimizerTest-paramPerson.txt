@@ -28,7 +28,6 @@ public class A$B {
 
   // access flags 0x1
   public setName(Ljava/lang/String;)V
-    // parameter  name
     ALOAD 0
     ALOAD 1
     PUTFIELD A$B.a : Ljava/lang/String;
@@ -38,7 +37,6 @@ public class A$B {
 
   // access flags 0x1
   public setAge(I)V
-    // parameter  age
     ALOAD 0
     ILOAD 1
     PUTFIELD A$B.b : I

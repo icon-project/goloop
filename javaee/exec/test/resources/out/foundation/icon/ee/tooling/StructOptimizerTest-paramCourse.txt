@@ -55,7 +55,6 @@ public class C$D {
 
   // access flags 0x1
   public setName(Ljava/lang/String;)V
-    // parameter  name
     ALOAD 0
     ALOAD 1
     PUTFIELD C$D.a : Ljava/lang/String;
@@ -65,7 +64,6 @@ public class C$D {
 
   // access flags 0x1
   public setAge(I)V
-    // parameter  age
     ALOAD 0
     ILOAD 1
     PUTFIELD C$D.b : I
@@ -92,7 +90,6 @@ public class E$F extends C$D {
 
   // access flags 0x1
   public setMajor(Ljava/lang/String;)V
-    // parameter  major
     ALOAD 0
     ALOAD 1
     PUTFIELD E$F.c : Ljava/lang/String;
@@ -122,7 +119,6 @@ public class G$H {
 
   // access flags 0x1
   public setTeacher(LC$D;)V
-    // parameter  teacher
     ALOAD 0
     ALOAD 1
     PUTFIELD G$H.d : LC$D;
@@ -132,7 +128,6 @@ public class G$H {
 
   // access flags 0x1
   public setStudents([LE$F;)V
-    // parameter  students
     ALOAD 0
     ALOAD 1
     PUTFIELD G$H.e : [LE$F;
