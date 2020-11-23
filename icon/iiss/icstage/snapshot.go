@@ -38,6 +38,14 @@ func (ss *Snapshot) Bytes() []byte {
 	return ss.trie.Hash()
 }
 
+func (ss *Snapshot) Iterator() trie.IteratorForObject {
+	return ss.trie.Iterator()
+}
+
+func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
+	return ss.trie.Filter(prefix)
+}
+
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
 	return &Snapshot{

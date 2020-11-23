@@ -26,6 +26,8 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
+const TypeReserved int = 30
+
 type Tag int
 
 func (t Tag) Type() int {
@@ -140,6 +142,13 @@ func (o *Object) Real() Impl {
 		return nil
 	}
 	return o.real
+}
+
+func (o *Object) Tag() Tag {
+	if o == nil {
+		return 0
+	}
+	return o.tag
 }
 
 func New(t int, real Impl) *Object {

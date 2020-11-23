@@ -19,25 +19,11 @@ package icstage
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 type IScoreClaim struct {
-	icobject.NoDatabase
-	Value *big.Int
-}
-
-func (ic *IScoreClaim) Version() int {
-	return 0
-}
-
-func (ic *IScoreClaim) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&ic.Value)
-}
-
-func (ic *IScoreClaim) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(ic.Value)
+	icobject.ObjectBigInt
 }
 
 func (ic *IScoreClaim) Equal(o icobject.Impl) bool {
@@ -46,14 +32,6 @@ func (ic *IScoreClaim) Equal(o icobject.Impl) bool {
 	} else {
 		return false
 	}
-}
-
-func (ic *IScoreClaim) Clear() {
-	ic.Value = new(big.Int)
-}
-
-func (ic *IScoreClaim) IsEmpty() bool {
-	return ic.Value == nil || ic.Value.Sign() == 0
 }
 
 func (ic *IScoreClaim) Added(amount *big.Int) *IScoreClaim {

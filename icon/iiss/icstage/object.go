@@ -24,12 +24,32 @@ import (
 
 const (
 	TypeIScoreClaim int = iota
+	TypeEventDelegation
+	TypeEventEnable
+	TypeEventPeriod
+	TypeEventValidator
+	TypeBlockProduce
+	TypeGlobal
 )
 
 func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
+	case icobject.TypeBigInt:
+		return icobject.NewObjectBigInt(tag), nil
 	case TypeIScoreClaim:
 		return newIScoreClaim(tag), nil
+	case TypeEventDelegation:
+		return newEventDelegation(tag), nil
+	case TypeEventEnable:
+		return newEventEnable(tag), nil
+	case TypeEventPeriod:
+		return newEventPeriod(tag), nil
+	case TypeEventValidator:
+		return newEventValidator(tag), nil
+	case TypeBlockProduce:
+		return newBlockProduce(tag), nil
+	case TypeGlobal:
+		return newGlobal(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -41,4 +61,46 @@ func ToIScoreClaim(obj trie.Object) *IScoreClaim {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*IScoreClaim)
+}
+
+func ToEventDelegation(obj trie.Object) *EventDelegation {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventDelegation)
+}
+
+func ToEventEnable(obj trie.Object) *EventEnable {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventEnable)
+}
+
+func ToEventPeriod(obj trie.Object) *EventPeriod {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventPeriod)
+}
+
+func ToEventValidator(obj trie.Object) *Validator {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*Validator)
+}
+
+func ToBlockProduce(obj trie.Object) *BlockProduce {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*BlockProduce)
+}
+
+func ToGlobal(obj trie.Object) *Global {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*Global)
 }

@@ -28,7 +28,7 @@ type extensionSnapshotImpl struct {
 	state *icstate.Snapshot
 	front *icstage.Snapshot
 	back  *icstage.Snapshot
-	//base *icstate.Snapshot
+	//base  *icstate.Snapshot
 }
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
@@ -49,6 +49,8 @@ func (s *extensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 		return err
 	}
 	s.state = icstate.NewSnapshot(s.database, stateHash)
+	s.front = icstage.NewSnapshot(s.database, frontHash)
+	s.back = icstage.NewSnapshot(s.database, backHash)
 	return nil
 }
 
@@ -70,7 +72,7 @@ func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	return &ExtensionStateImpl{
 		database: s.database,
 		state:    icstate.NewStateFromSnapshot(s.state),
-		front:    icstage.NewStateFromSnapshot(s.front),
+		Front:    icstage.NewStateFromSnapshot(s.front),
 		back:     icstage.NewStateFromSnapshot(s.back),
 	}
 }
@@ -80,6 +82,8 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 		return &extensionSnapshotImpl{
 			database: database,
 			state:    icstate.NewSnapshot(database, nil),
+			front:    icstage.NewSnapshot(database, nil),
+			back:     icstage.NewSnapshot(database, nil),
 		}
 	}
 	s := &extensionSnapshotImpl{
@@ -94,7 +98,7 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 type ExtensionStateImpl struct {
 	database db.Database
 	state    *icstate.State
-	front    *icstage.State
+	Front    *icstage.State
 	back     *icstage.State
 }
 
@@ -103,7 +107,7 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &extensionSnapshotImpl{
 		database: s.database,
 		state:    s.state.GetSnapshot(),
-		front:    s.front.GetSnapshot(),
+		front:    s.Front.GetSnapshot(),
 		back:     s.back.GetSnapshot(),
 	}
 }
