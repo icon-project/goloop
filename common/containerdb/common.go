@@ -16,6 +16,7 @@
 package containerdb
 
 import (
+	"io"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -83,6 +84,83 @@ func AppendRawKeys(key []byte, keys ...interface{}) []byte {
 		kbytes = append(kbytes, k...)
 	}
 	return kbytes
+}
+
+func rlpReadSize(b []byte, slen int) (uint64, error) {
+	if slen > len(b) {
+		return 0, errors.IllegalArgumentError.Errorf(
+			"NotEnoughBytes(exp=%d,real=%d)", slen, len(b))
+	}
+	var s uint64
+	switch slen {
+	case 1:
+		s = uint64(b[0])
+	case 2:
+		s = uint64(b[0])<<8 | uint64(b[1])
+	case 3:
+		s = uint64(b[0])<<16 | uint64(b[1])<<8 | uint64(b[2])
+	case 4:
+		s = uint64(b[0])<<24 | uint64(b[1])<<16 | uint64(b[2])<<8 | uint64(b[3])
+	case 5:
+		s = uint64(b[0])<<32 | uint64(b[1])<<24 | uint64(b[2])<<16 | uint64(b[3])<<8 | uint64(b[4])
+	case 6:
+		s = uint64(b[0])<<40 | uint64(b[1])<<32 | uint64(b[2])<<24 | uint64(b[3])<<16 | uint64(b[4])<<8 | uint64(b[5])
+	case 7:
+		s = uint64(b[0])<<48 | uint64(b[1])<<40 | uint64(b[2])<<32 | uint64(b[3])<<24 | uint64(b[4])<<16 | uint64(b[5])<<8 | uint64(b[6])
+	case 8:
+		s = uint64(b[0])<<56 | uint64(b[1])<<48 | uint64(b[2])<<40 | uint64(b[3])<<32 | uint64(b[4])<<24 | uint64(b[5])<<16 | uint64(b[6])<<8 | uint64(b[7])
+	}
+	if s < 56 || b[0] == 0 {
+		return 0, errors.IllegalArgumentError.New("InvalidSizeField")
+	}
+	return s, nil
+}
+
+func rlpParseBytes(bs []byte) ([]byte, []byte, error) {
+	if len(bs) == 0 {
+		return nil, nil, io.EOF
+	}
+	tag := bs[0]
+	data := bs[1:]
+	switch {
+	case tag < 0x80:
+		return []byte{tag}, data, nil
+	case tag < 0xB8:
+		size := int(tag - 0x80)
+		if len(data) < size {
+			return nil, nil, errors.IllegalArgumentError.Errorf(
+				"NotEnoughBytes(exp=%d,real=%d)", size, len(data))
+		}
+		return data[:size], data[size:], nil
+	case tag < 0xC0:
+		ts := int(tag - 0xb7)
+		size, err := rlpReadSize(data, ts)
+		if err != nil {
+			return nil, nil, err
+		}
+		data = data[ts:]
+		if len(data) < int(size) {
+			return nil, nil, errors.IllegalArgumentError.Errorf(
+				"NotEnoughBytes(exp=%d,real=%d)", size, len(data))
+		}
+		return data[:size], data[size:], nil
+	default:
+		return nil, nil, errors.IllegalArgumentError.New(
+			"InvalidType(exp=bytes,real=list)")
+	}
+}
+
+func SplitKeys(key []byte) ([][]byte, error) {
+	var keys [][]byte
+	for len(key) > 0 {
+		if part, remain, err := rlpParseBytes(key); err != nil {
+			return nil, err
+		} else {
+			keys = append(keys, part)
+			key = remain
+		}
+	}
+	return keys, nil
 }
 
 func ToBytes(v interface{}) []byte {
