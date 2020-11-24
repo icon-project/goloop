@@ -11,9 +11,6 @@ import pi.UnmodifiableArrayMap;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Map;
 
 public class Shadower {
@@ -131,10 +128,6 @@ public class Shadower {
             return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
         }
         return null;
-    }
-
-    static int compare(Map.Entry<String, ?> e1, Map.Entry<String, ?> e2) {
-        return e1.getKey().compareTo(e2.getKey());
     }
 
     private static Object _shadow(Object obj, Class<?> c) {
