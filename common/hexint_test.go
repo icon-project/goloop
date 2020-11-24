@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -80,7 +81,7 @@ func TestHexInt_UnmarshalJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexInt
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -223,7 +224,7 @@ func TestHexInt16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexInt16
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -298,7 +299,7 @@ func TestHexInt32(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexInt32
 
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -377,7 +378,7 @@ func TestHexInt64(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexInt64
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -456,7 +457,7 @@ func TestHexUint16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexUint16
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -535,7 +536,7 @@ func TestHexUint32(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexUint32
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
@@ -610,7 +611,7 @@ func TestHexUint64(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var v1 HexUint64
-			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
+			if err := json.Unmarshal([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
 				}
