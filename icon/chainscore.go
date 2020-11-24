@@ -111,6 +111,11 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "unregisterPRep",
+		scoreapi.FlagExternal, 0,
+		nil,
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
 }
 
 func applyStepLimits(as state.AccountState, limits map[string]int64) error {

@@ -135,3 +135,7 @@ func (s *ExtensionStateImpl) GetAccountState(address module.Address) (*icstate.A
 func (s *ExtensionStateImpl) GetPRepState(address module.Address) (*icstate.PRepState, error) {
 	return s.state.GetPRepState(address)
 }
+
+func (s *ExtensionStateImpl) GetPRepStatusState(address module.Address) (*icstate.PRepStatusState, error) {
+	return s.state.GetPRepStatusState(address)
+}

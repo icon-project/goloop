@@ -27,9 +27,10 @@ import (
 )
 
 type State struct {
-	mutableAccounts map[string]*AccountState
-	mutablePReps    map[string]*PRepState
-	trie            trie.MutableForObject
+	mutableAccounts   map[string]*AccountState
+	mutablePReps      map[string]*PRepState
+	mutablePRepStatus map[string]*PRepStatusState
+	trie              trie.MutableForObject
 }
 
 func (s *State) Reset(ss *Snapshot) error {
@@ -58,6 +59,18 @@ func (s *State) Reset(ss *Snapshot) error {
 			ps.Reset(ToPRepSnapshot(value))
 		}
 	}
+	for _, ps := range s.mutablePRepStatus {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.GetAddress()))
+		value, err := s.trie.Get(key)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			ps.Clear()
+		} else {
+			ps.Reset(ToPRepStatusSnapshot(value))
+		}
+	}
 	return nil
 }
 
@@ -84,6 +97,21 @@ func (s *State) GetSnapshot() *Snapshot {
 		if ps.IsEmpty() {
 			if err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete prep key %x, err+%+v", key, err)
+			}
+		} else {
+			if err := s.trie.Set(key, value); err != nil {
+				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+			}
+		}
+	}
+
+	for _, ps := range s.mutablePRepStatus {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.GetAddress()))
+		value := icobject.New(TypePRepStatus, ps.GetSnapshot())
+
+		if ps.IsEmpty() {
+			if err := s.trie.Delete(key); err != nil {
+				log.Errorf("Failed to delete prepStatus key %x, err+%+v", key, err)
 			}
 		} else {
 			if err := s.trie.Set(key, value); err != nil {
@@ -136,10 +164,31 @@ func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
 	return ps, nil
 }
 
+func (s *State) GetPRepStatusState(addr module.Address) (*PRepStatusState, error) {
+	ids := addr.String()
+	if a, ok := s.mutablePRepStatus[ids]; ok {
+		return a, nil
+	}
+	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr)))
+	if err != nil {
+		return nil, err
+	}
+	var pss *PRepStatusSnapshot
+	if obj != nil {
+		pss = ToPRepStatusSnapshot(obj)
+	} else {
+		pss = newPRepStatusSnapshot(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
+	}
+	ps := NewPRepStatusStateWithSnapshot(addr, pss)
+	s.mutablePRepStatus[ids] = ps
+	return ps, nil
+}
+
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	return &State{
-		mutableAccounts: make(map[string]*AccountState),
-		mutablePReps:    make(map[string]*PRepState),
-		trie:            trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		mutableAccounts:   make(map[string]*AccountState),
+		mutablePReps:      make(map[string]*PRepState),
+		mutablePRepStatus: make(map[string]*PRepStatusState),
+		trie:              trie_manager.NewMutableFromImmutableForObject(ss.trie),
 	}
 }

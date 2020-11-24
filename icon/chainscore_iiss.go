@@ -1,3 +1,16 @@
+/*
+ * Copyright 2020 ICON Foundation
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package icon
 
 import (
@@ -8,7 +21,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"math/big"
 )
-
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
@@ -68,7 +80,6 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	return ia.GetStakeInfo(), nil
 }
 
-
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccountState(s.from)
@@ -106,6 +117,12 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	if err != nil {
 		return err
 	}
+	ips, err := es.GetPRepStatusState(s.from)
+	if err != nil {
+		return err
+	}
+	ips.SetGrade(icstate.PrepGradeCandidate)
+	ips.SetStatus(icstate.StatusActive)
 	return ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
 }
 
@@ -115,5 +132,24 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
-	return ip.GetPRep(), nil
+	ips, err := es.GetPRepStatusState(address)
+	if err != nil {
+		return nil, err
+	}
+	prepInfo := ip.GetPRep()
+	for k, v := range ips.GetPRepStatusInfo() {
+		prepInfo[k] = v
+	}
+	return prepInfo, nil
+}
+
+func (s *chainScore) Ex_unregisterPRep() error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	ips, err := es.GetPRepStatusState(s.from)
+	if err != nil {
+		return err
+	}
+	ips.SetGrade(icstate.PrepGradeCandidate)
+	ips.SetStatus(icstate.StatusUnregistered)
+	return nil
 }

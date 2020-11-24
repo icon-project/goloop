@@ -48,6 +48,7 @@ func ToAccountSnapshot(object trie.Object) *AccountSnapshot {
 	}
 	return object.(*icobject.Object).Real().(*AccountSnapshot)
 }
+
 func ToPRepStatusSnapshot(object trie.Object) *PRepStatusSnapshot {
 	if object == nil {
 		return nil
