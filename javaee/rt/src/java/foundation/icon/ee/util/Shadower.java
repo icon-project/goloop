@@ -10,6 +10,10 @@ import pi.UnmodifiableArrayMap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
 
 public class Shadower {
@@ -129,6 +133,10 @@ public class Shadower {
         return null;
     }
 
+    static int compare(Map.Entry<String, ?> e1, Map.Entry<String, ?> e2) {
+        return e1.getKey().compareTo(e2.getKey());
+    }
+
     private static Object _shadow(Object obj, Class<?> c) {
         if (obj == null) {
             return null;
@@ -243,10 +251,12 @@ public class Shadower {
             }
             return new UnmodifiableArrayList<>(sa);
         } else if (c == s.java.util.Map.class) {
-            var o = (Map<?, ?>) obj;
+            var o = (Map<String, Object>) obj;
+            var l = new ArrayList<>(o.entrySet());
+            l.sort(Map.Entry.comparingByKey());
             var skv = new IObject[o.size() * 2];
             int i = 0;
-            for (Map.Entry<?, ?> e : o.entrySet()) {
+            for (var e : l) {
                 skv[i++] = shadow(e.getKey());
                 skv[i++] = shadow(e.getValue());
             }
