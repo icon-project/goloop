@@ -1,7 +1,7 @@
 package state
 
 import (
-	"github.com/icon-project/goloop/common/log"
+	"fmt"
 )
 
 type EEType string
@@ -66,17 +66,23 @@ func (e EEType) String() string {
 	return string(e)
 }
 
-// Only "application/zip" and "application/java" are allowed as contentType by server validator.
-func EETypeFromContentType(ct string) EEType {
+func EETypeFromContentType(ct string) (EEType, bool) {
 	switch ct {
 	case CTAppZip:
-		return PythonEE
+		return PythonEE, true
 	case CTAppJava:
-		return JavaEE
+		return JavaEE, true
 	case CTAppSystem:
-		return SystemEE
+		return SystemEE, true
 	default:
-		log.Errorf("Unexpected contentType(%s)\n", ct)
-		return ""
+		return "", false
+	}
+}
+
+func MustEETypeFromContentType(ct string) EEType {
+	if et, ok := EETypeFromContentType(ct); !ok {
+		panic(fmt.Sprintf("InvalidContentType(type=%s)", ct))
+	} else {
+		return et
 	}
 }

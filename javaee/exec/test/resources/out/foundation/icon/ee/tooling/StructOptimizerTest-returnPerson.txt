@@ -45,8 +45,6 @@ public class C$D {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;I)V
-    // parameter  name
-    // parameter  age
     ALOAD 0
     INVOKESPECIAL java/lang/Object.<init> ()V
     ALOAD 0

@@ -1,9 +1,17 @@
 package s.java.lang;
 
+import i.IObjectDeserializer;
+import i.IObjectSerializer;
 import org.aion.avm.ClassNameExtractor;
 import i.IInstrumentation;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import s.java.io.Serializable;
+
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 /**
  * Our shadow implementation of java.lang.Throwable.
@@ -19,6 +27,8 @@ import s.java.io.Serializable;
  * Also note that at the creation of these exception/error objects, the 'new' bytecode and the heap size are billed.
  */
 public class Throwable extends Object implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(Throwable.class);
+
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -26,6 +36,8 @@ public class Throwable extends Object implements Serializable {
 
     private String message;
     private Throwable cause;
+    private java.lang.String systemMessage = null;
+    private StackTraceElement[] stackTrace;
 
     public Throwable() {
         this((String)null, (Throwable)null);
@@ -38,16 +50,32 @@ public class Throwable extends Object implements Serializable {
     public Throwable(String message, Throwable cause) {
         this.message = message;
         this.cause = cause;
+        this.stackTrace = Thread.currentThread().getStackTrace();
     }
 
     public Throwable(Throwable cause) {
         this.message = (cause == null ? null : cause.internalToString());
         this.cause = cause;
+        this.stackTrace = Thread.currentThread().getStackTrace();
     }
 
     // Deserializer support.
     public Throwable(java.lang.Void ignore, int readIndex) {
         super(ignore, readIndex);
+    }
+
+    public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
+        super.deserializeSelf(Throwable.class, deserializer);
+        this.message = (String) deserializer.readObject();
+        this.cause = (Throwable) deserializer.readObject();
+    }
+
+    public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
+        super.serializeSelf(Throwable.class, serializer);
+        serializer.writeObject(message);
+        serializer.writeObject(cause);
+        // DO NOT serialize systemMessage and backtrace as this can change
+        // between versions
     }
 
     public String avm_getMessage() {
@@ -81,6 +109,38 @@ public class Throwable extends Object implements Serializable {
         return internalToString();
     }
 
+    public void avm_printStackTrace() {
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        printStackTrace("", visited);
+    }
+
+    private void printStackTrace(java.lang.String caption,
+            Set<Throwable> visited) {
+        if (visited.contains(this)) {
+            return;
+        }
+        visited.add(this);
+        logger.trace("PRT|");
+        logger.trace("PRT| " + caption + this);
+        if (stackTrace != null) {
+            for (StackTraceElement e : stackTrace) {
+                logger.trace("PRT|\tat " + e);
+            }
+        }
+
+        if (cause != null) {
+            cause.printStackTrace("Caused by: ", visited);
+        }
+    }
+
+    public void setSystemMessage(java.lang.String message) {
+        this.systemMessage = message;
+    }
+
+    public void setStackTrace(StackTraceElement[] backtrace) {
+        this.stackTrace = backtrace;
+    }
+
     //=======================================================
     // Methods below are used by runtime and test code only!
     //========================================================
@@ -88,7 +148,9 @@ public class Throwable extends Object implements Serializable {
     @Override
     public java.lang.String toString() {
         lazyLoad();
-        return getClass().getName() + ": " + this.message;
+        return getClass().getName() + ": "
+                + (this.message==null ? "" : this.message) + ": "
+                + (this.systemMessage==null ? "" : this.systemMessage);
     }
 
     private String internalToString(){

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.List;
+import java.math.BigInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -61,23 +61,9 @@ public class TBCTest extends TestBase {
             throws IOException, ResultTimeoutException {
         var totalExp = scenario.getExpectCount();
         var tr = s1.runAndLogEvent(ownerWallet, scenario.compile());
-        var out = tr.getEventLogs().get(0).getIndexed().get(1).asString();
-        var list = List.of(out.split("\n"));
-        var okObs = list
-                .stream()
-                .filter(s -> s.startsWith("EXPECT"))
-                .filter(s -> s.contains("[OK]"))
-                .count();
-        var totalObs = list
-                .stream()
-                .filter(s -> s.startsWith("EXPECT"))
-                .count();
-        LOG.info(String.format("%s : %d/%d", name, okObs, totalObs));
-        if (okObs != totalExp) {
-            LOG.info("debug log:\n" + out);
-        }
-        assertEquals(totalObs, totalExp);
-        assertEquals(totalObs, okObs);
+        var okObs = tr.getEventLogs().get(0).getIndexed().get(1).asInteger();
+        LOG.info(String.format("%s : %d/%d", name, okObs, totalExp));
+        assertEquals(BigInteger.valueOf(totalExp), okObs);
     }
 
     byte[] toByteArray(Address a) {

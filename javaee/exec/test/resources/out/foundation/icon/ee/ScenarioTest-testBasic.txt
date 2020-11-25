@@ -51,6 +51,6 @@ SEND result status=0 stepUsed=16426 ret=<null> EID=6 prevEID=4
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=3
 RECV result status=32 stepUsed=39695 ret=Reverted(0)
 SEND result status=32 stepUsed=39695 ret=Reverted(0) EID=7 prevEID=3
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=score.ScoreRevertException: Reverted(0)
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=score.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=90600 ret=<null>
+RECV result status=0 stepUsed=90470 ret=<null>

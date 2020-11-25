@@ -10,10 +10,11 @@ class TBCInterpreter(IconScoreBase):
     ADDRESS_LEN = 21
     SHORT_LEN = 2
 
+    SCORE_ERROR_BASE = 32
+
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
         self._name = VarDB('name', db, value_type=str)
-        self._res = ''
 
     def on_install(self, _name: str) -> None:
         super().on_install()
@@ -23,13 +24,11 @@ class TBCInterpreter(IconScoreBase):
         super().on_update()
 
     @eventlog(indexed=1)
-    def Event_(self, eventData:str):
+    def Event_(self, eventData:int):
         pass
 
     def Event(self, eventData:str):
-        if len(self._res) > 0:
-            self._res = self._res + '\n'
-        self._res = self._res + eventData
+        Logger.info(eventData, TAG)
 
     @external
     def runAndLogResult(self, _code: bytes):
@@ -37,19 +36,19 @@ class TBCInterpreter(IconScoreBase):
         self.Event_(res)
 
     @external
-    def run(self, _code: bytes) -> str:
-        self._res = ''
+    def run(self, _code: bytes) -> int:
         self.Event(f'Enter: {self._name.get()}')
         try:
-            self._runImpl(_code)
+            res = self._runImpl(_code)
             self.Event(f'Exit by Return: {self._name.get()}')
+            return res
         except:
             self.Event(f'Exit by Exception: {self._name.get()}')
             raise
-        return self._res
 
-    def _runImpl(self, code: bytes):
+    def _runImpl(self, code: bytes) -> int:
         offset = 0
+        okCount = 0
         while offset < len(code):
             insn = code[offset]
             offset = offset + 1
@@ -68,9 +67,10 @@ class TBCInterpreter(IconScoreBase):
                 try:
                     res = self.call(addr, "run", {'_code': ccode})
                     self.Event(res)
+                    okCount = okCount + res
                 except IconScoreException as e:
                     self.Event(e.message)
-                    pass
+                    okCount = okCount + (e.code - self.SCORE_ERROR_BASE)
             elif insn == self.REVERT:
                 code = int.from_bytes(
                     code[offset:offset + self.SHORT_LEN],
@@ -78,6 +78,7 @@ class TBCInterpreter(IconScoreBase):
                 )
                 offset = offset + self.SHORT_LEN
                 self.Event(f'Exit by Revert: {self._name.get()}')
-                revert(self._res, code)
+                revert(code=okCount)
             else:
                 self.Event(f'Unexpected insn {insn}')
+        return okCount

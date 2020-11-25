@@ -103,8 +103,8 @@ public interface IBlockchainRuntime {
      * @param params        parameters
      * @return The response of executing the contract.
      */
-    IObject avm_call(BigInteger value, Address targetAddress, String method,
-                     IObjectArray params);
+    Object avm_call(Class<?> cls, BigInteger value,
+            Address targetAddress, String method, IObjectArray params);
 
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.

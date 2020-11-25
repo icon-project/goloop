@@ -10,6 +10,7 @@ import pi.UnmodifiableArrayMap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class Shadower {
@@ -17,15 +18,15 @@ public class Shadower {
      * Shadows internal objects according to a shadow class.
      *
      * @param obj internal object. Map, array, byte[], Address, String, Boolean,
-     *            BigInteger or a writable struct.
-     * @param c shadow class
+     *            BigInteger.
+     * @param c   shadow class
      * @param <T> shadow class
      * @return shadow object
      * @throws IllegalArgumentException thrown if obj and c does not match
-     *          correctly or obj is not a valid parameter/return object or c is
-     *          not a valid parameter/return class.
+     *                                  correctly or obj is not a valid parameter/return object or c is
+     *                                  not a valid parameter/return class.
      */
-    public static<T> T shadow(Object obj, Class<T> c) {
+    public static <T> T shadow(Object obj, Class<T> c) {
         @SuppressWarnings("unchecked")
         T res = (T) shadowImpl(obj, c);
         return res;
@@ -43,10 +44,23 @@ public class Shadower {
         return res;
     }
 
+    public static <T, U extends IObject> U shadowReturnValue(Object obj, Class<T> c) {
+        if (obj == null) {
+            return null;
+        } else if (c.isPrimitive()) {
+            @SuppressWarnings("unchecked")
+            U res = (U) shadowPrimitiveReturnValue(obj, c);
+            return res;
+        }
+        @SuppressWarnings("unchecked")
+        U res = (U) shadowImpl(obj, c);
+        return res;
+    }
+
     private static i.IObjectArray newObjectArray(Class<?> c, int l) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         var post = c.getName().substring(2);
         int i = 0;
-        for (; i<post.length(); ++i) {
+        for (; i < post.length(); ++i) {
             if (post.charAt(i) != '_') {
                 break;
             }
@@ -96,6 +110,24 @@ public class Shadower {
         } catch (ClassCastException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    private static IObject shadowPrimitiveReturnValue(Object obj, Class<?> c) {
+        if (c == boolean.class) {
+            return s.java.lang.Boolean.avm_valueOf((Boolean) obj);
+        } else if(c == char.class) {
+            return s.java.lang.Character.avm_valueOf(
+                    (char)((BigInteger)obj).intValue());
+        } else if(c == byte.class) {
+            return s.java.lang.Byte.avm_valueOf(((BigInteger)obj).byteValue());
+        } else if(c == short.class) {
+            return s.java.lang.Short.avm_valueOf(((BigInteger)obj).shortValue());
+        } else if(c == int.class) {
+            return s.java.lang.Integer.avm_valueOf(((BigInteger)obj).intValue());
+        } else if(c == long.class) {
+            return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
+        }
+        return null;
     }
 
     private static Object _shadow(Object obj, Class<?> c) {
@@ -212,10 +244,12 @@ public class Shadower {
             }
             return new UnmodifiableArrayList<>(sa);
         } else if (c == s.java.util.Map.class) {
-            var o = (Map<?, ?>) obj;
+            var o = (Map<String, Object>) obj;
+            var l = new ArrayList<>(o.entrySet());
+            l.sort(Map.Entry.comparingByKey());
             var skv = new IObject[o.size() * 2];
             int i = 0;
-            for (Map.Entry<?, ?> e : o.entrySet()) {
+            for (var e : l) {
                 skv[i++] = shadow(e.getKey());
                 skv[i++] = shadow(e.getValue());
             }

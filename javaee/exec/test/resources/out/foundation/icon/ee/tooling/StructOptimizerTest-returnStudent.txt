@@ -24,8 +24,6 @@ public class A$B {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;I)V
-    // parameter  name
-    // parameter  age
     ALOAD 0
     INVOKESPECIAL java/lang/Object.<init> ()V
     ALOAD 0
@@ -65,9 +63,6 @@ public class C$D extends A$B {
 
   // access flags 0x1
   public <init>(Ljava/lang/String;ILjava/lang/String;)V
-    // parameter  name
-    // parameter  age
-    // parameter  major
     ALOAD 0
     ALOAD 1
     ILOAD 2

@@ -112,10 +112,10 @@ func DecodeAnyForJSON(o *codec.TypedObj) (interface{}, error) {
 	if err != nil {
 		return value, err
 	}
-	return convertType(value)
+	return AnyForJSON(value)
 }
 
-func convertType(o interface{}) (interface{}, error) {
+func AnyForJSON(o interface{}) (interface{}, error) {
 	switch obj := o.(type) {
 	case []byte:
 		return HexBytes(obj), nil
@@ -130,7 +130,7 @@ func convertType(o interface{}) (interface{}, error) {
 	case []interface{}:
 		l := make([]interface{}, len(obj))
 		for i, o := range obj {
-			if co, err := convertType(o); err != nil {
+			if co, err := AnyForJSON(o); err != nil {
 				return nil, err
 			} else {
 				l[i] = co
@@ -140,7 +140,7 @@ func convertType(o interface{}) (interface{}, error) {
 	case map[string]interface{}:
 		m := make(map[string]interface{})
 		for k, o := range obj {
-			if co, err := convertType(o); err != nil {
+			if co, err := AnyForJSON(o); err != nil {
 				return nil, err
 			} else {
 				m[k] = co

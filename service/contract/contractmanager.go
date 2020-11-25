@@ -30,7 +30,7 @@ type (
 
 	ContractManager interface {
 		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error)
-		GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
+		GetCallHandler(from, to module.Address, value *big.Int, ctype int, paramObj *codec.TypedObj) (ContractHandler, error)
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
 		GetSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error)
 	}
@@ -150,7 +150,7 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 	switch ctype {
 	case CTypeTransfer:
 		if to.IsContract() {
-			call := newCallHandlerWithTypedObj(ch, scoreapi.FallbackMethodName, nil, false)
+			call := newCallHandlerWithParams(ch, scoreapi.FallbackMethodName, nil, false)
 			return newTransferAndCallHandler(ch, call), nil
 		} else {
 			return newTransferHandler(ch), nil
@@ -174,18 +174,34 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 	return handler, nil
 }
 
-func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler {
+func (cm *contractManager) GetCallHandler(
+	from, to module.Address,
+	value *big.Int,
+	ctype int,
+	data *codec.TypedObj,
+) (ContractHandler, error) {
 	ch := NewCommonHandler(from, to, value, cm.log)
-	if to.IsContract() {
-		call := newCallHandlerWithTypedObj(ch, method, paramObj, false)
-		if value != nil && value.Sign() == 1 { //value > 0
-			return newTransferAndCallHandler(ch, call)
+	switch ctype {
+	case CTypeTransfer:
+		if to.IsContract() {
+			call := newCallHandlerWithParams(ch, scoreapi.FallbackMethodName, nil, false)
+			return newTransferAndCallHandler(ch, call), nil
 		} else {
-			return call
+			return newTransferHandler(ch), nil
 		}
-	} else {
-		return newTransferHandler(ch)
+	case CTypeCall:
+		call, err := newCallHandlerWithTypedObj(ch, data)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil && value.Sign() == 1 {
+			return newTransferAndCallHandler(ch, call), nil
+		}
+		return call, nil
+	case CTypeDeploy:
+		return newDeployHandlerWithTypedObj(ch, data)
 	}
+	return nil, errors.NotFoundError.New("UnknownCType")
 }
 
 // if path does not exist, make the path

@@ -13,7 +13,7 @@ public class TBCProtocol {
     //  byte[] : code
     public static final byte CALL = 0;
 
-    //  int16 : revert code
+    //  int16 : revert code. unused
     public static final byte REVERT = 1;
 
     //

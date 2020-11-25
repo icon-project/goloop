@@ -1,4 +1,20 @@
-package scoredb
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package containerdb
 
 import (
 	"github.com/icon-project/goloop/common/db"
@@ -31,7 +47,7 @@ func (s *TestStore) DeleteValue(k []byte) ([]byte, error) {
 func TestNewVarDB(t *testing.T) {
 	mdb := db.NewMapDB()
 	tree := trie_manager.NewMutable(mdb, nil)
-	db := NewVarDB(&TestStore{tree}, 1)
+	db := NewVarDB(&TestStore{tree}, ToKey(HashBuilder, 1))
 	db.Set(int(1))
 
 	if v := int(db.Int64()); v != 1 {

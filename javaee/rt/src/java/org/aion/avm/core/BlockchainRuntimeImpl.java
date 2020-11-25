@@ -158,7 +158,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public IObject avm_call(s.java.math.BigInteger value,
+    public IObject avm_call(s.java.lang.Class<?> cls,
+                            s.java.math.BigInteger value,
                             p.score.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {
@@ -213,7 +214,12 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         inst.chargeEnergy(res.getStepUsed().intValue());
         int s = res.getStatus();
         if (s == Status.Success) {
-            return Shadower.shadow(res.getRet());
+            if (cls == null) {
+                return Shadower.shadow(res.getRet());
+            } else {
+                return Shadower.shadowReturnValue(res.getRet(),
+                        cls.getRealClass());
+            }
         } else if (s == Status.UnknownFailure) {
             throw new RevertException();
         } else if (s == Status.ContractNotFound
@@ -229,7 +235,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             throw new RevertException();
         } else if (s < Status.UserReversionEnd) {
             throw new ScoreRevertException(s - Status.UserReversionStart,
-                    res.getRet().toString());
+                    res.getRet()==null ? null : res.getRet().toString());
         }
         throw new RevertException();
     }

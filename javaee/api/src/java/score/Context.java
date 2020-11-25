@@ -152,16 +152,54 @@ public final class Context {
     /**
      * Calls the method of the given account address with the value.
      *
+     * @param <T>           return type
+     * @param cls           class of return type
      * @param value         the value in loop to transfer
      * @param targetAddress the account address
      * @param method        method
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException if call target reverts the newly created frame
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     */
+    public static<T> T call(Class<T> cls, BigInteger value,
+            Address targetAddress, String method, Object... params) {
+        return null;
+    }
+
+    /**
+     * Calls the method of the given account address with the value.
+     *
+     * @param value         the value in loop to transfer
+     * @param targetAddress the account address
+     * @param method        method
+     * @param params        parameters
+     * @return the invocation result
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
+        return null;
+    }
+
+    /**
+     * Calls the method of the account designated by the targetAddress.
+     *
+     * @param <T>           return type
+     * @param cls           class of return type
+     * @param targetAddress the account address
+     * @param method        method
+     * @param params        parameters
+     * @return the invocation result
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     */
+    public static<T> T call(Class<T> cls, Address targetAddress, String method,
+            Object... params) {
         return null;
     }
 
@@ -173,7 +211,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException if call target reverts the newly created frame
+     * @throws RevertException if call target reverts the newly created frame
+     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(Address targetAddress, String method, Object... params) {
         return null;
