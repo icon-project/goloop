@@ -66,7 +66,7 @@ type CallContext interface {
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	OnResult(status error, steps *big.Int, result *codec.TypedObj)
-	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
+	OnCall(from, to module.Address, value, limit *big.Int, dataType string, dataObj *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
 	OnSetFeeProportion(owner module.Address, portion int)
 	SetCode(code []byte) error
@@ -431,8 +431,13 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s",
 			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
-		p.frame.ctx.OnCall(p.frame.addr,
-			&m.To, &m.Value.Int, &m.Limit.Int, m.Method, m.Params)
+
+		dataType := "call"
+		data := make(map[string]interface{})
+		data["method"] = m.Method
+		data["params"] = m.Params
+		dataObj := common.MustEncodeAny(data)
+		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, dataType, dataObj)
 		return nil
 
 	case msgEVENT:

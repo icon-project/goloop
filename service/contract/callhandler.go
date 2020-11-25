@@ -23,6 +23,11 @@ type DataCallJSON struct {
 	Params json.RawMessage `json:"params"`
 }
 
+const (
+	DataTypeCall   = "call"
+	DataTypeDeploy = "deploy"
+)
+
 type CallHandler struct {
 	*CommonHandler
 
@@ -66,7 +71,25 @@ func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error
 	}, nil
 }
 
-func newCallHandlerWithTypedObj(ch *CommonHandler, method string,
+func newCallHandlerWithTypedObj(
+	ch *CommonHandler,
+	data *codec.TypedObj,
+) (*CallHandler, error) {
+	if data.Type != codec.TypeDict {
+		return nil, scoreresult.InvalidParameterError.New("InvalidDataType")
+	}
+	dataReal := data.Object.(map[string]*codec.TypedObj)
+	method := common.DecodeAsString(dataReal["method"], scoreapi.FallbackMethodName)
+	paramObj := dataReal["params"]
+
+	return &CallHandler{
+		CommonHandler: ch,
+		name:          method,
+		paramObj:      paramObj,
+	}, nil
+}
+
+func newCallHandlerWithParams(ch *CommonHandler, method string,
 	paramObj *codec.TypedObj, forDeploy bool,
 ) *CallHandler {
 	return &CallHandler{
@@ -443,14 +466,39 @@ func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.Typed
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
-	limit *big.Int, method string, params *codec.TypedObj,
+	limit *big.Int, dataType string, dataObj *codec.TypedObj,
 ) {
 	if h.log.IsTrace() {
-		po, _ := common.DecodeAnyForJSON(params)
-		h.log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v method=%s params=%s",
-			from, to, value, limit, method, trace.ToJSON(po))
+		po, _ := common.DecodeAnyForJSON(dataObj)
+		h.log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
+			from, to, value, limit, dataType, trace.ToJSON(po))
 	}
-	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, method, params), limit)
+
+	ctype := CTypeNone
+	switch dataType {
+	case DataTypeCall:
+		if to.IsContract() {
+			ctype = CTypeCall
+		} else {
+			ctype = CTypeTransfer
+		}
+	case DataTypeDeploy:
+		ctype = CTypeDeploy
+	}
+
+	handler, err := h.cm.GetCallHandler(from, to, value, ctype, dataObj)
+
+	if err != nil {
+		steps := big.NewInt(h.cc.StepsFor(state.StepTypeContractCall, 1))
+		if steps.Cmp(limit) > 0 {
+			steps = limit
+		}
+		if err := h.SendResult(err, steps, nil); err != nil {
+			h.cc.OnResult(err, h.cc.StepAvailable(), nil, nil)
+		}
+	} else {
+		h.cc.OnCall(handler, limit)
+	}
 }
 
 func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {

@@ -709,17 +709,58 @@ func (a *Method) CheckEventData(indexed [][]byte, data [][]byte) error {
 	return nil
 }
 
+type inputParameters interface {
+	Get(i int, n string) (json.RawMessage, bool)
+	Size() int
+}
+
+type dictParameters map[string]json.RawMessage
+
+func (d dictParameters) Get(i int, n string) (json.RawMessage, bool) {
+	v, ok := d[n]
+	return v, ok
+}
+
+func (d dictParameters) Size() int {
+	return len(d)
+}
+
+type listParameters []json.RawMessage
+
+func (l listParameters) Get(i int, n string) (json.RawMessage, bool) {
+	if i < 0 || i >= len(l) {
+		return nil, false
+	}
+	return l[i], true
+}
+
+func (l listParameters) Size() int {
+	return len(l)
+}
+
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
-	var params map[string]json.RawMessage
+	var params inputParameters
 	if len(bs) > 0 {
-		if err := json.Unmarshal(bs, &params); err != nil {
-			return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
+		if bs[0] == '[' {
+			var p listParameters
+			if err := json.Unmarshal(bs, &p); err != nil {
+				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
+			}
+			params = p
+		} else {
+			var p dictParameters
+			if err := json.Unmarshal(bs, &p); err != nil {
+				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
+			}
+			params = p
 		}
+	} else {
+		params = listParameters(nil)
 	}
 	matched := 0
 	inputs := make([]*codec.TypedObj, len(a.Inputs))
 	for i, input := range a.Inputs {
-		param, ok := params[input.Name]
+		param, ok := params.Get(i, input.Name)
 		if !ok {
 			if i >= a.Indexed {
 				if obj, err := input.Type.ConvertBytesToTypedObj(input.Default); err != nil {
@@ -741,7 +782,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		}
 	}
 
-	if matched != len(params) {
+	if matched != params.Size() {
 		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 			"UnexpectedParam(%v)\n", params)
 	}
