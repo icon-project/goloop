@@ -6,6 +6,7 @@ import score.ScoreRevertException;
 import score.annotation.EventLog;
 import score.annotation.External;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 public class TBCInterpreter {
@@ -13,7 +14,6 @@ public class TBCInterpreter {
 
     private final String name;
     private final String[] iVar = new String[TBCProtocol.MAX_VAR];
-    private StringBuilder sb;
 
     public TBCInterpreter(String _name) {
         this.name = _name;
@@ -21,36 +21,31 @@ public class TBCInterpreter {
 
     @External
     public void runAndLogResult(byte[] _code) {
-        String res = run(_code);
-        Context.println(res);
+        int res = run(_code);
         Event_(res);
     }
 
     @External
-    public String run(byte[] _code) {
-        var old = sb;
-        sb = new StringBuilder();
+    public int run(byte[] _code) {
         Event("Enter: " + name);
+        int res = 0;
         try {
-            doRunImpl(_code);
+            res = doRunImpl(_code);
             Event("Exit by Return: " + name);
         } catch (Throwable t) {
+            t.printStackTrace();
             Event("Exit by Exception: " + name + " e="+t);
+            Context.require(false);
         }
-        var res = sb.toString();
-        sb = old;
         return res;
     }
 
     @EventLog(indexed=1)
-    private void Event_(String eventData) {
+    private void Event_(int eventData) {
     }
 
     private void Event(String eventData) {
-        if (sb.length() > 0) {
-            sb.append('\n');
-        }
-        sb.append(eventData);
+        Context.println(eventData);
     }
 
     private String getRef(int type, int id, String[] lVar) {
@@ -71,7 +66,8 @@ public class TBCInterpreter {
         return (a == b) || (a != null && a.equals(b));
     }
 
-    private void doRunImpl(byte[] code) {
+    private int doRunImpl(byte[] code) {
+        int okCount = 0;
         int offset = 0;
         final String[] lVar = new String[TBCProtocol.MAX_VAR];
         while (offset < code.length) {
@@ -86,16 +82,17 @@ public class TBCInterpreter {
                     int ccodeLen = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                     var ccode = Arrays.copyOfRange(code, offset, offset + ccodeLen);
                     offset += ccodeLen;
-                    String res = (String)Context.call(addr, "run",
+                    BigInteger res = (BigInteger)Context.call(addr, "run",
                             (Object) ccode);
-                    Event(res);
+                    assert res != null;
+                    okCount += res.intValue();
                 } catch (ScoreRevertException e) {
-                    Event(e.getMessage());
+                    okCount += e.getCode();
                 }
             } else if (insn == TBCProtocol.REVERT) {
                 int rcode = ((code[offset++] & 0xff) << 8) | (code[offset++] & 0xff);
                 Event("Exit by Revert: " + name);
-                Context.revert(rcode, sb.toString());
+                Context.revert(okCount);
             } else if (insn == TBCProtocol.SET) {
                 int t = code[offset++] & 0xff;
                 int id = code[offset++] & 0xff;
@@ -152,6 +149,7 @@ public class TBCInterpreter {
                 boolean eqRes = code[offset++] == TBCProtocol.CMP_EQ;
                 if (equals(val, xvar) == eqRes) {
                     Event("EXPECT [OK] xvar=" + xvar);
+                    ++okCount;
                 } else {
                     Event("EXPECT [ERROR] expected=" + val +
                             " observed=" + xvar);
@@ -186,6 +184,7 @@ public class TBCInterpreter {
                 boolean eqRes = code[offset++] == TBCProtocol.CMP_EQ;
                 if ((lhs == rhs) == eqRes) {
                     Event("EXPECT_REF [OK]");
+                    ++okCount;
                 } else {
                     Event("EXPECT_REF [ERROR]");
                 }
@@ -193,5 +192,6 @@ public class TBCInterpreter {
                 Event("Unexpected insn " + insn);
             }
         }
+        return okCount;
     }
 }

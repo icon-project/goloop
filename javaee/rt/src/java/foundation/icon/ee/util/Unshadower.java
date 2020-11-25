@@ -128,8 +128,12 @@ public class Unshadower {
             var it = o.avm_entrySet().avm_iterator();
             while (it.avm_hasNext()) {
                 var e = it.avm_next();
+                var k = e.avm_getKey();
+                if (!(k instanceof s.java.lang.String)) {
+                    throw new IllegalArgumentException("map key is not a string");
+                }
                 map.put(
-                        Unshadower.unshadow(e.avm_getKey()),
+                        Unshadower.unshadow(k),
                         Unshadower.unshadow(e.avm_getValue())
                 );
             }

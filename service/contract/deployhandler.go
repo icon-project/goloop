@@ -49,8 +49,64 @@ func newDeployHandler(
 		CommonHandler: ch,
 		content:       deploy.Content,
 		contentType:   deploy.ContentType,
-		eeType:        state.EETypeFromContentType(deploy.ContentType),
+		eeType:        state.MustEETypeFromContentType(deploy.ContentType),
 		params:        deploy.Params,
+	}, nil
+}
+
+func newDeployHandlerWithTypedObj(
+	ch *CommonHandler,
+	dataObj *codec.TypedObj,
+) (*DeployHandler, error) {
+	dataAny, err := common.DecodeAny(dataObj)
+	if err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+	}
+	data, ok := dataAny.(map[string]interface{})
+	if !ok {
+		return nil, scoreresult.InvalidParameterError.Errorf("InvalidTypeForData(%T)", dataAny)
+	}
+
+	content, ok := data["content"].([]byte)
+	if !ok {
+		return nil, scoreresult.InvalidParameterError.New("InvalidDeployContent")
+	}
+
+	contentType, ok := data["contentType"].(string)
+	if !ok {
+		return nil, scoreresult.InvalidParameterError.New("InvalidDeployContentType")
+	}
+
+	eeType, ok := state.EETypeFromContentType(contentType)
+	if !ok {
+		return nil, scoreresult.InvalidParameterError.New("InvalidDeployContentType")
+	}
+
+	paramsAny := data["params"]
+	var params []byte
+	if paramsAny != nil {
+		paramsJSO, err := common.AnyForJSON(paramsAny)
+		if err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidDeployParams")
+		}
+		params, err = json.Marshal(paramsJSO)
+		if err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidDeployParams")
+		}
+		params, err = common.CompactJSON(params)
+		if err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidDeployParams")
+		}
+	} else {
+		params = nil
+	}
+
+	return &DeployHandler{
+		CommonHandler: ch,
+		content:       content,
+		contentType:   contentType,
+		params:        params,
+		eeType:        eeType,
 	}, nil
 }
 
@@ -69,7 +125,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
-		eeType:         state.EETypeFromContentType(contentType),
+		eeType:         state.MustEETypeFromContentType(contentType),
 		params:         p,
 	}
 }
@@ -184,9 +240,16 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	}
 
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	h2a.Set(h.txHash, scoreAddr)
+	if prev := h2a.Get(h.txHash); prev != nil {
+		return scoreresult.ErrInvalidInstance, nil, nil
+	}
+	if err := h2a.Set(h.txHash, scoreAddr); err != nil {
+		return err, nil, nil
+	}
 	if len(oldTx) > 0 {
-		h2a.Delete(oldTx)
+		if err := h2a.Delete(oldTx); err != nil {
+			return err, nil, nil
+		}
 	}
 
 	if cc.AuditEnabled() == false ||
@@ -200,7 +263,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	}
 	h.log.TSystemf("DEPLOY done score=%s", scoreAddr)
 
-	return nil, nil, scoreAddr
+	return nil, common.MustEncodeAny(scoreAddr), scoreAddr
 }
 
 type AcceptHandler struct {
@@ -278,7 +341,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if cur := scoreAs.Contract(); cur != nil {
 		cur.SetStatus(state.CSInactive)
 	}
-	handler := newCallHandlerWithTypedObj(
+	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
 		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.log),

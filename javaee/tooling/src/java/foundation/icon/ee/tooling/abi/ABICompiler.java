@@ -11,6 +11,7 @@ import foundation.icon.ee.struct.StructDB;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.util.ASM;
 import foundation.icon.ee.util.Multimap;
+import org.aion.avm.tooling.deploy.eliminator.ParameterNameRemover;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassWriter;
@@ -121,7 +122,7 @@ public class ABICompiler {
         for (var e : classMap.entrySet()) {
             var icw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             var icv = ASM.accept(e.getValue(),
-                    new KeptMemberCollector(icw));
+                    new KeptMemberCollector(new ParameterNameRemover(icw)));
             var name = Utilities.fullyQualifiedNameToInternalName(
                     e.getKey());
             Multimap.addAll(keptMethods, name, icv.getKeptMethods());

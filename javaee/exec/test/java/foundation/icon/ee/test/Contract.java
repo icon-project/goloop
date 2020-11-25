@@ -29,7 +29,7 @@ public class Contract {
                 throw new TransactionException(new Result(
                         Status.MethodNotFound,
                         BigInteger.ZERO,
-                        "Method not found"));
+                        "Method not found: " + method));
             }
             if (query && (m.getFlags() & Method.Flags.READONLY) == 0) {
                 throw new TransactionException(new Result(

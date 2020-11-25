@@ -8,6 +8,7 @@ import foundation.icon.ee.test.TBCTestScenarios;
 import org.junit.jupiter.api.Test;
 import test.TBCInterpreter;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,19 +21,8 @@ public class TBCTest extends SimpleTest {
     void subcase(String name, Contract c, TBCTestScenario scenario) {
         var totalExp = scenario.getExpectCount();
         var tr = c.invoke("run", (Object)scenario.compile());
-        var out = (String)tr.getRet();
-        var list = List.of(out.split("\n"));
-        var okObs = list
-                .stream()
-                .filter(s -> s.startsWith("EXPECT"))
-                .filter(s -> s.contains("[OK]"))
-                .count();
-        var totalObs = list
-                .stream()
-                .filter(s -> s.startsWith("EXPECT"))
-                .count();
-        assertEquals(totalObs, totalExp);
-        assertEquals(totalObs, okObs);
+        var okObs = (BigInteger)tr.getRet();
+        assertEquals(BigInteger.valueOf(totalExp), okObs);
     }
 
     @Test

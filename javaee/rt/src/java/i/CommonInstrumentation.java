@@ -282,11 +282,6 @@ public class CommonInstrumentation implements IInstrumentation {
     // Private helpers used internally.
     private s.java.lang.Throwable convertScoreRevertException(ScoreRevertException t) throws Exception {
         int code = t.getCode();
-        // First step is to convert the message and cause into shadow objects, as well.
-        String originalMessage = t.getMessage();
-        s.java.lang.String message = (null != originalMessage)
-                ? new s.java.lang.String(originalMessage)
-                : null;
         // (note that converting the cause is recusrive on the causal chain)
         Throwable originalCause = t.getCause();
         s.java.lang.Throwable cause = (null != originalCause)
@@ -296,16 +291,14 @@ public class CommonInstrumentation implements IInstrumentation {
         // Then, use reflection to find the appropriate wrapper.
         String throwableName = t.getClass().getName();
         Class<?> shadowClass = this.currentFrame.lateLoader.loadClass(PackageConstants.kShadowDotPrefix + throwableName);
-        return (s.java.lang.Throwable)shadowClass.getConstructor(int.class, s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(code, message, cause);
+        var res =  (s.java.lang.Throwable)shadowClass.getConstructor(int.class, s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(code, null, cause);
+        res.setSystemMessage(t.getMessage());
+        res.setStackTrace(t.getStackTrace());
+        return res;
     }
 
     // Private helpers used internally.
     private s.java.lang.Throwable convertVmGeneratedException(Throwable t) throws Exception {
-        // First step is to convert the message and cause into shadow objects, as well.
-        String originalMessage = t.getMessage();
-        s.java.lang.String message = (null != originalMessage)
-                ? new s.java.lang.String(originalMessage)
-                : null;
         // (note that converting the cause is recusrive on the causal chain)
         Throwable originalCause = t.getCause();
         s.java.lang.Throwable cause = (null != originalCause)
@@ -315,7 +308,10 @@ public class CommonInstrumentation implements IInstrumentation {
         // Then, use reflection to find the appropriate wrapper.
         String throwableName = t.getClass().getName();
         Class<?> shadowClass = this.currentFrame.lateLoader.loadClass(PackageConstants.kShadowDotPrefix + throwableName);
-        return (s.java.lang.Throwable)shadowClass.getConstructor(s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(message, cause);
+        var res = (s.java.lang.Throwable)shadowClass.getConstructor(s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(null, cause);
+        res.setSystemMessage(t.getMessage());
+        res.setStackTrace(t.getStackTrace());
+        return res;
     }
 
     @Override

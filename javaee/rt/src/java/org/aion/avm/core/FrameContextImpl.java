@@ -32,6 +32,10 @@ public class FrameContextImpl implements FrameContext {
         return dbs;
     }
 
+    public IExternalState getExternalState() {
+        return externalState;
+    }
+
     public boolean waitForRefund() {
         return externalState.waitForCallback();
     }
