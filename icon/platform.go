@@ -57,6 +57,9 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
 	// TODO start background calculator if it's not started.
+	// TODO check whether start calculator
+	// TODO check end of prev calculation
+	iiss.RunCalculator(ess)
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext) error {

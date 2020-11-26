@@ -27,11 +27,9 @@ func TestGlobal(t *testing.T) {
 
 	type_ := TypeGlobal
 	version := 0
-	bh1 := int64(100)
 	offsetLimit := 10
 
 	g1 := newGlobal(icobject.MakeTag(type_, version))
-	g1.StartBlockHeight = bh1
 	g1.OffsetLimit = offsetLimit
 
 	o1 := icobject.New(type_, g1)
@@ -49,6 +47,5 @@ func TestGlobal(t *testing.T) {
 
 	g2 := ToGlobal(o2)
 	assert.Equal(t, true, g1.Equal(g2))
-	assert.Equal(t, bh1, g2.StartBlockHeight)
 	assert.Equal(t, offsetLimit, g2.OffsetLimit)
 }

@@ -11,23 +11,29 @@
  * limitations under the License.
  */
 
-package icstate
+package icreward
 
 import (
-	"github.com/bmizerany/assert"
+	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestPRepStatusSnapshot_Bytes(t *testing.T) {
+func TestDelegated(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-	ss1 := newPRepStatusSnapshot(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
-	g := Candidate
-	ss1.grade = g
 
-	o1 := icobject.New(TypePRepStatus, ss1)
+	type_ := TypeDelegated
+	version := 0
+	v1 := int64(100)
+
+	t1 := newDelegated(icobject.MakeTag(type_, version))
+	t1.Current = big.NewInt(v1)
+
+	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -37,7 +43,10 @@ func TestPRepStatusSnapshot_Bytes(t *testing.T) {
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
 
-	ss2 := ToPRepStatusSnapshot(o2)
-	assert.Equal(t, true, ss1.Equal(ss2))
+	t2 := ToDelegated(o2)
+	assert.Equal(t, true, t1.Equal(t2))
+	assert.Equal(t, 0, t1.Current.Cmp(t2.Current))
 }

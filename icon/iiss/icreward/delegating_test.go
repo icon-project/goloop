@@ -11,23 +11,33 @@
  * limitations under the License.
  */
 
-package icstate
+package icreward
 
 import (
-	"github.com/bmizerany/assert"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
-func TestPRepStatusSnapshot_Bytes(t *testing.T) {
+func TestDelegating(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-	ss1 := newPRepStatusSnapshot(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
-	g := Candidate
-	ss1.grade = g
 
-	o1 := icobject.New(TypePRepStatus, ss1)
+	type_ := TypeDelegating
+	version := 0
+
+	t1 := newDelegating(icobject.MakeTag(type_, version))
+	d := &icstate.Delegation{
+		Address: common.NewAddressFromString("hx1"),
+		Value:   common.NewHexInt(10),
+	}
+	t1.Delegations = append(t1.Delegations, d)
+
+	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -37,7 +47,9 @@ func TestPRepStatusSnapshot_Bytes(t *testing.T) {
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
 
-	ss2 := ToPRepStatusSnapshot(o2)
-	assert.Equal(t, true, ss1.Equal(ss2))
+	t2 := ToDelegating(o2)
+	assert.Equal(t, true, t1.Equal(t2))
 }

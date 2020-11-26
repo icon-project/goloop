@@ -14,46 +14,36 @@
  * limitations under the License.
  */
 
-package icstage
+package icreward
 
 import (
-	"github.com/icon-project/goloop/common/codec"
+	"math/big"
+
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-type Global struct {
-	icobject.NoDatabase
-	OffsetLimit      int
+type IScore struct {
+	icobject.ObjectBigInt
 }
 
-func (g *Global) Version() int {
-	return 0
-}
-
-func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&g.OffsetLimit)
-}
-
-func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(g.OffsetLimit)
-}
-
-func (g *Global) Equal(o icobject.Impl) bool {
-	if g2, ok := o.(*Global); ok {
-		return  g.OffsetLimit == g2.OffsetLimit
+func (is *IScore) Equal(o icobject.Impl) bool {
+	if is2, ok := o.(*IScore); ok {
+		return is.Value.Cmp(is2.Value) == 0
 	} else {
 		return false
 	}
 }
 
-func (g *Global) Clear() {
-	g.OffsetLimit = 0
+func (is *IScore) Added(amount *big.Int) *IScore {
+	n := new(IScore)
+	if is == nil {
+		n.Value = amount
+	} else {
+		n.Value = new(big.Int).Add(is.Value, amount)
+	}
+	return n
 }
 
-func (g *Global) IsEmpty() bool {
-	return g.OffsetLimit == 0
-}
-
-func newGlobal(tag icobject.Tag) *Global {
-	return new(Global)
+func newIScore(tag icobject.Tag) *IScore {
+	return new(IScore)
 }

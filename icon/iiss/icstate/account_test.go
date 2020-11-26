@@ -24,7 +24,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-var t1 = AccountSnapshot{
+var assTest = &AccountSnapshot{
 	staked: big.NewInt(100),
 	unstakes: []*Unstake{
 		{
@@ -50,38 +50,35 @@ var t1 = AccountSnapshot{
 	bonded: big.NewInt(20),
 	bonds: []*Bond{
 		{
-			target: common.NewAddressFromString("hx3"),
-			amount: big.NewInt(10),
+			Target: common.NewAddressFromString("hx3"),
+			Amount: big.NewInt(10),
 		},
 		{
-			target: common.NewAddressFromString("hx4"),
-			amount: big.NewInt(10),
+			Target: common.NewAddressFromString("hx4"),
+			Amount: big.NewInt(10),
 		},
 	},
 	unbonds: []*Unbond{
 		{
-			target:       common.NewAddressFromString("hx5"),
-			amount:       big.NewInt(10),
-			expireHeight: 20,
+			Target:       common.NewAddressFromString("hx5"),
+			Amount:       big.NewInt(10),
+			ExpireHeight: 20,
 		},
 		{
-			target:       common.NewAddressFromString("hx6"),
-			amount:       big.NewInt(10),
-			expireHeight: 30,
+			Target:       common.NewAddressFromString("hx6"),
+			Amount:       big.NewInt(10),
+			ExpireHeight: 30,
 		},
 	},
 }
 
 func TestAccountSnapshot_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-	ss1 := newAccountSnapshot(icobject.MakeTag(TypeAccount, accountVersion))
-	v1 := big.NewInt(10)
-	ss1.staked = v1
 
-	o1 := icobject.New(TypeAccount, ss1)
+	o1 := icobject.New(TypeAccount, assTest)
 	serialized := o1.Bytes()
 
-	t.Logf("Serialized:% X", serialized)
+	t.Logf("Serialized:%v", serialized)
 
 	o2 := new(icobject.Object)
 	if err := o2.Reset(database, serialized); err != nil {
@@ -91,6 +88,6 @@ func TestAccountSnapshot_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := ToAccountSnapshot(o2)
-	assert.Equal(t, true, ss1.Equal(ss2))
+	ass2 := ToAccountSnapshot(o2)
+	assert.Equal(t, true, assTest.Equal(ass2))
 }

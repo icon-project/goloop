@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -36,7 +37,7 @@ type PRep struct {
 	website     string
 	details     string
 	p2pEndpoint string
-	node        module.Address
+	node        *common.Address
 }
 
 func (p *PRep) Details() string {
@@ -129,7 +130,7 @@ func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 func NewPRepSnapshot(city, country, details, email, name, website string, node module.Address) *PRepSnapshot {
 	return &PRepSnapshot{
 		PRep: PRep{
-			node:    node,
+			node:    node.(*common.Address),
 			city:    city,
 			country: country,
 			details: details,
@@ -189,7 +190,7 @@ func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoi
 	p.city = city
 	p.details = details
 	p.p2pEndpoint = endpoint
-	p.node = node
+	p.node = node.(*common.Address)
 	return nil
 }
 

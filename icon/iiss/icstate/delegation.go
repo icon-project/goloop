@@ -18,10 +18,10 @@ package icstate
 
 import (
 	"encoding/json"
-	"github.com/icon-project/goloop/common/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -44,37 +44,37 @@ func setMaxDelegationCount(v int) {
 }
 
 type Delegation struct {
-	Address *common.Address	`json:"address"`
-	Value   *common.HexInt	`json:"value"`
+	Address *common.Address `json:"address"`
+	Value   *common.HexInt  `json:"value"`
 }
 
 func newDelegation() *Delegation {
 	return &Delegation{
 		Address: new(common.Address),
-		Value: new(common.HexInt),
+		Value:   new(common.HexInt),
 	}
 }
 
-func (d *Delegation) Clone() *Delegation {
+func (dg *Delegation) Clone() *Delegation {
 	n := newDelegation()
-	n.Address.Set(d.Address)
-	n.Value.Set(d.Value.Value())
+	n.Address.Set(dg.Address)
+	n.Value.Set(dg.Value.Value())
 	return n
 }
 
-func (d *Delegation) Equal(d2 *Delegation) bool {
-	if d == d2 {
+func (dg *Delegation) Equal(d2 *Delegation) bool {
+	if dg == d2 {
 		return true
 	}
-	return d.Address.Equal(d2.Address) &&
-		d.Value.Cmp(d2.Value.Value()) == 0
+	return dg.Address.Equal(d2.Address) &&
+		dg.Value.Cmp(d2.Value.Value()) == 0
 }
 
-func (d *Delegation) ToJSON() map[string]interface{} {
+func (dg *Delegation) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 
-	jso["address"] = d.Address
-	jso["value"] = d.Value
+	jso["address"] = dg.Address
+	jso["value"] = dg.Value
 
 	return jso
 }
@@ -154,4 +154,3 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 
 	return delegations, nil
 }
-

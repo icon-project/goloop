@@ -16,6 +16,7 @@ package iiss
 import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -25,10 +26,10 @@ import (
 type extensionSnapshotImpl struct {
 	database db.Database
 
-	state *icstate.Snapshot
-	front *icstage.Snapshot
-	back  *icstage.Snapshot
-	//base  *icstate.Snapshot
+	state  *icstate.Snapshot
+	front  *icstage.Snapshot
+	back   *icstage.Snapshot
+	reward *icreward.Snapshot
 }
 
 func (s *extensionSnapshotImpl) Bytes() []byte {
@@ -40,17 +41,19 @@ func (s *extensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 		s.state.Bytes(),
 		s.front.Bytes(),
 		s.back.Bytes(),
+		s.reward.Bytes(),
 	)
 }
 
 func (s *extensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
-	var stateHash, frontHash, backHash []byte
-	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash); err != nil {
+	var stateHash, frontHash, backHash, rewardHash []byte
+	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash, &rewardHash); err != nil {
 		return err
 	}
 	s.state = icstate.NewSnapshot(s.database, stateHash)
 	s.front = icstage.NewSnapshot(s.database, frontHash)
 	s.back = icstage.NewSnapshot(s.database, backHash)
+	s.reward = icreward.NewSnapshot(s.database, rewardHash)
 	return nil
 }
 
@@ -64,6 +67,9 @@ func (s *extensionSnapshotImpl) Flush() error {
 	if err := s.back.Flush(); err != nil {
 		return err
 	}
+	if err := s.reward.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -74,6 +80,7 @@ func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		state:    icstate.NewStateFromSnapshot(s.state),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		back:     icstage.NewStateFromSnapshot(s.back),
+		reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 }
 
@@ -84,6 +91,7 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 			state:    icstate.NewSnapshot(database, nil),
 			front:    icstage.NewSnapshot(database, nil),
 			back:     icstage.NewSnapshot(database, nil),
+			reward:   icreward.NewSnapshot(database, nil),
 		}
 	}
 	s := &extensionSnapshotImpl{
@@ -100,6 +108,7 @@ type ExtensionStateImpl struct {
 	state    *icstate.State
 	Front    *icstage.State
 	back     *icstage.State
+	reward   *icreward.State
 }
 
 func (s *ExtensionStateImpl) State() *icstate.State {
@@ -107,12 +116,12 @@ func (s *ExtensionStateImpl) State() *icstate.State {
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
-	// TODO add front, back and base snapshot
 	return &extensionSnapshotImpl{
 		database: s.database,
 		state:    s.state.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.back.GetSnapshot(),
+		reward:   s.reward.GetSnapshot(),
 	}
 }
 
@@ -121,19 +130,12 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	if err := s.state.Reset(snapshot.state); err != nil {
 		panic(err)
 	}
+	s.Front.Reset(snapshot.front)
 }
 
 func (s *ExtensionStateImpl) ClearCache() {
 	// TODO clear cached objects
 	// It is called whenever executing a transaction is done
-}
-
-func NewExtensionState(database db.Database, hash []byte) state.ExtensionState {
-	s := &ExtensionStateImpl{
-		database: database,
-	}
-	// TODO parse hash and make stateHolders
-	return s
 }
 
 func (s *ExtensionStateImpl) GetAccountState(address module.Address) (*icstate.AccountState, error) {

@@ -31,34 +31,34 @@ type EventDelegation struct {
 	Delegations icstate.Delegations
 }
 
-func (ee *EventDelegation) Version() int {
+func (ed *EventDelegation) Version() int {
 	return 0
 }
 
-func (ee *EventDelegation) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ee.From, &ee.Delegations)
+func (ed *EventDelegation) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(&ed.From, &ed.Delegations)
 	return err
 }
 
-func (ee *EventDelegation) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ee.From, ee.Delegations)
+func (ed *EventDelegation) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(ed.From, ed.Delegations)
 }
 
-func (ee *EventDelegation) Equal(o icobject.Impl) bool {
+func (ed *EventDelegation) Equal(o icobject.Impl) bool {
 	if ee2, ok := o.(*EventDelegation); ok {
-		return ee.From.Equal(ee2.From) && ee.Delegations.Equal(ee2.Delegations)
+		return ed.From.Equal(ee2.From) && ed.Delegations.Equal(ee2.Delegations)
 	} else {
 		return false
 	}
 }
 
-func (ee *EventDelegation) Clear() {
-	ee.From = nil
-	ee.Delegations = nil
+func (ed *EventDelegation) Clear() {
+	ed.From = nil
+	ed.Delegations = nil
 }
 
-func (ee *EventDelegation) IsEmpty() bool {
-	return ee.From == nil && ee.Delegations == nil
+func (ed *EventDelegation) IsEmpty() bool {
+	return ed.From == nil && ed.Delegations == nil
 }
 
 func newEventDelegation(tag icobject.Tag) *EventDelegation {
@@ -149,50 +149,4 @@ func (ep *EventPeriod) IsEmpty() bool {
 
 func newEventPeriod(tag icobject.Tag) *EventPeriod {
 	return new(EventPeriod)
-}
-
-type Validator struct {
-	icobject.NoDatabase
-	validators []*common.Address
-}
-
-func (v *Validator) Version() int {
-	return 0
-}
-
-func (v *Validator) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&v.validators)
-	return err
-}
-
-func (v *Validator) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(v.validators)
-}
-
-func (v *Validator) Equal(o icobject.Impl) bool {
-	if v2, ok := o.(*Validator); ok {
-		if len(v.validators) != len(v2.validators) {
-			return false
-		}
-		for i, a := range v.validators {
-			if a.Equal(v2.validators[i]) == false {
-				return false
-			}
-		}
-		return true
-	} else {
-		return false
-	}
-}
-
-func (v *Validator) Clear() {
-	v.validators = nil
-}
-
-func (v *Validator) IsEmpty() bool {
-	return v.validators == nil
-}
-
-func newEventValidator(tag icobject.Tag) *Validator {
-	return new(Validator)
 }

@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package icstage
+package icreward
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 type Global struct {
 	icobject.NoDatabase
-	OffsetLimit      int
+	Irep           *big.Int
+	Rrep           *big.Int
 }
 
 func (g *Global) Version() int {
@@ -31,27 +34,30 @@ func (g *Global) Version() int {
 }
 
 func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&g.OffsetLimit)
+	_, err := decoder.DecodeMulti(&g.Irep, &g.Rrep)
+	return err
 }
 
 func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(g.OffsetLimit)
+	return encoder.EncodeMulti(g.Irep, g.Rrep)
 }
 
 func (g *Global) Equal(o icobject.Impl) bool {
 	if g2, ok := o.(*Global); ok {
-		return  g.OffsetLimit == g2.OffsetLimit
+		return g.Irep.Cmp(g2.Irep) == 0 && g2.Rrep.Cmp(g2.Rrep) == 0
 	} else {
 		return false
 	}
 }
 
 func (g *Global) Clear() {
-	g.OffsetLimit = 0
+	g.Irep = new(big.Int)
+	g.Rrep = new(big.Int)
 }
 
 func (g *Global) IsEmpty() bool {
-	return g.OffsetLimit == 0
+	return (g.Irep == nil || g.Irep.Sign() == 0) &&
+		(g.Rrep == nil || g.Rrep.Sign() == 0)
 }
 
 func newGlobal(tag icobject.Tag) *Global {

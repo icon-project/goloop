@@ -20,19 +20,19 @@ import (
 )
 
 type Bond struct {
-	target *common.Address
-	amount *big.Int
+	Target *common.Address
+	Amount *big.Int
 }
 
 func newBond() *Bond {
 	return &Bond{
-		target: new(common.Address),
-		amount: new(big.Int),
+		Target: new(common.Address),
+		Amount: new(big.Int),
 	}
 }
 
 func (b *Bond) Equal(b2 *Bond) bool {
-	return b.target.Equal(b2.target) && b.amount.Cmp(b2.amount) == 0
+	return b.Target.Equal(b2.Target) && b.Amount.Cmp(b2.Amount) == 0
 }
 
 type Bonds []*Bond

@@ -24,7 +24,6 @@ import (
 
 const (
 	TypeBigInt = TypeReserved
-	TypeAddress
 )
 
 type ObjectBigInt struct {
@@ -45,8 +44,8 @@ func (obi *ObjectBigInt) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (obi *ObjectBigInt) Equal(o Impl) bool {
-	if ic2, ok := o.(*ObjectBigInt); ok {
-		return obi.Value.Cmp(ic2.Value) == 0
+	if obi2, ok := o.(*ObjectBigInt); ok {
+		return obi.Value.Cmp(obi2.Value) == 0
 	} else {
 		return false
 	}
@@ -68,5 +67,7 @@ func ToBigInt(obj trie.Object) *ObjectBigInt {
 }
 
 func NewObjectBigInt(tag Tag) *ObjectBigInt {
-	return new(ObjectBigInt)
+	return &ObjectBigInt{
+		Value: new(big.Int),
+	}
 }

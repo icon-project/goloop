@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package icstage
+package icreward
 
 import (
 	"github.com/icon-project/goloop/common/db"
@@ -42,24 +42,8 @@ func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
 	return ss.trie.Filter(prefix)
 }
 
-func (ss *Snapshot) GetGlobal() (*Global, error) {
-	key := GlobalKey.Build()
-	o, err := ss.trie.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	return ToGlobal(o), nil
-}
-
-func (ss *Snapshot) GetOffsetLimit() (int, error) {
-	global, err := ss.GetGlobal()
-	if err != nil {
-		return 0, err
-	}
-	if global == nil {
-		return 0, nil
-	}
-	return global.OffsetLimit, nil
+func (ss *Snapshot) NewState() *State {
+	return NewStateFromSnapshot(ss)
 }
 
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {

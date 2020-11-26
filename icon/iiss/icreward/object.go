@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package icstage
+package icreward
 
 import (
 	"github.com/icon-project/goloop/common/errors"
@@ -23,79 +23,52 @@ import (
 )
 
 const (
-	TypeIScoreClaim int = iota
-	TypeEventDelegation
-	TypeEventEnable
-	TypeEventPeriod
-	TypeBlockProduce
-	TypeValidator
+	TypeDelegated int = iota
+	TypeDelegating
+	TypeIScore
 	TypeGlobal
+	TypeValidator
 )
 
 func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
 	case icobject.TypeBigInt:
 		return icobject.NewObjectBigInt(tag), nil
-	case TypeIScoreClaim:
-		return newIScoreClaim(tag), nil
-	case TypeEventDelegation:
-		return newEventDelegation(tag), nil
-	case TypeEventEnable:
-		return newEventEnable(tag), nil
-	case TypeEventPeriod:
-		return newEventPeriod(tag), nil
-	case TypeBlockProduce:
-		return newBlockVotes(tag), nil
-	case TypeValidator:
-		return newValidator(tag), nil
+	case TypeDelegated:
+		return newDelegated(tag), nil
+	case TypeDelegating:
+		return newDelegating(tag), nil
+	case TypeIScore:
+		return newIScore(tag), nil
 	case TypeGlobal:
 		return newGlobal(tag), nil
+	case TypeValidator:
+		return newValidators(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
 	}
 }
 
-func ToIScoreClaim(obj trie.Object) *IScoreClaim {
+func ToIScore(obj trie.Object) *IScore {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*IScoreClaim)
+	return obj.(*icobject.Object).Real().(*IScore)
 }
 
-func ToEventDelegation(obj trie.Object) *EventDelegation {
+func ToDelegated(obj trie.Object) *Delegated {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*EventDelegation)
+	return obj.(*icobject.Object).Real().(*Delegated)
 }
 
-func ToEventEnable(obj trie.Object) *EventEnable {
+func ToDelegating(obj trie.Object) *Delegating {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*EventEnable)
-}
-
-func ToEventPeriod(obj trie.Object) *EventPeriod {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*EventPeriod)
-}
-
-func ToBlockVotes(obj trie.Object) *BlockVotes {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*BlockVotes)
-}
-
-func ToValidators(obj trie.Object) *Validators {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*Validators)
+	return obj.(*icobject.Object).Real().(*Delegating)
 }
 
 func ToGlobal(obj trie.Object) *Global {
@@ -103,4 +76,11 @@ func ToGlobal(obj trie.Object) *Global {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*Global)
+}
+
+func ToValidators(obj trie.Object) *Validators {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*Validators)
 }

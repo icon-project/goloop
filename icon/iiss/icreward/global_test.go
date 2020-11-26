@@ -11,23 +11,31 @@
  * limitations under the License.
  */
 
-package icstate
+package icreward
 
 import (
-	"github.com/bmizerany/assert"
+	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestPRepStatusSnapshot_Bytes(t *testing.T) {
+func TestEvent_Period(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-	ss1 := newPRepStatusSnapshot(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
-	g := Candidate
-	ss1.grade = g
 
-	o1 := icobject.New(TypePRepStatus, ss1)
+	type_ := TypeGlobal
+	version := 0
+	irep := int64(1000)
+	rrep := int64(2000)
+
+	t1 := newGlobal(icobject.MakeTag(type_, version))
+	t1.Irep = big.NewInt(irep)
+	t1.Rrep = big.NewInt(rrep)
+
+	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -37,7 +45,11 @@ func TestPRepStatusSnapshot_Bytes(t *testing.T) {
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
 
-	ss2 := ToPRepStatusSnapshot(o2)
-	assert.Equal(t, true, ss1.Equal(ss2))
+	t2 := ToGlobal(o2)
+	assert.Equal(t, true, t1.Equal(t2))
+	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
+	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
 }

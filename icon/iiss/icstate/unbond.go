@@ -19,20 +19,20 @@ import (
 )
 
 type Unbond struct {
-	target       *common.Address
-	amount       *big.Int
-	expireHeight int64
+	Target       *common.Address
+	Amount       *big.Int
+	ExpireHeight int64
 }
 
 func newUnbond() *Unbond {
 	return &Unbond{
-		target: new(common.Address),
-		amount: new(big.Int),
+		Target: new(common.Address),
+		Amount: new(big.Int),
 	}
 }
 
 func (ub *Unbond) Equal(ub2 *Unbond) bool {
-	return ub.target.Equal(ub2.target) && ub.amount.Cmp(ub2.amount) == 0 && ub.expireHeight == ub2.expireHeight
+	return ub.Target.Equal(ub2.Target) && ub.Amount.Cmp(ub2.Amount) == 0 && ub.ExpireHeight == ub2.ExpireHeight
 }
 
 type Unbonds []*Unbond

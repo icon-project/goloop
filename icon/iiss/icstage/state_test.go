@@ -14,17 +14,18 @@
 package icstage
 
 import (
-	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestState_AddIScoreClaim(t *testing.T) {
@@ -38,7 +39,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 	v2 := int64(200)
 
 	type args struct {
-		addr  *common.Address
+		addr  module.Address
 		value *big.Int
 	}
 
@@ -177,15 +178,6 @@ func TestState_AddEvent(t *testing.T) {
 				rrep:    big.NewInt(v2),
 			},
 		},
-		{
-			"Validator",
-			args{
-				type_:      TypeEventValidator,
-				offset:     offset2,
-				index:      1,
-				validators: []*common.Address{addr1, addr2},
-			},
-		},
 	}
 	for _, tt := range tests {
 		args := tt.args
@@ -197,8 +189,6 @@ func TestState_AddEvent(t *testing.T) {
 				checkAddEventEnable(t, s, args.offset, args.index, args.address, args.enable)
 			case TypeEventPeriod:
 				checkAddEventPeriod(t, s, args.offset, args.index, args.irep, args.rrep)
-			case TypeEventValidator:
-				checkAddEventValidator(t, s, args.offset, args.index, args.validators)
 			}
 		})
 	}
@@ -213,6 +203,10 @@ func TestState_AddEvent(t *testing.T) {
 
 		keySplit, _ := containerdb.SplitKeys(key)
 		assert.Equal(t, EventKey.Build(), keySplit[0])
+		if len(keySplit) == 1 {
+			// size value
+			continue
+		}
 		assert.Equal(t, tests[count].args.offset, int(intconv.BytesToInt64(keySplit[1])))
 		assert.Equal(t, tests[count].args.index, int(intconv.BytesToInt64(keySplit[2])))
 
@@ -257,20 +251,6 @@ func checkAddEventPeriod(t *testing.T, s *State, offset int, index int, irep *bi
 	assert.Equal(t, 0, rrep.Cmp(event.Rrep))
 }
 
-func checkAddEventValidator(t *testing.T, s *State, offset int, index int, validators []*common.Address) {
-	err := s.AddEventValidator(offset, index, validators)
-	assert.NoError(t, err)
-
-	key := EventKey.Append(offset, index).Build()
-	obj, err := s.trie.Get(key)
-	assert.NoError(t, err)
-	event := ToEventValidator(obj)
-	assert.Equal(t, len(validators), len(event.validators))
-	for i, v := range validators {
-		assert.True(t, v.Equal(event.validators[i]))
-	}
-}
-
 func TestState_AddBlockProduce(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
@@ -279,11 +259,19 @@ func TestState_AddBlockProduce(t *testing.T) {
 	offset1 := 0
 	offset2 := 1
 
+	addr1 := common.NewAddressFromString("hx1")
+	addr2 := common.NewAddressFromString("hx2")
+	addr3 := common.NewAddressFromString("hx3")
+	addr4 := common.NewAddressFromString("hx4")
+	addr5 := common.NewAddressFromString("hx5")
+
 	type args struct {
+		type_        int
 		offset       int
 		proposeIndex int
 		voteCount    int
 		voteMask     int64
+		validators   []*common.Address
 	}
 
 	tests := []struct {
@@ -291,8 +279,17 @@ func TestState_AddBlockProduce(t *testing.T) {
 		args args
 	}{
 		{
+			"Validator 1",
+			args{
+				type_:      TypeValidator,
+				offset:     offset1,
+				validators: []*common.Address{addr1, addr2, addr3, addr4},
+			},
+		},
+		{
 			"block produce 1",
 			args{
+				type_:        TypeBlockProduce,
 				offset:       offset1,
 				proposeIndex: 1,
 				voteCount:    4,
@@ -300,8 +297,17 @@ func TestState_AddBlockProduce(t *testing.T) {
 			},
 		},
 		{
+			"Validator 2",
+			args{
+				type_:      TypeValidator,
+				offset:     offset2,
+				validators: []*common.Address{addr1, addr2, addr3, addr5},
+			},
+		},
+		{
 			"block produce 2",
 			args{
+				type_:        TypeBlockProduce,
 				offset:       offset2,
 				proposeIndex: 3,
 				voteCount:    3,
@@ -312,17 +318,34 @@ func TestState_AddBlockProduce(t *testing.T) {
 	for _, tt := range tests {
 		args := tt.args
 		t.Run(tt.name, func(t *testing.T) {
-			err := s.AddBlockProduce(args.offset, args.proposeIndex, args.voteCount, args.voteMask)
-			assert.NoError(t, err)
+			switch args.type_ {
+			case TypeBlockProduce:
+				err := s.AddBlockVotes(args.offset, args.proposeIndex, args.voteCount, args.voteMask)
+				assert.NoError(t, err)
 
-			key := BlockProduceKey.Append(args.offset).Build()
-			obj, err := s.trie.Get(key)
-			assert.NoError(t, err)
-			assert.NotNil(t, obj)
-			o := ToBlockProduce(obj)
-			assert.Equal(t, args.proposeIndex, o.ProposerIndex)
-			assert.Equal(t, args.voteCount, o.VoteCount)
-			assert.Equal(t, args.voteMask, o.VoteMask)
+				key := BlockProduceKey.Append(args.offset, suffixBlockVotes).Build()
+				obj, err := s.trie.Get(key)
+				assert.NoError(t, err)
+				assert.NotNil(t, obj)
+
+				o := ToBlockVotes(obj)
+				assert.Equal(t, args.proposeIndex, o.ProposerIndex)
+				assert.Equal(t, args.voteCount, o.VoteCount)
+				assert.Equal(t, args.voteMask, o.VoteMask)
+			case TypeValidator:
+				err := s.AddValidators(args.offset, args.validators)
+				assert.NoError(t, err)
+
+				key := BlockProduceKey.Append(args.offset, suffixValidators).Build()
+				obj, err := s.trie.Get(key)
+				assert.NoError(t, err)
+				assert.NotNil(t, obj)
+				o := ToValidators(obj)
+				assert.Equal(t, len(args.validators), len(o.Addresses))
+				for i, v := range args.validators {
+					assert.True(t, v.Equal(o.Addresses[i]))
+				}
+			}
 		})
 	}
 
@@ -336,8 +359,15 @@ func TestState_AddBlockProduce(t *testing.T) {
 		assert.Equal(t, BlockProduceKey.Build(), keySplit[0])
 		assert.Equal(t, tests[count].args.offset, int(intconv.BytesToInt64(keySplit[1])))
 
-		blockProduce := ToBlockProduce(o)
-		assert.NotNil(t, blockProduce)
+		suffix := keySplit[2][0]
+		switch suffix {
+		case suffixBlockVotes:
+			blockProduce := ToBlockVotes(o)
+			assert.NotNil(t, blockProduce)
+		case suffixValidators:
+			validators := ToValidators(o)
+			assert.NotNil(t, validators)
+		}
 
 		count += 1
 	}

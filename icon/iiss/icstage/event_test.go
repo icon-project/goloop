@@ -124,38 +124,3 @@ func TestEvent_Period(t *testing.T) {
 	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
 	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
 }
-
-func TestEvent_Validator(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-
-	type_ := TypeEventValidator
-	version := 0
-	validators := []*common.Address{
-		common.NewAddressFromString("hx1"),
-		common.NewAddressFromString("hx2"),
-	}
-
-
-	t1 := newEventValidator(icobject.MakeTag(type_, version))
-	t1.validators = validators
-
-	o1 := icobject.New(type_, t1)
-	serialized := o1.Bytes()
-
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
-	}
-
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
-
-	t2 := ToEventValidator(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, len(t1.validators), len(t2.validators))
-	for i, v := range t1.validators {
-		assert.True(t, v.Equal(t2.validators[i]))
-	}
-}
