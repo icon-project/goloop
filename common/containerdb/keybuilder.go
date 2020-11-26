@@ -43,7 +43,7 @@ type prefixedHashKeyBuilder struct {
 func (b *prefixedHashKeyBuilder) Append(keys ...interface{}) KeyBuilder {
 	return &prefixedHashKeyBuilder{
 		rawPrefix:  b.rawPrefix,
-		hashPrefix: AppendKeys(b.hashPrefix, keys),
+		hashPrefix: AppendKeys(b.hashPrefix, keys...),
 	}
 }
 
