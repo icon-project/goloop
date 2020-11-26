@@ -27,7 +27,6 @@ import (
 
 type contractManager struct {
 	contract.ContractManager
-	plt *platform
 }
 
 func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
@@ -42,5 +41,5 @@ func newContractManager(plt *platform, dbase db.Database, dir string, logger log
 	if err != nil {
 		return nil, err
 	}
-	return &contractManager{cm, plt}, nil
+	return &contractManager{cm}, nil
 }

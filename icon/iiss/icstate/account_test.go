@@ -24,60 +24,63 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-var assTest = &AccountSnapshot{
-	AccountData: &AccountData{
-		stake: big.NewInt(100),
-		unstakes: []*Unstake{
-			{
-				Amount:       big.NewInt(5),
-				ExpireHeight: 10,
-			},
-			{
-				Amount:       big.NewInt(10),
-				ExpireHeight: 20,
-			},
-		},
-		delegating: big.NewInt(20),
-		delegations: []*Delegation{
-			{
-				Address: common.NewAddressFromString("hx1"),
-				Value:   common.NewHexInt(10),
-			},
-			{
-				Address: common.NewAddressFromString("hx2"),
-				Value:   common.NewHexInt(10),
-			},
-		},
-		bonding: big.NewInt(20),
-		bonds: []*Bond{
-			{
-				Address: common.NewAddressFromString("hx3"),
-				Value:   common.NewHexInt(10),
-			},
-			{
-				Address: common.NewAddressFromString("hx4"),
-				Value:   common.NewHexInt(10),
-			},
-		},
-		unbonds: []*Unbond{
-			{
-				Address: common.NewAddressFromString("hx5"),
-				Value:   big.NewInt(10),
-				Expire:  20,
-			},
-			{
-				Address: common.NewAddressFromString("hx6"),
-				Value:   big.NewInt(10),
-				Expire:  30,
-			},
-		},
-	},
+var assTest = &Account{
+	stake: big.NewInt(100),
+	unstakes: []*Unstake{
+{
+	Amount:       big.NewInt(5),
+	ExpireHeight: 10,
+},
+{
+	Amount:       big.NewInt(10),
+	ExpireHeight: 20,
+},
+},
+	delegating: big.NewInt(20),
+	delegations: []*Delegation{
+{
+	Address: common.NewAddressFromString("hx1"),
+	Value:   common.NewHexInt(10),
+},
+{
+	Address: common.NewAddressFromString("hx2"),
+	Value:   common.NewHexInt(10),
+},
+},
+	bonding: big.NewInt(20),
+	bonds: []*Bond{
+{
+	Address: common.NewAddressFromString("hx3"),
+	Value:   common.NewHexInt(10),
+},
+{
+	Address: common.NewAddressFromString("hx4"),
+	Value:   common.NewHexInt(10),
+},
+},
+	unbonds: []*Unbond{
+{
+	Address: common.NewAddressFromString("hx5"),
+	Value:   big.NewInt(10),
+	Expire:  20,
+},
+{
+	Address: common.NewAddressFromString("hx6"),
+	Value:   big.NewInt(10),
+	Expire:  30,
+},
+},
 }
 
-func TestAccountSnapshot_Bytes(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+func TestAccount_Bytes(t *testing.T) {
+	address, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
+	if err != nil {
+		t.Errorf("Failed to create an address")
+	}
+	assTest.SetAddress(address)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
-	o1 := icobject.New(TypeAccount, assTest)
+	o1 := icobject.New(TypeAccount, assTest.GetSnapshot())
 	serialized := o1.Bytes()
 
 	t.Logf("Serialized:%v", serialized)
@@ -90,6 +93,6 @@ func TestAccountSnapshot_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ass2 := ToAccountSnapshot(o2)
+	ass2 := ToAccount(o2, address)
 	assert.Equal(t, true, assTest.Equal(ass2))
 }

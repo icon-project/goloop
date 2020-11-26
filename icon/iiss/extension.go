@@ -14,6 +14,7 @@
 package iiss
 
 import (
+	"github.com/icon-project/goloop/service/contract"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -86,11 +87,15 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	return &ExtensionStateImpl{
 		database: s.database,
 		c:        s.c,
-		state:    icstate.NewStateFromSnapshot(s.state),
+		state:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		back:     icstage.NewStateFromSnapshot(s.back),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
+}
+
+func (s *ExtensionSnapshotImpl) State() *icstate.Snapshot {
+	return s.state
 }
 
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
@@ -129,10 +134,6 @@ type ExtensionStateImpl struct {
 	Reward *icreward.State
 }
 
-func (s *ExtensionStateImpl) State() *icstate.State {
-	return s.state
-}
-
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: s.database,
@@ -157,16 +158,8 @@ func (s *ExtensionStateImpl) ClearCache() {
 	// It is called whenever executing a transaction is done
 }
 
-func (s *ExtensionStateImpl) GetAccountState(address module.Address) (*icstate.AccountState, error) {
-	return s.state.GetAccountState(address)
-}
-
-func (s *ExtensionStateImpl) GetPRepState(address module.Address) (*icstate.PRepState, error) {
-	return s.state.GetPRepState(address)
-}
-
-func (s *ExtensionStateImpl) GetPRepStatusState(address module.Address) (*icstate.PRepStatusState, error) {
-	return s.state.GetPRepStatusState(address)
+func (s *ExtensionStateImpl) GetAccount(address module.Address) (*icstate.Account, error) {
+	return s.state.GetAccount(address)
 }
 
 func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.TimerState, error) {
@@ -303,4 +296,105 @@ func (c *calculation) flush(dbase db.Database) error {
 
 func newCalculation() *calculation {
 	return &calculation{false, nil, 0, 0}
+}
+
+func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {
+	return s.state.GetPRepsInJSON()
+}
+
+func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
+	return s.state.GetPRepInJSON(address)
+}
+
+func (s *ExtensionStateImpl) GetValidators() []module.Validator {
+	return s.state.GetValidators()
+}
+
+func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []string) error {
+	return s.state.RegisterPRep(owner, node, params)
+}
+
+func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
+	var err error
+	var account *icstate.Account
+
+	err = s.state.SetDelegation(from, ds)
+	if err != nil {
+		return err
+	}
+
+	account, err = s.state.GetAccount(from)
+	bonds := account.Bonds()
+	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
+	for _, d := range ds {
+		event = append(event, d)
+	}
+	for _, b := range bonds {
+		d := new(icstate.Delegation)
+		d.Address = b.Address
+		d.Value = b.Value
+		event = append(event, d)
+	}
+	_, err = s.Front.AddEventDelegation(
+		int(cc.BlockHeight()-s.CalculationBlockHeight()),
+		from,
+		event,
+	)
+	return nil
+}
+
+func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
+	err := s.state.UnregisterPRep(owner)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.Front.AddEventEnable(
+		int(cc.BlockHeight()-s.CalculationBlockHeight()),
+		owner,
+		false,
+	)
+	return err
+}
+
+func (s *ExtensionStateImpl) SetPRep(from, node module.Address, params []string) error {
+	return s.state.SetPRep(from, node, params)
+}
+
+func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
+	var err error
+	var account *icstate.Account
+	blockHeight := cc.BlockHeight()
+
+	err = s.state.SetBond(from, blockHeight, bonds)
+	if err != nil {
+		return err
+	}
+
+	account, err = s.state.GetAccount(from)
+	ds := account.Delegations()
+	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
+	for _, d := range ds {
+		event = append(event, d)
+	}
+	for _, b := range bonds {
+		d := new(icstate.Delegation)
+		d.Address = b.Address
+		d.Value = b.Value
+		event = append(event, d)
+	}
+	_, err = s.Front.AddEventDelegation(
+		int(blockHeight-s.CalculationBlockHeight()),
+		from,
+		event,
+	)
+	return nil
+}
+
+func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
+	return s.state.SetBonderList(from, bl)
+}
+
+func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{}, error) {
+	return s.state.GetBonderList(address)
 }

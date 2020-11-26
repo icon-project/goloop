@@ -19,12 +19,14 @@ package icobject
 import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/module"
 	"math/big"
 )
 
 const (
 	TypeBytes = TypeReserved + iota
 	TypeBigInt
+	TypeAddress
 )
 
 type ObjectBigInt struct {
@@ -60,6 +62,13 @@ func (obi *ObjectBigInt) IsEmpty() bool {
 	return obi.Value == nil || obi.Value.Sign() == 0
 }
 
+func (obi *ObjectBigInt) Int64() int64 {
+	if obi == nil {
+		return 0
+	}
+	return obi.Value.Int64()
+}
+
 func ToBigInt(obj trie.Object) *ObjectBigInt {
 	if obj == nil {
 		return nil
@@ -71,4 +80,41 @@ func NewObjectBigInt(tag Tag) *ObjectBigInt {
 	return &ObjectBigInt{
 		Value: new(big.Int),
 	}
+}
+
+type Address struct {
+	NoDatabase
+	Value module.Address
+}
+
+func (a *Address) Version() int {
+	return 0
+}
+
+func (a *Address) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.Decode(&a.Value)
+}
+
+func (a *Address) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.Encode(a.Value)
+}
+
+func (a *Address) Equal(o Impl) bool {
+	a2, ok := o.(*Address)
+	if !ok {
+		return false
+	}
+
+	return a.Value.Equal(a2.Value)
+}
+
+func ToAddress(obj trie.Object) *Address {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*Object).Real().(*Address)
+}
+
+func NewAddress(tag Tag) *Address {
+	return &Address{}
 }

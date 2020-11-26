@@ -32,7 +32,7 @@ type Snapshot struct {
 
 var (
 	accountPrefix        = scoredb.ToKey(scoredb.DictDBPrefix, "account_db")
-	prepPrefix           = scoredb.ToKey(scoredb.DictDBPrefix, "prep")
+	prepPrefix           = scoredb.ToKey(scoredb.DictDBPrefix, "PRep")
 	prepStatusPrefix     = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
 	unbondingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unbonding")
 	unstakingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unstaking")
@@ -49,39 +49,35 @@ func (ss *Snapshot) Flush() error {
 	return nil
 }
 
-func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, error) {
+func (ss *Snapshot) GetValue(key []byte) ([]byte, error) {
+	var value []byte
+	o, err := ss.store.Get(key)
+	if o != nil {
+		value = o.Bytes()
+	}
+
+	if err != nil {
+		return value, err
+	}
+
+	return value, nil
+}
+
+func (ss *Snapshot) GetAccount(addr module.Address) (*Account, error) {
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
 	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
 	if err != nil {
 		return nil, err
 	}
-	return ToAccountSnapshot(obj), nil
+	return ToAccount(obj, addr), nil
 }
 
-func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) {
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
-	if err != nil {
-		return nil, err
-	}
-	return ToPRepSnapshot(obj), nil
-}
-
-func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
-	if err != nil {
-		return nil, err
-	}
-	return ToPRepStatusSnapshot(obj), nil
-}
-
-func (ss *Snapshot) NewState() *State {
-	return NewStateFromSnapshot(ss)
+func (ss *Snapshot) NewState(readonly bool) *State {
+	return NewStateFromSnapshot(ss, readonly)
 }
 
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {
-	dbase = icobject.AttachObjectFactory(dbase, newObjectImpl)
+	dbase = icobject.AttachObjectFactory(dbase, NewObjectImpl)
 	t := trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType)
 	return newSnapshotFromImmutableForObject(t)
 }

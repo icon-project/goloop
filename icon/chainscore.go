@@ -202,6 +202,18 @@ var chainMethods = []*chainMethod{
 			scoreapi.List,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
+	{
+		scoreapi.Method{
+			scoreapi.Function,
+			"getPReps",
+			scoreapi.FlagReadOnly | scoreapi.FlagExternal,
+			0,
+			nil,
+			[]scoreapi.DataType{scoreapi.Dict},
+		},
+		0,
+		0,
+	},
 }
 
 func applyStepLimits(as state.AccountState, limits map[string]int64) error {

@@ -15,6 +15,7 @@ package icstate
 
 import (
 	"github.com/bmizerany/assert"
+	"github.com/icon-project/goloop/common"
 	"testing"
 
 	"github.com/icon-project/goloop/common/db"
@@ -22,12 +23,18 @@ import (
 )
 
 func TestPRepSnapshot_Bytes(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-	ss1 := newPRepSnapshot(icobject.MakeTag(TypePRep, prepVersion))
+	owner, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
+	if err != nil {
+		t.Errorf("Failed to create an address")
+	}
+
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+	ss1 := newPRepBaseWithTag(icobject.MakeTag(TypePRepBase, prepVersion))
 	n := "name"
+	ss1.SetOwner(owner)
 	ss1.name = n
 
-	o1 := icobject.New(TypePRep, ss1)
+	o1 := icobject.New(TypePRepBase, ss1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -38,6 +45,8 @@ func TestPRepSnapshot_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := ToPRepSnapshot(o2)
+	ss2 := ToPRepBase(o2, owner)
 	assert.Equal(t, true, ss1.Equal(ss2))
+	assert.Equal(t, true, ss1.owner.Equal(owner))
+	assert.Equal(t, true, ss2.owner.Equal(owner))
 }

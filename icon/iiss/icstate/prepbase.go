@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -31,7 +32,15 @@ const (
 	bonderListMax = 10
 )
 
-type PRepData struct {
+type PRepBase struct {
+	icobject.NoDatabase
+	StateAndSnapshot
+
+	// memory variables
+	readonly bool
+	owner    module.Address
+
+	// database variables
 	name        string
 	country     string
 	city        string
@@ -39,27 +48,47 @@ type PRepData struct {
 	website     string
 	details     string
 	p2pEndpoint string
-	node        *common.Address
+	node        module.Address
 	bonderList  BonderList
 }
 
-func (p *PRepData) Equal(other *PRepData) bool {
+func (p *PRepBase) equal(other *PRepBase) bool {
 	if p == other {
 		return true
 	}
 
-	return p.name == other.name &&
+	return icutils.EqualAddress(p.owner, other.owner) &&
+		p.name == other.name &&
 		p.country == other.country &&
 		p.city == other.city &&
 		p.email == other.email &&
 		p.website == other.website &&
 		p.details == other.details &&
 		p.p2pEndpoint == other.p2pEndpoint &&
-		p.node.Equal(other.node) &&
+		icutils.EqualAddress(p.node, other.node) &&
 		p.bonderList.Equal(other.bonderList)
 }
 
-func (p *PRepData) Set(other *PRepData) {
+func (p *PRepBase) Owner() module.Address {
+	return p.owner
+}
+
+func (p *PRepBase) SetOwner(owner module.Address) {
+	p.checkWritable()
+	p.owner = owner
+}
+
+func (p *PRepBase) GetNode() module.Address {
+	if p.node != nil {
+		return p.node
+	}
+	return p.owner
+}
+
+func (p *PRepBase) Set(other *PRepBase) {
+	p.checkWritable()
+
+	p.owner = other.owner
 	p.name = other.name
 	p.country = other.country
 	p.city = other.city
@@ -71,8 +100,10 @@ func (p *PRepData) Set(other *PRepData) {
 	p.bonderList = other.bonderList.Clone()
 }
 
-func (p *PRepData) Clone() *PRepData {
-	return &PRepData{
+func (p *PRepBase) Clone() *PRepBase {
+	return &PRepBase{
+		readonly:    false,
+		owner:       p.owner,
 		name:        p.name,
 		city:        p.city,
 		country:     p.country,
@@ -85,7 +116,16 @@ func (p *PRepData) Clone() *PRepData {
 	}
 }
 
-func (p *PRepData) ToJSON() map[string]interface{} {
+func (p *PRepBase) GetSnapshot() *PRepBase {
+	if p.IsReadonly() {
+		return p
+	}
+	ret := p.Clone()
+	ret.freeze()
+	return ret
+}
+
+func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["name"] = p.name
 	jso["email"] = p.email
@@ -98,30 +138,8 @@ func (p *PRepData) ToJSON() map[string]interface{} {
 	return jso
 }
 
-type PRepSnapshot struct {
-	icobject.NoDatabase
-	owner module.Address
-	*PRepData
-}
-
-func (p *PRepSnapshot) Owner() module.Address {
-	return p.owner
-}
-
-func (p *PRepSnapshot) SetOwner(address module.Address) {
-	p.owner = address
-}
-
-func (p *PRepSnapshot) Version() int {
-	return prepVersion
-}
-
-func (p *PRepSnapshot) RLPEncodeFields(e codec.Encoder) error {
-	e2, err := e.EncodeList()
-	if err != nil {
-		return err
-	}
-	if err := e2.EncodeMulti(
+func (p *PRepBase) RLPEncodeFields(e codec.Encoder) error {
+	if err := e.EncodeListOf(
 		p.name,
 		p.country,
 		p.city,
@@ -136,13 +154,12 @@ func (p *PRepSnapshot) RLPEncodeFields(e codec.Encoder) error {
 	return nil
 }
 
-func (p *PRepSnapshot) RLPDecodeFields(d codec.Decoder) error {
-	d2, err := d.DecodeList()
-	if err != nil {
-		return err
-	}
+func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
+	p.checkWritable()
 
-	if _, err := d2.DecodeMulti(
+	var node *common.Address
+
+	if err := d.DecodeListOf(
 		&p.name,
 		&p.country,
 		&p.city,
@@ -150,38 +167,37 @@ func (p *PRepSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		&p.website,
 		&p.details,
 		&p.p2pEndpoint,
-		&p.node,
+		&node,
 		&p.bonderList); err != nil {
-		return errors.Wrap(err, "Fail to decode PRepSnapshot")
+		return errors.Wrap(err, "Fail to decode PRepBase")
 	}
+	p.node = node
 	return nil
 }
 
-func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
-	ps, ok := object.(*PRepSnapshot)
+func (p *PRepBase) freeze() {
+	p.readonly = true
+}
+
+func (p *PRepBase) Version() int {
+	return prepVersion
+}
+
+func (p *PRepBase) Equal(object icobject.Impl) bool {
+	other, ok := object.(*PRepBase)
 	if !ok {
 		return false
 	}
-	if ps == p {
+	if p == other {
 		return true
 	}
-	return p.PRepData.Equal(ps.PRepData)
+
+	return p.equal(other)
 }
 
-func newPRepSnapshot(_ icobject.Tag) *PRepSnapshot {
-	return &PRepSnapshot{PRepData: &PRepData{}}
-}
+func (p *PRepBase) Clear() {
+	p.checkWritable()
 
-type PRepState struct {
-	owner module.Address
-	*PRepData
-}
-
-func (p *PRepState) Owner() module.Address {
-	return p.owner
-}
-
-func (p *PRepState) Clear() {
 	p.owner = nil
 	p.city = ""
 	p.country = ""
@@ -193,23 +209,13 @@ func (p *PRepState) Clear() {
 	p.website = ""
 }
 
-func (p *PRepState) Reset(ps *PRepSnapshot) {
-	if p.PRepData == nil {
-		p.PRepData = ps.PRepData.Clone()
-	} else {
-		p.PRepData.Set(ps.PRepData)
-	}
+func (p *PRepBase) IsEmpty() bool {
+	return p == nil || p.owner == nil
 }
 
-func (p *PRepState) GetSnapshot() *PRepSnapshot {
-	return &PRepSnapshot{PRepData: p.PRepData.Clone()}
-}
+func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
+	p.checkWritable()
 
-func (p PRepState) IsEmpty() bool {
-	return p.name == ""
-}
-
-func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
 	p.name = name
 	p.email = email
 	p.website = website
@@ -217,26 +223,29 @@ func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoi
 	p.city = city
 	p.details = details
 	p.p2pEndpoint = endpoint
-	p.node = node.(*common.Address)
+	p.node = node
 	return nil
 }
 
-func (p *PRepState) SetBonderList(bonderList BonderList) {
+func (p *PRepBase) SetBonderList(bonderList BonderList) {
 	p.bonderList = bonderList
 }
 
-func (p *PRepState) BonderList() BonderList {
+func (p *PRepBase) BonderList() BonderList {
 	return p.bonderList
 }
 
-func (p *PRepState) GetBonderListInJSON() []interface{} {
+func (p *PRepBase) GetBonderListInJSON() []interface{} {
 	return p.bonderList.ToJSON()
 }
 
-func NewPRepStateWithSnapshot(owner module.Address, ss *PRepSnapshot) *PRepState {
-	return &PRepState{
-		owner:    owner,
-		PRepData: ss.PRepData.Clone(),
+func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
+	return &PRepBase{}
+}
+
+func newPRepBase(owner module.Address) *PRepBase {
+	return &PRepBase{
+		owner: owner,
 	}
 }
 

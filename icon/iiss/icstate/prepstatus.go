@@ -44,7 +44,12 @@ const (
 	Disqualified
 )
 
-type PRepStatusData struct {
+type PRepStatus struct {
+	icobject.NoDatabase
+	StateAndSnapshot
+
+	owner module.Address
+
 	grade        Grade
 	status       Status
 	penalty      int
@@ -52,46 +57,55 @@ type PRepStatusData struct {
 	bonded       *big.Int
 	vTotal       int
 	vFail        int
-	vFailCount   int
+	vFailCont    int
 	vPenaltyMask int
 	lastState    int
 	lastHeight   int
 }
 
-func (ps *PRepStatusData) Bonded() *big.Int {
+func (ps *PRepStatus) Owner() module.Address {
+	return ps.owner
+}
+
+func (ps *PRepStatus) SetOwner(owner module.Address) {
+	ps.checkWritable()
+	ps.owner = owner
+}
+
+func (ps *PRepStatus) Bonded() *big.Int {
 	return ps.bonded
 }
 
-func (ps *PRepStatusData) Grade() Grade {
+func (ps *PRepStatus) Grade() Grade {
 	return ps.grade
 }
 
-func (ps *PRepStatusData) Status() Status {
+func (ps *PRepStatus) Status() Status {
 	return ps.status
 }
 
-func (ps *PRepStatusData) LastHeight() int {
+func (ps *PRepStatus) LastHeight() int {
 	return ps.lastHeight
 }
 
-func (ps *PRepStatusData) Delegated() *big.Int {
+func (ps *PRepStatus) Delegated() *big.Int {
 	return ps.delegated
 }
 
-func (ps *PRepStatusData) GetBondedDelegation() *big.Int {
+func (ps *PRepStatus) GetBondedDelegation() *big.Int {
 	// TODO: Not implemented
 	return ps.delegated
 }
 
-func (ps *PRepStatusData) VTotal() int {
+func (ps *PRepStatus) VTotal() int {
 	return ps.vTotal
 }
 
-func (ps *PRepStatusData) VFail() int {
+func (ps *PRepStatus) VFail() int {
 	return ps.vFail
 }
 
-func (ps *PRepStatusData) Equal(other *PRepStatusData) bool {
+func (ps *PRepStatus) equal(other *PRepStatus) bool {
 	if ps == other {
 		return true
 	}
@@ -103,13 +117,15 @@ func (ps *PRepStatusData) Equal(other *PRepStatusData) bool {
 		ps.bonded.Cmp(other.bonded) == 0 &&
 		ps.vTotal == other.vTotal &&
 		ps.vFail == other.vFail &&
-		ps.vFailCount == other.vFailCount &&
+		ps.vFailCont == other.vFailCont &&
 		ps.vPenaltyMask == other.vPenaltyMask &&
 		ps.lastState == other.lastState &&
 		ps.lastHeight == other.lastHeight
 }
 
-func (ps *PRepStatusData) Set(other *PRepStatusData) {
+func (ps *PRepStatus) Set(other *PRepStatus) {
+	ps.checkWritable()
+
 	ps.grade = other.grade
 	ps.penalty = other.penalty
 	ps.status = other.status
@@ -117,14 +133,14 @@ func (ps *PRepStatusData) Set(other *PRepStatusData) {
 	ps.bonded.Set(other.bonded)
 	ps.vTotal = other.vTotal
 	ps.vFail = other.vFail
-	ps.vFailCount = other.vFailCount
+	ps.vFailCont = other.vFailCont
 	ps.vPenaltyMask = other.vPenaltyMask
 	ps.lastState = other.lastState
 	ps.lastHeight = other.lastHeight
 }
 
-func (ps *PRepStatusData) Clone() *PRepStatusData {
-	return &PRepStatusData{
+func (ps *PRepStatus) Clone() *PRepStatus {
+	return &PRepStatus{
 		grade:        ps.grade,
 		penalty:      ps.penalty,
 		status:       ps.status,
@@ -132,14 +148,14 @@ func (ps *PRepStatusData) Clone() *PRepStatusData {
 		bonded:       new(big.Int).Set(ps.bonded),
 		vTotal:       ps.vTotal,
 		vFail:        ps.vFail,
-		vFailCount:   ps.vFailCount,
+		vFailCont:    ps.vFailCont,
 		vPenaltyMask: ps.vPenaltyMask,
 		lastState:    ps.lastState,
 		lastHeight:   ps.lastHeight,
 	}
 }
 
-func (ps *PRepStatusData) ToJSON() map[string]interface{} {
+func (ps *PRepStatus) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = ps.grade
 	jso["status"] = ps.status
@@ -152,145 +168,125 @@ func (ps *PRepStatusData) ToJSON() map[string]interface{} {
 	return jso
 }
 
-type PRepStatusSnapshot struct {
-	icobject.NoDatabase
-	*PRepStatusData
-}
-
-func (pss *PRepStatusSnapshot) Version() int {
+func (ps *PRepStatus) Version() int {
 	return 0
 }
 
-func (pss *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(
-		&pss.grade,
-		&pss.penalty,
-		&pss.status,
-		&pss.delegated,
-		&pss.bonded,
-		&pss.vTotal,
-		&pss.vFail,
-		&pss.vFailCount,
-		&pss.vPenaltyMask,
-		&pss.lastState,
-		&pss.lastHeight,
-	)
-	return err
-}
-
-func (pss *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
-		pss.grade,
-		pss.penalty,
-		pss.status,
-		pss.delegated,
-		pss.bonded,
-		pss.vTotal,
-		pss.vFail,
-		pss.vFailCount,
-		pss.vPenaltyMask,
-		pss.lastState,
-		pss.lastHeight,
+func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
+	ps.checkWritable()
+	return decoder.DecodeListOf(
+		&ps.grade,
+		&ps.penalty,
+		&ps.status,
+		&ps.delegated,
+		&ps.bonded,
+		&ps.vTotal,
+		&ps.vFail,
+		&ps.vFailCont,
+		&ps.vPenaltyMask,
+		&ps.lastState,
+		&ps.lastHeight,
 	)
 }
 
-func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
-	pss1, ok := o.(*PRepStatusSnapshot)
+func (ps *PRepStatus) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeListOf(
+		ps.grade,
+		ps.penalty,
+		ps.status,
+		ps.delegated,
+		ps.bonded,
+		ps.vTotal,
+		ps.vFail,
+		ps.vFailCont,
+		ps.vPenaltyMask,
+		ps.lastState,
+		ps.lastHeight,
+	)
+}
+
+func (ps *PRepStatus) Equal(o icobject.Impl) bool {
+	other, ok := o.(*PRepStatus)
 	if !ok {
 		return false
 	}
-	return pss.PRepStatusData.Equal(pss1.PRepStatusData)
+	return ps.equal(other)
 }
 
-func newPRepStatusSnapshot(_ icobject.Tag) *PRepStatusSnapshot {
-	return &PRepStatusSnapshot{
-		PRepStatusData: &PRepStatusData{
-			delegated: new(big.Int),
-			bonded:    new(big.Int),
-		},
-	}
-}
-
-type PRepStatusState struct {
-	address module.Address
-	*PRepStatusData
-}
-
-func (ps *PRepStatusState) Clear() {
-	ps.grade = 0
+func (ps *PRepStatus) Clear() {
+	ps.checkWritable()
+	ps.owner = nil
+	ps.status = Active
+	ps.grade = Candidate
 	ps.penalty = 0
 	ps.delegated = BigIntZero
 	ps.bonded = BigIntZero
 	ps.vTotal = 0
 	ps.vFail = 0
-	ps.vFailCount = 0
+	ps.vFailCont = 0
 	ps.vPenaltyMask = 0
 	ps.lastState = 0
 	ps.lastHeight = 0
 }
 
-func (ps *PRepStatusState) Reset(pss *PRepStatusSnapshot) {
-	if ps.PRepStatusData == nil {
-		ps.PRepStatusData = pss.PRepStatusData.Clone()
-	} else {
-		ps.PRepStatusData.Set(pss.PRepStatusData)
+func (ps *PRepStatus) GetSnapshot() *PRepStatus {
+	if ps.IsReadonly() {
+		return ps
 	}
+	ret := ps.Clone()
+	ret.freeze()
+	return ret
 }
 
-func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {
-	return &PRepStatusSnapshot{PRepStatusData: ps.PRepStatusData.Clone()}
+func (ps PRepStatus) IsEmpty() bool {
+	return ps.owner == nil
 }
 
-func (ps PRepStatusState) IsEmpty() bool {
-	return ps.status == Active && ps.grade == Main
-}
-
-func (ps PRepStatusState) Address() module.Address {
-	return ps.address
-}
-
-func (ps *PRepStatusState) SetBonded(v *big.Int) {
+func (ps *PRepStatus) SetBonded(v *big.Int) {
 	ps.bonded = v
 }
 
-func (ps *PRepStatusState) SetGrade(g Grade) {
+func (ps *PRepStatus) SetGrade(g Grade) {
 	ps.grade = g
 }
 
-func (ps *PRepStatusState) SetStatus(s Status) {
+func (ps *PRepStatus) SetStatus(s Status) {
 	ps.status = s
 }
 
-func (ps *PRepStatusState) SetVTotal(t int) {
+func (ps *PRepStatus) SetVTotal(t int) {
 	ps.vTotal = t
 }
 
-func (ps *PRepStatusState) SetVFail(f int) {
+func (ps *PRepStatus) SetVFail(f int) {
 	ps.vFail = f
 }
 
-func (ps *PRepStatusState) SetVFailCount(f int) {
-	ps.vFailCount = f
+func (ps *PRepStatus) SetVFailCont(f int) {
+	ps.vFailCont = f
 }
 
-func (ps *PRepStatusState) SetVPenaltyMask(p int) {
+func (ps *PRepStatus) SetVPenaltyMask(p int) {
 	ps.vPenaltyMask = p
 }
 
-func (ps *PRepStatusState) SetLastState(l int) {
+func (ps *PRepStatus) SetLastState(l int) {
 	ps.lastState = l
 }
 
-func (ps *PRepStatusState) SetLastHeight(h int) {
+func (ps *PRepStatus) SetLastHeight(h int) {
 	ps.lastHeight = h
 }
-func (ps *PRepStatusState) GetPRepStatusInfo() map[string]interface{} {
-	return ps.ToJSON()
+
+func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
+	return newPRepStatus(nil)
 }
 
-func NewPRepStatusStateWithSnapshot(a module.Address, pss *PRepStatusSnapshot) *PRepStatusState {
-	return &PRepStatusState{
-		address:        a,
-		PRepStatusData: pss.PRepStatusData.Clone(),
+func newPRepStatus(owner module.Address) *PRepStatus {
+	return &PRepStatus{
+		owner:     owner,
+		grade:     Candidate,
+		delegated: new(big.Int),
+		bonded:    new(big.Int),
 	}
 }

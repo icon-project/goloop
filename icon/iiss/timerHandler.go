@@ -38,12 +38,12 @@ func HandleTimerJob(wc state.WorldContext) (err error) {
 
 func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []module.Address, h int64) error {
 	for _, a := range al {
-		ea, err := es.GetAccountState(a)
+		ea, err := es.GetAccount(a)
 		if err != nil {
 			return err
 		}
 
-		ra, err := ea.RemoveUnStaking(h)
+		ra, err := ea.RemoveUnstaking(h)
 		if err != nil {
 			return err
 		}
@@ -57,7 +57,7 @@ func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []mo
 
 func handleUnbondingTimer(es *ExtensionStateImpl, al []module.Address, h int64) error {
 	for _, a := range al {
-		as, err := es.GetAccountState(a)
+		as, err := es.GetAccount(a)
 		if err != nil {
 			return err
 		}

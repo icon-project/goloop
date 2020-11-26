@@ -18,26 +18,29 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"math/big"
 )
 
 type State struct {
-	mutableAccounts       map[string]*AccountState
-	mutablePReps          map[string]*PRepState
-	mutablePRepStatus     map[string]*PRepStatusState
+	readonly              bool
+	mutableAccounts       map[string]*Account
 	mutableUnstakingTimer map[int64]*TimerState
 	mutableUnbondingTimer map[int64]*TimerState
 	store                 *icobject.ObjectStoreState
+	pm                    *PRepManager
 }
 
 func (s *State) Reset(ss *Snapshot) error {
 	s.store.Reset(ss.store.ImmutableForObject)
 	for _, as := range s.mutableAccounts {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
+		address := as.Address()
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, address))
 		value, err := icobject.GetFromMutableForObject(s.store, key)
 		if err != nil {
 			return err
@@ -45,31 +48,7 @@ func (s *State) Reset(ss *Snapshot) error {
 		if value == nil {
 			as.Clear()
 		} else {
-			as.Reset(ToAccountSnapshot(value))
-		}
-	}
-	for _, ps := range s.mutablePReps {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
-		value, err := icobject.GetFromMutableForObject(s.store, key)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			ps.Clear()
-		} else {
-			ps.Reset(ToPRepSnapshot(value))
-		}
-	}
-	for _, ps := range s.mutablePRepStatus {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.Address()))
-		value, err := icobject.GetFromMutableForObject(s.store, key)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			ps.Clear()
-		} else {
-			ps.Reset(ToPRepStatusSnapshot(value))
+			as.Set(ToAccount(value, address))
 		}
 	}
 	for _, ubt := range s.mutableUnbondingTimer {
@@ -96,6 +75,10 @@ func (s *State) Reset(ss *Snapshot) error {
 			ust.Reset(ToTimerSnapshot(value))
 		}
 	}
+
+	if err := s.pm.Reset(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -107,36 +90,6 @@ func (s *State) GetSnapshot() *Snapshot {
 		if as.IsEmpty() {
 			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
-			}
-		} else {
-			if _, err := s.store.Set(key, value); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
-			}
-		}
-	}
-
-	for _, ps := range s.mutablePReps {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
-		value := icobject.New(TypePRep, ps.GetSnapshot())
-
-		if ps.IsEmpty() {
-			if _, err := s.store.Delete(key); err != nil {
-				log.Errorf("Failed to delete prep key %x, err+%+v", key, err)
-			}
-		} else {
-			if _, err := s.store.Set(key, value); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
-			}
-		}
-	}
-
-	for _, ps := range s.mutablePRepStatus {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.Address()))
-		value := icobject.New(TypePRepStatus, ps.GetSnapshot())
-
-		if ps.IsEmpty() {
-			if _, err := s.store.Delete(key); err != nil {
-				log.Errorf("Failed to delete prepStatus key %x, err+%+v", key, err)
 			}
 		} else {
 			if _, err := s.store.Set(key, value); err != nil {
@@ -174,10 +127,14 @@ func (s *State) GetSnapshot() *Snapshot {
 		}
 	}
 
+	if err := s.pm.GetSnapshot(); err != nil {
+		panic(err)
+	}
+
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
-func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
+func (s *State) GetAccount(addr module.Address) (*Account, error) {
 	ids := addr.String()
 	if a, ok := s.mutableAccounts[ids]; ok {
 		return a, nil
@@ -187,58 +144,61 @@ func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
 	if err != nil {
 		return nil, err
 	}
-	var ass *AccountSnapshot
+	var as *Account
 	if obj != nil {
-		ass = ToAccountSnapshot(obj)
+		as = ToAccount(obj, addr)
 	} else {
-		ass = newAccountSnapshot(icobject.MakeTag(TypeAccount, accountVersion))
+		as = newAccountWithTag(icobject.MakeTag(TypeAccount, accountVersion))
 	}
-	as := NewAccountStateWithSnapshot(addr, ass)
 	s.mutableAccounts[ids] = as
 	return as, nil
 }
 
-func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
-	ids := addr.String()
-	if a, ok := s.mutablePReps[ids]; ok {
-		return a, nil
-	}
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	if err != nil {
-		return nil, err
-	}
-	var pss *PRepSnapshot
-	if obj != nil {
-		pss = ToPRepSnapshot(obj)
-	} else {
-		pss = newPRepSnapshot(icobject.MakeTag(TypePRep, prepVersion))
-	}
-	ps := NewPRepStateWithSnapshot(addr, pss)
-	s.mutablePReps[ids] = ps
-	return ps, nil
-}
+//func (s *State) GetPRepBase(owner module.Address) (*PRepBase, error) {
+//	ids := icutils.ToKey(owner)
+//	if a, ok := s.mutablePRepBases[ids]; ok {
+//		return a, nil
+//	}
+//
+//	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, owner))
+//	obj, err := icobject.GetFromMutableForObject(s.store, key)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var pb *PRepBase
+//	if obj != nil {
+//		pb = ToPRepBase(obj, owner)
+//	} else {
+//		pb = newPRepBaseWithTag(icobject.MakeTag(TypePRepBase, prepVersion))
+//	}
+//
+//	pb.SetOwner(owner)
+//	s.mutablePRepBases[ids] = pb
+//	return pb, nil
+//}
 
-func (s *State) GetPRepStatusState(addr module.Address) (*PRepStatusState, error) {
-	ids := addr.String()
-	if a, ok := s.mutablePRepStatus[ids]; ok {
-		return a, nil
-	}
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	if err != nil {
-		return nil, err
-	}
-	var pss *PRepStatusSnapshot
-	if obj != nil {
-		pss = ToPRepStatusSnapshot(obj)
-	} else {
-		pss = newPRepStatusSnapshot(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
-	}
-	ps := NewPRepStatusStateWithSnapshot(addr, pss)
-	s.mutablePRepStatus[ids] = ps
-	return ps, nil
-}
+//func (s *State) GetPRepStatus(owner module.Address) (*PRepStatus, error) {
+//	ids := icutils.ToKey(owner)
+//	if a, ok := s.mutablePRepStatuses[ids]; ok {
+//		return a, nil
+//	}
+//	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, owner))
+//	obj, err := icobject.GetFromMutableForObject(s.store, key)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var ps *PRepStatus
+//	if obj != nil {
+//		ps = ToPRepStatus(obj, owner)
+//	} else {
+//		ps = newPRepStatusWithTag(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
+//	}
+//
+//	s.mutablePRepStatuses[ids] = ps
+//	return ps, nil
+//}
 
 func (s *State) GetUnstakingTimerState(height int64) (*TimerState, error) {
 	if a, ok := s.mutableUnstakingTimer[height]; ok {
@@ -277,15 +237,137 @@ func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
 	s.mutableUnbondingTimer[height] = ts
 	return ts, nil
 }
-func NewStateFromSnapshot(ss *Snapshot) *State {
-	trie := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 
-	return &State{
-		mutableAccounts:       make(map[string]*AccountState),
-		mutablePReps:          make(map[string]*PRepState),
-		mutablePRepStatus:     make(map[string]*PRepStatusState),
+func (s *State) GetValidators() []module.Validator {
+	return s.pm.GetValidators()
+}
+
+func (s *State) GetPRepsInJSON() map[string]interface{} {
+	return s.pm.GetPRepsInJSON()
+}
+
+func (s *State) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
+	prep := s.pm.GetPRepByOwner(address)
+	if prep == nil {
+		return nil, errors.Errorf("PRep not found: %s", address)
+	}
+	return prep.ToJSON(), nil
+}
+
+func (s *State) RegisterPRep(owner, node module.Address, params []string) error {
+	return s.pm.RegisterPRep(owner, node, params)
+}
+
+func (s *State) UnregisterPRep(owner module.Address) error {
+	return s.pm.UnregisterPRep(owner)
+}
+
+func (s *State) SetDelegation(from module.Address, ds Delegations) error {
+	account, err := s.GetAccount(from)
+	if err != nil {
+		return err
+	}
+
+	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+
+	return s.pm.ChangeDelegation(account.delegations, ds)
+}
+
+func (s *State) SetPRep(from, node module.Address, params []string) error {
+	return s.pm.SetPRep(from, node, params)
+}
+
+func (s *State) SetBond(from module.Address, height int64, bonds Bonds) error {
+	account, err := s.GetAccount(from)
+	if err != nil {
+		return err
+	}
+
+	bondAmount := big.NewInt(0)
+	for _, bond := range bonds {
+		bondAmount.Add(bondAmount, bond.Amount())
+
+		prep := s.pm.GetPRepByOwner(bond.To())
+		if prep == nil {
+			return errors.Errorf("PRep not found: %v", from)
+		}
+		if !prep.BonderList().Contains(from) {
+			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
+		}
+
+		prep.SetBonded(bond.Amount())
+	}
+	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+
+	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, height+UnbondingPeriod)
+	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
+	votingAmount.Sub(votingAmount, account.Bond())
+	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnbondAmount(), ubDiff)
+	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+	account.SetBonds(bonds)
+	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
+	for _, t := range tl {
+		ts, e := s.GetUnbondingTimerState(t.Height)
+		if e != nil {
+			return errors.Errorf("Error while getting unbonding Timer")
+		}
+		if err = ScheduleTimerJob(ts, t, from); err != nil {
+			return errors.Errorf("Error while scheduling Unbonding Timer Job")
+		}
+	}
+	return nil
+}
+
+func (s *State) SetBonderList(from module.Address, bl BonderList) error {
+	pb := s.pm.getPRepBase(from)
+	if pb == nil {
+		return errors.Errorf("PRep not found: %v", from)
+	}
+
+	var account *Account
+	var err error
+	for _, old := range pb.BonderList() {
+		if !bl.Contains(old) {
+			account, err = s.GetAccount(old)
+			if err != nil {
+				return err
+			}
+			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
+				return errors.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d", len(account.Bonds()), len(account.Unbonds()))
+			}
+		}
+	}
+
+	pb.SetBonderList(bl)
+	return nil
+}
+
+func (s *State) GetBonderList(address module.Address) ([]interface{}, error) {
+	pb := s.pm.getPRepBase(address)
+	if pb == nil {
+		return nil, errors.Errorf("PRep not found: %v", address)
+	}
+	return pb.GetBonderListInJSON(), nil
+}
+
+func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
+	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
+	store := icobject.NewObjectStoreState(t)
+
+	s := &State{
+		readonly:              readonly,
+		mutableAccounts:       make(map[string]*Account),
 		mutableUnstakingTimer: make(map[int64]*TimerState),
 		mutableUnbondingTimer: make(map[int64]*TimerState),
-		store:                 icobject.NewObjectStoreState(trie),
+		store:                 store,
+		pm:                    newPRepManager(store, big.NewInt(0)),
 	}
+
+	return s
 }

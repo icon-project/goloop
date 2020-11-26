@@ -20,50 +20,80 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
 	TypeAccount int = iota
-	TypePRep
+	TypePRepBase
 	TypePRepStatus
 	TypeTimer
 )
 
-func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
+type StateAndSnapshot struct {
+	readonly bool
+}
+
+func (s *StateAndSnapshot) IsReadonly() bool {
+	return s.readonly
+}
+
+func (s *StateAndSnapshot) checkWritable() {
+	if s.readonly {
+		panic(errors.Errorf("Failed to clear readonly PRepBase: %v", s))
+	}
+}
+
+func (s *StateAndSnapshot) freeze() {
+	s.readonly = true
+}
+
+func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
 	case TypeAccount:
-		return newAccountSnapshot(tag), nil
-	case TypePRep:
-		return newPRepSnapshot(tag), nil
+		return newAccountWithTag(tag), nil
+	case TypePRepBase:
+		return newPRepBaseWithTag(tag), nil
 	case TypePRepStatus:
-		return newPRepStatusSnapshot(tag), nil
+		return newPRepStatusWithTag(tag), nil
 	case TypeTimer:
 		return newTimerSnapshot(tag), nil
+	case icobject.TypeAddress:
+		return icobject.NewAddress(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
 	}
 }
 
-func ToAccountSnapshot(object trie.Object) *AccountSnapshot {
+func ToAccount(object trie.Object, address module.Address) *Account {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*AccountSnapshot)
+	a := object.(*icobject.Object).Real().(*Account)
+	a = a.Clone()
+	a.SetAddress(address)
+	return a
 }
 
-func ToPRepStatusSnapshot(object trie.Object) *PRepStatusSnapshot {
+func ToPRepStatus(object trie.Object, owner module.Address) *PRepStatus {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*PRepStatusSnapshot)
+	ps := object.(*icobject.Object).Real().(*PRepStatus)
+	ps = ps.Clone()
+	ps.SetOwner(owner)
+	return ps
 }
 
-func ToPRepSnapshot(object trie.Object) *PRepSnapshot {
+func ToPRepBase(object trie.Object, owner module.Address) *PRepBase {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*PRepSnapshot)
+	pb := object.(*icobject.Object).Real().(*PRepBase)
+	pb = pb.Clone()
+	pb.SetOwner(owner)
+	return pb
 }
 
 func ToTimerSnapshot(object trie.Object) *TimerSnapshot {

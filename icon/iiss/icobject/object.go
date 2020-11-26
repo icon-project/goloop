@@ -17,6 +17,7 @@
 package icobject
 
 import (
+	"bytes"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -176,6 +177,31 @@ func New(t int, real Impl) *Object {
 		tag:  MakeTag(t, real.Version()),
 		real: real,
 	}
+}
+
+func NewObjectFromBytes(factory ImplFactory, b []byte) (*Object, error) {
+	d := codec.BC.NewDecoder(bytes.NewReader(b)).(codec.Decoder)
+
+	d2, err := d.DecodeList()
+	if err != nil {
+		return nil, err
+	}
+
+	var tag Tag
+	var origin Impl
+	if err := d2.Decode(&tag); err != nil {
+		return nil, err
+	}
+	origin, err = factory(tag)
+	if err != nil {
+		return nil, errors.CriticalFormatError.Wrap(err, "FailToCreateObjectImpl")
+	}
+	err = origin.RLPDecodeFields(d2)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(int(tag), origin), nil
 }
 
 type NoDatabase struct{}
