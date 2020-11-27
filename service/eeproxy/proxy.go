@@ -160,11 +160,11 @@ type oldValueMessage struct {
 }
 
 type callMessage struct {
-	To     common.Address
-	Value  common.HexInt
-	Limit  common.HexInt
-	Method string
-	Params *codec.TypedObj
+	To       common.Address
+	Value    common.HexInt
+	Limit    common.HexInt
+	DataType string
+	Data     *codec.TypedObj
 }
 
 type eventMessage struct {
@@ -433,15 +433,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s",
-			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
-
-		dataType := "call"
-		data := make(map[string]interface{})
-		data["method"] = m.Method
-		data["params"] = m.Params
-		dataObj := common.MustEncodeAny(data)
-		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, dataType, dataObj)
+		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v limit=%v type=%s data=%v",
+			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.DataType, m.Data)
+		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.DataType, m.Data)
 		return nil
 
 	case msgEVENT:

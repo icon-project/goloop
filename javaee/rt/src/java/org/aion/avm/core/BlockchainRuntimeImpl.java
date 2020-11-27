@@ -31,6 +31,8 @@ import pi.AnyDBImpl;
 import score.RevertException;
 import score.ScoreRevertException;
 
+import java.util.Map;
+
 /**
  * The implementation of IBlockchainRuntime which is appropriate for exposure as a shadow Object instance within a DApp.
  */
@@ -190,12 +192,18 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         var prevState = rds.getTop();
         rds.pushState();
+
+        var dataType = "call";
+        var dataObj = Map.of(
+                "method", method.getUnderlying(),
+                "params", params
+        );
         foundation.icon.ee.types.Result res = externalState.call(
                 new Address(targetAddress.toByteArray()),
-                method.getUnderlying(),
-                params,
                 value.getUnderlying(),
-                stepLeft);
+                stepLeft,
+                dataType,
+                dataObj);
         if (res.getStatus() == 0 && prevState != null) {
             prevState.inherit(rds.getTop());
         }

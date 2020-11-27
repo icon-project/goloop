@@ -321,10 +321,14 @@ public class EEProxy extends Proxy {
         }
     }
 
-    public Result call(Address addr, String method, Object[] params, BigInteger value, long stepLimit) throws IOException {
-        var sl = BigInteger.valueOf(stepLimit);
-        var pa = TypedObj.encodeAny(params);
-        sendMessage(MsgType.CALL, addr, value, sl, method, pa);
+    public Result call(Address addr, BigInteger value, long stepLimit,
+                       String dataType, Object dataObj) throws IOException {
+        // send message first
+        var limit = BigInteger.valueOf(stepLimit);
+        var typedObj = TypedObj.encodeAny(dataObj);
+        sendMessage(MsgType.CALL, addr, value, limit, dataType, typedObj);
+
+        // handle result
         Value raw = doHandleMessages();
         ArrayValue data = raw.asArrayValue();
         int status = data.get(0).asIntegerValue().asInt();

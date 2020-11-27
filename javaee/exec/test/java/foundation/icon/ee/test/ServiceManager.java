@@ -261,8 +261,13 @@ public class ServiceManager implements Agent {
                     var to = new Address(data.get(0).asRawValue().asByteArray());
                     var value = new BigInteger(data.get(1).asRawValue().asByteArray());
                     var stepLimit = new BigInteger(data.get(2).asRawValue().asByteArray());
-                    String method = data.get(3).asStringValue().asString();
-                    Object[] params = (Object[]) TypedObj.decodeAny(data.get(4));
+                    String dataType = data.get(3).asStringValue().asString();
+                    @SuppressWarnings("unchecked")
+                    var dataObj = (Map<String, Object>) TypedObj.decodeAny(data.get(4));
+                    assert "call".equals(dataType);
+                    assert dataObj != null;
+                    String method = (String) dataObj.get("method");
+                    Object[] params = (Object[]) dataObj.get("params");
                     BigInteger stepsContractCall = BigInteger.valueOf(5000);
                     stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",

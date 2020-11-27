@@ -409,9 +409,13 @@ class ServiceManagerProxy:
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
              params: Any) -> Tuple[int, int, Any]:
+        data = {
+            'method': method,
+            'params': params
+        }
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
-            self.encode(method), self.encode_any(params)
+            self.encode('call'), self.encode_any(data)
         ])
 
         while True:
