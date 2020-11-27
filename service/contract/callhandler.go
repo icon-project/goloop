@@ -2,7 +2,6 @@ package contract
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -51,8 +50,7 @@ type CallHandler struct {
 	cs        ContractStore
 	isSysCall bool
 	isQuery   bool
-	codeID    string
-	codeHash  []byte
+	codeID    []byte
 }
 
 func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
@@ -194,8 +192,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
-	h.codeHash = c.CodeHash()
-	h.codeID = fmt.Sprintf("%s-%x", h.to.String(), c.CodeHash())
+	h.codeID = c.CodeID()
 	// Before we set the codeID, it gets the last frame.
 	// Otherwise it would return current frameID for the code.
 	cc.SetFrameCodeID(h.codeID)
@@ -239,7 +236,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 
 	last := cc.GetLastEIDOf(h.codeID)
 	var state *eeproxy.CodeState
-	if next, objHash, _, err := h.as.GetObjGraph(h.codeHash, false); err == nil {
+	if next, objHash, _, err := h.as.GetObjGraph(h.codeID, false); err == nil {
 		state = &eeproxy.CodeState{
 			NexHash:   next,
 			GraphHash: objHash,
@@ -257,7 +254,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 		h.log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
 		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
 			h.value, cc.StepAvailable(), h.method.Name, h.paramObj,
-			eid, state)
+			h.codeID, eid, state)
 	}
 	h.lock.Unlock()
 
@@ -519,14 +516,14 @@ func (h *CallHandler) SetCode(code []byte) error {
 }
 
 func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	return h.as.GetObjGraph(h.codeHash, flags)
+	return h.as.GetObjGraph(h.codeID, flags)
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	if h.isQuery {
 		return nil
 	}
-	return h.as.SetObjGraph(h.codeHash, flags, nextHash, objGraph)
+	return h.as.SetObjGraph(h.codeID, flags, nextHash, objGraph)
 }
 
 type TransferAndCallHandler struct {

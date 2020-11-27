@@ -36,8 +36,8 @@ type (
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
 		EnterQueryMode()
-		SetFrameCodeID(code string)
-		GetLastEIDOf(code string) int
+		SetFrameCodeID(id []byte)
+		GetLastEIDOf(id []byte) int
 		NewExecution() int
 		GetReturnEID() int
 		SetFeeProportion(addr module.Address, portion int)
@@ -416,18 +416,18 @@ func (cc *callContext) EnterQueryMode() {
 	cc.frame.enterQueryMode(cc)
 }
 
-func (cc *callContext) SetFrameCodeID(code string) {
+func (cc *callContext) SetFrameCodeID(id []byte) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	cc.frame.setCodeID(code)
+	cc.frame.setCodeID(id)
 }
 
-func (cc *callContext) GetLastEIDOf(code string) int {
+func (cc *callContext) GetLastEIDOf(id []byte) int {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	return cc.frame.getLastEIDOf(code)
+	return cc.frame.getLastEIDOf(id)
 }
 
 func (cc *callContext) NewExecution() int {

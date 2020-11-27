@@ -435,9 +435,11 @@ public class ServiceManager implements Agent {
                         code, isReadOnly, from, to, value, stepLimit, method,
                         params, eid, codeState);
             }
+            // TODO need to get proper codeId
+            byte[] codeId = null;
             proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
                     to, value, stepLimit, method, TypedObj.encodeAny(params),
-                    TypedObj.encodeAny(info), eid, codeState);
+                    TypedObj.encodeAny(info), codeId, eid, codeState);
             var msg = waitFor(EEProxy.MsgType.RESULT);
             proxy = prevProxy;
             if (msg.type != EEProxy.MsgType.RESULT) {

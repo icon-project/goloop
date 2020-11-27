@@ -105,7 +105,8 @@ func (f *callFrame) enterQueryMode(cc *callContext) {
 	}
 }
 
-func (f *callFrame) getLastEIDOf(code string) int {
+func (f *callFrame) getLastEIDOf(id []byte) int {
+	code := string(id)
 	for ptr := f; ptr != nil; ptr = ptr.parent {
 		if id, ok := ptr.code2EID[code]; ok {
 			return id
@@ -117,8 +118,8 @@ func (f *callFrame) getLastEIDOf(code string) int {
 	return unknownEID
 }
 
-func (f *callFrame) setCodeID(code string) {
-	f.code = code
+func (f *callFrame) setCodeID(id []byte) {
+	f.code = string(id)
 }
 
 func (f *callFrame) newExecution(eid int) {
@@ -127,8 +128,8 @@ func (f *callFrame) newExecution(eid int) {
 }
 
 func (f *callFrame) mergeLastEIDMap(f2 *callFrame) {
-	for name, id := range f2.code2EID {
-		f.code2EID[name] = id
+	for code, id := range f2.code2EID {
+		f.code2EID[code] = id
 	}
 	if f2.code != "" && f2.eid != unknownEID {
 		f.code2EID[f2.code] = f2.eid

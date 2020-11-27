@@ -121,7 +121,7 @@ func assertAccountSnapshot(t *testing.T, dbase db.Database, ass AccountSnapshot,
 	assert.NoError(t, err)
 	assert.Equal(t, code, code1)
 
-	next1, _, graph1, err := ass.GetObjGraph(c.CodeHash(), true)
+	next1, _, graph1, err := ass.GetObjGraph(c.CodeID(), true)
 	assert.NoError(t, err)
 	assert.Equal(t, next, next1)
 	assert.Equal(t, graph, graph1)
@@ -134,7 +134,7 @@ func assertAccountSnapshot(t *testing.T, dbase db.Database, ass AccountSnapshot,
 	assert.NoError(t, err)
 	assert.Equal(t, code, code1)
 
-	next1, _, graph1, err = as.GetObjGraph(c.CodeHash(), true)
+	next1, _, graph1, err = as.GetObjGraph(c.CodeID(), true)
 	assert.NoError(t, err)
 	assert.Equal(t, next, next1)
 	assert.Equal(t, graph, graph1)
@@ -166,13 +166,13 @@ func TestAccountStateImpl_SetObjGraph(t *testing.T) {
 	assert.NoError(t, err)
 
 	c1 := as.NextContract()
-	next, graphHash, graph, err := as.GetObjGraph(c1.CodeHash(), true)
+	next, graphHash, graph, err := as.GetObjGraph(c1.CodeID(), true)
 	assert.Error(t, err)
 	assert.Zero(t, next)
 	assert.Nil(t, graphHash)
 	assert.Nil(t, graph)
 
-	err = as.SetObjGraph(c1.CodeHash(), true, next1v1, graph1v1)
+	err = as.SetObjGraph(c1.CodeID(), true, next1v1, graph1v1)
 	assert.NoError(t, err)
 
 	err = as.AcceptContract(tx1, tx1)
@@ -181,7 +181,7 @@ func TestAccountStateImpl_SetObjGraph(t *testing.T) {
 	ass1 := as.GetSnapshot()
 
 	c2 := as.Contract()
-	next, _, graph, err = as.GetObjGraph(c2.CodeHash(), true)
+	next, _, graph, err = as.GetObjGraph(c2.CodeID(), true)
 	assert.NoError(t, err)
 	assert.Equal(t, next1v1, next)
 	assert.Equal(t, graph1v1, graph)
@@ -190,13 +190,13 @@ func TestAccountStateImpl_SetObjGraph(t *testing.T) {
 	assert.NoError(t, err)
 
 	c3 := as.NextContract()
-	next, graphHash, graph, err = as.GetObjGraph(c3.CodeHash(), true)
+	next, graphHash, graph, err = as.GetObjGraph(c3.CodeID(), true)
 	assert.Error(t, err)
 	assert.Zero(t, next)
 	assert.Nil(t, graphHash)
 	assert.Nil(t, graph)
 
-	err = as.SetObjGraph(c3.CodeHash(), true, next2v1, graph2v1)
+	err = as.SetObjGraph(c3.CodeID(), true, next2v1, graph2v1)
 	assert.NoError(t, err)
 
 	err = as.AcceptContract(tx2, tx2)
@@ -204,12 +204,12 @@ func TestAccountStateImpl_SetObjGraph(t *testing.T) {
 
 	ass2 := as.GetSnapshot()
 
-	err = as.SetObjGraph(c2.CodeHash(), true, next1v2, graph1v2)
+	err = as.SetObjGraph(c2.CodeID(), true, next1v2, graph1v2)
 	assert.NoError(t, err)
 
 	ass3 := as.GetSnapshot()
 
-	next, _, graph, err = as.GetObjGraph(c2.CodeHash(), true)
+	next, _, graph, err = as.GetObjGraph(c2.CodeID(), true)
 	assert.NoError(t, err)
 	assert.Equal(t, next1v2, next)
 	assert.Equal(t, graph1v2, graph)

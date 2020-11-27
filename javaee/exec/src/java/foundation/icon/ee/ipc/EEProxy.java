@@ -293,11 +293,12 @@ public class EEProxy extends Proxy {
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
             @SuppressWarnings("unchecked")
             var info = (Map<String, Object>) TypedObj.decodeAny(data.get(8));
-            int eid = data.get(9).asIntegerValue().asInt();
+            // TODO need to handle codeId in data.get(9)
+            int eid = data.get(10).asIntegerValue().asInt();
             int nextHash = 0;
             byte[] graphHash = null;
             int prevEID = 0;
-            Value state_ = data.get(10);
+            Value state_ = data.get(11);
             if (state_.isArrayValue()) {
                 var state = state_.asArrayValue();
                 nextHash = state.get(0).asIntegerValue().asInt();
