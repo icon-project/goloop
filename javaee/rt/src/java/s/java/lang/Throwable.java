@@ -27,8 +27,6 @@ import java.util.Set;
  * Also note that at the creation of these exception/error objects, the 'new' bytecode and the heap size are billed.
  */
 public class Throwable extends Object implements Serializable {
-    private static final Logger logger = LoggerFactory.getLogger(Throwable.class);
-
     static {
         // Shadow classes MUST be loaded during bootstrap phase.
         IInstrumentation.attachedThreadInstrumentation.get().bootstrapOnly();
@@ -120,6 +118,7 @@ public class Throwable extends Object implements Serializable {
             return;
         }
         visited.add(this);
+        final Logger logger = LoggerFactory.getLogger(Throwable.class);
         logger.trace("PRT|");
         logger.trace("PRT| " + caption + this);
         if (stackTrace != null) {
