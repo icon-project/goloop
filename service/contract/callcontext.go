@@ -83,8 +83,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	logger := trace.LoggerOf(ctx.Logger())
 	ti := ctx.TraceInfo()
 	if ti != nil {
-		var info state.TransactionInfo
-		if ctx.GetTransactionInfo(&info) {
+		if info := ctx.TransactionInfo(); info != nil {
 			if info.Group == ti.Group && int(info.Index) == ti.Index {
 				logger = trace.NewLogger(logger.Logger, ti.Callback)
 			}

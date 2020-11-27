@@ -92,7 +92,7 @@ type WorldContext interface {
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
-	GetTransactionInfo(ti *TransactionInfo) bool
+	TransactionInfo() *TransactionInfo
 	TransactionID() []byte
 	SetContractInfo(si *ContractInfo)
 	DepositIssueRate() *big.Int
@@ -381,12 +381,12 @@ func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
 	c.info = nil
 }
 
-func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) bool {
+func (c *worldContext) TransactionInfo() *TransactionInfo {
 	if c.txInfo.Hash != nil {
-		*ti = c.txInfo
-		return true
+		info := c.txInfo
+		return &info
 	}
-	return false
+	return nil
 }
 
 func (c *worldContext) TransactionID() []byte {

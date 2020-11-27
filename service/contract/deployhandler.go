@@ -177,12 +177,11 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	h.log.TSystemf("DEPLOY start to=%s", h.to)
 
 	update := false
-	info := cc.GetInfo()
-	if info == nil {
-		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), nil, nil
-	} else {
-		h.txHash = info[state.InfoTxHash].([]byte)
+	txInfo := cc.TransactionInfo()
+	if txInfo == nil {
+		return errors.CriticalUnknownError.New("InvalidTransactionInfo"), nil, nil
 	}
+	h.txHash = txInfo.Hash
 
 	var contractID []byte
 	var as state.AccountState
@@ -191,7 +190,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		if h.preDefinedAddr != nil {
 			contractID = h.preDefinedAddr.ID()
 		} else {
-			contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
+			contractID = genContractAddr(h.from, txInfo.Timestamp, txInfo.Nonce)
 		}
 		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
