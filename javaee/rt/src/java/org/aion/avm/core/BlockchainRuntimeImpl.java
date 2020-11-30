@@ -164,22 +164,61 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                             s.java.math.BigInteger value,
                             p.score.Address targetAddress,
                             s.java.lang.String method,
-                            IObjectArray sparams) {
+                            IObjectArray params) {
         if (value == null) {
             value = s.java.math.BigInteger.avm_ZERO;
         }
         if (method == null) {
             method = new s.java.lang.String("");
         }
+        var dataObj = Map.of(
+                "method", method.getUnderlying(),
+                "params", getUnderlyingObjects(params)
+        );
+        return messageCall(cls, value, targetAddress, "call", dataObj);
+    }
+
+    @Override
+    public p.score.Address avm_deploy(p.score.Address target,
+                                      ByteArray content,
+                                      IObjectArray params) {
+        require(content != null, "Content cannot be NULL");
+        if (target == null) {
+            // make cx000...000
+            byte[] raw = new byte[Address.LENGTH];
+            raw[0] = 0x1;
+            target = new p.score.Address(raw);
+        }
+        var dataObj = Map.of(
+                "contentType", "application/java",
+                "content", content.getUnderlying(),
+                "params", getUnderlyingObjects(params)
+        );
+        return (p.score.Address) messageCall(
+                target.avm_getClass(),
+                s.java.math.BigInteger.avm_ZERO,
+                target,
+                "deploy",
+                dataObj);
+    }
+
+    private Object[] getUnderlyingObjects(IObjectArray sparams) {
         if (sparams == null) {
             sparams = new a.ObjectArray(0);
         }
-        require(targetAddress != null, "Destination can't be NULL");
         Object[] params = new Object[sparams.length()];
-        for (int i=0; i<params.length; i++) {
+        for (int i = 0; i < params.length; i++) {
             params[i] = Unshadower.unshadow(sparams.get(i));
         }
+        return params;
+    }
 
+    private IObject messageCall(s.java.lang.Class<?> cls,
+                                s.java.math.BigInteger value,
+                                p.score.Address targetAddress,
+                                String dataType,
+                                Object dataObj) {
+        require(targetAddress != null, "Destination can't be NULL");
         externalState.waitForCallbacks();
         IInstrumentation inst = IInstrumentation.attachedThreadInstrumentation.get();
         var hash = inst.peekNextHashCode();
@@ -192,12 +231,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         var prevState = rds.getTop();
         rds.pushState();
-
-        var dataType = "call";
-        var dataObj = Map.of(
-                "method", method.getUnderlying(),
-                "params", params
-        );
         foundation.icon.ee.types.Result res = externalState.call(
                 new Address(targetAddress.toByteArray()),
                 value.getUnderlying(),

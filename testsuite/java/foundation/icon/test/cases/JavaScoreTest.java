@@ -51,6 +51,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import testcases.APITest;
+import testcases.DeployScore;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -59,6 +60,7 @@ import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -715,6 +717,39 @@ class JavaScoreTest extends TestBase {
         RpcItem address = apiScore.call("getAddressFromKeyQuery", params);
         LOG.info("expected (" + caller.getAddress() + "), got (" + address.asAddress() + ")");
         assertEquals(caller.getAddress(), address.asAddress());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testDeployApi() throws Exception {
+        LOG.infoEntering("deploy", "DeployScore");
+        var score = txHandler.deploy(ownerWallet, DeployScore.class, null);
+        LOG.info("scoreAddress = " + score.getAddress());
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "deploy API");
+        var classes = new Class<?>[]{APITest.class};
+        byte[] jarBytes = txHandler.makeJar(classes[0].getName(), classes);
+        RpcObject params = new RpcObject.Builder()
+                .put("content", new RpcValue(jarBytes))
+                .build();
+        var txres = txHandler.getResult(
+                score.invoke(ownerWallet, "deploy", params));
+        assertSuccess(txres);
+        TransactionResult.EventLog event = score.findEventLog(txres, "EmitScoreAddress(Address)");
+        assertNotNull(event);
+        Address scoreAddress = event.getIndexed().get(1).asAddress();
+        LOG.info("scoreAddress = " + scoreAddress);
+        LOG.infoExiting();
+
+        LOG.infoEntering("call", "the deployed score");
+        var apiScore = new Score(txHandler, scoreAddress);
+        var res = apiScore.call("getOwnerQuery", null);
+        LOG.info("getOwner: expected (" + score.getAddress() + "), got (" +  res.asAddress() + ")");
+        assertEquals(score.getAddress(), res.asAddress());
+        res = apiScore.call("getAddressQuery", null);
+        LOG.info("getAddress: expected (" + scoreAddress + "), got (" +  res.asAddress() + ")");
+        assertEquals(scoreAddress, res.asAddress());
         LOG.infoExiting();
     }
 }

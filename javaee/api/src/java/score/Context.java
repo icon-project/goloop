@@ -229,6 +229,27 @@ public final class Context {
     }
 
     /**
+     * Deploys a SCORE with the given byte streams.
+     *
+     * @param content the byte streams of the SCORE
+     * @param params parameters
+     */
+    public static Address deploy(byte[] content, Object... params) {
+        return null;
+    }
+
+    /**
+     * Deploys a SCORE with the given byte streams to the target address.
+     *
+     * @param targetAddress the SCORE address that is to be updated
+     * @param content the byte streams of the SCORE
+     * @param params parameters
+     */
+    public static Address deploy(Address targetAddress, byte[] content, Object... params) {
+        return null;
+    }
+
+    /**
      * Stops the current execution and rolls back all state changes.
      * In case of cross-calls, {@code ScoreRevertException} would be raised to the caller
      * with the given code and message data.
