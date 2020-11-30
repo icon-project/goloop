@@ -182,7 +182,7 @@ public class SampleTokenScore extends Score {
 
     public void ensureTransfer(TransactionResult result, Address from, Address to, BigInteger value, byte[] data)
             throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Transfer(Address,Address,int,bytes)");
+        TransactionResult.EventLog event = findEventLog(result, "Transfer(Address,Address,int,bytes)");
         if (event != null) {
             if (data == null) {
                 data = new byte[0];
