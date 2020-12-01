@@ -96,7 +96,7 @@ public class TransactionHandler {
         return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
     }
 
-    private byte[] makeJar(String name, Class<?>[] classes) {
+    public byte[] makeJar(String name, Class<?>[] classes) {
         byte[] jarBytes = JarBuilder.buildJarForExplicitMainAndClasses(name, classes);
         return new OptimizedJarBuilder(false, jarBytes, true)
                 .withUnreachableMethodRemover()

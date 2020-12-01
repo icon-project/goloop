@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 )
@@ -92,8 +93,9 @@ type WorldContext interface {
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
-	GetTransactionInfo(ti *TransactionInfo) bool
+	TransactionInfo() *TransactionInfo
 	TransactionID() []byte
+	NextReferID() []byte
 	SetContractInfo(si *ContractInfo)
 	DepositIssueRate() *big.Int
 	FeeLimit() *big.Int
@@ -147,6 +149,8 @@ type worldContext struct {
 	info map[string]interface{}
 
 	skipTransaction bool
+
+	referID []byte
 
 	platform Platform
 }
@@ -379,18 +383,45 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
 	c.txInfo = *ti
 	c.info = nil
+	c.referID = nil
 }
 
-func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) bool {
+func (c *worldContext) TransactionInfo() *TransactionInfo {
 	if c.txInfo.Hash != nil {
-		*ti = c.txInfo
-		return true
+		info := c.txInfo
+		return &info
 	}
-	return false
+	return nil
 }
 
 func (c *worldContext) TransactionID() []byte {
 	return c.txInfo.Hash
+}
+
+func getNextID(id []byte) []byte {
+	var i big.Int
+	i.SetBytes(id)
+	i.Add(&i, intconv.BigIntOne)
+	bs := i.Bytes()
+	if len(bs) >= len(id) {
+		return bs[len(bs)-len(id):]
+	} else {
+		bs2 := make([]byte, len(id))
+		copy(bs2[len(id)-len(bs):], bs)
+		return bs2
+	}
+}
+
+func (c *worldContext) NextReferID() []byte {
+	if len(c.referID) == 0 {
+		c.referID = c.txInfo.Hash
+		if len(c.referID) == 0 {
+			panic("Invalid transaction information was set")
+		}
+	} else {
+		c.referID = getNextID(c.referID)
+	}
+	return c.referID
 }
 
 func (c *worldContext) SetContractInfo(si *ContractInfo) {

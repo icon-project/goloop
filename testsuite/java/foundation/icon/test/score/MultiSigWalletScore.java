@@ -156,7 +156,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public BigInteger getTransactionId(TransactionResult result) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Submission(int)");
+        TransactionResult.EventLog event = findEventLog(result, "Submission(int)");
         if (event != null) {
             return event.getIndexed().get(1).asInteger();
         }
@@ -164,7 +164,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureConfirmation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Confirmation(Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, "Confirmation(Address,int)");
         if (event != null) {
             Address _sender = event.getIndexed().get(1).asAddress();
             BigInteger _txId = event.getIndexed().get(2).asInteger();
@@ -176,7 +176,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureRevocation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Revocation(Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, "Revocation(Address,int)");
         if (event != null) {
             Address _sender = event.getIndexed().get(1).asAddress();
             BigInteger _txId = event.getIndexed().get(2).asInteger();
@@ -188,7 +188,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureIcxTransfer(TransactionResult result, Address from, Address to, long value) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "ICXTransfer(Address,Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, "ICXTransfer(Address,Address,int)");
         if (event != null) {
             BigInteger icxValue = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
             Address _from = event.getIndexed().get(1).asAddress();
@@ -202,7 +202,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureExecution(TransactionResult result, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Execution(int)");
+        TransactionResult.EventLog event = findEventLog(result, "Execution(int)");
         if (event != null) {
             BigInteger _txId = event.getIndexed().get(1).asInteger();
             if (txId.equals(_txId)) {
@@ -213,7 +213,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerAddition(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "WalletOwnerAddition(Address)");
+        TransactionResult.EventLog event = findEventLog(result, "WalletOwnerAddition(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -224,7 +224,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerRemoval(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "WalletOwnerRemoval(Address)");
+        TransactionResult.EventLog event = findEventLog(result, "WalletOwnerRemoval(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -235,7 +235,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureRequirementChange(TransactionResult result, Integer required) throws IOException {
-        TransactionResult.EventLog event = findEventLog(result, getAddress(), "RequirementChange(int)");
+        TransactionResult.EventLog event = findEventLog(result, "RequirementChange(int)");
         if (event != null) {
             BigInteger _required = event.getData().get(0).asInteger();
             if (required.equals(_required.intValue())) {

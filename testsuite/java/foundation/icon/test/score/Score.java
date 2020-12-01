@@ -54,10 +54,10 @@ public class Score {
         return SCORE_ROOT + pkgName;
     }
 
-    protected static EventLog findEventLog(TransactionResult result, Address scoreAddress, String funcSig) {
+    public EventLog findEventLog(TransactionResult result, String funcSig) {
         List<EventLog> eventLogs = result.getEventLogs();
         for (EventLog event : eventLogs) {
-            if (event.getScoreAddress().equals(scoreAddress.toString())) {
+            if (event.getScoreAddress().equals(this.address.toString())) {
                 String signature = event.getIndexed().get(0).asString();
                 if (funcSig.equals(signature)) {
                     return event;

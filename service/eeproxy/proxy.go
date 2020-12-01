@@ -76,7 +76,9 @@ type CallContext interface {
 }
 
 type Proxy interface {
-	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj, eid int, state *CodeState) error
+	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address,
+		value, limit *big.Int, method string, params *codec.TypedObj,
+		cid []byte, eid int, state *CodeState) error
 	SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj, eid int, last int) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
@@ -131,6 +133,7 @@ type invokeMessage struct {
 	Method string          `codec:"method"`
 	Params *codec.TypedObj `codec:"params"`
 	Info   *codec.TypedObj `codec:"info"`
+	CID    []byte
 	EID    int
 	State  *CodeState
 }
@@ -157,11 +160,11 @@ type oldValueMessage struct {
 }
 
 type callMessage struct {
-	To     common.Address
-	Value  common.HexInt
-	Limit  common.HexInt
-	Method string
-	Params *codec.TypedObj
+	To       common.Address
+	Value    common.HexInt
+	Limit    common.HexInt
+	DataType string
+	Data     *codec.TypedObj
 }
 
 type eventMessage struct {
@@ -205,7 +208,7 @@ func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
 func (p *proxy) Invoke(
 	ctx CallContext, code string, isQuery bool,
 	from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj,
-	eid int, state *CodeState,
+	cid []byte, eid int, state *CodeState,
 ) error {
 	logger := trace.LoggerOf(ctx.Logger().WithFields(log.Fields{log.FieldKeyEID: p.uid}))
 
@@ -218,6 +221,7 @@ func (p *proxy) Invoke(
 	m.Limit.Set(limit)
 	m.Method = method
 	m.Params = params
+	m.CID = cid
 	m.EID = eid
 	m.State = state
 
@@ -429,15 +433,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s",
-			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
-
-		dataType := "call"
-		data := make(map[string]interface{})
-		data["method"] = m.Method
-		data["params"] = m.Params
-		dataObj := common.MustEncodeAny(data)
-		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, dataType, dataObj)
+		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v limit=%v type=%s data=%v",
+			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.DataType, m.Data)
+		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.DataType, m.Data)
 		return nil
 
 	case msgEVENT:

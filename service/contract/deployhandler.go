@@ -177,12 +177,11 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	h.log.TSystemf("DEPLOY start to=%s", h.to)
 
 	update := false
-	info := cc.GetInfo()
-	if info == nil {
-		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), nil, nil
-	} else {
-		h.txHash = info[state.InfoTxHash].([]byte)
+	txInfo := cc.TransactionInfo()
+	if txInfo == nil {
+		return errors.CriticalUnknownError.New("InvalidTransactionInfo"), nil, nil
 	}
+	h.txHash = txInfo.Hash
 
 	var contractID []byte
 	var as state.AccountState
@@ -191,7 +190,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		if h.preDefinedAddr != nil {
 			contractID = h.preDefinedAddr.ID()
 		} else {
-			contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
+			contractID = genContractAddr(h.from, txInfo.Timestamp, txInfo.Nonce)
 		}
 		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
@@ -234,16 +233,18 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
-	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
+	deployID := cc.NextReferID()
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	for h2a.Get(deployID) != nil {
+		return scoreresult.InvalidInstanceError.New("DuplicateDeployID"), nil, nil
+	}
+
+	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, deployID)
 	if err != nil {
 		return err, nil, nil
 	}
 
-	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	if prev := h2a.Get(h.txHash); prev != nil {
-		return scoreresult.ErrInvalidInstance, nil, nil
-	}
-	if err := h2a.Set(h.txHash, scoreAddr); err != nil {
+	if err := h2a.Set(deployID, scoreAddr); err != nil {
 		return err, nil, nil
 	}
 	if len(oldTx) > 0 {
@@ -254,7 +255,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), h.log), h.txHash, h.txHash)
+		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), h.log), deployID, h.txHash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
 		cc.DeductSteps(acceptStepUsed)
 		if status != nil {

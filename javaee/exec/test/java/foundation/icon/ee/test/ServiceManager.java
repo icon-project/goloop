@@ -261,8 +261,13 @@ public class ServiceManager implements Agent {
                     var to = new Address(data.get(0).asRawValue().asByteArray());
                     var value = new BigInteger(data.get(1).asRawValue().asByteArray());
                     var stepLimit = new BigInteger(data.get(2).asRawValue().asByteArray());
-                    String method = data.get(3).asStringValue().asString();
-                    Object[] params = (Object[]) TypedObj.decodeAny(data.get(4));
+                    String dataType = data.get(3).asStringValue().asString();
+                    @SuppressWarnings("unchecked")
+                    var dataObj = (Map<String, Object>) TypedObj.decodeAny(data.get(4));
+                    assert "call".equals(dataType);
+                    assert dataObj != null;
+                    String method = (String) dataObj.get("method");
+                    Object[] params = (Object[]) dataObj.get("params");
                     BigInteger stepsContractCall = BigInteger.valueOf(5000);
                     stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
@@ -408,6 +413,9 @@ public class ServiceManager implements Agent {
         var prevIsReadOnly = isReadOnly;
         if (isQuery || isReadOnly || readOnlyMethod) {
             isReadOnly = true;
+            info.remove(Info.TX_HASH);
+        } else {
+            info.put(Info.TX_HASH, Arrays.copyOf(new byte[]{1, 2}, 32));
         }
         try {
             Object[] codeState = null;
@@ -435,9 +443,11 @@ public class ServiceManager implements Agent {
                         code, isReadOnly, from, to, value, stepLimit, method,
                         params, eid, codeState);
             }
+            // TODO need to get proper codeId
+            byte[] codeId = null;
             proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
                     to, value, stepLimit, method, TypedObj.encodeAny(params),
-                    TypedObj.encodeAny(info), eid, codeState);
+                    TypedObj.encodeAny(info), codeId, eid, codeState);
             var msg = waitFor(EEProxy.MsgType.RESULT);
             proxy = prevProxy;
             if (msg.type != EEProxy.MsgType.RESULT) {

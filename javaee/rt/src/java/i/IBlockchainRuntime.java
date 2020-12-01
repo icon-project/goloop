@@ -107,6 +107,16 @@ public interface IBlockchainRuntime {
             Address targetAddress, String method, IObjectArray params);
 
     /**
+     * Deploys a SCORE with the given byte streams to the target address.
+     *
+     * @param target the SCORE address that is to be updated
+     * @param content the byte streams of the SCORE
+     * @param params parameters
+     * @return the SCORE address if the deployment was successful
+     */
+    Address avm_deploy(Address target, ByteArray content, IObjectArray params);
+
+    /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.
      */
     void avm_revert(int code, String message);

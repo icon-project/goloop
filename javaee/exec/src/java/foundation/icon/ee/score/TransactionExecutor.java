@@ -25,11 +25,9 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Transaction;
-import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.core.IExternalState;
-import org.aion.avm.utilities.JarBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +36,7 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.zip.ZipException;
 
@@ -144,6 +143,7 @@ public class TransactionExecutor {
         int option = 0;
         if (isQuery) {
             option |= IExternalState.OPTION_READ_ONLY;
+            from = null; // nullify if this is a query call
         }
         ExternalState kernel = new ExternalState(proxy, option, code,
                 fileIO, blockHeight, blockTimestamp, owner, stepCosts, nextHash,
@@ -161,7 +161,10 @@ public class TransactionExecutor {
         }
 
         public void writeFile(String p, byte[] bytes) throws IOException {
-            Files.write(Paths.get(p), bytes);
+            var temp = Files.createTempFile(Paths.get(p).getParent(), null,
+                    null);
+            Files.write(temp, bytes);
+            Files.move(temp, Paths.get(p), StandardCopyOption.REPLACE_EXISTING);
         }
     };
 
