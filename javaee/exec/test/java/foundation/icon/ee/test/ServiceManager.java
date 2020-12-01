@@ -413,6 +413,9 @@ public class ServiceManager implements Agent {
         var prevIsReadOnly = isReadOnly;
         if (isQuery || isReadOnly || readOnlyMethod) {
             isReadOnly = true;
+            info.remove(Info.TX_HASH);
+        } else {
+            info.put(Info.TX_HASH, Arrays.copyOf(new byte[]{1, 2}, 32));
         }
         try {
             Object[] codeState = null;
