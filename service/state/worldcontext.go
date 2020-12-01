@@ -95,7 +95,7 @@ type WorldContext interface {
 	SetTransactionInfo(ti *TransactionInfo)
 	TransactionInfo() *TransactionInfo
 	TransactionID() []byte
-	NextReferID() []byte
+	NextTransactionSalt() *big.Int
 	SetContractInfo(si *ContractInfo)
 	DepositIssueRate() *big.Int
 	FeeLimit() *big.Int
@@ -150,7 +150,7 @@ type worldContext struct {
 
 	skipTransaction bool
 
-	referID []byte
+	nextTxSalt *big.Int
 
 	platform Platform
 }
@@ -383,7 +383,7 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
 	c.txInfo = *ti
 	c.info = nil
-	c.referID = nil
+	c.nextTxSalt = nil
 }
 
 func (c *worldContext) TransactionInfo() *TransactionInfo {
@@ -398,30 +398,17 @@ func (c *worldContext) TransactionID() []byte {
 	return c.txInfo.Hash
 }
 
-func getNextID(id []byte) []byte {
-	var i big.Int
-	i.SetBytes(id)
-	i.Add(&i, intconv.BigIntOne)
-	bs := i.Bytes()
-	if len(bs) >= len(id) {
-		return bs[len(bs)-len(id):]
+// TransactionSalt returns index value to be used as salt.
+// On the first call in a transaction, it returns nil.
+// Then it returns 1 to N in a sequence.
+func (c *worldContext) NextTransactionSalt() *big.Int {
+	salt := c.nextTxSalt
+	if c.nextTxSalt == nil {
+		c.nextTxSalt = intconv.BigIntOne
 	} else {
-		bs2 := make([]byte, len(id))
-		copy(bs2[len(id)-len(bs):], bs)
-		return bs2
+		c.nextTxSalt = new(big.Int).Add(c.nextTxSalt, intconv.BigIntOne)
 	}
-}
-
-func (c *worldContext) NextReferID() []byte {
-	if len(c.referID) == 0 {
-		c.referID = c.txInfo.Hash
-		if len(c.referID) == 0 {
-			panic("Invalid transaction information was set")
-		}
-	} else {
-		c.referID = getNextID(c.referID)
-	}
-	return c.referID
+	return salt
 }
 
 func (c *worldContext) SetContractInfo(si *ContractInfo) {
