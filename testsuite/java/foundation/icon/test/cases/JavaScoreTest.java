@@ -734,7 +734,7 @@ class JavaScoreTest extends TestBase {
                 .put("content", new RpcValue(jarBytes))
                 .build();
         var txres = txHandler.getResult(
-                score.invoke(ownerWallet, "deploy", params));
+                score.invoke(ownerWallet, "deploySingle", params));
         assertSuccess(txres);
         TransactionResult.EventLog event = score.findEventLog(txres, "EmitScoreAddress(Address)");
         assertNotNull(event);
@@ -742,7 +742,7 @@ class JavaScoreTest extends TestBase {
         LOG.info("scoreAddress = " + scoreAddress);
         LOG.infoExiting();
 
-        LOG.infoEntering("call", "the deployed score");
+        LOG.infoEntering("call", "directly");
         var apiScore = new Score(txHandler, scoreAddress);
         var res = apiScore.call("getOwnerQuery", null);
         LOG.info("getOwner: expected (" + score.getAddress() + "), got (" +  res.asAddress() + ")");
@@ -751,5 +751,21 @@ class JavaScoreTest extends TestBase {
         LOG.info("getAddress: expected (" + scoreAddress + "), got (" +  res.asAddress() + ")");
         assertEquals(scoreAddress, res.asAddress());
         LOG.infoExiting();
+
+        LOG.infoEntering("call", "indirectly");
+        res = score.call("getOwner", null);
+        LOG.info("getOwner: expected (" + score.getAddress() + "), got (" +  res.asAddress() + ")");
+        assertEquals(score.getAddress(), res.asAddress());
+        res = score.call("getAddress", null);
+        LOG.info("getAddress: expected (" + scoreAddress + "), got (" +  res.asAddress() + ")");
+        assertEquals(scoreAddress, res.asAddress());
+        LOG.infoExiting();
+
+        // revisit if we could handle this case later
+//        LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
+//        txres = txHandler.getResult(
+//                score.invoke(ownerWallet, "deployMultiple", params));
+//        assertSuccess(txres);
+//        LOG.infoExiting();
     }
 }

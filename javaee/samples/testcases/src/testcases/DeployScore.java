@@ -22,13 +22,31 @@ import score.annotation.EventLog;
 import score.annotation.External;
 
 public class DeployScore {
-    public DeployScore() {
+    private Address address;
+
+    @External
+    public void deploySingle(byte[] content) {
+        this.address = Context.deploy(content);
+        EmitScoreAddress(this.address);
     }
 
     @External
-    public void deploy(byte[] content) {
-        var address = Context.deploy(content); // no params for APITest
-        EmitScoreAddress(address);
+    public void deployMultiple(byte[] content) {
+        var addr = Context.deploy(content);
+        var addr1 = Context.deploy(content);
+        Context.require(addr != addr1);
+    }
+
+    @External(readonly=true)
+    public Address getOwner() {
+        Context.require(this.address != null);
+        return Context.call(Address.class, this.address, "getOwnerQuery");
+    }
+
+    @External(readonly=true)
+    public Address getAddress() {
+        Context.require(this.address != null);
+        return Context.call(Address.class, this.address, "getAddressQuery");
     }
 
     @EventLog(indexed=1)
