@@ -721,7 +721,7 @@ class JavaScoreTest extends TestBase {
     }
 
     @Test
-    public void testDeployApi() throws Exception {
+    public void testAPIForDeploy() throws Exception {
         LOG.infoEntering("deploy", "DeployScore");
         var score = txHandler.deploy(ownerWallet, DeployScore.class, null);
         LOG.info("scoreAddress = " + score.getAddress());
@@ -761,11 +761,10 @@ class JavaScoreTest extends TestBase {
         assertEquals(scoreAddress, res.asAddress());
         LOG.infoExiting();
 
-        // revisit if we could handle this case later
-//        LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
-//        txres = txHandler.getResult(
-//                score.invoke(ownerWallet, "deployMultiple", params));
-//        assertSuccess(txres);
-//        LOG.infoExiting();
+        LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
+        txres = txHandler.getResult(
+                score.invoke(ownerWallet, "deployMultiple", params));
+        assertSuccess(txres);
+        LOG.infoExiting();
     }
 }
