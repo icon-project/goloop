@@ -42,9 +42,6 @@ public final class Transaction {
         if (null == from && txHash != null) {
             throw new NullPointerException("No sender");
         }
-        if (null == txHash && from != null) {
-            throw new NullPointerException("No transaction hash");
-        }
         if (null == value) {
             throw new NullPointerException("No value");
         }

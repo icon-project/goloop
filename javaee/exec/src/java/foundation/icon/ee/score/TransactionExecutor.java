@@ -143,7 +143,6 @@ public class TransactionExecutor {
         int option = 0;
         if (isQuery) {
             option |= IExternalState.OPTION_READ_ONLY;
-            from = null; // nullify if this is a query call
         }
         ExternalState kernel = new ExternalState(proxy, option, code,
                 fileIO, blockHeight, blockTimestamp, owner, stepCosts, nextHash,
