@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	maxUnstakes    = 1000
+	maxUnstakes = 1000
 )
 
 var maxUnstakeCount = maxUnstakes
@@ -77,10 +77,10 @@ func (u Unstake) ToJSON(v module.JSONVersion) interface{} {
 	return jso
 }
 
-// TODO delete Unstake from Unstakes via timer
-type Unstakes []*Unstake
+// TODO delete Unstake from UnStakes via timer
+type UnStakes []*Unstake
 
-func (us Unstakes) Clone() Unstakes {
+func (us UnStakes) Clone() UnStakes {
 	if us == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func (us Unstakes) Clone() Unstakes {
 	return n
 }
 
-func (us Unstakes) Equal(us2 Unstakes) bool {
+func (us UnStakes) Equal(us2 UnStakes) bool {
 	if len(us) != len(us2) {
 		return false
 	}
@@ -103,12 +103,12 @@ func (us Unstakes) Equal(us2 Unstakes) bool {
 	return true
 }
 
-func (us Unstakes) Has() bool {
+func (us UnStakes) Has() bool {
 	return len(us) > 0
 }
 
-// GetUnstakeAmount return unstake amount
-func (us Unstakes) GetUnstakeAmount() *big.Int {
+// GetUnstakeAmount return unstake Value
+func (us UnStakes) GetUnstakeAmount() *big.Int {
 	total := new(big.Int)
 	for _, u := range us {
 		total.Add(total, u.Amount)
@@ -116,7 +116,7 @@ func (us Unstakes) GetUnstakeAmount() *big.Int {
 	return total
 }
 
-func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
+func (us UnStakes) ToJSON(v module.JSONVersion) []interface{} {
 	if us.Has() == false {
 		return nil
 	}
@@ -128,9 +128,9 @@ func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
 	return unstakes
 }
 
-func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
+func (us *UnStakes) increaseUnstake(v *big.Int, eh int64) error {
 	if v.Sign() == -1 {
-		return errors.Errorf("Invalid unstake value %v", v)
+		return errors.Errorf("Invalid unstake Value %v", v)
 	}
 	if len(*us) >= getMaxUnstakeCount() {
 		// update last entry
@@ -152,9 +152,9 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
 	return nil
 }
 
-func (us *Unstakes) decreaseUnstake(v *big.Int) error {
+func (us *UnStakes) decreaseUnstake(v *big.Int) error {
 	if v.Sign() == -1 {
-		return errors.Errorf("Invalid unstake value %v", v)
+		return errors.Errorf("Invalid unstake Value %v", v)
 	}
 	remain := new(big.Int).Set(v)
 	unstakes := *us

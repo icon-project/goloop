@@ -14,25 +14,66 @@
 package icstate
 
 import (
+	"encoding/json"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 )
 
+const (
+	maxBonds = 100
+)
+
+var maxBondCount = maxBonds
+
+func getMaxBondsCount() int {
+	return maxBondCount
+}
+
+func setMaxBondCount(v int) {
+	if v > 0 {
+		maxBondCount = v
+	}
+}
+
 type Bond struct {
-	Target *common.Address
-	Amount *big.Int
+	Address *common.Address `json:"address"`
+	Value   *common.HexInt  `json:"value"`
 }
 
 func newBond() *Bond {
 	return &Bond{
-		Target: new(common.Address),
-		Amount: new(big.Int),
+		Address: new(common.Address),
+		Value:   new(common.HexInt),
 	}
 }
 
 func (b *Bond) Equal(b2 *Bond) bool {
-	return b.Target.Equal(b2.Target) && b.Amount.Cmp(b2.Amount) == 0
+	return b.Address.Equal(b2.Address) && b.Value.Cmp(b2.Value.Value()) == 0
+}
+
+func (b *Bond) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["address"] = b.Address
+	jso["value"] = b.Value
+	return jso
+}
+
+func (b *Bond) Clone() *Bond {
+	n := newBond()
+	n.Address.Set(b.Address)
+	n.Value.Set(b.Value.Value())
+	return n
+}
+
+func (b *Bond) To() *common.Address {
+	return b.Address
+}
+
+func (b *Bond) Amount() *big.Int {
+	return b.Value.Value()
 }
 
 type Bonds []*Bond
@@ -58,6 +99,54 @@ func (bl Bonds) Clone() Bonds {
 		return nil
 	}
 	bonds := make([]*Bond, len(bl))
-	copy(bonds, bl)
+	for i, b := range bl {
+		bonds[i] = b.Clone()
+	}
 	return bonds
+}
+
+func (bl Bonds) GetBondAmount() *big.Int {
+	total := new(big.Int)
+	for _, b := range bl {
+		total.Add(total, b.Value.Value())
+	}
+	return total
+}
+
+func (bl Bonds) ToJSON(v module.JSONVersion) []interface{} {
+	if !bl.Has() {
+		return nil
+	}
+	bonds := make([]interface{}, len(bl))
+
+	for idx, b := range bl {
+		bonds[idx] = b.ToJSON()
+	}
+	return bonds
+}
+
+func NewBonds(param []interface{}) (Bonds, error) {
+	count := len(param)
+	if count > getMaxBondsCount() {
+		return nil, errors.Errorf("Too many bonds %d", count)
+	}
+	targets := make(map[string]struct{}, count)
+	bonds := make([]*Bond, 0)
+	for _, p := range param {
+		bond := newBond()
+		bs, err := json.Marshal(p)
+		if err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
+		}
+		if err = json.Unmarshal(bs, bond); err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
+		}
+		target := bond.Address.String()
+		if _, ok := targets[target]; ok {
+			return nil, errors.IllegalArgumentError.Errorf("Duplicated bond Address")
+		}
+		targets[target] = struct{}{}
+		bonds = append(bonds, bond)
+	}
+	return bonds, nil
 }

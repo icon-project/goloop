@@ -227,6 +227,10 @@ func (ps PRepStatusState) GetAddress() module.Address {
 	return ps.address
 }
 
+func (ps *PRepStatusState) SetBonded(v *big.Int) {
+	ps.bonded = v
+}
+
 func (ps *PRepStatusState) SetGrade(g Grade) {
 	ps.grade = g
 }
@@ -235,6 +239,29 @@ func (ps *PRepStatusState) SetStatus(s Status) {
 	ps.status = s
 }
 
+func (ps *PRepStatusState) SetVTotal(t int) {
+	ps.vTotal = t
+}
+
+func (ps *PRepStatusState) SetVFail(f int) {
+	ps.vFail = f
+}
+
+func (ps *PRepStatusState) SetVFailCount(f int) {
+	ps.vFailCount = f
+}
+
+func (ps *PRepStatusState) SetVPenaltyMask(p int) {
+	ps.vPenaltyMask = p
+}
+
+func (ps *PRepStatusState) SetLastState(l int) {
+	ps.lastState = l
+}
+
+func (ps *PRepStatusState) SetLastHeight(h int) {
+	ps.lastHeight = h
+}
 func (ps *PRepStatusState) GetPRepStatusInfo() map[string]interface{} {
 	return ps.ToJSON()
 }

@@ -22,53 +22,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDelegation(t *testing.T) {
-	d1 := newDelegation()
-	d1.Address.SetString("hx1")
-	d1.Value.SetInt64(100)
+func TestBond(t *testing.T) {
+	b1 := newBond()
+	b1.Address.SetString("hx1")
+	b1.Value.SetInt64(100)
 
-	d2 := d1.Clone()
+	b2 := b1.Clone()
 
-	assert.True(t, d1.Equal(d2))
-	assert.True(t, d1.Address.Equal(d2.Address))
-	assert.Equal(t, 0, d1.Value.Cmp(d2.Value.Value()))
+	assert.True(t, b1.Equal(b2))
+	assert.True(t, b1.Address.Equal(b2.Address))
+	assert.Equal(t, 0, b1.Value.Cmp(b2.Value.Value()))
 }
 
-func TestDelegations(t *testing.T) {
+func TestBonds(t *testing.T) {
 	addr1 := "hx1"
 	addr2 := "hx2"
 	v1 := int64(1)
 	v2 := int64(2)
-	d1 := Delegation{
+	b1 := Bond{
 		Address: common.NewAddressFromString(addr1),
 		Value:   common.NewHexInt(v1),
 	}
-	d2 := Delegation{
+	b2 := Bond{
 		Address: common.NewAddressFromString(addr2),
 		Value:   common.NewHexInt(v2),
 	}
-	ds1 := Delegations{
-		&d1, &d2,
+	bl1 := Bonds{
+		&b1, &b2,
 	}
 
-	ds2 := ds1.Clone()
+	bl2 := bl1.Clone()
 
-	assert.True(t, ds1.Has())
-	assert.True(t, ds1.Equal(ds2))
-	assert.Equal(t, v1+v2, ds2.GetDelegationAmount().Int64())
+	assert.True(t, bl1.Has())
+	assert.True(t, bl1.Equal(bl2))
+	assert.Equal(t, v1+v2, bl2.GetBondAmount().Int64())
 }
 
-func TestNewDelegations(t *testing.T) {
-	setMaxDelegationCount(2)
-	defer setMaxDelegationCount(0)
+func TestNewBonds(t *testing.T) {
+	setMaxBondCount(2)
 
 	v1 := 1
 	v2 := 2
 	tests := []struct {
-		name          string
-		param         []interface{}
-		err           bool
-		totalDelegate int
+		name      string
+		param     []interface{}
+		err       bool
+		totalBond int
 	}{
 		{"Nil param", nil, false, 0},
 		{"Empty param", []interface{}{}, false, 0},
@@ -125,18 +124,18 @@ func TestNewDelegations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			delegations, err := NewDelegations(tt.param)
+			delegations, err := NewBonds(tt.param)
 			if tt.err {
-				assert.Error(t, err, "NewDelegations() was not failed for %v.", tt.param)
+				assert.Error(t, err, "NewBonds() was not failed for %v.", tt.param)
 			} else {
-				assert.NoError(t, err, "NewDelegations() was failed for %v. err=%v", tt.param, err)
+				assert.NoError(t, err, "NewBonds() was failed for %v. err=%v", tt.param, err)
 
 				got := delegations.ToJSON(module.JSONVersion3)
 				if len(tt.param) != len(got) {
-					t.Errorf("NewDelegations() = %v, want %v", got, tt.param)
+					t.Errorf("NewBonds() = %v, want %v", got, tt.param)
 				}
-				if int64(tt.totalDelegate) != delegations.GetDelegationAmount().Int64() {
-					t.Errorf("NewDelegations() = %v, want %v", got, tt.param)
+				if int64(tt.totalBond) != delegations.GetBondAmount().Int64() {
+					t.Errorf("NewBonds() = %v, want %v", got, tt.param)
 				}
 			}
 		})

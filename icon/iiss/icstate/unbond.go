@@ -15,33 +15,54 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/module"
 	"math/big"
 )
 
+var UnBondingPeriod = int64(10)
+
 type Unbond struct {
-	Target       *common.Address
-	Amount       *big.Int
-	ExpireHeight int64
+	Address *common.Address
+	Value   *big.Int
+	Expire  int64
 }
 
 func newUnbond() *Unbond {
 	return &Unbond{
-		Target: new(common.Address),
-		Amount: new(big.Int),
+		Address: new(common.Address),
+		Value:   new(big.Int),
 	}
 }
 
 func (ub *Unbond) Equal(ub2 *Unbond) bool {
-	return ub.Target.Equal(ub2.Target) && ub.Amount.Cmp(ub2.Amount) == 0 && ub.ExpireHeight == ub2.ExpireHeight
+	return ub.Address.Equal(ub2.Address) && ub.Value.Cmp(ub2.Value) == 0 && ub.Expire == ub2.Expire
 }
 
-type Unbonds []*Unbond
+func (ub *Unbond) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["address"] = ub.Address
+	jso["value"] = intconv.FormatBigInt(ub.Value)
+	jso["expireHeight"] = ub.Expire
 
-func (ul Unbonds) Has() bool {
+	return jso
+}
+
+func (ub *Unbond) Clone() *Unbond {
+	n := newUnbond()
+	n.Address.Set(ub.Address)
+	n.Value.Set(ub.Value)
+	n.Expire = ub.Expire
+	return n
+}
+
+type UnBonds []*Unbond
+
+func (ul UnBonds) Has() bool {
 	return len(ul) > 0
 }
 
-func (ul Unbonds) Equal(ul2 Unbonds) bool {
+func (ul UnBonds) Equal(ul2 UnBonds) bool {
 	if len(ul) != len(ul2) {
 		return false
 	}
@@ -53,12 +74,33 @@ func (ul Unbonds) Equal(ul2 Unbonds) bool {
 	return true
 }
 
-func (ul Unbonds) Clone() Unbonds {
+func (ul UnBonds) Clone() UnBonds {
 	if ul == nil {
 		return nil
 	}
-	unbondings := make([]*Unbond, len(ul))
-	copy(unbondings, ul)
-	return unbondings
+	unBonds := make([]*Unbond, len(ul))
+	for i, u := range ul {
+		unBonds[i] = u.Clone()
+	}
+	return unBonds
 }
 
+func (ul UnBonds) GetUnBondAmount() *big.Int {
+	total := new(big.Int)
+	for _, b := range ul {
+		total.Add(total, b.Value)
+	}
+	return total
+}
+
+func (ul UnBonds) ToJSON(v module.JSONVersion) []interface{} {
+	if !ul.Has() {
+		return nil
+	}
+	unbonds := make([]interface{}, len(ul))
+
+	for idx, u := range ul {
+		unbonds[idx] = u.ToJSON()
+	}
+	return unbonds
+}

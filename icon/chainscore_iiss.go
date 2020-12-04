@@ -153,3 +153,105 @@ func (s *chainScore) Ex_unregisterPRep() error {
 	ips.SetStatus(icstate.Unregistered)
 	return nil
 }
+
+func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
+	city string, details string, p2pEndpoint string, node module.Address) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	ip, err := es.GetPRepState(s.from)
+	if err != nil {
+		return err
+	}
+	return ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
+}
+
+func (s *chainScore) Ex_setBond(bondList []interface{}) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	account, err := es.GetAccountState(s.from)
+	if err != nil {
+		return err
+	}
+	bonds, err := icstate.NewBonds(bondList)
+	if err != nil {
+		return err
+	}
+	bondAmount := big.NewInt(0)
+	for _, b := range bonds {
+		bondAmount = bondAmount.Add(bondAmount, b.Amount())
+		prep, err := es.GetPRepState(b.To())
+		if err != nil {
+			return err
+		}
+		if !prep.BonderList().Contains(s.from) {
+			return errors.Errorf("%s is not in bonder List of %s", s.from.String(), b.Address.String())
+		}
+		prepStatus, err := es.GetPRepStatusState(b.To())
+		if err != nil {
+			return err
+		}
+		prepStatus.SetBonded(b.Amount())
+	}
+	if account.GetStake().Cmp(new(big.Int).Add(bondAmount, account.GetDelegation())) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+
+	ubToAdd, ubToMod, ubDiff := account.GetUnBondingInfo(bonds, s.cc.BlockHeight()+icstate.UnBondingPeriod)
+	votingAmount := new(big.Int).Add(account.GetDelegation(), bondAmount)
+	votingAmount.Sub(votingAmount, account.GetBond())
+	unbondingAmount := new(big.Int).Add(account.UnBonds().GetUnBondAmount(), ubDiff)
+	if account.GetStake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+	account.SetBonds(bonds)
+	account.UpdateUnBonds(ubToAdd, ubToMod)
+
+	return nil
+}
+
+func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	account, err := es.GetAccountState(address)
+	if err != nil {
+		return nil, err
+	}
+	data := make(map[string]interface{})
+	data["bonds"] = account.GetBondsInfo()
+	data["unbonds"] = account.GetUnBondsInfo()
+	return data, nil
+}
+
+func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	prep, err := es.GetPRepState(s.from)
+	if err != nil {
+		return err
+	}
+	bl, err := icstate.NewBonderList(bonderList)
+	if err != nil {
+		return err
+	}
+
+	var b *icstate.AccountState
+	for _, old := range prep.BonderList() {
+		if !bl.Contains(old) {
+			b, err = es.GetAccountState(old)
+			if err != nil {
+				return err
+			}
+			if len(b.Bonds()) > 0 || len(b.UnBonds()) > 0 {
+				return errors.Errorf("Bonding/UnBonding exist. bonds : %d, unbonds : %d", len(b.Bonds()), len(b.UnBonds()))
+			}
+		}
+	}
+
+	prep.SetBonderList(bl)
+	return nil
+}
+
+func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	prep, err := es.GetPRepState(address)
+	if err != nil {
+		return nil, err
+	}
+	return prep.BonderListInfo(), nil
+}

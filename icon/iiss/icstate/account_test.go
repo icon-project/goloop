@@ -26,7 +26,7 @@ import (
 
 var assTest = &AccountSnapshot{
 	staked: big.NewInt(100),
-	unstakes: []*Unstake{
+	unStakes: []*Unstake{
 		{
 			Amount:       big.NewInt(5),
 			ExpireHeight: 10,
@@ -50,24 +50,24 @@ var assTest = &AccountSnapshot{
 	bonded: big.NewInt(20),
 	bonds: []*Bond{
 		{
-			Target: common.NewAddressFromString("hx3"),
-			Amount: big.NewInt(10),
+			Address: common.NewAddressFromString("hx3"),
+			Value:   common.NewHexInt(10),
 		},
 		{
-			Target: common.NewAddressFromString("hx4"),
-			Amount: big.NewInt(10),
+			Address: common.NewAddressFromString("hx4"),
+			Value:   common.NewHexInt(10),
 		},
 	},
-	unbonds: []*Unbond{
+	unBonds: []*Unbond{
 		{
-			Target:       common.NewAddressFromString("hx5"),
-			Amount:       big.NewInt(10),
-			ExpireHeight: 20,
+			Address: common.NewAddressFromString("hx5"),
+			Value:   big.NewInt(10),
+			Expire:  20,
 		},
 		{
-			Target:       common.NewAddressFromString("hx6"),
-			Amount:       big.NewInt(10),
-			ExpireHeight: 30,
+			Address: common.NewAddressFromString("hx6"),
+			Value:   big.NewInt(10),
+			Expire:  30,
 		},
 	},
 }

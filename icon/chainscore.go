@@ -116,6 +116,78 @@ var chainMethods = []*chainMethod{
 		nil,
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "setPRep",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"name", scoreapi.String, nil, nil},
+			{"email", scoreapi.String, nil, nil},
+			{"website", scoreapi.String, nil, nil},
+			{"country", scoreapi.String, nil, nil},
+			{"city", scoreapi.String, nil, nil},
+			{"details", scoreapi.String, nil, nil},
+			{"p2pEndpoint", scoreapi.String, nil, nil},
+			{"nodeAddress", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getPReps",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getMainPReps",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getSubPReps",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "setBond",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"bondList", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"address", scoreapi.Address, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getBond",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "setBonderList",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"bonderList", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getBonderList",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
 }
 
 func applyStepLimits(as state.AccountState, limits map[string]int64) error {

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"encoding/json"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -25,8 +26,9 @@ import (
 )
 
 const (
-	prepVersion1 = iota + 1
-	prepVersion  = prepVersion1
+	prepVersion1  = iota + 1
+	prepVersion   = prepVersion1
+	bonderListMax = 10
 )
 
 type PRep struct {
@@ -38,6 +40,7 @@ type PRep struct {
 	details     string
 	p2pEndpoint string
 	node        *common.Address
+	bonderList  BonderList
 }
 
 func (p *PRep) Details() string {
@@ -91,7 +94,7 @@ func (p *PRepSnapshot) RLPEncodeFields(e codec.Encoder) error {
 	if err != nil {
 		return err
 	}
-	if err := e2.EncodeMulti(p.name, p.country, p.city, p.email, p.website, p.details, p.p2pEndpoint, p.node); err != nil {
+	if err := e2.EncodeMulti(p.name, p.country, p.city, p.email, p.website, p.details, p.p2pEndpoint, p.node, p.bonderList); err != nil {
 		return err
 	}
 	return nil
@@ -103,7 +106,7 @@ func (p *PRepSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		return err
 	}
 
-	if _, err := d2.DecodeMulti(&p.name, &p.country, &p.city, &p.email, &p.website, &p.details, &p.p2pEndpoint, &p.node); err != nil {
+	if _, err := d2.DecodeMulti(&p.name, &p.country, &p.city, &p.email, &p.website, &p.details, &p.p2pEndpoint, &p.node, &p.bonderList); err != nil {
 		return errors.Wrap(err, "Fail to decode PRepSnapshot")
 	}
 	return nil
@@ -124,7 +127,8 @@ func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 		p.website == ps.website &&
 		p.details == ps.details &&
 		p.p2pEndpoint == ps.p2pEndpoint &&
-		p.node == ps.node
+		p.node.Equal(ps.node) &&
+		p.bonderList.Equal(ps.bonderList)
 }
 
 func NewPRepSnapshot(city, country, details, email, name, website string, node module.Address) *PRepSnapshot {
@@ -194,6 +198,22 @@ func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoi
 	return nil
 }
 
+func (p *PRepState) SetBonderList(bonderList []*common.Address) {
+	p.bonderList = bonderList
+}
+
+func (p *PRepState) BonderList() BonderList {
+	return p.bonderList
+}
+
+func (p *PRepState) BonderListInfo() []interface{} {
+	r := make([]interface{}, 0)
+	for _, b := range p.bonderList {
+		r = append(r, b)
+	}
+	return r
+}
+
 func (p *PRepState) GetPRep() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["name"] = p.name
@@ -204,6 +224,7 @@ func (p *PRepState) GetPRep() map[string]interface{} {
 	data["details"] = p.details
 	data["p2pEndpoint"] = p.p2pEndpoint
 	data["node"] = p.node
+	data["BonderList"] = p.bonderList
 	return data
 }
 
@@ -211,4 +232,51 @@ func NewPRepStateWithSnapshot(a module.Address, ss *PRepSnapshot) *PRepState {
 	ps := newPRepState(a)
 	ps.Reset(ss)
 	return ps
+}
+
+type BonderList []*common.Address
+
+func getMaxBonderListCount() int {
+	return bonderListMax
+}
+
+func (bl BonderList) Equal(bl2 BonderList) bool {
+	if len(bl) != len(bl2) {
+		return false
+	}
+	for i, d := range bl {
+		if !d.Equal(bl2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (bl BonderList) Contains(a module.Address) bool {
+	for _, b := range bl {
+		if b.Equal(a) {
+			return true
+		}
+	}
+	return false
+}
+
+func NewBonderList(param []interface{}) (BonderList, error) {
+	count := len(param)
+	if count > getMaxBonderListCount() {
+		return nil, errors.Errorf("Too many bonder List %d", count)
+	}
+	bl := make([]*common.Address, 0)
+	for _, p := range param {
+		b := new(common.Address)
+		bs, err := json.Marshal(p)
+		if err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("Failed to get address %v", err)
+		}
+		if err = json.Unmarshal(bs, b); err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("Failed to get address %v", err)
+		}
+		bl = append(bl, b)
+	}
+	return bl, nil
 }
