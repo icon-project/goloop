@@ -121,7 +121,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		p = *params
 	}
 	return &DeployHandler{
-		CommonHandler:  NewCommonHandler(owner, state.SystemAddress, &zero, log),
+		CommonHandler:  NewCommonHandler(owner, state.SystemAddress, &zero, false, log),
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
@@ -282,7 +282,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), h.log), deployID, txInfo.Hash)
+		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
 		cc.DeductSteps(acceptStepUsed)
 		if status != nil {
@@ -345,7 +345,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(NewCommonHandler(h.from, scoreAddr, nil, h.log))
+	cgah := newCallGetAPIHandler(NewCommonHandler(h.from, scoreAddr, nil, false, h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, _, _ := cc.Call(cgah, cc.StepAvailable())
 	if status != nil {
@@ -368,7 +368,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
-		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.log),
+		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), false, h.log),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive

@@ -50,11 +50,12 @@ type CommonHandler struct {
 	from, to module.Address
 	value    *big.Int
 	log      *trace.Logger
+	call     bool
 }
 
-func NewCommonHandler(from, to module.Address, value *big.Int, log log.Logger) *CommonHandler {
+func NewCommonHandler(from, to module.Address, value *big.Int, call bool, log log.Logger) *CommonHandler {
 	return &CommonHandler{
-		from: from, to: to, value: value,
+		from: from, to: to, value: value, call: call,
 		log: trace.LoggerOf(log)}
 }
 
@@ -64,6 +65,15 @@ func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 		{string(h.to.ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
+}
+
+func (h *CommonHandler) ApplyStepsForInterCall(cc CallContext) bool {
+	if h.call {
+		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *CommonHandler) Logger() log.Logger {

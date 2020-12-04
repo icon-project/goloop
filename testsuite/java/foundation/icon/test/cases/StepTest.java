@@ -79,7 +79,7 @@ public class StepTest extends TestBase {
         govScore = new GovScore(txHandler);
         fee = govScore.getFee();
 
-        testWallets = new KeyWallet[4];
+        testWallets = new KeyWallet[5];
         Address[] addresses = new Address[testWallets.length + 1];
         for (int i = 0; i < testWallets.length; i++) {
             KeyWallet wallet = KeyWallet.create();
@@ -343,6 +343,9 @@ public class StepTest extends TestBase {
         }
 
         BigInteger call(KeyWallet from, Address to, String method, RpcObject params, BigInteger stepLimit) throws Exception {
+            return this.call(from, to, method, params, stepLimit, Constants.STATUS_SUCCESS);
+        }
+        BigInteger call(KeyWallet from, Address to, String method, RpcObject params, BigInteger stepLimit, BigInteger status) throws Exception {
             BigInteger prevTreasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
             BigInteger prevBal = txHandler.getBalance(from.getAddress());
             TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
@@ -361,8 +364,7 @@ public class StepTest extends TestBase {
             Bytes txHash = txHandler.invoke(from, transaction);
             TransactionResult result = txHandler.getResult(txHash);
             usedFee = getUsedFee(from, BigInteger.ZERO, prevTreasury, prevBal);
-            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-                LOG.info("Expected " + result.getFailure());
+            if (!status.equals(result.getStatus())) {
                 throw new TransactionFailureException(result.getFailure());
             }
             return usedFee;
@@ -648,6 +650,64 @@ public class StepTest extends TestBase {
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         // the actual stepUsed should still be the estimatedStep
         assertEquals(estimatedStep, result.getStepUsed());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testVariousCallTest() throws Exception {
+        LOG.infoEntering("testVariousCallTest");
+
+        LOG.infoEntering("deploy", "Scores");
+        Score fromScore = HelloWorld.install(txHandler, testWallets[4]);
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld2"))
+                .build();
+        Score toScore = new HelloWorld(txHandler.deploy(testWallets[4], Score.getFilePath("hello_world2"), params));
+        LOG.infoExiting();
+
+        LOG.infoEntering("deposit", "initial funds");
+        transferAndCheckResult(txHandler, fromScore.getAddress(), ICX.multiply(BigInteger.TEN));
+        LOG.infoExiting();
+
+        BigInteger[] expects = {
+                Constants.STATUS_SUCCESS,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_SUCCESS,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_SUCCESS,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_FAILURE,
+                Constants.STATUS_FAILURE,
+        };
+        BigInteger[] extraSteps = {
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+        };
+
+        for(int i=0 ; i<10 ; i++) {
+            LOG.infoEntering("Call", "case "+String.valueOf(i));
+            StepTransaction stx = new StepTransaction();
+            params = new RpcObject.Builder()
+                    .put("to", new RpcValue(toScore.getAddress()))
+                    .put("method", new RpcValue(BigInteger.valueOf(i)))
+                    .build();
+            var used = stx.call(testWallets[4], fromScore.getAddress(),
+                    "callMethodOf", params, Constants.DEFAULT_STEPS, expects[i]);
+            var expected = stx.expectedFee().add(extraSteps[i]);
+            assertEquals(expected, used);
+            LOG.infoExiting();
+        }
+
         LOG.infoExiting();
     }
 }
