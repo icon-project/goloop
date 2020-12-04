@@ -22,11 +22,6 @@ type DataCallJSON struct {
 	Params json.RawMessage `json:"params"`
 }
 
-const (
-	DataTypeCall   = "call"
-	DataTypeDeploy = "deploy"
-)
-
 type CallHandler struct {
 	*CommonHandler
 

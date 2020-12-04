@@ -64,6 +64,15 @@ type (
 	}
 )
 
+const (
+	DataTypeCall      = "call"
+	DataTypeMessage   = "message"
+	DataTypeDeploy    = "deploy"
+	DataTypeDeposit   = "deposit"
+	DataTypeAuthorize = "authorize"
+	DataTypePatch     = "patch"
+)
+
 func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
 	cm := cc.ContractManager()
 	sas := cc.GetAccountState(to.ID())
