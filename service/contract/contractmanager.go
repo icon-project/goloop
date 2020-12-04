@@ -65,12 +65,11 @@ type (
 )
 
 const (
-	DataTypeCall      = "call"
-	DataTypeMessage   = "message"
-	DataTypeDeploy    = "deploy"
-	DataTypeDeposit   = "deposit"
-	DataTypeAuthorize = "authorize"
-	DataTypePatch     = "patch"
+	DataTypeCall    = "call"
+	DataTypeMessage = "message"
+	DataTypeDeploy  = "deploy"
+	DataTypeDeposit = "deposit"
+	DataTypePatch   = "patch"
 )
 
 func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
