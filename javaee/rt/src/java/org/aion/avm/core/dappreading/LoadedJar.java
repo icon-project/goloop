@@ -1,5 +1,7 @@
 package org.aion.avm.core.dappreading;
 
+import org.aion.avm.utilities.Utilities;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Collections;
@@ -11,11 +13,6 @@ import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.zip.ZipException;
 
-import org.aion.avm.utilities.Utilities;
-
-import i.RuntimeAssertionError;
-
-
 /**
  * Converts the in-memory byte[] representation of a JAR into something we can easily interact with as an object.
  * Specifically, this involves asking for things like manifest data but, more commonly, the map of fully-qualified names to class file bytes.
@@ -26,38 +23,29 @@ public class LoadedJar {
     private static final int MAX_CLASS_BYTES = 1024 * 1024;
 
     /**
-     * Returns a representation of the JAR loaded from the given bytes, or null if the JAR was malformed.
+     * Returns a representation of the JAR loaded from the given bytes,
+     * or throws IOException if the JAR was malformed.
      * 
      * @param jar The in-memory JAR file.
      * @return The high-level JAR, or null if the input was malformed.
      */
-    public static LoadedJar fromBytes(byte[] jar) {
-        LoadedJar result = null;
+    public static LoadedJar fromBytes(byte[] jar) throws IOException {
         try (ByteArrayInputStream byteReader = new ByteArrayInputStream(jar)) {
-            result = safeLoadFromBytes(byteReader);
-        } catch (ZipException e) {
-            // This is corrupt input so just return null.
-            result = null;
+            return safeLoadFromBytes(byteReader);
         } catch (SecurityException e) {
-            // This might happen if the JAR has a signature but it is invalid, so return null.
-            result = null;
+            // This might happen if the JAR has a signature but it is invalid
+            throw new IOException(e.getMessage());
         } catch (SizeException e) {
-            // This can happen if the JAR contains a single class which is larger than MAX_CLASS_BYTES so we just return null.
-            result = null;
-        } catch (IOException e) {
-            // This shouldn't happen from our in-memory representation.
-            throw RuntimeAssertionError.unexpected(e);
+            // This can happen if the JAR contains a single class which is larger than MAX_CLASS_BYTES
+            throw new ZipException(e.getMessage());
         }
-        return result;
     }
 
     private static LoadedJar safeLoadFromBytes(ByteArrayInputStream byteReader) throws IOException, SizeException {
         Map<String, byte[]> classBytesByQualifiedNames = new HashMap<>();
         String mainClassName = null;
-        
-        boolean verify = true;
-        try (JarInputStream jarReader = new JarInputStream(byteReader, verify)) {
-            
+
+        try (JarInputStream jarReader = new JarInputStream(byteReader, true)) {
             Manifest manifest = jarReader.getManifest();
             if (null != manifest) {
                 Attributes mainAttributes = manifest.getMainAttributes();
@@ -65,7 +53,7 @@ public class LoadedJar {
                     mainClassName = mainAttributes.getValue(Attributes.Name.MAIN_CLASS);
                 }
             }
-            
+
             JarEntry entry = null;
             byte[] tempReadingBuffer = new byte[MAX_CLASS_BYTES];
             while (null != (entry = jarReader.getNextJarEntry())) {
@@ -93,7 +81,6 @@ public class LoadedJar {
         return new LoadedJar(classBytesByQualifiedNames, mainClassName);
     }
 
-
     public final Map<String, byte[]> classBytesByQualifiedNames;
     public final String mainClassName;
 
@@ -101,7 +88,6 @@ public class LoadedJar {
         this.classBytesByQualifiedNames = Collections.unmodifiableMap(classBytesByQualifiedNames);
         this.mainClassName = mainClassName;
     }
-
 
     private static class SizeException extends Exception {
         private static final long serialVersionUID = 1L;

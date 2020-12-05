@@ -38,7 +38,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
-import java.util.zip.ZipException;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
@@ -110,8 +109,8 @@ public class TransactionExecutor {
         proxy.close();
     }
 
-    private Method[] handleGetApi(String path) throws ZipException,
-            IOException, ValidationException  {
+    private Method[] handleGetApi(String path) throws IOException,
+            ValidationException {
         logger.trace(">>> path={}", path);
         byte[] jarBytes = fileIO.readFile(
                 Path.of(path, ExternalState.CODE_JAR).toString());

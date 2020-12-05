@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipException;
 
 public class Validator {
     private static ValidationException fail(String fmt, Object... args) throws
@@ -45,20 +44,16 @@ public class Validator {
     /**
      * Returns false if code is invalid.
      * @return false if code is invalid
-     * @throws ZipException for zip error
      * @throws IOException for other critical error
      * @throws ValidationException for validation error
      */
-    public static Method[] validate(byte[] codeBytes) throws ZipException,
+    public static Method[] validate(byte[] codeBytes) throws
             IOException, ValidationException {
         var apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
         if (apisBytes == null) {
             throw fail("Cannot get APIS");
         }
         var jar = LoadedJar.fromBytes(codeBytes);
-        if (jar == null) {
-            throw fail("Cannot load classes");
-        }
         var classMap = jar.classBytesByQualifiedNames;
         var structDB = new StructDB(classMap);
         Method[] eeMethods;

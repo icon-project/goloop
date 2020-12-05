@@ -89,6 +89,7 @@ const (
 	StatusTimeout
 	StatusStackOverflow
 	StatusSkipTransaction
+	StatusInvalidPackage
 	StatusReverted Status = 32
 
 	StatusLimitRev5 Status = 99
@@ -127,6 +128,8 @@ func (s Status) String() string {
 		return "StackOverflow"
 	case StatusSkipTransaction:
 		return "SkipTransaction"
+	case StatusInvalidPackage:
+		return "InvalidPackage"
 	default:
 		if s >= StatusReverted {
 			return fmt.Sprintf("Reverted(%d)", s-StatusReverted)

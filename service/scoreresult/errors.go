@@ -76,6 +76,7 @@ const (
 	TimeoutError
 	StackOverflowError
 	SkipTransactionError
+	InvalidPackageError
 	RevertedError = errors.CodeSCORE + errors.Code(module.StatusReverted)
 )
 
@@ -94,5 +95,6 @@ var (
 	ErrTimeout                = errors.NewBase(TimeoutError, "Timeout")
 	ErrStackOverflow          = errors.NewBase(StackOverflowError, "StackOverflow")
 	ErrSkipTransaction        = errors.NewBase(SkipTransactionError, "SkipTransaction")
+	ErrInvalidPackage         = errors.NewBase(InvalidPackageError, "InvalidPackage")
 	ErrReverted               = errors.NewBase(RevertedError, "Reverted")
 )
