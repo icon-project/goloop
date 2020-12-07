@@ -504,7 +504,10 @@ func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte)
 }
 
 func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	h.log.Panicln("Unexpected call OnResult() from GetAPI()")
+	if status == nil {
+		h.log.Panicln("Unexpected call OnResult() from GetAPI()")
+	}
+	h.OnAPI(status, nil)
 }
 
 func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) {
