@@ -26,21 +26,28 @@ import (
 const (
 	prepStatusVersion1 = iota + 1
 	prepStatusVersion  = prepStatusVersion1
-
-	PrepGradeMain = iota
-	PrepGradeSub
-	PrepGradeCandidate
-
-	StatusActive = iota
-	StatusUnregistered
-	StatusDisqualified
 )
 
-type PRepStatusSnapshot struct {
-	icobject.NoDatabase
-	grade        int
+type Grade int
+
+const (
+	Main Grade = iota
+	Sub
+	Candidate
+)
+
+type Status int
+
+const (
+	Active Status = iota
+	Unregistered
+	Disqualified
+)
+
+type PRepStatus struct {
+	grade        Grade
+	status       Status
 	penalty      int
-	state        int
 	delegated    *big.Int
 	bonded       *big.Int
 	vTotal       int
@@ -51,6 +58,57 @@ type PRepStatusSnapshot struct {
 	lastHeight   int
 }
 
+func (ps *PRepStatus) Bonded() *big.Int {
+	return ps.bonded
+}
+
+func (ps *PRepStatus) Grade() Grade {
+	return ps.grade
+}
+
+func (ps *PRepStatus) Status() Status {
+	return ps.status
+}
+
+func (ps *PRepStatus) LastHeight() int {
+	return ps.lastHeight
+}
+
+func (ps *PRepStatus) Delegated() *big.Int {
+	return ps.delegated
+}
+
+func (ps *PRepStatus) GetBondedDelegation() *big.Int {
+	// TODO: Not implemented
+	return ps.delegated
+}
+
+func (ps *PRepStatus) VTotal() int {
+	return ps.vTotal
+}
+
+func (ps *PRepStatus) VFail() int {
+	return ps.vFail
+}
+
+func (ps *PRepStatus) ToJSON() map[string]interface{} {
+	data := make(map[string]interface{})
+	data["grade"] = ps.grade
+	data["status"] = ps.status
+	data["lastHeight"] = ps.lastHeight
+	data["delegated"] = ps.delegated
+	data["bonded"] = ps.bonded
+	data["bondedDelegation"] = ps.GetBondedDelegation()
+	data["totalBlocks"] = ps.vTotal
+	data["validatedBlocks"] = ps.vTotal - ps.vFail
+	return data
+}
+
+type PRepStatusSnapshot struct {
+	icobject.NoDatabase
+	PRepStatus
+}
+
 func (pss *PRepStatusSnapshot) Version() int {
 	return 0
 }
@@ -59,7 +117,7 @@ func (pss *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
 		&pss.grade,
 		&pss.penalty,
-		&pss.state,
+		&pss.status,
 		&pss.delegated,
 		&pss.bonded,
 		&pss.vTotal,
@@ -76,7 +134,7 @@ func (pss *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		pss.grade,
 		pss.penalty,
-		pss.state,
+		pss.status,
 		pss.delegated,
 		pss.bonded,
 		pss.vTotal,
@@ -95,7 +153,7 @@ func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
 	}
 	return pss.grade == pss1.grade &&
 		pss.penalty == pss1.penalty &&
-		pss.state == pss1.state &&
+		pss.status == pss1.status &&
 		pss.delegated.Cmp(pss1.delegated) == 0 &&
 		pss.bonded.Cmp(pss.bonded) == 0 &&
 		pss.vTotal == pss.vTotal &&
@@ -106,33 +164,37 @@ func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
 		pss.lastHeight == pss.lastHeight
 }
 
-func newPRepStatusSnapshot(tag icobject.Tag) *PRepStatusSnapshot {
+func newPRepStatusSnapshot(_ icobject.Tag) *PRepStatusSnapshot {
 	return &PRepStatusSnapshot{
-		delegated: new(big.Int),
-		bonded:    new(big.Int),
+		PRepStatus: PRepStatus{
+			delegated: new(big.Int),
+			bonded:    new(big.Int),
+		},
+	}
+}
+
+func NewPRepStatusSnapshot(grade Grade, delegated, bonded *big.Int) *PRepStatusSnapshot {
+	return &PRepStatusSnapshot{
+		PRepStatus: PRepStatus{
+			grade:     grade,
+			delegated: delegated,
+			bonded:    bonded,
+		},
 	}
 }
 
 type PRepStatusState struct {
-	address      module.Address
-	grade        int
-	status       int
-	penalty      int
-	delegated    *big.Int
-	bonded       *big.Int
-	vTotal       int
-	vFail        int
-	vFailCount   int
-	vPenaltyMask int
-	lastState    int
-	lastHeight   int
+	address module.Address
+	PRepStatus
 }
 
 func newPRepStatusState(address module.Address) *PRepStatusState {
 	return &PRepStatusState{
-		address:   address,
-		delegated: new(big.Int),
-		bonded:    new(big.Int),
+		address: address,
+		PRepStatus: PRepStatus{
+			delegated: new(big.Int),
+			bonded:    new(big.Int),
+		},
 	}
 }
 
@@ -154,41 +216,27 @@ func (ps *PRepStatusState) Reset(pss *PRepStatusSnapshot) {
 }
 
 func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {
-	pss := &PRepStatusSnapshot{}
-	pss.grade = ps.grade
-	pss.penalty = ps.penalty
-	pss.delegated = ps.delegated
-	pss.bonded = ps.bonded
-	pss.vTotal = ps.vTotal
-	pss.vFail = ps.vFail
-	pss.vFailCount = ps.vFailCount
-	pss.vPenaltyMask = ps.vPenaltyMask
-	pss.lastState = ps.lastState
-	pss.lastHeight = ps.lastHeight
-	return pss
+	return &PRepStatusSnapshot{PRepStatus: ps.PRepStatus}
 }
 
 func (ps PRepStatusState) IsEmpty() bool {
-	return ps.status == StatusActive && ps.grade == PrepGradeMain
+	return ps.status == Active && ps.grade == Main
 }
 
 func (ps PRepStatusState) GetAddress() module.Address {
 	return ps.address
 }
 
-func (ps *PRepStatusState) SetGrade(g int) {
+func (ps *PRepStatusState) SetGrade(g Grade) {
 	ps.grade = g
 }
 
-func (ps *PRepStatusState) SetStatus(s int) {
+func (ps *PRepStatusState) SetStatus(s Status) {
 	ps.status = s
 }
 
 func (ps *PRepStatusState) GetPRepStatusInfo() map[string]interface{} {
-	data := make(map[string]interface{})
-	data["grade"] = ps.grade
-	data["status"] = ps.status
-	return data
+	return ps.ToJSON()
 }
 
 func NewPRepStatusStateWithSnapshot(a module.Address, pss *PRepStatusSnapshot) *PRepStatusState {

@@ -48,7 +48,7 @@ func (s *State) Reset(ss *Snapshot) error {
 		}
 	}
 	for _, ps := range s.mutablePReps {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
 		value, err := s.trie.Get(key)
 		if err != nil {
 			return err
@@ -80,26 +80,26 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypeAccount, as.GetSnapshot())
 
 		if as.IsEmpty() {
-			if err := s.trie.Delete(key); err != nil {
+			if _, err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
 			}
 		} else {
-			if err := s.trie.Set(key, value); err != nil {
+			if _, err := s.trie.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
 	}
 
 	for _, ps := range s.mutablePReps {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
 		value := icobject.New(TypePRep, ps.GetSnapshot())
 
 		if ps.IsEmpty() {
-			if err := s.trie.Delete(key); err != nil {
+			if _, err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete prep key %x, err+%+v", key, err)
 			}
 		} else {
-			if err := s.trie.Set(key, value); err != nil {
+			if _, err := s.trie.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
@@ -110,11 +110,11 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypePRepStatus, ps.GetSnapshot())
 
 		if ps.IsEmpty() {
-			if err := s.trie.Delete(key); err != nil {
+			if _, err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete prepStatus key %x, err+%+v", key, err)
 			}
 		} else {
-			if err := s.trie.Set(key, value); err != nil {
+			if _, err := s.trie.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}

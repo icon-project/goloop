@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -29,8 +28,7 @@ const (
 	prepVersion  = prepVersion1
 )
 
-type PRepSnapshot struct {
-	icobject.NoDatabase
+type PRep struct {
 	name        string
 	country     string
 	city        string
@@ -38,7 +36,49 @@ type PRepSnapshot struct {
 	website     string
 	details     string
 	p2pEndpoint string
-	node        *common.Address
+	node        module.Address
+}
+
+func (p *PRep) Details() string {
+	return p.details
+}
+
+func (p *PRep) Website() string {
+	return p.website
+}
+
+func (p *PRep) Email() string {
+	return p.email
+}
+
+func (p *PRep) Name() string {
+	return p.name
+}
+
+func (p *PRep) Country() string {
+	return p.country
+}
+
+func (p *PRep) City() string {
+	return p.city
+}
+
+func (p *PRep) Node() module.Address {
+	return p.node
+}
+
+type PRepSnapshot struct {
+	icobject.NoDatabase
+	owner module.Address
+	PRep
+}
+
+func (p *PRepSnapshot) Owner() module.Address {
+	return p.owner
+}
+
+func (p *PRepSnapshot) SetOwner(address module.Address) {
+	p.owner = address
 }
 
 func (p *PRepSnapshot) Version() int {
@@ -82,81 +122,66 @@ func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 		p.email == ps.email &&
 		p.website == ps.website &&
 		p.details == ps.details &&
-		p.p2pEndpoint == ps.p2pEndpoint
+		p.p2pEndpoint == ps.p2pEndpoint &&
+		p.node == ps.node
 }
 
-func newPRepSnapshot(tag icobject.Tag) *PRepSnapshot {
+func NewPRepSnapshot(city, country, details, email, name, website string, node module.Address) *PRepSnapshot {
+	return &PRepSnapshot{
+		PRep: PRep{
+			node:    node,
+			city:    city,
+			country: country,
+			details: details,
+			email:   email,
+			name:    name,
+			website: website,
+		},
+	}
+}
+
+func newPRepSnapshot(_ icobject.Tag) *PRepSnapshot {
 	return &PRepSnapshot{}
 }
 
 type PRepState struct {
-	address     module.Address
-	name        string
-	country     string
-	city        string
-	email       string
-	website     string
-	details     string
-	p2pEndpoint string
-	//registerBlockHeight uint
-	//registerTxIndex     uint
-	//iRep                common.HexInt
-	//iRepBlockHeight     uint
-	node *common.Address
-	//bondList            []common.Address
+	owner module.Address
+	PRep
 }
 
-func newPRepState(address module.Address) *PRepState {
-	return &PRepState{
-		address: address,
-	}
+func (p *PRepState) Owner() module.Address {
+	return p.owner
+}
+
+func newPRepState(owner module.Address) *PRepState {
+	return &PRepState{owner: owner}
 }
 
 func (p *PRepState) Clear() {
-	p.name = ""
-	p.country = ""
+	p.owner = nil
 	p.city = ""
-	p.email = ""
-	p.website = ""
+	p.country = ""
 	p.details = ""
-	p.p2pEndpoint = ""
+	p.email = ""
+	p.name = ""
 	p.node = nil
+	p.p2pEndpoint = ""
+	p.website = ""
 }
 
 func (p *PRepState) Reset(ps *PRepSnapshot) {
-	p.name = ps.name
-	p.country = ps.country
-	p.city = ps.city
-	p.email = ps.email
-	p.website = ps.website
-	p.details = ps.details
-	p.p2pEndpoint = ps.p2pEndpoint
-	p.node = ps.node
+	p.PRep = ps.PRep
 }
 
 func (p *PRepState) GetSnapshot() *PRepSnapshot {
-	ps := &PRepSnapshot{}
-	ps.name = p.name
-	ps.country = p.country
-	ps.city = p.city
-	ps.email = p.email
-	ps.website = p.website
-	ps.details = p.details
-	ps.p2pEndpoint = p.p2pEndpoint
-	ps.node = p.node
-	return ps
+	return &PRepSnapshot{PRep: p.PRep}
 }
 
 func (p PRepState) IsEmpty() bool {
 	return p.name == ""
 }
 
-func (p PRepState) GetAddress() module.Address {
-	return p.address
-}
-
-func (p *PRepState) SetPRep(name string, email string, website string, country string,
-	city string, details string, endpoint string, node module.Address) error {
+func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
 	p.name = name
 	p.email = email
 	p.website = website
@@ -164,7 +189,7 @@ func (p *PRepState) SetPRep(name string, email string, website string, country s
 	p.city = city
 	p.details = details
 	p.p2pEndpoint = endpoint
-	p.node = node.(*common.Address)
+	p.node = node
 	return nil
 }
 

@@ -121,8 +121,8 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	if err != nil {
 		return err
 	}
-	ips.SetGrade(icstate.PrepGradeCandidate)
-	ips.SetStatus(icstate.StatusActive)
+	ips.SetGrade(icstate.Candidate)
+	ips.SetStatus(icstate.Active)
 	return ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
 }
 
@@ -149,7 +149,7 @@ func (s *chainScore) Ex_unregisterPRep() error {
 	if err != nil {
 		return err
 	}
-	ips.SetGrade(icstate.PrepGradeCandidate)
-	ips.SetStatus(icstate.StatusUnregistered)
+	ips.SetGrade(icstate.Candidate)
+	ips.SetStatus(icstate.Unregistered)
 	return nil
 }

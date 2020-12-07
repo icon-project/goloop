@@ -58,7 +58,8 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	}
 	claim := ToIScoreClaim(obj)
 	claim = claim.Added(amount)
-	return s.trie.Set(key, icobject.New(TypeIScoreClaim, claim))
+	_, err = s.trie.Set(key, icobject.New(TypeIScoreClaim, claim))
+	return err
 }
 
 func (s *State) AddEventDelegation(offset int, index int, from module.Address, delegations icstate.Delegations) error {
@@ -66,7 +67,8 @@ func (s *State) AddEventDelegation(offset int, index int, from module.Address, d
 	ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
 	ed.From = from.(*common.Address)
 	ed.Delegations = delegations
-	return s.trie.Set(key, icobject.New(TypeEventDelegation, ed))
+	_, err := s.trie.Set(key, icobject.New(TypeEventDelegation, ed))
+	return err
 }
 
 func (s *State) AddEventEnable(offset int, index int, target module.Address, enable bool) error {
@@ -74,7 +76,8 @@ func (s *State) AddEventEnable(offset int, index int, target module.Address, ena
 	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
 	obj.Target = target.(*common.Address)
 	obj.Enable = enable
-	return s.trie.Set(key, icobject.New(TypeEventEnable, obj))
+	_, err := s.trie.Set(key, icobject.New(TypeEventEnable, obj))
+	return err
 }
 
 func (s *State) AddEventPeriod(offset int, index int, irep *big.Int, rrep *big.Int) error {
@@ -82,14 +85,16 @@ func (s *State) AddEventPeriod(offset int, index int, irep *big.Int, rrep *big.I
 	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
 	obj.Irep = irep
 	obj.Rrep = rrep
-	return s.trie.Set(key, icobject.New(TypeEventPeriod, obj))
+	_, err := s.trie.Set(key, icobject.New(TypeEventPeriod, obj))
+	return err
 }
 
 func (s *State) AddEventValidator(offset int, index int, validators []*common.Address) error {
 	key := EventKey.Append(offset, index).Build()
 	obj := newEventValidator(icobject.MakeTag(TypeEventValidator, 0))
 	obj.validators = validators
-	return s.trie.Set(key, icobject.New(TypeEventValidator, obj))
+	_, err := s.trie.Set(key, icobject.New(TypeEventValidator, obj))
+	return err
 }
 
 func (s *State) AddBlockProduce(offset int, proposerIndex int, voteCount int, voteMask int64) error {
@@ -98,7 +103,8 @@ func (s *State) AddBlockProduce(offset int, proposerIndex int, voteCount int, vo
 	obj.ProposerIndex = proposerIndex
 	obj.VoteCount = voteCount
 	obj.VoteMask = voteMask
-	return s.trie.Set(key, icobject.New(TypeBlockProduce, obj))
+	_, err := s.trie.Set(key, icobject.New(TypeBlockProduce, obj))
+	return err
 }
 
 func (s *State) AddGlobal(blockHeight int64, offsetLimit int) error {
@@ -106,7 +112,8 @@ func (s *State) AddGlobal(blockHeight int64, offsetLimit int) error {
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, 0))
 	obj.StartBlockHeight = blockHeight
 	obj.OffsetLimit = offsetLimit
-	return s.trie.Set(key, icobject.New(TypeGlobal, obj))
+	_, err := s.trie.Set(key, icobject.New(TypeGlobal, obj))
+	return err
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {

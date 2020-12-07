@@ -102,6 +102,10 @@ type ExtensionStateImpl struct {
 	back     *icstage.State
 }
 
+func (s *ExtensionStateImpl) State() *icstate.State {
+	return s.state
+}
+
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	// TODO add front, back and base snapshot
 	return &extensionSnapshotImpl{
