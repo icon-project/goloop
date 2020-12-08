@@ -64,6 +64,14 @@ type (
 	}
 )
 
+const (
+	DataTypeCall    = "call"
+	DataTypeMessage = "message"
+	DataTypeDeploy  = "deploy"
+	DataTypeDeposit = "deposit"
+	DataTypePatch   = "patch"
+)
+
 func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
 	cm := cc.ContractManager()
 	sas := cc.GetAccountState(to.ID())
@@ -146,7 +154,7 @@ func (cs *contractStoreImpl) notify(err error) {
 
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error) {
 	var handler ContractHandler
-	ch := NewCommonHandler(from, to, value, cm.log)
+	ch := NewCommonHandler(from, to, value, false, cm.log)
 	switch ctype {
 	case CTypeTransfer:
 		if to.IsContract() {
@@ -180,7 +188,7 @@ func (cm *contractManager) GetCallHandler(
 	ctype int,
 	data *codec.TypedObj,
 ) (ContractHandler, error) {
-	ch := NewCommonHandler(from, to, value, cm.log)
+	ch := NewCommonHandler(from, to, value, true, cm.log)
 	switch ctype {
 	case CTypeTransfer:
 		if to.IsContract() {

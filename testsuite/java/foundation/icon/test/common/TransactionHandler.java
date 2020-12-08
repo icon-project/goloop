@@ -96,7 +96,7 @@ public class TransactionHandler {
         return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
     }
 
-    private byte[] makeJar(String name, Class<?>[] classes) {
+    public byte[] makeJar(String name, Class<?>[] classes) {
         byte[] jarBytes = JarBuilder.buildJarForExplicitMainAndClasses(name, classes);
         return new OptimizedJarBuilder(false, jarBytes, true)
                 .withUnreachableMethodRemover()
@@ -109,7 +109,7 @@ public class TransactionHandler {
         return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, null, contentType);
     }
 
-    private Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
+    public Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
             throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())

@@ -862,7 +862,7 @@ func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 
-	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), s.log)
+	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), false, s.log)
 	ah := contract.NewAcceptHandler(ch, txHash, auditTxHash)
 	status, _, _ := ah.ExecuteSync(s.cc)
 	return status

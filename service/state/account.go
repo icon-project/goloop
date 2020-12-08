@@ -72,6 +72,7 @@ type AccountState interface {
 	Clear()
 
 	IsContractOwner(owner module.Address) bool
+	SetContractOwner(owner module.Address) error
 	InitContractAccount(address module.Address) bool
 	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
 	APIInfo() (*scoreapi.Info, error)
@@ -87,8 +88,8 @@ type AccountState interface {
 	IsBlocked() bool
 	ContractOwner() module.Address
 
-	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
-	SetObjGraph(hash []byte, flags bool, nextHash int, objGraph []byte) error
+	GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error)
+	SetObjGraph(id []byte, flags bool, nextHash int, objGraph []byte) error
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
@@ -436,7 +437,7 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 			if err := s.objGraph.ResetDB(s.database); err != nil {
 				return err
 			}
-			s.objCache.Set(s.curContract.CodeHash(), s.objGraph)
+			s.objCache.Set(s.curContract.CodeID(), s.objGraph)
 		}
 
 		if (extension & ExDepositInfo) != 0 {
@@ -482,17 +483,17 @@ type accountStateImpl struct {
 	deposits depositList
 }
 
-func (s *accountStateImpl) GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error) {
-	obj := s.objCache.Get(hash)
+func (s *accountStateImpl) GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error) {
+	obj := s.objCache.Get(id)
 	return obj.Get(flags)
 }
 
-func (s *accountStateImpl) SetObjGraph(hash []byte, flags bool, nextHash int, objGraph []byte) error {
-	obj := s.objCache.Get(hash)
+func (s *accountStateImpl) SetObjGraph(id []byte, flags bool, nextHash int, objGraph []byte) error {
+	obj := s.objCache.Get(id)
 	if no, err := obj.Changed(s.database, flags, nextHash, objGraph); err != nil {
 		return err
 	} else {
-		s.objCache.Set(hash, no)
+		s.objCache.Set(id, no)
 		return nil
 	}
 }
@@ -552,6 +553,14 @@ func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 		return false
 	}
 	return s.contractOwner.Equal(owner)
+}
+
+func (s *accountStateImpl) SetContractOwner(owner module.Address) error {
+	if !s.isContract {
+		return scoreresult.ContractNotFoundError.New("NotContract")
+	}
+	s.contractOwner = owner
+	return nil
 }
 
 func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
@@ -665,7 +674,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	}
 	var objGraph *objectGraph
 	if s.curContract != nil {
-		objGraph = s.objCache.Get(s.curContract.CodeHash())
+		objGraph = s.objCache.Get(s.curContract.CodeID())
 	}
 	return &accountSnapshotImpl{
 		database:      s.database,
@@ -870,6 +879,11 @@ func (a *accountROState) NextContract() Contract {
 
 func (a *accountROState) SetDisable(b bool) {
 	log.Panic("accountROState().SetDisable() is invoked")
+}
+
+func (a *accountROState) SetContractOwner(owner module.Address) error {
+	log.Panic("accountROState().SetOwner() is invoked")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) SetBlock(b bool) {

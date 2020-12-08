@@ -190,11 +190,11 @@ func (ws *worldStateImpl) ClearCache() {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
-			if err := ws.accounts.Delete(key); err != nil {
+			if _, err := ws.accounts.Delete(key); err != nil {
 				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
-			if err := ws.accounts.Set(key, s); err != nil {
+			if _, err := ws.accounts.Set(key, s); err != nil {
 				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}
@@ -248,11 +248,11 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
-			if err := ws.accounts.Delete(key); err != nil {
+			if _, err := ws.accounts.Delete(key); err != nil {
 				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
-			if err := ws.accounts.Set(key, s); err != nil {
+			if _, err := ws.accounts.Set(key, s); err != nil {
 				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}

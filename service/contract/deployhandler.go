@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -27,7 +28,6 @@ type DeployHandler struct {
 	content        []byte
 	contentType    string
 	params         []byte
-	txHash         []byte
 	preDefinedAddr module.Address
 }
 
@@ -121,7 +121,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		p = *params
 	}
 	return &DeployHandler{
-		CommonHandler:  NewCommonHandler(owner, state.SystemAddress, &zero, log),
+		CommonHandler:  NewCommonHandler(owner, state.SystemAddress, &zero, false, log),
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
@@ -130,11 +130,13 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 	}
 }
 
+// genContractAddr generate new contract address
 // nonce, timestamp, from
 // data = from(20 bytes) + timestamp (32 bytes) + if exists, nonce (32 bytes)
 // digest = sha3_256(data)
 // contract address = digest[len(digest) - 20:] // get last 20bytes
-func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byte {
+// If there is salt, it would be added to nonce value.
+func genContractAddr(from module.Address, timestamp int64, nonce, salt *big.Int) []byte {
 	md := sha3.New256()
 
 	// From ID(20 bytes)
@@ -146,13 +148,21 @@ func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byt
 
 	// Nonce (32 bytes)
 	if nonce != nil && nonce.Sign() != 0 {
-		var n common.HexInt
-		n.Set(nonce)
-		nb := n.Bytes()
+		nb := intconv.BigIntToBytes(nonce)
 		if len(nb) >= 32 {
 			md.Write(nb[:32])
 		} else {
 			md.Write(make([]byte, 32-len(nb))) // add padding
+			md.Write(nb)
+		}
+	}
+	// Salt (16 bytes)
+	if salt != nil && salt.Sign() != 0 {
+		nb := intconv.BigIntToBytes(salt)
+		if len(nb) >= 16 {
+			md.Write(nb[len(nb)-16:])
+		} else {
+			md.Write(make([]byte, 16-len(nb))) // add padding
 			md.Write(nb)
 		}
 	}
@@ -170,6 +180,23 @@ func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
+func getIDWithSalt(id []byte, salt *big.Int) []byte {
+	if salt == nil {
+		return id
+	}
+	var i big.Int
+	i.SetBytes(id)
+	i.Add(&i, salt)
+	bs := i.Bytes()
+	if len(bs) >= len(id) {
+		return bs[len(bs)-len(id):]
+	} else {
+		bs2 := make([]byte, len(id))
+		copy(bs2[len(id)-len(bs):], bs)
+		return bs2
+	}
+}
+
 func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	h.log = trace.LoggerOf(cc.Logger())
 	sysAs := cc.GetAccountState(state.SystemID)
@@ -177,12 +204,11 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	h.log.TSystemf("DEPLOY start to=%s", h.to)
 
 	update := false
-	info := cc.GetInfo()
-	if info == nil {
-		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), nil, nil
-	} else {
-		h.txHash = info[state.InfoTxHash].([]byte)
+	txInfo := cc.TransactionInfo()
+	if txInfo == nil {
+		return errors.CriticalUnknownError.New("InvalidTransactionInfo"), nil, nil
 	}
+	salt := cc.NextTransactionSalt()
 
 	var contractID []byte
 	var as state.AccountState
@@ -191,7 +217,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		if h.preDefinedAddr != nil {
 			contractID = h.preDefinedAddr.ID()
 		} else {
-			contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
+			contractID = genContractAddr(h.from, txInfo.Timestamp, txInfo.Nonce, salt)
 		}
 		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
@@ -234,16 +260,18 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
-	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
+	deployID := getIDWithSalt(txInfo.Hash, salt)
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	for h2a.Get(deployID) != nil {
+		return scoreresult.InvalidInstanceError.New("DuplicateDeployID"), nil, nil
+	}
+
+	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, deployID)
 	if err != nil {
 		return err, nil, nil
 	}
 
-	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	if prev := h2a.Get(h.txHash); prev != nil {
-		return scoreresult.ErrInvalidInstance, nil, nil
-	}
-	if err := h2a.Set(h.txHash, scoreAddr); err != nil {
+	if err := h2a.Set(deployID, scoreAddr); err != nil {
 		return err, nil, nil
 	}
 	if len(oldTx) > 0 {
@@ -254,7 +282,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), h.log), h.txHash, h.txHash)
+		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
 		cc.DeductSteps(acceptStepUsed)
 		if status != nil {
@@ -283,10 +311,6 @@ func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{{state.WorldIDStr, state.AccountWriteLock}}
 	return ctx.GetFuture(lq), nil
 }
-
-const (
-	deployUpdate = "on_update"
-)
 
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	h.log = trace.LoggerOf(cc.Logger())
@@ -321,7 +345,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(NewCommonHandler(h.from, scoreAddr, nil, h.log))
+	cgah := newCallGetAPIHandler(NewCommonHandler(h.from, scoreAddr, nil, false, h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, _, _ := cc.Call(cgah, cc.StepAvailable())
 	if status != nil {
@@ -344,7 +368,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
-		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.log),
+		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), false, h.log),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
@@ -480,7 +504,10 @@ func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte)
 }
 
 func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	h.log.Panicln("Unexpected call OnResult() from GetAPI()")
+	if status == nil {
+		h.log.Panicln("Unexpected call OnResult() from GetAPI()")
+	}
+	h.OnAPI(status, nil)
 }
 
 func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) {

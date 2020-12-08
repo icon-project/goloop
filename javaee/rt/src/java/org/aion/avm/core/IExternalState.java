@@ -155,10 +155,10 @@ public interface IExternalState {
      * Calls external method of target contract.
      */
     Result call(Address address,
-                       String method,
-                       Object[] params,
-                       BigInteger value,
-                       long stepLimit);
+                BigInteger value,
+                long stepLimit,
+                String dataType,
+                Object dataObj);
 
     int getOption();
 

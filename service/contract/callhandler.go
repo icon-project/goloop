@@ -2,7 +2,6 @@ package contract
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -22,11 +21,6 @@ type DataCallJSON struct {
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`
 }
-
-const (
-	DataTypeCall   = "call"
-	DataTypeDeploy = "deploy"
-)
 
 type CallHandler struct {
 	*CommonHandler
@@ -51,8 +45,8 @@ type CallHandler struct {
 	cs        ContractStore
 	isSysCall bool
 	isQuery   bool
-	codeID    string
-	codeHash  []byte
+	charged   bool
+	codeID    []byte
 }
 
 func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
@@ -63,8 +57,6 @@ func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error
 	}
 	return &CallHandler{
 		CommonHandler: ch,
-		disposed:      false,
-		isSysCall:     false,
 		external:      true,
 		name:          jso.Method,
 		params:        jso.Params,
@@ -167,22 +159,33 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 
 func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.log = trace.LoggerOf(cc.Logger())
-	h.cc = cc
-	h.cm = cc.ContractManager()
 
 	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.name)
-
-	callCharged := false
 	defer func() {
-		if err != nil && !callCharged {
-			if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-				err = scoreresult.OutOfStepError.New("FailToApplyContractCall")
-			}
-		}
 		if err != nil {
+			if !h.ApplyCallSteps(cc) {
+				err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+			}
 			h.log.TSystemf("INVOKE done status=%s msg=%v", err.Error(), err)
 		}
 	}()
+
+	return h.DoExecuteAsync(cc)
+}
+
+func (h *CallHandler) ApplyCallSteps(cc CallContext) bool {
+	if !h.charged {
+		h.charged = true
+		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
+	h.cc = cc
+	h.cm = cc.ContractManager()
 
 	// Prepare
 	if !h.to.IsContract() {
@@ -194,8 +197,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
-	h.codeHash = c.CodeHash()
-	h.codeID = fmt.Sprintf("%s-%x", h.to.String(), c.CodeHash())
+	h.codeID = c.CodeID()
 	// Before we set the codeID, it gets the last frame.
 	// Otherwise it would return current frameID for the code.
 	cc.SetFrameCodeID(h.codeID)
@@ -203,9 +205,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	// Calculate steps
 	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
 	if !h.forDeploy && !isSystem {
-		callCharged = true
-		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.OutOfStepError.New("FailToApplyContractCall")
+		if !h.ApplyCallSteps(cc) {
+			return scoreresult.OutOfStepError.New("OutOfStepForCall")
 		}
 	}
 
@@ -239,7 +240,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 
 	last := cc.GetLastEIDOf(h.codeID)
 	var state *eeproxy.CodeState
-	if next, objHash, _, err := h.as.GetObjGraph(h.codeHash, false); err == nil {
+	if next, objHash, _, err := h.as.GetObjGraph(h.codeID, false); err == nil {
 		state = &eeproxy.CodeState{
 			NexHash:   next,
 			GraphHash: objHash,
@@ -257,7 +258,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 		h.log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
 		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
 			h.value, cc.StepAvailable(), h.method.Name, h.paramObj,
-			eid, state)
+			h.codeID, eid, state)
 	}
 	h.lock.Unlock()
 
@@ -519,14 +520,14 @@ func (h *CallHandler) SetCode(code []byte) error {
 }
 
 func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	return h.as.GetObjGraph(h.codeHash, flags)
+	return h.as.GetObjGraph(h.codeID, flags)
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	if h.isQuery {
 		return nil
 	}
-	return h.as.SetObjGraph(h.codeHash, flags, nextHash, objGraph)
+	return h.as.SetObjGraph(h.codeID, flags, nextHash, objGraph)
 }
 
 type TransferAndCallHandler struct {
@@ -542,7 +543,30 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 	}
 }
 
-func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
+func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
+	h.log = trace.LoggerOf(cc.Logger())
+
+	h.log.TSystemf("TRANSFER INVOKE start score=%s method=%s", h.to, h.name)
+	defer func() {
+		if err != nil {
+			if !h.ApplyCallSteps(cc) {
+				err = scoreresult.OutOfStepError.New("OutOfStepForCall")
+			}
+			h.log.TSystemf("TRANSFER INVOKE done status=%s msg=%v", err.Error(), err)
+		}
+	}()
+
+	status, result, addr := h.th.DoExecuteSync(cc)
+	if status != nil {
+		if !h.ApplyCallSteps(cc) {
+			status = scoreresult.OutOfStepError.New("OutOfStepForCall")
+		}
+		go func() {
+			cc.OnResult(status, cc.StepUsed(), result, addr)
+		}()
+		return nil
+	}
+
 	as := cc.GetAccountState(h.to.ID())
 	apiInfo, err := as.APIInfo()
 	if err != nil {
@@ -563,14 +587,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		}
 	}
 
-	status, result, addr := h.th.ExecuteSync(cc)
-	if status == nil {
-		return h.CallHandler.ExecuteAsync(cc)
-	}
-	go func() {
-		cc.OnResult(status, cc.StepUsed(), result, addr)
-	}()
-	return nil
+	return h.CallHandler.DoExecuteAsync(cc)
 }
 
 func newTransferAndCallHandler(ch *CommonHandler, call *CallHandler) *TransferAndCallHandler {

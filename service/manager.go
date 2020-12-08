@@ -440,7 +440,7 @@ func (m *manager) Call(resultHash []byte,
 	if json.Unmarshal(js, &jso) != nil {
 		return nil, InvalidQueryError.Errorf("FailToParse(%s)", string(js))
 	}
-	if jso.DataType == nil || *jso.DataType != transaction.DataTypeCall {
+	if jso.DataType == nil || *jso.DataType != contract.DataTypeCall {
 		return nil, InvalidQueryError.New("InvalidDataType")
 	}
 

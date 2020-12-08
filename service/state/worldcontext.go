@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 )
@@ -92,8 +93,9 @@ type WorldContext interface {
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
-	GetTransactionInfo(ti *TransactionInfo) bool
+	TransactionInfo() *TransactionInfo
 	TransactionID() []byte
+	NextTransactionSalt() *big.Int
 	SetContractInfo(si *ContractInfo)
 	DepositIssueRate() *big.Int
 	FeeLimit() *big.Int
@@ -147,6 +149,8 @@ type worldContext struct {
 	info map[string]interface{}
 
 	skipTransaction bool
+
+	nextTxSalt *big.Int
 
 	platform Platform
 }
@@ -379,18 +383,32 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
 	c.txInfo = *ti
 	c.info = nil
+	c.nextTxSalt = nil
 }
 
-func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) bool {
+func (c *worldContext) TransactionInfo() *TransactionInfo {
 	if c.txInfo.Hash != nil {
-		*ti = c.txInfo
-		return true
+		info := c.txInfo
+		return &info
 	}
-	return false
+	return nil
 }
 
 func (c *worldContext) TransactionID() []byte {
 	return c.txInfo.Hash
+}
+
+// TransactionSalt returns index value to be used as salt.
+// On the first call in a transaction, it returns nil.
+// Then it returns 1 to N in a sequence.
+func (c *worldContext) NextTransactionSalt() *big.Int {
+	salt := c.nextTxSalt
+	if c.nextTxSalt == nil {
+		c.nextTxSalt = intconv.BigIntOne
+	} else {
+		c.nextTxSalt = new(big.Int).Add(c.nextTxSalt, intconv.BigIntOne)
+	}
+	return salt
 }
 
 func (c *worldContext) SetContractInfo(si *ContractInfo) {

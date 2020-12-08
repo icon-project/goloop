@@ -25,11 +25,9 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Transaction;
-import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.core.IExternalState;
-import org.aion.avm.utilities.JarBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +36,8 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
-import java.util.zip.ZipException;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
@@ -111,8 +109,8 @@ public class TransactionExecutor {
         proxy.close();
     }
 
-    private Method[] handleGetApi(String path) throws ZipException,
-            IOException, ValidationException  {
+    private Method[] handleGetApi(String path) throws IOException,
+            ValidationException {
         logger.trace(">>> path={}", path);
         byte[] jarBytes = fileIO.readFile(
                 Path.of(path, ExternalState.CODE_JAR).toString());
@@ -161,7 +159,10 @@ public class TransactionExecutor {
         }
 
         public void writeFile(String p, byte[] bytes) throws IOException {
-            Files.write(Paths.get(p), bytes);
+            var temp = Files.createTempFile(Paths.get(p).getParent(), null,
+                    null);
+            Files.write(temp, bytes);
+            Files.move(temp, Paths.get(p), StandardCopyOption.REPLACE_EXISTING);
         }
     };
 

@@ -36,8 +36,8 @@ type (
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
 		EnterQueryMode()
-		SetFrameCodeID(code string)
-		GetLastEIDOf(code string) int
+		SetFrameCodeID(id []byte)
+		GetLastEIDOf(id []byte) int
 		NewExecution() int
 		GetReturnEID() int
 		SetFeeProportion(addr module.Address, portion int)
@@ -83,8 +83,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	logger := trace.LoggerOf(ctx.Logger())
 	ti := ctx.TraceInfo()
 	if ti != nil {
-		var info state.TransactionInfo
-		if ctx.GetTransactionInfo(&info) {
+		if info := ctx.TransactionInfo(); info != nil {
 			if info.Group == ti.Group && int(info.Index) == ti.Index {
 				logger = trace.NewLogger(logger.Logger, ti.Callback)
 			}
@@ -417,18 +416,18 @@ func (cc *callContext) EnterQueryMode() {
 	cc.frame.enterQueryMode(cc)
 }
 
-func (cc *callContext) SetFrameCodeID(code string) {
+func (cc *callContext) SetFrameCodeID(id []byte) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	cc.frame.setCodeID(code)
+	cc.frame.setCodeID(id)
 }
 
-func (cc *callContext) GetLastEIDOf(code string) int {
+func (cc *callContext) GetLastEIDOf(id []byte) int {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	return cc.frame.getLastEIDOf(code)
+	return cc.frame.getLastEIDOf(id)
 }
 
 func (cc *callContext) NewExecution() int {

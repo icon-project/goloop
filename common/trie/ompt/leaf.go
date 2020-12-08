@@ -27,7 +27,7 @@ func newLeaf(hash, serialized []byte, blist [][]byte, state nodeState) (node, er
 	if err != nil {
 		return nil, err
 	}
-	value := bytesObject(vbytes)
+	value := trie.BytesObject(vbytes)
 
 	return &leaf{
 		nodeBase: nodeBase{

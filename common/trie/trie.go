@@ -57,11 +57,13 @@ type (
 		Next() error
 		Has() bool
 		Get() (Object, []byte, error)
+		GetTyped(t reflect.Type) (Object, []byte, error)
 	}
 
 	ImmutableForObject interface {
 		Empty() bool
 		Get(k []byte) (Object, error)
+		GetTyped(k []byte, t reflect.Type) (Object, error)
 		Hash() []byte
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() IteratorForObject
@@ -79,8 +81,9 @@ type (
 
 	MutableForObject interface {
 		Get(k []byte) (Object, error)
-		Set(k []byte, o Object) error
-		Delete(k []byte) error
+		GetTyped(k []byte, t reflect.Type) (Object, error)
+		Set(k []byte, o Object) (Object, error)
+		Delete(k []byte) (Object, error)
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
 		ClearCache()

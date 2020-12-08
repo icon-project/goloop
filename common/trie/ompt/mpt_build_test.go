@@ -113,7 +113,7 @@ func TestMerkleBuild(t *testing.T) {
 	dbase := db.NewMapDB()
 	m1 := NewMutableForObject(dbase, nil, reflect.TypeOf((*TestObject)(nil)))
 	for _, e := range entries {
-		if err := m1.Set(e.k, NewTestObject(dbase, e.v)); err != nil {
+		if _, err := m1.Set(e.k, NewTestObject(dbase, e.v)); err != nil {
 			t.Errorf("Fail to Set(%x,'%s')", e.k, e.v)
 			return
 		}

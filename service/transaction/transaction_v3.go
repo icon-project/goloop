@@ -180,7 +180,7 @@ func (tx *transactionV3) Verify() error {
 	// Checkups by data types
 	if tx.DataType != nil {
 		switch *tx.DataType {
-		case DataTypeCall:
+		case contract.DataTypeCall:
 			// element check
 			if tx.Data == nil {
 				return InvalidTxValue.Errorf("TxData for call is NIL")
@@ -188,7 +188,7 @@ func (tx *transactionV3) Verify() error {
 			if _, err := contract.ParseCallData(tx.Data); err != nil {
 				return err
 			}
-		case DataTypeDeploy:
+		case contract.DataTypeDeploy:
 			// element check
 			if tx.Data == nil {
 				return InvalidTxValue.New("TxData for deploy is NIL")
@@ -199,7 +199,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Value != nil && tx.Value.Sign() != 0 {
 				return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 			}
-		case DataTypePatch:
+		case contract.DataTypePatch:
 			if tx.Data == nil {
 				return InvalidTxValue.New("TxData for patch is NIL")
 			}
@@ -225,7 +225,7 @@ func (tx *transactionV3) ValidateNetwork(nid int) bool {
 }
 
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
-	if tx.DataType == nil || *tx.DataType != DataTypePatch {
+	if tx.DataType == nil || *tx.DataType != contract.DataTypePatch {
 		// stepLimit >= default step + input steps
 		cnt, err := MeasureBytesOfData(wc.Revision(), tx.Data)
 		if err != nil {
@@ -252,7 +252,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 
 	as2 := wc.GetAccountState(tx.To().ID())
-	if tx.DataType == nil || *tx.DataType == DataTypeCall || *tx.DataType == DataTypeMessage {
+	if tx.DataType == nil || *tx.DataType == contract.DataTypeCall || *tx.DataType == contract.DataTypeMessage {
 		if !as2.CanAcceptTx(wc) {
 			return ContractNotUsable.New("NotAcceptable")
 		}
@@ -286,7 +286,7 @@ func (tx *transactionV3) GetHandler(cm contract.ContractManager) (Handler, error
 }
 
 func (tx *transactionV3) Group() module.TransactionGroup {
-	if tx.DataType != nil && *tx.DataType == DataTypePatch {
+	if tx.DataType != nil && *tx.DataType == contract.DataTypePatch {
 		return module.TransactionGroupPatch
 	}
 	return module.TransactionGroupNormal

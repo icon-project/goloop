@@ -83,6 +83,14 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		}
 	}()
 
+	if !h.ApplyStepsForInterCall(cc) {
+		return scoreresult.OutOfStepError.New("OutOfStepForInterCall"), nil, nil
+	}
+
+	if cc.QueryMode() {
+		return scoreresult.AccessDeniedError.New("DepositControlIsNotAllowed"), nil, nil
+	}
+
 	as1 := cc.GetAccountState(h.from.ID())
 	if as1.IsContract() != h.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf(

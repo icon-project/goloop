@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 
@@ -53,6 +54,7 @@ const (
 )
 
 type ContractSnapshot interface {
+	CodeID() []byte
 	CodeHash() []byte
 	Code() ([]byte, error)
 	SetCode([]byte) error
@@ -146,6 +148,14 @@ func (c *contractSnapshotImpl) ContentType() string {
 
 func (c *contractSnapshotImpl) DeployTxHash() []byte {
 	return c.deployTxHash
+}
+
+func (c *contractSnapshotImpl) CodeID() []byte {
+	if len(c.deployTxHash) > 0 {
+		return c.deployTxHash
+	} else {
+		return crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(c))
+	}
 }
 
 func (c *contractSnapshotImpl) AuditTxHash() []byte {
