@@ -9,12 +9,11 @@ import (
 )
 
 const (
+	nodeCacheManager    = "nodeCM"
 	defaultAccountDepth = 5
 )
 
-type databaseWithCacheManager struct {
-	db.Database
-
+type cacheManager struct {
 	lock  sync.Mutex
 	path  string
 	depth [2]int
@@ -22,11 +21,11 @@ type databaseWithCacheManager struct {
 	store map[string]*NodeCache
 }
 
-func (m *databaseWithCacheManager) getWorldNodeCache() *NodeCache {
+func (m *cacheManager) getWorldNodeCache() *NodeCache {
 	return m.world
 }
 
-func (m *databaseWithCacheManager) getAccountNodeCache(id []byte) *NodeCache {
+func (m *cacheManager) getAccountNodeCache(id []byte) *NodeCache {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if m.depth[0] == 0 {
@@ -43,11 +42,20 @@ func (m *databaseWithCacheManager) getAccountNodeCache(id []byte) *NodeCache {
 	}
 }
 
+func cacheManagerOf(database db.Database) *cacheManager {
+	value := db.GetFlag(database, nodeCacheManager)
+	if cm, ok := value.(*cacheManager); ok {
+		return cm
+	} else {
+		return nil
+	}
+}
+
 // WorldNodeCacheOf get node cache of the world if it has.
 // If node cache for world state is not enabled, it returns nil.
 func WorldNodeCacheOf(database db.Database) *NodeCache {
-	if m, ok := database.(*databaseWithCacheManager); ok {
-		return m.getWorldNodeCache()
+	if cm := cacheManagerOf(database); cm != nil {
+		return cm.getWorldNodeCache()
 	}
 	return nil
 }
@@ -55,10 +63,11 @@ func WorldNodeCacheOf(database db.Database) *NodeCache {
 // AccountNodeCacheOf get node cache of the account specified by *id*.
 // If node cache for the account is not enabled, it returns nil.
 func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
-	if m, ok := database.(*databaseWithCacheManager); ok {
-		return m.getAccountNodeCache(id)
+	if cm := cacheManagerOf(database); cm != nil {
+		return cm.getAccountNodeCache(id)
+	} else {
+		return nil
 	}
-	return nil
 }
 
 // AttachManager attach cache manager to the database, and return it.
@@ -66,11 +75,12 @@ func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
 // mem is number of levels of tree items to store in the memory.
 // file is number of levels of tree items to store in files.
 func AttachManager(database db.Database, dir string, mem, file int) db.Database {
-	return &databaseWithCacheManager{
-		Database: database,
-		path:     dir,
-		depth:    [2]int{mem, file},
-		world:    NewNodeCache(defaultAccountDepth, 0, ""),
-		store:    make(map[string]*NodeCache),
-	}
+	return db.WithFlags(database, db.Flags{
+		nodeCacheManager: &cacheManager{
+			path:  dir,
+			depth: [2]int{mem, file},
+			world: NewNodeCache(defaultAccountDepth, 0, ""),
+			store: make(map[string]*NodeCache),
+		},
+	})
 }
