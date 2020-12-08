@@ -21,6 +21,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"math/big"
 )
 
 type contractManager struct {
@@ -28,11 +29,11 @@ type contractManager struct {
 	plt *platform
 }
 
-func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address) (contract.SystemScore, error) {
+func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	if contentID == contract.CID_CHAIN {
 		return newChainScore(cc, from)
 	}
-	return cm.ContractManager.GetSystemScore(contentID, cc, from)
+	return cm.ContractManager.GetSystemScore(contentID, cc, from, value)
 }
 
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {

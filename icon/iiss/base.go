@@ -100,8 +100,8 @@ func (tx *baseV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 }
 
 func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
-	var info state.TransactionInfo
-	if ok := ctx.GetTransactionInfo(&info); !ok {
+	info := ctx.TransactionInfo()
+	if info == nil {
 		return nil, errors.InvalidStateError.New("TransactionInfoUnavailable")
 	}
 	if info.Index != 0 {
