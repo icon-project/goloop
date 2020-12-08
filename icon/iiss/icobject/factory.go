@@ -18,25 +18,23 @@ package icobject
 
 import "github.com/icon-project/goloop/common/db"
 
+const (
+	objectFactoryName = "objectFactory"
+)
+
 type ImplFactory func(tag Tag) (Impl, error)
 
-type databaseWithFactory struct {
-	db.Database
-	factory ImplFactory
-}
-
 func AttachObjectFactory(database db.Database, factory ImplFactory) db.Database {
-	if dwf, ok := database.(*databaseWithFactory); ok {
-		return dwf
-	}
-	return &databaseWithFactory{
-		database, factory,
-	}
+	return db.WithFlags(database, db.Flags{
+		objectFactoryName: factory,
+	})
 }
 
 func FactoryOf(database db.Database) ImplFactory {
-	if dbf, ok := database.(*databaseWithFactory); ok {
-		return dbf.factory
+	flag := db.GetFlag(database, objectFactoryName)
+	if factory, ok := flag.(ImplFactory); ok {
+		return factory
+	} else {
+		return nil
 	}
-	return nil
 }
