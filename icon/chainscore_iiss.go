@@ -128,19 +128,18 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	ip, err := es.GetPRepState(address)
+
+	prep, err := es.GetPRepState(address)
 	if err != nil {
 		return nil, err
 	}
-	ips, err := es.GetPRepStatusState(address)
+
+	prepStatus, err := es.GetPRepStatusState(address)
 	if err != nil {
 		return nil, err
 	}
-	prepInfo := ip.GetPRep()
-	for k, v := range ips.GetPRepStatusInfo() {
-		prepInfo[k] = v
-	}
-	return prepInfo, nil
+
+	return iiss.MergeMaps(prep.ToJSON(), prepStatus.ToJSON()), nil
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {

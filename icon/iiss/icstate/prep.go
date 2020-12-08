@@ -71,6 +71,35 @@ func (p *PRep) Node() module.Address {
 	return p.node
 }
 
+func (p *PRep) Equal(other *PRep) bool {
+	if p == other {
+		return true
+	}
+
+	return p.name == other.name &&
+		p.country == other.country &&
+		p.city == other.city &&
+		p.email == other.email &&
+		p.website == other.website &&
+		p.details == other.details &&
+		p.p2pEndpoint == other.p2pEndpoint &&
+		p.node.Equal(other.node) &&
+		p.bonderList.Equal(other.bonderList)
+}
+
+func (p *PRep) ToJSON() map[string]interface{} {
+	data := make(map[string]interface{})
+	data["name"] = p.name
+	data["email"] = p.email
+	data["website"] = p.website
+	data["country"] = p.country
+	data["city"] = p.city
+	data["details"] = p.details
+	data["p2pEndpoint"] = p.p2pEndpoint
+	data["node"] = p.node
+	return data
+}
+
 type PRepSnapshot struct {
 	icobject.NoDatabase
 	owner module.Address
@@ -120,15 +149,7 @@ func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 	if ps == p {
 		return true
 	}
-	return p.name == ps.name &&
-		p.country == ps.country &&
-		p.city == ps.city &&
-		p.email == ps.email &&
-		p.website == ps.website &&
-		p.details == ps.details &&
-		p.p2pEndpoint == ps.p2pEndpoint &&
-		p.node.Equal(ps.node) &&
-		p.bonderList.Equal(ps.bonderList)
+	return p.PRep.Equal(&ps.PRep)
 }
 
 func NewPRepSnapshot(city, country, details, email, name, website string, node module.Address) *PRepSnapshot {
@@ -215,17 +236,7 @@ func (p *PRepState) BonderListInfo() []interface{} {
 }
 
 func (p *PRepState) GetPRep() map[string]interface{} {
-	data := make(map[string]interface{})
-	data["name"] = p.name
-	data["email"] = p.email
-	data["website"] = p.website
-	data["country"] = p.country
-	data["city"] = p.city
-	data["details"] = p.details
-	data["p2pEndpoint"] = p.p2pEndpoint
-	data["node"] = p.node
-	data["BonderList"] = p.bonderList
-	return data
+	return p.ToJSON()
 }
 
 func NewPRepStateWithSnapshot(a module.Address, ss *PRepSnapshot) *PRepState {

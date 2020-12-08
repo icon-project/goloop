@@ -91,6 +91,24 @@ func (ps *PRepStatus) VFail() int {
 	return ps.vFail
 }
 
+func (ps *PRepStatus) Equal(other *PRepStatus) bool {
+	if ps == other {
+		return true
+	}
+
+	return ps.grade == other.grade &&
+		ps.penalty == other.penalty &&
+		ps.status == other.status &&
+		ps.delegated.Cmp(other.delegated) == 0 &&
+		ps.bonded.Cmp(other.bonded) == 0 &&
+		ps.vTotal == other.vTotal &&
+		ps.vFail == other.vFail &&
+		ps.vFailCount == other.vFailCount &&
+		ps.vPenaltyMask == other.vPenaltyMask &&
+		ps.lastState == other.lastState &&
+		ps.lastHeight == other.lastHeight
+}
+
 func (ps *PRepStatus) ToJSON() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["grade"] = ps.grade
@@ -151,17 +169,7 @@ func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
 	if !ok {
 		return false
 	}
-	return pss.grade == pss1.grade &&
-		pss.penalty == pss1.penalty &&
-		pss.status == pss1.status &&
-		pss.delegated.Cmp(pss1.delegated) == 0 &&
-		pss.bonded.Cmp(pss.bonded) == 0 &&
-		pss.vTotal == pss.vTotal &&
-		pss.vFail == pss.vFail &&
-		pss.vFailCount == pss.vFailCount &&
-		pss.vPenaltyMask == pss.vPenaltyMask &&
-		pss.lastState == pss.lastState &&
-		pss.lastHeight == pss.lastHeight
+	return pss.PRepStatus.Equal(&pss1.PRepStatus)
 }
 
 func newPRepStatusSnapshot(_ icobject.Tag) *PRepStatusSnapshot {
