@@ -116,6 +116,25 @@ func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
 	return nobj, true, nil
 }
 
+func (m *mpt) getTypedObject(o trie.Object, tt reflect.Type) (trie.Object, bool, error) {
+	if o == nil {
+		return nil, false, nil
+	}
+	if t := reflect.TypeOf(o); t == tt {
+		return o, false, nil
+	}
+
+	vobj := reflect.New(tt.Elem())
+	nobj, ok := vobj.Interface().(trie.Object)
+	if !ok {
+		return nil, false, errors.New("Illegal type object")
+	}
+	if err := nobj.Reset(m.db, o.Bytes()); err != nil {
+		return o, false, err
+	}
+	return nobj, true, nil
+}
+
 func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 	serialized, cache := m.cache.Get(nibs, h)
 	if len(serialized) == 0 {
@@ -145,6 +164,25 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 func (m *mpt) Get(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	return m.doGet(k)
+}
+
+func (m *mpt) GetTyped(k []byte, t reflect.Type) (trie.Object, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.objectType != t {
+		ot := m.objectType
+		m.objectType = t
+		defer func() {
+			m.objectType = ot
+		}()
+	}
+	return m.doGet(k)
+}
+
+func (m *mpt) doGet(k []byte) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.get, 1)
 	}
@@ -221,7 +259,7 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	}
 }
 
-func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
+func (m *mpt) Set(k []byte, o trie.Object) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
@@ -238,17 +276,7 @@ func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
 	return old, err
 }
 
-func (m *mpt) Set(k []byte, o trie.Object) error {
-	_, err := m.doSet(k, o)
-	return err
-}
-
-func (m *mpt) Delete(k []byte) error {
-	_, err := m.doDelete(k)
-	return err
-}
-
-func (m *mpt) doDelete(k []byte) (trie.Object, error) {
+func (m *mpt) Delete(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
@@ -321,6 +349,17 @@ type iterator struct {
 
 func (i *iterator) Get() (trie.Object, []byte, error) {
 	return i.value, []byte(i.key), i.error
+}
+
+func (i *iterator) GetTyped(t reflect.Type) (trie.Object, []byte, error) {
+	if i.error != nil {
+		return i.value, []byte(i.key), i.error
+	}
+	if v, _, err := i.m.getTypedObject(i.value, t); err != nil {
+		return nil, nil, err
+	} else {
+		return v, []byte(i.key), i.error
+	}
 }
 
 func (i *iterator) appendItem(k string, n node) (node, error) {
@@ -557,6 +596,9 @@ func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 	bk, err := d.GetBucket(db.MerkleTrie)
 	if err != nil {
 		log.Panicln("NewImmutable fail to get bucket")
+	}
+	if t == nil {
+		t = typeBytesObject
 	}
 	return &mpt{
 		mptBase: mptBase{

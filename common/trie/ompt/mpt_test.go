@@ -128,10 +128,10 @@ func TestNewMPT(t *testing.T) {
 				var err error
 				if e.v != nil {
 					log.Printf("Set(%x,%x)", e.k, e.v)
-					err = got.Set(e.k, bytesObject(e.v))
+					_, err = got.Set(e.k, bytesObject(e.v))
 				} else {
 					log.Printf("Delete(%x)", e.k)
-					err = got.Delete(e.k)
+					_, err = got.Delete(e.k)
 				}
 				if err != nil {
 					t.Errorf("FAIL to set key to value")

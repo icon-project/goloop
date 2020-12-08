@@ -9,6 +9,8 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
+var typeBytesObject = reflect.TypeOf(bytesObject(nil))
+
 type mptForBytes struct {
 	*mpt
 }
@@ -23,7 +25,7 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 
 func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
 	obj := bytesObject(v)
-	old, err := m.mpt.doSet(k, obj)
+	old, err := m.mpt.Set(k, obj)
 	if old == nil {
 		return nil, err
 	}
@@ -32,7 +34,7 @@ func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
 }
 
 func (m *mptForBytes) Delete(k []byte) ([]byte, error) {
-	old, err := m.mpt.doDelete(k)
+	old, err := m.mpt.Delete(k)
 	if old == nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (m *mptForBytes) Resolve(bd merkle.Builder) {
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 	return &mptForBytes{
-		NewMPT(db, h, reflect.TypeOf(bytesObject(nil))),
+		NewMPT(db, h, typeBytesObject),
 	}
 }
 
