@@ -9,6 +9,30 @@ class InterCallInterface(InterfaceScore):
     def infinite_intercall(self, _to: Address, call_cnt: int):
         pass
 
+    @interface
+    def doNothing(self):
+        pass
+
+    @interface
+    def doRevert(self):
+        pass
+
+    @interface
+    def payableDoNothing(self):
+        pass
+
+    @interface
+    def payableDoRevert(self):
+        pass
+
+    @interface
+    def readOnlyDoNothing(self) -> str:
+        return ""
+
+    @interface
+    def readOnlyDoRevert(self) -> str:
+        return ""
+
 
 class ChainSCORE(InterfaceScore):
     @interface
@@ -106,3 +130,35 @@ class HelloWorld(IconScoreBase):
         Logger.info(f"value len={len(_value)}", TAG)
         # end test
         self._name.set(_prev_name)
+
+    @external
+    def callMethodOf(self, to: Address, method: int):
+        score = self.create_interface_score(to, InterCallInterface)
+        if method == 0:
+            score.doNothing()
+        elif method == 1:
+            score.doRevert()
+        elif method == 2:
+            # score.icx(10).doNothing()
+            self.call(to, "doNothing", {}, 10)
+        elif method == 3:
+            # score.icx(10).doRevert()
+            self.call(to, "doRevert", {}, 10)
+        elif method == 4:
+            # score.icx(10).payableDoNothing()
+            self.call(to, "payableDoNothing", {}, 10)
+        elif method == 5:
+            # score.icx(10).payableDoRevert()
+            self.call(to, "payableDoRevert", {}, 10)
+        elif method == 6:
+            score.readOnlyDoNothing()
+        elif method == 7:
+            score.readOnlyDoRevert()
+        elif method == 8:
+            # score.icx(10).readOnlyDoNothing()
+            self.call(to, "readOnlyDoNothing", {}, 10)
+        elif method == 9:
+            # score.icx(10).readOnlyDoRevert()
+            self.call(to, "readOnlyDoRevert", {}, 10)
+        elif method == 10:
+            self.icx.transfer(to, 10)

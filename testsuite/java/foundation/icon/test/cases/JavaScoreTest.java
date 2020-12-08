@@ -721,7 +721,7 @@ class JavaScoreTest extends TestBase {
     }
 
     @Test
-    public void testDeployApi() throws Exception {
+    public void testAPIForDeploy() throws Exception {
         LOG.infoEntering("deploy", "DeployScore");
         var score = txHandler.deploy(ownerWallet, DeployScore.class, null);
         LOG.info("scoreAddress = " + score.getAddress());
@@ -761,11 +761,29 @@ class JavaScoreTest extends TestBase {
         assertEquals(scoreAddress, res.asAddress());
         LOG.infoExiting();
 
-        // revisit if we could handle this case later
-//        LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
-//        txres = txHandler.getResult(
-//                score.invoke(ownerWallet, "deployMultiple", params));
-//        assertSuccess(txres);
-//        LOG.infoExiting();
+        LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
+        txres = txHandler.getResult(
+                score.invoke(ownerWallet, "deployMultiple", params));
+        assertSuccess(txres);
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void deployInvalidJar() throws Exception {
+        LOG.infoEntering("deploy", "invalid jar");
+        var classes = new Class<?>[]{APITest.class};
+        byte[] jarBytes = txHandler.makeJar(classes[0].getName(), classes);
+        int len = jarBytes.length;
+        for (int i = 2; i <= 256; i *= 2) {
+            int modLen = len / i;
+            LOG.info("len=" + len + ", modLen=" + modLen);
+            var garbage = getRandomBytes(modLen);
+            System.arraycopy(garbage, 0, jarBytes, modLen, garbage.length);
+            var hash = txHandler.doDeploy(ownerWallet, jarBytes,
+                    Constants.CHAINSCORE_ADDRESS, null,
+                    Constants.DEFAULT_STEPS, Constants.CONTENT_TYPE_JAVA);
+            assertFailure(txHandler.getResult(hash));
+        }
+        LOG.infoExiting();
     }
 }

@@ -38,17 +38,17 @@ public class OptimizerGoldenTest extends GoldenTest {
             var methods = MethodUnpacker.readFrom(apis);
             Arrays.asList(methods).forEach(System.out::println);
             System.out.println();
+
+            var jar = LoadedJar.fromBytes(jarBytes);
+            var keys = jar.classBytesByQualifiedNames
+                    .keySet().stream().sorted().collect(Collectors.toList());
+            for (var key : keys) {
+                var bytes = jar.classBytesByQualifiedNames.get(key);
+                var cr = new ClassReader(bytes);
+                cr.accept(new TraceClassVisitor(new PrintWriter(System.out)), 0);
+            }
         } catch (IOException e) {
             Assertions.fail(e);
-        }
-        var jar = LoadedJar.fromBytes(jarBytes);
-        var keys = jar.classBytesByQualifiedNames
-                .keySet().stream().sorted().collect(Collectors.toList());
-        for (var key : keys) {
-            var bytes = jar.classBytesByQualifiedNames.get(key);
-            var cr = new ClassReader(bytes);
-            cr.accept(new TraceClassVisitor(new PrintWriter(System.out)),
-                    0);
         }
     }
 }

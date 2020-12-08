@@ -18,7 +18,7 @@ func NewPatchTransaction(p module.Patch, nid int, ts int64, w module.Wallet) (Tr
 	tx.To.SetTypeAndID(true, state.SystemID)
 	tx.TimeStamp.Value = ts
 	tx.NID = &common.HexInt64{Value: int64(nid)}
-	dt := DataTypePatch
+	dt := contract.DataTypePatch
 	tx.DataType = &dt
 	data := &contract.Patch{
 		Type: p.Type(),

@@ -15,14 +15,6 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-const (
-	DataTypeMessage = "message"
-	DataTypeCall    = "call"
-	DataTypeDeploy  = "deploy"
-	DataTypePatch   = "patch"
-	DataTypeDeposit = "deposit"
-)
-
 type Handler interface {
 	Prepare(ctx contract.Context) (state.WorldContext, error)
 	Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error)
@@ -57,15 +49,15 @@ func NewHandler(cm contract.ContractManager, from, to module.Address,
 		ctype = contract.CTypeTransfer
 	} else {
 		switch *dataType {
-		case DataTypeMessage:
+		case contract.DataTypeMessage:
 			ctype = contract.CTypeTransfer
-		case DataTypeDeploy:
+		case contract.DataTypeDeploy:
 			ctype = contract.CTypeDeploy
-		case DataTypeCall:
+		case contract.DataTypeCall:
 			ctype = contract.CTypeCall
-		case DataTypePatch:
+		case contract.DataTypePatch:
 			ctype = contract.CTypePatch
-		case DataTypeDeposit:
+		case contract.DataTypeDeposit:
 			ctype = contract.CTypeDeposit
 		default:
 			return nil, InvalidFormat.Errorf("IllegalDataType(type=%s)", *dataType)

@@ -36,3 +36,34 @@ class HelloWorld(IconScoreBase):
     @external
     def tokenFallback(self, _from: Address, _value: int, _data: bytes):
         Logger.info('tokenFallback is called', TAG)
+
+    @external
+    def doNothing(self):
+        Logger.info('doNothing', TAG)
+
+    @external
+    def doRevert(self):
+        Logger.info('doRevert', TAG)
+        revert('Abort')
+
+    @payable
+    @external
+    def payableDoNothing(self):
+        Logger.info('payableDoNothing', TAG)
+
+    @payable
+    @external
+    def payableDoRevert(self):
+        Logger.info('payableDoRevert', TAG)
+        revert('Abort')
+
+    @external(readonly=True)
+    def readOnlyDoNothing(self) -> str:
+        Logger.info('readOnlyDoNothing', TAG)
+        return ""
+
+    @external(readonly=True)
+    def readOnlyDoRevert(self) -> str:
+        Logger.info('readOnlyDoRevert', TAG)
+        revert('Abort')
+        return ""

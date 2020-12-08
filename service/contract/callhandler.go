@@ -22,11 +22,6 @@ type DataCallJSON struct {
 	Params json.RawMessage `json:"params"`
 }
 
-const (
-	DataTypeCall   = "call"
-	DataTypeDeploy = "deploy"
-)
-
 type CallHandler struct {
 	*CommonHandler
 
@@ -50,6 +45,7 @@ type CallHandler struct {
 	cs        ContractStore
 	isSysCall bool
 	isQuery   bool
+	charged   bool
 	codeID    []byte
 }
 
@@ -61,8 +57,6 @@ func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error
 	}
 	return &CallHandler{
 		CommonHandler: ch,
-		disposed:      false,
-		isSysCall:     false,
 		external:      true,
 		name:          jso.Method,
 		params:        jso.Params,
@@ -165,22 +159,33 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 
 func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.log = trace.LoggerOf(cc.Logger())
-	h.cc = cc
-	h.cm = cc.ContractManager()
 
 	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.name)
-
-	callCharged := false
 	defer func() {
-		if err != nil && !callCharged {
-			if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-				err = scoreresult.OutOfStepError.New("FailToApplyContractCall")
-			}
-		}
 		if err != nil {
+			if !h.ApplyCallSteps(cc) {
+				err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+			}
 			h.log.TSystemf("INVOKE done status=%s msg=%v", err.Error(), err)
 		}
 	}()
+
+	return h.DoExecuteAsync(cc)
+}
+
+func (h *CallHandler) ApplyCallSteps(cc CallContext) bool {
+	if !h.charged {
+		h.charged = true
+		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
+	h.cc = cc
+	h.cm = cc.ContractManager()
 
 	// Prepare
 	if !h.to.IsContract() {
@@ -200,9 +205,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	// Calculate steps
 	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
 	if !h.forDeploy && !isSystem {
-		callCharged = true
-		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.OutOfStepError.New("FailToApplyContractCall")
+		if !h.ApplyCallSteps(cc) {
+			return scoreresult.OutOfStepError.New("OutOfStepForCall")
 		}
 	}
 
@@ -539,7 +543,30 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 	}
 }
 
-func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
+func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
+	h.log = trace.LoggerOf(cc.Logger())
+
+	h.log.TSystemf("TRANSFER INVOKE start score=%s method=%s", h.to, h.name)
+	defer func() {
+		if err != nil {
+			if !h.ApplyCallSteps(cc) {
+				err = scoreresult.OutOfStepError.New("OutOfStepForCall")
+			}
+			h.log.TSystemf("TRANSFER INVOKE done status=%s msg=%v", err.Error(), err)
+		}
+	}()
+
+	status, result, addr := h.th.DoExecuteSync(cc)
+	if status != nil {
+		if !h.ApplyCallSteps(cc) {
+			status = scoreresult.OutOfStepError.New("OutOfStepForCall")
+		}
+		go func() {
+			cc.OnResult(status, cc.StepUsed(), result, addr)
+		}()
+		return nil
+	}
+
 	as := cc.GetAccountState(h.to.ID())
 	apiInfo, err := as.APIInfo()
 	if err != nil {
@@ -560,14 +587,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		}
 	}
 
-	status, result, addr := h.th.ExecuteSync(cc)
-	if status == nil {
-		return h.CallHandler.ExecuteAsync(cc)
-	}
-	go func() {
-		cc.OnResult(status, cc.StepUsed(), result, addr)
-	}()
-	return nil
+	return h.CallHandler.DoExecuteAsync(cc)
 }
 
 func newTransferAndCallHandler(ch *CommonHandler, call *CallHandler) *TransferAndCallHandler {

@@ -233,7 +233,7 @@ public class EEProxy extends Proxy {
     }
 
     public interface OnGetApiListener {
-        Method[] onGetApi(String path) throws ZipException, IOException,
+        Method[] onGetApi(String path) throws IOException,
                 ValidationException;
     }
 

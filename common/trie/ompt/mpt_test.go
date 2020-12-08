@@ -39,7 +39,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(bytesObject(nil)),
+				reflect.TypeOf(trie.BytesObject(nil)),
 				[]entry{
 					{[]byte{1, 2, 3}, []byte{1}},
 					{[]byte{1, 2, 3}, []byte{2}},
@@ -64,7 +64,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(bytesObject(nil)),
+				reflect.TypeOf(trie.BytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -94,7 +94,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(bytesObject(nil)),
+				reflect.TypeOf(trie.BytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -128,10 +128,10 @@ func TestNewMPT(t *testing.T) {
 				var err error
 				if e.v != nil {
 					log.Printf("Set(%x,%x)", e.k, e.v)
-					err = got.Set(e.k, bytesObject(e.v))
+					_, err = got.Set(e.k, trie.BytesObject(e.v))
 				} else {
 					log.Printf("Delete(%x)", e.k)
-					err = got.Delete(e.k)
+					_, err = got.Delete(e.k)
 				}
 				if err != nil {
 					t.Errorf("FAIL to set key to value")
@@ -299,7 +299,7 @@ func TestNullHash(t *testing.T) {
 		t.Errorf("NewMPTForBytes(nil).Hash() should return nil")
 	}
 
-	m2 := NewMPT(db.NewMapDB(), nil, reflect.TypeOf(bytesObject(nil)))
+	m2 := NewMPT(db.NewMapDB(), nil, reflect.TypeOf(trie.BytesObject(nil)))
 	if m2.Hash() != nil {
 		t.Errorf("NewMPT(nil).Hash() should return nil")
 	}

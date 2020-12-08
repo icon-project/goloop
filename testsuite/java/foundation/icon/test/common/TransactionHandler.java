@@ -109,7 +109,7 @@ public class TransactionHandler {
         return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, null, contentType);
     }
 
-    private Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
+    public Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
             throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())

@@ -6,7 +6,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -18,13 +17,23 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 	return &TransferHandler{ch}
 }
 
-func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
-	if cc.QueryMode() {
-		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.ErrOutOfStep, nil, nil
+func (h *TransferHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
+	h.log.TSystemf("TRANSFER start from=%s to=%s value=%s",
+		h.from, h.to, h.value)
+	defer func() {
+		if err != nil {
+			h.log.TSystemf("TRANSFER done status=%s msg=%v", err.Error(), err)
 		}
-		h.log.TSystemf("TRANSFER denied from=%s to=%s value=%s",
-			h.from, h.to, h.value)
+	}()
+
+	if !h.ApplyStepsForInterCall(cc) {
+		return scoreresult.OutOfStepError.New("OutOfStepForInterCall"), nil, nil
+	}
+	return h.DoExecuteSync(cc)
+}
+
+func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
+	if cc.QueryMode() {
 		return scoreresult.AccessDeniedError.New("TransferIsNotAllowed"), nil, nil
 	}
 	as1 := cc.GetAccountState(h.from.ID())
@@ -46,13 +55,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	bal2 := as2.GetBalance()
 	as2.SetBalance(new(big.Int).Add(bal2, h.value))
 
-	h.log.TSystemf("TRANSFER from=%s to=%s value=%s",
-		h.from, h.to, h.value)
-
 	if h.from.IsContract() {
-		if !h.to.IsContract() && !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.ErrOutOfStep, nil, nil
-		}
 		indexed := make([][]byte, 4, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.from.Bytes()

@@ -28,19 +28,19 @@ func RegisterValidationRule(v *jsonrpc.Validator) {
 }
 
 func isCall(fl validator.FieldLevel) bool {
-	return fl.Field().String() == "call"
+	return fl.Field().String() == contract.DataTypeCall
 }
 
 func isDeploy(fl validator.FieldLevel) bool {
-	return fl.Field().String() == "deploy"
+	return fl.Field().String() == contract.DataTypeDeploy
 }
 
 func isMessage(fl validator.FieldLevel) bool {
-	return fl.Field().String() == "message"
+	return fl.Field().String() == contract.DataTypeMessage
 }
 
 func isDeposit(fl validator.FieldLevel) bool {
-	return fl.Field().String() == "deposit"
+	return fl.Field().String() == contract.DataTypeDeposit
 }
 
 func DataParamValidation(sl validator.StructLevel) {
@@ -56,19 +56,19 @@ func DataParamValidation(sl validator.StructLevel) {
 		txParam := sl.Current().Interface().(TransactionParam)
 		if txParam.DataType != "" {
 			switch txParam.DataType {
-			case "call":
+			case contract.DataTypeCall:
 				if data, ok := txParam.Data.(map[string]interface{}); ok {
 					validateCallDataParam(sl, txParam.Data, data)
 				} else {
 					sl.ReportError(txParam.Data, "Data", "", "data", "")
 				}
-			case "deploy":
+			case contract.DataTypeDeploy:
 				if data, ok := txParam.Data.(map[string]interface{}); ok {
 					validateDeployDataParam(sl, txParam.Data, data)
 				} else {
 					sl.ReportError(txParam.Data, "Data", "", "data", "")
 				}
-			case "message":
+			case contract.DataTypeMessage:
 				if data, ok := txParam.Data.(string); ok {
 					if !hexString.MatchString(data) {
 						sl.ReportError(txParam.Data, "Data", "", "data", "")
@@ -76,7 +76,7 @@ func DataParamValidation(sl validator.StructLevel) {
 				} else {
 					sl.ReportError(txParam.Data, "Data", "", "data", "")
 				}
-			case "deposit":
+			case contract.DataTypeDeposit:
 				if data, ok := txParam.Data.(map[string]interface{}); ok {
 					validateDepositDataParam(sl, txParam.Data, data)
 				} else {

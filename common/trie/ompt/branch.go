@@ -37,7 +37,7 @@ func newBranch(h, s []byte, blist [][]byte, state nodeState) (node, error) {
 				return nil, err
 			}
 			if len(v) > 0 {
-				br.value = bytesObject(v)
+				br.value = trie.BytesObject(v)
 			}
 		}
 	}

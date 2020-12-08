@@ -72,6 +72,7 @@ type AccountState interface {
 	Clear()
 
 	IsContractOwner(owner module.Address) bool
+	SetContractOwner(owner module.Address) error
 	InitContractAccount(address module.Address) bool
 	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
 	APIInfo() (*scoreapi.Info, error)
@@ -554,6 +555,14 @@ func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 	return s.contractOwner.Equal(owner)
 }
 
+func (s *accountStateImpl) SetContractOwner(owner module.Address) error {
+	if !s.isContract {
+		return scoreresult.ContractNotFoundError.New("NotContract")
+	}
+	s.contractOwner = owner
+	return nil
+}
+
 func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 	if s.isContract == true {
 		log.Debug("already Contract account")
@@ -870,6 +879,11 @@ func (a *accountROState) NextContract() Contract {
 
 func (a *accountROState) SetDisable(b bool) {
 	log.Panic("accountROState().SetDisable() is invoked")
+}
+
+func (a *accountROState) SetContractOwner(owner module.Address) error {
+	log.Panic("accountROState().SetOwner() is invoked")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) SetBlock(b bool) {

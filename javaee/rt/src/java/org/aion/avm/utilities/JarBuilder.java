@@ -2,6 +2,7 @@ package org.aion.avm.utilities;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -13,7 +14,7 @@ import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
-
+import java.util.zip.ZipException;
 
 /**
  * A utility to build in-memory JAR representations for tests and examples.
@@ -109,14 +110,18 @@ public class JarBuilder {
     }
 
     public static byte[] getAPIsBytesFromJAR(byte[] jarBytes) throws IOException {
-        JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
-        JarEntry entry;
-        while ((entry = jis.getNextJarEntry()) != null) {
-            if (entry.getName().equals(APIS_NAME)) {
-                return jis.readAllBytes();
+        try {
+            JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
+            JarEntry entry;
+            while ((entry = jis.getNextJarEntry()) != null) {
+                if (entry.getName().equals(APIS_NAME)) {
+                    return jis.readAllBytes();
+                }
             }
+            return null;
+        } catch (IllegalArgumentException | EOFException e) {
+            throw new ZipException(e.getClass().getName());
         }
-        return null;
     }
 
     private final ByteArrayOutputStream byteStream;
