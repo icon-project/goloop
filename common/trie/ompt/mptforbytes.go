@@ -1,15 +1,11 @@
 package ompt
 
 import (
-	"reflect"
-
 	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
-
-var typeBytesObject = reflect.TypeOf(bytesObject(nil))
 
 type mptForBytes struct {
 	*mpt
@@ -24,12 +20,12 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 }
 
 func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
-	obj := bytesObject(v)
+	obj := trie.BytesObject(v)
 	old, err := m.mpt.Set(k, obj)
 	if old == nil {
 		return nil, err
 	}
-	ob := old.(bytesObject)
+	ob := old.(trie.BytesObject)
 	return ob.Bytes(), err
 }
 
@@ -38,7 +34,7 @@ func (m *mptForBytes) Delete(k []byte) ([]byte, error) {
 	if old == nil {
 		return nil, err
 	}
-	ob := old.(bytesObject)
+	ob := old.(trie.BytesObject)
 	return ob.Bytes(), err
 }
 
@@ -105,7 +101,7 @@ func (m *mptForBytes) Resolve(bd merkle.Builder) {
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 	return &mptForBytes{
-		NewMPT(db, h, typeBytesObject),
+		NewMPT(db, h, trie.TypeBytesObject),
 	}
 }
 

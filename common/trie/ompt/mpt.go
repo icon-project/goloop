@@ -598,7 +598,7 @@ func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 		log.Panicln("NewImmutable fail to get bucket")
 	}
 	if t == nil {
-		t = typeBytesObject
+		t = trie.TypeBytesObject
 	}
 	return &mpt{
 		mptBase: mptBase{
