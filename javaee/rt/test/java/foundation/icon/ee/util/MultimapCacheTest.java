@@ -16,17 +16,28 @@ public class MultimapCacheTest {
         systemGC();
         Assertions.assertEquals(2, mc.size());
         o1 = null;
-        systemGC();
-        mc.gc();
+        while (mc.size() == 2) {
+            systemGC();
+            mc.gc();
+        }
         Assertions.assertEquals(1, mc.size());
+    }
+
+    static void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     static void systemGC() {
         Object obj = new Object();
         var ref = new WeakReference<>(obj);
         obj = null;
-        while(ref.get() != null) {
+        do {
             System.gc();
-        }
+            sleep(100);
+        } while(ref.get() != null);
     }
 }
