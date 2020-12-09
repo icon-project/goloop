@@ -1,6 +1,6 @@
 package foundation.icon.ee.score;
 
-import foundation.icon.ee.types.Address;
+import foundation.icon.ee.util.MultimapCache;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppLoader;
@@ -8,49 +8,38 @@ import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.persistence.LoadedDApp;
 
 import java.io.IOException;
-import java.lang.ref.SoftReference;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class Loader {
-    private static final int MAX_ENTRY = 256;
+    private static final int CAP = 256;
 
-    private Map<Address, SoftReference<LoadedDApp>> dappCache = Collections.synchronizedMap(
-            new LinkedHashMap<>(
-                    MAX_ENTRY + 1,
-                    1.0f,
-                    true
-            ) {
-                protected boolean removeEldestEntry(Map.Entry entry) {
-                    return (size() > MAX_ENTRY);
-                }
-            });
+    private final MultimapCache<String, LoadedDApp> cache =
+            MultimapCache.newSoftCache(CAP);
 
-    public LoadedDApp load(Address addr, IExternalState es, AvmConfiguration conf) {
-        var dappSR = dappCache.get(addr);
-        var dapp = (dappSR != null) ? dappSR.get() : null;
+    public LoadedDApp load(IExternalState es, AvmConfiguration conf) {
+        var dapp = cache.remove(es.getCodeID(), da ->
+                da.hasSameGraphHash(es.getObjectGraphHash())
+        );
         if (dapp == null) {
-            if (es != null) {
-                byte[] code;
-                try {
-                    code = es.getTransformedCode();
-                } catch (IOException e) {
-                    var transformer = new Transformer(es, conf);
-                    transformer.transform();
-                    code = transformer.getTransformedCodeBytes();
-                    es.setTransformedCode(code);
-                }
-                try {
-                    dapp = DAppLoader.loadFromGraph(code, conf.preserveDebuggability);
-                } catch (IOException e) {
-                    RuntimeAssertionError.unexpected(e);
-                }
-                if (dapp != null) {
-                    dappCache.put(addr, new SoftReference<>(dapp));
-                }
+            byte[] code;
+            try {
+                code = es.getTransformedCode();
+            } catch (IOException e) {
+                var transformer = new Transformer(es, conf);
+                transformer.transform();
+                code = transformer.getTransformedCodeBytes();
+                es.setTransformedCode(code);
+            }
+            try {
+                dapp = DAppLoader.loadFromGraph(code,
+                        conf.preserveDebuggability);
+            } catch (IOException e) {
+                RuntimeAssertionError.unexpected(e);
             }
         }
         return dapp;
+    }
+
+    public void unload(String codeID, LoadedDApp dapp) {
+        cache.put(codeID, dapp);
     }
 }

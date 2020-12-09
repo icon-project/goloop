@@ -67,6 +67,10 @@ public class ExternalState implements IExternalState {
         this.graphHash = graphHash;
     }
 
+    public String getCodeID() {
+        return Path.of(codePath).getFileName().toString();
+    }
+
     @Override
     public byte[] getCode() {
         logger.trace("[getCode]");

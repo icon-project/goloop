@@ -245,6 +245,14 @@ public class LoadedDApp {
         stateCache = null;
     }
 
+    public boolean hasSameGraphHash(byte[] graphHash) {
+        if (stateCache == null) {
+            return false;
+        }
+        var gh = stateCache.getGraph().getGraphHash();
+        return Arrays.equals(gh, graphHash);
+    }
+
     /**
      * Attaches an IBlockchainRuntime instance to the Helper class (per contract) so DApp can
      * access blockchain related methods.
