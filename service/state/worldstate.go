@@ -88,7 +88,7 @@ func (ws *worldSnapshotImpl) Database() db.Database {
 
 func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key)
+	obj, err := ws.accounts.Get(key, nil)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%v", key, err)
 		return nil
@@ -135,7 +135,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	ws.accounts.Reset(snapshot.accounts)
 	for _, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
-		value, err := ws.accounts.Get(key)
+		value, err := ws.accounts.Get(key, nil)
 		if err != nil {
 			log.Errorf("Fail to read account value. err=%+v\n", err)
 		}
@@ -168,7 +168,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 		return a
 	}
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key)
+	obj, err := ws.accounts.Get(key, nil)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil
@@ -228,7 +228,7 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	}
 
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key)
+	obj, err := ws.accounts.Get(key, nil)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil

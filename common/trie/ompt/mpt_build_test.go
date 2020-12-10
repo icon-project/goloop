@@ -160,7 +160,7 @@ func TestMerkleBuild(t *testing.T) {
 	}
 
 	for _, e := range entries {
-		vobj, err := ss2.Get(e.k)
+		vobj, err := ss2.Get(e.k, nil)
 		if err != nil {
 			t.Errorf("Fail to get value for key=<%x>", e.k)
 			return
@@ -185,7 +185,7 @@ func TestMerkleBuild(t *testing.T) {
 
 	ss3 := NewImmutableForObject(dbase2, ss.Hash(), reflect.TypeOf((*TestObject)(nil)))
 	for _, e := range entries {
-		vobj, err := ss3.Get(e.k)
+		vobj, err := ss3.Get(e.k, nil)
 		if err != nil {
 			t.Errorf("Fail to get value for key=<%x>", e.k)
 			return

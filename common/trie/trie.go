@@ -46,11 +46,15 @@ type (
 
 	Object interface {
 		Bytes() []byte
-		Reset(s db.Database, k []byte) error
 		Flush() error
 		Equal(Object) bool
 		Resolve(builder merkle.Builder) error
 		ClearCache()
+	}
+
+	ObjectImpl interface {
+		Object
+		Reset(s db.Database, k []byte) error
 	}
 
 	IteratorForObject interface {
@@ -62,8 +66,7 @@ type (
 
 	ImmutableForObject interface {
 		Empty() bool
-		Get(k []byte) (Object, error)
-		GetTyped(k []byte, t reflect.Type) (Object, error)
+		Get(k []byte, t reflect.Type) (Object, error)
 		Hash() []byte
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() IteratorForObject
@@ -80,8 +83,7 @@ type (
 	}
 
 	MutableForObject interface {
-		Get(k []byte) (Object, error)
-		GetTyped(k []byte, t reflect.Type) (Object, error)
+		Get(k []byte, t reflect.Type) (Object, error)
 		Set(k []byte, o Object) (Object, error)
 		Delete(k []byte) (Object, error)
 		GetSnapshot() SnapshotForObject

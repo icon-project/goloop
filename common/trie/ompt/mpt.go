@@ -106,7 +106,7 @@ func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
 	}
 
 	vobj := reflect.New(m.objectType.Elem())
-	nobj, ok := vobj.Interface().(trie.Object)
+	nobj, ok := vobj.Interface().(trie.ObjectImpl)
 	if !ok {
 		return nil, false, errors.New("Illegal type object")
 	}
@@ -125,7 +125,7 @@ func (m *mpt) getTypedObject(o trie.Object, tt reflect.Type) (trie.Object, bool,
 	}
 
 	vobj := reflect.New(tt.Elem())
-	nobj, ok := vobj.Interface().(trie.Object)
+	nobj, ok := vobj.Interface().(trie.ObjectImpl)
 	if !ok {
 		return nil, false, errors.New("Illegal type object")
 	}
@@ -161,24 +161,18 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 	return deserialize(h, serialized, stateFlushed)
 }
 
-func (m *mpt) Get(k []byte) (trie.Object, error) {
+func (m *mpt) Get(k []byte, t reflect.Type) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	return m.doGet(k)
-}
-
-func (m *mpt) GetTyped(k []byte, t reflect.Type) (trie.Object, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	if m.objectType != t {
+	if t != nil && m.objectType != t {
 		ot := m.objectType
 		m.objectType = t
 		defer func() {
 			m.objectType = ot
 		}()
 	}
+
 	return m.doGet(k)
 }
 
