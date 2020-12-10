@@ -179,9 +179,9 @@ func (o *NoDatabase) Resolve(bd merkle.Builder) error {
 }
 
 func GetFromMutableForObject(trie trie.MutableForObject, key []byte) (trie.Object, error) {
-	return trie.Get(key, ObjectType)
+	return trie.Get(key)
 }
 
 func GetFromImmutableForObject(trie trie.ImmutableForObject, key []byte) (trie.Object, error) {
-	return trie.Get(key, ObjectType)
+	return trie.Get(key)
 }
