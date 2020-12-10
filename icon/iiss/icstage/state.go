@@ -58,7 +58,7 @@ func (s *State) Reset(ss *Snapshot) {
 
 func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	key := IScoreClaimKey.Append(addr).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (s *State) AddEventPeriod(offset int, index int, irep *big.Int, rrep *big.I
 
 func (s *State) getEventSize() (*icobject.ObjectBigInt, error) {
 	key := EventKey.Build()
-	o, err := s.trie.Get(key)
+	o, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}

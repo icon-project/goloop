@@ -44,7 +44,7 @@ func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
 
 func (ss *Snapshot) GetGlobal() (*Global, error) {
 	key := GlobalKey.Build()
-	o, err := ss.trie.Get(key)
+	o, err := icobject.GetFromImmutableForObject(ss.trie, key)
 	if err != nil {
 		return nil, err
 	}

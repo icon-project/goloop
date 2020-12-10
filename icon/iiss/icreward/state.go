@@ -49,7 +49,7 @@ func (s *State) Reset(ss *Snapshot) {
 
 func (s *State) GetGlobal() (*Global, error) {
 	key := GlobalKey.Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (s *State) SetGlobal(global *Global) error {
 
 func (s *State) GetIScore(addr module.Address) (*IScore, error) {
 	key := IScoreKey.Append(addr).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *State) DeleteDelegated(addr module.Address) error {
 
 func (s *State) GetDelegating(addr module.Address) (*Delegating, error) {
 	key := DelegatingKey.Append(addr).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *State) SetValidators(vs *Validators) error {
 
 func (s *State) GetValidators() (*Validators, error) {
 	key := ValidatorsKey.Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}

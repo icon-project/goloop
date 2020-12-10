@@ -80,7 +80,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 			assert.NoError(t, err)
 
 			key := IScoreClaimKey.Append(args.addr).Build()
-			obj, err := s.trie.Get(key)
+			obj, err := icobject.GetFromMutableForObject(s.trie, key)
 			assert.NoError(t, err)
 			claim := ToIScoreClaim(obj)
 			assert.Equal(t, tt.want, claim.Value.Int64())
@@ -220,7 +220,7 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, index int, addr
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	assert.NoError(t, err)
 	event := ToEventDelegation(obj)
 	assert.True(t, address.Equal(event.From))
@@ -232,7 +232,7 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, index int, address 
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	assert.NoError(t, err)
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target))
@@ -244,7 +244,7 @@ func checkAddEventPeriod(t *testing.T, s *State, offset int, index int, irep *bi
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	assert.NoError(t, err)
 	event := ToEventPeriod(obj)
 	assert.Equal(t, 0, irep.Cmp(event.Irep))
@@ -324,7 +324,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 				assert.NoError(t, err)
 
 				key := BlockProduceKey.Append(args.offset, suffixBlockVotes).Build()
-				obj, err := s.trie.Get(key)
+				obj, err := icobject.GetFromMutableForObject(s.trie, key)
 				assert.NoError(t, err)
 				assert.NotNil(t, obj)
 
@@ -337,7 +337,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 				assert.NoError(t, err)
 
 				key := BlockProduceKey.Append(args.offset, suffixValidators).Build()
-				obj, err := s.trie.Get(key)
+				obj, err := icobject.GetFromMutableForObject(s.trie, key)
 				assert.NoError(t, err)
 				assert.NotNil(t, obj)
 				o := ToValidators(obj)

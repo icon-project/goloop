@@ -1,4 +1,4 @@
-package iiss
+package icutils
 
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 	size := len(maps)

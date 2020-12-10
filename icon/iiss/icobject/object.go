@@ -177,3 +177,11 @@ func (o *NoDatabase) Resolve(bd merkle.Builder) error {
 	// do nothing
 	return nil
 }
+
+func GetFromMutableForObject(trie trie.MutableForObject, key []byte) (trie.Object, error) {
+	return trie.Get(key, ObjectType)
+}
+
+func GetFromImmutableForObject(trie trie.ImmutableForObject, key []byte) (trie.Object, error) {
+	return trie.Get(key, ObjectType)
+}

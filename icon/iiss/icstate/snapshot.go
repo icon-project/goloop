@@ -48,7 +48,8 @@ func (ss *Snapshot) Flush() error {
 }
 
 func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, error) {
-	obj, err := ss.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
+	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +57,8 @@ func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, e
 }
 
 func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) {
-	obj, err := ss.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
+	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +66,8 @@ func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) 
 }
 
 func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {
-	obj, err := ss.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
+	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
 	if err != nil {
 		return nil, err
 	}

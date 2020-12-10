@@ -18,6 +18,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"math/big"
 )
@@ -139,7 +140,7 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 		return nil, err
 	}
 
-	return iiss.MergeMaps(prep.ToJSON(), prepStatus.ToJSON()), nil
+	return icutils.MergeMaps(prep.ToJSON(), prepStatus.ToJSON()), nil
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {

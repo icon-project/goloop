@@ -37,7 +37,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	s.trie.Reset(ss.trie)
 	for _, as := range s.mutableAccounts {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
-		value, err := s.trie.Get(key)
+		value, err := icobject.GetFromMutableForObject(s.trie, key)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ps := range s.mutablePReps {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
-		value, err := s.trie.Get(key)
+		value, err := icobject.GetFromMutableForObject(s.trie, key)
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ps := range s.mutablePRepStatus {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.GetAddress()))
-		value, err := s.trie.Get(key)
+		value, err := icobject.GetFromMutableForObject(s.trie, key)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,8 @@ func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
 	if a, ok := s.mutableAccounts[ids]; ok {
 		return a, nil
 	}
-	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +150,8 @@ func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
 	if a, ok := s.mutablePReps[ids]; ok {
 		return a, nil
 	}
-	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +171,8 @@ func (s *State) GetPRepStatusState(addr module.Address) (*PRepStatusState, error
 	if a, ok := s.mutablePRepStatus[ids]; ok {
 		return a, nil
 	}
-	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr)))
+	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
 	if err != nil {
 		return nil, err
 	}
