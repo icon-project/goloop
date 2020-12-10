@@ -79,8 +79,8 @@ type (
 
 	MutableForObject interface {
 		Get(k []byte) (Object, error)
-		Set(k []byte, o Object) error
-		Delete(k []byte) error
+		Set(k []byte, o Object) (Object, error)
+		Delete(k []byte) (Object, error)
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
 		ClearCache()

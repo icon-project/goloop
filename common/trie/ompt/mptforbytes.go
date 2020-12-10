@@ -23,7 +23,7 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 
 func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
 	obj := bytesObject(v)
-	old, err := m.mpt.doSet(k, obj)
+	old, err := m.mpt.Set(k, obj)
 	if old == nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
 }
 
 func (m *mptForBytes) Delete(k []byte) ([]byte, error) {
-	old, err := m.mpt.doDelete(k)
+	old, err := m.mpt.Delete(k)
 	if old == nil {
 		return nil, err
 	}

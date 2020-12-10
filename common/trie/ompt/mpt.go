@@ -221,7 +221,7 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	}
 }
 
-func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
+func (m *mpt) Set(k []byte, o trie.Object) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
@@ -238,17 +238,7 @@ func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
 	return old, err
 }
 
-func (m *mpt) Set(k []byte, o trie.Object) error {
-	_, err := m.doSet(k, o)
-	return err
-}
-
-func (m *mpt) Delete(k []byte) error {
-	_, err := m.doDelete(k)
-	return err
-}
-
-func (m *mpt) doDelete(k []byte) (trie.Object, error) {
+func (m *mpt) Delete(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
