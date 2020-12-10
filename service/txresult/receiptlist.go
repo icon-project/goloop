@@ -42,7 +42,7 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	if err != nil {
 		return nil, err
 	}
-	obj, err := l.immutableTrie.Get(b)
+	obj, err := l.immutableTrie.Get(b, nil)
 	if err != nil {
 		return nil, err
 	}

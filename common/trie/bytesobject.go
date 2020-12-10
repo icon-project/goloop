@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 )
 
@@ -32,11 +30,6 @@ var TypeBytesObject = reflect.TypeOf(BytesObject(nil))
 
 func (o BytesObject) Bytes() []byte {
 	return o
-}
-
-func (o BytesObject) Reset(db db.Database, k []byte) error {
-	log.Panicln("Bytes object can't RESET!!")
-	return nil
 }
 
 func (o BytesObject) Flush() error {

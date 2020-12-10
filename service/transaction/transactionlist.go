@@ -29,7 +29,7 @@ func intToKey(i int) []byte {
 }
 
 func (l *transactionList) Get(i int) (module.Transaction, error) {
-	obj, err := l.trie.Get(intToKey(i))
+	obj, err := l.trie.Get(intToKey(i), nil)
 	if err != nil {
 		return nil, errors.WithCode(err, errors.NotFoundError)
 	}

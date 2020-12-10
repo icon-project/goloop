@@ -152,7 +152,7 @@ func TestNewMPT(t *testing.T) {
 			s2.Dump()
 			log.Printf("Verify results")
 			for _, e := range tt.want.e {
-				obj, err := s2.Get(e.k)
+				obj, err := s2.Get(e.k, nil)
 				if err != nil {
 					t.Errorf("Key(%s) return error=%v",
 						hex.EncodeToString(e.k), err)
@@ -372,7 +372,7 @@ func TestObjectTest(t *testing.T) {
 	for i, tt := range tests {
 		m2 := NewMPT(db, snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
 		for _, s := range tt {
-			o, err := m2.Get([]byte(s))
+			o, err := m2.Get([]byte(s), nil)
 			if err != nil {
 				t.Errorf("Fail to get '%s'", s)
 			}
