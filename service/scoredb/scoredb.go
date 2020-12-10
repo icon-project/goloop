@@ -24,23 +24,23 @@ const (
 	VarDBPrefix   byte = 0x02
 )
 
-func NewArrayDB(store containerdb.BytesStoreState, keys ...interface{}) *containerdb.ArrayDB {
+func NewArrayDB(store containerdb.StateStore, keys ...interface{}) *containerdb.ArrayDB {
 	key := containerdb.ToKey(containerdb.HashBuilder, ArrayDBPrefix).Append(keys...)
 	return containerdb.NewArrayDB(store, key)
 }
 
-func NewDictDB(store containerdb.BytesStoreState, name string, depth int, keys ...interface{}) *containerdb.DictDB {
+func NewDictDB(store containerdb.StateStore, name string, depth int, keys ...interface{}) *containerdb.DictDB {
 	key := containerdb.ToKey(containerdb.HashBuilder, DictDBPrefix, name).Append(keys...)
 	return containerdb.NewDictDB(store, depth, key)
 }
 
-func NewVarDB(store containerdb.BytesStoreState, keys ...interface{}) *containerdb.VarDB {
+func NewVarDB(store containerdb.StateStore, keys ...interface{}) *containerdb.VarDB {
 	key := containerdb.ToKey(containerdb.HashBuilder, VarDBPrefix).Append(keys...)
 	return containerdb.NewVarDB(store, key)
 }
 
-func NewStateStoreWith(s containerdb.BytesStoreSnapshot) containerdb.BytesStoreState {
-	return containerdb.NewBytesStoreStateWithSnapshot(s)
+func NewStateStoreWith(s containerdb.SnapshotStore) containerdb.StateStore {
+	return containerdb.NewStateStoreWith(s)
 }
 
 func ToKey(t byte, keys ...interface{}) []byte {

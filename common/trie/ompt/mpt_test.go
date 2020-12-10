@@ -39,7 +39,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(trie.BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{1, 2, 3}, []byte{1}},
 					{[]byte{1, 2, 3}, []byte{2}},
@@ -64,7 +64,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(trie.BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -94,7 +94,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(trie.BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -128,7 +128,7 @@ func TestNewMPT(t *testing.T) {
 				var err error
 				if e.v != nil {
 					log.Printf("Set(%x,%x)", e.k, e.v)
-					_, err = got.Set(e.k, trie.BytesObject(e.v))
+					_, err = got.Set(e.k, bytesObject(e.v))
 				} else {
 					log.Printf("Delete(%x)", e.k)
 					_, err = got.Delete(e.k)
@@ -152,7 +152,7 @@ func TestNewMPT(t *testing.T) {
 			s2.Dump()
 			log.Printf("Verify results")
 			for _, e := range tt.want.e {
-				obj, err := s2.Get(e.k, nil)
+				obj, err := s2.Get(e.k)
 				if err != nil {
 					t.Errorf("Key(%s) return error=%v",
 						hex.EncodeToString(e.k), err)
@@ -299,7 +299,7 @@ func TestNullHash(t *testing.T) {
 		t.Errorf("NewMPTForBytes(nil).Hash() should return nil")
 	}
 
-	m2 := NewMPT(db.NewMapDB(), nil, reflect.TypeOf(trie.BytesObject(nil)))
+	m2 := NewMPT(db.NewMapDB(), nil, reflect.TypeOf(bytesObject(nil)))
 	if m2.Hash() != nil {
 		t.Errorf("NewMPT(nil).Hash() should return nil")
 	}
@@ -372,7 +372,7 @@ func TestObjectTest(t *testing.T) {
 	for i, tt := range tests {
 		m2 := NewMPT(db, snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
 		for _, s := range tt {
-			o, err := m2.Get([]byte(s), nil)
+			o, err := m2.Get([]byte(s))
 			if err != nil {
 				t.Errorf("Fail to get '%s'", s)
 			}

@@ -22,14 +22,14 @@ import (
 
 type DictDB struct {
 	key   KeyBuilder
-	store ValueStoreState
+	store StateStore
 	depth int
 }
 
-func NewDictDB(store interface{}, depth int, key KeyBuilder) *DictDB {
+func NewDictDB(store StateStore, depth int, key KeyBuilder) *DictDB {
 	return &DictDB{
 		key:   key,
-		store: NewStateStore(store),
+		store: store,
 		depth: depth,
 	}
 }
@@ -50,7 +50,11 @@ func (d *DictDB) Get(keys ...interface{}) Value {
 	if len(keys) != d.depth {
 		return nil
 	}
-	return d.store.GetValue(d.key.Append(keys...).Build())
+	bs, err := d.store.GetValue(d.key.Append(keys...).Build())
+	if err != nil || bs == nil {
+		return nil
+	}
+	return NewValueFromBytes(bs)
 }
 
 func (d *DictDB) Set(params ...interface{}) error {
@@ -59,13 +63,13 @@ func (d *DictDB) Set(params ...interface{}) error {
 	}
 
 	key := d.key.Append(params[:len(params)-1]...).Build()
-	return d.store.At(key).Set(params[len(params)-1])
+	value := ToBytes(params[len(params)-1])
+	return must(d.store.SetValue(key, value))
 }
 
 func (d *DictDB) Delete(kv ...interface{}) error {
 	if len(kv) != d.depth {
 		return scoreresult.ErrInvalidContainerAccess
 	}
-	_, err := d.store.At(d.key.Append(kv...).Build()).Delete()
-	return err
+	return must(d.store.DeleteValue(d.key.Append(kv...).Build()))
 }
