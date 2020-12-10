@@ -18,14 +18,29 @@ package containerdb
 
 import (
 	"math/big"
+	"reflect"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 )
 
+type storageEntry interface {
+	Bytes() []byte
+	SetBytes([]byte) ([]byte, error)
+	GetObject(t reflect.Type) (trie.Object, error)
+	SetObject(o trie.Object) (trie.Object, error)
+	Delete() (Value, error)
+}
+
 type valueImpl struct {
-	BytesStore
+	entry storageEntry
+}
+
+func (e *valueImpl) Bytes() []byte {
+	return e.entry.Bytes()
 }
 
 func (e *valueImpl) BigInt() *big.Int {
@@ -74,9 +89,34 @@ func (e *valueImpl) Bool() bool {
 	}
 }
 
-func (e *valueImpl) Set(v interface{}) error {
-	bs := ToBytes(v)
-	return e.SetBytes(bs)
+func (e *valueImpl) Object(t reflect.Type) trie.Object {
+	if obj, err := e.entry.GetObject(t); err != nil {
+		return nil
+	} else {
+		return obj
+	}
+}
+
+type writableValueImpl struct {
+	valueImpl
+}
+
+func (e *writableValueImpl) Delete() (Value, error) {
+	return e.valueImpl.entry.Delete()
+}
+
+func (e *writableValueImpl) Set(v interface{}) error {
+	if obj, ok := v.(trie.Object); ok {
+		_, err := e.valueImpl.entry.SetObject(obj)
+		return err
+	} else {
+		_, err := e.valueImpl.entry.SetBytes(ToBytes(v))
+		return err
+	}
+}
+
+func (e *writableValueImpl) SetBytes(bs []byte) ([]byte, error) {
+	return e.valueImpl.entry.SetBytes(bs)
 }
 
 type bytesEntry []byte
@@ -85,35 +125,55 @@ func (e bytesEntry) Bytes() []byte {
 	return []byte(e)
 }
 
-func (e bytesEntry) SetBytes([]byte) error {
-	return nil
+func (e bytesEntry) SetBytes([]byte) ([]byte, error) {
+	panic("invalid usage")
 }
 
-func (e bytesEntry) Delete() error {
-	return nil
+func (e bytesEntry) Delete() (Value, error) {
+	panic("invalid usage")
 }
 
-func NewValueFromBytes(bs []byte) Value {
+func (e bytesEntry) GetObject(t reflect.Type) (trie.Object, error) {
+	if t == nil || t == trie.TypeBytesObject {
+		if e == nil {
+			return nil, nil
+		} else {
+			return trie.BytesObject(e), nil
+		}
+	} else {
+		return nil, errors.UnsupportedError.Errorf("UnsupportedType(%s)", t)
+	}
+}
+
+func (e bytesEntry) SetObject(o trie.Object) (trie.Object, error) {
+	panic("Invalid usage")
+}
+
+func newValueFromBytes(bs []byte) Value {
 	if bs == nil {
 		return nil
 	}
 	return &valueImpl{bytesEntry(bs)}
 }
 
-type storeEntry struct {
+type bytesStoreEntry struct {
 	key   []byte
-	store StateStore
+	store BytesStoreState
 }
 
-func (e *storeEntry) Delete() error {
-	return must(e.store.DeleteValue(e.key))
+func (e *bytesStoreEntry) Delete() (Value, error) {
+	if bs, err := e.store.DeleteValue(e.key); err != nil || bs == nil {
+		return nil, err
+	} else {
+		return newValueFromBytes(bs), nil
+	}
 }
 
-func (e *storeEntry) SetBytes(bs []byte) error {
-	return must(e.store.SetValue(e.key, bs))
+func (e *bytesStoreEntry) SetBytes(bs []byte) ([]byte, error) {
+	return e.store.SetValue(e.key, bs)
 }
 
-func (e *storeEntry) Bytes() []byte {
+func (e *bytesStoreEntry) Bytes() []byte {
 	if bs, err := e.store.GetValue(e.key); err == nil && bs != nil {
 		return bs
 	} else {
@@ -121,6 +181,117 @@ func (e *storeEntry) Bytes() []byte {
 	}
 }
 
-func NewValueFromStore(store StateStore, kbytes []byte) WritableValue {
-	return &valueImpl{&storeEntry{kbytes, store}}
+func (e *bytesStoreEntry) GetObject(t reflect.Type) (trie.Object, error) {
+	if t == nil || t == trie.TypeBytesObject {
+		if bs, err := e.store.GetValue(e.key); err != nil {
+			return nil, err
+		} else {
+			if bs == nil {
+				return nil, nil
+			} else {
+				return trie.BytesObject(bs), nil
+			}
+		}
+	} else {
+		return nil, errors.UnsupportedError.Errorf("UnsupportedType(%s)", t)
+	}
+}
+
+func (e *bytesStoreEntry) SetObject(o trie.Object) (trie.Object, error) {
+	if bs, err := e.store.SetValue(e.key, o.Bytes()); err != nil {
+		return nil, err
+	} else {
+		if bs == nil {
+			return nil, nil
+		} else {
+			return trie.BytesObject(bs), nil
+		}
+	}
+}
+
+func newValueFromBytesStore(store BytesStoreState, kbytes []byte) WritableValue {
+	return &writableValueImpl{valueImpl{
+		&bytesStoreEntry{kbytes, store},
+	}}
+}
+
+type objectStoreEntry struct {
+	key   []byte
+	store ObjectStoreState
+}
+
+func (e *objectStoreEntry) Bytes() []byte {
+	if obj, err := e.store.GetValue(e.key, trie.TypeBytesObject); err != nil {
+		return nil
+	} else {
+		if bs, ok := obj.(trie.BytesObject); ok {
+			return bs
+		} else {
+			return nil
+		}
+	}
+}
+
+func (e *objectStoreEntry) SetBytes(bytes []byte) ([]byte, error) {
+	_, err := e.store.SetValue(e.key, trie.BytesObject(bytes))
+	return nil, err
+}
+
+func (e *objectStoreEntry) GetObject(t reflect.Type) (trie.Object, error) {
+	return e.store.GetValue(e.key, t)
+}
+
+func (e *objectStoreEntry) SetObject(o trie.Object) (trie.Object, error) {
+	return e.store.SetValue(e.key, o)
+}
+
+func (e *objectStoreEntry) Delete() (Value, error) {
+	if ro, err := e.store.DeleteValue(e.key); err != nil || ro == nil {
+		return nil, err
+	} else {
+		return newValueFromObject(ro), nil
+	}
+}
+
+func newValueFromObjectStore(state ObjectStoreState, key []byte) WritableValue {
+	return &writableValueImpl{valueImpl{&objectStoreEntry{key, state}}}
+}
+
+type objectEntry struct {
+	object trie.Object
+}
+
+func (e *objectEntry) Bytes() []byte {
+	if e.object == nil {
+		return nil
+	} else {
+		return e.object.Bytes()
+	}
+}
+
+func (e *objectEntry) SetBytes(bytes []byte) ([]byte, error) {
+	panic("invalid usage")
+}
+
+func (e *objectEntry) GetObject(t reflect.Type) (trie.Object, error) {
+	if e.object == nil {
+		return nil, nil
+	}
+	if t == nil || reflect.TypeOf(e.object) == t {
+		return e.object, nil
+	} else {
+		return nil, errors.InvalidStateError.Errorf("IncompatibleObject(type=%T)", e.object)
+	}
+}
+
+func (e *objectEntry) SetObject(o trie.Object) (trie.Object, error) {
+	panic("invalid usage")
+}
+
+func (e *objectEntry) Delete() (Value, error) {
+	panic("invalid usage")
+}
+
+func newValueFromObject(obj trie.Object) Value {
+	return &valueImpl{&objectEntry{obj}}
 }
