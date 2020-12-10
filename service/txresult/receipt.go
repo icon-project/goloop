@@ -509,7 +509,7 @@ func (r *receipt) buildMerkleListOfLogs() {
 	mt := trie_manager.NewMutableForObject(r.db, nil, reflect.TypeOf((*eventLog)(nil)))
 	for idx, item := range r.data.EventLogs {
 		k, _ := codec.BC.MarshalToBytes(uint(idx))
-		_, err := mt.Set(k, item)
+		err := mt.Set(k, item)
 		if err != nil {
 			log.Panicf("Fail to add event log to the list err=%+v", err)
 		}

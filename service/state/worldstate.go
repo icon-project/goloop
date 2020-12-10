@@ -88,7 +88,7 @@ func (ws *worldSnapshotImpl) Database() db.Database {
 
 func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key, nil)
+	obj, err := ws.accounts.Get(key)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%v", key, err)
 		return nil
@@ -135,7 +135,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	ws.accounts.Reset(snapshot.accounts)
 	for _, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
-		value, err := ws.accounts.Get(key, nil)
+		value, err := ws.accounts.Get(key)
 		if err != nil {
 			log.Errorf("Fail to read account value. err=%+v\n", err)
 		}
@@ -168,7 +168,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 		return a
 	}
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key, nil)
+	obj, err := ws.accounts.Get(key)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil
@@ -190,11 +190,11 @@ func (ws *worldStateImpl) ClearCache() {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
-			if _, err := ws.accounts.Delete(key); err != nil {
+			if err := ws.accounts.Delete(key); err != nil {
 				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
-			if _, err := ws.accounts.Set(key, s); err != nil {
+			if err := ws.accounts.Set(key, s); err != nil {
 				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}
@@ -228,7 +228,7 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	}
 
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key, nil)
+	obj, err := ws.accounts.Get(key)
 	if err != nil {
 		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil
@@ -248,11 +248,11 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
-			if _, err := ws.accounts.Delete(key); err != nil {
+			if err := ws.accounts.Delete(key); err != nil {
 				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
-			if _, err := ws.accounts.Set(key, s); err != nil {
+			if err := ws.accounts.Set(key, s); err != nil {
 				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}

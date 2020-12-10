@@ -1,6 +1,8 @@
 package ompt
 
 import (
+	"reflect"
+
 	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
@@ -12,7 +14,7 @@ type mptForBytes struct {
 }
 
 func (m *mptForBytes) Get(k []byte) ([]byte, error) {
-	obj, err := m.mpt.Get(k, nil)
+	obj, err := m.mpt.Get(k)
 	if err != nil || obj == nil {
 		return nil, err
 	}
@@ -20,21 +22,21 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 }
 
 func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
-	obj := trie.BytesObject(v)
-	old, err := m.mpt.Set(k, obj)
+	obj := bytesObject(v)
+	old, err := m.mpt.doSet(k, obj)
 	if old == nil {
 		return nil, err
 	}
-	ob := old.(trie.BytesObject)
+	ob := old.(bytesObject)
 	return ob.Bytes(), err
 }
 
 func (m *mptForBytes) Delete(k []byte) ([]byte, error) {
-	old, err := m.mpt.Delete(k)
+	old, err := m.mpt.doDelete(k)
 	if old == nil {
 		return nil, err
 	}
-	ob := old.(trie.BytesObject)
+	ob := old.(bytesObject)
 	return ob.Bytes(), err
 }
 
@@ -101,7 +103,7 @@ func (m *mptForBytes) Resolve(bd merkle.Builder) {
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 	return &mptForBytes{
-		NewMPT(db, h, trie.TypeBytesObject),
+		NewMPT(db, h, reflect.TypeOf(bytesObject(nil))),
 	}
 }
 

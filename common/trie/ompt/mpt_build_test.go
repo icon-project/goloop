@@ -113,7 +113,7 @@ func TestMerkleBuild(t *testing.T) {
 	dbase := db.NewMapDB()
 	m1 := NewMutableForObject(dbase, nil, reflect.TypeOf((*TestObject)(nil)))
 	for _, e := range entries {
-		if _, err := m1.Set(e.k, NewTestObject(dbase, e.v)); err != nil {
+		if err := m1.Set(e.k, NewTestObject(dbase, e.v)); err != nil {
 			t.Errorf("Fail to Set(%x,'%s')", e.k, e.v)
 			return
 		}
@@ -160,7 +160,7 @@ func TestMerkleBuild(t *testing.T) {
 	}
 
 	for _, e := range entries {
-		vobj, err := ss2.Get(e.k, nil)
+		vobj, err := ss2.Get(e.k)
 		if err != nil {
 			t.Errorf("Fail to get value for key=<%x>", e.k)
 			return
@@ -185,7 +185,7 @@ func TestMerkleBuild(t *testing.T) {
 
 	ss3 := NewImmutableForObject(dbase2, ss.Hash(), reflect.TypeOf((*TestObject)(nil)))
 	for _, e := range entries {
-		vobj, err := ss3.Get(e.k, nil)
+		vobj, err := ss3.Get(e.k)
 		if err != nil {
 			t.Errorf("Fail to get value for key=<%x>", e.k)
 			return

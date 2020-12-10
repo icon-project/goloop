@@ -42,7 +42,7 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	if err != nil {
 		return nil, err
 	}
-	obj, err := l.immutableTrie.Get(b, nil)
+	obj, err := l.immutableTrie.Get(b)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewReceiptListFromSlice(database db.Database, list []Receipt) module.Receip
 	mt := trie_manager.NewMutableForObject(database, nil, receiptType)
 	for idx, r := range list {
 		k, _ := codec.BC.MarshalToBytes(uint(idx))
-		_, err := mt.Set(k, r.(*receipt))
+		err := mt.Set(k, r.(*receipt))
 		if err != nil {
 			log.Panicf("NewTransactionListFromSlice FAILs err=%+v", err)
 			return nil
