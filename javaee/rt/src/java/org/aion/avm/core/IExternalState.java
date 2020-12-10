@@ -18,6 +18,13 @@ public interface IExternalState {
     int OPTION_TRACE = 2;
 
     /**
+     *  Returns code ID
+     *
+     * @return code ID
+     */
+    String getCodeID();
+
+    /**
      * Returns the pre-transformed code associated with current score.
      *
      * Returns {@code null} if the context has no pre-transformed code.

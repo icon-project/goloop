@@ -826,7 +826,7 @@ func TestObjectFlush(t *testing.T) {
 	for i, tt := range tests {
 		m2 := mgr.NewImmutableForObject(snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
 		for _, s := range tt {
-			o, err := m2.Get([]byte(s))
+			o, err := m2.Get([]byte(s), nil)
 			if err != nil {
 				t.Errorf("Fail to get '%s'", s)
 			}

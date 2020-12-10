@@ -103,12 +103,14 @@ public class AvmExecutor {
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
             if (null != stateToResume) {
                 dapp = stateToResume.dApp;
-            } else {
-                dapp = loader.load(recipient, kernel, conf);
+                return DAppExecutor.call(kernel, dapp, stateToResume, task,
+                        senderAddress, recipient, tx, conf);
             }
-            logger.trace("=== DAppExecutor ===");
-            return DAppExecutor.call(kernel, dapp, stateToResume, task,
+            dapp = loader.load(kernel, conf);
+            var res = DAppExecutor.call(kernel, dapp, stateToResume, task,
                     senderAddress, recipient, tx, conf);
+            loader.unload(kernel.getCodeID(), dapp);
+            return res;
         }
     }
 

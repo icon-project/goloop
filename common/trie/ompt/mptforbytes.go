@@ -12,7 +12,7 @@ type mptForBytes struct {
 }
 
 func (m *mptForBytes) Get(k []byte) ([]byte, error) {
-	obj, err := m.mpt.Get(k)
+	obj, err := m.mpt.Get(k, nil)
 	if err != nil || obj == nil {
 		return nil, err
 	}
