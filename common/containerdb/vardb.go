@@ -20,7 +20,7 @@ type VarDB struct {
 	WritableValue
 }
 
-func NewVarDB(store StateStore, key KeyBuilder) *VarDB {
-	value := NewValueFromStore(store, key.Build())
-	return &VarDB{value}
+func NewVarDB(source interface{}, key KeyBuilder) *VarDB {
+	store := ToStoreState(source)
+	return &VarDB{store.At(key.Build())}
 }
