@@ -204,22 +204,22 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		return errors.Errorf("Not enough voting power")
 	}
 
-	ubToAdd, ubToMod, ubDiff := account.GetUnBondingInfo(bonds, s.cc.BlockHeight()+icstate.UnBondingPeriod)
+	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, s.cc.BlockHeight()+icstate.UnbondingPeriod)
 	votingAmount := new(big.Int).Add(account.GetDelegation(), bondAmount)
 	votingAmount.Sub(votingAmount, account.Bond())
-	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnBondAmount(), ubDiff)
+	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnbondAmount(), ubDiff)
 	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 	account.SetBonds(bonds)
-	tl := account.UpdateUnBonds(ubToAdd, ubToMod)
+	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
 		ts, e := es.GetUnbondingTimerState(t.Height)
 		if e != nil {
 			return errors.Errorf("Error while getting unbonding Timer")
 		}
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return errors.Errorf("Error while scheduling UnBonding Timer Job")
+			return errors.Errorf("Error while scheduling Unbonding Timer Job")
 		}
 	}
 	return nil
@@ -233,7 +233,7 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 	}
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInfo()
-	data["unbonds"] = account.GetUnBondsInfo()
+	data["unbonds"] = account.GetUnbondsInfo()
 	return data, nil
 }
 
@@ -256,7 +256,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 				return err
 			}
 			if len(b.Bonds()) > 0 || len(b.Unbonds()) > 0 {
-				return errors.Errorf("Bonding/UnBonding exist. bonds : %d, unbonds : %d", len(b.Bonds()), len(b.Unbonds()))
+				return errors.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d", len(b.Bonds()), len(b.Unbonds()))
 			}
 		}
 	}

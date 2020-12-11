@@ -68,7 +68,7 @@ func (u *Unstake) Equal(u2 *Unstake) bool {
 		u.ExpireHeight == u2.ExpireHeight
 }
 
-func (u Unstake) ToJSON(v module.JSONVersion) interface{} {
+func (u Unstake) ToJSON(_ module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 
 	jso["unstake"] = intconv.FormatBigInt(u.Amount)
@@ -77,10 +77,10 @@ func (u Unstake) ToJSON(v module.JSONVersion) interface{} {
 	return jso
 }
 
-// TODO delete Unstake from UnStakes via timer
-type UnStakes []*Unstake
+// TODO delete Unstake from Unstakes via timer
+type Unstakes []*Unstake
 
-func (us UnStakes) Clone() UnStakes {
+func (us Unstakes) Clone() Unstakes {
 	if us == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func (us UnStakes) Clone() UnStakes {
 	return n
 }
 
-func (us UnStakes) Equal(us2 UnStakes) bool {
+func (us Unstakes) Equal(us2 Unstakes) bool {
 	if len(us) != len(us2) {
 		return false
 	}
@@ -103,12 +103,12 @@ func (us UnStakes) Equal(us2 UnStakes) bool {
 	return true
 }
 
-func (us UnStakes) Has() bool {
+func (us Unstakes) Has() bool {
 	return len(us) > 0
 }
 
 // GetUnstakeAmount return unstake Value
-func (us UnStakes) GetUnstakeAmount() *big.Int {
+func (us Unstakes) GetUnstakeAmount() *big.Int {
 	total := new(big.Int)
 	for _, u := range us {
 		total.Add(total, u.Amount)
@@ -116,7 +116,7 @@ func (us UnStakes) GetUnstakeAmount() *big.Int {
 	return total
 }
 
-func (us UnStakes) ToJSON(v module.JSONVersion) []interface{} {
+func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
 	if us.Has() == false {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (us UnStakes) ToJSON(v module.JSONVersion) []interface{} {
 	return unstakes
 }
 
-func (us *UnStakes) increaseUnstake(v *big.Int, eh int64) error {
+func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
 	if v.Sign() == -1 {
 		return errors.Errorf("Invalid unstake Value %v", v)
 	}
@@ -152,7 +152,7 @@ func (us *UnStakes) increaseUnstake(v *big.Int, eh int64) error {
 	return nil
 }
 
-func (us *UnStakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
+func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
 		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}

@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnBonds(t *testing.T) {
+func TestUnbonds(t *testing.T) {
 	addr1 := "hx1"
 	addr2 := "hx2"
 	v1 := int64(1)
@@ -42,5 +42,5 @@ func TestUnBonds(t *testing.T) {
 
 	assert.True(t, ubl1.Has())
 	assert.True(t, ubl1.Equal(ubl2))
-	assert.Equal(t, v1+v2, ubl2.GetUnBondAmount().Int64())
+	assert.Equal(t, v1+v2, ubl2.GetUnbondAmount().Int64())
 }

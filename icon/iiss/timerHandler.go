@@ -26,7 +26,7 @@ func HandleTimerJob(wc state.WorldContext) (err error) {
 	if bt, err := es.GetUnbondingTimerState(wc.BlockHeight()); err != nil {
 		return err
 	} else {
-		err = handleUnBoningTimer(es, bt.Addresses, bt.Height)
+		err = handleUnbondingTimer(es, bt.Addresses, bt.Height)
 	}
 	if st, err := es.GetUnstakingTimerState(wc.BlockHeight()); err != nil {
 		return err
@@ -55,13 +55,13 @@ func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []mo
 	return nil
 }
 
-func handleUnBoningTimer(es *ExtensionStateImpl, al []module.Address, h int64) error {
+func handleUnbondingTimer(es *ExtensionStateImpl, al []module.Address, h int64) error {
 	for _, a := range al {
 		as, err := es.GetAccountState(a)
 		if err != nil {
 			return err
 		}
-		if err = as.RemoveUnBonding(h); err != nil {
+		if err = as.RemoveUnbonding(h); err != nil {
 			return err
 		}
 	}

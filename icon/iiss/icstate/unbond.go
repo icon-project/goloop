@@ -20,7 +20,7 @@ import (
 	"math/big"
 )
 
-var UnBondingPeriod = int64(10)
+var UnbondingPeriod = int64(10)
 
 type Unbond struct {
 	Address *common.Address
@@ -78,14 +78,14 @@ func (ul Unbonds) Clone() Unbonds {
 	if ul == nil {
 		return nil
 	}
-	unBonds := make([]*Unbond, len(ul))
+	unbonds := make([]*Unbond, len(ul))
 	for i, u := range ul {
-		unBonds[i] = u.Clone()
+		unbonds[i] = u.Clone()
 	}
-	return unBonds
+	return unbonds
 }
 
-func (ul Unbonds) GetUnBondAmount() *big.Int {
+func (ul Unbonds) GetUnbondAmount() *big.Int {
 	total := new(big.Int)
 	for _, b := range ul {
 		total.Add(total, b.Value)

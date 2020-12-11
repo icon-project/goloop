@@ -56,7 +56,7 @@ func TestUnstakes(t *testing.T) {
 		ExpireHeight: eh3,
 	}
 
-	var us1 = UnStakes{
+	var us1 = Unstakes{
 		&u1, &u2, &u3,
 	}
 
@@ -66,8 +66,8 @@ func TestUnstakes(t *testing.T) {
 	assert.True(t, us1.Has())
 	assert.Equal(t, a1+a2+a3, us1.GetUnstakeAmount().Int64())
 
-	t.Run("increase UnStakes", func(t *testing.T) {
-		unstakes := UnStakes{}
+	t.Run("increase Unstakes", func(t *testing.T) {
+		unstakes := Unstakes{}
 
 		// add unstake u1
 		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight)
@@ -97,8 +97,8 @@ func TestUnstakes(t *testing.T) {
 		setMaxUnstakeCount(0)
 	})
 
-	t.Run("decrease UnStakes", func(t *testing.T) {
-		unstakes := UnStakes{}
+	t.Run("decrease Unstakes", func(t *testing.T) {
+		unstakes := Unstakes{}
 		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight)
 		assert.NoError(t, err)
 		err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight)

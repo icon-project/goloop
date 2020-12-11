@@ -35,7 +35,7 @@ var BigIntZero = &bigIntZero
 
 type AccountData struct {
 	stake       *big.Int
-	unstakes    UnStakes
+	unstakes    Unstakes
 	delegating  *big.Int
 	delegations Delegations
 	bonding     *big.Int
@@ -172,7 +172,7 @@ func (as *AccountState) SetStake(v *big.Int) error {
 	return nil
 }
 
-// UpdateUnstake update unStakes
+// UpdateUnstake update unstakes
 func (as *AccountState) UpdateUnstake(stakeInc *big.Int, expireHeight int64) ([]TimerJobInfo, error) {
 	tl := make([]TimerJobInfo, 0)
 	var err error
@@ -264,11 +264,11 @@ func (as *AccountState) GetBondsInfo() []interface{} {
 	return as.bonds.ToJSON(module.JSONVersion3)
 }
 
-func (as *AccountState) GetUnBondsInfo() []interface{} {
+func (as *AccountState) GetUnbondsInfo() []interface{} {
 	return as.unbonds.ToJSON(module.JSONVersion3)
 }
 
-func (as *AccountState) GetUnBondingInfo(bonds Bonds, unBondingHeight int64) (Unbonds, Unbonds, *big.Int) {
+func (as *AccountState) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds, Unbonds, *big.Int) {
 	diff, uDiff := new(big.Int), new(big.Int)
 	var ubToAdd, ubToMod []*Unbond
 	for _, nb := range bonds {
@@ -276,13 +276,13 @@ func (as *AccountState) GetUnBondingInfo(bonds Bonds, unBondingHeight int64) (Un
 			if nb.Address.Equal(ob.Address) {
 				diff.Sub(ob.Value.Value(), nb.Value.Value())
 				if diff.Sign() == 1 {
-					unbond := Unbond{nb.Address, diff, unBondingHeight}
+					unbond := Unbond{nb.Address, diff, unbondingHeight}
 					ubToAdd = append(ubToAdd, &unbond)
 					uDiff.Add(uDiff, diff)
 				} else {
 					for _, ub := range as.unbonds {
 						if nb.Address.Equal(ub.Address) {
-							unbond := Unbond{nb.Address, ub.Value.Add(ub.Value, diff), unBondingHeight}
+							unbond := Unbond{nb.Address, ub.Value.Add(ub.Value, diff), unbondingHeight}
 							ubToMod = append(ubToMod, &unbond)
 							uDiff.Add(uDiff, diff)
 						}
@@ -299,7 +299,7 @@ func (as *AccountState) SetBonds(bonds Bonds) {
 	as.bonding.Set(as.bonds.GetBondAmount())
 }
 
-func (as *AccountState) UpdateUnBonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
+func (as *AccountState) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
 	var tl []TimerJobInfo
 	as.unbonds = append(as.unbonds, ubToAdd...)
 	for _, u := range ubToAdd {
@@ -319,7 +319,7 @@ func (as *AccountState) UpdateUnBonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJ
 	return tl
 }
 
-func (as *AccountState) RemoveUnBonding(height int64) error {
+func (as *AccountState) RemoveUnbonding(height int64) error {
 	var tmp Unbonds
 	for _, u := range as.unbonds {
 		if u.Expire != height {
@@ -328,7 +328,7 @@ func (as *AccountState) RemoveUnBonding(height int64) error {
 	}
 
 	if len(tmp) == len(as.unbonds) {
-		return errors.Errorf("%s does not have unBonding timer at %d", as.address.String(), height)
+		return errors.Errorf("%s does not have unbonding timer at %d", as.address.String(), height)
 	}
 	as.unbonds = tmp
 
@@ -336,7 +336,7 @@ func (as *AccountState) RemoveUnBonding(height int64) error {
 }
 
 func (as *AccountState) RemoveUnStaking(height int64) (ra *big.Int, err error) {
-	var tmp UnStakes
+	var tmp Unstakes
 	ra = new(big.Int)
 	for _, u := range as.unstakes {
 		if u.ExpireHeight == height {
