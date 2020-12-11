@@ -24,13 +24,14 @@ import (
 type ArrayDB struct {
 	key   KeyBuilder
 	size  WritableValue
-	store StateStore
+	store StoreState
 }
 
-func NewArrayDB(store StateStore, key KeyBuilder) *ArrayDB {
+func NewArrayDB(source interface{}, key KeyBuilder) *ArrayDB {
+	store := ToStoreState(source)
 	return &ArrayDB{
 		key:   key,
-		size:  NewValueFromStore(store, key.Build()),
+		size:  store.At(key.Build()),
 		store: store,
 	}
 }
@@ -41,11 +42,7 @@ func (a *ArrayDB) Size() int {
 
 func (a *ArrayDB) Get(i int) Value {
 	key := a.key.Append(i).Build()
-	bs, err := a.store.GetValue(key)
-	if err != nil || bs == nil {
-		return nil
-	}
-	return NewValueFromBytes(bs)
+	return a.store.GetValue(key)
 }
 
 func (a *ArrayDB) Set(i int, v interface{}) error {
@@ -53,14 +50,13 @@ func (a *ArrayDB) Set(i int, v interface{}) error {
 		return scoreresult.ErrInvalidContainerAccess
 	}
 	key := a.key.Append(i).Build()
-	return must(a.store.SetValue(key, ToBytes(v)))
+	return a.store.At(key).Set(v)
 }
 
 func (a *ArrayDB) Put(v interface{}) error {
 	idx := a.Size()
 	key := a.key.Append(idx).Build()
-	value := ToBytes(v)
-	if err := must(a.store.SetValue(key, value)); err != nil {
+	if err := a.store.At(key).Set(v); err != nil {
 		return err
 	}
 	return a.size.Set(idx + 1)
@@ -73,20 +69,18 @@ func (a *ArrayDB) Pop() Value {
 	}
 
 	key := a.key.Append(idx - 1).Build()
-	var bs []byte
-	if ov, err := a.store.DeleteValue(key); err != nil {
+	ov, err := a.store.At(key).Delete()
+	if err != nil {
 		log.Panicf("Fail to delete last element")
-	} else {
-		bs = ov
 	}
 	if idx > 1 {
 		if err := a.size.Set(idx - 1); err != nil {
 			log.Panicf("Fail to update size")
 		}
 	} else {
-		if err := a.size.Delete(); err != nil {
+		if _, err := a.size.Delete(); err != nil {
 			log.Panicf("Fail to delete size")
 		}
 	}
-	return NewValueFromBytes(bs)
+	return ov
 }

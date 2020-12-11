@@ -21,11 +21,20 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 )
 
 type valueImpl struct {
-	BytesStore
+	store ValueSnapshot
+}
+
+func (e *valueImpl) Bytes() []byte {
+	return e.store.Bytes()
+}
+
+func (e *valueImpl) Object() trie.Object {
+	return e.store.Object()
 }
 
 func (e *valueImpl) BigInt() *big.Int {
@@ -74,53 +83,31 @@ func (e *valueImpl) Bool() bool {
 	}
 }
 
-func (e *valueImpl) Set(v interface{}) error {
-	bs := ToBytes(v)
-	return e.SetBytes(bs)
+func NewValue(vs ValueSnapshot) Value {
+	return &valueImpl{vs}
 }
 
-type bytesEntry []byte
-
-func (e bytesEntry) Bytes() []byte {
-	return []byte(e)
+type writableValueImpl struct {
+	valueImpl
 }
 
-func (e bytesEntry) SetBytes([]byte) error {
-	return nil
-}
-
-func (e bytesEntry) Delete() error {
-	return nil
-}
-
-func NewValueFromBytes(bs []byte) Value {
-	if bs == nil {
-		return nil
-	}
-	return &valueImpl{bytesEntry(bs)}
-}
-
-type storeEntry struct {
-	key   []byte
-	store StateStore
-}
-
-func (e *storeEntry) Delete() error {
-	return must(e.store.DeleteValue(e.key))
-}
-
-func (e *storeEntry) SetBytes(bs []byte) error {
-	return must(e.store.SetValue(e.key, bs))
-}
-
-func (e *storeEntry) Bytes() []byte {
-	if bs, err := e.store.GetValue(e.key); err == nil && bs != nil {
-		return bs
+func (e *writableValueImpl) Set(v interface{}) error {
+	if obj, ok := v.(trie.Object); ok {
+		return e.store.(ValueState).SetObject(obj)
 	} else {
-		return nil
+		bs := ToBytes(v)
+		return e.store.(ValueState).SetBytes(bs)
 	}
 }
 
-func NewValueFromStore(store StateStore, kbytes []byte) WritableValue {
-	return &valueImpl{&storeEntry{kbytes, store}}
+func (e *writableValueImpl) Delete() (Value, error) {
+	if vs, err := e.store.(ValueState).Delete(); err != nil {
+		return nil, err
+	} else {
+		return &valueImpl{vs}, nil
+	}
+}
+
+func NewWritableValue(vs ValueState) WritableValue {
+	return &writableValueImpl{valueImpl{vs}}
 }
