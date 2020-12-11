@@ -67,6 +67,9 @@ func (o *Object) Equal(object trie.Object) bool {
 	if oo == o {
 		return true
 	}
+	if o.tag != oo.tag {
+		return false
+	}
 	return o.real.Equal(oo.real)
 }
 
@@ -98,6 +101,14 @@ func (o *Object) Bytes() []byte {
 	return o.bytes
 }
 
+func (o *Object) BytesValue() []byte {
+	if o.tag.Type() == TypeBytes {
+		return o.real.(BytesImpl)
+	} else {
+		return nil
+	}
+}
+
 func (o *Object) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
@@ -107,6 +118,15 @@ func (o *Object) RLPDecodeSelf(d codec.Decoder) error {
 	var real Impl
 	if err := d2.Decode(&tag); err != nil {
 		return err
+	}
+	if tag.Type() == TypeBytes {
+		var bs []byte
+		if err := d2.Decode(&bs); err != nil {
+			return err
+		}
+		o.real = BytesImpl(bs)
+		o.tag = tag
+		return nil
 	}
 	real, err = o.factory(tag)
 	if err != nil {

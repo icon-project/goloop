@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	TypeBigInt = TypeReserved
+	TypeBytes = TypeReserved + iota
+	TypeBigInt
 )
 
 type ObjectBigInt struct {
