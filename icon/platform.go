@@ -17,6 +17,8 @@
 package icon
 
 import (
+	"encoding/json"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -25,6 +27,8 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/transaction"
+	"time"
 )
 
 type platform struct{}
@@ -52,7 +56,18 @@ func (p *platform) ToRevision(value int) module.Revision {
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
 	// TODO calculate issued i-score and amount balance. No changes on world context.
-	return nil, nil
+	t := common.HexInt64{Value: time.Now().UnixNano() / int64(time.Microsecond)}
+	v := common.HexUint16{Value: module.TransactionVersion3}
+	mtx := map[string]interface{}{"timestamp": t, "version": v, "dataType": "base"}
+	bs, err := json.Marshal(mtx)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := transaction.NewTransactionFromJSON(bs)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {

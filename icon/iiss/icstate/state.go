@@ -27,10 +27,12 @@ import (
 )
 
 type State struct {
-	mutableAccounts   map[string]*AccountState
-	mutablePReps      map[string]*PRepState
-	mutablePRepStatus map[string]*PRepStatusState
-	trie              trie.MutableForObject
+	mutableAccounts       map[string]*AccountState
+	mutablePReps          map[string]*PRepState
+	mutablePRepStatus     map[string]*PRepStatusState
+	mutableUnstakingTimer map[int64]*TimerState
+	mutableUnbondingTimer map[int64]*TimerState
+	trie                  trie.MutableForObject
 }
 
 func (s *State) Reset(ss *Snapshot) error {
@@ -69,6 +71,30 @@ func (s *State) Reset(ss *Snapshot) error {
 			ps.Clear()
 		} else {
 			ps.Reset(ToPRepStatusSnapshot(value))
+		}
+	}
+	for _, ubt := range s.mutableUnbondingTimer {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, ubt.Height))
+		value, err := s.trie.Get(key)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			ubt.Clear()
+		} else {
+			ubt.Reset(ToTimerSnapshot(value))
+		}
+	}
+	for _, ust := range s.mutableUnstakingTimer {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, ust.Height))
+		value, err := s.trie.Get(key)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			ust.Clear()
+		} else {
+			ust.Reset(ToTimerSnapshot(value))
 		}
 	}
 	return nil
@@ -112,6 +138,35 @@ func (s *State) GetSnapshot() *Snapshot {
 		if ps.IsEmpty() {
 			if _, err := s.trie.Delete(key); err != nil {
 				log.Errorf("Failed to delete prepStatus key %x, err+%+v", key, err)
+			}
+		} else {
+			if _, err := s.trie.Set(key, value); err != nil {
+				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+			}
+		}
+	}
+
+	for _, timer := range s.mutableUnstakingTimer {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, timer.Height))
+		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
+
+		if timer.IsEmpty() {
+			if _, err := s.trie.Delete(key); err != nil {
+				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
+			}
+		} else {
+			if _, err := s.trie.Set(key, value); err != nil {
+				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+			}
+		}
+	}
+	for _, timer := range s.mutableUnbondingTimer {
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, timer.Height))
+		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
+
+		if timer.IsEmpty() {
+			if _, err := s.trie.Delete(key); err != nil {
+				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
 			}
 		} else {
 			if _, err := s.trie.Set(key, value); err != nil {
@@ -187,11 +242,50 @@ func (s *State) GetPRepStatusState(addr module.Address) (*PRepStatusState, error
 	return ps, nil
 }
 
+func (s *State) GetUnstakingTimerState(height int64) (*TimerState, error) {
+	if a, ok := s.mutableUnstakingTimer[height]; ok {
+		return a, nil
+	}
+	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, height)))
+	if err != nil {
+		return nil, err
+	}
+	var tss *TimerSnapshot
+	if obj != nil {
+		tss = ToTimerSnapshot(obj)
+	} else {
+		tss = newTimerSnapshot(icobject.MakeTag(TypeTimer, timerVersion))
+	}
+	ts := NewTimerStateWithSnapshot(height, tss)
+	s.mutableUnstakingTimer[height] = ts
+	return ts, nil
+}
+
+func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
+	if a, ok := s.mutableUnbondingTimer[height]; ok {
+		return a, nil
+	}
+	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, height)))
+	if err != nil {
+		return nil, err
+	}
+	var tss *TimerSnapshot
+	if obj != nil {
+		tss = ToTimerSnapshot(obj)
+	} else {
+		tss = newTimerSnapshot(icobject.MakeTag(TypeTimer, timerVersion))
+	}
+	ts := NewTimerStateWithSnapshot(height, tss)
+	s.mutableUnbondingTimer[height] = ts
+	return ts, nil
+}
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	return &State{
-		mutableAccounts:   make(map[string]*AccountState),
-		mutablePReps:      make(map[string]*PRepState),
-		mutablePRepStatus: make(map[string]*PRepStatusState),
-		trie:              trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		mutableAccounts:       make(map[string]*AccountState),
+		mutablePReps:          make(map[string]*PRepState),
+		mutablePRepStatus:     make(map[string]*PRepStatusState),
+		mutableUnstakingTimer: make(map[int64]*TimerState),
+		mutableUnbondingTimer: make(map[int64]*TimerState),
+		trie:                  trie_manager.NewMutableFromImmutableForObject(ss.trie),
 	}
 }

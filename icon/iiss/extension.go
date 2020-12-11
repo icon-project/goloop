@@ -149,3 +149,11 @@ func (s *ExtensionStateImpl) GetPRepState(address module.Address) (*icstate.PRep
 func (s *ExtensionStateImpl) GetPRepStatusState(address module.Address) (*icstate.PRepStatusState, error) {
 	return s.state.GetPRepStatusState(address)
 }
+
+func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.TimerState, error) {
+	return s.state.GetUnstakingTimerState(height)
+}
+
+func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.TimerState, error) {
+	return s.state.GetUnbondingTimerState(height)
+}

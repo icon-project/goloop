@@ -108,28 +108,28 @@ func TestUnstakes(t *testing.T) {
 
 		total := a1 + a2 + a3
 		// decrease Value of slot
-		err = unstakes.decreaseUnstake(bigOne)
+		_, err = unstakes.decreaseUnstake(bigOne)
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 3, len(unstakes))
 		assert.Equal(t, total-bigOne.Int64(), unstakes.GetUnstakeAmount().Int64())
 
 		// delete 1 slot
-		err = unstakes.decreaseUnstake(new(big.Int).Sub(u3.Amount, bigOne))
+		_, err = unstakes.decreaseUnstake(new(big.Int).Sub(u3.Amount, bigOne))
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 2, len(unstakes))
 		assert.Equal(t, total-a3, unstakes.GetUnstakeAmount().Int64())
 
 		// delete 1 slot and decrease 1 slot
-		err = unstakes.decreaseUnstake(new(big.Int).Add(u2.Amount, bigOne))
+		_, err = unstakes.decreaseUnstake(new(big.Int).Add(u2.Amount, bigOne))
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 1, len(unstakes))
 		assert.Equal(t, a1-bigOne.Int64(), unstakes.GetUnstakeAmount().Int64())
 
 		// > total unstake. delete all
-		err = unstakes.decreaseUnstake(u1.Amount)
+		_, err = unstakes.decreaseUnstake(u1.Amount)
 		assert.NoError(t, err)
 		assert.False(t, unstakes.Has())
 		assert.Equal(t, 0, len(unstakes))

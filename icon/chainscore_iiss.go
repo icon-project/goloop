@@ -50,8 +50,18 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	// update IISS account
 	expireHeight := calcUnstakeLockPeriod(s.cc.BlockHeight())
-	if err := ia.UpdateUnstake(stakeInc, expireHeight); err != nil {
+	tl, err := ia.UpdateUnstake(stakeInc, expireHeight)
+	if err != nil {
 		return err
+	}
+	for _, t := range tl {
+		ts, e := es.GetUnstakingTimerState(t.Height)
+		if e != nil {
+			return errors.Errorf("Error while getting Timer")
+		}
+		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
+			return errors.Errorf("Error while scheduling UnStaking Timer Job")
+		}
 	}
 	if err = ia.SetStake(v); err != nil {
 		return err
@@ -202,8 +212,17 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		return errors.Errorf("Not enough voting power")
 	}
 	account.SetBonds(bonds)
-	account.UpdateUnBonds(ubToAdd, ubToMod)
+	tl := account.UpdateUnBonds(ubToAdd, ubToMod)
+	for _, t := range tl {
+		ts, e := es.GetUnbondingTimerState(t.Height)
+		if e != nil {
+			return errors.Errorf("Error while getting unbonding Timer")
+		}
+		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
+			return errors.Errorf("Error while scheduling UnBonding Timer Job")
+		}
 
+	}
 	return nil
 }
 

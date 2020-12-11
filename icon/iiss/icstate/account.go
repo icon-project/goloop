@@ -167,18 +167,21 @@ func (as *AccountState) SetStake(v *big.Int) error {
 }
 
 // UpdateUnstake update unStakes
-func (as *AccountState) UpdateUnstake(stakeInc *big.Int, expireHeight int64) error {
+func (as *AccountState) UpdateUnstake(stakeInc *big.Int, expireHeight int64) ([]TimerJobInfo, error) {
+	tl := make([]TimerJobInfo, 0)
+	var err error
 	switch stakeInc.Sign() {
 	case 1:
-		if err := as.unstakes.decreaseUnstake(stakeInc); err != nil {
-			return err
+		if tl, err = as.unstakes.decreaseUnstake(stakeInc); err != nil {
+			return nil, err
 		}
 	case -1:
 		if err := as.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight); err != nil {
-			return err
+			return nil, err
 		}
+		tl = append(tl, TimerJobInfo{JobTypeAdd, expireHeight})
 	}
-	return nil
+	return tl, nil
 }
 
 func (as AccountState) GetAddress() module.Address {
@@ -261,7 +264,7 @@ func (as *AccountState) GetUnBondsInfo() []interface{} {
 
 func (as *AccountState) GetUnBondingInfo(bonds Bonds, unBondingHeight int64) (UnBonds, UnBonds, *big.Int) {
 	diff, uDiff := new(big.Int), new(big.Int)
-	ubToAdd, ubToMod := make([]*Unbond, 0), make([]*Unbond, 0)
+	var ubToAdd, ubToMod []*Unbond
 	for _, nb := range bonds {
 		for _, ob := range as.bonds {
 			if nb.Address.Equal(ob.Address) {
@@ -290,13 +293,63 @@ func (as *AccountState) SetBonds(bonds Bonds) {
 	as.bonding.Set(as.bonds.GetBondAmount())
 }
 
-func (as *AccountState) UpdateUnBonds(ubToAdd UnBonds, ubToMod UnBonds) {
+func (as *AccountState) UpdateUnBonds(ubToAdd UnBonds, ubToMod UnBonds) []TimerJobInfo {
+	var tl []TimerJobInfo
 	as.unbonds = append(as.unbonds, ubToAdd...)
+	for _, u := range ubToAdd {
+		tl = append(tl, TimerJobInfo{JobTypeAdd, u.Expire})
+	}
 	for _, mod := range ubToMod {
 		for _, ub := range as.unbonds {
-			ub.Value = mod.Value
+			if ub.Address.Equal(mod.Address) {
+				ub.Value = mod.Value
+				ub.Expire = mod.Expire
+				if ub.Value.Cmp(new(big.Int)) == 0 {
+					tl = append(tl, TimerJobInfo{JobTypeRemove, ub.Expire})
+				}
+			}
 		}
 	}
+	return tl
+}
+
+func (as *AccountState) RemoveUnBonding(height int64) error {
+	var tmp UnBonds
+	for _, u := range as.unbonds {
+		if u.Expire != height {
+			tmp = append(tmp, u)
+		}
+	}
+
+	if len(tmp) == len(as.unbonds) {
+		return errors.Errorf("%s does not have unBonding timer at %d", as.address.String(), height)
+	}
+	as.unbonds = tmp
+
+	return nil
+}
+
+func (as *AccountState) RemoveUnStaking(height int64) (ra *big.Int, err error) {
+	var tmp UnStakes
+	ra = new(big.Int)
+	for _, u := range as.unstakes {
+		if u.ExpireHeight == height {
+			ra.Set(u.Amount)
+		} else {
+			tmp = append(tmp, u)
+		}
+	}
+	tl := len(tmp)
+	ul := len(as.unstakes)
+
+	if tl == ul {
+		err = errors.Errorf("%s does not have unStaking timer at %d", as.address.String(), height)
+	} else if tl != ul-1 {
+		err = errors.Errorf("%s has too many unstaking timer at %d", as.address.String(), height)
+	}
+	as.unstakes = tmp
+
+	return
 }
 
 func NewAccountStateWithSnapshot(addr module.Address, ss *AccountSnapshot) *AccountState {

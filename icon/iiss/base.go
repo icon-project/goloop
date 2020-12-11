@@ -107,12 +107,16 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	if info.Index != 0 {
 		return nil, errors.CriticalFormatError.New("BaseMustBeTheFirst")
 	}
-	// TODO process something for base tx
-	return nil, nil
+	if err := HandleTimerJob(ctx); err != nil {
+		return nil, err
+	}
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
+	r.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
+	return r, nil
 }
 
 func (tx *baseV3) Dispose() {
-	panic("implement me")
+	//panic("implement me")
 }
 
 func (tx *baseV3) Group() module.TransactionGroup {

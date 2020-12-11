@@ -31,9 +31,11 @@ type Snapshot struct {
 }
 
 var (
-	accountPrefix    = scoredb.ToKey(scoredb.DictDBPrefix, "account_db")
-	prepPrefix       = scoredb.ToKey(scoredb.DictDBPrefix, "prep")
-	prepStatusPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
+	accountPrefix        = scoredb.ToKey(scoredb.DictDBPrefix, "account_db")
+	prepPrefix           = scoredb.ToKey(scoredb.DictDBPrefix, "prep")
+	prepStatusPrefix     = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
+	unbondingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unbonding")
+	unstakingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unstaking")
 )
 
 func (ss *Snapshot) Bytes() []byte {

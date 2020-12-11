@@ -26,6 +26,7 @@ const (
 	TypeAccount int = iota
 	TypePRep
 	TypePRepStatus
+	TypeTimer
 )
 
 func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -36,6 +37,8 @@ func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newPRepSnapshot(tag), nil
 	case TypePRepStatus:
 		return newPRepStatusSnapshot(tag), nil
+	case TypeTimer:
+		return newTimerSnapshot(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -61,4 +64,11 @@ func ToPRepSnapshot(object trie.Object) *PRepSnapshot {
 		return nil
 	}
 	return object.(*icobject.Object).Real().(*PRepSnapshot)
+}
+
+func ToTimerSnapshot(object trie.Object) *TimerSnapshot {
+	if object == nil {
+		return nil
+	}
+	return object.(*icobject.Object).Real().(*TimerSnapshot)
 }

@@ -152,10 +152,11 @@ func (us *UnStakes) increaseUnstake(v *big.Int, eh int64) error {
 	return nil
 }
 
-func (us *UnStakes) decreaseUnstake(v *big.Int) error {
+func (us *UnStakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
-		return errors.Errorf("Invalid unstake Value %v", v)
+		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
+	var tl []TimerJobInfo
 	remain := new(big.Int).Set(v)
 	unstakes := *us
 	uLen := len(unstakes)
@@ -170,8 +171,8 @@ func (us *UnStakes) decreaseUnstake(v *big.Int) error {
 			} else {
 				*us = nil
 			}
-			// TODO remove unstake timer
-			return nil
+			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
+			return tl, nil
 		case 1:
 			copy(unstakes[i:], unstakes[i+1:])
 			unstakes = unstakes[0 : len(unstakes)-1]
@@ -180,12 +181,12 @@ func (us *UnStakes) decreaseUnstake(v *big.Int) error {
 			} else {
 				*us = nil
 			}
-			// TODO remove unstake timer
+			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 			remain.Sub(remain, u.Amount)
 		case -1:
 			u.Amount.Sub(u.Amount, remain)
-			return nil
+			return nil, nil
 		}
 	}
-	return nil
+	return tl, nil
 }
