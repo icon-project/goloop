@@ -26,8 +26,12 @@ public class DeployScore {
 
     @External
     public void deploySingle(byte[] content) {
-        this.address = Context.deploy(content);
-        EmitScoreAddress(this.address);
+        try {
+            this.address = Context.deploy(content);
+            EmitScoreAddress(this.address);
+        } catch (IllegalArgumentException e) {
+            Context.revert(1, "Failed to deploy");
+        }
     }
 
     @External

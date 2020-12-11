@@ -770,19 +770,41 @@ class JavaScoreTest extends TestBase {
 
     @Test
     public void deployInvalidJar() throws Exception {
-        LOG.infoEntering("deploy", "invalid jar");
+        LOG.infoEntering("deploy", "directly");
         var classes = new Class<?>[]{APITest.class};
         byte[] jarBytes = txHandler.makeJar(classes[0].getName(), classes);
         int len = jarBytes.length;
         for (int i = 2; i <= 256; i *= 2) {
             int modLen = len / i;
             LOG.info("len=" + len + ", modLen=" + modLen);
+            var content = new byte[len];
+            System.arraycopy(jarBytes, 0, content, 0, content.length);
             var garbage = getRandomBytes(modLen);
-            System.arraycopy(garbage, 0, jarBytes, modLen, garbage.length);
-            var hash = txHandler.doDeploy(ownerWallet, jarBytes,
+            System.arraycopy(garbage, 0, content, modLen, garbage.length);
+            var hash = txHandler.doDeploy(ownerWallet, content,
                     Constants.CHAINSCORE_ADDRESS, null,
                     Constants.DEFAULT_STEPS, Constants.CONTENT_TYPE_JAVA);
             assertFailure(txHandler.getResult(hash));
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy", "indirectly");
+        var deployScore = txHandler.deploy(ownerWallet, DeployScore.class, null);
+        LOG.info("scoreAddress = " + deployScore.getAddress());
+        for (int i = 2; i <= 256; i *= 2) {
+            int modLen = len / i;
+            LOG.info("len=" + len + ", modLen=" + modLen);
+            var content = new byte[len];
+            System.arraycopy(jarBytes, 0, content, 0, content.length);
+            var garbage = getRandomBytes(modLen);
+            System.arraycopy(garbage, 0, content, modLen, garbage.length);
+            RpcObject params = new RpcObject.Builder()
+                    .put("content", new RpcValue(content))
+                    .build();
+            var txres = txHandler.getResult(
+                    deployScore.invoke(ownerWallet, "deploySingle", params));
+            assertFailure(txres);
+            assertEquals(0x21, txres.getFailure().getCode().intValue());
         }
         LOG.infoExiting();
     }
