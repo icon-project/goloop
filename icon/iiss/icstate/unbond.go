@@ -56,13 +56,13 @@ func (ub *Unbond) Clone() *Unbond {
 	return n
 }
 
-type UnBonds []*Unbond
+type Unbonds []*Unbond
 
-func (ul UnBonds) Has() bool {
+func (ul Unbonds) Has() bool {
 	return len(ul) > 0
 }
 
-func (ul UnBonds) Equal(ul2 UnBonds) bool {
+func (ul Unbonds) Equal(ul2 Unbonds) bool {
 	if len(ul) != len(ul2) {
 		return false
 	}
@@ -74,7 +74,7 @@ func (ul UnBonds) Equal(ul2 UnBonds) bool {
 	return true
 }
 
-func (ul UnBonds) Clone() UnBonds {
+func (ul Unbonds) Clone() Unbonds {
 	if ul == nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (ul UnBonds) Clone() UnBonds {
 	return unBonds
 }
 
-func (ul UnBonds) GetUnBondAmount() *big.Int {
+func (ul Unbonds) GetUnBondAmount() *big.Int {
 	total := new(big.Int)
 	for _, b := range ul {
 		total.Add(total, b.Value)
@@ -93,7 +93,7 @@ func (ul UnBonds) GetUnBondAmount() *big.Int {
 	return total
 }
 
-func (ul UnBonds) ToJSON(v module.JSONVersion) []interface{} {
+func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {
 	if !ul.Has() {
 		return nil
 	}

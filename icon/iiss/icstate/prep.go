@@ -31,7 +31,7 @@ const (
 	bonderListMax = 10
 )
 
-type PRep struct {
+type PRepData struct {
 	name        string
 	country     string
 	city        string
@@ -43,35 +43,7 @@ type PRep struct {
 	bonderList  BonderList
 }
 
-func (p *PRep) Details() string {
-	return p.details
-}
-
-func (p *PRep) Website() string {
-	return p.website
-}
-
-func (p *PRep) Email() string {
-	return p.email
-}
-
-func (p *PRep) Name() string {
-	return p.name
-}
-
-func (p *PRep) Country() string {
-	return p.country
-}
-
-func (p *PRep) City() string {
-	return p.city
-}
-
-func (p *PRep) Node() module.Address {
-	return p.node
-}
-
-func (p *PRep) Equal(other *PRep) bool {
+func (p *PRepData) Equal(other *PRepData) bool {
 	if p == other {
 		return true
 	}
@@ -87,23 +59,42 @@ func (p *PRep) Equal(other *PRep) bool {
 		p.bonderList.Equal(other.bonderList)
 }
 
-func (p *PRep) ToJSON() map[string]interface{} {
-	data := make(map[string]interface{})
-	data["name"] = p.name
-	data["email"] = p.email
-	data["website"] = p.website
-	data["country"] = p.country
-	data["city"] = p.city
-	data["details"] = p.details
-	data["p2pEndpoint"] = p.p2pEndpoint
-	data["node"] = p.node
-	return data
+func (p *PRepData) Set(other *PRepData) {
+	*p = *other
+	p.bonderList = other.bonderList.Clone()
+}
+
+func (p *PRepData) Clone() *PRepData {
+	return &PRepData{
+		name:        p.name,
+		city:        p.city,
+		country:     p.country,
+		email:       p.email,
+		website:     p.website,
+		details:     p.details,
+		p2pEndpoint: p.p2pEndpoint,
+		node:        p.node,
+		bonderList:  p.bonderList.Clone(),
+	}
+}
+
+func (p *PRepData) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["name"] = p.name
+	jso["email"] = p.email
+	jso["website"] = p.website
+	jso["country"] = p.country
+	jso["city"] = p.city
+	jso["details"] = p.details
+	jso["p2pEndpoint"] = p.p2pEndpoint
+	jso["node"] = p.node
+	return jso
 }
 
 type PRepSnapshot struct {
 	icobject.NoDatabase
 	owner module.Address
-	PRep
+	*PRepData
 }
 
 func (p *PRepSnapshot) Owner() module.Address {
@@ -149,30 +140,16 @@ func (p *PRepSnapshot) Equal(object icobject.Impl) bool {
 	if ps == p {
 		return true
 	}
-	return p.PRep.Equal(&ps.PRep)
-}
-
-func NewPRepSnapshot(city, country, details, email, name, website string, node module.Address) *PRepSnapshot {
-	return &PRepSnapshot{
-		PRep: PRep{
-			node:    node.(*common.Address),
-			city:    city,
-			country: country,
-			details: details,
-			email:   email,
-			name:    name,
-			website: website,
-		},
-	}
+	return p.PRepData.Equal(ps.PRepData)
 }
 
 func newPRepSnapshot(_ icobject.Tag) *PRepSnapshot {
-	return &PRepSnapshot{}
+	return &PRepSnapshot{PRepData: &PRepData{}}
 }
 
 type PRepState struct {
 	owner module.Address
-	PRep
+	*PRepData
 }
 
 func (p *PRepState) Owner() module.Address {
@@ -196,11 +173,11 @@ func (p *PRepState) Clear() {
 }
 
 func (p *PRepState) Reset(ps *PRepSnapshot) {
-	p.PRep = ps.PRep
+	p.PRepData.Set(ps.PRepData)
 }
 
 func (p *PRepState) GetSnapshot() *PRepSnapshot {
-	return &PRepSnapshot{PRep: p.PRep}
+	return &PRepSnapshot{PRepData: p.PRepData.Clone()}
 }
 
 func (p PRepState) IsEmpty() bool {
@@ -219,7 +196,7 @@ func (p *PRepState) SetPRep(name, email, website, country, city, details, endpoi
 	return nil
 }
 
-func (p *PRepState) SetBonderList(bonderList []*common.Address) {
+func (p *PRepState) SetBonderList(bonderList BonderList) {
 	p.bonderList = bonderList
 }
 
@@ -227,16 +204,8 @@ func (p *PRepState) BonderList() BonderList {
 	return p.bonderList
 }
 
-func (p *PRepState) BonderListInfo() []interface{} {
-	r := make([]interface{}, 0)
-	for _, b := range p.bonderList {
-		r = append(r, b)
-	}
-	return r
-}
-
-func (p *PRepState) GetPRep() map[string]interface{} {
-	return p.ToJSON()
+func (p *PRepState) GetBonderListInJSON() []interface{} {
+	return p.bonderList.ToJSON()
 }
 
 func NewPRepStateWithSnapshot(a module.Address, ss *PRepSnapshot) *PRepState {
@@ -270,6 +239,27 @@ func (bl BonderList) Contains(a module.Address) bool {
 		}
 	}
 	return false
+}
+
+func (bl BonderList) Clone() BonderList {
+	size := len(bl)
+	if size == 0 {
+		return nil
+	}
+
+	dst := make([]*common.Address, 0, size)
+	copy(dst, bl)
+
+	return dst
+}
+
+func (bl BonderList) ToJSON() []interface{} {
+	size := len(bl)
+	jso := make([]interface{}, size, size)
+	for i, b := range bl {
+		jso[i] = b
+	}
+	return jso
 }
 
 func NewBonderList(param []interface{}) (BonderList, error) {

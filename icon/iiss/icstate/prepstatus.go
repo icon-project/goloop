@@ -44,7 +44,7 @@ const (
 	Disqualified
 )
 
-type PRepStatus struct {
+type PRepStatusData struct {
 	grade        Grade
 	status       Status
 	penalty      int
@@ -58,40 +58,40 @@ type PRepStatus struct {
 	lastHeight   int
 }
 
-func (ps *PRepStatus) Bonded() *big.Int {
+func (ps *PRepStatusData) Bonded() *big.Int {
 	return ps.bonded
 }
 
-func (ps *PRepStatus) Grade() Grade {
+func (ps *PRepStatusData) Grade() Grade {
 	return ps.grade
 }
 
-func (ps *PRepStatus) Status() Status {
+func (ps *PRepStatusData) Status() Status {
 	return ps.status
 }
 
-func (ps *PRepStatus) LastHeight() int {
+func (ps *PRepStatusData) LastHeight() int {
 	return ps.lastHeight
 }
 
-func (ps *PRepStatus) Delegated() *big.Int {
+func (ps *PRepStatusData) Delegated() *big.Int {
 	return ps.delegated
 }
 
-func (ps *PRepStatus) GetBondedDelegation() *big.Int {
+func (ps *PRepStatusData) GetBondedDelegation() *big.Int {
 	// TODO: Not implemented
 	return ps.delegated
 }
 
-func (ps *PRepStatus) VTotal() int {
+func (ps *PRepStatusData) VTotal() int {
 	return ps.vTotal
 }
 
-func (ps *PRepStatus) VFail() int {
+func (ps *PRepStatusData) VFail() int {
 	return ps.vFail
 }
 
-func (ps *PRepStatus) Equal(other *PRepStatus) bool {
+func (ps *PRepStatusData) Equal(other *PRepStatusData) bool {
 	if ps == other {
 		return true
 	}
@@ -109,22 +109,52 @@ func (ps *PRepStatus) Equal(other *PRepStatus) bool {
 		ps.lastHeight == other.lastHeight
 }
 
-func (ps *PRepStatus) ToJSON() map[string]interface{} {
-	data := make(map[string]interface{})
-	data["grade"] = ps.grade
-	data["status"] = ps.status
-	data["lastHeight"] = ps.lastHeight
-	data["delegated"] = ps.delegated
-	data["bonded"] = ps.bonded
-	data["bondedDelegation"] = ps.GetBondedDelegation()
-	data["totalBlocks"] = ps.vTotal
-	data["validatedBlocks"] = ps.vTotal - ps.vFail
-	return data
+func (ps *PRepStatusData) Set(other *PRepStatusData) {
+	ps.grade = other.grade
+	ps.penalty = other.penalty
+	ps.status = other.status
+	ps.delegated.Set(other.delegated)
+	ps.bonded.Set(other.bonded)
+	ps.vTotal = other.vTotal
+	ps.vFail = other.vFail
+	ps.vFailCount = other.vFailCount
+	ps.vPenaltyMask = other.vPenaltyMask
+	ps.lastState = other.lastState
+	ps.lastHeight = other.lastHeight
+}
+
+func (ps *PRepStatusData) Clone() *PRepStatusData {
+	return &PRepStatusData{
+		grade:        ps.grade,
+		penalty:      ps.penalty,
+		status:       ps.status,
+		delegated:    new(big.Int).Set(ps.delegated),
+		bonded:       new(big.Int).Set(ps.bonded),
+		vTotal:       ps.vTotal,
+		vFail:        ps.vFail,
+		vFailCount:   ps.vFailCount,
+		vPenaltyMask: ps.vPenaltyMask,
+		lastState:    ps.lastState,
+		lastHeight:   ps.lastHeight,
+	}
+}
+
+func (ps *PRepStatusData) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["grade"] = ps.grade
+	jso["status"] = ps.status
+	jso["lastHeight"] = ps.lastHeight
+	jso["delegated"] = ps.delegated
+	jso["bonded"] = ps.bonded
+	jso["bondedDelegation"] = ps.GetBondedDelegation()
+	jso["totalBlocks"] = ps.vTotal
+	jso["validatedBlocks"] = ps.vTotal - ps.vFail
+	return jso
 }
 
 type PRepStatusSnapshot struct {
 	icobject.NoDatabase
-	PRepStatus
+	*PRepStatusData
 }
 
 func (pss *PRepStatusSnapshot) Version() int {
@@ -169,41 +199,21 @@ func (pss *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
 	if !ok {
 		return false
 	}
-	return pss.PRepStatus.Equal(&pss1.PRepStatus)
+	return pss.PRepStatusData.Equal(pss1.PRepStatusData)
 }
 
 func newPRepStatusSnapshot(_ icobject.Tag) *PRepStatusSnapshot {
 	return &PRepStatusSnapshot{
-		PRepStatus: PRepStatus{
+		PRepStatusData: &PRepStatusData{
 			delegated: new(big.Int),
 			bonded:    new(big.Int),
-		},
-	}
-}
-
-func NewPRepStatusSnapshot(grade Grade, delegated, bonded *big.Int) *PRepStatusSnapshot {
-	return &PRepStatusSnapshot{
-		PRepStatus: PRepStatus{
-			grade:     grade,
-			delegated: delegated,
-			bonded:    bonded,
 		},
 	}
 }
 
 type PRepStatusState struct {
 	address module.Address
-	PRepStatus
-}
-
-func newPRepStatusState(address module.Address) *PRepStatusState {
-	return &PRepStatusState{
-		address: address,
-		PRepStatus: PRepStatus{
-			delegated: new(big.Int),
-			bonded:    new(big.Int),
-		},
-	}
+	*PRepStatusData
 }
 
 func (ps *PRepStatusState) Clear() {
@@ -220,18 +230,18 @@ func (ps *PRepStatusState) Clear() {
 }
 
 func (ps *PRepStatusState) Reset(pss *PRepStatusSnapshot) {
-	ps.grade = pss.grade
+	ps.PRepStatusData.Set(pss.PRepStatusData)
 }
 
 func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {
-	return &PRepStatusSnapshot{PRepStatus: ps.PRepStatus}
+	return &PRepStatusSnapshot{PRepStatusData: ps.PRepStatusData.Clone()}
 }
 
 func (ps PRepStatusState) IsEmpty() bool {
 	return ps.status == Active && ps.grade == Main
 }
 
-func (ps PRepStatusState) GetAddress() module.Address {
+func (ps PRepStatusState) Address() module.Address {
 	return ps.address
 }
 
@@ -275,7 +285,8 @@ func (ps *PRepStatusState) GetPRepStatusInfo() map[string]interface{} {
 }
 
 func NewPRepStatusStateWithSnapshot(a module.Address, pss *PRepStatusSnapshot) *PRepStatusState {
-	ps := newPRepStatusState(a)
-	ps.Reset(pss)
-	return ps
+	return &PRepStatusState{
+		address:        a,
+		PRepStatusData: pss.PRepStatusData.Clone(),
+	}
 }

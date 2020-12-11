@@ -38,7 +38,7 @@ type State struct {
 func (s *State) Reset(ss *Snapshot) error {
 	s.trie.Reset(ss.trie)
 	for _, as := range s.mutableAccounts {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
 		value, err := icobject.GetFromMutableForObject(s.trie, key)
 		if err != nil {
 			return err
@@ -62,7 +62,7 @@ func (s *State) Reset(ss *Snapshot) error {
 		}
 	}
 	for _, ps := range s.mutablePRepStatus {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.Address()))
 		value, err := icobject.GetFromMutableForObject(s.trie, key)
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (s *State) Reset(ss *Snapshot) error {
 
 func (s *State) GetSnapshot() *Snapshot {
 	for _, as := range s.mutableAccounts {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
 		value := icobject.New(TypeAccount, as.GetSnapshot())
 
 		if as.IsEmpty() {
@@ -132,7 +132,7 @@ func (s *State) GetSnapshot() *Snapshot {
 	}
 
 	for _, ps := range s.mutablePRepStatus {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.GetAddress()))
+		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.Address()))
 		value := icobject.New(TypePRepStatus, ps.GetSnapshot())
 
 		if ps.IsEmpty() {

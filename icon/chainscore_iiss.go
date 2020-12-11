@@ -37,7 +37,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	}
 
 	prevTotalStake := ia.GetTotalStake()
-	stakeInc := new(big.Int).Sub(v, ia.GetStake())
+	stakeInc := new(big.Int).Sub(v, ia.Stake())
 	if stakeInc.Sign() == 0 {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 		return err
 	}
 
-	if ia.GetStake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), ia.GetBond())) == -1 {
+	if ia.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), ia.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 
@@ -200,15 +200,15 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		}
 		prepStatus.SetBonded(b.Amount())
 	}
-	if account.GetStake().Cmp(new(big.Int).Add(bondAmount, account.GetDelegation())) == -1 {
+	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.GetDelegation())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 
 	ubToAdd, ubToMod, ubDiff := account.GetUnBondingInfo(bonds, s.cc.BlockHeight()+icstate.UnBondingPeriod)
 	votingAmount := new(big.Int).Add(account.GetDelegation(), bondAmount)
-	votingAmount.Sub(votingAmount, account.GetBond())
-	unbondingAmount := new(big.Int).Add(account.UnBonds().GetUnBondAmount(), ubDiff)
-	if account.GetStake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
+	votingAmount.Sub(votingAmount, account.Bond())
+	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnBondAmount(), ubDiff)
+	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 	account.SetBonds(bonds)
@@ -221,7 +221,6 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
 			return errors.Errorf("Error while scheduling UnBonding Timer Job")
 		}
-
 	}
 	return nil
 }
@@ -256,8 +255,8 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 			if err != nil {
 				return err
 			}
-			if len(b.Bonds()) > 0 || len(b.UnBonds()) > 0 {
-				return errors.Errorf("Bonding/UnBonding exist. bonds : %d, unbonds : %d", len(b.Bonds()), len(b.UnBonds()))
+			if len(b.Bonds()) > 0 || len(b.Unbonds()) > 0 {
+				return errors.Errorf("Bonding/UnBonding exist. bonds : %d, unbonds : %d", len(b.Bonds()), len(b.Unbonds()))
 			}
 		}
 	}
@@ -272,5 +271,5 @@ func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, er
 	if err != nil {
 		return nil, err
 	}
-	return prep.BonderListInfo(), nil
+	return prep.GetBonderListInJSON(), nil
 }

@@ -34,7 +34,7 @@ func TestUnBonds(t *testing.T) {
 		Address: common.NewAddressFromString(addr2),
 		Value:   big.NewInt(v2),
 	}
-	ubl1 := UnBonds{
+	ubl1 := Unbonds{
 		&ub1, &ub2,
 	}
 

@@ -25,49 +25,51 @@ import (
 )
 
 var assTest = &AccountSnapshot{
-	staked: big.NewInt(100),
-	unStakes: []*Unstake{
-		{
-			Amount:       big.NewInt(5),
-			ExpireHeight: 10,
+	AccountData: &AccountData{
+		stake: big.NewInt(100),
+		unstakes: []*Unstake{
+			{
+				Amount:       big.NewInt(5),
+				ExpireHeight: 10,
+			},
+			{
+				Amount:       big.NewInt(10),
+				ExpireHeight: 20,
+			},
 		},
-		{
-			Amount:       big.NewInt(10),
-			ExpireHeight: 20,
+		delegating: big.NewInt(20),
+		delegations: []*Delegation{
+			{
+				Address: common.NewAddressFromString("hx1"),
+				Value:   common.NewHexInt(10),
+			},
+			{
+				Address: common.NewAddressFromString("hx2"),
+				Value:   common.NewHexInt(10),
+			},
 		},
-	},
-	delegated: big.NewInt(20),
-	delegations: []*Delegation{
-		{
-			Address: common.NewAddressFromString("hx1"),
-			Value:   common.NewHexInt(10),
+		bonding: big.NewInt(20),
+		bonds: []*Bond{
+			{
+				Address: common.NewAddressFromString("hx3"),
+				Value:   common.NewHexInt(10),
+			},
+			{
+				Address: common.NewAddressFromString("hx4"),
+				Value:   common.NewHexInt(10),
+			},
 		},
-		{
-			Address: common.NewAddressFromString("hx2"),
-			Value:   common.NewHexInt(10),
-		},
-	},
-	bonded: big.NewInt(20),
-	bonds: []*Bond{
-		{
-			Address: common.NewAddressFromString("hx3"),
-			Value:   common.NewHexInt(10),
-		},
-		{
-			Address: common.NewAddressFromString("hx4"),
-			Value:   common.NewHexInt(10),
-		},
-	},
-	unBonds: []*Unbond{
-		{
-			Address: common.NewAddressFromString("hx5"),
-			Value:   big.NewInt(10),
-			Expire:  20,
-		},
-		{
-			Address: common.NewAddressFromString("hx6"),
-			Value:   big.NewInt(10),
-			Expire:  30,
+		unbonds: []*Unbond{
+			{
+				Address: common.NewAddressFromString("hx5"),
+				Value:   big.NewInt(10),
+				Expire:  20,
+			},
+			{
+				Address: common.NewAddressFromString("hx6"),
+				Value:   big.NewInt(10),
+				Expire:  30,
+			},
 		},
 	},
 }

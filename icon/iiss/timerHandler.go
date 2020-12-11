@@ -48,7 +48,7 @@ func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []mo
 			return err
 		}
 
-		wa := wc.GetAccountState(ea.GetAddress().ID())
+		wa := wc.GetAccountState(ea.Address().ID())
 		b := wa.GetBalance()
 		wa.SetBalance(new(big.Int).Add(b, ra))
 	}
