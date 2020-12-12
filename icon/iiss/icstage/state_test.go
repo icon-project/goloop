@@ -193,6 +193,11 @@ func TestState_AddEvent(t *testing.T) {
 		})
 	}
 
+	// check event size
+	es, err := s.getEventSize()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(len(tests)), es.Value.Int64())
+
 	// check Filter
 	ss := s.GetSnapshot()
 	count := 0
@@ -257,7 +262,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
 	offset1 := 0
-	offset2 := 1
 
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
@@ -265,111 +269,182 @@ func TestState_AddBlockProduce(t *testing.T) {
 	addr4 := common.NewAddressFromString("hx4")
 	addr5 := common.NewAddressFromString("hx5")
 
+	addrs := []*common.Address{addr1, addr2, addr3, addr4, addr5}
+
 	type args struct {
-		type_        int
-		offset       int
-		proposeIndex int
-		voteCount    int
-		voteMask     int64
-		validators   []*common.Address
+		offset   int
+		proposer module.Address
+		voters   []module.Address
+	}
+
+	type wants struct {
+		proposerIndex int
+		voteCount     int
+		voteMask      *big.Int
 	}
 
 	tests := []struct {
-		name string
-		args args
+		name  string
+		args  args
+		wants wants
 	}{
-		{
-			"Validator 1",
-			args{
-				type_:      TypeValidator,
-				offset:     offset1,
-				validators: []*common.Address{addr1, addr2, addr3, addr4},
-			},
-		},
 		{
 			"block produce 1",
 			args{
-				type_:        TypeBlockProduce,
-				offset:       offset1,
-				proposeIndex: 1,
-				voteCount:    4,
-				voteMask:     0b1111,
+				offset:   offset1,
+				proposer: addr1,
+				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
-		},
-		{
-			"Validator 2",
-			args{
-				type_:      TypeValidator,
-				offset:     offset2,
-				validators: []*common.Address{addr1, addr2, addr3, addr5},
+			wants{
+				proposerIndex: 0,
+				voteCount:     4,
+				voteMask:      big.NewInt(int64(0b1111)),
 			},
 		},
 		{
 			"block produce 2",
 			args{
-				type_:        TypeBlockProduce,
-				offset:       offset2,
-				proposeIndex: 3,
-				voteCount:    3,
-				voteMask:     0b1110,
+				offset:   offset1 + 1,
+				proposer: addr2,
+				voters:   []module.Address{addr1, addr2, addr3, addr4},
+			},
+			wants{
+				proposerIndex: 1,
+				voteCount:     4,
+				voteMask:      big.NewInt(int64(0b1111)),
+			},
+		},
+		{
+			"block produce 3",
+			args{
+				offset:   offset1 + 2,
+				proposer: addr5,
+				voters:   []module.Address{addr1, addr4, addr5},
+			},
+			wants{
+				proposerIndex: 4,
+				voteCount:     3,
+				voteMask:      big.NewInt(int64(0b11001)),
 			},
 		},
 	}
 	for _, tt := range tests {
-		args := tt.args
+		a := tt.args
+		w := tt.wants
 		t.Run(tt.name, func(t *testing.T) {
-			switch args.type_ {
-			case TypeBlockProduce:
-				err := s.AddBlockVotes(args.offset, args.proposeIndex, args.voteCount, args.voteMask)
-				assert.NoError(t, err)
+			err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
+			assert.NoError(t, err)
 
-				key := BlockProduceKey.Append(args.offset, suffixBlockVotes).Build()
-				obj, err := icobject.GetFromMutableForObject(s.trie, key)
-				assert.NoError(t, err)
-				assert.NotNil(t, obj)
+			key := BlockProduceKey.Append(a.offset).Build()
+			obj, err := icobject.GetFromMutableForObject(s.trie, key)
+			assert.NoError(t, err)
+			assert.NotNil(t, obj)
 
-				o := ToBlockVotes(obj)
-				assert.Equal(t, args.proposeIndex, o.ProposerIndex)
-				assert.Equal(t, args.voteCount, o.VoteCount)
-				assert.Equal(t, args.voteMask, o.VoteMask)
-			case TypeValidator:
-				err := s.AddValidators(args.offset, args.validators)
-				assert.NoError(t, err)
-
-				key := BlockProduceKey.Append(args.offset, suffixValidators).Build()
-				obj, err := icobject.GetFromMutableForObject(s.trie, key)
-				assert.NoError(t, err)
-				assert.NotNil(t, obj)
-				o := ToValidators(obj)
-				assert.Equal(t, len(args.validators), len(o.Addresses))
-				for i, v := range args.validators {
-					assert.True(t, v.Equal(o.Addresses[i]))
-				}
-			}
+			o := ToBlockProduce(obj)
+			assert.Equal(t, w.proposerIndex, o.ProposerIndex)
+			assert.Equal(t, w.voteCount, o.VoteCount)
+			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask))
 		})
 	}
 
 	ss := s.GetSnapshot()
 	count := 0
-	for iter := ss.Filter(BlockProduceKey.Build()); iter.Has(); iter.Next() {
+	for iter := ss.Filter(ValidatorKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		assert.NoError(t, err)
+		v := ToValidator(o)
 
 		keySplit, _ := containerdb.SplitKeys(key)
-		assert.Equal(t, BlockProduceKey.Build(), keySplit[0])
-		assert.Equal(t, tests[count].args.offset, int(intconv.BytesToInt64(keySplit[1])))
-
-		suffix := keySplit[2][0]
-		switch suffix {
-		case suffixBlockVotes:
-			blockProduce := ToBlockVotes(o)
-			assert.NotNil(t, blockProduce)
-		case suffixValidators:
-			validators := ToValidators(o)
-			assert.NotNil(t, validators)
-		}
+		assert.Equal(t, ValidatorKey.Build(), keySplit[0])
+		assert.Equal(t, count, int(intconv.BytesToInt64(keySplit[1])))
+		assert.True(t, addrs[count].Equal(v.Address))
 
 		count += 1
 	}
-	assert.Equal(t, len(tests), count)
+}
+
+func TestState_AddGlobal(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+
+	s := NewStateFromSnapshot(NewSnapshot(database, nil))
+
+	offsetLimit := 1000
+
+	type args struct {
+		offsetLimit int
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"Set offsetLimit",
+			args{
+				offsetLimit,
+			},
+			offsetLimit,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := tt.args
+			err := s.AddGlobal(a.offsetLimit)
+			assert.NoError(t, err)
+
+			key := HashKey.Append(globalKey).Build()
+			obj, err := icobject.GetFromMutableForObject(s.trie, key)
+			assert.NoError(t, err)
+			global := ToGlobal(obj)
+			assert.Equal(t, tt.want, global.OffsetLimit)
+		})
+	}
+}
+
+func TestState_AddLoadValidators(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+
+	s := NewStateFromSnapshot(NewSnapshot(database, nil))
+
+	datas := []struct {
+		offset int
+		addr   *common.Address
+	}{
+		{
+			0,
+			common.NewAddressFromString("hx1"),
+		},
+		{
+			2,
+			common.NewAddressFromString("hx2"),
+		},
+		{
+			3,
+			common.NewAddressFromString("hx3"),
+		},
+		{
+			5,
+			common.NewAddressFromString("hx5"),
+		},
+	}
+	for _, data := range datas {
+		err := s.addValidator(data.offset, data.addr)
+		assert.NoError(t, err)
+
+		key := ValidatorKey.Append(data.offset).Build()
+		obj, err := icobject.GetFromMutableForObject(s.trie, key)
+		assert.NoError(t, err)
+		validator := ToValidator(obj)
+		assert.True(t, data.addr.Equal(validator.Address))
+	}
+
+	ss := s.GetSnapshot()
+	s.loadValidators(ss)
+
+	for _, data := range datas {
+		offset, ok := s.validators[*data.addr]
+		assert.True(t, ok)
+		assert.Equal(t, data.offset, offset)
+	}
 }

@@ -45,5 +45,7 @@ func (ic *IScoreClaim) Added(amount *big.Int) *IScoreClaim {
 }
 
 func newIScoreClaim(tag icobject.Tag) *IScoreClaim {
-	return new(IScoreClaim)
+	return &IScoreClaim{
+		*icobject.NewObjectBigInt(tag),
+	}
 }

@@ -45,5 +45,7 @@ func (is *IScore) Added(amount *big.Int) *IScore {
 }
 
 func newIScore(tag icobject.Tag) *IScore {
-	return new(IScore)
+	return &IScore{
+		*icobject.NewObjectBigInt(tag),
+	}
 }

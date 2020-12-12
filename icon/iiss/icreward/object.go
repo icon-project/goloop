@@ -27,7 +27,6 @@ const (
 	TypeDelegating
 	TypeIScore
 	TypeGlobal
-	TypeValidator
 )
 
 func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -42,8 +41,6 @@ func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newIScore(tag), nil
 	case TypeGlobal:
 		return newGlobal(tag), nil
-	case TypeValidator:
-		return newValidators(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -76,11 +73,4 @@ func ToGlobal(obj trie.Object) *Global {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*Global)
-}
-
-func ToValidators(obj trie.Object) *Validators {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*Validators)
 }

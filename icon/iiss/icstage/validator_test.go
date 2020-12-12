@@ -11,14 +11,14 @@
  * limitations under the License.
  */
 
-package icreward
+package icstage
 
 import (
-	"github.com/icon-project/goloop/common"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
@@ -28,14 +28,10 @@ func Test_Validator(t *testing.T) {
 
 	type_ := TypeValidator
 	version := 0
-	validators := []*common.Address{
-		common.NewAddressFromString("hx1"),
-		common.NewAddressFromString("hx2"),
-	}
+	validator := common.NewAddressFromString("hx1")
 
-
-	t1 := newValidators(icobject.MakeTag(type_, version))
-	t1.Addresses = validators
+	t1 := newValidator(icobject.MakeTag(type_, version))
+	t1.Address = validator
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -50,10 +46,7 @@ func Test_Validator(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	t2 := ToValidators(o2)
+	t2 := ToValidator(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, len(t1.Addresses), len(t2.Addresses))
-	for i, v := range t1.Addresses {
-		assert.True(t, v.Equal(t2.Addresses[i]))
-	}
+	assert.True(t, t1.Address.Equal(t2.Address))
 }

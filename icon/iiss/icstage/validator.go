@@ -1,12 +1,9 @@
 /*
  * Copyright 2020 ICON Foundation
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,43 +14,45 @@
 package icstage
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-type Global struct {
+type Validator struct {
 	icobject.NoDatabase
-	OffsetLimit int
+	Address *common.Address
 }
 
-func (g *Global) Version() int {
+func (v *Validator) Version() int {
 	return 0
 }
 
-func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&g.OffsetLimit)
+func (v *Validator) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.Decode(&v.Address)
 }
 
-func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(g.OffsetLimit)
+func (v *Validator) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.Encode(v.Address)
 }
 
-func (g *Global) Equal(o icobject.Impl) bool {
-	if g2, ok := o.(*Global); ok {
-		return g.OffsetLimit == g2.OffsetLimit
+func (v *Validator) Equal(o icobject.Impl) bool {
+	if v2, ok := o.(*Validator); ok {
+		return v.Address.Equal(v2.Address)
 	} else {
 		return false
 	}
 }
 
-func (g *Global) Clear() {
-	g.OffsetLimit = 0
+func (v *Validator) Clear() {
+	v.Address = nil
 }
 
-func (g *Global) IsEmpty() bool {
-	return g.OffsetLimit == 0
+func (v *Validator) IsEmpty() bool {
+	return v.Address == nil
 }
 
-func newGlobal(tag icobject.Tag) *Global {
-	return new(Global)
+func newValidator(tag icobject.Tag) *Validator {
+	return &Validator{}
 }
+

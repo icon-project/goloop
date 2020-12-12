@@ -43,7 +43,7 @@ func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
 }
 
 func (ss *Snapshot) GetGlobal() (*Global, error) {
-	key := GlobalKey.Build()
+	key := HashKey.Build()
 	o, err := icobject.GetFromImmutableForObject(ss.trie, key)
 	if err != nil {
 		return nil, err
@@ -60,6 +60,15 @@ func (ss *Snapshot) GetOffsetLimit() (int, error) {
 		return 0, nil
 	}
 	return global.OffsetLimit, nil
+}
+
+func (ss *Snapshot) GetBlockProduce(offset int) (*BlockProduce, error) {
+	key := BlockProduceKey.Append(offset).Build()
+	o, err := icobject.GetFromImmutableForObject(ss.trie, key)
+	if err != nil {
+		return nil, err
+	}
+	return ToBlockProduce(o), nil
 }
 
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {

@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 )
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
@@ -99,7 +100,6 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	s := icstage.NewState(database, nil)
 
 	offset1 := 0
-	offset2 := 5
 
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
@@ -108,107 +108,110 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	addr5 := common.NewAddressFromString("hx5")
 
 	type args struct {
-		type_        int
-		offset       int
-		proposeIndex int
-		voteCount    int
-		voteMask     int64
-		validators   []*common.Address
+		offset   int
+		proposer module.Address
+		voters   []module.Address
 	}
 
-	tests := []struct {
+	datas := []struct {
 		name string
 		args args
 	}{
 		{
-			"Validator 1",
-			args{
-				type_:      icstage.TypeValidator,
-				offset:     offset1,
-				validators: []*common.Address{addr1, addr2, addr3, addr4},
-			},
-		},
-		{
 			"block produce 1",
 			args{
-				type_:        icstage.TypeBlockProduce,
-				offset:       offset1,
-				proposeIndex: 1,
-				voteCount:    4,
-				voteMask:     0b1111,
-			},
-		},
-		{
-			"Validator 2",
-			args{
-				type_:      icstage.TypeValidator,
-				offset:     offset2,
-				validators: []*common.Address{addr1, addr2, addr3, addr5},
+				offset:   offset1,
+				proposer: addr1,
+				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
 		},
 		{
 			"block produce 2",
 			args{
-				type_:        icstage.TypeBlockProduce,
-				offset:       offset2,
-				proposeIndex: 3,
-				voteCount:    3,
-				voteMask:     0b1110,
+				offset:   offset1 + 1,
+				proposer: addr2,
+				voters:   []module.Address{addr1, addr2, addr3, addr4},
+			},
+		},
+		{
+			"block produce 3",
+			args{
+				offset:   offset1 + 2,
+				proposer: addr5,
+				voters:   []module.Address{addr1, addr4, addr5},
 			},
 		},
 	}
-	for _, tt := range tests {
-		args := tt.args
-		t.Run(tt.name, func(t *testing.T) {
-			switch args.type_ {
-			case icstage.TypeBlockProduce:
-				err := s.AddBlockVotes(args.offset, args.proposeIndex, args.voteCount, args.voteMask)
-				assert.NoError(t, err)
-			case icstage.TypeValidator:
-				err := s.AddValidators(args.offset, args.validators)
-				assert.NoError(t, err)
-			}
-		})
+	for _, data := range datas {
+		a := data.args
+		err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
+		assert.NoError(t, err)
 	}
 
 	c := MakeCalculator(database, s.GetSnapshot())
 	irep := big.NewInt(int64(YearBlock * IScoreICXRatio))
-	vs := make([]*validator, 0)
-	var err error
+	rewardGenerate := new(big.Int).Div(irep, bigIntBeta1Divider).Int64()
+	rewardValidate := new(big.Int).Div(irep, bigIntBeta1Divider).Int64()
+	vs, err := c.loadValidators()
+	assert.NoError(t, err)
 
-	for offset := offset1; offset <= offset2; offset += 1 {
-		vs, err = c.processBlockProduce(irep, offset, vs)
+	for _, data := range datas {
+		a := data.args
+		err = c.processBlockProduce(irep, a.offset, vs)
 		assert.NoError(t, err)
 	}
-	// Beta1 in temp made by tests[0] and tests[1]
-	rewardGenerate := new(big.Int).Div(irep, bigIntBeta1Divider)
-	rewardValidate := new(big.Int).Div(irep, bigIntBeta1Divider)
-	for i, v := range tests[0].args.validators {
-		is, err := c.temp.GetIScore(v)
-		assert.NoError(t, err)
-		reward := new(big.Int)
-		if i == tests[1].args.proposeIndex {
-			reward.Add(reward, rewardGenerate)
-		}
-		if (tests[1].args.voteMask & (1 << i)) != 0 {
-			r := new(big.Int).Div(rewardValidate, big.NewInt(int64(tests[1].args.voteCount)))
-			reward.Add(reward, r)
-		}
-		assert.Equal(t, reward.Int64(), is.Value.Int64())
+
+	tests := []struct {
+		name  string
+		idx   int
+		addr  *common.Address
+		wants int64
+	}{
+		{
+			"addr1",
+			0,
+			addr1,
+			rewardGenerate +
+				rewardValidate/4 +
+				rewardValidate/4 +
+				rewardValidate/3,
+		},
+		{
+			"addr2",
+			1,
+			addr2,
+			rewardValidate/4 +
+				rewardGenerate +
+				rewardValidate/4,
+		},
+		{
+			"addr3",
+			2,
+			addr3,
+			rewardValidate/4 +
+				rewardValidate/4,
+		},
+		{
+			"addr4",
+			3,
+			addr4,
+			rewardValidate/4 +
+				rewardValidate/4 +
+				rewardValidate/3,
+		},
+		{
+			"addr5",
+			4,
+			addr5,
+			rewardGenerate +
+				rewardValidate/3,
+		},
 	}
 
-	// Beta1 in validator list make by tests[2] and tests[3]
-	assert.Equal(t, len(tests[2].args.validators), len(vs))
-	for i, v := range vs {
-		reward := new(big.Int)
-		if i == tests[3].args.proposeIndex {
-			reward.Add(reward, rewardGenerate)
-		}
-		if (tests[3].args.voteMask & (1 << i)) != 0 {
-			r := new(big.Int).Div(rewardValidate, big.NewInt(int64(tests[3].args.voteCount)))
-			reward.Add(reward, r)
-		}
-		assert.Equal(t, 0, v.iScore.Cmp(reward))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wants, vs[tt.idx].iScore.Int64())
+		})
 	}
 }
 
@@ -556,9 +559,6 @@ func TestCalculator_processDelegating(t *testing.T) {
 	dting1.Delegations = ds1
 	dting2 := icreward.NewDelegating()
 	dting2.Delegations = ds2
-	//c.temp.SetDelegating(addr2, dting2)
-	//c.temp.SetDelegating(addr3, dting1)
-	//c.temp.SetDelegating(addr4, dting2)
 	c.temp.SetDelegating(addr2, dting2.Clone())
 	c.temp.SetDelegating(addr3, dting1.Clone())
 	c.temp.SetDelegating(addr4, dting2.Clone())

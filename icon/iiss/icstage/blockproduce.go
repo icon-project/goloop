@@ -19,21 +19,21 @@ package icstage
 import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icreward"
+	"math/big"
 )
 
-type BlockVotes struct {
+type BlockProduce struct {
 	icobject.NoDatabase
 	ProposerIndex int
 	VoteCount     int
-	VoteMask      int64
+	VoteMask      *big.Int
 }
 
-func (bp *BlockVotes) Version() int {
+func (bp *BlockProduce) Version() int {
 	return 0
 }
 
-func (bp *BlockVotes) RLPDecodeFields(decoder codec.Decoder) error {
+func (bp *BlockProduce) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
 		&bp.ProposerIndex,
 		&bp.VoteCount,
@@ -42,7 +42,7 @@ func (bp *BlockVotes) RLPDecodeFields(decoder codec.Decoder) error {
 	return err
 }
 
-func (bp *BlockVotes) RLPEncodeFields(encoder codec.Encoder) error {
+func (bp *BlockProduce) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		bp.ProposerIndex,
 		bp.VoteCount,
@@ -50,50 +50,26 @@ func (bp *BlockVotes) RLPEncodeFields(encoder codec.Encoder) error {
 	)
 }
 
-func (bp *BlockVotes) Equal(o icobject.Impl) bool {
-	if bp2, ok := o.(*BlockVotes); ok {
+func (bp *BlockProduce) Equal(o icobject.Impl) bool {
+	if bp2, ok := o.(*BlockProduce); ok {
 		return bp.ProposerIndex == bp2.ProposerIndex &&
 			bp.VoteCount == bp2.VoteCount &&
-			bp.VoteMask == bp2.VoteMask
+			bp.VoteMask.Cmp(bp2.VoteMask) == 0
 	} else {
 		return false
 	}
 }
 
-func (bp *BlockVotes) Clear() {
+func (bp *BlockProduce) Clear() {
 	bp.ProposerIndex = 0
 	bp.VoteCount = 0
-	bp.VoteMask = 0
+	bp.VoteMask = nil
 }
 
-func (bp *BlockVotes) IsEmpty() bool {
+func (bp *BlockProduce) IsEmpty() bool {
 	return bp.VoteCount == 0
 }
 
-func newBlockVotes(tag icobject.Tag) *BlockVotes {
-	return new(BlockVotes)
-}
-
-type Validators struct {
-	icreward.Validators
-}
-
-func (v *Validators) Equal(o icobject.Impl) bool {
-	if v2, ok := o.(*Validators); ok {
-		if len(v.Addresses) != len(v2.Addresses) {
-			return false
-		}
-		for i, a := range v.Addresses {
-			if a.Equal(v2.Addresses[i]) == false {
-				return false
-			}
-		}
-		return true
-	} else {
-		return false
-	}
-}
-
-func newValidator(tag icobject.Tag) *Validators {
-	return new(Validators)
+func newBlockProduce(tag icobject.Tag) *BlockProduce {
+	return new(BlockProduce)
 }

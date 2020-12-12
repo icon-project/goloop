@@ -14,7 +14,7 @@
 package icstage
 
 import (
-	"github.com/icon-project/goloop/common"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,9 +30,9 @@ func Test_BlockVote(t *testing.T) {
 	version := 0
 	proposerIndex := 3
 	voteCount := 4
-	voteMask := int64(0b1111)
+	voteMask := big.NewInt(0b1111)
 
-	g1 := newBlockVotes(icobject.MakeTag(type_, version))
+	g1 := newBlockProduce(icobject.MakeTag(type_, version))
 	g1.ProposerIndex = proposerIndex
 	g1.VoteCount = voteCount
 	g1.VoteMask = voteMask
@@ -50,45 +50,9 @@ func Test_BlockVote(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	g2 := ToBlockVotes(o2)
+	g2 := ToBlockProduce(o2)
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, proposerIndex, g2.ProposerIndex)
 	assert.Equal(t, voteCount, g2.VoteCount)
 	assert.Equal(t, voteMask, g2.VoteMask)
-}
-
-
-func Test_Validator(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-
-	type_ := TypeValidator
-	version := 0
-	validators := []*common.Address{
-		common.NewAddressFromString("hx1"),
-		common.NewAddressFromString("hx2"),
-	}
-
-
-	t1 := newValidator(icobject.MakeTag(type_, version))
-	t1.Addresses = validators
-
-	o1 := icobject.New(type_, t1)
-	serialized := o1.Bytes()
-
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
-	}
-
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
-
-	t2 := ToValidators(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, len(t1.Addresses), len(t2.Addresses))
-	for i, v := range t1.Addresses {
-		assert.True(t, v.Equal(t2.Addresses[i]))
-	}
 }

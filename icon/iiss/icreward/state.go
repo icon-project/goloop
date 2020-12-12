@@ -121,21 +121,6 @@ func (s *State) DeleteDelegating(addr module.Address) error {
 	return err
 }
 
-func (s *State) SetValidators(vs *Validators) error {
-	key := ValidatorsKey.Build()
-	_, err := s.trie.Set(key, icobject.New(TypeValidator, vs))
-	return err
-}
-
-func (s *State) GetValidators() (*Validators, error) {
-	key := ValidatorsKey.Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
-	if err != nil {
-		return nil, err
-	}
-	return ToValidators(obj), nil
-}
-
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	return &State{
 		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),

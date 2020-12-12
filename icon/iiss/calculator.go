@@ -15,7 +15,6 @@ package iiss
 
 import (
 	"math/big"
-	"math/bits"
 	"sort"
 
 	"github.com/icon-project/goloop/common"
@@ -56,7 +55,6 @@ type Calculator struct {
 
 	irep       *big.Int
 	rrep       *big.Int
-	validators []*validator
 
 	offsetLimit int
 }
@@ -101,19 +99,6 @@ func (c *Calculator) prepare() error {
 	} else {
 		c.irep = new(big.Int)
 		c.rrep = new(big.Int)
-	}
-
-	vs, err := c.temp.GetValidators()
-	if err != nil {
-		return err
-	}
-	if vs == nil {
-		c.validators = make([]*validator, 0)
-	} else {
-		c.validators = make([]*validator, len(vs.Addresses), len(vs.Addresses))
-		for i, addr := range vs.Addresses {
-			c.validators[i] = newValidator(addr)
-		}
 	}
 
 	// read offsetLimit from back
@@ -167,7 +152,10 @@ func (c *Calculator) calculateBeta1() error {
 	var err error
 	offset := 0
 	irep := c.irep
-	validators := c.validators
+	validators, err := c.loadValidators()
+	if err != nil {
+		return err
+	}
 
 	eventPrefix := icstage.EventKey.Build()
 	for iter := c.back.Filter(eventPrefix); iter.Has(); iter.Next() {
@@ -179,8 +167,7 @@ func (c *Calculator) calculateBeta1() error {
 			keySplit, _ := containerdb.SplitKeys(key)
 			keyOffset := int(intconv.BytesToInt64(keySplit[1]))
 			for ; offset < keyOffset; offset += 1 {
-				validators, err = c.processBlockProduce(irep, offset, validators)
-				if err != nil {
+				if err := c.processBlockProduce(irep, offset, validators); err != nil {
 					return err
 				}
 			}
@@ -189,13 +176,12 @@ func (c *Calculator) calculateBeta1() error {
 		}
 	}
 	for ; offset < c.offsetLimit; offset += 1 {
-		validators, err = c.processBlockProduce(irep, offset, validators)
+		err = c.processBlockProduce(irep, offset, validators)
 		if err != nil {
 			return err
 		}
 	}
 
-	vs := new(icreward.Validators)
 	for _, v := range validators {
 		is, err := c.temp.GetIScore(v.addr)
 		if err != nil {
@@ -204,63 +190,62 @@ func (c *Calculator) calculateBeta1() error {
 		if err := c.temp.SetIScore(v.addr, is.Added(v.iScore)); err != nil {
 			return err
 		}
-		vs.Add(v.addr)
 	}
-	if err := c.temp.SetValidators(vs); err != nil {
-		return err
-	}
+
 	return nil
 }
 
-func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators []*validator) ([]*validator, error) {
+func (c *Calculator) loadValidators() ([]*validator, error) {
+	vs := make([]*validator, 0)
+	count := 0
+
+	prefix := icstage.ValidatorKey.Build()
+	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		if err != nil {
+			return nil, err
+		}
+		keySplit, err := containerdb.SplitKeys(key)
+		if err != nil {
+			return nil, err
+		}
+		idx := int(intconv.BytesToInt64(keySplit[1]))
+		if idx != count {
+			return nil, errors.ErrExecutionFail
+		}
+		obj := icstage.ToValidator(o)
+		vs = append(vs, newValidator(obj.Address))
+		count += 1
+	}
+
+	return vs, nil
+}
+
+func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators []*validator) error {
 	beta1Reward := new(big.Int).Div(irep, bigIntBeta1Divider)
 	if irep.Sign() == 0 {
-		return validators, nil
+		return nil
 	}
-	prefix := icstage.BlockProduceKey.Append(offset).Build()
-	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
-		o, _, err := iter.Get()
-		if err != nil {
-			return validators, err
-		}
-		type_ := o.(*icobject.Object).Tag().Type()
-		if type_ == icstage.TypeValidator {
-			// validators will be changed, update temp with gathered I-Score
-			for _, v := range validators {
-				is, err := c.temp.GetIScore(v.addr)
-				if err != nil {
-					return validators, err
-				}
-				if err := c.temp.SetIScore(v.addr, is.Added(v.iScore)); err != nil {
-					return validators, err
-				}
-			}
-			// load new validators
-			obj := icstage.ToValidators(o)
-			nvs := make([]*validator, 0)
-			for _, nv := range obj.Addresses {
-				v := newValidator(nv)
-				nvs = append(nvs, v)
-			}
-			validators = nvs
-		} else {
-			v := icstage.ToBlockVotes(o)
-			// Beta1 for generator
-			proposer := validators[v.ProposerIndex]
-			proposer.iScore.Add(proposer.iScore, beta1Reward)
-			// Beta1 for validator
-			beta1Validate := new(big.Int)
-			beta1Validate.Div(beta1Reward, big.NewInt(int64(v.VoteCount)))
-			maxIndex := bits.Len(uint(v.VoteMask))
-			for i := 0; i <= maxIndex; i += 1 {
-				if (v.VoteMask & (1 << i)) != 0 {
-					validators[i].iScore.Add(validators[i].iScore, beta1Validate)
-				}
-			}
+	bp, err := c.back.GetBlockProduce(offset)
+	if err != nil {
+		return err
+	}
+
+	// for generator
+	proposer := validators[bp.ProposerIndex]
+	proposer.iScore.Add(proposer.iScore, beta1Reward)
+
+	// for validator
+	beta1Validate := new(big.Int)
+	beta1Validate.Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
+	maxIndex := bp.VoteMask.BitLen()
+	for i := 0; i <= maxIndex; i += 1 {
+		if (bp.VoteMask.Bit(i)) != 0 {
+			validators[i].iScore.Add(validators[i].iScore, beta1Validate)
 		}
 	}
 
-	return validators, nil
+	return nil
 }
 
 func (c *Calculator) calculateBeta2() error {

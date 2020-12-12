@@ -27,6 +27,7 @@ const (
 	TypeEventDelegation
 	TypeEventEnable
 	TypeEventPeriod
+	TypeEventSize
 	TypeBlockProduce
 	TypeValidator
 	TypeGlobal
@@ -44,8 +45,10 @@ func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newEventEnable(tag), nil
 	case TypeEventPeriod:
 		return newEventPeriod(tag), nil
+	case TypeEventSize:
+		return newEventSize(tag), nil
 	case TypeBlockProduce:
-		return newBlockVotes(tag), nil
+		return newBlockProduce(tag), nil
 	case TypeValidator:
 		return newValidator(tag), nil
 	case TypeGlobal:
@@ -84,18 +87,25 @@ func ToEventPeriod(obj trie.Object) *EventPeriod {
 	return obj.(*icobject.Object).Real().(*EventPeriod)
 }
 
-func ToBlockVotes(obj trie.Object) *BlockVotes {
+func ToEventSize(obj trie.Object) *EventSize {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*BlockVotes)
+	return obj.(*icobject.Object).Real().(*EventSize)
 }
 
-func ToValidators(obj trie.Object) *Validators {
+func ToBlockProduce(obj trie.Object) *BlockProduce {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*Validators)
+	return obj.(*icobject.Object).Real().(*BlockProduce)
+}
+
+func ToValidator(obj trie.Object) *Validator {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*Validator)
 }
 
 func ToGlobal(obj trie.Object) *Global {
