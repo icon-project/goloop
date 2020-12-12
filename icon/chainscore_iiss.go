@@ -16,6 +16,7 @@ package icon
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -80,6 +81,11 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 func calcUnstakeLockPeriod(blockHeight int64) int64 {
 	// TODO implement me
 	return blockHeight + 10
+}
+
+func prevCalcBlockHeight() int64 {
+	// TODO implement me
+	return 0
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
@@ -272,4 +278,63 @@ func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, er
 		return nil, err
 	}
 	return prep.GetBonderListInJSON(), nil
+}
+
+func (s *chainScore) Ex_claimIScore() error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+
+	claim, err := es.Front.GetIScoreClaim(s.from)
+	if err != nil {
+		return err
+	}
+	if claim != nil {
+		// claim already in this calculation period
+		return nil
+	}
+
+	iScore, err := es.Reward.GetIScore(s.from)
+	if err != nil {
+		return err
+	}
+	if iScore == nil || iScore.IsEmpty() {
+		// there is no iScore to claim
+		return nil
+	}
+
+	account := s.cc.GetAccountState(s.from.ID())
+	if account == nil {
+		return nil
+	}
+	balance := account.GetBalance()
+
+	// increase world account balance
+	account.SetBalance(balance.Add(balance, iScore.Value))
+
+	// write claim data to front
+	if err = es.Front.AddIScoreClaim(s.from, iScore.Value); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	iScore, err := es.Reward.GetIScore(address)
+	if err != nil {
+		return nil, err
+	}
+	is := new(big.Int)
+	if iScore == nil || iScore.IsEmpty() {
+		is.SetInt64(0)
+	} else {
+		is = iScore.Value
+	}
+
+	data := make(map[string]interface{})
+	data["blockheight"] = prevCalcBlockHeight()
+	data["iscore"] = intconv.FormatBigInt(is)
+	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
+
+	return data, nil
 }

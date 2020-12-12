@@ -58,6 +58,14 @@ func (s *State) Reset(ss *Snapshot) {
 	s.trie.Reset(ss.trie)
 }
 
+func (s *State) GetIScoreClaim(addr module.Address) (*IScoreClaim, error) {
+	key := IScoreClaimKey.Append(addr).Build()
+	obj, err := s.trie.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToIScoreClaim(obj), nil
+}
 func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	key := IScoreClaimKey.Append(addr).Build()
 	obj, err := icobject.GetFromMutableForObject(s.trie, key)

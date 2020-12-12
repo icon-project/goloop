@@ -80,7 +80,7 @@ func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		state:    icstate.NewStateFromSnapshot(s.state),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		back:     icstage.NewStateFromSnapshot(s.back),
-		reward:   icreward.NewStateFromSnapshot(s.reward),
+		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 }
 
@@ -108,7 +108,7 @@ type ExtensionStateImpl struct {
 	state    *icstate.State
 	Front    *icstage.State
 	back     *icstage.State
-	reward   *icreward.State
+	Reward   *icreward.State
 }
 
 func (s *ExtensionStateImpl) State() *icstate.State {
@@ -121,7 +121,7 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 		state:    s.state.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.back.GetSnapshot(),
-		reward:   s.reward.GetSnapshot(),
+		reward:   s.Reward.GetSnapshot(),
 	}
 }
 

@@ -88,6 +88,20 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "claimIScore",
+		scoreapi.FlagExternal, 0,
+		nil,
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "queryIScore",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{scoreapi.Function, "registerPRep",
 		scoreapi.FlagPayable | scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
