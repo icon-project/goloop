@@ -280,7 +280,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 
-	if cc.AuditEnabled() == false ||
+	if h.eeType.NeedAudit() == false || cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
 		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
