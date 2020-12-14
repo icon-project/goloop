@@ -31,28 +31,28 @@ func (bytesConverter) BytesToObject(value []byte) trie.Object {
 	return NewBytesObject(value)
 }
 
-type objectStoreState struct {
+type ObjectStoreState struct {
 	trie.MutableForObject
 	bytesConverter
 }
 
-func NewObjectStoreState(t trie.MutableForObject) containerdb.ObjectStoreState {
-	return &objectStoreState{t, bytesConverter{}}
+func NewObjectStoreState(t trie.MutableForObject) *ObjectStoreState {
+	return &ObjectStoreState{t, bytesConverter{}}
 }
 
-type objectStoreSnapshot struct {
+type ObjectStoreSnapshot struct {
 	trie.ImmutableForObject
 	bytesConverter
 }
 
-func (o *objectStoreSnapshot) Set(key []byte, obj trie.Object) (trie.Object, error) {
+func (o *ObjectStoreSnapshot) Set(key []byte, obj trie.Object) (trie.Object, error) {
 	panic("invalid usage")
 }
 
-func (o *objectStoreSnapshot) Delete(key []byte) (trie.Object, error) {
+func (o *ObjectStoreSnapshot) Delete(key []byte) (trie.Object, error) {
 	panic("invalid usage")
 }
 
 func NewObjectStoreSnapshot(t trie.ImmutableForObject) containerdb.ObjectStoreState {
-	return &objectStoreSnapshot{t, bytesConverter{}}
+	return &ObjectStoreSnapshot{t, bytesConverter{}}
 }
