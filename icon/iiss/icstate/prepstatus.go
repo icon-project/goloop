@@ -230,7 +230,11 @@ func (ps *PRepStatusState) Clear() {
 }
 
 func (ps *PRepStatusState) Reset(pss *PRepStatusSnapshot) {
-	ps.PRepStatusData.Set(pss.PRepStatusData)
+	if ps.PRepStatusData == nil {
+		ps.PRepStatusData = pss.PRepStatusData.Clone()
+	} else {
+		ps.PRepStatusData.Set(pss.PRepStatusData)
+	}
 }
 
 func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {

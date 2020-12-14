@@ -60,7 +60,14 @@ func (p *PRepData) Equal(other *PRepData) bool {
 }
 
 func (p *PRepData) Set(other *PRepData) {
-	*p = *other
+	p.name = other.name
+	p.country = other.country
+	p.city = other.city
+	p.email = other.email
+	p.website = other.website
+	p.details = other.details
+	p.p2pEndpoint = other.p2pEndpoint
+	p.node = other.node
 	p.bonderList = other.bonderList.Clone()
 }
 
@@ -114,7 +121,16 @@ func (p *PRepSnapshot) RLPEncodeFields(e codec.Encoder) error {
 	if err != nil {
 		return err
 	}
-	if err := e2.EncodeMulti(p.name, p.country, p.city, p.email, p.website, p.details, p.p2pEndpoint, p.node, p.bonderList); err != nil {
+	if err := e2.EncodeMulti(
+		p.name,
+		p.country,
+		p.city,
+		p.email,
+		p.website,
+		p.details,
+		p.p2pEndpoint,
+		p.node,
+		p.bonderList); err != nil {
 		return err
 	}
 	return nil
@@ -126,7 +142,16 @@ func (p *PRepSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		return err
 	}
 
-	if _, err := d2.DecodeMulti(&p.name, &p.country, &p.city, &p.email, &p.website, &p.details, &p.p2pEndpoint, &p.node, &p.bonderList); err != nil {
+	if _, err := d2.DecodeMulti(
+		&p.name,
+		&p.country,
+		&p.city,
+		&p.email,
+		&p.website,
+		&p.details,
+		&p.p2pEndpoint,
+		&p.node,
+		&p.bonderList); err != nil {
 		return errors.Wrap(err, "Fail to decode PRepSnapshot")
 	}
 	return nil
@@ -156,10 +181,6 @@ func (p *PRepState) Owner() module.Address {
 	return p.owner
 }
 
-func newPRepState(owner module.Address) *PRepState {
-	return &PRepState{owner: owner}
-}
-
 func (p *PRepState) Clear() {
 	p.owner = nil
 	p.city = ""
@@ -173,7 +194,11 @@ func (p *PRepState) Clear() {
 }
 
 func (p *PRepState) Reset(ps *PRepSnapshot) {
-	p.PRepData.Set(ps.PRepData)
+	if p.PRepData == nil {
+		p.PRepData = ps.PRepData.Clone()
+	} else {
+		p.PRepData.Set(ps.PRepData)
+	}
 }
 
 func (p *PRepState) GetSnapshot() *PRepSnapshot {
@@ -208,10 +233,11 @@ func (p *PRepState) GetBonderListInJSON() []interface{} {
 	return p.bonderList.ToJSON()
 }
 
-func NewPRepStateWithSnapshot(a module.Address, ss *PRepSnapshot) *PRepState {
-	ps := newPRepState(a)
-	ps.Reset(ss)
-	return ps
+func NewPRepStateWithSnapshot(owner module.Address, ss *PRepSnapshot) *PRepState {
+	return &PRepState{
+		owner:    owner,
+		PRepData: ss.PRepData.Clone(),
+	}
 }
 
 type BonderList []*common.Address
