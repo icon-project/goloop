@@ -27,7 +27,7 @@ import (
 )
 
 type Snapshot struct {
-	trie trie.ImmutableForObject
+	store *icobject.ObjectStoreSnapshot
 }
 
 var (
@@ -39,11 +39,11 @@ var (
 )
 
 func (ss *Snapshot) Bytes() []byte {
-	return ss.trie.Hash()
+	return ss.store.Hash()
 }
 
 func (ss *Snapshot) Flush() error {
-	if s, ok := ss.trie.(trie.SnapshotForObject); ok {
+	if s, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
 		return s.Flush()
 	}
 	return nil
@@ -51,7 +51,7 @@ func (ss *Snapshot) Flush() error {
 
 func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, error) {
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
+	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (ss *Snapshot) GetAccountSnapshot(addr module.Address) (*AccountSnapshot, e
 
 func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) {
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
+	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (ss *Snapshot) GetPRepSnapshot(addr module.Address) (*PRepSnapshot, error) 
 
 func (ss *Snapshot) GetPRepStatusSnapshot(addr module.Address) (*PRepStatusSnapshot, error) {
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.trie, key)
+	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,10 @@ func (ss *Snapshot) NewState() *State {
 
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {
 	dbase = icobject.AttachObjectFactory(dbase, newObjectImpl)
-	return &Snapshot{
-		trie: trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType),
-	}
+	t := trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType)
+	return newSnapshotFromImmutableForObject(t)
+}
+
+func newSnapshotFromImmutableForObject(t trie.ImmutableForObject) *Snapshot {
+	return &Snapshot{icobject.NewObjectStoreSnapshot(t)}
 }

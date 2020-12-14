@@ -19,7 +19,6 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -32,14 +31,14 @@ type State struct {
 	mutablePRepStatus     map[string]*PRepStatusState
 	mutableUnstakingTimer map[int64]*TimerState
 	mutableUnbondingTimer map[int64]*TimerState
-	trie                  trie.MutableForObject
+	store                 *icobject.ObjectStoreState
 }
 
 func (s *State) Reset(ss *Snapshot) error {
-	s.trie.Reset(ss.trie)
+	s.store.Reset(ss.store)
 	for _, as := range s.mutableAccounts {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
-		value, err := icobject.GetFromMutableForObject(s.trie, key)
+		value, err := icobject.GetFromMutableForObject(s.store, key)
 		if err != nil {
 			return err
 		}
@@ -51,7 +50,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ps := range s.mutablePReps {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, ps.Owner()))
-		value, err := icobject.GetFromMutableForObject(s.trie, key)
+		value, err := icobject.GetFromMutableForObject(s.store, key)
 		if err != nil {
 			return err
 		}
@@ -63,7 +62,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ps := range s.mutablePRepStatus {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, ps.Address()))
-		value, err := icobject.GetFromMutableForObject(s.trie, key)
+		value, err := icobject.GetFromMutableForObject(s.store, key)
 		if err != nil {
 			return err
 		}
@@ -75,7 +74,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ubt := range s.mutableUnbondingTimer {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, ubt.Height))
-		value, err := s.trie.Get(key)
+		value, err := s.store.Get(key)
 		if err != nil {
 			return err
 		}
@@ -87,7 +86,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	}
 	for _, ust := range s.mutableUnstakingTimer {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, ust.Height))
-		value, err := s.trie.Get(key)
+		value, err := s.store.Get(key)
 		if err != nil {
 			return err
 		}
@@ -106,11 +105,11 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypeAccount, as.GetSnapshot())
 
 		if as.IsEmpty() {
-			if _, err := s.trie.Delete(key); err != nil {
+			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
 			}
 		} else {
-			if _, err := s.trie.Set(key, value); err != nil {
+			if _, err := s.store.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
@@ -121,11 +120,11 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypePRep, ps.GetSnapshot())
 
 		if ps.IsEmpty() {
-			if _, err := s.trie.Delete(key); err != nil {
+			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete prep key %x, err+%+v", key, err)
 			}
 		} else {
-			if _, err := s.trie.Set(key, value); err != nil {
+			if _, err := s.store.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
@@ -136,11 +135,11 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypePRepStatus, ps.GetSnapshot())
 
 		if ps.IsEmpty() {
-			if _, err := s.trie.Delete(key); err != nil {
+			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete prepStatus key %x, err+%+v", key, err)
 			}
 		} else {
-			if _, err := s.trie.Set(key, value); err != nil {
+			if _, err := s.store.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
@@ -151,11 +150,11 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
 
 		if timer.IsEmpty() {
-			if _, err := s.trie.Delete(key); err != nil {
+			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
 			}
 		} else {
-			if _, err := s.trie.Set(key, value); err != nil {
+			if _, err := s.store.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
@@ -165,18 +164,17 @@ func (s *State) GetSnapshot() *Snapshot {
 		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
 
 		if timer.IsEmpty() {
-			if _, err := s.trie.Delete(key); err != nil {
+			if _, err := s.store.Delete(key); err != nil {
 				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
 			}
 		} else {
-			if _, err := s.trie.Set(key, value); err != nil {
+			if _, err := s.store.Set(key, value); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
 			}
 		}
 	}
-	return &Snapshot{
-		trie: s.trie.GetSnapshot(),
-	}
+
+	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
 func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
@@ -185,7 +183,7 @@ func (s *State) GetAccountState(addr module.Address) (*AccountState, error) {
 		return a, nil
 	}
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +204,7 @@ func (s *State) GetPRepState(addr module.Address) (*PRepState, error) {
 		return a, nil
 	}
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +225,7 @@ func (s *State) GetPRepStatusState(addr module.Address) (*PRepStatusState, error
 		return a, nil
 	}
 	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +244,7 @@ func (s *State) GetUnstakingTimerState(height int64) (*TimerState, error) {
 	if a, ok := s.mutableUnstakingTimer[height]; ok {
 		return a, nil
 	}
-	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, height)))
+	obj, err := s.store.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, height)))
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +263,7 @@ func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
 	if a, ok := s.mutableUnbondingTimer[height]; ok {
 		return a, nil
 	}
-	obj, err := s.trie.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, height)))
+	obj, err := s.store.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, height)))
 	if err != nil {
 		return nil, err
 	}
@@ -280,12 +278,14 @@ func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
 	return ts, nil
 }
 func NewStateFromSnapshot(ss *Snapshot) *State {
+	trie := trie_manager.NewMutableFromImmutableForObject(ss.store)
+
 	return &State{
 		mutableAccounts:       make(map[string]*AccountState),
 		mutablePReps:          make(map[string]*PRepState),
 		mutablePRepStatus:     make(map[string]*PRepStatusState),
 		mutableUnstakingTimer: make(map[int64]*TimerState),
 		mutableUnbondingTimer: make(map[int64]*TimerState),
-		trie:                  trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		store:                 icobject.NewObjectStoreState(trie),
 	}
 }

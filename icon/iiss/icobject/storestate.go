@@ -17,7 +17,6 @@
 package icobject
 
 import (
-	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -45,14 +44,14 @@ type ObjectStoreSnapshot struct {
 	bytesConverter
 }
 
-func (o *ObjectStoreSnapshot) Set(key []byte, obj trie.Object) (trie.Object, error) {
+func (o *ObjectStoreSnapshot) Set(_ []byte, _ trie.Object) (trie.Object, error) {
 	panic("invalid usage")
 }
 
-func (o *ObjectStoreSnapshot) Delete(key []byte) (trie.Object, error) {
+func (o *ObjectStoreSnapshot) Delete(_ []byte) (trie.Object, error) {
 	panic("invalid usage")
 }
 
-func NewObjectStoreSnapshot(t trie.ImmutableForObject) containerdb.ObjectStoreState {
+func NewObjectStoreSnapshot(t trie.ImmutableForObject) *ObjectStoreSnapshot {
 	return &ObjectStoreSnapshot{t, bytesConverter{}}
 }
