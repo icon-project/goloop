@@ -24,8 +24,11 @@ var (
 		SystemEE: "<Update>",
 	}
 	allowUpdateFromTo = map[EEType]map[EEType]bool{
-		PythonEE: map[EEType]bool{
+		PythonEE: {
 			PythonEE: true,
+		},
+		JavaEE: {
+			JavaEE: true,
 		},
 	}
 	needAudit = map[EEType]bool{

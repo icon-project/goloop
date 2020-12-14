@@ -52,6 +52,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import testcases.APITest;
 import testcases.DeployScore;
+import testcases.HelloWorld;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -765,6 +766,25 @@ class JavaScoreTest extends TestBase {
         txres = txHandler.getResult(
                 score.invoke(ownerWallet, "deployMultiple", params));
         assertSuccess(txres);
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "update API");
+        classes = new Class<?>[]{HelloWorld.class};
+        jarBytes = txHandler.makeJar(classes[0].getName(), classes);
+        params = new RpcObject.Builder()
+                .put("target", new RpcValue(scoreAddress))
+                .put("content", new RpcValue(jarBytes))
+                .put("name", new RpcValue("Alice"))
+                .build();
+        txres = txHandler.getResult(
+                score.invoke(ownerWallet, "updateSingle", params));
+        assertSuccess(txres);
+        LOG.infoExiting();
+
+        LOG.infoEntering("call", "updated methods");
+        assertThrows(RpcError.class, () -> apiScore.call("getOwnerQuery", null));
+        res = apiScore.call("name", null);
+        assertEquals("Alice", res.asString());
         LOG.infoExiting();
     }
 

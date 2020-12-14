@@ -41,6 +41,17 @@ public class DeployScore {
         Context.require(addr != addr1);
     }
 
+    @External
+    public void updateSingle(Address target, byte[] content, String name) {
+        try {
+            assert target != null;
+            this.address = Context.deploy(target, content, name);
+            Context.require(target.equals(this.address));
+        } catch (IllegalArgumentException e) {
+            Context.revert(2, "Failed to update");
+        }
+    }
+
     @External(readonly=true)
     public Address getOwner() {
         Context.require(this.address != null);
