@@ -56,9 +56,12 @@ def split_icon_address(address: str) -> (str, str):
 
 
 class AddressPrefix(IntEnum):
-    """Address prefix class
     """
-    # Externally Owned Account
+    Enumeration of Address prefix
+
+    - EOA: Externally Owned Account
+    - CONTRACT: Contract Account
+    """
     EOA = 0
     CONTRACT = 1
 
@@ -113,7 +116,7 @@ class Address(object):
     def prefix(self) -> AddressPrefix:
         """Returns address prefix part
 
-        :return: AddressPrefix.EOA(0) or AddressPrefix.CONTRACT(1)
+        :return: :class:`.AddressPrefix` AddressPrefix.EOA(0) or AddressPrefix.CONTRACT(1)
         """
         return self.__prefix
 
@@ -151,6 +154,9 @@ class Address(object):
         """
         return f'{str(self.prefix)}{self.body.hex()}'
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def __hash__(self) -> int:
         """Returns a hash value for this object
 
@@ -168,9 +174,9 @@ class Address(object):
         return self.prefix == AddressPrefix.CONTRACT
 
     @staticmethod
-    def from_string(address: str):
+    def from_string(address: str) -> 'Address':
         """
-        creates an address object from given 42-char string `address`
+        Creates an Address object from given 42-char string `address`
 
         :return: :class:`.Address`
         """
@@ -186,22 +192,23 @@ class Address(object):
         return Address(address_prefix, address_body)
 
     @staticmethod
-    def from_data(prefix: AddressPrefix, data: bytes):
+    def from_data(prefix: AddressPrefix, data: bytes) -> 'Address':
         """
-        creates an address object using given bytes
+        Creates an Address object using given bytes data
 
-        :param prefix:
-        :param data:
-        :return:
+        :param prefix: address prefix
+        :param data: arbitrary bytes data
+        :return: :class:`.Address`
         """
         hash_value = hashlib.sha3_256(data).digest()
         return Address(prefix, hash_value[-20:])
 
     @staticmethod
     def from_bytes(buf: bytes) -> 'Address':
-        """Create Address object from bytes data
+        """
+        Creates an Address object from given raw bytes that represent address
 
-        :param buf: :class:`.bytes` bytes data including Address information
+        :param buf: :class:`.bytes` raw bytes data
         :return: :class:`.Address`
         """
         buf_size = len(buf)

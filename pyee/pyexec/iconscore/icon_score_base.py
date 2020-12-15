@@ -41,11 +41,12 @@ INDEXED_ARGS_LIMIT = 3
 
 def interface(func):
     """
-    A decorator for the functions of interface SCORE.
+    A decorator for the functions of InterfaceScore.
 
-    Declaring this decorator to the function can invoke
-    the same form of the function of the external SCORE.
+    If other SCORE has the function whose signature is the same as defined with @interface decorator,
+    the function can be invoked via InterfaceScore class instance
     """
+
     cls_name, func_name = str(func.__qualname__).split('.')
     if not isfunction(func):
         raise IllegalFormatException(FORMAT_IS_NOT_FUNCTION_OBJECT.format(func, cls_name))
@@ -408,10 +409,10 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         pass
 
     @classmethod
-    def get_api(cls) -> dict:
+    def __get_api(cls) -> dict:
         return getattr(cls, CONST_CLASS_API, "")
 
-    def validate_external_method(self, func_name: str) -> None:
+    def __validate_external_method(self, func_name: str) -> None:
         """Validate the method indicated by func_name is an external method
 
         :param func_name: name of method
@@ -433,7 +434,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         if func_name != STR_FALLBACK and \
                 func_name != STR_ON_INSTALL and \
                 func_name != STR_ON_UPDATE:
-            self.validate_external_method(func_name)
+            self.__validate_external_method(func_name)
 
         if func_name == STR_FALLBACK:
             if not self.__is_payable_method(func_name):
@@ -578,11 +579,10 @@ class IconScoreBase(IconScoreObject, ContextGetter,
 
         :param addr_to: :class:`.Address` the address of another SCORE
         :param func_name: function name of another SCORE
-        :param kw_dict: Arguments of the external function
-        :param amount: ICX value to enclose with. in loop.
+        :param kw_dict: arguments of the external function
+        :param amount: amount of ICX to transfer in loop
         :return: returning value of the external function
         """
-        warnings.warn('Use create_interface_score() instead.', DeprecationWarning, stacklevel=2)
         return InternalCall.message_call(self._context, self.address, addr_to, amount, func_name, None, kw_dict)
 
     @staticmethod

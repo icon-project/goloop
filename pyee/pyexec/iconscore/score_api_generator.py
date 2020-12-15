@@ -86,12 +86,16 @@ class ScoreApiGenerator:
 
     @staticmethod
     def __generate_events(src: list, score_funcs: list) -> None:
-        event_funcs = {func.__name__: signature(func) for func in score_funcs
-                       if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.EventLog}
+        event_funcs = {
+            func.__name__: signature(func) for func in score_funcs
+            if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.EventLog
+        }
 
-        indexed_args_counts = {func.__name__: getattr(func, CONST_INDEXED_ARGS_COUNT, 0)
-                               for func in score_funcs
-                               if getattr(func, CONST_INDEXED_ARGS_COUNT, 0)}
+        indexed_args_counts = {
+            func.__name__: getattr(func, CONST_INDEXED_ARGS_COUNT, 0)
+            for func in score_funcs
+            if getattr(func, CONST_INDEXED_ARGS_COUNT, 0)
+        }
 
         for func_name, event in event_funcs.items():
             index_args_count = indexed_args_counts.get(func_name, 0)
