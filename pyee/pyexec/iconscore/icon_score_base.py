@@ -31,7 +31,7 @@ from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, Const
     FORMAT_IS_NOT_FUNCTION_OBJECT, FORMAT_IS_NOT_DERIVED_OF_OBJECT, FORMAT_DECORATOR_DUPLICATED, \
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
     CONST_CLASS_EXTERNALS, CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
-from .icon_score_context import ContextGetter
+from .icon_score_context import ContextGetter, ContextContainer
 from .icon_score_eventlog import EventLogEmitter
 from .internal_call import InternalCall
 from .score_api_generator import ScoreApiGenerator
@@ -63,14 +63,17 @@ def interface(func):
             raise InvalidInstanceException(
                 FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
 
-        context = calling_obj.context
+        context = ContextContainer._get_context()
         addr_to = calling_obj.addr_to
         addr_from: 'Address' = context.to
+
+        amount: int = getattr(calling_obj, "_InterfaceScore__get_icx")()
+        getattr(calling_obj, "_InterfaceScore__reset_icx")()
 
         if addr_to is None:
             raise InvalidInterfaceException('Cannot create an interface SCORE with a None address')
 
-        return InternalCall.message_call(context, addr_from, addr_to, 0, func_name, args, kwargs)
+        return InternalCall.message_call(context, addr_from, addr_to, amount, func_name, args, kwargs)
 
     return __wrapper
 
