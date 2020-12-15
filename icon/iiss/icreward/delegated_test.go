@@ -14,6 +14,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -32,6 +33,7 @@ func TestDelegated(t *testing.T) {
 
 	t1 := newDelegated(icobject.MakeTag(type_, version))
 	t1.Current = big.NewInt(v1)
+	t1.Snapshot = big.NewInt(v1)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -49,4 +51,7 @@ func TestDelegated(t *testing.T) {
 	t2 := ToDelegated(o2)
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, 0, t1.Current.Cmp(t2.Current))
+	assert.Equal(t, 0, t1.Snapshot.Cmp(t2.Snapshot))
+
+	fmt.Printf("%+v %+v", t1, t2)
 }

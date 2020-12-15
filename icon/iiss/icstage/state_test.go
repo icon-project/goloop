@@ -134,7 +134,6 @@ func TestState_AddEvent(t *testing.T) {
 	type args struct {
 		type_       int
 		offset      int
-		index       int
 		address     *common.Address
 		delegations icstate.Delegations
 		enable      bool
@@ -152,7 +151,6 @@ func TestState_AddEvent(t *testing.T) {
 			args{
 				type_:       TypeEventDelegation,
 				offset:      offset1,
-				index:       0,
 				address:     addr1,
 				delegations: icstate.Delegations{&d1, &d2},
 			},
@@ -162,7 +160,6 @@ func TestState_AddEvent(t *testing.T) {
 			args{
 				type_:   TypeEventEnable,
 				offset:  offset1,
-				index:   1,
 				address: addr2,
 				enable:  false,
 			},
@@ -172,7 +169,6 @@ func TestState_AddEvent(t *testing.T) {
 			args{
 				type_:   TypeEventPeriod,
 				offset:  offset2,
-				index:   0,
 				address: addr1,
 				irep:    big.NewInt(v1),
 				rrep:    big.NewInt(v2),
@@ -180,15 +176,15 @@ func TestState_AddEvent(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		args := tt.args
+		a := tt.args
 		t.Run(tt.name, func(t *testing.T) {
-			switch args.type_ {
+			switch a.type_ {
 			case TypeEventDelegation:
-				checkAddEventDelegation(t, s, args.offset, args.index, args.address, args.delegations)
+				checkAddEventDelegation(t, s, a.offset, a.address, a.delegations)
 			case TypeEventEnable:
-				checkAddEventEnable(t, s, args.offset, args.index, args.address, args.enable)
+				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
 			case TypeEventPeriod:
-				checkAddEventPeriod(t, s, args.offset, args.index, args.irep, args.rrep)
+				checkAddEventPeriod(t, s, a.offset, a.irep, a.rrep)
 			}
 		})
 	}
@@ -208,20 +204,17 @@ func TestState_AddEvent(t *testing.T) {
 
 		keySplit, _ := containerdb.SplitKeys(key)
 		assert.Equal(t, EventKey.Build(), keySplit[0])
-		if len(keySplit) == 1 {
-			// size value
-			continue
-		}
 		assert.Equal(t, tests[count].args.offset, int(intconv.BytesToInt64(keySplit[1])))
-		assert.Equal(t, tests[count].args.index, int(intconv.BytesToInt64(keySplit[2])))
 
 		count += 1
 	}
-	assert.Equal(t, len(tests), count)
+	size, err := ss.GetEventSize()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(len(tests)), size.Value.Int64())
 }
 
-func checkAddEventDelegation(t *testing.T, s *State, offset int, index int, address *common.Address, delegations icstate.Delegations) {
-	err := s.AddEventDelegation(offset, index, address, delegations)
+func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, delegations icstate.Delegations) {
+	index, err := s.AddEventDelegation(offset, address, delegations)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
@@ -232,8 +225,8 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, index int, addr
 	assert.True(t, delegations.Equal(event.Delegations))
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, index int, address *common.Address, enable bool) {
-	err := s.AddEventEnable(offset, index, address, enable)
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, enable bool) {
+	index, err := s.AddEventEnable(offset, address, enable)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
@@ -244,8 +237,8 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, index int, address 
 	assert.Equal(t, enable, event.Enable)
 }
 
-func checkAddEventPeriod(t *testing.T, s *State, offset int, index int, irep *big.Int, rrep *big.Int) {
-	err := s.AddEventPeriod(offset, index, irep, rrep)
+func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep *big.Int) {
+	index, err := s.AddEventPeriod(offset, irep, rrep)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
@@ -440,10 +433,11 @@ func TestState_AddLoadValidators(t *testing.T) {
 	}
 
 	ss := s.GetSnapshot()
-	s.loadValidators(ss)
+	err := s.loadValidators(ss)
+	assert.NoError(t, err)
 
 	for _, data := range datas {
-		offset, ok := s.validators[*data.addr]
+		offset, ok := s.validatorToIdx[string(data.addr.Bytes())]
 		assert.True(t, ok)
 		assert.Equal(t, data.offset, offset)
 	}

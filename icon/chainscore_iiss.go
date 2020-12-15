@@ -83,11 +83,6 @@ func calcUnstakeLockPeriod(blockHeight int64) int64 {
 	return blockHeight + 10
 }
 
-func prevCalcBlockHeight() int64 {
-	// TODO implement me
-	return 0
-}
-
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccountState(address)
@@ -115,6 +110,22 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 
 	ia.SetDelegation(ds)
 
+	bonds := ia.Bonds()
+	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
+	for _, d := range ds {
+		event = append(event, d)
+	}
+	for _, b := range bonds {
+		d := new(icstate.Delegation)
+		d.Address = b.Address
+		d.Value = b.Value
+		event = append(event, d)
+	}
+	_, err = es.Front.AddEventDelegation(
+		int(s.cc.BlockHeight()-es.CalculationBlockHeight()),
+		s.from,
+		event,
+	)
 	return nil
 }
 
@@ -140,7 +151,16 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 	ips.SetGrade(icstate.Candidate)
 	ips.SetStatus(icstate.Active)
-	return ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
+	err = ip.SetPRep(name, email, website, country, city, details, p2pEndpoint, node)
+	if err != nil {
+		return err
+	}
+	_, err = es.Front.AddEventEnable(
+		int(s.cc.BlockHeight()-es.CalculationBlockHeight()),
+		s.from,
+		true,
+	)
+	return err
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
@@ -167,7 +187,13 @@ func (s *chainScore) Ex_unregisterPRep() error {
 	}
 	ips.SetGrade(icstate.Candidate)
 	ips.SetStatus(icstate.Unregistered)
-	return nil
+
+	_, err = es.Front.AddEventEnable(
+		int(s.cc.BlockHeight()-es.CalculationBlockHeight()),
+		s.from,
+		false,
+	)
+	return err
 }
 
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
@@ -206,12 +232,12 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		}
 		prepStatus.SetBonded(b.Amount())
 	}
-	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.GetDelegation())) == -1 {
+	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 
 	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, s.cc.BlockHeight()+icstate.UnbondingPeriod)
-	votingAmount := new(big.Int).Add(account.GetDelegation(), bondAmount)
+	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
 	votingAmount.Sub(votingAmount, account.Bond())
 	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnbondAmount(), ubDiff)
 	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
@@ -228,6 +254,23 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 			return errors.Errorf("Error while scheduling Unbonding Timer Job")
 		}
 	}
+
+	ds := account.Delegations()
+	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
+	for _, d := range ds {
+		event = append(event, d)
+	}
+	for _, b := range bonds {
+		d := new(icstate.Delegation)
+		d.Address = b.Address
+		d.Value = b.Value
+		event = append(event, d)
+	}
+	_, err = es.Front.AddEventDelegation(
+		int(s.cc.BlockHeight()-es.CalculationBlockHeight()),
+		s.from,
+		event,
+	)
 	return nil
 }
 
@@ -283,11 +326,11 @@ func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, er
 func (s *chainScore) Ex_claimIScore() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
-	claim, err := es.Front.GetIScoreClaim(s.from)
+	claimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
 		return err
 	}
-	if claim != nil {
+	if claimed != nil {
 		// claim already in this calculation period
 		return nil
 	}
@@ -300,18 +343,24 @@ func (s *chainScore) Ex_claimIScore() error {
 		// there is no iScore to claim
 		return nil
 	}
+	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRation, new(big.Int))
+	claim := new(big.Int).Sub(iScore.Value, remains)
 
+	// increase account icx balance
 	account := s.cc.GetAccountState(s.from.ID())
 	if account == nil {
 		return nil
 	}
 	balance := account.GetBalance()
+	account.SetBalance(balance.Add(balance, icx))
 
-	// increase world account balance
-	account.SetBalance(balance.Add(balance, iScore.Value))
+	// decrease treasury icx balance
+	tr := s.cc.GetAccountState(s.cc.Treasury().ID())
+	tb := tr.GetBalance()
+	tr.SetBalance(new(big.Int).Add(tb, icx))
 
 	// write claim data to front
-	if err = es.Front.AddIScoreClaim(s.from, iScore.Value); err != nil {
+	if err = es.Front.AddIScoreClaim(s.from, claim); err != nil {
 		return err
 	}
 
@@ -320,19 +369,25 @@ func (s *chainScore) Ex_claimIScore() error {
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	iScore, err := es.Reward.GetIScore(address)
+	claimed, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
 		return nil, err
 	}
 	is := new(big.Int)
-	if iScore == nil || iScore.IsEmpty() {
-		is.SetInt64(0)
-	} else {
-		is = iScore.Value
+	if claimed == nil {
+		iScore, err := es.Reward.GetIScore(address)
+		if err != nil {
+			return nil, err
+		}
+		if iScore == nil || iScore.IsEmpty() {
+			is.SetInt64(0)
+		} else {
+			is = iScore.Value
+		}
 	}
 
 	data := make(map[string]interface{})
-	data["blockheight"] = prevCalcBlockHeight()
+	data["blockheight"] = intconv.FormatInt(es.PrevCalculationBlockHeight())
 	data["iscore"] = intconv.FormatBigInt(is)
 	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
 

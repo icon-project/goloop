@@ -44,8 +44,8 @@ var (
 )
 
 type State struct {
-	validators map[common.Address]int
-	trie       trie.MutableForObject
+	validatorToIdx map[string]int
+	trie           trie.MutableForObject
 }
 
 func (s *State) GetSnapshot() *Snapshot {
@@ -78,61 +78,64 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	return err
 }
 
-func (s *State) AddEventDelegation(offset int, index int, from module.Address, delegations icstate.Delegations) error {
+func (s *State) AddEventDelegation(offset int, from module.Address, delegations icstate.Delegations) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	key := EventKey.Append(offset, index).Build()
+	key := EventKey.Append(offset, size.Value).Build()
 	ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
 	ed.From = from.(*common.Address)
 	ed.Delegations = delegations
 	_, err = s.trie.Set(key, icobject.New(TypeEventDelegation, ed))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
+	index := size.Value.Int64()
 	size.Value.Add(size.Value, intconv.BigIntOne)
-	return s.setEventSize(size)
+	return index, s.setEventSize(size)
 }
 
-func (s *State) AddEventEnable(offset int, index int, target module.Address, enable bool) error {
+func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	key := EventKey.Append(offset, index).Build()
+	key := EventKey.Append(offset, size.Value).Build()
 	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
 	obj.Target = target.(*common.Address)
 	obj.Enable = enable
 	_, err = s.trie.Set(key, icobject.New(TypeEventEnable, obj))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
+	index := size.Value.Int64()
 	size.Value.Add(size.Value, intconv.BigIntOne)
-	return s.setEventSize(size)
+	return index, s.setEventSize(size)
 }
 
-func (s *State) AddEventPeriod(offset int, index int, irep *big.Int, rrep *big.Int) error {
+func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	key := EventKey.Append(offset, index).Build()
+	key := EventKey.Append(offset, size.Value).Build()
 	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
 	obj.Irep = irep
 	obj.Rrep = rrep
 	_, err = s.trie.Set(key, icobject.New(TypeEventPeriod, obj))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
+	index := size.Value.Int64()
 	size.Value.Add(size.Value, intconv.BigIntOne)
-	return s.setEventSize(size)
+	return index, s.setEventSize(size)
 }
 
 func (s *State) getEventSize() (*EventSize, error) {
@@ -156,24 +159,26 @@ func (s *State) setEventSize(size *EventSize) error {
 }
 
 func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
-	proposerIndex, ok := s.validators[*proposer.(*common.Address)]
+	pKey := string(proposer.Bytes())
+	pIdx, ok := s.validatorToIdx[pKey]
 	if !ok {
-		proposerIndex = len(s.validators)
-		s.validators[*proposer.(*common.Address)] = proposerIndex
-		if err := s.addValidator(proposerIndex, proposer); err != nil {
+		pIdx = len(s.validatorToIdx)
+		s.validatorToIdx[pKey] = pIdx
+		if err := s.addValidator(pIdx, proposer); err != nil {
 			return err
 		}
 	}
 	key := BlockProduceKey.Append(offset).Build()
 	obj := newBlockProduce(icobject.MakeTag(TypeBlockProduce, 0))
-	obj.ProposerIndex = proposerIndex
+	obj.ProposerIndex = pIdx
 	obj.VoteCount = len(voters)
 	voteMask := big.NewInt(0)
 	for _, v := range voters {
-		idx, ok := s.validators[*v.(*common.Address)]
+		vKey := string(v.Bytes())
+		idx, ok := s.validatorToIdx[vKey]
 		if !ok {
-			idx = len(s.validators)
-			s.validators[*v.(*common.Address)] = idx
+			idx = len(s.validatorToIdx)
+			s.validatorToIdx[vKey] = idx
 			if err := s.addValidator(idx, v); err != nil {
 				return err
 			}
@@ -202,7 +207,7 @@ func (s *State) AddGlobal(offsetLimit int) error {
 }
 
 func (s *State) loadValidators(ss *Snapshot) error {
-	nvs := make(map[common.Address]int)
+	nvs := make(map[string]int)
 	prefix := ValidatorKey.Build()
 	for iter := ss.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -215,9 +220,9 @@ func (s *State) loadValidators(ss *Snapshot) error {
 		}
 		idx := int(intconv.BytesToInt64(keySplit[1]))
 		v := ToValidator(o)
-		nvs[*v.Address] = idx
+		nvs[string(v.Address.Bytes())] = idx
 	}
-	s.validators = nvs
+	s.validatorToIdx = nvs
 	return nil
 }
 
@@ -229,10 +234,10 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 	return s
 }
 
-func NewState(database db.Database, hash []byte) *State {
+func NewState(database db.Database) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
 	return &State{
-		trie: trie_manager.NewMutableForObject(database, hash, icobject.ObjectType),
-		validators: make(map[common.Address]int),
+		trie:           trie_manager.NewMutableForObject(database, nil, icobject.ObjectType),
+		validatorToIdx: make(map[string]int),
 	}
 }

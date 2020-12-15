@@ -31,14 +31,14 @@ import (
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 	c := new(Calculator)
 	c.back = back
-	c.temp = icreward.NewState(database, nil)
+	c.temp = icreward.NewState(database)
 
 	return c
 }
 
 func TestCalculator_processClaim(t *testing.T) {
 	database := db.NewMapDB()
-	s := icstage.NewState(database, nil)
+	s := icstage.NewState(database)
 
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
@@ -97,7 +97,7 @@ func TestCalculator_processClaim(t *testing.T) {
 
 func TestCalculator_processBlockProduce(t *testing.T) {
 	database := db.NewMapDB()
-	s := icstage.NewState(database, nil)
+	s := icstage.NewState(database)
 
 	offset1 := 0
 
@@ -291,17 +291,21 @@ func TestDelegated_setEnable(t *testing.T) {
 	}
 
 	enable := true
-	for a, dd := range d.preps {
+	for key, dd := range d.preps {
 		enable = !enable
-		d.setEnable(&a, enable)
+		addr, err := common.NewAddress([]byte(key))
+		assert.NoError(t, err)
+		d.setEnable(addr, enable)
 		assert.Equal(t, enable, dd.delegated.Enable)
 	}
 
-	newAddr := common.NewAddressFromString("hx123412341234")
-	d.setEnable(newAddr, true)
-	assert.Equal(t, true, d.preps[*newAddr].delegated.Enable)
-	assert.True(t, d.preps[*newAddr].delegated.IsEmpty())
-	assert.Equal(t, 0, d.preps[*newAddr].iScore.Sign())
+	addr := common.NewAddressFromString("hx123412341234")
+	d.setEnable(addr, false)
+	prep, ok := d.preps[string(addr.Bytes())]
+	assert.True(t, ok)
+	assert.Equal(t, false, prep.delegated.Enable)
+	assert.True(t, prep.delegated.IsEmpty())
+	assert.Equal(t, 0, prep.iScore.Sign())
 }
 
 func TestDelegated_updateCurrent(t *testing.T) {
@@ -335,7 +339,7 @@ func TestDelegated_updateCurrent(t *testing.T) {
 		if v.Address.Equal(newAddr) {
 			expect = v.Value.Value().Int64()
 		}
-		assert.Equal(t, expect, d.preps[*v.Address].delegated.Current.Int64())
+		assert.Equal(t, expect, d.preps[string(v.Address.Bytes())].delegated.Current.Int64())
 	}
 }
 
@@ -371,8 +375,8 @@ func TestDelegated_updateTotal(t *testing.T) {
 	assert.Equal(t, total, d.total.Int64())
 
 	for i, rank := range d.rank {
-		expect := common.NewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
-		assert.True(t, expect.Equal(&rank))
+		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
+		assert.Equal(t, string(addr.Bytes()), rank)
 	}
 }
 
@@ -417,10 +421,10 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 	addr2 := common.NewAddressFromString("hx2")
 	addr3 := common.NewAddressFromString("hx3")
 	addr4 := common.NewAddressFromString("hx4")
-	prepInfo := map[common.Address]*pRepEnable{
-		*addr1: {0, 0},
-		*addr2: {10, 0},
-		*addr3: {100, 200},
+	prepInfo := map[string]*pRepEnable{
+		string(addr1.Bytes()): {0, 0},
+		string(addr2.Bytes()): {10, 0},
+		string(addr3.Bytes()): {100, 200},
 	}
 
 	d1 := &icstate.Delegation{
@@ -523,7 +527,7 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 
 func TestCalculator_processDelegating(t *testing.T) {
 	database := db.NewMapDB()
-	s := icstage.NewState(database, nil)
+	s := icstage.NewState(database)
 	c := MakeCalculator(database, s.GetSnapshot())
 
 	rrep := 100
@@ -551,8 +555,8 @@ func TestCalculator_processDelegating(t *testing.T) {
 	ds2 := icstate.Delegations{d2}
 
 	// make pRepInfo. all enabled
-	prepInfo := make(map[common.Address]*pRepEnable)
-	prepInfo[*addr1] = &pRepEnable{0, 0}
+	prepInfo := make(map[string]*pRepEnable)
+	prepInfo[string(addr1.Bytes())] = &pRepEnable{0, 0}
 
 	// write delegating data to base
 	dting1 := icreward.NewDelegating()
@@ -565,13 +569,13 @@ func TestCalculator_processDelegating(t *testing.T) {
 	c.base = c.temp.GetSnapshot()
 
 	// make delegationMap
-	delegationMap := make(map[common.Address]map[int]icstate.Delegations)
-	delegationMap[*addr1] = make(map[int]icstate.Delegations)
-	delegationMap[*addr1][from+offset] = ds2
-	delegationMap[*addr3] = make(map[int]icstate.Delegations)
-	delegationMap[*addr3][from+offset] = ds2
-	delegationMap[*addr4] = make(map[int]icstate.Delegations)
-	delegationMap[*addr4][from+offset] = icstate.Delegations{}
+	delegationMap := make(map[string]map[int]icstate.Delegations)
+	delegationMap[string(addr1.Bytes())] = make(map[int]icstate.Delegations)
+	delegationMap[string(addr1.Bytes())][from+offset] = ds2
+	delegationMap[string(addr3.Bytes())] = make(map[int]icstate.Delegations)
+	delegationMap[string(addr3.Bytes())][from+offset] = ds2
+	delegationMap[string(addr4.Bytes())] = make(map[int]icstate.Delegations)
+	delegationMap[string(addr4.Bytes())][from+offset] = icstate.Delegations{}
 
 	err := c.processDelegating(rrepBigInt, from, to, prepInfo, delegationMap)
 	assert.NoError(t, err)

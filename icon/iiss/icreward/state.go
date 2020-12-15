@@ -30,7 +30,6 @@ var (
 	DelegatingKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
 	IScoreKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
 	GlobalKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
-	ValidatorsKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
 )
 
 type State struct {
@@ -88,9 +87,20 @@ func (s *State) DeleteIScore(addr module.Address) error {
 	return err
 }
 
+func (s *State) GetDelegated(addr module.Address) (*Delegated, error) {
+	key := DelegatedKey.Append(addr).Build()
+	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	if err != nil {
+		return nil, err
+	}
+	return ToDelegated(obj), nil
+}
+
 func (s *State) SetDelegated(addr module.Address, delegated *Delegated) error {
 	key := DelegatedKey.Append(addr).Build()
-	_, err := s.trie.Set(key, icobject.New(TypeDelegated, delegated))
+	d := delegated.Clone()
+	_, err := s.trie.Set(key, icobject.New(TypeDelegated, d))
+	//_, err := s.trie.Set(key, icobject.New(TypeDelegated, delegated))
 	return err
 }
 
@@ -126,9 +136,10 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),
 	}
 }
-func NewState(database db.Database, hash []byte) *State {
+
+func NewState(database db.Database) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
 	return &State{
-		trie: trie_manager.NewMutableForObject(database, hash, icobject.ObjectType),
+		trie: trie_manager.NewMutableForObject(database, nil, icobject.ObjectType),
 	}
 }

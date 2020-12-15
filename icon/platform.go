@@ -31,7 +31,11 @@ import (
 	"time"
 )
 
-type platform struct{}
+type platform struct {
+	calcStarted bool
+	calcResult  []byte
+	calcDoneBH  int64
+}
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
 	return newContractManager(p, dbase, dir, logger)
@@ -72,13 +76,21 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
 	// TODO start background calculator if it's not started.
-	// TODO check whether start calculator
-	// TODO check end of prev calculation
-	iiss.RunCalculator(ess)
+	func() {
+		if err := iiss.RunCalculator(ess); err != nil {
+			log.Printf("Failed to calculate %+v", err)
+			return
+		}
+	}()
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext) error {
-	// TODO implement
+	// FIXME temp implementation for test
+	ext := wc.GetExtensionState()
+	es := ext.(*iiss.ExtensionStateImpl)
+	if err := es.NewCalculationPeriod(wc.BlockHeight()); err != nil {
+		return err
+	}
 	return nil
 }
 

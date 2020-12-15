@@ -51,8 +51,19 @@ func (d *Delegated) Equal(o icobject.Impl) bool {
 	}
 }
 
+func (d *Delegated) Clone() *Delegated {
+	if d == nil {
+		return nil
+	}
+	nd := NewDelegated()
+	nd.Enable = d.Enable
+	nd.Current.Set(d.Current)
+	nd.Snapshot.Set(d.Snapshot)
+	return nd
+}
+
 func (d *Delegated) IsEmpty() bool {
-	return d.Current.Sign() == 0 && d.Snapshot.Sign() == 0
+	return d.Enable == false && d.Current.Sign() == 0 && d.Snapshot.Sign() == 0
 }
 
 func newDelegated(tag icobject.Tag) *Delegated {

@@ -14,17 +14,22 @@
 package iiss
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
-type extensionSnapshotImpl struct {
+type ExtensionSnapshotImpl struct {
 	database db.Database
+
+	c *calculation
 
 	state  *icstate.Snapshot
 	front  *icstage.Snapshot
@@ -32,11 +37,11 @@ type extensionSnapshotImpl struct {
 	reward *icreward.Snapshot
 }
 
-func (s *extensionSnapshotImpl) Bytes() []byte {
+func (s *ExtensionSnapshotImpl) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(s)
 }
 
-func (s *extensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
+func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		s.state.Bytes(),
 		s.front.Bytes(),
@@ -45,7 +50,7 @@ func (s *extensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (s *extensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
+func (s *ExtensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	var stateHash, frontHash, backHash, rewardHash []byte
 	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash, &rewardHash); err != nil {
 		return err
@@ -57,7 +62,10 @@ func (s *extensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	return nil
 }
 
-func (s *extensionSnapshotImpl) Flush() error {
+func (s *ExtensionSnapshotImpl) Flush() error {
+	if err := s.c.flush(s.database); err != nil {
+		return err
+	}
 	if err := s.state.Flush(); err != nil {
 		return err
 	}
@@ -73,10 +81,11 @@ func (s *extensionSnapshotImpl) Flush() error {
 	return nil
 }
 
-func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
+func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	// TODO readonly?
 	return &ExtensionStateImpl{
 		database: s.database,
+		c:        s.c,
 		state:    icstate.NewStateFromSnapshot(s.state),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		back:     icstage.NewStateFromSnapshot(s.back),
@@ -86,29 +95,38 @@ func (s *extensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
 	if hash == nil {
-		return &extensionSnapshotImpl{
+		return &ExtensionSnapshotImpl{
 			database: database,
+			c:        newCalculation(),
 			state:    icstate.NewSnapshot(database, nil),
 			front:    icstage.NewSnapshot(database, nil),
 			back:     icstage.NewSnapshot(database, nil),
 			reward:   icreward.NewSnapshot(database, nil),
 		}
 	}
-	s := &extensionSnapshotImpl{
+	s := &ExtensionSnapshotImpl{
 		database: database,
 	}
 	if _, err := codec.BC.UnmarshalFromBytes(hash, s); err != nil {
 		return nil
 	}
+
+	c := newCalculation()
+	c.load(s.database)
+	s.c = c
+
 	return s
 }
 
 type ExtensionStateImpl struct {
 	database db.Database
-	state    *icstate.State
-	Front    *icstage.State
-	back     *icstage.State
-	Reward   *icreward.State
+
+	c *calculation
+
+	state  *icstate.State
+	Front  *icstage.State
+	back   *icstage.State
+	Reward *icreward.State
 }
 
 func (s *ExtensionStateImpl) State() *icstate.State {
@@ -116,8 +134,9 @@ func (s *ExtensionStateImpl) State() *icstate.State {
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
-	return &extensionSnapshotImpl{
+	return &ExtensionSnapshotImpl{
 		database: s.database,
+		c:        s.c,
 		state:    s.state.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.back.GetSnapshot(),
@@ -126,7 +145,7 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 }
 
 func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
-	snapshot := isnapshot.(*extensionSnapshotImpl)
+	snapshot := isnapshot.(*ExtensionSnapshotImpl)
 	if err := s.state.Reset(snapshot.state); err != nil {
 		panic(err)
 	}
@@ -156,4 +175,132 @@ func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.Time
 
 func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.TimerState, error) {
 	return s.state.GetUnbondingTimerState(height)
+}
+
+func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
+	return s.c.currentBH
+}
+
+func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
+	return s.c.prevBH
+}
+
+// FIXME temp implementation
+func calculationPeriod() int {
+	return 3
+}
+
+func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64) error {
+	if blockHeight != s.c.currentBH+int64(calculationPeriod()) {
+		return nil
+	}
+
+	if !s.c.isCalcDone() {
+		return scoreresult.ErrTimeout
+	}
+
+	// set offsetLimit
+	if err := s.Front.AddGlobal(calculationPeriod()); err != nil {
+		return err
+	}
+
+	// FIXME data for test
+	if _, err := s.Front.AddEventPeriod(
+		0,
+		big.NewInt(YearBlock*IScoreICXRatio),
+		big.NewInt(YearBlock*IScoreICXRatio),
+	); err != nil {
+		return err
+	}
+	// FIXME data for test
+
+	s.back = s.Front
+	s.Front = icstage.NewState(s.database)
+	s.Reward = icreward.NewSnapshot(s.database, s.c.resultHash).NewState()
+	s.c.start(blockHeight)
+
+	return nil
+}
+
+const keyCalculation = "iiss.calculation"
+
+type calculation struct {
+	run        bool
+	resultHash []byte
+	currentBH  int64
+	prevBH     int64
+}
+
+func (c *calculation) RLPEncodeSelf(e codec.Encoder) error {
+	return e.EncodeListOf(
+		c.run,
+		c.resultHash,
+		c.currentBH,
+		c.prevBH,
+	)
+}
+
+func (c *calculation) RLPDecodeSelf(d codec.Decoder) error {
+	return d.DecodeListOf(
+		&c.run,
+		&c.resultHash,
+		&c.currentBH,
+		&c.prevBH,
+	)
+}
+
+func (c *calculation) isCalcDone() bool {
+	return c.currentBH == 0 || c.currentBH == c.prevBH
+}
+
+func (c *calculation) start(blockHeight int64) {
+	c.currentBH = blockHeight
+	c.run = true
+}
+
+func (c *calculation) stop() {
+	c.run = false
+}
+
+func (c *calculation) done(hash []byte) {
+	c.prevBH = c.currentBH
+	c.resultHash = hash
+}
+
+func (c *calculation) load(dbase db.Database) error {
+	bk, err := dbase.GetBucket(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	value, err := bk.Get([]byte(keyCalculation))
+	if err != nil {
+		return err
+	}
+	if len(value) == 0 {
+		return nil
+	}
+	_, err = codec.BC.UnmarshalFromBytes(value, c)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *calculation) flush(dbase db.Database) error {
+	bk, err := dbase.GetBucket(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	data, err := codec.BC.MarshalToBytes(c)
+	if err != nil {
+		return err
+	}
+	if err = bk.Set([]byte(keyCalculation), data); err != nil {
+		return err
+	}
+	return nil
+}
+
+func newCalculation() *calculation {
+	return &calculation{false, nil, 0, 0}
 }

@@ -35,7 +35,7 @@ type State struct {
 }
 
 func (s *State) Reset(ss *Snapshot) error {
-	s.store.Reset(ss.store)
+	s.store.Reset(ss.store.ImmutableForObject)
 	for _, as := range s.mutableAccounts {
 		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
 		value, err := icobject.GetFromMutableForObject(s.store, key)

@@ -49,3 +49,7 @@ func newIScore(tag icobject.Tag) *IScore {
 		*icobject.NewObjectBigInt(tag),
 	}
 }
+
+func NewIScore() *IScore {
+	return newIScore(icobject.MakeTag(TypeIScore, 0))
+}

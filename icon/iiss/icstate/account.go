@@ -219,6 +219,14 @@ func (as AccountState) GetStakeInfo() map[string]interface{} {
 	return jso
 }
 
+func (as *AccountState) Delegating() *big.Int {
+	return as.delegating
+}
+
+func (as *AccountState) Delegations() Delegations {
+	return as.delegations
+}
+
 func (as *AccountState) SetDelegation(ds Delegations) {
 	as.delegations = ds
 	as.delegating.Set(as.delegations.GetDelegationAmount())
@@ -246,10 +254,6 @@ func (as *AccountState) GetVotedPower() *big.Int {
 
 func (as *AccountState) Bond() *big.Int {
 	return as.bonding
-}
-
-func (as *AccountState) GetDelegation() *big.Int {
-	return as.delegating
 }
 
 func (as *AccountState) Bonds() Bonds {
