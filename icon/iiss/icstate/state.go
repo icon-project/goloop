@@ -278,7 +278,7 @@ func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
 	return ts, nil
 }
 func NewStateFromSnapshot(ss *Snapshot) *State {
-	trie := trie_manager.NewMutableFromImmutableForObject(ss.store)
+	trie := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 
 	return &State{
 		mutableAccounts:       make(map[string]*AccountState),
