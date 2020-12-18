@@ -335,6 +335,7 @@ type testTransition struct {
 	_result            []byte
 	_logsBloom         *txresult.LogsBloom
 	_bi                module.BlockInfo
+	_csi               module.ConsensusInfo
 
 	sync.Mutex
 	step     transitionStep
@@ -521,7 +522,8 @@ func (tr *testTransition) Equal(t2 module.Transition) bool {
 	}
 	return tr.patchTransactions.Equal(tr2.patchTransactions) &&
 		tr.normalTransactions.Equal(tr2.normalTransactions) &&
-		module.EqualBlockInfo(tr._bi, tr2._bi)
+		common.BlockInfoEqual(tr._bi, tr2._bi) &&
+		common.ConsensusInfoEqual(tr._csi, tr2._csi)
 }
 
 type testServiceManager struct {
@@ -550,12 +552,17 @@ func (sm *testServiceManager) GetChainID(result []byte) (int64, error) {
 	return 0, errors.ErrNotFound
 }
 
-func (sm *testServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
+func (sm *testServiceManager) ProposeTransition(
+	parent module.Transition,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
+) (module.Transition, error) {
 	tr := &testTransition{}
 	tr.baseValidators = parent.NextValidators().(*testValidatorList)
 	tr.patchTransactions = newTestTransactionList(sm.transactions[module.TransactionGroupPatch])
 	tr.normalTransactions = newTestTransactionList(sm.transactions[module.TransactionGroupNormal])
 	tr._bi = bi
+	tr._csi = csi
 	if sm.exeChan != nil {
 		tr.setExeChan(sm.exeChan)
 	}
@@ -580,7 +587,12 @@ func (sm *testServiceManager) CreateInitialTransition(result []byte, nextValidat
 	return tr, nil
 }
 
-func (sm *testServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo) (module.Transition, error) {
+func (sm *testServiceManager) CreateTransition(
+	parent module.Transition,
+	txs module.TransactionList,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
+) (module.Transition, error) {
 	if ttxl, ok := txs.(*testTransactionList); ok {
 		for _, ttx := range ttxl.Transactions {
 			if ttx.Data.TransitionCreateError != nil {
@@ -592,6 +604,7 @@ func (sm *testServiceManager) CreateTransition(parent module.Transition, txs mod
 		tr.patchTransactions = newTestTransactionList(nil)
 		tr.normalTransactions = ttxl
 		tr._bi = bi
+		tr._csi = csi
 		if sm.exeChan != nil {
 			tr.setExeChan(sm.exeChan)
 		}
@@ -622,6 +635,7 @@ func (sm *testServiceManager) PatchTransition(transition module.Transition,
 	tr.patchTransactions = ttxl
 	tr.normalTransactions = ttr.normalTransactions
 	tr._bi = transition.(*testTransition)._bi
+	tr._csi = transition.(*testTransition)._csi
 	return tr
 }
 
@@ -784,14 +798,14 @@ func newCommitVoteSet(pass bool) module.CommitVoteSet {
 	return &testCommitVoteSet{Pass: pass}
 }
 
-func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) error {
+func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	if block.Height() == 0 && vs.zero {
-		return nil
+		return nil, nil
 	}
 	if vs.Pass {
-		return nil
+		return nil, nil
 	}
-	return errors.Errorf("verify error")
+	return nil, errors.Errorf("verify error")
 }
 
 func (vs *testCommitVoteSet) Bytes() []byte {

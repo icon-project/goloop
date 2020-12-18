@@ -123,8 +123,7 @@ func (m *manager) Term() {
 // ProposeTransition proposes a Transition following the parent Transition.
 // parent transition should have a valid result.
 // Returned Transition always passes validation.
-func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInfo,
-) (module.Transition, error) {
+func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
@@ -132,7 +131,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	}
 
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := state.NewWorldContext(ws, bi, m.plt)
+	wc := state.NewWorldContext(ws, bi, csi, m.plt)
 
 	baseTx, err := m.plt.NewBaseTransaction(wc)
 	if err != nil {
@@ -146,7 +145,16 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	}
 
 	// create transition instance and return it
-	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, nil), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log, m.plt),
+	return newTransition(
+			pt,
+			transaction.NewTransactionListFromSlice(m.db, nil),
+			transaction.NewTransactionListFromSlice(m.db, normalTxs),
+			bi,
+			csi,
+			true,
+			m.log,
+			m.plt,
+		),
 		nil
 }
 
@@ -171,15 +179,18 @@ func (m *manager) CreateInitialTransition(result []byte,
 // CreateTransition creates a Transition following parent Transition with txs
 // transactions.
 // parent transition should have a valid result.
-func (m *manager) CreateTransition(parent module.Transition,
-	txList module.TransactionList, bi module.BlockInfo,
+func (m *manager) CreateTransition(
+	parent module.Transition,
+	txs module.TransactionList,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
 ) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txList, bi, false, m.log, m.plt), nil
+	return newTransition(pt, nil, txs, bi, csi, false, m.log, m.plt), nil
 }
 
 func (m *manager) SendPatch(data module.Patch) error {
@@ -216,7 +227,7 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 		return nil
 	}
 
-	wc := state.NewWorldContext(ws, bi, m.plt)
+	wc := state.NewWorldContext(ws, bi, nil, m.plt)
 
 	txs, size := m.tm.Candidate(module.TransactionGroupPatch, wc, m.chain.MaxBlockTxBytes(), 0)
 
@@ -251,7 +262,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return patchTransition(pt, patchTxList)
+	return patchTransition(pt, bi, patchTxList)
 }
 
 func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte) module.Transition {
@@ -262,7 +273,7 @@ func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHas
 		return nil
 	}
 	ntr := newTransition(
-		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, true, m.log, m.plt)
+		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, true, m.log, m.plt)
 	r, _ := newTransitionResultFromBytes(result)
 	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
 		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)
@@ -447,7 +458,7 @@ func (m *manager) Call(resultHash []byte,
 	var wc state.WorldContext
 	if wss, err := m.trc.GetWorldSnapshot(resultHash, vl.Hash()); err == nil {
 		ws := state.NewReadOnlyWorldState(wss)
-		wc = state.NewWorldContext(ws, bi, m.plt)
+		wc = state.NewWorldContext(ws, bi, nil, m.plt)
 	} else {
 		return nil, err
 	}
@@ -588,7 +599,7 @@ func (m *manager) WaitForTransaction(
 ) bool {
 	pt := parent.(*transition)
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := state.NewWorldContext(ws, bi, m.plt)
+	wc := state.NewWorldContext(ws, bi, nil, m.plt)
 
 	return m.tm.Wait(wc, cb)
 }
@@ -640,7 +651,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 		if err != nil {
 			return nil, err
 		}
-		wc = state.NewWorldContext(ws, bi, m.plt)
+		wc = state.NewWorldContext(ws, bi, nil, m.plt)
 	} else {
 		return nil, err
 	}

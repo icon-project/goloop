@@ -37,3 +37,13 @@ func NewBlockInfo(height, timestamp int64) module.BlockInfo {
 		timestamp: timestamp,
 	}
 }
+
+func BlockInfoEqual(bi1 module.BlockInfo, bi2 module.BlockInfo) bool {
+	if bi1 == bi2 {
+		return true
+	}
+	if bi1 == nil || bi2 == nil {
+		return false
+	}
+	return bi1.Timestamp() == bi2.Timestamp() && bi1.Height() == bi2.Height()
+}

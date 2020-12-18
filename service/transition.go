@@ -82,6 +82,7 @@ type transition struct {
 	id     *transitionID
 	bi     module.BlockInfo
 	pbi    module.BlockInfo
+	csi    module.ConsensusInfo
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -115,16 +116,20 @@ type transition struct {
 	ti *module.TraceInfo
 }
 
-func patchTransition(t *transition, patchTXs module.TransactionList) *transition {
+func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.TransactionList) *transition {
 	if patchTXs == nil {
 		patchTXs = transaction.NewTransactionListFromSlice(t.db, nil)
+	}
+	if len(patchTXs.Hash()) == 0 {
+		bi = nil
 	}
 	return &transition{
 		parent:             t.parent,
 		pid:                t.pid,
 		id:                 new(transitionID),
 		bi:                 t.bi,
-		pbi:                nil,
+		pbi:                bi,
+		csi:                t.csi,
 		patchTransactions:  patchTXs,
 		normalTransactions: t.normalTransactions,
 		db:                 t.db,
@@ -138,9 +143,15 @@ func patchTransition(t *transition, patchTXs module.TransactionList) *transition
 	}
 }
 
-func newTransition(parent *transition, patchtxs module.TransactionList,
-	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
-	logger log.Logger, plt Platform,
+func newTransition(
+	parent *transition,
+	patchtxs module.TransactionList,
+	normaltxs module.TransactionList,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
+	alreadyValidated bool,
+	logger log.Logger,
+	plt Platform,
 ) *transition {
 	var step transitionStep
 	if alreadyValidated {
@@ -160,6 +171,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		pid:                parent.id,
 		id:                 new(transitionID),
 		bi:                 bi,
+		csi:                csi,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
@@ -340,7 +352,7 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 	if execution {
 		ws.EnableNodeCache()
 	}
-	return state.NewWorldContext(ws, t.bi, t.plt), nil
+	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
 }
 
 func (t *transition) reportValidation(e error) bool {
@@ -473,6 +485,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	ctx.ClearCache()
 
 	startTime := time.Now()
+
+	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
 	patchReceipts := make([]txresult.Receipt, patchCount)
 	if err := t.executeTxsSequential(t.patchTransactions, ctx, patchReceipts); err != nil {
@@ -664,16 +678,6 @@ func (t *transition) cancelExecution() bool {
 	return true
 }
 
-func equalBlockInfo(bi1 module.BlockInfo, bi2 module.BlockInfo) bool {
-	if bi1 == nil && bi2 == nil {
-		return true
-	}
-	if bi1 == nil || bi2 == nil {
-		return false
-	}
-	return bi1.Timestamp() == bi2.Timestamp() && bi1.Height() == bi2.Height()
-}
-
 func (t *transition) Equal(tr module.Transition) bool {
 	t2 := tr.(*transition)
 
@@ -686,7 +690,8 @@ func (t *transition) Equal(tr module.Transition) bool {
 
 	return t.patchTransactions.Equal(t2.patchTransactions) &&
 		t.normalTransactions.Equal(t2.normalTransactions) &&
-		equalBlockInfo(t.bi, t2.bi) &&
-		equalBlockInfo(t.pbi, t2.pbi) &&
+		common.BlockInfoEqual(t.bi, t2.bi) &&
+		common.BlockInfoEqual(t.pbi, t2.pbi) &&
+		common.ConsensusInfoEqual(t.csi, t2.csi) &&
 		t.pid == t2.pid
 }

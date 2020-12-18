@@ -119,6 +119,7 @@ type importTask struct {
 	task
 	out   *transition
 	block module.BlockData
+	csi   module.ConsensusInfo
 	flags int
 }
 
@@ -126,6 +127,7 @@ type proposeTask struct {
 	task
 	parentBlock module.Block
 	votes       module.CommitVoteSet
+	csi         module.ConsensusInfo
 }
 
 func (m *manager) addNode(par *bnode, bn *bnode) {
@@ -245,11 +247,15 @@ func (m *manager) _import(
 		}
 		validators = pprev.NextValidators()
 	}
-	if err := verifyBlock(block, bn.block, validators); err != nil {
+	var csi module.ConsensusInfo
+	if vt, err := verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
+	} else {
+		csi = common.NewConsensusInfo(block.Proposer(), validators, vt)
 	}
 	it := &importTask{
 		block: block,
+		csi:   csi,
 		flags: flags,
 		task: task{
 			manager: m,
@@ -371,7 +377,7 @@ func (it *importTask) _onExecute(err error) {
 			it.cb(nil, err)
 			return
 		}
-		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it)
+		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it)
 		if err != nil {
 			it.stop()
 			it.cb(nil, err)
@@ -401,8 +407,11 @@ func (m *manager) _propose(
 		}
 		validators = pprev.NextValidators()
 	}
-	if err := votes.Verify(bn.block, validators); err != nil {
+	var csi module.ConsensusInfo
+	if voted, err := votes.Verify(bn.block, validators); err != nil {
 		return nil, err
+	} else {
+		csi = common.NewConsensusInfo(m.chain.Wallet().Address(), validators, voted)
 	}
 	pt := &proposeTask{
 		task: task{
@@ -411,14 +420,16 @@ func (m *manager) _propose(
 		},
 		parentBlock: bn.block,
 		votes:       votes,
+		csi:         csi,
 	}
 	pt.state = executingIn
+	bi := common.NewBlockInfo(bn.block.Height()+1, votes.Timestamp())
 	patches := m.sm.GetPatches(
 		bn.in.mtransition(),
-		common.NewBlockInfo(bn.block.Height()+1, votes.Timestamp()),
+		bi,
 	)
 	var err error
-	pt.in, err = bn.preexe.patch(patches, nil, pt)
+	pt.in, err = bn.preexe.patch(patches, bi, pt)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +489,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	if pt.manager.timestamper != nil {
 		timestamp = pt.manager.timestamper.GetBlockTimestamp(height, timestamp)
 	}
-	tr, err := pt.in.propose(common.NewBlockInfo(height, timestamp), nil)
+	tr, err := pt.in.propose(common.NewBlockInfo(height, timestamp), pt.csi, nil)
 	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
@@ -603,7 +614,8 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		block: lastFinalized,
 		in:    tr,
 	}
-	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil)
+	// TODO need to make proper consensus information or not to trigger transit.
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -795,8 +807,13 @@ func (m *manager) finalizePrunedBlock() error {
 		return err
 	}
 
-	if _, err = m._importBlockByID(d, blk.PrevID()); err != nil {
+	pblk, err := m._importBlockByID(d, blk.PrevID())
+	if err != nil {
 		return err
+	}
+	voted, err := blk.Votes().Verify(pblk, pblk.NextValidators())
+	if err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())
@@ -834,7 +851,8 @@ func (m *manager) finalizePrunedBlock() error {
 		block: blk,
 		in:    tr,
 	}
-	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, nil)
+	csi := common.NewConsensusInfo(blk.Proposer(), pblk.NextValidators(), voted)
+	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
 	if err != nil {
 		return err
 	}
@@ -873,7 +891,8 @@ func (m *manager) finalizeGenesisBlock(
 	}
 	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
 	m.syncer.begin()
-	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), &channelingCB{ch: ch})
+	csi := common.NewConsensusInfo(nil, nil, nil)
+	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch})
 	if err != nil {
 		m.syncer.end()
 		return nil, err
