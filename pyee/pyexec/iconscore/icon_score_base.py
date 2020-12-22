@@ -164,6 +164,7 @@ def __retrieve_event_signature(function_name, parameters) -> str:
                 main_type = Address
 
             # Raises an exception if the types are not supported
+            # pylint: disable=no-member
             if main_type is None or not issubclass(main_type, BaseType.__constraints__):
                 raise IllegalFormatException(
                     f"Unsupported type for '{param.name}: {param.annotation}'")

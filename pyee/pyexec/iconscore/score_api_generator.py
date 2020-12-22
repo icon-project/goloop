@@ -193,6 +193,7 @@ class ScoreApiGenerator:
         :param t: target
         :return: base_super_type
         """
+        # pylint: disable=no-member
         find = (base_type for base_type in BaseType.__constraints__
                 if isclass(t) and issubclass(t, base_type))
         return next(find, None)

@@ -39,6 +39,7 @@ class ContextContainer(object):
         context_stack: List['IconScoreContext'] = getattr(_thread_local_data, 'context_stack', None)
 
         if context_stack is not None and len(context_stack) > 0:
+            # pylint: disable=unsubscriptable-object
             return context_stack[-1]
         else:
             return None

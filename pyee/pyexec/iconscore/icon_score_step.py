@@ -20,6 +20,7 @@ from ..utils import to_camel_case
 
 class AutoValueEnum(Enum):
     # noinspection PyMethodParameters
+    # pylint: disable=no-self-argument,no-member
     def _generate_next_value_(name, start, count, last_values):
         # Generates value from the camel-cased name
         return to_camel_case(name.lower())
