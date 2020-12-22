@@ -14,13 +14,15 @@
 package icon
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
-	"math/big"
+	"github.com/icon-project/goloop/service/state"
 )
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
@@ -221,10 +223,23 @@ func (s *chainScore) Ex_claimIScore() error {
 	if err != nil {
 		return err
 	}
-	if iScore == nil || iScore.IsEmpty() {
+	if iScore == nil {
 		// there is no iScore to claim
 		return nil
 	}
+	claimed, err = es.Back.GetIScoreClaim(s.from)
+	if err != nil {
+		return err
+	}
+	if claimed != nil {
+		iScore.Value.Sub(iScore.Value, claimed.Value)
+	}
+
+	if iScore.IsEmpty() {
+		// there is no iScore to claim
+		return nil
+	}
+
 	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRation, new(big.Int))
 	claim := new(big.Int).Sub(iScore.Value, remains)
 
@@ -239,12 +254,23 @@ func (s *chainScore) Ex_claimIScore() error {
 	// decrease treasury icx balance
 	tr := s.cc.GetAccountState(s.cc.Treasury().ID())
 	tb := tr.GetBalance()
-	tr.SetBalance(new(big.Int).Add(tb, icx))
+	tr.SetBalance(new(big.Int).Sub(tb, icx))
 
 	// write claim data to front
 	if err = es.Front.AddIScoreClaim(s.from, claim); err != nil {
 		return err
 	}
+
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{
+			[]byte("IScoreClaimedV2(Address,int,int)"),
+		},
+		[][]byte{
+			s.from.Bytes(),
+			claim.Bytes(),
+			icx.Bytes(),
+		},
+	)
 
 	return nil
 }
@@ -265,6 +291,13 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 			is.SetInt64(0)
 		} else {
 			is = iScore.Value
+		}
+		claimed, err = es.Back.GetIScoreClaim(address)
+		if err != nil {
+			return nil, err
+		}
+		if claimed != nil {
+			is.Sub(is, claimed.Value)
 		}
 	}
 

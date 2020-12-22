@@ -31,7 +31,8 @@ import (
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 	c := new(Calculator)
 	c.back = back
-	c.temp = icreward.NewState(database)
+	c.base = icreward.NewSnapshot(database, nil)
+	c.temp = c.base.NewState()
 
 	return c
 }
@@ -72,15 +73,20 @@ func TestCalculator_processClaim(t *testing.T) {
 			v2,
 		},
 	}
+
+	c := MakeCalculator(database, s.GetSnapshot())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			err := s.AddIScoreClaim(args.addr, args.value)
+			iScore := icreward.NewIScore()
+			iScore.Value.Set(args.value)
+			err := c.temp.SetIScore(args.addr, iScore)
+			assert.NoError(t, err)
+
+			err = s.AddIScoreClaim(args.addr, args.value)
 			assert.NoError(t, err)
 		})
 	}
-
-	c := MakeCalculator(database, s.GetSnapshot())
 
 	err := c.processClaim()
 	assert.NoError(t, err)

@@ -32,9 +32,7 @@ import (
 )
 
 type platform struct {
-	calcStarted bool
-	calcResult  []byte
-	calcDoneBH  int64
+	calculator *iiss.Calculator
 }
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
@@ -76,19 +74,17 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
 	// TODO start background calculator if it's not started.
-	func() {
-		if err := iiss.RunCalculator(ess); err != nil {
-			log.Printf("Failed to calculate %+v", err)
-			return
-		}
-	}()
+	ss := ess.(*iiss.ExtensionSnapshotImpl)
+	p.calculator.SetExtension(ss)
+	if p.calculator.CheckToRun() {
+		go p.calculator.Run()
+	}
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext) error {
-	// FIXME temp implementation for test
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
-	if err := es.NewCalculationPeriod(wc.BlockHeight()); err != nil {
+	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
 		return err
 	}
 	return nil
@@ -99,7 +95,9 @@ func (p *platform) Term() {
 }
 
 func NewPlatform(base string, cid int) (service.Platform, error) {
-	return &platform{}, nil
+	return &platform{
+		calculator: iiss.NewCalculator(),
+	}, nil
 }
 
 func init() {

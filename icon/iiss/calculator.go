@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -49,24 +48,45 @@ var (
 )
 
 type Calculator struct {
-	ss     *ExtensionSnapshotImpl
-	back   *icstage.Snapshot
-	base   *icreward.Snapshot
-	temp   *icreward.State
+	result      *icreward.Snapshot
+	blockHeight int64
 
-	irep *big.Int
-	rrep *big.Int
-
+	ss          *ExtensionSnapshotImpl
+	back        *icstage.Snapshot
+	base        *icreward.Snapshot
+	temp        *icreward.State
+	irep        *big.Int
+	rrep        *big.Int
 	offsetLimit int
 }
 
-func (c *Calculator) checkToRun() bool {
-	return c.ss.c.run &&	// reached to calculation period
-		bytes.Compare(c.ss.reward.Bytes(), c.ss.c.resultHash) == 0	// snapshot has updated result
+func (c *Calculator) SetExtension(ss *ExtensionSnapshotImpl) {
+	c.ss = ss
 }
 
-func (c *Calculator) run() (err error) {
-	c.ss.c.stop()
+func (c *Calculator) isCalculating() bool {
+	return c.blockHeight != 0 && c.result == nil
+}
+
+func (c *Calculator) isRestarted() bool {
+	return c.result == nil || c.ss.reward == nil
+}
+
+func (c *Calculator) isResultSynced() bool {
+	return bytes.Compare(c.result.Bytes(), c.ss.reward.Bytes()) == 0
+}
+
+func (c *Calculator) CheckToRun() bool {
+	if c.isCalculating() {
+		return false
+	}
+	if c.isRestarted() {
+		return true
+	}
+	return c.isResultSynced()
+}
+
+func (c *Calculator) Run() (err error) {
 	if err = c.prepare(); err != nil {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
@@ -93,12 +113,11 @@ func (c *Calculator) run() (err error) {
 }
 
 func (c *Calculator) prepare() error {
-	c.base = c.ss.reward
 	c.back = c.ss.back
-
-	// make temp state for calculation
+	c.base = c.ss.reward
 	c.temp = c.base.NewState()
-
+	c.result = nil
+	c.blockHeight = c.ss.c.currentBH
 
 	// read old values from temp
 	global, err := c.temp.GetGlobal()
@@ -148,7 +167,7 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore = iScore.Added(claim.Value)
+			iScore = iScore.Added(claim.Value.Neg(claim.Value))
 			if iScore.Value.Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
 			}
@@ -584,33 +603,19 @@ func delegatingReward(
 }
 
 func (c *Calculator) postWork() {
+	// save values for next calculation
 	g := new(icreward.Global)
 	g.Irep = c.irep
 	g.Rrep = c.rrep
 	c.temp.SetGlobal(g)
 
-	result := c.temp.GetSnapshot()
-	result.Flush()
-
-	// TODO handle result by async?
-	c.ss.c.done(result.Bytes())
-
-	return
+	// save calculation result
+	c.result = c.temp.GetSnapshot()
+	c.result.Flush()
 }
 
-func newCalculator(ess *ExtensionSnapshotImpl) *Calculator {
-	return &Calculator{ss: ess}
-}
-
-func RunCalculator(ess state.ExtensionSnapshot) error {
-	calculator := newCalculator(ess.(*ExtensionSnapshotImpl))
-	if !calculator.checkToRun() {
-		return nil
-	}
-	if err := calculator.run(); err != nil {
-		return err
-	}
-	return nil
+func NewCalculator() *Calculator {
+	return &Calculator{}
 }
 
 type validator struct {
