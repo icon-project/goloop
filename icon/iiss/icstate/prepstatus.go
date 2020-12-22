@@ -42,6 +42,7 @@ const (
 	Active Status = iota
 	Unregistered
 	Disqualified
+	NotReady
 )
 
 type PRepStatus struct {
@@ -141,6 +142,7 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 
 func (ps *PRepStatus) Clone() *PRepStatus {
 	return &PRepStatus{
+		owner:        ps.owner,
 		grade:        ps.grade,
 		penalty:      ps.penalty,
 		status:       ps.status,

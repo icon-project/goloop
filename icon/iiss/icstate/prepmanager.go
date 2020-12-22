@@ -44,13 +44,12 @@ var (
 )
 
 type PRep struct {
-	owner module.Address
 	*PRepBase
 	*PRepStatus
 }
 
 func (p *PRep) Owner() module.Address {
-	return p.owner
+	return p.PRepBase.Owner()
 }
 
 func (p *PRep) ToJSON() map[string]interface{} {
@@ -58,7 +57,7 @@ func (p *PRep) ToJSON() map[string]interface{} {
 }
 
 func (p *PRep) Clone() *PRep {
-	return newPRep(p.owner, p.PRepBase, p.PRepStatus)
+	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus)
 }
 
 func newPRep(owner module.Address, base *PRepBase, status *PRepStatus) *PRep {
@@ -68,7 +67,7 @@ func newPRep(owner module.Address, base *PRepBase, status *PRepStatus) *PRep {
 	status = status.Clone()
 	status.SetOwner(owner)
 
-	return &PRep{owner: owner, PRepBase: base, PRepStatus: status}
+	return &PRep{PRepBase: base, PRepStatus: status}
 }
 
 func setPRep(pb *PRepBase, node module.Address, params []string) error {
@@ -94,15 +93,15 @@ type PRepManager struct {
 	prepBaseCache   *PRepBaseCache
 	prepStatusCache *PRepStatusCache
 
-	orderedPReps []*PRep
+	orderedPReps preps
 	prepMap      map[string]*PRep
 }
 
-type prepFulls []*PRep
+type preps []*PRep
 
-func (p prepFulls) Len() int      { return len(p) }
-func (p prepFulls) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-func (p prepFulls) Less(i, j int) bool {
+func (p preps) Len() int      { return len(p) }
+func (p preps) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (p preps) Less(i, j int) bool {
 	ret := p[i].GetBondedDelegation().Cmp(p[j].GetBondedDelegation())
 	if ret < 0 {
 		return true
@@ -117,7 +116,7 @@ func (p prepFulls) Less(i, j int) bool {
 		return false
 	}
 
-	return bytes.Compare(p[i].GetNode().Bytes(), p[j].GetNode().Bytes()) < 0
+	return bytes.Compare(p[i].Owner().Bytes(), p[j].Owner().Bytes()) < 0
 }
 
 func (pm *PRepManager) init() {
@@ -157,9 +156,9 @@ func (pm *PRepManager) Add(p *PRep) {
 	pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
 }
 
-// sort prepFulls in descending order by bonded delegation
+// sort preps in descending order by bonded delegation
 func (pm *PRepManager) sort() {
-	sort.Sort(sort.Reverse(prepFulls(pm.orderedPReps)))
+	sort.Sort(sort.Reverse(preps(pm.orderedPReps)))
 }
 
 func (pm *PRepManager) Size() int {
@@ -258,9 +257,16 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 		return err
 	}
 
-	ps := newPRepStatus(owner)
+	ps := pm.prepStatusCache.Get(owner)
+	if ps == nil {
+		ps = newPRepStatus(owner)
+		pm.prepStatusCache.Add(ps)
+	} else {
+		// NotReady -> Active
+		ps.SetStatus(Active)
+	}
+
 	pm.prepBaseCache.Add(pb)
-	pm.prepStatusCache.Add(ps)
 	pm.activePRepCache.Add(owner)
 	if err = pm.addNodeToOwner(node, owner); err != nil {
 		return err
@@ -324,26 +330,44 @@ func (pm *PRepManager) ChangeDelegation(od, nd Delegations) error {
 		delta[key].Add(delta[key], d.Value.Value())
 	}
 
+	notReadyDelegated := big.NewInt(0)
+	var newPs *PRepStatus
 	for k, v := range delta {
 		owner, err := common.NewAddress([]byte(k))
 		if err != nil {
 			return err
 		}
 
-		ps := pm.prepStatusCache.Get(owner)
-		if ps == nil {
-			return errors.Errorf("PRepStatus is not found: %s", owner)
-		}
-
 		key := icutils.ToKey(owner)
 		if delta[key].Cmp(BigIntZero) != 0 {
-			newPs := ps.Clone()
+			ps := pm.prepStatusCache.Get(owner)
+			if ps == nil {
+				// Someone tries to set delegation to a PRep which has not been registered
+				newPs = newPRepStatus(owner)
+				newPs.SetStatus(NotReady)
+				notReadyDelegated.Add(notReadyDelegated, delta[key])
+			} else {
+				newPs = ps.Clone()
+			}
+
 			newPs.delegated.Add(newPs.delegated, v)
-			pm.prepStatusCache.Add(newPs)
+
+			if newPs.Status() == NotReady && newPs.delegated.Cmp(BigIntZero) == 0 {
+				err = pm.prepStatusCache.Remove(owner)
+				if err != nil {
+					panic(errors.Errorf("PRepStatusCache is broken: %s", owner))
+				}
+			} else {
+				pm.prepStatusCache.Add(newPs)
+			}
 		}
 	}
 
-	pm.totalDelegated.Add(pm.totalDelegated, nd.GetDelegationAmount()).Sub(pm.totalDelegated, od.GetDelegationAmount())
+	totalDelegated := pm.totalDelegated
+	totalDelegated.Add(totalDelegated, nd.GetDelegationAmount())
+	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
+	// Ignore the delegation to NotReady PReps
+	totalDelegated.Sub(totalDelegated, notReadyDelegated)
 	return nil
 }
 

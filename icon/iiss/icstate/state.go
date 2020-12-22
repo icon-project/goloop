@@ -149,56 +149,11 @@ func (s *State) GetAccount(addr module.Address) (*Account, error) {
 		as = ToAccount(obj, addr)
 	} else {
 		as = newAccountWithTag(icobject.MakeTag(TypeAccount, accountVersion))
+		as.SetAddress(addr)
 	}
 	s.mutableAccounts[ids] = as
 	return as, nil
 }
-
-//func (s *State) GetPRepBase(owner module.Address) (*PRepBase, error) {
-//	ids := icutils.ToKey(owner)
-//	if a, ok := s.mutablePRepBases[ids]; ok {
-//		return a, nil
-//	}
-//
-//	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepPrefix, owner))
-//	obj, err := icobject.GetFromMutableForObject(s.store, key)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var pb *PRepBase
-//	if obj != nil {
-//		pb = ToPRepBase(obj, owner)
-//	} else {
-//		pb = newPRepBaseWithTag(icobject.MakeTag(TypePRepBase, prepVersion))
-//	}
-//
-//	pb.SetOwner(owner)
-//	s.mutablePRepBases[ids] = pb
-//	return pb, nil
-//}
-
-//func (s *State) GetPRepStatus(owner module.Address) (*PRepStatus, error) {
-//	ids := icutils.ToKey(owner)
-//	if a, ok := s.mutablePRepStatuses[ids]; ok {
-//		return a, nil
-//	}
-//	key := crypto.SHA3Sum256(scoredb.AppendKeys(prepStatusPrefix, owner))
-//	obj, err := icobject.GetFromMutableForObject(s.store, key)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var ps *PRepStatus
-//	if obj != nil {
-//		ps = ToPRepStatus(obj, owner)
-//	} else {
-//		ps = newPRepStatusWithTag(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
-//	}
-//
-//	s.mutablePRepStatuses[ids] = ps
-//	return ps, nil
-//}
 
 func (s *State) GetUnstakingTimerState(height int64) (*TimerState, error) {
 	if a, ok := s.mutableUnstakingTimer[height]; ok {

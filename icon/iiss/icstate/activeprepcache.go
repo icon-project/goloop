@@ -71,7 +71,7 @@ func (c *ActivePRepCache) Get(i int) module.Address {
 }
 
 func (c *ActivePRepCache) Clear() {
-	c.items = make([]*activePRepCacheItem, 0)
+	c.items = nil
 	c.ownerToItem = make(map[string]*activePRepCacheItem)
 }
 
@@ -79,6 +79,8 @@ func (c *ActivePRepCache) Reset() {
 	c.Clear()
 
 	size := c.arraydb.Size()
+	c.items = make([]*activePRepCacheItem, size)
+
 	for i := 0; i < size; i++ {
 		owner := c.arraydb.Get(i).Address()
 		item := &activePRepCacheItem{owner, i}
