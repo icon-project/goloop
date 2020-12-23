@@ -275,9 +275,9 @@ func (s *chainScore) Ex_claimIScore() error {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{
 			[]byte("IScoreClaimedV2(Address,int,int)"),
+			s.from.Bytes(),
 		},
 		[][]byte{
-			s.from.Bytes(),
 			claim.Bytes(),
 			icx.Bytes(),
 		},
