@@ -105,6 +105,7 @@ func (s *State) SetDelegation(from module.Address, ds Delegations) error {
 		return errors.Errorf("Not enough voting power")
 	}
 
+	account.SetDelegation(ds)
 	return s.pm.ChangeDelegation(account.delegations, ds)
 }
 
