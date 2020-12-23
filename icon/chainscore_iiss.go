@@ -247,7 +247,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	}
 
 	if iScore.IsEmpty() {
-		// there is no iScore to claim
+		// there is no IScore to claim
 		return nil
 	}
 
@@ -288,12 +288,12 @@ func (s *chainScore) Ex_claimIScore() error {
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	claimed, err := es.Front.GetIScoreClaim(address)
+	fClaim, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
 		return nil, err
 	}
 	is := new(big.Int)
-	if claimed == nil {
+	if fClaim == nil {
 		iScore, err := es.Reward.GetIScore(address)
 		if err != nil {
 			return nil, err
@@ -303,12 +303,12 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		} else {
 			is = iScore.Value
 		}
-		claimed, err = es.Back.GetIScoreClaim(address)
+		bClaim, err := es.Back.GetIScoreClaim(address)
 		if err != nil {
 			return nil, err
 		}
-		if claimed != nil {
-			is.Sub(is, claimed.Value)
+		if bClaim != nil {
+			is.Sub(is, bClaim.Value)
 		}
 	}
 

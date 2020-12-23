@@ -19,7 +19,9 @@ import (
 	"sort"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -38,6 +40,8 @@ const (
 	YearBlock  = MonthBlock * 12
 
 	IScoreICXRatio = 1000
+
+	keyCalculator = "iiss.calculator"
 )
 
 var (
@@ -48,6 +52,8 @@ var (
 )
 
 type Calculator struct {
+	dbase       db.Database
+
 	result      *icreward.Snapshot
 	blockHeight int64
 
@@ -60,16 +66,65 @@ type Calculator struct {
 	offsetLimit int
 }
 
+func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
+	var hash []byte
+	if c.result != nil {
+		hash = c.result.Bytes()
+	}
+	return e.EncodeListOf(
+		hash,
+		c.blockHeight,
+	)
+}
+
+func (c *Calculator) RLPDecodeSelf(d codec.Decoder) error {
+	var hash []byte
+	if err := d.DecodeListOf(&hash, &c.blockHeight); err != nil {
+		return err
+	}
+	c.result = icreward.NewSnapshot(c.dbase, hash)
+	return nil
+}
+
+func (c *Calculator) Bytes() []byte {
+	bs, err := codec.BC.MarshalToBytes(c)
+	if err != nil {
+		return nil
+	}
+	return bs
+}
+func (c *Calculator) SetBytes(bs []byte) error {
+	_, err := codec.BC.UnmarshalFromBytes(bs, c)
+	return err
+}
+
+func (c *Calculator) Flush() error {
+	bk, err := c.dbase.GetBucket(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	return bk.Set([]byte(keyCalculator), c.Bytes())
+}
+
+func (c *Calculator) Init(dbase db.Database) error {
+	c.dbase = dbase
+	bk, err := c.dbase.GetBucket(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	bs, err := bk.Get([]byte(keyCalculator))
+	if err != nil || bs == nil {
+		return err
+	}
+	return c.SetBytes(bs)
+}
+
 func (c *Calculator) SetExtension(ss *ExtensionSnapshotImpl) {
 	c.ss = ss
 }
 
 func (c *Calculator) isCalculating() bool {
 	return c.blockHeight != 0 && c.result == nil
-}
-
-func (c *Calculator) isRestarted() bool {
-	return c.result == nil || c.ss.reward == nil
 }
 
 func (c *Calculator) isResultSynced() bool {
@@ -79,9 +134,6 @@ func (c *Calculator) isResultSynced() bool {
 func (c *Calculator) CheckToRun() bool {
 	if c.isCalculating() {
 		return false
-	}
-	if c.isRestarted() {
-		return true
 	}
 	return c.isResultSynced()
 }
@@ -107,14 +159,17 @@ func (c *Calculator) Run() (err error) {
 		return
 	}
 
-	c.postWork()
+	if err = c.postWork(); err != nil {
+		err = errors.Wrapf(err, "Failed to save calculation result")
+		return
+	}
 
 	return
 }
 
 func (c *Calculator) prepare() error {
-	c.back = c.ss.back
-	c.base = c.ss.reward
+	c.back = icstage.NewSnapshot(c.ss.database, c.ss.back.Bytes())
+	c.base = icreward.NewSnapshot(c.ss.database, c.ss.reward.Bytes())
 	c.temp = c.base.NewState()
 	c.result = nil
 	c.blockHeight = c.ss.c.currentBH
@@ -602,16 +657,26 @@ func delegatingReward(
 	return total
 }
 
-func (c *Calculator) postWork() {
+func (c *Calculator) postWork() (err error) {
 	// save values for next calculation
 	g := new(icreward.Global)
 	g.Irep = c.irep
 	g.Rrep = c.rrep
-	c.temp.SetGlobal(g)
+	if err = c.temp.SetGlobal(g); err != nil {
+		return
+	}
 
-	// save calculation result
+	// save calculation result to MPT
 	c.result = c.temp.GetSnapshot()
-	c.result.Flush()
+	if err = c.result.Flush(); err != nil {
+		return
+	}
+
+	// save calculator Info.
+	if err = c.Flush(); err != nil {
+		return
+	}
+	return
 }
 
 func NewCalculator() *Calculator {

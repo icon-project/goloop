@@ -28,6 +28,26 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+func TestCalculator(t *testing.T) {
+	database := db.NewMapDB()
+	c := new(Calculator)
+
+	err := c.Init(database)
+	assert.NoError(t, err)
+	assert.Equal(t, database, c.dbase)
+	assert.Equal(t, int64(0), c.blockHeight)
+
+	c.blockHeight = 100
+	err = c.Flush()
+	assert.NoError(t, err)
+
+	c2 := new(Calculator)
+	err = c2.Init(database)
+	assert.NoError(t, err)
+	assert.Equal(t, c.dbase, c2.dbase)
+	assert.Equal(t, c.blockHeight, c2.blockHeight)
+}
+
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 	c := new(Calculator)
 	c.back = back
