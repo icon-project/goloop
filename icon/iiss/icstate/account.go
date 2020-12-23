@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 
@@ -33,6 +34,7 @@ const (
 
 var bigIntZero big.Int
 var BigIntZero = &bigIntZero
+var AccountDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "account_db")
 
 // Account containing IISS information
 type Account struct {
@@ -372,7 +374,12 @@ func (a *Account) GetSnapshot() *Account {
 
 func newAccountWithTag(_ icobject.Tag) *Account {
 	// versioning with tag.Version() if necessary
+	return &Account{}
+}
+
+func newAccount(addr module.Address) *Account {
 	return &Account{
+		address:    addr,
 		stake:      new(big.Int),
 		delegating: new(big.Int),
 		bonding:    new(big.Int),

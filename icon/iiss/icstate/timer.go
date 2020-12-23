@@ -18,10 +18,14 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
+
+var unstakingTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_unstaking")
+var unbondingTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_unbonding")
 
 type addresses []module.Address
 
@@ -51,34 +55,44 @@ func (a addresses) Equal(a2 addresses) bool {
 	return true
 }
 
+func (a addresses) Clone() addresses {
+	if a == nil {
+		return nil
+	}
+	c := make([]module.Address, len(a))
+	for i, address := range a {
+		c[i] = address
+	}
+	return c
+}
+
 type Timer struct {
+	icobject.NoDatabase
+	StateAndSnapshot
+	Height int64
+
 	Addresses addresses
 }
 
-type TimerSnapshot struct {
-	icobject.NoDatabase
-	Timer
-}
-
-func (t *TimerSnapshot) Version() int {
+func (t *Timer) Version() int {
 	return timerVersion
 }
 
-func (t *TimerSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
+func (t *Timer) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
 		&t.Addresses,
 	)
 	return err
 }
 
-func (t *TimerSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
+func (t *Timer) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		t.Addresses,
 	)
 }
 
-func (t *TimerSnapshot) Equal(object icobject.Impl) bool {
-	tt, ok := object.(*TimerSnapshot)
+func (t *Timer) Equal(object icobject.Impl) bool {
+	tt, ok := object.(*Timer)
 	if !ok {
 		return false
 	}
@@ -88,39 +102,26 @@ func (t *TimerSnapshot) Equal(object icobject.Impl) bool {
 	return t.Addresses.Equal(tt.Addresses)
 }
 
-func newTimerSnapshot(tag icobject.Tag) *TimerSnapshot {
-	return &TimerSnapshot{}
-}
-
-type TimerState struct {
-	Height int64
-	Timer
-}
-
-func (t *TimerState) Reset(ts *TimerSnapshot) {
-	t.Addresses = ts.Addresses
-}
-
-func (t *TimerState) Clear() {
+func (t *Timer) Clear() {
 	t.Height = 0
 	t.Addresses = nil
 }
 
-func (t *TimerState) GetSnapshot() *TimerSnapshot {
-	ts := &TimerSnapshot{}
-	ts.Addresses = t.Addresses
-	return ts
-}
-
-func (t TimerState) IsEmpty() bool {
+func (t Timer) IsEmpty() bool {
 	return len(t.Addresses) == 0
 }
 
-func (t *TimerState) Add(address module.Address) {
+func (t *Timer) Set(other *Timer) {
+	t.checkWritable()
+	t.Height = other.Height
+	t.Addresses = other.Addresses.Clone()
+}
+
+func (t *Timer) Add(address module.Address) {
 	t.Addresses = append(t.Addresses, address)
 }
 
-func (t *TimerState) Delete(address module.Address) error {
+func (t *Timer) Delete(address module.Address) error {
 	tmp := make(addresses, 0)
 	for _, a := range t.Addresses {
 		if !a.Equal(address) {
@@ -136,19 +137,17 @@ func (t *TimerState) Delete(address module.Address) error {
 	return nil
 }
 
-func newTimerState(height int64) *TimerState {
-	return &TimerState{
+func newTimer(height int64) *Timer {
+	return &Timer{
 		Height: height,
 	}
 }
 
-func NewTimerStateWithSnapshot(h int64, ss *TimerSnapshot) *TimerState {
-	ts := newTimerState(h)
-	ts.Reset(ss)
-	return ts
+func newTimerWithTag(_ icobject.Tag) *Timer {
+	return &Timer{}
 }
 
-func ScheduleTimerJob(t *TimerState, info TimerJobInfo, address module.Address) error {
+func ScheduleTimerJob(t *Timer, info TimerJobInfo, address module.Address) error {
 	switch info.Type {
 	case JobTypeAdd:
 		t.Add(address)

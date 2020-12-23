@@ -17,64 +17,27 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 )
 
 type State struct {
-	readonly              bool
-	mutableAccounts       map[string]*Account
-	mutableUnstakingTimer map[int64]*TimerState
-	mutableUnbondingTimer map[int64]*TimerState
-	store                 *icobject.ObjectStoreState
-	pm                    *PRepManager
+	readonly            bool
+	accountCache        *AccountCache
+	unstakingtimerCache *TimerCache
+	unbondingtimerCache *TimerCache
+	store               *icobject.ObjectStoreState
+	pm                  *PRepManager
 }
 
 func (s *State) Reset(ss *Snapshot) error {
 	s.store.Reset(ss.store.ImmutableForObject)
-	for _, as := range s.mutableAccounts {
-		address := as.Address()
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, address))
-		value, err := icobject.GetFromMutableForObject(s.store, key)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			as.Clear()
-		} else {
-			as.Set(ToAccount(value, address))
-		}
-	}
-	for _, ubt := range s.mutableUnbondingTimer {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, ubt.Height))
-		value, err := s.store.Get(key)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			ubt.Clear()
-		} else {
-			ubt.Reset(ToTimerSnapshot(value))
-		}
-	}
-	for _, ust := range s.mutableUnstakingTimer {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, ust.Height))
-		value, err := s.store.Get(key)
-		if err != nil {
-			return err
-		}
-		if value == nil {
-			ust.Clear()
-		} else {
-			ust.Reset(ToTimerSnapshot(value))
-		}
-	}
+	s.accountCache.Reset()
+	s.unstakingtimerCache.Reset()
+	s.unbondingtimerCache.Reset()
 
 	if err := s.pm.Reset(); err != nil {
 		return err
@@ -83,50 +46,9 @@ func (s *State) Reset(ss *Snapshot) error {
 }
 
 func (s *State) GetSnapshot() *Snapshot {
-	for _, as := range s.mutableAccounts {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, as.Address()))
-		value := icobject.New(TypeAccount, as.GetSnapshot())
-
-		if as.IsEmpty() {
-			if _, err := s.store.Delete(key); err != nil {
-				log.Errorf("Failed to delete account key %x, err+%+v", key, err)
-			}
-		} else {
-			if _, err := s.store.Set(key, value); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
-			}
-		}
-	}
-
-	for _, timer := range s.mutableUnstakingTimer {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, timer.Height))
-		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
-
-		if timer.IsEmpty() {
-			if _, err := s.store.Delete(key); err != nil {
-				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
-			}
-		} else {
-			if _, err := s.store.Set(key, value); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
-			}
-		}
-	}
-	for _, timer := range s.mutableUnbondingTimer {
-		key := crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, timer.Height))
-		value := icobject.New(TypePRepStatus, timer.GetSnapshot())
-
-		if timer.IsEmpty() {
-			if _, err := s.store.Delete(key); err != nil {
-				log.Errorf("Failed to delete Timer key %x, err+%+v", key, err)
-			}
-		} else {
-			if _, err := s.store.Set(key, value); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
-			}
-		}
-	}
-
+	s.accountCache.GetSnapshot()
+	s.unstakingtimerCache.GetSnapshot()
+	s.unbondingtimerCache.GetSnapshot()
 	if err := s.pm.GetSnapshot(); err != nil {
 		panic(err)
 	}
@@ -135,62 +57,18 @@ func (s *State) GetSnapshot() *Snapshot {
 }
 
 func (s *State) GetAccount(addr module.Address) (*Account, error) {
-	ids := addr.String()
-	if a, ok := s.mutableAccounts[ids]; ok {
-		return a, nil
-	}
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	if err != nil {
-		return nil, err
-	}
-	var as *Account
-	if obj != nil {
-		as = ToAccount(obj, addr)
-	} else {
-		as = newAccountWithTag(icobject.MakeTag(TypeAccount, accountVersion))
-		as.SetAddress(addr)
-	}
-	s.mutableAccounts[ids] = as
-	return as, nil
+	a := s.accountCache.Get(addr)
+	return a, nil
 }
 
-func (s *State) GetUnstakingTimerState(height int64) (*TimerState, error) {
-	if a, ok := s.mutableUnstakingTimer[height]; ok {
-		return a, nil
-	}
-	obj, err := s.store.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unstakingTimerPrefix, height)))
-	if err != nil {
-		return nil, err
-	}
-	var tss *TimerSnapshot
-	if obj != nil {
-		tss = ToTimerSnapshot(obj)
-	} else {
-		tss = newTimerSnapshot(icobject.MakeTag(TypeTimer, timerVersion))
-	}
-	ts := NewTimerStateWithSnapshot(height, tss)
-	s.mutableUnstakingTimer[height] = ts
-	return ts, nil
+func (s *State) GetUnstakingTimer(height int64) (*Timer, error) {
+	timer := s.unstakingtimerCache.Get(height)
+	return timer, nil
 }
 
-func (s *State) GetUnbondingTimerState(height int64) (*TimerState, error) {
-	if a, ok := s.mutableUnbondingTimer[height]; ok {
-		return a, nil
-	}
-	obj, err := s.store.Get(crypto.SHA3Sum256(scoredb.AppendKeys(unbondingTimerPrefix, height)))
-	if err != nil {
-		return nil, err
-	}
-	var tss *TimerSnapshot
-	if obj != nil {
-		tss = ToTimerSnapshot(obj)
-	} else {
-		tss = newTimerSnapshot(icobject.MakeTag(TypeTimer, timerVersion))
-	}
-	ts := NewTimerStateWithSnapshot(height, tss)
-	s.mutableUnbondingTimer[height] = ts
-	return ts, nil
+func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
+	timer := s.unbondingtimerCache.Get(height)
+	return timer, nil
 }
 
 func (s *State) GetValidators() []module.Validator {
@@ -268,7 +146,7 @@ func (s *State) SetBond(from module.Address, height int64, bonds Bonds) error {
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
-		ts, e := s.GetUnbondingTimerState(t.Height)
+		ts, e := s.GetUnbondingTimer(t.Height)
 		if e != nil {
 			return errors.Errorf("Error while getting unbonding Timer")
 		}
@@ -316,12 +194,12 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	store := icobject.NewObjectStoreState(t)
 
 	s := &State{
-		readonly:              readonly,
-		mutableAccounts:       make(map[string]*Account),
-		mutableUnstakingTimer: make(map[int64]*TimerState),
-		mutableUnbondingTimer: make(map[int64]*TimerState),
-		store:                 store,
-		pm:                    newPRepManager(store, big.NewInt(0)),
+		readonly:            readonly,
+		accountCache:        newAccountCache(store),
+		unstakingtimerCache: newTimerCache(store, unstakingTimerDictPrefix),
+		unbondingtimerCache: newTimerCache(store, unbondingTimerDictPrefix),
+		store:               store,
+		pm:                  newPRepManager(store, big.NewInt(0)),
 	}
 
 	return s

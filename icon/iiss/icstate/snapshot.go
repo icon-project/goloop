@@ -17,26 +17,15 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoredb"
 )
 
 type Snapshot struct {
 	store *icobject.ObjectStoreSnapshot
 }
-
-var (
-	accountPrefix        = scoredb.ToKey(scoredb.DictDBPrefix, "account_db")
-	prepPrefix           = scoredb.ToKey(scoredb.DictDBPrefix, "PRep")
-	prepStatusPrefix     = scoredb.ToKey(scoredb.DictDBPrefix, "prep_status")
-	unbondingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unbonding")
-	unstakingTimerPrefix = scoredb.ToKey(scoredb.DictDBPrefix, "timer_unstaking")
-)
 
 func (ss *Snapshot) Bytes() []byte {
 	return ss.store.Hash()
@@ -61,15 +50,6 @@ func (ss *Snapshot) GetValue(key []byte) ([]byte, error) {
 	}
 
 	return value, nil
-}
-
-func (ss *Snapshot) GetAccount(addr module.Address) (*Account, error) {
-	key := crypto.SHA3Sum256(scoredb.AppendKeys(accountPrefix, addr))
-	obj, err := icobject.GetFromImmutableForObject(ss.store, key)
-	if err != nil {
-		return nil, err
-	}
-	return ToAccount(obj, addr), nil
 }
 
 func (ss *Snapshot) NewState(readonly bool) *State {

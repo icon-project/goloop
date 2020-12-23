@@ -155,12 +155,12 @@ func (s *ExtensionStateImpl) GetAccount(address module.Address) (*icstate.Accoun
 	return s.state.GetAccount(address)
 }
 
-func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.TimerState, error) {
-	return s.state.GetUnstakingTimerState(height)
+func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.Timer, error) {
+	return s.state.GetUnstakingTimer(height)
 }
 
-func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.TimerState, error) {
-	return s.state.GetUnbondingTimerState(height)
+func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.Timer, error) {
+	return s.state.GetUnbondingTimer(height)
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {

@@ -57,7 +57,7 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypePRepStatus:
 		return newPRepStatusWithTag(tag), nil
 	case TypeTimer:
-		return newTimerSnapshot(tag), nil
+		return newTimerWithTag(tag), nil
 	case icobject.TypeAddress:
 		return icobject.NewAddress(tag), nil
 	default:
@@ -96,9 +96,9 @@ func ToPRepBase(object trie.Object, owner module.Address) *PRepBase {
 	return pb
 }
 
-func ToTimerSnapshot(object trie.Object) *TimerSnapshot {
+func ToTimer(object trie.Object) *Timer {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*TimerSnapshot)
+	return object.(*icobject.Object).Real().(*Timer)
 }
