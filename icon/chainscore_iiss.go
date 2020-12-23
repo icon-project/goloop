@@ -134,6 +134,12 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		s.from,
 		true,
 	)
+
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepRegistered(Address)")},
+		[][]byte{s.from.Bytes()},
+	)
+
 	return err
 }
 
@@ -165,6 +171,11 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	params[icstate.IdxEmail] = email
 	params[icstate.IdxWebsite] = website
 	params[icstate.IdxP2pEndpoint] = p2pEndpoint
+
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepSet(Address)")},
+		[][]byte{s.from.Bytes()},
+	)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	return es.SetPRep(s.from, node, params)
