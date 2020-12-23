@@ -240,8 +240,8 @@ func (ps *PRepStatus) GetSnapshot() *PRepStatus {
 	return ret
 }
 
-func (ps PRepStatus) IsEmpty() bool {
-	return ps.owner == nil
+func (ps *PRepStatus) IsEmpty() bool {
+	return ps == nil || ps.owner == nil
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {

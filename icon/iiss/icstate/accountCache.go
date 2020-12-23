@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -81,15 +82,19 @@ func (c *AccountCache) Reset() {
 }
 
 func (c *AccountCache) GetSnapshot() {
-	for _, account := range c.accounts {
+	for k, account := range c.accounts {
 		account.freeze()
-		key := account.address
 
 		if account.IsEmpty() {
-			if err := c.dict.Delete(key); err != nil {
+			key, err := common.BytesToAddress([]byte(k))
+			if err != nil {
+				panic(errors.Errorf("AccountCache is broken: %s", k))
+			}
+			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete Account key %x, err+%+v", key, err)
 			}
 		} else {
+			key := account.address
 			o := icobject.New(TypeAccount, account)
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)

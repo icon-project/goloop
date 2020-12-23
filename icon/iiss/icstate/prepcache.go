@@ -1,6 +1,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -66,14 +67,17 @@ func (c *PRepBaseCache) Reset() {
 }
 
 func (c *PRepBaseCache) GetSnapshot() {
-	for _, base := range c.bases {
-		key := base.owner
-
+	for k, base := range c.bases {
 		if base.IsEmpty() {
-			if err := c.dict.Delete(key); err != nil {
+			key, err := common.BytesToAddress([]byte(k))
+			if err != nil {
+				panic(errors.Errorf("PRepBaseCache is broken: %s", k))
+			}
+			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 		} else {
+			key := base.owner
 			o := icobject.New(TypePRepBase, base)
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
@@ -146,14 +150,17 @@ func (c *PRepStatusCache) Reset() {
 }
 
 func (c *PRepStatusCache) GetSnapshot() {
-	for _, status := range c.statuses {
-		key := status.owner
-
+	for k, status := range c.statuses {
 		if status.IsEmpty() {
-			if err := c.dict.Delete(key); err != nil {
+			key, err := common.BytesToAddress([]byte(k))
+			if err != nil {
+				panic(errors.Errorf("PRepStatusCache is broken: %s", k))
+			}
+			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 		} else {
+			key := status.owner
 			o := icobject.New(TypePRepStatus, status)
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
