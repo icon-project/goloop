@@ -26,8 +26,12 @@ public class DeployScore {
 
     @External
     public void deploySingle(byte[] content) {
-        this.address = Context.deploy(content);
-        EmitScoreAddress(this.address);
+        try {
+            this.address = Context.deploy(content);
+            EmitScoreAddress(this.address);
+        } catch (IllegalArgumentException e) {
+            Context.revert(1, "Failed to deploy");
+        }
     }
 
     @External
@@ -35,6 +39,17 @@ public class DeployScore {
         var addr = Context.deploy(content);
         var addr1 = Context.deploy(content);
         Context.require(addr != addr1);
+    }
+
+    @External
+    public void updateSingle(Address target, byte[] content, String name) {
+        try {
+            assert target != null;
+            this.address = Context.deploy(target, content, name);
+            Context.require(target.equals(this.address));
+        } catch (IllegalArgumentException e) {
+            Context.revert(2, "Failed to update");
+        }
     }
 
     @External(readonly=true)

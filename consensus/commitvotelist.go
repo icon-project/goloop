@@ -26,12 +26,12 @@ type commitVoteList struct {
 	Items          []commitVoteItem
 }
 
-func (vl *commitVoteList) Verify(block module.BlockData, validators module.ValidatorList) error {
+func (vl *commitVoteList) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	if block.Height() == 0 {
 		if len(vl.Items) == 0 {
-			return nil
+			return nil, nil
 		} else {
-			return errors.Errorf("voters for height 0\n")
+			return nil, errors.Errorf("voters for height 0\n")
 		}
 	}
 	vset := make([]bool, validators.Len())
@@ -46,18 +46,18 @@ func (vl *commitVoteList) Verify(block module.BlockData, validators module.Valid
 		msg.setSignature(item.Signature)
 		index := validators.IndexOf(msg.address())
 		if index < 0 {
-			return errors.Errorf("bad voter %x at index %d in vote list", msg.address(), i)
+			return nil, errors.Errorf("bad voter %x at index %d in vote list", msg.address(), i)
 		}
 		if vset[index] {
-			return errors.Errorf("vl.Verify: duplicated validator %v\n", msg.address())
+			return nil, errors.Errorf("vl.Verify: duplicated validator %v\n", msg.address())
 		}
 		vset[index] = true
 	}
 	twoThirds := validators.Len() * 2 / 3
 	if len(vl.Items) > twoThirds {
-		return nil
+		return vset, nil
 	}
-	return errors.Errorf("votes(%d) <= 2/3 of validators(%d)", len(vl.Items), validators.Len())
+	return nil, errors.Errorf("votes(%d) <= 2/3 of validators(%d)", len(vl.Items), validators.Len())
 }
 
 func (vl *commitVoteList) Bytes() []byte {

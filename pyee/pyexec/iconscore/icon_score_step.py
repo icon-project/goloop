@@ -20,6 +20,7 @@ from ..utils import to_camel_case
 
 class AutoValueEnum(Enum):
     # noinspection PyMethodParameters
+    # pylint: disable=no-self-argument,no-member
     def _generate_next_value_(name, start, count, last_values):
         # Generates value from the camel-cased name
         return to_camel_case(name.lower())
@@ -40,8 +41,11 @@ class OutOfStepException(IconServiceBaseException):
     """ An Exception which is thrown when steps are exhausted.
     """
 
-    def __init__(self, step_limit: int, step_used: int,
-                 requested_step: int, step_type: StepType) -> None:
+    def __init__(self,
+                 step_limit: int,
+                 step_used: int,
+                 requested_step: int,
+                 step_type: StepType) -> None:
         """Constructor
 
         :param step_limit: step limit of the transaction

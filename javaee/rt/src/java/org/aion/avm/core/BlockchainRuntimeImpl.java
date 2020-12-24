@@ -267,7 +267,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 || s == Status.MethodNotFound
                 || s == Status.MethodNotPayable
                 || s == Status.InvalidParameter
-                || s == Status.OutOfBalance) {
+                || s == Status.OutOfBalance
+                || s == Status.PackageError) {
             throw new IllegalArgumentException(Status.getMessage(s));
         } else if (s == Status.OutOfStep
                 || s == Status.StackOverflow) {

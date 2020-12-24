@@ -345,6 +345,7 @@ public class StepTest extends TestBase {
         BigInteger call(KeyWallet from, Address to, String method, RpcObject params, BigInteger stepLimit) throws Exception {
             return this.call(from, to, method, params, stepLimit, Constants.STATUS_SUCCESS);
         }
+
         BigInteger call(KeyWallet from, Address to, String method, RpcObject params, BigInteger stepLimit, BigInteger status) throws Exception {
             BigInteger prevTreasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
             BigInteger prevBal = txHandler.getBalance(from.getAddress());
@@ -680,6 +681,7 @@ public class StepTest extends TestBase {
                 Constants.STATUS_FAILURE,
                 Constants.STATUS_FAILURE,
                 Constants.STATUS_FAILURE,
+                Constants.STATUS_SUCCESS,
         };
         BigInteger[] extraSteps = {
                 STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
@@ -692,10 +694,11 @@ public class StepTest extends TestBase {
                 STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
                 STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
                 STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
+                STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()),
         };
 
-        for(int i=0 ; i<10 ; i++) {
-            LOG.infoEntering("Call", "case "+String.valueOf(i));
+        for(int i = 0; i < expects.length; i++) {
+            LOG.infoEntering("Call", "case " + i);
             StepTransaction stx = new StepTransaction();
             params = new RpcObject.Builder()
                     .put("to", new RpcValue(toScore.getAddress()))

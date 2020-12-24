@@ -6,9 +6,9 @@
 
 from __future__ import absolute_import
 
+import hashlib
 import numbers
 import operator
-import hashlib
 
 
 def get_chunks_for_bloom(value_hash):

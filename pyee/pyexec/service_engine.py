@@ -72,7 +72,8 @@ class ServiceEngine(ContextContainer):
     def get_score_api(cls, code: str):
         try:
             icon_score: 'IconScoreBase' = cls._get_icon_score(GETAPI_DUMMY_ADDRESS, code)
-            ret = icon_score.get_api()
+            get_api = getattr(icon_score, '_IconScoreBase__get_api')
+            ret = get_api()
             status = Status.SUCCESS
         except BaseException as e:
             status, ret = cls._get_status_from_exception(e)

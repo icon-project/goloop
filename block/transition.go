@@ -222,9 +222,10 @@ func (ti *transitionImpl) patch(
 func (ti *transitionImpl) transit(
 	txs module.TransactionList,
 	bi module.BlockInfo,
+	csi module.ConsensusInfo,
 	cb transitionCallback,
 ) (*transition, error) {
-	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi)
+	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi, csi)
 	if err != nil {
 		return nil, err
 	}
@@ -243,8 +244,8 @@ func (ti *transitionImpl) transit(
 	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) (*transition, error) {
-	cmtr, err := ti._chainContext.sm.ProposeTransition(ti._mtransition, bi)
+func (ti *transitionImpl) propose(bi module.BlockInfo, csi module.ConsensusInfo, cb transitionCallback) (*transition, error) {
+	cmtr, err := ti._chainContext.sm.ProposeTransition(ti._mtransition, bi, csi)
 	if err != nil {
 		return nil, err
 	}
@@ -340,19 +341,20 @@ func (tr *transition) patch(
 func (tr *transition) transit(
 	txs module.TransactionList,
 	bi module.BlockInfo,
+	csi module.ConsensusInfo,
 	cb transitionCallback,
 ) (*transition, error) {
 	if tr._ti == nil {
 		return nil, nil
 	}
-	return tr._ti.transit(txs, bi, cb)
+	return tr._ti.transit(txs, bi, csi, cb)
 }
 
-func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) (*transition, error) {
+func (tr *transition) propose(bi module.BlockInfo, csi module.ConsensusInfo, cb transitionCallback) (*transition, error) {
 	if tr._ti == nil {
 		return nil, nil
 	}
-	return tr._ti.propose(bi, cb)
+	return tr._ti.propose(bi, csi, cb)
 }
 
 func (tr *transition) sync(result []byte, vlHash []byte, cb transitionCallback) (*transition, error) {

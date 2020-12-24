@@ -27,11 +27,11 @@ class InterCallInterface(InterfaceScore):
 
     @interface
     def readOnlyDoNothing(self) -> str:
-        return ""
+        pass
 
     @interface
     def readOnlyDoRevert(self) -> str:
-        return ""
+        pass
 
 
 class ChainSCORE(InterfaceScore):
@@ -139,26 +139,22 @@ class HelloWorld(IconScoreBase):
         elif method == 1:
             score.doRevert()
         elif method == 2:
-            # score.icx(10).doNothing()
-            self.call(to, "doNothing", {}, 10)
+            score.icx(10).doNothing()
         elif method == 3:
-            # score.icx(10).doRevert()
-            self.call(to, "doRevert", {}, 10)
+            score.icx(10).doRevert()
         elif method == 4:
-            # score.icx(10).payableDoNothing()
-            self.call(to, "payableDoNothing", {}, 10)
+            score.icx(10).payableDoNothing()
         elif method == 5:
-            # score.icx(10).payableDoRevert()
-            self.call(to, "payableDoRevert", {}, 10)
+            score.icx(10).payableDoRevert()
         elif method == 6:
             score.readOnlyDoNothing()
         elif method == 7:
             score.readOnlyDoRevert()
         elif method == 8:
-            # score.icx(10).readOnlyDoNothing()
-            self.call(to, "readOnlyDoNothing", {}, 10)
+            score.icx(10).readOnlyDoNothing()
         elif method == 9:
-            # score.icx(10).readOnlyDoRevert()
-            self.call(to, "readOnlyDoRevert", {}, 10)
+            score.icx(10).readOnlyDoRevert()
         elif method == 10:
             self.icx.transfer(to, 10)
+        else:
+            revert('InvalidMethod')
