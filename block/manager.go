@@ -614,6 +614,9 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		block: lastFinalized,
 		in:    tr,
 	}
+	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
+		return nil, err
+	}
 	// TODO need to make proper consensus information or not to trigger transit.
 	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil, nil)
 	if err != nil {
@@ -850,6 +853,9 @@ func (m *manager) finalizePrunedBlock() error {
 	bn := &bnode{
 		block: blk,
 		in:    tr,
+	}
+	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
+		return err
 	}
 	csi := common.NewConsensusInfo(blk.Proposer(), pblk.NextValidators(), voted)
 	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
