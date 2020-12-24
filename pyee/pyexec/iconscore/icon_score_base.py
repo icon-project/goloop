@@ -31,7 +31,7 @@ from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, Const
     FORMAT_IS_NOT_FUNCTION_OBJECT, FORMAT_IS_NOT_DERIVED_OF_OBJECT, FORMAT_DECORATOR_DUPLICATED, \
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
     CONST_CLASS_EXTERNALS, CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
-from .icon_score_context import ContextGetter
+from .icon_score_context import ContextGetter, ContextContainer
 from .icon_score_eventlog import EventLogEmitter
 from .internal_call import InternalCall
 from .score_api_generator import ScoreApiGenerator
@@ -41,11 +41,12 @@ INDEXED_ARGS_LIMIT = 3
 
 def interface(func):
     """
-    A decorator for the functions of interface SCORE.
+    A decorator for the functions of InterfaceScore.
 
-    Declaring this decorator to the function can invoke
-    the same form of the function of the external SCORE.
+    If other SCORE has the function whose signature is the same as defined with @interface decorator,
+    the function can be invoked via InterfaceScore class instance
     """
+
     cls_name, func_name = str(func.__qualname__).split('.')
     if not isfunction(func):
         raise IllegalFormatException(FORMAT_IS_NOT_FUNCTION_OBJECT.format(func, cls_name))
@@ -62,14 +63,17 @@ def interface(func):
             raise InvalidInstanceException(
                 FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
 
-        context = calling_obj.context
+        context = ContextContainer._get_context()
         addr_to = calling_obj.addr_to
         addr_from: 'Address' = context.to
+
+        amount: int = getattr(calling_obj, "_InterfaceScore__get_icx")()
+        getattr(calling_obj, "_InterfaceScore__reset_icx")()
 
         if addr_to is None:
             raise InvalidInterfaceException('Cannot create an interface SCORE with a None address')
 
-        return InternalCall.message_call(context, addr_from, addr_to, 0, func_name, args, kwargs)
+        return InternalCall.message_call(context, addr_from, addr_to, amount, func_name, args, kwargs)
 
     return __wrapper
 
@@ -160,6 +164,7 @@ def __retrieve_event_signature(function_name, parameters) -> str:
                 main_type = Address
 
             # Raises an exception if the types are not supported
+            # pylint: disable=no-member
             if main_type is None or not issubclass(main_type, BaseType.__constraints__):
                 raise IllegalFormatException(
                     f"Unsupported type for '{param.name}: {param.annotation}'")
@@ -408,10 +413,10 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         pass
 
     @classmethod
-    def get_api(cls) -> dict:
+    def __get_api(cls) -> dict:
         return getattr(cls, CONST_CLASS_API, "")
 
-    def validate_external_method(self, func_name: str) -> None:
+    def __validate_external_method(self, func_name: str) -> None:
         """Validate the method indicated by func_name is an external method
 
         :param func_name: name of method
@@ -433,7 +438,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         if func_name != STR_FALLBACK and \
                 func_name != STR_ON_INSTALL and \
                 func_name != STR_ON_UPDATE:
-            self.validate_external_method(func_name)
+            self.__validate_external_method(func_name)
 
         if func_name == STR_FALLBACK:
             if not self.__is_payable_method(func_name):
@@ -578,11 +583,10 @@ class IconScoreBase(IconScoreObject, ContextGetter,
 
         :param addr_to: :class:`.Address` the address of another SCORE
         :param func_name: function name of another SCORE
-        :param kw_dict: Arguments of the external function
-        :param amount: ICX value to enclose with. in loop.
+        :param kw_dict: arguments of the external function
+        :param amount: amount of ICX to transfer in loop
         :return: returning value of the external function
         """
-        warnings.warn('Use create_interface_score() instead.', DeprecationWarning, stacklevel=2)
         return InternalCall.message_call(self._context, self.address, addr_to, amount, func_name, None, kw_dict)
 
     @staticmethod

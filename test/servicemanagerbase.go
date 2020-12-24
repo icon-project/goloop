@@ -10,7 +10,7 @@ import (
 
 type ServiceManagerBase struct{}
 
-func (_r *ServiceManagerBase) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
+func (_r *ServiceManagerBase) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
 	panic("not implemented")
 }
 
@@ -18,7 +18,7 @@ func (_r *ServiceManagerBase) CreateInitialTransition(result []byte, nextValidat
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo) (module.Transition, error) {
+func (_r *ServiceManagerBase) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
 	panic("not implemented")
 }
 

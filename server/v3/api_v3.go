@@ -195,7 +195,8 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	}
 
 	block, err := bm.GetLastBlock()
-	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
+	bi := common.NewBlockInfo(block.Height(), block.Timestamp())
+	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), bi)
 	if err != nil {
 		if service.InvalidQueryError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
@@ -898,6 +899,29 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
+	var csi module.ConsensusInfo
+	if pblkid := blk.PrevID(); len(pblkid) > 0 {
+		pblk, err := bm.GetBlock(pblkid)
+		if err != nil {
+			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
+		var voters module.ValidatorList
+		var voted []bool
+		if ppblkid := pblk.PrevID(); len(ppblkid) > 0 {
+			if ppblk, err := bm.GetBlock(ppblkid); err != nil {
+				return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			} else {
+				voters = ppblk.NextValidators()
+			}
+		} else {
+			voters = pblk.NextValidators()
+		}
+		voted, err = blk.Votes().Verify(pblk, voters)
+		if err != nil {
+			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
+		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
+	}
 	nblk, err := bm.GetBlockByHeight(blk.Height() + 1)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
@@ -906,7 +930,7 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk)
+	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk, csi)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}

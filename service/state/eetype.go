@@ -24,9 +24,15 @@ var (
 		SystemEE: "<Update>",
 	}
 	allowUpdateFromTo = map[EEType]map[EEType]bool{
-		PythonEE: map[EEType]bool{
+		PythonEE: {
 			PythonEE: true,
 		},
+		JavaEE: {
+			JavaEE: true,
+		},
+	}
+	needAudit = map[EEType]bool{
+		PythonEE: true,
 	}
 )
 
@@ -64,6 +70,14 @@ func (e EEType) IsInternalMethod(s string) bool {
 
 func (e EEType) String() string {
 	return string(e)
+}
+
+func (e EEType) NeedAudit() bool {
+	if yn, ok := needAudit[e]; ok {
+		return yn
+	} else {
+		return false
+	}
 }
 
 func EETypeFromContentType(ct string) (EEType, bool) {

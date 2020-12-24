@@ -86,6 +86,7 @@ type WorldContext interface {
 	BlockTimeStamp() int64
 	GetStepLimit(t string) *big.Int
 	BlockHeight() int64
+	ConsensusInfo() module.ConsensusInfo
 	Treasury() module.Address
 	Governance() module.Address
 	GetInfo() map[string]interface{}
@@ -115,11 +116,6 @@ type WorldContext interface {
 	SkipTransactionEnabled() bool
 }
 
-type BlockInfo struct {
-	Timestamp int64
-	Height    int64
-}
-
 type TransactionInfo struct {
 	Group     module.TransactionGroup
 	Index     int32
@@ -142,7 +138,8 @@ type worldContext struct {
 
 	systemInfo systemStorageInfo
 
-	blockInfo    BlockInfo
+	blockInfo    module.BlockInfo
+	csInfo       module.ConsensusInfo
 	txInfo       TransactionInfo
 	contractInfo ContractInfo
 
@@ -344,15 +341,15 @@ func (c *worldContext) IsDeployer(addr string) bool {
 }
 
 func (c *worldContext) BlockTimeStamp() int64 {
-	return c.blockInfo.Timestamp
+	return c.blockInfo.Timestamp()
 }
 
 func (c *worldContext) BlockHeight() int64 {
-	return c.blockInfo.Height
+	return c.blockInfo.Height()
 }
 
-func (c *worldContext) GetBlockInfo(bi *BlockInfo) {
-	*bi = c.blockInfo
+func (c *worldContext) ConsensusInfo() module.ConsensusInfo {
+	return c.csInfo
 }
 
 func (c *worldContext) Treasury() module.Address {
@@ -426,8 +423,8 @@ func (c *worldContext) stepCostInfo() interface{} {
 func (c *worldContext) GetInfo() map[string]interface{} {
 	if c.info == nil {
 		m := make(map[string]interface{})
-		m[InfoBlockHeight] = c.blockInfo.Height
-		m[InfoBlockTimestamp] = c.blockInfo.Timestamp
+		m[InfoBlockHeight] = c.BlockHeight()
+		m[InfoBlockTimestamp] = c.BlockTimeStamp()
 		m[InfoTxHash] = c.txInfo.Hash
 		m[InfoTxIndex] = c.txInfo.Index
 		m[InfoTxTimestamp] = c.txInfo.Timestamp
@@ -459,7 +456,7 @@ type Platform interface {
 	ToRevision(value int) module.Revision
 }
 
-func NewWorldContext(ws WorldState, bi module.BlockInfo, plt Platform) WorldContext {
+func NewWorldContext(ws WorldState, bi module.BlockInfo, csi module.ConsensusInfo, plt Platform) WorldContext {
 	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
 	as := scoredb.NewStateStoreWith(ass)
@@ -478,7 +475,8 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, plt Platform) WorldCont
 		virtualState: tryVirtualState(ws),
 		treasury:     treasury,
 		governance:   governance,
-		blockInfo:    BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
+		blockInfo:    bi,
+		csInfo:       csi,
 		platform:     plt,
 	}
 	wc.UpdateSystemInfo()

@@ -233,6 +233,8 @@ public final class Context {
      *
      * @param content the byte streams of the SCORE
      * @param params parameters
+     * @return the newly created SCORE address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, etc.
      */
     public static Address deploy(byte[] content, Object... params) {
         return null;
@@ -244,6 +246,8 @@ public final class Context {
      * @param targetAddress the SCORE address that is to be updated
      * @param content the byte streams of the SCORE
      * @param params parameters
+     * @return the target SCORE address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, NULL address
      */
     public static Address deploy(Address targetAddress, byte[] content, Object... params) {
         return null;

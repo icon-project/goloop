@@ -39,16 +39,52 @@ class InterfaceScoreMeta(ABCMeta):
 
 
 class InterfaceScore(ABC, metaclass=InterfaceScoreMeta):
+    """
+    An interface class that is used to invoke other SCORE’s external method.
+    """
     def __init__(self, addr_to: 'Address'):
+        """
+        A Python init function. Invoked when the contract call create_interface_score()
+        """
         self.__addr_to = addr_to
+        self.__icx = 0
 
     @property
     def addr_to(self) -> 'Address':
+        """
+        The address of SCORE to invoke
+
+        :return: :class:`.Address` SCORE address
+        """
         return self.__addr_to
 
-    @property
-    def context(self) -> 'IconScoreContext':
-        return ContextContainer._get_context()
+    def icx(self, value: int):
+        """Set the number of ICX coins to send on inter-call.
+
+        This function can be used when you want to call payable functions of other SCOREs along with ICX coins.
+
+        It is strongly recommended to use icx() in method chaining like the following:
+        ``interface_score.icx(2 * 10 ** 18).func()``
+
+        .. note::
+            The unit of value is not icx but loop.
+            1 icx is 10 ** 18 loop.
+
+        :param value: the number of ICX coins to send (unit: loop)
+        :type value: int
+        :return: :class:`.InterfaceScore` object
+        """
+        if not (isinstance(value, int) and value >= 0):
+            raise InvalidParamsException(f"Invalid ICX value")
+
+        self.__icx = value
+        return self
+
+    def __get_icx(self) -> int:
+        return self.__icx
+
+    def __reset_icx(self):
+        self.__icx = 0
 
 
 class Block(object):

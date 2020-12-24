@@ -102,7 +102,11 @@ class DictDB(object):
     :V: [int, str, Address, bytes, bool]
     """
 
-    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type, depth: int = 1) -> None:
+    def __init__(self,
+                 var_key: K,
+                 db: 'IconScoreDatabase',
+                 value_type: type,
+                 depth: int = 1) -> None:
         self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=DICT_DB_ID)
         self.__value_type = value_type
         self.__depth = depth
@@ -145,6 +149,9 @@ class DictDB(object):
             raise InvalidContainerAccessException('DictDB depth mismatch')
         self._db.delete(ContainerUtil.encode_key(key))
 
+    def __iter__(self):
+        raise InvalidContainerAccessException("Iteration not supported in DictDB")
+
 
 class ArrayDB(object):
     """
@@ -155,7 +162,10 @@ class ArrayDB(object):
     :V: [int, str, Address, bytes, bool]
     """
 
-    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
+    def __init__(self,
+                 var_key: K,
+                 db: 'IconScoreDatabase',
+                 value_type: type) -> None:
         self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=ARRAY_DB_ID)
         self.__value_type = value_type
 
@@ -258,7 +268,10 @@ class VarDB(object):
     :V: [int, str, Address, bytes, bool]
     """
 
-    def __init__(self, var_key: K, db: 'IconScoreDatabase', value_type: type) -> None:
+    def __init__(self,
+                 var_key: K,
+                 db: 'IconScoreDatabase',
+                 value_type: type) -> None:
         self._db = db.get_sub_db(ContainerUtil.encode_key(var_key), tag=VAR_DB_ID)
         self.__value_type = value_type
 
