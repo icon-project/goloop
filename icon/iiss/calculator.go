@@ -123,22 +123,36 @@ func (c *Calculator) SetExtension(ss *ExtensionSnapshotImpl) {
 	c.ss = ss
 }
 
+func (c *Calculator) isGenesis() bool {
+	return c.blockHeight == 0 && c.result == nil
+}
+
 func (c *Calculator) isCalculating() bool {
 	return c.blockHeight != 0 && c.result == nil
 }
 
-func (c *Calculator) isResultSynced() bool {
-	return bytes.Compare(c.result.Bytes(), c.ss.reward.Bytes()) == 0
+func (c *Calculator) isResultSynced(ss *ExtensionSnapshotImpl) bool {
+	if c.result == nil {
+		return false
+	}
+	return bytes.Compare(c.result.Bytes(), ss.reward.Bytes()) == 0
 }
 
-func (c *Calculator) CheckToRun() bool {
+func (c *Calculator) CheckToRun(ss *ExtensionSnapshotImpl) bool {
+	if c.isGenesis() {
+		return true
+	}
 	if c.isCalculating() {
 		return false
 	}
-	return c.isResultSynced()
+	return c.isResultSynced(ss)
 }
 
-func (c *Calculator) Run() (err error) {
+func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
+	if !c.CheckToRun(ss) {
+		return
+	}
+	c.ss = ss
 	if err = c.prepare(); err != nil {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
