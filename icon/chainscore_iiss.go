@@ -278,8 +278,8 @@ func (s *chainScore) Ex_claimIScore() error {
 			s.from.Bytes(),
 		},
 		[][]byte{
-			claim.Bytes(),
-			icx.Bytes(),
+			intconv.BigIntToBytes(claim),
+			intconv.BigIntToBytes(icx),
 		},
 	)
 
