@@ -19,7 +19,6 @@ package icreward
 import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -33,22 +32,22 @@ var (
 )
 
 type State struct {
-	trie trie.MutableForObject
+	store *icobject.ObjectStoreState
 }
 
 func (s *State) GetSnapshot() *Snapshot {
 	return &Snapshot{
-		trie: s.trie.GetSnapshot(),
+		store: icobject.NewObjectStoreSnapshot(s.store.GetSnapshot()),
 	}
 }
 
 func (s *State) Reset(ss *Snapshot) {
-	s.trie.Reset(ss.trie)
+	s.store.Reset(ss.store.ImmutableForObject)
 }
 
 func (s *State) GetGlobal() (*Global, error) {
 	key := GlobalKey.Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -57,13 +56,13 @@ func (s *State) GetGlobal() (*Global, error) {
 
 func (s *State) SetGlobal(global *Global) error {
 	key := GlobalKey.Build()
-	_, err := s.trie.Set(key, icobject.New(TypeGlobal, global))
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, global))
 	return err
 }
 
 func (s *State) GetIScore(addr module.Address) (*IScore, error) {
 	key := IScoreKey.Append(addr).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -73,23 +72,23 @@ func (s *State) GetIScore(addr module.Address) (*IScore, error) {
 func (s *State) SetIScore(addr module.Address, iScore *IScore) error {
 	key := IScoreKey.Append(addr).Build()
 	if iScore.IsEmpty() {
-		_, err := s.trie.Delete(key)
+		_, err := s.store.Delete(key)
 		return err
 	} else {
-		_, err := s.trie.Set(key, icobject.New(TypeIScore, iScore))
+		_, err := s.store.Set(key, icobject.New(TypeIScore, iScore))
 		return err
 	}
 }
 
 func (s *State) DeleteIScore(addr module.Address) error {
 	key := IScoreKey.Append(addr).Build()
-	_, err := s.trie.Delete(key)
+	_, err := s.store.Delete(key)
 	return err
 }
 
 func (s *State) GetDelegated(addr module.Address) (*Delegated, error) {
 	key := DelegatedKey.Append(addr).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -98,21 +97,19 @@ func (s *State) GetDelegated(addr module.Address) (*Delegated, error) {
 
 func (s *State) SetDelegated(addr module.Address, delegated *Delegated) error {
 	key := DelegatedKey.Append(addr).Build()
-	d := delegated.Clone()
-	_, err := s.trie.Set(key, icobject.New(TypeDelegated, d))
-	//_, err := s.trie.Set(key, icobject.New(TypeDelegated, delegated))
+	_, err := s.store.Set(key, icobject.New(TypeDelegated, delegated))
 	return err
 }
 
 func (s *State) DeleteDelegated(addr module.Address) error {
 	key := DelegatedKey.Append(addr).Build()
-	_, err := s.trie.Delete(key)
+	_, err := s.store.Delete(key)
 	return err
 }
 
 func (s *State) GetDelegating(addr module.Address) (*Delegating, error) {
 	key := DelegatingKey.Append(addr).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -121,25 +118,27 @@ func (s *State) GetDelegating(addr module.Address) (*Delegating, error) {
 
 func (s *State) SetDelegating(addr module.Address, delegating *Delegating) error {
 	key := DelegatingKey.Append(addr).Build()
-	_, err := s.trie.Set(key, icobject.New(TypeDelegating, delegating))
+	_, err := s.store.Set(key, icobject.New(TypeDelegating, delegating))
 	return err
 }
 
 func (s *State) DeleteDelegating(addr module.Address) error {
 	key := DelegatingKey.Append(addr).Build()
-	_, err := s.trie.Delete(key)
+	_, err := s.store.Delete(key)
 	return err
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {
+	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	return &State{
-		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		store: icobject.NewObjectStoreState(t),
 	}
 }
 
 func NewState(database db.Database) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
+	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	return &State{
-		trie: trie_manager.NewMutableForObject(database, nil, icobject.ObjectType),
+		store: icobject.NewObjectStoreState(t),
 	}
 }

@@ -24,22 +24,22 @@ import (
 )
 
 type Snapshot struct {
-	trie trie.ImmutableForObject
+	store *icobject.ObjectStoreSnapshot
 }
 
 func (ss *Snapshot) Flush() error {
-	if sso, ok := ss.trie.(trie.SnapshotForObject); ok {
+	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
 		return sso.Flush()
 	}
 	return nil
 }
 
 func (ss *Snapshot) Bytes() []byte {
-	return ss.trie.Hash()
+	return ss.store.Hash()
 }
 
 func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
-	return ss.trie.Filter(prefix)
+	return ss.store.Filter(prefix)
 }
 
 func (ss *Snapshot) NewState() *State {
@@ -48,7 +48,8 @@ func (ss *Snapshot) NewState() *State {
 
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
+	t := trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType)
 	return &Snapshot{
-		trie: trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType),
+		store: icobject.NewObjectStoreSnapshot(t),
 	}
 }

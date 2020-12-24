@@ -80,7 +80,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 			assert.NoError(t, err)
 
 			key := IScoreClaimKey.Append(args.addr).Build()
-			obj, err := icobject.GetFromMutableForObject(s.trie, key)
+			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
 			claim := ToIScoreClaim(obj)
 			assert.Equal(t, tt.want, claim.Value.Int64())
@@ -218,7 +218,7 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventDelegation(obj)
 	assert.True(t, address.Equal(event.From))
@@ -230,7 +230,7 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target))
@@ -242,7 +242,7 @@ func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventPeriod(obj)
 	assert.Equal(t, 0, irep.Cmp(event.Irep))
@@ -329,7 +329,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 			assert.NoError(t, err)
 
 			key := BlockProduceKey.Append(a.offset).Build()
-			obj, err := icobject.GetFromMutableForObject(s.trie, key)
+			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
 			assert.NotNil(t, obj)
 
@@ -387,7 +387,7 @@ func TestState_AddGlobal(t *testing.T) {
 			assert.NoError(t, err)
 
 			key := HashKey.Append(globalKey).Build()
-			obj, err := icobject.GetFromMutableForObject(s.trie, key)
+			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
 			global := ToGlobal(obj)
 			assert.Equal(t, tt.want, global.OffsetLimit)
@@ -426,7 +426,7 @@ func TestState_AddLoadValidators(t *testing.T) {
 		assert.NoError(t, err)
 
 		key := ValidatorKey.Append(data.offset).Build()
-		obj, err := icobject.GetFromMutableForObject(s.trie, key)
+		obj, err := icobject.GetFromMutableForObject(s.store, key)
 		assert.NoError(t, err)
 		validator := ToValidator(obj)
 		assert.True(t, data.addr.Equal(validator.Address))

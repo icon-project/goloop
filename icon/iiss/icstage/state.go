@@ -23,7 +23,6 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -45,22 +44,22 @@ var (
 
 type State struct {
 	validatorToIdx map[string]int
-	trie           trie.MutableForObject
+	store          *icobject.ObjectStoreState
 }
 
 func (s *State) GetSnapshot() *Snapshot {
 	return &Snapshot{
-		trie: s.trie.GetSnapshot(),
+		store: icobject.NewObjectStoreSnapshot(s.store.GetSnapshot()),
 	}
 }
 
 func (s *State) Reset(ss *Snapshot) {
-	s.trie.Reset(ss.trie)
+	s.store.Reset(ss.store.ImmutableForObject)
 }
 
 func (s *State) GetIScoreClaim(addr module.Address) (*IScoreClaim, error) {
 	key := IScoreClaimKey.Append(addr).Build()
-	obj, err := s.trie.Get(key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -68,13 +67,13 @@ func (s *State) GetIScoreClaim(addr module.Address) (*IScoreClaim, error) {
 }
 func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	key := IScoreClaimKey.Append(addr).Build()
-	obj, err := icobject.GetFromMutableForObject(s.trie, key)
+	obj, err := s.store.Get(key)
 	if err != nil {
 		return err
 	}
 	claim := ToIScoreClaim(obj)
 	claim = claim.Added(amount)
-	_, err = s.trie.Set(key, icobject.New(TypeIScoreClaim, claim))
+	_, err = s.store.Set(key, icobject.New(TypeIScoreClaim, claim))
 	return err
 }
 
@@ -88,7 +87,7 @@ func (s *State) AddEventDelegation(offset int, from module.Address, delegations 
 	ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
 	ed.From = from.(*common.Address)
 	ed.Delegations = delegations
-	_, err = s.trie.Set(key, icobject.New(TypeEventDelegation, ed))
+	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, ed))
 	if err != nil {
 		return 0, err
 	}
@@ -108,7 +107,7 @@ func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (
 	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
 	obj.Target = target.(*common.Address)
 	obj.Enable = enable
-	_, err = s.trie.Set(key, icobject.New(TypeEventEnable, obj))
+	_, err = s.store.Set(key, icobject.New(TypeEventEnable, obj))
 	if err != nil {
 		return 0, err
 	}
@@ -128,7 +127,7 @@ func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int) (int64,
 	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
 	obj.Irep = irep
 	obj.Rrep = rrep
-	_, err = s.trie.Set(key, icobject.New(TypeEventPeriod, obj))
+	_, err = s.store.Set(key, icobject.New(TypeEventPeriod, obj))
 	if err != nil {
 		return 0, err
 	}
@@ -140,7 +139,7 @@ func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int) (int64,
 
 func (s *State) getEventSize() (*EventSize, error) {
 	key := HashKey.Append(eventsKey).Build()
-	o, err := icobject.GetFromMutableForObject(s.trie, key)
+	o, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +153,7 @@ func (s *State) getEventSize() (*EventSize, error) {
 
 func (s *State) setEventSize(size *EventSize) error {
 	key := HashKey.Append(eventsKey).Build()
-	_, err := s.trie.Set(key, icobject.New(TypeEventSize, size))
+	_, err := s.store.Set(key, icobject.New(TypeEventSize, size))
 	return err
 }
 
@@ -186,7 +185,7 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		voteMask.SetBit(voteMask, idx, 1)
 	}
 	obj.VoteMask = voteMask
-	_, err := s.trie.Set(key, icobject.New(TypeBlockProduce, obj))
+	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, obj))
 	return err
 }
 
@@ -194,7 +193,7 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 	key := ValidatorKey.Append(offset).Build()
 	obj := newValidator(icobject.MakeTag(TypeValidator, 0))
 	obj.Address = validator.(*common.Address)
-	_, err := s.trie.Set(key, icobject.New(TypeValidator, obj))
+	_, err := s.store.Set(key, icobject.New(TypeValidator, obj))
 	return err
 }
 
@@ -202,7 +201,7 @@ func (s *State) AddGlobal(offsetLimit int) error {
 	key := HashKey.Append(globalKey).Build()
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, 0))
 	obj.OffsetLimit = offsetLimit
-	_, err := s.trie.Set(key, icobject.New(TypeGlobal, obj))
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
 	return err
 }
 
@@ -227,8 +226,9 @@ func (s *State) loadValidators(ss *Snapshot) error {
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {
+	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	s := &State{
-		trie: trie_manager.NewMutableFromImmutableForObject(ss.trie),
+		store: icobject.NewObjectStoreState(t),
 	}
 	s.loadValidators(ss)
 	return s
@@ -236,8 +236,9 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 
 func NewState(database db.Database) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
+	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	return &State{
-		trie:           trie_manager.NewMutableForObject(database, nil, icobject.ObjectType),
+		store:          icobject.NewObjectStoreState(t),
 		validatorToIdx: make(map[string]int),
 	}
 }
