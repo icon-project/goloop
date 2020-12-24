@@ -282,6 +282,19 @@ func TestState_AddBlockProduce(t *testing.T) {
 		wants wants
 	}{
 		{
+			"genesis block produce",
+			args{
+				offset:   offset1,
+				proposer: addr1,
+				voters:   []module.Address{},
+			},
+			wants{
+				proposerIndex: 0,
+				voteCount:     0,
+				voteMask:      big.NewInt(int64(0b0000)),
+			},
+		},
+		{
 			"block produce 1",
 			args{
 				offset:   offset1,

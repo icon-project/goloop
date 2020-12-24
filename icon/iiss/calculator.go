@@ -334,17 +334,19 @@ func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators [
 		return nil
 	}
 
-	// for generator
+	// for proposer
 	proposer := validators[bp.ProposerIndex]
 	proposer.iScore.Add(proposer.iScore, beta1Reward)
 
 	// for validator
-	beta1Validate := new(big.Int)
-	beta1Validate.Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
-	maxIndex := bp.VoteMask.BitLen()
-	for i := 0; i <= maxIndex; i += 1 {
-		if (bp.VoteMask.Bit(i)) != 0 {
-			validators[i].iScore.Add(validators[i].iScore, beta1Validate)
+	if bp.VoteCount > 0 {
+		beta1Validate := new(big.Int)
+		beta1Validate.Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
+		maxIndex := bp.VoteMask.BitLen()
+		for i := 0; i <= maxIndex; i += 1 {
+			if (bp.VoteMask.Bit(i)) != 0 {
+				validators[i].iScore.Add(validators[i].iScore, beta1Validate)
+			}
 		}
 	}
 

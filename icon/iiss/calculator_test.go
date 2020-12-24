@@ -125,8 +125,6 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	database := db.NewMapDB()
 	s := icstage.NewState(database)
 
-	offset1 := 0
-
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
 	addr3 := common.NewAddressFromString("hx3")
@@ -134,7 +132,6 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	addr5 := common.NewAddressFromString("hx5")
 
 	type args struct {
-		offset   int
 		proposer module.Address
 		voters   []module.Address
 	}
@@ -144,9 +141,15 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		args args
 	}{
 		{
+			"genesis block produce",
+			args{
+				proposer: addr1,
+				voters:   []module.Address{},
+			},
+		},
+		{
 			"block produce 1",
 			args{
-				offset:   offset1,
 				proposer: addr1,
 				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
@@ -154,7 +157,6 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			"block produce 2",
 			args{
-				offset:   offset1 + 1,
 				proposer: addr2,
 				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
@@ -162,15 +164,14 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			"block produce 3",
 			args{
-				offset:   offset1 + 2,
 				proposer: addr5,
 				voters:   []module.Address{addr1, addr4, addr5},
 			},
 		},
 	}
-	for _, data := range datas {
+	for i, data := range datas {
 		a := data.args
-		err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
+		err := s.AddBlockProduce(i, a.proposer, a.voters)
 		assert.NoError(t, err)
 	}
 
@@ -181,9 +182,8 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	vs, err := c.loadValidators()
 	assert.NoError(t, err)
 
-	for _, data := range datas {
-		a := data.args
-		err = c.processBlockProduce(irep, a.offset, vs)
+	for i, _:= range datas {
+		err = c.processBlockProduce(irep, i, vs)
 		assert.NoError(t, err)
 	}
 
@@ -197,7 +197,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 			"addr1",
 			0,
 			addr1,
-			rewardGenerate +
+			rewardGenerate * 2 +
 				rewardValidate/4 +
 				rewardValidate/4 +
 				rewardValidate/3,

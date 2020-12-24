@@ -107,6 +107,9 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	if info.Index != 0 {
 		return nil, errors.CriticalFormatError.New("BaseMustBeTheFirst")
 	}
+	if err := putBlockProduceEvent(ctx); err != nil {
+		return nil, err
+	}
 	if err := HandleTimerJob(ctx); err != nil {
 		return nil, err
 	}
@@ -245,4 +248,27 @@ func RegisterBaseTx() {
 		CheckBinary: checkBaseV3Bytes,
 		ParseBinary: parseBaseV3Bytes,
 	})
+}
+
+func putBlockProduceEvent(wc state.WorldContext) error {
+	es := wc.GetExtensionState().(*ExtensionStateImpl)
+	csi := wc.ConsensusInfo()
+	proposer := csi.Proposer()
+	validators := csi.Voters()
+	voted := csi.Voted()
+	voters := make([]module.Address, 0)
+
+	if validators != nil {
+		for i := 0; i < validators.Len(); i += 1 {
+			if voted[i] {
+				v, _ := validators.Get(i)
+				voters = append(voters, v.Address())
+			}
+		}
+	}
+	return es.Front.AddBlockProduce(
+		int(wc.BlockHeight()-es.CalculationBlockHeight()),
+		proposer,
+		voters,
+	)
 }
