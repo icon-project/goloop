@@ -50,13 +50,12 @@ func (c *TimerCache) Get(height int64) *Timer {
 
 	o := c.dict.Get(height)
 	if o == nil {
-		timer = newTimer(height)
-		c.Add(timer)
-		c.timers[height] = timer
-	} else {
-		timer = ToTimer(o.Object())
-		c.timers[height] = timer
+		return nil
 	}
+
+	timer = ToTimer(o.Object())
+	c.timers[height] = timer
+
 	return timer
 }
 

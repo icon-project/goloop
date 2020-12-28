@@ -150,6 +150,8 @@ func (s *State) SetBond(from module.Address, height int64, bonds Bonds) error {
 		ts, e := s.GetUnbondingTimer(t.Height)
 		if e != nil {
 			return errors.Errorf("Error while getting unbonding Timer")
+		} else if ts == nil {
+			ts = s.AddUnbondingTimerToCache(t.Height)
 		}
 		if err = ScheduleTimerJob(ts, t, from); err != nil {
 			return errors.Errorf("Error while scheduling Unbonding Timer Job")
@@ -204,4 +206,16 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	}
 
 	return s
+}
+
+func (s *State) AddUnbondingTimerToCache(h int64) *Timer {
+	t := newTimer(h)
+	s.unbondingtimerCache.Add(t)
+	return t
+}
+
+func (s *State) AddUnstakingTimerToCache(h int64) *Timer {
+	t := newTimer(h)
+	s.unstakingtimerCache.Add(t)
+	return t
 }

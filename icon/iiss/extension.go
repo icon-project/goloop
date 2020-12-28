@@ -163,6 +163,14 @@ func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.Time
 	return s.state.GetUnbondingTimer(height)
 }
 
+func (s *ExtensionStateImpl) AddUnbondingTimerToState(height int64) *icstate.Timer {
+	return s.state.AddUnbondingTimerToCache(height)
+}
+
+func (s *ExtensionStateImpl) AddUnstakingTimerToState(height int64) *icstate.Timer {
+	return s.state.AddUnstakingTimerToCache(height)
+}
+
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
 	return s.c.currentBH
 }

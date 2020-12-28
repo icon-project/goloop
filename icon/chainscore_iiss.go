@@ -57,9 +57,11 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		return err
 	}
 	for _, t := range tl {
-		ts, e := es.GetUnstakingTimerState(t.Height)
+		ts, e := es.GetUnbondingTimerState(t.Height)
 		if e != nil {
 			return errors.Errorf("Error while getting Timer")
+		} else if ts == nil {
+			ts = es.AddUnstakingTimerToState(t.Height)
 		}
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
 			return errors.Errorf("Error while scheduling UnStaking Timer Job")
