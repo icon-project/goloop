@@ -14,7 +14,6 @@
 package iiss
 
 import (
-	"github.com/icon-project/goloop/service/contract"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -23,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -30,6 +30,7 @@ import (
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
+	// TODO move to icstate?
 	c *calculation
 
 	state  *icstate.Snapshot
@@ -212,34 +213,31 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 	s.Front = icstage.NewState(s.database)
 	if calculator.result != nil {
 		s.Reward = calculator.result.NewState()
-		s.c.start(calculator.result.Bytes(), blockHeight)
-	} else {
-		s.Reward = icreward.NewSnapshot(s.database, s.c.resultHash).NewState()
-		s.c.start(s.c.resultHash, blockHeight)
+		s.c.start(calculator.stats.totalReward(), blockHeight)
 	}
 
 	return nil
 }
 
 type calculation struct {
-	resultHash []byte
-	currentBH  int64
-	prevBH     int64
+	currentBH    int64
+	prevBH       int64
+	rewardAmount *big.Int
 }
 
 func (c *calculation) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
-		c.resultHash,
 		c.currentBH,
 		c.prevBH,
+		c.rewardAmount,
 	)
 }
 
 func (c *calculation) RLPDecodeSelf(d codec.Decoder) error {
 	return d.DecodeListOf(
-		&c.resultHash,
 		&c.currentBH,
 		&c.prevBH,
+		&c.rewardAmount,
 	)
 }
 
@@ -250,14 +248,14 @@ func (c *calculation) isCalcDone(calculator *Calculator) bool {
 	return calculator.blockHeight == c.currentBH && calculator.result != nil
 }
 
-func (c *calculation) start(resultHash []byte, blockHeight int64) {
+func (c *calculation) start(reward *big.Int, blockHeight int64) {
 	c.prevBH = c.currentBH
 	c.currentBH = blockHeight
-	c.resultHash = resultHash
+	c.rewardAmount = reward
 }
 
 func newCalculation() *calculation {
-	return &calculation{nil, 0, 0}
+	return &calculation{0, 0, nil}
 }
 
 func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {

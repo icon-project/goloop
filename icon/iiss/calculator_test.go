@@ -30,7 +30,7 @@ import (
 
 func TestCalculator(t *testing.T) {
 	database := db.NewMapDB()
-	c := new(Calculator)
+	c := NewCalculator()
 
 	err := c.Init(database)
 	assert.NoError(t, err)
@@ -38,18 +38,22 @@ func TestCalculator(t *testing.T) {
 	assert.Equal(t, int64(0), c.blockHeight)
 
 	c.blockHeight = 100
+	c.stats.beta1.SetInt64(int64(100))
+	c.stats.beta2.SetInt64(int64(200))
+	c.stats.beta3.SetInt64(int64(300))
 	err = c.Flush()
 	assert.NoError(t, err)
 
-	c2 := new(Calculator)
+	c2 := NewCalculator()
 	err = c2.Init(database)
 	assert.NoError(t, err)
 	assert.Equal(t, c.dbase, c2.dbase)
 	assert.Equal(t, c.blockHeight, c2.blockHeight)
+	assert.True(t, c.stats.equal(c2.stats))
 }
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
-	c := new(Calculator)
+	c := NewCalculator()
 	c.back = back
 	c.base = icreward.NewSnapshot(database, nil)
 	c.temp = c.base.NewState()

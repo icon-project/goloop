@@ -253,6 +253,10 @@ func RegisterBaseTx() {
 func putBlockProduceEvent(wc state.WorldContext) error {
 	es := wc.GetExtensionState().(*ExtensionStateImpl)
 	csi := wc.ConsensusInfo()
+	// TODO is it possible?
+	if csi == nil {
+		return nil
+	}
 	proposer := csi.Proposer()
 	validators := csi.Voters()
 	voted := csi.Voted()

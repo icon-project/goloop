@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"math/big"
 	"sort"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -24,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -52,12 +54,12 @@ var (
 )
 
 type Calculator struct {
-	dbase       db.Database
+	dbase db.Database
 
 	result      *icreward.Snapshot
 	blockHeight int64
+	stats       *statistics
 
-	ss          *ExtensionSnapshotImpl
 	back        *icstage.Snapshot
 	base        *icreward.Snapshot
 	temp        *icreward.State
@@ -74,12 +76,21 @@ func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		hash,
 		c.blockHeight,
+		c.stats.beta1,
+		c.stats.beta2,
+		c.stats.beta3,
 	)
 }
 
 func (c *Calculator) RLPDecodeSelf(d codec.Decoder) error {
 	var hash []byte
-	if err := d.DecodeListOf(&hash, &c.blockHeight); err != nil {
+	if err := d.DecodeListOf(
+		&hash,
+		&c.blockHeight,
+		&c.stats.beta1,
+		&c.stats.beta2,
+		&c.stats.beta3,
+	); err != nil {
 		return err
 	}
 	c.result = icreward.NewSnapshot(c.dbase, hash)
@@ -119,10 +130,6 @@ func (c *Calculator) Init(dbase db.Database) error {
 	return c.SetBytes(bs)
 }
 
-func (c *Calculator) SetExtension(ss *ExtensionSnapshotImpl) {
-	c.ss = ss
-}
-
 func (c *Calculator) isGenesis() bool {
 	return c.blockHeight == 0 && c.result == nil
 }
@@ -138,7 +145,7 @@ func (c *Calculator) isResultSynced(ss *ExtensionSnapshotImpl) bool {
 	return bytes.Compare(c.result.Bytes(), ss.reward.Bytes()) == 0
 }
 
-func (c *Calculator) CheckToRun(ss *ExtensionSnapshotImpl) bool {
+func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
 	if c.isGenesis() {
 		return true
 	}
@@ -149,44 +156,59 @@ func (c *Calculator) CheckToRun(ss *ExtensionSnapshotImpl) bool {
 }
 
 func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
-	if !c.CheckToRun(ss) {
+	if !c.checkToRun(ss) {
 		return
 	}
-	c.ss = ss
-	if err = c.prepare(); err != nil {
+	startTS := time.Now()
+	if err = c.prepare(ss); err != nil {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
+	prepareTS := time.Now()
 
 	if err = c.calculateBeta1(); err != nil {
 		err = errors.Wrapf(err, "Failed to calculate beta1")
 		return
 	}
+	beta1TS := time.Now()
 
 	if err = c.calculateBeta2(); err != nil {
 		err = errors.Wrapf(err, "Failed to calculate beta2")
 		return
 	}
+	beta2TS := time.Now()
 
 	if err = c.calculateBeta3(); err != nil {
 		err = errors.Wrapf(err, "Failed to calculate beta3")
 		return
 	}
+	beta3TS := time.Now()
 
 	if err = c.postWork(); err != nil {
 		err = errors.Wrapf(err, "Failed to save calculation result")
 		return
 	}
+	finalTS := time.Now()
 
+	log.Infof("Calculation time: total=%s prepare=%s beta1=%s beta2=%s beta3=%s",
+		finalTS.Sub(startTS), prepareTS.Sub(startTS),
+		beta1TS.Sub(prepareTS), beta2TS.Sub(beta1TS), beta3TS.Sub(beta2TS),
+	)
+	log.Infof("Calculation statistics: Beta1=%s Beta2=%s Beta3=%s",
+		c.stats.beta1.String(),
+		c.stats.beta2.String(),
+		c.stats.beta3.String(),
+	)
 	return
 }
 
-func (c *Calculator) prepare() error {
-	c.back = icstage.NewSnapshot(c.ss.database, c.ss.back.Bytes())
-	c.base = icreward.NewSnapshot(c.ss.database, c.ss.reward.Bytes())
+func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
+	c.back = icstage.NewSnapshot(ss.database, ss.back.Bytes())
+	c.base = icreward.NewSnapshot(ss.database, ss.reward.Bytes())
 	c.temp = c.base.NewState()
 	c.result = nil
-	c.blockHeight = c.ss.c.currentBH
+	c.blockHeight = ss.c.currentBH
+	c.stats.clear()
 
 	// read old values from temp
 	global, err := c.temp.GetGlobal()
@@ -290,6 +312,7 @@ func (c *Calculator) calculateBeta1() error {
 		if err := c.temp.SetIScore(v.addr, is.Added(v.iScore)); err != nil {
 			return err
 		}
+		c.stats.increaseBeta1(v.iScore)
 	}
 
 	return nil
@@ -423,6 +446,7 @@ func (c *Calculator) calculateBeta2() error {
 		if err := c.temp.SetIScore(addr, is.Added(prep.iScore)); err != nil {
 			return err
 		}
+		c.stats.increaseBeta2(prep.iScore)
 	}
 
 	c.irep = irep
@@ -589,6 +613,7 @@ func (c *Calculator) processDelegating(
 			if err := c.temp.SetIScore(addr, iScore.Added(reward)); err != nil {
 				return err
 			}
+			c.stats.increaseBeta3(reward)
 		}
 	}
 	// calculate reward for account who got DELEGATE event
@@ -640,6 +665,7 @@ func (c *Calculator) processDelegating(
 		if err = c.temp.SetIScore(addr, iScore); err != nil {
 			return err
 		}
+		c.stats.increaseBeta3(iScore.Value)
 	}
 	return nil
 }
@@ -696,7 +722,9 @@ func (c *Calculator) postWork() (err error) {
 }
 
 func NewCalculator() *Calculator {
-	return &Calculator{}
+	return &Calculator{
+		stats: newStatistics(),
+	}
 }
 
 type validator struct {
@@ -845,4 +873,57 @@ func newDelegated() *delegated {
 type pRepEnable struct {
 	startOffset int
 	endOffset   int
+}
+
+type statistics struct {
+	beta1 *big.Int
+	beta2 *big.Int
+	beta3 *big.Int
+}
+
+func newStatistics() *statistics {
+	return &statistics{
+		beta1: new(big.Int),
+		beta2: new(big.Int),
+		beta3: new(big.Int),
+	}
+}
+
+func (s *statistics) equal(s2 *statistics) bool {
+	return s.beta1.Cmp(s2.beta1) == 0 &&
+		s.beta2.Cmp(s2.beta2) == 0 &&
+		s.beta3.Cmp(s2.beta3) == 0
+}
+
+func (s *statistics) clear() {
+	s.beta1.SetInt64(0)
+	s.beta2.SetInt64(0)
+	s.beta3.SetInt64(0)
+}
+
+func increaseStats(src *big.Int, amount *big.Int) *big.Int {
+	if src == nil {
+		src = new(big.Int).Set(amount)
+	} else {
+		src.Add(src, amount)
+	}
+	return src
+}
+
+func (s *statistics) increaseBeta1(amount *big.Int) {
+	s.beta1 = increaseStats(s.beta1, amount)
+}
+
+func (s *statistics) increaseBeta2(amount *big.Int) {
+	s.beta2 = increaseStats(s.beta2, amount)
+}
+
+func (s *statistics) increaseBeta3(amount *big.Int) {
+	s.beta3 = increaseStats(s.beta3, amount)
+}
+func (s *statistics) totalReward() *big.Int {
+	reward := new(big.Int)
+	reward.Add(s.beta1, s.beta2)
+	reward.Add(reward, s.beta3)
+	return reward
 }
