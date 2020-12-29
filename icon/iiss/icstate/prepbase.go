@@ -282,7 +282,7 @@ func (bl BonderList) Clone() BonderList {
 		return nil
 	}
 
-	dst := make([]*common.Address, 0, size)
+	dst := make([]*common.Address, size)
 	copy(dst, bl)
 
 	return dst
