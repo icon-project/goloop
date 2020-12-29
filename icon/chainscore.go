@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -42,6 +43,7 @@ type chainScore struct {
 	log   log.Logger
 	from  module.Address
 	value *big.Int
+	gov   bool
 }
 
 const (
@@ -51,6 +53,29 @@ const (
 )
 
 var chainMethods = []*chainMethod{
+	{scoreapi.Method{scoreapi.Function, "setIRep",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"value", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0}, // TODO change minVer to Revision11
+	{scoreapi.Method{
+		scoreapi.Function, "getIRep",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0}, // TODO change minVer to Revision11
+	{scoreapi.Method{
+		scoreapi.Function, "getRRep",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0}, // TODO change minVer to Revision11
 	{scoreapi.Method{scoreapi.Function, "setStake",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 0,
 		[]scoreapi.Parameter{
@@ -325,6 +350,20 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
+	// FIXME Initial data for test
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if err := icstate.SetIRep(
+		es.State,
+		big.NewInt(iiss.YearBlock*iiss.IScoreICXRatio),
+	); err != nil {
+		return err
+	}
+	if err := icstate.SetRRep(
+		es.State,
+		big.NewInt(iiss.YearBlock*iiss.IScoreICXRatio),
+	); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -349,6 +388,25 @@ func (s *chainScore) GetAPI() *scoreapi.Info {
 	return scoreapi.NewInfo(methods[:j])
 }
 
+func (s *chainScore) checkGovernance(charge bool) error {
+	if !s.gov {
+		if charge {
+			if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
+				return scoreresult.OutOfStepError.New("UserCodeError")
+			}
+		}
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	return nil
+}
+
 func newChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
-	return &chainScore{cc: cc, from: from, value: value, log: cc.Logger()}, nil
+	return &chainScore{
+			cc:    cc,
+			from:  from,
+			value: value,
+			log:   cc.Logger(),
+			gov:   cc.Governance().Equal(from),
+		},
+		nil
 }

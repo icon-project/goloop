@@ -86,7 +86,7 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	return &ExtensionStateImpl{
 		database: s.database,
 		c:        s.c,
-		state:    icstate.NewStateFromSnapshot(s.state, readonly),
+		State:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		Back:     icstage.NewStateFromSnapshot(s.back),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
@@ -122,7 +122,7 @@ type ExtensionStateImpl struct {
 
 	c *calculation
 
-	state  *icstate.State
+	State  *icstate.State
 	Front  *icstage.State
 	Back   *icstage.State
 	Reward *icreward.State
@@ -132,7 +132,7 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: s.database,
 		c:        s.c,
-		state:    s.state.GetSnapshot(),
+		state:    s.State.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.Back.GetSnapshot(),
 		reward:   s.Reward.GetSnapshot(),
@@ -141,7 +141,7 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 
 func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	snapshot := isnapshot.(*ExtensionSnapshotImpl)
-	if err := s.state.Reset(snapshot.state); err != nil {
+	if err := s.State.Reset(snapshot.state); err != nil {
 		panic(err)
 	}
 	s.Front.Reset(snapshot.front)
@@ -153,23 +153,23 @@ func (s *ExtensionStateImpl) ClearCache() {
 }
 
 func (s *ExtensionStateImpl) GetAccount(address module.Address) (*icstate.Account, error) {
-	return s.state.GetAccount(address)
+	return s.State.GetAccount(address)
 }
 
 func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.Timer, error) {
-	return s.state.GetUnstakingTimer(height)
+	return s.State.GetUnstakingTimer(height)
 }
 
 func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.Timer, error) {
-	return s.state.GetUnbondingTimer(height)
+	return s.State.GetUnbondingTimer(height)
 }
 
 func (s *ExtensionStateImpl) AddUnbondingTimerToState(height int64) *icstate.Timer {
-	return s.state.AddUnbondingTimerToCache(height)
+	return s.State.AddUnbondingTimerToCache(height)
 }
 
 func (s *ExtensionStateImpl) AddUnstakingTimerToState(height int64) *icstate.Timer {
-	return s.state.AddUnstakingTimerToCache(height)
+	return s.State.AddUnstakingTimerToCache(height)
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
@@ -202,8 +202,8 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 	// FIXME data for test
 	if _, err := s.Front.AddEventPeriod(
 		0,
-		big.NewInt(YearBlock*IScoreICXRatio),
-		big.NewInt(YearBlock*IScoreICXRatio),
+		icstate.GetIRep(s.State),
+		icstate.GetRRep(s.State),
 	); err != nil {
 		return err
 	}
@@ -259,31 +259,31 @@ func newCalculation() *calculation {
 }
 
 func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {
-	return s.state.GetPRepsInJSON()
+	return s.State.GetPRepsInJSON()
 }
 
 func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
-	return s.state.GetPRepInJSON(address)
+	return s.State.GetPRepInJSON(address)
 }
 
 func (s *ExtensionStateImpl) GetValidators() []module.Validator {
-	return s.state.GetValidators()
+	return s.State.GetValidators()
 }
 
 func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []string) error {
-	return s.state.RegisterPRep(owner, node, params)
+	return s.State.RegisterPRep(owner, node, params)
 }
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
 	var err error
 	var account *icstate.Account
 
-	err = s.state.SetDelegation(from, ds)
+	err = s.State.SetDelegation(from, ds)
 	if err != nil {
 		return err
 	}
 
-	account, err = s.state.GetAccount(from)
+	account, err = s.State.GetAccount(from)
 	bonds := account.Bonds()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
 	for _, d := range ds {
@@ -304,7 +304,7 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 }
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
-	err := s.state.UnregisterPRep(owner)
+	err := s.State.UnregisterPRep(owner)
 	if err != nil {
 		return err
 	}
@@ -324,7 +324,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 }
 
 func (s *ExtensionStateImpl) SetPRep(from, node module.Address, params []string) error {
-	return s.state.SetPRep(from, node, params)
+	return s.State.SetPRep(from, node, params)
 }
 
 func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
@@ -332,12 +332,12 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	var account *icstate.Account
 	blockHeight := cc.BlockHeight()
 
-	err = s.state.SetBond(from, blockHeight, bonds)
+	err = s.State.SetBond(from, blockHeight, bonds)
 	if err != nil {
 		return err
 	}
 
-	account, err = s.state.GetAccount(from)
+	account, err = s.State.GetAccount(from)
 	ds := account.Delegations()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
 	for _, d := range ds {
@@ -358,9 +358,9 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 }
 
 func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
-	return s.state.SetBonderList(from, bl)
+	return s.State.SetBonderList(from, bl)
 }
 
 func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{}, error) {
-	return s.state.GetBonderList(address)
+	return s.State.GetBonderList(address)
 }

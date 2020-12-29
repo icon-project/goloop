@@ -25,6 +25,24 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return icstate.SetIRep(es.State, new(big.Int).Set(&value.Int))
+}
+
+func (s *chainScore) Ex_getIRep() (int64, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return icstate.GetIRep(es.State).Int64(), nil
+}
+
+func (s *chainScore) Ex_getRRep() (int64, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return icstate.GetRRep(es.State).Int64(), nil
+}
+
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccount(s.from)
