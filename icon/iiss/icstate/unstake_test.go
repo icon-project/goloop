@@ -136,3 +136,92 @@ func TestUnstakes(t *testing.T) {
 		assert.Equal(t, int64(0), unstakes.GetUnstakeAmount().Int64())
 	})
 }
+
+func TestIncreaseUnstake(t *testing.T) {
+	maxUnstakeCount = 3
+	a0 := int64(5)
+	a1 := int64(10)
+	a2 := int64(20)
+	a3 := int64(30)
+	eh0 := int64(10)
+	eh1 := int64(20)
+	eh2 := int64(30)
+	eh3 := int64(40)
+
+	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
+	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
+	u2 := Unstake{Amount: big.NewInt(a2), ExpireHeight: eh2}
+	u3 := Unstake{Amount: big.NewInt(a3), ExpireHeight: eh3}
+
+	us := Unstakes{&u1}
+
+	//u0 will place in 0 index(front of u1)
+	err := us.increaseUnstake(big.NewInt(a0), eh0)
+	assert.NoError(t, err)
+	assert.True(t, u0.Equal(us[0]))
+	assert.True(t, u1.Equal(us[1]))
+
+	err = us.increaseUnstake(big.NewInt(a2), eh2)
+	assert.NoError(t, err)
+	assert.True(t, u0.Equal(us[0]))
+	assert.True(t, u1.Equal(us[1]))
+	assert.True(t, u2.Equal(us[2]))
+
+	//unstake of last index will be updated
+	err = us.increaseUnstake(big.NewInt(a3-a2), eh3)
+	assert.NoError(t, err)
+	assert.True(t, u0.Equal(us[0]))
+	assert.True(t, u1.Equal(us[1]))
+	assert.True(t, u3.Equal(us[2]))
+}
+
+func TestDecreaseUnstake(t *testing.T) {
+	maxUnstakeCount = 5
+	a0 := int64(5)
+	a1 := int64(10)
+	a2 := int64(20)
+	a3 := int64(30)
+	a4 := int64(40)
+	eh0 := int64(10)
+	eh1 := int64(20)
+	eh2 := int64(30)
+	eh3 := int64(40)
+	eh4 := int64(50)
+
+	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
+	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
+	u2 := Unstake{Amount: big.NewInt(a2), ExpireHeight: eh2}
+	u3 := Unstake{Amount: big.NewInt(a3), ExpireHeight: eh3}
+	u4 := Unstake{Amount: big.NewInt(a4), ExpireHeight: eh4}
+
+	us := Unstakes{&u0, &u1, &u2, &u3, &u4}
+	assert.Equal(t, len(us), 5)
+
+	//remove first unstake
+	j, err := us.decreaseUnstake(u0.Amount)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(us))
+	assert.True(t, us[0].Equal(&u1))
+	assert.Equal(t, 1, len(j))
+	assert.Equal(t, eh0, j[0].Height)
+
+	//remove first 2 unstakes
+	j, err = us.decreaseUnstake(new(big.Int).Add(u1.Amount, u2.Amount))
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(us))
+	assert.True(t, us[0].Equal(&u3))
+	assert.True(t, us[1].Equal(&u4))
+	assert.Equal(t, 2, len(j))
+	assert.Equal(t, eh1, j[0].Height)
+	assert.Equal(t, eh2, j[1].Height)
+
+	//remove first unstake and decrease last unstake
+	v := big.NewInt(a3 + a4 - 1)
+	j, err = us.decreaseUnstake(v)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(us))
+	expectedUnstake := &Unstake{Amount: big.NewInt(a4 - 1), ExpireHeight: eh4}
+	assert.True(t, us[0].Equal(expectedUnstake))
+	assert.Equal(t, 1, len(j))
+	assert.Equal(t, eh3, j[0].Height)
+}

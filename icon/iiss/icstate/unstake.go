@@ -140,16 +140,27 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
 		if eh > last.ExpireHeight {
 			last.ExpireHeight = eh
 		}
-		// TODO update unstake timer
 	} else {
 		unstake := newUnstake()
 		unstake.Amount.Set(v)
 		unstake.ExpireHeight = eh
-		*us = append(*us, unstake)
-		// TODO add unstake timer
+		unstakes := *us
+		index := us.findIndex(eh)
+		unstakes = append(unstakes, unstake)
+		copy(unstakes[index+1:], unstakes[index:])
+		unstakes[index] = unstake
+		*us = unstakes
 	}
-
 	return nil
+}
+
+func (us Unstakes) findIndex(h int64) int64 {
+	for i := len(us) - 1; i >= 0; i-- {
+		if h >= us[i].ExpireHeight {
+			return int64(i + 1)
+		}
+	}
+	return 0
 }
 
 func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
@@ -159,14 +170,14 @@ func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 	var tl []TimerJobInfo
 	remain := new(big.Int).Set(v)
 	unstakes := *us
-	uLen := len(unstakes)
-	for i := uLen - 1; i >= 0; i-- {
+	uLen := len(*us)
+	for i := 0; i < uLen; i++ {
 		u := unstakes[i]
-		switch remain.Cmp(u.Amount) {
+		remain.Sub(remain, u.Amount)
+		switch remain.Sign() {
 		case 0:
-			copy(unstakes[i:], unstakes[i+1:])
-			unstakes = unstakes[0 : len(unstakes)-1]
-			if len(unstakes) > 0 {
+			unstakes = unstakes[i+1:]
+			if len(*us) >= 0 {
 				*us = unstakes
 			} else {
 				*us = nil
@@ -174,18 +185,12 @@ func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 			return tl, nil
 		case 1:
-			copy(unstakes[i:], unstakes[i+1:])
-			unstakes = unstakes[0 : len(unstakes)-1]
-			if len(unstakes) > 0 {
-				*us = unstakes
-			} else {
-				*us = nil
-			}
 			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
-			remain.Sub(remain, u.Amount)
 		case -1:
-			u.Amount.Sub(u.Amount, remain)
-			return nil, nil
+			u.Amount.Add(u.Amount, remain)
+			unstakes = unstakes[i:]
+			*us = unstakes
+			return tl, nil
 		}
 	}
 	return tl, nil
