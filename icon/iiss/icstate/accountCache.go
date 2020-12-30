@@ -83,8 +83,6 @@ func (c *AccountCache) Reset() {
 
 func (c *AccountCache) GetSnapshot() {
 	for k, account := range c.accounts {
-		account.freeze()
-
 		if account.IsEmpty() {
 			key, err := common.BytesToAddress([]byte(k))
 			if err != nil {

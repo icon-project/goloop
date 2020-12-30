@@ -159,8 +159,8 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 
 func (ps *PRepStatus) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["grade"] = ps.grade
-	jso["status"] = ps.status
+	jso["grade"] = int(ps.grade)
+	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded

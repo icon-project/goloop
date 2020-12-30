@@ -130,10 +130,6 @@ func (a *Account) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
-	if !a.IsReadonly() {
-		panic(errors.Errorf("Data is not readonly: %s", a.address))
-	}
-
 	return encoder.EncodeListOf(
 		a.stake,
 		a.unstakes,

@@ -77,7 +77,6 @@ func (c *TimerCache) Reset() {
 
 func (c *TimerCache) GetSnapshot() {
 	for _, timer := range c.timers {
-		timer.freeze()
 		height := timer.Height
 
 		if timer.IsEmpty() {

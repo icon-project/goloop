@@ -64,7 +64,8 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	account := s.cc.GetAccountState(s.from.ID())
 	balance := account.GetBalance()
-	if balance.Cmp(v) == -1 {
+	availableStake := new(big.Int).Add(balance, ia.GetVotingPower())
+	if availableStake.Cmp(v) == -1 {
 		return errors.Errorf("Not enough balance")
 	}
 
@@ -75,7 +76,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		return err
 	}
 	for _, t := range tl {
-		ts, e := es.GetUnbondingTimerState(t.Height)
+		ts, e := es.GetUnstakingTimerState(t.Height)
 		if e != nil {
 			return errors.Errorf("Error while getting Timer")
 		} else if ts == nil {
