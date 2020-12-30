@@ -193,7 +193,7 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
 	}
 	h.as = cc.GetAccountState(h.to.ID())
 	c := h.contract(h.as)
-	if c == nil {
+	if c == nil || c.Status() != state.CSActive {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
