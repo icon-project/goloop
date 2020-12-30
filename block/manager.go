@@ -886,7 +886,6 @@ func (m *manager) finalizePrunedBlock() error {
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return err
 	}
-	csi := common.NewConsensusInfo(blk.Proposer(), pblk.NextValidators(), voted)
 	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
 	if err != nil {
 		return err
@@ -1599,12 +1598,23 @@ func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64)
 func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
 	ctx := merkle.NewCopyContext(m.db(), dst)
 	if hasBits(flag, exportValidator) && from > 0 {
+		// export the block for validators
 		blk, err := m.getBlockByHeight(from - 1)
 		if err != nil {
 			return errors.Wrapf(err, "fail to get previous block height=%d", from-1)
 		}
 		if err := m._export(blk, ctx, flag); err != nil {
 			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
+		}
+		// export the block for voters
+		if pid := blk.PrevID(); len(pid) > 0 {
+			pblk, err := m.getBlockByHeight(from - 2)
+			if err != nil {
+				return errors.Wrapf(err, "fail to get p-previous block height=%d", from-2)
+			}
+			if err := m._export(pblk, ctx, flag); err != nil {
+				return errors.Wrapf(err, "fail to export block height=%d", pblk.Height())
+			}
 		}
 	}
 	for h := from; h <= to; h++ {
