@@ -173,8 +173,7 @@ func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 	uLen := len(*us)
 	for i := 0; i < uLen; i++ {
 		u := unstakes[i]
-		remain.Sub(remain, u.Amount)
-		switch remain.Sign() {
+		switch remain.Cmp(u.Amount) {
 		case 0:
 			unstakes = unstakes[i+1:]
 			if len(*us) >= 0 {
@@ -185,13 +184,16 @@ func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 			return tl, nil
 		case 1:
+			remain.Sub(remain, u.Amount)
 			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 		case -1:
-			u.Amount.Add(u.Amount, remain)
+			u.Amount.Sub(u.Amount, remain)
 			unstakes = unstakes[i:]
 			*us = unstakes
 			return tl, nil
 		}
 	}
+	// case when v > total unstake
+	*us = nil
 	return tl, nil
 }
