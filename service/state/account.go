@@ -586,6 +586,9 @@ func (s *accountStateImpl) DeployContract(code []byte, eeType EEType, contentTyp
 	}
 	var old []byte
 	if s.nextContract != nil {
+		if s.nextContract.Status() == CSActive {
+			return nil, scoreresult.InvalidInstanceError.New("AlreadyDeploying")
+		}
 		old = s.nextContract.deployTxHash
 	}
 	s.nextContract = &contractImpl{contractSnapshotImpl{

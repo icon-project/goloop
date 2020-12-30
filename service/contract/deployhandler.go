@@ -329,16 +329,22 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	h2a.Delete(h.txHash)
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
+	next := scoreAs.NextContract()
+	if next.Status() != state.CSPending {
+		return scoreresult.ContractNotFoundError.New("NoContractToAccept"), nil, nil
+	}
+
 	var methodStr string
-	nextEEType := scoreAs.NextContract().EEType()
-	if scoreAs.Contract() == nil {
+	nextEEType := next.EEType()
+	current := scoreAs.Contract()
+	if current == nil {
 		if method, ok := nextEEType.InstallMethod(); !ok {
 			return scoreresult.MethodNotFoundError.New("NoInstallMethod"), nil, nil
 		} else {
 			methodStr = method
 		}
 	} else {
-		if method, ok := nextEEType.UpdateMethod(scoreAs.ActiveContract().EEType()); !ok {
+		if method, ok := nextEEType.UpdateMethod(current.EEType()); !ok {
 			return scoreresult.MethodNotFoundError.New("NoUpdateMethod"), nil, nil
 		} else {
 			methodStr = method
@@ -356,15 +362,16 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		return err, nil, nil
 	}
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
-		methodStr, scoreAs.NextContract().Params())
+		methodStr, next.Params())
 	if err != nil {
 		return err, nil, nil
 	}
 
 	// 2. call on_install or on_update of the contract
-	if cur := scoreAs.Contract(); cur != nil {
-		cur.SetStatus(state.CSInactive)
+	if current != nil {
+		current.SetStatus(state.CSInactive)
 	}
+	next.SetStatus(state.CSActive)
 	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
