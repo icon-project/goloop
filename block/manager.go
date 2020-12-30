@@ -617,8 +617,26 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return nil, err
 	}
-	// TODO need to make proper consensus information or not to trigger transit.
-	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil, nil)
+	var csi module.ConsensusInfo
+	if pBlock, err := m.getBlock(lastFinalized.PrevID()); err != nil {
+		return nil, err
+	} else {
+		var voters module.ValidatorList
+		var voted []bool
+		if ppID := pBlock.PrevID(); len(ppID) > 0 {
+			if ppBlock, err := m.getBlock(ppID); err != nil {
+				return nil, err
+			} else {
+				voters = ppBlock.NextValidators()
+				voted, err = lastFinalized.Votes().Verify(pBlock, voters)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		csi = common.NewConsensusInfo(lastFinalized.Proposer(), voters, voted)
+	}
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -814,9 +832,20 @@ func (m *manager) finalizePrunedBlock() error {
 	if err != nil {
 		return err
 	}
-	voted, err := blk.Votes().Verify(pblk, pblk.NextValidators())
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
+	var csi module.ConsensusInfo
+	if ppid := pblk.PrevID(); len(ppid) > 0 {
+		ppblk, err := m._importBlockByID(d, ppid)
+		if err != nil {
+			return transaction.InvalidGenesisError.Wrap(err, "NoVoterInformation")
+		}
+		voters := ppblk.NextValidators()
+		voted, err := blk.Votes().Verify(pblk, voters)
+		if err != nil {
+			return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
+		}
+		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
+	} else {
+		csi = common.NewConsensusInfo(blk.Proposer(), nil, nil)
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())

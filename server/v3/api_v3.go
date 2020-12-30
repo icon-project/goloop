@@ -912,15 +912,15 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 				return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 			} else {
 				voters = ppblk.NextValidators()
+				voted, err = blk.Votes().Verify(pblk, voters)
+				if err != nil {
+					return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+				}
 			}
-		} else {
-			voters = pblk.NextValidators()
-		}
-		voted, err = blk.Votes().Verify(pblk, voters)
-		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 		}
 		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
+	} else {
+		csi = common.NewConsensusInfo(blk.Proposer(), nil, nil)
 	}
 	nblk, err := bm.GetBlockByHeight(blk.Height() + 1)
 	if err != nil {
