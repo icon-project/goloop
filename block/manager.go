@@ -617,8 +617,26 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return nil, err
 	}
-	// TODO need to make proper consensus information or not to trigger transit.
-	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil, nil)
+	var csi module.ConsensusInfo
+	if pBlock, err := m.getBlock(lastFinalized.PrevID()); err != nil {
+		return nil, err
+	} else {
+		var voters module.ValidatorList
+		var voted []bool
+		if ppID := pBlock.PrevID(); len(ppID) > 0 {
+			if ppBlock, err := m.getBlock(ppID); err != nil {
+				return nil, err
+			} else {
+				voters = ppBlock.NextValidators()
+				voted, err = lastFinalized.Votes().Verify(pBlock, voters)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		csi = common.NewConsensusInfo(lastFinalized.Proposer(), voters, voted)
+	}
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -814,9 +832,20 @@ func (m *manager) finalizePrunedBlock() error {
 	if err != nil {
 		return err
 	}
-	voted, err := blk.Votes().Verify(pblk, pblk.NextValidators())
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
+	var csi module.ConsensusInfo
+	if ppid := pblk.PrevID(); len(ppid) > 0 {
+		ppblk, err := m._importBlockByID(d, ppid)
+		if err != nil {
+			return transaction.InvalidGenesisError.Wrap(err, "NoVoterInformation")
+		}
+		voters := ppblk.NextValidators()
+		voted, err := blk.Votes().Verify(pblk, voters)
+		if err != nil {
+			return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
+		}
+		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
+	} else {
+		csi = common.NewConsensusInfo(blk.Proposer(), nil, nil)
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())
@@ -857,7 +886,6 @@ func (m *manager) finalizePrunedBlock() error {
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return err
 	}
-	csi := common.NewConsensusInfo(blk.Proposer(), pblk.NextValidators(), voted)
 	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
 	if err != nil {
 		return err
@@ -1570,12 +1598,23 @@ func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64)
 func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
 	ctx := merkle.NewCopyContext(m.db(), dst)
 	if hasBits(flag, exportValidator) && from > 0 {
+		// export the block for validators
 		blk, err := m.getBlockByHeight(from - 1)
 		if err != nil {
 			return errors.Wrapf(err, "fail to get previous block height=%d", from-1)
 		}
 		if err := m._export(blk, ctx, flag); err != nil {
 			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
+		}
+		// export the block for voters
+		if pid := blk.PrevID(); len(pid) > 0 {
+			pblk, err := m.getBlockByHeight(from - 2)
+			if err != nil {
+				return errors.Wrapf(err, "fail to get p-previous block height=%d", from-2)
+			}
+			if err := m._export(pblk, ctx, flag); err != nil {
+				return errors.Wrapf(err, "fail to export block height=%d", pblk.Height())
+			}
 		}
 	}
 	for h := from; h <= to; h++ {
