@@ -71,7 +71,7 @@ func (t *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 	// do nothing
 }
 
-func (t *platform) OnExecutionEnd(wc state.WorldContext) error {
+func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
 	return nil
 }
 
