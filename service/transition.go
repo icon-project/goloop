@@ -500,11 +500,6 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	if err := t.plt.OnExecutionEnd(ctx); err != nil {
-		t.reportExecution(err)
-		return
-	}
-
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
@@ -529,6 +524,12 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tr := ctx.GetAccountState(ctx.Treasury().ID())
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
+
+	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, cumulativeSteps, gatheredFee)
+	if err := t.plt.OnExecutionEnd(ctx, er); err != nil {
+		t.reportExecution(err)
+		return
+	}
 
 	t.worldSnapshot = ctx.GetSnapshot()
 
