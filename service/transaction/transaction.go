@@ -126,3 +126,11 @@ func NewTransactionFromJSON(b []byte) (Transaction, error) {
 		return &transaction{tx}, nil
 	}
 }
+
+func Wrap(t Transaction) Transaction {
+	if _, ok := t.(*transaction); ok {
+		return t
+	} else {
+		return &transaction{t}
+	}
+}

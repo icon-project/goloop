@@ -17,6 +17,8 @@
 package service
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -32,6 +34,13 @@ type Platform interface {
 	OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot)
 	ToRevision(value int) module.Revision
 	NewBaseTransaction(wc state.WorldContext) (module.Transaction, error)
-	OnExecutionEnd(wc state.WorldContext) error
+	OnExecutionEnd(wc state.WorldContext, er ExecutionResult) error
 	Term()
+}
+
+type ExecutionResult interface {
+	PatchReceipts() module.ReceiptList
+	NormalReceipts() module.ReceiptList
+	TotalFee() *big.Int
+	TotalSteps() *big.Int
 }
