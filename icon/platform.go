@@ -81,7 +81,7 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 	go p.calculator.Run(ess.(*iiss.ExtensionSnapshotImpl))
 }
 
-func (p *platform) OnExecutionEnd(wc state.WorldContext) error {
+func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
 	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
