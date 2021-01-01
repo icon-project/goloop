@@ -59,7 +59,7 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 	// TODO start background calculator if it's not started.
 }
 
-func (p *platform) OnExecutionEnd(wc state.WorldContext) error {
+func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
 	// TODO implement
 	return nil
 }
