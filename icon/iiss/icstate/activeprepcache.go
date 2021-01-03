@@ -8,6 +8,8 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var activePRepArrayPrefix = containerdb.ToKey(containerdb.RawBuilder, "active_prep")
+
 type activePRepCacheItem struct {
 	owner module.Address
 	idx   int
@@ -117,7 +119,17 @@ func (c *ActivePRepCache) GetSnapshot() {
 
 func newActivePRepCache(store containerdb.ObjectStoreState) *ActivePRepCache {
 	arraydb := containerdb.NewArrayDB(store, activePRepArrayPrefix)
-	items := make([]*activePRepCacheItem, 0)
+	size := arraydb.Size()
+
+	items := make([]*activePRepCacheItem, size)
 	itemMap := make(map[string]*activePRepCacheItem)
+
+	for i := 0; i < size; i++ {
+		owner := arraydb.Get(i).Address()
+		item := &activePRepCacheItem{owner, i}
+		items[i] = item
+		itemMap[item.key()] = item
+	}
+
 	return &ActivePRepCache{arraydb, items, itemMap}
 }

@@ -93,6 +93,10 @@ func (ps *PRepStatus) Delegated() *big.Int {
 	return ps.delegated
 }
 
+func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
+	ps.delegated.Set(delegated)
+}
+
 func (ps *PRepStatus) GetBondedDelegation() *big.Int {
 	// TODO: Not implemented
 	return ps.delegated
@@ -245,7 +249,7 @@ func (ps *PRepStatus) IsEmpty() bool {
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
-	ps.bonded = v
+	ps.bonded.Set(v)
 }
 
 func (ps *PRepStatus) SetGrade(g Grade) {
@@ -281,10 +285,10 @@ func (ps *PRepStatus) SetLastHeight(h int) {
 }
 
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
-	return newPRepStatus(nil)
+	return NewPRepStatus(nil)
 }
 
-func newPRepStatus(owner module.Address) *PRepStatus {
+func NewPRepStatus(owner module.Address) *PRepStatus {
 	return &PRepStatus{
 		owner:     owner,
 		grade:     Candidate,

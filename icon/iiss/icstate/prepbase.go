@@ -243,7 +243,7 @@ func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
 	return &PRepBase{}
 }
 
-func newPRepBase(owner module.Address) *PRepBase {
+func NewPRepBase(owner module.Address) *PRepBase {
 	return &PRepBase{
 		owner: owner,
 	}

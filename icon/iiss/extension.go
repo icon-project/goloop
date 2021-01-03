@@ -14,6 +14,7 @@
 package iiss
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -31,7 +32,8 @@ type ExtensionSnapshotImpl struct {
 	database db.Database
 
 	// TODO move to icstate?
-	c *calculation
+	c  *calculation
+	pm *PRepManager
 
 	state  *icstate.Snapshot
 	front  *icstage.Snapshot
@@ -82,8 +84,7 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 }
 
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
-	// TODO readonly?
-	return &ExtensionStateImpl{
+	es := &ExtensionStateImpl{
 		database: s.database,
 		c:        s.c,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly),
@@ -91,6 +92,11 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		Back:     icstage.NewStateFromSnapshot(s.back),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
+
+	// TODO: Need to get totalStake from State
+	totalStake := big.NewInt(0)
+	es.pm = newPRepManager(es.State, totalStake)
+	return es
 }
 
 func (s *ExtensionSnapshotImpl) State() *icstate.Snapshot {
@@ -120,7 +126,8 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 type ExtensionStateImpl struct {
 	database db.Database
 
-	c *calculation
+	c  *calculation
+	pm *PRepManager
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -259,31 +266,42 @@ func newCalculation() *calculation {
 }
 
 func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {
-	return s.State.GetPRepsInJSON()
+	return s.pm.GetPRepsInJSON()
 }
 
 func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
-	return s.State.GetPRepInJSON(address)
+	prep := s.pm.GetPRepByOwner(address)
+	if prep == nil {
+		return nil, errors.Errorf("PRep not found: %s", address)
+	}
+	return prep.ToJSON(), nil
 }
 
 func (s *ExtensionStateImpl) GetValidators() []module.Validator {
-	return s.State.GetValidators()
+	return s.pm.GetValidators()
 }
 
 func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []string) error {
-	return s.State.RegisterPRep(owner, node, params)
+	return s.pm.RegisterPRep(owner, node, params)
 }
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
 	var err error
 	var account *icstate.Account
 
-	err = s.State.SetDelegation(from, ds)
+	account, err = s.State.GetAccount(from)
+	if err != nil {
+		return err
+	}
+	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+	account.SetDelegation(ds)
+	err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
 		return err
 	}
 
-	account, err = s.State.GetAccount(from)
 	bonds := account.Bonds()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
 	for _, d := range ds {
@@ -304,7 +322,7 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 }
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
-	err := s.State.UnregisterPRep(owner)
+	err := s.pm.UnregisterPRep(owner)
 	if err != nil {
 		return err
 	}
@@ -324,7 +342,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 }
 
 func (s *ExtensionStateImpl) SetPRep(from, node module.Address, params []string) error {
-	return s.State.SetPRep(from, node, params)
+	return s.pm.SetPRep(from, node, params)
 }
 
 func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
@@ -332,12 +350,51 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	var account *icstate.Account
 	blockHeight := cc.BlockHeight()
 
-	err = s.State.SetBond(from, blockHeight, bonds)
+	account, err = s.GetAccount(from)
 	if err != nil {
 		return err
 	}
 
-	account, err = s.State.GetAccount(from)
+	bondAmount := big.NewInt(0)
+	for _, bond := range bonds {
+		bondAmount.Add(bondAmount, bond.Amount())
+
+		prep := s.pm.GetPRepByOwner(bond.To())
+		if prep == nil {
+			return errors.Errorf("PRep not found: %v", from)
+		}
+		if !prep.BonderList().Contains(from) {
+			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
+		}
+
+		prep.SetBonded(bond.Amount())
+	}
+	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+
+	unbondingHeight := blockHeight + icstate.UnbondingPeriod
+	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, unbondingHeight)
+	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
+	votingAmount.Sub(votingAmount, account.Bond())
+	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnbondAmount(), ubDiff)
+	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
+		return errors.Errorf("Not enough voting power")
+	}
+	account.SetBonds(bonds)
+	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
+	for _, t := range tl {
+		ts, e := s.State.GetUnbondingTimer(t.Height)
+		if e != nil {
+			return errors.Errorf("Error while getting unbonding Timer")
+		} else if ts == nil {
+			ts = s.State.AddUnbondingTimerToCache(t.Height)
+		}
+		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
+			return errors.Errorf("Error while scheduling Unbonding Timer Job")
+		}
+	}
+
 	ds := account.Delegations()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
 	for _, d := range ds {
@@ -358,9 +415,33 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 }
 
 func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
-	return s.State.SetBonderList(from, bl)
+	pb := s.State.GetPRepBase(from)
+	if pb == nil {
+		return errors.Errorf("PRep not found: %v", from)
+	}
+
+	var account *icstate.Account
+	var err error
+	for _, old := range pb.BonderList() {
+		if !bl.Contains(old) {
+			account, err = s.GetAccount(old)
+			if err != nil {
+				return err
+			}
+			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
+				return errors.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d", len(account.Bonds()), len(account.Unbonds()))
+			}
+		}
+	}
+
+	pb.SetBonderList(bl)
+	return nil
 }
 
 func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{}, error) {
-	return s.State.GetBonderList(address)
+	pb := s.State.GetPRepBase(address)
+	if pb == nil {
+		return nil, errors.Errorf("PRep not found: %v", address)
+	}
+	return pb.GetBonderListInJSON(), nil
 }

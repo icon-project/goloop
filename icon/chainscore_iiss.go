@@ -136,13 +136,13 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	city string, details string, p2pEndpoint string, node module.Address) error {
 	size := 7
 	params := make([]string, size, size)
-	params[icstate.IdxName] = name
-	params[icstate.IdxCountry] = country
-	params[icstate.IdxCity] = city
-	params[icstate.IdxDetails] = details
-	params[icstate.IdxEmail] = email
-	params[icstate.IdxWebsite] = website
-	params[icstate.IdxP2pEndpoint] = p2pEndpoint
+	params[iiss.IdxName] = name
+	params[iiss.IdxCountry] = country
+	params[iiss.IdxCity] = city
+	params[iiss.IdxDetails] = details
+	params[iiss.IdxEmail] = email
+	params[iiss.IdxWebsite] = website
+	params[iiss.IdxP2pEndpoint] = p2pEndpoint
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.RegisterPRep(s.from, node, params)
@@ -185,13 +185,13 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	city string, details string, p2pEndpoint string, node module.Address) error {
 	size := 7
 	params := make([]string, size, size)
-	params[icstate.IdxName] = name
-	params[icstate.IdxCountry] = country
-	params[icstate.IdxCity] = city
-	params[icstate.IdxDetails] = details
-	params[icstate.IdxEmail] = email
-	params[icstate.IdxWebsite] = website
-	params[icstate.IdxP2pEndpoint] = p2pEndpoint
+	params[iiss.IdxName] = name
+	params[iiss.IdxCountry] = country
+	params[iiss.IdxCity] = city
+	params[iiss.IdxDetails] = details
+	params[iiss.IdxEmail] = email
+	params[iiss.IdxWebsite] = website
+	params[iiss.IdxP2pEndpoint] = p2pEndpoint
 
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},

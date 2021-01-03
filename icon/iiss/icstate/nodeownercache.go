@@ -8,6 +8,8 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var nodeOwnerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "node_owner")
+
 // TODO: Remove old nodes which is not used anymore
 type NodeOwnerCache struct {
 	dict        *containerdb.DictDB

@@ -10,6 +10,11 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var (
+	prepBaseDictPrefix   = containerdb.ToKey(containerdb.RawBuilder, "prep_base")
+	prepStatusDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "prep_status")
+)
+
 type PRepBaseCache struct {
 	bases map[string]*PRepBase
 	dict  *containerdb.DictDB

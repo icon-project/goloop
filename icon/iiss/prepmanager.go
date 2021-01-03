@@ -1,11 +1,11 @@
-package icstate
+package iiss
 
 import (
 	"bytes"
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
@@ -36,16 +36,9 @@ const (
 	idxSize = iota - 1
 )
 
-var (
-	activePRepArrayPrefix = containerdb.ToKey(containerdb.RawBuilder, "active_prep")
-	nodeOwnerDictPrefix   = containerdb.ToKey(containerdb.RawBuilder, "node_owner")
-	prepBaseDictPrefix    = containerdb.ToKey(containerdb.RawBuilder, "prep_base")
-	prepStatusDictPrefix  = containerdb.ToKey(containerdb.RawBuilder, "prep_status")
-)
-
 type PRep struct {
-	*PRepBase
-	*PRepStatus
+	*icstate.PRepBase
+	*icstate.PRepStatus
 }
 
 func (p *PRep) Owner() module.Address {
@@ -60,7 +53,7 @@ func (p *PRep) Clone() *PRep {
 	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus)
 }
 
-func newPRep(owner module.Address, base *PRepBase, status *PRepStatus) *PRep {
+func newPRep(owner module.Address, base *icstate.PRepBase, status *icstate.PRepStatus) *PRep {
 	base = base.Clone()
 	base.SetOwner(owner)
 
@@ -70,7 +63,7 @@ func newPRep(owner module.Address, base *PRepBase, status *PRepStatus) *PRep {
 	return &PRep{PRepBase: base, PRepStatus: status}
 }
 
-func setPRep(pb *PRepBase, node module.Address, params []string) error {
+func setPRep(pb *icstate.PRepBase, node module.Address, params []string) error {
 	return pb.SetPRep(
 		params[IdxName],
 		params[IdxEmail],
@@ -85,13 +78,9 @@ func setPRep(pb *PRepBase, node module.Address, params []string) error {
 
 // Manage PRepBase, PRepStatus and ActivePRep
 type PRepManager struct {
-	totalDelegated  *big.Int
-	totalStake      *big.Int
-	store           containerdb.ObjectStoreState
-	activePRepCache *ActivePRepCache
-	nodeOwnerCache  *NodeOwnerCache
-	prepBaseCache   *PRepBaseCache
-	prepStatusCache *PRepStatusCache
+	state          *icstate.State
+	totalDelegated *big.Int
+	totalStake     *big.Int
 
 	orderedPReps preps
 	prepMap      map[string]*PRep
@@ -120,11 +109,10 @@ func (p preps) Less(i, j int) bool {
 }
 
 func (pm *PRepManager) init() {
-	pm.activePRepCache.Reset()
-	size := pm.activePRepCache.Size()
+	size := pm.state.GetActivePRepSize()
 
 	for i := 0; i < size; i++ {
-		owner := pm.activePRepCache.Get(i)
+		owner := pm.state.GetActivePRep(i)
 		prep := pm.getPRep(owner)
 		pm.Add(prep)
 	}
@@ -132,21 +120,13 @@ func (pm *PRepManager) init() {
 	pm.sort()
 }
 
-func (pm *PRepManager) getPRepBase(owner module.Address) *PRepBase {
-	return pm.prepBaseCache.Get(owner)
-}
-
-func (pm *PRepManager) getPRepStatus(owner module.Address) *PRepStatus {
-	return pm.prepStatusCache.Get(owner)
-}
-
 func (pm *PRepManager) getPRep(owner module.Address) *PRep {
-	base := pm.getPRepBase(owner)
+	base := pm.state.GetPRepBase(owner)
 	if base == nil {
 		return nil
 	}
 
-	status := pm.getPRepStatus(owner)
+	status := pm.state.GetPRepStatus(owner)
 	return newPRep(owner, base, status)
 }
 
@@ -158,7 +138,7 @@ func (pm *PRepManager) Add(p *PRep) {
 
 // sort preps in descending order by bonded delegation
 func (pm *PRepManager) sort() {
-	sort.Sort(sort.Reverse(preps(pm.orderedPReps)))
+	sort.Sort(sort.Reverse(pm.orderedPReps))
 }
 
 func (pm *PRepManager) Size() int {
@@ -170,7 +150,7 @@ func (pm *PRepManager) GetPRepByOwner(owner module.Address) *PRep {
 }
 
 func (pm *PRepManager) GetPRepByNode(node module.Address) *PRep {
-	owner := pm.nodeOwnerCache.Get(node)
+	owner := pm.state.GetOwnerByNode(node)
 	if owner == nil {
 		owner = node
 	}
@@ -224,25 +204,8 @@ func (pm *PRepManager) GetPRepsInJSON() map[string]interface{} {
 	return ret
 }
 
-func (pm *PRepManager) Reset() error {
-	pm.activePRepCache.Reset()
-	pm.prepBaseCache.Reset()
-	pm.prepStatusCache.Reset()
-	pm.nodeOwnerCache.Reset()
-	return nil
-}
-
-// It is called on ExtensionState.GetSnapshot()
-func (pm *PRepManager) GetSnapshot() error {
-	pm.activePRepCache.GetSnapshot()
-	pm.prepBaseCache.GetSnapshot()
-	pm.prepStatusCache.GetSnapshot()
-	pm.nodeOwnerCache.GetSnapshot()
-	return nil
-}
-
 func (pm *PRepManager) contains(owner module.Address) bool {
-	pb := pm.getPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner)
 	return !pb.IsEmpty()
 }
 
@@ -251,23 +214,23 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
 
-	pb := newPRepBase(owner)
+	pb := icstate.NewPRepBase(owner)
 	err := setPRep(pb, node, params)
 	if err != nil {
 		return err
 	}
 
-	ps := pm.prepStatusCache.Get(owner)
+	ps := pm.state.GetPRepStatus(owner)
 	if ps == nil {
-		ps = newPRepStatus(owner)
-		pm.prepStatusCache.Add(ps)
+		ps = icstate.NewPRepStatus(owner)
+		pm.state.AddPRepStatus(ps)
 	} else {
 		// NotReady -> Active
-		ps.SetStatus(Active)
+		ps.SetStatus(icstate.Active)
 	}
 
-	pm.prepBaseCache.Add(pb)
-	pm.activePRepCache.Add(owner)
+	pm.state.AddPRepBase(pb)
+	pm.state.AddActivePRep(owner)
 	if err = pm.addNodeToOwner(node, owner); err != nil {
 		return err
 	}
@@ -276,7 +239,7 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 }
 
 func (pm *PRepManager) SetPRep(owner, node module.Address, params []string) error {
-	pb := pm.getPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
@@ -290,15 +253,15 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
-	err = pm.prepBaseCache.Remove(owner)
+	err = pm.state.RemovePRepBase(owner)
 	if err != nil {
 		return err
 	}
-	err = pm.prepStatusCache.Remove(owner)
+	err = pm.state.RemovePRepStatus(owner)
 	if err != nil {
 		return err
 	}
-	pm.totalDelegated.Sub(pm.totalDelegated, p.delegated)
+	pm.totalDelegated.Sub(pm.totalDelegated, p.Delegated())
 	return nil
 }
 
@@ -312,10 +275,10 @@ func (pm *PRepManager) addNodeToOwner(node, owner module.Address) error {
 	if pm.contains(node) {
 		return errors.Errorf("Node must not be owner of other")
 	}
-	return pm.nodeOwnerCache.Add(node, owner)
+	return pm.state.AddNodeToOwner(node, owner)
 }
 
-func (pm *PRepManager) ChangeDelegation(od, nd Delegations) error {
+func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	delta := make(map[string]*big.Int)
 
 	for _, d := range od {
@@ -330,8 +293,8 @@ func (pm *PRepManager) ChangeDelegation(od, nd Delegations) error {
 		delta[key].Add(delta[key], d.Value.Value())
 	}
 
-	notReadyDelegated := big.NewInt(0)
-	var newPs *PRepStatus
+	delegatedToNotReadyNode := big.NewInt(0)
+	var newPs *icstate.PRepStatus
 	for k, v := range delta {
 		owner, err := common.NewAddress([]byte(k))
 		if err != nil {
@@ -339,26 +302,26 @@ func (pm *PRepManager) ChangeDelegation(od, nd Delegations) error {
 		}
 
 		key := icutils.ToKey(owner)
-		if delta[key].Cmp(BigIntZero) != 0 {
-			ps := pm.prepStatusCache.Get(owner)
+		if delta[key].Cmp(icstate.BigIntZero) != 0 {
+			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to set delegation to a PRep which has not been registered
-				newPs = newPRepStatus(owner)
-				newPs.SetStatus(NotReady)
-				notReadyDelegated.Add(notReadyDelegated, delta[key])
+				newPs = icstate.NewPRepStatus(owner)
+				newPs.SetStatus(icstate.NotReady)
+				delegatedToNotReadyNode.Add(delegatedToNotReadyNode, delta[key])
 			} else {
 				newPs = ps.Clone()
 			}
 
-			newPs.delegated.Add(newPs.delegated, v)
+			newPs.Delegated().Add(newPs.Delegated(), v)
 
-			if newPs.Status() == NotReady && newPs.delegated.Cmp(BigIntZero) == 0 {
-				err = pm.prepStatusCache.Remove(owner)
+			if newPs.Status() == icstate.NotReady && newPs.Delegated().Cmp(icstate.BigIntZero) == 0 {
+				err = pm.state.RemovePRepStatus(owner)
 				if err != nil {
 					panic(errors.Errorf("PRepStatusCache is broken: %s", owner))
 				}
 			} else {
-				pm.prepStatusCache.Add(newPs)
+				pm.state.AddPRepStatus(newPs)
 			}
 		}
 	}
@@ -367,18 +330,15 @@ func (pm *PRepManager) ChangeDelegation(od, nd Delegations) error {
 	totalDelegated.Add(totalDelegated, nd.GetDelegationAmount())
 	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
 	// Ignore the delegation to NotReady PReps
-	totalDelegated.Sub(totalDelegated, notReadyDelegated)
+	totalDelegated.Sub(totalDelegated, delegatedToNotReadyNode)
 	return nil
 }
 
-func newPRepManager(store containerdb.ObjectStoreState, totalStake *big.Int) *PRepManager {
+func newPRepManager(state *icstate.State, totalStake *big.Int) *PRepManager {
 	pm := &PRepManager{
-		totalDelegated:  big.NewInt(0),
-		totalStake:      totalStake,
-		activePRepCache: newActivePRepCache(store),
-		nodeOwnerCache:  newNodeOwnerCache(store),
-		prepBaseCache:   newPRepBaseCache(store),
-		prepStatusCache: newPRepStatusCache(store),
+		state:          state,
+		totalDelegated: big.NewInt(0),
+		totalStake:     totalStake,
 
 		prepMap: make(map[string]*PRep),
 	}
