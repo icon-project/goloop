@@ -17,9 +17,14 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
+)
+
+var (
+	IssueKey = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
 )
 
 type State struct {
@@ -147,4 +152,24 @@ func (s *State) AddNodeToOwner(node, owner module.Address) error {
 
 func (s *State) GetOwnerByNode(node module.Address) module.Address {
 	return s.nodeOwnerCache.Get(node)
+}
+
+func (s *State) SetIssue(issue *Issue) error {
+	_, err := s.store.Set(IssueKey, icobject.New(TypeIssue, issue))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *State) GetIssue() (*Issue, error) {
+	obj, err := s.store.Get(IssueKey)
+	if err != nil {
+		return nil, err
+	}
+	issue := ToIssue(obj)
+	if issue == nil {
+		issue = NewIssue()
+	}
+	return issue, nil
 }

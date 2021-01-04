@@ -20,8 +20,10 @@ import (
 )
 
 const (
-	VarIRep = "irep"
-	VarRRep = "rrep"
+	VarIRep          = "irep"
+	VarRRep          = "rrep"
+	VarMainPRepCount = "main_prep_count"
+	VarSubPRepCount  = "sub_prep_count"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -56,4 +58,20 @@ func GetRRep(s *State) *big.Int {
 
 func SetRRep(s *State, value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
+}
+
+func GetMainPRepCount(s *State) int64 {
+	return getValue(s.store, VarMainPRepCount).Int64()
+}
+
+func SetMainPRepCount(s *State, value int64) error {
+	return setValue(s.store, VarMainPRepCount, value)
+}
+
+func GetSubPRepCount(s *State) int64 {
+	return getValue(s.store, VarSubPRepCount).Int64()
+}
+
+func SetSubPRepCount(s *State, value int64) error {
+	return setValue(s.store, VarSubPRepCount, value)
 }

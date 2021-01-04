@@ -64,7 +64,19 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 	// TODO calculate issued i-score and amount balance. No changes on world context.
 	t := common.HexInt64{Value: time.Now().UnixNano() / int64(time.Microsecond)}
 	v := common.HexUint16{Value: module.TransactionVersion3}
-	mtx := map[string]interface{}{"timestamp": t, "version": v, "dataType": "base"}
+	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	prep, issue := iiss.GetIssueData(es)
+	data := make(map[string]interface{})
+	if prep != nil && issue != nil {
+		data["prep"] = prep
+		data["result"] = issue
+	}
+	mtx := map[string]interface{}{
+		"timestamp": t,
+		"version":   v,
+		"dataType":  "base",
+		"data": data,
+	}
 	bs, err := json.Marshal(mtx)
 	if err != nil {
 		return nil, err
@@ -85,6 +97,14 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
 	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
+		return err
+	}
+	issue, err := es.State.GetIssue()
+	if err != nil {
+		return err
+	}
+	issue.PrevBlockFee.Set(er.TotalFee())
+	if err = es.State.SetIssue(issue); err != nil {
 		return err
 	}
 	return nil

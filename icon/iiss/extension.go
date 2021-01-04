@@ -206,7 +206,6 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 		return err
 	}
 
-	// FIXME data for test
 	if _, err := s.Front.AddEventPeriod(
 		0,
 		icstate.GetIRep(s.State),
@@ -214,7 +213,6 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 	); err != nil {
 		return err
 	}
-	// FIXME data for test
 
 	s.Back = s.Front
 	s.Front = icstage.NewState(s.database)
@@ -222,6 +220,8 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 		s.Reward = calculator.result.NewState()
 		s.c.start(calculator.stats.totalReward(), blockHeight)
 	}
+
+	RegulateIssueInfo(s, s.c.rewardAmount)
 
 	return nil
 }
@@ -279,6 +279,10 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]i
 
 func (s *ExtensionStateImpl) GetValidators() []module.Validator {
 	return s.pm.GetValidators()
+}
+
+func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
+	return s.pm.TotalDelegated()
 }
 
 func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []string) error {

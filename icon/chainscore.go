@@ -364,6 +364,12 @@ func (s *chainScore) Install(param []byte) error {
 	); err != nil {
 		return err
 	}
+	if err := icstate.SetMainPRepCount(es.State, 22); err != nil {
+		return err
+	}
+	if err := icstate.SetSubPRepCount(es.State, 78); err != nil {
+		return err
+	}
 	return nil
 }
 

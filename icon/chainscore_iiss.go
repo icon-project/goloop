@@ -272,7 +272,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		return nil
 	}
 
-	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRation, new(big.Int))
+	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRatio, new(big.Int))
 	claim := new(big.Int).Sub(iScore.Value, remains)
 
 	// increase account icx balance

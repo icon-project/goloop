@@ -47,10 +47,10 @@ const (
 )
 
 var (
-	BigIntIScoreICXRation = big.NewInt(int64(IScoreICXRatio))
-	bigIntBeta1Divider    = big.NewInt(int64(MonthBlock * 2 * 2))
-	bigIntBeta2Divider    = big.NewInt(int64(MonthBlock * 2))
-	bigIntBeta3Divider    = big.NewInt(int64(YearBlock / IScoreICXRatio))
+	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
+	bigIntBeta1Divider   = big.NewInt(int64(MonthBlock * 2 * 2))
+	bigIntBeta2Divider   = big.NewInt(int64(MonthBlock * 2))
+	bigIntBeta3Divider   = big.NewInt(int64(YearBlock / IScoreICXRatio))
 )
 
 type Calculator struct {

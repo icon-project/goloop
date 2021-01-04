@@ -65,6 +65,7 @@ func (s *State) GetIScoreClaim(addr module.Address) (*IScoreClaim, error) {
 	}
 	return ToIScoreClaim(obj), nil
 }
+
 func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	key := IScoreClaimKey.Append(addr).Build()
 	obj, err := s.store.Get(key)
