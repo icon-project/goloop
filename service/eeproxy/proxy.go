@@ -475,7 +475,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 
 		var status error
 		if m.Status != errors.Success {
-			status = m.Status.New("")
+			status = m.Status.New(module.Status(m.Status).String())
 		}
 		frame.ctx.OnAPI(status, m.Info)
 		return p.tryToBeReady()
