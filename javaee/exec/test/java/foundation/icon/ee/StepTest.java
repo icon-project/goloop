@@ -48,7 +48,7 @@ public class StepTest extends SimpleTest {
     public void setUp() {
         super.setUp();
         sm.enableClassMetering(false);
-        score = sm.deploy(Score.class);
+        score = sm.mustDeploy(Score.class);
         stepCost = sm.getStepCost();
         var storageKey = new byte[]{2, (byte)0x85, 'v', 'a', 'r', 'D', 'B'};
         // call, read OG, create storageKey object

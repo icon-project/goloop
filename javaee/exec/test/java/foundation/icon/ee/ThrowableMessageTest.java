@@ -101,7 +101,7 @@ public class ThrowableMessageTest extends SimpleTest {
     @Test
     public void test() {
         createAndAcceptNewJAVAEE();
-        var score = sm.deploy(new Class[]{Score.class, MyException.class});
+        var score = sm.mustDeploy(new Class[]{Score.class, MyException.class});
 
         invokeAndMatch(score, "setFromSystem", new Matcher(Map.of(
                 "s.java.lang.ArrayIndexOutOfBoundsException: : Index 10 out of bounds for length 0", true,

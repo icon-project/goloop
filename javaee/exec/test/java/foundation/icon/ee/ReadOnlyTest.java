@@ -98,7 +98,7 @@ public class ReadOnlyTest extends SimpleTest {
     class Direct {
         @BeforeEach
         void setUp() {
-            score = sm.deploy(Score.class);
+            score = sm.mustDeploy(Score.class);
         }
 
         @Test
@@ -140,8 +140,8 @@ public class ReadOnlyTest extends SimpleTest {
     class Indirect {
         @BeforeEach
         void setUp() {
-            var real = sm.deploy(Score.class);
-            score = sm.deploy(ProxyScore.class, real.getAddress());
+            var real = sm.mustDeploy(Score.class);
+            score = sm.mustDeploy(ProxyScore.class, real.getAddress());
         }
 
         @Test

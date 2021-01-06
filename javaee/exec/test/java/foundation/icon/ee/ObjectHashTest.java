@@ -103,8 +103,8 @@ public class ObjectHashTest extends SimpleTest {
     @BeforeEach
     public void setUp() {
         super.setUp();
-        score = sm.deploy(A.class);
-        var score2 = sm.deploy(B.class, score.getAddress());
+        score = sm.mustDeploy(A.class);
+        var score2 = sm.mustDeploy(B.class, score.getAddress());
         score.invoke("setNext", score2.getAddress());
     }
 

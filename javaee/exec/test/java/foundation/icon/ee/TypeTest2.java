@@ -874,7 +874,7 @@ public class TypeTest2 extends SimpleTest {
 
     @Test
     public void testParamAndReturn() {
-        var app = sm.deploy(new Class<?>[]{
+        var app = sm.mustDeploy(new Class<?>[]{
                 Score.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         });
@@ -883,11 +883,11 @@ public class TypeTest2 extends SimpleTest {
 
     @Test
     public void testInterncall() {
-        var app = sm.deploy(new Class<?>[]{
+        var app = sm.mustDeploy(new Class<?>[]{
                 Score.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         });
-        var caller = sm.deploy(new Class<?>[]{
+        var caller = sm.mustDeploy(new Class<?>[]{
                 CallerScore.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         }, app.getAddress());

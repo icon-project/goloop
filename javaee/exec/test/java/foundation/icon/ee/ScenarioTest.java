@@ -162,9 +162,9 @@ public class ScenarioTest extends GoldenTest {
 
     @Test
     public void testBasic() {
-        var c1 = sm.deploy(Score.class);
-        var c2 = sm.deploy(Score.class);
-        var c3 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
+        var c2 = sm.mustDeploy(Score.class);
+        var c3 = sm.mustDeploy(Score.class);
         var code = new Compiler()
                 .call(c2)
                 .ret()
@@ -178,9 +178,9 @@ public class ScenarioTest extends GoldenTest {
 
     @Test
     public void testIndirectRecursion() {
-        var c1 = sm.deploy(Score.class);
-        var c2 = sm.deploy(Score.class);
-        var c3 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
+        var c2 = sm.mustDeploy(Score.class);
+        var c3 = sm.mustDeploy(Score.class);
         c1.invoke("run", (Object)new Compiler()
                 .call(c2)
                     .setSVar("")
@@ -221,7 +221,7 @@ public class ScenarioTest extends GoldenTest {
 
     @Test
     public void testDirectRecursion() {
-        var c1 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
         c1.invoke("run", (Object)new Compiler()
                 .setSVar("")
                 .call(c1)
@@ -269,7 +269,7 @@ public class ScenarioTest extends GoldenTest {
 
     @Test
     public void testDirectRecursion2() {
-        var c1 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
         c1.invoke("run", (Object)new Compiler()
                 .setSVar("1")
                 .call(c1)
@@ -293,8 +293,8 @@ public class ScenarioTest extends GoldenTest {
 
     @Test
     public void testIndirectRecursion2() {
-        var c1 = sm.deploy(Score.class);
-        var c2 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
+        var c2 = sm.mustDeploy(Score.class);
         c1.invoke("run", (Object)new Compiler()
                 .setSVar("1")
                 .call(c2)
@@ -319,9 +319,9 @@ public class ScenarioTest extends GoldenTest {
     @Test
     public void testIndirectRecursionWithMultiEE() {
         createAndAcceptNewJAVAEE();
-        var c1 = sm.deploy(Score.class);
+        var c1 = sm.mustDeploy(Score.class);
         sm.setIndexer((addr) -> 1);
-        var c2 = sm.deploy(Score.class);
+        var c2 = sm.mustDeploy(Score.class);
         sm.setIndexer((addr) -> {
             if (addr.equals(c1.getAddress())) {
                 return 0;

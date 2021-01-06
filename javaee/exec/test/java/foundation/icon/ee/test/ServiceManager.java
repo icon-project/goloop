@@ -119,7 +119,7 @@ public class ServiceManager implements Agent {
         return addr;
     }
 
-    public Contract deploy(Class<?> main, Object ... params) {
+    public Contract mustDeploy(Class<?> main, Object ... params) {
         ++exid;
         eid = 0;
         byte[] jar = makeJar(main);
@@ -130,7 +130,7 @@ public class ServiceManager implements Agent {
         return origin;
     }
 
-    public Contract deploy(Class<?>[] all, Object ... params) {
+    public Contract mustDeploy(Class<?>[] all, Object ... params) {
         ++exid;
         eid = 0;
         byte[] jar = makeJar(all[0].getName(), all);

@@ -8,7 +8,7 @@ public class CodecTest2 extends SimpleTest {
     public void testMultipleDeploy() {
         final int N = 10;
         for (int i=0; i<N; i++) {
-            var score2 = sm.deploy(new Class<?>[]{CodecTest.Score.class, CodecTest.User.class});
+            var score2 = sm.mustDeploy(new Class<?>[]{CodecTest.Score.class, CodecTest.User.class});
             score2.invoke("run");
         }
     }

@@ -67,7 +67,7 @@ public class TypeTest extends GoldenTest {
 
     @Test
     public void testTypes() {
-        var app = sm.deploy(Score.class);
+        var app = sm.mustDeploy(Score.class);
         app.invoke("mbyte", 0);
         app.invoke("mshort", 0);
         app.invoke("mint", 0);

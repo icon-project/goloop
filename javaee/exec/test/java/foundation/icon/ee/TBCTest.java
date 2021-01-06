@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import test.TBCInterpreter;
 
 import java.math.BigInteger;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -28,9 +27,9 @@ public class TBCTest extends SimpleTest {
     @Test
     public void test() {
         createAndAcceptNewJAVAEE();
-        var c1 = sm.deploy(TBCInterpreter.class, "c1");
+        var c1 = sm.mustDeploy(TBCInterpreter.class, "c1");
         sm.setIndexer((addr) -> 1);
-        var c2 = sm.deploy(TBCInterpreter.class, "c2");
+        var c2 = sm.mustDeploy(TBCInterpreter.class, "c2");
         sm.setIndexer((addr) -> {
             if (addr.equals(c1.getAddress())) {
                 return 0;

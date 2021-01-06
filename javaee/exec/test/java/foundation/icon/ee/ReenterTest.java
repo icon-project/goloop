@@ -28,7 +28,7 @@ public class ReenterTest extends GoldenTest {
 
     @Test
     public void test() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         score.invoke("reenter");
     }
 }

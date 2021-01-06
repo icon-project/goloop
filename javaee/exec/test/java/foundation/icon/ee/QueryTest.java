@@ -63,7 +63,7 @@ public class QueryTest extends GoldenTest {
 
     @Test
     void testSetDB() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         score.query("setDictDB");
         score.query("setBranchDB");
         score.query("setArrayDB");
