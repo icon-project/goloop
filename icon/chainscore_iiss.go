@@ -96,6 +96,13 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		diff := new(big.Int).Sub(totalStake, prevTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
+	ts := icstate.GetTotalStake(es.State)
+	if ts == nil {
+		ts = new(big.Int)
+	}
+	if err := icstate.SetTotalStake(es.State, new(big.Int).Add(ts, stakeInc)); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -177,6 +184,10 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso := es.GetPRepsInJSON()
+	ts := icstate.GetTotalStake(es.State)
+	tsh := new(common.HexInt)
+	tsh.Set(ts)
+	jso["totalStake"] = tsh.String()
 	jso["blockHeight"] = s.cc.BlockHeight()
 	return jso, nil
 }

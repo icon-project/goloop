@@ -24,6 +24,7 @@ const (
 	VarRRep          = "rrep"
 	VarMainPRepCount = "main_prep_count"
 	VarSubPRepCount  = "sub_prep_count"
+	VarTotalStake    = "total_stake"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -78,4 +79,12 @@ func SetSubPRepCount(s *State, value int64) error {
 
 func GetPRepCount(s *State) int64 {
 	return GetMainPRepCount(s) + GetSubPRepCount(s)
+}
+
+func GetTotalStake(s *State) *big.Int {
+	return getValue(s.store, VarTotalStake).BigInt()
+}
+
+func SetTotalStake(s *State, value *big.Int) error {
+	return setValue(s.store, VarTotalStake, value)
 }
