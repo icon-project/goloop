@@ -210,6 +210,8 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 		0,
 		icstate.GetIRep(s.State),
 		icstate.GetRRep(s.State),
+		icstate.GetMainPRepCount(s.State),
+		icstate.GetPRepCount(s.State),
 	); err != nil {
 		return err
 	}

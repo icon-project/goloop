@@ -118,7 +118,7 @@ func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (
 	return index, s.setEventSize(size)
 }
 
-func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int) (int64, error) {
+func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
 		return 0, err
@@ -128,6 +128,8 @@ func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int) (int64,
 	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
 	obj.Irep = irep
 	obj.Rrep = rrep
+	obj.MainPRepCount = new(big.Int).SetInt64(mainPRepCount)
+	obj.PRepCount = new(big.Int).SetInt64(pRepCount)
 	_, err = s.store.Set(key, icobject.New(TypeEventPeriod, obj))
 	if err != nil {
 		return 0, err

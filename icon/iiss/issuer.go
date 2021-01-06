@@ -74,15 +74,17 @@ func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
 	es.State.SetIssue(issue)
 }
 
+// regulateIssueInfo regulate icx issue amount with previous period data.
 func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
 	icx, remains := new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
-	overIssued := new(big.Int).Sub(issue.TotalReward, icx)
+	overIssued := new(big.Int).Sub(issue.PrevTotalReward, icx)
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
 	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
 	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
 		issue.OverIssued.Sub(issue.OverIssued, intconv.BigIntOne)
 		issue.IScoreRemains.Sub(issue.IScoreRemains, BigIntIScoreICXRatio)
 	}
+	issue.PrevTotalReward.Set(issue.TotalReward)
 	issue.TotalReward.SetInt64(0)
 
 	return issue
@@ -93,15 +95,29 @@ func calcRewardPerBlock(
 	irep *big.Int,
 	rrep *big.Int,
 	mainPRepCount *big.Int,
+	pRepCount *big.Int,
 	totalDelegated *big.Int,
 ) *big.Int {
-	beta12 := new(big.Int).Mul(irep, mainPRepCount)
-	beta12.Div(beta12, new(big.Int).SetInt64(MonthBlock))
-	beta12.Div(beta12, BigIntIScoreICXRatio)
-	beta3 := new(big.Int).Mul(rrep, totalDelegated)
-	beta3.Div(beta3, new(big.Int).SetInt64(YearBlock))
-	beta3.Div(beta3, BigIntIScoreICXRatio)
-	reward := new(big.Int).Add(beta12, beta3)
+	beta1 := new(big.Int)
+	beta2 := new(big.Int)
+	beta3 := new(big.Int)
+
+	beta1.Mul(irep, mainPRepCount)
+	beta1.Div(beta1, new(big.Int).SetInt64(MonthBlock))
+	beta1.Div(beta1, BigIntTwo)
+
+	if totalDelegated.Sign() != 0 {
+		beta2.Mul(irep, pRepCount)
+		beta2.Div(beta2, new(big.Int).SetInt64(MonthBlock))
+		beta2.Div(beta2, BigIntTwo)
+
+		beta3.Mul(rrep, totalDelegated)
+		beta3.Div(beta3, new(big.Int).SetInt64(YearBlock))
+	}
+
+	reward := new(big.Int).Add(beta1, beta2)
+	reward.Add(reward, beta3)
+
 	return reward
 }
 
@@ -119,14 +135,22 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, is
 
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
-	if es.c.rewardAmount == nil || es.c.rewardAmount.Sign() == 0 {
-		return nil, nil
-	}
 	irep := icstate.GetIRep(es.State)
 	rrep := icstate.GetRRep(es.State)
-	pRepCount := icstate.GetMainPRepCount(es.State)
+	mainPRepCount := icstate.GetMainPRepCount(es.State)
+	pRepCount := icstate.GetPRepCount(es.State)
 	totalDelegated := es.GetTotalDelegated()
-	reward := calcRewardPerBlock(irep, rrep, new(big.Int).SetInt64(pRepCount), totalDelegated)
+	// TODO check condition with API from Term
+	//if !isDecentralized {
+	//	irep.SetInt64(0)
+	//}
+	reward := calcRewardPerBlock(
+		irep,
+		rrep,
+		new(big.Int).SetInt64(mainPRepCount),
+		new(big.Int).SetInt64(pRepCount),
+		totalDelegated,
+	)
 	prep := &IssuePRepJSON{
 		IRep:            bigInt2HexInt(irep),
 		RRep:            bigInt2HexInt(rrep),

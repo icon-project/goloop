@@ -180,14 +180,14 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	}
 
 	c := MakeCalculator(database, s.GetSnapshot())
-	irep := big.NewInt(int64(YearBlock * IScoreICXRatio))
-	rewardGenerate := new(big.Int).Div(irep, bigIntBeta1Divider).Int64()
-	rewardValidate := new(big.Int).Div(irep, bigIntBeta1Divider).Int64()
+	varForBeta1 := big.NewInt(int64(YearBlock * IScoreICXRatio))
+	rewardGenerate := varForBeta1.Int64()
+	rewardValidate := varForBeta1.Int64()
 	vs, err := c.loadValidators()
 	assert.NoError(t, err)
 
 	for i, _:= range datas {
-		err = c.processBlockProduce(irep, i, vs)
+		err = c.processBlockProduce(varForBeta1, i, vs)
 		assert.NoError(t, err)
 	}
 
@@ -313,7 +313,7 @@ func TestDelegatedData_compare(t *testing.T) {
 }
 
 func TestDelegated_setEnable(t *testing.T) {
-	d := newDelegated()
+	d := newDelegated(100)
 	for i := int64(1); i < 6; i += 1 {
 		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newDelegatedDataForTest(true, i, i, i)
@@ -339,7 +339,7 @@ func TestDelegated_setEnable(t *testing.T) {
 }
 
 func TestDelegated_updateCurrent(t *testing.T) {
-	d := newDelegated()
+	d := newDelegated(100)
 	ds := make([]*icstate.Delegation, 0)
 	for i := int64(1); i < 6; i += 1 {
 		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
@@ -374,7 +374,7 @@ func TestDelegated_updateCurrent(t *testing.T) {
 }
 
 func TestDelegated_updateSnapshot(t *testing.T) {
-	d := newDelegated()
+	d := newDelegated(100)
 	for i := int64(1); i < 6; i += 1 {
 		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newDelegatedDataForTest(true, i*2, i, i)
@@ -389,10 +389,10 @@ func TestDelegated_updateSnapshot(t *testing.T) {
 }
 
 func TestDelegated_updateTotal(t *testing.T) {
-	d := newDelegated()
+	d := newDelegated(100)
 	total := int64(0)
 	more := int64(10)
-	maxIndex := int64(d.maxRankForReward()) + more
+	maxIndex := int64(d.maxRankForReward) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newDelegatedDataForTest(true, i, i, i)
@@ -411,10 +411,10 @@ func TestDelegated_updateTotal(t *testing.T) {
 }
 
 func TestDelegated_calculateReward(t *testing.T) {
-	d := newDelegated()
+	d := newDelegated(100)
 	total := int64(0)
 	more := int64(10)
-	maxIndex := int64(d.maxRankForReward()) + more
+	maxIndex := int64(d.maxRankForReward) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newDelegatedDataForTest(true, i, i, 0)
@@ -434,7 +434,7 @@ func TestDelegated_calculateReward(t *testing.T) {
 
 	for i, addr := range d.rank {
 		expect := big.NewInt(maxIndex - int64(i))
-		if i >= d.maxRankForReward() {
+		if i >= d.maxRankForReward {
 			expect.SetInt64(0)
 		} else {
 			expect.Mul(expect, irep)

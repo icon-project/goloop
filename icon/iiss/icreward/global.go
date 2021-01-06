@@ -25,8 +25,10 @@ import (
 
 type Global struct {
 	icobject.NoDatabase
-	Irep           *big.Int
-	Rrep           *big.Int
+	Irep          *big.Int
+	Rrep          *big.Int
+	MainPRepCount *big.Int
+	PRepCount     *big.Int
 }
 
 func (g *Global) Version() int {
@@ -34,17 +36,20 @@ func (g *Global) Version() int {
 }
 
 func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&g.Irep, &g.Rrep)
+	_, err := decoder.DecodeMulti(&g.Irep, &g.Rrep, &g.MainPRepCount, &g.PRepCount)
 	return err
 }
 
 func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(g.Irep, g.Rrep)
+	return encoder.EncodeMulti(g.Irep, g.Rrep, g.MainPRepCount, g.PRepCount)
 }
 
 func (g *Global) Equal(o icobject.Impl) bool {
 	if g2, ok := o.(*Global); ok {
-		return g.Irep.Cmp(g2.Irep) == 0 && g2.Rrep.Cmp(g2.Rrep) == 0
+		return g.Irep.Cmp(g2.Irep) == 0 &&
+			g2.Rrep.Cmp(g2.Rrep) == 0 &&
+			g2.MainPRepCount.Cmp(g2.MainPRepCount) == 0 &&
+			g2.PRepCount.Cmp(g2.PRepCount) == 0
 	} else {
 		return false
 	}
@@ -53,6 +58,8 @@ func (g *Global) Equal(o icobject.Impl) bool {
 func (g *Global) Clear() {
 	g.Irep = new(big.Int)
 	g.Rrep = new(big.Int)
+	g.MainPRepCount = new(big.Int)
+	g.PRepCount = new(big.Int)
 }
 
 func (g *Global) IsEmpty() bool {
@@ -61,5 +68,14 @@ func (g *Global) IsEmpty() bool {
 }
 
 func newGlobal(tag icobject.Tag) *Global {
-	return new(Global)
+	return NewGlobal()
+}
+
+func NewGlobal() *Global {
+	return &Global{
+		Irep:          new(big.Int),
+		Rrep:          new(big.Int),
+		MainPRepCount: new(big.Int),
+		PRepCount:     new(big.Int),
+	}
 }
