@@ -64,8 +64,9 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 	assert.Equal(t, 0, result1.Issue.Cmp(result2.Issue.Value()))
 }
 
-func setIssue(issue *icstate.Issue, totalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
+func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
 	issue.TotalReward.SetInt64(totalIssued)
+	issue.PrevTotalReward.SetInt64(prevTotalIssued)
 	issue.OverIssued.SetInt64(overIssued)
 	issue.IScoreRemains.SetInt64(iScoreRemains)
 	issue.PrevBlockFee.SetInt64(prevBlockFee)
@@ -73,10 +74,11 @@ func setIssue(issue *icstate.Issue, totalIssued int64, overIssued int64, iScoreR
 
 func TestIssuer_regulateIssueInfo(t *testing.T) {
 	type values struct {
-		totalIssued   int64
-		overIssued    int64
-		iScoreRemains int64
-		prevBlockFee  int64
+		prevtotalIssued int64
+		totalIssued     int64
+		overIssued      int64
+		iScoreRemains   int64
+		prevBlockFee    int64
 	}
 
 	tests := []struct {
@@ -88,41 +90,41 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 		{
 			"Zero iScore reward",
 			values{
-				100, 0, 0, 0,
+				0, 100, 0, 0, 0,
 			},
 			0,
 			values{
-				0, 100, 0, 0,
+				100, 0, 0, 0, 0,
 			},
 		},
 		{
 			"No overIssue",
 			values{
-				100, 0, 100, 0,
+				100, 200, 0, 100, 0,
 			},
 			100 * IScoreICXRatio,
 			values{
-				0, 0, 100, 0,
+				200, 0, 0, 100, 0,
 			},
 		},
 		{
 			"Positive overIssue",
 			values{
-				100, 10, 1, 0,
+				100, 200, 10, 1, 0,
 			},
 			90*IScoreICXRatio + 123,
 			values{
-				0, 20, 124, 0,
+				200, 0, 20, 124, 0,
 			},
 		},
 		{
 			"Negative overIssue",
 			values{
-				100, 10, 1, 0,
+				100, 200, 10, 1, 0,
 			},
 			200*IScoreICXRatio + 123,
 			values{
-				0, -90, 124, 0,
+				200, 0, -90,  124, 0,
 			},
 		},
 	}
@@ -132,10 +134,11 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
+			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
 			regulateIssueInfo(issue, new(big.Int).SetInt64(tt.iScore))
 
 			assert.Equal(t, out.totalIssued, issue.TotalReward.Int64())
+			assert.Equal(t, out.prevtotalIssued, issue.PrevTotalReward.Int64())
 			assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
 			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
 			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
@@ -148,6 +151,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		irep           int64
 		rrep           int64
 		mainPRepCount  int64
+		pRepCount  int64
 		totalDelegated int64
 	}
 
@@ -159,25 +163,27 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"No reward",
 			values{
-				0, 0, 0, 0,
+				0, 0, 0, 0, 0,
 			},
 			0,
 		},
 		{
 			"Prevote - beta3 only",
 			values{
-				100 * IScoreICXRatio * MonthBlock,
+				100 * MonthBlock,
 				10,
 				0,
-				100 * IScoreICXRatio * YearBlock,
+				0,
+				100 * YearBlock,
 			},
 			10 * 100,
 		},
 		{
 			"Prevote - too small delegation",
 			values{
-				100 * IScoreICXRatio * MonthBlock,
+				100 * MonthBlock,
 				10,
+				0,
 				0,
 				100,
 			},
@@ -186,12 +192,13 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"Decentralized",
 			values{
-				100 * IScoreICXRatio * MonthBlock,
+				100 * MonthBlock,
 				10,
 				22,
-				100 * IScoreICXRatio * YearBlock,
+				100,
+				100 * YearBlock,
 			},
-			100*22 + 10*100,
+			100*22/2 + 100*100/2 + 10*100,
 		},
 	}
 
@@ -202,6 +209,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 				big.NewInt(in.irep),
 				big.NewInt(in.rrep),
 				big.NewInt(in.mainPRepCount),
+				big.NewInt(in.pRepCount),
 				big.NewInt(in.totalDelegated),
 			)
 
@@ -212,10 +220,11 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 
 func TestIssuer_calcIssueAmount(t *testing.T) {
 	type values struct {
-		totalIssued   int64
-		overIssued    int64
-		iScoreRemains int64
-		prevBlockFee  int64
+		prevTotalIssued int64
+		totalIssued     int64
+		overIssued      int64
+		iScoreRemains   int64
+		prevBlockFee    int64
 	}
 	type wants struct {
 		overIssued int64
@@ -231,7 +240,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"First",
 			values{
-				0, 0, 0, 0,
+				0, 0, 0, 0, 0,
 			},
 			100,
 			wants{
@@ -241,17 +250,17 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued",
 			values{
-				0, 10, 0, 0,
+				0, 0, 10, 0, 0,
 			},
 			100,
 			wants{
-				10, 100-10,
+				10, 100 - 10,
 			},
 		},
 		{
 			"OverIssued-larger than reward",
 			values{
-				0, 300, 0, 0,
+				0, 0, 300, 0, 0,
 			},
 			100,
 			wants{
@@ -261,17 +270,17 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued and fee",
 			values{
-				0, 10, 0, 20,
+				0, 0, 10, 0, 20,
 			},
 			100,
 			wants{
-				10, 100-10-20,
+				10, 100 - 10 - 20,
 			},
 		},
 		{
 			"OverIssued and fee -larger than reward",
 			values{
-				0, 300, 0, 20,
+				0, 0, 300, 0, 20,
 			},
 			100,
 			wants{
@@ -285,7 +294,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
+			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
 			overIssued, issued := calcIssueAmount(new(big.Int).SetInt64(tt.reward), issue)
 
 			assert.Equal(t, out.issue, issued.Int64())

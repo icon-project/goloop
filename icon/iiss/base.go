@@ -170,7 +170,7 @@ func handleConsensusInfo(wc state.WorldContext) error {
 
 	// make Block produce Info for calculator
 	if err := es.Front.AddBlockProduce(
-		int(wc.BlockHeight()-es.CalculationBlockHeight()),
+		int(wc.BlockHeight()-es.CalculationBlockHeight()-1),
 		proposer,
 		voters,
 	); err != nil {

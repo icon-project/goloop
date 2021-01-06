@@ -28,10 +28,11 @@ const (
 type Issue struct {
 	icobject.NoDatabase
 
-	TotalReward   *big.Int // amount of reward ICX at baseTX
-	OverIssued    *big.Int // TotalReward - reward calculated by calculator
-	IScoreRemains *big.Int // not issued ICX
-	PrevBlockFee  *big.Int
+	TotalReward     *big.Int // amount of reward ICX at current calculation period
+	PrevTotalReward *big.Int // amount of reward ICX while previous calculation period
+	OverIssued      *big.Int // PrevTotalReward - reward calculated by calculator
+	IScoreRemains   *big.Int // not issued ICX
+	PrevBlockFee    *big.Int
 }
 
 func newIssue(_ icobject.Tag) *Issue {
@@ -40,10 +41,11 @@ func newIssue(_ icobject.Tag) *Issue {
 
 func NewIssue() *Issue {
 	return &Issue{
-		TotalReward:   new(big.Int),
-		OverIssued:    new(big.Int),
-		IScoreRemains: new(big.Int),
-		PrevBlockFee:  new(big.Int),
+		TotalReward:     new(big.Int),
+		PrevTotalReward: new(big.Int),
+		OverIssued:      new(big.Int),
+		IScoreRemains:   new(big.Int),
+		PrevBlockFee:    new(big.Int),
 	}
 }
 

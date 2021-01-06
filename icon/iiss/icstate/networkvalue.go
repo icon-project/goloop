@@ -75,3 +75,7 @@ func GetSubPRepCount(s *State) int64 {
 func SetSubPRepCount(s *State, value int64) error {
 	return setValue(s.store, VarSubPRepCount, value)
 }
+
+func GetPRepCount(s *State) int64 {
+	return GetMainPRepCount(s) + GetSubPRepCount(s)
+}

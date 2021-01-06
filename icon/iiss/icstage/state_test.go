@@ -132,14 +132,16 @@ func TestState_AddEvent(t *testing.T) {
 	}
 
 	type args struct {
-		type_       int
-		offset      int
-		address     *common.Address
-		delegations icstate.Delegations
-		enable      bool
-		irep        *big.Int
-		rrep        *big.Int
-		validators  []*common.Address
+		type_         int
+		offset        int
+		address       *common.Address
+		delegations   icstate.Delegations
+		enable        bool
+		irep          *big.Int
+		rrep          *big.Int
+		mainPRepCount int64
+		pRepCount     int64
+		validators    []*common.Address
 	}
 
 	tests := []struct {
@@ -167,11 +169,13 @@ func TestState_AddEvent(t *testing.T) {
 		{
 			"Period",
 			args{
-				type_:   TypeEventPeriod,
-				offset:  offset2,
-				address: addr1,
-				irep:    big.NewInt(v1),
-				rrep:    big.NewInt(v2),
+				type_:         TypeEventPeriod,
+				offset:        offset2,
+				address:       addr1,
+				irep:          big.NewInt(v1),
+				rrep:          big.NewInt(v2),
+				mainPRepCount: 22,
+				pRepCount:     100,
 			},
 		},
 	}
@@ -184,7 +188,7 @@ func TestState_AddEvent(t *testing.T) {
 			case TypeEventEnable:
 				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
 			case TypeEventPeriod:
-				checkAddEventPeriod(t, s, a.offset, a.irep, a.rrep)
+				checkAddEventPeriod(t, s, a.offset, a.irep, a.rrep, a.mainPRepCount, a.pRepCount)
 			}
 		})
 	}
@@ -237,8 +241,8 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	assert.Equal(t, enable, event.Enable)
 }
 
-func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep *big.Int) {
-	index, err := s.AddEventPeriod(offset, irep, rrep)
+func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) {
+	index, err := s.AddEventPeriod(offset, irep, rrep, mainPRepCount, pRepCount)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()

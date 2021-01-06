@@ -33,10 +33,6 @@ import (
 )
 
 const (
-	NumMainPReps    = 22
-	NumSubPReps     = 78
-	NumMainSubPReps = NumMainPReps + NumSubPReps
-
 	DayBlock   = 24 * 60 * 60 / 2
 	MonthBlock = DayBlock * 30
 	YearBlock  = MonthBlock * 12
@@ -48,9 +44,10 @@ const (
 
 var (
 	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
-	bigIntBeta1Divider   = big.NewInt(int64(MonthBlock * 2 * 2))
-	bigIntBeta2Divider   = big.NewInt(int64(MonthBlock * 2))
+	bigIntBeta1Divider   = big.NewInt(int64(MonthBlock * 2 * 2 / IScoreICXRatio))
+	bigIntBeta2Divider   = big.NewInt(int64(MonthBlock * 2 / IScoreICXRatio))
 	bigIntBeta3Divider   = big.NewInt(int64(YearBlock / IScoreICXRatio))
+	BigIntTwo            = big.NewInt(2)
 )
 
 type Calculator struct {
@@ -60,12 +57,12 @@ type Calculator struct {
 	blockHeight int64
 	stats       *statistics
 
-	back        *icstage.Snapshot
-	base        *icreward.Snapshot
-	temp        *icreward.State
-	irep        *big.Int
-	rrep        *big.Int
-	offsetLimit int
+	back            *icstage.Snapshot
+	base            *icreward.Snapshot
+	temp            *icreward.State
+	global          *icreward.Global
+	lastEventPeriod *icstage.EventPeriod
+	offsetLimit     int
 }
 
 func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
@@ -216,12 +213,11 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 		return err
 	}
 	if global != nil {
-		c.irep = global.Irep
-		c.rrep = global.Rrep
+		c.global = global
 	} else {
-		c.irep = new(big.Int)
-		c.rrep = new(big.Int)
+		c.global = icreward.NewGlobal()
 	}
+	c.lastEventPeriod = icstage.NewEventPeriod()
 
 	// read offsetLimit from back
 	c.offsetLimit, err = c.back.GetOffsetLimit()
@@ -270,10 +266,19 @@ func (c *Calculator) processClaim() error {
 	return nil
 }
 
+// irepForBeta1 return variable for beta1
+// return irep * mainPRepCount * IScoreICXRatio / (2 * 2 * MonthBlock)
+func irepForBeta1(irep *big.Int, mainPRepCount *big.Int) *big.Int {
+	v := new(big.Int)
+	v.Mul(irep, mainPRepCount)
+	v.Div(v, bigIntBeta1Divider)
+	return v
+}
+
 func (c *Calculator) calculateBeta1() error {
 	var err error
 	offset := 0
-	irep := c.irep
+	irep := irepForBeta1(c.global.Irep, c.global.MainPRepCount)
 	validators, err := c.loadValidators()
 	if err != nil {
 		return err
@@ -294,7 +299,8 @@ func (c *Calculator) calculateBeta1() error {
 				}
 			}
 			obj := icstage.ToEventPeriod(o)
-			irep = obj.Irep
+			irep = irepForBeta1(obj.Irep, obj.MainPRepCount)
+			c.lastEventPeriod = obj
 		}
 	}
 	for ; offset < c.offsetLimit; offset += 1 {
@@ -344,17 +350,18 @@ func (c *Calculator) loadValidators() ([]*validator, error) {
 	return vs, nil
 }
 
-func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators []*validator) error {
-	beta1Reward := new(big.Int).Div(irep, bigIntBeta1Divider)
-	if irep.Sign() == 0 {
+// processBlockProduce calculate beta1 reward with Block Produce Info.
+// reward for proposer per block = irep * mainPRepCount / (2 * 2 * MonthBlock)
+// reward for validator per block = irep * mainPRepCount / (2 * 2 * MonthBlock * validatorCount)
+// varForBeta1 = irep * mainPRepCount / (2 * 2 * MonthBlock)
+func (c *Calculator) processBlockProduce(varForBeta1 *big.Int, offset int, validators []*validator) error {
+	if varForBeta1.Sign() == 0 {
 		return nil
 	}
+	beta1Reward := new(big.Int).Set(varForBeta1)
 	bp, err := c.back.GetBlockProduce(offset)
-	if err != nil {
+	if err != nil || bp == nil {
 		return err
-	}
-	if bp == nil {
-		return nil
 	}
 
 	// for proposer
@@ -363,8 +370,7 @@ func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators [
 
 	// for validator
 	if bp.VoteCount > 0 {
-		beta1Validate := new(big.Int)
-		beta1Validate.Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
+		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
 		maxIndex := bp.VoteMask.BitLen()
 		for i := 0; i <= maxIndex; i += 1 {
 			if (bp.VoteMask.Bit(i)) != 0 {
@@ -376,9 +382,18 @@ func (c *Calculator) processBlockProduce(irep *big.Int, offset int, validators [
 	return nil
 }
 
+// irepForBeta2 return variable for Beta2
+// return irep * PRepCount * IScoreICXRatio / (2 * MonthBlock)
+func irepForBeta2(irep *big.Int, pRepCount *big.Int) *big.Int {
+	v := new(big.Int)
+	v.Mul(irep, pRepCount)
+	v.Div(v, bigIntBeta2Divider)
+	return v
+}
+
 func (c *Calculator) calculateBeta2() error {
 	offset := 0
-	irep := c.irep
+	irep := irepForBeta2(c.global.Irep, c.global.PRepCount)
 
 	lDelegated, err := c.loadDelegated()
 	if err != nil {
@@ -402,7 +417,8 @@ func (c *Calculator) calculateBeta2() error {
 			offset = keyOffset
 			if type_ == icstage.TypeEventPeriod {
 				obj := icstage.ToEventPeriod(o)
-				irep = obj.Irep
+				irep = irepForBeta2(obj.Irep, obj.PRepCount)
+				c.lastEventPeriod = obj
 				lDelegated.updateSnapshot()
 				lDelegated.updateTotal()
 			} else {
@@ -448,13 +464,11 @@ func (c *Calculator) calculateBeta2() error {
 		}
 		c.stats.increaseBeta2(prep.iScore)
 	}
-
-	c.irep = irep
 	return nil
 }
 
 func (c *Calculator) loadDelegated() (*delegated, error) {
-	d := newDelegated()
+	d := newDelegated(int(c.global.PRepCount.Int64()))
 
 	prefix := icreward.DelegatedKey.Build()
 	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
@@ -480,7 +494,7 @@ func (c *Calculator) loadDelegated() (*delegated, error) {
 }
 
 func (c *Calculator) calculateBeta3() error {
-	rrep := c.rrep
+	rrep := c.global.Rrep
 	processedOffset := 0
 
 	prepInfo, err := c.loadPRepInfo()
@@ -513,6 +527,7 @@ func (c *Calculator) calculateBeta3() error {
 			rrep = ep.Rrep
 			processedOffset = offset
 			delegationMap = make(map[string]map[int]icstate.Delegations)
+			c.lastEventPeriod = ep
 		case icstage.TypeEventEnable:
 			// update prepInfo
 			ee := icstage.ToEventEnable(obj)
@@ -543,7 +558,6 @@ func (c *Calculator) calculateBeta3() error {
 			return err
 		}
 	}
-	c.rrep = rrep
 	return nil
 }
 
@@ -702,8 +716,10 @@ func delegatingReward(
 func (c *Calculator) postWork() (err error) {
 	// save values for next calculation
 	g := new(icreward.Global)
-	g.Irep = c.irep
-	g.Rrep = c.rrep
+	g.Irep = c.lastEventPeriod.Irep
+	g.Rrep = c.lastEventPeriod.Rrep
+	g.MainPRepCount = c.lastEventPeriod.MainPRepCount
+	g.PRepCount = c.lastEventPeriod.PRepCount
 	if err = c.temp.SetGlobal(g); err != nil {
 		return
 	}
@@ -764,30 +780,29 @@ func newDelegatedData(d *icreward.Delegated) *delegatedData {
 }
 
 type delegated struct {
-	total *big.Int // total delegated amount of top 100 P-Reps
-	rank  []string
-	preps map[string]*delegatedData
-}
-
-func (d *delegated) maxRankForReward() int {
-	return NumMainSubPReps
+	total            *big.Int // total delegated amount of top 100 P-Reps
+	maxRankForReward int
+	rank             []string
+	preps            map[string]*delegatedData
 }
 
 func (d *delegated) addDelegatedData(addr *common.Address, data *delegatedData) {
 	d.preps[string(addr.Bytes())] = data
 }
 
-func (d *delegated) calculateReward(irep *big.Int, period int) {
-	if irep.Sign() == 0 || period == 0 {
+// calculateReward calculate Beta2 reward with delegated
+// varForBeta1 = irep * PRepCount * IScoreICXRatio / (2 * MonthBlock)
+func (d *delegated) calculateReward(varForBeta2 *big.Int, period int) {
+	if varForBeta2.Sign() == 0 || period == 0 {
 		return
 	}
 	if d.total.Sign() == 0 {
 		return
 	}
-	// beta2 = irep * delegated * period / (2 * month_block * total_delegated)
-	base := new(big.Int).Mul(irep, big.NewInt(int64(period)))
+	// beta2 = irep * delegated * period * IScoreICXRatio / (2 * month_block * total_delegated)
+	base := new(big.Int).Mul(varForBeta2, big.NewInt(int64(period)))
 	for i, addr := range d.rank {
-		if i == d.maxRankForReward() {
+		if i == d.maxRankForReward {
 			break
 		}
 		prep := d.preps[addr]
@@ -855,7 +870,7 @@ func (d *delegated) updateTotal() {
 	// update total
 	total := new(big.Int)
 	for i, address := range d.rank {
-		if i == d.maxRankForReward() {
+		if i == d.maxRankForReward {
 			break
 		}
 		total.Add(total, d.preps[address].delegated.Snapshot)
@@ -863,10 +878,11 @@ func (d *delegated) updateTotal() {
 	d.total = total
 }
 
-func newDelegated() *delegated {
+func newDelegated(maxRankForReward int) *delegated {
 	return &delegated{
-		total: new(big.Int),
-		preps: make(map[string]*delegatedData),
+		total:            new(big.Int),
+		maxRankForReward: maxRankForReward,
+		preps:            make(map[string]*delegatedData),
 	}
 }
 

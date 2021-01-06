@@ -112,8 +112,10 @@ func newEventEnable(tag icobject.Tag) *EventEnable {
 
 type EventPeriod struct {
 	icobject.NoDatabase
-	Irep *big.Int
-	Rrep *big.Int
+	Irep          *big.Int
+	Rrep          *big.Int
+	MainPRepCount *big.Int
+	PRepCount     *big.Int
 }
 
 func (ep *EventPeriod) Version() int {
@@ -121,17 +123,20 @@ func (ep *EventPeriod) Version() int {
 }
 
 func (ep *EventPeriod) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ep.Irep, &ep.Rrep)
+	_, err := decoder.DecodeMulti(&ep.Irep, &ep.Rrep, &ep.MainPRepCount, &ep.PRepCount)
 	return err
 }
 
 func (ep *EventPeriod) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ep.Irep, ep.Rrep)
+	return encoder.EncodeMulti(ep.Irep, ep.Rrep, &ep.MainPRepCount, &ep.PRepCount)
 }
 
 func (ep *EventPeriod) Equal(o icobject.Impl) bool {
 	if ep2, ok := o.(*EventPeriod); ok {
-		return ep.Irep.Cmp(ep2.Irep) == 0 && ep2.Rrep.Cmp(ep2.Rrep) == 0
+		return ep.Irep.Cmp(ep2.Irep) == 0 &&
+			ep.Rrep.Cmp(ep2.Rrep) == 0 &&
+			ep.MainPRepCount.Cmp(ep2.MainPRepCount) == 0 &&
+			ep.PRepCount.Cmp(ep2.PRepCount) == 0
 	} else {
 		return false
 	}
@@ -140,6 +145,8 @@ func (ep *EventPeriod) Equal(o icobject.Impl) bool {
 func (ep *EventPeriod) Clear() {
 	ep.Irep = new(big.Int)
 	ep.Rrep = new(big.Int)
+	ep.MainPRepCount = new(big.Int)
+	ep.PRepCount = new(big.Int)
 }
 
 func (ep *EventPeriod) IsEmpty() bool {
@@ -148,7 +155,16 @@ func (ep *EventPeriod) IsEmpty() bool {
 }
 
 func newEventPeriod(tag icobject.Tag) *EventPeriod {
-	return new(EventPeriod)
+	return NewEventPeriod()
+}
+
+func NewEventPeriod() *EventPeriod {
+	return &EventPeriod{
+		Irep:          new(big.Int),
+		Rrep:          new(big.Int),
+		MainPRepCount: new(big.Int),
+		PRepCount:     new(big.Int),
+	}
 }
 
 type EventSize struct {
