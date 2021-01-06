@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.types.StepCost;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +40,7 @@ public class StepTest extends SimpleTest {
         }
     }
 
-    private Contract score;
+    private ContractAddress score;
     private StepCost stepCost;
     private int hashCost;
 

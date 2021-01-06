@@ -15,7 +15,7 @@ public class State {
         public byte[] objectGraph = null;
         public byte[] objectGraphHash = null;
         public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
-        public Contract contract = null;
+        public ContractAddress contractAddress = null;
         public int exid = 0;
         public int eid = 0;
 
@@ -30,7 +30,7 @@ public class State {
             objectGraph = src.objectGraph;
             objectGraphHash = src.objectGraphHash;
             storage.putAll(src.storage);
-            contract = src.contract;
+            contractAddress = src.contractAddress;
             exid = src.exid;
             eid = src.eid;
         }

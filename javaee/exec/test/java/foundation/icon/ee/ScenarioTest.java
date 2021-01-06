@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.GoldenTest;
 import org.junit.jupiter.api.Test;
 import score.Address;
@@ -107,7 +107,7 @@ public class ScenarioTest extends GoldenTest {
             return Arrays.copyOf(bb.array(), bb.position());
         }
 
-        public Compiler call(Contract c) {
+        public Compiler call(ContractAddress c) {
             return call(c.getAddress());
         }
 

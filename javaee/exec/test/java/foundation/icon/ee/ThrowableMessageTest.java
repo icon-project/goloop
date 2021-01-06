@@ -16,7 +16,7 @@
 
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.Matcher;
 import foundation.icon.ee.test.SimpleTest;
 import org.junit.jupiter.api.Test;
@@ -92,7 +92,7 @@ public class ThrowableMessageTest extends SimpleTest {
         }
     }
 
-    void invokeAndMatch(Contract c, String method, Matcher matcher) {
+    void invokeAndMatch(ContractAddress c, String method, Matcher matcher) {
         sm.setLogger(matcher);
         c.invoke(method);
         matcher.assertOK();

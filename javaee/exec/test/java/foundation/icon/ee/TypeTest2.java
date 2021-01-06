@@ -16,7 +16,7 @@
 
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.util.Strings;
 import org.junit.jupiter.api.Assertions;
@@ -788,7 +788,7 @@ public class TypeTest2 extends SimpleTest {
         Assertions.assertEquals(wrap(o1), wrap(o2));
     }
 
-    private void test(Contract app, Object object, String method) {
+    private void test(ContractAddress app, Object object, String method) {
         Assertions.assertEquals(wrap(object), wrap(app.invoke(method, object).getRet()));
     }
 
@@ -894,7 +894,7 @@ public class TypeTest2 extends SimpleTest {
         testForApp(caller);
     }
 
-    private void testForApp(Contract app) {
+    private void testForApp(ContractAddress app) {
         final var booleanArray3D = nest3D(true);
         final var byteArray3D = new Object[][] {
                 new Object[] {

@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TransactionException;
 import foundation.icon.ee.types.Status;
@@ -91,7 +91,7 @@ public class ReadOnlyTest extends SimpleTest {
         }
     }
 
-    private Contract score;
+    private ContractAddress score;
     private TransactionException e;
 
     @Nested

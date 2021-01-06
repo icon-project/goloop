@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TBCProtocol;
 import foundation.icon.ee.test.TBCTestScenario;
@@ -17,7 +17,7 @@ public class TBCTest extends SimpleTest {
     private static final int I = TBCProtocol.VAR_TYPE_INSTANCE;
     private static final int L = TBCProtocol.VAR_TYPE_LOCAL;
 
-    void subcase(String name, Contract c, TBCTestScenario scenario) {
+    void subcase(String name, ContractAddress c, TBCTestScenario scenario) {
         var totalExp = scenario.getExpectCount();
         var tr = c.invoke("run", (Object)scenario.compile());
         var okObs = (BigInteger)tr.getRet();
