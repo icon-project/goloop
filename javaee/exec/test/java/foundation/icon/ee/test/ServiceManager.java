@@ -268,8 +268,6 @@ public class ServiceManager implements Agent {
                     assert dataObj != null;
                     String method = (String) dataObj.get("method");
                     Object[] params = (Object[]) dataObj.get("params");
-                    BigInteger stepsContractCall = BigInteger.valueOf(5000);
-                    stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
                             to, value, stepLimit, method, params);
                     current.eid = eid;
@@ -278,7 +276,7 @@ public class ServiceManager implements Agent {
                             res.getStatus(), res.getStepUsed(), res.getRet(),
                             eid, current.eid);
                     proxy.sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
-                            res.getStepUsed().add(stepsContractCall),
+                            res.getStepUsed(),
                             TypedObj.encodeAny(res.getRet()), eid, current.eid);
                     break;
                 }
