@@ -64,7 +64,7 @@ type CallContext interface {
 	DeleteValue(key []byte) ([]byte, error)
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
-	OnEvent(addr module.Address, indexed, data [][]byte)
+	OnEvent(addr module.Address, indexed, data [][]byte) error
 	OnResult(status error, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, dataType string, dataObj *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
@@ -445,8 +445,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		p.log.Tracef("Proxy[%p].OnEvent from=%v indexed=%v data=%v",
 			p, p.frame.addr, m.Indexed, m.Data)
-		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
-		return nil
+		return p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 
 	case msgGETBALANCE:
 		var addr common.Address

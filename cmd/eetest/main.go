@@ -75,8 +75,9 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 	return big.NewInt(state.GIGA)
 }
 
-func (cc *callContext) OnEvent(score module.Address, indexed, data [][]byte) {
-	fmt.Printf("CallContext.OnEvent(%s,%+v,%+v)\n", score, indexed, data)
+func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) error {
+	fmt.Printf("CallContext.OnEvent(%s,%+v,%+v)\n", addr, indexed, data)
+	return nil
 }
 
 func (cc *callContext) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
