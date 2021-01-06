@@ -20,6 +20,7 @@ type ErrorWithResponse interface {
 }
 
 func main() {
+	//fmt.Println("Lee changed")
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "goloop", "Goloop CLI")
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",

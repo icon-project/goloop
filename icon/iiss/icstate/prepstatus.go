@@ -110,6 +110,10 @@ func (ps *PRepStatus) VFail() int {
 	return ps.vFail
 }
 
+func (ps *PRepStatus) VFailCount() int {
+	return ps.vFailCont
+}
+
 func (ps *PRepStatus) equal(other *PRepStatus) bool {
 	if ps == other {
 		return true

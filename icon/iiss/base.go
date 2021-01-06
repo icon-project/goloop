@@ -177,8 +177,21 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		return err
 	}
 
-	// TODO update P-Rep status
+	// TODO need to review P-rep status update
+	if validators != nil {
+		for i := 0; i < validators.Len(); i += 1 {
+			v, _ := validators.Get(i)
+			prepStatus := es.State.GetPRepStatus(v.Address())
+			prepStatus.SetVTotal(prepStatus.VTotal() + 1)
 
+			if !voted[i] {
+				prepStatus.SetVFailCont(prepStatus.VFailCount() + 1)
+				prepStatus.SetVFail(prepStatus.VFail() + 1)
+			} else {
+				prepStatus.SetVFailCont(0)
+			}
+		}
+	}
 	return nil
 }
 
