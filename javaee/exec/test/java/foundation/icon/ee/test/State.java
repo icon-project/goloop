@@ -15,8 +15,6 @@ public class State {
         public byte[] objectGraph = null;
         public byte[] objectGraphHash = null;
         public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
-        public byte[] optimized = null;
-        public byte[] transformed = null;
         public Contract contract = null;
         public int exid = 0;
         public int eid = 0;
@@ -32,8 +30,6 @@ public class State {
             objectGraph = src.objectGraph;
             objectGraphHash = src.objectGraphHash;
             storage.putAll(src.storage);
-            optimized = src.optimized;
-            transformed = src.transformed;
             contract = src.contract;
             exid = src.exid;
             eid = src.eid;
