@@ -162,10 +162,9 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	prepAddressList := make([]module.Address, 0)
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
-			vv, _ := validators.Get(i)
-			prepAddressList = append(prepAddressList, vv.Address())
+			v, _ := validators.Get(i)
+			prepAddressList = append(prepAddressList, v.Address())
 			if voted[i] {
-				v, _ := validators.Get(i)
 				voters = append(voters, v.Address())
 			}
 		}
