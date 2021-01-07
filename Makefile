@@ -3,7 +3,7 @@
 # 	Makefile for building target binaries.
 #
 
-# Configurationƒ
+# Configuration
 BUILD_ROOT = $(abspath ./)
 BIN_DIR = ./bin
 LINUX_BIN_DIR = ./build/linux
