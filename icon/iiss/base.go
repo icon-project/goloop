@@ -21,6 +21,7 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -30,7 +31,6 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -159,16 +159,16 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	validators := csi.Voters()
 	voted := csi.Voted()
 	voters := make([]module.Address, 0)
-
+	prepAddressList := make([]module.Address, 0)
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
+			v, _ := validators.Get(i)
+			prepAddressList = append(prepAddressList, v.Address())
 			if voted[i] {
-				v, _ := validators.Get(i)
 				voters = append(voters, v.Address())
 			}
 		}
 	}
-
 	// make Block produce Info for calculator
 	if err := es.Front.AddBlockProduce(
 		int(wc.BlockHeight()-es.CalculationBlockHeight()-1),
@@ -178,8 +178,42 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		return err
 	}
 
-	// TODO update P-Rep status
+	// update P-rep status, vtotal, vfail, vfailcont
+	proposerExist := false
+	for _, p := range prepAddressList {
+		if p == proposer {
+			proposerExist = true
+		}
+	}
+	if !proposerExist {
+		prepAddressList = append(prepAddressList, proposer)
+	}
+	err := handlePrepStatus(es.State, prepAddressList, voted)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func handlePrepStatus(state *icstate.State, prepAddressList []module.Address, voted []bool) error {
+	if len(prepAddressList) != 0 {
+		for i := 0; i < len(prepAddressList); i += 1 {
+			prepStatus := state.GetPRepStatus(prepAddressList[i])
+			if prepStatus == nil {
+				// TODO check if any predefined error format
+				err := errors.New("Prep status not exist")
+				return err
+			}
+			prepStatus.SetVTotal(prepStatus.VTotal() + 1)
+
+			if !voted[i] {
+				prepStatus.SetVFailCont(prepStatus.VFailCont() + 1)
+				prepStatus.SetVFail(prepStatus.VFail() + 1)
+			} else {
+				prepStatus.SetVFailCont(0)
+			}
+		}
+	}
 	return nil
 }
 
@@ -217,15 +251,6 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	tr := cc.GetAccountState(cc.Treasury().ID())
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
-
-	// increase total supply
-	as := cc.GetAccountState(state.SystemID)
-	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
-	totalSupply := ts.BigInt()
-	totalSupply.Add(totalSupply, result.Issue.Value())
-	if err = ts.Set(&totalSupply); err != nil {
-		return err
-	}
 
 	// write Issue Info
 	issue, err := es.State.GetIssue()
