@@ -82,7 +82,11 @@ func GetPRepCount(s *State) int64 {
 }
 
 func GetTotalStake(s *State) *big.Int {
-	return getValue(s.store, VarTotalStake).BigInt()
+	value := getValue(s.store, VarTotalStake).BigInt()
+	if value == nil {
+		value = new(big.Int)
+	}
+	return value
 }
 
 func SetTotalStake(s *State, value *big.Int) error {

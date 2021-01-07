@@ -14,6 +14,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -69,8 +70,11 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		return errors.Errorf("Not enough balance")
 	}
 
+	tStake := icstate.GetTotalStake(es.State)
+	tsupply := icutils.GetTotalSupply(s.cc)
+
 	// update IISS account
-	expireHeight := calcUnstakeLockPeriod(s.cc.BlockHeight())
+	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(tStake, tsupply).Int64()
 	tl, err := ia.UpdateUnstake(stakeInc, expireHeight)
 	if err != nil {
 		return err
@@ -96,20 +100,35 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		diff := new(big.Int).Sub(totalStake, prevTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
-	ts := icstate.GetTotalStake(es.State)
-	if ts == nil {
-		ts = new(big.Int)
-	}
-	if err := icstate.SetTotalStake(es.State, new(big.Int).Add(ts, stakeInc)); err != nil {
+	if err := icstate.SetTotalStake(es.State, new(big.Int).Add(tStake, stakeInc)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func calcUnstakeLockPeriod(blockHeight int64) int64 {
-	// TODO implement me
-	return blockHeight + 10
+func calcUnstakeLockPeriod(totalStake *big.Int, totalSupply *big.Int) *big.Int {
+	fstake := new(big.Float).SetInt(totalStake)
+	fsupply := new(big.Float).SetInt(totalSupply)
+	stakeRate := new(big.Float).Quo(fstake, fsupply)
+	bRpoint := iiss.RPoint
+	bLMin := iiss.LockMin
+	bLMax := iiss.LockMax
+	if stakeRate.Cmp(bRpoint) == 1 {
+		return bLMin
+	}
+
+	fNumerator := new(big.Float).SetInt(new(big.Int).Sub(bLMax, bLMin))
+	fDenominator := new(big.Float).Mul(bRpoint, bRpoint)
+	firstOperand := new(big.Float).Quo(fNumerator, fDenominator)
+	s := new(big.Float).Sub(stakeRate, bRpoint)
+	secondOperand := new(big.Float).Mul(s, s)
+
+	iResult := new(big.Int)
+	fResult := new(big.Float).Mul(firstOperand, secondOperand)
+	fResult.Int(iResult)
+
+	return new(big.Int).Add(iResult, bLMin)
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
@@ -187,7 +206,7 @@ func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
 	ts := icstate.GetTotalStake(es.State)
 	tsh := new(common.HexInt)
 	tsh.Set(ts)
-	jso["totalStake"] = tsh.String()
+	jso["totalStake"] = tsh
 	jso["blockHeight"] = s.cc.BlockHeight()
 	return jso, nil
 }
@@ -350,4 +369,13 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
 
 	return data, nil
+}
+
+func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	totalStake := icstate.GetTotalStake(es.State)
+	totalSupply := icutils.GetTotalSupply(s.cc)
+	result := make(map[string]interface{})
+	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(totalStake, totalSupply)
+	return result, nil
 }

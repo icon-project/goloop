@@ -3,6 +3,9 @@ package icutils
 import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
+	"math/big"
 )
 
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
@@ -44,4 +47,13 @@ func EqualAddress(a1 module.Address, a2 module.Address) bool {
 	}
 
 	return false
+}
+
+func GetTotalSupply(ws state.WorldState) *big.Int {
+	wss := ws.GetSnapshot()
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+	ts := tsVar.BigInt()
+	return ts
 }
