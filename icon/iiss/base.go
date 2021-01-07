@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -216,6 +217,15 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	tr := cc.GetAccountState(cc.Treasury().ID())
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
+
+	// increase total supply
+	as := cc.GetAccountState(state.SystemID)
+	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
+	totalSupply := ts.BigInt()
+	totalSupply.Add(totalSupply, result.Issue.Value())
+	if err = ts.Set(&totalSupply); err != nil {
+		return err
+	}
 
 	// write Issue Info
 	issue, err := es.State.GetIssue()
