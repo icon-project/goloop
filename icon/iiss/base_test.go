@@ -84,4 +84,15 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, 3, s.GetPRepStatus(addr2).VFail())
 	assert.Equal(t, 3, s.GetPRepStatus(addr1).VFailCont())
 	assert.Equal(t, 1, s.GetPRepStatus(addr2).VFailCont())
+
+	voted5 := []bool{true, true}
+	err = handlePrepStatus(s, addrArray, voted5)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 5, s.GetPRepStatus(addr1).VTotal())
+	assert.Equal(t, 5, s.GetPRepStatus(addr2).VTotal())
+	assert.Equal(t, 3, s.GetPRepStatus(addr1).VFail())
+	assert.Equal(t, 3, s.GetPRepStatus(addr2).VFail())
+	assert.Equal(t, 0, s.GetPRepStatus(addr1).VFailCont())
+	assert.Equal(t, 0, s.GetPRepStatus(addr2).VFailCont())
 }

@@ -156,7 +156,7 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
 	}
-	proposer := csi.Proposer()
+	proposer := es.pm.GetPRepByNode(csi.Proposer()).Owner()
 	validators := csi.Voters()
 	voted := csi.Voted()
 	voters := make([]module.Address, 0)
@@ -164,9 +164,9 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
 			v, _ := validators.Get(i)
-			prepAddressList = append(prepAddressList, v.Address())
+			prepAddressList = append(prepAddressList, es.pm.GetPRepByNode(v.Address()).Owner())
 			if voted[i] {
-				voters = append(voters, v.Address())
+				voters = append(voters, es.pm.GetPRepByNode(v.Address()).Owner())
 			}
 		}
 	}
