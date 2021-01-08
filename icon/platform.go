@@ -75,7 +75,7 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 		"timestamp": t,
 		"version":   v,
 		"dataType":  "base",
-		"data": data,
+		"data":      data,
 	}
 	bs, err := json.Marshal(mtx)
 	if err != nil {

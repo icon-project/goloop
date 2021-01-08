@@ -187,13 +187,8 @@ func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
 	return s.c.prevBH
 }
 
-// FIXME temp implementation
-func calculationPeriod() int {
-	return 3
-}
-
 func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator *Calculator) error {
-	if blockHeight != s.c.currentBH+int64(calculationPeriod()) {
+	if blockHeight != s.c.currentBH+icstate.GetCalculatePeriod(s.State) {
 		return nil
 	}
 

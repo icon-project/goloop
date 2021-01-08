@@ -223,7 +223,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
 	totalSupply := ts.BigInt()
 	totalSupply.Add(totalSupply, result.Issue.Value())
-	if err = ts.Set(&totalSupply); err != nil {
+	if err = ts.Set(totalSupply); err != nil {
 		return err
 	}
 

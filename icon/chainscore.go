@@ -18,8 +18,11 @@ package icon
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"math/big"
+	"os"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss"
@@ -286,7 +289,58 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
+const (
+	configFile             = "./icon_config.json"
+	defaultTermPeriod      = 43120
+	defaultCalculatePeriod = 43120
+	defaultMainPRepCount   = 22
+	defaultSubPRepCount    = 78
+	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultRRep            = iiss.MonthBlock * iiss.IScoreICXRatio
+)
+
+type config struct {
+	TermPeriod        *common.HexInt `json:"termPeriod"`
+	CalculationPeriod *common.HexInt `json:"iissCalculatePeriod"`
+	MainPRepCount     *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount      *common.HexInt `json:"subPRepCount"`
+	Irep              *common.HexInt `json:"irep,omitempty"`
+	Rrep              *common.HexInt `json:"rrep,omitempty"`
+}
+
+func newIconConfig() *config {
+	return &config{
+		TermPeriod:        common.NewHexInt(defaultTermPeriod),
+		CalculationPeriod: common.NewHexInt(defaultCalculatePeriod),
+		MainPRepCount:     common.NewHexInt(defaultMainPRepCount),
+		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
+		Irep:              common.NewHexInt(defaultIRep),
+		Rrep:              common.NewHexInt(defaultRRep),
+	}
+}
+
+func loadIconConfig() *config {
+	iconConfig := newIconConfig()
+	f, err := os.Open(configFile)
+	if err != nil {
+		log.Infof("Failed to open configuration file %+v. Use default config", err)
+		return iconConfig
+	}
+	bs, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Infof("Failed to read configuration file %+v. Use default config", err)
+		return iconConfig
+	}
+	if err = json.Unmarshal(bs, &iconConfig); err != nil {
+		log.Infof("Failed to unmarshal configuration file %+v. Use default config", err)
+		return iconConfig
+	}
+
+	return iconConfig
+}
+
 func (s *chainScore) Install(param []byte) error {
+	var err error
 	if s.from != nil {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
@@ -298,8 +352,11 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
+	iconConfig := loadIconConfig()
+
 	// load validatorList
 	// set block interval 2 seconds
+	s.cc.ChainID()
 	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
 		return err
@@ -351,34 +408,33 @@ func (s *chainScore) Install(param []byte) error {
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	}
 
-	if err := applyStepLimits(as, stepLimitsMap); err != nil {
+	if err = applyStepLimits(as, stepLimitsMap); err != nil {
 		return err
 	}
-	if err := applyStepCosts(as, stepTypesMap); err != nil {
+	if err = applyStepCosts(as, stepTypesMap); err != nil {
 		return err
 	}
-	if err := applyStepPrice(as, stepPrice); err != nil {
+	if err = applyStepPrice(as, stepPrice); err != nil {
 		return err
 	}
 
-	// FIXME Initial data for test
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err := icstate.SetIRep(
-		es.State,
-		big.NewInt(iiss.YearBlock*iiss.IScoreICXRatio),
-	); err != nil {
+	if err = icstate.SetTermPeriod(es.State, iconConfig.TermPeriod.Int64()); err != nil {
 		return err
 	}
-	if err := icstate.SetRRep(
-		es.State,
-		big.NewInt(iiss.YearBlock*iiss.IScoreICXRatio),
-	); err != nil {
+	if err = icstate.SetCalculatePeriod(es.State, iconConfig.TermPeriod.Int64()); err != nil {
 		return err
 	}
-	if err := icstate.SetMainPRepCount(es.State, 22); err != nil {
+	if err = icstate.SetIRep(es.State, iconConfig.Irep.Value()); err != nil {
 		return err
 	}
-	if err := icstate.SetSubPRepCount(es.State, 78); err != nil {
+	if err = icstate.SetRRep(es.State, iconConfig.Rrep.Value()); err != nil {
+		return err
+	}
+	if err = icstate.SetMainPRepCount(es.State, iconConfig.MainPRepCount.Int64()); err != nil {
+		return err
+	}
+	if err = icstate.SetSubPRepCount(es.State, iconConfig.SubPRepCount.Int64()); err != nil {
 		return err
 	}
 	return nil

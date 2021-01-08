@@ -20,11 +20,13 @@ import (
 )
 
 const (
-	VarIRep          = "irep"
-	VarRRep          = "rrep"
-	VarMainPRepCount = "main_prep_count"
-	VarSubPRepCount  = "sub_prep_count"
-	VarTotalStake    = "total_stake"
+	VarIRep            = "irep"
+	VarRRep            = "rrep"
+	VarMainPRepCount   = "main_prep_count"
+	VarSubPRepCount    = "sub_prep_count"
+	VarTotalStake      = "total_stake"
+	VarTermPeriod      = "term_period"
+	VarCalculatePeriod = "calculate_period"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -43,6 +45,22 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 		return err
 	}
 	return nil
+}
+
+func GetTermPeriod(s *State) int64 {
+	return getValue(s.store, VarTermPeriod).Int64()
+}
+
+func SetTermPeriod(s *State, value int64) error {
+	return setValue(s.store, VarTermPeriod, value)
+}
+
+func GetCalculatePeriod(s *State) int64 {
+	return getValue(s.store, VarCalculatePeriod).Int64()
+}
+
+func SetCalculatePeriod(s *State, value int64) error {
+	return setValue(s.store, VarCalculatePeriod, value)
 }
 
 func GetIRep(s *State) *big.Int {
