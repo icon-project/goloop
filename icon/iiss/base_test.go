@@ -38,7 +38,11 @@ func TestUpdatePrepStatus(t *testing.T) {
 	addrArray := []module.Address{addr1, addr2}
 	voted := []bool{true, false}
 
-	err := handlePrepStatus(s, addrArray, voted)
+	var emptyArray []module.Address
+	err := handlePrepStatus(s, emptyArray, voted)
+	assert.NoError(t, err)
+
+	err = handlePrepStatus(s, addrArray, voted)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, s.GetPRepStatus(addr1).VTotal())

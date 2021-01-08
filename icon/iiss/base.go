@@ -197,22 +197,20 @@ func handleConsensusInfo(wc state.WorldContext) error {
 }
 
 func handlePrepStatus(state *icstate.State, prepAddressList []module.Address, voted []bool) error {
-	if len(prepAddressList) != 0 {
-		for i := 0; i < len(prepAddressList); i += 1 {
-			prepStatus := state.GetPRepStatus(prepAddressList[i])
-			if prepStatus == nil {
-				// TODO check if any predefined error format
-				err := errors.New("Prep status not exist")
-				return err
-			}
-			prepStatus.SetVTotal(prepStatus.VTotal() + 1)
+	for i := 0; i < len(prepAddressList); i += 1 {
+		prepStatus := state.GetPRepStatus(prepAddressList[i])
+		if prepStatus == nil {
+			// TODO check if any predefined error format
+			err := errors.New("Prep status not exist")
+			return err
+		}
+		prepStatus.SetVTotal(prepStatus.VTotal() + 1)
 
-			if !voted[i] {
-				prepStatus.SetVFailCont(prepStatus.VFailCont() + 1)
-				prepStatus.SetVFail(prepStatus.VFail() + 1)
-			} else {
-				prepStatus.SetVFailCont(0)
-			}
+		if !voted[i] {
+			prepStatus.SetVFailCont(prepStatus.VFailCont() + 1)
+			prepStatus.SetVFail(prepStatus.VFail() + 1)
+		} else {
+			prepStatus.SetVFailCont(0)
 		}
 	}
 	return nil
