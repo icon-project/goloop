@@ -164,7 +164,8 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
 			v, _ := validators.Get(i)
-			prepAddressList = append(prepAddressList, es.pm.GetPRepByNode(v.Address()).Owner())
+			owner := es.pm.GetPRepByNode(v.Address()).Owner()
+			prepAddressList = append(prepAddressList, owner)
 			if voted[i] {
 				voters = append(voters, es.pm.GetPRepByNode(v.Address()).Owner())
 			}
