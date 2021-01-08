@@ -156,6 +156,10 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
 	}
+	// if PrepManager is not ready, it returns immediately
+	if es.pm.GetPRepByNode(csi.Proposer()) == nil {
+		return nil
+	}
 	proposer := es.pm.GetPRepByNode(csi.Proposer()).Owner()
 	validators := csi.Voters()
 	voted := csi.Voted()
@@ -164,6 +168,9 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
 			v, _ := validators.Get(i)
+			if  es.pm.GetPRepByNode(v.Address()) == nil {
+				return nil
+			}
 			owner := es.pm.GetPRepByNode(v.Address()).Owner()
 			prepAddressList = append(prepAddressList, owner)
 			if voted[i] {
