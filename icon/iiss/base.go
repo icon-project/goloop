@@ -182,7 +182,7 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	// update P-rep status, vtotal, vfail, vfailcont
 	proposerExist := false
 	for _, p := range prepAddressList {
-		if p == proposer {
+		if p.Equal(proposer) {
 			proposerExist = true
 		}
 	}
@@ -261,7 +261,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if err = ts.Set(&totalSupply); err != nil {
 		return err
 	}
-	
+
 	// write Issue Info
 	issue, err := es.State.GetIssue()
 	if err != nil {
