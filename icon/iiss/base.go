@@ -167,7 +167,7 @@ func handleConsensusInfo(wc state.WorldContext) error {
 			owner := es.pm.GetPRepByNode(v.Address()).Owner()
 			prepAddressList = append(prepAddressList, owner)
 			if voted[i] {
-				voters = append(voters, es.pm.GetPRepByNode(v.Address()).Owner())
+				voters = append(voters, owner)
 			}
 		}
 	}
