@@ -110,6 +110,10 @@ func (ps *PRepStatus) VFail() int {
 	return ps.vFail
 }
 
+func (ps *PRepStatus) VFailCont() int {
+	return ps.vFailCont
+}
+
 func (ps *PRepStatus) equal(other *PRepStatus) bool {
 	if ps == other {
 		return true
@@ -294,5 +298,8 @@ func NewPRepStatus(owner module.Address) *PRepStatus {
 		grade:     Candidate,
 		delegated: new(big.Int),
 		bonded:    new(big.Int),
+		vFail: 0,
+		vFailCont: 0,
+		vTotal: 0,
 	}
 }

@@ -21,6 +21,8 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -30,7 +32,6 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -155,20 +156,21 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
 	}
-	proposer := csi.Proposer()
+	proposer := es.pm.GetPRepByNode(csi.Proposer()).Owner()
 	validators := csi.Voters()
 	voted := csi.Voted()
 	voters := make([]module.Address, 0)
-
+	prepAddressList := make([]module.Address, 0)
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
+			v, _ := validators.Get(i)
+			owner := es.pm.GetPRepByNode(v.Address()).Owner()
+			prepAddressList = append(prepAddressList, owner)
 			if voted[i] {
-				v, _ := validators.Get(i)
-				voters = append(voters, v.Address())
+				voters = append(voters, owner)
 			}
 		}
 	}
-
 	// make Block produce Info for calculator
 	if err := es.Front.AddBlockProduce(
 		int(wc.BlockHeight()-es.CalculationBlockHeight()-1),
@@ -178,8 +180,40 @@ func handleConsensusInfo(wc state.WorldContext) error {
 		return err
 	}
 
-	// TODO update P-Rep status
+	// update P-rep status, vtotal, vfail, vfailcont
+	proposerExist := false
+	for _, p := range prepAddressList {
+		if p.Equal(proposer) {
+			proposerExist = true
+		}
+	}
+	if !proposerExist {
+		prepAddressList = append(prepAddressList, proposer)
+	}
+	err := handlePrepStatus(es.State, prepAddressList, voted)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func handlePrepStatus(state *icstate.State, prepAddressList []module.Address, voted []bool) error {
+	for i := 0; i < len(prepAddressList); i += 1 {
+		prepStatus := state.GetPRepStatus(prepAddressList[i])
+		if prepStatus == nil {
+			// TODO check if any predefined error format
+			err := errors.New("Prep status not exist")
+			return err
+		}
+		prepStatus.SetVTotal(prepStatus.VTotal() + 1)
+
+		if !voted[i] {
+			prepStatus.SetVFailCont(prepStatus.VFailCont() + 1)
+			prepStatus.SetVFail(prepStatus.VFail() + 1)
+		} else {
+			prepStatus.SetVFailCont(0)
+		}
+	}
 	return nil
 }
 
