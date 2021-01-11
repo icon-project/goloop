@@ -86,7 +86,7 @@ func (c *TimerCache) GetSnapshot() {
 		} else {
 			o := icobject.New(TypeTimer, timer)
 			if err := c.dict.Set(timer.Height, o); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", height, err)
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
 			}
 		}
 	}

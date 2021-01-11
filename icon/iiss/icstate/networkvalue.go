@@ -79,12 +79,20 @@ func SetRRep(s *State, value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
 }
 
+func (s *State)GetMainPRepCount() int {
+	return int(GetMainPRepCount(s))
+}
+
 func GetMainPRepCount(s *State) int64 {
 	return getValue(s.store, VarMainPRepCount).Int64()
 }
 
 func SetMainPRepCount(s *State, value int64) error {
 	return setValue(s.store, VarMainPRepCount, value)
+}
+
+func (s *State)GetSubPRepCount() int {
+	return int(GetSubPRepCount(s))
 }
 
 func GetSubPRepCount(s *State) int64 {

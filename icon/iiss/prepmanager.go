@@ -13,11 +13,6 @@ import (
 	"sort"
 )
 
-const (
-	mainPRepCount = 22
-	subPRepCount  = 78
-)
-
 type RegInfoIdx int
 
 func (_ RegInfoIdx) Size() int {
@@ -120,6 +115,14 @@ func (pm *PRepManager) init() {
 	pm.sort()
 }
 
+func (pm *PRepManager) getMainPRepCount() int {
+	return int(icstate.GetMainPRepCount(pm.state))
+}
+
+func (pm *PRepManager) getSubPRepCount() int {
+	return int(icstate.GetSubPRepCount(pm.state))
+}
+
 func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 	base := pm.state.GetPRepBase(owner)
 	if base == nil {
@@ -173,6 +176,8 @@ func (pm *PRepManager) TotalStake() *big.Int {
 
 func (pm *PRepManager) GetValidators() []module.Validator {
 	size := len(pm.orderedPReps)
+	mainPRepCount := pm.getMainPRepCount()
+
 	if size < mainPRepCount {
 		log.Errorf("Not enough PReps: %d < %d", size, mainPRepCount)
 	}
@@ -194,11 +199,11 @@ func (pm *PRepManager) GetValidators() []module.Validator {
 func (pm *PRepManager) GetPRepsInJSON() map[string]interface{} {
 	size := len(pm.orderedPReps)
 	ret := make(map[string]interface{})
-	preps := make([]map[string]interface{}, size, size)
-	ret["preps"] = preps
+	prepList := make([]map[string]interface{}, size, size)
+	ret["preps"] = prepList
 
 	for i, prep := range pm.orderedPReps {
-		preps[i] = prep.ToJSON()
+		prepList[i] = prep.ToJSON()
 	}
 
 	return ret
@@ -331,6 +336,39 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
 	// Ignore the delegation to NotReady PReps
 	totalDelegated.Sub(totalDelegated, delegatedToNotReadyNode)
+	return nil
+}
+
+func (pm *PRepManager) OnTermEnd() error {
+	mainPRepCount := pm.getMainPRepCount()
+	subPRepCount := pm.getSubPRepCount()
+
+	if len(pm.orderedPReps) < mainPRepCount {
+		return nil
+	}
+
+	// Main PRep
+	electedPRepCount := mainPRepCount + subPRepCount
+
+	for i, prep := range pm.orderedPReps {
+		if i < mainPRepCount {
+			if prep.Grade() != icstate.Main {
+				prep.SetGrade(icstate.Main)
+				pm.state.AddPRepStatus(prep.PRepStatus)
+			}
+		} else if i < electedPRepCount {
+			if prep.Grade() != icstate.Sub {
+				prep.SetGrade(icstate.Sub)
+				pm.state.AddPRepStatus(prep.PRepStatus)
+			}
+		} else {
+			if prep.Grade() != icstate.Candidate {
+				prep.SetGrade(icstate.Candidate)
+				pm.state.AddPRepStatus(prep.PRepStatus)
+			}
+		}
+	}
+
 	return nil
 }
 

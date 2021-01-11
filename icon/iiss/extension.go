@@ -15,10 +15,12 @@ package iiss
 
 import (
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -133,6 +135,11 @@ type ExtensionStateImpl struct {
 	Front  *icstage.State
 	Back   *icstage.State
 	Reward *icreward.State
+
+	// Memory only -----
+	// If this flag is on, new validators will be set in OnExecutionEnd()
+	// It is valid until a transition is finished
+	updateValidator bool
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
@@ -274,10 +281,6 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]i
 	return prep.ToJSON(), nil
 }
 
-func (s *ExtensionStateImpl) GetValidators() []module.Validator {
-	return s.pm.GetValidators()
-}
-
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
 	return s.pm.TotalDelegated()
 }
@@ -323,6 +326,20 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 }
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
+	prep := s.pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+
+	grade := prep.Grade()
+	if grade != icstate.Candidate {
+		term := s.State.Term()
+		if err := term.RemovePRepSnapshot(owner); err != nil {
+			return err
+		}
+		s.updateValidator = grade == icstate.Main
+	}
+
 	err := s.pm.UnregisterPRep(owner)
 	if err != nil {
 		return err
@@ -343,6 +360,12 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 }
 
 func (s *ExtensionStateImpl) SetPRep(from, node module.Address, params []string) error {
+	if node != nil {
+		prep := s.pm.GetPRepByOwner(from)
+		if prep != nil && prep.Grade() == icstate.Main && !prep.GetNode().Equal(node) {
+			s.updateValidator = true
+		}
+	}
 	return s.pm.SetPRep(from, node, params)
 }
 
@@ -445,4 +468,149 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 		return nil, errors.Errorf("PRep not found: %v", address)
 	}
 	return pb.GetBonderListInJSON(), nil
+}
+
+func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext) error {
+	var err error
+	term := s.State.Term()
+	if term == nil {
+		return nil
+	}
+
+	blockHeight := wc.BlockHeight()
+	if blockHeight == term.GetEndBlockHeight() {
+		err = s.onTermEnd(wc)
+		if err != nil {
+			panic(err)
+		}
+
+		// NextTerm
+		term = s.State.Term()
+	}
+
+	if s.updateValidator {
+		err = s.setValidators(wc)
+		if err != nil {
+			panic(err)
+		}
+		s.updateValidator = false
+	}
+
+	return nil
+}
+
+func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
+	var err error
+	var totalSupply *big.Int
+
+	if err = s.pm.OnTermEnd(); err != nil {
+		return err
+	}
+
+	totalSupply, err = s.getTotalSupply(wc)
+	if err != nil {
+		return err
+	}
+	if err = s.moveOnToNextTerm(totalSupply); err != nil {
+		return err
+	}
+
+	if s.IsDecentralized() {
+		s.updateValidator = true
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
+	term := s.State.GetTerm()
+	nextTerm, err := term.NewNextTerm(totalSupply, s.pm.totalDelegated)
+	if err != nil {
+		return err
+	}
+
+	mainPRepCount := s.State.GetMainPRepCount()
+
+	size := s.pm.Size()
+	if size > mainPRepCount {
+		size = mainPRepCount
+	}
+
+	if size == mainPRepCount {
+		prepSnapshots := make(icstate.PRepSnapshots, size, size)
+		for i := 0; i < size; i++ {
+			prep := s.pm.GetPRepByIndex(i)
+			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus)
+		}
+
+		nextTerm.SetPRepSnapshots(prepSnapshots)
+		s.updateValidator = true
+	}
+
+	log.Debugf("#### %s", nextTerm)
+	return s.State.SetTerm(nextTerm)
+}
+
+func (s *ExtensionStateImpl) setValidators(wc state.WorldContext) error {
+	blockHeight := wc.BlockHeight()
+	validators := s.GetValidators()
+	size := len(validators)
+
+	if size > 0 {
+		// TODO: Remove the comment below when testing with multiple nodes
+		//return wc.GetValidatorState().Set(validators)
+		for i := 0; i < size; i++ {
+			log.Debugf("Validator %d: %s", i, validators[i].Address())
+		}
+	} else {
+		log.Infof("Not enough PReps height=%d, size=%d", blockHeight, size)
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) GetValidators() []module.Validator {
+	mainPRepCount := s.State.GetMainPRepCount()
+
+	term := s.State.GetTerm()
+	size := term.GetPRepSnapshotCount()
+	if size < mainPRepCount {
+		log.Errorf("Not enough PReps: %d < %d", size, mainPRepCount)
+	}
+
+	var err error
+	validators := make([]module.Validator, size, size)
+
+	for i := 0; i < mainPRepCount; i++ {
+		prepSnapshot := term.GetPRepSnapshot(i)
+		prep := s.pm.GetPRepByOwner(prepSnapshot.Owner())
+		node := prep.GetNode()
+		validators[i], err = state.ValidatorFromAddress(node)
+		if err != nil {
+			log.Errorf("Failed to run GetValidators(): %s", node.String())
+		}
+	}
+
+	return validators
+}
+
+func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
+	term := s.State.Term()
+	if term == nil {
+		err := errors.Errorf("Term is nil")
+		return nil, err
+	}
+	return term.ToJSON(), nil
+}
+
+func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {
+	ass := wc.GetAccountState(state.SystemID).GetSnapshot()
+	as := scoredb.NewStateStoreWith(ass)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+	if ts := tsVar.BigInt(); ts != nil {
+		return ts, nil
+	}
+	return big.NewInt(0), nil
+}
+
+func (s *ExtensionStateImpl) IsDecentralized() bool {
+	return s.State.Term().IsDecentralized()
 }

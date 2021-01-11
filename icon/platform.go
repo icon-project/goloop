@@ -96,6 +96,7 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
+
 	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
 		return err
 	}
@@ -107,11 +108,12 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	if err = es.State.SetIssue(issue); err != nil {
 		return err
 	}
-	return nil
+
+	return es.OnExecutionEnd(wc)
 }
 
 func (p *platform) Term() {
-	// TODO implement
+	// Terminate
 }
 
 func NewPlatform(base string, cid int) (service.Platform, error) {

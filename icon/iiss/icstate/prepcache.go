@@ -85,7 +85,7 @@ func (c *PRepBaseCache) GetSnapshot() {
 			key := base.owner
 			o := icobject.New(TypePRepBase, base)
 			if err := c.dict.Set(key, o); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
 		}
 	}
@@ -168,7 +168,7 @@ func (c *PRepStatusCache) GetSnapshot() {
 			key := status.owner
 			o := icobject.New(TypePRepStatus, status)
 			if err := c.dict.Set(key, o); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
 		}
 	}

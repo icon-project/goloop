@@ -95,7 +95,7 @@ func (c *AccountCache) GetSnapshot() {
 			key := account.address
 			o := icobject.New(TypeAccount, account)
 			if err := c.dict.Set(key, o); err != nil {
-				log.Errorf("Failed to set snapshot for %x, err+%+v", key, err)
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
 		}
 	}

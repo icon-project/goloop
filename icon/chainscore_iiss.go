@@ -379,3 +379,13 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(totalStake, totalSupply)
 	return result, nil
 }
+
+func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	jso, err := es.GetPRepTermInJSON()
+	if err != nil {
+		return jso, err
+	}
+	jso["blockHeight"] = s.cc.BlockHeight()
+	return jso, err
+}

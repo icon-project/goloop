@@ -29,6 +29,7 @@ const (
 	TypePRepStatus
 	TypeTimer
 	TypeIssue
+	TypeTerm
 )
 
 type StateAndSnapshot struct {
@@ -61,6 +62,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newTimerWithTag(tag), nil
 	case TypeIssue:
 		return newIssue(tag), nil
+	case TypeTerm:
+		return newTermWithTag(tag), nil
 	case icobject.TypeAddress:
 		return icobject.NewAddress(tag), nil
 	default:
@@ -111,4 +114,11 @@ func ToIssue(object trie.Object) *Issue {
 		return nil
 	}
 	return object.(*icobject.Object).Real().(*Issue)
+}
+
+func ToTerm(object trie.Object) *Term {
+	if object == nil {
+		return nil
+	}
+	return object.(*icobject.Object).Real().(*Term)
 }

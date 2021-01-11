@@ -36,10 +36,12 @@ type State struct {
 	prepStatusCache     *PRepStatusCache
 	unstakingTimerCache *TimerCache
 	unbondingTimerCache *TimerCache
+	termCache           *termCache
 	store               *icobject.ObjectStoreState
 }
 
 func (s *State) Reset(ss *Snapshot) error {
+	var err error
 	s.store.Reset(ss.store.ImmutableForObject)
 	s.accountCache.Reset()
 	s.activePRepCache.Reset()
@@ -48,11 +50,14 @@ func (s *State) Reset(ss *Snapshot) error {
 	s.prepStatusCache.Reset()
 	s.unstakingTimerCache.Reset()
 	s.unbondingTimerCache.Reset()
-
+	if err = s.termCache.Reset(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *State) GetSnapshot() *Snapshot {
+	var err error
 	s.accountCache.GetSnapshot()
 	s.activePRepCache.GetSnapshot()
 	s.nodeOwnerCache.GetSnapshot()
@@ -60,6 +65,9 @@ func (s *State) GetSnapshot() *Snapshot {
 	s.prepStatusCache.GetSnapshot()
 	s.unstakingTimerCache.GetSnapshot()
 	s.unbondingTimerCache.GetSnapshot()
+	if err = s.termCache.GetSnapshot(); err != nil {
+		panic(err)
+	}
 
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
@@ -77,25 +85,6 @@ func (s *State) GetUnstakingTimer(height int64) (*Timer, error) {
 func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
 	timer := s.unbondingTimerCache.Get(height)
 	return timer, nil
-}
-
-func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
-	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
-	store := icobject.NewObjectStoreState(t)
-
-	s := &State{
-		readonly:            readonly,
-		accountCache:        newAccountCache(store),
-		activePRepCache:     newActivePRepCache(store),
-		nodeOwnerCache:      newNodeOwnerCache(store),
-		prepBaseCache:       newPRepBaseCache(store),
-		prepStatusCache:     newPRepStatusCache(store),
-		unstakingTimerCache: newTimerCache(store, unstakingTimerDictPrefix),
-		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
-		store:               store,
-	}
-
-	return s
 }
 
 func (s *State) AddUnbondingTimerToCache(h int64) *Timer {
@@ -142,6 +131,30 @@ func (s *State) GetPRepStatus(owner module.Address) *PRepStatus {
 	return s.prepStatusCache.Get(owner)
 }
 
+func (s *State) Term() *Term {
+	return s.termCache.Get()
+}
+
+func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
+	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
+	store := icobject.NewObjectStoreState(t)
+
+	s := &State{
+		readonly:            readonly,
+		accountCache:        newAccountCache(store),
+		activePRepCache:     newActivePRepCache(store),
+		nodeOwnerCache:      newNodeOwnerCache(store),
+		prepBaseCache:       newPRepBaseCache(store),
+		prepStatusCache:     newPRepStatusCache(store),
+		unstakingTimerCache: newTimerCache(store, unstakingTimerDictPrefix),
+		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
+		termCache:           newTermCache(store),
+		store:               store,
+	}
+
+	return s
+}
+
 func (s *State) RemovePRepStatus(owner module.Address) error {
 	return s.prepBaseCache.Remove(owner)
 }
@@ -172,4 +185,12 @@ func (s *State) GetIssue() (*Issue, error) {
 		issue = NewIssue()
 	}
 	return issue, nil
+}
+
+func (s *State) GetTerm() *Term {
+	return s.termCache.Get()
+}
+
+func (s *State) SetTerm(term *Term) error {
+	return s.termCache.Set(term)
 }
