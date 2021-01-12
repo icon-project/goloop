@@ -57,3 +57,11 @@ func GetTotalSupply(ws state.WorldState) *big.Int {
 	ts := tsVar.BigInt()
 	return ts
 }
+
+func Min(value1, value2 int) int {
+	if value1 < value2 {
+		return value1
+	} else {
+		return value2
+	}
+}
