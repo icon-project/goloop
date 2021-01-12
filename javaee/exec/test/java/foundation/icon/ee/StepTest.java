@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.types.StepCost;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +40,7 @@ public class StepTest extends SimpleTest {
         }
     }
 
-    private Contract score;
+    private ContractAddress score;
     private StepCost stepCost;
     private int hashCost;
 
@@ -48,7 +48,7 @@ public class StepTest extends SimpleTest {
     public void setUp() {
         super.setUp();
         sm.enableClassMetering(false);
-        score = sm.deploy(Score.class);
+        score = sm.mustDeploy(Score.class);
         stepCost = sm.getStepCost();
         var storageKey = new byte[]{2, (byte)0x85, 'v', 'a', 'r', 'D', 'B'};
         // call, read OG, create storageKey object

@@ -32,6 +32,7 @@ public interface IInstrumentation {
     s.java.lang.String wrapAsString(String input);
     s.java.lang.Object unwrapThrowable(Throwable t);
     Throwable wrapAsThrowable(s.java.lang.Object arg);
+    void chargeEnergy(long cost) throws OutOfEnergyException;
     void chargeEnergy(int cost) throws OutOfEnergyException;
     boolean tryChargeEnergy(int cost);
     long energyLeft();

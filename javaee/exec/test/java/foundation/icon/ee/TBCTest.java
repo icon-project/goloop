@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TBCProtocol;
 import foundation.icon.ee.test.TBCTestScenario;
@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import test.TBCInterpreter;
 
 import java.math.BigInteger;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -18,7 +17,7 @@ public class TBCTest extends SimpleTest {
     private static final int I = TBCProtocol.VAR_TYPE_INSTANCE;
     private static final int L = TBCProtocol.VAR_TYPE_LOCAL;
 
-    void subcase(String name, Contract c, TBCTestScenario scenario) {
+    void subcase(String name, ContractAddress c, TBCTestScenario scenario) {
         var totalExp = scenario.getExpectCount();
         var tr = c.invoke("run", (Object)scenario.compile());
         var okObs = (BigInteger)tr.getRet();
@@ -28,9 +27,9 @@ public class TBCTest extends SimpleTest {
     @Test
     public void test() {
         createAndAcceptNewJAVAEE();
-        var c1 = sm.deploy(TBCInterpreter.class, "c1");
+        var c1 = sm.mustDeploy(TBCInterpreter.class, "c1");
         sm.setIndexer((addr) -> 1);
-        var c2 = sm.deploy(TBCInterpreter.class, "c2");
+        var c2 = sm.mustDeploy(TBCInterpreter.class, "c2");
         sm.setIndexer((addr) -> {
             if (addr.equals(c1.getAddress())) {
                 return 0;

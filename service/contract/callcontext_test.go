@@ -232,7 +232,7 @@ func (h *asyncHandler) GetBalance(addr module.Address) *big.Int {
 	panic("implement me")
 }
 
-func (h *asyncHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+func (h *asyncHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
 	panic("implement me")
 }
 

@@ -16,7 +16,7 @@
 
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.Matcher;
 import foundation.icon.ee.test.SimpleTest;
 import org.junit.jupiter.api.Test;
@@ -92,7 +92,7 @@ public class ThrowableMessageTest extends SimpleTest {
         }
     }
 
-    void invokeAndMatch(Contract c, String method, Matcher matcher) {
+    void invokeAndMatch(ContractAddress c, String method, Matcher matcher) {
         sm.setLogger(matcher);
         c.invoke(method);
         matcher.assertOK();
@@ -101,7 +101,7 @@ public class ThrowableMessageTest extends SimpleTest {
     @Test
     public void test() {
         createAndAcceptNewJAVAEE();
-        var score = sm.deploy(new Class[]{Score.class, MyException.class});
+        var score = sm.mustDeploy(new Class[]{Score.class, MyException.class});
 
         invokeAndMatch(score, "setFromSystem", new Matcher(Map.of(
                 "s.java.lang.ArrayIndexOutOfBoundsException: : Index 10 out of bounds for length 0", true,

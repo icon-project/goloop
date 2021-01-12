@@ -19,7 +19,7 @@ public class IntercallTest2 extends SimpleTest {
 
     @Test
     void testBadParam() {
-        var c = sm.deploy(BadParam.class);
+        var c = sm.mustDeploy(BadParam.class);
         var res = c.invoke("run");
         Assertions.assertEquals(0, res.getStatus());
     }

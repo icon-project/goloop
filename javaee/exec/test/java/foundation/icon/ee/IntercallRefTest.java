@@ -81,24 +81,24 @@ public class IntercallRefTest extends GoldenTest {
 
     @Test
     public void testRef1() {
-        var app1 = sm.deploy(RefScoreA.class);
-        var app2 = sm.deploy(RefScoreB.class);
+        var app1 = sm.mustDeploy(RefScoreA.class);
+        var app2 = sm.mustDeploy(RefScoreB.class);
         app1.invoke("method", 1, true, app2.getAddress());
     }
 
     @Test
     public void testRef2() {
-        var app1 = sm.deploy(RefScoreA.class);
-        var app2 = sm.deploy(RefScoreB.class);
+        var app1 = sm.mustDeploy(RefScoreA.class);
+        var app2 = sm.mustDeploy(RefScoreB.class);
         app1.invoke("method", 2, true, app2.getAddress());
     }
 
     @Test
     public void testRef3() {
         createAndAcceptNewJAVAEE();
-        var app1 = sm.deploy(RefScoreA.class);
+        var app1 = sm.mustDeploy(RefScoreA.class);
         sm.setIndexer((addr) -> 1);
-        var app2 = sm.deploy(RefScoreB.class);
+        var app2 = sm.mustDeploy(RefScoreB.class);
         sm.setIndexer((addr) -> {
             if (addr.equals(app1.getAddress())) {
                 return 0;

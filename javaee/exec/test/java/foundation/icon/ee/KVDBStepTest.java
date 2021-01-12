@@ -30,7 +30,7 @@ public class KVDBStepTest extends SimpleTest {
 
     @Test
     void testSetStepCharge() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         var nonNull = new byte[]{(byte)0};
 
         // null -> null
