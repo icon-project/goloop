@@ -97,9 +97,19 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
 
-func (ps *PRepStatus) GetBondedDelegation() *big.Int {
-	// TODO: Not implemented
-	return ps.delegated
+func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
+	sum := new(big.Int).Add(ps.delegated, ps.bonded)
+	multiflyer := big.NewInt(100)
+	calc := new(big.Int).Mul(ps.bonded, multiflyer)
+
+	br := big.NewInt(bondRequirement)
+	calc.Div(calc, br)
+
+	if sum.Cmp(calc) > 0 {
+		return calc
+	} else {
+		return sum
+	}
 }
 
 func (ps *PRepStatus) VTotal() int {
@@ -165,14 +175,14 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	}
 }
 
-func (ps *PRepStatus) ToJSON() map[string]interface{} {
+func (ps *PRepStatus) ToJSON(br int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	jso["bondedDelegation"] = ps.GetBondedDelegation()
+	jso["bondedDelegation"] = ps.GetBondedDelegation(br)
 	jso["totalBlocks"] = ps.vTotal
 	jso["validatedBlocks"] = ps.vTotal - ps.vFail
 	return jso

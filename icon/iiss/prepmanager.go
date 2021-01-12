@@ -34,6 +34,7 @@ const (
 type PRep struct {
 	*icstate.PRepBase
 	*icstate.PRepStatus
+	*icstate.State
 }
 
 func (p *PRep) Owner() module.Address {
@@ -41,21 +42,22 @@ func (p *PRep) Owner() module.Address {
 }
 
 func (p *PRep) ToJSON() map[string]interface{} {
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON())
+	br := icstate.GetBondRequirement(p.State)
+	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(br))
 }
 
 func (p *PRep) Clone() *PRep {
-	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus)
+	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus, p.State)
 }
 
-func newPRep(owner module.Address, base *icstate.PRepBase, status *icstate.PRepStatus) *PRep {
+func newPRep(owner module.Address, base *icstate.PRepBase, status *icstate.PRepStatus, state *icstate.State) *PRep {
 	base = base.Clone()
 	base.SetOwner(owner)
 
 	status = status.Clone()
 	status.SetOwner(owner)
 
-	return &PRep{PRepBase: base, PRepStatus: status}
+	return &PRep{PRepBase: base, PRepStatus: status, State: state}
 }
 
 func setPRep(pb *icstate.PRepBase, node module.Address, params []string) error {
@@ -86,7 +88,8 @@ type preps []*PRep
 func (p preps) Len() int      { return len(p) }
 func (p preps) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 func (p preps) Less(i, j int) bool {
-	ret := p[i].GetBondedDelegation().Cmp(p[j].GetBondedDelegation())
+	br := icstate.GetBondRequirement(p[i].State)
+	ret := p[i].GetBondedDelegation(br).Cmp(p[j].GetBondedDelegation(br))
 	if ret < 0 {
 		return true
 	} else if ret > 0 {
@@ -130,7 +133,7 @@ func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 	}
 
 	status := pm.state.GetPRepStatus(owner)
-	return newPRep(owner, base, status)
+	return newPRep(owner, base, status, pm.state)
 }
 
 func (pm *PRepManager) Add(p *PRep) {
