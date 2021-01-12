@@ -99,8 +99,8 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 
 func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
 	sum := new(big.Int).Add(ps.delegated, ps.bonded)
-	multiflyer := big.NewInt(100)
-	calc := new(big.Int).Mul(ps.bonded, multiflyer)
+	multiplier := big.NewInt(100)
+	calc := new(big.Int).Mul(ps.bonded, multiplier)
 
 	br := big.NewInt(bondRequirement)
 	calc.Div(calc, br)

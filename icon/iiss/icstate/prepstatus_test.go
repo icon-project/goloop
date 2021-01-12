@@ -14,7 +14,6 @@
 package icstate
 
 import (
-	"fmt"
 	"github.com/bmizerany/assert"
 	"github.com/icon-project/goloop/common"
 	"math/big"
@@ -67,7 +66,6 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	bonded := big.NewInt(int64(1))
 	s.GetPRepStatus(addr1).SetBonded(bonded)
 	res := status1.GetBondedDelegation(5)
-	fmt.Println(res)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(20))))
 
 	delegated = big.NewInt(int64(99))
@@ -75,7 +73,6 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	bonded = big.NewInt(int64(2))
 	s.GetPRepStatus(addr1).SetBonded(bonded)
 	res = status1.GetBondedDelegation(5)
-	fmt.Println(res)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(40))))
 
 	delegated = big.NewInt(int64(93))
@@ -83,7 +80,6 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	bonded = big.NewInt(int64(7))
 	s.GetPRepStatus(addr1).SetBonded(bonded)
 	res = status1.GetBondedDelegation(5)
-	fmt.Println(res)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100))))
 
 	delegated = big.NewInt(int64(90))
@@ -91,7 +87,13 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	bonded = big.NewInt(int64(10))
 	s.GetPRepStatus(addr1).SetBonded(bonded)
 	res = status1.GetBondedDelegation(5)
-	fmt.Println(res)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100))))
+
+	delegated = big.NewInt(int64(0))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(0))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(5)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
 
 }
