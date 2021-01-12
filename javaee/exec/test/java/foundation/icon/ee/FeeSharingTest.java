@@ -28,7 +28,7 @@ public class FeeSharingTest extends GoldenTest {
     @Test
     void test() {
         var owner = sm.getOrigin();
-        var score = sm.deploy(FeeSharing.class);
+        var score = sm.mustDeploy(FeeSharing.class);
         assertEquals(BigInteger.ZERO, score.query("getProportion", owner).getRet());
         String value = "No value";
         assertEquals(value, score.query("getValue").getRet());

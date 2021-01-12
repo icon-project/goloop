@@ -38,21 +38,21 @@ public class DeployTest extends SimpleTest {
 
     @Test
     public void test() {
-        sm.deploy(NoConstructor.class);
+        sm.mustDeploy(NoConstructor.class);
         var e = assertThrows(TransactionException.class,
-                () -> sm.deploy(PackagePrivateConstructor.class));
+                () -> sm.mustDeploy(PackagePrivateConstructor.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
-                () -> sm.deploy(ProtectedConstructor.class));
+                () -> sm.mustDeploy(ProtectedConstructor.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
-                () -> sm.deploy(PrivateConstructor.class));
+                () -> sm.mustDeploy(PrivateConstructor.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
-                () -> sm.deploy(Abstract.class));
+                () -> sm.mustDeploy(Abstract.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
-                () -> sm.deploy(Interface.class));
+                () -> sm.mustDeploy(Interface.class));
         assertEquals(Status.IllegalFormat, e.getResult().getStatus());
     }
 
@@ -77,10 +77,10 @@ public class DeployTest extends SimpleTest {
     @Test
     void testClassAccess() {
         Assertions.assertDoesNotThrow(() ->
-                sm.deploy(new Class<?>[]{ClassAccess.class, Inf.class})
+                sm.mustDeploy(new Class<?>[]{ClassAccess.class, Inf.class})
         );
         Assertions.assertDoesNotThrow(() ->
-                sm.deploy(new Class<?>[]{ArrayClassAccess.class, Inf.class})
+                sm.mustDeploy(new Class<?>[]{ArrayClassAccess.class, Inf.class})
         );
     }
 }

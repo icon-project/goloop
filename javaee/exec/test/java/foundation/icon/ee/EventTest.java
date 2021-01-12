@@ -47,7 +47,7 @@ public class EventTest extends GoldenTest {
 
     @Test
     void testLogEvents() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         score.invoke("logEvent", true, 1, 2, 3, 4, 5, 6, "7",
                 sm.newExternalAddress(), new byte[]{0, 1, 2, 3});
     }

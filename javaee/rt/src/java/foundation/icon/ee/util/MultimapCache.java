@@ -6,7 +6,7 @@ import java.lang.ref.WeakReference;
 import java.util.function.Predicate;
 
 public abstract class MultimapCache<K, V> {
-    public interface Entry<T> extends Disposable {
+    private interface Entry<T> extends Disposable {
         T get();
     }
 

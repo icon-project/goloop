@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class CompilerTest extends GoldenTest {
     @Test
     public void testNoInit() {
-        sm.deploy(ScoreWithoutInit.class);
+        sm.mustDeploy(ScoreWithoutInit.class);
     }
 
     public static class ScoreWithoutInit {
@@ -20,7 +20,7 @@ public class CompilerTest extends GoldenTest {
     @Test
     public void testMultipleInits() {
         try {
-            sm.deploy(ScoreWithMultipleInits.class, "Hello");
+            sm.mustDeploy(ScoreWithMultipleInits.class, "Hello");
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
@@ -35,13 +35,13 @@ public class CompilerTest extends GoldenTest {
     @Test
     public void testMultipleSameNames() {
         try {
-            sm.deploy(ScoreWithMultipleSameExternals.class);
+            sm.mustDeploy(ScoreWithMultipleSameExternals.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
         }
         try {
-            sm.deploy(ScoreWithMultipleSameEvents.class);
+            sm.mustDeploy(ScoreWithMultipleSameEvents.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
@@ -65,13 +65,13 @@ public class CompilerTest extends GoldenTest {
     @Test
     public void testParamType() {
         try {
-            sm.deploy(ScoreWithFloatParam.class);
+            sm.mustDeploy(ScoreWithFloatParam.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
         }
         try {
-            sm.deploy(ScoreWithDoubleParam.class);
+            sm.mustDeploy(ScoreWithDoubleParam.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
@@ -91,13 +91,13 @@ public class CompilerTest extends GoldenTest {
     @Test
     public void testReturnType() {
         try {
-            sm.deploy(ScoreWithFloatReturn.class);
+            sm.mustDeploy(ScoreWithFloatReturn.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());
         }
         try {
-            sm.deploy(ScoreWithDoubleReturn.class);
+            sm.mustDeploy(ScoreWithDoubleReturn.class);
             fail();
         } catch (ABICompilerException e) {
             System.err.println("Expected " + e.getMessage());

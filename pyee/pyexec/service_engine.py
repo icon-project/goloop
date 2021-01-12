@@ -22,6 +22,7 @@ from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
 from .iconscore.icon_score_mapper import IconScoreMapper
 from .iconscore.internal_call import InternalCall
+from .iconscore.score_package_validator import ScorePackageValidator
 from .logger import Logger, SystemLogger
 
 TAG = 'ServiceEngine'
@@ -48,6 +49,7 @@ class ServiceEngine(ContextContainer):
 
     _score_mapper = None
     _proxy = None
+    _verify_package = False  # need to be set by config
 
     @classmethod
     def open(cls, proxy):
@@ -71,6 +73,8 @@ class ServiceEngine(ContextContainer):
     @classmethod
     def get_score_api(cls, code: str):
         try:
+            if cls._verify_package:
+                ScorePackageValidator.execute(code)
             icon_score: 'IconScoreBase' = cls._get_icon_score(GETAPI_DUMMY_ADDRESS, code)
             get_api = getattr(icon_score, '_IconScoreBase__get_api')
             ret = get_api()

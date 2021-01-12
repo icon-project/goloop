@@ -506,8 +506,9 @@ func (h *callGetAPIHandler) GetBalance(addr module.Address) *big.Int {
 	return nil
 }
 
-func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
 	h.log.Panicln("Unexpected OnEvent() call")
+	return nil
 }
 
 func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {

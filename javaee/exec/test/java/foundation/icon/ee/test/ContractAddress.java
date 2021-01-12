@@ -8,12 +8,12 @@ import foundation.icon.ee.types.Status;
 import java.io.IOException;
 import java.math.BigInteger;
 
-public class Contract {
+public class ContractAddress {
     private final ServiceManager sm;
     private final Address address;
     private final Method[] methods;
 
-    public Contract(ServiceManager sm, Address address, Method[] methods) {
+    public ContractAddress(ServiceManager sm, Address address, Method[] methods) {
         this.sm = sm;
         this.address = address;
         this.methods = methods;

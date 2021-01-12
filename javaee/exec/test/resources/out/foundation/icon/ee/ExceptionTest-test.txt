@@ -21,13 +21,13 @@ RECV result status=0 stepUsed=7649 ret=<null>
 SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[010002... 010003...] EID=1 codeState=[6 8a368807a52b155e0b6b82dc5ee9e87a85ea51b970d554749e7cf0ab4affb667 0]
 RECV getObjGraph flag=1 => next=6 hash=8a368807a52b155e0b6b82dc5ee9e87a85ea51b970d554749e7cf0ab4affb667 graphLen=183 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04&foundation.icon.ee.ExceptionTest$Score\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x06NOT OK\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02OK\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x04test
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK
-RECV call to=010002... value=0 stepLimit=999986569 method=run params=[]
-SEND invoke code=010002 isQuery=false from=010001... to=010002... value=0 stepLimit=999986569 method=run params=[] EID=2 codeState=[3 4e076305b75dbf31ebcfe784177f225a58506abaedf890b6d597111d60589c20 0]
+RECV call to=010002... value=0 stepLimit=999991569 method=run params=[]
+SEND invoke code=010002 isQuery=false from=010001... to=010002... value=0 stepLimit=999991569 method=run params=[] EID=2 codeState=[3 4e076305b75dbf31ebcfe784177f225a58506abaedf890b6d597111d60589c20 0]
 RECV getObjGraph flag=1 => next=3 hash=4e076305b75dbf31ebcfe784177f225a58506abaedf890b6d597111d60589c20 graphLen=95 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01,foundation.icon.ee.ExceptionTest$RevertScore\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0buser revert
 RECV result status=33 stepUsed=3952 ret=user revert
 SEND result status=33 stepUsed=3952 ret=user revert EID=3 prevEID=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK code=1
-RECV call to=010003... value=0 stepLimit=999973423 method=run params=[]
+RECV call to=010003... value=0 stepLimit=999983423 method=run params=[]
 SEND result status=2 stepUsed=0 ret=Contract not found EID=3 prevEID=3
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK : java.lang.IllegalArgumentException
-RECV result status=0 stepUsed=29844 ret=<null>
+RECV result status=0 stepUsed=19844 ret=<null>

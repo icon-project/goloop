@@ -83,7 +83,7 @@ public class JCFTest extends GoldenTest {
 
     @Test
     public void test() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         score.invoke("run");
         score.invoke("dumpMyMap");
         score.invoke("setMyMap1");

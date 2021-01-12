@@ -434,17 +434,27 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 	return h.cc.GetBalance(addr)
 }
 
-func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
 	if h.isQuery {
-		h.log.Panic("EventLog arrives in query mode")
-		return
+		// It's not allowed to send event message if it's in query mode.
+		// It means that the execution environment is in invalid state.
+		// Proxy need to be closed.
+		h.log.Warnf("DROP EventLog(%s,%+v,%+v) in QueryMode",
+			addr, indexed, data)
+		return errors.InvalidStateError.New("EventInQueryMode")
 	}
 	if err := h.info.CheckEventData(indexed, data); err != nil {
+		// Given data is incorrect. This may not be able to  checked
+		// by execution environment. So we just ignore this and let
+		// them know the problem.
+		h.log.TSystemf("EVENT drop event=(%s,%+v,%+v) err=%+v",
+			addr, indexed, data, err)
 		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
-		return
+		return nil
 	}
 	h.cc.OnEvent(addr, indexed, data)
+	return nil
 }
 
 func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {

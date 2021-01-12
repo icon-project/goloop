@@ -119,7 +119,7 @@ public class ServiceManager implements Agent {
         return addr;
     }
 
-    public Contract deploy(Class<?> main, Object ... params) {
+    public ContractAddress mustDeploy(Class<?> main, Object ... params) {
         ++exid;
         eid = 0;
         byte[] jar = makeJar(main);
@@ -130,7 +130,7 @@ public class ServiceManager implements Agent {
         return origin;
     }
 
-    public Contract deploy(Class<?>[] all, Object ... params) {
+    public ContractAddress mustDeploy(Class<?>[] all, Object ... params) {
         ++exid;
         eid = 0;
         byte[] jar = makeJar(all[0].getName(), all);
@@ -159,7 +159,7 @@ public class ServiceManager implements Agent {
         return res;
     }
 
-    private Contract doDeploy(byte[] jar, Object ... params) {
+    private ContractAddress doDeploy(byte[] jar, Object ... params) {
         Address scoreAddr = newScoreAddress();
         String path = getHexPrefix(scoreAddr);
         try {
@@ -179,8 +179,8 @@ public class ServiceManager implements Agent {
                 current = state.getAccount(prev.address);
                 throw new TransactionException(res);
             }
-            var contract = new Contract(ServiceManager.this, scoreAddr, methods);
-            current.contract = contract;
+            var contract = new ContractAddress(ServiceManager.this, scoreAddr, methods);
+            current.contractAddress = contract;
             current = state.getAccount(prev.address);
             return contract;
         } catch (IOException e) {
@@ -268,8 +268,6 @@ public class ServiceManager implements Agent {
                     assert dataObj != null;
                     String method = (String) dataObj.get("method");
                     Object[] params = (Object[]) dataObj.get("params");
-                    BigInteger stepsContractCall = BigInteger.valueOf(5000);
-                    stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
                             to, value, stepLimit, method, params);
                     current.eid = eid;
@@ -278,7 +276,7 @@ public class ServiceManager implements Agent {
                             res.getStatus(), res.getStepUsed(), res.getRet(),
                             eid, current.eid);
                     proxy.sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
-                            res.getStepUsed().add(stepsContractCall),
+                            res.getStepUsed(),
                             TypedObj.encodeAny(res.getRet()), eid, current.eid);
                     break;
                 }
@@ -407,7 +405,7 @@ public class ServiceManager implements Agent {
                             String method, Object[] params) throws IOException {
         boolean readOnlyMethod = false;
         if (!method.equals("<init>")) {
-            var m = current.contract.getMethod(method);
+            var m = current.contractAddress.getMethod(method);
             readOnlyMethod = (m.getFlags()&Method.Flags.READONLY) != 0;
         }
         var prevIsReadOnly = isReadOnly;

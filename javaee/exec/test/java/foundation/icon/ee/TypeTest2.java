@@ -16,7 +16,7 @@
 
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.util.Strings;
 import org.junit.jupiter.api.Assertions;
@@ -788,7 +788,7 @@ public class TypeTest2 extends SimpleTest {
         Assertions.assertEquals(wrap(o1), wrap(o2));
     }
 
-    private void test(Contract app, Object object, String method) {
+    private void test(ContractAddress app, Object object, String method) {
         Assertions.assertEquals(wrap(object), wrap(app.invoke(method, object).getRet()));
     }
 
@@ -874,7 +874,7 @@ public class TypeTest2 extends SimpleTest {
 
     @Test
     public void testParamAndReturn() {
-        var app = sm.deploy(new Class<?>[]{
+        var app = sm.mustDeploy(new Class<?>[]{
                 Score.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         });
@@ -883,18 +883,18 @@ public class TypeTest2 extends SimpleTest {
 
     @Test
     public void testInterncall() {
-        var app = sm.deploy(new Class<?>[]{
+        var app = sm.mustDeploy(new Class<?>[]{
                 Score.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         });
-        var caller = sm.deploy(new Class<?>[]{
+        var caller = sm.mustDeploy(new Class<?>[]{
                 CallerScore.class, Person.class, Student.class, Course.class,
                 PersonF.class, StudentF.class, CourseF.class
         }, app.getAddress());
         testForApp(caller);
     }
 
-    private void testForApp(Contract app) {
+    private void testForApp(ContractAddress app) {
         final var booleanArray3D = nest3D(true);
         final var byteArray3D = new Object[][] {
                 new Object[] {
