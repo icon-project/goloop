@@ -89,6 +89,7 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	res = status1.GetBondedDelegation(5)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100))))
 
+	// 0 input, exptected 0 output
 	delegated = big.NewInt(int64(0))
 	s.GetPRepStatus(addr1).SetDelegated(delegated)
 	bonded = big.NewInt(int64(0))
@@ -96,4 +97,43 @@ func TestPRepManager_GetBondedDelegation(t *testing.T) {
 	res = status1.GetBondedDelegation(5)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
 
+	// extreme
+	delegated = big.NewInt(int64(99999999999))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(999))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(5)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(19980))))
+
+	// different requirement
+	delegated = big.NewInt(int64(99999))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(999))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(4)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(24975))))
+
+	// 0 for bond requirement
+	delegated = big.NewInt(int64(99999))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(999))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(0)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
+
+	// 101 for bond requirement
+	delegated = big.NewInt(int64(99999))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(999))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(101)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
+
+	// 0 for bond requirement
+	delegated = big.NewInt(int64(99999))
+	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	bonded = big.NewInt(int64(999))
+	s.GetPRepStatus(addr1).SetBonded(bonded)
+	res = status1.GetBondedDelegation(100)
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(999))))
 }

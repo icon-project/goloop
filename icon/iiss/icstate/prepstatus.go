@@ -98,6 +98,10 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 }
 
 func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
+	if bondRequirement == 0 || bondRequirement > 100 {
+		// should not be 0 for bond requirement
+		return big.NewInt(0)
+	}
 	sum := new(big.Int).Add(ps.delegated, ps.bonded)
 	multiplier := big.NewInt(100)
 	calc := new(big.Int).Mul(ps.bonded, multiplier)
