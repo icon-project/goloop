@@ -29,6 +29,8 @@ from . import (
 from ..icon_score_constant import (
     CONST_INDEXED_ARGS_COUNT,
     CONST_SCORE_FLAG,
+    STR_ON_INSTALL,
+    STR_ON_UPDATE,
     ScoreFlag,
 )
 from ... import utils
@@ -372,9 +374,16 @@ def create_score_element_metadata(cls: type) -> Mapping:
         if name.startswith("__"):
             continue
 
-        # Collect the only functions with one or more of the above 4 score flags
         flag = get_score_flag(func)
 
+        # goloop needs to have these init functions explicitly
+        if name == STR_ON_INSTALL or name == STR_ON_UPDATE:
+            if utils.is_any_flag_on(flag, ScoreFlag.ALL):
+                raise IllegalFormatException(f"Invalid decorators in {name}")
+            elements[name] = FunctionMetadata(func)
+            continue
+
+        # Collect the only functions with the following flags
         if utils.is_any_flag_on(flag, ScoreFlag.FUNC | ScoreFlag.EVENTLOG):
             verify_score_flag(flag)
             elements[name] = __get_score_element_metadata(func)

@@ -166,6 +166,7 @@ class DataType(object):
     ADDRESS = 5
     LIST = 6
     DICT = 7
+    STRUCT = 8
 
 
 class MethodName(object):
@@ -177,15 +178,20 @@ class APIInfo(object):
         self.__values = []
         self.__proxy = proxy
 
-    def __encode_inputs(self, inputs: List[Tuple[str, int, Any]], optional: int) -> List[Tuple[str, int, bytes]]:
+    def __encode_inputs(self, inputs: List[Tuple[str, int, Any]], optional: int) -> list:
         mandatory = len(inputs) - optional
         new_inputs = []
         for i in range(len(inputs)):
-            name, _type, default = inputs[i]
+            name, _type, default = inputs[i][:3]
+            item = [name, _type]
             if i < mandatory:
-                new_inputs.append((name, _type, None))
+                item.append(None)
             else:
-                new_inputs.append((name, _type, self.__proxy.encode(default)))
+                item.append(self.__proxy.encode(default))
+            if len(inputs[i]) == 4:
+                fields = inputs[i][3]
+                item.append(fields)
+            new_inputs.append(item)
         return new_inputs
 
     def add_function(self, name: str, flags: int, optional: int, inputs: List[Tuple[str, int, Any]],

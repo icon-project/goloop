@@ -44,7 +44,7 @@ class ScoreFlag(Flag):
     EXTERNAL = 0x02
     PAYABLE = 0x04
     FALLBACK = 0x08
-    ISOLATED = 0x16
+    ISOLATED = 0x10
     FUNC = 0xFF
 
     # Used for other declarations

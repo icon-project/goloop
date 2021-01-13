@@ -15,7 +15,7 @@
 import warnings
 from abc import abstractmethod, ABC, ABCMeta
 from functools import partial, wraps
-from inspect import isfunction, getmembers, signature, Parameter
+from inspect import Parameter, isfunction, signature
 from typing import Callable, Any, List, Mapping
 
 from .icon_score_base2 import (
@@ -36,7 +36,7 @@ from .icon_score_constant import (
 from .icon_score_context import ContextGetter, ContextContainer
 from .icon_score_eventlog import EventLogEmitter
 from .internal_call import InternalCall
-from .score_api_generator import ScoreApiGenerator
+from .typing.definition import get_score_api
 from .typing.element import (
     FunctionMetadata,
     ScoreElementMetadata,
@@ -358,11 +358,8 @@ class IconScoreBaseMeta(ABCMeta):
         elements: Mapping[str, ScoreElementMetadata] = create_score_element_metadata(cls)
         setattr(cls, CONST_CLASS_ELEMENT_METADATA, elements)
 
-        custom_funcs = [value for key, value in getmembers(cls, predicate=isfunction)
-                        if not key.startswith('__')]
-
         # Generate SCORE API list
-        api_list = ScoreApiGenerator.generate(custom_funcs)
+        api_list = get_score_api(elements.values())
         setattr(cls, CONST_CLASS_API, api_list)
 
         return cls

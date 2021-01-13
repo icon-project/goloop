@@ -3,6 +3,11 @@ from iconservice import *
 TAG = 'ScoreApi'
 
 
+class Person(TypedDict):
+    name: str
+    age: int
+
+
 class ScoreApi(IconScoreBase):
 
     def __init__(self, db: IconScoreDatabase) -> None:
@@ -14,7 +19,6 @@ class ScoreApi(IconScoreBase):
     def on_update(self) -> None:
         super().on_update()
 
-    # readonly, external, payable, isolated
     @external
     def externalMethod(self) -> str:
         return "externalMethod"
@@ -23,6 +27,7 @@ class ScoreApi(IconScoreBase):
     def externalReadonlyMethod(self) -> str:
         return "externalReadonlyMethod"
 
+    # This should not be exposed to the API list
     @payable
     def payableMethod(self) -> str:
         return "payableMethod"
@@ -42,8 +47,8 @@ class ScoreApi(IconScoreBase):
         return "externalReadonlyFalseMethod"
 
     # Possible data types for function parameters are int, str, bytes, bool, Address.
-    # List and Dict type parameters are not supported yet.
-    # Returning types can be int, str, bytes, bool, Address, List, Dict.
+    # List and Struct parameters are now newly supported.
+    # Return types can be int, str, bytes, bool, Address, list, dict.
 
     @external(readonly=True)
     def param_int(self, param1: int) -> int:
@@ -63,6 +68,22 @@ class ScoreApi(IconScoreBase):
 
     @external(readonly=True)
     def param_Address(self, param1: Address) -> Address:
+        return param1
+
+    @external(readonly=True)
+    def param_List(self, param1: List[str]) -> List[str]:
+        return param1
+
+    @external(readonly=True)
+    def param_ListList(self, param1: List[List[str]]) -> List[List[str]]:
+        return param1
+
+    @external(readonly=True)
+    def param_Struct(self, param1: Person) -> Person:
+        return param1
+
+    @external(readonly=True)
+    def param_ListStruct(self, param1: List[Person]) -> List[Person]:
         return param1
 
     @external(readonly=True)
