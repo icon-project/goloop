@@ -98,7 +98,7 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 }
 
 func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
-	if bondRequirement == 0 || bondRequirement > 100 {
+	if bondRequirement < 1 || bondRequirement > 100 {
 		// should not be 0 for bond requirement
 		return big.NewInt(0)
 	}
