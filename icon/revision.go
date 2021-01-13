@@ -36,6 +36,12 @@ const (
 	RevisionReserved
 )
 
+const (
+	DefaultRevision = Revision4
+	MaxRevision     = RevisionReserved - 1
+	LatestRevision  = Revision8
+)
+
 var revisionFlags = []module.Revision{
 	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo,
 	0,
