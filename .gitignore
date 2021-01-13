@@ -6,4 +6,3 @@ __pycache__
 doc.tmp/
 build/
 bin/
-go.mod
