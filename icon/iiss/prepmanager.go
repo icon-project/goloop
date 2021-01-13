@@ -34,7 +34,6 @@ const (
 type PRep struct {
 	*icstate.PRepBase
 	*icstate.PRepStatus
-	*icstate.State
 }
 
 func (p *PRep) Owner() module.Address {
@@ -42,22 +41,21 @@ func (p *PRep) Owner() module.Address {
 }
 
 func (p *PRep) ToJSON() map[string]interface{} {
-	br := icstate.GetBondRequirement(p.State)
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(br))
+	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON())
 }
 
 func (p *PRep) Clone() *PRep {
-	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus, p.State)
+	return newPRep(p.Owner(), p.PRepBase, p.PRepStatus)
 }
 
-func newPRep(owner module.Address, base *icstate.PRepBase, status *icstate.PRepStatus, state *icstate.State) *PRep {
+func newPRep(owner module.Address, base *icstate.PRepBase, status *icstate.PRepStatus) *PRep {
 	base = base.Clone()
 	base.SetOwner(owner)
 
 	status = status.Clone()
 	status.SetOwner(owner)
 
-	return &PRep{PRepBase: base, PRepStatus: status, State: state}
+	return &PRep{PRepBase: base, PRepStatus: status}
 }
 
 func setPRep(pb *icstate.PRepBase, node module.Address, params []string) error {
@@ -78,6 +76,7 @@ type PRepManager struct {
 	state          *icstate.State
 	totalDelegated *big.Int
 	totalStake     *big.Int
+	bondRequirement *big.Int
 
 	orderedPReps preps
 	prepMap      map[string]*PRep
@@ -88,8 +87,7 @@ type preps []*PRep
 func (p preps) Len() int      { return len(p) }
 func (p preps) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 func (p preps) Less(i, j int) bool {
-	br := icstate.GetBondRequirement(p[i].State)
-	ret := p[i].GetBondedDelegation(br).Cmp(p[j].GetBondedDelegation(br))
+	ret := p[i].GetBondedDelegation().Cmp(p[j].GetBondedDelegation())
 	if ret < 0 {
 		return true
 	} else if ret > 0 {
@@ -133,7 +131,7 @@ func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 	}
 
 	status := pm.state.GetPRepStatus(owner)
-	return newPRep(owner, base, status, pm.state)
+	return newPRep(owner, base, status)
 }
 
 func (pm *PRepManager) Add(p *PRep) {
@@ -230,7 +228,7 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 
 	ps := pm.state.GetPRepStatus(owner)
 	if ps == nil {
-		ps = icstate.NewPRepStatus(owner)
+		ps = icstate.NewPRepStatusWithBondValue(owner, pm.state.GetBondRequirement())
 		pm.state.AddPRepStatus(ps)
 	} else {
 		// NotReady -> Active
