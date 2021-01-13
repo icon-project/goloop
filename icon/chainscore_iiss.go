@@ -197,17 +197,18 @@ func (s *chainScore) Ex_unregisterPRep() error {
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.GetPRepInJSON(address)
+	return es.GetPRepInJSON(address, s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	jso := es.GetPRepsInJSON()
+	blockHeight := s.cc.BlockHeight()
+	jso := es.GetPRepsInJSON(blockHeight)
 	ts := icstate.GetTotalStake(es.State)
 	tsh := new(common.HexInt)
 	tsh.Set(ts)
 	jso["totalStake"] = tsh
-	jso["blockHeight"] = s.cc.BlockHeight()
+	jso["blockHeight"] = blockHeight
 	return jso, nil
 }
 

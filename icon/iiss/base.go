@@ -130,7 +130,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(state.StepLimitTypeInvoke), false)
 	defer cc.Dispose()
 
-	if err := handleConsensusInfo(ctx); err != nil {
+	if err := handleConsensusInfo(cc); err != nil {
 		return nil, err
 	}
 
@@ -149,9 +149,9 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	return r, nil
 }
 
-func handleConsensusInfo(wc state.WorldContext) error {
-	es := wc.GetExtensionState().(*ExtensionStateImpl)
-	csi := wc.ConsensusInfo()
+func handleConsensusInfo(cc contract.CallContext) error {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	csi := cc.ConsensusInfo()
 	if csi == nil {
 		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
@@ -180,14 +180,14 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	}
 	// make Block produce Info for calculator
 	if err := es.Front.AddBlockProduce(
-		int(wc.BlockHeight()-es.CalculationBlockHeight()-1),
+		int(cc.BlockHeight()-es.CalculationBlockHeight()-1),
 		proposer,
 		voters,
 	); err != nil {
 		return err
 	}
 
-	// update P-rep status, vtotal, vfail, vfailcont
+	// update P-rep status
 	proposerExist := false
 	for _, p := range prepAddressList {
 		if p.Equal(proposer) {
@@ -197,14 +197,38 @@ func handleConsensusInfo(wc state.WorldContext) error {
 	if !proposerExist {
 		prepAddressList = append(prepAddressList, proposer)
 	}
-	err := handlePrepStatus(es.State, prepAddressList, voted)
+	err := updatePRepStatus(cc, es.State, prepAddressList, voted)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func handlePrepStatus(state *icstate.State, prepAddressList []module.Address, voted []bool) error {
+func updatePRepStatus(cc contract.CallContext, state *icstate.State, prepAddressList []module.Address, voted []bool) error {
+	// compare with last validators
+	lastValidators := state.GetLastValidators()
+	validatorChanged := false
+	for _, lv := range lastValidators {
+		find := false
+		for _, cv := range prepAddressList {
+			if cv.Equal(lv) {
+				find = true
+				break
+			}
+		}
+		if !find {
+			prepStatus := state.GetPRepStatus(lv)
+			applyPRepStatus(prepStatus, icstate.None, cc.BlockHeight())
+			validatorChanged = true
+		}
+	}
+	if validatorChanged {
+		if err := state.SetLastValidators(prepAddressList); err != nil {
+			return err
+		}
+	}
+
+	// process current validators
 	for i := 0; i < len(prepAddressList); i += 1 {
 		prepStatus := state.GetPRepStatus(prepAddressList[i])
 		if prepStatus == nil {
@@ -212,16 +236,34 @@ func handlePrepStatus(state *icstate.State, prepAddressList []module.Address, vo
 			err := errors.New("Prep status not exist")
 			return err
 		}
-		prepStatus.SetVTotal(prepStatus.VTotal() + 1)
 
 		if !voted[i] {
-			prepStatus.SetVFailCont(prepStatus.VFailCont() + 1)
-			prepStatus.SetVFail(prepStatus.VFail() + 1)
+			applyPRepStatus(prepStatus, icstate.Fail, cc.BlockHeight())
+			if err := validationPenalty(cc, prepStatus); err != nil {
+				return err
+			}
 		} else {
-			prepStatus.SetVFailCont(0)
+			applyPRepStatus(prepStatus, icstate.Success, cc.BlockHeight())
 		}
 	}
+
 	return nil
+}
+
+func applyPRepStatus(ps *icstate.PRepStatus, vs icstate.ValidationState, blockHeight int64) {
+	if ps.LastState() == vs {
+		return
+	}
+
+	if ps.LastState() != icstate.None {
+		diff := int(blockHeight - ps.LastHeight())
+		ps.SetVTotal(ps.VTotal() + diff)
+		if ps.LastState() == icstate.Fail {
+			ps.SetVFail(ps.VFail() + diff)
+		}
+	}
+	ps.SetLastState(vs)
+	ps.SetLastHeight(blockHeight)
 }
 
 func handleICXIssue(cc contract.CallContext, data []byte) error {

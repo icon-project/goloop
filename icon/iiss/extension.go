@@ -270,16 +270,16 @@ func newCalculation() *calculation {
 	return &calculation{0, 0, nil}
 }
 
-func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {
-	return s.pm.GetPRepsInJSON()
+func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
+	return s.pm.GetPRepsInJSON(blockHeight)
 }
 
-func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
+func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
 	prep := s.pm.GetPRepByOwner(address)
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	return prep.ToJSON(), nil
+	return prep.ToJSON(blockHeight), nil
 }
 
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
@@ -559,6 +559,13 @@ func (s *ExtensionStateImpl) setValidators(wc state.WorldContext) error {
 	size := len(validators)
 
 	if size > 0 {
+		// shift validation penalty mask
+		for _, v := range validators {
+			// TODO IC2-35 When creating a validator with a validation penalty, only the newly added P-Rep is modified.
+			pRepStatus := s.pm.GetPRepByNode(v.Address())
+			pRepStatus.ShiftVPenaltyMask(ConsistentValidationPenaltyMask)
+		}
+
 		// TODO: Remove the comment below when testing with multiple nodes
 		//return wc.GetValidatorState().Set(validators)
 		for i := 0; i < size; i++ {

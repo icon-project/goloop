@@ -35,24 +35,31 @@ func newUnbond() *Unbond {
 	}
 }
 
-func (ub *Unbond) Equal(ub2 *Unbond) bool {
-	return ub.Address.Equal(ub2.Address) && ub.Value.Cmp(ub2.Value) == 0 && ub.Expire == ub2.Expire
+func (u *Unbond) Slash(ratio int) *big.Int {
+	slashAmount := new(big.Int).Mul(u.Value, big.NewInt(int64(ratio)))
+	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
+	u.Value.Sub(u.Value, slashAmount)
+	return slashAmount
 }
 
-func (ub *Unbond) ToJSON() map[string]interface{} {
+func (u *Unbond) Equal(ub2 *Unbond) bool {
+	return u.Address.Equal(ub2.Address) && u.Value.Cmp(ub2.Value) == 0 && u.Expire == ub2.Expire
+}
+
+func (u *Unbond) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["address"] = ub.Address
-	jso["value"] = intconv.FormatBigInt(ub.Value)
-	jso["expireHeight"] = ub.Expire
+	jso["address"] = u.Address
+	jso["value"] = intconv.FormatBigInt(u.Value)
+	jso["expireHeight"] = u.Expire
 
 	return jso
 }
 
-func (ub *Unbond) Clone() *Unbond {
+func (u *Unbond) Clone() *Unbond {
 	n := newUnbond()
-	n.Address.Set(ub.Address)
-	n.Value.Set(ub.Value)
-	n.Expire = ub.Expire
+	n.Address.Set(u.Address)
+	n.Value.Set(u.Value)
+	n.Expire = u.Expire
 	return n
 }
 
@@ -91,6 +98,27 @@ func (ul Unbonds) GetUnbondAmount() *big.Int {
 		total.Add(total, b.Value)
 	}
 	return total
+}
+
+func (ul *Unbonds) Slash(address module.Address, ratio int) *big.Int {
+	unbonds := *ul
+	for idx, u := range *ul {
+		if u.Address.Equal(address) {
+			if ratio == 100 {
+				copy(unbonds[idx:], unbonds[idx+1:])
+				unbonds = unbonds[0 : len(unbonds)-1]
+				if len(unbonds) > 0 {
+					*ul = unbonds
+				} else {
+					*ul = nil
+				}
+				return u.Value
+			} else {
+				return u.Slash(ratio)
+			}
+		}
+	}
+	return new(big.Int)
 }
 
 func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {

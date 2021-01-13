@@ -44,3 +44,102 @@ func TestUnbonds(t *testing.T) {
 	assert.True(t, ubl1.Equal(ubl2))
 	assert.Equal(t, v1+v2, ubl2.GetUnbondAmount().Int64())
 }
+
+func TestUnbonds_Slash(t *testing.T) {
+	addr1 := common.NewAddressFromString("hx1")
+	addr2 := common.NewAddressFromString("hx2")
+	ub1 := Unbond{
+		Address: addr1,
+		Value:   big.NewInt(100),
+	}
+	ub2 := Unbond{
+		Address: addr2,
+		Value:   big.NewInt(200),
+	}
+	ubl1 := Unbonds{
+		&ub1, &ub2,
+	}
+
+	type values struct {
+		target *common.Address
+		ratio  int
+	}
+
+	type wants struct {
+		slashAmount int64
+		length      int
+	}
+
+	tests := []struct {
+		name string
+		in   values
+		out  wants
+	}{
+		{
+			"Invalid address",
+			values{
+				common.NewAddressFromString("hx321"),
+				10,
+			},
+			wants{
+				0,
+				2,
+			},
+		},
+		{
+			"slash 10%",
+			values{
+				addr1,
+				10,
+			},
+			wants{
+				int64(10),
+				2,
+			},
+		},
+		{
+			"slash 100%",
+			values{
+				addr1,
+				100,
+			},
+			wants{
+				int64(90),
+				1,
+			},
+		},
+		{
+			"slash 10% last entry",
+			values{
+				addr2,
+				10,
+			},
+			wants{
+				int64(20),
+				1,
+			},
+		},
+		{
+			"slash 100% last entry",
+			values{
+				addr2,
+				100,
+			},
+			wants{
+				int64(180),
+				0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.in
+			out := tt.out
+			slashAmount := ubl1.Slash(in.target, in.ratio)
+
+			assert.Equal(t, out.slashAmount, slashAmount.Int64())
+			assert.Equal(t, out.length, len(ubl1))
+		})
+	}
+}

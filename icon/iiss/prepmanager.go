@@ -40,8 +40,8 @@ func (p *PRep) Owner() module.Address {
 	return p.PRepBase.Owner()
 }
 
-func (p *PRep) ToJSON() map[string]interface{} {
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON())
+func (p *PRep) ToJSON(blockHeight int64) map[string]interface{} {
+	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight))
 }
 
 func (p *PRep) Clone() *PRep {
@@ -196,14 +196,14 @@ func (pm *PRepManager) GetValidators() []module.Validator {
 	return validators
 }
 
-func (pm *PRepManager) GetPRepsInJSON() map[string]interface{} {
+func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
 	size := len(pm.orderedPReps)
 	ret := make(map[string]interface{})
 	prepList := make([]map[string]interface{}, size, size)
 	ret["preps"] = prepList
 
 	for i, prep := range pm.orderedPReps {
-		prepList[i] = prep.ToJSON()
+		prepList[i] = prep.ToJSON(blockHeight)
 	}
 
 	return ret
