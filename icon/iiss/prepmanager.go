@@ -76,7 +76,6 @@ type PRepManager struct {
 	state          *icstate.State
 	totalDelegated *big.Int
 	totalStake     *big.Int
-	bondRequirement *big.Int
 
 	orderedPReps preps
 	prepMap      map[string]*PRep
