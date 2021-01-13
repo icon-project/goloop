@@ -124,6 +124,7 @@ func SetTotalStake(s *State, value *big.Int) error {
 func (s *State)GetBondRequirement() int {
 	return int(GetBondRequirement(s))
 }
+
 func GetBondRequirement(s *State) int64 {
 	return getValue(s.store, VarBondRequirement).Int64()
 }
