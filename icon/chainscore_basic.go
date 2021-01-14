@@ -15,16 +15,13 @@ package icon
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"math/big"
-	"strings"
-
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	"math/big"
 )
 
 func (s *chainScore) tryChargeCall() error {
@@ -136,7 +133,7 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	return status
 }
 
-func (s *chainScore) Ex_rejectScore(txHash []byte) error {
+func (s *chainScore) Ex_rejectScore(txHash []byte, reason string) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}
@@ -237,133 +234,6 @@ func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 	return stepLimitDB.Set(contextType, cost)
 }
 
-func (s *chainScore) Ex_grantValidator(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
-		return err
-	}
-	if address == nil {
-		return scoreresult.ErrInvalidParameter
-	}
-	if err := s.checkGovernance(false); err != nil {
-		return err
-	}
-	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
-	}
-
-	if s.cc.MembershipEnabled() {
-		found := false
-		as := s.cc.GetAccountState(state.SystemID)
-		db := scoredb.NewArrayDB(as, state.VarMembers)
-		for i := 0; i < db.Size(); i++ {
-			if db.Get(i).Address().Equal(address) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return scoreresult.New(StatusIllegalArgument, "NotInMembers")
-		}
-	}
-
-	if v, err := state.ValidatorFromAddress(address); err == nil {
-		return s.cc.GetValidatorState().Add(v)
-	} else {
-		return err
-	}
-}
-
-func (s *chainScore) Ex_revokeValidator(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
-		return err
-	}
-	if address == nil {
-		return scoreresult.ErrInvalidParameter
-	}
-	if err := s.checkGovernance(false); err != nil {
-		return err
-	}
-	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
-	}
-	if v, err := state.ValidatorFromAddress(address); err == nil {
-		vl := s.cc.GetValidatorState()
-		if ok := vl.Remove(v); !ok {
-			return scoreresult.New(StatusNotFound, "NotFound")
-		}
-		if vl.Len() == 0 {
-			return scoreresult.New(StatusIllegalArgument, "OnlyValidator")
-		}
-		return nil
-	} else {
-		return err
-	}
-}
-
-func (s *chainScore) Ex_getValidators() ([]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return nil, err
-	}
-	vs := s.cc.GetValidatorState()
-	validators := make([]interface{}, vs.Len())
-	for i := 0; i < vs.Len(); i++ {
-		if v, ok := vs.Get(i); ok {
-			validators[i] = v.Address()
-		} else {
-			return nil, errors.CriticalUnknownError.New("Unexpected access failure")
-		}
-	}
-	return validators, nil
-}
-
-func (s *chainScore) Ex_addMember(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarMembers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			return nil
-		}
-	}
-	return db.Put(address)
-}
-
-func (s *chainScore) Ex_removeMember(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
-	}
-
-	// If membership system is on, first check if the member is not a validator
-	if s.cc.MembershipEnabled() {
-		if s.cc.GetValidatorState().IndexOf(address) >= 0 {
-			return scoreresult.New(StatusIllegalArgument, "RevokeValidatorFirst")
-		}
-	}
-
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarMembers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			rAddr := db.Pop().Address()
-			if i < db.Size() { // addr is not rAddr
-				if err := db.Set(i, rAddr); err != nil {
-					return err
-				}
-			}
-			break
-		}
-	}
-	return nil
-}
-
 func (s *chainScore) Ex_addDeployer(address module.Address) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
@@ -389,58 +259,6 @@ func (s *chainScore) Ex_removeDeployer(address module.Address) error {
 			rAddr := db.Pop().Address()
 			if i < db.Size() { // addr is not rAddr
 				if err := db.Set(i, rAddr); err != nil {
-					return err
-				}
-			}
-			break
-		}
-	}
-	return nil
-}
-
-func (s *chainScore) Ex_setTimestampThreshold(threshold *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewVarDB(as, state.VarTimestampThreshold)
-	return db.Set(threshold)
-}
-
-func (s *chainScore) Ex_getTimestampThreshold() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return 0, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewVarDB(as, state.VarTimestampThreshold)
-	return db.Int64(), nil
-}
-
-func (s *chainScore) Ex_addLicense(contentId string) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarLicenses)
-	for i := 0; i < db.Size(); i++ {
-		if strings.Compare(db.Get(i).String(), contentId) == 0 {
-			return nil
-		}
-	}
-	return db.Put(contentId)
-}
-
-func (s *chainScore) Ex_removeLicense(contentId string) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarLicenses)
-	for i := 0; i < db.Size(); i++ {
-		if strings.Compare(db.Get(i).String(), contentId) == 0 {
-			id := db.Pop().String()
-			if i < db.Size() { // id is not contentId
-				if err := db.Set(i, id); err != nil {
 					return err
 				}
 			}
@@ -607,55 +425,4 @@ func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarServiceConfig).Int64(), nil
-}
-
-func (s *chainScore) Ex_getMembers() ([]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return nil, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarMembers)
-	members := make([]interface{}, db.Size())
-	for i := 0; i < db.Size(); i++ {
-		members[i] = db.Get(i).Address()
-	}
-	return members, nil
-}
-
-func (s *chainScore) Ex_getRoundLimitFactor() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return 0, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64(), nil
-}
-
-func (s *chainScore) Ex_setRoundLimitFactor(f *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	if f.Sign() < 0 {
-		return scoreresult.New(StatusIllegalArgument, "IllegalArgument")
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor)
-	return factor.Set(f)
-}
-
-func (s *chainScore) Ex_getMinimizeBlockGen() (bool, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return false, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	mbg := scoredb.NewVarDB(as, state.VarMinimizeBlockGen)
-	return mbg.Bool(), nil
-}
-
-func (s *chainScore) Ex_setMinimizeBlockGen(b bool) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	mbg := scoredb.NewVarDB(as, state.VarMinimizeBlockGen)
-	return mbg.Set(b)
 }
