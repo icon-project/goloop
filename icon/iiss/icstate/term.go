@@ -12,10 +12,6 @@ import (
 	"math/big"
 )
 
-const (
-	termPeriod = 10
-)
-
 type PRepSnapshot struct {
 	owner     module.Address
 	delegated *big.Int
@@ -397,9 +393,9 @@ func newTermWithTag(_ icobject.Tag) *Term {
 	return &Term{}
 }
 
-func newTerm() *Term {
+func newTerm(termPeriod int64) *Term {
 	return &Term{
-		period:         termPeriod,
+		period:         int(termPeriod),
 		totalSupply:    big.NewInt(0),
 		totalDelegated: big.NewInt(0),
 		prepSnapshots:  nil,
