@@ -116,22 +116,29 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
 
+// Bond Delegation formula
+// totalDelegation = bond + delegation
+// bondRatio = bond / totalDelegation * 100
+// bondedDelegation = totalDelegation * (bondRatio / bondRequirement)
+//                  = bond * 100 / bondRequirement
+// if bondedDelegation > totalDelegation
+//    bondedDelegation = totalDelegation
 func (ps *PRepStatus) GetBondedDelegation(bondRequirement int) *big.Int {
 	if bondRequirement < 1 || bondRequirement > 100 {
 		// should not be 0 for bond requirement
 		return big.NewInt(0)
 	}
-	sum := new(big.Int).Add(ps.delegated, ps.bonded)
+	totalDelegation := new(big.Int).Add(ps.delegated, ps.bonded)
 	multiplier := big.NewInt(100)
-	calc := new(big.Int).Mul(ps.bonded, multiplier)
+	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
 
 	br := big.NewInt(int64(bondRequirement))
-	calc.Div(calc, br)
+	bondedDelegation.Div(bondedDelegation, br)
 
-	if sum.Cmp(calc) > 0 {
-		return calc
+	if totalDelegation.Cmp(bondedDelegation) > 0 {
+		return bondedDelegation
 	} else {
-		return sum
+		return totalDelegation
 	}
 }
 

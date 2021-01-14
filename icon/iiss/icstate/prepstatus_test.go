@@ -14,13 +14,13 @@
 package icstate
 
 import (
-	"github.com/bmizerany/assert"
-	"github.com/icon-project/goloop/common"
 	"math/big"
 	"testing"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/bmizerany/assert"
 )
 
 func TestPRepStatus_Bytes(t *testing.T) {
