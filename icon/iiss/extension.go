@@ -278,7 +278,7 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]i
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	return prep.ToJSON(), nil
+	return prep.ToJSON(s.pm.state.GetBondRequirement()), nil
 }
 
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {

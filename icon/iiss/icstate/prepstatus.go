@@ -62,8 +62,6 @@ type PRepStatus struct {
 	vPenaltyMask int
 	lastState    int
 	lastHeight   int
-
-	bondRequirement int
 }
 
 func (ps *PRepStatus) Owner() module.Address {
@@ -99,8 +97,8 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
 
-func (ps *PRepStatus) GetBondedDelegation() *big.Int {
-	if ps.bondRequirement < 1 || ps.bondRequirement > 100 {
+func (ps *PRepStatus) GetBondedDelegation(bondRequirement int) *big.Int {
+	if bondRequirement < 1 || bondRequirement > 100 {
 		// should not be 0 for bond requirement
 		return big.NewInt(0)
 	}
@@ -108,7 +106,7 @@ func (ps *PRepStatus) GetBondedDelegation() *big.Int {
 	multiplier := big.NewInt(100)
 	calc := new(big.Int).Mul(ps.bonded, multiplier)
 
-	br := big.NewInt(int64(ps.bondRequirement))
+	br := big.NewInt(int64(bondRequirement))
 	calc.Div(calc, br)
 
 	if sum.Cmp(calc) > 0 {
@@ -181,14 +179,14 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	}
 }
 
-func (ps *PRepStatus) ToJSON() map[string]interface{} {
+func (ps *PRepStatus) ToJSON(bondRequirement int) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	jso["bondedDelegation"] = ps.GetBondedDelegation()
+	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	jso["totalBlocks"] = ps.vTotal
 	jso["validatedBlocks"] = ps.vTotal - ps.vFail
 	return jso
@@ -304,10 +302,6 @@ func (ps *PRepStatus) SetLastHeight(h int) {
 	ps.lastHeight = h
 }
 
-func (ps *PRepStatus) SetBondRequirement(b int) {
-	ps.bondRequirement = b
-}
-
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
 	return NewPRepStatus(nil)
 }
@@ -321,18 +315,5 @@ func NewPRepStatus(owner module.Address) *PRepStatus {
 		vFail: 0,
 		vFailCont: 0,
 		vTotal: 0,
-	}
-}
-
-func NewPRepStatusWithBondValue(owner module.Address, bondRequirement int) *PRepStatus {
-	return &PRepStatus{
-		owner:     owner,
-		grade:     Candidate,
-		delegated: new(big.Int),
-		bonded:    new(big.Int),
-		vFail: 0,
-		vFailCont: 0,
-		vTotal: 0,
-		bondRequirement: bondRequirement,
 	}
 }
