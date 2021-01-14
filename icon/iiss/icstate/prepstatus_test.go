@@ -47,3 +47,318 @@ func TestPRepStatus_Bytes(t *testing.T) {
 	assert.Equal(t, true, ss1.owner.Equal(owner))
 	assert.Equal(t, true, ss2.owner.Equal(owner))
 }
+
+func TestPRepStatus_getContValue(t *testing.T) {
+	type args struct {
+		lastState   ValidationState
+		lastBH      int64
+		blockHeight int64
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"Fail state",
+			args{
+				Fail,
+				0,
+				10,
+			},
+			11,
+		},
+		{
+			"Success state",
+			args{
+				Success,
+				10,
+				22000,
+			},
+			21991,
+		},
+		{
+			"None state",
+			args{
+				None,
+				0,
+				1000,
+			},
+			0,
+		},
+		{
+			"Invalid block height",
+			args{
+				Fail,
+				100,
+				1,
+			},
+			0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := &PRepStatus{
+				lastState:  in.lastState,
+				lastHeight: in.lastBH,
+			}
+
+			ret := ps.getContValue(in.blockHeight)
+
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func TestPRepStatus_GetVTotal(t *testing.T) {
+	type args struct {
+		vTotal      int
+		lastState   ValidationState
+		lastBH      int64
+		blockHeight int64
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"Fail state",
+			args{
+				10,
+				Fail,
+				15,
+				20,
+			},
+			10 + 20 - 15 + 1,
+		},
+		{
+			"Success state",
+			args{
+				20,
+				Success,
+				50,
+				22000,
+			},
+			20 + 22000 - 50 + 1,
+		},
+		{
+			"None state",
+			args{
+				100,
+				None,
+				200,
+				1000,
+			},
+			100,
+		},
+		{
+			"Invalid block height",
+			args{
+				100,
+				Fail,
+				200,
+				1,
+			},
+			100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := &PRepStatus{
+				vTotal:     in.vTotal,
+				lastState:  in.lastState,
+				lastHeight: in.lastBH,
+			}
+
+			ret := ps.GetVTotal(in.blockHeight)
+
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func TestPRepStatus_GetVFail(t *testing.T) {
+	type args struct {
+		vFail       int
+		lastState   ValidationState
+		lastBH      int64
+		blockHeight int64
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"Fail state",
+			args{
+				10,
+				Fail,
+				15,
+				20,
+			},
+			10 + 20 - 15 + 1,
+		},
+		{
+			"Success state",
+			args{
+				20,
+				Success,
+				50,
+				22000,
+			},
+			20,
+		},
+		{
+			"None state",
+			args{
+				100,
+				None,
+				200,
+				1000,
+			},
+			100,
+		},
+		{
+			"Invalid block height",
+			args{
+				100,
+				Fail,
+				200,
+				1,
+			},
+			100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := &PRepStatus{
+				vFail:      in.vFail,
+				lastState:  in.lastState,
+				lastHeight: in.lastBH,
+			}
+
+			ret := ps.GetVFail(in.blockHeight)
+
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func TestPRepStatus_GetVFailCont(t *testing.T) {
+	type args struct {
+		lastState   ValidationState
+		lastBH      int64
+		blockHeight int64
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"Fail state",
+			args{
+				Fail,
+				15,
+				20,
+			},
+			20 - 15 + 1,
+		},
+		{
+			"Success state",
+			args{
+				Success,
+				50,
+				22000,
+			},
+			0,
+		},
+		{
+			"None state",
+			args{
+				None,
+				200,
+				1000,
+			},
+			0,
+		},
+		{
+			"Invalid block height",
+			args{
+				Fail,
+				200,
+				1,
+			},
+			0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := &PRepStatus{
+				lastState:  in.lastState,
+				lastHeight: in.lastBH,
+			}
+
+			ret := ps.GetVFailCont(in.blockHeight)
+
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
+	type args struct {
+		vPenaltyMask uint32
+		mask         uint32
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want uint32
+	}{
+		{
+			"Normal",
+			args{
+				0x3,
+				0x3fffffff,
+			},
+			0x6,
+		},
+		{
+			"Masked",
+			args{
+				0x3fffffff,
+				0x3fffffff,
+			},
+			0x3ffffffe,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := &PRepStatus{
+				vPenaltyMask:  in.vPenaltyMask,
+			}
+
+			ps.ShiftVPenaltyMask(in.mask)
+
+			assert.Equal(t, tt.want, ps.vPenaltyMask)
+		})
+	}
+}

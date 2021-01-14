@@ -102,5 +102,4 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			assert.Equal(t, tt.want, ret)
 		})
 	}
-
 }
