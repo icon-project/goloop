@@ -45,8 +45,8 @@ public class ExceptionTest extends GoldenTest {
 
     @Test
     public void test() {
-        var score = sm.deploy(Score.class);
-        var revertScore = sm.deploy(RevertScore.class);
+        var score = sm.mustDeploy(Score.class);
+        var revertScore = sm.mustDeploy(RevertScore.class);
         score.invoke("run", revertScore.getAddress(), sm.newScoreAddress());
     }
 }

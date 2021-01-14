@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	IssueKey = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
+	IssueKey          = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
+	LastValidatorsKey = containerdb.ToKey(containerdb.HashBuilder, "last_validators")
 )
 
 type State struct {
@@ -193,4 +194,32 @@ func (s *State) GetTerm() *Term {
 
 func (s *State) SetTerm(term *Term) error {
 	return s.termCache.Set(term)
+}
+
+func (s *State) SetLastValidators(al []module.Address) error {
+	var err error
+	db := containerdb.NewArrayDB(s.store, LastValidatorsKey)
+	size := db.Size()
+	for i, a := range al {
+		value := a.Bytes()
+		if i < size {
+			err = db.Set(i, value)
+		} else {
+			err = db.Put(value)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *State) GetLastValidators() []module.Address {
+	db := containerdb.NewArrayDB(s.store, LastValidatorsKey)
+	size := db.Size()
+	al := make([]module.Address, size, size)
+	for i := 0; i < size; i += 1 {
+		al[i] = db.Get(i).Address()
+	}
+	return al
 }

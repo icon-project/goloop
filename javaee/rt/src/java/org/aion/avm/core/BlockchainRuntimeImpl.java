@@ -252,7 +252,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         dApp.loadRuntimeState(newRS);
         dApp.invalidateStateCache();
         inst.forceNextHashCode(newRS.getGraph().getNextHash());
-        inst.chargeEnergy(res.getStepUsed().intValue());
+        inst.chargeEnergy(res.getStepUsed().longValue());
         int s = res.getStatus();
         if (s == Status.Success) {
             if (cls == null) {

@@ -80,8 +80,8 @@ public class IntercallTest extends GoldenTest {
 
     @Test
     public void testTypes() {
-        var papp = sm.deploy(TypeTest.Score.class);
-        var app = sm.deploy(ProxyScore.class, papp.getAddress());
+        var papp = sm.mustDeploy(TypeTest.Score.class);
+        var app = sm.mustDeploy(ProxyScore.class, papp.getAddress());
         app.invoke("mbyte", 0);
         app.invoke("mshort", 0);
         app.invoke("mint", 0);
@@ -137,8 +137,8 @@ public class IntercallTest extends GoldenTest {
 
     @Test
     public void testFail() {
-        var app1 = sm.deploy(ScoreA.class);
-        var app2 = sm.deploy(ScoreFail.class);
+        var app1 = sm.mustDeploy(ScoreA.class);
+        var app2 = sm.mustDeploy(ScoreFail.class);
         app1.invoke("method", app2.getAddress());
     }
 }

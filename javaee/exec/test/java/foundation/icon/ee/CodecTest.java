@@ -61,7 +61,7 @@ public class CodecTest extends GoldenTest {
 
     @Test
     public void test() {
-        var score = sm.deploy(new Class<?>[]{Score.class, User.class});
+        var score = sm.mustDeploy(new Class<?>[]{Score.class, User.class});
         score.invoke("run");
     }
 }

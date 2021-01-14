@@ -20,7 +20,7 @@ public class SampleTest extends GoldenTest {
     @Test
     public void testSample() {
         var owner = sm.getOrigin();
-        var app = sm.deploy(SampleToken.class, "MySampleToken", "MST", 18, 1000);
+        var app = sm.mustDeploy(SampleToken.class, "MySampleToken", "MST", 18, 1000);
         app.invoke("balanceOf", owner);
         var addr1 = sm.newExternalAddress();
         app.invoke("transfer", addr1, new BigInteger("1000000000000000000"), "Hello".getBytes(StandardCharsets.UTF_8));
@@ -29,7 +29,7 @@ public class SampleTest extends GoldenTest {
         app.invoke("balanceOf", addr1);
         app.invoke("balanceOf", owner);
         app.invoke("totalSupply");
-        var app2 = sm.deploy(CollectionTest.class);
+        var app2 = sm.mustDeploy(CollectionTest.class);
         app2.invoke("getInt");
         app2.invoke("totalSupply2", app.getAddress());
         app2.invoke("balanceOf2", app.getAddress(), owner);
@@ -38,7 +38,7 @@ public class SampleTest extends GoldenTest {
     @Test
     public void testInherited() {
         var owner = sm.getOrigin();
-        var app = sm.deploy(new Class<?>[]{IRC2BasicToken.class, IRC2Basic.class, IRC2.class}, "MySampleToken", "MST", 18, 1000);
+        var app = sm.mustDeploy(new Class<?>[]{IRC2BasicToken.class, IRC2Basic.class, IRC2.class}, "MySampleToken", "MST", 18, 1000);
         app.invoke("balanceOf", owner);
         var addr1 = sm.newExternalAddress();
         app.invoke("transfer", addr1, new BigInteger("1000000000000000000"), "Hello".getBytes(StandardCharsets.UTF_8));
@@ -47,7 +47,7 @@ public class SampleTest extends GoldenTest {
         app.invoke("balanceOf", addr1);
         app.invoke("balanceOf", owner);
         app.invoke("totalSupply");
-        var app2 = sm.deploy(CollectionTest.class);
+        var app2 = sm.mustDeploy(CollectionTest.class);
         app2.invoke("getInt");
         app2.invoke("totalSupply2", app.getAddress());
         app2.invoke("balanceOf2", app.getAddress(), owner);
@@ -56,7 +56,7 @@ public class SampleTest extends GoldenTest {
     @Test
     public void testIRC3() {
         var owner = sm.getOrigin();
-        var app = sm.deploy(new Class<?>[]{IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
+        var app = sm.mustDeploy(new Class<?>[]{IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
                 EnumerableIntMap.class, Arrays.class}, "MyNFT", "NFT");
         app.invoke("balanceOf", owner);
         app.invoke("totalSupply");

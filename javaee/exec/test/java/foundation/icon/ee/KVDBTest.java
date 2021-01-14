@@ -122,7 +122,7 @@ public class KVDBTest extends GoldenTest {
 
     @Test
     void testExampleScore() {
-        var score = sm.deploy(Score.class);
+        var score = sm.mustDeploy(Score.class);
         score.invoke("run");
     }
 }

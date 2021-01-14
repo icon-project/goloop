@@ -186,6 +186,20 @@ type Field struct {
 	Fields []Field
 }
 
+func (f *Field) ToJSON(v module.JSONVersion) (interface{}, error) {
+	jso := make(map[string]interface{})
+	jso["type"] = f.Type.String()
+	jso["name"] = f.Name
+	if f.Type.Tag() == TStruct && len(f.Fields) > 0 {
+		if fo, err := FieldsToJSON(f.Fields, v); err != nil {
+			return nil, err
+		} else {
+			jso["fields"] = fo
+		}
+	}
+	return jso, nil
+}
+
 // DataType composed of following bits.
 // ListDepth(4bits) + TypeTag(4bits)
 type DataType int
@@ -562,6 +576,19 @@ func (a *Method) IsFallback() bool {
 func (a *Method) IsEvent() bool {
 	return a.Type == Event
 }
+
+func FieldsToJSON(fields []Field, version module.JSONVersion) (interface{}, error) {
+	fo := make([]interface{}, len(fields))
+	for j, f := range fields {
+		if jso, err := f.ToJSON(version); err != nil {
+			return nil, err
+		} else {
+			fo[j] = jso
+		}
+	}
+	return fo, nil
+}
+
 func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 	m := make(map[string]interface{})
 	m["type"] = a.Type.String()
@@ -583,6 +610,13 @@ func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 				} else {
 					log.Warnf("Fail to decode default bytes err=%+v", def)
 				}
+			}
+		}
+		if input.Type.Tag() == TStruct && len(input.Fields) > 0 {
+			if fo, err := FieldsToJSON(input.Fields, version); err != nil {
+				return nil, err
+			} else {
+				io["fields"] = fo
 			}
 		}
 		inputs[i] = io

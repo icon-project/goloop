@@ -76,6 +76,13 @@ func (b *Bond) Amount() *big.Int {
 	return b.Value.Value()
 }
 
+func (b *Bond) Slash(ratio int) *big.Int {
+	slashAmount := new(big.Int).Mul(b.Value.Value(), big.NewInt(int64(ratio)))
+	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
+	b.Value.Sub(b.Value.Value(), slashAmount)
+	return slashAmount
+}
+
 type Bonds []*Bond
 
 func (bl Bonds) Has() bool {
@@ -111,6 +118,27 @@ func (bl Bonds) GetBondAmount() *big.Int {
 		total.Add(total, b.Value.Value())
 	}
 	return total
+}
+
+func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
+	bonds := *bl
+	for idx, b := range *bl {
+		if b.Address.Equal(address) {
+			if ratio == 100 {
+				copy(bonds[idx:], bonds[idx+1:])
+				bonds = bonds[0 : len(bonds)-1]
+				if len(bonds) > 0 {
+					*bl = bonds
+				} else {
+					*bl = nil
+				}
+				return b.Value.Value()
+			} else {
+				return b.Slash(ratio)
+			}
+		}
+	}
+	return new(big.Int)
 }
 
 func (bl Bonds) ToJSON(v module.JSONVersion) []interface{} {

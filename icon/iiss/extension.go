@@ -15,6 +15,7 @@ package iiss
 
 import (
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
@@ -269,16 +270,17 @@ func newCalculation() *calculation {
 	return &calculation{0, 0, nil}
 }
 
-func (s *ExtensionStateImpl) GetPRepsInJSON() map[string]interface{} {
-	return s.pm.GetPRepsInJSON()
+func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
+	return s.pm.GetPRepsInJSON(blockHeight)
 }
 
-func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address) (map[string]interface{}, error) {
+func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
 	prep := s.pm.GetPRepByOwner(address)
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	return prep.ToJSON(s.pm.state.GetBondRequirement()), nil
+
+	return prep.ToJSON(blockHeight, s.pm.state.GetBondRequirement()), nil
 }
 
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
@@ -528,14 +530,16 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		return err
 	}
 
-	mainPRepCount := s.State.GetMainPRepCount()
+	size := 0
+	mainPRepCount := int(icstate.GetMainPRepCount(s.State))
+	activePRepCount := s.pm.Size()
 
-	size := s.pm.Size()
-	if size > mainPRepCount {
-		size = mainPRepCount
+	if term.IsDecentralized() || activePRepCount >= mainPRepCount {
+		prepCount := int(icstate.GetPRepCount(s.State))
+		size = icutils.Min(activePRepCount, prepCount)
 	}
 
-	if size == mainPRepCount {
+	if size > 0 {
 		prepSnapshots := make(icstate.PRepSnapshots, size, size)
 		for i := 0; i < size; i++ {
 			prep := s.pm.GetPRepByIndex(i)
@@ -556,6 +560,13 @@ func (s *ExtensionStateImpl) setValidators(wc state.WorldContext) error {
 	size := len(validators)
 
 	if size > 0 {
+		// shift validation penalty mask
+		for _, v := range validators {
+			// TODO IC2-35 When creating a validator with a validation penalty, only the newly added P-Rep is modified.
+			pRepStatus := s.pm.GetPRepByNode(v.Address())
+			pRepStatus.ShiftVPenaltyMask(ConsistentValidationPenaltyMask)
+		}
+
 		// TODO: Remove the comment below when testing with multiple nodes
 		//return wc.GetValidatorState().Set(validators)
 		for i := 0; i < size; i++ {
@@ -571,15 +582,16 @@ func (s *ExtensionStateImpl) GetValidators() []module.Validator {
 	mainPRepCount := s.State.GetMainPRepCount()
 
 	term := s.State.GetTerm()
-	size := term.GetPRepSnapshotCount()
-	if size < mainPRepCount {
-		log.Errorf("Not enough PReps: %d < %d", size, mainPRepCount)
+	prepSnapshotCount := term.GetPRepSnapshotCount()
+	if prepSnapshotCount < mainPRepCount {
+		log.Warnf("Not enough PReps: %d < %d", prepSnapshotCount, mainPRepCount)
 	}
 
 	var err error
+	size := icutils.Min(mainPRepCount, prepSnapshotCount)
 	validators := make([]module.Validator, size, size)
 
-	for i := 0; i < mainPRepCount; i++ {
+	for i := 0; i < size; i++ {
 		prepSnapshot := term.GetPRepSnapshot(i)
 		prep := s.pm.GetPRepByOwner(prepSnapshot.Owner())
 		node := prep.GetNode()
