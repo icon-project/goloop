@@ -3,11 +3,15 @@ package iiss
 import (
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/bmizerany/assert"
 	"math/big"
 	"math/rand"
+	"testing"
 )
 
 func createAddress(i int) module.Address {
@@ -49,6 +53,54 @@ func createPRepStatus(i int) *icstate.PRepStatus {
 	ps.SetDelegated(big.NewInt(rand.Int63()))
 	ps.SetBonded(big.NewInt(0))
 	return ps
+}
+
+// test for GetBondedDelegation
+func TestPRepManager_Sort(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
+	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
+	pm := newPRepManager(s, big.NewInt(int64(1000000)))
+
+	addr := common.NewAddressFromString("hx1")
+	status := icstate.NewPRepStatus(addr)
+	base := icstate.NewPRepBase(addr)
+	s.AddPRepBase(base)
+	s.AddPRepStatus(status)
+	delegated := big.NewInt(int64(99))
+	s.GetPRepStatus(addr).SetDelegated(delegated)
+	bonded := big.NewInt(int64(2))
+	s.GetPRepStatus(addr).SetBonded(bonded)
+	pm.state.AddActivePRep(addr)
+
+	addr = common.NewAddressFromString("hx2")
+	status = icstate.NewPRepStatus(addr)
+	base = icstate.NewPRepBase(addr)
+	s.AddPRepBase(base)
+	s.AddPRepStatus(status)
+	delegated = big.NewInt(int64(99))
+	s.GetPRepStatus(addr).SetDelegated(delegated)
+	bonded = big.NewInt(int64(1))
+	s.GetPRepStatus(addr).SetBonded(bonded)
+	pm.state.AddActivePRep(addr)
+
+	addr = common.NewAddressFromString("hx3")
+	status = icstate.NewPRepStatus(addr)
+	base = icstate.NewPRepBase(addr)
+	s.AddPRepBase(base)
+	s.AddPRepStatus(status)
+	delegated = big.NewInt(int64(99))
+	s.GetPRepStatus(addr).SetDelegated(delegated)
+	bonded = big.NewInt(int64(3))
+	s.GetPRepStatus(addr).SetBonded(bonded)
+	pm.state.AddActivePRep(addr)
+
+	pm.state.SetBondRequirement(5)
+	pm.init()
+//	pm.sort()
+
+	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[0].Owner().String())
+	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[1].Owner().String())
+	assert.Equal(t, "hx0000000000000000000000000000000000000002", pm.orderedPReps[2].Owner().String())
 }
 
 /*

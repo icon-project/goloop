@@ -125,20 +125,20 @@ func (pm *PRepManager) sort() {
 	br := pm.state.GetBondRequirement()
 	sort.Slice(pm.orderedPReps, func(i, j int) bool {
 		ret :=  pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
-		if ret < 0 {
+		if ret > 0 {
 			return true
-		} else if ret > 0 {
+		} else if ret < 0 {
 			return false
 		}
 
 		ret = pm.orderedPReps[i].Delegated().Cmp(pm.orderedPReps[i].Delegated())
-		if ret < 0 {
+		if ret > 0 {
 			return true
-		} else if ret > 0 {
+		} else if ret < 0 {
 			return false
 		}
 
-		return bytes.Compare(pm.orderedPReps[i].Owner().Bytes(), pm.orderedPReps[j].Owner().Bytes()) < 0
+		return bytes.Compare(pm.orderedPReps[i].Owner().Bytes(), pm.orderedPReps[j].Owner().Bytes()) > 0
 	})
 }
 

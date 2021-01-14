@@ -50,7 +50,7 @@ func TestPRepStatus_Bytes(t *testing.T) {
 }
 
 // test for GetBondedDelegation
-func TestPRepManager_GetBondedDelegation(t *testing.T) {
+func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
