@@ -40,8 +40,8 @@ func (p *PRep) Owner() module.Address {
 	return p.PRepBase.Owner()
 }
 
-func (p *PRep) ToJSON(blockHeight int64) map[string]interface{} {
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight))
+func (p *PRep) ToJSON(blockHeight int64, bondRequirement int) map[string]interface{} {
+	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
 }
 
 func (p *PRep) Clone() *PRep {
@@ -83,26 +83,6 @@ type PRepManager struct {
 
 type preps []*PRep
 
-func (p preps) Len() int      { return len(p) }
-func (p preps) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-func (p preps) Less(i, j int) bool {
-	ret := p[i].GetBondedDelegation().Cmp(p[j].GetBondedDelegation())
-	if ret < 0 {
-		return true
-	} else if ret > 0 {
-		return false
-	}
-
-	ret = p[i].Delegated().Cmp(p[j].Delegated())
-	if ret < 0 {
-		return true
-	} else if ret > 0 {
-		return false
-	}
-
-	return bytes.Compare(p[i].Owner().Bytes(), p[j].Owner().Bytes()) < 0
-}
-
 func (pm *PRepManager) init() {
 	size := pm.state.GetActivePRepSize()
 
@@ -141,7 +121,25 @@ func (pm *PRepManager) Add(p *PRep) {
 
 // sort preps in descending order by bonded delegation
 func (pm *PRepManager) sort() {
-	sort.Sort(sort.Reverse(pm.orderedPReps))
+	//sort.Sort(sort.Reverse(pm.orderedPReps))
+	br := pm.state.GetBondRequirement()
+	sort.Slice(pm.orderedPReps, func(i, j int) bool {
+		ret :=  pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
+		if ret > 0 {
+			return true
+		} else if ret < 0 {
+			return false
+		}
+
+		ret = pm.orderedPReps[i].Delegated().Cmp(pm.orderedPReps[i].Delegated())
+		if ret > 0 {
+			return true
+		} else if ret < 0 {
+			return false
+		}
+
+		return bytes.Compare(pm.orderedPReps[i].Owner().Bytes(), pm.orderedPReps[j].Owner().Bytes()) > 0
+	})
 }
 
 func (pm *PRepManager) Size() int {
@@ -201,9 +199,9 @@ func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} 
 	ret := make(map[string]interface{})
 	prepList := make([]map[string]interface{}, size, size)
 	ret["preps"] = prepList
-
+	br := pm.state.GetBondRequirement()
 	for i, prep := range pm.orderedPReps {
-		prepList[i] = prep.ToJSON(blockHeight)
+		prepList[i] = prep.ToJSON(blockHeight, br)
 	}
 
 	return ret

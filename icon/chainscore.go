@@ -647,6 +647,7 @@ const (
 	defaultSubPRepCount    = 78
 	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
 	defaultRRep            = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultBondRequirement = 5
 )
 
 type config struct {
@@ -656,6 +657,7 @@ type config struct {
 	SubPRepCount      *common.HexInt `json:"subPRepCount"`
 	Irep              *common.HexInt `json:"irep,omitempty"`
 	Rrep              *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement   *common.HexInt `json:"bondRequirement,omitempty"`
 }
 
 type Chain struct {
@@ -687,6 +689,7 @@ func newIconConfig() *config {
 		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
 		Irep:              common.NewHexInt(defaultIRep),
 		Rrep:              common.NewHexInt(defaultRRep),
+		BondRequirement:   common.NewHexInt(defaultBondRequirement),
 	}
 }
 
@@ -803,6 +806,9 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 	if err = icstate.SetSubPRepCount(es.State, iconConfig.SubPRepCount.Int64()); err != nil {
+		return err
+	}
+	if err = icstate.SetBondRequirement(es.State, iconConfig.BondRequirement.Int64()); err != nil {
 		return err
 	}
 

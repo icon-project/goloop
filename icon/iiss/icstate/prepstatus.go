@@ -116,9 +116,30 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
 
-func (ps *PRepStatus) GetBondedDelegation() *big.Int {
-	// TODO: Not implemented
-	return ps.delegated
+// Bond Delegation formula
+// totalDelegation = bond + delegation
+// bondRatio = bond / totalDelegation * 100
+// bondedDelegation = totalDelegation * (bondRatio / bondRequirement)
+//                  = bond * 100 / bondRequirement
+// if bondedDelegation > totalDelegation
+//    bondedDelegation = totalDelegation
+func (ps *PRepStatus) GetBondedDelegation(bondRequirement int) *big.Int {
+	if bondRequirement < 1 || bondRequirement > 100 {
+		// should not be 0 for bond requirement
+		return big.NewInt(0)
+	}
+	totalDelegation := new(big.Int).Add(ps.delegated, ps.bonded)
+	multiplier := big.NewInt(100)
+	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
+
+	br := big.NewInt(int64(bondRequirement))
+	bondedDelegation.Div(bondedDelegation, br)
+
+	if totalDelegation.Cmp(bondedDelegation) > 0 {
+		return bondedDelegation
+	} else {
+		return totalDelegation
+	}
 }
 
 func (ps *PRepStatus) VTotal() int {
@@ -203,14 +224,15 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	}
 }
 
-func (ps *PRepStatus) ToJSON(blockHeight int64) map[string]interface{} {
+
+func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	jso["bondedDelegation"] = ps.GetBondedDelegation()
+	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)

@@ -14,6 +14,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -27,6 +28,7 @@ const (
 	VarTotalStake      = "total_stake"
 	VarTermPeriod      = "term_period"
 	VarCalculatePeriod = "calculate_period"
+	VarBondRequirement = "bond_requirement"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -117,4 +119,23 @@ func GetTotalStake(s *State) *big.Int {
 
 func SetTotalStake(s *State, value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
+}
+
+func (s *State)GetBondRequirement() int {
+	return int(GetBondRequirement(s))
+}
+
+func GetBondRequirement(s *State) int64 {
+	return getValue(s.store, VarBondRequirement).Int64()
+}
+
+func (s *State)SetBondRequirement(value int64)  {
+	SetBondRequirement(s, value)
+}
+
+func SetBondRequirement(s *State, value int64) error {
+	if value < 1 || value > 100 {
+		return errors.IllegalArgumentError.New("Bond Requirement should range from 1 to 100")
+	}
+	return setValue(s.store, VarBondRequirement, value)
 }
