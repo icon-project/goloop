@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -29,7 +30,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -255,7 +255,7 @@ var chainMethods = []*chainMethod{
 		0}, // TODO change minVer to Revision5
 	{
 		scoreapi.Method{
-		scoreapi.Function,
+			scoreapi.Function,
 			"getPRepTerm",
 			scoreapi.FlagReadOnly | scoreapi.FlagExternal,
 			0,
@@ -265,33 +265,371 @@ var chainMethods = []*chainMethod{
 		0,
 		0,
 	},
+	{scoreapi.Method{scoreapi.Function, "disableScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "disableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "enableScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "enableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "setRevision",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"code", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "setRevision",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"code", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "acceptScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "acceptScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "rejectScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+			{"reason", scoreapi.String, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "rejectScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+			{"reason", scoreapi.String, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "blockScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "blockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "unblockScore",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "unblockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "setStepPrice",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"price", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "setStepPrice",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"price", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "setStepCost",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"cost", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "setStepCost",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"cost", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "setMaxStepLimit",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+			{"limit", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "setMaxStepLimit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+			{"limit", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "addDeployer",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "addDeployer",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "removeDeployer",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "removeDeployer",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, Revision5, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getRevision",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{scoreapi.Function, "getStepPrice",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{scoreapi.Function, "getStepCost",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "getStepCost",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "getStepCosts",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{scoreapi.Function, "getMaxStepLimit",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "getMaxStepLimit",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "getScoreStatus",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "getScoreStatus",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "isDeployer",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, Revision4},
+	{scoreapi.Method{scoreapi.Function, "isDeployer",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "getDeployers",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, Revision7, 0},
+	{scoreapi.Method{scoreapi.Function, "setDeployerWhiteListEnabled",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"yn", scoreapi.Bool, nil, nil},
+		},
+		nil,
+	}, Revision7, 0},
+	{scoreapi.Method{scoreapi.Function, "getServiceConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
 }
 
-func applyStepLimits(as state.AccountState, limits map[string]int64) error {
+func applyStepLimits(c Chain, as state.AccountState) error {
+	price := c.Fee
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	for _, k := range state.AllStepLimitTypes {
-		cost, _ := limits[k]
-		if err := stepLimitTypes.Put(k); err != nil {
-			return err
+	if price.StepLimit != nil {
+		stepLimitsMap := make(map[string]string)
+		if err := json.Unmarshal(*price.StepLimit, &stepLimitsMap); err != nil {
+			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
 		}
-		if err := stepLimitDB.Set(k, cost); err != nil {
-			return err
+		for _, k := range state.AllStepLimitTypes {
+			cost := stepLimitsMap[k]
+			if err := stepLimitTypes.Put(k); err != nil {
+				return err
+			}
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					return scoreresult.InvalidParameterError.Errorf(
+						"Failed to parse %s to integer. err(%+v)\n", cost, err)
+				}
+			}
+			if err := stepLimitDB.Set(k, icost); err != nil {
+				return err
+			}
+		}
+	} else {
+		for _, k := range state.AllStepLimitTypes {
+			if err := stepLimitTypes.Put(k); err != nil {
+				return err
+			}
+			if err := stepLimitDB.Set(k, 0); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func applyStepCosts(as state.AccountState, costs map[string]int64) error {
+func applyStepCosts(c Chain, as state.AccountState) error {
+	price := c.Fee
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	for _, k := range state.AllStepTypes {
-		cost, _ := costs[k]
-		if err := stepTypes.Put(k); err != nil {
-			return err
+	if price.StepCosts != nil {
+		stepTypesMap := make(map[string]string)
+		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
+			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
 		}
-		if err := stepCostDB.Set(k, cost); err != nil {
-			return err
+		for _, k := range state.AllStepTypes {
+			cost := stepTypesMap[k]
+			if err := stepTypes.Put(k); err != nil {
+				return err
+			}
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					return err
+				}
+			}
+			if err := stepCostDB.Set(k, icost); err != nil {
+				return err
+			}
+		}
+	} else {
+		for _, k := range state.AllStepTypes {
+			if err := stepTypes.Put(k); err != nil {
+				return err
+			}
+			if err := stepCostDB.Set(k, 0); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -320,6 +658,27 @@ type config struct {
 	Irep              *common.HexInt `json:"irep,omitempty"`
 	Rrep              *common.HexInt `json:"rrep,omitempty"`
 	BondRequirement   *common.HexInt `json:"bondRequirement,omitempty"`
+}
+
+type Chain struct {
+	Revision                 common.HexInt32 `json:"revision"`
+	AuditEnabled             common.HexInt16 `json:"auditEnabled"`
+	DeployerWhiteListEnabled common.HexInt16 `json:"deployerWhiteListEnabled"`
+	Fee                      struct {
+		StepPrice common.HexInt    `json:"stepPrice"`
+		StepLimit *json.RawMessage `json:"stepLimit"`
+		StepCosts *json.RawMessage `json:"stepCosts"`
+	} `json:"fee"`
+	ValidatorList      []*common.Address `json:"validatorList"`
+	MemberList         []*common.Address `json:"memberList"`
+	BlockInterval      *common.HexInt64  `json:"blockInterval"`
+	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
+	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
+	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
+	MinimizeBlockGen   *common.HexInt16  `json:"minimizeBlockGen"`
+	DepositTerm        *common.HexInt64  `json:"depositTerm"`
+	DepositIssueRate   *common.HexInt64  `json:"depositIssueRate"`
+	FeeSharingEnabled  *common.HexInt16  `json:"feeSharingEnabled"`
 }
 
 func newIconConfig() *config {
@@ -360,7 +719,7 @@ func (s *chainScore) Install(param []byte) error {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
 
-	chain := basic.Chain{}
+	chain := Chain{}
 	if param != nil {
 		if err := json.Unmarshal(param, &chain); err != nil {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
@@ -369,10 +728,24 @@ func (s *chainScore) Install(param []byte) error {
 
 	iconConfig := loadIconConfig()
 
+	as := s.cc.GetAccountState(state.SystemID)
+	revision := DefaultRevision
+	if chain.Revision.Value != 0 {
+		revision = int(chain.Revision.Value)
+		if revision > MaxRevision {
+			return scoreresult.IllegalFormatError.Errorf(
+				"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
+		} else if revision > LatestRevision {
+			s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
+				revision, LatestRevision)
+		}
+	}
+	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
+		return err
+	}
+
 	// load validatorList
 	// set block interval 2 seconds
-	s.cc.ChainID()
-	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
 		return err
 	}
@@ -382,34 +755,17 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	stepLimitsMap := map[string]int64{}
-	stepTypesMap := map[string]int64{}
 	stepPrice := big.NewInt(0)
+
+	price := chain.Fee
+	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
+		return err
+	}
 
 	switch s.cc.ChainID() {
 	case CIDForMainNet:
 		// initialize for main network
 	default:
-		stepLimitsMap = map[string]int64{
-			state.StepLimitTypeInvoke: 0x9502f900,
-			state.StepLimitTypeQuery:  0x2faf080,
-		}
-		stepTypesMap = map[string]int64{
-			state.StepTypeDefault:          0x186a0,
-			state.StepTypeContractCall:     0x61a8,
-			state.StepTypeContractCreate:   0x3b9aca00,
-			state.StepTypeContractUpdate:   0x5f5e1000,
-			state.StepTypeContractDestruct: -0x11170,
-			state.StepTypeContractSet:      0x7530,
-			state.StepTypeGet:              0x0,
-			state.StepTypeSet:              0x140,
-			state.StepTypeReplace:          0x50,
-			state.StepTypeDelete:           -0xf0,
-			state.StepTypeInput:            0xc8,
-			state.StepTypeEventLog:         0x64,
-			state.StepTypeApiCall:          0x2710,
-		}
-		stepPrice = big.NewInt(0x2e90edd00)
 
 		validators := make([]module.Validator, len(chain.ValidatorList))
 		for i, validator := range chain.ValidatorList {
@@ -423,10 +779,10 @@ func (s *chainScore) Install(param []byte) error {
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	}
 
-	if err = applyStepLimits(as, stepLimitsMap); err != nil {
+	if err = applyStepLimits(chain, as); err != nil {
 		return err
 	}
-	if err = applyStepCosts(as, stepTypesMap); err != nil {
+	if err = applyStepCosts(chain, as); err != nil {
 		return err
 	}
 	if err = applyStepPrice(as, stepPrice); err != nil {
@@ -455,6 +811,8 @@ func (s *chainScore) Install(param []byte) error {
 	if err = icstate.SetBondRequirement(es.State, iconConfig.BondRequirement.Int64()); err != nil {
 		return err
 	}
+
+	s.handleRevisionChange(as, Revision1, revision)
 	return nil
 }
 
