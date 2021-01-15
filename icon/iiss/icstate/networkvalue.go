@@ -49,12 +49,8 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 	return nil
 }
 
-func (s *State)GetTermPeriod() int64 {
-	return GetTermPeriod(s)
-}
-
-func GetTermPeriod(s *State) int64 {
-	return getValue(s.store, VarTermPeriod).Int64()
+func GetTermPeriod(store containerdb.ObjectStoreState) int64 {
+	return getValue(store, VarTermPeriod).Int64()
 }
 
 func SetTermPeriod(s *State, value int64) error {
@@ -85,7 +81,7 @@ func SetRRep(s *State, value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
 }
 
-func (s *State)GetMainPRepCount() int {
+func (s *State) GetMainPRepCount() int {
 	return int(GetMainPRepCount(s))
 }
 
@@ -97,7 +93,7 @@ func SetMainPRepCount(s *State, value int64) error {
 	return setValue(s.store, VarMainPRepCount, value)
 }
 
-func (s *State)GetSubPRepCount() int {
+func (s *State) GetSubPRepCount() int {
 	return int(GetSubPRepCount(s))
 }
 
@@ -125,7 +121,7 @@ func SetTotalStake(s *State, value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State)GetBondRequirement() int {
+func (s *State) GetBondRequirement() int {
 	return int(GetBondRequirement(s))
 }
 
@@ -133,7 +129,7 @@ func GetBondRequirement(s *State) int64 {
 	return getValue(s.store, VarBondRequirement).Int64()
 }
 
-func (s *State)SetBondRequirement(value int64)  {
+func (s *State) SetBondRequirement(value int64) {
 	SetBondRequirement(s, value)
 }
 
