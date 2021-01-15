@@ -49,8 +49,8 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 	return nil
 }
 
-func (s *State)GetTermPeriod() int {
-	return int(GetTermPeriod(s))
+func (s *State)GetTermPeriod() int64 {
+	return GetTermPeriod(s)
 }
 
 func GetTermPeriod(s *State) int64 {

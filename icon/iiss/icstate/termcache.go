@@ -7,6 +7,8 @@ import (
 
 var termVarPrefix = containerdb.ToKey(containerdb.RawBuilder, "term")
 
+const termPeriodConst = 10
+
 type termCache struct {
 	dirty bool
 	term  *Term
@@ -52,9 +54,15 @@ func (c *termCache) IsDirty() bool {
 func newTermCache(store containerdb.ObjectStoreState) *termCache {
 	varDB := containerdb.NewVarDB(store, termVarPrefix)
 	termPeriod :=  containerdb.NewVarDB(store, containerdb.ToKey(containerdb.HashBuilder, "term_period"))
+	var tp int64
+	if termPeriod == nil {
+		tp = termPeriodConst
+	} else {
+		tp = termPeriod.Int64()
+	}
 	term := ToTerm(varDB.Object())
 	if term == nil {
-		term = newTerm(termPeriod.Int64())
+		term = newTerm(tp)
 	}
 
 	cache := &termCache{
