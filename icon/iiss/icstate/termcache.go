@@ -51,9 +51,11 @@ func (c *termCache) IsDirty() bool {
 
 func newTermCache(store containerdb.ObjectStoreState) *termCache {
 	varDB := containerdb.NewVarDB(store, termVarPrefix)
+	tp := GetTermPeriod(store)
+
 	term := ToTerm(varDB.Object())
 	if term == nil {
-		term = newTerm()
+		term = newTerm(tp)
 	}
 
 	cache := &termCache{

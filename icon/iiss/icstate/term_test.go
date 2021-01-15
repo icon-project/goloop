@@ -79,7 +79,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 
 func TestTerm_GetPRepSnapshot(t *testing.T) {
 	size := 100
-	term := newTerm()
+	term := newTerm(43120)
 	prepSnapshots := newPRepSnapshots(0, size)
 	term.SetPRepSnapshots(prepSnapshots)
 
@@ -91,7 +91,7 @@ func TestTerm_GetPRepSnapshot(t *testing.T) {
 }
 
 func TestTerm_SetPRepSnapshots(t *testing.T) {
-	term := newTerm()
+	term := newTerm(43120)
 
 	size := 30
 	prepSnapshots := newPRepSnapshots(0, size)
@@ -123,7 +123,7 @@ func TestTerm_SetPRepSnapshots(t *testing.T) {
 }
 
 func TestTerm_Clone(t *testing.T) {
-	term := newTerm()
+	term := newTerm(43120)
 	term2 := term.Clone()
 	assert.True(t, term.Equal(term2))
 
