@@ -270,6 +270,10 @@ func newCalculation() *calculation {
 	return &calculation{0, 0, nil}
 }
 
+func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
+	return s.pm.GetPRepManagerInJSON()
+}
+
 func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
 	return s.pm.GetPRepsInJSON(blockHeight)
 }
@@ -302,11 +306,11 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
-	account.SetDelegation(ds)
 	err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
 		return err
 	}
+	account.SetDelegation(ds)
 
 	bonds := account.Bonds()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))

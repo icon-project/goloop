@@ -172,6 +172,13 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{scoreapi.Function, "getPRepManager",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
 	{scoreapi.Method{scoreapi.Function, "getPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,

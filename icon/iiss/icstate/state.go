@@ -157,7 +157,7 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 }
 
 func (s *State) RemovePRepStatus(owner module.Address) error {
-	return s.prepBaseCache.Remove(owner)
+	return s.prepStatusCache.Remove(owner)
 }
 
 func (s *State) AddNodeToOwner(node, owner module.Address) error {

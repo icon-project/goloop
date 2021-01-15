@@ -208,10 +208,14 @@ func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
 	blockHeight := s.cc.BlockHeight()
 	jso := es.GetPRepsInJSON(blockHeight)
 	ts := icstate.GetTotalStake(es.State)
-	tsh := new(common.HexInt)
-	tsh.Set(ts)
-	jso["totalStake"] = tsh
+	jso["totalStake"] = intconv.FormatBigInt(ts)
 	jso["blockHeight"] = blockHeight
+	return jso, nil
+}
+
+func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	jso := es.GetPRepManagerInJSON()
 	return jso, nil
 }
 

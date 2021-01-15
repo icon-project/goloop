@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -73,7 +74,8 @@ func setPRep(pb *icstate.PRepBase, node module.Address, params []string) error {
 
 // Manage PRepBase, PRepStatus and ActivePRep
 type PRepManager struct {
-	state          *icstate.State
+	state *icstate.State
+
 	totalDelegated *big.Int
 	totalStake     *big.Int
 
@@ -124,7 +126,7 @@ func (pm *PRepManager) sort() {
 	//sort.Sort(sort.Reverse(pm.orderedPReps))
 	br := pm.state.GetBondRequirement()
 	sort.Slice(pm.orderedPReps, func(i, j int) bool {
-		ret :=  pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
+		ret := pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
@@ -194,6 +196,14 @@ func (pm *PRepManager) GetValidators() []module.Validator {
 	return validators
 }
 
+func (pm *PRepManager) GetPRepManagerInJSON() map[string]interface{} {
+	ret := make(map[string]interface{})
+	ret["totalStake"] = intconv.FormatBigInt(pm.totalStake)
+	ret["totalDelegated"] = intconv.FormatBigInt(pm.totalDelegated)
+
+	return ret
+}
+
 func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
 	size := len(pm.orderedPReps)
 	ret := make(map[string]interface{})
@@ -256,6 +266,7 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
+	pm.totalDelegated.Sub(pm.totalDelegated, p.Delegated())
 	err = pm.state.RemovePRepBase(owner)
 	if err != nil {
 		return err
@@ -264,7 +275,6 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 	if err != nil {
 		return err
 	}
-	pm.totalDelegated.Sub(pm.totalDelegated, p.Delegated())
 	return nil
 }
 
@@ -298,34 +308,25 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 
 	delegatedToNotReadyNode := big.NewInt(0)
 	var newPs *icstate.PRepStatus
-	for k, v := range delta {
-		owner, err := common.NewAddress([]byte(k))
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
 
-		key := icutils.ToKey(owner)
-		if delta[key].Cmp(icstate.BigIntZero) != 0 {
+		if value.Cmp(icstate.BigIntZero) != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to set delegation to a PRep which has not been registered
 				newPs = icstate.NewPRepStatus(owner)
 				newPs.SetStatus(icstate.NotReady)
-				delegatedToNotReadyNode.Add(delegatedToNotReadyNode, delta[key])
+				delegatedToNotReadyNode.Add(delegatedToNotReadyNode, value)
 			} else {
 				newPs = ps.Clone()
 			}
 
-			newPs.Delegated().Add(newPs.Delegated(), v)
-
-			if newPs.Status() == icstate.NotReady && newPs.Delegated().Cmp(icstate.BigIntZero) == 0 {
-				err = pm.state.RemovePRepStatus(owner)
-				if err != nil {
-					panic(errors.Errorf("PRepStatusCache is broken: %s", owner))
-				}
-			} else {
-				pm.state.AddPRepStatus(newPs)
-			}
+			newPs.Delegated().Add(newPs.Delegated(), value)
+			pm.state.AddPRepStatus(newPs)
 		}
 	}
 
@@ -412,8 +413,7 @@ func newPRepManager(state *icstate.State, totalStake *big.Int) *PRepManager {
 		state:          state,
 		totalDelegated: big.NewInt(0),
 		totalStake:     totalStake,
-
-		prepMap: make(map[string]*PRep),
+		prepMap:        make(map[string]*PRep),
 	}
 
 	pm.init()
