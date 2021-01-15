@@ -169,6 +169,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	params[iiss.IdxEmail] = email
 	params[iiss.IdxWebsite] = website
 	params[iiss.IdxP2pEndpoint] = p2pEndpoint
+	if node == nil {
+		node = s.from
+	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.RegisterPRep(s.from, node, params)
