@@ -125,7 +125,7 @@ type Term struct {
 
 	sequence       int
 	startHeight    int64
-	period         int
+	period         int64
 	irep           int
 	totalSupply    *big.Int
 	totalDelegated *big.Int
@@ -139,7 +139,7 @@ func (term *Term) GetEndBlockHeight() int64 {
 	if term == nil {
 		return -1
 	}
-	return term.startHeight + int64(term.period) - 1
+	return term.startHeight + term.period - 1
 }
 
 func (term *Term) Set(other *Term) {
@@ -395,7 +395,7 @@ func newTermWithTag(_ icobject.Tag) *Term {
 
 func newTerm(termPeriod int64) *Term {
 	return &Term{
-		period:         int(termPeriod),
+		period:         termPeriod,
 		totalSupply:    big.NewInt(0),
 		totalDelegated: big.NewInt(0),
 		prepSnapshots:  nil,
