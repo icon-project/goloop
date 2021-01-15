@@ -337,6 +337,43 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	return nil
 }
 
+func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
+	delta := make(map[string]*big.Int)
+
+	for _, d := range oBonds {
+		key := icutils.ToKey(d.Address)
+		delta[key] = new(big.Int).Neg(d.Value.Value())
+	}
+	for _, d := range nBonds {
+		key := icutils.ToKey(d.Address)
+		if delta[key] == nil {
+			delta[key] = new(big.Int)
+		}
+		delta[key].Add(delta[key], d.Value.Value())
+	}
+
+	var newPs *icstate.PRepStatus
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		if value.Cmp(icstate.BigIntZero) != 0 {
+			ps := pm.state.GetPRepStatus(owner)
+			if ps == nil {
+				// Someone tries to bond to a PRep which has not been registered
+				panic(errors.Errorf("Failed to set bonded value to PRepStatus"))
+			} else {
+				newPs = ps.Clone()
+			}
+			newPs.Bonded().Add(newPs.Bonded(), value)
+			pm.state.AddPRepStatus(newPs)
+		}
+	}
+	return nil
+}
+
 func (pm *PRepManager) OnTermEnd() error {
 	mainPRepCount := pm.getMainPRepCount()
 	subPRepCount := pm.getSubPRepCount()
