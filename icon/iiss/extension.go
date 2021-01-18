@@ -271,7 +271,7 @@ func newCalculation() *calculation {
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
-	return s.pm.GetPRepManagerInJSON()
+	return s.pm.ToJSON()
 }
 
 func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {

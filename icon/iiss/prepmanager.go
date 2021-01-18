@@ -196,7 +196,7 @@ func (pm *PRepManager) GetValidators() []module.Validator {
 	return validators
 }
 
-func (pm *PRepManager) GetPRepManagerInJSON() map[string]interface{} {
+func (pm *PRepManager) ToJSON() map[string]interface{} {
 	ret := make(map[string]interface{})
 	ret["totalStake"] = intconv.FormatBigInt(pm.totalStake)
 	ret["totalDelegated"] = intconv.FormatBigInt(pm.totalDelegated)
