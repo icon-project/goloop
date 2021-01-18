@@ -1,6 +1,8 @@
 package service
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -10,6 +12,7 @@ import (
 )
 
 func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
+	skipping := ctx.SkipTransactionEnabled()
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
@@ -21,6 +24,15 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			return err
 		}
 		txo := txi.(transaction.Transaction)
+		if skipping && txo.IsSkippable() {
+			t.log.Tracef("SKIP TX <0x%x>", txo.ID())
+			zero := big.NewInt(0)
+			rct := txresult.NewReceipt(t.db, ctx.Revision(), txo.To())
+			rct.SetResult(module.StatusSkipTransaction, zero, zero, nil)
+			rctBuf[cnt] = rct
+			cnt++
+			continue
+		}
 		t.log.Tracef("START TX <0x%x>", txo.ID())
 		for trial := 0; ; trial++ {
 			txh, err := txo.GetHandler(t.cm)

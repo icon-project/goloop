@@ -211,6 +211,10 @@ func (tx *transactionV2) MarshalJSON() ([]byte, error) {
 	return tx.raw, nil
 }
 
+func (tx *transactionV2) IsSkippable() bool {
+	return true
+}
+
 func checkV2(jso map[string]interface{}) bool {
 	if _, ok := jso["version"]; ok {
 		return false
