@@ -29,6 +29,8 @@ const (
 	VarTermPeriod      = "term_period"
 	VarCalculatePeriod = "calculate_period"
 	VarBondRequirement = "bond_requirement"
+	VarLockMin         = "lockMin"
+	VarLockMax         = "lockMax"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -138,4 +140,41 @@ func SetBondRequirement(s *State, value int64) error {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 1 to 100")
 	}
 	return setValue(s.store, VarBondRequirement, value)
+}
+
+func GetLockMin(s *State) *big.Int {
+	value := getValue(s.store, VarLockMin).BigInt()
+	return value
+}
+
+func setLockMin(s *State, value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("LockMin must have positive value")
+	}
+	return setValue(s.store, VarLockMin, value)
+}
+
+func GetLockMax(s *State) *big.Int {
+	value := getValue(s.store, VarLockMax).BigInt()
+	return value
+}
+
+func setLockMax(s *State, value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("LockMax must have positive value")
+	}
+	return setValue(s.store, VarLockMin, value)
+}
+
+func SetLockVariables(s *State, lockMin *big.Int, lockMax *big.Int) error {
+	if lockMax.Cmp(lockMin) == -1 {
+		return errors.IllegalArgumentError.New("LockMax < LockMin")
+	}
+	if err := setLockMin(s, lockMin); err != nil {
+		return err
+	}
+	if err := setLockMax(s, lockMax); err != nil {
+		return err
+	}
+	return nil
 }
