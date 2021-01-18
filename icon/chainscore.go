@@ -655,6 +655,9 @@ const (
 	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
 	defaultRRep            = iiss.MonthBlock * iiss.IScoreICXRatio
 	defaultBondRequirement = 5
+	defaultLockMin         = defaultTermPeriod * 5
+	defaultLockMax         = defaultTermPeriod * 20
+	rewardPoint            = 0.7
 )
 
 type config struct {
@@ -665,6 +668,8 @@ type config struct {
 	Irep              *common.HexInt `json:"irep,omitempty"`
 	Rrep              *common.HexInt `json:"rrep,omitempty"`
 	BondRequirement   *common.HexInt `json:"bondRequirement,omitempty"`
+	LockMin           *common.HexInt `json:"lockMin,omitempty"`
+	LockMax           *common.HexInt `json:"lockMax,omitempty"`
 }
 
 type Chain struct {
@@ -697,6 +702,8 @@ func newIconConfig() *config {
 		Irep:              common.NewHexInt(defaultIRep),
 		Rrep:              common.NewHexInt(defaultRRep),
 		BondRequirement:   common.NewHexInt(defaultBondRequirement),
+		LockMin:           common.NewHexInt(defaultLockMin),
+		LockMax:           common.NewHexInt(defaultLockMax),
 	}
 }
 
@@ -816,6 +823,9 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 	if err = icstate.SetBondRequirement(es.State, iconConfig.BondRequirement.Int64()); err != nil {
+		return err
+	}
+	if err = icstate.SetLockVariables(es.State, iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
 		return err
 	}
 

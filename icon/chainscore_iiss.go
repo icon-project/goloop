@@ -74,7 +74,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	tsupply := icutils.GetTotalSupply(s.cc)
 
 	// update IISS account
-	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(tStake, tsupply).Int64()
+	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
 	tl, err := ia.UpdateUnstake(stakeInc, expireHeight)
 	if err != nil {
 		return err
@@ -107,28 +107,28 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	return nil
 }
 
-func calcUnstakeLockPeriod(totalStake *big.Int, totalSupply *big.Int) *big.Int {
+func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSupply *big.Int) *big.Int {
 	fstake := new(big.Float).SetInt(totalStake)
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
-	bRpoint := iiss.RPoint
-	bLMin := iiss.LockMin
-	bLMax := iiss.LockMax
-	if stakeRate.Cmp(bRpoint) == 1 {
-		return bLMin
+	rPoint := big.NewFloat(rewardPoint)
+	lMin := icstate.GetLockMin(state)
+	lMax := icstate.GetLockMax(state)
+	if stakeRate.Cmp(rPoint) == 1 {
+		return lMin
 	}
 
-	fNumerator := new(big.Float).SetInt(new(big.Int).Sub(bLMax, bLMin))
-	fDenominator := new(big.Float).Mul(bRpoint, bRpoint)
+	fNumerator := new(big.Float).SetInt(new(big.Int).Sub(lMax, lMin))
+	fDenominator := new(big.Float).Mul(rPoint, rPoint)
 	firstOperand := new(big.Float).Quo(fNumerator, fDenominator)
-	s := new(big.Float).Sub(stakeRate, bRpoint)
+	s := new(big.Float).Sub(stakeRate, rPoint)
 	secondOperand := new(big.Float).Mul(s, s)
 
 	iResult := new(big.Int)
 	fResult := new(big.Float).Mul(firstOperand, secondOperand)
 	fResult.Int(iResult)
 
-	return new(big.Int).Add(iResult, bLMin)
+	return new(big.Int).Add(iResult, lMin)
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
@@ -384,7 +384,7 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	totalStake := icstate.GetTotalStake(es.State)
 	totalSupply := icutils.GetTotalSupply(s.cc)
 	result := make(map[string]interface{})
-	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(totalStake, totalSupply)
+	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(es.State, totalStake, totalSupply)
 	return result, nil
 }
 
