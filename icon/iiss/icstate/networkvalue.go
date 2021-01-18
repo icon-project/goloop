@@ -14,10 +14,11 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 )
 
 const (
@@ -177,4 +178,17 @@ func SetLockVariables(s *State, lockMin *big.Int, lockMax *big.Int) error {
 		return err
 	}
 	return nil
+}
+
+func NetworkValueToJSON(s *State) map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["irep"] = intconv.FormatBigInt(GetIRep(s))
+	jso["rrep"] = intconv.FormatBigInt(GetRRep(s))
+	jso["mainPRepCount"] = intconv.FormatInt(GetMainPRepCount(s))
+	jso["subPRepCount"] = intconv.FormatInt(GetMainPRepCount(s))
+	jso["totalStake"] = intconv.FormatBigInt(GetTotalStake(s))
+	jso["termPeriod"] = intconv.FormatInt(GetTermPeriod(s.store))
+	jso["calculationPeriod"] = intconv.FormatInt(GetCalculatePeriod(s))
+	jso["bondRequirement"] = intconv.FormatInt(GetBondRequirement(s))
+	return jso
 }

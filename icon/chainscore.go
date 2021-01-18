@@ -56,6 +56,13 @@ const (
 )
 
 var chainMethods = []*chainMethod{
+	{scoreapi.Method{scoreapi.Function, "getNetworkValue",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
 	{scoreapi.Method{scoreapi.Function, "setIRep",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{

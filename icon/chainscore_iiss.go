@@ -397,3 +397,8 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	jso["blockHeight"] = s.cc.BlockHeight()
 	return jso, err
 }
+
+func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.GetNetworkValueInJSON()
+}

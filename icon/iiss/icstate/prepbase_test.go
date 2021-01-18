@@ -23,7 +23,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestPRepSnapshot_Bytes(t *testing.T) {
+func TestPRepBase_Bytes(t *testing.T) {
 	owner, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
 	if err != nil {
 		t.Errorf("Failed to create an address")
