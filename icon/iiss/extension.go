@@ -270,6 +270,10 @@ func newCalculation() *calculation {
 	return &calculation{0, 0, nil}
 }
 
+func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
+	return s.pm.ToJSON()
+}
+
 func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
 	return s.pm.GetPRepsInJSON(blockHeight)
 }
@@ -302,11 +306,11 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
-	account.SetDelegation(ds)
 	err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
 		return err
 	}
+	account.SetDelegation(ds)
 
 	bonds := account.Bonds()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
@@ -392,8 +396,6 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		if !prep.BonderList().Contains(from) {
 			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
 		}
-
-		prep.SetBonded(bond.Amount())
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
 		return errors.Errorf("Not enough voting power")
@@ -407,6 +409,12 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
+
+	err = s.pm.ChangeBond(account.Bonds(), bonds)
+	if err != nil {
+		return err
+	}
+
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
