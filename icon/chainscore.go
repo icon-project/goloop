@@ -650,7 +650,7 @@ const (
 	defaultBondRequirement = 5
 	defaultLockMin         = defaultTermPeriod * 5
 	defaultLockMax         = defaultTermPeriod * 20
-	rPoint                 = 0.7
+	rewardPoint            = 0.7
 )
 
 type config struct {
