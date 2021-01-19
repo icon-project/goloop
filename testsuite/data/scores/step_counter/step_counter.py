@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
 from iconservice import *
 
-TAG = 'RevertTest'
+TAG = 'StepCounter'
 
 
 class StepCounterInterface(InterfaceScore):

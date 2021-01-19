@@ -78,6 +78,7 @@ class GetAPITest {
     private static final String TYPE_ADDRESS = "Address";
     private static final String TYPE_LIST = "list";
     private static final String TYPE_DICT = "dict";
+    private static final String TYPE_STRUCT = "struct";
 
     private static final String VALUE_TRUE = "0x1";
     private static final String VALUE_FALSE = "0x0";
@@ -237,19 +238,31 @@ class GetAPITest {
             put("fallback", new FuncInfo(TYPE_FALLBACK, null, null, VALUE_FALSE, VALUE_TRUE));
             put("param_int", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_INT, null)
-            }, "int", VALUE_TRUE, VALUE_FALSE));
+            }, TYPE_INT, VALUE_TRUE, VALUE_FALSE));
             put("param_str", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_STRING, null)
-            }, "str", VALUE_TRUE, VALUE_FALSE));
+            }, TYPE_STRING, VALUE_TRUE, VALUE_FALSE));
             put("param_bytes", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_BYTES, null)
-            }, "bytes", VALUE_TRUE, VALUE_FALSE));
+            }, TYPE_BYTES, VALUE_TRUE, VALUE_FALSE));
             put("param_bool", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_BOOL, null)
-            }, "bool", VALUE_TRUE, VALUE_FALSE));
+            }, TYPE_BOOL, VALUE_TRUE, VALUE_FALSE));
             put("param_Address", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_ADDRESS, null)
-            }, "Address", VALUE_TRUE, VALUE_FALSE));
+            }, TYPE_ADDRESS, VALUE_TRUE, VALUE_FALSE));
+            put("param_List", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", "[]str", null)
+            }, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
+            put("param_ListList", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", "[][]str", null)
+            }, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
+            put("param_Struct", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_STRUCT, null)
+            }, TYPE_DICT, VALUE_TRUE, VALUE_FALSE));
+            put("param_ListStruct", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", "[]struct", null)
+            }, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
             put("eventlog_index1", new FuncInfo(TYPE_EVENTLOG, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_INT, BigInteger.ONE),
                     new FuncInfo.Input("param2", TYPE_STRING, null)
@@ -297,6 +310,14 @@ class GetAPITest {
                     }
                 }
                 fInfo.inputsMap.remove(sParam.getName());
+            }
+            if (fInfo.outputs != null) {
+                for (ScoreApi.Param param : api.getOutputs()) {
+                    if (fInfo.outputs.compareTo(param.getType()) != 0) {
+                        LOG.warning("[" + funcName + "] return type is " + fInfo.outputs + " but " + param.getType());
+                        return false;
+                    }
+                }
             }
             if (fInfo.inputsMap.size() != 0) {
                 LOG.warning("Not received param [" + fInfo.inputsMap.keySet() + "]");

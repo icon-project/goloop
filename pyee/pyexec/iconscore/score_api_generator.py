@@ -15,17 +15,21 @@
 from inspect import signature, Signature, Parameter, isclass
 from typing import Any, Optional
 
-from .icon_score_constant import ConstBitFlag, CONST_BIT_FLAG, CONST_INDEXED_ARGS_COUNT, BaseType, \
-    STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE
+from .icon_score_constant import (
+    BaseType,
+    CONST_INDEXED_ARGS_COUNT,
+    STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE,
+    ScoreFlag,
+)
+from .typing.element import get_score_flag
 from ..base.address import Address
 from ..base.exception import IllegalFormatException, InvalidParamsException
 from ..utils import get_main_type_from_annotations_type
-from ..ipc.proxy import APIType
+from ..ipc.proxy import APIType, APIFlag
 
-APIFlagsMask = ConstBitFlag.ReadOnly \
-               | ConstBitFlag.External \
-               | ConstBitFlag.Payable \
-               | ConstBitFlag.Isolated
+APIFlagsMask = APIFlag.READONLY \
+               | APIFlag.EXTERNAL \
+               | APIFlag.PAYABLE
 
 
 class ScoreApiGenerator:
@@ -58,37 +62,42 @@ class ScoreApiGenerator:
     def __generate_functions(src: list, score_funcs: list) -> None:
         for func in score_funcs:
             try:
-                const_bit_flag = getattr(func, CONST_BIT_FLAG, 0)
-                if const_bit_flag & ConstBitFlag.External or \
+                score_flag = get_score_flag(func)
+                if score_flag & ScoreFlag.EXTERNAL or \
                         func.__name__ == ScoreApiGenerator.__API_TYPE_ON_INSTALL or \
                         func.__name__ == ScoreApiGenerator.__API_TYPE_ON_UPDATE or \
                         func.__name__ == ScoreApiGenerator.__API_TYPE_FALLBACK:
                     src.append(ScoreApiGenerator.__generate_function_info(
-                        func.__name__, const_bit_flag, signature(func)))
+                        func.__name__, score_flag, signature(func)))
             except IllegalFormatException as e:
                 raise IllegalFormatException(f"{e.message} at {func.__name__}")
 
     @staticmethod
-    def __generate_function_info(func_name: str, flags: int, sig_info: 'Signature') -> list:
-        if flags & APIFlagsMask != flags:
-            raise IllegalFormatException(f'Illegal combination of decorators')
-        is_readonly = flags & ConstBitFlag.ReadOnly == ConstBitFlag.ReadOnly
+    def __generate_function_info(func_name: str, score_flag: ScoreFlag, sig_info: 'Signature') -> list:
+        is_readonly = bool(score_flag & ScoreFlag.READONLY)
         info = list()
         if func_name == ScoreApiGenerator.__API_TYPE_FALLBACK:
             info.append(APIType.FALLBACK)
         else:
             info.append(APIType.FUNCTION)
         info.append(func_name)
-        info.append(flags)
+        info.append(ScoreApiGenerator.__convert_to_proxy(score_flag))
         info.append(ScoreApiGenerator.__generate_inputs(dict(sig_info.parameters)))
         info.append(ScoreApiGenerator.__generate_output(sig_info.return_annotation, is_readonly))
         return info
 
     @staticmethod
+    def __convert_to_proxy(score_flag: ScoreFlag):
+        flags = score_flag.value & APIFlagsMask
+        if score_flag & ScoreFlag.ISOLATED:
+            flags |= APIFlag.ISOLATED
+        return flags
+
+    @staticmethod
     def __generate_events(src: list, score_funcs: list) -> None:
         event_funcs = {
             func.__name__: signature(func) for func in score_funcs
-            if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.EventLog
+            if get_score_flag(func) & ScoreFlag.EVENTLOG
         }
 
         indexed_args_counts = {
