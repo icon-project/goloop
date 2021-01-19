@@ -1,14 +1,17 @@
 package org.aion.avm.core;
 
-import foundation.icon.ee.types.Address;
+import foundation.icon.ee.score.Loader;
 import foundation.icon.ee.types.DAppRuntimeState;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.persistence.LoadedDApp;
+import org.aion.avm.core.util.ByteArrayWrapper;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Contains the state of DApps currently running within the current logical thread (DApps calling DApps) to ensure that we can properly manage
@@ -17,7 +20,39 @@ import java.util.Map;
  * Over time, the contents stored in the ReentrantState may be moved into the LoadedDApp, since their lifecycles are closely aligned.
  */
 public class ReentrantDAppStack {
+    private static class LoadedDAppInfo {
+        private final LoadedDApp loadedDApp;
+        private final String codeID;
+
+        public LoadedDAppInfo(LoadedDApp loadedDApp, String codeID) {
+            this.loadedDApp = loadedDApp;
+            this.codeID = codeID;
+        }
+
+        public LoadedDApp getLoadedDApp() {
+            return loadedDApp;
+        }
+
+        public String getCodeID() {
+            return codeID;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            LoadedDAppInfo that = (LoadedDAppInfo) o;
+            return loadedDApp.equals(that.loadedDApp) && codeID.equals(that.codeID);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(loadedDApp, codeID);
+        }
+    }
+
     private final Deque<ReentrantState> stack = new ArrayDeque<>();
+    private final Map<ByteArrayWrapper, LoadedDAppInfo> dAppCache = new HashMap<>();
 
     /**
      * Pushes the given state onto the stack.  Note that state will temporarily shadow any other states on the stack with the same address.
@@ -29,6 +64,11 @@ public class ReentrantDAppStack {
         RuntimeAssertionError.assertTrue(null != state);
 
         this.stack.push(state);
+        assert state.dApp != null;
+        assert state.contractID != null;
+        assert state.codeID != null;
+        dAppCache.put(new ByteArrayWrapper(state.contractID),
+                new LoadedDAppInfo(state.dApp, state.codeID));
     }
 
     public void pushState() {
@@ -39,14 +79,14 @@ public class ReentrantDAppStack {
      * Searches the stack (starting with the top) for a state with the given address, returning it (but not modifying the state of the stack)
      * if it is found.
      * 
-     * @param address The address of the state we wish to find.
+     * @param contractID The contract ID of the state we wish to find.
      * @return The first state found with the given address.
      */
-    public ReentrantState tryShareState(Address address) {
-        RuntimeAssertionError.assertTrue(null != address);
+    public ReentrantState tryShareState(byte[] contractID) {
+        RuntimeAssertionError.assertTrue(null != contractID);
         ReentrantState foundState = null;
         for (ReentrantState state : this.stack) {
-            if (address.equals(state.address)) {
+            if (Arrays.equals(contractID, state.contractID)) {
                 foundState = state;
                 break;
             }
@@ -83,18 +123,21 @@ public class ReentrantDAppStack {
 
 
     public static class ReentrantState {
-        public final Address address;
         public final LoadedDApp dApp;
+        public final byte[] contractID;
+        public final String codeID;
         private final Map<Integer, SaveItem> saveItems = new HashMap<>();
 
         public ReentrantState() {
-            this.address = null;
             this.dApp = null;
+            this.contractID = null;
+            this.codeID = null;
         }
 
-        public ReentrantState(Address address, LoadedDApp dApp) {
-            this.address = address;
+        public ReentrantState(LoadedDApp dApp, byte[] contractID, String codeID) {
             this.dApp = dApp;
+            this.contractID = contractID;
+            this.codeID = codeID;
         }
 
         public DAppRuntimeState getRuntimeState(int eid) {
@@ -105,13 +148,13 @@ public class ReentrantDAppStack {
             return saveItem.getRuntimeState();
         }
 
-        public void setRuntimeState(int eid, DAppRuntimeState rs, Address addr) {
-            saveItems.put(eid, new SaveItem(rs, addr));
+        public void setRuntimeState(int eid, DAppRuntimeState rs, byte[] contractID) {
+            saveItems.put(eid, new SaveItem(rs, contractID));
         }
 
-        public void removeRuntimeStatesByAddress(Address address) {
+        public void removeRuntimeStatesByAddress(byte[] contractID) {
             this.saveItems.entrySet().removeIf((si) ->
-                    si.getValue().getAddress().equals(address)
+                    Arrays.equals(si.getValue().getContractID(), contractID)
             );
         }
 
@@ -122,19 +165,31 @@ public class ReentrantDAppStack {
 
     static class SaveItem {
         private final DAppRuntimeState runtimeState;
-        private final Address address;
+        private final byte[] contractID;
 
-        public SaveItem(DAppRuntimeState runtimeState, Address address) {
+        public SaveItem(DAppRuntimeState runtimeState, byte[] contractID) {
             this.runtimeState = runtimeState;
-            this.address = address;
+            this.contractID = contractID;
         }
 
         public DAppRuntimeState getRuntimeState() {
             return runtimeState;
         }
 
-        public Address getAddress() {
-            return address;
+        public byte[] getContractID() {
+            return contractID;
+        }
+    }
+
+    public LoadedDApp tryGetLoadedDApp(byte[] contractID) {
+        var dAppInfo = dAppCache.get(new ByteArrayWrapper(contractID));
+        return  dAppInfo != null ? dAppInfo.getLoadedDApp() : null;
+    }
+
+    public void unloadDApps(Loader loader) {
+        for (var e : dAppCache.entrySet()) {
+            loader.unload(e.getValue().getCodeID(),
+                    e.getValue().getLoadedDApp());
         }
     }
 }

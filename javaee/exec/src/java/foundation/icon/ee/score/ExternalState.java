@@ -45,13 +45,14 @@ public class ExternalState implements IExternalState {
     private final Address owner;
     private final String codePath;
     private final FileIO fileIO;
+    private final byte[] contractID;
     private final StepCost stepCost;
     private final int nextHash;
     private final byte[] graphHash;
     private int feeProportion;
 
     ExternalState(EEProxy proxy, int option, String codePath,
-                  FileIO fileIO, BigInteger blockHeight,
+                  FileIO fileIO, byte[] contractID, BigInteger blockHeight,
                   BigInteger blockTimestamp, Address owner,
                   Map<String, BigInteger> stepCosts, int nextHash,
                   byte[] graphHash) {
@@ -59,6 +60,7 @@ public class ExternalState implements IExternalState {
         this.option = option;
         this.codePath = codePath;
         this.fileIO = fileIO;
+        this.contractID = contractID;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
@@ -98,6 +100,10 @@ public class ExternalState implements IExternalState {
             logger.debug("[setTransformedCode] {}", e.getMessage());
             RuntimeAssertionError.unexpected(e);
         }
+    }
+
+    public byte[] getContractID() {
+        return contractID;
     }
 
     @Override

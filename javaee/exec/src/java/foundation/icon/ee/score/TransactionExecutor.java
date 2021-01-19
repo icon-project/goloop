@@ -120,8 +120,8 @@ public class TransactionExecutor {
     private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
                                       BigInteger value, BigInteger limit,
                                       String method, Object[] params,
-                                      Map<String, Object> info, int eid,
-                                      int nextHash, byte[] graphHash,
+                                      Map<String, Object> info, byte[] contractID,
+                                      int eid, int nextHash, byte[] graphHash,
                                       int prevEID) throws IOException {
         if (logger.isTraceEnabled()) {
             printInvokeParams(code, isQuery, from, to, value, limit, method, params);
@@ -144,8 +144,8 @@ public class TransactionExecutor {
             option |= IExternalState.OPTION_READ_ONLY;
         }
         ExternalState kernel = new ExternalState(proxy, option, code,
-                fileIO, blockHeight, blockTimestamp, owner, stepCosts, nextHash,
-                graphHash);
+                fileIO, contractID, blockHeight, blockTimestamp, owner,
+                stepCosts, nextHash, graphHash);
         Transaction tx = new Transaction(from, to, value, nonce,
                 limit.longValue(), method, params, txHash, txIndex, txTimestamp,
                 isInstall);

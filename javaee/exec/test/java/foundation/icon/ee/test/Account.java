@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package foundation.icon.ee.util;
+package foundation.icon.ee.test;
 
-import java.util.Arrays;
+import foundation.icon.ee.types.Address;
+import org.aion.avm.core.util.ByteArrayWrapper;
 
-public class Containers {
-    public static <T> T[] concatArray(T[] first, T[] second) {
-        T[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 
-    public static byte[] concatArray(byte[] first, byte[] second) {
-        byte[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
-
-
+public interface Account {
+    Address getAddress();
+    byte[] getStorage(byte[] key);
+    byte[] setStorage(byte[] key, byte[] value);
+    byte[] removeStorage(byte[] key);
+    BigInteger getBalance();
+    void setBalance(BigInteger balance);
+    Contract getContract();
+    byte[] getContractID();
 }
