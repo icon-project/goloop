@@ -14,10 +14,11 @@
 package icstate
 
 import (
-	"github.com/bmizerany/assert"
-	"github.com/icon-project/goloop/common"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )

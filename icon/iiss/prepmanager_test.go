@@ -2,16 +2,18 @@ package iiss
 
 import (
 	"fmt"
+	"math/big"
+	"math/rand"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
-	"github.com/bmizerany/assert"
-	"math/big"
-	"math/rand"
-	"testing"
 )
 
 func createAddress(i int) module.Address {
@@ -96,7 +98,7 @@ func TestPRepManager_Sort(t *testing.T) {
 
 	pm.state.SetBondRequirement(5)
 	pm.init()
-//	pm.sort()
+	//	pm.sort()
 
 	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[0].Owner().String())
 	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[1].Owner().String())

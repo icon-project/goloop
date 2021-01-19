@@ -17,10 +17,11 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/bmizerany/assert"
 )
 
 func TestPRepStatus_Bytes(t *testing.T) {
@@ -443,7 +444,7 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
 			ps := &PRepStatus{
-				vPenaltyMask:  in.vPenaltyMask,
+				vPenaltyMask: in.vPenaltyMask,
 			}
 
 			ps.ShiftVPenaltyMask(in.mask)
@@ -452,4 +453,3 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 		})
 	}
 }
-
