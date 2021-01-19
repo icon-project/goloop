@@ -1,8 +1,9 @@
 package db
 
 import (
-	"github.com/pkg/errors"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 type layerBucket struct {
@@ -134,9 +135,36 @@ func (ldb *layerDB) Close() error {
 	return nil
 }
 
-func NewLayerDB(dbase Database) LayerDB {
-	return &layerDB{
-		real:    dbase,
+type layerDBContext struct {
+	LayerDB
+	flags Flags
+}
+
+func (c *layerDBContext) WithFlags(flags Flags) Context {
+	newFlags := c.flags.Merged(flags)
+	return &layerDBContext{c.LayerDB, newFlags}
+}
+
+func (c *layerDBContext) GetFlag(name string) interface{} {
+	return c.flags.Get(name)
+}
+
+func (c *layerDBContext) Flags() Flags {
+	return c.flags.Clone()
+}
+
+func (ldb *layerDB) WithFlags(flags Flags) Context {
+	return &layerDBContext{ldb, flags}
+}
+
+func NewLayerDB(database Database) LayerDB {
+	ldb := &layerDB{
+		real:    database,
 		buckets: make(map[string]*layerBucket),
+	}
+	if ctx, ok := database.(Context); ok {
+		return &layerDBContext{ldb, ctx.Flags()}
+	} else {
+		return ldb
 	}
 }
