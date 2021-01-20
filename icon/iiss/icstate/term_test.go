@@ -104,7 +104,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 }
 
 func TestTerm_Equal(t *testing.T) {
-	t0 := newTerm(10)
+	t0 := newTerm(0, 10)
 	tSequence := t0.Clone()
 	tSequence.sequence = t0.sequence + 1
 	tSet := tSequence.Clone()
@@ -132,7 +132,7 @@ func TestTerm_Equal(t *testing.T) {
 		{"nil comp", nil, nil, true},
 		{"same instance", t0, t0, true},
 		{"clone", t0, t0.Clone(), true},
-		{"newTerm() with same param", t0, newTerm(10), true},
+		{"newTerm() with same param", t0, newTerm(0, 10), true},
 		{"nil to instance", nil, t0, false},
 		{"instance to nil", t0, nil, false},
 		{"Set()", t0, tSet, true},
@@ -154,7 +154,7 @@ func TestTerm_Equal(t *testing.T) {
 }
 
 func TestTerm_Bytes(t *testing.T) {
-	term := newTerm(10)
+	term := newTerm(0, 10)
 
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	o1 := icobject.New(TypeTerm, term)
@@ -171,7 +171,7 @@ func TestTerm_Bytes(t *testing.T) {
 }
 
 func TestTerm_Clone(t *testing.T) {
-	term := newTerm(43120)
+	term := newTerm(0, 43120)
 	term2 := term.Clone()
 	assert.True(t, term.Equal(term2))
 
@@ -188,7 +188,7 @@ func TestTerm_Clone(t *testing.T) {
 
 func TestTerm_PRepSnapshot(t *testing.T) {
 	size := 100
-	term := newTerm(43120)
+	term := newTerm(0, 43120)
 	prepSnapshots := newPRepSnapshots(0, size)
 	term.SetPRepSnapshots(prepSnapshots.Clone())
 
@@ -241,32 +241,20 @@ func TestTerm_PRepSnapshot(t *testing.T) {
 }
 
 func TestTerm_NewNextTerm(t *testing.T) {
-	var err error
-	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
-
 	totalSupply := big.NewInt(1000)
 	totalDelegated := big.NewInt(100)
 	period := int64(100)
-	irep := int64(2000)
-	rrep := int64(1500)
+	irep := big.NewInt(2000)
+	rrep := big.NewInt(1500)
 
-	err = SetTermPeriod(s, period)
-	assert.NoError(t, err)
-	err = SetIRep(s, big.NewInt(irep))
-	assert.NoError(t, err)
-	err = SetRRep(s, big.NewInt(rrep))
-	assert.NoError(t, err)
-
-	term := newTerm(100)
-	nTerm, err := term.NewNextTerm(s, totalSupply, totalDelegated)
-	assert.NoError(t, err)
+	term := newTerm(0, 100)
+	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated)
 
 	assert.Equal(t, term.sequence+1, nTerm.sequence)
 	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.startHeight)
-	assert.Equal(t, GetTermPeriod(s.store), nTerm.period)
-	assert.Equal(t, GetIRep(s).Int64(), nTerm.irep.Int64())
-	assert.Equal(t, GetRRep(s).Int64(), nTerm.rrep.Int64())
+	assert.Equal(t, period, nTerm.period)
+	assert.Equal(t, irep.Int64(), nTerm.irep.Int64())
+	assert.Equal(t, rrep.Int64(), nTerm.rrep.Int64())
 	assert.Equal(t, totalSupply.Int64(), nTerm.totalSupply.Int64())
 	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
 	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)

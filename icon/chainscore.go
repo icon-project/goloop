@@ -655,6 +655,7 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 
 const (
 	configFile             = "./icon_config.json"
+	defaultIISSBlockHeight = 0
 	defaultTermPeriod      = 43120
 	defaultCalculatePeriod = 43120
 	defaultMainPRepCount   = 22
@@ -669,6 +670,7 @@ const (
 
 type config struct {
 	TermPeriod        *common.HexInt `json:"termPeriod"`
+	IISSBlockHeight   *common.HexInt `json:"iissBlockHeight,omitempty"`
 	CalculationPeriod *common.HexInt `json:"iissCalculatePeriod"`
 	MainPRepCount     *common.HexInt `json:"mainPRepCount"`
 	SubPRepCount      *common.HexInt `json:"subPRepCount"`
@@ -703,6 +705,7 @@ type Chain struct {
 func newIconConfig() *config {
 	return &config{
 		TermPeriod:        common.NewHexInt(defaultTermPeriod),
+		IISSBlockHeight:   common.NewHexInt(defaultIISSBlockHeight),
 		CalculationPeriod: common.NewHexInt(defaultCalculatePeriod),
 		MainPRepCount:     common.NewHexInt(defaultMainPRepCount),
 		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
@@ -811,10 +814,13 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if err = icstate.SetIISSBlockHeight(es.State, iconConfig.IISSBlockHeight.Int64()); err != nil {
+		return err
+	}
 	if err = icstate.SetTermPeriod(es.State, iconConfig.TermPeriod.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetCalculatePeriod(es.State, iconConfig.TermPeriod.Int64()); err != nil {
+	if err = icstate.SetCalculatePeriod(es.State, iconConfig.CalculationPeriod.Int64()); err != nil {
 		return err
 	}
 	if err = icstate.SetIRep(es.State, iconConfig.Irep.Value()); err != nil {

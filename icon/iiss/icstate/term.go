@@ -124,14 +124,14 @@ type Term struct {
 	icobject.NoDatabase
 	StateAndSnapshot
 
-	sequence              int
-	startHeight           int64
-	period                int64
-	irep                  *big.Int
-	rrep                  *big.Int
-	totalSupply           *big.Int
-	totalDelegated        *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
-	prepSnapshots         PRepSnapshots
+	sequence       int
+	startHeight    int64
+	period         int64
+	irep           *big.Int
+	rrep           *big.Int
+	totalSupply    *big.Int
+	totalDelegated *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
+	prepSnapshots  PRepSnapshots
 
 	flags       TermFlag
 	snapshotMap map[string]*PRepSnapshot
@@ -163,14 +163,14 @@ func (term *Term) Clone() *Term {
 	}
 
 	return &Term{
-		sequence:              term.sequence,
-		startHeight:           term.startHeight,
-		period:                term.period,
-		irep:                  new(big.Int).Set(term.irep),
-		rrep:                  new(big.Int).Set(term.rrep),
-		totalSupply:           new(big.Int).Set(term.totalSupply),
-		totalDelegated:        new(big.Int).Set(term.totalDelegated),
-		prepSnapshots:         term.prepSnapshots.Clone(),
+		sequence:       term.sequence,
+		startHeight:    term.startHeight,
+		period:         term.period,
+		irep:           new(big.Int).Set(term.irep),
+		rrep:           new(big.Int).Set(term.rrep),
+		totalSupply:    new(big.Int).Set(term.totalSupply),
+		totalDelegated: new(big.Int).Set(term.totalDelegated),
+		prepSnapshots:  term.prepSnapshots.Clone(),
 	}
 }
 
@@ -316,19 +316,29 @@ func (term *Term) ToJSON() map[string]interface{} {
 	return jso
 }
 
-func (term *Term) NewNextTerm(s *State, totalSupply *big.Int, totalDelegated *big.Int) (*Term, error) {
+func NewNextTerm(
+	term *Term,
+	period int64,
+	irep *big.Int,
+	rrep *big.Int,
+	totalSupply *big.Int,
+	totalDelegated *big.Int,
+) *Term {
+	if term == nil {
+		return nil
+	}
 	nextTerm := &Term{
-		sequence:              term.sequence + 1,
-		startHeight:           term.GetEndBlockHeight() + 1,
-		period:                GetTermPeriod(s.store),
-		irep:                  new(big.Int).Set(GetIRep(s)),
-		rrep:                  new(big.Int).Set(GetRRep(s)),
-		totalSupply:           new(big.Int).Set(totalSupply),
-		totalDelegated:        new(big.Int).Set(totalDelegated),
+		sequence:       term.sequence + 1,
+		startHeight:    term.GetEndBlockHeight() + 1,
+		period:         period,
+		irep:           new(big.Int).Set(irep),
+		rrep:           new(big.Int).Set(rrep),
+		totalSupply:    new(big.Int).Set(totalSupply),
+		totalDelegated: new(big.Int).Set(totalDelegated),
 
 		flags: term.flags | FlagNextTerm,
 	}
-	return nextTerm, nil
+	return nextTerm
 }
 
 func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
@@ -418,14 +428,15 @@ func newTermWithTag(_ icobject.Tag) *Term {
 	return &Term{}
 }
 
-func newTerm(termPeriod int64) *Term {
+func newTerm(startHeight, termPeriod int64) *Term {
 	return &Term{
-		period:                termPeriod,
-		irep:                  big.NewInt(0),
-		rrep:                  big.NewInt(0),
-		totalSupply:           big.NewInt(0),
-		totalDelegated:        big.NewInt(0),
-		prepSnapshots:         nil,
+		startHeight:    startHeight,
+		period:         termPeriod,
+		irep:           big.NewInt(0),
+		rrep:           big.NewInt(0),
+		totalSupply:    big.NewInt(0),
+		totalDelegated: big.NewInt(0),
+		prepSnapshots:  nil,
 
 		flags:       FlagNone,
 		snapshotMap: nil,

@@ -132,10 +132,6 @@ func (s *State) GetPRepStatus(owner module.Address) *PRepStatus {
 	return s.prepStatusCache.Get(owner)
 }
 
-func (s *State) Term() *Term {
-	return s.termCache.Get()
-}
-
 func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	store := icobject.NewObjectStoreState(t)
@@ -151,6 +147,16 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
 		termCache:           newTermCache(store),
 		store:               store,
+	}
+
+	if s.GetTerm() == nil {
+		iissBH := GetIISSBlockHeight(s)
+		termPeriod := GetTermPeriod(s)
+		// if termPeriod is not enabled, do not make termCache with Term
+		if termPeriod != 0 {
+			term := newTerm(iissBH, termPeriod)
+			s.SetTerm(term)
+		}
 	}
 
 	return s
