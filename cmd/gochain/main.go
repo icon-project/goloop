@@ -141,6 +141,7 @@ func main() {
 	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
 	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
+	flag.Int64Var(&cfg.TxTimeout, "tx_timeout", 0, "Transaction timeout in milli-second (0: uses system default value)")
 	flag.StringVar(&cfg.Engines, "engines", "python", "Execution engines, comma-separated (python,java)")
 	flag.StringVar(&lwCfg.Filename, "log_writer_filename", "", "Log filename")
 	flag.IntVar(&lwCfg.MaxSize, "log_writer_maxsize", 100, "Log file max size")

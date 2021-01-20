@@ -222,6 +222,13 @@ func (c *singleChain) MaxWaitTimeout() time.Duration {
 	return 0
 }
 
+func (c *singleChain) TransactionTimeout() time.Duration {
+	if c.cfg.TxTimeout > 0 {
+		return time.Duration(c.cfg.TxTimeout) * time.Millisecond
+	}
+	return ConfigDefaultTxTimeout
+}
+
 func (c *singleChain) State() (string, int64, error) {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()

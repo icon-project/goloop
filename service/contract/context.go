@@ -3,6 +3,7 @@ package contract
 import (
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -12,6 +13,7 @@ import (
 
 type Context interface {
 	state.WorldContext
+	TransactionTimeout() time.Duration
 	ContractManager() ContractManager
 	EEManager() eeproxy.Manager
 	GetPreInstalledScore(id string) ([]byte, error)
@@ -66,4 +68,8 @@ func (c *context) TraceInfo() *module.TraceInfo {
 
 func (c *context) ChainID() int {
 	return c.chain.CID()
+}
+
+func (c *context) TransactionTimeout() time.Duration {
+	return c.chain.TransactionTimeout()
 }

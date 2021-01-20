@@ -206,7 +206,7 @@ func (cc *callContext) runFrame(frame *callFrame) (bool, error, *codec.TypedObj,
 
 func (cc *callContext) waitResult(target *callFrame) (error, *codec.TypedObj, module.Address) {
 	if cc.timer == nil {
-		cc.timer = time.After(transactionTimeLimit)
+		cc.timer = time.After(cc.TransactionTimeout())
 	}
 
 	for {
