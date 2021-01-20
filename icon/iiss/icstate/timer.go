@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
@@ -27,7 +28,7 @@ import (
 var unstakingTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_unstaking")
 var unbondingTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_unbonding")
 
-type addresses []module.Address
+type addresses []*common.Address
 
 const timerVersion = iota + 1
 
@@ -59,7 +60,7 @@ func (a addresses) Clone() addresses {
 	if a == nil {
 		return nil
 	}
-	c := make([]module.Address, len(a))
+	c := make([]*common.Address, len(a))
 	for i, address := range a {
 		c[i] = address
 	}
@@ -118,7 +119,7 @@ func (t *Timer) Set(other *Timer) {
 }
 
 func (t *Timer) Add(address module.Address) {
-	t.Addresses = append(t.Addresses, address)
+	t.Addresses = append(t.Addresses, address.(*common.Address))
 }
 
 func (t *Timer) Delete(address module.Address) error {
