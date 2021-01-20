@@ -16,7 +16,7 @@
 package iiss
 
 import (
-	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/service/state"
 	"math/big"
 )
@@ -36,7 +36,7 @@ func HandleTimerJob(wc state.WorldContext) (err error) {
 	return
 }
 
-func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []module.Address, h int64) error {
+func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*common.Address, h int64) error {
 	for _, a := range al {
 		ea, err := es.GetAccount(a)
 		if err != nil {
@@ -55,7 +55,7 @@ func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []mo
 	return nil
 }
 
-func handleUnbondingTimer(es *ExtensionStateImpl, al []module.Address, h int64) error {
+func handleUnbondingTimer(es *ExtensionStateImpl, al []*common.Address, h int64) error {
 	for _, a := range al {
 		as, err := es.GetAccount(a)
 		if err != nil {
