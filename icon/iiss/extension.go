@@ -549,10 +549,10 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 
 	if size > 0 {
 		prepSnapshots := make(icstate.PRepSnapshots, size, size)
-		bondRequirement := int(icstate.GetBondRequirement(s.State))
+		br := int(icstate.GetBondRequirement(s.State))
 		for i := 0; i < size; i++ {
 			prep := s.pm.GetPRepByIndex(i)
-			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, bondRequirement)
+			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
 		}
 
 		nextTerm.SetPRepSnapshots(prepSnapshots)

@@ -14,21 +14,11 @@ import (
 
 type PRepSnapshot struct {
 	owner            module.Address
-	delegated        *big.Int
-	bonded           *big.Int
 	bondedDelegation *big.Int
 }
 
 func (pss *PRepSnapshot) Owner() module.Address {
 	return pss.owner
-}
-
-func (pss *PRepSnapshot) Delegated() *big.Int {
-	return pss.delegated
-}
-
-func (pss *PRepSnapshot) Bonded() *big.Int {
-	return pss.bonded
 }
 
 func (pss *PRepSnapshot) BondedDelegation() *big.Int {
@@ -43,16 +33,12 @@ func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
 		return false
 	}
 	return pss.owner.Equal(other.owner) &&
-		pss.delegated.Cmp(other.delegated) == 0 &&
-		pss.bonded.Cmp(other.bonded) == 0 &&
 		pss.bondedDelegation.Cmp(other.bondedDelegation) == 0
 }
 
 func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            pss.owner,
-		delegated:        new(big.Int).Set(pss.delegated),
-		bonded:           new(big.Int).Set(pss.bonded),
 		bondedDelegation: new(big.Int).Set(pss.bondedDelegation),
 	}
 }
@@ -60,19 +46,17 @@ func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 func (pss *PRepSnapshot) toJSON() map[string]interface{} {
 	jso := make(map[string]interface{}, 2)
 	jso["address"] = pss.owner.String()
-	jso["delegated"] = pss.delegated
-	jso["bonded"] = pss.bonded
 	jso["bondedDelegation"] = pss.bondedDelegation
 	return jso
 }
 
 func (pss *PRepSnapshot) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(pss.owner, pss.delegated, pss.bonded, pss.bondedDelegation)
+	return e.EncodeListOf(pss.owner, pss.bondedDelegation)
 }
 
 func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	var owner *common.Address
-	err := d.DecodeListOf(&owner, &pss.delegated, &pss.bonded, &pss.bondedDelegation)
+	err := d.DecodeListOf(&owner, &pss.bondedDelegation)
 	if err == nil {
 		pss.owner = owner
 	}
@@ -83,8 +67,6 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 func NewPRepSnapshotFromPRepStatus(ps *PRepStatus, bondRequirement int) *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            ps.owner,
-		delegated:        new(big.Int).Set(ps.delegated),
-		bonded:           new(big.Int).Set(ps.bonded),
 		bondedDelegation: new(big.Int).Set(ps.GetBondedDelegation(bondRequirement)),
 	}
 }
@@ -149,7 +131,6 @@ type Term struct {
 	rrep                  *big.Int
 	totalSupply           *big.Int
 	totalDelegated        *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
-	totalBondedDelegation *big.Int // total bonded delegation of prepSnapshots
 	prepSnapshots         PRepSnapshots
 
 	flags       TermFlag
@@ -172,7 +153,6 @@ func (term *Term) Set(other *Term) {
 	term.rrep = other.rrep
 	term.totalSupply.Set(other.totalSupply)
 	term.totalDelegated.Set(other.totalDelegated)
-	term.totalBondedDelegation.Set(other.totalBondedDelegation)
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
 }
@@ -190,7 +170,6 @@ func (term *Term) Clone() *Term {
 		rrep:                  new(big.Int).Set(term.rrep),
 		totalSupply:           new(big.Int).Set(term.totalSupply),
 		totalDelegated:        new(big.Int).Set(term.totalDelegated),
-		totalBondedDelegation: new(big.Int).Set(term.totalBondedDelegation),
 		prepSnapshots:         term.prepSnapshots.Clone(),
 	}
 }
@@ -208,7 +187,6 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.rrep,
 		&term.totalSupply,
 		&term.totalDelegated,
-		&term.totalBondedDelegation,
 		&term.prepSnapshots,
 	)
 }
@@ -222,7 +200,6 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.rrep,
 		term.totalSupply,
 		term.totalDelegated,
-		term.totalBondedDelegation,
 		term.prepSnapshots,
 	)
 }
@@ -249,7 +226,6 @@ func (term *Term) equal(other *Term) bool {
 		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
-		term.totalBondedDelegation.Cmp(other.totalBondedDelegation) == 0 &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -312,8 +288,15 @@ func (term *Term) TotalDelegated() *big.Int {
 	return term.totalDelegated
 }
 
-func (term *Term) TotalBondedDelegation() *big.Int {
-	return term.totalBondedDelegation
+func (term *Term) GetTotalBondedDelegation() *big.Int {
+	totalBondedDelegation := new(big.Int)
+	if term.prepSnapshots != nil {
+		for _, ps := range term.prepSnapshots {
+			totalBondedDelegation.Add(totalBondedDelegation, ps.bondedDelegation)
+		}
+	}
+
+	return totalBondedDelegation
 }
 
 func (term *Term) ToJSON() map[string]interface{} {
@@ -324,7 +307,7 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["endBlockHeight"] = term.GetEndBlockHeight()
 	jso["totalSupply"] = term.totalSupply
 	jso["totalDelegated"] = term.totalDelegated
-	jso["totalBondedDelegation"] = term.totalBondedDelegation
+	jso["totalBondedDelegation"] = term.GetTotalBondedDelegation()
 	jso["irep"] = term.irep
 	jso["rrep"] = term.rrep
 	jso["period"] = term.period
@@ -342,7 +325,6 @@ func (term *Term) NewNextTerm(s *State, totalSupply *big.Int, totalDelegated *bi
 		rrep:                  new(big.Int).Set(GetRRep(s)),
 		totalSupply:           new(big.Int).Set(totalSupply),
 		totalDelegated:        new(big.Int).Set(totalDelegated),
-		totalBondedDelegation: new(big.Int),
 
 		flags: term.flags | FlagNextTerm,
 	}
@@ -401,14 +383,11 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 	term.prepSnapshots = prepSnapshots
 
 	if prepSnapshots != nil {
-		totalBondedDelegation := new(big.Int)
 		snapshotMap = make(map[string]*PRepSnapshot)
 		for _, ps := range prepSnapshots {
 			key := icutils.ToKey(ps.owner)
 			snapshotMap[key] = ps
-			totalBondedDelegation.Add(totalBondedDelegation, ps.bondedDelegation)
 		}
-		term.totalBondedDelegation.Set(totalBondedDelegation)
 	}
 
 	term.snapshotMap = snapshotMap
@@ -417,14 +396,13 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 
 func (term *Term) String() string {
 	return fmt.Sprintf(
-		"Term: seq=%d startBH=%d endBH=%d period=%d totalSupply=%s totalDelegated=%s totalBondedDelegation=%s preps=%d",
+		"Term: seq=%d startBH=%d endBH=%d period=%d totalSupply=%s totalDelegated=%s preps=%d",
 		term.sequence,
 		term.startHeight,
 		term.GetEndBlockHeight(),
 		term.period,
 		term.totalSupply,
 		term.totalDelegated,
-		term.totalBondedDelegation,
 		len(term.prepSnapshots),
 	)
 }
@@ -447,7 +425,6 @@ func newTerm(termPeriod int64) *Term {
 		rrep:                  big.NewInt(0),
 		totalSupply:           big.NewInt(0),
 		totalDelegated:        big.NewInt(0),
-		totalBondedDelegation: big.NewInt(0),
 		prepSnapshots:         nil,
 
 		flags:       FlagNone,

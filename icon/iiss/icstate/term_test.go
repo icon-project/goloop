@@ -121,8 +121,6 @@ func TestTerm_Equal(t *testing.T) {
 	tTS.totalSupply.SetInt64(t0.totalSupply.Int64() + 1)
 	tTD := t0.Clone()
 	tTD.totalDelegated.SetInt64(t0.totalDelegated.Int64() + 1)
-	tTBD := t0.Clone()
-	tTBD.totalBondedDelegation.SetInt64(t0.totalBondedDelegation.Int64() + 1)
 	tSnapshots := t0.Clone()
 	tSnapshots.SetPRepSnapshots(newPRepSnapshots(1, 2))
 
@@ -145,7 +143,6 @@ func TestTerm_Equal(t *testing.T) {
 		{"diff RRep", t0, tRrep, false},
 		{"diff totalSupply", t0, tTS, false},
 		{"diff totalDelegated", t0, tTD, false},
-		{"diff totalBondedDelegation", t0, tTBD, false},
 		{"diff prepSnapshots", t0, tSnapshots, false},
 	}
 
@@ -213,7 +210,7 @@ func TestTerm_PRepSnapshot(t *testing.T) {
 
 		totalBondedDelegation.Add(totalBondedDelegation, ps.BondedDelegation())
 	}
-	assert.Equal(t, 0, totalBondedDelegation.Cmp(term.TotalBondedDelegation()))
+	assert.Equal(t, 0, totalBondedDelegation.Cmp(term.GetTotalBondedDelegation()))
 
 	// GetPRepSnapshot...()
 	for i := 0; i < size; i++ {
@@ -272,6 +269,5 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.Equal(t, GetRRep(s).Int64(), nTerm.rrep.Int64())
 	assert.Equal(t, totalSupply.Int64(), nTerm.totalSupply.Int64())
 	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
-	assert.Equal(t, int64(0), nTerm.totalBondedDelegation.Int64())
 	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)
 }

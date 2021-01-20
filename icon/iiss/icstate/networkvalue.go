@@ -164,7 +164,7 @@ func setLockMax(s *State, value *big.Int) error {
 	if value.Sign() != 1 {
 		return errors.IllegalArgumentError.New("LockMax must have positive value")
 	}
-	return setValue(s.store, VarLockMin, value)
+	return setValue(s.store, VarLockMax, value)
 }
 
 func SetLockVariables(s *State, lockMin *big.Int, lockMax *big.Int) error {
@@ -190,5 +190,7 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["termPeriod"] = intconv.FormatInt(GetTermPeriod(s.store))
 	jso["calculationPeriod"] = intconv.FormatInt(GetCalculatePeriod(s))
 	jso["bondRequirement"] = intconv.FormatInt(GetBondRequirement(s))
+	jso["lockMin"] = intconv.FormatBigInt(GetLockMin(s))
+	jso["lockMAX"] = intconv.FormatBigInt(GetLockMax(s))
 	return jso
 }
