@@ -34,7 +34,7 @@ func (c *termCache) Reset() error {
 	return nil
 }
 
-func (c *termCache) GetSnapshot() error {
+func (c *termCache) Flush() error {
 	if c.IsDirty() {
 		c.dirty = false
 		c.term.ResetFlag()

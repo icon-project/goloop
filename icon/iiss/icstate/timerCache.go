@@ -75,7 +75,7 @@ func (c *TimerCache) Reset() {
 	}
 }
 
-func (c *TimerCache) GetSnapshot() {
+func (c *TimerCache) Flush() {
 	for _, timer := range c.timers {
 		height := timer.Height
 

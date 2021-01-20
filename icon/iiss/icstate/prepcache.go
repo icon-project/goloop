@@ -61,17 +61,19 @@ func (c *PRepBaseCache) Clear() {
 
 func (c *PRepBaseCache) Reset() {
 	for _, base := range c.bases {
-		value := c.dict.Get(base.owner)
+		if !base.IsEmpty() {
+			value := c.dict.Get(base.owner)
 
-		if value == nil {
-			base.Clear()
-		} else {
-			base.Set(ToPRepBase(value.Object(), base.owner))
+			if value == nil {
+				base.Clear()
+			} else {
+				base.Set(ToPRepBase(value.Object(), base.owner))
+			}
 		}
 	}
 }
 
-func (c *PRepBaseCache) GetSnapshot() {
+func (c *PRepBaseCache) Flush() {
 	for k, base := range c.bases {
 		if base.IsEmpty() {
 			key, err := common.BytesToAddress([]byte(k))
@@ -144,17 +146,19 @@ func (c *PRepStatusCache) Clear() {
 
 func (c *PRepStatusCache) Reset() {
 	for _, status := range c.statuses {
-		value := c.dict.Get(status.owner)
+		if !status.IsEmpty() {
+			value := c.dict.Get(status.owner)
 
-		if value == nil {
-			status.Clear()
-		} else {
-			status.Set(ToPRepStatus(value.Object(), status.owner))
+			if value == nil {
+				status.Clear()
+			} else {
+				status.Set(ToPRepStatus(value.Object(), status.owner))
+			}
 		}
 	}
 }
 
-func (c *PRepStatusCache) GetSnapshot() {
+func (c *PRepStatusCache) Flush() {
 	for k, status := range c.statuses {
 		if status.IsEmpty() {
 			key, err := common.BytesToAddress([]byte(k))

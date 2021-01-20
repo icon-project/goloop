@@ -71,17 +71,19 @@ func (c *AccountCache) Clear() {
 
 func (c *AccountCache) Reset() {
 	for _, account := range c.accounts {
-		value := c.dict.Get(account.address)
+		if !account.IsEmpty() {
+			value := c.dict.Get(account.address)
 
-		if value == nil {
-			account.Clear()
-		} else {
-			account.Set(ToAccount(value.Object(), account.address))
+			if value == nil {
+				account.Clear()
+			} else {
+				account.Set(ToAccount(value.Object(), account.address))
+			}
 		}
 	}
 }
 
-func (c *AccountCache) GetSnapshot() {
+func (c *AccountCache) Flush() {
 	for k, account := range c.accounts {
 		if account.IsEmpty() {
 			key, err := common.BytesToAddress([]byte(k))
