@@ -557,10 +557,6 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		for i := 0; i < size; i++ {
 			prep := s.pm.GetPRepByIndex(i)
 			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
-			if prepSnapshots[i].BondedDelegation().Sign() > 0 {
-				totalDelegated := s.pm.TotalDelegated()
-				log.Debugf("totalDelegated : %v", totalDelegated)
-			}
 		}
 
 		nextTerm.SetPRepSnapshots(prepSnapshots)
