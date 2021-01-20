@@ -135,6 +135,7 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, is
 
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
+	// TODO read values from Term
 	irep := icstate.GetIRep(es.State)
 	rrep := icstate.GetRRep(es.State)
 	mainPRepCount := icstate.GetMainPRepCount(es.State)

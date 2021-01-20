@@ -13,16 +13,16 @@ import (
 )
 
 type PRepSnapshot struct {
-	owner     module.Address
-	delegated *big.Int
+	owner            module.Address
+	bondedDelegation *big.Int
 }
 
 func (pss *PRepSnapshot) Owner() module.Address {
 	return pss.owner
 }
 
-func (pss *PRepSnapshot) Delegated() *big.Int {
-	return pss.delegated
+func (pss *PRepSnapshot) BondedDelegation() *big.Int {
+	return pss.bondedDelegation
 }
 
 func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
@@ -32,30 +32,31 @@ func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
 	if pss == nil || other == nil {
 		return false
 	}
-	return pss.owner.Equal(other.owner) && pss.delegated.Cmp(other.delegated) == 0
+	return pss.owner.Equal(other.owner) &&
+		pss.bondedDelegation.Cmp(other.bondedDelegation) == 0
 }
 
 func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 	return &PRepSnapshot{
-		owner:     pss.owner,
-		delegated: new(big.Int).Set(pss.delegated),
+		owner:            pss.owner,
+		bondedDelegation: new(big.Int).Set(pss.bondedDelegation),
 	}
 }
 
 func (pss *PRepSnapshot) toJSON() map[string]interface{} {
 	jso := make(map[string]interface{}, 2)
 	jso["address"] = pss.owner.String()
-	jso["delegated"] = pss.delegated
+	jso["bondedDelegation"] = pss.bondedDelegation
 	return jso
 }
 
 func (pss *PRepSnapshot) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(pss.owner, pss.delegated)
+	return e.EncodeListOf(pss.owner, pss.bondedDelegation)
 }
 
 func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	var owner *common.Address
-	err := d.DecodeListOf(&owner, &pss.delegated)
+	err := d.DecodeListOf(&owner, &pss.bondedDelegation)
 	if err == nil {
 		pss.owner = owner
 	}
@@ -63,10 +64,10 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	return err
 }
 
-func NewPRepSnapshotFromPRepStatus(ps *PRepStatus) *PRepSnapshot {
+func NewPRepSnapshotFromPRepStatus(ps *PRepStatus, bondRequirement int) *PRepSnapshot {
 	return &PRepSnapshot{
-		owner:     ps.owner,
-		delegated: new(big.Int).Set(ps.delegated),
+		owner:            ps.owner,
+		bondedDelegation: new(big.Int).Set(ps.GetBondedDelegation(bondRequirement)),
 	}
 }
 
@@ -126,9 +127,10 @@ type Term struct {
 	sequence       int
 	startHeight    int64
 	period         int64
-	irep           int
+	irep           *big.Int
+	rrep           *big.Int
 	totalSupply    *big.Int
-	totalDelegated *big.Int
+	totalDelegated *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	prepSnapshots  PRepSnapshots
 
 	flags       TermFlag
@@ -148,6 +150,7 @@ func (term *Term) Set(other *Term) {
 	term.startHeight = other.startHeight
 	term.period = other.period
 	term.irep = other.irep
+	term.rrep = other.rrep
 	term.totalSupply.Set(other.totalSupply)
 	term.totalDelegated.Set(other.totalDelegated)
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
@@ -163,7 +166,8 @@ func (term *Term) Clone() *Term {
 		sequence:       term.sequence,
 		startHeight:    term.startHeight,
 		period:         term.period,
-		irep:           term.irep,
+		irep:           new(big.Int).Set(term.irep),
+		rrep:           new(big.Int).Set(term.rrep),
 		totalSupply:    new(big.Int).Set(term.totalSupply),
 		totalDelegated: new(big.Int).Set(term.totalDelegated),
 		prepSnapshots:  term.prepSnapshots.Clone(),
@@ -180,7 +184,8 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.startHeight,
 		&term.period,
 		&term.irep,
-		&term.totalDelegated,
+		&term.rrep,
+		&term.totalSupply,
 		&term.totalDelegated,
 		&term.prepSnapshots,
 	)
@@ -192,7 +197,8 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.startHeight,
 		term.period,
 		term.irep,
-		term.totalDelegated,
+		term.rrep,
+		term.totalSupply,
 		term.totalDelegated,
 		term.prepSnapshots,
 	)
@@ -216,7 +222,8 @@ func (term *Term) equal(other *Term) bool {
 	return term.sequence == other.sequence &&
 		term.startHeight == other.startHeight &&
 		term.period == other.period &&
-		term.irep == other.irep &&
+		term.irep.Cmp(other.irep) == 0 &&
+		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
@@ -226,11 +233,11 @@ func (term *Term) GetPRepSnapshotCount() int {
 	return len(term.prepSnapshots)
 }
 
-func (term *Term) GetPRepSnapshot(i int) *PRepSnapshot {
-	if i < 0 || i >= term.GetPRepSnapshotCount() {
+func (term *Term) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
+	if index < 0 || index >= term.GetPRepSnapshotCount() {
 		return nil
 	}
-	return term.prepSnapshots[i]
+	return term.prepSnapshots[index]
 }
 
 func (term *Term) GetPRepSnapshotByOwner(owner module.Address) *PRepSnapshot {
@@ -277,6 +284,21 @@ func (term *Term) SetFlag(flags TermFlag, on bool) {
 	}
 }
 
+func (term *Term) TotalDelegated() *big.Int {
+	return term.totalDelegated
+}
+
+func (term *Term) GetTotalBondedDelegation() *big.Int {
+	totalBondedDelegation := new(big.Int)
+	if term.prepSnapshots != nil {
+		for _, ps := range term.prepSnapshots {
+			totalBondedDelegation.Add(totalBondedDelegation, ps.bondedDelegation)
+		}
+	}
+
+	return totalBondedDelegation
+}
+
 func (term *Term) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 
@@ -285,25 +307,38 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["endBlockHeight"] = term.GetEndBlockHeight()
 	jso["totalSupply"] = term.totalSupply
 	jso["totalDelegated"] = term.totalDelegated
+	jso["totalBondedDelegation"] = term.GetTotalBondedDelegation()
 	jso["irep"] = term.irep
+	jso["rrep"] = term.rrep
 	jso["period"] = term.period
 	jso["preps"] = term.prepSnapshots.toJSON()
 
 	return jso
 }
 
-func (term *Term) NewNextTerm(totalSupply *big.Int, totalDelegated *big.Int) (*Term, error) {
+func NewNextTerm(
+	term *Term,
+	period int64,
+	irep *big.Int,
+	rrep *big.Int,
+	totalSupply *big.Int,
+	totalDelegated *big.Int,
+) *Term {
+	if term == nil {
+		return nil
+	}
 	nextTerm := &Term{
 		sequence:       term.sequence + 1,
 		startHeight:    term.GetEndBlockHeight() + 1,
-		period:         term.period,
-		irep:           term.irep,
+		period:         period,
+		irep:           new(big.Int).Set(irep),
+		rrep:           new(big.Int).Set(rrep),
 		totalSupply:    new(big.Int).Set(totalSupply),
 		totalDelegated: new(big.Int).Set(totalDelegated),
 
 		flags: term.flags | FlagNextTerm,
 	}
-	return nextTerm, nil
+	return nextTerm
 }
 
 func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
@@ -393,9 +428,12 @@ func newTermWithTag(_ icobject.Tag) *Term {
 	return &Term{}
 }
 
-func newTerm(termPeriod int64) *Term {
+func newTerm(startHeight, termPeriod int64) *Term {
 	return &Term{
+		startHeight:    startHeight,
 		period:         termPeriod,
+		irep:           big.NewInt(0),
+		rrep:           big.NewInt(0),
 		totalSupply:    big.NewInt(0),
 		totalDelegated: big.NewInt(0),
 		prepSnapshots:  nil,

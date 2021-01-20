@@ -14,10 +14,11 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 )
 
 const (
@@ -26,6 +27,7 @@ const (
 	VarMainPRepCount   = "main_prep_count"
 	VarSubPRepCount    = "sub_prep_count"
 	VarTotalStake      = "total_stake"
+	VarIISSBlockHeight = "iiss_blockheight"
 	VarTermPeriod      = "term_period"
 	VarCalculatePeriod = "calculate_period"
 	VarBondRequirement = "bond_requirement"
@@ -51,8 +53,16 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 	return nil
 }
 
-func GetTermPeriod(store containerdb.ObjectStoreState) int64 {
-	return getValue(store, VarTermPeriod).Int64()
+func GetIISSBlockHeight(s *State) int64 {
+	return getValue(s.store, VarIISSBlockHeight).Int64()
+}
+
+func SetIISSBlockHeight(s *State, value int64) error {
+	return setValue(s.store, VarIISSBlockHeight, value)
+}
+
+func GetTermPeriod(s *State) int64 {
+	return getValue(s.store, VarTermPeriod).Int64()
 }
 
 func SetTermPeriod(s *State, value int64) error {
@@ -177,4 +187,20 @@ func SetLockVariables(s *State, lockMin *big.Int, lockMax *big.Int) error {
 		return err
 	}
 	return nil
+}
+
+func NetworkValueToJSON(s *State) map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["irep"] = intconv.FormatBigInt(GetIRep(s))
+	jso["rrep"] = intconv.FormatBigInt(GetRRep(s))
+	jso["mainPRepCount"] = intconv.FormatInt(GetMainPRepCount(s))
+	jso["subPRepCount"] = intconv.FormatInt(GetMainPRepCount(s))
+	jso["totalStake"] = intconv.FormatBigInt(GetTotalStake(s))
+	jso["iissBlockHeight"] = intconv.FormatInt(GetIISSBlockHeight(s))
+	jso["termPeriod"] = intconv.FormatInt(GetTermPeriod(s))
+	jso["calculationPeriod"] = intconv.FormatInt(GetCalculatePeriod(s))
+	jso["bondRequirement"] = intconv.FormatInt(GetBondRequirement(s))
+	jso["lockMin"] = intconv.FormatBigInt(GetLockMin(s))
+	jso["lockMAX"] = intconv.FormatBigInt(GetLockMax(s))
+	return jso
 }
