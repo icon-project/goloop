@@ -1,12 +1,13 @@
 package icstate
 
 import (
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestPrepBaseCache(t *testing.T) {

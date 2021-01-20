@@ -1,13 +1,14 @@
 package icstate
 
 import (
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var testTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_test")

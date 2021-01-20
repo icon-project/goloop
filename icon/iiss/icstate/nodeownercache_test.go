@@ -2,11 +2,12 @@ package icstate
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNodeOwnerCache(t *testing.T) {

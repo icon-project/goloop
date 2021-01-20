@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/bmizerany/assert"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAccountCache(t *testing.T) {
@@ -31,11 +31,12 @@ func TestAccountCache(t *testing.T) {
 	// flush
 	s.accountCache.Flush()
 
+	// there should be addr1 in DB after Flush()
 	o := s.accountCache.dict.Get(addr1)
 	account = ToAccount(o.Object(), addr1)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(40)))
 
-	// dict deleted
+	// item(addr2) should be gotten from the map, although it is deleted in DB
 	s.accountCache.dict.Delete(addr2)
 	account = s.accountCache.Get(addr2)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
@@ -43,19 +44,21 @@ func TestAccountCache(t *testing.T) {
 	// reset
 	s.accountCache.Reset()
 
+	// Reset() will affect on items in map
 	account = s.accountCache.Get(addr2)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(0)))
+	assert.True(t, account.IsEmpty())
 
 	account.SetStake(big.NewInt(int64(100)))
 
 	// flush without add
 	s.accountCache.Flush()
 
+	// cannot affect DB, it didn't add addr2
 	o = s.accountCache.dict.Get(addr2)
-	assert.Equal(t, nil, o)
-	//account = ToAccount(o.Object(), addr2)
+	assert.Nil(t, o)
 
-	// add new
+	// add new addr2
 	s.accountCache.Add(newAccount(addr2))
 	account = s.accountCache.Get(addr2)
 	account.SetStake(big.NewInt(int64(100)))
