@@ -131,8 +131,8 @@ func GetBondRequirement(s *State) int64 {
 	return getValue(s.store, VarBondRequirement).Int64()
 }
 
-func (s *State) SetBondRequirement(value int64) {
-	SetBondRequirement(s, value)
+func (s *State) SetBondRequirement(value int64) error {
+	return SetBondRequirement(s, value)
 }
 
 func SetBondRequirement(s *State, value int64) error {
@@ -163,7 +163,7 @@ func setLockMax(s *State, value *big.Int) error {
 	if value.Sign() != 1 {
 		return errors.IllegalArgumentError.New("LockMax must have positive value")
 	}
-	return setValue(s.store, VarLockMin, value)
+	return setValue(s.store, VarLockMax, value)
 }
 
 func SetLockVariables(s *State, lockMin *big.Int, lockMax *big.Int) error {
