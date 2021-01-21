@@ -68,12 +68,12 @@ func Test_networkValue(t *testing.T) {
 }
 
 func setTermPeriodTest(t *testing.T, s *State) {
-	actual := GetTermPeriod(s.store)
+	actual := GetTermPeriod(s)
 	assert.Equal(t, int64(0), actual)
 
 	tp := int64(10)
 	SetTermPeriod(s, tp)
-	actual = GetTermPeriod(s.store)
+	actual = GetTermPeriod(s)
 	assert.Equal(t, tp, actual)
 
 }
