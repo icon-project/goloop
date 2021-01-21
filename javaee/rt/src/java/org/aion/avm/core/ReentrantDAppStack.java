@@ -186,6 +186,11 @@ public class ReentrantDAppStack {
         return  dAppInfo != null ? dAppInfo.getLoadedDApp() : null;
     }
 
+    public void cacheDApp(LoadedDApp dApp, byte[] contractID, String codeID) {
+        dAppCache.put(new ByteArrayWrapper(contractID),
+                new LoadedDAppInfo(dApp, codeID));
+    }
+
     public void unloadDApps(Loader loader) {
         for (var e : dAppCache.entrySet()) {
             loader.unload(e.getValue().getCodeID(),
