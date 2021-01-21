@@ -78,6 +78,7 @@ func (c *ActivePRepCache) Clear() {
 	c.ownerToItem = make(map[string]*activePRepCacheItem)
 }
 
+// Reset recovers data which is in the list of Map as of now
 func (c *ActivePRepCache) Reset() {
 	c.Clear()
 
