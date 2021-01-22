@@ -158,7 +158,7 @@ func (c *PRepStatusCache) Reset() {
 		if err != nil {
 			panic(errors.Errorf("Address convert error"))
 		}
-		value := c.GetObject(addr)
+		value := c.dict.Get(addr)
 
 		if value == nil {
 			delete(c.statuses, key)
@@ -166,13 +166,6 @@ func (c *PRepStatusCache) Reset() {
 			status.Set(ToPRepStatus(value.Object(), addr))
 		}
 	}
-}
-
-func (c *PRepStatusCache) GetObject(addr module.Address) containerdb.Value{
-
-		value := c.dict.Get(addr)
-	return value
-
 }
 
 func (c *PRepStatusCache) Flush() {
