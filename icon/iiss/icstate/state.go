@@ -89,14 +89,14 @@ func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
 }
 
 func (s *State) AddUnbondingTimerToCache(h int64) *Timer {
-	t := newTimer(h)
-	s.unbondingTimerCache.Add(t)
+	t := newTimer()
+	s.unbondingTimerCache.Add(h, t)
 	return t
 }
 
 func (s *State) AddUnstakingTimerToCache(h int64) *Timer {
-	t := newTimer(h)
-	s.unstakingTimerCache.Add(t)
+	t := newTimer()
+	s.unstakingTimerCache.Add(h, t)
 	return t
 }
 

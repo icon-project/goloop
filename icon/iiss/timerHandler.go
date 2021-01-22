@@ -23,15 +23,16 @@ import (
 
 func HandleTimerJob(wc state.WorldContext) (err error) {
 	es := wc.GetExtensionState().(*ExtensionStateImpl)
-	if bt, err := es.GetUnbondingTimerState(wc.BlockHeight()); err != nil {
+	bh := wc.BlockHeight()
+	if bt, err := es.GetUnbondingTimerState(bh); err != nil {
 		return err
 	} else if bt != nil {
-		err = handleUnbondingTimer(es, bt.Addresses, bt.Height)
+		err = handleUnbondingTimer(es, bt.Addresses, bh)
 	}
 	if st, err := es.GetUnstakingTimerState(wc.BlockHeight()); err != nil {
 		return err
 	} else if st != nil {
-		err = handleUnStakingTimer(wc, es, st.Addresses, st.Height)
+		err = handleUnStakingTimer(wc, es, st.Addresses, bh)
 	}
 	return
 }

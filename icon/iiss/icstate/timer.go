@@ -70,8 +70,8 @@ func (a addresses) Clone() addresses {
 type Timer struct {
 	icobject.NoDatabase
 	StateAndSnapshot
-	Height int64
 
+	dirty     bool
 	Addresses addresses
 }
 
@@ -97,15 +97,12 @@ func (t *Timer) Equal(object icobject.Impl) bool {
 	if !ok {
 		return false
 	}
-	if tt == t {
-		return true
-	}
 	return t.Addresses.Equal(tt.Addresses)
 }
 
 func (t *Timer) Clear() {
-	t.Height = 0
 	t.Addresses = nil
+	t.dirty = false
 }
 
 func (t Timer) IsEmpty() bool {
@@ -114,12 +111,12 @@ func (t Timer) IsEmpty() bool {
 
 func (t *Timer) Set(other *Timer) {
 	t.checkWritable()
-	t.Height = other.Height
 	t.Addresses = other.Addresses.Clone()
 }
 
 func (t *Timer) Add(address module.Address) {
 	t.Addresses = append(t.Addresses, address.(*common.Address))
+	t.dirty = true
 }
 
 func (t *Timer) Delete(address module.Address) error {
@@ -135,13 +132,12 @@ func (t *Timer) Delete(address module.Address) error {
 	}
 
 	t.Addresses = tmp
+	t.dirty = true
 	return nil
 }
 
-func newTimer(height int64) *Timer {
-	return &Timer{
-		Height: height,
-	}
+func newTimer() *Timer {
+	return &Timer{}
 }
 
 func newTimerWithTag(_ icobject.Tag) *Timer {

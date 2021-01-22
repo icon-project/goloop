@@ -28,8 +28,8 @@ type TimerCache struct {
 	timers map[int64]*Timer
 }
 
-func (c *TimerCache) Add(t *Timer) {
-	c.timers[t.Height] = t
+func (c *TimerCache) Add(h int64, t *Timer) {
+	c.timers[h] = t
 }
 
 func (c *TimerCache) Remove(height int64) error {
@@ -64,29 +64,30 @@ func (c *TimerCache) Clear() {
 }
 
 func (c *TimerCache) Reset() {
-	for _, timer := range c.timers {
-		value := c.dict.Get(timer.Height)
+	for key, timer := range c.timers {
+		value := c.dict.Get(key)
 
 		if value == nil {
 			timer.Clear()
 		} else {
 			timer.Set(ToTimer(value.Object()))
+			timer.dirty = false
 		}
 	}
 }
 
 func (c *TimerCache) GetSnapshot() {
-	for _, timer := range c.timers {
-		height := timer.Height
-
-		if timer.IsEmpty() {
-			if err := c.dict.Delete(); err != nil {
-				log.Errorf("Failed to delete Timer on %d, err+%+v", height, err)
-			}
-		} else {
-			o := icobject.New(TypeTimer, timer)
-			if err := c.dict.Set(timer.Height, o); err != nil {
-				log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
+	for key, timer := range c.timers {
+		if timer.dirty {
+			if timer.IsEmpty() {
+				if err := c.dict.Delete(key); err != nil {
+					log.Errorf("Failed to delete Timer on %d, err+%+v", key, err)
+				}
+			} else {
+				o := icobject.New(TypeTimer, timer)
+				if err := c.dict.Set(key, o); err != nil {
+					log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
+				}
 			}
 		}
 	}
