@@ -169,6 +169,9 @@ func NewBonds(param []interface{}) (Bonds, error) {
 		if err = json.Unmarshal(bs, bond); err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
 		}
+		if bond.Value.Sign() == -1 {
+			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to bond")
+		}
 		target := bond.Address.String()
 		if _, ok := targets[target]; ok {
 			return nil, errors.IllegalArgumentError.Errorf("Duplicated bond Address")
