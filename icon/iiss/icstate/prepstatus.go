@@ -285,8 +285,8 @@ func (ps *PRepStatus) Clear() {
 	ps.owner = nil
 	ps.status = Active
 	ps.grade = Candidate
-	ps.delegated = BigIntZero
-	ps.bonded = BigIntZero
+	ps.delegated = big.NewInt(0)
+	ps.bonded = big.NewInt(0)
 	ps.vTotal = 0
 	ps.vFail = 0
 	ps.vPenaltyMask = 0

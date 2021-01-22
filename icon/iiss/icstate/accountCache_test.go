@@ -1,7 +1,6 @@
 package icstate
 
 import (
-	"fmt"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 	"testing"
@@ -54,10 +53,8 @@ func TestAccountCache(t *testing.T) {
 
 	account.SetStake(big.NewInt(int64(100)))
 
-	fmt.Println(len(s.accountCache.accounts))
 
 	// flush without add
-	fmt.Println(s.accountCache.Get(addr2).stake)
 	s.accountCache.Flush()
 
 	// DB reflected after Flush()
@@ -83,7 +80,6 @@ func TestAccountCache(t *testing.T) {
 	s.accountCache.Flush()
 	// Get() gets data directly from dictDB, if there's no in Map
 	account = s.accountCache.Get(addr2)
-	fmt.Println(account.address)
 	assert.Equal(t, false, account.IsEmpty())
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
 

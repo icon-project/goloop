@@ -71,20 +71,17 @@ func (c *AccountCache) Clear() {
 }
 
 func (c *AccountCache) Reset() {
-	for key, _ := range c.accounts {
+	for key, account := range c.accounts {
 		addr, err := common.NewAddress([]byte(key))
 		if err != nil {
 			panic(errors.Errorf("Address convert error"))
 		}
 		value := c.dict.Get(addr)
-
+		account.Clear()
 		if value == nil {
 			delete(c.accounts, key)
 		} else {
-			delete(c.accounts, key)
-			newac := newAccount(addr)
-			newac.Set(ToAccount(value.Object(), addr))
-			c.accounts[key] = newac
+			account.Set(ToAccount(value.Object(), addr))
 		}
 	}
 }
