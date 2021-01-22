@@ -88,7 +88,7 @@ func TestNewDelegations(t *testing.T) {
 			v1 + v2,
 		},
 		{
-			"Duplicated Address Address",
+			"Duplicated Address",
 			[]interface{}{
 				map[string]interface{}{
 					"Address": "hx1",
@@ -116,6 +116,17 @@ func TestNewDelegations(t *testing.T) {
 				map[string]interface{}{
 					"Address": "hx3",
 					"Value":   fmt.Sprintf("0x%x", v2),
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"negative delegation",
+			[]interface{}{
+				map[string]interface{}{
+					"Address": "hx1",
+					"Value":   fmt.Sprintf("-0x%x", v1),
 				},
 			},
 			true,

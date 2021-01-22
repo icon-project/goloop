@@ -144,6 +144,9 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 		if err = json.Unmarshal(bs, dg); err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)
 		}
+		if dg.Value.Sign() == -1 {
+			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to delegation")
+		}
 		target := dg.Address.String()
 		if _, ok := targets[target]; ok {
 			return nil, errors.IllegalArgumentError.Errorf("Duplicated delegation address")
