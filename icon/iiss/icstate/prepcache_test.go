@@ -22,6 +22,7 @@ func TestPrepBaseCache(t *testing.T) {
 
 	addr = common.NewAddressFromString("hx2")
 	base = NewPRepBase(addr)
+	base.SetPRep("name", "emal" , "web" , "country", "city","deatil", "end", addr)
 
 	// cache added
 	s.AddPRepBase(base)
@@ -36,12 +37,12 @@ func TestPrepBaseCache(t *testing.T) {
 	val = s.prepBaseCache.dict.Get(key)
 	assert.NotNil(t,val)
 
-	// once item is removed in the map,
-	// it cannot be recovered by reset
+	// Reset() reverts Remove(), should get after reset()
 	s.prepBaseCache.Remove(addr)
 	s.prepBaseCache.Reset()
 	base = s.prepBaseCache.Get(addr)
-	assert.True(t, base.IsEmpty())
+	assert.False(t, base.IsEmpty())
+	assert.Equal(t, "name" , base.name)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
@@ -51,11 +52,13 @@ func TestPrepBaseCache(t *testing.T) {
 	val = s.prepBaseCache.dict.Get(key)
 	assert.Nil(t,val)
 
+	// Reset cannot get items from DB after clear()
 	s.prepBaseCache.Clear()
 	s.prepBaseCache.Reset()
 
 	assert.Equal(t, 0, len(s.prepBaseCache.bases))
 
+	// but it can get item, using Get() specifically
 	addr = common.NewAddressFromString("hx1")
 	base = s.prepBaseCache.Get(addr)
 
@@ -74,6 +77,7 @@ func TestPrepStatusCache(t *testing.T) {
 
 	addr = common.NewAddressFromString("hx2")
 	status = NewPRepStatus(addr)
+	status.SetVTotal(100)
 
 	// cache added
 	s.AddPRepStatus(status)
@@ -88,12 +92,12 @@ func TestPrepStatusCache(t *testing.T) {
 	val = s.prepStatusCache.dict.Get(key)
 	assert.NotNil(t,val)
 
-	// once item is removed in the map,
-	// it cannot be recovered by reset
+	// Reset() reverts Remove(), should get after reset()
 	s.prepStatusCache.Remove(addr)
 	s.prepStatusCache.Reset()
 	status = s.prepStatusCache.Get(addr)
-	assert.True(t, status.IsEmpty())
+	assert.False(t, status.IsEmpty())
+	assert.Equal(t, 100, status.vTotal)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
@@ -103,11 +107,13 @@ func TestPrepStatusCache(t *testing.T) {
 	val = s.prepStatusCache.dict.Get(key)
 	assert.Nil(t,val)
 
+	// Reset cannot get items from DB after clear()
 	s.prepStatusCache.Clear()
 	s.prepStatusCache.Reset()
 
 	assert.Equal(t, 0, len(s.prepStatusCache.statuses))
 
+	// but it can get item, using Get() specifically
 	addr = common.NewAddressFromString("hx1")
 	status = s.prepStatusCache.Get(addr)
 

@@ -197,7 +197,7 @@ func (ps *PRepStatus) equal(other *PRepStatus) bool {
 
 func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.checkWritable()
-
+	ps.owner = other.owner
 	ps.grade = other.grade
 	ps.status = other.status
 	ps.delegated.Set(other.delegated)

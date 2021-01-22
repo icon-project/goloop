@@ -2,6 +2,7 @@ package icstate
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 	"testing"
 
@@ -45,40 +46,36 @@ func TestAccountCache(t *testing.T) {
 	s.accountCache.Reset()
 
 	// Reset() will affect on items in map
+	// Get() will return empty object, not nil, if there is no both in map and db
 	account = s.accountCache.Get(addr2)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(0)))
-	assert.True(t, account.IsEmpty())
+
+	assert.False(t, account.IsEmpty())
 
 	account.SetStake(big.NewInt(int64(100)))
+
+	fmt.Println(len(s.accountCache.accounts))
 
 	// flush without add
+	fmt.Println(s.accountCache.Get(addr2).stake)
 	s.accountCache.Flush()
 
-	// cannot affect DB, it didn't add addr2
+	// DB reflected after Flush()
 	o = s.accountCache.dict.Get(addr2)
-	assert.Nil(t, o)
+	account = ToAccount(o.Object(), addr2)
+	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
 
-	// add new addr2
-	s.accountCache.Add(newAccount(addr2))
-	account = s.accountCache.Get(addr2)
-	account.SetStake(big.NewInt(int64(100)))
-
-	// flush
-	s.accountCache.Flush()
-
-	// exist in dict
-	o = s.accountCache.dict.Get(addr2)
-	assert.NotEqual(t, nil, o)
 
 	// remove
 	s.accountCache.Remove(addr1)
 	account = s.accountCache.Get(addr1)
-	assert.Equal(t, true, account.IsEmpty())
+	assert.True(t, account.IsEmpty())
 
-	// cannot get even if reset
+	// Should get after reset()
 	s.accountCache.Reset()
 	account = s.accountCache.Get(addr1)
-	assert.Equal(t, true, account.IsEmpty())
+	assert.False(t, account.IsEmpty())
+	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(40)))
 
 	// clear
 	s.accountCache.Clear()
@@ -88,4 +85,12 @@ func TestAccountCache(t *testing.T) {
 	account = s.accountCache.Get(addr2)
 	fmt.Println(account.address)
 	assert.Equal(t, false, account.IsEmpty())
+	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
+
+	s.accountCache.Remove(addr2)
+	s.accountCache.Flush()
+
+	key := icutils.ToKey(addr2)
+	account = s.accountCache.accounts[key]
+	assert.Nil(t, account)
 }

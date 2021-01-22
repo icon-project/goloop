@@ -136,6 +136,12 @@ func (t *Timer) Delete(address module.Address) error {
 	t.Addresses = tmp
 	return nil
 }
+func (t *Timer) Clone() *Timer {
+	return &Timer{
+		Height: t.Height,
+		Addresses: t.Addresses.Clone(),
+	}
+}
 
 func newTimer(height int64) *Timer {
 	return &Timer{

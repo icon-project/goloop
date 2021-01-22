@@ -48,14 +48,14 @@ func TestTimerCache(t *testing.T) {
 	// new timer 110 added
 	tc.Add(timer)
 
-	// 110 should be empty
+	// 110 should not be empty
 	timer = tc.Get(110)
 	assert.False(t, timer.IsEmpty())
 
-	// the item 110 in map will be cleared after Reset(), because the item 110 didn't flush
+	// the item 110 in map will be removed after reset(), because there is no in DB
 	tc.Reset()
 	timer = tc.Get(110)
-	assert.True(t, timer.IsEmpty())
+	assert.Nil(t, timer)
 
 	timer = newTimer(110)
 	addr = common.NewAddressFromString("hx2")
@@ -71,7 +71,7 @@ func TestTimerCache(t *testing.T) {
 	tc.Reset()
 	timer = tc.Get(100)
 	// should be still empty
-	assert.True(t, timer.IsEmpty())
+	assert.False(t, timer.IsEmpty())
 
 	// after Clear(), it cannot recover any data from DB by Reset()
 	tc.Clear()
