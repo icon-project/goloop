@@ -115,20 +115,29 @@ func (t *Timer) Set(other *Timer) {
 	t.dirty = false
 }
 
-func (t *Timer) Add(address module.Address) {
+func (t *Timer) Add(address module.Address) error {
+	for _, a := range t.Addresses {
+		if a.Equal(address) {
+			return errors.Errorf("%s already in timer", a.String())
+		}
+	}
 	t.Addresses = append(t.Addresses, common.AddressToPtr(address))
 	t.dirty = true
+	return nil
 }
 
 func (t *Timer) Delete(address module.Address) error {
 	tmp := make(addresses, 0)
-	for _, a := range t.Addresses {
-		if !a.Equal(address) {
-			tmp = append(tmp, a)
+	found := false
+	for i, a := range t.Addresses {
+		if a.Equal(address) {
+			tmp = append(tmp, t.Addresses[:i]...)
+			tmp = append(tmp, t.Addresses[i+1:]...)
+			found = true
+			break
 		}
 	}
-
-	if len(tmp) == len(t.Addresses) {
+	if !found {
 		return errors.Errorf("%s not in timer", address.String())
 	}
 

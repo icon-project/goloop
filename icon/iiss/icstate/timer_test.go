@@ -17,9 +17,9 @@
 package icstate
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -89,7 +89,7 @@ func TestTimer_Delete(t *testing.T) {
 
 	err = timer.Delete(a2)
 	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), errors.Errorf("%s not in timer", a2.String()).Error())
+		assert.Equal(t, err.Error(), fmt.Sprintf("%s not in timer", a2.String()))
 	}
 
 	err = timer.Delete(a4)
