@@ -87,7 +87,7 @@ func TestNewBonds(t *testing.T) {
 			v1 + v2,
 		},
 		{
-			"Duplicated Address Address",
+			"Duplicated Address",
 			[]interface{}{
 				map[string]interface{}{
 					"Address": "hx1",
@@ -102,7 +102,7 @@ func TestNewBonds(t *testing.T) {
 			0,
 		},
 		{
-			"Too many delegations",
+			"Too many bonds",
 			[]interface{}{
 				map[string]interface{}{
 					"Address": "hx1",
@@ -115,6 +115,17 @@ func TestNewBonds(t *testing.T) {
 				map[string]interface{}{
 					"Address": "hx3",
 					"Value":   fmt.Sprintf("0x%x", v2),
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"negative bond",
+			[]interface{}{
+				map[string]interface{}{
+					"Address": "hx1",
+					"Value":   fmt.Sprintf("-0x%x", v1),
 				},
 			},
 			true,
@@ -141,7 +152,6 @@ func TestNewBonds(t *testing.T) {
 		})
 	}
 }
-
 
 func TestBonds_Slash(t *testing.T) {
 	addr1 := common.NewAddressFromString("hx1")

@@ -59,7 +59,7 @@ class ProxyStreamHandler(Handler):
         self._proxy.log(Log.from_py_level(levelname), msg)
 
 
-def convert_data_type(typ: str) -> DataType:
+def convert_data_type(typ: str) -> int:
     if typ == 'int':
         return DataType.INTEGER
     elif typ == 'str':
@@ -70,11 +70,15 @@ def convert_data_type(typ: str) -> DataType:
         return DataType.BOOL
     elif typ == 'Address':
         return DataType.ADDRESS
+    elif typ == 'struct':
+        return DataType.STRUCT
+    elif typ.startswith('[]'):
+        return 0x10 + convert_data_type(typ[2:])
     else:
         raise Exception(f"UnknownType: {typ}")
 
 
-def convert_output_data_type(typ: str) -> DataType:
+def convert_output_data_type(typ: str) -> int:
     if typ == 'list':
         return DataType.LIST
     elif typ == 'dict':
@@ -94,7 +98,11 @@ def convert_inputs(params: list) -> Tuple[int, List[Tuple[str, int, Any]]]:
             optional += 1
         else:
             default: Any = None
-        result.append((name, typ, default))
+        if 'fields' in param:
+            _, fields = convert_inputs(param.get('fields'))
+            result.append((name, typ, default, fields))
+        else:
+            result.append((name, typ, default))
     return optional, result
 
 

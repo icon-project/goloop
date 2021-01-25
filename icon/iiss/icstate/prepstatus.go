@@ -92,6 +92,10 @@ func (ps *PRepStatus) Status() Status {
 	return ps.status
 }
 
+func (ps *PRepStatus) IsActive() bool {
+	return ps.status == Active
+}
+
 func (ps *PRepStatus) VPenaltyMask() uint32 {
 	return ps.vPenaltyMask
 }
@@ -112,6 +116,10 @@ func (ps *PRepStatus) Delegated() *big.Int {
 	return ps.delegated
 }
 
+func (ps *PRepStatus) GetDelegated() *big.Int {
+	return new(big.Int).Add(ps.delegated, ps.bonded)
+}
+
 func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
@@ -128,7 +136,7 @@ func (ps *PRepStatus) GetBondedDelegation(bondRequirement int) *big.Int {
 		// should not be 0 for bond requirement
 		return big.NewInt(0)
 	}
-	totalDelegation := new(big.Int).Add(ps.delegated, ps.bonded)
+	totalDelegation := ps.GetDelegated()
 	multiplier := big.NewInt(100)
 	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
 
@@ -230,7 +238,7 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int) map[string]
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
-	jso["delegated"] = ps.delegated
+	jso["delegated"] = ps.GetDelegated()
 	jso["bonded"] = ps.bonded
 	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)

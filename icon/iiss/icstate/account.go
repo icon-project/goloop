@@ -265,10 +265,11 @@ func (a *Account) GetUnbondsInfo() []interface{} {
 }
 
 func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds, Unbonds, *big.Int) {
-	diff, uDiff := new(big.Int), new(big.Int)
+	uDiff := new(big.Int)
 	var ubToAdd, ubToMod []*Unbond
 	for _, nb := range bonds {
 		for _, ob := range a.bonds {
+			diff := new(big.Int)
 			if nb.Address.Equal(ob.Address) {
 				diff.Sub(ob.Value.Value(), nb.Value.Value())
 				if diff.Sign() == 1 {
@@ -278,7 +279,12 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				} else {
 					for _, ub := range a.unbonds {
 						if nb.Address.Equal(ub.Address) {
-							unbond := Unbond{nb.Address, ub.Value.Add(ub.Value, diff), unbondingHeight}
+							value := new(big.Int).Add(ub.Value, diff)
+							if value.Sign() == -1 {
+								uDiff.Add(uDiff, value.Abs(value))
+								value = new(big.Int)
+							}
+							unbond := Unbond{nb.Address, value, unbondingHeight}
 							ubToMod = append(ubToMod, &unbond)
 							uDiff.Add(uDiff, diff)
 						}

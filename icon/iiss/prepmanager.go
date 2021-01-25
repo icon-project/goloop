@@ -2,15 +2,17 @@ package iiss
 
 import (
 	"bytes"
+	"math/big"
+	"sort"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
-	"math/big"
-	"sort"
 )
 
 type RegInfoIdx int
@@ -73,9 +75,10 @@ func setPRep(pb *icstate.PRepBase, node module.Address, params []string) error {
 
 // Manage PRepBase, PRepStatus and ActivePRep
 type PRepManager struct {
-	state          *icstate.State
-	totalDelegated *big.Int
-	totalStake     *big.Int
+	state *icstate.State
+
+	totalDelegated *big.Int // total delegated amount of all active P-Reps
+	totalStake     *big.Int // total stake of all ICONist
 
 	orderedPReps preps
 	prepMap      map[string]*PRep
@@ -116,7 +119,7 @@ func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 func (pm *PRepManager) Add(p *PRep) {
 	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
+	pm.totalDelegated.Add(pm.totalDelegated, p.GetDelegated())
 }
 
 // sort preps in descending order by bonded delegation
@@ -124,7 +127,7 @@ func (pm *PRepManager) sort() {
 	//sort.Sort(sort.Reverse(pm.orderedPReps))
 	br := pm.state.GetBondRequirement()
 	sort.Slice(pm.orderedPReps, func(i, j int) bool {
-		ret :=  pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
+		ret := pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
@@ -167,6 +170,15 @@ func (pm *PRepManager) TotalDelegated() *big.Int {
 	return pm.totalDelegated
 }
 
+func (pm *PRepManager) GetTotalBondedDelegation() *big.Int {
+	total := new(big.Int)
+	br := int(icstate.GetBondRequirement(pm.state))
+	for _, prep := range pm.orderedPReps {
+		total.Add(total, prep.GetBondedDelegation(br))
+	}
+	return total
+}
+
 func (pm *PRepManager) TotalStake() *big.Int {
 	// TODO: Not implemented
 	return pm.totalStake
@@ -192,6 +204,15 @@ func (pm *PRepManager) GetValidators() []module.Validator {
 	}
 
 	return validators
+}
+
+func (pm *PRepManager) ToJSON() map[string]interface{} {
+	ret := make(map[string]interface{})
+	ret["totalStake"] = intconv.FormatBigInt(pm.totalStake)
+	ret["totalDelegated"] = intconv.FormatBigInt(pm.totalDelegated)
+	ret["totalBondedDelegation"] = intconv.FormatBigInt(pm.GetTotalBondedDelegation())
+
+	return ret
 }
 
 func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
@@ -256,6 +277,7 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
+	pm.totalDelegated.Sub(pm.totalDelegated, p.GetDelegated())
 	err = pm.state.RemovePRepBase(owner)
 	if err != nil {
 		return err
@@ -264,7 +286,6 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 	if err != nil {
 		return err
 	}
-	pm.totalDelegated.Sub(pm.totalDelegated, p.Delegated())
 	return nil
 }
 
@@ -296,44 +317,85 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 		delta[key].Add(delta[key], d.Value.Value())
 	}
 
-	delegatedToNotReadyNode := big.NewInt(0)
+	delegatedToInactiveNode := big.NewInt(0)
 	var newPs *icstate.PRepStatus
-	for k, v := range delta {
-		owner, err := common.NewAddress([]byte(k))
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
 
-		key := icutils.ToKey(owner)
-		if delta[key].Sign() != 0 {
+
+		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to set delegation to a PRep which has not been registered
 				newPs = icstate.NewPRepStatus(owner)
 				newPs.SetStatus(icstate.NotReady)
-				delegatedToNotReadyNode.Add(delegatedToNotReadyNode, delta[key])
 			} else {
 				newPs = ps.Clone()
 			}
 
-			newPs.Delegated().Add(newPs.Delegated(), v)
+			if !newPs.IsActive() {
+				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
 
-			if newPs.Status() == icstate.NotReady && newPs.Delegated().Sign() == 0 {
-				err = pm.state.RemovePRepStatus(owner)
-				if err != nil {
-					panic(errors.Errorf("PRepStatusCache is broken: %s", owner))
-				}
-			} else {
-				pm.state.AddPRepStatus(newPs)
 			}
+			newPs.Delegated().Add(newPs.Delegated(), value)
+			pm.state.AddPRepStatus(newPs)
 		}
 	}
 
 	totalDelegated := pm.totalDelegated
 	totalDelegated.Add(totalDelegated, nd.GetDelegationAmount())
 	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
-	// Ignore the delegation to NotReady PReps
-	totalDelegated.Sub(totalDelegated, delegatedToNotReadyNode)
+	// Ignore the delegated amount to Inactive P-Rep
+	totalDelegated.Sub(totalDelegated, delegatedToInactiveNode)
+	return nil
+}
+
+func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
+	delta := make(map[string]*big.Int)
+
+	for _, d := range oBonds {
+		key := icutils.ToKey(d.Address)
+		delta[key] = new(big.Int).Neg(d.Value.Value())
+	}
+	for _, d := range nBonds {
+		key := icutils.ToKey(d.Address)
+		if delta[key] == nil {
+			delta[key] = new(big.Int)
+		}
+		delta[key].Add(delta[key], d.Value.Value())
+	}
+
+	bondedToInactiveNode := big.NewInt(0)
+	var newPs *icstate.PRepStatus
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		if value.Cmp(icstate.BigIntZero) != 0 {
+			ps := pm.state.GetPRepStatus(owner)
+			if ps == nil {
+				// Someone tries to bond to a PRep which has not been registered
+				panic(errors.Errorf("Failed to set bonded value to PRepStatus"))
+			} else {
+				newPs = ps.Clone()
+			}
+			if !newPs.IsActive() {
+				bondedToInactiveNode.Add(bondedToInactiveNode, value)
+			}
+			newPs.Bonded().Add(newPs.Bonded(), value)
+			pm.state.AddPRepStatus(newPs)
+		}
+	}
+	totalDelegated := pm.totalDelegated
+	totalDelegated.Add(totalDelegated, oBonds.GetBondAmount())
+	totalDelegated.Sub(totalDelegated, nBonds.GetBondAmount())
+	// Ignore the bonded amount to inactive P-Rep
+	totalDelegated.Sub(totalDelegated, bondedToInactiveNode)
 	return nil
 }
 
@@ -375,8 +437,7 @@ func newPRepManager(state *icstate.State, totalStake *big.Int) *PRepManager {
 		state:          state,
 		totalDelegated: big.NewInt(0),
 		totalStake:     totalStake,
-
-		prepMap: make(map[string]*PRep),
+		prepMap:        make(map[string]*PRep),
 	}
 
 	pm.init()

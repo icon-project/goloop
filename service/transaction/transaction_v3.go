@@ -379,6 +379,10 @@ func (tx *transactionV3) MarshalJSON() ([]byte, error) {
 	}
 }
 
+func (tx *transactionV3) IsSkippable() bool {
+	return tx.Group() == module.TransactionGroupNormal
+}
+
 func checkV3JSON(jso map[string]interface{}) bool {
 	if version, ok := jso["version"]; !ok && version != "0x3" {
 		return false

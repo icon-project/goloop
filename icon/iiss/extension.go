@@ -270,6 +270,10 @@ func newCalculation() *calculation {
 	return &calculation{0, 0, nil}
 }
 
+func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
+	return s.pm.ToJSON()
+}
+
 func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
 	return s.pm.GetPRepsInJSON(blockHeight)
 }
@@ -280,7 +284,7 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
 
-	return prep.ToJSON(blockHeight, s.pm.state.GetBondRequirement()), nil
+	return prep.ToJSON(blockHeight, s.State.GetBondRequirement()), nil
 }
 
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
@@ -302,11 +306,11 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
-	account.SetDelegation(ds)
 	err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
 		return err
 	}
+	account.SetDelegation(ds)
 
 	bonds := account.Bonds()
 	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
@@ -335,7 +339,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 
 	grade := prep.Grade()
 	if grade != icstate.Candidate {
-		term := s.State.Term()
+		term := s.State.GetTerm()
 		if err := term.RemovePRepSnapshot(owner); err != nil {
 			return err
 		}
@@ -392,8 +396,6 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		if !prep.BonderList().Contains(from) {
 			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
 		}
-
-		prep.SetBonded(bond.Amount())
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
 		return errors.Errorf("Not enough voting power")
@@ -407,6 +409,12 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
+
+	err = s.pm.ChangeBond(account.Bonds(), bonds)
+	if err != nil {
+		return err
+	}
+
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
@@ -474,7 +482,7 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 
 func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext) error {
 	var err error
-	term := s.State.Term()
+	term := s.State.GetTerm()
 	if term == nil {
 		return nil
 	}
@@ -487,7 +495,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext) error {
 		}
 
 		// NextTerm
-		term = s.State.Term()
+		term = s.State.GetTerm()
 	}
 
 	if s.updateValidator {
@@ -525,10 +533,14 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 	term := s.State.GetTerm()
-	nextTerm, err := term.NewNextTerm(totalSupply, s.pm.totalDelegated)
-	if err != nil {
-		return err
-	}
+	nextTerm := icstate.NewNextTerm(
+		term,
+		icstate.GetTermPeriod(s.State),
+		icstate.GetIRep(s.State),
+		icstate.GetRRep(s.State),
+		totalSupply,
+		s.pm.TotalDelegated(),
+	)
 
 	size := 0
 	mainPRepCount := int(icstate.GetMainPRepCount(s.State))
@@ -541,9 +553,10 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 
 	if size > 0 {
 		prepSnapshots := make(icstate.PRepSnapshots, size, size)
+		br := int(icstate.GetBondRequirement(s.State))
 		for i := 0; i < size; i++ {
 			prep := s.pm.GetPRepByIndex(i)
-			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus)
+			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
 		}
 
 		nextTerm.SetPRepSnapshots(prepSnapshots)
@@ -592,7 +605,7 @@ func (s *ExtensionStateImpl) GetValidators() []module.Validator {
 	validators := make([]module.Validator, size, size)
 
 	for i := 0; i < size; i++ {
-		prepSnapshot := term.GetPRepSnapshot(i)
+		prepSnapshot := term.GetPRepSnapshotByIndex(i)
 		prep := s.pm.GetPRepByOwner(prepSnapshot.Owner())
 		node := prep.GetNode()
 		validators[i], err = state.ValidatorFromAddress(node)
@@ -605,12 +618,16 @@ func (s *ExtensionStateImpl) GetValidators() []module.Validator {
 }
 
 func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
-	term := s.State.Term()
+	term := s.State.GetTerm()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
 	return term.ToJSON(), nil
+}
+
+func (s *ExtensionStateImpl) GetNetworkValueInJSON() (map[string]interface{}, error) {
+	return icstate.NetworkValueToJSON(s.State), nil
 }
 
 func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {
@@ -624,5 +641,5 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 }
 
 func (s *ExtensionStateImpl) IsDecentralized() bool {
-	return s.State.Term().IsDecentralized()
+	return s.State.GetTerm().IsDecentralized()
 }

@@ -14,15 +14,16 @@
 package icstate
 
 import (
-	"github.com/bmizerany/assert"
-	"github.com/icon-project/goloop/common"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestPRepSnapshot_Bytes(t *testing.T) {
+func TestPRepBase_Bytes(t *testing.T) {
 	owner, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
 	if err != nil {
 		t.Errorf("Failed to create an address")

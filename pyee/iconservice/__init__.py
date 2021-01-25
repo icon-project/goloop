@@ -17,6 +17,9 @@
 from abc import ABCMeta, abstractmethod, ABC
 from functools import wraps
 from inspect import isfunction
+from typing import List, Union, Optional, Dict
+
+from typing_extensions import TypedDict
 
 from pyexec.logger import Logger
 

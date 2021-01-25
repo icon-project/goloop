@@ -168,7 +168,7 @@ func handleConsensusInfo(cc contract.CallContext) error {
 	if validators != nil {
 		for i := 0; i < validators.Len(); i += 1 {
 			v, _ := validators.Get(i)
-			if  es.pm.GetPRepByNode(v.Address()) == nil {
+			if es.pm.GetPRepByNode(v.Address()) == nil {
 				return nil
 			}
 			owner := es.pm.GetPRepByNode(v.Address()).Owner()
@@ -425,6 +425,10 @@ func (tx *baseV3) Nonce() *big.Int {
 
 func (tx *baseV3) To() module.Address {
 	return state.SystemAddress
+}
+
+func (tx *baseV3) IsSkippable() bool {
+	return false
 }
 
 func checkBaseV3JSON(jso map[string]interface{}) bool {

@@ -592,18 +592,9 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	if l == nil {
 		return nil
 	}
-	rev := ctx.Revision()
 	if ctx.SkipTransactionEnabled() {
-		zero := big.NewInt(0)
-		for itr, idx := l.Iterator(), 0; itr.Has(); idx, _ = idx+1, itr.Next() {
-			txi, _, _ := itr.Get()
-			txo := txi.(transaction.Transaction)
-			rct := txresult.NewReceipt(t.db, rev, txo.To())
-			rct.SetResult(module.StatusSkipTransaction, zero, zero, nil)
-			rct.SetCumulativeStepUsed(zero)
-			rctBuf[idx] = rct
-		}
-		return nil
+		// it will skip skippable transactions
+		return t.executeTxsSequential(l, ctx, rctBuf)
 	}
 	if cc := t.chain.ConcurrencyLevel(); cc > 1 {
 		return t.executeTxsConcurrent(cc, l, ctx, rctBuf)

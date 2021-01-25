@@ -283,6 +283,10 @@ func (g *genesisV3) To() module.Address {
 	return state.SystemAddress
 }
 
+func (g *genesisV3) IsSkippable() bool {
+	return false
+}
+
 func checkV3Genesis(jso map[string]interface{}) bool {
 	_, hasAccounts := jso["accounts"]
 	_, hasChain := jso["chain"]
