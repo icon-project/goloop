@@ -376,7 +376,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 			return err
 		}
 
-		if value.Cmp(icstate.BigIntZero) != 0 {
+		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to bond to a PRep which has not been registered
