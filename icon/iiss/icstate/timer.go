@@ -112,10 +112,11 @@ func (t Timer) IsEmpty() bool {
 func (t *Timer) Set(other *Timer) {
 	t.checkWritable()
 	t.Addresses = other.Addresses.Clone()
+	t.dirty = false
 }
 
 func (t *Timer) Add(address module.Address) {
-	t.Addresses = append(t.Addresses, address.(*common.Address))
+	t.Addresses = append(t.Addresses, common.AddressToPtr(address))
 	t.dirty = true
 }
 
