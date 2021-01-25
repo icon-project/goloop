@@ -50,9 +50,10 @@ func (c *ActivePRepCache) Remove(owner module.Address) {
 	lastIdx := c.Size() - 1
 	if idx < lastIdx {
 		c.items[idx] = c.items[lastIdx]
+		c.items[idx].idx = idx
 	}
 
-	c.items = c.items[:idx]
+	c.items = c.items[:lastIdx]
 	delete(c.ownerToItem, itemToRemove.key())
 }
 
@@ -77,6 +78,7 @@ func (c *ActivePRepCache) Clear() {
 	c.ownerToItem = make(map[string]*activePRepCacheItem)
 }
 
+// Reset recovers data which is in the list of Map as of now
 func (c *ActivePRepCache) Reset() {
 	c.Clear()
 
@@ -91,7 +93,7 @@ func (c *ActivePRepCache) Reset() {
 	}
 }
 
-func (c *ActivePRepCache) GetSnapshot() {
+func (c *ActivePRepCache) Flush() {
 	for i, item := range c.items {
 		if i == item.idx {
 			continue

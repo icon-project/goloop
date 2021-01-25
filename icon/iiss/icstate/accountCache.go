@@ -37,7 +37,8 @@ func (c *AccountCache) Add(account *Account) {
 }
 
 func (c *AccountCache) Remove(owner module.Address) error {
-	account := c.Get(owner)
+	key := icutils.ToKey(owner)
+	account := c.accounts[key]
 	if account == nil {
 		return errors.Errorf("Account not found: %s", owner)
 	}
@@ -70,18 +71,22 @@ func (c *AccountCache) Clear() {
 }
 
 func (c *AccountCache) Reset() {
-	for _, account := range c.accounts {
-		value := c.dict.Get(account.address)
-
+	for key, account := range c.accounts {
+		addr, err := common.NewAddress([]byte(key))
+		if err != nil {
+			panic(errors.Errorf("Address convert error"))
+		}
+		value := c.dict.Get(addr)
+		account.Clear()
 		if value == nil {
-			account.Clear()
+			delete(c.accounts, key)
 		} else {
-			account.Set(ToAccount(value.Object(), account.address))
+			account.Set(ToAccount(value.Object(), addr))
 		}
 	}
 }
 
-func (c *AccountCache) GetSnapshot() {
+func (c *AccountCache) Flush() {
 	for k, account := range c.accounts {
 		if account.IsEmpty() {
 			key, err := common.BytesToAddress([]byte(k))
@@ -91,9 +96,10 @@ func (c *AccountCache) GetSnapshot() {
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete Account key %x, err+%+v", key, err)
 			}
+			delete(c.accounts, k)
 		} else {
 			key := account.address
-			o := icobject.New(TypeAccount, account)
+			o := icobject.New(TypeAccount, account.Clone())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}

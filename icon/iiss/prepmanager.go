@@ -325,7 +325,8 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 			return err
 		}
 
-		if value.Cmp(icstate.BigIntZero) != 0 {
+
+		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to set delegation to a PRep which has not been registered
@@ -337,6 +338,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 
 			if !newPs.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
+
 			}
 			newPs.Delegated().Add(newPs.Delegated(), value)
 			pm.state.AddPRepStatus(newPs)

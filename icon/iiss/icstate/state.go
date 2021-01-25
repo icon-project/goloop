@@ -59,14 +59,14 @@ func (s *State) Reset(ss *Snapshot) error {
 
 func (s *State) GetSnapshot() *Snapshot {
 	var err error
-	s.accountCache.GetSnapshot()
-	s.activePRepCache.GetSnapshot()
-	s.nodeOwnerCache.GetSnapshot()
-	s.prepBaseCache.GetSnapshot()
-	s.prepStatusCache.GetSnapshot()
-	s.unstakingTimerCache.GetSnapshot()
-	s.unbondingTimerCache.GetSnapshot()
-	if err = s.termCache.GetSnapshot(); err != nil {
+	s.accountCache.Flush()
+	s.activePRepCache.Flush()
+	s.nodeOwnerCache.Flush()
+	s.prepBaseCache.Flush()
+	s.prepStatusCache.Flush()
+	s.unstakingTimerCache.Flush()
+	s.unbondingTimerCache.Flush()
+	if err = s.termCache.Flush(); err != nil {
 		panic(err)
 	}
 

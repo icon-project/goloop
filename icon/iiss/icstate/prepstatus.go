@@ -205,7 +205,7 @@ func (ps *PRepStatus) equal(other *PRepStatus) bool {
 
 func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.checkWritable()
-
+	ps.owner = other.owner
 	ps.grade = other.grade
 	ps.status = other.status
 	ps.delegated.Set(other.delegated)
@@ -293,8 +293,8 @@ func (ps *PRepStatus) Clear() {
 	ps.owner = nil
 	ps.status = Active
 	ps.grade = Candidate
-	ps.delegated = BigIntZero
-	ps.bonded = BigIntZero
+	ps.delegated = big.NewInt(0)
+	ps.bonded = big.NewInt(0)
 	ps.vTotal = 0
 	ps.vFail = 0
 	ps.vPenaltyMask = 0
