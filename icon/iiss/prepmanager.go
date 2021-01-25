@@ -305,7 +305,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 		}
 
 		key := icutils.ToKey(owner)
-		if delta[key].Cmp(icstate.BigIntZero) != 0 {
+		if delta[key].Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
 				// Someone tries to set delegation to a PRep which has not been registered
@@ -318,7 +318,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 
 			newPs.Delegated().Add(newPs.Delegated(), v)
 
-			if newPs.Status() == icstate.NotReady && newPs.Delegated().Cmp(icstate.BigIntZero) == 0 {
+			if newPs.Status() == icstate.NotReady && newPs.Delegated().Sign() == 0 {
 				err = pm.state.RemovePRepStatus(owner)
 				if err != nil {
 					panic(errors.Errorf("PRepStatusCache is broken: %s", owner))
