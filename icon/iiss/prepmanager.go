@@ -325,7 +325,6 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 			return err
 		}
 
-
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
 			if ps == nil {
