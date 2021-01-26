@@ -81,7 +81,6 @@ func TestTimerCache(t *testing.T) {
 	assert.Equal(t, 0, len(tc.timers))
 
 	// but, it can recover specific item, using Get()
-	timer= tc.Get(110)
+	timer = tc.Get(bh)
 	assert.NotNil(t, timer)
 }
-
