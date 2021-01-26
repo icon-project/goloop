@@ -50,7 +50,7 @@ type chainScore struct {
 }
 
 const (
-	CIDForMainNet         = 0xaf4e97
+	CIDForMainNet         = 0x1
 	StatusIllegalArgument = module.StatusReverted + iota
 	StatusNotFound
 )
@@ -801,6 +801,9 @@ func (s *chainScore) Install(param []byte) error {
 		}
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
+	}
+	if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
+		return err
 	}
 
 	if err = applyStepLimits(chain, as); err != nil {
