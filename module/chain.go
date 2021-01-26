@@ -27,6 +27,7 @@ type Chain interface {
 	MaxBlockTxBytes() int
 	DefaultWaitTimeout() time.Duration
 	MaxWaitTimeout() time.Duration
+	TransactionTimeout() time.Duration
 	Genesis() []byte
 	GenesisStorage() GenesisStorage
 	CommitVoteSetDecoder() CommitVoteSetDecoder

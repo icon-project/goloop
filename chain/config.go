@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -14,6 +15,7 @@ const (
 	ConfigDefaultNormalTxPoolSize = 5000
 	ConfigDefaultPatchTxPoolSize  = 1000
 	ConfigDefaultMaxBlockTxBytes  = 1024 * 1024
+	ConfigDefaultTxTimeout        = 5000 * time.Millisecond
 )
 
 const (
@@ -50,6 +52,7 @@ type Config struct {
 	SecureAeads    string `json:"secureAeads"`
 	DefWaitTimeout int64  `json:"waitTimeout"`
 	MaxWaitTimeout int64  `json:"maxTimeout"`
+	TxTimeout      int64  `json:"txTimeout"`
 
 	GenesisStorage module.GenesisStorage `json:"-"`
 	Genesis        json.RawMessage       `json:"genesis"`

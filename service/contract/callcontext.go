@@ -44,6 +44,7 @@ type (
 		RedeemSteps(s *big.Int) (*big.Int, error)
 		GetRedeemLogs(r txresult.Receipt) bool
 		ClearRedeemLogs()
+		DoIOTask(func())
 	}
 	callResultMessage struct {
 		status   error
@@ -69,10 +70,13 @@ type callContext struct {
 	executor *eeproxy.Executor
 	nextEID  int
 
-	timer  <-chan time.Time
 	lock   sync.Mutex
 	frame  *callFrame
 	waiter chan interface{}
+
+	timer   <-chan time.Time
+	ioStart *time.Time
+	ioTime  time.Duration
 
 	payers *stepPayers
 
@@ -204,14 +208,54 @@ func (cc *callContext) runFrame(frame *callFrame) (bool, error, *codec.TypedObj,
 	}
 }
 
-func (cc *callContext) waitResult(target *callFrame) (error, *codec.TypedObj, module.Address) {
-	if cc.timer == nil {
-		cc.timer = time.After(transactionTimeLimit)
-	}
+func (cc *callContext) DoIOTask(f func()) {
+	cc.lock.Lock()
+	start := time.Now()
+	cc.ioStart = &start
+	cc.lock.Unlock()
 
+	f()
+
+	cc.lock.Lock()
+	cc.ioTime += time.Now().Sub(start)
+	cc.ioStart = nil
+	cc.lock.Unlock()
+}
+
+func (cc *callContext) getTimer(update bool) <-chan time.Time {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	if cc.timer == nil {
+		cc.timer = time.After(cc.TransactionTimeout())
+		return cc.timer
+	}
+	if update {
+		if cc.ioStart != nil {
+			now := time.Now()
+			cc.ioTime += now.Sub(*cc.ioStart)
+			*cc.ioStart = now
+		}
+		if cc.ioTime > 0 {
+			cc.timer = time.After(cc.ioTime)
+			cc.ioTime = 0
+			return cc.timer
+		} else {
+			return nil
+		}
+	} else {
+		return cc.timer
+	}
+}
+
+func (cc *callContext) waitResult(target *callFrame) (error, *codec.TypedObj, module.Address) {
+	timer := cc.getTimer(false)
 	for {
 		select {
-		case <-cc.timer:
+		case <-timer:
+			timer = cc.getTimer(true)
+			if timer != nil {
+				continue
+			}
 			cc.cleanUpFrames(target, scoreresult.ErrTimeout)
 			return scoreresult.ErrTimeout, nil, nil
 		case msg := <-cc.waiter:

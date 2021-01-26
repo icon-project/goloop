@@ -32,12 +32,12 @@ func HandleTimerJob(wc state.WorldContext) (err error) {
 	if st, err := es.GetUnstakingTimerState(wc.BlockHeight()); err != nil {
 		return err
 	} else if st != nil {
-		err = handleUnStakingTimer(wc, es, st.Addresses, bh)
+		err = handleUnstakingTimer(wc, es, st.Addresses, bh)
 	}
 	return
 }
 
-func handleUnStakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*common.Address, h int64) error {
+func handleUnstakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*common.Address, h int64) error {
 	for _, a := range al {
 		ea, err := es.GetAccount(a)
 		if err != nil {

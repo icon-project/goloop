@@ -58,7 +58,7 @@ func (c *NodeOwnerCache) Reset() {
 	c.Clear()
 }
 
-func (c *NodeOwnerCache) GetSnapshot() {
+func (c *NodeOwnerCache) Flush() {
 	for node, owner := range c.nodeToOwner {
 		o := icobject.NewBytesObject(owner.Bytes())
 		if err := c.dict.Set(node, o); err != nil {

@@ -50,7 +50,7 @@ type chainScore struct {
 }
 
 const (
-	CIDForMainNet         = 0xaf4e97
+	CIDForMainNet         = 0x1
 	StatusIllegalArgument = module.StatusReverted + iota
 	StatusNotFound
 )
@@ -717,20 +717,20 @@ func newIconConfig() *config {
 	}
 }
 
-func loadIconConfig() *config {
+func (s *chainScore) loadIconConfig() *config {
 	iconConfig := newIconConfig()
 	f, err := os.Open(configFile)
 	if err != nil {
-		log.Infof("Failed to open configuration file %+v. Use default config", err)
+		s.log.Infof("Failed to open configuration file %+v. Use default config", err)
 		return iconConfig
 	}
 	bs, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.Infof("Failed to read configuration file %+v. Use default config", err)
+		s.log.Infof("Failed to read configuration file %+v. Use default config", err)
 		return iconConfig
 	}
 	if err = json.Unmarshal(bs, &iconConfig); err != nil {
-		log.Infof("Failed to unmarshal configuration file %+v. Use default config", err)
+		s.log.Infof("Failed to unmarshal configuration file %+v. Use default config", err)
 		return iconConfig
 	}
 
@@ -750,7 +750,7 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
-	iconConfig := loadIconConfig()
+	iconConfig := s.loadIconConfig()
 
 	as := s.cc.GetAccountState(state.SystemID)
 	revision := DefaultRevision
@@ -801,6 +801,9 @@ func (s *chainScore) Install(param []byte) error {
 		}
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
+	}
+	if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
+		return err
 	}
 
 	if err = applyStepLimits(chain, as); err != nil {

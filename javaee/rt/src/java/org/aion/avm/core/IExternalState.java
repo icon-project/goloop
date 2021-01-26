@@ -50,6 +50,12 @@ public interface IExternalState {
     void setTransformedCode(byte[] code);
 
     /**
+     * Returns contract ID of current score.
+     * @return contract ID
+     */
+    byte[] getContractID();
+
+    /**
      * Saves the specified serialized bytes of the object graph to current score.
      *
      * @param objectGraph The bytes of the object graph.

@@ -145,6 +145,11 @@ func (t *Timer) Delete(address module.Address) error {
 	t.dirty = true
 	return nil
 }
+func (t *Timer) Clone() *Timer {
+	return &Timer{
+		Addresses: t.Addresses.Clone(),
+	}
+}
 
 func newTimer() *Timer {
 	return &Timer{}
@@ -157,7 +162,9 @@ func newTimerWithTag(_ icobject.Tag) *Timer {
 func ScheduleTimerJob(t *Timer, info TimerJobInfo, address module.Address) error {
 	switch info.Type {
 	case JobTypeAdd:
-		t.Add(address)
+		if err := t.Add(address); err != nil {
+			return err
+		}
 	case JobTypeRemove:
 		if err := t.Delete(address); err != nil {
 			return err

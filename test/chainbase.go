@@ -60,6 +60,10 @@ func (_r *ChainBase) MaxWaitTimeout() time.Duration {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) TransactionTimeout() time.Duration {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) Genesis() []byte {
 	panic("not implemented")
 }

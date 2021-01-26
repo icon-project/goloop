@@ -68,25 +68,24 @@ func (c *TimerCache) Reset() {
 		value := c.dict.Get(height)
 
 		if value == nil {
-			timer.Clear()
+			delete(c.timers, height)
 		} else {
 			timer.Set(ToTimer(value.Object()))
 		}
 	}
 }
 
-func (c *TimerCache) GetSnapshot() {
+func (c *TimerCache) Flush() {
 	for height, timer := range c.timers {
-		if timer.dirty {
-			if timer.IsEmpty() {
-				if err := c.dict.Delete(height); err != nil {
-					log.Errorf("Failed to delete Timer on %d, err+%+v", height, err)
-				}
-			} else {
-				o := icobject.New(TypeTimer, timer)
-				if err := c.dict.Set(height, o); err != nil {
-					log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
-				}
+		if timer.IsEmpty() {
+			if err := c.dict.Delete(height); err != nil {
+				log.Errorf("Failed to delete Timer on %d, err+%+v", height, err)
+			}
+			delete(c.timers, height)
+		} else {
+			o := icobject.New(TypeTimer, timer.Clone())
+			if err := c.dict.Set(height, o); err != nil {
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
 			}
 		}
 	}

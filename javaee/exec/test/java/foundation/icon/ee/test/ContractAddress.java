@@ -1,7 +1,6 @@
 package foundation.icon.ee.test;
 
 import foundation.icon.ee.types.Address;
-import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 
@@ -11,12 +10,10 @@ import java.math.BigInteger;
 public class ContractAddress {
     private final ServiceManager sm;
     private final Address address;
-    private final Method[] methods;
 
-    public ContractAddress(ServiceManager sm, Address address, Method[] methods) {
+    public ContractAddress(ServiceManager sm, Address address) {
         this.sm = sm;
         this.address = address;
-        this.methods = methods;
     }
 
     Result invoke(
@@ -24,21 +21,8 @@ public class ContractAddress {
             BigInteger stepLimit, String method, Object[] params
     ) {
         try {
-            Method m = getMethod(method);
-            if (m == null) {
-                throw new TransactionException(new Result(
-                        Status.MethodNotFound,
-                        BigInteger.ZERO,
-                        "Method not found: " + method));
-            }
-            if (query && (m.getFlags() & Method.Flags.READONLY) == 0) {
-                throw new TransactionException(new Result(
-                        Status.AccessDenied,
-                        BigInteger.ZERO,
-                        "Method not found"));
-            }
             var res =  sm.invoke(query, address, value, stepLimit, method, params);
-            if (must && res.getStatus() != 0) {
+            if (must && res.getStatus() != Status.Success) {
                 throw new TransactionException(res);
             }
             return res;
@@ -75,18 +59,5 @@ public class ContractAddress {
 
     public Address getAddress() {
         return address;
-    }
-
-    public Method[] getMethods() {
-        return methods;
-    }
-
-    public Method getMethod(String name) {
-        for (var m : methods) {
-            if (m.getName().equals(name)) {
-                return m;
-            }
-        }
-        return null;
     }
 }

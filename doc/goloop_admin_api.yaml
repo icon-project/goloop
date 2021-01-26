@@ -554,6 +554,10 @@ components:
           type: integer
           default: 0
           description: "Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)"
+        txTimeout:
+          type: integer
+          default: 0
+          description: "Transaction timeout in milli-second(0:uses system default value)"
         autoStart:
           type: boolean
           default: false
@@ -571,6 +575,7 @@ components:
         secureSuites: "none,tls,ecdhe"
         secureAeads: "chacha,aes128,aes256"
         defaultWaitTimeout: 0
+        txTimeout: 0
         maxWaitTimeout: 0
         autoStart: false
     ChainImportParam:

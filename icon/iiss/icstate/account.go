@@ -32,8 +32,6 @@ const (
 	accountVersion  = accountVersion1
 )
 
-var bigIntZero big.Int
-var BigIntZero = &bigIntZero
 var AccountDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "account_db")
 
 // Account containing IISS information
@@ -90,6 +88,7 @@ func (a *Account) Equal(object icobject.Impl) bool {
 func (a *Account) Set(other *Account) {
 	a.checkWritable()
 	a.address = other.address
+
 	a.stake.Set(other.stake)
 	a.unstakes = other.unstakes.Clone()
 	a.delegating.Set(other.delegating)
@@ -144,11 +143,11 @@ func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
 func (a *Account) Clear() {
 	a.checkWritable()
 	a.address = nil
-	a.stake = BigIntZero
+	a.stake = big.NewInt(0)
 	a.unstakes = nil
-	a.delegating = BigIntZero
+	a.delegating = big.NewInt(0)
 	a.delegations = nil
-	a.bonding = BigIntZero
+	a.bonding = big.NewInt(0)
 	a.bonds = nil
 	a.unbonds = nil
 }

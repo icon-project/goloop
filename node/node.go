@@ -424,6 +424,7 @@ func (n *Node) JoinChain(
 		NodeCache:        p.NodeCache,
 		DefWaitTimeout:   p.DefWaitTimeout,
 		MaxWaitTimeout:   p.MaxWaitTimeout,
+		TxTimeout:        p.TxTimeout,
 		AutoStart:        p.AutoStart,
 		FilePath:         cfgFile,
 		NIDForP2P:        n.cfg.NIDForP2P,
@@ -718,6 +719,12 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 				return errors.Wrapf(err, "invalid value type")
 			} else {
 				c.cfg.MaxWaitTimeout = intVal
+			}
+		case "txTimeout":
+			if intVal, err := strconv.ParseInt(value, 0, 64); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.TxTimeout = intVal
 			}
 		case "channel":
 			if err := n._canAdd(c.CID(), c.NID(), value, true); err != nil {
