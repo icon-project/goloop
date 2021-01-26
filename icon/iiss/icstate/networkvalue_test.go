@@ -68,125 +68,125 @@ func Test_networkValue(t *testing.T) {
 }
 
 func setTermPeriodTest(t *testing.T, s *State) {
-	actual := GetTermPeriod(s)
+	actual := s.GetTermPeriod()
 	assert.Equal(t, int64(0), actual)
 
 	tp := int64(10)
-	SetTermPeriod(s, tp)
-	actual = GetTermPeriod(s)
+	s.SetTermPeriod(tp)
+	actual = s.GetTermPeriod()
 	assert.Equal(t, tp, actual)
 
 }
 
 func setCalculatePeriodTest(t *testing.T, s *State) {
 	cp := int64(0)
-	actual := GetCalculatePeriod(s)
+	actual := s.GetCalculatePeriod()
 	assert.Equal(t, actual, cp)
 
 	cp = int64(10)
-	SetCalculatePeriod(s, cp)
-	actual = GetCalculatePeriod(s)
+	s.SetCalculatePeriod(cp)
+	actual = s.GetCalculatePeriod()
 	assert.Equal(t, actual, cp)
 }
 
 func setIRepTest(t *testing.T, s *State) {
-	actual := GetIRep(s)
+	actual := s.GetIRep()
 	assert.Nil(t, actual)
 
 	irep := big.NewInt(10)
-	SetIRep(s, irep)
-	actual = GetIRep(s)
+	s.SetIRep(irep)
+	actual = s.GetIRep()
 	assert.Equal(t, 0, actual.Cmp(irep))
 }
 
 func setRRepTest(t *testing.T, s *State) {
-	actual := GetRRep(s)
+	actual := s.GetRRep()
 	assert.Nil(t, actual)
 
 	rrep := big.NewInt(10)
-	SetIRep(s, rrep)
-	actual = GetIRep(s)
+	s.SetIRep(rrep)
+	actual = s.GetIRep()
 	assert.Equal(t, 0, actual.Cmp(rrep))
 }
 
 func setMainPRepCountTest(t *testing.T, s *State) {
 	count := int64(0)
-	actual := GetMainPRepCount(s)
+	actual := s.GetMainPRepCount()
 	sCount := s.GetMainPRepCount()
 	assert.Equal(t, count, actual)
-	assert.Equal(t, int(count), sCount)
+	assert.Equal(t, count, sCount)
 
 	count = int64(10)
-	SetMainPRepCount(s, count)
-	actual = GetMainPRepCount(s)
+	s.SetMainPRepCount(count)
+	actual = s.GetMainPRepCount()
 	sCount = s.GetMainPRepCount()
 	assert.Equal(t, count, actual)
-	assert.Equal(t, int(count), sCount)
+	assert.Equal(t, count, sCount)
 }
 
 func setSubPRepCountTest(t *testing.T, s *State) {
 	count := int64(0)
-	actual := GetSubPRepCount(s)
+	actual := s.GetSubPRepCount()
 	sCount := s.GetSubPRepCount()
 	assert.Equal(t, count, actual)
-	assert.Equal(t, int(count), sCount)
+	assert.Equal(t, count, sCount)
 
 	count = int64(20)
-	SetSubPRepCount(s, count)
-	actual = GetSubPRepCount(s)
+	s.SetSubPRepCount(count)
+	actual = s.GetSubPRepCount()
 	sCount = s.GetSubPRepCount()
 	assert.Equal(t, count, actual)
-	assert.Equal(t, int(count), sCount)
+	assert.Equal(t, count, sCount)
 }
 
 func setTotalStakeTest(t *testing.T, s *State) {
 	ts := new(big.Int)
-	actual := GetTotalStake(s)
+	actual := s.GetTotalStake()
 	assert.Equal(t, 0, actual.Cmp(ts))
 
 	ts = big.NewInt(20)
-	SetTotalStake(s, ts)
-	actual = GetTotalStake(s)
+	s.SetTotalStake(ts)
+	actual = s.GetTotalStake()
 	assert.Equal(t, 0, actual.Cmp(ts))
 }
 
 func setBondRequirementTest(t *testing.T, s *State) {
 	br := int64(0)
-	actual := GetBondRequirement(s)
+	actual := s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
 	br = 5
-	SetBondRequirement(s, br)
-	actual = GetBondRequirement(s)
+	s.SetBondRequirement(br)
+	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err := SetBondRequirement(s, 0)
+	err := s.SetBondRequirement(0)
 	assert.Error(t, err)
-	actual = GetBondRequirement(s)
+	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 }
 
 func setLockVariablesTest(t *testing.T, s *State) {
-	actualMin := GetLockMin(s)
-	actualMax := GetLockMax(s)
+	actualMin := s.GetLockMin()
+	actualMax := s.GetLockMax()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
 	min := big.NewInt(10)
 	max := big.NewInt(1)
-	err := SetLockVariables(s, min, max)
+	err := s.SetLockVariables(min, max)
 	assert.Error(t, err)
-	actualMin = GetLockMin(s)
-	actualMax = GetLockMax(s)
+	actualMin = s.GetLockMin()
+	actualMax = s.GetLockMax()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
 	min = big.NewInt(1)
 	max = big.NewInt(10)
-	err = SetLockVariables(s, min, max)
+	err = s.SetLockVariables(min, max)
 	assert.NoError(t, err)
-	actualMin = GetLockMin(s)
-	actualMax = GetLockMax(s)
+	actualMin = s.GetLockMin()
+	actualMax = s.GetLockMax()
 	assert.Equal(t, 0, actualMin.Cmp(min))
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }

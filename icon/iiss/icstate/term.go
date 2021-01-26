@@ -64,7 +64,7 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	return err
 }
 
-func NewPRepSnapshotFromPRepStatus(ps *PRepStatus, bondRequirement int) *PRepSnapshot {
+func NewPRepSnapshotFromPRepStatus(ps *PRepStatus, bondRequirement int64) *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            ps.owner,
 		bondedDelegation: new(big.Int).Set(ps.GetBondedDelegation(bondRequirement)),
