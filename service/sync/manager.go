@@ -120,12 +120,13 @@ func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte) Syncer {
 }
 
 func NewSyncManager(db db.Database, nm module.NetworkManager, plt Platform, logger log.Logger) *Manager {
+	logger = logger.WithFields(log.Fields{log.FieldKeyModule: "statesync"})
 	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 	ph, err := nm.RegisterReactorForStreams(
 		"statesync", module.ProtoStateSync, m, protocol, configSyncPriority)
 	if err != nil {
-		log.Panicf("Failed to register reactor for stateSync\n")
+		logger.Panicf("Failed to register reactor for stateSync\n")
 		return nil
 	}
 	m.db = db
