@@ -393,7 +393,12 @@ func (h *CallHandler) EEType() state.EEType {
 
 func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	if h.as != nil {
-		return h.as.GetValue(key)
+		var value []byte
+		var err error
+		h.cc.DoIOTask(func() {
+			value, err = h.as.GetValue(key)
+		})
+		return value, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
 			"GetValue: No Account(%s) exists", h.to)
@@ -406,7 +411,12 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 			"DeleteValueInQuery")
 	}
 	if h.as != nil {
-		return h.as.SetValue(key, value)
+		var old []byte
+		var err error
+		h.cc.DoIOTask(func() {
+			old, err = h.as.SetValue(key, value)
+		})
+		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
 			"SetValue: No Account(%s) exists", h.to)
@@ -419,7 +429,12 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 			"DeleteValueInQuery")
 	}
 	if h.as != nil {
-		return h.as.DeleteValue(key)
+		var old []byte
+		var err error
+		h.cc.DoIOTask(func() {
+			old, err = h.as.DeleteValue(key)
+		})
+		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
 			"DeleteValue: No Account(%s) exists", h.to)

@@ -14,22 +14,15 @@
  * limitations under the License.
  */
 
-package foundation.icon.ee.util;
+package foundation.icon.ee.test;
 
-import java.util.Arrays;
+import foundation.icon.ee.types.Address;
 
-public class Containers {
-    public static <T> T[] concatArray(T[] first, T[] second) {
-        T[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
-
-    public static byte[] concatArray(byte[] first, byte[] second) {
-        byte[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
-
-
+public interface Frame {
+    State getState();
+    void setState(State state);
+    Account getAccount();
+    Contract getContract();
+    byte[] getContractID();
+    Address getAddress();
 }

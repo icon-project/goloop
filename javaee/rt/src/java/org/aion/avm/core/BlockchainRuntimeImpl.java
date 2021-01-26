@@ -224,9 +224,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var hash = inst.peekNextHashCode();
         long stepLeft = inst.energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
-        var callerAddr = this.transactionDestination;
+        var cid = externalState.getContractID();
         var rds = task.getReentrantDAppStack();
-        rds.getTop().setRuntimeState(task.getEID(), rs, callerAddr);
+        rds.getTop().setRuntimeState(task.getEID(), rs, cid);
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
 
         var prevState = rds.getTop();
@@ -247,7 +247,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
         var newRS = rds.getTop().getRuntimeState(task.getPrevEID());
-        rds.getTop().removeRuntimeStatesByAddress(callerAddr);
+        rds.getTop().removeRuntimeStatesByAddress(cid);
         assert newRS!=null;
         dApp.loadRuntimeState(newRS);
         dApp.invalidateStateCache();

@@ -17,58 +17,83 @@
 package db
 
 type Flags map[string]interface{}
-type Context struct {
-	Database
-	info map[string]interface{}
+
+func (f Flags) Get(n string) interface{} {
+	if f == nil {
+		return nil
+	} else {
+		return f[n]
+	}
 }
 
-func (c *Context) WithFlags(flags map[string]interface{}) *Context {
-	if c == nil {
-		return nil
-	}
-	info := make(map[string]interface{})
-	if len(c.info) > 0 {
-		for k, v := range c.info {
-			info[k] = v
+func (f Flags) Clone() Flags {
+	flags := make(map[string]interface{})
+	if len(f) > 0 {
+		for k, v := range f {
+			flags[k] = v
 		}
 	}
+	return flags
+}
+
+func (f Flags) Merged(flags Flags) Flags {
+	newFlags := f.Clone()
 	if len(flags) > 0 {
 		for k, v := range flags {
-			info[k] = v
+			newFlags[k] = v
 		}
 	}
-	return &Context{
-		Database: c.Database,
-		info:     info,
-	}
+	return newFlags
 }
 
-func (c *Context) GetFlag(n string) interface{} {
-	if c == nil {
+type ContextBuilder interface {
+	WithFlags(flags Flags) Context
+}
+
+type Context interface {
+	Database
+	ContextBuilder
+	GetFlag(n string) interface{}
+	Flags() Flags
+}
+
+type databaseContext struct {
+	Database
+	flags Flags
+}
+
+func (c *databaseContext) WithFlags(flags Flags) Context {
+	newFlags := c.flags.Merged(flags)
+	return &databaseContext{c.Database, newFlags}
+}
+
+func (c *databaseContext) GetFlag(name string) interface{} {
+	return c.flags.Get(name)
+}
+
+func (c *databaseContext) Flags() Flags {
+	return c.flags.Clone()
+}
+
+func WithFlags(database Database, flags Flags) Context {
+	if database == nil {
 		return nil
 	}
-	return c.info[n]
-}
-
-func WithFlags(dbase Database, flags Flags) Database {
-	ctx := ContextOf(dbase)
-	return ctx.WithFlags(flags)
-}
-
-func ContextOf(dbase Database) *Context {
-	if dbase == nil {
-		return nil
-	}
-	if dbc, ok := dbase.(*Context); ok {
-		return dbc
+	if ctx, ok := database.(Context); ok {
+		return ctx
 	} else {
-		return &Context{
-			Database: dbase,
-			info:     make(map[string]interface{}),
+		if cb, ok := database.(ContextBuilder); ok {
+			return cb.WithFlags(flags)
+		} else {
+			return &databaseContext{database, flags}
 		}
 	}
 }
 
-func GetFlag(db Database, name string) interface{} {
-	return ContextOf(db).GetFlag(name)
+func GetFlag(database Database, name string) interface{} {
+	if ctx, ok := database.(Context); ok {
+		return ctx.GetFlag(name)
+	} else {
+		return nil
+	}
 }

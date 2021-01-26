@@ -261,7 +261,8 @@ public class EEProxy extends Proxy {
         InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
                               BigInteger value, BigInteger limit,
                               String method, Object[] params,
-                              Map<String, Object> info, int eid, int nextHash,
+                              Map<String, Object> info,
+                              byte[] contractID, int eid, int nextHash,
                               byte[] graphHash, int prevEID) throws IOException;
     }
 
@@ -293,7 +294,7 @@ public class EEProxy extends Proxy {
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
             @SuppressWarnings("unchecked")
             var info = (Map<String, Object>) TypedObj.decodeAny(data.get(8));
-            // TODO need to handle codeId in data.get(9)
+            var contractID = getValueAsByteArray(data.get(9));
             int eid = data.get(10).asIntegerValue().asInt();
             int nextHash = 0;
             byte[] graphHash = null;
@@ -309,7 +310,7 @@ public class EEProxy extends Proxy {
             if (mOnInvokeListener != null) {
                 InvokeResult result = mOnInvokeListener.onInvoke(
                         code, isQuery, from, to, value, limit, method, params,
-                        info, eid, nextHash, graphHash, prevEID);
+                        info, contractID, eid, nextHash, graphHash, prevEID);
                 sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
             } else {
                 throw new IOException("no invoke handler");
