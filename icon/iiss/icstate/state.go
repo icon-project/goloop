@@ -150,8 +150,8 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	}
 
 	if s.GetTerm() == nil {
-		iissBH := GetIISSBlockHeight(s)
-		termPeriod := GetTermPeriod(s)
+		iissBH := s.GetIISSBlockHeight()
+		termPeriod := s.GetTermPeriod()
 		// if termPeriod is not enabled, do not make termCache with Term
 		if termPeriod != 0 {
 			term := newTerm(iissBH, termPeriod)

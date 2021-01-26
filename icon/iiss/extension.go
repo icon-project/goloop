@@ -196,7 +196,7 @@ func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
 }
 
 func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator *Calculator) error {
-	if blockHeight != s.c.currentBH+icstate.GetCalculatePeriod(s.State) {
+	if blockHeight != s.c.currentBH+s.State.GetCalculatePeriod() {
 		return nil
 	}
 
@@ -211,10 +211,10 @@ func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator 
 
 	if _, err := s.Front.AddEventPeriod(
 		0,
-		icstate.GetIRep(s.State),
-		icstate.GetRRep(s.State),
-		icstate.GetMainPRepCount(s.State),
-		icstate.GetPRepCount(s.State),
+		s.State.GetIRep(),
+		s.State.GetRRep(),
+		s.State.GetMainPRepCount(),
+		s.State.GetPRepCount(),
 	); err != nil {
 		return err
 	}
@@ -535,25 +535,25 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 	term := s.State.GetTerm()
 	nextTerm := icstate.NewNextTerm(
 		term,
-		icstate.GetTermPeriod(s.State),
-		icstate.GetIRep(s.State),
-		icstate.GetRRep(s.State),
+		s.State.GetTermPeriod(),
+		s.State.GetIRep(),
+		s.State.GetRRep(),
 		totalSupply,
 		s.pm.TotalDelegated(),
 	)
 
 	size := 0
-	mainPRepCount := int(icstate.GetMainPRepCount(s.State))
+	mainPRepCount := int(s.State.GetMainPRepCount())
 	activePRepCount := s.pm.Size()
 
 	if term.IsDecentralized() || activePRepCount >= mainPRepCount {
-		prepCount := int(icstate.GetPRepCount(s.State))
+		prepCount := int(s.State.GetPRepCount())
 		size = icutils.Min(activePRepCount, prepCount)
 	}
 
 	if size > 0 {
 		prepSnapshots := make(icstate.PRepSnapshots, size, size)
-		br := int(icstate.GetBondRequirement(s.State))
+		br := s.State.GetBondRequirement()
 		for i := 0; i < size; i++ {
 			prep := s.pm.GetPRepByIndex(i)
 			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
@@ -592,7 +592,7 @@ func (s *ExtensionStateImpl) setValidators(wc state.WorldContext) error {
 }
 
 func (s *ExtensionStateImpl) GetValidators() []module.Validator {
-	mainPRepCount := s.State.GetMainPRepCount()
+	mainPRepCount := int(s.State.GetMainPRepCount())
 
 	term := s.State.GetTerm()
 	prepSnapshotCount := term.GetPRepSnapshotCount()

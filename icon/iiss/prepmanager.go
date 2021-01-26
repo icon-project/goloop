@@ -42,7 +42,7 @@ func (p *PRep) Owner() module.Address {
 	return p.PRepBase.Owner()
 }
 
-func (p *PRep) ToJSON(blockHeight int64, bondRequirement int) map[string]interface{} {
+func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
 }
 
@@ -99,11 +99,11 @@ func (pm *PRepManager) init() {
 }
 
 func (pm *PRepManager) getMainPRepCount() int {
-	return int(icstate.GetMainPRepCount(pm.state))
+	return int(pm.state.GetMainPRepCount())
 }
 
 func (pm *PRepManager) getSubPRepCount() int {
-	return int(icstate.GetSubPRepCount(pm.state))
+	return int(pm.state.GetSubPRepCount())
 }
 
 func (pm *PRepManager) getPRep(owner module.Address) *PRep {
@@ -119,7 +119,7 @@ func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 func (pm *PRepManager) Add(p *PRep) {
 	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalDelegated.Add(pm.totalDelegated, p.GetDelegated())
+	pm.totalDelegated.Add(pm.totalDelegated, p.GetVoted())
 }
 
 // sort preps in descending order by bonded delegation
@@ -172,7 +172,7 @@ func (pm *PRepManager) TotalDelegated() *big.Int {
 
 func (pm *PRepManager) GetTotalBondedDelegation() *big.Int {
 	total := new(big.Int)
-	br := int(icstate.GetBondRequirement(pm.state))
+	br := pm.state.GetBondRequirement()
 	for _, prep := range pm.orderedPReps {
 		total.Add(total, prep.GetBondedDelegation(br))
 	}
@@ -277,7 +277,7 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
-	pm.totalDelegated.Sub(pm.totalDelegated, p.GetDelegated())
+	pm.totalDelegated.Sub(pm.totalDelegated, p.GetVoted())
 	err = pm.state.RemovePRepBase(owner)
 	if err != nil {
 		return err
