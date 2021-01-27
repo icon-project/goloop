@@ -220,10 +220,11 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	c.lastEventPeriod = icstage.NewEventPeriod()
 
 	// read offsetLimit from back
-	c.offsetLimit, err = c.back.GetOffsetLimit()
-	if err != nil {
-		return err
-	}
+	// TODO parse global value
+	//c.offsetLimit, err = c.back.GetGlobal()
+	//if err != nil {
+	//	return err
+	//}
 
 	// write claim data to temp
 	if err := c.processClaim(); err != nil {

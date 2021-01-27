@@ -43,6 +43,11 @@ func setMaxDelegationCount(v int) {
 	}
 }
 
+type Vote interface {
+	Target() *common.Address
+	VoteAmount() *big.Int
+}
+
 type Delegation struct {
 	Address *common.Address `json:"address"`
 	Value   *common.HexInt  `json:"value"`
@@ -77,6 +82,14 @@ func (dg *Delegation) ToJSON() map[string]interface{} {
 	jso["value"] = dg.Value
 
 	return jso
+}
+
+func (dg *Delegation) Target() *common.Address {
+	return dg.Address
+}
+
+func (dg *Delegation) VoteAmount() *big.Int {
+	return dg.Value.Value()
 }
 
 type Delegations []*Delegation

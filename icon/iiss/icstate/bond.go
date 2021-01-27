@@ -83,6 +83,14 @@ func (b *Bond) Slash(ratio int) *big.Int {
 	return slashAmount
 }
 
+func (b *Bond) Target() *common.Address {
+	return b.Address
+}
+
+func (b *Bond) VoteAmount() *big.Int {
+	return b.Value.Value()
+}
+
 type Bonds []*Bond
 
 func (bl Bonds) Has() bool {

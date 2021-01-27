@@ -130,12 +130,21 @@ func TestState_AddEvent(t *testing.T) {
 		Address: addr2,
 		Value:   common.NewHexInt(v2),
 	}
+	b1 := icstate.Bond{
+		Address: addr1,
+		Value:   common.NewHexInt(v1),
+	}
+	b2 := icstate.Bond{
+		Address: addr2,
+		Value:   common.NewHexInt(v2),
+	}
 
 	type args struct {
 		type_         int
 		offset        int
 		address       *common.Address
 		delegations   icstate.Delegations
+		bonds         icstate.Bonds
 		enable        bool
 		irep          *big.Int
 		rrep          *big.Int
@@ -158,24 +167,21 @@ func TestState_AddEvent(t *testing.T) {
 			},
 		},
 		{
-			"Enable",
+			"Bond",
 			args{
-				type_:   TypeEventEnable,
+				type_:   TypeEventBond,
 				offset:  offset1,
-				address: addr2,
-				enable:  false,
+				address: addr1,
+				bonds:   icstate.Bonds{&b1, &b2},
 			},
 		},
 		{
-			"Period",
+			"Enable",
 			args{
-				type_:         TypeEventPeriod,
-				offset:        offset2,
-				address:       addr1,
-				irep:          big.NewInt(v1),
-				rrep:          big.NewInt(v2),
-				mainPRepCount: 22,
-				pRepCount:     100,
+				type_:   TypeEventEnable,
+				offset:  offset2,
+				address: addr2,
+				enable:  false,
 			},
 		},
 	}
@@ -185,10 +191,10 @@ func TestState_AddEvent(t *testing.T) {
 			switch a.type_ {
 			case TypeEventDelegation:
 				checkAddEventDelegation(t, s, a.offset, a.address, a.delegations)
+			case TypeEventBond:
+				checkAddEventBond(t, s, a.offset, a.address, a.bonds)
 			case TypeEventEnable:
 				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
-			case TypeEventPeriod:
-				checkAddEventPeriod(t, s, a.offset, a.irep, a.rrep, a.mainPRepCount, a.pRepCount)
 			}
 		})
 	}
@@ -229,6 +235,18 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common
 	assert.True(t, delegations.Equal(event.Delegations))
 }
 
+func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, bonds icstate.Bonds) {
+	index, err := s.AddEventBond(offset, address, bonds)
+	assert.NoError(t, err)
+
+	key := EventKey.Append(offset, index).Build()
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
+	assert.NoError(t, err)
+	event := ToEventBond(obj)
+	assert.True(t, address.Equal(event.From))
+	assert.True(t, bonds.Equal(event.Bonds))
+}
+
 func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, enable bool) {
 	index, err := s.AddEventEnable(offset, address, enable)
 	assert.NoError(t, err)
@@ -239,18 +257,6 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target))
 	assert.Equal(t, enable, event.Enable)
-}
-
-func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) {
-	index, err := s.AddEventPeriod(offset, irep, rrep, mainPRepCount, pRepCount)
-	assert.NoError(t, err)
-
-	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	assert.NoError(t, err)
-	event := ToEventPeriod(obj)
-	assert.Equal(t, 0, irep.Cmp(event.Irep))
-	assert.Equal(t, 0, rrep.Cmp(event.Rrep))
 }
 
 func TestState_AddBlockProduce(t *testing.T) {
@@ -378,36 +384,104 @@ func TestState_AddGlobal(t *testing.T) {
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
-	offsetLimit := 1000
-
 	type args struct {
-		offsetLimit int
+		version          int
+		offsetLimit      int
+		irep             *big.Int
+		rrep             *big.Int
+		mainPRepCount    int
+		electedPRepCount int
+		period           int
+		iglobal          *big.Int
+		iprep            *big.Int
+		ivoter           *big.Int
+		bondRequirement  int
+	}
+
+	type want struct {
+		version int
 	}
 
 	tests := []struct {
 		name string
 		args args
-		want int
 	}{
 		{
-			"Set offsetLimit",
+			"Version 1",
 			args{
-				offsetLimit,
+				version:          GlobalVersion1,
+				offsetLimit:      1000,
+				irep:             big.NewInt(100),
+				rrep:             big.NewInt(200),
+				mainPRepCount:    22,
+				electedPRepCount: 100,
 			},
-			offsetLimit,
+		},
+		{
+			"Version 2",
+			args{
+				version:          GlobalVersion2,
+				offsetLimit:      1000,
+				iglobal:          big.NewInt(100),
+				iprep:            big.NewInt(50),
+				ivoter:           big.NewInt(50),
+				electedPRepCount: 100,
+				bondRequirement:  5,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
 			a := tt.args
-			err := s.AddGlobal(a.offsetLimit)
+			switch a.version {
+			case GlobalVersion1:
+				err = s.AddGlobalV1(
+					a.offsetLimit,
+					a.irep,
+					a.rrep,
+					a.mainPRepCount,
+					a.electedPRepCount,
+				)
+			case GlobalVersion2:
+				err = s.AddGlobalV2(
+					a.offsetLimit,
+					a.iglobal,
+					a.iprep,
+					a.ivoter,
+					a.electedPRepCount,
+					a.bondRequirement,
+				)
+			}
 			assert.NoError(t, err)
 
 			key := HashKey.Append(globalKey).Build()
 			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
-			global := ToGlobal(obj)
-			assert.Equal(t, tt.want, global.OffsetLimit)
+			g := ToGlobal(obj)
+			assert.Equal(t, a.version, g.Version())
+
+			switch a.version {
+			case GlobalVersion1:
+				global := g.GetV1()
+				assert.NotNil(t, global)
+				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
+				assert.Equal(t, 0, a.irep.Cmp(global.Irep))
+				assert.Equal(t, 0, a.rrep.Cmp(global.Rrep))
+				assert.Equal(t, a.mainPRepCount, global.MainPRepCount)
+				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
+			case GlobalVersion2:
+				global := g.GetV2()
+				assert.NotNil(t, global)
+				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
+				assert.Equal(t, 0, a.iglobal.Cmp(global.Iglobal))
+				assert.Equal(t, 0, a.iprep.Cmp(global.Iprep))
+				assert.Equal(t, 0, a.ivoter.Cmp(global.Ivoter))
+				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
+				assert.Equal(t, a.bondRequirement, global.BondRequirement)
+			}
 		})
 	}
 }

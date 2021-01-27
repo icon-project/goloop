@@ -27,12 +27,13 @@ const (
 	VarMainPRepCount   = "main_prep_count"
 	VarSubPRepCount    = "sub_prep_count"
 	VarTotalStake      = "total_stake"
-	VarIISSBlockHeight = "iiss_blockheight"
+	VarIISSVersion     = "iiss_version"
 	VarTermPeriod      = "term_period"
 	VarCalculatePeriod = "calculate_period"
 	VarBondRequirement = "bond_requirement"
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
+	VarRewardFund      = "reward_fund"
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
@@ -53,12 +54,12 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 	return nil
 }
 
-func (s *State) GetIISSBlockHeight() int64 {
-	return getValue(s.store, VarIISSBlockHeight).Int64()
+func (s *State) GetIISSVersion() int64 {
+	return getValue(s.store, VarIISSVersion).Int64()
 }
 
-func (s *State) SetIISSBlockHeight(value int64) error {
-	return setValue(s.store, VarIISSBlockHeight, value)
+func (s *State) SetIISSVersion(value int64) error {
+	return setValue(s.store, VarIISSVersion, value)
 }
 
 func (s *State) GetTermPeriod() int64 {
@@ -71,10 +72,6 @@ func (s *State) SetTermPeriod(value int64) error {
 
 func (s *State) GetCalculatePeriod() int64 {
 	return getValue(s.store, VarCalculatePeriod).Int64()
-}
-
-func (s *State) SetCalculatePeriod(value int64) error {
-	return setValue(s.store, VarCalculatePeriod, value)
 }
 
 func (s *State) GetIRep() *big.Int {
@@ -176,6 +173,16 @@ func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	return nil
 }
 
+func (s *State) GetRewardFund() *RewardFund {
+	bs := getValue(s.store, VarRewardFund).Bytes()
+	rc, _ := newRewardFundFromByte(bs)
+	return rc
+}
+
+func (s *State) SetRewardFund(rc *RewardFund) error {
+	return setValue(s.store, VarRewardFund, rc.Bytes())
+}
+
 func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["irep"] = intconv.FormatBigInt(s.GetIRep())
@@ -183,11 +190,12 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["mainPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
 	jso["subPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
 	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
-	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
+	jso["iissVersion"] = intconv.FormatInt(s.GetIISSVersion())
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
 	jso["calculationPeriod"] = intconv.FormatInt(s.GetCalculatePeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
 	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
 	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())
+	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	return jso
 }

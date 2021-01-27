@@ -98,6 +98,26 @@ func (s *State) AddEventDelegation(offset int, from module.Address, delegations 
 	return index, s.setEventSize(size)
 }
 
+func (s *State) AddEventBond(offset int, from module.Address, bonds icstate.Bonds) (int64, error) {
+	size, err := s.getEventSize()
+	if err != nil {
+		return 0, err
+	}
+
+	key := EventKey.Append(offset, size.Value).Build()
+	ed := newEventBond(icobject.MakeTag(TypeEventBond, 0))
+	ed.From = from.(*common.Address)
+	ed.Bonds = bonds
+	_, err = s.store.Set(key, icobject.New(TypeEventBond, ed))
+	if err != nil {
+		return 0, err
+	}
+
+	index := size.Value.Int64()
+	size.Value.Add(size.Value, intconv.BigIntOne)
+	return index, s.setEventSize(size)
+}
+
 func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
@@ -109,28 +129,6 @@ func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (
 	obj.Target = target.(*common.Address)
 	obj.Enable = enable
 	_, err = s.store.Set(key, icobject.New(TypeEventEnable, obj))
-	if err != nil {
-		return 0, err
-	}
-
-	index := size.Value.Int64()
-	size.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(size)
-}
-
-func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) (int64, error) {
-	size, err := s.getEventSize()
-	if err != nil {
-		return 0, err
-	}
-
-	key := EventKey.Append(offset, size.Value).Build()
-	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
-	obj.Irep = irep
-	obj.Rrep = rrep
-	obj.MainPRepCount = new(big.Int).SetInt64(mainPRepCount)
-	obj.PRepCount = new(big.Int).SetInt64(pRepCount)
-	_, err = s.store.Set(key, icobject.New(TypeEventPeriod, obj))
 	if err != nil {
 		return 0, err
 	}
@@ -200,10 +198,31 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 	return err
 }
 
-func (s *State) AddGlobal(offsetLimit int) error {
+func (s *State) AddGlobalV1(offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
 	key := HashKey.Append(globalKey).Build()
-	obj := newGlobal(icobject.MakeTag(TypeGlobal, 0))
-	obj.OffsetLimit = offsetLimit
+	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion1))
+	g := obj.globalImpl.(*GlobalV1)
+	g.OffsetLimit = offsetLimit
+	g.Irep.Set(irep)
+	g.Rrep.Set(rrep)
+	g.MainPRepCount = mainPRepCount
+	g.ElectedPRepCount = electedPRepCount
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
+	return err
+}
+
+func (s *State) AddGlobalV2(offsetLimit int, iglobal *big.Int, iprep *big.Int, ivoter *big.Int,
+	electedPRepCount int, bondRequirement int,
+) error {
+	key := HashKey.Append(globalKey).Build()
+	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion2))
+	g := obj.globalImpl.(*GlobalV2)
+	g.OffsetLimit = offsetLimit
+	g.Iglobal.Set(iglobal)
+	g.Iprep.Set(iprep)
+	g.Ivoter.Set(ivoter)
+	g.ElectedPRepCount = electedPRepCount
+	g.BondRequirement = bondRequirement
 	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
 	return err
 }

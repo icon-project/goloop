@@ -98,9 +98,6 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
 
-	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
-		return err
-	}
 	issue, err := es.State.GetIssue()
 	if err != nil {
 		return err
@@ -110,7 +107,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 		return err
 	}
 
-	return es.OnExecutionEnd(wc)
+	return es.OnExecutionEnd(wc, p.calculator)
 }
 
 func (p *platform) Term() {

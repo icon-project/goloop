@@ -1,0 +1,44 @@
+/*
+ * Copyright 2020 ICON Foundation
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package icstate
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestRewardFund(t *testing.T) {
+	iglobal := int64(100000)
+	iprep := int64(50)
+	ivoter := int64(50)
+	rf := NewRewardFund()
+	rf.Iglobl.SetInt64(iglobal)
+	rf.Iprep.SetInt64(iprep)
+	rf.Ivoter.SetInt64(ivoter)
+
+	bs := rf.Bytes()
+
+	rf2, err := newRewardFundFromByte(bs)
+	assert.NoError(t, err)
+
+	assert.True(t, rf.Equal(rf2))
+	assert.Equal(t, 0, rf.Iglobl.Cmp(rf2.Iglobl))
+
+	rf3 := rf.Clone()
+	assert.True(t, rf.Equal(rf3))
+
+	assert.Equal(t, int64(iglobal * iprep / 100), rf.GetPRepFund().Int64())
+	assert.Equal(t, int64(iglobal * ivoter / 100), rf.GetVoterFund().Int64())
+}

@@ -23,7 +23,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestEvent_Period(t *testing.T) {
+func TestGlobal(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
 	type_ := TypeGlobal

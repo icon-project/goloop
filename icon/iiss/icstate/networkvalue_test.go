@@ -42,9 +42,6 @@ func Test_networkValue(t *testing.T) {
 	// test for SetTermPeriod
 	t.Run("SetTermPeriod", func(t *testing.T) { setTermPeriodTest(t, s) })
 
-	// test for SetCalculatePeriod
-	t.Run("SetCalculatePeriod", func(t *testing.T) { setCalculatePeriodTest(t, s) })
-
 	// test for SetIRep
 	t.Run("SetIRep", func(t *testing.T) { setIRepTest(t, s) })
 
@@ -65,6 +62,9 @@ func Test_networkValue(t *testing.T) {
 
 	// test for SetLockVariables
 	t.Run("SetLockVariables", func(t *testing.T) { setLockVariablesTest(t, s) })
+
+	// test for SetRewardFund
+	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
 }
 
 func setTermPeriodTest(t *testing.T, s *State) {
@@ -76,17 +76,6 @@ func setTermPeriodTest(t *testing.T, s *State) {
 	actual = s.GetTermPeriod()
 	assert.Equal(t, tp, actual)
 
-}
-
-func setCalculatePeriodTest(t *testing.T, s *State) {
-	cp := int64(0)
-	actual := s.GetCalculatePeriod()
-	assert.Equal(t, actual, cp)
-
-	cp = int64(10)
-	s.SetCalculatePeriod(cp)
-	actual = s.GetCalculatePeriod()
-	assert.Equal(t, actual, cp)
 }
 
 func setIRepTest(t *testing.T, s *State) {
@@ -189,4 +178,18 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	actualMax = s.GetLockMax()
 	assert.Equal(t, 0, actualMin.Cmp(min))
 	assert.Equal(t, 0, actualMax.Cmp(max))
+}
+
+func setRewardFundTest(t *testing.T, s *State) {
+	rf := NewRewardFund()
+	actual := s.GetRewardFund()
+	assert.Equal(t, rf, actual)
+
+	rf.Iglobl.SetInt64(100000)
+	rf.Iprep.SetInt64(50)
+	rf.Ivoter.SetInt64(50)
+	err := s.SetRewardFund(rf)
+	assert.NoError(t, err)
+	actual = s.GetRewardFund()
+	assert.True(t, rf.Equal(actual))
 }

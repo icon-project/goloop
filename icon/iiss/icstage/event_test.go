@@ -16,7 +16,6 @@ package icstage
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,36 +90,4 @@ func TestEvent_Enable(t *testing.T) {
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, true, t1.Target.Equal(t2.Target))
 	assert.Equal(t, t1.Enable, t2.Enable)
-}
-
-func TestEvent_Period(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-
-	type_ := TypeEventPeriod
-	version := 0
-	irep := int64(1000)
-	rrep := int64(2000)
-
-
-	t1 := newEventPeriod(icobject.MakeTag(type_, version))
-	t1.Irep = big.NewInt(irep)
-	t1.Rrep = big.NewInt(rrep)
-
-	o1 := icobject.New(type_, t1)
-	serialized := o1.Bytes()
-
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
-	}
-
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
-
-	t2 := ToEventPeriod(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
-	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
 }

@@ -65,6 +65,46 @@ func newEventDelegation(tag icobject.Tag) *EventDelegation {
 	return new(EventDelegation)
 }
 
+type EventBond struct {
+	icobject.NoDatabase
+	From  *common.Address
+	Bonds icstate.Bonds
+}
+
+func (b *EventBond) Version() int {
+	return 0
+}
+
+func (b *EventBond) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(&b.From, &b.Bonds)
+	return err
+}
+
+func (b *EventBond) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(b.From, b.Bonds)
+}
+
+func (b *EventBond) Equal(o icobject.Impl) bool {
+	if ee2, ok := o.(*EventBond); ok {
+		return b.From.Equal(ee2.From) && b.Bonds.Equal(ee2.Bonds)
+	} else {
+		return false
+	}
+}
+
+func (b *EventBond) Clear() {
+	b.From = nil
+	b.Bonds = nil
+}
+
+func (b *EventBond) IsEmpty() bool {
+	return b.From == nil && b.Bonds == nil
+}
+
+func newEventBond(tag icobject.Tag) *EventBond {
+	return new(EventBond)
+}
+
 type EventEnable struct {
 	icobject.NoDatabase
 	Target *common.Address

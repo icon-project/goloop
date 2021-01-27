@@ -124,17 +124,63 @@ type Term struct {
 	icobject.NoDatabase
 	StateAndSnapshot
 
-	sequence       int
-	startHeight    int64
-	period         int64
-	irep           *big.Int
-	rrep           *big.Int
-	totalSupply    *big.Int
-	totalDelegated *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
-	prepSnapshots  PRepSnapshots
+	sequence        int
+	startHeight     int64
+	period          int64
+	irep            *big.Int
+	rrep            *big.Int
+	totalSupply     *big.Int
+	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
+	iglobal         *big.Int
+	iprep           *big.Int
+	ivoter          *big.Int
+	bondRequirement int
+	prepSnapshots   PRepSnapshots
 
 	flags       TermFlag
 	snapshotMap map[string]*PRepSnapshot
+}
+
+func (term *Term) StartHeight() int64 {
+	return term.startHeight
+}
+
+func (term *Term) Period() int64 {
+	return term.period
+}
+
+func (term *Term) Irep() *big.Int {
+	return term.irep
+}
+
+func (term *Term) Rrep() *big.Int {
+	return term.rrep
+}
+
+func (term *Term) MainPRepCount() int {
+	// TODO implement me
+	return 1
+}
+
+func (term *Term) ElectedPRepCount() int {
+	// TODO implement me
+	return len(term.prepSnapshots)
+}
+
+func (term *Term) Iglobal() *big.Int {
+	return term.iglobal
+}
+
+func (term *Term) Iprep() *big.Int {
+	return term.iprep
+}
+
+func (term *Term) Ivoter() *big.Int {
+	return term.ivoter
+}
+
+func (term *Term) BondRequirement() int {
+	return term.bondRequirement
 }
 
 func (term *Term) GetEndBlockHeight() int64 {
@@ -153,6 +199,10 @@ func (term *Term) Set(other *Term) {
 	term.rrep = other.rrep
 	term.totalSupply.Set(other.totalSupply)
 	term.totalDelegated.Set(other.totalDelegated)
+	term.iglobal = other.iglobal
+	term.iprep = other.iprep
+	term.ivoter = other.ivoter
+	term.bondRequirement = other.bondRequirement
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
 }
@@ -163,14 +213,18 @@ func (term *Term) Clone() *Term {
 	}
 
 	return &Term{
-		sequence:       term.sequence,
-		startHeight:    term.startHeight,
-		period:         term.period,
-		irep:           new(big.Int).Set(term.irep),
-		rrep:           new(big.Int).Set(term.rrep),
-		totalSupply:    new(big.Int).Set(term.totalSupply),
-		totalDelegated: new(big.Int).Set(term.totalDelegated),
-		prepSnapshots:  term.prepSnapshots.Clone(),
+		sequence:        term.sequence,
+		startHeight:     term.startHeight,
+		period:          term.period,
+		irep:            new(big.Int).Set(term.irep),
+		rrep:            new(big.Int).Set(term.rrep),
+		totalSupply:     new(big.Int).Set(term.totalSupply),
+		totalDelegated:  new(big.Int).Set(term.totalDelegated),
+		iglobal:         new(big.Int).Set(term.iglobal),
+		iprep:           new(big.Int).Set(term.iprep),
+		ivoter:          new(big.Int).Set(term.ivoter),
+		bondRequirement: term.bondRequirement,
+		prepSnapshots:   term.prepSnapshots.Clone(),
 	}
 }
 
@@ -187,6 +241,10 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.rrep,
 		&term.totalSupply,
 		&term.totalDelegated,
+		&term.iglobal,
+		&term.iprep,
+		&term.ivoter,
+		&term.bondRequirement,
 		&term.prepSnapshots,
 	)
 }
@@ -200,6 +258,10 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.rrep,
 		term.totalSupply,
 		term.totalDelegated,
+		term.iglobal,
+		term.iprep,
+		term.ivoter,
+		term.bondRequirement,
 		term.prepSnapshots,
 	)
 }
@@ -226,6 +288,10 @@ func (term *Term) equal(other *Term) bool {
 		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
+		term.iglobal.Cmp(other.iglobal) == 0 &&
+		term.iprep.Cmp(other.iprep) == 0 &&
+		term.ivoter.Cmp(other.ivoter) == 0 &&
+		term.bondRequirement == other.bondRequirement &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -311,6 +377,10 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["irep"] = term.irep
 	jso["rrep"] = term.rrep
 	jso["period"] = term.period
+	jso["iglobal"] = term.iglobal
+	jso["iprep"] = term.iprep
+	jso["ivoter"] = term.ivoter
+	jso["bondRequirement"] = term.bondRequirement
 	jso["preps"] = term.prepSnapshots.toJSON()
 
 	return jso
@@ -323,18 +393,26 @@ func NewNextTerm(
 	rrep *big.Int,
 	totalSupply *big.Int,
 	totalDelegated *big.Int,
+	iglobal *big.Int,
+	iprep *big.Int,
+	ivoter *big.Int,
+	bondRequirement int,
 ) *Term {
 	if term == nil {
 		return nil
 	}
 	nextTerm := &Term{
-		sequence:       term.sequence + 1,
-		startHeight:    term.GetEndBlockHeight() + 1,
-		period:         period,
-		irep:           new(big.Int).Set(irep),
-		rrep:           new(big.Int).Set(rrep),
-		totalSupply:    new(big.Int).Set(totalSupply),
-		totalDelegated: new(big.Int).Set(totalDelegated),
+		sequence:        term.sequence + 1,
+		startHeight:     term.GetEndBlockHeight() + 1,
+		period:          period,
+		irep:            new(big.Int).Set(irep),
+		rrep:            new(big.Int).Set(rrep),
+		totalSupply:     new(big.Int).Set(totalSupply),
+		totalDelegated:  new(big.Int).Set(totalDelegated),
+		iglobal:         new(big.Int).Set(iglobal),
+		iprep:           new(big.Int).Set(iprep),
+		ivoter:          new(big.Int).Set(ivoter),
+		bondRequirement: bondRequirement,
 
 		flags: term.flags | FlagNextTerm,
 	}
@@ -436,6 +514,9 @@ func newTerm(startHeight, termPeriod int64) *Term {
 		rrep:           big.NewInt(0),
 		totalSupply:    big.NewInt(0),
 		totalDelegated: big.NewInt(0),
+		iglobal:        big.NewInt(0),
+		iprep:          big.NewInt(0),
+		ivoter:         big.NewInt(0),
 		prepSnapshots:  nil,
 
 		flags:       FlagNone,

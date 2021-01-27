@@ -246,9 +246,13 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	period := int64(100)
 	irep := big.NewInt(2000)
 	rrep := big.NewInt(1500)
+	iglobal := big.NewInt(150000)
+	iprep := big.NewInt(50)
+	ivoter := big.NewInt(50)
+	bondRequirement := 5
 
 	term := newTerm(0, 100)
-	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated)
+	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated, iglobal, iprep, ivoter, bondRequirement)
 
 	assert.Equal(t, term.sequence+1, nTerm.sequence)
 	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.startHeight)
@@ -257,5 +261,9 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.Equal(t, rrep.Int64(), nTerm.rrep.Int64())
 	assert.Equal(t, totalSupply.Int64(), nTerm.totalSupply.Int64())
 	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
+	assert.Equal(t, iglobal.Int64(), nTerm.iglobal.Int64())
+	assert.Equal(t, iprep.Int64(), nTerm.iprep.Int64())
+	assert.Equal(t, ivoter.Int64(), nTerm.ivoter.Int64())
+	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
 	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)
 }

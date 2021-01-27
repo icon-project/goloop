@@ -51,16 +51,16 @@ func (ss *Snapshot) GetGlobal() (*Global, error) {
 	return ToGlobal(o), nil
 }
 
-func (ss *Snapshot) GetOffsetLimit() (int, error) {
-	global, err := ss.GetGlobal()
-	if err != nil {
-		return 0, err
-	}
-	if global == nil {
-		return 0, nil
-	}
-	return global.OffsetLimit, nil
-}
+//func (ss *Snapshot) GetOffsetLimit() (int, error) {
+//	global, err := ss.GetGlobal()
+//	if err != nil {
+//		return 0, err
+//	}
+//	if global == nil {
+//		return 0, nil
+//	}
+//	return global.OffsetLimit(), nil
+//}
 
 func (ss *Snapshot) GetBlockProduce(offset int) (*BlockProduce, error) {
 	key := BlockProduceKey.Append(offset).Build()

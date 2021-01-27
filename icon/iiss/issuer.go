@@ -19,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 )
 
@@ -153,24 +154,18 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 		totalDelegated,
 	)
 	prep := &IssuePRepJSON{
-		IRep:            bigInt2HexInt(irep),
-		RRep:            bigInt2HexInt(rrep),
-		TotalDelegation: bigInt2HexInt(totalDelegated),
-		Value:           bigInt2HexInt(reward),
+		IRep:            icutils.BigInt2HexInt(irep),
+		RRep:            icutils.BigInt2HexInt(rrep),
+		TotalDelegation: icutils.BigInt2HexInt(totalDelegated),
+		Value:           icutils.BigInt2HexInt(reward),
 	}
 
 	i, _ := es.State.GetIssue()
 	overIssued, issue := calcIssueAmount(reward, i)
 	result := &IssueResultJSON{
-		ByFee:           bigInt2HexInt(i.PrevBlockFee),
-		ByOverIssuedICX: bigInt2HexInt(overIssued),
-		Issue:           bigInt2HexInt(issue),
+		ByFee:           icutils.BigInt2HexInt(i.PrevBlockFee),
+		ByOverIssuedICX: icutils.BigInt2HexInt(overIssued),
+		Issue:           icutils.BigInt2HexInt(issue),
 	}
 	return prep, result
-}
-
-func bigInt2HexInt(value *big.Int) *common.HexInt {
-	h := new(common.HexInt)
-	h.Set(value)
-	return h
 }
