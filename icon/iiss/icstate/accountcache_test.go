@@ -83,7 +83,7 @@ func TestAccountCache(t *testing.T) {
 	account = s.accountCache.Get(addr2, true)
 	assert.Equal(t, false, account.IsEmpty())
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
-	
+
 	account = s.accountCache.Get(addr2, true)
 	account.Clear()
 	s.accountCache.Flush()
