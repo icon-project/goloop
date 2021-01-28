@@ -56,12 +56,12 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
 	addr1 := common.NewAddressFromString("hx1")
-	
+
 	delegated := big.NewInt(int64(99))
 	status1 := s.GetPRepStatus(addr1)
 	status1.SetDelegated(delegated)
 	bonded := big.NewInt(int64(1))
-	s.GetPRepStatus(addr1).SetBonded(bonded)
+	status1.SetBonded(bonded)
 	res := status1.GetBondedDelegation(5)
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(20))))
 
