@@ -835,7 +835,7 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err = es.State.SetIISSVersion(iconConfig.IISSVersion.Int64()); err != nil {
+	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
 		return err
 	}
 	if err = es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {

@@ -18,7 +18,9 @@ package icreward
 
 import (
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
@@ -60,6 +62,42 @@ func (d *Delegating) Clone() *Delegating {
 
 func (d *Delegating) IsEmpty() bool {
 	return len(d.Delegations) == 0
+}
+
+func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
+	var index int
+	ds := d.Delegations.Clone()
+	add := make([]*icstate.Delegation, 0)
+	for _, vote := range deltas {
+		index = -1
+		for i, delegation := range ds {
+			if delegation.To().Equal(vote.To()) {
+				index = i
+				delegation.Amount().Add(delegation.Amount(), vote.Amount())
+				switch delegation.Value.Sign() {
+				case -1:
+					return errors.Errorf("Negative delegation value %d", delegation.Amount().Int64())
+				case 0:
+					if err := ds.Delete(i); err != nil {
+						return err
+					}
+				}
+				break
+			}
+		}
+		if index == -1 { // add new delegation
+			if vote.Value.Sign() != 1 {
+				return errors.Errorf("Negative delegation value %v", vote)
+			}
+			nd := icstate.NewDelegation()
+			nd.Address.Set(vote.To())
+			nd.Amount().Set(vote.Amount())
+			add = append(add, nd)
+		}
+	}
+	ds = append(ds, add...)
+	d.Delegations = ds
+	return nil
 }
 
 func newDelegating(tag icobject.Tag) *Delegating {

@@ -303,11 +303,11 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 	delta := make(map[string]*big.Int)
 
 	for _, d := range od {
-		key := icutils.ToKey(d.Address)
+		key := icutils.ToKey(d.To())
 		delta[key] = new(big.Int).Neg(d.Value.Value())
 	}
 	for _, d := range nd {
-		key := icutils.ToKey(d.Address)
+		key := icutils.ToKey(d.To())
 		if delta[key] == nil {
 			delta[key] = new(big.Int)
 		}
@@ -340,16 +340,16 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big.Int, error) {
 	delta := make(map[string]*big.Int)
 
-	for _, d := range oBonds {
-		key := icutils.ToKey(d.Address)
-		delta[key] = new(big.Int).Neg(d.Value.Value())
+	for _, bond := range oBonds {
+		key := icutils.ToKey(bond.To())
+		delta[key] = new(big.Int).Neg(bond.Amount())
 	}
-	for _, d := range nBonds {
-		key := icutils.ToKey(d.Address)
+	for _, bond := range nBonds {
+		key := icutils.ToKey(bond.To())
 		if delta[key] == nil {
 			delta[key] = new(big.Int)
 		}
-		delta[key].Add(delta[key], d.Value.Value())
+		delta[key].Add(delta[key], bond.Amount())
 	}
 
 	bondedToInactiveNode := big.NewInt(0)

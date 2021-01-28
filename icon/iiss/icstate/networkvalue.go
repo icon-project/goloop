@@ -36,6 +36,11 @@ const (
 	VarRewardFund      = "reward_fund"
 )
 
+const (
+	IISSVersion1 int = iota
+	IISSVersion2
+)
+
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
 		store,
@@ -54,11 +59,11 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 	return nil
 }
 
-func (s *State) GetIISSVersion() int64 {
-	return getValue(s.store, VarIISSVersion).Int64()
+func (s *State) GetIISSVersion() int {
+	return int(getValue(s.store, VarIISSVersion).Int64())
 }
 
-func (s *State) SetIISSVersion(value int64) error {
+func (s *State) SetIISSVersion(value int) error {
 	return setValue(s.store, VarIISSVersion, value)
 }
 
@@ -190,7 +195,7 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["mainPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
 	jso["subPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
 	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
-	jso["iissVersion"] = intconv.FormatInt(s.GetIISSVersion())
+	jso["iissVersion"] = intconv.FormatInt(int64(s.GetIISSVersion()))
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
 	jso["calculationPeriod"] = intconv.FormatInt(s.GetCalculatePeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())

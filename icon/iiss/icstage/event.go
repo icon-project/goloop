@@ -17,13 +17,83 @@
 package icstage
 
 import (
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 )
+
+type Vote struct {
+	Address *common.Address
+	Value   *big.Int
+}
+
+func NewVote() *Vote {
+	return &Vote{
+		Address: new(common.Address),
+		Value:   new(big.Int),
+	}
+}
+
+func (v *Vote) To() module.Address {
+	return v.Address
+}
+
+func (v *Vote) Amount() *big.Int {
+	return v.Value
+}
+
+func (v *Vote) Equal(v2 *Vote) bool {
+	return v.Address.Equal(v2.Address) && v.Value.Cmp(v2.Value) == 0
+}
+
+type VoteList []*Vote
+
+func (vl VoteList) Equal (vl2 VoteList) bool {
+	if len(vl) != len(vl2) {
+		return false
+	}
+	for i, b := range vl {
+		if !b.Equal(vl2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+type EventVote struct {
+	icobject.NoDatabase
+	From  *common.Address
+	Votes VoteList
+}
+
+func (ed *EventVote) Version() int {
+	return 0
+}
+
+func (ed *EventVote) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(&ed.From, &ed.Votes)
+	return err
+}
+
+func (ed *EventVote) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(ed.From, ed.Votes)
+}
+
+func (ed *EventVote) Equal(o icobject.Impl) bool {
+	if ee2, ok := o.(*EventVote); ok {
+		return ed.From.Equal(ee2.From) && ed.Votes.Equal(ee2.Votes)
+	} else {
+		return false
+	}
+}
+
+func newEventVote(tag icobject.Tag) *EventVote {
+	return new(EventVote)
+}
 
 type EventDelegation struct {
 	icobject.NoDatabase
@@ -148,63 +218,6 @@ func (ee *EventEnable) IsEmpty() bool {
 
 func newEventEnable(tag icobject.Tag) *EventEnable {
 	return new(EventEnable)
-}
-
-type EventPeriod struct {
-	icobject.NoDatabase
-	Irep          *big.Int
-	Rrep          *big.Int
-	MainPRepCount *big.Int
-	PRepCount     *big.Int
-}
-
-func (ep *EventPeriod) Version() int {
-	return 0
-}
-
-func (ep *EventPeriod) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ep.Irep, &ep.Rrep, &ep.MainPRepCount, &ep.PRepCount)
-	return err
-}
-
-func (ep *EventPeriod) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ep.Irep, ep.Rrep, &ep.MainPRepCount, &ep.PRepCount)
-}
-
-func (ep *EventPeriod) Equal(o icobject.Impl) bool {
-	if ep2, ok := o.(*EventPeriod); ok {
-		return ep.Irep.Cmp(ep2.Irep) == 0 &&
-			ep.Rrep.Cmp(ep2.Rrep) == 0 &&
-			ep.MainPRepCount.Cmp(ep2.MainPRepCount) == 0 &&
-			ep.PRepCount.Cmp(ep2.PRepCount) == 0
-	} else {
-		return false
-	}
-}
-
-func (ep *EventPeriod) Clear() {
-	ep.Irep = new(big.Int)
-	ep.Rrep = new(big.Int)
-	ep.MainPRepCount = new(big.Int)
-	ep.PRepCount = new(big.Int)
-}
-
-func (ep *EventPeriod) IsEmpty() bool {
-	return (ep.Irep == nil || ep.Irep.Sign() == 0) &&
-		(ep.Rrep == nil || ep.Rrep.Sign() == 0)
-}
-
-func newEventPeriod(tag icobject.Tag) *EventPeriod {
-	return NewEventPeriod()
-}
-
-func NewEventPeriod() *EventPeriod {
-	return &EventPeriod{
-		Irep:          new(big.Int),
-		Rrep:          new(big.Int),
-		MainPRepCount: new(big.Int),
-		PRepCount:     new(big.Int),
-	}
 }
 
 type EventSize struct {

@@ -78,17 +78,19 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	return err
 }
 
-func (s *State) AddEventDelegation(offset int, from module.Address, delegations icstate.Delegations) (int64, error) {
+func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
 		return 0, err
 	}
 
 	key := EventKey.Append(offset, size.Value).Build()
-	ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
-	ed.From = from.(*common.Address)
-	ed.Delegations = delegations
-	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, ed))
+	//ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
+	//event.Delegations = delegations
+	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
+	event.Votes = votes
+	event.From = from.(*common.Address)
+	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, event))
 	if err != nil {
 		return 0, err
 	}
@@ -98,16 +100,16 @@ func (s *State) AddEventDelegation(offset int, from module.Address, delegations 
 	return index, s.setEventSize(size)
 }
 
-func (s *State) AddEventBond(offset int, from module.Address, bonds icstate.Bonds) (int64, error) {
+func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
 	size, err := s.getEventSize()
 	if err != nil {
 		return 0, err
 	}
 
 	key := EventKey.Append(offset, size.Value).Build()
-	ed := newEventBond(icobject.MakeTag(TypeEventBond, 0))
+	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
 	ed.From = from.(*common.Address)
-	ed.Bonds = bonds
+	ed.Votes = votes
 	_, err = s.store.Set(key, icobject.New(TypeEventBond, ed))
 	if err != nil {
 		return 0, err
@@ -201,7 +203,8 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 func (s *State) AddGlobalV1(offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
 	key := HashKey.Append(globalKey).Build()
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion1))
-	g := obj.globalImpl.(*GlobalV1)
+	g := obj.GlobalImpl.(*GlobalV1)
+	g.IISSVersion = icstate.IISSVersion1
 	g.OffsetLimit = offsetLimit
 	g.Irep.Set(irep)
 	g.Rrep.Set(rrep)
@@ -216,7 +219,8 @@ func (s *State) AddGlobalV2(offsetLimit int, iglobal *big.Int, iprep *big.Int, i
 ) error {
 	key := HashKey.Append(globalKey).Build()
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion2))
-	g := obj.globalImpl.(*GlobalV2)
+	g := obj.GlobalImpl.(*GlobalV2)
+	g.IISSVersion = icstate.IISSVersion2
 	g.OffsetLimit = offsetLimit
 	g.Iglobal.Set(iglobal)
 	g.Iprep.Set(iprep)

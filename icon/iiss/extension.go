@@ -204,7 +204,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	// set icstage.global value
 	version := s.State.GetIISSVersion()
 	switch version {
-	case 0:
+	case icstate.IISSVersion1:
 		if err := s.Front.AddGlobalV1(
 			int(term.Period()),
 			term.Irep(),
@@ -214,7 +214,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 		); err != nil {
 			return err
 		}
-	case 1:
+	case icstate.IISSVersion2:
 		if err := s.Front.AddGlobalV2(
 			int(term.Period()),
 			term.Iglobal(),
@@ -331,24 +331,32 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	return nil
 }
 
-func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
-	event := make([]*icstate.Delegation, 0, len(delta))
+func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
+	votes = make([]*icstage.Vote, 0, len(delta))
 	for key, value := range delta {
 		var addr *common.Address
-		d := new(icstate.Delegation)
+		vote := icstage.NewVote()
 
 		addr, err = common.NewAddress([]byte(key))
 		if err != nil {
-			return err
+			return
 		}
-		d.Address = addr
-		d.Value = icutils.BigInt2HexInt(value)
-		event = append(event, d)
+		vote.Address = addr
+		vote.Value.Set(value)
+		votes = append(votes, vote)
+	}
+	return
+}
+
+func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return
 	}
 	_, err = s.Front.AddEventDelegation(
 		int(blockHeight-s.CalculationBlockHeight()),
 		from,
-		event,
+		votes,
 	)
 	return
 }
@@ -416,7 +424,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 			return errors.Errorf("PRep not found: %v", from)
 		}
 		if !prep.BonderList().Contains(from) {
-			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
+			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.To().String())
 		}
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
@@ -460,23 +468,14 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 }
 
 func (s *ExtensionStateImpl) addEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
-	event := make([]*icstate.Bond, 0, len(delta))
-	for key, value := range delta {
-		var addr *common.Address
-		d := new(icstate.Bond)
-
-		addr, err = common.NewAddress([]byte(key))
-		if err != nil {
-			return err
-		}
-		d.Address = addr
-		d.Value = icutils.BigInt2HexInt(value)
-		event = append(event, d)
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return
 	}
 	_, err = s.Front.AddEventBond(
 		int(blockHeight-s.CalculationBlockHeight()),
 		from,
-		event,
+		votes,
 	)
 	return
 }

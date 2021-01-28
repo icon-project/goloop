@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -122,29 +121,20 @@ func TestState_AddEvent(t *testing.T) {
 	addr2 := common.NewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
-	d1 := icstate.Delegation{
+	vote1 := Vote{
 		Address: addr1,
-		Value:   common.NewHexInt(v1),
+		Value:   big.NewInt(v1),
 	}
-	d2 := icstate.Delegation{
+	vote2 := Vote{
 		Address: addr2,
-		Value:   common.NewHexInt(v2),
-	}
-	b1 := icstate.Bond{
-		Address: addr1,
-		Value:   common.NewHexInt(v1),
-	}
-	b2 := icstate.Bond{
-		Address: addr2,
-		Value:   common.NewHexInt(v2),
+		Value:   big.NewInt(v2),
 	}
 
 	type args struct {
 		type_         int
 		offset        int
 		address       *common.Address
-		delegations   icstate.Delegations
-		bonds         icstate.Bonds
+		votes         VoteList
 		enable        bool
 		irep          *big.Int
 		rrep          *big.Int
@@ -160,10 +150,10 @@ func TestState_AddEvent(t *testing.T) {
 		{
 			"Delegation",
 			args{
-				type_:       TypeEventDelegation,
-				offset:      offset1,
-				address:     addr1,
-				delegations: icstate.Delegations{&d1, &d2},
+				type_:   TypeEventDelegation,
+				offset:  offset1,
+				address: addr1,
+				votes:   VoteList{&vote1, &vote2},
 			},
 		},
 		{
@@ -172,7 +162,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:   TypeEventBond,
 				offset:  offset1,
 				address: addr1,
-				bonds:   icstate.Bonds{&b1, &b2},
+				votes:   VoteList{&vote1, &vote2},
 			},
 		},
 		{
@@ -190,9 +180,9 @@ func TestState_AddEvent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch a.type_ {
 			case TypeEventDelegation:
-				checkAddEventDelegation(t, s, a.offset, a.address, a.delegations)
+				checkAddEventDelegation(t, s, a.offset, a.address, a.votes)
 			case TypeEventBond:
-				checkAddEventBond(t, s, a.offset, a.address, a.bonds)
+				checkAddEventBond(t, s, a.offset, a.address, a.votes)
 			case TypeEventEnable:
 				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
 			}
@@ -223,28 +213,28 @@ func TestState_AddEvent(t *testing.T) {
 	assert.Equal(t, int64(len(tests)), size.Value.Int64())
 }
 
-func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, delegations icstate.Delegations) {
-	index, err := s.AddEventDelegation(offset, address, delegations)
+func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
+	index, err := s.AddEventDelegation(offset, address, votes)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
-	event := ToEventDelegation(obj)
+	event := ToEventVote(obj)
 	assert.True(t, address.Equal(event.From))
-	assert.True(t, delegations.Equal(event.Delegations))
+	assert.True(t, votes.Equal(event.Votes))
 }
 
-func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, bonds icstate.Bonds) {
-	index, err := s.AddEventBond(offset, address, bonds)
+func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
+	index, err := s.AddEventBond(offset, address, votes)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
-	event := ToEventBond(obj)
+	event := ToEventVote(obj)
 	assert.True(t, address.Equal(event.From))
-	assert.True(t, bonds.Equal(event.Bonds))
+	assert.True(t, votes.Equal(event.Votes))
 }
 
 func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, enable bool) {

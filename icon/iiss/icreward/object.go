@@ -23,24 +23,24 @@ import (
 )
 
 const (
-	TypeDelegated int = iota
+	TypeVoted int = iota
 	TypeDelegating
+	TypeBonding
 	TypeIScore
-	TypeGlobal
 )
 
 func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
 	case icobject.TypeBigInt:
 		return icobject.NewObjectBigInt(tag), nil
-	case TypeDelegated:
-		return newDelegated(tag), nil
+	case TypeVoted:
+		return newVoted(tag), nil
 	case TypeDelegating:
 		return newDelegating(tag), nil
+	case TypeBonding:
+		return newBonding(tag), nil
 	case TypeIScore:
 		return newIScore(tag), nil
-	case TypeGlobal:
-		return newGlobal(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -54,11 +54,11 @@ func ToIScore(obj trie.Object) *IScore {
 	return obj.(*icobject.Object).Real().(*IScore)
 }
 
-func ToDelegated(obj trie.Object) *Delegated {
+func ToVoted(obj trie.Object) *Voted {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*Delegated)
+	return obj.(*icobject.Object).Real().(*Voted)
 }
 
 func ToDelegating(obj trie.Object) *Delegating {
@@ -68,9 +68,9 @@ func ToDelegating(obj trie.Object) *Delegating {
 	return obj.(*icobject.Object).Real().(*Delegating)
 }
 
-func ToGlobal(obj trie.Object) *Global {
+func ToBonding(obj trie.Object) *Bonding {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*Global)
+	return obj.(*icobject.Object).Real().(*Bonding)
 }

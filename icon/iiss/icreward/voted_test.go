@@ -14,6 +14,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -23,17 +24,16 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestGlobal(t *testing.T) {
+func TestVoted(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	type_ := TypeGlobal
+	type_ := TypeVoted
 	version := 0
-	irep := int64(1000)
-	rrep := int64(2000)
+	v1 := int64(100)
 
-	t1 := newGlobal(icobject.MakeTag(type_, version))
-	t1.Irep = big.NewInt(irep)
-	t1.Rrep = big.NewInt(rrep)
+	t1 := newVoted(icobject.MakeTag(type_, version))
+	t1.Delegated = big.NewInt(v1)
+	t1.BondedDelegation = big.NewInt(v1)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -48,8 +48,10 @@ func TestGlobal(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	t2 := ToGlobal(o2)
+	t2 := ToVoted(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
-	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
+	assert.Equal(t, 0, t1.Delegated.Cmp(t2.Delegated))
+	assert.Equal(t, 0, t1.BondedDelegation.Cmp(t2.BondedDelegation))
+
+	fmt.Printf("%+v %+v", t1, t2)
 }

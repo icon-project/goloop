@@ -28,29 +28,28 @@ const (
 	GlobalVersion2
 )
 
-type globalImpl interface {
+type GlobalImpl interface {
 	Version() int
+	GetIISSVersion() int
+	GetOffsetLimit() int
+	GetElectedPRepCount() int
+	GetBondRequirement() int
 	RLPDecodeFields(decoder codec.Decoder) error
 	RLPEncodeFields(encoder codec.Encoder) error
-	Equal(impl globalImpl) bool
+	Equal(impl GlobalImpl) bool
 }
 
 type Global struct {
 	icobject.NoDatabase
-	globalImpl
+	GlobalImpl
 }
 
 func (g *Global) Version() int {
-	_, ok := g.globalImpl.(*GlobalV1)
-	if ok {
-		return GlobalVersion1
-	} else {
-		return GlobalVersion2
-	}
+	return g.GlobalImpl.Version()
 }
 
 func (g *Global) GetV1() *GlobalV1 {
-	global, ok := g.globalImpl.(*GlobalV1)
+	global, ok := g.GlobalImpl.(*GlobalV1)
 	if ok {
 		return global
 	} else {
@@ -59,7 +58,7 @@ func (g *Global) GetV1() *GlobalV1 {
 }
 
 func (g *Global) GetV2() *GlobalV2 {
-	global, ok := g.globalImpl.(*GlobalV2)
+	global, ok := g.GlobalImpl.(*GlobalV2)
 	if ok {
 		return global
 	} else {
@@ -71,9 +70,9 @@ func newGlobal(tag icobject.Tag) *Global {
 	g := new(Global)
 	switch tag.Version() {
 	case GlobalVersion1:
-		g.globalImpl = newGlobalV1()
+		g.GlobalImpl = newGlobalV1()
 	case GlobalVersion2:
-		g.globalImpl = newGlobalV2()
+		g.GlobalImpl = newGlobalV2()
 	}
 	return g
 }
@@ -89,14 +88,14 @@ func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
 	}
 	switch version {
 	case GlobalVersion1:
-		g.globalImpl = new(GlobalV1)
+		g.GlobalImpl = new(GlobalV1)
 	case GlobalVersion2:
-		g.globalImpl = new(GlobalV2)
+		g.GlobalImpl = new(GlobalV2)
 	default:
 		return errors.CriticalFormatError.Errorf(
 			"InvalidGlobalVersion(version=%d)", version)
 	}
-	return g.globalImpl.RLPDecodeFields(d)
+	return g.GlobalImpl.RLPDecodeFields(d)
 }
 
 func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
@@ -104,10 +103,10 @@ func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
 	if err != nil {
 		return err
 	}
-	if err := e.Encode(g.globalImpl.Version()); err != nil {
+	if err := e.Encode(g.GlobalImpl.Version()); err != nil {
 		return err
 	}
-	return g.globalImpl.RLPEncodeFields(e)
+	return g.GlobalImpl.RLPEncodeFields(e)
 }
 
 func (g *Global) Equal(o icobject.Impl) bool {
@@ -122,6 +121,7 @@ func (g *Global) Equal(o icobject.Impl) bool {
 }
 
 type GlobalV1 struct {
+	IISSVersion      int
 	OffsetLimit      int
 	Irep             *big.Int
 	Rrep             *big.Int
@@ -133,18 +133,49 @@ func (g *GlobalV1) Version() int {
 	return GlobalVersion1
 }
 
+func (g *GlobalV1) GetIISSVersion() int {
+	return g.IISSVersion
+}
+
+func (g *GlobalV1) GetOffsetLimit() int {
+	return g.OffsetLimit
+}
+
+func (g *GlobalV1) GetElectedPRepCount() int {
+	return g.ElectedPRepCount
+}
+
+func (g *GlobalV1) GetBondRequirement() int {
+	return 0
+}
+
 func (g *GlobalV1) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&g.OffsetLimit, &g.Irep, &g.Rrep, &g.MainPRepCount, &g.ElectedPRepCount)
+	_, err := decoder.DecodeMulti(
+		&g.IISSVersion,
+		&g.OffsetLimit,
+		&g.Irep,
+		&g.Rrep,
+		&g.MainPRepCount,
+		&g.ElectedPRepCount,
+	)
 	return err
 }
 
 func (g *GlobalV1) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(g.OffsetLimit, g.Irep, g.Rrep, g.MainPRepCount, g.ElectedPRepCount)
+	return encoder.EncodeMulti(
+		g.IISSVersion,
+		g.OffsetLimit,
+		g.Irep,
+		g.Rrep,
+		g.MainPRepCount,
+		g.ElectedPRepCount,
+	)
 }
 
-func (g *GlobalV1) Equal(impl globalImpl) bool {
+func (g *GlobalV1) Equal(impl GlobalImpl) bool {
 	if g2, ok := impl.(*GlobalV1); ok {
-		return g.OffsetLimit == g2.OffsetLimit &&
+		return g.IISSVersion == g2.IISSVersion &&
+			g.OffsetLimit == g2.OffsetLimit &&
 			g.Irep.Cmp(g2.Irep) == 0 &&
 			g.Rrep.Cmp(g2.Rrep) == 0 &&
 			g.MainPRepCount == g2.MainPRepCount &&
@@ -155,6 +186,7 @@ func (g *GlobalV1) Equal(impl globalImpl) bool {
 }
 
 func (g *GlobalV1) Clear() {
+	g.IISSVersion = 0
 	g.OffsetLimit = 0
 	g.Irep.SetInt64(0)
 	g.Rrep.SetInt64(0)
@@ -178,6 +210,7 @@ func newGlobalV1() *GlobalV1 {
 }
 
 type GlobalV2 struct {
+	IISSVersion      int
 	OffsetLimit      int
 	Iglobal          *big.Int
 	Iprep            *big.Int
@@ -190,18 +223,51 @@ func (g *GlobalV2) Version() int {
 	return GlobalVersion2
 }
 
+func (g *GlobalV2) GetIISSVersion() int {
+	return g.IISSVersion
+}
+
+func (g *GlobalV2) GetOffsetLimit() int {
+	return g.OffsetLimit
+}
+
+func (g *GlobalV2) GetElectedPRepCount() int {
+	return g.ElectedPRepCount
+}
+
+func (g *GlobalV2) GetBondRequirement() int {
+	return g.BondRequirement
+}
+
 func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&g.OffsetLimit, &g.Iglobal, &g.Iprep, &g.Ivoter, &g.ElectedPRepCount, &g.BondRequirement)
+	_, err := decoder.DecodeMulti(
+		&g.IISSVersion,
+		&g.OffsetLimit,
+		&g.Iglobal,
+		&g.Iprep,
+		&g.Ivoter,
+		&g.ElectedPRepCount,
+		&g.BondRequirement,
+	)
 	return err
 }
 
 func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(g.OffsetLimit, g.Iglobal, g.Iprep, g.Ivoter, g.ElectedPRepCount, g.BondRequirement)
+	return encoder.EncodeMulti(
+		g.IISSVersion,
+		g.OffsetLimit,
+		g.Iglobal,
+		g.Iprep,
+		g.Ivoter,
+		g.ElectedPRepCount,
+		g.BondRequirement,
+	)
 }
 
-func (g *GlobalV2) Equal(impl globalImpl) bool {
+func (g *GlobalV2) Equal(impl GlobalImpl) bool {
 	if g2, ok := impl.(*GlobalV2); ok {
-		return g.OffsetLimit == g2.OffsetLimit &&
+		return g.IISSVersion == g2.IISSVersion &&
+			g.OffsetLimit == g2.OffsetLimit &&
 			g.Iglobal.Cmp(g2.Iglobal) == 0 &&
 			g.Iprep.Cmp(g2.Iprep) == 0 &&
 			g.Ivoter.Cmp(g2.Ivoter) == 0 &&
@@ -213,6 +279,7 @@ func (g *GlobalV2) Equal(impl globalImpl) bool {
 }
 
 func (g *GlobalV2) Clear() {
+	g.IISSVersion = 0
 	g.OffsetLimit = 0
 	g.Iglobal.SetInt64(0)
 	g.Iprep.SetInt64(0)
@@ -233,7 +300,7 @@ func (g *GlobalV2) IsEmpty() bool {
 func newGlobalV2() *GlobalV2 {
 	return &GlobalV2{
 		Iglobal: new(big.Int),
-		Iprep: new(big.Int),
-		Ivoter: new(big.Int),
+		Iprep:   new(big.Int),
+		Ivoter:  new(big.Int),
 	}
 }

@@ -23,7 +23,7 @@ import (
 )
 
 func TestBond(t *testing.T) {
-	b1 := newBond()
+	b1 := NewBond()
 	b1.Address.SetString("hx1")
 	b1.Value.SetInt64(100)
 
@@ -56,6 +56,61 @@ func TestBonds(t *testing.T) {
 	assert.True(t, bl1.Has())
 	assert.True(t, bl1.Equal(bl2))
 	assert.Equal(t, v1+v2, bl2.GetBondAmount().Int64())
+}
+
+func TestBonds_Delete(t *testing.T) {
+	addr1 := "hx1"
+	addr2 := "hx2"
+	addr3 := "hx3"
+	v1 := int64(1)
+	v2 := int64(2)
+	v3 := int64(3)
+	bond1 := Bond{
+		Address: common.NewAddressFromString(addr1),
+		Value:   common.NewHexInt(v1),
+	}
+	bond2 := Bond{
+		Address: common.NewAddressFromString(addr2),
+		Value:   common.NewHexInt(v2),
+	}
+	bond3 := Bond{
+		Address: common.NewAddressFromString(addr3),
+		Value:   common.NewHexInt(v3),
+	}
+	bonds := Bonds{&bond1, &bond2, &bond3}
+
+	tests := []struct {
+		name  string
+		index int
+		err   bool
+		want  Bonds
+	}{
+		{"Delete first item", 0, false, Bonds{&bond2, &bond3}},
+		{"Delete middle item", 1, false, Bonds{&bond1, &bond3}},
+		{"Delete last item", 2, false, Bonds{&bond1, &bond2}},
+		{"Negative index", -1, true, Bonds{}},
+		{"Too big index", 100, true, Bonds{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			test := bonds.Clone()
+			err := test.Delete(tt.index)
+			if tt.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.True(t, tt.want.Equal(test))
+			}
+		})
+	}
+
+	t.Run("Delete and empty", func(t *testing.T) {
+		bonds1 := Bonds{&bond1}
+		err := bonds1.Delete(0)
+		assert.NoError(t, err)
+		assert.False(t, bonds1.Has())
+	})
 }
 
 func TestNewBonds(t *testing.T) {

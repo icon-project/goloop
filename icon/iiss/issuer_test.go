@@ -168,7 +168,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 			0,
 		},
 		{
-			"Prevote - beta3 only",
+			"Prevote - voting only",
 			values{
 				100 * MonthBlock,
 				10,

@@ -15,11 +15,11 @@ package icstate
 
 import (
 	"encoding/json"
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/module"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -43,7 +43,7 @@ type Bond struct {
 	Value   *common.HexInt  `json:"value"`
 }
 
-func newBond() *Bond {
+func NewBond() *Bond {
 	return &Bond{
 		Address: new(common.Address),
 		Value:   new(common.HexInt),
@@ -62,13 +62,13 @@ func (b *Bond) ToJSON() map[string]interface{} {
 }
 
 func (b *Bond) Clone() *Bond {
-	n := newBond()
+	n := NewBond()
 	n.Address.Set(b.Address)
 	n.Value.Set(b.Value.Value())
 	return n
 }
 
-func (b *Bond) To() *common.Address {
+func (b *Bond) To() module.Address {
 	return b.Address
 }
 
@@ -81,14 +81,6 @@ func (b *Bond) Slash(ratio int) *big.Int {
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
 	b.Value.Sub(b.Value.Value(), slashAmount)
 	return slashAmount
-}
-
-func (b *Bond) Target() *common.Address {
-	return b.Address
-}
-
-func (b *Bond) VoteAmount() *big.Int {
-	return b.Value.Value()
 }
 
 type Bonds []*Bond
@@ -128,6 +120,17 @@ func (bl Bonds) GetBondAmount() *big.Int {
 	return total
 }
 
+func (bl *Bonds) Delete(i int) error {
+	if i < 0 || i >= len(*bl) {
+		return errors.Errorf("Invalid index")
+	}
+
+	copy((*bl)[i:], (*bl)[i+1:])
+	(*bl)[len(*bl)-1] = nil // or the zero value of T
+	*bl = (*bl)[:len(*bl)-1]
+	return nil
+}
+
 func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
 	bonds := *bl
 	for idx, b := range *bl {
@@ -161,6 +164,25 @@ func (bl Bonds) ToJSON(v module.JSONVersion) []interface{} {
 	return bonds
 }
 
+func (bl *Bonds) getVotings() []Voting {
+	size := len(*bl)
+	votings := make([]Voting, size)
+	if !bl.Has() {
+		return votings
+	}
+	for i := 0; i < size; i++ {
+		votings[i] = (*bl)[i]
+	}
+	return votings
+}
+
+func (bl *Bonds) Iterator() VotingIterator {
+	if bl == nil {
+		return nil
+	}
+	return NewVotingIterator(bl.getVotings())
+}
+
 func NewBonds(param []interface{}) (Bonds, error) {
 	count := len(param)
 	if count > getMaxBondsCount() {
@@ -169,7 +191,7 @@ func NewBonds(param []interface{}) (Bonds, error) {
 	targets := make(map[string]struct{}, count)
 	bonds := make([]*Bond, 0)
 	for _, p := range param {
-		bond := newBond()
+		bond := NewBond()
 		bs, err := json.Marshal(p)
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
