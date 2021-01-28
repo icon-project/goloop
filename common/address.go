@@ -199,6 +199,16 @@ func (a *Address) Equal(a2 module.Address) bool {
 	return bytes.Equal(a[:], a2.Bytes())
 }
 
+func AddressEqual(a, b module.Address) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Equal(b)
+}
+
 func (a *Address) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode([]byte(a[:]))
 }
