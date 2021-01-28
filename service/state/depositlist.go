@@ -122,9 +122,9 @@ func (dl depositList) getAvailableDeposit(bh int64) *big.Int {
 
 // PaySteps returns consumes virtual steps and also deposits.
 // It returns payed steps
-func (dl *depositList) PaySteps(dc DepositContext, steps *big.Int) *big.Int {
-	bh := dc.BlockHeight()
-	price := dc.StepPrice()
+func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
+	bh := pc.BlockHeight()
+	price := pc.StepPrice()
 
 	// Unable to pay with non positive price or empty deposit list.
 	if price.Sign() <= 0 || !dl.Has() {

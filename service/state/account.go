@@ -93,7 +93,7 @@ type AccountState interface {
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
-	PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error)
+	PaySteps(pc PayContext, steps *big.Int) (*big.Int, error)
 	CanAcceptTx(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
@@ -816,9 +816,9 @@ func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *
 	return amount, fee, nil
 }
 
-func (s *accountStateImpl) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
-	if s.deposits.Has() {
-		return s.deposits.PaySteps(dc, steps), nil
+func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
+	if pc.FeeSharingEnabled() && s.deposits.Has() {
+		return s.deposits.PaySteps(pc, steps), nil
 	}
 	return nil, nil
 }
@@ -957,7 +957,7 @@ func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte, value *bi
 	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
+func (a *accountROState) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
 	return nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
