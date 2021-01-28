@@ -19,15 +19,17 @@ func TestTimerCache(t *testing.T) {
 	oss := icobject.NewObjectStoreState(tree)
 
 	tc := newTimerCache(oss,testTimerDictPrefix)
-	timer := newTimer(100)
+
+	timer := tc.Get(100, false)
+	assert.Nil(t, timer)
+	timer = tc.Get(100, true)
 	addr := common.NewAddressFromString("hx1")
 	// add address to timer 100
 	timer.Add(addr)
 	// add timer 100 to tc
-	tc.Add(timer)
 
 	// should get 100
-	res := tc.Get(100)
+	res := tc.Get(100, true)
 	assert.NotNil(t, res)
 
 	// should not get 100 from DB, because it didn't flush
@@ -41,36 +43,34 @@ func TestTimerCache(t *testing.T) {
 	o = tc.dict.Get(100)
 	assert.NotNil(t, o)
 
-
-	timer = newTimer(110)
+	timer = tc.Get(110, true)
 	addr = common.NewAddressFromString("hx2")
 	timer.Add(addr)
 	// new timer 110 added
-	tc.Add(timer)
 
 	// 110 should not be empty
-	timer = tc.Get(110)
+	timer = tc.Get(110, true)
 	assert.False(t, timer.IsEmpty())
 
 	// the item 110 in map will be removed after reset(), because there is no in DB
 	tc.Reset()
-	timer = tc.Get(110)
-	assert.Nil(t, timer)
+	timer = tc.Get(110, true)
+	assert.NotNil(t, timer)
+	assert.True(t, timer.IsEmpty())
 
-	timer = newTimer(110)
+	timer = tc.Get(110, true)
 	addr = common.NewAddressFromString("hx2")
 
 	// item 110 added and flushed, DB will have both 100, 110
 	timer.Add(addr)
-	tc.Add(timer)
 	tc.Flush()
 
-	// Reset cannot recover the data after it is explicitly removed
 	// remove item 100 in the map, not DB
-	tc.Remove(100)
+	timer = tc.Get(100, true)
+	timer.Clear()
 	tc.Reset()
-	timer = tc.Get(100)
-	// should be still empty
+	timer = tc.Get(100, true)
+	// should not be empty
 	assert.False(t, timer.IsEmpty())
 
 	// after Clear(), it cannot recover any data from DB by Reset()
@@ -79,7 +79,7 @@ func TestTimerCache(t *testing.T) {
 	assert.Equal(t, 0, len(tc.timers))
 
 	// but, it can recover specific item, using Get()
-	timer= tc.Get(110)
+	timer= tc.Get(110, true)
 	assert.NotNil(t, timer)
 }
 

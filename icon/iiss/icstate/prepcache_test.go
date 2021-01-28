@@ -15,17 +15,18 @@ func TestPrepBaseCache(t *testing.T) {
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
 	addr := common.NewAddressFromString("hx1")
-	base := NewPRepBase(addr)
 
 	// cache added
-	s.AddPRepBase(base)
+	base := s.prepBaseCache.Get(addr, false)
+	assert.Nil(t, base)
+	base = s.prepBaseCache.Get(addr, true)
 
 	addr = common.NewAddressFromString("hx2")
-	base = NewPRepBase(addr)
-	base.SetPRep("name", "emal" , "web" , "country", "city","deatil", "end", addr)
 
 	// cache added
-	s.AddPRepBase(base)
+	base = s.prepBaseCache.Get(addr, true)
+	base.SetPRep("name", "emal" , "web" , "country", "city","deatil", "end", addr)
+
 	key := icutils.ToKey(addr)
 	val := s.prepBaseCache.dict.Get(key)
 
@@ -37,16 +38,19 @@ func TestPrepBaseCache(t *testing.T) {
 	val = s.prepBaseCache.dict.Get(key)
 	assert.NotNil(t,val)
 
-	// Reset() reverts Remove(), should get after reset()
-	s.prepBaseCache.Remove(addr)
+	// Reset() reverts Clear(), should get after reset()
+	base = s.prepBaseCache.Get(addr, true)
+	base.Clear()
+
 	s.prepBaseCache.Reset()
-	base = s.prepBaseCache.Get(addr)
+	base = s.prepBaseCache.Get(addr, true)
 	assert.False(t, base.IsEmpty())
 	assert.Equal(t, "name" , base.name)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
-	s.prepBaseCache.Remove(addr)
+	base = s.prepBaseCache.Get(addr, true)
+	base.Clear()
 	s.prepBaseCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepBaseCache.dict.Get(key)
@@ -60,7 +64,7 @@ func TestPrepBaseCache(t *testing.T) {
 
 	// but it can get item, using Get() specifically
 	addr = common.NewAddressFromString("hx1")
-	base = s.prepBaseCache.Get(addr)
+	base = s.prepBaseCache.Get(addr, true)
 
 	assert.Equal(t, 1, len(s.prepBaseCache.bases))
 }
@@ -70,17 +74,17 @@ func TestPrepStatusCache(t *testing.T) {
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
 	addr := common.NewAddressFromString("hx1")
-	status := NewPRepStatus(addr)
 
 	// cache added
-	s.AddPRepStatus(status)
+	status := s.prepStatusCache.Get(addr, false)
+	assert.Nil(t, status)
+	status = s.prepStatusCache.Get(addr, true)
 
 	addr = common.NewAddressFromString("hx2")
-	status = NewPRepStatus(addr)
+	status = s.prepStatusCache.Get(addr, true)
 	status.SetVTotal(100)
 
 	// cache added
-	s.AddPRepStatus(status)
 	key := icutils.ToKey(addr)
 	val := s.prepStatusCache.dict.Get(key)
 
@@ -92,16 +96,18 @@ func TestPrepStatusCache(t *testing.T) {
 	val = s.prepStatusCache.dict.Get(key)
 	assert.NotNil(t,val)
 
-	// Reset() reverts Remove(), should get after reset()
-	s.prepStatusCache.Remove(addr)
+	// Reset() reverts Clear(), should get after reset()
+	status = s.prepStatusCache.Get(addr, true)
+	status.Clear()
 	s.prepStatusCache.Reset()
-	status = s.prepStatusCache.Get(addr)
+	status = s.prepStatusCache.Get(addr, true)
 	assert.False(t, status.IsEmpty())
 	assert.Equal(t, 100, status.vTotal)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
-	s.prepStatusCache.Remove(addr)
+	status = s.prepStatusCache.Get(addr, true)
+	status.Clear()
 	s.prepStatusCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepStatusCache.dict.Get(key)
@@ -115,7 +121,7 @@ func TestPrepStatusCache(t *testing.T) {
 
 	// but it can get item, using Get() specifically
 	addr = common.NewAddressFromString("hx1")
-	status = s.prepStatusCache.Get(addr)
+	status = s.prepStatusCache.Get(addr, true)
 
 	assert.Equal(t, 1, len(s.prepStatusCache.statuses))
 }

@@ -18,14 +18,14 @@ func TestAccountCache(t *testing.T) {
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
 
-	// add
-	s.accountCache.Add(newAccount(addr1))
-	s.accountCache.Add(newAccount(addr2))
+	account := s.accountCache.Get(addr1, false)
+	assert.Nil(t, account)
 
-	account := s.accountCache.Get(addr1)
+	account = s.accountCache.Get(addr1, true)
 	account.SetStake(big.NewInt(int64(40)))
 
-	account = s.accountCache.Get(addr2)
+
+	account = s.accountCache.Get(addr2, true)
 	account.SetStake(big.NewInt(int64(100)))
 
 	// flush
@@ -38,7 +38,7 @@ func TestAccountCache(t *testing.T) {
 
 	// item(addr2) should be gotten from the map, although it is deleted in DB
 	s.accountCache.dict.Delete(addr2)
-	account = s.accountCache.Get(addr2)
+	account = s.accountCache.Get(addr2, true)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
 
 	// reset
@@ -46,7 +46,7 @@ func TestAccountCache(t *testing.T) {
 
 	// Reset() will affect on items in map
 	// Get() will return empty object, not nil, if there is no both in map and db
-	account = s.accountCache.Get(addr2)
+	account = s.accountCache.Get(addr2, true)
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(0)))
 
 	assert.False(t, account.IsEmpty())
@@ -64,13 +64,14 @@ func TestAccountCache(t *testing.T) {
 
 
 	// remove
-	s.accountCache.Remove(addr1)
-	account = s.accountCache.Get(addr1)
+	account = s.accountCache.Get(addr1, true)
+	account.Clear()
+	account = s.accountCache.Get(addr1, true)
 	assert.True(t, account.IsEmpty())
 
 	// Should get after reset()
 	s.accountCache.Reset()
-	account = s.accountCache.Get(addr1)
+	account = s.accountCache.Get(addr1, true)
 	assert.False(t, account.IsEmpty())
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(40)))
 
@@ -79,11 +80,12 @@ func TestAccountCache(t *testing.T) {
 	// nothing to flush, cannot affect dictDB
 	s.accountCache.Flush()
 	// Get() gets data directly from dictDB, if there's no in Map
-	account = s.accountCache.Get(addr2)
+	account = s.accountCache.Get(addr2, true)
 	assert.Equal(t, false, account.IsEmpty())
 	assert.Equal(t, 0,account.stake.Cmp(big.NewInt(100)))
-
-	s.accountCache.Remove(addr2)
+	
+	account = s.accountCache.Get(addr2, true)
+	account.Clear()
 	s.accountCache.Flush()
 
 	key := icutils.ToKey(addr2)

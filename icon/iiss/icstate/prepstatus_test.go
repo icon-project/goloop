@@ -57,13 +57,16 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 
 	addr1 := common.NewAddressFromString("hx1")
 
-	status1 := NewPRepStatus(addr1)
+/*	status1 := NewPRepStatus(addr1)
 	base := NewPRepBase(addr1)
 	s.AddPRepBase(base)
 	s.AddPRepStatus(status1)
+	s.prepStatusCache.Get(addr1)
+	s.prepBaseCache.Get(addr1)*/
 
 	delegated := big.NewInt(int64(99))
-	s.GetPRepStatus(addr1).SetDelegated(delegated)
+	status1 := s.GetPRepStatus(addr1)
+	status1.SetDelegated(delegated)
 	bonded := big.NewInt(int64(1))
 	s.GetPRepStatus(addr1).SetBonded(bonded)
 	res := status1.GetBondedDelegation(5)
