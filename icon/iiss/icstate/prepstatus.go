@@ -367,5 +367,6 @@ func NewPRepStatus(owner module.Address) *PRepStatus {
 		vTotal:     0,
 		lastState:  None,
 		lastHeight: 0,
+		status:     NotReady,
 	}
 }
