@@ -9,25 +9,30 @@ TYPE_BYTES = 3
 TYPE_STR = 4
 
 
+class Person(TypedDict):
+    name: str
+    age: int
+
+
 class InterCallInterface(InterfaceScore):
     @interface
-    def call_bool(self, param: bool):
+    def call_bool(self, param: Optional[bool]):
         pass
 
     @interface
-    def call_address(self, param: Address):
+    def call_address(self, param: Optional[Address]):
         pass
 
     @interface
-    def call_int(self, param: int):
+    def call_int(self, param: Optional[int]):
         pass
 
     @interface
-    def call_bytes(self, param: bytes):
+    def call_bytes(self, param: Optional[bytes]):
         pass
 
     @interface
-    def call_str(self, param: str):
+    def call_str(self, param: Optional[str]):
         pass
 
     @interface
@@ -40,6 +45,14 @@ class InterCallInterface(InterfaceScore):
 
     @interface
     def call_all_default(self, _bool: bool, _int: int):
+        pass
+
+    @interface
+    def call_struct(self, person: Person):
+        pass
+
+    @interface
+    def call_list_struct(self, people: List[Person]):
         pass
 
 
@@ -59,11 +72,13 @@ class CheckParams(IconScoreBase):
     @external
     def call_bool(self, param: bool):
         if param is None:
-            self._type_val['bool'] = 'None'
+            value = 'None'
         elif isinstance(param, bool):
-            self._type_val['bool'] = str(param).lower()
+            value = str(param).lower()
+            self.LogCallValue(param, None, None, None, None)
         else:
-            self._type_val['bool'] = "not bool"
+            value = "not bool"
+        self._type_val['bool'] = value
 
     @external
     def call_address(self, param: Address):
@@ -123,7 +138,22 @@ class CheckParams(IconScoreBase):
         elif not isinstance(p_bytes, bytes):
             self._type_val['all'] = "not bytes"
 
-    def convert_type(self, param, ptype):
+    @external
+    def call_struct(self, person: Person):
+        self._type_val['person.name'] = person['name']
+        self._type_val['person.age'] = str(person['age'])
+
+    @external
+    def call_list_struct(self, people: List[Person]):
+        i = 0
+        for person in people:
+            self._type_val[f'person.name.{i}'] = person['name']
+            self._type_val[f'person.age.{i}'] = str(person['age'])
+            i += 1
+        self._type_val['person.index'] = str(i)
+
+    @staticmethod
+    def convert_type(param, ptype):
         if ptype == TYPE_BOOL:
             if isinstance(param, bool):
                 o = param
@@ -185,6 +215,16 @@ class CheckParams(IconScoreBase):
         recipient_score = self.create_interface_score(_to, InterCallInterface)
         recipient_score.call_all(p_bool, p_addr, p_int, p_str, p_bytes)
 
+    @external
+    def inter_call_struct(self, _to: Address, person: Person):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_struct(person)
+
+    @external
+    def inter_call_list_struct(self, _to: Address, people: List[Person]):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_list_struct(people)
+
     @external(readonly=True)
     def check_bool(self) -> str:
         return self._type_val['bool']
@@ -208,6 +248,20 @@ class CheckParams(IconScoreBase):
     @external(readonly=True)
     def check_all(self) -> str:
         return self._type_val['all']
+
+    @external(readonly=True)
+    def check_struct(self) -> Person:
+        return Person(name=self._type_val['person.name'],
+                      age=int(self._type_val['person.age']))
+
+    @external(readonly=True)
+    def check_list_struct(self) -> List[Person]:
+        ret = []
+        end = int(self._type_val['person.index'])
+        for i in range(end):
+            ret.append(Person(name=self._type_val[f'person.name.{i}'],
+                              age=int(self._type_val[f'person.age.{i}'])))
+        return ret
 
     @external
     def call_default_param(self, default_param: bytes = None):
@@ -242,7 +296,7 @@ class CheckParams(IconScoreBase):
         elif ptype == TYPE_STR:
             recipient_score.call_str(None)
         else:
-            self.revert(f'IllegalPType{ptype})')
+            revert(f'IllegalPType{ptype})')
 
     @external
     def inter_call_with_default_param(self, _to: Address, p_bool: bool = True,

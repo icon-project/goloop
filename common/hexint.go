@@ -66,6 +66,19 @@ func (i *HexInt) Value() *big.Int {
 	return &i.Int
 }
 
+func (i *HexInt) SetValue(x *big.Int) *HexInt {
+	if iv := i.Int.Set(x); iv == nil {
+		return nil
+	} else {
+		return i
+	}
+}
+
+func (i *HexInt) AddValue(x, y *big.Int) *HexInt {
+	i.Add(x, y)
+	return i
+}
+
 func NewHexInt(v int64) *HexInt {
 	i := new(HexInt)
 	i.SetInt64(v)

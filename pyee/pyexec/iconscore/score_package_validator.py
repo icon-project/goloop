@@ -72,8 +72,7 @@ class ScorePackageValidator(object):
         return cls.ICONSERVICE_WHITELIST
 
     @classmethod
-    def execute(cls,
-                code_path: str) -> callable:
+    def execute(cls, code_path: str):
         dirname: str = os.path.dirname(code_path)
         package: str = os.path.basename(code_path)
 
@@ -96,15 +95,14 @@ class ScorePackageValidator(object):
             cls._validate_blacklist_keyword_from_names(code.co_names)
 
     @classmethod
-    def _make_custom_import_list(cls,
-                                 pkg_root_path: str) -> list:
+    def _make_custom_import_list(cls, pkg_root_path: str) -> list:
         tmp_list = []
-        for dirpath, _, filenames in os.walk(pkg_root_path):
+        for dir_path, _, filenames in os.walk(pkg_root_path):
             for file in filenames:
                 file_name, extension = os.path.splitext(file)
                 if extension != '.py':
                     continue
-                sub_pkg_path = os.path.relpath(dirpath, pkg_root_path)
+                sub_pkg_path = os.path.relpath(dir_path, pkg_root_path)
                 if sub_pkg_path == '.':
                     pkg_path = file_name
                 else:
@@ -115,15 +113,13 @@ class ScorePackageValidator(object):
         return tmp_list
 
     @classmethod
-    def _validate_blacklist_keyword_from_names(cls,
-                                               co_names: tuple):
+    def _validate_blacklist_keyword_from_names(cls, co_names: tuple):
         for co_name in co_names:
             if co_name in BLACKLIST_RESERVED_KEYWORD:
                 raise IllegalFormatException(f'Blacklist keyword found: {co_name}')
 
     @classmethod
-    def _validate_import_from_code(cls,
-                                   code):
+    def _validate_import_from_code(cls, code):
         if not hasattr(code, CODE_ATTR):
             return
 
@@ -136,8 +132,7 @@ class ScorePackageValidator(object):
                 cls._validate_import(code_index, byte_code_list, code.co_names, code.co_consts)
 
     @classmethod
-    def _validate_import_from_const(cls,
-                                    co_consts: tuple):
+    def _validate_import_from_const(cls, co_consts: tuple):
         for co_const in co_consts:
             if not hasattr(co_const, CODE_ATTR):
                 continue
@@ -202,7 +197,7 @@ class ScorePackageValidator(object):
                 if from_list[0] != '*':
                     raise IllegalFormatException(f'Invalid star import: {import_name}')
             elif IMPORT_FROM == next_op_code_key:
-                # import from
+                # import_from
                 for import_from in from_list:
                     if '*' not in cls.WHITELIST_IMPORT[import_name] and \
                             import_from not in cls.WHITELIST_IMPORT[import_name]:

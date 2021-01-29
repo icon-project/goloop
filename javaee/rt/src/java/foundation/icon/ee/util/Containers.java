@@ -25,4 +25,11 @@ public class Containers {
         return result;
     }
 
+    public static byte[] concatArray(byte[] first, byte[] second) {
+        byte[] result = Arrays.copyOf(first, first.length + second.length);
+        System.arraycopy(second, 0, result, first.length, second.length);
+        return result;
+    }
+
+
 }

@@ -24,7 +24,8 @@ import java.util.zip.ZipException;
  */
 public class JarBuilder {
     // Defines a fixed timestamp for producing reproducible archives.
-    private static final long FIXED_TIMESTAMP = 315532800000L; // Tue Jan 1 00:00:00 UTC 1980
+    //private static final long FIXED_TIMESTAMP = 315532800000L; // Tue Jan 1 00:00:00 UTC 1980
+    private static final long FIXED_TIMESTAMP = 0;
 
     // The API Info file name
     private static final String APIS_NAME = "META-INF/APIS";

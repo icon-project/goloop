@@ -59,6 +59,12 @@ func bytesToNibs(k []byte) []byte {
 	return nibs
 }
 
+func (mb *mptBase) Equal(mb2 *mptBase) bool {
+	return mb.db == mb2.db &&
+		mb.bucket == mb2.bucket &&
+		mb.objectType == mb2.objectType
+}
+
 func (m *mpt) bytesToNibs(k []byte) []byte {
 	ks := len(k)
 	if cap(m.nibs) < ks*2 {
@@ -270,7 +276,7 @@ func (m *mpt) Reset(s trie.ImmutableForObject) {
 	}
 
 	m2, ok := s.(*mpt)
-	if (!ok) || !reflect.DeepEqual(m2.mptBase, m.mptBase) {
+	if (!ok) || !m2.mptBase.Equal(&m.mptBase) {
 		log.Panicln("Supplied ImmutableForObject isn't usable in here", s)
 	}
 	m.root = m2.root

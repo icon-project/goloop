@@ -22,6 +22,7 @@ type Transaction interface {
 	Timestamp() int64
 	Nonce() *big.Int
 	To() module.Address
+	IsSkippable() bool
 }
 
 type GenesisTransaction interface {

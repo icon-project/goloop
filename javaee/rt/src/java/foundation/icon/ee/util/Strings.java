@@ -30,10 +30,14 @@ public class Strings {
     private static final String hexDigits = "0123456789abcdef";
 
     public static String hexFromBytes(byte[] ba) {
+        return hexFromBytes(ba, " ");
+    }
+
+    public static String hexFromBytes(byte[] ba, String sep) {
         var sb = new StringBuilder();
         for (int i=0; i<ba.length; i++) {
             if (i>0) {
-                sb.append(' ');
+                sb.append(sep);
             }
             sb.append(hexDigits.charAt((ba[i]>>4)&0xf));
             sb.append(hexDigits.charAt((ba[i])&0xf));

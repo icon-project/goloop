@@ -49,6 +49,7 @@ type depositImpl interface {
 	ConsumeDepositLv1(height int64, amount *big.Int) *big.Int
 	ConsumeDepositLv2(height int64, amount *big.Int) *big.Int
 	Clone() depositImpl
+	Equal(depositImpl) bool
 }
 
 type deposit struct {
@@ -89,6 +90,10 @@ func (dp *deposit) RLPDecodeSelf(d codec.Decoder) error {
 			"InvalidDepositVersion(version=%d)", version)
 	}
 	return dp.depositImpl.RLPDecodeFields(d2)
+}
+
+func (dp *deposit) Equal(dp2 *deposit) bool {
+	return dp.depositImpl.Equal(dp2.depositImpl)
 }
 
 type depositV1 struct {
@@ -290,6 +295,22 @@ func (d *depositV1) Clone() depositImpl {
 	return d2
 }
 
+func (d *depositV1) Equal(d2 depositImpl) bool {
+	if d2p, ok := d2.(*depositV1); !ok {
+		return false
+	} else {
+		if d == d2p {
+			return true
+		}
+		return bytes.Equal(d.ID, d2p.ID) &&
+			d.DepositAmount.Cmp(d2p.DepositAmount) == 0 &&
+			d.DepositRemain.Cmp(d2p.DepositRemain) == 0 &&
+			d.ExpireHeight == d2p.ExpireHeight &&
+			d.StepIssued.Cmp(d2p.StepIssued) == 0 &&
+			d.StepRemain.Cmp(d2p.StepRemain) == 0
+	}
+}
+
 func newDepositV1(dc DepositContext, value *big.Int) (*depositV1, error) {
 	issue := calcVirtualSteps(value, dc.DepositIssueRate(), dc.StepPrice())
 	return &depositV1{
@@ -390,6 +411,14 @@ func (d *depositV2) Clone() depositImpl {
 	d2 := new(depositV2)
 	*d2 = *d
 	return d2
+}
+
+func (d *depositV2) Equal(d2 depositImpl) bool {
+	if d2p, ok := d2.(*depositV2); !ok {
+		return false
+	} else {
+		return d.DepositRemain.Cmp(d2p.DepositRemain) == 0
+	}
 }
 
 func newDepositV2(dc DepositContext, value *big.Int) (*depositV2, error) {

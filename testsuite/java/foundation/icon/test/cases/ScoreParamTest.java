@@ -22,6 +22,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
@@ -35,6 +36,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -278,6 +281,82 @@ class ScoreParamTest extends TestBase {
         LOG.infoExiting();
     }
 
+    static class Person {
+        String name;
+        BigInteger age;
+
+        public Person(String name, BigInteger age) {
+            this.name = name;
+            this.age = age;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Person) {
+                Person other = (Person) obj;
+                return (this.name.equals(other.name)
+                        && this.age.equals(other.age));
+            }
+            return false;
+        }
+    }
+
+    @Test
+    void callStruct() throws Exception {
+        LOG.infoEntering("callStruct");
+        Person alice = new Person("Alice", BigInteger.valueOf(20));
+        RpcObject params = new RpcObject.Builder()
+                .put("person", new RpcObject.Builder()
+                        .put("name", new RpcValue(alice.name))
+                        .put("age", new RpcValue(alice.age))
+                        .build()
+                ).build();
+        LOG.infoEntering("invoke call_struct");
+        assertSuccess(testScore.invokeAndWaitResult(callerWallet,
+                "call_struct", params, BigInteger.ZERO, BigInteger.valueOf(100)));
+        LOG.infoExiting();
+        RpcItem item = testScore.call("check_struct", null);
+        Person other = new Person(
+                item.asObject().getItem("name").asString(),
+                item.asObject().getItem("age").asInteger());
+        assertEquals(alice, other);
+        LOG.infoExiting();
+    }
+
+    @Test
+    void callListStruct() throws Exception {
+        LOG.infoEntering("callListStruct");
+        var peopleList = List.of(
+                new Person("Alice", BigInteger.valueOf(20)),
+                new Person("Bob", BigInteger.valueOf(30)),
+                new Person("Charlie", BigInteger.valueOf(40))
+        );
+        var array = new RpcArray.Builder();
+        for (var p : peopleList) {
+            array.add(new RpcObject.Builder()
+                    .put("name", new RpcValue(p.name))
+                    .put("age", new RpcValue(p.age))
+                    .build());
+        }
+        RpcObject params = new RpcObject.Builder()
+                .put("people", array.build())
+                .build();
+        LOG.infoEntering("invoke call_list_struct");
+        assertSuccess(testScore.invokeAndWaitResult(callerWallet,
+                "call_list_struct", params, BigInteger.ZERO, BigInteger.valueOf(100)));
+        LOG.infoExiting();
+        RpcItem ret = testScore.call("check_list_struct", null);
+        var retList = new ArrayList<Person>();
+        for (RpcItem item : ret.asArray().asList()) {
+            Person p = new Person(
+                    item.asObject().getItem("name").asString(),
+                    item.asObject().getItem("age").asInteger());
+            retList.add(p);
+        }
+        assertEquals(peopleList, retList);
+        LOG.infoExiting();
+    }
+
     @Test
     void interCallBool() throws Exception {
         LOG.infoEntering("interCallBool");
@@ -475,6 +554,64 @@ class ScoreParamTest extends TestBase {
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         RpcItem item = interCallScore.call("check_all", null);
         assertEquals("all", item.asString());
+        LOG.infoExiting();
+    }
+
+    @Test
+    void interCallStruct() throws Exception {
+        LOG.infoEntering("interCallStruct");
+        Person alice = new Person("Alice1", BigInteger.valueOf(21));
+        RpcObject params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .put("person", new RpcObject.Builder()
+                        .put("name", new RpcValue(alice.name))
+                        .put("age", new RpcValue(alice.age))
+                        .build()
+                ).build();
+        LOG.infoEntering("invoke inter_call_struct");
+        assertSuccess(testScore.invokeAndWaitResult(callerWallet,
+                "inter_call_struct", params, BigInteger.ZERO, BigInteger.valueOf(100)));
+        LOG.infoExiting();
+        RpcItem item = interCallScore.call("check_struct", null);
+        Person other = new Person(
+                item.asObject().getItem("name").asString(),
+                item.asObject().getItem("age").asInteger());
+        assertEquals(alice, other);
+        LOG.infoExiting();
+    }
+
+    @Test
+    void interCallListStruct() throws Exception {
+        LOG.infoEntering("interCallListStruct");
+        var peopleList = List.of(
+                new Person("Alice1", BigInteger.valueOf(21)),
+                new Person("Bob1", BigInteger.valueOf(31)),
+                new Person("Charlie1", BigInteger.valueOf(41))
+        );
+        var array = new RpcArray.Builder();
+        for (var p : peopleList) {
+            array.add(new RpcObject.Builder()
+                    .put("name", new RpcValue(p.name))
+                    .put("age", new RpcValue(p.age))
+                    .build());
+        }
+        RpcObject params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .put("people", array.build())
+                .build();
+        LOG.infoEntering("invoke inter_call_list_struct");
+        assertSuccess(testScore.invokeAndWaitResult(callerWallet,
+                "inter_call_list_struct", params, BigInteger.ZERO, BigInteger.valueOf(100)));
+        LOG.infoExiting();
+        RpcItem ret = interCallScore.call("check_list_struct", null);
+        var retList = new ArrayList<Person>();
+        for (RpcItem item : ret.asArray().asList()) {
+            Person p = new Person(
+                    item.asObject().getItem("name").asString(),
+                    item.asObject().getItem("age").asInteger());
+            retList.add(p);
+        }
+        assertEquals(peopleList, retList);
         LOG.infoExiting();
     }
 

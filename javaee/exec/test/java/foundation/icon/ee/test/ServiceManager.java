@@ -14,7 +14,7 @@ import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.util.Crypto;
-import org.aion.avm.core.util.ByteArrayWrapper;
+import foundation.icon.ee.util.Strings;
 import org.aion.avm.utilities.JarBuilder;
 import org.msgpack.core.MessagePack;
 import org.msgpack.value.ArrayValue;
@@ -32,35 +32,31 @@ import static foundation.icon.ee.ipc.EEProxy.Info;
 public class ServiceManager implements Agent {
     private final ArrayList<MyProxy> allProxies = new ArrayList<>();
     private MyProxy proxy;
-    private State state = new State();
     private int nextScoreAddr = 1;
     private int nextExtAddr = 1;
     private BigInteger value = BigInteger.valueOf(0);
     private BigInteger stepLimit = BigInteger.valueOf(1_000_000_000);
-    private State.Account current;
-    private Address origin;
     private final Map<String, Object> info = new HashMap<>();
     private final StepCost stepCost;
     private boolean isReadOnly = false;
-    private int eid = 0;
-    private int exid = 0;
     private Indexer indexer;
     private Consumer<String> logger;
+    private final Context context;
 
     private boolean isClassMeteringEnabled = true;
 
     public ServiceManager(Connection conn) {
         proxy = new MyProxy(conn);
         allProxies.add(proxy);
-        origin = newExternalAddress();
+        context = new Context(newExternalAddress());
         info.put(Info.BLOCK_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.BLOCK_HEIGHT, BigInteger.valueOf(10));
         info.put(Info.TX_HASH, Arrays.copyOf(new byte[]{1, 2}, 32));
         info.put(Info.TX_INDEX, BigInteger.valueOf(1));
-        info.put(Info.TX_FROM, origin);
+        info.put(Info.TX_FROM, context.getOrigin());
         info.put(Info.TX_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.TX_NONCE, BigInteger.valueOf(2));
-        info.put(Info.CONTRACT_OWNER, origin);
+        info.put(Info.CONTRACT_OWNER, context.getOrigin());
         Map<String, BigInteger> stepCosts = new HashMap<>(Map.of(
                 StepCost.GET, BigInteger.valueOf(40),
                 StepCost.REPLACE, BigInteger.valueOf(80),
@@ -73,7 +69,6 @@ public class ServiceManager implements Agent {
         ));
         info.put(Info.STEP_COSTS, stepCosts);
         stepCost = new StepCost(stepCosts);
-        current = state.getAccount(origin);
     }
 
     public void setIndexer(Indexer indexer) {
@@ -120,25 +115,30 @@ public class ServiceManager implements Agent {
     }
 
     public ContractAddress mustDeploy(Class<?> main, Object ... params) {
-        ++exid;
-        eid = 0;
         byte[] jar = makeJar(main);
-        return doDeploy(jar, params);
+        return doMustDeploy(jar, params);
+    }
+
+    public ContractAddress mustDeploy(byte[] jar, Object ... params) {
+        return doMustDeploy(jar, params);
+    }
+
+    private Result deployInner(Address to, BigInteger value, BigInteger stepLimit,
+            String contentType, byte[] content, Object[] params) {
+        return doDeploy(to, value, stepLimit, contentType, content, params);
     }
 
     public Address getOrigin() {
-        return origin;
+        return context.getOrigin();
     }
 
     public ContractAddress mustDeploy(Class<?>[] all, Object ... params) {
-        ++exid;
-        eid = 0;
         byte[] jar = makeJar(all[0].getName(), all);
-        return doDeploy(jar, params);
+        return doMustDeploy(jar, params);
     }
 
     private Method[] getAPI(String path) throws IOException {
-        printf("SEND getAPI %s%n", path);
+        printf("SEND getAPI %s%n", getPrefix(path, 6));
         proxy.sendMessage(EEProxy.MsgType.GETAPI, path);
         var msg = waitFor(EEProxy.MsgType.GETAPI);
         var packer = MessagePack.newDefaultBufferPacker();
@@ -159,32 +159,42 @@ public class ServiceManager implements Agent {
         return res;
     }
 
-    private ContractAddress doDeploy(byte[] jar, Object ... params) {
-        Address scoreAddr = newScoreAddress();
-        String path = getHexPrefix(scoreAddr);
-        try {
-            var prev = current;
-            var prevState = new State(state);
-            state.writeFile(path + "/code.jar", jar);
-            Method[] methods = getAPI(path);
-            if (methods==null) {
-                throw new TransactionException(new Result(Status.IllegalFormat,
-                        0, null));
+    private ContractAddress doMustDeploy(byte[] jar, Object ... params) {
+        var res = doDeploy(null, BigInteger.ZERO, stepLimit,
+                "application/java", jar, params);
+        assert res != null;
+        if (res.getStatus() != Status.Success) {
+            throw new TransactionException(res);
+        }
+        var address = (Address) res.getRet();
+        return new ContractAddress(this, address);
+    }
+
+    private Result doDeploy(Address to, BigInteger value, BigInteger stepLimit,
+            String contentType, byte[] jar, Object[] params) {
+        if (to == null) {
+            to = newScoreAddress();
+        }
+        var codeID = Strings.hexFromBytes(Crypto.sha3_256(jar), "");
+        //var codeID = getHexPrefix(to);
+        try (var cl = context.beginExecution()) {
+            try {
+                context.writeFile(codeID + "/code.jar", jar);
+                Method[] methods = getAPI(codeID);
+                if (methods == null) {
+                    return new Result(Status.IllegalFormat, 0, null);
+                }
+                context.beginFrame(to, codeID, methods);
+                info.put(Info.CONTRACT_OWNER, context.getFrom());
+                var res = doInvoke(codeID, false, context.getFrom(), to, value, stepLimit, "<init>", params);
+                if (res.getStatus() == Status.Success) {
+                    context.commit(true);
+                    res = res.updateRet(to);
+                }
+                return res;
+            } catch (IOException e) {
+                throw new AssertionError(e);
             }
-            current = state.getAccount(scoreAddr);
-            info.put(Info.CONTRACT_OWNER, origin);
-            var res = doInvoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
-            if (res.getStatus()!=0) {
-                state = prevState;
-                current = state.getAccount(prev.address);
-                throw new TransactionException(res);
-            }
-            var contract = new ContractAddress(ServiceManager.this, scoreAddr, methods);
-            current.contractAddress = contract;
-            current = state.getAccount(prev.address);
-            return contract;
-        } catch (IOException e) {
-            throw new AssertionError(e);
         }
     }
 
@@ -201,15 +211,7 @@ public class ServiceManager implements Agent {
     }
 
     public FileIO getFileIO() {
-        return new FileIO() {
-            public byte[] readFile(String path) {
-                return state.readFile(path);
-            }
-
-            public void writeFile(String path, byte[] bytes) {
-                state.writeFile(path, bytes);
-            }
-        };
+        return context;
     }
 
     private Object[] unpackByteArrayArray(ArrayValue arr) {
@@ -229,7 +231,7 @@ public class ServiceManager implements Agent {
             switch(msg.type) {
                 case EEProxy.MsgType.GETVALUE: {
                     var key = msg.value.asRawValue().asByteArray();
-                    var value = current.storage.get(new ByteArrayWrapper(key));
+                    var value = context.getStorage(key);
                     printf("RECV getValue %s => %s%n", key, value);
                     proxy.sendMessage(EEProxy.MsgType.GETVALUE, value!=null, value);
                     break;
@@ -240,11 +242,11 @@ public class ServiceManager implements Agent {
                     var flag = data.get(1).asIntegerValue().toInt();
                     byte[] old;
                     if ((flag & EEProxy.SetValueFlag.DELETE) != 0) {
-                        old = current.storage.remove(new ByteArrayWrapper(key));
+                        old = context.removeStorage(key);
                         printf("RECV setValue %s isDelete=%b%n", key, true);
                     } else {
                         var value = data.get(2).asRawValue().asByteArray();
-                        old = current.storage.put(new ByteArrayWrapper(key), value);
+                        old = context.setStorage(key, value);
                         printf("RECV setValue %s isDelete=%b %s%n", key, false, value);
                     }
                     if ((flag & EEProxy.SetValueFlag.OLDVALUE) != 0) {
@@ -264,20 +266,37 @@ public class ServiceManager implements Agent {
                     String dataType = data.get(3).asStringValue().asString();
                     @SuppressWarnings("unchecked")
                     var dataObj = (Map<String, Object>) TypedObj.decodeAny(data.get(4));
-                    assert "call".equals(dataType);
                     assert dataObj != null;
-                    String method = (String) dataObj.get("method");
-                    Object[] params = (Object[]) dataObj.get("params");
-                    printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
-                            to, value, stepLimit, method, params);
-                    current.eid = eid;
-                    var res = invokeInner(to, value, stepLimit, method, params);
+                    Result res = null;
+                    switch (dataType) {
+                        case "call": {
+                            String method = (String) dataObj.get("method");
+                            Object[] params = (Object[]) dataObj.get("params");
+                            printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
+                                    to, value, stepLimit, method, params);
+                            res = invokeInner(to, value, stepLimit, method, params);
+                            break;
+                        }
+                        case "deploy": {
+                            String contentType = (String) dataObj.get("contentType");
+                            byte[] content = (byte[]) dataObj.get("content");
+                            Object[] params = (Object[]) dataObj.get("params");
+                            printf("RECV call to=%s value=%d stepLimit=%d contentType=%s" +
+                                    " content={len=%d hash=%s} params=%s%n",
+                                    to, value, stepLimit, contentType,
+                                    content.length, Crypto.sha3_256(content), params);
+                            res = deployInner(to, value, stepLimit, contentType, content, params);
+                            break;
+                        }
+                        default:
+                            assert false;
+                    }
                     printf("SEND result status=%d stepUsed=%d ret=%s EID=%d prevEID=%d%n",
                             res.getStatus(), res.getStepUsed(), res.getRet(),
-                            eid, current.eid);
+                            context.getContextEID(), context.getEID());
                     proxy.sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
                             res.getStepUsed(),
-                            TypedObj.encodeAny(res.getRet()), eid, current.eid);
+                            TypedObj.encodeAny(res.getRet()), context.getContextEID(), context.getEID());
                     break;
                 }
                 case EEProxy.MsgType.EVENT: {
@@ -289,7 +308,7 @@ public class ServiceManager implements Agent {
                 }
                 case EEProxy.MsgType.GETBALANCE: {
                     var addr = new Address(msg.value.asRawValue().asByteArray());
-                    var balance = state.getAccount(addr).balance;
+                    var balance = context.getBalance(addr);
                     proxy.sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
                     printf("RECV getBalance %s => %d%n", addr, balance);
                     break;
@@ -308,18 +327,12 @@ public class ServiceManager implements Agent {
                     }
                     break;
                 }
-                case EEProxy.MsgType.SETCODE:{
-                    var code = msg.value.asRawValue().asByteArray();
-                    state.writeFile(getHexPrefix(current.address) + "/transformed.jar", code);
-                    printf("RECV setCode hash=%s len=%d%n", Crypto.sha3_256(code), code.length);
-                    break;
-                }
                 case EEProxy.MsgType.GETOBJGRAPH: {
                     var flag = msg.value.asIntegerValue().asInt();
-                    var nextHash = current.nextHash;
-                    var ogh = current.objectGraphHash;
+                    var nextHash = context.getNextHash();
+                    var ogh = context.getObjectGraphHash();
                     if ((flag&1)!=0) {
-                        var og = current.objectGraph;
+                        var og = context.getObjectGraph();
                         printf("RECV getObjGraph flag=%d => next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, ogh, og.length, beautifyObjectGraph(og));
                         proxy.sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh, og);
                     } else {
@@ -332,12 +345,11 @@ public class ServiceManager implements Agent {
                     var data = msg.value.asArrayValue();
                     var flag = data.get(0).asIntegerValue().asInt();
                     var nextHash = data.get(1).asIntegerValue().asInt();
-                    current.nextHash = nextHash;
+                    context.setNextHash(nextHash);
                     if ((flag&1)!=0) {
                         var og = data.get(2).asRawValue().asByteArray();
-                        current.objectGraphHash = Crypto.sha3_256(og);
-                        current.objectGraph = og;
-                        printf("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, current.objectGraphHash, og.length, beautifyObjectGraph(og));
+                        context.setObjectGraph(og);
+                        printf("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, context.getObjectGraphHash(), og.length, beautifyObjectGraph(og));
                     } else {
                         printf("RECV setObjGraph flag=%d next=%d%n", flag, nextHash);
                     }
@@ -355,13 +367,6 @@ public class ServiceManager implements Agent {
         }
     }
 
-    public Result invoke(Address to, BigInteger value, BigInteger stepLimit,
-                         String method, Object[] params) throws IOException {
-        ++exid;
-        eid = 0;
-        return doInvoke(false, to, value, stepLimit, method, params);
-    }
-
     private Result invokeInner(Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
         return doInvoke(false, to, value, stepLimit, method, params);
@@ -369,35 +374,37 @@ public class ServiceManager implements Agent {
 
     public Result invoke(boolean query, Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
-        ++exid;
-        eid = 0;
+        Method m = context.getMethod(to, method);
+        if (m == null) {
+            throw new TransactionException(new Result(
+                    Status.MethodNotFound,
+                    BigInteger.ZERO,
+                    "Method not found: " + method));
+        }
+        if (query && (m.getFlags() & Method.Flags.READONLY) == 0) {
+            throw new TransactionException(new Result(
+                    Status.AccessDenied,
+                    BigInteger.ZERO,
+                    "Method not found"));
+        }
         return doInvoke(query, to, value, stepLimit, method, params);
     }
 
     private Result doInvoke(boolean query, Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
-        var prev = current;
-        var prevState = new State(state);
-        var from = current.address;
-        current = state.getAccount(to);
-        info.put(Info.CONTRACT_OWNER, from);
-        var code = getHexPrefix(to) + "/transformed.jar";
-        if (state.readFile(code) == null) {
-            state = prevState;
-            current = state.getAccount(prev.address);
-            return new Result(
-                    Status.ContractNotFound,
-                    BigInteger.ZERO,
-                    "Contract not found");
+        try (var cl = context.beginExecution()) {
+            if (context.getContract(to) == null) {
+                return new Result(
+                        Status.ContractNotFound,
+                        BigInteger.ZERO,
+                        "Contract not found");
+            }
+            context.beginFrame(to);
+            info.put(Info.CONTRACT_OWNER, context.getFrom());
+            var res = doInvoke(context.getCodeID(), query, context.getFrom(), to, value, stepLimit, method, params);
+            context.commit(res.getStatus() == Status.Success);
+            return res;
         }
-        var res = doInvoke(getHexPrefix(to), query, from, to, value, stepLimit, method, params);
-        if (res.getStatus()!=0) {
-            state = prevState;
-            current = state.getAccount(prev.address);
-        } else {
-            current = state.getAccount(prev.address);
-        }
-        return res;
     }
 
     private Result doInvoke(String code, boolean isQuery, Address from,
@@ -405,7 +412,7 @@ public class ServiceManager implements Agent {
                             String method, Object[] params) throws IOException {
         boolean readOnlyMethod = false;
         if (!method.equals("<init>")) {
-            var m = current.contractAddress.getMethod(method);
+            var m = context.getMethod(method);
             readOnlyMethod = (m.getFlags()&Method.Flags.READONLY) != 0;
         }
         var prevIsReadOnly = isReadOnly;
@@ -417,35 +424,31 @@ public class ServiceManager implements Agent {
         }
         try {
             Object[] codeState = null;
-            ++eid;
-            if (current.objectGraph != null) {
-                if (current.exid != exid) {
-                    current.exid = exid;
-                    current.eid = 0;
-                }
+            if (context.getObjectGraph() != null) {
                 codeState = new Object[]{
-                        current.nextHash,
-                        current.objectGraphHash,
-                        current.eid
+                        context.getNextHash(),
+                        context.getObjectGraphHash(),
+                        context.getEID()
                 };
             }
             var prevProxy = proxy;
             if (indexer != null) {
                 var index = indexer.getIndex(to);
                 proxy = allProxies.get(index);
-                printf("SEND invoke EE=%d code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
-                        index, code, isReadOnly, from, to, value, stepLimit,
-                        method, params, eid, codeState);
+                printf("SEND invoke EE=%d code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
+                        index, getPrefix(code, 6), isReadOnly, from, to,
+                        value, stepLimit, method, params, context.getShortCID(),
+                        context.getContextEID(), codeState);
             } else {
-                printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s EID=%d codeState=%s%n",
-                        code, isReadOnly, from, to, value, stepLimit, method,
-                        params, eid, codeState);
+                printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
+                        getPrefix(code, 6), isReadOnly, from, to,
+                        value, stepLimit, method, params, context.getShortCID(),
+                        context.getContextEID(), codeState);
             }
-            // TODO need to get proper codeId
-            byte[] codeId = null;
             proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
                     to, value, stepLimit, method, TypedObj.encodeAny(params),
-                    TypedObj.encodeAny(info), codeId, eid, codeState);
+                    TypedObj.encodeAny(info), context.getContractID(),
+                    context.getContextEID(), codeState);
             var msg = waitFor(EEProxy.MsgType.RESULT);
             proxy = prevProxy;
             if (msg.type != EEProxy.MsgType.RESULT) {
@@ -455,7 +458,6 @@ public class ServiceManager implements Agent {
             var status = data.get(0).asIntegerValue().asInt();
             var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
             var result = TypedObj.decodeAny(data.get(2));
-            current.eid = eid++;
             printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
             return new Result(status, stepUsed, result);
         } finally {
@@ -490,6 +492,13 @@ public class ServiceManager implements Agent {
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    private static String getPrefix(String str, int len) {
+        if (str.length() > len) {
+            return str.substring(0, len) + "...";
+        }
+        return str;
     }
 
     private static String getHexPrefix(Address addr) {
@@ -583,7 +592,7 @@ public class ServiceManager implements Agent {
                 sendMessage(EEProxy.MsgType.CLOSE);
                 super.close();
             } catch (IOException e) {
-                throw new AssertionError(e);
+                e.printStackTrace();
             }
         }
 

@@ -107,6 +107,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			param.SecureAeads, _ = fs.GetString("secure_aeads")
 			param.DefWaitTimeout, _ = fs.GetInt64("default_wait_timeout")
 			param.MaxWaitTimeout, _ = fs.GetInt64("max_wait_timeout")
+			param.TxTimeout, _ = fs.GetInt64("tx_timeout")
 			param.AutoStart, _ = fs.GetBool("auto_start")
 
 			var buf *bytes.Buffer
@@ -167,6 +168,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		"Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string")
 	joinFlags.Int64("default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
 	joinFlags.Int64("max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
+	joinFlags.Int64("tx_timeout", 0, "Transaction timeout in milli-second (0: uses system default value)")
 	joinFlags.Bool("auto_start", false, "Auto start")
 
 	leaveCmd := &cobra.Command{

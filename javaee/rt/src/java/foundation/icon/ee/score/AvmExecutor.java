@@ -73,6 +73,7 @@ public class AvmExecutor {
         task.attachInstrumentationForThread();
         Result result = runCommon(task.getThisTransactionalKernel(),
                 transaction, eid, prevEID);
+        task.getReentrantDAppStack().unloadDApps(loader);
         task.detachInstrumentationForThread();
 
         logger.trace("{}", result);
@@ -98,19 +99,15 @@ public class AvmExecutor {
             return DAppCreator.create(kernel, task, senderAddress, recipient,
                     tx, conf);
         } else {
-            LoadedDApp dapp;
             // See if this call is trying to reenter one already on this call-stack.
-            ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
-            if (null != stateToResume) {
-                dapp = stateToResume.dApp;
-                return DAppExecutor.call(kernel, dapp, stateToResume, task,
-                        senderAddress, recipient, tx, conf);
+            var cid = kernel.getContractID();
+            ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(cid);
+            LoadedDApp dapp = task.getReentrantDAppStack().tryGetLoadedDApp(cid);
+            if (dapp == null) {
+                dapp = loader.load(kernel, conf);
             }
-            dapp = loader.load(kernel, conf);
-            var res = DAppExecutor.call(kernel, dapp, stateToResume, task,
+            return DAppExecutor.call(kernel, dapp, stateToResume, task,
                     senderAddress, recipient, tx, conf);
-            loader.unload(kernel.getCodeID(), dapp);
-            return res;
         }
     }
 

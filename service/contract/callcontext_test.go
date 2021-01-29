@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -12,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/test"
 )
 
 func TestCallContext_Call(t *testing.T) {
@@ -118,6 +120,18 @@ func (d dummyPlatformType) ToRevision(value int) module.Revision {
 	return module.AllRevision
 }
 
+type dummyChain struct {
+	test.ChainBase
+}
+
+func (c *dummyChain) TransactionTimeout() time.Duration {
+	return 5 * time.Second
+}
+
+func newDummyChain() module.Chain {
+	return &dummyChain{}
+}
+
 func newCallContext() CallContext {
 	dbo, _ := db.Open("", string(db.MapDBBackend), "map")
 	return NewCallContext(
@@ -130,7 +144,7 @@ func newCallContext() CallContext {
 			),
 			nil,
 			nil,
-			nil,
+			newDummyChain(),
 			log.New(),
 			nil,
 		),

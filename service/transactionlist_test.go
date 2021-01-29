@@ -74,6 +74,10 @@ func (t *mockTransaction) ValidateNetwork(nid int) bool {
 	return t.NID == nid
 }
 
+func (t *mockTransaction) IsSkippable() bool {
+	return true
+}
+
 func newMockTransaction(id []byte, from module.Address, ts int64) *mockTransaction {
 	return &mockTransaction{
 		id:        id,

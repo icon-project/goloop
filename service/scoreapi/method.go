@@ -623,13 +623,15 @@ func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 	}
 	m["inputs"] = inputs
 
-	outputs := make([]interface{}, len(a.Outputs))
-	for i, output := range a.Outputs {
-		oo := make(map[string]interface{})
-		oo["type"] = output.String()
-		outputs[i] = oo
+	if a.Type != Event {
+		outputs := make([]interface{}, len(a.Outputs))
+		for i, output := range a.Outputs {
+			oo := make(map[string]interface{})
+			oo["type"] = output.String()
+			outputs[i] = oo
+		}
+		m["outputs"] = outputs
 	}
-	m["outputs"] = outputs
 	if (a.Flags & FlagReadOnly) != 0 {
 		m["readonly"] = "0x1"
 	}

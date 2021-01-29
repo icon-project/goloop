@@ -1,9 +1,12 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/icon-project/goloop/service/contract"
@@ -41,8 +44,66 @@ type genesisV3JSON struct {
 	txHash   []byte
 }
 
+const (
+	ICONMainNetGenesisID = "5aa2453a84ba2fb1e3394b9e3471f5dcebc6225fc311a97ca505728153b9d246"
+	ICONMainNetCID       = 1
+)
+
+func legacySerializeValue(w io.Writer, o interface{}) error {
+	switch obj := o.(type) {
+	case string:
+		w.Write([]byte("."))
+		w.Write([]byte(obj))
+	case []interface{}:
+		for _, v := range obj {
+			if err := legacySerializeValue(w, v); err != nil {
+				return err
+			}
+		}
+	case map[string]interface{}:
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if v, ok := obj[k]; ok {
+				w.Write([]byte("."))
+				w.Write([]byte(k))
+				if err := legacySerializeValue(w, v); err != nil {
+					return err
+				}
+			}
+		}
+	default:
+		return errors.IllegalArgumentError.Errorf("InvalidType(%T)", o)
+	}
+	return nil
+}
+
+func legacySerializeMap(jso map[string]interface{}) ([]byte, error) {
+	var buf = bytes.NewBuffer(nil)
+	if err := legacySerializeValue(buf, jso); err != nil {
+		return nil, err
+	}
+	return buf.Bytes()[1:], nil
+}
+
+func serializeGenesis(bs []byte) ([]byte, error) {
+	var jso map[string]interface{}
+	if err := json.Unmarshal(bs, &jso); err != nil {
+		return nil, err
+	}
+	// If there is "chain" field, we assume that it's enterprise
+	// genesis. Otherwise, we assume that it's ICON genesis.
+	if _, ok := jso["chain"]; ok {
+		return SerializeMap(jso, nil, nil)
+	}
+	return legacySerializeMap(jso)
+}
+
 func (g *genesisV3JSON) calcHash() ([]byte, error) {
-	bs, err := SerializeJSON(g.raw, nil, nil)
+	bs, err := serializeGenesis(g.raw)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +190,12 @@ func (g *genesisV3) GetHandler(contract.ContractManager) (Handler, error) {
 	return g, nil
 }
 
+var ICONMainNetGenesisIDBytes, _ = hex.DecodeString(ICONMainNetGenesisID)
+
 func CIDForGenesisTransactionID(txid []byte) int {
+	if bytes.Equal(txid, ICONMainNetGenesisIDBytes) {
+		return ICONMainNetCID
+	}
 	return int(txid[2]) | int(txid[1])<<8 | int(txid[0])<<16
 }
 
@@ -281,6 +347,10 @@ func (g *genesisV3) Nonce() *big.Int {
 
 func (g *genesisV3) To() module.Address {
 	return state.SystemAddress
+}
+
+func (g *genesisV3) IsSkippable() bool {
+	return false
 }
 
 func checkV3Genesis(jso map[string]interface{}) bool {

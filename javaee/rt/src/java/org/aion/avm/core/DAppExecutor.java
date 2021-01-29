@@ -51,7 +51,8 @@ public class DAppExecutor {
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
         // instance loader (ReentrantGraphProcessor/ReflectionStructureCodec) can be notified when it becomes active/inactive (since it needs
         // to know if it is loading an instance
-        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp);
+        var cid = externalState.getContractID();
+        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dapp, cid, externalState.getCodeID());
         var prevState = task.getReentrantDAppStack().getTop();
         task.getReentrantDAppStack().pushState(thisState);
 
@@ -109,7 +110,7 @@ public class DAppExecutor {
             result = new Result(Status.Success, energyUsed, ret);
             if (prevState != null) {
                 prevState.inherit(thisState);
-                prevState.setRuntimeState(task.getEID(), newRS, dappAddress);
+                prevState.setRuntimeState(task.getEID(), newRS, externalState.getContractID());
             }
         } catch (AvmException e) {
             logger.trace("DApp invocation failed: {}", e.getMessage());

@@ -37,6 +37,8 @@ def main():
                         help='debugging log level')
     parser.add_argument('-s', '--socket', dest='socket',
                         help='a UNIX domain socket address for connection')
+    parser.add_argument('-p', '--verify-package', dest='verify_package', action='store_true',
+                        help='enable SCORE package validator')
     parser.add_argument('-u', '--uuid', dest='uuid', required=True,
                         help='a UUID for this instance')
     args = parser.parse_args()
@@ -54,7 +56,7 @@ def main():
         log_level = "info"
     default_log_config["log"]["level"] = Log.to_py_level(log_level)
 
-    engine = PyExecEngine(ServiceManagerProxy())
+    engine = PyExecEngine(ServiceManagerProxy(), args.verify_package)
     engine.init_logger(default_log_config)
     engine.connect(server_address, args.uuid)
     engine.process()

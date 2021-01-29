@@ -247,7 +247,7 @@ func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte)
 	}
 
 	if status == ErrTimeExpired {
-		log.Debug("onNodeData TimeExpired!!\n")
+		s.log.Debug("onNodeData TimeExpired!!\n")
 		np := s._reservePeers(1, st)
 		if np == nil {
 			return
@@ -284,7 +284,7 @@ func (s *syncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
 }
 
 func (s *syncer) onJoin(p *peer) {
-	log.Tracef("onJoin peer(%s)\n", p)
+	s.log.Tracef("onJoin peer(%s)\n", p)
 	p.cb = s
 	s._requestIfNotEnough(p)
 }
@@ -292,7 +292,7 @@ func (s *syncer) onJoin(p *peer) {
 func (s *syncer) onLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	log.Tracef("onLeave id(%s)\n", id)
+	s.log.Tracef("onLeave id(%s)\n", id)
 	p := s.vpool.getPeer(id)
 	if p == nil {
 		if rp := s.sentReq[id]; rp != nil {
@@ -309,7 +309,7 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	defer s.mutex.Unlock()
 	rp := s.sentReq[p.id]
 	if rp == nil {
-		log.Tracef("peer(%s) for (%s) is already received\n", p, pi)
+		s.log.Tracef("peer(%s) for (%s) is already received\n", p, pi)
 		return
 	}
 
@@ -328,7 +328,7 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 		reqID = data.ReqID
 		i = data
 	default:
-		log.Info("Invalid protocol received(%d)\n", pi)
+		s.log.Info("Invalid protocol received(%d)\n", pi)
 		return
 	}
 
@@ -382,7 +382,7 @@ func (s *syncer) _updateValidPool() {
 }
 
 func (s *syncer) _requestIfNotEnough(p *peer) {
-	log.Tracef("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
+	s.log.Tracef("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if s.vpool.size() < configMaxPeerForSync && s.vpool.size() != s.pool.size() {
@@ -390,7 +390,7 @@ func (s *syncer) _requestIfNotEnough(p *peer) {
 			p, s.ah, s.prh,
 			s.nrh, s.vlh, s.processMsg)
 		if err != nil {
-			log.Info("Failed to request hasNode to %s, err(%+v)\n", p, err)
+			s.log.Info("Failed to request hasNode to %s, err(%+v)\n", p, err)
 			s.ivpool.push(p)
 		} else {
 			s.sentReq[p.id] = p

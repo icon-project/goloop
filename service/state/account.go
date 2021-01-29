@@ -93,7 +93,7 @@ type AccountState interface {
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
-	PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error)
+	PaySteps(pc PayContext, steps *big.Int) (*big.Int, error)
 	CanAcceptTx(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
@@ -464,6 +464,7 @@ func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
 }
 
 type accountStateImpl struct {
+	last     *accountSnapshotImpl
 	key      []byte
 	useCache bool
 
@@ -483,6 +484,10 @@ type accountStateImpl struct {
 	deposits depositList
 }
 
+func (s *accountStateImpl) markDirty() {
+	s.last = nil
+}
+
 func (s *accountStateImpl) GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error) {
 	obj := s.objCache.Get(id)
 	return obj.Get(flags)
@@ -494,6 +499,7 @@ func (s *accountStateImpl) SetObjGraph(id []byte, flags bool, nextHash int, objG
 		return err
 	} else {
 		s.objCache.Set(id, no)
+		s.markDirty()
 		return nil
 	}
 }
@@ -530,20 +536,18 @@ func (s *accountStateImpl) IsBlocked() bool {
 
 func (s *accountStateImpl) SetDisable(b bool) {
 	if s.isContract == true {
-		if b == true {
-			s.state = s.state | ASDisabled
-		} else {
-			s.state = s.state & ^ASDisabled
+		if ((s.state & ASDisabled) != 0) != b {
+			s.state = s.state ^ ASDisabled
+			s.markDirty()
 		}
 	}
 }
 
 func (s *accountStateImpl) SetBlock(b bool) {
 	if s.isContract == true {
-		if b == true {
-			s.state = s.state | ASBlocked
-		} else {
-			s.state = s.state & ^ASBlocked
+		if ((s.state & ASBlocked) != 0) != b {
+			s.state = s.state ^ ASBlocked
+			s.markDirty()
 		}
 	}
 }
@@ -559,7 +563,10 @@ func (s *accountStateImpl) SetContractOwner(owner module.Address) error {
 	if !s.isContract {
 		return scoreresult.ContractNotFoundError.New("NotContract")
 	}
-	s.contractOwner = owner
+	if !common.AddressEqual(s.contractOwner, owner) {
+		s.markDirty()
+		s.contractOwner = owner
+	}
 	return nil
 }
 
@@ -568,6 +575,7 @@ func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 		log.Debug("already Contract account")
 		return false
 	}
+	s.markDirty()
 	s.isContract = true
 	s.contractOwner = address
 	return true
@@ -596,6 +604,7 @@ func (s *accountStateImpl) DeployContract(code []byte, eeType EEType, contentTyp
 		eeType: eeType, deployTxHash: txHash, codeHash: codeHash[:],
 		params: params, code: code},
 	}
+	s.markDirty()
 	return old, nil
 }
 
@@ -611,6 +620,7 @@ func (s *accountStateImpl) AcceptContract(
 	s.curContract.state = CSActive
 	s.curContract.auditTxHash = auditTxHash
 	s.nextContract = nil
+	s.markDirty()
 	return nil
 }
 
@@ -624,6 +634,7 @@ func (s *accountStateImpl) RejectContract(
 	}
 	s.nextContract.state = CSRejected
 	s.nextContract.auditTxHash = auditTxHash
+	s.markDirty()
 	return nil
 }
 
@@ -645,12 +656,14 @@ func (s *accountStateImpl) migrate(v int) error {
 			s.apiInfo.dirty = true
 		}
 		s.version = v
+		s.markDirty()
 	}
 	return nil
 }
 
 func (s *accountStateImpl) SetAPIInfo(apiInfo *scoreapi.Info) {
 	s.apiInfo.Set(apiInfo)
+	s.markDirty()
 }
 
 func (s *accountStateImpl) GetBalance() *big.Int {
@@ -658,9 +671,10 @@ func (s *accountStateImpl) GetBalance() *big.Int {
 }
 
 func (s *accountStateImpl) SetBalance(v *big.Int) {
-	nv := new(common.HexInt)
-	nv.Set(v)
-	s.balance = nv
+	if s.balance.Cmp(v) != 0 {
+		s.balance = new(common.HexInt).SetValue(v)
+		s.markDirty()
+	}
 }
 
 func (s *accountStateImpl) IsContract() bool {
@@ -668,6 +682,10 @@ func (s *accountStateImpl) IsContract() bool {
 }
 
 func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
+	if s.last != nil {
+		return s.last
+	}
+
 	var store trie.Immutable
 	if s.store != nil {
 		store = s.store.GetSnapshot()
@@ -679,7 +697,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	if s.curContract != nil {
 		objGraph = s.objCache.Get(s.curContract.CodeID())
 	}
-	return &accountSnapshotImpl{
+	s.last = &accountSnapshotImpl{
 		database:      s.database,
 		version:       s.version,
 		balance:       s.balance,
@@ -694,6 +712,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		objCache:      s.objCache.Clone(),
 		deposits:      s.deposits.Clone(),
 	}
+	return s.last
 }
 
 // attachCacheForStore enable cache of the store if useCache is true
@@ -710,6 +729,11 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	if !ok {
 		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
 	}
+
+	if s.last == snapshot {
+		return nil
+	}
+	s.last = snapshot
 
 	s.balance = snapshot.balance
 	s.isContract = snapshot.fIsContract
@@ -748,6 +772,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 }
 
 func (s *accountStateImpl) Clear() {
+	s.last = nil
 	s.balance = common.HexIntZero
 	s.isContract = false
 	s.version = AccountVersion
@@ -771,14 +796,24 @@ func (s *accountStateImpl) SetValue(k, v []byte) ([]byte, error) {
 		s.store = trie_manager.NewMutable(s.database, nil)
 		s.attachCacheForStore()
 	}
-	return s.store.Set(k, v)
+	if old, err := s.store.Set(k, v); err == nil {
+		s.markDirty()
+		return old, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (s *accountStateImpl) DeleteValue(k []byte) ([]byte, error) {
 	if s.store == nil {
 		return nil, nil
 	}
-	return s.store.Delete(k)
+	if old, err := s.store.Delete(k); err == nil {
+		s.markDirty()
+		return old, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (s *accountStateImpl) Contract() Contract {
@@ -802,7 +837,12 @@ func (s *accountStateImpl) ClearCache() {
 }
 
 func (s *accountStateImpl) AddDeposit(dc DepositContext, value *big.Int) error {
-	return s.deposits.AddDeposit(dc, value)
+	if err := s.deposits.AddDeposit(dc, value); err == nil {
+		s.markDirty()
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error) {
@@ -810,24 +850,22 @@ func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *
 	if err != nil {
 		return nil, nil, err
 	}
-	balance := new(common.HexInt)
-	balance.Add(&s.balance.Int, amount)
-	s.balance = balance
+	s.balance = new(common.HexInt).AddValue(s.balance.Value(), amount)
+	s.markDirty()
 	return amount, fee, nil
 }
 
-func (s *accountStateImpl) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
-	if s.deposits.Has() {
-		return s.deposits.PaySteps(dc, steps), nil
+func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
+	if pc.FeeSharingEnabled() && s.deposits.Has() {
+		s.markDirty()
+		return s.deposits.PaySteps(pc, steps), nil
 	}
 	return nil, nil
 }
 
 func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
-	if pc.FeeSharingEnabled() {
-		if s.deposits.Has() {
-			return s.deposits.CanPay(pc)
-		}
+	if pc.FeeSharingEnabled() && s.deposits.Has() {
+		return s.deposits.CanPay(pc)
 	}
 	return true
 }
@@ -957,7 +995,7 @@ func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte, value *bi
 	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) PaySteps(dc DepositContext, steps *big.Int) (*big.Int, error) {
+func (a *accountROState) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
 	return nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 

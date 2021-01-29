@@ -19,6 +19,7 @@ Functions and classes in this module don't have any external dependencies.
 
 import hashlib
 import re
+from enum import Flag
 from typing import Union
 
 
@@ -76,3 +77,11 @@ def get_main_type_from_annotations_type(annotations_type: type) -> type:
     else:
         main_type = annotations_type
     return main_type
+
+
+def is_all_flag_on(src_flags: Flag, flag: Flag) -> bool:
+    return src_flags & flag == flag
+
+
+def is_any_flag_on(src_flags: Flag, flag: Flag) -> bool:
+    return bool(src_flags & flag)

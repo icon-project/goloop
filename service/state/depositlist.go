@@ -18,7 +18,6 @@ package state
 
 import (
 	"math/big"
-	"reflect"
 
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
@@ -47,7 +46,15 @@ func (dl depositList) Has() bool {
 }
 
 func (dl depositList) Equal(di2 depositList) bool {
-	return reflect.DeepEqual([]*deposit(dl), []*deposit(di2))
+	if len(dl) != len(di2) {
+		return false
+	}
+	for idx, dp := range dl {
+		if !dp.Equal(di2[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (dl depositList) Clone() depositList {
@@ -122,9 +129,9 @@ func (dl depositList) getAvailableDeposit(bh int64) *big.Int {
 
 // PaySteps returns consumes virtual steps and also deposits.
 // It returns payed steps
-func (dl *depositList) PaySteps(dc DepositContext, steps *big.Int) *big.Int {
-	bh := dc.BlockHeight()
-	price := dc.StepPrice()
+func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
+	bh := pc.BlockHeight()
+	price := pc.StepPrice()
 
 	// Unable to pay with non positive price or empty deposit list.
 	if price.Sign() <= 0 || !dl.Has() {

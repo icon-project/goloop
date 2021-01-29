@@ -91,6 +91,7 @@ type ChainConfig struct {
 	SecureAeads      string `json:"secureAeads"`
 	DefWaitTimeout   int64  `json:"defaultWaitTimeout"`
 	MaxWaitTimeout   int64  `json:"maxWaitTimeout"`
+	TxTimeout        int64  `json:"txTimeout"`
 	AutoStart        bool   `json:"autoStart"`
 }
 
@@ -160,6 +161,7 @@ func NewChainConfig(cfg *chain.Config) *ChainConfig {
 		SecureAeads:      cfg.SecureAeads,
 		DefWaitTimeout:   cfg.DefWaitTimeout,
 		MaxWaitTimeout:   cfg.MaxWaitTimeout,
+		TxTimeout:        cfg.TxTimeout,
 		AutoStart:        cfg.AutoStart,
 	}
 	return v

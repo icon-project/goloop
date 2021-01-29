@@ -14,7 +14,6 @@ import i.IInstrumentation;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
 import i.OutOfStackException;
-import i.RuntimeAssertionError;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.parallel.TransactionTask;
@@ -31,14 +30,16 @@ public class DAppCreator {
                                 Transaction tx,
                                 AvmConfiguration conf) throws AvmError {
         IRuntimeSetup runtimeSetup = null;
+        IBlockchainRuntime previousRuntime = null;
         Result result;
+        LoadedDApp dapp = null;
         try {
             Transformer transformer = new Transformer(
                     externalState,
                     conf);
             transformer.transform();
             TransformedDappModule transformedDapp = transformer.getBootstrapModule();
-            LoadedDApp dapp = DAppLoader.fromTransformed(
+            dapp = DAppLoader.fromTransformed(
                     transformedDapp,
                     transformer.getAPIsBytes(),
                     conf.preserveDebuggability);
@@ -46,7 +47,10 @@ public class DAppCreator {
 
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
+            var prevState = task.getReentrantDAppStack().getTop();
             // we pass a null re-entrant state since we haven't finished initializing yet - nobody can call into us.
+            task.getReentrantDAppStack().pushState();
+            var thisState = task.getReentrantDAppStack().getTop();
             IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
                                                               task,
                                                               senderAddress,
@@ -57,16 +61,21 @@ public class DAppCreator {
                                                               conf.enableContextPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, dapp.getInternedClasses(), fc);
-            IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
-
-            // We have just created this dApp, there should be no previous runtime associated with it.
-            RuntimeAssertionError.assertTrue(previousRuntime == null);
+            previousRuntime = dapp.attachBlockchainRuntime(br);
 
             externalState.setTransformedCode(transformer.getTransformedCodeBytes());
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             result = runClinitAndCreateMainInstance(dapp, threadInstrumentation, externalState, tx);
+            if (prevState != null) {
+                prevState.inherit(thisState);
+                var newRS = dapp.saveRuntimeState();
+                prevState.setRuntimeState(task.getEID(), newRS, externalState.getContractID());
+                task.getReentrantDAppStack().cacheDApp(dapp,
+                        externalState.getContractID(),
+                        externalState.getCodeID());
+            }
         } catch (AvmException e) {
             logger.trace("DApp deployment failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
@@ -79,6 +88,8 @@ public class DAppCreator {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {
                 InstrumentationHelpers.popExistingStackFrame(runtimeSetup);
+                task.getReentrantDAppStack().popState();
+                dapp.attachBlockchainRuntime(previousRuntime);
             }
         }
         return result;

@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	transactionTimeLimit     = time.Duration(5 * time.Second)
 	scoreDecompressTimeLimit = time.Duration(5 * time.Second)
 
 	CTypeNone = iota
