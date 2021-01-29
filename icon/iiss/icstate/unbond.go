@@ -100,7 +100,7 @@ func (ul Unbonds) GetUnbondAmount() *big.Int {
 	return total
 }
 
-func (ul *Unbonds) Slash(address module.Address, ratio int) *big.Int {
+func (ul *Unbonds) Slash(address module.Address, ratio int) (*big.Int, int64) {
 	unbonds := *ul
 	for idx, u := range *ul {
 		if u.Address.Equal(address) {
@@ -112,13 +112,13 @@ func (ul *Unbonds) Slash(address module.Address, ratio int) *big.Int {
 				} else {
 					*ul = nil
 				}
-				return u.Value
+				return u.Value, u.Expire
 			} else {
-				return u.Slash(ratio)
+				return u.Slash(ratio), -1
 			}
 		}
 	}
-	return new(big.Int)
+	return new(big.Int), -1
 }
 
 func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {
