@@ -18,6 +18,7 @@ func TestTimerCache(t *testing.T) {
 	tree := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	oss := icobject.NewObjectStoreState(tree)
 
+
 	tc := newTimerCache(oss,testTimerDictPrefix)
 
 	timer := tc.Get(100, false)
@@ -42,6 +43,7 @@ func TestTimerCache(t *testing.T) {
 	// should not be nil
 	o = tc.dict.Get(100)
 	assert.NotNil(t, o)
+
 
 	timer = tc.Get(110, true)
 	addr = common.NewAddressFromString("hx2")
@@ -82,4 +84,3 @@ func TestTimerCache(t *testing.T) {
 	timer= tc.Get(110, true)
 	assert.NotNil(t, timer)
 }
-
