@@ -271,6 +271,7 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 	}
 
 	pm.totalDelegated.Sub(pm.totalDelegated, p.GetVoted())
+
 	pb := pm.state.GetPRepBase(owner)
 	pb.Clear()
 	if err != nil {
