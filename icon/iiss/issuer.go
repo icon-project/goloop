@@ -136,10 +136,10 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, is
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	// TODO read values from Term
-	irep := icstate.GetIRep(es.State)
-	rrep := icstate.GetRRep(es.State)
-	mainPRepCount := icstate.GetMainPRepCount(es.State)
-	pRepCount := icstate.GetPRepCount(es.State)
+	irep := es.State.GetIRep()
+	rrep := es.State.GetRRep()
+	mainPRepCount := es.State.GetMainPRepCount()
+	pRepCount := es.State.GetPRepCount()
 	totalDelegated := es.GetTotalDelegated()
 	// TODO check condition with API from Term
 	//if !isDecentralized {

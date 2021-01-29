@@ -116,7 +116,7 @@ func (ps *PRepStatus) Delegated() *big.Int {
 	return ps.delegated
 }
 
-func (ps *PRepStatus) GetDelegated() *big.Int {
+func (ps *PRepStatus) GetVoted() *big.Int {
 	return new(big.Int).Add(ps.delegated, ps.bonded)
 }
 
@@ -125,28 +125,28 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 }
 
 // Bond Delegation formula
-// totalDelegation = bond + delegation
-// bondRatio = bond / totalDelegation * 100
-// bondedDelegation = totalDelegation * (bondRatio / bondRequirement)
+// totalVoted = bond + delegation
+// bondRatio = bond / totalVoted * 100
+// bondedDelegation = totalVoted * (bondRatio / bondRequirement)
 //                  = bond * 100 / bondRequirement
-// if bondedDelegation > totalDelegation
-//    bondedDelegation = totalDelegation
-func (ps *PRepStatus) GetBondedDelegation(bondRequirement int) *big.Int {
+// if bondedDelegation > totalVoted
+//    bondedDelegation = totalVoted
+func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
 	if bondRequirement < 1 || bondRequirement > 100 {
 		// should not be 0 for bond requirement
 		return big.NewInt(0)
 	}
-	totalDelegation := ps.GetDelegated()
+	totalVoted := ps.GetVoted() // bonded + delegated
 	multiplier := big.NewInt(100)
 	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
 
-	br := big.NewInt(int64(bondRequirement))
+	br := big.NewInt(bondRequirement)
 	bondedDelegation.Div(bondedDelegation, br)
 
-	if totalDelegation.Cmp(bondedDelegation) > 0 {
+	if totalVoted.Cmp(bondedDelegation) > 0 {
 		return bondedDelegation
 	} else {
-		return totalDelegation
+		return totalVoted
 	}
 }
 
@@ -233,13 +233,14 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 }
 
 
-func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int) map[string]interface{} {
+func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
-	jso["delegated"] = ps.GetDelegated()
+	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
+//	jso["voted"] = ps.GetVoted()
 	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
@@ -366,5 +367,6 @@ func NewPRepStatus(owner module.Address) *PRepStatus {
 		vTotal:     0,
 		lastState:  None,
 		lastHeight: 0,
+		status:     NotReady,
 	}
 }

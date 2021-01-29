@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -817,31 +816,31 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err = icstate.SetIISSBlockHeight(es.State, iconConfig.IISSBlockHeight.Int64()); err != nil {
+	if err = es.State.SetIISSBlockHeight(iconConfig.IISSBlockHeight.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetTermPeriod(es.State, iconConfig.TermPeriod.Int64()); err != nil {
+	if err = es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetCalculatePeriod(es.State, iconConfig.CalculationPeriod.Int64()); err != nil {
+	if err = es.State.SetCalculatePeriod(iconConfig.CalculationPeriod.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetIRep(es.State, iconConfig.Irep.Value()); err != nil {
+	if err = es.State.SetIRep(iconConfig.Irep.Value()); err != nil {
 		return err
 	}
-	if err = icstate.SetRRep(es.State, iconConfig.Rrep.Value()); err != nil {
+	if err = es.State.SetRRep(iconConfig.Rrep.Value()); err != nil {
 		return err
 	}
-	if err = icstate.SetMainPRepCount(es.State, iconConfig.MainPRepCount.Int64()); err != nil {
+	if err = es.State.SetMainPRepCount(iconConfig.MainPRepCount.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetSubPRepCount(es.State, iconConfig.SubPRepCount.Int64()); err != nil {
+	if err = es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetBondRequirement(es.State, iconConfig.BondRequirement.Int64()); err != nil {
+	if err = es.State.SetBondRequirement(iconConfig.BondRequirement.Int64()); err != nil {
 		return err
 	}
-	if err = icstate.SetLockVariables(es.State, iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
+	if err = es.State.SetLockVariables(iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
 		return err
 	}
 
