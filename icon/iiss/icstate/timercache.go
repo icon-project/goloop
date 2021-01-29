@@ -18,7 +18,6 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
@@ -28,21 +27,7 @@ type TimerCache struct {
 	timers map[int64]*Timer
 }
 
-func (c *TimerCache) Add(t *Timer) {
-	c.timers[t.Height] = t
-}
-
-func (c *TimerCache) Remove(height int64) error {
-	timer := c.Get(height)
-	if timer == nil {
-		return errors.Errorf("Timer not found on BH %d", height)
-	}
-
-	timer.Clear()
-	return nil
-}
-
-func (c *TimerCache) Get(height int64) *Timer {
+func (c *TimerCache) Get(height int64, createIfNotExist bool) *Timer {
 	timer := c.timers[height]
 	if timer != nil {
 		return timer
@@ -50,12 +35,16 @@ func (c *TimerCache) Get(height int64) *Timer {
 
 	o := c.dict.Get(height)
 	if o == nil {
-		return nil
+		if createIfNotExist {
+			timer = newTimer(height)
+			c.timers[height] = timer
+		} else {
+			// return nil
+		}
+	} else {
+		timer = ToTimer(o.Object())
+		c.timers[height] = timer
 	}
-
-	timer = ToTimer(o.Object())
-	c.timers[height] = timer
-
 	return timer
 }
 
