@@ -209,5 +209,9 @@ func NewPythonEE(logger log.Logger) (Engine, error) {
 	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: PythonEE})
 	lv := logger.GetLevel()
 	e.args = append(e.args, "-d", lv.String())
+	verify, ok := os.LookupEnv("PYEE_VERIFY_PACKAGE")
+	if ok && verify == "true" {
+		e.args = append(e.args, "-p")
+	}
 	return &e, nil
 }

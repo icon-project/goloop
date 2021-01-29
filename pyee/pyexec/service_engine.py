@@ -49,7 +49,6 @@ class ServiceEngine(ContextContainer):
 
     _score_mapper = None
     _proxy = None
-    _verify_package = False  # need to be set by config
 
     @classmethod
     def open(cls, proxy):
@@ -71,9 +70,9 @@ class ServiceEngine(ContextContainer):
         return status, step_used, ret
 
     @classmethod
-    def get_score_api(cls, code: str):
+    def get_score_api(cls, code: str, verify_package=False):
         try:
-            if cls._verify_package:
+            if verify_package:
                 ScorePackageValidator.execute(code)
             icon_score: 'IconScoreBase' = cls._get_icon_score(GETAPI_DUMMY_ADDRESS, code)
             get_api = getattr(icon_score, '_IconScoreBase__get_api')

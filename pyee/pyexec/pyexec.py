@@ -114,8 +114,9 @@ def convert_output(params: list) -> List[int]:
 
 
 class PyExecEngine(object):
-    def __init__(self, proxy: 'ServiceManagerProxy'):
+    def __init__(self, proxy: 'ServiceManagerProxy', verify_package: bool):
         self.__proxy = proxy
+        self.__verify_package = verify_package
         proxy.set_codec(EECodec())
         proxy.set_invoke_handler(self.invoke_handler)
         proxy.set_api_handler(self.api_handler)
@@ -155,7 +156,7 @@ class PyExecEngine(object):
 
     def api_handler(self, code: str) -> Tuple[int, APIInfo]:
         Logger.debug(f'[api_handler] code={code}', TAG)
-        status, apis = ServiceEngine.get_score_api(code)
+        status, apis = ServiceEngine.get_score_api(code, self.__verify_package)
         Logger.debug(f"get_api({code}) -> {status} {apis}", TAG)
         info = APIInfo(self.__proxy)
         if status == Status.SUCCESS:
