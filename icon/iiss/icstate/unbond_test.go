@@ -51,10 +51,12 @@ func TestUnbonds_Slash(t *testing.T) {
 	ub1 := Unbond{
 		Address: addr1,
 		Value:   big.NewInt(100),
+		Expire: 100,
 	}
 	ub2 := Unbond{
 		Address: addr2,
 		Value:   big.NewInt(200),
+		Expire: 200,
 	}
 	ubl1 := Unbonds{
 		&ub1, &ub2,
@@ -68,6 +70,7 @@ func TestUnbonds_Slash(t *testing.T) {
 	type wants struct {
 		slashAmount int64
 		length      int
+		expire int64
 	}
 
 	tests := []struct {
@@ -84,6 +87,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			wants{
 				0,
 				2,
+				-1,
 			},
 		},
 		{
@@ -95,6 +99,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			wants{
 				int64(10),
 				2,
+				-1,
 			},
 		},
 		{
@@ -106,6 +111,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			wants{
 				int64(90),
 				1,
+				100,
 			},
 		},
 		{
@@ -117,6 +123,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			wants{
 				int64(20),
 				1,
+				-1,
 			},
 		},
 		{
@@ -128,6 +135,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			wants{
 				int64(180),
 				0,
+				200,
 			},
 		},
 	}
@@ -136,9 +144,10 @@ func TestUnbonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			slashAmount := ubl1.Slash(in.target, in.ratio)
+			slashAmount, expire := ubl1.Slash(in.target, in.ratio)
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())
+			assert.Equal(t, out.expire, expire)
 			assert.Equal(t, out.length, len(ubl1))
 		})
 	}

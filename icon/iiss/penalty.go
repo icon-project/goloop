@@ -84,14 +84,31 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		totalSlash := new(big.Int)
 
 		// from bonds
-		bonds := account.Bonds()
-		slashAmount := bonds.Slash(address, ratio)
+		slashAmount := account.SlashBond(address, ratio)
 		totalSlash.Add(totalSlash, slashAmount)
 
 		// from unbondings
-		unbonds := account.Unbonds()
-		slashAmount = unbonds.Slash(address, ratio)
+		slashAmount, expire := account.SlashUnbond(address, ratio)
 		totalSlash.Add(totalSlash, slashAmount)
+		if expire != -1 {
+			timer, err := es.GetUnbondingTimerState(expire)
+			if err != nil {
+				return err
+			}
+			if err := timer.Delete(address); err != nil {
+				return err
+			}
+		}
+
+		// from stake
+		if err = account.SlashStake(totalSlash); err != nil {
+			return err
+		}
+		totalStake := es.State.GetTotalStake()
+		totalStake.Sub(totalStake, totalSlash)
+		if err := es.State.SetTotalStake(totalStake); err != nil {
+			return err
+		}
 
 		// event log
 		cc.OnEvent(
