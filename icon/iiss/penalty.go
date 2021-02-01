@@ -104,9 +104,9 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		if err = account.SlashStake(totalSlash); err != nil {
 			return err
 		}
-		totalStake := icstate.GetTotalStake(es.State)
+		totalStake := es.State.GetTotalStake()
 		totalStake.Sub(totalStake, totalSlash)
-		if err := icstate.SetTotalStake(es.State, totalStake); err != nil {
+		if err := es.State.SetTotalStake(totalStake); err != nil {
 			return err
 		}
 
