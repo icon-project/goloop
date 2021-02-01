@@ -166,7 +166,7 @@ func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
 }
 
 func (s *accountSnapshotImpl) IsEmpty() bool {
-	return s.balance.BitLen() == 0 && s.store == nil && s.contractOwner == nil
+	return s.balance.Sign() == 0 && s.store == nil && s.contractOwner == nil
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {

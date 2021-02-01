@@ -30,7 +30,7 @@ func Test_NewWorldVirtualState(t *testing.T) {
 		as1 := wvs1.GetAccountState(acid)
 		log.Println("TX1 getAccount() after")
 		balance1 := as1.GetBalance()
-		if balance1.BitLen() != 0 {
+		if balance1.Sign() != 0 {
 			t.Errorf("TX1 balance isn't empty ret=%s", balance1.String())
 		}
 		as1.SetBalance(v1)

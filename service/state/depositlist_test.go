@@ -116,7 +116,7 @@ func TestDepositList_WithdrawDepositV1(t *testing.T) {
 		am, tr, err := dl.WithdrawDeposit(dc, tid1, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, amount, am)
-		assert.Equal(t, 0, tr.BitLen())
+		assert.Equal(t, 0, tr.Sign())
 	})
 
 	t.Run("withdraw before expiration", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestDepositList_WithdrawDepositV1(t *testing.T) {
 		am, tr, err := dl.WithdrawDeposit(dc, tid1, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, amount, am)
-		assert.Equal(t, 0, tr.BitLen())
+		assert.Equal(t, 0, tr.Sign())
 	})
 
 	t.Run("paying some and withdraw after expiration", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestDepositList_WithdrawDepositV1(t *testing.T) {
 		am, tr, err := dl.WithdrawDeposit(dc, tid1, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, amount, am)
-		assert.Equal(t, 0, tr.BitLen())
+		assert.Equal(t, 0, tr.Sign())
 	})
 
 	t.Run("paying some and withdraw before expiration", func(t *testing.T) {
@@ -223,7 +223,7 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 			if i > 0 {
 				am, fee, err := dl.WithdrawDeposit(dc, tid2, nil)
 				assert.NoError(t, err)
-				assert.Equal(t, 0, fee.BitLen())
+				assert.Equal(t, 0, fee.Sign())
 				assert.Equal(t, 0, am.Cmp(amount))
 			}
 			err = dl.AddDeposit(dc, amount)
@@ -235,7 +235,7 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 			dc.height += dc.period/2 - 1
 			am, fee, err := dl.WithdrawDeposit(dc, tid1, nil)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, fee.BitLen())
+			assert.Equal(t, 0, fee.Sign())
 			assert.Equal(t, 0, am.Cmp(amount))
 		}
 	})
@@ -329,7 +329,7 @@ func TestDepositList_WithdrawDepositV2(t *testing.T) {
 		am, tr, err := dl.WithdrawDeposit(dc, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, amount, am)
-		assert.Equal(t, 0, tr.BitLen())
+		assert.Equal(t, 0, tr.Sign())
 	})
 
 	t.Run("paying some and withdraw", func(t *testing.T) {
@@ -348,7 +348,7 @@ func TestDepositList_WithdrawDepositV2(t *testing.T) {
 		am, tr, err := dl.WithdrawDeposit(dc, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, remains, am)
-		assert.Equal(t, 0, tr.BitLen())
+		assert.Equal(t, 0, tr.Sign())
 	})
 
 	t.Run("paying all and withdraw", func(t *testing.T) {
