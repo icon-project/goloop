@@ -74,29 +74,27 @@ func (s *State) GetSnapshot() *Snapshot {
 }
 
 func (s *State) GetAccount(addr module.Address) (*Account, error) {
-	a := s.accountCache.Get(addr)
+	a := s.accountCache.Get(addr, true)
 	return a, nil
 }
 
 func (s *State) GetUnstakingTimer(height int64) (*Timer, error) {
-	timer := s.unstakingTimerCache.Get(height)
+	timer := s.unstakingTimerCache.Get(height, true)
 	return timer, nil
 }
 
 func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
-	timer := s.unbondingTimerCache.Get(height)
+	timer := s.unbondingTimerCache.Get(height, true)
 	return timer, nil
 }
 
 func (s *State) AddUnbondingTimerToCache(h int64) *Timer {
-	t := newTimer(h)
-	s.unbondingTimerCache.Add(t)
+	t := s.unbondingTimerCache.Get(h, true)
 	return t
 }
 
 func (s *State) AddUnstakingTimerToCache(h int64) *Timer {
-	t := newTimer(h)
-	s.unstakingTimerCache.Add(t)
+	t := s.unstakingTimerCache.Get(h, true)
 	return t
 }
 
@@ -112,24 +110,16 @@ func (s *State) GetActivePRep(i int) module.Address {
 	return s.activePRepCache.Get(i)
 }
 
-func (s *State) AddPRepBase(base *PRepBase) {
+/*func (s *State) AddPRepBase(base *PRepBase) {
 	s.prepBaseCache.Add(base)
-}
+}*/
 
 func (s *State) GetPRepBase(owner module.Address) *PRepBase {
-	return s.prepBaseCache.Get(owner)
-}
-
-func (s *State) RemovePRepBase(owner module.Address) error {
-	return s.prepBaseCache.Remove(owner)
-}
-
-func (s *State) AddPRepStatus(status *PRepStatus) {
-	s.prepStatusCache.Add(status)
+	return s.prepBaseCache.Get(owner, true)
 }
 
 func (s *State) GetPRepStatus(owner module.Address) *PRepStatus {
-	return s.prepStatusCache.Get(owner)
+	return s.prepStatusCache.Get(owner, true)
 }
 
 func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
@@ -150,8 +140,8 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	}
 
 	if s.GetTerm() == nil {
-		iissBH := GetIISSBlockHeight(s)
-		termPeriod := GetTermPeriod(s)
+		iissBH := s.GetIISSBlockHeight()
+		termPeriod := s.GetTermPeriod()
 		// if termPeriod is not enabled, do not make termCache with Term
 		if termPeriod != 0 {
 			term := newTerm(iissBH, termPeriod)
@@ -160,10 +150,6 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	}
 
 	return s
-}
-
-func (s *State) RemovePRepStatus(owner module.Address) error {
-	return s.prepStatusCache.Remove(owner)
 }
 
 func (s *State) AddNodeToOwner(node, owner module.Address) error {

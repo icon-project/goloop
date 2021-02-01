@@ -31,23 +31,7 @@ type AccountCache struct {
 	accounts map[string]*Account
 }
 
-func (c *AccountCache) Add(account *Account) {
-	key := icutils.ToKey(account.address)
-	c.accounts[key] = account
-}
-
-func (c *AccountCache) Remove(owner module.Address) error {
-	key := icutils.ToKey(owner)
-	account := c.accounts[key]
-	if account == nil {
-		return errors.Errorf("Account not found: %s", owner)
-	}
-
-	account.Clear()
-	return nil
-}
-
-func (c *AccountCache) Get(owner module.Address) *Account {
+func (c *AccountCache) Get(owner module.Address, createIfNotExist bool) *Account {
 	key := icutils.ToKey(owner)
 	account := c.accounts[key]
 	if account != nil {
@@ -56,9 +40,13 @@ func (c *AccountCache) Get(owner module.Address) *Account {
 
 	o := c.dict.Get(owner)
 	if o == nil {
-		account = newAccount(owner)
-		c.Add(account)
-		c.accounts[key] = account
+		if createIfNotExist {
+			account = newAccount(owner)
+			//c.Add(account)
+			c.accounts[key] = account
+		} else {
+			// return nil
+		}
 	} else {
 		account = ToAccount(o.Object(), owner)
 		c.accounts[key] = account

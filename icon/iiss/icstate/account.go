@@ -227,7 +227,7 @@ func (a *Account) SetDelegation(ds Delegations) {
 func (a Account) GetDelegationInfo() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["totalDelegated"] = a.delegating
-	jso["votingPower"] = new(big.Int).Sub(a.stake, a.GetVotedPower())
+	jso["votingPower"] = a.GetVotingPower()
 
 	if delegations := a.delegations.ToJSON(module.JSONVersion3); delegations != nil {
 		jso["delegations"] = delegations
@@ -237,10 +237,10 @@ func (a Account) GetDelegationInfo() map[string]interface{} {
 }
 
 func (a *Account) GetVotingPower() *big.Int {
-	return new(big.Int).Sub(a.stake, a.GetVotedPower())
+	return new(big.Int).Sub(a.stake, a.GetVoting())
 }
 
-func (a *Account) GetVotedPower() *big.Int {
+func (a *Account) GetVoting() *big.Int {
 	return new(big.Int).Add(a.bonding, a.delegating)
 }
 

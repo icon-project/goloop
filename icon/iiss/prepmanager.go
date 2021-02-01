@@ -42,7 +42,7 @@ func (p *PRep) Owner() module.Address {
 	return p.PRepBase.Owner()
 }
 
-func (p *PRep) ToJSON(blockHeight int64, bondRequirement int) map[string]interface{} {
+func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
 }
 
@@ -99,11 +99,11 @@ func (pm *PRepManager) init() {
 }
 
 func (pm *PRepManager) getMainPRepCount() int {
-	return int(icstate.GetMainPRepCount(pm.state))
+	return int(pm.state.GetMainPRepCount())
 }
 
 func (pm *PRepManager) getSubPRepCount() int {
-	return int(icstate.GetSubPRepCount(pm.state))
+	return int(pm.state.GetSubPRepCount())
 }
 
 func (pm *PRepManager) getPRep(owner module.Address) *PRep {
@@ -119,7 +119,7 @@ func (pm *PRepManager) getPRep(owner module.Address) *PRep {
 func (pm *PRepManager) Add(p *PRep) {
 	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalDelegated.Add(pm.totalDelegated, p.GetDelegated())
+	pm.totalDelegated.Add(pm.totalDelegated, p.GetVoted())
 }
 
 // sort preps in descending order by bonded delegation
@@ -172,7 +172,7 @@ func (pm *PRepManager) TotalDelegated() *big.Int {
 
 func (pm *PRepManager) GetTotalBondedDelegation() *big.Int {
 	total := new(big.Int)
-	br := int(icstate.GetBondRequirement(pm.state))
+	br := pm.state.GetBondRequirement()
 	for _, prep := range pm.orderedPReps {
 		total.Add(total, prep.GetBondedDelegation(br))
 	}
@@ -238,22 +238,15 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
 
-	pb := icstate.NewPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner)
 	err := setPRep(pb, node, params)
 	if err != nil {
 		return err
 	}
 
 	ps := pm.state.GetPRepStatus(owner)
-	if ps == nil {
-		ps = icstate.NewPRepStatus(owner)
-		pm.state.AddPRepStatus(ps)
-	} else {
-		// NotReady -> Active
-		ps.SetStatus(icstate.Active)
-	}
+	ps.SetStatus(icstate.Active)
 
-	pm.state.AddPRepBase(pb)
 	pm.state.AddActivePRep(owner)
 	if err = pm.addNodeToOwner(node, owner); err != nil {
 		return err
@@ -277,12 +270,15 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
-	pm.totalDelegated.Sub(pm.totalDelegated, p.GetDelegated())
-	err = pm.state.RemovePRepBase(owner)
+	pm.totalDelegated.Sub(pm.totalDelegated, p.GetVoted())
+
+	pb := pm.state.GetPRepBase(owner)
+	pb.Clear()
 	if err != nil {
 		return err
 	}
-	err = pm.state.RemovePRepStatus(owner)
+	ps := pm.state.GetPRepStatus(owner)
+	ps.Clear()
 	if err != nil {
 		return err
 	}
@@ -318,29 +314,18 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	}
 
 	delegatedToInactiveNode := big.NewInt(0)
-	var newPs *icstate.PRepStatus
 	for key, value := range delta {
 		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
-
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
-			if ps == nil {
-				// Someone tries to set delegation to a PRep which has not been registered
-				newPs = icstate.NewPRepStatus(owner)
-				newPs.SetStatus(icstate.NotReady)
-			} else {
-				newPs = ps.Clone()
-			}
 
-			if !newPs.IsActive() {
+			if !ps.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
-
 			}
-			newPs.Delegated().Add(newPs.Delegated(), value)
-			pm.state.AddPRepStatus(newPs)
+			ps.Delegated().Add(ps.Delegated(), value)
 		}
 	}
 
@@ -368,7 +353,6 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 	}
 
 	bondedToInactiveNode := big.NewInt(0)
-	var newPs *icstate.PRepStatus
 	for key, value := range delta {
 		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
@@ -377,17 +361,10 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner)
-			if ps == nil {
-				// Someone tries to bond to a PRep which has not been registered
-				panic(errors.Errorf("Failed to set bonded value to PRepStatus"))
-			} else {
-				newPs = ps.Clone()
-			}
-			if !newPs.IsActive() {
+			if !ps.IsActive() {
 				bondedToInactiveNode.Add(bondedToInactiveNode, value)
 			}
-			newPs.Bonded().Add(newPs.Bonded(), value)
-			pm.state.AddPRepStatus(newPs)
+			ps.Bonded().Add(ps.Bonded(), value)
 		}
 	}
 	totalDelegated := pm.totalDelegated
@@ -412,18 +389,21 @@ func (pm *PRepManager) OnTermEnd() error {
 	for i, prep := range pm.orderedPReps {
 		if i < mainPRepCount {
 			if prep.Grade() != icstate.Main {
-				prep.SetGrade(icstate.Main)
-				pm.state.AddPRepStatus(prep.PRepStatus)
+				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps.Set(prep.PRepStatus)
+				ps.SetGrade(icstate.Main)
 			}
 		} else if i < electedPRepCount {
 			if prep.Grade() != icstate.Sub {
-				prep.SetGrade(icstate.Sub)
-				pm.state.AddPRepStatus(prep.PRepStatus)
+				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps.Set(prep.PRepStatus)
+				ps.SetGrade(icstate.Sub)
 			}
 		} else {
 			if prep.Grade() != icstate.Candidate {
-				prep.SetGrade(icstate.Candidate)
-				pm.state.AddPRepStatus(prep.PRepStatus)
+				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps.Set(prep.PRepStatus)
+				ps.SetGrade(icstate.Candidate)
 			}
 		}
 	}

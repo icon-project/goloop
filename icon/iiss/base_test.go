@@ -51,13 +51,9 @@ func TestUpdatePrepStatus(t *testing.T) {
 
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
-	status1 := icstate.NewPRepStatus(addr1)
-	status2 := icstate.NewPRepStatus(addr2)
 
 	addrArray := []module.Address{addr1, addr2}
 
-	s.AddPRepStatus(status1)
-	s.AddPRepStatus(status2)
 	err := s.SetLastValidators(addrArray)
 	assert.NoError(t, err)
 

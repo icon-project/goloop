@@ -31,17 +31,17 @@ func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 		return err
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return icstate.SetIRep(es.State, new(big.Int).Set(&value.Int))
+	return es.State.SetIRep(new(big.Int).Set(&value.Int))
 }
 
 func (s *chainScore) Ex_getIRep() (int64, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return icstate.GetIRep(es.State).Int64(), nil
+	return es.State.GetIRep().Int64(), nil
 }
 
 func (s *chainScore) Ex_getRRep() (int64, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return icstate.GetRRep(es.State).Int64(), nil
+	return es.State.GetRRep().Int64(), nil
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
@@ -53,8 +53,8 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	v := &value.Int
 
-	if ia.GetVotedPower().Cmp(v) == 1 {
-		return errors.Errorf("Failed to stake: stake < votedPower")
+	if ia.GetVoting().Cmp(v) == 1 {
+		return errors.Errorf("Failed to stake: stake < voting")
 	}
 
 	prevTotalStake := ia.GetTotalStake()
@@ -65,12 +65,12 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	account := s.cc.GetAccountState(s.from.ID())
 	balance := account.GetBalance()
-	availableStake := new(big.Int).Add(balance, ia.GetVotingPower())
+	availableStake := new(big.Int).Add(balance, ia.Stake())
 	if availableStake.Cmp(v) == -1 {
 		return errors.Errorf("Not enough balance")
 	}
 
-	tStake := icstate.GetTotalStake(es.State)
+	tStake := es.State.GetTotalStake()
 	tsupply := icutils.GetTotalSupply(s.cc)
 
 	// update IISS account
@@ -100,7 +100,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		diff := new(big.Int).Sub(totalStake, prevTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
-	if err := icstate.SetTotalStake(es.State, new(big.Int).Add(tStake, stakeInc)); err != nil {
+	if err := es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
 		return err
 	}
 
@@ -112,8 +112,8 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
 	rPoint := big.NewFloat(rewardPoint)
-	lMin := icstate.GetLockMin(state)
-	lMax := icstate.GetLockMax(state)
+	lMin := state.GetLockMin()
+	lMax := state.GetLockMax()
 	if stakeRate.Cmp(rPoint) == 1 {
 		return lMin
 	}
@@ -207,7 +207,7 @@ func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	blockHeight := s.cc.BlockHeight()
 	jso := es.GetPRepsInJSON(blockHeight)
-	ts := icstate.GetTotalStake(es.State)
+	ts := es.State.GetTotalStake()
 	jso["totalStake"] = intconv.FormatBigInt(ts)
 	jso["blockHeight"] = blockHeight
 	return jso, nil
@@ -381,7 +381,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 
 func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	totalStake := icstate.GetTotalStake(es.State)
+	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
 	result := make(map[string]interface{})
 	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(es.State, totalStake, totalSupply)

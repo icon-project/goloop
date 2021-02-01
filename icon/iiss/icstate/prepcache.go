@@ -20,39 +20,26 @@ type PRepBaseCache struct {
 	dict  *containerdb.DictDB
 }
 
-func (c *PRepBaseCache) Add(base *PRepBase) {
-	key := icutils.ToKey(base.owner)
-	c.bases[key] = base
-}
-
-func (c *PRepBaseCache) Remove(owner module.Address) error {
-	key := icutils.ToKey(owner)
-	pb := c.bases[key]
-	if pb == nil {
-		return errors.Errorf("PRepBase not found: %s", owner)
-	}
-
-	pb.Clear()
-	return nil
-}
-
-func (c *PRepBaseCache) Get(owner module.Address) *PRepBase {
+func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBase {
 	key := icutils.ToKey(owner)
 	base := c.bases[key]
 	if base != nil {
 		return base
 	}
-
 	o := c.dict.Get(owner)
 	if o == nil {
-		return nil
+		if createIfNotExist {
+			base = NewPRepBase(owner)
+			c.bases[key] = base
+		} else {
+			// return nil
+		}
+	} else {
+		base = ToPRepBase(o.Object(), owner)
+		if base != nil {
+			c.bases[key] = base
+		}
 	}
-
-	base = ToPRepBase(o.Object(), owner)
-	if base != nil {
-		c.bases[key] = base
-	}
-
 	return base
 }
 
@@ -109,48 +96,32 @@ type PRepStatusCache struct {
 	dict     *containerdb.DictDB
 }
 
-func (c *PRepStatusCache) Add(status *PRepStatus) {
-	key := icutils.ToKey(status.owner)
-	c.statuses[key] = status
-}
-
-func (c *PRepStatusCache) Remove(owner module.Address) error {
-	key := icutils.ToKey(owner)
-	ps := c.statuses[key]
-
-	if ps == nil {
-		return errors.Errorf("PRepStatus not found: %s", owner)
-	}
-
-	ps.Clear()
-	return nil
-}
-
-func (c *PRepStatusCache) Get(owner module.Address) *PRepStatus {
+func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRepStatus {
 	key := icutils.ToKey(owner)
 	status := c.statuses[key]
 	if status != nil {
 		return status
 	}
-
 	o := c.dict.Get(owner)
 	if o == nil {
-		return nil
+		if createIfNotExist {
+			status = NewPRepStatus(owner)
+			c.statuses[key] = status
+		} else {
+			// return nil
+		}
+	} else {
+		status = ToPRepStatus(o.Object(), owner)
+		if status != nil {
+			c.statuses[key] = status
+		}
 	}
-
-	status = ToPRepStatus(o.Object(), owner)
-	if status != nil {
-		c.statuses[key] = status
-	}
-
 	return status
 }
 
 func (c *PRepStatusCache) Clear() {
 	c.statuses = make(map[string]*PRepStatus)
 }
-
-
 
 func (c *PRepStatusCache) Reset() {
 	for key , status := range c.statuses {
