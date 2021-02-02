@@ -16,11 +16,9 @@
 
 package example.token;
 
-import example.util.Arrays;
-import example.util.EnumerableIntMap;
+import example.util.IntSet;
+import example.util.IntToAddressMap;
 import score.Address;
-import score.ArrayDB;
-import score.BranchDB;
 import score.Context;
 import score.DictDB;
 import score.annotation.EventLog;
@@ -32,8 +30,8 @@ public abstract class IRC3Basic implements IRC3 {
     protected static final Address ZERO_ADDRESS = new Address(new byte[Address.LENGTH]);
     private final String name;
     private final String symbol;
-    private final BranchDB<Address, ArrayDB<BigInteger>> holderTokens = Context.newBranchDB("holders", BigInteger.class);
-    private final EnumerableIntMap<Address> tokenOwners = new EnumerableIntMap<>("owners", Address.class);
+    private final DictDB<Address, IntSet> holderTokens = Context.newDictDB("holders", IntSet.class);
+    private final IntToAddressMap tokenOwners = new IntToAddressMap("owners");
     private final DictDB<BigInteger, Address> tokenApprovals = Context.newDictDB("approvals", Address.class);
 
     public IRC3Basic(String _name, String _symbol) {
@@ -54,7 +52,8 @@ public abstract class IRC3Basic implements IRC3 {
     @External(readonly=true)
     public int balanceOf(Address _owner) {
         Context.require(!ZERO_ADDRESS.equals(_owner));
-        return holderTokens.at(_owner).size();
+        var tokens = holderTokens.get(_owner);
+        return (tokens != null) ? tokens.length() : 0;
     }
 
     @External(readonly=true)
@@ -121,7 +120,7 @@ public abstract class IRC3Basic implements IRC3 {
      */
     @External(readonly=true)
     public BigInteger tokenByIndex(int _index) {
-        return tokenOwners.get(_index);
+        return tokenOwners.getKey(_index);
     }
 
     /**
@@ -130,7 +129,8 @@ public abstract class IRC3Basic implements IRC3 {
      */
     @External(readonly=true)
     public BigInteger tokenOfOwnerByIndex(Address _owner, int _index) {
-        return holderTokens.at(_owner).get(_index);
+        var tokens = holderTokens.get(_owner);
+        return (tokens != null) ? tokens.at(_index) : BigInteger.ZERO;
     }
 
     /**
@@ -163,12 +163,21 @@ public abstract class IRC3Basic implements IRC3 {
     }
 
     private void _addTokenTo(BigInteger tokenId, Address to) {
-        holderTokens.at(to).add(tokenId);
+        var tokens = holderTokens.get(to);
+        if (tokens == null) {
+            tokens = new IntSet(to.toString());
+            holderTokens.set(to, tokens);
+        }
+        tokens.add(tokenId);
     }
 
     private void _removeTokenFrom(BigInteger tokenId, Address from) {
-        var array = holderTokens.at(from);
-        Arrays.remove(array, tokenId);
+        var tokens = holderTokens.get(from);
+        Context.require(tokens != null);
+        tokens.remove(tokenId);
+        if (tokens.length() == 0) {
+            holderTokens.set(from, null);
+        }
     }
 
     @EventLog(indexed=3)

@@ -95,6 +95,13 @@ public class IRC3TokenScore extends Score {
         return invoke(wallet, "mint", params);
     }
 
+    public Bytes burn(Wallet wallet, BigInteger tokenId) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("_tokenId", new RpcValue(tokenId))
+                .build();
+        return invoke(wallet, "burn", params);
+    }
+
     public Bytes approve(Wallet wallet, Address to, BigInteger tokenId) throws IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("_to", new RpcValue(to))

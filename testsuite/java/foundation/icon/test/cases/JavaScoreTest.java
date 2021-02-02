@@ -22,8 +22,9 @@ import example.token.IRC2;
 import example.token.IRC2Basic;
 import example.token.IRC3;
 import example.token.IRC3Basic;
-import example.util.Arrays;
-import example.util.EnumerableIntMap;
+import example.util.EnumerableMap;
+import example.util.IntSet;
+import example.util.IntToAddressMap;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -184,8 +185,10 @@ class JavaScoreTest extends TestBase {
     @Test
     public void testIRC3Token() throws Exception {
         // 1. deploy
-        IRC3TokenScore tokenScore = IRC3TokenScore.mustDeploy(txHandler, ownerWallet,
-                new Class<?>[]{IRC3BasicToken.class, IRC3Basic.class, IRC3.class, EnumerableIntMap.class, Arrays.class});
+        IRC3TokenScore tokenScore = IRC3TokenScore.mustDeploy(
+                txHandler, ownerWallet, new Class<?>[]{
+                        IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
+                        EnumerableMap.class, IntSet.class, IntToAddressMap.class});
 
         // 2. initial check
         LOG.infoEntering("initial check");
@@ -251,9 +254,20 @@ class JavaScoreTest extends TestBase {
         showTokenStatus(tokenScore);
         LOG.infoExiting();
 
-        // 6. negative tests
+        // 6. burn and check
+        LOG.infoEntering("burn and check");
+        var balance = tokenScore.balanceOf(ownerWallet.getAddress());
+        token = tokenScore.tokenOfOwnerByIndex(ownerWallet.getAddress(), 0);
+        ids[0] = tokenScore.burn(ownerWallet, token);
+        assertSuccess(txHandler.getResult(ids[0]));
+        assertEquals(balance.subtract(BigInteger.ONE), tokenScore.balanceOf(ownerWallet.getAddress()));
+        assertEquals(BigInteger.valueOf(tokenId.length-1), tokenScore.totalSupply());
+        showTokenStatus(tokenScore);
+        LOG.infoExiting();
+
+        // 7. negative tests
         LOG.infoEntering("negative tests");
-        final var nonExistToken = new BigInteger(getRandomBytes(10));
+        final var nonExistToken = token; // burned token
         assertThrows(RpcError.class, () -> tokenScore.ownerOf(nonExistToken));
         assertFailure(txHandler.getResult(
                 tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), tokenId[2])));

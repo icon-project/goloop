@@ -17,6 +17,7 @@
 package example;
 
 import example.token.IRC3Basic;
+import score.Address;
 import score.Context;
 import score.annotation.External;
 
@@ -32,5 +33,13 @@ public class IRC3BasicToken extends IRC3Basic {
         // simple access control - only the contract owner can mint new token
         Context.require(Context.getCaller().equals(Context.getOwner()));
         super._mint(Context.getCaller(), _tokenId);
+    }
+
+    @External
+    public void burn(BigInteger _tokenId) {
+        // simple access control - only the owner of token can burn it
+        Address owner = ownerOf(_tokenId);
+        Context.require(Context.getCaller().equals(owner));
+        super._burn(_tokenId);
     }
 }
