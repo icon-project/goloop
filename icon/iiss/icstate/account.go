@@ -364,6 +364,20 @@ func (a *Account) RemoveUnstaking(height int64) (ra *big.Int, err error) {
 	return
 }
 
+func (a *Account) SlashStake(amount *big.Int) error {
+	stake := new(big.Int).Set(a.Stake())
+	stake.Sub(stake, amount)
+	return a.SetStake(stake)
+}
+
+func (a *Account) SlashBond(address module.Address, ratio int) *big.Int {
+	return a.bonds.Slash(address, ratio)
+}
+
+func (a *Account) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
+	return a.unbonds.Slash(address, ratio)
+}
+
 func (a *Account) GetSnapshot() *Account {
 	if a.IsReadonly() {
 		return a

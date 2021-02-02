@@ -396,6 +396,56 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 }
 
+func TestAccount_SlashStake(t *testing.T) {
+	a := assTest.Clone() // a.stake = 100
+
+	err := a.SlashStake(big.NewInt(10))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, a.Stake().Cmp(big.NewInt(90)))
+
+	err = a.SlashStake(big.NewInt(100))
+	assert.Error(t, err)
+	assert.Equal(t, 0, a.Stake().Cmp(big.NewInt(90)))
+
+	err = a.SlashStake(big.NewInt(90))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, a.Stake().Cmp(big.NewInt(0)))
+}
+
+func TestAccount_SlashBond(t *testing.T) {
+	a := assTest.Clone() //[{hx3, 10}, {hx4, 10}]
+
+	amount := a.SlashBond(common.NewAddressFromString("hx3"), 10)
+	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
+	b1 := a.Bonds()[0]
+	assert.Equal(t, 0, b1.Value.Cmp(big.NewInt(9)))
+	bl := len(a.Bonds())
+	assert.Equal(t, 2, bl)
+
+	amount = a.SlashBond(common.NewAddressFromString("hx4"), 100)
+	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
+	bl = len(a.Bonds())
+	assert.Equal(t, 1, bl)
+}
+
+func TestAccount_SlashUnbond(t *testing.T) {
+	a := assTest.Clone() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
+
+	amount, eh := a.SlashUnbond(common.NewAddressFromString("hx5"), 10)
+	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
+	assert.Equal(t, int64(-1), eh)
+	u1 := a.Unbonds()[0]
+	assert.Equal(t, 0, u1.Value.Cmp(big.NewInt(9)))
+	ul := len(a.Unbonds())
+	assert.Equal(t, 2, ul)
+
+	amount, eh = a.SlashUnbond(common.NewAddressFromString("hx6"), 100)
+	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
+	assert.Equal(t, int64(30), eh)
+	ul = len(a.Unbonds())
+	assert.Equal(t, 1, ul)
+}
+
 func equalTimerJobSlice(expected []TimerJobInfo, actual []TimerJobInfo) bool {
 	if len(expected) != len(actual) {
 		return false
