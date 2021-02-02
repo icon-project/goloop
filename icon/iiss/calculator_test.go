@@ -34,9 +34,9 @@ func TestCalculator(t *testing.T) {
 	err := c.Init(database)
 	assert.NoError(t, err)
 	assert.Equal(t, database, c.dbase)
-	assert.Equal(t, int64(0), c.blockHeight)
+	assert.Equal(t, int64(0), c.startHeight)
 
-	c.blockHeight = 100
+	c.startHeight = 100
 	c.stats.blockProduce.SetInt64(int64(100))
 	c.stats.Voted.SetInt64(int64(200))
 	c.stats.voting.SetInt64(int64(300))
@@ -47,7 +47,7 @@ func TestCalculator(t *testing.T) {
 	err = c2.Init(database)
 	assert.NoError(t, err)
 	assert.Equal(t, c.dbase, c2.dbase)
-	assert.Equal(t, c.blockHeight, c2.blockHeight)
+	assert.Equal(t, c.startHeight, c2.startHeight)
 	assert.True(t, c.stats.equal(c2.stats))
 }
 

@@ -62,7 +62,7 @@ type Calculator struct {
 	dbase db.Database
 
 	result      *icreward.Snapshot
-	blockHeight int64
+	startHeight int64
 	stats       *statistics
 
 	back        *icstage.Snapshot
@@ -79,7 +79,7 @@ func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
 	}
 	return e.EncodeListOf(
 		hash,
-		c.blockHeight,
+		c.startHeight,
 		c.stats.blockProduce,
 		c.stats.Voted,
 		c.stats.voting,
@@ -90,7 +90,7 @@ func (c *Calculator) RLPDecodeSelf(d codec.Decoder) error {
 	var hash []byte
 	if err := d.DecodeListOf(
 		&hash,
-		&c.blockHeight,
+		&c.startHeight,
 		&c.stats.blockProduce,
 		&c.stats.Voted,
 		&c.stats.voting,
@@ -134,12 +134,36 @@ func (c *Calculator) Init(dbase db.Database) error {
 	return c.SetBytes(bs)
 }
 
-func (c *Calculator) isGenesis() bool {
-	return c.blockHeight == 0 && c.result == nil
+func (c *Calculator) Result() *icreward.Snapshot {
+	return c.result
+}
+
+func (c *Calculator) StartHeight() int64 {
+	return c.startHeight
+}
+
+func (c *Calculator) TotalReward() *big.Int {
+	return c.stats.totalReward()
+}
+
+func (c *Calculator) OffsetLimit() int {
+	return c.offsetLimit
+}
+
+func (c *Calculator) Back() *icstage.Snapshot {
+	return c.back
+}
+
+func (c *Calculator) Base() *icreward.Snapshot {
+	return c.base
+}
+
+func (c *Calculator) Temp() *icreward.State {
+	return c.temp
 }
 
 func (c *Calculator) isCalculating() bool {
-	return c.blockHeight != 0 && c.result == nil
+	return c.startHeight != 0 && c.result == nil
 }
 
 func (c *Calculator) isResultSynced(ss *ExtensionSnapshotImpl) bool {
@@ -150,9 +174,6 @@ func (c *Calculator) isResultSynced(ss *ExtensionSnapshotImpl) bool {
 }
 
 func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
-	if c.isGenesis() {
-		return true
-	}
 	if c.isCalculating() {
 		return false
 	}
@@ -212,7 +233,7 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	c.base = icreward.NewSnapshot(ss.database, ss.reward.Bytes())
 	c.temp = c.base.NewState()
 	c.result = nil
-	c.blockHeight = ss.c.currentBH
+	c.startHeight = ss.c.currentBH
 	c.stats.clear()
 
 	// read global variables

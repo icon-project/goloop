@@ -44,6 +44,9 @@ type baseDataJSON struct {
 }
 
 func parseBaseData(data []byte) (*baseDataJSON, error) {
+	if data == nil {
+		return nil, nil
+	}
 	jso := new(baseDataJSON)
 	jd := json.NewDecoder(bytes.NewBuffer(data))
 	jd.DisallowUnknownFields()
@@ -274,27 +277,30 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
 	}
-	if bd.PRep == nil || bd.Result == nil {
-		return nil
-	}
-	iPrep, err := parseIssuePRepData(bd.PRep)
-	if err != nil {
-		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
-	}
-	iResult, err := parseIssueResultData(bd.Result)
-	if err != nil {
-		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+
+	var iPrep *IssuePRepJSON
+	var iResult *IssueResultJSON
+	if bd != nil {
+		iPrep, err = parseIssuePRepData(bd.PRep)
+		if err != nil {
+			return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+		}
+		iResult, err = parseIssueResultData(bd.Result)
+		if err != nil {
+			return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+		}
 	}
 
 	// get Issue result from state
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	prep, result := GetIssueData(es)
-	if prep == nil || result == nil {
+	// there is no issue data
+	if iPrep == nil && iResult == nil && prep == nil && result == nil {
 		return nil
 	}
 
 	// check Issue result
-	if !iPrep.equal(prep) || !iResult.equal(result) {
+	if (iPrep != nil && !iPrep.equal(prep)) || (iResult != nil && !iResult.equal(result)) {
 		return scoreresult.InvalidParameterError.New("Invalid issue data")
 	}
 
@@ -317,8 +323,10 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
 	}
-	issue.TotalReward.Add(issue.TotalReward, prep.Value.Value())
-	issue.PrevBlockFee.SetInt64(0)
+	issue.TotalReward.Add(issue.TotalReward, result.GetTotalReward())
+	if result.ByFee.Sign() != 0 {
+		issue.PrevBlockFee.Sub(issue.PrevBlockFee, result.ByFee.Value())
+	}
 	if result.ByOverIssuedICX.Sign() != 0 {
 		issue.OverIssued.Sub(issue.OverIssued, result.ByOverIssuedICX.Value())
 	}
@@ -327,15 +335,17 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	}
 
 	// make event log
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepIssued(int,int,int,int)")},
-		[][]byte{
-			intconv.BigIntToBytes(prep.IRep.Value()),
-			intconv.BigIntToBytes(prep.RRep.Value()),
-			intconv.BigIntToBytes(prep.TotalDelegation.Value()),
-			intconv.BigIntToBytes(prep.Value.Value()),
-		},
-	)
+	if prep != nil {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
+			[][]byte{
+				intconv.BigIntToBytes(prep.IRep.Value()),
+				intconv.BigIntToBytes(prep.RRep.Value()),
+				intconv.BigIntToBytes(prep.TotalDelegation.Value()),
+				intconv.BigIntToBytes(prep.Value.Value()),
+			},
+		)
+	}
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
 		[][]byte{

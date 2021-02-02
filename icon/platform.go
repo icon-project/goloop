@@ -68,8 +68,10 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	prep, issue := iiss.GetIssueData(es)
 	data := make(map[string]interface{})
-	if prep != nil && issue != nil {
+	if prep != nil {
 		data["prep"] = prep
+	}
+	if issue != nil {
 		data["result"] = issue
 	}
 	mtx := map[string]interface{}{
@@ -98,15 +100,9 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
 
-	issue, err := es.State.GetIssue()
-	if err != nil {
+	if err := es.UpdateIssueInfo(er.TotalFee()); err != nil {
 		return err
 	}
-	issue.PrevBlockFee.Set(er.TotalFee())
-	if err = es.State.SetIssue(issue); err != nil {
-		return err
-	}
-
 	return es.OnExecutionEnd(wc, p.calculator)
 }
 

@@ -31,6 +31,9 @@ type IssuePRepJSON struct {
 }
 
 func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
+	if data == nil {
+		return nil, nil
+	}
 	jso := new(IssuePRepJSON)
 	jd := json.NewDecoder(bytes.NewBuffer(data))
 	jd.DisallowUnknownFields()
@@ -54,6 +57,9 @@ type IssueResultJSON struct {
 }
 
 func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
+	if data == nil {
+		return nil, nil
+	}
 	jso := new(IssueResultJSON)
 	jd := json.NewDecoder(bytes.NewBuffer(data))
 	jd.DisallowUnknownFields()
@@ -69,6 +75,12 @@ func (i *IssueResultJSON) equal(i2 *IssueResultJSON) bool {
 		i.Issue.Cmp(i2.Issue.Value()) == 0
 }
 
+func (i *IssueResultJSON) GetTotalReward() *big.Int {
+	total := new(big.Int).Add(i.ByFee.Value(), i.ByOverIssuedICX.Value())
+	total.Add(total, i.Issue.Value())
+	return total
+}
+
 func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
 	issue, _ := es.State.GetIssue()
 	issue = regulateIssueInfo(issue, iScore)
@@ -77,7 +89,13 @@ func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
 
 // regulateIssueInfo regulate icx issue amount with previous period data.
 func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
-	icx, remains := new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
+	var icx, remains *big.Int
+	if iScore == nil || iScore.Sign() == 0 {
+		icx = new(big.Int)
+		remains = new(big.Int)
+	} else {
+		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
+	}
 	overIssued := new(big.Int).Sub(issue.PrevTotalReward, icx)
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
 	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
@@ -121,14 +139,25 @@ func calcRewardPerBlock(
 
 	return reward
 }
+func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverIssued *big.Int, byFee *big.Int) {
+	issue = new(big.Int).Set(reward)
+	byFee = new(big.Int)
+	byOverIssued = new(big.Int)
 
-func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, issue *big.Int) {
-	issue = new(big.Int).Sub(reward, i.PrevBlockFee)
-	overIssued = new(big.Int).Set(i.OverIssued)
-	if issue.Cmp(overIssued) >= 0 {
-		issue.Sub(issue, overIssued)
+	if issue.Cmp(i.OverIssued) > 0 {
+		byOverIssued.Set(i.OverIssued)
+		issue.Sub(issue, i.OverIssued)
 	} else {
-		overIssued.Set(issue)
+		byOverIssued.Set(issue)
+		issue.SetInt64(0)
+		return
+	}
+
+	if issue.Cmp(i.PrevBlockFee) > 0 {
+		byFee.Set(i.PrevBlockFee)
+		issue.Sub(issue, i.PrevBlockFee)
+	} else {
+		byFee.Set(issue)
 		issue.SetInt64(0)
 	}
 	return
@@ -136,21 +165,30 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, is
 
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
-	// TODO read values from Term
-	irep := es.State.GetIRep()
-	rrep := es.State.GetRRep()
-	mainPRepCount := es.State.GetMainPRepCount()
-	pRepCount := es.State.GetPRepCount()
-	totalDelegated := es.GetTotalDelegated()
-	// TODO check condition with API from Term
-	//if !isDecentralized {
-	//	irep.SetInt64(0)
-	//}
+	term := es.State.GetTerm()
+	if term == nil || !term.IsDecentralized() {
+		return nil, nil
+	}
+	issueInfo, _ := es.State.GetIssue()
+	if term.GetIISSVersion() == icstate.IISSVersion1 {
+		return getIssueDataV1(es, term)
+	} else {
+		return nil, getIssueDataV2(issueInfo, term)
+	}
+}
+
+func getIssueDataV1(es *ExtensionStateImpl, term *icstate.Term) (*IssuePRepJSON, *IssueResultJSON) {
+	irep := term.Irep()
+	rrep := term.Rrep()
+	// TODO read values from Term and replace es to issue
+	mainPRepCount := term.MainPRepCount()
+	electedPRepCount := term.ElectedPRepCount()
+	totalDelegated := term.TotalDelegated()
 	reward := calcRewardPerBlock(
 		irep,
 		rrep,
-		new(big.Int).SetInt64(mainPRepCount),
-		new(big.Int).SetInt64(pRepCount),
+		new(big.Int).SetInt64(int64(mainPRepCount)),
+		new(big.Int).SetInt64(int64(electedPRepCount)),
 		totalDelegated,
 	)
 	prep := &IssuePRepJSON{
@@ -161,11 +199,23 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	}
 
 	i, _ := es.State.GetIssue()
-	overIssued, issue := calcIssueAmount(reward, i)
+	issue, byOverIssued, byFee := calcIssueAmount(reward, i)
 	result := &IssueResultJSON{
-		ByFee:           icutils.BigInt2HexInt(i.PrevBlockFee),
-		ByOverIssuedICX: icutils.BigInt2HexInt(overIssued),
+		ByFee:           icutils.BigInt2HexInt(byFee),
+		ByOverIssuedICX: icutils.BigInt2HexInt(byOverIssued),
 		Issue:           icutils.BigInt2HexInt(issue),
 	}
 	return prep, result
 }
+
+func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.Term) *IssueResultJSON {
+	reward := new(big.Int).Div(term.Iglobal(), big.NewInt(term.Period()))
+	issue, byOverIssued, byFee := calcIssueAmount(reward, issueInfo)
+	result := &IssueResultJSON{
+		ByFee:           icutils.BigInt2HexInt(byFee),
+		ByOverIssuedICX: icutils.BigInt2HexInt(byOverIssued),
+		Issue:           icutils.BigInt2HexInt(issue),
+	}
+	return result
+}
+

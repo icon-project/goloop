@@ -135,6 +135,7 @@ type Term struct {
 	iprep           *big.Int
 	ivoter          *big.Int
 	bondRequirement int
+	iissVersion     int
 	prepSnapshots   PRepSnapshots
 
 	flags       TermFlag
@@ -190,6 +191,10 @@ func (term *Term) GetEndBlockHeight() int64 {
 	return term.startHeight + term.period - 1
 }
 
+func (term *Term) GetIISSVersion() int {
+	return term.iissVersion
+}
+
 func (term *Term) Set(other *Term) {
 	term.checkWritable()
 	term.sequence = other.sequence
@@ -203,6 +208,7 @@ func (term *Term) Set(other *Term) {
 	term.iprep = other.iprep
 	term.ivoter = other.ivoter
 	term.bondRequirement = other.bondRequirement
+	term.iissVersion = other.iissVersion
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
 }
@@ -224,6 +230,7 @@ func (term *Term) Clone() *Term {
 		iprep:           new(big.Int).Set(term.iprep),
 		ivoter:          new(big.Int).Set(term.ivoter),
 		bondRequirement: term.bondRequirement,
+		iissVersion:     term.iissVersion,
 		prepSnapshots:   term.prepSnapshots.Clone(),
 	}
 }
@@ -245,6 +252,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.iprep,
 		&term.ivoter,
 		&term.bondRequirement,
+		&term.iissVersion,
 		&term.prepSnapshots,
 	)
 }
@@ -262,6 +270,7 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.iprep,
 		term.ivoter,
 		term.bondRequirement,
+		term.iissVersion,
 		term.prepSnapshots,
 	)
 }
@@ -292,6 +301,7 @@ func (term *Term) equal(other *Term) bool {
 		term.iprep.Cmp(other.iprep) == 0 &&
 		term.ivoter.Cmp(other.ivoter) == 0 &&
 		term.bondRequirement == other.bondRequirement &&
+		term.iissVersion == other.iissVersion &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -381,6 +391,7 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["iprep"] = term.iprep
 	jso["ivoter"] = term.ivoter
 	jso["bondRequirement"] = term.bondRequirement
+	jso["iissVersion"] = term.iissVersion
 	jso["preps"] = term.prepSnapshots.toJSON()
 
 	return jso
@@ -397,6 +408,7 @@ func NewNextTerm(
 	iprep *big.Int,
 	ivoter *big.Int,
 	bondRequirement int,
+	iissVersion int,
 ) *Term {
 	if term == nil {
 		return nil
@@ -413,6 +425,7 @@ func NewNextTerm(
 		iprep:           new(big.Int).Set(iprep),
 		ivoter:          new(big.Int).Set(ivoter),
 		bondRequirement: bondRequirement,
+		iissVersion:     iissVersion,
 
 		flags: term.flags | FlagNextTerm,
 	}

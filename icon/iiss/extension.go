@@ -201,7 +201,6 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 		return scoreresult.ErrTimeout
 	}
 
-	// set icstage.global value
 	version := s.State.GetIISSVersion()
 	switch version {
 	case icstate.IISSVersion1:
@@ -232,9 +231,9 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 
 	s.Back = s.Front
 	s.Front = icstage.NewState(s.database)
-	if calculator.result != nil {
-		s.Reward = calculator.result.NewState()
-		s.c.start(calculator.stats.totalReward(), term.StartHeight())
+	if calculator.Result()!= nil {
+		s.Reward = calculator.Result().NewState()
+		s.c.start(calculator.TotalReward(), term.StartHeight())
 	}
 
 	RegulateIssueInfo(s, s.c.rewardAmount)
@@ -268,7 +267,7 @@ func (c *calculation) isCalcDone(calculator *Calculator) bool {
 	if c.currentBH == 0 {
 		return true
 	}
-	return calculator.blockHeight == c.currentBH && calculator.result != nil
+	return calculator.StartHeight() == c.currentBH && calculator.Result() != nil
 }
 
 func (c *calculation) start(reward *big.Int, blockHeight int64) {
@@ -512,6 +511,18 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 	return pb.GetBonderListInJSON(), nil
 }
 
+func (s *ExtensionStateImpl) UpdateIssueInfo(fee *big.Int) error {
+	issue, err := s.State.GetIssue()
+	if err != nil {
+		return err
+	}
+	issue.PrevBlockFee.Add(issue.PrevBlockFee, fee)
+	if err = s.State.SetIssue(issue); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *Calculator) error {
 	var err error
 	term := s.State.GetTerm()
@@ -581,6 +592,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		rf.Iprep,
 		rf.Ivoter,
 		int(s.State.GetBondRequirement()),
+		s.State.GetIISSVersion(),
 	)
 
 	size := 0
