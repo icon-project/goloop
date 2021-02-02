@@ -15,10 +15,10 @@ package icon
 
 import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -28,10 +28,11 @@ import (
 
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
-		return err
+		return err // this is already formatted inside the method
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.State.SetIRep(new(big.Int).Set(&value.Int))
+	err := es.State.SetIRep(new(big.Int).Set(&value.Int))
+	return scoreresult.InvalidParameterError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_getIRep() (int64, error) {
@@ -48,13 +49,13 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccount(s.from)
 	if err != nil {
-		return err
+		return scoreresult.InvalidInstanceError.Errorf("Invalid Account Error")
 	}
 
 	v := &value.Int
 
 	if ia.GetVoting().Cmp(v) == 1 {
-		return errors.Errorf("Failed to stake: stake < voting")
+		return scoreresult.InvalidParameterError.Errorf("Failed to stake: stake < voting")
 	}
 
 	prevTotalStake := ia.GetTotalStake()
@@ -67,7 +68,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	balance := account.GetBalance()
 	availableStake := new(big.Int).Add(balance, ia.Stake())
 	if availableStake.Cmp(v) == -1 {
-		return errors.Errorf("Not enough balance")
+		return scoreresult.OutOfBalanceError.Errorf("Not enough balance")
 	}
 
 	tStake := es.State.GetTotalStake()
@@ -77,21 +78,21 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
 	tl, err := ia.UpdateUnstake(stakeInc, expireHeight)
 	if err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
 	}
 	for _, t := range tl {
 		ts, e := es.GetUnstakingTimerState(t.Height)
 		if e != nil {
-			return errors.Errorf("Error while getting Timer")
+			return scoreresult.UnknownFailureError.Errorf("Error while getting Timer")
 		} else if ts == nil {
 			ts = es.AddUnstakingTimerToState(t.Height)
 		}
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return errors.Errorf("Error while scheduling UnStaking Timer Job")
+			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
 		}
 	}
 	if err = ia.SetStake(v); err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
 	// update world account
@@ -101,7 +102,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
 	if err := es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 
 	return nil
@@ -135,7 +136,8 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccount(address)
 	if err != nil {
-		return nil, err
+		errorCode := scoreresult.UnknownFailureError.Errorf(err.Error()) // this one is not reachable
+		return nil, errorCode
 	}
 	return ia.GetStakeInfo(), nil
 }
@@ -144,7 +146,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 	return es.SetDelegation(s.cc, s.from, ds)
 }
@@ -153,7 +155,8 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia, err := es.GetAccount(address)
 	if err != nil {
-		return nil, err
+		errorCode := scoreresult.UnknownFailureError.Errorf(err.Error()) // this one is not reachable
+		return nil, errorCode
 	}
 	return ia.GetDelegationInfo(), nil
 }
@@ -176,7 +179,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.RegisterPRep(s.from, node, params)
 	if err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
 	_, err = es.Front.AddEventEnable(
@@ -190,17 +193,23 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		[][]byte{s.from.Bytes()},
 	)
 
-	return err
+	return scoreresult.UnknownFailureError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.UnregisterPRep(s.cc, s.from)
+	err :=  es.UnregisterPRep(s.cc, s.from)
+	return scoreresult.UnknownFailureError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.GetPRepInJSON(address, s.cc.BlockHeight())
+	res, err := es.GetPRepInJSON(address, s.cc.BlockHeight())
+	if err != nil {
+		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
+	} else {
+		return res, nil
+	}
 }
 
 func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
@@ -237,24 +246,26 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.SetPRep(s.from, node, params)
+	err := es.SetPRep(s.from, node, params)
+	return scoreresult.UnknownFailureError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	bonds, err := icstate.NewBonds(bondList)
 	if err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.SetBond(s.cc, s.from, bonds)
+	err = es.SetBond(s.cc, s.from, bonds)
+	return scoreresult.UnknownFailureError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	account, err := es.GetAccount(address)
 	if err != nil {
-		return nil, err
+		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
 	}
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInfo()
@@ -265,16 +276,22 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 	bl, err := icstate.NewBonderList(bonderList)
 	if err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.SetBonderList(s.from, bl)
+	err = es.SetBonderList(s.from, bl)
+	return scoreresult.UnknownFailureError.Errorf(err.Error())
 }
 
 func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.GetBonderList(address)
+	res, err := es.GetBonderList(address)
+	if err != nil {
+		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
+	} else {
+		return res, nil
+	}
 }
 
 func (s *chainScore) Ex_claimIScore() error {
@@ -282,24 +299,24 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	claimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
-		return err
+		return scoreresult.InvalidInstanceError.Errorf(err.Error())
 	}
 	if claimed != nil {
 		// claim already in this calculation period
-		return nil
+		return scoreresult.UnknownFailureError.Errorf("claim already in this calculation period")
 	}
 
 	iScore, err := es.Reward.GetIScore(s.from)
 	if err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Errorf("cannot find IScore data")
 	}
 	if iScore == nil {
 		// there is no iScore to claim
-		return nil
+		return scoreresult.UnknownFailureError.Errorf("no IScore data to claim")
 	}
 	claimed, err = es.Back.GetIScoreClaim(s.from)
 	if err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	if claimed != nil {
 		iScore.Value.Sub(iScore.Value, claimed.Value)
@@ -307,7 +324,7 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	if iScore.IsEmpty() {
 		// there is no IScore to claim
-		return nil
+		return scoreresult.OutOfBalanceError.Errorf("no IScore to claim")
 	}
 
 	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRatio, new(big.Int))
@@ -316,7 +333,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	// increase account icx balance
 	account := s.cc.GetAccountState(s.from.ID())
 	if account == nil {
-		return nil
+		return scoreresult.InvalidInstanceError.Errorf("Invalid account")
 	}
 	balance := account.GetBalance()
 	account.SetBalance(balance.Add(balance, icx))
@@ -328,7 +345,7 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	// write claim data to front
 	if err = es.Front.AddIScoreClaim(s.from, claim); err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 
 	s.cc.OnEvent(state.SystemAddress,
@@ -349,13 +366,13 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	fClaim, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
-		return nil, err
+		return nil, scoreresult.InvalidInstanceError.Errorf("Invalid account")
 	}
 	is := new(big.Int)
 	if fClaim == nil {
 		iScore, err := es.Reward.GetIScore(address)
 		if err != nil {
-			return nil, err
+			return nil, scoreresult.UnknownFailureError.Errorf("error while querying IScore")
 		}
 		if iScore == nil || iScore.IsEmpty() {
 			is.SetInt64(0)
@@ -364,7 +381,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		}
 		bClaim, err := es.Back.GetIScoreClaim(address)
 		if err != nil {
-			return nil, err
+			return nil, scoreresult.UnknownFailureError.Errorf("error while querying IScore")
 		}
 		if bClaim != nil {
 			is.Sub(is, bClaim.Value)
@@ -392,7 +409,7 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso, err := es.GetPRepTermInJSON()
 	if err != nil {
-		return jso, err
+		return jso, scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	jso["blockHeight"] = s.cc.BlockHeight()
 	return jso, err
