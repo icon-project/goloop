@@ -217,7 +217,7 @@ func updatePRepStatus(cc contract.CallContext, state *icstate.State, prepAddress
 			}
 		}
 		if !find {
-			prepStatus := state.GetPRepStatus(lv)
+			prepStatus := state.GetPRepStatus(lv, false)
 			applyPRepStatus(prepStatus, icstate.None, cc.BlockHeight())
 			validatorChanged = true
 		}
@@ -230,9 +230,8 @@ func updatePRepStatus(cc contract.CallContext, state *icstate.State, prepAddress
 
 	// process current validators
 	for i := 0; i < len(prepAddressList); i += 1 {
-		prepStatus := state.GetPRepStatus(prepAddressList[i])
+		prepStatus := state.GetPRepStatus(prepAddressList[i], true)
 		if prepStatus == nil {
-			// TODO check if any predefined error format
 			err := errors.New("Prep status not exist")
 			return err
 		}

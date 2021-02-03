@@ -91,7 +91,7 @@ func (pm *PRepManager) init() {
 
 	for i := 0; i < size; i++ {
 		owner := pm.state.GetActivePRep(i)
-		prep := pm.getPRep(owner)
+		prep := pm.getPRep(owner, true)
 		pm.Add(prep)
 	}
 
@@ -106,8 +106,8 @@ func (pm *PRepManager) getSubPRepCount() int {
 	return int(pm.state.GetSubPRepCount())
 }
 
-func (pm *PRepManager) getPRep(owner module.Address) *PRep {
-	base := pm.state.GetPRepBase(owner, false)
+func (pm *PRepManager) getPRep(owner module.Address, createIfNotExist bool) *PRep {
+	base := pm.state.GetPRepBase(owner, createIfNotExist)
 	if base == nil {
 		return nil
 	}
@@ -265,7 +265,7 @@ func (pm *PRepManager) SetPRep(owner, node module.Address, params []string) erro
 
 func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 	var err error
-	p := pm.getPRep(owner)
+	p := pm.getPRep(owner, false)
 	if p == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
