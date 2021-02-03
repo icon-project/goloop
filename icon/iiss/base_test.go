@@ -59,11 +59,11 @@ func TestUpdatePrepStatus(t *testing.T) {
 
 	// 0 block : vote
 	voted := []bool{true, false}
+	ps1 := s.GetPRepStatus(addr1, true)
+	ps2 := s.GetPRepStatus(addr2, true)
 	err = updatePRepStatus(cc, s, addrArray, voted)
 	assert.NoError(t, err)
 
-	ps1 := s.GetPRepStatus(addr1, true)
-	ps2 := s.GetPRepStatus(addr2, true)
 	bh := cc.BlockHeight()
 	assert.Equal(t, icstate.Success, ps1.LastState())
 	assert.Equal(t, icstate.Fail, ps2.LastState())
