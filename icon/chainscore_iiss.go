@@ -32,7 +32,10 @@ func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.State.SetIRep(new(big.Int).Set(&value.Int))
-	return scoreresult.InvalidParameterError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getIRep() (int64, error) {
@@ -148,7 +151,11 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
-	return es.SetDelegation(s.cc, s.from, ds)
+	err = es.SetDelegation(s.cc, s.from, ds)
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
@@ -192,14 +199,19 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		[][]byte{[]byte("PRepRegistered(Address)")},
 		[][]byte{s.from.Bytes()},
 	)
-
-	return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err :=  es.UnregisterPRep(s.cc, s.from)
-	return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
@@ -247,7 +259,10 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.SetPRep(s.from, node, params)
-	return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_setBond(bondList []interface{}) error {
@@ -258,7 +273,10 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err = es.SetBond(s.cc, s.from, bonds)
-	return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{}, error) {
@@ -281,7 +299,10 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err = es.SetBonderList(s.from, bl)
-	return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, error) {
@@ -409,13 +430,17 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso, err := es.GetPRepTermInJSON()
 	if err != nil {
-		return jso, scoreresult.UnknownFailureError.Errorf(err.Error())
+		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	jso["blockHeight"] = s.cc.BlockHeight()
-	return jso, err
+	return jso, nil
 }
 
 func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.GetNetworkValueInJSON()
+	res, err := es.GetNetworkValueInJSON()
+	if err != nil {
+		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return res, nil
 }
