@@ -112,7 +112,7 @@ func (pm *PRepManager) getPRep(owner module.Address, createIfNotExist bool) *PRe
 		return nil
 	}
 
-	status := pm.state.GetPRepStatus(owner, false)
+	status := pm.state.GetPRepStatus(owner, createIfNotExist)
 	return newPRep(owner, base, status)
 }
 
