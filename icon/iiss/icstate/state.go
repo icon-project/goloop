@@ -78,13 +78,13 @@ func (s *State) GetAccount(addr module.Address) (*Account, error) {
 	return a, nil
 }
 
-func (s *State) GetUnstakingTimer(height int64) (*Timer, error) {
-	timer := s.unstakingTimerCache.Get(height, true)
+func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) (*Timer, error) {
+	timer := s.unstakingTimerCache.Get(height, createIfNotExist)
 	return timer, nil
 }
 
-func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
-	timer := s.unbondingTimerCache.Get(height, true)
+func (s *State) GetUnbondingTimer(height int64, createIfNotExist bool) (*Timer, error) {
+	timer := s.unbondingTimerCache.Get(height, createIfNotExist)
 	return timer, nil
 }
 
