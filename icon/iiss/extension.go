@@ -449,7 +449,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 }
 
 func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
-	pb := s.State.GetPRepBase(from)
+	pb := s.State.GetPRepBase(from, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %v", from)
 	}
@@ -473,7 +473,7 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 }
 
 func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{}, error) {
-	pb := s.State.GetPRepBase(address)
+	pb := s.State.GetPRepBase(address, false)
 	if pb == nil {
 		return nil, errors.Errorf("PRep not found: %v", address)
 	}

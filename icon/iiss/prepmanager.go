@@ -107,12 +107,12 @@ func (pm *PRepManager) getSubPRepCount() int {
 }
 
 func (pm *PRepManager) getPRep(owner module.Address) *PRep {
-	base := pm.state.GetPRepBase(owner)
+	base := pm.state.GetPRepBase(owner, false)
 	if base == nil {
 		return nil
 	}
 
-	status := pm.state.GetPRepStatus(owner)
+	status := pm.state.GetPRepStatus(owner, false)
 	return newPRep(owner, base, status)
 }
 
@@ -229,7 +229,7 @@ func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} 
 }
 
 func (pm *PRepManager) contains(owner module.Address) bool {
-	pb := pm.state.GetPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner, false)
 	return !pb.IsEmpty()
 }
 
@@ -238,13 +238,13 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
 
-	pb := pm.state.GetPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner, true)
 	err := setPRep(pb, node, params)
 	if err != nil {
 		return err
 	}
 
-	ps := pm.state.GetPRepStatus(owner)
+	ps := pm.state.GetPRepStatus(owner, true)
 	ps.SetStatus(icstate.Active)
 
 	pm.state.AddActivePRep(owner)
@@ -256,7 +256,7 @@ func (pm *PRepManager) RegisterPRep(owner, node module.Address, params []string)
 }
 
 func (pm *PRepManager) SetPRep(owner, node module.Address, params []string) error {
-	pb := pm.state.GetPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
@@ -272,12 +272,12 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 
 	pm.totalDelegated.Sub(pm.totalDelegated, p.GetVoted())
 
-	pb := pm.state.GetPRepBase(owner)
+	pb := pm.state.GetPRepBase(owner, false)
 	pb.Clear()
 	if err != nil {
 		return err
 	}
-	ps := pm.state.GetPRepStatus(owner)
+	ps := pm.state.GetPRepStatus(owner, false)
 	ps.Clear()
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 			return err
 		}
 		if value.Sign() != 0 {
-			ps := pm.state.GetPRepStatus(owner)
+			ps := pm.state.GetPRepStatus(owner, false)
 
 			if !ps.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
@@ -360,7 +360,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 		}
 
 		if value.Sign() != 0 {
-			ps := pm.state.GetPRepStatus(owner)
+			ps := pm.state.GetPRepStatus(owner, false)
 			if !ps.IsActive() {
 				bondedToInactiveNode.Add(bondedToInactiveNode, value)
 			}
@@ -389,19 +389,19 @@ func (pm *PRepManager) OnTermEnd() error {
 	for i, prep := range pm.orderedPReps {
 		if i < mainPRepCount {
 			if prep.Grade() != icstate.Main {
-				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps := pm.state.GetPRepStatus(prep.Owner(), false)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Main)
 			}
 		} else if i < electedPRepCount {
 			if prep.Grade() != icstate.Sub {
-				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps := pm.state.GetPRepStatus(prep.Owner(), false)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Sub)
 			}
 		} else {
 			if prep.Grade() != icstate.Candidate {
-				ps := pm.state.GetPRepStatus(prep.Owner())
+				ps := pm.state.GetPRepStatus(prep.Owner(), false)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Candidate)
 			}

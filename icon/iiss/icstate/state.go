@@ -114,12 +114,12 @@ func (s *State) GetActivePRep(i int) module.Address {
 	s.prepBaseCache.Add(base)
 }*/
 
-func (s *State) GetPRepBase(owner module.Address) *PRepBase {
-	return s.prepBaseCache.Get(owner, true)
+func (s *State) GetPRepBase(owner module.Address, createIfNotExist bool) *PRepBase {
+	return s.prepBaseCache.Get(owner, createIfNotExist)
 }
 
-func (s *State) GetPRepStatus(owner module.Address) *PRepStatus {
-	return s.prepStatusCache.Get(owner, true)
+func (s *State) GetPRepStatus(owner module.Address, createIfNotExist bool) *PRepStatus {
+	return s.prepStatusCache.Get(owner, createIfNotExist)
 }
 
 func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
