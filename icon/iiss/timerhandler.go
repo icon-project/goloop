@@ -23,14 +23,16 @@ import (
 
 func HandleTimerJob(wc state.WorldContext) (err error) {
 	es := wc.GetExtensionState().(*ExtensionStateImpl)
-	if bt, err := es.GetUnbondingTimerState(wc.BlockHeight()); err != nil {
-		return err
-	} else if bt != nil {
+	bt := es.GetUnbondingTimerState(wc.BlockHeight(), false)
+	if bt != nil {
 		err = handleUnbondingTimer(es, bt.Addresses, bt.Height)
+		if err != nil {
+			return
+		}
 	}
-	if st, err := es.GetUnstakingTimerState(wc.BlockHeight()); err != nil {
-		return err
-	} else if st != nil {
+
+	st := es.GetUnstakingTimerState(wc.BlockHeight(), false)
+	if st != nil {
 		err = handleUnstakingTimer(wc, es, st.Addresses, st.Height)
 	}
 	return
@@ -38,11 +40,7 @@ func HandleTimerJob(wc state.WorldContext) (err error) {
 
 func handleUnstakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*common.Address, h int64) error {
 	for _, a := range al {
-		ea, err := es.GetAccount(a)
-		if err != nil {
-			return err
-		}
-
+		ea := es.GetAccount(a)
 		ra, err := ea.RemoveUnstaking(h)
 		if err != nil {
 			return err
@@ -57,11 +55,8 @@ func handleUnstakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*c
 
 func handleUnbondingTimer(es *ExtensionStateImpl, al []*common.Address, h int64) error {
 	for _, a := range al {
-		as, err := es.GetAccount(a)
-		if err != nil {
-			return err
-		}
-		if err = as.RemoveUnbonding(h); err != nil {
+		as := es.GetAccount(a)
+		if err := as.RemoveUnbonding(h); err != nil {
 			return err
 		}
 	}

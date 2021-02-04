@@ -50,11 +50,7 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	ia, err := es.GetAccount(s.from)
-	if err != nil {
-		return scoreresult.InvalidInstanceError.Errorf("Invalid Account Error")
-	}
-
+	ia := es.GetAccount(s.from)
 	v := &value.Int
 
 	if ia.GetVoting().Cmp(v) == 1 {
@@ -84,12 +80,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
 	}
 	for _, t := range tl {
-		ts, e := es.GetUnstakingTimerState(t.Height)
-		if e != nil {
-			return scoreresult.UnknownFailureError.Errorf("Error while getting Timer")
-		} else if ts == nil {
-			ts = es.AddUnstakingTimerToState(t.Height)
-		}
+		ts := es.GetUnstakingTimerState(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
 			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
 		}
@@ -137,11 +128,7 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	ia, err := es.GetAccount(address)
-	if err != nil {
-		errorCode := scoreresult.UnknownFailureError.Errorf(err.Error()) // this one is not reachable
-		return nil, errorCode
-	}
+	ia := es.GetAccount(address)
 	return ia.GetStakeInfo(), nil
 }
 
@@ -160,11 +147,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	ia, err := es.GetAccount(address)
-	if err != nil {
-		errorCode := scoreresult.UnknownFailureError.Errorf(err.Error()) // this one is not reachable
-		return nil, errorCode
-	}
+	ia := es.GetAccount(address)
 	return ia.GetDelegationInfo(), nil
 }
 
@@ -281,10 +264,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 
 func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	account, err := es.GetAccount(address)
-	if err != nil {
-		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
-	}
+	account := es.GetAccount(address)
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInfo()
 	data["unbonds"] = account.GetUnbondsInfo()

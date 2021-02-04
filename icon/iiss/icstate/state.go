@@ -73,29 +73,20 @@ func (s *State) GetSnapshot() *Snapshot {
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
-func (s *State) GetAccount(addr module.Address) (*Account, error) {
+func (s *State) GetAccount(addr module.Address) *Account {
 	a := s.accountCache.Get(addr, true)
-	return a, nil
+	return a
 }
 
-func (s *State) GetUnstakingTimer(height int64) (*Timer, error) {
-	timer := s.unstakingTimerCache.Get(height, true)
-	return timer, nil
+
+func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) *Timer {
+	timer := s.unstakingTimerCache.Get(height, createIfNotExist)
+	return timer
 }
 
-func (s *State) GetUnbondingTimer(height int64) (*Timer, error) {
-	timer := s.unbondingTimerCache.Get(height, true)
-	return timer, nil
-}
-
-func (s *State) AddUnbondingTimerToCache(h int64) *Timer {
-	t := s.unbondingTimerCache.Get(h, true)
-	return t
-}
-
-func (s *State) AddUnstakingTimerToCache(h int64) *Timer {
-	t := s.unstakingTimerCache.Get(h, true)
-	return t
+func (s *State) GetUnbondingTimer(height int64, createIfNotExist bool) *Timer {
+	timer := s.unbondingTimerCache.Get(height, createIfNotExist)
+	return timer
 }
 
 func (s *State) AddActivePRep(owner module.Address) {

@@ -167,24 +167,17 @@ func (s *ExtensionStateImpl) ClearCache() {
 	// It is called whenever executing a transaction is finish
 }
 
-func (s *ExtensionStateImpl) GetAccount(address module.Address) (*icstate.Account, error) {
+func (s *ExtensionStateImpl) GetAccount(address module.Address) *icstate.Account {
 	return s.State.GetAccount(address)
 }
 
-func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64) (*icstate.Timer, error) {
-	return s.State.GetUnstakingTimer(height)
+
+func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
+	return s.State.GetUnstakingTimer(height, createIfNotExist)
 }
 
-func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64) (*icstate.Timer, error) {
-	return s.State.GetUnbondingTimer(height)
-}
-
-func (s *ExtensionStateImpl) AddUnbondingTimerToState(height int64) *icstate.Timer {
-	return s.State.AddUnbondingTimerToCache(height)
-}
-
-func (s *ExtensionStateImpl) AddUnstakingTimerToState(height int64) *icstate.Timer {
-	return s.State.AddUnstakingTimerToCache(height)
+func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
+	return s.State.GetUnbondingTimer(height, createIfNotExist)
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
@@ -299,10 +292,8 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	var err error
 	var account *icstate.Account
 
-	account, err = s.State.GetAccount(from)
-	if err != nil {
-		return err
-	}
+	account = s.State.GetAccount(from)
+
 	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
@@ -380,10 +371,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	var account *icstate.Account
 	blockHeight := cc.BlockHeight()
 
-	account, err = s.GetAccount(from)
-	if err != nil {
-		return err
-	}
+	account = s.GetAccount(from)
 
 	bondAmount := big.NewInt(0)
 	for _, bond := range bonds {
@@ -418,12 +406,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
-		ts, e := s.State.GetUnbondingTimer(t.Height)
-		if e != nil {
-			return errors.Errorf("Error while getting unbonding Timer")
-		} else if ts == nil {
-			ts = s.State.AddUnbondingTimerToCache(t.Height)
-		}
+		ts := s.State.GetUnbondingTimer(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
 			return errors.Errorf("Error while scheduling Unbonding Timer Job")
 		}
@@ -455,13 +438,9 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 	}
 
 	var account *icstate.Account
-	var err error
 	for _, old := range pb.BonderList() {
 		if !bl.Contains(old) {
-			account, err = s.GetAccount(old)
-			if err != nil {
-				return err
-			}
+			account = s.GetAccount(old)
 			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
 				return errors.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d", len(account.Bonds()), len(account.Unbonds()))
 			}
