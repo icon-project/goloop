@@ -91,12 +91,13 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		slashAmount, expire := account.SlashUnbond(address, ratio)
 		totalSlash.Add(totalSlash, slashAmount)
 		if expire != -1 {
-			timer, err := es.GetUnbondingTimerState(expire)
-			if err != nil {
-				return err
-			}
-			if err := timer.Delete(address); err != nil {
-				return err
+			timer := es.GetUnbondingTimerState(expire, false)
+			if timer != nil {
+				if err := timer.Delete(address); err != nil {
+					return err
+				}
+			} else {
+				return errors.Errorf("timer doesn't exist for height %d", expire)
 			}
 		}
 
