@@ -38,7 +38,7 @@ func (t transactionV3) String() string {
 	return fmt.Sprint(t.Transaction)
 }
 
-type blockV1Impl struct {
+type blockV0Impl struct {
 	Version            string             `json:"version"`
 	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
@@ -50,44 +50,44 @@ type blockV1Impl struct {
 	Signature          common.Signature   `json:"signature"`
 }
 
-type blockV1 struct {
-	*blockV1Impl
+type blockV0 struct {
+	*blockV0Impl
 	transactionList module.TransactionList
 }
 
-func (b *blockV1) Version() int {
-	return module.BlockVersion1
+func (b *blockV0) Version() int {
+	return module.BlockVersion0
 }
 
-func (b *blockV1) ID() []byte {
-	return b.blockV1Impl.BlockHash.Bytes()
+func (b *blockV0) ID() []byte {
+	return b.blockV0Impl.BlockHash.Bytes()
 }
 
-func (b *blockV1) Height() int64 {
-	return b.blockV1Impl.Height
+func (b *blockV0) Height() int64 {
+	return b.blockV0Impl.Height
 }
 
-func (b *blockV1) PrevRound() int {
+func (b *blockV0) PrevRound() int {
 	return 0
 }
 
-func (b *blockV1) PrevID() []byte {
-	return b.blockV1Impl.PrevBlockHash.Bytes()
+func (b *blockV0) PrevID() []byte {
+	return b.blockV0Impl.PrevBlockHash.Bytes()
 }
 
-func (b *blockV1) Votes() module.CommitVoteSet {
+func (b *blockV0) Votes() module.CommitVoteSet {
 	return nil
 }
 
-func (b *blockV1) NextValidatorsHash() []byte {
+func (b *blockV0) NextValidatorsHash() []byte {
 	return nil
 }
 
-func (b *blockV1) NextValidators() module.ValidatorList {
+func (b *blockV0) NextValidators() module.ValidatorList {
 	return nil
 }
 
-func (b *blockV1) Verify() error {
+func (b *blockV0) Verify() error {
 	bs := make([]byte, 0, 128+8)
 	bs = append(bs, []byte(b.PrevBlockHash.String())...)
 	bs = append(bs, []byte(b.MerkleTreeRootHash.String())...)
@@ -125,55 +125,55 @@ func (b *blockV1) Verify() error {
 	return nil
 }
 
-func (b *blockV1) String() string {
-	return fmt.Sprint(b.blockV1Impl)
+func (b *blockV0) String() string {
+	return fmt.Sprint(b.blockV0Impl)
 }
 
-func (b *blockV1) NormalTransactions() module.TransactionList {
+func (b *blockV0) NormalTransactions() module.TransactionList {
 	return b.transactionList
 }
 
-func (b *blockV1) PatchTransactions() module.TransactionList {
+func (b *blockV0) PatchTransactions() module.TransactionList {
 	return nil
 }
 
-func (b *blockV1) Timestamp() int64 {
+func (b *blockV0) Timestamp() int64 {
 	return int64(b.TimeStamp)
 }
 
-func (b *blockV1) Proposer() module.Address {
+func (b *blockV0) Proposer() module.Address {
 	return nil
 }
 
-func (b *blockV1) LogsBloom() module.LogsBloom {
+func (b *blockV0) LogsBloom() module.LogsBloom {
 	return nil
 }
 
-func (b *blockV1) Result() []byte {
+func (b *blockV0) Result() []byte {
 	return nil
 }
 
-func (b *blockV1) NormalReceipts() module.ReceiptList {
+func (b *blockV0) NormalReceipts() module.ReceiptList {
 	return nil
 }
 
-func (b *blockV1) PatchReceipts() module.ReceiptList {
+func (b *blockV0) PatchReceipts() module.ReceiptList {
 	return nil
 }
 
-func (b *blockV1) MarshalHeader(w io.Writer) error {
+func (b *blockV0) MarshalHeader(w io.Writer) error {
 	return nil
 }
 
-func (b *blockV1) MarshalBody(w io.Writer) error {
+func (b *blockV0) MarshalBody(w io.Writer) error {
 	return nil
 }
 
-func (b *blockV1) Marshal(w io.Writer) error {
+func (b *blockV0) Marshal(w io.Writer) error {
 	return nil
 }
 
-func (b *blockV1) ToJSON(version module.JSONVersion) (interface{}, error) {
+func (b *blockV0) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return nil, nil
 }
 
@@ -182,8 +182,8 @@ type Block interface {
 	Verify() error
 }
 
-func ParseBlockV1(b []byte) (Block, error) {
-	var blk = new(blockV1Impl)
+func ParseBlockV0(b []byte) (Block, error) {
+	var blk = new(blockV0Impl)
 	err := json.Unmarshal(b, blk)
 	if err != nil {
 		return nil, err
@@ -193,5 +193,5 @@ func ParseBlockV1(b []byte) (Block, error) {
 		trs[i] = tx.Transaction
 	}
 	transactionList := transaction.NewTransactionListV1FromSlice(trs)
-	return &blockV1{blk, transactionList}, nil
+	return &blockV0{blk, transactionList}, nil
 }

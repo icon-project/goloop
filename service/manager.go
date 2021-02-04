@@ -342,9 +342,9 @@ func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	switch version {
-	case module.BlockVersion1:
+	case module.BlockVersion0:
 		return transaction.NewTransactionListV1FromSlice(txs)
-	case module.BlockVersion2:
+	case module.BlockVersion1, module.BlockVersion2:
 		return transaction.NewTransactionListFromSlice(m.db, txs)
 	default:
 		return nil
