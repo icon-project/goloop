@@ -230,6 +230,9 @@ func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} 
 
 func (pm *PRepManager) contains(owner module.Address) bool {
 	pb := pm.state.GetPRepBase(owner, false)
+	if pb == nil {
+		return false
+	}
 	return !pb.IsEmpty()
 }
 
@@ -264,7 +267,6 @@ func (pm *PRepManager) SetPRep(owner, node module.Address, params []string) erro
 }
 
 func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
-	var err error
 	p := pm.getPRep(owner, false)
 	if p == nil {
 		return errors.Errorf("PRep not found: %s", owner)
@@ -273,14 +275,13 @@ func (pm *PRepManager) UnregisterPRep(owner module.Address) error {
 	pm.totalDelegated.Sub(pm.totalDelegated, p.GetVoted())
 
 	pb := pm.state.GetPRepBase(owner, false)
-	pb.Clear()
-	if err != nil {
-		return err
+	if pb != nil {
+		pb.Clear()
 	}
+
 	ps := pm.state.GetPRepStatus(owner, false)
-	ps.Clear()
-	if err != nil {
-		return err
+	if ps != nil {
+		ps.Clear()
 	}
 	return nil
 }
@@ -320,8 +321,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 			return err
 		}
 		if value.Sign() != 0 {
-			ps := pm.state.GetPRepStatus(owner, false)
-
+			ps := pm.state.GetPRepStatus(owner, true)
 			if !ps.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
 			}
@@ -360,7 +360,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 		}
 
 		if value.Sign() != 0 {
-			ps := pm.state.GetPRepStatus(owner, false)
+			ps := pm.state.GetPRepStatus(owner, true)
 			if !ps.IsActive() {
 				bondedToInactiveNode.Add(bondedToInactiveNode, value)
 			}
@@ -389,19 +389,19 @@ func (pm *PRepManager) OnTermEnd() error {
 	for i, prep := range pm.orderedPReps {
 		if i < mainPRepCount {
 			if prep.Grade() != icstate.Main {
-				ps := pm.state.GetPRepStatus(prep.Owner(), false)
+				ps := pm.state.GetPRepStatus(prep.Owner(), true)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Main)
 			}
 		} else if i < electedPRepCount {
 			if prep.Grade() != icstate.Sub {
-				ps := pm.state.GetPRepStatus(prep.Owner(), false)
+				ps := pm.state.GetPRepStatus(prep.Owner(), true)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Sub)
 			}
 		} else {
 			if prep.Grade() != icstate.Candidate {
-				ps := pm.state.GetPRepStatus(prep.Owner(), false)
+				ps := pm.state.GetPRepStatus(prep.Owner(), true)
 				ps.Set(prep.PRepStatus)
 				ps.SetGrade(icstate.Candidate)
 			}

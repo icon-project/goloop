@@ -171,20 +171,13 @@ func (s *ExtensionStateImpl) GetAccount(address module.Address) (*icstate.Accoun
 	return s.State.GetAccount(address)
 }
 
-func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) (*icstate.Timer, error) {
+
+func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
 	return s.State.GetUnstakingTimer(height, createIfNotExist)
 }
 
-func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64, createIfNotExist bool) (*icstate.Timer, error) {
+func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
 	return s.State.GetUnbondingTimer(height, createIfNotExist)
-}
-
-func (s *ExtensionStateImpl) AddUnbondingTimerToState(height int64) *icstate.Timer {
-	return s.State.AddUnbondingTimerToCache(height)
-}
-
-func (s *ExtensionStateImpl) AddUnstakingTimerToState(height int64) *icstate.Timer {
-	return s.State.AddUnstakingTimerToCache(height)
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
@@ -418,10 +411,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	for _, t := range tl {
-		ts, e := s.State.GetUnbondingTimer(t.Height, true)
-		if e != nil {
-			return errors.Errorf("Error while getting unbonding Timer")
-		}
+		ts := s.State.GetUnbondingTimer(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
 			return errors.Errorf("Error while scheduling Unbonding Timer Job")
 		}
