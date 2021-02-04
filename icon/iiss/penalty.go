@@ -76,11 +76,7 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 	bonders := pm.GetPRepByOwner(address).BonderList()
 	// slash all bonder
 	for _, bonder := range bonders {
-		account, err := es.GetAccount(bonder)
-		if err != nil {
-			return err
-		}
-
+		account := es.GetAccount(bonder)
 		totalSlash := new(big.Int)
 
 		// from bonds
@@ -102,7 +98,7 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		}
 
 		// from stake
-		if err = account.SlashStake(totalSlash); err != nil {
+		if err := account.SlashStake(totalSlash); err != nil {
 			return err
 		}
 		totalStake := es.State.GetTotalStake()

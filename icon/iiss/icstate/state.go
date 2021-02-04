@@ -73,9 +73,9 @@ func (s *State) GetSnapshot() *Snapshot {
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
-func (s *State) GetAccount(addr module.Address) (*Account, error) {
+func (s *State) GetAccount(addr module.Address) *Account {
 	a := s.accountCache.Get(addr, true)
-	return a, nil
+	return a
 }
 
 
