@@ -190,7 +190,7 @@ func TestState_AddEvent(t *testing.T) {
 	}
 
 	// check event size
-	es, err := s.getEventSize()
+	es, err := s.GetEventSize()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(len(tests)), es.Value.Int64())
 
@@ -376,6 +376,7 @@ func TestState_AddGlobal(t *testing.T) {
 
 	type args struct {
 		version          int
+		startHeight      int64
 		offsetLimit      int
 		irep             *big.Int
 		rrep             *big.Int
@@ -388,10 +389,6 @@ func TestState_AddGlobal(t *testing.T) {
 		bondRequirement  int
 	}
 
-	type want struct {
-		version int
-	}
-
 	tests := []struct {
 		name string
 		args args
@@ -400,6 +397,7 @@ func TestState_AddGlobal(t *testing.T) {
 			"Version 1",
 			args{
 				version:          GlobalVersion1,
+				startHeight:      0,
 				offsetLimit:      1000,
 				irep:             big.NewInt(100),
 				rrep:             big.NewInt(200),
@@ -411,6 +409,7 @@ func TestState_AddGlobal(t *testing.T) {
 			"Version 2",
 			args{
 				version:          GlobalVersion2,
+				startHeight:      0,
 				offsetLimit:      1000,
 				iglobal:          big.NewInt(100),
 				iprep:            big.NewInt(50),
@@ -427,6 +426,7 @@ func TestState_AddGlobal(t *testing.T) {
 			switch a.version {
 			case GlobalVersion1:
 				err = s.AddGlobalV1(
+					a.startHeight,
 					a.offsetLimit,
 					a.irep,
 					a.rrep,
@@ -435,6 +435,7 @@ func TestState_AddGlobal(t *testing.T) {
 				)
 			case GlobalVersion2:
 				err = s.AddGlobalV2(
+					a.startHeight,
 					a.offsetLimit,
 					a.iglobal,
 					a.iprep,
@@ -446,7 +447,7 @@ func TestState_AddGlobal(t *testing.T) {
 			assert.NoError(t, err)
 
 			key := HashKey.Append(globalKey).Build()
-			obj, err := icobject.GetFromMutableForObject(s.store, key)
+			obj, err := s.store.Get(key)
 			assert.NoError(t, err)
 			g := ToGlobal(obj)
 			assert.Equal(t, a.version, g.Version())

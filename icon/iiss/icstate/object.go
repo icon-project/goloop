@@ -30,6 +30,7 @@ const (
 	TypeTimer
 	TypeIssue
 	TypeTerm
+	TypeRewardCalcInfo
 )
 
 type StateAndSnapshot struct {
@@ -64,6 +65,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newIssue(tag), nil
 	case TypeTerm:
 		return newTermWithTag(tag), nil
+	case TypeRewardCalcInfo:
+		return newRewardCalcInfo(tag), nil
 	case icobject.TypeAddress:
 		return icobject.NewAddress(tag), nil
 	default:
@@ -121,4 +124,11 @@ func ToTerm(object trie.Object) *Term {
 		return nil
 	}
 	return object.(*icobject.Object).Real().(*Term)
+}
+
+func ToRewardCalcInfo(object trie.Object) *RewardCalcInfo {
+	if object == nil {
+		return nil
+	}
+	return object.(*icobject.Object).Real().(*RewardCalcInfo)
 }

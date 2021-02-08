@@ -34,6 +34,14 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type RewardType int
+
+const (
+	TypeBlockProduce RewardType = iota
+	TypeVoted
+	TypeVoting
+)
+
 const (
 	DayBlock   = 24 * 60 * 60 / 2
 	MonthBlock = DayBlock * 30
@@ -42,14 +50,6 @@ const (
 	IScoreICXRatio = 1000
 
 	keyCalculator = "iiss.calculator"
-)
-
-type RewardType int
-
-const (
-	TypeBlockProduce RewardType = iota
-	TypeVoted
-	TypeVoting
 )
 
 var (
@@ -65,11 +65,10 @@ type Calculator struct {
 	startHeight int64
 	stats       *statistics
 
-	back        *icstage.Snapshot
-	global      *icstage.Global
-	base        *icreward.Snapshot
-	temp        *icreward.State
-	offsetLimit int
+	back   *icstage.Snapshot
+	base   *icreward.Snapshot
+	global *icstage.Global
+	temp   *icreward.State
 }
 
 func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
@@ -80,9 +79,7 @@ func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		hash,
 		c.startHeight,
-		c.stats.blockProduce,
-		c.stats.Voted,
-		c.stats.voting,
+		c.stats,
 	)
 }
 
@@ -91,9 +88,7 @@ func (c *Calculator) RLPDecodeSelf(d codec.Decoder) error {
 	if err := d.DecodeListOf(
 		&hash,
 		&c.startHeight,
-		&c.stats.blockProduce,
-		&c.stats.Voted,
-		&c.stats.voting,
+		&c.stats,
 	); err != nil {
 		return err
 	}
@@ -146,10 +141,6 @@ func (c *Calculator) TotalReward() *big.Int {
 	return c.stats.totalReward()
 }
 
-func (c *Calculator) OffsetLimit() int {
-	return c.offsetLimit
-}
-
 func (c *Calculator) Back() *icstage.Snapshot {
 	return c.back
 }
@@ -162,22 +153,22 @@ func (c *Calculator) Temp() *icreward.State {
 	return c.temp
 }
 
-func (c *Calculator) isCalculating() bool {
-	return c.startHeight != 0 && c.result == nil
-}
-
-func (c *Calculator) isResultSynced(ss *ExtensionSnapshotImpl) bool {
-	if c.result == nil {
-		return false
+func (c *Calculator) IsCalcDone(blockHeight int64) bool {
+	if c.startHeight == InitBlockHeight {
+		return true
 	}
-	return bytes.Compare(c.result.Bytes(), ss.reward.Bytes()) == 0
+	return c.startHeight == blockHeight && c.result != nil
 }
 
 func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
-	if c.isCalculating() {
+	if ss.back == nil {
 		return false
 	}
-	return c.isResultSynced(ss)
+	global, err := ss.back.GetGlobal()
+	if err != nil || global == nil {
+		return false
+	}
+	return c.back == nil  || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
 }
 
 func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
@@ -221,7 +212,7 @@ func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
 	)
 	log.Infof("Calculation statistics: BlockProduce=%s Voted=%s Voting=%s",
 		c.stats.blockProduce.String(),
-		c.stats.Voted.String(),
+		c.stats.voted.String(),
 		c.stats.voting.String(),
 	)
 	return
@@ -229,11 +220,10 @@ func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
 
 func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	var err error
-	c.back = icstage.NewSnapshot(ss.database, ss.back.Bytes())
-	c.base = icreward.NewSnapshot(ss.database, ss.reward.Bytes())
+	c.back = ss.back
+	c.base = ss.reward
 	c.temp = c.base.NewState()
 	c.result = nil
-	c.startHeight = ss.c.currentBH
 	c.stats.clear()
 
 	// read global variables
@@ -241,6 +231,10 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	if err != nil {
 		return err
 	}
+	if c.global == nil {
+		return errors.Errorf("There is no Global values for calculator")
+	}
+	c.startHeight = c.global.GetStartHeight()
 
 	// write claim data to temp
 	if err = c.processClaim(); err != nil {
@@ -638,12 +632,12 @@ func (c *Calculator) calculateVotingRewardV1() error {
 			delegateMap[idx][offset] = e.Votes
 		}
 	}
-	if err := c.processDelegating(variable, processedOffset, c.offsetLimit, prepInfo, delegateMap); err != nil {
+	if err := c.processDelegating(variable, processedOffset, c.global.GetOffsetLimit(), prepInfo, delegateMap); err != nil {
 		return err
 	}
 
 	// from DELEGATE event
-	if err := c.processDelegateEvent(variable, c.offsetLimit, prepInfo, delegateMap); err != nil {
+	if err := c.processDelegateEvent(variable, c.global.GetOffsetLimit(), prepInfo, delegateMap); err != nil {
 		return err
 	}
 	return nil
@@ -794,7 +788,7 @@ func (c *Calculator) calculateVotingRewardV2() error {
 		}
 		offset := int(intconv.BytesToInt64(keySplit[1]))
 		if lastOffset != offset {
-			if err = c.processVoting(variable, lastOffset, c.offsetLimit, vInfo); err != nil {
+			if err = c.processVoting(variable, lastOffset, offset, vInfo); err != nil {
 				return err
 			}
 			lastOffset = offset
@@ -968,8 +962,11 @@ func (c *Calculator) postWork() (err error) {
 	return
 }
 
+const InitBlockHeight = -1
+
 func NewCalculator() *Calculator {
 	return &Calculator{
+		startHeight: InitBlockHeight,
 		stats: newStatistics(),
 	}
 }
@@ -1165,27 +1162,43 @@ type pRepEnable struct {
 
 type statistics struct {
 	blockProduce *big.Int
-	Voted        *big.Int
+	voted        *big.Int
 	voting       *big.Int
 }
 
 func newStatistics() *statistics {
 	return &statistics{
 		blockProduce: new(big.Int),
-		Voted:        new(big.Int),
+		voted:        new(big.Int),
 		voting:       new(big.Int),
 	}
 }
 
+func (s *statistics) RLPEncodeSelf(e codec.Encoder) error {
+	return e.EncodeListOf(
+		s.blockProduce,
+		s.voted,
+		s.voting,
+	)
+}
+
+func (s *statistics) RLPDecodeSelf(d codec.Decoder) error {
+	return d.DecodeListOf(
+		&s.blockProduce,
+		&s.voted,
+		&s.voting,
+	)
+}
+
 func (s *statistics) equal(s2 *statistics) bool {
 	return s.blockProduce.Cmp(s2.blockProduce) == 0 &&
-		s.Voted.Cmp(s2.Voted) == 0 &&
+		s.voted.Cmp(s2.voted) == 0 &&
 		s.voting.Cmp(s2.voting) == 0
 }
 
 func (s *statistics) clear() {
 	s.blockProduce.SetInt64(0)
-	s.Voted.SetInt64(0)
+	s.voted.SetInt64(0)
 	s.voting.SetInt64(0)
 }
 
@@ -1203,7 +1216,7 @@ func (s *statistics) increaseBlockProduce(amount *big.Int) {
 }
 
 func (s *statistics) increaseVoted(amount *big.Int) {
-	s.Voted = increaseStats(s.Voted, amount)
+	s.voted = increaseStats(s.voted, amount)
 }
 
 func (s *statistics) increaseVoting(amount *big.Int) {
@@ -1211,7 +1224,7 @@ func (s *statistics) increaseVoting(amount *big.Int) {
 }
 func (s *statistics) totalReward() *big.Int {
 	reward := new(big.Int)
-	reward.Add(s.blockProduce, s.Voted)
+	reward.Add(s.blockProduce, s.voted)
 	reward.Add(reward, s.voting)
 	return reward
 }

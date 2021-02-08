@@ -79,7 +79,7 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 }
 
 func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
-	size, err := s.getEventSize()
+	size, err := s.GetEventSize()
 	if err != nil {
 		return 0, err
 	}
@@ -101,7 +101,7 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 }
 
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
-	size, err := s.getEventSize()
+	size, err := s.GetEventSize()
 	if err != nil {
 		return 0, err
 	}
@@ -121,7 +121,7 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 }
 
 func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (int64, error) {
-	size, err := s.getEventSize()
+	size, err := s.GetEventSize()
 	if err != nil {
 		return 0, err
 	}
@@ -140,7 +140,7 @@ func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (
 	return index, s.setEventSize(size)
 }
 
-func (s *State) getEventSize() (*EventSize, error) {
+func (s *State) GetEventSize() (*EventSize, error) {
 	key := HashKey.Append(eventsKey).Build()
 	o, err := s.store.Get(key)
 	if err != nil {
@@ -200,11 +200,12 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 	return err
 }
 
-func (s *State) AddGlobalV1(offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
+func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
 	key := HashKey.Append(globalKey).Build()
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion1))
 	g := obj.GlobalImpl.(*GlobalV1)
 	g.IISSVersion = icstate.IISSVersion1
+	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit
 	g.Irep.Set(irep)
 	g.Rrep.Set(rrep)
@@ -214,13 +215,14 @@ func (s *State) AddGlobalV1(offsetLimit int, irep *big.Int, rrep *big.Int, mainP
 	return err
 }
 
-func (s *State) AddGlobalV2(offsetLimit int, iglobal *big.Int, iprep *big.Int, ivoter *big.Int,
+func (s *State) AddGlobalV2(startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int, ivoter *big.Int,
 	electedPRepCount int, bondRequirement int,
 ) error {
 	key := HashKey.Append(globalKey).Build()
 	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion2))
 	g := obj.GlobalImpl.(*GlobalV2)
 	g.IISSVersion = icstate.IISSVersion2
+	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit
 	g.Iglobal.Set(iglobal)
 	g.Iprep.Set(iprep)

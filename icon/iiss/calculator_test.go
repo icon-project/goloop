@@ -38,7 +38,7 @@ func TestCalculator(t *testing.T) {
 
 	c.startHeight = 100
 	c.stats.blockProduce.SetInt64(int64(100))
-	c.stats.Voted.SetInt64(int64(200))
+	c.stats.voted.SetInt64(int64(200))
 	c.stats.voting.SetInt64(int64(300))
 	err = c.Flush()
 	assert.NoError(t, err)

@@ -28,15 +28,12 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
-	// TODO move to icstate?
-	c  *calculation
 	pm *PRepManager
 
 	state  *icstate.Snapshot
@@ -51,7 +48,6 @@ func (s *ExtensionSnapshotImpl) Bytes() []byte {
 
 func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
-		s.c,
 		s.state.Bytes(),
 		s.front.Bytes(),
 		s.back.Bytes(),
@@ -61,7 +57,7 @@ func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 
 func (s *ExtensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	var stateHash, frontHash, backHash, rewardHash []byte
-	if err := d.DecodeListOf(&s.c, &stateHash, &frontHash, &backHash, &rewardHash); err != nil {
+	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash, &rewardHash); err != nil {
 		return err
 	}
 	s.state = icstate.NewSnapshot(s.database, stateHash)
@@ -90,7 +86,6 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	es := &ExtensionStateImpl{
 		database: s.database,
-		c:        s.c,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		Back:     icstage.NewStateFromSnapshot(s.back),
@@ -103,15 +98,10 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	return es
 }
 
-func (s *ExtensionSnapshotImpl) State() *icstate.Snapshot {
-	return s.state
-}
-
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
 	if hash == nil {
 		return &ExtensionSnapshotImpl{
 			database: database,
-			c:        newCalculation(),
 			state:    icstate.NewSnapshot(database, nil),
 			front:    icstage.NewSnapshot(database, nil),
 			back:     icstage.NewSnapshot(database, nil),
@@ -130,7 +120,6 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 type ExtensionStateImpl struct {
 	database db.Database
 
-	c  *calculation
 	pm *PRepManager
 
 	State  *icstate.State
@@ -147,7 +136,6 @@ type ExtensionStateImpl struct {
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: s.database,
-		c:        s.c,
 		state:    s.State.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.Back.GetSnapshot(),
@@ -161,6 +149,8 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 		panic(err)
 	}
 	s.Front.Reset(snapshot.front)
+	s.Back.Reset(snapshot.back)
+	s.Reward.Reset(snapshot.reward)
 }
 
 func (s *ExtensionStateImpl) ClearCache() {
@@ -189,22 +179,44 @@ func (s *ExtensionStateImpl) AddUnstakingTimerToState(height int64) *icstate.Tim
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
-	return s.c.currentBH
+	rcInfo, err := s.State.GetRewardCalcInfo()
+	if err != nil || rcInfo == nil {
+		return 0
+	}
+	return rcInfo.StartHeight()
 }
 
 func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
-	return s.c.prevBH
+	rcInfo, err := s.State.GetRewardCalcInfo()
+	if err != nil || rcInfo == nil {
+		return 0
+	}
+	return rcInfo.PrevHeight()
 }
 
 func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calculator) error {
-	if !s.c.isCalcDone(calculator) {
-		return scoreresult.ErrTimeout
+	rcInfo, err := s.State.GetRewardCalcInfo()
+	if err != nil {
+		return err
+	}
+	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
+		err = CriticalCalculatorError.Errorf("Reward calculation is not finished (%d)", rcInfo.StartHeight())
+		return err
 	}
 
+	// apply calculation result
+	if calculator.Result() != nil {
+		s.Reward = calculator.Result().NewState()
+		RegulateIssueInfo(s, calculator.TotalReward())
+	}
+	// switch icstage and write global
+	s.Back = s.Front
+	s.Front = icstage.NewState(s.database)
 	version := s.State.GetIISSVersion()
 	switch version {
 	case icstate.IISSVersion1:
-		if err := s.Front.AddGlobalV1(
+		if err = s.Back.AddGlobalV1(
+			term.StartHeight(),
 			int(term.Period()),
 			term.Irep(),
 			term.Rrep(),
@@ -214,7 +226,8 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 			return err
 		}
 	case icstate.IISSVersion2:
-		if err := s.Front.AddGlobalV2(
+		if err = s.Back.AddGlobalV2(
+			term.StartHeight(),
 			int(term.Period()),
 			term.Iglobal(),
 			term.Iprep(),
@@ -229,55 +242,13 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 			"InvalidIISSVersion(version=%d)", version)
 	}
 
-	s.Back = s.Front
-	s.Front = icstage.NewState(s.database)
-	if calculator.Result()!= nil {
-		s.Reward = calculator.Result().NewState()
-		s.c.start(calculator.TotalReward(), term.StartHeight())
+	// update rewardCalcInfo
+	rcInfo.Start(term.StartHeight())
+	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
+		return err
 	}
-
-	RegulateIssueInfo(s, s.c.rewardAmount)
 
 	return nil
-}
-
-type calculation struct {
-	currentBH    int64
-	prevBH       int64
-	rewardAmount *big.Int
-}
-
-func (c *calculation) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(
-		c.currentBH,
-		c.prevBH,
-		c.rewardAmount,
-	)
-}
-
-func (c *calculation) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeListOf(
-		&c.currentBH,
-		&c.prevBH,
-		&c.rewardAmount,
-	)
-}
-
-func (c *calculation) isCalcDone(calculator *Calculator) bool {
-	if c.currentBH == 0 {
-		return true
-	}
-	return calculator.StartHeight() == c.currentBH && calculator.Result() != nil
-}
-
-func (c *calculation) start(reward *big.Int, blockHeight int64) {
-	c.prevBH = c.currentBH
-	c.currentBH = blockHeight
-	c.rewardAmount = reward
-}
-
-func newCalculation() *calculation {
-	return &calculation{0, 0, nil}
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
@@ -532,16 +503,13 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 
 	blockHeight := wc.BlockHeight()
 	if blockHeight == term.GetEndBlockHeight() {
+		if err = s.NewCalculation(term, calculator); err != nil {
+			return err
+		}
+
 		err = s.onTermEnd(wc)
 		if err != nil {
 			panic(err)
-		}
-
-		// NextTerm
-		term = s.State.GetTerm()
-
-		if err = s.NewCalculation(term, calculator); err != nil {
-			return err
 		}
 	}
 

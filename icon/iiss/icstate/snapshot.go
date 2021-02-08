@@ -52,6 +52,18 @@ func (ss *Snapshot) GetValue(key []byte) ([]byte, error) {
 	return value, nil
 }
 
+func (ss *Snapshot) GetRewardCalcInfo() (*RewardCalcInfo, error) {
+	obj, err := ss.store.Get(RewardCalcInfoKey)
+	if err != nil {
+		return nil, err
+	}
+	rc := ToRewardCalcInfo(obj)
+	if rc == nil {
+		rc = NewRewardCalcInfo()
+	}
+	return rc, nil
+}
+
 func (ss *Snapshot) NewState(readonly bool) *State {
 	return NewStateFromSnapshot(ss, readonly)
 }
