@@ -508,7 +508,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 	return scoreapi.NewInfo(methods[:j])
 }
 
-type chain struct {
+type Chain struct {
 	Revision                 common.HexInt32 `json:"revision"`
 	AuditEnabled             common.HexInt16 `json:"auditEnabled"`
 	DeployerWhiteListEnabled common.HexInt16 `json:"deployerWhiteListEnabled"`
@@ -530,7 +530,7 @@ type chain struct {
 }
 
 func (s *ChainScore) Install(param []byte) error {
-	chain := chain{}
+	chain := Chain{}
 	if param != nil {
 		if err := json.Unmarshal(param, &chain); err != nil {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)

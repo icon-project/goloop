@@ -21,18 +21,37 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
+
+type baseDataJSON struct {
+	PRep   json.RawMessage `json:"prep"`
+	Result json.RawMessage `json:"result"`
+}
+
+func parseBaseData(data []byte) (*baseDataJSON, error) {
+	jso := new(baseDataJSON)
+	jd := json.NewDecoder(bytes.NewBuffer(data))
+	jd.DisallowUnknownFields()
+	if err := jd.Decode(jso); err != nil {
+		return nil, err
+	}
+	return jso, nil
+}
 
 type baseV3Data struct {
 	Version   common.HexUint16 `json:"version"`
@@ -107,12 +126,231 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	if info.Index != 0 {
 		return nil, errors.CriticalFormatError.New("BaseMustBeTheFirst")
 	}
-	// TODO process something for base tx
-	return nil, nil
+
+	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(state.StepLimitTypeInvoke), false)
+	defer cc.Dispose()
+
+	if err := handleConsensusInfo(cc); err != nil {
+		return nil, err
+	}
+
+	if err := handleICXIssue(cc, tx.Data); err != nil {
+		return nil, err
+	}
+
+	if err := HandleTimerJob(ctx); err != nil {
+		return nil, err
+	}
+
+	// Make a receipt
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
+	cc.GetEventLogs(r)
+	r.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
+	return r, nil
+}
+
+func handleConsensusInfo(cc contract.CallContext) error {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	csi := cc.ConsensusInfo()
+	if csi == nil {
+		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
+		return nil
+	}
+	// if PrepManager is not ready, it returns immediately
+	if es.pm.GetPRepByNode(csi.Proposer()) == nil {
+		return nil
+	}
+	proposer := es.pm.GetPRepByNode(csi.Proposer()).Owner()
+	validators := csi.Voters()
+	voted := csi.Voted()
+	voters := make([]module.Address, 0)
+	prepAddressList := make([]module.Address, 0)
+	if validators != nil {
+		for i := 0; i < validators.Len(); i += 1 {
+			v, _ := validators.Get(i)
+			if es.pm.GetPRepByNode(v.Address()) == nil {
+				return nil
+			}
+			owner := es.pm.GetPRepByNode(v.Address()).Owner()
+			prepAddressList = append(prepAddressList, owner)
+			if voted[i] {
+				voters = append(voters, owner)
+			}
+		}
+	}
+	// make Block produce Info for calculator
+	if err := es.Front.AddBlockProduce(
+		int(cc.BlockHeight()-es.CalculationBlockHeight()-1),
+		proposer,
+		voters,
+	); err != nil {
+		return err
+	}
+
+	// update P-rep status
+	proposerExist := false
+	for _, p := range prepAddressList {
+		if p.Equal(proposer) {
+			proposerExist = true
+		}
+	}
+	if !proposerExist {
+		prepAddressList = append(prepAddressList, proposer)
+	}
+	err := updatePRepStatus(cc, es.State, prepAddressList, voted)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updatePRepStatus(cc contract.CallContext, state *icstate.State, prepAddressList []module.Address, voted []bool) error {
+	// compare with last validators
+	lastValidators := state.GetLastValidators()
+	validatorChanged := false
+	for _, lv := range lastValidators {
+		find := false
+		for _, cv := range prepAddressList {
+			if cv.Equal(lv) {
+				find = true
+				break
+			}
+		}
+		if !find {
+			prepStatus := state.GetPRepStatus(lv, false)
+			if prepStatus == nil {
+				err := errors.New("Prep status not exist")
+				return err
+			}
+			applyPRepStatus(prepStatus, icstate.None, cc.BlockHeight())
+			validatorChanged = true
+		}
+	}
+	if validatorChanged {
+		if err := state.SetLastValidators(prepAddressList); err != nil {
+			return err
+		}
+	}
+
+	// process current validators
+	for i := 0; i < len(prepAddressList); i += 1 {
+		prepStatus := state.GetPRepStatus(prepAddressList[i], false)
+		if prepStatus == nil {
+			err := errors.New("Prep status not exist")
+			return err
+		}
+		if !voted[i] {
+			applyPRepStatus(prepStatus, icstate.Fail, cc.BlockHeight())
+			if err := validationPenalty(cc, prepStatus); err != nil {
+				return err
+			}
+		} else {
+			applyPRepStatus(prepStatus, icstate.Success, cc.BlockHeight())
+		}
+	}
+
+	return nil
+}
+
+func applyPRepStatus(ps *icstate.PRepStatus, vs icstate.ValidationState, blockHeight int64) {
+	if ps.LastState() == vs {
+		return
+	}
+
+	if ps.LastState() != icstate.None {
+		diff := int(blockHeight - ps.LastHeight())
+		ps.SetVTotal(ps.VTotal() + diff)
+		if ps.LastState() == icstate.Fail {
+			ps.SetVFail(ps.VFail() + diff)
+		}
+	}
+	ps.SetLastState(vs)
+	ps.SetLastHeight(blockHeight)
+}
+
+func handleICXIssue(cc contract.CallContext, data []byte) error {
+	// parse Issue Info. from TX data
+	bd, err := parseBaseData(data)
+	if err != nil {
+		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+	}
+	if bd.PRep == nil || bd.Result == nil {
+		return nil
+	}
+	iPrep, err := parseIssuePRepData(bd.PRep)
+	if err != nil {
+		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+	}
+	iResult, err := parseIssueResultData(bd.Result)
+	if err != nil {
+		return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
+	}
+
+	// get Issue result from state
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	prep, result := GetIssueData(es)
+	if prep == nil || result == nil {
+		return nil
+	}
+
+	// check Issue result
+	if !iPrep.equal(prep) || !iResult.equal(result) {
+		return scoreresult.InvalidParameterError.New("Invalid issue data")
+	}
+
+	// transfer issued ICX to treasury
+	tr := cc.GetAccountState(cc.Treasury().ID())
+	tb := tr.GetBalance()
+	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
+
+	// increase total supply
+	as := cc.GetAccountState(state.SystemID)
+	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
+	totalSupply := ts.BigInt()
+	totalSupply.Add(totalSupply, result.Issue.Value())
+	if err = ts.Set(totalSupply); err != nil {
+		return err
+	}
+
+	// write Issue Info
+	issue, err := es.State.GetIssue()
+	if err != nil {
+		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
+	}
+	issue.TotalReward.Add(issue.TotalReward, prep.Value.Value())
+	issue.PrevBlockFee.SetInt64(0)
+	if result.ByOverIssuedICX.Sign() != 0 {
+		issue.OverIssued.Sub(issue.OverIssued, result.ByOverIssuedICX.Value())
+	}
+	if err = es.State.SetIssue(issue); err != nil {
+		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to set issue Info.")
+	}
+
+	// make event log
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepIssued(int,int,int,int)")},
+		[][]byte{
+			intconv.BigIntToBytes(prep.IRep.Value()),
+			intconv.BigIntToBytes(prep.RRep.Value()),
+			intconv.BigIntToBytes(prep.TotalDelegation.Value()),
+			intconv.BigIntToBytes(prep.Value.Value()),
+		},
+	)
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
+		[][]byte{
+			intconv.BigIntToBytes(result.ByFee.Value()),
+			intconv.BigIntToBytes(result.ByOverIssuedICX.Value()),
+			intconv.BigIntToBytes(result.Issue.Value()),
+			intconv.BigIntToBytes(issue.OverIssued),
+		},
+	)
+
+	return nil
 }
 
 func (tx *baseV3) Dispose() {
-	panic("implement me")
+	//panic("implement me")
 }
 
 func (tx *baseV3) Group() module.TransactionGroup {
@@ -189,6 +427,10 @@ func (tx *baseV3) Nonce() *big.Int {
 
 func (tx *baseV3) To() module.Address {
 	return state.SystemAddress
+}
+
+func (tx *baseV3) IsSkippable() bool {
+	return false
 }
 
 func checkBaseV3JSON(jso map[string]interface{}) bool {

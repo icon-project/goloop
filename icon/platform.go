@@ -17,6 +17,9 @@
 package icon
 
 import (
+	"encoding/json"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -25,11 +28,18 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/transaction"
 )
 
-type platform struct{}
+type platform struct {
+	calculator *iiss.Calculator
+}
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
+	// TODO find right position
+	if err := p.calculator.Init(dbase); err != nil {
+		return nil, err
+	}
 	return newContractManager(p, dbase, dir, logger)
 }
 
@@ -37,7 +47,7 @@ func (p *platform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.Ext
 	// TODO return valid ExtensionSnapshot(not nil) which can return valid ExtensionState.
 	//  with that state, we may change state of extension.
 	//  For initial state, the snapshot returns nil for Bytes() method.
-	return nil
+	return iiss.NewExtensionSnapshot(dbase, raw)
 }
 
 func (p *platform) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
@@ -52,24 +62,65 @@ func (p *platform) ToRevision(value int) module.Revision {
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
 	// TODO calculate issued i-score and amount balance. No changes on world context.
-	return nil, nil
+	// t := common.HexInt64{Value: time.Now().UnixNano() / int64(time.Microsecond)}
+	t := common.HexInt64{Value: wc.BlockTimeStamp()}
+	v := common.HexUint16{Value: module.TransactionVersion3}
+	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	prep, issue := iiss.GetIssueData(es)
+	data := make(map[string]interface{})
+	if prep != nil && issue != nil {
+		data["prep"] = prep
+		data["result"] = issue
+	}
+	mtx := map[string]interface{}{
+		"timestamp": t,
+		"version":   v,
+		"dataType":  "base",
+		"data":      data,
+	}
+	bs, err := json.Marshal(mtx)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := transaction.NewTransactionFromJSON(bs)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
 	// TODO start background calculator if it's not started.
+	go p.calculator.Run(ess.(*iiss.ExtensionSnapshotImpl))
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
-	// TODO implement
-	return nil
+	ext := wc.GetExtensionState()
+	es := ext.(*iiss.ExtensionStateImpl)
+
+	if err := es.NewCalculationPeriod(wc.BlockHeight(), p.calculator); err != nil {
+		return err
+	}
+	issue, err := es.State.GetIssue()
+	if err != nil {
+		return err
+	}
+	issue.PrevBlockFee.Set(er.TotalFee())
+	if err = es.State.SetIssue(issue); err != nil {
+		return err
+	}
+
+	return es.OnExecutionEnd(wc)
 }
 
 func (p *platform) Term() {
-	// TODO implement
+	// Terminate
 }
 
 func NewPlatform(base string, cid int) (service.Platform, error) {
-	return &platform{}, nil
+	return &platform{
+		calculator: iiss.NewCalculator(),
+	}, nil
 }
 
 func init() {

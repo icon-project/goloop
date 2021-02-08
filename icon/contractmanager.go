@@ -17,21 +17,21 @@
 package icon
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"math/big"
 )
 
 type contractManager struct {
 	contract.ContractManager
-	plt *platform
 }
 
 func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	if contentID == contract.CID_CHAIN {
-		return newChainScore(cc, from)
+		return newChainScore(cc, from, value)
 	}
 	return cm.ContractManager.GetSystemScore(contentID, cc, from, value)
 }
@@ -41,5 +41,5 @@ func newContractManager(plt *platform, dbase db.Database, dir string, logger log
 	if err != nil {
 		return nil, err
 	}
-	return &contractManager{cm, plt}, nil
+	return &contractManager{cm}, nil
 }
