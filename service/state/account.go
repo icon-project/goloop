@@ -166,7 +166,7 @@ func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
 }
 
 func (s *accountSnapshotImpl) IsEmpty() bool {
-	return s.balance.BitLen() == 0 && s.store == nil && s.contractOwner == nil
+	return s.balance.Sign() == 0 && s.store == nil && (!s.fIsContract) && s.state == 0
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {
@@ -772,16 +772,13 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 }
 
 func (s *accountStateImpl) Clear() {
-	s.last = nil
-	s.balance = common.HexIntZero
-	s.isContract = false
-	s.version = AccountVersion
-	s.apiInfo = apiInfoStore{}
-	s.contractOwner = nil
-	s.curContract = nil
-	s.nextContract = nil
-	s.store = nil
-	s.deposits = nil
+	*s = accountStateImpl{
+		key:      s.key,
+		useCache: s.useCache,
+		database: s.database,
+		version:  AccountVersion,
+		balance:  common.HexIntZero,
+	}
 }
 
 func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {

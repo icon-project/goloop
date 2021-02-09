@@ -172,7 +172,7 @@ func (d *depositV1) ConsumeSteps(height int64, steps *big.Int) *big.Int {
 		return steps
 	}
 
-	if d.StepRemain.BitLen() == 0 {
+	if d.StepRemain.Sign() == 0 {
 		return steps
 	}
 	if d.StepRemain.Cmp(steps) < 0 {

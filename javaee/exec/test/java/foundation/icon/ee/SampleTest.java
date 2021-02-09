@@ -8,8 +8,9 @@ import example.token.IRC2;
 import example.token.IRC2Basic;
 import example.token.IRC3;
 import example.token.IRC3Basic;
-import example.util.Arrays;
-import example.util.EnumerableIntMap;
+import example.util.EnumerableMap;
+import example.util.IntSet;
+import example.util.IntToAddressMap;
 import foundation.icon.ee.test.GoldenTest;
 import org.junit.jupiter.api.Test;
 
@@ -57,20 +58,20 @@ public class SampleTest extends GoldenTest {
     public void testIRC3() {
         var owner = sm.getOrigin();
         var app = sm.mustDeploy(new Class<?>[]{IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
-                EnumerableIntMap.class, Arrays.class}, "MyNFT", "NFT");
+                EnumerableMap.class, IntSet.class, IntToAddressMap.class}, "MyNFT", "NFT");
         app.invoke("balanceOf", owner);
         app.invoke("totalSupply");
-        var tokenId1 = BigInteger.valueOf(100);
-        var tokenId2 = BigInteger.valueOf(200);
-        var tokenId3 = BigInteger.valueOf(300);
-        app.invoke("mint", tokenId1);
-        app.invoke("mint", tokenId2);
-        app.invoke("mint", tokenId3);
+        BigInteger[] tokenIds = new BigInteger[3];
+        long value = 0x100;
+        for (int i = 0; i < tokenIds.length; i++) {
+            tokenIds[i] = BigInteger.valueOf(value << i);
+            app.invoke("mint", tokenIds[i]);
+        }
         app.invoke("balanceOf", owner);
         var addr1 = sm.newExternalAddress();
-        app.invoke("transfer", addr1, tokenId1);
+        app.invoke("transfer", addr1, tokenIds[1]);
         var addr2 = sm.newExternalAddress();
-        app.invoke("transfer", addr2, tokenId3);
+        app.invoke("transfer", addr2, tokenIds[2]);
         app.invoke("balanceOf", owner);
         app.invoke("tokenOfOwnerByIndex", owner, 0);
         app.invoke("balanceOf", addr1);
@@ -78,5 +79,6 @@ public class SampleTest extends GoldenTest {
         app.invoke("balanceOf", addr2);
         app.invoke("tokenOfOwnerByIndex", addr2, 0);
         app.invoke("totalSupply");
+        app.invoke("burn", tokenIds[0]);
     }
 }

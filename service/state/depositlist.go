@@ -143,7 +143,7 @@ func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
 	for idx, _ := range *dl {
 		dp := (*dl)[idx]
 		remains = dp.ConsumeSteps(bh, remains)
-		if remains.BitLen() == 0 {
+		if remains.Sign() == 0 {
 			return steps
 		}
 	}
@@ -164,15 +164,15 @@ func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
 	for idx, _ := range *dl {
 		dp := (*dl)[idx]
 		fee = dp.ConsumeDepositLv1(bh, fee)
-		if fee.BitLen() == 0 {
+		if fee.Sign() == 0 {
 			break
 		}
 	}
-	if fee.BitLen() != 0 {
+	if fee.Sign() != 0 {
 		for idx, _ := range *dl {
 			dp := (*dl)[idx]
 			fee = dp.ConsumeDepositLv2(bh, fee)
-			if fee.BitLen() == 0 {
+			if fee.Sign() == 0 {
 				return steps
 			}
 		}

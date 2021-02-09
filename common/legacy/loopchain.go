@@ -69,7 +69,7 @@ func (lc *LoopChainDB) GetBlockByHeight(height int) (module.Block, error) {
 	if bs, err := lc.GetBlockJSONByHeight(height); err != nil {
 		return nil, err
 	} else {
-		b, err := ParseBlockV1(bs)
+		b, err := ParseBlockV0(bs)
 		if err != nil {
 			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 		}
@@ -81,7 +81,7 @@ func (lc *LoopChainDB) GetLastBlock() (module.Block, error) {
 	if bs, err := lc.GetLastBlockJSON(); err != nil {
 		return nil, err
 	} else {
-		b, err := ParseBlockV1(bs)
+		b, err := ParseBlockV0(bs)
 		if err != nil {
 			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 		}

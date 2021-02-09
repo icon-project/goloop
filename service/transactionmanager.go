@@ -154,6 +154,9 @@ func (m *TransactionManager) OnTxDrops(drops []TxDrop) {
 func (m *TransactionManager) AddAndWait(tx transaction.Transaction) (
 	<-chan interface{}, error,
 ) {
+	if err := m.verifyTx(tx); err != nil {
+		return nil, err
+	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -184,11 +187,15 @@ func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
 }
 
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
+	if err := m.verifyTx(tx); err != nil {
+		return err
+	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.addInLock(tx, direct)
 }
-func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
+
+func (m *TransactionManager) verifyTx(tx transaction.Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -204,6 +211,9 @@ func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) 
 		return InvalidTransactionError.Wrap(err,
 			"Failed to verify transaction")
 	}
+	return nil
+}
+func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
 	if m.txBucket.Has(tx.ID()) {
 		return ErrCommittedTransaction
 	}

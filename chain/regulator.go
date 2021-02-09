@@ -21,16 +21,25 @@ type txExecutionEntry struct {
 	finalize  time.Duration
 }
 
-func (e *txExecutionEntry) Sub(e2 *txExecutionEntry) {
-	e.count -= e2.count
-	e.execution -= e2.execution
-	e.finalize -= e2.finalize
+type txExecutionSum struct {
+	txExecutionEntry
+	entries int
 }
 
-func (e *txExecutionEntry) Add(e2 *txExecutionEntry) {
+func (e *txExecutionSum) Sub(e2 *txExecutionEntry) {
+	if e2.count > 0 {
+		e.count -= e2.count
+		e.execution -= e2.execution
+		e.finalize -= e2.finalize
+		e.entries -= 1
+	}
+}
+
+func (e *txExecutionSum) Add(e2 *txExecutionEntry) {
 	e.count += e2.count
 	e.execution += e2.execution
 	e.finalize += e2.finalize
+	e.entries += 1
 }
 
 type regulator struct {
@@ -41,7 +50,7 @@ type regulator struct {
 	minCommitTimeout time.Duration
 
 	history      [30]txExecutionEntry
-	sum          txExecutionEntry
+	sum          txExecutionSum
 	currentIndex int
 
 	currentTxCount int
@@ -107,24 +116,28 @@ func (r *regulator) MaxTxCount() int {
 	return r.currentTxCount
 }
 
-func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	if count == 0 {
-		return
-	}
-
+func (r *regulator) addEntryInLock(count int, ed time.Duration, fd time.Duration) {
 	e := txExecutionEntry{count, ed, fd}
 	item := &r.history[r.currentIndex]
 	r.sum.Sub(item)
 	*item = e
 	r.sum.Add(&e)
 	r.currentIndex = (r.currentIndex + 1) % (len(r.history))
+}
+
+func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration) {
+	if count <= configMinimumTransactions {
+		return
+	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.addEntryInLock(count, ed, fd)
 
 	// For target duration
-	r.currentTxCount =
-		int(time.Duration(r.sum.count) * r.blockInterval / (r.sum.execution + (r.sum.finalize * 2)))
+	iv := r.blockInterval - (r.sum.finalize / time.Duration(r.sum.entries))
+	r.currentTxCount = int(time.Duration(r.sum.count) * iv / r.sum.execution)
 	if r.currentTxCount < configMinimumTransactions {
 		r.currentTxCount = configMinimumTransactions
 	}
@@ -133,10 +146,12 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 }
 
 func NewRegulator(logger log.Logger) *regulator {
-	return &regulator{
+	r := &regulator{
 		blockInterval:    ConfigDefaultBlockInterval,
 		minCommitTimeout: ConfigDefaultMinCommitTimeout,
 		currentTxCount:   ConfigDefaultTransactions,
 		log:              logger,
 	}
+	r.addEntryInLock(ConfigDefaultTransactions, time.Second, 0)
+	return r
 }

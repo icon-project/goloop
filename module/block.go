@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	BlockVersion1 = iota + 1
+	BlockVersion0 = iota
+	BlockVersion1
 	BlockVersion2
 )
 

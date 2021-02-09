@@ -494,15 +494,8 @@ Loop:
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
 					p.logger.Tracef("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
-					if !r {
-						p.CloseByError(err)
-						return
-					}
-					if cbFunc := p.getErrorCbFunc(); cbFunc != nil {
-						cbFunc(err, p, pkt)
-					} else {
-						defaultOnError(err, p, pkt)
-					}
+					p.CloseByError(err)
+					return
 				}
 				//TODO peer.packet_dump
 				if isLoggingPacket {

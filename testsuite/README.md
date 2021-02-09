@@ -1,61 +1,59 @@
 # TEST Suite
 
-## About
-
-This is test suite for goloop.
+A collection of test suite for goloop.
 It includes test cases for continuous integration system.
 
 ## Requirements
 
-### JDK 11
+You need to install OpenJDK 11 version. Visit [OpenJDK.net](http://openjdk.java.net/) for prebuilt binaries.
+Or you can install a proper OpenJDK package from your OS vendors.
 
-It's tested with OpenJDK 11.0.4.
-> Refer [https://openjdk.java.net/] for OpenJDK
-
-#### Installation in macOS
-
+In macOS:
 ```
-brew tap AdoptOpenJDK/openjdk
-brew cask install adoptopenjdk11
+$ brew tap AdoptOpenJDK/openjdk
+$ brew cask install adoptopenjdk11
 ```
-> Refer [https://brew.sh/] for `brew`
+
+In Linux (Ubuntu 18.04):
+```
+$ sudo apt install openjdk-11-jdk
+```
 
 ## Run
 
 ```
-# ./gradlew build
-# ./gradlew <target>
+$ ./gradlew <target>
 ```
 
-For specific test case
+For specific test cases.
 ```
-# ./gradlew <target> --tests <test pattern>
+$ ./gradlew <target> --tests <test pattern>
 ```
 
 ### Available targets
 
 | Target         | Description                                          |
 |:---------------|:-----------------------------------------------------|
-| testPyScore    | Test features for python score.                      |
-| testPyGov      | Test chain score with python score.                  |
-| testJavaScore  | Test features for java score.                        |
-| testInterScore | Test inter operation between java and python scores. |
+| testPyScore    | Test features for Python SCORE.                      |
+| testPyGov      | Test governance SCORE written in Python.             |
+| testJavaScore  | Test features for Java SCORE.                        |
+| testInterScore | Test inter-operations between Java and Python SCOREs.|
 
 
 ### Options
 
 Using options.
 ```
-# ./gradlew [-D<variable>=<value>...] <target>
+$ ./gradlew [-D<variable>=<value>...] <target>
 ```
 
-Available options
+Available options.
 
 | Option      | Targets   | Description                                    |
 |:------------|:----------|:-----------------------------------------------|
-| AUDIT       | testPyGov | `true` for testing scores with AUDIT feature   |
-| NO_SERVER   | all       | `true` for disabling auto start `gochain`.     |
-| USE_DOCKER  | all       | `true` for enabling docker container for test. |
+| `AUDIT`     | testPyGov | `true` for testing SCOREs with AUDIT feature   |
+| `NO_SERVER` | all       | `true` for disabling auto start `gochain`.     |
+| `USE_DOCKER`| all       | `true` for enabling docker container for test. |
 
 To use other nodes than `gochain`, start the servers first, then define
 `NO_SERVER` as `true`.
@@ -71,7 +69,7 @@ Set `AUDIT` to `true` to run audit specific feature tests in governance.
 
 | Directory           | Description                                    |
 |:--------------------|:-----------------------------------------------|
-| data/genesisStorage | Genesis file & governance score                |
+| data/genesisStorage | Genesis file & governance SCORE                |
 | data/scores         | SCOREs related with test cases                 |
 | data/config         | gochain configurations for the target          |
 | data/chainenv       | Chain environment property file for the target |
@@ -89,12 +87,12 @@ Set `AUDIT` to `true` to run audit specific feature tests in governance.
 | foundation.icon.test.common | Common classes              |
 | foundation.icon.test.scores | Wrapping classes for SCOREs |
 
-### Test case
+### Test cases
 
 All test cases are written in JUnit 5.
 > Refer [https://junit.org/junit5/] for JUnit.
 
-#### Environment file
+#### Environment files
 
 Before it executes test cases, it loads environment properties from
 the file specified by environment variable `CHAIN_ENV`
@@ -102,13 +100,14 @@ the file specified by environment variable `CHAIN_ENV`
 It's accessible through `foundation.icon.test.common.Env`.
 
 #### Tags
-They are categorized into specific targets.
+
+Test cases are categorized into specific targets.
 To identify test cases, following tags are used for each target.
 
 | Target         | Tags            |
 |:---------------|:----------------|
 | testPyScore    | TAG_PY_SCORE    |
-| testPyGov      | TAG_PY_SCORE    |
+| testPyGov      | TAG_PY_GOV      |
 | testJavaScore  | TAG_JAVA_SCORE  |
 | testInterScore | TAG_INTER_SCORE |
 
