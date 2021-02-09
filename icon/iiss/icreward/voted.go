@@ -71,6 +71,14 @@ func (v *Voted) IsEmpty() bool {
 	return v.Enable == false && v.Delegated.Sign() == 0 && v.Bonded.Sign() == 0 && v.BondedDelegation.Sign() == 0
 }
 
+func (v *Voted) SetEnable(enable bool) {
+	v.Enable = enable
+}
+
+func (v *Voted) SetBonded(bonded *big.Int) {
+	v.Bonded.Set(bonded)
+}
+
 func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
 	if bondRequirement == 0 {
 		// IISSVersion1: bondedDelegation = delegated

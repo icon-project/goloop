@@ -222,7 +222,8 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	var err error
 	c.back = ss.back
 	c.base = ss.reward
-	c.temp = c.base.NewState()
+	// make new State with hash value to decoupling base and temp
+	c.temp = icreward.NewState(c.dbase, c.base.Bytes())
 	c.result = nil
 	c.stats.clear()
 
@@ -512,7 +513,7 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		data := newVotedData(obj)
+		data := newVotedData(obj.Clone())	// Clone Voted instance as we will modify it later
 		data.voted.UpdateBondedDelegation(bondRequirement)
 		vInfo.addVotedData(addr, data)
 	}
@@ -737,13 +738,14 @@ func (c *Calculator) processDelegateEvent(
 }
 
 func delegatingReward(
-	rrep *big.Int,
+	variable *big.Int,
 	from int,
 	to int,
 	prepInfo map[string]*pRepEnable,
 	delegations icstate.Delegations,
 ) *big.Int {
 	// voting = rrep * delegations * period * IScoreICXRatio / year_block
+	// variable = rrep * IScoreICXRatio / year_block
 	total := new(big.Int)
 	for _, d := range delegations {
 		s := from
@@ -756,9 +758,8 @@ func delegatingReward(
 				e = prep.endOffset
 			}
 			period := e - s
-			reward := new(big.Int).Mul(rrep, d.Value.Value())
+			reward := new(big.Int).Mul(variable, d.Value.Value())
 			reward.Mul(reward, big.NewInt(int64(period)))
-			reward.Div(reward, bigIntBeta3Divider)
 			total.Add(total, reward)
 		}
 	}
@@ -832,6 +833,12 @@ func (c *Calculator) calculateVotingRewardV2() error {
 			if err = c.writeBonding(event.From, bonding); err != nil {
 				return nil
 			}
+		}
+	}
+
+	if lastOffset < c.global.GetOffsetLimit() {
+		if err = c.processVoting(variable, lastOffset, c.global.GetOffsetLimit(), vInfo); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -909,8 +916,8 @@ func votingReward(
 		if voting, err := iter.Get(); err != nil {
 			log.Errorf("Fail to iterating votings err=%+v", err)
 		} else {
-			if prep, ok := vInfo.preps[string(voting.To().Bytes())]; ok {
-				if prep.voted.Enable != true {
+			if vData, ok := vInfo.preps[string(voting.To().Bytes())]; ok {
+				if vData.Enable() != true {
 					continue
 				}
 				reward.Mul(base, voting.Amount())
@@ -990,18 +997,34 @@ type votedData struct {
 
 func (vd *votedData) compare(vd2 *votedData) int {
 	dv := new(big.Int)
-	if vd.voted.Enable {
-		dv = vd.voted.BondedDelegation
+	if vd.Enable() {
+		dv = vd.GetBondedDelegation()
 	}
 	dv2 := new(big.Int)
-	if vd2.voted.Enable {
-		dv2 = vd2.voted.BondedDelegation
+	if vd2.Enable() {
+		dv2 = vd2.GetBondedDelegation()
 	}
 	return dv.Cmp(dv2)
 }
 
 func (vd *votedData) Enable() bool {
 	return vd.voted.Enable
+}
+
+func (vd *votedData) SetEnable(enable bool) {
+	vd.voted.SetEnable(enable)
+}
+
+func (vd *votedData) GetDelegated() *big.Int {
+	return vd.voted.Delegated
+}
+
+func (vd *votedData) GetBonded() *big.Int {
+	return vd.voted.Bonded
+}
+
+func (vd *votedData) GetBondedDelegation() *big.Int {
+	return vd.voted.BondedDelegation
 }
 
 func (vd *votedData) GetVotedAmount() *big.Int {
@@ -1031,20 +1054,20 @@ func (vi *votedInfo) addVotedData(addr module.Address, data *votedData) {
 }
 
 func (vi *votedInfo) setEnable(addr module.Address, enable bool) {
-	if prep, ok := vi.preps[string(addr.Bytes())]; ok {
-		if enable != prep.voted.Enable {
+	if vData, ok := vi.preps[string(addr.Bytes())]; ok {
+		if enable != vData.Enable() {
 			if enable {
-				vi.updateTotalVoted(prep.GetVotedAmount())
+				vi.updateTotalVoted(vData.GetVotedAmount())
 			} else {
-				vi.updateTotalVoted(new(big.Int).Neg(prep.GetVotedAmount()))
+				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
 			}
 		}
-		prep.voted.Enable = enable
+		vData.SetEnable(enable)
 	} else {
-		dt := icreward.NewVoted()
-		dt.Enable = enable
-		data := newVotedData(dt)
-		vi.addVotedData(addr, data)
+		voted := icreward.NewVoted()
+		vData = newVotedData(voted)
+		vData.SetEnable(enable)
+		vi.addVotedData(addr, vData)
 	}
 }
 
@@ -1067,17 +1090,17 @@ func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 
 func (vi *votedInfo) updateBonded(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if data, ok := vi.preps[string(vote.To().Bytes())]; ok {
-			current := data.voted.Bonded
+		if vData, ok := vi.preps[string(vote.To().Bytes())]; ok {
+			current := vData.GetBonded()
 			current.Add(current, vote.Value)
-			if data.Enable() {
+			if vData.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.Bonded.Set(vote.Value)
-			data = newVotedData(voted)
-			vi.addVotedData(vote.To(), data)
+			voted.SetBonded(vote.Value)
+			vData = newVotedData(voted)
+			vi.addVotedData(vote.To(), vData)
 		}
 	}
 }
@@ -1110,9 +1133,9 @@ func (vi *votedInfo) updateTotalBondedDelegation() {
 		if i == vi.maxRankForReward {
 			break
 		}
-		delegated := vi.preps[address].voted
-		if delegated.Enable {
-			total.Add(total, delegated.BondedDelegation)
+		vData := vi.preps[address]
+		if vData.Enable() {
+			total.Add(total, vData.GetBondedDelegation())
 		}
 	}
 	vi.totalBondedDelegation = total

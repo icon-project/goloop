@@ -141,9 +141,9 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 	}
 }
 
-func NewState(database db.Database) *State {
+func NewState(database db.Database, hash []byte) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
-	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
+	t := trie_manager.NewMutableForObject(database, hash, icobject.ObjectType)
 	return &State{
 		store: icobject.NewObjectStoreState(t),
 	}

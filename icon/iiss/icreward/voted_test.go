@@ -55,3 +55,74 @@ func TestVoted(t *testing.T) {
 
 	fmt.Printf("%+v %+v", t1, t2)
 }
+
+func makeVotedFotTest(delegated int64, bonded int64) *Voted {
+	type_ := TypeVoted
+	version := 0
+	voted := newVoted(icobject.MakeTag(type_, version))
+	voted.Delegated = big.NewInt(delegated)
+	voted.Bonded = big.NewInt(bonded)
+	return voted
+
+}
+
+func TestVoted_UpdateBondedDelegation(t *testing.T) {
+
+	type args struct {
+		delegated int64
+		bonded int64
+		bondRequirement int
+	}
+
+	tests := []struct {
+		name string
+		in   args
+		want int64
+	}{
+		{
+			"IISSVersion 1",
+			args {
+				100, 0, 0,
+			},
+			100,
+		},
+		{
+			"IISSVersion 2 - exact fulfil",
+			args {
+				9500, 500, 5,
+			},
+			10000,
+		},
+		{
+			"IISSVersion 2 - not enough",
+			args {
+				9600, 400, 5,
+			},
+			8000,
+		},
+		{
+			"IISSVersion 2 - overbonded",
+			args {
+				1000, 100, 5,
+			},
+			1100,
+		},
+		{
+			"IISSVersion 2 - Zero bond requirement",
+			args {
+				10000, 1000, 0,
+			},
+			11000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.in
+			t1 := makeVotedFotTest(in.delegated, in.bonded)
+			t1.UpdateBondedDelegation(in.bondRequirement)
+
+			assert.Equal(t, tt.want, t1.BondedDelegation.Int64())
+		})
+	}
+}

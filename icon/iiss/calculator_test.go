@@ -34,7 +34,7 @@ func TestCalculator(t *testing.T) {
 	err := c.Init(database)
 	assert.NoError(t, err)
 	assert.Equal(t, database, c.dbase)
-	assert.Equal(t, int64(0), c.startHeight)
+	assert.Equal(t, int64(InitBlockHeight), c.startHeight)
 
 	c.startHeight = 100
 	c.stats.blockProduce.SetInt64(int64(100))
@@ -389,7 +389,7 @@ func TestDelegatedData_compare(t *testing.T) {
 	}
 }
 
-func TestDelegated_setEnable(t *testing.T) {
+func TestVotedInfo_setEnable(t *testing.T) {
 	totalVoted := new(big.Int)
 	vInfo := newVotedInfo(100)
 	enable := false
@@ -432,7 +432,7 @@ func TestDelegated_setEnable(t *testing.T) {
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
 }
 
-func TestDelegated_updateDelegated(t *testing.T) {
+func TestVotedInfo_updateDelegated(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
 	enable := true
@@ -466,17 +466,17 @@ func TestDelegated_updateDelegated(t *testing.T) {
 		if v.Address.Equal(newAddr) {
 			expect = v.Value.Int64()
 		}
-		voted := vInfo.preps[string(v.Address.Bytes())].voted
-		assert.Equal(t, expect, voted.Delegated.Int64())
+		vData := vInfo.preps[string(v.Address.Bytes())]
+		assert.Equal(t, expect, vData.GetDelegated().Int64())
 
-		if voted.Enable {
+		if vData.Enable() {
 			totalVoted.Add(totalVoted, v.Value)
 		}
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
 }
 
-func TestDelegated_updateBonded(t *testing.T) {
+func TestVotedInfo_updateBonded(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
 	enable := true
@@ -510,17 +510,17 @@ func TestDelegated_updateBonded(t *testing.T) {
 		if v.Address.Equal(newAddr) {
 			expect = v.Value.Int64()
 		}
-		voted := vInfo.preps[string(v.Address.Bytes())].voted
-		assert.Equal(t, expect, voted.Bonded.Int64())
+		vData := vInfo.preps[string(v.Address.Bytes())]
+		assert.Equal(t, expect, vData.GetBonded().Int64())
 
-		if voted.Enable {
+		if vData.Enable() {
 			totalVoted.Add(totalVoted, v.Value)
 		}
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
 }
 
-func TestDelegated_SortAndUpdateTotalBondedDelegation(t *testing.T) {
+func TestVotedInfo_SortAndUpdateTotalBondedDelegation(t *testing.T) {
 	d := newVotedInfo(100)
 	total := int64(0)
 	more := int64(10)
@@ -543,7 +543,7 @@ func TestDelegated_SortAndUpdateTotalBondedDelegation(t *testing.T) {
 	}
 }
 
-func TestDelegated_calculateReward(t *testing.T) {
+func TestVotedInfo_calculateReward(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	total := int64(0)
 	more := int64(10)
@@ -700,7 +700,7 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 				1000,
 				icstate.Delegations{d1},
 			},
-			want: 100 * 100 * 1000 * 1000 / YearBlock,
+			want: 100 * 100 * 1000,
 		},
 		{
 			name: "PRep-enabled",
@@ -710,7 +710,7 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 				1000,
 				icstate.Delegations{d2},
 			},
-			want: 100 * 100 * (1000 - 10) * 1000 / YearBlock,
+			want: 100 * 100 * (1000 - 10),
 		},
 		{
 			name: "PRep-disabled",
@@ -720,7 +720,7 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 				1000,
 				icstate.Delegations{d3},
 			},
-			want: 100 * 100 * (200 - 100) * 1000 / YearBlock,
+			want: 100 * 100 * (200 - 100),
 		},
 		{
 			name: "PRep-None",
@@ -740,9 +740,9 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 				1000,
 				icstate.Delegations{d1, d2, d3, d4},
 			},
-			want: (100 * 100 * 1000 * 1000 / YearBlock) +
-				(100 * 100 * (1000 - 10) * 1000 / YearBlock) +
-				(100 * 100 * (200 - 100) * 1000 / YearBlock),
+			want: (100 * 100 * 1000) +
+				(100 * 100 * (1000 - 10)) +
+				(100 * 100 * (200 - 100)),
 		},
 	}
 
@@ -852,7 +852,7 @@ func TestCalculator_processDelegating(t *testing.T) {
 		{
 			name: "Delegated to P-Rep",
 			args: args{addr2},
-			want: int64(variable * d1Value * (to - from) * IScoreICXRatio / YearBlock),
+			want: int64(variable * d1Value * (to - from)),
 		},
 		{
 			name: "Delegated to none P-Rep",
@@ -862,12 +862,12 @@ func TestCalculator_processDelegating(t *testing.T) {
 		{
 			name: "Delegated to P-Rep and got penalty",
 			args: args{addr4},
-			want: int64(variable * d2Value * (offset - from) * IScoreICXRatio / YearBlock),
+			want: int64(variable * d2Value * (offset - from)),
 		},
 		{
 			name: "Delegated to none P-Rep and register P-Rep later",
 			args: args{addr5},
-			want: int64(variable * d2Value * (to - offset) * IScoreICXRatio / YearBlock),
+			want: int64(variable * d2Value * (to - offset)),
 		},
 	}
 
@@ -970,14 +970,14 @@ func TestCalculator_processDelegateEvent(t *testing.T) {
 		{
 			name:       "Delegate New",
 			args:       args{addr1},
-			want:       int64(variable * d2Value * (to - offset) * IScoreICXRatio / YearBlock),
+			want:       int64(variable * d2Value * (to - offset)),
 			delegating: dting2,
 		},
 		{
 			name: "Delegated and modified",
 			args: args{addr2},
-			want: int64(variable*(d1Value+d2Value)*(offset-from)*IScoreICXRatio/YearBlock) +
-				int64(variable*(d2Value+d1Value+d2Value)*(to-offset)*IScoreICXRatio/YearBlock),
+			want: int64(variable*(d1Value+d2Value)*(offset-from)) +
+				int64(variable*(d2Value+d1Value+d2Value)*(to-offset)),
 			delegating: &icreward.Delegating{
 				Delegations: icstate.Delegations{
 					&icstate.Delegation{
@@ -990,7 +990,7 @@ func TestCalculator_processDelegateEvent(t *testing.T) {
 		{
 			name:       "Delegating removed",
 			args:       args{addr3},
-			want:       int64(variable * d1Value * (offset - from) * IScoreICXRatio / YearBlock),
+			want:       int64(variable * d1Value * (offset - from)),
 			delegating: nil,
 		},
 	}
@@ -1014,6 +1014,7 @@ func TestCalculator_processDelegateEvent(t *testing.T) {
 		})
 	}
 }
+
 func TestCalculator_VotingReward(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	maxIndex := int64(vInfo.maxRankForReward)

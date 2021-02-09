@@ -27,7 +27,7 @@ import (
 func TestState_NewState(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	s := NewState(database)
+	s := NewState(database, nil)
 
 	addr1 := common.NewAddressFromString("hx1")
 	iScore := NewIScore()
@@ -62,7 +62,7 @@ func TestState_NewState(t *testing.T) {
 func TestState_SetVoted(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	s := NewState(database)
+	s := NewState(database, nil)
 
 	addr1 := common.NewAddressFromString("hx1")
 	voted1 := NewVoted()
