@@ -151,9 +151,8 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 			transaction.NewTransactionListFromSlice(m.db, normalTxs),
 			bi,
 			csi,
-			true,
-			m.log,
 			m.plt,
+			true,
 		),
 		nil
 }
@@ -190,7 +189,7 @@ func (m *manager) CreateTransition(
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txs, bi, csi, false, m.log, m.plt), nil
+	return newTransition(pt, nil, txs, bi, csi, m.plt, false), nil
 }
 
 func (m *manager) SendPatch(data module.Patch) error {
@@ -273,7 +272,7 @@ func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHas
 		return nil
 	}
 	ntr := newTransition(
-		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, true, m.log, m.plt)
+		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, m.plt, true)
 	r, _ := newTransitionResultFromBytes(result)
 	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
 		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)

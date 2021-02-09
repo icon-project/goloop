@@ -149,9 +149,8 @@ func newTransition(
 	normaltxs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
-	alreadyValidated bool,
-	logger log.Logger,
 	plt Platform,
+	alreadyValidated bool,
 ) *transition {
 	var step transitionStep
 	if alreadyValidated {
@@ -180,7 +179,7 @@ func newTransition(
 		eem:                parent.eem,
 		step:               step,
 		chain:              parent.chain,
-		log:                logger,
+		log:                parent.log,
 		plt:                plt,
 	}
 }
@@ -688,4 +687,52 @@ func (t *transition) Equal(tr module.Transition) bool {
 		common.BlockInfoEqual(t.pbi, t2.pbi) &&
 		common.ConsensusInfoEqual(t.csi, t2.csi) &&
 		t.pid == t2.pid
+}
+
+func NewInitTransition(
+	db db.Database,
+	stateHash []byte,
+	vl module.ValidatorList,
+	es state.ExtensionSnapshot,
+	cm contract.ContractManager,
+	em eeproxy.Manager, chain module.Chain,
+	logger log.Logger, plt Platform,
+	tsc *TxTimestampChecker,
+) (module.Transition, error) {
+	if tr, err := newInitTransition(
+		db,
+		stateHash,
+		vl,
+		es,
+		cm,
+		em,
+		chain,
+		logger,
+		plt,
+		tsc,
+	); err != nil {
+		return nil, err
+	} else {
+		return tr, nil
+	}
+}
+
+func NewTransition(
+	parent module.Transition,
+	patchtxs module.TransactionList,
+	normaltxs module.TransactionList,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
+	plt Platform,
+	alreadyValidated bool,
+) module.Transition {
+	return newTransition(
+		parent.(*transition),
+		patchtxs,
+		normaltxs,
+		bi,
+		csi,
+		plt,
+		alreadyValidated,
+	)
 }
