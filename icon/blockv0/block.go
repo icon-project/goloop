@@ -1,0 +1,86 @@
+/*
+ * Copyright 2021 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package blockv0
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/transaction"
+
+	"github.com/icon-project/goloop/module"
+)
+
+type Transaction struct {
+	module.Transaction
+}
+
+func (t *Transaction) MarshalJSON() ([]byte, error) {
+	return nil, nil
+}
+
+func (t *Transaction) UnmarshalJSON(b []byte) error {
+	if tr, err := transaction.NewTransactionFromJSON(b); err != nil {
+		return err
+	} else {
+		t.Transaction = tr
+		return nil
+	}
+}
+
+func (t Transaction) String() string {
+	return fmt.Sprint(t.Transaction)
+}
+
+type Block interface {
+	Version() string
+	ID() []byte
+	Height() int64
+	Timestamp() int64
+	PrevID() []byte
+	Votes() *BlockVoteList
+	Proposer() module.Address
+	NextValidators() *RepsList
+	NormalTransactions() module.TransactionList
+	LogsBloom() module.LogsBloom
+	Verify(prev Block) error
+}
+
+type Store interface {
+	GetRepsByHash(hash []byte) (*RepsList, error)
+}
+
+type blockJSON struct {
+	Version string `json:"version"`
+}
+
+func ParseBlock(b []byte, lc Store) (Block, error) {
+	rawBlk := new(blockJSON)
+	if err := json.Unmarshal(b, rawBlk); err != nil {
+		return nil, err
+	}
+	switch rawBlk.Version {
+	case "0.1a":
+		return ParseBlockV20a(b)
+	case "0.3", "0.4":
+		return ParseBlockV03(b, lc)
+	default:
+		return nil, errors.UnsupportedError.Errorf(
+			"UnknownBlockVersion(version=%s)", rawBlk.Version)
+	}
+}
