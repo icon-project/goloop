@@ -1,11 +1,14 @@
-name: Go
+name: Go test
 
 on:
+  push:
+    branches:
+      - master
   pull_request:
-    branches: [ icondev ]
+    branches:
+      - master
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
