@@ -182,8 +182,9 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		}
 	}
 	// make Block produce Info for calculator
+	term := es.State.GetTerm()
 	if err := es.Front.AddBlockProduce(
-		int(cc.BlockHeight()-es.CalculationBlockHeight()-1),
+		int(cc.BlockHeight()-term.StartHeight()),
 		proposer,
 		voters,
 	); err != nil {

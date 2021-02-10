@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -81,14 +82,18 @@ func (i *IssueResultJSON) GetTotalReward() *big.Int {
 	return total
 }
 
-func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
+func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) error {
+	var err error
 	issue, _ := es.State.GetIssue()
-	issue = regulateIssueInfo(issue, iScore)
-	es.State.SetIssue(issue)
+	issue, err = regulateIssueInfo(issue, iScore)
+	if err != nil {
+		return err
+	}
+	return es.State.SetIssue(issue)
 }
 
 // regulateIssueInfo regulate icx issue amount with previous period data.
-func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
+func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) (*icstate.Issue, error) {
 	issue = issue.Clone()
 	var icx, remains *big.Int
 	if iScore == nil || iScore.Sign() == 0 {
@@ -98,6 +103,9 @@ func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
 	overIssued := new(big.Int).Sub(issue.PrevTotalReward, icx)
+	if overIssued.Sign() == -1 {
+		return nil, errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result")
+	}
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
 	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
 	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
@@ -107,7 +115,7 @@ func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
 	issue.PrevTotalReward.Set(issue.TotalReward)
 	issue.TotalReward.SetInt64(0)
 
-	return issue
+	return issue, nil
 }
 
 // calcRewardPerBlock calculate reward per block

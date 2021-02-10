@@ -208,7 +208,9 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	// apply calculation result
 	if calculator.Result() != nil {
 		s.Reward = calculator.Result().NewState()
-		RegulateIssueInfo(s, calculator.TotalReward())
+		if err = RegulateIssueInfo(s, calculator.TotalReward()); err != nil {
+			return err
+		}
 	}
 	// switch icstage and write global
 	s.Back = s.Front
@@ -324,8 +326,9 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 	if err != nil {
 		return
 	}
+	term := s.State.GetTerm()
 	_, err = s.Front.AddEventDelegation(
-		int(blockHeight-s.CalculationBlockHeight()),
+		int(blockHeight-term.StartHeight()),
 		from,
 		votes,
 	)
@@ -352,8 +355,9 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 		return err
 	}
 
+	term := s.State.GetTerm()
 	_, err = s.Front.AddEventEnable(
-		int(cc.BlockHeight()-s.CalculationBlockHeight()),
+		int(cc.BlockHeight()-term.StartHeight()),
 		owner,
 		false,
 	)
@@ -443,8 +447,9 @@ func (s *ExtensionStateImpl) addEventBond(blockHeight int64, from module.Address
 	if err != nil {
 		return
 	}
+	term := s.State.GetTerm()
 	_, err = s.Front.AddEventBond(
-		int(blockHeight-s.CalculationBlockHeight()),
+		int(blockHeight-term.StartHeight()),
 		from,
 		votes,
 	)

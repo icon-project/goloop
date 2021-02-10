@@ -788,6 +788,10 @@ func (c *Calculator) calculateVotingRewardV2() error {
 			return err
 		}
 		offset := int(intconv.BytesToInt64(keySplit[1]))
+		if offset >= c.global.GetOffsetLimit() {
+			return CriticalCalculatorError.Errorf("offset is bigger than offsetLimit %d >= %d",
+				offset, c.global.GetOffsetLimit())
+		}
 		if lastOffset != offset {
 			if err = c.processVoting(variable, lastOffset, offset, vInfo); err != nil {
 				return err

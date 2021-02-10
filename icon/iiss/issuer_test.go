@@ -93,6 +93,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 		name   string
 		in     values
 		iScore *big.Int
+		err    bool
 		out    values
 	}{
 		{
@@ -101,6 +102,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				0, 100, 0, 0, 0,
 			},
 			nil,
+			false,
 			values{
 				100, 0, 0, 0, 0,
 			},
@@ -111,6 +113,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				0, 100, 0, 0, 0,
 			},
 			new(big.Int).SetInt64(0),
+			false,
 			values{
 				100, 0, 0, 0, 0,
 			},
@@ -121,6 +124,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 0, 100, 0,
 			},
 			new(big.Int).SetInt64(100 * IScoreICXRatio),
+			false,
 			values{
 				200, 0, 0, 100, 0,
 			},
@@ -131,6 +135,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 10, 1, 0,
 			},
 			new(big.Int).SetInt64(90*IScoreICXRatio + 123),
+			false,
 			values{
 				200, 0, 20, 124, 0,
 			},
@@ -141,25 +146,30 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 10, 1, 0,
 			},
 			new(big.Int).SetInt64(200*IScoreICXRatio + 123),
-			values{
-				200, 0, -90, 124, 0,
-			},
+			true,
+			values{},
 		},
 	}
 
+	var err error
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
 			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
-			regulateIssueInfo(issue, tt.iScore)
-
-			assert.Equal(t, out.totalIssued, issue.TotalReward.Int64())
-			assert.Equal(t, out.prevtotalIssued, issue.PrevTotalReward.Int64())
-			assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
-			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
-			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
+			issue, err = regulateIssueInfo(issue, tt.iScore)
+			if tt.err {
+				assert.Nil(t, issue)
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, out.totalIssued, issue.TotalReward.Int64())
+				assert.Equal(t, out.prevtotalIssued, issue.PrevTotalReward.Int64())
+				assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
+				assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
+				assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
+			}
 		})
 	}
 }
