@@ -319,10 +319,11 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	}
 
 	// write Issue Info
-	issue, err := es.State.GetIssue()
+	is, err := es.State.GetIssue()
 	if err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
 	}
+	issue := is.Clone()
 	issue.TotalReward.Add(issue.TotalReward, result.GetTotalReward())
 	if result.ByFee.Sign() != 0 {
 		issue.PrevBlockFee.Sub(issue.PrevBlockFee, result.ByFee.Value())

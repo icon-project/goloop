@@ -195,7 +195,8 @@ func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
 }
 
 func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calculator) error {
-	rcInfo, err := s.State.GetRewardCalcInfo()
+	rc, err := s.State.GetRewardCalcInfo()
+	rcInfo := rc.Clone()
 	if err != nil {
 		return err
 	}
@@ -483,10 +484,11 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 }
 
 func (s *ExtensionStateImpl) UpdateIssueInfo(fee *big.Int) error {
-	issue, err := s.State.GetIssue()
+	is, err := s.State.GetIssue()
 	if err != nil {
 		return err
 	}
+	issue := is.Clone()
 	issue.PrevBlockFee.Add(issue.PrevBlockFee, fee)
 	if err = s.State.SetIssue(issue); err != nil {
 		return err

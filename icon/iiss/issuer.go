@@ -89,6 +89,7 @@ func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
 
 // regulateIssueInfo regulate icx issue amount with previous period data.
 func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
+	issue = issue.Clone()
 	var icx, remains *big.Int
 	if iScore == nil || iScore.Sign() == 0 {
 		icx = new(big.Int)
