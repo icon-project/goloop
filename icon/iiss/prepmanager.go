@@ -217,11 +217,16 @@ func (pm *PRepManager) ToJSON() map[string]interface{} {
 
 func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) map[string]interface{} {
 	size := len(pm.orderedPReps)
-	if size < end {
+	if start != 0 && end !=0 {
+		if size < end {
+			end = size
+		}
+	} else {
 		end = size
 	}
 	ret := make(map[string]interface{})
 	prepList := make([]interface{}, end)
+
 	ret["preps"] = prepList
 	br := pm.state.GetBondRequirement()
 
