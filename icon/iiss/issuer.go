@@ -17,8 +17,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 )
 
@@ -30,6 +32,9 @@ type IssuePRepJSON struct {
 }
 
 func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
+	if data == nil {
+		return nil, nil
+	}
 	jso := new(IssuePRepJSON)
 	jd := json.NewDecoder(bytes.NewBuffer(data))
 	jd.DisallowUnknownFields()
@@ -53,6 +58,9 @@ type IssueResultJSON struct {
 }
 
 func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
+	if data == nil {
+		return nil, nil
+	}
 	jso := new(IssueResultJSON)
 	jd := json.NewDecoder(bytes.NewBuffer(data))
 	jd.DisallowUnknownFields()
@@ -68,16 +76,36 @@ func (i *IssueResultJSON) equal(i2 *IssueResultJSON) bool {
 		i.Issue.Cmp(i2.Issue.Value()) == 0
 }
 
-func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) {
+func (i *IssueResultJSON) GetTotalReward() *big.Int {
+	total := new(big.Int).Add(i.ByFee.Value(), i.ByOverIssuedICX.Value())
+	total.Add(total, i.Issue.Value())
+	return total
+}
+
+func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) error {
+	var err error
 	issue, _ := es.State.GetIssue()
-	issue = regulateIssueInfo(issue, iScore)
-	es.State.SetIssue(issue)
+	issue, err = regulateIssueInfo(issue, iScore)
+	if err != nil {
+		return err
+	}
+	return es.State.SetIssue(issue)
 }
 
 // regulateIssueInfo regulate icx issue amount with previous period data.
-func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
-	icx, remains := new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
+func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) (*icstate.Issue, error) {
+	issue = issue.Clone()
+	var icx, remains *big.Int
+	if iScore == nil || iScore.Sign() == 0 {
+		icx = new(big.Int)
+		remains = new(big.Int)
+	} else {
+		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
+	}
 	overIssued := new(big.Int).Sub(issue.PrevTotalReward, icx)
+	if overIssued.Sign() == -1 {
+		return nil, errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result")
+	}
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
 	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
 	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
@@ -87,7 +115,7 @@ func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int) *icstate.Issue {
 	issue.PrevTotalReward.Set(issue.TotalReward)
 	issue.TotalReward.SetInt64(0)
 
-	return issue
+	return issue, nil
 }
 
 // calcRewardPerBlock calculate reward per block
@@ -120,14 +148,25 @@ func calcRewardPerBlock(
 
 	return reward
 }
+func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverIssued *big.Int, byFee *big.Int) {
+	issue = new(big.Int).Set(reward)
+	byFee = new(big.Int)
+	byOverIssued = new(big.Int)
 
-func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, issue *big.Int) {
-	issue = new(big.Int).Sub(reward, i.PrevBlockFee)
-	overIssued = new(big.Int).Set(i.OverIssued)
-	if issue.Cmp(overIssued) >= 0 {
-		issue.Sub(issue, overIssued)
+	if issue.Cmp(i.OverIssued) > 0 {
+		byOverIssued.Set(i.OverIssued)
+		issue.Sub(issue, i.OverIssued)
 	} else {
-		overIssued.Set(issue)
+		byOverIssued.Set(issue)
+		issue.SetInt64(0)
+		return
+	}
+
+	if issue.Cmp(i.PrevBlockFee) > 0 {
+		byFee.Set(i.PrevBlockFee)
+		issue.Sub(issue, i.PrevBlockFee)
+	} else {
+		byFee.Set(issue)
 		issue.SetInt64(0)
 	}
 	return
@@ -135,42 +174,57 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (overIssued *big.Int, is
 
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
-	// TODO read values from Term
-	irep := es.State.GetIRep()
-	rrep := es.State.GetRRep()
-	mainPRepCount := es.State.GetMainPRepCount()
-	pRepCount := es.State.GetPRepCount()
-	totalDelegated := es.GetTotalDelegated()
-	// TODO check condition with API from Term
-	//if !isDecentralized {
-	//	irep.SetInt64(0)
-	//}
+	term := es.State.GetTerm()
+	if term == nil || !term.IsDecentralized() {
+		return nil, nil
+	}
+	issueInfo, _ := es.State.GetIssue()
+	if term.GetIISSVersion() == icstate.IISSVersion1 {
+		return getIssueDataV1(es, term)
+	} else {
+		return nil, getIssueDataV2(issueInfo, term)
+	}
+}
+
+func getIssueDataV1(es *ExtensionStateImpl, term *icstate.Term) (*IssuePRepJSON, *IssueResultJSON) {
+	irep := term.Irep()
+	rrep := term.Rrep()
+	// TODO read values from Term and replace es to issue
+	mainPRepCount := term.MainPRepCount()
+	electedPRepCount := term.ElectedPRepCount()
+	totalDelegated := term.TotalDelegated()
 	reward := calcRewardPerBlock(
 		irep,
 		rrep,
-		new(big.Int).SetInt64(mainPRepCount),
-		new(big.Int).SetInt64(pRepCount),
+		new(big.Int).SetInt64(int64(mainPRepCount)),
+		new(big.Int).SetInt64(int64(electedPRepCount)),
 		totalDelegated,
 	)
 	prep := &IssuePRepJSON{
-		IRep:            bigInt2HexInt(irep),
-		RRep:            bigInt2HexInt(rrep),
-		TotalDelegation: bigInt2HexInt(totalDelegated),
-		Value:           bigInt2HexInt(reward),
+		IRep:            icutils.BigInt2HexInt(irep),
+		RRep:            icutils.BigInt2HexInt(rrep),
+		TotalDelegation: icutils.BigInt2HexInt(totalDelegated),
+		Value:           icutils.BigInt2HexInt(reward),
 	}
 
 	i, _ := es.State.GetIssue()
-	overIssued, issue := calcIssueAmount(reward, i)
+	issue, byOverIssued, byFee := calcIssueAmount(reward, i)
 	result := &IssueResultJSON{
-		ByFee:           bigInt2HexInt(i.PrevBlockFee),
-		ByOverIssuedICX: bigInt2HexInt(overIssued),
-		Issue:           bigInt2HexInt(issue),
+		ByFee:           icutils.BigInt2HexInt(byFee),
+		ByOverIssuedICX: icutils.BigInt2HexInt(byOverIssued),
+		Issue:           icutils.BigInt2HexInt(issue),
 	}
 	return prep, result
 }
 
-func bigInt2HexInt(value *big.Int) *common.HexInt {
-	h := new(common.HexInt)
-	h.Set(value)
-	return h
+func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.Term) *IssueResultJSON {
+	reward := new(big.Int).Div(term.Iglobal(), big.NewInt(term.Period()))
+	issue, byOverIssued, byFee := calcIssueAmount(reward, issueInfo)
+	result := &IssueResultJSON{
+		ByFee:           icutils.BigInt2HexInt(byFee),
+		ByOverIssuedICX: icutils.BigInt2HexInt(byOverIssued),
+		Issue:           icutils.BigInt2HexInt(issue),
+	}
+	return result
 }
+

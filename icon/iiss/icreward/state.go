@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	DelegatedKey  = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
+	VotedKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
 	DelegatingKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
-	IScoreKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
-	GlobalKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BondingKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
+	IScoreKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
 )
 
 type State struct {
@@ -43,21 +43,6 @@ func (s *State) GetSnapshot() *Snapshot {
 
 func (s *State) Reset(ss *Snapshot) {
 	s.store.Reset(ss.store.ImmutableForObject)
-}
-
-func (s *State) GetGlobal() (*Global, error) {
-	key := GlobalKey.Build()
-	obj, err := s.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	return ToGlobal(obj), nil
-}
-
-func (s *State) SetGlobal(global *Global) error {
-	key := GlobalKey.Build()
-	_, err := s.store.Set(key, icobject.New(TypeGlobal, global))
-	return err
 }
 
 func (s *State) GetIScore(addr module.Address) (*IScore, error) {
@@ -86,23 +71,23 @@ func (s *State) DeleteIScore(addr module.Address) error {
 	return err
 }
 
-func (s *State) GetDelegated(addr module.Address) (*Delegated, error) {
-	key := DelegatedKey.Append(addr).Build()
+func (s *State) GetVoted(addr module.Address) (*Voted, error) {
+	key := VotedKey.Append(addr).Build()
 	obj, err := s.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
-	return ToDelegated(obj), nil
+	return ToVoted(obj), nil
 }
 
-func (s *State) SetDelegated(addr module.Address, delegated *Delegated) error {
-	key := DelegatedKey.Append(addr).Build()
-	_, err := s.store.Set(key, icobject.New(TypeDelegated, delegated))
+func (s *State) SetVoted(addr module.Address, voted *Voted) error {
+	key := VotedKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeVoted, voted))
 	return err
 }
 
-func (s *State) DeleteDelegated(addr module.Address) error {
-	key := DelegatedKey.Append(addr).Build()
+func (s *State) DeleteVoted(addr module.Address) error {
+	key := VotedKey.Append(addr).Build()
 	_, err := s.store.Delete(key)
 	return err
 }
@@ -128,6 +113,27 @@ func (s *State) DeleteDelegating(addr module.Address) error {
 	return err
 }
 
+func (s *State) GetBonding(addr module.Address) (*Bonding, error) {
+	key := BondingKey.Append(addr).Build()
+	obj, err := s.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToBonding(obj), nil
+}
+
+func (s *State) SetBonding(addr module.Address, bonding *Bonding) error {
+	key := BondingKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeBonding, bonding))
+	return err
+}
+
+func (s *State) DeleteBonding(addr module.Address) error {
+	key := DelegatingKey.Append(addr).Build()
+	_, err := s.store.Delete(key)
+	return err
+}
+
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	return &State{
@@ -135,9 +141,9 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 	}
 }
 
-func NewState(database db.Database) *State {
+func NewState(database db.Database, hash []byte) *State {
 	database = icobject.AttachObjectFactory(database, newObjectImpl)
-	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
+	t := trie_manager.NewMutableForObject(database, hash, icobject.ObjectType)
 	return &State{
 		store: icobject.NewObjectStoreState(t),
 	}

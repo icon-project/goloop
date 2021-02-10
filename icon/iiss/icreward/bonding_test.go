@@ -26,18 +26,18 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
-func TestDelegating(t *testing.T) {
+func TestBonding(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	type_ := TypeDelegating
+	type_ := TypeBonding
 	version := 0
 
-	t1 := newDelegating(icobject.MakeTag(type_, version))
-	d := &icstate.Delegation{
+	t1 := newBonding(icobject.MakeTag(type_, version))
+	d := &icstate.Bond{
 		Address: common.NewAddressFromString("hx1"),
 		Value:   common.NewHexInt(10),
 	}
-	t1.Delegations = append(t1.Delegations, d)
+	t1.Bonds = append(t1.Bonds, d)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -52,11 +52,11 @@ func TestDelegating(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	t2 := ToDelegating(o2)
+	t2 := ToBonding(o2)
 	assert.Equal(t, true, t1.Equal(t2))
 }
 
-func TestDelegating_ApplyVotes(t *testing.T) {
+func TestBonding_ApplyVotes(t *testing.T) {
 	addr1 := "hx1"
 	addr2 := "hx2"
 	addr3 := "hx3"
@@ -65,7 +65,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 	val2 := int64(2)
 	val3 := int64(3)
 	vBig := int64(100)
-	d1 := icstate.Delegation{
+	b1 := icstate.Bond{
 		Address: common.NewAddressFromString(addr1),
 		Value:   common.NewHexInt(val1),
 	}
@@ -77,7 +77,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		Address: common.NewAddressFromString(addr1),
 		Value:   big.NewInt(-vBig),
 	}
-	d2 := icstate.Delegation{
+	b2 := icstate.Bond{
 		Address: common.NewAddressFromString(addr2),
 		Value:   common.NewHexInt(val2),
 	}
@@ -85,15 +85,15 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		Address: common.NewAddressFromString(addr2),
 		Value:   big.NewInt(val2),
 	}
-	d2Double := icstate.Delegation{
+	b2Double := icstate.Bond{
 		Address: common.NewAddressFromString(addr2),
 		Value:   common.NewHexInt(val2 * 2),
 	}
-	d3 := icstate.Delegation{
+	b3 := icstate.Bond{
 		Address: common.NewAddressFromString(addr3),
 		Value:   common.NewHexInt(val3),
 	}
-	dNew := icstate.Delegation{
+	bNew := icstate.Bond{
 		Address: common.NewAddressFromString(addr4),
 		Value:   common.NewHexInt(val3),
 	}
@@ -105,30 +105,30 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		Address: common.NewAddressFromString(addr4),
 		Value:   big.NewInt(-val3),
 	}
-	delegating := Delegating{
-		Delegations: icstate.Delegations{&d1, &d2, &d3},
+	bonding := Bonding{
+		Bonds: icstate.Bonds{&b1, &b2, &b3},
 	}
 
 	tests := []struct {
 		name string
 		in   icstage.VoteList
 		err  bool
-		want icstate.Delegations
+		want icstate.Bonds
 	}{
-		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Delegations{&d2Double, &d3, &dNew}},
-		{"New with negative value", icstage.VoteList{&vNewNegative}, true, icstate.Delegations{}},
-		{"Update result value is negative", icstage.VoteList{&v1TooBig}, true, icstate.Delegations{}},
+		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Bonds{&b2Double, &b3, &bNew}},
+		{"New with negative value", icstage.VoteList{&vNewNegative}, true, icstate.Bonds{}},
+		{"Update result value is negative", icstage.VoteList{&v1TooBig}, true, icstate.Bonds{}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			test := delegating.Clone()
+			test := bonding.Clone()
 			err := test.ApplyVotes(tt.in)
 			if tt.err {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.True(t, tt.want.Equal(test.Delegations), "%v\n%v")
+				assert.True(t, tt.want.Equal(test.Bonds), "%v\n%v")
 			}
 		})
 	}

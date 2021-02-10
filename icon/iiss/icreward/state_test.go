@@ -27,7 +27,7 @@ import (
 func TestState_NewState(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	s := NewState(database)
+	s := NewState(database, nil)
 
 	addr1 := common.NewAddressFromString("hx1")
 	iScore := NewIScore()
@@ -59,38 +59,38 @@ func TestState_NewState(t *testing.T) {
 	assert.True(t, iScore.Equal(is))
 }
 
-func TestState_SetDelegated(t *testing.T) {
+func TestState_SetVoted(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
-	s := NewState(database)
+	s := NewState(database, nil)
 
 	addr1 := common.NewAddressFromString("hx1")
-	delegated1 := NewDelegated()
-	delegated1.Enable = true
-	delegated1.Current.SetInt64(100)
-	delegated1.Snapshot.SetInt64(100)
-	err := s.SetDelegated(addr1, delegated1)
+	voted1 := NewVoted()
+	voted1.Enable = true
+	voted1.Delegated.SetInt64(100)
+	voted1.BondedDelegation.SetInt64(100)
+	err := s.SetVoted(addr1, voted1)
 	assert.NoError(t, err)
 
 	addr2 := common.NewAddressFromString("hx2")
-	delegated2 := NewDelegated()
-	delegated2.Enable = false
-	delegated2.Current.SetInt64(200)
-	delegated2.Snapshot.SetInt64(200)
-	err = s.SetDelegated(addr2, delegated2)
+	voted2 := NewVoted()
+	voted2.Enable = false
+	voted2.Delegated.SetInt64(200)
+	voted2.BondedDelegation.SetInt64(200)
+	err = s.SetVoted(addr2, voted2)
 	assert.NoError(t, err)
 
-	d1, err := s.GetDelegated(addr1)
+	v1, err := s.GetVoted(addr1)
 	assert.NoError(t, err)
-	assert.True(t, delegated1.Equal(d1))
-	d2, err := s.GetDelegated(addr2)
+	assert.True(t, voted1.Equal(v1))
+	v2, err := s.GetVoted(addr2)
 	assert.NoError(t, err)
-	assert.True(t, delegated2.Equal(d2))
+	assert.True(t, voted2.Equal(v2))
 
 	ss := s.GetSnapshot()
 	ss.Flush()
 
-	prefix := DelegatedKey.Build()
+	prefix := VotedKey.Build()
 	for iter := ss.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		assert.NoError(t, err)
@@ -98,15 +98,15 @@ func TestState_SetDelegated(t *testing.T) {
 		assert.NoError(t, err)
 		addr, err := common.NewAddress(keySplit[1])
 		assert.NoError(t, err)
-		obj := ToDelegated(o)
+		obj := ToVoted(o)
 
-		var d *Delegated
+		var v *Voted
 		if addr.Equal(addr1) {
-			d = delegated1
+			v = voted1
 		} else {
-			d = delegated2
+			v = voted2
 		}
-		assert.True(t, d.Equal(obj))
+		assert.True(t, v.Equal(obj))
 	}
 
 	ss2 := NewSnapshot(database, ss.Bytes())
@@ -117,22 +117,22 @@ func TestState_SetDelegated(t *testing.T) {
 		assert.NoError(t, err)
 		addr, err := common.NewAddress(keySplit[1])
 		assert.NoError(t, err)
-		obj := ToDelegated(o)
+		obj := ToVoted(o)
 
-		var d *Delegated
+		var v *Voted
 		if addr.Equal(addr1) {
-			d = delegated1
+			v = voted1
 		} else {
-			d = delegated2
+			v = voted2
 		}
-		assert.True(t, d.Equal(obj))
+		assert.True(t, v.Equal(obj))
 	}
 
 	s2 := ss2.NewState()
-	d1, err = s2.GetDelegated(addr1)
+	v1, err = s2.GetVoted(addr1)
 	assert.NoError(t, err)
-	assert.True(t, delegated1.Equal(d1))
-	d2, err = s2.GetDelegated(addr2)
+	assert.True(t, voted1.Equal(v1))
+	v2, err = s2.GetVoted(addr2)
 	assert.NoError(t, err)
-	assert.True(t, delegated2.Equal(d2))
+	assert.True(t, voted2.Equal(v2))
 }

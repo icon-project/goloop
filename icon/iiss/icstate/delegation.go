@@ -48,7 +48,7 @@ type Delegation struct {
 	Value   *common.HexInt  `json:"value"`
 }
 
-func newDelegation() *Delegation {
+func NewDelegation() *Delegation {
 	return &Delegation{
 		Address: new(common.Address),
 		Value:   new(common.HexInt),
@@ -56,7 +56,7 @@ func newDelegation() *Delegation {
 }
 
 func (dg *Delegation) Clone() *Delegation {
-	n := newDelegation()
+	n := NewDelegation()
 	n.Address.Set(dg.Address)
 	n.Value.Set(dg.Value.Value())
 	return n
@@ -77,6 +77,14 @@ func (dg *Delegation) ToJSON() map[string]interface{} {
 	jso["value"] = dg.Value
 
 	return jso
+}
+
+func (dg *Delegation) To() module.Address {
+	return dg.Address
+}
+
+func (dg *Delegation) Amount() *big.Int {
+	return dg.Value.Value()
 }
 
 type Delegations []*Delegation
@@ -116,6 +124,17 @@ func (ds Delegations) GetDelegationAmount() *big.Int {
 	return total
 }
 
+func (ds *Delegations) Delete(i int) error {
+	if i < 0 || i >= len(*ds) {
+		return errors.Errorf("Invalid index")
+	}
+
+	copy((*ds)[i:], (*ds)[i+1:])
+	(*ds)[len(*ds)-1] = nil // or the zero value of T
+	*ds = (*ds)[:len(*ds)-1]
+	return nil
+}
+
 func (ds Delegations) ToJSON(v module.JSONVersion) []interface{} {
 	if !ds.Has() {
 		return nil
@@ -128,6 +147,25 @@ func (ds Delegations) ToJSON(v module.JSONVersion) []interface{} {
 	return delegations
 }
 
+func (ds *Delegations) getVotings() []Voting {
+	size := len(*ds)
+	votings := make([]Voting, size)
+	if !ds.Has() {
+		return votings
+	}
+	for i := 0; i < size; i++ {
+		votings[i] = (*ds)[i]
+	}
+	return votings
+}
+
+func (ds *Delegations) Iterator() VotingIterator {
+	if ds == nil {
+		return nil
+	}
+	return NewVotingIterator(ds.getVotings())
+}
+
 func NewDelegations(param []interface{}) (Delegations, error) {
 	count := len(param)
 	if count > getMaxDelegationCount() {
@@ -136,7 +174,7 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 	targets := make(map[string]struct{}, count)
 	delegations := make([]*Delegation, 0)
 	for _, p := range param {
-		dg := newDelegation()
+		dg := NewDelegation()
 		bs, err := json.Marshal(p)
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)

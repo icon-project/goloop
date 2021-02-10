@@ -78,17 +78,39 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	return err
 }
 
-func (s *State) AddEventDelegation(offset int, from module.Address, delegations icstate.Delegations) (int64, error) {
-	size, err := s.getEventSize()
+func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
+	size, err := s.GetEventSize()
 	if err != nil {
 		return 0, err
 	}
 
 	key := EventKey.Append(offset, size.Value).Build()
-	ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
+	//ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
+	//event.Delegations = delegations
+	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
+	event.Votes = votes
+	event.From = from.(*common.Address)
+	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, event))
+	if err != nil {
+		return 0, err
+	}
+
+	index := size.Value.Int64()
+	size.Value.Add(size.Value, intconv.BigIntOne)
+	return index, s.setEventSize(size)
+}
+
+func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
+	size, err := s.GetEventSize()
+	if err != nil {
+		return 0, err
+	}
+
+	key := EventKey.Append(offset, size.Value).Build()
+	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
 	ed.From = from.(*common.Address)
-	ed.Delegations = delegations
-	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, ed))
+	ed.Votes = votes
+	_, err = s.store.Set(key, icobject.New(TypeEventBond, ed))
 	if err != nil {
 		return 0, err
 	}
@@ -99,7 +121,7 @@ func (s *State) AddEventDelegation(offset int, from module.Address, delegations 
 }
 
 func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (int64, error) {
-	size, err := s.getEventSize()
+	size, err := s.GetEventSize()
 	if err != nil {
 		return 0, err
 	}
@@ -118,29 +140,7 @@ func (s *State) AddEventEnable(offset int, target module.Address, enable bool) (
 	return index, s.setEventSize(size)
 }
 
-func (s *State) AddEventPeriod(offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) (int64, error) {
-	size, err := s.getEventSize()
-	if err != nil {
-		return 0, err
-	}
-
-	key := EventKey.Append(offset, size.Value).Build()
-	obj := newEventPeriod(icobject.MakeTag(TypeEventPeriod, 0))
-	obj.Irep = irep
-	obj.Rrep = rrep
-	obj.MainPRepCount = new(big.Int).SetInt64(mainPRepCount)
-	obj.PRepCount = new(big.Int).SetInt64(pRepCount)
-	_, err = s.store.Set(key, icobject.New(TypeEventPeriod, obj))
-	if err != nil {
-		return 0, err
-	}
-
-	index := size.Value.Int64()
-	size.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(size)
-}
-
-func (s *State) getEventSize() (*EventSize, error) {
+func (s *State) GetEventSize() (*EventSize, error) {
 	key := HashKey.Append(eventsKey).Build()
 	o, err := s.store.Get(key)
 	if err != nil {
@@ -200,10 +200,35 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 	return err
 }
 
-func (s *State) AddGlobal(offsetLimit int) error {
+func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
 	key := HashKey.Append(globalKey).Build()
-	obj := newGlobal(icobject.MakeTag(TypeGlobal, 0))
-	obj.OffsetLimit = offsetLimit
+	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion1))
+	g := obj.GlobalImpl.(*GlobalV1)
+	g.IISSVersion = icstate.IISSVersion1
+	g.StartHeight = startHeight
+	g.OffsetLimit = offsetLimit
+	g.Irep.Set(irep)
+	g.Rrep.Set(rrep)
+	g.MainPRepCount = mainPRepCount
+	g.ElectedPRepCount = electedPRepCount
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
+	return err
+}
+
+func (s *State) AddGlobalV2(startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int, ivoter *big.Int,
+	electedPRepCount int, bondRequirement int,
+) error {
+	key := HashKey.Append(globalKey).Build()
+	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion2))
+	g := obj.GlobalImpl.(*GlobalV2)
+	g.IISSVersion = icstate.IISSVersion2
+	g.StartHeight = startHeight
+	g.OffsetLimit = offsetLimit
+	g.Iglobal.Set(iglobal)
+	g.Iprep.Set(iprep)
+	g.Ivoter.Set(ivoter)
+	g.ElectedPRepCount = electedPRepCount
+	g.BondRequirement = bondRequirement
 	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
 	return err
 }

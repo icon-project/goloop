@@ -14,28 +14,26 @@
 package iiss
 
 import (
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
-	// TODO move to icstate?
-	c  *calculation
 	pm *PRepManager
 
 	state  *icstate.Snapshot
@@ -50,7 +48,6 @@ func (s *ExtensionSnapshotImpl) Bytes() []byte {
 
 func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
-		s.c,
 		s.state.Bytes(),
 		s.front.Bytes(),
 		s.back.Bytes(),
@@ -60,7 +57,7 @@ func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 
 func (s *ExtensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	var stateHash, frontHash, backHash, rewardHash []byte
-	if err := d.DecodeListOf(&s.c, &stateHash, &frontHash, &backHash, &rewardHash); err != nil {
+	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash, &rewardHash); err != nil {
 		return err
 	}
 	s.state = icstate.NewSnapshot(s.database, stateHash)
@@ -89,7 +86,6 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	es := &ExtensionStateImpl{
 		database: s.database,
-		c:        s.c,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		Back:     icstage.NewStateFromSnapshot(s.back),
@@ -102,15 +98,10 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	return es
 }
 
-func (s *ExtensionSnapshotImpl) State() *icstate.Snapshot {
-	return s.state
-}
-
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
 	if hash == nil {
 		return &ExtensionSnapshotImpl{
 			database: database,
-			c:        newCalculation(),
 			state:    icstate.NewSnapshot(database, nil),
 			front:    icstage.NewSnapshot(database, nil),
 			back:     icstage.NewSnapshot(database, nil),
@@ -129,7 +120,6 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 type ExtensionStateImpl struct {
 	database db.Database
 
-	c  *calculation
 	pm *PRepManager
 
 	State  *icstate.State
@@ -146,7 +136,6 @@ type ExtensionStateImpl struct {
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: s.database,
-		c:        s.c,
 		state:    s.State.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
 		back:     s.Back.GetSnapshot(),
@@ -160,6 +149,8 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 		panic(err)
 	}
 	s.Front.Reset(snapshot.front)
+	s.Back.Reset(snapshot.back)
+	s.Reward.Reset(snapshot.reward)
 }
 
 func (s *ExtensionStateImpl) ClearCache() {
@@ -181,86 +172,79 @@ func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64, createIfNotExi
 }
 
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
-	return s.c.currentBH
+	rcInfo, err := s.State.GetRewardCalcInfo()
+	if err != nil || rcInfo == nil {
+		return 0
+	}
+	return rcInfo.StartHeight()
 }
 
 func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
-	return s.c.prevBH
+	rcInfo, err := s.State.GetRewardCalcInfo()
+	if err != nil || rcInfo == nil {
+		return 0
+	}
+	return rcInfo.PrevHeight()
 }
 
-func (s *ExtensionStateImpl) NewCalculationPeriod(blockHeight int64, calculator *Calculator) error {
-	if blockHeight != s.c.currentBH+s.State.GetCalculatePeriod() {
-		return nil
+func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calculator) error {
+	rc, err := s.State.GetRewardCalcInfo()
+	rcInfo := rc.Clone()
+	if err != nil {
+		return err
 	}
-
-	if !s.c.isCalcDone(calculator) {
-		return scoreresult.ErrTimeout
-	}
-
-	// set offsetLimit
-	if err := s.Front.AddGlobal(int(blockHeight - s.CalculationBlockHeight())); err != nil {
+	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
+		err = CriticalCalculatorError.Errorf("Reward calculation is not finished (%d)", rcInfo.StartHeight())
 		return err
 	}
 
-	if _, err := s.Front.AddEventPeriod(
-		0,
-		s.State.GetIRep(),
-		s.State.GetRRep(),
-		s.State.GetMainPRepCount(),
-		s.State.GetPRepCount(),
-	); err != nil {
-		return err
+	// apply calculation result
+	if calculator.Result() != nil {
+		s.Reward = calculator.Result().NewState()
+		if err = RegulateIssueInfo(s, calculator.TotalReward()); err != nil {
+			return err
+		}
 	}
-
+	// switch icstage and write global
 	s.Back = s.Front
 	s.Front = icstage.NewState(s.database)
-	if calculator.result != nil {
-		s.Reward = calculator.result.NewState()
-		s.c.start(calculator.stats.totalReward(), blockHeight)
+	version := s.State.GetIISSVersion()
+	switch version {
+	case icstate.IISSVersion1:
+		if err = s.Back.AddGlobalV1(
+			term.StartHeight(),
+			int(term.Period()),
+			term.Irep(),
+			term.Rrep(),
+			term.MainPRepCount(),
+			term.ElectedPRepCount(),
+		); err != nil {
+			return err
+		}
+	case icstate.IISSVersion2:
+		if err = s.Back.AddGlobalV2(
+			term.StartHeight(),
+			int(term.Period()),
+			term.Iglobal(),
+			term.Iprep(),
+			term.Ivoter(),
+			term.ElectedPRepCount(),
+			term.BondRequirement(),
+		); err != nil {
+			return err
+		}
+	default:
+		return errors.CriticalFormatError.Errorf(
+			"InvalidIISSVersion(version=%d)", version)
 	}
 
-	RegulateIssueInfo(s, s.c.rewardAmount)
+	// update rewardCalcInfo
+	rcInfo.Start(term.StartHeight())
+	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
+		return err
+	}
 
 	return nil
-}
-
-type calculation struct {
-	currentBH    int64
-	prevBH       int64
-	rewardAmount *big.Int
-}
-
-func (c *calculation) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(
-		c.currentBH,
-		c.prevBH,
-		c.rewardAmount,
-	)
-}
-
-func (c *calculation) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeListOf(
-		&c.currentBH,
-		&c.prevBH,
-		&c.rewardAmount,
-	)
-}
-
-func (c *calculation) isCalcDone(calculator *Calculator) bool {
-	if c.currentBH == 0 {
-		return true
-	}
-	return calculator.blockHeight == c.currentBH && calculator.result != nil
-}
-
-func (c *calculation) start(reward *big.Int, blockHeight int64) {
-	c.prevBH = c.currentBH
-	c.currentBH = blockHeight
-	c.rewardAmount = reward
-}
-
-func newCalculation() *calculation {
-	return &calculation{0, 0, nil}
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
@@ -291,35 +275,55 @@ func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []s
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
 	var err error
 	var account *icstate.Account
+	var delta map[string]*big.Int
 
 	account = s.State.GetAccount(from)
 
 	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
-	err = s.pm.ChangeDelegation(account.Delegations(), ds)
+	delta, err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
 		return err
 	}
-	account.SetDelegation(ds)
 
-	bonds := account.Bonds()
-	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
-	for _, d := range ds {
-		event = append(event, d)
+	if err = s.addEventDelegation(cc.BlockHeight(), from, delta); err != nil {
+		return err
 	}
-	for _, b := range bonds {
-		d := new(icstate.Delegation)
-		d.Address = b.Address
-		d.Value = b.Value
-		event = append(event, d)
-	}
-	_, err = s.Front.AddEventDelegation(
-		int(cc.BlockHeight()-s.CalculationBlockHeight()),
-		from,
-		event,
-	)
+
+	account.SetDelegation(ds)
 	return nil
+}
+
+func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
+	votes = make([]*icstage.Vote, 0, len(delta))
+	for key, value := range delta {
+		var addr *common.Address
+		vote := icstage.NewVote()
+
+		addr, err = common.NewAddress([]byte(key))
+		if err != nil {
+			return
+		}
+		vote.Address = addr
+		vote.Value.Set(value)
+		votes = append(votes, vote)
+	}
+	return
+}
+
+func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return
+	}
+	term := s.State.GetTerm()
+	_, err = s.Front.AddEventDelegation(
+		int(blockHeight-term.StartHeight()),
+		from,
+		votes,
+	)
+	return
 }
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
@@ -342,8 +346,9 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 		return err
 	}
 
+	term := s.State.GetTerm()
 	_, err = s.Front.AddEventEnable(
-		int(cc.BlockHeight()-s.CalculationBlockHeight()),
+		int(cc.BlockHeight()-term.StartHeight()),
 		owner,
 		false,
 	)
@@ -382,7 +387,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 			return errors.Errorf("PRep not found: %v", from)
 		}
 		if !prep.BonderList().Contains(from) {
-			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.Address.String())
+			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.To().String())
 		}
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
@@ -398,7 +403,8 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return errors.Errorf("Not enough voting power")
 	}
 
-	err = s.pm.ChangeBond(account.Bonds(), bonds)
+	var delta map[string]*big.Int
+	delta, err = s.pm.ChangeBond(account.Bonds(), bonds)
 	if err != nil {
 		return err
 	}
@@ -412,23 +418,25 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		}
 	}
 
-	ds := account.Delegations()
-	event := make([]*icstate.Delegation, 0, len(ds)+len(bonds))
-	for _, d := range ds {
-		event = append(event, d)
+	if err = s.addEventBond(blockHeight, from, delta); err != nil {
+		return err
 	}
-	for _, b := range bonds {
-		d := new(icstate.Delegation)
-		d.Address = b.Address
-		d.Value = b.Value
-		event = append(event, d)
-	}
-	_, err = s.Front.AddEventDelegation(
-		int(blockHeight-s.CalculationBlockHeight()),
-		from,
-		event,
-	)
+
 	return nil
+}
+
+func (s *ExtensionStateImpl) addEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return
+	}
+	term := s.State.GetTerm()
+	_, err = s.Front.AddEventBond(
+		int(blockHeight-term.StartHeight()),
+		from,
+		votes,
+	)
+	return
 }
 
 func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
@@ -459,7 +467,20 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 	return pb.GetBonderListInJSON(), nil
 }
 
-func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext) error {
+func (s *ExtensionStateImpl) UpdateIssueInfo(fee *big.Int) error {
+	is, err := s.State.GetIssue()
+	if err != nil {
+		return err
+	}
+	issue := is.Clone()
+	issue.PrevBlockFee.Add(issue.PrevBlockFee, fee)
+	if err = s.State.SetIssue(issue); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *Calculator) error {
 	var err error
 	term := s.State.GetTerm()
 	if term == nil {
@@ -468,13 +489,14 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext) error {
 
 	blockHeight := wc.BlockHeight()
 	if blockHeight == term.GetEndBlockHeight() {
+		if err = s.NewCalculation(term, calculator); err != nil {
+			return err
+		}
+
 		err = s.onTermEnd(wc)
 		if err != nil {
 			panic(err)
 		}
-
-		// NextTerm
-		term = s.State.GetTerm()
 	}
 
 	if s.updateValidator {
@@ -512,6 +534,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 	term := s.State.GetTerm()
+	rf := s.State.GetRewardFund()
 	nextTerm := icstate.NewNextTerm(
 		term,
 		s.State.GetTermPeriod(),
@@ -519,6 +542,11 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		s.State.GetRRep(),
 		totalSupply,
 		s.pm.TotalDelegated(),
+		rf.Iglobl,
+		rf.Iprep,
+		rf.Ivoter,
+		int(s.State.GetBondRequirement()),
+		s.State.GetIISSVersion(),
 	)
 
 	size := 0

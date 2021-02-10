@@ -11,10 +11,9 @@
  * limitations under the License.
  */
 
-package icreward
+package icstate
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,19 +22,16 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestEvent_Period(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+func TestRewardCalcInfo(t *testing.T) {
+	startHeight := int64(10)
+	prevHeight := int64(5)
 
-	type_ := TypeGlobal
-	version := 0
-	irep := int64(1000)
-	rrep := int64(2000)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+	rc1 := newRewardCalcInfo(icobject.MakeTag(TypeRewardCalcInfo, rewardCalcInfoVersion))
+	rc1.startHeight = startHeight
+	rc1.prevHeight = prevHeight
 
-	t1 := newGlobal(icobject.MakeTag(type_, version))
-	t1.Irep = big.NewInt(irep)
-	t1.Rrep = big.NewInt(rrep)
-
-	o1 := icobject.New(type_, t1)
+	o1 := icobject.New(TypeRewardCalcInfo, rc1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -45,11 +41,25 @@ func TestEvent_Period(t *testing.T) {
 	}
 
 	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
 
-	t2 := ToGlobal(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
-	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
+	rc2 := ToRewardCalcInfo(o2)
+	assert.True(t, rc1.Equal(rc2))
+	assert.Equal(t, startHeight, rc1.startHeight)
+	assert.Equal(t, prevHeight, rc1.prevHeight)
+}
+
+func TestRewardCalcInfo_Start(t *testing.T) {
+	startHeight := int64(10)
+	prevHeight := int64(5)
+
+	rc1 := newRewardCalcInfo(icobject.MakeTag(TypeRewardCalcInfo, rewardCalcInfoVersion))
+	rc1.startHeight = startHeight
+	rc1.prevHeight = prevHeight
+
+	nBH := int64(15)
+
+	rc1.Start(nBH)
+
+	assert.Equal(t, nBH, rc1.startHeight)
+	assert.Equal(t, startHeight, rc1.prevHeight)
 }

@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -122,20 +121,20 @@ func TestState_AddEvent(t *testing.T) {
 	addr2 := common.NewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
-	d1 := icstate.Delegation{
+	vote1 := Vote{
 		Address: addr1,
-		Value:   common.NewHexInt(v1),
+		Value:   big.NewInt(v1),
 	}
-	d2 := icstate.Delegation{
+	vote2 := Vote{
 		Address: addr2,
-		Value:   common.NewHexInt(v2),
+		Value:   big.NewInt(v2),
 	}
 
 	type args struct {
 		type_         int
 		offset        int
 		address       *common.Address
-		delegations   icstate.Delegations
+		votes         VoteList
 		enable        bool
 		irep          *big.Int
 		rrep          *big.Int
@@ -151,31 +150,28 @@ func TestState_AddEvent(t *testing.T) {
 		{
 			"Delegation",
 			args{
-				type_:       TypeEventDelegation,
-				offset:      offset1,
-				address:     addr1,
-				delegations: icstate.Delegations{&d1, &d2},
+				type_:   TypeEventDelegation,
+				offset:  offset1,
+				address: addr1,
+				votes:   VoteList{&vote1, &vote2},
+			},
+		},
+		{
+			"Bond",
+			args{
+				type_:   TypeEventBond,
+				offset:  offset1,
+				address: addr1,
+				votes:   VoteList{&vote1, &vote2},
 			},
 		},
 		{
 			"Enable",
 			args{
 				type_:   TypeEventEnable,
-				offset:  offset1,
+				offset:  offset2,
 				address: addr2,
 				enable:  false,
-			},
-		},
-		{
-			"Period",
-			args{
-				type_:         TypeEventPeriod,
-				offset:        offset2,
-				address:       addr1,
-				irep:          big.NewInt(v1),
-				rrep:          big.NewInt(v2),
-				mainPRepCount: 22,
-				pRepCount:     100,
 			},
 		},
 	}
@@ -184,17 +180,17 @@ func TestState_AddEvent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch a.type_ {
 			case TypeEventDelegation:
-				checkAddEventDelegation(t, s, a.offset, a.address, a.delegations)
+				checkAddEventDelegation(t, s, a.offset, a.address, a.votes)
+			case TypeEventBond:
+				checkAddEventBond(t, s, a.offset, a.address, a.votes)
 			case TypeEventEnable:
 				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
-			case TypeEventPeriod:
-				checkAddEventPeriod(t, s, a.offset, a.irep, a.rrep, a.mainPRepCount, a.pRepCount)
 			}
 		})
 	}
 
 	// check event size
-	es, err := s.getEventSize()
+	es, err := s.GetEventSize()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(len(tests)), es.Value.Int64())
 
@@ -217,16 +213,28 @@ func TestState_AddEvent(t *testing.T) {
 	assert.Equal(t, int64(len(tests)), size.Value.Int64())
 }
 
-func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, delegations icstate.Delegations) {
-	index, err := s.AddEventDelegation(offset, address, delegations)
+func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
+	index, err := s.AddEventDelegation(offset, address, votes)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
-	event := ToEventDelegation(obj)
+	event := ToEventVote(obj)
 	assert.True(t, address.Equal(event.From))
-	assert.True(t, delegations.Equal(event.Delegations))
+	assert.True(t, votes.Equal(event.Votes))
+}
+
+func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
+	index, err := s.AddEventBond(offset, address, votes)
+	assert.NoError(t, err)
+
+	key := EventKey.Append(offset, index).Build()
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
+	assert.NoError(t, err)
+	event := ToEventVote(obj)
+	assert.True(t, address.Equal(event.From))
+	assert.True(t, votes.Equal(event.Votes))
 }
 
 func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, enable bool) {
@@ -239,18 +247,6 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target))
 	assert.Equal(t, enable, event.Enable)
-}
-
-func checkAddEventPeriod(t *testing.T, s *State, offset int, irep *big.Int, rrep *big.Int, mainPRepCount int64, pRepCount int64) {
-	index, err := s.AddEventPeriod(offset, irep, rrep, mainPRepCount, pRepCount)
-	assert.NoError(t, err)
-
-	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	assert.NoError(t, err)
-	event := ToEventPeriod(obj)
-	assert.Equal(t, 0, irep.Cmp(event.Irep))
-	assert.Equal(t, 0, rrep.Cmp(event.Rrep))
 }
 
 func TestState_AddBlockProduce(t *testing.T) {
@@ -378,36 +374,105 @@ func TestState_AddGlobal(t *testing.T) {
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
-	offsetLimit := 1000
-
 	type args struct {
-		offsetLimit int
+		version          int
+		startHeight      int64
+		offsetLimit      int
+		irep             *big.Int
+		rrep             *big.Int
+		mainPRepCount    int
+		electedPRepCount int
+		period           int
+		iglobal          *big.Int
+		iprep            *big.Int
+		ivoter           *big.Int
+		bondRequirement  int
 	}
 
 	tests := []struct {
 		name string
 		args args
-		want int
 	}{
 		{
-			"Set offsetLimit",
+			"Version 1",
 			args{
-				offsetLimit,
+				version:          GlobalVersion1,
+				startHeight:      0,
+				offsetLimit:      1000,
+				irep:             big.NewInt(100),
+				rrep:             big.NewInt(200),
+				mainPRepCount:    22,
+				electedPRepCount: 100,
 			},
-			offsetLimit,
+		},
+		{
+			"Version 2",
+			args{
+				version:          GlobalVersion2,
+				startHeight:      0,
+				offsetLimit:      1000,
+				iglobal:          big.NewInt(100),
+				iprep:            big.NewInt(50),
+				ivoter:           big.NewInt(50),
+				electedPRepCount: 100,
+				bondRequirement:  5,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
 			a := tt.args
-			err := s.AddGlobal(a.offsetLimit)
+			switch a.version {
+			case GlobalVersion1:
+				err = s.AddGlobalV1(
+					a.startHeight,
+					a.offsetLimit,
+					a.irep,
+					a.rrep,
+					a.mainPRepCount,
+					a.electedPRepCount,
+				)
+			case GlobalVersion2:
+				err = s.AddGlobalV2(
+					a.startHeight,
+					a.offsetLimit,
+					a.iglobal,
+					a.iprep,
+					a.ivoter,
+					a.electedPRepCount,
+					a.bondRequirement,
+				)
+			}
 			assert.NoError(t, err)
 
 			key := HashKey.Append(globalKey).Build()
-			obj, err := icobject.GetFromMutableForObject(s.store, key)
+			obj, err := s.store.Get(key)
 			assert.NoError(t, err)
-			global := ToGlobal(obj)
-			assert.Equal(t, tt.want, global.OffsetLimit)
+			g := ToGlobal(obj)
+			assert.Equal(t, a.version, g.Version())
+
+			switch a.version {
+			case GlobalVersion1:
+				global := g.GetV1()
+				assert.NotNil(t, global)
+				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
+				assert.Equal(t, 0, a.irep.Cmp(global.Irep))
+				assert.Equal(t, 0, a.rrep.Cmp(global.Rrep))
+				assert.Equal(t, a.mainPRepCount, global.MainPRepCount)
+				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
+			case GlobalVersion2:
+				global := g.GetV2()
+				assert.NotNil(t, global)
+				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
+				assert.Equal(t, 0, a.iglobal.Cmp(global.Iglobal))
+				assert.Equal(t, 0, a.iprep.Cmp(global.Iprep))
+				assert.Equal(t, 0, a.ivoter.Cmp(global.Ivoter))
+				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
+				assert.Equal(t, a.bondRequirement, global.BondRequirement)
+			}
 		})
 	}
 }

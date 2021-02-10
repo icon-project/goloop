@@ -313,15 +313,15 @@ func (pm *PRepManager) addNodeToOwner(node, owner module.Address) error {
 	return pm.state.AddNodeToOwner(node, owner)
 }
 
-func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
+func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]*big.Int, error) {
 	delta := make(map[string]*big.Int)
 
 	for _, d := range od {
-		key := icutils.ToKey(d.Address)
+		key := icutils.ToKey(d.To())
 		delta[key] = new(big.Int).Neg(d.Value.Value())
 	}
 	for _, d := range nd {
-		key := icutils.ToKey(d.Address)
+		key := icutils.ToKey(d.To())
 		if delta[key] == nil {
 			delta[key] = new(big.Int)
 		}
@@ -332,7 +332,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	for key, value := range delta {
 		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner, true)
@@ -348,29 +348,29 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) error {
 	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
 	// Ignore the delegated amount to Inactive P-Rep
 	totalDelegated.Sub(totalDelegated, delegatedToInactiveNode)
-	return nil
+	return delta, nil
 }
 
-func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
+func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big.Int, error) {
 	delta := make(map[string]*big.Int)
 
-	for _, d := range oBonds {
-		key := icutils.ToKey(d.Address)
-		delta[key] = new(big.Int).Neg(d.Value.Value())
+	for _, bond := range oBonds {
+		key := icutils.ToKey(bond.To())
+		delta[key] = new(big.Int).Neg(bond.Amount())
 	}
-	for _, d := range nBonds {
-		key := icutils.ToKey(d.Address)
+	for _, bond := range nBonds {
+		key := icutils.ToKey(bond.To())
 		if delta[key] == nil {
 			delta[key] = new(big.Int)
 		}
-		delta[key].Add(delta[key], d.Value.Value())
+		delta[key].Add(delta[key], bond.Amount())
 	}
 
 	bondedToInactiveNode := big.NewInt(0)
 	for key, value := range delta {
 		owner, err := common.NewAddress([]byte(key))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if value.Sign() != 0 {
@@ -386,7 +386,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) error {
 	totalDelegated.Sub(totalDelegated, nBonds.GetBondAmount())
 	// Ignore the bonded amount to inactive P-Rep
 	totalDelegated.Sub(totalDelegated, bondedToInactiveNode)
-	return nil
+	return delta, nil
 }
 
 func (pm *PRepManager) OnTermEnd() error {

@@ -25,8 +25,8 @@ import (
 const (
 	TypeIScoreClaim int = iota
 	TypeEventDelegation
+	TypeEventBond
 	TypeEventEnable
-	TypeEventPeriod
 	TypeEventSize
 	TypeBlockProduce
 	TypeValidator
@@ -40,11 +40,11 @@ func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypeIScoreClaim:
 		return newIScoreClaim(tag), nil
 	case TypeEventDelegation:
-		return newEventDelegation(tag), nil
+		return newEventVote(tag), nil
+	case TypeEventBond:
+		return newEventVote(tag), nil
 	case TypeEventEnable:
 		return newEventEnable(tag), nil
-	case TypeEventPeriod:
-		return newEventPeriod(tag), nil
 	case TypeEventSize:
 		return newEventSize(tag), nil
 	case TypeBlockProduce:
@@ -73,18 +73,25 @@ func ToEventDelegation(obj trie.Object) *EventDelegation {
 	return obj.(*icobject.Object).Real().(*EventDelegation)
 }
 
+func ToEventBond(obj trie.Object) *EventBond {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventBond)
+}
+
+func ToEventVote(obj trie.Object) *EventVote {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventVote)
+}
+
 func ToEventEnable(obj trie.Object) *EventEnable {
 	if obj == nil {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*EventEnable)
-}
-
-func ToEventPeriod(obj trie.Object) *EventPeriod {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*EventPeriod)
 }
 
 func ToEventSize(obj trie.Object) *EventSize {

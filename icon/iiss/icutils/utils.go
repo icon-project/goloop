@@ -1,6 +1,7 @@
 package icutils
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -64,4 +65,11 @@ func Min(value1, value2 int) int {
 	} else {
 		return value2
 	}
+}
+
+
+func BigInt2HexInt(value *big.Int) *common.HexInt {
+	h := new(common.HexInt)
+	h.Set(value)
+	return h
 }

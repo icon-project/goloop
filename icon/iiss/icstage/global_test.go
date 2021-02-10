@@ -22,22 +22,25 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-func TestGlobal(t *testing.T) {
+func TestGlobalV1(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
 
 	type_ := TypeGlobal
-	version := 0
+	version := GlobalVersion1
 	offsetLimit := 10
 
-	g1 := newGlobal(icobject.MakeTag(type_, version))
+	g := newGlobal(icobject.MakeTag(type_, version))
+	assert.Equal(t, version, g.Version())
+	g1 := g.GetV1()
+	assert.NotNil(t, g1)
 	g1.OffsetLimit = offsetLimit
 
-	o1 := icobject.New(type_, g1)
+	o1 := icobject.New(type_, g)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
 	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
+		t.Errorf("Failed to get object from bytes. %v", err)
 		return
 	}
 
@@ -45,7 +48,40 @@ func TestGlobal(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	g2 := ToGlobal(o2)
+	global := ToGlobal(o2)
+	g2 := global.GetV1()
+	assert.Equal(t, true, g1.Equal(g2))
+	assert.Equal(t, offsetLimit, g2.OffsetLimit)
+}
+
+func TestGlobalV2(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+
+	type_ := TypeGlobal
+	version := GlobalVersion2
+	offsetLimit := 10
+
+	g := newGlobal(icobject.MakeTag(type_, version))
+	assert.Equal(t, version, g.Version())
+	g1 := g.GetV2()
+	assert.NotNil(t, g1)
+	g1.OffsetLimit = offsetLimit
+
+	o1 := icobject.New(type_, g)
+	serialized := o1.Bytes()
+
+	o2 := new(icobject.Object)
+	if err := o2.Reset(database, serialized); err != nil {
+		t.Errorf("Failed to get object from bytes. %v", err)
+		return
+	}
+
+	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
+
+	global := ToGlobal(o2)
+	g2 := global.GetV2()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.OffsetLimit)
 }

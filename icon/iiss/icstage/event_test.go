@@ -15,7 +15,6 @@ package icstage
 
 import (
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 	"testing"
 
@@ -32,15 +31,14 @@ func TestEvent_Delegation(t *testing.T) {
 	version := 0
 	addr1 := "hx1"
 	v1 := int64(1)
-	d1 := icstate.Delegation{
+	vote1 := Vote{
 		Address: common.NewAddressFromString(addr1),
-		Value: common.NewHexInt(v1),
+		Value: big.NewInt(v1),
 	}
 
-
-	t1 := newEventDelegation(icobject.MakeTag(type_, version))
+	t1 := newEventVote(icobject.MakeTag(type_, version))
 	t1.From = common.NewAddressFromString(addr1)
-	t1.Delegations = icstate.Delegations{&d1}
+	t1.Votes = VoteList{&vote1}
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -55,10 +53,46 @@ func TestEvent_Delegation(t *testing.T) {
 	assert.Equal(t, type_, o2.Tag().Type())
 	assert.Equal(t, version, o2.Tag().Version())
 
-	t2 := ToEventDelegation(o2)
+	t2 := ToEventVote(o2)
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, true, t1.From.Equal(t2.From))
-	assert.Equal(t, true, t1.Delegations.Equal(t2.Delegations))
+	assert.Equal(t, true, t1.Votes.Equal(t2.Votes))
+}
+
+func TestEvent_Bond(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+
+	type_ := TypeEventBond
+	version := 0
+	addr1 := "hx1"
+	v1 := int64(1)
+	vote1 := Vote{
+		Address: common.NewAddressFromString(addr1),
+		Value: big.NewInt(v1),
+	}
+
+
+	t1 := newEventVote(icobject.MakeTag(type_, version))
+	t1.From = common.NewAddressFromString(addr1)
+	t1.Votes = VoteList{&vote1}
+
+	o1 := icobject.New(type_, t1)
+	serialized := o1.Bytes()
+
+	o2 := new(icobject.Object)
+	if err := o2.Reset(database, serialized); err != nil {
+		t.Errorf("Failed to get object from bytes")
+		return
+	}
+
+	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
+
+	t2 := ToEventVote(o2)
+	assert.Equal(t, true, t1.Equal(t2))
+	assert.Equal(t, true, t1.From.Equal(t2.From))
+	assert.Equal(t, true, t1.Votes.Equal(t2.Votes))
 }
 
 func TestEvent_Enable(t *testing.T) {
@@ -91,36 +125,4 @@ func TestEvent_Enable(t *testing.T) {
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, true, t1.Target.Equal(t2.Target))
 	assert.Equal(t, t1.Enable, t2.Enable)
-}
-
-func TestEvent_Period(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
-
-	type_ := TypeEventPeriod
-	version := 0
-	irep := int64(1000)
-	rrep := int64(2000)
-
-
-	t1 := newEventPeriod(icobject.MakeTag(type_, version))
-	t1.Irep = big.NewInt(irep)
-	t1.Rrep = big.NewInt(rrep)
-
-	o1 := icobject.New(type_, t1)
-	serialized := o1.Bytes()
-
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
-	}
-
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
-
-	t2 := ToEventPeriod(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Irep.Cmp(t2.Irep))
-	assert.Equal(t, 0, t1.Rrep.Cmp(t2.Rrep))
 }

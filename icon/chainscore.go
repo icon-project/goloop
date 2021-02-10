@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -647,7 +648,6 @@ const (
 	configFile             = "./icon_config.json"
 	defaultIISSBlockHeight = 0
 	defaultTermPeriod      = 43120
-	defaultCalculatePeriod = 43120
 	defaultMainPRepCount   = 22
 	defaultSubPRepCount    = 78
 	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
@@ -660,8 +660,7 @@ const (
 
 type config struct {
 	TermPeriod        *common.HexInt `json:"termPeriod"`
-	IISSBlockHeight   *common.HexInt `json:"iissBlockHeight,omitempty"`
-	CalculationPeriod *common.HexInt `json:"iissCalculatePeriod"`
+	IISSVersion       *common.HexInt `json:"iissVersion,omitempty"`
 	MainPRepCount     *common.HexInt `json:"mainPRepCount"`
 	SubPRepCount      *common.HexInt `json:"subPRepCount"`
 	Irep              *common.HexInt `json:"irep,omitempty"`
@@ -669,6 +668,27 @@ type config struct {
 	BondRequirement   *common.HexInt `json:"bondRequirement,omitempty"`
 	LockMin           *common.HexInt `json:"lockMin,omitempty"`
 	LockMax           *common.HexInt `json:"lockMax,omitempty"`
+	RewardFund        struct {
+		Iglobal common.HexInt `json:"Iglobal"`
+		Iprep   common.HexInt `json:"Iprep"`
+		Icps    common.HexInt `json:"Icps"`
+		Ibtp    common.HexInt `json:"Ibtp"`
+		Ivoter  common.HexInt `json:"Ivoter"`
+	} `json:"rewardFund"`
+}
+
+func applyRewardFund(iconConfig *config, s *icstate.State) error {
+	rf := &icstate.RewardFund{
+		Iglobl: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
+		Iprep:  new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
+		Icps:   new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
+		Ibtp:   new(big.Int).Set(iconConfig.RewardFund.Ibtp.Value()),
+		Ivoter: new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
+	}
+	if err := s.SetRewardFund(rf); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Chain struct {
@@ -695,8 +715,7 @@ type Chain struct {
 func newIconConfig() *config {
 	return &config{
 		TermPeriod:        common.NewHexInt(defaultTermPeriod),
-		IISSBlockHeight:   common.NewHexInt(defaultIISSBlockHeight),
-		CalculationPeriod: common.NewHexInt(defaultCalculatePeriod),
+		IISSVersion:       common.NewHexInt(defaultIISSBlockHeight),
 		MainPRepCount:     common.NewHexInt(defaultMainPRepCount),
 		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
 		Irep:              common.NewHexInt(defaultIRep),
@@ -807,13 +826,10 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err = es.State.SetIISSBlockHeight(iconConfig.IISSBlockHeight.Int64()); err != nil {
+	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
 		return err
 	}
 	if err = es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetCalculatePeriod(iconConfig.CalculationPeriod.Int64()); err != nil {
 		return err
 	}
 	if err = es.State.SetIRep(iconConfig.Irep.Value()); err != nil {
@@ -832,6 +848,9 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 	if err = es.State.SetLockVariables(iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
+		return err
+	}
+	if err = applyRewardFund(iconConfig, es.State); err != nil {
 		return err
 	}
 

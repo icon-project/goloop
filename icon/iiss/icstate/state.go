@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -25,6 +26,7 @@ import (
 
 var (
 	IssueKey          = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
+	RewardCalcInfoKey = containerdb.ToKey(containerdb.HashBuilder, "reward_calc_info").Build()
 	LastValidatorsKey = containerdb.ToKey(containerdb.HashBuilder, "last_validators")
 )
 
@@ -131,9 +133,10 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	}
 
 	if s.GetTerm() == nil {
-		iissBH := s.GetIISSBlockHeight()
+		iissBH := int64(0)
+		// TODO check revision before making Term
+		//if iissOFF { return s } else { iissBH = current block height }
 		termPeriod := s.GetTermPeriod()
-		// if termPeriod is not enabled, do not make termCache with Term
 		if termPeriod != 0 {
 			term := newTerm(iissBH, termPeriod)
 			s.SetTerm(term)
@@ -177,6 +180,27 @@ func (s *State) GetTerm() *Term {
 
 func (s *State) SetTerm(term *Term) error {
 	return s.termCache.Set(term)
+}
+
+func (s *State) SetRewardCalcInfo(rc *RewardCalcInfo) error {
+	log.Debugf("Set rewardCalcInfo %+v", rc)
+	_, err := s.store.Set(RewardCalcInfoKey, icobject.New(TypeRewardCalcInfo, rc))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *State) GetRewardCalcInfo() (*RewardCalcInfo, error) {
+	obj, err := s.store.Get(RewardCalcInfoKey)
+	if err != nil {
+		return nil, err
+	}
+	rc := ToRewardCalcInfo(obj)
+	if rc == nil {
+		rc = NewRewardCalcInfo()
+	}
+	return rc, nil
 }
 
 func (s *State) SetLastValidators(al []module.Address) error {

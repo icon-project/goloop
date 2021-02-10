@@ -17,13 +17,13 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -270,15 +270,15 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 	for _, nb := range bonds {
 		for _, ob := range a.bonds {
 			diff := new(big.Int)
-			if nb.Address.Equal(ob.Address) {
-				diff.Sub(ob.Value.Value(), nb.Value.Value())
+			if nb.To().Equal(ob.To()) {
+				diff.Sub(ob.Amount(), nb.Amount())
 				if diff.Sign() == 1 {
 					unbond := Unbond{nb.Address, diff, unbondingHeight}
 					ubToAdd = append(ubToAdd, &unbond)
 					uDiff.Add(uDiff, diff)
 				} else {
 					for _, ub := range a.unbonds {
-						if nb.Address.Equal(ub.Address) {
+						if nb.To().Equal(ub.Address) {
 							value := new(big.Int).Add(ub.Value, diff)
 							if value.Sign() == -1 {
 								uDiff.Add(uDiff, value.Abs(value))
