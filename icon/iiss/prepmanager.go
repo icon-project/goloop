@@ -215,16 +215,25 @@ func (pm *PRepManager) ToJSON() map[string]interface{} {
 	return ret
 }
 
-func (pm *PRepManager) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
+func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) map[string]interface{} {
 	size := len(pm.orderedPReps)
+	if size < end {
+		end = size
+	}
 	ret := make(map[string]interface{})
-	prepList := make([]map[string]interface{}, size, size)
+	prepList := make([]interface{}, end)
 	ret["preps"] = prepList
 	br := pm.state.GetBondRequirement()
-	for i, prep := range pm.orderedPReps {
-		prepList[i] = prep.ToJSON(blockHeight, br)
-	}
 
+	if start != 0 && end != 0 {
+		for i := start - 1 ; i < end ; i++ {
+			prepList[i] = pm.orderedPReps[i].ToJSON(blockHeight, br)
+		}
+	} else {
+		for i, prep := range pm.orderedPReps {
+			prepList[i] = prep.ToJSON(blockHeight, br)
+		}
+	}
 	return ret
 }
 

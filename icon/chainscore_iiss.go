@@ -207,10 +207,18 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	}
 }
 
-func (s *chainScore) Ex_getPReps() (map[string]interface{}, error) {
+func (s *chainScore) Ex_getPReps(startRanking, endRanking  *common.HexInt) (map[string]interface{}, error) {
+	var start, end int = 0, 0
+	if startRanking != nil && endRanking != nil {
+		start = int(startRanking.Int.Int64())
+		end = int(endRanking.Int.Int64())
+	}
+	if start > end {
+		return nil, scoreresult.InvalidParameterError.Errorf("Invalid parameter")
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	blockHeight := s.cc.BlockHeight()
-	jso := es.GetPRepsInJSON(blockHeight)
+	jso := es.GetPRepsInJSON(blockHeight, start, end)
 	ts := es.State.GetTotalStake()
 	jso["totalStake"] = intconv.FormatBigInt(ts)
 	jso["blockHeight"] = blockHeight

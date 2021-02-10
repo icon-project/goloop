@@ -267,8 +267,8 @@ func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
 	return s.pm.ToJSON()
 }
 
-func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64) map[string]interface{} {
-	return s.pm.GetPRepsInJSON(blockHeight)
+func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64, start, end int) map[string]interface{} {
+	return s.pm.GetPRepsInJSON(blockHeight, start, end)
 }
 
 func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
