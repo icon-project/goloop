@@ -58,6 +58,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag(Constants.TAG_PY_GOV)
+@Tag(Constants.TAG_JAVA_GOV)
 public class ChainScoreTest extends TestBase {
     private static final String SCORE_STATUS_PENDING = "pending";
     private static final String SCORE_STATUS_ACTIVE = "active";
@@ -66,6 +67,7 @@ public class ChainScoreTest extends TestBase {
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
     private static GovScore govScore;
+    private static GovScore.Fee fee;
     private static KeyWallet[] testWallets;
     private static final int testWalletNum = 3;
     private static KeyWallet governorWallet;
@@ -81,13 +83,14 @@ public class ChainScoreTest extends TestBase {
     }
 
     @BeforeAll
-    public static void init() {
+    public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Chain chain = node.channels[0].chain;
         IconService iconService = new IconService(new HttpProvider(node.channels[0].getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
         chainScore = new ChainScore(txHandler);
         govScore = new GovScore(txHandler);
+        fee = govScore.getFee();
         governorWallet = chain.governorWallet;
         try {
             Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), ICX);
@@ -108,9 +111,7 @@ public class ChainScoreTest extends TestBase {
 
     @AfterAll
     public static void destroy() throws Exception {
-        for (String type : new String[]{"invoke", "query"}) {
-            assertSuccess(govScore.setMaxStepLimit(type, BigInteger.ZERO));
-        }
+        govScore.setFee(fee);
     }
 
     public void invokeAndCheckResult(Address target, String method, RpcObject params) throws Exception {

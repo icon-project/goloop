@@ -6,6 +6,7 @@ sourceSets {
     main.java.srcDirs = [
         'collection/src',
         'crowdsale/src',
+        'governance/src',
         'multisig/src',
         'sampletoken/src',
         'testcases/src',

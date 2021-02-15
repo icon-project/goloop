@@ -691,14 +691,23 @@ func (t *transition) Equal(tr module.Transition) bool {
 
 func NewInitTransition(
 	db db.Database,
-	stateHash []byte,
+	result []byte,
 	vl module.ValidatorList,
-	es state.ExtensionSnapshot,
 	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 	logger log.Logger, plt Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
+	var stateHash []byte
+	var es state.ExtensionSnapshot
+	if len(result) > 0 {
+		if tsr, err := newTransitionResultFromBytes(result); err != nil {
+			return nil, err
+		} else {
+			stateHash = tsr.StateHash
+			es = plt.NewExtensionSnapshot(db, tsr.ExtensionData)
+		}
+	}
 	if tr, err := newInitTransition(
 		db,
 		stateHash,

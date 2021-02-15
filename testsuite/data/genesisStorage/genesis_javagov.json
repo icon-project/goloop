@@ -14,12 +14,11 @@
             "address": "cx0000000000000000000000000000000000000001",
             "name": "governance",
             "score": {
-                "contentId": "hash:{{ziphash:governance}}",
-                "contentType": "application/zip",
+                "contentId": "hash:{{hash:governance-optimized.jar}}",
+                "contentType": "application/java",
                 "owner": "hx54f021fc4a755a2a2c9fdda47a16ce4cd3f3b43e",
                 "params": {
-                    "name": "Governance",
-                    "value": "50"
+                    "name": "Governance"
                 }
             }
         }
@@ -27,7 +26,7 @@
     "chain": {
         "auditEnabled": "0x0",
         "deployerWhiteListEnabled": "0x0",
-        "revision": "0x5",
+        "revision": "0x8",
         "depositTerm": "0x20",
         "feeSharingEnabled": "0x1",
         "fee": {
@@ -57,5 +56,5 @@
         ]
     },
     "message": "genesis for CI tests",
-    "nid": "0x3"
+    "nid": "0x4"
 }

@@ -103,7 +103,7 @@ public class FeeSharingTest extends TestBase {
         deployAndStartTest(Constants.CONTENT_TYPE_PYTHON);
     }
 
-    @Tag(Constants.TAG_INTER_SCORE)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     public void testJava() throws Exception {
         deployAndStartTest(Constants.CONTENT_TYPE_JAVA);

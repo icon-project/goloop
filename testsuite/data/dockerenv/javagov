@@ -1,0 +1,6 @@
+GOCHAIN_CONFIG=/testsuite/data/config/javagov.json
+GOCHAIN_GENESIS=/testsuite/data/genesisStorage/genesis_javagov.json
+GOCHAIN_DATA=/testsuite/.chain/javagov
+GOCHAIN_LOGFILE=/testsuite/.chain/javagov.log
+GOCHAIN_CLEAN_DATA=true
+JAVAEE_BIN=/goloop/execman/bin/execman

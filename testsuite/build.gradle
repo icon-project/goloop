@@ -183,14 +183,14 @@ task testPyGov(type: ChainTest, overwrite: true) {
         chainDir = ".chain/pyaudit"
         logFile = ".chain/pyaudit.log"
         gsDir = "./data/genesisStorage/genesis_audit.json"
-        envFile = "./data/chainenv/gov.props"
+        envFile = "./data/chainenv/pygov.props"
         dockerEnv = "pyaudit"
     } else {
         configFile = "./data/config/pygov.json"
         chainDir = ".chain/pygov"
         logFile = ".chain/pygov.log"
         gsDir = "./data/genesisStorage/genesis_gov.json"
-        envFile = "./data/chainenv/gov.props"
+        envFile = "./data/chainenv/pygov.props"
         dockerEnv = "pygov"
     }
 
@@ -231,21 +231,21 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     testLogging.showStandardStreams = true
 }
 
-task testInterScore(type: ChainTest, overwrite: true) {
+task testJavaGov(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
-        includeTags "interScore"
+        includeTags "javaGov"
     }
-    configFile = "./data/config/inter.json"
-    chainDir = ".chain/interscore"
-    logFile = ".chain/interscore.log"
-    gsDir = "./data/genesisStorage/genesis_inter.json"
-    envFile = "./data/chainenv/inter.props"
-    dockerEnv = "interscore"
+    configFile = "./data/config/javagov.json"
+    chainDir = ".chain/javagov"
+    logFile = ".chain/javagov.log"
+    gsDir = "./data/genesisStorage/genesis_javagov.json"
+    envFile = "./data/chainenv/javagov.props"
+    dockerEnv = "javagov"
 
-    dependsOn 'cleanTestInterScore'
+    dependsOn 'cleanTestJavaGov'
     testLogging.showStandardStreams = true
 }
 
 task test(overwrite: true) {
-    dependsOn 'testPyScore', 'testPyGov', 'testJavaScore', 'testInterScore'
+    dependsOn 'testPyScore', 'testPyGov', 'testJavaScore', 'testJavaGov'
 }
