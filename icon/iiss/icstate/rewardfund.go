@@ -24,7 +24,7 @@ type RewardFund struct {
 	Iglobl *big.Int
 	Iprep  *big.Int
 	Icps   *big.Int
-	Ibtp   *big.Int
+	Irelay *big.Int
 	Ivoter *big.Int
 }
 
@@ -33,7 +33,7 @@ func NewRewardFund() *RewardFund {
 		Iglobl: new(big.Int),
 		Iprep:  new(big.Int),
 		Icps:   new(big.Int),
-		Ibtp:   new(big.Int),
+		Irelay: new(big.Int),
 		Ivoter: new(big.Int),
 	}
 }
@@ -54,7 +54,7 @@ func (rf *RewardFund) RLPEncodeSelf(e codec.Encoder) error {
 		rf.Iglobl,
 		rf.Iprep,
 		rf.Icps,
-		rf.Ibtp,
+		rf.Irelay,
 		rf.Ivoter,
 	)
 }
@@ -64,7 +64,7 @@ func (rf *RewardFund) RLPDecodeSelf(d codec.Decoder) error {
 		&rf.Iglobl,
 		&rf.Iprep,
 		&rf.Icps,
-		&rf.Ibtp,
+		&rf.Irelay,
 		&rf.Ivoter,
 	)
 }
@@ -80,7 +80,7 @@ func (rf *RewardFund) Equal(rc2 *RewardFund) bool {
 	return rf.Iglobl.Cmp(rc2.Iglobl) == 0 &&
 		rf.Iprep.Cmp(rc2.Iprep) == 0 &&
 		rf.Icps.Cmp(rc2.Icps) == 0 &&
-		rf.Ibtp.Cmp(rc2.Ibtp) == 0 &&
+		rf.Irelay.Cmp(rc2.Irelay) == 0 &&
 		rf.Ivoter.Cmp(rc2.Ivoter) == 0
 }
 
@@ -89,7 +89,7 @@ func (rf *RewardFund) Clone() *RewardFund {
 	rewardFund.Iglobl.Set(rf.Iglobl)
 	rewardFund.Iprep.Set(rf.Iprep)
 	rewardFund.Icps.Set(rf.Icps)
-	rewardFund.Ibtp.Set(rf.Ibtp)
+	rewardFund.Irelay.Set(rf.Irelay)
 	rewardFund.Ivoter.Set(rf.Ivoter)
 	return rewardFund
 }
@@ -99,7 +99,7 @@ func (rf *RewardFund) ToJSON() map[string]interface{} {
 	jso["Iglobal"] = intconv.FormatBigInt(rf.Iglobl)
 	jso["Iprep"] = intconv.FormatBigInt(rf.Iprep)
 	jso["Icps"] = intconv.FormatBigInt(rf.Icps)
-	jso["Ibtp"] = intconv.FormatBigInt(rf.Ibtp)
+	jso["Irelay"] = intconv.FormatBigInt(rf.Irelay)
 	jso["Ivoter"] = intconv.FormatBigInt(rf.Ivoter)
 	return jso
 }

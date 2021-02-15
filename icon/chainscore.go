@@ -672,7 +672,7 @@ type config struct {
 		Iglobal common.HexInt `json:"Iglobal"`
 		Iprep   common.HexInt `json:"Iprep"`
 		Icps    common.HexInt `json:"Icps"`
-		Ibtp    common.HexInt `json:"Ibtp"`
+		Irelay  common.HexInt `json:"Irelay"`
 		Ivoter  common.HexInt `json:"Ivoter"`
 	} `json:"rewardFund"`
 }
@@ -682,7 +682,7 @@ func applyRewardFund(iconConfig *config, s *icstate.State) error {
 		Iglobl: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
 		Iprep:  new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
 		Icps:   new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
-		Ibtp:   new(big.Int).Set(iconConfig.RewardFund.Ibtp.Value()),
+		Irelay: new(big.Int).Set(iconConfig.RewardFund.Irelay.Value()),
 		Ivoter: new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
 	}
 	if err := s.SetRewardFund(rf); err != nil {
