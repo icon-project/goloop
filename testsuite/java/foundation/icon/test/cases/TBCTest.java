@@ -1,6 +1,23 @@
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.ee.test.TBCProtocol;
+import foundation.icon.ee.test.TBCTestScenario;
 import foundation.icon.ee.test.TBCTestScenarios;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -9,7 +26,6 @@ import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.ee.test.TBCTestScenario;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.TBCInterpreterScore;
@@ -20,9 +36,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.math.BigInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TBCTest extends TestBase {
     private static final int S = TBCProtocol.VAR_TYPE_STATIC;
@@ -74,7 +89,7 @@ public class TBCTest extends TestBase {
         return out;
     }
 
-    @Tag(Constants.TAG_INTER_SCORE)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     void testSimpleScenario() throws Exception {
         s1 = TBCInterpreterScore.mustDeploy(txHandler, ownerWallet,

@@ -211,7 +211,7 @@ IT:py:pygov:
   <<: *IT__goloop
   variables:
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
   script:
     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -220,7 +220,7 @@ IT:py:pyaudit:
   <<: *IT__goloop
   variables:
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
   script:
     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -234,11 +234,20 @@ IT:java:javascore:
   script:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
+IT:goloop:javagov:
+  <<: *IT__goloop
+  variables:
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_javagov.json"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/javagov.props"
+    GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
+  script:
+    - ./gradlew testJavaGov -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+
 IT:goloop:pyaudit:
   <<: *IT__goloop
   variables:
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   script:
     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -247,7 +256,7 @@ IT:goloop:pygov:
   <<: *IT__goloop
   variables:
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   script:
     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -269,15 +278,6 @@ IT:goloop:javascore:
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   script:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
-
-IT:goloop:interscore:
-  <<: *IT__goloop
-  variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_inter.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/inter.props"
-    GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
-  script:
-    - ./gradlew testInterScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
 .pages: &pages
   image: node:lts-alpine
@@ -366,14 +366,14 @@ pages:IT:goloop:javascore:
   dependencies:
     - IT:goloop:javascore
 
-pages:IT:goloop:interscore:
+pages:IT:goloop:javagov:
   <<: *pages
   variables:
-    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_goloop/interscore"
-    PAGES_SOURCE: "testsuite/build/reports/tests/testInterScore"
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_goloop/javagov"
+    PAGES_SOURCE: "testsuite/build/reports/tests/testJavaGov"
   when: on_failure
   dependencies:
-    - IT:goloop:interscore
+    - IT:goloop:javagov
     
 .push: &push
   image: docker:git

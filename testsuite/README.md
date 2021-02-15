@@ -109,7 +109,7 @@ To identify test cases, following tags are used for each target.
 | testPyScore    | TAG_PY_SCORE    |
 | testPyGov      | TAG_PY_GOV      |
 | testJavaScore  | TAG_JAVA_SCORE  |
-| testInterScore | TAG_INTER_SCORE |
+| testJavaGov    | TAG_JAVA_GOV    |
 
 > Example of `TAG_PY_SCORE`
 ```java

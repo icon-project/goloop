@@ -82,13 +82,13 @@ class CrowdsaleTest extends TestBase {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_JAVA);
     }
 
-    @Tag(Constants.TAG_INTER_SCORE)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     void testPythonToJava() throws Exception {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_PYTHON, Constants.CONTENT_TYPE_JAVA);
     }
 
-    @Tag(Constants.TAG_INTER_SCORE)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     void testJavaToPython() throws Exception {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_PYTHON);

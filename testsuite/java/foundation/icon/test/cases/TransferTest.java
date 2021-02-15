@@ -52,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_GOV)
+@Tag(Constants.TAG_JAVA_GOV)
 public class TransferTest extends TestBase {
     private static TransactionHandler txHandler;
     private static Env.Chain chain;
@@ -329,12 +330,13 @@ public class TransferTest extends TestBase {
         for (KeyWallet wallet : testWallets) {
             LOG.infoEntering("invoke", "from " + wallet.getAddress());
             String msg = "message: " + wallet.toString();
+            int stepLimit = (msg.length() + 2) * 2 + 1;
             Transaction transaction = TransactionBuilder.newBuilder()
                     .nid(txHandler.getNetworkId())
                     .from(wallet.getAddress())
                     .to(testWallet.getAddress())
                     .value(BigInteger.ONE)
-                    .stepLimit(BigInteger.ONE)
+                    .stepLimit(BigInteger.valueOf(stepLimit))
                     .message(msg)
                     .build();
             msgs[cnt] = msg;
