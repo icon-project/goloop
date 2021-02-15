@@ -132,11 +132,17 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 // if bondedDelegation > totalVoted
 //    bondedDelegation = totalVoted
 func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
-	if bondRequirement < 1 || bondRequirement > 100 {
-		// should not be 0 for bond requirement
+	if bondRequirement < 0 || bondRequirement > 100 {
+		// should not be negative or over 100 for bond requirement
 		return big.NewInt(0)
 	}
 	totalVoted := ps.GetVoted() // bonded + delegated
+	if bondRequirement == 0 {
+		// when bondRequirement is 0, it means no threshold for BondedRequirement,
+		// so it returns 100% of totalVoted.
+		// And it should not be divided by 0 in the following code that could occurs Panic.
+		return totalVoted
+	}
 	multiplier := big.NewInt(100)
 	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
 

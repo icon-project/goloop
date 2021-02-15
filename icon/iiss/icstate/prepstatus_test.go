@@ -116,7 +116,7 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	bonded = big.NewInt(int64(999))
 	s.GetPRepStatus(addr1, true).SetBonded(bonded)
 	res = status1.GetBondedDelegation(0)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
+	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100998))))
 
 	// 101 for bond requirement
 	delegated = big.NewInt(int64(99999))
