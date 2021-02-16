@@ -52,6 +52,34 @@ type PRepBase struct {
 	bonderList  BonderList
 }
 
+func (p *PRepBase) City() string {
+	return p.city
+}
+
+func (p *PRepBase) Country() string {
+	return p.country
+}
+
+func (p *PRepBase) Details() string {
+	return p.details
+}
+
+func (p *PRepBase) Email() string {
+	return p.email
+}
+
+func (p *PRepBase) P2pEndpoint() string {
+	return p.p2pEndpoint
+}
+
+func (p *PRepBase) Website() string {
+	return p.website
+}
+
+func (p *PRepBase) Node() module.Address {
+	return p.node
+}
+
 func (p *PRepBase) equal(other *PRepBase) bool {
 	if p == other {
 		return true

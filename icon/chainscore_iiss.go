@@ -153,21 +153,10 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
-	size := 7
-	params := make([]string, size, size)
-	params[iiss.IdxName] = name
-	params[iiss.IdxCountry] = country
-	params[iiss.IdxCity] = city
-	params[iiss.IdxDetails] = details
-	params[iiss.IdxEmail] = email
-	params[iiss.IdxWebsite] = website
-	params[iiss.IdxP2pEndpoint] = p2pEndpoint
-	if node == nil {
-		node = s.from
-	}
+	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err := es.RegisterPRep(s.from, node, params)
+	err := es.RegisterPRep(regInfo)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
@@ -219,10 +208,10 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking  *common.HexInt) (map[
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	blockHeight := s.cc.BlockHeight()
-	jso := es.GetPRepsInJSON(blockHeight, start, end)
-	ts := es.State.GetTotalStake()
-	jso["totalStake"] = intconv.FormatBigInt(ts)
-	jso["blockHeight"] = blockHeight
+	jso, err := es.GetPRepsInJSON(blockHeight, start, end)
+	if err != nil {
+		return nil, scoreresult.InvalidParameterError.Errorf(err.Error())
+	}
 	return jso, nil
 }
 
@@ -234,15 +223,7 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
-	size := 7
-	params := make([]string, size, size)
-	params[iiss.IdxName] = name
-	params[iiss.IdxCountry] = country
-	params[iiss.IdxCity] = city
-	params[iiss.IdxDetails] = details
-	params[iiss.IdxEmail] = email
-	params[iiss.IdxWebsite] = website
-	params[iiss.IdxP2pEndpoint] = p2pEndpoint
+	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
 
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
@@ -250,7 +231,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err := es.SetPRep(s.from, node, params)
+	err := es.SetPRep(regInfo)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}

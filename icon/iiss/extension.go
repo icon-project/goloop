@@ -92,9 +92,7 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 
-	// TODO: Need to get totalStake from State
-	totalStake := big.NewInt(0)
-	es.pm = newPRepManager(es.State, totalStake)
+	es.pm = newPRepManager(es.State)
 	return es
 }
 
@@ -248,11 +246,19 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
-	return s.pm.ToJSON()
+	totalStake := s.State.GetTotalStake()
+	return s.pm.ToJSON(totalStake)
 }
 
-func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64, start, end int) map[string]interface{} {
-	return s.pm.GetPRepsInJSON(blockHeight, start, end)
+func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
+	jso, err := s.pm.GetPRepsInJSON(blockHeight, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	jso["totalStake"] = s.State.GetTotalStake()
+	jso["blockHeight"] = blockHeight
+	return jso, nil
 }
 
 func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
@@ -268,8 +274,8 @@ func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
 	return s.pm.TotalDelegated()
 }
 
-func (s *ExtensionStateImpl) RegisterPRep(owner, node module.Address, params []string) error {
-	return s.pm.RegisterPRep(owner, node, params)
+func (s *ExtensionStateImpl) RegisterPRep(regInfo *RegInfo) error {
+	return s.pm.RegisterPRep(regInfo)
 }
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
@@ -361,14 +367,8 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	return err
 }
 
-func (s *ExtensionStateImpl) SetPRep(from, node module.Address, params []string) error {
-	if node != nil {
-		prep := s.pm.GetPRepByOwner(from)
-		if prep != nil && prep.Grade() == icstate.Main && !prep.GetNode().Equal(node) {
-			s.updateValidator = true
-		}
-	}
-	return s.pm.SetPRep(from, node, params)
+func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
+	return s.pm.SetPRep(regInfo)
 }
 
 func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
@@ -513,8 +513,10 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	var err error
 	var totalSupply *big.Int
+	mainPRepCount := int(s.State.GetMainPRepCount())
+	subPRepCount := int(s.State.GetSubPRepCount())
 
-	if err = s.pm.OnTermEnd(); err != nil {
+	if err = s.pm.OnTermEnd(mainPRepCount, subPRepCount); err != nil {
 		return err
 	}
 

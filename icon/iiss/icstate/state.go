@@ -19,6 +19,7 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -59,8 +60,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	return nil
 }
 
-func (s *State) GetSnapshot() *Snapshot {
-	var err error
+func (s *State) Flush() error {
 	s.accountCache.Flush()
 	s.activePRepCache.Flush()
 	s.nodeOwnerCache.Flush()
@@ -68,10 +68,13 @@ func (s *State) GetSnapshot() *Snapshot {
 	s.prepStatusCache.Flush()
 	s.unstakingTimerCache.Flush()
 	s.unbondingTimerCache.Flush()
-	if err = s.termCache.Flush(); err != nil {
+	return s.termCache.Flush()
+}
+
+func (s *State) GetSnapshot() *Snapshot {
+	if err := s.Flush(); err != nil {
 		panic(err)
 	}
-
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
@@ -79,7 +82,6 @@ func (s *State) GetAccount(addr module.Address) *Account {
 	a := s.accountCache.Get(addr, true)
 	return a
 }
-
 
 func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) *Timer {
 	timer := s.unstakingTimerCache.Get(height, createIfNotExist)
@@ -117,6 +119,10 @@ func (s *State) GetPRepStatus(owner module.Address, createIfNotExist bool) *PRep
 
 func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
+	return NewStateFromTrie(t, readonly)
+}
+
+func NewStateFromTrie(t trie.MutableForObject, readonly bool) *State {
 	store := icobject.NewObjectStoreState(t)
 
 	s := &State{
@@ -137,7 +143,8 @@ func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 		// TODO check revision before making Term
 		//if iissOFF { return s } else { iissBH = current block height }
 		termPeriod := s.GetTermPeriod()
-		if termPeriod != 0 {
+		// if termPeriod is not enabled, do not make termCache with Term
+		if termPeriod > 0 {
 			term := newTerm(iissBH, termPeriod)
 			s.SetTerm(term)
 		}
