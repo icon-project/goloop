@@ -17,6 +17,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -47,7 +48,7 @@ func validationPenalty(cc contract.CallContext, ps *icstate.PRepStatus) error {
 			return err
 		}
 		ps.SetLastHeight(blockHeight)
-		// TODO IC2-35 notify to PRepManager
+		// TODO IC2-35 notify to PRepManager. PRepManager must add icstage.EventEnable
 
 		// Consistent Penalty
 		if checkConsistentValidationPenalty(ps) {
@@ -80,12 +81,12 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		totalSlash := new(big.Int)
 
 		// from bonds
-		slashAmount := account.SlashBond(address, ratio)
-		totalSlash.Add(totalSlash, slashAmount)
+		slashBond := account.SlashBond(address, ratio)
+		totalSlash.Add(totalSlash, slashBond)
 
 		// from unbondings
-		slashAmount, expire := account.SlashUnbond(address, ratio)
-		totalSlash.Add(totalSlash, slashAmount)
+		slashUnbond, expire := account.SlashUnbond(address, ratio)
+		totalSlash.Add(totalSlash, slashUnbond)
 		if expire != -1 {
 			timer := es.GetUnbondingTimerState(expire, false)
 			if timer != nil {
@@ -104,6 +105,14 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		totalStake := es.State.GetTotalStake()
 		totalStake.Sub(totalStake, totalSlash)
 		if err := es.State.SetTotalStake(totalStake); err != nil {
+			return err
+		}
+
+		// add icstage.EventBond
+		delta := make(map[string]*big.Int)
+		key := icutils.ToKey(bonder)
+		delta[key] = slashBond
+		if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 			return err
 		}
 

@@ -418,14 +418,14 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		}
 	}
 
-	if err = s.addEventBond(blockHeight, from, delta); err != nil {
+	if err = s.AddEventBond(blockHeight, from, delta); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *ExtensionStateImpl) addEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
+func (s *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
 	votes, err := deltaToVotes(delta)
 	if err != nil {
 		return
