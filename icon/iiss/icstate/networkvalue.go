@@ -29,7 +29,6 @@ const (
 	VarTotalStake      = "total_stake"
 	VarIISSVersion     = "iiss_version"
 	VarTermPeriod      = "term_period"
-	VarCalculatePeriod = "calculate_period"
 	VarBondRequirement = "bond_requirement"
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
@@ -73,10 +72,6 @@ func (s *State) GetTermPeriod() int64 {
 
 func (s *State) SetTermPeriod(value int64) error {
 	return setValue(s.store, VarTermPeriod, value)
-}
-
-func (s *State) GetCalculatePeriod() int64 {
-	return getValue(s.store, VarCalculatePeriod).Int64()
 }
 
 func (s *State) GetIRep() *big.Int {
@@ -197,7 +192,6 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
 	jso["iissVersion"] = intconv.FormatInt(int64(s.GetIISSVersion()))
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
-	jso["calculationPeriod"] = intconv.FormatInt(s.GetCalculatePeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
 	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
 	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())

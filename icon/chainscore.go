@@ -646,7 +646,7 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 
 const (
 	configFile             = "./icon_config.json"
-	defaultIISSBlockHeight = 0
+	defaultIISSVersion     = 1
 	defaultTermPeriod      = 43120
 	defaultMainPRepCount   = 22
 	defaultSubPRepCount    = 78
@@ -715,7 +715,7 @@ type Chain struct {
 func newIconConfig() *config {
 	return &config{
 		TermPeriod:        common.NewHexInt(defaultTermPeriod),
-		IISSVersion:       common.NewHexInt(defaultIISSBlockHeight),
+		IISSVersion:       common.NewHexInt(defaultIISSVersion),
 		MainPRepCount:     common.NewHexInt(defaultMainPRepCount),
 		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
 		Irep:              common.NewHexInt(defaultIRep),
