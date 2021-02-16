@@ -14,6 +14,7 @@
 package icstate
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,7 @@ func TestRewardCalcInfo(t *testing.T) {
 	rc1 := newRewardCalcInfo(icobject.MakeTag(TypeRewardCalcInfo, rewardCalcInfoVersion))
 	rc1.startHeight = startHeight
 	rc1.prevHeight = prevHeight
+	rc1.period = startHeight - prevHeight
 
 	o1 := icobject.New(TypeRewardCalcInfo, rc1)
 	serialized := o1.Bytes()
@@ -46,6 +48,8 @@ func TestRewardCalcInfo(t *testing.T) {
 	assert.True(t, rc1.Equal(rc2))
 	assert.Equal(t, startHeight, rc1.startHeight)
 	assert.Equal(t, prevHeight, rc1.prevHeight)
+	assert.Equal(t, startHeight - prevHeight, rc1.period)
+	assert.Equal(t, int64(0), rc1.prevTotalReward.Int64())
 }
 
 func TestRewardCalcInfo_Start(t *testing.T) {
@@ -56,10 +60,14 @@ func TestRewardCalcInfo_Start(t *testing.T) {
 	rc1.startHeight = startHeight
 	rc1.prevHeight = prevHeight
 
-	nBH := int64(15)
+	period := int64(5)
+	nBH := startHeight + period
+	reward := int64(100)
 
-	rc1.Start(nBH)
+	rc1.Start(nBH, period, new(big.Int).SetInt64(reward))
 
 	assert.Equal(t, nBH, rc1.startHeight)
 	assert.Equal(t, startHeight, rc1.prevHeight)
+	assert.Equal(t, period, rc1.period)
+	assert.Equal(t, reward, rc1.prevTotalReward.Int64())
 }

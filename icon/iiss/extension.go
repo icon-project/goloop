@@ -239,7 +239,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	}
 
 	// update rewardCalcInfo
-	rcInfo.Start(term.StartHeight())
+	rcInfo.Start(term.StartHeight(), term.Period(), calculator.TotalReward())
 	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
 		return err
 	}

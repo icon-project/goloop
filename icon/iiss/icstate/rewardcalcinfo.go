@@ -14,6 +14,8 @@
 package icstate
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
@@ -26,8 +28,10 @@ const (
 type RewardCalcInfo struct {
 	icobject.NoDatabase
 
-	startHeight  int64
-	prevHeight   int64
+	startHeight     int64
+	period          int64
+	prevHeight      int64
+	prevTotalReward *big.Int
 }
 
 func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
@@ -35,7 +39,9 @@ func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
 }
 
 func NewRewardCalcInfo() *RewardCalcInfo {
-	return &RewardCalcInfo{}
+	return &RewardCalcInfo{
+		prevTotalReward: new(big.Int),
+	}
 }
 
 func (rc *RewardCalcInfo) Version() int {
@@ -46,28 +52,47 @@ func (rc *RewardCalcInfo) StartHeight() int64 {
 	return rc.startHeight
 }
 
+func (rc *RewardCalcInfo) Period() int64 {
+	return rc.period
+}
+
 func (rc *RewardCalcInfo) PrevHeight() int64 {
 	return rc.prevHeight
+}
+
+func (rc *RewardCalcInfo) PrevTotalReward() *big.Int {
+	return rc.prevTotalReward
+}
+
+
+func (rc *RewardCalcInfo) GetEndHeight() int64 {
+	return rc.startHeight + rc.period - 1
 }
 
 func (rc *RewardCalcInfo) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
 		&rc.startHeight,
+		&rc.period,
 		&rc.prevHeight,
+		&rc.prevTotalReward,
 	)
 }
 
 func (rc *RewardCalcInfo) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
 		rc.startHeight,
+		rc.period,
 		rc.prevHeight,
+		rc.prevTotalReward,
 	)
 }
 
 func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 	if rc2, ok := o.(*RewardCalcInfo); ok {
 		return rc.startHeight == rc2.startHeight &&
-			rc.prevHeight == rc2.prevHeight
+			rc.period == rc2.period &&
+			rc.prevHeight == rc2.prevHeight &&
+			rc.prevTotalReward.Cmp(rc2.prevTotalReward) == 0
 	} else {
 		return false
 	}
@@ -76,11 +101,15 @@ func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 func (rc *RewardCalcInfo) Clone() *RewardCalcInfo {
 	nrc := NewRewardCalcInfo()
 	nrc.startHeight = rc.startHeight
+	nrc.period = rc.period
 	nrc.prevHeight = rc.prevHeight
+	nrc.prevTotalReward = new(big.Int).Set(rc.prevTotalReward)
 	return nrc
 }
 
-func (rc *RewardCalcInfo) Start(blockHeight int64) {
+func (rc *RewardCalcInfo) Start(blockHeight int64, period int64, reward *big.Int) {
 	rc.prevHeight = rc.startHeight
 	rc.startHeight = blockHeight
+	rc.period = period
+	rc.prevTotalReward.Set(reward)
 }

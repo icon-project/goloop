@@ -180,6 +180,7 @@ func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
+	log.Debugf("Start calculation %d", c.startHeight)
 	prepareTS := time.Now()
 
 	if err = c.calculateBlockProduce(); err != nil {
