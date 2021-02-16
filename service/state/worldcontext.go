@@ -71,6 +71,7 @@ const (
 var (
 	SystemID      = []byte(SystemIDStr)
 	SystemAddress = common.NewContractAddress(SystemID)
+	ZeroAddress   = common.NewAccountAddress(SystemID)
 )
 
 var (

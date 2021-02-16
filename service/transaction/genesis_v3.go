@@ -265,7 +265,7 @@ func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Recei
 	cc.UpdateSystemInfo()
 	cc.ResetStepLimit(cc.GetStepLimit(state.StepLimitTypeInvoke))
 
-	r := txresult.NewReceipt(cc.Database(), cc.Revision(), state.SystemAddress)
+	r := txresult.NewReceipt(cc.Database(), cc.Revision(), g.To())
 	if err := g.installContracts(cc); err != nil {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err
@@ -346,7 +346,11 @@ func (g *genesisV3) Nonce() *big.Int {
 }
 
 func (g *genesisV3) To() module.Address {
-	return state.SystemAddress
+	if g.CID() == ICONMainNetCID {
+		return state.ZeroAddress
+	} else {
+		return state.SystemAddress
+	}
 }
 
 func (g *genesisV3) IsSkippable() bool {
