@@ -90,11 +90,12 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		in     values
-		iScore *big.Int
-		err    bool
-		out    values
+		name             string
+		in               values
+		iScore           *big.Int
+		additionalReward *big.Int
+		err              bool
+		out              values
 	}{
 		{
 			"Nill iScore reward",
@@ -102,6 +103,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				0, 100, 0, 0, 0,
 			},
 			nil,
+			new(big.Int).SetInt64(0),
 			false,
 			values{
 				100, 0, 0, 0, 0,
@@ -112,6 +114,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			values{
 				0, 100, 0, 0, 0,
 			},
+			new(big.Int).SetInt64(0),
 			new(big.Int).SetInt64(0),
 			false,
 			values{
@@ -124,6 +127,19 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 0, 100, 0,
 			},
 			new(big.Int).SetInt64(100 * IScoreICXRatio),
+			new(big.Int).SetInt64(0),
+			false,
+			values{
+				200, 0, 0, 100, 0,
+			},
+		},
+		{
+			"No overIssue with additionalReward",
+			values{
+				100, 200, 0, 100, 0,
+			},
+			new(big.Int).SetInt64(50 * IScoreICXRatio),
+			new(big.Int).SetInt64(50),
 			false,
 			values{
 				200, 0, 0, 100, 0,
@@ -135,6 +151,19 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 10, 1, 0,
 			},
 			new(big.Int).SetInt64(90*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(0),
+			false,
+			values{
+				200, 0, 20, 124, 0,
+			},
+		},
+		{
+			"Positive overIssue with additionalReward",
+			values{
+				100, 200, 10, 1, 0,
+			},
+			new(big.Int).SetInt64(50*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(40),
 			false,
 			values{
 				200, 0, 20, 124, 0,
@@ -146,6 +175,17 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 				100, 200, 10, 1, 0,
 			},
 			new(big.Int).SetInt64(200*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(0),
+			true,
+			values{},
+		},
+		{
+			"Negative overIssue with additionReward",
+			values{
+				100, 200, 10, 1, 0,
+			},
+			new(big.Int).SetInt64(50*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(150),
 			true,
 			values{},
 		},
@@ -158,7 +198,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			out := tt.out
 			issue := icstate.NewIssue()
 			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
-			issue, err = regulateIssueInfo(issue, tt.iScore)
+			issue, err = regulateIssueInfo(issue, tt.iScore, tt.additionalReward)
 			if tt.err {
 				assert.Nil(t, issue)
 				assert.Error(t, err)
