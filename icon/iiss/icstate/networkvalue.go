@@ -135,8 +135,8 @@ func (s *State) GetBondRequirement() int64 {
 }
 
 func (s *State) SetBondRequirement(value int64) error {
-	if value < 1 || value > 100 {
-		return errors.IllegalArgumentError.New("Bond Requirement should range from 1 to 100")
+	if value < 0 || value > 100 {
+		return errors.IllegalArgumentError.New("Bond Requirement should range from 0 to 100")
 	}
 	return setValue(s.store, VarBondRequirement, value)
 }

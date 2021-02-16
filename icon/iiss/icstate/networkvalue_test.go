@@ -149,8 +149,9 @@ func setBondRequirementTest(t *testing.T, s *State) {
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err := s.SetBondRequirement(0)
-	assert.Error(t, err)
+	br = 0
+	err := s.SetBondRequirement(br)
+	assert.NoError(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 }
