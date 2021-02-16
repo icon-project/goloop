@@ -37,7 +37,7 @@ $ ./gradlew <target> --tests <test pattern>
 | testPyScore    | Test features for Python SCORE.                      |
 | testPyGov      | Test governance SCORE written in Python.             |
 | testJavaScore  | Test features for Java SCORE.                        |
-| testInterScore | Test inter-operations between Java and Python SCOREs.|
+| testJavaGov    | Test governance SCORE written in Java.               |
 
 
 ### Options
@@ -52,14 +52,13 @@ Available options.
 | Option      | Targets   | Description                                    |
 |:------------|:----------|:-----------------------------------------------|
 | `AUDIT`     | testPyGov | `true` for testing SCOREs with AUDIT feature   |
-| `NO_SERVER` | all       | `true` for disabling auto start `gochain`.     |
+| `NO_SERVER` | all       | `true` for disabling auto start of `gochain`.  |
 | `USE_DOCKER`| all       | `true` for enabling docker container for test. |
 
 To use other nodes than `gochain`, start the servers first, then define
 `NO_SERVER` as `true`.
 
-To run docker container for the node, set both `NO_SERVER` and `USE_DOCKER`
- as `true`
+To run docker container for the node, set `USE_DOCKER` as `true`.
  
 Set `AUDIT` to `true` to run audit specific feature tests in governance.
 
@@ -69,13 +68,13 @@ Set `AUDIT` to `true` to run audit specific feature tests in governance.
 
 | Directory           | Description                                    |
 |:--------------------|:-----------------------------------------------|
-| data/genesisStorage | Genesis file & governance SCORE                |
+| data/genesisStorage | Genesis files & governance SCOREs              |
 | data/scores         | SCOREs related with test cases                 |
 | data/config         | gochain configurations for the target          |
-| data/chainenv       | Chain environment property file for the target |
-| data/dockerenv      | Docker environment file for the target         |
+| data/chainenv       | Chain environment property files for the target|
+| data/dockerenv      | Docker environment files for the target        |
 | java                | Java sources related with test cases           |
-| gradle              | Gradle class directory                         |
+| gradle              | Gradle wrapper directory                       |
 | build               | Build output directory                         |
 | out                 | Test output directory                          |
 
@@ -96,7 +95,7 @@ All test cases are written in JUnit 5.
 
 Before it executes test cases, it loads environment properties from
 the file specified by environment variable `CHAIN_ENV`
- ( default value is `"./data/env.properties"`).
+(default value is `"./data/env.properties"`).
 It's accessible through `foundation.icon.test.common.Env`.
 
 #### Tags
