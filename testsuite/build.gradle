@@ -117,25 +117,26 @@ class ChainTest extends Test {
     void executeTests() {
         def noServer = System.getProperty("NO_SERVER")
         if (noServer == null || noServer != "true") {
+            def useDocker = System.getProperty("USE_DOCKER", "false")
             logging.println("STARTING Stand-alone server")
+            logging.println("Docker: ${useDocker}")
             logging.println("Config: ${configFile}")
             logging.println("Log   : ${logFile}")
             logging.println("Env   : ${envFile}")
             if (gsFile != null) {
                 logging.println("GSFile: ${gsFile}")
             }
-            startServer()
-            systemProperty("CHAIN_ENV", envFile)
-        } else {
-            def useDocker = System.getProperty("USE_DOCKER")
             if (useDocker != null && useDocker == "true") {
-                logging.println("STARTING docker container")
-                logging.println("EnvFile: ${envFile}")
                 startDocker(getServerPort())
-                systemProperty("CHAIN_ENV", envFile)
             } else {
-                systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
+                startServer()
             }
+            systemProperty("CHAIN_ENV", envFile)
+
+            // wait for a while to get ready.
+            sleep(1000)
+        } else {
+            systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
         try {
             super.executeTests()
