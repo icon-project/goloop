@@ -97,6 +97,10 @@ func (s *State) AddActivePRep(owner module.Address) {
 	s.activePRepCache.Add(owner)
 }
 
+func (s *State) RemoveActivePRep(owner module.Address) error {
+	return s.activePRepCache.Remove(owner)
+}
+
 func (s *State) GetActivePRepSize() int {
 	return s.activePRepCache.Size()
 }

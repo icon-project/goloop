@@ -395,6 +395,7 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 	}
 
 	pm.totalDelegated.Sub(pm.totalDelegated, prep.Delegated())
+	pm.totalBonded.Sub(pm.totalBonded, prep.Bonded())
 	pm.adjustPRepSize(prep.Grade(), false)
 	prep.SetGrade(icstate.Candidate)
 	prep.SetStatus(status)
@@ -403,10 +404,9 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 
 func (pm *PRepManager) removePRep(owner module.Address) error {
 	var err error
-	// TODO: How to update ActivePRep cache
-	//if err = pm.state.RemoveActivePRep(owner); err != nil {
-	//	return err
-	//}
+	if err = pm.state.RemoveActivePRep(owner); err != nil {
+		return err
+	}
 	if err = pm.removeFromPRepMap(owner); err != nil {
 		return err
 	}

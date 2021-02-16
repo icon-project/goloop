@@ -40,10 +40,10 @@ func (c *ActivePRepCache) Add(owner module.Address) {
 }
 
 // An active PRep is removed
-func (c *ActivePRepCache) Remove(owner module.Address) {
+func (c *ActivePRepCache) Remove(owner module.Address) error {
 	itemToRemove := c.getByOwner(owner)
 	if itemToRemove == nil {
-		panic(errors.Errorf("ActivePRep is not found: %v", itemToRemove))
+		return errors.Errorf("ActivePRep is not found: %v", itemToRemove)
 	}
 
 	idx := itemToRemove.idx
@@ -55,6 +55,7 @@ func (c *ActivePRepCache) Remove(owner module.Address) {
 
 	c.items = c.items[:lastIdx]
 	delete(c.ownerToItem, itemToRemove.key())
+	return nil
 }
 
 func (c *ActivePRepCache) Size() int {
