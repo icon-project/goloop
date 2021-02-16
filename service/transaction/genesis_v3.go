@@ -355,8 +355,7 @@ func (g *genesisV3) IsSkippable() bool {
 
 func checkV3Genesis(jso map[string]interface{}) bool {
 	_, hasAccounts := jso["accounts"]
-	_, hasChain := jso["chain"]
-	return hasAccounts && hasChain
+	return hasAccounts
 }
 
 func parseV3Genesis(js []byte, raw bool) (Transaction, error) {
