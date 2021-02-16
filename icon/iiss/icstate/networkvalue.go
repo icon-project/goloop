@@ -28,6 +28,7 @@ const (
 	VarSubPRepCount    = "sub_prep_count"
 	VarTotalStake      = "total_stake"
 	VarIISSVersion     = "iiss_version"
+	VarIISSBlockHeight = "iiss_blockHeight"
 	VarTermPeriod      = "term_period"
 	VarBondRequirement = "bond_requirement"
 	VarLockMin         = "lockMin"
@@ -64,6 +65,14 @@ func (s *State) GetIISSVersion() int {
 
 func (s *State) SetIISSVersion(value int) error {
 	return setValue(s.store, VarIISSVersion, value)
+}
+
+func (s *State) GetIISSBlockHeight() int64 {
+	return getValue(s.store, VarIISSBlockHeight).Int64()
+}
+
+func (s *State) SetIISSBlockHeight(value int64) error {
+	return setValue(s.store, VarIISSBlockHeight, value)
 }
 
 func (s *State) GetTermPeriod() int64 {
@@ -108,7 +117,7 @@ func (s *State) SetSubPRepCount(value int64) error {
 	return setValue(s.store, VarSubPRepCount, value)
 }
 
-// PrepCount
+// GetPRepCount returns the number of mainPReps and subPReps based on ICON Network Value
 func (s *State) GetPRepCount() int64 {
 	return s.GetMainPRepCount() + s.GetSubPRepCount()
 }
@@ -191,6 +200,7 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["subPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
 	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
 	jso["iissVersion"] = intconv.FormatInt(int64(s.GetIISSVersion()))
+	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
 	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
