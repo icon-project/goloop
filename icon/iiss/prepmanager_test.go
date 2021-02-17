@@ -2,6 +2,7 @@ package iiss
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math"
 	"math/big"
 	"math/rand"
@@ -42,16 +43,30 @@ func newRegInfo(i int) *RegInfo {
 	return NewRegInfo(city, country, details, email, name, endpoint, website, node, owner)
 }
 
+func newBond(address module.Address, amount int64) *icstate.Bond {
+	b := icstate.NewBond()
+	b.Address.Set(address)
+	b.Value.SetInt64(amount)
+	return b
+}
+
+func newDelegation(address module.Address, amount int64) *icstate.Delegation {
+	d := icstate.NewDelegation()
+	d.Address.Set(address)
+	d.Value.SetInt64(amount)
+	return d
+}
+
 func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), readonly)
 	pm := newPRepManager(s)
 
 	for i := 0; i < size; i++ {
-		assert.Nil(t, pm.RegisterPRep(newRegInfo(i)))
+		assert.NoError(t, pm.RegisterPRep(newRegInfo(i)))
 	}
 	pm.Sort()
-	assert.Nil(t, pm.state.Flush())
+	assert.NoError(t, pm.state.Flush())
 	assert.Equal(t, 0, pm.GetPRepSize(icstate.Main))
 	assert.Equal(t, 0, pm.GetPRepSize(icstate.Sub))
 	assert.Equal(t, size, pm.GetPRepSize(icstate.Candidate))
@@ -89,12 +104,9 @@ func createBonds(start, size int) ([]*icstate.Bond, int64) {
 	ret := make([]*icstate.Bond, size, size)
 
 	for i := 0; i < size; i++ {
+		address := createAddress(start + i)
 		amount := rand.Int63n(10000)
-		address := createAddress(start + i).(*common.Address)
-		value := new(common.HexInt)
-		value.SetInt64(amount)
-
-		ret[i] = &icstate.Bond{Address: address, Value: value}
+		ret[i] = newBond(address, amount)
 		sum += amount
 	}
 
@@ -106,12 +118,9 @@ func createDelegations(start, size int) ([]*icstate.Delegation, int64) {
 	ret := make([]*icstate.Delegation, size, size)
 
 	for i := 0; i < size; i++ {
+		address := createAddress(start + i)
 		amount := rand.Int63n(10000)
-		address := createAddress(start + i).(*common.Address)
-		value := new(common.HexInt)
-		value.SetInt64(amount)
-
-		ret[i] = &icstate.Delegation{Address: address, Value: value}
+		ret[i] = newDelegation(address, amount)
 		sum += amount
 	}
 
@@ -188,7 +197,7 @@ func TestPRepManager_Add(t *testing.T) {
 		totalDelegated.Add(totalDelegated, prep.Delegated())
 	}
 
-	assert.Nil(t, pm.state.Flush())
+	assert.NoError(t, pm.state.Flush())
 	assert.Zero(t, totalDelegated.Cmp(pm.TotalDelegated()))
 }
 
@@ -201,7 +210,7 @@ func TestPRepManager_RegisterPRep(t *testing.T) {
 		owner := regInfo.owner
 
 		err := pm.RegisterPRep(regInfo)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, i+1, pm.Size())
 
 		owner = createAddress(i)
@@ -239,7 +248,7 @@ func TestPRepManager_disablePRep(t *testing.T) {
 		assert.True(t, prep.Owner().Equal(owner))
 
 		err := pm.disablePRep(owner, status)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		noPRep := pm.GetPRepByOwner(owner)
 		assert.Nil(t, noPRep)
@@ -278,9 +287,8 @@ func TestPRepManager_ChangeDelegation(t *testing.T) {
 	dSize := 3
 	ds0, sum0 := createDelegations(0, dSize)
 	ds1, sum1 := createDelegations(0, dSize)
-	ds2, _ := createDelegations(size, dSize)
-	ds3, _ := createDelegations(0, dSize)
-	ds3[0].Value.SetInt64(-100)
+	ds2, sum2 := createDelegations(2, 3)
+	exds := make(map[string]int64)
 
 	type test struct {
 		name    string
@@ -292,39 +300,53 @@ func TestPRepManager_ChangeDelegation(t *testing.T) {
 
 	tests := []test{
 		{
-			name:    "(nil, ods)",
+			name:    "(nil, ds0)",
 			ods:     nil,
 			nds:     ds0,
 			sum:     sum0,
 			success: true,
 		},
 		{
-			name:    "(ods, nds)",
+			name:    "(nil, ds1)",
+			ods:     nil,
+			nds:     ds1,
+			sum:     sum0 + sum1,
+			success: true,
+		},
+		{
+			name:    "(ds0, ds1)",
 			ods:     ds0,
 			nds:     ds1,
+			sum:     sum1 * 2,
+			success: true,
+		},
+		{
+			name:    "(ds1, ds0)",
+			ods:     ds1,
+			nds:     ds0,
+			sum:     sum0 + sum1,
+			success: true,
+		},
+		{
+			name:    "(ds0, nil)",
+			ods:     ds0,
+			nds:     nil,
 			sum:     sum1,
 			success: true,
 		},
 		{
-			name:    "(nds, nil)",
-			ods:     ds1,
-			nds:     nil,
-			sum:     0,
+			name:    "(nil, ds2)",
+			ods:     nil,
+			nds:     ds2,
+			sum:     sum1 + sum2,
 			success: true,
 		},
 		{
-			name:    "(nil,nds)-error",
-			ods:     nil,
-			nds:     ds2,
-			sum:     0,
-			success: false,
-		},
-		{
-			name:    "(nil,nds)-error",
-			ods:     nil,
-			nds:     ds2,
-			sum:     0,
-			success: false,
+			name:    "(ds1, nil)",
+			ods:     ds1,
+			nds:     nil,
+			sum:     sum2,
+			success: true,
 		},
 	}
 
@@ -335,26 +357,29 @@ func TestPRepManager_ChangeDelegation(t *testing.T) {
 			sum := tt.sum
 			success := tt.success
 
+			for _, d := range nds {
+				key := icutils.ToKey(d.To())
+				exds[key] += d.Amount().Int64()
+			}
+			for _, d := range ods {
+				key := icutils.ToKey(d.To())
+				exds[key] -= d.Amount().Int64()
+			}
+
 			_, err = pm.ChangeDelegation(ods, nds)
 			if success {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
+				assert.Zero(t, pm.TotalBonded().Int64())
 				assert.Equal(t, sum, pm.TotalDelegated().Int64())
 				assert.True(t, checkOrderedByBondedDelegation(pm, br))
 
-				for j := 0; j < dSize; j++ {
-					owner := createAddress(j)
+				for i := 0; i < size; i++ {
+					owner := createAddress(i)
 					prep := pm.GetPRepByOwner(owner)
-					d := prep.Delegated()
-					assert.True(t, d.Int64() >= 0)
-
-					if nds == nil {
-						assert.Zero(t, d.Int64())
-					} else {
-						assert.Zero(t, d.Cmp(nds[j].Value.Value()))
-					}
+					assert.Equal(t, exds[icutils.ToKey(owner)], prep.Delegated().Int64())
 				}
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 			}
 		})
 	}
@@ -427,7 +452,7 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 
 			_, err := pm.ChangeBond(obs, nbs)
 			if success {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.Equal(t, want, pm.TotalBonded().Int64())
 				assert.True(t, checkOrderedByBondedDelegation(pm, br))
 
@@ -440,11 +465,11 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 					if nbs == nil {
 						assert.Zero(t, bonded.Int64())
 					} else {
-						assert.Zero(t, bonded.Cmp(nbs[j].Value.Value()))
+						assert.Zero(t, bonded.Cmp(nbs[j].Amount()))
 					}
 				}
 			} else {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 			}
 		})
 	}
