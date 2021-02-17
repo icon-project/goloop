@@ -172,8 +172,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
+	term := es.State.GetTerm()
 	_, err = es.Front.AddEventEnable(
-		int(s.cc.BlockHeight()-es.CalculationBlockHeight()),
+		int(s.cc.BlockHeight()-term.StartHeight()),
 		s.from,
 		true,
 	)
