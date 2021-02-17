@@ -1,4 +1,5 @@
-[![Download](https://api.bintray.com/packages/icon/javaee/javaee-api/images/download.svg)](https://bintray.com/icon/javaee/javaee-api/_latestVersion)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/foundation.icon/javaee-api/badge.svg)](https://search.maven.org/search?q=g:foundation.icon%20a:javaee-api)
+[![javadoc](http://www.javadoc.io/badge/foundation.icon/javaee-api.svg)](http://www.javadoc.io/doc/foundation.icon/javaee-api)
 
 # Java Execution Environment
 
