@@ -149,7 +149,6 @@ func (r *receiptData) Equal(r2 *receiptData) bool {
 		r.StepUsed.Cmp(&r2.StepUsed.Int) == 0 &&
 		r.StepPrice.Cmp(&r2.StepPrice.Int) == 0 &&
 		r.LogsBloom.Equal(&r2.LogsBloom) &&
-		reflect.DeepEqual(r.EventLogs, r2.EventLogs) &&
 		r.SCOREAddress.Equal(r2.SCOREAddress) &&
 		reflect.DeepEqual(r.FeeDetail, r2.FeeDetail)
 }
@@ -400,7 +399,7 @@ type receiptJSON struct {
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
 	LogsBloom          LogsBloom        `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
-	FeeDetail          feeDetail        `json:"stepUsedDetails"`
+	FeeDetail          feeDetail        `json:"stepUsedDetails,omitempty"`
 }
 
 func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
@@ -569,18 +568,21 @@ func (r *receipt) Check(r2 module.Receipt) error {
 		return errors.IllegalArgumentError.New("IncompatibleReceipt")
 	}
 	if !r.data.Equal(&rct2.data) {
-		return errors.InvalidStateError.New("DataIsn'tEqual")
+		return errors.InvalidStateError.New("DifferentData")
 	}
-	if r.version != rct2.version {
-		return errors.InvalidStateError.New("VersionMismatch")
-	}
-	if r.version >= Version2 {
-		if !r.eventLogs.Equal(rct2.eventLogs, true) {
-			return errors.InvalidStateError.New("DifferentEventLogs")
+	for itr1, itr2, idx := r.EventLogIterator(), r2.EventLogIterator(), 0; itr1.Has() && itr2.Has(); idx, _, _ = idx+1, itr1.Next(), itr2.Next() {
+		ev1, err := itr1.Get()
+		if err != nil {
+			return errors.InvalidStateError.Wrap(err, "FailOnReadingEvents")
 		}
-	} else {
-		if r.eventLogs != nil || rct2.eventLogs != nil {
-			return errors.InvalidStateError.New("InvalidEventLogHash")
+		ev2, err := itr2.Get()
+		if err != nil {
+			return errors.InvalidStateError.Wrap(err, "FailOnReadingEvents")
+		}
+		elog1 := ev1.(*eventLog)
+		elog2 := ev2.(*eventLog)
+		if !elog1.Equal(elog2) {
+			return errors.InvalidStateError.Errorf("DifferentEvent(idx=%d)", idx)
 		}
 	}
 	return nil
