@@ -21,7 +21,7 @@ func (sig Signature) RecoverPublicKey(hash []byte) (*crypto.PublicKey, error) {
 
 func (sig Signature) MarshalJSON() ([]byte, error) {
 	if sig.Signature == nil {
-		return nil, nil
+		return []byte("\"\""), nil
 	}
 	if bytes, err := sig.SerializeRSV(); err == nil {
 		s := base64.StdEncoding.EncodeToString(bytes)
