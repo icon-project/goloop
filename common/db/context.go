@@ -79,14 +79,10 @@ func WithFlags(database Database, flags Flags) Context {
 	if database == nil {
 		return nil
 	}
-	if ctx, ok := database.(Context); ok {
-		return ctx
+	if cb, ok := database.(ContextBuilder); ok {
+		return cb.WithFlags(flags)
 	} else {
-		if cb, ok := database.(ContextBuilder); ok {
-			return cb.WithFlags(flags)
-		} else {
-			return &databaseContext{database, flags}
-		}
+		return &databaseContext{database, flags}
 	}
 }
 
