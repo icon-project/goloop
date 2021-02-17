@@ -66,7 +66,7 @@ func (bg *blockGenerator) generateUntil(n int64) {
 	assert.Nil(bg.t, err, "GetLastBlock")
 	for i := blk.Height(); i < n; i++ {
 		pid := blk.ID()
-		br := proposeSync(bg.bm, pid, newCommitVoteSet(true))
+		br := proposeSync(bg.bm, pid, newCommitVoteSetWithTimestamp(true, i))
 		blk = br.blk
 		err := bg.bm.Finalize(br.blk)
 		assert.Nil(bg.t, err, "Finalize")
