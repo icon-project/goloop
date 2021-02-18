@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -214,16 +213,6 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 	from := flags.Int64("from", -1, "From height(-1 for last)")
 	logLevel := flags.String("log_level", "debug", "Default log level")
 
-	var dbase db.Database
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		path := vc.GetString("database")
-		if wdb, err := db.Open(path, "goleveldb", "main"); err != nil {
-			return errors.Wrapf(err, "DatabaseFailure(path=%s)", path)
-		} else {
-			dbase = wdb
-		}
-		return nil
-	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		to := int64(-1)
 		if len(args) > 0 {
