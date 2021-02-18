@@ -372,8 +372,9 @@ func (e *Executor) CheckResult(tr *Transition) error {
 				rct2jso, _ := rct2.ToJSON(module.JSONVersionLast)
 				rct1js, _ := json.MarshalIndent(rct1jso, "", "  ")
 				rct2js, _ := json.MarshalIndent(rct2jso, "", "  ")
-				e.log.Debugf("Expected Receipt[%d]:%s", idx, rct1js)
-				e.log.Debugf("Returned Receipt[%d]:%s", idx, rct2js)
+				StatusDone(e.log)
+				e.log.Warnf("Expected Receipt[%d]:%s", idx, rct1js)
+				e.log.Warnf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)
 			}
 		}

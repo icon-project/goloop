@@ -217,18 +217,22 @@ const (
 	ClearLine = "\x1b[2K"
 )
 
+var statusDisplay bool
+
 func Statusf(l log.Logger, format string, args ...interface{}) {
 	l.Infof(format, args...)
 	if l.GetConsoleLevel() < log.InfoLevel {
 		fmt.Print(ClearLine)
 		fmt.Printf(format, args...)
 		fmt.Print("\r")
+		statusDisplay = true
 	}
 }
 
 func StatusDone(l log.Logger) {
-	if l.GetConsoleLevel() < log.InfoLevel {
+	if statusDisplay {
 		fmt.Print("\n")
+		statusDisplay = false
 	}
 }
 
