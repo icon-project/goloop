@@ -779,6 +779,7 @@ func (vl *testValidatorList) Get(i int) (module.Validator, bool) {
 type testCommitVoteSet struct {
 	zero bool
 	Pass bool
+	Timestamp_ int64
 }
 
 func newCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
@@ -796,6 +797,10 @@ func newCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 
 func newCommitVoteSet(pass bool) module.CommitVoteSet {
 	return &testCommitVoteSet{Pass: pass}
+}
+
+func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.CommitVoteSet {
+	return &testCommitVoteSet{Pass: pass, Timestamp_: ts}
 }
 
 func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
@@ -818,7 +823,7 @@ func (vs *testCommitVoteSet) Hash() []byte {
 }
 
 func (vs *testCommitVoteSet) Timestamp() int64 {
-	return 0
+	return vs.Timestamp_
 }
 
 func newRandomTestValidatorList(n int) *testValidatorList {

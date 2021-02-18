@@ -54,10 +54,13 @@ func (bg *blockGenerator) getBlock(n int64) module.Block {
 }
 
 func (bg *blockGenerator) getReaderForBlock(n int64) io.Reader {
+	return getReaderForBlock(bg.t, bg.getBlock(n))
+}
+
+func getReaderForBlock(t *testing.T, blk module.Block) io.Reader {
 	buf := bytes.NewBuffer(nil)
-	blk := bg.getBlock(n)
-	assert.NoError(bg.t, blk.MarshalHeader(buf))
-	assert.NoError(bg.t, blk.MarshalBody(buf))
+	assert.NoError(t, blk.MarshalHeader(buf))
+	assert.NoError(t, blk.MarshalBody(buf))
 	return buf
 }
 
@@ -66,7 +69,7 @@ func (bg *blockGenerator) generateUntil(n int64) {
 	assert.Nil(bg.t, err, "GetLastBlock")
 	for i := blk.Height(); i < n; i++ {
 		pid := blk.ID()
-		br := proposeSync(bg.bm, pid, newCommitVoteSet(true))
+		br := proposeSync(bg.bm, pid, newCommitVoteSetWithTimestamp(true, i))
 		blk = br.blk
 		err := bg.bm.Finalize(br.blk)
 		assert.Nil(bg.t, err, "Finalize")
@@ -301,6 +304,58 @@ func TestBlockManager_Import_Cancel(t *testing.T) {
 	assert.Nil(t, err, "import return error")
 	res := canceler.Cancel()
 	assert.Equal(t, true, res, "canceler result")
+}
+
+func TestBlockManager_Import_BadTimestamp(t *testing.T) {
+	s := newBlockManagerTestSetUp(t)
+
+	// height 1 - OK
+	r := s.bg.getReaderForBlock(1)
+	br := importSync(s.bm, r)
+	br.assertOK(t)
+	assert.NoError(t, s.bm.Finalize(br.blk))
+
+	// height 2 - alter timestamp
+	blk := s.bg.getBlock(2)
+	assert.NotNil(t, blk)
+	blk.(*blockV2).timestamp = blk.(*blockV2).timestamp + 10
+	blk.(*blockV2)._id = nil
+	r = getReaderForBlock(t, blk)
+	br = importSync(s.bm, r)
+	// TODO: check if the observed error is the expected error
+	br.assertError(t)
+}
+
+func TestBlockManager_Import_NonAscendingTimestamp(t *testing.T) {
+	s := newBlockManagerTestSetUp(t)
+
+	// height 1 - OK
+	r := s.bg.getReaderForBlock(1)
+	br := importSync(s.bm, r)
+	br.assertOK(t)
+	assert.NoError(t, s.bm.Finalize(br.blk))
+
+	// height 2 - change timestamp (2 -> 10)
+	blk := s.bg.getBlock(2)
+	assert.NotNil(t, blk)
+	blk.(*blockV2).votes = newCommitVoteSetWithTimestamp(true, 10)
+	blk.(*blockV2).timestamp = blk.(*blockV2).votes.Timestamp()
+	blk.(*blockV2)._id = nil
+	r = getReaderForBlock(t, blk)
+	br = importSync(s.bm, r)
+	br.assertOK(t)
+	assert.NoError(t, s.bm.Finalize(br.blk))
+
+	// height 3 - do not change timestamp (3 -> 3)
+	prevHash := blk.ID()
+	blk = s.bg.getBlock(3)
+	assert.NotNil(t, blk)
+	blk.(*blockV2).prevID = prevHash
+	blk.(*blockV2)._id = nil
+	r = getReaderForBlock(t, blk)
+	br = importSync(s.bm, r)
+	// TODO: check if the observed error is the expected error
+	br.assertError(t)
 }
 
 func TestBlockManager_WaitForBlock_Nonblock(t *testing.T) {

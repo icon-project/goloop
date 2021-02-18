@@ -24,5 +24,8 @@ func verifyBlock(b module.BlockData, prev module.BlockData, validators module.Va
 	if b.Height() > 1 && b.Timestamp() != b.Votes().Timestamp() {
 		return nil, errors.New("bad timestamp")
 	}
+	if b.Height() > 1 && prev.Timestamp() >= b.Timestamp() {
+		return nil, errors.New("non-increasing timestamp")
+	}
 	return voted, nil
 }
