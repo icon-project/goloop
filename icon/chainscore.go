@@ -33,6 +33,7 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/transaction"
 )
 
 type chainMethod struct {
@@ -798,6 +799,24 @@ func (s *chainScore) Install(param []byte) error {
 			state.StepTypeInput:            {20},
 			state.StepTypeEventLog:         {10},
 			state.StepTypeApiCall:          {0},
+		}
+		governance, err := ioutil.ReadFile("icon_governance.zip")
+		if err != nil {
+			return err
+		}
+		params := json.RawMessage("{}")
+		handler := contract.NewDeployHandlerForPreInstall(
+			common.NewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
+			s.cc.Governance(),
+			"application/zip",
+			governance,
+			&params,
+			s.cc.Logger(),
+		)
+		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
+		if status != nil {
+			return transaction.InvalidGenesisError.Wrap(status,
+				"FAIL to install initial governance score.")
 		}
 	default:
 		validators := make([]module.Validator, len(chain.ValidatorList))
