@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"strconv"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -568,30 +567,16 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 }
 
-func applyStepLimits(c Chain, as state.AccountState) error {
-	price := c.Fee
+func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	if price.StepLimit != nil {
-		stepLimitsMap := make(map[string]string)
-		if err := json.Unmarshal(*price.StepLimit, &stepLimitsMap); err != nil {
-			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
-		}
+	if fee.StepLimit != nil {
 		for _, k := range state.AllStepLimitTypes {
-			cost := stepLimitsMap[k]
 			if err := stepLimitTypes.Put(k); err != nil {
 				return err
 			}
-			var icost int64
-			if cost != "" {
-				var err error
-				icost, err = strconv.ParseInt(cost, 0, 64)
-				if err != nil {
-					return scoreresult.InvalidParameterError.Errorf(
-						"Failed to parse %s to integer. err(%+v)\n", cost, err)
-				}
-			}
-			if err := stepLimitDB.Set(k, icost); err != nil {
+			icost := fee.StepLimit[k]
+			if err := stepLimitDB.Set(k, icost.Value); err != nil {
 				return err
 			}
 		}
@@ -608,29 +593,16 @@ func applyStepLimits(c Chain, as state.AccountState) error {
 	return nil
 }
 
-func applyStepCosts(c Chain, as state.AccountState) error {
-	price := c.Fee
+func applyStepCosts(fee *FeeConfig, as state.AccountState) error {
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if price.StepCosts != nil {
-		stepTypesMap := make(map[string]string)
-		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
-			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
-		}
+	if fee.StepCosts != nil {
 		for _, k := range state.AllStepTypes {
-			cost := stepTypesMap[k]
 			if err := stepTypes.Put(k); err != nil {
 				return err
 			}
-			var icost int64
-			if cost != "" {
-				var err error
-				icost, err = strconv.ParseInt(cost, 0, 64)
-				if err != nil {
-					return err
-				}
-			}
-			if err := stepCostDB.Set(k, icost); err != nil {
+			icost := fee.StepCosts[k]
+			if err := stepCostDB.Set(k, icost.Value); err != nil {
 				return err
 			}
 		}
@@ -700,25 +672,27 @@ func applyRewardFund(iconConfig *config, s *icstate.State) error {
 	return nil
 }
 
+type FeeConfig struct {
+	StepPrice common.HexInt              `json:"stepPrice"`
+	StepLimit map[string]common.HexInt64 `json:"stepLimit,omitempty"`
+	StepCosts map[string]common.HexInt64 `json:"stepCosts,omitempty"`
+}
+
 type Chain struct {
-	Revision                 common.HexInt32 `json:"revision"`
-	AuditEnabled             common.HexInt16 `json:"auditEnabled"`
-	DeployerWhiteListEnabled common.HexInt16 `json:"deployerWhiteListEnabled"`
-	Fee                      struct {
-		StepPrice common.HexInt    `json:"stepPrice"`
-		StepLimit *json.RawMessage `json:"stepLimit"`
-		StepCosts *json.RawMessage `json:"stepCosts"`
-	} `json:"fee"`
-	ValidatorList      []*common.Address `json:"validatorList"`
-	MemberList         []*common.Address `json:"memberList"`
-	BlockInterval      *common.HexInt64  `json:"blockInterval"`
-	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
-	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
-	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
-	MinimizeBlockGen   *common.HexInt16  `json:"minimizeBlockGen"`
-	DepositTerm        *common.HexInt64  `json:"depositTerm"`
-	DepositIssueRate   *common.HexInt64  `json:"depositIssueRate"`
-	FeeSharingEnabled  *common.HexInt16  `json:"feeSharingEnabled"`
+	Revision                 common.HexInt32   `json:"revision"`
+	AuditEnabled             common.HexInt16   `json:"auditEnabled"`
+	DeployerWhiteListEnabled common.HexInt16   `json:"deployerWhiteListEnabled"`
+	Fee                      FeeConfig         `json:"fee"`
+	ValidatorList            []*common.Address `json:"validatorList"`
+	MemberList               []*common.Address `json:"memberList"`
+	BlockInterval            *common.HexInt64  `json:"blockInterval"`
+	CommitTimeout            *common.HexInt64  `json:"commitTimeout"`
+	TimestampThreshold       *common.HexInt64  `json:"timestampThreshold"`
+	RoundLimitFactor         *common.HexInt64  `json:"roundLimitFactor"`
+	MinimizeBlockGen         *common.HexInt16  `json:"minimizeBlockGen"`
+	DepositTerm              *common.HexInt64  `json:"depositTerm"`
+	DepositIssueRate         *common.HexInt64  `json:"depositIssueRate"`
+	FeeSharingEnabled        *common.HexInt16  `json:"feeSharingEnabled"`
 }
 
 func newIconConfig() *config {
@@ -798,19 +772,34 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	stepPrice := big.NewInt(0)
-
-	price := chain.Fee
-	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
-		return err
-	}
+	var feeConfig *FeeConfig
 
 	switch s.cc.ChainID() {
 	case CIDForMainNet:
 		// initialize for main network
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
+		feeConfig = new(FeeConfig)
+		feeConfig.StepPrice.SetString("1000000000000", 10)
+		feeConfig.StepLimit = map[string]common.HexInt64{
+			state.StepLimitTypeInvoke: {0x4000000},
+			state.StepLimitTypeQuery:  {0x40000},
+		}
+		feeConfig.StepCosts = map[string]common.HexInt64{
+			state.StepTypeDefault:          {4000},
+			state.StepTypeContractCall:     {1500},
+			state.StepTypeContractCreate:   {2000},
+			state.StepTypeContractUpdate:   {8000},
+			state.StepTypeContractDestruct: {-7000},
+			state.StepTypeContractSet:      {1000},
+			state.StepTypeGet:              {0x0},
+			state.StepTypeSet:              {20},
+			state.StepTypeReplace:          {5},
+			state.StepTypeDelete:           {-15},
+			state.StepTypeInput:            {20},
+			state.StepTypeEventLog:         {10},
+			state.StepTypeApiCall:          {0},
+		}
 	default:
-
 		validators := make([]module.Validator, len(chain.ValidatorList))
 		for i, validator := range chain.ValidatorList {
 			validators[i], _ = state.ValidatorFromAddress(validator)
@@ -819,21 +808,23 @@ func (s *chainScore) Install(param []byte) error {
 		if err := s.cc.GetValidatorState().Set(validators); err != nil {
 			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
 		}
+		feeConfig = &chain.Fee
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	}
 	if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
 		return err
 	}
-
-	if err = applyStepLimits(chain, as); err != nil {
-		return err
-	}
-	if err = applyStepCosts(chain, as); err != nil {
-		return err
-	}
-	if err = applyStepPrice(as, stepPrice); err != nil {
-		return err
+	if feeConfig != nil {
+		if err = applyStepLimits(feeConfig, as); err != nil {
+			return err
+		}
+		if err = applyStepCosts(feeConfig, as); err != nil {
+			return err
+		}
+		if err = applyStepPrice(as, &feeConfig.StepPrice.Int); err != nil {
+			return err
+		}
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
