@@ -656,6 +656,7 @@ const (
 	defaultIISSVersion     = 1
 	defaultIISSBlockHeight = 0
 	defaultTermPeriod      = 43120
+	defaultUnbondingPeriod = defaultTermPeriod * 7
 	defaultMainPRepCount   = 22
 	defaultSubPRepCount    = 78
 	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
@@ -675,6 +676,7 @@ type config struct {
 	Irep            *common.HexInt `json:"irep,omitempty"`
 	Rrep            *common.HexInt `json:"rrep,omitempty"`
 	BondRequirement *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriod *common.HexInt `json:"unbondingPeriod,omitempty"`
 	LockMin         *common.HexInt `json:"lockMin,omitempty"`
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
 	RewardFund      struct {
@@ -733,6 +735,7 @@ func newIconConfig() *config {
 		BondRequirement: common.NewHexInt(defaultBondRequirement),
 		LockMin:         common.NewHexInt(defaultLockMin),
 		LockMax:         common.NewHexInt(defaultLockMax),
+		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
 	}
 }
 
@@ -862,6 +865,9 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 	if err = es.State.SetLockVariables(iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
+		return err
+	}
+	if err = es.State.SetUnbondingPeriod(iconConfig.UnbondingPeriod.Int64()); err != nil {
 		return err
 	}
 	if err = applyRewardFund(iconConfig, es.State); err != nil {

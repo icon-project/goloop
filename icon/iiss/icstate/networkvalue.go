@@ -31,6 +31,7 @@ const (
 	VarIISSBlockHeight = "iiss_blockHeight"
 	VarTermPeriod      = "term_period"
 	VarBondRequirement = "bond_requirement"
+	VarUnbondingPeriod = "unbonding_period"
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
 	VarRewardFund      = "reward_fund"
@@ -143,6 +144,17 @@ func (s *State) SetBondRequirement(value int64) error {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 0 to 100")
 	}
 	return setValue(s.store, VarBondRequirement, value)
+}
+
+func (s *State) SetUnbondingPeriod(value int64) error {
+	if (value <= 0) || (value%s.GetTermPeriod() != 0) {
+		return errors.IllegalArgumentError.New("unbonding period must be multiple of term period")
+	}
+	return setValue(s.store, VarUnbondingPeriod, value)
+}
+
+func (s *State) GetUnbondingPeriod() int64 {
+	return getValue(s.store, VarUnbondingPeriod).Int64()
 }
 
 func (s *State) GetLockMin() *big.Int {
