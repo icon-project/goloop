@@ -73,14 +73,14 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 }
 
 func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
-	issue.TotalReward.SetInt64(totalIssued)
-	issue.PrevTotalReward.SetInt64(prevTotalIssued)
+	issue.TotalIssued.SetInt64(totalIssued)
+	issue.PrevTotalIssued.SetInt64(prevTotalIssued)
 	issue.OverIssued.SetInt64(overIssued)
 	issue.IScoreRemains.SetInt64(iScoreRemains)
 	issue.PrevBlockFee.SetInt64(prevBlockFee)
 }
 
-func TestIssuer_regulateIssueInfo(t *testing.T) {
+func TestIssuer_RegulateIssueInfo(t *testing.T) {
 	type values struct {
 		prevtotalIssued int64
 		totalIssued     int64
@@ -106,7 +106,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(0),
 			false,
 			values{
-				100, 0, 0, 0, 0,
+				0, 0, 0, 0, 0,
 			},
 		},
 		{
@@ -118,7 +118,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(0),
 			false,
 			values{
-				100, 0, 0, 0, 0,
+				0, 0, 0, 0, 0,
 			},
 		},
 		{
@@ -130,7 +130,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(0),
 			false,
 			values{
-				200, 0, 0, 100, 0,
+				0, 0, 0, 100, 0,
 			},
 		},
 		{
@@ -142,7 +142,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(50),
 			false,
 			values{
-				200, 0, 0, 100, 0,
+				0, 0, 0, 100, 0,
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(0),
 			false,
 			values{
-				200, 0, 20, 124, 0,
+				0, 0, 20, 124, 0,
 			},
 		},
 		{
@@ -166,7 +166,7 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			new(big.Int).SetInt64(40),
 			false,
 			values{
-				200, 0, 20, 124, 0,
+				0, 0, 20, 124, 0,
 			},
 		},
 		{
@@ -198,14 +198,11 @@ func TestIssuer_regulateIssueInfo(t *testing.T) {
 			out := tt.out
 			issue := icstate.NewIssue()
 			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
-			issue, err = regulateIssueInfo(issue, tt.iScore, tt.additionalReward)
+			err = RegulateIssueInfo(issue, tt.iScore, tt.additionalReward)
 			if tt.err {
-				assert.Nil(t, issue)
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, out.totalIssued, issue.TotalReward.Int64())
-				assert.Equal(t, out.prevtotalIssued, issue.PrevTotalReward.Int64())
 				assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
 				assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
 				assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())

@@ -198,10 +198,12 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	// apply calculation result
 	if calculator.Result() != nil {
 		s.Reward = calculator.Result().NewState()
-		if err = RegulateIssueInfo(s, calculator.TotalReward()); err != nil {
-			return err
-		}
 	}
+
+	if err = s.UpdateIssueInfo(calculator.TotalReward(), rcInfo.IsDecentralized(), rcInfo.AdditionalReward()); err != nil {
+		return err
+	}
+
 	// switch icstage and write global
 	s.Back = s.Front
 	s.Front = icstage.NewState(s.database)
@@ -236,7 +238,15 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	}
 
 	// update rewardCalcInfo
-	rcInfo.Start(term.StartHeight(), term.Period(), calculator.TotalReward())
+	additionalReward := new(big.Int)
+	if s.State.GetIISSVersion() == icstate.IISSVersion2 {
+		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
+		rewardCPS.Div(rewardCPS, big.NewInt(100))
+		rewardRelay:= new(big.Int).Mul(term.Iglobal(), term.Irelay())
+		rewardRelay.Div(rewardCPS, big.NewInt(100))
+		additionalReward.Add(rewardCPS, rewardRelay)
+	}
+	rcInfo.Start(term.StartHeight(), term.Period(), term.IsDecentralized(), calculator.TotalReward(), additionalReward)
 	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
 		return err
 	}
@@ -466,7 +476,30 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 	return pb.GetBonderListInJSON(), nil
 }
 
-func (s *ExtensionStateImpl) UpdateIssueInfo(fee *big.Int) error {
+func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bool, additionalReward *big.Int) error {
+	is, err := s.State.GetIssue()
+	issue := is.Clone()
+	if err != nil {
+		return err
+	}
+
+	// regulate ICX issue when network is decentralized. We will not issue ICX while pre-vote period
+	if isDecentralized {
+
+		if err = RegulateIssueInfo(issue, reward, additionalReward); err != nil {
+			return err
+		}
+	}
+
+	issue.ResetTotalIssued()
+
+	if err = s.State.SetIssue(issue); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
 	is, err := s.State.GetIssue()
 	if err != nil {
 		return err
@@ -535,7 +568,6 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 	term := s.State.GetTerm()
-	rf := s.State.GetRewardFund()
 	nextTerm := icstate.NewNextTerm(
 		term,
 		s.State.GetTermPeriod(),
@@ -543,9 +575,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		s.State.GetRRep(),
 		totalSupply,
 		s.pm.TotalDelegated(),
-		rf.Iglobl,
-		rf.Iprep,
-		rf.Ivoter,
+		s.State.GetRewardFund(),
 		int(s.State.GetBondRequirement()),
 		s.State.GetIISSVersion(),
 	)

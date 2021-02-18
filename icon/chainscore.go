@@ -663,11 +663,11 @@ type config struct {
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
 	rf := &icstate.RewardFund{
-		Iglobl: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
-		Iprep:  new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
-		Icps:   new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
-		Irelay: new(big.Int).Set(iconConfig.RewardFund.Irelay.Value()),
-		Ivoter: new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
+		Iglobal: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
+		Iprep:   new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
+		Icps:    new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
+		Irelay:  new(big.Int).Set(iconConfig.RewardFund.Irelay.Value()),
+		Ivoter:  new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
 	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err

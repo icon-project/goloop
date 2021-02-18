@@ -28,9 +28,9 @@ const (
 type Issue struct {
 	icobject.NoDatabase
 
-	TotalReward     *big.Int // amount of reward ICX at current calculation period
-	PrevTotalReward *big.Int // amount of reward ICX while previous calculation period
-	OverIssued      *big.Int // PrevTotalReward - reward calculated by calculator
+	TotalIssued     *big.Int // amount of issued ICX while current calculation period
+	PrevTotalIssued *big.Int // amount of issued ICX while previous calculation period
+	OverIssued      *big.Int // PrevTotalIssued - reward calculated by calculator
 	IScoreRemains   *big.Int // not issued ICX
 	PrevBlockFee    *big.Int
 }
@@ -41,8 +41,8 @@ func newIssue(_ icobject.Tag) *Issue {
 
 func NewIssue() *Issue {
 	return &Issue{
-		TotalReward:     new(big.Int),
-		PrevTotalReward: new(big.Int),
+		TotalIssued:     new(big.Int),
+		PrevTotalIssued: new(big.Int),
 		OverIssued:      new(big.Int),
 		IScoreRemains:   new(big.Int),
 		PrevBlockFee:    new(big.Int),
@@ -55,8 +55,8 @@ func (i *Issue) Version() int {
 
 func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
-		&i.TotalReward,
-		&i.PrevTotalReward,
+		&i.TotalIssued,
+		&i.PrevTotalIssued,
 		&i.OverIssued,
 		&i.IScoreRemains,
 		&i.PrevBlockFee,
@@ -65,8 +65,8 @@ func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 
 func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
-		i.TotalReward,
-		i.PrevTotalReward,
+		i.TotalIssued,
+		i.PrevTotalIssued,
 		i.OverIssued,
 		i.IScoreRemains,
 		i.PrevBlockFee,
@@ -75,8 +75,8 @@ func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (i *Issue) Equal(o icobject.Impl) bool {
 	if i2, ok := o.(*Issue); ok {
-		return i.TotalReward.Cmp(i2.TotalReward) == 0 &&
-			i.PrevTotalReward.Cmp(i2.PrevTotalReward) == 0 &&
+		return i.TotalIssued.Cmp(i2.TotalIssued) == 0 &&
+			i.PrevTotalIssued.Cmp(i2.PrevTotalIssued) == 0 &&
 			i.OverIssued.Cmp(i2.OverIssued) == 0 &&
 			i.IScoreRemains.Cmp(i2.IScoreRemains) == 0 &&
 			i.PrevBlockFee.Cmp(i2.PrevBlockFee) == 0
@@ -87,10 +87,15 @@ func (i *Issue) Equal(o icobject.Impl) bool {
 
 func (i *Issue) Clone() *Issue {
 	ni := NewIssue()
-	ni.TotalReward.Set(i.TotalReward)
-	ni.PrevTotalReward.Set(i.PrevTotalReward)
+	ni.TotalIssued.Set(i.TotalIssued)
+	ni.PrevTotalIssued.Set(i.PrevTotalIssued)
 	ni.OverIssued.Set(i.OverIssued)
 	ni.IScoreRemains.Set(i.IScoreRemains)
 	ni.PrevBlockFee.Set(i.PrevBlockFee)
 	return ni
+}
+
+func (i *Issue) ResetTotalIssued() {
+	i.PrevTotalIssued.Set(i.TotalIssued)
+	i.TotalIssued.SetInt64(0)
 }

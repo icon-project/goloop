@@ -103,7 +103,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	ext := wc.GetExtensionState()
 	es := ext.(*iiss.ExtensionStateImpl)
 
-	if err := es.UpdateIssueInfo(er.TotalFee()); err != nil {
+	if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
 		return err
 	}
 	return es.OnExecutionEnd(wc, p.calculator)

@@ -49,7 +49,7 @@ func TestRewardCalcInfo(t *testing.T) {
 	assert.Equal(t, startHeight, rc1.startHeight)
 	assert.Equal(t, prevHeight, rc1.prevHeight)
 	assert.Equal(t, startHeight - prevHeight, rc1.period)
-	assert.Equal(t, int64(0), rc1.prevTotalReward.Int64())
+	assert.Equal(t, int64(0), rc1.prevCalcReward.Int64())
 }
 
 func TestRewardCalcInfo_Start(t *testing.T) {
@@ -63,11 +63,15 @@ func TestRewardCalcInfo_Start(t *testing.T) {
 	period := int64(5)
 	nBH := startHeight + period
 	reward := int64(100)
+	isDecentralized := false
+	additionalReward := int64(100)
 
-	rc1.Start(nBH, period, new(big.Int).SetInt64(reward))
+	rc1.Start(nBH, period, isDecentralized, new(big.Int).SetInt64(reward), new(big.Int).SetInt64(additionalReward))
 
 	assert.Equal(t, nBH, rc1.startHeight)
 	assert.Equal(t, startHeight, rc1.prevHeight)
 	assert.Equal(t, period, rc1.period)
-	assert.Equal(t, reward, rc1.prevTotalReward.Int64())
+	assert.Equal(t, isDecentralized, rc1.isDecentralized)
+	assert.Equal(t, reward, rc1.prevCalcReward.Int64())
+	assert.Equal(t, additionalReward, rc1.additionalReward.Int64())
 }

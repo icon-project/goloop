@@ -28,10 +28,12 @@ const (
 type RewardCalcInfo struct {
 	icobject.NoDatabase
 
-	startHeight     int64
-	period          int64
-	prevHeight      int64
-	prevTotalReward *big.Int
+	startHeight      int64
+	period           int64
+	isDecentralized  bool
+	prevHeight       int64
+	prevCalcReward   *big.Int
+	additionalReward *big.Int
 }
 
 func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
@@ -40,7 +42,8 @@ func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
 
 func NewRewardCalcInfo() *RewardCalcInfo {
 	return &RewardCalcInfo{
-		prevTotalReward: new(big.Int),
+		prevCalcReward:   new(big.Int),
+		additionalReward: new(big.Int),
 	}
 }
 
@@ -56,14 +59,21 @@ func (rc *RewardCalcInfo) Period() int64 {
 	return rc.period
 }
 
+func (rc *RewardCalcInfo) IsDecentralized() bool {
+	return rc.isDecentralized
+}
+
 func (rc *RewardCalcInfo) PrevHeight() int64 {
 	return rc.prevHeight
 }
 
-func (rc *RewardCalcInfo) PrevTotalReward() *big.Int {
-	return rc.prevTotalReward
+func (rc *RewardCalcInfo) PrevCalcReward() *big.Int {
+	return rc.prevCalcReward
 }
 
+func (rc *RewardCalcInfo) AdditionalReward() *big.Int {
+	return rc.additionalReward
+}
 
 func (rc *RewardCalcInfo) GetEndHeight() int64 {
 	return rc.startHeight + rc.period - 1
@@ -73,8 +83,10 @@ func (rc *RewardCalcInfo) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
 		&rc.startHeight,
 		&rc.period,
+		&rc.isDecentralized,
 		&rc.prevHeight,
-		&rc.prevTotalReward,
+		&rc.prevCalcReward,
+		&rc.additionalReward,
 	)
 }
 
@@ -82,8 +94,10 @@ func (rc *RewardCalcInfo) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
 		rc.startHeight,
 		rc.period,
+		rc.isDecentralized,
 		rc.prevHeight,
-		rc.prevTotalReward,
+		rc.prevCalcReward,
+		rc.additionalReward,
 	)
 }
 
@@ -91,8 +105,10 @@ func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 	if rc2, ok := o.(*RewardCalcInfo); ok {
 		return rc.startHeight == rc2.startHeight &&
 			rc.period == rc2.period &&
+			rc.isDecentralized == rc2.isDecentralized &&
 			rc.prevHeight == rc2.prevHeight &&
-			rc.prevTotalReward.Cmp(rc2.prevTotalReward) == 0
+			rc.prevCalcReward.Cmp(rc2.prevCalcReward) == 0 &&
+			rc.additionalReward.Cmp(rc2.additionalReward) == 0
 	} else {
 		return false
 	}
@@ -102,14 +118,20 @@ func (rc *RewardCalcInfo) Clone() *RewardCalcInfo {
 	nrc := NewRewardCalcInfo()
 	nrc.startHeight = rc.startHeight
 	nrc.period = rc.period
+	nrc.isDecentralized = rc.isDecentralized
 	nrc.prevHeight = rc.prevHeight
-	nrc.prevTotalReward = new(big.Int).Set(rc.prevTotalReward)
+	nrc.prevCalcReward = new(big.Int).Set(rc.prevCalcReward)
+	nrc.additionalReward = new(big.Int).Set(rc.additionalReward)
 	return nrc
 }
 
-func (rc *RewardCalcInfo) Start(blockHeight int64, period int64, reward *big.Int) {
+func (rc *RewardCalcInfo) Start(
+	blockHeight int64, period int64, isDecentralized bool, calcReward *big.Int, additionalReward *big.Int,
+) {
 	rc.prevHeight = rc.startHeight
 	rc.startHeight = blockHeight
 	rc.period = period
-	rc.prevTotalReward.Set(reward)
+	rc.isDecentralized = isDecentralized
+	rc.prevCalcReward.Set(calcReward)
+	rc.additionalReward.Set(additionalReward)
 }

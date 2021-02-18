@@ -82,25 +82,8 @@ func (i *IssueResultJSON) GetTotalReward() *big.Int {
 	return total
 }
 
-func RegulateIssueInfo(es *ExtensionStateImpl, iScore *big.Int) error {
-	var err error
-	issue, _ := es.State.GetIssue()
-	additionalReward := new(big.Int)
-	if es.State.GetIISSVersion() == icstate.IISSVersion2 {
-		rf := es.State.GetRewardFund()
-		additionalReward.Mul(rf.Iglobl, new(big.Int).Add(rf.Icps, rf.Irelay))
-		additionalReward.Div(additionalReward, big.NewInt(100))
-	}
-	issue, err = regulateIssueInfo(issue, iScore, additionalReward)
-	if err != nil {
-		return err
-	}
-	return es.State.SetIssue(issue)
-}
-
-// regulateIssueInfo regulate icx issue amount with previous period data.
-func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) (*icstate.Issue, error) {
-	ni := issue.Clone()
+// RegulateIssueInfo regulate icx issue amount with previous period data.
+func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) error {
 	var icx, remains *big.Int
 	if iScore == nil || iScore.Sign() == 0 {
 		icx = new(big.Int)
@@ -108,21 +91,19 @@ func regulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	} else {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
-	overIssued := new(big.Int).Sub(ni.PrevTotalReward, additionalReward)
+	overIssued := new(big.Int).Sub(issue.PrevTotalIssued, additionalReward)
 	overIssued.Sub(overIssued, icx)
 	if overIssued.Sign() == -1 {
-		return nil, errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result")
+		return errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result")
 	}
-	ni.OverIssued.Add(ni.OverIssued, overIssued)
-	ni.IScoreRemains.Add(ni.IScoreRemains, remains)
-	if BigIntIScoreICXRatio.Cmp(ni.IScoreRemains) < 0 {
-		ni.OverIssued.Sub(ni.OverIssued, intconv.BigIntOne)
-		ni.IScoreRemains.Sub(ni.IScoreRemains, BigIntIScoreICXRatio)
+	issue.OverIssued.Add(issue.OverIssued, overIssued)
+	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
+	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
+		issue.OverIssued.Sub(issue.OverIssued, intconv.BigIntOne)
+		issue.IScoreRemains.Sub(issue.IScoreRemains, BigIntIScoreICXRatio)
 	}
-	ni.PrevTotalReward.Set(ni.TotalReward)
-	ni.TotalReward.SetInt64(0)
 
-	return ni, nil
+	return nil
 }
 
 // calcRewardPerBlock calculate reward per block

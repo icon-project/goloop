@@ -24,7 +24,7 @@ func TestRewardFund(t *testing.T) {
 	iprep := int64(50)
 	ivoter := int64(50)
 	rf := NewRewardFund()
-	rf.Iglobl.SetInt64(iglobal)
+	rf.Iglobal.SetInt64(iglobal)
 	rf.Iprep.SetInt64(iprep)
 	rf.Ivoter.SetInt64(ivoter)
 
@@ -34,7 +34,7 @@ func TestRewardFund(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, rf.Equal(rf2))
-	assert.Equal(t, 0, rf.Iglobl.Cmp(rf2.Iglobl))
+	assert.Equal(t, 0, rf.Iglobal.Cmp(rf2.Iglobal))
 
 	rf3 := rf.Clone()
 	assert.True(t, rf.Equal(rf3))

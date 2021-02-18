@@ -131,9 +131,7 @@ type Term struct {
 	rrep            *big.Int
 	totalSupply     *big.Int
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
-	iglobal         *big.Int
-	iprep           *big.Int
-	ivoter          *big.Int
+	rewardFund      *RewardFund
 	bondRequirement int
 	iissVersion     int
 	prepSnapshots   PRepSnapshots
@@ -168,16 +166,28 @@ func (term *Term) ElectedPRepCount() int {
 	return len(term.prepSnapshots)
 }
 
+func (term *Term) RewardFund() *RewardFund {
+	return term.rewardFund
+}
+
 func (term *Term) Iglobal() *big.Int {
-	return term.iglobal
+	return term.rewardFund.Iglobal
 }
 
 func (term *Term) Iprep() *big.Int {
-	return term.iprep
+	return term.rewardFund.Iprep
+}
+
+func (term *Term) Icps() *big.Int {
+	return term.rewardFund.Icps
+}
+
+func (term *Term) Irelay() *big.Int {
+	return term.rewardFund.Irelay
 }
 
 func (term *Term) Ivoter() *big.Int {
-	return term.ivoter
+	return term.rewardFund.Ivoter
 }
 
 func (term *Term) BondRequirement() int {
@@ -204,9 +214,7 @@ func (term *Term) Set(other *Term) {
 	term.rrep = other.rrep
 	term.totalSupply.Set(other.totalSupply)
 	term.totalDelegated.Set(other.totalDelegated)
-	term.iglobal = other.iglobal
-	term.iprep = other.iprep
-	term.ivoter = other.ivoter
+	term.rewardFund = other.rewardFund.Clone()
 	term.bondRequirement = other.bondRequirement
 	term.iissVersion = other.iissVersion
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
@@ -226,9 +234,7 @@ func (term *Term) Clone() *Term {
 		rrep:            new(big.Int).Set(term.rrep),
 		totalSupply:     new(big.Int).Set(term.totalSupply),
 		totalDelegated:  new(big.Int).Set(term.totalDelegated),
-		iglobal:         new(big.Int).Set(term.iglobal),
-		iprep:           new(big.Int).Set(term.iprep),
-		ivoter:          new(big.Int).Set(term.ivoter),
+		rewardFund:      term.rewardFund.Clone(),
 		bondRequirement: term.bondRequirement,
 		iissVersion:     term.iissVersion,
 		prepSnapshots:   term.prepSnapshots.Clone(),
@@ -248,9 +254,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.rrep,
 		&term.totalSupply,
 		&term.totalDelegated,
-		&term.iglobal,
-		&term.iprep,
-		&term.ivoter,
+		&term.rewardFund,
 		&term.bondRequirement,
 		&term.iissVersion,
 		&term.prepSnapshots,
@@ -266,9 +270,7 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.rrep,
 		term.totalSupply,
 		term.totalDelegated,
-		term.iglobal,
-		term.iprep,
-		term.ivoter,
+		term.rewardFund,
 		term.bondRequirement,
 		term.iissVersion,
 		term.prepSnapshots,
@@ -297,9 +299,7 @@ func (term *Term) equal(other *Term) bool {
 		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
-		term.iglobal.Cmp(other.iglobal) == 0 &&
-		term.iprep.Cmp(other.iprep) == 0 &&
-		term.ivoter.Cmp(other.ivoter) == 0 &&
+		term.rewardFund.Equal(other.rewardFund) &&
 		term.bondRequirement == other.bondRequirement &&
 		term.iissVersion == other.iissVersion &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
@@ -387,9 +387,7 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["irep"] = term.irep
 	jso["rrep"] = term.rrep
 	jso["period"] = term.period
-	jso["iglobal"] = term.iglobal
-	jso["iprep"] = term.iprep
-	jso["ivoter"] = term.ivoter
+	jso["rewardFund"] = term.rewardFund.ToJSON()
 	jso["bondRequirement"] = term.bondRequirement
 	jso["iissVersion"] = term.iissVersion
 	jso["preps"] = term.prepSnapshots.toJSON()
@@ -404,9 +402,7 @@ func NewNextTerm(
 	rrep *big.Int,
 	totalSupply *big.Int,
 	totalDelegated *big.Int,
-	iglobal *big.Int,
-	iprep *big.Int,
-	ivoter *big.Int,
+	rewardFund *RewardFund,
 	bondRequirement int,
 	iissVersion int,
 ) *Term {
@@ -421,9 +417,7 @@ func NewNextTerm(
 		rrep:            new(big.Int).Set(rrep),
 		totalSupply:     new(big.Int).Set(totalSupply),
 		totalDelegated:  new(big.Int).Set(totalDelegated),
-		iglobal:         new(big.Int).Set(iglobal),
-		iprep:           new(big.Int).Set(iprep),
-		ivoter:          new(big.Int).Set(ivoter),
+		rewardFund:      rewardFund.Clone(),
 		bondRequirement: bondRequirement,
 		iissVersion:     iissVersion,
 
@@ -527,9 +521,7 @@ func newTerm(startHeight, termPeriod int64) *Term {
 		rrep:           big.NewInt(0),
 		totalSupply:    big.NewInt(0),
 		totalDelegated: big.NewInt(0),
-		iglobal:        big.NewInt(0),
-		iprep:          big.NewInt(0),
-		ivoter:         big.NewInt(0),
+		rewardFund:     NewRewardFund(),
 		prepSnapshots:  nil,
 
 		flags:       FlagNone,

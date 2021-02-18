@@ -425,9 +425,7 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 		iissVariables["irep"] = intconv.FormatBigInt(term.Irep())
 		iissVariables["rrep"] = intconv.FormatBigInt(term.Rrep())
 	} else {
-		iissVariables["iglobal"] = intconv.FormatBigInt(term.Iglobal())
-		iissVariables["iprep"] = intconv.FormatBigInt(term.Iprep())
-		iissVariables["ivoter"] = intconv.FormatBigInt(term.Ivoter())
+		iissVariables = term.RewardFund().ToJSON()
 	}
 
 	rcInfo, err := es.State.GetRewardCalcInfo()
@@ -435,8 +433,8 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 		return nil, err
 	}
 	rcResult := make(map[string]interface{})
-	rcResult["iscore"] = intconv.FormatBigInt(rcInfo.PrevTotalReward())
-	rcResult["estimatedICX"] = intconv.FormatBigInt(new(big.Int).Div(rcInfo.PrevTotalReward(), iiss.BigIntIScoreICXRatio))
+	rcResult["iscore"] = intconv.FormatBigInt(rcInfo.PrevCalcReward())
+	rcResult["estimatedICX"] = intconv.FormatBigInt(new(big.Int).Div(rcInfo.PrevCalcReward(), iiss.BigIntIScoreICXRatio))
 	rcResult["startBlockHeight"] = intconv.FormatInt(rcInfo.StartHeight())
 	rcResult["endBlockHeight"] = intconv.FormatInt(rcInfo.GetEndHeight())
 	rcResult["stateHash"] = es.Reward.GetSnapshot().Bytes()
