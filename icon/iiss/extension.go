@@ -160,7 +160,6 @@ func (s *ExtensionStateImpl) GetAccount(address module.Address) *icstate.Account
 	return s.State.GetAccount(address)
 }
 
-
 func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
 	return s.State.GetUnstakingTimer(height, createIfNotExist)
 }
@@ -394,7 +393,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return errors.Errorf("Not enough voting power")
 	}
 
-	unbondingHeight := blockHeight + icstate.UnbondingPeriod
+	unbondingHeight := blockHeight + s.State.GetUnbondingPeriod()
 	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, unbondingHeight)
 	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
 	votingAmount.Sub(votingAmount, account.Bond())
