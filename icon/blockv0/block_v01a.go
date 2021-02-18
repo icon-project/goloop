@@ -27,23 +27,26 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type blockV01aJSON struct {
 	Version            string             `json:"version"`
-	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
+	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash,omitempty"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
-	Transactions       []Transaction      `json:"confirmed_transaction_list"`
+	Transactions       []Transaction      `json:"confirmed_transaction_list,omitempty"`
 	BlockHash          common.RawHexBytes `json:"block_hash"`
 	Height             int64              `json:"height"`
 	PeerID             *common.Address    `json:"peer_id"`
 	TimeStamp          uint64             `json:"time_stamp"`
-	Signature          common.Signature   `json:"signature"`
+	Signature          common.Signature   `json:"signature,omitempty"`
 }
+
+var emptyLogBloom = new(txresult.LogsBloom)
 
 type BlockV01a struct {
 	*blockV01aJSON
-	transactionList module.TransactionList
+	txs []module.Transaction
 }
 
 func (b *BlockV01a) Version() string {
@@ -87,7 +90,7 @@ func (b *BlockV01a) Verify(prev Block) error {
 			if pid := prev.ID(); !bytes.Equal(pid, b.PrevBlockHash.Bytes()) {
 				return errors.CriticalFormatError.Errorf(
 					"InvalidPrevID(exp=%#x,real=%#x)",
-					pid, b.PrevBlockHash.Bytes(),
+					b.PrevBlockHash.Bytes(), pid,
 				)
 			}
 		}
@@ -106,8 +109,9 @@ func (b *BlockV01a) Verify(prev Block) error {
 		}
 	}
 
-	mrh := b.NormalTransactions().Hash()
-	if bytes.Compare(mrh, b.MerkleTreeRootHash) != 0 {
+	transactionList := transaction.NewTransactionListV1FromSlice(b.txs)
+	mrh := transactionList.Hash()
+	if bytes.Compare(b.MerkleTreeRootHash, mrh) != 0 {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidTransactionMerkleRoot(exp=%#x,calc=%#x)",
 			b.MerkleTreeRootHash, mrh)
@@ -119,8 +123,8 @@ func (b *BlockV01a) String() string {
 	return fmt.Sprint(b.blockV01aJSON)
 }
 
-func (b *BlockV01a) NormalTransactions() module.TransactionList {
-	return b.transactionList
+func (b *BlockV01a) NormalTransactions() []module.Transaction {
+	return b.txs
 }
 
 func (b *BlockV01a) Timestamp() int64 {
@@ -132,6 +136,10 @@ func (b *BlockV01a) Proposer() module.Address {
 }
 
 func (b *BlockV01a) LogsBloom() module.LogsBloom {
+	return emptyLogBloom
+}
+
+func (b *BlockV01a) Validators() *RepsList {
 	return nil
 }
 
@@ -140,11 +148,10 @@ func (b *BlockV01a) NextValidators() *RepsList {
 }
 
 func (b *BlockV01a) ToJSON(version module.JSONVersion) (interface{}, error) {
-	// TODO implement to json.
-	return nil, nil
+	return b.blockV01aJSON, nil
 }
 
-func ParseBlockV20a(b []byte) (Block, error) {
+func ParseBlockV01a(b []byte) (Block, error) {
 	var blk = new(blockV01aJSON)
 	err := json.Unmarshal(b, blk)
 	if err != nil {
@@ -154,6 +161,5 @@ func ParseBlockV20a(b []byte) (Block, error) {
 	for i, tx := range blk.Transactions {
 		trs[i] = tx.Transaction
 	}
-	transactionList := transaction.NewTransactionListV1FromSlice(trs)
-	return &BlockV01a{blk, transactionList}, nil
+	return &BlockV01a{blk, trs}, nil
 }

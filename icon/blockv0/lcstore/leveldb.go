@@ -40,6 +40,10 @@ func (ds *LevelDB) GetBlockJSONByHeight(height int) ([]byte, error) {
 		}
 		return nil, err
 	}
+	return ds.GetBlockJSONByID(bid)
+}
+
+func (ds *LevelDB) GetBlockJSONByID(bid []byte) ([]byte, error) {
 	blockjson, err := ds.leveldb.Get(bid, nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {

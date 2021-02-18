@@ -723,16 +723,16 @@ type Chain struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:        common.NewHexInt(defaultTermPeriod),
-		IISSVersion:       common.NewHexInt(defaultIISSVersion),
+		TermPeriod:      common.NewHexInt(defaultTermPeriod),
+		IISSVersion:     common.NewHexInt(defaultIISSVersion),
 		IISSBlockHeight: common.NewHexInt(defaultIISSBlockHeight),
-		MainPRepCount:     common.NewHexInt(defaultMainPRepCount),
-		SubPRepCount:      common.NewHexInt(defaultSubPRepCount),
-		Irep:              common.NewHexInt(defaultIRep),
-		Rrep:              common.NewHexInt(defaultRRep),
-		BondRequirement:   common.NewHexInt(defaultBondRequirement),
-		LockMin:           common.NewHexInt(defaultLockMin),
-		LockMax:           common.NewHexInt(defaultLockMax),
+		MainPRepCount:   common.NewHexInt(defaultMainPRepCount),
+		SubPRepCount:    common.NewHexInt(defaultSubPRepCount),
+		Irep:            common.NewHexInt(defaultIRep),
+		Rrep:            common.NewHexInt(defaultRRep),
+		BondRequirement: common.NewHexInt(defaultBondRequirement),
+		LockMin:         common.NewHexInt(defaultLockMin),
+		LockMax:         common.NewHexInt(defaultLockMax),
 	}
 }
 
@@ -808,6 +808,7 @@ func (s *chainScore) Install(param []byte) error {
 	switch s.cc.ChainID() {
 	case CIDForMainNet:
 		// initialize for main network
+		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	default:
 
 		validators := make([]module.Validator, len(chain.ValidatorList))

@@ -55,3 +55,10 @@ func (l *RepsList) Hash() []byte {
 func (l *RepsList) Get(i int) module.Address {
 	return &l.json[i].Address
 }
+
+func (l *RepsList) ToJSON(version module.JSONVersion) (interface{}, error) {
+	if l == nil {
+		return nil, nil
+	}
+	return l.json, nil
+}

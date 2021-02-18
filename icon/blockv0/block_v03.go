@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -52,7 +51,7 @@ type BlockV03JSON struct {
 
 type BlockV03 struct {
 	json     *BlockV03JSON
-	txs      module.TransactionList
+	txs      []module.Transaction
 	reps     *RepsList
 	nextReps *RepsList
 }
@@ -77,11 +76,15 @@ func (b *BlockV03) Votes() *BlockVoteList {
 	return b.json.PrevVotes
 }
 
+func (b *BlockV03) Validators() *RepsList {
+	return b.reps
+}
+
 func (b *BlockV03) NextValidators() *RepsList {
 	return b.nextReps
 }
 
-func (b *BlockV03) NormalTransactions() module.TransactionList {
+func (b *BlockV03) NormalTransactions() []module.Transaction {
 	return b.txs
 }
 
@@ -136,7 +139,7 @@ func (b *BlockV03) Verify(prev Block) error {
 	if err := b.json.PrevVotes.Verify(); err != nil {
 		return err
 	}
-	for _, tx := range b.json.Transactions {
+	for _, tx := range b.txs {
 		if err := tx.Verify(); err != nil {
 			return err
 		}
@@ -224,7 +227,7 @@ func ParseBlockV03(b []byte, lc Store) (Block, error) {
 	}
 	return &BlockV03{
 		json:     jso,
-		txs:      transaction.NewTransactionListV1FromSlice(txs),
+		txs:      txs,
 		reps:     current,
 		nextReps: next,
 	}, nil

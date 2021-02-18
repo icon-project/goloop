@@ -24,12 +24,12 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
 type Database interface {
 	GetBlockJSONByHeight(height int) ([]byte, error)
+	GetBlockJSONByID(id []byte) ([]byte, error)
 	GetLastBlockJSON() ([]byte, error)
 	GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error)
 	GetRepsJSONByHash(id []byte) ([]byte, error)
@@ -68,7 +68,7 @@ type TransactionInfo struct {
 	BlockHeight int                 `json:"block_height"`
 	TxIndex     common.HexInt32     `json:"tx_index"`
 	Transaction blockv0.Transaction `json:"transaction"`
-	Receipt     json.RawMessage     `json:"result"`
+	Receipt     json.RawMessage     `json:"receipt"`
 }
 
 func (lc *Store) GetTransactionInfoByTransaction(id []byte) (*TransactionInfo, error) {
@@ -87,7 +87,8 @@ func (lc *Store) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
 	if tinfo, err := lc.GetTransactionInfoByTransaction(id); err != nil {
 		return nil, err
 	} else {
-		if r, err := txresult.NewReceiptFromJSON(nil, basic.Revision3, tinfo.Receipt); err != nil {
+		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, tinfo.Receipt); err != nil {
+			log.Warnf("FailureInParsingJSON(json=%q)", string(tinfo.Receipt))
 			return nil, err
 		} else {
 			return r, nil

@@ -31,7 +31,12 @@ type Transaction struct {
 }
 
 func (t *Transaction) MarshalJSON() ([]byte, error) {
-	return nil, nil
+	jso, err := t.Transaction.ToJSON(module.JSONVersionLast)
+	if err != nil {
+		return nil, err
+	} else {
+		return json.Marshal(jso)
+	}
 }
 
 func (t *Transaction) UnmarshalJSON(b []byte) error {
@@ -55,10 +60,12 @@ type Block interface {
 	PrevID() []byte
 	Votes() *BlockVoteList
 	Proposer() module.Address
+	Validators() *RepsList
 	NextValidators() *RepsList
-	NormalTransactions() module.TransactionList
+	NormalTransactions() []module.Transaction
 	LogsBloom() module.LogsBloom
 	Verify(prev Block) error
+	ToJSON(version module.JSONVersion) (interface{}, error)
 }
 
 type Store interface {
@@ -76,7 +83,7 @@ func ParseBlock(b []byte, lc Store) (Block, error) {
 	}
 	switch rawBlk.Version {
 	case "0.1a":
-		return ParseBlockV20a(b)
+		return ParseBlockV01a(b)
 	case "0.3", "0.4":
 		return ParseBlockV03(b, lc)
 	default:
