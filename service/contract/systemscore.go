@@ -247,9 +247,16 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 			} else {
 				status = scoreresult.ErrInvalidInstance
 			}
-		}
-		if rLen == 2 {
-			result, status = common.EncodeAny(r[0].Interface())
+		} else if rLen >= 2 {
+			if rLen == 2 {
+				if ret, err := common.EncodeAny(r[0].Interface()); err != nil {
+					status = scoreresult.InvalidInstanceError.Wrap(err, "InvalidReturnValue")
+				} else {
+					result = ret
+				}
+			} else {
+				panic("Not implemented")
+			}
 		}
 	}
 	return
