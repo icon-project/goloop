@@ -85,6 +85,7 @@ type task interface {
 type CacheStore struct {
 	*lcstore.Store
 	lock sync.Mutex
+	log  log.Logger
 
 	blockWorkers      int
 	maxBlocks         int
@@ -249,12 +250,26 @@ func (cs *CacheStore) GetReceiptByTransaction(id []byte) (module.Receipt, error)
 			panic("UnknownType")
 		}
 	}
+	trial := 0
+	for {
+		if rct, err := cs.Store.GetReceiptByTransaction(id); err == nil {
+			return rct, nil
+		} else {
+			if trial >= MaxTrials {
+				return nil, err
+			} else {
+				trial += 1
+				cs.log.Debugf("Try RECEIPT tid=%#x again err=%+v", id, err)
+			}
+		}
+	}
 	return cs.Store.GetReceiptByTransaction(id)
 }
 
-func NewCacheStore(store *lcstore.Store) *CacheStore {
+func NewCacheStore(logger log.Logger, store *lcstore.Store) *CacheStore {
 	cs := &CacheStore{
 		Store:             store,
+		log:               logger,
 		maxBlocks:         32,
 		maxReceiptWorkers: 64,
 		blockInfo:         make(map[int64]*blockTask),

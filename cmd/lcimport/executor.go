@@ -104,6 +104,9 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 		return nil, errors.Wrap(err, "FailureInAllocProxyManager")
 	}
 
+	go em.Loop()
+	em.SetInstances(1, 1, 1)
+
 	jsBucket, err := database.GetBucket(JSONByHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInGetBucketForJSON")
@@ -122,7 +125,7 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	}
 	ex := &Executor{
 		lc:          lc,
-		cs:          NewCacheStore(lc),
+		cs:          NewCacheStore(logger, lc),
 		log:         logger,
 		chain:       chain,
 		plt:         plt,
@@ -384,7 +387,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 }
 
 func (e *Executor) Execute(from, to int64) error {
-	e.log.Infof("From: %d, To:%d", from, to)
+	e.log.Infof("Execute Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}

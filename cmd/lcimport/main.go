@@ -204,6 +204,15 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 	}
 }
 
+var logo = []string{
+	"  _____ _____ ____  _   _ ___  ",
+	" |_   _/ ____/ __ \\| \\ | |__ \\ ",
+	"   | || |   | |  | |  \\| |  ) |",
+	"   | || |   | |  | | . ` | / / ",
+	"  _| || |___| |__| | |\\  |/ /_ ",
+	" |_____\\_____\\____/|_| \\_|____| IMPORTER",
+}
+
 func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(0, 1),
@@ -232,6 +241,9 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 			return errors.Wrapf(err, "InvalidLogLevel(log_level=%s)", *logLevel)
 		} else {
 			logger.SetLevel(lv)
+		}
+		for _, l := range logo {
+			logger.Infoln(l)
 		}
 
 		return executeTransactions(logger, lcDB, data, *from, to)
