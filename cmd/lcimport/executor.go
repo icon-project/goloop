@@ -89,7 +89,7 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	}
 	plt, err := icon.NewPlatform(data, chain.CID())
 	if err != nil {
-		return nil, errors.Wrap(err, "NewPaltformFailure")
+		return nil, errors.Wrap(err, "NewPlatformFailure")
 	}
 	cm, err := plt.NewContractManager(database, path.Join(data, ContractPath), logger)
 	if err != nil {

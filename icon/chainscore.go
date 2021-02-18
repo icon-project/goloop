@@ -783,24 +783,24 @@ func (s *chainScore) Install(param []byte) error {
 		// initialize for main network
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 		feeConfig = new(FeeConfig)
-		feeConfig.StepPrice.SetString("1000000000000", 10)
+		feeConfig.StepPrice.SetString("10000000000", 10)
 		feeConfig.StepLimit = map[string]common.HexInt64{
-			state.StepLimitTypeInvoke: {0x4000000},
-			state.StepLimitTypeQuery:  {0x40000},
+			state.StepLimitTypeInvoke: {0x78000000},
+			state.StepLimitTypeQuery:  {0x780000},
 		}
 		feeConfig.StepCosts = map[string]common.HexInt64{
-			state.StepTypeDefault:          {4000},
-			state.StepTypeContractCall:     {1500},
-			state.StepTypeContractCreate:   {2000},
-			state.StepTypeContractUpdate:   {8000},
-			state.StepTypeContractDestruct: {-7000},
-			state.StepTypeContractSet:      {1000},
-			state.StepTypeGet:              {0x0},
-			state.StepTypeSet:              {20},
-			state.StepTypeReplace:          {5},
-			state.StepTypeDelete:           {-15},
-			state.StepTypeInput:            {20},
-			state.StepTypeEventLog:         {10},
+			state.StepTypeDefault:          {1_000_000},
+			state.StepTypeContractCall:     {15_000},
+			state.StepTypeContractCreate:   {200_000},
+			state.StepTypeContractUpdate:   {80_000},
+			state.StepTypeContractDestruct: {-70_000},
+			state.StepTypeContractSet:      {30_000},
+			state.StepTypeGet:              {0},
+			state.StepTypeSet:              {200},
+			state.StepTypeReplace:          {50},
+			state.StepTypeDelete:           {-150},
+			state.StepTypeInput:            {200},
+			state.StepTypeEventLog:         {100},
 			state.StepTypeApiCall:          {0},
 		}
 		governance, err := ioutil.ReadFile("icon_governance.zip")
