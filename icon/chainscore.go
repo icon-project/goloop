@@ -630,6 +630,7 @@ const (
 	defaultIISSBlockHeight = 0
 	defaultTermPeriod      = 43120
 	defaultUnbondingPeriod = defaultTermPeriod * 7
+	defaultUnstakeSlotMax  = 1000
 	defaultMainPRepCount   = 22
 	defaultSubPRepCount    = 78
 	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
@@ -650,6 +651,7 @@ type config struct {
 	Rrep            *common.HexInt `json:"rrep,omitempty"`
 	BondRequirement *common.HexInt `json:"bondRequirement,omitempty"`
 	UnbondingPeriod *common.HexInt `json:"unbondingPeriod,omitempty"`
+	UnstakeSlotMax  *common.HexInt `json:"unstakeSlotMax,omitempty"`
 	LockMin         *common.HexInt `json:"lockMin,omitempty"`
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
 	RewardFund      struct {
@@ -711,6 +713,7 @@ func newIconConfig() *config {
 		LockMin:         common.NewHexInt(defaultLockMin),
 		LockMax:         common.NewHexInt(defaultLockMax),
 		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
+		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
 	}
 }
 

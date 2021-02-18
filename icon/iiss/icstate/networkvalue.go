@@ -32,6 +32,7 @@ const (
 	VarTermPeriod      = "term_period"
 	VarBondRequirement = "bond_requirement"
 	VarUnbondingPeriod = "unbonding_period"
+	VarUnstakeSlotMax  = "unstake_slot_max"
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
 	VarRewardFund      = "reward_fund"
@@ -155,6 +156,17 @@ func (s *State) SetUnbondingPeriod(value int64) error {
 
 func (s *State) GetUnbondingPeriod() int64 {
 	return getValue(s.store, VarUnbondingPeriod).Int64()
+}
+
+func (s *State) SetUnstakeSlotMax(value int64) error {
+	if value <= 0 {
+		return errors.IllegalArgumentError.New("unstakeSlotMax must be positive number")
+	}
+	return setValue(s.store, VarUnstakeSlotMax, value)
+}
+
+func (s *State) GetUnstakeSlotMax() int64 {
+	return getValue(s.store, VarUnstakeSlotMax).Int64()
 }
 
 func (s *State) GetLockMin() *big.Int {
