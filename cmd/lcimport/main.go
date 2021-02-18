@@ -213,6 +213,25 @@ var logo = []string{
 	" |_____\\_____\\____/|_| \\_|____| IMPORTER",
 }
 
+const (
+	ClearLine = "\x1b[2K"
+)
+
+func Statusf(l log.Logger, format string, args ...interface{}) {
+	l.Infof(format, args...)
+	if l.GetConsoleLevel() < log.InfoLevel {
+		fmt.Print(ClearLine)
+		fmt.Printf(format, args...)
+		fmt.Print("\r")
+	}
+}
+
+func StatusDone(l log.Logger) {
+	if l.GetConsoleLevel() < log.InfoLevel {
+		fmt.Print("\n")
+	}
+}
+
 func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(0, 1),
@@ -221,6 +240,8 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 	flags := cmd.PersistentFlags()
 	from := flags.Int64("from", -1, "From height(-1 for last)")
 	logLevel := flags.String("log_level", "debug", "Default log level")
+	consoleLevel := flags.String("console_level", "info", "Console log level")
+	logFile := flags.String("log_file", "", "Output logfile")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		to := int64(-1)
@@ -236,11 +257,24 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 
 		logger := log.New()
 		log.SetGlobalLogger(logger)
-		logger.SetConsoleLevel(log.TraceLevel)
 		if lv, err := log.ParseLevel(*logLevel); err != nil {
 			return errors.Wrapf(err, "InvalidLogLevel(log_level=%s)", *logLevel)
 		} else {
 			logger.SetLevel(lv)
+		}
+		if lv, err := log.ParseLevel(*consoleLevel); err != nil {
+			return errors.Wrapf(err, "InvalidLogLevel(console_level=%s)", *consoleLevel)
+		} else {
+			logger.SetConsoleLevel(lv)
+		}
+		if len(*logFile) > 0 {
+			if fw, err := log.NewWriter(&log.WriterConfig{
+				Filename: *logFile,
+			}); err != nil {
+				return err
+			} else {
+				logger.SetFileWriter(fw)
+			}
 		}
 		for _, l := range logo {
 			logger.Infoln(l)

@@ -329,14 +329,15 @@ func (e *Executor) FinalizeTransition(tr *Transition) error {
 		}
 	}
 
+	height := tr.Block.Height()
 	bid := tr.Block.ID()
 	if err := e.blkByID.Set(bid, tr.Block.Bytes()); err != nil {
 		return err
 	}
-	if err := e.blkIndex.Set(BlockIndexKey(tr.Block.Height()), bid); err != nil {
+	if err := e.blkIndex.Set(BlockIndexKey(height), bid); err != nil {
 		return err
 	}
-	if err := e.setLastHeight(tr.Block.Height()); err != nil {
+	if err := e.setLastHeight(height); err != nil {
 		return errors.Wrap(err, "FailToSetLastHeight")
 	}
 	return nil
@@ -387,7 +388,8 @@ func (e *Executor) CheckResult(tr *Transition) error {
 }
 
 func (e *Executor) Execute(from, to int64) error {
-	e.log.Infof("Execute Blocks from=%d, to=%d", from, to)
+	defer StatusDone(e.log)
+	Statusf(e.log, "Execute Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
@@ -400,7 +402,8 @@ func (e *Executor) Execute(from, to int64) error {
 	}
 	callback := make(transitionCallback, 1)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		e.log.Infof("Execute Block[ %8d ]", height)
+		Statusf(e.log, "Executing Block[ %8d ] Tx[ %16d ]",
+			height, prevTR.Block.TxTotal())
 		tr, err := e.ProposeTransition(prevTR)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
