@@ -168,7 +168,7 @@ func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
 	if err != nil || global == nil {
 		return false
 	}
-	return c.back == nil  || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
+	return c.back == nil || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
 }
 
 func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
@@ -514,7 +514,7 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		data := newVotedData(obj.Clone())	// Clone Voted instance as we will modify it later
+		data := newVotedData(obj.Clone()) // Clone Voted instance as we will modify it later
 		data.voted.UpdateBondedDelegation(bondRequirement)
 		vInfo.addVotedData(addr, data)
 	}
@@ -551,143 +551,249 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 	return prepInfo, nil
 }
 
-// varForPRepDelegatingReward return variable for ICONist delegating reward
+// varForPRepDelegatingReward return variables for ICONist delegating reward
 // IISS 2.0
-// 	variable = rrep * IScoreICXRatio / YearBlock
+// 	multiplier = Rrep * IScoreICXRatio
+//	divider = YearBlock
 // IISS 3.1
-// 	variable = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod)
-func varForVotingReward(global *icstage.Global) *big.Int {
-	v := new(big.Int)
+// 	multiplier = Iglobal * Ivoter * IScoreICXRatio
+//	divider = 100 * term period * total voting amount
+func varForVotingReward(global *icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
+	multiplier = new(big.Int)
+	divider = new(big.Int)
+
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.GetV1()
-		v.Div(g.Rrep, big.NewInt(int64(YearBlock/IScoreICXRatio)))
+		if g.Rrep.Sign() == 0 {
+			return
+		}
+		multiplier.Mul(g.Rrep, BigIntIScoreICXRatio)
+		divider.SetInt64(int64(YearBlock))
 	} else {
 		g := global.GetV2()
 		if g.OffsetLimit == 0 {
-			return v
+			return
 		}
-		v.Mul(g.Iglobal, g.Ivoter)
-		v.Mul(v, BigIntIScoreICXRatio)
-		v.Div(v, big.NewInt(int64(100*g.OffsetLimit)))
+		multiplier.Mul(g.Iglobal, g.Ivoter)
+		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
+		divider.SetInt64(int64(100 * g.OffsetLimit))
+		divider.Mul(divider, totalVotingAmount)
 	}
-	return v
+	return
 }
 
 func (c *Calculator) calculateVotingReward() error {
-	var err error
-
-	if c.global.GetIISSVersion() == icstate.IISSVersion1 {
-		err = c.calculateVotingRewardV1()
-	} else {
-		err = c.calculateVotingRewardV2()
-	}
-
-	return err
-}
-
-func (c *Calculator) calculateVotingRewardV1() error {
+	totalVotingAmount := new(big.Int)
+	delegatingMap := make(map[string]map[int]icstage.VoteList)
+	bondingMap := make(map[string]map[int]icstage.VoteList)
 	prepInfo, err := c.loadPRepInfo()
 	if err != nil {
 		return err
 	}
-	variable := varForVotingReward(c.global)
-	processedOffset := 0
-	delegateMap := make(map[string]map[int]icstage.VoteList)
+	vInfo, err := c.loadVotedInfo()
+	if err != nil {
+		return err
+	}
+	totalVotingAmount.Set(vInfo.totalVoted)
 
 	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
+		var o trie.Object
+		var key []byte
+		o, key, err = iter.Get()
 		if err != nil {
 			return err
 		}
 
 		obj := o.(*icobject.Object)
-		type_ := obj.Tag().Type()
+		_type := obj.Tag().Type()
 
-		keySplit, err := containerdb.SplitKeys(key)
+		var keySplit [][]byte
+		keySplit, err = containerdb.SplitKeys(key)
 		if err != nil {
 			return err
 		}
 		offset := int(intconv.BytesToInt64(keySplit[1]))
-		switch type_ {
+		switch _type {
 		case icstage.TypeEventEnable:
 			// update prepInfo
-			ee := icstage.ToEventEnable(obj)
-			idx := string(ee.Target.Bytes())
+			event := icstage.ToEventEnable(obj)
+			idx := string(event.Target.Bytes())
 			if _, ok := prepInfo[idx]; !ok {
 				pe := new(pRepEnable)
 				prepInfo[idx] = pe
 			}
-			if ee.Enable {
+			if event.Enable {
 				prepInfo[idx].startOffset = offset
 			} else {
 				prepInfo[idx].endOffset = offset
 			}
-		case icstage.TypeEventDelegation:
-			// TODO If delegateMap is too big, use other storage
-			e := icstage.ToEventVote(obj)
-			idx := string(e.From.Bytes())
-			_, ok := delegateMap[idx]
+			// update vInfo
+			vInfo.setEnable(event.Target, event.Enable)
+		case icstage.TypeEventDelegation, icstage.TypeEventBond:
+			// update eventMap and vInfo
+			event := icstage.ToEventVote(obj)
+			idx := string(event.From.Bytes())
+			_, ok := delegatingMap[idx]
 			if !ok {
-				delegateMap[idx] = make(map[int]icstage.VoteList)
 			}
-			delegateMap[idx][offset] = e.Votes
+			if _type == icstage.TypeEventDelegation {
+				delegatingMap[idx] = make(map[int]icstage.VoteList)
+				delegatingMap[idx][offset] = event.Votes
+				vInfo.updateDelegated(event.Votes)
+			} else {
+				bondingMap[idx] = make(map[int]icstage.VoteList)
+				bondingMap[idx][offset] = event.Votes
+				vInfo.updateBonded(event.Votes)
+			}
+		}
+		// find MAX totalVotingAmount
+		if totalVotingAmount.Cmp(vInfo.totalVoted) == -1 {
+			totalVotingAmount.Set(vInfo.totalVoted)
 		}
 	}
-	if err := c.processDelegating(variable, processedOffset, c.global.GetOffsetLimit(), prepInfo, delegateMap); err != nil {
-		return err
+
+	// get variables for calculation
+	multiplier, divider := varForVotingReward(c.global, totalVotingAmount)
+	if multiplier.Sign() == 0 {
+		return nil
 	}
 
-	// from DELEGATE event
-	if err := c.processDelegateEvent(variable, c.global.GetOffsetLimit(), prepInfo, delegateMap); err != nil {
-		return err
+	inputs := []struct {
+		_type    int
+		eventMap map[string]map[int]icstage.VoteList
+	}{
+		{icreward.TypeDelegating, delegatingMap},
+		{icreward.TypeBonding, bondingMap},
+	}
+
+	// calculate voting reward
+	for _, i := range inputs {
+		if err = c.processVoting(
+			i._type,
+			multiplier,
+			divider,
+			c.global.GetOffsetLimit(),
+			prepInfo,
+			i.eventMap,
+		); err != nil {
+			return err
+		}
+		if err = c.processVotingEvent(
+			i._type,
+			multiplier,
+			divider,
+			c.global.GetOffsetLimit(),
+			prepInfo,
+			i.eventMap,
+		); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// processDelegating calculator voting reward for delegating data.
-// Do not calculate rewards for accounts that have modified their voting configuration with setDelegate and setBond.
-// processDelegateEvent will calculate rewards for that account.
-func (c *Calculator) processDelegating(
-	variable *big.Int,
-	from int,
+// processVoting calculator voting reward with delegating and bonding data.
+func (c *Calculator) processVoting(
+	_type int,
+	multiplier *big.Int,
+	divider *big.Int,
 	to int,
 	prepInfo map[string]*pRepEnable,
-	delegateMap map[string]map[int]icstage.VoteList,
+	eventMap map[string]map[int]icstage.VoteList,
 ) error {
-	if variable.Sign() == 0 {
+	if multiplier.Sign() == 0 {
 		return nil
 	}
 
-	prefix := icreward.DelegatingKey.Build()
+	var prefix []byte
+	if _type == icreward.TypeDelegating {
+		prefix = icreward.DelegatingKey.Build()
+	} else {
+		prefix = icreward.BondingKey.Build()
+	}
 	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
 		}
-		keySplit, err := containerdb.SplitKeys(key)
+		var keySplit [][]byte
+		keySplit, err = containerdb.SplitKeys(key)
 		if err != nil {
 			return err
 		}
-		addr, err := common.NewAddress(keySplit[1])
+		var addr *common.Address
+		addr, err = common.NewAddress(keySplit[1])
 		if err != nil {
 			return err
 		}
-		if _, ok := delegateMap[string(addr.Bytes())]; ok {
+		var reward *big.Int
+		if _, ok := eventMap[string(addr.Bytes())]; ok {
 			continue
+		} else {
+			voting := toVoting(_type, o)
+			if voting == nil {
+				log.Errorf("Failed to convert data to voting instance")
+				continue
+			}
+			reward = votingReward(multiplier, divider, 0, to, prepInfo, voting.Iterator())
 		}
-		delegating := icreward.ToDelegating(o)
-		reward := delegatingReward(variable, from, to, prepInfo, delegating.Delegations)
 		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-// processDelegateEvent calculate reward for account who got DELEGATE event
-func (c *Calculator) processDelegateEvent(
-	rrep *big.Int,
+// votingReward calculate voting reward with a single voting data
+// IISS 2.0
+//   reward = Rrep * delegations * period * IScoreICXRatio / YearBlock
+//   multiplier = Rrep * IScoreICXRatio
+//   divider = YearBlock
+// IISS 3.1
+//   reward = Iglobal * Ivoter * voting amount * period * IScoreICXRatio / (100 * Term period * total voting amount)
+//   multiplier = Iglobal * Ivoter * IScoreICXRatio
+//   divider = 100 * Term period * total voting amount
+// reward = multiplier * voting amount * period / divider
+func votingReward(
+	multiplier *big.Int,
+	divider *big.Int,
+	from int,
+	to int,
+	prepInfo map[string]*pRepEnable,
+	iter icstate.VotingIterator,
+) *big.Int {
+	total := new(big.Int)
+	for ; iter.Has(); iter.Next() {
+		if voting, err := iter.Get(); err != nil {
+			log.Errorf("Fail to iterating votings err=%+v", err)
+		} else {
+			s := from
+			e := to
+			if prep, ok := prepInfo[string(voting.To().Bytes())]; ok {
+				if prep.startOffset > s {
+					s = prep.startOffset
+				}
+				if prep.endOffset != 0 && prep.endOffset < e {
+					e = prep.endOffset
+				}
+				period := e - s
+				reward := new(big.Int).Mul(multiplier, voting.Amount())
+				reward.Mul(reward, big.NewInt(int64(period)))
+				reward.Div(reward, divider)
+				total.Add(total, reward)
+			}
+		}
+	}
+	return total
+}
+
+// processVotingEvent calculate reward for account who got DELEGATE event
+func (c *Calculator) processVotingEvent(
+	_type int,
+	multiplier *big.Int,
+	divider *big.Int,
 	to int,
 	prepInfo map[string]*pRepEnable,
 	eventMap map[string]map[int]icstage.VoteList,
@@ -702,33 +808,30 @@ func (c *Calculator) processDelegateEvent(
 		// sort with offset
 		sort.Ints(offsets)
 
-		delegating, err := c.temp.GetDelegating(addr)
+		votings, err := c.getVoting(_type, addr)
 		if err != nil {
 			return err
-		}
-		if delegating == nil {
-			delegating = icreward.NewDelegating()
 		}
 
 		var start, end int
 		for i := 0; i < len(events); i += 1 {
 			end = offsets[i]
-			ret := delegatingReward(rrep, start, end, prepInfo, delegating.Delegations)
+			ret := votingReward(multiplier, divider, start, end, prepInfo, votings.Iterator())
 			reward.Add(reward, ret)
 
 			// update delegating
 			votes := events[end]
-			if err = delegating.ApplyVotes(votes); err != nil {
+			if err = votings.ApplyVotes(votes); err != nil {
 				return err
 			}
 
 			start = end
 		}
 		// calculate reward for last event
-		ret := delegatingReward(rrep, start, to, prepInfo, delegating.Delegations)
+		ret := votingReward(multiplier, divider, start, to, prepInfo, votings.Iterator())
 		reward.Add(reward, ret)
 
-		if err = c.writeDelegating(addr, delegating); err != nil {
+		if err = c.writeVoting(addr, votings); err != nil {
 			return nil
 		}
 		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
@@ -738,200 +841,49 @@ func (c *Calculator) processDelegateEvent(
 	return nil
 }
 
-func delegatingReward(
-	variable *big.Int,
-	from int,
-	to int,
-	prepInfo map[string]*pRepEnable,
-	delegations icstate.Delegations,
-) *big.Int {
-	// voting = rrep * delegations * period * IScoreICXRatio / year_block
-	// variable = rrep * IScoreICXRatio / year_block
-	total := new(big.Int)
-	for _, d := range delegations {
-		s := from
-		e := to
-		if prep, ok := prepInfo[string(d.To().Bytes())]; ok {
-			if prep.startOffset > s {
-				s = prep.startOffset
-			}
-			if prep.endOffset != 0 && prep.endOffset < e {
-				e = prep.endOffset
-			}
-			period := e - s
-			reward := new(big.Int).Mul(variable, d.Value.Value())
-			reward.Mul(reward, big.NewInt(int64(period)))
-			total.Add(total, reward)
-		}
-	}
-	return total
-}
-
-func (c *Calculator) calculateVotingRewardV2() error {
-	lastOffset := 0
-	variable := varForVotingReward(c.global)
-	vInfo, err := c.loadVotedInfo()
-	if err != nil {
-		return err
-	}
-
-	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-
-		obj := o.(*icobject.Object)
-		type_ := obj.Tag().Type()
-
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		offset := int(intconv.BytesToInt64(keySplit[1]))
-		if offset >= c.global.GetOffsetLimit() {
-			return CriticalCalculatorError.Errorf("offset is bigger than offsetLimit %d >= %d",
-				offset, c.global.GetOffsetLimit())
-		}
-		if lastOffset != offset {
-			if err = c.processVoting(variable, lastOffset, offset, vInfo); err != nil {
-				return err
-			}
-			lastOffset = offset
-		}
-		switch type_ {
-		case icstage.TypeEventEnable:
-			event := icstage.ToEventEnable(o)
-			vInfo.setEnable(event.Target, event.Enable)
-		case icstage.TypeEventDelegation:
-			event := icstage.ToEventVote(o)
-			vInfo.updateDelegated(event.Votes)
-
-			var delegating *icreward.Delegating
-			delegating, err = c.temp.GetDelegating(event.From)
-			if err != nil {
-				return err
-			}
-			if delegating == nil {
-				delegating = icreward.NewDelegating()
-			}
-			if err = delegating.ApplyVotes(event.Votes); err != nil {
-				return err
-			}
-			if err = c.writeDelegating(event.From, delegating); err != nil {
-				return nil
-			}
-		case icstage.TypeEventBond:
-			event := icstage.ToEventVote(o)
-			vInfo.updateBonded(event.Votes)
-			var bonding *icreward.Bonding
-			bonding, err = c.temp.GetBonding(event.From)
-			if err != nil {
-				return err
-			}
-			if bonding == nil {
-				bonding = icreward.NewBonding()
-			}
-			if err = bonding.ApplyVotes(event.Votes); err != nil {
-				return err
-			}
-			if err = c.writeBonding(event.From, bonding); err != nil {
-				return nil
-			}
-		}
-	}
-
-	if lastOffset < c.global.GetOffsetLimit() {
-		if err = c.processVoting(variable, lastOffset, c.global.GetOffsetLimit(), vInfo); err != nil {
-			return err
-		}
+func toVoting(_type int, o trie.Object) icreward.Voting {
+	switch _type {
+	case icreward.TypeDelegating:
+		return icreward.ToDelegating(o)
+	case icreward.TypeBonding:
+		return icreward.ToBonding(o)
 	}
 	return nil
 }
 
-func (c *Calculator) processVoting(variable *big.Int, from int, to int, vInfo *votedInfo) error {
-	if variable.Sign() == 0 {
-		return nil
+func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
+	switch _type {
+	case icreward.TypeDelegating:
+		delegating, err := c.temp.GetDelegating(addr)
+		if err != nil {
+			return nil, err
+		}
+		if delegating == nil {
+			delegating = icreward.NewDelegating()
+		}
+		return delegating, nil
+	case icreward.TypeBonding:
+		bonding, err := c.temp.GetBonding(addr)
+		if err != nil {
+			return nil, err
+		}
+		if bonding == nil {
+			bonding = icreward.NewBonding()
+		}
+		return bonding, nil
 	}
 
-	prefix := icreward.DelegatingKey.Build()
-	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		addr, err := common.NewAddress(keySplit[1])
-		if err != nil {
-			return err
-		}
-		delegating := icreward.ToDelegating(o)
-		reward := votingReward(variable, from, to, vInfo, delegating.Delegations.Iterator())
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
-			return err
-		}
-	}
-
-	prefix = icreward.BondingKey.Build()
-	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		addr, err := common.NewAddress(keySplit[1])
-		if err != nil {
-			return err
-		}
-		bonding := icreward.ToBonding(o)
-		reward := votingReward(variable, from, to, vInfo, bonding.Bonds.Iterator())
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
-			return err
-		}
-	}
-	return nil
+	return nil, nil
 }
 
-func votingReward(
-	variable *big.Int,
-	from int,
-	to int,
-	vInfo *votedInfo,
-	iter icstate.VotingIterator,
-) *big.Int {
-	// reward = variable * voting * period / total_voting
-	//	variable = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod)
-	if variable.Sign() == 0 ||
-		from == to ||
-		vInfo == nil || vInfo.totalVoted.Sign() == 0 ||
-		iter == nil || !iter.Has() {
-		return new(big.Int)
+func (c *Calculator) writeVoting(addr *common.Address, data interface{}) error {
+	switch o := data.(type) {
+	case *icreward.Delegating:
+		return c.writeDelegating(addr, o)
+	case *icreward.Bonding:
+		return c.writeBonding(addr, o)
 	}
-	total := new(big.Int)
-	reward := new(big.Int)
-	period := big.NewInt(int64(to - from))
-	base := new(big.Int).Mul(variable, period)
-	for ; iter.Has(); iter.Next() {
-		if voting, err := iter.Get(); err != nil {
-			log.Errorf("Fail to iterating votings err=%+v", err)
-		} else {
-			if vData, ok := vInfo.preps[string(voting.To().Bytes())]; ok {
-				if vData.Enable() != true {
-					continue
-				}
-				reward.Mul(base, voting.Amount())
-				reward.Div(reward, vInfo.totalVoted)
-				total.Add(total, reward)
-			}
-		}
-	}
-	return total
+	return nil
 }
 
 func (c *Calculator) writeDelegating(addr *common.Address, delegating *icreward.Delegating) error {
@@ -979,7 +931,7 @@ const InitBlockHeight = -1
 func NewCalculator() *Calculator {
 	return &Calculator{
 		startHeight: InitBlockHeight,
-		stats: newStatistics(),
+		stats:       newStatistics(),
 	}
 }
 

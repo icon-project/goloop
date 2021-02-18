@@ -24,6 +24,11 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
+type Voting interface {
+	Iterator() icstate.VotingIterator
+	ApplyVotes(deltas icstage.VoteList) error
+}
+
 type Bonding struct {
 	icobject.NoDatabase
 	icstate.Bonds

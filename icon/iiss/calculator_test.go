@@ -580,81 +580,114 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 }
 
 func TestCalculator_varForVotingReward(t *testing.T) {
+	type args struct {
+		global            *icstage.Global
+		totalVotingAmount *big.Int
+	}
+	type want struct {
+		multiplier int64
+		divider    int64
+	}
 	tests := []struct {
 		name string
-		args *icstage.Global
-		want int64
+		args args
+		want want
 	}{
 		{
 			"Global Version1",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV1{
-					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
-					Irep:             big.NewInt(MonthBlock),
-					Rrep:             big.NewInt(20000000),
-					MainPRepCount:    22,
-					ElectedPRepCount: 100,
+			args{
+				&icstage.Global{
+					GlobalImpl: &icstage.GlobalV1{
+						IISSVersion:      icstate.IISSVersion1,
+						OffsetLimit:      100,
+						Irep:             big.NewInt(MonthBlock),
+						Rrep:             big.NewInt(20000000),
+						MainPRepCount:    22,
+						ElectedPRepCount: 100,
+					},
 				},
+				nil,
 			},
-			// 	variable = rrep * IScoreICXRatio / YearBlock
-			20000000 * IScoreICXRatio / YearBlock,
+			// 	multiplier = rrep * IScoreICXRatio / YearBlock
+			want{
+				20000000 * IScoreICXRatio,
+				YearBlock,
+			},
 		},
 		{
 			"Global Version1 - disabled",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV1{
-					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
-					Irep:             big.NewInt(MonthBlock),
-					Rrep:             big.NewInt(0),
-					MainPRepCount:    22,
-					ElectedPRepCount: 100,
+			args{
+				&icstage.Global{
+					GlobalImpl: &icstage.GlobalV1{
+						IISSVersion:      icstate.IISSVersion1,
+						OffsetLimit:      100,
+						Irep:             big.NewInt(MonthBlock),
+						Rrep:             big.NewInt(0),
+						MainPRepCount:    22,
+						ElectedPRepCount: 100,
+					},
 				},
+				nil,
 			},
-			0,
+			want{
+				0,
+				0,
+			},
 		},
 		{
 			"Global Version2",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV2{
-					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      1000,
-					Iglobal:          big.NewInt(10000),
-					Iprep:            big.NewInt(50),
-					Ivoter:           big.NewInt(50),
-					ElectedPRepCount: 100,
-					BondRequirement:  5,
+			args{
+				&icstage.Global{
+					GlobalImpl: &icstage.GlobalV2{
+						IISSVersion:      icstate.IISSVersion2,
+						OffsetLimit:      1000,
+						Iglobal:          big.NewInt(10000),
+						Iprep:            big.NewInt(50),
+						Ivoter:           big.NewInt(50),
+						ElectedPRepCount: 100,
+						BondRequirement:  5,
+					},
 				},
+				big.NewInt(10),
 			},
-			// 	variable = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod)
-			10000 * 50 * IScoreICXRatio / (100 * 1000),
+			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
+			want{
+				10000 * 50 * IScoreICXRatio,
+				100 * 1000 * 10,
+			},
 		},
 		{
 			"Global Version2 - disabled",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV2{
-					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      0,
-					Iglobal:          big.NewInt(0),
-					Iprep:            big.NewInt(0),
-					Ivoter:           big.NewInt(0),
-					ElectedPRepCount: 0,
-					BondRequirement:  0,
+			args{
+				&icstage.Global{
+					GlobalImpl: &icstage.GlobalV2{
+						IISSVersion:      icstate.IISSVersion2,
+						OffsetLimit:      0,
+						Iglobal:          big.NewInt(0),
+						Iprep:            big.NewInt(0),
+						Ivoter:           big.NewInt(0),
+						ElectedPRepCount: 0,
+						BondRequirement:  0,
+					},
 				},
+				big.NewInt(10),
 			},
-			0,
+			want{
+				0,
+				0,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ret := varForVotingReward(tt.args)
-			assert.Equal(t, tt.want, ret.Int64())
+			multiplier, divider := varForVotingReward(tt.args.global, tt.args.totalVotingAmount)
+			assert.Equal(t, tt.want.multiplier, multiplier.Int64())
+			assert.Equal(t, tt.want.divider, divider.Int64())
 		})
 	}
 }
 
-func TestCalculator_DelegatingReward(t *testing.T) {
+func TestCalculator_VotingReward(t *testing.T) {
 	addr1 := common.NewAddressFromString("hx1")
 	addr2 := common.NewAddressFromString("hx2")
 	addr3 := common.NewAddressFromString("hx3")
@@ -682,7 +715,8 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 		Value:   common.NewHexInt(100),
 	}
 	type args struct {
-		rrep       int
+		multiplier int
+		divider    int
 		from       int
 		to         int
 		delegating icstate.Delegations
@@ -696,36 +730,40 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 			name: "PRep-full",
 			args: args{
 				100,
+				10,
 				0,
 				1000,
 				icstate.Delegations{d1},
 			},
-			want: 100 * 100 * 1000,
+			want: 100 * 100 * 1000 / 10,
 		},
 		{
 			name: "PRep-enabled",
 			args: args{
 				100,
+				10,
 				0,
 				1000,
 				icstate.Delegations{d2},
 			},
-			want: 100 * 100 * (1000 - 10),
+			want: 100 * 100 * (1000 - 10) / 10,
 		},
 		{
 			name: "PRep-disabled",
 			args: args{
 				100,
+				10,
 				0,
 				1000,
 				icstate.Delegations{d3},
 			},
-			want: 100 * 100 * (200 - 100),
+			want: 100 * 100 * (200 - 100) / 10,
 		},
 		{
 			name: "PRep-None",
 			args: args{
 				100,
+				10,
 				0,
 				1000,
 				icstate.Delegations{d4},
@@ -736,622 +774,29 @@ func TestCalculator_DelegatingReward(t *testing.T) {
 			name: "PRep-combination",
 			args: args{
 				100,
+				10,
 				0,
 				1000,
 				icstate.Delegations{d1, d2, d3, d4},
 			},
-			want: (100 * 100 * 1000) +
-				(100 * 100 * (1000 - 10)) +
-				(100 * 100 * (200 - 100)),
+			want: (100 * 100 * 1000) / 10 +
+				(100 * 100 * (1000 - 10)) / 10 +
+				(100 * 100 * (200 - 100)) / 10,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			reward := delegatingReward(
-				big.NewInt(int64(args.rrep)),
+			reward := votingReward(
+				big.NewInt(int64(args.multiplier)),
+				big.NewInt(int64(args.divider)),
 				args.from,
 				args.to,
 				prepInfo,
-				args.delegating,
+				args.delegating.Iterator(),
 			)
 			assert.Equal(t, tt.want, reward.Int64())
-		})
-	}
-}
-
-func TestCalculator_processDelegating(t *testing.T) {
-	database := db.NewMapDB()
-	s := icstage.NewState(database)
-	c := MakeCalculator(database, s.GetSnapshot())
-
-	variable := 100
-	varBigInt := big.NewInt(int64(variable))
-	from := 0
-	to := 100
-	offset := 50
-
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-	addr4 := common.NewAddressFromString("hx4")
-	addr5 := common.NewAddressFromString("hx5")
-
-	d1Value := 100
-	d2Value := 200
-	d1 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(int64(d1Value)),
-	}
-	d2 := &icstate.Delegation{
-		Address: addr2,
-		Value:   common.NewHexInt(int64(d2Value)),
-	}
-	d3 := &icstate.Delegation{
-		Address: addr3,
-		Value:   common.NewHexInt(int64(d2Value)),
-	}
-	d5 := &icstate.Delegation{
-		Address: addr5,
-		Value:   common.NewHexInt(int64(d2Value)),
-	}
-	ds1 := icstate.Delegations{d1}
-	ds2 := icstate.Delegations{d2}
-	ds3 := icstate.Delegations{d3}
-	ds5 := icstate.Delegations{d5}
-
-	vote1 := &icstage.Vote{
-		Address: addr1,
-		Value:   big.NewInt(int64(d1Value)),
-	}
-	votes1 := icstage.VoteList{vote1}
-
-	// make pRepInfo.
-	prepInfo := make(map[string]*pRepEnable)
-	prepInfo[string(addr1.Bytes())] = &pRepEnable{0, 0}
-	prepInfo[string(addr3.Bytes())] = &pRepEnable{0, offset}
-	prepInfo[string(addr5.Bytes())] = &pRepEnable{offset, 0}
-
-	// write delegating data to base
-	dting1 := icreward.NewDelegating()
-	dting1.Delegations = ds1
-	dting2 := icreward.NewDelegating()
-	dting2.Delegations = ds2
-	dting3 := icreward.NewDelegating()
-	dting3.Delegations = ds3
-	dting5 := icreward.NewDelegating()
-	dting5.Delegations = ds5
-	c.temp.SetDelegating(addr2, dting1.Clone())
-	c.temp.SetDelegating(addr3, dting2.Clone())
-	c.temp.SetDelegating(addr4, dting3.Clone())
-	c.temp.SetDelegating(addr5, dting5.Clone())
-	c.base = c.temp.GetSnapshot()
-
-	// make delegationMap
-	delegationMap := make(map[string]map[int]icstage.VoteList)
-	delegationMap[string(addr1.Bytes())] = make(map[int]icstage.VoteList)
-	delegationMap[string(addr1.Bytes())][from+offset] = votes1
-
-	err := c.processDelegating(varBigInt, from, to, prepInfo, delegationMap)
-	assert.NoError(t, err)
-
-	type args struct {
-		addr *common.Address
-	}
-	tests := []struct {
-		name string
-		args args
-		want int64
-	}{
-		{
-			name: "Modify voting configuration",
-			args: args{addr1},
-			want: int64(0),
-		},
-		{
-			name: "Delegated to P-Rep",
-			args: args{addr2},
-			want: int64(variable * d1Value * (to - from)),
-		},
-		{
-			name: "Delegated to none P-Rep",
-			args: args{addr3},
-			want: 0,
-		},
-		{
-			name: "Delegated to P-Rep and got penalty",
-			args: args{addr4},
-			want: int64(variable * d2Value * (offset - from)),
-		},
-		{
-			name: "Delegated to none P-Rep and register P-Rep later",
-			args: args{addr5},
-			want: int64(variable * d2Value * (to - offset)),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			in := tt.args
-
-			iScore, err := c.temp.GetIScore(in.addr)
-			assert.NoError(t, err)
-			if tt.want == 0 {
-				if iScore != nil && iScore.Value.Int64() != 0 {
-					t.Errorf("FAIL: tt.name")
-				}
-			} else {
-				assert.Equal(t, tt.want, iScore.Value.Int64())
-			}
-		})
-	}
-}
-
-func TestCalculator_processDelegateEvent(t *testing.T) {
-	database := db.NewMapDB()
-	s := icstage.NewState(database)
-	c := MakeCalculator(database, s.GetSnapshot())
-
-	variable := 100
-	varBigInt := big.NewInt(int64(variable))
-	from := 0
-	to := 100
-	offset := 50
-
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-
-	d1Value := 100
-	d2Value := 200
-	d1 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(int64(d1Value)),
-	}
-	d2 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(int64(d2Value)),
-	}
-	ds1 := icstate.Delegations{d1}
-	ds2 := icstate.Delegations{d2}
-
-	// make pRepInfo. all enabled
-	prepInfo := make(map[string]*pRepEnable)
-	prepInfo[string(addr1.Bytes())] = &pRepEnable{0, 0}
-
-	vote1 := &icstage.Vote{
-		Address: addr1,
-		Value:   big.NewInt(int64(d1Value)),
-	}
-	vote1Negative := &icstage.Vote{
-		Address: addr1,
-		Value:   big.NewInt(int64(-d1Value)),
-	}
-	vote2 := &icstage.Vote{
-		Address: addr1,
-		Value:   big.NewInt(int64(d2Value)),
-	}
-	votes1 := icstage.VoteList{vote1}
-	votes2 := icstage.VoteList{vote2}
-	votes1Negative := icstage.VoteList{vote1Negative}
-
-	// write delegating data to base
-	dting1 := icreward.NewDelegating()
-	dting1.Delegations = ds1
-	dting2 := icreward.NewDelegating()
-	dting2.Delegations = ds2
-	c.temp.SetDelegating(addr2, dting2.Clone())
-	c.temp.SetDelegating(addr3, dting1.Clone())
-	c.base = c.temp.GetSnapshot()
-
-	// make delegationMap
-	delegationMap := make(map[string]map[int]icstage.VoteList)
-	delegationMap[string(addr1.Bytes())] = make(map[int]icstage.VoteList)
-	delegationMap[string(addr1.Bytes())][from+offset] = votes2
-	delegationMap[string(addr2.Bytes())] = make(map[int]icstage.VoteList)
-	delegationMap[string(addr2.Bytes())][from] = votes1
-	delegationMap[string(addr2.Bytes())][from+offset] = votes2
-	delegationMap[string(addr3.Bytes())] = make(map[int]icstage.VoteList)
-	delegationMap[string(addr3.Bytes())][from+offset] = votes1Negative
-
-	err := c.processDelegateEvent(varBigInt, to, prepInfo, delegationMap)
-	assert.NoError(t, err)
-
-	type args struct {
-		addr *common.Address
-	}
-	tests := []struct {
-		name       string
-		args       args
-		want       int64
-		delegating *icreward.Delegating
-	}{
-		{
-			name:       "Delegate New",
-			args:       args{addr1},
-			want:       int64(variable * d2Value * (to - offset)),
-			delegating: dting2,
-		},
-		{
-			name: "Delegated and modified",
-			args: args{addr2},
-			want: int64(variable*(d1Value+d2Value)*(offset-from)) +
-				int64(variable*(d2Value+d1Value+d2Value)*(to-offset)),
-			delegating: &icreward.Delegating{
-				Delegations: icstate.Delegations{
-					&icstate.Delegation{
-						Address: addr1,
-						Value:   common.NewHexInt(int64(d1Value + d2Value*2)),
-					},
-				},
-			},
-		},
-		{
-			name:       "Delegating removed",
-			args:       args{addr3},
-			want:       int64(variable * d1Value * (offset - from)),
-			delegating: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			in := tt.args
-
-			iScore, err := c.temp.GetIScore(in.addr)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, iScore.Value.Int64())
-
-			delegating, err := c.temp.GetDelegating(in.addr)
-			assert.NoError(t, err)
-			if tt.delegating != nil {
-				assert.NotNil(t, delegating)
-				assert.True(t, delegating.Equal(tt.delegating), "%v\n%v", tt.delegating, delegating)
-			} else {
-				assert.Nil(t, delegating)
-			}
-		})
-	}
-}
-
-func TestCalculator_VotingReward(t *testing.T) {
-	vInfo := newVotedInfo(100)
-	maxIndex := int64(vInfo.maxRankForReward)
-	var enable bool
-	for i := int64(1); i <= maxIndex; i += 1 {
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
-		delegated := i * 1000
-		bonded := i * 2000
-		if i%2 != 0 {
-			enable = false
-		} else {
-			enable = true
-		}
-		data := newVotedDataForTest(enable, delegated, bonded, 0, 0)
-		vInfo.addVotedData(addr, data)
-	}
-	vInfo.sort()
-	vInfo.updateTotalBondedDelegation()
-
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-	addr4 := common.NewAddressFromString("hx4")
-
-	d1 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(100),
-	}
-	d2 := &icstate.Delegation{
-		Address: addr2,
-		Value:   common.NewHexInt(100),
-	}
-	b3 := &icstate.Bond{
-		Address: addr3,
-		Value:   common.NewHexInt(100),
-	}
-	b4 := &icstate.Bond{
-		Address: addr4,
-		Value:   common.NewHexInt(100),
-	}
-	nonePRep := &icstate.Delegation{
-		Address: common.NewAddressFromString("hxffffffffff"),
-		Value:   common.NewHexInt(100),
-	}
-	type args struct {
-		variable int
-		from     int
-		to       int
-		vInfo    *votedInfo
-		iter     icstate.VotingIterator
-	}
-	tests := []struct {
-		name string
-		args args
-		want int64
-	}{
-		{
-			name: "variable is zero",
-			args: args{
-				0,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{d2, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "period is zero",
-			args: args{
-				10000,
-				1000,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{d2, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "vInfo is nil",
-			args: args{
-				10000,
-				0,
-				1000,
-				nil,
-				icstate.NewVotingIterator([]icstate.Voting{d2, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "empty vInfo",
-			args: args{
-				10000,
-				0,
-				1000,
-				newVotedInfo(100),
-				icstate.NewVotingIterator([]icstate.Voting{d2, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "iter is nil",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				nil,
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "empty iter",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "voting to disabled P-Rep",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{d1, b3}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "voting to none P-Rep",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{nonePRep}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 0,
-		},
-		{
-			name: "voting to enabled P-Rep",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{d2, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 10000*(1000-0)*100/vInfo.totalVoted.Int64() +
-				10000*(1000-0)*100/vInfo.totalVoted.Int64(),
-		},
-		{
-			name: "voting to P-Rep",
-			args: args{
-				10000,
-				0,
-				1000,
-				vInfo,
-				icstate.NewVotingIterator([]icstate.Voting{d1, d2, b3, b4}),
-			},
-			// reward = variable * period * voting / total_voting
-			want: 10000*(1000-0)*100/vInfo.totalVoted.Int64() +
-				0 +
-				10000*(1000-0)*100/vInfo.totalVoted.Int64() +
-				0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			in := tt.args
-			reward := votingReward(
-				big.NewInt(int64(in.variable)),
-				in.from,
-				in.to,
-				in.vInfo,
-				in.iter,
-			)
-			assert.Equal(t, tt.want, reward.Int64())
-		})
-	}
-}
-
-func TestCalculator_processVoting(t *testing.T) {
-	database := db.NewMapDB()
-	s := icstage.NewState(database)
-	c := MakeCalculator(database, s.GetSnapshot())
-
-	vInfo := newVotedInfo(100)
-	maxIndex := int64(vInfo.maxRankForReward)
-	for i := int64(1); i <= maxIndex; i += 1 {
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
-		delegated := i * 1000
-		bonded := i * 2000
-		data := newVotedDataForTest(true, delegated, bonded, 0, 0)
-		vInfo.addVotedData(addr, data)
-	}
-	vInfo.sort()
-	vInfo.updateTotalBondedDelegation()
-
-	variable := 10000
-	varBigInt := big.NewInt(int64(variable))
-	from := 0
-	to := 1000
-	value := 100
-
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-	addr4 := common.NewAddressFromString("hx4")
-	addr5 := common.NewAddressFromString("hx5")
-
-	d1 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(int64(value)),
-	}
-	d2 := &icstate.Delegation{
-		Address: addr2,
-		Value:   common.NewHexInt(int64(value)),
-	}
-	dNonePRep := &icstate.Delegation{
-		Address: common.NewAddressFromString("hx32123ffffff"),
-		Value:   common.NewHexInt(int64(value)),
-	}
-	b4 := &icstate.Bond{
-		Address: addr4,
-		Value:   common.NewHexInt(int64(value)),
-	}
-	b5 := &icstate.Bond{
-		Address: addr5,
-		Value:   common.NewHexInt(int64(value)),
-	}
-	bNonePRep := &icstate.Bond{
-		Address: common.NewAddressFromString("hx32123ffffff"),
-		Value:   common.NewHexInt(int64(value)),
-	}
-	ds1 := icstate.Delegations{d1, d2}
-	ds2 := icstate.Delegations{d2, dNonePRep}
-	ds3 := icstate.Delegations{dNonePRep}
-	bs1 := icstate.Bonds{b4, b5}
-	bs2 := icstate.Bonds{bNonePRep}
-
-	// write delegating and bonding data to base
-	dting1 := icreward.NewDelegating()
-	dting1.Delegations = ds1
-	dting2 := icreward.NewDelegating()
-	dting2.Delegations = ds2
-	dting3 := icreward.NewDelegating()
-	dting3.Delegations = ds3
-	bondig1 := icreward.NewBonding()
-	bondig1.Bonds = bs1
-	bondig2 := icreward.NewBonding()
-	bondig2.Bonds = bs2
-
-	c.temp.SetDelegating(addr1, dting1.Clone())
-
-	c.temp.SetBonding(addr2, bondig1.Clone())
-
-	c.temp.SetDelegating(addr3, dting2.Clone())
-	c.temp.SetBonding(addr3, bondig1.Clone())
-
-	c.temp.SetDelegating(addr4, dting3.Clone())
-
-	c.temp.SetBonding(addr5, bondig2.Clone())
-
-	c.base = c.temp.GetSnapshot()
-
-	err := c.processVoting(varBigInt, from, to, vInfo)
-	assert.NoError(t, err)
-
-	type args struct {
-		addr *common.Address
-	}
-	tests := []struct {
-		name string
-		args args
-		want int64
-	}{
-		{
-			name: "delegating only",
-			args: args{addr1},
-			// reward = variable * period * voting / total_voting
-			want: int64(variable*(to-from)*value)/vInfo.totalVoted.Int64() +
-				int64(variable*(to-from)*value)/vInfo.totalVoted.Int64(),
-		},
-		{
-			name: "bonding only",
-			args: args{addr2},
-			want: int64(variable*(to-from)*value)/vInfo.totalVoted.Int64() +
-				int64(variable*(to-from)*value)/vInfo.totalVoted.Int64(),
-		},
-		{
-			name: "delegating and bonding",
-			args: args{addr3},
-			want: int64(variable*(to-from)*value)/vInfo.totalVoted.Int64() +
-				int64(variable*(to-from)*value)/vInfo.totalVoted.Int64() +
-				int64(variable*(to-from)*value)/vInfo.totalVoted.Int64(),
-		},
-		{
-			name: "delegating to none P-Rep",
-			args: args{addr4},
-			want: int64(0),
-		},
-		{
-			name: "bonding to none P-Rep",
-			args: args{addr5},
-			want: int64(0),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			in := tt.args
-
-			iScore, err := c.temp.GetIScore(in.addr)
-			assert.NoError(t, err)
-			if tt.want == 0 {
-				if iScore != nil && iScore.Value.Int64() != 0 {
-					t.Errorf("FAIL: tt.name")
-				}
-			} else {
-				assert.Equal(t, tt.want, iScore.Value.Int64())
-			}
 		})
 	}
 }

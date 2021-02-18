@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -50,9 +51,16 @@ func (v *Vote) Equal(v2 *Vote) bool {
 	return v.Address.Equal(v2.Address) && v.Value.Cmp(v2.Value) == 0
 }
 
+func (v *Vote) Clone() *Vote {
+	n := NewVote()
+	n.Address.Set(v.Address)
+	n.Value.Set(v.Value)
+	return n
+}
+
 type VoteList []*Vote
 
-func (vl VoteList) Equal (vl2 VoteList) bool {
+func (vl VoteList) Equal(vl2 VoteList) bool {
 	if len(vl) != len(vl2) {
 		return false
 	}
@@ -63,6 +71,29 @@ func (vl VoteList) Equal (vl2 VoteList) bool {
 	}
 	return true
 }
+
+func (vl VoteList) Clone() VoteList {
+	if vl == nil {
+		return nil
+	}
+	votes := make([]*Vote, len(vl))
+	for i, vote := range vl {
+		votes[i] = vote.Clone()
+	}
+	return votes
+}
+
+func (vl *VoteList) Delete(i int) error {
+	if i < 0 || i >= len(*vl) {
+		return errors.Errorf("Invalid index")
+	}
+
+	copy((*vl)[i:], (*vl)[i+1:])
+	(*vl)[len(*vl)-1] = nil // or the zero value of T
+	*vl = (*vl)[:len(*vl)-1]
+	return nil
+}
+
 
 type EventVote struct {
 	icobject.NoDatabase
