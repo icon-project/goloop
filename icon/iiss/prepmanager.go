@@ -27,6 +27,9 @@ type RegInfo struct {
 }
 
 func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {
+	if node == nil {
+		node = owner
+	}
 	return &RegInfo{
 		city:        city,
 		country:     country,
