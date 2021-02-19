@@ -681,7 +681,7 @@ type FeeConfig struct {
 	StepCosts map[string]common.HexInt64 `json:"stepCosts,omitempty"`
 }
 
-type Chain struct {
+type ChainConfig struct {
 	Revision                 common.HexInt32   `json:"revision"`
 	AuditEnabled             common.HexInt16   `json:"auditEnabled"`
 	DeployerWhiteListEnabled common.HexInt16   `json:"deployerWhiteListEnabled"`
@@ -740,48 +740,18 @@ func (s *chainScore) Install(param []byte) error {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
 
-	chain := Chain{}
-	if param != nil {
-		if err := json.Unmarshal(param, &chain); err != nil {
-			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
-		}
-	}
+	as := s.cc.GetAccountState(state.SystemID)
 
 	iconConfig := s.loadIconConfig()
-
-	as := s.cc.GetAccountState(state.SystemID)
-	revision := DefaultRevision
-	if chain.Revision.Value != 0 {
-		revision = int(chain.Revision.Value)
-		if revision > MaxRevision {
-			return scoreresult.IllegalFormatError.Errorf(
-				"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
-		} else if revision > LatestRevision {
-			s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
-				revision, LatestRevision)
-		}
-	}
-	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
-		return err
-	}
-
-	// load validatorList
-	// set block interval 2 seconds
-	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
-		return err
-	}
-
-	// skip transaction
-	if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(3); err != nil {
-		return err
-	}
-
 	var feeConfig *FeeConfig
+	var systemConfig int
+	var revision int
+	var validators []module.Validator
+	var handlers []contract.ContractHandler
 
 	switch s.cc.ChainID() {
 	case CIDForMainNet:
 		// initialize for main network
-		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 		feeConfig = new(FeeConfig)
 		feeConfig.StepPrice.SetString("10000000000", 10)
 		feeConfig.StepLimit = map[string]common.HexInt64{
@@ -803,9 +773,13 @@ func (s *chainScore) Install(param []byte) error {
 			state.StepTypeEventLog:         {100},
 			state.StepTypeApiCall:          {0},
 		}
+		systemConfig = state.SysConfigAudit
+		revision = Revision1
+
+		// prepare Governance SCORE
 		governance, err := ioutil.ReadFile("icon_governance.zip")
-		if err != nil {
-			return err
+		if err != nil || len(governance) == 0 {
+			return transaction.InvalidGenesisError.Wrap(err, "FailOnGovernance")
 		}
 		params := json.RawMessage("{}")
 		handler := contract.NewDeployHandlerForPreInstall(
@@ -816,27 +790,53 @@ func (s *chainScore) Install(param []byte) error {
 			&params,
 			s.cc.Logger(),
 		)
-		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
-		if status != nil {
-			return transaction.InvalidGenesisError.Wrap(status,
-				"FAIL to install initial governance score.")
-		}
+		handlers = append(handlers, handler)
 	default:
-		validators := make([]module.Validator, len(chain.ValidatorList))
-		for i, validator := range chain.ValidatorList {
+		var chainConfig ChainConfig
+		if param != nil {
+			if err := json.Unmarshal(param, &chainConfig); err != nil {
+				return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
+			}
+		}
+
+		if chainConfig.Revision.Value != 0 {
+			revision = int(chainConfig.Revision.Value)
+			if revision > MaxRevision {
+				return scoreresult.IllegalFormatError.Errorf(
+					"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
+			} else if revision > LatestRevision {
+				s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
+					revision, LatestRevision)
+			}
+		}
+
+		validators = make([]module.Validator, len(chainConfig.ValidatorList))
+		for i, validator := range chainConfig.ValidatorList {
 			validators[i], _ = state.ValidatorFromAddress(validator)
 			s.log.Debugf("add validator %d: %v", i, validator)
 		}
-		if err := s.cc.GetValidatorState().Set(validators); err != nil {
-			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
-		}
-		feeConfig = &chain.Fee
-
-		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
+		feeConfig = &chainConfig.Fee
 	}
+
+	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
+		return err
+	}
+
+	// load validatorList
+	// set block interval 2 seconds
+	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
+		return err
+	}
+
+	// skip transaction
+	if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(3); err != nil {
+		return err
+	}
+
 	if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
 		return err
 	}
+
 	if feeConfig != nil {
 		if err = applyStepLimits(feeConfig, as); err != nil {
 			return err
@@ -849,6 +849,19 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
+	if len(validators) > 0 {
+		if err := s.cc.GetValidatorState().Set(validators); err != nil {
+			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
+		}
+	}
+
+	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(systemConfig); err != nil {
+		return err
+	}
+
+	s.handleRevisionChange(as, Revision1, revision)
+
+	s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
 		return err
@@ -884,7 +897,13 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	s.handleRevisionChange(as, Revision1, revision)
+	for _, handler := range handlers {
+		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
+		if status != nil {
+			return transaction.InvalidGenesisError.Wrap(status,
+				"FAIL to install initial governance score.")
+		}
+	}
 	return nil
 }
 
