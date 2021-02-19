@@ -369,7 +369,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	)
 
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnRegistered(Address)")},
+		[][]byte{[]byte("PRepUnregistered(Address)")},
 		[][]byte{owner.Bytes()},
 	)
 
