@@ -306,21 +306,21 @@ func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) (map[st
 	}
 
 	size := len(pm.orderedPReps)
-	if start == 0 {
-		start = 1
-	}
-	if end == 0 || end > size {
-		end = size
-	}
 	if start > end {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
 	}
 	if start > size {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) > # of preps(%d)", start, size)
 	}
+	if start == 0 {
+		start = 1
+	}
+	if end == 0 || end > size {
+		end = size
+	}
 
 	jso := make(map[string]interface{})
-	prepList := make([]map[string]interface{}, 0)
+	prepList := make([]interface{}, 0, end)
 	br := pm.getBondRequirement()
 
 	for i := start - 1; i < end; i++ {
