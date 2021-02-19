@@ -9,6 +9,8 @@ import (
 	"math/big"
 )
 
+var BigIntICX = big.NewInt(1_000_000_000_000_000_000)
+
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 	size := len(maps)
 	if size == 0 {
