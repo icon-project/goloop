@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package icutils
 
 import (
@@ -10,6 +26,30 @@ import (
 )
 
 var BigIntICX = big.NewInt(1_000_000_000_000_000_000)
+
+func ToLoop(icx int) *big.Int {
+	return ToDecimal(icx, 18)
+}
+
+// ToDecimal
+func ToDecimal(x, y int) *big.Int {
+	if y < 0 {
+		return nil
+	}
+	ret := big.NewInt(int64(x))
+	return ret.Mul(ret, Pow10(y))
+}
+
+func Pow10(n int) *big.Int {
+	if n < 0 {
+		return nil
+	}
+	if n == 0 {
+		return big.NewInt(1)
+	}
+	ret := big.NewInt(10)
+	return ret.Exp(ret, big.NewInt(int64(n)), nil)
+}
 
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 	size := len(maps)
