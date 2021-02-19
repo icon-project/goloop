@@ -154,19 +154,19 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 var registerFee = new(big.Int).Mul(big.NewInt(2000), icutils.BigIntICX)
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
-	city string, details string, p2pEndpoint string, node module.Address) error {
+	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
 	if name == "" || email == "" || website == "" || country == "" || city == "" || details == "" ||
 		p2pEndpoint == "" {
 		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
 	}
-	if node != nil && node.IsContract() {
+	if nodeAddress != nil && nodeAddress.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
 	}
 	if s.value.Cmp(registerFee) == -1 {
 		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
 	}
 
-	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
+	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.RegisterPRep(regInfo)
