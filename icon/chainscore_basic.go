@@ -237,40 +237,6 @@ func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 	return stepLimitDB.Set(contextType, cost)
 }
 
-func (s *chainScore) Ex_addDeployer(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			return nil
-		}
-	}
-	return db.Put(address)
-}
-
-func (s *chainScore) Ex_removeDeployer(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			rAddr := db.Pop().Address()
-			if i < db.Size() { // addr is not rAddr
-				if err := db.Set(i, rAddr); err != nil {
-					return err
-				}
-			}
-			break
-		}
-	}
-	return nil
-}
-
 // User calls icx_call : Functions which can be called by anyone.
 func (s *chainScore) Ex_getRevision() (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
@@ -379,47 +345,6 @@ func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		scoreStatus["disabled"] = "0x0"
 	}
 	return scoreStatus, nil
-}
-
-func (s *chainScore) Ex_isDeployer(address module.Address) (int, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return 0, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			return 1, nil
-		}
-	}
-	return 0, nil
-}
-
-func (s *chainScore) Ex_getDeployers() ([]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return nil, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	deployers := make([]interface{}, db.Size())
-	for i := 0; i < db.Size(); i++ {
-		deployers[i] = db.Get(i).Address()
-	}
-	return deployers, nil
-}
-
-func (s *chainScore) Ex_setDeployerWhiteListEnabled(yn bool) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	confValue := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
-	if yn {
-		confValue |= state.SysConfigDeployerWhiteList
-	} else {
-		confValue &^= state.SysConfigDeployerWhiteList
-	}
-	return scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue)
 }
 
 func (s *chainScore) Ex_getServiceConfig() (int64, error) {
