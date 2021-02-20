@@ -16,7 +16,7 @@ import warnings
 from abc import abstractmethod, ABC, ABCMeta
 from functools import partial, wraps
 from inspect import Parameter, isfunction, signature
-from typing import Callable, Any, List, Mapping
+from typing import Callable, Any, List, Mapping, Tuple
 
 from .icon_score_base2 import (
     Block, Icx, InterfaceScore,
@@ -45,12 +45,13 @@ from .typing.element import (
     is_any_score_flag_on,
     set_score_flag_on,
 )
-from ..base.address import Address
+from ..base.address import Address, ZERO_SCORE_ADDRESS
 from ..base.exception import *
 from ..base.message import Message
 from ..base.transaction import Transaction
 from ..database.db import IconScoreDatabase
-from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType
+from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType, Revision
+from ..logger import Logger
 from ..utils import get_main_type_from_annotations_type
 
 INDEXED_ARGS_LIMIT = 3
@@ -632,3 +633,29 @@ class IconScoreBase(IconScoreObject, ContextGetter,
             raise InvalidRequestException("Invalid proportion: should be between 0 and 100")
 
         self._context.fee_sharing_proportion = proportion
+
+    def deploy(self, tx_hash: bytes):
+        warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
+        if Revision.to_value(self._context.revision) <= Revision.THREE:
+            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
+                                             'acceptScore', tuple([tx_hash]))
+        else:
+            raise AccessDeniedException('No permission')
+
+    def get_tx_hashes_by_score_address(self,
+                                       score_address: 'Address') -> Tuple[Optional[bytes], Optional[bytes]]:
+        warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
+        if Revision.to_value(self._context.revision) <= Revision.THREE:
+            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
+                                             'addressToTxHashes', tuple([score_address]))
+        else:
+            raise AccessDeniedException('No permission')
+
+    def get_score_address_by_tx_hash(self,
+                                     tx_hash: bytes) -> Optional['Address']:
+        warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
+        if Revision.to_value(self._context.revision) <= Revision.THREE:
+            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
+                                             'txHashToAddress', tuple([tx_hash]))
+        else:
+            raise AccessDeniedException('No permission')

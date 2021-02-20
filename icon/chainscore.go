@@ -308,6 +308,26 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, 0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "txHashToAddress",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Address,
+		},
+	}, 0, Revision3},
+	{scoreapi.Method{
+		scoreapi.Function, "addressToTxHashes",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, Revision3},
+	{scoreapi.Method{
 		scoreapi.Function, "acceptScore",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{

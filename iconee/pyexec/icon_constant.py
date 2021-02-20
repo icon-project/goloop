@@ -23,9 +23,26 @@ DATA_BYTE_ORDER = 'big'  # big endian
 # Reserved EventLog
 ICX_TRANSFER_EVENT_LOG = 'ICXTransfer(Address,Address,int)'
 
+
 # Revisions
-REVISION_2 = 2
-REVISION_COMPACT_JSON = 256
+@unique
+class Revision(IntEnum):
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+    IISS = 5
+    DECENTRALIZATION = 6
+    FIX_TOTAL_ELECTED_PREP_DELEGATED = 7
+    VALUE_MASK = 0xFF
+
+    COMPACT_JSON = 0x100
+
+    @classmethod
+    def to_value(cls, revision: int) -> int:
+        return revision & cls.VALUE_MASK
+
+    def is_set(self, revision: int):
+        return (self.value & revision) != 0
 
 
 class IconServiceFlag(IntFlag):

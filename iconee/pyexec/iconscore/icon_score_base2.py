@@ -26,7 +26,7 @@ from .icon_score_step import StepType
 from .internal_call import InternalCall
 from ..base.address import Address, AddressPrefix
 from ..base.exception import InvalidParamsException, IconScoreException, InvalidInstanceException
-from ..icon_constant import REVISION_COMPACT_JSON, CHARSET_ENCODING
+from ..icon_constant import CHARSET_ENCODING, Revision
 
 
 class InterfaceScoreMeta(ABCMeta):
@@ -162,7 +162,7 @@ class ScoreApiStepRatio(IntEnum):
     RECOVER_KEY = 70000
 
 
-def _get_api_call_step_cost(context: 'IconScoreContext', ratio: ScoreApiStepRatio) -> int:
+def _get_api_call_step_cost(context: 'IconScoreContext', ratio: int) -> int:
     """Returns the step cost for a given SCORE API
 
     API CALL step cost in context.step_counter means the step cost of sha3_256(b'')
@@ -259,7 +259,7 @@ def json_dumps(obj: Any) -> str:
     context = ContextContainer._get_context()
     assert context
 
-    if context and (context.revision & REVISION_COMPACT_JSON) != 0:
+    if context and Revision.COMPACT_JSON.is_set(context.revision):
         ret: str = json.dumps(obj, separators=(',', ':'))
 
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_DUMPS)
@@ -285,7 +285,7 @@ def json_loads(src: str) -> Any:
     context = ContextContainer._get_context()
     assert context
 
-    if context and (context.revision & REVISION_COMPACT_JSON) != 0:
+    if context and Revision.COMPACT_JSON.is_set(context.revision):
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_LOADS)
         step: int = step_cost + step_cost * len(src.encode(CHARSET_ENCODING)) // 100
 

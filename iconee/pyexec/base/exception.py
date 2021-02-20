@@ -86,6 +86,11 @@ class InvalidParamsException(IconServiceBaseException):
         super().__init__(message, ExceptionCode.INVALID_PARAMETER)
 
 
+class AccessDeniedException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ACCESS_DENIED)
+
+
 class DatabaseException(IconServiceBaseException):
     def __init__(self, message: Optional[str]):
         super().__init__(message, ExceptionCode.ACCESS_DENIED)

@@ -117,6 +117,44 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	return nil
 }
 
+func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
+	if err := s.checkGovernance(false); err != nil {
+		return nil, err
+	}
+	if len(txHash) == 0 {
+		return nil, scoreresult.ErrInvalidParameter
+	}
+	sysAs := s.cc.GetAccountState(state.SystemID)
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	value := h2a.Get(txHash)
+	if value == nil {
+		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
+		return nil, err
+	}
+	return value.Address(), nil
+}
+
+func (s *chainScore) Ex_addressToTxHashes(address module.Address) ([]interface{}, error) {
+	if err := s.checkGovernance(false); err != nil {
+		return nil, err
+	}
+	if !address.IsContract() {
+		return nil, scoreresult.New(StatusIllegalArgument, "address must be contract")
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as == nil || !as.IsContract() {
+		return nil, scoreresult.New(StatusNotFound, "ContractNotFound")
+	}
+	result := make([]interface{}, 2)
+	if cur := as.Contract(); cur != nil {
+		result[0] = cur.DeployTxHash()
+	}
+	if next := as.NextContract(); next != nil {
+		result[1] = next.DeployTxHash()
+	}
+	return result, nil
+}
+
 func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err

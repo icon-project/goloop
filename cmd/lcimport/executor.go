@@ -379,12 +379,13 @@ func (e *Executor) CheckResult(tr *Transition) error {
 			}
 		}
 	}
-	rLogBloom := tr.Transition.LogsBloom()
-	eLogBloom := tr.Block.LogBloom()
-	if !rLogBloom.Equal(eLogBloom) {
-		return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
-			eLogBloom.LogBytes(), rLogBloom.LogBytes())
-	}
+	// Disable comparing block logsBloom
+	//rLogBloom := tr.Transition.LogsBloom()
+	//eLogBloom := tr.Block.LogBloom()
+	//if !rLogBloom.Equal(eLogBloom) {
+	//	return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
+	//		eLogBloom.LogBytes(), rLogBloom.LogBytes())
+	//}
 	return nil
 }
 
