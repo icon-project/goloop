@@ -81,11 +81,6 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	if r1 >= r2 {
 		return nil
 	}
-	if r2 >= Revision7 {
-		if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

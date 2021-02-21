@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	DefaultRevision = Revision4
+	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
 	LatestRevision  = Revision8
 )
