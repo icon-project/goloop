@@ -19,6 +19,7 @@ import (
 var version2FixedFee = big.NewInt(10 * state.PETA)
 var version2StepPrice = big.NewInt(10 * state.GIGA)
 var version2StepUsed = big.NewInt(1000000)
+var version2ZeroPrice = new(big.Int)
 
 type transactionV2 struct {
 	*transactionJSON
@@ -147,11 +148,7 @@ func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.
 	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(trans) < 0 {
-		stepPrice := version2StepPrice
-		if bal1.Cmp(version2FixedFee) < 0 {
-			stepPrice.SetInt64(0)
-		}
-		r.SetResult(module.StatusOutOfBalance, version2StepUsed, stepPrice, nil)
+		r.SetResult(module.StatusOutOfBalance, version2StepUsed, version2ZeroPrice, nil)
 		return r, nil
 	}
 
