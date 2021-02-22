@@ -29,6 +29,7 @@ var (
 	IssueKey          = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
 	RewardCalcInfoKey = containerdb.ToKey(containerdb.HashBuilder, "reward_calc_info").Build()
 	LastValidatorsKey = containerdb.ToKey(containerdb.HashBuilder, "last_validators")
+	UnstakeSlotMaxKey = containerdb.ToKey(containerdb.HashBuilder, "unstake_slot_max")
 )
 
 type State struct {
@@ -240,4 +241,15 @@ func (s *State) GetLastValidators() []module.Address {
 		al[i] = db.Get(i).Address()
 	}
 	return al
+}
+
+func (s *State) SetUnstakeSlotMax(v int64) error {
+	db := containerdb.NewVarDB(s.store, UnstakeSlotMaxKey)
+	err := db.Set(v)
+	return err
+}
+
+func (s *State) GetUnstakeSlotMax() int64 {
+	db := containerdb.NewVarDB(s.store, UnstakeSlotMaxKey)
+	return db.Int64()
 }

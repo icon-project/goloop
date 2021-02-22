@@ -15,7 +15,6 @@ package icon
 
 import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 
@@ -26,8 +25,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
-
-const VarUnstakeSlotMax = "unstake_slot_max"
 
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
@@ -78,8 +75,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	// update IISS account
 	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
-	sa := s.cc.GetAccountState(state.SystemID)
-	slotMax := int(scoredb.NewVarDB(sa, VarUnstakeSlotMax).Int64())
+	slotMax := int(es.State.GetUnstakeSlotMax())
 	tl, err := ia.UpdateUnstake(stakeInc, expireHeight, slotMax)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")

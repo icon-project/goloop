@@ -886,7 +886,7 @@ func (s *chainScore) Install(param []byte) error {
 	if err = applyRewardFund(iconConfig, es.State); err != nil {
 		return err
 	}
-	if err = scoredb.NewVarDB(as, VarUnstakeSlotMax).Set(iconConfig.UnstakeSlotMax.Int64()); err != nil {
+	if err = es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
 		return err
 	}
 
