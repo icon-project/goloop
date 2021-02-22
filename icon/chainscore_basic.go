@@ -112,6 +112,16 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	return nil
 }
 
+func (s *chainScore) getScoreAddress(txHash []byte) module.Address {
+	sysAs := s.cc.GetAccountState(state.SystemID)
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	value := h2a.Get(txHash)
+	if value != nil {
+		return value.Address()
+	}
+	return nil
+}
+
 func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
 	if err := s.checkGovernance(false); err != nil {
 		return nil, err
@@ -119,14 +129,12 @@ func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
 	if len(txHash) == 0 {
 		return nil, scoreresult.ErrInvalidParameter
 	}
-	sysAs := s.cc.GetAccountState(state.SystemID)
-	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	value := h2a.Get(txHash)
-	if value == nil {
+	scoreAddr := s.getScoreAddress(txHash)
+	if scoreAddr == nil {
 		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
 		return nil, err
 	}
-	return value.Address(), nil
+	return scoreAddr, nil
 }
 
 func (s *chainScore) Ex_addressToTxHashes(address module.Address) ([]interface{}, error) {
@@ -160,12 +168,45 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	if err := s.checkGovernance(false); err != nil {
 		return err
 	}
+	// get scoreAddr first since it cannot be accessible after acceptHandler
+	scoreAddr := s.getScoreAddress(txHash)
+
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
-
 	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), false, s.log)
 	ah := contract.NewAcceptHandler(ch, txHash, auditTxHash)
 	status, _, _ := ah.ExecuteSync(s.cc)
+
+	// update governance variables
+	if status == nil && scoreAddr != nil && s.cc.Governance().Equal(scoreAddr) {
+		sysAs := s.cc.GetAccountState(state.SystemID)
+		govAs := s.cc.GetAccountState(scoreAddr.ID())
+		// stepPrice
+		price := scoredb.NewVarDB(govAs, state.VarStepPrice).Int64()
+		_ = scoredb.NewVarDB(sysAs, state.VarStepPrice).Set(price)
+		// stepCosts
+		stepTypes := scoredb.NewArrayDB(sysAs, state.VarStepTypes)
+		stepCostDB := scoredb.NewDictDB(sysAs, state.VarStepCosts, 1)
+		stepCostGov := scoredb.NewDictDB(govAs, state.VarStepCosts, 1)
+		tcount := stepTypes.Size()
+		for i := 0; i < tcount; i++ {
+			tname := stepTypes.Get(i).String()
+			if cost := stepCostGov.Get(tname); cost != nil {
+				_ = stepCostDB.Set(tname, cost.Int64())
+			}
+		}
+		// maxStepLimits
+		stepLimitTypes := scoredb.NewArrayDB(sysAs, state.VarStepLimitTypes)
+		stepLimitDB := scoredb.NewDictDB(sysAs, state.VarStepLimit, 1)
+		stepLimitGov := scoredb.NewDictDB(govAs, "max_step_limits", 1)
+		tcount = stepLimitTypes.Size()
+		for i := 0; i < tcount; i++ {
+			tname := stepLimitTypes.Get(i).String()
+			if value := stepLimitGov.Get(tname); value != nil {
+				_ = stepLimitDB.Set(tname, value.Int64())
+			}
+		}
+	}
 	return status
 }
 
@@ -182,11 +223,11 @@ func (s *chainScore) Ex_rejectScore(txHash []byte, reason string) error {
 
 	sysAs := s.cc.GetAccountState(state.SystemID)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	scoreAddr := h2a.Get(txHash).Address()
-	if scoreAddr == nil {
+	value := h2a.Get(txHash)
+	if value == nil {
 		return scoreresult.Errorf(StatusNotFound, "NoPendingTx")
 	}
-	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
+	scoreAs := s.cc.GetAccountState(value.Address().ID())
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
