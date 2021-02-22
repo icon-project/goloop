@@ -43,7 +43,7 @@ const (
 )
 
 var revisionFlags = []module.Revision{
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo,
+	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure,
 	0,
 	0,
 	module.InputCostingWithJSON,
