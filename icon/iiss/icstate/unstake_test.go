@@ -68,7 +68,7 @@ func TestUnstakes(t *testing.T) {
 
 	t.Run("increase Unstakes", func(t *testing.T) {
 		unstakes := Unstakes{}
-		unstakeSlotMax := int64(2)
+		unstakeSlotMax := 2
 
 		// add unstake u1
 		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
@@ -98,7 +98,7 @@ func TestUnstakes(t *testing.T) {
 
 	t.Run("decrease Unstakes", func(t *testing.T) {
 		unstakes := Unstakes{}
-		unstakeSlotMax := int64(3)
+		unstakeSlotMax := 3
 		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
 		err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax)
@@ -138,7 +138,7 @@ func TestUnstakes(t *testing.T) {
 }
 
 func TestIncreaseUnstake(t *testing.T) {
-	unstakeSlotMax := int64(3)
+	unstakeSlotMax := 3
 	a0 := int64(5)
 	a1 := int64(10)
 	a2 := int64(20)

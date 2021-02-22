@@ -69,8 +69,6 @@ func Test_networkValue(t *testing.T) {
 	// test for SetUnbondingPeriod
 	t.Run("SetUnbondingPeriod", func(t *testing.T) { setUnbondingPeriod(t, s) })
 
-	// test for SetUnstakeSlotMax
-	t.Run("SetUnstakeSlotMax", func(t *testing.T) { setUnstakeSlotMax(t, s) })
 }
 
 func setTermPeriodTest(t *testing.T, s *State) {
@@ -219,22 +217,4 @@ func setUnbondingPeriod(t *testing.T, s *State) {
 	assert.NoError(t, err)
 	actual = s.GetUnbondingPeriod()
 	assert.Equal(t, p, actual)
-}
-
-func setUnstakeSlotMax(t *testing.T, s *State) {
-	m := int64(0)
-	actual := s.GetUnstakeSlotMax()
-	assert.Equal(t, m, actual)
-
-	m = int64(-1)
-	err := s.SetUnstakeSlotMax(m)
-	assert.Error(t, err)
-	actual = s.GetUnstakeSlotMax()
-	assert.Equal(t, int64(0), actual)
-
-	m = 10
-	err = s.SetUnstakeSlotMax(m)
-	assert.NoError(t, err)
-	actual = s.GetUnstakeSlotMax()
-	assert.Equal(t, m, actual)
 }

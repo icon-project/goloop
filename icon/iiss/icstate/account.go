@@ -167,7 +167,7 @@ func (a *Account) SetStake(v *big.Int) error {
 }
 
 // UpdateUnstake update unstakes
-func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64, slotMax int64) ([]TimerJobInfo, error) {
+func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64, slotMax int) ([]TimerJobInfo, error) {
 	a.checkWritable()
 	tl := make([]TimerJobInfo, 0)
 	var err error

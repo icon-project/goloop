@@ -115,7 +115,7 @@ func TestAccount_SetStake(t *testing.T) {
 }
 
 func TestAccount_UpdateUnstake(t *testing.T) {
-	unstakeSlotMax := int64(3)
+	unstakeSlotMax := 3
 	address := common.NewAddressFromString("hx1")
 	account := newAccount(address)
 
