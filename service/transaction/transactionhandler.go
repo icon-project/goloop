@@ -177,8 +177,14 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 				stepUsed = stepAll
 			}
 			status = scoreresult.ErrOutOfBalance
-			logger.TSystemf("TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
-			stepPrice = new(big.Int)
+			if cc.Revision().ResetStepOnFailure() {
+				logger.TSystemf("STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
+				stepUsed = new(big.Int)
+				stepAll = new(big.Int)
+			} else {
+				logger.TSystemf("TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
+				stepPrice = new(big.Int)
+			}
 			fee.SetInt64(0)
 		}
 	}
