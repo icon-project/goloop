@@ -155,7 +155,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{
 		scoreapi.Function, "registerPRep",
-		scoreapi.FlagExternal | scoreapi.FlagPayable, 8,
+		scoreapi.FlagExternal | scoreapi.FlagPayable, 7,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
 			{"email", scoreapi.String, nil, nil},
@@ -186,7 +186,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{
 		scoreapi.Function, "setPRep",
-		scoreapi.FlagExternal, 8,
+		scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
 			{"email", scoreapi.String, nil, nil},
@@ -209,7 +209,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPReps",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 2,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
 			{"startRanking", scoreapi.Integer, nil, nil},
 			{"endRanking", scoreapi.Integer, nil, nil},
