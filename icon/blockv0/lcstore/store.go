@@ -33,6 +33,7 @@ type Database interface {
 	GetLastBlockJSON() ([]byte, error)
 	GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error)
 	GetRepsJSONByHash(id []byte) ([]byte, error)
+	Close() error
 }
 
 type Store struct {

@@ -114,6 +114,10 @@ func (s *NodeDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
 	return result.Result, nil
 }
 
+func (s *NodeDB) Close() error {
+	return nil
+}
+
 func OpenNodeDB(endpoint string) (Database, error) {
 	hc := new(http.Client)
 	jc := client.NewJsonRpcClient(hc, endpoint)
