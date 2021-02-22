@@ -148,11 +148,7 @@ func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.
 	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(trans) < 0 {
-		stepPrice := version2StepPrice
-		if bal1.Cmp(version2FixedFee) < 0 {
-			stepPrice = version2ZeroPrice
-		}
-		r.SetResult(module.StatusOutOfBalance, version2StepUsed, stepPrice, nil)
+		r.SetResult(module.StatusOutOfBalance, version2StepUsed, version2ZeroPrice, nil)
 		return r, nil
 	}
 
