@@ -203,6 +203,15 @@ func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
 	}, nil
 }
 
+func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
+	if !bytes.Equal(b.nextValidatorsHash, vl.Hash()) {
+		return nil
+	}
+	blk := *b
+	blk._nextValidators = vl
+	return &blk
+}
+
 type blockBuilder struct {
 	vld   module.CommitVoteSetDecoder
 	block *blockV2

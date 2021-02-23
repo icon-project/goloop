@@ -73,6 +73,10 @@ func (_r *BlockBase) ToJSON(version module.JSONVersion) (interface{}, error) {
 	panic("not implemented")
 }
 
+func (_r *BlockBase) NewBlock(vl module.ValidatorList) module.Block {
+	panic("not implemented")
+}
+
 func (_r *BlockBase) NextValidators() module.ValidatorList {
 	panic("not implemented")
 }
