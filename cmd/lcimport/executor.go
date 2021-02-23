@@ -368,11 +368,14 @@ func (e *Executor) CheckResult(tr *Transition) error {
 				return errors.Wrapf(err, "ResultReceiptGetFailure(idx=%d)", idx)
 			}
 			if err := rct1.Check(rct2); err != nil {
-				rct1jso, _ := rct1.ToJSON(module.JSONVersionLast)
-				rct2jso, _ := rct2.ToJSON(module.JSONVersionLast)
-				rct1js, _ := json.MarshalIndent(rct1jso, "", "  ")
-				rct2js, _ := json.MarshalIndent(rct2jso, "", "  ")
+				rct1js, _ := JSONMarshalIndent(rct1)
+				rct2js, _ := JSONMarshalIndent(rct2)
+				var txjs []byte
+				if tx, err := tr.Transition.NormalTransactions().Get(idx); err == nil {
+					txjs, _ = JSONMarshalIndent(tx)
+				}
 				StatusDone(e.log)
+				e.log.Warnf("Failed Transaction[%d]:%s", idx, txjs)
 				e.log.Warnf("Expected Receipt[%d]:%s", idx, rct1js)
 				e.log.Warnf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)

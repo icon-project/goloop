@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	envPrefix = "LOOPCHAIN"
+	envPrefix = "LCIMPORT"
 )
 
 var lcDB *lcstore.Store
@@ -242,10 +242,11 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 		Use:  name + " [<to>]",
 	}
 	flags := cmd.PersistentFlags()
-	from := flags.Int64("from", -1, "From height(-1 for last)")
-	logLevel := flags.String("log_level", "debug", "Default log level")
-	consoleLevel := flags.String("console_level", "info", "Console log level")
-	logFile := flags.String("log_file", "", "Output logfile")
+	flags.Int64("from", -1, "From height(-1 for last)")
+	flags.String("log_level", "debug", "Default log level")
+	flags.String("console_level", "info", "Console log level")
+	flags.String("log_file", "", "Output logfile")
+	vc.BindPFlags(flags)
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		to := int64(-1)
@@ -261,19 +262,22 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 
 		logger := log.New()
 		log.SetGlobalLogger(logger)
-		if lv, err := log.ParseLevel(*logLevel); err != nil {
-			return errors.Wrapf(err, "InvalidLogLevel(log_level=%s)", *logLevel)
+		logLevel := vc.GetString("log_level")
+		if lv, err := log.ParseLevel(logLevel); err != nil {
+			return errors.Wrapf(err, "InvalidLogLevel(log_level=%s)", logLevel)
 		} else {
 			logger.SetLevel(lv)
 		}
-		if lv, err := log.ParseLevel(*consoleLevel); err != nil {
-			return errors.Wrapf(err, "InvalidLogLevel(console_level=%s)", *consoleLevel)
+		consoleLevel := vc.GetString("console_level")
+		if lv, err := log.ParseLevel(consoleLevel); err != nil {
+			return errors.Wrapf(err, "InvalidLogLevel(console_level=%s)", consoleLevel)
 		} else {
 			logger.SetConsoleLevel(lv)
 		}
-		if len(*logFile) > 0 {
+		logFile := vc.GetString("log_file")
+		if len(logFile) > 0 {
 			if fw, err := log.NewWriter(&log.WriterConfig{
-				Filename: *logFile,
+				Filename: logFile,
 			}); err != nil {
 				return err
 			} else {
@@ -284,7 +288,8 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 			logger.Infoln(l)
 		}
 
-		return executeTransactions(logger, lcDB, data, *from, to)
+		from := vc.GetInt64("from")
+		return executeTransactions(logger, lcDB, data, from, to)
 	}
 	return cmd
 }

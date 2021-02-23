@@ -48,3 +48,14 @@ func JSONMarshalAndCompact(jso interface{}) ([]byte, error) {
 	}
 	return bf.Bytes(), nil
 }
+
+func JSONMarshalIndent(obj interface{}) ([]byte, error) {
+	if jsoner, ok := obj.(ToJSONer); ok {
+		if jso, err := jsoner.ToJSON(module.JSONVersionLast); err == nil {
+			obj = jso
+		} else {
+			log.Warnf("Failure in ToJSON err=%+v", err)
+		}
+	}
+	return json.MarshalIndent(obj, "", "  ")
+}
