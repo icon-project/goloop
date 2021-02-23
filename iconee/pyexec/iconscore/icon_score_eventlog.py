@@ -15,9 +15,10 @@
 from typing import TYPE_CHECKING, List, Optional, Any
 
 from .icon_score_step import StepType
-from ..base.address import Address
+from .internal_call import ChainScore
+from ..base.address import Address, GOVERNANCE_SCORE_ADDRESS
 from ..base.exception import InvalidEventLogException
-from ..icon_constant import DATA_BYTE_ORDER, ICX_TRANSFER_EVENT_LOG
+from ..icon_constant import DATA_BYTE_ORDER, GOV_REJECTED_EVENT_LOG
 from ..utils import int_to_bytes, byte_length_of_int
 
 if TYPE_CHECKING:
@@ -111,9 +112,13 @@ class EventLogEmitter(object):
             else:
                 data.append(argument)
 
-        # skip counting steps for auto emitted event 'ICXTransfer(Address,Address,int)'
-        if event_signature != ICX_TRANSFER_EVENT_LOG:
-            context.step_counter.apply_step(StepType.EVENT_LOG, event_size)
+        # apply steps here
+        context.step_counter.apply_step(StepType.EVENT_LOG, event_size)
+
+        # special handling of 'Rejected(str,str)' of governance
+        if score_address == GOVERNANCE_SCORE_ADDRESS and \
+                event_signature == GOV_REJECTED_EVENT_LOG:
+            ChainScore.rejectScore(context, score_address, bytes.fromhex(arguments[0][2:]))
 
         event = EventLog(score_address, indexed, data)
         cls._proxy.send_event(

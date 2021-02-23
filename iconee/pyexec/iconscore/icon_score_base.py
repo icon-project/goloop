@@ -35,7 +35,7 @@ from .icon_score_constant import (
 )
 from .icon_score_context import ContextGetter, ContextContainer
 from .icon_score_eventlog import EventLogEmitter
-from .internal_call import InternalCall
+from .internal_call import InternalCall, ChainScore
 from .typing.definition import get_score_api
 from .typing.element import (
     FunctionMetadata,
@@ -45,13 +45,12 @@ from .typing.element import (
     is_any_score_flag_on,
     set_score_flag_on,
 )
-from ..base.address import Address, ZERO_SCORE_ADDRESS
+from ..base.address import Address
 from ..base.exception import *
 from ..base.message import Message
 from ..base.transaction import Transaction
 from ..database.db import IconScoreDatabase
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType, Revision
-from ..logger import Logger
 from ..utils import get_main_type_from_annotations_type
 
 INDEXED_ARGS_LIMIT = 3
@@ -350,7 +349,7 @@ class IconScoreBaseMeta(ABCMeta):
     def __new__(mcs, name, bases, namespace, **kwargs):
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
 
-        if IconScoreObject in bases:
+        if IconScoreObject in bases or name == "IconSystemScoreBase":
             return cls
 
         if not isinstance(namespace, dict):
@@ -637,8 +636,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
     def deploy(self, tx_hash: bytes):
         warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
         if Revision.to_value(self._context.revision) <= Revision.THREE:
-            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
-                                             'acceptScore', tuple([tx_hash]))
+            return ChainScore.acceptScore(self._context, self.address, tx_hash)
         else:
             raise AccessDeniedException('No permission')
 
@@ -646,8 +644,7 @@ class IconScoreBase(IconScoreObject, ContextGetter,
                                        score_address: 'Address') -> Tuple[Optional[bytes], Optional[bytes]]:
         warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
         if Revision.to_value(self._context.revision) <= Revision.THREE:
-            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
-                                             'addressToTxHashes', tuple([score_address]))
+            return ChainScore.addressToTxHashes(self._context, self.address, score_address)
         else:
             raise AccessDeniedException('No permission')
 
@@ -655,7 +652,6 @@ class IconScoreBase(IconScoreObject, ContextGetter,
                                      tx_hash: bytes) -> Optional['Address']:
         warnings.warn("Forbidden function", DeprecationWarning, stacklevel=2)
         if Revision.to_value(self._context.revision) <= Revision.THREE:
-            return InternalCall.message_call(self._context, self.address, ZERO_SCORE_ADDRESS, 0,
-                                             'txHashToAddress', tuple([tx_hash]))
+            return ChainScore.txHashToAddress(self._context, self.address, tx_hash)
         else:
             raise AccessDeniedException('No permission')

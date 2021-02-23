@@ -337,10 +337,9 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 2,
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"txHash", scoreapi.Bytes, nil, nil},
-			{"reason", scoreapi.String, nil, nil},
 		},
 		nil,
 	}, 0, 0},
