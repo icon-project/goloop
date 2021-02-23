@@ -291,20 +291,25 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 					unbond := Unbond{nb.Address, diff, unbondingHeight}
 					ubToAdd = append(ubToAdd, &unbond)
 					uDiff.Add(uDiff, diff)
+				} else if diff.Sign() == 0 {
+					continue
 				}
 				for _, ub := range a.unbonds {
 					if nb.To().Equal(ub.Address) {
+						if len(ubToAdd) > 0 && nb.Address.Equal(ubToAdd[len(ubToAdd)-1].Address) {
+							ubToAdd = ubToAdd[:len(ubToAdd)-1]
+						}
 						value := new(big.Int).Add(ub.Value, diff)
 						if value.Sign() == -1 {
 							uDiff.Add(uDiff, value.Abs(value))
 							value = new(big.Int)
 						}
-						unbond := Unbond{nb.Address, value, unbondingHeight}
-						ubToMod = append(ubToMod, &unbond)
+						// append 0 value unbond to remove previous unbond
+						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+						ubToMod = append(ubToMod, unbond)
+						unbond = &Unbond{nb.Address, value, unbondingHeight}
+						ubToMod = append(ubToMod, unbond)
 						uDiff.Add(uDiff, diff)
-						if len(ubToAdd) > 0 && nb.Address.Equal(ubToAdd[len(ubToAdd)-1].Address) {
-							ubToAdd = ubToAdd[:len(ubToAdd)-1]
-						}
 					}
 				}
 			}
@@ -315,6 +320,19 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				ubToMod = append(ubToMod, &unbond)
 				uDiff.Sub(uDiff, ub.Value)
 			}
+		}
+	}
+
+	for _, ob := range a.bonds {
+		exist := false
+		for _, nb := range bonds {
+			if nb.To().Equal(ob.To()) {
+				exist = true
+			}
+		}
+		if !exist {
+			ubToAdd = append(ubToAdd, &Unbond{ob.Address, ob.Amount(), unbondingHeight})
+			uDiff.Add(uDiff, ob.Amount())
 		}
 	}
 	return ubToAdd, ubToMod, uDiff
