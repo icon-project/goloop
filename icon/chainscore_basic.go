@@ -206,6 +206,9 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 				_ = stepLimitDB.Set(tname, value.Int64())
 			}
 		}
+		// revision
+		revision := scoredb.NewVarDB(govAs, "revision_code").Int64()
+		_ = scoredb.NewVarDB(sysAs, state.VarRevision).Set(revision)
 	}
 	return status
 }
