@@ -34,6 +34,8 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+const unbondingMax = 1000
+
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
@@ -245,7 +247,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	if s.State.GetIISSVersion() == icstate.IISSVersion2 {
 		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
 		rewardCPS.Div(rewardCPS, big.NewInt(100))
-		rewardRelay:= new(big.Int).Mul(term.Iglobal(), term.Irelay())
+		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())
 		rewardRelay.Div(rewardCPS, big.NewInt(100))
 		additionalReward.Add(rewardCPS, rewardRelay)
 	}
@@ -423,6 +425,10 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
+	unbondingCount := len(account.Unbonds())
+	if unbondingCount > unbondingMax {
+		return errors.Errorf("To many unbonds %d", unbondingCount)
+	}
 	for _, t := range tl {
 		ts := s.State.GetUnbondingTimer(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
