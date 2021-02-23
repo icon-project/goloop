@@ -93,12 +93,19 @@ func EqualAddress(a1 module.Address, a2 module.Address) bool {
 }
 
 func GetTotalSupply(ws state.WorldState) *big.Int {
-	wss := ws.GetSnapshot()
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
+	as := ws.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-	ts := tsVar.BigInt()
-	return ts
+	return tsVar.BigInt()
+}
+
+func IncrementTotalSupply(ws state.WorldState, amount *big.Int) error {
+	as := ws.GetAccountState(state.SystemID)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+	ts := new(big.Int).Add(tsVar.BigInt(), amount)
+	if ts.Sign() < 0 {
+		return errors.Errorf("TotalSupply < 0")
+	}
+	return tsVar.Set(ts)
 }
 
 func Min(value1, value2 int) int {
