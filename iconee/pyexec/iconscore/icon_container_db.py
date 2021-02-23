@@ -40,7 +40,7 @@ class ContainerUtil(object):
         elif isinstance(key, str):
             bytes_key = key.encode('utf-8')
         elif isinstance(key, Address):
-            bytes_key = key.to_bytes()
+            bytes_key = key.to_canonical_byte()
         elif isinstance(key, bytes):
             bytes_key = key
         else:
