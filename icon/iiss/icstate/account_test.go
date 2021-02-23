@@ -354,6 +354,7 @@ func TestAccount_RemoveUnstaking(t *testing.T) {
 }
 
 func TestAccount_GetUnbondingInfo(t *testing.T) {
+	// case1 2 unbonds will added(for hx3, hx4)
 	a := assTest.Clone()
 	//bonds : [{hx3, 10}, {hx4, 10}] , unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 	addr1 := common.MustNewAddressFromString("hx3")
@@ -373,6 +374,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 0, len(ubMods))
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 
+	// case2 hx5 unbond will be modified and hx4 unbond will be added
 	//add bond
 	addr3 := common.MustNewAddressFromString("hx5")
 	b1 = &Bond{addr3, common.NewHexInt(5)}
@@ -404,6 +406,18 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.True(t, ubAdds[0].Equal(ubAdd1))
 	assert.True(t, ubMods[0].Equal(ubMod1))
 	assert.Equal(t, 1, len(ubAdds))
+	assert.Equal(t, 1, len(ubMods))
+	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
+
+	// hx6 unbond will be modified(removed)
+	addr4 := common.NewAddressFromString("hx6")
+	b1 = &Bond{addr4, common.NewHexInt(3)}
+	nbs = []*Bond{b1}
+	ubAdds, ubMods, uDiff = a.GetUnbondingInfo(nbs, bh)
+	expectedUDiff = big.NewInt(-10)
+	ubMod1 = &Unbond{addr4, big.NewInt(0), bh}
+	assert.Equal(t, 0, len(ubAdds))
+	assert.True(t, ubMods[0].Equal(ubMod1))
 	assert.Equal(t, 1, len(ubMods))
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 }
