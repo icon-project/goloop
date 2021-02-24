@@ -16,9 +16,9 @@ from typing import TYPE_CHECKING, List, Optional, Any
 
 from .icon_score_step import StepType
 from .internal_call import ChainScore
-from ..base.address import Address, GOVERNANCE_SCORE_ADDRESS
+from ..base.address import Address, GOVERNANCE_SCORE_ADDRESS, ICON_ADDRESS_BODY_SIZE, ICON_ADDRESS_BYTES_SIZE
 from ..base.exception import InvalidEventLogException
-from ..icon_constant import DATA_BYTE_ORDER, GOV_REJECTED_EVENT_LOG
+from ..icon_constant import DATA_BYTE_ORDER, GOV_REJECTED_EVENT_LOG, Revision
 from ..utils import int_to_bytes, byte_length_of_int
 
 if TYPE_CHECKING:
@@ -100,11 +100,11 @@ class EventLogEmitter(object):
                 f'declared indexed_args_count is {indexed_args_count}, '
                 f'but argument count is {len(arguments)}')
 
-        event_size = EventLogEmitter.__get_byte_length(event_signature)
+        event_size = EventLogEmitter.__get_byte_length(context, event_signature)
         indexed: List['BaseType'] = [event_signature]
         data: List['BaseType'] = []
         for i, argument in enumerate(arguments):
-            event_size += EventLogEmitter.__get_byte_length(argument)
+            event_size += EventLogEmitter.__get_byte_length(context, argument)
 
             # Separates indexed type and base type with keeping order.
             if i < indexed_args_count:
@@ -127,13 +127,18 @@ class EventLogEmitter(object):
         )
 
     @staticmethod
-    def __get_byte_length(data: 'BaseType') -> int:
+    def __get_byte_length(context: 'IconScoreContext', data: 'BaseType') -> int:
         if data is None:
             return 0
         elif isinstance(data, int):
             return byte_length_of_int(data)
-        else:
-            return len(EventLogEmitter.__get_bytes_from_base_type(data))
+        elif isinstance(data, Address):
+            if Revision.to_value(context.revision) < Revision.THREE:
+                return ICON_ADDRESS_BODY_SIZE
+            else:
+                return ICON_ADDRESS_BYTES_SIZE
+
+        return len(EventLogEmitter.__get_bytes_from_base_type(data))
 
     @staticmethod
     def __get_bytes_from_base_type(data: 'BaseType') -> bytes:

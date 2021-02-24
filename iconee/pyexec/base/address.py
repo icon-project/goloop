@@ -24,9 +24,8 @@ from .exception import InvalidParamsException
 
 ICON_EOA_ADDRESS_PREFIX = 'hx'
 ICON_CONTRACT_ADDRESS_PREFIX = 'cx'
-ICON_EOA_ADDRESS_BYTES_SIZE = 20
-ICON_CONTRACT_ADDRESS_BYTES_SIZE = 21
 ICON_ADDRESS_BODY_SIZE = 20
+ICON_ADDRESS_BYTES_SIZE = 21
 
 
 def is_icon_address_valid(address: str) -> bool:
