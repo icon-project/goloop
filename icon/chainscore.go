@@ -527,6 +527,11 @@ const (
 	defaultLockMin         = defaultTermPeriod * 5
 	defaultLockMax         = defaultTermPeriod * 20
 	rewardPoint            = 0.7
+	defaultIglobal         = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIprep           = 50
+	defaultIcps            = 0
+	defaultIrelay          = 0
+	defaultIvoter          = 50
 )
 
 type config struct {
@@ -541,13 +546,15 @@ type config struct {
 	UnbondingPeriod *common.HexInt `json:"unbondingPeriod,omitempty"`
 	LockMin         *common.HexInt `json:"lockMin,omitempty"`
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
-	RewardFund      struct {
-		Iglobal common.HexInt `json:"Iglobal"`
-		Iprep   common.HexInt `json:"Iprep"`
-		Icps    common.HexInt `json:"Icps"`
-		Irelay  common.HexInt `json:"Irelay"`
-		Ivoter  common.HexInt `json:"Ivoter"`
-	} `json:"rewardFund"`
+	RewardFund      rewardFund     `json:"rewardFund"`
+}
+
+type rewardFund struct {
+	Iglobal *common.HexInt `json:"Iglobal"`
+	Iprep   *common.HexInt `json:"Iprep"`
+	Icps    *common.HexInt `json:"Icps"`
+	Irelay  *common.HexInt `json:"Irelay"`
+	Ivoter  *common.HexInt `json:"Ivoter"`
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
@@ -600,6 +607,13 @@ func newIconConfig() *config {
 		LockMin:         common.NewHexInt(defaultLockMin),
 		LockMax:         common.NewHexInt(defaultLockMax),
 		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
+		RewardFund: rewardFund{
+			Iglobal: common.NewHexInt(defaultIglobal),
+			Iprep:   common.NewHexInt(defaultIprep),
+			Icps:    common.NewHexInt(defaultIcps),
+			Irelay:  common.NewHexInt(defaultIrelay),
+			Ivoter:  common.NewHexInt(defaultIvoter),
+		},
 	}
 }
 
