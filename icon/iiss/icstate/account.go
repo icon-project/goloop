@@ -358,6 +358,8 @@ func (a *Account) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo
 				ub.Expire = mod.Expire
 				if ub.Value.Cmp(new(big.Int)) == 0 {
 					tl = append(tl, TimerJobInfo{JobTypeRemove, ub.Expire})
+				} else {
+					tl = append(tl, TimerJobInfo{JobTypeAdd, ub.Expire})
 				}
 			}
 		}
