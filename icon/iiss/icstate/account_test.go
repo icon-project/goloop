@@ -209,8 +209,8 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 
 	expectedTL := []TimerJobInfo{{JobTypeAdd, ul2Add[0].Expire}, {JobTypeAdd, ul2Mod[0].Expire}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
-	ub1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(40), 100}
-	ub2 := &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(40), 100}
+	ub2 := &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(add1))
@@ -399,7 +399,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 
 	//case4 hx6 unbond will be modified(removed)
-	addr4 := common.NewAddressFromString("hx6")
+	addr4 := common.MustNewAddressFromString("hx6")
 	b1 = &Bond{addr1, common.NewHexInt(10)}
 	b2 = &Bond{addr2, common.NewHexInt(10)}
 	b3 = &Bond{addr3, common.NewHexInt(5)}
@@ -414,7 +414,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 
 	//case5
-	b1 = &Bond{common.NewAddressFromString("hx10"), common.NewHexInt(100)}
+	b1 = &Bond{common.MustNewAddressFromString("hx10"), common.NewHexInt(100)}
 	nbs = []*Bond{b1}
 	ubAdds, ubMods, uDiff = a.GetUnbondingInfo(nbs, bh) //hx3, hx4, hx5 will be added
 	expectedUDiff = big.NewInt(25)
