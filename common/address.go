@@ -77,14 +77,19 @@ func (a *Address) ID() []byte {
 }
 
 func (a *Address) SetBytes(b []byte) error {
-	if len(b) != AddressBytes {
-		return ErrIllegalArgument
-	}
-	switch b[0] {
-	case 0, 1:
-		copy(a[:], b)
+	if blen := len(b); blen == AddressBytes {
+		switch b[0] {
+		case 0, 1:
+			copy(a[:], b)
+			return nil
+		default:
+			return ErrIllegalArgument
+		}
+	} else if blen == AddressIDBytes {
+		a[0] = 0
+		copy(a[1:], b)
 		return nil
-	default:
+	} else {
 		return ErrIllegalArgument
 	}
 }
@@ -196,7 +201,7 @@ func (a *Address) Equal(a2 module.Address) bool {
 	if a2IsNil || a == nil {
 		return false
 	}
-	return bytes.Equal(a[:], a2.Bytes())
+	return a.IsContract() == a2.IsContract() && bytes.Equal(a.ID(), a2.ID())
 }
 
 func AddressEqual(a, b module.Address) bool {

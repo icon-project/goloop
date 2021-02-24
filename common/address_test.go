@@ -293,7 +293,7 @@ func TestAddress_SetBytes(t *testing.T) {
 			name:    "EOA20Bytes",
 			a:       Address{},
 			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
