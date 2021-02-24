@@ -90,7 +90,7 @@ func TestAccountState_DepositTest(t *testing.T) {
 		period: 100,
 		tid:    tid1,
 	}
-	sender := common.NewAddressFromString("hx0000000000000000000000000000000000000001")
+	sender := common.MustNewAddressFromString("hx0000000000000000000000000000000000000001")
 	amount := big.NewInt(50000)
 
 	as := newAccountState(database, nil, nil, false)
@@ -157,7 +157,7 @@ func TestAccountStateImpl_SetObjGraph(t *testing.T) {
 
 	dbase := db.NewMapDB()
 	as := newAccountState(dbase, nil, nil, false)
-	sender := common.NewAddressFromString("hx0000000000000000000000000000000000000001")
+	sender := common.MustNewAddressFromString("hx0000000000000000000000000000000000000001")
 
 	r := as.InitContractAccount(sender)
 	assert.True(t, r)

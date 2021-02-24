@@ -37,7 +37,7 @@ func TestDelegating(t *testing.T) {
 
 	t1 := newDelegating(icobject.MakeTag(type_, version))
 	d := &icstate.Delegation{
-		Address: common.NewAddressFromString("hx1"),
+		Address: common.MustNewAddressFromString("hx1"),
 		Value:   common.NewHexInt(10),
 	}
 	t1.Delegations = append(t1.Delegations, d)
@@ -69,43 +69,43 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 	val3 := int64(3)
 	vBig := int64(100)
 	d1 := icstate.Delegation{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   common.NewHexInt(val1),
 	}
 	v1Delete := icstage.Vote{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   big.NewInt(-val1),
 	}
 	v1TooBig := icstage.Vote{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   big.NewInt(-vBig),
 	}
 	d2 := icstate.Delegation{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(val2),
 	}
 	v2 := icstage.Vote{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   big.NewInt(val2),
 	}
 	d2Double := icstate.Delegation{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(val2 * 2),
 	}
 	d3 := icstate.Delegation{
-		Address: common.NewAddressFromString(addr3),
+		Address: common.MustNewAddressFromString(addr3),
 		Value:   common.NewHexInt(val3),
 	}
 	dNew := icstate.Delegation{
-		Address: common.NewAddressFromString(addr4),
+		Address: common.MustNewAddressFromString(addr4),
 		Value:   common.NewHexInt(val3),
 	}
 	vNew := icstage.Vote{
-		Address: common.NewAddressFromString(addr4),
+		Address: common.MustNewAddressFromString(addr4),
 		Value:   big.NewInt(val3),
 	}
 	vNewNegative := icstage.Vote{
-		Address: common.NewAddressFromString(addr4),
+		Address: common.MustNewAddressFromString(addr4),
 		Value:   big.NewInt(-val3),
 	}
 	delegating := Delegating{

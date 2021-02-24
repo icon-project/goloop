@@ -154,7 +154,7 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	return ia.GetDelegationInfo(), nil
 }
 
-var registerFee = new(big.Int).Mul(big.NewInt(2000), icutils.BigIntICX)
+var regPRepFee = icutils.ToLoop(2000)
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
@@ -165,8 +165,21 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	if nodeAddress != nil && nodeAddress.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
 	}
-	if s.value.Cmp(registerFee) == -1 {
+	if s.value.Cmp(regPRepFee) == -1 {
 		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	}
+
+	// Subtract regPRepFree from chainScore
+	as := s.cc.GetAccountState(state.SystemID)
+	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
+	if balance.Sign() < 0 {
+		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	}
+	as.SetBalance(balance)
+
+	// Decrease totalSupply by regPRepFee
+	if err := icutils.IncrementTotalSupply(s.cc, regPRepFee.Neg(regPRepFee)); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)

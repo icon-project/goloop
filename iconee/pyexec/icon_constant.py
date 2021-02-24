@@ -22,6 +22,7 @@ DATA_BYTE_ORDER = 'big'  # big endian
 
 # Reserved EventLog
 ICX_TRANSFER_EVENT_LOG = 'ICXTransfer(Address,Address,int)'
+GOV_REJECTED_EVENT_LOG = 'Rejected(str,str)'
 
 
 # Revisions

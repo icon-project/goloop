@@ -26,6 +26,7 @@ ICON_EOA_ADDRESS_PREFIX = 'hx'
 ICON_CONTRACT_ADDRESS_PREFIX = 'cx'
 ICON_EOA_ADDRESS_BYTES_SIZE = 20
 ICON_CONTRACT_ADDRESS_BYTES_SIZE = 21
+ICON_ADDRESS_BODY_SIZE = 20
 
 
 def is_icon_address_valid(address: str) -> bool:
@@ -106,7 +107,7 @@ class Address(object):
             raise InvalidParamsException('Invalid address body type')
 
         if not ignore_length_validate:
-            if len(address_body) != 20:
+            if len(address_body) != ICON_ADDRESS_BODY_SIZE:
                 raise InvalidParamsException('Address length is not 20 in bytes')
 
         self.__prefix = address_prefix
@@ -214,7 +215,7 @@ class Address(object):
         buf_size = len(buf)
 
         prefix = AddressPrefix.EOA
-        if buf_size != ICON_EOA_ADDRESS_BYTES_SIZE:
+        if buf_size != ICON_ADDRESS_BODY_SIZE:
             prefix_byte = buf[0:1]
             prefix_int = int.from_bytes(prefix_byte, DATA_BYTE_ORDER)
             prefix = AddressPrefix(prefix_int)
@@ -227,13 +228,18 @@ class Address(object):
 
         :return: :class:`.bytes` data including information of Address object
         """
+        if self.prefix == AddressPrefix.EOA:
+            return self.body
+        return self.to_canonical_bytes()
+
+    def to_canonical_bytes(self) -> bytes:
         prefix_byte = self.prefix.value.to_bytes(1, DATA_BYTE_ORDER)
         return prefix_byte + self.body
 
     @staticmethod
-    def from_prefix_and_int(prefix: 'AddressPrefix', num: int):
+    def from_prefix_and_int(prefix: AddressPrefix, num: int):
         num_bytes = int_to_bytes(num)
-        zero_size = 20 - len(num_bytes)
+        zero_size = ICON_ADDRESS_BODY_SIZE - len(num_bytes)
         if zero_size < 0:
             raise InvalidParamsException(f'num_bytes is over 20 bytes num: {num}')
         return Address(prefix, b'\x00' * zero_size + num_bytes)
@@ -280,19 +286,8 @@ GOVERNANCE_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 1
 # A dummy address for handling GETAPI message
 GETAPI_DUMMY_ADDRESS = Address.from_data(AddressPrefix.CONTRACT, "SCORE_API".encode())
 
-
-def generate_score_address(from_: 'Address',
-                           timestamp: int,
-                           nonce: int = None) -> 'Address':
-    """Generates a SCORE address from the transaction information.
-
-    :param from_:
-    :param timestamp:
-    :param nonce:
-    :return: score address
-    """
-    data = from_.body + timestamp.to_bytes(32, DATA_BYTE_ORDER)
-    if nonce:
-        data += nonce.to_bytes(32, DATA_BYTE_ORDER)
-
-    return Address.from_data(AddressPrefix.CONTRACT, data)
+BUILTIN_SCORE_ADDRESS_MAPPER = {
+    'system': ZERO_SCORE_ADDRESS,
+    'governance': GOVERNANCE_SCORE_ADDRESS,
+    'getapi_dummy': GETAPI_DUMMY_ADDRESS,
+}

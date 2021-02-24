@@ -26,7 +26,7 @@ import (
 )
 
 func TestPenalty_checkValidationPenalty(t *testing.T) {
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 
 	type args struct {
 		vPenaltyMask uint32

@@ -33,7 +33,7 @@ version_number = 1
 class EECodec(Codec):
     def encode(self, obj) -> Tuple[int, bytes]:
         if isinstance(obj, Address):
-            return TypeTag.ADDRESS, obj.to_bytes()
+            return TypeTag.ADDRESS, obj.to_canonical_bytes()
         raise Exception
 
     def decode(self, t: int, b: bytes) -> Any:

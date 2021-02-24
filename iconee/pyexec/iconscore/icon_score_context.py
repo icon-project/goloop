@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import threading
+import warnings
 from typing import TYPE_CHECKING, Optional, List, Any
 
 from ..base.address import Address
@@ -21,6 +22,7 @@ from ..base.message import Message
 from ..base.transaction import Transaction
 from ..icon_constant import IconScoreFuncType, IconScoreContextType
 from .icon_score_step import IconScoreStepCounter
+from .internal_call import ChainScore
 
 if TYPE_CHECKING:
     from .icon_score_base import IconScoreBase
@@ -116,3 +118,7 @@ class IconScoreContext(object):
             self.func_type = IconScoreFuncType.READONLY
         else:
             self.func_type = IconScoreFuncType.WRITABLE
+
+    def deploy(self, tx_hash: bytes) -> None:
+        warnings.warn("Do not use this legacy function.", DeprecationWarning, stacklevel=2)
+        ChainScore.acceptScore(self, self.to, tx_hash)

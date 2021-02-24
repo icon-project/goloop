@@ -140,7 +140,8 @@ func (pm *PRepManager) getPRepFromState(owner module.Address) *PRep {
 func (pm *PRepManager) appendPRep(p *PRep) {
 	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalDelegated.Add(pm.totalDelegated, p.GetVoted())
+	pm.totalBonded.Add(pm.totalBonded, p.Bonded())
+	pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
 	pm.adjustPRepSize(p.Grade(), true)
 }
 

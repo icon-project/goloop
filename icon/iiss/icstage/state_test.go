@@ -35,8 +35,8 @@ func TestState_AddIScoreClaim(t *testing.T) {
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
 
@@ -120,8 +120,8 @@ func TestState_AddEvent(t *testing.T) {
 
 	offset1 := 100
 	offset2 := 200
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
 	vote1 := Vote{
@@ -259,11 +259,11 @@ func TestState_AddBlockProduce(t *testing.T) {
 
 	offset1 := 0
 
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-	addr4 := common.NewAddressFromString("hx4")
-	addr5 := common.NewAddressFromString("hx5")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	addr3 := common.MustNewAddressFromString("hx3")
+	addr4 := common.MustNewAddressFromString("hx4")
+	addr5 := common.MustNewAddressFromString("hx5")
 
 	addrs := []*common.Address{addr1, addr2, addr3, addr4, addr5}
 
@@ -491,19 +491,19 @@ func TestState_AddLoadValidators(t *testing.T) {
 	}{
 		{
 			0,
-			common.NewAddressFromString("hx1"),
+			common.MustNewAddressFromString("hx1"),
 		},
 		{
 			2,
-			common.NewAddressFromString("hx2"),
+			common.MustNewAddressFromString("hx2"),
 		},
 		{
 			3,
-			common.NewAddressFromString("hx3"),
+			common.MustNewAddressFromString("hx3"),
 		},
 		{
 			5,
-			common.NewAddressFromString("hx5"),
+			common.MustNewAddressFromString("hx5"),
 		},
 	}
 	for _, data := range datas {

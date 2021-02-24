@@ -31,7 +31,7 @@ func Test_Validator(t *testing.T) {
 
 	type_ := TypeValidator
 	version := 0
-	validator := common.NewAddressFromString("hx1")
+	validator := common.MustNewAddressFromString("hx1")
 
 	t1 := newValidator(icobject.MakeTag(type_, version))
 	t1.Address = validator

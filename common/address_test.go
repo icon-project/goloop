@@ -85,7 +85,7 @@ func TestNewAddressFromString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewAddressFromString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
+			if got := MustNewAddressFromString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewAddressFromString() = %v, want %v", got, tt.want)
 			}
 		})
@@ -128,7 +128,7 @@ func TestAddressEncodingDecoding(t *testing.T) {
 				return
 			}
 
-			a := NewAddressFromString(tt.args.s)
+			a := MustNewAddressFromString(tt.args.s)
 			b, err := codec.MarshalToBytes(a)
 			if err != nil {
 				t.Error(err)
@@ -182,43 +182,43 @@ func TestAddress_Equal(t *testing.T) {
 		{
 			name: "NilvsNonNil",
 			a:    nil,
-			args: args{NewAddressFromString("hx8888888888888888888888888888888888888888")},
+			args: args{MustNewAddressFromString("hx8888888888888888888888888888888888888888")},
 			want: false,
 		},
 		{
 			name: "NonNilvsNil",
-			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			a:    MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
 			args: args{nil},
 			want: false,
 		},
 		{
 			name: "NonNilvsNilPtr",
-			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			a:    MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
 			args: args{(*Address)(nil)},
 			want: false,
 		},
 		{
 			name: "Same1",
-			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
-			args: args{NewAddressFromString("hx8888888888888888888888888888888888888888")},
+			a:    MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{MustNewAddressFromString("hx8888888888888888888888888888888888888888")},
 			want: true,
 		},
 		{
 			name: "Same2",
-			a:    NewAddressFromString("cx8888888888888888888888888888888888888888"),
-			args: args{NewAddressFromString("cx8888888888888888888888888888888888888888")},
+			a:    MustNewAddressFromString("cx8888888888888888888888888888888888888888"),
+			args: args{MustNewAddressFromString("cx8888888888888888888888888888888888888888")},
 			want: true,
 		},
 		{
 			name: "Diff1",
-			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
-			args: args{NewAddressFromString("cx8888888888888888888888888888888888888888")},
+			a:    MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{MustNewAddressFromString("cx8888888888888888888888888888888888888888")},
 			want: false,
 		},
 		{
 			name: "Diff2",
-			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
-			args: args{NewAddressFromString("hx9888888888888888888888888888888888888888")},
+			a:    MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{MustNewAddressFromString("hx9888888888888888888888888888888888888888")},
 			want: false,
 		},
 	}
@@ -293,7 +293,7 @@ func TestAddress_SetBytes(t *testing.T) {
 			name:    "EOA20Bytes",
 			a:       Address{},
 			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -335,10 +335,10 @@ func TestAddress_SetTypeAndID(t *testing.T) {
 }
 
 func TestAddress_Set(t *testing.T) {
-	addr0 := NewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
+	addr0 := MustNewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
 
 	t.Run("SetWithSelf", func(t *testing.T) {
-		addr1 := NewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
+		addr1 := MustNewAddressFromString("hxce6e688a539449c3f9f5c5990749c135bf0ee0e3")
 		addr1.Set(addr1)
 		assert.Equal(t, addr0, addr1)
 	})
@@ -356,7 +356,7 @@ func TestAddress_Set(t *testing.T) {
 	})
 
 	t.Run("SetOther", func(t *testing.T) {
-		addr1 := NewAddressFromString("hxfa6341b183b48fd460b9a42884db7987a46ea92f")
+		addr1 := MustNewAddressFromString("hxfa6341b183b48fd460b9a42884db7987a46ea92f")
 		addr1.Set(addr0)
 		assert.Equal(t, addr0, addr1)
 	})

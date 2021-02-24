@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Optional, Any, Tuple
 
-from ..base.address import Address
+from ..base.address import Address, ZERO_SCORE_ADDRESS
 from ..base.exception import ExceptionCode, IconServiceBaseException
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..ipc import MethodName
@@ -71,3 +71,41 @@ class InternalCall(object):
             return result
         else:
             raise IconServiceBaseException.create(result, status)
+
+
+class ChainScore(object):
+
+    @staticmethod
+    def acceptScore(context: 'IconScoreContext',
+                    _from: 'Address',
+                    tx_hash: bytes) -> Optional['Address']:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'acceptScore', tuple([tx_hash]))
+
+    @staticmethod
+    def rejectScore(context: 'IconScoreContext',
+                    _from: 'Address',
+                    tx_hash: bytes) -> Optional['Address']:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'rejectScore', tuple([tx_hash]))
+
+    @staticmethod
+    def txHashToAddress(context: 'IconScoreContext',
+                        _from: 'Address',
+                        tx_hash: bytes) -> Optional['Address']:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'txHashToAddress', tuple([tx_hash]))
+
+    @staticmethod
+    def addressToTxHashes(context: 'IconScoreContext',
+                          _from: 'Address',
+                          score_address: 'Address') -> Tuple[Optional[bytes], Optional[bytes]]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'addressToTxHashes', tuple([score_address]))
+
+    @staticmethod
+    def getScoreStatus(context: 'IconScoreContext',
+                       _from: 'Address',
+                       score_address: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'getScoreStatus', tuple([score_address]))

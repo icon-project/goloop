@@ -58,7 +58,7 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 
 	delegated := big.NewInt(int64(99))
 	status1 := s.GetPRepStatus(addr1, true)

@@ -43,11 +43,11 @@ func TestBonds(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	b1 := Bond{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   common.NewHexInt(v1),
 	}
 	b2 := Bond{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(v2),
 	}
 	bl1 := Bonds{
@@ -69,15 +69,15 @@ func TestBonds_Delete(t *testing.T) {
 	v2 := int64(2)
 	v3 := int64(3)
 	bond1 := Bond{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   common.NewHexInt(v1),
 	}
 	bond2 := Bond{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(v2),
 	}
 	bond3 := Bond{
-		Address: common.NewAddressFromString(addr3),
+		Address: common.MustNewAddressFromString(addr3),
 		Value:   common.NewHexInt(v3),
 	}
 	bonds := Bonds{&bond1, &bond2, &bond3}
@@ -212,8 +212,8 @@ func TestNewBonds(t *testing.T) {
 }
 
 func TestBonds_Slash(t *testing.T) {
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 	b1 := Bond{
 		Address: addr1,
 		Value:   common.NewHexInt(100),
@@ -244,7 +244,7 @@ func TestBonds_Slash(t *testing.T) {
 		{
 			"Invalid address",
 			values{
-				common.NewAddressFromString("hx321"),
+				common.MustNewAddressFromString("hx321"),
 				10,
 			},
 			wants{

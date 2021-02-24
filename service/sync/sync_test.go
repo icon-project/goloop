@@ -283,7 +283,7 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 
 	for j, re := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for i := 0; i < receiptsNum; i++ {
-			addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
+			addr := common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 			r := txresult.NewReceipt(db1, rev, addr)
 			r.SetResult(module.StatusSuccess, big.NewInt(100*int64(i+j)), big.NewInt(1000), nil)
 			r.SetCumulativeStepUsed(big.NewInt(100 * int64(i)))

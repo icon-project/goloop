@@ -207,13 +207,14 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 			}
 		}
 		// revision
-		revision := scoredb.NewVarDB(govAs, "revision_code").Int64()
-		_ = scoredb.NewVarDB(sysAs, state.VarRevision).Set(revision)
+		if revision := scoredb.NewVarDB(govAs, "revision_code"); revision != nil {
+			_ = scoredb.NewVarDB(sysAs, state.VarRevision).Set(revision.Int64())
+		}
 	}
 	return status
 }
 
-func (s *chainScore) Ex_rejectScore(txHash []byte, reason string) error {
+func (s *chainScore) Ex_rejectScore(txHash []byte) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}

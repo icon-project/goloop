@@ -33,3 +33,4 @@ from pyexec.iconscore.icon_score_base import (IconScoreBase, IconScoreDatabase,
 from pyexec.iconscore.icon_score_base2 import (revert, sha3_256, sha_256, json_loads, json_dumps,
                                                recover_key, create_address_with_key,
                                                InterfaceScore, create_interface_score)
+from pyexec.iconscore.icon_system_score_base import IconSystemScoreBase

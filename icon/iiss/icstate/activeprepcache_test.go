@@ -17,7 +17,7 @@ func TestActivePrepCache(t *testing.T) {
 	activePRepCache := newActivePRepCache(oss)
 
 	// add new active prep
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 	activePRepCache.Add(addr1)
 
 	// size
@@ -33,10 +33,9 @@ func TestActivePrepCache(t *testing.T) {
 	val = activePRepCache.arraydb.Get(0)
 	assert.NotNil(t, val)
 
-
-	addr2 := common.NewAddressFromString("hx2")
+	addr2 := common.MustNewAddressFromString("hx2")
 	activePRepCache.Add(addr2)
-	addr3 := common.NewAddressFromString("hx3")
+	addr3 := common.MustNewAddressFromString("hx3")
 	activePRepCache.Add(addr3)
 	// will write addr2, addr3 on DB
 	activePRepCache.Flush()

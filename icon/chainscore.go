@@ -337,10 +337,9 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 2,
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"txHash", scoreapi.Bytes, nil, nil},
-			{"reason", scoreapi.String, nil, nil},
 		},
 		nil,
 	}, 0, 0},
@@ -673,7 +672,7 @@ func (s *chainScore) Install(param []byte) error {
 		}
 		params := json.RawMessage("{}")
 		handler := contract.NewDeployHandlerForPreInstall(
-			common.NewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
+			common.MustNewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
 			s.cc.Governance(),
 			"application/zip",
 			governance,

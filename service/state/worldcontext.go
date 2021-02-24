@@ -466,10 +466,10 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, csi module.ConsensusInf
 		governance = scoredb.NewVarDB(as, VarGovernance).Address()
 	}
 	if treasury == nil {
-		treasury = common.NewAddressFromString("hx1000000000000000000000000000000000000000")
+		treasury = common.MustNewAddressFromString("hx1000000000000000000000000000000000000000")
 	}
 	if governance == nil {
-		governance = common.NewAddressFromString("cx0000000000000000000000000000000000000001")
+		governance = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 	}
 	wc := &worldContext{
 		WorldState:   ws,
