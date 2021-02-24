@@ -199,13 +199,6 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 func TestAccount_UpdateUnbonds(t *testing.T) {
 	a := assTest.Clone() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 
-	ub1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(10), 20}
-	ub2 := &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
-	assert.True(t, a.unbonds[0].Equal(ub1))
-	assert.True(t, a.unbonds[1].Equal(ub2))
-	ua := big.NewInt(20)
-	assert.Equal(t, 0, ua.Cmp(a.unbonds.GetUnbondAmount()))
-
 	// modify hx5 targeted unbonding, add a unbonding(hx7)
 	// unbonds : [{address: hx5, value:40, bh: 100}, {hx6, 10, 30}, {hx7, 40, 50}]/
 	add1 := &Unbond{common.NewAddressFromString("hx7"), big.NewInt(40), 50}
@@ -214,14 +207,14 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	ul2Mod := []*Unbond{mod1}
 	tl := a.UpdateUnbonds(ul2Add, ul2Mod)
 
-	expectedTL := []TimerJobInfo{{JobTypeAdd, ul2Add[0].Expire}}
+	expectedTL := []TimerJobInfo{{JobTypeAdd, ul2Add[0].Expire}, {JobTypeAdd, ul2Mod[0].Expire}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
-	ub1 = &Unbond{common.NewAddressFromString("hx5"), big.NewInt(40), 100}
-	ub2 = &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(40), 100}
+	ub2 := &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(add1))
-	ua = big.NewInt(90)
+	ua := big.NewInt(90)
 	assert.Equal(t, 0, ua.Cmp(a.unbonds.GetUnbondAmount()))
 
 	// delete hx5 targeted unbonding, add 2 unbondings(hx8, hx9)
