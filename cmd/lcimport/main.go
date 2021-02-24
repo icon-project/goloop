@@ -17,15 +17,20 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"text/scanner"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
@@ -33,10 +38,16 @@ import (
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
 	envPrefix = "LCIMPORT"
+)
+
+const (
+	vcKeyExecutor = "internal.executor"
 )
 
 var lcDB *lcstore.Store
@@ -236,17 +247,218 @@ func StatusDone(l log.Logger) {
 	}
 }
 
-func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
+func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: name,
+	}
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if err := parent.PersistentPreRunE(cmd, args); err != nil {
+			return err
+		}
+		if executor, err := NewExecutor(log.GlobalLogger(), lcDB, vc.GetString("data")); err != nil {
+			return err
+		} else {
+			vc.Set(vcKeyExecutor, executor)
+		}
+		return nil
+	}
+	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
+	cmd.AddCommand(newCmdLastHeight(cmd, "last", vc))
+	cmd.AddCommand(newCmdState(cmd, "state", vc))
+	return cmd
+}
+
+func parseParams(p string) ([]string, error) {
+	var params []string
+	s := new(scanner.Scanner)
+	s.Init(bytes.NewBufferString(p))
+	s.Mode = scanner.ScanIdents | scanner.ScanStrings | scanner.ScanInts
+	for {
+		switch value := s.Scan(); value {
+		case scanner.EOF:
+			return params, nil
+		case scanner.Ident, scanner.Int:
+			params = append(params, s.TokenText())
+		case scanner.String, scanner.RawString:
+			token := s.TokenText()
+			var str string
+			if err := json.Unmarshal([]byte(token), &str); err != nil {
+				return nil, errors.IllegalArgumentError.Wrapf(err,
+					"Invalid String(%q)", token)
+			}
+			params = append(params, str)
+		case '-':
+			if s.Scan() == scanner.Int {
+				params = append(params, "-"+s.TokenText())
+			} else {
+				return nil, errors.IllegalArgumentError.Errorf("InvalidTokenAfterMinus")
+			}
+		case '.':
+		default:
+			return nil, errors.IllegalArgumentError.Errorf(
+				"Unknown character=%c", value)
+		}
+	}
+}
+
+func toKeys(params []string) []interface{} {
+	var keys []interface{}
+	for _, p := range params {
+		if v, err := strconv.ParseInt(p, 0, 64); err == nil {
+			keys = append(keys, v)
+		} else if addr, err := common.NewAddressFromString(p); err == nil {
+			keys = append(keys, addr)
+		} else {
+			keys = append(keys, p)
+		}
+	}
+	return keys
+}
+
+func showValue(value containerdb.Value, ts string) {
+	switch ts {
+	case "int":
+		fmt.Printf("%d\n", value.BigInt())
+	case "bool":
+		fmt.Printf("%v\n", value.Bool())
+	case "str":
+		fmt.Printf("%q\n", value.String())
+	case "addr":
+		fmt.Printf("%s\n", value.Address().String())
+	default:
+		fmt.Printf("%#x\n", value.Bytes())
+	}
+}
+
+func showAccount(addr module.Address, ass state.AccountSnapshot, params []string) error {
+	if len(params) == 0 {
+		fmt.Printf("Account[%s]\n", addr.String())
+		fmt.Printf("- Balance : %#d\n", ass.GetBalance())
+		if ass.IsContract() {
+			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
+		}
+		return nil
+	} else {
+		if len(params) < 3 {
+			return errors.Errorf("InvalidArguments(%+v)", params)
+		}
+		prefix := params[0]
+		params = params[1:]
+		store := containerdb.NewBytesStoreStateWithSnapshot(ass)
+		_, _ = store, prefix
+		switch prefix {
+		case "var":
+			suffix := params[len(params)-1]
+			keys := toKeys(params[:len(params)-1])
+			vardb := scoredb.NewVarDB(store, keys...)
+			showValue(vardb, suffix)
+			return nil
+		case "array":
+			suffix := params[len(params)-1]
+			params = params[:len(params)-1]
+			var keys []interface{}
+			if suffix != "size" {
+				if len(params) < 2 {
+					return errors.IllegalArgumentError.New("")
+				}
+				idxStr := params[len(params)-1]
+				keys = toKeys(params[:len(params)-1])
+				idx, err := strconv.ParseInt(idxStr, 0, 64)
+				if err != nil {
+					return errors.IllegalArgumentError.Wrapf(err,
+						"InvalidArrayIndex(value=%s)", idxStr)
+				}
+				arraydb := scoredb.NewArrayDB(store, keys...)
+				value := arraydb.Get(int(idx))
+				showValue(value, suffix)
+				return nil
+			} else {
+				keys := toKeys(params)
+				arraydb := scoredb.NewArrayDB(store, keys...)
+				fmt.Printf("%d", arraydb.Size())
+				return nil
+			}
+		case "dict":
+			suffix := params[len(params)-1]
+			params = params[:len(params)-1]
+			name := params[0]
+			keys := toKeys(params[1:])
+
+			dictdb := scoredb.NewDictDB(store, name, len(keys))
+			value := dictdb.Get(keys...)
+			showValue(value, suffix)
+		default:
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidPrefix(prefix=%s)", prefix)
+		}
+		return nil
+	}
+}
+
+func showWorld(wss state.WorldSnapshot, params []string) error {
+	if len(params) < 1 {
+		return errors.IllegalArgumentError.New("" +
+			"Address need to be specified")
+	}
+	addr := common.MustNewAddressFromString(params[0])
+	if addr == nil {
+		return errors.IllegalArgumentError.Errorf(
+			"InvalidAddress(addr=%s)", params[0])
+	}
+	params = params[1:]
+	ass := wss.GetAccountSnapshot(addr.ID())
+	return showAccount(addr, ass, params)
+}
+
+func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Args: cobra.ExactArgs(1),
+		Use:  name + " <expr>",
+	}
+	pflags := cmd.PersistentFlags()
+	pHeight := pflags.Int64("height", 0, "Height of the state (0 for last height)")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		ex := vc.Get(vcKeyExecutor).(*Executor)
+		height := *pHeight
+		if height == 0 {
+			height = ex.getLastHeight()
+		}
+		wss, err := ex.NewWorldSnapshot(height)
+		if err != nil {
+			return err
+		}
+		params, err := parseParams(args[0])
+		if err != nil {
+			return err
+		}
+		return showWorld(wss, params)
+	}
+	return cmd
+}
+
+func newCmdLastHeight(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Args: cobra.NoArgs,
+		Use:  name,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if executor, ok := vc.Get(vcKeyExecutor).(*Executor); ok {
+				fmt.Println(executor.getLastHeight())
+				return nil
+			} else {
+				return errors.New("NoValidExecutor")
+			}
+		},
+	}
+	return cmd
+}
+
+func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(0, 1),
 		Use:  name + " [<to>]",
 	}
 	flags := cmd.PersistentFlags()
-	flags.Int64("from", -1, "From height(-1 for last)")
-	flags.String("log_level", "debug", "Default log level")
-	flags.String("console_level", "info", "Console log level")
-	flags.String("log_file", "", "Output logfile")
-	vc.BindPFlags(flags)
+	from := flags.Int64("from", -1, "From height(-1 for last)")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		to := int64(-1)
@@ -257,11 +469,45 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 				to = v
 			}
 		}
+		for _, l := range logo {
+			log.Infoln(l)
+		}
+		executor := vc.Get(vcKeyExecutor).(*Executor)
+		return executor.Execute(*from, to)
+	}
+	return cmd
+}
 
-		data := vc.GetString("data")
+func main() {
+	vc := viper.New()
+	vc.AutomaticEnv()
+	vc.SetEnvPrefix(envPrefix)
 
-		logger := log.New()
-		log.SetGlobalLogger(logger)
+	root := &cobra.Command{
+		Use: os.Args[0],
+	}
+	pflags := root.PersistentFlags()
+	pflags.StringP("store_uri", "b",
+		"", "LoopChain Storage URI (leveldb or node endpoint)")
+	pflags.StringP("data", "d",
+		".chain/import", "Data path to store node data")
+	pflags.String("log_level", "debug", "Default log level")
+	pflags.String("console_level", "info", "Console log level")
+	pflags.String("log_file", "", "Output logfile")
+	if err := vc.BindPFlags(pflags); err != nil {
+		log.Errorf("Fail to bind flags err=%+v", err)
+		os.Exit(1)
+	}
+
+	root.AddCommand(newCmdGetTx("tx"))
+	root.AddCommand(newCmdGetResult("result"))
+	root.AddCommand(newCmdGetBlock("block"))
+	root.AddCommand(newCmdVerifyBlock("verify"))
+	root.AddCommand(newCmdExecutor(root, "executor", vc))
+
+	root.SilenceUsage = true
+	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		logger := log.GlobalLogger()
 		logLevel := vc.GetString("log_level")
 		if lv, err := log.ParseLevel(logLevel); err != nil {
 			return errors.Wrapf(err, "InvalidLogLevel(log_level=%s)", logLevel)
@@ -284,45 +530,7 @@ func newCmdExecuteBlocks(name string, vc *viper.Viper) *cobra.Command {
 				logger.SetFileWriter(fw)
 			}
 		}
-		for _, l := range logo {
-			logger.Infoln(l)
-		}
-
-		from := vc.GetInt64("from")
-		return executeTransactions(logger, lcDB, data, from, to)
-	}
-	return cmd
-}
-
-func main() {
-	vc := viper.New()
-	vc.AutomaticEnv()
-	vc.SetEnvPrefix(envPrefix)
-	vc.Set("env_prefix", envPrefix)
-
-	root := &cobra.Command{
-		Use: os.Args[0],
-	}
-	pflags := root.PersistentFlags()
-	pflags.StringP("store_uri", "b",
-		"", "LoopChain Storage URI (leveldb or node endpoint)")
-	pflags.StringP("data", "d",
-		".chain/import", "Data path to store node data")
-	if err := vc.BindPFlags(pflags); err != nil {
-		log.Errorf("Fail to bind flags err=%+v", err)
-		os.Exit(1)
-	}
-
-	root.AddCommand(newCmdGetTx("tx"))
-	root.AddCommand(newCmdGetResult("result"))
-	root.AddCommand(newCmdGetBlock("block"))
-	root.AddCommand(newCmdVerifyBlock("verify"))
-	root.AddCommand(newCmdExecuteBlocks("execute", vc))
-
-	root.SilenceUsage = true
-	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		uri := vc.GetString("store_uri")
-
 		if db, err := lcstore.OpenStore(uri); err != nil {
 			return errors.Wrapf(err, "OpenFailure(uri=%s)", uri)
 		} else {

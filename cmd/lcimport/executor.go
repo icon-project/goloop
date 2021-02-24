@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -176,6 +177,14 @@ func (e *Executor) GetBlockByHeight(h int64) (*Block, error) {
 		return blk, nil
 	}
 	return nil, nil
+}
+
+func (e *Executor) NewWorldSnapshot(height int64) (state.WorldSnapshot, error) {
+	blk, err := e.GetBlockByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	return blk.NewWorldSnapshot(e.database, e.plt)
 }
 
 func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
@@ -430,19 +439,11 @@ func (e *Executor) Execute(from, to int64) error {
 
 		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
 		e.log.Infof("Finalize Block[ %8d ] Tx[ %16d ]", height, txTotal)
-		tr.Block.SetResult(tr.Result(), tr.NormalReceipts(), txTotal)
+		tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
 		if err := e.FinalizeTransition(tr); err != nil {
 			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
 		}
 		prevTR = tr
 	}
 	return nil
-}
-
-func executeTransactions(logger log.Logger, lc *lcstore.Store, data string, from, to int64) error {
-	executor, err := NewExecutor(logger, lc, data)
-	if err != nil {
-		return err
-	}
-	return executor.Execute(from, to)
 }

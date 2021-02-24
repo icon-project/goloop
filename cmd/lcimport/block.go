@@ -23,17 +23,20 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
 type Block struct {
-	height  int64
-	result  []byte
-	txs     module.TransactionList
-	rcts    module.ReceiptList
-	blk     blockv0.Block
-	txTotal *big.Int
+	height     int64
+	result     []byte
+	txs        module.TransactionList
+	rcts       module.ReceiptList
+	blk        blockv0.Block
+	txTotal    *big.Int
+	validators module.ValidatorList
 }
 
 type blockHeader struct {
@@ -43,6 +46,7 @@ type blockHeader struct {
 	RctRoot []byte
 	BlkRaw  []byte
 	TxTotal *big.Int
+	VltHash []byte
 }
 
 func (b *Block) Height() int64 {
@@ -53,10 +57,11 @@ func (b *Block) Result() []byte {
 	return b.result
 }
 
-func (b *Block) SetResult(result []byte, rcts module.ReceiptList, txTotal *big.Int) {
+func (b *Block) SetResult(result []byte, validators module.ValidatorList, rcts module.ReceiptList, txTotal *big.Int) {
 	b.result = result
 	b.rcts = rcts
 	b.txTotal = txTotal
+	b.validators = validators
 }
 
 func (b *Block) Transactions() module.TransactionList {
@@ -95,7 +100,18 @@ func (b *Block) Reset(database db.Database, bs []byte) error {
 		b.blk = blk
 	}
 	b.txTotal = header.TxTotal
+	if len(header.VltHash) > 0 {
+		if vlt, err := state.ValidatorSnapshotFromHash(database, header.VltHash); err != nil {
+			return err
+		} else {
+			b.validators = vlt
+		}
+	}
 	return nil
+}
+
+func (b *Block) NewWorldSnapshot(database db.Database, plt service.Platform) (state.WorldSnapshot, error) {
+	return service.NewWorldSnapshot(database, plt, b.result, b.validators)
 }
 
 func (b *Block) Bytes() []byte {
@@ -110,6 +126,9 @@ func (b *Block) Bytes() []byte {
 	}
 	header.BlkRaw = js
 	header.TxTotal = b.txTotal
+	if b.validators != nil {
+		header.VltHash = b.validators.Hash()
+	}
 	bs, _ := codec.BC.MarshalToBytes(&header)
 	return bs
 }
