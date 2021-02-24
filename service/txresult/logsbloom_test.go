@@ -12,7 +12,7 @@ func TestLogsBloom_AddLog(t *testing.T) {
 
 	l1 := lb1.LogBytes()
 
-	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb1.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x03},
 	})
 
@@ -35,12 +35,12 @@ func TestLogsBloom_Initial(t *testing.T) {
 
 func TestLogsBloom_MergeContains(t *testing.T) {
 	lb1 := NewLogsBloom(nil)
-	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb1.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x03},
 	})
 
 	lb2 := NewLogsBloom(nil)
-	lb2.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb2.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x04},
 	})
 
@@ -53,7 +53,7 @@ func TestLogsBloom_MergeContains(t *testing.T) {
 	}
 
 	lb4 := NewLogsBloom(nil)
-	lb4.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb4.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x05},
 	})
 
@@ -73,7 +73,7 @@ func TestLogsBloom_MergeContains(t *testing.T) {
 
 func TestLogsBloom_Bytes(t *testing.T) {
 	lb1 := NewLogsBloom(nil)
-	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb1.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x03},
 	})
 
@@ -89,7 +89,7 @@ func TestLogsBloom_Bytes(t *testing.T) {
 
 func TestLogsBloom_Compressed(t *testing.T) {
 	lb1 := NewLogsBloom(nil)
-	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+	lb1.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
 		{0x01, 0x02, 0x03},
 	})
 

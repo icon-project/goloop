@@ -173,7 +173,7 @@ func TestMethod_ConvertParamsToTypedObj(t *testing.T) {
 			},
 			args: args{[]byte("{\"_to\":\"hxff9221db215ce1a511cbe0a12ff9eb70be4e5764\",\"_value\":\"0xa\"}")},
 			want: common.MustEncodeAny([]interface{}{
-				common.NewAddressFromString("hxff9221db215ce1a511cbe0a12ff9eb70be4e5764"),
+				common.MustNewAddressFromString("hxff9221db215ce1a511cbe0a12ff9eb70be4e5764"),
 				common.NewHexInt(10),
 				nil,
 			}),
@@ -203,7 +203,7 @@ func TestMethod_ConvertParamsToTypedObj(t *testing.T) {
 			},
 			args: args{[]byte("[\"hxff9221db215ce1a511cbe0a12ff9eb70be4e5764\",\"0xa\"]")},
 			want: common.MustEncodeAny([]interface{}{
-				common.NewAddressFromString("hxff9221db215ce1a511cbe0a12ff9eb70be4e5764"),
+				common.MustNewAddressFromString("hxff9221db215ce1a511cbe0a12ff9eb70be4e5764"),
 				common.NewHexInt(10),
 				nil,
 			}),

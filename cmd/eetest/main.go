@@ -127,8 +127,8 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 		cc.proxy = proxy
 		proxy.GetAPI(cc, "score/")
 		proxy.Invoke(cc, "score/", false,
-			common.NewAddressFromString("cx9999999999999999999999999999999999999999"),
-			common.NewAddressFromString("hx3333333333333333333333333333333333333333"),
+			common.MustNewAddressFromString("cx9999999999999999999999999999999999999999"),
+			common.MustNewAddressFromString("hx3333333333333333333333333333333333333333"),
 			big.NewInt(10), big.NewInt(state.GIGA), "test", paramAny, nil, 1, nil)
 		executor.Release()
 		time.Sleep(time.Second)

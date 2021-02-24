@@ -23,7 +23,7 @@ func TestValidatorFromAddress(t *testing.T) {
 		{
 			name: "EOA1",
 			args: args{
-				common.NewAddressFromString("hx4567db98764567db98764567db98764567db9876"),
+				common.MustNewAddressFromString("hx4567db98764567db98764567db98764567db9876"),
 			},
 			wantErr: false,
 		},
@@ -117,7 +117,7 @@ func TestValidatorSerializeWithPubKey(t *testing.T) {
 }
 
 func TestValidatorSerializeWithAddr(t *testing.T) {
-	addr := common.NewAddressFromString("hx0000000000000000000000000000000000000000")
+	addr := common.MustNewAddressFromString("hx0000000000000000000000000000000000000000")
 	v, err := ValidatorFromAddress(addr)
 	if err != nil {
 		t.Errorf("Fail to make Validator from addr=%v err=%+v", addr, err)
