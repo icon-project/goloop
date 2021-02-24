@@ -38,6 +38,26 @@ class IconScoreDeployTXParams(object):
         return self._score_address
 
 
+class IconScoreDeployInfo(object):
+
+    def __init__(self, score_address: 'Address', current_tx_hash: bytes, next_tx_hash: bytes):
+        self._score_address = score_address
+        self._current_tx_hash = current_tx_hash
+        self._next_tx_hash = next_tx_hash
+
+    @property
+    def score_address(self) -> 'Address':
+        return self._score_address
+
+    @property
+    def current_tx_hash(self) -> bytes:
+        return self._current_tx_hash
+
+    @property
+    def next_tx_hash(self) -> bytes:
+        return self._next_tx_hash
+
+
 class IconSystemScoreBase(IconScoreBase):
 
     @abstractmethod
@@ -63,18 +83,17 @@ class IconSystemScoreBase(IconScoreBase):
                | IconServiceFlag.AUDIT \
                | IconServiceFlag.SCORE_PACKAGE_VALIDATOR
 
-    # def deploy(self, tx_hash: bytes) -> None:
-    #     return ChainScore.acceptScore(self._context, self.address, tx_hash)
-
     def get_deploy_tx_params(self, tx_hash: bytes) -> Optional['IconScoreDeployTXParams']:
         address = ChainScore.txHashToAddress(self._context, self.address, tx_hash)
         return IconScoreDeployTXParams(tx_hash, address)
 
-    # def get_deploy_info(self, address: 'Address') -> Optional['IconScoreDeployInfo']:
-    #     return IconScoreContextUtil.get_deploy_info(self._context, address)
-    #
-    # def is_score_active(self, score_address: 'Address') -> bool:
-    #     return IconScoreContextUtil.is_score_active(self._context, score_address)
-    #
-    # def get_owner(self, score_address: Optional['Address']) -> Optional['Address']:
-    #     return IconScoreContextUtil.get_owner(self._context, score_address)
+    def get_deploy_info(self, score_address: 'Address') -> Optional['IconScoreDeployInfo']:
+        current, _next = ChainScore.addressToTxHashes(self._context, self.address, score_address)
+        return IconScoreDeployInfo(score_address, current, _next)
+
+    def is_score_active(self, score_address: 'Address') -> bool:
+        status = ChainScore.getScoreStatus(self._context, self.address, score_address)
+        if status is None:
+            return False
+        current = status.get('current', None)
+        return current is not None and current['status'] == 'active'

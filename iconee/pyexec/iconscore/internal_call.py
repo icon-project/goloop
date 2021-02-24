@@ -102,3 +102,10 @@ class ChainScore(object):
                           score_address: 'Address') -> Tuple[Optional[bytes], Optional[bytes]]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
                                          'addressToTxHashes', tuple([score_address]))
+
+    @staticmethod
+    def getScoreStatus(context: 'IconScoreContext',
+                       _from: 'Address',
+                       score_address: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'getScoreStatus', tuple([score_address]))
