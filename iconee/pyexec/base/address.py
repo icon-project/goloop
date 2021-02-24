@@ -230,9 +230,9 @@ class Address(object):
         """
         if self.prefix == AddressPrefix.EOA:
             return self.body
-        return self.to_canonical_byte()
+        return self.to_canonical_bytes()
 
-    def to_canonical_byte(self) -> bytes:
+    def to_canonical_bytes(self) -> bytes:
         prefix_byte = self.prefix.value.to_bytes(1, DATA_BYTE_ORDER)
         return prefix_byte + self.body
 
