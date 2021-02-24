@@ -44,11 +44,11 @@ func TestDelegations(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	d1 := Delegation{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   common.NewHexInt(v1),
 	}
 	d2 := Delegation{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(v2),
 	}
 	ds1 := Delegations{
@@ -70,15 +70,15 @@ func TestDelegations_Delete(t *testing.T) {
 	v2 := int64(2)
 	v3 := int64(3)
 	d1 := Delegation{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   common.NewHexInt(v1),
 	}
 	d2 := Delegation{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   common.NewHexInt(v2),
 	}
 	d3 := Delegation{
-		Address: common.NewAddressFromString(addr3),
+		Address: common.MustNewAddressFromString(addr3),
 		Value:   common.NewHexInt(v3),
 	}
 	ds := Delegations{&d1, &d2, &d3}

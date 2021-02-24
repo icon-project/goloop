@@ -52,8 +52,8 @@ func TestUpdatePrepStatus(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
 
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 
 	addrArray := []module.Address{addr1, addr2}
 
@@ -200,7 +200,7 @@ func TestUpdatePrepStatus(t *testing.T) {
 }
 
 func Test_applyPRepStatus(t *testing.T) {
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 	status1 := icstate.NewPRepStatus(addr1)
 
 	type args struct {

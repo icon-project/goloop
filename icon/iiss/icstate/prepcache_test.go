@@ -14,29 +14,29 @@ func TestPrepBaseCache(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
-	addr := common.NewAddressFromString("hx1")
+	addr := common.MustNewAddressFromString("hx1")
 
 	// cache added
 	base := s.prepBaseCache.Get(addr, false)
 	assert.Nil(t, base)
 	base = s.prepBaseCache.Get(addr, true)
 
-	addr = common.NewAddressFromString("hx2")
+	addr = common.MustNewAddressFromString("hx2")
 
 	// cache added
 	base = s.prepBaseCache.Get(addr, true)
-	base.SetPRep("name", "emal" , "web" , "country", "city","deatil", "end", addr)
+	base.SetPRep("name", "emal", "web", "country", "city", "deatil", "end", addr)
 
 	key := icutils.ToKey(addr)
 	val := s.prepBaseCache.dict.Get(key)
 
-	assert.Nil(t,val)
+	assert.Nil(t, val)
 
 	// DB write
 	s.prepBaseCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepBaseCache.dict.Get(key)
-	assert.NotNil(t,val)
+	assert.NotNil(t, val)
 
 	// Reset() reverts Clear(), should get after reset()
 	base = s.prepBaseCache.Get(addr, true)
@@ -45,7 +45,7 @@ func TestPrepBaseCache(t *testing.T) {
 	s.prepBaseCache.Reset()
 	base = s.prepBaseCache.Get(addr, true)
 	assert.False(t, base.IsEmpty())
-	assert.Equal(t, "name" , base.name)
+	assert.Equal(t, "name", base.name)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
@@ -54,7 +54,7 @@ func TestPrepBaseCache(t *testing.T) {
 	s.prepBaseCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepBaseCache.dict.Get(key)
-	assert.Nil(t,val)
+	assert.Nil(t, val)
 
 	// Reset cannot get items from DB after clear()
 	s.prepBaseCache.Clear()
@@ -63,7 +63,7 @@ func TestPrepBaseCache(t *testing.T) {
 	assert.Equal(t, 0, len(s.prepBaseCache.bases))
 
 	// but it can get item, using Get() specifically
-	addr = common.NewAddressFromString("hx1")
+	addr = common.MustNewAddressFromString("hx1")
 	base = s.prepBaseCache.Get(addr, true)
 
 	assert.Equal(t, 1, len(s.prepBaseCache.bases))
@@ -73,14 +73,14 @@ func TestPrepStatusCache(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
-	addr := common.NewAddressFromString("hx1")
+	addr := common.MustNewAddressFromString("hx1")
 
 	// cache added
 	status := s.prepStatusCache.Get(addr, false)
 	assert.Nil(t, status)
 	status = s.prepStatusCache.Get(addr, true)
 
-	addr = common.NewAddressFromString("hx2")
+	addr = common.MustNewAddressFromString("hx2")
 	status = s.prepStatusCache.Get(addr, true)
 	status.SetVTotal(100)
 
@@ -88,13 +88,13 @@ func TestPrepStatusCache(t *testing.T) {
 	key := icutils.ToKey(addr)
 	val := s.prepStatusCache.dict.Get(key)
 
-	assert.Nil(t,val)
+	assert.Nil(t, val)
 
 	// DB write
 	s.prepStatusCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepStatusCache.dict.Get(key)
-	assert.NotNil(t,val)
+	assert.NotNil(t, val)
 
 	// Reset() reverts Clear(), should get after reset()
 	status = s.prepStatusCache.Get(addr, true)
@@ -111,7 +111,7 @@ func TestPrepStatusCache(t *testing.T) {
 	s.prepStatusCache.Flush()
 	key = icutils.ToKey(addr)
 	val = s.prepStatusCache.dict.Get(key)
-	assert.Nil(t,val)
+	assert.Nil(t, val)
 
 	// Reset cannot get items from DB after clear()
 	s.prepStatusCache.Clear()
@@ -120,7 +120,7 @@ func TestPrepStatusCache(t *testing.T) {
 	assert.Equal(t, 0, len(s.prepStatusCache.statuses))
 
 	// but it can get item, using Get() specifically
-	addr = common.NewAddressFromString("hx1")
+	addr = common.MustNewAddressFromString("hx1")
 	status = s.prepStatusCache.Get(addr, true)
 
 	assert.Equal(t, 1, len(s.prepStatusCache.statuses))

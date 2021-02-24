@@ -133,7 +133,7 @@ func TestPRepManager_Sort(t *testing.T) {
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
 	pm := newPRepManager(s)
 
-	addr := common.NewAddressFromString("hx1")
+	addr := common.MustNewAddressFromString("hx1")
 	delegated := big.NewInt(int64(99))
 	s.GetPRepBase(addr, true)
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)
@@ -141,7 +141,7 @@ func TestPRepManager_Sort(t *testing.T) {
 	s.GetPRepStatus(addr, true).SetBonded(bonded)
 	pm.state.AddActivePRep(addr)
 
-	addr = common.NewAddressFromString("hx2")
+	addr = common.MustNewAddressFromString("hx2")
 	s.GetPRepBase(addr, true)
 	delegated = big.NewInt(int64(99))
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)
@@ -149,7 +149,7 @@ func TestPRepManager_Sort(t *testing.T) {
 	s.GetPRepStatus(addr, true).SetBonded(bonded)
 	pm.state.AddActivePRep(addr)
 
-	addr = common.NewAddressFromString("hx3")
+	addr = common.MustNewAddressFromString("hx3")
 	s.GetPRepBase(addr, true)
 	delegated = big.NewInt(int64(99))
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)

@@ -672,7 +672,7 @@ func (s *chainScore) Install(param []byte) error {
 		}
 		params := json.RawMessage("{}")
 		handler := contract.NewDeployHandlerForPreInstall(
-			common.NewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
+			common.MustNewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
 			s.cc.Governance(),
 			"application/zip",
 			governance,
