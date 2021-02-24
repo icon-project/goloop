@@ -836,7 +836,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				param.Signature = sig
 			}
 			if addr := cmd.Flag("addr").Value.String(); addr != "" {
-				param.Addr = common.NewAddressFromString(addr)
+				param.Addr = common.MustNewAddressFromString(addr)
 			}
 			if evtIndexed, err := cmd.Flags().GetStringSlice("indexed"); err == nil && len(evtIndexed) > 0 {
 				param.Indexed = make([]*string, len(evtIndexed))

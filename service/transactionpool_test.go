@@ -34,7 +34,7 @@ func TestTransactionPool_Add(t *testing.T) {
 	bk, _ := dbase.GetBucket(db.TransactionLocatorByHash)
 	pool := NewTransactionPool(module.TransactionGroupNormal, 5000, bk, &mockMonitor{}, log.New())
 
-	addr := common.NewAddressFromString("hx1111111111111111111111111111111111111111")
+	addr := common.MustNewAddressFromString("hx1111111111111111111111111111111111111111")
 	tx1 := newMockTransaction([]byte("tx1"), addr, 1)
 	tx1.NID = 1
 

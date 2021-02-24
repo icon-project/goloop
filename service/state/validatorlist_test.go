@@ -11,9 +11,9 @@ import (
 
 func TestValidatorListBasic(t *testing.T) {
 	addrs := []module.Address{
-		common.NewAddressFromString("hx0000000000000000000000000000000000000000"),
-		common.NewAddressFromString("hx0000000000000000000000000000000000000001"),
-		common.NewAddressFromString("hx0000000000000000000000000000000000000002"),
+		common.MustNewAddressFromString("hx0000000000000000000000000000000000000000"),
+		common.MustNewAddressFromString("hx0000000000000000000000000000000000000001"),
+		common.MustNewAddressFromString("hx0000000000000000000000000000000000000002"),
 	}
 	var validators []module.Validator
 	for _, a := range addrs {
@@ -52,7 +52,7 @@ func TestValidatorListBasic(t *testing.T) {
 		return
 	}
 
-	addrErr := common.NewAddressFromString("cx9999999999999999999999999999999999999999")
+	addrErr := common.MustNewAddressFromString("cx9999999999999999999999999999999999999999")
 	if ridx := vList2.IndexOf(addrErr); ridx >= 0 {
 		t.Errorf("Invalid index value(%d) with invalid address", ridx)
 		return
@@ -87,7 +87,7 @@ func TestValidatorListBasic(t *testing.T) {
 }
 
 func checkEmpty(t *testing.T, vl module.ValidatorList) {
-	addr := common.NewAddressFromString("cx7777777777777777777777777777777777777777")
+	addr := common.MustNewAddressFromString("cx7777777777777777777777777777777777777777")
 	if idx := vl.IndexOf(addr); idx != -1 {
 		t.Errorf("Invalid result on IndexOf() for empty list")
 		return

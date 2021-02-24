@@ -32,5 +32,5 @@ func (i HexInt) Value() int64 {
 type Address string
 
 func (addr Address) Address() module.Address {
-	return common.NewAddressFromString(string(addr))
+	return common.MustNewAddressFromString(string(addr))
 }

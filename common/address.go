@@ -176,12 +176,22 @@ func NewContractAddress(b []byte) *Address {
 	return a
 }
 
-func NewAddressFromString(s string) *Address {
+func MustNewAddressFromString(s string) *Address {
+	if addr, err := NewAddressFromString(s); err != nil {
+		log.Panicf("FAIL to create address with string=%q", s)
+		return nil
+	} else {
+		return addr
+	}
+}
+
+func NewAddressFromString(s string) (*Address, error) {
 	a := new(Address)
 	if err := a.SetString(s); err != nil {
-		log.Panicln("FAIL to Address.SetString() for", s, err)
+		return nil, err
+	} else {
+		return a, nil
 	}
-	return a
 }
 
 func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
