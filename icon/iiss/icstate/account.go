@@ -296,20 +296,18 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				}
 				for _, ub := range a.unbonds {
 					if nb.To().Equal(ub.Address) {
-						if len(ubToAdd) > 0 && nb.Address.Equal(ubToAdd[len(ubToAdd)-1].Address) {
-							ubToAdd = ubToAdd[:len(ubToAdd)-1]
-						}
-						value := new(big.Int).Add(ub.Value, diff)
-						if value.Sign() == -1 {
-							uDiff.Add(uDiff, value.Abs(value))
-							value = new(big.Int)
-						}
 						// append 0 value unbond to remove previous unbond
 						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
 						ubToMod = append(ubToMod, unbond)
-						unbond = &Unbond{nb.Address, value, unbondingHeight}
-						ubToMod = append(ubToMod, unbond)
-						uDiff.Add(uDiff, diff)
+						if diff.Sign() == -1 { // nb > ob, remove unbond
+							uDiff.Sub(uDiff, ub.Value)
+							break
+						} else { // modify unbond
+							ubToAdd = ubToAdd[:len(ubToAdd)-1]
+							value := new(big.Int).Add(ub.Value, diff)
+							unbond = &Unbond{nb.Address, value, unbondingHeight}
+							ubToAdd = append(ubToAdd, unbond)
+						}
 					}
 				}
 			}
