@@ -66,8 +66,8 @@ func (h *DepositHandler) Prepare(ctx Context) (state.WorldContext, error) {
 		}
 	} else {
 		lq = []state.LockRequest{
-			{string(h.from.ID()), state.AccountWriteLock},
-			{string(h.to.ID()), state.AccountWriteLock},
+			{string(h.From.ID()), state.AccountWriteLock},
+			{string(h.To.ID()), state.AccountWriteLock},
 		}
 	}
 	return ctx.GetFuture(lq), nil
@@ -76,7 +76,7 @@ func (h *DepositHandler) Prepare(ctx Context) (state.WorldContext, error) {
 func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
 	h.log = trace.LoggerOf(cc.Logger())
 
-	h.log.TSystemf("DEPOSIT start to=%s action=%s", h.to, h.data.Action)
+	h.log.TSystemf("DEPOSIT start to=%s action=%s", h.To, h.data.Action)
 	defer func() {
 		if err != nil {
 			h.log.TSystemf("DEPOSIT done status=%s msg=%v", err.Error(), err)
@@ -91,19 +91,19 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		return scoreresult.AccessDeniedError.New("DepositControlIsNotAllowed"), nil, nil
 	}
 
-	as1 := cc.GetAccountState(h.from.ID())
-	if as1.IsContract() != h.from.IsContract() {
+	as1 := cc.GetAccountState(h.From.ID())
+	if as1.IsContract() != h.From.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf(
-			"InvalidAddress(%s)", h.from.String()), nil, nil
+			"InvalidAddress(%s)", h.From.String()), nil, nil
 	}
 
-	as2 := cc.GetAccountState(h.to.ID())
-	if as2.IsContract() != h.to.IsContract() || !as2.IsContract() {
+	as2 := cc.GetAccountState(h.To.ID())
+	if as2.IsContract() != h.To.IsContract() || !as2.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf(
-			"InvalidAddress(%s)", h.to.String()), nil, nil
+			"InvalidAddress(%s)", h.To.String()), nil, nil
 	}
 
-	if owner := as2.ContractOwner(); !owner.Equal(h.from) {
+	if owner := as2.ContractOwner(); !owner.Equal(h.From) {
 		return scoreresult.AccessDeniedError.New("NotOwner"), nil, nil
 	}
 
@@ -116,14 +116,14 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		if h.data.ID != nil {
 			return scoreresult.InvalidParameterError.New("UnknownField(id)"), nil, nil
 		}
-		if h.value == nil || h.value.Sign() == -1 {
+		if h.Value == nil || h.Value.Sign() == -1 {
 			return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
 		}
 
 		id := cc.TransactionID()
 		term := cc.DepositTerm()
 		if term > 0 {
-			if h.value.Cmp(depositMinimumValue) < 0 {
+			if h.Value.Cmp(depositMinimumValue) < 0 {
 				return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
 			}
 		} else {
@@ -131,27 +131,27 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		}
 
 		bal1 := as1.GetBalance()
-		if bal1.Cmp(h.value) < 0 {
+		if bal1.Cmp(h.Value) < 0 {
 			return scoreresult.ErrOutOfBalance, nil, nil
 		}
 
-		as1.SetBalance(new(big.Int).Sub(bal1, h.value))
-		if err := as2.AddDeposit(cc, h.value); err != nil {
+		as1.SetBalance(new(big.Int).Sub(bal1, h.Value))
+		if err := as2.AddDeposit(cc, h.Value); err != nil {
 			return err, nil, nil
 		}
-		cc.OnEvent(h.to, [][]byte{
+		cc.OnEvent(h.To, [][]byte{
 			[]byte("DepositAdded(bytes,Address,int,int)"),
 			id,
-			h.from.Bytes(),
+			h.From.Bytes(),
 		}, [][]byte{
-			intconv.BigIntToBytes(h.value),
+			intconv.BigIntToBytes(h.Value),
 			intconv.Int64ToBytes(term),
 		})
 		return nil, nil, nil
 	case DepositActionWithdraw:
-		if h.value != nil && h.value.Sign() != 0 {
+		if h.Value != nil && h.Value.Sign() != 0 {
 			return scoreresult.MethodNotPayableError.Errorf(
-				"NotPayable(value=%d)", h.value), nil, nil
+				"NotPayable(value=%d)", h.Value), nil, nil
 		}
 
 		id := h.data.ID.Bytes()
@@ -168,10 +168,10 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 			treasury := cc.GetAccountState(cc.Treasury().ID())
 			treasury.SetBalance(new(big.Int).Add(treasury.GetBalance(), fee))
 
-			cc.OnEvent(h.to, [][]byte{
+			cc.OnEvent(h.To, [][]byte{
 				[]byte("DepositWithdrawn(bytes,Address,int,int)"),
 				id,
-				h.from.Bytes(),
+				h.From.Bytes(),
 			}, [][]byte{
 				intconv.BigIntToBytes(amount),
 				intconv.BigIntToBytes(fee),

@@ -46,22 +46,22 @@ type (
 )
 
 type CommonHandler struct {
-	from, to module.Address
-	value    *big.Int
+	From, To module.Address
+	Value    *big.Int
 	log      *trace.Logger
 	call     bool
 }
 
 func NewCommonHandler(from, to module.Address, value *big.Int, call bool, log log.Logger) *CommonHandler {
 	return &CommonHandler{
-		from: from, to: to, value: value, call: call,
+		From: from, To: to, Value: value, call: call,
 		log: trace.LoggerOf(log)}
 }
 
 func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
-		{string(h.from.ID()), state.AccountWriteLock},
-		{string(h.to.ID()), state.AccountWriteLock},
+		{string(h.From.ID()), state.AccountWriteLock},
+		{string(h.To.ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
