@@ -20,7 +20,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
-	"strconv"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
