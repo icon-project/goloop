@@ -252,7 +252,7 @@ func countBytesOfDataValue(v interface{}) int {
 		bs := []byte(o)
 		for _, b := range bs {
 			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
-				return len(bs)
+				return len(v.(string))
 			}
 		}
 		return (len(bs) + 1) / 2
