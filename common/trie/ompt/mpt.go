@@ -61,7 +61,6 @@ func bytesToNibs(k []byte) []byte {
 
 func (mb *mptBase) Equal(mb2 *mptBase) bool {
 	return mb.db == mb2.db &&
-		mb.bucket == mb2.bucket &&
 		mb.objectType == mb2.objectType
 }
 
