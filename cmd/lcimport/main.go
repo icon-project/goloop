@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -336,6 +337,12 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 		fmt.Printf("- Balance : %#d\n", ass.GetBalance())
 		if ass.IsContract() {
 			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
+			api, err := ass.APIInfo()
+			if err != nil {
+				return err
+			}
+			apijs, _ := JSONMarshalIndent(api)
+			fmt.Printf("- API Info\n%s\n", apijs)
 		}
 		return nil
 	} else {
@@ -412,8 +419,8 @@ func showWorld(wss state.WorldSnapshot, params []string) error {
 
 func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(1),
-		Use:  name + " <expr>",
+		Args: cobra.RangeArgs(0, 1),
+		Use:  name + " [<expr>]",
 	}
 	pflags := cmd.PersistentFlags()
 	pHeight := pflags.Int64("height", 0, "Height of the state (0 for last height)")
@@ -423,15 +430,43 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 		if height == 0 {
 			height = ex.getLastHeight()
 		}
-		wss, err := ex.NewWorldSnapshot(height)
-		if err != nil {
-			return err
+
+		if len(args) >= 1 {
+			wss, err := ex.NewWorldSnapshot(height)
+			if err != nil {
+				return err
+			}
+			for _, arg := range args {
+				params, err := parseParams(arg)
+				if err != nil {
+					return err
+				}
+				if err := showWorld(wss, params); err != nil {
+					return err
+				}
+			}
+		} else {
+			blk, err := ex.GetBlockByHeight(height)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Block[%d] - %#x\n", height, blk.ID())
+			var values [][]byte
+			result := blk.Result()
+			if len(result) > 0 {
+				if _, err := codec.BC.UnmarshalFromBytes(result, &values); err != nil {
+					return err
+				}
+				fmt.Printf("- World State Hash  : %#x\n", values[0])
+				fmt.Printf("- Patch Result Hash : %#x\n", values[1])
+				fmt.Printf("- Normal Result Hash: %#x\n", values[2])
+				if len(values) >= 3 {
+					fmt.Printf("- Extension Data    : %#x\n", values[3])
+				}
+			}
+			fmt.Printf("- Total Transactions: %d", blk.TxTotal())
 		}
-		params, err := parseParams(args[0])
-		if err != nil {
-			return err
-		}
-		return showWorld(wss, params)
+		return nil
 	}
 	return cmd
 }
