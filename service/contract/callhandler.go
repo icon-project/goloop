@@ -95,13 +95,13 @@ func newCallHandlerWithParams(ch *CommonHandler, method string,
 
 func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldContext, state.AccountState) {
 	lq := []state.LockRequest{
-		{string(h.to.ID()), state.AccountWriteLock},
-		{string(h.from.ID()), state.AccountWriteLock},
+		{string(h.To.ID()), state.AccountWriteLock},
+		{string(h.From.ID()), state.AccountWriteLock},
 	}
 	wc := ctx.GetFuture(lq)
 	wc.WorldVirtualState().Ensure()
 
-	as := wc.GetAccountState(h.to.ID())
+	as := wc.GetAccountState(h.To.ID())
 
 	info, err := as.APIInfo()
 	if err != nil || info == nil {
@@ -118,7 +118,7 @@ func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldCon
 		{state.WorldIDStr, state.AccountWriteLock},
 	}
 	wc = ctx.GetFuture(lq)
-	as = wc.GetAccountState(h.to.ID())
+	as = wc.GetAccountState(h.To.ID())
 
 	return wc, as
 }
@@ -160,7 +160,7 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.log = trace.LoggerOf(cc.Logger())
 
-	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.name)
+	h.log.TSystemf("INVOKE start score=%s method=%s", h.To, h.name)
 	defer func() {
 		if err != nil {
 			if !h.ApplyCallSteps(cc) {
@@ -188,10 +188,10 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
 	h.cm = cc.ContractManager()
 
 	// Prepare
-	if !h.to.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("InvalidAddressForCall(%s)", h.to.String())
+	if !h.To.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidAddressForCall(%s)", h.To.String())
 	}
-	h.as = cc.GetAccountState(h.to.ID())
+	h.as = cc.GetAccountState(h.To.ID())
 	c := h.contract(h.as)
 	if c == nil || c.Status() != state.CSActive {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
@@ -256,8 +256,8 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	h.lock.Lock()
 	if !h.disposed {
 		h.log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
-		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
-			h.value, cc.StepAvailable(), h.method.Name, h.paramObj,
+		err = h.conn.Invoke(h, path, cc.QueryMode(), h.From, h.To,
+			h.Value, cc.StepAvailable(), h.method.Name, h.paramObj,
 			h.codeID, eid, state)
 	}
 	h.lock.Unlock()
@@ -277,7 +277,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 		}
 	}
 
-	score, err := cc.ContractManager().GetSystemScore(cid, cc, h.from, h.value)
+	score, err := cc.ContractManager().GetSystemScore(cid, cc, h.From, h.Value)
 	if err != nil {
 		return err
 	}
@@ -401,7 +401,7 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 		return value, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
-			"GetValue: No Account(%s) exists", h.to)
+			"GetValue: No Account(%s) exists", h.To)
 	}
 }
 
@@ -419,7 +419,7 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
-			"SetValue: No Account(%s) exists", h.to)
+			"SetValue: No Account(%s) exists", h.To)
 	}
 }
 
@@ -437,7 +437,7 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
-			"DeleteValue: No Account(%s) exists", h.to)
+			"DeleteValue: No Account(%s) exists", h.To)
 	}
 }
 
@@ -561,7 +561,7 @@ type TransferAndCallHandler struct {
 }
 
 func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	if h.to.IsContract() {
+	if h.To.IsContract() {
 		return h.CallHandler.Prepare(ctx)
 	} else {
 		return h.th.Prepare(ctx)
@@ -571,7 +571,7 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.log = trace.LoggerOf(cc.Logger())
 
-	h.log.TSystemf("TRANSFER INVOKE start score=%s method=%s", h.to, h.name)
+	h.log.TSystemf("TRANSFER INVOKE start score=%s method=%s", h.To, h.name)
 	defer func() {
 		if err != nil {
 			if !h.ApplyCallSteps(cc) {
@@ -592,7 +592,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 		return nil
 	}
 
-	as := cc.GetAccountState(h.to.ID())
+	as := cc.GetAccountState(h.To.ID())
 	apiInfo, err := as.APIInfo()
 	if err != nil {
 		return err
