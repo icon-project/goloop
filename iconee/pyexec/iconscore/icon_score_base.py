@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 from abc import abstractmethod, ABC, ABCMeta
 from functools import partial, wraps
@@ -478,6 +479,12 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         func: FunctionMetadata = elements.get(func_name)
         return isinstance(func, FunctionMetadata) and func.is_readonly
 
+    def __getattr__(self, item):
+        status, ret = AttributeHandler.run(self._context, item)
+        if status:
+            return ret
+        super().__getattribute__(item)
+
     @property
     def msg(self) -> 'Message':
         """
@@ -655,3 +662,15 @@ class IconScoreBase(IconScoreObject, ContextGetter,
             return ChainScore.txHashToAddress(self._context, self.address, tx_hash)
         else:
             raise AccessDeniedException('No permission')
+
+
+class AttributeHandler(object):
+    MECA_COIN_CODEHASH = '0x5edae375f569d1243b1d9241344d3c2cd34e0dc232242060b0a7508a8335b8dc'
+
+    @classmethod
+    def run(cls, context, item):
+        if item == 'privateSaleHolder' and \
+                os.path.basename(context.code) == cls.MECA_COIN_CODEHASH:
+            return True, ""
+
+        return False, None
