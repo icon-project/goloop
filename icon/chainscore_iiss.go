@@ -20,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
+	"strconv"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
@@ -317,34 +318,37 @@ func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, er
 func (s *chainScore) Ex_claimIScore() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
-	claimed, err := es.Front.GetIScoreClaim(s.from)
+	fClaimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
 		return scoreresult.InvalidInstanceError.Errorf(err.Error())
 	}
-	if claimed != nil {
-		// claim already in this calculation period
-		return scoreresult.UnknownFailureError.Errorf("claim already in this calculation period")
+	if fClaimed != nil {
+		// claim already in this calculation period. there is no IScore to claim
+		s.claimEventLog(s.from, new(big.Int), new(big.Int))
+		return nil
 	}
 
 	iScore, err := es.Reward.GetIScore(s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("cannot find IScore data")
+		return scoreresult.UnknownFailureError.Errorf("Failed to get IScore data(%v)", err)
 	}
 	if iScore == nil {
-		// there is no iScore to claim
-		return scoreresult.UnknownFailureError.Errorf("no IScore data to claim")
+		// there is no IScore to claim.
+		s.claimEventLog(s.from, new(big.Int), new(big.Int))
+		return nil
 	}
-	claimed, err = es.Back.GetIScoreClaim(s.from)
+	bClaimed, err := es.Back.GetIScoreClaim(s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Errorf("Failed to get claim data from back (%s)", err.Error())
 	}
-	if claimed != nil {
-		iScore.Value.Sub(iScore.Value, claimed.Value)
+	if bClaimed != nil {
+		iScore.Value.Sub(iScore.Value, bClaimed.Value)
 	}
 
 	if iScore.IsEmpty() {
 		// there is no IScore to claim
-		return scoreresult.OutOfBalanceError.Errorf("no IScore to claim")
+		s.claimEventLog(s.from, new(big.Int), new(big.Int))
+		return nil
 	}
 
 	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRatio, new(big.Int))
@@ -353,10 +357,10 @@ func (s *chainScore) Ex_claimIScore() error {
 	// increase account icx balance
 	account := s.cc.GetAccountState(s.from.ID())
 	if account == nil {
-		return scoreresult.InvalidInstanceError.Errorf("Invalid account")
+		return scoreresult.InvalidInstanceError.Errorf("Invalid account %s", s.from.String())
 	}
 	balance := account.GetBalance()
-	account.SetBalance(balance.Add(balance, icx))
+	account.SetBalance(new(big.Int).Add(balance, icx))
 
 	// decrease treasury icx balance
 	tr := s.cc.GetAccountState(s.cc.Treasury().ID())
@@ -365,21 +369,25 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	// write claim data to front
 	if err = es.Front.AddIScoreClaim(s.from, claim); err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Errorf("Failed to add IScore claim event. (%s)", err.Error())
 	}
 
+	s.claimEventLog(s.from, claim, icx)
+
+	return nil
+}
+
+func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *big.Int) {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{
 			[]byte("IScoreClaimedV2(Address,int,int)"),
-			s.from.Bytes(),
+			address.Bytes(),
 		},
 		[][]byte{
 			intconv.BigIntToBytes(claim),
 			intconv.BigIntToBytes(icx),
 		},
 	)
-
-	return nil
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
@@ -409,7 +417,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	}
 
 	data := make(map[string]interface{})
-	data["blockheight"] = intconv.FormatInt(es.PrevCalculationBlockHeight())
+	data["blockHeight"] = intconv.FormatInt(es.CalculationBlockHeight())
 	data["iscore"] = intconv.FormatBigInt(is)
 	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
 
