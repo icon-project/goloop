@@ -320,11 +320,10 @@ func (it *importTask) _onValidate(err error) {
 		var bn *bnode
 		var ok bool
 		if bn, ok = it.manager.nmap[string(it.block.ID())]; !ok {
-			blockV2 := it.block.(*blockV2)
-			validatedBlock := *blockV2
-			validatedBlock._nextValidators = it.in.mtransition().NextValidators()
+			vl := it.in.mtransition().NextValidators()
+			validatedBlock := it.block.NewBlock(vl)
 			bn = &bnode{
-				block:  &validatedBlock,
+				block:  validatedBlock,
 				in:     it.in.newTransition(nil),
 				preexe: it.out.newTransition(nil),
 			}

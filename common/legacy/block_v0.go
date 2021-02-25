@@ -177,6 +177,10 @@ func (b *blockV0) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return nil, nil
 }
 
+func (b *blockV0) NewBlock(vl module.ValidatorList) module.Block {
+	return nil
+}
+
 type Block interface {
 	module.Block
 	Verify() error
