@@ -295,6 +295,7 @@ func (pm *PRepManager) ToJSON(totalStake *big.Int) map[string]interface{} {
 	jso["totalBonded"] = pm.totalBonded
 	jso["totalDelegated"] = pm.totalDelegated
 	jso["totalBondedDelegation"] = pm.GetTotalBondedDelegation(br)
+	jso["preps"] = pm.Size()
 	return jso
 }
 
@@ -327,7 +328,10 @@ func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) (map[st
 	for i := start - 1; i < end; i++ {
 		prepList = append(prepList, pm.orderedPReps[i].ToJSON(blockHeight, br))
 	}
+
+	jso["startRanking"] = start
 	jso["preps"] = prepList
+	jso["totalDelegated"] = pm.TotalDelegated()
 	return jso, nil
 }
 
