@@ -601,14 +601,30 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 	} else {
 		m := apiInfo.GetMethod(h.name)
-		if m == nil {
-			return scoreresult.ErrMethodNotFound
-		}
-		if !m.IsPayable() {
-			return scoreresult.ErrMethodNotPayable
-		}
-		if m.IsReadOnly() {
-			return scoreresult.ErrAccessDenied
+		if h.name == scoreapi.FallbackMethodName {
+			payable := m != nil && m.IsPayable()
+			if cc.Revision().LegacyFallbackCheck() {
+				if h.Value.Sign() > 0 && !payable {
+					return scoreresult.ErrMethodNotPayable
+				}
+				if m == nil {
+					return nil
+				}
+			} else {
+				if !payable {
+					return scoreresult.ErrMethodNotFound
+				}
+			}
+		} else {
+			if m == nil {
+				return scoreresult.ErrMethodNotFound
+			}
+			if !m.IsPayable() {
+				return scoreresult.ErrMethodNotPayable
+			}
+			if m.IsReadOnly() {
+				return scoreresult.ErrAccessDenied
+			}
 		}
 	}
 

@@ -26,6 +26,7 @@ const (
 	UseCompactAPIInfo
 	AutoAcceptGovernance
 	ResetStepOnFailure
+	LegacyFallbackCheck
 	LastRevisionBit
 )
 
@@ -64,4 +65,8 @@ func (r Revision) AutoAcceptGovernance() bool {
 
 func (r Revision) ResetStepOnFailure() bool {
 	return (r & ResetStepOnFailure) != 0
+}
+
+func (r Revision) LegacyFallbackCheck() bool {
+	return (r & LegacyFallbackCheck) != 0
 }
