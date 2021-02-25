@@ -79,15 +79,15 @@ func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 
 func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	vs := cc.GetValidatorState()
-	if idx := vs.IndexOf(h.from); idx < 0 {
-		h.log.Warnf("PatchHandler: %s isn't validator", h.from)
-		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.from), nil, nil
+	if idx := vs.IndexOf(h.From); idx < 0 {
+		h.log.Warnf("PatchHandler: %s isn't validator", h.From)
+		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.From), nil, nil
 	}
-	if h.value != nil && h.value.Sign() == 1 {
+	if h.Value != nil && h.Value.Sign() == 1 {
 		return scoreresult.InvalidParameterError.New("ValueMustBeZero"), nil, nil
 	}
-	if !h.to.Equal(state.SystemAddress) {
-		return scoreresult.InvalidParameterError.Errorf("TargetInNotSystem(target=%s)", h.to.String()), nil, nil
+	if !h.To.Equal(state.SystemAddress) {
+		return scoreresult.InvalidParameterError.Errorf("TargetInNotSystem(target=%s)", h.To.String()), nil, nil
 	}
 	switch h.patch.Type {
 	case module.PatchTypeSkipTransaction:

@@ -201,7 +201,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	h.log = trace.LoggerOf(cc.Logger())
 	sysAs := cc.GetAccountState(state.SystemID)
 
-	h.log.TSystemf("DEPLOY start to=%s", h.to)
+	h.log.TSystemf("DEPLOY start to=%s", h.To)
 
 	update := false
 	txInfo := cc.TransactionInfo()
@@ -212,18 +212,18 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 
 	var contractID []byte
 	var as state.AccountState
-	if bytes.Equal(h.to.ID(), state.SystemID) { // install
+	if bytes.Equal(h.To.ID(), state.SystemID) { // install
 		// preDefinedAddr is not nil, it is pre-installed score.
 		if h.preDefinedAddr != nil {
 			contractID = h.preDefinedAddr.ID()
 		} else {
-			contractID = genContractAddr(h.from, txInfo.Timestamp, txInfo.Nonce, salt)
+			contractID = genContractAddr(h.From, txInfo.Timestamp, txInfo.Nonce, salt)
 		}
 		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
-		contractID = h.to.ID()
+		contractID = h.To.ID()
 		as = cc.GetAccountState(contractID)
-		if h.to.Equal(cc.Governance()) && as.IsContract() == false {
+		if h.To.Equal(cc.Governance()) && as.IsContract() == false {
 			update = false
 		} else {
 			update = true
@@ -243,19 +243,19 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		return scoreresult.ErrOutOfStep, nil, nil
 	}
 
-	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) && h.preDefinedAddr == nil {
+	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.From.String()) && h.preDefinedAddr == nil {
 		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
 	if update == false {
-		if as.InitContractAccount(h.from) == false {
+		if as.InitContractAccount(h.From) == false {
 			return errors.ErrExecutionFail, nil, nil
 		}
 	} else {
 		if as.IsContract() == false {
 			return scoreresult.ErrContractNotFound, nil, nil
 		}
-		if as.IsContractOwner(h.from) == false {
+		if as.IsContractOwner(h.From) == false {
 			return scoreresult.ErrAccessDenied, nil, nil
 		}
 	}
@@ -281,8 +281,9 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	}
 
 	if h.eeType.NeedAudit() == false || cc.AuditEnabled() == false ||
-		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := NewAcceptHandler(NewCommonHandler(h.from, h.to, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
+		cc.IsDeployer(h.From.String()) || h.preDefinedAddr != nil ||
+		(cc.Revision().AutoAcceptGovernance() && cc.Governance().Equal(h.To)) {
+		ah := NewAcceptHandler(NewCommonHandler(h.From, h.To, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
 		cc.DeductSteps(acceptStepUsed)
 		if status != nil {
@@ -351,7 +352,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(NewCommonHandler(h.from, scoreAddr, nil, false, h.log))
+	cgah := newCallGetAPIHandler(NewCommonHandler(h.From, scoreAddr, nil, false, h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, _, _ := cc.Call(cgah, cc.StepAvailable())
 	if status != nil {
@@ -418,9 +419,9 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	h.cc = cc
 	h.log = trace.LoggerOf(cc.Logger())
 
-	h.as = cc.GetAccountState(h.to.ID())
+	h.as = cc.GetAccountState(h.To.ID())
 	if !h.as.IsContract() {
-		return scoreresult.Errorf(module.StatusContractNotFound, "Account(%s) is't contract", h.to)
+		return scoreresult.Errorf(module.StatusContractNotFound, "Account(%s) is't contract", h.To)
 	}
 
 	conn := h.cc.GetProxy(h.EEType())

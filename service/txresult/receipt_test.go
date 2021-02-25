@@ -28,7 +28,7 @@ func TestReceipt_JSON(t *testing.T) {
 
 func testReceiptJSONByRev(t *testing.T, rev module.Revision) {
 	database := db.NewMapDB()
-	addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
+	addr := common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 	r := NewReceipt(database, rev, addr)
 	r.SetResult(module.StatusSuccess, big.NewInt(100), big.NewInt(1000), nil)
 	r.SetCumulativeStepUsed(big.NewInt(100))

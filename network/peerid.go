@@ -114,11 +114,3 @@ func NewPeerIDFromAddress(a module.Address) module.PeerID {
 func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {
 	return cache.Get(common.NewAccountAddressFromPublicKey(k))
 }
-
-func NewPeerIDFromString(s string) module.PeerID {
-	a := common.NewAddressFromString(s)
-	if a.IsContract() {
-		panic("PeerId must be AccountAddress")
-	}
-	return cache.Get(a)
-}

@@ -36,7 +36,7 @@ func TestFeeDetail_Basic(t *testing.T) {
 	assert.False(t, fd1.Has())
 
 	ok = fd1.AddPayment(
-		common.NewAddressFromString("hx9e62261634efa9733f37ef449fd32209de272453"),
+		common.MustNewAddressFromString("hx9e62261634efa9733f37ef449fd32209de272453"),
 		big.NewInt(1000),
 	)
 

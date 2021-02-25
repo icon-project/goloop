@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,12 +35,12 @@ func TestEvent_Delegation(t *testing.T) {
 	addr1 := "hx1"
 	v1 := int64(1)
 	vote1 := Vote{
-		Address: common.NewAddressFromString(addr1),
-		Value: big.NewInt(v1),
+		Address: common.MustNewAddressFromString(addr1),
+		Value:   big.NewInt(v1),
 	}
 
 	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.NewAddressFromString(addr1)
+	t1.From = common.MustNewAddressFromString(addr1)
 	t1.Votes = VoteList{&vote1}
 
 	o1 := icobject.New(type_, t1)
@@ -67,13 +70,12 @@ func TestEvent_Bond(t *testing.T) {
 	addr1 := "hx1"
 	v1 := int64(1)
 	vote1 := Vote{
-		Address: common.NewAddressFromString(addr1),
-		Value: big.NewInt(v1),
+		Address: common.MustNewAddressFromString(addr1),
+		Value:   big.NewInt(v1),
 	}
 
-
 	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.NewAddressFromString(addr1)
+	t1.From = common.MustNewAddressFromString(addr1)
 	t1.Votes = VoteList{&vote1}
 
 	o1 := icobject.New(type_, t1)
@@ -103,9 +105,8 @@ func TestEvent_Enable(t *testing.T) {
 	addr1 := "hx1"
 	enable := false
 
-
 	t1 := newEventEnable(icobject.MakeTag(type_, version))
-	t1.Target = common.NewAddressFromString(addr1)
+	t1.Target = common.MustNewAddressFromString(addr1)
 	t1.Enable = enable
 
 	o1 := icobject.New(type_, t1)

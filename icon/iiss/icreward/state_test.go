@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,7 +32,7 @@ func TestState_NewState(t *testing.T) {
 
 	s := NewState(database, nil)
 
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 	iScore := NewIScore()
 	iScore.Value.SetInt64(int64(10))
 	s.SetIScore(addr1, iScore)
@@ -64,7 +67,7 @@ func TestState_SetVoted(t *testing.T) {
 
 	s := NewState(database, nil)
 
-	addr1 := common.NewAddressFromString("hx1")
+	addr1 := common.MustNewAddressFromString("hx1")
 	voted1 := NewVoted()
 	voted1.Enable = true
 	voted1.Delegated.SetInt64(100)
@@ -72,7 +75,7 @@ func TestState_SetVoted(t *testing.T) {
 	err := s.SetVoted(addr1, voted1)
 	assert.NoError(t, err)
 
-	addr2 := common.NewAddressFromString("hx2")
+	addr2 := common.MustNewAddressFromString("hx2")
 	voted2 := NewVoted()
 	voted2.Enable = false
 	voted2.Delegated.SetInt64(200)

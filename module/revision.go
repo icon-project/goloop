@@ -24,6 +24,9 @@ const (
 	UseChainID
 	UseMPTOnEvents
 	UseCompactAPIInfo
+	AutoAcceptGovernance
+	ResetStepOnFailure
+	LegacyFallbackCheck
 	LastRevisionBit
 )
 
@@ -54,4 +57,16 @@ func (r Revision) UseMPTOnEvents() bool {
 
 func (r Revision) UseCompactAPIInfo() bool {
 	return (r & UseCompactAPIInfo) != 0
+}
+
+func (r Revision) AutoAcceptGovernance() bool {
+	return (r & AutoAcceptGovernance) != 0
+}
+
+func (r Revision) ResetStepOnFailure() bool {
+	return (r & ResetStepOnFailure) != 0
+}
+
+func (r Revision) LegacyFallbackCheck() bool {
+	return (r & LegacyFallbackCheck) != 0
 }

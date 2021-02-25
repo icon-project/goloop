@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -64,8 +67,8 @@ func TestCalculator_processClaim(t *testing.T) {
 	database := db.NewMapDB()
 	s := icstage.NewState(database)
 
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
 
@@ -125,10 +128,10 @@ func TestCalculator_processClaim(t *testing.T) {
 }
 
 func TestCalculator_processBlockProduce(t *testing.T) {
-	addr0 := common.NewAddressFromString("hx0")
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
+	addr0 := common.MustNewAddressFromString("hx0")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	addr3 := common.MustNewAddressFromString("hx3")
 	variable := big.NewInt(int64(YearBlock * IScoreICXRatio))
 	rewardGenerate := variable.Int64()
 	rewardValidate := variable.Int64()
@@ -395,7 +398,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 	enable := false
 	for i := int64(1); i < 6; i += 1 {
 		enable = !enable
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(enable, i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
 		if enable {
@@ -422,7 +425,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 		assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted), "%s: %v\t%v", addr.String(), totalVoted, vInfo.totalVoted)
 	}
 
-	addr := common.NewAddressFromString("hx123412341234")
+	addr := common.MustNewAddressFromString("hx123412341234")
 	vInfo.setEnable(addr, false)
 	prep, ok := vInfo.preps[string(addr.Bytes())]
 	assert.True(t, ok)
@@ -438,7 +441,7 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 	enable := true
 	for i := int64(1); i < 6; i += 1 {
 		enable = !enable
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(enable, i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
 
@@ -450,7 +453,7 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 			},
 		)
 	}
-	newAddr := common.NewAddressFromString("hx321321")
+	newAddr := common.MustNewAddressFromString("hx321321")
 	votes = append(
 		votes,
 		&icstage.Vote{
@@ -482,7 +485,7 @@ func TestVotedInfo_updateBonded(t *testing.T) {
 	enable := true
 	for i := int64(1); i < 6; i += 1 {
 		enable = !enable
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(enable, i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
 
@@ -494,7 +497,7 @@ func TestVotedInfo_updateBonded(t *testing.T) {
 			},
 		)
 	}
-	newAddr := common.NewAddressFromString("hx321321")
+	newAddr := common.MustNewAddressFromString("hx321321")
 	votes = append(
 		votes,
 		&icstage.Vote{
@@ -526,7 +529,7 @@ func TestVotedInfo_SortAndUpdateTotalBondedDelegation(t *testing.T) {
 	more := int64(10)
 	maxIndex := int64(d.maxRankForReward) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(true, i, 0, 0, i)
 		d.addVotedData(addr, data)
 		if i > more {
@@ -538,7 +541,7 @@ func TestVotedInfo_SortAndUpdateTotalBondedDelegation(t *testing.T) {
 	assert.Equal(t, total, d.totalBondedDelegation.Int64())
 
 	for i, rank := range d.rank {
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
 		assert.Equal(t, string(addr.Bytes()), rank)
 	}
 }
@@ -549,7 +552,7 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 	more := int64(10)
 	maxIndex := int64(vInfo.maxRankForReward) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
-		addr := common.NewAddressFromString(fmt.Sprintf("hx%d", i))
+		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(true, i, 0, 0, 0)
 		vInfo.addVotedData(addr, data)
 		if i > more {
@@ -688,10 +691,10 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 }
 
 func TestCalculator_VotingReward(t *testing.T) {
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
-	addr3 := common.NewAddressFromString("hx3")
-	addr4 := common.NewAddressFromString("hx4")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	addr3 := common.MustNewAddressFromString("hx3")
+	addr4 := common.MustNewAddressFromString("hx4")
 	prepInfo := map[string]*pRepEnable{
 		string(addr1.Bytes()): {0, 0},
 		string(addr2.Bytes()): {10, 0},
@@ -779,9 +782,9 @@ func TestCalculator_VotingReward(t *testing.T) {
 				1000,
 				icstate.Delegations{d1, d2, d3, d4},
 			},
-			want: (100 * 100 * 1000) / 10 +
-				(100 * 100 * (1000 - 10)) / 10 +
-				(100 * 100 * (200 - 100)) / 10,
+			want: (100*100*1000)/10 +
+				(100*100*(1000-10))/10 +
+				(100*100*(200-100))/10,
 		},
 	}
 

@@ -102,7 +102,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 			godAddr = mustParseAddress(*god)
 		}
 
-		treasuryAddr := common.NewAddressFromString(*treasury)
+		treasuryAddr := common.MustNewAddressFromString(*treasury)
 		if treasuryAddr.IsContract() {
 			log.Panicln("Treasury address shouldn't be contract")
 		}

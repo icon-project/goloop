@@ -88,7 +88,7 @@ func newMockTransaction(id []byte, from module.Address, ts int64) *mockTransacti
 
 func TestTransactionList_AddRemove(t *testing.T) {
 	l := newTransactionList()
-	tx := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x04}, common.NewAddressFromString("hx1111111111111111111111111111111111111111"), 0)
+	tx := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x04}, common.MustNewAddressFromString("hx1111111111111111111111111111111111111111"), 0)
 
 	if err := l.Add(tx, false); err != nil {
 		t.Error("Fail to add transaction")
@@ -104,7 +104,7 @@ func TestTransactionList_AddRemove(t *testing.T) {
 		t.Error("First one must be at front")
 	}
 
-	tx2 := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x05}, common.NewAddressFromString("hx1111111111111111111111111111111111111112"), 0)
+	tx2 := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x05}, common.MustNewAddressFromString("hx1111111111111111111111111111111111111112"), 0)
 	if err := l.Add(tx2, false); err != nil {
 		t.Error("Fail to add second transaction")
 		return
@@ -151,8 +151,8 @@ func TestTransactionList_AddRemove(t *testing.T) {
 }
 
 func TestTransactionList_TestSort(t *testing.T) {
-	from1 := common.NewAddressFromString("hx0000000000000000000000000000000000000001")
-	from2 := common.NewAddressFromString("hx0000000000000000000000000000000000000002")
+	from1 := common.MustNewAddressFromString("hx0000000000000000000000000000000000000001")
+	from2 := common.MustNewAddressFromString("hx0000000000000000000000000000000000000002")
 	tx1 := newMockTransaction([]byte{0x00, 0x00, 0x00, 0x01}, from1, 1)
 	tx2 := newMockTransaction([]byte{0x00, 0x00, 0x00, 0x02}, from1, 2)
 	tx3 := newMockTransaction([]byte{0x00, 0x00, 0x00, 0x03}, from2, 1)

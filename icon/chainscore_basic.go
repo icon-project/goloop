@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -78,11 +81,6 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	if r1 >= r2 {
 		return nil
 	}
-	if r2 >= Revision7 {
-		if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -114,6 +112,52 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	return nil
 }
 
+func (s *chainScore) getScoreAddress(txHash []byte) module.Address {
+	sysAs := s.cc.GetAccountState(state.SystemID)
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	value := h2a.Get(txHash)
+	if value != nil {
+		return value.Address()
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
+	if err := s.checkGovernance(false); err != nil {
+		return nil, err
+	}
+	if len(txHash) == 0 {
+		return nil, scoreresult.ErrInvalidParameter
+	}
+	scoreAddr := s.getScoreAddress(txHash)
+	if scoreAddr == nil {
+		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
+		return nil, err
+	}
+	return scoreAddr, nil
+}
+
+func (s *chainScore) Ex_addressToTxHashes(address module.Address) ([]interface{}, error) {
+	if err := s.checkGovernance(false); err != nil {
+		return nil, err
+	}
+	if !address.IsContract() {
+		return nil, scoreresult.New(StatusIllegalArgument, "address must be contract")
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as == nil || !as.IsContract() {
+		return nil, scoreresult.New(StatusNotFound, "ContractNotFound")
+	}
+	result := make([]interface{}, 2)
+	if cur := as.Contract(); cur != nil {
+		result[0] = cur.DeployTxHash()
+	}
+	if next := as.NextContract(); next != nil {
+		result[1] = next.DeployTxHash()
+	}
+	return result, nil
+}
+
 func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err
@@ -124,16 +168,53 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	if err := s.checkGovernance(false); err != nil {
 		return err
 	}
+	// get scoreAddr first since it cannot be accessible after acceptHandler
+	scoreAddr := s.getScoreAddress(txHash)
+
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
-
 	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), false, s.log)
 	ah := contract.NewAcceptHandler(ch, txHash, auditTxHash)
 	status, _, _ := ah.ExecuteSync(s.cc)
+
+	// update governance variables
+	if status == nil && scoreAddr != nil && s.cc.Governance().Equal(scoreAddr) {
+		sysAs := s.cc.GetAccountState(state.SystemID)
+		govAs := s.cc.GetAccountState(scoreAddr.ID())
+		// stepPrice
+		price := scoredb.NewVarDB(govAs, state.VarStepPrice).Int64()
+		_ = scoredb.NewVarDB(sysAs, state.VarStepPrice).Set(price)
+		// stepCosts
+		stepTypes := scoredb.NewArrayDB(sysAs, state.VarStepTypes)
+		stepCostDB := scoredb.NewDictDB(sysAs, state.VarStepCosts, 1)
+		stepCostGov := scoredb.NewDictDB(govAs, state.VarStepCosts, 1)
+		tcount := stepTypes.Size()
+		for i := 0; i < tcount; i++ {
+			tname := stepTypes.Get(i).String()
+			if cost := stepCostGov.Get(tname); cost != nil {
+				_ = stepCostDB.Set(tname, cost.Int64())
+			}
+		}
+		// maxStepLimits
+		stepLimitTypes := scoredb.NewArrayDB(sysAs, state.VarStepLimitTypes)
+		stepLimitDB := scoredb.NewDictDB(sysAs, state.VarStepLimit, 1)
+		stepLimitGov := scoredb.NewDictDB(govAs, "max_step_limits", 1)
+		tcount = stepLimitTypes.Size()
+		for i := 0; i < tcount; i++ {
+			tname := stepLimitTypes.Get(i).String()
+			if value := stepLimitGov.Get(tname); value != nil {
+				_ = stepLimitDB.Set(tname, value.Int64())
+			}
+		}
+		// revision
+		if revision := scoredb.NewVarDB(govAs, "revision_code"); revision != nil {
+			_ = scoredb.NewVarDB(sysAs, state.VarRevision).Set(revision.Int64())
+		}
+	}
 	return status
 }
 
-func (s *chainScore) Ex_rejectScore(txHash []byte, reason string) error {
+func (s *chainScore) Ex_rejectScore(txHash []byte) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}
@@ -146,11 +227,11 @@ func (s *chainScore) Ex_rejectScore(txHash []byte, reason string) error {
 
 	sysAs := s.cc.GetAccountState(state.SystemID)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	scoreAddr := h2a.Get(txHash).Address()
-	if scoreAddr == nil {
+	value := h2a.Get(txHash)
+	if value == nil {
 		return scoreresult.Errorf(StatusNotFound, "NoPendingTx")
 	}
-	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
+	scoreAs := s.cc.GetAccountState(value.Address().ID())
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
@@ -232,40 +313,6 @@ func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 		}
 	}
 	return stepLimitDB.Set(contextType, cost)
-}
-
-func (s *chainScore) Ex_addDeployer(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			return nil
-		}
-	}
-	return db.Put(address)
-}
-
-func (s *chainScore) Ex_removeDeployer(address module.Address) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			rAddr := db.Pop().Address()
-			if i < db.Size() { // addr is not rAddr
-				if err := db.Set(i, rAddr); err != nil {
-					return err
-				}
-			}
-			break
-		}
-	}
-	return nil
 }
 
 // User calls icx_call : Functions which can be called by anyone.
@@ -376,47 +423,6 @@ func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		scoreStatus["disabled"] = "0x0"
 	}
 	return scoreStatus, nil
-}
-
-func (s *chainScore) Ex_isDeployer(address module.Address) (int, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return 0, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(address) == true {
-			return 1, nil
-		}
-	}
-	return 0, nil
-}
-
-func (s *chainScore) Ex_getDeployers() ([]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return nil, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployers)
-	deployers := make([]interface{}, db.Size())
-	for i := 0; i < db.Size(); i++ {
-		deployers[i] = db.Get(i).Address()
-	}
-	return deployers, nil
-}
-
-func (s *chainScore) Ex_setDeployerWhiteListEnabled(yn bool) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	confValue := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
-	if yn {
-		confValue |= state.SysConfigDeployerWhiteList
-	} else {
-		confValue &^= state.SysConfigDeployerWhiteList
-	}
-	return scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue)
 }
 
 func (s *chainScore) Ex_getServiceConfig() (int64, error) {

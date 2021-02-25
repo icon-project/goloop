@@ -26,7 +26,7 @@ func testReceiptListByRev(t *testing.T, rev module.Revision) {
 
 	var used, price big.Int
 
-	addr1 := common.NewAddressFromString("hx8888888888888888888888888888888888888888")
+	addr1 := common.MustNewAddressFromString("hx8888888888888888888888888888888888888888")
 	for i := 0; i < 5; i++ {
 		r1 := NewReceipt(mdb, rev, addr1)
 		used.SetInt64(int64(i * 100))
@@ -34,7 +34,7 @@ func testReceiptListByRev(t *testing.T, rev module.Revision) {
 		r1.SetResult(module.StatusOutOfBalance, &used, &price, nil)
 		rslice = append(rslice, r1)
 	}
-	addr2 := common.NewAddressFromString("cx0003737589788888888888888888888888888888")
+	addr2 := common.MustNewAddressFromString("cx0003737589788888888888888888888888888888")
 	for i := 0; i < 5; i++ {
 		r2 := NewReceipt(mdb, rev, addr2)
 		used.SetInt64(int64(i * 100))

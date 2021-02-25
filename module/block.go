@@ -32,6 +32,7 @@ type BlockData interface {
 	Marshal(w io.Writer) error
 
 	ToJSON(version JSONVersion) (interface{}, error)
+	NewBlock(vl ValidatorList) Block
 }
 
 type Block interface {

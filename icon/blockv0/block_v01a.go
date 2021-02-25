@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
-	"github.com/icon-project/goloop/service/txresult"
 )
 
 type blockV01aJSON struct {
@@ -41,8 +40,6 @@ type blockV01aJSON struct {
 	TimeStamp          uint64             `json:"time_stamp"`
 	Signature          common.Signature   `json:"signature,omitempty"`
 }
-
-var emptyLogBloom = new(txresult.LogsBloom)
 
 type BlockV01a struct {
 	*blockV01aJSON
@@ -136,7 +133,7 @@ func (b *BlockV01a) Proposer() module.Address {
 }
 
 func (b *BlockV01a) LogsBloom() module.LogsBloom {
-	return emptyLogBloom
+	return nil
 }
 
 func (b *BlockV01a) Validators() *RepsList {

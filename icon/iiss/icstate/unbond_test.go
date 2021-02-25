@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,11 +30,11 @@ func TestUnbonds(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	ub1 := Unbond{
-		Address: common.NewAddressFromString(addr1),
+		Address: common.MustNewAddressFromString(addr1),
 		Value:   big.NewInt(v1),
 	}
 	ub2 := Unbond{
-		Address: common.NewAddressFromString(addr2),
+		Address: common.MustNewAddressFromString(addr2),
 		Value:   big.NewInt(v2),
 	}
 	ubl1 := Unbonds{
@@ -46,17 +49,17 @@ func TestUnbonds(t *testing.T) {
 }
 
 func TestUnbonds_Slash(t *testing.T) {
-	addr1 := common.NewAddressFromString("hx1")
-	addr2 := common.NewAddressFromString("hx2")
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
 	ub1 := Unbond{
 		Address: addr1,
 		Value:   big.NewInt(100),
-		Expire: 100,
+		Expire:  100,
 	}
 	ub2 := Unbond{
 		Address: addr2,
 		Value:   big.NewInt(200),
-		Expire: 200,
+		Expire:  200,
 	}
 	ubl1 := Unbonds{
 		&ub1, &ub2,
@@ -70,7 +73,7 @@ func TestUnbonds_Slash(t *testing.T) {
 	type wants struct {
 		slashAmount int64
 		length      int
-		expire int64
+		expire      int64
 	}
 
 	tests := []struct {
@@ -81,7 +84,7 @@ func TestUnbonds_Slash(t *testing.T) {
 		{
 			"Invalid address",
 			values{
-				common.NewAddressFromString("hx321"),
+				common.MustNewAddressFromString("hx321"),
 				10,
 			},
 			wants{

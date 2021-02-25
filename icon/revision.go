@@ -37,16 +37,20 @@ const (
 )
 
 const (
-	DefaultRevision = Revision4
+	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
 	LatestRevision  = Revision8
 )
 
+const (
+	RevisionIISS = Revision5
+)
+
 var revisionFlags = []module.Revision{
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo,
+	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck,
 	0,
 	0,
-	module.InputCostingWithJSON,
+	module.InputCostingWithJSON | module.ResetStepOnFailure | module.LegacyFallbackCheck,
 	0,
 	0,
 	0,
@@ -57,7 +61,7 @@ var revisionFlags = []module.Revision{
 func init() {
 	var revSum module.Revision
 	for idx, rev := range revisionFlags {
-		revSum |= rev
+		revSum ^= rev
 		revisionFlags[idx] = revSum
 	}
 }

@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -152,9 +155,35 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	return ia.GetDelegationInfo(), nil
 }
 
+var regPRepFee = icutils.ToLoop(2000)
+
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
-	city string, details string, p2pEndpoint string, node module.Address) error {
-	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
+	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
+	if name == "" || email == "" || website == "" || country == "" || city == "" || details == "" ||
+		p2pEndpoint == "" {
+		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
+	}
+	if nodeAddress != nil && nodeAddress.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+	}
+	if s.value.Cmp(regPRepFee) == -1 {
+		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	}
+
+	// Subtract regPRepFree from chainScore
+	as := s.cc.GetAccountState(state.SystemID)
+	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
+	if balance.Sign() < 0 {
+		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	}
+	as.SetBalance(balance)
+
+	// Decrease totalSupply by regPRepFee
+	if err := icutils.IncrementTotalSupply(s.cc, regPRepFee.Neg(regPRepFee)); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
+	}
+
+	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	err := es.RegisterPRep(regInfo)

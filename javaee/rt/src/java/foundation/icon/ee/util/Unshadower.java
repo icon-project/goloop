@@ -116,10 +116,12 @@ public class Unshadower {
             var skv = o.getData();
             var map = new java.util.HashMap<>();
             for (int i = 0; i < skv.length; i += 2) {
-                map.put(
-                        Unshadower.unshadow(skv[i]),
-                        Unshadower.unshadow(skv[i + 1])
-                );
+                var k = skv[i];
+                var v = skv[i+1];
+                if (!(k instanceof s.java.lang.String)) {
+                    throw new IllegalArgumentException("map key is not a string");
+                }
+                map.put(Unshadower.unshadow(k), Unshadower.unshadow(v));
             }
             return map;
         } else if (so instanceof s.java.util.Map) {

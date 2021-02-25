@@ -14,10 +14,10 @@ func TestNodeOwnerCache(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
 
-	addr1node := common.NewAddressFromString("hx11")
-	addr1owner := common.NewAddressFromString("hx12")
-	addr2node := common.NewAddressFromString("hx21")
-	addr2owner := common.NewAddressFromString("hx22")
+	addr1node := common.MustNewAddressFromString("hx11")
+	addr1owner := common.MustNewAddressFromString("hx12")
+	addr2node := common.MustNewAddressFromString("hx21")
+	addr2owner := common.MustNewAddressFromString("hx22")
 
 	// add
 	s.nodeOwnerCache.Add(addr1node, addr1owner)

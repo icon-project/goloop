@@ -1,9 +1,12 @@
 /*
  * Copyright 2020 ICON Foundation
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +28,7 @@ import (
 )
 
 var assTest = &Account{
-	address: common.NewAddressFromString("hx0"),
+	address: common.MustNewAddressFromString("hx0"),
 	stake:   big.NewInt(100),
 	unstakes: []*Unstake{
 		{
@@ -40,33 +43,33 @@ var assTest = &Account{
 	delegating: big.NewInt(20),
 	delegations: []*Delegation{
 		{
-			Address: common.NewAddressFromString("hx1"),
+			Address: common.MustNewAddressFromString("hx1"),
 			Value:   common.NewHexInt(10),
 		},
 		{
-			Address: common.NewAddressFromString("hx2"),
+			Address: common.MustNewAddressFromString("hx2"),
 			Value:   common.NewHexInt(10),
 		},
 	},
 	bonding: big.NewInt(20),
 	bonds: []*Bond{
 		{
-			Address: common.NewAddressFromString("hx3"),
+			Address: common.MustNewAddressFromString("hx3"),
 			Value:   common.NewHexInt(10),
 		},
 		{
-			Address: common.NewAddressFromString("hx4"),
+			Address: common.MustNewAddressFromString("hx4"),
 			Value:   common.NewHexInt(10),
 		},
 	},
 	unbonds: []*Unbond{
 		{
-			Address: common.NewAddressFromString("hx5"),
+			Address: common.MustNewAddressFromString("hx5"),
 			Value:   big.NewInt(10),
 			Expire:  20,
 		},
 		{
-			Address: common.NewAddressFromString("hx6"),
+			Address: common.MustNewAddressFromString("hx6"),
 			Value:   big.NewInt(10),
 			Expire:  30,
 		},
@@ -99,7 +102,7 @@ func TestAccount_Bytes(t *testing.T) {
 }
 
 func TestAccount_SetStake(t *testing.T) {
-	address := common.NewAddressFromString("hx1")
+	address := common.MustNewAddressFromString("hx1")
 	account := newAccount(address)
 
 	assert.Equal(t, 0, account.Stake().Cmp(new(big.Int)))
@@ -116,7 +119,7 @@ func TestAccount_SetStake(t *testing.T) {
 
 func TestAccount_UpdateUnstake(t *testing.T) {
 	unstakeSlotMax := 3
-	address := common.NewAddressFromString("hx1")
+	address := common.MustNewAddressFromString("hx1")
 	account := newAccount(address)
 
 	ul := make(Unstakes, 0)
@@ -196,8 +199,8 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 func TestAccount_UpdateUnbonds(t *testing.T) {
 	a := assTest.Clone() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 
-	ub1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(10), 20}
-	ub2 := &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(10), 20}
+	ub2 := &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	ua := big.NewInt(20)
@@ -205,16 +208,16 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 
 	// modify hx5 targeted unbonding, add a unbonding(hx7)
 	// unbonds : [{address: hx5, value:40, bh: 100}, {hx6, 10, 30}, {hx7, 40, 50}]/
-	add1 := &Unbond{common.NewAddressFromString("hx7"), big.NewInt(40), 50}
-	mod1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(40), 100}
+	add1 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
+	mod1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(40), 100}
 	ul2Add := []*Unbond{add1}
 	ul2Mod := []*Unbond{mod1}
 	tl := a.UpdateUnbonds(ul2Add, ul2Mod)
 
 	expectedTL := []TimerJobInfo{{JobTypeAdd, ul2Add[0].Expire}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
-	ub1 = &Unbond{common.NewAddressFromString("hx5"), big.NewInt(40), 100}
-	ub2 = &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(40), 100}
+	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(add1))
@@ -223,9 +226,9 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 
 	// delete hx5 targeted unbonding, add 2 unbondings(hx8, hx9)
 	// unbonds : [{address: hx5, value: 0, bh:100}, {hx6, 10, 30}, {hx7, 40, 50}, {hx8, 50, 50}, {hx9, 100, 3}]
-	add1 = &Unbond{common.NewAddressFromString("hx8"), big.NewInt(50), 50}
-	add2 := &Unbond{common.NewAddressFromString("hx9"), big.NewInt(100), 3}
-	mod1 = &Unbond{common.NewAddressFromString("hx5"), big.NewInt(0), 100}
+	add1 = &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
+	add2 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 3}
+	mod1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
 	ul2Add = []*Unbond{add1, add2}
 	ul2Mod = []*Unbond{mod1}
 	tl = a.UpdateUnbonds(ul2Add, ul2Mod)
@@ -236,11 +239,11 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.Contains(t, tl, j1)
 	assert.Contains(t, tl, j2)
 	assert.Contains(t, tl, j3)
-	ub1 = &Unbond{common.NewAddressFromString("hx5"), big.NewInt(0), 100}
-	ub2 = &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
-	ub3 := &Unbond{common.NewAddressFromString("hx7"), big.NewInt(40), 50}
-	ub4 := &Unbond{common.NewAddressFromString("hx8"), big.NewInt(50), 50}
-	ub5 := &Unbond{common.NewAddressFromString("hx9"), big.NewInt(100), 3}
+	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
+	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub3 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
+	ub4 := &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
+	ub5 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 3}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(ub3))
@@ -248,10 +251,10 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.True(t, a.unbonds[4].Equal(ub5))
 
 	//remove all unbondings
-	mod1 = &Unbond{common.NewAddressFromString("hx6"), big.NewInt(0), 150}
-	mod2 := &Unbond{common.NewAddressFromString("hx7"), big.NewInt(0), 200}
-	mod3 := &Unbond{common.NewAddressFromString("hx8"), big.NewInt(0), 100}
-	mod4 := &Unbond{common.NewAddressFromString("hx9"), big.NewInt(0), 1000}
+	mod1 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(0), 150}
+	mod2 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(0), 200}
+	mod3 := &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(0), 100}
+	mod4 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(0), 1000}
 	ul2Add = []*Unbond{}
 	ul2Mod = []*Unbond{mod1, mod2, mod3, mod4}
 	tl = a.UpdateUnbonds(ul2Add, ul2Mod)
@@ -264,11 +267,11 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.Contains(t, tl, j2)
 	assert.Contains(t, tl, j3)
 	assert.Contains(t, tl, j4)
-	ub1 = &Unbond{common.NewAddressFromString("hx5"), big.NewInt(0), 100}
-	ub2 = &Unbond{common.NewAddressFromString("hx6"), big.NewInt(0), 150}
-	ub3 = &Unbond{common.NewAddressFromString("hx7"), big.NewInt(0), 200}
-	ub4 = &Unbond{common.NewAddressFromString("hx8"), big.NewInt(0), 100}
-	ub5 = &Unbond{common.NewAddressFromString("hx9"), big.NewInt(0), 1000}
+	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
+	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(0), 150}
+	ub3 = &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(0), 200}
+	ub4 = &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(0), 100}
+	ub5 = &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(0), 1000}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(ub3))
@@ -278,8 +281,8 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 
 func TestAccount_RemoveUnbonding(t *testing.T) {
 	a := assTest.Clone() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
-	ub1 := &Unbond{common.NewAddressFromString("hx5"), big.NewInt(10), 20}
-	ub2 := &Unbond{common.NewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(10), 20}
+	ub2 := &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.Contains(t, a.unbonds, ub1)
 	assert.Contains(t, a.unbonds, ub2)
 	expected := big.NewInt(20)
@@ -344,8 +347,8 @@ func TestAccount_RemoveUnstaking(t *testing.T) {
 func TestAccount_GetUnbondingInfo(t *testing.T) {
 	a := assTest.Clone()
 	//bonds : [{hx3, 10}, {hx4, 10}] , unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
-	addr1 := common.NewAddressFromString("hx3")
-	addr2 := common.NewAddressFromString("hx4")
+	addr1 := common.MustNewAddressFromString("hx3")
+	addr2 := common.MustNewAddressFromString("hx4")
 	bh := int64(31)
 	b1 := &Bond{addr1, common.NewHexInt(5)}
 	b2 := &Bond{addr2, common.NewHexInt(5)}
@@ -362,7 +365,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 
 	//add bond
-	addr3 := common.NewAddressFromString("hx5")
+	addr3 := common.MustNewAddressFromString("hx5")
 	b1 = &Bond{addr3, common.NewHexInt(5)}
 	a.bonds = append(a.bonds, b1)
 	//bonds : [{hx3, 10}, {hx4, 10}, {hx5, 5}], unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
@@ -415,14 +418,14 @@ func TestAccount_SlashStake(t *testing.T) {
 func TestAccount_SlashBond(t *testing.T) {
 	a := assTest.Clone() //[{hx3, 10}, {hx4, 10}]
 
-	amount := a.SlashBond(common.NewAddressFromString("hx3"), 10)
+	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), 10)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	b1 := a.Bonds()[0]
 	assert.Equal(t, 0, b1.Value.Cmp(big.NewInt(9)))
 	bl := len(a.Bonds())
 	assert.Equal(t, 2, bl)
 
-	amount = a.SlashBond(common.NewAddressFromString("hx4"), 100)
+	amount = a.SlashBond(common.MustNewAddressFromString("hx4"), 100)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	bl = len(a.Bonds())
 	assert.Equal(t, 1, bl)
@@ -431,7 +434,7 @@ func TestAccount_SlashBond(t *testing.T) {
 func TestAccount_SlashUnbond(t *testing.T) {
 	a := assTest.Clone() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
 
-	amount, eh := a.SlashUnbond(common.NewAddressFromString("hx5"), 10)
+	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), 10)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	assert.Equal(t, int64(-1), eh)
 	u1 := a.Unbonds()[0]
@@ -439,7 +442,7 @@ func TestAccount_SlashUnbond(t *testing.T) {
 	ul := len(a.Unbonds())
 	assert.Equal(t, 2, ul)
 
-	amount, eh = a.SlashUnbond(common.NewAddressFromString("hx6"), 100)
+	amount, eh = a.SlashUnbond(common.MustNewAddressFromString("hx6"), 100)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	assert.Equal(t, int64(30), eh)
 	ul = len(a.Unbonds())

@@ -162,7 +162,7 @@ func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso["city"] = p.city
 	jso["details"] = p.details
 	jso["p2pEndpoint"] = p.p2pEndpoint
-	jso["node"] = p.node
+	jso["nodeAddress"] = p.node
 	return jso
 }
 

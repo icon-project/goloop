@@ -20,7 +20,7 @@ func TestMarshalAny(t *testing.T) {
 	}{
 		{"map", args{
 			map[string]interface{}{
-				"addr":  NewAddressFromString("hx8888888888888888888888888888888888888888"),
+				"addr":  MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
 				"bytes": []byte{0x23, 0x45},
 				"lst":   []interface{}{"test", "puha"},
 				"value": NewHexInt(2),
@@ -28,11 +28,11 @@ func TestMarshalAny(t *testing.T) {
 			},
 		}, false},
 		{"addr", args{
-			NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
 		}, false},
 		{"slice", args{
 			[]interface{}{
-				NewAddressFromString("hx8888888888888888888888888888888888888888"),
+				MustNewAddressFromString("hx8888888888888888888888888888888888888888"),
 				"test",
 				nil,
 				[]byte{0x02, 0x03},

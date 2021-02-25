@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -89,7 +90,7 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	}
 	plt, err := icon.NewPlatform(data, chain.CID())
 	if err != nil {
-		return nil, errors.Wrap(err, "NewPaltformFailure")
+		return nil, errors.Wrap(err, "NewPlatformFailure")
 	}
 	cm, err := plt.NewContractManager(database, path.Join(data, ContractPath), logger)
 	if err != nil {
@@ -176,6 +177,14 @@ func (e *Executor) GetBlockByHeight(h int64) (*Block, error) {
 		return blk, nil
 	}
 	return nil, nil
+}
+
+func (e *Executor) NewWorldSnapshot(height int64) (state.WorldSnapshot, error) {
+	blk, err := e.GetBlockByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	return blk.NewWorldSnapshot(e.database, e.plt)
 }
 
 func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
@@ -368,11 +377,14 @@ func (e *Executor) CheckResult(tr *Transition) error {
 				return errors.Wrapf(err, "ResultReceiptGetFailure(idx=%d)", idx)
 			}
 			if err := rct1.Check(rct2); err != nil {
-				rct1jso, _ := rct1.ToJSON(module.JSONVersionLast)
-				rct2jso, _ := rct2.ToJSON(module.JSONVersionLast)
-				rct1js, _ := json.MarshalIndent(rct1jso, "", "  ")
-				rct2js, _ := json.MarshalIndent(rct2jso, "", "  ")
+				rct1js, _ := JSONMarshalIndent(rct1)
+				rct2js, _ := JSONMarshalIndent(rct2)
+				var txjs []byte
+				if tx, err := tr.Transition.NormalTransactions().Get(idx); err == nil {
+					txjs, _ = JSONMarshalIndent(tx)
+				}
 				StatusDone(e.log)
+				e.log.Warnf("Failed Transaction[%d]:%s", idx, txjs)
 				e.log.Warnf("Expected Receipt[%d]:%s", idx, rct1js)
 				e.log.Warnf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)
@@ -381,7 +393,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 	}
 	rLogBloom := tr.Transition.LogsBloom()
 	eLogBloom := tr.Block.LogBloom()
-	if !rLogBloom.Equal(eLogBloom) {
+	if eLogBloom != nil && !rLogBloom.Equal(eLogBloom) {
 		return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
 			eLogBloom.LogBytes(), rLogBloom.LogBytes())
 	}
@@ -427,19 +439,11 @@ func (e *Executor) Execute(from, to int64) error {
 
 		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
 		e.log.Infof("Finalize Block[ %8d ] Tx[ %16d ]", height, txTotal)
-		tr.Block.SetResult(tr.Result(), tr.NormalReceipts(), txTotal)
+		tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
 		if err := e.FinalizeTransition(tr); err != nil {
 			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
 		}
 		prevTR = tr
 	}
 	return nil
-}
-
-func executeTransactions(logger log.Logger, lc *lcstore.Store, data string, from, to int64) error {
-	executor, err := NewExecutor(logger, lc, data)
-	if err != nil {
-		return err
-	}
-	return executor.Execute(from, to)
 }

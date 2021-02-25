@@ -56,21 +56,24 @@ const (
 )
 
 var chainMethods = []*chainMethod{
-	{scoreapi.Method{scoreapi.Function, "getNetworkValue",
+	{scoreapi.Method{
+		scoreapi.Function, "getNetworkValue",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "getIISSInfo",
+	{scoreapi.Method{
+		scoreapi.Function, "getIISSInfo",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "setIRep",
+	{scoreapi.Method{
+		scoreapi.Function, "setIRep",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"value", scoreapi.Integer, nil, nil},
@@ -79,7 +82,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0}, // TODO change minVer to Revision11
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
@@ -87,21 +90,23 @@ var chainMethods = []*chainMethod{
 	}, 0, 0}, // TODO change minVer to Revision11
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
 	}, 0, 0}, // TODO change minVer to Revision11
-	{scoreapi.Method{scoreapi.Function, "setStake",
-		scoreapi.FlagExternal | scoreapi.FlagPayable, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "setStake",
+		scoreapi.FlagExternal | scoreapi.FlagPayable, 1,
 		[]scoreapi.Parameter{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getStake",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "getStake",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -109,8 +114,9 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "setDelegation",
-		scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "setDelegation",
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
@@ -121,8 +127,9 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getDelegation",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "getDelegation",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -130,13 +137,15 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "claimIScore",
+	{scoreapi.Method{
+		scoreapi.Function, "claimIScore",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "queryIScore",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "queryIScore",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -144,8 +153,9 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "registerPRep",
-		scoreapi.FlagPayable | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "registerPRep",
+		scoreapi.FlagExternal | scoreapi.FlagPayable, 7,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
 			{"email", scoreapi.String, nil, nil},
@@ -158,8 +168,9 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getPRep",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "getPRep",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -167,12 +178,14 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "unregisterPRep",
+	{scoreapi.Method{
+		scoreapi.Function, "unregisterPRep",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "setPRep",
+	{scoreapi.Method{
+		scoreapi.Function, "setPRep",
 		scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
@@ -186,14 +199,16 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getPRepManager",
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepManager",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "getPReps",
+	{scoreapi.Method{
+		scoreapi.Function, "getPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		[]scoreapi.Parameter{
 			{"startRanking", scoreapi.Integer, nil, nil},
@@ -203,22 +218,25 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getMainPReps",
+	{scoreapi.Method{
+		scoreapi.Function, "getMainPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getSubPReps",
+	{scoreapi.Method{
+		scoreapi.Function, "getSubPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "setBond",
-		scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "setBond",
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"bondList", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
@@ -229,8 +247,9 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getBond",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "getBond",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -238,15 +257,17 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "setBonderList",
-		scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "setBonderList",
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"bonderList", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
-	{scoreapi.Method{scoreapi.Function, "getBonderList",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+	{scoreapi.Method{
+		scoreapi.Function, "getBonderList",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -254,203 +275,124 @@ var chainMethods = []*chainMethod{
 			scoreapi.List,
 		},
 	}, 0, 0}, // TODO change minVer to Revision5
-	{
-		scoreapi.Method{
-			scoreapi.Function, "estimateUnstakeLockPeriod",
-			scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
-			nil,
-			[]scoreapi.DataType{
-				scoreapi.Dict,
-			},
-		},
-		0,
-		0}, // TODO change minVer to Revision5
-	{
-		scoreapi.Method{
-			scoreapi.Function,
-			"getPRepTerm",
-			scoreapi.FlagReadOnly | scoreapi.FlagExternal,
-			0,
-			nil,
-			[]scoreapi.DataType{scoreapi.Dict},
-		},
-		0,
-		0,
-	},
-	{scoreapi.Method{scoreapi.Function, "disableScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
+	{scoreapi.Method{
+		scoreapi.Function, "estimateUnstakeLockPeriod",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "disableScore",
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0}, // TODO change minVer to Revision5
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepTerm",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "disableScore",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "enableScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "enableScore",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "enableScore",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "setRevision",
-		scoreapi.FlagExternal, 0,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "txHashToAddress",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Address,
+		},
+	}, 0, Revision3},
+	{scoreapi.Method{
+		scoreapi.Function, "addressToTxHashes",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, Revision3},
+	{scoreapi.Method{
+		scoreapi.Function, "acceptScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "rejectScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "blockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "unblockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRevision",
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"code", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "setRevision",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"code", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "acceptScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "acceptScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-			{"reason", scoreapi.String, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-			{"reason", scoreapi.String, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "blockScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "blockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "unblockScore",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "unblockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "setStepPrice",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"price", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "setStepPrice",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepPrice",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"price", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "setStepCost",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-			{"cost", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "setStepCost",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepCost",
 		scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
 			{"type", scoreapi.String, nil, nil},
 			{"cost", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "setMaxStepLimit",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-			{"limit", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "setMaxStepLimit",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMaxStepLimit",
 		scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
 			{"contextType", scoreapi.String, nil, nil},
 			{"limit", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "addDeployer",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "addDeployer",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "removeDeployer",
-		scoreapi.FlagExternal, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "removeDeployer",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, Revision5, 0},
+	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getRevision",
 		scoreapi.FlagReadOnly, 0,
@@ -459,23 +401,16 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "getStepPrice",
+	{scoreapi.Method{
+		scoreapi.Function, "getStepPrice",
 		scoreapi.FlagReadOnly, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "getStepCost",
-		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "getStepCost",
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCost",
 		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
 			{"type", scoreapi.String, nil, nil},
@@ -483,24 +418,17 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "getStepCosts",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCosts",
 		scoreapi.FlagReadOnly, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
 	}, 0, 0},
-	{scoreapi.Method{scoreapi.Function, "getMaxStepLimit",
-		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "getMaxStepLimit",
+	{scoreapi.Method{
+		scoreapi.Function, "getMaxStepLimit",
 		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
 			{"contextType", scoreapi.String, nil, nil},
@@ -508,17 +436,9 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "getScoreStatus",
-		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "getScoreStatus",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getScoreStatus",
 		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
@@ -526,40 +446,9 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "isDeployer",
-		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, Revision4},
-	{scoreapi.Method{scoreapi.Function, "isDeployer",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, Revision5, 0},
-	{scoreapi.Method{scoreapi.Function, "getDeployers",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.List,
-		},
-	}, Revision7, 0},
-	{scoreapi.Method{scoreapi.Function, "setDeployerWhiteListEnabled",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"yn", scoreapi.Bool, nil, nil},
-		},
-		nil,
-	}, Revision7, 0},
-	{scoreapi.Method{scoreapi.Function, "getServiceConfig",
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getServiceConfig",
 		scoreapi.FlagReadOnly, 0,
 		nil,
 		[]scoreapi.DataType{
@@ -639,6 +528,11 @@ const (
 	defaultLockMin         = defaultTermPeriod * 5
 	defaultLockMax         = defaultTermPeriod * 20
 	rewardPoint            = 0.7
+	defaultIglobal         = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIprep           = 50
+	defaultIcps            = 0
+	defaultIrelay          = 0
+	defaultIvoter          = 50
 )
 
 type config struct {
@@ -654,13 +548,15 @@ type config struct {
 	UnstakeSlotMax  *common.HexInt `json:"unstakeSlotMax,omitempty"`
 	LockMin         *common.HexInt `json:"lockMin,omitempty"`
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
-	RewardFund      struct {
-		Iglobal common.HexInt `json:"Iglobal"`
-		Iprep   common.HexInt `json:"Iprep"`
-		Icps    common.HexInt `json:"Icps"`
-		Irelay  common.HexInt `json:"Irelay"`
-		Ivoter  common.HexInt `json:"Ivoter"`
-	} `json:"rewardFund"`
+	RewardFund      rewardFund     `json:"rewardFund"`
+}
+
+type rewardFund struct {
+	Iglobal *common.HexInt `json:"Iglobal"`
+	Iprep   *common.HexInt `json:"Iprep"`
+	Icps    *common.HexInt `json:"Icps"`
+	Irelay  *common.HexInt `json:"Irelay"`
+	Ivoter  *common.HexInt `json:"Ivoter"`
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
@@ -683,7 +579,7 @@ type FeeConfig struct {
 	StepCosts map[string]common.HexInt64 `json:"stepCosts,omitempty"`
 }
 
-type Chain struct {
+type ChainConfig struct {
 	Revision                 common.HexInt32   `json:"revision"`
 	AuditEnabled             common.HexInt16   `json:"auditEnabled"`
 	DeployerWhiteListEnabled common.HexInt16   `json:"deployerWhiteListEnabled"`
@@ -714,6 +610,13 @@ func newIconConfig() *config {
 		LockMax:         common.NewHexInt(defaultLockMax),
 		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
 		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
+		RewardFund: rewardFund{
+			Iglobal: common.NewHexInt(defaultIglobal),
+			Iprep:   common.NewHexInt(defaultIprep),
+			Icps:    common.NewHexInt(defaultIcps),
+			Irelay:  common.NewHexInt(defaultIrelay),
+			Ivoter:  common.NewHexInt(defaultIvoter),
+		},
 	}
 }
 
@@ -743,27 +646,84 @@ func (s *chainScore) Install(param []byte) error {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
 
-	chain := Chain{}
-	if param != nil {
-		if err := json.Unmarshal(param, &chain); err != nil {
-			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
-		}
-	}
+	as := s.cc.GetAccountState(state.SystemID)
 
 	iconConfig := s.loadIconConfig()
+	var feeConfig *FeeConfig
+	var systemConfig int
+	var revision int
+	var validators []module.Validator
+	var handlers []contract.ContractHandler
 
-	as := s.cc.GetAccountState(state.SystemID)
-	revision := DefaultRevision
-	if chain.Revision.Value != 0 {
-		revision = int(chain.Revision.Value)
-		if revision > MaxRevision {
-			return scoreresult.IllegalFormatError.Errorf(
-				"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
-		} else if revision > LatestRevision {
-			s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
-				revision, LatestRevision)
+	switch s.cc.ChainID() {
+	case CIDForMainNet:
+		// initialize for main network
+		feeConfig = new(FeeConfig)
+		feeConfig.StepPrice.SetString("10000000000", 10)
+		feeConfig.StepLimit = map[string]common.HexInt64{
+			state.StepLimitTypeInvoke: {0x78000000},
+			state.StepLimitTypeQuery:  {0x780000},
 		}
+		feeConfig.StepCosts = map[string]common.HexInt64{
+			state.StepTypeDefault:          {1_000_000},
+			state.StepTypeContractCall:     {15_000},
+			state.StepTypeContractCreate:   {200_000},
+			state.StepTypeContractUpdate:   {80_000},
+			state.StepTypeContractDestruct: {-70_000},
+			state.StepTypeContractSet:      {30_000},
+			state.StepTypeGet:              {0},
+			state.StepTypeSet:              {200},
+			state.StepTypeReplace:          {50},
+			state.StepTypeDelete:           {-150},
+			state.StepTypeInput:            {200},
+			state.StepTypeEventLog:         {100},
+			state.StepTypeApiCall:          {0},
+		}
+		systemConfig = state.SysConfigAudit
+		revision = Revision1
+
+		// prepare Governance SCORE
+		governance, err := ioutil.ReadFile("icon_governance.zip")
+		if err != nil || len(governance) == 0 {
+			return transaction.InvalidGenesisError.Wrap(err, "FailOnGovernance")
+		}
+		params := json.RawMessage("{}")
+		handler := contract.NewDeployHandlerForPreInstall(
+			common.MustNewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
+			s.cc.Governance(),
+			"application/zip",
+			governance,
+			&params,
+			s.cc.Logger(),
+		)
+		handlers = append(handlers, handler)
+	default:
+		var chainConfig ChainConfig
+		if param != nil {
+			if err := json.Unmarshal(param, &chainConfig); err != nil {
+				return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to parse parameter for chainScore. err(%+v)\n", err)
+			}
+		}
+
+		if chainConfig.Revision.Value != 0 {
+			revision = int(chainConfig.Revision.Value)
+			if revision > MaxRevision {
+				return scoreresult.IllegalFormatError.Errorf(
+					"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
+			} else if revision > LatestRevision {
+				s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
+					revision, LatestRevision)
+			}
+		}
+
+		validators = make([]module.Validator, len(chainConfig.ValidatorList))
+		for i, validator := range chainConfig.ValidatorList {
+			validators[i], _ = state.ValidatorFromAddress(validator)
+			s.log.Debugf("add validator %d: %v", i, validator)
+		}
+		feeConfig = &chainConfig.Fee
 	}
+
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
 		return err
 	}
@@ -779,67 +739,10 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	var feeConfig *FeeConfig
-
-	switch s.cc.ChainID() {
-	case CIDForMainNet:
-		// initialize for main network
-		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
-		feeConfig = new(FeeConfig)
-		feeConfig.StepPrice.SetString("1000000000000", 10)
-		feeConfig.StepLimit = map[string]common.HexInt64{
-			state.StepLimitTypeInvoke: {0x4000000},
-			state.StepLimitTypeQuery:  {0x40000},
-		}
-		feeConfig.StepCosts = map[string]common.HexInt64{
-			state.StepTypeDefault:          {4000},
-			state.StepTypeContractCall:     {1500},
-			state.StepTypeContractCreate:   {2000},
-			state.StepTypeContractUpdate:   {8000},
-			state.StepTypeContractDestruct: {-7000},
-			state.StepTypeContractSet:      {1000},
-			state.StepTypeGet:              {0x0},
-			state.StepTypeSet:              {20},
-			state.StepTypeReplace:          {5},
-			state.StepTypeDelete:           {-15},
-			state.StepTypeInput:            {20},
-			state.StepTypeEventLog:         {10},
-			state.StepTypeApiCall:          {0},
-		}
-		governance, err := ioutil.ReadFile("icon_governance.zip")
-		if err != nil {
-			return err
-		}
-		params := json.RawMessage("{}")
-		handler := contract.NewDeployHandlerForPreInstall(
-			common.NewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
-			s.cc.Governance(),
-			"application/zip",
-			governance,
-			&params,
-			s.cc.Logger(),
-		)
-		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
-		if status != nil {
-			return transaction.InvalidGenesisError.Wrap(status,
-				"FAIL to install initial governance score.")
-		}
-	default:
-		validators := make([]module.Validator, len(chain.ValidatorList))
-		for i, validator := range chain.ValidatorList {
-			validators[i], _ = state.ValidatorFromAddress(validator)
-			s.log.Debugf("add validator %d: %v", i, validator)
-		}
-		if err := s.cc.GetValidatorState().Set(validators); err != nil {
-			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
-		}
-		feeConfig = &chain.Fee
-
-		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
-	}
 	if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
 		return err
 	}
+
 	if feeConfig != nil {
 		if err = applyStepLimits(feeConfig, as); err != nil {
 			return err
@@ -852,6 +755,19 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
+	if len(validators) > 0 {
+		if err := s.cc.GetValidatorState().Set(validators); err != nil {
+			return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
+		}
+	}
+
+	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(systemConfig); err != nil {
+		return err
+	}
+
+	s.handleRevisionChange(as, Revision1, revision)
+
+	s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
 		return err
@@ -890,7 +806,13 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	s.handleRevisionChange(as, Revision1, revision)
+	for _, handler := range handlers {
+		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
+		if status != nil {
+			return transaction.InvalidGenesisError.Wrap(status,
+				"FAIL to install initial governance score.")
+		}
+	}
 	return nil
 }
 
