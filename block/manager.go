@@ -567,7 +567,7 @@ func NewManager(
 	}
 
 	var height int64
-	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
+	err = chainPropBucket.Get(db.Raw(keyLastBlockHeight), &height)
 	if errors.NotFoundError.Equals(err) || (err == nil && height == 0) {
 		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
@@ -771,7 +771,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 	if err != nil {
 		return nil, errors.CriticalUnknownError.Wrap(err, "UnknownBucketError")
 	}
-	if err := hb.set(blk.Height(), raw(blk.ID())); err != nil {
+	if err := hb.Set(blk.Height(), db.Raw(blk.ID())); err != nil {
 		return nil, errors.CriticalUnknownError.Wrap(err, "FailOnBlockIndex")
 	}
 
@@ -789,7 +789,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 			TransactionGroup: module.TransactionGroupPatch,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
 		}
 	}
@@ -803,7 +803,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 			TransactionGroup: module.TransactionGroupNormal,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
 		}
 	}
@@ -864,7 +864,7 @@ func (m *manager) finalizePrunedBlock() error {
 	if bk, err := m.bucketFor(db.ChainProperty); err != nil {
 		return errors.InvalidStateError.Wrap(err, "BucketForChainProperty")
 	} else {
-		if err := bk.set(raw(keyLastBlockHeight), blk.Height()); err != nil {
+		if err := bk.Set(db.Raw(keyLastBlockHeight), blk.Height()); err != nil {
 			return errors.CriticalUnknownError.Wrap(err, "FailOnSetLast")
 		}
 	}
@@ -988,15 +988,8 @@ func (m *manager) Commit(block module.BlockCandidate) error {
 	return nil
 }
 
-func (m *manager) bucketFor(id db.BucketID) (*bucket, error) {
-	b, err := m.db().GetBucket(id)
-	if err != nil {
-		return nil, err
-	}
-	return &bucket{
-		dbBucket: b,
-		codec:    dbCodec,
-	}, nil
+func (m *manager) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
+	return db.NewCodedBucket(m.db(), id, nil)
 }
 
 func (m *manager) Finalize(block module.BlockCandidate) error {
@@ -1055,7 +1048,7 @@ func (m *manager) finalize(bn *bnode) error {
 			TransactionGroup: module.TransactionGroupPatch,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return err
 		}
 	}
@@ -1069,7 +1062,7 @@ func (m *manager) finalize(bn *bnode) error {
 			TransactionGroup: module.TransactionGroupNormal,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return err
 		}
 	}
@@ -1077,7 +1070,7 @@ func (m *manager) finalize(bn *bnode) error {
 	if err != nil {
 		return err
 	}
-	if err = chainProp.set(raw(keyLastBlockHeight), block.Height()); err != nil {
+	if err = chainProp.Set(db.Raw(keyLastBlockHeight), block.Height()); err != nil {
 		return err
 	}
 	m.log.Debugf("Finalize(%x)\n", block.ID())
@@ -1100,7 +1093,7 @@ func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
 	if err != nil {
 		return nil
 	}
-	bs, err := hb.getBytes(raw(hash))
+	bs, err := hb.GetBytes(db.Raw(hash))
 	if err != nil {
 		return nil
 	}
@@ -1173,7 +1166,7 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 		return nil, err
 	}
 	var loc transactionLocator
-	err = tlb.get(raw(id), &loc)
+	err = tlb.Get(db.Raw(id), &loc)
 	if err != nil {
 		return nil, errors.ErrNotFound
 	}
@@ -1231,7 +1224,7 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 		return nil, err
 	}
 	loc := new(transactionLocator)
-	err = tlb.get(raw(id), loc)
+	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
 		return nil, errors.ErrNotFound
 	}
@@ -1275,7 +1268,7 @@ func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
 		return nil, err
 	}
 	loc := new(transactionLocator)
-	err = tlb.get(raw(id), loc)
+	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
 		return nil, errors.NotFoundError.Wrap(err, "Not found")
 	}

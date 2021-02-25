@@ -51,15 +51,8 @@ func NewBlockV2Handler(chain module.Chain) Handler {
 	return &blockV2Handler{chain: chain}
 }
 
-func (b *blockV2Handler) bucketFor(id db.BucketID) (*bucket, error) {
-	bk, err := b.chain.Database().GetBucket(id)
-	if err != nil {
-		return nil, err
-	}
-	return &bucket{
-		dbBucket: bk,
-		codec:    dbCodec,
-	}, nil
+func (b *blockV2Handler) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
+	return db.NewCodedBucket(b.chain.Database(), id, nil)
 }
 
 func (b *blockV2Handler) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
@@ -67,7 +60,7 @@ func (b *blockV2Handler) commitVoteSetFromHash(hash []byte) module.CommitVoteSet
 	if err != nil {
 		return nil
 	}
-	bs, err := bk.getBytes(raw(hash))
+	bs, err := bk.GetBytes(db.Raw(hash))
 	if err != nil {
 		return nil
 	}
@@ -144,7 +137,7 @@ func (b *blockV2Handler) GetBlock(id []byte) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	headerBytes, err := hb.getBytes(raw(id))
+	headerBytes, err := hb.GetBytes(db.Raw(id))
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +225,7 @@ func (b* blockV2Handler) GetBlockByHeight(height int64) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash, err := headerHashByHeight.getBytes(height)
+	hash, err := headerHashByHeight.GetBytes(height)
 	if err != nil {
 		return nil, err
 	}
@@ -249,17 +242,17 @@ func (b *blockV2Handler) FinalizeHeader(blk module.Block) error {
 		return err
 	}
 	blkV2 := blk.(*blockV2)
-	if err = hb.put(blkV2._headerFormat()); err != nil {
+	if err = hb.Put(blkV2._headerFormat()); err != nil {
 		return err
 	}
-	if err = hb.set(raw(blk.Votes().Hash()), raw(blk.Votes().Bytes())); err != nil {
+	if err = hb.Set(db.Raw(blk.Votes().Hash()), db.Raw(blk.Votes().Bytes())); err != nil {
 		return err
 	}
 	hh, err := b.bucketFor(db.BlockHeaderHashByHeight)
 	if err != nil {
 		return err
 	}
-	if err = hh.set(blk.Height(), raw(blk.ID())); err != nil {
+	if err = hh.Set(blk.Height(), db.Raw(blk.ID())); err != nil {
 		return err
 	}
 	return nil

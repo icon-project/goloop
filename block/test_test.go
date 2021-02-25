@@ -529,14 +529,14 @@ func (tr *testTransition) Equal(t2 module.Transition) bool {
 type testServiceManager struct {
 	test.ServiceManagerBase
 	transactions [][]*testTransaction
-	bucket       *bucket
+	bucket       *db.CodedBucket
 	exeChan      chan struct{}
 }
 
 func newTestServiceManager(database db.Database) *testServiceManager {
 	sm := &testServiceManager{}
 	sm.transactions = make([][]*testTransaction, 2)
-	sm.bucket = newBucket(database, db.BytesByHash, nil)
+	sm.bucket, _ = db.NewCodedBucket(database, db.BytesByHash, nil)
 	return sm
 }
 
@@ -646,13 +646,13 @@ func (sm *testServiceManager) Finalize(transition module.Transition, opt int) er
 		return errors.New("invalid assertion. not testTransition")
 	}
 	if opt&module.FinalizeNormalTransaction != 0 {
-		log.Must(sm.bucket.put(tr.normalTransactions))
+		log.Must(sm.bucket.Put(tr.normalTransactions))
 	}
 	if opt&module.FinalizePatchTransaction != 0 {
-		log.Must(sm.bucket.put(tr.patchTransactions))
+		log.Must(sm.bucket.Put(tr.patchTransactions))
 	}
 	if opt&module.FinalizeResult != 0 {
-		log.Must(sm.bucket.put(tr.NextValidators()))
+		log.Must(sm.bucket.Put(tr.NextValidators()))
 	}
 	return nil
 }
@@ -675,7 +675,7 @@ func (sm *testServiceManager) GenesisTransactionFromBytes(b []byte, blockVersion
 
 func (sm *testServiceManager) TransactionListFromHash(hash []byte) module.TransactionList {
 	ttxs := &testTransactionList{}
-	err := sm.bucket.get(raw(hash), ttxs)
+	err := sm.bucket.Get(db.Raw(hash), ttxs)
 	if err != nil {
 		return nil
 	}
@@ -707,7 +707,7 @@ func (sm *testServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
 
 func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	tvl := &testValidatorList{}
-	err := sm.bucket.get(raw(hash), tvl)
+	err := sm.bucket.Get(db.Raw(hash), tvl)
 	if err != nil {
 		return nil
 	}
