@@ -42,6 +42,10 @@ const (
 	LatestRevision  = Revision8
 )
 
+const (
+	RevisionIISS = Revision5
+)
+
 var revisionFlags = []module.Revision{
 	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure,
 	0,
