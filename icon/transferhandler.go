@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -86,7 +87,7 @@ func (h *TransferHandler) DoExecuteSync(cc contract.CallContext) (err error, ro 
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.From.Bytes()
 		indexed[2] = h.To.Bytes()
-		indexed[3] = h.Value.Bytes()
+		indexed[3] = intconv.BigIntToBytes(h.Value)
 		cc.OnEvent(h.From, indexed, make([][]byte, 0))
 	}
 
