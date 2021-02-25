@@ -38,7 +38,7 @@ func TestHexInt_UnmarshalJSON(t *testing.T) {
 		{
 			name:     "ShortNumber3",
 			args:     args{"\"-10\""},
-			expected: big.NewInt(-0x10),
+			expected: big.NewInt(-0xa),
 			error:    false,
 		},
 		{

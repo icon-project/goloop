@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -13,12 +14,22 @@ func FormatBigInt(i *big.Int) string {
 }
 
 func ParseBigInt(i *big.Int, s string) error {
-	neg, bs, err := decodeHexNumber(s)
-	if err != nil {
-		return err
+	negate := false
+	if s[0] == '-' {
+		negate = true
+		s = s[1:]
 	}
-	i.SetBytes(bs)
-	if neg {
+	if strings.HasPrefix(s, "0x") {
+		s = s[2:]
+		if _, ok := i.SetString(s, 16); !ok {
+			return errors.New("InvalidHexNumber")
+		}
+	} else {
+		if _, ok := i.SetString(s, 10); !ok {
+			return errors.New("InvalidDecimalNumber")
+		}
+	}
+	if negate {
 		i.Neg(i)
 	}
 	return nil
