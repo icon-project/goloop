@@ -27,6 +27,7 @@ import (
 
 type contractManager struct {
 	contract.ContractManager
+	log log.Logger
 }
 
 func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
@@ -36,10 +37,17 @@ func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallCont
 	return cm.ContractManager.GetSystemScore(contentID, cc, from, value)
 }
 
+func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (contract.ContractHandler, error) {
+	if ctype == contract.CTypeTransfer && !to.IsContract() {
+		return newTransferHandler(from, to, value, data, cm.log), nil
+	}
+	return cm.ContractManager.GetHandler(from, to, value, ctype, data)
+}
+
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
 	cm, err := contract.NewContractManager(dbase, dir, logger)
 	if err != nil {
 		return nil, err
 	}
-	return &contractManager{cm}, nil
+	return &contractManager{cm, logger}, nil
 }

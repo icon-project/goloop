@@ -155,6 +155,10 @@ func (tx *transactionV2) Execute(ctx contract.Context, estimate bool) (txresult.
 	as1.SetBalance(new(big.Int).Sub(bal1, trans))
 
 	as2 := ctx.GetAccountState(tx.To().ID())
+	if as2.IsContract() {
+		ctx.Logger().Debugf("LOST transfer addr=%s", tx.To().String())
+		as2 = ctx.GetAccountState(state.LostID)
+	}
 	bal2 := as2.GetBalance()
 	as2.SetBalance(new(big.Int).Add(bal2, &tx.Value.Int))
 
