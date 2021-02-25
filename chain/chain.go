@@ -439,7 +439,7 @@ func (c *singleChain) prepareManagers() error {
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, ts)
+	c.bm, err = block.NewManager(c, ts, nil)
 	if err != nil {
 		return err
 	}

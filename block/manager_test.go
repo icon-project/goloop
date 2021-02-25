@@ -41,7 +41,7 @@ func newBlockGenerator(t *testing.T, gtx *testTransaction) *blockGenerator {
 	c := newTestChain(newMapDB(), gtx)
 	bg.sm = newTestServiceManager(c.Database())
 	var err error
-	bg.bm, err = NewManager(c, nil)
+	bg.bm, err = NewManager(c, nil, nil)
 	assert.Nil(t, err)
 	return bg
 }
@@ -92,7 +92,7 @@ func newBlockManagerTestSetUp(t *testing.T) *blockManagerTestSetUp {
 	s.chain = newTestChain(s.database, s.gtx)
 	s.sm = s.chain.sm
 	var err error
-	s.bm, err = NewManager(s.chain, nil)
+	s.bm, err = NewManager(s.chain, nil, nil)
 	assert.Nil(t, err)
 	s.bg = newBlockGenerator(t, s.gtx)
 	return s
@@ -179,7 +179,7 @@ func TestBlockManager_New_HasValidGenesisBlock(t *testing.T) {
 
 	c := newTestChain(s.chain.Database(), s.chain.gtx)
 	var err error
-	bm, err = NewManager(c, nil)
+	bm, err = NewManager(c, nil, nil)
 	assert.Nil(t, err)
 	assertHasValidGenesisBlock(t, bm)
 	blk, _ = bm.GetLastBlock()
