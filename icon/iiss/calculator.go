@@ -35,6 +35,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 )
 
 type RewardType int
@@ -163,7 +164,8 @@ func (c *Calculator) IsCalcDone(blockHeight int64) bool {
 	return c.startHeight == blockHeight && c.result != nil
 }
 
-func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
+func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
+	ss := ess.(*ExtensionSnapshotImpl)
 	if ss.back == nil {
 		return false
 	}
@@ -174,10 +176,8 @@ func (c *Calculator) checkToRun(ss *ExtensionSnapshotImpl) bool {
 	return c.back == nil || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
 }
 
-func (c *Calculator) Run(ss *ExtensionSnapshotImpl) (err error) {
-	if !c.checkToRun(ss) {
-		return
-	}
+func (c *Calculator) Run(ess state.ExtensionSnapshot) (err error) {
+	ss := ess.(*ExtensionSnapshotImpl)
 	startTS := time.Now()
 	if err = c.prepare(ss); err != nil {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
