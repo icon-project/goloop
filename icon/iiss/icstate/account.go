@@ -45,6 +45,7 @@ type Account struct {
 	delegating  *big.Int
 	delegations Delegations
 	bonding     *big.Int
+	unbonding   *big.Int
 	bonds       Bonds
 	unbonds     Unbonds
 }
@@ -69,6 +70,7 @@ func (a *Account) equal(other *Account) bool {
 		a.delegating.Cmp(other.delegating) == 0 &&
 		a.delegations.Equal(other.delegations) &&
 		a.bonding.Cmp(other.bonding) == 0 &&
+		a.unbonding.Cmp(other.unbonding) == 0 &&
 		a.bonds.Equal(other.bonds) &&
 		a.unbonds.Equal(other.unbonds)
 }
@@ -94,6 +96,7 @@ func (a *Account) Set(other *Account) {
 	a.delegating.Set(other.delegating)
 	a.delegations = other.delegations.Clone()
 	a.bonding.Set(other.bonding)
+	a.unbonding.Set(other.unbonding)
 	a.bonds = other.bonds.Clone()
 	a.unbonds = other.unbonds.Clone()
 }
@@ -106,6 +109,7 @@ func (a *Account) Clone() *Account {
 		delegating:  new(big.Int).Set(a.delegating),
 		delegations: a.delegations.Clone(),
 		bonding:     new(big.Int).Set(a.bonding),
+		unbonding:   new(big.Int).Set(a.unbonding),
 		bonds:       a.bonds.Clone(),
 		unbonds:     a.unbonds.Clone(),
 	}
@@ -123,6 +127,7 @@ func (a *Account) RLPDecodeFields(decoder codec.Decoder) error {
 		&a.delegating,
 		&a.delegations,
 		&a.bonding,
+		&a.unbonding,
 		&a.bonds,
 		&a.unbonds,
 	)
@@ -135,6 +140,7 @@ func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
 		a.delegating,
 		a.delegations,
 		a.bonding,
+		a.unbonding,
 		a.bonds,
 		a.unbonds,
 	)
@@ -148,6 +154,7 @@ func (a *Account) Clear() {
 	a.delegating = big.NewInt(0)
 	a.delegations = nil
 	a.bonding = big.NewInt(0)
+	a.unbonding = big.NewInt(0)
 	a.bonds = nil
 	a.unbonds = nil
 }
@@ -241,7 +248,9 @@ func (a *Account) GetVotingPower() *big.Int {
 }
 
 func (a *Account) GetVoting() *big.Int {
-	return new(big.Int).Add(a.bonding, a.delegating)
+	voting := new(big.Int).Add(a.Bond(), a.Delegating())
+	voting.Add(voting, a.Unbond())
+	return voting
 }
 
 func (a *Account) Bond() *big.Int {
@@ -254,6 +263,10 @@ func (a *Account) Bonds() Bonds {
 
 func (a *Account) Unbonds() Unbonds {
 	return a.unbonds
+}
+
+func (a *Account) Unbond() *big.Int {
+	return a.unbonding
 }
 
 func (a *Account) GetBondsInfo() []interface{} {
@@ -320,15 +333,19 @@ func (a *Account) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo
 			}
 		}
 	}
+	a.unbonding.Set(a.Unbonds().GetUnbondAmount())
 	return tl
 }
 
 func (a *Account) RemoveUnbonding(height int64) error {
 	a.checkWritable()
 	var tmp Unbonds
+	removed := new(big.Int)
 	for _, u := range a.unbonds {
 		if u.Expire != height {
 			tmp = append(tmp, u)
+		} else {
+			removed.Add(removed, u.Value)
 		}
 	}
 
@@ -336,6 +353,7 @@ func (a *Account) RemoveUnbonding(height int64) error {
 		return errors.Errorf("%s does not have unbonding timer at %d", a.address.String(), height)
 	}
 	a.unbonds = tmp
+	a.unbonding.Sub(a.Unbond(), removed)
 
 	return nil
 }
@@ -398,5 +416,6 @@ func newAccount(addr module.Address) *Account {
 		stake:      new(big.Int),
 		delegating: new(big.Int),
 		bonding:    new(big.Int),
+		unbonding:  new(big.Int),
 	}
 }
