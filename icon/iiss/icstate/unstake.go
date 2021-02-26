@@ -109,15 +109,18 @@ func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
 	return unstakes
 }
 
-func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) error {
+func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
-		return errors.Errorf("Invalid unstake Value %v", v)
+		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
+	tl := make([]TimerJobInfo, 0)
 	if len(*us) >= sm {
 		// update last entry
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
 		last.Amount.Add(last.Amount, v)
+		tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
+		tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 		if eh > last.ExpireHeight {
 			last.ExpireHeight = eh
 		}
@@ -131,8 +134,9 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) error {
 		copy(unstakes[index+1:], unstakes[index:])
 		unstakes[index] = unstake
 		*us = unstakes
+		tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 	}
-	return nil
+	return tl, nil
 }
 
 func (us Unstakes) findIndex(h int64) int64 {
