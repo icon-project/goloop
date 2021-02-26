@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -85,16 +86,41 @@ func (t TypeTag) String() string {
 	}
 }
 
+// ParseHexIntParam reproduce same decoding logics of parameter parsing
+// of ICON.
+//
+// def str_to_int(value: str) -> int:
+//    if isinstance(value, int):
+//        return value
+//
+//    base = 16 if is_hex(value) else 10
+//    return int(value, base)
+//
+func ParseHexIntParam(bs []byte) (*common.HexInt, error) {
+	var iValue int64
+	if err := json.Unmarshal(bs, &iValue); err == nil {
+		return common.NewHexInt(iValue), nil
+	}
+	var sValue string
+	if err := json.Unmarshal(bs, &sValue); err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidIntValue")
+	}
+	ret := new(common.HexInt)
+	if err := intconv.ParseBigInt(&ret.Int, sValue); err != nil {
+		return nil, scoreresult.UnknownFailureError.Wrap(err, "InvalidParameterError(ICON)")
+	}
+	return ret, nil
+}
+
 func (t TypeTag) ConvertJSONToTypedObj(bs []byte, fields []Field) (*codec.TypedObj, error) {
 	var value interface{}
 	switch t {
 	case TInteger:
-		var buffer common.HexInt
-		if err := json.Unmarshal(bs, &buffer); err != nil {
-			return nil, scoreresult.InvalidParameterError.Wrapf(err,
-				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+		if buffer, err := ParseHexIntParam(bs); err != nil {
+			return nil, err
+		} else {
+			value = buffer
 		}
-		value = &buffer
 	case TString:
 		var buffer string
 		if err := json.Unmarshal(bs, &buffer); err != nil {
