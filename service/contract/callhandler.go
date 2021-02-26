@@ -581,15 +581,9 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 		}
 	}()
 
-	status, result, addr := h.th.DoExecuteSync(cc)
+	status, _, _ := h.th.DoExecuteSync(cc)
 	if status != nil {
-		if !h.ApplyCallSteps(cc) {
-			status = scoreresult.OutOfStepError.New("OutOfStepForCall")
-		}
-		go func() {
-			cc.OnResult(status, cc.StepUsed(), result, addr)
-		}()
-		return nil
+		return status
 	}
 
 	as := cc.GetAccountState(h.To.ID())
@@ -608,6 +602,12 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 					return scoreresult.ErrMethodNotPayable
 				}
 				if m == nil {
+					if !h.ApplyCallSteps(cc) {
+						return scoreresult.OutOfStepError.New("OutOfStepForCall")
+					}
+					go func() {
+						cc.OnResult(nil, cc.StepUsed(), nil, nil)
+					}()
 					return nil
 				}
 			} else {
