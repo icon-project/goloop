@@ -62,6 +62,7 @@ var assTest = &Account{
 			Value:   common.NewHexInt(10),
 		},
 	},
+	unbonding: big.NewInt(20),
 	unbonds: []*Unbond{
 		{
 			Address: common.MustNewAddressFromString("hx5"),
@@ -205,9 +206,10 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	ua := big.NewInt(20)
 	assert.Equal(t, 0, ua.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	// modify hx5 targeted unbonding, add a unbonding(hx7)
-	// unbonds : [{address: hx5, value:40, bh: 100}, {hx6, 10, 30}, {hx7, 40, 50}]/
+	// unbonds : [{address: hx5, value:40, bh: 100}, {hx6, 10, 30}, {hx7, 40, 50}]
 	add1 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
 	mod1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(40), 100}
 	ul2Add := []*Unbond{add1}
@@ -223,6 +225,7 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.True(t, a.unbonds[2].Equal(add1))
 	ua = big.NewInt(90)
 	assert.Equal(t, 0, ua.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	// delete hx5 targeted unbonding, add 2 unbondings(hx8, hx9)
 	// unbonds : [{address: hx5, value: 0, bh:100}, {hx6, 10, 30}, {hx7, 40, 50}, {hx8, 50, 50}, {hx9, 100, 3}]
@@ -249,6 +252,7 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.True(t, a.unbonds[2].Equal(ub3))
 	assert.True(t, a.unbonds[3].Equal(ub4))
 	assert.True(t, a.unbonds[4].Equal(ub5))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	//remove all unbondings
 	mod1 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(0), 150}
@@ -277,6 +281,7 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.True(t, a.unbonds[2].Equal(ub3))
 	assert.True(t, a.unbonds[3].Equal(ub4))
 	assert.True(t, a.unbonds[4].Equal(ub5))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 }
 
 func TestAccount_RemoveUnbonding(t *testing.T) {
@@ -287,6 +292,7 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 	assert.Contains(t, a.unbonds, ub2)
 	expected := big.NewInt(20)
 	assert.Equal(t, 0, expected.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	//invalid height
 	err := a.RemoveUnbonding(1)
@@ -294,6 +300,7 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 	assert.Contains(t, a.unbonds, ub1)
 	assert.Contains(t, a.unbonds, ub2)
 	assert.Equal(t, 0, expected.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	err = a.RemoveUnbonding(30)
 	assert.NoError(t, err)
@@ -301,6 +308,7 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 	assert.NotContains(t, a.unbonds, ub2)
 	expected = big.NewInt(10)
 	assert.Equal(t, 0, expected.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	err = a.RemoveUnbonding(20)
 	assert.NoError(t, err)
@@ -308,6 +316,7 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 	assert.NotContains(t, a.unbonds, ub2)
 	expected = big.NewInt(0)
 	assert.Equal(t, 0, expected.Cmp(a.unbonds.GetUnbondAmount()))
+	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 }
 
 func TestAccount_RemoveUnstaking(t *testing.T) {
