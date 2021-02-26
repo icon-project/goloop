@@ -606,7 +606,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 						return scoreresult.OutOfStepError.New("OutOfStepForCall")
 					}
 					go func() {
-						cc.OnResult(nil, cc.StepUsed(), nil, nil)
+						cc.OnResult(nil, new(big.Int), nil, nil)
 					}()
 					return nil
 				}
