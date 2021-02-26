@@ -74,7 +74,9 @@ func (cb *transitionCallbackForTrace) OnExecute(tr module.Transition, e error) {
 	cb.info.Callback.OnEnd(e)
 }
 
-type transitionID struct{}
+type transitionID struct {
+	dummy int
+}
 
 type transition struct {
 	parent *transition
