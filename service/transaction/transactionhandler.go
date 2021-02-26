@@ -22,6 +22,7 @@ type Handler interface {
 }
 
 type transactionHandler struct {
+	group     module.TransactionGroup
 	from      module.Address
 	to        module.Address
 	value     *big.Int
@@ -34,10 +35,9 @@ type transactionHandler struct {
 	cc contract.CallContext
 }
 
-func NewHandler(cm contract.ContractManager, from, to module.Address,
-	value, stepLimit *big.Int, dataType *string, data []byte,
-) (Handler, error) {
+func NewHandler(cm contract.ContractManager, group module.TransactionGroup, from, to module.Address, value, stepLimit *big.Int, dataType *string, data []byte) (Handler, error) {
 	th := &transactionHandler{
+		group:     group,
 		from:      from,
 		to:        to,
 		value:     value,
@@ -80,8 +80,9 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	// Make a copy of initial state
 	wcs := ctx.GetSnapshot()
 
+	isPatch := th.group == module.TransactionGroupPatch
 	limit := th.stepLimit
-	if invokeLimit := ctx.GetStepLimit(state.StepLimitTypeInvoke); estimate || limit.Cmp(invokeLimit) > 0 {
+	if invokeLimit := ctx.GetStepLimit(state.StepLimitTypeInvoke); isPatch || estimate || limit.Cmp(invokeLimit) > 0 {
 		limit = invokeLimit
 	}
 
@@ -109,7 +110,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 			}
 
 			// Check balance before start
-			if status == nil && !estimate {
+			if status == nil && !isPatch && !estimate {
 				as := ctx.GetAccountState(th.from.ID())
 				bal := as.GetBalance()
 				value := new(big.Int).Mul(cc.StepPrice(), limit)
@@ -142,6 +143,10 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	// Try to charge fee
 	stepPrice := ctx.StepPrice()
 	stepUsed := cc.StepUsed()
+	if isPatch {
+		stepPrice = new(big.Int)
+		logger.TSystem("TRANSACTION reset stepPrice=0 msg=\"patch tx\"")
+	}
 	minSteps := big.NewInt(cc.StepsFor(state.StepTypeDefault, 1))
 	if stepUsed.Cmp(minSteps) == -1 {
 		old := stepUsed

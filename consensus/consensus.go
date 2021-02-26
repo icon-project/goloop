@@ -572,7 +572,7 @@ func (cs *consensus) enterPropose() {
 				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
 				if roundEvidences != nil {
 					err := cs.c.ServiceManager().SendPatch(newSkipPatch(roundEvidences))
-					if err != nil {
+					if err == nil {
 						cs.sentPatch = true
 					}
 				}

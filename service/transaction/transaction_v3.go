@@ -277,6 +277,7 @@ func (tx *transactionV3) GetHandler(cm contract.ContractManager) (Handler, error
 		value = big.NewInt(0)
 	}
 	return NewHandler(cm,
+		tx.Group(),
 		tx.From(),
 		tx.To(),
 		value,

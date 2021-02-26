@@ -1,22 +1,19 @@
 package block
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/transaction"
-	"github.com/icon-project/goloop/service/txresult"
-
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/db"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
@@ -82,6 +79,7 @@ type manager struct {
 	finalized       *bnode
 	finalizationCBs []finalizationCB
 	timestamper     module.Timestamper
+	handler         Handler
 }
 
 func (m *manager) db() db.Database {
@@ -496,19 +494,18 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
-	block := &blockV2{
-		height:             height,
-		timestamp:          timestamp,
-		proposer:           pt.manager.chain.Wallet().Address(),
-		prevID:             pt.parentBlock.ID(),
-		logsBloom:          pmtr.LogsBloom(),
-		result:             pmtr.Result(),
-		patchTransactions:  pmtr.PatchTransactions(),
-		normalTransactions: mtr.NormalTransactions(),
-		nextValidatorsHash: pmtr.NextValidators().Hash(),
-		_nextValidators:    pmtr.NextValidators(),
-		votes:              pt.votes,
-	}
+	block := pt.manager.handler.NewBlock(
+		height,
+		timestamp,
+		pt.manager.chain.Wallet().Address(),
+		pt.parentBlock.ID(),
+		pmtr.LogsBloom(),
+		pmtr.Result(),
+		pmtr.PatchTransactions(),
+		mtr.NormalTransactions(),
+		pmtr.NextValidators(),
+		pt.votes,
+	)
 	var bn *bnode
 	var ok bool
 	if bn, ok = pt.manager.nmap[string(block.ID())]; !ok {
@@ -532,11 +529,20 @@ func (pt *proposeTask) _onExecute(err error) {
 }
 
 // NewManager creates BlockManager.
-func NewManager(chain module.Chain, timestamper module.Timestamper) (module.BlockManager, error) {
+func NewManager(
+	chain module.Chain,
+	timestamper module.Timestamper,
+	handler Handler,
+) (module.BlockManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM",
 	})
 	logger.Debugf("NewBlockManager\n")
+
+	if handler == nil {
+		handler = NewBlockV2Handler(chain)
+	}
+
 	m := &manager{
 		chainContext: &chainContext{
 			chain:   chain,
@@ -547,6 +553,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(configCacheCap),
 		timestamper: timestamper,
+		handler: handler,
 	}
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM|BNODE",
@@ -560,7 +567,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	}
 
 	var height int64
-	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
+	err = chainPropBucket.Get(db.Raw(keyLastBlockHeight), &height)
 	if errors.NotFoundError.Equals(err) || (err == nil && height == 0) {
 		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
@@ -675,18 +682,7 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 }
 
 func (m *manager) doGetBlock(id []byte) (module.Block, error) {
-	hb, err := m.bucketFor(db.BytesByHash)
-	if err != nil {
-		return nil, err
-	}
-	headerBytes, err := hb.getBytes(raw(id))
-	if err != nil {
-		return nil, err
-	}
-	if headerBytes == nil {
-		return nil, errors.InvalidStateError.Errorf("nil header")
-	}
-	blk, err := m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	blk, err := m.handler.GetBlock(id)
 	if blk != nil {
 		m.cache.Put(blk)
 	}
@@ -703,7 +699,7 @@ func (m *manager) Import(
 
 	m.log.Debugf("Import(%x)\n", r)
 
-	block, err := m.newBlockDataFromReader(r)
+	block, err := m.handler.NewBlockDataFromReader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -775,7 +771,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 	if err != nil {
 		return nil, errors.CriticalUnknownError.Wrap(err, "UnknownBucketError")
 	}
-	if err := hb.set(blk.Height(), raw(blk.ID())); err != nil {
+	if err := hb.Set(blk.Height(), db.Raw(blk.ID())); err != nil {
 		return nil, errors.CriticalUnknownError.Wrap(err, "FailOnBlockIndex")
 	}
 
@@ -793,7 +789,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 			TransactionGroup: module.TransactionGroupPatch,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
 		}
 	}
@@ -807,7 +803,7 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 			TransactionGroup: module.TransactionGroupNormal,
 			IndexInGroup:     i,
 		}
-		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
 		}
 	}
@@ -868,7 +864,7 @@ func (m *manager) finalizePrunedBlock() error {
 	if bk, err := m.bucketFor(db.ChainProperty); err != nil {
 		return errors.InvalidStateError.Wrap(err, "BucketForChainProperty")
 	} else {
-		if err := bk.set(raw(keyLastBlockHeight), blk.Height()); err != nil {
+		if err := bk.Set(db.Raw(keyLastBlockHeight), blk.Height()); err != nil {
 			return errors.CriticalUnknownError.Wrap(err, "FailOnSetLast")
 		}
 	}
@@ -944,19 +940,18 @@ func (m *manager) finalizeGenesisBlock(
 	bn := &bnode{}
 	bn.in = in
 	bn.preexe = gtr
-	bn.block = &blockV2{
-		height:             genesisHeight,
-		timestamp:          timestamp,
-		proposer:           proposer,
-		prevID:             nil,
-		logsBloom:          mtr.LogsBloom(),
-		result:             mtr.Result(),
-		patchTransactions:  gtr.mtransition().PatchTransactions(),
-		normalTransactions: gtr.mtransition().NormalTransactions(),
-		nextValidatorsHash: gtr.mtransition().NextValidators().Hash(),
-		_nextValidators:    gtr.mtransition().NextValidators(),
-		votes:              votes,
-	}
+	bn.block = m.handler.NewBlock(
+		genesisHeight,
+		timestamp,
+		proposer,
+		nil,
+		mtr.LogsBloom(),
+		mtr.Result(),
+		gtr.mtransition().PatchTransactions(),
+		gtr.mtransition().NormalTransactions(),
+		gtr.mtransition().NextValidators(),
+		votes,
+	)
 	if configTraceBnode {
 		m.bntr.TraceNew(bn)
 	}
@@ -993,15 +988,8 @@ func (m *manager) Commit(block module.BlockCandidate) error {
 	return nil
 }
 
-func (m *manager) bucketFor(id db.BucketID) (*bucket, error) {
-	b, err := m.db().GetBucket(id)
-	if err != nil {
-		return nil, err
-	}
-	return &bucket{
-		dbBucket: b,
-		codec:    dbCodec,
-	}, nil
+func (m *manager) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
+	return db.NewCodedBucket(m.db(), id, nil)
 }
 
 func (m *manager) Finalize(block module.BlockCandidate) error {
@@ -1041,63 +1029,49 @@ func (m *manager) finalize(bn *bnode) error {
 		m.bntr.TraceRef(bn)
 	}
 
-	if blockV2, ok := block.(*blockV2); ok {
-		hb, err := m.bucketFor(db.BytesByHash)
+	err = m.handler.FinalizeHeader(block)
+	if err != nil {
+		return err
+	}
+
+	lb, err := m.bucketFor(db.TransactionLocatorByHash)
+	if err != nil {
+		return err
+	}
+	for it := block.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
+		tr, i, err := it.Get()
 		if err != nil {
 			return err
 		}
-		if err = hb.put(blockV2._headerFormat()); err != nil {
+		trLoc := transactionLocator{
+			BlockHeight:      block.Height(),
+			TransactionGroup: module.TransactionGroupPatch,
+			IndexInGroup:     i,
+		}
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return err
 		}
-		if err = hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes())); err != nil {
-			return err
-		}
-		lb, err := m.bucketFor(db.TransactionLocatorByHash)
+	}
+	for it := block.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
+		tr, i, err := it.Get()
 		if err != nil {
 			return err
 		}
-		for it := block.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-			tr, i, err := it.Get()
-			if err != nil {
-				return err
-			}
-			trLoc := transactionLocator{
-				BlockHeight:      block.Height(),
-				TransactionGroup: module.TransactionGroupPatch,
-				IndexInGroup:     i,
-			}
-			if err = lb.set(raw(tr.ID()), trLoc); err != nil {
-				return err
-			}
+		trLoc := transactionLocator{
+			BlockHeight:      block.Height(),
+			TransactionGroup: module.TransactionGroupNormal,
+			IndexInGroup:     i,
 		}
-		for it := block.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-			tr, i, err := it.Get()
-			if err != nil {
-				return err
-			}
-			trLoc := transactionLocator{
-				BlockHeight:      block.Height(),
-				TransactionGroup: module.TransactionGroupNormal,
-				IndexInGroup:     i,
-			}
-			if err = lb.set(raw(tr.ID()), trLoc); err != nil {
-				return err
-			}
-		}
-		b, err := m.bucketFor(db.BlockHeaderHashByHeight)
-		if err != nil {
+		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
 			return err
 		}
-		if err = b.set(block.Height(), raw(block.ID())); err != nil {
-			return err
-		}
-		chainProp, err := m.bucketFor(db.ChainProperty)
-		if err != nil {
-			return err
-		}
-		if err = chainProp.set(raw(keyLastBlockHeight), block.Height()); err != nil {
-			return err
-		}
+	}
+	chainProp, err := m.bucketFor(db.ChainProperty)
+	if err != nil {
+		return err
+	}
+	if err = chainProp.Set(db.Raw(keyLastBlockHeight), block.Height()); err != nil {
+		return err
 	}
 	m.log.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
@@ -1119,7 +1093,7 @@ func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
 	if err != nil {
 		return nil
 	}
-	bs, err := hb.getBytes(raw(hash))
+	bs, err := hb.GetBytes(db.Raw(hash))
 	if err != nil {
 		return nil
 	}
@@ -1140,123 +1114,11 @@ func newProposer(bs []byte) (module.Address, error) {
 	return nil, nil
 }
 
-func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
-	var header blockV2HeaderFormat
-	err := v2Codec.Unmarshal(r, &header)
-	if err != nil {
-		return nil, err
-	}
-	patches := m.sm.TransactionListFromHash(header.PatchTransactionsHash)
-	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
-	}
-	normalTxs := m.sm.TransactionListFromHash(header.NormalTransactionsHash)
-	if normalTxs == nil {
-		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
-	}
-	nextValidators := m.sm.ValidatorListFromHash(header.NextValidatorsHash)
-	if nextValidators == nil {
-		return nil, errors.Errorf("ValidatorListFromHas(%x)", header.NextValidatorsHash)
-	}
-	votes := m.commitVoteSetFromHash(header.VotesHash)
-	if votes == nil {
-		return nil, errors.Errorf("commitVoteSetFromHash(%x) failed", header.VotesHash)
-	}
-	proposer, err := newProposer(header.Proposer)
-	if err != nil {
-		return nil, err
-	}
-	return &blockV2{
-		height:             header.Height,
-		timestamp:          header.Timestamp,
-		proposer:           proposer,
-		prevID:             header.PrevID,
-		logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
-		result:             header.Result,
-		patchTransactions:  patches,
-		normalTransactions: normalTxs,
-		nextValidatorsHash: nextValidators.Hash(),
-		_nextValidators:    nextValidators,
-		votes:              votes,
-	}, nil
-}
-
-func (m *manager) newTransactionListFromBSS(
-	bss [][]byte,
-	version int,
-) (module.TransactionList, error) {
-	ts := make([]module.Transaction, len(bss))
-	for i, bs := range bss {
-		if tx, err := m.sm.TransactionFromBytes(bs, version); err != nil {
-			return nil, err
-		} else {
-			ts[i] = tx
-		}
-	}
-	return m.sm.TransactionListFromSlice(ts, version), nil
-}
-
 func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	return m.newBlockDataFromReader(r)
-}
-
-func (m *manager) newBlockDataFromReader(r io.Reader) (module.BlockData, error) {
-	r = bufio.NewReader(r)
-	var blockFormat blockV2Format
-	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
-	if err != nil {
-		return nil, err
-	}
-	err = v2Codec.Unmarshal(r, &blockFormat.blockV2BodyFormat)
-	if err != nil {
-		return nil, err
-	}
-	patches, err := m.newTransactionListFromBSS(
-		blockFormat.PatchTransactions,
-		module.BlockVersion2,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
-		return nil, errors.New("bad patch transactions hash")
-	}
-	normalTxs, err := m.newTransactionListFromBSS(
-		blockFormat.NormalTransactions,
-		module.BlockVersion2,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
-		return nil, errors.New("bad normal transactions hash")
-	}
-	// nextValidators may be nil
-	nextValidators := m.sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
-	votes := m.chain.CommitVoteSetDecoder()(blockFormat.Votes)
-	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
-		return nil, errors.New("bad vote list hash")
-	}
-	proposer, err := newProposer(blockFormat.Proposer)
-	if err != nil {
-		return nil, err
-	}
-	return &blockV2{
-		height:             blockFormat.Height,
-		timestamp:          blockFormat.Timestamp,
-		proposer:           proposer,
-		prevID:             blockFormat.PrevID,
-		logsBloom:          txresult.NewLogsBloomFromCompressed(blockFormat.LogsBloom),
-		result:             blockFormat.Result,
-		patchTransactions:  patches,
-		normalTransactions: normalTxs,
-		nextValidatorsHash: blockFormat.NextValidatorsHash,
-		_nextValidators:    nextValidators,
-		votes:              votes,
-	}, nil
+	return m.handler.NewBlockDataFromReader(r)
 }
 
 type transactionInfo struct {
@@ -1304,7 +1166,7 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 		return nil, err
 	}
 	var loc transactionLocator
-	err = tlb.get(raw(id), &loc)
+	err = tlb.Get(db.Raw(id), &loc)
 	if err != nil {
 		return nil, errors.ErrNotFound
 	}
@@ -1362,7 +1224,7 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 		return nil, err
 	}
 	loc := new(transactionLocator)
-	err = tlb.get(raw(id), loc)
+	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
 		return nil, errors.ErrNotFound
 	}
@@ -1406,7 +1268,7 @@ func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
 		return nil, err
 	}
 	loc := new(transactionLocator)
-	err = tlb.get(raw(id), loc)
+	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
 		return nil, errors.NotFoundError.Wrap(err, "Not found")
 	}
@@ -1458,19 +1320,7 @@ func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) doGetBlockByHeight(height int64) (module.Block, error) {
-	headerHashByHeight, err := m.bucketFor(db.BlockHeaderHashByHeight)
-	if err != nil {
-		return nil, err
-	}
-	hash, err := headerHashByHeight.getBytes(height)
-	if err != nil {
-		return nil, err
-	}
-	blk, err := m.doGetBlock(hash)
-	if errors.NotFoundError.Equals(err) {
-		return blk, errors.InvalidStateError.Wrapf(err, "block h=%d by hash=%x not found", height, hash)
-	}
-	return blk, err
+	return m.handler.GetBlockByHeight(height)
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {
