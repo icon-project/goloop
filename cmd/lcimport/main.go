@@ -322,12 +322,14 @@ func showValue(value containerdb.Value, ts string) {
 		fmt.Printf("%d\n", value.BigInt())
 	case "bool":
 		fmt.Printf("%v\n", value.Bool())
-	case "str":
+	case "str", "string":
 		fmt.Printf("%q\n", value.String())
-	case "addr":
+	case "addr", "Address":
 		fmt.Printf("%s\n", value.Address().String())
-	default:
+	case "bytes":
 		fmt.Printf("%#x\n", value.Bytes())
+	default:
+		log.Warnf("Unknown type=%s bytes=%#x", ts, value.Bytes())
 	}
 }
 
@@ -382,7 +384,7 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 			} else {
 				keys := toKeys(params)
 				arraydb := scoredb.NewArrayDB(store, keys...)
-				fmt.Printf("%d", arraydb.Size())
+				fmt.Printf("%d\n", arraydb.Size())
 				return nil
 			}
 		case "dict":
@@ -393,6 +395,9 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 
 			dictdb := scoredb.NewDictDB(store, name, len(keys))
 			value := dictdb.Get(keys...)
+			if value == nil {
+				fmt.Println("nil")
+			}
 			showValue(value, suffix)
 		default:
 			return errors.IllegalArgumentError.Errorf(
