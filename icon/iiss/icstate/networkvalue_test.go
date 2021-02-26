@@ -68,6 +68,10 @@ func Test_networkValue(t *testing.T) {
 
 	// test for SetRewardFund
 	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
+
+	// test for SetUnbondingPeriod
+	t.Run("SetUnbondingPeriod", func(t *testing.T) { setUnbondingPeriod(t, s) })
+
 }
 
 func setTermPeriodTest(t *testing.T, s *State) {
@@ -196,4 +200,24 @@ func setRewardFundTest(t *testing.T, s *State) {
 	assert.NoError(t, err)
 	actual = s.GetRewardFund()
 	assert.True(t, rf.Equal(actual))
+}
+
+func setUnbondingPeriod(t *testing.T, s *State) {
+	p := int64(0)
+	actual := s.GetUnbondingPeriod()
+	assert.Equal(t, p, actual)
+
+	p = -1
+	err := s.SetUnbondingPeriod(p)
+	assert.Error(t, err)
+	actual = s.GetUnbondingPeriod()
+	assert.Equal(t, int64(0), actual) // not changed
+
+	p = 10
+	err = s.SetTermPeriod(5) // unbonding period must be multiple of termPeriod
+	assert.NoError(t, err)
+	err = s.SetUnbondingPeriod(p)
+	assert.NoError(t, err)
+	actual = s.GetUnbondingPeriod()
+	assert.Equal(t, p, actual)
 }

@@ -24,24 +24,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const (
-	maxUnstakes = 1000
-)
-
-var maxUnstakeCount = maxUnstakes
-
-func getMaxUnstakeCount() int {
-	return maxUnstakeCount
-}
-
-func setMaxUnstakeCount(v int) {
-	if v == 0 {
-		maxUnstakeCount = maxUnstakes
-	} else {
-		maxUnstakeCount = v
-	}
-}
-
 type Unstake struct {
 	Amount       *big.Int
 	ExpireHeight int64
@@ -127,11 +109,11 @@ func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
 	return unstakes
 }
 
-func (us *Unstakes) increaseUnstake(v *big.Int, eh int64) error {
+func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) error {
 	if v.Sign() == -1 {
 		return errors.Errorf("Invalid unstake Value %v", v)
 	}
-	if len(*us) >= getMaxUnstakeCount() {
+	if len(*us) >= sm {
 		// update last entry
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]

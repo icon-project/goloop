@@ -78,7 +78,8 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	// update IISS account
 	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
-	tl, err := ia.UpdateUnstake(stakeInc, expireHeight)
+	slotMax := int(es.State.GetUnstakeSlotMax())
+	tl, err := ia.UpdateUnstake(stakeInc, expireHeight, slotMax)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
 	}
@@ -209,7 +210,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 
 func (s *chainScore) Ex_unregisterPRep() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err :=  es.UnregisterPRep(s.cc, s.from)
+	err := es.UnregisterPRep(s.cc, s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
@@ -226,7 +227,7 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	}
 }
 
-func (s *chainScore) Ex_getPReps(startRanking, endRanking  *common.HexInt) (map[string]interface{}, error) {
+func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[string]interface{}, error) {
 	var start, end int = 0, 0
 	if startRanking != nil && endRanking != nil {
 		start = int(startRanking.Int.Int64())
@@ -477,8 +478,8 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 
 	jso := make(map[string]interface{})
 	jso["blockHeight"] = intconv.FormatInt(s.cc.BlockHeight())
-	jso["nextCalculation"] = intconv.FormatInt(term.GetEndBlockHeight()+1)
-	jso["nextPRepTerm"] = intconv.FormatInt(term.GetEndBlockHeight()+1)
+	jso["nextCalculation"] = intconv.FormatInt(term.GetEndBlockHeight() + 1)
+	jso["nextPRepTerm"] = intconv.FormatInt(term.GetEndBlockHeight() + 1)
 	jso["variable"] = iissVariables
 	jso["rcResult"] = rcResult
 	return jso, nil

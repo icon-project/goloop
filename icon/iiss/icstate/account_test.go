@@ -118,7 +118,7 @@ func TestAccount_SetStake(t *testing.T) {
 }
 
 func TestAccount_UpdateUnstake(t *testing.T) {
-	maxUnstakeCount = 3
+	unstakeSlotMax := 3
 	address := common.MustNewAddressFromString("hx1")
 	account := newAccount(address)
 
@@ -128,7 +128,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake += 0
 	bh0 := int64(0)
 	v0 := big.NewInt(0)
-	tl, e := account.UpdateUnstake(v0, bh0)
+	tl, e := account.UpdateUnstake(v0, bh0, unstakeSlotMax)
 	expectedTL := make([]TimerJobInfo, 0)
 	assert.NoError(t, e)
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
@@ -137,7 +137,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake += 10
 	bh1 := int64(10)
 	v1 := big.NewInt(10)
-	tl, e = account.UpdateUnstake(new(big.Int).Neg(v1), bh1)
+	tl, e = account.UpdateUnstake(new(big.Int).Neg(v1), bh1, unstakeSlotMax)
 	expectedTL = []TimerJobInfo{{JobTypeAdd, bh1}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
@@ -146,7 +146,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake += 20
 	bh2 := int64(20)
 	v2 := big.NewInt(20)
-	tl, e = account.UpdateUnstake(new(big.Int).Neg(v2), bh2)
+	tl, e = account.UpdateUnstake(new(big.Int).Neg(v2), bh2, unstakeSlotMax)
 	expectedTL = []TimerJobInfo{{JobTypeAdd, bh2}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
@@ -156,7 +156,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake += 30
 	bh3 := int64(15) // unstakes : [(10, 10), (30, 15), (20, 20)]
 	v3 := big.NewInt(20)
-	tl, e = account.UpdateUnstake(new(big.Int).Neg(v3), bh3)
+	tl, e = account.UpdateUnstake(new(big.Int).Neg(v3), bh3, unstakeSlotMax)
 	expectedTL = []TimerJobInfo{{JobTypeAdd, bh3}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
@@ -165,7 +165,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 
 	// unstake -= 20
 	// unstakes : [(10, 10), (30, 15)]
-	tl, e = account.UpdateUnstake(v2, 0) //expireHeight does not effect when decrease unstake
+	tl, e = account.UpdateUnstake(v2, 0, unstakeSlotMax) //expireHeight does not effect when decrease unstake
 	expectedTL = []TimerJobInfo{{JobTypeRemove, bh2}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
@@ -176,7 +176,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake -= 13
 	// unstakes : [(10, 10), (17, 15)]
 	dv := big.NewInt(13)
-	tl, e = account.UpdateUnstake(dv, 0)
+	tl, e = account.UpdateUnstake(dv, 0, unstakeSlotMax)
 	expectedTL = []TimerJobInfo{}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
@@ -187,7 +187,7 @@ func TestAccount_UpdateUnstake(t *testing.T) {
 	// unstake -= 27
 	// unstakes : []
 	dv = new(big.Int).Add(account.unstakes[0].Amount, account.unstakes[1].Amount)
-	tl, e = account.UpdateUnstake(dv, 0)
+	tl, e = account.UpdateUnstake(dv, 0, unstakeSlotMax)
 	expectedTL = []TimerJobInfo{{JobTypeRemove, bh3}, {JobTypeRemove, bh1}}
 	assert.True(t, equalTimerJobSlice(expectedTL, tl))
 	assert.NoError(t, e)
