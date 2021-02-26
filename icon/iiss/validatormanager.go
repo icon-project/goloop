@@ -2,6 +2,7 @@ package iiss
 
 import (
 	"container/list"
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -147,6 +148,7 @@ func (vm *ValidatorManager) add(node module.Address, added bool) error {
 	return nil
 }
 
+// Replace is used for node address change
 func (vm *ValidatorManager) Replace(oldNode, newNode module.Address) error {
 	key := icutils.ToKey(oldNode)
 	e, ok := vm.vmap[key]
@@ -186,10 +188,12 @@ func (vm *ValidatorManager) Remove(node module.Address) error {
 }
 
 func (vm *ValidatorManager) Clear() error {
-	vm.updated = false
-	vm.vlist = vm.vlist.Init()
-	vm.vmap = make(map[string]*list.Element)
-	vm.updated = false
+	if vm.Len() > 0 {
+		vm.pssIdx = 0
+		vm.vlist = vm.vlist.Init()
+		vm.vmap = make(map[string]*list.Element)
+		vm.updated = false
+	}
 	return nil
 }
 
@@ -222,11 +226,13 @@ func (vm *ValidatorManager) load(pm *PRepManager, term *icstate.Term, added bool
 
 	mainPReps := pm.GetPRepSize(icstate.Main)
 	if mainPReps <= vm.Len() {
-		return errors.Errorf(
+		err := errors.Errorf(
 			"Invalid mainPRepCount: mainPRepCount(%d) <= validatorCount(%d)",
 			mainPReps,
 			vm.Len(),
 		)
+		log.Errorf(err.Error())
+		return nil
 	}
 
 	pssCount := term.GetPRepSnapshotCount()
@@ -255,6 +261,10 @@ func (vm *ValidatorManager) checkWritable() error {
 		return errors.Errorf("Writing is not allowed: %v", vm)
 	}
 	return nil
+}
+
+func (vm *ValidatorManager) String() string {
+	return fmt.Sprintf("ValidatorManager: size=%d", vm.Len())
 }
 
 func NewValidatorManager() *ValidatorManager {

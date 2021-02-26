@@ -37,8 +37,6 @@ import (
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
-	pm *PRepManager
-
 	state  *icstate.Snapshot
 	front  *icstage.Snapshot
 	back   *icstage.Snapshot
@@ -95,7 +93,16 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 
-	es.pm = newPRepManager(es.State)
+	pm := newPRepManager(es.State)
+	term := es.State.GetTerm()
+
+	vm := NewValidatorManager()
+	if err := vm.Init(pm, term); err != nil {
+		log.Errorf(err.Error())
+	}
+
+	es.pm = pm
+	es.vm = vm
 	return es
 }
 
@@ -122,16 +129,12 @@ type ExtensionStateImpl struct {
 	database db.Database
 
 	pm *PRepManager
+	vm *ValidatorManager
 
 	State  *icstate.State
 	Front  *icstage.State
 	Back   *icstage.State
 	Reward *icreward.State
-
-	// Memory only -----
-	// If this flag is on, new validators will be set in OnExecutionEnd()
-	// It is valid until a transition is finished
-	updateValidator bool
 }
 
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
@@ -245,7 +248,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	if s.State.GetIISSVersion() == icstate.IISSVersion2 {
 		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
 		rewardCPS.Div(rewardCPS, big.NewInt(100))
-		rewardRelay:= new(big.Int).Mul(term.Iglobal(), term.Irelay())
+		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())
 		rewardRelay.Div(rewardCPS, big.NewInt(100))
 		additionalReward.Add(rewardCPS, rewardRelay)
 	}
@@ -345,23 +348,23 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 }
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
+	var err error
 	prep := s.pm.GetPRepByOwner(owner)
 	if prep == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
-	grade := prep.Grade()
-	if grade != icstate.Candidate {
-		term := s.State.GetTerm()
-		if err := term.RemovePRepSnapshot(owner); err != nil {
-			return err
-		}
-		s.updateValidator = grade == icstate.Main
+	if err = s.pm.UnregisterPRep(owner); err != nil {
+		return err
 	}
 
-	err := s.pm.UnregisterPRep(owner)
-	if err != nil {
-		return err
+	if s.IsDecentralized() && prep.Grade() == icstate.Main {
+		if err = s.vm.Remove(prep.GetNode()); err != nil {
+			return err
+		}
+		if err = s.selectNewValidator(); err != nil {
+			return err
+		}
 	}
 
 	term := s.State.GetTerm()
@@ -379,7 +382,48 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	return err
 }
 
+// selectNewValidator chooses a new validator from sub PReps ordered by BondedDelegation
+func (s *ExtensionStateImpl) selectNewValidator() error {
+	var err error
+	var prep *PRep
+	term := s.State.GetTerm()
+	pssCount := term.GetPRepSnapshotCount()
+
+	i := s.vm.PRepSnapshotIndex()
+	for ; i < pssCount; i++ {
+		pss := term.GetPRepSnapshotByIndex(i)
+		prep = s.pm.GetPRepByOwner(pss.Owner())
+		if prep != nil {
+			switch prep.Grade() {
+			case icstate.Main:
+				panic(errors.Errorf("Invalid validator management"))
+			case icstate.Sub:
+				if err = s.pm.ChangeGrade(pss.Owner(), icstate.Main); err != nil {
+					return err
+				}
+				if err = s.vm.Add(prep.GetNode()); err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+	s.vm.SetPRepSnapshotIndex(i + 1)
+	return nil
+}
+
 func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
+	owner := regInfo.owner
+	node := regInfo.node
+
+	if node != nil {
+		if prep := s.pm.GetPRepByOwner(owner); prep != nil {
+			if err := s.vm.Replace(prep.GetNode(), node); err != nil {
+				log.Debugf(err.Error())
+			}
+		}
+	}
+
 	return s.pm.SetPRep(regInfo)
 }
 
@@ -527,22 +571,14 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 		if err = s.NewCalculation(term, calculator); err != nil {
 			return err
 		}
-
-		err = s.onTermEnd(wc)
-		if err != nil {
-			panic(err)
+		if err = s.onTermEnd(wc); err != nil {
+			return err
 		}
 	}
 
-	if s.updateValidator {
-		err = s.setValidators(wc)
-		if err != nil {
-			panic(err)
-		}
-		s.updateValidator = false
-	}
-
-	return nil
+	err = s.updateValidators(wc)
+	log.Tracef("%s", s.vm)
+	return err
 }
 
 func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
@@ -550,9 +586,13 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	var totalSupply *big.Int
 	mainPRepCount := int(s.State.GetMainPRepCount())
 	subPRepCount := int(s.State.GetSubPRepCount())
+	isDecentralized := s.IsDecentralized()
 
-	if err = s.pm.OnTermEnd(mainPRepCount, subPRepCount); err != nil {
-		return err
+	if isDecentralized {
+		// Assign grades to PReps ordered by bondedDelegation
+		if err = s.pm.OnTermEnd(mainPRepCount, subPRepCount); err != nil {
+			return err
+		}
 	}
 
 	totalSupply, err = s.getTotalSupply(wc)
@@ -563,8 +603,14 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 		return err
 	}
 
-	if s.IsDecentralized() {
-		s.updateValidator = true
+	if isDecentralized {
+		if err = s.vm.Clear(); err != nil {
+			return err
+		}
+		if err = s.vm.Load(s.pm, s.State.GetTerm()); err != nil {
+			return err
+		}
+		s.vm.SetUpdated(true)
 	}
 	return nil
 }
@@ -583,52 +629,50 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		s.State.GetIISSVersion(),
 	)
 
-	size := 0
-	mainPRepCount := int(s.State.GetMainPRepCount())
-	activePRepCount := s.pm.Size()
+	// Take prep snapshots only if mainPReps exist
+	if s.pm.GetPRepSize(icstate.Main) > 0 {
+		size := icutils.Min(s.pm.Size(), int(s.State.GetPRepCount()))
+		if size > 0 {
+			prepSnapshots := make(icstate.PRepSnapshots, size, size)
+			br := s.State.GetBondRequirement()
+			for i := 0; i < size; i++ {
+				prep := s.pm.GetPRepByIndex(i)
+				prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
+			}
 
-	if term.IsDecentralized() || activePRepCount >= mainPRepCount {
-		prepCount := int(s.State.GetPRepCount())
-		size = icutils.Min(activePRepCount, prepCount)
-	}
-
-	if size > 0 {
-		prepSnapshots := make(icstate.PRepSnapshots, size, size)
-		br := s.State.GetBondRequirement()
-		for i := 0; i < size; i++ {
-			prep := s.pm.GetPRepByIndex(i)
-			prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
+			nextTerm.SetPRepSnapshots(prepSnapshots)
 		}
-
-		nextTerm.SetPRepSnapshots(prepSnapshots)
-		s.updateValidator = true
 	}
-
-	log.Debugf("#### %s", nextTerm)
 	return s.State.SetTerm(nextTerm)
 }
 
-func (s *ExtensionStateImpl) setValidators(wc state.WorldContext) error {
-	blockHeight := wc.BlockHeight()
-	validators := s.GetValidators()
-	size := len(validators)
-
-	if size > 0 {
-		// shift validation penalty mask
-		for _, v := range validators {
-			// TODO IC2-35 When creating a validator with a validation penalty, only the newly added P-Rep is modified.
-			pRepStatus := s.pm.GetPRepByNode(v.Address())
-			pRepStatus.ShiftVPenaltyMask(ConsistentValidationPenaltyMask)
-		}
-
-		// TODO: Remove the comment below when testing with multiple nodes
-		//return wc.GetValidatorState().Set(validators)
-		for i := 0; i < size; i++ {
-			log.Debugf("Validator %d: %s", i, validators[i].Address())
-		}
-	} else {
-		log.Infof("Not enough PReps height=%d, size=%d", blockHeight, size)
+func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
+	vm := s.vm
+	if !vm.IsUpdated() {
+		return nil
 	}
+
+	vs, err := vm.GetValidators()
+	if err != nil {
+		return err
+	}
+
+	for _, v := range vs {
+		vi := v.(*ValidatorImpl)
+		if vi.IsAdded() {
+			if err = s.pm.ShiftVPenaltyMaskByNode(vi.address); err != nil {
+				return nil
+			}
+			vi.ResetFlags()
+		}
+	}
+
+	// TODO: Remove the comment below when testing with multiple nodes
+	//if err = wc.GetValidatorState().Set(vs); err != nil {
+	//	return err
+	//}
+
+	vm.ResetUpdated()
 	return nil
 }
 
@@ -682,5 +726,6 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 }
 
 func (s *ExtensionStateImpl) IsDecentralized() bool {
-	return s.State.GetTerm().IsDecentralized()
+	term := s.State.GetTerm()
+	return term.IsDecentralized() || s.pm.Size() >= int(s.State.GetMainPRepCount())
 }

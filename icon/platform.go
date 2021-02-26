@@ -102,7 +102,8 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
-	if wc.Revision().Value() < RevisionIISS {
+	revision := wc.Revision().Value()
+	if revision < RevisionIISS {
 		return nil
 	}
 	ext := wc.GetExtensionState()

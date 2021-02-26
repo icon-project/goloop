@@ -570,6 +570,16 @@ func (pm *PRepManager) OnTermEnd(mainPRepCount, subPRepCount int) error {
 	return nil
 }
 
+func (pm *PRepManager) ShiftVPenaltyMaskByNode(node module.Address) error {
+	prep := pm.GetPRepByNode(node)
+	if prep == nil {
+		return errors.Errorf("PRep not found: node=%s", node)
+	}
+
+	prep.ShiftVPenaltyMask(ConsistentValidationPenaltyMask)
+	return nil
+}
+
 func newPRepManager(state *icstate.State) *PRepManager {
 	pm := &PRepManager{
 		state:          state,
