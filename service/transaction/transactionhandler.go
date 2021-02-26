@@ -108,6 +108,19 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 				status = scoreresult.ErrOutOfStep
 			}
 
+			// Check balance before start
+			if status == nil && !estimate {
+				as := ctx.GetAccountState(th.from.ID())
+				bal := as.GetBalance()
+				value := new(big.Int).Mul(cc.StepPrice(), limit)
+				if th.value != nil {
+					value.Add(value, th.value)
+				}
+				if bal.Cmp(value) < 0 {
+					status = scoreresult.ErrOutOfBalance
+				}
+			}
+
 			// Execute
 			if status == nil {
 				var used *big.Int
