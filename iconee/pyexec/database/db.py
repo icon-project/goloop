@@ -67,11 +67,22 @@ def _is_db_writable_on_context(context: 'IconScoreContext'):
 
 
 class DummyDatabase(object):
+
+    ALLOWLIST = [
+        bytes.fromhex('3a9348059e2ce915d14d46e0105e1f1894df5410877fe153176ed7388c70d838'),
+        bytes.fromhex('bf96b93bc0a12900af7f6d6d311e0f4ed7ec4cad52c09762aa4cb77071a2697d'),
+    ]
+
+    @property
+    def writable(self) -> bool:
+        return False
+
     def get(self, key: bytes) -> bytes:
         raise DatabaseException('No permission')
 
-    def put(self, key: bytes, value: bytes) -> None:
-        raise DatabaseException('No permission')
+    def put(self, key: bytes, value: bytes, cb: callable) -> None:
+        if key not in self.ALLOWLIST:
+            raise DatabaseException('No permission')
 
     def delete(self, key: bytes) -> None:
         raise DatabaseException('No permission')
@@ -84,6 +95,10 @@ class ProxyDatabase(object):
 
     def __init__(self, proxy) -> None:
         self._proxy = proxy
+
+    @property
+    def writable(self) -> bool:
+        return True
 
     def get(self, key: bytes) -> bytes:
         """Get the value for the specified key.
@@ -215,11 +230,11 @@ class ContextDatabase(object):
                 context.type != IconScoreContextType.DIRECT:
             context.step_counter.apply_step(StepType.GET, len(value))
 
-    @staticmethod
-    def _charge_step_set(context: 'IconScoreContext', value: bytes):
+    def _charge_step_set(self, context: 'IconScoreContext', value: bytes):
         """ charge steps for set
         """
         if context and context.step_counter and \
+                self._db.writable and \
                 context.type == IconScoreContextType.INVOKE:
             # charge for the new value
             context.step_counter.apply_step(StepType.SET, len(value))
