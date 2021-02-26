@@ -49,7 +49,7 @@ func (rt *RefTracer) TraceUnref(rc RefCounter) {
 		rt.Logger.Debugf("unref Obj:%s\n", stringfy(rc))
 	} else {
 		rt.traceDispose(rc)
-		log.Debugf("unref Obj:%s nObj:%d Objs:%s\n", stringfy(rc), len(rt.refCounters), rt.objectsString())
+		rt.Logger.Debugf("unref Obj:%s nObj:%d Objs:%s\n", stringfy(rc), len(rt.refCounters), rt.objectsString())
 	}
 }
 
@@ -65,5 +65,5 @@ func (rt *RefTracer) traceDispose(rc RefCounter) {
 }
 func (rt *RefTracer) TraceDispose(rc RefCounter) {
 	rt.traceDispose(rc)
-	log.Debugf("dispose Obj:%s nObj:%d Objs:%s\n", stringfy(rc), len(rt.refCounters), rt.objectsString())
+	rt.Logger.Debugf("dispose Obj:%s nObj:%d Objs:%s\n", stringfy(rc), len(rt.refCounters), rt.objectsString())
 }
