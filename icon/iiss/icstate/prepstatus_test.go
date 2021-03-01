@@ -198,14 +198,14 @@ func TestPRepStatus_getContValue(t *testing.T) {
 
 			ret := ps.getContValue(in.blockHeight)
 
-			assert.Equal(t, tt.want, ret)
+			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
 }
 
 func TestPRepStatus_GetVTotal(t *testing.T) {
 	type args struct {
-		vTotal      int
+		vTotal      int64
 		lastState   ValidationState
 		lastBH      int64
 		blockHeight int64
@@ -269,14 +269,14 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 
 			ret := ps.GetVTotal(in.blockHeight)
 
-			assert.Equal(t, tt.want, ret)
+			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
 }
 
 func TestPRepStatus_GetVFail(t *testing.T) {
 	type args struct {
-		vFail       int
+		vFail       int64
 		lastState   ValidationState
 		lastBH      int64
 		blockHeight int64
@@ -340,7 +340,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 
 			ret := ps.GetVFail(in.blockHeight)
 
-			assert.Equal(t, tt.want, ret)
+			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
 }
@@ -405,7 +405,7 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 
 			ret := ps.GetVFailCont(in.blockHeight)
 
-			assert.Equal(t, tt.want, ret)
+			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
 }

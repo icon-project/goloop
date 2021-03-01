@@ -64,7 +64,7 @@ func validationPenalty(cc contract.CallContext, ps *icstate.PRepStatus) error {
 }
 
 func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight int64) bool {
-	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= ValidationPenaltyCondition
+	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= int64(ValidationPenaltyCondition)
 }
 
 func checkConsistentValidationPenalty(ps *icstate.PRepStatus) bool {

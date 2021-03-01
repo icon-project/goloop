@@ -262,7 +262,7 @@ func applyPRepStatus(ps *icstate.PRepStatus, vs icstate.ValidationState, blockHe
 	}
 
 	if ps.LastState() != icstate.None {
-		diff := int(blockHeight - ps.LastHeight())
+		diff := blockHeight - ps.LastHeight()
 		ps.SetVTotal(ps.VTotal() + diff)
 		if ps.LastState() == icstate.Fail {
 			ps.SetVFail(ps.VFail() + diff)

@@ -64,8 +64,8 @@ type PRepStatus struct {
 	status       Status
 	delegated    *big.Int
 	bonded       *big.Int
-	vTotal       int
-	vFail        int
+	vTotal       int64
+	vFail        int64
 	vPenaltyMask uint32
 	lastState    ValidationState
 	lastHeight   int64
@@ -156,40 +156,40 @@ func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
 	}
 }
 
-func (ps *PRepStatus) VTotal() int {
+func (ps *PRepStatus) VTotal() int64 {
 	return ps.vTotal
 }
 
 // GetVTotal returns the calculated number of validation
-func (ps *PRepStatus) GetVTotal(blockHeight int64) int {
+func (ps *PRepStatus) GetVTotal(blockHeight int64) int64 {
 	return ps.vTotal + ps.getContValue(blockHeight)
 }
 
-func (ps *PRepStatus) VFail() int {
+func (ps *PRepStatus) VFail() int64 {
 	return ps.vFail
 }
 
 // GetVFail returns the calculated number of validation failures
-func (ps *PRepStatus) GetVFail(blockHeight int64) int {
+func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
 	return ps.vFail + ps.GetVFailCont(blockHeight)
 }
 
 // GetVFailCont returns the number of consecutive validation failures
-func (ps *PRepStatus) GetVFailCont(blockHeight int64) int {
+func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
 	if ps.lastState == Fail {
 		return ps.getContValue(blockHeight)
 	}
 	return 0
 }
 
-func (ps *PRepStatus) getContValue(blockHeight int64) int {
+func (ps *PRepStatus) getContValue(blockHeight int64) int64 {
 	if ps.lastState == None {
 		return 0
 	}
 	if blockHeight < ps.lastHeight {
 		return 0
 	} else {
-		return int(blockHeight - ps.lastHeight) + 1
+		return blockHeight - ps.lastHeight + 1
 	}
 }
 
@@ -334,11 +334,11 @@ func (ps *PRepStatus) SetStatus(s Status) {
 	ps.status = s
 }
 
-func (ps *PRepStatus) SetVTotal(t int) {
+func (ps *PRepStatus) SetVTotal(t int64) {
 	ps.vTotal = t
 }
 
-func (ps *PRepStatus) SetVFail(f int) {
+func (ps *PRepStatus) SetVFail(f int64) {
 	ps.vFail = f
 }
 

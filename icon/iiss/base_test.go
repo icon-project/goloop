@@ -72,12 +72,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Fail, ps2.LastState())
 	assert.Equal(t, int64(0), ps2.LastHeight())
 	assert.Equal(t, int64(0), ps2.LastHeight())
-	assert.Equal(t, 1, ps1.GetVTotal(bh))
-	assert.Equal(t, 1, ps2.GetVTotal(bh))
-	assert.Equal(t, 0, ps1.GetVFail(bh))
-	assert.Equal(t, 1, ps2.GetVFail(bh))
-	assert.Equal(t, 0, ps1.GetVFailCont(bh))
-	assert.Equal(t, 1, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(1), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(1), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(0), ps1.GetVFail(bh))
+	assert.Equal(t, int64(1), ps2.GetVFail(bh))
+	assert.Equal(t, int64(0), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(1), ps2.GetVFailCont(bh))
 
 	// 9 block : vote
 	cc.setBlockHeight(9)
@@ -91,12 +91,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Fail, ps2.LastState())
 	assert.Equal(t, int64(0), ps2.LastHeight())
 	assert.Equal(t, int64(0), ps2.LastHeight())
-	assert.Equal(t, 10, ps1.GetVTotal(bh))
-	assert.Equal(t, 10, ps2.GetVTotal(bh))
-	assert.Equal(t, 0, ps1.GetVFail(bh))
-	assert.Equal(t, 10, ps2.GetVFail(bh))
-	assert.Equal(t, 0, ps1.GetVFailCont(bh))
-	assert.Equal(t, 10, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(10), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(10), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(0), ps1.GetVFail(bh))
+	assert.Equal(t, int64(10), ps2.GetVFail(bh))
+	assert.Equal(t, int64(0), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(10), ps2.GetVFailCont(bh))
 
 	// 10 block : no vote
 	cc.setBlockHeight(10)
@@ -111,12 +111,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.None, ps2.LastState())
 	assert.Equal(t, int64(10), ps2.LastHeight())
 	assert.Equal(t, int64(10), ps2.LastHeight())
-	assert.Equal(t, 10, ps1.GetVTotal(bh))
-	assert.Equal(t, 10, ps2.GetVTotal(bh))
-	assert.Equal(t, 0, ps1.GetVFail(bh))
-	assert.Equal(t, 10, ps2.GetVFail(bh))
-	assert.Equal(t, 0, ps1.GetVFailCont(bh))
-	assert.Equal(t, 0, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(10), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(10), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(0), ps1.GetVFail(bh))
+	assert.Equal(t, int64(10), ps2.GetVFail(bh))
+	assert.Equal(t, int64(0), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(0), ps2.GetVFailCont(bh))
 
 	// 11 block : vote
 	cc.setBlockHeight(11)
@@ -131,12 +131,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Fail, ps2.LastState())
 	assert.Equal(t, int64(11), ps2.LastHeight())
 	assert.Equal(t, int64(11), ps2.LastHeight())
-	assert.Equal(t, 11, ps1.GetVTotal(bh))
-	assert.Equal(t, 11, ps2.GetVTotal(bh))
-	assert.Equal(t, 1, ps1.GetVFail(bh))
-	assert.Equal(t, 11, ps2.GetVFail(bh))
-	assert.Equal(t, 1, ps1.GetVFailCont(bh))
-	assert.Equal(t, 1, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(11), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(11), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(1), ps1.GetVFail(bh))
+	assert.Equal(t, int64(11), ps2.GetVFail(bh))
+	assert.Equal(t, int64(1), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(1), ps2.GetVFailCont(bh))
 
 	// 12 block : vote - false, true
 	cc.setBlockHeight(12)
@@ -151,12 +151,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Success, ps2.LastState())
 	assert.Equal(t, int64(12), ps2.LastHeight())
 	assert.Equal(t, int64(12), ps2.LastHeight())
-	assert.Equal(t, 12, ps1.GetVTotal(bh))
-	assert.Equal(t, 12, ps2.GetVTotal(bh))
-	assert.Equal(t, 2, ps1.GetVFail(bh))
-	assert.Equal(t, 11, ps2.GetVFail(bh))
-	assert.Equal(t, 2, ps1.GetVFailCont(bh))
-	assert.Equal(t, 0, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(12), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(12), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(2), ps1.GetVFail(bh))
+	assert.Equal(t, int64(11), ps2.GetVFail(bh))
+	assert.Equal(t, int64(2), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(0), ps2.GetVFailCont(bh))
 
 	// 13 block : vote - false, false
 	cc.setBlockHeight(13)
@@ -171,12 +171,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Fail, ps2.LastState())
 	assert.Equal(t, int64(13), ps2.LastHeight())
 	assert.Equal(t, int64(13), ps2.LastHeight())
-	assert.Equal(t, 13, ps1.GetVTotal(bh))
-	assert.Equal(t, 13, ps2.GetVTotal(bh))
-	assert.Equal(t, 3, ps1.GetVFail(bh))
-	assert.Equal(t, 12, ps2.GetVFail(bh))
-	assert.Equal(t, 3, ps1.GetVFailCont(bh))
-	assert.Equal(t, 1, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(13), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(13), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(3), ps1.GetVFail(bh))
+	assert.Equal(t, int64(12), ps2.GetVFail(bh))
+	assert.Equal(t, int64(3), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(1), ps2.GetVFailCont(bh))
 
 	// 14 block : vote - true, true
 	cc.setBlockHeight(14)
@@ -191,12 +191,12 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, icstate.Success, ps2.LastState())
 	assert.Equal(t, int64(14), ps2.LastHeight())
 	assert.Equal(t, int64(14), ps2.LastHeight())
-	assert.Equal(t, 14, ps1.GetVTotal(bh))
-	assert.Equal(t, 14, ps2.GetVTotal(bh))
-	assert.Equal(t, 3, ps1.GetVFail(bh))
-	assert.Equal(t, 12, ps2.GetVFail(bh))
-	assert.Equal(t, 0, ps1.GetVFailCont(bh))
-	assert.Equal(t, 0, ps2.GetVFailCont(bh))
+	assert.Equal(t, int64(14), ps1.GetVTotal(bh))
+	assert.Equal(t, int64(14), ps2.GetVTotal(bh))
+	assert.Equal(t, int64(3), ps1.GetVFail(bh))
+	assert.Equal(t, int64(12), ps2.GetVFail(bh))
+	assert.Equal(t, int64(0), ps1.GetVFailCont(bh))
+	assert.Equal(t, int64(0), ps2.GetVFailCont(bh))
 }
 
 func Test_applyPRepStatus(t *testing.T) {
@@ -209,11 +209,11 @@ func Test_applyPRepStatus(t *testing.T) {
 	}
 
 	type want struct {
-		vTotal    int
-		getVTotal int
-		vFail     int
-		getVFail  int
-		vFailCont int
+		vTotal    int64
+		getVTotal int64
+		vFail     int64
+		getVFail  int64
+		vFailCont int64
 		lastState icstate.ValidationState
 		lastBH    int64
 	}

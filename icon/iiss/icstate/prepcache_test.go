@@ -102,7 +102,7 @@ func TestPrepStatusCache(t *testing.T) {
 	s.prepStatusCache.Reset()
 	status = s.prepStatusCache.Get(addr, true)
 	assert.False(t, status.IsEmpty())
-	assert.Equal(t, 100, status.vTotal)
+	assert.Equal(t, int64(100), status.vTotal)
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
