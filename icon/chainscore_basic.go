@@ -130,10 +130,6 @@ func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
 		return nil, scoreresult.ErrInvalidParameter
 	}
 	scoreAddr := s.getScoreAddress(txHash)
-	if scoreAddr == nil {
-		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
-		return nil, err
-	}
 	return scoreAddr, nil
 }
 

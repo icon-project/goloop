@@ -85,7 +85,9 @@ class IconSystemScoreBase(IconScoreBase):
 
     def get_deploy_tx_params(self, tx_hash: bytes) -> Optional['IconScoreDeployTXParams']:
         address = ChainScore.txHashToAddress(self._context, self.address, tx_hash)
-        return IconScoreDeployTXParams(tx_hash, address)
+        if address is not None:
+            return IconScoreDeployTXParams(tx_hash, address)
+        return None
 
     def get_deploy_info(self, score_address: 'Address') -> Optional['IconScoreDeployInfo']:
         current, _next = ChainScore.addressToTxHashes(self._context, self.address, score_address)
