@@ -3,6 +3,7 @@ package contract
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"sync"
@@ -25,15 +26,65 @@ import (
 type DeployHandler struct {
 	*CommonHandler
 	eeType         state.EEType
-	content        []byte
+	content        *ContentBytes
 	contentType    string
 	params         []byte
 	preDefinedAddr module.Address
 }
 
+type ContentBytes struct {
+	Bytes []byte
+	JSON  []byte
+}
+
+func (c *ContentBytes) UnmarshalJSON(b []byte) error {
+	var os *string
+	if err := json.Unmarshal(b, &os); err != nil {
+		return err
+	}
+	if os == nil {
+		c.JSON = nil
+		c.Bytes = nil
+		return nil
+	}
+	s := *os
+	if len(s) >= 2 && s[0:2] == "0x" {
+		s = s[2:]
+	}
+	if bin, err := hex.DecodeString(s); err != nil {
+		return err
+	} else {
+		c.JSON = []byte(*os)
+		c.Bytes = bin
+		return nil
+	}
+}
+
+func (c *ContentBytes) GetBytes() []byte {
+	if c == nil {
+		return nil
+	} else {
+		return c.Bytes
+	}
+}
+
+func (c *ContentBytes) Count(revision module.Revision) int {
+	if c == nil {
+		return 0
+	}
+	if revision.LegacyContentCount() && len(c.JSON) > 0 {
+		for _, b := range c.JSON[2:] {
+			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
+				return len(c.JSON)
+			}
+		}
+	}
+	return len(c.Bytes)
+}
+
 type DeployData struct {
 	ContentType string          `json:"contentType"`
-	Content     common.HexBytes `json:"content"`
+	Content     *ContentBytes   `json:"content"`
 	Params      json.RawMessage `json:"params"`
 }
 
@@ -103,7 +154,7 @@ func newDeployHandlerWithTypedObj(
 
 	return &DeployHandler{
 		CommonHandler: ch,
-		content:       content,
+		content:       &ContentBytes{Bytes: content},
 		contentType:   contentType,
 		params:        params,
 		eeType:        eeType,
@@ -122,7 +173,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 	}
 	return &DeployHandler{
 		CommonHandler:  NewCommonHandler(owner, state.SystemAddress, &zero, false, log),
-		content:        content,
+		content:        &ContentBytes{Bytes: content},
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
 		eeType:         state.MustEETypeFromContentType(contentType),
@@ -237,7 +288,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	} else {
 		st = state.StepTypeContractCreate
 	}
-	codeLen := len(h.content)
+	codeLen := h.content.Count(cc.Revision())
 	if !cc.ApplySteps(st, 1) ||
 		!cc.ApplySteps(state.StepTypeContractSet, codeLen) {
 		return scoreresult.ErrOutOfStep, nil, nil
@@ -266,7 +317,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		return scoreresult.InvalidInstanceError.New("DuplicateDeployID"), nil, nil
 	}
 
-	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, deployID)
+	oldTx, err := as.DeployContract(h.content.GetBytes(), h.eeType, h.contentType, h.params, deployID)
 	if err != nil {
 		return err, nil, nil
 	}
