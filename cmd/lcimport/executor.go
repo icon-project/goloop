@@ -35,6 +35,7 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -67,6 +68,7 @@ type Executor struct {
 	chain    module.Chain
 	log      log.Logger
 	plt      service.Platform
+	trace    log.Logger
 
 	jsBucket    db.Bucket
 	blkIndex    db.Bucket
@@ -137,6 +139,9 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 		blkByID:     blkByID,
 		chainBucket: chainBucket,
 	}
+	ex.trace = logger.WithFields(log.Fields{
+		log.FieldKeyModule: "TRACE",
+	})
 	ex.database = db.WithFlags(database, db.Flags{
 		FlagExecutor: ex,
 	})
@@ -187,10 +192,19 @@ func (e *Executor) NewWorldSnapshot(height int64) (state.WorldSnapshot, error) {
 	return blk.NewWorldSnapshot(e.database, e.plt)
 }
 
+func (e *Executor) OnLog(level module.TraceLevel, msg string) {
+	e.trace.Trace(msg)
+}
+
+func (e *Executor) OnEnd(err error) {
+	e.trace.Tracef("Result=%+v ", err)
+}
+
 func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	if height < 0 {
 		return nil, errors.Errorf("InvalidHeight(height=%d)", height)
 	}
+	logger := trace.NewLogger(e.log, e)
 	if height > 0 {
 		blk, err := e.GetBlockByHeight(height - 1)
 		if err != nil {
@@ -204,7 +218,7 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 			e.cm,
 			e.em,
 			e.chain,
-			e.log,
+			logger,
 			e.plt,
 			tsc,
 		)
@@ -221,7 +235,7 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 			e.cm,
 			e.em,
 			e.chain,
-			e.log,
+			logger,
 			e.plt,
 			tsc,
 		)
