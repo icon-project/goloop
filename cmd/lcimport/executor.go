@@ -383,7 +383,6 @@ func (e *Executor) CheckResult(tr *Transition) error {
 				if tx, err := tr.Transition.NormalTransactions().Get(idx); err == nil {
 					txjs, _ = JSONMarshalIndent(tx)
 				}
-				StatusDone(e.log)
 				e.log.Warnf("Failed Transaction[%d]:%s", idx, txjs)
 				e.log.Warnf("Expected Receipt[%d]:%s", idx, rct1js)
 				e.log.Warnf("Returned Receipt[%d]:%s", idx, rct2js)
@@ -401,8 +400,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 }
 
 func (e *Executor) Execute(from, to int64) error {
-	defer StatusDone(e.log)
-	Statusf(e.log, "Execute Blocks from=%d, to=%d", from, to)
+	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
