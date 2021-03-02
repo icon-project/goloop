@@ -127,6 +127,9 @@ def _get_inputs(params: Mapping[str, Parameter]) -> list:
     inputs = []
 
     for name, param in params.items():
+        if param.kind == Parameter.VAR_KEYWORD:
+            continue
+
         annotation = param.annotation
         type_hint = str if annotation is Parameter.empty else annotation
 

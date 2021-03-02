@@ -33,12 +33,14 @@ from ..icon_score_constant import (
     STR_ON_UPDATE,
     ScoreFlag,
 )
+from ..icon_score_context import ContextContainer
 from ... import utils
 from ...base.exception import (
     IllegalFormatException,
     InvalidInstanceException,
     InvalidParamsException,
 )
+from ...icon_constant import Revision
 
 _VALID_SCORE_FLAG_COMBINATION = {
     ScoreFlag.EXTERNAL,
@@ -108,7 +110,8 @@ def normalize_signature(func: callable) -> Signature:
 
 
 def normalize_parameter(parameter: Parameter) -> Parameter:
-    if parameter.kind != Parameter.POSITIONAL_OR_KEYWORD:
+    if parameter.kind not in (Parameter.POSITIONAL_OR_KEYWORD,
+                              Parameter.VAR_KEYWORD):
         raise IllegalFormatException(
             f"Invalid signature: name={parameter.name} kind={parameter.kind}")
 
@@ -380,7 +383,14 @@ def create_score_element_metadata(cls: type) -> Mapping:
         if name == STR_ON_INSTALL or name == STR_ON_UPDATE:
             if utils.is_any_flag_on(flag, ScoreFlag.ALL):
                 raise IllegalFormatException(f"Invalid decorators in {name}")
-            elements[name] = FunctionMetadata(func)
+            func_meta = FunctionMetadata(func)
+            context = ContextContainer._get_context()
+            if Revision.to_value(context.revision) >= Revision.THREE:
+                for _name, _param in func_meta.signature.parameters.items():
+                    if _param.kind == Parameter.VAR_KEYWORD:
+                        raise IllegalFormatException(
+                            f"Invalid signature: name={_name} kind={_param.kind}")
+            elements[name] = func_meta
             continue
 
         # Collect the only functions with the following flags
