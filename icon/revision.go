@@ -47,10 +47,10 @@ const (
 )
 
 var revisionFlags = []module.Revision{
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck,
+	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount,
 	0,
 	0,
-	module.InputCostingWithJSON | module.ResetStepOnFailure | module.LegacyFallbackCheck,
+	module.InputCostingWithJSON | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount,
 	0,
 	0,
 	0,
