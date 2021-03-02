@@ -117,7 +117,7 @@ func (tcc *testCallContext) Reset() {
 type dummyPlatformType struct{}
 
 func (d dummyPlatformType) ToRevision(value int) module.Revision {
-	return module.AllRevision
+	return module.LatestRevision
 }
 
 type dummyChain struct {
