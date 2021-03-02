@@ -27,12 +27,15 @@ const (
 	AutoAcceptGovernance
 	ResetStepOnFailure
 	LegacyFallbackCheck
+	LegacyContentCount
 	LastRevisionBit
 )
 
 const (
-	NoRevision  Revision = 0
-	AllRevision          = LastRevisionBit - 1
+	NoRevision       = 0
+	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount
+	AllRevision      = LastRevisionBit - 1
+	LatestRevision   = AllRevision ^ BackwardRevision
 )
 
 func (r Revision) Value() int {
@@ -69,4 +72,8 @@ func (r Revision) ResetStepOnFailure() bool {
 
 func (r Revision) LegacyFallbackCheck() bool {
 	return (r & LegacyFallbackCheck) != 0
+}
+
+func (r Revision) LegacyContentCount() bool {
+	return (r & LegacyContentCount) != 0
 }
