@@ -147,6 +147,7 @@ func (b *Block) Bytes() []byte {
 	if b.validators != nil {
 		header.VltHash = b.validators.Hash()
 	}
+	header.OldRct = b.oldRcts.Hash()
 	bs, _ := codec.BC.MarshalToBytes(&header)
 	return bs
 }
