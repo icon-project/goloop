@@ -385,7 +385,7 @@ def create_score_element_metadata(cls: type) -> Mapping:
                 raise IllegalFormatException(f"Invalid decorators in {name}")
             func_meta = FunctionMetadata(func)
             context = ContextContainer._get_context()
-            if Revision.to_value(context.revision) >= Revision.THREE:
+            if context and Revision.to_value(context.revision) >= Revision.THREE:
                 for _name, _param in func_meta.signature.parameters.items():
                     if _param.kind == Parameter.VAR_KEYWORD:
                         raise IllegalFormatException(
