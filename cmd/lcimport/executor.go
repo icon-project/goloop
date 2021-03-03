@@ -290,10 +290,10 @@ func (e *Executor) ProposeTransition(last *Transition, noCache bool) (*Transitio
 			rcts[idx] = rct.(txresult.Receipt)
 		}
 		blk = &Block{
-			height: height,
-			txs:    transaction.NewTransactionListFromSlice(e.database, txs),
-			rcts:   txresult.NewReceiptListFromSlice(e.database, rcts),
-			blk:    blkv0,
+			height:  height,
+			txs:     transaction.NewTransactionListFromSlice(e.database, txs),
+			oldRcts: txresult.NewReceiptListFromSlice(e.database, rcts),
+			blk:     blkv0,
 		}
 	}
 	var csi module.ConsensusInfo
@@ -358,7 +358,9 @@ func (e *Executor) FinalizeTransition(tr *Transition) error {
 			e.jsBucket.Set(preps.Hash(), bs)
 		}
 	}
-
+	if err := tr.Block.Flush(); err != nil {
+		return err
+	}
 	height := tr.Block.Height()
 	bid := tr.Block.ID()
 	if err := e.blkByID.Set(bid, tr.Block.Bytes()); err != nil {
@@ -454,7 +456,7 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 
 func (e *Executor) CheckResult(tr *Transition) error {
 	results := tr.NormalReceipts()
-	expects := tr.Block.Receipts()
+	expects := tr.Block.OldReceipts()
 	idx := 0
 	if !bytes.Equal(expects.Hash(), results.Hash()) {
 		for expect, result := expects.Iterator(), results.Iterator(); expect.Has() && result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {

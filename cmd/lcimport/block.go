@@ -37,6 +37,7 @@ type Block struct {
 	blk        blockv0.Block
 	txTotal    *big.Int
 	validators module.ValidatorList
+	oldRcts    module.ReceiptList
 }
 
 type blockHeader struct {
@@ -47,6 +48,7 @@ type blockHeader struct {
 	BlkRaw  []byte
 	TxTotal *big.Int
 	VltHash []byte
+	OldRct  []byte
 }
 
 func (b *Block) Height() int64 {
@@ -72,16 +74,27 @@ func (b *Block) Receipts() module.ReceiptList {
 	return b.rcts
 }
 
+func (b *Block) OldReceipts() module.ReceiptList {
+	return b.oldRcts
+}
+
 func (b *Block) LogBloom() module.LogsBloom {
 	return b.blk.LogsBloom()
 }
 
 func (b *Block) Timestamp() int64 {
+	if b.blk == nil {
+		return 0
+	}
 	return b.blk.Timestamp()
 }
 
 func (b *Block) ID() []byte {
 	return b.blk.ID()
+}
+
+func (b *Block) Flush() error {
+	return b.oldRcts.Flush()
 }
 
 func (b *Block) Reset(database db.Database, bs []byte) error {
@@ -106,6 +119,11 @@ func (b *Block) Reset(database db.Database, bs []byte) error {
 		} else {
 			b.validators = vlt
 		}
+	}
+	if len(header.OldRct) > 0 {
+		b.oldRcts = txresult.NewReceiptListFromHash(database, header.OldRct)
+	} else {
+		b.oldRcts = b.rcts
 	}
 	return nil
 }
