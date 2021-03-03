@@ -120,7 +120,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.Parameter{
 			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
-					{"address", scoreapi.String, nil},
+					{"address", scoreapi.Address, nil},
 					{"value", scoreapi.Integer, nil},
 				},
 			},
