@@ -53,6 +53,10 @@ func (_r *ReceiptBase) EventLogIterator() module.EventLogIterator {
 	panic("not implemented")
 }
 
+func (_r *ReceiptBase) FeePaymentIterator() module.FeePaymentIterator {
+	panic("not implemented")
+}
+
 func (_r *ReceiptBase) GetProofOfEvent(int) ([][]byte, error) {
 	panic("not implemented")
 }
