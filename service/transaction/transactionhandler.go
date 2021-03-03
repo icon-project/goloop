@@ -99,43 +99,43 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 
 	if !cc.ApplySteps(state.StepTypeDefault, 1) {
 		status = scoreresult.ErrOutOfStep
-	} else {
+	}
+
+	if status == nil && !isPatch && !estimate {
+		as := ctx.GetAccountState(th.from.ID())
+		bal := as.GetBalance()
+		value := new(big.Int).Mul(cc.StepPrice(), limit)
+		if th.value != nil {
+			value.Add(value, th.value)
+		}
+		if bal.Cmp(value) < 0 {
+			status = scoreresult.ErrOutOfBalance
+		}
+	}
+
+	if status == nil {
 		cnt, err := MeasureBytesOfData(ctx.Revision(), th.data)
 		if err != nil {
 			return nil, err
-		} else {
-			if !cc.ApplySteps(state.StepTypeInput, cnt) {
-				status = scoreresult.ErrOutOfStep
-			}
+		}
+		if !cc.ApplySteps(state.StepTypeInput, cnt) {
+			status = scoreresult.ErrOutOfStep
+		}
+	}
 
-			// Check balance before start
-			if status == nil && !isPatch && !estimate {
-				as := ctx.GetAccountState(th.from.ID())
-				bal := as.GetBalance()
-				value := new(big.Int).Mul(cc.StepPrice(), limit)
-				if th.value != nil {
-					value.Add(value, th.value)
-				}
-				if bal.Cmp(value) < 0 {
-					status = scoreresult.ErrOutOfBalance
-				}
-			}
+	// Execute
+	if status == nil {
+		var used *big.Int
+		status, used, _, addr = cc.Call(th.chandler, cc.StepAvailable())
+		cc.DeductSteps(used)
 
-			// Execute
-			if status == nil {
-				var used *big.Int
-				status, used, _, addr = cc.Call(th.chandler, cc.StepAvailable())
-				cc.DeductSteps(used)
-
-				// If it fails for system failure, then it needs to re-run this.
-				if code := errors.CodeOf(status); code == errors.ExecutionFailError ||
-					errors.IsCriticalCode(code) {
-					return nil, status
-				} else if code == scoreresult.TimeoutError {
-					// it consumes all steps if it meets timeout.
-					cc.DeductSteps(cc.StepAvailable())
-				}
-			}
+		// If it fails for system failure, then it needs to re-run this.
+		if code := errors.CodeOf(status); code == errors.ExecutionFailError ||
+			errors.IsCriticalCode(code) {
+			return nil, status
+		} else if code == scoreresult.TimeoutError {
+			// it consumes all steps if it meets timeout.
+			cc.DeductSteps(cc.StepAvailable())
 		}
 	}
 
