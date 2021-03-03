@@ -105,3 +105,48 @@ func (d *feeDetail) RLPDecodeSelf(e codec.Decoder) error {
 	*d = dl
 	return nil
 }
+
+func (d feeDetail) Iterator() module.FeePaymentIterator {
+	return &feeIterator{
+		feeDetail: d,
+		index:     0,
+	}
+}
+
+type feePaymentItem struct {
+	*feePayment
+}
+
+func (i feePaymentItem) Payer() module.Address {
+	return &i.feePayment.Payer
+}
+
+func (i feePaymentItem) Amount() *big.Int {
+	return &i.feePayment.Amount.Int
+}
+
+type feeIterator struct {
+	feeDetail feeDetail
+	index     int
+}
+
+func (itr *feeIterator) Has() bool {
+	return itr.index < len(itr.feeDetail)
+}
+
+func (itr *feeIterator) Next() error {
+	if itr.index < len(itr.feeDetail) {
+		itr.index = itr.index + 1
+		return nil
+	} else {
+		return common.ErrInvalidState
+	}
+}
+
+func (itr *feeIterator) Get() (module.FeePayment, error) {
+	if itr.index < len(itr.feeDetail) {
+		return feePaymentItem{itr.feeDetail[itr.index]}, nil
+	} else {
+		return nil, common.ErrInvalidState
+	}
+}
