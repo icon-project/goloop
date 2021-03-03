@@ -26,30 +26,27 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
 type TransferHandler struct {
 	*contract.CommonHandler
 	data []byte
-	log  *trace.Logger
 }
 
 func newTransferHandler(from, to module.Address, value *big.Int, data []byte, logger log.Logger) *TransferHandler {
 	return &TransferHandler{
 		contract.NewCommonHandler(from, to, value, false, logger),
 		data,
-		trace.LoggerOf(logger),
 	}
 }
 
 func (h *TransferHandler) ExecuteSync(cc contract.CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	h.log.TSystemf("TRANSFER start from=%s to=%s value=%s",
-		h.From, h.To, h.Value)
+	h.Log.TSystemf("FRAME[%d] TRANSFER start from=%s to=%s value=%s",
+		h.FID, h.From, h.To, h.Value)
 	defer func() {
 		if err != nil {
-			h.log.TSystemf("TRANSFER done status=%s msg=%v", err.Error(), err)
+			h.Log.TSystemf("FRAME[%d] TRANSFER done status=%s msg=%v", h.FID, err.Error(), err)
 		}
 	}()
 

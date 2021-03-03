@@ -171,7 +171,8 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 	auditTxHash := info[state.InfoTxHash].([]byte)
 	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), false, s.log)
 	ah := contract.NewAcceptHandler(ch, txHash, auditTxHash)
-	status, _, _ := ah.ExecuteSync(s.cc)
+	status, steps, _, _ := s.cc.Call(ah, s.cc.StepAvailable())
+	s.cc.DeductSteps(steps)
 
 	// update governance variables
 	if status == nil && scoreAddr != nil && s.cc.Governance().Equal(scoreAddr) {
