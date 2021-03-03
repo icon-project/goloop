@@ -580,6 +580,78 @@ func (pm *PRepManager) ShiftVPenaltyMaskByNode(node module.Address) error {
 	return nil
 }
 
+// UpdateLastState updates PRepLastState based on ConsensusInfo
+func (pm *PRepManager) UpdateLastState(owner module.Address, voted bool, blockHeight int64) error {
+	prep := pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+
+	vs := icstate.Success
+	if !voted {
+		vs = icstate.Fail
+	}
+
+	ps := prep.PRepStatus
+	ls := ps.LastState()
+	if ls == icstate.None {
+		if vs == icstate.Fail {
+			ps.SetVFail(ps.VFail() + 1)
+		}
+		ps.SetVTotal(ps.VTotal() + 1)
+		ps.SetLastHeight(blockHeight)
+	} else {
+		if vs != ls {
+			diff := blockHeight - ps.LastHeight()
+			ps.SetVTotal(ps.VTotal() + diff)
+			if vs == icstate.Success {
+				ps.SetVFail(ps.VFail() + diff - 1)
+			} else {
+				ps.SetVFail(ps.VFail() + 1)
+			}
+			ps.SetLastState(vs)
+			ps.SetLastHeight(blockHeight)
+		}
+	}
+
+	return nil
+}
+
+// Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
+// Do not change PRep grade here
+// Caution: amount should not include the amount from unbonded
+func (pm *PRepManager) Slash(owner module.Address, amount *big.Int, sort bool) error {
+	if owner == nil {
+		return errors.Errorf("Owner is nil")
+	}
+	if amount == nil {
+		return errors.Errorf("Amount is nil")
+	}
+	if amount.Sign() < 0 {
+		return errors.Errorf("Amount is less than zero: %v", amount)
+	}
+	if amount.Sign() == 0 {
+		return nil
+	}
+
+	prep := pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %v", owner)
+	}
+
+	bonded := new(big.Int).Set(prep.Bonded())
+	if bonded.Cmp(amount) < 0 {
+		return errors.Errorf("bonded=%v < slash=%v", bonded, amount)
+	}
+	prep.SetBonded(bonded.Sub(bonded, amount))
+	pm.totalBonded.Sub(pm.totalBonded, amount)
+
+	if sort {
+		pm.Sort()
+	}
+	return nil
+}
+
 func newPRepManager(state *icstate.State) *PRepManager {
 	pm := &PRepManager{
 		state:          state,

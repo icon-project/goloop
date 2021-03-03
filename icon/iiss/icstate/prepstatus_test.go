@@ -138,71 +138,6 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(999))))
 }
 
-func TestPRepStatus_getContValue(t *testing.T) {
-	type args struct {
-		lastState   ValidationState
-		lastBH      int64
-		blockHeight int64
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want int
-	}{
-		{
-			"Fail state",
-			args{
-				Fail,
-				0,
-				10,
-			},
-			11,
-		},
-		{
-			"Success state",
-			args{
-				Success,
-				10,
-				22000,
-			},
-			21991,
-		},
-		{
-			"None state",
-			args{
-				None,
-				0,
-				1000,
-			},
-			0,
-		},
-		{
-			"Invalid block height",
-			args{
-				Fail,
-				100,
-				1,
-			},
-			0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			in := tt.args
-			ps := &PRepStatus{
-				lastState:  in.lastState,
-				lastHeight: in.lastBH,
-			}
-
-			ret := ps.getContValue(in.blockHeight)
-
-			assert.Equal(t, int64(tt.want), ret)
-		})
-	}
-}
-
 func TestPRepStatus_GetVTotal(t *testing.T) {
 	type args struct {
 		vTotal      int64
@@ -224,7 +159,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 				15,
 				20,
 			},
-			10 + 20 - 15 + 1,
+			10 + 20 - 15,
 		},
 		{
 			"Success state",
@@ -234,7 +169,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 				50,
 				22000,
 			},
-			20 + 22000 - 50 + 1,
+			20 + 22000 - 50,
 		},
 		{
 			"None state",
@@ -295,7 +230,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 				15,
 				20,
 			},
-			10 + 20 - 15 + 1,
+			10 + 20 - 15,
 		},
 		{
 			"Success state",

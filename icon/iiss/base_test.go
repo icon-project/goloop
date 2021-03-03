@@ -16,15 +16,8 @@
 package iiss
 
 import (
-	"testing"
-
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/stretchr/testify/assert"
 )
 
 type dummyPlatformType struct{}
@@ -46,6 +39,7 @@ func (cc *testCallContext) setBlockHeight(blockHeight int64) {
 	cc.blockHeight = blockHeight
 }
 
+/*
 // test for updatePRepStatus
 func TestUpdatePrepStatus(t *testing.T) {
 	cc := &testCallContext{}
@@ -198,7 +192,9 @@ func TestUpdatePrepStatus(t *testing.T) {
 	assert.Equal(t, int64(0), ps1.GetVFailCont(bh))
 	assert.Equal(t, int64(0), ps2.GetVFailCont(bh))
 }
+*/
 
+/*
 func Test_applyPRepStatus(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	status1 := icstate.NewPRepStatus(addr1)
@@ -246,9 +242,9 @@ func Test_applyPRepStatus(t *testing.T) {
 				10,
 			},
 			want{
-				0,
 				1,
-				0,
+				1,
+				1,
 				1,
 				1,
 				icstate.Fail,
@@ -337,3 +333,4 @@ func Test_applyPRepStatus(t *testing.T) {
 		})
 	}
 }
+*/

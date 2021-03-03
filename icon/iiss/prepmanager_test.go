@@ -537,3 +537,168 @@ func TestPRepManager_OnTermEnd(t *testing.T) {
 		})
 	}
 }
+
+func TestPRepManager_UpdateLastState(t *testing.T) {
+	type input struct {
+		ls     icstate.ValidationState
+		lh     int64
+		vFail  int64
+		vTotal int64
+
+		voted bool
+		bh    int64
+	}
+	type output struct {
+		ls        icstate.ValidationState
+		lh        int64
+		vFail     int64
+		vFailCont int64
+		vTotal    int64
+	}
+	type test struct {
+		in  input
+		out output
+	}
+
+	owner := createAddress(0)
+	tests := [...]test{
+		{
+			in: input{
+				ls:     icstate.None,
+				lh:     100,
+				vFail:  10,
+				vTotal: 999,
+
+				voted: false,
+				bh:    123,
+			},
+			out: output{
+				ls:        icstate.None,
+				lh:        123,
+				vFail:     11,
+				vFailCont: 0,
+				vTotal:    1000,
+			},
+		},
+		{
+			in: input{
+				ls:     icstate.None,
+				lh:     100,
+				vFail:  123,
+				vTotal: 9999,
+
+				voted: true,
+				bh:    110,
+			},
+			out: output{
+				ls:        icstate.None,
+				lh:        110,
+				vFail:     123,
+				vFailCont: 0,
+				vTotal:    10000,
+			},
+		},
+		{
+			in: input{
+				ls:     icstate.Fail,
+				lh:     1000,
+				vFail:  51,
+				vTotal: 90,
+
+				voted: true,
+				bh:    1010,
+			},
+			out: output{
+				ls:        icstate.Success,
+				lh:        1010,
+				vFail:     60,
+				vFailCont: 0,
+				vTotal:    100,
+			},
+		},
+		{
+			in: input{
+				ls:     icstate.Success,
+				lh:     1000,
+				vFail:  50,
+				vTotal: 90,
+
+				voted: false,
+				bh:    1010,
+			},
+			out: output{
+				ls:        icstate.Fail,
+				lh:        1010,
+				vFail:     51,
+				vFailCont: 1,
+				vTotal:    100,
+			},
+		},
+		{
+			in: input{
+				ls:     icstate.Fail,
+				lh:     1000,
+				vFail:  50,
+				vTotal: 90,
+
+				voted: false,
+				bh:    1010,
+			},
+			out: output{
+				ls:        icstate.Fail,
+				lh:        1000,
+				vFail:     60,
+				vFailCont: 11,
+				vTotal:    100,
+			},
+		},
+		{
+			in: input{
+				ls:     icstate.Success,
+				lh:     1000,
+				vFail:  50,
+				vTotal: 90,
+
+				voted: true,
+				bh:    1010,
+			},
+			out: output{
+				ls:        icstate.Success,
+				lh:        1000,
+				vFail:     50,
+				vFailCont: 0,
+				vTotal:    100,
+			},
+		},
+	}
+
+	for i, tc := range tests {
+		name := fmt.Sprintf("test-%d", i)
+		t.Run(name, func(t *testing.T) {
+			in := tc.in
+			out := tc.out
+			voted := in.voted
+			bh := in.bh
+
+			pm := createPRepManager(t, false, 1)
+			prep := pm.GetPRepByOwner(owner)
+
+			// Initialize PRep
+			prep.SetLastState(in.ls)
+			prep.SetLastHeight(in.lh)
+			prep.SetVTotal(in.vTotal)
+			prep.SetVFail(in.vFail)
+
+			// Run the method to test
+			err := pm.UpdateLastState(owner, voted, bh)
+			assert.NoError(t, err)
+
+			// Check the result
+			assert.Equal(t, out.ls, prep.LastState())
+			assert.Equal(t, out.lh, prep.LastHeight())
+			assert.Equal(t, out.vFail, prep.GetVFail(bh))
+			assert.Equal(t, out.vTotal, prep.GetVTotal(bh))
+			assert.Equal(t, out.vFailCont, prep.GetVFailCont(bh))
+		})
+	}
+}

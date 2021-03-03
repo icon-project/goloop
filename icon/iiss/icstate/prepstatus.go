@@ -162,7 +162,11 @@ func (ps *PRepStatus) VTotal() int64 {
 
 // GetVTotal returns the calculated number of validation
 func (ps *PRepStatus) GetVTotal(blockHeight int64) int64 {
-	return ps.vTotal + ps.getContValue(blockHeight)
+	if ps.lastState == None {
+		return ps.vTotal
+	} else {
+		return ps.vTotal + ps.getSafeHeightDiff(blockHeight)
+	}
 }
 
 func (ps *PRepStatus) VFail() int64 {
@@ -171,26 +175,28 @@ func (ps *PRepStatus) VFail() int64 {
 
 // GetVFail returns the calculated number of validation failures
 func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
-	return ps.vFail + ps.GetVFailCont(blockHeight)
+	if ps.lastState == Fail && blockHeight >= ps.lastHeight {
+		return ps.vFail + ps.GetVFailCont(blockHeight) - 1
+	}
+	return ps.vFail
 }
 
 // GetVFailCont returns the number of consecutive validation failures
 func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
 	if ps.lastState == Fail {
-		return ps.getContValue(blockHeight)
+		diff := blockHeight - ps.lastHeight
+		if diff >= 0 {
+			return diff + 1
+		}
 	}
 	return 0
 }
 
-func (ps *PRepStatus) getContValue(blockHeight int64) int64 {
-	if ps.lastState == None {
-		return 0
-	}
+func (ps *PRepStatus) getSafeHeightDiff(blockHeight int64) int64 {
 	if blockHeight < ps.lastHeight {
 		return 0
-	} else {
-		return blockHeight - ps.lastHeight + 1
 	}
+	return blockHeight - ps.lastHeight
 }
 
 func (ps *PRepStatus) equal(other *PRepStatus) bool {
