@@ -193,7 +193,12 @@ func (e *Executor) NewWorldSnapshot(height int64) (state.WorldSnapshot, error) {
 }
 
 func (e *Executor) OnLog(level module.TraceLevel, msg string) {
-	e.trace.Trace(msg)
+	switch level {
+	case module.TSystemLevel:
+		e.trace.Trace(msg)
+	default:
+		// others are already printed by logger
+	}
 }
 
 func (e *Executor) OnEnd(err error) {
