@@ -676,32 +676,6 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
 	return nil
 }
 
-func (s *ExtensionStateImpl) GetValidators() []module.Validator {
-	mainPRepCount := int(s.State.GetMainPRepCount())
-
-	term := s.State.GetTerm()
-	prepSnapshotCount := term.GetPRepSnapshotCount()
-	if prepSnapshotCount < mainPRepCount {
-		log.Warnf("Not enough PReps: %d < %d", prepSnapshotCount, mainPRepCount)
-	}
-
-	var err error
-	size := icutils.Min(mainPRepCount, prepSnapshotCount)
-	validators := make([]module.Validator, size, size)
-
-	for i := 0; i < size; i++ {
-		prepSnapshot := term.GetPRepSnapshotByIndex(i)
-		prep := s.pm.GetPRepByOwner(prepSnapshot.Owner())
-		node := prep.GetNode()
-		validators[i], err = state.ValidatorFromAddress(node)
-		if err != nil {
-			log.Errorf("Failed to run GetValidators(): %s", node.String())
-		}
-	}
-
-	return validators
-}
-
 func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
 	term := s.State.GetTerm()
 	if term == nil {
