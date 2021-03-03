@@ -384,7 +384,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		var m getValueMessage
 		if value, err := p.frame.ctx.GetValue(key); err != nil {
 			p.log.Tracef("Proxy[%p].GetValue key=<%x> err=%+v", p, key, err)
-			p.log.TSystemf("GETVALUE key=<%x> err=%+v", key, err)
 			return err
 		} else {
 			if value != nil {
@@ -395,7 +394,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 				m.Value = nil
 			}
 			p.log.Tracef("Proxy[%p].GetValue key=<%x> value=<%x>", p, key, value)
-			p.log.TSystemf("GETVALUE key=<%x> value=<%x>", key, value)
 		}
 		return p.conn.Send(msgGETVALUE, &m)
 
@@ -409,11 +407,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if (m.Flag & flagDELETE) != 0 {
 			old, err = p.frame.ctx.DeleteValue(m.Key)
 			p.log.Tracef("Proxy[%p].Delete key=<%x> old=<%x>", p, m.Key, old)
-			p.log.TSystemf("DELETE start key=<%x> old=<%x>", m.Key, old)
 		} else {
 			old, err = p.frame.ctx.SetValue(m.Key, m.Value)
 			p.log.Tracef("Proxy[%p].SetValue key=<%x> value=<%x> old=<%x>", p, m.Key, m.Value, old)
-			p.log.TSystemf("SETVALUE key=<%x> value=<%x> old=<%x>", m.Key, m.Value, old)
 		}
 		if err != nil {
 			return err
@@ -456,7 +452,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		balance.Set(p.frame.ctx.GetBalance(&addr))
 		p.log.Tracef("Proxy[%p].GetBalance(%s) -> %s",
 			p, &addr, &balance)
-		p.log.TSystemf("GETBALANCE addr=%s value=%s", &addr, &balance)
 		return p.conn.Send(msgGETBALANCE, &balance)
 
 	case msgGETAPI:

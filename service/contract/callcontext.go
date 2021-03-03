@@ -40,6 +40,7 @@ type (
 		GetLastEIDOf(id []byte) int
 		NewExecution() int
 		GetReturnEID() int
+		FrameID() int
 		SetFeeProportion(addr module.Address, portion int)
 		RedeemSteps(s *big.Int) (*big.Int, error)
 		GetRedeemLogs(r txresult.Receipt) bool
@@ -64,11 +65,18 @@ const (
 	initialEID = 1
 )
 
+const (
+	unknownFID = 0
+	baseFID    = 1 // ID for base frame  (Default + Input + Call)
+	firstFID   = 2 // ID for first frame (Executor + Child)
+)
+
 type callContext struct {
 	Context
 	isQuery  bool
 	executor *eeproxy.Executor
 	nextEID  int
+	nextFID  int
 
 	lock   sync.Mutex
 	frame  *callFrame
@@ -98,6 +106,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 		Context: ctx,
 		isQuery: isQuery,
 		nextEID: initialEID,
+		nextFID: firstFID,
 		frame:   NewFrame(nil, nil, limit, isQuery),
 
 		waiter: make(chan interface{}, 8),
@@ -118,11 +127,14 @@ func (cc *callContext) Logger() log.Logger {
 func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callFrame {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
-	handler.ResetLogger(cc.Logger())
+	handler.Init(cc.nextFID, cc.Logger())
 	frame := NewFrame(cc.frame, handler, limit, false)
 	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
+	cc.log.TSystemf("FRAME[%d] START parent=FRAME[%d]", cc.nextFID, cc.frame.fid)
+	frame.fid = cc.nextFID
+	cc.nextFID += 1
 	cc.frame = frame
 	return frame
 }
@@ -132,6 +144,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
+	cc.log.TSystemf("FRAME[%d] END success=%v steps=%d", frame.fid, success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
 			frame.parent.pushBackEventLogsOf(frame)
@@ -144,6 +157,17 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	}
 	cc.frame = frame.parent
 	return frame
+}
+
+func (cc *callContext) FrameID() int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	if cc.frame != nil {
+		return cc.frame.fid
+	} else {
+		return unknownFID
+	}
 }
 
 func (cc *callContext) enterQueryMode() {
@@ -370,8 +394,8 @@ func (cc *callContext) sendMessage(msg interface{}) error {
 }
 
 func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
-	cc.log.TSystemf("EVENT score=%s sig=%s indexed=%v data=%v",
-		addr, indexed[0],
+	cc.log.TSystemf("FRAME[%d] EVENT score=%s sig=%s indexed=%v data=%v",
+		cc.FrameID(), addr, indexed[0],
 		common.SliceOfHexBytes(indexed[1:]),
 		common.SliceOfHexBytes(data))
 	if err := cc.addLogToFrame(addr, indexed, data); err != nil {
@@ -435,7 +459,7 @@ func (cc *callContext) ApplySteps(t state.StepType, n int) bool {
 	defer cc.lock.Unlock()
 	steps := big.NewInt(cc.StepsFor(t, n))
 	ok := cc.frame.deductSteps(steps)
-	cc.log.TSystemf("STEP apply type=%s count=%d cost=%s total=%s", t, n, steps, &cc.frame.stepUsed)
+	cc.log.TSystemf("FRAME[%d] STEP apply type=%s count=%d cost=%s total=%s", cc.frame.fid, t, n, steps, &cc.frame.stepUsed)
 	return ok
 }
 
@@ -443,7 +467,7 @@ func (cc *callContext) DeductSteps(s *big.Int) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	ok := cc.frame.deductSteps(s)
-	cc.log.TSystemf("STEP apply cost=%s total=%d", s, &cc.frame.stepUsed)
+	cc.log.TSystemf("FRAME[%d] STEP apply cost=%s total=%d", cc.frame.fid, s, &cc.frame.stepUsed)
 	return ok
 }
 

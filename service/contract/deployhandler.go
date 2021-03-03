@@ -20,7 +20,6 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/trace"
 )
 
 type DeployHandler struct {
@@ -249,10 +248,9 @@ func getIDWithSalt(id []byte, salt *big.Int) []byte {
 }
 
 func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
-	h.log = trace.LoggerOf(cc.Logger())
 	sysAs := cc.GetAccountState(state.SystemID)
 
-	h.log.TSystemf("DEPLOY start to=%s", h.To)
+	h.Log.TSystemf("FRAME[%d] DEPLOY start to=%s", h.FID, h.To)
 
 	update := false
 	txInfo := cc.TransactionInfo()
@@ -334,14 +332,14 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if h.eeType.NeedAudit() == false || cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.From.String()) || h.preDefinedAddr != nil ||
 		(cc.Revision().AutoAcceptGovernance() && cc.Governance().Equal(h.To)) {
-		ah := NewAcceptHandler(NewCommonHandler(h.From, h.To, big.NewInt(0), false, h.log), deployID, txInfo.Hash)
+		ah := NewAcceptHandler(NewCommonHandler(h.From, h.To, big.NewInt(0), false, h.Log), deployID, txInfo.Hash)
 		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
 		cc.DeductSteps(acceptStepUsed)
 		if status != nil {
 			return status, nil, nil
 		}
 	}
-	h.log.TSystemf("DEPLOY done score=%s", scoreAddr)
+	h.Log.TSystemf("FRAME[%d] DEPLOY done score=%s", h.FID, scoreAddr)
 
 	return nil, common.MustEncodeAny(scoreAddr), scoreAddr
 }
@@ -365,9 +363,7 @@ func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
-	h.log = trace.LoggerOf(cc.Logger())
-
-	h.log.TSystemf("ACCEPT start txhash=0x%x audit=0x%x", h.txHash, h.auditTxHash)
+	h.Log.TSystemf("FRAME[%d] ACCEPT start txhash=0x%x audit=0x%x", h.FID, h.txHash, h.auditTxHash)
 
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
@@ -403,7 +399,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 		}
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(NewCommonHandler(h.From, scoreAddr, nil, false, h.log))
+	cgah := newCallGetAPIHandler(NewCommonHandler(h.From, scoreAddr, nil, false, h.Log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, _, _ := cc.Call(cgah, cc.StepAvailable())
 	if status != nil {
@@ -427,7 +423,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
-		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), false, h.log),
+		NewCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), false, h.Log),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
@@ -437,7 +433,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if status != nil {
 		return status, nil, nil
 	}
-	h.log.TSystemf("ACCEPT done score=%s", scoreAddr)
+	h.Log.TSystemf("FRAME[%d] ACCEPT done score=%s", h.FID, scoreAddr)
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return err, nil, nil
 	}
@@ -462,14 +458,12 @@ func newCallGetAPIHandler(ch *CommonHandler) *callGetAPIHandler {
 
 // It's never called
 func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	h.log.Panicf("SHOULD not reach here")
+	h.Log.Panicf("SHOULD not reach here")
 	return nil, nil
 }
 
-func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
+func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) (ret error) {
 	h.cc = cc
-	h.log = trace.LoggerOf(cc.Logger())
-
 	h.as = cc.GetAccountState(h.To.ID())
 	if !h.as.IsContract() {
 		return scoreresult.Errorf(module.StatusContractNotFound, "Account(%s) is't contract", h.To)
@@ -486,7 +480,12 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 		return scoreresult.New(module.StatusContractNotFound,
 			"No pending contract")
 	}
-	h.log.TSystemf("GETAPI start code=<%x>", c.CodeHash())
+	h.Log.TSystemf("FRAME[%d] GETAPI start code=<%x>", h.FID, c.CodeHash())
+	defer func() {
+		if ret != nil {
+			h.Log.TSystemf("FRAME[%d] GETAPI fail err=%+v", h.FID, ret)
+		}
+	}()
 
 	var err error
 	h.lock.Lock()
@@ -497,7 +496,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
-		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
+		h.Log.Warnf("FAIL to prepare contract. err=%+v", err)
 		return PreparingContractError.New("FAIL to prepare contract")
 	}
 
@@ -511,7 +510,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 }
 
 func (h *callGetAPIHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
-	h.log.Panicln("Unexpected SendResult() call")
+	h.Log.Panicln("Unexpected SendResult() call")
 	return nil
 }
 
@@ -527,56 +526,56 @@ func (h *callGetAPIHandler) Dispose() {
 func (h *callGetAPIHandler) EEType() state.EEType {
 	c := h.as.NextContract()
 	if c == nil {
-		h.log.Println("No associated contract exists")
+		h.Log.Println("No associated contract exists")
 		return ""
 	}
 	return c.EEType()
 }
 
 func (h *callGetAPIHandler) GetValue(key []byte) ([]byte, error) {
-	h.log.Panicln("Unexpected GetValue() call")
+	h.Log.Panicln("Unexpected GetValue() call")
 	return nil, nil
 }
 
 func (h *callGetAPIHandler) SetValue(key []byte, value []byte) ([]byte, error) {
-	h.log.Panicln("Unexpected SetValue() call")
+	h.Log.Panicln("Unexpected SetValue() call")
 	return nil, nil
 }
 
 func (h *callGetAPIHandler) DeleteValue(key []byte) ([]byte, error) {
-	h.log.Panicln("Unexpected DeleteValue() call")
+	h.Log.Panicln("Unexpected DeleteValue() call")
 	return nil, nil
 }
 
 func (h *callGetAPIHandler) GetInfo() *codec.TypedObj {
-	h.log.Panicln("Unexpected GetInfo() call")
+	h.Log.Panicln("Unexpected GetInfo() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) GetBalance(addr module.Address) *big.Int {
-	h.log.Panicln("Unexpected GetBalance() call")
+	h.Log.Panicln("Unexpected GetBalance() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
-	h.log.Panicln("Unexpected OnEvent() call")
+	h.Log.Panicln("Unexpected OnEvent() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
 	if status == nil {
-		h.log.Panicln("Unexpected call OnResult() from GetAPI()")
+		h.Log.Panicln("Unexpected call OnResult() from GetAPI()")
 	}
 	h.OnAPI(status, nil)
 }
 
 func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) {
-	h.log.Panicln("Unexpected call OnCall() from GetAPI()")
+	h.Log.Panicln("Unexpected call OnCall() from GetAPI()")
 }
 
 func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	if status == nil {
-		h.log.TSystemf("GETAPI done status=%s info=%v", module.StatusSuccess, info)
+		h.Log.TSystemf("FRAME[%d] GETAPI done status=%s info=%v", h.FID, module.StatusSuccess, info)
 		if err := h.as.MigrateForRevision(h.cc.Revision()); err != nil {
 			status = err
 		} else {
@@ -584,27 +583,27 @@ func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 		}
 	} else {
 		s, _ := scoreresult.StatusOf(status)
-		h.log.TSystemf("GETAPI done status=%s msg=%s", s, status.Error())
+		h.Log.TSystemf("FRAME[%d] GETAPI done status=%s msg=%s", h.FID, s, status.Error())
 	}
 	h.cc.OnResult(status, new(big.Int), nil, nil)
 }
 
 func (h *callGetAPIHandler) OnSetFeeProportion(addr module.Address, portion int) {
-	h.log.Errorf("Unexpected call OnSetFeeProportion() from GetAPI()")
+	h.Log.Errorf("Unexpected call OnSetFeeProportion() from GetAPI()")
 }
 
 func (h *callGetAPIHandler) SetCode(code []byte) error {
-	h.log.Errorf("Unexpected call SetCode() from GetAPI()")
+	h.Log.Errorf("Unexpected call SetCode() from GetAPI()")
 	return nil
 }
 
 func (h *callGetAPIHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	h.log.Errorf("Unexpected call GetObjGraph() from GetAPI()")
+	h.Log.Errorf("Unexpected call GetObjGraph() from GetAPI()")
 	return 0, nil, nil, nil
 }
 
 func (h *callGetAPIHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
-	h.log.Errorf("Unexpected call SetObjGraph() from GetAPI()")
+	h.Log.Errorf("Unexpected call SetObjGraph() from GetAPI()")
 	return nil
 }
 

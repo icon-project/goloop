@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/trace"
 )
 
 const (
@@ -74,12 +73,10 @@ func (h *DepositHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	h.log = trace.LoggerOf(cc.Logger())
-
-	h.log.TSystemf("DEPOSIT start to=%s action=%s", h.To, h.data.Action)
+	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, h.data.Action)
 	defer func() {
 		if err != nil {
-			h.log.TSystemf("DEPOSIT done status=%s msg=%v", err.Error(), err)
+			h.Log.TSystemf("FRAME[%d] DEPOSIT done status=%s msg=%v", h.FID, err.Error(), err)
 		}
 	}()
 

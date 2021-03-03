@@ -38,14 +38,14 @@ func (h *patchHandler) verifySkipTransactionPatch(cc CallContext, p module.SkipT
 	as := cc.GetAccountState(state.SystemID)
 	f := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64()
 	if f == 0 {
-		h.log.Warn("RoundLimitFactor is not enabled")
+		h.Log.Warn("RoundLimitFactor is not enabled")
 		return false
 	}
 	vs := cc.GetValidatorState()
 	round := RoundLimitFactorToRound(vs.Len(), f)
 	nid := scoredb.NewVarDB(as, state.VarNetwork).Int64()
 	if err := p.Verify(vs.GetSnapshot(), round, int(nid)); err != nil {
-		h.log.Warnf("FailToVerifySkipTxPatch(err=%v)", err)
+		h.Log.Warnf("FailToVerifySkipTxPatch(err=%v)", err)
 		return false
 	}
 	return true
@@ -54,17 +54,17 @@ func (h *patchHandler) verifySkipTransactionPatch(cc CallContext, p module.SkipT
 func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 	decode := cc.PatchDecoder()
 	if decode == nil {
-		h.log.Warn("PatchHandler: patch decoder isn't set")
+		h.Log.Warn("PatchHandler: patch decoder isn't set")
 		return scoreresult.InvalidParameterError.New("PatchDecoderIsNil")
 	}
 	pd, err := decode(h.patch.Type, h.patch.Data)
 	if err != nil {
-		h.log.Warnf("PatchHandler: decode fail err=%+v", err)
+		h.Log.Warnf("PatchHandler: decode fail err=%+v", err)
 		return scoreresult.InvalidParameterError.Wrap(err, "DecodeFail")
 	}
 	p := pd.(module.SkipTransactionPatch)
 	if cc.BlockHeight() != p.Height() || p.Height() < 1 {
-		h.log.Warnf("PatchHandler: invalid height block.height=%d patch.height=%d",
+		h.Log.Warnf("PatchHandler: invalid height block.height=%d patch.height=%d",
 			cc.BlockHeight(), p.Height())
 		return scoreresult.InvalidParameterError.Errorf("InvalidHeight(bh=%d,ph=%d)",
 			cc.BlockHeight(), p.Height())
@@ -73,14 +73,14 @@ func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 		return scoreresult.InvalidParameterError.New("VerifySkipTransactionPatchFail")
 	}
 	cc.EnableSkipTransaction()
-	h.log.Warnf("PatchHandler: SKIP TRANSACTION height=%d", p.Height())
+	h.Log.Warnf("PatchHandler: SKIP TRANSACTION height=%d", p.Height())
 	return nil
 }
 
 func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	vs := cc.GetValidatorState()
 	if idx := vs.IndexOf(h.From); idx < 0 {
-		h.log.Warnf("PatchHandler: %s isn't validator", h.From)
+		h.Log.Warnf("PatchHandler: %s isn't validator", h.From)
 		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.From), nil, nil
 	}
 	if h.Value != nil && h.Value.Sign() == 1 {
