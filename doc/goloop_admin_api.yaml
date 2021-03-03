@@ -329,7 +329,7 @@ paths:
       tags:
         - node
       summary: View system
-      description: Return system infomation.
+      description: Return system information.
       parameters:
         - <<: *query__format
       responses:
