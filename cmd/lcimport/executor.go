@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"path"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -418,7 +419,12 @@ func (e *Executor) CheckResult(tr *Transition) error {
 	return nil
 }
 
-func (e *Executor) Execute(from, to int64) error {
+func TimestampToString(ts int64) string {
+	tm := time.Unix(ts/1000000, (ts%1000000)*1000)
+	return tm.Format(time.RFC3339)
+}
+
+func (e *Executor) Execute(from, to int64, useCache bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
@@ -432,9 +438,9 @@ func (e *Executor) Execute(from, to int64) error {
 	}
 	callback := make(transitionCallback, 1)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		Statusf(e.log, "Executing Block[ %8d ] Tx[ %16d ]",
-			height, prevTR.Block.TxTotal())
-		tr, err := e.ProposeTransition(prevTR)
+		Statusf(e.log, "Executing Block[ %8d ] Tx[ %16d ] %s",
+			height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()))
+		tr, err := e.ProposeTransition(prevTR, useCache)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
 		}
