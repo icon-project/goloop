@@ -147,6 +147,17 @@ type EventLogIterator interface {
 	Get() (EventLog, error)
 }
 
+type FeePayment interface {
+	Payer() Address
+	Amount() *big.Int
+}
+
+type FeePaymentIterator interface {
+	Has() bool
+	Next() error
+	Get() (FeePayment, error)
+}
+
 type Receipt interface {
 	Bytes() []byte
 	To() Address
@@ -159,6 +170,7 @@ type Receipt interface {
 	ToJSON(version JSONVersion) (interface{}, error)
 	LogsBloom() LogsBloom
 	EventLogIterator() EventLogIterator
+	FeePaymentIterator() FeePaymentIterator
 	GetProofOfEvent(int) ([][]byte, error)
 }
 

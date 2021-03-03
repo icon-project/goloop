@@ -570,7 +570,7 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	if !r.data.Equal(&rct2.data) {
 		return errors.InvalidStateError.New("DifferentData")
 	}
-	for itr1, itr2, idx := r.EventLogIterator(), r2.EventLogIterator(), 0; itr1.Has() && itr2.Has(); idx, _, _ = idx+1, itr1.Next(), itr2.Next() {
+	for itr1, itr2, idx := r.EventLogIterator(), r2.EventLogIterator(), 0; itr1.Has() || itr2.Has(); idx, _, _ = idx+1, itr1.Next(), itr2.Next() {
 		ev1, err := itr1.Get()
 		if err != nil {
 			return errors.InvalidStateError.Wrap(err, "FailOnReadingEvents")
@@ -586,6 +586,10 @@ func (r *receipt) Check(r2 module.Receipt) error {
 		}
 	}
 	return nil
+}
+
+func (r *receipt) FeePaymentIterator() module.FeePaymentIterator {
+	return r.data.FeeDetail.Iterator()
 }
 
 func versionForRevision(revision module.Revision) Version {

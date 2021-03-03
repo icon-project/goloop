@@ -688,7 +688,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 				to := tol[i]
 				nullable := (i >= a.Indexed) && input.Default == nil
 				if err := inputType.ValidateInput(to, input.Fields, nullable); err != nil {
-					return nil, err
+					return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidParameter")
 				}
 			} else {
 				if obj, err := inputType.ConvertBytesToTypedObj(input.Default); err != nil {
