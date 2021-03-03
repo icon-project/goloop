@@ -402,6 +402,7 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 	}
 	if s1 == module.StatusUnknownFailure && s2 == module.StatusInvalidParameter {
 		logger.Warnf("Ignore status difference(e=%s,r=%s)", s1, s2)
+		StatusCleared()
 		return nil
 	}
 	return errors.InvalidStateError.Errorf("InvalidStatus(e=%s,r=%s)", s1, s2)

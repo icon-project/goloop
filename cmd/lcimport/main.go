@@ -244,6 +244,10 @@ func Statusf(l log.Logger, format string, args ...interface{}) {
 	}
 }
 
+func StatusCleared() {
+	statusDisplay = false
+}
+
 func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: name,
