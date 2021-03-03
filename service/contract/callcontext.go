@@ -519,7 +519,7 @@ func (cc *callContext) SetFeeProportion(addr module.Address, portion int) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	if cc.frame.eid == initialEID {
+	if cc.frame.fid == firstFID {
 		if portion == 0 {
 			cc.payers = nil
 		} else {
