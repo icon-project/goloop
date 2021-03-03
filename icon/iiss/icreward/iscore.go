@@ -44,6 +44,15 @@ func (is *IScore) Added(amount *big.Int) *IScore {
 	return n
 }
 
+func (is *IScore) Clone() *IScore {
+	if is == nil {
+		return nil
+	}
+	nIS := NewIScore()
+	nIS.Value.Set(is.Value)
+	return nIS
+}
+
 func newIScore(tag icobject.Tag) *IScore {
 	return &IScore{
 		*icobject.NewObjectBigInt(tag),

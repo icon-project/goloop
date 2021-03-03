@@ -328,15 +328,16 @@ func (s *chainScore) Ex_claimIScore() error {
 		return nil
 	}
 
-	iScore, err := es.Reward.GetIScore(s.from)
+	is, err := es.Reward.GetIScore(s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Failed to get IScore data(%v)", err)
 	}
-	if iScore == nil {
+	if is == nil {
 		// there is no IScore to claim.
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
 		return nil
 	}
+	iScore := is.Clone()
 	bClaimed, err := es.Back.GetIScoreClaim(s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Failed to get claim data from back (%s)", err.Error())
@@ -368,7 +369,15 @@ func (s *chainScore) Ex_claimIScore() error {
 	tr.SetBalance(new(big.Int).Sub(tb, icx))
 
 	// write claim data to front
-	if err = es.Front.AddIScoreClaim(s.from, claim); err != nil {
+	// TODO add revision checking.
+	// IISS 2.0 : do not burn iScore < 1000
+	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
+	if true {
+		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
+	} else {
+		err = es.Front.AddIScoreClaim(s.from, claim)
+	}
+	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Failed to add IScore claim event. (%s)", err.Error())
 	}
 
@@ -405,7 +414,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		if iScore == nil || iScore.IsEmpty() {
 			is.SetInt64(0)
 		} else {
-			is = iScore.Value
+			is.Set(iScore.Value)
 		}
 		bClaim, err := es.Back.GetIScoreClaim(address)
 		if err != nil {
@@ -416,8 +425,13 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		}
 	}
 
+	bh := int64(0)
+	if is.Sign() != 0 {
+		bh = es.CalculationBlockHeight() - 1
+	}
+
 	data := make(map[string]interface{})
-	data["blockHeight"] = intconv.FormatInt(es.CalculationBlockHeight())
+	data["blockHeight"] = intconv.FormatInt(bh)
 	data["iscore"] = intconv.FormatBigInt(is)
 	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
 
