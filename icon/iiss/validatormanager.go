@@ -225,14 +225,13 @@ func (vm *ValidatorManager) load(pm *PRepManager, term *icstate.Term, added bool
 	}
 
 	mainPReps := pm.GetPRepSize(icstate.Main)
-	if mainPReps <= vm.Len() {
-		err := errors.Errorf(
-			"Invalid mainPRepCount: mainPRepCount(%d) <= validatorCount(%d)",
-			mainPReps,
-			vm.Len(),
-		)
-		log.Errorf(err.Error())
+	vLen := vm.Len()
+
+	if vLen == mainPReps {
 		return nil
+	}
+	if vLen > mainPReps {
+		return errors.Errorf("Invalid validators: validators(%d) > mainPReps(%d)", vLen, mainPReps)
 	}
 
 	pssCount := term.GetPRepSnapshotCount()
@@ -252,6 +251,9 @@ func (vm *ValidatorManager) load(pm *PRepManager, term *icstate.Term, added bool
 				break
 			}
 		}
+	}
+	if vm.Len() != mainPReps {
+		return errors.Errorf("Invalid validators: validators(%d) != mainPReps(%d)", vLen, mainPReps)
 	}
 	return nil
 }
