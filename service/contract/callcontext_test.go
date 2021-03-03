@@ -182,7 +182,7 @@ func (h *commonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	panic("implement me")
 }
 
-func (h *commonHandler) ResetLogger(logger log.Logger) {
+func (h *commonHandler) Init(fid int, logger log.Logger) {
 	// do nothing
 }
 

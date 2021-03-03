@@ -354,7 +354,9 @@ json:
   secureSuites: 'none,tls,ecdhe'
   secureAeads: 'chacha,aes128,aes256'
   defaultWaitTimeout: 0
+  txTimeout: 0
   maxWaitTimeout: 0
+  autoStart: false
 genesisZip: string
 
 ```
@@ -378,6 +380,8 @@ genesisZip: string
 |»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
 |»» defaultWaitTimeout|body|integer|false|Default wait timeout in milli-second(0:disable)|
 |»» maxWaitTimeout|body|integer|false|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
+|»» txTimeout|body|integer|false|Transaction timeout in milli-second(0:uses system default value)|
+|»» autoStart|body|boolean|false|Start the chain automatically on node start|
 |» genesisZip|body|string(binary)|true|Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'|
 
 #### Detailed descriptions
@@ -470,7 +474,9 @@ Return low-level information about a chain.
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256",
     "defaultWaitTimeout": 0,
-    "maxWaitTimeout": 0
+    "txTimeout": 0,
+    "maxWaitTimeout": 0,
+    "autoStart": false
   },
   "module": {
     "property1": {},
@@ -773,7 +779,9 @@ Return chain configuration.
   "secureSuites": "none,tls,ecdhe",
   "secureAeads": "chacha,aes128,aes256",
   "defaultWaitTimeout": 0,
-  "maxWaitTimeout": 0
+  "txTimeout": 0,
+  "maxWaitTimeout": 0,
+  "autoStart": false
 }
 ```
 
@@ -899,7 +907,9 @@ This operation does not require authentication
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256",
     "defaultWaitTimeout": 0,
-    "maxWaitTimeout": 0
+    "txTimeout": 0,
+    "maxWaitTimeout": 0,
+    "autoStart": false
   },
   "module": {
     "property1": {},
@@ -945,7 +955,9 @@ This operation does not require authentication
   "secureSuites": "none,tls,ecdhe",
   "secureAeads": "chacha,aes128,aes256",
   "defaultWaitTimeout": 0,
-  "maxWaitTimeout": 0
+  "txTimeout": 0,
+  "maxWaitTimeout": 0,
+  "autoStart": false
 }
 
 ```
@@ -967,6 +979,8 @@ This operation does not require authentication
 |secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
 |defaultWaitTimeout|integer|false|none|Default wait timeout in milli-second(0:disable)|
 |maxWaitTimeout|integer|false|none|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
+|txTimeout|integer|false|none|Transaction timeout in milli-second(0:uses system default value)|
+|autoStart|boolean|false|none|Start the chain automatically on node start|
 
 #### Enumerated Values
 

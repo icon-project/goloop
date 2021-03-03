@@ -88,11 +88,10 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 
 	// Set up
 	cc := contract.NewCallContext(ctx, limit, false)
+	fid := cc.FrameID()
 	th.cc = cc
 	logger := trace.LoggerOf(cc.Logger())
-	th.chandler.ResetLogger(logger)
-
-	logger.TSystemf("TRANSACTION start to=%s from=%s", th.to, th.from)
+	logger.TSystemf("FRAME[%d] TRANSACTION start to=%s from=%s", fid, th.to, th.from)
 
 	// Calculate common steps
 	var status error
@@ -145,14 +144,14 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	stepUsed := cc.StepUsed()
 	if isPatch {
 		stepPrice = new(big.Int)
-		logger.TSystem("TRANSACTION reset stepPrice=0 msg=\"patch tx\"")
+		logger.TSystemf("FRAME[%d] TRANSACTION reset stepPrice=0 msg=\"patch tx\"", fid)
 	}
 	minSteps := big.NewInt(cc.StepsFor(state.StepTypeDefault, 1))
 	if stepUsed.Cmp(minSteps) == -1 {
 		old := stepUsed
 		stepUsed = minSteps
-		logger.TSystemf("STEP reset value=%d old=%d msg=%q",
-			minSteps, old, "sustain minimum")
+		logger.TSystemf("FRAME[%d] STEP reset value=%d old=%d msg=\"sustain minimum\"",
+			fid, minSteps, old)
 	}
 
 	stepAll := stepUsed
@@ -161,12 +160,12 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		var err error
 		redeemed, err = cc.RedeemSteps(stepUsed)
 		if err != nil {
-			logger.TSystemf("TRANSACTION failed on RedeemSteps")
+			logger.TSystemf("FRAME[%d] TRANSACTION failed on RedeemSteps", fid)
 			return nil, err
 		} else if redeemed != nil {
 			stepUsed = new(big.Int).Sub(stepUsed, redeemed)
-			logger.TSystemf("STEP redeemed value=%d redeemed=%d old=%d",
-				stepUsed, redeemed, stepAll)
+			logger.TSystemf("FRAME[%d] STEP redeemed value=%d redeemed=%d old=%d",
+				fid, stepUsed, redeemed, stepAll)
 		}
 	}
 	fee := new(big.Int).Mul(stepUsed, stepPrice)
@@ -176,13 +175,14 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	for bal.Cmp(fee) < 0 {
 		if status == nil {
 			// rollback all changes
-			logger.TSystemf("TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d", bal, fee)
+			logger.TSystemf("FRAME[%d] TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d",
+				fid, bal, fee)
 			status = scoreresult.ErrOutOfBalance
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
 			if redeemed != nil {
 				cc.ClearRedeemLogs()
-				logger.TSystemf("STEP rollback value=%d", stepAll)
+				logger.TSystemf("FRAME[%d] STEP rollback value=%d", fid, stepAll)
 				stepUsed = stepAll
 			}
 			fee.Mul(stepUsed, stepPrice)
@@ -191,22 +191,22 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 				ctx.Reset(wcs)
 				bal = as.GetBalance()
 				cc.ClearRedeemLogs()
-				logger.TSystemf("STEP rollback value=%d", stepAll)
+				logger.TSystemf("FRAME[%d] STEP rollback value=%d", fid, stepAll)
 				stepUsed = stepAll
 			}
 			status = scoreresult.ErrOutOfBalance
 			if cc.Revision().ResetStepOnFailure() {
-				logger.TSystemf("STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
+				logger.TSystemf("FRAME[%d] STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
 				stepUsed = new(big.Int)
 				stepAll = new(big.Int)
 			} else {
-				logger.TSystemf("TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
+				logger.TSystemf("FRAME[%d] TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
 				stepPrice = new(big.Int)
 			}
 			fee.SetInt64(0)
 		}
 	}
-	logger.TSystemf("TRANSACTION charge fee=%d steps=%d price=%d", fee, stepUsed, stepPrice)
+	logger.TSystemf("FRAME[%d] TRANSACTION charge fee=%d steps=%d price=%d", fid, fee, stepUsed, stepPrice)
 	as.SetBalance(new(big.Int).Sub(bal, fee))
 
 	// Make a receipt
@@ -221,7 +221,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	receipt.SetResult(s, stepAll, stepPrice, addr)
 	receipt.SetReason(status)
 
-	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepAll, stepPrice)
+	logger.TSystemf("FRAME[%d] TRANSACTION done status=%s steps=%s price=%s", fid, s, stepAll, stepPrice)
 
 	return receipt, nil
 }

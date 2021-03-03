@@ -26,7 +26,7 @@ const (
 type (
 	ContractHandler interface {
 		Prepare(ctx Context) (state.WorldContext, error)
-		ResetLogger(logger log.Logger)
+		Init(fid int, logger log.Logger)
 	}
 
 	SyncContractHandler interface {
@@ -48,14 +48,15 @@ type (
 type CommonHandler struct {
 	From, To module.Address
 	Value    *big.Int
-	log      *trace.Logger
+	FID      int
+	Log      *trace.Logger
 	call     bool
 }
 
 func NewCommonHandler(from, to module.Address, value *big.Int, call bool, log log.Logger) *CommonHandler {
 	return &CommonHandler{
 		From: from, To: to, Value: value, call: call,
-		log: trace.LoggerOf(log)}
+		Log: trace.LoggerOf(log)}
 }
 
 func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
@@ -75,10 +76,11 @@ func (h *CommonHandler) ApplyStepsForInterCall(cc CallContext) bool {
 	return true
 }
 
-func (h *CommonHandler) Logger() log.Logger {
-	return h.log
+func (h *CommonHandler) Init(fid int, logger log.Logger) {
+	h.FID = fid
+	h.Log = trace.LoggerOf(logger)
 }
 
-func (h *CommonHandler) ResetLogger(logger log.Logger) {
-	h.log = trace.LoggerOf(logger)
+func (h *CommonHandler) Logger() log.Logger {
+	return h.Log
 }

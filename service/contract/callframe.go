@@ -18,6 +18,7 @@ type eventLog struct {
 
 type callFrame struct {
 	parent    *callFrame
+	fid       int
 	eid       int
 	code      string
 	isQuery   bool
@@ -37,6 +38,7 @@ func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
 		stepLimit: l,
 		code2EID:  make(map[string]int),
 		eid:       unknownEID,
+		fid:       baseFID,
 	}
 	frame.eventLogs.Init()
 	return frame

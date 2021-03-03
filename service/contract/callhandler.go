@@ -158,15 +158,13 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 }
 
 func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
-	h.log = trace.LoggerOf(cc.Logger())
-
-	h.log.TSystemf("INVOKE start score=%s method=%s", h.To, h.name)
+	h.Log.TSystemf("FRAME[%d] INVOKE start score=%s method=%s", h.FID, h.To, h.name)
 	defer func() {
 		if err != nil {
 			if !h.ApplyCallSteps(cc) {
 				err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
 			}
-			h.log.TSystemf("INVOKE done status=%s msg=%v", err.Error(), err)
+			h.Log.TSystemf("FRAME[%d] INVOKE done status=%s msg=%v", h.FID, err.Error(), err)
 		}
 	}()
 
@@ -229,12 +227,12 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 
 	// Set up contract files
 	if err := h.prepareContractStore(cc, cc, c); err != nil {
-		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
+		h.Log.Warnf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
-		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
+		h.Log.Warnf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
 	}
 
@@ -255,7 +253,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	// Execute
 	h.lock.Lock()
 	if !h.disposed {
-		h.log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
+		h.Log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
 		err = h.conn.Invoke(h, path, cc.QueryMode(), h.From, h.To,
 			h.Value, cc.StepAvailable(), h.method.Name, h.paramObj,
 			h.codeID, eid, state)
@@ -346,15 +344,15 @@ func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 }
 
 func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
-	if h.log.IsTrace() {
+	if h.Log.IsTrace() {
 		if status == nil {
 			po, _ := common.DecodeAnyForJSON(result)
-			h.log.TSystemf("CALL done status=%s steps=%v result=%s",
-				module.StatusSuccess, steps, trace.ToJSON(po))
+			h.Log.TSystemf("FRAME[%d] CALL done status=%s steps=%v result=%s",
+				h.FID, module.StatusSuccess, steps, trace.ToJSON(po))
 		} else {
 			s, _ := scoreresult.StatusOf(status)
-			h.log.TSystemf("CALL done status=%s steps=%v msg=%s",
-				s, steps, status.Error())
+			h.Log.TSystemf("FRAME[%d] CALL done status=%s steps=%v msg=%s",
+				h.FID, s, steps, status.Error())
 		}
 	}
 	if !h.isSysCall {
@@ -364,7 +362,7 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 		}
 		last := h.cc.GetReturnEID()
 		eid := h.cc.NewExecution()
-		h.log.Tracef("Execution RESULT last=%d eid=%d", last, eid)
+		h.Log.Tracef("Execution RESULT last=%d eid=%d", last, eid)
 		return h.conn.SendResult(h, status, steps, result, eid, last)
 	} else {
 		h.cc.OnResult(status, steps, result, nil)
@@ -384,7 +382,7 @@ func (h *CallHandler) Dispose() {
 func (h *CallHandler) EEType() state.EEType {
 	c := h.contract(h.as)
 	if c == nil {
-		h.log.Debugf("No associated contract exists. forDeploy(%d), Active(%v), Next(%v)\n",
+		h.Log.Debugf("No associated contract exists. forDeploy(%d), Active(%v), Next(%v)\n",
 			h.forDeploy, h.as.ActiveContract(), h.as.NextContract())
 		return ""
 	}
@@ -398,6 +396,11 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 		h.cc.DoIOTask(func() {
 			value, err = h.as.GetValue(key)
 		})
+		if err != nil {
+			h.Log.TSystemf("FRAME[%d] GETVALUE key=<%x> err=%+v", h.FID, key, err)
+		} else {
+			h.Log.TSystemf("FRAME[%d] GETVALUE key=<%x> value=<%x>", h.FID, key, value)
+		}
 		return value, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
@@ -416,6 +419,11 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 		h.cc.DoIOTask(func() {
 			old, err = h.as.SetValue(key, value)
 		})
+		if err != nil {
+			h.Log.TSystemf("FRAME[%d] SETVALUE key=<%x> value=<%x> err=%+v", h.FID, key, value, err)
+		} else {
+			h.Log.TSystemf("FRAME[%d] SETVALUE key=<%x> value=<%x> old=<%x>", h.FID, key, value, old)
+		}
 		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
@@ -434,6 +442,11 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 		h.cc.DoIOTask(func() {
 			old, err = h.as.DeleteValue(key)
 		})
+		if err != nil {
+			h.Log.TSystemf("FRAME[%d] DELETE key=<%x> err=%+v", h.FID, key, err)
+		} else {
+			h.Log.TSystemf("FRAME[%d] DELETE key=<%x> old=<%x>", h.FID, key, old)
+		}
 		return old, err
 	} else {
 		return nil, errors.CriticalUnknownError.Errorf(
@@ -446,7 +459,9 @@ func (h *CallHandler) GetInfo() *codec.TypedObj {
 }
 
 func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
-	return h.cc.GetBalance(addr)
+	value := h.cc.GetBalance(addr)
+	h.Log.TSystemf("FRAME[%d] GETBALANCE addr=%s value=%s", h.FID, addr, value)
+	return value
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
@@ -454,7 +469,7 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 		// It's not allowed to send event message if it's in query mode.
 		// It means that the execution environment is in invalid state.
 		// Proxy need to be closed.
-		h.log.Warnf("DROP EventLog(%s,%+v,%+v) in QueryMode",
+		h.Log.Warnf("DROP EventLog(%s,%+v,%+v) in QueryMode",
 			addr, indexed, data)
 		return errors.InvalidStateError.New("EventInQueryMode")
 	}
@@ -462,9 +477,9 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 		// Given data is incorrect. This may not be able to  checked
 		// by execution environment. So we just ignore this and let
 		// them know the problem.
-		h.log.TSystemf("EVENT drop event=(%s,%+v,%+v) err=%+v",
-			addr, indexed, data, err)
-		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
+		h.Log.TSystemf("FRAME[%d] EVENT drop event=(%s,%+v,%+v) err=%+v",
+			h.FID, addr, indexed, data, err)
+		h.Log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
 		return nil
 	}
@@ -473,18 +488,18 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 }
 
 func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	if h.log.IsTrace() {
+	if h.Log.IsTrace() {
 		if status != nil {
 			s, _ := scoreresult.StatusOf(status)
-			h.log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
+			h.Log.TSystemf("FRAME[%d] INVOKE done status=%s msg=%v steps=%s", h.FID, s, status, steps)
 		} else {
 			obj, _ := common.DecodeAnyForJSON(result)
 			if err := h.method.EnsureResult(result); err != nil {
-				h.log.TSystemf("INVOKE done status=%s steps=%s result=%s warning=%s",
-					module.StatusSuccess, steps, trace.ToJSON(obj), err)
+				h.Log.TSystemf("FRAME[%d] INVOKE done status=%s steps=%s result=%s warning=%s",
+					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj), err)
 			} else {
-				h.log.TSystemf("INVOKE done status=%s steps=%s result=%s",
-					module.StatusSuccess, steps, trace.ToJSON(obj))
+				h.Log.TSystemf("FRAME[%d] INVOKE done status=%s steps=%s result=%s",
+					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj))
 			}
 		}
 	}
@@ -494,10 +509,10 @@ func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.Typed
 func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, dataType string, dataObj *codec.TypedObj,
 ) {
-	if h.log.IsTrace() {
+	if h.Log.IsTrace() {
 		po, _ := common.DecodeAnyForJSON(dataObj)
-		h.log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
-			from, to, value, limit, dataType, trace.ToJSON(po))
+		h.Log.TSystemf("FRAME[%d] CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
+			h.FID, from, to, value, limit, dataType, trace.ToJSON(po))
 	}
 
 	ctype := CTypeNone
@@ -528,11 +543,11 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 }
 
 func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
-	h.log.Panicln("Unexpected OnAPI() call")
+	h.Log.Panicln("Unexpected OnAPI() call")
 }
 
 func (h *CallHandler) OnSetFeeProportion(addr module.Address, portion int) {
-	h.log.TSystemf("CALL setFeeProportion addr=%s portion=%d", addr, portion)
+	h.Log.TSystemf("FRAME[%d] CALL setFeeProportion addr=%s portion=%d", h.FID, addr, portion)
 	h.cc.SetFeeProportion(addr, portion)
 }
 
@@ -569,15 +584,13 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
-	h.log = trace.LoggerOf(cc.Logger())
-
-	h.log.TSystemf("TRANSFER INVOKE start score=%s method=%s", h.To, h.name)
+	h.Log.TSystemf("FRAME[%d] TRANSFER INVOKE start score=%s method=%s", h.FID, h.To, h.name)
 	defer func() {
 		if err != nil {
 			if !h.ApplyCallSteps(cc) {
 				err = scoreresult.OutOfStepError.New("OutOfStepForCall")
 			}
-			h.log.TSystemf("TRANSFER INVOKE done status=%s msg=%v", err.Error(), err)
+			h.Log.TSystemf("FRAME[%d] TRANSFER INVOKE done status=%s msg=%v", h.FID, err.Error(), err)
 		}
 	}()
 

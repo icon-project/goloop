@@ -289,6 +289,7 @@ Join chain
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
+| --auto_start |  | false | false |  Auto start |
 | --channel |  | false |  |  Channel |
 | --concurrency |  | false | 1 |  Maximum number of executors to be used for concurrency |
 | --db_type |  | false | goleveldb |  Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
@@ -300,10 +301,12 @@ Join chain
 | --node_cache |  | false | none |  Node cache (none,small,large) |
 | --normal_tx_pool |  | false | 0 |  Size of normal transaction pool |
 | --patch_tx_pool |  | false | 0 |  Size of patch transaction pool |
+| --platform |  | false |  |  Name of service platform |
 | --role |  | false | 3 |  [0:None, 1:Seed, 2:Validator, 3:Both] |
 | --secure_aeads |  | false | chacha,aes128,aes256 |  Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
 | --secure_suites |  | false | none,tls,ecdhe |  Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
 | --seed |  | false |  |  List of trust-seed ip-port, Comma separated string |
+| --tx_timeout |  | false | 0 |  Transaction timeout in milli-second (0: uses system default value) |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -909,6 +912,7 @@ JSON-RPC API
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Child commands
@@ -964,6 +968,7 @@ GetBalance
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1004,6 +1009,7 @@ GetBlockByHash
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1044,6 +1050,7 @@ GetBlockByHeight
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1084,6 +1091,7 @@ GetBlockHeaderByHeight
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1133,6 +1141,7 @@ Call
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1173,6 +1182,7 @@ GetDataByHash
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1213,6 +1223,7 @@ GetLastBlock
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1257,6 +1268,7 @@ Monitor
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Child commands
@@ -1308,6 +1320,7 @@ MonitorBlock
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1342,6 +1355,7 @@ MonitorEvent
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1367,6 +1381,7 @@ GetProofForEvents
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1407,6 +1422,7 @@ GetProofForResult
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1447,6 +1463,7 @@ Rpc with raw json file
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1487,6 +1504,7 @@ GetScoreApi
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1526,6 +1544,7 @@ SendTransaction
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1536,6 +1555,7 @@ SendTransaction
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Child commands
@@ -1592,6 +1612,8 @@ SmartContract Call Transaction
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1631,6 +1653,8 @@ Deploy Transaction
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1657,12 +1681,14 @@ Deploy Transaction
 Send transaction with json file
 
 ### Usage
-` goloop rpc sendtx raw FILE [flags] `
+` goloop rpc sendtx raw FILE `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1702,6 +1728,8 @@ Coin Transfer Transaction
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
@@ -1734,6 +1762,7 @@ GetTotalSupply
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1774,6 +1803,7 @@ GetTransactionByHash
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1814,6 +1844,7 @@ GetTransactionResult
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1854,6 +1885,7 @@ GetVotesByHeight
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1899,6 +1931,8 @@ Server management
 | --ee_socket | GOLOOP_EE_SOCKET | false |  |  Execution engine socket path |
 | --engines | GOLOOP_ENGINES | false | python |  Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD | false |  |  Password for the KeyStore file |
+| --key_plugin | GOLOOP_KEY_PLUGIN | false |  |  KeyPlugin file for wallet |
+| --key_plugin_options | GOLOOP_KEY_PLUGIN_OPTIONS | false | [] |  KeyPlugin options |
 | --key_secret | GOLOOP_KEY_SECRET | false |  |  Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS | false |  |  LogForwarder address |
@@ -1968,6 +2002,8 @@ Save configuration
 | --ee_socket | GOLOOP_EE_SOCKET | false |  |  Execution engine socket path |
 | --engines | GOLOOP_ENGINES | false | python |  Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD | false |  |  Password for the KeyStore file |
+| --key_plugin | GOLOOP_KEY_PLUGIN | false |  |  KeyPlugin file for wallet |
+| --key_plugin_options | GOLOOP_KEY_PLUGIN_OPTIONS | false | [] |  KeyPlugin options |
 | --key_secret | GOLOOP_KEY_SECRET | false |  |  Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS | false |  |  LogForwarder address |
@@ -2023,6 +2059,8 @@ Start server
 | --ee_socket | GOLOOP_EE_SOCKET | false |  |  Execution engine socket path |
 | --engines | GOLOOP_ENGINES | false | python |  Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD | false |  |  Password for the KeyStore file |
+| --key_plugin | GOLOOP_KEY_PLUGIN | false |  |  KeyPlugin file for wallet |
+| --key_plugin_options | GOLOOP_KEY_PLUGIN_OPTIONS | false | [] |  KeyPlugin options |
 | --key_secret | GOLOOP_KEY_SECRET | false |  |  Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE | false |  |  KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS | false |  |  LogForwarder address |
