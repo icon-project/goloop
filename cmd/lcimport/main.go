@@ -495,6 +495,7 @@ func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *c
 	}
 	flags := cmd.PersistentFlags()
 	from := flags.Int64("from", -1, "From height(-1 for last)")
+	noCache := flags.Bool("no_cache", false, "Disable cache")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		to := int64(-1)
@@ -509,7 +510,7 @@ func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *c
 			log.Infoln(l)
 		}
 		executor := vc.Get(vcKeyExecutor).(*Executor)
-		return executor.Execute(*from, to)
+		return executor.Execute(*from, to, *noCache)
 	}
 	return cmd
 }

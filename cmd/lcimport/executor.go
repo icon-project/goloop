@@ -252,7 +252,7 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	}
 }
 
-func (e *Executor) ProposeTransition(last *Transition) (*Transition, error) {
+func (e *Executor) ProposeTransition(last *Transition, noCache bool) (*Transition, error) {
 	var height int64
 	if last.Block != nil {
 		height = last.Block.Height() + 1
@@ -263,7 +263,7 @@ func (e *Executor) ProposeTransition(last *Transition) (*Transition, error) {
 	if err != nil {
 		return nil, err
 	}
-	if blk == nil {
+	if blk == nil || noCache {
 		e.log.Tracef("get the block from the store height=%d", height)
 		blkv0, err := e.cs.GetBlockByHeight(int(height))
 		if err != nil {
