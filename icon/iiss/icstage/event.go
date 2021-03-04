@@ -18,6 +18,7 @@ package icstage
 
 import (
 	"math/big"
+	"sort"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -94,6 +95,32 @@ func (vl *VoteList) Delete(i int) error {
 	return nil
 }
 
+func (vl *VoteList) Update(vl2 VoteList) {
+	newVL := vl.Clone()
+	deleteIdx := make([]int, 0)
+	for _, vote2 := range vl2 {
+		find := false
+		for idx, _:= range *vl {
+			vote := newVL[idx]
+			if vote.To().Equal(vote2.To()) {
+				find = true
+				vote.Amount().Add(vote.Amount(), vote2.Amount())
+				if vote.Amount().Sign() == 0 {
+					deleteIdx = append(deleteIdx, idx)
+				}
+				break
+			}
+		}
+		if !find {
+			newVL = append(newVL, vote2)
+		}
+	}
+	sort.Ints(deleteIdx)
+	for i, value:= range deleteIdx {
+		newVL.Delete(value - i)
+	}
+	*vl = newVL
+}
 
 type EventVote struct {
 	icobject.NoDatabase

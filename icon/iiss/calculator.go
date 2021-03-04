@@ -637,16 +637,30 @@ func (c *Calculator) calculateVotingReward() error {
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
 			idx := string(event.From.Bytes())
-			_, ok := delegatingMap[idx]
-			if !ok {
-			}
 			if _type == icstage.TypeEventDelegation {
-				delegatingMap[idx] = make(map[int]icstage.VoteList)
-				delegatingMap[idx][offset] = event.Votes
+				_, ok := delegatingMap[idx]
+				if !ok {
+					delegatingMap[idx] = make(map[int]icstage.VoteList)
+				}
+				votes, ok := delegatingMap[idx][offset]
+				if ok {
+					votes.Update(event.Votes)
+					delegatingMap[idx][offset] = votes
+				} else {
+					delegatingMap[idx][offset] = event.Votes
+				}
 				vInfo.updateDelegated(event.Votes)
 			} else {
-				bondingMap[idx] = make(map[int]icstage.VoteList)
-				bondingMap[idx][offset] = event.Votes
+				_, ok := bondingMap[idx]
+				if !ok {
+					bondingMap[idx] = make(map[int]icstage.VoteList)
+				}
+				votes, ok := bondingMap[idx][offset]
+				if ok {
+					votes.Update(event.Votes)
+				} else {
+					bondingMap[idx][offset] = event.Votes
+				}
 				vInfo.updateBonded(event.Votes)
 			}
 		}

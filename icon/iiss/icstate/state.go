@@ -18,7 +18,6 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -195,7 +194,6 @@ func (s *State) SetTerm(term *Term) error {
 }
 
 func (s *State) SetRewardCalcInfo(rc *RewardCalcInfo) error {
-	log.Debugf("Set rewardCalcInfo %+v", rc)
 	_, err := s.store.Set(RewardCalcInfoKey, icobject.New(TypeRewardCalcInfo, rc))
 	if err != nil {
 		return err
