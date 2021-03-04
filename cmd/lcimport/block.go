@@ -83,7 +83,7 @@ func (b *Block) LogBloom() module.LogsBloom {
 }
 
 func (b *Block) Timestamp() int64 {
-	if b.blk == nil {
+	if b == nil || b.blk == nil {
 		return 0
 	}
 	return b.blk.Timestamp()
