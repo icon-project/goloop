@@ -173,9 +173,9 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		return err
 	}
 
-	// Update PRep status
+	// Update Block vote stats
 	voted := csi.Voted()
-	return updatePRepStates(cc, owners, voted)
+	return updateBlockVoteStats(cc, owners, voted)
 }
 
 func nodeToOwner(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
@@ -222,21 +222,23 @@ func addBlockProduce(cc contract.CallContext, trueVoters []module.Address) error
 	)
 }
 
-// updatePRepStates updates validation state of each PRep and checks PReps for penalty
-func updatePRepStates(cc contract.CallContext, owners []module.Address, voted []bool) error {
+// updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
+func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, voted []bool) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	slashedPReps := 0
 
 	for i, owner := range owners {
-		if err := es.UpdatePRepLastState(cc, owner, voted[i]); err != nil {
+		if err := es.UpdateBlockVoteStats(cc, owner, voted[i]); err != nil {
 			return err
 		}
-		err, slashed := es.handlePenalty(cc, owner)
-		if err != nil {
-			return err
-		}
-		if slashed {
-			slashedPReps++
+		if !voted[i] {
+			err, slashed := es.handlePenalty(cc, owner)
+			if err != nil {
+				return err
+			}
+			if slashed {
+				slashedPReps++
+			}
 		}
 	}
 

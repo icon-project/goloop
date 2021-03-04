@@ -580,8 +580,8 @@ func (pm *PRepManager) ShiftVPenaltyMaskByNode(node module.Address) error {
 	return nil
 }
 
-// UpdateLastState updates PRepLastState based on ConsensusInfo
-func (pm *PRepManager) UpdateLastState(owner module.Address, voted bool, blockHeight int64) error {
+// UpdateBlockVoteStats updates PRepLastState based on ConsensusInfo
+func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeight int64) error {
 	prep := pm.GetPRepByOwner(owner)
 	if prep == nil {
 		return errors.Errorf("PRep not found: %s", owner)
@@ -614,6 +614,49 @@ func (pm *PRepManager) UpdateLastState(owner module.Address, voted bool, blockHe
 		}
 	}
 
+	return nil
+}
+
+func (pm *PRepManager) SyncBlockVoteStats(owner module.Address, blockHeight int64) error {
+	prep := pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+
+	lh := prep.LastHeight()
+	if blockHeight < lh {
+		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
+	}
+	if prep.LastState() == icstate.None {
+		return nil
+	}
+
+	if blockHeight == prep.LastHeight() {
+		// Already done by other reasons
+		return nil
+	}
+
+	prep.SetVFail(prep.GetVFail(blockHeight))
+	prep.SetVTotal(prep.GetVTotal(blockHeight))
+	prep.SetLastHeight(blockHeight)
+	prep.SetLastState(icstate.None)
+	return nil
+}
+
+// Grade change, LastState to icstate.None
+func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) error {
+	prep := pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %v", owner)
+	}
+
+	if err := pm.ChangeGrade(owner, icstate.Candidate); err != nil {
+		return err
+	}
+	if err := pm.SyncBlockVoteStats(owner, blockHeight); err != nil {
+		return err
+	}
+	prep.IncrementVPenalty()
 	return nil
 }
 

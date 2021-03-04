@@ -27,6 +27,13 @@ import (
 	"math/big"
 )
 
+type PenaltyType int
+const (
+	PenaltyNone PenaltyType = iota
+	PenaltyValidationFailure
+	PenaltyAccumulatedValidationFailure
+)
+
 const (
 	ValidationPenaltyCondition  int = 660
 	ValidationPenaltySlashRatio     = 0
@@ -36,10 +43,10 @@ const (
 	ConsistentValidationPenaltySlashRatio     = 10
 )
 
-func (s *ExtensionStateImpl) UpdatePRepLastState(
+func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 	cc contract.CallContext, owner module.Address, voted bool) error {
 	blockHeight := cc.BlockHeight()
-	if err := s.pm.UpdateLastState(owner, voted, blockHeight); err != nil {
+	if err := s.pm.UpdateBlockVoteStats(owner, voted, blockHeight); err != nil {
 		return err
 	}
 	return nil
@@ -55,58 +62,55 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	}
 
 	blockHeight := cc.BlockHeight()
+	penalty := checkPenalty(prep.PRepStatus, blockHeight)
+	if penalty == PenaltyNone {
+		return nil, false
+	}
 
-	// check and apply penalties
-	slashRatio := ValidationPenaltySlashRatio
-	if checkValidationPenalty(prep.PRepStatus, blockHeight) {
-		// Validation Penalty
-		prep.IncrementVPenalty()
-		prep.SetLastHeight(blockHeight)
+	var err error
+	var slashed bool
+	if err, slashed = s.imposePenalty(cc, owner, penalty); err != nil {
+		return err, false
+	}
+	if err = s.selectNewValidator(); err != nil {
+		return err, false
+	}
+	return nil, slashed
+}
 
-		// Consistent Penalty
-		if checkConsistentValidationPenalty(prep.PRepStatus) {
-			slashRatio = ConsistentValidationPenaltySlashRatio
-		}
+func (s *ExtensionStateImpl) imposePenalty(
+	cc contract.CallContext, owner module.Address, penalty PenaltyType) (error, bool) {
+	var err error = nil
 
-		var err error
-		if err = s.pm.ChangeGrade(owner, icstate.Candidate); err != nil {
-			return err, false
-		}
-		if err = Slash(cc, owner, slashRatio); err != nil {
-			return err, false
-		}
-		if err = s.selectNewValidator(); err != nil {
-			return err, false
-		}
+	var slashRatio int
+	bh := cc.BlockHeight()
+
+	switch penalty {
+	case PenaltyValidationFailure:
+		slashRatio = ValidationPenaltySlashRatio
+	case PenaltyAccumulatedValidationFailure:
+		slashRatio = ConsistentValidationPenaltySlashRatio
+	default:
+		return errors.Errorf("Unknown penalty: %d", penalty), false
+	}
+
+	if err = s.pm.ImposePenalty(owner, bh); err != nil {
+		return err, false
+	}
+	if err = s.slash(cc, owner, slashRatio); err != nil {
+		return err, false
 	}
 	return nil, slashRatio > 0
 }
 
-func validationPenalty(cc contract.CallContext, ps *icstate.PRepStatus) error {
-	if ps.LastState() != icstate.Failure {
-		return nil
-	}
-	owner := ps.Owner()
-	blockHeight := cc.BlockHeight()
-
-	// check and apply penalties
+func checkPenalty(ps *icstate.PRepStatus, blockHeight int64) PenaltyType {
 	if checkValidationPenalty(ps, blockHeight) {
-		// Validation Penalty
-		ps.SetVPenaltyMask(ps.VPenaltyMask() | 1)
-		if err := Slash(cc, owner, ValidationPenaltySlashRatio); err != nil {
-			return err
-		}
-		ps.SetLastHeight(blockHeight)
-		// TODO IC2-35 notify to PRepManager. PRepManager must add icstage.EventEnable
-
-		// Consistent Penalty
 		if checkConsistentValidationPenalty(ps) {
-			if err := Slash(cc, owner, ConsistentValidationPenaltySlashRatio); err != nil {
-				return err
-			}
+			return PenaltyAccumulatedValidationFailure
 		}
+		return PenaltyValidationFailure
 	}
-	return nil
+	return PenaltyNone
 }
 
 func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight int64) bool {
@@ -117,27 +121,30 @@ func checkConsistentValidationPenalty(ps *icstate.PRepStatus) bool {
 	return ps.GetVPenaltyCount() >= ConsistentValidationPenaltyCondition
 }
 
-func Slash(cc contract.CallContext, address module.Address, ratio int) error {
+func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Address, ratio int) error {
 	if ratio < 0 || 100 < ratio {
 		return errors.Errorf("Too big slash ratio %d", ratio)
 	}
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
-	pm := es.pm
+
+	pm := s.pm
 	bonders := pm.GetPRepByOwner(address).BonderList()
+	totalSlashBond := new(big.Int)
+
 	// slash all bonder
 	for _, bonder := range bonders {
-		account := es.GetAccount(bonder)
+		account := s.GetAccount(bonder)
 		totalSlash := new(big.Int)
 
 		// from bonds
 		slashBond := account.SlashBond(address, ratio)
 		totalSlash.Add(totalSlash, slashBond)
+		totalSlashBond.Add(totalSlashBond, slashBond)
 
 		// from unbondings
 		slashUnbond, expire := account.SlashUnbond(address, ratio)
 		totalSlash.Add(totalSlash, slashUnbond)
 		if expire != -1 {
-			timer := es.GetUnbondingTimerState(expire, false)
+			timer := s.GetUnbondingTimerState(expire, false)
 			if timer != nil {
 				if err := timer.Delete(address); err != nil {
 					return err
@@ -151,9 +158,9 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		if err := account.SlashStake(totalSlash); err != nil {
 			return err
 		}
-		totalStake := es.State.GetTotalStake()
+		totalStake := s.State.GetTotalStake()
 		totalStake.Sub(totalStake, totalSlash)
-		if err := es.State.SetTotalStake(totalStake); err != nil {
+		if err := s.State.SetTotalStake(totalStake); err != nil {
 			return err
 		}
 
@@ -161,7 +168,7 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		delta := make(map[string]*big.Int)
 		key := icutils.ToKey(bonder)
 		delta[key] = slashBond
-		if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
+		if err := s.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 			return err
 		}
 
@@ -173,11 +180,5 @@ func Slash(cc contract.CallContext, address module.Address, ratio int) error {
 		)
 	}
 
-	return nil
-}
-
-func DisqualifyPRep(cc contract.CallContext, address module.Address) error {
-	// TODO implement me
-	// event log
-	return nil
+	return s.pm.Slash(address, totalSlashBond, false)
 }

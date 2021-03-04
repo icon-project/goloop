@@ -538,7 +538,7 @@ func TestPRepManager_OnTermEnd(t *testing.T) {
 	}
 }
 
-func TestPRepManager_UpdateLastState(t *testing.T) {
+func TestPRepManager_UpdateBlockVoteStats(t *testing.T) {
 	type input struct {
 		ls     icstate.ValidationState
 		lh     int64
@@ -690,7 +690,80 @@ func TestPRepManager_UpdateLastState(t *testing.T) {
 			prep.SetVFail(in.vFail)
 
 			// Run the method to test
-			err := pm.UpdateLastState(owner, voted, bh)
+			err := pm.UpdateBlockVoteStats(owner, voted, bh)
+			assert.NoError(t, err)
+
+			// Check the result
+			assert.Equal(t, out.ls, prep.LastState())
+			assert.Equal(t, out.lh, prep.LastHeight())
+			assert.Equal(t, out.vFail, prep.GetVFail(bh))
+			assert.Equal(t, out.vTotal, prep.GetVTotal(bh))
+			assert.Equal(t, out.vFailCont, prep.GetVFailCont(bh))
+		})
+	}
+}
+
+func TestPRepManager_SyncBlockVoteStats(t *testing.T) {
+	type input struct {
+		ls     icstate.ValidationState
+		lh     int64
+		vFail  int64
+		vTotal int64
+
+		voted bool
+		bh    int64
+	}
+	type output struct {
+		ls        icstate.ValidationState
+		lh        int64
+		vFail     int64
+		vFailCont int64
+		vTotal    int64
+	}
+	type test struct {
+		in  input
+		out output
+	}
+
+	owner := createAddress(0)
+	tests := [...]test{
+		{
+			in: input{
+				ls:     icstate.Failure,
+				lh:     100,
+				vFail:  10,
+				vTotal: 50,
+
+				bh:    105,
+			},
+			out: output{
+				ls:        icstate.None,
+				lh:        105,
+				vFail:     15,
+				vFailCont: 0,
+				vTotal:    55,
+			},
+		},
+	}
+
+	for i, tc := range tests {
+		name := fmt.Sprintf("test-%d", i)
+		t.Run(name, func(t *testing.T) {
+			in := tc.in
+			out := tc.out
+			bh := in.bh
+
+			pm := createPRepManager(t, false, 1)
+			prep := pm.GetPRepByOwner(owner)
+
+			// Initialize PRep
+			prep.SetLastState(in.ls)
+			prep.SetLastHeight(in.lh)
+			prep.SetVTotal(in.vTotal)
+			prep.SetVFail(in.vFail)
+
+			// Run the method to test
+			err := pm.SyncBlockVoteStats(owner, bh)
 			assert.NoError(t, err)
 
 			// Check the result

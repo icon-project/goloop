@@ -573,6 +573,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 	}
 
 	blockHeight := wc.BlockHeight()
+
 	if blockHeight == term.GetEndBlockHeight() {
 		if err = s.NewCalculation(term, calculator); err != nil {
 			return err
