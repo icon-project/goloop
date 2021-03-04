@@ -163,7 +163,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		p2pEndpoint == "" {
 		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
 	}
-	if nodeAddress != nil && nodeAddress.IsContract() {
+	if (nodeAddress != nil && nodeAddress.IsContract()) || s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
 	}
 	if s.value.Cmp(regPRepFee) == -1 {
@@ -210,6 +210,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 
 func (s *chainScore) Ex_unregisterPRep() error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if  s.from.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+	}
 	err := es.UnregisterPRep(s.cc, s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
@@ -254,6 +257,9 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
+	if (node != nil && node.IsContract()) || s.from.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+	}
 
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
