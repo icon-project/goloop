@@ -76,6 +76,67 @@ func (th *transactionHandler) Prepare(ctx contract.Context) (state.WorldContext,
 	return th.chandler.Prepare(ctx)
 }
 
+func (th *transactionHandler) checkBalance(cc contract.CallContext) error {
+	value := new(big.Int).Mul(cc.StepPrice(), th.stepLimit)
+	if th.value != nil {
+		value.Add(value, th.value)
+	}
+	var bal *big.Int
+	if cc.Revision().LegacyBalanceCheck() {
+		wcs := cc.GetProperty(contract.PropInitialSnapshot).(state.WorldSnapshot)
+		if as := wcs.GetAccountSnapshot(th.from.ID()); as != nil {
+			bal = as.GetBalance()
+		} else {
+			bal = new(big.Int)
+		}
+	} else {
+		as := cc.GetAccountState(th.from.ID())
+		bal = as.GetBalance()
+	}
+	if bal.Cmp(value) < 0 {
+		return scoreresult.ErrOutOfBalance
+	}
+	return nil
+}
+
+func (th *transactionHandler) DoExecute(cc contract.CallContext, estimate, isPatch bool) (
+	status error,
+	score module.Address,
+	err error,
+) {
+	if !isPatch && !estimate {
+		if err := th.checkBalance(cc); err != nil {
+			return err, nil, nil
+		}
+	}
+
+	if !cc.ApplySteps(state.StepTypeDefault, 1) {
+		return scoreresult.ErrOutOfStep, nil, nil
+	}
+
+	if cnt, err := MeasureBytesOfData(cc.Revision(), th.data); err != nil {
+		return nil, nil, err
+	} else {
+		if !cc.ApplySteps(state.StepTypeInput, cnt) {
+			return scoreresult.ErrOutOfStep, nil, nil
+		}
+	}
+
+	// Execute
+	status, used, _, addr := cc.Call(th.chandler, cc.StepAvailable())
+	cc.DeductSteps(used)
+
+	// If it fails for system failure, then it needs to re-run this.
+	if code := errors.CodeOf(status); code == errors.ExecutionFailError ||
+		errors.IsCriticalCode(code) {
+		return nil, nil, status
+	} else if code == scoreresult.TimeoutError {
+		// it consumes all steps if it meets timeout.
+		cc.DeductSteps(cc.StepAvailable())
+	}
+	return status, addr, nil
+}
+
 func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
 	// Make a copy of initial state
 	wcs := ctx.GetSnapshot()
@@ -93,50 +154,9 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	logger := trace.LoggerOf(cc.Logger())
 	logger.TSystemf("FRAME[%d] TRANSACTION start to=%s from=%s", fid, th.to, th.from)
 
-	// Calculate common steps
-	var status error
-	var addr module.Address
-
-	if !cc.ApplySteps(state.StepTypeDefault, 1) {
-		status = scoreresult.ErrOutOfStep
-	}
-
-	if status == nil && !isPatch && !estimate {
-		as := ctx.GetAccountState(th.from.ID())
-		bal := as.GetBalance()
-		value := new(big.Int).Mul(cc.StepPrice(), limit)
-		if th.value != nil {
-			value.Add(value, th.value)
-		}
-		if bal.Cmp(value) < 0 {
-			status = scoreresult.ErrOutOfBalance
-		}
-	}
-
-	if status == nil {
-		cnt, err := MeasureBytesOfData(ctx.Revision(), th.data)
-		if err != nil {
-			return nil, err
-		}
-		if !cc.ApplySteps(state.StepTypeInput, cnt) {
-			status = scoreresult.ErrOutOfStep
-		}
-	}
-
-	// Execute
-	if status == nil {
-		var used *big.Int
-		status, used, _, addr = cc.Call(th.chandler, cc.StepAvailable())
-		cc.DeductSteps(used)
-
-		// If it fails for system failure, then it needs to re-run this.
-		if code := errors.CodeOf(status); code == errors.ExecutionFailError ||
-			errors.IsCriticalCode(code) {
-			return nil, status
-		} else if code == scoreresult.TimeoutError {
-			// it consumes all steps if it meets timeout.
-			cc.DeductSteps(cc.StepAvailable())
-		}
+	status, addr, err := th.DoExecute(cc, estimate, isPatch)
+	if err != nil {
+		return nil, err
 	}
 
 	// Try to charge fee

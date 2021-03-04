@@ -11,6 +11,10 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+const (
+	PropInitialSnapshot = "transition.initialSnapshot"
+)
+
 type Context interface {
 	state.WorldContext
 	TransactionTimeout() time.Duration
@@ -21,6 +25,7 @@ type Context interface {
 	PatchDecoder() module.PatchDecoder
 	TraceInfo() *module.TraceInfo
 	ChainID() int
+	GetProperty(name string) interface{}
 }
 
 type context struct {
@@ -30,10 +35,11 @@ type context struct {
 	eem   eeproxy.Manager
 	log   log.Logger
 	ti    *module.TraceInfo
+	props map[string]interface{}
 }
 
 func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger, ti *module.TraceInfo) *context {
-	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log, ti: ti}
+	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log, ti: ti, props: make(map[string]interface{})}
 }
 func (c *context) ContractManager() ContractManager {
 	return c.cm
@@ -72,4 +78,12 @@ func (c *context) ChainID() int {
 
 func (c *context) TransactionTimeout() time.Duration {
 	return c.chain.TransactionTimeout()
+}
+
+func (c *context) SetProperty(name string, value interface{}) {
+	c.props[name] = value
+}
+
+func (c *context) GetProperty(name string) interface{} {
+	return c.props[name]
 }
