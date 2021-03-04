@@ -486,6 +486,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	}
 	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
 	ctx.ClearCache()
+	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 
 	startTime := time.Now()
 

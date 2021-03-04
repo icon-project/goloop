@@ -28,12 +28,13 @@ const (
 	ResetStepOnFailure
 	LegacyFallbackCheck
 	LegacyContentCount
+	LegacyBalanceCheck
 	LastRevisionBit
 )
 
 const (
 	NoRevision       = 0
-	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount
+	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck
 	AllRevision      = LastRevisionBit - 1
 	LatestRevision   = AllRevision ^ BackwardRevision
 )
@@ -76,4 +77,8 @@ func (r Revision) LegacyFallbackCheck() bool {
 
 func (r Revision) LegacyContentCount() bool {
 	return (r & LegacyContentCount) != 0
+}
+
+func (r Revision) LegacyBalanceCheck() bool {
+	return (r & LegacyBalanceCheck) != 0
 }
