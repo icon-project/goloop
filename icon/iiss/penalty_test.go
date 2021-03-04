@@ -44,7 +44,7 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			"True",
 			args{
 				0,
-				icstate.Fail,
+				icstate.Failure,
 				0,
 				int64(ValidationPenaltyCondition),
 			},
@@ -74,7 +74,7 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			"False - Not enough fail count)",
 			args{
 				0,
-				icstate.Fail,
+				icstate.Failure,
 				0,
 				int64(ValidationPenaltyCondition - 100),
 			},
@@ -84,7 +84,7 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			"False - already got penalty)",
 			args{
 				1,
-				icstate.Fail,
+				icstate.Failure,
 				0,
 				int64(ValidationPenaltyCondition),
 			},

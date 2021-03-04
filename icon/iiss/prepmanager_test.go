@@ -600,7 +600,7 @@ func TestPRepManager_UpdateLastState(t *testing.T) {
 		},
 		{
 			in: input{
-				ls:     icstate.Fail,
+				ls:     icstate.Failure,
 				lh:     1000,
 				vFail:  51,
 				vTotal: 90,
@@ -627,7 +627,7 @@ func TestPRepManager_UpdateLastState(t *testing.T) {
 				bh:    1010,
 			},
 			out: output{
-				ls:        icstate.Fail,
+				ls:        icstate.Failure,
 				lh:        1010,
 				vFail:     51,
 				vFailCont: 1,
@@ -636,7 +636,7 @@ func TestPRepManager_UpdateLastState(t *testing.T) {
 		},
 		{
 			in: input{
-				ls:     icstate.Fail,
+				ls:     icstate.Failure,
 				lh:     1000,
 				vFail:  50,
 				vTotal: 90,
@@ -645,7 +645,7 @@ func TestPRepManager_UpdateLastState(t *testing.T) {
 				bh:    1010,
 			},
 			out: output{
-				ls:        icstate.Fail,
+				ls:        icstate.Failure,
 				lh:        1000,
 				vFail:     60,
 				vFailCont: 11,

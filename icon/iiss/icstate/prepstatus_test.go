@@ -155,7 +155,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 			"Fail state",
 			args{
 				10,
-				Fail,
+				Failure,
 				15,
 				20,
 			},
@@ -185,7 +185,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 			"Invalid block height",
 			args{
 				100,
-				Fail,
+				Failure,
 				200,
 				1,
 			},
@@ -226,7 +226,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 			"Fail state",
 			args{
 				10,
-				Fail,
+				Failure,
 				15,
 				20,
 			},
@@ -256,7 +256,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 			"Invalid block height",
 			args{
 				100,
-				Fail,
+				Failure,
 				200,
 				1,
 			},
@@ -295,7 +295,7 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 		{
 			"Fail state",
 			args{
-				Fail,
+				Failure,
 				15,
 				20,
 			},
@@ -322,7 +322,7 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 		{
 			"Invalid block height",
 			args{
-				Fail,
+				Failure,
 				200,
 				1,
 			},

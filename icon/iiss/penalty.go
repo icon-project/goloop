@@ -29,15 +29,61 @@ import (
 
 const (
 	ValidationPenaltyCondition  int = 660
-	ValidationPenaltySlashRatio     = 10
+	ValidationPenaltySlashRatio     = 0
 
 	ConsistentValidationPenaltyCondition  int = 5
 	ConsistentValidationPenaltyMask           = 0x3fffffff
-	ConsistentValidationPenaltySlashRatio     = 100
+	ConsistentValidationPenaltySlashRatio     = 10
 )
 
+func (s *ExtensionStateImpl) UpdatePRepLastState(
+	cc contract.CallContext, owner module.Address, voted bool) error {
+	blockHeight := cc.BlockHeight()
+	if err := s.pm.UpdateLastState(owner, voted, blockHeight); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) (error, bool) {
+	prep := s.pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return nil, false
+	}
+	if prep.LastState() != icstate.Failure {
+		return nil, false
+	}
+
+	blockHeight := cc.BlockHeight()
+
+	// check and apply penalties
+	slashRatio := ValidationPenaltySlashRatio
+	if checkValidationPenalty(prep.PRepStatus, blockHeight) {
+		// Validation Penalty
+		prep.IncrementVPenalty()
+		prep.SetLastHeight(blockHeight)
+
+		// Consistent Penalty
+		if checkConsistentValidationPenalty(prep.PRepStatus) {
+			slashRatio = ConsistentValidationPenaltySlashRatio
+		}
+
+		var err error
+		if err = s.pm.ChangeGrade(owner, icstate.Candidate); err != nil {
+			return err, false
+		}
+		if err = Slash(cc, owner, slashRatio); err != nil {
+			return err, false
+		}
+		if err = s.selectNewValidator(); err != nil {
+			return err, false
+		}
+	}
+	return nil, slashRatio > 0
+}
+
 func validationPenalty(cc contract.CallContext, ps *icstate.PRepStatus) error {
-	if ps.LastState() != icstate.Fail {
+	if ps.LastState() != icstate.Failure {
 		return nil
 	}
 	owner := ps.Owner()

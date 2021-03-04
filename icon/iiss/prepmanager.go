@@ -589,13 +589,13 @@ func (pm *PRepManager) UpdateLastState(owner module.Address, voted bool, blockHe
 
 	vs := icstate.Success
 	if !voted {
-		vs = icstate.Fail
+		vs = icstate.Failure
 	}
 
 	ps := prep.PRepStatus
 	ls := ps.LastState()
 	if ls == icstate.None {
-		if vs == icstate.Fail {
+		if vs == icstate.Failure {
 			ps.SetVFail(ps.VFail() + 1)
 		}
 		ps.SetVTotal(ps.VTotal() + 1)

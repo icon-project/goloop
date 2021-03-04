@@ -51,7 +51,7 @@ type ValidationState int
 const (
 	None ValidationState = iota
 	Success
-	Fail
+	Failure
 )
 
 type PRepStatus struct {
@@ -175,7 +175,7 @@ func (ps *PRepStatus) VFail() int64 {
 
 // GetVFail returns the calculated number of validation failures
 func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
-	if ps.lastState == Fail && blockHeight >= ps.lastHeight {
+	if ps.lastState == Failure && blockHeight >= ps.lastHeight {
 		return ps.vFail + ps.GetVFailCont(blockHeight) - 1
 	}
 	return ps.vFail
@@ -183,7 +183,7 @@ func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
 
 // GetVFailCont returns the number of consecutive validation failures
 func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
-	if ps.lastState == Fail {
+	if ps.lastState == Failure {
 		diff := blockHeight - ps.lastHeight
 		if diff >= 0 {
 			return diff + 1
@@ -350,6 +350,10 @@ func (ps *PRepStatus) SetVFail(f int64) {
 
 func (ps *PRepStatus) SetVPenaltyMask(p uint32) {
 	ps.vPenaltyMask = p
+}
+
+func (ps *PRepStatus) IncrementVPenalty() {
+	ps.vPenaltyMask |= 1
 }
 
 func (ps *PRepStatus) ShiftVPenaltyMask(mask uint32) {

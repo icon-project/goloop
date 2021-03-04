@@ -21,7 +21,6 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
@@ -155,117 +154,97 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
 	}
+	if !es.IsDecentralized() {
+		return nil
+	}
 	// if PrepManager is not ready, it returns immediately
 	if es.pm.GetPRepByNode(csi.Proposer()) == nil {
 		return nil
 	}
-	proposer := es.pm.GetPRepByNode(csi.Proposer()).Owner()
-	validators := csi.Voters()
-	voted := csi.Voted()
-	voters := make([]module.Address, 0)
-	prepAddressList := make([]module.Address, 0)
-	if validators != nil {
-		for i := 0; i < validators.Len(); i += 1 {
-			v, _ := validators.Get(i)
-			if es.pm.GetPRepByNode(v.Address()) == nil {
-				return nil
-			}
-			owner := es.pm.GetPRepByNode(v.Address()).Owner()
-			prepAddressList = append(prepAddressList, owner)
-			if voted[i] {
-				voters = append(voters, owner)
-			}
-		}
-	}
-	// make Block produce Info for calculator
-	term := es.State.GetTerm()
-	if err := es.Front.AddBlockProduce(
-		int(cc.BlockHeight()-term.StartHeight()),
-		proposer,
-		voters,
-	); err != nil {
-		return err
-	}
 
-	// update P-rep status
-	proposerExist := false
-	for _, p := range prepAddressList {
-		if p.Equal(proposer) {
-			proposerExist = true
-		}
-	}
-	if !proposerExist {
-		prepAddressList = append(prepAddressList, proposer)
-	}
-	err := updatePRepStatus(cc, es.State, prepAddressList, voted)
+	// Convert node address to owner address
+	owners, trueVoters, err := nodeToOwner(es.pm, csi)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Make block produce Info for calculator
+	if err = addBlockProduce(cc, trueVoters); err != nil {
+		return err
+	}
+
+	// Update PRep status
+	voted := csi.Voted()
+	return updatePRepStates(cc, owners, voted)
 }
 
-func updatePRepStatus(cc contract.CallContext, state *icstate.State, prepAddressList []module.Address, voted []bool) error {
-	// compare with last validators
-	lastValidators := state.GetLastValidators()
-	validatorChanged := false
-	for _, lv := range lastValidators {
-		find := false
-		for _, cv := range prepAddressList {
-			if cv.Equal(lv) {
-				find = true
-				break
-			}
-		}
-		if !find {
-			prepStatus := state.GetPRepStatus(lv, false)
-			if prepStatus == nil {
-				err := errors.New("Prep status not exist")
-				return err
-			}
-			applyPRepStatus(prepStatus, icstate.None, cc.BlockHeight())
-			validatorChanged = true
-		}
+func nodeToOwner(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
+	voters := csi.Voters()
+	if voters == nil {
+		return nil, nil, errors.Errorf("Voters are nil")
 	}
-	if validatorChanged {
-		if err := state.SetLastValidators(prepAddressList); err != nil {
-			return err
+	voted := csi.Voted()
+
+	size := voters.Len()
+	owners := make([]module.Address, size, size)
+	trueVoters := make([]module.Address, 0)
+
+	for i := 0; i < size; i += 1 {
+		v, _ := voters.Get(i)
+		owner := pm.GetOwnerByNode(v.Address())
+		if owner == nil {
+			return nil, nil, errors.Errorf("Owner not found: %s", v.Address())
+		}
+		owners[i] = owner
+		if voted[i] {
+			trueVoters = append(trueVoters, owner)
 		}
 	}
 
-	// process current validators
-	for i := 0; i < len(prepAddressList); i += 1 {
-		prepStatus := state.GetPRepStatus(prepAddressList[i], false)
-		if prepStatus == nil {
-			err := errors.New("Prep status not exist")
+	return owners, trueVoters, nil
+}
+
+// addBlockProduce makes Block produce Info for calculator
+// trueVoters contain the addresses which vote for block approval
+func addBlockProduce(cc contract.CallContext, trueVoters []module.Address) error {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	csi := cc.ConsensusInfo()
+
+	// if PRepManager is not ready, it returns immediately
+	proposer := csi.Proposer()
+	po := es.pm.GetOwnerByNode(proposer)
+	term := es.State.GetTerm()
+
+	return es.Front.AddBlockProduce(
+		int(cc.BlockHeight()-term.StartHeight()),
+		po,
+		trueVoters,
+	)
+}
+
+// updatePRepStates updates validation state of each PRep and checks PReps for penalty
+func updatePRepStates(cc contract.CallContext, owners []module.Address, voted []bool) error {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	slashedPReps := 0
+
+	for i, owner := range owners {
+		if err := es.UpdatePRepLastState(cc, owner, voted[i]); err != nil {
 			return err
 		}
-		if !voted[i] {
-			applyPRepStatus(prepStatus, icstate.Fail, cc.BlockHeight())
-			if err := validationPenalty(cc, prepStatus); err != nil {
-				return err
-			}
-		} else {
-			applyPRepStatus(prepStatus, icstate.Success, cc.BlockHeight())
+		err, slashed := es.handlePenalty(cc, owner)
+		if err != nil {
+			return err
 		}
+		if slashed {
+			slashedPReps++
+		}
+	}
+
+	if slashedPReps > 0 {
+		es.pm.Sort()
 	}
 
 	return nil
-}
-
-func applyPRepStatus(ps *icstate.PRepStatus, vs icstate.ValidationState, blockHeight int64) {
-	if ps.LastState() == vs {
-		return
-	}
-
-	if ps.LastState() != icstate.None {
-		diff := blockHeight - ps.LastHeight()
-		ps.SetVTotal(ps.VTotal() + diff)
-		if ps.LastState() == icstate.Fail {
-			ps.SetVFail(ps.VFail() + diff)
-		}
-	}
-	ps.SetLastState(vs)
-	ps.SetLastHeight(blockHeight)
 }
 
 func handleICXIssue(cc contract.CallContext, data []byte) error {
