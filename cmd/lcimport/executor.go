@@ -51,7 +51,8 @@ const (
 )
 
 const (
-	KeyLastBlockHeight = "block.lastHeight"
+	KeyLastBlockHeight   = "block.lastHeight"
+	KeyStoredBlockHeight = "block.storedHeight"
 )
 
 const (
@@ -62,6 +63,7 @@ const (
 // then it stores actual results.
 // If from is negative, it executes from
 type Executor struct {
+	baseDir  string
 	lc       *lcstore.Store
 	cs       *CacheStore
 	database db.Database
@@ -71,6 +73,8 @@ type Executor struct {
 	log      log.Logger
 	plt      service.Platform
 	trace    log.Logger
+
+	sHeight int64
 
 	jsBucket    db.Bucket
 	blkIndex    db.Bucket
@@ -96,22 +100,6 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	if err != nil {
 		return nil, errors.Wrap(err, "NewPlatformFailure")
 	}
-	cm, err := plt.NewContractManager(database, path.Join(data, ContractPath), logger)
-	if err != nil {
-		return nil, errors.Wrap(err, "NewContractManagerFailure")
-	}
-	ee, err := eeproxy.AllocEngines(logger, "python")
-	if err != nil {
-		return nil, errors.Wrap(err, "FailureInAllocEngines")
-	}
-	em, err := eeproxy.NewManager("unix", path.Join(data, EESocketPath), logger, ee...)
-	if err != nil {
-		return nil, errors.Wrap(err, "FailureInAllocProxyManager")
-	}
-
-	go em.Loop()
-	em.SetInstances(1, 1, 1)
-
 	jsBucket, err := database.GetBucket(JSONByHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInGetBucketForJSON")
@@ -129,13 +117,12 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=ChainProperty)")
 	}
 	ex := &Executor{
+		baseDir:     data,
 		lc:          lc,
 		cs:          NewCacheStore(logger, lc),
 		log:         logger,
 		chain:       chain,
 		plt:         plt,
-		cm:          cm,
-		em:          em,
 		jsBucket:    jsBucket,
 		blkIndex:    blkIndex,
 		blkByID:     blkByID,
@@ -147,7 +134,6 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	ex.database = db.WithFlags(database, db.Flags{
 		FlagExecutor: ex,
 	})
-	logger.Infoln("Initialize executor : SUCCESS")
 	return ex, nil
 }
 
@@ -211,6 +197,11 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	if height < 0 {
 		return nil, errors.Errorf("InvalidHeight(height=%d)", height)
 	}
+	if e.em == nil || e.cm == nil {
+		if err := e.SetupEE(); err != nil {
+			return nil, err
+		}
+	}
 	logger := trace.NewLogger(e.log, e)
 	if height > 0 {
 		blk, err := e.GetBlockByHeight(height - 1)
@@ -266,34 +257,8 @@ func (e *Executor) ProposeTransition(last *Transition, noCache bool) (*Transitio
 		return nil, err
 	}
 	if blk == nil || noCache {
-		e.log.Tracef("get the block from the store height=%d", height)
-		blkv0, err := e.cs.GetBlockByHeight(int(height))
-		if err != nil {
+		if blk, err = e.LoadBlockByHeight(last.Block, height); err != nil {
 			return nil, err
-		}
-		e.log.Tracef("verify retrieved the block height=%d", height)
-		if err := blkv0.Verify(last.Block.Original()); err != nil {
-			return nil, err
-		}
-
-		e.log.Tracef("get receipts of the block height=%d", height)
-		txs := blkv0.NormalTransactions()
-		rcts := make([]txresult.Receipt, len(txs))
-		for idx, tx := range txs {
-			if err := tx.Verify(); err != nil {
-				return nil, err
-			}
-			rct, err := e.cs.GetReceiptByTransaction(tx.ID())
-			if err != nil {
-				return nil, errors.Wrapf(err, "FailureInGetReceipts(txid=%#x)", tx.ID())
-			}
-			rcts[idx] = rct.(txresult.Receipt)
-		}
-		blk = &Block{
-			height:  height,
-			txs:     transaction.NewTransactionListFromSlice(e.database, txs),
-			oldRcts: txresult.NewReceiptListFromSlice(e.database, rcts),
-			blk:     blkv0,
 		}
 	}
 	var csi module.ConsensusInfo
@@ -339,11 +304,32 @@ func (e *Executor) getLastHeight() int64 {
 	}
 }
 
-func (e *Executor) FinalizeTransition(tr *Transition) error {
-	service.FinalizeTransition(tr.Transition,
-		module.FinalizeNormalTransaction|module.FinalizeResult,
+func (e *Executor) setStoredHeight(height int64) error {
+	e.log.Tracef("setLastHeight(%d)", height)
+	return e.chainBucket.Set(
+		[]byte(KeyStoredBlockHeight),
+		codec.BC.MustMarshalToBytes(height),
 	)
-	blkv0 := tr.Block.Original()
+}
+
+func (e *Executor) getStoredHeight() int64 {
+	bs, err := e.chainBucket.Get([]byte(KeyStoredBlockHeight))
+	if err != nil || len(bs) == 0 {
+		e.log.Debugf("Fail to get stored block height")
+		return e.getLastHeight()
+	}
+	var height int64
+	if _, err := codec.BC.UnmarshalFromBytes(bs, &height); err != nil {
+		e.log.Debugf("Fail to parse stored block height")
+		return -1
+	} else {
+		e.log.Tracef("Stored block height:%d", height)
+		return height
+	}
+}
+
+func (e *Executor) StoreBlock(blk *Block) error {
+	blkv0 := blk.Original()
 	if preps := blkv0.Validators(); preps != nil {
 		if bs, err := JSONMarshalAndCompact(preps); err != nil {
 			return err
@@ -358,18 +344,28 @@ func (e *Executor) FinalizeTransition(tr *Transition) error {
 			e.jsBucket.Set(preps.Hash(), bs)
 		}
 	}
-	if err := tr.Block.Flush(); err != nil {
+	if err := blk.Flush(); err != nil {
 		return err
 	}
-	height := tr.Block.Height()
-	bid := tr.Block.ID()
-	if err := e.blkByID.Set(bid, tr.Block.Bytes()); err != nil {
+	height := blk.Height()
+	bid := blk.ID()
+	if err := e.blkByID.Set(bid, blk.Bytes()); err != nil {
 		return err
 	}
 	if err := e.blkIndex.Set(BlockIndexKey(height), bid); err != nil {
 		return err
 	}
-	if err := e.setLastHeight(height); err != nil {
+	return nil
+}
+
+func (e *Executor) FinalizeTransition(tr *Transition) error {
+	service.FinalizeTransition(tr.Transition,
+		module.FinalizeNormalTransaction|module.FinalizeResult,
+	)
+	if err := e.StoreBlock(tr.Block); err != nil {
+		return err
+	}
+	if err := e.setLastHeight(tr.Block.Height()); err != nil {
 		return errors.Wrap(err, "FailToSetLastHeight")
 	}
 	return nil
@@ -497,11 +493,65 @@ func TimestampToString(ts int64) string {
 	return tm.Format(time.RFC3339)
 }
 
+func (e *Executor) LoadBlockByHeight(prev *Block, height int64) (*Block, error) {
+	blkv0, err := e.cs.GetBlockByHeight(int(height))
+	if err != nil {
+		return nil, err
+	}
+	if err := blkv0.Verify(prev.Original()); err != nil {
+		return nil, err
+	}
+	txs := blkv0.NormalTransactions()
+	rcts := make([]txresult.Receipt, len(txs))
+	txTotal := big.NewInt(int64(len(txs)))
+	txTotal = txTotal.Add(txTotal, prev.TxTotal())
+	for idx, tx := range txs {
+		if err := tx.Verify(); err != nil {
+			return nil, err
+		}
+		rct, err := e.cs.GetReceiptByTransaction(tx.ID())
+		if err != nil {
+			return nil, errors.Wrapf(err, "FailureInGetReceipts(txid=%#x)", tx.ID())
+		}
+		rcts[idx] = rct.(txresult.Receipt)
+	}
+	return &Block{
+		height:  height,
+		txs:     transaction.NewTransactionListFromSlice(e.database, txs),
+		oldRcts: txresult.NewReceiptListFromSlice(e.database, rcts),
+		blk:     blkv0,
+		txTotal: txTotal,
+	}, nil
+}
+
+func (e *Executor) SetupEE() error {
+	cm, err := e.plt.NewContractManager(e.database, path.Join(e.baseDir, ContractPath), e.log)
+	if err != nil {
+		return errors.Wrap(err, "NewContractManagerFailure")
+	}
+	ee, err := eeproxy.AllocEngines(e.log, "python")
+	if err != nil {
+		return errors.Wrap(err, "FailureInAllocEngines")
+	}
+	em, err := eeproxy.NewManager("unix", path.Join(e.baseDir, EESocketPath), e.log, ee...)
+	if err != nil {
+		return errors.Wrap(err, "FailureInAllocProxyManager")
+	}
+
+	go em.Loop()
+	em.SetInstances(1, 1, 1)
+
+	e.cm = cm
+	e.em = em
+	return nil
+}
+
 func (e *Executor) Execute(from, to int64, useCache bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
+	stored := e.getStoredHeight()
 	if to >= 0 && to < from {
 		return errors.IllegalArgumentError.Errorf("InvalidArgument(from=%d,to=%d)", from, to)
 	}
@@ -539,7 +589,55 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		if err := e.FinalizeTransition(tr); err != nil {
 			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
 		}
+		if height > stored {
+			if err := e.setStoredHeight(height); err != nil {
+				return err
+			}
+		}
 		prevTR = tr
+	}
+	return nil
+}
+
+func (e *Executor) Download(from, to int64) error {
+	e.log.Infof("Downloading Blocks from=%d, to=%d", from, to)
+	stored := e.getStoredHeight()
+	last := e.getLastHeight()
+	if from < 0 {
+		from = stored + 1
+	}
+	if to >= 0 && to < from {
+		return errors.IllegalArgumentError.Errorf("InvalidArgument(from=%d,to=%d)", from, to)
+	}
+	var prevBlk *Block
+	if from > 0 {
+		if blk, err := e.GetBlockByHeight(from - 1); err != nil {
+			return err
+		} else {
+			prevBlk = blk
+		}
+	}
+	for height := from; to < 0 || height <= to; height++ {
+		Statusf(e.log, "Download Block [ %8d ]", height)
+		blk, err := e.LoadBlockByHeight(prevBlk, height)
+		if err != nil {
+			return err
+		}
+		if err := e.StoreBlock(blk); err != nil {
+			return err
+		}
+		if height > stored {
+			if err := e.setStoredHeight(height); err != nil {
+				return err
+			}
+		}
+		if height <= last {
+			if err := e.setLastHeight(height - 1); err != nil {
+				return err
+			}
+			last = height - 1
+		}
+		prevBlk = blk
 	}
 	return nil
 }

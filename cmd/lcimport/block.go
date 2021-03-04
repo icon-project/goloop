@@ -94,6 +94,11 @@ func (b *Block) ID() []byte {
 }
 
 func (b *Block) Flush() error {
+	if len(b.result) == 0 {
+		if err := b.txs.Flush(); err != nil {
+			return err
+		}
+	}
 	return b.oldRcts.Flush()
 }
 
@@ -137,7 +142,9 @@ func (b *Block) Bytes() []byte {
 	header.Result = b.result
 	header.Height = b.height
 	header.TxRoot = b.txs.Hash()
-	header.RctRoot = b.rcts.Hash()
+	if b.rcts != nil {
+		header.RctRoot = b.rcts.Hash()
+	}
 	js, err := JSONMarshalAndCompact(b.blk)
 	if err != nil {
 		panic(err)

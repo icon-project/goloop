@@ -266,6 +266,8 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
 	cmd.AddCommand(newCmdLastHeight(cmd, "last", vc))
 	cmd.AddCommand(newCmdState(cmd, "state", vc))
+	cmd.AddCommand(newCmdStoredHeight(cmd, "stored", vc))
+	cmd.AddCommand(newCmdDownloadBlocks(cmd, "load", vc))
 	return cmd
 }
 
@@ -424,8 +426,9 @@ func showWorld(wss state.WorldSnapshot, params []string) error {
 
 func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(0, 1),
-		Use:  name + " [<expr>]",
+		Args:  cobra.RangeArgs(0, 1),
+		Use:   name + " [<expr>]",
+		Short: "Inspect state",
 	}
 	pflags := cmd.PersistentFlags()
 	pHeight := pflags.Int64("height", 0, "Height of the state (0 for last height)")
@@ -478,8 +481,9 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 
 func newCmdLastHeight(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Args: cobra.NoArgs,
-		Use:  name,
+		Args:  cobra.NoArgs,
+		Use:   name,
+		Short: "Show last finalized block height",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if executor, ok := vc.Get(vcKeyExecutor).(*Executor); ok {
 				fmt.Println(executor.getLastHeight())
@@ -494,8 +498,9 @@ func newCmdLastHeight(parent *cobra.Command, name string, vc *viper.Viper) *cobr
 
 func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(0, 1),
-		Use:  name + " [<to>]",
+		Use:   name + " [<to>]",
+		Short: "Execute blocks",
+		Args:  cobra.RangeArgs(0, 1),
 	}
 	flags := cmd.PersistentFlags()
 	from := flags.Int64("from", -1, "From height(-1 for last)")
@@ -515,6 +520,49 @@ func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *c
 		}
 		executor := vc.Get(vcKeyExecutor).(*Executor)
 		return executor.Execute(*from, to, *noCache)
+	}
+	return cmd
+}
+
+func newCmdDownloadBlocks(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   name + " [<to>]",
+		Short: "Download blocks",
+		Args:  cobra.RangeArgs(0, 1),
+	}
+	flags := cmd.PersistentFlags()
+	from := flags.Int64("from", -1, "From height(-1 for last)")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		to := int64(-1)
+		if len(args) > 0 {
+			if v, err := intconv.ParseInt(args[0], 64); err != nil {
+				return errors.Wrapf(err, "InvalidArgument(arg=%s)", args[0])
+			} else {
+				to = v
+			}
+		}
+		for _, l := range logo {
+			log.Infoln(l)
+		}
+		executor := vc.Get(vcKeyExecutor).(*Executor)
+		return executor.Download(*from, to)
+	}
+	return cmd
+}
+
+func newCmdStoredHeight(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   name,
+		Short: "Show stored block height",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if executor, ok := vc.Get(vcKeyExecutor).(*Executor); ok {
+				fmt.Println(executor.getStoredHeight())
+				return nil
+			} else {
+				return errors.New("NoValidExecutor")
+			}
+		},
 	}
 	return cmd
 }
