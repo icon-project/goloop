@@ -38,8 +38,15 @@ func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallCont
 }
 
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (contract.ContractHandler, error) {
-	if ctype == contract.CTypeTransfer && !to.IsContract() {
-		return newTransferHandler(from, to, value, data, cm.log), nil
+	switch ctype {
+	case contract.CTypeTransfer:
+		if !to.IsContract() {
+			return newTransferHandler(from, to, value, data, cm.log), nil
+		}
+	case contract.CTypeCall:
+		if !to.IsContract() {
+			return newTransferHandler(from, to, value, data, cm.log), nil
+		}
 	}
 	return cm.ContractManager.GetHandler(from, to, value, ctype, data)
 }
