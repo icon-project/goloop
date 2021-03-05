@@ -258,8 +258,10 @@ func MeasureBytesOfData(rev module.Revision, data []byte) (int, error) {
 		return 0, nil
 	}
 
-	if rev.InputCostingWithJSON() {
-		return countBytesOfData(data)
+	if rev.Has(module.InputCostingWithJSON) {
+		return countBytesOfCompactJSON(data)
+	} else if rev.Has(module.LegacyInputJSON) {
+		return countBytesOfReEncodedJSON(data)
 	} else {
 		var idata interface{}
 		if err := json.Unmarshal(data, &idata); err != nil {
@@ -270,8 +272,20 @@ func MeasureBytesOfData(rev module.Revision, data []byte) (int, error) {
 	}
 }
 
-func countBytesOfData(data []byte) (int, error) {
+func countBytesOfReEncodedJSON(data []byte) (int, error) {
 	if data == nil {
+		return 0, nil
+	}
+	var jso interface{}
+	if err := json.Unmarshal(data, &jso); err != nil {
+		return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
+	}
+	bs, _ := json.Marshal(jso)
+	return countBytesOfCompactJSON(bs)
+}
+
+func countBytesOfCompactJSON(data []byte) (int, error) {
+	if len(data) == 0 {
 		return 0, nil
 	}
 	b := bytes.NewBuffer(nil)
