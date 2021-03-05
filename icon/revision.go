@@ -50,7 +50,7 @@ var revisionFlags = []module.Revision{
 	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
 	0,
 	module.AutoAcceptGovernance,
-	module.LegacyInputJSON | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
+	module.LegacyInputJSON | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
 	0,
 	0,
 	0,
