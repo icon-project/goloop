@@ -546,6 +546,17 @@ func (e *Executor) SetupEE() error {
 	return nil
 }
 
+var diskSpin = []string{"⠁", "⠁", "⠉", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠤", "⠄", "⠄", "⠤", "⠠", "⠠", "⠤", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋", "⠉", "⠈", "⠈"}
+var netSpin = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func spinner(height, stored int64) string {
+	if stored > height {
+		return diskSpin[int(height/4)%(len(diskSpin))]
+	} else {
+		return netSpin[int(height)%(len(netSpin))]
+	}
+}
+
 func (e *Executor) Execute(from, to int64, useCache bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
@@ -561,8 +572,8 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 	}
 	callback := make(transitionCallback, 1)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		Statusf(e.log, "Executing Block[ %8d ] Tx[ %16d ] %s",
-			height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()))
+		Statusf(e.log, "[%s] Executing Block[ %8d ] Tx[ %16d ] %s",
+			spinner(height, stored), height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()))
 		tr, err := e.ProposeTransition(prevTR, useCache)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
@@ -618,7 +629,7 @@ func (e *Executor) Download(from, to int64) error {
 		}
 	}
 	for height := from; to < 0 || height <= to; height++ {
-		Statusf(e.log, "Download Block [ %8d ]", height)
+		Statusf(e.log, "[%s] Download Block [ %8d ]", spinner(height, stored), height)
 		blk, err := e.LoadBlockByHeight(prevBlk, height)
 		if err != nil {
 			return err
