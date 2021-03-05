@@ -259,7 +259,7 @@ def json_dumps(obj: Any) -> str:
     context = ContextContainer._get_context()
     assert context
 
-    if context and Revision.COMPACT_JSON.is_set(context.revision):
+    if context and Revision.JSON_COSTING.is_set(context.revision):
         ret: str = json.dumps(obj, separators=(',', ':'))
 
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_DUMPS)
@@ -285,7 +285,7 @@ def json_loads(src: str) -> Any:
     context = ContextContainer._get_context()
     assert context
 
-    if context and Revision.COMPACT_JSON.is_set(context.revision):
+    if context and Revision.JSON_COSTING.is_set(context.revision):
         step_cost: int = _get_api_call_step_cost(context, ScoreApiStepRatio.JSON_LOADS)
         step: int = step_cost + step_cost * len(src.encode(CHARSET_ENCODING)) // 100
 

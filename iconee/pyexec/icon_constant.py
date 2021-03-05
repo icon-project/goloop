@@ -37,6 +37,9 @@ class Revision(IntEnum):
     VALUE_MASK = 0xFF
 
     COMPACT_JSON = 0x100
+    LEGACY_INPUT_JSON = 0x40000
+
+    JSON_COSTING = COMPACT_JSON | LEGACY_INPUT_JSON
 
     @classmethod
     def to_value(cls, revision: int) -> int:
