@@ -316,7 +316,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Address,
 		},
-	}, 0, Revision3},
+	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "addressToTxHashes",
 		scoreapi.FlagReadOnly, 1,
@@ -326,7 +326,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.List,
 		},
-	}, 0, Revision3},
+	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "acceptScore",
 		scoreapi.FlagExternal, 1,
