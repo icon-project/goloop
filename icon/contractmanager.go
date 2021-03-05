@@ -19,6 +19,8 @@ package icon
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -37,18 +39,44 @@ func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallCont
 	return cm.ContractManager.GetSystemScore(contentID, cc, from, value)
 }
 
+var govAddress = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (contract.ContractHandler, error) {
 	switch ctype {
 	case contract.CTypeTransfer:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, data, cm.log), nil
+			return newTransferHandler(from, to, value, cm.log), nil
 		}
 	case contract.CTypeCall:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, data, cm.log), nil
+			return newTransferHandler(from, to, value, cm.log), nil
 		}
 	}
-	return cm.ContractManager.GetHandler(from, to, value, ctype, data)
+	ch, err := cm.ContractManager.GetHandler(from, to, value, ctype, data)
+	if err != nil {
+		return nil, err
+	}
+	switch ctype {
+	case contract.CTypeCall, contract.CTypeDeploy:
+		if to.Equal(govAddress) {
+			return newGovernanceHandler(ch), nil
+		}
+	}
+	return ch, nil
+}
+
+func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.Int, ctype int, paramObj *codec.TypedObj) (contract.ContractHandler, error) {
+	switch ctype {
+	case contract.CTypeTransfer:
+		if !to.IsContract() {
+			return newTransferHandler(from, to, value, cm.log), nil
+		}
+	case contract.CTypeCall:
+		if !to.IsContract() {
+			return newTransferHandler(from, to, value, cm.log), nil
+		}
+	}
+	return cm.ContractManager.GetCallHandler(from, to, value, ctype, paramObj)
 }
 
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {

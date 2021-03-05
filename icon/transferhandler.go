@@ -31,13 +31,11 @@ import (
 
 type TransferHandler struct {
 	*contract.CommonHandler
-	data []byte
 }
 
-func newTransferHandler(from, to module.Address, value *big.Int, data []byte, logger log.Logger) *TransferHandler {
+func newTransferHandler(from, to module.Address, value *big.Int, logger log.Logger) *TransferHandler {
 	return &TransferHandler{
 		contract.NewCommonHandler(from, to, value, false, logger),
-		data,
 	}
 }
 

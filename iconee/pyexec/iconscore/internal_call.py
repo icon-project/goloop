@@ -109,10 +109,3 @@ class ChainScore(object):
                        score_address: 'Address') -> Optional[dict]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
                                          'getScoreStatus', tuple([score_address]))
-
-    @staticmethod
-    def setRevision(context: 'IconScoreContext',
-                    _from: 'Address',
-                    code: int):
-        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
-                                         'setRevision', tuple([code]))
