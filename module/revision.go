@@ -29,12 +29,13 @@ const (
 	LegacyFallbackCheck
 	LegacyContentCount
 	LegacyBalanceCheck
+	LegacyInputJSON
 	LastRevisionBit
 )
 
 const (
 	NoRevision       = 0
-	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck
+	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck | LegacyInputJSON
 	AllRevision      = LastRevisionBit - 1
 	LatestRevision   = AllRevision ^ BackwardRevision
 )
@@ -81,4 +82,8 @@ func (r Revision) LegacyContentCount() bool {
 
 func (r Revision) LegacyBalanceCheck() bool {
 	return (r & LegacyBalanceCheck) != 0
+}
+
+func (r Revision) Has(flag Revision) bool {
+	return (r & flag) != 0
 }

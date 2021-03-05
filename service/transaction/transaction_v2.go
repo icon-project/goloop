@@ -77,7 +77,7 @@ func (tx *transactionV2) Verify() error {
 	}
 
 	// character level size of data element <= 512KB
-	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
+	if n, err := countBytesOfCompactJSON(tx.Data); err != nil || n > txMaxDataSize {
 		return InvalidTxValue.Errorf("InvalidTxData(%s)", tx.Value.String())
 	}
 
