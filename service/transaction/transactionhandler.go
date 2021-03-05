@@ -280,8 +280,12 @@ func countBytesOfReEncodedJSON(data []byte) (int, error) {
 	if err := json.Unmarshal(data, &jso); err != nil {
 		return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
 	}
-	bs, _ := json.Marshal(jso)
-	return countBytesOfCompactJSON(bs)
+	buf := bytes.NewBuffer(nil)
+	je := json.NewEncoder(buf)
+	je.SetEscapeHTML(false)
+	je.SetIndent("", "")
+	_ = je.Encode(jso)
+	return countBytesOfCompactJSON(buf.Bytes())
 }
 
 func countBytesOfCompactJSON(data []byte) (int, error) {
