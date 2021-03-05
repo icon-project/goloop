@@ -45,11 +45,11 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 	switch ctype {
 	case contract.CTypeTransfer:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, cm.log), nil
+			return newTransferHandler(from, to, value, false, cm.log), nil
 		}
 	case contract.CTypeCall:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, cm.log), nil
+			return newTransferHandler(from, to, value, false, cm.log), nil
 		}
 	}
 	ch, err := cm.ContractManager.GetHandler(from, to, value, ctype, data)
@@ -69,11 +69,11 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 	switch ctype {
 	case contract.CTypeTransfer:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, cm.log), nil
+			return newTransferHandler(from, to, value, true, cm.log), nil
 		}
 	case contract.CTypeCall:
 		if !to.IsContract() {
-			return newTransferHandler(from, to, value, cm.log), nil
+			return newTransferHandler(from, to, value, true, cm.log), nil
 		}
 	}
 	return cm.ContractManager.GetCallHandler(from, to, value, ctype, paramObj)

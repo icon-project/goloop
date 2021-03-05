@@ -33,9 +33,9 @@ type TransferHandler struct {
 	*contract.CommonHandler
 }
 
-func newTransferHandler(from, to module.Address, value *big.Int, logger log.Logger) *TransferHandler {
+func newTransferHandler(from, to module.Address, value *big.Int, call bool, logger log.Logger) *TransferHandler {
 	return &TransferHandler{
-		contract.NewCommonHandler(from, to, value, false, logger),
+		contract.NewCommonHandler(from, to, value, call, logger),
 	}
 }
 
