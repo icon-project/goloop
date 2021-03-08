@@ -129,7 +129,7 @@ func (s *State) SetBonding(addr module.Address, bonding *Bonding) error {
 }
 
 func (s *State) DeleteBonding(addr module.Address) error {
-	key := DelegatingKey.Append(addr).Build()
+	key := BondingKey.Append(addr).Build()
 	_, err := s.store.Delete(key)
 	return err
 }

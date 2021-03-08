@@ -658,6 +658,7 @@ func (c *Calculator) calculateVotingReward() error {
 				votes, ok := bondingMap[idx][offset]
 				if ok {
 					votes.Update(event.Votes)
+					bondingMap[idx][offset] = votes
 				} else {
 					bondingMap[idx][offset] = event.Votes
 				}
@@ -877,6 +878,8 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 		}
 		if delegating == nil {
 			delegating = icreward.NewDelegating()
+		} else {
+			delegating = delegating.Clone()
 		}
 		return delegating, nil
 	case icreward.TypeBonding:
@@ -886,6 +889,8 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 		}
 		if bonding == nil {
 			bonding = icreward.NewBonding()
+		} else {
+			bonding = bonding.Clone()
 		}
 		return bonding, nil
 	}
