@@ -305,7 +305,7 @@ func (e *Executor) getLastHeight() int64 {
 }
 
 func (e *Executor) setStoredHeight(height int64) error {
-	e.log.Tracef("setLastHeight(%d)", height)
+	e.log.Tracef("setStoredHeight(%d)", height)
 	return e.chainBucket.Set(
 		[]byte(KeyStoredBlockHeight),
 		codec.BC.MustMarshalToBytes(height),
