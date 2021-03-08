@@ -226,26 +226,16 @@ var logo = []string{
 }
 
 const (
-	CursorUp  = "\x1b[1A"
 	ClearLine = "\x1b[2K"
 )
-
-var statusDisplay bool
 
 func Statusf(l log.Logger, format string, args ...interface{}) {
 	l.Infof(format, args...)
 	if l.GetConsoleLevel() < log.InfoLevel {
-		if statusDisplay {
-			fmt.Print(CursorUp + ClearLine)
-		}
+		fmt.Print(ClearLine + ">")
 		fmt.Printf(format, args...)
-		fmt.Print("\n")
-		statusDisplay = true
+		fmt.Print("\r")
 	}
-}
-
-func StatusCleared() {
-	statusDisplay = false
 }
 
 func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {

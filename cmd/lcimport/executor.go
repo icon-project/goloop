@@ -398,7 +398,6 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 	}
 	if s1 == module.StatusUnknownFailure && s2 == module.StatusInvalidParameter {
 		logger.Warnf("Ignore status difference(e=%s,r=%s)", s1, s2)
-		StatusCleared()
 		return nil
 	}
 	return errors.InvalidStateError.Errorf("InvalidStatus(e=%s,r=%s)", s1, s2)
@@ -468,13 +467,14 @@ func (e *Executor) CheckResult(tr *Transition) error {
 			if err := CheckReceipt(e.log, rct1, rct2); err != nil {
 				rct1js, _ := JSONMarshalIndent(rct1)
 				rct2js, _ := JSONMarshalIndent(rct2)
-				var txjs []byte
-				if tx, err := tr.Transition.NormalTransactions().Get(idx); err == nil {
-					txjs, _ = JSONMarshalIndent(tx)
-				}
-				e.log.Warnf("Failed Transaction[%d]:%s", idx, txjs)
-				e.log.Warnf("Expected Receipt[%d]:%s", idx, rct1js)
-				e.log.Warnf("Returned Receipt[%d]:%s", idx, rct2js)
+
+				tx, _ := tr.Transition.NormalTransactions().Get(idx)
+				txjs, _ := JSONMarshalIndent(tx)
+
+				e.log.Errorf("Failed Block[ %9d ] TxID[ %#x ]", tr.Block.Height(), tx.ID())
+				e.log.Errorf("Failed Transaction[%d]:%s", idx, txjs)
+				e.log.Errorf("Expected Receipt[%d]:%s", idx, rct1js)
+				e.log.Errorf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)
 			}
 		}
@@ -490,7 +490,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 
 func TimestampToString(ts int64) string {
 	tm := time.Unix(ts/1000000, (ts%1000000)*1000)
-	return tm.Format(time.RFC3339)
+	return tm.Format("2006-01-02 15:04:05")
 }
 
 func (e *Executor) LoadBlockByHeight(prev *Block, height int64) (*Block, error) {
@@ -572,7 +572,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 	}
 	callback := make(transitionCallback, 1)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		Statusf(e.log, "[%s] Executing Block[ %8d ] Tx[ %16d ] %s",
+		Statusf(e.log, "[%s] Executing Block[ %9d ] Tx[ %9d ] %s",
 			spinner(height, stored), height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()))
 		tr, err := e.ProposeTransition(prevTR, useCache)
 		if err != nil {
