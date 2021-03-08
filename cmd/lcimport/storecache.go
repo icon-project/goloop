@@ -194,15 +194,24 @@ func (cs *CacheStore) scheduleBlock(height int64) {
 	}
 }
 
+func (cs *CacheStore) scheduleFollowings(b blockv0.Block) {
+	txs := b.NormalTransactions()
+	for _, tx := range txs {
+		cs.scheduleReceipt(tx.ID())
+	}
+	height := int(b.Height())
+	for h := height + 1; h <= height+cs.maxBlocks; h += 1 {
+		cs.scheduleBlock(int64(h))
+	}
+}
+
 func (cs *CacheStore) GetBlockByHeight(height int) (blockv0.Block, error) {
 	if bt := cs.getBlockTask(int64(height)); bt != nil {
 		r := <-bt.chn
 		close(bt.chn)
 		switch obj := r.(type) {
 		case blockv0.Block:
-			for h := height + 1; h <= height+cs.maxBlocks; h += 1 {
-				cs.scheduleBlock(int64(h))
-			}
+			cs.scheduleFollowings(obj)
 			return obj, nil
 		case error:
 			return nil, obj
@@ -213,13 +222,7 @@ func (cs *CacheStore) GetBlockByHeight(height int) (blockv0.Block, error) {
 	if blk, err := cs.Store.GetBlockByHeight(height); err != nil {
 		return nil, err
 	} else {
-		txs := blk.NormalTransactions()
-		for _, tx := range txs {
-			cs.scheduleReceipt(tx.ID())
-		}
-		for h := height + 1; h <= height+cs.maxBlocks; h += 1 {
-			cs.scheduleBlock(int64(h))
-		}
+		cs.scheduleFollowings(blk)
 		return blk, nil
 	}
 }
