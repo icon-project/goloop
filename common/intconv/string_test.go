@@ -87,6 +87,7 @@ func TestParseBigInt(t *testing.T) {
 		{"T5", args{"-18446744073709551616"}, n1, false},
 		{"T6", args{"-1844674407370955161a"}, nil, true},
 		{"T7", args{"887234"}, big.NewInt(887234), false},
+		{"T8", args{"0x-b"}, big.NewInt(-7), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
