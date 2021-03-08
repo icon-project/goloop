@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
@@ -70,6 +71,7 @@ type TransactionInfo struct {
 	TxIndex     common.HexInt32     `json:"tx_index"`
 	Transaction blockv0.Transaction `json:"transaction"`
 	Receipt     json.RawMessage     `json:"receipt"`
+	Result      json.RawMessage     `json:"result"`
 }
 
 func (lc *Store) GetTransactionInfoByTransaction(id []byte) (*TransactionInfo, error) {
@@ -86,10 +88,14 @@ func (lc *Store) GetTransactionInfoByTransaction(id []byte) (*TransactionInfo, e
 
 func (lc *Store) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
 	if tinfo, err := lc.GetTransactionInfoByTransaction(id); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "FailureInGetTransactionInfo")
 	} else {
-		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, tinfo.Receipt); err != nil {
-			log.Warnf("FailureInParsingJSON(json=%q)", string(tinfo.Receipt))
+		rct := tinfo.Receipt
+		if len(rct) == 0 {
+			rct = tinfo.Result
+		}
+		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, rct); err != nil {
+			log.Warnf("FailureInParsingJSON(json=%q)", string(rct))
 			return nil, err
 		} else {
 			return r, nil
