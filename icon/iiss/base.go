@@ -141,10 +141,6 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 		return nil, err
 	}
 
-	if err := HandleTimerJob(ctx); err != nil {
-		return nil, err
-	}
-
 	// Make a receipt
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
 	cc.GetEventLogs(r)

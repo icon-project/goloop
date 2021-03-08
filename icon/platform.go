@@ -112,6 +112,11 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
 		return err
 	}
+
+	if err := iiss.HandleTimerJob(wc); err != nil {
+		return err
+	}
+
 	return es.OnExecutionEnd(wc, p.calculator)
 }
 
