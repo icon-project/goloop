@@ -24,6 +24,9 @@ func ParseBigInt(i *big.Int, s string) error {
 		if _, ok := i.SetString(s, 16); !ok {
 			return errors.New("InvalidHexNumber")
 		}
+		if i.Sign() < 0 {
+			return errors.New("InvalidHexNumber")
+		}
 	} else {
 		if _, ok := i.SetString(s, 10); !ok {
 			return errors.New("InvalidDecimalNumber")
