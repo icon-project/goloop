@@ -36,10 +36,13 @@ const (
 )
 
 func (t *blockTask) Do(cs *CacheStore) {
+	cs.log.Tracef("BLOCK start height=%d", t.height)
 	trial := 0
 	for {
 		block, err := cs.Store.GetBlockByHeight(int(t.height))
 		if err == nil {
+			cs.log.Tracef("BLOCK done height=%d", t.height)
+			cs.scheduleFollowings(block)
 			t.chn <- block
 			return
 		} else {
@@ -60,10 +63,12 @@ type receiptTask struct {
 }
 
 func (t *receiptTask) Do(cs *CacheStore) {
+	cs.log.Tracef("RECEIPT start id=%#x", t.id)
 	trial := 0
 	for {
 		receipt, err := cs.Store.GetReceiptByTransaction(t.id)
 		if err == nil {
+			cs.log.Tracef("RECEIPT done id=%#x", t.id)
 			t.chn <- receipt
 			return
 		} else {
@@ -90,6 +95,7 @@ type CacheStore struct {
 	blockWorkers      int
 	maxBlocks         int
 	receiptWorkers    int
+	maxBlockWorkers   int
 	maxReceiptWorkers int
 
 	blockTasks   list.List
@@ -157,12 +163,10 @@ func (cs *CacheStore) getBlockTask(height int64) *blockTask {
 	}
 }
 
-func (cs *CacheStore) scheduleReceipt(id []byte) {
-	cs.lock.Lock()
-	defer cs.lock.Unlock()
-
+func (cs *CacheStore) scheduleReceiptInLock(id []byte) {
 	ids := string(id)
 	if t, ok := cs.receiptInfo[ids]; !ok {
+		cs.log.Tracef("RECEIPT schedule id=%#x", id)
 		t = &receiptTask{
 			id:  id,
 			chn: make(chan interface{}, 1),
@@ -176,18 +180,16 @@ func (cs *CacheStore) scheduleReceipt(id []byte) {
 	}
 }
 
-func (cs *CacheStore) scheduleBlock(height int64) {
-	cs.lock.Lock()
-	defer cs.lock.Unlock()
-
+func (cs *CacheStore) scheduleBlockInLock(height int64) {
 	if t, ok := cs.blockInfo[height]; !ok {
+		cs.log.Tracef("BLOCK schedule height=%d", height)
 		t = &blockTask{
 			height: height,
 			chn:    make(chan interface{}, 1),
 		}
 		cs.blockTasks.PushBack(t)
 		cs.blockInfo[height] = t
-		if cs.blockWorkers < 2 {
+		if cs.blockWorkers < cs.maxBlockWorkers {
 			cs.blockWorkers += 1
 			go cs.blockLoop()
 		}
@@ -195,13 +197,15 @@ func (cs *CacheStore) scheduleBlock(height int64) {
 }
 
 func (cs *CacheStore) scheduleFollowings(b blockv0.Block) {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
 	txs := b.NormalTransactions()
 	for _, tx := range txs {
-		cs.scheduleReceipt(tx.ID())
+		cs.scheduleReceiptInLock(tx.ID())
 	}
-	height := int(b.Height())
-	for h := height + 1; h <= height+cs.maxBlocks; h += 1 {
-		cs.scheduleBlock(int64(h))
+	for h := b.Height() + 1; len(cs.blockInfo) < cs.maxBlocks; h += 1 {
+		cs.scheduleBlockInLock(int64(h))
 	}
 }
 
@@ -274,6 +278,7 @@ func NewCacheStore(logger log.Logger, store *lcstore.Store) *CacheStore {
 		Store:             store,
 		log:               logger,
 		maxBlocks:         32,
+		maxBlockWorkers:   8,
 		maxReceiptWorkers: 64,
 		blockInfo:         make(map[int64]*blockTask),
 		receiptInfo:       make(map[string]*receiptTask),
