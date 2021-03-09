@@ -380,7 +380,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	expectedUDiff = big.NewInt(7)
 	ubAdd1 = &Unbond{addr2, big.NewInt(5), bh}
 	ubAdd2 = &Unbond{addr3, big.NewInt(12), bh}
-	ubMod1 := &Unbond{ addr3, new(big.Int), a.Unbonds()[0].Expire}
+	ubMod1 := &Unbond{addr3, new(big.Int), bh}
 	assert.True(t, ubAdds[0].Equal(ubAdd1))
 	assert.True(t, ubAdds[1].Equal(ubAdd2))
 	assert.True(t, ubMods[0].Equal(ubMod1))
@@ -398,7 +398,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 
 	expectedUDiff = big.NewInt(-5)
 	ubAdd1 = &Unbond{addr2, big.NewInt(5), bh}
-	ubMod1 = &Unbond{addr3, big.NewInt(0), a.Unbonds()[0].Expire}
+	ubMod1 = &Unbond{addr3, big.NewInt(0), bh}
 	assert.True(t, ubAdds[0].Equal(ubAdd1))
 	assert.True(t, ubMods[0].Equal(ubMod1))
 	assert.Equal(t, 1, len(ubAdds))

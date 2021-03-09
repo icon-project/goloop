@@ -297,17 +297,17 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				for _, ub := range a.unbonds {
 					if nb.To().Equal(ub.Address) {
 						// append 0 value unbond to remove previous unbond
-						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+						unbond := &Unbond{nb.Address, new(big.Int), unbondingHeight}
 						ubToMod = append(ubToMod, unbond)
 						if diff.Sign() == -1 { // nb > ob, remove unbond
 							uDiff.Sub(uDiff, ub.Value)
-							break
 						} else { // modify unbond
 							ubToAdd = ubToAdd[:len(ubToAdd)-1]
 							value := new(big.Int).Add(ub.Value, diff)
 							unbond = &Unbond{nb.Address, value, unbondingHeight}
 							ubToAdd = append(ubToAdd, unbond)
 						}
+						break
 					}
 				}
 			}
