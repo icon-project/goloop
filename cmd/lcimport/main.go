@@ -486,6 +486,8 @@ func newCmdLastHeight(parent *cobra.Command, name string, vc *viper.Viper) *cobr
 	return cmd
 }
 
+var version = "unknown"
+
 func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   name + " [<to>]",
@@ -508,6 +510,7 @@ func newCmdExecuteBlocks(parent *cobra.Command, name string, vc *viper.Viper) *c
 		for _, l := range logo {
 			log.Infoln(l)
 		}
+		log.Infof("Version : %s", version)
 		executor := vc.Get(vcKeyExecutor).(*Executor)
 		return executor.Execute(*from, to, *noCache)
 	}
