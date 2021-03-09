@@ -184,10 +184,10 @@ func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64, slotMax i
 			return nil, err
 		}
 	case -1:
-		if err := a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax); err != nil {
+		tl, err = a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
+		if err != nil {
 			return nil, err
 		}
-		tl = append(tl, TimerJobInfo{JobTypeAdd, expireHeight})
 	}
 	return tl, nil
 }

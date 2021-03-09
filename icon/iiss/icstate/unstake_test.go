@@ -74,39 +74,50 @@ func TestUnstakes(t *testing.T) {
 		unstakeSlotMax := 2
 
 		// add unstake u1
-		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
+		tl, err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 1, len(unstakes))
 		assert.True(t, u1.Equal(unstakes[0]))
 		assert.Equal(t, a1, unstakes.GetUnstakeAmount().Int64())
+		assert.Equal(t, len(tl), 1)
+		assert.Equal(t, tl[0].Type, JobTypeAdd)
+		assert.Equal(t, tl[0].Height, u1.ExpireHeight)
 
 		// add unstake u2
-		err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax)
+		tl, err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 2, len(unstakes))
 		assert.True(t, u2.Equal(unstakes[1]))
 		assert.Equal(t, a1+a2, unstakes.GetUnstakeAmount().Int64())
+		assert.Equal(t, len(tl), 1)
+		assert.Equal(t, tl[0].Type, JobTypeAdd)
+		assert.Equal(t, tl[0].Height, u2.ExpireHeight)
 
 		// update last unstake
-		err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax)
+		tl, err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
 		assert.True(t, unstakes.Has())
 		assert.Equal(t, 2, len(unstakes))
 		assert.Equal(t, a2+a3, unstakes[1].Amount.Int64())
 		assert.Equal(t, eh3, unstakes[1].ExpireHeight)
 		assert.Equal(t, a1+a2+a3, unstakes.GetUnstakeAmount().Int64())
+		assert.Equal(t, len(tl), 2)
+		assert.Equal(t, tl[0].Type, JobTypeRemove)
+		assert.Equal(t, tl[0].Height, u2.ExpireHeight)
+		assert.Equal(t, tl[1].Type, JobTypeAdd)
+		assert.Equal(t, tl[1].Height, u3.ExpireHeight)
 	})
 
 	t.Run("decrease Unstakes", func(t *testing.T) {
 		unstakes := Unstakes{}
 		unstakeSlotMax := 3
-		err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
+		_, err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
-		err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax)
+		_, err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
-		err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax)
+		_, err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax)
 		assert.NoError(t, err)
 
 		total := a1 + a2 + a3
@@ -159,19 +170,19 @@ func TestIncreaseUnstake(t *testing.T) {
 	us := Unstakes{&u1}
 
 	//u0 will place in 0 index(front of u1)
-	err := us.increaseUnstake(big.NewInt(a0), eh0, unstakeSlotMax)
+	_, err := us.increaseUnstake(big.NewInt(a0), eh0, unstakeSlotMax)
 	assert.NoError(t, err)
 	assert.True(t, u0.Equal(us[0]))
 	assert.True(t, u1.Equal(us[1]))
 
-	err = us.increaseUnstake(big.NewInt(a2), eh2, unstakeSlotMax)
+	_, err = us.increaseUnstake(big.NewInt(a2), eh2, unstakeSlotMax)
 	assert.NoError(t, err)
 	assert.True(t, u0.Equal(us[0]))
 	assert.True(t, u1.Equal(us[1]))
 	assert.True(t, u2.Equal(us[2]))
 
 	//unstake of last index will be updated
-	err = us.increaseUnstake(big.NewInt(a3-a2), eh3, unstakeSlotMax)
+	_, err = us.increaseUnstake(big.NewInt(a3-a2), eh3, unstakeSlotMax)
 	assert.NoError(t, err)
 	assert.True(t, u0.Equal(us[0]))
 	assert.True(t, u1.Equal(us[1]))
