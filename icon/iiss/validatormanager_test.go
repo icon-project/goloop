@@ -21,8 +21,7 @@ func newDummyValidatorManager(t *testing.T, size int) *ValidatorManager {
 		err := vm.add(address, true)
 		assert.NoError(t, err)
 
-		v, _ := vm.Get(i)
-		vi := v.(*ValidatorImpl)
+		vi, _ := vm.Get(i)
 		assert.True(t, vi.IsAdded())
 	}
 	assert.Equal(t, size, vm.Len())
@@ -50,8 +49,8 @@ func TestValidatorManager_GetValidators(t *testing.T) {
 	assert.Equal(t, size, len(vs))
 
 	for i := 0; i < size; i++ {
-		expected, _ := vm.Get(i)
-		assert.Equal(t, expected, vs[i])
+		vi, _ := vm.Get(i)
+		assert.True(t, vs[i].Address().Equal(vi.Address()))
 	}
 }
 

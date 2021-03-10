@@ -491,7 +491,7 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 
 func (term *Term) String() string {
 	return fmt.Sprintf(
-		"Term: seq=%d startBH=%d endBH=%d period=%d totalSupply=%s totalDelegated=%s preps=%d",
+		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d",
 		term.sequence,
 		term.startHeight,
 		term.GetEndBlockHeight(),

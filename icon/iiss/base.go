@@ -21,6 +21,7 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
@@ -232,6 +233,7 @@ func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, vote
 			return err
 		}
 		if !voted[i] {
+			log.Debugf("Nil vote: bh=%d address=%s", cc.BlockHeight(), owner.String())
 			err, slashed := es.handlePenalty(cc, owner)
 			if err != nil {
 				return err

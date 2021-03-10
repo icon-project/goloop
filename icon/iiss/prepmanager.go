@@ -81,7 +81,8 @@ func setPRep(pb *icstate.PRepBase, regInfo *RegInfo) error {
 
 // Manage PRepBase, PRepStatus and ActivePRep
 type PRepManager struct {
-	state *icstate.State
+	logger log.Logger
+	state  *icstate.State
 
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
@@ -99,7 +100,7 @@ func (pm *PRepManager) init() {
 		owner := pm.state.GetActivePRep(i)
 		prep := pm.getPRepFromState(owner)
 		if prep == nil {
-			log.Warnf("Failed to load PRep: %s", owner)
+			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
 			pm.appendPRep(prep)
 		}
@@ -624,7 +625,7 @@ func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, bl
 		}
 		ps.SetVTotal(ps.VTotal() + 1)
 		ps.SetLastHeight(blockHeight)
-	default:
+	default: // icstate.Success or icstate.Failure
 		if vs != ls {
 			diff := blockHeight - ps.LastHeight()
 			ps.SetVTotal(ps.VTotal() + diff)
@@ -674,6 +675,18 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 		return errors.Errorf("PRep not found: %v", owner)
 	}
 
+	pm.logger.Debugf(
+		"ImposePenalty() start: bh=%d addr=%s grade=%d ls=%d lh=%d vf=%d vt=%d vpc=%d",
+		blockHeight,
+		owner,
+		prep.Grade(),
+		prep.LastState(),
+		prep.LastHeight(),
+		prep.VFail(),
+		prep.VTotal(),
+		prep.GetVPenaltyCount(),
+	)
+
 	if err := pm.ChangeGrade(owner, icstate.Candidate); err != nil {
 		return err
 	}
@@ -681,6 +694,18 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 		return err
 	}
 	prep.IncrementVPenalty()
+
+	pm.logger.Debugf(
+		"ImposePenalty() end: bh=%d addr=%s grade=%d ls=%d lh=%d vf=%d vt=%d vpc=%d",
+		blockHeight,
+		owner,
+		prep.Grade(),
+		prep.LastState(),
+		prep.LastHeight(),
+		prep.VFail(),
+		prep.VTotal(),
+		prep.GetVPenaltyCount(),
+	)
 	return nil
 }
 
@@ -716,11 +741,15 @@ func (pm *PRepManager) Slash(owner module.Address, amount *big.Int, sort bool) e
 	if sort {
 		pm.Sort()
 	}
+	pm.logger.Debugf(
+"Slash: addr=%s amount=%s tb=%s",
+		owner, amount, pm.totalBonded,
+	)
 	return nil
 }
 
 func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	size := pm.GetPRepSize(icstate.Main)
+	size := pm.Size()
 	jso := make(map[string]interface{})
 	preps := make([]interface{}, size, size)
 
@@ -733,8 +762,15 @@ func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interfa
 	return jso, nil
 }
 
-func newPRepManager(state *icstate.State) *PRepManager {
+func newPRepManager(state *icstate.State, logger log.Logger) *PRepManager {
+	if logger == nil {
+		logger = log.WithFields(log.Fields{
+			log.FieldKeyModule: "ICON",
+		})
+	}
+
 	pm := &PRepManager{
+		logger:         logger,
 		state:          state,
 		totalDelegated: big.NewInt(0),
 		totalBonded:    big.NewInt(0),

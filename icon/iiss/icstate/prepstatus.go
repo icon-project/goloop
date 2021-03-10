@@ -267,7 +267,7 @@ func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
-	jso["lastState"] = ps.lastState
+	jso["lastState"] = int(ps.lastState)
 	jso["penalties"] = ps.GetVPenaltyCount()
 	jso["total"] = ps.vTotal
 	jso["fail"] = ps.vFail

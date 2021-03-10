@@ -3,51 +3,53 @@ package iiss
 import (
 	"container/list"
 	"fmt"
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 )
 
-type ValidatorImpl struct {
-	added   bool
-	address module.Address
+type ValidatorItemIterator interface {
+	Has() bool
+	Next() error
+	Get() (*ValidatorItem, error)
 }
 
-func (vi *ValidatorImpl) IsAdded() bool {
+type ValidatorItem struct {
+	v     module.Validator
+	added bool
+}
+
+func (vi *ValidatorItem) Address() module.Address {
+	return vi.v.Address()
+}
+
+func (vi *ValidatorItem) IsAdded() bool {
 	return vi.added
 }
 
-func (vi *ValidatorImpl) ResetFlags() {
+func (vi *ValidatorItem) ResetFlags() {
 	vi.added = false
 }
 
-func (vi *ValidatorImpl) Address() module.Address {
-	return vi.address
-}
-
-func (vi *ValidatorImpl) PublicKey() []byte {
-	return nil
-}
-
-func (vi *ValidatorImpl) Bytes() []byte {
-	return vi.address.Bytes()
-}
-
-func validatorFromAddress(a module.Address, added bool) (module.Validator, error) {
+func validatorFromAddress(a module.Address, added bool) (*ValidatorItem, error) {
 	if a == nil {
 		return nil, errors.ErrIllegalArgument
 	}
+
 	if a.IsContract() {
 		return nil, errors.ErrIllegalArgument
 	}
-	v := &ValidatorImpl{
-		added:   added,
-		address: common.AddressToPtr(a),
+	v, err := state.ValidatorFromAddress(a)
+	if err != nil {
+		return nil, err
 	}
-	return v, nil
+	return &ValidatorItem{
+		added: added,
+		v:     v,
+	}, nil
 }
 
 type ValidatorManager struct {
@@ -74,8 +76,8 @@ func (vm *ValidatorManager) Flush() error {
 func (vm *ValidatorManager) IndexOf(address module.Address) int {
 	i := 0
 	for e := vm.vlist.Front(); e != nil; e = e.Next() {
-		v := e.Value.(module.Validator)
-		if address.Equal(v.Address()) {
+		vi := e.Value.(*ValidatorItem)
+		if address.Equal(vi.Address()) {
 			return i
 		}
 		i++
@@ -95,7 +97,7 @@ func (vm *ValidatorManager) SetPRepSnapshotIndex(idx int) {
 	vm.pssIdx = idx
 }
 
-func (vm *ValidatorManager) Get(idx int) (module.Validator, bool) {
+func (vm *ValidatorManager) Get(idx int) (*ValidatorItem, bool) {
 	size := vm.Len()
 	if idx < 0 || idx > size {
 		return nil, false
@@ -105,7 +107,7 @@ func (vm *ValidatorManager) Get(idx int) (module.Validator, bool) {
 	for i := 0; i < idx; i++ {
 		e = e.Next()
 	}
-	return e.Value.(module.Validator), true
+	return e.Value.(*ValidatorItem), true
 }
 
 func (vm *ValidatorManager) IsUpdated() bool {
@@ -144,7 +146,9 @@ func (vm *ValidatorManager) add(node module.Address, added bool) error {
 
 	e := vm.vlist.PushBack(v)
 	vm.vmap[key] = e
-	vm.updated = true
+	if added {
+		vm.updated = true
+	}
 	return nil
 }
 
@@ -202,7 +206,7 @@ func (vm *ValidatorManager) GetValidators() ([]module.Validator, error) {
 	vs := make([]module.Validator, size, size)
 	e := vm.vlist.Front()
 	for i := 0; i < size; i++ {
-		vs[i] = e.Value.(module.Validator)
+		vs[i] = e.Value.(*ValidatorItem).v
 		e = e.Next()
 	}
 	return vs, nil
@@ -267,6 +271,35 @@ func (vm *ValidatorManager) checkWritable() error {
 
 func (vm *ValidatorManager) String() string {
 	return fmt.Sprintf("ValidatorManager: size=%d", vm.Len())
+}
+
+type viIterator struct {
+	e *list.Element
+}
+
+func (vii *viIterator) Has() bool {
+	return vii.e != nil
+}
+
+func (vii *viIterator) Next() error {
+	vii.e = vii.e.Next()
+	if vii.e == nil {
+		return errors.Errorf("Stop iteration")
+	}
+	return nil
+}
+
+func (vii *viIterator) Get() (*ValidatorItem, error) {
+	if vii.e == nil {
+		return nil, errors.Errorf("Invalid value")
+	}
+	return vii.e.Value.(*ValidatorItem), nil
+}
+
+func (vm *ValidatorManager) Iterator() *viIterator {
+	return &viIterator{
+		e: vm.vlist.Front(),
+	}
 }
 
 func NewValidatorManager() *ValidatorManager {

@@ -60,7 +60,7 @@ func newDelegation(address module.Address, amount int64) *icstate.Delegation {
 func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), readonly)
-	pm := newPRepManager(s)
+	pm := newPRepManager(s, nil)
 
 	for i := 0; i < size; i++ {
 		assert.NoError(t, pm.RegisterPRep(newRegInfo(i)))
@@ -131,7 +131,7 @@ func createDelegations(start, size int) ([]*icstate.Delegation, int64) {
 func TestPRepManager_Sort(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
-	pm := newPRepManager(s)
+	pm := newPRepManager(s, nil)
 
 	addr := common.MustNewAddressFromString("hx1")
 	delegated := big.NewInt(int64(99))
@@ -522,10 +522,11 @@ func TestPRepManager_OnTermEnd(t *testing.T) {
 	}
 
 	for i, tt := range tests {
+		bh := int64(123)
 		name := fmt.Sprintf("test-%d", i)
 		t.Run(name, func(t *testing.T) {
 			pm := createPRepManager(t, false, tt.size)
-			err := pm.OnTermEnd(tt.mainPRepCount, tt.subPRepCount)
+			err := pm.OnTermEnd(tt.mainPRepCount, tt.subPRepCount, bh)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedMainPReps, pm.GetPRepSize(icstate.Main))
 			assert.Equal(t, tt.expectedSubPReps, pm.GetPRepSize(icstate.Sub))

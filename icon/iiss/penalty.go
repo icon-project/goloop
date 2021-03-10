@@ -53,6 +53,9 @@ func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 }
 
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) (error, bool) {
+	var err error = nil
+	var slashRatio int
+
 	prep := s.pm.GetPRepByOwner(owner)
 	if prep == nil {
 		return nil, false
@@ -63,29 +66,9 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 
 	blockHeight := cc.BlockHeight()
 	penalty := checkPenalty(prep.PRepStatus, blockHeight)
-	if penalty == PenaltyNone {
-		return nil, false
-	}
-
-	var err error
-	var slashed bool
-	if err, slashed = s.imposePenalty(cc, owner, penalty); err != nil {
-		return err, false
-	}
-	if err = s.selectNewValidator(); err != nil {
-		return err, false
-	}
-	return nil, slashed
-}
-
-func (s *ExtensionStateImpl) imposePenalty(
-	cc contract.CallContext, owner module.Address, penalty PenaltyType) (error, bool) {
-	var err error = nil
-
-	var slashRatio int
-	bh := cc.BlockHeight()
-
 	switch penalty {
+	case PenaltyNone:
+		return nil, false
 	case PenaltyValidationFailure:
 		slashRatio = ValidationPenaltySlashRatio
 	case PenaltyAccumulatedValidationFailure:
@@ -94,7 +77,11 @@ func (s *ExtensionStateImpl) imposePenalty(
 		return errors.Errorf("Unknown penalty: %d", penalty), false
 	}
 
+	bh := cc.BlockHeight()
 	if err = s.pm.ImposePenalty(owner, bh); err != nil {
+		return err, false
+	}
+	if err = s.replaceValidator(owner); err != nil {
 		return err, false
 	}
 	if err = s.slash(cc, owner, slashRatio); err != nil {

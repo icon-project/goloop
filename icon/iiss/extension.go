@@ -17,7 +17,9 @@
 package iiss
 
 import (
+	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -87,15 +89,20 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 }
 
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
+	esLogger := log.WithFields(log.Fields{
+		log.FieldKeyModule: "ICON",
+	})
+
 	es := &ExtensionStateImpl{
 		database: s.database,
+		logger:   esLogger,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
 		Back:     icstage.NewStateFromSnapshot(s.back),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 
-	pm := newPRepManager(es.State)
+	pm := newPRepManager(es.State, esLogger)
 	term := es.State.GetTerm()
 
 	vm := NewValidatorManager()
@@ -130,8 +137,9 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 type ExtensionStateImpl struct {
 	database db.Database
 
-	pm *PRepManager
-	vm *ValidatorManager
+	pm     *PRepManager
+	vm     *ValidatorManager
+	logger log.Logger
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -361,10 +369,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	}
 
 	if s.IsDecentralized() && prep.Grade() == icstate.Main {
-		if err = s.vm.Remove(prep.GetNode()); err != nil {
-			return err
-		}
-		if err = s.selectNewValidator(); err != nil {
+		if err = s.replaceValidator(owner); err != nil {
 			return err
 		}
 	}
@@ -382,6 +387,19 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	)
 
 	return err
+}
+
+// replaceValidator replaces a penalized or inactive validator with a new validator from subPReps
+func (s *ExtensionStateImpl) replaceValidator(owner module.Address) error {
+	var err error
+	prep := s.pm.GetPRepByOwner(owner)
+	if prep == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+	if err = s.vm.Remove(prep.GetNode()); err != nil {
+		return err
+	}
+	return s.selectNewValidator()
 }
 
 // selectNewValidator chooses a new validator from sub PReps ordered by BondedDelegation
@@ -421,7 +439,7 @@ func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
 	if node != nil {
 		if prep := s.pm.GetPRepByOwner(owner); prep != nil {
 			if err := s.vm.Replace(prep.GetNode(), node); err != nil {
-				log.Debugf(err.Error())
+				s.logger.Debugf(err.Error())
 			}
 		}
 	}
@@ -584,7 +602,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 	}
 
 	err = s.updateValidators(wc)
-	log.Tracef("%s", s.vm)
+	s.logger.Tracef("%s", s.vm)
 	return err
 }
 
@@ -650,6 +668,8 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 			nextTerm.SetPRepSnapshots(prepSnapshots)
 		}
 	}
+
+	s.logger.Debugf(nextTerm.String())
 	return s.State.SetTerm(nextTerm)
 }
 
@@ -664,10 +684,13 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
 		return err
 	}
 
-	for _, v := range vs {
-		vi := v.(*ValidatorImpl)
+	for it := vm.Iterator(); it.Has(); it.Next() {
+		vi, _ := it.Get()
+		if vi == nil {
+			break
+		}
 		if vi.IsAdded() {
-			if err = s.pm.ShiftVPenaltyMaskByNode(vi.address); err != nil {
+			if err = s.pm.ShiftVPenaltyMaskByNode(vi.Address()); err != nil {
 				return nil
 			}
 			vi.ResetFlags()
@@ -679,8 +702,20 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
 		return err
 	}
 
+	s.logNewValidators(wc.BlockHeight(), vs)
 	vm.ResetUpdated()
 	return nil
+}
+
+func (s *ExtensionStateImpl) logNewValidators(blockHeight int64, vs []module.Validator) {
+	var b strings.Builder
+	b.WriteString("New validators: ")
+	b.WriteString(fmt.Sprintf("bh=%d cnt=%d", blockHeight, len(vs)))
+
+	for _, v := range vs {
+		b.WriteString(fmt.Sprintf(" %s", v.Address()))
+	}
+	s.logger.Debugf(b.String())
 }
 
 func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
