@@ -100,6 +100,18 @@ func (s *NodeDB) GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error) 
 	return json.Marshal(info)
 }
 
+func (s *NodeDB) GetReceiptJSON(id []byte) ([]byte, error) {
+	var receipt json.RawMessage
+	_, err := s.client.Do("icx_getTransactionResult", &txHashParam{
+		common.HexBytes(id),
+	}, &receipt)
+	if err != nil {
+		return nil, err
+	} else {
+		return receipt, nil
+	}
+}
+
 func (s *NodeDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
 	result, err := s.client.Do(
 		"rep_getListByHash",

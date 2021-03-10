@@ -31,7 +31,6 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -64,8 +63,7 @@ const (
 // If from is negative, it executes from
 type Executor struct {
 	baseDir  string
-	lc       *lcstore.Store
-	cs       *CacheStore
+	cs       Store
 	database db.Database
 	cm       contract.ContractManager
 	em       eeproxy.Manager
@@ -87,7 +85,13 @@ type Transition struct {
 	Block *Block
 }
 
-func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, error) {
+type Store interface {
+	GetRepsByHash(id []byte) (*blockv0.RepsList, error)
+	GetBlockByHeight(height int) (blockv0.Block, error)
+	GetReceiptByTransaction(id []byte) (module.Receipt, error)
+}
+
+func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	database, err := db.Open(data, "goleveldb", "database")
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
@@ -118,8 +122,7 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 	}
 	ex := &Executor{
 		baseDir:     data,
-		lc:          lc,
-		cs:          NewCacheStore(logger, lc),
+		cs:          cs,
 		log:         logger,
 		chain:       chain,
 		plt:         plt,
@@ -139,7 +142,7 @@ func NewExecutor(logger log.Logger, lc *lcstore.Store, data string) (*Executor, 
 
 func (e *Executor) GetRepsByHash(hash []byte) (*blockv0.RepsList, error) {
 	if js, err := e.jsBucket.Get(hash); err != nil || js == nil {
-		return e.lc.GetRepsByHash(hash)
+		return e.cs.GetRepsByHash(hash)
 	} else {
 		reps := new(blockv0.RepsList)
 		if err := json.Unmarshal(js, reps); err != nil {

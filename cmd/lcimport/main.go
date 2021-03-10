@@ -246,13 +246,24 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		if err := parent.PersistentPreRunE(cmd, args); err != nil {
 			return err
 		}
-		if executor, err := NewExecutor(log.GlobalLogger(), lcDB, vc.GetString("data")); err != nil {
+		cc := &lcstore.CacheConfig{
+			MaxBlocks:  vc.GetInt("max_blocks"),
+			MaxWorkers: vc.GetInt("max_workers"),
+		}
+		logger := log.GlobalLogger()
+		fc := lcstore.NewForwardCache(lcDB, logger, cc)
+		if executor, err := NewExecutor(logger, fc, vc.GetString("data")); err != nil {
 			return err
 		} else {
 			vc.Set(vcKeyExecutor, executor)
 		}
 		return nil
 	}
+	flags := cmd.PersistentFlags()
+	flags.Int("max_blocks", 32, "Max number of blocks to cache")
+	flags.Int("max_workers", 8, "Max number of workers for cache")
+	vc.BindPFlags(flags)
+
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
 	cmd.AddCommand(newCmdLastHeight(cmd, "last", vc))
 	cmd.AddCommand(newCmdState(cmd, "state", vc))

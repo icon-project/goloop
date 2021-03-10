@@ -14,28 +14,34 @@
  * limitations under the License.
  */
 
-package main
+package lcstore
 
 import (
 	"container/list"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/module"
 )
+
+const (
+	MaxTrials        = 5
+	DelayBeforeRetry = 500 * time.Millisecond
+)
+
+type CacheConfig struct {
+	MaxWorkers int
+	MaxBlocks  int
+}
 
 type blockTask struct {
 	height int64
 	chn    chan interface{}
 }
 
-const (
-	MaxTrials = 5
-)
-
-func (t *blockTask) Do(cs *CacheStore) {
+func (t *blockTask) Do(cs *ForwardCache) {
 	cs.log.Tracef("BLOCK start height=%d", t.height)
 	trial := 0
 	for {
@@ -51,7 +57,8 @@ func (t *blockTask) Do(cs *CacheStore) {
 				t.chn <- err
 				return
 			} else {
-				log.Warnf("Re-try BLOCK for height=%d trial=%d", t.height, trial)
+				cs.log.Debugf("Re-try BLOCK for height=%d trial=%d", t.height, trial)
+				time.Sleep(DelayBeforeRetry)
 			}
 		}
 	}
@@ -62,7 +69,7 @@ type receiptTask struct {
 	chn chan interface{}
 }
 
-func (t *receiptTask) Do(cs *CacheStore) {
+func (t *receiptTask) Do(cs *ForwardCache) {
 	cs.log.Tracef("RECEIPT start id=%#x", t.id)
 	trial := 0
 	for {
@@ -77,44 +84,41 @@ func (t *receiptTask) Do(cs *CacheStore) {
 				t.chn <- err
 				return
 			} else {
-				log.Warnf("Re-try RECEIPT for tx=%#x trial=%d", t.id, trial)
+				cs.log.Debugf("Re-try RECEIPT for tx=%#x trial=%d", t.id, trial)
+				time.Sleep(DelayBeforeRetry)
 			}
 		}
 	}
 }
 
 type task interface {
-	Do(cs *CacheStore)
+	Do(cs *ForwardCache)
 }
 
-type CacheStore struct {
-	*lcstore.Store
+type ForwardCache struct {
+	*Store
 	lock sync.Mutex
 	log  log.Logger
 
-	blockWorkers      int
-	maxBlocks         int
-	receiptWorkers    int
-	maxBlockWorkers   int
-	maxReceiptWorkers int
+	workers int
+	config  CacheConfig
 
-	blockTasks   list.List
-	blockInfo    map[int64]*blockTask
-	receiptTasks list.List
-	receiptInfo  map[string]*receiptTask
+	tasks       list.List
+	blockInfo   map[int64]*blockTask
+	receiptInfo map[string]*receiptTask
 }
 
-func (cs *CacheStore) receiptLoop() {
-	fetchTask := func() *receiptTask {
+func (cs *ForwardCache) workLoop() {
+	fetchTask := func() task {
 		cs.lock.Lock()
 		defer cs.lock.Unlock()
-		e := cs.receiptTasks.Front()
+		e := cs.tasks.Front()
 		if e == nil {
-			cs.receiptWorkers -= 1
+			cs.workers -= 1
 			return nil
 		} else {
-			cs.receiptTasks.Remove(e)
-			return e.Value.(*receiptTask)
+			cs.tasks.Remove(e)
+			return e.Value.(task)
 		}
 	}
 
@@ -128,30 +132,7 @@ func (cs *CacheStore) receiptLoop() {
 	}
 }
 
-func (cs *CacheStore) blockLoop() {
-	fetchTask := func() *blockTask {
-		cs.lock.Lock()
-		defer cs.lock.Unlock()
-		e := cs.blockTasks.Front()
-		if e == nil {
-			cs.blockWorkers -= 1
-			return nil
-		} else {
-			cs.blockTasks.Remove(e)
-			return e.Value.(*blockTask)
-		}
-	}
-	for {
-		t := fetchTask()
-		if t != nil {
-			t.Do(cs)
-		} else {
-			break
-		}
-	}
-}
-
-func (cs *CacheStore) getBlockTask(height int64) *blockTask {
+func (cs *ForwardCache) getBlockTask(height int64) *blockTask {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
 
@@ -163,7 +144,14 @@ func (cs *CacheStore) getBlockTask(height int64) *blockTask {
 	}
 }
 
-func (cs *CacheStore) scheduleReceiptInLock(id []byte) {
+func (cs *ForwardCache) addWorkerInLock() {
+	if cs.workers < cs.config.MaxWorkers {
+		cs.workers += 1
+		go cs.workLoop()
+	}
+}
+
+func (cs *ForwardCache) scheduleReceiptInLock(id []byte) {
 	ids := string(id)
 	if t, ok := cs.receiptInfo[ids]; !ok {
 		cs.log.Tracef("RECEIPT schedule id=%#x", id)
@@ -171,32 +159,26 @@ func (cs *CacheStore) scheduleReceiptInLock(id []byte) {
 			id:  id,
 			chn: make(chan interface{}, 1),
 		}
-		cs.receiptTasks.PushBack(t)
+		cs.tasks.PushBack(t)
 		cs.receiptInfo[ids] = t
-		if cs.receiptWorkers < cs.maxReceiptWorkers {
-			cs.receiptWorkers += 1
-			go cs.receiptLoop()
-		}
+		cs.addWorkerInLock()
 	}
 }
 
-func (cs *CacheStore) scheduleBlockInLock(height int64) {
+func (cs *ForwardCache) scheduleBlockInLock(height int64) {
 	if t, ok := cs.blockInfo[height]; !ok {
 		cs.log.Tracef("BLOCK schedule height=%d", height)
 		t = &blockTask{
 			height: height,
 			chn:    make(chan interface{}, 1),
 		}
-		cs.blockTasks.PushBack(t)
+		cs.tasks.PushBack(t)
 		cs.blockInfo[height] = t
-		if cs.blockWorkers < cs.maxBlockWorkers {
-			cs.blockWorkers += 1
-			go cs.blockLoop()
-		}
+		cs.addWorkerInLock()
 	}
 }
 
-func (cs *CacheStore) scheduleFollowings(b blockv0.Block) {
+func (cs *ForwardCache) scheduleFollowings(b blockv0.Block) {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
 
@@ -204,12 +186,12 @@ func (cs *CacheStore) scheduleFollowings(b blockv0.Block) {
 	for _, tx := range txs {
 		cs.scheduleReceiptInLock(tx.ID())
 	}
-	for h := b.Height() + 1; len(cs.blockInfo) < cs.maxBlocks; h += 1 {
+	for h := b.Height() + 1; len(cs.blockInfo) < cs.config.MaxBlocks; h += 1 {
 		cs.scheduleBlockInLock(int64(h))
 	}
 }
 
-func (cs *CacheStore) GetBlockByHeight(height int) (blockv0.Block, error) {
+func (cs *ForwardCache) GetBlockByHeight(height int) (blockv0.Block, error) {
 	if bt := cs.getBlockTask(int64(height)); bt != nil {
 		r := <-bt.chn
 		close(bt.chn)
@@ -231,7 +213,7 @@ func (cs *CacheStore) GetBlockByHeight(height int) (blockv0.Block, error) {
 	}
 }
 
-func (cs *CacheStore) getReceiptTask(id []byte) *receiptTask {
+func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
 
@@ -244,7 +226,7 @@ func (cs *CacheStore) getReceiptTask(id []byte) *receiptTask {
 	}
 }
 
-func (cs *CacheStore) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
+func (cs *ForwardCache) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
 	if rt := cs.getReceiptTask(id); rt != nil {
 		r := <-rt.chn
 		close(rt.chn)
@@ -273,17 +255,22 @@ func (cs *CacheStore) GetReceiptByTransaction(id []byte) (module.Receipt, error)
 	return cs.Store.GetReceiptByTransaction(id)
 }
 
-func NewCacheStore(logger log.Logger, store *lcstore.Store) *CacheStore {
-	cs := &CacheStore{
-		Store:             store,
-		log:               logger,
-		maxBlocks:         32,
-		maxBlockWorkers:   8,
-		maxReceiptWorkers: 64,
-		blockInfo:         make(map[int64]*blockTask),
-		receiptInfo:       make(map[string]*receiptTask),
+var defaultCacheConfig = CacheConfig{
+	MaxBlocks:  32,
+	MaxWorkers: 8,
+}
+
+func NewForwardCache(store *Store, logger log.Logger, config *CacheConfig) *ForwardCache {
+	if config == nil {
+		config = &defaultCacheConfig
 	}
-	cs.receiptTasks.Init()
-	cs.blockTasks.Init()
+	cs := &ForwardCache{
+		Store:       store,
+		log:         logger,
+		config:      *config,
+		blockInfo:   make(map[int64]*blockTask),
+		receiptInfo: make(map[string]*receiptTask),
+	}
+	cs.tasks.Init()
 	return cs
 }
