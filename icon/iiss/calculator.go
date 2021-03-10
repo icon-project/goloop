@@ -575,7 +575,7 @@ func varForVotingReward(global *icstage.Global, totalVotingAmount *big.Int) (mul
 		divider.SetInt64(int64(YearBlock))
 	} else {
 		g := global.GetV2()
-		if g.OffsetLimit == 0 {
+		if g.OffsetLimit == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
 		multiplier.Mul(g.Iglobal, g.Ivoter)
@@ -673,7 +673,7 @@ func (c *Calculator) calculateVotingReward() error {
 
 	// get variables for calculation
 	multiplier, divider := varForVotingReward(c.global, totalVotingAmount)
-	if multiplier.Sign() == 0 {
+	if multiplier.Sign() == 0 || divider.Sign() == 0 {
 		return nil
 	}
 
@@ -1139,6 +1139,10 @@ func (vi *votedInfo) calculateReward(variable *big.Int, period int) {
 			break
 		}
 		prep := vi.preps[addr]
+
+		if prep.Enable() == false {
+			continue
+		}
 
 		reward := new(big.Int).Set(base)
 		reward.Mul(reward, prep.voted.BondedDelegation)
