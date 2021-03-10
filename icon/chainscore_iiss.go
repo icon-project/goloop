@@ -504,3 +504,8 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	jso["rcResult"] = rcResult
 	return jso, nil
 }
+
+func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.GetPRepStatsInJSON(s.cc.BlockHeight())
+}

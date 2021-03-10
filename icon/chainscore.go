@@ -455,6 +455,14 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepStats",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

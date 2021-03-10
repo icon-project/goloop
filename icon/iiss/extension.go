@@ -675,9 +675,9 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
 	}
 
 	// TODO: Remove the comment below when testing with multiple nodes
-	//if err = wc.GetValidatorState().Set(vs); err != nil {
-	//	return err
-	//}
+	if err = wc.GetValidatorState().Set(vs); err != nil {
+		return err
+	}
 
 	vm.ResetUpdated()
 	return nil
@@ -709,4 +709,8 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 func (s *ExtensionStateImpl) IsDecentralized() bool {
 	term := s.State.GetTerm()
 	return term.IsDecentralized() || s.pm.Size() >= int(s.State.GetMainPRepCount())
+}
+
+func (s *ExtensionStateImpl) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
+	return s.pm.GetPRepStatsInJSON(blockHeight)
 }

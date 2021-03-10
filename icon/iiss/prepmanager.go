@@ -695,6 +695,20 @@ func (pm *PRepManager) Slash(owner module.Address, amount *big.Int, sort bool) e
 	return nil
 }
 
+func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
+	size := pm.GetPRepSize(icstate.Main)
+	jso := make(map[string]interface{})
+	preps := make([]interface{}, size, size)
+
+	for i, prep := range pm.orderedPReps {
+		preps[i] = prep.GetStatsInJSON(blockHeight)
+	}
+
+	jso["blockHeight"] = blockHeight
+	jso["preps"] = preps
+	return jso, nil
+}
+
 func newPRepManager(state *icstate.State) *PRepManager {
 	pm := &PRepManager{
 		state:          state,

@@ -260,6 +260,22 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 	return jso
 }
 
+func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["address"] = ps.owner
+	jso["grade"] = int(ps.grade)
+	jso["status"] = int(ps.status)
+	jso["lastHeight"] = ps.lastHeight
+	jso["lastState"] = ps.lastState
+	jso["penalties"] = ps.GetVPenaltyCount()
+	jso["total"] = ps.vTotal
+	jso["fail"] = ps.vFail
+	jso["realTotal"] = ps.GetVTotal(blockHeight)
+	jso["realFail"] = ps.GetVFail(blockHeight)
+	jso["failCont"] = ps.GetVFailCont(blockHeight)
+	return jso
+}
+
 func (ps *PRepStatus) Version() int {
 	return 0
 }

@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	ValidationPenaltyCondition  int = 660
+	ValidationPenaltyCondition  int = 3
 	ValidationPenaltySlashRatio     = 0
 
 	ConsistentValidationPenaltyCondition  int = 5
