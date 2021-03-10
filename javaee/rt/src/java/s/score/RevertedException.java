@@ -20,20 +20,20 @@ import s.java.lang.RuntimeException;
 import s.java.lang.String;
 import s.java.lang.Throwable;
 
-public class RevertException extends RuntimeException {
-    public RevertException() {
+public class RevertedException extends RuntimeException {
+    public RevertedException() {
         super();
     }
 
-    public RevertException(String message) {
+    public RevertedException(String message) {
         super(message);
     }
 
-    public RevertException(String message, Throwable cause) {
+    public RevertedException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public RevertException(Throwable cause) {
+    public RevertedException(Throwable cause) {
         super(cause);
     }
 }

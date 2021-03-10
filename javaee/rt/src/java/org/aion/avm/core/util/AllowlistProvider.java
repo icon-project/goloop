@@ -48,8 +48,8 @@ public class AllowlistProvider {
         List<String> jclClassNames = NodeEnvironment.singleton.getJclSlashClassNames();
         jclClassNames.removeAll(MethodDescriptorCollector.getOmittedClassNames());
         jclClassNames.removeAll(Arrays.asList(
-                "score/RevertException",
-                "score/ScoreRevertException"
+                "score/RevertedException",
+                "score/UserRevertedException"
         ));
         jclClassNames.replaceAll(s -> PackageConstants.kShadowSlashPrefix + s);
 

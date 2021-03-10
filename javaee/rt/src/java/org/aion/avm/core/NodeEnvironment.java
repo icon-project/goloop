@@ -21,6 +21,8 @@ import org.aion.avm.core.util.MethodDescriptorCollector;
 import org.aion.avm.utilities.Utilities;
 import p.score.Address;
 import p.score.Context;
+import s.score.RevertedException;
+import s.score.UserRevertedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -149,8 +151,8 @@ public class NodeEnvironment {
                     , s.java.util.concurrent.TimeUnit.class
 
                     , s.java.io.Serializable.class
-                    , s.score.RevertException.class
-                    , s.score.ScoreRevertException.class
+                    , RevertedException.class
+                    , UserRevertedException.class
             };
 
             this.jclClassNames = new HashSet<>();

@@ -4,8 +4,8 @@ import foundation.icon.ee.test.GoldenTest;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
-import score.RevertException;
-import score.ScoreRevertException;
+import score.RevertedException;
+import score.UserRevertedException;
 import score.annotation.External;
 
 public class ExceptionTest extends GoldenTest {
@@ -20,16 +20,16 @@ public class ExceptionTest extends GoldenTest {
         @External
         public void run(Address addrGood, Address addrBad) {
             try {
-                throw new ScoreRevertException("test");
-            } catch (ScoreRevertException e) {
+                throw new UserRevertedException("test");
+            } catch (UserRevertedException e) {
                 Context.println("OK");
             }
 
             try {
                 Context.call(addrGood,"run");
-            } catch (RevertException e) {
-                if (e instanceof ScoreRevertException) {
-                    Context.println("OK code=" + ((ScoreRevertException)e).getCode());
+            } catch (RevertedException e) {
+                if (e instanceof UserRevertedException) {
+                    Context.println("OK code=" + ((UserRevertedException)e).getCode());
                 } else {
                     Context.println("NOT OK");
                 }

@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
-import score.RevertException;
+import score.RevertedException;
 import score.annotation.External;
 
 public class DeployTest2 extends SimpleTest {
@@ -89,7 +89,7 @@ public class DeployTest2 extends SimpleTest {
         public Address deploy(byte[] jar, Address param) {
             try {
                 return Context.deploy(jar, param);
-            } catch (RevertException e) {
+            } catch (RevertedException e) {
                 e.printStackTrace();
                 return null;
             }
@@ -99,7 +99,7 @@ public class DeployTest2 extends SimpleTest {
         public Address update(Address addr, byte[] jar, Address param) {
             try {
                 return Context.deploy(addr, jar, param);
-            } catch (RevertException e) {
+            } catch (RevertedException e) {
                 e.printStackTrace();
                 return null;
             }
@@ -175,7 +175,7 @@ public class DeployTest2 extends SimpleTest {
             Address child;
             try {
                 child = Context.deploy(jar, ctorParam);
-            } catch (RevertException e) {
+            } catch (RevertedException e) {
                 e.printStackTrace();
                 return null;
             }
@@ -188,7 +188,7 @@ public class DeployTest2 extends SimpleTest {
             Address child;
             try {
                 child = Context.deploy(addr, jar, ctorParam);
-            } catch (RevertException e) {
+            } catch (RevertedException e) {
                 e.printStackTrace();
                 return null;
             }

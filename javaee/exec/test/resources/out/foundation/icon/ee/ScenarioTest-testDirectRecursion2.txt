@@ -29,10 +29,10 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Set sVar=3
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
 RECV result status=32 stepUsed=33059 ret=Reverted(0)
 SEND result status=32 stepUsed=33059 ret=Reverted(0) EID=5 prevEID=3
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=score.ScoreRevertException
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=score.UserRevertedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=2
-RECV call to=010001... value=0 stepLimit=999881927 method=run params=[0400013202000134]
-SEND invoke code=fc7fc6... isQuery=false from=010001... to=010001... value=0 stepLimit=999881927 method=run params=[0400013202000134] CID=1 EID=6 codeState=[3 05b3e5a421cc3da0fd389817842ec3f5d79f58c6e43affcc79ddd0dba9f7761e 5]
+RECV call to=010001... value=0 stepLimit=999881917 method=run params=[0400013202000134]
+SEND invoke code=fc7fc6... isQuery=false from=010001... to=010001... value=0 stepLimit=999881917 method=run params=[0400013202000134] CID=1 EID=6 codeState=[3 05b3e5a421cc3da0fd389817842ec3f5d79f58c6e43affcc79ddd0dba9f7761e 5]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Set sVar=4
@@ -42,4 +42,4 @@ SEND result status=0 stepUsed=41793 ret=<null> EID=7 prevEID=6
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=4
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
 RECV setObjGraph flag=1 next=76 hash=e6815b0f34af0abbee9979541879ef4c3643c9c57fb9f66ea7eb049a48b2b8e1 graphLen=116 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02%foundation.icon.ee.ScenarioTest$Score\x00\x00\x00\x02\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00>\x00\x00\x00\x014
-RECV result status=0 stepUsed=187045 ret=<null>
+RECV result status=0 stepUsed=187055 ret=<null>

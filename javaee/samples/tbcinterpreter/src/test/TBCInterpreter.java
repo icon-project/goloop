@@ -2,7 +2,7 @@ package test;
 
 import score.Address;
 import score.Context;
-import score.ScoreRevertException;
+import score.UserRevertedException;
 import score.annotation.EventLog;
 import score.annotation.External;
 
@@ -86,7 +86,7 @@ public class TBCInterpreter {
                             (Object) ccode);
                     assert res != null;
                     okCount += res.intValue();
-                } catch (ScoreRevertException e) {
+                } catch (UserRevertedException e) {
                     okCount += e.getCode();
                 }
             } else if (insn == TBCProtocol.REVERT) {

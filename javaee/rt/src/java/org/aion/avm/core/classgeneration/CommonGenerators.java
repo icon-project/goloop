@@ -2,7 +2,6 @@ package org.aion.avm.core.classgeneration;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,8 +33,8 @@ public class CommonGenerators {
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ENUM_CONSTANT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_TYPE_PRESENT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_SUCH_ELEMENT_EXCEPTION.dotName),
-        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_REVERT_EXCEPTION.dotName),
-        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_SCORE_REVERT_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_REVERTED_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_USER_REVERTED_EXCEPTION.dotName),
     });
 
     // We generate "legacy-style exception" shadows for these ones (and wrappers are still required).

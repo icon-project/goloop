@@ -28,8 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.score.AnyDB;
 import pi.AnyDBImpl;
-import score.RevertException;
-import score.ScoreRevertException;
+import score.RevertedException;
+import score.UserRevertedException;
 
 import java.util.Map;
 
@@ -262,7 +262,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                         cls.getRealClass());
             }
         } else if (s == Status.UnknownFailure) {
-            throw new RevertException();
+            throw new RevertedException();
         } else if (s == Status.ContractNotFound
                 || s == Status.MethodNotFound
                 || s == Status.MethodNotPayable
@@ -274,12 +274,12 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 || s == Status.StackOverflow) {
             throw new GenericPredefinedException(s, Status.getMessage(s));
         } else if (s < Status.UserReversionStart) {
-            throw new RevertException();
+            throw new RevertedException();
         } else if (s < Status.UserReversionEnd) {
-            throw new ScoreRevertException(s - Status.UserReversionStart,
+            throw new UserRevertedException(s - Status.UserReversionStart,
                     res.getRet()==null ? null : res.getRet().toString());
         }
-        throw new RevertException();
+        throw new RevertedException();
     }
 
     private void require(boolean condition, String message) {

@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
-import score.RevertException;
+import score.RevertedException;
 import score.annotation.External;
 
 import java.math.BigInteger;
@@ -79,7 +79,7 @@ public class ObjectHashTest extends SimpleTest {
             var ba = new Object();
             try {
                 Context.call(next, "call", args);
-            } catch (RevertException e) {
+            } catch (RevertedException e) {
                 Context.require(ba.hashCode() + 1 == e.hashCode());
             }
         }

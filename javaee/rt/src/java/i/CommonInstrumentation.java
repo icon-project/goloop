@@ -1,6 +1,6 @@
 package i;
 
-import score.ScoreRevertException;
+import score.UserRevertedException;
 
 import java.util.*;
 
@@ -98,8 +98,8 @@ public class CommonInstrumentation implements IInstrumentation {
                     this.currentFrame.forceExitState = error;
                     // -throw it
                     exceptionToRethrow = error;
-                } else if (t instanceof ScoreRevertException) {
-                    shadow = convertScoreRevertException((ScoreRevertException)t);
+                } else if (t instanceof UserRevertedException) {
+                    shadow = convertUserRevertedException((UserRevertedException)t);
                 } else {
                     // This is VM-generated - we will have to instantiate a shadow, directly.
                     shadow = convertVmGeneratedException(t);
@@ -283,7 +283,7 @@ public class CommonInstrumentation implements IInstrumentation {
     }
 
     // Private helpers used internally.
-    private s.java.lang.Throwable convertScoreRevertException(ScoreRevertException t) throws Exception {
+    private s.java.lang.Throwable convertUserRevertedException(UserRevertedException t) throws Exception {
         int code = t.getCode();
         // (note that converting the cause is recusrive on the causal chain)
         Throwable originalCause = t.getCause();
