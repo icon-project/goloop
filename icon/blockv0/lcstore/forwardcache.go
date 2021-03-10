@@ -34,6 +34,7 @@ const (
 type CacheConfig struct {
 	MaxWorkers int
 	MaxBlocks  int
+	MaxTPS     int
 }
 
 type blockTask struct {
@@ -74,6 +75,7 @@ type ForwardCache struct {
 	log  log.Logger
 
 	workers int
+	tr      tpsRegulator
 	config  CacheConfig
 
 	tasks       list.List
@@ -165,8 +167,9 @@ func (cs *ForwardCache) scheduleFollowings(b blockv0.Block) {
 }
 
 func (cs *ForwardCache) doGetBlockByHeight(height int) (blockv0.Block, error) {
-	trial := 0
+	cs.tr.Wait()
 	cs.log.Tracef("BLOCK start height=%d", height)
+	trial := 0
 	for {
 		block, err := cs.Store.GetBlockByHeight(height)
 		if err == nil {
@@ -217,6 +220,7 @@ func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
 }
 
 func (cs *ForwardCache) doGetReceipt(id []byte) (module.Receipt, error) {
+	cs.tr.Wait()
 	cs.log.Tracef("RECEIPT start id=%#x", id)
 	trial := 0
 	for {
@@ -269,5 +273,6 @@ func NewForwardCache(store *Store, logger log.Logger, config *CacheConfig) *Forw
 		receiptInfo: make(map[string]*receiptTask),
 	}
 	cs.tasks.Init()
+	cs.tr.Init(config.MaxTPS)
 	return cs
 }

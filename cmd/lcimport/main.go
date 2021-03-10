@@ -245,6 +245,7 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		cc := &lcstore.CacheConfig{
 			MaxBlocks:  vc.GetInt("max_blocks"),
 			MaxWorkers: vc.GetInt("max_workers"),
+			MaxTPS:     vc.GetInt("max_tps"),
 		}
 		logger := log.GlobalLogger()
 		fc := lcstore.NewForwardCache(lcDB, logger, cc)
@@ -258,6 +259,7 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	flags := cmd.PersistentFlags()
 	flags.Int("max_blocks", 32, "Max number of blocks to cache")
 	flags.Int("max_workers", 8, "Max number of workers for cache")
+	flags.Int("max_tps", 0, "Max TPS for the server(0:unlimited)")
 	vc.BindPFlags(flags)
 
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
