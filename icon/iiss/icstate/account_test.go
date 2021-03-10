@@ -379,13 +379,13 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 
 	expectedUDiff = big.NewInt(7)
 	ubAdd1 = &Unbond{addr2, big.NewInt(5), bh}
-	ubAdd2 = &Unbond{addr3, big.NewInt(12), bh}
-	ubMod1 := &Unbond{addr3, new(big.Int), bh}
+	ubMod1 := &Unbond{addr3, new(big.Int), a.Unbonds()[0].Expire}
+	ubMod2 := &Unbond{addr3, big.NewInt(12), bh}
 	assert.True(t, ubAdds[0].Equal(ubAdd1))
-	assert.True(t, ubAdds[1].Equal(ubAdd2))
 	assert.True(t, ubMods[0].Equal(ubMod1))
-	assert.Equal(t, 2, len(ubAdds))
-	assert.Equal(t, 1, len(ubMods))
+	assert.True(t, ubMods[1].Equal(ubMod2))
+	assert.Equal(t, 1, len(ubAdds))
+	assert.Equal(t, 2, len(ubMods))
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 
 	//case3 hx4 will be added(5), hx5 will be removed
@@ -397,8 +397,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	ubAdds, ubMods, uDiff = a.GetUnbondingInfo(nbs, bh) // 1 will modified(hx5), 1 will added(hx4)
 
 	expectedUDiff = big.NewInt(-5)
-	ubAdd1 = &Unbond{addr2, big.NewInt(5), bh}
-	ubMod1 = &Unbond{addr3, big.NewInt(0), bh}
+	ubMod1 = &Unbond{addr3, new(big.Int), a.Unbonds()[0].Expire}
 	assert.True(t, ubAdds[0].Equal(ubAdd1))
 	assert.True(t, ubMods[0].Equal(ubMod1))
 	assert.Equal(t, 1, len(ubAdds))

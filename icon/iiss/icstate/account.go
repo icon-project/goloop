@@ -297,7 +297,7 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				for _, ub := range a.unbonds {
 					if nb.To().Equal(ub.Address) {
 						// append 0 value unbond to remove previous unbond
-						unbond := &Unbond{nb.Address, new(big.Int), unbondingHeight}
+						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
 						ubToMod = append(ubToMod, unbond)
 						if diff.Sign() == -1 { // nb > ob, remove unbond
 							uDiff.Sub(uDiff, ub.Value)
@@ -305,7 +305,7 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 							ubToAdd = ubToAdd[:len(ubToAdd)-1]
 							value := new(big.Int).Add(ub.Value, diff)
 							unbond = &Unbond{nb.Address, value, unbondingHeight}
-							ubToAdd = append(ubToAdd, unbond)
+							ubToMod = append(ubToMod, unbond)
 						}
 						break
 					}
@@ -418,11 +418,15 @@ func (a *Account) SlashStake(amount *big.Int) error {
 }
 
 func (a *Account) SlashBond(address module.Address, ratio int) *big.Int {
-	return a.bonds.Slash(address, ratio)
+	amount := a.bonds.Slash(address, ratio)
+	a.bonding.Sub(a.bonding, amount)
+	return amount
 }
 
 func (a *Account) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
-	return a.unbonds.Slash(address, ratio)
+	amount, expire := a.unbonds.Slash(address, ratio)
+	a.unbonding.Sub(a.unbonding, amount)
+	return amount, expire
 }
 
 func (a *Account) GetSnapshot() *Account {
