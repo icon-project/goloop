@@ -281,29 +281,56 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 	uDiff := new(big.Int)
 	var ubToAdd, ubToMod []*Unbond
 	for _, nb := range bonds {
+		bondExist := false
 		for _, ob := range a.bonds {
 			diff := new(big.Int)
 			if nb.To().Equal(ob.To()) {
+				bondExist = true
 				diff.Sub(ob.Amount(), nb.Amount())
 				if diff.Sign() == 1 {
 					unbond := Unbond{nb.Address, diff, unbondingHeight}
 					ubToAdd = append(ubToAdd, &unbond)
 					uDiff.Add(uDiff, diff)
-				} else {
-					for _, ub := range a.unbonds {
-						if nb.To().Equal(ub.Address) {
+				} else if diff.Sign() == 0 {
+					continue
+				}
+				for _, ub := range a.unbonds {
+					if nb.To().Equal(ub.Address) {
+						// append 0 value unbond to remove previous unbond
+						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+						ubToMod = append(ubToMod, unbond)
+						if diff.Sign() == -1 { // nb > ob, remove unbond
+							uDiff.Sub(uDiff, ub.Value)
+						} else { // modify unbond
+							ubToAdd = ubToAdd[:len(ubToAdd)-1]
 							value := new(big.Int).Add(ub.Value, diff)
-							if value.Sign() == -1 {
-								uDiff.Add(uDiff, value.Abs(value))
-								value = new(big.Int)
-							}
-							unbond := Unbond{nb.Address, value, unbondingHeight}
-							ubToMod = append(ubToMod, &unbond)
-							uDiff.Add(uDiff, diff)
+							unbond = &Unbond{nb.Address, value, unbondingHeight}
+							ubToMod = append(ubToMod, unbond)
 						}
+						break
 					}
 				}
 			}
+		}
+		for _, ub := range a.unbonds {
+			if nb.To().Equal(ub.Address) && !bondExist {
+				unbond := Unbond{nb.Address, new(big.Int), unbondingHeight}
+				ubToMod = append(ubToMod, &unbond)
+				uDiff.Sub(uDiff, ub.Value)
+			}
+		}
+	}
+
+	for _, ob := range a.bonds {
+		exist := false
+		for _, nb := range bonds {
+			if nb.To().Equal(ob.To()) {
+				exist = true
+			}
+		}
+		if !exist {
+			ubToAdd = append(ubToAdd, &Unbond{ob.Address, ob.Amount(), unbondingHeight})
+			uDiff.Add(uDiff, ob.Amount())
 		}
 	}
 	return ubToAdd, ubToMod, uDiff
@@ -329,6 +356,8 @@ func (a *Account) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo
 				ub.Expire = mod.Expire
 				if ub.Value.Cmp(new(big.Int)) == 0 {
 					tl = append(tl, TimerJobInfo{JobTypeRemove, ub.Expire})
+				} else {
+					tl = append(tl, TimerJobInfo{JobTypeAdd, ub.Expire})
 				}
 			}
 		}
@@ -389,11 +418,15 @@ func (a *Account) SlashStake(amount *big.Int) error {
 }
 
 func (a *Account) SlashBond(address module.Address, ratio int) *big.Int {
-	return a.bonds.Slash(address, ratio)
+	amount := a.bonds.Slash(address, ratio)
+	a.bonding.Sub(a.bonding, amount)
+	return amount
 }
 
 func (a *Account) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
-	return a.unbonds.Slash(address, ratio)
+	amount, expire := a.unbonds.Slash(address, ratio)
+	a.unbonding.Sub(a.unbonding, amount)
+	return amount, expire
 }
 
 func (a *Account) GetSnapshot() *Account {
