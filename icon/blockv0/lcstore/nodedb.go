@@ -72,7 +72,19 @@ func (s *NodeDB) GetLastBlockJSON() ([]byte, error) {
 	}
 }
 
-func (s *NodeDB) GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error) {
+func (s *NodeDB) GetTransactionJSON(id []byte) ([]byte, error) {
+	var tx json.RawMessage
+	_, err := s.client.Do("icx_getTransactionByHash", &txHashParam{
+		common.HexBytes(id),
+	}, &tx)
+	if err != nil {
+		return nil, err
+	} else {
+		return tx, nil
+	}
+}
+
+func (s *NodeDB) GetResultJSON(id []byte) ([]byte, error) {
 	var receipt map[string]interface{}
 	_, err := s.client.Do("icx_getTransactionResult", &txHashParam{
 		common.HexBytes(id),

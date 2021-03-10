@@ -19,9 +19,12 @@ package lcstore
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+
+	"github.com/icon-project/goloop/common"
 )
 
 type LevelDB struct {
@@ -72,7 +75,7 @@ func (ds *LevelDB) GetLastBlockJSON() ([]byte, error) {
 	return blockjson, nil
 }
 
-func (ds *LevelDB) GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error) {
+func (ds *LevelDB) GetResultJSON(id []byte) ([]byte, error) {
 	key := []byte(hex.EncodeToString(id))
 	tinfo, err := ds.leveldb.Get(key, nil)
 	if err != nil {
@@ -82,6 +85,39 @@ func (ds *LevelDB) GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error
 		return nil, err
 	}
 	return tinfo, nil
+}
+
+type rawTransactionInfo struct {
+	BlockID     common.HexBytes `json:"block_hash"`
+	BlockHeight int             `json:"block_height"`
+	TxIndex     common.HexInt32 `json:"tx_index"`
+	Transaction json.RawMessage `json:"transaction"`
+	Result      json.RawMessage `json:"result"`
+}
+
+func (ds *LevelDB) GetTransactionJSON(id []byte) ([]byte, error) {
+	ti, err := ds.GetResultJSON(id)
+	if err != nil {
+		return nil, err
+	}
+	var tinfo rawTransactionInfo
+	if err := json.Unmarshal(ti, &tinfo); err != nil {
+		return nil, err
+	} else {
+		return tinfo.Transaction, nil
+	}
+}
+
+func (ds *LevelDB) GetReceiptJSON(id []byte) ([]byte, error) {
+	ti, err := ds.GetResultJSON(id)
+	if err != nil {
+		return nil, err
+	}
+	var tinfo rawTransactionInfo
+	if err := json.Unmarshal(ti, &tinfo); err != nil {
+		return nil, err
+	}
+	return tinfo.Result, nil
 }
 
 func (ds *LevelDB) GetRepsJSONByHash(id []byte) ([]byte, error) {

@@ -42,25 +42,11 @@ type blockTask struct {
 }
 
 func (t *blockTask) Do(cs *ForwardCache) {
-	cs.log.Tracef("BLOCK start height=%d", t.height)
-	trial := 0
-	for {
-		block, err := cs.Store.GetBlockByHeight(int(t.height))
-		if err == nil {
-			cs.log.Tracef("BLOCK done height=%d", t.height)
-			cs.scheduleFollowings(block)
-			t.chn <- block
-			return
-		} else {
-			trial += 1
-			if trial >= MaxTrials {
-				t.chn <- err
-				return
-			} else {
-				cs.log.Debugf("Re-try BLOCK for height=%d trial=%d", t.height, trial)
-				time.Sleep(DelayBeforeRetry)
-			}
-		}
+	block, err := cs.doGetBlockByHeight(int(t.height))
+	if err != nil {
+		t.chn <- err
+	} else {
+		t.chn <- block
 	}
 }
 
@@ -70,24 +56,11 @@ type receiptTask struct {
 }
 
 func (t *receiptTask) Do(cs *ForwardCache) {
-	cs.log.Tracef("RECEIPT start id=%#x", t.id)
-	trial := 0
-	for {
-		receipt, err := cs.Store.GetReceiptByTransaction(t.id)
-		if err == nil {
-			cs.log.Tracef("RECEIPT done id=%#x", t.id)
-			t.chn <- receipt
-			return
-		} else {
-			trial += 1
-			if trial >= MaxTrials {
-				t.chn <- err
-				return
-			} else {
-				cs.log.Debugf("Re-try RECEIPT for tx=%#x trial=%d", t.id, trial)
-				time.Sleep(DelayBeforeRetry)
-			}
-		}
+	receipt, err := cs.doGetReceipt(t.id)
+	if err != nil {
+		t.chn <- err
+	} else {
+		t.chn <- receipt
 	}
 }
 
@@ -191,6 +164,28 @@ func (cs *ForwardCache) scheduleFollowings(b blockv0.Block) {
 	}
 }
 
+func (cs *ForwardCache) doGetBlockByHeight(height int) (blockv0.Block, error) {
+	trial := 0
+	cs.log.Tracef("BLOCK start height=%d", height)
+	for {
+		block, err := cs.Store.GetBlockByHeight(height)
+		if err == nil {
+			cs.log.Tracef("BLOCK done height=%d", height)
+			cs.scheduleFollowings(block)
+			return block, nil
+		} else {
+			trial += 1
+			if trial >= MaxTrials {
+				cs.log.Tracef("BLOCK failed height=%d", height)
+				return nil, err
+			} else {
+				cs.log.Debugf("BLOCK retry height=%d trial=%d err=%+v", height, trial, err)
+				time.Sleep(DelayBeforeRetry)
+			}
+		}
+	}
+}
+
 func (cs *ForwardCache) GetBlockByHeight(height int) (blockv0.Block, error) {
 	if bt := cs.getBlockTask(int64(height)); bt != nil {
 		r := <-bt.chn
@@ -205,12 +200,7 @@ func (cs *ForwardCache) GetBlockByHeight(height int) (blockv0.Block, error) {
 			panic("UnknownType")
 		}
 	}
-	if blk, err := cs.Store.GetBlockByHeight(height); err != nil {
-		return nil, err
-	} else {
-		cs.scheduleFollowings(blk)
-		return blk, nil
-	}
+	return cs.doGetBlockByHeight(height)
 }
 
 func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
@@ -226,7 +216,27 @@ func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
 	}
 }
 
-func (cs *ForwardCache) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
+func (cs *ForwardCache) doGetReceipt(id []byte) (module.Receipt, error) {
+	cs.log.Tracef("RECEIPT start id=%#x", id)
+	trial := 0
+	for {
+		if rct, err := cs.Store.GetReceipt(id); err == nil {
+			cs.log.Tracef("RECEIPT done id=%#x", id)
+			return rct, nil
+		} else {
+			trial += 1
+			if trial >= MaxTrials {
+				cs.log.Tracef("RECEIPT failure id=%#x", id)
+				return nil, err
+			} else {
+				cs.log.Debugf("RECEIPT retry tid=%#x trial=%d err=%+v", id, trial, err)
+				time.Sleep(DelayBeforeRetry)
+			}
+		}
+	}
+}
+
+func (cs *ForwardCache) GetReceipt(id []byte) (module.Receipt, error) {
 	if rt := cs.getReceiptTask(id); rt != nil {
 		r := <-rt.chn
 		close(rt.chn)
@@ -239,20 +249,7 @@ func (cs *ForwardCache) GetReceiptByTransaction(id []byte) (module.Receipt, erro
 			panic("UnknownType")
 		}
 	}
-	trial := 0
-	for {
-		if rct, err := cs.Store.GetReceiptByTransaction(id); err == nil {
-			return rct, nil
-		} else {
-			if trial >= MaxTrials {
-				return nil, err
-			} else {
-				trial += 1
-				cs.log.Debugf("Try RECEIPT tid=%#x again err=%+v", id, err)
-			}
-		}
-	}
-	return cs.Store.GetReceiptByTransaction(id)
+	return cs.doGetReceipt(id)
 }
 
 var defaultCacheConfig = CacheConfig{

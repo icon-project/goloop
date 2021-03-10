@@ -88,7 +88,7 @@ type Transition struct {
 type Store interface {
 	GetRepsByHash(id []byte) (*blockv0.RepsList, error)
 	GetBlockByHeight(height int) (blockv0.Block, error)
-	GetReceiptByTransaction(id []byte) (module.Receipt, error)
+	GetReceipt(id []byte) (module.Receipt, error)
 }
 
 func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
@@ -512,7 +512,7 @@ func (e *Executor) LoadBlockByHeight(prev *Block, height int64) (*Block, error) 
 		if err := tx.Verify(); err != nil {
 			return nil, err
 		}
-		rct, err := e.cs.GetReceiptByTransaction(tx.ID())
+		rct, err := e.cs.GetReceipt(tx.ID())
 		if err != nil {
 			return nil, errors.Wrapf(err, "FailureInGetReceipts(txid=%#x)", tx.ID())
 		}

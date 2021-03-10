@@ -65,19 +65,15 @@ func newCmdGetTx(name string) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				info, err := lcDB.GetTransactionInfoByTransaction(bs)
+				js, err := lcDB.GetTransactionJSON(bs)
 				if err != nil {
 					return err
 				}
-				jso, err := info.Transaction.ToJSON(module.JSONVersionLast)
+				js, err = json.MarshalIndent(json.RawMessage(js), "", "  ")
 				if err != nil {
 					return err
 				}
-				txs, err := json.MarshalIndent(jso, "", "  ")
-				if err != nil {
-					return err
-				}
-				fmt.Println(string(txs))
+				fmt.Println(string(js))
 			}
 			return nil
 		},
@@ -96,7 +92,7 @@ func newCmdGetResult(name string) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				info, err := lcDB.GetTransactionInfoJSONByTransaction(bs)
+				info, err := lcDB.GetResultJSON(bs)
 				if err != nil {
 					return err
 				}

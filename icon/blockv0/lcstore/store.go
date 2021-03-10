@@ -32,8 +32,10 @@ type Database interface {
 	GetBlockJSONByHeight(height int) ([]byte, error)
 	GetBlockJSONByID(id []byte) ([]byte, error)
 	GetLastBlockJSON() ([]byte, error)
-	GetTransactionInfoJSONByTransaction(id []byte) ([]byte, error)
+	GetResultJSON(id []byte) ([]byte, error)
+	GetTransactionJSON(id []byte) ([]byte, error)
 	GetRepsJSONByHash(id []byte) ([]byte, error)
+	GetReceiptJSON(id []byte) ([]byte, error)
 	Close() error
 }
 
@@ -74,8 +76,8 @@ type TransactionInfo struct {
 	Result      json.RawMessage     `json:"result"`
 }
 
-func (lc *Store) GetTransactionInfoByTransaction(id []byte) (*TransactionInfo, error) {
-	bs, err := lc.GetTransactionInfoJSONByTransaction(id)
+func (lc *Store) GetResult(id []byte) (*TransactionInfo, error) {
+	bs, err := lc.GetResultJSON(id)
 	if err != nil {
 		return nil, err
 	}
@@ -86,14 +88,23 @@ func (lc *Store) GetTransactionInfoByTransaction(id []byte) (*TransactionInfo, e
 	return tinfo, nil
 }
 
-func (lc *Store) GetReceiptByTransaction(id []byte) (module.Receipt, error) {
-	if tinfo, err := lc.GetTransactionInfoByTransaction(id); err != nil {
-		return nil, errors.Wrap(err, "FailureInGetTransactionInfo")
+func (lc *Store) GetTransaction(id []byte) (*blockv0.Transaction, error) {
+	bs, err := lc.Database.GetTransactionJSON(id)
+	if err != nil {
+		return nil, err
+	}
+	var tx blockv0.Transaction
+	if err := json.Unmarshal(bs, &tx); err != nil {
+		return nil, err
 	} else {
-		rct := tinfo.Receipt
-		if len(rct) == 0 {
-			rct = tinfo.Result
-		}
+		return &tx, nil
+	}
+}
+
+func (lc *Store) GetReceipt(id []byte) (module.Receipt, error) {
+	if rct, err := lc.GetReceiptJSON(id); err != nil {
+		return nil, errors.Wrap(err, "FailureInGetResultJSON")
+	} else {
 		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, rct); err != nil {
 			log.Warnf("FailureInParsingJSON(json=%q)", string(rct))
 			return nil, err
