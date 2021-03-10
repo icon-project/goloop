@@ -597,7 +597,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 	if isDecentralized {
 		// Assign grades to PReps ordered by bondedDelegation
-		if err = s.pm.OnTermEnd(mainPRepCount, subPRepCount); err != nil {
+		if err = s.pm.OnTermEnd(mainPRepCount, subPRepCount, wc.BlockHeight()); err != nil {
 			return err
 		}
 	}

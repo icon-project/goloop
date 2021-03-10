@@ -49,7 +49,8 @@ const (
 type ValidationState int
 
 const (
-	None ValidationState = iota
+	Ready ValidationState = iota
+	None
 	Success
 	Failure
 )

@@ -551,18 +551,32 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 	return delta, nil
 }
 
-func (pm *PRepManager) OnTermEnd(mainPRepCount, subPRepCount int) error {
+func (pm *PRepManager) OnTermEnd(mainPRepCount, subPRepCount int, blockHeight int64) error {
 	pm.mainPReps = 0
 	pm.subPReps = 0
 	electedPRepCount := mainPRepCount + subPRepCount
 
 	for i, prep := range pm.orderedPReps {
+		ls := prep.LastState()
+
 		if i < mainPRepCount {
 			prep.SetGrade(icstate.Main)
+			if ls == icstate.None {
+				prep.SetLastState(icstate.Ready)
+				prep.SetLastHeight(blockHeight)
+			}
 		} else if i < electedPRepCount {
 			prep.SetGrade(icstate.Sub)
+			if ls != icstate.None {
+				prep.SetLastState(icstate.None)
+				prep.SetLastHeight(blockHeight)
+			}
 		} else {
 			prep.SetGrade(icstate.Candidate)
+			if ls != icstate.None {
+				prep.SetLastState(icstate.None)
+				prep.SetLastHeight(blockHeight)
+			}
 		}
 		pm.adjustPRepSize(prep.Grade(), true)
 	}
@@ -594,13 +608,23 @@ func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, bl
 
 	ps := prep.PRepStatus
 	ls := ps.LastState()
-	if ls == icstate.None {
+	switch ls {
+	case icstate.Ready:
+		// S,C -> M
 		if vs == icstate.Failure {
 			ps.SetVFail(ps.VFail() + 1)
 		}
 		ps.SetVTotal(ps.VTotal() + 1)
 		ps.SetLastHeight(blockHeight)
-	} else {
+		ps.SetLastState(vs)
+	case icstate.None:
+		// Received vote info after this node is not a mainPRep
+		if vs == icstate.Failure {
+			ps.SetVFail(ps.VFail() + 1)
+		}
+		ps.SetVTotal(ps.VTotal() + 1)
+		ps.SetLastHeight(blockHeight)
+	default:
 		if vs != ls {
 			diff := blockHeight - ps.LastHeight()
 			ps.SetVTotal(ps.VTotal() + diff)
