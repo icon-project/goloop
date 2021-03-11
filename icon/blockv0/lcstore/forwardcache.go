@@ -256,6 +256,10 @@ func (cs *ForwardCache) GetReceipt(id []byte) (module.Receipt, error) {
 	return cs.doGetReceipt(id)
 }
 
+func (cs *ForwardCache) GetTPS() float32 {
+	return cs.tr.GetTPS()
+}
+
 var defaultCacheConfig = CacheConfig{
 	MaxBlocks:  32,
 	MaxWorkers: 8,

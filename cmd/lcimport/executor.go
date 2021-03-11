@@ -91,6 +91,10 @@ type Store interface {
 	GetReceipt(id []byte) (module.Receipt, error)
 }
 
+type GetTPSer interface {
+	GetTPS() float32
+}
+
 func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	database, err := db.Open(data, "goleveldb", "database")
 	if err != nil {
@@ -565,6 +569,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
+	getTPSer, _ := e.cs.(GetTPSer)
 	stored := e.getStoredHeight()
 	if to >= 0 && to < from {
 		return errors.IllegalArgumentError.Errorf("InvalidArgument(from=%d,to=%d)", from, to)
@@ -574,9 +579,13 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		return err
 	}
 	callback := make(transitionCallback, 1)
+	var tps float32
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		Statusf(e.log, "[%s] Executing Block[ %9d ] Tx[ %9d ] %s",
-			spinner(height, stored), height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()))
+		if getTPSer != nil {
+			tps = getTPSer.GetTPS()
+		}
+		Statusf(e.log, "[%s] Executing Block[ %9d ] Tx[ %9d ] %s TPS[ %6.2f ]",
+			spinner(height, stored), height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()), tps)
 		tr, err := e.ProposeTransition(prevTR, useCache)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)

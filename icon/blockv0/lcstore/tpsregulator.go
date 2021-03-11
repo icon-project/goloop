@@ -31,9 +31,6 @@ type tpsRegulator struct {
 }
 
 func (m *tpsRegulator) Wait() {
-	if m.max <= 0 {
-		return
-	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -46,10 +43,10 @@ func (m *tpsRegulator) Wait() {
 	interval := now.Sub(m.last)
 	total := m.total + interval - m.intervals[m.idx]
 
-	if m.cnt < m.max {
+	if m.cnt < len(m.intervals) {
 		m.cnt += 1
 	} else {
-		if total < time.Second {
+		if m.max > 0 && total < time.Second {
 			delay := time.Second - total
 			time.Sleep(delay)
 			now = time.Now()
@@ -63,9 +60,21 @@ func (m *tpsRegulator) Wait() {
 	m.idx = (m.idx + 1) % len(m.intervals)
 }
 
+func (m *tpsRegulator) GetTPS() float32 {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if m.total != 0 {
+		return float32(100*time.Duration(m.cnt)*time.Second/m.total) / 100
+	} else {
+		return float32(m.cnt)
+	}
+}
+
 func (m *tpsRegulator) Init(max int) *tpsRegulator {
 	if max > 0 {
 		m.intervals = make([]time.Duration, max)
+	} else {
+		m.intervals = make([]time.Duration, 300)
 	}
 	m.max = max
 	return m
