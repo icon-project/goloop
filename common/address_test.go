@@ -13,80 +13,113 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-var (
-	addr1_str1  = "hx1234567890abcdef1234"
-	addr1_str2  = "cx1234567890abcdef1234"
-	addr1_str3  = "0x1234567890abcdef1234"
-	addr1_str4  = "1234567890abcdef1234"
-	addr1_bytes = []byte{0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef, 0x12, 0x34}
-
-	addr2_str1  = "hx00011234567890abcdef"
-	addr2_str2  = "cx00011234567890abcdef"
-	addr2_str3  = "0x00011234567890abcdef"
-	addr2_str4  = "00011234567890abcdef"
-	addr2_str5  = "11234567890abcdef"
-	addr2_bytes = []byte{0x00, 0x01, 0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef}
-)
-
-func TestNewAddressFromString(t *testing.T) {
+func TestAddress_SetString(t *testing.T) {
+	addr1_id := []byte("\x12\x34\x56\x78\x90\xab\xcd\xef\x12\x34\x56\x78\x90\xab\xcd\xef\x12\x34\x56\x78")
+	addr2_id := []byte("\x00\x01\x23\x45\x67\x89\x0a\xbc\xde\xf1\x23\x45\x67\x89\x0a\xbc\xde\xf1\x23\x45")
 	type args struct {
 		s string
 	}
 	tests := []struct {
-		name string
-		args args
-		want *Address
+		name   string
+		args   args
+		strict bool
+		normal bool
+		want   *Address
 	}{
 		{
-			"Account1-1",
-			args{s: addr1_str1},
-			NewAccountAddress(addr1_bytes),
+			"ID1-EOA",
+			args{s: "hx1234567890abcdef1234567890abcdef12345678"},
+			true, true,
+			NewAccountAddress(addr1_id),
 		},
 		{
-			"Contract1-2",
-			args{s: addr1_str2},
-			NewContractAddress(addr1_bytes),
+			"ID1-Contract",
+			args{s: "cx1234567890abcdef1234567890abcdef12345678"},
+			true, true,
+			NewContractAddress(addr1_id),
 		},
 		{
-			"Account1-3",
-			args{s: addr1_str3},
-			NewAccountAddress(addr1_bytes),
+			"ID2-EOA",
+			args{s: "hx0001234567890abcdef1234567890abcdef12345"},
+			true, true,
+			NewAccountAddress(addr2_id),
 		},
 		{
-			"Account1-4",
-			args{s: addr1_str4},
-			NewAccountAddress(addr1_bytes),
+			"ID2-Contract",
+			args{s: "cx0001234567890abcdef1234567890abcdef12345"},
+			true, true,
+			NewContractAddress(addr2_id),
 		},
 		{
-			"Account2-1",
-			args{s: addr2_str1},
-			NewAccountAddress(addr2_bytes),
+			"PrefixShort",
+			args{s: "hx1234567890abcdef1234567890abcdef12345"},
+			false, true,
+			NewAccountAddress(addr2_id),
 		},
 		{
-			"Contract2-2",
-			args{s: addr2_str2},
-			NewContractAddress(addr2_bytes),
+			"NoPrefix",
+			args{s: "0001234567890abcdef1234567890abcdef12345"},
+			false, true,
+			NewAccountAddress(addr2_id),
 		},
 		{
-			"Account2-3",
-			args{s: addr2_str3},
-			NewAccountAddress(addr2_bytes),
+			"NoPrefixShort",
+			args{s: "1234567890abcdef1234567890abcdef12345"},
+			false, true,
+			NewAccountAddress(addr2_id),
 		},
 		{
-			"Account2-4",
-			args{s: addr2_str4},
-			NewAccountAddress(addr2_bytes),
+			"ID2-ContractShort",
+			args{s: "cx1234567890abcdef1234567890abcdef12345"},
+			false, true,
+			NewContractAddress(addr2_id),
 		},
 		{
-			"Account2-5",
-			args{s: addr2_str5},
-			NewAccountAddress(addr2_bytes),
+			"InvalidCharacter1",
+			args{s: "hx00000h0000000000000000000000000000000000"},
+			false, false,
+			nil,
+		},
+		{
+			"InvalidCharacter1",
+			args{s: "hx00000.0000000000000000000000000000000000"},
+			false, false,
+			nil,
+		},
+		{
+			"0xPrefix",
+			args{s: "0x0001234567890abcdef1234567890abcdef12345"},
+			false, true,
+			NewAccountAddress(addr2_id),
+		},
+		{
+			"InvalidPrefix",
+			args{s: "dx0001234567890abcdef1234567890abcdef12345"},
+			false, false,
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := MustNewAddressFromString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewAddressFromString() = %v, want %v", got, tt.want)
+			got := new(Address)
+			err := got.SetStringStrict(tt.args.s)
+			if tt.strict {
+				assert.NoError(t, err)
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("SetStringStrict() = %v, want %v", got, tt.want)
+				}
+			} else {
+				assert.Error(t, err)
+			}
+			got2 := new(Address)
+			err = got2.SetString(tt.args.s)
+			if tt.normal {
+				assert.NoError(t, err)
+				if !reflect.DeepEqual(got2, tt.want) {
+					t.Errorf("SetString() = %v, want %v", got2, tt.want)
+				}
+			} else {
+				assert.Error(t, err)
 			}
 		})
 	}

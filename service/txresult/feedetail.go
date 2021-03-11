@@ -71,7 +71,7 @@ func (d *feeDetail) UnmarshalJSON(s []byte) error {
 	}
 	for addr, value := range jso {
 		p := new(feePayment)
-		if err := p.Payer.SetString(addr); err != nil {
+		if err := p.Payer.SetStringStrict(addr); err != nil {
 			return errors.CriticalFormatError.Wrapf(err,
 				"InvalidAddress(str=%q)", addr)
 		}
