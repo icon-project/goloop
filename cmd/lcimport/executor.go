@@ -624,6 +624,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 
 func (e *Executor) Download(from, to int64) error {
 	e.log.Infof("Downloading Blocks from=%d, to=%d", from, to)
+	tpser, _ := e.cs.(GetTPSer)
 	stored := e.getStoredHeight()
 	last := e.getLastHeight()
 	if from < 0 {
@@ -640,8 +641,12 @@ func (e *Executor) Download(from, to int64) error {
 			prevBlk = blk
 		}
 	}
+	var tps float32
 	for height := from; to < 0 || height <= to; height++ {
-		Statusf(e.log, "[%s] Download Block [ %8d ]", spinner(height, stored), height)
+		if tpser != nil {
+			tps = tpser.GetTPS()
+		}
+		Statusf(e.log, "[%s] Download Block [ %8d ]  Tx [ %9d ] TPS [ %5.2f ]", spinner(height, stored), height, prevBlk.TxTotal(), tps)
 		blk, err := e.LoadBlockByHeight(prevBlk, height)
 		if err != nil {
 			return err
