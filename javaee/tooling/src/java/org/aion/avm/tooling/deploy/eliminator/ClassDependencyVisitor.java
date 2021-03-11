@@ -73,7 +73,8 @@ public class ClassDependencyVisitor extends ClassVisitor {
         return name.equals("<clinit>()V")
                 || name.equals("hashCode()I")
                 || name.equals("toString()Ljava/lang/String;")
-                || name.equals("equals(Ljava/lang/Object;)Z");
+                || name.equals("equals(Ljava/lang/Object;)Z")
+                || name.equals("getCode()I");
     }
 
     public String getClassSlashName() {

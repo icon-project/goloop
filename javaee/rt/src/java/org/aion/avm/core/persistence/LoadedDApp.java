@@ -3,7 +3,9 @@ package org.aion.avm.core.persistence;
 import foundation.icon.ee.score.ScoreClass;
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.IllegalFormatException;
+import foundation.icon.ee.types.ManualRevertException;
 import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.UnknownFailureException;
 import foundation.icon.ee.util.MethodUnpacker;
 import foundation.icon.ee.util.Shadower;
@@ -356,6 +358,12 @@ public class LoadedDApp {
         else if (cause instanceof e.s.java.lang.Throwable) {
             // Note that we will need to unwrap this since the wrapper doesn't actually communicate anything, just being
             // used to satisfy Java exception relationship requirements (the user code populates the wrapped object).
+            var esThrowable = ((e.s.java.lang.Throwable) cause);
+            var shadow = esThrowable.unwrap();
+            if (shadow instanceof s.score.UserRevertException) {
+                var e = (s.score.UserRevertException) shadow;
+                throw new ManualRevertException(Status.fromUserCode(e.avm_getCode()));
+            }
             throw new UncaughtException(((e.s.java.lang.Throwable) cause).unwrap().toString(), cause);
         } else {
             RuntimeAssertionError.unexpected(cause);

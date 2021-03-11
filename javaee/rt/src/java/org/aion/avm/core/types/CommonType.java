@@ -104,6 +104,7 @@ public enum CommonType {
     SHADOW_BUFF_OVERFLOW_EXCEPTION  (false, true,   false,  PackageConstants.kShadowDotPrefix + "java.nio.BufferOverflowException",         SHADOW_RUNTIME_EXCEPTION.dotName,           null),
     SHADOW_REVERTED_EXCEPTION(false, true,   false,  PackageConstants.kShadowDotPrefix + "score.RevertedException",                    SHADOW_RUNTIME_EXCEPTION.dotName,           null),
     SHADOW_USER_REVERTED_EXCEPTION(false, true,   false,  PackageConstants.kShadowDotPrefix + "score.UserRevertedException",               SHADOW_REVERTED_EXCEPTION.dotName,            null),
+    SHADOW_USER_REVERT_EXCEPTION(false, true,   false,  PackageConstants.kShadowDotPrefix + "score.UserRevertException",               SHADOW_RUNTIME_EXCEPTION.dotName,            null),
     ;
 
     public final boolean isInterface;

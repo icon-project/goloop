@@ -29,6 +29,7 @@ public class JCLAndAPIHeapInstanceSize {
             {Utilities.fullyQualifiedNameToInternalName(s.java.lang.RuntimeException.class.getName()), DEFAULT_EXCEPTION_ALLOCATION_SIZE}, // Throwable
             {Utilities.fullyQualifiedNameToInternalName(s.score.RevertedException.class.getName()), DEFAULT_EXCEPTION_ALLOCATION_SIZE}, // Throwable
             {Utilities.fullyQualifiedNameToInternalName(s.score.UserRevertedException.class.getName()), 36}, // Throwable + int
+            {Utilities.fullyQualifiedNameToInternalName(s.score.UserRevertException.class.getName()), DEFAULT_EXCEPTION_ALLOCATION_SIZE}, // Throwable
     }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
     public static int getAllocationSizeForJCLAndAPISlashClass(String slashName) {
