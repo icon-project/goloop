@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"path"
 	"reflect"
@@ -564,6 +565,22 @@ func spinner(height, stored int64) string {
 	}
 }
 
+func D(v interface{}) string {
+	var ret string
+	vs := fmt.Sprintf("%d", v)
+	vLen := len(vs)
+	for vLen > 0 {
+		seg := (vLen-1)%3 + 1
+		if len(ret) > 0 {
+			ret += ","
+		}
+		ret += vs[0:seg]
+		vs = vs[seg:]
+		vLen -= seg
+	}
+	return ret
+}
+
 func (e *Executor) Execute(from, to int64, useCache bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
@@ -584,8 +601,15 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		if getTPSer != nil {
 			tps = getTPSer.GetTPS()
 		}
-		Statusf(e.log, "[%s] Executing Block[ %9d ] Tx[ %9d ] %s TPS[ %6.2f ]",
-			spinner(height, stored), height, prevTR.Block.TxTotal(), TimestampToString(prevTR.Block.Timestamp()), tps)
+		Statusf(
+			e.log,
+			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.2f ]",
+			spinner(height, stored),
+			D(height),
+			D(prevTR.Block.TxTotal()),
+			TimestampToString(prevTR.Block.Timestamp()),
+			tps,
+		)
 		tr, err := e.ProposeTransition(prevTR, useCache)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
@@ -646,7 +670,14 @@ func (e *Executor) Download(from, to int64) error {
 		if tpser != nil {
 			tps = tpser.GetTPS()
 		}
-		Statusf(e.log, "[%s] Download Block [ %8d ]  Tx [ %9d ] TPS [ %5.2f ]", spinner(height, stored), height, prevBlk.TxTotal(), tps)
+		Statusf(
+			e.log,
+			"[%s] Downloading Block[ %10s ]  Tx[ %11s ] RPS [ %5.2f ]",
+			spinner(height, stored),
+			D(height),
+			D(prevBlk.TxTotal()),
+			tps,
+		)
 		blk, err := e.LoadBlockByHeight(prevBlk, height)
 		if err != nil {
 			return err

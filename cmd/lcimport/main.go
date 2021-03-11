@@ -222,15 +222,21 @@ var logo = []string{
 }
 
 const (
+	CursorUp  = "\x1b[1A"
 	ClearLine = "\x1b[2K"
 )
+
+var statusDisplay bool
 
 func Statusf(l log.Logger, format string, args ...interface{}) {
 	l.Infof(format, args...)
 	if l.GetConsoleLevel() < log.InfoLevel {
-		fmt.Print(ClearLine + ">")
+		if statusDisplay {
+			fmt.Print(CursorUp + ClearLine)
+		}
 		fmt.Printf(format, args...)
-		fmt.Print("\r")
+		fmt.Print("\n")
+		statusDisplay = true
 	}
 }
 
