@@ -56,7 +56,7 @@ func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.Ty
 	bal2 := as2.GetBalance()
 	as2.SetBalance(new(big.Int).Add(bal2, h.Value))
 
-	if h.From.IsContract() {
+	if h.From.IsContract() && h.Value.Sign() > 0 {
 		indexed := make([][]byte, 4, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.From.Bytes()
