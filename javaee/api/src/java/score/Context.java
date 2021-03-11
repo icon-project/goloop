@@ -255,7 +255,7 @@ public final class Context {
 
     /**
      * Stops the current execution and rolls back all state changes.
-     * In case of cross-calls, {@code UserRevertedException} would be raised to the caller
+     * In case of cross-calls, {@link UserRevertedException} would be raised to the caller
      * with the given code and message data.
      *
      * @param code an arbitrary user-defined code
