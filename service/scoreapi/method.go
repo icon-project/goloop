@@ -121,10 +121,15 @@ func (t TypeTag) ConvertJSONToTypedObj(bs []byte, fields []Field) (*codec.TypedO
 		}
 		value = buffer.Value != 0
 	case TAddress:
-		var buffer common.Address
-		if err := json.Unmarshal(bs, &buffer); err != nil {
+		var s string
+		if err := json.Unmarshal(bs, &s); err != nil {
 			return nil, scoreresult.InvalidParameterError.Wrapf(err,
-				"InvalidParameter(type=%s,json=%q)", t.String(), string(bs))
+				"InvalidParameter(type=%s,json=%s)", t.String(), string(bs))
+		}
+		var buffer common.Address
+		if err := buffer.SetStringStrict(s); err != nil {
+			return nil, scoreresult.InvalidParameterError.Wrapf(err,
+				"InvalidParameter(type=%s,json=%q)", t.String(), s)
 		}
 		value = &buffer
 	case TStruct:

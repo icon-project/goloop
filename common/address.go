@@ -43,6 +43,28 @@ func (a *Address) UnmarshalJSON(b []byte) error {
 	return a.SetString(s)
 }
 
+func (a *Address) SetStringStrict(s string) error {
+	if len(s) != AddressIDBytes*2+2 {
+		return ErrIllegalArgument
+	}
+	prefix := s[0:2]
+	body := s[2:]
+	var isContract bool
+	switch prefix {
+	case "cx":
+		isContract = true
+	case "hx":
+	default:
+		return ErrIllegalArgument
+	}
+	if bytes, err := hex.DecodeString(body); err != nil {
+		return err
+	} else {
+		a.SetTypeAndID(isContract, bytes)
+		return nil
+	}
+}
+
 func (a *Address) SetString(s string) error {
 	var isContract = false
 	if len(s) >= 2 {
