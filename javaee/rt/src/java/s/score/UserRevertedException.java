@@ -41,33 +41,23 @@ public class UserRevertedException extends RevertedException {
         super(cause);
     }
 
-    private void assumeValidCode(int code) {
-        if (code < 0 || code >= End) {
-            throw new IllegalArgumentException("invalid code " + code);
-        }
-    }
-
     public UserRevertedException(int code) {
         super();
-        assumeValidCode(code);
         statusCode = code;
     }
 
     public UserRevertedException(int code, String message) {
         super(message);
-        assumeValidCode(code);
         statusCode = code;
     }
 
     public UserRevertedException(int code, String message, Throwable cause) {
         super(message, cause);
-        assumeValidCode(code);
         statusCode = code;
     }
 
     public UserRevertedException(int code, Throwable cause) {
         super(cause);
-        assumeValidCode(code);
         statusCode = code;
     }
 
