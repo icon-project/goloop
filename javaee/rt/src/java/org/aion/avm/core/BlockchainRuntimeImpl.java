@@ -290,12 +290,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_revert(int code, s.java.lang.String message) {
-        throw new ManualRevertException(code + Status.UserReversionStart, message.getUnderlying());
+        throw new ManualRevertException(Status.fromUserCode(code),
+                message.getUnderlying());
     }
 
     @Override
     public void avm_revert(int code) {
-        throw new ManualRevertException(code + Status.UserReversionStart);
+        throw new ManualRevertException(Status.fromUserCode(code));
     }
 
     @Override

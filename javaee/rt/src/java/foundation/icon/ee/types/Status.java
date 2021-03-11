@@ -37,6 +37,11 @@ public class Status {
     public static final int UserReversionStart = 32;
     public static final int UserReversionEnd = 1000;
 
+    public static int fromUserCode(int code) {
+        code = code + UserReversionStart;
+        return Math.max(UserReversionStart, Math.min(UserReversionEnd-1, code));
+    }
+
     public static String getMessage(int status) {
         switch (status) {
             case Success:
