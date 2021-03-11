@@ -533,6 +533,7 @@ const (
 	defaultIcps            = 0
 	defaultIrelay          = 0
 	defaultIvoter          = 50
+	defaultUnbondingMax    = 1000
 )
 
 type config struct {
@@ -549,6 +550,7 @@ type config struct {
 	LockMin         *common.HexInt `json:"lockMin,omitempty"`
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
 	RewardFund      rewardFund     `json:"rewardFund"`
+	UnbondingMax    *common.HexInt `json:"unbondingMax"`
 }
 
 type rewardFund struct {
@@ -610,6 +612,7 @@ func newIconConfig() *config {
 		LockMax:         common.NewHexInt(defaultLockMax),
 		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
 		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
+		UnbondingMax:    common.NewHexInt(defaultUnbondingMax),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(defaultIglobal),
 			Iprep:   common.NewHexInt(defaultIprep),
@@ -803,6 +806,9 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 	if err = es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
+		return err
+	}
+	if err = es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
 		return err
 	}
 

@@ -38,6 +38,7 @@ const (
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
 	VarRewardFund      = "reward_fund"
+	VARUnbondingMax    = "unbonding_max"
 )
 
 const (
@@ -205,6 +206,18 @@ func (s *State) GetRewardFund() *RewardFund {
 
 func (s *State) SetRewardFund(rc *RewardFund) error {
 	return setValue(s.store, VarRewardFund, rc.Bytes())
+}
+
+func (s *State) GetUnbondingMax() *big.Int {
+	value := getValue(s.store, VARUnbondingMax).BigInt()
+	return value
+}
+
+func (s *State) SetUnbondingMax(value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("UnbondingMax must have positive value")
+	}
+	return setValue(s.store, VARUnbondingMax, value)
 }
 
 func NetworkValueToJSON(s *State) map[string]interface{} {

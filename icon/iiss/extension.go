@@ -470,7 +470,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	account.SetBonds(bonds)
 	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
 	unbondingCount := len(account.Unbonds())
-	if unbondingCount > unbondingMax {
+	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
 		return errors.Errorf("To many unbonds %d", unbondingCount)
 	}
 	for _, t := range tl {
