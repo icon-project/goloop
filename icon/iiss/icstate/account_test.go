@@ -221,23 +221,21 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	// delete hx5 targeted unbonding, add 2 unbondings(hx8, hx9)
 	// unbonds : [{address: hx5, value: 0, bh:100}, {hx6, 10, 30}, {hx7, 40, 50}, {hx8, 50, 50}, {hx9, 100, 3}]
 	add1 = &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
-	add2 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 3}
+	add2 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 50}
 	mod1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
 	ul2Add = []*Unbond{add1, add2}
 	ul2Mod = []*Unbond{mod1}
 	tl = a.UpdateUnbonds(ul2Add, ul2Mod)
 
 	j1 := TimerJobInfo{JobTypeAdd, add1.Expire}
-	j2 := TimerJobInfo{JobTypeAdd, add2.Expire}
-	j3 := TimerJobInfo{JobTypeRemove, mod1.Expire}
+	j2 := TimerJobInfo{JobTypeRemove, mod1.Expire}
 	assert.Contains(t, tl, j1)
 	assert.Contains(t, tl, j2)
-	assert.Contains(t, tl, j3)
 	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
 	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	ub3 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
 	ub4 := &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
-	ub5 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 3}
+	ub5 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 50}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(ub3))
@@ -255,13 +253,11 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	tl = a.UpdateUnbonds(ul2Add, ul2Mod)
 
 	j1 = TimerJobInfo{JobTypeRemove, mod1.Expire}
-	j2 = TimerJobInfo{JobTypeRemove, mod2.Expire}
-	j3 = TimerJobInfo{JobTypeRemove, mod3.Expire}
-	j4 := TimerJobInfo{JobTypeRemove, mod4.Expire}
+	j2 = TimerJobInfo{JobTypeRemove, mod3.Expire}
+	j3 := TimerJobInfo{JobTypeRemove, mod4.Expire}
 	assert.Contains(t, tl, j1)
 	assert.Contains(t, tl, j2)
 	assert.Contains(t, tl, j3)
-	assert.Contains(t, tl, j4)
 	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
 	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(0), 150}
 	ub3 = &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(0), 200}
@@ -414,7 +410,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	nbs = []*Bond{b1, b2, b3, b4}
 	ubAdds, ubMods, uDiff = a.GetUnbondingInfo(nbs, bh)
 	expectedUDiff = big.NewInt(-10)
-	ubMod1 = &Unbond{addr4, big.NewInt(0), bh}
+	ubMod1 = &Unbond{addr4, big.NewInt(0), a.Unbonds()[1].Expire}
 	assert.Equal(t, 0, len(ubAdds))
 	assert.True(t, ubMods[0].Equal(ubMod1))
 	assert.Equal(t, 1, len(ubMods))
@@ -425,10 +421,12 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	nbs = []*Bond{b1}
 	ubAdds, ubMods, uDiff = a.GetUnbondingInfo(nbs, bh) //hx3, hx4, hx5 will be added
 	expectedUDiff = big.NewInt(25)
-	assert.Equal(t, 3, len(ubAdds))
+	assert.Equal(t, 2, len(ubAdds))
+	assert.Equal(t, 2, len(ubMods))
 	assert.True(t, ubAdds[0].Address.Equal(addr1))
 	assert.True(t, ubAdds[1].Address.Equal(addr2))
-	assert.True(t, ubAdds[2].Address.Equal(addr3))
+	assert.True(t, ubMods[0].Address.Equal(addr3))
+	assert.True(t, ubMods[1].Address.Equal(addr3))
 	assert.Equal(t, 0, uDiff.Cmp(expectedUDiff))
 }
 

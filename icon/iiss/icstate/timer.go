@@ -67,6 +67,15 @@ func (a addresses) Clone() addresses {
 	return c
 }
 
+func (a addresses) Contains(address module.Address) bool {
+	for _, addr := range a {
+		if addr.Equal(address) {
+			return true
+		}
+	}
+	return false
+}
+
 type Timer struct {
 	icobject.NoDatabase
 	StateAndSnapshot
@@ -118,8 +127,12 @@ func (t *Timer) Set(other *Timer) {
 	t.Addresses = other.Addresses.Clone()
 }
 
-func (t *Timer) Add(address module.Address) {
+func (t *Timer) Add(address module.Address) error {
+	if t.Addresses.Contains(address) {
+		return errors.Errorf("%s already in timer", address.String())
+	}
 	t.Addresses = append(t.Addresses, address.(*common.Address))
+	return nil
 }
 
 func (t *Timer) Delete(address module.Address) error {
@@ -139,7 +152,7 @@ func (t *Timer) Delete(address module.Address) error {
 }
 func (t *Timer) Clone() *Timer {
 	return &Timer{
-		Height: t.Height,
+		Height:    t.Height,
 		Addresses: t.Addresses.Clone(),
 	}
 }
@@ -157,7 +170,9 @@ func newTimerWithTag(_ icobject.Tag) *Timer {
 func ScheduleTimerJob(t *Timer, info TimerJobInfo, address module.Address) error {
 	switch info.Type {
 	case JobTypeAdd:
-		t.Add(address)
+		if err := t.Add(address); err != nil {
+			return err
+		}
 	case JobTypeRemove:
 		if err := t.Delete(address); err != nil {
 			return err
