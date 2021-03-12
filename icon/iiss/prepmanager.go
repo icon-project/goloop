@@ -601,45 +601,7 @@ func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, bl
 	if prep == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-
-	vs := icstate.Success
-	if !voted {
-		vs = icstate.Failure
-	}
-
-	ps := prep.PRepStatus
-	ls := ps.LastState()
-	switch ls {
-	case icstate.Ready:
-		// S,C -> M
-		if vs == icstate.Failure {
-			ps.SetVFail(ps.VFail() + 1)
-		}
-		ps.SetVTotal(ps.VTotal() + 1)
-		ps.SetLastHeight(blockHeight)
-		ps.SetLastState(vs)
-	case icstate.None:
-		// Received vote info after this node is not a mainPRep
-		if vs == icstate.Failure {
-			ps.SetVFail(ps.VFail() + 1)
-		}
-		ps.SetVTotal(ps.VTotal() + 1)
-		ps.SetLastHeight(blockHeight)
-	default: // icstate.Success or icstate.Failure
-		if vs != ls {
-			diff := blockHeight - ps.LastHeight()
-			ps.SetVTotal(ps.VTotal() + diff)
-			if vs == icstate.Success {
-				ps.SetVFail(ps.VFail() + diff - 1)
-			} else {
-				ps.SetVFail(ps.VFail() + 1)
-			}
-			ps.SetLastState(vs)
-			ps.SetLastHeight(blockHeight)
-		}
-	}
-
-	return nil
+	return prep.UpdateBlockVoteStats(blockHeight, voted)
 }
 
 func (pm *PRepManager) SyncBlockVoteStats(owner module.Address, blockHeight int64) error {
@@ -647,25 +609,7 @@ func (pm *PRepManager) SyncBlockVoteStats(owner module.Address, blockHeight int6
 	if prep == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-
-	lh := prep.LastHeight()
-	if blockHeight < lh {
-		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
-	}
-	if prep.LastState() == icstate.None {
-		return nil
-	}
-
-	if blockHeight == prep.LastHeight() {
-		// Already done by other reasons
-		return nil
-	}
-
-	prep.SetVFail(prep.GetVFail(blockHeight))
-	prep.SetVTotal(prep.GetVTotal(blockHeight))
-	prep.SetLastHeight(blockHeight)
-	prep.SetLastState(icstate.None)
-	return nil
+	return prep.SyncBlockVoteStats(blockHeight)
 }
 
 // Grade change, LastState to icstate.None
@@ -675,17 +619,7 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 		return errors.Errorf("PRep not found: %v", owner)
 	}
 
-	pm.logger.Debugf(
-		"ImposePenalty() start: bh=%d addr=%s grade=%d ls=%d lh=%d vf=%d vt=%d vpc=%d",
-		blockHeight,
-		owner,
-		prep.Grade(),
-		prep.LastState(),
-		prep.LastHeight(),
-		prep.VFail(),
-		prep.VTotal(),
-		prep.GetVPenaltyCount(),
-	)
+	pm.logger.Debugf("ImposePenalty() start: bh=%d %s", blockHeight, prep.PRepStatus)
 
 	if err := pm.ChangeGrade(owner, icstate.Candidate); err != nil {
 		return err
@@ -695,17 +629,7 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 	}
 	prep.IncrementVPenalty()
 
-	pm.logger.Debugf(
-		"ImposePenalty() end: bh=%d addr=%s grade=%d ls=%d lh=%d vf=%d vt=%d vpc=%d",
-		blockHeight,
-		owner,
-		prep.Grade(),
-		prep.LastState(),
-		prep.LastHeight(),
-		prep.VFail(),
-		prep.VTotal(),
-		prep.GetVPenaltyCount(),
-	)
+	pm.logger.Debugf("ImposePenalty() end: bh=%d %s", blockHeight, prep.PRepStatus)
 	return nil
 }
 

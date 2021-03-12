@@ -28,6 +28,7 @@ import (
 )
 
 type PenaltyType int
+
 const (
 	PenaltyNone PenaltyType = iota
 	PenaltyValidationFailure
@@ -46,6 +47,9 @@ const (
 func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 	cc contract.CallContext, owner module.Address, voted bool) error {
 	blockHeight := cc.BlockHeight()
+	if !voted {
+		s.logger.Debugf("Nil vote: bh=%d addr=%s", blockHeight, owner)
+	}
 	if err := s.pm.UpdateBlockVoteStats(owner, voted, blockHeight); err != nil {
 		return err
 	}

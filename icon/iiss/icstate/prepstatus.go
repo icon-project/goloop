@@ -17,7 +17,9 @@
 package icstate
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"math/big"
@@ -37,6 +39,19 @@ const (
 	Candidate
 )
 
+func (g Grade) String() string {
+	switch g {
+	case Main:
+		return "M"
+	case Sub:
+		return "S"
+	case Candidate:
+		return "C"
+	default:
+		return "X"
+	}
+}
+
 type Status int
 
 const (
@@ -46,6 +61,21 @@ const (
 	NotReady
 )
 
+func (s Status) String() string {
+	switch s {
+	case Active:
+		return "A"
+	case Unregistered:
+		return "U"
+	case Disqualified:
+		return "D"
+	case NotReady:
+		return "N"
+	default:
+		return "X"
+	}
+}
+
 type ValidationState int
 
 const (
@@ -54,6 +84,21 @@ const (
 	Success
 	Failure
 )
+
+func (vs ValidationState) String() string {
+	switch vs {
+	case Ready:
+		return "R"
+	case None:
+		return "N"
+	case Success:
+		return "S"
+	case Failure:
+		return "F"
+	default:
+		return "X"
+	}
+}
 
 type PRepStatus struct {
 	icobject.NoDatabase
@@ -245,7 +290,6 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	}
 }
 
-
 func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
@@ -253,7 +297,7 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-//	jso["voted"] = ps.GetVoted()
+	//	jso["voted"] = ps.GetVoted()
 	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
@@ -377,13 +421,86 @@ func (ps *PRepStatus) ShiftVPenaltyMask(mask uint32) {
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & mask
 }
 
-
 func (ps *PRepStatus) SetLastState(l ValidationState) {
 	ps.lastState = l
 }
 
 func (ps *PRepStatus) SetLastHeight(h int64) {
 	ps.lastHeight = h
+}
+
+// UpdateBlockVoteStats updates Penalty-related info based on ConsensusInfo
+func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error {
+	vs := Success
+	if !voted {
+		vs = Failure
+	}
+
+	ls := ps.LastState()
+	switch ls {
+	case Ready:
+		// S,C -> M
+		if vs == Failure {
+			ps.SetVFail(ps.vFail + 1)
+		}
+		ps.SetVTotal(ps.vTotal + 1)
+		ps.SetLastHeight(blockHeight)
+		ps.SetLastState(vs)
+	case None:
+		// Received vote info after this node is not a mainPRep
+		if vs == Failure {
+			ps.SetVFail(ps.vFail + 1)
+		}
+		ps.SetVTotal(ps.vTotal + 1)
+		ps.SetLastHeight(blockHeight)
+	default: // icstate.Success or icstate.Failure
+		if vs != ls {
+			diff := blockHeight - ps.lastHeight
+			ps.SetVTotal(ps.vTotal + diff)
+			if vs == Success {
+				ps.SetVFail(ps.vFail + diff - 1)
+			} else {
+				ps.SetVFail(ps.vFail + 1)
+			}
+			ps.SetLastState(vs)
+			ps.SetLastHeight(blockHeight)
+		}
+	}
+	return nil
+}
+
+func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
+	lh := ps.lastHeight
+	if blockHeight < lh {
+		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
+	}
+	if ps.lastState == None {
+		return nil
+	}
+	if blockHeight == lh {
+		// Already done by other reasons
+		return nil
+	}
+
+	ps.SetVFail(ps.GetVFail(blockHeight))
+	ps.SetVTotal(ps.GetVTotal(blockHeight))
+	ps.SetLastHeight(blockHeight)
+	ps.SetLastState(None)
+	return nil
+}
+
+func (ps *PRepStatus) String() string {
+	return fmt.Sprintf(
+		"owner=%s st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d",
+		ps.owner,
+		ps.status,
+		ps.grade,
+		ps.lastState,
+		ps.lastHeight,
+		ps.vFail,
+		ps.vTotal,
+		ps.GetVPenaltyCount(),
+	)
 }
 
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
