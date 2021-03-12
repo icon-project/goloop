@@ -536,12 +536,8 @@ func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bo
 		return err
 	}
 
-	// regulate ICX issue when network is decentralized. We will not issue ICX while pre-vote period
-	if isDecentralized {
-
-		if err = RegulateIssueInfo(issue, reward, additionalReward); err != nil {
-			return err
-		}
+	if err = RegulateIssueInfo(issue, reward, additionalReward); err != nil {
+		return err
 	}
 
 	issue.ResetTotalIssued()
@@ -553,6 +549,10 @@ func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bo
 }
 
 func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
+	term := s.State.GetTerm()
+	if term == nil || !term.IsDecentralized() {
+		return nil
+	}
 	is, err := s.State.GetIssue()
 	if err != nil {
 		return err

@@ -88,6 +88,11 @@ func (i *IssueResultJSON) GetTotalReward() *big.Int {
 // RegulateIssueInfo regulate icx issue amount with previous period data.
 func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) error {
 	var icx, remains *big.Int
+
+	// Do not regulate ICX issue if there is no ICX issuance.
+	if issue.PrevTotalIssued.Sign() == 0 {
+		return nil
+	}
 	if iScore == nil || iScore.Sign() == 0 {
 		icx = new(big.Int)
 		remains = new(big.Int)
@@ -97,7 +102,8 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	overIssued := new(big.Int).Sub(issue.PrevTotalIssued, additionalReward)
 	overIssued.Sub(overIssued, icx)
 	if overIssued.Sign() == -1 {
-		return errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result")
+		return errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
+			issue.PrevTotalIssued.String(), icx.String())
 	}
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
 	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
@@ -209,7 +215,10 @@ func getIssueDataV1(es *ExtensionStateImpl, term *icstate.Term) (*IssuePRepJSON,
 }
 
 func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.Term) *IssueResultJSON {
-	reward := new(big.Int).Div(term.Iglobal(), big.NewInt(term.Period()))
+	reward, remains := new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
+	if remains.Sign() == 1 {
+		reward.Add(reward, intconv.BigIntOne)
+	}
 	issue, byOverIssued, byFee := calcIssueAmount(reward, issueInfo)
 	result := &IssueResultJSON{
 		ByFee:           icutils.BigInt2HexInt(byFee),

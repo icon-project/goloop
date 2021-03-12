@@ -205,7 +205,6 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot) (err error) {
 	votingTS := time.Now()
 
 	if err = c.postWork(); err != nil {
-		err = errors.Wrapf(err, "Failed to save calculation result")
 		return
 	}
 	finalTS := time.Now()
@@ -407,31 +406,35 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 
 // varForVotedReward return variable for P-Rep voted reward
 // IISS 2.0
-// 	variable = irep * electedPRepCount * IScoreICXRatio / (2 * MonthBlock)
+// 	multiplier = irep * electedPRepCount * IScoreICXRatio
+//	divider = 2 * MonthBlock
 // IISS 3.1
-// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
-func varForVotedReward(global *icstage.Global) *big.Int {
-	v := new(big.Int)
+// 	multiplier = iglobal * iprep * IScoreICXRatio
+//	divider = 100 * TermPeriod
+func varForVotedReward(global *icstage.Global) (multiplier, divider *big.Int) {
+	multiplier = new(big.Int)
+	divider = new(big.Int)
+
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.GetV1()
-		v.Mul(g.Irep, big.NewInt(int64(g.ElectedPRepCount)))
-		v.Div(v, big.NewInt(int64(MonthBlock*2/IScoreICXRatio)))
+		multiplier.Mul(g.Irep, big.NewInt(int64(g.ElectedPRepCount*IScoreICXRatio)))
+		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
 		g := global.GetV2()
 		if g.OffsetLimit == 0 {
-			return v
+			return
 		}
-		v.Mul(g.Iglobal, g.Iprep)
-		v.Mul(v, BigIntIScoreICXRatio)
-		v.Div(v, big.NewInt(int64(100*g.OffsetLimit)))
+		multiplier.Mul(g.Iglobal, g.Iprep)
+		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
+		divider.SetInt64(int64(100 * g.OffsetLimit))
 	}
-	return v
+	return
 }
 
 func (c *Calculator) calculateVotedReward() error {
 	offset := 0
-	variable := varForVotedReward(c.global)
+	multiplier, divider := varForVotedReward(c.global)
 	vInfo, err := c.loadVotedInfo()
 	if err != nil {
 		return err
@@ -451,7 +454,7 @@ func (c *Calculator) calculateVotedReward() error {
 		keyOffset := int(intconv.BytesToInt64(keySplit[1]))
 		switch type_ {
 		case icstage.TypeEventEnable:
-			vInfo.calculateReward(variable, keyOffset-offset)
+			vInfo.calculateReward(multiplier, divider, keyOffset-offset)
 			offset = keyOffset
 
 			obj := icstage.ToEventEnable(o)
@@ -466,7 +469,7 @@ func (c *Calculator) calculateVotedReward() error {
 		}
 	}
 	if offset < c.global.GetOffsetLimit() {
-		vInfo.calculateReward(variable, c.global.GetOffsetLimit()-offset)
+		vInfo.calculateReward(multiplier, divider, c.global.GetOffsetLimit()-offset)
 	}
 
 	// write result to temp and update statistics
@@ -935,6 +938,26 @@ func (c *Calculator) writeBonding(addr *common.Address, bonding *icreward.Bondin
 }
 
 func (c *Calculator) postWork() (err error) {
+	// check result
+	if c.global.GetIISSVersion() == icstate.IISSVersion2 {
+		if c.stats.blockProduce.Sign() != 0 {
+			return errors.CriticalUnknownError.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
+		}
+		g := c.global.GetV2()
+		maxVotedReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
+		if c.stats.voted.Cmp(maxVotedReward) == 1 {
+			return errors.CriticalUnknownError.Errorf("Too much Voted Reward. %s < %s",
+				maxVotedReward, c.stats.voted.String())
+		}
+		maxVotingReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
+		if c.stats.voting.Cmp(maxVotingReward) == 1 {
+			return errors.CriticalUnknownError.Errorf("Too much Voting Reward. %s < %s",
+				maxVotingReward, c.stats.voting.String())
+		}
+	}
+
 	// save calculation result to MPT
 	c.result = c.temp.GetSnapshot()
 	if err = c.result.Flush(); err != nil {
@@ -1125,15 +1148,15 @@ func (vi *votedInfo) updateTotalVoted(amount *big.Int) {
 }
 
 // calculateReward calculate P-Rep voted reward
-func (vi *votedInfo) calculateReward(variable *big.Int, period int) {
-	if variable.Sign() == 0 || period == 0 {
+func (vi *votedInfo) calculateReward(multiplier, divider *big.Int, period int) {
+	if multiplier.Sign() == 0 || period == 0 {
 		return
 	}
-	if vi.totalBondedDelegation.Sign() == 0 {
+	if divider.Sign() == 0 || vi.totalBondedDelegation.Sign() == 0 {
 		return
 	}
-	// reward = variable * period * bondedDelegation / totalBondedDelegation
-	base := new(big.Int).Mul(variable, big.NewInt(int64(period)))
+	// reward = multiplier * period * bondedDelegation / (divider * totalBondedDelegation)
+	base := new(big.Int).Mul(multiplier, big.NewInt(int64(period)))
 	for i, addr := range vi.rank {
 		if i == vi.maxRankForReward {
 			break
@@ -1146,6 +1169,7 @@ func (vi *votedInfo) calculateReward(variable *big.Int, period int) {
 
 		reward := new(big.Int).Set(base)
 		reward.Mul(reward, prep.voted.BondedDelegation)
+		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 
 		prep.iScore.Add(prep.iScore, reward)

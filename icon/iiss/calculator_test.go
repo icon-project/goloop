@@ -253,7 +253,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 	tests := []struct {
 		name string
 		args *icstage.Global
-		want int64
+		multiplier, divider int64
 	}{
 		{
 			"Global Version1",
@@ -268,7 +268,8 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				},
 			},
 			// 	variable = irep * electedPRepCount * IScoreICXRatio / (2 * MonthBlock)
-			MonthBlock * 100 * IScoreICXRatio / (2 * MonthBlock),
+			MonthBlock * 100 * IScoreICXRatio,
+			2 * MonthBlock,
 		},
 		{
 			"Global Version1 - disabled",
@@ -283,6 +284,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				},
 			},
 			0,
+			MonthBlock * 2,
 		},
 		{
 			"Global Version2",
@@ -298,7 +300,8 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				},
 			},
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
-			10000 * 50 * IScoreICXRatio / (100 * 1000),
+			10000 * 50 * IScoreICXRatio,
+			100 * 1000,
 		},
 		{
 			"Global Version2 - disabled",
@@ -314,12 +317,14 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				},
 			},
 			0,
+			0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ret := varForVotedReward(tt.args)
-			assert.Equal(t, tt.want, ret.Int64())
+			multiplier, divider := varForVotedReward(tt.args)
+			assert.Equal(t, tt.multiplier, multiplier.Int64())
+			assert.Equal(t, tt.divider, divider.Int64())
 		})
 	}
 }
@@ -564,10 +569,11 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 	assert.Equal(t, total, vInfo.totalBondedDelegation.Int64())
 
 	variable := big.NewInt(YearBlock)
+	divider := big.NewInt(1)
 	period := 10000
 	bigIntPeriod := big.NewInt(int64(period))
 
-	vInfo.calculateReward(variable, period)
+	vInfo.calculateReward(variable, divider, period)
 
 	for i, addr := range vInfo.rank {
 		expect := big.NewInt(maxIndex - int64(i))

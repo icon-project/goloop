@@ -156,6 +156,7 @@ func (p *PRepBase) GetSnapshot() *PRepBase {
 func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["name"] = p.name
+	jso["address"] = p.owner
 	jso["email"] = p.email
 	jso["website"] = p.website
 	jso["country"] = p.country
