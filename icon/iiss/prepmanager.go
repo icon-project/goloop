@@ -604,16 +604,9 @@ func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, bl
 	return prep.UpdateBlockVoteStats(blockHeight, voted)
 }
 
-func (pm *PRepManager) SyncBlockVoteStats(owner module.Address, blockHeight int64) error {
-	prep := pm.GetPRepByOwner(owner)
-	if prep == nil {
-		return errors.Errorf("PRep not found: %s", owner)
-	}
-	return prep.SyncBlockVoteStats(blockHeight)
-}
-
 // Grade change, LastState to icstate.None
 func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) error {
+	var err error
 	prep := pm.GetPRepByOwner(owner)
 	if prep == nil {
 		return errors.Errorf("PRep not found: %v", owner)
@@ -621,16 +614,13 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 
 	pm.logger.Debugf("ImposePenalty() start: bh=%d %s", blockHeight, prep.PRepStatus)
 
-	if err := pm.ChangeGrade(owner, icstate.Candidate); err != nil {
+	if err = pm.ChangeGrade(owner, icstate.Candidate); err != nil {
 		return err
 	}
-	if err := pm.SyncBlockVoteStats(owner, blockHeight); err != nil {
-		return err
-	}
-	prep.IncrementVPenalty()
+	err = prep.OnPenaltyImposed(blockHeight)
 
 	pm.logger.Debugf("ImposePenalty() end: bh=%d %s", blockHeight, prep.PRepStatus)
-	return nil
+	return err
 }
 
 // Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded

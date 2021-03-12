@@ -106,15 +106,16 @@ type PRepStatus struct {
 
 	owner module.Address
 
-	grade        Grade
-	status       Status
-	delegated    *big.Int
-	bonded       *big.Int
-	vTotal       int64
-	vFail        int64
-	vPenaltyMask uint32
-	lastState    ValidationState
-	lastHeight   int64
+	grade           Grade
+	status          Status
+	delegated       *big.Int
+	bonded          *big.Int
+	vTotal          int64
+	vFail           int64
+	vFailContOffset int64
+	vPenaltyMask    uint32
+	lastState       ValidationState
+	lastHeight      int64
 }
 
 func (ps *PRepStatus) Owner() module.Address {
@@ -221,18 +222,24 @@ func (ps *PRepStatus) VFail() int64 {
 
 // GetVFail returns the calculated number of validation failures
 func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
-	if ps.lastState == Failure && blockHeight >= ps.lastHeight {
-		return ps.vFail + ps.GetVFailCont(blockHeight) - 1
+	diff := blockHeight - ps.lastHeight
+	if ps.lastState == Failure && diff >= 0 {
+		return ps.vFail + diff
 	}
 	return ps.vFail
 }
 
 // GetVFailCont returns the number of consecutive validation failures
 func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
-	if ps.lastState == Failure {
+	switch ps.lastState {
+	case Ready:
+		return ps.vFailContOffset
+	case None:
+		return ps.vFailContOffset
+	case Failure:
 		diff := blockHeight - ps.lastHeight
 		if diff >= 0 {
-			return diff + 1
+			return diff + ps.vFailContOffset
 		}
 	}
 	return 0
@@ -256,6 +263,7 @@ func (ps *PRepStatus) equal(other *PRepStatus) bool {
 		ps.bonded.Cmp(other.bonded) == 0 &&
 		ps.vTotal == other.vTotal &&
 		ps.vFail == other.vFail &&
+		ps.vFailContOffset == other.vFailContOffset &&
 		ps.vPenaltyMask == other.vPenaltyMask &&
 		ps.lastState == other.lastState &&
 		ps.lastHeight == other.lastHeight
@@ -270,6 +278,7 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.bonded.Set(other.bonded)
 	ps.vTotal = other.vTotal
 	ps.vFail = other.vFail
+	ps.vFailContOffset = other.vFailContOffset
 	ps.vPenaltyMask = other.vPenaltyMask
 	ps.lastState = other.lastState
 	ps.lastHeight = other.lastHeight
@@ -277,16 +286,17 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 
 func (ps *PRepStatus) Clone() *PRepStatus {
 	return &PRepStatus{
-		owner:        ps.owner,
-		grade:        ps.grade,
-		status:       ps.status,
-		delegated:    new(big.Int).Set(ps.delegated),
-		bonded:       new(big.Int).Set(ps.bonded),
-		vTotal:       ps.vTotal,
-		vFail:        ps.vFail,
-		vPenaltyMask: ps.vPenaltyMask,
-		lastState:    ps.lastState,
-		lastHeight:   ps.lastHeight,
+		owner:           ps.owner,
+		grade:           ps.grade,
+		status:          ps.status,
+		delegated:       new(big.Int).Set(ps.delegated),
+		bonded:          new(big.Int).Set(ps.bonded),
+		vTotal:          ps.vTotal,
+		vFail:           ps.vFail,
+		vFailContOffset: ps.vFailContOffset,
+		vPenaltyMask:    ps.vPenaltyMask,
+		lastState:       ps.lastState,
+		lastHeight:      ps.lastHeight,
 	}
 }
 
@@ -315,9 +325,10 @@ func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
 	jso["penalties"] = ps.GetVPenaltyCount()
 	jso["total"] = ps.vTotal
 	jso["fail"] = ps.vFail
+	jso["failCont"] = ps.vFailContOffset
 	jso["realTotal"] = ps.GetVTotal(blockHeight)
 	jso["realFail"] = ps.GetVFail(blockHeight)
-	jso["failCont"] = ps.GetVFailCont(blockHeight)
+	jso["realFailCont"] = ps.GetVFailCont(blockHeight)
 	return jso
 }
 
@@ -334,6 +345,7 @@ func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
 		&ps.bonded,
 		&ps.vTotal,
 		&ps.vFail,
+		&ps.vFailContOffset,
 		&ps.vPenaltyMask,
 		&ps.lastState,
 		&ps.lastHeight,
@@ -348,6 +360,7 @@ func (ps *PRepStatus) RLPEncodeFields(encoder codec.Encoder) error {
 		ps.bonded,
 		ps.vTotal,
 		ps.vFail,
+		ps.vFailContOffset,
 		ps.vPenaltyMask,
 		ps.lastState,
 		ps.lastHeight,
@@ -371,6 +384,7 @@ func (ps *PRepStatus) Clear() {
 	ps.bonded = big.NewInt(0)
 	ps.vTotal = 0
 	ps.vFail = 0
+	ps.vFailContOffset = 0
 	ps.vPenaltyMask = 0
 	ps.lastState = None
 	ps.lastHeight = 0
@@ -409,6 +423,10 @@ func (ps *PRepStatus) SetVFail(f int64) {
 	ps.vFail = f
 }
 
+func (ps *PRepStatus) ResetVFailContOffset() {
+	ps.vFailContOffset = 0
+}
+
 func (ps *PRepStatus) SetVPenaltyMask(p uint32) {
 	ps.vPenaltyMask = p
 }
@@ -441,29 +459,37 @@ func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error 
 	case Ready:
 		// S,C -> M
 		if vs == Failure {
-			ps.SetVFail(ps.vFail + 1)
+			ps.vFail++
+			ps.vFailContOffset++
+		} else {
+			ps.vFailContOffset = 0
 		}
-		ps.SetVTotal(ps.vTotal + 1)
-		ps.SetLastHeight(blockHeight)
-		ps.SetLastState(vs)
+		ps.vTotal++
+		ps.lastHeight = blockHeight
+		ps.lastState = vs
 	case None:
 		// Received vote info after this node is not a mainPRep
 		if vs == Failure {
-			ps.SetVFail(ps.vFail + 1)
+			ps.vFail++
+			ps.vFailContOffset++
+		} else {
+			ps.vFailContOffset = 0
 		}
-		ps.SetVTotal(ps.vTotal + 1)
-		ps.SetLastHeight(blockHeight)
-	default: // icstate.Success or icstate.Failure
+		ps.vTotal++
+		ps.lastHeight = blockHeight
+	default: // Success or Failure
 		if vs != ls {
 			diff := blockHeight - ps.lastHeight
-			ps.SetVTotal(ps.vTotal + diff)
-			if vs == Success {
-				ps.SetVFail(ps.vFail + diff - 1)
+			if vs == Failure {
+				ps.vFail++
+				ps.vFailContOffset++
 			} else {
-				ps.SetVFail(ps.vFail + 1)
+				ps.vFail += diff - 1
+				ps.vFailContOffset = 0
 			}
-			ps.SetLastState(vs)
-			ps.SetLastHeight(blockHeight)
+			ps.vTotal += diff
+			ps.lastState = vs
+			ps.lastHeight = blockHeight
 		}
 	}
 	return nil
@@ -477,21 +503,26 @@ func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
 	if ps.lastState == None {
 		return nil
 	}
-	if blockHeight == lh {
-		// Already done by other reasons
-		return nil
-	}
+	ps.vFail = ps.GetVFail(blockHeight)
+	ps.vTotal = ps.GetVTotal(blockHeight)
+	ps.vFailContOffset = ps.GetVFailCont(blockHeight)
+	ps.lastHeight = blockHeight
+	ps.lastState = None
+	return nil
+}
 
-	ps.SetVFail(ps.GetVFail(blockHeight))
-	ps.SetVTotal(ps.GetVTotal(blockHeight))
-	ps.SetLastHeight(blockHeight)
-	ps.SetLastState(None)
+func (ps *PRepStatus) OnPenaltyImposed(blockHeight int64) error {
+	if err := ps.SyncBlockVoteStats(blockHeight); err != nil {
+		return err
+	}
+	ps.vPenaltyMask |= 1
+	ps.vFailContOffset = 0
 	return nil
 }
 
 func (ps *PRepStatus) String() string {
 	return fmt.Sprintf(
-		"owner=%s st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d",
+		"owner=%s st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
 		ps.owner,
 		ps.status,
 		ps.grade,
@@ -500,6 +531,7 @@ func (ps *PRepStatus) String() string {
 		ps.vFail,
 		ps.vTotal,
 		ps.GetVPenaltyCount(),
+		ps.vFailContOffset,
 	)
 }
 
@@ -509,14 +541,15 @@ func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
 
 func NewPRepStatus(owner module.Address) *PRepStatus {
 	return &PRepStatus{
-		owner:      owner,
-		grade:      Candidate,
-		delegated:  new(big.Int),
-		bonded:     new(big.Int),
-		vFail:      0,
-		vTotal:     0,
-		lastState:  None,
-		lastHeight: 0,
-		status:     NotReady,
+		owner:           owner,
+		grade:           Candidate,
+		delegated:       new(big.Int),
+		bonded:          new(big.Int),
+		vFail:           0,
+		vFailContOffset: 0,
+		vTotal:          0,
+		lastState:       None,
+		lastHeight:      0,
+		status:          NotReady,
 	}
 }
