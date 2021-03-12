@@ -159,7 +159,7 @@ func TestPRepManager_Sort(t *testing.T) {
 
 	assert.NoError(t, pm.state.SetBondRequirement(5))
 	pm.init()
-	pm.Sort()
+	pm.sort()
 
 	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[0].Owner().String())
 	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[1].Owner().String())

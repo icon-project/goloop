@@ -225,27 +225,19 @@ func addBlockProduce(cc contract.CallContext, trueVoters []module.Address) error
 // updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
 func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, voted []bool) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
-	slashedPReps := 0
 
 	for i, owner := range owners {
 		if err := es.UpdateBlockVoteStats(cc, owner, voted[i]); err != nil {
 			return err
 		}
 		if !voted[i] {
-			err, slashed := es.handlePenalty(cc, owner)
-			if err != nil {
+			if err := es.handlePenalty(cc, owner); err != nil {
 				return err
-			}
-			if slashed {
-				slashedPReps++
 			}
 		}
 	}
 
-	if slashedPReps > 0 {
-		es.pm.Sort()
-	}
-
+	es.pm.Sort()
 	return nil
 }
 

@@ -658,6 +658,17 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 				getVFailCont: 1,
 			},
 		},
+		{
+			name: "N,N,0,C,M",
+			init: attr{lh: 0, ls: None, vf: 0, vt: 0, vfco: 0, vpm: 0},
+			in:   input{bh: 9},
+			out: output{
+				attr:         attr{lh: 0, ls: None, vf: 0, vt: 0, vfco: 0, vpm: 0},
+				getVFail:     0,
+				getVTotal:    0,
+				getVFailCont: 0,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

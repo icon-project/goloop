@@ -87,6 +87,7 @@ type PRepManager struct {
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
 
+	sorted       bool
 	mainPReps    int
 	subPReps     int
 	orderedPReps []*PRep
@@ -166,6 +167,14 @@ func (pm *PRepManager) adjustPRepSize(grade icstate.Grade, increment bool) {
 
 // Sort preps in descending order by bonded delegation
 func (pm *PRepManager) Sort() {
+	if pm.sorted {
+		return
+	}
+	pm.sort()
+	pm.sorted = true
+}
+
+func (pm *PRepManager) sort() {
 	br := pm.getBondRequirement()
 	sort.Slice(pm.orderedPReps, func(i, j int) bool {
 		ret := pm.orderedPReps[i].GetBondedDelegation(br).Cmp(pm.orderedPReps[j].GetBondedDelegation(br))
@@ -502,7 +511,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 	// Ignore the delegated amount to Inactive P-Rep
 	totalDelegated.Sub(totalDelegated, delegatedToInactiveNode)
 
-	pm.Sort()
+	pm.sort()
 	return delta, nil
 }
 
@@ -548,11 +557,12 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 	// Ignore the bonded amount to inactive P-Rep
 	totalBonded.Sub(totalBonded, bondedToInactiveNode)
 
-	pm.Sort()
+	pm.sort()
 	return delta, nil
 }
 
 func (pm *PRepManager) OnTermEnd(mainPRepCount, subPRepCount int, blockHeight int64) error {
+	pm.Sort()
 	pm.mainPReps = 0
 	pm.subPReps = 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -562,24 +572,25 @@ func (pm *PRepManager) OnTermEnd(mainPRepCount, subPRepCount int, blockHeight in
 
 		if i < mainPRepCount {
 			prep.SetGrade(icstate.Main)
+		} else if i < electedPRepCount {
+			prep.SetGrade(icstate.Sub)
+		} else {
+			prep.SetGrade(icstate.Candidate)
+		}
+		pm.adjustPRepSize(prep.Grade(), true)
+
+		if prep.Grade() == icstate.Main {
 			if ls == icstate.None {
 				prep.SetLastState(icstate.Ready)
 				prep.SetLastHeight(blockHeight)
 			}
-		} else if i < electedPRepCount {
-			prep.SetGrade(icstate.Sub)
-			if ls != icstate.None {
-				prep.SetLastState(icstate.None)
-				prep.SetLastHeight(blockHeight)
-			}
 		} else {
-			prep.SetGrade(icstate.Candidate)
 			if ls != icstate.None {
-				prep.SetLastState(icstate.None)
-				prep.SetLastHeight(blockHeight)
+				if err := prep.SyncBlockVoteStats(blockHeight); err != nil {
+					return err
+				}
 			}
 		}
-		pm.adjustPRepSize(prep.Grade(), true)
 	}
 
 	return nil
@@ -601,7 +612,9 @@ func (pm *PRepManager) UpdateBlockVoteStats(owner module.Address, voted bool, bl
 	if prep == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	return prep.UpdateBlockVoteStats(blockHeight, voted)
+	err := prep.UpdateBlockVoteStats(blockHeight, voted)
+	//pm.logger.Debugf("UpdateBlockVoteStats: bh=%d %s", blockHeight, prep.PRepStatus)
+	return err
 }
 
 // Grade change, LastState to icstate.None
@@ -626,7 +639,7 @@ func (pm *PRepManager) ImposePenalty(owner module.Address, blockHeight int64) er
 // Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
 // Do not change PRep grade here
 // Caution: amount should not include the amount from unbonded
-func (pm *PRepManager) Slash(owner module.Address, amount *big.Int, sort bool) error {
+func (pm *PRepManager) Slash(owner module.Address, amount *big.Int) error {
 	if owner == nil {
 		return errors.Errorf("Owner is nil")
 	}
@@ -652,13 +665,11 @@ func (pm *PRepManager) Slash(owner module.Address, amount *big.Int, sort bool) e
 	prep.SetBonded(bonded.Sub(bonded, amount))
 	pm.totalBonded.Sub(pm.totalBonded, amount)
 
-	if sort {
-		pm.Sort()
-	}
 	pm.logger.Debugf(
-"Slash: addr=%s amount=%s tb=%s",
+		"Slash: addr=%s amount=%s tb=%s",
 		owner, amount, pm.totalBonded,
 	)
+	pm.sorted = false
 	return nil
 }
 
@@ -692,6 +703,6 @@ func newPRepManager(state *icstate.State, logger log.Logger) *PRepManager {
 	}
 
 	pm.init()
-	pm.Sort()
+	pm.sort()
 	return pm
 }

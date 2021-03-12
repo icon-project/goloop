@@ -79,8 +79,8 @@ func (s Status) String() string {
 type ValidationState int
 
 const (
-	Ready ValidationState = iota
-	None
+	None ValidationState = iota
+	Ready
 	Success
 	Failure
 )

@@ -36,7 +36,7 @@ const (
 )
 
 const (
-	ValidationPenaltyCondition  int = 3
+	ValidationPenaltyCondition  int = 660
 	ValidationPenaltySlashRatio     = 0
 
 	ConsistentValidationPenaltyCondition  int = 5
@@ -56,42 +56,42 @@ func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 	return nil
 }
 
-func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) (error, bool) {
+func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
 	var err error = nil
 	var slashRatio int
 
 	prep := s.pm.GetPRepByOwner(owner)
 	if prep == nil {
-		return nil, false
+		return nil
 	}
 	if prep.LastState() != icstate.Failure {
-		return nil, false
+		return nil
 	}
 
 	blockHeight := cc.BlockHeight()
 	penalty := checkPenalty(prep.PRepStatus, blockHeight)
 	switch penalty {
 	case PenaltyNone:
-		return nil, false
+		return nil
 	case PenaltyValidationFailure:
 		slashRatio = ValidationPenaltySlashRatio
 	case PenaltyAccumulatedValidationFailure:
 		slashRatio = ConsistentValidationPenaltySlashRatio
 	default:
-		return errors.Errorf("Unknown penalty: %d", penalty), false
+		return errors.Errorf("Unknown penalty: %d", penalty)
 	}
 
 	bh := cc.BlockHeight()
 	if err = s.pm.ImposePenalty(owner, bh); err != nil {
-		return err, false
+		return err
 	}
 	if err = s.replaceValidator(owner); err != nil {
-		return err, false
+		return err
 	}
 	if err = s.slash(cc, owner, slashRatio); err != nil {
-		return err, false
+		return err
 	}
-	return nil, slashRatio > 0
+	return nil
 }
 
 func checkPenalty(ps *icstate.PRepStatus, blockHeight int64) PenaltyType {
@@ -171,5 +171,5 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		)
 	}
 
-	return s.pm.Slash(address, totalSlashBond, false)
+	return s.pm.Slash(address, totalSlashBond)
 }
