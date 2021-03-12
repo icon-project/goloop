@@ -295,6 +295,69 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 	return prep.ToJSON(blockHeight, s.State.GetBondRequirement()), nil
 }
 
+func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
+	term := s.State.GetTerm()
+	if term == nil {
+		err := errors.Errorf("Term is nil")
+		return nil, err
+	}
+
+	pssCount := term.GetPRepSnapshotCount()
+	mainPRepCount := s.pm.GetPRepSize(icstate.Main)
+	jso := make(map[string]interface{})
+	preps := make([]interface{}, 0, mainPRepCount)
+	sum := new(big.Int)
+
+	for i := 0; i < pssCount; i++ {
+		pss := term.GetPRepSnapshotByIndex(i)
+		prep := s.pm.GetPRepByOwner(pss.Owner())
+
+		if prep != nil && prep.Grade() == icstate.Main {
+			preps = append(preps, pss.ToJSON())
+			sum.Add(sum, pss.BondedDelegation())
+
+			if len(preps) == mainPRepCount {
+				break
+			}
+		}
+	}
+
+	jso["blockHeight"] = blockHeight
+	jso["totalBondedDelegation"] = sum
+	jso["preps"] = preps
+	return jso, nil
+}
+
+func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
+	term := s.State.GetTerm()
+	if term == nil {
+		err := errors.Errorf("Term is nil")
+		return nil, err
+	}
+
+	pssCount := term.GetPRepSnapshotCount()
+	mainPRepCount := s.pm.GetPRepSize(icstate.Main)
+
+	jso := make(map[string]interface{}, 2)
+	preps := make([]interface{}, 0, mainPRepCount)
+	sum := new(big.Int)
+
+	for i := mainPRepCount; i < pssCount; i++ {
+		pss := term.GetPRepSnapshotByIndex(i)
+		prep := s.pm.GetPRepByOwner(pss.Owner())
+
+		if prep != nil && prep.Grade() == icstate.Sub {
+			preps = append(preps, pss.ToJSON())
+			sum.Add(sum, pss.BondedDelegation())
+		}
+	}
+
+	jso["blockHeight"] = blockHeight
+	jso["totalBondedDelegation"] = sum
+	jso["preps"] = preps
+	return jso, nil
+}
+
 func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
 	return s.pm.TotalDelegated()
 }

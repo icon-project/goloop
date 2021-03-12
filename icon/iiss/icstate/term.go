@@ -43,9 +43,9 @@ func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 	}
 }
 
-func (pss *PRepSnapshot) toJSON() map[string]interface{} {
+func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{}, 2)
-	jso["address"] = pss.owner.String()
+	jso["address"] = pss.owner
 	jso["bondedDelegation"] = pss.bondedDelegation
 	return jso
 }
@@ -104,7 +104,7 @@ func (p PRepSnapshots) toJSON() []interface{} {
 	jso := make([]interface{}, size, size)
 
 	for i, pss := range p {
-		jso[i] = pss.toJSON()
+		jso[i] = pss.ToJSON()
 	}
 
 	return jso

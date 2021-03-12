@@ -248,6 +248,16 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 	return jso, nil
 }
 
+func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.GetMainPRepsInJSON(s.cc.BlockHeight())
+}
+
+func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.GetSubPRepsInJSON(s.cc.BlockHeight())
+}
+
 func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso := es.GetPRepManagerInJSON()
