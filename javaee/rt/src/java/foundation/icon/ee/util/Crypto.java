@@ -16,6 +16,7 @@
 
 package foundation.icon.ee.util;
 
+import i.RuntimeAssertionError;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.asn1.x9.X9IntegerConverter;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
@@ -36,7 +37,7 @@ public class Crypto {
             MessageDigest digest = MessageDigest.getInstance("SHA3-256");
             return digest.digest(msg);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -45,7 +46,7 @@ public class Crypto {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return digest.digest(msg);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
