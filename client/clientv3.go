@@ -168,8 +168,8 @@ func (c *ClientV3) Call(param *v3.CallParam) (interface{}, error) {
 	return result, nil
 }
 
-func (c *ClientV3) GetBalance(param *v3.AddressParam) (*jsonrpc.HexInt, error) {
-	var result jsonrpc.HexInt
+func (c *ClientV3) GetBalance(param *v3.AddressParam) (*common.HexInt, error) {
+	var result common.HexInt
 	_, err := c.Do("icx_getBalance", param, &result)
 	if err != nil {
 		return nil, err
