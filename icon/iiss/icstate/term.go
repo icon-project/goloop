@@ -48,6 +48,7 @@ func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{}, 2)
 	jso["address"] = pss.owner
 	jso["bondedDelegation"] = pss.bondedDelegation
+	jso["delegated"] = pss.bondedDelegation
 	return jso
 }
 

@@ -331,6 +331,7 @@ func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]i
 
 	jso["blockHeight"] = blockHeight
 	jso["totalBondedDelegation"] = sum
+	jso["totalDelegated"] = sum
 	jso["preps"] = preps
 	return jso, nil
 }
@@ -361,6 +362,7 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 
 	jso["blockHeight"] = blockHeight
 	jso["totalBondedDelegation"] = sum
+	jso["totalDelegated"] = sum
 	jso["preps"] = preps
 	return jso, nil
 }
