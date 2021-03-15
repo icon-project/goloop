@@ -129,7 +129,6 @@ func (cs *ForwardCache) addWorkerInLock() {
 func (cs *ForwardCache) scheduleReceiptInLock(id []byte) {
 	ids := string(id)
 	if t, ok := cs.receiptInfo[ids]; !ok {
-		cs.log.Tracef("RECEIPT schedule id=%#x", id)
 		t = &receiptTask{
 			id:  id,
 			chn: make(chan interface{}, 1),
@@ -142,7 +141,6 @@ func (cs *ForwardCache) scheduleReceiptInLock(id []byte) {
 
 func (cs *ForwardCache) scheduleBlockInLock(height int64) {
 	if t, ok := cs.blockInfo[height]; !ok {
-		cs.log.Tracef("BLOCK schedule height=%d", height)
 		t = &blockTask{
 			height: height,
 			chn:    make(chan interface{}, 1),
@@ -168,18 +166,16 @@ func (cs *ForwardCache) scheduleFollowings(b blockv0.Block) {
 
 func (cs *ForwardCache) doGetBlockByHeight(height int) (blockv0.Block, error) {
 	cs.tr.Wait()
-	cs.log.Tracef("BLOCK start height=%d", height)
 	trial := 0
 	for {
 		block, err := cs.Store.GetBlockByHeight(height)
 		if err == nil {
-			cs.log.Tracef("BLOCK done height=%d", height)
 			cs.scheduleFollowings(block)
 			return block, nil
 		} else {
 			trial += 1
 			if trial >= MaxTrials {
-				cs.log.Tracef("BLOCK failed height=%d", height)
+				cs.log.Warnf("BLOCK failed height=%d", height)
 				return nil, err
 			} else {
 				cs.log.Debugf("BLOCK retry height=%d trial=%d err=%+v", height, trial, err)
@@ -221,16 +217,14 @@ func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
 
 func (cs *ForwardCache) doGetReceipt(id []byte) (module.Receipt, error) {
 	cs.tr.Wait()
-	cs.log.Tracef("RECEIPT start id=%#x", id)
 	trial := 0
 	for {
 		if rct, err := cs.Store.GetReceipt(id); err == nil {
-			cs.log.Tracef("RECEIPT done id=%#x", id)
 			return rct, nil
 		} else {
 			trial += 1
 			if trial >= MaxTrials {
-				cs.log.Tracef("RECEIPT failure id=%#x", id)
+				cs.log.Warnf("RECEIPT failure id=%#x", id)
 				return nil, err
 			} else {
 				cs.log.Debugf("RECEIPT retry tid=%#x trial=%d err=%+v", id, trial, err)
