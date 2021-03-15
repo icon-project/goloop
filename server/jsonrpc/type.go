@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"encoding/hex"
+	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
@@ -27,6 +28,19 @@ func (i HexInt) Value() int64 {
 		return 0
 	}
 	return v
+}
+
+func (i HexInt) Int64() (int64, error) {
+	return intconv.ParseInt(string(i), 64)
+}
+
+func (i HexInt) BigInt() (*big.Int, error) {
+	bi := new(big.Int)
+	if err := intconv.ParseBigInt(bi, string(i)); err != nil {
+		return nil, err
+	} else {
+		return bi, nil
+	}
 }
 
 type Address string
