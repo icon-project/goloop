@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
@@ -591,6 +592,8 @@ func main() {
 	pflags.String("log_level", "debug", "Default log level")
 	pflags.String("console_level", "info", "Console log level")
 	pflags.String("log_file", "", "Output logfile")
+	pflags.String("cpuprofile", "", "CPU Profile")
+	pflags.String("memprofile", "", "Memory Profile")
 	if err := vc.BindPFlags(pflags); err != nil {
 		log.Errorf("Fail to bind flags err=%+v", err)
 		os.Exit(1)
@@ -604,6 +607,12 @@ func main() {
 
 	root.SilenceUsage = true
 	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if cpuprofile := vc.GetString("cpuprofile"); len(cpuprofile) > 0 {
+			cli.StartCPUProfile(cpuprofile)
+		}
+		if memprofile := vc.GetString("memprofile"); len(memprofile) > 0 {
+			cli.StartMemoryProfile(memprofile)
+		}
 		logger := log.GlobalLogger()
 		logLevel := vc.GetString("log_level")
 		if lv, err := log.ParseLevel(logLevel); err != nil {
