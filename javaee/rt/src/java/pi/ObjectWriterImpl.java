@@ -9,6 +9,7 @@ import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
+import p.score.ByteArrayObjectWriter;
 import p.score.ObjectWriter;
 
 import java.lang.reflect.InvocationTargetException;
@@ -17,7 +18,7 @@ import java.util.Objects;
 
 public class ObjectWriterImpl
         extends s.java.lang.Object
-        implements ObjectWriter, AutoCloseable {
+        implements ByteArrayObjectWriter, AutoCloseable {
     private DataWriter writer;
     private int level = 0;
     private long lastChargePos = 0;
@@ -280,17 +281,27 @@ public class ObjectWriterImpl
         return writer.toByteArray();
     }
 
+    public ByteArray avm_toByteArray() {
+        return ByteArray.newWithCharge(toByteArray());
+    }
+
     public void close() {
         writer = null;
+        level = 0;
+        lastChargePos = 0;
+    }
+
+    public ObjectWriterImpl(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(ObjectWriterImpl.class, deserializer);
-        writer = null;
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
+        // close as the current contract can be cached
+        close();
         super.serializeSelf(ObjectWriterImpl.class, serializer);
-        assert writer == null;
     }
 }

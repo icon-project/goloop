@@ -6,6 +6,8 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
+import foundation.icon.ee.io.RLPDataReader;
+import foundation.icon.ee.io.RLPDataWriter;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.ManualRevertException;
 import foundation.icon.ee.types.Status;
@@ -28,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.score.AnyDB;
 import pi.AnyDBImpl;
+import pi.ObjectReaderImpl;
+import pi.ObjectWriterImpl;
 import score.RevertedException;
 import score.UserRevertedException;
 
@@ -407,5 +411,25 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         int evLog = stepCost.eventLog();
         IInstrumentation.charge(Math.max(evLogBase, len) * evLog);
         externalState.log(bindexed, bdata);
+    }
+
+    @Override
+    public p.score.ObjectReader avm_newByteArrayObjectReader(
+            s.java.lang.String codec, ByteArray byteArray) {
+        var c = codec==null ? null : codec.getUnderlying();
+        if ("RLPn".equals(c)) {
+            return new ObjectReaderImpl(new RLPDataReader(byteArray.getUnderlying()));
+        }
+        return null;
+    }
+
+    @Override
+    public p.score.ByteArrayObjectWriter avm_newByteArrayObjectWriter(
+            s.java.lang.String codec) {
+        var c = codec==null ? null : codec.getUnderlying();
+        if ("RLPn".equals(c)) {
+            return new ObjectWriterImpl(new RLPDataWriter());
+        }
+        return null;
     }
 }

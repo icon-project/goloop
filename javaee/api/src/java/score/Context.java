@@ -447,4 +447,25 @@ public final class Context {
      */
     public static void logEvent(Object[] indexed, Object[] data) {
     }
+
+    /**
+     * Returns a new object reader reading from a byte array.
+     * @param codec codec. Currently "RLPn" is supported.
+     * @param byteArray byte array.
+     * @return object reader.
+     */
+    public static ObjectReader newByteArrayObjectReader(String codec,
+            byte[] byteArray) {
+        return null;
+    }
+
+    /**
+     * Returns a new object writer writing to a byte array.
+     * @param codec codec. Currently "RLPn" is supported.
+     * @return byte array object writer
+     */
+    public static ByteArrayObjectWriter newByteArrayObjectWriter(
+            String codec) {
+        return null;
+    }
 }

@@ -213,4 +213,16 @@ public final class Context extends Object {
         // Charge steps in BlockchainRuntime
         blockchainRuntime.avm_logEvent(indexed, data);
     }
+
+    public static ObjectReader avm_newByteArrayObjectReader(String codec,
+            ByteArray byteArray) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newByteArrayObjectReader);
+        return blockchainRuntime.avm_newByteArrayObjectReader(codec, byteArray);
+    }
+
+    public static ByteArrayObjectWriter avm_newByteArrayObjectWriter(
+            String codec) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newByteArrayObjectWriter);
+        return blockchainRuntime.avm_newByteArrayObjectWriter(codec);
+    }
 }
