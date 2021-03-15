@@ -599,18 +599,19 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		return err
 	}
 	callback := make(transitionCallback, 1)
-	var tps float32
+	var rps, tps float32
+	tm := new(TPSMeasure).Init(100)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		if getTPSer != nil {
-			tps = getTPSer.GetTPS()
-		}
+		rps = getTPSer.GetTPS()
+		tps = tm.GetTPS()
 		Statusf(
 			e.log,
-			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.2f ]",
+			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.2f ] TPS[ %6.2f ]",
 			spinner(height, stored),
 			D(height),
 			D(prevTR.Block.TxTotal()),
 			TimestampToString(prevTR.Block.Timestamp()),
+			rps,
 			tps,
 		)
 		tr, err := e.ProposeTransition(prevTR, useCache)
@@ -634,7 +635,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		}
 
 		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
-		e.log.Infof("Finalize Block[ %8d ] Tx[ %16d ]", height, txTotal)
+		e.log.Infof("Finalize Block[ %9d ] Tx[ %9d ]", height, txTotal)
 		tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
 		if err := e.FinalizeTransition(tr); err != nil {
 			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
@@ -644,6 +645,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 				return err
 			}
 		}
+		tm.OnTransactions(tr.Block.TxCount())
 		prevTR = tr
 	}
 	return nil
