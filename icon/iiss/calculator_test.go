@@ -617,10 +617,9 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 				},
 				nil,
 			},
-			// 	multiplier = rrep * IScoreICXRatio / YearBlock
 			want{
-				20000000 * IScoreICXRatio,
-				YearBlock,
+				RrepMultiplier * 20000000 * IScoreICXRatio,
+				YearBlock * RrepDivider,
 			},
 		},
 		{

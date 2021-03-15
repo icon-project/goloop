@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 ICON Foundation
+ * Copyright 2021 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package icon
+package icmodule
 
 import "github.com/icon-project/goloop/module"
 
@@ -43,7 +43,9 @@ const (
 )
 
 const (
-	RevisionIISS = Revision5
+	RevisionIISS         = Revision5
+	RevisionDecentralize = Revision6
+	RevisionICON2        = Revision13
 )
 
 var revisionFlags = []module.Revision{
@@ -66,7 +68,7 @@ func init() {
 	}
 }
 
-func valueToRevision(v int) module.Revision {
+func ValueToRevision(v int) module.Revision {
 	if v < Revision1 {
 		return revisionFlags[0]
 	}

@@ -219,7 +219,6 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		irep           int64
 		rrep           int64
 		mainPRepCount  int64
-		pRepCount      int64
 		totalDelegated int64
 	}
 
@@ -231,7 +230,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"No reward",
 			values{
-				0, 0, 0, 0, 0,
+				0, 0, 0, 0,
 			},
 			0,
 		},
@@ -239,34 +238,34 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 			"Prevote - voting only",
 			values{
 				100 * MonthBlock,
-				10,
-				0,
+				1000,
 				0,
 				100 * YearBlock,
 			},
-			10 * 100,
+			(100 * MonthBlock) / (MonthBlock * 2) * 100 +
+				RrepMultiplier * 1000 * 100 / RrepDivider,
 		},
 		{
 			"Prevote - too small delegation",
 			values{
 				100 * MonthBlock,
-				10,
-				0,
+				1000,
 				0,
 				100,
 			},
-			0,
+			(100 * MonthBlock) / (MonthBlock * 2) * 100 + 0,
 		},
 		{
 			"Decentralized",
 			values{
 				100 * MonthBlock,
-				10,
+				1000,
 				22,
-				100,
 				100 * YearBlock,
 			},
-			100*22/2 + 100*100/2 + 10*100,
+			(100 * MonthBlock) / (MonthBlock * 2) * 22 +
+				(100 * MonthBlock) / (MonthBlock * 2) * 100 +
+				RrepMultiplier * 1000 * 100 / RrepDivider,
 		},
 	}
 
@@ -277,7 +276,6 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 				big.NewInt(in.irep),
 				big.NewInt(in.rrep),
 				big.NewInt(in.mainPRepCount),
-				big.NewInt(in.pRepCount),
 				big.NewInt(in.totalDelegated),
 			)
 

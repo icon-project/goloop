@@ -51,15 +51,15 @@ const (
 	MonthBlock = DayBlock * 30
 	YearBlock  = MonthBlock * 12
 
-	IScoreICXRatio = 1000
+	IScoreICXRatio = 1_000
+	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
+	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
 
 	keyCalculator = "iiss.calculator"
 )
 
 var (
 	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
-	bigIntBeta3Divider   = big.NewInt(int64(YearBlock / IScoreICXRatio))
-	BigIntTwo            = big.NewInt(2)
 )
 
 type Calculator struct {
@@ -560,7 +560,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 // varForPRepDelegatingReward return variables for ICONist delegating reward
 // IISS 2.0
 // 	multiplier = Rrep * IScoreICXRatio
-//	divider = YearBlock
+//	divider = YearBlock * RrepDivider
 // IISS 3.1
 // 	multiplier = Iglobal * Ivoter * IScoreICXRatio
 //	divider = 100 * term period * total voting amount
@@ -574,8 +574,8 @@ func varForVotingReward(global *icstage.Global, totalVotingAmount *big.Int) (mul
 		if g.Rrep.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.Rrep, BigIntIScoreICXRatio)
-		divider.SetInt64(int64(YearBlock))
+		multiplier.Mul(g.Rrep, new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
+		divider.SetInt64(int64(YearBlock * RrepDivider))
 	} else {
 		g := global.GetV2()
 		if g.OffsetLimit == 0 || totalVotingAmount.Sign() == 0 {

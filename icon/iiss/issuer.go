@@ -120,24 +120,24 @@ func calcRewardPerBlock(
 	irep *big.Int,
 	rrep *big.Int,
 	mainPRepCount *big.Int,
-	pRepCount *big.Int,
 	totalDelegated *big.Int,
 ) *big.Int {
+	// reference ICON1: IssueFormula._handle_icx_issue_formula_for_prep()
 	beta1 := new(big.Int)
 	beta2 := new(big.Int)
 	beta3 := new(big.Int)
+	base := new(big.Int).Div(irep, new(big.Int).SetInt64(MonthBlock*2))
 
-	beta1.Mul(irep, mainPRepCount)
-	beta1.Div(beta1, new(big.Int).SetInt64(MonthBlock))
-	beta1.Div(beta1, BigIntTwo)
+	beta1.Mul(base, mainPRepCount)
+
+	// 100 : Beta2 percentage
+	beta2.Mul(base, new(big.Int).SetInt64(100))
 
 	if totalDelegated.Sign() != 0 {
-		beta2.Mul(irep, pRepCount)
-		beta2.Div(beta2, new(big.Int).SetInt64(MonthBlock))
-		beta2.Div(beta2, BigIntTwo)
-
-		beta3.Mul(rrep, totalDelegated)
-		beta3.Div(beta3, new(big.Int).SetInt64(YearBlock))
+		// real rrep = rrep + eep + dbp = 3 * rrep
+		beta3.Mul(rrep, new(big.Int).SetInt64(RrepMultiplier))
+		beta3.Mul(beta3, totalDelegated)
+		beta3.Div(beta3, new(big.Int).SetInt64(YearBlock*RrepDivider))
 	}
 
 	reward := new(big.Int).Add(beta1, beta2)
@@ -145,6 +145,7 @@ func calcRewardPerBlock(
 
 	return reward
 }
+
 func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverIssued *big.Int, byFee *big.Int) {
 	issue = new(big.Int).Set(reward)
 	byFee = new(big.Int)
@@ -177,24 +178,24 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	}
 	issueInfo, _ := es.State.GetIssue()
 	if term.GetIISSVersion() == icstate.IISSVersion1 {
-		return getIssueDataV1(es, term)
+		return getIssueDataV1(es, term, es.pm.TotalDelegated())
 	} else {
 		return nil, getIssueDataV2(issueInfo, term)
 	}
 }
 
-func getIssueDataV1(es *ExtensionStateImpl, term *icstate.Term) (*IssuePRepJSON, *IssueResultJSON) {
+func getIssueDataV1(
+	es *ExtensionStateImpl,
+	term *icstate.Term,
+	totalDelegated *big.Int,
+) (*IssuePRepJSON, *IssueResultJSON) {
 	irep := term.Irep()
 	rrep := term.Rrep()
-	// TODO read values from Term and replace es to issue
 	mainPRepCount := term.MainPRepCount()
-	electedPRepCount := term.ElectedPRepCount()
-	totalDelegated := term.TotalDelegated()
 	reward := calcRewardPerBlock(
 		irep,
 		rrep,
 		new(big.Int).SetInt64(int64(mainPRepCount)),
-		new(big.Int).SetInt64(int64(electedPRepCount)),
 		totalDelegated,
 	)
 	prep := &IssuePRepJSON{
@@ -227,4 +228,3 @@ func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.Term) *IssueResultJS
 	}
 	return result
 }
-

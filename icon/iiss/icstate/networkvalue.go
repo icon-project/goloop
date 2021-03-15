@@ -42,7 +42,8 @@ const (
 )
 
 const (
-	IISSVersion1 int = iota // IISS 2.0
+	IISSVersion0 int = iota // IISS disabled
+	IISSVersion1            // IISS 2.0
 	IISSVersion2            // IISS 3.1
 )
 

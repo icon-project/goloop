@@ -265,6 +265,6 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
 	assert.True(t, rf.Equal(nTerm.rewardFund))
 	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
-	assert.Equal(t, iissVersion, nTerm.iissVersion)
+	assert.Equal(t, iissVersion, nTerm.revision)
 	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)
 }

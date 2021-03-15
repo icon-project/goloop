@@ -142,18 +142,6 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool) *State {
 		store:               store,
 	}
 
-	if s.GetTerm() == nil {
-		iissBH := s.GetIISSBlockHeight()
-		// TODO check revision before making Term
-		//if iissOFF { return s } else { iissBH = current block height }
-		termPeriod := s.GetTermPeriod()
-		// if termPeriod is not enabled, do not make termCache with Term
-		if termPeriod > 0 {
-			term := newTerm(iissBH, termPeriod)
-			s.SetTerm(term)
-		}
-	}
-
 	return s
 }
 

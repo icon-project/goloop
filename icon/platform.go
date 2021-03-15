@@ -18,11 +18,11 @@ package icon
 
 import (
 	"encoding/json"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -57,7 +57,7 @@ func (p *platform) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) s
 }
 
 func (p *platform) ToRevision(value int) module.Revision {
-	return valueToRevision(value)
+	return icmodule.ValueToRevision(value)
 }
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
@@ -97,13 +97,18 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
 	// Start background calculator if it's not started.
 	if p.calculator.CheckToRun(ess) {
-		go p.calculator.Run(ess)
+		go func(snapshot state.ExtensionSnapshot) {
+			err := p.calculator.Run(snapshot)
+			if err != nil {
+				log.Errorf("Failed to calculate reward. %+v", err)
+			}
+		}(ess)
 	}
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
 	revision := wc.Revision().Value()
-	if revision < RevisionIISS {
+	if revision < icmodule.RevisionIISS {
 		return nil
 	}
 	ext := wc.GetExtensionState()

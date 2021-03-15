@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -133,7 +134,7 @@ type Term struct {
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	rewardFund      *RewardFund
 	bondRequirement int
-	iissVersion     int
+	revision        int
 	prepSnapshots   PRepSnapshots
 
 	flags       TermFlag
@@ -194,6 +195,10 @@ func (term *Term) BondRequirement() int {
 	return term.bondRequirement
 }
 
+func (term *Term) Revision() int {
+	return term.revision
+}
+
 func (term *Term) GetEndBlockHeight() int64 {
 	if term == nil {
 		return -1
@@ -202,7 +207,13 @@ func (term *Term) GetEndBlockHeight() int64 {
 }
 
 func (term *Term) GetIISSVersion() int {
-	return term.iissVersion
+	if term.revision >= icmodule.RevisionICON2 {
+		return IISSVersion2
+	}
+	if term.revision >= icmodule.RevisionIISS {
+		return IISSVersion1
+	}
+	return IISSVersion0
 }
 
 func (term *Term) Set(other *Term) {
@@ -216,7 +227,7 @@ func (term *Term) Set(other *Term) {
 	term.totalDelegated.Set(other.totalDelegated)
 	term.rewardFund = other.rewardFund.Clone()
 	term.bondRequirement = other.bondRequirement
-	term.iissVersion = other.iissVersion
+	term.revision = other.revision
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
 }
@@ -236,7 +247,7 @@ func (term *Term) Clone() *Term {
 		totalDelegated:  new(big.Int).Set(term.totalDelegated),
 		rewardFund:      term.rewardFund.Clone(),
 		bondRequirement: term.bondRequirement,
-		iissVersion:     term.iissVersion,
+		revision:        term.revision,
 		prepSnapshots:   term.prepSnapshots.Clone(),
 	}
 }
@@ -256,7 +267,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.totalDelegated,
 		&term.rewardFund,
 		&term.bondRequirement,
-		&term.iissVersion,
+		&term.revision,
 		&term.prepSnapshots,
 	)
 }
@@ -272,7 +283,7 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.totalDelegated,
 		term.rewardFund,
 		term.bondRequirement,
-		term.iissVersion,
+		term.revision,
 		term.prepSnapshots,
 	)
 }
@@ -301,7 +312,7 @@ func (term *Term) equal(other *Term) bool {
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
 		term.rewardFund.Equal(other.rewardFund) &&
 		term.bondRequirement == other.bondRequirement &&
-		term.iissVersion == other.iissVersion &&
+		term.revision == other.revision &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -389,7 +400,8 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["period"] = term.period
 	jso["rewardFund"] = term.rewardFund.ToJSON()
 	jso["bondRequirement"] = term.bondRequirement
-	jso["iissVersion"] = term.iissVersion
+	jso["revision"] = term.revision
+	jso["iissVersion"] = term.GetIISSVersion()
 	jso["preps"] = term.prepSnapshots.toJSON()
 
 	return jso
@@ -404,7 +416,7 @@ func NewNextTerm(
 	totalDelegated *big.Int,
 	rewardFund *RewardFund,
 	bondRequirement int,
-	iissVersion int,
+	revision int,
 ) *Term {
 	if term == nil {
 		return nil
@@ -419,11 +431,32 @@ func NewNextTerm(
 		totalDelegated:  new(big.Int).Set(totalDelegated),
 		rewardFund:      rewardFund.Clone(),
 		bondRequirement: bondRequirement,
-		iissVersion:     iissVersion,
+		revision:        revision,
 
 		flags: term.flags | FlagNextTerm,
 	}
 	return nextTerm
+}
+
+func GenesisTerm(
+	state *State,
+	startHeight int64,
+	revision int,
+) *Term {
+	return &Term{
+		sequence:        0,
+		startHeight:     startHeight,
+		period:          state.GetTermPeriod(),
+		irep:            state.GetIRep(),
+		rrep:            state.GetRRep(),
+		totalSupply:     new(big.Int),
+		totalDelegated:  new(big.Int),
+		rewardFund:      state.GetRewardFund().Clone(),
+		bondRequirement: int(state.GetBondRequirement()),
+		revision:        revision,
+
+		flags: FlagNextTerm,
+	}
 }
 
 func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
@@ -489,6 +522,35 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 	term.flags |= FlagValidator
 }
 
+func (term *Term) SetIrep(prepSnapshots []*PRepSnapshot) {
+	totalWeightedIrep := new(big.Int)
+	totalDelegation := new(big.Int)
+	for _, prep := range prepSnapshots {
+		// TODO fix params to get irep
+		//weightedIrep := new(big.Int).Mul(prep.irep, prep.bondedDelegation)
+		//totalWeightedIrep.Add(totalWeightedIrep, weightedIrep)
+		totalDelegation.Add(totalDelegation, prep.bondedDelegation)
+	}
+	if totalDelegation.Sign() == 1 {
+		term.irep.Div(totalWeightedIrep, totalDelegation)
+	} else {
+		term.irep.Mul(big.NewInt(10_000), icutils.BigIntICX)
+	}
+}
+
+func (term *Term) SetRrep() {
+	// TODO implement me
+	//stake_percentage := term.totalDelegated / term.totalSupply * IISS_MAX_REWARD_RATE
+	//if stake_percentage >= rpoint {
+	//	term.Rrep.SetInt(rmin)
+	//	return
+	//}
+	//
+	//first_operand: float = (rmax - rmin) / (rpoint ** 2)
+	//second_operand: float = (stake_percentage - rpoint) ** 2
+	//return int(first_operand * second_operand + rmin)
+}
+
 func (term *Term) String() string {
 	return fmt.Sprintf(
 		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d",
@@ -506,7 +568,9 @@ func (term *Term) IsDecentralized() bool {
 	if term == nil {
 		return false
 	}
-	return len(term.prepSnapshots) > 0
+	return term.revision >= icmodule.RevisionDecentralize &&
+		len(term.prepSnapshots) >= term.MainPRepCount() &&
+		term.totalDelegated.Sign() == 1
 }
 
 func newTermWithTag(_ icobject.Tag) *Term {

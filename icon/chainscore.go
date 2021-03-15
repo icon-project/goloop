@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -691,7 +692,7 @@ func (s *chainScore) Install(param []byte) error {
 			state.StepTypeApiCall:          {0},
 		}
 		systemConfig = state.SysConfigAudit
-		revision = Revision1
+		revision = icmodule.Revision1
 
 		// prepare Governance SCORE
 		governance, err := ioutil.ReadFile("icon_governance.zip")
@@ -718,12 +719,12 @@ func (s *chainScore) Install(param []byte) error {
 
 		if chainConfig.Revision.Value != 0 {
 			revision = int(chainConfig.Revision.Value)
-			if revision > MaxRevision {
+			if revision > icmodule.MaxRevision {
 				return scoreresult.IllegalFormatError.Errorf(
-					"RevisionIsHigherMax(%d > %d)", revision, MaxRevision)
-			} else if revision > LatestRevision {
+					"RevisionIsHigherMax(%d > %d)", revision, icmodule.MaxRevision)
+			} else if revision > icmodule.LatestRevision {
 				s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
-					revision, LatestRevision)
+					revision, icmodule.LatestRevision)
 			}
 		}
 
@@ -776,8 +777,6 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	s.handleRevisionChange(as, Revision1, revision)
-
 	s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
@@ -827,6 +826,9 @@ func (s *chainScore) Install(param []byte) error {
 				"FAIL to install initial governance score.")
 		}
 	}
+
+	s.handleRevisionChange(as, icmodule.Revision1, revision)
+
 	return nil
 }
 

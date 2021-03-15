@@ -19,6 +19,9 @@ package icon
 import (
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -81,6 +84,42 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	if r1 >= r2 {
 		return nil
 	}
+
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if es != nil {
+		var err error
+		if r2 == icmodule.RevisionIISS {
+			termPeriod := es.State.GetTermPeriod()
+			if termPeriod == defaultTermPeriod {
+				if err = es.State.SetTermPeriod(43200); err != nil {
+					return err
+				}
+			}
+			term := icstate.GenesisTerm(es.State, s.cc.BlockHeight()+1, r2)
+			if err = es.State.SetTerm(term); err != nil {
+				return err
+			}
+		} else if r2 == icmodule.RevisionDecentralize {
+			termPeriod := es.State.GetTermPeriod()
+			if termPeriod == defaultTermPeriod {
+				if err = es.State.SetTermPeriod(43120); err != nil {
+					return err
+				}
+			}
+		}
+
+		iissVersion := icstate.IISSVersion0
+		if r2 >= icmodule.RevisionICON2 {
+			iissVersion = icstate.IISSVersion2
+		} else if r2 >= icmodule.RevisionIISS {
+			iissVersion = icstate.IISSVersion1
+		}
+		if iissVersion != icstate.IISSVersion0 {
+			if err = es.State.SetIISSVersion(iissVersion); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -89,9 +128,9 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	if MaxRevision < code.Int64() {
+	if icmodule.MaxRevision < code.Int64() {
 		return scoreresult.Errorf(StatusIllegalArgument,
-			"IllegalArgument(max=%#x,new=%s)", MaxRevision, code)
+			"IllegalArgument(max=%#x,new=%s)", icmodule.MaxRevision, code)
 	}
 
 	as := s.cc.GetAccountState(state.SystemID)

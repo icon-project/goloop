@@ -292,7 +292,14 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
 
-	return prep.ToJSON(blockHeight, s.State.GetBondRequirement()), nil
+	return prep.ToJSON(blockHeight, s.GetBondRequirement()), nil
+}
+
+func (s *ExtensionStateImpl) GetBondRequirement() int64 {
+	if s.State.GetIISSVersion() < icstate.IISSVersion2 {
+		return 0
+	}
+	return s.State.GetBondRequirement()
 }
 
 func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -687,7 +694,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	if err != nil {
 		return err
 	}
-	if err = s.moveOnToNextTerm(totalSupply); err != nil {
+	if err = s.moveOnToNextTerm(totalSupply, wc.Revision().Value()); err != nil {
 		return err
 	}
 
@@ -703,7 +710,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	return nil
 }
 
-func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
+func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int) error {
 	term := s.State.GetTerm()
 	nextTerm := icstate.NewNextTerm(
 		term,
@@ -713,8 +720,8 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		totalSupply,
 		s.pm.TotalDelegated(),
 		s.State.GetRewardFund(),
-		int(s.State.GetBondRequirement()),
-		s.State.GetIISSVersion(),
+		int(s.GetBondRequirement()),
+		revision,
 	)
 
 	// Take prep snapshots only if mainPReps exist
@@ -722,13 +729,18 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int) error {
 		size := icutils.Min(s.pm.Size(), int(s.State.GetPRepCount()))
 		if size > 0 {
 			prepSnapshots := make(icstate.PRepSnapshots, size, size)
-			br := s.State.GetBondRequirement()
+			br := s.GetBondRequirement()
 			for i := 0; i < size; i++ {
 				prep := s.pm.GetPRepByIndex(i)
 				prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
 			}
 
 			nextTerm.SetPRepSnapshots(prepSnapshots)
+			// TODO pass list of main preps
+			//if revision < icmodule.Revision9 {
+			//	nextTerm.SetIrep(s.pm.mainPReps)
+			//}
+			//nextTerm.SetRrep(total_supply)
 		}
 	}
 
