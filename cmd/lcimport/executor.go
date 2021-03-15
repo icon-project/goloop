@@ -25,11 +25,13 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
