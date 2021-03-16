@@ -88,19 +88,19 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if es != nil {
 		var err error
-		if r2 == icmodule.RevisionIISS {
-			termPeriod := es.State.GetTermPeriod()
+		termPeriod := es.State.GetTermPeriod()
+		iissVersion := icstate.IISSVersion0
+
+		if r2 >= icmodule.RevisionIISS {
 			if termPeriod == defaultTermPeriod {
 				if err = es.State.SetTermPeriod(43200); err != nil {
 					return err
 				}
 			}
-			term := icstate.GenesisTerm(es.State, s.cc.BlockHeight()+1, r2)
-			if err = es.State.SetTerm(term); err != nil {
-				return err
-			}
-		} else if r2 == icmodule.RevisionDecentralize {
-			termPeriod := es.State.GetTermPeriod()
+			iissVersion = icstate.IISSVersion1
+		}
+
+		if r2 >= icmodule.RevisionDecentralize {
 			if termPeriod == defaultTermPeriod {
 				if err = es.State.SetTermPeriod(43120); err != nil {
 					return err
@@ -108,16 +108,16 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
-		iissVersion := icstate.IISSVersion0
 		if r2 >= icmodule.RevisionICON2 {
 			iissVersion = icstate.IISSVersion2
-		} else if r2 >= icmodule.RevisionIISS {
-			iissVersion = icstate.IISSVersion1
 		}
-		if iissVersion != icstate.IISSVersion0 {
-			if err = es.State.SetIISSVersion(iissVersion); err != nil {
-				return err
-			}
+
+		if err = es.State.SetIISSVersion(iissVersion); err != nil {
+			return err
+		}
+
+		if err = es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
+			return err
 		}
 	}
 	return nil

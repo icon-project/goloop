@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -748,6 +749,16 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 
 	s.logger.Debugf(nextTerm.String())
 	return s.State.SetTerm(nextTerm)
+}
+
+func (s *ExtensionStateImpl) GenesisTerm(blockHeight int64, revision int) error {
+	if revision >= icmodule.RevisionIISS && s.State.GetTerm() == nil {
+		term := icstate.GenesisTerm(s.State, blockHeight+1, revision)
+		if err := s.State.SetTerm(term); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
