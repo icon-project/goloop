@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"text/scanner"
@@ -644,6 +645,10 @@ func main() {
 			lcDB = db
 		}
 		return nil
+	}
+
+	root.PersistentPostRun = func(cmd *cobra.Command, args []string) {
+		pprof.StopCPUProfile()
 	}
 
 	if err := root.Execute(); err != nil {
