@@ -347,6 +347,7 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 		fmt.Printf("- Balance : %#d\n", ass.GetBalance())
 		if ass.IsContract() {
 			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
+			fmt.Printf("- CodeHash: %#x\n", ass.Contract().CodeHash())
 			api, err := ass.APIInfo()
 			if err != nil {
 				return err
@@ -478,7 +479,7 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 					fmt.Printf("- Extension Data    : %#x\n", values[3])
 				}
 			}
-			fmt.Printf("- Total Transactions: %d", blk.TxTotal())
+			fmt.Printf("- Total Transactions: %d\n", blk.TxTotal())
 		}
 		return nil
 	}
