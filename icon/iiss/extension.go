@@ -467,6 +467,10 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	return err
 }
 
+func (s *ExtensionStateImpl) DisqualifyPRep(owner module.Address) error {
+	return s.pm.DisqualifyPRep(owner)
+}
+
 // replaceValidator replaces a penalized or inactive validator with a new validator from subPReps
 func (s *ExtensionStateImpl) replaceValidator(owner module.Address) error {
 	var err error
@@ -637,7 +641,7 @@ func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *b
 	if pb == nil {
 		return errors.Errorf("PRep not found: %v", from)
 	}
-	if err := s.validateIRep(pb.IRep(), irep, pb.IRepHeight()); err != nil {
+	if err := s.ValidateIRep(pb.IRep(), irep, pb.IRepHeight()); err != nil {
 		return err
 	}
 
@@ -647,7 +651,7 @@ func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *b
 
 const IrepInflationLimit = 14 // 14%
 
-func (s *ExtensionStateImpl) validateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
+func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
 	term := s.State.GetTerm()
 	if prevSetIRepHeight >= term.StartHeight() {
 		return errors.Errorf("IRep can be changed only once during a term")

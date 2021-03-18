@@ -58,14 +58,6 @@ const (
 
 var chainMethods = []*chainMethod{
 	{scoreapi.Method{
-		scoreapi.Function, "getNetworkValue",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
 		scoreapi.Function, "getIISSInfo",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
@@ -385,26 +377,8 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, 0, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "setStepCost",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-			{"cost", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setMaxStepLimit",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-			{"limit", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
 		scoreapi.Function, "getRevision",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
@@ -412,25 +386,15 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getStepPrice",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
 	}, 0, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getStepCost",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
 		scoreapi.Function, "getStepCosts",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
@@ -438,7 +402,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getMaxStepLimit",
-		scoreapi.FlagReadOnly, 1,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"contextType", scoreapi.String, nil, nil},
 		},
@@ -448,7 +412,7 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getScoreStatus",
-		scoreapi.FlagReadOnly, 1,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
 		},
@@ -458,18 +422,68 @@ var chainMethods = []*chainMethod{
 	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getServiceConfig",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
 	}, 0, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getPRepStats",
-		scoreapi.FlagReadOnly, 0,
+		scoreapi.Function, "getScoreDenyList",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getImportAllowList",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "removeScoreDenyList",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"score", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "addScoreDenyList",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"score", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepStats",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "disqualifyPRep",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"prep", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "validateIrep",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"newIrep", scoreapi.Integer, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
 		},
 	}, 0, 0},
 }

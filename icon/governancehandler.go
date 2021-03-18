@@ -85,6 +85,34 @@ func applyGovernanceVariablesToSytstem(cc contract.CallContext, govAs, sysAs con
 			}
 		}
 	}
+
+	//import allowList
+	allowListGov := scoredb.NewDictDB(govAs, "import_white_list", 1)
+	keysGov := scoredb.NewArrayDB(govAs, "import_white_list_keys")
+	allowListDB := scoredb.NewDictDB(sysAs, VarImportAllowList, 1)
+	keysDB := scoredb.NewArrayDB(sysAs, VarImportAllowListKeys)
+	kcount := keysGov.Size()
+	for i := 0; i < kcount; i ++ {
+		k := keysGov.Get(i)
+		if value := allowListGov.Get(k); value != nil {
+			_ = keysDB.Put(k.String())
+			_ = allowListDB.Set(k, value.String())
+		}
+	}
+
+	// score denyList
+	denyListGov := scoredb.NewArrayDB(govAs, "score_black_list")
+	denyListDB := scoredb.NewArrayDB(sysAs, VarScoreDenyList)
+	kcount = denyListGov.Size()
+	for i := 0; i < kcount; i++ {
+		v := denyListGov.Get(i)
+		_ = denyListDB.Put(v.Address())
+	}
+
+	// service config
+	govConfig := scoredb.NewVarDB(govAs, state.VarServiceConfig)
+	sysConfig := scoredb.NewVarDB(sysAs, state.VarServiceConfig)
+	_ = sysConfig.Set(govConfig.Int64())
 	return nil
 }
 

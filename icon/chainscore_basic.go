@@ -30,6 +30,12 @@ import (
 	"math/big"
 )
 
+const (
+	VarScoreDenyList       = "score_deny_list"
+	VarImportAllowList     = "import_allow_list"
+	VarImportAllowListKeys = "import_allow_listKeys"
+)
+
 func (s *chainScore) tryChargeCall() error {
 	if !s.gov {
 		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
@@ -283,36 +289,6 @@ func (s *chainScore) Ex_setStepPrice(price *common.HexInt) error {
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
-func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if stepCostDB.Get(costType) == nil {
-		stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-		if err := stepTypes.Put(costType); err != nil {
-			return err
-		}
-	}
-	return stepCostDB.Set(costType, cost)
-}
-
-func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	if stepLimitDB.Get(contextType) == nil {
-		stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
-		if err := stepLimitTypes.Put(contextType); err != nil {
-			return err
-		}
-	}
-	return stepLimitDB.Set(contextType, cost)
-}
-
 // User calls icx_call : Functions which can be called by anyone.
 func (s *chainScore) Ex_getRevision() (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
@@ -328,18 +304,6 @@ func (s *chainScore) Ex_getStepPrice() (int64, error) {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarStepPrice).Int64(), nil
-}
-
-func (s *chainScore) Ex_getStepCost(t string) (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
-		return 0, err
-	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if v := stepCostDB.Get(t); v != nil {
-		return v.Int64(), nil
-	}
-	return 0, nil
 }
 
 func (s *chainScore) Ex_getStepCosts() (map[string]interface{}, error) {
@@ -429,4 +393,113 @@ func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarServiceConfig).Int64(), nil
+}
+
+func (s *chainScore) Ex_getScoreDenyList() ([]interface{}, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	blDB := scoredb.NewArrayDB(as, VarScoreDenyList)
+	size := blDB.Size()
+	bl := make([]interface{}, size)
+	for i := 0; i < size; i++ {
+		a := blDB.Get(i).Address()
+		bl = append(bl, common.AddressToPtr(a))
+	}
+	return bl, nil
+}
+
+func (s *chainScore) Ex_getImportAllowList() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	wlDB := scoredb.NewDictDB(as, VarImportAllowList, 1)
+	kDB := scoredb.NewArrayDB(as, VarImportAllowListKeys)
+	size := kDB.Size()
+	wl := make(map[string]interface{}, size)
+	for i := 0; i < size; i++ {
+		k := kDB.Get(i).String()
+		wl[k] = wlDB.Get(k).String()
+	}
+	return wl, nil
+}
+
+func (s *chainScore) Ex_addScoreDenyList(score module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	if !score.IsContract() {
+		return scoreresult.New(StatusNotFound, "NoContract")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	dlDB := scoredb.NewArrayDB(as, VarScoreDenyList)
+	for i := 0; i < dlDB.Size(); i++ {
+		v := dlDB.Get(i).Address()
+		if v.Equal(score) {
+			return scoreresult.New(StatusIllegalArgument, score.String() + "already in deny list")
+		}
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_removeScoreDenyList(score module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	if !score.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "NoContract")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	dlDB := scoredb.NewArrayDB(as, VarScoreDenyList)
+	exist := false
+	top := dlDB.Pop().Address()
+	if !top.Equal(score) {
+		for i := 0; i < dlDB.Size(); i++ {
+			v := dlDB.Get(i).Address()
+			if v.Equal(score) {
+				_ = dlDB.Set(i, top)
+				exist = true
+			}
+		}
+	} else {
+		exist = true
+	}
+	if !exist{
+		return scoreresult.New(StatusIllegalArgument, score.String() + "not in deny list")
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_disqualifyPRep(prep module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.DisqualifyPRep(prep)
+}
+
+func (s *chainScore) Ex_validateIrep(newIrep *common.HexInt) (bool, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return false, err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return false, err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	term := es.State.GetTerm()
+	if err := es.ValidateIRep(term.Irep(), &newIrep.Int, 0); err != nil {
+		return false, err
+	}
+	return true, nil
 }
