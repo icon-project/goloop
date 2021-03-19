@@ -430,6 +430,16 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 	return
 }
 
+func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableFlag) (err error) {
+	term := s.State.GetTerm()
+	_, err = s.Front.AddEventEnable(
+		int(blockHeight-term.StartHeight()),
+		from,
+		flag,
+	)
+	return
+}
+
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
 	var err error
 	prep := s.pm.GetPRepByOwner(owner)
@@ -447,12 +457,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 		}
 	}
 
-	term := s.State.GetTerm()
-	_, err = s.Front.AddEventEnable(
-		int(cc.BlockHeight()-term.StartHeight()),
-		owner,
-		false,
-	)
+	s.addEventEnable(cc.BlockHeight(), owner, icstage.EfDisablePermanent)
 
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepUnregistered(Address)")},

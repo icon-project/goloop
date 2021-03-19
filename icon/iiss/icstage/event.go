@@ -100,7 +100,7 @@ func (vl *VoteList) Update(vl2 VoteList) {
 	deleteIdx := make([]int, 0)
 	for _, vote2 := range vl2 {
 		find := false
-		for idx, _:= range *vl {
+		for idx, _ := range *vl {
 			vote := newVL[idx]
 			if vote.To().Equal(vote2.To()) {
 				find = true
@@ -116,7 +116,7 @@ func (vl *VoteList) Update(vl2 VoteList) {
 		}
 	}
 	sort.Ints(deleteIdx)
-	for i, value:= range deleteIdx {
+	for i, value := range deleteIdx {
 		newVL.Delete(value - i)
 	}
 	*vl = newVL
@@ -233,10 +233,27 @@ func newEventBond(tag icobject.Tag) *EventBond {
 	return new(EventBond)
 }
 
+type EnableFlag int
+
+const (
+	EfEnable EnableFlag = iota
+	EfDisableTemp
+	EfDisablePermanent
+	EfMAX
+)
+
+func (ef EnableFlag) IsEnable() bool {
+	return ef == EfEnable
+}
+
+func (ef EnableFlag) IsTemporarilyDisabled() bool {
+	return ef == EfDisableTemp
+}
+
 type EventEnable struct {
 	icobject.NoDatabase
 	Target *common.Address
-	Enable bool
+	Flag   EnableFlag
 }
 
 func (ee *EventEnable) Version() int {
@@ -246,7 +263,7 @@ func (ee *EventEnable) Version() int {
 func (ee *EventEnable) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
 		&ee.Target,
-		&ee.Enable,
+		&ee.Flag,
 	)
 	return err
 }
@@ -254,13 +271,13 @@ func (ee *EventEnable) RLPDecodeFields(decoder codec.Decoder) error {
 func (ee *EventEnable) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		ee.Target,
-		ee.Enable,
+		ee.Flag,
 	)
 }
 
 func (ee *EventEnable) Equal(o icobject.Impl) bool {
 	if ee2, ok := o.(*EventEnable); ok {
-		return ee.Target.Equal(ee2.Target) && ee.Enable == ee2.Enable
+		return ee.Target.Equal(ee2.Target) && ee.Flag == ee2.Flag
 	} else {
 		return false
 	}

@@ -461,7 +461,7 @@ func (c *Calculator) calculateVotedReward() error {
 			offset = keyOffset
 
 			obj := icstage.ToEventEnable(o)
-			vInfo.setEnable(obj.Target, obj.Enable)
+			vInfo.setEnable(obj.Target, obj.Flag)
 			vInfo.updateTotalBondedDelegation()
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
@@ -482,6 +482,7 @@ func (c *Calculator) calculateVotedReward() error {
 		if err != nil {
 			return err
 		}
+		prep.UpdateToWrite()
 		if prep.voted.IsEmpty() {
 			if err = c.temp.DeleteVoted(addr); err != nil {
 				return err
@@ -632,13 +633,13 @@ func (c *Calculator) calculateVotingReward() error {
 				pe := new(pRepEnable)
 				prepInfo[idx] = pe
 			}
-			if event.Enable {
+			if event.Flag.IsEnable() {
 				prepInfo[idx].startOffset = offset
 			} else {
 				prepInfo[idx].endOffset = offset
 			}
 			// update vInfo
-			vInfo.setEnable(event.Target, event.Enable)
+			vInfo.setEnable(event.Target, event.Flag)
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
@@ -998,6 +999,7 @@ func newValidator(addr *common.Address) *validator {
 type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
+	flag   icstage.EnableFlag
 }
 
 func (vd *votedData) compare(vd2 *votedData) int {
@@ -1016,8 +1018,9 @@ func (vd *votedData) Enable() bool {
 	return vd.voted.Enable
 }
 
-func (vd *votedData) SetEnable(enable bool) {
-	vd.voted.SetEnable(enable)
+func (vd *votedData) SetEnable(flag icstage.EnableFlag) {
+	vd.voted.SetEnable(flag.IsEnable())
+	vd.flag = flag
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
@@ -1034,6 +1037,12 @@ func (vd *votedData) GetBondedDelegation() *big.Int {
 
 func (vd *votedData) GetVotedAmount() *big.Int {
 	return vd.voted.GetVoted()
+}
+
+func (vd *votedData) UpdateToWrite() {
+	if vd.flag.IsTemporarilyDisabled() {
+		vd.voted.Enable = true
+	}
 }
 
 func newVotedData(d *icreward.Voted) *votedData {
@@ -1058,20 +1067,20 @@ func (vi *votedInfo) addVotedData(addr module.Address, data *votedData) {
 	}
 }
 
-func (vi *votedInfo) setEnable(addr module.Address, enable bool) {
+func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableFlag) {
 	if vData, ok := vi.preps[string(addr.Bytes())]; ok {
-		if enable != vData.Enable() {
-			if enable {
+		if flag.IsEnable() != vData.Enable() {
+			if flag.IsEnable() {
 				vi.updateTotalVoted(vData.GetVotedAmount())
 			} else {
 				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
 			}
 		}
-		vData.SetEnable(enable)
+		vData.SetEnable(flag)
 	} else {
 		voted := icreward.NewVoted()
 		vData = newVotedData(voted)
-		vData.SetEnable(enable)
+		vData.SetEnable(flag)
 		vi.addVotedData(addr, vData)
 	}
 }

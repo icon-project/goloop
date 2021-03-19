@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
@@ -200,7 +201,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	_, err = es.Front.AddEventEnable(
 		int(s.cc.BlockHeight()-term.StartHeight()),
 		s.from,
-		true,
+		icstage.EfEnable,
 	)
 
 	s.cc.OnEvent(state.SystemAddress,

@@ -138,7 +138,7 @@ func TestState_AddEvent(t *testing.T) {
 		offset        int
 		address       *common.Address
 		votes         VoteList
-		enable        bool
+		enableFlag    EnableFlag
 		irep          *big.Int
 		rrep          *big.Int
 		mainPRepCount int64
@@ -171,10 +171,10 @@ func TestState_AddEvent(t *testing.T) {
 		{
 			"Enable",
 			args{
-				type_:   TypeEventEnable,
-				offset:  offset2,
-				address: addr2,
-				enable:  false,
+				type_:      TypeEventEnable,
+				offset:     offset2,
+				address:    addr2,
+				enableFlag: EfDisablePermanent,
 			},
 		},
 	}
@@ -187,7 +187,7 @@ func TestState_AddEvent(t *testing.T) {
 			case TypeEventBond:
 				checkAddEventBond(t, s, a.offset, a.address, a.votes)
 			case TypeEventEnable:
-				checkAddEventEnable(t, s, a.offset, a.address, a.enable)
+				checkAddEventEnable(t, s, a.offset, a.address, a.enableFlag)
 			}
 		})
 	}
@@ -240,8 +240,8 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	assert.True(t, votes.Equal(event.Votes))
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, enable bool) {
-	index, err := s.AddEventEnable(offset, address, enable)
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableFlag) {
+	index, err := s.AddEventEnable(offset, address, flag)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
@@ -249,7 +249,7 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	assert.NoError(t, err)
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target))
-	assert.Equal(t, enable, event.Enable)
+	assert.Equal(t, flag, event.Flag)
 }
 
 func TestState_AddBlockProduce(t *testing.T) {

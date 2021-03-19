@@ -19,6 +19,7 @@ package iiss
 import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -59,6 +60,7 @@ func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
 	var err error = nil
 	var slashRatio int
+	var enableFlag icstage.EnableFlag
 
 	prep := s.pm.GetPRepByOwner(owner)
 	if prep == nil {
@@ -75,8 +77,10 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 		return nil
 	case PenaltyValidationFailure:
 		slashRatio = ValidationPenaltySlashRatio
+		enableFlag = icstage.EfDisableTemp
 	case PenaltyAccumulatedValidationFailure:
 		slashRatio = ConsistentValidationPenaltySlashRatio
+		enableFlag = icstage.EfDisableTemp
 	default:
 		return errors.Errorf("Unknown penalty: %d", penalty)
 	}
@@ -89,6 +93,9 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 		return err
 	}
 	if err = s.slash(cc, owner, slashRatio); err != nil {
+		return err
+	}
+	if err = s.addEventEnable(blockHeight, owner, enableFlag); err != nil {
 		return err
 	}
 	return nil
@@ -113,8 +120,11 @@ func checkConsistentValidationPenalty(ps *icstate.PRepStatus) bool {
 }
 
 func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Address, ratio int) error {
+	if ratio == 0 {
+		return nil
+	}
 	if ratio < 0 || 100 < ratio {
-		return errors.Errorf("Too big slash ratio %d", ratio)
+		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
 
 	pm := s.pm
