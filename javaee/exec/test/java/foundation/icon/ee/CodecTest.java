@@ -2,6 +2,7 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.GoldenTest;
 import org.junit.jupiter.api.Test;
+import score.ByteArrayObjectWriter;
 import score.Context;
 import score.DictDB;
 import score.ObjectReader;
@@ -63,5 +64,28 @@ public class CodecTest extends GoldenTest {
     public void test() {
         var score = sm.mustDeploy(new Class<?>[]{Score.class, User.class});
         score.invoke("run");
+    }
+
+    public static class RWHolder {
+        private ObjectReader r;
+        private ByteArrayObjectWriter w;
+
+        @External
+        public void setupRW(byte[] bytes) {
+            r = Context.newByteArrayObjectReader("RLPn", bytes);
+            w = Context.newByteArrayObjectWriter("RLPn");
+            w.write(bytes);
+        }
+    }
+
+    @Test
+    public void testReaderWriter() {
+        var score = sm.mustDeploy(RWHolder.class);
+        var by = new byte[1000];
+        score.invoke("setupRW", by);
+        by = new byte[500];
+        by[0] = 1;
+        // ObjectGraph changes but only object ID changes
+        score.invoke("setupRW", by);
     }
 }

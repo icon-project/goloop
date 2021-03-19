@@ -327,15 +327,21 @@ public class ObjectReaderImpl
 
     public void close() {
         reader = null;
+        level = 0;
+        lastChargePos = 0;
+    }
+
+    public ObjectReaderImpl(Void ignore, int readIndex) {
+        super(ignore, readIndex);
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(ObjectReaderImpl.class, deserializer);
-        reader = null;
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
+        // close as the current contract can be cached
+        close();
         super.serializeSelf(ObjectReaderImpl.class, serializer);
-        assert reader == null;
     }
 }

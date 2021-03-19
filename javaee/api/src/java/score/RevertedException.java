@@ -19,11 +19,11 @@ package score;
 /**
  * Signals a failure of an inter-contract call.
  */
-public class RevertException extends RuntimeException {
+public class RevertedException extends RuntimeException {
     /**
      * Constructs a new exception.
      */
-    public RevertException() {
+    public RevertedException() {
         super();
     }
 
@@ -31,7 +31,7 @@ public class RevertException extends RuntimeException {
      * Constructs a new exception.
      * @param message message
      */
-    public RevertException(String message) {
+    public RevertedException(String message) {
         super(message);
     }
 
@@ -40,7 +40,7 @@ public class RevertException extends RuntimeException {
      * @param message message
      * @param cause cause
      */
-    public RevertException(String message, Throwable cause) {
+    public RevertedException(String message, Throwable cause) {
         super(message, cause);
     }
 
@@ -48,7 +48,7 @@ public class RevertException extends RuntimeException {
      * Constructs a new exception.
      * @param cause cause
      */
-    public RevertException(Throwable cause) {
+    public RevertedException(Throwable cause) {
         super(cause);
     }
 }

@@ -160,8 +160,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws RevertException if call target reverts the newly created frame
-     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws RevertedException if call target reverts the newly created frame
+     * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static<T> T call(Class<T> cls, BigInteger value,
             Address targetAddress, String method, Object... params) {
@@ -177,8 +177,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws RevertException if call target reverts the newly created frame
-     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws RevertedException if call target reverts the newly created frame
+     * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
@@ -195,8 +195,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws RevertException if call target reverts the newly created frame
-     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws RevertedException if call target reverts the newly created frame
+     * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static<T> T call(Class<T> cls, Address targetAddress, String method,
             Object... params) {
@@ -211,8 +211,8 @@ public final class Context {
      * @param params        parameters
      * @return the invocation result
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws RevertException if call target reverts the newly created frame
-     * @throws ScoreRevertException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws RevertedException if call target reverts the newly created frame
+     * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      */
     public static Object call(Address targetAddress, String method, Object... params) {
         return null;
@@ -255,7 +255,7 @@ public final class Context {
 
     /**
      * Stops the current execution and rolls back all state changes.
-     * In case of cross-calls, {@code ScoreRevertException} would be raised to the caller
+     * In case of cross-calls, {@link UserRevertedException} would be raised to the caller
      * with the given code and message data.
      *
      * @param code an arbitrary user-defined code
@@ -446,5 +446,26 @@ public final class Context {
      * @param data extra data
      */
     public static void logEvent(Object[] indexed, Object[] data) {
+    }
+
+    /**
+     * Returns a new object reader reading from a byte array.
+     * @param codec codec. Currently "RLPn" is supported.
+     * @param byteArray byte array.
+     * @return object reader.
+     */
+    public static ObjectReader newByteArrayObjectReader(String codec,
+            byte[] byteArray) {
+        return null;
+    }
+
+    /**
+     * Returns a new object writer writing to a byte array.
+     * @param codec codec. Currently "RLPn" is supported.
+     * @return byte array object writer
+     */
+    public static ByteArrayObjectWriter newByteArrayObjectWriter(
+            String codec) {
+        return null;
     }
 }

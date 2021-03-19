@@ -4,6 +4,7 @@ import i.PackageConstants;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.NodeEnvironment;
 import org.aion.avm.utilities.Utilities;
+import score.UserRevertException;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,7 +22,8 @@ public class PreRenameClassAccessRules {
             Exception.class.getName(),
             Object.class.getName(),
             RuntimeException.class.getName(),
-            Throwable.class.getName()
+            Throwable.class.getName(),
+            UserRevertException.class.getName()
     ).stream().map(Utilities::fullyQualifiedNameToInternalName).collect(Collectors.toSet());
 
     private final Set<String> userDefinedSlashClassesOnly;

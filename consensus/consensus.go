@@ -611,6 +611,10 @@ func (cs *consensus) enterPropose() {
 				cs.log.Panicf("propose error: %+v\n", err)
 			}
 		}
+	} else {
+		if cs.isProposalAndPOLPrevotesComplete() {
+			cs.enterPrevote()
+		}
 	}
 	cs.notifySyncer()
 }

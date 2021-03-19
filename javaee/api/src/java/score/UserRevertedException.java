@@ -19,7 +19,7 @@ package score;
 /**
  * Signals a manual reversion from a score.
  */
-public class ScoreRevertException extends RevertException {
+public class UserRevertedException extends RevertedException {
     // NOTE: the following codes should be matched with {@code foundation.icon.ee.types.Status}
     private static final int Start = 32;
     private static final int End = 1000 - Start;
@@ -29,7 +29,7 @@ public class ScoreRevertException extends RevertException {
     /**
      * Constructs a new exception
      */
-    public ScoreRevertException() {
+    public UserRevertedException() {
         super();
     }
 
@@ -37,7 +37,7 @@ public class ScoreRevertException extends RevertException {
      * Constructs a new exception
      * @param message message
      */
-    public ScoreRevertException(String message) {
+    public UserRevertedException(String message) {
         super(message);
     }
 
@@ -46,7 +46,7 @@ public class ScoreRevertException extends RevertException {
      * @param message message
      * @param cause cause
      */
-    public ScoreRevertException(String message, Throwable cause) {
+    public UserRevertedException(String message, Throwable cause) {
         super(message, cause);
     }
 
@@ -54,23 +54,16 @@ public class ScoreRevertException extends RevertException {
      * Constructs a new exception
      * @param cause cause
      */
-    public ScoreRevertException(Throwable cause) {
+    public UserRevertedException(Throwable cause) {
         super(cause);
-    }
-
-    private void assumeValidCode(int code) {
-        if (code < 0 || code >= End) {
-            throw new IllegalArgumentException("invalid code " + code);
-        }
     }
 
     /**
      * Constructs a new exception
      * @param code reversion code defined by score
      */
-    public ScoreRevertException(int code) {
+    public UserRevertedException(int code) {
         super();
-        assumeValidCode(code);
         statusCode = code;
     }
 
@@ -79,9 +72,8 @@ public class ScoreRevertException extends RevertException {
      * @param code reversion code defined by score
      * @param message message
      */
-    public ScoreRevertException(int code, String message) {
+    public UserRevertedException(int code, String message) {
         super(message);
-        assumeValidCode(code);
         statusCode = code;
     }
 
@@ -91,9 +83,8 @@ public class ScoreRevertException extends RevertException {
      * @param message message
      * @param cause cause
      */
-    public ScoreRevertException(int code, String message, Throwable cause) {
+    public UserRevertedException(int code, String message, Throwable cause) {
         super(message, cause);
-        assumeValidCode(code);
         statusCode = code;
     }
 
@@ -102,9 +93,8 @@ public class ScoreRevertException extends RevertException {
      * @param code reversion code defined by score
      * @param cause cause
      */
-    public ScoreRevertException(int code, Throwable cause) {
+    public UserRevertedException(int code, Throwable cause) {
         super(cause);
-        assumeValidCode(code);
         statusCode = code;
     }
 

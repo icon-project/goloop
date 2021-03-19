@@ -294,6 +294,8 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_newDictDB = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_newArrayDB = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_newVarDB = RT_METHOD_FEE_LEVEL_1;
+    public static final int BlockchainRuntime_avm_newByteArrayObjectReader = RT_METHOD_FEE_LEVEL_1;
+    public static final int BlockchainRuntime_avm_newByteArrayObjectWriter = RT_METHOD_FEE_LEVEL_1;
 
     public static final int DictDB_avm_at = RT_METHOD_FEE_LEVEL_1;
 

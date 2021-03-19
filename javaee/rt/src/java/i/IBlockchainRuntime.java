@@ -3,6 +3,8 @@ package i;
 import a.ByteArray;
 import p.score.Address;
 import p.score.AnyDB;
+import p.score.ByteArrayObjectWriter;
+import p.score.ObjectReader;
 import s.java.lang.Class;
 import s.java.lang.String;
 import s.java.math.BigInteger;
@@ -172,4 +174,8 @@ public interface IBlockchainRuntime {
      * Emits event logs
      */
     void avm_logEvent(IObjectArray indexed, IObjectArray data);
+
+    ObjectReader avm_newByteArrayObjectReader(String codec, ByteArray byteArray);
+
+    ByteArrayObjectWriter avm_newByteArrayObjectWriter(String codec);
 }
