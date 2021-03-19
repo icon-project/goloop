@@ -52,6 +52,40 @@ func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string
 	}
 }
 
+func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
+	if len(r.city) == 0 {
+		r.city = prepInfo.City()
+	}
+
+	if len(r.country) == 0 {
+		r.country = prepInfo.Country()
+	}
+
+	if len(r.details) == 0 {
+		r.details = prepInfo.Details()
+	}
+
+	if len(r.email) == 0 {
+		r.email = prepInfo.Email()
+	}
+
+	if len(r.name) == 0 {
+		r.name = prepInfo.Name()
+	}
+
+	if len(r.p2pEndpoint) == 0 {
+		r.p2pEndpoint = prepInfo.P2pEndpoint()
+	}
+
+	if len(r.website) == 0 {
+		r.website = prepInfo.Website()
+	}
+
+	if r.node == nil {
+		r.node = prepInfo.Node()
+	}
+}
+
 type PRep struct {
 	*icstate.PRepBase
 	*icstate.PRepStatus

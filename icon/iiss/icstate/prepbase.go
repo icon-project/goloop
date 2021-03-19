@@ -56,6 +56,10 @@ type PRepBase struct {
 	bonderList  BonderList
 }
 
+func (p *PRepBase) Name() string {
+	return p.name
+}
+
 func (p *PRepBase) City() string {
 	return p.city
 }
@@ -306,7 +310,7 @@ func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
 func NewPRepBase(owner module.Address) *PRepBase {
 	return &PRepBase{
 		owner: owner,
-		irep: new(big.Int),
+		irep:  new(big.Int),
 	}
 }
 

@@ -517,6 +517,13 @@ func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
 		}
 	}
 
+	prepInfo := s.State.GetPRepBase(owner, false)
+	if prepInfo == nil {
+		return errors.Errorf("PRep Not Found: %v", owner)
+	}
+
+	regInfo.UpdateRegInfo(prepInfo)
+
 	return s.pm.SetPRep(regInfo)
 }
 
