@@ -5,8 +5,8 @@
 
 # Configuration
 BUILD_ROOT = $(abspath ./)
-BIN_DIR = ./bin
-LINUX_BIN_DIR = ./build/linux
+BIN_DIR = $(BUILD_ROOT)/bin
+LINUX_BIN_DIR = $(BUILD_ROOT)/build/linux
 
 GOBUILD = go build
 GOBUILD_TAGS ?=
@@ -176,6 +176,8 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
 	GOCHAIN_VERSION=$(GL_VERSION) \
 	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/gochain/update.sh $(GOCHAIN_IMAGE) $(BUILD_ROOT) $(GOCHAIN_DOCKER_DIR)
+
+include icon/build.mk
 
 .PHONY: test
 
