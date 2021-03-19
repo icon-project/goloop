@@ -201,6 +201,14 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, 0, 0}, // TODO change minVer to Revision5
 	{scoreapi.Method{
+		scoreapi.Function, "setGovernanceVariables",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"irep", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionDecentralize, icmodule.Revision8},
+	{scoreapi.Method{
 		scoreapi.Function, "getPRepManager",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,

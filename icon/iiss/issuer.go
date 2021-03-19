@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
@@ -86,12 +86,12 @@ func (i *IssueResultJSON) GetTotalReward() *big.Int {
 }
 
 // RegulateIssueInfo regulate icx issue amount with previous period data.
-func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) error {
+func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) {
 	var icx, remains *big.Int
 
 	// Do not regulate ICX issue if there is no ICX issuance.
 	if issue.PrevTotalIssued.Sign() == 0 {
-		return nil
+		return
 	}
 	if iScore == nil || iScore.Sign() == 0 {
 		icx = new(big.Int)
@@ -102,7 +102,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	overIssued := new(big.Int).Sub(issue.PrevTotalIssued, additionalReward)
 	overIssued.Sub(overIssued, icx)
 	if overIssued.Sign() == -1 {
-		return errors.CriticalUnknownError.Errorf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
+		log.Debugf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
 			issue.PrevTotalIssued.String(), icx.String())
 	}
 	issue.OverIssued.Add(issue.OverIssued, overIssued)
@@ -111,8 +111,6 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 		issue.OverIssued.Sub(issue.OverIssued, intconv.BigIntOne)
 		issue.IScoreRemains.Sub(issue.IScoreRemains, BigIntIScoreICXRatio)
 	}
-
-	return nil
 }
 
 // calcRewardPerBlock calculate reward per block
@@ -126,7 +124,8 @@ func calcRewardPerBlock(
 	beta1 := new(big.Int)
 	beta2 := new(big.Int)
 	beta3 := new(big.Int)
-	base := new(big.Int).Div(irep, new(big.Int).SetInt64(MonthBlock*2))
+	base := new(big.Int).Mul(irep, new(big.Int).SetInt64(MonthPerYear))
+	base.Div(base, new(big.Int).SetInt64(YearBlock*2))
 
 	beta1.Mul(base, mainPRepCount)
 

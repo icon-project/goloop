@@ -372,8 +372,8 @@ func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
 	return s.pm.TotalDelegated()
 }
 
-func (s *ExtensionStateImpl) RegisterPRep(regInfo *RegInfo) error {
-	return s.pm.RegisterPRep(regInfo)
+func (s *ExtensionStateImpl) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
+	return s.pm.RegisterPRep(regInfo, irep)
 }
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
@@ -620,6 +620,46 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{
 	return pb.GetBonderListInJSON(), nil
 }
 
+func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *big.Int, blockHeight int64) error {
+	pb := s.State.GetPRepBase(from, false)
+	if pb == nil {
+		return errors.Errorf("PRep not found: %v", from)
+	}
+	if err := s.validateIRep(pb.IRep(), irep, pb.IRepHeight()); err != nil {
+		return err
+	}
+
+	pb.SetIrep(irep, blockHeight)
+	return nil
+}
+
+const IrepInflationLimit = 14 // 14%
+
+func (s *ExtensionStateImpl) validateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
+	term := s.State.GetTerm()
+	if prevSetIRepHeight >= term.StartHeight() {
+		return errors.Errorf("IRep can be changed only once during a term")
+	}
+	if err := icutils.ValidateRange(oldIRep, newIRep, 20, 20); err != nil {
+		return err
+	}
+
+	/* annual amount of beta1 + beta2 <= totalSupply * IrepInflationLimit / 100
+	annual amount of beta1 + beta2
+	= (1/2 * irep * MainPRepCount + 1/2 * irep * VotedRewardMultiplier) * MonthPerYear
+	= irep * (MAIN_PREP_COUNT + VotedRewardMultiplier) * MonthPerBlock / 2
+	<= totalSupply * IrepInflationLimit / 100
+	irep <= totalSupply * IrepInflationLimit * 2 / (100 * MonthBlock * (MAIN_PREP_COUNT + PERCENTAGE_FOR_BETA_2))
+	*/
+	limit := new(big.Int).Mul(term.TotalSupply(), new(big.Int).SetInt64(IrepInflationLimit*2))
+	divider := new(big.Int).SetInt64(int64(100 * MonthPerYear * (term.MainPRepCount() + VotedRewardMultiplier)))
+	limit.Div(limit, divider)
+	if newIRep.Cmp(limit) == 1 {
+		return errors.Errorf("IRep is out of range: %s > %s", newIRep.String(), limit.String())
+	}
+	return nil
+}
+
 func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bool, additionalReward *big.Int) error {
 	is, err := s.State.GetIssue()
 	issue := is.Clone()
@@ -627,9 +667,7 @@ func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bo
 		return err
 	}
 
-	if err = RegulateIssueInfo(issue, reward, additionalReward); err != nil {
-		return err
-	}
+	RegulateIssueInfo(issue, reward, additionalReward)
 
 	issue.ResetTotalIssued()
 
@@ -739,12 +777,15 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 			}
 
 			nextTerm.SetPRepSnapshots(prepSnapshots)
-			// TODO pass list of main preps
-			//if revision < icmodule.Revision9 {
-			//	nextTerm.SetIrep(s.pm.mainPReps)
-			//}
-			//nextTerm.SetRrep(total_supply)
 		}
+	}
+	irep := s.pm.CalculateIRep(revision)
+	if irep != nil {
+		nextTerm.SetIrep(irep)
+	}
+	rrep := s.pm.CalculateRRep(totalSupply, revision)
+	if rrep != nil {
+		nextTerm.SetRrep(rrep)
 	}
 
 	s.logger.Debugf(nextTerm.String())

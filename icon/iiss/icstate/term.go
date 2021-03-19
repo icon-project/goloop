@@ -372,6 +372,10 @@ func (term *Term) SetFlag(flags TermFlag, on bool) {
 	}
 }
 
+func (term *Term) TotalSupply() *big.Int {
+	return term.totalSupply
+}
+
 func (term *Term) TotalDelegated() *big.Int {
 	return term.totalDelegated
 }
@@ -523,33 +527,12 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 	term.flags |= FlagValidator
 }
 
-func (term *Term) SetIrep(prepSnapshots []*PRepSnapshot) {
-	totalWeightedIrep := new(big.Int)
-	totalDelegation := new(big.Int)
-	for _, prep := range prepSnapshots {
-		// TODO fix params to get irep
-		//weightedIrep := new(big.Int).Mul(prep.irep, prep.bondedDelegation)
-		//totalWeightedIrep.Add(totalWeightedIrep, weightedIrep)
-		totalDelegation.Add(totalDelegation, prep.bondedDelegation)
-	}
-	if totalDelegation.Sign() == 1 {
-		term.irep.Div(totalWeightedIrep, totalDelegation)
-	} else {
-		term.irep.Mul(big.NewInt(10_000), icutils.BigIntICX)
-	}
+func (term *Term) SetIrep(irep *big.Int) {
+	term.irep.Set(irep)
 }
 
-func (term *Term) SetRrep() {
-	// TODO implement me
-	//stake_percentage := term.totalDelegated / term.totalSupply * IISS_MAX_REWARD_RATE
-	//if stake_percentage >= rpoint {
-	//	term.Rrep.SetInt(rmin)
-	//	return
-	//}
-	//
-	//first_operand: float = (rmax - rmin) / (rpoint ** 2)
-	//second_operand: float = (stake_percentage - rpoint) ** 2
-	//return int(first_operand * second_operand + rmin)
+func (term *Term) SetRrep(rrep *big.Int) {
+	term.rrep.Set(rrep)
 }
 
 func (term *Term) String() string {

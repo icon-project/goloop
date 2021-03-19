@@ -2,17 +2,26 @@ package iiss
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common/log"
+	"math"
 	"math/big"
 	"sort"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
+
+const (
+	InitialIRep = 50_000
+	MinIRep     = 10_000
+)
+
+var BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
 
 type RegInfo struct {
 	city        string
@@ -184,7 +193,7 @@ func (pm *PRepManager) sort() {
 			return false
 		}
 
-		ret = pm.orderedPReps[i].Delegated().Cmp(pm.orderedPReps[i].Delegated())
+		ret = pm.orderedPReps[i].Delegated().Cmp(pm.orderedPReps[j].Delegated())
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
@@ -350,7 +359,7 @@ func (pm *PRepManager) contains(owner module.Address) bool {
 	return ok
 }
 
-func (pm *PRepManager) RegisterPRep(regInfo *RegInfo) error {
+func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	if regInfo == nil {
 		return errors.Errorf("Invalid argument: regInfo")
 	}
@@ -367,6 +376,7 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo) error {
 	if err != nil {
 		return err
 	}
+	pb.SetIrep(irep, 0)
 
 	ps := pm.state.GetPRepStatus(owner, true)
 	ps.SetStatus(icstate.Active)
@@ -685,6 +695,61 @@ func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interfa
 	jso["blockHeight"] = blockHeight
 	jso["preps"] = preps
 	return jso, nil
+}
+
+func (pm *PRepManager) CalculateIRep(revision int) *big.Int {
+	irep := new(big.Int)
+	if revision < icmodule.RevisionDecentralize ||
+		revision >= icmodule.RevisionICON2 {
+		return irep
+	}
+	if revision >= icmodule.Revision9 {
+		// set IRep via network proposal
+		return nil
+	}
+	size := pm.GetPRepSize(icstate.Main)
+	totalDelegated := new(big.Int)
+	totalWeightedIrep := new(big.Int)
+	for i := 0; i < size; i++ {
+		prep := pm.orderedPReps[i]
+
+		totalWeightedIrep.Add(totalWeightedIrep, new(big.Int).Mul(prep.IRep(), prep.Delegated()))
+		totalDelegated.Add(totalDelegated, prep.Delegated())
+	}
+
+	if totalDelegated.Sign() == 0 {
+		return irep
+	}
+
+	irep.Div(totalWeightedIrep, totalDelegated)
+	if irep.Cmp(new(big.Int).SetInt64(MinIRep)) == -1 {
+		irep.SetInt64(MinIRep)
+	}
+	return irep
+}
+
+const (
+	rrepMin        = 200   // 2%
+	rrepMax        = 1_200 // 12%
+	rrepPoint      = 7_000 // 70%
+	rrepMultiplier = 10_000
+)
+
+func (pm *PRepManager) CalculateRRep(totalSupply *big.Int, revision int) *big.Int {
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
+		// rrep is disabled
+		return new(big.Int)
+	}
+	delegatePercentage := new(big.Int).Mul(pm.totalDelegated, new(big.Int).SetInt64(rrepMultiplier))
+	delegatePercentage.Div(delegatePercentage, totalSupply)
+	dp := delegatePercentage.Int64()
+	if dp >= rrepPoint {
+		return new(big.Int).SetInt64(rrepMin)
+	}
+
+	firstOperand := (rrepMax - rrepMin) / math.Pow(rrepPoint, 2)
+	secondOperand := math.Pow(float64(dp-rrepPoint), 2)
+	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
 }
 
 func newPRepManager(state *icstate.State, logger log.Logger) *PRepManager {

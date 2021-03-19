@@ -47,13 +47,16 @@ const (
 )
 
 const (
-	DayBlock   = 24 * 60 * 60 / 2
-	MonthBlock = DayBlock * 30
-	YearBlock  = MonthBlock * 12
+	DayBlock     = 24 * 60 * 60 / 2
+	DayPerMonth  = 30
+	MonthBlock   = DayBlock * DayPerMonth
+	MonthPerYear = 12
+	YearBlock    = MonthBlock * MonthPerYear
 
-	IScoreICXRatio = 1_000
-	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
-	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+	IScoreICXRatio        = 1_000
+	VotedRewardMultiplier = 100
+	RrepMultiplier        = 3      // rrep = rrep + eep + dbp = 3 * rrep
+	RrepDivider           = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
 
 	keyCalculator = "iiss.calculator"
 )
@@ -418,7 +421,7 @@ func varForVotedReward(global *icstage.Global) (multiplier, divider *big.Int) {
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.GetV1()
-		multiplier.Mul(g.Irep, big.NewInt(int64(g.ElectedPRepCount*IScoreICXRatio)))
+		multiplier.Mul(g.Irep, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
 		g := global.GetV2()

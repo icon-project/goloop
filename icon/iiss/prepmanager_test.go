@@ -63,7 +63,7 @@ func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 	pm := newPRepManager(s, nil)
 
 	for i := 0; i < size; i++ {
-		assert.NoError(t, pm.RegisterPRep(newRegInfo(i)))
+		assert.NoError(t, pm.RegisterPRep(newRegInfo(i), BigIntInitialIRep))
 	}
 	pm.Sort()
 	assert.NoError(t, pm.state.Flush())
@@ -134,7 +134,7 @@ func TestPRepManager_Sort(t *testing.T) {
 	pm := newPRepManager(s, nil)
 
 	addr := common.MustNewAddressFromString("hx1")
-	delegated := big.NewInt(int64(99))
+	delegated := big.NewInt(int64(98))
 	s.GetPRepBase(addr, true)
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)
 	bonded := big.NewInt(int64(2))
@@ -143,15 +143,23 @@ func TestPRepManager_Sort(t *testing.T) {
 
 	addr = common.MustNewAddressFromString("hx2")
 	s.GetPRepBase(addr, true)
-	delegated = big.NewInt(int64(99))
+	delegated = big.NewInt(int64(198))
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(1))
+	bonded = big.NewInt(int64(2))
 	s.GetPRepStatus(addr, true).SetBonded(bonded)
 	pm.state.AddActivePRep(addr)
 
 	addr = common.MustNewAddressFromString("hx3")
 	s.GetPRepBase(addr, true)
-	delegated = big.NewInt(int64(99))
+	delegated = big.NewInt(int64(97))
+	s.GetPRepStatus(addr, true).SetDelegated(delegated)
+	bonded = big.NewInt(int64(3))
+	s.GetPRepStatus(addr, true).SetBonded(bonded)
+	pm.state.AddActivePRep(addr)
+
+	addr = common.MustNewAddressFromString("hx4")
+	s.GetPRepBase(addr, true)
+	delegated = big.NewInt(int64(97))
 	s.GetPRepStatus(addr, true).SetDelegated(delegated)
 	bonded = big.NewInt(int64(3))
 	s.GetPRepStatus(addr, true).SetBonded(bonded)
@@ -161,9 +169,10 @@ func TestPRepManager_Sort(t *testing.T) {
 	pm.init()
 	pm.sort()
 
-	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[0].Owner().String())
-	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[1].Owner().String())
+	assert.Equal(t, "hx0000000000000000000000000000000000000004", pm.orderedPReps[0].Owner().String())
+	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[1].Owner().String())
 	assert.Equal(t, "hx0000000000000000000000000000000000000002", pm.orderedPReps[2].Owner().String())
+	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[3].Owner().String())
 }
 
 func TestPRepManager_new(t *testing.T) {
@@ -209,7 +218,7 @@ func TestPRepManager_RegisterPRep(t *testing.T) {
 		regInfo := newRegInfo(i)
 		owner := regInfo.owner
 
-		err := pm.RegisterPRep(regInfo)
+		err := pm.RegisterPRep(regInfo, BigIntInitialIRep)
 		assert.NoError(t, err)
 		assert.Equal(t, i+1, pm.Size())
 
@@ -217,6 +226,7 @@ func TestPRepManager_RegisterPRep(t *testing.T) {
 		prep := pm.GetPRepByOwner(owner)
 		assert.Equal(t, icstate.Candidate, prep.Grade())
 		assert.Equal(t, icstate.Active, prep.Status())
+		assert.Equal(t, 0, BigIntInitialIRep.Cmp(prep.IRep()))
 		assert.True(t, compareRegInfo(prep, regInfo))
 
 		pb := pm.state.GetPRepBase(owner, false)

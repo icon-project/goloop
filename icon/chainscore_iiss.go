@@ -184,9 +184,14 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
-
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err := es.RegisterPRep(regInfo)
+	irep := new(big.Int).Set(iiss.BigIntInitialIRep)
+	if es.IsDecentralized() {
+		term := es.State.GetTerm()
+		irep.Set(term.Irep())
+	}
+
+	err := es.RegisterPRep(regInfo, irep)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
@@ -282,6 +287,11 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	return nil
+}
+
+func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_setBond(bondList []interface{}) error {

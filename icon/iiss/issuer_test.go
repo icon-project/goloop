@@ -97,7 +97,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 		in               values
 		iScore           *big.Int
 		additionalReward *big.Int
-		err              bool
 		out              values
 	}{
 		{
@@ -107,7 +106,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			nil,
 			new(big.Int).SetInt64(0),
-			false,
 			values{
 				0, 0, 0, 0, 0,
 			},
@@ -119,7 +117,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(0),
 			new(big.Int).SetInt64(0),
-			false,
 			values{
 				0, 0, 0, 0, 0,
 			},
@@ -131,7 +128,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(100 * IScoreICXRatio),
 			new(big.Int).SetInt64(0),
-			false,
 			values{
 				0, 0, 0, 100, 0,
 			},
@@ -143,7 +139,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(50 * IScoreICXRatio),
 			new(big.Int).SetInt64(50),
-			false,
 			values{
 				0, 0, 0, 100, 0,
 			},
@@ -155,7 +150,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(90*IScoreICXRatio + 123),
 			new(big.Int).SetInt64(0),
-			false,
 			values{
 				0, 0, 20, 124, 0,
 			},
@@ -167,7 +161,6 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(50*IScoreICXRatio + 123),
 			new(big.Int).SetInt64(40),
-			false,
 			values{
 				0, 0, 20, 124, 0,
 			},
@@ -179,8 +172,9 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(200*IScoreICXRatio + 123),
 			new(big.Int).SetInt64(0),
-			true,
-			values{},
+			values{
+				100, 200, -90, 124, 0,
+			},
 		},
 		{
 			"Negative overIssue with additionReward",
@@ -189,27 +183,22 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(50*IScoreICXRatio + 123),
 			new(big.Int).SetInt64(150),
-			true,
-			values{},
+			values{
+				100, 200, -90, 124, 0,
+			},
 		},
 	}
 
-	var err error
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
 			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
-			err = RegulateIssueInfo(issue, tt.iScore, tt.additionalReward)
-			if tt.err {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
-				assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
-				assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
-			}
+			RegulateIssueInfo(issue, tt.iScore, tt.additionalReward)
+			assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
+			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
+			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
 		})
 	}
 }
@@ -242,8 +231,8 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 				0,
 				100 * YearBlock,
 			},
-			(100 * MonthBlock) / (MonthBlock * 2) * 100 +
-				RrepMultiplier * 1000 * 100 / RrepDivider,
+			(100*MonthBlock)/(MonthBlock*2)*100 +
+				RrepMultiplier*1000*100/RrepDivider,
 		},
 		{
 			"Prevote - too small delegation",
@@ -253,7 +242,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 				0,
 				100,
 			},
-			(100 * MonthBlock) / (MonthBlock * 2) * 100 + 0,
+			(100*MonthBlock)/(MonthBlock*2)*100 + 0,
 		},
 		{
 			"Decentralized",
@@ -263,9 +252,9 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 				22,
 				100 * YearBlock,
 			},
-			(100 * MonthBlock) / (MonthBlock * 2) * 22 +
-				(100 * MonthBlock) / (MonthBlock * 2) * 100 +
-				RrepMultiplier * 1000 * 100 / RrepDivider,
+			(100*MonthBlock)/(MonthBlock*2)*22 +
+				(100*MonthBlock)/(MonthBlock*2)*100 +
+				RrepMultiplier*1000*100/RrepDivider,
 		},
 	}
 

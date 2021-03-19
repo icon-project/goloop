@@ -122,3 +122,22 @@ func BigInt2HexInt(value *big.Int) *common.HexInt {
 	h.Set(value)
 	return h
 }
+
+func ValidateRange(oldValue *big.Int, newValue *big.Int, minPct int, maxPct int) error {
+	diff := new(big.Int).Sub(oldValue, newValue)
+	switch diff.Sign() {
+	case 1:
+		threshold := new(big.Int).Mul(oldValue, new(big.Int).SetInt64(int64(100-minPct)))
+		threshold.Div(threshold, new(big.Int).SetInt64(100))
+		if newValue.CmpAbs(threshold) == -1 {
+			return errors.Errorf("Out of range: %s < %s", newValue, threshold)
+		}
+	case -1:
+		threshold := new(big.Int).Mul(oldValue, new(big.Int).SetInt64(int64(100+maxPct)))
+		threshold.Div(threshold, new(big.Int).SetInt64(100))
+		if newValue.CmpAbs(threshold) == 1 {
+			return errors.Errorf("Out of range: %s > %s", newValue, threshold)
+		}
+	}
+	return nil
+}

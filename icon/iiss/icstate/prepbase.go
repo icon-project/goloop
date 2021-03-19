@@ -18,6 +18,8 @@ package icstate
 
 import (
 	"encoding/json"
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -49,6 +51,8 @@ type PRepBase struct {
 	details     string
 	p2pEndpoint string
 	node        module.Address
+	irep        *big.Int
+	irepHeight  int64
 	bonderList  BonderList
 }
 
@@ -80,6 +84,14 @@ func (p *PRepBase) Node() module.Address {
 	return p.node
 }
 
+func (p *PRepBase) IRep() *big.Int {
+	return p.irep
+}
+
+func (p *PRepBase) IRepHeight() int64 {
+	return p.irepHeight
+}
+
 func (p *PRepBase) equal(other *PRepBase) bool {
 	if p == other {
 		return true
@@ -94,6 +106,8 @@ func (p *PRepBase) equal(other *PRepBase) bool {
 		p.details == other.details &&
 		p.p2pEndpoint == other.p2pEndpoint &&
 		icutils.EqualAddress(p.node, other.node) &&
+		p.irep.Cmp(other.irep) == 0 &&
+		p.irepHeight == other.irepHeight &&
 		p.bonderList.Equal(other.bonderList)
 }
 
@@ -125,6 +139,8 @@ func (p *PRepBase) Set(other *PRepBase) {
 	p.details = other.details
 	p.p2pEndpoint = other.p2pEndpoint
 	p.node = other.node
+	p.irep.Set(other.irep)
+	p.irepHeight = other.irepHeight
 	p.bonderList = other.bonderList.Clone()
 }
 
@@ -140,6 +156,8 @@ func (p *PRepBase) Clone() *PRepBase {
 		details:     p.details,
 		p2pEndpoint: p.p2pEndpoint,
 		node:        p.node,
+		irep:        new(big.Int).Set(p.irep),
+		irepHeight:  p.irepHeight,
 		bonderList:  p.bonderList.Clone(),
 	}
 }
@@ -164,6 +182,8 @@ func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso["details"] = p.details
 	jso["p2pEndpoint"] = p.p2pEndpoint
 	jso["nodeAddress"] = p.node
+	jso["irep"] = p.irep
+	jso["irepUpdateBlockHeight"] = p.irepHeight
 	return jso
 }
 
@@ -177,6 +197,8 @@ func (p *PRepBase) RLPEncodeFields(e codec.Encoder) error {
 		p.details,
 		p.p2pEndpoint,
 		p.node,
+		p.irep,
+		p.irepHeight,
 		p.bonderList); err != nil {
 		return err
 	}
@@ -197,6 +219,8 @@ func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
 		&p.details,
 		&p.p2pEndpoint,
 		&node,
+		&p.irep,
+		&p.irepHeight,
 		&p.bonderList); err != nil {
 		return errors.Wrap(err, "Fail to decode PRepBase")
 	}
@@ -234,6 +258,8 @@ func (p *PRepBase) Clear() {
 	p.email = ""
 	p.name = ""
 	p.node = nil
+	p.irep.SetInt64(0)
+	p.irepHeight = 0
 	p.p2pEndpoint = ""
 	p.website = ""
 }
@@ -256,6 +282,11 @@ func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoin
 	return nil
 }
 
+func (p *PRepBase) SetIrep(irep *big.Int, irepHeight int64) {
+	p.irep.Set(irep)
+	p.irepHeight = irepHeight
+}
+
 func (p *PRepBase) SetBonderList(bonderList BonderList) {
 	p.bonderList = bonderList
 }
@@ -269,12 +300,13 @@ func (p *PRepBase) GetBonderListInJSON() []interface{} {
 }
 
 func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
-	return &PRepBase{}
+	return &PRepBase{irep: new(big.Int)}
 }
 
 func NewPRepBase(owner module.Address) *PRepBase {
 	return &PRepBase{
 		owner: owner,
+		irep: new(big.Int),
 	}
 }
 
