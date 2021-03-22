@@ -31,7 +31,7 @@ lcimport-image: pyrun-iconexec gorun-lcimport
 	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/lcimport/update.sh $(LCIMPORT_IMAGE) $(BUILD_ROOT) $(LCIMPORT_DOCKER_DIR)
 
-gochain-icon-image: pyrun-iconexec gorun-gochain javarun-javaexec
+gochain-icon-image: pyrun-iconexec gorun-gochain-linux javarun-javaexec
 	@ \
 	rm -rf $(GOCHAIN_ICON_DOCKER_DIR)
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
