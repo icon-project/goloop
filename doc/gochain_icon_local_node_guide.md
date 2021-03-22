@@ -1,22 +1,22 @@
 # Gochain-icon local node guide
 
-Ref.
+## References
 
-- https://github.com/icon-project/gochain-local 
-- https://gist.github.com/sink772/443b0abd0be1176b4ccb334205516450#requirements 
-- [Testsuite readme.md](https://github.com/icon-project/goloop/blob/master/testsuite/README.md) 
-- https://github.com/icon-project/java-score-examples 
+- [Helper scripts to run gochain docker container as a local network](https://github.com/icon-project/gochain-local)
+- [How to run goloop/testsuite with gochain docker image](https://gist.github.com/sink772/443b0abd0be1176b4ccb334205516450)
+- [Testsuite README.md](https://github.com/icon-project/goloop/blob/master/testsuite/README.md)
+- [Java SCORE Examples](https://github.com/icon-project/java-score-examples)
 - [goloop_cli.md](https://github.com/icon-project/goloop/blob/master/doc/goloop_cli.md)  
 - [Goloop JSON-RPC API v3](https://github.com/icon-project/goloop/blob/master/doc/jsonrpc_v3.md) 
 - [JSON-RPC API v3 Extension for BTP](https://github.com/icon-project/goloop/blob/master/doc/btp_extension.md) 
 
 
 
-## Goal
+## Goals
 
 - You can build docker image for local.
 - You can build javaee-api.jar for local.
-- You can deploy sample java SCORE using goloop_cli.
+- You can deploy sample java SCORE using goloop CLI binary.
 
 
 
@@ -42,7 +42,7 @@ Ref.
 
 
 
-## Step1. Source checkout
+## Step 1. Source checkout
 
 First of all, you need to checkout the `gochain-local` repository for executing local node.
 
@@ -55,7 +55,7 @@ Then, you need to checkout the `goloop` repository for building docker image and
 
 ```
 $ git clone git@github.com:icon-project/goloop.git
-$ GOLOOP_ROOT=/path/to/gochain
+$ GOLOOP_ROOT=/path/to/goloop
 ```
 
 And last, you need to checkout the `java-score-examples` repository for sample java SCORE.
@@ -67,7 +67,7 @@ $ JAVA_SCORE_EXAMPLES_ROOT=/path/to/java-score-examples
 
 
 
-## Step2.Build Docker image and goloop CLI for local
+## Step 2. Build Docker image and goloop CLI for local
 
 First of all, you need checkout git specific branch and run make file.
 
@@ -95,7 +95,7 @@ $ cp ./bin/goloop ${GOCHAIN_LOCAL_ROOT}/goloop
 
 
 
-## Step3.Build javaee-api.jar for local
+## Step 3. Build javaee-api.jar for local
 
 If you want to use RLP method, you need to build `javaee-api.jar` for development.
 
@@ -103,7 +103,7 @@ If you want to use RLP method, you need to build `javaee-api.jar` for developmen
 $ cd ${GOLOOP_ROOT}/javaee
 ```
 
-First of all, you can make`api-0.8.7-SNAPSHOT.jar` by using gradle script cmd.
+First of all, you can make `api-0.8.7-SNAPSHOT.jar` by using gradle script cmd.
 
 ```
 $ ./gradlew api:build
@@ -111,7 +111,7 @@ $ ./gradlew api:build
 
 If the command runs successfully, it generates the jar file on `./api/build/libs/`.
 
-and copy jar file to `java-score-examples/hello-world`.
+Then copy the jar file to `java-score-examples/hello-world`.
 
 ```
 $ cp ./api/build/libs/api-0.8.7-SNAPSHOT.jar ${JAVA_SCORE_EXAMPLES_ROOT}/hello-world/api-0.8.7-SNAPSHOT.jar
@@ -122,7 +122,7 @@ you can open local javadoc from `javaee/api/build/javadoc/index.html`.
 
 
 
-## Step4.Build sample java SCORE for local
+## Step 4. Build sample java SCORE for local
 
 ```
 $ cd ${JAVA_SCORE_EXAMPLES_ROOT}
@@ -131,28 +131,22 @@ $ cd ${JAVA_SCORE_EXAMPLES_ROOT}
 First of all, edit `java-score-example/hello-world/build.gradle` as below.
 
 ```
-# build.gradle
-
 ...
-
 dependencies {
-    compileOnly files('api-0.8.7-SNAPSHOT.jar')
-    implementation 'foundation.icon:javaee-api:0.8.7'
+    # use the local api jar for testing
+    compile files('api-0.8.7-SNAPSHOT.jar')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.0'
 }
-...
 ...
 ```
 
 Prepare `hello-world/src/main/java/com/iconloop/score/example/HelloWorld.java` file as below.
 
 ```
-#HelloWorld.java
-
 /*
- * Copyright 2020 ICONLOOP Inc.
+ * Copyright 2021 ICONLOOP Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -240,7 +234,7 @@ $ cp ./hello-world/build/libs/hello-world-0.1.0-optimized.jar ${GOCHAIN_LOCAL_RO
 
 
 
-## Step5.Start gochain docker container
+## Step 5. Start gochain docker container
 
 ```
 $ cd ${GOCHAIN_LOCAL_ROOT}
@@ -298,17 +292,15 @@ case "$CMD" in
 esac
 ```
 
- Run start gochain-icon container cmd.
+ Start gochain-icon container.
 
 ```
 $ ./run_gochain-icon.sh start
-
 >>> START iconee 9082 latest
 48e4c66fec68d01e767da91cbbb043c03f595b33cac69c8cdf94f39eaa03b34e
 
 $ docker ps
-
-CONTAINER ID   IMAGE                   COMMAND                  CREATED         STATUS         PORTS                                        NAMES
+CONTAINER ID   IMAGE                        COMMAND                  CREATED         STATUS         PORTS                                        NAMES
 48e4c66fec68   goloop/gochain-icon:latest   "/entrypoint /bin/sh…"   9 seconds ago   Up 8 seconds   8080/tcp, 9080/tcp, 0.0.0.0:9082->9082/tcp   gochain-iconee
 ```
 
@@ -316,7 +308,6 @@ Note that log messages will be generated at `./chain/iconee.log`.
 
 ```
 $ head ./chain/iconee.log
-
 I|20210125-05:41:05.997850|b6b5|-|main|main.go:431   ____  ___   ____ _   _    _    ___ _   _
 I|20210125-05:41:05.997953|b6b5|-|main|main.go:431  / ___|/ _ \ / ___| | | |  / \  |_ _| \ | |
 I|20210125-05:41:05.997964|b6b5|-|main|main.go:431 | |  _| | | | |   | |_| | / _ \  | ||  \| |
@@ -333,7 +324,6 @@ T|20210125-05:41:05.998304|b6b5|-|TP|transport.go:383 registerPeerHandler &{0xc0
 
 ```
 $ ./run_gochain-icon.sh stop
-
 >>> STOP gochain-iconee
 gochain-iconee
 gochain-iconee
@@ -341,9 +331,9 @@ gochain-iconee
 
 
 
-## Step6.Deploy the optimized jar (hello-world SCORE with RLP)
+## Step 6. Deploy the optimized jar (hello-world SCORE with RLP)
 
-You can deploy java hello-world SCORE by using goloop_cli.
+You can deploy the optimized jar by using goloop CLI binary.
 
 ```
 $ cd ${GOCHAIN_LOCAL_ROOT}
@@ -353,8 +343,7 @@ $ ./goloop rpc sendtx deploy ./hello-world-0.1.0-optimized.jar \
     --nid 3 --step_limit 10000000000 \
     --content_type application/java \
     --param name=GoLoop
-    
-0xfee1e31e3ecb88106e785a6cb8b0b957e42f5f908a7c2c66a0c19aebd659f7ef
+"0xfee1e31e3ecb88106e785a6cb8b0b957e42f5f908a7c2c66a0c19aebd659f7ef"
 ```
 
 Check the deployed SCORE address first using the txresult command.
@@ -362,7 +351,6 @@ Check the deployed SCORE address first using the txresult command.
 ```
 $ ./goloop rpc txresult 0xfee1e31e3ecb88106e785a6cb8b0b957e42f5f908a7c2c66a0c19aebd659f7ef \
     --uri http://localhost:9082/api/v3
-
 {
   "to": "cx0000000000000000000000000000000000000000",
   "cumulativeStepUsed": "0x3d70a5c3",
@@ -385,7 +373,6 @@ Then you can query getGreeting method via the following call command.
 $ ./goloop rpc call --to cxd1f5d12e92459a4fcdf2678a14b572687471a70e \
     --method getGreeting \
     --uri http://localhost:9082/api/v3
-
 "Hello GoLoop!"
 ```
 
@@ -397,8 +384,7 @@ $ ./goloop rpc sendtx call --to cxd1f5d12e92459a4fcdf2678a14b572687471a70e \
     --uri http://localhost:9082/api/v3 \
     --key_store ./data/godWallet.json --key_password gochain \
     --nid 3 --step_limit 10000000000
-
-0x07868af25c42e0d201073eae9d490d895e0922a431918199aa3bd461d6d9e65f
+"0x07868af25c42e0d201073eae9d490d895e0922a431918199aa3bd461d6d9e65f"
 ```
 
 Check the called SCORE address using the txresult command.
@@ -406,7 +392,6 @@ Check the called SCORE address using the txresult command.
 ```
 $ ./goloop rpc txresult 0x07868af25c42e0d201073eae9d490d895e0922a431918199aa3bd461d6d9e65f \
     --uri http://localhost:9082/api/v3
-
 {
   "to": "cxd1f5d12e92459a4fcdf2678a14b572687471a70e",
   "cumulativeStepUsed": "0x1fe85",
