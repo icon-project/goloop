@@ -432,13 +432,13 @@ func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bo
 			return errors.IllegalArgumentError.Errorf(
 				"InvalidType(exp=TypeDict,real=%d)", obj.Type)
 		}
-		childMap, ok := obj.Object.(map[string]*codec.TypedObj)
+		childMap, ok := obj.Object.(*codec.TypedDict)
 		if !ok {
 			return errors.IllegalArgumentError.Errorf(
 				"InvalidValue(exp=[]*codec.TypedObj,real=%T)", obj.Object)
 		}
 		for _, field := range fields {
-			if value, ok := childMap[field.Name]; ok {
+			if value, ok := childMap.Map[field.Name]; ok {
 				if err := field.Type.ValidateInput(value, field.Fields, false); err != nil {
 					return err
 				}
@@ -446,9 +446,9 @@ func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bo
 				return errors.IllegalArgumentError.Errorf("NoValueForField(field=%s)", field.Name)
 			}
 		}
-		if len(childMap) > len(fields) {
+		if len(childMap.Map) > len(fields) {
 			return errors.IllegalArgumentError.Errorf(
-				"UnexpectedFields(n=%d)", len(childMap)-len(fields))
+				"UnexpectedFields(n=%d)", len(childMap.Map)-len(fields))
 		}
 		return nil
 	}
@@ -685,14 +685,14 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		return nil, scoreresult.InvalidParameterError.Errorf(
 			"MustBeDictionary(tag=%d)", paramObj.Type)
 	}
-	params, ok := paramObj.Object.(map[string]*codec.TypedObj)
+	params, ok := paramObj.Object.(*codec.TypedDict)
 	if !ok {
 		return nil, scoreresult.InvalidParameterError.Errorf(
 			"FailToCastDictToMap(type=%[1]T, obj=%+[1]v)", paramObj.Object)
 	}
 	inputs := make([]*codec.TypedObj, len(a.Inputs))
 	for i, input := range a.Inputs {
-		if obj, ok := params[input.Name]; ok {
+		if obj, ok := params.Map[input.Name]; ok {
 			nullable := (i >= a.Indexed) && input.Default == nil
 			if err := input.Type.ValidateInput(obj, input.Fields, nullable); err != nil {
 				return nil, scoreresult.InvalidParameterError.Wrapf(err,

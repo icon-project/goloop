@@ -70,7 +70,7 @@ func newCallHandlerWithTypedObj(
 	if data.Type != codec.TypeDict {
 		return nil, scoreresult.InvalidParameterError.New("InvalidDataType")
 	}
-	dataReal := data.Object.(map[string]*codec.TypedObj)
+	dataReal := data.Object.(*codec.TypedDict).Map
 	method := common.DecodeAsString(dataReal["method"], scoreapi.FallbackMethodName)
 	paramObj := dataReal["params"]
 
