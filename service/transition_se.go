@@ -2,6 +2,7 @@ package service
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -34,6 +35,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			continue
 		}
 		t.log.Tracef("START TX <0x%x>", txo.ID())
+		ts := time.Now()
 		for trial := 0; ; trial++ {
 			txh, err := txo.GetHandler(t.cm)
 			if err != nil {
@@ -64,8 +66,10 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return err
 			}
 			t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+			ts = time.Now()
 		}
-		t.log.Tracef("END   TX <0x%x>", txo.ID())
+		duration := time.Now().Sub(ts)
+		t.log.Tracef("END   TX <0x%x> duration=%s", txo.ID(), duration)
 		cnt++
 	}
 	return nil
