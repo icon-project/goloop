@@ -58,7 +58,7 @@ func (o *TypedObj) RLPDecodeSelf(d Decoder) error {
 	switch t {
 	case TypeNil:
 	case TypeDict:
-		var m map[string]*TypedObj
+		var m *TypedDict
 		err = d2.Decode(&m)
 		if err != nil {
 			return err
@@ -141,9 +141,9 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 				m[k] = eo
 			}
 		}
-		return newTypedObj(TypeDict, m), nil
+		return newTypedObj(TypeDict, &TypedDict{Map: m}), nil
 	case map[string]*TypedObj:
-		return newTypedObj(TypeDict, obj), nil
+		return newTypedObj(TypeDict, &TypedDict{Map: obj}), nil
 	case map[string]int64:
 		m := make(map[string]*TypedObj)
 		for k, o := range obj {
@@ -153,9 +153,11 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 				m[k] = eo
 			}
 		}
-		return newTypedObj(TypeDict, m), nil
+		return newTypedObj(TypeDict, &TypedDict{Map: m}), nil
 	case *TypedObj:
 		return obj, nil
+	case *TypedDict:
+		return newTypedObj(TypeDict, obj), nil
 	default:
 		if tag, bytes, err := tc.Encode(obj); err != nil {
 			return nil, err
@@ -193,7 +195,7 @@ func DecodeAny(tc TypeCodec, to *TypedObj) (interface{}, error) {
 		}
 	case TypeDict:
 		m := make(map[string]interface{})
-		for k, nto := range to.Object.(map[string]*TypedObj) {
+		for k, nto := range to.Object.(*TypedDict).Map {
 			var err error
 			m[k], err = DecodeAny(tc, nto)
 			if err != nil {

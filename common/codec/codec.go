@@ -48,6 +48,11 @@ type Encoder interface {
 	EncodeListOf(objs ...interface{}) error
 }
 
+type EncodeAndCloser interface {
+	Encoder
+	Close() error
+}
+
 type Decoder interface {
 	Decode(o interface{}) error
 	DecodeMulti(objs ...interface{}) (int, error)
@@ -56,12 +61,25 @@ type Decoder interface {
 	DecodeListOf(objs ...interface{}) error
 }
 
+type DecodeAndCloser interface {
+	Decoder
+	Close() error
+}
+
 type EncodeSelfer interface {
 	RLPEncodeSelf(e Encoder) error
 }
 
 type DecodeSelfer interface {
 	RLPDecodeSelf(d Decoder) error
+}
+
+type WriteSelfer interface {
+	RLPWriteSelf(w Writer) error
+}
+
+type ReadSelfer interface {
+	RLPReadSelf(w Reader) error
 }
 
 type Unmarshaler interface {
@@ -126,6 +144,10 @@ func (e *encoderImpl) flushAndClose() error {
 	return e.real.Close()
 }
 
+func (e *encoderImpl) Close() error {
+	return e.flushAndClose()
+}
+
 func (e *encoderImpl) EncodeList() (Encoder, error) {
 	if err := e.flush(); err != nil {
 		return nil, err
@@ -154,11 +176,17 @@ func (e *encoderImpl) encodeMap() (*encoderImpl, error) {
 
 var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
 
+var writeSelferType = reflect.TypeOf((*WriteSelfer)(nil)).Elem()
 var encodeSelferType = reflect.TypeOf((*EncodeSelfer)(nil)).Elem()
 var binaryMarshaler = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
 var codecMarshaler = reflect.TypeOf((*Marshaler)(nil)).Elem()
 
 func (e *encoderImpl) tryCustom(v reflect.Value) (bool, error) {
+	if v.Type().Implements(writeSelferType) {
+		if i, ok := v.Interface().(WriteSelfer); ok {
+			return true, i.RLPWriteSelf(e.real)
+		}
+	}
 	if v.Type().Implements(encodeSelferType) {
 		if i, ok := v.Interface().(EncodeSelfer); ok {
 			if err := i.RLPEncodeSelf(e); err == nil {
@@ -402,6 +430,13 @@ func (d *decoderImpl) flush() error {
 	return nil
 }
 
+func (d *decoderImpl) Close() error {
+	if err := d.flush(); err != nil {
+		return err
+	}
+	return d.real.Close()
+}
+
 func (d *decoderImpl) Decode(o interface{}) error {
 	if err := d.flush(); err != nil {
 		return err
@@ -452,11 +487,15 @@ func (d *decoderImpl) DecodeListOf(objs ...interface{}) error {
 	return d.flush()
 }
 
+var readSelferType = reflect.TypeOf((*ReadSelfer)(nil)).Elem()
 var rlpDecodeSelferType = reflect.TypeOf((*DecodeSelfer)(nil)).Elem()
 var binaryUnmarshaler = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
 var codecUnmarshaler = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 
 func (d *decoderImpl) tryCustom(v reflect.Value) (bool, error) {
+	if v.Type().Implements(readSelferType) {
+		return true, v.Interface().(ReadSelfer).RLPReadSelf(d.real)
+	}
 	if v.Type().Implements(rlpDecodeSelferType) {
 		if err := v.Interface().(DecodeSelfer).RLPDecodeSelf(d); err == nil {
 			return true, d.flush()
@@ -706,10 +745,10 @@ func (d *decoderImpl) decode(o interface{}) error {
 	}
 }
 
-func NewEncoder(w Writer) Encoder {
+func NewEncoder(w Writer) EncodeAndCloser {
 	return &encoderImpl{real: w}
 }
 
-func NewDecoder(r Reader) Decoder {
+func NewDecoder(r Reader) DecodeAndCloser {
 	return &decoderImpl{real: r}
 }
