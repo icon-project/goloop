@@ -114,7 +114,7 @@ public class Unshadower {
         } else if (so instanceof UnmodifiableArrayMap) {
             var o = (UnmodifiableArrayMap<?, ?>) so;
             var skv = o.getData();
-            var map = new java.util.HashMap<>();
+            var map = new java.util.LinkedHashMap<>();
             for (int i = 0; i < skv.length; i += 2) {
                 var k = skv[i];
                 var v = skv[i+1];
@@ -126,7 +126,7 @@ public class Unshadower {
             return map;
         } else if (so instanceof s.java.util.Map) {
             var o = (s.java.util.Map<?, ?>) so;
-            var map = new java.util.HashMap<>();
+            var map = new java.util.LinkedHashMap<>();
             var it = o.avm_entrySet().avm_iterator();
             while (it.avm_hasNext()) {
                 var e = it.avm_next();
@@ -145,7 +145,7 @@ public class Unshadower {
             if (rProps.isEmpty()) {
                 throw new IllegalArgumentException();
             }
-            var map = new java.util.HashMap<>();
+            var map = new java.util.TreeMap<>();
             for (var rp : rProps) {
                 try {
                     map.put(rp.getName(), Unshadower.unshadow(rp.get(so)));

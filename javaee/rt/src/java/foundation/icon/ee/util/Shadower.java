@@ -245,11 +245,9 @@ public class Shadower {
             return new UnmodifiableArrayList<>(sa);
         } else if (c == s.java.util.Map.class) {
             var o = (Map<String, Object>) obj;
-            var l = new ArrayList<>(o.entrySet());
-            l.sort(Map.Entry.comparingByKey());
             var skv = new IObject[o.size() * 2];
             int i = 0;
-            for (var e : l) {
+            for (var e : o.entrySet()) {
                 skv[i++] = shadow(e.getKey());
                 skv[i++] = shadow(e.getValue());
             }

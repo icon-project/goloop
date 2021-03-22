@@ -24,7 +24,7 @@ import org.msgpack.value.Value;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class TypedObj {
@@ -54,7 +54,7 @@ public class TypedObj {
         if (tag == NIL) {
             return null;
         } else if (tag == DICT) {
-            Map<String, Object> map = new HashMap<>();
+            Map<String, Object> map = new LinkedHashMap<>();
             for (Map.Entry<Value, Value> pair : val.asMapValue().entrySet()) {
                 map.put(pair.getKey().asStringValue().asString(),
                         decodeAny(pair.getValue()));
@@ -93,7 +93,7 @@ public class TypedObj {
         } else if (obj instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) obj;
-            Map<String, Object> typedMap = new HashMap<>();
+            Map<String, Object> typedMap = new LinkedHashMap<>();
             for (Map.Entry<String, Object> pair : map.entrySet()) {
                 typedMap.put(pair.getKey(), encodeAny(pair.getValue()));
             }
