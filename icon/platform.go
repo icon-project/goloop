@@ -61,7 +61,7 @@ func (p *platform) ToRevision(value int) module.Revision {
 }
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
-	// TODO calculate issued i-score and amount balance. No changes on world context.
+	// calculate issued i-score and amount balance. No changes on world context.
 	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if !es.State.GetTerm().IsDecentralized() {
 		return nil, nil

@@ -838,7 +838,6 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext) error {
 		}
 	}
 
-	// TODO: Remove the comment below when testing with multiple nodes
 	if err = wc.GetValidatorState().Set(vs); err != nil {
 		return err
 	}

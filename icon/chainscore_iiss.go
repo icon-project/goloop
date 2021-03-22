@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -29,6 +30,15 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
+
+func (s *chainScore) iissHandleRevision() error {
+	revision := s.cc.Revision().Value()
+	if revision < icmodule.RevisionIISS {
+		// chain SCORE was added on RevisionIISS
+		return scoreresult.ErrContractNotFound
+	}
+	return nil
+}
 
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
@@ -53,6 +63,9 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia := es.GetAccount(s.from)
 	v := &value.Int
@@ -132,12 +145,18 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia := es.GetAccount(address)
 	return ia.GetStakeInfo(), nil
 }
 
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
@@ -151,6 +170,9 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 }
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	ia := es.GetAccount(address)
 	return ia.GetDelegationInfo(), nil
@@ -160,6 +182,9 @@ var regPRepFee = icutils.ToLoop(2000)
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	if name == "" || email == "" || website == "" || country == "" || city == "" || details == "" ||
 		p2pEndpoint == "" {
 		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
@@ -216,6 +241,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if  s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
@@ -228,6 +256,9 @@ func (s *chainScore) Ex_unregisterPRep() error {
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	res, err := es.GetPRepInJSON(address, s.cc.BlockHeight())
 	if err != nil {
@@ -238,6 +269,9 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 }
 
 func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	var start, end int = 0, 0
 	if startRanking != nil && endRanking != nil {
 		start = int(startRanking.Int.Int64())
@@ -256,16 +290,25 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 }
 
 func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	return es.GetMainPRepsInJSON(s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	return es.GetSubPRepsInJSON(s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso := es.GetPRepManagerInJSON()
 	return jso, nil
@@ -273,6 +316,9 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
 	if (node != nil && node.IsContract()) || s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
@@ -344,6 +390,9 @@ func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, er
 }
 
 func (s *chainScore) Ex_claimIScore() error {
+	if err := s.iissHandleRevision(); err != nil {
+		return err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	fClaimed, err := es.Front.GetIScoreClaim(s.from)
@@ -397,10 +446,10 @@ func (s *chainScore) Ex_claimIScore() error {
 	tr.SetBalance(new(big.Int).Sub(tb, icx))
 
 	// write claim data to front
-	// TODO add revision checking.
 	// IISS 2.0 : do not burn iScore < 1000
 	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
-	if true {
+	revision := s.cc.Revision().Value()
+	if revision < icmodule.RevisionICON2 {
 		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
 	} else {
 		err = es.Front.AddIScoreClaim(s.from, claim)
@@ -428,6 +477,9 @@ func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	fClaim, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
@@ -467,6 +519,9 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 }
 
 func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
@@ -476,6 +531,9 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 }
 
 func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	jso, err := es.GetPRepTermInJSON()
 	if err != nil {
@@ -495,6 +553,9 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
+	if err := s.iissHandleRevision(); err != nil {
+		return nil, err
+	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	term := es.State.GetTerm()
 	iissVersion := es.State.GetIISSVersion()

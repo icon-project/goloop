@@ -64,7 +64,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getIISSInfo",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -72,7 +72,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setIRep",
 		scoreapi.FlagExternal, 1,
@@ -80,7 +80,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision11
+	}, icmodule.Revision11, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -88,7 +88,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, 0, 0}, // TODO change minVer to Revision11
+	}, icmodule.Revision11, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -96,7 +96,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, 0, 0}, // TODO change minVer to Revision11
+	}, icmodule.Revision11, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 1,
@@ -104,7 +104,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getStake",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -114,7 +114,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setDelegation",
 		scoreapi.FlagExternal, 1,
@@ -127,7 +127,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getDelegation",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -137,13 +137,13 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "claimIScore",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "queryIScore",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -153,7 +153,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "registerPRep",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 7,
@@ -168,7 +168,7 @@ var chainMethods = []*chainMethod{
 			{"nodeAddress", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -178,13 +178,13 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "unregisterPRep",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setPRep",
 		scoreapi.FlagExternal, 0,
@@ -199,7 +199,7 @@ var chainMethods = []*chainMethod{
 			{"nodeAddress", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setGovernanceVariables",
 		scoreapi.FlagExternal, 1,
@@ -215,7 +215,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -226,7 +226,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getMainPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -234,7 +234,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getSubPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -242,7 +242,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setBond",
 		scoreapi.FlagExternal, 1,
@@ -255,7 +255,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBond",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -265,7 +265,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setBonderList",
 		scoreapi.FlagExternal, 1,
@@ -273,7 +273,7 @@ var chainMethods = []*chainMethod{
 			{"bonderList", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBonderList",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -283,7 +283,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.List,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "estimateUnstakeLockPeriod",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -291,7 +291,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0}, // TODO change minVer to Revision5
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepTerm",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -299,7 +299,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "disableScore",
 		scoreapi.FlagExternal, 1,
@@ -471,7 +471,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.RevisionICON2, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
