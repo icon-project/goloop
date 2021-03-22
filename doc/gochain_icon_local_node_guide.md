@@ -1,3 +1,5 @@
+# Gochain-icon local node guide
+
 Ref.
 
 - https://github.com/icon-project/gochain-local 
@@ -10,7 +12,7 @@ Ref.
 
 
 
-# Goal
+## Goal
 
 - You can build docker image for local.
 - You can build javaee-api.jar for local.
@@ -18,7 +20,7 @@ Ref.
 
 
 
-# Requirements
+## Requirements
 
 - [Download and Install Docker](https://docs.docker.com/get-docker/)
 
@@ -40,7 +42,7 @@ Ref.
 
 
 
-# Step1. Source checkout
+## Step1. Source checkout
 
 First of all, you need to checkout the `gochain-local` repository for executing local node.
 
@@ -65,7 +67,7 @@ $ JAVA_SCORE_EXAMPLES_ROOT=/path/to/java-score-examples
 
 
 
-# Step2.Build Docker image and goloop CLI for local
+## Step2.Build Docker image and goloop CLI for local
 
 First of all, you need checkout git specific branch and run make file.
 
@@ -93,7 +95,7 @@ $ cp ./bin/goloop ${GOCHAIN_LOCAL_ROOT}/goloop
 
 
 
-# Step3.Build javaee-api.jar for local
+## Step3.Build javaee-api.jar for local
 
 If you want to use RLP method, you need to build `javaee-api.jar` for development.
 
@@ -120,7 +122,7 @@ you can open local javadoc from `javaee/api/build/javadoc/index.html`.
 
 
 
-# Step4.Build sample java SCORE for local
+## Step4.Build sample java SCORE for local
 
 ```
 $ cd ${JAVA_SCORE_EXAMPLES_ROOT}
@@ -238,7 +240,7 @@ $ cp ./hello-world/build/libs/hello-world-0.1.0-optimized.jar ${GOCHAIN_LOCAL_RO
 
 
 
-# Step5.Start gochain docker container
+## Step5.Start gochain docker container
 
 ```
 $ cd ${GOCHAIN_LOCAL_ROOT}
@@ -339,7 +341,7 @@ gochain-iconee
 
 
 
-# Step6.Deploy the optimized jar (hello-world SCORE with RLP)
+## Step6.Deploy the optimized jar (hello-world SCORE with RLP)
 
 You can deploy java hello-world SCORE by using goloop_cli.
 
