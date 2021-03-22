@@ -235,5 +235,7 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
 	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
+	jso["unbondingMax"] = s.GetUnbondingMax()
+	jso["unbondingPeriod"] = s.GetUnbondingPeriod()
 	return jso
 }
