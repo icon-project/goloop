@@ -35,6 +35,9 @@ func (s *chainScore) iissHandleRevision() error {
 	revision := s.cc.Revision().Value()
 	if revision < icmodule.RevisionIISS {
 		// chain SCORE was added on RevisionIISS
+		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return scoreresult.ErrOutOfStep
+		}
 		return scoreresult.ErrContractNotFound
 	}
 	return nil
@@ -245,7 +248,7 @@ func (s *chainScore) Ex_unregisterPRep() error {
 		return err
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if  s.from.IsContract() {
+	if s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
 	}
 	err := es.UnregisterPRep(s.cc, s.from)
