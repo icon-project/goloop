@@ -65,27 +65,4 @@ public class CodecTest extends GoldenTest {
         var score = sm.mustDeploy(new Class<?>[]{Score.class, User.class});
         score.invoke("run");
     }
-
-    public static class RWHolder {
-        private ObjectReader r;
-        private ByteArrayObjectWriter w;
-
-        @External
-        public void setupRW(byte[] bytes) {
-            r = Context.newByteArrayObjectReader("RLPn", bytes);
-            w = Context.newByteArrayObjectWriter("RLPn");
-            w.write(bytes);
-        }
-    }
-
-    @Test
-    public void testReaderWriter() {
-        var score = sm.mustDeploy(RWHolder.class);
-        var by = new byte[1000];
-        score.invoke("setupRW", by);
-        by = new byte[500];
-        by[0] = 1;
-        // ObjectGraph changes but only object ID changes
-        score.invoke("setupRW", by);
-    }
 }

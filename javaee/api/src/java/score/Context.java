@@ -453,6 +453,7 @@ public final class Context {
      * @param codec codec. Currently "RLPn" is supported.
      * @param byteArray byte array.
      * @return object reader.
+     * @throws IllegalArgumentException if the codec is unsupported.
      */
     public static ObjectReader newByteArrayObjectReader(String codec,
             byte[] byteArray) {
@@ -463,6 +464,7 @@ public final class Context {
      * Returns a new object writer writing to a byte array.
      * @param codec codec. Currently "RLPn" is supported.
      * @return byte array object writer
+     * @throws IllegalArgumentException if the codec is unsupported.
      */
     public static ByteArrayObjectWriter newByteArrayObjectWriter(
             String codec) {
