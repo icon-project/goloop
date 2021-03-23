@@ -555,7 +555,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return errors.Errorf("Not enough voting power")
 	}
 
-	unbondingHeight := blockHeight + s.State.GetUnbondingPeriod()
+	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
 	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, unbondingHeight)
 	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
 	votingAmount.Sub(votingAmount, account.Bond())

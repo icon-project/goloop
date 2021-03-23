@@ -25,20 +25,20 @@ import (
 )
 
 const (
-	VarIRep            = "irep"
-	VarRRep            = "rrep"
-	VarMainPRepCount   = "main_prep_count"
-	VarSubPRepCount    = "sub_prep_count"
-	VarTotalStake      = "total_stake"
-	VarIISSVersion     = "iiss_version"
-	VarIISSBlockHeight = "iiss_blockHeight"
-	VarTermPeriod      = "term_period"
-	VarBondRequirement = "bond_requirement"
-	VarUnbondingPeriod = "unbonding_period"
-	VarLockMin         = "lockMin"
-	VarLockMax         = "lockMax"
-	VarRewardFund      = "reward_fund"
-	VARUnbondingMax    = "unbonding_max"
+	VarIRep                      = "irep"
+	VarRRep                      = "rrep"
+	VarMainPRepCount             = "main_prep_count"
+	VarSubPRepCount              = "sub_prep_count"
+	VarTotalStake                = "total_stake"
+	VarIISSVersion               = "iiss_version"
+	VarIISSBlockHeight           = "iiss_blockHeight"
+	VarTermPeriod                = "term_period"
+	VarBondRequirement           = "bond_requirement"
+	VarUnbondingPeriodMultiplier = "unbonding_period_multiplier"
+	VarLockMin                   = "lockMin"
+	VarLockMax                   = "lockMax"
+	VarRewardFund                = "reward_fund"
+	VARUnbondingMax              = "unbonding_max"
 )
 
 const (
@@ -151,15 +151,15 @@ func (s *State) SetBondRequirement(value int64) error {
 	return setValue(s.store, VarBondRequirement, value)
 }
 
-func (s *State) SetUnbondingPeriod(value int64) error {
-	if (value <= 0) || (value%s.GetTermPeriod() != 0) {
-		return errors.IllegalArgumentError.New("unbonding period must be multiple of term period")
+func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
+	if value <= 0 {
+		return errors.IllegalArgumentError.New("unbondingPeriodMultiplier must be positive number")
 	}
-	return setValue(s.store, VarUnbondingPeriod, value)
+	return setValue(s.store, VarUnbondingPeriodMultiplier, value)
 }
 
-func (s *State) GetUnbondingPeriod() int64 {
-	return getValue(s.store, VarUnbondingPeriod).Int64()
+func (s *State) GetUnbondingPeriodMultiplier() int64 {
+	return getValue(s.store, VarUnbondingPeriodMultiplier).Int64()
 }
 
 func (s *State) GetLockMin() *big.Int {
@@ -236,6 +236,6 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	jso["unbondingMax"] = s.GetUnbondingMax()
-	jso["unbondingPeriod"] = s.GetUnbondingPeriod()
+	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()
 	return jso
 }

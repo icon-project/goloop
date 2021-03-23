@@ -531,43 +531,43 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 }
 
 const (
-	configFile             = "./icon_config.json"
-	defaultIISSVersion     = 1
-	defaultIISSBlockHeight = 0
-	defaultTermPeriod      = 43120
-	defaultUnbondingPeriod = defaultTermPeriod * 7
-	defaultUnstakeSlotMax  = 1000
-	defaultMainPRepCount   = 22
-	defaultSubPRepCount    = 78
-	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultRRep            = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultBondRequirement = 5
-	defaultLockMin         = defaultTermPeriod * 5
-	defaultLockMax         = defaultTermPeriod * 20
-	rewardPoint            = 0.7
-	defaultIglobal         = iiss.YearBlock * iiss.IScoreICXRatio
-	defaultIprep           = 50
-	defaultIcps            = 0
-	defaultIrelay          = 0
-	defaultIvoter          = 50
-	defaultUnbondingMax    = 1000
+	configFile                       = "./icon_config.json"
+	defaultIISSVersion               = 1
+	defaultIISSBlockHeight           = 0
+	defaultTermPeriod                = 43120
+	defaultUnbondingPeriodMultiplier = 7
+	defaultUnstakeSlotMax            = 1000
+	defaultMainPRepCount             = 22
+	defaultSubPRepCount              = 78
+	defaultIRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultRRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultBondRequirement           = 5
+	defaultLockMin                   = defaultTermPeriod * 5
+	defaultLockMax                   = defaultTermPeriod * 20
+	rewardPoint                      = 0.7
+	defaultIglobal                   = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIprep                     = 50
+	defaultIcps                      = 0
+	defaultIrelay                    = 0
+	defaultIvoter                    = 50
+	defaultUnbondingMax              = 1000
 )
 
 type config struct {
-	TermPeriod      *common.HexInt `json:"termPeriod"`
-	IISSVersion     *common.HexInt `json:"iissVersion,omitempty"`
-	IISSBlockHeight *common.HexInt `json:"iissBlockHeight,omitempty"`
-	MainPRepCount   *common.HexInt `json:"mainPRepCount"`
-	SubPRepCount    *common.HexInt `json:"subPRepCount"`
-	Irep            *common.HexInt `json:"irep,omitempty"`
-	Rrep            *common.HexInt `json:"rrep,omitempty"`
-	BondRequirement *common.HexInt `json:"bondRequirement,omitempty"`
-	UnbondingPeriod *common.HexInt `json:"unbondingPeriod,omitempty"`
-	UnstakeSlotMax  *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMin         *common.HexInt `json:"lockMin,omitempty"`
-	LockMax         *common.HexInt `json:"lockMax,omitempty"`
-	RewardFund      rewardFund     `json:"rewardFund"`
-	UnbondingMax    *common.HexInt `json:"unbondingMax"`
+	TermPeriod                *common.HexInt `json:"termPeriod"`
+	IISSVersion               *common.HexInt `json:"iissVersion,omitempty"`
+	IISSBlockHeight           *common.HexInt `json:"iissBlockHeight,omitempty"`
+	MainPRepCount             *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount              *common.HexInt `json:"subPRepCount"`
+	Irep                      *common.HexInt `json:"irep,omitempty"`
+	Rrep                      *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement           *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriodMultiplier *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
+	UnstakeSlotMax            *common.HexInt `json:"unstakeSlotMax,omitempty"`
+	LockMin                   *common.HexInt `json:"lockMin,omitempty"`
+	LockMax                   *common.HexInt `json:"lockMax,omitempty"`
+	RewardFund                rewardFund     `json:"rewardFund"`
+	UnbondingMax              *common.HexInt `json:"unbondingMax"`
 }
 
 type rewardFund struct {
@@ -617,19 +617,19 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:      common.NewHexInt(defaultTermPeriod),
-		IISSVersion:     common.NewHexInt(defaultIISSVersion),
-		IISSBlockHeight: common.NewHexInt(defaultIISSBlockHeight),
-		MainPRepCount:   common.NewHexInt(defaultMainPRepCount),
-		SubPRepCount:    common.NewHexInt(defaultSubPRepCount),
-		Irep:            common.NewHexInt(defaultIRep),
-		Rrep:            common.NewHexInt(defaultRRep),
-		BondRequirement: common.NewHexInt(defaultBondRequirement),
-		LockMin:         common.NewHexInt(defaultLockMin),
-		LockMax:         common.NewHexInt(defaultLockMax),
-		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
-		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
-		UnbondingMax:    common.NewHexInt(defaultUnbondingMax),
+		TermPeriod:                common.NewHexInt(defaultTermPeriod),
+		IISSVersion:               common.NewHexInt(defaultIISSVersion),
+		IISSBlockHeight:           common.NewHexInt(defaultIISSBlockHeight),
+		MainPRepCount:             common.NewHexInt(defaultMainPRepCount),
+		SubPRepCount:              common.NewHexInt(defaultSubPRepCount),
+		Irep:                      common.NewHexInt(defaultIRep),
+		Rrep:                      common.NewHexInt(defaultRRep),
+		BondRequirement:           common.NewHexInt(defaultBondRequirement),
+		LockMin:                   common.NewHexInt(defaultLockMin),
+		LockMax:                   common.NewHexInt(defaultLockMax),
+		UnbondingPeriodMultiplier: common.NewHexInt(defaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:            common.NewHexInt(defaultUnstakeSlotMax),
+		UnbondingMax:              common.NewHexInt(defaultUnbondingMax),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(defaultIglobal),
 			Iprep:   common.NewHexInt(defaultIprep),
