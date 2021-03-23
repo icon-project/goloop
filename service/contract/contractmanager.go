@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"container/list"
 	"encoding/hex"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
+	"path"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -318,84 +320,74 @@ func NewContractManager(db db.Database, contractDir string, log log.Logger) (Con
 const (
 	javaCode               = "code.jar"
 	tmpRoot                = "tmp"
+	tmpPattern             = "tmp-*"
 	contractPythonRootFile = "package.json"
 	tryTmpNum              = 10
 )
 
-func storePython(path string, code []byte, log log.Logger) error {
-	basePath, _ := filepath.Split(path)
-	var tmpPath string
-	var i int
-	for i = 0; i < tryTmpNum; i++ {
-		tmpPath = filepath.Join(basePath, tmpRoot, path+strconv.Itoa(i))
-		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
-			if err := os.RemoveAll(tmpPath); err != nil {
-				break
-			}
-		} else {
-			break
-		}
-	}
-	if i == tryTmpNum {
-		return errors.CriticalIOError.Errorf("Fail to create temporary directory")
-	}
-
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+func storePython(dst string, code []byte, log log.Logger) (ret error) {
+	basePath := filepath.Dir(dst)
+	tmpPath, err := ioutil.TempDir(basePath, tmpPattern)
+	if err != nil {
 		return errors.WithCode(err, errors.CriticalIOError)
 	}
+	defer func() {
+		if ret != nil {
+			os.RemoveAll(tmpPath)
+		}
+	}()
+
 	zipReader, err :=
 		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
 		return errors.WithCode(err, errors.CriticalIOError)
 	}
 
-	findRoot := false
-	scoreRoot := ""
-	for _, zipFile := range zipReader.File {
-		if info := zipFile.FileInfo(); info.IsDir() {
+	var pkg string
+	for _, zFile := range zipReader.File {
+		info := zFile.FileInfo()
+		if info.Name() == contractPythonRootFile && info.IsDir() == false {
+			pkg = zFile.Name
+			break
+		}
+	}
+
+	if len(pkg) == 0 {
+		return scoreresult.IllegalFormatError.New("NoPackageFile")
+	}
+	pkgBase, _ := path.Split(pkg)
+	for _, zFile := range zipReader.File {
+		if zFile.FileInfo().IsDir() {
 			continue
 		}
-		if findRoot == false &&
-			filepath.Base(zipFile.Name) == contractPythonRootFile {
-			scoreRoot = filepath.Dir(zipFile.Name)
-			findRoot = true
+		dir, base := path.Split(zFile.Name)
+		if !strings.HasPrefix(dir, pkgBase) {
+			continue
 		}
-		storePath := filepath.Join(tmpPath, zipFile.Name)
-		storeDir := filepath.Dir(storePath)
-		if _, err := os.Stat(storeDir); os.IsNotExist(err) {
-			os.MkdirAll(storeDir, 0755)
+		dir = strings.TrimPrefix(dir, pkgBase)
+		if strings.Contains(dir, "__MACOSX") ||
+			strings.Contains(dir, "__pycache__") {
+			continue
 		}
-		reader, err := zipFile.Open()
+		in, err := zFile.Open()
 		if err != nil {
-			return scoreresult.IllegalFormatError.Wrap(err, "Fail to open zip file")
+			return scoreresult.IllegalFormatError.Errorf("FailToOpen(f=%s)", zFile.Name)
 		}
-		buf, err := ioutil.ReadAll(reader)
+		tmpDir := filepath.Join(tmpPath, filepath.FromSlash(dir))
+		if err := os.MkdirAll(tmpDir, 0755); err != nil {
+			return errors.WithCode(err, errors.CriticalIOError)
+		}
+		tmpFile := filepath.Join(tmpDir, base)
+		out, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0755)
 		if err != nil {
-			reader.Close()
-			return scoreresult.IllegalFormatError.Wrap(err, "Fail to read zip file")
+			return errors.WithCode(err, errors.CriticalIOError)
 		}
-		if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
-			return errors.CriticalIOError.Wrapf(err, "FailToWriteFile(name=%s)", storePath)
-		}
-		err = reader.Close()
-		if err != nil {
-			return errors.CriticalIOError.Wrap(err, "Fail to close zip file")
+		if _, err := io.Copy(out, in); err != nil {
+			return errors.WithCode(err, errors.CriticalIOError)
 		}
 	}
-	if findRoot == false {
-		os.RemoveAll(tmpPath)
-		return scoreresult.IllegalFormatError.Errorf(
-			"Root file does not exist(required:%s)\n", contractPythonRootFile)
-	}
-	contractRoot := filepath.Join(tmpPath, scoreRoot)
-	if err := os.Rename(contractRoot, path); err != nil {
-		log.Warnf("tmpPath(%s), scoreRoot(%s), err(%s)\n", tmpPath, scoreRoot, err)
-		return errors.CriticalIOError.Wrapf(err, "FailToRenameTo(from=%s to=%s)", contractRoot, path)
-	}
-	if err := os.RemoveAll(tmpPath); err != nil {
-		log.Debugf("Failed to remove tmpPath(%s), err(%s)\n", tmpPath, err)
-	}
-	return nil
+
+	return os.Rename(tmpPath, dst)
 }
 
 func storeJava(path string, code []byte, log log.Logger) error {
