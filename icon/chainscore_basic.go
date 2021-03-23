@@ -81,8 +81,53 @@ func (s *chainScore) fromGovernance() bool {
 }
 
 func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
-	if r1 >= r2 {
+	if r1 >= r2 || r2 < icmodule.RevisionIISS {
 		return nil
+	}
+	if r2 == icmodule.RevisionIISS {
+		iconConfig := s.loadIconConfig()
+
+		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
+		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+		if err := es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
+			return err
+		}
+		if err := es.State.SetIISSBlockHeight(iconConfig.IISSBlockHeight.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetIRep(iconConfig.Irep.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetRRep(iconConfig.Rrep.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetMainPRepCount(iconConfig.MainPRepCount.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetBondRequirement(iconConfig.BondRequirement.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetLockVariables(iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetUnbondingPeriod(iconConfig.UnbondingPeriod.Int64()); err != nil {
+			return err
+		}
+		if err := applyRewardFund(iconConfig, es.State); err != nil {
+			return err
+		}
+		if err := es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
+			return err
+		}
+		if err := es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
+			return err
+		}
 	}
 
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)

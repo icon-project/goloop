@@ -96,7 +96,7 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// Start background calculator if it's not started.
-	if p.calculator.CheckToRun(ess) {
+	if ess != nil && p.calculator.CheckToRun(ess) {
 		go func(snapshot state.ExtensionSnapshot) {
 			err := p.calculator.Run(snapshot, logger)
 			if err != nil {
