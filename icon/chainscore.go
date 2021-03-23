@@ -58,6 +58,170 @@ const (
 
 var chainMethods = []*chainMethod{
 	{scoreapi.Method{
+		scoreapi.Function, "disableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "enableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "txHashToAddress",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Address,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "addressToTxHashes",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "acceptScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "rejectScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "blockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "unblockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRevision",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"code", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepPrice",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"price", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepCost",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"cost", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMaxStepLimit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+			{"limit", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getRevision",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepPrice",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCost",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCosts",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMaxStepLimit",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getScoreStatus",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getServiceConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "getNetworkValue",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
@@ -300,170 +464,6 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, icmodule.Revision4, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "disableScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "enableScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "txHashToAddress",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Address,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "addressToTxHashes",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.List,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "acceptScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "blockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "unblockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setRevision",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"code", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setStepPrice",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"price", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setStepCost",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-			{"cost", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setMaxStepLimit",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-			{"limit", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getRevision",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepPrice",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepCost",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepCosts",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getMaxStepLimit",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getScoreStatus",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getServiceConfig",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepStats",
 		scoreapi.FlagReadOnly, 0,
