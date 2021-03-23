@@ -98,9 +98,9 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, 
 	// Start background calculator if it's not started.
 	if p.calculator.CheckToRun(ess) {
 		go func(snapshot state.ExtensionSnapshot) {
-			err := p.calculator.Run(snapshot)
+			err := p.calculator.Run(snapshot, logger)
 			if err != nil {
-				log.Errorf("Failed to calculate reward. %+v", err)
+				logger.Errorf("Failed to calculate reward. %+v", err)
 			}
 		}(ess)
 	}

@@ -67,6 +67,7 @@ var (
 
 type Calculator struct {
 	dbase db.Database
+	log   log.Logger
 
 	result      *icreward.Snapshot
 	startHeight int64
@@ -179,14 +180,15 @@ func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
 	return c.back == nil || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
 }
 
-func (c *Calculator) Run(ess state.ExtensionSnapshot) (err error) {
+func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err error) {
+	c.log = logger
 	ss := ess.(*ExtensionSnapshotImpl)
 	startTS := time.Now()
 	if err = c.prepare(ss); err != nil {
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
-	log.Debugf("Start calculation %d", c.startHeight)
+	c.log.Infof("Start calculation %d", c.startHeight)
 	prepareTS := time.Now()
 
 	if err = c.calculateBlockProduce(); err != nil {
@@ -212,11 +214,11 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot) (err error) {
 	}
 	finalTS := time.Now()
 
-	log.Infof("Calculation time: total=%s prepare=%s blockProduce=%s voted=%s voting=%s postwork=%s",
+	c.log.Infof("Calculation time: total=%s prepare=%s blockProduce=%s voted=%s voting=%s postwork=%s",
 		finalTS.Sub(startTS), prepareTS.Sub(startTS), bpTS.Sub(prepareTS),
 		votedTS.Sub(bpTS), votingTS.Sub(votedTS), finalTS.Sub(votingTS),
 	)
-	log.Infof("Calculation statistics: BlockProduce=%s Voted=%s Voting=%s",
+	c.log.Infof("Calculation statistics: BlockProduce=%s Voted=%s Voting=%s",
 		c.stats.blockProduce.String(),
 		c.stats.voted.String(),
 		c.stats.voting.String(),
@@ -758,7 +760,7 @@ func (c *Calculator) processVoting(
 		} else {
 			voting := toVoting(_type, o)
 			if voting == nil {
-				log.Errorf("Failed to convert data to voting instance")
+				c.log.Errorf("Failed to convert data to voting instance")
 				continue
 			}
 			reward = votingReward(multiplier, divider, 0, to, prepInfo, voting.Iterator())
