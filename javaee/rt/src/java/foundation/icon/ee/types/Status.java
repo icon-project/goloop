@@ -33,6 +33,7 @@ public class Status {
     public static final int StackOverflow = 13;
     public static final int SkipTransaction = 14;
     public static final int PackageError = 15;
+    public static final int IllegalObjectGraph = 16;
 
     public static final int UserReversionStart = 32;
     public static final int UserReversionEnd = 1000;

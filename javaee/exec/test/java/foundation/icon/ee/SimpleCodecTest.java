@@ -17,63 +17,144 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.test.TransactionException;
+import foundation.icon.ee.types.Status;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.ByteArrayObjectWriter;
 import score.Context;
 import score.ObjectReader;
+import score.RevertedException;
 import score.annotation.External;
 
 public class SimpleCodecTest extends SimpleTest {
-    public static class RWHolder {
+    public static class Score {
         private ObjectReader r;
         private ByteArrayObjectWriter w;
 
         @External
-        public void setupRW(byte[] bytes) {
-            r = Context.newByteArrayObjectReader("RLPn", bytes);
+        public void memberReaderBeforeCall() {
+            r = Context.newByteArrayObjectReader("RLPn", new byte[0]);
+            Context.call(Context.getAddress(), "dummyMethod");
+            // shall not reach here
+            Context.revert();
+        }
+
+        @External
+        public void memberWriterBeforeCall() {
             w = Context.newByteArrayObjectWriter("RLPn");
-            w.write(bytes);
+            Context.call(Context.getAddress(), "dummyMethod");
+            // shall not reach here
+            Context.revert();
         }
 
         @External
-        public void useReader() {
-            try {
-                r.hasNext();
-                Context.revert();
-            } catch (IllegalStateException e) {
-                // expected
-            }
+        public void memberReaderBeforeReturn() {
+            r = Context.newByteArrayObjectReader("RLPn", new byte[0]);
         }
 
         @External
-        public void useWriter() {
-            try {
-                w.write(0);
-                Context.revert();
-            } catch (IllegalStateException e) {
-                // expected
-            }
+        public void memberWriterBeforeReturn() {
+            w = Context.newByteArrayObjectWriter("RLPn");
+        }
+
+        @External
+        public void localReaderBeforeCall() {
+            var r = Context.newByteArrayObjectReader("RLPn", new byte[0]);
+            Context.call(Context.getAddress(), "dummyMethod");
+        }
+
+        @External
+        public void localWriterBeforeCall() {
+            var w = Context.newByteArrayObjectWriter("RLPn");
+            Context.call(Context.getAddress(), "dummyMethod");
+        }
+
+        @External
+        public void localReaderBeforeReturn() {
+            var r = Context.newByteArrayObjectReader("RLPn", new byte[0]);
+        }
+
+        @External
+        public void localWriterBeforeReturn() {
+            var w = Context.newByteArrayObjectWriter("RLPn");
+        }
+
+        @External
+        public void dummyMethod() {
         }
     }
 
     @Test
-    public void expectIllegalStateExceptionForInvalidatedReaderWriter() {
-        var score = sm.mustDeploy(RWHolder.class);
-        var by = new byte[1000];
-        score.invoke("setupRW", by);
-        score.invoke("useReader");
-        score.invoke("useWriter");
+    void beforeCallAndReturn() {
+        var s = sm.mustDeploy(Score.class);
+        var e = Assertions.assertThrows(TransactionException.class,
+                () -> s.invoke("memberReaderBeforeCall"));
+        Assertions.assertEquals(Status.IllegalObjectGraph, e.getResult().getStatus());
+        e = Assertions.assertThrows(TransactionException.class,
+                () -> s.invoke("memberWriterBeforeCall"));
+        Assertions.assertEquals(Status.IllegalObjectGraph, e.getResult().getStatus());
+        e = Assertions.assertThrows(TransactionException.class,
+                () -> s.invoke("memberReaderBeforeReturn"));
+        Assertions.assertEquals(Status.IllegalObjectGraph, e.getResult().getStatus());
+        e = Assertions.assertThrows(TransactionException.class,
+                () -> s.invoke("memberWriterBeforeReturn"));
+        Assertions.assertEquals(Status.IllegalObjectGraph, e.getResult().getStatus());
+        s.invoke("localReaderBeforeCall");
+        s.invoke("localReaderBeforeCall");
+        s.invoke("localWriterBeforeReturn");
+        s.invoke("localWriterBeforeReturn");
+    }
+
+    public static class ReaderInInit {
+        private ObjectReader r = Context.newByteArrayObjectReader("RLPn", new byte[0]);
+
+        @External
+        public void dummyMethod() {
+        }
     }
 
     @Test
-    public void deserializeReaderWriter() {
-        var score = sm.mustDeploy(RWHolder.class);
-        var by = new byte[1000];
-        score.invoke("setupRW", by);
-        // to run without cache
-        createAndAcceptNewJAVAEE();
-        sm.setIndexer((addr) -> 1);
-        score.invoke("useReader");
-        score.invoke("useWriter");
+    void readerInInit() {
+        Assertions.assertThrows(TransactionException.class,
+                () -> sm.mustDeploy(ReaderInInit.class));
+    }
+
+    public static class Deployer {
+        @External
+        public boolean deploy(byte[] jar) {
+            try {
+                Context.deploy(jar);
+            } catch (RevertedException e) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    @Test
+    void readInInitInternalTX() {
+        var s = sm.mustDeploy(Deployer.class);
+        var jar = makeRelJar(ReaderInInit.class);
+        var res = s.invoke("deploy", jar);
+        Assertions.assertEquals(false, res.getRet());
+    }
+
+    public static class ContextLevelCodecUser {
+        @External
+        public void f() {
+            var enc = Context.newByteArrayObjectWriter("RLPn");
+            enc.write(10);
+            enc.write("a string");
+            var dec = Context.newByteArrayObjectReader("RLPn", enc.toByteArray());
+            Context.require(dec.readInt() == 10);
+            Context.require( dec.readString().equals("a string"));
+        }
+    }
+
+    @Test
+    public void contextLevelCodec() {
+        var score = sm.mustDeploy(ContextLevelCodecUser.class);
+        score.invoke("f");
     }
 }

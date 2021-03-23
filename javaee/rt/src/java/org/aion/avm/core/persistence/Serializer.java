@@ -10,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+import i.AvmException;
 import i.OutOfEnergyException;
 import i.RuntimeAssertionError;
 
@@ -114,6 +115,8 @@ public class Serializer {
             } else if (cause instanceof BufferOverflowException) {
                 // This is if we run off the end of the buffer, which is an example of out of energy.
                 throw new OutOfEnergyException();
+            } else if (cause instanceof AvmException) {
+                throw (AvmException)cause;
             } else {
                 // This shouldn't happen but is distinct from reflection errors.
                 throw RuntimeAssertionError.unexpected(e);
