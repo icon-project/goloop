@@ -67,11 +67,11 @@ func (t *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 	return nil, nil
 }
 
-func (t *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
+func (t *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// do nothing
 }
 
-func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
+func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
 	return nil
 }
 
