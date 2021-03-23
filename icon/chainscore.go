@@ -445,7 +445,7 @@ var chainMethods = []*chainMethod{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		[]scoreapi.DataType{
-			scoreapi.List,
+			scoreapi.Dict,
 		},
 	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{

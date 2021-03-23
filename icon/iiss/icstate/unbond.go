@@ -53,7 +53,7 @@ func (u *Unbond) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["address"] = u.Address
 	jso["value"] = intconv.FormatBigInt(u.Value)
-	jso["expireHeight"] = u.Expire
+	jso["expireBlockHeight"] = u.Expire
 
 	return jso
 }

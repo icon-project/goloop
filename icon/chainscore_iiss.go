@@ -382,7 +382,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 	return nil
 }
 
-func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, error) {
+func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	res, err := es.GetBonderList(address)
 	if err != nil {
