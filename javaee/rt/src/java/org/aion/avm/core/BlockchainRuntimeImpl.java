@@ -420,7 +420,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if ("RLPn".equals(c)) {
             return new ObjectReaderImpl(new RLPDataReader(byteArray.getUnderlying()));
         }
-        return null;
+        throw new IllegalArgumentException("bad codec");
     }
 
     @Override
@@ -430,6 +430,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if ("RLPn".equals(c)) {
             return new ObjectWriterImpl(new RLPDataWriter());
         }
-        return null;
+        throw new IllegalArgumentException("bad codec");
     }
 }
