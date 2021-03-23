@@ -94,7 +94,7 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 	return tx, nil
 }
 
-func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) {
+func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// Start background calculator if it's not started.
 	if p.calculator.CheckToRun(ess) {
 		go func(snapshot state.ExtensionSnapshot) {
@@ -106,7 +106,7 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot) 
 	}
 }
 
-func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult) error {
+func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
 	revision := wc.Revision().Value()
 	if revision < icmodule.RevisionIISS {
 		return nil
