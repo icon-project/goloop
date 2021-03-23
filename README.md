@@ -13,6 +13,7 @@ This github repository contains the source code of the Goloop software, which wi
   - [Tutorial](doc/tutorial.md)
 * API Documents
   - [JSON RPC v3](doc/jsonrpc_v3.md)
+  - [JSON RPC IISS Extension](doc/iiss_extension.md)
   - [JSON RPC BTP Extension](doc/btp_extension.md)
 * Others
   - [`goloop` command line reference](doc/goloop_cli.md)
