@@ -31,10 +31,10 @@ type Platform interface {
 	NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error)
 	NewExtensionSnapshot(dbase db.Database, raw []byte) state.ExtensionSnapshot
 	NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot
-	OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot)
+	OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger)
 	ToRevision(value int) module.Revision
 	NewBaseTransaction(wc state.WorldContext) (module.Transaction, error)
-	OnExecutionEnd(wc state.WorldContext, er ExecutionResult) error
+	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
 	Term()
 }
 

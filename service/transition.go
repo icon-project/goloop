@@ -528,7 +528,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, cumulativeSteps, gatheredFee)
-	if err := t.plt.OnExecutionEnd(ctx, er); err != nil {
+	if err := t.plt.OnExecutionEnd(ctx, er, t.log); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -655,7 +655,7 @@ func (t *transition) finalizeResult() error {
 			t.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
 		}
 	}
-	t.plt.OnExtensionSnapshotFinalization(t.worldSnapshot.GetExtensionSnapshot())
+	t.plt.OnExtensionSnapshotFinalization(t.worldSnapshot.GetExtensionSnapshot(), t.log)
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 
 	t.log.Infof("finalizeResult() total=%s world=%s receipts=%s",
