@@ -77,6 +77,8 @@ public class Status {
                 return "SkipTransaction";
             case PackageError:
                 return "PackageError";
+            case IllegalObjectGraph:
+                return "IllegalObjectGraph";
         }
         if (status >= UserReversionStart) {
             return String.format("Reverted(%d)", status - UserReversionStart);
