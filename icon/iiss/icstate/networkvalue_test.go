@@ -164,8 +164,8 @@ func setBondRequirementTest(t *testing.T, s *State) {
 }
 
 func setLockVariablesTest(t *testing.T, s *State) {
-	actualMin := s.GetLockMin()
-	actualMax := s.GetLockMax()
+	actualMin := s.GetLockMinMultiplier()
+	actualMax := s.GetLockMaxMultiplier()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
@@ -173,8 +173,8 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	max := big.NewInt(1)
 	err := s.SetLockVariables(min, max)
 	assert.Error(t, err)
-	actualMin = s.GetLockMin()
-	actualMax = s.GetLockMax()
+	actualMin = s.GetLockMinMultiplier()
+	actualMax = s.GetLockMaxMultiplier()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
@@ -182,8 +182,8 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	max = big.NewInt(10)
 	err = s.SetLockVariables(min, max)
 	assert.NoError(t, err)
-	actualMin = s.GetLockMin()
-	actualMax = s.GetLockMax()
+	actualMin = s.GetLockMinMultiplier()
+	actualMax = s.GetLockMaxMultiplier()
 	assert.Equal(t, 0, actualMin.Cmp(min))
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }

@@ -547,8 +547,8 @@ const (
 	defaultIRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
 	defaultRRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
 	defaultBondRequirement           = 5
-	defaultLockMin                   = defaultTermPeriod * 5
-	defaultLockMax                   = defaultTermPeriod * 20
+	defaultLockMinMultiplier         = 5
+	defaultLockMaxMultiplier         = 20
 	rewardPoint                      = 0.7
 	defaultIglobal                   = iiss.YearBlock * iiss.IScoreICXRatio
 	defaultIprep                     = 50
@@ -569,8 +569,8 @@ type config struct {
 	BondRequirement           *common.HexInt `json:"bondRequirement,omitempty"`
 	UnbondingPeriodMultiplier *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
 	UnstakeSlotMax            *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMin                   *common.HexInt `json:"lockMin,omitempty"`
-	LockMax                   *common.HexInt `json:"lockMax,omitempty"`
+	LockMinMultiplier         *common.HexInt `json:"lockMinMultiplier,omitempty"`
+	LockMaxMultiplier         *common.HexInt `json:"lockMaxMultiplier,omitempty"`
 	RewardFund                rewardFund     `json:"rewardFund"`
 	UnbondingMax              *common.HexInt `json:"unbondingMax"`
 }
@@ -630,8 +630,8 @@ func newIconConfig() *config {
 		Irep:                      common.NewHexInt(defaultIRep),
 		Rrep:                      common.NewHexInt(defaultRRep),
 		BondRequirement:           common.NewHexInt(defaultBondRequirement),
-		LockMin:                   common.NewHexInt(defaultLockMin),
-		LockMax:                   common.NewHexInt(defaultLockMax),
+		LockMinMultiplier:         common.NewHexInt(defaultLockMinMultiplier),
+		LockMaxMultiplier:         common.NewHexInt(defaultLockMaxMultiplier),
 		UnbondingPeriodMultiplier: common.NewHexInt(defaultUnbondingPeriodMultiplier),
 		UnstakeSlotMax:            common.NewHexInt(defaultUnstakeSlotMax),
 		UnbondingMax:              common.NewHexInt(defaultUnbondingMax),

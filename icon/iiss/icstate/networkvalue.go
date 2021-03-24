@@ -35,8 +35,8 @@ const (
 	VarTermPeriod                = "term_period"
 	VarBondRequirement           = "bond_requirement"
 	VarUnbondingPeriodMultiplier = "unbonding_period_multiplier"
-	VarLockMin                   = "lockMin"
-	VarLockMax                   = "lockMax"
+	VarLockMinMultiplier         = "lockMinMultiplier"
+	VarLockMaxMultiplier         = "lockMaxMultiplier"
 	VarRewardFund                = "reward_fund"
 	VARUnbondingMax              = "unbonding_max"
 )
@@ -162,38 +162,38 @@ func (s *State) GetUnbondingPeriodMultiplier() int64 {
 	return getValue(s.store, VarUnbondingPeriodMultiplier).Int64()
 }
 
-func (s *State) GetLockMin() *big.Int {
-	value := getValue(s.store, VarLockMin).BigInt()
+func (s *State) GetLockMinMultiplier() *big.Int {
+	value := getValue(s.store, VarLockMinMultiplier).BigInt()
 	return value
 }
 
-func (s *State) setLockMin(value *big.Int) error {
+func (s *State) setLockMinMultiplier(value *big.Int) error {
 	if value.Sign() != 1 {
-		return errors.IllegalArgumentError.New("LockMin must have positive value")
+		return errors.IllegalArgumentError.New("LockMinMultiplier must have positive value")
 	}
-	return setValue(s.store, VarLockMin, value)
+	return setValue(s.store, VarLockMinMultiplier, value)
 }
 
-func (s *State) GetLockMax() *big.Int {
-	value := getValue(s.store, VarLockMax).BigInt()
+func (s *State) GetLockMaxMultiplier() *big.Int {
+	value := getValue(s.store, VarLockMaxMultiplier).BigInt()
 	return value
 }
 
-func (s *State) setLockMax(value *big.Int) error {
+func (s *State) setLockMaxMultiplier(value *big.Int) error {
 	if value.Sign() != 1 {
-		return errors.IllegalArgumentError.New("LockMax must have positive value")
+		return errors.IllegalArgumentError.New("LockMaxMultiplier must have positive value")
 	}
-	return setValue(s.store, VarLockMax, value)
+	return setValue(s.store, VarLockMaxMultiplier, value)
 }
 
 func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	if lockMax.Cmp(lockMin) == -1 {
-		return errors.IllegalArgumentError.New("LockMax < LockMin")
+		return errors.IllegalArgumentError.New("LockMaxMultiplier < LockMinMultiplier")
 	}
-	if err := s.setLockMin(lockMin); err != nil {
+	if err := s.setLockMinMultiplier(lockMin); err != nil {
 		return err
 	}
-	if err := s.setLockMax(lockMax); err != nil {
+	if err := s.setLockMaxMultiplier(lockMax); err != nil {
 		return err
 	}
 	return nil
@@ -232,8 +232,8 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
-	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
-	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())
+	jso["lockMinMultiplier"] = intconv.FormatBigInt(s.GetLockMinMultiplier())
+	jso["lockMaxMultiplier"] = intconv.FormatBigInt(s.GetLockMaxMultiplier())
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()

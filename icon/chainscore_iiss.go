@@ -128,8 +128,9 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
 	rPoint := big.NewFloat(rewardPoint)
-	lMin := state.GetLockMin()
-	lMax := state.GetLockMax()
+	termPeriod := new(big.Int).SetInt64(state.GetTermPeriod())
+	lMin := new(big.Int).Mul(state.GetLockMinMultiplier(), termPeriod)
+	lMax := new(big.Int).Mul(state.GetLockMaxMultiplier(), termPeriod)
 	if stakeRate.Cmp(rPoint) == 1 {
 		return lMin
 	}
