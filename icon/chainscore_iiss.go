@@ -128,8 +128,9 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
 	rPoint := big.NewFloat(rewardPoint)
-	lMin := state.GetLockMin()
-	lMax := state.GetLockMax()
+	termPeriod := new(big.Int).SetInt64(state.GetTermPeriod())
+	lMin := new(big.Int).Mul(state.GetLockMinMultiplier(), termPeriod)
+	lMax := new(big.Int).Mul(state.GetLockMaxMultiplier(), termPeriod)
 	if stakeRate.Cmp(rPoint) == 1 {
 		return lMin
 	}
@@ -382,7 +383,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 	return nil
 }
 
-func (s *chainScore) Ex_getBonderList(address module.Address) ([]interface{}, error) {
+func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	res, err := es.GetBonderList(address)
 	if err != nil {

@@ -69,8 +69,8 @@ func Test_networkValue(t *testing.T) {
 	// test for SetRewardFund
 	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
 
-	// test for SetUnbondingPeriod
-	t.Run("SetUnbondingPeriod", func(t *testing.T) { setUnbondingPeriod(t, s) })
+	// test for SetUnbondingPeriodMultiplier
+	t.Run("SetUnbondingPeriodMultiplier", func(t *testing.T) { setUnbondingPeriodMultiplier(t, s) })
 
 }
 
@@ -164,8 +164,8 @@ func setBondRequirementTest(t *testing.T, s *State) {
 }
 
 func setLockVariablesTest(t *testing.T, s *State) {
-	actualMin := s.GetLockMin()
-	actualMax := s.GetLockMax()
+	actualMin := s.GetLockMinMultiplier()
+	actualMax := s.GetLockMaxMultiplier()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
@@ -173,8 +173,8 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	max := big.NewInt(1)
 	err := s.SetLockVariables(min, max)
 	assert.Error(t, err)
-	actualMin = s.GetLockMin()
-	actualMax = s.GetLockMax()
+	actualMin = s.GetLockMinMultiplier()
+	actualMax = s.GetLockMaxMultiplier()
 	assert.Nil(t, actualMin)
 	assert.Nil(t, actualMax)
 
@@ -182,8 +182,8 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	max = big.NewInt(10)
 	err = s.SetLockVariables(min, max)
 	assert.NoError(t, err)
-	actualMin = s.GetLockMin()
-	actualMax = s.GetLockMax()
+	actualMin = s.GetLockMinMultiplier()
+	actualMax = s.GetLockMaxMultiplier()
 	assert.Equal(t, 0, actualMin.Cmp(min))
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }
@@ -202,22 +202,20 @@ func setRewardFundTest(t *testing.T, s *State) {
 	assert.True(t, rf.Equal(actual))
 }
 
-func setUnbondingPeriod(t *testing.T, s *State) {
+func setUnbondingPeriodMultiplier(t *testing.T, s *State) {
 	p := int64(0)
-	actual := s.GetUnbondingPeriod()
+	actual := s.GetUnbondingPeriodMultiplier()
 	assert.Equal(t, p, actual)
 
 	p = -1
-	err := s.SetUnbondingPeriod(p)
+	err := s.SetUnbondingPeriodMultiplier(p)
 	assert.Error(t, err)
-	actual = s.GetUnbondingPeriod()
+	actual = s.GetUnbondingPeriodMultiplier()
 	assert.Equal(t, int64(0), actual) // not changed
 
 	p = 10
-	err = s.SetTermPeriod(5) // unbonding period must be multiple of termPeriod
+	err = s.SetUnbondingPeriodMultiplier(p)
 	assert.NoError(t, err)
-	err = s.SetUnbondingPeriod(p)
-	assert.NoError(t, err)
-	actual = s.GetUnbondingPeriod()
+	actual = s.GetUnbondingPeriodMultiplier()
 	assert.Equal(t, p, actual)
 }

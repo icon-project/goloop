@@ -10,7 +10,6 @@ import pi.UnmodifiableArrayMap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Map;
 
 public class Shadower {

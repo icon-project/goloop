@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -47,6 +48,7 @@ func (p *platform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.Ext
 	// TODO return valid ExtensionSnapshot(not nil) which can return valid ExtensionState.
 	//  with that state, we may change state of extension.
 	//  For initial state, the snapshot returns nil for Bytes() method.
+	dbase = iccache.AttachStateNodeCache(dbase)
 	return iiss.NewExtensionSnapshot(dbase, raw)
 }
 
@@ -62,8 +64,8 @@ func (p *platform) ToRevision(value int) module.Revision {
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
 	// calculate issued i-score and amount balance. No changes on world context.
-	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !es.State.GetTerm().IsDecentralized() {
+	es, _ := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if es == nil || !es.State.GetTerm().IsDecentralized() {
 		return nil, nil
 	}
 
@@ -96,11 +98,11 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// Start background calculator if it's not started.
-	if p.calculator.CheckToRun(ess) {
+	if ess != nil && p.calculator.CheckToRun(ess) {
 		go func(snapshot state.ExtensionSnapshot) {
-			err := p.calculator.Run(snapshot)
+			err := p.calculator.Run(snapshot, logger)
 			if err != nil {
-				log.Errorf("Failed to calculate reward. %+v", err)
+				logger.Errorf("Failed to calculate reward. %+v", err)
 			}
 		}(ess)
 	}

@@ -2,10 +2,13 @@ package pi;
 
 import a.ByteArray;
 import foundation.icon.ee.io.DataReader;
+import foundation.icon.ee.types.Status;
+import i.GenericPredefinedException;
 import i.IInstrumentation;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
+import i.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import p.score.Address;
 import p.score.ObjectReader;
@@ -336,12 +339,10 @@ public class ObjectReaderImpl
     }
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
-        super.deserializeSelf(ObjectReaderImpl.class, deserializer);
+        RuntimeAssertionError.unimplemented("cannot deserialize ObjectReaderImpl");
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
-        // close as the current contract can be cached
-        close();
-        super.serializeSelf(ObjectReaderImpl.class, serializer);
+        throw new GenericPredefinedException(Status.IllegalObjectGraph);
     }
 }

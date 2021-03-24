@@ -58,6 +58,170 @@ const (
 
 var chainMethods = []*chainMethod{
 	{scoreapi.Method{
+		scoreapi.Function, "disableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "enableScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "txHashToAddress",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Address,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "addressToTxHashes",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "acceptScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "rejectScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"txHash", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "blockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "unblockScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRevision",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"code", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepPrice",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"price", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setStepCost",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"cost", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMaxStepLimit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+			{"limit", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getRevision",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepPrice",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCost",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getStepCosts",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMaxStepLimit",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"contextType", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getScoreStatus",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getServiceConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "getNetworkValue",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
@@ -281,7 +445,7 @@ var chainMethods = []*chainMethod{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		[]scoreapi.DataType{
-			scoreapi.List,
+			scoreapi.Dict,
 		},
 	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
@@ -300,170 +464,6 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, icmodule.Revision4, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "disableScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "enableScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "txHashToAddress",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Address,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "addressToTxHashes",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.List,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "acceptScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "rejectScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"txHash", scoreapi.Bytes, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "blockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "unblockScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setRevision",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"code", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setStepPrice",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"price", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setStepCost",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-			{"cost", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "setMaxStepLimit",
-		scoreapi.FlagExternal, 2,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-			{"limit", scoreapi.Integer, nil, nil},
-		},
-		nil,
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getRevision",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepPrice",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepCost",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"type", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getStepCosts",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getMaxStepLimit",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"contextType", scoreapi.String, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getScoreStatus",
-		scoreapi.FlagReadOnly, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, 0, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getServiceConfig",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Integer,
-		},
-	}, 0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepStats",
 		scoreapi.FlagReadOnly, 0,
@@ -531,26 +531,31 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 }
 
 const (
-	configFile             = "./icon_config.json"
-	defaultIISSVersion     = 1
-	defaultIISSBlockHeight = 0
-	defaultTermPeriod      = 43120
-	defaultUnbondingPeriod = defaultTermPeriod * 7
-	defaultUnstakeSlotMax  = 1000
-	defaultMainPRepCount   = 22
-	defaultSubPRepCount    = 78
-	defaultIRep            = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultRRep            = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultBondRequirement = 5
-	defaultLockMin         = defaultTermPeriod * 5
-	defaultLockMax         = defaultTermPeriod * 20
-	rewardPoint            = 0.7
-	defaultIglobal         = iiss.YearBlock * iiss.IScoreICXRatio
-	defaultIprep           = 50
-	defaultIcps            = 0
-	defaultIrelay          = 0
-	defaultIvoter          = 50
-	defaultUnbondingMax    = 1000
+	InitialTermPeriod       = 43200
+	DecentralizedTermPeriod = 43120
+)
+
+const (
+	configFile                       = "./icon_config.json"
+	defaultIISSVersion               = 1
+	defaultIISSBlockHeight           = 0
+	defaultTermPeriod                = InitialTermPeriod
+	defaultUnbondingPeriodMultiplier = 7
+	defaultUnstakeSlotMax            = 1000
+	defaultMainPRepCount             = 22
+	defaultSubPRepCount              = 78
+	defaultIRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultRRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultBondRequirement           = 5
+	defaultLockMinMultiplier         = 5
+	defaultLockMaxMultiplier         = 20
+	rewardPoint                      = 0.7
+	defaultIglobal                   = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIprep                     = 50
+	defaultIcps                      = 0
+	defaultIrelay                    = 0
+	defaultIvoter                    = 50
+	defaultUnbondingMax              = 1000
 	defaultValidationPenaltyCondition            = 660
 	defaultConsistentValidationPenaltyCondition  = 5
 	defaultConsistentValidationPenaltyMask       = 30
@@ -558,20 +563,20 @@ const (
 )
 
 type config struct {
-	TermPeriod      *common.HexInt `json:"termPeriod"`
-	IISSVersion     *common.HexInt `json:"iissVersion,omitempty"`
-	IISSBlockHeight *common.HexInt `json:"iissBlockHeight,omitempty"`
-	MainPRepCount   *common.HexInt `json:"mainPRepCount"`
-	SubPRepCount    *common.HexInt `json:"subPRepCount"`
-	Irep            *common.HexInt `json:"irep,omitempty"`
-	Rrep            *common.HexInt `json:"rrep,omitempty"`
-	BondRequirement *common.HexInt `json:"bondRequirement,omitempty"`
-	UnbondingPeriod *common.HexInt `json:"unbondingPeriod,omitempty"`
-	UnstakeSlotMax  *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMin         *common.HexInt `json:"lockMin,omitempty"`
-	LockMax         *common.HexInt `json:"lockMax,omitempty"`
-	RewardFund      rewardFund     `json:"rewardFund"`
-	UnbondingMax    *common.HexInt `json:"unbondingMax"`
+	TermPeriod                *common.HexInt `json:"termPeriod"`
+	IISSVersion               *common.HexInt `json:"iissVersion,omitempty"`
+	IISSBlockHeight           *common.HexInt `json:"iissBlockHeight,omitempty"`
+	MainPRepCount             *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount              *common.HexInt `json:"subPRepCount"`
+	Irep                      *common.HexInt `json:"irep,omitempty"`
+	Rrep                      *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement           *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriodMultiplier *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
+	UnstakeSlotMax            *common.HexInt `json:"unstakeSlotMax,omitempty"`
+	LockMinMultiplier         *common.HexInt `json:"lockMinMultiplier,omitempty"`
+	LockMaxMultiplier         *common.HexInt `json:"lockMaxMultiplier,omitempty"`
+	RewardFund                rewardFund     `json:"rewardFund"`
+	UnbondingMax              *common.HexInt `json:"unbondingMax"`
 	ValidationPenaltyCondition            *common.HexInt `json:"validationPenaltyCondition"`
 	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
 	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
@@ -625,19 +630,19 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:      common.NewHexInt(defaultTermPeriod),
-		IISSVersion:     common.NewHexInt(defaultIISSVersion),
-		IISSBlockHeight: common.NewHexInt(defaultIISSBlockHeight),
-		MainPRepCount:   common.NewHexInt(defaultMainPRepCount),
-		SubPRepCount:    common.NewHexInt(defaultSubPRepCount),
-		Irep:            common.NewHexInt(defaultIRep),
-		Rrep:            common.NewHexInt(defaultRRep),
-		BondRequirement: common.NewHexInt(defaultBondRequirement),
-		LockMin:         common.NewHexInt(defaultLockMin),
-		LockMax:         common.NewHexInt(defaultLockMax),
-		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
-		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
-		UnbondingMax:    common.NewHexInt(defaultUnbondingMax),
+		TermPeriod:                common.NewHexInt(defaultTermPeriod),
+		IISSVersion:               common.NewHexInt(defaultIISSVersion),
+		IISSBlockHeight:           common.NewHexInt(defaultIISSBlockHeight),
+		MainPRepCount:             common.NewHexInt(defaultMainPRepCount),
+		SubPRepCount:              common.NewHexInt(defaultSubPRepCount),
+		Irep:                      common.NewHexInt(defaultIRep),
+		Rrep:                      common.NewHexInt(defaultRRep),
+		BondRequirement:           common.NewHexInt(defaultBondRequirement),
+		LockMinMultiplier:         common.NewHexInt(defaultLockMinMultiplier),
+		LockMaxMultiplier:         common.NewHexInt(defaultLockMaxMultiplier),
+		UnbondingPeriodMultiplier: common.NewHexInt(defaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:            common.NewHexInt(defaultUnstakeSlotMax),
+		UnbondingMax:              common.NewHexInt(defaultUnbondingMax),
 		ValidationPenaltyCondition:            common.NewHexInt(defaultValidationPenaltyCondition),
 		ConsistentValidationPenaltyCondition:  common.NewHexInt(defaultConsistentValidationPenaltyCondition),
 		ConsistentValidationPenaltyMask:       common.NewHexInt(defaultConsistentValidationPenaltyMask),
@@ -680,7 +685,6 @@ func (s *chainScore) Install(param []byte) error {
 
 	as := s.cc.GetAccountState(state.SystemID)
 
-	iconConfig := s.loadIconConfig()
 	var feeConfig *FeeConfig
 	var systemConfig int
 	var revision int
@@ -729,6 +733,7 @@ func (s *chainScore) Install(param []byte) error {
 			s.cc.Logger(),
 		)
 		handlers = append(handlers, handler)
+
 	default:
 		var chainConfig ChainConfig
 		if param != nil {
@@ -760,7 +765,6 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	// load validatorList
 	// set block interval 2 seconds
 	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
 		return err
@@ -797,60 +801,6 @@ func (s *chainScore) Install(param []byte) error {
 		return err
 	}
 
-	s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err = es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
-		return err
-	}
-	if err = es.State.SetIISSBlockHeight(iconConfig.IISSBlockHeight.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetIRep(iconConfig.Irep.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetRRep(iconConfig.Rrep.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetMainPRepCount(iconConfig.MainPRepCount.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetBondRequirement(iconConfig.BondRequirement.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetLockVariables(iconConfig.LockMin.Value(), iconConfig.LockMax.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetUnbondingPeriod(iconConfig.UnbondingPeriod.Int64()); err != nil {
-		return err
-	}
-	if err = applyRewardFund(iconConfig, es.State); err != nil {
-		return err
-	}
-	if err = es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
-		return err
-	}
-	if err = es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetValidationPenaltyCondition(iconConfig.ValidationPenaltyCondition.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetConsistentValidationPenaltyCondition(iconConfig.ConsistentValidationPenaltyCondition.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetConsistentValidationPenaltyMask(iconConfig.ConsistentValidationPenaltyMask.Value()); err != nil {
-		return err
-	}
-	if err = es.State.SetConsistentValidationPenaltySlashRatio(iconConfig.ConsistentValidationPenaltySlashRatio.Value()); err != nil {
-		return err
-	}
-
 	for _, handler := range handlers {
 		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
 		if status != nil {
@@ -860,6 +810,7 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	s.handleRevisionChange(as, icmodule.Revision1, revision)
+
 	return nil
 }
 

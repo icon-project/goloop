@@ -19,7 +19,9 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
@@ -123,6 +125,9 @@ func (s *State) GetPRepStatus(owner module.Address, createIfNotExist bool) *PRep
 
 func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
+	if c := iccache.StateNodeCacheOf(t.Database()); c != nil && !readonly {
+		ompt.SetCacheOfMutableForObject(t, c)
+	}
 	return NewStateFromTrie(t, readonly)
 }
 

@@ -26,20 +26,20 @@ import (
 )
 
 const (
-	VarIRep            = "irep"
-	VarRRep            = "rrep"
-	VarMainPRepCount   = "main_prep_count"
-	VarSubPRepCount    = "sub_prep_count"
-	VarTotalStake      = "total_stake"
-	VarIISSVersion     = "iiss_version"
-	VarIISSBlockHeight = "iiss_blockHeight"
-	VarTermPeriod      = "term_period"
-	VarBondRequirement = "bond_requirement"
-	VarUnbondingPeriod = "unbonding_period"
-	VarLockMin         = "lockMin"
-	VarLockMax         = "lockMax"
-	VarRewardFund      = "reward_fund"
-	VarUnbondingMax    = "unbonding_max"
+	VarIRep                      = "irep"
+	VarRRep                      = "rrep"
+	VarMainPRepCount             = "main_prep_count"
+	VarSubPRepCount              = "sub_prep_count"
+	VarTotalStake                = "total_stake"
+	VarIISSVersion               = "iiss_version"
+	VarIISSBlockHeight           = "iiss_blockHeight"
+	VarTermPeriod                = "term_period"
+	VarBondRequirement           = "bond_requirement"
+	VarUnbondingPeriodMultiplier = "unbonding_period_multiplier"
+	VarLockMinMultiplier         = "lockMinMultiplier"
+	VarLockMaxMultiplier         = "lockMaxMultiplier"
+	VarRewardFund                = "reward_fund"
+	VarUnbondingMax              = "unbonding_max"
 	VarValidationPenaltyCondition            = "validation_penalty_condition"
 	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
 	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
@@ -156,49 +156,49 @@ func (s *State) SetBondRequirement(value int64) error {
 	return setValue(s.store, VarBondRequirement, value)
 }
 
-func (s *State) SetUnbondingPeriod(value int64) error {
-	if (value <= 0) || (value%s.GetTermPeriod() != 0) {
-		return errors.IllegalArgumentError.New("unbonding period must be multiple of term period")
+func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
+	if value <= 0 {
+		return errors.IllegalArgumentError.New("unbondingPeriodMultiplier must be positive number")
 	}
-	return setValue(s.store, VarUnbondingPeriod, value)
+	return setValue(s.store, VarUnbondingPeriodMultiplier, value)
 }
 
-func (s *State) GetUnbondingPeriod() int64 {
-	return getValue(s.store, VarUnbondingPeriod).Int64()
+func (s *State) GetUnbondingPeriodMultiplier() int64 {
+	return getValue(s.store, VarUnbondingPeriodMultiplier).Int64()
 }
 
-func (s *State) GetLockMin() *big.Int {
-	value := getValue(s.store, VarLockMin).BigInt()
+func (s *State) GetLockMinMultiplier() *big.Int {
+	value := getValue(s.store, VarLockMinMultiplier).BigInt()
 	return value
 }
 
-func (s *State) setLockMin(value *big.Int) error {
+func (s *State) setLockMinMultiplier(value *big.Int) error {
 	if value.Sign() != 1 {
-		return errors.IllegalArgumentError.New("LockMin must have positive value")
+		return errors.IllegalArgumentError.New("LockMinMultiplier must have positive value")
 	}
-	return setValue(s.store, VarLockMin, value)
+	return setValue(s.store, VarLockMinMultiplier, value)
 }
 
-func (s *State) GetLockMax() *big.Int {
-	value := getValue(s.store, VarLockMax).BigInt()
+func (s *State) GetLockMaxMultiplier() *big.Int {
+	value := getValue(s.store, VarLockMaxMultiplier).BigInt()
 	return value
 }
 
-func (s *State) setLockMax(value *big.Int) error {
+func (s *State) setLockMaxMultiplier(value *big.Int) error {
 	if value.Sign() != 1 {
-		return errors.IllegalArgumentError.New("LockMax must have positive value")
+		return errors.IllegalArgumentError.New("LockMaxMultiplier must have positive value")
 	}
-	return setValue(s.store, VarLockMax, value)
+	return setValue(s.store, VarLockMaxMultiplier, value)
 }
 
 func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	if lockMax.Cmp(lockMin) == -1 {
-		return errors.IllegalArgumentError.New("LockMax < LockMin")
+		return errors.IllegalArgumentError.New("LockMaxMultiplier < LockMinMultiplier")
 	}
-	if err := s.setLockMin(lockMin); err != nil {
+	if err := s.setLockMinMultiplier(lockMin); err != nil {
 		return err
 	}
-	if err := s.setLockMax(lockMax); err != nil {
+	if err := s.setLockMaxMultiplier(lockMax); err != nil {
 		return err
 	}
 	return nil
@@ -286,11 +286,11 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
 	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
 	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
-	jso["lockMin"] = intconv.FormatBigInt(s.GetLockMin())
-	jso["lockMAX"] = intconv.FormatBigInt(s.GetLockMax())
+	jso["lockMinMultiplier"] = intconv.FormatBigInt(s.GetLockMinMultiplier())
+	jso["lockMaxMultiplier"] = intconv.FormatBigInt(s.GetLockMaxMultiplier())
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	jso["unbondingMax"] = s.GetUnbondingMax()
-	jso["unbondingPeriod"] = s.GetUnbondingPeriod()
+	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()

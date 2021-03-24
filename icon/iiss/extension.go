@@ -555,7 +555,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return errors.Errorf("Not enough voting power")
 	}
 
-	unbondingHeight := blockHeight + s.State.GetUnbondingPeriod()
+	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
 	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, unbondingHeight)
 	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
 	votingAmount.Sub(votingAmount, account.Bond())
@@ -624,12 +624,14 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 	return nil
 }
 
-func (s *ExtensionStateImpl) GetBonderList(address module.Address) ([]interface{}, error) {
+func (s *ExtensionStateImpl) GetBonderList(address module.Address) (map[string]interface{}, error) {
 	pb := s.State.GetPRepBase(address, false)
 	if pb == nil {
 		return nil, errors.Errorf("PRep not found: %v", address)
 	}
-	return pb.GetBonderListInJSON(), nil
+	jso := make(map[string]interface{})
+	jso["bonderList"] = pb.GetBonderListInJSON()
+	return jso, nil
 }
 
 func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *big.Int, blockHeight int64) error {
