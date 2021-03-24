@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -99,7 +100,10 @@ func (b *Block) Flush() error {
 			return err
 		}
 	}
-	return b.oldRcts.Flush()
+	if b.rcts == nil || !bytes.Equal(b.rcts.Hash(), b.oldRcts.Hash()) {
+		return b.oldRcts.Flush()
+	}
+	return nil
 }
 
 func (b *Block) Reset(database db.Database, bs []byte) error {
