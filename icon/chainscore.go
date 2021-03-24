@@ -531,10 +531,15 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 }
 
 const (
+	InitialTermPeriod       = 43200
+	DecentralizedTermPeriod = 43120
+)
+
+const (
 	configFile                       = "./icon_config.json"
 	defaultIISSVersion               = 1
 	defaultIISSBlockHeight           = 0
-	defaultTermPeriod                = 43120
+	defaultTermPeriod                = InitialTermPeriod
 	defaultUnbondingPeriodMultiplier = 7
 	defaultUnstakeSlotMax            = 1000
 	defaultMainPRepCount             = 22

@@ -130,38 +130,36 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 	}
 
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if es != nil {
-		var err error
-		termPeriod := es.State.GetTermPeriod()
-		iissVersion := icstate.IISSVersion0
+	if es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl); ok {
+		iissVersion := es.State.GetIISSVersion()
 
-		if r2 >= icmodule.RevisionIISS {
-			if termPeriod == defaultTermPeriod {
-				if err = es.State.SetTermPeriod(43200); err != nil {
-					return err
-				}
+		if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
+			if iissVersion < icstate.IISSVersion1 {
+				iissVersion = icstate.IISSVersion1
 			}
-			iissVersion = icstate.IISSVersion1
 		}
 
-		if r2 >= icmodule.RevisionDecentralize {
-			if termPeriod == defaultTermPeriod {
-				if err = es.State.SetTermPeriod(43120); err != nil {
+		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
+			if termPeriod := es.State.GetTermPeriod(); termPeriod == InitialTermPeriod {
+				if err := es.State.SetTermPeriod(DecentralizedTermPeriod); err != nil {
 					return err
 				}
 			}
 		}
 
-		if r2 >= icmodule.RevisionICON2 {
-			iissVersion = icstate.IISSVersion2
+		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
+			if iissVersion < icstate.IISSVersion2 {
+				iissVersion = icstate.IISSVersion2
+			}
 		}
 
-		if err = es.State.SetIISSVersion(iissVersion); err != nil {
+		if err := es.State.SetIISSVersion(iissVersion); err != nil {
 			return err
 		}
 
-		if err = es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
+		// Start genesis term according to the period information
+		// if it's not started.
+		if err := es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
 			return err
 		}
 	}
