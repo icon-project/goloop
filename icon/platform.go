@@ -48,6 +48,9 @@ func (p *platform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.Ext
 	// TODO return valid ExtensionSnapshot(not nil) which can return valid ExtensionState.
 	//  with that state, we may change state of extension.
 	//  For initial state, the snapshot returns nil for Bytes() method.
+	if len(raw) == 0 {
+		return nil
+	}
 	dbase = iccache.AttachStateNodeCache(dbase)
 	return iiss.NewExtensionSnapshot(dbase, raw)
 }
