@@ -535,6 +535,10 @@ func (m *mpt) resolve(d merkle.Builder, pNode *node) {
 	}
 }
 
+func (m *mpt) Database() db.Database {
+	return m.db
+}
+
 func newMPTStatics(s *mptStatics) *mptStatics {
 	if logStatics {
 		if s == nil {

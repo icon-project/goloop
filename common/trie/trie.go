@@ -22,6 +22,7 @@ type (
 		Prove(k []byte, p [][]byte) ([]byte, error)
 		Resolve(builder merkle.Builder)
 		ClearCache()
+		Database() db.Database
 	}
 
 	Snapshot interface {
@@ -42,6 +43,7 @@ type (
 		GetSnapshot() Snapshot
 		Reset(d Immutable) error
 		ClearCache()
+		Database() db.Database
 	}
 
 	Object interface {
@@ -70,6 +72,7 @@ type (
 		Prove(k []byte, p [][]byte) (Object, error)
 		Resolve(builder merkle.Builder)
 		ClearCache()
+		Database() db.Database
 	}
 
 	SnapshotForObject interface {
@@ -84,6 +87,7 @@ type (
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
 		ClearCache()
+		Database() db.Database
 	}
 
 	Manager interface {
