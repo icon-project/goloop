@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	InitialIRep = 50_000
+	InitialIRep = 50_000	// in icx, not loop
 	MinIRep     = 10_000
 )
 
 var BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
+var BigIntMinIRep = new(big.Int).Mul(new(big.Int).SetInt64(MinIRep), icutils.BigIntICX)
 
 type RegInfo struct {
 	city        string
@@ -756,8 +757,8 @@ func (pm *PRepManager) CalculateIRep(revision int) *big.Int {
 	}
 
 	irep.Div(totalWeightedIrep, totalDelegated)
-	if irep.Cmp(new(big.Int).SetInt64(MinIRep)) == -1 {
-		irep.SetInt64(MinIRep)
+	if irep.Cmp(BigIntMinIRep) == -1 {
+		irep.Set(BigIntMinIRep)
 	}
 	return irep
 }
