@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -256,7 +255,6 @@ func (s *State) GetConsistentValidationPenaltyMask() *big.Int {
 }
 
 func (s *State) SetConsistentValidationPenaltyMask(value *big.Int) error {
-	fmt.Printf("inside %d\n", value.Int64())
 	if value.Sign() != 1 || value.Int64() > 30 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltyMask over range(1~30)")
 	}
