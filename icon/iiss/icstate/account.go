@@ -17,14 +17,14 @@
 package icstate
 
 import (
-	"math/big"
-
+	"fmt"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"math/big"
 )
 
 const (
@@ -462,6 +462,13 @@ func (a *Account) GetSnapshot() *Account {
 	ret := a.Clone()
 	ret.freeze()
 	return ret
+}
+
+func (a *Account) String() string {
+	return fmt.Sprintf(
+		"addr=%s stake=%s unstake=%s delegating=%s bonding=%s unbonding=%s",
+		a.address, a.stake, a.unstakes.GetUnstakeAmount(), a.delegating, a.bonding, a.unbonding,
+	)
 }
 
 func newAccountWithTag(_ icobject.Tag) *Account {
