@@ -476,7 +476,7 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 				fmt.Printf("- World State Hash  : %#x\n", values[0])
 				fmt.Printf("- Patch Result Hash : %#x\n", values[1])
 				fmt.Printf("- Normal Result Hash: %#x\n", values[2])
-				if len(values) >= 3 {
+				if len(values) > 3 {
 					fmt.Printf("- Extension Data    : %#x\n", values[3])
 				}
 			}
