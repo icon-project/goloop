@@ -727,7 +727,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 	}
 
 	err = s.updateValidators(wc)
-	s.logger.Tracef("%s", s.vm)
+	s.logger.Tracef("bh=%d %s", blockHeight, s.vm)
 	return err
 }
 

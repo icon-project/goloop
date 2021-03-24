@@ -201,16 +201,15 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 
 	// Subtract regPRepFree from chainScore
-	fee := new(big.Int).Set(regPRepFee)
 	as := s.cc.GetAccountState(state.SystemID)
-	balance := new(big.Int).Sub(as.GetBalance(), fee)
+	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
 	if balance.Sign() < 0 {
 		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
 	}
 	as.SetBalance(balance)
 
-	// Subtract regPRepFee from totalSupply
-	if err := icutils.IncrementTotalSupply(s.cc, fee.Neg(fee)); err != nil {
+	// Burn regPRepFee
+	if err := icutils.BurnICX(s.cc, regPRepFee); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 

@@ -21,7 +21,7 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -280,11 +280,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
 
 	// increase total supply
-	as := cc.GetAccountState(state.SystemID)
-	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
-	totalSupply := ts.BigInt()
-	totalSupply.Add(totalSupply, result.Issue.Value())
-	if err = ts.Set(totalSupply); err != nil {
+	if err = icutils.IssueICX(cc, result.Issue.Value()); err != nil {
 		return err
 	}
 

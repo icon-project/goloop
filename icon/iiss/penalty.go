@@ -97,7 +97,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	}
 
 	logger := cc.Logger().WithFields(log.Fields{log.FieldKeyModule: "ICON"})
-	logger.Debugf("slash() start: addr=%s ratio=%d", address, ratio)
+	logger.Tracef("slash() start: addr=%s ratio=%d", address, ratio)
 
 	pm := s.pm
 	bonders := pm.GetPRepByOwner(address).BonderList()
@@ -158,8 +158,11 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		logger.Debugf("After slashing: %s", account)
 	}
 
+	if err := icutils.BurnICX(cc, totalSlashBond); err != nil {
+		return err
+	}
 	ret := s.pm.Slash(address, totalSlashBond)
-	logger.Debugf("slash() end")
+	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return ret
 }
 

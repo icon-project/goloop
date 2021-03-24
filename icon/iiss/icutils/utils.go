@@ -98,7 +98,7 @@ func GetTotalSupply(ws state.WorldState) *big.Int {
 	return tsVar.BigInt()
 }
 
-func IncrementTotalSupply(ws state.WorldState, amount *big.Int) error {
+func IssueICX(ws state.WorldState, amount *big.Int) error {
 	as := ws.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 	ts := new(big.Int).Add(tsVar.BigInt(), amount)
@@ -108,6 +108,10 @@ func IncrementTotalSupply(ws state.WorldState, amount *big.Int) error {
 	return tsVar.Set(ts)
 }
 
+func BurnICX(ws state.WorldState, amount *big.Int) error {
+	return IssueICX(ws, new(big.Int).Neg(amount))
+}
+
 func Min(value1, value2 int) int {
 	if value1 < value2 {
 		return value1
@@ -115,7 +119,6 @@ func Min(value1, value2 int) int {
 		return value2
 	}
 }
-
 
 func BigInt2HexInt(value *big.Int) *common.HexInt {
 	h := new(common.HexInt)
