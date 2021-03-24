@@ -38,10 +38,6 @@ const (
 
 const (
 	ValidationPenaltySlashRatio     = 0
-
-	//ConsistentValidationPenaltyCondition  int = 5
-	ConsistentValidationPenaltyMask           = 0x3fffffff
-	//ConsistentValidationPenaltySlashRatio     = 10
 )
 
 func (s *ExtensionStateImpl) UpdateBlockVoteStats(

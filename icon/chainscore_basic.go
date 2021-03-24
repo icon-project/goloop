@@ -128,6 +128,18 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
 			return err
 		}
+		if err := es.State.SetValidationPenaltyCondition(iconConfig.ValidationPenaltyCondition.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetConsistentValidationPenaltyCondition(iconConfig.ConsistentValidationPenaltyCondition.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetConsistentValidationPenaltyMask(iconConfig.ConsistentValidationPenaltyMask.Value()); err != nil {
+			return err
+		}
+		if err := es.State.SetConsistentValidationPenaltySlashRatio(iconConfig.ConsistentValidationPenaltySlashRatio.Value()); err != nil {
+			return err
+		}
 	}
 
 	if es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl); ok {
