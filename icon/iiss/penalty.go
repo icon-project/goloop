@@ -37,12 +37,11 @@ const (
 )
 
 const (
-	ValidationPenaltyCondition  int = 660
 	ValidationPenaltySlashRatio     = 0
 
-	ConsistentValidationPenaltyCondition  int = 5
+	//ConsistentValidationPenaltyCondition  int = 5
 	ConsistentValidationPenaltyMask           = 0x3fffffff
-	ConsistentValidationPenaltySlashRatio     = 10
+	//ConsistentValidationPenaltySlashRatio     = 10
 )
 
 func (s *ExtensionStateImpl) UpdateBlockVoteStats(
@@ -71,7 +70,9 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	}
 
 	blockHeight := cc.BlockHeight()
-	penalty := checkPenalty(prep.PRepStatus, blockHeight)
+	validationPenaltyCondition := s.State.GetValidationPenaltyCondition().Int64()
+	consistentValidationPenaltyCondition := s.State.GetValidationPenaltyCondition().Int64()
+	penalty := checkPenalty(prep.PRepStatus, blockHeight, validationPenaltyCondition, consistentValidationPenaltyCondition)
 	switch penalty {
 	case PenaltyNone:
 		return nil
@@ -79,7 +80,7 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 		slashRatio = ValidationPenaltySlashRatio
 		enableFlag = icstage.EfDisableTemp
 	case PenaltyAccumulatedValidationFailure:
-		slashRatio = ConsistentValidationPenaltySlashRatio
+		slashRatio = int(s.State.GetConsistentValidationPenaltySlashRatio().Int64())
 		enableFlag = icstage.EfDisableTemp
 	default:
 		return errors.Errorf("Unknown penalty: %d", penalty)
@@ -101,9 +102,9 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	return nil
 }
 
-func checkPenalty(ps *icstate.PRepStatus, blockHeight int64) PenaltyType {
-	if checkValidationPenalty(ps, blockHeight) {
-		if checkConsistentValidationPenalty(ps) {
+func checkPenalty(ps *icstate.PRepStatus, blockHeight, validationPenaltyCondition, consistentValidationPenaltyCondition int64) PenaltyType {
+	if checkValidationPenalty(ps, blockHeight, validationPenaltyCondition) {
+		if checkConsistentValidationPenalty(ps, consistentValidationPenaltyCondition) {
 			return PenaltyAccumulatedValidationFailure
 		}
 		return PenaltyValidationFailure
@@ -111,12 +112,12 @@ func checkPenalty(ps *icstate.PRepStatus, blockHeight int64) PenaltyType {
 	return PenaltyNone
 }
 
-func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight int64) bool {
-	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= int64(ValidationPenaltyCondition)
+func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight, validationPenaltyCondition int64) bool {
+	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= validationPenaltyCondition
 }
 
-func checkConsistentValidationPenalty(ps *icstate.PRepStatus) bool {
-	return ps.GetVPenaltyCount() >= ConsistentValidationPenaltyCondition
+func checkConsistentValidationPenalty(ps *icstate.PRepStatus, consistentValidationPenaltyCondition int64) bool {
+	return ps.GetVPenaltyCount() >= int(consistentValidationPenaltyCondition)
 }
 
 func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Address, ratio int) error {
@@ -182,4 +183,14 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	}
 
 	return s.pm.Slash(address, totalSlashBond)
+}
+
+func buildPenaltyMask(input *big.Int) (res uint32) {
+	var mid uint32
+	mid = 0x00000001
+	for i := 0; i < int(input.Int64()) ; i++ {
+		res = res | mid
+		mid = mid << 1
+	}
+	return
 }

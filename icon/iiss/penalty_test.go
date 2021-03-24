@@ -17,7 +17,9 @@
 package iiss
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +27,9 @@ import (
 	"github.com/icon-project/goloop/common"
 )
 
+const (
+	ValidationPenaltyCondition = 30
+)
 func TestPenalty_checkValidationPenalty(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 
@@ -100,9 +105,26 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			ps.SetLastState(in.lastState)
 			ps.SetLastHeight(in.lastBH)
 
-			ret := checkValidationPenalty(ps, in.blockHeight)
+			ret := checkValidationPenalty(ps, in.blockHeight, ValidationPenaltyCondition)
 
 			assert.Equal(t, tt.want, ret)
 		})
 	}
+}
+
+func TestPenalty_bitOperation(t *testing.T) {
+	input := new(big.Int).SetInt64(30)
+	res := buildPenaltyMask(input)
+	str := fmt.Sprintf("%x", res)
+	assert.Equal(t, "3fffffff", str)
+
+	input = new(big.Int).SetInt64(1)
+	res = buildPenaltyMask(input)
+	str = fmt.Sprintf("%x", res)
+	assert.Equal(t, "1", str)
+
+	input = new(big.Int).SetInt64(2)
+	res = buildPenaltyMask(input)
+	str = fmt.Sprintf("%x", res)
+	assert.Equal(t, "3", str)
 }

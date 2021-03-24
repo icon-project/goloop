@@ -551,6 +551,10 @@ const (
 	defaultIrelay          = 0
 	defaultIvoter          = 50
 	defaultUnbondingMax    = 1000
+	defaultValidationPenaltyCondition            = 660
+	defaultConsistentValidationPenaltyCondition  = 5
+	defaultConsistentValidationPenaltyMask       = 30
+	defaultConsistentValidationPenaltySlashRatio = 10
 )
 
 type config struct {
@@ -568,6 +572,10 @@ type config struct {
 	LockMax         *common.HexInt `json:"lockMax,omitempty"`
 	RewardFund      rewardFund     `json:"rewardFund"`
 	UnbondingMax    *common.HexInt `json:"unbondingMax"`
+	ValidationPenaltyCondition            *common.HexInt `json:"validationPenaltyCondition"`
+	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
+	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
+	ConsistentValidationPenaltySlashRatio *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
 }
 
 type rewardFund struct {
@@ -630,6 +638,10 @@ func newIconConfig() *config {
 		UnbondingPeriod: common.NewHexInt(defaultUnbondingPeriod),
 		UnstakeSlotMax:  common.NewHexInt(defaultUnstakeSlotMax),
 		UnbondingMax:    common.NewHexInt(defaultUnbondingMax),
+		ValidationPenaltyCondition:            common.NewHexInt(defaultValidationPenaltyCondition),
+		ConsistentValidationPenaltyCondition:  common.NewHexInt(defaultConsistentValidationPenaltyCondition),
+		ConsistentValidationPenaltyMask:       common.NewHexInt(defaultConsistentValidationPenaltyMask),
+		ConsistentValidationPenaltySlashRatio: common.NewHexInt(defaultConsistentValidationPenaltySlashRatio),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(defaultIglobal),
 			Iprep:   common.NewHexInt(defaultIprep),
@@ -826,6 +838,18 @@ func (s *chainScore) Install(param []byte) error {
 	if err = es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
 		return err
 	}
+	if err = es.State.SetValidationPenaltyCondition(iconConfig.ValidationPenaltyCondition.Value()); err != nil {
+		return err
+	}
+	if err = es.State.SetConsistentValidationPenaltyCondition(iconConfig.ConsistentValidationPenaltyCondition.Value()); err != nil {
+		return err
+	}
+	if err = es.State.SetConsistentValidationPenaltyMask(iconConfig.ConsistentValidationPenaltyMask.Value()); err != nil {
+		return err
+	}
+	if err = es.State.SetConsistentValidationPenaltySlashRatio(iconConfig.ConsistentValidationPenaltySlashRatio.Value()); err != nil {
+		return err
+	}
 
 	for _, handler := range handlers {
 		status, _, _, _ := s.cc.Call(handler, s.cc.StepAvailable())
@@ -836,7 +860,6 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	s.handleRevisionChange(as, icmodule.Revision1, revision)
-
 	return nil
 }
 

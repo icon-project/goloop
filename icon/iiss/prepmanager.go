@@ -646,7 +646,7 @@ func (pm *PRepManager) ShiftVPenaltyMaskByNode(node module.Address) error {
 		return errors.Errorf("PRep not found: node=%s", node)
 	}
 
-	prep.ShiftVPenaltyMask(ConsistentValidationPenaltyMask)
+	prep.ShiftVPenaltyMask(buildPenaltyMask(pm.state.GetConsistentValidationPenaltyMask()))
 	return nil
 }
 

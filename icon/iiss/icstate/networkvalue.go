@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -38,7 +39,11 @@ const (
 	VarLockMin         = "lockMin"
 	VarLockMax         = "lockMax"
 	VarRewardFund      = "reward_fund"
-	VARUnbondingMax    = "unbonding_max"
+	VarUnbondingMax    = "unbonding_max"
+	VarValidationPenaltyCondition            = "validation_penalty_condition"
+	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
+	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
+	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
 )
 
 const (
@@ -210,7 +215,7 @@ func (s *State) SetRewardFund(rc *RewardFund) error {
 }
 
 func (s *State) GetUnbondingMax() *big.Int {
-	value := getValue(s.store, VARUnbondingMax).BigInt()
+	value := getValue(s.store, VarUnbondingMax).BigInt()
 	return value
 }
 
@@ -218,7 +223,56 @@ func (s *State) SetUnbondingMax(value *big.Int) error {
 	if value.Sign() != 1 {
 		return errors.IllegalArgumentError.New("UnbondingMax must have positive value")
 	}
-	return setValue(s.store, VARUnbondingMax, value)
+	return setValue(s.store, VarUnbondingMax, value)
+}
+
+func (s *State) GetValidationPenaltyCondition() *big.Int {
+	value := getValue(s.store, VarValidationPenaltyCondition).BigInt()
+	return value
+}
+
+func (s *State) SetValidationPenaltyCondition(value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("ValidationPenaltyCondition must have positive value")
+	}
+	return setValue(s.store, VarValidationPenaltyCondition, value)
+}
+
+func (s *State) GetConsistentValidationPenaltyCondition() *big.Int {
+	value := getValue(s.store, VarConsistentValidationPenaltyCondition).BigInt()
+	return value
+}
+
+func (s *State) SetConsistentValidationPenaltyCondition(value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("ConsistentValidationPenaltyCondition must have positive value")
+	}
+	return setValue(s.store, VarConsistentValidationPenaltyCondition, value)
+}
+
+func (s *State) GetConsistentValidationPenaltyMask() *big.Int {
+	value := getValue(s.store, VarConsistentValidationPenaltyMask).BigInt()
+	return value
+}
+
+func (s *State) SetConsistentValidationPenaltyMask(value *big.Int) error {
+	fmt.Printf("inside %d\n", value.Int64())
+	if value.Sign() != 1 || value.Int64() > 30 {
+		return errors.IllegalArgumentError.New("ConsistentValidationPenaltyMask over range(1~30)")
+	}
+	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
+}
+
+func (s *State) GetConsistentValidationPenaltySlashRatio() *big.Int {
+	value := getValue(s.store, VarConsistentValidationPenaltySlashRatio).BigInt()
+	return value
+}
+
+func (s *State) SetConsistentValidationPenaltySlashRatio(value *big.Int) error {
+	if value.Sign() != 1 {
+		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
+	}
+	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
 }
 
 func NetworkValueToJSON(s *State) map[string]interface{} {
@@ -237,5 +291,9 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriod"] = s.GetUnbondingPeriod()
+	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
+	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
+	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
+	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	return jso
 }
