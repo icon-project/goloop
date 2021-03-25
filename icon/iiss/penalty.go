@@ -151,7 +151,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		// event log
 		cc.OnEvent(
 			state.SystemAddress,
-			[][]byte{[]byte("Slash(Address,Address,int)"), address.Bytes()},
+			[][]byte{[]byte("Slashed(Address,Address,int)"), address.Bytes()},
 			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(totalSlash)},
 		)
 
