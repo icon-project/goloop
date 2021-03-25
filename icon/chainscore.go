@@ -472,6 +472,22 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, icmodule.RevisionICON2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "validateIRep",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"irep", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "disqualifyPRep",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.Revision9, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
@@ -536,26 +552,26 @@ const (
 )
 
 const (
-	configFile                       = "./icon_config.json"
-	defaultIISSVersion               = 1
-	defaultIISSBlockHeight           = 0
-	defaultTermPeriod                = InitialTermPeriod
-	defaultUnbondingPeriodMultiplier = 7
-	defaultUnstakeSlotMax            = 1000
-	defaultMainPRepCount             = 22
-	defaultSubPRepCount              = 78
-	defaultIRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultRRep                      = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultBondRequirement           = 5
-	defaultLockMinMultiplier         = 5
-	defaultLockMaxMultiplier         = 20
-	rewardPoint                      = 0.7
-	defaultIglobal                   = iiss.YearBlock * iiss.IScoreICXRatio
-	defaultIprep                     = 50
-	defaultIcps                      = 0
-	defaultIrelay                    = 0
-	defaultIvoter                    = 50
-	defaultUnbondingMax              = 1000
+	configFile                                   = "./icon_config.json"
+	defaultIISSVersion                           = 1
+	defaultIISSBlockHeight                       = 0
+	defaultTermPeriod                            = InitialTermPeriod
+	defaultUnbondingPeriodMultiplier             = 7
+	defaultUnstakeSlotMax                        = 1000
+	defaultMainPRepCount                         = 22
+	defaultSubPRepCount                          = 78
+	defaultIRep                                  = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultRRep                                  = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultBondRequirement                       = 5
+	defaultLockMinMultiplier                     = 5
+	defaultLockMaxMultiplier                     = 20
+	rewardPoint                                  = 0.7
+	defaultIglobal                               = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIprep                                 = 50
+	defaultIcps                                  = 0
+	defaultIrelay                                = 0
+	defaultIvoter                                = 50
+	defaultUnbondingMax                          = 1000
 	defaultValidationPenaltyCondition            = 660
 	defaultConsistentValidationPenaltyCondition  = 5
 	defaultConsistentValidationPenaltyMask       = 30
@@ -563,20 +579,20 @@ const (
 )
 
 type config struct {
-	TermPeriod                *common.HexInt `json:"termPeriod"`
-	IISSVersion               *common.HexInt `json:"iissVersion,omitempty"`
-	IISSBlockHeight           *common.HexInt `json:"iissBlockHeight,omitempty"`
-	MainPRepCount             *common.HexInt `json:"mainPRepCount"`
-	SubPRepCount              *common.HexInt `json:"subPRepCount"`
-	Irep                      *common.HexInt `json:"irep,omitempty"`
-	Rrep                      *common.HexInt `json:"rrep,omitempty"`
-	BondRequirement           *common.HexInt `json:"bondRequirement,omitempty"`
-	UnbondingPeriodMultiplier *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
-	UnstakeSlotMax            *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMinMultiplier         *common.HexInt `json:"lockMinMultiplier,omitempty"`
-	LockMaxMultiplier         *common.HexInt `json:"lockMaxMultiplier,omitempty"`
-	RewardFund                rewardFund     `json:"rewardFund"`
-	UnbondingMax              *common.HexInt `json:"unbondingMax"`
+	TermPeriod                            *common.HexInt `json:"termPeriod"`
+	IISSVersion                           *common.HexInt `json:"iissVersion,omitempty"`
+	IISSBlockHeight                       *common.HexInt `json:"iissBlockHeight,omitempty"`
+	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount                          *common.HexInt `json:"subPRepCount"`
+	Irep                                  *common.HexInt `json:"irep,omitempty"`
+	Rrep                                  *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement                       *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriodMultiplier             *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
+	UnstakeSlotMax                        *common.HexInt `json:"unstakeSlotMax,omitempty"`
+	LockMinMultiplier                     *common.HexInt `json:"lockMinMultiplier,omitempty"`
+	LockMaxMultiplier                     *common.HexInt `json:"lockMaxMultiplier,omitempty"`
+	RewardFund                            rewardFund     `json:"rewardFund"`
+	UnbondingMax                          *common.HexInt `json:"unbondingMax"`
 	ValidationPenaltyCondition            *common.HexInt `json:"validationPenaltyCondition"`
 	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
 	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
@@ -585,9 +601,9 @@ type config struct {
 
 func (c *config) String() string {
 	return fmt.Sprintf(
-		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s " +
-		"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s " +
-		"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
+		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s "+
+			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
+			"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
 		c.TermPeriod,
 		c.IISSVersion,
 		c.MainPRepCount,
@@ -660,19 +676,19 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:                common.NewHexInt(defaultTermPeriod),
-		IISSVersion:               common.NewHexInt(defaultIISSVersion),
-		IISSBlockHeight:           common.NewHexInt(defaultIISSBlockHeight),
-		MainPRepCount:             common.NewHexInt(defaultMainPRepCount),
-		SubPRepCount:              common.NewHexInt(defaultSubPRepCount),
-		Irep:                      common.NewHexInt(defaultIRep),
-		Rrep:                      common.NewHexInt(defaultRRep),
-		BondRequirement:           common.NewHexInt(defaultBondRequirement),
-		LockMinMultiplier:         common.NewHexInt(defaultLockMinMultiplier),
-		LockMaxMultiplier:         common.NewHexInt(defaultLockMaxMultiplier),
-		UnbondingPeriodMultiplier: common.NewHexInt(defaultUnbondingPeriodMultiplier),
-		UnstakeSlotMax:            common.NewHexInt(defaultUnstakeSlotMax),
-		UnbondingMax:              common.NewHexInt(defaultUnbondingMax),
+		TermPeriod:                            common.NewHexInt(defaultTermPeriod),
+		IISSVersion:                           common.NewHexInt(defaultIISSVersion),
+		IISSBlockHeight:                       common.NewHexInt(defaultIISSBlockHeight),
+		MainPRepCount:                         common.NewHexInt(defaultMainPRepCount),
+		SubPRepCount:                          common.NewHexInt(defaultSubPRepCount),
+		Irep:                                  common.NewHexInt(defaultIRep),
+		Rrep:                                  common.NewHexInt(defaultRRep),
+		BondRequirement:                       common.NewHexInt(defaultBondRequirement),
+		LockMinMultiplier:                     common.NewHexInt(defaultLockMinMultiplier),
+		LockMaxMultiplier:                     common.NewHexInt(defaultLockMaxMultiplier),
+		UnbondingPeriodMultiplier:             common.NewHexInt(defaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:                        common.NewHexInt(defaultUnstakeSlotMax),
+		UnbondingMax:                          common.NewHexInt(defaultUnbondingMax),
 		ValidationPenaltyCondition:            common.NewHexInt(defaultValidationPenaltyCondition),
 		ConsistentValidationPenaltyCondition:  common.NewHexInt(defaultConsistentValidationPenaltyCondition),
 		ConsistentValidationPenaltyMask:       common.NewHexInt(defaultConsistentValidationPenaltyMask),

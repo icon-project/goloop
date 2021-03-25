@@ -486,3 +486,29 @@ func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarServiceConfig).Int64(), nil
 }
+
+func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.DisqualifyPRep(address)
+}
+
+func (s *chainScore) Ex_validateIRep(newIrep *common.HexInt) (bool, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return false, err
+	}
+	if err := s.tryChargeCall(); err != nil {
+		return false, err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	term := es.State.GetTerm()
+	if err := es.ValidateIRep(term.Irep(), new(big.Int).Set(newIrep.Value()), 0); err != nil {
+		return false, err
+	}
+	return true, nil
+}
