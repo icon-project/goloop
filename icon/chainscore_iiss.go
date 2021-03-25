@@ -209,7 +209,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	as.SetBalance(balance)
 
 	// Burn regPRepFee
-	if err := icutils.BurnICX(s.cc, regPRepFee); err != nil {
+	if err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 

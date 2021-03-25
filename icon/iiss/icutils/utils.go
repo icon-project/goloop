@@ -98,7 +98,7 @@ func GetTotalSupply(ws state.WorldState) *big.Int {
 	return tsVar.BigInt()
 }
 
-func IssueICX(ws state.WorldState, amount *big.Int) error {
+func IncreaseTotalSupply(ws state.WorldState, amount *big.Int) error {
 	as := ws.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 	ts := new(big.Int).Add(tsVar.BigInt(), amount)
@@ -108,8 +108,8 @@ func IssueICX(ws state.WorldState, amount *big.Int) error {
 	return tsVar.Set(ts)
 }
 
-func BurnICX(ws state.WorldState, amount *big.Int) error {
-	return IssueICX(ws, new(big.Int).Neg(amount))
+func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) error {
+	return IncreaseTotalSupply(ws, new(big.Int).Neg(amount))
 }
 
 func Min(value1, value2 int) int {
