@@ -19,6 +19,7 @@ package iiss
 import (
 	"encoding/json"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 	"testing"
 
@@ -205,56 +206,102 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 
 func TestIssuer_calcRewardPerBlock(t *testing.T) {
 	type values struct {
-		irep           int64
-		rrep           int64
-		mainPRepCount  int64
-		totalDelegated int64
+		irep           *big.Int
+		rrep           *big.Int
+		mainPRepCount  *big.Int
+		totalDelegated *big.Int
 	}
 
 	tests := []struct {
 		name string
 		in   values
-		want int64
+		want *big.Int
 	}{
 		{
 			"No reward",
 			values{
-				0, 0, 0, 0,
+				new(big.Int),
+				new(big.Int),
+				new(big.Int),
+				new(big.Int),
 			},
-			0,
+			new(big.Int),
 		},
 		{
 			"Prevote - voting only",
 			values{
-				100 * MonthBlock,
-				1000,
-				0,
-				100 * YearBlock,
+				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(1000),
+				new(big.Int),
+				new(big.Int).SetInt64(100 * YearBlock),
 			},
-			(100*MonthBlock)/(MonthBlock*2)*100 +
-				RrepMultiplier*1000*100/RrepDivider,
+			new(big.Int).SetInt64(
+				(100*MonthBlock)/(MonthBlock*2)*100 +
+					RrepMultiplier*1000*100/RrepDivider,
+			),
 		},
 		{
 			"Prevote - too small delegation",
 			values{
-				100 * MonthBlock,
-				1000,
-				0,
-				100,
+				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(1000),
+				new(big.Int),
+				new(big.Int).SetInt64(100),
 			},
-			(100*MonthBlock)/(MonthBlock*2)*100 + 0,
+			new(big.Int).SetInt64((100*MonthBlock)/(MonthBlock*2)*100 + 0),
 		},
 		{
 			"Decentralized",
 			values{
-				100 * MonthBlock,
-				1000,
-				22,
-				100 * YearBlock,
+				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(1000),
+				new(big.Int).SetInt64(22),
+				new(big.Int).SetInt64(100 * YearBlock),
 			},
-			(100*MonthBlock)/(MonthBlock*2)*22 +
-				(100*MonthBlock)/(MonthBlock*2)*100 +
-				RrepMultiplier*1000*100/RrepDivider,
+			new(big.Int).SetInt64(
+				(100*MonthBlock)/(MonthBlock*2)*22 +
+					(100*MonthBlock)/(MonthBlock*2)*100 +
+					RrepMultiplier*1000*100/RrepDivider,
+			),
+		},
+		{
+			"MainNet-10,362,083-DecentralizedBH",
+			values{
+				BigIntInitialIRep,
+				new(big.Int).SetInt64(0x2ac),
+				new(big.Int).SetInt64(22),
+				new(big.Int).Add(
+					new(big.Int).Mul(new(big.Int).SetInt64(170075049), icutils.BigIntICX),
+					new(big.Int).SetInt64(583626807627704134),
+				),
+			},
+			new(big.Int).SetInt64(0x3fcd641964f21cea),
+		},
+		{
+			"MainNet-10,405,202",
+			values{
+				BigIntInitialIRep,
+				new(big.Int).SetInt64(0x2ac),
+				new(big.Int).SetInt64(22),
+				new(big.Int).Add(
+					new(big.Int).Mul(new(big.Int).SetInt64(170774443), icutils.BigIntICX),
+					new(big.Int).SetInt64(514041607082338118),
+				),
+			},
+			new(big.Int).SetInt64(0x3fee2d05334c7b8d),
+		},
+		{
+			"MainNet-27,523,843-NP-setIRep",
+			values{
+				new(big.Int).Mul(new(big.Int).SetInt64(10_000), icutils.BigIntICX),
+				new(big.Int).SetInt64(0x19d),
+				new(big.Int).SetInt64(22),
+				new(big.Int).Add(
+					new(big.Int).Mul(new(big.Int).SetInt64(326594583), icutils.BigIntICX),
+					new(big.Int).SetInt64(659661834421744157),
+				),
+			},
+			new(big.Int).SetInt64(0x2aa4110d9a9c3a7a),
 		},
 	}
 
@@ -262,13 +309,13 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := calcRewardPerBlock(
-				big.NewInt(in.irep),
-				big.NewInt(in.rrep),
-				big.NewInt(in.mainPRepCount),
-				big.NewInt(in.totalDelegated),
+				in.irep,
+				in.rrep,
+				in.mainPRepCount,
+				in.totalDelegated,
 			)
 
-			assert.Equal(t, tt.want, out.Int64())
+			assert.Equal(t, 0, tt.want.Cmp(out))
 		})
 	}
 }
