@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	InitialIRep = 50_000	// in icx, not loop
+	InitialIRep = 50_000 // in icx, not loop
 	MinIRep     = 10_000
 )
 
@@ -147,7 +147,9 @@ func (pm *PRepManager) init() {
 		if prep == nil {
 			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
-			pm.appendPRep(prep)
+			if prep.Status() == icstate.Active {
+				pm.appendPRep(prep)
+			}
 		}
 	}
 }
@@ -405,6 +407,9 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	if pm.contains(owner) {
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
+	if ps := pm.state.GetPRepStatus(owner, false); ps != nil {
+		return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
+	}
 
 	pb := pm.state.GetPRepBase(owner, true)
 	err := setPRep(pb, regInfo)
@@ -467,9 +472,9 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 
 func (pm *PRepManager) removePRep(owner module.Address) error {
 	var err error
-	if err = pm.state.RemoveActivePRep(owner); err != nil {
-		return err
-	}
+	//if err = pm.state.RemoveActivePRep(owner); err != nil {
+	//	return err
+	//}
 	if err = pm.removeFromPRepMap(owner); err != nil {
 		return err
 	}

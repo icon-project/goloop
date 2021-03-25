@@ -127,52 +127,35 @@ func createDelegations(start, size int) ([]*icstate.Delegation, int64) {
 	return ret, sum
 }
 
+func createActivePRep(s *icstate.State, addr module.Address, bonded, delegated int64) {
+	s.GetPRepBase(addr, true)
+	ps := s.GetPRepStatus(addr, true)
+	ps.SetStatus(icstate.Active)
+	ps.SetBonded(big.NewInt(bonded))
+	ps.SetDelegated(big.NewInt(delegated))
+	s.AddActivePRep(addr)
+}
+
 // test for GetBondedDelegation
 func TestPRepManager_Sort(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
 	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
 	pm := newPRepManager(s, nil)
 
-	addr := common.MustNewAddressFromString("hx1")
-	delegated := big.NewInt(int64(98))
-	s.GetPRepBase(addr, true)
-	s.GetPRepStatus(addr, true).SetDelegated(delegated)
-	bonded := big.NewInt(int64(2))
-	s.GetPRepStatus(addr, true).SetBonded(bonded)
-	pm.state.AddActivePRep(addr)
-
-	addr = common.MustNewAddressFromString("hx2")
-	s.GetPRepBase(addr, true)
-	delegated = big.NewInt(int64(198))
-	s.GetPRepStatus(addr, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(2))
-	s.GetPRepStatus(addr, true).SetBonded(bonded)
-	pm.state.AddActivePRep(addr)
-
-	addr = common.MustNewAddressFromString("hx3")
-	s.GetPRepBase(addr, true)
-	delegated = big.NewInt(int64(97))
-	s.GetPRepStatus(addr, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(3))
-	s.GetPRepStatus(addr, true).SetBonded(bonded)
-	pm.state.AddActivePRep(addr)
-
-	addr = common.MustNewAddressFromString("hx4")
-	s.GetPRepBase(addr, true)
-	delegated = big.NewInt(int64(97))
-	s.GetPRepStatus(addr, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(3))
-	s.GetPRepStatus(addr, true).SetBonded(bonded)
-	pm.state.AddActivePRep(addr)
+	br := int64(5)
+	size := 10
+	for i := 0; i < size; i++ {
+		addr := createAddress(i + 1)
+		bonded := rand.Int63()
+		delegated := rand.Int63()
+		createActivePRep(s, addr, bonded, delegated)
+	}
 
 	assert.NoError(t, pm.state.SetBondRequirement(5))
 	pm.init()
 	pm.sort()
 
-	assert.Equal(t, "hx0000000000000000000000000000000000000004", pm.orderedPReps[0].Owner().String())
-	assert.Equal(t, "hx0000000000000000000000000000000000000003", pm.orderedPReps[1].Owner().String())
-	assert.Equal(t, "hx0000000000000000000000000000000000000002", pm.orderedPReps[2].Owner().String())
-	assert.Equal(t, "hx0000000000000000000000000000000000000001", pm.orderedPReps[3].Owner().String())
+	checkOrderedByBondedDelegation(pm, br)
 }
 
 func TestPRepManager_new(t *testing.T) {
