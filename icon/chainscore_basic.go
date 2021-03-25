@@ -86,6 +86,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	}
 	if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
 		iconConfig := s.loadIconConfig()
+		s.cc.Logger().Infof("IconConfig: %s", iconConfig)
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)

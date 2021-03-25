@@ -18,10 +18,7 @@ package icon
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"math/big"
-	"os"
-
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -35,6 +32,9 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
+	"io/ioutil"
+	"math/big"
+	"os"
 )
 
 type chainMethod struct {
@@ -583,12 +583,42 @@ type config struct {
 	ConsistentValidationPenaltySlashRatio *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
 }
 
+func (c *config) String() string {
+	return fmt.Sprintf(
+		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s " +
+		"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s " +
+		"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
+		c.TermPeriod,
+		c.IISSVersion,
+		c.MainPRepCount,
+		c.SubPRepCount,
+		c.Irep,
+		c.Rrep,
+		c.BondRequirement,
+		c.UnbondingPeriodMultiplier,
+		c.UnstakeSlotMax,
+		c.UnbondingMax,
+		c.ValidationPenaltyCondition,
+		c.ConsistentValidationPenaltyCondition,
+		c.ConsistentValidationPenaltyMask,
+		c.ConsistentValidationPenaltySlashRatio,
+		c.RewardFund,
+	)
+}
+
 type rewardFund struct {
 	Iglobal *common.HexInt `json:"Iglobal"`
 	Iprep   *common.HexInt `json:"Iprep"`
 	Icps    *common.HexInt `json:"Icps"`
 	Irelay  *common.HexInt `json:"Irelay"`
 	Ivoter  *common.HexInt `json:"Ivoter"`
+}
+
+func (r rewardFund) String() string {
+	return fmt.Sprintf(
+		"Iglobal=%s Iprep=%s Icps=%s Irelay=%s Ivoter=%s",
+		r.Iglobal, r.Iprep, r.Icps, r.Irelay, r.Ivoter,
+	)
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
@@ -809,9 +839,7 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
-	s.handleRevisionChange(as, icmodule.Revision1, revision)
-
-	return nil
+	return s.handleRevisionChange(as, icmodule.Revision1, revision)
 }
 
 func (s *chainScore) Update(param []byte) error {
