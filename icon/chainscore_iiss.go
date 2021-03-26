@@ -597,3 +597,26 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	return es.GetPRepStatsInJSON(s.cc.BlockHeight())
 }
+
+func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	if err := es.DisqualifyPRep(address); err != nil {
+		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return false, err
+	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	term := es.State.GetTerm()
+	if err := es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
+		return false, scoreresult.InvalidParameterError.Errorf(err.Error())
+	}
+	return true, nil
+}
