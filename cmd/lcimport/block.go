@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/state"
@@ -149,7 +150,7 @@ func (b *Block) Bytes() []byte {
 	if b.rcts != nil {
 		header.RctRoot = b.rcts.Hash()
 	}
-	js, err := JSONMarshalAndCompact(b.blk)
+	js, err := lcimporter.JSONMarshalAndCompact(b.blk)
 	if err != nil {
 		panic(err)
 	}

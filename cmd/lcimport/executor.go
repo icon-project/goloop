@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -103,7 +104,7 @@ func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
 	}
-	chain, err := newChain(database, logger)
+	chain, err := lcimporter.newChain(database, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewChainFailure")
 	}
@@ -341,14 +342,14 @@ func (e *Executor) getStoredHeight() int64 {
 func (e *Executor) StoreBlock(blk *Block) error {
 	blkv0 := blk.Original()
 	if preps := blkv0.Validators(); preps != nil {
-		if bs, err := JSONMarshalAndCompact(preps); err != nil {
+		if bs, err := lcimporter.JSONMarshalAndCompact(preps); err != nil {
 			return err
 		} else {
 			e.jsBucket.Set(preps.Hash(), bs)
 		}
 	}
 	if preps := blkv0.NextValidators(); preps != nil {
-		if bs, err := JSONMarshalAndCompact(preps); err != nil {
+		if bs, err := lcimporter.JSONMarshalAndCompact(preps); err != nil {
 			return err
 		} else {
 			e.jsBucket.Set(preps.Hash(), bs)
@@ -475,11 +476,11 @@ func (e *Executor) CheckResult(tr *Transition) error {
 				return errors.Wrapf(err, "ResultReceiptGetFailure(idx=%d)", idx)
 			}
 			if err := CheckReceipt(e.log, rct1, rct2); err != nil {
-				rct1js, _ := JSONMarshalIndent(rct1)
-				rct2js, _ := JSONMarshalIndent(rct2)
+				rct1js, _ := lcimporter.JSONMarshalIndent(rct1)
+				rct2js, _ := lcimporter.JSONMarshalIndent(rct2)
 
 				tx, _ := tr.Transition.NormalTransactions().Get(idx)
-				txjs, _ := JSONMarshalIndent(tx)
+				txjs, _ := lcimporter.JSONMarshalIndent(tx)
 
 				e.log.Errorf("Failed Block[ %9d ] TxID[ %#x ]", tr.Block.Height(), tx.ID())
 				e.log.Errorf("Failed Transaction[%d]:%s", idx, txjs)
@@ -585,7 +586,7 @@ func D(v interface{}) string {
 }
 
 func (e *Executor) Execute(from, to int64, useCache bool) error {
-	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
+	lcimporter.Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
@@ -600,11 +601,11 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 	}
 	callback := make(transitionCallback, 1)
 	var rps, tps float32
-	tm := new(TPSMeasure).Init(100)
+	tm := new(lcimporter.TPSMeasure).Init(100)
 	for height := from; to < 0 || height <= to; height = height + 1 {
 		rps = getTPSer.GetTPS()
 		tps = tm.GetTPS()
-		Statusf(
+		lcimporter.Statusf(
 			e.log,
 			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.2f ] TPS[ %6.2f ]",
 			spinner(height, stored),
@@ -675,7 +676,7 @@ func (e *Executor) Download(from, to int64) error {
 		if tpser != nil {
 			tps = tpser.GetTPS()
 		}
-		Statusf(
+		lcimporter.Statusf(
 			e.log,
 			"[%s] Downloading Block[ %10s ]  Tx[ %11s ] RPS [ %5.2f ]",
 			spinner(height, stored),
