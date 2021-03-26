@@ -104,7 +104,7 @@ func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
 	}
-	chain, err := lcimporter.newChain(database, logger)
+	chain, err := lcimporter.NewChain(database, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewChainFailure")
 	}

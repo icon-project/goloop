@@ -177,7 +177,7 @@ func (c *chainImpl) Logger() log.Logger {
 	return c.log
 }
 
-func newChain(database db.Database, logger log.Logger) (module.Chain, error) {
+func NewChain(database db.Database, logger log.Logger) (module.Chain, error) {
 	w := wallet.New()
 	return &chainImpl{
 		database:  database,
