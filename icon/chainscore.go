@@ -478,7 +478,9 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.Parameter{
 			{"irep", scoreapi.Integer, nil, nil},
 		},
-		nil,
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
 	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "disqualifyPRep",

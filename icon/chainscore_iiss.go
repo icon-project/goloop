@@ -612,17 +612,17 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	return nil
 }
 
-func (s *chainScore) Ex_validateIRep(irep *common.HexInt) error {
+func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 	if err := s.checkGovernance(true); err != nil {
-		return err
+		return false, err
 	}
 	if err := s.tryChargeCall(); err != nil {
-		return err
+		return false, err
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	term := es.State.GetTerm()
 	if err := es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return false, scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
-	return nil
+	return true, nil
 }
