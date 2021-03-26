@@ -768,6 +768,14 @@ func (pm *PRepManager) CalculateIRep(revision int) *big.Int {
 	return irep
 }
 
+func (pm *PRepManager) CalculateRRep(totalSupply *big.Int, revision int) *big.Int {
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
+		// rrep is disabled
+		return new(big.Int)
+	}
+	return calculateRRep(totalSupply, pm.totalDelegated)
+}
+
 const (
 	rrepMin        = 200   // 2%
 	rrepMax        = 1_200 // 12%
@@ -775,20 +783,18 @@ const (
 	rrepMultiplier = 10_000
 )
 
-func (pm *PRepManager) CalculateRRep(totalSupply *big.Int, revision int) *big.Int {
-	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
-		// rrep is disabled
-		return new(big.Int)
-	}
-	delegatePercentage := new(big.Int).Mul(pm.totalDelegated, new(big.Int).SetInt64(rrepMultiplier))
-	delegatePercentage.Div(delegatePercentage, totalSupply)
-	dp := delegatePercentage.Int64()
+func calculateRRep(totalSupply, totalDelegated *big.Int) *big.Int {
+	ts := new(big.Float).SetInt(totalSupply)
+	td := new(big.Float).SetInt(totalDelegated)
+	delegatePercentage := new(big.Float).Quo(td, ts)
+	delegatePercentage.Mul(delegatePercentage, new(big.Float).SetInt64(rrepMultiplier))
+	dp, _ := delegatePercentage.Float64()
 	if dp >= rrepPoint {
 		return new(big.Int).SetInt64(rrepMin)
 	}
 
 	firstOperand := (rrepMax - rrepMin) / math.Pow(rrepPoint, 2)
-	secondOperand := math.Pow(float64(dp-rrepPoint), 2)
+	secondOperand := math.Pow(dp-rrepPoint, 2)
 	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
 }
 
