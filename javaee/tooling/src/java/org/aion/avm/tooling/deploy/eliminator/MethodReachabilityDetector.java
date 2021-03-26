@@ -78,7 +78,7 @@ public class MethodReachabilityDetector {
                     }
                     switch (invocation.invocationOpcode) {
                         case Opcodes.INVOKESPECIAL:
-                            // this is the easy case: we just mark the methodInfo as reachable and enqueue it
+                            calledMethod = ownerClass.getConcreteImplementation(invocation.methodIdentifier);
                             enqueue(calledMethod);
                             break;
                         case Opcodes.INVOKEVIRTUAL:

@@ -1,0 +1,112 @@
+foundation/icon/ee/tooling/ExtendsTest$C -> A$B
+foundation/icon/ee/tooling/ExtendsTest$A -> C$D
+foundation/icon/ee/tooling/ExtendsTest$B -> E$F
+foundation/icon/ee/tooling/ExtendsTest$Score -> G$H
+A$B.h()V -> b
+A$B.g()V -> a
+
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='f', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+
+// class version 55.0 (55)
+// access flags 0x21
+public class A$B extends E$F {
+
+  // compiled from: ExtendsTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL E$F.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public f()V
+    LDC "C.f()"
+    INVOKESTATIC score/Context.println (Ljava/lang/String;)V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public a()V
+    ALOAD 0
+    INVOKESPECIAL E$F.f ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public b()V
+    ALOAD 0
+    INVOKEVIRTUAL A$B.f ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class C$D {
+
+  // compiled from: ExtendsTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public f()V
+    LDC "A.f()"
+    INVOKESTATIC score/Context.println (Ljava/lang/String;)V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class E$F extends C$D {
+
+  // compiled from: ExtendsTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL C$D.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}
+// class version 55.0 (55)
+// access flags 0x21
+public class G$H {
+
+  // compiled from: ExtendsTest.java
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public f()V
+    NEW A$B
+    DUP
+    INVOKESPECIAL A$B.<init> ()V
+    ASTORE 1
+    ALOAD 1
+    INVOKEVIRTUAL A$B.a ()V
+    ALOAD 1
+    INVOKEVIRTUAL A$B.b ()V
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 2
+}
