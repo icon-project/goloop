@@ -40,7 +40,6 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
-	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -335,7 +334,7 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 			if err != nil {
 				return err
 			}
-			apijs, _ := lcimporter.JSONMarshalIndent(api)
+			apijs, _ := JSONMarshalIndent(api)
 			fmt.Printf("- API Info\n%s\n", apijs)
 		}
 		return nil

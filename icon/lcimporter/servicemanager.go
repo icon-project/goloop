@@ -235,15 +235,20 @@ func (sm *ServiceManager) getValidators() (module.ValidatorList, error) {
 	}
 }
 
-func NewServiceManager(chain module.Chain, config *Config) (*ServiceManager, error) {
-	dbase := chain.Database()
+func NewServiceManager(chain module.Chain, dbase db.Database, cfg *Config) (*ServiceManager, error) {
 	logger := chain.Logger()
 
-	ex := NewExecutor(dbase, logger)
+	chain2 := NewChain(chain, dbase)
+	ex, err := NewExecutor(chain2, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServiceManager{
-		db:  dbase,
-		log: logger,
+		cfg: cfg,
 		ex:  ex,
+		log: logger,
+		db:  dbase,
 
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),
 		emptyReceipts:     txresult.NewReceiptListFromHash(dbase, nil),

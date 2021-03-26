@@ -19,6 +19,8 @@ package lcimporter
 import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/blockv0/lcstore"
+	"github.com/icon-project/goloop/module"
 )
 
 type GetBlockTxCallback func([]*BlockTransaction, error)
@@ -50,9 +52,17 @@ func (e *Executor) SyncTransactions([]*BlockTransaction) error {
 	return nil
 }
 
-func NewExecutor(dbase db.Database, logger log.Logger) *Executor {
-	return &Executor{
-		db:  dbase,
-		log: logger,
+func NewExecutor(chain module.Chain, cfg *Config) (*Executor, error) {
+	store, err := lcstore.OpenStore(cfg.StoreURI)
+	logger := chain.Logger()
+	if err != nil {
+		return nil, err
 	}
+	cs := lcstore.NewForwardCache(store, logger, &cfg.CacheConfig)
+	// TODO need to use made cs.
+	_ = cs
+	return &Executor{
+		db:  chain.Database(),
+		log: logger,
+	}, nil
 }

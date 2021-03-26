@@ -21,11 +21,13 @@ import (
 	"io/ioutil"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 )
 
 type Config struct {
-	Validators []*common.Address `json:"validators"`
-	StoreURI   string            `json:"store_uri"`
+	Validators  []*common.Address   `json:"validators"`
+	StoreURI    string              `json:"store_uri"`
+	CacheConfig lcstore.CacheConfig `json:"cache_config"`
 }
 
 func LoadConfig(uri string) (*Config, error) {

@@ -17,28 +17,38 @@
 package lcimporter
 
 import (
-	"github.com/icon-project/goloop/common/db"
+	"time"
+
 	"github.com/icon-project/goloop/module"
 )
 
-type chainImpl struct {
-	module.Chain
-	dbase     db.Database
-	regulator module.Regulator
+type regulatorImpl struct {
 }
 
-func (c *chainImpl) Database() db.Database {
-	return c.dbase
+func (r *regulatorImpl) MaxTxCount() int {
+	return 1000
 }
 
-func (c *chainImpl) Regulator() module.Regulator {
-	return c.regulator
+func (r *regulatorImpl) OnPropose(now time.Time) {
+	// do nothing
 }
 
-func NewChain(org module.Chain, dbase db.Database) module.Chain {
-	return &chainImpl{
-		Chain:     org,
-		dbase:     dbase,
-		regulator: NewRegulator(),
-	}
+func (r *regulatorImpl) CommitTimeout() time.Duration {
+	panic("not implemented")
+}
+
+func (r *regulatorImpl) MinCommitTimeout() time.Duration {
+	panic("not implemented")
+}
+
+func (r *regulatorImpl) OnTxExecution(count int, ed time.Duration, fd time.Duration) {
+	// do nothing
+}
+
+func (r *regulatorImpl) SetBlockInterval(i time.Duration, d time.Duration) {
+	// do nothing
+}
+
+func NewRegulator() module.Regulator {
+	return &regulatorImpl{}
 }

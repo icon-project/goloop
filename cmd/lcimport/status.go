@@ -14,31 +14,29 @@
  * limitations under the License.
  */
 
-package lcimporter
+package main
 
 import (
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/module"
+	"fmt"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
-type chainImpl struct {
-	module.Chain
-	dbase     db.Database
-	regulator module.Regulator
-}
+const (
+	CursorUp  = "\x1b[1A"
+	ClearLine = "\x1b[2K"
+)
 
-func (c *chainImpl) Database() db.Database {
-	return c.dbase
-}
+var statusDisplay bool
 
-func (c *chainImpl) Regulator() module.Regulator {
-	return c.regulator
-}
-
-func NewChain(org module.Chain, dbase db.Database) module.Chain {
-	return &chainImpl{
-		Chain:     org,
-		dbase:     dbase,
-		regulator: NewRegulator(),
+func Statusf(l log.Logger, format string, args ...interface{}) {
+	l.Infof(format, args...)
+	if l.GetConsoleLevel() < log.InfoLevel {
+		if statusDisplay {
+			fmt.Print(CursorUp + ClearLine)
+		}
+		fmt.Printf(format, args...)
+		fmt.Print("\n")
+		statusDisplay = true
 	}
 }
