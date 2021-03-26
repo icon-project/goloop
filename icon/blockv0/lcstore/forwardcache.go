@@ -32,9 +32,9 @@ const (
 )
 
 type CacheConfig struct {
-	MaxWorkers int
-	MaxBlocks  int
-	MaxTPS     int
+	MaxWorkers int `json:"max_workers"`
+	MaxBlocks  int `json:"max_blocks"`
+	MaxTPS     int `json:"max_rps"`
 }
 
 type blockTask struct {
