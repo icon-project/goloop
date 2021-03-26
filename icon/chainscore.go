@@ -603,8 +603,8 @@ type config struct {
 
 func (c *config) String() string {
 	return fmt.Sprintf(
-		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s "+
-			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
+		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s " +
+			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s " +
 			"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
 		c.TermPeriod,
 		c.IISSVersion,
