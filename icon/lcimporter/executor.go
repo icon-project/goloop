@@ -16,10 +16,17 @@
 
 package lcimporter
 
+import (
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
+)
+
 type GetBlockTxCallback func([]*BlockTransaction, error)
 type Canceler func()
 
 type Executor struct {
+	db  db.Database
+	log log.Logger
 }
 
 // ProposeTransactions propose transactions for blocks to be consensus
@@ -41,4 +48,11 @@ func (e *Executor) FinalizeTransactions(to int64) error {
 // SyncTransactions sync transactions
 func (e *Executor) SyncTransactions([]*BlockTransaction) error {
 	return nil
+}
+
+func NewExecutor(dbase db.Database, logger log.Logger) *Executor {
+	return &Executor{
+		db:  dbase,
+		log: logger,
+	}
 }
