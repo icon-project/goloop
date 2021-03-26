@@ -237,9 +237,7 @@ func (sm *ServiceManager) getValidators() (module.ValidatorList, error) {
 
 func NewServiceManager(chain module.Chain, dbase db.Database, cfg *Config) (*ServiceManager, error) {
 	logger := chain.Logger()
-
-	chain2 := NewChain(chain, dbase)
-	ex, err := NewExecutor(chain2, cfg)
+	ex, err := NewExecutor(chain, dbase, cfg)
 	if err != nil {
 		return nil, err
 	}

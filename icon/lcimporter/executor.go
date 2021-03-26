@@ -19,6 +19,7 @@ package lcimporter
 import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/module"
 )
@@ -52,8 +53,13 @@ func (e *Executor) SyncTransactions([]*BlockTransaction) error {
 	return nil
 }
 
-func NewExecutor(chain module.Chain, cfg *Config) (*Executor, error) {
+func NewExecutor(chain module.Chain, dbase db.Database, cfg *Config) (*Executor, error) {
+	dbase = cache.AttachManager(dbase, "", 0, 0)
+	chain = NewChain(chain, dbase)
 	store, err := lcstore.OpenStore(cfg.StoreURI)
+	if err != nil {
+		return nil, err
+	}
 	logger := chain.Logger()
 	if err != nil {
 		return nil, err
