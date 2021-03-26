@@ -29,6 +29,12 @@ type BytesStoreState interface {
 	DeleteValue(key []byte) ([]byte, error)
 }
 
+type RawBytesStoreState interface {
+	Get(key []byte) ([]byte, error)
+	Set(key []byte, value []byte) ([]byte, error)
+	Delete(key []byte) ([]byte, error)
+}
+
 type ObjectStoreState interface {
 	Get(key []byte) (trie.Object, error)
 	Set(key []byte, obj trie.Object) (trie.Object, error)
@@ -259,4 +265,24 @@ func ToStoreState(store interface{}) StoreState {
 	default:
 		panic("invalid usage")
 	}
+}
+
+type bytesStoreStateForRaw struct {
+	rbs RawBytesStoreState
+}
+
+func (s bytesStoreStateForRaw) GetValue(key []byte) ([]byte, error) {
+	return s.rbs.Get(key)
+}
+
+func (s bytesStoreStateForRaw) SetValue(key []byte, value []byte) ([]byte, error) {
+	return s.rbs.Set(key, value)
+}
+
+func (s bytesStoreStateForRaw) DeleteValue(key []byte) ([]byte, error) {
+	return s.rbs.Delete(key)
+}
+
+func NewBytesStoreStateFromRaw(s RawBytesStoreState) BytesStoreState {
+	return bytesStoreStateForRaw{s}
 }
