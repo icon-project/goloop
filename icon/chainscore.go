@@ -474,7 +474,7 @@ var chainMethods = []*chainMethod{
 	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "validateIRep",
-		scoreapi.FlagExternal, 1,
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"irep", scoreapi.Integer, nil, nil},
 		},
