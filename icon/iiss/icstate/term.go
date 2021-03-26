@@ -142,6 +142,14 @@ type Term struct {
 	snapshotMap map[string]*PRepSnapshot
 }
 
+func (term *Term) Sequence() int {
+	return term.sequence
+}
+
+func (term *Term) ResetSequence() {
+	term.sequence = 0
+}
+
 func (term *Term) StartHeight() int64 {
 	return term.startHeight
 }

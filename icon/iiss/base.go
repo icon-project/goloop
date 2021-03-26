@@ -322,7 +322,17 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			intconv.BigIntToBytes(issue.OverIssued),
 		},
 	)
-
+	term := es.State.GetTerm()
+	if cc.BlockHeight() == term.StartHeight() {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte("TermStarted(int,int,int)")},
+			[][]byte{
+				intconv.Int64ToBytes(int64(term.Sequence())),
+				intconv.Int64ToBytes(term.StartHeight()),
+				intconv.Int64ToBytes(term.GetEndBlockHeight()),
+			},
+		)
+	}
 	return nil
 }
 

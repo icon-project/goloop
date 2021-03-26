@@ -4,6 +4,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -251,10 +252,10 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	rf.Iprep.SetInt64(50)
 	rf.Ivoter.SetInt64(50)
 	bondRequirement := 5
-	iissVersion := IISSVersion1
+	revision := icmodule.Revision1
 
 	term := newTerm(0, 100)
-	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated, rf, bondRequirement, iissVersion)
+	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated, rf, bondRequirement, revision)
 
 	assert.Equal(t, term.sequence+1, nTerm.sequence)
 	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.startHeight)
@@ -265,6 +266,6 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
 	assert.True(t, rf.Equal(nTerm.rewardFund))
 	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
-	assert.Equal(t, iissVersion, nTerm.revision)
+	assert.Equal(t, revision, nTerm.revision)
 	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)
 }

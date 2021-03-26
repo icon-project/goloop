@@ -805,7 +805,10 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 	if rrep != nil {
 		nextTerm.SetRrep(rrep)
 	}
-
+	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
+		// reset sequence when network is decentralized
+		nextTerm.ResetSequence()
+	}
 	s.logger.Debugf(nextTerm.String())
 	return s.State.SetTerm(nextTerm)
 }
