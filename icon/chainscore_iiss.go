@@ -602,9 +602,6 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	if err := s.tryChargeCall(); err != nil {
-		return err
-	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if err := es.DisqualifyPRep(address); err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
@@ -614,9 +611,6 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 
 func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 	if err := s.checkGovernance(true); err != nil {
-		return false, err
-	}
-	if err := s.tryChargeCall(); err != nil {
 		return false, err
 	}
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
