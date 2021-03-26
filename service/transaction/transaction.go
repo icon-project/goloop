@@ -135,3 +135,11 @@ func Wrap(t Transaction) Transaction {
 		return &transaction{t}
 	}
 }
+
+func Unwrap(t module.Transaction) module.Transaction {
+	if tp, ok := t.(*transaction); ok {
+		return tp.Transaction
+	} else {
+		return t
+	}
+}
