@@ -662,17 +662,13 @@ type FeeConfig struct {
 type ChainConfig struct {
 	Revision                 common.HexInt32   `json:"revision"`
 	AuditEnabled             common.HexInt16   `json:"auditEnabled"`
-	DeployerWhiteListEnabled common.HexInt16   `json:"deployerWhiteListEnabled"`
 	Fee                      FeeConfig         `json:"fee"`
 	ValidatorList            []*common.Address `json:"validatorList"`
-	MemberList               []*common.Address `json:"memberList"`
 	BlockInterval            *common.HexInt64  `json:"blockInterval"`
 	CommitTimeout            *common.HexInt64  `json:"commitTimeout"`
 	TimestampThreshold       *common.HexInt64  `json:"timestampThreshold"`
 	RoundLimitFactor         *common.HexInt64  `json:"roundLimitFactor"`
-	MinimizeBlockGen         *common.HexInt16  `json:"minimizeBlockGen"`
 	DepositTerm              *common.HexInt64  `json:"depositTerm"`
-	DepositIssueRate         *common.HexInt64  `json:"depositIssueRate"`
 	FeeSharingEnabled        *common.HexInt16  `json:"feeSharingEnabled"`
 }
 
@@ -726,7 +722,6 @@ func (s *chainScore) loadIconConfig() *config {
 }
 
 func (s *chainScore) Install(param []byte) error {
-	var err error
 	if s.from != nil {
 		return scoreresult.AccessDeniedError.New("AccessDeniedToInstallChainSCORE")
 	}
@@ -801,6 +796,24 @@ func (s *chainScore) Install(param []byte) error {
 			}
 		}
 
+		if chainConfig.AuditEnabled.Value != 0 {
+			systemConfig |= state.SysConfigAudit
+		}
+		if chainConfig.FeeSharingEnabled != nil {
+			if chainConfig.FeeSharingEnabled.Value != 0 {
+				systemConfig |= state.SysConfigFeeSharing
+			}
+		}
+
+		if chainConfig.DepositTerm != nil {
+			if chainConfig.DepositTerm.Value < 0 {
+				return scoreresult.IllegalFormatError.Errorf("InvalidDepositTerm(%s)", chainConfig.DepositTerm)
+			}
+			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(chainConfig.DepositTerm.Value); err != nil {
+				return err
+			}
+		}
+
 		validators = make([]module.Validator, len(chainConfig.ValidatorList))
 		for i, validator := range chainConfig.ValidatorList {
 			validators[i], _ = state.ValidatorFromAddress(validator)
@@ -828,13 +841,13 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	if feeConfig != nil {
-		if err = applyStepLimits(feeConfig, as); err != nil {
+		if err := applyStepLimits(feeConfig, as); err != nil {
 			return err
 		}
-		if err = applyStepCosts(feeConfig, as); err != nil {
+		if err := applyStepCosts(feeConfig, as); err != nil {
 			return err
 		}
-		if err = applyStepPrice(as, &feeConfig.StepPrice.Int); err != nil {
+		if err := applyStepPrice(as, &feeConfig.StepPrice.Int); err != nil {
 			return err
 		}
 	}
