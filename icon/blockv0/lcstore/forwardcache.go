@@ -34,7 +34,7 @@ const (
 type CacheConfig struct {
 	MaxWorkers int `json:"max_workers"`
 	MaxBlocks  int `json:"max_blocks"`
-	MaxTPS     int `json:"max_rps"`
+	MaxRPS     int `json:"max_rps"`
 }
 
 type blockTask struct {
@@ -271,6 +271,6 @@ func NewForwardCache(store *Store, logger log.Logger, config *CacheConfig) *Forw
 		receiptInfo: make(map[string]*receiptTask),
 	}
 	cs.tasks.Init()
-	cs.tr.Init(config.MaxTPS)
+	cs.tr.Init(config.MaxRPS)
 	return cs
 }
