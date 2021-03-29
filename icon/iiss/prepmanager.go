@@ -407,13 +407,9 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	if pm.contains(owner) {
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
-	if ps := pm.state.GetPRepStatus(owner, false); ps != nil {
-		if ps.Status() != icstate.NotReady {
-			return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
-		} else {
-			// if status is NotReady
-			pm.totalDelegated.Add(pm.totalDelegated, ps.Delegated())
-		}
+	ps := pm.state.GetPRepStatus(owner, false)
+	if ps != nil && ps.Status() != icstate.NotReady {
+		return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
 	}
 
 	pb := pm.state.GetPRepBase(owner, true)
@@ -423,7 +419,9 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	}
 	pb.SetIrep(irep, 0)
 
-	ps := pm.state.GetPRepStatus(owner, true)
+	if ps == nil {
+		ps = pm.state.GetPRepStatus(owner, true)
+	}
 	ps.SetStatus(icstate.Active)
 
 	pm.state.AddActivePRep(owner)
