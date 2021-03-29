@@ -244,7 +244,7 @@ func TestPRepManager_disablePRep(t *testing.T) {
 		assert.NoError(t, err)
 
 		noPRep := pm.GetPRepByOwner(owner)
-		assert.Nil(t, noPRep)
+		assert.NotNil(t, noPRep)
 
 		assert.Equal(t, size-i-1, pm.Size())
 
