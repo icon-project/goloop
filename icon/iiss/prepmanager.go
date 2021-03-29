@@ -147,9 +147,7 @@ func (pm *PRepManager) init() {
 		if prep == nil {
 			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
-			if prep.Status() == icstate.Active {
 				pm.appendPRep(prep)
-			}
 		}
 	}
 }
@@ -186,11 +184,13 @@ func (pm *PRepManager) getPRepFromState(owner module.Address) *PRep {
 }
 
 func (pm *PRepManager) appendPRep(p *PRep) {
-	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalBonded.Add(pm.totalBonded, p.Bonded())
-	pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
-	pm.adjustPRepSize(p.Grade(), true)
+	if p.PRepStatus.Status() == icstate.Active {
+		pm.orderedPReps = append(pm.orderedPReps, p)
+		pm.totalBonded.Add(pm.totalBonded, p.Bonded())
+		pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
+		pm.adjustPRepSize(p.Grade(), true)
+	}
 }
 
 func (pm *PRepManager) adjustPRepSize(grade icstate.Grade, increment bool) {
@@ -408,7 +408,9 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
 	if ps := pm.state.GetPRepStatus(owner, false); ps != nil {
-		return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
+		if ps.Status() != icstate.NotReady {
+			return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
+		}
 	}
 
 	pb := pm.state.GetPRepBase(owner, true)
@@ -471,13 +473,6 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 }
 
 func (pm *PRepManager) removePRep(owner module.Address) error {
-	var err error
-	//if err = pm.state.RemoveActivePRep(owner); err != nil {
-	//	return err
-	//}
-	if err = pm.removeFromPRepMap(owner); err != nil {
-		return err
-	}
 	return pm.removeFromOrderedPReps(owner)
 }
 
