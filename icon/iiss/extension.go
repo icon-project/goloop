@@ -19,6 +19,7 @@ package iiss
 import (
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/icon-project/goloop/common"
@@ -412,8 +413,15 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 }
 
 func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
-	votes = make([]*icstage.Vote, 0, len(delta))
-	for key, value := range delta {
+	size := len(delta)
+	keys := make([]string, 0, size)
+	votes = make([]*icstage.Vote, size, size)
+	for key := range delta {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for i, key := range keys {
 		var addr *common.Address
 		vote := icstage.NewVote()
 
@@ -422,8 +430,8 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 			return
 		}
 		vote.Address = addr
-		vote.Value.Set(value)
-		votes = append(votes, vote)
+		vote.Value.Set(delta[key])
+		votes[i] = vote
 	}
 	return
 }

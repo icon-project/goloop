@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -151,86 +150,6 @@ func (ed *EventVote) Equal(o icobject.Impl) bool {
 
 func newEventVote(tag icobject.Tag) *EventVote {
 	return new(EventVote)
-}
-
-type EventDelegation struct {
-	icobject.NoDatabase
-	From        *common.Address
-	Delegations icstate.Delegations
-}
-
-func (ed *EventDelegation) Version() int {
-	return 0
-}
-
-func (ed *EventDelegation) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ed.From, &ed.Delegations)
-	return err
-}
-
-func (ed *EventDelegation) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ed.From, ed.Delegations)
-}
-
-func (ed *EventDelegation) Equal(o icobject.Impl) bool {
-	if ee2, ok := o.(*EventDelegation); ok {
-		return ed.From.Equal(ee2.From) && ed.Delegations.Equal(ee2.Delegations)
-	} else {
-		return false
-	}
-}
-
-func (ed *EventDelegation) Clear() {
-	ed.From = nil
-	ed.Delegations = nil
-}
-
-func (ed *EventDelegation) IsEmpty() bool {
-	return ed.From == nil && ed.Delegations == nil
-}
-
-func newEventDelegation(tag icobject.Tag) *EventDelegation {
-	return new(EventDelegation)
-}
-
-type EventBond struct {
-	icobject.NoDatabase
-	From  *common.Address
-	Bonds icstate.Bonds
-}
-
-func (b *EventBond) Version() int {
-	return 0
-}
-
-func (b *EventBond) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&b.From, &b.Bonds)
-	return err
-}
-
-func (b *EventBond) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(b.From, b.Bonds)
-}
-
-func (b *EventBond) Equal(o icobject.Impl) bool {
-	if ee2, ok := o.(*EventBond); ok {
-		return b.From.Equal(ee2.From) && b.Bonds.Equal(ee2.Bonds)
-	} else {
-		return false
-	}
-}
-
-func (b *EventBond) Clear() {
-	b.From = nil
-	b.Bonds = nil
-}
-
-func (b *EventBond) IsEmpty() bool {
-	return b.From == nil && b.Bonds == nil
-}
-
-func newEventBond(tag icobject.Tag) *EventBond {
-	return new(EventBond)
 }
 
 type EnableFlag int

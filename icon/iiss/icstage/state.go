@@ -85,8 +85,6 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 	}
 
 	key := EventKey.Append(offset, size.Value).Build()
-	//ed := newEventDelegation(icobject.MakeTag(TypeEventDelegation, 0))
-	//event.Delegations = delegations
 	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
 	event.Votes = votes
 	event.From = from.(*common.Address)

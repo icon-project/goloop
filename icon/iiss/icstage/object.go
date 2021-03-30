@@ -66,20 +66,6 @@ func ToIScoreClaim(obj trie.Object) *IScoreClaim {
 	return obj.(*icobject.Object).Real().(*IScoreClaim)
 }
 
-func ToEventDelegation(obj trie.Object) *EventDelegation {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*EventDelegation)
-}
-
-func ToEventBond(obj trie.Object) *EventBond {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*EventBond)
-}
-
 func ToEventVote(obj trie.Object) *EventVote {
 	if obj == nil {
 		return nil
