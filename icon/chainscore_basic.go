@@ -81,7 +81,38 @@ func (s *chainScore) fromGovernance() bool {
 }
 
 func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
-	if r1 >= r2 || r2 < icmodule.RevisionIISS {
+	if r1 >= r2 {
+		return nil
+	}
+
+	// for goloop engine
+
+	if r1 < icmodule.Revision4 && r2 >= icmodule.Revision4 {
+		// enable Fee sharing 2.0
+		systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
+		systemConfig |= state.SysConfigFeeSharing
+		if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(systemConfig); err != nil {
+			return err
+		}
+		// enable Virtual step
+		depositTerm := scoredb.NewVarDB(as, state.VarDepositTerm).Int64()
+		if depositTerm == DisableDepositTerm {
+			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
+				return err
+			}
+		}
+	}
+
+	if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
+		// disable Virtual step
+		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(DisableDepositTerm); err != nil {
+			return err
+		}
+	}
+
+	// for ICON platform IISS
+
+	if r2 < icmodule.RevisionIISS {
 		return nil
 	}
 	if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
@@ -181,9 +212,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 // Governance functions : Functions which can be called by governance SCORE.
 func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
+	//if err := s.checkGovernance(true); err != nil {
+	//	return err
+	//}
 	if icmodule.MaxRevision < code.Int64() {
 		return scoreresult.Errorf(StatusIllegalArgument,
 			"IllegalArgument(max=%#x,new=%s)", icmodule.MaxRevision, code)
@@ -485,4 +516,17 @@ func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarServiceConfig).Int64(), nil
+}
+
+func (s *chainScore) Ex_getFeeSharingConfig() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
+	fsConfig := make(map[string]interface{})
+	fsConfig["feeSharingEnabled"] = systemConfig & state.SysConfigFeeSharing != 0
+	fsConfig["depositTerm"] = s.cc.DepositTerm()
+	fsConfig["depositIssueRate"] = s.cc.DepositIssueRate()
+	return fsConfig, nil
 }

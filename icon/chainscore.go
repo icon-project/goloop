@@ -222,6 +222,14 @@ var chainMethods = []*chainMethod{
 		},
 	}, 0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "getFeeSharingConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "getNetworkValue",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
@@ -551,6 +559,9 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 const (
 	InitialTermPeriod       = 43200
 	DecentralizedTermPeriod = 43120
+
+	InitialDepositTerm = 1_296_000
+	DisableDepositTerm = 0
 )
 
 const (
@@ -603,8 +614,8 @@ type config struct {
 
 func (c *config) String() string {
 	return fmt.Sprintf(
-		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s " +
-			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s " +
+		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s "+
+			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
 			"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
 		c.TermPeriod,
 		c.IISSVersion,
@@ -660,16 +671,16 @@ type FeeConfig struct {
 }
 
 type ChainConfig struct {
-	Revision                 common.HexInt32   `json:"revision"`
-	AuditEnabled             common.HexInt16   `json:"auditEnabled"`
-	Fee                      FeeConfig         `json:"fee"`
-	ValidatorList            []*common.Address `json:"validatorList"`
-	BlockInterval            *common.HexInt64  `json:"blockInterval"`
-	CommitTimeout            *common.HexInt64  `json:"commitTimeout"`
-	TimestampThreshold       *common.HexInt64  `json:"timestampThreshold"`
-	RoundLimitFactor         *common.HexInt64  `json:"roundLimitFactor"`
-	DepositTerm              *common.HexInt64  `json:"depositTerm"`
-	FeeSharingEnabled        *common.HexInt16  `json:"feeSharingEnabled"`
+	Revision           common.HexInt32   `json:"revision"`
+	AuditEnabled       common.HexInt16   `json:"auditEnabled"`
+	Fee                FeeConfig         `json:"fee"`
+	ValidatorList      []*common.Address `json:"validatorList"`
+	BlockInterval      *common.HexInt64  `json:"blockInterval"`
+	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
+	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
+	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
+	DepositTerm        *common.HexInt64  `json:"depositTerm"`
+	FeeSharingEnabled  *common.HexInt16  `json:"feeSharingEnabled"`
 }
 
 func newIconConfig() *config {
