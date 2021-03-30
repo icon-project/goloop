@@ -87,7 +87,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 	// for goloop engine
 
-	if r1 < icmodule.Revision4 && r2 >= icmodule.Revision4 {
+	if r1 < icmodule.Revision5 && r2 >= icmodule.Revision5 {
 		// enable Fee sharing 2.0
 		systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
 		systemConfig |= state.SysConfigFeeSharing
@@ -95,11 +95,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			return err
 		}
 		// enable Virtual step
-		depositTerm := scoredb.NewVarDB(as, state.VarDepositTerm).Int64()
-		if depositTerm == DisableDepositTerm {
-			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
-				return err
-			}
+		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
+			return err
 		}
 	}
 

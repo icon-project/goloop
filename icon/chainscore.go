@@ -228,7 +228,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.Revision5, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getNetworkValue",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
