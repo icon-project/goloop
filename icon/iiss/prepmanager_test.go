@@ -221,6 +221,34 @@ func TestPRepManager_RegisterPRep(t *testing.T) {
 	assert.True(t, checkOrderedByBondedDelegation(pm, 5))
 }
 
+func TestPRepManager_RegisterPRepWithNotReadyPRep(t *testing.T) {
+	size := 5
+	start := 10
+	br := int64(5)
+	pm := createPRepManager(t, false, 0)
+
+	nd, sum := createDelegations(start, size)
+	delta, err := pm.ChangeDelegation(nil, nd)
+	assert.NoError(t, err)
+	etd := big.NewInt(sum)
+	td := new(big.Int)
+	for _, value := range delta {
+		assert.True(t, value.Sign() >= 0)
+		td.Add(td, value)
+	}
+	assert.Zero(t, etd.Cmp(td))
+
+	for i := 0; i < size; i++ {
+		regInfo := newRegInfo(start + i)
+		err = pm.RegisterPRep(regInfo, BigIntInitialIRep)
+		assert.NoError(t, err)
+	}
+
+	assert.Zero(t, etd.Cmp(pm.TotalDelegated()))
+	assert.Equal(t, int64(0), pm.TotalBonded().Int64())
+	checkOrderedByBondedDelegation(pm, br)
+}
+
 func TestPRepManager_disablePRep(t *testing.T) {
 	size := 5
 	pm := createPRepManager(t, false, size)
@@ -244,7 +272,7 @@ func TestPRepManager_disablePRep(t *testing.T) {
 		assert.NoError(t, err)
 
 		noPRep := pm.GetPRepByOwner(owner)
-		assert.Nil(t, noPRep)
+		assert.NotNil(t, noPRep)
 
 		assert.Equal(t, size-i-1, pm.Size())
 

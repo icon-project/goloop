@@ -147,9 +147,7 @@ func (pm *PRepManager) init() {
 		if prep == nil {
 			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
-			if prep.Status() == icstate.Active {
 				pm.appendPRep(prep)
-			}
 		}
 	}
 }
@@ -186,11 +184,13 @@ func (pm *PRepManager) getPRepFromState(owner module.Address) *PRep {
 }
 
 func (pm *PRepManager) appendPRep(p *PRep) {
-	pm.orderedPReps = append(pm.orderedPReps, p)
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
-	pm.totalBonded.Add(pm.totalBonded, p.Bonded())
-	pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
-	pm.adjustPRepSize(p.Grade(), true)
+	if p.PRepStatus.Status() == icstate.Active {
+		pm.orderedPReps = append(pm.orderedPReps, p)
+		pm.totalBonded.Add(pm.totalBonded, p.Bonded())
+		pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
+		pm.adjustPRepSize(p.Grade(), true)
+	}
 }
 
 func (pm *PRepManager) adjustPRepSize(grade icstate.Grade, increment bool) {
@@ -407,7 +407,8 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	if pm.contains(owner) {
 		return errors.Errorf("PRep already exists: %s", owner)
 	}
-	if ps := pm.state.GetPRepStatus(owner, false); ps != nil {
+	ps := pm.state.GetPRepStatus(owner, false)
+	if ps != nil && ps.Status() != icstate.NotReady {
 		return errors.Errorf("Already in use: addr=%s status=%s", owner, ps.Status())
 	}
 
@@ -418,7 +419,9 @@ func (pm *PRepManager) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
 	}
 	pb.SetIrep(irep, 0)
 
-	ps := pm.state.GetPRepStatus(owner, true)
+	if ps == nil {
+		ps = pm.state.GetPRepStatus(owner, true)
+	}
 	ps.SetStatus(icstate.Active)
 
 	pm.state.AddActivePRep(owner)
@@ -471,13 +474,6 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 }
 
 func (pm *PRepManager) removePRep(owner module.Address) error {
-	var err error
-	//if err = pm.state.RemoveActivePRep(owner); err != nil {
-	//	return err
-	//}
-	if err = pm.removeFromPRepMap(owner); err != nil {
-		return err
-	}
 	return pm.removeFromOrderedPReps(owner)
 }
 
@@ -547,9 +543,8 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 		}
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner, true)
-			if ps.IsActive() {
-				ps.Delegated().Add(ps.Delegated(), value)
-			} else {
+			ps.Delegated().Add(ps.Delegated(), value)
+			if !ps.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
 			}
 		}
@@ -596,6 +591,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 			if ps.IsActive() {
 				ps.Bonded().Add(ps.Bonded(), value)
 			} else {
+				// this code is not reachable, because there is no case of bonding to not-registered PRep
 				bondedToInactiveNode.Add(bondedToInactiveNode, value)
 			}
 		}
