@@ -95,8 +95,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			return err
 		}
 		// enable Virtual step
-		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
-			return err
+		depositTerm := scoredb.NewVarDB(as, state.VarDepositTerm).Int64()
+		if depositTerm == DisableDepositTerm {
+			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
+				return err
+			}
 		}
 	}
 
