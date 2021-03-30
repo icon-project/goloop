@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -67,7 +68,7 @@ func (p *platform) ToRevision(value int) module.Revision {
 
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
 	// calculate issued i-score and amount balance. No changes on world context.
-	es, _ := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := p.getExtensionState(wc, nil)
 	if es == nil || !es.State.GetTerm().IsDecentralized() {
 		return nil, nil
 	}
@@ -116,17 +117,17 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	if revision < icmodule.RevisionIISS {
 		return nil
 	}
-	ext := wc.GetExtensionState()
-	es := ext.(*iiss.ExtensionStateImpl)
+	es := p.getExtensionState(wc, logger)
+	if es == nil {
+		return nil
+	}
 
 	if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
 		return err
 	}
-
 	if err := iiss.HandleTimerJob(wc); err != nil {
 		return err
 	}
-
 	return es.OnExecutionEnd(wc, p.calculator)
 }
 
@@ -142,4 +143,16 @@ func NewPlatform(base string, cid int) (service.Platform, error) {
 
 func init() {
 	iiss.RegisterBaseTx()
+}
+
+func (p *platform) getExtensionState(wc state.WorldContext, logger log.Logger) *iiss.ExtensionStateImpl {
+	es := wc.GetExtensionState()
+	if es == nil {
+		return nil
+	}
+	esi := es.(*iiss.ExtensionStateImpl)
+	if logger != nil {
+		esi.SetLogger(icutils.NewIconLogger(logger))
+	}
+	return esi
 }

@@ -2,10 +2,7 @@ package iiss
 
 import (
 	"bytes"
-	"math"
-	"math/big"
-	"sort"
-
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -14,6 +11,9 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	"math"
+	"math/big"
+	"sort"
 )
 
 const (
@@ -34,6 +34,13 @@ type RegInfo struct {
 	website     string
 	owner       module.Address
 	node        module.Address
+}
+
+func (r *RegInfo) String() string {
+	return fmt.Sprintf(
+		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s owner=%s",
+		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website, r.owner,
+	)
 }
 
 func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {

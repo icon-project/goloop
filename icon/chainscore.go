@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -922,7 +923,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 			cc:    cc,
 			from:  from,
 			value: value,
-			log:   cc.Logger(),
+			log:   icutils.NewIconLogger(cc.Logger()),
 			gov:   cc.Governance().Equal(from),
 		},
 		nil

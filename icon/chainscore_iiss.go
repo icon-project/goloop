@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -40,13 +41,35 @@ func (s *chainScore) iissHandleRevision() error {
 	return nil
 }
 
+func (s *chainScore) getExtensionState() (*iiss.ExtensionStateImpl, error) {
+	es := s.cc.GetExtensionState()
+	if es == nil {
+		err := errors.Errorf("ExtensionState is nil")
+		return nil, s.toScoreResultError(scoreresult.UnknownFailureError, err)
+	}
+	esi := es.(*iiss.ExtensionStateImpl)
+	esi.SetLogger(icutils.NewIconLogger(s.cc.Logger()))
+	return esi, nil
+}
+
+func (s *chainScore) toScoreResultError(code errors.Code, err error) error {
+	msg := err.Error()
+	if logger := s.cc.Logger(); logger != nil {
+		logger = icutils.NewIconLogger(logger)
+		logger.Infof(msg)
+	}
+	return code.Errorf(msg)
+}
+
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err := es.State.SetIRep(new(big.Int).Set(&value.Int))
+	es, err := s.getExtensionState()
 	if err != nil {
+		return err
+	}
+	if err = es.State.SetIRep(new(big.Int).Set(&value.Int)); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 	return nil
@@ -56,7 +79,10 @@ func (s *chainScore) Ex_getIRep() (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return 0, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return 0, err
+	}
 	return es.State.GetIRep().Int64(), nil
 }
 
@@ -64,7 +90,10 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return 0, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return 0, nil
+	}
 	return es.State.GetRRep().Int64(), nil
 }
 
@@ -75,12 +104,18 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 	ia := es.GetAccount(s.from)
 	v := &value.Int
+	logger := s.cc.Logger()
 
 	if ia.GetVoting().Cmp(v) == 1 {
-		return scoreresult.InvalidParameterError.Errorf("Failed to stake: stake < voting")
+		msg := "Failed to stake: stake < voting"
+		logger.Infof(msg)
+		return scoreresult.InvalidParameterError.Errorf(msg)
 	}
 
 	prevTotalStake := ia.GetTotalStake()
@@ -161,7 +196,10 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	ia := es.GetAccount(address)
 	return ia.GetStakeInfo(), nil
 }
@@ -173,13 +211,17 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 	err = es.SetDelegation(s.cc, s.from, ds)
 	if err != nil {
+		s.cc.Logger().Infof(err.Error())
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	return nil
@@ -192,7 +234,10 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	ia := es.GetAccount(address)
 	return ia.GetDelegationInfo(), nil
 }
@@ -232,14 +277,17 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 	irep := new(big.Int).Set(iiss.BigIntInitialIRep)
 	if es.IsDecentralized() {
 		term := es.State.GetTerm()
 		irep.Set(term.Irep())
 	}
 
-	err := es.RegisterPRep(regInfo, irep)
+	err = es.RegisterPRep(regInfo, irep)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
@@ -268,12 +316,16 @@ func (s *chainScore) Ex_unregisterPRep() error {
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 	if s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
 	}
-	err := es.UnregisterPRep(s.cc, s.from)
+	err = es.UnregisterPRep(s.cc, s.from)
 	if err != nil {
+		s.cc.Logger().Infof(err.Error())
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	return nil
@@ -286,7 +338,10 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	res, err := es.GetPRepInJSON(address, s.cc.BlockHeight())
 	if err != nil {
 		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
@@ -310,7 +365,10 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 	if start > end {
 		return nil, scoreresult.InvalidParameterError.Errorf("Invalid parameter")
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	blockHeight := s.cc.BlockHeight()
 	jso, err := es.GetPRepsInJSON(blockHeight, start, end)
 	if err != nil {
@@ -326,7 +384,10 @@ func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	return es.GetMainPRepsInJSON(s.cc.BlockHeight())
 }
 
@@ -337,7 +398,10 @@ func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	return es.GetSubPRepsInJSON(s.cc.BlockHeight())
 }
 
@@ -348,7 +412,10 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	jso := es.GetPRepManagerInJSON()
 	return jso, nil
 }
@@ -371,8 +438,11 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 		[][]byte{s.from.Bytes()},
 	)
 
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err := es.SetPRep(regInfo)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	err = es.SetPRep(regInfo)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
@@ -383,24 +453,33 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 	return es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_setBond(bondList []interface{}) error {
+	logger := s.cc.Logger()
+	logger.Tracef("Ex_setBond() start: from=%s", s.from)
+
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}
 	bonds, err := icstate.NewBonds(bondList)
 	if err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return s.toScoreResultError(scoreresult.InvalidParameterError, err)
 	}
 
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err = es.SetBond(s.cc, s.from, bonds)
+	es, err := s.getExtensionState()
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return err
 	}
+	if err = es.SetBond(s.cc, s.from, bonds); err != nil {
+		return s.toScoreResultError(scoreresult.UnknownFailureError, err)
+	}
+	logger.Tracef("Ex_setBond() end")
 	return nil
 }
 
@@ -408,7 +487,10 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	account := es.GetAccount(address)
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInfo()
@@ -422,13 +504,17 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 	}
 	bl, err := icstate.NewBonderList(bonderList)
 	if err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return s.toScoreResultError(scoreresult.InvalidParameterError, err)
 	}
 
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	err = es.SetBonderList(s.from, bl)
+	s.cc.Logger().Debugf("from=%s bonder[0]=%s", s.from, bonderList[0])
+
+	es, err := s.getExtensionState()
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return err
+	}
+	if err = es.SetBonderList(s.from, bl); err != nil {
+		return s.toScoreResultError(scoreresult.UnknownFailureError, err)
 	}
 	return nil
 }
@@ -437,7 +523,10 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	res, err := es.GetBonderList(address)
 	if err != nil {
 		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
@@ -453,7 +542,10 @@ func (s *chainScore) Ex_claimIScore() error {
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
 
 	fClaimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
@@ -543,7 +635,10 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	fClaim, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
 		return nil, scoreresult.InvalidInstanceError.Errorf("Invalid account")
@@ -588,7 +683,10 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
 	result := make(map[string]interface{})
@@ -603,7 +701,10 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	jso, err := es.GetPRepTermInJSON()
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
@@ -616,7 +717,10 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	res, err := es.GetNetworkValueInJSON()
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
@@ -631,7 +735,10 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	term := es.State.GetTerm()
 	iissVersion := es.State.GetIISSVersion()
 
@@ -667,7 +774,10 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
 	return es.GetPRepStatsInJSON(s.cc.BlockHeight())
 }
 
@@ -675,8 +785,11 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if err := es.DisqualifyPRep(address); err != nil {
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if err = es.DisqualifyPRep(address); err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 	return nil
@@ -686,7 +799,10 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 	if err := s.checkGovernance(true); err != nil {
 		return false, err
 	}
-	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return false, err
+	}
 	term := es.State.GetTerm()
 	if err := es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
 		return false, scoreresult.InvalidParameterError.Errorf(err.Error())

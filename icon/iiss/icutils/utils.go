@@ -19,6 +19,7 @@ package icutils
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -143,4 +144,11 @@ func ValidateRange(oldValue *big.Int, newValue *big.Int, minPct int, maxPct int)
 		}
 	}
 	return nil
+}
+
+func NewIconLogger(logger log.Logger) log.Logger {
+	if logger == nil {
+		return nil
+	}
+	return logger.WithFields(log.Fields{log.FieldKeyModule: "ICON"})
 }

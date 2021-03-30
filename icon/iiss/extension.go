@@ -148,6 +148,12 @@ type ExtensionStateImpl struct {
 	Reward *icreward.State
 }
 
+func (s *ExtensionStateImpl) SetLogger(logger log.Logger) {
+	if logger != nil {
+		s.logger = logger
+	}
+}
+
 func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: s.database,
@@ -373,7 +379,13 @@ func (s *ExtensionStateImpl) GetTotalDelegated() *big.Int {
 }
 
 func (s *ExtensionStateImpl) RegisterPRep(regInfo *RegInfo, irep *big.Int) error {
-	return s.pm.RegisterPRep(regInfo, irep)
+	s.logger.Tracef("RegisterPRep() start: regInfo=[%s] irep=%s", regInfo, irep)
+	err := s.pm.RegisterPRep(regInfo, irep)
+	if err != nil {
+		s.logger.Infof(err.Error())
+	}
+	s.logger.Tracef("RegisterPRep() end")
+	return err
 }
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
@@ -537,6 +549,8 @@ func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
 }
 
 func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
+	s.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
+
 	var err error
 	var account *icstate.Account
 	blockHeight := cc.BlockHeight()
@@ -591,6 +605,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return err
 	}
 
+	s.logger.Tracef("SetBond() end")
 	return nil
 }
 
@@ -609,6 +624,8 @@ func (s *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Address
 }
 
 func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
+	s.logger.Tracef("SetBonderList() start: from=%s bl=%s", from, bl)
+
 	pb := s.State.GetPRepBase(from, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %v", from)
@@ -625,6 +642,7 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 	}
 
 	pb.SetBonderList(bl)
+	s.logger.Tracef("SetBonderList() end")
 	return nil
 }
 

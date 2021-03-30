@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -80,6 +81,7 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 }
 
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
+	logger = icutils.NewIconLogger(logger)
 	cm, err := contract.NewContractManager(dbase, dir, logger)
 	if err != nil {
 		return nil, err

@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -84,6 +85,10 @@ func (b *Bond) Slash(ratio int) *big.Int {
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
 	b.Value.Sub(b.Value.Value(), slashAmount)
 	return slashAmount
+}
+
+func (b *Bond) String() string {
+	return fmt.Sprintf("{address=%s, value=%s}", b.Address, b.Value)
 }
 
 type Bonds []*Bond
