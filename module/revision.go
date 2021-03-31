@@ -30,12 +30,13 @@ const (
 	LegacyContentCount
 	LegacyBalanceCheck
 	LegacyInputJSON
+	LegacyNoTimeout
 	LastRevisionBit
 )
 
 const (
 	NoRevision       = 0
-	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck | LegacyInputJSON
+	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck | LegacyInputJSON | LegacyNoTimeout
 	AllRevision      = LastRevisionBit - 1
 	LatestRevision   = AllRevision ^ BackwardRevision
 )

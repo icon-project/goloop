@@ -249,6 +249,14 @@ func (cc *callContext) DoIOTask(f func()) {
 func (cc *callContext) getTimer(update bool) <-chan time.Time {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
+
+	if cc.Revision().Has(module.LegacyNoTimeout) {
+		if cc.timer == nil {
+			cc.timer = make(chan time.Time)
+		}
+		return cc.timer
+	}
+
 	if cc.timer == nil {
 		cc.timer = time.After(cc.TransactionTimeout())
 		return cc.timer
