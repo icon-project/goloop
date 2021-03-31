@@ -511,8 +511,9 @@ func (s *ExtensionStateImpl) selectNewValidator() error {
 	term := s.State.GetTerm()
 	pssCount := term.GetPRepSnapshotCount()
 
+	loop := true
 	i := s.vm.PRepSnapshotIndex()
-	for ; i < pssCount; i++ {
+	for ; loop && i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
 		prep = s.pm.GetPRepByOwner(pss.Owner())
 		if prep != nil {
@@ -526,7 +527,8 @@ func (s *ExtensionStateImpl) selectNewValidator() error {
 				if err = s.vm.Add(prep.GetNode()); err != nil {
 					return err
 				}
-				break
+				// Break the loop
+				loop = false
 			}
 		}
 	}
