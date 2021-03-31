@@ -26,20 +26,19 @@ import (
 
 type Unstake struct {
 	Amount       *big.Int
+	// Unstake is done on OnExecutionEnd of ExpireHeight
 	ExpireHeight int64
 }
 
-func newUnstake() *Unstake {
+func newUnstake(amount *big.Int, expireHeight int64) *Unstake {
 	return &Unstake{
-		Amount: new(big.Int),
+		Amount: new(big.Int).Set(amount),
+		ExpireHeight: expireHeight,
 	}
 }
 
 func (u *Unstake) Clone() *Unstake {
-	n := newUnstake()
-	n.Amount.Set(u.Amount)
-	n.ExpireHeight = u.ExpireHeight
-	return n
+	return newUnstake(u.Amount, u.ExpireHeight)
 }
 
 func (u *Unstake) Equal(u2 *Unstake) bool {
@@ -125,9 +124,7 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) ([]TimerJobInf
 			last.ExpireHeight = eh
 		}
 	} else {
-		unstake := newUnstake()
-		unstake.Amount.Set(v)
-		unstake.ExpireHeight = eh
+		unstake := newUnstake(v, eh)
 		unstakes := *us
 		index := us.findIndex(eh)
 		unstakes = append(unstakes, unstake)

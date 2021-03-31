@@ -26,13 +26,10 @@ import (
 var bigOne = big.NewInt(1)
 
 func TestUnstake(t *testing.T) {
-	amount := int64(12)
+	amount := big.NewInt(12)
 	eh := int64(100)
 
-	u1 := newUnstake()
-	u1.Amount.SetInt64(amount)
-	u1.ExpireHeight = eh
-
+	u1 := newUnstake(amount, eh)
 	u2 := u1.Clone()
 
 	assert.True(t, u1.Equal(u2))
