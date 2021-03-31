@@ -596,7 +596,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
 		return errors.Errorf("Too many unbonds %d", unbondingCount)
 	}
-	if account.Stake().Cmp(account.GetVoting()) != 1 {
+	if account.Stake().Cmp(account.GetVoting()) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 	for _, t := range tl {

@@ -403,17 +403,16 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	b4 := &Bond{addr4, common.NewHexInt(3)}
 	nbs = []*Bond{b1, b2, b3, b4}
 	ubAdds, ubMods = a.GetUnbondingInfo(nbs, bh)
-	ubMod1 = &Unbond{addr4, big.NewInt(0), a.Unbonds()[1].Expire}
-	ubMod2 = &Unbond{addr4, big.NewInt(7), a.Unbonds()[1].Expire}
+	ubMod1 = &Unbond{addr4, big.NewInt(7), a.Unbonds()[1].Expire}
 	assert.Equal(t, 0, len(ubAdds))
-	assert.Equal(t, 2, len(ubMods))
+	assert.Equal(t, 1, len(ubMods))
 	assert.True(t, ubMods[0].Equal(ubMod1))
-	assert.True(t, ubMods[1].Equal(ubMod2))
 
 	//case5
+	//bonds : [{hx3, 10}, {hx4, 10}, {hx5, 5}], unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 	b1 = &Bond{common.MustNewAddressFromString("hx10"), common.NewHexInt(100)}
 	nbs = []*Bond{b1}
-	ubAdds, ubMods = a.GetUnbondingInfo(nbs, bh) //hx3, hx4 will be added, hx5 will be modified
+	ubAdds, ubMods = a.GetUnbondingInfo(nbs, bh) //hx3, hx4 will be added, hx5 will be modified(remove hx5, add hx5)
 	assert.Equal(t, 2, len(ubAdds))
 	assert.Equal(t, 2, len(ubMods))
 	assert.True(t, ubAdds[0].Address.Equal(addr1))

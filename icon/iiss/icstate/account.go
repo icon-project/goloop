@@ -314,11 +314,10 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				if nb.To().Equal(ub.Address) {
 					newValue := new(big.Int).Sub(ub.Value, nb.Value.Value())
 					unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
-					ubToMod = append(ubToMod, unbond)
 					if newValue.Sign() == 1 {
 						unbond = &Unbond{nb.Address, newValue, ub.Expire}
-						ubToMod = append(ubToMod, unbond)
 					}
+					ubToMod = append(ubToMod, unbond)
 					break
 				}
 			}
