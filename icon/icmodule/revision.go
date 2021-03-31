@@ -49,7 +49,7 @@ const (
 )
 
 var revisionFlags = []module.Revision{
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
+	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout,
 	0,
 	module.AutoAcceptGovernance,
 	module.LegacyInputJSON | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
