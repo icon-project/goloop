@@ -277,8 +277,7 @@ func (a *Account) GetUnbondsInfo() []interface{} {
 	return a.unbonds.ToJSON(module.JSONVersion3)
 }
 
-func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds, Unbonds, *big.Int) {
-	uDiff := new(big.Int)
+func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds, Unbonds) {
 	var ubToAdd, ubToMod []*Unbond
 	for _, nb := range bonds {
 		bondExist := false
@@ -290,7 +289,6 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				if diff.Sign() == 1 {
 					unbond := Unbond{nb.Address, diff, unbondingHeight}
 					ubToAdd = append(ubToAdd, &unbond)
-					uDiff.Add(uDiff, diff)
 				} else if diff.Sign() == 0 {
 					continue
 				}
@@ -299,9 +297,7 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 						// append 0 value unbond to remove previous unbond
 						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
 						ubToMod = append(ubToMod, unbond)
-						if diff.Sign() == -1 { // nb > ob, remove unbond
-							uDiff.Sub(uDiff, ub.Value)
-						} else { // modify unbond
+						if diff.Sign() == 1 { // ob > nb
 							ubToAdd = ubToAdd[:len(ubToAdd)-1]
 							value := new(big.Int).Add(ub.Value, diff)
 							unbond = &Unbond{nb.Address, value, unbondingHeight}
@@ -316,9 +312,13 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 		if !bondExist {
 			for _, ub := range a.unbonds {
 				if nb.To().Equal(ub.Address) {
-					unbond := Unbond{nb.Address, new(big.Int), ub.Expire}
-					ubToMod = append(ubToMod, &unbond)
-					uDiff.Sub(uDiff, ub.Value)
+					newValue := new(big.Int).Sub(ub.Value, nb.Value.Value())
+					unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+					ubToMod = append(ubToMod, unbond)
+					if newValue.Sign() == 1 {
+						unbond = &Unbond{nb.Address, newValue, ub.Expire}
+						ubToMod = append(ubToMod, unbond)
+					}
 					break
 				}
 			}
@@ -341,7 +341,6 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				ubExist = true
 				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int), ub.Expire})
 				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int).Add(ob.Amount(), ub.Value), unbondingHeight})
-				uDiff.Add(uDiff, ob.Amount())
 				break
 			}
 		}
@@ -349,9 +348,8 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 			continue
 		}
 		ubToAdd = append(ubToAdd, &Unbond{ob.Address, ob.Amount(), unbondingHeight})
-		uDiff.Add(uDiff, ob.Amount())
 	}
-	return ubToAdd, ubToMod, uDiff
+	return ubToAdd, ubToMod
 }
 
 func (a *Account) SetBonds(bonds Bonds) {

@@ -582,13 +582,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	}
 
 	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
-	ubToAdd, ubToMod, ubDiff := account.GetUnbondingInfo(bonds, unbondingHeight)
-	votingAmount := new(big.Int).Add(account.Delegating(), bondAmount)
-	votingAmount.Sub(votingAmount, account.Bond())
-	unbondingAmount := new(big.Int).Add(account.Unbonds().GetUnbondAmount(), ubDiff)
-	if account.Stake().Cmp(new(big.Int).Add(votingAmount, unbondingAmount)) == -1 {
-		return errors.Errorf("Not enough voting power")
-	}
+	ubToAdd, ubToMod := account.GetUnbondingInfo(bonds, unbondingHeight)
 
 	var delta map[string]*big.Int
 	delta, err = s.pm.ChangeBond(account.Bonds(), bonds)
@@ -601,6 +595,9 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	unbondingCount := len(account.Unbonds())
 	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
 		return errors.Errorf("Too many unbonds %d", unbondingCount)
+	}
+	if account.Stake().Cmp(account.GetVoting()) != 1 {
+		return errors.Errorf("Not enough voting power")
 	}
 	for _, t := range tl {
 		ts := s.State.GetUnbondingTimer(t.Height, true)
