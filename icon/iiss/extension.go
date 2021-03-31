@@ -38,8 +38,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-const unbondingMax = 1000
-
 type ExtensionSnapshotImpl struct {
 	database db.Database
 
@@ -396,7 +394,9 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 
 	account = s.State.GetAccount(from)
 
-	if account.Stake().Cmp(new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())) == -1 {
+	voting := new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())
+	voting.Add(voting, account.Unbond())
+	if account.Stake().Cmp(voting) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 	delta, err = s.pm.ChangeDelegation(account.Delegations(), ds)
