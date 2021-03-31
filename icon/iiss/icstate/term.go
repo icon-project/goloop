@@ -136,6 +136,7 @@ type Term struct {
 	rewardFund      *RewardFund
 	bondRequirement int
 	revision        int
+	mainPRepCount   int
 	prepSnapshots   PRepSnapshots
 
 	flags       TermFlag
@@ -167,12 +168,10 @@ func (term *Term) Rrep() *big.Int {
 }
 
 func (term *Term) MainPRepCount() int {
-	// TODO implement me
-	return 1
+	return term.mainPRepCount
 }
 
-func (term *Term) ElectedPRepCount() int {
-	// TODO implement me
+func (term *Term) GetElectedPRepCount() int {
 	return len(term.prepSnapshots)
 }
 
@@ -237,6 +236,7 @@ func (term *Term) Set(other *Term) {
 	term.rewardFund = other.rewardFund.Clone()
 	term.bondRequirement = other.bondRequirement
 	term.revision = other.revision
+	term.mainPRepCount = other.mainPRepCount
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
 }
@@ -257,6 +257,7 @@ func (term *Term) Clone() *Term {
 		rewardFund:      term.rewardFund.Clone(),
 		bondRequirement: term.bondRequirement,
 		revision:        term.revision,
+		mainPRepCount:   term.mainPRepCount,
 		prepSnapshots:   term.prepSnapshots.Clone(),
 	}
 }
@@ -277,6 +278,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.rewardFund,
 		&term.bondRequirement,
 		&term.revision,
+		&term.mainPRepCount,
 		&term.prepSnapshots,
 	)
 }
@@ -293,6 +295,7 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.rewardFund,
 		term.bondRequirement,
 		term.revision,
+		term.mainPRepCount,
 		term.prepSnapshots,
 	)
 }
@@ -322,6 +325,7 @@ func (term *Term) equal(other *Term) bool {
 		term.rewardFund.Equal(other.rewardFund) &&
 		term.bondRequirement == other.bondRequirement &&
 		term.revision == other.revision &&
+		term.mainPRepCount == other.mainPRepCount &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -414,6 +418,7 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["rewardFund"] = term.rewardFund.ToJSON()
 	jso["bondRequirement"] = term.bondRequirement
 	jso["revision"] = term.revision
+	jso["mainPRepCount"] = term.mainPRepCount
 	jso["iissVersion"] = term.GetIISSVersion()
 	jso["preps"] = term.prepSnapshots.toJSON()
 
@@ -535,6 +540,10 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 	term.flags |= FlagValidator
 }
 
+func (term *Term) SetMainPRepCount(mainPRepCount int) {
+	term.mainPRepCount = mainPRepCount
+}
+
 func (term *Term) SetIrep(irep *big.Int) {
 	term.irep.Set(irep)
 }
@@ -561,7 +570,7 @@ func (term *Term) IsDecentralized() bool {
 		return false
 	}
 	return term.revision >= icmodule.RevisionDecentralize &&
-		len(term.prepSnapshots) >= term.MainPRepCount() &&
+		len(term.prepSnapshots) > 0 &&
 		term.totalDelegated.Sign() == 1
 }
 

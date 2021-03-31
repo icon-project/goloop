@@ -238,7 +238,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 			term.Irep(),
 			term.Rrep(),
 			term.MainPRepCount(),
-			term.ElectedPRepCount(),
+			term.GetElectedPRepCount(),
 		); err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 			term.Iglobal(),
 			term.Iprep(),
 			term.Ivoter(),
-			term.ElectedPRepCount(),
+			term.GetElectedPRepCount(),
 			term.BondRequirement(),
 		); err != nil {
 			return err
@@ -812,6 +812,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 	)
 
 	// Take prep snapshots only if mainPReps exist
+	mainPRepCount := 0
 	if s.pm.GetPRepSize(icstate.Main) > 0 {
 		size := icutils.Min(s.pm.Size(), int(s.State.GetPRepCount()))
 		if size > 0 {
@@ -820,8 +821,12 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 			for i := 0; i < size; i++ {
 				prep := s.pm.GetPRepByIndex(i)
 				prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
+				if prep.Grade() == icstate.Main {
+					mainPRepCount++
+				}
 			}
 
+			nextTerm.SetMainPRepCount(mainPRepCount)
 			nextTerm.SetPRepSnapshots(prepSnapshots)
 		}
 	}
