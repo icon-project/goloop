@@ -278,7 +278,7 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["irep"] = intconv.FormatBigInt(s.GetIRep())
 	jso["rrep"] = intconv.FormatBigInt(s.GetRRep())
 	jso["mainPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
-	jso["subPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
+	jso["subPRepCount"] = intconv.FormatInt(s.GetSubPRepCount())
 	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
 	jso["iissVersion"] = intconv.FormatInt(int64(s.GetIISSVersion()))
 	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
