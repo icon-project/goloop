@@ -294,14 +294,24 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 				}
 				for _, ub := range a.unbonds {
 					if nb.To().Equal(ub.Address) {
-						// append 0 value unbond to remove previous unbond
-						unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
-						ubToMod = append(ubToMod, unbond)
-						if diff.Sign() == 1 { // ob > nb
+						if len(ubToAdd) > 0 && nb.To().Equal(ubToAdd[len(ubToAdd)-1].Address) {
 							ubToAdd = ubToAdd[:len(ubToAdd)-1]
-							value := new(big.Int).Add(ub.Value, diff)
+						}
+						value := new(big.Int).Add(ub.Value, diff)
+						if diff.Sign() == 1 { // ob > nb, increase ub
+							// append 0 value unbond to remove previous unbond
+							unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+							ubToMod = append(ubToMod, unbond)
 							unbond = &Unbond{nb.Address, value, unbondingHeight}
 							ubToMod = append(ubToMod, unbond)
+						} else { // ob < nb, decrease ub
+							if value.Sign() == 1 {
+								unbond := &Unbond{nb.Address, value, ub.Expire}
+								ubToMod = append(ubToMod, unbond)
+							} else {
+								unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
+								ubToMod = append(ubToMod, unbond)
+							}
 						}
 						break
 					}
@@ -338,8 +348,7 @@ func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds,
 		for _, ub := range a.unbonds {
 			if ob.To().Equal(ub.Address) {
 				ubExist = true
-				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int), ub.Expire})
-				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int).Add(ob.Amount(), ub.Value), unbondingHeight})
+				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int).Add(ob.Amount(), ub.Value), ub.Expire})
 				break
 			}
 		}
@@ -360,31 +369,51 @@ func (a *Account) SetBonds(bonds Bonds) {
 func (a *Account) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
 	a.checkWritable()
 	var tl []TimerJobInfo
-	jobSet := make(map[int64]bool)
+	addedSet := make(map[int64]bool)
 	a.unbonds = append(a.unbonds, ubToAdd...)
 	// All ubToAdd elements have same expire height
 	if len(ubToAdd) > 0 {
 		expire := ubToAdd[0].Expire
 		tl = append(tl, TimerJobInfo{JobTypeAdd, expire})
-		jobSet[expire] = true
+		addedSet[expire] = true
 	}
 	for _, mod := range ubToMod {
 		for _, ub := range a.unbonds {
 			if ub.Address.Equal(mod.Address) {
 				ub.Value = mod.Value
 				ub.Expire = mod.Expire
-				if jobSet[mod.Expire] {
+				if addedSet[mod.Expire] {
 					continue
 				}
-				jobSet[mod.Expire] = true
-				if ub.Value.Cmp(new(big.Int)) == 0 {
-					tl = append(tl, TimerJobInfo{JobTypeRemove, ub.Expire})
-				} else {
+				addedSet[mod.Expire] = true
+				if ub.Value.Sign() == 1 {
 					tl = append(tl, TimerJobInfo{JobTypeAdd, ub.Expire})
 				}
 			}
 		}
 	}
+	tmpUbs := make([]*Unbond, 0)
+	ubHToRm := make([]int64, 0)
+	for _, ub := range a.unbonds {
+		if ub.Value.Sign() == 1 {
+			tmpUbs = append(tmpUbs, ub)
+		} else {
+			ubHToRm = append(ubHToRm, ub.Expire)
+		}
+	}
+	for _, h := range ubHToRm {
+		flag := true // all unbonds that expireHeight set `h` have zero value
+		for _, ub := range tmpUbs {
+			if ub.Expire == h {
+				flag = false
+				break
+			}
+		}
+		if flag {
+			tl = append(tl, TimerJobInfo{JobTypeRemove, h})
+		}
+	}
+	a.unbonds = tmpUbs
 	a.unbonding.Set(a.Unbonds().GetUnbondAmount())
 	return tl
 }

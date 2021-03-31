@@ -127,12 +127,10 @@ func (t *Timer) Set(other *Timer) {
 	t.Addresses = other.Addresses.Clone()
 }
 
-func (t *Timer) Add(address module.Address) error {
-	if t.Addresses.Contains(address) {
-		return errors.Errorf("%s already in timer", address.String())
+func (t *Timer) Add(address module.Address) {
+	if !t.Addresses.Contains(address) {
+		t.Addresses = append(t.Addresses, address.(*common.Address))
 	}
-	t.Addresses = append(t.Addresses, address.(*common.Address))
-	return nil
 }
 
 func (t *Timer) Delete(address module.Address) error {
@@ -170,9 +168,7 @@ func newTimerWithTag(_ icobject.Tag) *Timer {
 func ScheduleTimerJob(t *Timer, info TimerJobInfo, address module.Address) error {
 	switch info.Type {
 	case JobTypeAdd:
-		if err := t.Add(address); err != nil {
-			return err
-		}
+		t.Add(address)
 	case JobTypeRemove:
 		if err := t.Delete(address); err != nil {
 			return err

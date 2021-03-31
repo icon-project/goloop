@@ -231,16 +231,14 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	j2 := TimerJobInfo{JobTypeRemove, mod1.Expire}
 	assert.Contains(t, tl, j1)
 	assert.Contains(t, tl, j2)
-	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
-	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
-	ub3 := &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
-	ub4 := &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
-	ub5 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 50}
+	ub1 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub2 = &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50}
+	ub3 := &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 50}
+	ub4 := &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(100), 50}
 	assert.True(t, a.unbonds[0].Equal(ub1))
 	assert.True(t, a.unbonds[1].Equal(ub2))
 	assert.True(t, a.unbonds[2].Equal(ub3))
 	assert.True(t, a.unbonds[3].Equal(ub4))
-	assert.True(t, a.unbonds[4].Equal(ub5))
 	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 
 	//remove all unbondings
@@ -258,16 +256,7 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	assert.Contains(t, tl, j1)
 	assert.Contains(t, tl, j2)
 	assert.Contains(t, tl, j3)
-	ub1 = &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(0), 100}
-	ub2 = &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(0), 150}
-	ub3 = &Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(0), 200}
-	ub4 = &Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(0), 100}
-	ub5 = &Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(0), 1000}
-	assert.True(t, a.unbonds[0].Equal(ub1))
-	assert.True(t, a.unbonds[1].Equal(ub2))
-	assert.True(t, a.unbonds[2].Equal(ub3))
-	assert.True(t, a.unbonds[3].Equal(ub4))
-	assert.True(t, a.unbonds[4].Equal(ub5))
+	assert.Equal(t, 0, len(a.Unbonds()))
 	assert.Equal(t, 0, a.unbonding.Cmp(a.unbonds.GetUnbondAmount()))
 }
 
@@ -380,7 +369,7 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	assert.Equal(t, 1, len(ubAdds))
 	assert.Equal(t, 2, len(ubMods))
 
-	//case3 hx4 will be added(5), hx5 will be removed
+	//case3 hx4 will be added(5), hx5 will be modified
 	//bonds : [{hx3, 10}, {hx4, 10}, {hx5, 5}], unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 	b1 = &Bond{addr1, common.NewHexInt(10)}
 	b2 = &Bond{addr2, common.NewHexInt(5)}
@@ -388,11 +377,12 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	nbs = []*Bond{b1, b2, b3}
 	ubAdds, ubMods = a.GetUnbondingInfo(nbs, bh) // 1 will modified(hx5), 1 will added(hx4)
 
-	ubMod1 = &Unbond{addr3, new(big.Int), a.Unbonds()[0].Expire}
-	assert.True(t, ubAdds[0].Equal(ubAdd1))
-	assert.True(t, ubMods[0].Equal(ubMod1))
+	ubAdd1 = &Unbond{addr2, big.NewInt(5), bh}
+	ubMod1 = &Unbond{addr3, big.NewInt(0), a.Unbonds()[0].Expire}
 	assert.Equal(t, 1, len(ubAdds))
 	assert.Equal(t, 1, len(ubMods))
+	assert.True(t, ubAdds[0].Equal(ubAdd1))
+	assert.True(t, ubMods[0].Equal(ubMod1))
 
 	//case4 hx6 unbond will be modified(removed)
 	//bonds : [{hx3, 10}, {hx4, 10}, {hx5, 5}], unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
@@ -414,11 +404,10 @@ func TestAccount_GetUnbondingInfo(t *testing.T) {
 	nbs = []*Bond{b1}
 	ubAdds, ubMods = a.GetUnbondingInfo(nbs, bh) //hx3, hx4 will be added, hx5 will be modified(remove hx5, add hx5)
 	assert.Equal(t, 2, len(ubAdds))
-	assert.Equal(t, 2, len(ubMods))
+	assert.Equal(t, 1, len(ubMods))
 	assert.True(t, ubAdds[0].Address.Equal(addr1))
 	assert.True(t, ubAdds[1].Address.Equal(addr2))
 	assert.True(t, ubMods[0].Address.Equal(addr3))
-	assert.True(t, ubMods[1].Address.Equal(addr3))
 }
 
 func TestAccount_SlashStake(t *testing.T) {
