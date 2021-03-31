@@ -44,11 +44,12 @@ type chainMethod struct {
 }
 
 type chainScore struct {
-	cc    contract.CallContext
-	log   log.Logger
-	from  module.Address
-	value *big.Int
-	gov   bool
+	cc     contract.CallContext
+	log    log.Logger
+	from   module.Address
+	value  *big.Int
+	gov    bool
+	charge bool
 }
 
 const (
@@ -920,11 +921,12 @@ func (s *chainScore) checkGovernance(charge bool) error {
 
 func newChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	return &chainScore{
-			cc:    cc,
-			from:  from,
-			value: value,
-			log:   icutils.NewIconLogger(cc.Logger()),
-			gov:   cc.Governance().Equal(from),
+			cc:     cc,
+			from:   from,
+			value:  value,
+			log:    icutils.NewIconLogger(cc.Logger()),
+			gov:    cc.Governance().Equal(from),
+			charge: from.IsContract() || cc.Revision().Value() >= icmodule.RevisionICON2,
 		},
 		nil
 }

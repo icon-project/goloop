@@ -76,7 +76,7 @@ func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 }
 
 func (s *chainScore) Ex_getIRep() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return 0, err
 	}
 	es, err := s.getExtensionState()
@@ -87,7 +87,7 @@ func (s *chainScore) Ex_getIRep() (int64, error) {
 }
 
 func (s *chainScore) Ex_getRRep() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return 0, err
 	}
 	es, err := s.getExtensionState()
@@ -98,7 +98,7 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 }
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -190,7 +190,7 @@ func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSuppl
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -205,7 +205,7 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 }
 
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -228,7 +228,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 }
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -246,7 +246,7 @@ var regPRepFee = icutils.ToLoop(2000)
 
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -310,7 +310,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -332,7 +332,7 @@ func (s *chainScore) Ex_unregisterPRep() error {
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -351,7 +351,7 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 }
 
 func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -378,7 +378,7 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 }
 
 func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -392,7 +392,7 @@ func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -406,7 +406,7 @@ func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -422,7 +422,7 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -450,7 +450,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 }
 
 func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	es, err := s.getExtensionState()
@@ -464,7 +464,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	logger := s.cc.Logger()
 	logger.Tracef("Ex_setBond() start: from=%s", s.from)
 
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	bonds, err := icstate.NewBonds(bondList)
@@ -484,7 +484,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 }
 
 func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -499,7 +499,7 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 }
 
 func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	bl, err := icstate.NewBonderList(bonderList)
@@ -518,7 +518,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 }
 
 func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -534,7 +534,7 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 }
 
 func (s *chainScore) Ex_claimIScore() error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -627,7 +627,7 @@ func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -675,7 +675,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 }
 
 func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -693,7 +693,7 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 }
 
 func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -712,7 +712,7 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -727,7 +727,7 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	if err := s.iissHandleRevision(); err != nil {
@@ -769,7 +769,7 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()

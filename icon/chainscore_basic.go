@@ -30,7 +30,10 @@ import (
 	"math/big"
 )
 
-func (s *chainScore) tryChargeCall() error {
+func (s *chainScore) tryChargeCall(iiss bool) error {
+	if iiss && !s.charge {
+		return nil
+	}
 	if !s.gov {
 		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
 			return scoreresult.OutOfStepError.New("UserCodeError")
@@ -41,7 +44,7 @@ func (s *chainScore) tryChargeCall() error {
 
 // Destroy : Allowed from score owner
 func (s *chainScore) Ex_disableScore(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if address == nil {
@@ -59,7 +62,7 @@ func (s *chainScore) Ex_disableScore(address module.Address) error {
 }
 
 func (s *chainScore) Ex_enableScore(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if address == nil {
@@ -249,7 +252,7 @@ func (s *chainScore) getScoreAddress(txHash []byte) module.Address {
 }
 
 func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
-	if err := s.checkGovernance(false); err != nil {
+	if err := s.checkGovernance(true); err != nil {
 		return nil, err
 	}
 	if len(txHash) == 0 {
@@ -260,7 +263,7 @@ func (s *chainScore) Ex_txHashToAddress(txHash []byte) (module.Address, error) {
 }
 
 func (s *chainScore) Ex_addressToTxHashes(address module.Address) ([]interface{}, error) {
-	if err := s.checkGovernance(false); err != nil {
+	if err := s.checkGovernance(true); err != nil {
 		return nil, err
 	}
 	if !address.IsContract() {
@@ -281,7 +284,7 @@ func (s *chainScore) Ex_addressToTxHashes(address module.Address) ([]interface{}
 }
 
 func (s *chainScore) Ex_acceptScore(txHash []byte) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if len(txHash) == 0 {
@@ -300,7 +303,7 @@ func (s *chainScore) Ex_acceptScore(txHash []byte) error {
 }
 
 func (s *chainScore) Ex_rejectScore(txHash []byte) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if len(txHash) == 0 {
@@ -328,7 +331,7 @@ func (s *chainScore) Ex_rejectScore(txHash []byte) error {
 
 // Governance score would check the verification of the address
 func (s *chainScore) Ex_blockScore(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if address == nil {
@@ -346,7 +349,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 
 // Governance score would check the verification of the address
 func (s *chainScore) Ex_unblockScore(address module.Address) error {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return err
 	}
 	if address == nil {
@@ -402,7 +405,7 @@ func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 
 // User calls icx_call : Functions which can be called by anyone.
 func (s *chainScore) Ex_getRevision() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -410,7 +413,7 @@ func (s *chainScore) Ex_getRevision() (int64, error) {
 }
 
 func (s *chainScore) Ex_getStepPrice() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -418,7 +421,7 @@ func (s *chainScore) Ex_getStepPrice() (int64, error) {
 }
 
 func (s *chainScore) Ex_getStepCost(t string) (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -430,7 +433,7 @@ func (s *chainScore) Ex_getStepCost(t string) (int64, error) {
 }
 
 func (s *chainScore) Ex_getStepCosts() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -447,7 +450,7 @@ func (s *chainScore) Ex_getStepCosts() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -459,7 +462,7 @@ func (s *chainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 }
 
 func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
 	if !address.IsContract() {
@@ -511,7 +514,7 @@ func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 }
 
 func (s *chainScore) Ex_getServiceConfig() (int64, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -519,7 +522,7 @@ func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 }
 
 func (s *chainScore) Ex_getFeeSharingConfig() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(); err != nil {
+	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
