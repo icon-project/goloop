@@ -507,8 +507,6 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 		return s.toScoreResultError(scoreresult.InvalidParameterError, err)
 	}
 
-	s.cc.Logger().Debugf("from=%s bonder[0]=%s", s.from, bonderList[0])
-
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
