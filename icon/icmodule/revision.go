@@ -49,15 +49,34 @@ const (
 )
 
 var revisionFlags = []module.Revision{
+	// Revision0
 	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout,
+	// Revision1
 	0,
+	// Revision2
 	module.AutoAcceptGovernance,
+	// Revision3
 	module.LegacyInputJSON | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
+	// Revision4
 	0,
+	// Revision5
 	0,
+	// Revision6
 	0,
+	// Revision7
 	0,
+	// Revision8
 	0,
+	// Revision9
+	0,
+	// Revision10
+	0,
+	// Revision11
+	0,
+	// Revision12
+	0,
+	// Revision13
+	module.ResetStepOnFailure | module.LegacyNoTimeout,
 }
 
 func init() {
