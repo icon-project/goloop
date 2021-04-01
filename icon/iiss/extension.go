@@ -394,9 +394,10 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 
 	account = s.State.GetAccount(from)
 
-	voting := new(big.Int).Add(ds.GetDelegationAmount(), account.Bond())
-	voting.Add(voting, account.Unbond())
-	if account.Stake().Cmp(voting) == -1 {
+	using := ds.GetDelegationAmount()
+	using.Add(using, account.Unbond())
+	using.Add(using, account.Bond())
+	if account.Stake().Cmp(using) < 0 {
 		return errors.Errorf("Not enough voting power")
 	}
 	delta, err = s.pm.ChangeDelegation(account.Delegations(), ds)
@@ -595,7 +596,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
 		return errors.Errorf("Too many unbonds %d", unbondingCount)
 	}
-	if account.Stake().Cmp(account.GetVoting()) == -1 {
+	if account.Stake().Cmp(account.UsingStake()) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
 	for _, timerJobInfo := range tl {

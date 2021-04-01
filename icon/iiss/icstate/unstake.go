@@ -25,14 +25,14 @@ import (
 )
 
 type Unstake struct {
-	Amount       *big.Int
+	Amount *big.Int
 	// Unstake is done on OnExecutionEnd of ExpireHeight
 	ExpireHeight int64
 }
 
 func newUnstake(amount *big.Int, expireHeight int64) *Unstake {
 	return &Unstake{
-		Amount: new(big.Int).Set(amount),
+		Amount:       new(big.Int).Set(amount),
 		ExpireHeight: expireHeight,
 	}
 }
@@ -145,11 +145,11 @@ func (us Unstakes) findIndex(h int64) int64 {
 	return 0
 }
 
-func (us *Unstakes) decreaseUnstake(address module.Address, v *big.Int) ([]TimerJobInfo, error) {
+func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
 		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
-	//var tl []TimerJobInfo
+	var tl []TimerJobInfo
 	remain := new(big.Int).Set(v) // stakeInc
 	uLen := len(*us)
 	for i := uLen - 1; i >= 0; i-- {
@@ -159,8 +159,7 @@ func (us *Unstakes) decreaseUnstake(address module.Address, v *big.Int) ([]Timer
 		case 0, 1:
 			// Remove an unstake slot
 			*us = (*us)[:i]
-			//tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
-			RemoveUnstakingTimer(address, u.ExpireHeight)
+			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 			if cmp == 0 {
 				return tl, nil
 			} else {
@@ -168,8 +167,8 @@ func (us *Unstakes) decreaseUnstake(address module.Address, v *big.Int) ([]Timer
 			}
 		case -1:
 			u.Amount.Sub(u.Amount, remain)
-			//return tl, nil
+			return tl, nil
 		}
 	}
-	//return tl, nil
+	return tl, nil
 }

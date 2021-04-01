@@ -112,7 +112,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	v := &value.Int
 	logger := s.cc.Logger()
 
-	if ia.GetVoting().Cmp(v) == 1 {
+	if v.Cmp(ia.UsingStake()) < 0 {
 		msg := "Failed to stake: stake < voting"
 		logger.Infof(msg)
 		return scoreresult.InvalidParameterError.Errorf(msg)
@@ -134,27 +134,27 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	tsupply := icutils.GetTotalSupply(s.cc)
 	prevTotalStake := ia.GetTotalStake()
 
-	// update IISS account
-	//var tl []icstate.TimerJobInfo
+	//update IISS account
+	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
 	case 1:
 		// Condition: stakeInc > 0
-		err = ia.DecreaseUnstake(stakeInc)
+		tl, err = ia.DecreaseUnstake(stakeInc)
 	case -1:
 		expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
 		slotMax := int(es.State.GetUnstakeSlotMax())
-		err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
+		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
 	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
 	}
 
-	//for _, t := range tl {
-	//	ts := es.GetUnstakingTimerState(t.Height, true)
-	//	if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-	//		return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
-	//	}
-	//}
+	for _, t := range tl {
+		ts := es.GetUnstakingTimerState(t.Height, true)
+		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
+			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
+		}
+	}
 	if err = ia.SetStake(v); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
@@ -168,7 +168,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	cmp := prevTotalStake.Cmp(totalStake)
 	if cmp != 0 {
 		if cmp > 0 {
-			panic()
+			logger.Panicf("Fail to setStake: account.totalStake < preveTotalStake(invalid state)")
 		}
 		diff := new(big.Int).Sub(totalStake, prevTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
