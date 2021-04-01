@@ -415,12 +415,12 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
 	size := len(delta)
 	keys := make([]string, 0, size)
-	votes = make([]*icstage.Vote, size, size)
 	for key := range delta {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 
+	votes = make([]*icstage.Vote, size, size)
 	for i, key := range keys {
 		var addr *common.Address
 		vote := icstage.NewVote()
@@ -581,9 +581,6 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return errors.Errorf("Not enough voting power")
 	}
 
-	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
-	ubToAdd, ubToMod := account.GetUnbondingInfo(bonds, unbondingHeight)
-
 	var delta map[string]*big.Int
 	delta, err = s.pm.ChangeBond(account.Bonds(), bonds)
 	if err != nil {
@@ -591,7 +588,11 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	}
 
 	account.SetBonds(bonds)
-	tl := account.UpdateUnbonds(ubToAdd, ubToMod)
+	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
+	tl, err := account.UpdateUnbonds(delta, unbondingHeight)
+	if err != nil {
+		return err
+	}
 	unbondingCount := len(account.Unbonds())
 	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
 		return errors.Errorf("Too many unbonds %d", unbondingCount)
@@ -599,9 +600,16 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	if account.Stake().Cmp(account.GetVoting()) == -1 {
 		return errors.Errorf("Not enough voting power")
 	}
-	for _, t := range tl {
-		ts := s.State.GetUnbondingTimer(t.Height, true)
-		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
+	for _, timerJobInfo := range tl {
+		creatIfNotExist := true
+		if timerJobInfo.Type == icstate.JobTypeRemove {
+			creatIfNotExist = false
+		}
+		unbondingTimer := s.State.GetUnbondingTimer(timerJobInfo.Height, creatIfNotExist)
+		if unbondingTimer == nil {
+			panic(errors.Errorf("There is no timer"))
+		}
+		if err = icstate.ScheduleTimerJob(unbondingTimer, timerJobInfo, from); err != nil {
 			return errors.Errorf("Error while scheduling Unbonding Timer Job")
 		}
 	}

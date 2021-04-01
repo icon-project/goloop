@@ -18,13 +18,16 @@ package icstate
 
 import (
 	"fmt"
+	"math/big"
+	"sort"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"math/big"
 )
 
 const (
@@ -277,96 +280,88 @@ func (a *Account) GetUnbondsInfo() []interface{} {
 	return a.unbonds.ToJSON(module.JSONVersion3)
 }
 
-func (a *Account) GetUnbondingInfo(bonds Bonds, unbondingHeight int64) (Unbonds, Unbonds) {
-	var ubToAdd, ubToMod []*Unbond
-	for _, nb := range bonds {
-		bondExist := false
-		for _, ob := range a.bonds {
-			diff := new(big.Int)
-			if nb.To().Equal(ob.To()) {
-				bondExist = true
-				diff.Sub(ob.Amount(), nb.Amount())
-				if diff.Sign() == 1 {
-					unbond := Unbond{nb.Address, diff, unbondingHeight}
-					ubToAdd = append(ubToAdd, &unbond)
-				} else if diff.Sign() == 0 {
-					continue
-				}
-				for _, ub := range a.unbonds {
-					if nb.To().Equal(ub.Address) {
-						if len(ubToAdd) > 0 && nb.To().Equal(ubToAdd[len(ubToAdd)-1].Address) {
-							ubToAdd = ubToAdd[:len(ubToAdd)-1]
-						}
-						value := new(big.Int).Add(ub.Value, diff)
-						if diff.Sign() == 1 { // ob > nb, increase ub
-							// append 0 value unbond to remove previous unbond
-							unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
-							ubToMod = append(ubToMod, unbond)
-							unbond = &Unbond{nb.Address, value, unbondingHeight}
-							ubToMod = append(ubToMod, unbond)
-						} else { // ob < nb, decrease ub
-							if value.Sign() == 1 {
-								unbond := &Unbond{nb.Address, value, ub.Expire}
-								ubToMod = append(ubToMod, unbond)
-							} else {
-								unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
-								ubToMod = append(ubToMod, unbond)
-							}
-						}
-						break
-					}
-				}
-				break
-			}
-		}
-		if !bondExist {
-			for _, ub := range a.unbonds {
-				if nb.To().Equal(ub.Address) {
-					newValue := new(big.Int).Sub(ub.Value, nb.Value.Value())
-					unbond := &Unbond{nb.Address, new(big.Int), ub.Expire}
-					if newValue.Sign() == 1 {
-						unbond = &Unbond{nb.Address, newValue, ub.Expire}
-					}
-					ubToMod = append(ubToMod, unbond)
-					break
-				}
-			}
-		}
-	}
-
-	for _, ob := range a.bonds {
-		nbExist, ubExist := false, false
-		for _, nb := range bonds {
-			if nb.To().Equal(ob.To()) {
-				nbExist = true
-				break
-			}
-		}
-		if nbExist {
-			continue
-		}
-		for _, ub := range a.unbonds {
-			if ob.To().Equal(ub.Address) {
-				ubExist = true
-				ubToMod = append(ubToMod, &Unbond{ob.Address, new(big.Int).Add(ob.Amount(), ub.Value), ub.Expire})
-				break
-			}
-		}
-		if ubExist {
-			continue
-		}
-		ubToAdd = append(ubToAdd, &Unbond{ob.Address, ob.Amount(), unbondingHeight})
-	}
-	return ubToAdd, ubToMod
-}
-
 func (a *Account) SetBonds(bonds Bonds) {
 	a.checkWritable()
 	a.bonds = bonds
 	a.bonding.Set(a.bonds.GetBondAmount())
 }
 
-func (a *Account) UpdateUnbonds(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
+func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int64) ([]TimerJobInfo, error) {
+	a.checkWritable()
+	var tl []TimerJobInfo
+
+	// sort key of bondDelta
+	size := len(bondDelta)
+	keys := make([]string, 0, size)
+	for key := range bondDelta {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	unbondsMapByAddr := a.unbonds.MapByAddr()
+	expireRefCount := a.unbonds.ExpireRefCount()
+
+	for _, key := range keys {
+		value := bondDelta[key]
+		sign := value.Sign()
+		if sign == 0 {
+			// there is no change
+			continue
+		}
+		unbond, ok := unbondsMapByAddr[key]
+		if sign == -1 { // value is negative. increase unbond value
+			if expireRefCount[expireHeight] == 0 {
+				// add new timer
+				tl = append(tl, TimerJobInfo{JobTypeAdd, expireHeight})
+			}
+			expireRefCount[expireHeight]++
+
+			if ok {
+				if expireRefCount[unbond.Expire] == 1 {
+					tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.Expire})
+				}
+				expireRefCount[unbond.Expire]--
+				// update unbond
+				unbond.Value.Sub(unbond.Value, value)
+				unbond.Expire = expireHeight
+			} else {
+				// add new unbond
+				addr, err := common.NewAddress([]byte(key))
+				if err != nil {
+					return nil, err
+				}
+
+				a.unbonds.Add(addr, new(big.Int).Neg(value), expireHeight)
+			}
+		} else { // value is positive. decrease unbond value
+			if ok {
+				// decrease unbond value
+				unbond.Value.Sub(unbond.Value, value)
+				if unbond.Value.Sign() <= 0 {
+					// remove unbond
+					addr, err := common.NewAddress([]byte(key))
+					if err != nil {
+						return nil, err
+					}
+					if err := a.unbonds.DeleteByAddress(addr); err != nil {
+						return nil, err
+					}
+					if expireRefCount[unbond.Expire] == 1 {
+						// remove timer
+						tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.Expire})
+					}
+					expireRefCount[unbond.Expire]--
+				}
+			} else {
+				// do nothing
+			}
+		}
+	}
+	a.unbonding.Set(a.unbonds.GetUnbondAmount())
+	return tl, nil
+}
+
+func (a *Account) UpdateUnbondsOld(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
 	a.checkWritable()
 	var tl []TimerJobInfo
 	addedSet := make(map[int64]bool)
@@ -431,7 +426,7 @@ func (a *Account) RemoveUnbonding(height int64) error {
 	}
 
 	if len(tmp) == len(a.unbonds) {
-		return errors.Errorf("%s does not have unbonding timer at %d", a.address.String(), height)
+		return errors.Errorf("%s does not have unbonding entry with expire(%d)", a.address, height)
 	}
 	a.unbonds = tmp
 	a.unbonding.Sub(a.Unbond(), removed)
