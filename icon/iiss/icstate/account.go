@@ -176,19 +176,6 @@ func (a *Account) SetStake(v *big.Int) error {
 	return nil
 }
 
-// UpdateUnstake update unstakes
-func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64, slotMax int) ([]TimerJobInfo, error) {
-	a.checkWritable()
-	switch stakeInc.Sign() {
-	case 1:
-		// Condition: stakeInc > 0
-		return a.unstakes.decreaseUnstake(stakeInc)
-	case -1:
-		return a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
-	}
-	return nil, nil
-}
-
 func (a *Account) DecreaseUnstake(stakeInc *big.Int) ([]TimerJobInfo, error) {
 	a.checkWritable()
 	return a.unstakes.decreaseUnstake(stakeInc)
@@ -255,9 +242,12 @@ func (a *Account) GetVotingPower() *big.Int {
 }
 
 func (a *Account) GetVoting() *big.Int {
-	voting := new(big.Int).Add(a.Bond(), a.Delegating())
-	voting.Add(voting, a.Unbond())
-	return voting
+	return new(big.Int).Add(a.Bond(), a.Delegating())
+}
+
+func (a *Account) UsingStake() *big.Int {
+	using := a.GetVoting()
+	return using.Add(using, a.unbonding)
 }
 
 func (a *Account) Bond() *big.Int {
