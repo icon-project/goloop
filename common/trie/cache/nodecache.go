@@ -22,14 +22,12 @@ type NodeCache struct {
 	lock   sync.Mutex
 	nodes  [][2][]byte
 	offset int
+	depth  int
 	size   int
 	f      *os.File
 }
 
 func indexByNibs(nibs []byte) int {
-	if len(nibs) == 0 {
-		return 0
-	}
 	idx := 0
 	for _, nib := range nibs {
 		idx = idx*16 + int(nib) + 1
@@ -42,16 +40,13 @@ func sizeByDepth(d int) int {
 }
 
 func (c *NodeCache) Get(nibs []byte, h []byte) ([]byte, bool) {
-	if c == nil || nibs == nil {
+	if c == nil || nibs == nil || len(nibs) >= c.depth {
 		return nil, false
 	}
 	idx := indexByNibs(nibs)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if idx >= c.size {
-		return nil, false
-	}
 
 	var node [][]byte
 	if idx < c.offset {
@@ -73,16 +68,13 @@ func (c *NodeCache) String() string {
 }
 
 func (c *NodeCache) Put(nibs []byte, h []byte, serialized []byte) {
-	if c == nil || nibs == nil || len(serialized) > dataMaxSize {
+	if c == nil || nibs == nil || len(serialized) > dataMaxSize || len(nibs) >= c.depth {
 		return
 	}
 	idx := indexByNibs(nibs)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if idx >= c.size {
-		return
-	}
 
 	if idx < c.offset {
 		c.nodes[idx] = [2][]byte{h, serialized}
@@ -177,6 +169,7 @@ func NewNodeCache(depth int, fdepth int, path string) *NodeCache {
 	return &NodeCache{
 		nodes:  make([][2][]byte, offset),
 		offset: offset,
+		depth:  depth+fdepth,
 		size:   size,
 		f:      f,
 	}
