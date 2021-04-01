@@ -926,7 +926,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 			value:  value,
 			log:    icutils.NewIconLogger(cc.Logger()),
 			gov:    cc.Governance().Equal(from),
-			charge: from.IsContract() || cc.Revision().Value() >= icmodule.RevisionICON2,
+			charge: (from != nil && from.IsContract()) || cc.Revision().Value() >= icmodule.RevisionICON2,
 		},
 		nil
 }
