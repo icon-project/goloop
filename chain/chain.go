@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -560,6 +561,28 @@ func (c *singleChain) Prune(gsfile string, dbtype string, height int64) error {
 func (c *singleChain) Backup(file string, extra []string) error {
 	task := newTaskBackup(c, file, extra)
 	return c._runTask(task, false)
+}
+
+type TaskFactory func(c *singleChain, params json.RawMessage) (chainTask, error)
+
+var taskFactories = map[string]TaskFactory{}
+
+func registerTaskFactory(name string, factory TaskFactory) {
+	if _, ok := taskFactories[name]; ok {
+		panic("duplicated task factory")
+	}
+	taskFactories[name] = factory
+}
+
+func (c *singleChain) RunTask(name string, params json.RawMessage) error {
+	if factory, ok := taskFactories[name]; ok {
+		if task, err := factory(c, params); err != nil {
+			return err
+		} else {
+			return c._runTask(task, false)
+		}
+	}
+	return errors.NotFoundError.Errorf("UnknownTask(name=%s)", name)
 }
 
 func (c *singleChain) _handleTerminateInLock() {
