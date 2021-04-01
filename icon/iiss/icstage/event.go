@@ -32,10 +32,10 @@ type Vote struct {
 	Value   *big.Int
 }
 
-func NewVote() *Vote {
+func NewVote(address *common.Address, value *big.Int) *Vote {
 	return &Vote{
-		Address: new(common.Address),
-		Value:   new(big.Int),
+		Address: address,
+		Value:   new(big.Int).Set(value),
 	}
 }
 
@@ -52,10 +52,7 @@ func (v *Vote) Equal(v2 *Vote) bool {
 }
 
 func (v *Vote) Clone() *Vote {
-	n := NewVote()
-	n.Address.Set(v.Address)
-	n.Value.Set(v.Value)
-	return n
+	return NewVote(v.Address, v.Value)
 }
 
 type VoteList []*Vote

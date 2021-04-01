@@ -17,10 +17,13 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/module"
 	"math/big"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 )
 
 var UnbondingPeriod = int64(10)
@@ -101,6 +104,57 @@ func (ul Unbonds) GetUnbondAmount() *big.Int {
 		total.Add(total, b.Value)
 	}
 	return total
+}
+
+func (ul Unbonds) GetUnbondByAddress(address module.Address) (*Unbond, int) {
+	for i, ub := range ul {
+		if address.Equal(ub.Address) {
+			return ub, i
+		}
+	}
+	return nil, -1
+}
+
+func (ul Unbonds) MapByAddr() map[string]*Unbond {
+	newMap := make(map[string]*Unbond)
+	for _, ub := range ul {
+		key := icutils.ToKey(ub.Address)
+		newMap[key] = ub
+	}
+	return newMap
+}
+
+func (ul Unbonds) ExpireRefCount() map[int64]int {
+	newMap := make(map[int64]int)
+	for _, ub := range ul {
+		key := ub.Expire
+		newMap[key] = newMap[key] + 1
+	}
+	return newMap
+}
+
+func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
+	unbond := newUnbond()
+	unbond.Address = address.(*common.Address)
+	unbond.Value.Set(value)
+	unbond.Expire = expireHeight
+	*ul = append(*ul, unbond)
+}
+
+func (ul *Unbonds) Delete(i int) error {
+	if i < 0 || i >= len(*ul) {
+		return errors.Errorf("Invalid index")
+	}
+
+	copy((*ul)[i:], (*ul)[i+1:])
+	(*ul)[len(*ul)-1] = nil // or the zero value of T
+	*ul = (*ul)[:len(*ul)-1]
+	return nil
+}
+
+func (ul *Unbonds) DeleteByAddress(address module.Address) error {
+	_, idx := ul.GetUnbondByAddress(address)
+	return ul.Delete(idx)
 }
 
 func (ul *Unbonds) Slash(address module.Address, ratio int) (*big.Int, int64) {
