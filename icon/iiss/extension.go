@@ -423,15 +423,11 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 	votes = make([]*icstage.Vote, size, size)
 	for i, key := range keys {
 		var addr *common.Address
-		vote := icstage.NewVote()
-
 		addr, err = common.NewAddress([]byte(key))
 		if err != nil {
 			return
 		}
-		vote.Address = addr
-		vote.Value.Set(delta[key])
-		votes[i] = vote
+		votes[i] = icstage.NewVote(addr, delta[key])
 	}
 	return
 }
