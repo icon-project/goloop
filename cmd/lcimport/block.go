@@ -22,6 +22,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -65,6 +66,22 @@ func (b *Block) SetResult(result []byte, validators module.ValidatorList, rcts m
 	b.rcts = rcts
 	b.txTotal = txTotal
 	b.validators = validators
+}
+
+func (b *Block) CheckResult(result []byte, validators module.ValidatorList, rcts module.ReceiptList, txTotal *big.Int) error {
+	if len(b.result) == 0 {
+		return errors.New("NoStoredResult")
+	}
+	if !bytes.Equal(b.result, result) {
+		return errors.Errorf("DifferentResult(stored=%#x,real=%#x)", b.result, result)
+	}
+	if exp, real := b.validators.Hash(), validators.Hash(); !bytes.Equal(exp, real) {
+		return errors.Errorf("DifferentValidators(stored=%#x,real=%#x)", exp, real)
+	}
+	if txTotal.Cmp(b.txTotal) != 0 {
+		return errors.Errorf("DifferentTxCount(stored=%d,real=%d)", b.txTotal, txTotal)
+	}
+	return nil
 }
 
 func (b *Block) Transactions() module.TransactionList {
@@ -128,6 +145,8 @@ func (b *Block) Reset(database db.Database, bs []byte) error {
 		} else {
 			b.validators = vlt
 		}
+	} else {
+		b.validators, _ = state.ValidatorSnapshotFromHash(database, nil)
 	}
 	if len(header.OldRct) > 0 {
 		b.oldRcts = txresult.NewReceiptListFromHash(database, header.OldRct)

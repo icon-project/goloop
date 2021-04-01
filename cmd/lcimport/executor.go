@@ -585,7 +585,7 @@ func D(v interface{}) string {
 	return ret
 }
 
-func (e *Executor) Execute(from, to int64, useCache bool) error {
+func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
@@ -636,14 +636,21 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		}
 
 		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
-		e.log.Infof("Finalize Block[ %9d ] Tx[ %9d ]", height, txTotal)
-		tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
-		if err := e.FinalizeTransition(tr); err != nil {
-			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
-		}
-		if height > stored {
-			if err := e.setStoredHeight(height); err != nil {
+		if dryRun {
+			e.log.Infof("Check Block[ %9d ]", height, txTotal)
+			if err := tr.Block.CheckResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
 				return err
+			}
+		} else {
+			e.log.Infof("Finalize Block[ %9d ] Tx[ %9d ]", height, txTotal)
+			tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
+			if err := e.FinalizeTransition(tr); err != nil {
+				return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
+			}
+			if height > stored {
+				if err := e.setStoredHeight(height); err != nil {
+					return err
+				}
 			}
 		}
 		tm.OnTransactions(tr.Block.TxCount())
