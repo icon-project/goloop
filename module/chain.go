@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -45,6 +46,7 @@ type Chain interface {
 	Import(src string, height int64) error
 	Prune(gs string, dbt string, height int64) error
 	Backup(file string, extra []string) error
+	RunTask(task string, params json.RawMessage) error
 	Term() error
 	State() (string, int64, error)
 	IsStarted() bool

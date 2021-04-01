@@ -34,6 +34,7 @@ const (
 	UrlChainRes = "/:" + ParamCID
 	ParamID     = "id"
 	UrlUserRes  = "/:" + ParamID
+	TaskID      = "task"
 )
 
 type Rest struct {
@@ -214,6 +215,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	}
 	g.GET(UrlChainRes+"/configure", r.GetChainConfig, r.ChainInjector)
 	g.POST(UrlChainRes+"/configure", r.ConfigureChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/:"+TaskID, r.RunChainTask, r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
@@ -410,6 +412,23 @@ func (r *Rest) ConfigureChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+func (r *Rest) RunChainTask(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	task := ctx.Param(TaskID)
+	var params json.RawMessage
+	if err := ctx.Bind(&params); err != nil {
+		return err
+	}
+	if err := r.n.RunChainTask(c.CID(), task, params); err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return ctx.String(http.StatusNotFound, fmt.Sprintf("%+v", err))
+		}
+		return err
+	} else {
+		return ctx.String(http.StatusOK, "OK")
+	}
+}
+
 func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
 	g.GET("/configure", r.GetSystemConfig)
@@ -526,11 +545,8 @@ func (r *Rest) AddUser(ctx echo.Context) error {
 func (r *Rest) RemoveUser(ctx echo.Context) error {
 	p := ctx.Param(ParamID)
 	if err := r.a.RemoveUser(p); err != nil {
-		if we, ok := err.(errors.Unwrapper); ok {
-			switch we.Unwrap() {
-			case ErrNotExists:
-				return ctx.String(http.StatusNotFound, err.Error())
-			}
+		if errors.NotFoundError.Equals(err) {
+			return ctx.String(http.StatusNotFound, err.Error())
 		}
 		return err
 	}

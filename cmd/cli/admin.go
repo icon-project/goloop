@@ -2,12 +2,14 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/jroimartin/gocui"
@@ -20,6 +22,24 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
 )
+
+func ReadParam(param string) ([]byte, error) {
+	if param == "-" {
+		if bs, err := ioutil.ReadAll(os.Stdin); err != nil {
+			return nil, errors.Wrap(err, "Fail to read stdin")
+		} else {
+			return bs, nil
+		}
+	} else if strings.HasPrefix(param, "@") {
+		if bs, err := ioutil.ReadFile(param[1:]); err != nil {
+			return nil, errors.Wrapf(err, "Fail to read file=%s", param[1:])
+		} else {
+			return bs, nil
+		}
+	} else {
+		return []byte(param), nil
+	}
+}
 
 func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHttpClient) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
@@ -112,16 +132,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 
 			var buf *bytes.Buffer
 			if len(genesisZip) > 0 {
-				var b []byte
-				var err error
-				if genesisZip == "-" {
-					if b, err = ioutil.ReadAll(os.Stdin); err != nil {
-						return errors.Errorf("fail to read stdin err=%+v", err)
-					}
-				} else {
-					if b, err = ioutil.ReadFile(genesisZip); err != nil {
-						return errors.Errorf("fail to read %s err=%+v", genesisZip, err)
-					}
+				b, err := ReadParam(genesisZip)
+				if err != nil {
+					return err
 				}
 				buf = bytes.NewBuffer(b)
 			} else if len(genesisPath) > 0 {
@@ -392,6 +405,23 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		},
 	}
 	rootCmd.AddCommand(configCmd)
+
+	rootCmd.Use = "chain TASK CID PARAM"
+	rootCmd.Args = ArgsWithDefaultErrorFunc(cobra.ExactArgs(3))
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		reqUrl := node.UrlChain + "/" + args[1] + "/" + args[0]
+		bs, err := ReadParam(args[2])
+		if err != nil {
+			return err
+		}
+		var v string
+		_, err = adminClient.PostWithJson(reqUrl, json.RawMessage(bs), &v)
+		if err != nil {
+			return err
+		}
+		fmt.Println(v)
+		return nil
+	}
 	return rootCmd, vc
 }
 

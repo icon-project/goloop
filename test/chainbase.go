@@ -3,6 +3,7 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -121,6 +122,10 @@ func (_r *ChainBase) Prune(gs string, dbt string, height int64) error {
 }
 
 func (_r *ChainBase) Backup(file string, extra []string) error {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) RunTask(task string, params json.RawMessage) error {
 	panic("not implemented")
 }
 

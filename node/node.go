@@ -781,6 +781,17 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 	}
 }
 
+func (n *Node) RunChainTask(cid int, task string, params json.RawMessage) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(cid)
+	if err != nil {
+		return err
+	}
+	return c.RunTask(task, params)
+}
+
 func (n *Node) GetChains() []*Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
