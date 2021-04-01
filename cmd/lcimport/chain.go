@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -143,6 +144,10 @@ func (c *chainImpl) Prune(gs string, dbt string, height int64) error {
 }
 
 func (c *chainImpl) Backup(file string, extra []string) error {
+	panic("implement me")
+}
+
+func (c *chainImpl) RunTask(task string, params json.RawMessage) error {
 	panic("implement me")
 }
 
