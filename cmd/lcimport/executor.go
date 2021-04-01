@@ -607,7 +607,7 @@ func (e *Executor) Execute(from, to int64, useCache bool) error {
 		tps = tm.GetTPS()
 		Statusf(
 			e.log,
-			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.2f ] TPS[ %6.2f ]",
+			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ]",
 			spinner(height, stored),
 			D(height),
 			D(prevTR.Block.TxTotal()),
@@ -678,7 +678,7 @@ func (e *Executor) Download(from, to int64) error {
 		}
 		Statusf(
 			e.log,
-			"[%s] Downloading Block[ %10s ]  Tx[ %11s ] RPS [ %5.2f ]",
+			"[%s] Downloading Block[ %10s ]  Tx[ %11s ] RPS [ %6.1f ]",
 			spinner(height, stored),
 			D(height),
 			D(prevBlk.TxTotal()),
