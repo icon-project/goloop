@@ -361,58 +361,6 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 	return tl, nil
 }
 
-func (a *Account) UpdateUnbondsOld(ubToAdd Unbonds, ubToMod Unbonds) []TimerJobInfo {
-	a.checkWritable()
-	var tl []TimerJobInfo
-	addedSet := make(map[int64]bool)
-	a.unbonds = append(a.unbonds, ubToAdd...)
-	// All ubToAdd elements have same expire height
-	if len(ubToAdd) > 0 {
-		expire := ubToAdd[0].Expire
-		tl = append(tl, TimerJobInfo{JobTypeAdd, expire})
-		addedSet[expire] = true
-	}
-	for _, mod := range ubToMod {
-		for _, ub := range a.unbonds {
-			if ub.Address.Equal(mod.Address) {
-				ub.Value = mod.Value
-				ub.Expire = mod.Expire
-				if addedSet[mod.Expire] {
-					continue
-				}
-				addedSet[mod.Expire] = true
-				if ub.Value.Sign() == 1 {
-					tl = append(tl, TimerJobInfo{JobTypeAdd, ub.Expire})
-				}
-			}
-		}
-	}
-	tmpUbs := make([]*Unbond, 0)
-	ubHToRm := make([]int64, 0)
-	for _, ub := range a.unbonds {
-		if ub.Value.Sign() == 1 {
-			tmpUbs = append(tmpUbs, ub)
-		} else {
-			ubHToRm = append(ubHToRm, ub.Expire)
-		}
-	}
-	for _, h := range ubHToRm {
-		flag := true // all unbonds that expireHeight set `h` have zero value
-		for _, ub := range tmpUbs {
-			if ub.Expire == h {
-				flag = false
-				break
-			}
-		}
-		if flag {
-			tl = append(tl, TimerJobInfo{JobTypeRemove, h})
-		}
-	}
-	a.unbonds = tmpUbs
-	a.unbonding.Set(a.Unbonds().GetUnbondAmount())
-	return tl
-}
-
 func (a *Account) RemoveUnbonding(height int64) error {
 	a.checkWritable()
 	var tmp Unbonds
