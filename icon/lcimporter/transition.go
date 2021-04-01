@@ -17,7 +17,6 @@
 package lcimporter
 
 import (
-	"math/big"
 	"sync"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -28,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -115,12 +113,8 @@ func (t *transition) transitState(target transitionState, from ...transitionStat
 	return true
 }
 
-func makeReceiptList(dbase db.Database, size int) module.ReceiptList {
-	zero := new(big.Int)
-	rct := txresult.NewReceipt(dbase, module.LatestRevision, state.SystemAddress)
-	rct.SetResult(module.StatusSuccess, zero, zero, nil)
-
-	rcts := make([]txresult.Receipt, 0, size)
+func makeReceiptList(dbase db.Database, size int, rct txresult.Receipt) module.ReceiptList {
+	rcts := make([]txresult.Receipt, size)
 	for i := 0; i < size; i++ {
 		rcts[i] = rct
 	}
@@ -134,7 +128,7 @@ func (t *transition) setResult(next int64, txs int, vl module.ValidatorList) {
 	ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
 	scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Set(next)
 	t.worldSnapshot = ws.GetSnapshot()
-	t.receipts = makeReceiptList(t.sm.db, txs)
+	t.receipts = makeReceiptList(t.sm.db, txs, t.sm.defaultReceipt)
 	if vl != nil {
 		t.nextValidators = vl
 	} else {

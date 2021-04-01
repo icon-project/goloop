@@ -41,6 +41,7 @@ type ServiceManager struct {
 
 	emptyTransactions module.TransactionList
 	emptyReceipts     module.ReceiptList
+	defaultReceipt    txresult.Receipt
 }
 
 func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
@@ -184,7 +185,7 @@ func (sm *ServiceManager) GetAPIInfo(result []byte, addr module.Address) (module
 }
 
 func (sm *ServiceManager) GetMembers(result []byte) (module.MemberList, error) {
-	return nil, nil
+	return nil, common.ErrInvalidState
 }
 
 func (sm *ServiceManager) GetRoundLimit(result []byte, vl int) int64 {
@@ -235,12 +236,17 @@ func (sm *ServiceManager) getValidators() (module.ValidatorList, error) {
 	}
 }
 
-func NewServiceManager(chain module.Chain, dbase db.Database, cfg *Config) (*ServiceManager, error) {
+func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config) (*ServiceManager, error) {
 	logger := chain.Logger()
-	ex, err := NewExecutor(chain, dbase, cfg)
+	ex, err := NewExecutor(chain, rdb, cfg)
 	if err != nil {
 		return nil, err
 	}
+
+	dbase := chain.Database()
+	zero := new(big.Int)
+	rct := txresult.NewReceipt(dbase, module.LatestRevision, state.SystemAddress)
+	rct.SetResult(module.StatusSuccess, zero, zero, nil)
 
 	return &ServiceManager{
 		cfg: cfg,
@@ -250,5 +256,6 @@ func NewServiceManager(chain module.Chain, dbase db.Database, cfg *Config) (*Ser
 
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),
 		emptyReceipts:     txresult.NewReceiptListFromHash(dbase, nil),
+		defaultReceipt:    rct,
 	}, nil
 }
