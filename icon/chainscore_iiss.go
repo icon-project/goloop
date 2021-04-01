@@ -97,12 +97,12 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 	return es.State.GetRRep().Int64(), nil
 }
 
-func (s *chainScore) Ex_setStake(value *common.HexInt) error {
-	if err := s.tryChargeCall(true); err != nil {
-		return err
+func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
+	if err = s.tryChargeCall(true); err != nil {
+		return
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return err
+	if err = s.iissHandleRevision(); err != nil {
+		return
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
@@ -118,7 +118,6 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 		return scoreresult.InvalidParameterError.Errorf(msg)
 	}
 
-	prevTotalStake := ia.GetTotalStake()
 	stakeInc := new(big.Int).Sub(v, ia.Stake())
 	if stakeInc.Sign() == 0 {
 		return nil
@@ -126,42 +125,55 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) error {
 
 	account := s.cc.GetAccountState(s.from.ID())
 	balance := account.GetBalance()
-	availableStake := new(big.Int).Add(balance, ia.Stake())
+	availableStake := new(big.Int).Add(balance, ia.GetTotalStake())
 	if availableStake.Cmp(v) == -1 {
 		return scoreresult.OutOfBalanceError.Errorf("Not enough balance")
 	}
 
 	tStake := es.State.GetTotalStake()
 	tsupply := icutils.GetTotalSupply(s.cc)
+	prevTotalStake := ia.GetTotalStake()
 
 	// update IISS account
-	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
-	slotMax := int(es.State.GetUnstakeSlotMax())
-	tl, err := ia.UpdateUnstake(stakeInc, expireHeight, slotMax)
+	//var tl []icstate.TimerJobInfo
+	switch stakeInc.Sign() {
+	case 1:
+		// Condition: stakeInc > 0
+		err = ia.DecreaseUnstake(stakeInc)
+	case -1:
+		expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
+		slotMax := int(es.State.GetUnstakeSlotMax())
+		err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
+	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
 	}
-	for _, t := range tl {
-		ts := es.GetUnstakingTimerState(t.Height, true)
-		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
-		}
-	}
+
+	//for _, t := range tl {
+	//	ts := es.GetUnstakingTimerState(t.Height, true)
+	//	if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
+	//		return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
+	//	}
+	//}
 	if err = ia.SetStake(v); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 
-	// update world account
-	totalStake := ia.GetTotalStake()
-	if prevTotalStake.Cmp(totalStake) != 0 {
-		diff := new(big.Int).Sub(totalStake, prevTotalStake)
-		account.SetBalance(new(big.Int).Sub(balance, diff))
-	}
-	if err := es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
+	if err = es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
 
-	return nil
+	// update world account
+	totalStake := ia.GetTotalStake()
+	cmp := prevTotalStake.Cmp(totalStake)
+	if cmp != 0 {
+		if cmp > 0 {
+			panic()
+		}
+		diff := new(big.Int).Sub(totalStake, prevTotalStake)
+		account.SetBalance(new(big.Int).Sub(balance, diff))
+	}
+	return
 }
 
 func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSupply *big.Int) *big.Int {

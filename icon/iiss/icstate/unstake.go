@@ -145,37 +145,31 @@ func (us Unstakes) findIndex(h int64) int64 {
 	return 0
 }
 
-func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
+func (us *Unstakes) decreaseUnstake(address module.Address, v *big.Int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
 		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
-	var tl []TimerJobInfo
-	remain := new(big.Int).Set(v)
-	unstakes := *us
+	//var tl []TimerJobInfo
+	remain := new(big.Int).Set(v) // stakeInc
 	uLen := len(*us)
 	for i := uLen - 1; i >= 0; i-- {
-		u := unstakes[i]
-		switch remain.Cmp(u.Amount) {
-		case 0:
-			unstakes = unstakes[:i]
-			if len(*us) >= 0 {
-				*us = unstakes
+		u := (*us)[i]
+		cmp := remain.Cmp(u.Amount)
+		switch cmp {
+		case 0, 1:
+			// Remove an unstake slot
+			*us = (*us)[:i]
+			//tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
+			RemoveUnstakingTimer(address, u.ExpireHeight)
+			if cmp == 0 {
+				return tl, nil
 			} else {
-				*us = nil
+				remain.Sub(remain, u.Amount)
 			}
-			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
-			return tl, nil
-		case 1:
-			remain.Sub(remain, u.Amount)
-			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 		case -1:
 			u.Amount.Sub(u.Amount, remain)
-			unstakes = unstakes[:i+1]
-			*us = unstakes
-			return tl, nil
+			//return tl, nil
 		}
 	}
-	// case when v > total unstake
-	*us = nil
-	return tl, nil
+	//return tl, nil
 }

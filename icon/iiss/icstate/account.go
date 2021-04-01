@@ -179,20 +179,24 @@ func (a *Account) SetStake(v *big.Int) error {
 // UpdateUnstake update unstakes
 func (a *Account) UpdateUnstake(stakeInc *big.Int, expireHeight int64, slotMax int) ([]TimerJobInfo, error) {
 	a.checkWritable()
-	tl := make([]TimerJobInfo, 0)
-	var err error
 	switch stakeInc.Sign() {
 	case 1:
-		if tl, err = a.unstakes.decreaseUnstake(stakeInc); err != nil {
-			return nil, err
-		}
+		// Condition: stakeInc > 0
+		return a.unstakes.decreaseUnstake(stakeInc)
 	case -1:
-		tl, err = a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
-		if err != nil {
-			return nil, err
-		}
+		return a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
 	}
-	return tl, nil
+	return nil, nil
+}
+
+func (a *Account) DecreaseUnstake(stakeInc *big.Int) ([]TimerJobInfo, error) {
+	a.checkWritable()
+	return a.unstakes.decreaseUnstake(stakeInc)
+}
+
+func (a *Account) IncreaseUnstake(stakeInc *big.Int, expireHeight int64, slotMax int) ([]TimerJobInfo, error) {
+	a.checkWritable()
+	return a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
 }
 
 // Stake return stake Value
