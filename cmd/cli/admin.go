@@ -23,19 +23,25 @@ import (
 	"github.com/icon-project/goloop/node"
 )
 
-func ReadParam(param string) ([]byte, error) {
-	if param == "-" {
+func ReadFile(name string) ([]byte, error) {
+	if name == "-" {
 		if bs, err := ioutil.ReadAll(os.Stdin); err != nil {
 			return nil, errors.Wrap(err, "Fail to read stdin")
 		} else {
 			return bs, nil
 		}
-	} else if strings.HasPrefix(param, "@") {
-		if bs, err := ioutil.ReadFile(param[1:]); err != nil {
-			return nil, errors.Wrapf(err, "Fail to read file=%s", param[1:])
+	} else {
+		if bs, err := ioutil.ReadFile(name); err != nil {
+			return nil, errors.Wrapf(err, "Fail to read file=%s", name)
 		} else {
 			return bs, nil
 		}
+	}
+}
+
+func ReadParam(param string) ([]byte, error) {
+	if strings.HasPrefix(param, "@") {
+		return ReadFile(param[1:])
 	} else {
 		return []byte(param), nil
 	}
@@ -132,7 +138,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 
 			var buf *bytes.Buffer
 			if len(genesisZip) > 0 {
-				b, err := ReadParam(genesisZip)
+				b, err := ReadFile(genesisZip)
 				if err != nil {
 					return err
 				}
