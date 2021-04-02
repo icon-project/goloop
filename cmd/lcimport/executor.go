@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math/big"
 	"path"
-	"reflect"
 	"time"
 
 	"github.com/icon-project/goloop/chain"
@@ -34,6 +33,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/importer"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -392,75 +392,6 @@ func (cb transitionCallback) OnExecute(transition module.Transition, err error) 
 	cb <- err
 }
 
-func FeePaymentEqual(p1, p2 module.FeePayment) bool {
-	return common.AddressEqual(p1.Payer(), p2.Payer()) &&
-		p1.Amount().Cmp(p2.Amount()) == 0
-}
-
-func EventLogEqual(e1, e2 module.EventLog) bool {
-	return common.AddressEqual(e1.Address(), e2.Address()) &&
-		reflect.DeepEqual(e1.Indexed(), e2.Indexed()) &&
-		reflect.DeepEqual(e1.Data(), e2.Data())
-}
-
-func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
-	if s1 == s2 {
-		return nil
-	}
-	if s1 == module.StatusUnknownFailure && s2 == module.StatusInvalidParameter {
-		logger.Warnf("Ignore status difference(e=%s,r=%s)", s1, s2)
-		return nil
-	}
-	return errors.InvalidStateError.Errorf("InvalidStatus(e=%s,r=%s)", s1, s2)
-}
-
-func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
-	if err := CheckStatus(logger, r1.Status(), r2.Status()); err != nil {
-		return err
-	}
-
-	if !(r1.To().Equal(r2.To()) &&
-		r1.CumulativeStepUsed().Cmp(r2.CumulativeStepUsed()) == 0 &&
-		r1.StepUsed().Cmp(r2.StepUsed()) == 0 &&
-		r1.StepPrice().Cmp(r2.StepPrice()) == 0 &&
-		common.AddressEqual(r1.SCOREAddress(), r2.SCOREAddress()) &&
-		r1.LogsBloom().Equal(r2.LogsBloom())) {
-		return errors.InvalidStateError.New("DifferentResultValue")
-	}
-
-	idx := 0
-	for itr1, itr2 := r1.FeePaymentIterator(), r2.FeePaymentIterator(); itr1.Has() || itr2.Has(); _, _, idx = itr1.Next(), itr2.Next(), idx+1 {
-		p1, err := itr1.Get()
-		if err != nil {
-			return errors.InvalidStateError.Wrap(err, "EndOfPayments")
-		}
-		p2, err := itr2.Get()
-		if err != nil {
-			return errors.InvalidStateError.Wrap(err, "EndOfPayments")
-		}
-		if !FeePaymentEqual(p1, p2) {
-			return errors.InvalidStateError.New("DifferentPayment")
-		}
-	}
-
-	idx = 0
-	for itr1, itr2 := r1.EventLogIterator(), r2.EventLogIterator(); itr1.Has() || itr2.Has(); _, _, idx = itr1.Next(), itr2.Next(), idx+1 {
-		e1, err := itr1.Get()
-		if err != nil {
-			return errors.InvalidStateError.Wrap(err, "EndOfEvents")
-		}
-		e2, err := itr2.Get()
-		if err != nil {
-			return errors.InvalidStateError.Wrap(err, "EndOfEvents")
-		}
-
-		if !EventLogEqual(e1, e2) {
-			return errors.InvalidStateError.Errorf("DifferentEvent(idx=%d)", idx)
-		}
-	}
-	return nil
-}
-
 func (e *Executor) CheckResult(tr *Transition) error {
 	results := tr.NormalReceipts()
 	expects := tr.Block.OldReceipts()
@@ -475,7 +406,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 			if err != nil {
 				return errors.Wrapf(err, "ResultReceiptGetFailure(idx=%d)", idx)
 			}
-			if err := CheckReceipt(e.log, rct1, rct2); err != nil {
+			if err := importer.CheckReceipt(e.log, rct1, rct2); err != nil {
 				rct1js, _ := JSONMarshalIndent(rct1)
 				rct2js, _ := JSONMarshalIndent(rct2)
 
