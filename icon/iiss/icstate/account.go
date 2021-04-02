@@ -238,7 +238,7 @@ func (a Account) GetDelegationInfo() map[string]interface{} {
 }
 
 func (a *Account) GetVotingPower() *big.Int {
-	return new(big.Int).Sub(a.stake, a.GetVoting())
+	return new(big.Int).Sub(a.stake, a.UsingStake())
 }
 
 func (a *Account) GetVoting() *big.Int {
