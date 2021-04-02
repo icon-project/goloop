@@ -1013,6 +1013,17 @@ func (vd *votedData) compare(vd2 *votedData) int {
 	if vd2.Enable() {
 		dv2 = vd2.GetBondedDelegation()
 	}
+	ret := dv.Cmp(dv2)
+	if ret != 0 {
+		return ret
+	}
+
+	if vd.Enable() {
+		dv = vd.GetDelegated()
+	}
+	if vd2.Enable() {
+		dv2 = vd2.GetDelegated()
+	}
 	return dv.Cmp(dv2)
 }
 
@@ -1133,7 +1144,13 @@ func (vi *votedInfo) sort() {
 		i += 1
 	}
 	sort.Slice(tempKeys, func(i, j int) bool {
-		return tempKeys[i].compare(&tempKeys[j]) > 0
+		ret := tempKeys[i].compare(&tempKeys[j])
+		if ret > 0 {
+			return true
+		} else if ret < 0 {
+			return false
+		}
+		return bytes.Compare([]byte(temp[tempKeys[i]]), []byte(temp[tempKeys[j]])) > 0
 	})
 
 	rank := make([]string, size)

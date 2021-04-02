@@ -131,7 +131,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	}
 
 	tStake := es.State.GetTotalStake()
-	tsupply := icutils.GetTotalSupply(s.cc)
+	tSupply := icutils.GetTotalSupply(s.cc)
 	prevTotalStake := ia.GetTotalStake()
 
 	//update IISS account
@@ -141,7 +141,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		// Condition: stakeInc > 0
 		tl, err = ia.DecreaseUnstake(stakeInc)
 	case -1:
-		expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tsupply).Int64()
+		expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tSupply).Int64()
 		slotMax := int(es.State.GetUnstakeSlotMax())
 		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
 	}
@@ -168,7 +168,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	cmp := prevTotalStake.Cmp(totalStake)
 	if cmp != 0 {
 		if cmp > 0 {
-			logger.Panicf("Fail to setStake: account.totalStake < preveTotalStake(invalid state)")
+			logger.Panicf("Fail to setStake: account.totalStake < prevTotalStake(invalid state)")
 		}
 		diff := new(big.Int).Sub(totalStake, prevTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
