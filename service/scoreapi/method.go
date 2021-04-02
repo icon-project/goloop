@@ -805,7 +805,7 @@ func (l listParameters) Size() int {
 	return len(l)
 }
 
-func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
+func (a *Method) ConvertParamsToTypedObj(bs []byte, allowExtra bool) (*codec.TypedObj, error) {
 	var params inputParameters
 	if len(bs) > 0 {
 		if bs[0] == '[' {
@@ -849,7 +849,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		}
 	}
 
-	if matched != params.Size() {
+	if matched != params.Size() && allowExtra == false {
 		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 			"UnexpectedParam(%v)\n", params)
 	}

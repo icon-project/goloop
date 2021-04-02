@@ -46,6 +46,7 @@ type CallHandler struct {
 	isSysCall bool
 	isQuery   bool
 	charged   bool
+	allowEx   bool
 	codeID    []byte
 }
 
@@ -339,8 +340,16 @@ func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 		}
 	}
 
-	h.paramObj, err = method.ConvertParamsToTypedObj(h.params)
+	h.paramObj, err = method.ConvertParamsToTypedObj(h.params, h.allowEx)
 	return err
+}
+
+func (h *CallHandler) GetMethodName() string {
+	return h.name
+}
+
+func (h *CallHandler) AllowExtra() {
+	h.allowEx = true
 }
 
 func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
