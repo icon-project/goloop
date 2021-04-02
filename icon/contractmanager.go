@@ -18,6 +18,8 @@ package icon
 
 import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/service/state"
+
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -58,9 +60,25 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 		return nil, err
 	}
 	switch ctype {
-	case contract.CTypeCall, contract.CTypeDeploy:
+	case contract.CTypeDeploy:
 		if to.Equal(govAddress) {
 			return newGovernanceHandler(ch), nil
+		}
+	case contract.CTypeCall:
+		if to.Equal(govAddress) {
+			return newGovernanceHandler(ch), nil
+		}
+		if to.Equal(state.SystemAddress) {
+			switch obj := ch.(type) {
+			case *contract.TransferAndCallHandler:
+				if needAllowExtra(obj.GetMethodName()) {
+					return &TransferAndCallHandlerAllowingExtra{obj }, nil
+				}
+			case *contract.CallHandler:
+				if needAllowExtra(obj.GetMethodName()) {
+					return &CallHandlerAllowingExtra{obj }, nil
+				}
+			}
 		}
 	}
 	return ch, nil
