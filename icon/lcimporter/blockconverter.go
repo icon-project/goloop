@@ -20,7 +20,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -78,13 +77,9 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
-func NewBlockConverter(chain module.Chain, cs Store, data string) (*BlockConverter, error) {
+func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data string) (*BlockConverter, error) {
 	database := chain.Database()
 	logger := chain.Logger()
-	plt, err := icon.NewPlatform(data, chain.CID())
-	if err != nil {
-		return nil, errors.Wrap(err, "NewPlatformFailure")
-	}
 	jsBucket, err := database.GetBucket(JSONByHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInGetBucketForJSON")

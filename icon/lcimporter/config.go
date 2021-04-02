@@ -17,27 +17,15 @@
 package lcimporter
 
 import (
-	"encoding/json"
-	"io/ioutil"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
+	"github.com/icon-project/goloop/service"
 )
 
 type Config struct {
 	Validators  []*common.Address   `json:"validators"`
 	StoreURI    string              `json:"store_uri"`
 	CacheConfig lcstore.CacheConfig `json:"cache_config"`
-}
-
-func LoadConfig(uri string) (*Config, error) {
-	bs, err := ioutil.ReadFile(uri)
-	if err != nil {
-		return nil, err
-	}
-	cfg := new(Config)
-	if err := json.Unmarshal(bs, cfg); err != nil {
-		return nil, err
-	}
-	return cfg, nil
+	BaseDir     string
+	Platform    service.Platform
 }

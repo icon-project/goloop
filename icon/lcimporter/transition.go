@@ -138,12 +138,14 @@ func (t *transition) setResult(next int64, txs int, vl module.ValidatorList) {
 }
 
 func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret error) {
-	cb.OnValidate(t, nil)
-
 	defer func() {
 		if ret != nil {
 			t.transitState(stepFailed, stepExecuting)
-			cb.OnExecute(t, ret)
+			cb.OnValidate(t, ret)
+		} else {
+			cb.OnValidate(t, nil)
+			t.transitState(stepComplete)
+			cb.OnExecute(t, nil)
 		}
 	}()
 
@@ -153,7 +155,6 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 			return err
 		}
 		t.setResult(1, 1, vls)
-		cb.OnExecute(t, nil)
 		return nil
 	}
 
@@ -209,7 +210,6 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 	}
 
 	t.setResult(txs[len(txs)-1].Height+1, len(txs), nil)
-	cb.OnExecute(t, nil)
 	return nil
 }
 

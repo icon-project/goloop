@@ -176,6 +176,8 @@ func (t *taskImportICON) _import() (ret error) {
 	} else {
 		config.CacheConfig = lcStoreDefaultCacheConfig
 	}
+	config.BaseDir = c.cfg.AbsBaseDir()
+	config.Platform = c.plt
 
 	// initialize network manager
 	pr := network.PeerRoleFlag(c.cfg.Role)
