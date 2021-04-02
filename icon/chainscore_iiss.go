@@ -275,7 +275,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
 	}
 
-	// Subtract regPRepFree from chainScore
+	// Subtract regPRepFee from chainScore
 	as := s.cc.GetAccountState(state.SystemID)
 	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
 	if balance.Sign() < 0 {
@@ -284,8 +284,10 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	as.SetBalance(balance)
 
 	// Burn regPRepFee
-	if err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
+	if ts, err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
+	} else {
+		icutils.OnBurn(s.cc, regPRepFee, ts)
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)

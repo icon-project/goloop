@@ -280,7 +280,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
 
 	// increase total supply
-	if err = icutils.IncreaseTotalSupply(cc, result.Issue.Value()); err != nil {
+	if _, err = icutils.IncreaseTotalSupply(cc, result.Issue.Value()); err != nil {
 		return err
 	}
 

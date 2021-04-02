@@ -19,8 +19,11 @@ package icutils
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 	"math/big"
@@ -99,18 +102,39 @@ func GetTotalSupply(ws state.WorldState) *big.Int {
 	return tsVar.BigInt()
 }
 
-func IncreaseTotalSupply(ws state.WorldState, amount *big.Int) error {
+func IncreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error) {
 	as := ws.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 	ts := new(big.Int).Add(tsVar.BigInt(), amount)
 	if ts.Sign() < 0 {
-		return errors.Errorf("TotalSupply < 0")
+		return nil, errors.Errorf("TotalSupply < 0")
 	}
-	return tsVar.Set(ts)
+	return ts, tsVar.Set(ts)
 }
 
-func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) error {
+func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error) {
 	return IncreaseTotalSupply(ws, new(big.Int).Neg(amount))
+}
+
+func OnBurn(cc contract.CallContext, amount, ts *big.Int) {
+	rev := cc.Revision().Value()
+	if rev < icmodule.Revision12 {
+		var burnSig string
+		if rev < icmodule.Revision9 {
+			burnSig = "ICXBurned"
+		} else {
+			burnSig = "ICXBurned(int)"
+		}
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte(burnSig)},
+			[][]byte{intconv.BigIntToBytes(amount)},
+		)
+	} else {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), state.SystemAddress.Bytes()},
+			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
+		)
+	}
 }
 
 func Min(value1, value2 int) int {

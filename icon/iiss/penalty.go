@@ -158,8 +158,10 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		logger.Debugf("After slashing: %s", account)
 	}
 
-	if err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
+	if ts, err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
 		return err
+	} else {
+		icutils.OnBurn(cc, totalSlashBond, ts)
 	}
 	ret := s.pm.Slash(address, totalSlashBond)
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
