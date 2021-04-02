@@ -586,7 +586,7 @@ const (
 	defaultIcps                                  = 0
 	defaultIrelay                                = 0
 	defaultIvoter                                = 50
-	defaultUnbondingMax                          = 1000
+	defaultUnbondingMax                          = 100
 	defaultValidationPenaltyCondition            = 660
 	defaultConsistentValidationPenaltyCondition  = 5
 	defaultConsistentValidationPenaltyMask       = 30
