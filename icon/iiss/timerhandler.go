@@ -21,26 +21,25 @@ import (
 	"math/big"
 )
 
-func HandleTimerJob(wc state.WorldContext) (err error) {
-	es := wc.GetExtensionState().(*ExtensionStateImpl)
-	bt := es.GetUnbondingTimerState(wc.BlockHeight(), false)
+func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
+	bt := s.GetUnbondingTimerState(wc.BlockHeight(), false)
 	if bt != nil {
-		err = handleUnbondingTimer(es, bt.Addresses, bt.Height)
+		err = s.handleUnbondingTimer(bt.Addresses, bt.Height)
 		if err != nil {
 			return
 		}
 	}
 
-	st := es.GetUnstakingTimerState(wc.BlockHeight(), false)
+	st := s.GetUnstakingTimerState(wc.BlockHeight(), false)
 	if st != nil {
-		err = handleUnstakingTimer(wc, es, st.Addresses, st.Height)
+		err = s.handleUnstakingTimer(wc, st.Addresses, st.Height)
 	}
 	return
 }
 
-func handleUnstakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*common.Address, h int64) error {
+func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*common.Address, h int64) error {
 	for _, a := range al {
-		ea := es.GetAccount(a)
+		ea := s.GetAccount(a)
 		ra, err := ea.RemoveUnstaking(h)
 		if err != nil {
 			return err
@@ -53,9 +52,9 @@ func handleUnstakingTimer(wc state.WorldContext, es *ExtensionStateImpl, al []*c
 	return nil
 }
 
-func handleUnbondingTimer(es *ExtensionStateImpl, al []*common.Address, h int64) error {
+func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64) error {
 	for _, a := range al {
-		as := es.GetAccount(a)
+		as := s.GetAccount(a)
 		if err := as.RemoveUnbonding(h); err != nil {
 			return err
 		}
