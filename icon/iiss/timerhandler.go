@@ -41,7 +41,7 @@ func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 }
 
 func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*common.Address, h int64) error {
-	s.logger.Tracef("handleUnstakingTimer() start")
+	s.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
 	for _, a := range al {
 		ea := s.GetAccount(a)
 		s.logger.Tracef("account : %s", ea)
@@ -50,17 +50,17 @@ func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*c
 			return err
 		}
 
-		wa := wc.GetAccountState(ea.Address().ID())
+		wa := wc.GetAccountState(a.ID())
 		b := wa.GetBalance()
 		wa.SetBalance(new(big.Int).Add(b, ra))
-		s.logger.Tracef("after remove unstake, stake information of %s : %s", ea.Address(), ea.GetStakeInfo())
+		s.logger.Tracef("after remove unstake, stake information of %s : %s", a, ea.GetStakeInfo())
 	}
 	s.logger.Tracef("handleUnstakingTimer() end")
 	return nil
 }
 
 func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64) error {
-	s.logger.Tracef("handleUnbondingTimer() start")
+	s.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
 	for _, a := range al {
 		s.logger.Tracef("account : %s", a)
 		as := s.GetAccount(a)
