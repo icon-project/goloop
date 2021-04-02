@@ -80,7 +80,7 @@ func (info *Info) ConvertParamsToTypedObj(method string, params []byte) (*codec.
 	if m == nil {
 		return nil, scoreresult.ErrMethodNotFound
 	}
-	return m.ConvertParamsToTypedObj(params)
+	return m.ConvertParamsToTypedObj(params, false)
 }
 
 func (info *Info) CheckEventData(indexed [][]byte, data [][]byte) error {

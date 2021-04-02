@@ -250,7 +250,7 @@ func TestMethod_ConvertParamsToTypedObj(t *testing.T) {
 				Inputs:  tt.fields.Inputs,
 				Outputs: tt.fields.Outputs,
 			}
-			got, err := a.ConvertParamsToTypedObj(tt.args.bs)
+			got, err := a.ConvertParamsToTypedObj(tt.args.bs, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ConvertParamsToTypedObj() error = %v, wantErr %v", err, tt.wantErr)
 				return
