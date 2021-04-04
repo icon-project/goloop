@@ -201,11 +201,11 @@ func (a Account) GetTotalStake() *big.Int {
 	return new(big.Int).Add(a.stake, a.unstakes.GetUnstakeAmount())
 }
 
-// GetStakeInfo return stake and unstake information as a json format
-func (a Account) GetStakeInfo() map[string]interface{} {
+// GetStakeInJSON returns stake and unstake information in json format
+func (a Account) GetStakeInJSON(blockHeight int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["stake"] = a.stake
-	if unstakes := a.unstakes.ToJSON(module.JSONVersion3); unstakes != nil {
+	if unstakes := a.unstakes.ToJSON(module.JSONVersion3, blockHeight); unstakes != nil {
 		jso["unstakes"] = unstakes
 	}
 	return jso

@@ -48,11 +48,12 @@ func (u *Unstake) Equal(u2 *Unstake) bool {
 		u.ExpireHeight == u2.ExpireHeight
 }
 
-func (u Unstake) ToJSON(_ module.JSONVersion) interface{} {
+func (u Unstake) ToJSON(_ module.JSONVersion, blockHeight int64) interface{} {
 	jso := make(map[string]interface{})
 
 	jso["unstake"] = u.Amount
 	jso["unstakeBlockHeight"] = u.ExpireHeight
+	jso["remainingBlocks"] = u.ExpireHeight - blockHeight
 
 	return jso
 }
@@ -95,14 +96,14 @@ func (us Unstakes) GetUnstakeAmount() *big.Int {
 	return total
 }
 
-func (us Unstakes) ToJSON(v module.JSONVersion) []interface{} {
+func (us Unstakes) ToJSON(v module.JSONVersion, blockHeight int64) []interface{} {
 	if us.Has() == false {
 		return nil
 	}
 	unstakes := make([]interface{}, len(us))
 
 	for idx, p := range us {
-		unstakes[idx] = p.ToJSON(v)
+		unstakes[idx] = p.ToJSON(v, blockHeight)
 	}
 	return unstakes
 }

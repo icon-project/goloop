@@ -216,7 +216,8 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 		return nil, err
 	}
 	ia := es.GetAccount(address)
-	return ia.GetStakeInfo(), nil
+	blockHeight := s.cc.BlockHeight()
+	return ia.GetStakeInJSON(blockHeight), nil
 }
 
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {

@@ -53,7 +53,11 @@ func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*c
 		wa := wc.GetAccountState(a.ID())
 		b := wa.GetBalance()
 		wa.SetBalance(new(big.Int).Add(b, ra))
-		s.logger.Tracef("after remove unstake, stake information of %s : %s", a, ea.GetStakeInfo())
+		blockHeight := wc.BlockHeight()
+		s.logger.Tracef(
+			"after remove unstake, stake information of %s : %s",
+			a, ea.GetStakeInJSON(blockHeight),
+		)
 	}
 	s.logger.Tracef("handleUnstakingTimer() end")
 	return nil
