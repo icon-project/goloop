@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/intconv"
 )
 
 type RewardFund struct {
@@ -99,11 +98,11 @@ func (rf *RewardFund) Clone() *RewardFund {
 
 func (rf *RewardFund) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["Iglobal"] = intconv.FormatBigInt(rf.Iglobal)
-	jso["Iprep"] = intconv.FormatBigInt(rf.Iprep)
-	jso["Icps"] = intconv.FormatBigInt(rf.Icps)
-	jso["Irelay"] = intconv.FormatBigInt(rf.Irelay)
-	jso["Ivoter"] = intconv.FormatBigInt(rf.Ivoter)
+	jso["Iglobal"] = rf.Iglobal
+	jso["Iprep"] = rf.Iprep
+	jso["Icps"] = rf.Icps
+	jso["Irelay"] = rf.Irelay
+	jso["Ivoter"] = rf.Ivoter
 	return jso
 }
 

@@ -21,7 +21,6 @@ import (
 
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 )
 
 const (
@@ -275,17 +274,17 @@ func (s *State) SetConsistentValidationPenaltySlashRatio(value *big.Int) error {
 
 func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["irep"] = intconv.FormatBigInt(s.GetIRep())
-	jso["rrep"] = intconv.FormatBigInt(s.GetRRep())
-	jso["mainPRepCount"] = intconv.FormatInt(s.GetMainPRepCount())
-	jso["subPRepCount"] = intconv.FormatInt(s.GetSubPRepCount())
-	jso["totalStake"] = intconv.FormatBigInt(s.GetTotalStake())
-	jso["iissVersion"] = intconv.FormatInt(int64(s.GetIISSVersion()))
-	jso["iissBlockHeight"] = intconv.FormatInt(s.GetIISSBlockHeight())
-	jso["termPeriod"] = intconv.FormatInt(s.GetTermPeriod())
-	jso["bondRequirement"] = intconv.FormatInt(s.GetBondRequirement())
-	jso["lockMinMultiplier"] = intconv.FormatBigInt(s.GetLockMinMultiplier())
-	jso["lockMaxMultiplier"] = intconv.FormatBigInt(s.GetLockMaxMultiplier())
+	jso["irep"] = s.GetIRep()
+	jso["rrep"] = s.GetRRep()
+	jso["mainPRepCount"] = s.GetMainPRepCount()
+	jso["subPRepCount"] = s.GetSubPRepCount()
+	jso["totalStake"] = s.GetTotalStake()
+	jso["iissVersion"] = int64(s.GetIISSVersion())
+	jso["iissBlockHeight"] = s.GetIISSBlockHeight()
+	jso["termPeriod"] = s.GetTermPeriod()
+	jso["bondRequirement"] = s.GetBondRequirement()
+	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
+	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()

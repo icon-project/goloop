@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -52,8 +51,8 @@ func (u *Unstake) Equal(u2 *Unstake) bool {
 func (u Unstake) ToJSON(_ module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 
-	jso["unstake"] = intconv.FormatBigInt(u.Amount)
-	jso["expireBlockHeight"] = intconv.FormatInt(u.ExpireHeight)
+	jso["unstake"] = u.Amount
+	jso["expireBlockHeight"] = u.ExpireHeight
 
 	return jso
 }

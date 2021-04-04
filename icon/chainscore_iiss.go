@@ -681,9 +681,9 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	}
 
 	data := make(map[string]interface{})
-	data["blockHeight"] = intconv.FormatInt(bh)
-	data["iscore"] = intconv.FormatBigInt(is)
-	data["estimatedICX"] = intconv.FormatBigInt(is.Div(is, big.NewInt(iiss.IScoreICXRatio)))
+	data["blockHeight"] = bh
+	data["iscore"] = is
+	data["estimatedICX"] = is.Div(is, big.NewInt(iiss.IScoreICXRatio))
 
 	return data, nil
 }
@@ -756,8 +756,8 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 
 	iissVariables := make(map[string]interface{})
 	if iissVersion == icstate.IISSVersion1 {
-		iissVariables["irep"] = intconv.FormatBigInt(term.Irep())
-		iissVariables["rrep"] = intconv.FormatBigInt(term.Rrep())
+		iissVariables["irep"] = term.Irep()
+		iissVariables["rrep"] = term.Rrep()
 	} else {
 		iissVariables = term.RewardFund().ToJSON()
 	}
@@ -767,16 +767,16 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 		return nil, err
 	}
 	rcResult := make(map[string]interface{})
-	rcResult["iscore"] = intconv.FormatBigInt(rcInfo.PrevCalcReward())
-	rcResult["estimatedICX"] = intconv.FormatBigInt(new(big.Int).Div(rcInfo.PrevCalcReward(), iiss.BigIntIScoreICXRatio))
-	rcResult["startBlockHeight"] = intconv.FormatInt(rcInfo.StartHeight())
-	rcResult["endBlockHeight"] = intconv.FormatInt(rcInfo.GetEndHeight())
+	rcResult["iscore"] = rcInfo.PrevCalcReward()
+	rcResult["estimatedICX"] = new(big.Int).Div(rcInfo.PrevCalcReward(), iiss.BigIntIScoreICXRatio)
+	rcResult["startBlockHeight"] = rcInfo.StartHeight()
+	rcResult["endBlockHeight"] = rcInfo.GetEndHeight()
 	rcResult["stateHash"] = es.Reward.GetSnapshot().Bytes()
 
 	jso := make(map[string]interface{})
-	jso["blockHeight"] = intconv.FormatInt(s.cc.BlockHeight())
-	jso["nextCalculation"] = intconv.FormatInt(term.GetEndBlockHeight() + 1)
-	jso["nextPRepTerm"] = intconv.FormatInt(term.GetEndBlockHeight() + 1)
+	jso["blockHeight"] = s.cc.BlockHeight()
+	jso["nextCalculation"] = term.GetEndBlockHeight() + 1
+	jso["nextPRepTerm"] = term.GetEndBlockHeight() + 1
 	jso["variable"] = iissVariables
 	jso["rcResult"] = rcResult
 	return jso, nil

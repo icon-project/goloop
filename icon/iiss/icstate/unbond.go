@@ -21,7 +21,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
@@ -55,7 +54,7 @@ func (u *Unbond) Equal(ub2 *Unbond) bool {
 func (u *Unbond) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["address"] = u.Address
-	jso["value"] = intconv.FormatBigInt(u.Value)
+	jso["value"] = u.Value
 	jso["expireBlockHeight"] = u.Expire
 
 	return jso
