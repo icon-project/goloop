@@ -17,8 +17,11 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 var methodsAllowingExtraParams = map[string]bool  {
@@ -26,29 +29,44 @@ var methodsAllowingExtraParams = map[string]bool  {
 	"setPRep": true,
 }
 
-func needAllowExtra(method string) bool {
+func allowExtraParams(method string) bool {
 	yn, _ :=  methodsAllowingExtraParams[method]
 	return yn
 }
 
-type CallHandlerAllowingExtra struct {
-	*contract.CallHandler
+type CallHandler interface {
+	contract.AsyncContractHandler
+	GetMethodName() string
+	AllowExtra()
 }
 
-func (h *CallHandlerAllowingExtra) ExecuteAsync(cc contract.CallContext) (err error) {
-	if cc.Revision().Value() < icmodule.Revision9 {
-		h.AllowExtra()
+type SystemCallHandler struct {
+	CallHandler
+}
+
+func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
+	logger := trace.LoggerOf(cc.Logger())
+	revision := cc.Revision()
+	if revision.Value() < icmodule.Revision9 {
+		if allowExtraParams(h.GetMethodName()) {
+			logger.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
+			h.AllowExtra()
+		}
+		defer func() {
+			if scoreresult.MethodNotFoundError.Equals(err) {
+				logger.TSystemf(
+					"FRAME[%d] result patch from=%v to=%v",
+					cc.FrameID(),
+					err,
+					scoreresult.ErrContractNotFound,
+				)
+				err = errors.WithCode(err, scoreresult.ContractNotFoundError)
+			}
+		}()
 	}
 	return h.CallHandler.ExecuteAsync(cc)
 }
 
-type TransferAndCallHandlerAllowingExtra struct {
-	*contract.TransferAndCallHandler
-}
-
-func (h *TransferAndCallHandlerAllowingExtra) ExecuteAsync(cc contract.CallContext) (err error) {
-	if cc.Revision().Value() < icmodule.Revision9 {
-		h.AllowExtra()
-	}
-	return h.TransferAndCallHandler.ExecuteAsync(cc)
+func newSystemHandler(ch CallHandler) contract.ContractHandler {
+	return &SystemCallHandler{ ch }
 }

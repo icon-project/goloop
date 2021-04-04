@@ -45,40 +45,21 @@ func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallCont
 var govAddress = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (contract.ContractHandler, error) {
-	switch ctype {
-	case contract.CTypeTransfer:
-		if !to.IsContract() {
-			return newTransferHandler(from, to, value, false, cm.log), nil
-		}
-	case contract.CTypeCall:
-		if !to.IsContract() {
-			return newTransferHandler(from, to, value, false, cm.log), nil
-		}
+	if (ctype == contract.CTypeTransfer || ctype == contract.CTypeCall) && !to.IsContract() {
+		return newTransferHandler(from, to, value, false, cm.log), nil
 	}
 	ch, err := cm.ContractManager.GetHandler(from, to, value, ctype, data)
 	if err != nil {
 		return nil, err
 	}
-	switch ctype {
-	case contract.CTypeDeploy:
-		if to.Equal(govAddress) {
-			return newGovernanceHandler(ch), nil
-		}
-	case contract.CTypeCall:
-		if to.Equal(govAddress) {
-			return newGovernanceHandler(ch), nil
-		}
-		if to.Equal(state.SystemAddress) {
-			switch obj := ch.(type) {
-			case *contract.TransferAndCallHandler:
-				if needAllowExtra(obj.GetMethodName()) {
-					return &TransferAndCallHandlerAllowingExtra{obj }, nil
-				}
-			case *contract.CallHandler:
-				if needAllowExtra(obj.GetMethodName()) {
-					return &CallHandlerAllowingExtra{obj }, nil
-				}
-			}
+	if (ctype == contract.CTypeDeploy || ctype == contract.CTypeCall) &&
+		to.Equal(govAddress){
+		ch = newGovernanceHandler(ch)
+	}
+	if (ctype == contract.CTypeCall || ctype == contract.CTypeTransfer) &&
+		to.Equal(state.SystemAddress) {
+		if h, ok := ch.(CallHandler); ok {
+			ch = newSystemHandler(h)
 		}
 	}
 	return ch, nil
