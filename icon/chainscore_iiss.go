@@ -36,6 +36,9 @@ func (s *chainScore) iissHandleRevision() error {
 	revision := s.cc.Revision().Value()
 	if revision < icmodule.RevisionIISS {
 		// chain SCORE was added on RevisionIISS
+		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return scoreresult.OutOfStepError.New("ChargeCallFailureOnContractNotFound")
+		}
 		return scoreresult.ErrContractNotFound
 	}
 	return nil
