@@ -52,7 +52,7 @@ func (u Unstake) ToJSON(_ module.JSONVersion) interface{} {
 	jso := make(map[string]interface{})
 
 	jso["unstake"] = u.Amount
-	jso["expireBlockHeight"] = u.ExpireHeight
+	jso["unstakeBlockHeight"] = u.ExpireHeight
 
 	return jso
 }

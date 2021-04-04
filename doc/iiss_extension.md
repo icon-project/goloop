@@ -125,12 +125,12 @@ Returns the stake status of a given address
 
 #### Returns
 
-| Key                        | VALUE Type     | Required | Description                           |
-| :------------------------- | :------------- | :------- | :------------------------------------ |
-| stake                      | T_INT          | true     | ICX amount of stake in loop           |
-| unstakes                   | T_LIST[T_DICT] | false    | Unstake Info. list                    |
-| unstakes.unstake           | T_INT          | false    | ICX amount of unstake in loop         |
-| unstakes.expireBlockHeight | T_INT          | false    | BlockHeight when unstake will be done |
+| Key                         | VALUE Type     | Required | Description                           |
+| :-------------------------- | :------------- | :------- | :------------------------------------ |
+| stake                       | T_INT          | true     | ICX amount of stake in loop           |
+| unstakes                    | T_LIST[T_DICT] | false    | Unstake info list                     |
+| unstakes.unstake            | T_INT          | false    | ICX amount of unstake in loop         |
+| unstakes.unstakeBlockHeight | T_INT          | false    | BlockHeight when unstake will be done |
 
 ### setDelegation
 
