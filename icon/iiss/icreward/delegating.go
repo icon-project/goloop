@@ -86,8 +86,11 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 			}
 		}
 		if index == -1 { // add new delegation
-			if vote.Value.Sign() != 1 {
+			if vote.Value.Sign() < 0 {
 				return errors.Errorf("Negative delegation value %v", vote)
+			}
+			if vote.Value.Sign() == 0 {
+				continue
 			}
 			nd := icstate.NewDelegation()
 			nd.Address.Set(vote.To())
