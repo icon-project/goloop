@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -105,31 +106,31 @@ func (b *BlockV03) ToJSON(rcpVersion module.JSONVersion) (interface{}, error) {
 }
 
 func calcMerkleRootOfTransactions(txs []Transaction) []byte {
-	items := make([]merkleItem, len(txs))
+	items := make([]merkle.Item, len(txs))
 	for i, tx := range txs {
-		items[i] = hashedItem(tx.ID())
+		items[i] = merkle.HashedItem(tx.ID())
 	}
-	return calcHashOfList(items)
+	return merkle.CalcHashOfList(items)
 }
 
 func (b *BlockV03) calcHash() []byte {
-	items := make([]merkleItem, 0, 13)
+	items := make([]merkle.Item, 0, 13)
 	items = append(items,
-		hashedItem(b.json.PrevHash.Bytes()),
-		hashedItem(b.json.TransactionsHash.Bytes()),
-		hashedItem(b.json.ReceiptsHash.Bytes()),
-		hashedItem(b.json.StateHash.Bytes()),
-		hashedItem(b.json.RepsHash.Bytes()),
-		hashedItem(b.json.NextRepsHash.Bytes()),
-		hashedItem(b.json.LeaderVotesHash.Bytes()),
-		hashedItem(b.json.PrevVotesHash.Bytes()),
-		valueItem(b.json.LogsBloom.LogBytes()),
-		valueItem(intconv.SizeToBytes(uint64(b.json.Height.Value))),
-		valueItem(intconv.SizeToBytes(uint64(b.json.Timestamp.Value))),
-		valueItem(b.json.Leader.ID()),
-		valueItem(b.json.NextLeader.ID()),
+		merkle.HashedItem(b.json.PrevHash.Bytes()),
+		merkle.HashedItem(b.json.TransactionsHash.Bytes()),
+		merkle.HashedItem(b.json.ReceiptsHash.Bytes()),
+		merkle.HashedItem(b.json.StateHash.Bytes()),
+		merkle.HashedItem(b.json.RepsHash.Bytes()),
+		merkle.HashedItem(b.json.NextRepsHash.Bytes()),
+		merkle.HashedItem(b.json.LeaderVotesHash.Bytes()),
+		merkle.HashedItem(b.json.PrevVotesHash.Bytes()),
+		merkle.ValueItem(b.json.LogsBloom.LogBytes()),
+		merkle.ValueItem(intconv.SizeToBytes(uint64(b.json.Height.Value))),
+		merkle.ValueItem(intconv.SizeToBytes(uint64(b.json.Timestamp.Value))),
+		merkle.ValueItem(b.json.Leader.ID()),
+		merkle.ValueItem(b.json.NextLeader.ID()),
 	)
-	return calcHashOfList(items)
+	return merkle.CalcHashOfList(items)
 }
 
 func (b *BlockV03) Verify(prev Block) error {

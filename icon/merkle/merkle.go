@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package blockv0
+package merkle
 
 import (
 	"bytes"
@@ -23,22 +23,22 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 )
 
-type merkleItem interface {
+type Item interface {
 	Hash() []byte
 }
 
-type hashedItem []byte
+type HashedItem []byte
 
-func (i hashedItem) Hash() []byte {
+func (i HashedItem) Hash() []byte {
 	return i
 }
-func (i hashedItem) String() string {
+func (i HashedItem) String() string {
 	return fmt.Sprintf("hash(%#x)", i)
 }
 
-type valueItem []byte
+type ValueItem []byte
 
-func (i valueItem) Hash() []byte {
+func (i ValueItem) Hash() []byte {
 	if i == nil {
 		return nil
 	}
@@ -47,13 +47,13 @@ func (i valueItem) Hash() []byte {
 	}
 	return crypto.SHA3Sum256(i)
 }
-func (i valueItem) String() string {
+func (i ValueItem) String() string {
 	return fmt.Sprintf("value(%#x)", i)
 }
 
 var nullHashBytes = make([]byte, crypto.HashLen)
 
-func getHash(i merkleItem) []byte {
+func getHash(i Item) []byte {
 	if i == nil {
 		return nullHashBytes
 	}
@@ -64,11 +64,11 @@ func getHash(i merkleItem) []byte {
 	}
 }
 
-func mergeWithBytes(a, b merkleItem) merkleItem {
+func mergeWithBytes(a, b Item) Item {
 	bs := make([]byte, 0, crypto.HashLen*2)
 	bs = append(bs, getHash(a)...)
 	bs = append(bs, getHash(b)...)
-	return hashedItem(crypto.SHA3Sum256(bs))
+	return HashedItem(crypto.SHA3Sum256(bs))
 }
 
 func hashToBytes(v []byte) []byte {
@@ -78,12 +78,12 @@ func hashToBytes(v []byte) []byte {
 	return v
 }
 
-func calcHashOfList(items []merkleItem) []byte {
+func CalcHashOfList(items []Item) []byte {
 	if len(items) == 0 {
 		return nil
 	}
 	merge := mergeWithBytes
-	entries := make([]merkleItem, len(items))
+	entries := make([]Item, len(items))
 	copy(entries, items)
 	for len(entries) > 1 {
 		var idx int

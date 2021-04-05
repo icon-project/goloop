@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -43,11 +44,11 @@ func (l *RepsList) Size() int {
 
 func (l *RepsList) Hash() []byte {
 	if l.hash == nil && len(l.json) > 0 {
-		items := make([]merkleItem, len(l.json))
+		items := make([]merkle.Item, len(l.json))
 		for i, rep := range l.json {
-			items[i] = valueItem(rep.Address.Bytes())
+			items[i] = merkle.ValueItem(rep.Address.Bytes())
 		}
-		l.hash = calcHashOfList(items)
+		l.hash = merkle.CalcHashOfList(items)
 	}
 	return l.hash
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/merkle"
 )
 
 type BlockVoteJSON struct {
@@ -128,13 +129,13 @@ func (s *BlockVoteList) Hash() []byte {
 }
 
 func (s *BlockVoteList) calcHash() {
-	items := make([]merkleItem, len(s.votes))
+	items := make([]merkle.Item, len(s.votes))
 	for i, v := range s.votes {
 		if v != nil {
 			items[i] = v
 		}
 	}
-	s.hash = calcHashOfList(items)
+	s.hash = merkle.CalcHashOfList(items)
 }
 
 func (s *BlockVoteList) Verify() error {

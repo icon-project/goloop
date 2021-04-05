@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -115,13 +116,13 @@ func (s *LeaderVoteList) Hash() []byte {
 }
 
 func (s *LeaderVoteList) calcHash() {
-	items := make([]merkleItem, len(s.votes))
+	items := make([]merkle.Item, len(s.votes))
 	for i, v := range s.votes {
 		if v != nil {
 			items[i] = v
 		}
 	}
-	s.hash = calcHashOfList(items)
+	s.hash = merkle.CalcHashOfList(items)
 }
 
 func (s *LeaderVoteList) Quorum() module.Address {
