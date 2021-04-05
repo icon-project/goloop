@@ -33,7 +33,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/importer"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -406,7 +405,7 @@ func (e *Executor) CheckResult(tr *Transition) error {
 			if err != nil {
 				return errors.Wrapf(err, "ResultReceiptGetFailure(idx=%d)", idx)
 			}
-			if err := importer.CheckReceipt(e.log, rct1, rct2); err != nil {
+			if err := lcimporter.CheckReceipt(e.log, rct1, rct2); err != nil {
 				rct1js, _ := JSONMarshalIndent(rct1)
 				rct2js, _ := JSONMarshalIndent(rct2)
 

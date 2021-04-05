@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package importer
+package lcimporter
 
 import (
 	"reflect"
