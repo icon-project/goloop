@@ -534,6 +534,11 @@ func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 	var rps, tps float32
 	tm := new(lcimporter.TPSMeasure).Init(100)
 	for height := from; to < 0 || height <= to; height = height + 1 {
+		tr, err := e.ProposeTransition(prevTR, useCache)
+		if err != nil {
+			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
+		}
+		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
 		rps = getTPSer.GetTPS()
 		tps = tm.GetTPS()
 		Statusf(
@@ -541,15 +546,11 @@ func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ]",
 			spinner(height, stored),
 			D(height),
-			D(prevTR.Block.TxTotal()),
-			TimestampToString(prevTR.Block.Timestamp()),
+			D(txTotal),
+			TimestampToString(tr.Block.Timestamp()),
 			rps,
 			tps,
 		)
-		tr, err := e.ProposeTransition(prevTR, useCache)
-		if err != nil {
-			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
-		}
 		if _, err = tr.Execute(callback); err != nil {
 			return errors.Wrapf(err, "FailureInExecute(height=%d)", height)
 		}
@@ -566,7 +567,6 @@ func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 			return err
 		}
 
-		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
 		if dryRun {
 			e.log.Infof("Check Block[ %9d ]", height, txTotal)
 			if err := tr.Block.CheckResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
