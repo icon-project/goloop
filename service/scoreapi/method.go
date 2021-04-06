@@ -724,6 +724,30 @@ func (a *Method) Signature() string {
 	return fmt.Sprintf("%s(%s)", a.Name, strings.Join(args, ","))
 }
 
+func (a *Method) String() string {
+	inputs := make([]string, len(a.Inputs))
+	for i := 0; i < len(inputs); i++ {
+		inputs[i] = fmt.Sprintf("%s:%s", a.Inputs[i].Name, a.Inputs[i].Type.String())
+	}
+	var output = ""
+	if len(a.Outputs) == 1 {
+		output = " -> " + a.Outputs[0].String()
+	} else if len(a.Outputs) > 1 {
+		outputs := make([]string, len(a.Outputs))
+		for i, o := range a.Outputs {
+			outputs[i] = o.String()
+		}
+		output = " -> (" + strings.Join(outputs, ",") + ")"
+	}
+	return fmt.Sprintf(
+		"%s %s(%s)%s",
+		a.Type.String(),
+		a.Name,
+		strings.Join(inputs, ","),
+		output,
+	)
+}
+
 func (a *Method) CheckEventData(indexed [][]byte, data [][]byte) error {
 	if len(indexed)+len(data) != len(a.Inputs)+1 {
 		return IllegalEventError.Errorf(
