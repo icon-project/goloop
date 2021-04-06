@@ -687,7 +687,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	data := make(map[string]interface{})
 	data["blockHeight"] = bh
 	data["iscore"] = is
-	data["estimatedICX"] = is.Div(is, big.NewInt(iiss.IScoreICXRatio))
+	data["estimatedICX"] = new(big.Int).Div(is, big.NewInt(iiss.IScoreICXRatio))
 
 	return data, nil
 }
