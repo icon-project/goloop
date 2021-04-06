@@ -169,7 +169,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		}
 	}()
 
-	return h.DoExecuteAsync(cc)
+	return h.DoExecuteAsync(cc, h)
 }
 
 func (h *CallHandler) ApplyCallSteps(cc CallContext) bool {
@@ -182,7 +182,7 @@ func (h *CallHandler) ApplyCallSteps(cc CallContext) bool {
 	return true
 }
 
-func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
+func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (err error) {
 	h.cc = cc
 	h.cm = cc.ContractManager()
 
@@ -214,12 +214,12 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext) (err error) {
 	}
 
 	if isSystem {
-		return h.invokeSystemMethod(cc, c)
+		return h.invokeSystemMethod(cc, ch, c)
 	}
-	return h.invokeEEMethod(cc, c)
+	return h.invokeEEMethod(cc, ch, c)
 }
 
-func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
+func (h *CallHandler) invokeEEMethod(cc CallContext, ch eeproxy.CallContext, c state.Contract) error {
 	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
 		return errors.ExecutionFailError.Errorf(
@@ -255,7 +255,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	h.lock.Lock()
 	if !h.disposed {
 		h.Log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
-		err = h.conn.Invoke(h, path, cc.QueryMode(), h.From, h.To,
+		err = h.conn.Invoke(ch, path, cc.QueryMode(), h.From, h.To,
 			h.Value, cc.StepAvailable(), h.method.Name, h.paramObj,
 			h.codeID, eid, state)
 	}
@@ -264,7 +264,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	return err
 }
 
-func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error {
+func (h *CallHandler) invokeSystemMethod(cc CallContext, ch eeproxy.CallContext, c state.Contract) error {
 	h.isSysCall = true
 
 	var cid string
@@ -283,7 +283,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 
 	status, result, step := Invoke(score, h.method.Name, h.paramObj)
 	go func() {
-		h.OnResult(status, step, result)
+		ch.OnResult(status, step, result)
 	}()
 
 	return nil
@@ -650,7 +650,26 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 		}
 	}
 
-	return h.CallHandler.DoExecuteAsync(cc)
+	return h.CallHandler.DoExecuteAsync(cc, h)
+}
+
+func (h *TransferAndCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+	if h.Log.IsTrace() {
+		if status != nil {
+			s, _ := scoreresult.StatusOf(status)
+			h.Log.TSystemf("FRAME[%d] TRANSFER INVOKE done status=%s msg=%v steps=%s", h.FID, s, status, steps)
+		} else {
+			obj, _ := common.DecodeAnyForJSON(result)
+			if err := h.method.EnsureResult(result); err != nil {
+				h.Log.TSystemf("FRAME[%d] TRANSFER INVOKE done status=%s steps=%s result=%s warning=%s",
+					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj), err)
+			} else {
+				h.Log.TSystemf("FRAME[%d] TRANSFER INVOKE done status=%s steps=%s result=%s",
+					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj))
+			}
+		}
+	}
+	h.cc.OnResult(status, steps, result, nil)
 }
 
 func newTransferAndCallHandler(ch *CommonHandler, call *CallHandler) *TransferAndCallHandler {
