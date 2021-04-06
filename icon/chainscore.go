@@ -575,8 +575,8 @@ const (
 	defaultUnstakeSlotMax                        = 1000
 	defaultMainPRepCount                         = 22
 	defaultSubPRepCount                          = 78
-	defaultIRep                                  = iiss.MonthBlock * iiss.IScoreICXRatio
-	defaultRRep                                  = iiss.MonthBlock * iiss.IScoreICXRatio
+	defaultIRep                                  = 0
+	defaultRRep                                  = 1200
 	defaultBondRequirement                       = 5
 	defaultLockMinMultiplier                     = 5
 	defaultLockMaxMultiplier                     = 20
