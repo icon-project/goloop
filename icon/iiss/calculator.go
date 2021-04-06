@@ -639,7 +639,7 @@ func (c *Calculator) calculateVotingReward() error {
 			i._type,
 			multiplier,
 			divider,
-			c.global.GetOffsetLimit(),
+			c.global.GetOffsetLimit()-1,
 			prepInfo,
 			i.eventMap,
 		); err != nil {
@@ -649,7 +649,7 @@ func (c *Calculator) calculateVotingReward() error {
 			i._type,
 			multiplier,
 			divider,
-			c.global.GetOffsetLimit(),
+			c.global.GetOffsetLimit()-1,
 			prepInfo,
 			i.eventMap,
 		); err != nil {
@@ -782,8 +782,19 @@ func (c *Calculator) processVotingEvent(
 		var start, end int
 		for i := 0; i < len(events); i += 1 {
 			end = offsets[i]
-			ret := votingReward(multiplier, divider, start, end, prepInfo, votings.Iterator())
-			reward.Add(reward, ret)
+			offsetLimit := c.global.GetOffsetLimit() - 1
+			iissVersion := c.global.GetIISSVersion()
+			switch iissVersion {
+			case icstate.IISSVersion1:
+				ret := votingReward(multiplier, divider, start, offsetLimit, prepInfo, votings.Iterator())
+				reward.Add(reward, ret)
+				ret = votingReward(multiplier, divider, end, offsetLimit, prepInfo, votings.Iterator())
+				reward.Sub(reward, ret)
+			case icstate.IISSVersion2:
+				end = offsets[i]
+				ret := votingReward(multiplier, divider, start, end, prepInfo, votings.Iterator())
+				reward.Add(reward, ret)
+			}
 
 			// update delegating
 			votes := events[end]
