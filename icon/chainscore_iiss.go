@@ -632,16 +632,29 @@ func (s *chainScore) Ex_claimIScore() error {
 }
 
 func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *big.Int) {
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{
-			[]byte("IScoreClaimedV2(Address,int,int)"),
-			address.Bytes(),
-		},
-		[][]byte{
-			intconv.BigIntToBytes(claim),
-			intconv.BigIntToBytes(icx),
-		},
-	)
+	revision := s.cc.Revision().Value()
+	if revision < icmodule.Revision9 {
+		s.cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("IScoreClaimed(int,int)"),
+			},
+			[][]byte{
+				intconv.BigIntToBytes(claim),
+				intconv.BigIntToBytes(icx),
+			},
+		)
+	} else {
+		s.cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("IScoreClaimedV2(Address,int,int)"),
+				address.Bytes(),
+			},
+			[][]byte{
+				intconv.BigIntToBytes(claim),
+				intconv.BigIntToBytes(icx),
+			},
+		)
+	}
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
