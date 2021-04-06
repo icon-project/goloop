@@ -30,30 +30,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
-func TestCalculator(t *testing.T) {
-	database := db.NewMapDB()
-	c := NewCalculator()
-
-	err := c.Init(database)
-	assert.NoError(t, err)
-	assert.Equal(t, database, c.dbase)
-	assert.Equal(t, int64(InitBlockHeight), c.startHeight)
-
-	c.startHeight = 100
-	c.stats.blockProduce.SetInt64(int64(100))
-	c.stats.voted.SetInt64(int64(200))
-	c.stats.voting.SetInt64(int64(300))
-	err = c.Flush()
-	assert.NoError(t, err)
-
-	c2 := NewCalculator()
-	err = c2.Init(database)
-	assert.NoError(t, err)
-	assert.Equal(t, c.dbase, c2.dbase)
-	assert.Equal(t, c.startHeight, c2.startHeight)
-	assert.True(t, c.stats.equal(c2.stats))
-}
-
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 	c := NewCalculator()
 	c.back = back

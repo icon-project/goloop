@@ -25,7 +25,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -57,8 +56,6 @@ const (
 	VotedRewardMultiplier = 100
 	RrepMultiplier        = 3      // rrep = rrep + eep + dbp = 3 * rrep
 	RrepDivider           = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-
-	keyCalculator = "iiss.calculator"
 )
 
 var (
@@ -66,75 +63,15 @@ var (
 )
 
 type Calculator struct {
-	dbase db.Database
-	log   log.Logger
+	log log.Logger
 
-	result      *icreward.Snapshot
 	startHeight int64
+	back        *icstage.Snapshot
+	base        *icreward.Snapshot
+	global      *icstage.Global
+	temp        *icreward.State
+	result      *icreward.Snapshot
 	stats       *statistics
-
-	back   *icstage.Snapshot
-	base   *icreward.Snapshot
-	global *icstage.Global
-	temp   *icreward.State
-}
-
-func (c *Calculator) RLPEncodeSelf(e codec.Encoder) error {
-	var hash []byte
-	if c.result != nil {
-		hash = c.result.Bytes()
-	}
-	return e.EncodeListOf(
-		hash,
-		c.startHeight,
-		c.stats,
-	)
-}
-
-func (c *Calculator) RLPDecodeSelf(d codec.Decoder) error {
-	var hash []byte
-	if err := d.DecodeListOf(
-		&hash,
-		&c.startHeight,
-		&c.stats,
-	); err != nil {
-		return err
-	}
-	c.result = icreward.NewSnapshot(c.dbase, hash)
-	return nil
-}
-
-func (c *Calculator) Bytes() []byte {
-	bs, err := codec.BC.MarshalToBytes(c)
-	if err != nil {
-		return nil
-	}
-	return bs
-}
-func (c *Calculator) SetBytes(bs []byte) error {
-	_, err := codec.BC.UnmarshalFromBytes(bs, c)
-	return err
-}
-
-func (c *Calculator) Flush() error {
-	bk, err := c.dbase.GetBucket(db.ChainProperty)
-	if err != nil {
-		return err
-	}
-	return bk.Set([]byte(keyCalculator), c.Bytes())
-}
-
-func (c *Calculator) Init(dbase db.Database) error {
-	c.dbase = dbase
-	bk, err := c.dbase.GetBucket(db.ChainProperty)
-	if err != nil {
-		return err
-	}
-	bs, err := bk.Get([]byte(keyCalculator))
-	if err != nil || bs == nil {
-		return err
-	}
-	return c.SetBytes(bs)
 }
 
 func (c *Calculator) Result() *icreward.Snapshot {
@@ -188,7 +125,6 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 		err = errors.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
-	c.log.Infof("Start calculation %d", c.startHeight)
 	prepareTS := time.Now()
 
 	if err = c.calculateBlockProduce(); err != nil {
@@ -231,7 +167,7 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	c.back = ss.back
 	c.base = ss.reward
 	// make new State with hash value to decoupling base and temp
-	c.temp = icreward.NewState(c.dbase, c.base.Bytes())
+	c.temp = icreward.NewState(ss.database, c.base.Bytes())
 	c.result = nil
 	c.stats.clear()
 
@@ -244,6 +180,9 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 		return errors.Errorf("There is no Global values for calculator")
 	}
 	c.startHeight = c.global.GetStartHeight()
+
+	c.log.Infof("Start calculation %d", c.startHeight)
+	c.log.Infof("Global Option: %s", c.global)
 
 	// write claim data to temp
 	if err = c.processClaim(); err != nil {
@@ -970,10 +909,6 @@ func (c *Calculator) postWork() (err error) {
 		return
 	}
 
-	// save calculator Info.
-	if err = c.Flush(); err != nil {
-		return
-	}
 	return
 }
 

@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -38,6 +39,7 @@ type GlobalImpl interface {
 	RLPDecodeFields(decoder codec.Decoder) error
 	RLPEncodeFields(encoder codec.Encoder) error
 	Equal(impl GlobalImpl) bool
+	String() string
 }
 
 type Global struct {
@@ -180,6 +182,19 @@ func (g *GlobalV1) RLPEncodeFields(encoder codec.Encoder) error {
 	)
 }
 
+func (g *GlobalV1) String() string {
+	return fmt.Sprintf("IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Irep: %s, Rrep: %s, "+
+		"MainPRepCount: %d, ElectedPRepCount: %d",
+		g.IISSVersion,
+		g.StartHeight,
+		g.OffsetLimit,
+		g.Irep,
+		g.Rrep,
+		g.MainPRepCount,
+		g.ElectedPRepCount,
+	)
+}
+
 func (g *GlobalV1) Equal(impl GlobalImpl) bool {
 	if g2, ok := impl.(*GlobalV1); ok {
 		return g.IISSVersion == g2.IISSVersion &&
@@ -270,6 +285,20 @@ func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
 
 func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
+		g.IISSVersion,
+		g.StartHeight,
+		g.OffsetLimit,
+		g.Iglobal,
+		g.Iprep,
+		g.Ivoter,
+		g.ElectedPRepCount,
+		g.BondRequirement,
+	)
+}
+
+func (g *GlobalV2) String() string {
+	return fmt.Sprintf("IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Iglobal: %s, Iprep: %s, "+
+		"Ivoter: %d, ElectedPRepCount: %d, BondRequirement: %d",
 		g.IISSVersion,
 		g.StartHeight,
 		g.OffsetLimit,

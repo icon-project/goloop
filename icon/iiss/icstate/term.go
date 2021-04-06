@@ -554,7 +554,7 @@ func (term *Term) SetRrep(rrep *big.Int) {
 
 func (term *Term) String() string {
 	return fmt.Sprintf(
-		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d",
+		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d irep:%s rrep:%s",
 		term.sequence,
 		term.startHeight,
 		term.GetEndBlockHeight(),
@@ -562,6 +562,8 @@ func (term *Term) String() string {
 		term.totalSupply,
 		term.totalDelegated,
 		len(term.prepSnapshots),
+		term.irep,
+		term.rrep,
 	)
 }
 
