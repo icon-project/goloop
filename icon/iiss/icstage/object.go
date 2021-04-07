@@ -52,7 +52,7 @@ func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypeValidator:
 		return newValidator(tag), nil
 	case TypeGlobal:
-		return newGlobal(tag), nil
+		return NewGlobal(tag.Version())
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -101,9 +101,9 @@ func ToValidator(obj trie.Object) *Validator {
 	return obj.(*icobject.Object).Real().(*Validator)
 }
 
-func ToGlobal(obj trie.Object) *Global {
+func ToGlobal(obj trie.Object) Global {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*icobject.Object).Real().(*Global)
+	return obj.(*icobject.Object).Real().(Global)
 }

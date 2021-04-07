@@ -42,7 +42,7 @@ func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
 	return ss.store.Filter(prefix)
 }
 
-func (ss *Snapshot) GetGlobal() (*Global, error) {
+func (ss *Snapshot) GetGlobal() (Global, error) {
 	key := HashKey.Append(globalKey).Build()
 	o, err := ss.store.Get(key)
 	if err != nil {

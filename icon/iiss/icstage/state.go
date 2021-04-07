@@ -200,8 +200,7 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 
 func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
 	key := HashKey.Append(globalKey).Build()
-	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion1))
-	g := obj.GlobalImpl.(*GlobalV1)
+	g := newGlobalV1()
 	g.IISSVersion = icstate.IISSVersion1
 	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit
@@ -209,7 +208,7 @@ func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, r
 	g.Rrep.Set(rrep)
 	g.MainPRepCount = mainPRepCount
 	g.ElectedPRepCount = electedPRepCount
-	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, g))
 	return err
 }
 
@@ -217,8 +216,7 @@ func (s *State) AddGlobalV2(startHeight int64, offsetLimit int, iglobal *big.Int
 	electedPRepCount int, bondRequirement int,
 ) error {
 	key := HashKey.Append(globalKey).Build()
-	obj := newGlobal(icobject.MakeTag(TypeGlobal, GlobalVersion2))
-	g := obj.GlobalImpl.(*GlobalV2)
+	g := newGlobalV2()
 	g.IISSVersion = icstate.IISSVersion2
 	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit
@@ -227,7 +225,7 @@ func (s *State) AddGlobalV2(startHeight int64, offsetLimit int, iglobal *big.Int
 	g.Ivoter.Set(ivoter)
 	g.ElectedPRepCount = electedPRepCount
 	g.BondRequirement = bondRequirement
-	_, err := s.store.Set(key, icobject.New(TypeGlobal, obj))
+	_, err := s.store.Set(key, icobject.New(TypeGlobal, g))
 	return err
 }
 

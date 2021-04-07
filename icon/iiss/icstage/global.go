@@ -18,10 +18,11 @@ package icstage
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"math/big"
 )
 
 const (
@@ -29,101 +30,31 @@ const (
 	GlobalVersion2
 )
 
-type GlobalImpl interface {
-	Version() int
+type Global interface {
+	icobject.Impl
+	GetV1() *GlobalV1
+	GetV2() *GlobalV2
 	GetIISSVersion() int
 	GetStartHeight() int64
 	GetOffsetLimit() int
 	GetElectedPRepCount() int
 	GetBondRequirement() int
-	RLPDecodeFields(decoder codec.Decoder) error
-	RLPEncodeFields(encoder codec.Encoder) error
-	Equal(impl GlobalImpl) bool
 	String() string
 }
 
-type Global struct {
-	icobject.NoDatabase
-	GlobalImpl
-}
-
-func (g *Global) Version() int {
-	return g.GlobalImpl.Version()
-}
-
-func (g *Global) GetV1() *GlobalV1 {
-	global, ok := g.GlobalImpl.(*GlobalV1)
-	if ok {
-		return global
-	} else {
-		return nil
-	}
-}
-
-func (g *Global) GetV2() *GlobalV2 {
-	global, ok := g.GlobalImpl.(*GlobalV2)
-	if ok {
-		return global
-	} else {
-		return nil
-	}
-}
-
-func newGlobal(tag icobject.Tag) *Global {
-	g := new(Global)
-	switch tag.Version() {
-	case GlobalVersion1:
-		g.GlobalImpl = newGlobalV1()
-	case GlobalVersion2:
-		g.GlobalImpl = newGlobalV2()
-	}
-	return g
-}
-
-func (g *Global) RLPDecodeFields(decoder codec.Decoder) error {
-	d, err := decoder.DecodeList()
-	if err != nil {
-		return err
-	}
-	var version int
-	if err = d.Decode(&version); err != nil {
-		return err
-	}
+func NewGlobal(version int) (Global, error) {
 	switch version {
 	case GlobalVersion1:
-		g.GlobalImpl = new(GlobalV1)
+		return newGlobalV1(), nil
 	case GlobalVersion2:
-		g.GlobalImpl = new(GlobalV2)
+		return newGlobalV2(), nil
 	default:
-		return errors.CriticalFormatError.Errorf(
-			"InvalidGlobalVersion(version=%d)", version)
-	}
-	return g.GlobalImpl.RLPDecodeFields(d)
-}
-
-func (g *Global) RLPEncodeFields(encoder codec.Encoder) error {
-	e, err := encoder.EncodeList()
-	if err != nil {
-		return err
-	}
-	if err := e.Encode(g.GlobalImpl.Version()); err != nil {
-		return err
-	}
-	return g.GlobalImpl.RLPEncodeFields(e)
-}
-
-func (g *Global) Equal(o icobject.Impl) bool {
-	if g2, ok := o.(*Global); ok {
-		if g.Version() != g2.Version() {
-			return false
-		}
-		return g.GlobalImpl.Equal(g2.GlobalImpl)
-	} else {
-		return false
+		return nil, errors.CriticalFormatError.Errorf("InvalidGlobalVersion(%d)", version)
 	}
 }
 
 type GlobalV1 struct {
+	icobject.NoDatabase
 	IISSVersion      int
 	StartHeight      int64
 	OffsetLimit      int
@@ -195,7 +126,7 @@ func (g *GlobalV1) String() string {
 	)
 }
 
-func (g *GlobalV1) Equal(impl GlobalImpl) bool {
+func (g *GlobalV1) Equal(impl icobject.Impl) bool {
 	if g2, ok := impl.(*GlobalV1); ok {
 		return g.IISSVersion == g2.IISSVersion &&
 			g.StartHeight == g2.StartHeight &&
@@ -227,6 +158,14 @@ func (g *GlobalV1) IsEmpty() bool {
 		g.ElectedPRepCount == 0
 }
 
+func (g *GlobalV1) GetV1() *GlobalV1 {
+	return g
+}
+
+func (g *GlobalV1) GetV2() *GlobalV2 {
+	return nil
+}
+
 func newGlobalV1() *GlobalV1 {
 	return &GlobalV1{
 		Irep: new(big.Int),
@@ -235,6 +174,7 @@ func newGlobalV1() *GlobalV1 {
 }
 
 type GlobalV2 struct {
+	icobject.NoDatabase
 	IISSVersion      int
 	StartHeight      int64
 	OffsetLimit      int
@@ -310,7 +250,7 @@ func (g *GlobalV2) String() string {
 	)
 }
 
-func (g *GlobalV2) Equal(impl GlobalImpl) bool {
+func (g *GlobalV2) Equal(impl icobject.Impl) bool {
 	if g2, ok := impl.(*GlobalV2); ok {
 		return g.IISSVersion == g2.IISSVersion &&
 			g.StartHeight == g2.StartHeight &&
@@ -329,9 +269,9 @@ func (g *GlobalV2) Clear() {
 	g.IISSVersion = 0
 	g.StartHeight = 0
 	g.OffsetLimit = 0
-	g.Iglobal.SetInt64(0)
-	g.Iprep.SetInt64(0)
-	g.Ivoter.SetInt64(0)
+	g.Iglobal = new(big.Int)
+	g.Iprep = new(big.Int)
+	g.Ivoter = new(big.Int)
 	g.ElectedPRepCount = 0
 	g.BondRequirement = 0
 }
@@ -343,6 +283,14 @@ func (g *GlobalV2) IsEmpty() bool {
 		g.Ivoter.Sign() == 0 &&
 		g.ElectedPRepCount == 0 &&
 		g.BondRequirement == 0
+}
+
+func (g *GlobalV2) GetV1() *GlobalV1 {
+	return nil
+}
+
+func (g *GlobalV2) GetV2() *GlobalV2 {
+	return g
 }
 
 func newGlobalV2() *GlobalV2 {

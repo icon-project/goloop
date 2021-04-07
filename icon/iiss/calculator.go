@@ -68,7 +68,7 @@ type Calculator struct {
 	startHeight int64
 	back        *icstage.Snapshot
 	base        *icreward.Snapshot
-	global      *icstage.Global
+	global      icstage.Global
 	temp        *icreward.State
 	result      *icreward.Snapshot
 	stats       *statistics
@@ -355,17 +355,17 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 // IISS 3.1
 // 	multiplier = iglobal * iprep * IScoreICXRatio
 //	divider = 100 * TermPeriod
-func varForVotedReward(global *icstage.Global) (multiplier, divider *big.Int) {
+func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
 	divider = new(big.Int)
 
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
-		g := global.GetV1()
+		g := global.(*icstage.GlobalV1)
 		multiplier.Mul(g.Irep, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
-		g := global.GetV2()
+		g := global.(*icstage.GlobalV2)
 		if g.OffsetLimit == 0 {
 			return
 		}
@@ -509,7 +509,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 // IISS 3.1
 // 	multiplier = Iglobal * Ivoter * IScoreICXRatio
 //	divider = 100 * term period * total voting amount
-func varForVotingReward(global *icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
+func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
 	divider = new(big.Int)
 

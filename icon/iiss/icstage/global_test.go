@@ -32,7 +32,8 @@ func TestGlobalV1(t *testing.T) {
 	version := GlobalVersion1
 	offsetLimit := 10
 
-	g := newGlobal(icobject.MakeTag(type_, version))
+	g, err := NewGlobal(version)
+	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV1()
 	assert.NotNil(t, g1)
@@ -64,7 +65,8 @@ func TestGlobalV2(t *testing.T) {
 	version := GlobalVersion2
 	offsetLimit := 10
 
-	g := newGlobal(icobject.MakeTag(type_, version))
+	g, err := NewGlobal(version)
+	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV2()
 	assert.NotNil(t, g1)
