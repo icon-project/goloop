@@ -9,7 +9,7 @@ lcimport_LDFLAGS = -X 'main.version=$(GL_VERSION)'
 GOCHAIN_ICON_IMAGE = goloop/gochain-icon:$(GL_TAG)
 GOCHAIN_ICON_DOCKER_DIR = $(BUILD_ROOT)/build/gochain-icon
 
-GOLOOP_ICON_IMAGE = goloop/goloop-icon:$(GL_TAG)
+GOLOOP_ICON_IMAGE = goloop-icon:$(GL_TAG)
 GOLOOP_ICON_DOCKER_DIR = $(BUILD_ROOT)/build/goloop-icon
 
 ICONEE_DIST_DIR = $(BUILD_ROOT)/build/iconee/dist
