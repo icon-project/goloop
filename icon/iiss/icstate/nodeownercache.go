@@ -6,9 +6,14 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
-var nodeOwnerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "node_owner")
+var nodeOwnerDictPrefix = containerdb.ToKey(
+	containerdb.HashBuilder,
+	scoredb.DictDBPrefix,
+	"node_owner",
+)
 
 // TODO: Remove old nodes which is not used anymore
 type NodeOwnerCache struct {

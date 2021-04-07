@@ -6,9 +6,14 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
-var activePRepArrayPrefix = containerdb.ToKey(containerdb.RawBuilder, "active_prep")
+var activePRepArrayPrefix = containerdb.ToKey(
+	containerdb.HashBuilder,
+	scoredb.ArrayDBPrefix,
+	"active_prep",
+)
 
 type activePRepCacheItem struct {
 	owner module.Address

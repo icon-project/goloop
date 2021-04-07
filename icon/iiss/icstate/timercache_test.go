@@ -1,6 +1,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/service/scoredb"
 	"testing"
 
 	"github.com/icon-project/goloop/common"
@@ -11,7 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testTimerDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "timer_test")
+var testTimerDictPrefix = containerdb.ToKey(
+	containerdb.HashBuilder, scoredb.DictDBPrefix, "timer_test",
+)
 
 func TestTimerCache(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)

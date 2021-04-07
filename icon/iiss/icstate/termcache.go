@@ -3,9 +3,10 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
-var termVarPrefix = containerdb.ToKey(containerdb.RawBuilder, "term")
+var termVarPrefix = containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, "term")
 
 type termCache struct {
 	dirty bool

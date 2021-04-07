@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -53,14 +54,14 @@ const (
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
 		store,
-		containerdb.ToKey(containerdb.HashBuilder, key),
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, key),
 	)
 }
 
 func setValue(store containerdb.ObjectStoreState, key string, value interface{}) error {
 	db := containerdb.NewVarDB(
 		store,
-		containerdb.ToKey(containerdb.HashBuilder, key),
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, key),
 	)
 	if err := db.Set(value); err != nil {
 		return err

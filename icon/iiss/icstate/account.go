@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 	"sort"
 
@@ -35,7 +36,11 @@ const (
 	accountVersion  = accountVersion1
 )
 
-var AccountDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "account_db")
+var AccountDictPrefix = containerdb.ToKey(
+	containerdb.HashBuilder,
+	scoredb.DictDBPrefix,
+	"account_db",
+)
 
 // Account containing IISS information
 type Account struct {

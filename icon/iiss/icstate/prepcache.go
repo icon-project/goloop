@@ -8,11 +8,20 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 var (
-	prepBaseDictPrefix   = containerdb.ToKey(containerdb.RawBuilder, "prep_base")
-	prepStatusDictPrefix = containerdb.ToKey(containerdb.RawBuilder, "prep_status")
+	prepBaseDictPrefix   = containerdb.ToKey(
+		containerdb.HashBuilder,
+		scoredb.DictDBPrefix,
+		"prep_base",
+	)
+	prepStatusDictPrefix = containerdb.ToKey(
+		containerdb.HashBuilder,
+		scoredb.DictDBPrefix,
+		"prep_status",
+	)
 )
 
 type PRepBaseCache struct {

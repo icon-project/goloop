@@ -24,13 +24,18 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 var (
 	IssueKey          = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
 	RewardCalcInfoKey = containerdb.ToKey(containerdb.HashBuilder, "reward_calc_info").Build()
-	LastValidatorsKey = containerdb.ToKey(containerdb.HashBuilder, "last_validators")
-	UnstakeSlotMaxKey = containerdb.ToKey(containerdb.HashBuilder, "unstake_slot_max")
+	LastValidatorsKey = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.ArrayDBPrefix, "last_validators",
+	)
+	UnstakeSlotMaxKey = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.VarDBPrefix, "unstake_slot_max",
+	)
 )
 
 type State struct {
