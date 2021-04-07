@@ -385,7 +385,7 @@ func (tx *transactionV3) IsSkippable() bool {
 }
 
 func checkV3JSON(jso map[string]interface{}) bool {
-	if version, ok := jso["version"]; !ok && version != "0x3" {
+	if version, ok := jso["version"]; !ok || version != "0x3" {
 		return false
 	}
 	if _, ok := jso["from"]; !ok {
