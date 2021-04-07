@@ -229,8 +229,8 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	// switch icstage and write global
 	s.Back = s.Front
 	s.Front = icstage.NewState(s.database)
-	version := s.State.GetIISSVersion()
-	switch version {
+	iissVersion := s.State.GetIISSVersion()
+	switch iissVersion {
 	case icstate.IISSVersion1:
 		if err = s.Back.AddGlobalV1(
 			term.StartHeight(),
@@ -256,12 +256,12 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 		}
 	default:
 		return errors.CriticalFormatError.Errorf(
-			"InvalidIISSVersion(version=%d)", version)
+			"InvalidIISSVersion(version=%d)", iissVersion)
 	}
 
 	// update rewardCalcInfo
 	additionalReward := new(big.Int)
-	if s.State.GetIISSVersion() == icstate.IISSVersion2 {
+	if iissVersion == icstate.IISSVersion2 {
 		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
 		rewardCPS.Div(rewardCPS, big.NewInt(100))
 		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())

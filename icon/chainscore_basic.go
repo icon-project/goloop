@@ -124,10 +124,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-		if err := es.State.SetIISSVersion(int(iconConfig.IISSVersion.Int64())); err != nil {
-			return err
-		}
-		if err := es.State.SetIISSBlockHeight(iconConfig.IISSBlockHeight.Int64()); err != nil {
+		if err := es.State.SetIISSVersion(icstate.IISSVersion1); err != nil {
 			return err
 		}
 		if err := es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
@@ -528,7 +525,7 @@ func (s *chainScore) Ex_getFeeSharingConfig() (map[string]interface{}, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
 	fsConfig := make(map[string]interface{})
-	fsConfig["feeSharingEnabled"] = systemConfig & state.SysConfigFeeSharing != 0
+	fsConfig["feeSharingEnabled"] = systemConfig&state.SysConfigFeeSharing != 0
 	fsConfig["depositTerm"] = s.cc.DepositTerm()
 	fsConfig["depositIssueRate"] = s.cc.DepositIssueRate()
 	return fsConfig, nil

@@ -568,8 +568,6 @@ const (
 
 const (
 	configFile                                   = "./icon_config.json"
-	defaultIISSVersion                           = 1
-	defaultIISSBlockHeight                       = 0
 	defaultTermPeriod                            = InitialTermPeriod
 	defaultUnbondingPeriodMultiplier             = 7
 	defaultUnstakeSlotMax                        = 1000
@@ -595,8 +593,6 @@ const (
 
 type config struct {
 	TermPeriod                            *common.HexInt `json:"termPeriod"`
-	IISSVersion                           *common.HexInt `json:"iissVersion,omitempty"`
-	IISSBlockHeight                       *common.HexInt `json:"iissBlockHeight,omitempty"`
 	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
 	SubPRepCount                          *common.HexInt `json:"subPRepCount"`
 	Irep                                  *common.HexInt `json:"irep,omitempty"`
@@ -616,11 +612,10 @@ type config struct {
 
 func (c *config) String() string {
 	return fmt.Sprintf(
-		"termPeriod=%s iissVer=%s mainPReps=%s subPReps=%s "+
+		"termPeriod=%s mainPReps=%s subPReps=%s "+
 			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
 			"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %s",
 		c.TermPeriod,
-		c.IISSVersion,
 		c.MainPRepCount,
 		c.SubPRepCount,
 		c.Irep,
@@ -688,8 +683,6 @@ type ChainConfig struct {
 func newIconConfig() *config {
 	return &config{
 		TermPeriod:                            common.NewHexInt(defaultTermPeriod),
-		IISSVersion:                           common.NewHexInt(defaultIISSVersion),
-		IISSBlockHeight:                       common.NewHexInt(defaultIISSBlockHeight),
 		MainPRepCount:                         common.NewHexInt(defaultMainPRepCount),
 		SubPRepCount:                          common.NewHexInt(defaultSubPRepCount),
 		Irep:                                  common.NewHexInt(defaultIRep),

@@ -25,20 +25,19 @@ import (
 )
 
 const (
-	VarIRep                      = "irep"
-	VarRRep                      = "rrep"
-	VarMainPRepCount             = "main_prep_count"
-	VarSubPRepCount              = "sub_prep_count"
-	VarTotalStake                = "total_stake"
-	VarIISSVersion               = "iiss_version"
-	VarIISSBlockHeight           = "iiss_blockHeight"
-	VarTermPeriod                = "term_period"
-	VarBondRequirement           = "bond_requirement"
-	VarUnbondingPeriodMultiplier = "unbonding_period_multiplier"
-	VarLockMinMultiplier         = "lockMinMultiplier"
-	VarLockMaxMultiplier         = "lockMaxMultiplier"
-	VarRewardFund                = "reward_fund"
-	VarUnbondingMax              = "unbonding_max"
+	VarIRep                                  = "irep"
+	VarRRep                                  = "rrep"
+	VarMainPRepCount                         = "main_prep_count"
+	VarSubPRepCount                          = "sub_prep_count"
+	VarTotalStake                            = "total_stake"
+	VarIISSVersion                           = "iiss_version"
+	VarTermPeriod                            = "term_period"
+	VarBondRequirement                       = "bond_requirement"
+	VarUnbondingPeriodMultiplier             = "unbonding_period_multiplier"
+	VarLockMinMultiplier                     = "lockMinMultiplier"
+	VarLockMaxMultiplier                     = "lockMaxMultiplier"
+	VarRewardFund                            = "reward_fund"
+	VarUnbondingMax                          = "unbonding_max"
 	VarValidationPenaltyCondition            = "validation_penalty_condition"
 	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
 	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
@@ -46,8 +45,7 @@ const (
 )
 
 const (
-	IISSVersion0 int = iota // IISS disabled
-	IISSVersion1            // IISS 2.0
+	IISSVersion1 int = iota // IISS 2.0
 	IISSVersion2            // IISS 3.1
 )
 
@@ -75,14 +73,6 @@ func (s *State) GetIISSVersion() int {
 
 func (s *State) SetIISSVersion(value int) error {
 	return setValue(s.store, VarIISSVersion, value)
-}
-
-func (s *State) GetIISSBlockHeight() int64 {
-	return getValue(s.store, VarIISSBlockHeight).Int64()
-}
-
-func (s *State) SetIISSBlockHeight(value int64) error {
-	return setValue(s.store, VarIISSBlockHeight, value)
 }
 
 func (s *State) GetTermPeriod() int64 {
@@ -281,7 +271,6 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["subPRepCount"] = s.GetSubPRepCount()
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
-	jso["iissBlockHeight"] = s.GetIISSBlockHeight()
 	jso["termPeriod"] = s.GetTermPeriod()
 	jso["bondRequirement"] = s.GetBondRequirement()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()

@@ -221,7 +221,7 @@ func (term *Term) GetIISSVersion() int {
 	if term.revision >= icmodule.RevisionIISS {
 		return IISSVersion1
 	}
-	return IISSVersion0
+	return IISSVersion1
 }
 
 func (term *Term) Set(other *Term) {
