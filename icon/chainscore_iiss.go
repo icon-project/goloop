@@ -618,9 +618,9 @@ func (s *chainScore) Ex_claimIScore() error {
 	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
 	revision := s.cc.Revision().Value()
 	if revision < icmodule.RevisionICON2 {
-		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
-	} else {
 		err = es.Front.AddIScoreClaim(s.from, claim)
+	} else {
+		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
 	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Failed to add IScore claim event. (%s)", err.Error())
