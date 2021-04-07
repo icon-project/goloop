@@ -70,7 +70,7 @@ func (ss *Snapshot) GetEventSize() (*EventSize, error) {
 }
 
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {
-	database = icobject.AttachObjectFactory(database, newObjectImpl)
+	database = icobject.AttachObjectFactory(database, NewObjectImpl)
 	t := trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType)
 	return &Snapshot{
 		store: icobject.NewObjectStoreSnapshot(t),

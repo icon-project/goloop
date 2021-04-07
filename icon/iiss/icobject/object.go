@@ -18,6 +18,7 @@ package icobject
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -170,6 +171,23 @@ func (o *Object) Tag() Tag {
 		return 0
 	}
 	return o.tag
+}
+
+func (o *Object) Format(f fmt.State, c rune) {
+	switch c {
+	case 's':
+		fmt.Fprintf(f, "Object[tag=%#x,obj=%s]", o.tag, o.real)
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Object[tag=%#x,obj=%+v]", o.tag, o.real)
+		} else {
+			fmt.Fprintf(f, "Object[tag=%#x,obj=%v]", o.tag, o.real)
+		}
+	default:
+		if formatter, ok := o.real.(fmt.Formatter); ok {
+			formatter.Format(f, c)
+		}
+	}
 }
 
 func New(t int, real Impl) *Object {

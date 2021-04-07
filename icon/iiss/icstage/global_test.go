@@ -26,7 +26,7 @@ import (
 )
 
 func TestGlobalV1(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeGlobal
 	version := GlobalVersion1
@@ -59,7 +59,7 @@ func TestGlobalV1(t *testing.T) {
 }
 
 func TestGlobalV2(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeGlobal
 	version := GlobalVersion2

@@ -27,7 +27,7 @@ import (
 )
 
 func TestIScore(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeIScore
 	version := 0

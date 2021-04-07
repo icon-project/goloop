@@ -28,7 +28,7 @@ import (
 )
 
 func TestState_NewState(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewState(database, nil)
 
@@ -63,7 +63,7 @@ func TestState_NewState(t *testing.T) {
 }
 
 func TestState_SetVoted(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewState(database, nil)
 

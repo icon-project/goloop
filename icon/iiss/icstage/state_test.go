@@ -31,7 +31,7 @@ import (
 )
 
 func TestState_AddIScoreClaim(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
@@ -114,7 +114,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 }
 
 func TestState_AddEvent(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
@@ -253,7 +253,7 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 }
 
 func TestState_AddBlockProduce(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
@@ -373,7 +373,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 }
 
 func TestState_AddGlobal(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
@@ -481,7 +481,7 @@ func TestState_AddGlobal(t *testing.T) {
 }
 
 func TestState_AddLoadValidators(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 

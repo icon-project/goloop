@@ -28,7 +28,7 @@ import (
 )
 
 func TestVoted(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeVoted
 	version := 0

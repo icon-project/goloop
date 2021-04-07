@@ -28,7 +28,7 @@ import (
 )
 
 func TestEvent_Delegation(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeEventDelegation
 	version := 0
@@ -63,7 +63,7 @@ func TestEvent_Delegation(t *testing.T) {
 }
 
 func TestEvent_Bond(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeEventBond
 	version := 0
@@ -98,7 +98,7 @@ func TestEvent_Bond(t *testing.T) {
 }
 
 func TestEvent_Enable(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeEventEnable
 	version := 0

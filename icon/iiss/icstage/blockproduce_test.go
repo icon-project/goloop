@@ -27,7 +27,7 @@ import (
 )
 
 func Test_BlockVote(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeBlockProduce
 	version := 0

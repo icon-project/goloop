@@ -27,7 +27,7 @@ import (
 )
 
 func TestIScoreClaim(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeIScoreClaim
 	version := 0

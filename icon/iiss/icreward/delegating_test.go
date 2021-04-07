@@ -30,7 +30,7 @@ import (
 )
 
 func TestDelegating(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeDelegating
 	version := 0

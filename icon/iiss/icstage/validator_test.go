@@ -27,7 +27,7 @@ import (
 )
 
 func Test_Validator(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), newObjectImpl)
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	type_ := TypeValidator
 	version := 0

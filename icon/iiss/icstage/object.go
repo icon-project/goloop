@@ -33,7 +33,7 @@ const (
 	TypeGlobal
 )
 
-func newObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
+func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
 	case icobject.TypeBigInt:
 		return icobject.NewObjectBigInt(tag), nil

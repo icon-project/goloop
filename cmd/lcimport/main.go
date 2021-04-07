@@ -17,32 +17,23 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"runtime/pprof"
-	"strconv"
 	"strings"
-	"text/scanner"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/cmd/cli"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -259,160 +250,6 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	return cmd
 }
 
-func parseParams(p string) ([]string, error) {
-	var params []string
-	s := new(scanner.Scanner)
-	s.Init(bytes.NewBufferString(p))
-	s.Mode = scanner.ScanIdents | scanner.ScanStrings | scanner.ScanInts
-	for {
-		switch value := s.Scan(); value {
-		case scanner.EOF:
-			return params, nil
-		case scanner.Ident, scanner.Int:
-			params = append(params, s.TokenText())
-		case scanner.String, scanner.RawString:
-			token := s.TokenText()
-			var str string
-			if err := json.Unmarshal([]byte(token), &str); err != nil {
-				return nil, errors.IllegalArgumentError.Wrapf(err,
-					"Invalid String(%q)", token)
-			}
-			params = append(params, str)
-		case '-':
-			if s.Scan() == scanner.Int {
-				params = append(params, "-"+s.TokenText())
-			} else {
-				return nil, errors.IllegalArgumentError.Errorf("InvalidTokenAfterMinus")
-			}
-		case '.':
-		default:
-			return nil, errors.IllegalArgumentError.Errorf(
-				"Unknown character=%c", value)
-		}
-	}
-}
-
-func toKeys(params []string) []interface{} {
-	var keys []interface{}
-	for _, p := range params {
-		if v, err := strconv.ParseInt(p, 0, 64); err == nil {
-			keys = append(keys, v)
-		} else if addr, err := common.NewAddressFromString(p); err == nil {
-			keys = append(keys, addr)
-		} else {
-			keys = append(keys, p)
-		}
-	}
-	return keys
-}
-
-func showValue(value containerdb.Value, ts string) {
-	switch ts {
-	case "int":
-		fmt.Printf("%d\n", value.BigInt())
-	case "bool":
-		fmt.Printf("%v\n", value.Bool())
-	case "str", "string":
-		fmt.Printf("%q\n", value.String())
-	case "addr", "Address":
-		fmt.Printf("%s\n", value.Address().String())
-	case "bytes":
-		fmt.Printf("%#x\n", value.Bytes())
-	default:
-		log.Warnf("Unknown type=%s bytes=%#x", ts, value.Bytes())
-	}
-}
-
-func showAccount(addr module.Address, ass state.AccountSnapshot, params []string) error {
-	if len(params) == 0 {
-		fmt.Printf("Account[%s]\n", addr.String())
-		fmt.Printf("- Balance : %#d\n", ass.GetBalance())
-		if ass.IsContract() {
-			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
-			fmt.Printf("- CodeHash: %#x\n", ass.Contract().CodeHash())
-			api, err := ass.APIInfo()
-			if err != nil {
-				return err
-			}
-			apijs, _ := JSONMarshalIndent(api)
-			fmt.Printf("- API Info\n%s\n", apijs)
-		}
-		return nil
-	} else {
-		if len(params) < 3 {
-			return errors.Errorf("InvalidArguments(%+v)", params)
-		}
-		prefix := params[0]
-		params = params[1:]
-		store := containerdb.NewBytesStoreStateWithSnapshot(ass)
-		_, _ = store, prefix
-		switch prefix {
-		case "var":
-			suffix := params[len(params)-1]
-			keys := toKeys(params[:len(params)-1])
-			vardb := scoredb.NewVarDB(store, keys...)
-			showValue(vardb, suffix)
-			return nil
-		case "array":
-			suffix := params[len(params)-1]
-			params = params[:len(params)-1]
-			var keys []interface{}
-			if suffix != "size" {
-				if len(params) < 2 {
-					return errors.IllegalArgumentError.New("")
-				}
-				idxStr := params[len(params)-1]
-				keys = toKeys(params[:len(params)-1])
-				idx, err := strconv.ParseInt(idxStr, 0, 64)
-				if err != nil {
-					return errors.IllegalArgumentError.Wrapf(err,
-						"InvalidArrayIndex(value=%s)", idxStr)
-				}
-				arraydb := scoredb.NewArrayDB(store, keys...)
-				value := arraydb.Get(int(idx))
-				showValue(value, suffix)
-				return nil
-			} else {
-				keys := toKeys(params)
-				arraydb := scoredb.NewArrayDB(store, keys...)
-				fmt.Printf("%d\n", arraydb.Size())
-				return nil
-			}
-		case "dict":
-			suffix := params[len(params)-1]
-			params = params[:len(params)-1]
-			name := params[0]
-			keys := toKeys(params[1:])
-
-			dictdb := scoredb.NewDictDB(store, name, len(keys))
-			value := dictdb.Get(keys...)
-			if value == nil {
-				fmt.Println("nil")
-			}
-			showValue(value, suffix)
-		default:
-			return errors.IllegalArgumentError.Errorf(
-				"InvalidPrefix(prefix=%s)", prefix)
-		}
-		return nil
-	}
-}
-
-func showWorld(wss state.WorldSnapshot, params []string) error {
-	if len(params) < 1 {
-		return errors.IllegalArgumentError.New("" +
-			"Address need to be specified")
-	}
-	addr := common.MustNewAddressFromString(params[0])
-	if addr == nil {
-		return errors.IllegalArgumentError.Errorf(
-			"InvalidAddress(addr=%s)", params[0])
-	}
-	params = params[1:]
-	ass := wss.GetAccountSnapshot(addr.ID())
-	return showAccount(addr, ass, params)
-}
-
 func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.RangeArgs(0, 1),
@@ -421,6 +258,7 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 	}
 	pflags := cmd.PersistentFlags()
 	pHeight := pflags.Int64("height", 0, "Height of the state (0 for last height)")
+	// pReadLine := pflags.BoolP("readline", "r", false, "Use command-line for continuous query")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		ex := vc.Get(vcKeyExecutor).(*Executor)
 		height := *pHeight
@@ -447,21 +285,43 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Block[%d] - %#x\n", height, blk.ID())
-			var values [][]byte
-			result := blk.Result()
-			if len(result) > 0 {
-				if _, err := codec.BC.UnmarshalFromBytes(result, &values); err != nil {
+			if err :=  showBlockDetail(blk); err != nil {
+				return err
+			}
+			/*
+			if *pReadLine {
+				wss, err := ex.NewWorldSnapshot(height)
+				if err != nil {
 					return err
 				}
-				fmt.Printf("- World State Hash  : %#x\n", values[0])
-				fmt.Printf("- Patch Result Hash : %#x\n", values[1])
-				fmt.Printf("- Normal Result Hash: %#x\n", values[2])
-				if len(values) > 3 {
-					fmt.Printf("- Extension Data    : %#x\n", values[3])
+				r, err := readline.New("state> ")
+				if err != nil {
+					return err
+				}
+				for {
+					line, err := r.Readline()
+					if err != nil {
+						break
+					}
+					arg := strings.TrimSpace(line)
+					if arg == "" {
+						continue
+					}
+					if arg == "." {
+						break
+					}
+					params, err := parseParams(arg)
+					if err != nil {
+						fmt.Printf("Error:%+v", err)
+						continue
+					}
+					if err := showWorld(wss, params); err != nil {
+						fmt.Printf("Error:%+v", err)
+						continue
+					}
 				}
 			}
-			fmt.Printf("- Total Transactions: %d\n", blk.TxTotal())
+			*/
 		}
 		return nil
 	}
