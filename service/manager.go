@@ -320,6 +320,7 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 	tx, err := transaction.NewTransaction(b)
 	if err != nil {
 		m.log.Warnf("sm.TransactionFromBytes() fails with err=%+v", err)
+		return nil, err
 	}
 	return tx, nil
 }
@@ -328,6 +329,7 @@ func (m *manager) GenesisTransactionFromBytes(b []byte, blockVersion int) (modul
 	tx, err := transaction.NewGenesisTransaction(b)
 	if err != nil {
 		m.log.Warnf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
+		return nil, err
 	}
 	return tx, nil
 }
