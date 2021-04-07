@@ -313,22 +313,27 @@ func applyShortcut(scs map[string]shortcut, params []string) []string {
 }
 
 var extensionStateShortcuts = map[string]shortcut{
-	"prep_base": {
-		[]string{"raw", "prep_base"},
-		[]string{"obj"},
-	},
-	"prep_status": {
-		[]string{"raw", "prep_status"},
-		[]string{"obj"},
-	},
-	"active_prep": {
-		[]string{"raw_array", "active_prep"},
-		[]string{"addr"},
-	},
-	"account": {
-		[]string{"raw", "account_db"},
-		[]string{"obj"},
-	},
+	"prep_base":   {[]string{"raw", "prep_base"}, []string{"obj"}},   // <address>
+	"prep_status": {[]string{"raw", "prep_status"}, []string{"obj"}}, // <address>
+	"active_prep": {[]string{"raw_array", "active_prep"}, []string{"addr"}},
+	"account":     {[]string{"raw", "account_db"}, []string{"obj"}}, // <address>
+	"value":       {[]string{"hash"}, []string{}},                   // <name>
+}
+
+var extensionStageShortcuts = map[string]shortcut{
+	"iscore":    {[]string{"rlp", "0x10"}, []string{"obj"}}, // <address>
+	"event":     {[]string{"rlp", "0x20"}, []string{"obj"}}, // <offset>/<index>
+	"block":     {[]string{"rlp", "0x30"}, []string{"obj"}}, // <offset>
+	"validator": {[]string{"rlp", "0x40"}, []string{"obj"}}, // <index>
+	"events":    {[]string{"ph", "0x70", "events"}, []string{"int"}},
+	"global":    {[]string{"ph", "0x70", "global"}, []string{"obj"}},
+}
+
+var extensionRewardShortcuts = map[string]shortcut{
+	"voted":      {[]string{"rlp", "0x10"}, []string{"obj"}}, // <address>
+	"delegating": {[]string{"rlp", "0x20"}, []string{"obj"}}, // <address>
+	"bonding":    {[]string{"rlp", "0x30"}, []string{"obj"}}, // <address>
+	"iscore":     {[]string{"rlp", "0x40"}, []string{"obj"}}, // <address>
 }
 
 func showExtensionState(dbase db.Database, hash []byte, params []string) error {
@@ -351,6 +356,7 @@ func showExtensionStage(dbase db.Database, hash []byte, params []string) error {
 	dbase = icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
 	snapshot := trie_manager.NewImmutableForObject(dbase, hash, icobject.ObjectType)
 	oss := icobject.NewObjectStoreSnapshot(snapshot)
+	params = applyShortcut(extensionStageShortcuts, params)
 	return showContainerData(oss, params)
 }
 
@@ -362,6 +368,7 @@ func showExtensionReward(dbase db.Database, hash []byte, params []string) error 
 	dbase = icobject.AttachObjectFactory(dbase, icreward.NewObjectImpl)
 	snapshot := trie_manager.NewImmutableForObject(dbase, hash, icobject.ObjectType)
 	oss := icobject.NewObjectStoreSnapshot(snapshot)
+	params = applyShortcut(extensionRewardShortcuts, params)
 	return showContainerData(oss, params)
 }
 
