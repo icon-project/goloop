@@ -22,7 +22,7 @@ cd $WORKDIR
 
 export GOLOOP_ICON_VERSION=${GOLOOP_ICON_VERSION:-$(git describe --always --tags --dirty)}
 export IMAGE_PY_DEPS=${IMAGE_PY_DEPS:-goloop/py-deps:latest}
-IMAGE_GOLOOP_ICON=${IMAGE_GOLOOP_ICON:-goloop/goloop-icon:latest}
+IMAGE_GOLOOP_ICON=${IMAGE_GOLOOP_ICON:-goloop-icon:latest}
 
 ./update.sh "${IMAGE_GOLOOP_ICON}" ../..
 

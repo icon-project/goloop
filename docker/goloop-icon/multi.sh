@@ -20,7 +20,7 @@ PRE_PWD=$(pwd)
 WORKDIR=$(dirname "$(readlink -f ${0})")
 cd $WORKDIR
 
-IMAGE_GOLOOP=${IMAGE_GOLOOP:-goloop/goloop-icon:latest}
+IMAGE_GOLOOP=${IMAGE_GOLOOP:-goloop-icon:latest}
 GOLOOP_DATA=${GOLOOP_DATA:-/goloop/data}
 GOLOOP_DOCKER_REPLICAS=${GOLOOP_DOCKER_REPLICAS:-4}
 GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_net}
