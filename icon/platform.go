@@ -146,7 +146,10 @@ func (p *platform) getExtensionState(wc state.WorldContext, logger log.Logger) *
 	if es == nil {
 		return nil
 	}
-	esi := es.(*iiss.ExtensionStateImpl)
+	esi, ok := es.(*iiss.ExtensionStateImpl)
+	if !ok {
+		return nil
+	}
 	if logger != nil {
 		esi.SetLogger(icutils.NewIconLogger(logger))
 	}
