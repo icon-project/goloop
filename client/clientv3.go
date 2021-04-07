@@ -250,6 +250,26 @@ func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) 
 	return &result, nil
 }
 
+func (c *ClientV3) SendRawTransaction(w module.Wallet, param map[string]interface{}) (*jsonrpc.HexBytes, error) {
+	param["timestamp"] = intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond))
+	bs, err := transaction.SerializeMap(param, nil, txSerializeExcludes)
+	if err != nil {
+		return nil, err
+	}
+	bs = append([]byte("icx_sendTransaction."), bs...)
+	sig, err := w.Sign(crypto.SHA3Sum256(bs))
+	if err != nil {
+		return nil, err
+	}
+
+	param["signature"] = base64.StdEncoding.EncodeToString(sig)
+	var result jsonrpc.HexBytes
+	if _, err = c.Do("icx_sendTransaction", param, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 //using blockHeader.NextValidatorsHash
 func (c *ClientV3) GetDataByHash(param *v3.DataHashParam) ([]byte, error) {
 	var result []byte

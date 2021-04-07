@@ -570,6 +570,29 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	}
 	rootCmd.AddCommand(rawCmd)
 
+	raw2Cmd := &cobra.Command{
+		Use:   "raw2 FILE",
+		Short: "Send transaction with json file just timestamp & sign",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			b, err := readFile(args[0])
+			if err != nil {
+				return err
+			}
+			var param map[string]interface{}
+			if err := json.Unmarshal(b, &param); err != nil {
+				return err
+			}
+			txHash, err := rpcClient.SendRawTransaction(rpcWallet, param)
+			if err != nil {
+				return err
+			}
+			vc.Set("txhash", txHash)
+			return JsonPrettyPrintln(os.Stdout, txHash)
+		},
+	}
+	rootCmd.AddCommand(raw2Cmd)
+
 	transferCmd := &cobra.Command{
 		Use:   "transfer",
 		Short: "Coin Transfer Transaction",
