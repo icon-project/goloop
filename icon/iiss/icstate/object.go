@@ -67,8 +67,6 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newTermWithTag(tag), nil
 	case TypeRewardCalcInfo:
 		return newRewardCalcInfo(tag), nil
-	case icobject.TypeAddress:
-		return icobject.NewAddress(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)

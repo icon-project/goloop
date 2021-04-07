@@ -31,8 +31,6 @@ const (
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
-	case icobject.TypeBigInt:
-		return icobject.NewObjectBigInt(tag), nil
 	case TypeVoted:
 		return newVoted(tag), nil
 	case TypeDelegating:
