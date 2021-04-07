@@ -662,6 +662,13 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if len(dataM) > 0 {
 				param.Data = dataM
 			}
+			if cmd.Flag("value").Value.String() != "" {
+				var value common.HexInt
+				if _, ok := value.SetString(cmd.Flag("value").Value.String(), 0); !ok {
+					return fmt.Errorf("fail to parsing value %s", cmd.Flag("value").Value.String())
+				}
+				param.Value = jsonrpc.HexInt(value.String())
+			}
 
 			txHash, err := rpcClientSendTx(rpcWallet, param)
 			if err != nil {
@@ -678,6 +685,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
 	callFlags.StringToString("param", nil,
 		"key=value, Function parameters, if '--raw' used, will overwrite")
+	callFlags.String("value", "", "Value of transfer")
 	callFlags.String("raw", "", "call with 'data' using raw json file or json-string")
 	MarkAnnotationRequired(callFlags, "to", "method")
 
