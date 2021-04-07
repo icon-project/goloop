@@ -227,21 +227,19 @@ func makeVS(addrs ...*common.Address) []*validator {
 
 func TestCalculator_varForVotedReward(t *testing.T) {
 	tests := []struct {
-		name string
-		args *icstage.Global
+		name                string
+		args                icstage.Global
 		multiplier, divider int64
 	}{
 		{
 			"Global Version1",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV1{
-					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
-					Irep:             big.NewInt(MonthBlock),
-					Rrep:             big.NewInt(200),
-					MainPRepCount:    22,
-					ElectedPRepCount: 100,
-				},
+			&icstage.GlobalV1{
+				IISSVersion:      icstate.IISSVersion1,
+				OffsetLimit:      100,
+				Irep:             big.NewInt(MonthBlock),
+				Rrep:             big.NewInt(200),
+				MainPRepCount:    22,
+				ElectedPRepCount: 100,
 			},
 			// 	variable = irep * electedPRepCount * IScoreICXRatio / (2 * MonthBlock)
 			MonthBlock * 100 * IScoreICXRatio,
@@ -249,31 +247,27 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		},
 		{
 			"Global Version1 - disabled",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV1{
-					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
-					Irep:             big.NewInt(0),
-					Rrep:             big.NewInt(200),
-					MainPRepCount:    22,
-					ElectedPRepCount: 100,
-				},
+			&icstage.GlobalV1{
+				IISSVersion:      icstate.IISSVersion1,
+				OffsetLimit:      100,
+				Irep:             big.NewInt(0),
+				Rrep:             big.NewInt(200),
+				MainPRepCount:    22,
+				ElectedPRepCount: 100,
 			},
 			0,
 			MonthBlock * 2,
 		},
 		{
 			"Global Version2",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV2{
-					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      1000,
-					Iglobal:          big.NewInt(10000),
-					Iprep:            big.NewInt(50),
-					Ivoter:           big.NewInt(50),
-					ElectedPRepCount: 100,
-					BondRequirement:  5,
-				},
+			&icstage.GlobalV2{
+				IISSVersion:      icstate.IISSVersion2,
+				OffsetLimit:      1000,
+				Iglobal:          big.NewInt(10000),
+				Iprep:            big.NewInt(50),
+				Ivoter:           big.NewInt(50),
+				ElectedPRepCount: 100,
+				BondRequirement:  5,
 			},
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
 			10000 * 50 * IScoreICXRatio,
@@ -281,16 +275,14 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		},
 		{
 			"Global Version2 - disabled",
-			&icstage.Global{
-				GlobalImpl: &icstage.GlobalV2{
-					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      0,
-					Iglobal:          big.NewInt(0),
-					Iprep:            big.NewInt(0),
-					Ivoter:           big.NewInt(0),
-					ElectedPRepCount: 0,
-					BondRequirement:  0,
-				},
+			&icstage.GlobalV2{
+				IISSVersion:      icstate.IISSVersion2,
+				OffsetLimit:      0,
+				Iglobal:          big.NewInt(0),
+				Iprep:            big.NewInt(0),
+				Ivoter:           big.NewInt(0),
+				ElectedPRepCount: 0,
+				BondRequirement:  0,
 			},
 			0,
 			0,
@@ -567,7 +559,7 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 
 func TestCalculator_varForVotingReward(t *testing.T) {
 	type args struct {
-		global            *icstage.Global
+		global            icstage.Global
 		totalVotingAmount *big.Int
 	}
 	type want struct {
@@ -582,15 +574,13 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 		{
 			"Global Version1",
 			args{
-				&icstage.Global{
-					GlobalImpl: &icstage.GlobalV1{
-						IISSVersion:      icstate.IISSVersion1,
-						OffsetLimit:      100,
-						Irep:             big.NewInt(MonthBlock),
-						Rrep:             big.NewInt(20000000),
-						MainPRepCount:    22,
-						ElectedPRepCount: 100,
-					},
+				&icstage.GlobalV1{
+					IISSVersion:      icstate.IISSVersion1,
+					OffsetLimit:      100,
+					Irep:             big.NewInt(MonthBlock),
+					Rrep:             big.NewInt(20000000),
+					MainPRepCount:    22,
+					ElectedPRepCount: 100,
 				},
 				nil,
 			},
@@ -602,15 +592,13 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 		{
 			"Global Version1 - disabled",
 			args{
-				&icstage.Global{
-					GlobalImpl: &icstage.GlobalV1{
-						IISSVersion:      icstate.IISSVersion1,
-						OffsetLimit:      100,
-						Irep:             big.NewInt(MonthBlock),
-						Rrep:             big.NewInt(0),
-						MainPRepCount:    22,
-						ElectedPRepCount: 100,
-					},
+				&icstage.GlobalV1{
+					IISSVersion:      icstate.IISSVersion1,
+					OffsetLimit:      100,
+					Irep:             big.NewInt(MonthBlock),
+					Rrep:             big.NewInt(0),
+					MainPRepCount:    22,
+					ElectedPRepCount: 100,
 				},
 				nil,
 			},
@@ -622,16 +610,14 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 		{
 			"Global Version2",
 			args{
-				&icstage.Global{
-					GlobalImpl: &icstage.GlobalV2{
-						IISSVersion:      icstate.IISSVersion2,
-						OffsetLimit:      1000,
-						Iglobal:          big.NewInt(10000),
-						Iprep:            big.NewInt(50),
-						Ivoter:           big.NewInt(50),
-						ElectedPRepCount: 100,
-						BondRequirement:  5,
-					},
+				&icstage.GlobalV2{
+					IISSVersion:      icstate.IISSVersion2,
+					OffsetLimit:      1000,
+					Iglobal:          big.NewInt(10000),
+					Iprep:            big.NewInt(50),
+					Ivoter:           big.NewInt(50),
+					ElectedPRepCount: 100,
+					BondRequirement:  5,
 				},
 				big.NewInt(10),
 			},
@@ -644,16 +630,14 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 		{
 			"Global Version2 - disabled",
 			args{
-				&icstage.Global{
-					GlobalImpl: &icstage.GlobalV2{
-						IISSVersion:      icstate.IISSVersion2,
-						OffsetLimit:      0,
-						Iglobal:          big.NewInt(0),
-						Iprep:            big.NewInt(0),
-						Ivoter:           big.NewInt(0),
-						ElectedPRepCount: 0,
-						BondRequirement:  0,
-					},
+				&icstage.GlobalV2{
+					IISSVersion:      icstate.IISSVersion2,
+					OffsetLimit:      0,
+					Iglobal:          big.NewInt(0),
+					Iprep:            big.NewInt(0),
+					Ivoter:           big.NewInt(0),
+					ElectedPRepCount: 0,
+					BondRequirement:  0,
 				},
 				big.NewInt(10),
 			},
