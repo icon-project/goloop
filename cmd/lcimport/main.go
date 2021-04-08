@@ -119,6 +119,18 @@ func showBlock(block []byte) {
 	}
 }
 
+func showReps(reps []byte) {
+	if bs, err := json.MarshalIndent(json.RawMessage(reps), "", "  "); err == nil {
+		reps = bs
+	}
+	fmt.Println(string(reps))
+	rl := new(blockv0.RepsList)
+	if err := json.Unmarshal(reps, rl); err != nil {
+		log.Warnf("[!] Fail to parse reps err=%+v", err)
+		return
+	}
+}
+
 func newCmdGetBlock(name string) *cobra.Command {
 	return &cobra.Command{
 		Use: name + " <height or id> ...",
@@ -155,6 +167,32 @@ func newCmdGetBlock(name string) *cobra.Command {
 					}
 				}
 				showBlock(block)
+			}
+			return nil
+		},
+	}
+}
+
+func newCmdGetReps(name string) *cobra.Command {
+	return &cobra.Command{
+		Args: cobra.ExactArgs(1),
+		Use: name + " <hash>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, arg := range args {
+
+				if strings.HasPrefix(arg, "0x") {
+					arg = arg[2:]
+				}
+				bs, err := hex.DecodeString(arg)
+				if err != nil {
+					return errors.UnsupportedError.Errorf("Not supported id=%#x", bs)
+				}
+
+				reps, err := lcDB.GetRepsJSONByHash(bs)
+				if err != nil {
+					return err
+				}
+				showReps(reps)
 			}
 			return nil
 		},
@@ -475,6 +513,7 @@ func main() {
 	root.AddCommand(newCmdGetResult("result"))
 	root.AddCommand(newCmdGetBlock("block"))
 	root.AddCommand(newCmdVerifyBlock("verify"))
+	root.AddCommand(newCmdGetReps("reps"))
 	root.AddCommand(newCmdExecutor(root, "executor", vc))
 
 	root.SilenceUsage = true
