@@ -25,7 +25,7 @@ import (
 )
 
 type RepJSON struct {
-	Address common.Address `json:"address"`
+	Address common.Address `json:"id"`
 	P2P     string         `json:"p2pEndPoint,omitempty"`
 }
 
