@@ -106,6 +106,7 @@ func toKeys(params []string) []interface{} {
 func showValue(value containerdb.Value, ts string) {
 	if value == nil {
 		fmt.Println("nil")
+		return
 	}
 	ts = strings.ToLower(ts)
 	switch ts {
@@ -210,17 +211,17 @@ func showContainerData(store interface{}, params []string) error {
 		showValue(containerdb.NewVarDB(store, kb), ts)
 		return nil
 	case "array":
-		if ct == "size" {
+		if ts == "size" {
 			keys := toKeys(params)
 			kb := containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix).Append(keys...)
 			array := containerdb.NewArrayDB(store, kb)
-			return showArray(array, []string{}, ct)
+			return showArray(array, []string{}, ts)
 		} else {
 			keys := toKeys(params[:pLen-1])
 			param := params[pLen-1]
 			kb := containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix).Append(keys...)
 			array := containerdb.NewArrayDB(store, kb)
-			return showArray(array, []string{param}, ct)
+			return showArray(array, []string{param}, ts)
 		}
 	case "dict":
 		keys := toKeys(params)
