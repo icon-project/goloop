@@ -282,5 +282,6 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
+	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	return jso
 }
