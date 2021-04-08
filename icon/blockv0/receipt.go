@@ -52,7 +52,7 @@ func CalcMerkleRootOfReceiptList(
 ) []byte {
 	var items []merkle.Item
 	txIter := txs.Iterator()
-	for rIter := receipts.Iterator(); rIter.Has(); _ = rIter.Next() {
+	for rIter := receipts.Iterator(); rIter.Has(); _, _ = rIter.Next(), txIter.Next() {
 		r, _ := rIter.Get()
 		tx, i, _ := txIter.Get()
 		items = append(
