@@ -37,6 +37,7 @@ type Global interface {
 	GetIISSVersion() int
 	GetStartHeight() int64
 	GetOffsetLimit() int
+	GetTermPeriod() int
 	GetElectedPRepCount() int
 	GetBondRequirement() int
 	String() string
@@ -78,6 +79,10 @@ func (g *GlobalV1) GetStartHeight() int64 {
 
 func (g *GlobalV1) GetOffsetLimit() int {
 	return g.OffsetLimit
+}
+
+func (g *GlobalV1) GetTermPeriod() int {
+	return g.OffsetLimit + 1
 }
 
 func (g *GlobalV1) GetElectedPRepCount() int {
@@ -199,6 +204,10 @@ func (g *GlobalV2) GetStartHeight() int64 {
 
 func (g *GlobalV2) GetOffsetLimit() int {
 	return g.OffsetLimit
+}
+
+func (g *GlobalV2) GetTermPeriod() int {
+	return g.OffsetLimit + 1
 }
 
 func (g *GlobalV2) GetElectedPRepCount() int {

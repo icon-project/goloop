@@ -234,7 +234,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	case icstate.IISSVersion1:
 		if err = s.Back.AddGlobalV1(
 			term.StartHeight(),
-			int(term.Period()),
+			int(term.Period()-1),
 			term.Irep(),
 			term.Rrep(),
 			term.MainPRepCount(),
@@ -245,7 +245,7 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	case icstate.IISSVersion2:
 		if err = s.Back.AddGlobalV2(
 			term.StartHeight(),
-			int(term.Period()),
+			int(term.Period()-1),
 			term.Iglobal(),
 			term.Iprep(),
 			term.Ivoter(),
