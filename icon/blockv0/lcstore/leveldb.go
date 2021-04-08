@@ -121,7 +121,15 @@ func (ds *LevelDB) GetReceiptJSON(id []byte) ([]byte, error) {
 }
 
 func (ds *LevelDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
-	return nil, leveldb.ErrNotFound
+	key := append([]byte("preps_key"), id...)
+	res, err := ds.leveldb.Get(key, nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return res, nil
 }
 
 func (ds *LevelDB) Close() error {
