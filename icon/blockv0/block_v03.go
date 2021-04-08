@@ -101,6 +101,10 @@ func (b *BlockV03) LogsBloom() module.LogsBloom {
 	return &b.json.LogsBloom
 }
 
+func (b *BlockV03) ReceiptsHash() []byte {
+	return b.json.ReceiptsHash.Bytes()
+}
+
 func (b *BlockV03) ToJSON(rcpVersion module.JSONVersion) (interface{}, error) {
 	return b.json, nil
 }

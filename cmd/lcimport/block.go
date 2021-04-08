@@ -81,6 +81,14 @@ func (b *Block) CheckResult(result []byte, validators module.ValidatorList, rcts
 	if txTotal.Cmp(b.txTotal) != 0 {
 		return errors.Errorf("DifferentTxCount(stored=%d,real=%d)", b.txTotal, txTotal)
 	}
+	if blkv03, ok := b.blk.(*blockv0.BlockV03); ok {
+		eReceiptListHash := blkv03.ReceiptsHash()
+		rReceiptListHash := blockv0.CalcMerkleRootOfReceiptList(rcts, b.txs, b.height)
+		if !bytes.Equal(eReceiptListHash, rReceiptListHash) {
+			return errors.Errorf("DifferentReceiptListHash(stored=%#x,real=%#x)",
+				eReceiptListHash, rReceiptListHash)
+		}
+	}
 	return nil
 }
 

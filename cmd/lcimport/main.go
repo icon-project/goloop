@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -29,11 +30,14 @@ import (
 
 	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -162,6 +166,7 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 		Args: cobra.RangeArgs(1, 2),
 		Use:  name + " <from> [<to>]",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			mdb := db.NewMapDB()
 			from, err := intconv.ParseInt(args[0], 64)
 			if err != nil {
 				return err
@@ -188,6 +193,29 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 					fmt.Fprintf(os.Stderr, "DECODE_FAIL %+v\n", err)
 					fmt.Fprintln(os.Stdout, string(blkJSON))
 					return err
+				}
+				if blkV03, ok := blk.(*blockv0.BlockV03); ok {
+					txs := blk.NormalTransactions()
+					receipts := make([]module.Receipt, 0, len(txs))
+					for _, tx := range txs {
+						jsn, err := lcDB.GetReceiptJSON(tx.ID())
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "GetReceiptJSON fail %+v\n", err)
+							return err
+						}
+						r, err := txresult.NewReceiptFromJSON(mdb,
+							module.NoRevision, jsn)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "NewReceiptFromJSON fail %+v\n", err)
+							return err
+						}
+						receipts = append(receipts, r)
+					}
+					eReceiptsHash := blkV03.ReceiptsHash()
+					aReceiptsHash := blockv0.CalcMerkleRootOfReceiptSlice(receipts, txs, blk.Height())
+					if !bytes.Equal(eReceiptsHash, aReceiptsHash) {
+						return errors.Errorf("ReceiptListHash error (expected=%#x, calc=%#x)", eReceiptsHash, aReceiptsHash)
+					}
 				}
 				if err := blk.Verify(prev); err != nil {
 					if js, err := json.MarshalIndent(json.RawMessage(blkJSON), "", "  "); err == nil {
