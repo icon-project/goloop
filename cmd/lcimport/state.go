@@ -314,11 +314,11 @@ func applyShortcut(scs map[string]shortcut, params []string) []string {
 }
 
 var extensionStateShortcuts = map[string]shortcut{
-	"prep_base":   {[]string{"raw", "prep_base"}, []string{"obj"}},   // <address>
-	"prep_status": {[]string{"raw", "prep_status"}, []string{"obj"}}, // <address>
-	"active_prep": {[]string{"raw_array", "active_prep"}, []string{"addr"}},
-	"account":     {[]string{"raw", "account_db"}, []string{"obj"}}, // <address>
-	"value":       {[]string{"hash"}, []string{}},                   // <name>
+	"prep_base":   {[]string{"dict", "prep_base"}, []string{"obj"}},   // <address>
+	"prep_status": {[]string{"dict", "prep_status"}, []string{"obj"}}, // <address>
+	"active_prep": {[]string{"array", "active_prep"}, []string{"addr"}},
+	"account":     {[]string{"dict", "account_db"}, []string{"obj"}}, // <address>
+	"value":       {[]string{"var"}, []string{}},                   // <name>
 }
 
 var extensionStageShortcuts = map[string]shortcut{
