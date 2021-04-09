@@ -2,6 +2,7 @@ package txresult
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/icon-project/goloop/common"
@@ -89,9 +90,14 @@ func TestLogsBloom_Bytes(t *testing.T) {
 
 func TestLogsBloom_Compressed(t *testing.T) {
 	lb1 := NewLogsBloom(nil)
-	lb1.AddLog(common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
-		{0x01, 0x02, 0x03},
-	})
+	lb1.AddLog(
+		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
+		[][]byte{[]byte("TestFunc(int)"), []byte{0x12, 0x23}},
+	)
+	lb1.AddLog(
+		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
+		[][]byte{[]byte("TestFunc2(int)"), []byte{0x13, 0x45}},
+	)
 
 	lb2 := NewLogsBloom(lb1.Bytes())
 
@@ -102,6 +108,9 @@ func TestLogsBloom_Compressed(t *testing.T) {
 		t.Error("Deserialized one should be same as origin")
 	}
 
+	fmt.Println("Original:", len(lb2.Bytes()),
+		"Compressed:", len(lb2.CompressedBytes()))
+
 	lb3 := NewLogsBloom(nil)
 	lb3.SetCompressedBytes(lb2.CompressedBytes())
 
@@ -111,4 +120,21 @@ func TestLogsBloom_Compressed(t *testing.T) {
 	if !bytes.Equal(lb3.Bytes(), lb1.Bytes()) {
 		t.Error("Deserialized one should be same as origin")
 	}
+}
+
+func BenchmarkLogsBloom_Compressed(b *testing.B) {
+	b.StopTimer()
+	lb1 := NewLogsBloom(nil)
+	lb1.AddLog(
+		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
+		[][]byte{[]byte("TestFunc(int)"), []byte{0x12, 0x23}},
+	)
+	lb1.AddLog(
+		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
+		[][]byte{[]byte("TestFunc2(int)"), []byte{0x13, 0x45}},
+	)
+	lb2 := NewLogsBloom(nil)
+	b.Run("CompressAndDecompress", func(b *testing.B) {
+		lb2.SetCompressedBytes(lb1.CompressedBytes())
+	})
 }

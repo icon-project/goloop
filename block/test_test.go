@@ -138,6 +138,10 @@ func (r *testReceipt) SCOREAddress() module.Address {
 	return r.Data.SCOREAddress
 }
 
+func (r *testReceipt) LogsBloomDisabled() bool {
+	return false
+}
+
 func (r *testReceipt) Check(r2 module.Receipt) error {
 	rct2, ok := r2.(*testReceipt)
 	if !ok {
@@ -777,8 +781,8 @@ func (vl *testValidatorList) Get(i int) (module.Validator, bool) {
 }
 
 type testCommitVoteSet struct {
-	zero bool
-	Pass bool
+	zero       bool
+	Pass       bool
 	Timestamp_ int64
 }
 
