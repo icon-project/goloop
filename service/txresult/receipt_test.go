@@ -88,3 +88,46 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 
 	assert.Equal(t, evs, evs2)
 }
+
+func TestReceipt_DisableLogBloom(t *testing.T) {
+	dbase := db.NewMapDB()
+	to := common.MustNewAddressFromString("hx9834234")
+	score := common.MustNewAddressFromString("cx1234")
+	for _, rev := range []module.Revision{module.NoRevision, module.LatestRevision} {
+		t.Run(fmt.Sprint("Rev", rev), func(t *testing.T) {
+			rct := NewReceipt(dbase, rev, to)
+			rct.AddLog(score, [][]byte{[]byte("TestEvent(int)"), []byte{0x02}}, [][]byte{})
+			rct.DisableLogsBloom()
+			rct.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
+
+			assert.Equal(t, []byte{}, rct.LogsBloom().Bytes())
+
+			err := rct.Flush()
+			assert.NoError(t, err)
+
+			// json marshalling test
+			jso, err := rct.ToJSON(module.JSONVersionLast)
+			assert.NoError(t, err)
+			jb, err := json.Marshal(jso)
+			assert.NoError(t, err)
+
+			fmt.Println("JSON:", string(jb))
+
+			rct2, err := NewReceiptFromJSON(dbase, rev, jb)
+			assert.NoError(t, err)
+			err = rct.Check(rct2)
+			assert.NoError(t, err)
+
+			// binary marshalling test
+			bs := codec.BC.MustMarshalToBytes(rct)
+
+			fmt.Printf("BYTES:%#x\n", bs)
+
+			rct3 := new(receipt)
+			err = rct3.Reset(dbase, bs)
+			assert.NoError(t, err)
+			err = rct.Check(rct2)
+			assert.NoError(t, err)
+		})
+	}
+}

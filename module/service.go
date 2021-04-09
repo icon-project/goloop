@@ -171,6 +171,7 @@ type Receipt interface {
 	LogsBloom() LogsBloom
 	EventLogIterator() EventLogIterator
 	FeePaymentIterator() FeePaymentIterator
+	LogsBloomDisabled() bool
 	GetProofOfEvent(int) ([][]byte, error)
 }
 

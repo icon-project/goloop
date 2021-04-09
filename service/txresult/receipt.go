@@ -137,6 +137,11 @@ const (
 	listItemsForVersion3 = 10
 )
 
+const (
+	ExtensionFeeDetail = 1 << iota
+	ExtensionDisableLogsBloom
+)
+
 type receiptData struct {
 	Status             module.Status
 	To                 common.Address
@@ -147,6 +152,7 @@ type receiptData struct {
 	EventLogs          []*eventLog
 	SCOREAddress       *common.Address
 	FeeDetail          feeDetail
+	DisableLogsBloom   bool
 }
 
 func (r *receiptData) Equal(r2 *receiptData) bool {
@@ -157,7 +163,19 @@ func (r *receiptData) Equal(r2 *receiptData) bool {
 		r.StepPrice.Cmp(&r2.StepPrice.Int) == 0 &&
 		r.LogsBloom.Equal(&r2.LogsBloom) &&
 		r.SCOREAddress.Equal(r2.SCOREAddress) &&
+		r.DisableLogsBloom == r2.DisableLogsBloom &&
 		reflect.DeepEqual(r.FeeDetail, r2.FeeDetail)
+}
+
+func (r *receiptData) Extension() int {
+	var extension int
+	if r.FeeDetail.Has() {
+		extension |= ExtensionFeeDetail
+	}
+	if r.DisableLogsBloom {
+		extension |= ExtensionDisableLogsBloom
+	}
+	return extension
 }
 
 type receipt struct {
@@ -165,6 +183,7 @@ type receipt struct {
 	db        db.Database
 	data      receiptData
 	eventLogs trie.ImmutableForObject
+	logsBloom []byte
 	reason    error
 }
 
@@ -240,18 +259,31 @@ func (r *receipt) RLPEncodeSelf(e codec.Encoder) error {
 			hash)
 	} else {
 		hash := r.eventLogs.Hash()
-		return e.EncodeListOf(
+		extension := r.data.Extension()
+		e2, err := e.EncodeList()
+		if err != nil {
+			return err
+		}
+		if err = e2.EncodeMulti(
 			r.data.Status,
 			&r.data.To,
 			&r.data.CumulativeStepUsed,
 			&r.data.StepUsed,
 			&r.data.StepPrice,
-			&r.data.LogsBloom,
+			r.logsBloom,
 			r.data.EventLogs,
 			r.data.SCOREAddress,
 			hash,
-			r.data.FeeDetail,
-		)
+			extension,
+		); err != nil {
+			return err
+		}
+		if (extension & ExtensionFeeDetail) != 0 {
+			if err = e2.Encode(&r.data.FeeDetail); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
 
@@ -260,32 +292,49 @@ func (r *receipt) RLPDecodeSelf(d codec.Decoder) error {
 	if err != nil {
 		return err
 	}
+	var logsBloom []byte
 	var hash []byte
+	var extension int
 	if cnt, err := d2.DecodeMulti(
 		&r.data.Status,
 		&r.data.To,
 		&r.data.CumulativeStepUsed,
 		&r.data.StepUsed,
 		&r.data.StepPrice,
-		&r.data.LogsBloom,
+		&logsBloom,
 		&r.data.EventLogs,
 		&r.data.SCOREAddress,
 		&hash,
-		&r.data.FeeDetail,
+		&extension,
 	); err == nil || err == io.EOF {
 		if cnt == listItemsForVersion1 {
 			r.version = Version1
-			r.eventLogs = nil
 		} else if cnt == listItemsForVersion2 {
 			r.version = Version2
-			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
-				reflect.TypeOf((*eventLog)(nil)))
 		} else if cnt == listItemsForVersion3 {
 			r.version = Version3
+			if (extension & ExtensionFeeDetail) != 0 {
+				if err := d2.Decode(&r.data.FeeDetail); err != nil {
+					return err
+				}
+			}
+		} else {
+			return codec.ErrInvalidFormat
+		}
+		if r.version >= Version2 {
 			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
 				reflect.TypeOf((*eventLog)(nil)))
 		} else {
-			return codec.ErrInvalidFormat
+			r.eventLogs = nil
+		}
+		if r.version >= Version3 {
+			r.logsBloom = logsBloom
+			r.data.LogsBloom.SetCompressedBytes(logsBloom)
+			if (extension & ExtensionDisableLogsBloom) != 0 {
+				r.data.DisableLogsBloom = true
+			}
+		} else {
+			r.data.LogsBloom.SetBytes(logsBloom)
 		}
 	} else {
 		return err
@@ -328,6 +377,18 @@ func (r *receipt) AddPayment(addr module.Address, steps *big.Int) {
 	if ok && r.version < Version3 {
 		r.version = Version3
 	}
+}
+
+func (r *receipt) DisableLogsBloom() {
+	r.data.DisableLogsBloom = true
+	r.data.LogsBloom.SetBytes(nil)
+	if r.version < Version3 {
+		r.version = Version3
+	}
+}
+
+func (r *receipt) LogsBloomDisabled() bool {
+	return r.data.DisableLogsBloom
 }
 
 type eventLogIteratorV2 struct {
@@ -390,10 +451,12 @@ type Receipt interface {
 	module.Receipt
 	AddLog(addr module.Address, indexed, data [][]byte)
 	AddPayment(addr module.Address, steps *big.Int)
+	DisableLogsBloom()
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
 	SetResult(status module.Status, used, price *big.Int, addr module.Address)
 	SetReason(e error)
 	Reason() error
+	Flush() error
 }
 
 type receiptJSON struct {
@@ -404,7 +467,7 @@ type receiptJSON struct {
 	SCOREAddress       *common.Address  `json:"scoreAddress,omitempty"`
 	Failure            *failureReason   `json:"failure,omitempty"`
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
-	LogsBloom          LogsBloom        `json:"logsBloom"`
+	LogsBloom          *LogsBloom       `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
 	FeeDetail          feeDetail        `json:"stepUsedDetails,omitempty"`
 }
@@ -415,7 +478,10 @@ func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
 		"cumulativeStepUsed": &r.data.CumulativeStepUsed,
 		"stepUsed":           &r.data.StepUsed,
 		"stepPrice":          &r.data.StepPrice,
-		"logsBloom":          &r.data.LogsBloom,
+	}
+
+	if !r.data.DisableLogsBloom {
+		jso["logsBloom"] = &r.data.LogsBloom
 	}
 
 	logs := make([]*eventLogJSON, 0, len(r.data.EventLogs))
@@ -486,13 +552,20 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 			}
 		}
 	}
-	data.LogsBloom.SetBytes(rjson.LogsBloom.Bytes())
+	if rjson.LogsBloom != nil {
+		data.LogsBloom.SetBytes(rjson.LogsBloom.Bytes())
+	} else {
+		data.DisableLogsBloom = true
+	}
 	data.FeeDetail = rjson.FeeDetail
-	if r.data.FeeDetail.Has() {
+	if r.data.Extension() != 0 && r.version < Version3 {
 		r.version = Version3
 	}
 	if r.version >= Version2 {
 		r.buildMerkleListOfLogs()
+	}
+	if r.version >= Version3 {
+		r.logsBloom = r.data.LogsBloom.CompressedBytes()
 	}
 	return nil
 }
@@ -535,6 +608,7 @@ func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr mod
 		r.buildMerkleListOfLogs()
 	}
 	if r.version >= Version3 {
+		r.logsBloom = r.data.LogsBloom.CompressedBytes()
 		r.data.FeeDetail.Normalize()
 	}
 }
