@@ -36,7 +36,7 @@ func (c *TimerCache) Get(height int64, createIfNotExist bool) *Timer {
 	o := c.dict.Get(height)
 	if o == nil {
 		if createIfNotExist {
-			timer = newTimer(height)
+			timer = newTimer()
 			c.timers[height] = timer
 		} else {
 			// return nil
@@ -65,16 +65,16 @@ func (c *TimerCache) Reset() {
 }
 
 func (c *TimerCache) Flush() {
-	for key, timer := range c.timers {
+	for height, timer := range c.timers {
 		if timer.IsEmpty() {
-			if err := c.dict.Delete(key); err != nil {
-				log.Errorf("Failed to delete Timer on %d, err+%+v", key, err)
+			if err := c.dict.Delete(height); err != nil {
+				log.Errorf("Failed to delete Timer on %d, err+%+v", height, err)
 			}
-			delete(c.timers, key)
+			delete(c.timers, height)
 		} else {
 			o := icobject.New(TypeTimer, timer.Clone())
-			if err := c.dict.Set(timer.Height, o); err != nil {
-				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
+			if err := c.dict.Set(height, o); err != nil {
+				log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
 			}
 		}
 	}

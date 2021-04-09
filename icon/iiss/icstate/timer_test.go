@@ -28,7 +28,6 @@ import (
 func TestTimerSnapshot_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	t1 := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
-	t1.Height = 10
 
 	al1 := make(addresses, 3)
 	a1 := common.NewAccountAddress([]byte("1"))
@@ -53,7 +52,6 @@ func TestTimerSnapshot_Bytes(t *testing.T) {
 
 func TestTimer_Add(t *testing.T) {
 	timer := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
-	timer.Height = 10
 
 	a1 := common.NewAccountAddress([]byte("1"))
 	a2 := common.NewAccountAddress([]byte("2"))
@@ -68,7 +66,6 @@ func TestTimer_Add(t *testing.T) {
 
 func TestTimer_Delete(t *testing.T) {
 	timer := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
-	timer.Height = 10
 
 	a1 := common.NewAccountAddress([]byte("1"))
 	a2 := common.NewAccountAddress([]byte("2"))

@@ -84,7 +84,6 @@ func (a addresses) Contains(address module.Address) bool {
 type Timer struct {
 	icobject.NoDatabase
 	StateAndSnapshot
-	Height int64
 
 	Addresses addresses
 }
@@ -118,7 +117,6 @@ func (t *Timer) Equal(object icobject.Impl) bool {
 }
 
 func (t *Timer) Clear() {
-	t.Height = 0
 	t.Addresses = nil
 }
 
@@ -128,7 +126,6 @@ func (t Timer) IsEmpty() bool {
 
 func (t *Timer) Set(other *Timer) {
 	t.checkWritable()
-	t.Height = other.Height
 	t.Addresses = other.Addresses.Clone()
 }
 
@@ -155,15 +152,12 @@ func (t *Timer) Delete(address module.Address) error {
 }
 func (t *Timer) Clone() *Timer {
 	return &Timer{
-		Height:    t.Height,
 		Addresses: t.Addresses.Clone(),
 	}
 }
 
-func newTimer(height int64) *Timer {
-	return &Timer{
-		Height: height,
-	}
+func newTimer() *Timer {
+	return &Timer{}
 }
 
 func newTimerWithTag(_ icobject.Tag) *Timer {

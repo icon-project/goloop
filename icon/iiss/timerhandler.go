@@ -26,7 +26,7 @@ func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 	s.logger.Tracef("HandleTimerJob() start BH-%d", bh)
 	bt := s.GetUnbondingTimerState(bh, false)
 	if bt != nil {
-		err = s.handleUnbondingTimer(bt.Addresses, bt.Height)
+		err = s.handleUnbondingTimer(bt.Addresses, bh)
 		if err != nil {
 			return
 		}
@@ -34,7 +34,7 @@ func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 
 	st := s.GetUnstakingTimerState(wc.BlockHeight(), false)
 	if st != nil {
-		err = s.handleUnstakingTimer(wc, st.Addresses, st.Height)
+		err = s.handleUnstakingTimer(wc, st.Addresses, bh)
 	}
 	s.logger.Tracef("HandleTimerJob() end BH-%d", bh)
 	return
