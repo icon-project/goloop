@@ -65,7 +65,7 @@ Although mainPRep has a permission to validate and vote, it can get penalty when
 validationPenaltyCondition defines consecutive validation fail count that imposes penalty on PRep.
 
 ### consistentValidationPenaltyCondition, consistentValidationPenaltyMask
-Along with validationPenaltyCondition, Sanction can be imposed based on a consecutive count of failures of validating.
+Along with validationPenaltyCondition, Sanction also can be imposed based on a cumulative count of failures of validating.
 consistentValidationPenaltyCondition defines the cumulative validation fail count that imposes penalty on the PRep and
 consistentValidationPenaltyMask defines the number of opportunities of it.
 
@@ -73,7 +73,7 @@ consistentValidationPenaltyMask defines the number of opportunities of it.
 This defines percentage of bond slashed when it gets a penalty.
 
 ### rewardFund
-rewardFund variables is newly introduced in ICON2. Please refer to the document of ICON2.(link needed)
+rewardFund variables are newly introduced in ICON2. Please refer to the document of ICON2.(link needed)
 
 ## Example
 ~~~json
