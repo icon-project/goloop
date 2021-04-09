@@ -25,6 +25,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -235,7 +236,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			"Global Version1",
 			&icstage.GlobalV1{
 				IISSVersion:      icstate.IISSVersion1,
-				OffsetLimit:      100,
+				OffsetLimit:      100 - 1,
 				Irep:             big.NewInt(MonthBlock),
 				Rrep:             big.NewInt(200),
 				MainPRepCount:    22,
@@ -249,7 +250,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			"Global Version1 - disabled",
 			&icstage.GlobalV1{
 				IISSVersion:      icstate.IISSVersion1,
-				OffsetLimit:      100,
+				OffsetLimit:      100 - 1,
 				Irep:             big.NewInt(0),
 				Rrep:             big.NewInt(200),
 				MainPRepCount:    22,
@@ -262,7 +263,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			"Global Version2",
 			&icstage.GlobalV2{
 				IISSVersion:      icstate.IISSVersion2,
-				OffsetLimit:      1000,
+				OffsetLimit:      1000 - 1,
 				Iglobal:          big.NewInt(10000),
 				Iprep:            big.NewInt(50),
 				Ivoter:           big.NewInt(50),
@@ -277,7 +278,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			"Global Version2 - disabled",
 			&icstage.GlobalV2{
 				IISSVersion:      icstate.IISSVersion2,
-				OffsetLimit:      0,
+				OffsetLimit:      -1,
 				Iglobal:          big.NewInt(0),
 				Iprep:            big.NewInt(0),
 				Ivoter:           big.NewInt(0),
@@ -576,7 +577,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			args{
 				&icstage.GlobalV1{
 					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
+					OffsetLimit:      100 - 1,
 					Irep:             big.NewInt(MonthBlock),
 					Rrep:             big.NewInt(20000000),
 					MainPRepCount:    22,
@@ -594,7 +595,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			args{
 				&icstage.GlobalV1{
 					IISSVersion:      icstate.IISSVersion1,
-					OffsetLimit:      100,
+					OffsetLimit:      100 - 1,
 					Irep:             big.NewInt(MonthBlock),
 					Rrep:             big.NewInt(0),
 					MainPRepCount:    22,
@@ -612,7 +613,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			args{
 				&icstage.GlobalV2{
 					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      1000,
+					OffsetLimit:      1000 - 1,
 					Iglobal:          big.NewInt(10000),
 					Iprep:            big.NewInt(50),
 					Ivoter:           big.NewInt(50),
@@ -632,7 +633,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			args{
 				&icstage.GlobalV2{
 					IISSVersion:      icstate.IISSVersion2,
-					OffsetLimit:      0,
+					OffsetLimit:      0 - 1,
 					Iglobal:          big.NewInt(0),
 					Iprep:            big.NewInt(0),
 					Ivoter:           big.NewInt(0),
@@ -754,10 +755,13 @@ func TestCalculator_VotingReward(t *testing.T) {
 		},
 	}
 
+	calculator := NewCalculator()
+	calculator.log = log.New()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			reward := votingReward(
+			reward := calculator.votingReward(
 				big.NewInt(int64(args.multiplier)),
 				big.NewInt(int64(args.divider)),
 				args.from,
