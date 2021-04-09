@@ -252,6 +252,10 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 					eReceiptsHash := blkV03.ReceiptsHash()
 					aReceiptsHash := blockv0.CalcMerkleRootOfReceiptSlice(receipts, txs, blk.Height())
 					if !bytes.Equal(eReceiptsHash, aReceiptsHash) {
+						for i, tx := range txs {
+							jsn, _ := lcDB.GetReceiptJSON(tx.ID())
+							fmt.Fprintf(os.Stdout, "receipt[%d] = %s\n", i, jsn)
+						}
 						return errors.Errorf("ReceiptListHash error (expected=%#x, calc=%#x)", eReceiptsHash, aReceiptsHash)
 					}
 				}
