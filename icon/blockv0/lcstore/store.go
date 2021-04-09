@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
@@ -41,6 +42,8 @@ type Database interface {
 
 type Store struct {
 	Database
+	ReceiptRevision module.Revision
+	ReceiptDatabase db.Database
 }
 
 func (lc *Store) GetBlockByHeight(height int) (blockv0.Block, error) {
@@ -105,7 +108,7 @@ func (lc *Store) GetReceipt(id []byte) (module.Receipt, error) {
 	if rct, err := lc.GetReceiptJSON(id); err != nil {
 		return nil, errors.Wrap(err, "FailureInGetResultJSON")
 	} else {
-		if r, err := txresult.NewReceiptFromJSON(nil, module.NoRevision, rct); err != nil {
+		if r, err := txresult.NewReceiptFromJSON(lc.ReceiptDatabase, lc.ReceiptRevision, rct); err != nil {
 			log.Warnf("FailureInParsingJSON(json=%q)", string(rct))
 			return nil, err
 		} else {
@@ -124,6 +127,11 @@ func (lc *Store) GetRepsByHash(id []byte) (*blockv0.RepsList, error) {
 		return nil, err
 	}
 	return reps, nil
+}
+
+func (lc *Store) SetReceiptParameter(dbase db.Database, rev module.Revision) {
+	lc.ReceiptDatabase = dbase
+	lc.ReceiptRevision = rev
 }
 
 func OpenStore(blockuri string) (*Store, error) {

@@ -92,6 +92,7 @@ type Store interface {
 	GetRepsByHash(id []byte) (*blockv0.RepsList, error)
 	GetBlockByHeight(height int) (blockv0.Block, error)
 	GetReceipt(id []byte) (module.Receipt, error)
+	SetReceiptParameter(dbase db.Database, rev module.Revision)
 }
 
 type GetTPSer interface {
@@ -103,6 +104,7 @@ func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
 	}
+	cs.SetReceiptParameter(database, module.LatestRevision)
 	chain, err := NewChain(database, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewChainFailure")
