@@ -22,32 +22,30 @@ This document specifies ICON configurations.
 | consistentValidationPenaltySlashRatio    | Percentage of bond slashed when it gets penalty                  | 10                 |
 
 ## rewardFund Attributes for ICON2
-|  Attribute                               | Description                 | Example                                                  |
-|----------------------------------------|:----------------------------|----------------------------------------------------------|
-| Iglobal                                | | |
-| Iprep                                  | | |
-| Icps                                   | | |
-| Irelay                                 | | |
-| Ivoter                                 | | |
+|  Attribute                               | Simple Description                                               | Default value      |
+|------------------------------------------|:-----------------------------------------------------------------|--------------------|
+| Iglobal                                  | Iglobal is multiplier, providing reward fund                     | YearBlock * IScoreICXRatio|
+| Iprep                                    | Iprep is multiplier of Representative Reward Fund(with Iglobal)  | 50                 |
+| Icps                                     | Icps is multiplier of Contribution Reward Fund(with Iglobal)     | 0                  |
+| Irelay                                   | Irelay is multiplier of Relayer Reward Fund(with Iglobal)        | 0                  |
+| Ivoter                                   | Ivoter is multiplier of Delegation Reward Fund(with Iglobal)     | 50                 |
 
 ## explanation
-### termPreiod
+### termPeriod
 Term is ~~
 
 
 ## example
 ~~~json
 {
-"termPeriod": 5,
-"iissVersion": 1,
-"iissBlockHeight": 0,
-"mainPRepCount": 1,
-"subPRepCount": 3,
-"irep": 1296000000,
-"rrep": 1296000000,
+"termPeriod": 43120,
+"mainPRepCount": 22,
+"subPRepCount": 78,
+"irep": 0,
+"rrep": 1200,
 "bondRequirement": 5,
 "unbondingPeriodMultiplier": 7,
-"unstakeSlotMax": 3,
+"unstakeSlotMax": 100,
 "lockMinMultiplier": 5,
 "lockMaxMultiplier": 20,
 "rewardFund": {
