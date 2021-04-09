@@ -26,12 +26,13 @@ iconexec:
 	python3 setup.py bdist_wheel -d $(ICONEE_DIST_DIR) ; \
 	rm -rf iconee.egg-info
 
-lcimport-image: pyrun-iconexec gorun-lcimport
+lcimport-image: pyrun-iconexec gorun-lcimport-linux
 	@ echo "[#] Building lcimport for $(GL_VERSION)"
 	@ \
 	rm -rf $(LCIMPORT_DOCKER_DIR); \
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	IMAGE_PY_DEPS=$(PYDEPS_IMAGE) \
+	LCIMPORT_VERSION=$(GL_VERSION) \
 	GOBUILD_TAGS="$(GOBUILD_TAGS)" \
 	$(BUILD_ROOT)/docker/lcimport/update.sh $(LCIMPORT_IMAGE) $(BUILD_ROOT) $(LCIMPORT_DOCKER_DIR)
 
