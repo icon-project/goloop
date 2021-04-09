@@ -21,8 +21,10 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
+
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -143,6 +145,9 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	// Make a receipt
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
 	cc.GetEventLogs(r)
+	if ctx.Revision().Value() < icmodule.Revision9 {
+		r.DisableLogsBloom()
+	}
 	r.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
 	return r, nil
 }
