@@ -92,7 +92,8 @@ class ServiceEngine(ContextContainer):
         try:
             ret = cls._internal_call(context)
             status = Status.SUCCESS
-            PostTxHandler.run(context, cls._proxy)
+            if context.tx.hash:
+                PostTxHandler.run(context.tx.hash, cls._proxy)
         except BaseException as e:
             status, ret = cls._get_status_from_exception(e)
         finally:
@@ -165,7 +166,7 @@ class PostTxHandler:
     }
 
     @classmethod
-    def run(cls, context, proxy):
-        value = cls.TX_VALUE_MAP.get(context.tx.hash.hex())
+    def run(cls, tx_hash, proxy):
+        value = cls.TX_VALUE_MAP.get(tx_hash.hex())
         if value:
             proxy.set_value(bytes.fromhex(value[0]), bytes.fromhex(value[1]), None)
