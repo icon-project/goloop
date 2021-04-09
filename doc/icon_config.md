@@ -6,58 +6,99 @@ This document specifies ICON configurations.
 ## Attributes
 |  Attribute                               | Simple Description                                               | Default value      |
 |------------------------------------------|:-----------------------------------------------------------------|--------------------|
-| termPeriod                               | number of blocks that consists of a period                       | 43120              |
+| termPeriod                               | number of blocks that forms a period                             | 43120              |
 | mainPRepCount                            | number of maximum main PRep nodes                                | 22                 |
 | subPRepCount                             | number of maximum sub PRep nodes                                 | 78                 |
-| irep                                     | Expected Monthly Reward per Representative                       | 0                  |
-| rrep                                     | Expected Monthly Reward per EEP                                  | 1200               |
-| bondRequirement                          | Percentage that requires bond to make delegation fully staked    | 5                  |
+| irep                                     | expected Monthly Reward per Representative                       | 0                  |
+| rrep                                     | expected Monthly Reward per EEP                                  | 1200               |
+| bondRequirement                          | percentage that requires bond to make delegation fully staked    | 5                  |
 | unbondingPeriodMultiplier                | unbond lock period multiplier                                    | 7                  |
-| unstakeSlotMax                           | maximum unstake slot per account                                 | 100                |
+| unstakeSlotMax                           | maximum unstake slot per account                                 | 1000                |
 | lockMinMultiplier                        | mininum unstake lock period term multiplier                      | 5                  |
 | lockMaxMultiplier                        | maximum unstake lock period term multiplier                      | 20                 |
 | validationPenaltyCondition               | consecutive validation fail count that imposes penalty on PRep   | 660                |
 | consistentValidationPenaltyCondition     | cumulative validation fail count that imposes penalty on PRep    | 5                  |
 | consistentValidationPenaltyMask          | number of opportunities of consistentValidationPenaltyCondition  | 30                 |
-| consistentValidationPenaltySlashRatio    | Percentage of bond slashed when it gets penalty                  | 10                 |
+| consistentValidationPenaltySlashRatio    | percentage of bond slashed when it gets penalty                  | 10                 |
 
 ## rewardFund Attributes for ICON2
 |  Attribute                               | Simple Description                                               | Default value      |
 |------------------------------------------|:-----------------------------------------------------------------|--------------------|
-| Iglobal                                  | Iglobal is multiplier, providing reward fund                     | YearBlock * IScoreICXRatio|
+| Iglobal                                  | Iglobal is multiplier, providing reward fund                     | 15552000000        |
 | Iprep                                    | Iprep is multiplier of Representative Reward Fund(with Iglobal)  | 50                 |
 | Icps                                     | Icps is multiplier of Contribution Reward Fund(with Iglobal)     | 0                  |
 | Irelay                                   | Irelay is multiplier of Relayer Reward Fund(with Iglobal)        | 0                  |
 | Ivoter                                   | Ivoter is multiplier of Delegation Reward Fund(with Iglobal)     | 50                 |
 
-## explanation
+## Explanation
 ### termPeriod
-Term is ~~
+Term is a cycle, on which system can measure contribution of users and calculate its corresponding reward. Its default
+value is equivalence of a day, and a block takes 2 seconds on average.
 
+### mainPRepCount, subPRepCount
+PRep consists of mainPRep and subPRep. mainPRep can participate in validating and voting in the process of consensus. 
+Whereas subPRep is registered as a PRep, but it can't participate in those activities. On a regular term basis, 
+PRep is ordered by a specific formula(mostly bonded delegation) and its top 22 PRep is elected as a mainPRep, and
+the bottom 78 PRep become a subPRep.
 
-## example
+### irep, rrep
+irep and rrep are variables that used in ICON1 reward calculation.
+
+### bondRequirement
+Each account can participate in the system as a way of stake, delegation, and bond. However, the amount of whole delegation
+of a user cannot be utilized without bond. The bondRequirement defines its percentage that requires bond to make delegation fully
+utilized. Based on bondRequirement, the system calculates bondedDelegation(not delegation by itself) and uses it when it orders PReps.
+
+### unbondingPeriodMultiplier
+User can unbond its bonds, but it takes several lock period. unbondingPeriodMultiplier defines unbond lock period multiplier.
+
+### unstakeSlotMax
+User can unstake its staking, but it cannot do it unlimitedly. unstakeSlotMax maximum unstake slot per account
+
+### lockMinMultiplier, lockMaxMultiplier
+Unstaking takes a certain period of time just as unbonding. lockMinMultiplier defines mininum unstake lock period term multiplier
+and lockMaxMultiplier defines maximum unstake lock period term multiplier. Unstake lock period can vary based on system
+environment at a particular moment.
+
+### validationPenaltyCondition
+Although mainPRep has a permission to validate and vote, it can get penalty when it fails to do those actions.
+validationPenaltyCondition defines consecutive validation fail count that imposes penalty on PRep.
+
+### consistentValidationPenaltyCondition, consistentValidationPenaltyMask
+Along with validationPenaltyCondition, Sanction can be imposed based on a consecutive count of failures of validating.
+consistentValidationPenaltyCondition defines the cumulative validation fail count that imposes penalty on the PRep and
+consistentValidationPenaltyMask defines the number of opportunities of it.
+
+### consistentValidationPenaltySlashRatio
+This defines percentage of bond slashed when it gets a penalty.
+
+### rewardFund
+rewardFund variables is newly introduced in ICON2. Please refer to the document of ICON2.(link needed)
+
+## Example
 ~~~json
 {
-"termPeriod": 43120,
-"mainPRepCount": 22,
-"subPRepCount": 78,
-"irep": 0,
-"rrep": 1200,
-"bondRequirement": 5,
-"unbondingPeriodMultiplier": 7,
-"unstakeSlotMax": 100,
-"lockMinMultiplier": 5,
-"lockMaxMultiplier": 20,
-"rewardFund": {
-"Iglobal": 15552000000,
-"Iprep": 50,
-"Icps": 0,
-"Irelay": 0,
-"Ivoter": 50
-},
-"validationPenaltyCondition": 660,
-"consistentValidationPenaltyCondition": 5,
-"consistentValidationPenaltyMask": 30,
-"consistentValidationPenaltySlashRatio": 10
+    "termPeriod": 43120,
+    "mainPRepCount": 22,
+    "subPRepCount": 78,
+    "irep": 0,
+    "rrep": 1200,
+    "bondRequirement": 5,
+    "unbondingPeriodMultiplier": 7,
+    "unstakeSlotMax": 1000,
+    "lockMinMultiplier": 5,
+    "lockMaxMultiplier": 20,
+    "unbondingMax": 100,
+    "validationPenaltyCondition": 660,
+    "consistentValidationPenaltyCondition": 5,
+    "consistentValidationPenaltyMask": 30,
+    "consistentValidationPenaltySlashRatio": 10,
+    "rewardFund": {
+        "Iglobal": 15552000000,
+        "Iprep": 50,
+        "Icps": 0,
+        "Irelay": 0,
+        "Ivoter": 50
+    }
 }
 ~~~
