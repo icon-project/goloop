@@ -233,7 +233,7 @@ func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t Reward
 	if err = c.temp.SetIScore(addr, iScore.Added(reward)); err != nil {
 		return err
 	}
-	c.log.Tracef("Update IScore %s by %d: +%s = %s", t, addr, reward, iScore.Value)
+	c.log.Tracef("Update IScore %s by %d: + %s = %+v", addr.String(), t, reward, iScore)
 
 	switch t {
 	case TypeBlockProduce:
@@ -809,10 +809,10 @@ func (c *Calculator) processVotingEvent(
 
 			start = end
 		}
-		// calculate reward for last event, do not include reward for TX block
+		// calculate reward for last event
 		ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, votings.Iterator())
-		log.Debugf("VotingEvent %s last: %d, %d : %s", addr, start, offsetLimit, ret)
 		reward.Add(reward, ret)
+		c.log.Tracef("VotingEvent %s last: %d, %d: %s", addr, start, offsetLimit, ret)
 
 		if err = c.writeVoting(addr, votings); err != nil {
 			return nil

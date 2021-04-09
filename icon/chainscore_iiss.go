@@ -149,13 +149,13 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
 	}
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes")
+		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes(%v)", err)
 	}
 
 	for _, t := range tl {
 		ts := es.GetUnstakingTimerState(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job")
+			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job(%v)", err)
 		}
 	}
 	if err = ia.SetStake(v); err != nil {
