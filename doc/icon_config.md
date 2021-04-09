@@ -22,13 +22,13 @@ This document specifies ICON configurations.
 | consistentValidationPenaltySlashRatio    | percentage of bond slashed when it gets penalty                  | 10                 |
 
 ## rewardFund Attributes for ICON2
-|  Attribute                               | Simple Description                                               | Default value      |
-|------------------------------------------|:-----------------------------------------------------------------|--------------------|
-| Iglobal                                  | Iglobal is multiplier, providing reward fund                     | 15552000000        |
-| Iprep                                    | Iprep is multiplier of Representative Reward Fund(with Iglobal)  | 50                 |
-| Icps                                     | Icps is multiplier of Contribution Reward Fund(with Iglobal)     | 0                  |
-| Irelay                                   | Irelay is multiplier of Relayer Reward Fund(with Iglobal)        | 0                  |
-| Ivoter                                   | Ivoter is multiplier of Delegation Reward Fund(with Iglobal)     | 50                 |
+|  Attribute                               | Simple Description                                                          | Default value      |
+|------------------------------------------|:----------------------------------------------------------------------------|--------------------|
+| Iglobal                                  | Iglobal is total amount of issuance on a term                               | 15552000000        |
+| Iprep                                    | Iprep is percentage of Iglobal to calculate Representative Reward Fund      | 50                 |
+| Icps                                     | Icps is percentage of Iglobal to calculate Contribution Reward Fund         | 0                  |
+| Irelay                                   | Irelay is percentage of Iglobal to calculate Relayer Reward Fund            | 0                  |
+| Ivoter                                   | Ivoter is percentage of Iglobal to calculate Delegation Reward Fund         | 50                 |
 
 ## Explanation
 ### termPeriod
@@ -42,7 +42,7 @@ PRep is ordered by a specific formula(mostly bonded delegation) and its top 22 P
 the bottom 78 PRep become a subPRep.
 
 ### irep, rrep
-irep and rrep are variables that used in ICON1 reward calculation.
+irep and rrep are variables that used in IISS 2.0 reward calculation.
 
 ### bondRequirement
 Each account can participate in the system as a way of stake, delegation, and bond. However, the amount of whole delegation
