@@ -141,9 +141,6 @@ func (b *BlockV03) Verify(prev Block) error {
 	if err := b.json.LeaderVotes.Verify(b.reps); err != nil {
 		return err
 	}
-	if err := b.json.PrevVotes.Verify(); err != nil {
-		return err
-	}
 	for _, tx := range b.txs {
 		if err := tx.Verify(); err != nil {
 			return err
@@ -169,9 +166,11 @@ func (b *BlockV03) Verify(prev Block) error {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidHashValue(exp=%#x,calc=%#x)", b.json.Hash.Bytes(), hash)
 	}
+	var prevReps *RepsList
 	if prev != nil {
 		switch pb := prev.(type) {
 		case *BlockV03:
+			prevReps = pb.reps
 			voted := b.json.PrevVotes.Quorum()
 			if !bytes.Equal(pb.ID(), voted) {
 				return errors.InvalidStateError.Errorf(
@@ -200,6 +199,9 @@ func (b *BlockV03) Verify(prev Block) error {
 		default:
 			return errors.InvalidStateError.Errorf("UnknownBlockVersion(%T)", prev)
 		}
+	}
+	if err := b.json.PrevVotes.Verify(prevReps); err != nil {
+		return err
 	}
 	return nil
 }

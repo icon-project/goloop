@@ -138,16 +138,27 @@ func (s *BlockVoteList) calcHash() {
 	s.hash = merkle.CalcHashOfList(items)
 }
 
-func (s *BlockVoteList) Verify() error {
+func (s *BlockVoteList) Verify(reps *RepsList) error {
 	if s == nil || len(s.votes) == 0 {
 		return nil
 	}
-	for _, v := range s.votes {
+	for i, v := range s.votes {
 		if v == nil {
 			continue
 		}
 		if err := v.Verify(); err != nil {
 			return err
+		}
+		if reps != nil {
+			rep := reps.Get(i)
+			if !v.json.Rep.Equal(rep) {
+				return errors.InvalidStateError.Errorf(
+					"InvalidVote(idx=%d,exp=%s,real=%s)",
+					i,
+					rep.String(),
+					v.json.Rep.String(),
+				)
+			}
 		}
 	}
 	return nil
