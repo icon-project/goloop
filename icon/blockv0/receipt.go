@@ -26,10 +26,11 @@ import (
 	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 func CalcMerkleRootOfReceiptSlice(
-	receipts []module.Receipt,
+	receipts []txresult.Receipt,
 	txs []module.Transaction,
 	height int64,
 ) []byte {

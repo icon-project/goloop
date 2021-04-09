@@ -234,7 +234,7 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 				}
 				if blkV03, ok := blk.(*blockv0.BlockV03); ok {
 					txs := blk.NormalTransactions()
-					receipts := make([]module.Receipt, 0, len(txs))
+					receipts := make([]txresult.Receipt, 0, len(txs))
 					for _, tx := range txs {
 						jsn, err := lcDB.GetReceiptJSON(tx.ID())
 						if err != nil {

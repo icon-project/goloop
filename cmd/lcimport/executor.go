@@ -458,6 +458,14 @@ func (e *Executor) LoadBlockByHeight(prev *Block, height int64) (*Block, error) 
 		}
 		rcts[idx] = rct.(txresult.Receipt)
 	}
+	if blkv03, ok := blkv0.(*blockv0.BlockV03); ok {
+		eReceiptListHash := blkv03.ReceiptsHash()
+		rReceiptListHash := blockv0.CalcMerkleRootOfReceiptSlice(rcts, txs, blkv0.Height())
+		if !bytes.Equal(eReceiptListHash, rReceiptListHash) {
+			return nil, errors.Errorf("DifferentReceiptListHash(stored=%#x,real=%#x)",
+				eReceiptListHash, rReceiptListHash)
+		}
+	}
 	return &Block{
 		height:  height,
 		txs:     transaction.NewTransactionListFromSlice(e.database, txs),
