@@ -17,18 +17,20 @@
 package icon
 
 import (
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icstage"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"github.com/icon-project/goloop/service/scoreresult"
+	"bytes"
+	"encoding/hex"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -551,12 +553,19 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 	}
 }
 
+var skipedClaimTX, _ = hex.DecodeString("b9eeb235f715b166cf4b91ffcf8cc48a81913896086d30104ffc0cf47eed1cbd")
+
 func (s *chainScore) Ex_claimIScore() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	if err := s.iissHandleRevision(); err != nil {
 		return err
+	}
+	if bytes.Compare(s.cc.TransactionID(), skipedClaimTX) == 0 {
+		// Skip this TX like ICON1 mainnet.
+		s.claimEventLog(s.from, new(big.Int), new(big.Int))
+		return nil
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
