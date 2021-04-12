@@ -118,9 +118,9 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) ([]TimerJobInf
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
 		last.Amount.Add(last.Amount, v)
-		tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
-		tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 		if eh > last.ExpireHeight {
+			tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
+			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 			last.ExpireHeight = eh
 		}
 	} else {
