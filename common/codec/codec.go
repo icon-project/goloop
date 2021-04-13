@@ -12,18 +12,10 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 )
 
-type SimpleEncoder interface {
-	Encode(v interface{}) error
-}
-
-type SimpleDecoder interface {
-	Decode(v interface{}) error
-}
-
 type codecImpl interface {
 	Name() string
-	NewDecoder(r io.Reader) SimpleDecoder
-	NewEncoder(w io.Writer) SimpleEncoder
+	NewDecoder(r io.Reader) DecodeAndCloser
+	NewEncoder(w io.Writer) EncodeAndCloser
 }
 
 type Codec interface {
@@ -34,7 +26,7 @@ type Codec interface {
 	UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error)
 	MustMarshalToBytes(v interface{}) []byte
 	MustUnmarshalFromBytes(b []byte, v interface{}) []byte
-	NewEncoderBytes(b *[]byte) SimpleEncoder
+	NewEncoderBytes(b *[]byte) EncodeAndCloser
 }
 
 func UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
@@ -263,13 +255,18 @@ func encodeRecursiveFields(e *encoderImpl, v reflect.Value) error {
 	if v.Kind() != reflect.Struct {
 		return nil
 	}
+	vt := v.Type()
 	n := v.NumField()
 	for i := 0; i < n; i++ {
 		fv := v.Field(i)
-		if !fv.CanInterface() {
+		ft := vt.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := encodeRecursiveFields(e, fv); err != nil {
 				return err
 			}
+			continue
+		}
+		if !fv.CanInterface() {
 			continue
 		}
 		if err := e.encodeValue(fv); err != nil {
@@ -551,13 +548,18 @@ func decodeRecursiveFields(d *decoderImpl, elem reflect.Value) error {
 	if elem.Kind() != reflect.Struct {
 		return nil
 	}
+	et := elem.Type()
 	n := elem.NumField()
 	for i := 0; i < n; i++ {
 		fv := elem.Field(i)
-		if !fv.CanSet() {
+		ft := et.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := decodeRecursiveFields(d, fv); err != nil {
 				return err
 			}
+			continue
+		}
+		if !fv.CanSet() {
 			continue
 		}
 		if err := d.decodeNullableValue(fv.Addr()); err != nil {
