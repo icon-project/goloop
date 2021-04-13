@@ -421,7 +421,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "setBond",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
-			{"bondList", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+			{"bonds", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
 					{"address", scoreapi.Address, nil},
 					{"value", scoreapi.Integer, nil},
