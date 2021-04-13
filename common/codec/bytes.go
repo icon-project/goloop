@@ -64,7 +64,7 @@ func (w bytesWriter) Write(bs []byte) (int, error) {
 	return len(bs), nil
 }
 
-func (c bytesWrapper) NewEncoderBytes(b *[]byte) SimpleEncoder {
+func (c bytesWrapper) NewEncoderBytes(b *[]byte) EncodeAndCloser {
 	if len(*b) > 0 {
 		*b = (*b)[:0]
 	}

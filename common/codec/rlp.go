@@ -437,13 +437,13 @@ func (c *rlpCodec) Name() string {
 	return "rlp"
 }
 
-func (c *rlpCodec) NewDecoder(r io.Reader) SimpleDecoder {
+func (c *rlpCodec) NewDecoder(r io.Reader) DecodeAndCloser {
 	return NewDecoder(&rlpReader{
 		reader: r,
 	})
 }
 
-func (c *rlpCodec) NewEncoder(w io.Writer) SimpleEncoder {
+func (c *rlpCodec) NewEncoder(w io.Writer) EncodeAndCloser {
 	return NewEncoder(&rlpWriter{
 		writer: w,
 	})

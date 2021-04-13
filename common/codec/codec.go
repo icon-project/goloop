@@ -12,18 +12,10 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 )
 
-type SimpleEncoder interface {
-	Encode(v interface{}) error
-}
-
-type SimpleDecoder interface {
-	Decode(v interface{}) error
-}
-
 type codecImpl interface {
 	Name() string
-	NewDecoder(r io.Reader) SimpleDecoder
-	NewEncoder(w io.Writer) SimpleEncoder
+	NewDecoder(r io.Reader) DecodeAndCloser
+	NewEncoder(w io.Writer) EncodeAndCloser
 }
 
 type Codec interface {
@@ -34,7 +26,7 @@ type Codec interface {
 	UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error)
 	MustMarshalToBytes(v interface{}) []byte
 	MustUnmarshalFromBytes(b []byte, v interface{}) []byte
-	NewEncoderBytes(b *[]byte) SimpleEncoder
+	NewEncoderBytes(b *[]byte) EncodeAndCloser
 }
 
 func UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {

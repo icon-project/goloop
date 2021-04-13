@@ -12,15 +12,15 @@ func Unmarshal(r io.Reader, v interface{}) error {
 	return BC.Unmarshal(r, v)
 }
 
-func NewSimpleEncoder(w io.Writer) SimpleEncoder {
+func NewSimpleEncoder(w io.Writer) EncodeAndCloser {
 	return BC.NewEncoder(w)
 }
 
-func NewSimpleDecoder(r io.Reader) SimpleDecoder {
+func NewSimpleDecoder(r io.Reader) DecodeAndCloser {
 	return BC.NewDecoder(r)
 }
 
-func NewEncoderBytes(b *[]byte) SimpleEncoder {
+func NewEncoderBytes(b *[]byte) EncodeAndCloser {
 	return BC.NewEncoderBytes(b)
 }
 
