@@ -29,6 +29,7 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -404,7 +405,10 @@ func (c *Calculator) calculateVotedReward() error {
 
 			obj := icstage.ToEventEnable(o)
 			vInfo.setEnable(obj.Target, obj.Flag)
-			vInfo.updateTotalBondedDelegation()
+			// If revision < 7, do not update totalBondedDelegation with EventEnable
+			if c.global.GetRevision() >= icmodule.Revision7 {
+				vInfo.updateTotalBondedDelegation()
+			}
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
 			vInfo.updateDelegated(obj.Votes)
