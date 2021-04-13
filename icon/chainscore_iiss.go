@@ -293,7 +293,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	if ts, err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
 	} else {
-		icutils.OnBurn(s.cc, regPRepFee, ts)
+		icutils.OnBurn(s.cc, state.SystemAddress, regPRepFee, ts)
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
@@ -846,4 +846,14 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 		return false, scoreresult.InvalidParameterError.Errorf(err.Error())
 	}
 	return true, nil
+}
+
+func (s *chainScore) Ex_burn() error {
+	// Burn value
+	if ts, err := icutils.DecreaseTotalSupply(s.cc, s.value); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
+	} else {
+		icutils.OnBurn(s.cc, s.from, s.value, ts)
+	}
+	return nil
 }
