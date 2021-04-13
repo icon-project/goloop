@@ -56,7 +56,6 @@ type Impl interface {
 }
 
 type Object struct {
-	factory ImplFactory
 	bytes   []byte
 	tag     Tag
 	real    Impl
@@ -88,11 +87,14 @@ func (o *Object) Reset(dbase db.Database, bs []byte) error {
 	if factory == nil {
 		return errors.InvalidStateError.New("FactoryIsNotAttached")
 	}
-	o.factory = factory
-	o.bytes = bs
-	if _, err := codec.BC.UnmarshalFromBytes(bs, o); err != nil {
+	d := codec.BC.NewDecoder(bytes.NewReader(bs))
+	if err := o.RLPDecodeSelf(d, factory); err != nil {
 		return err
 	}
+	if err := d.Close(); err != nil {
+		return err
+	}
+	o.bytes = bs
 	return o.real.Reset(dbase)
 }
 
@@ -111,7 +113,7 @@ func (o *Object) BytesValue() []byte {
 	}
 }
 
-func (o *Object) RLPDecodeSelf(d codec.Decoder) error {
+func (o *Object) RLPDecodeSelf(d codec.Decoder, factory ImplFactory) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -130,7 +132,7 @@ func (o *Object) RLPDecodeSelf(d codec.Decoder) error {
 		o.tag = tag
 		return nil
 	}
-	real, err = o.factory(tag)
+	real, err = factory(tag)
 	if err != nil {
 		return errors.CriticalFormatError.Wrap(err,
 			"FailToCreateObjectImpl")
@@ -195,31 +197,6 @@ func New(t int, real Impl) *Object {
 		tag:  MakeTag(t, real.Version()),
 		real: real,
 	}
-}
-
-func NewObjectFromBytes(factory ImplFactory, b []byte) (*Object, error) {
-	d := codec.BC.NewDecoder(bytes.NewReader(b)).(codec.Decoder)
-
-	d2, err := d.DecodeList()
-	if err != nil {
-		return nil, err
-	}
-
-	var tag Tag
-	var origin Impl
-	if err := d2.Decode(&tag); err != nil {
-		return nil, err
-	}
-	origin, err = factory(tag)
-	if err != nil {
-		return nil, errors.CriticalFormatError.Wrap(err, "FailToCreateObjectImpl")
-	}
-	err = origin.RLPDecodeFields(d2)
-	if err != nil {
-		return nil, err
-	}
-
-	return New(int(tag), origin), nil
 }
 
 type NoDatabase struct{}
