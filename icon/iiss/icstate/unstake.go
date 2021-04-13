@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -56,6 +57,23 @@ func (u Unstake) ToJSON(_ module.JSONVersion, blockHeight int64) interface{} {
 	jso["remainingBlocks"] = u.ExpireHeight - blockHeight
 
 	return jso
+}
+
+func (u Unstake) String() string {
+	return fmt.Sprintf("Unstake{%d %d}", u.Amount, u.ExpireHeight)
+}
+
+func (u Unstake) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Unstake{amount=%d expire=%d}", u.Amount, u.ExpireHeight)
+			return
+		}
+		fallthrough
+	case 's':
+		fmt.Fprint(f, u.String())
+	}
 }
 
 type Unstakes []*Unstake

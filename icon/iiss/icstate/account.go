@@ -18,7 +18,6 @@ package icstate
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 	"sort"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 const (
@@ -437,6 +437,21 @@ func (a *Account) String() string {
 		"addr=%s stake=%s unstake=%s delegating=%s bonding=%s unbonding=%s",
 		a.address, a.stake, a.unstakes.GetUnstakeAmount(), a.delegating, a.bonding, a.unbonding,
 	)
+}
+
+func (a *Account) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Account{stake=%d unstakes=%+v delegating=%d delegations=%+v bonding=%d unbonding=%d bonds=%+v unbonds=%+v}",
+				a.stake, a.unstakes, a.delegating, a.delegations, a.bonding, a.unbonding, a.bonds, a.unbonds)
+		} else {
+			fmt.Fprintf(f, "Account{%d %v %d %v %d %d %v %v}",
+				a.stake, a.unstakes, a.delegating, a.delegations, a.bonding, a.unbonding, a.bonds, a.unbonds)
+		}
+	case 's':
+		fmt.Fprint(f, a.String())
+	}
 }
 
 func newAccountWithTag(_ icobject.Tag) *Account {

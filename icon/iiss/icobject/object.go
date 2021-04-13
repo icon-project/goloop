@@ -175,14 +175,14 @@ func (o *Object) Tag() Tag {
 
 func (o *Object) Format(f fmt.State, c rune) {
 	switch c {
-	case 's':
-		fmt.Fprintf(f, "Object[tag=%#x,obj=%s]", o.tag, o.real)
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Object[tag=%#x,obj=%+v]", o.tag, o.real)
-		} else {
-			fmt.Fprintf(f, "Object[tag=%#x,obj=%v]", o.tag, o.real)
+			fmt.Fprintf(f, "Object{tag=%#x obj=%+v}", o.tag, o.real)
+			return
 		}
+		fallthrough
+	case 's':
+		fmt.Fprintf(f, "Object{%#x %v}", o.tag, o.real)
 	default:
 		if formatter, ok := o.real.(fmt.Formatter); ok {
 			formatter.Format(f, c)
