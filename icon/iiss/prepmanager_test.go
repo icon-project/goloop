@@ -36,7 +36,7 @@ func newRegInfo(i int) *RegInfo {
 	email := fmt.Sprintf("%s@email.com", name)
 	website := fmt.Sprintf("https://%s.example.com/", name)
 	details := fmt.Sprintf("%sdetails/", website)
-	endpoint := fmt.Sprintf("%s.example.com:9080/api/v3", name)
+	endpoint := fmt.Sprintf("%s.example.com:9080", name)
 	node := module.Address(nil)
 	owner := createAddress(i)
 
@@ -199,6 +199,7 @@ func TestPRepManager_RegisterPRep(t *testing.T) {
 
 	for i := 0; i < size; i++ {
 		regInfo := newRegInfo(i)
+		assert.NoError(t, regInfo.Validate(i))
 		owner := regInfo.owner
 
 		err := pm.RegisterPRep(regInfo, BigIntInitialIRep)

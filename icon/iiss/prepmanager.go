@@ -13,12 +13,34 @@ import (
 	"github.com/icon-project/goloop/service/state"
 	"math"
 	"math/big"
+	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 const (
 	InitialIRep = 50_000 // in icx, not loop
 	MinIRep     = 10_000
+
+	SchemePattern   = "^(http://|https://)"
+	HostNamePattern = "(localhost|(?:[\\w\\d](?:[\\w\\d-]{0,61}[\\w\\d])\\.)+[\\w\\d][\\w\\d-]{0,61}[\\w\\d])"
+	IPv4Pattern     = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+	PortPattern     = "(:[0-9]{1,5})?"
+	PathPattern     = "(\\/\\S*)?$"
+	EmailPattern    = "^[a-zA-Z0-9]+(.[a-zA-Z0-9]+)*@" + HostNamePattern + "$"
+
+	PortMax       = 65536
+	EmailLocalMax = 64
+	EmailMax      = 254
+)
+
+var (
+	websiteDNTemplate    = regexp.MustCompile(SchemePattern + HostNamePattern + PortPattern + PathPattern)
+	websiteIPv4Template  = regexp.MustCompile(SchemePattern + IPv4Pattern + PortPattern + PathPattern)
+	emailTemplate        = regexp.MustCompile(EmailPattern)
+	endpointDNTemplate   = regexp.MustCompile(IPv4Pattern + PortPattern)
+	endpointIPv4Template = regexp.MustCompile(HostNamePattern + PortPattern)
 )
 
 var BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
@@ -41,23 +63,6 @@ func (r *RegInfo) String() string {
 		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s owner=%s",
 		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website, r.owner,
 	)
-}
-
-func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {
-	if node == nil {
-		node = owner
-	}
-	return &RegInfo{
-		city:        city,
-		country:     country,
-		details:     details,
-		email:       email,
-		name:        name,
-		p2pEndpoint: p2pEndpoint,
-		website:     website,
-		node:        node,
-		owner:       owner,
-	}
 }
 
 func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
@@ -92,6 +97,100 @@ func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
 	if r.node == nil {
 		r.node = prepInfo.Node()
 	}
+}
+
+func (r *RegInfo) Validate(revision int) error {
+	if err := r.validateEndpoint(); err != nil {
+		return err
+	}
+
+	if err := r.validateWebsiteURL(r.website); err != nil {
+		return err
+	}
+
+	if err := r.validateWebsiteURL(r.details); err != nil {
+		return err
+	}
+
+	if err := r.validateEmail(revision); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RegInfo) validateEndpoint() error {
+	networkInfo := strings.Split(r.p2pEndpoint, ":")
+
+	if len(networkInfo) != 2 {
+		return errors.Errorf("Invalid endpoint format, must have port info.")
+	}
+
+	port, err := strconv.Atoi(networkInfo[1])
+	if err != nil {
+		return err
+	}
+
+	// port validate
+	if !(0 < port && port < PortMax) {
+		return errors.Errorf("Invalid endpoint format, Port out of range.")
+	}
+
+	endpoint := strings.ToLower(r.p2pEndpoint)
+	if !(endpointDNTemplate.MatchString(endpoint) || endpointIPv4Template.MatchString(endpoint)) {
+		return errors.Errorf("Invalid endpoint format")
+	}
+
+	return nil
+}
+
+func (r *RegInfo) validateWebsiteURL(url string) error {
+	websiteURI := strings.ToLower(url)
+	if !(websiteDNTemplate.MatchString(websiteURI) || websiteIPv4Template.MatchString(websiteURI)) {
+		return errors.Errorf("Invalid websiteURL format")
+	}
+
+	return nil
+}
+
+func (r *RegInfo) validateEmail(revision int) error {
+	if revision < icmodule.Revision9 {
+		if !emailTemplate.MatchString(r.email) {
+			return errors.Errorf("Invalid Email format")
+		}
+	} else {
+		index := strings.LastIndex(r.email, "@")
+		length := len(r.email)
+
+		beforeCheck := 1 <= index && index <= EmailLocalMax
+		afterCheck := index+1 < length && length <= EmailMax
+
+		if !(beforeCheck && afterCheck) {
+			return errors.Errorf("Invalid Email format")
+		}
+	}
+
+	return nil
+}
+
+func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {
+	if node == nil {
+		node = owner
+	}
+
+	regInfo := &RegInfo{
+		city:        city,
+		country:     country,
+		details:     details,
+		email:       email,
+		name:        name,
+		p2pEndpoint: p2pEndpoint,
+		website:     website,
+		node:        node,
+		owner:       owner,
+	}
+
+	return regInfo
 }
 
 type PRep struct {
@@ -154,7 +253,7 @@ func (pm *PRepManager) init() {
 		if prep == nil {
 			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
-				pm.appendPRep(prep)
+			pm.appendPRep(prep)
 		}
 	}
 }

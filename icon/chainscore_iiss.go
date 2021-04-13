@@ -297,6 +297,10 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
+	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(err.Error())
+	}
+
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
@@ -462,7 +466,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	if err != nil {
 		return err
 	}
-	err = es.SetPRep(regInfo)
+	err = es.SetPRep(regInfo, s.cc.Revision().Value())
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}
