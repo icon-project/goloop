@@ -140,15 +140,20 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	prevTotalStake := ia.GetTotalStake()
 
 	//update IISS account
+	revision := s.cc.Revision().Value()
+	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tSupply).Int64()
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
 	case 1:
 		// Condition: stakeInc > 0
-		tl, err = ia.DecreaseUnstake(stakeInc)
+		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
 	case -1:
-		expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tSupply).Int64()
 		slotMax := int(es.State.GetUnstakeSlotMax())
-		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
+		if revision < icmodule.Revision9 {
+			// support multiple unstakes since revision9
+			slotMax = 1
+		}
+		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
 	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes(%v)", err)

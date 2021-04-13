@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -126,17 +127,21 @@ func (us Unstakes) ToJSON(v module.JSONVersion, blockHeight int64) []interface{}
 	return unstakes
 }
 
-func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm int) ([]TimerJobInfo, error) {
+func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
 		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
 	tl := make([]TimerJobInfo, 0)
 	if len(*us) >= sm {
 		// update last entry
+		modExpireHeight := false
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
 		last.Amount.Add(last.Amount, v)
-		if eh > last.ExpireHeight {
+		if revision < icmodule.Revision9 || eh > last.ExpireHeight {
+			modExpireHeight = true
+		}
+		if modExpireHeight {
 			tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
 			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 			last.ExpireHeight = eh
@@ -163,7 +168,7 @@ func (us Unstakes) findIndex(h int64) int64 {
 	return 0
 }
 
-func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
+func (us *Unstakes) decreaseUnstake(v *big.Int, expireHeight int64, revision int) ([]TimerJobInfo, error) {
 	if v.Sign() == -1 {
 		return nil, errors.Errorf("Invalid unstake Value %v", v)
 	}
@@ -185,6 +190,12 @@ func (us *Unstakes) decreaseUnstake(v *big.Int) ([]TimerJobInfo, error) {
 			}
 		case -1:
 			u.Amount.Sub(u.Amount, remain)
+			if revision < icmodule.Revision9 {
+				// must update expire height
+				tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
+				tl = append(tl, TimerJobInfo{Type: JobTypeAdd, Height: expireHeight})
+				u.ExpireHeight = expireHeight
+			}
 			return tl, nil
 		}
 	}
