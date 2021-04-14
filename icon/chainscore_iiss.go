@@ -849,6 +849,14 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 }
 
 func (s *chainScore) Ex_burn() error {
+	// Subtract value from chainScore
+	as := s.cc.GetAccountState(state.SystemID)
+	balance := new(big.Int).Sub(as.GetBalance(), s.value)
+	if balance.Sign() < 0 {
+		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	}
+	as.SetBalance(balance)
+
 	// Burn value
 	if ts, err := icutils.DecreaseTotalSupply(s.cc, s.value); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(err.Error())
