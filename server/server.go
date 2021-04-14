@@ -34,6 +34,7 @@ type Manager struct {
 	jsonrpcMessageDump    int32
 	jsonrpcIncludeDebug   int32
 	logger                log.Logger
+	metricsHandler        echo.HandlerFunc
 }
 
 func NewManager(addr string,
@@ -64,6 +65,7 @@ func NewManager(addr string,
 		mtx:                   sync.RWMutex{},
 		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
 		logger:                logger,
+		metricsHandler:        echo.WrapHandler(metric.PrometheusExporter()),
 	}
 	m.SetMessageDump(jsonrpcDump)
 	m.SetIncludeDebug(jsonrpcIncludeDebug)
@@ -208,7 +210,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 }
 
 func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {
-	g.GET("", echo.WrapHandler(metric.PrometheusExporter()))
+	g.GET("", srv.metricsHandler)
 }
 
 func (srv *Manager) CheckDebug() echo.MiddlewareFunc {
