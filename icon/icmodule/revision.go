@@ -43,9 +43,10 @@ const (
 )
 
 const (
-	RevisionIISS         = Revision5
-	RevisionDecentralize = Revision6
-	RevisionICON2        = Revision13
+	RevisionIISS               = Revision5
+	RevisionDecentralize       = Revision6
+	RevisionICON2              = Revision13
+	RevisionFixEmailValidation = Revision9
 )
 
 var revisionFlags = []module.Revision{

@@ -248,7 +248,7 @@ func ValidateEmail(email string, revision int) error {
 		return nil
 	}
 
-	if revision < icmodule.Revision9 {
+	if revision < icmodule.RevisionFixEmailValidation {
 		if !emailTemplate.MatchString(email) {
 			return errors.Errorf("Invalid Email format")
 		}
