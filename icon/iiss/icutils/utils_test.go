@@ -1,9 +1,16 @@
 package icutils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 )
 
 func TestPow10(t *testing.T) {
@@ -125,6 +132,100 @@ func TestValidateRange(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+type testCallContext struct {
+	contract.CallContext
+	revision module.Revision
+	addr     module.Address
+	indexed  [][]byte
+	data     [][]byte
+}
+
+func (tcc *testCallContext) SetRevision(revision int) {
+	tcc.revision = icmodule.ValueToRevision(revision)
+}
+
+func (tcc *testCallContext) Revision() module.Revision {
+	return tcc.revision
+}
+
+func (tcc *testCallContext) OnEvent(address module.Address, indexed [][]byte, data [][]byte) {
+	tcc.addr = address
+	tcc.indexed = indexed
+	tcc.data = data
+}
+
+func TestOnBurn(t *testing.T) {
+	tcc := new(testCallContext)
+	type args struct {
+		revision    int
+		addr        module.Address
+		value       *big.Int
+		totalSupply *big.Int
+	}
+	type wants struct {
+		indexed [][]byte
+		data    [][]byte
+	}
+	addr1, _ := common.NewAddressFromString("hx1")
+	value := new(big.Int).SetInt64(100)
+	totalSupply := new(big.Int).SetInt64(1000)
+	tests := []struct {
+		name string
+		in   args
+		want wants
+	}{
+		{
+			"revision 5",
+			args{
+				5,
+				addr1,
+				value,
+				totalSupply,
+			},
+			wants{
+				[][]byte{[]byte("ICXBurned")},
+				[][]byte{intconv.BigIntToBytes(value)},
+			},
+		},
+		{
+			"revision 9",
+			args{
+				9,
+				addr1,
+				value,
+				totalSupply,
+			},
+			wants{
+				[][]byte{[]byte("ICXBurned(int)")},
+				[][]byte{intconv.BigIntToBytes(value)},
+			},
+		},
+		{
+			"revision 12",
+			args{
+				12,
+				addr1,
+				value,
+				totalSupply,
+			},
+			wants{
+				[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), addr1.Bytes()},
+				[][]byte{intconv.BigIntToBytes(value), intconv.BigIntToBytes(totalSupply)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.in
+			tcc.SetRevision(in.revision)
+			OnBurn(tcc, in.addr, in.value, in.totalSupply)
+			want := tt.want
+			assert.Equal(t, want.indexed, tcc.indexed)
+			assert.Equal(t, want.data, tcc.data)
 		})
 	}
 }
