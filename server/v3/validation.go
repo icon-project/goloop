@@ -184,8 +184,11 @@ func validateDepositDataParam(sl validator.StructLevel, field interface{}, data 
 			sl.ReportError(field, "Data", "amount", "data.amount", "Invalid T_NUMBER format")
 			return
 		}
-		if len(data) != 2 {
+		if (id != nil || amount != nil) && len(data) != 2 {
 			sl.ReportError(field, "Data", "data", "data", "InvalidDataForDeposit")
+			return
+		} else if id == nil && amount == nil && len(data) > 1 {
+			sl.ReportError(field, "Data", "data", "data.unknown", "")
 			return
 		}
 	default:
