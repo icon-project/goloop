@@ -406,7 +406,7 @@ func (c *Calculator) calculateVotedReward() error {
 			obj := icstage.ToEventEnable(o)
 			vInfo.setEnable(obj.Target, obj.Flag)
 			// If revision < 7, do not update totalBondedDelegation with EventEnable
-			if c.global.GetRevision() >= icmodule.Revision7 {
+			if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
 				vInfo.updateTotalBondedDelegation()
 			}
 		case icstage.TypeEventDelegation:
