@@ -571,6 +571,8 @@ const (
 
 	InitialDepositTerm = 1_296_000
 	DisableDepositTerm = 0
+
+	InitialUnstakeSlotMax = 1
 )
 
 const (

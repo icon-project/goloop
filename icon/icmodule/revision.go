@@ -50,6 +50,7 @@ const (
 	RevisionFixTotalDelegated = Revision7
 
 	RevisionFixBurnEventSignature = Revision9
+	RevisionMultipleUnstakes      = Revision9
 
 	RevisionBurnV2 = Revision12
 

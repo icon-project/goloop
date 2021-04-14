@@ -18,6 +18,8 @@ package icon
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
@@ -27,7 +29,6 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"math/big"
 )
 
 func (s *chainScore) tryChargeCall(iiss bool) error {
@@ -181,11 +182,24 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion1 {
 				iissVersion = icstate.IISSVersion1
 			}
+			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == defaultUnstakeSlotMax {
+				if err := es.State.SetUnstakeSlotMax(InitialUnstakeSlotMax); err != nil {
+					return err
+				}
+			}
 		}
 
 		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
 			if termPeriod := es.State.GetTermPeriod(); termPeriod == InitialTermPeriod {
 				if err := es.State.SetTermPeriod(DecentralizedTermPeriod); err != nil {
+					return err
+				}
+			}
+		}
+
+		if r1 < icmodule.RevisionMultipleUnstakes && r2 >= icmodule.RevisionMultipleUnstakes {
+			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == InitialUnstakeSlotMax {
+				if err := es.State.SetUnstakeSlotMax(defaultUnstakeSlotMax); err != nil {
 					return err
 				}
 			}
