@@ -43,23 +43,6 @@ func (r *RegInfo) String() string {
 	)
 }
 
-func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {
-	if node == nil {
-		node = owner
-	}
-	return &RegInfo{
-		city:        city,
-		country:     country,
-		details:     details,
-		email:       email,
-		name:        name,
-		p2pEndpoint: p2pEndpoint,
-		website:     website,
-		node:        node,
-		owner:       owner,
-	}
-}
-
 func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
 	if len(r.city) == 0 {
 		r.city = prepInfo.City()
@@ -92,6 +75,46 @@ func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
 	if r.node == nil {
 		r.node = prepInfo.Node()
 	}
+}
+
+func (r *RegInfo) Validate(revision int) error {
+	if err := icutils.ValidateEndpoint(r.p2pEndpoint); err != nil {
+		return err
+	}
+
+	if err := icutils.ValidateURL(r.website); err != nil {
+		return err
+	}
+
+	if err := icutils.ValidateURL(r.details); err != nil {
+		return err
+	}
+
+	if err := icutils.ValidateEmail(r.email, revision); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node, owner module.Address) *RegInfo {
+	if node == nil {
+		node = owner
+	}
+
+	regInfo := &RegInfo{
+		city:        city,
+		country:     country,
+		details:     details,
+		email:       email,
+		name:        name,
+		p2pEndpoint: p2pEndpoint,
+		website:     website,
+		node:        node,
+		owner:       owner,
+	}
+
+	return regInfo
 }
 
 type PRep struct {
@@ -154,7 +177,7 @@ func (pm *PRepManager) init() {
 		if prep == nil {
 			pm.logger.Warnf("Failed to load PRep: %s", owner)
 		} else {
-				pm.appendPRep(prep)
+			pm.appendPRep(prep)
 		}
 	}
 }

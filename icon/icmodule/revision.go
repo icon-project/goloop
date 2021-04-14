@@ -51,6 +51,7 @@ const (
 
 	RevisionFixBurnEventSignature = Revision9
 	RevisionMultipleUnstakes      = Revision9
+	RevisionFixEmailValidation    = Revision9
 
 	RevisionBurnV2 = Revision12
 
