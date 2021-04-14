@@ -198,9 +198,12 @@ func (s *State) addValidator(offset int, validator module.Address) error {
 	return err
 }
 
-func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int, mainPRepCount int, electedPRepCount int) error {
+func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
+	mainPRepCount int, electedPRepCount int,
+) error {
 	key := HashKey.Append(globalKey).Build()
 	g := newGlobalV1()
+	g.Revision = revision
 	g.IISSVersion = icstate.IISSVersion1
 	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit
@@ -212,11 +215,12 @@ func (s *State) AddGlobalV1(startHeight int64, offsetLimit int, irep *big.Int, r
 	return err
 }
 
-func (s *State) AddGlobalV2(startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int, ivoter *big.Int,
-	electedPRepCount int, bondRequirement int,
+func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
+	ivoter *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
 	key := HashKey.Append(globalKey).Build()
 	g := newGlobalV2()
+	g.Revision = revision
 	g.IISSVersion = icstate.IISSVersion2
 	g.StartHeight = startHeight
 	g.OffsetLimit = offsetLimit

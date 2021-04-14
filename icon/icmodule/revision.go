@@ -47,6 +47,8 @@ const (
 
 	RevisionDecentralize = Revision6
 
+	RevisionFixTotalDelegated = Revision7
+
 	RevisionFixBurnEventSignature = Revision9
 
 	RevisionBurnV2 = Revision12
