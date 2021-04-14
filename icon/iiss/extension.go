@@ -533,7 +533,7 @@ func (s *ExtensionStateImpl) selectNewValidator() error {
 	return nil
 }
 
-func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo, revision int) error {
+func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo) error {
 	owner := regInfo.owner
 	node := regInfo.node
 
@@ -551,9 +551,6 @@ func (s *ExtensionStateImpl) SetPRep(regInfo *RegInfo, revision int) error {
 	}
 
 	regInfo.UpdateRegInfo(prepInfo)
-	if err := regInfo.Validate(revision); err != nil {
-		return err
-	}
 
 	return s.pm.SetPRep(regInfo)
 }

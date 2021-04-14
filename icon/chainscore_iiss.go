@@ -452,9 +452,14 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
+
 	if (node != nil && node.IsContract()) || s.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+	}
+
+	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
+	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
+		return err
 	}
 
 	s.cc.OnEvent(state.SystemAddress,
@@ -466,7 +471,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	if err != nil {
 		return err
 	}
-	err = es.SetPRep(regInfo, s.cc.Revision().Value())
+	err = es.SetPRep(regInfo)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Errorf(err.Error())
 	}

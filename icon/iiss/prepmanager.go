@@ -120,6 +120,10 @@ func (r *RegInfo) Validate(revision int) error {
 }
 
 func (r *RegInfo) validateEndpoint() error {
+	if len(r.p2pEndpoint) == 0 {
+		return nil
+	}
+
 	networkInfo := strings.Split(r.p2pEndpoint, ":")
 
 	if len(networkInfo) != 2 {
@@ -145,6 +149,10 @@ func (r *RegInfo) validateEndpoint() error {
 }
 
 func (r *RegInfo) validateWebsiteURL(url string) error {
+	if len(url) == 0 {
+		return nil
+	}
+
 	websiteURI := strings.ToLower(url)
 	if !(websiteDNTemplate.MatchString(websiteURI) || websiteIPv4Template.MatchString(websiteURI)) {
 		return errors.Errorf("Invalid websiteURL format")
@@ -154,6 +162,10 @@ func (r *RegInfo) validateWebsiteURL(url string) error {
 }
 
 func (r *RegInfo) validateEmail(revision int) error {
+	if len(r.email) == 0 {
+		return nil
+	}
+
 	if revision < icmodule.Revision9 {
 		if !emailTemplate.MatchString(r.email) {
 			return errors.Errorf("Invalid Email format")
