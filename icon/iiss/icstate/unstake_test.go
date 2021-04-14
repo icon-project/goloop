@@ -38,7 +38,7 @@ func TestUnstake(t *testing.T) {
 }
 
 func TestUnstakes(t *testing.T) {
-	revision := icmodule.Revision9
+	revision := icmodule.RevisionMultipleUnstakes
 	a1 := int64(5)
 	a2 := int64(10)
 	a3 := int64(20)
@@ -153,7 +153,7 @@ func TestUnstakes(t *testing.T) {
 }
 
 func TestIncreaseUnstake_multiple(t *testing.T) {
-	revision := icmodule.Revision9
+	revision := icmodule.RevisionMultipleUnstakes
 	unstakeSlotMax := 3
 	a0 := int64(5)
 	a1 := int64(10)
@@ -192,7 +192,7 @@ func TestIncreaseUnstake_multiple(t *testing.T) {
 }
 
 func TestDecreaseUnstake_multiple(t *testing.T) {
-	revision := icmodule.Revision9
+	revision := icmodule.RevisionMultipleUnstakes
 	noMeaning := int64(0)
 	a0 := int64(5)
 	a1 := int64(10)
@@ -245,7 +245,7 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 
 func TestIncreaseUnstake_single(t *testing.T) {
 	unstakeSlotMax := 1
-	revision := icmodule.Revision9 - 1
+	revision := icmodule.RevisionMultipleUnstakes - 1
 	a0 := int64(5)
 	a1 := int64(10)
 	eh0 := int64(10)
@@ -271,7 +271,7 @@ func TestIncreaseUnstake_single(t *testing.T) {
 }
 
 func TestDecreaseUnstake_single(t *testing.T) {
-	revision := icmodule.Revision9 - 1
+	revision := icmodule.RevisionMultipleUnstakes - 1
 	a0 := int64(100)
 	a1 := int64(50)
 	eh0 := int64(10)

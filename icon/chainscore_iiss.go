@@ -149,7 +149,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
 	case -1:
 		slotMax := int(es.State.GetUnstakeSlotMax())
-		if revision < icmodule.Revision9 {
+		if revision < icmodule.RevisionMultipleUnstakes {
 			// support multiple unstakes since revision9
 			slotMax = 1
 		}
