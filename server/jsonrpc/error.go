@@ -176,22 +176,7 @@ func ErrorHandler(re *Error, c echo.Context) {
 			Version: Version,
 			Error:   re,
 		}
-		switch re.Code {
-		case ErrorCodeInvalidRequest, ErrorCodeInvalidParams:
-			status = http.StatusBadRequest
-		case ErrorCodeMethodNotFound, ErrorCodeNotFound:
-			status = http.StatusNotFound
-		case ErrorCodeServer, ErrorCodeInternal:
-			status = http.StatusInternalServerError
-		default:
-			switch {
-			case re.Code <= ErrorCodeScore && re.Code > ErrorCode(ErrorCodeScore-100):
-				// status = http.StatusOK
-				status = http.StatusInternalServerError
-			default:
-				status = http.StatusInternalServerError
-			}
-		}
+		status = http.StatusBadRequest
 	}
 
 	// Send response
