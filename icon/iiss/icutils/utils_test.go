@@ -128,3 +128,106 @@ func TestValidateRange(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateEndpoint(t *testing.T) {
+	shouldMatch := []string{
+		"foo.com:1", "192.10.6.2:8000", "localhost:1234",
+	}
+
+	for _, x := range shouldMatch {
+		err := ValidateEndpoint(x)
+		assert.Nil(t, err)
+	}
+
+	shouldFail := []string{
+		"http://", "http://.", "http://..", "http://../", "http://?", "http://??", "http://??/",
+		"http://#", "http://##", "http://##/", "http://foo.bar?q=Spaces should be encoded",
+		"//", "//a", "///a", "///", "http:///a", "foo.com", "rdar://1234", "h://test",
+		"http:// shouldfail.com", "http://foo.bar/foo(bar)baz quux", "ftps://foo.bar/",
+		"http://-error-.invalid/", "http://-a.b.co", "http://a.b-.co", "http://0.0.0.0:8080",
+		"http://3628126748", "http://.www.foo.bar/", "http://www.foo.bar./",
+		"http://.www.foo.bar./", "http://:8080", "http://.:8080", "http://..:8080",
+		"http://../:8080", "http://?:8080", "http://??:8080", "http://??/:8080", "http://#:8080",
+		"http://##:8080", "http://##/:8080", "http://foo.bar?q=Spaces should be encoded:8080",
+		"//:8080", "//a:8080", "///a:8080", "///:8080", "http:///a:8080", "rdar://1234:8080",
+		"h://test:8080", "http:// shouldfail.com:8080", "http://foo.bar/foo(bar)baz quux:8080",
+		"ftps://foo.bar/:8080", "http://-error-.invalid/:8080", "http://-a.b.co:8080",
+		"http://a.b-.co:8080", "http://3628126748:8080", "http://.www.foo.bar/:8080",
+		"http://www.foo.bar./:8080", "http://.www.foo.bar./:8080",
+	}
+
+	for _, x := range shouldFail {
+		err := ValidateEndpoint(x)
+		assert.Error(t, err)
+	}
+}
+
+func TestValidateURL(t *testing.T) {
+	shouldMatch := []string{
+		"http://foo.com/blah_blah", "http://foo.com/blah_blah/", "http://foo.com/blah_blah_(wikipedia)",
+		"http://foo.com/blah_blah_(wikipedia)_(again)", "http://www.example.com/wpstyle/?p=364",
+		"https://www.example.com/foo/?bar=baz&inga=42&quux", "http://odf.ws/123",
+		"http://foo.com/blah_(wikipedia)#cite-1", "http://foo.com/blah_(wikipedia)_blah#cite-1",
+		"http://foo.com/unicode_(✪)_in_parens", "http://foo.com/(something)?after=parens",
+		"http://code.google.com/events/#&product=browser", "http://foo.bar/?q=Test%20URL-encoded%20stuff",
+		"http://1337.net", "http://223.255.255.254", "http://foo.bar:8080", "https://foo.bar:8000",
+		"https://localhost:1234", "http://localhost:1234", "http://localhost", "https://localhost",
+	}
+
+	for _, x := range shouldMatch {
+		err := ValidateURL(x)
+		assert.Nil(t, err)
+	}
+
+	shouldFail := []string{
+		"http://", "http://.", "http://..", "http://../", "http://?", "http://??", "http://??/",
+		"http://#", "http://##", "http://##/", "http://foo.bar?q=Spaces should be encoded",
+		"//", "//a", "///a", "///", "http:///a", "foo.com", "rdar://1234", "h://test",
+		"http:// shouldfail.com", "http://foo.bar/foo(bar)baz quux", "ftps://foo.bar/",
+		"http://-error-.invalid/", "http://-a.b.co", "http://a.b-.co", "http://3628126748",
+		"http://.www.foo.bar/", "http://www.foo.bar./", "http://.www.foo.bar./",
+		"http://022.107.254.1",
+	}
+
+	for _, x := range shouldFail {
+		err := ValidateURL(x)
+		assert.Error(t, err)
+	}
+
+}
+
+func TestValidateEmail(t *testing.T) {
+	shouldFailBeforeRev9 := []string{
+		"invalid email", "invalid.com", "invalid@", "invalid@a",
+		"invalid@a.", "invalid@.com", "invalid.@asdf.com-",
+		"email@domain..com", "john..doe@example.com", ".invalid@email.com",
+	}
+
+	for _, x := range shouldFailBeforeRev9 {
+		err := ValidateEmail(x, 5)
+		assert.Error(t, err)
+	}
+
+	e := 253
+	s1 := ""
+	for i := 0; i < e; i++ {
+		s1 += "a"
+	}
+
+	e = 64
+	s2 := ""
+	for i := 0; i < e; i++ {
+		s2 += "가"
+	}
+
+	shouldFailAfterRev9 := []string{
+		"invalid email", "invalid.com", "invalid@",
+		s1 + "@aa", "@invalid", s2 + "@example.com",
+		"@@", "a@@",
+	}
+
+	for _, x := range shouldFailAfterRev9 {
+		err := ValidateEmail(x, 9)
+		assert.Error(t, err)
+	}
+}

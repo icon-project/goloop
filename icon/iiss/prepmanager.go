@@ -13,34 +13,12 @@ import (
 	"github.com/icon-project/goloop/service/state"
 	"math"
 	"math/big"
-	"regexp"
 	"sort"
-	"strconv"
-	"strings"
 )
 
 const (
 	InitialIRep = 50_000 // in icx, not loop
 	MinIRep     = 10_000
-
-	SchemePattern   = "^(http://|https://)"
-	HostNamePattern = "(localhost|(?:[\\w\\d](?:[\\w\\d-]{0,61}[\\w\\d])\\.)+[\\w\\d][\\w\\d-]{0,61}[\\w\\d])"
-	IPv4Pattern     = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
-	PortPattern     = "(:[0-9]{1,5})?"
-	PathPattern     = "(\\/\\S*)?$"
-	EmailPattern    = "^[a-zA-Z0-9]+(.[a-zA-Z0-9]+)*@" + HostNamePattern + "$"
-
-	PortMax       = 65536
-	EmailLocalMax = 64
-	EmailMax      = 254
-)
-
-var (
-	websiteDNTemplate    = regexp.MustCompile(SchemePattern + HostNamePattern + PortPattern + PathPattern)
-	websiteIPv4Template  = regexp.MustCompile(SchemePattern + IPv4Pattern + PortPattern + PathPattern)
-	emailTemplate        = regexp.MustCompile(EmailPattern)
-	endpointDNTemplate   = regexp.MustCompile(IPv4Pattern + PortPattern)
-	endpointIPv4Template = regexp.MustCompile(HostNamePattern + PortPattern)
 )
 
 var BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
@@ -100,86 +78,20 @@ func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
 }
 
 func (r *RegInfo) Validate(revision int) error {
-	if err := r.validateEndpoint(); err != nil {
+	if err := icutils.ValidateEndpoint(r.p2pEndpoint); err != nil {
 		return err
 	}
 
-	if err := r.validateWebsiteURL(r.website); err != nil {
+	if err := icutils.ValidateURL(r.website); err != nil {
 		return err
 	}
 
-	if err := r.validateWebsiteURL(r.details); err != nil {
+	if err := icutils.ValidateURL(r.details); err != nil {
 		return err
 	}
 
-	if err := r.validateEmail(revision); err != nil {
+	if err := icutils.ValidateEmail(r.email, revision); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (r *RegInfo) validateEndpoint() error {
-	if len(r.p2pEndpoint) == 0 {
-		return nil
-	}
-
-	networkInfo := strings.Split(r.p2pEndpoint, ":")
-
-	if len(networkInfo) != 2 {
-		return errors.Errorf("Invalid endpoint format, must have port info.")
-	}
-
-	port, err := strconv.Atoi(networkInfo[1])
-	if err != nil {
-		return err
-	}
-
-	// port validate
-	if !(0 < port && port < PortMax) {
-		return errors.Errorf("Invalid endpoint format, Port out of range.")
-	}
-
-	endpoint := strings.ToLower(r.p2pEndpoint)
-	if !(endpointDNTemplate.MatchString(endpoint) || endpointIPv4Template.MatchString(endpoint)) {
-		return errors.Errorf("Invalid endpoint format")
-	}
-
-	return nil
-}
-
-func (r *RegInfo) validateWebsiteURL(url string) error {
-	if len(url) == 0 {
-		return nil
-	}
-
-	websiteURI := strings.ToLower(url)
-	if !(websiteDNTemplate.MatchString(websiteURI) || websiteIPv4Template.MatchString(websiteURI)) {
-		return errors.Errorf("Invalid websiteURL format")
-	}
-
-	return nil
-}
-
-func (r *RegInfo) validateEmail(revision int) error {
-	if len(r.email) == 0 {
-		return nil
-	}
-
-	if revision < icmodule.Revision9 {
-		if !emailTemplate.MatchString(r.email) {
-			return errors.Errorf("Invalid Email format")
-		}
-	} else {
-		index := strings.LastIndex(r.email, "@")
-		length := len(r.email)
-
-		beforeCheck := 1 <= index && index <= EmailLocalMax
-		afterCheck := index+1 < length && length <= EmailMax
-
-		if !(beforeCheck && afterCheck) {
-			return errors.Errorf("Invalid Email format")
-		}
 	}
 
 	return nil

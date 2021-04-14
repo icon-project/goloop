@@ -27,6 +27,30 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 	"math/big"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+const (
+	SchemePattern   = "^(http://|https://)"
+	HostNamePattern = "(localhost|(?:[\\w\\d](?:[\\w\\d-]{0,61}[\\w\\d])\\.)+[\\w\\d][\\w\\d-]{0,61}[\\w\\d])"
+	IPv4Pattern     = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+	PortPattern     = "(:[0-9]{1,5})?"
+	PathPattern     = "(\\/\\S*)?$"
+	EmailPattern    = "^[a-zA-Z0-9]+(.[a-zA-Z0-9]+)*@" + HostNamePattern + "$"
+
+	PortMax       = 65536
+	EmailLocalMax = 64
+	EmailMax      = 254
+)
+
+var (
+	websiteDNTemplate    = regexp.MustCompile(SchemePattern + HostNamePattern + PortPattern + PathPattern)
+	websiteIPv4Template  = regexp.MustCompile(SchemePattern + IPv4Pattern + PortPattern + PathPattern)
+	emailTemplate        = regexp.MustCompile(EmailPattern)
+	endpointDNTemplate   = regexp.MustCompile(IPv4Pattern + PortPattern)
+	endpointIPv4Template = regexp.MustCompile(HostNamePattern + PortPattern)
 )
 
 var BigIntICX = big.NewInt(1_000_000_000_000_000_000)
@@ -175,4 +199,70 @@ func NewIconLogger(logger log.Logger) log.Logger {
 		return nil
 	}
 	return logger.WithFields(log.Fields{log.FieldKeyModule: "ICON"})
+}
+
+func ValidateEndpoint(endpoint string) error {
+	if len(endpoint) == 0 {
+		return nil
+	}
+
+	networkInfo := strings.Split(endpoint, ":")
+
+	if len(networkInfo) != 2 {
+		return errors.Errorf("Invalid endpoint format, must have port info.")
+	}
+
+	port, err := strconv.Atoi(networkInfo[1])
+	if err != nil {
+		return err
+	}
+
+	// port validate
+	if !(0 < port && port < PortMax) {
+		return errors.Errorf("Invalid endpoint format, Port out of range.")
+	}
+
+	endpointLower := strings.ToLower(endpoint)
+	if !(endpointDNTemplate.MatchString(endpointLower) || endpointIPv4Template.MatchString(endpointLower)) {
+		return errors.Errorf("Invalid endpoint format")
+	}
+
+	return nil
+}
+
+func ValidateURL(url string) error {
+	if len(url) == 0 {
+		return nil
+	}
+
+	websiteURI := strings.ToLower(url)
+	if !(websiteDNTemplate.MatchString(websiteURI) || websiteIPv4Template.MatchString(websiteURI)) {
+		return errors.Errorf("Invalid websiteURL format")
+	}
+
+	return nil
+}
+
+func ValidateEmail(email string, revision int) error {
+	if len(email) == 0 {
+		return nil
+	}
+
+	if revision < icmodule.Revision9 {
+		if !emailTemplate.MatchString(email) {
+			return errors.Errorf("Invalid Email format")
+		}
+	} else {
+		index := strings.LastIndex(email, "@")
+		length := len(email)
+
+		beforeCheck := 1 <= index && index <= EmailLocalMax
+		afterCheck := index+1 < length && length <= EmailMax
+
+		if !(beforeCheck && afterCheck) {
+			return errors.Errorf("Invalid Email format")
+		}
+	}
+
+	return nil
 }
