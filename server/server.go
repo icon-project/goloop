@@ -168,45 +168,40 @@ func (srv *Manager) Start() error {
 func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	g.Use(middleware.Recover())
 
-	// method
-	mr := v3.MethodRepository()
-	dmr := v3.DebugMethodRepository()
-
-	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+	// group for json rpc
+	rpc := g.Group("")
+	rpc.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
 		if srv.MessageDump() {
 			srv.logger.Printf("request=%s", reqBody)
 			srv.logger.Printf("response=%s", resBody)
 		}
 	}))
-	g.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+	rpc.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
 			ctx.Set("includeDebug", srv.IncludeDebug())
 			return next(ctx)
 		}
 	})
+	// group for websocket
+	ws := g.Group("")
 
-	v3api := g.Group("/v3")
+	// v3 APIs
+	mr := v3.MethodRepository()
+	dmr := v3.DebugMethodRepository()
+	v3api := rpc.Group("/v3")
 	v3api.Use(JsonRpc(mr), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
 	v3api.POST("/", mr.Handle, ChainInjector(srv))
 	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
 
-	v3dbg := g.Group("/v3d")
+	v3dbg := rpc.Group("/v3d")
 	v3dbg.Use(srv.CheckDebug(), JsonRpc(dmr), Chunk())
 	v3dbg.POST("", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
-	// websocket
-	v3api.GET("/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
-	v3api.GET("/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
-
-	// document: redoc
-	// opts := RedocOpts{
-	// 	SpecURL: "doc/swagger.yaml",
-	// }
-	// srv.e.GET("/doc", Redoc(opts))
-	// srv.e.File("doc/swagger.yaml", "./doc/swagger.yaml")
+	ws.GET("/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
+	ws.GET("/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 }
 
 func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {
