@@ -149,19 +149,27 @@ func (srv *Manager) IncludeDebug() bool {
 
 func (srv *Manager) Start() error {
 	srv.logger.Infoln("starting the server")
-	// middleware
-	// srv.e.Use(middleware.Logger())
-	srv.e.Use(middleware.Recover())
+	// CORS middleware
 	srv.e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		MaxAge: 3600,
 	}))
+
+	// json rpc
+	srv.RegisterAPIHandler(srv.e.Group("/api"))
+
+	// metric
+	srv.RegisterMetricsHandler(srv.e.Group("/metrics"))
+
+	return srv.e.Start(srv.addr)
+}
+
+func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
+	g.Use(middleware.Recover())
 
 	// method
 	mr := v3.MethodRepository()
 	dmr := v3.DebugMethodRepository()
 
-	// jsonrpc
-	g := srv.e.Group("/api")
 	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
 		if srv.MessageDump() {
 			srv.logger.Printf("request=%s", reqBody)
@@ -174,6 +182,7 @@ func (srv *Manager) Start() error {
 			return next(ctx)
 		}
 	})
+
 	v3api := g.Group("/v3")
 	v3api.Use(JsonRpc(mr), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
@@ -187,11 +196,8 @@ func (srv *Manager) Start() error {
 	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
 	// websocket
-	srv.e.GET("/api/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
-	srv.e.GET("/api/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
-
-	// metric
-	srv.e.GET("/metrics", echo.WrapHandler(metric.PrometheusExporter()))
+	v3api.GET("/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
+	v3api.GET("/:channel/block", srv.wssm.RunEventSession, ChainInjector(srv))
 
 	// document: redoc
 	// opts := RedocOpts{
@@ -199,9 +205,10 @@ func (srv *Manager) Start() error {
 	// }
 	// srv.e.GET("/doc", Redoc(opts))
 	// srv.e.File("doc/swagger.yaml", "./doc/swagger.yaml")
+}
 
-	// Start server : main loop
-	return srv.e.Start(srv.addr)
+func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {
+	g.GET("", echo.WrapHandler(metric.PrometheusExporter()))
 }
 
 func (srv *Manager) CheckDebug() echo.MiddlewareFunc {
