@@ -206,6 +206,13 @@ func (tx *transactionV3) Verify() error {
 			if _, err := contract.ParsePatchData(tx.Data); err != nil {
 				return InvalidTxValue.Wrap(err, "TxData is invalid")
 			}
+		case contract.DataTypeDeposit:
+			if tx.Data == nil {
+				return InvalidTxValue.New("TxData for deposit is NIL")
+			}
+			if _, err := contract.ParseDepositData(tx.Data); err != nil {
+				return InvalidTxValue.Wrap(err, "TxData is invalid")
+			}
 		}
 	}
 
