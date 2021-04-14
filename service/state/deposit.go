@@ -338,7 +338,7 @@ func (d *depositV2) CanPay(height int64, feeLimit *big.Int) bool {
 }
 
 func (d *depositV2) GetAvailableSteps(height int64) *big.Int {
-	return nil
+	return new(big.Int)
 }
 
 func (d *depositV2) GetAvailableDeposit(height int64) *big.Int {
