@@ -199,7 +199,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 
 	// websocket
 	v3api.GET("/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
-	v3api.GET("/:channel/block", srv.wssm.RunEventSession, ChainInjector(srv))
+	v3api.GET("/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 
 	// document: redoc
 	// opts := RedocOpts{
