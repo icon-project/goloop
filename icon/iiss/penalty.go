@@ -17,6 +17,8 @@
 package iiss
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -26,7 +28,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
-	"math/big"
 )
 
 func (s *ExtensionStateImpl) UpdateBlockVoteStats(
@@ -161,7 +162,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	if ts, err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
 		return err
 	} else {
-		icutils.OnBurn(cc, totalSlashBond, ts)
+		icutils.OnBurn(cc, state.SystemAddress, totalSlashBond, ts)
 	}
 	ret := s.pm.Slash(address, totalSlashBond)
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)

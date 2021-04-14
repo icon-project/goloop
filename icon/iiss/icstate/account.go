@@ -181,14 +181,14 @@ func (a *Account) SetStake(v *big.Int) error {
 	return nil
 }
 
-func (a *Account) DecreaseUnstake(stakeInc *big.Int) ([]TimerJobInfo, error) {
+func (a *Account) DecreaseUnstake(stakeInc *big.Int, expireHeight int64, revision int) ([]TimerJobInfo, error) {
 	a.checkWritable()
-	return a.unstakes.decreaseUnstake(stakeInc)
+	return a.unstakes.decreaseUnstake(stakeInc, expireHeight, revision)
 }
 
-func (a *Account) IncreaseUnstake(stakeInc *big.Int, expireHeight int64, slotMax int) ([]TimerJobInfo, error) {
+func (a *Account) IncreaseUnstake(stakeInc *big.Int, expireHeight int64, slotMax, revision int) ([]TimerJobInfo, error) {
 	a.checkWritable()
-	return a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax)
+	return a.unstakes.increaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
 }
 
 // Stake return stake Value

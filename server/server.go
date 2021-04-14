@@ -34,6 +34,7 @@ type Manager struct {
 	jsonrpcMessageDump    int32
 	jsonrpcIncludeDebug   int32
 	logger                log.Logger
+	metricsHandler        echo.HandlerFunc
 }
 
 func NewManager(addr string,
@@ -64,6 +65,7 @@ func NewManager(addr string,
 		mtx:                   sync.RWMutex{},
 		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
 		logger:                logger,
+		metricsHandler:        echo.WrapHandler(metric.PrometheusExporter()),
 	}
 	m.SetMessageDump(jsonrpcDump)
 	m.SetIncludeDebug(jsonrpcIncludeDebug)
@@ -149,59 +151,61 @@ func (srv *Manager) IncludeDebug() bool {
 
 func (srv *Manager) Start() error {
 	srv.logger.Infoln("starting the server")
-	// middleware
-	// srv.e.Use(middleware.Logger())
-	srv.e.Use(middleware.Recover())
+	// CORS middleware
 	srv.e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		MaxAge: 3600,
 	}))
 
-	// method
-	mr := v3.MethodRepository()
-	dmr := v3.DebugMethodRepository()
+	// json rpc
+	srv.RegisterAPIHandler(srv.e.Group("/api"))
 
-	// jsonrpc
-	g := srv.e.Group("/api")
-	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+	// metric
+	srv.RegisterMetricsHandler(srv.e.Group("/metrics"))
+
+	return srv.e.Start(srv.addr)
+}
+
+func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
+	g.Use(middleware.Recover())
+
+	// group for json rpc
+	rpc := g.Group("")
+	rpc.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
 		if srv.MessageDump() {
 			srv.logger.Printf("request=%s", reqBody)
 			srv.logger.Printf("response=%s", resBody)
 		}
 	}))
-	g.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+	rpc.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
 			ctx.Set("includeDebug", srv.IncludeDebug())
 			return next(ctx)
 		}
 	})
-	v3api := g.Group("/v3")
+	// group for websocket
+	ws := g.Group("")
+
+	// v3 APIs
+	mr := v3.MethodRepository()
+	dmr := v3.DebugMethodRepository()
+	v3api := rpc.Group("/v3")
 	v3api.Use(JsonRpc(mr), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
 	v3api.POST("/", mr.Handle, ChainInjector(srv))
 	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
 
-	v3dbg := g.Group("/v3d")
+	v3dbg := rpc.Group("/v3d")
 	v3dbg.Use(srv.CheckDebug(), JsonRpc(dmr), Chunk())
 	v3dbg.POST("", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
-	// websocket
-	srv.e.GET("/api/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
-	srv.e.GET("/api/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
+	ws.GET("/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
+	ws.GET("/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
+}
 
-	// metric
-	srv.e.GET("/metrics", echo.WrapHandler(metric.PrometheusExporter()))
-
-	// document: redoc
-	// opts := RedocOpts{
-	// 	SpecURL: "doc/swagger.yaml",
-	// }
-	// srv.e.GET("/doc", Redoc(opts))
-	// srv.e.File("doc/swagger.yaml", "./doc/swagger.yaml")
-
-	// Start server : main loop
-	return srv.e.Start(srv.addr)
+func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {
+	g.GET("", srv.metricsHandler)
 }
 
 func (srv *Manager) CheckDebug() echo.MiddlewareFunc {

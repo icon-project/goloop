@@ -378,6 +378,7 @@ func TestState_AddGlobal(t *testing.T) {
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
 
 	type args struct {
+		revision         int
 		version          int
 		startHeight      int64
 		offsetLimit      int
@@ -399,6 +400,7 @@ func TestState_AddGlobal(t *testing.T) {
 		{
 			"Version 1",
 			args{
+				revision:         4,
 				version:          GlobalVersion1,
 				startHeight:      0,
 				offsetLimit:      1000,
@@ -411,6 +413,7 @@ func TestState_AddGlobal(t *testing.T) {
 		{
 			"Version 2",
 			args{
+				revision:         13,
 				version:          GlobalVersion2,
 				startHeight:      0,
 				offsetLimit:      1000,
@@ -429,6 +432,7 @@ func TestState_AddGlobal(t *testing.T) {
 			switch a.version {
 			case GlobalVersion1:
 				err = s.AddGlobalV1(
+					a.revision,
 					a.startHeight,
 					a.offsetLimit,
 					a.irep,
@@ -438,6 +442,7 @@ func TestState_AddGlobal(t *testing.T) {
 				)
 			case GlobalVersion2:
 				err = s.AddGlobalV2(
+					a.revision,
 					a.startHeight,
 					a.offsetLimit,
 					a.iglobal,
@@ -460,6 +465,7 @@ func TestState_AddGlobal(t *testing.T) {
 				global := g.GetV1()
 				assert.NotNil(t, global)
 				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.revision, global.GetRevision())
 				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
 				assert.Equal(t, 0, a.irep.Cmp(global.Irep))
 				assert.Equal(t, 0, a.rrep.Cmp(global.Rrep))
@@ -469,6 +475,7 @@ func TestState_AddGlobal(t *testing.T) {
 				global := g.GetV2()
 				assert.NotNil(t, global)
 				assert.Equal(t, a.version, global.Version())
+				assert.Equal(t, a.revision, global.GetRevision())
 				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
 				assert.Equal(t, 0, a.iglobal.Cmp(global.Iglobal))
 				assert.Equal(t, 0, a.iprep.Cmp(global.Iprep))

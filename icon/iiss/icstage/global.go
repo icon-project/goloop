@@ -38,6 +38,7 @@ type Global interface {
 	GetStartHeight() int64
 	GetOffsetLimit() int
 	GetTermPeriod() int
+	GetRevision() int
 	GetElectedPRepCount() int
 	GetBondRequirement() int
 	String() string
@@ -59,6 +60,7 @@ type GlobalV1 struct {
 	IISSVersion      int
 	StartHeight      int64
 	OffsetLimit      int
+	Revision         int
 	Irep             *big.Int
 	Rrep             *big.Int
 	MainPRepCount    int
@@ -85,6 +87,10 @@ func (g *GlobalV1) GetTermPeriod() int {
 	return g.OffsetLimit + 1
 }
 
+func (g *GlobalV1) GetRevision() int {
+	return g.Revision
+}
+
 func (g *GlobalV1) GetElectedPRepCount() int {
 	return g.ElectedPRepCount
 }
@@ -98,6 +104,7 @@ func (g *GlobalV1) RLPDecodeFields(decoder codec.Decoder) error {
 		&g.IISSVersion,
 		&g.StartHeight,
 		&g.OffsetLimit,
+		&g.Revision,
 		&g.Irep,
 		&g.Rrep,
 		&g.MainPRepCount,
@@ -111,6 +118,7 @@ func (g *GlobalV1) RLPEncodeFields(encoder codec.Encoder) error {
 		g.IISSVersion,
 		g.StartHeight,
 		g.OffsetLimit,
+		g.Revision,
 		g.Irep,
 		g.Rrep,
 		g.MainPRepCount,
@@ -119,8 +127,9 @@ func (g *GlobalV1) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (g *GlobalV1) String() string {
-	return fmt.Sprintf("IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Irep: %s, Rrep: %s, "+
+	return fmt.Sprintf("Revision: %d, IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Irep: %s, Rrep: %s, "+
 		"MainPRepCount: %d, ElectedPRepCount: %d",
+		g.Revision,
 		g.IISSVersion,
 		g.StartHeight,
 		g.OffsetLimit,
@@ -136,6 +145,7 @@ func (g *GlobalV1) Equal(impl icobject.Impl) bool {
 		return g.IISSVersion == g2.IISSVersion &&
 			g.StartHeight == g2.StartHeight &&
 			g.OffsetLimit == g2.OffsetLimit &&
+			g.Revision == g2.Revision &&
 			g.Irep.Cmp(g2.Irep) == 0 &&
 			g.Rrep.Cmp(g2.Rrep) == 0 &&
 			g.MainPRepCount == g2.MainPRepCount &&
@@ -149,6 +159,7 @@ func (g *GlobalV1) Clear() {
 	g.IISSVersion = 0
 	g.StartHeight = 0
 	g.OffsetLimit = 0
+	g.Revision = 0
 	g.Irep.SetInt64(0)
 	g.Rrep.SetInt64(0)
 	g.MainPRepCount = 0
@@ -183,6 +194,7 @@ type GlobalV2 struct {
 	IISSVersion      int
 	StartHeight      int64
 	OffsetLimit      int
+	Revision         int
 	Iglobal          *big.Int
 	Iprep            *big.Int
 	Ivoter           *big.Int
@@ -210,6 +222,10 @@ func (g *GlobalV2) GetTermPeriod() int {
 	return g.OffsetLimit + 1
 }
 
+func (g *GlobalV2) GetRevision() int {
+	return g.Revision
+}
+
 func (g *GlobalV2) GetElectedPRepCount() int {
 	return g.ElectedPRepCount
 }
@@ -223,6 +239,7 @@ func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
 		&g.IISSVersion,
 		&g.StartHeight,
 		&g.OffsetLimit,
+		&g.Revision,
 		&g.Iglobal,
 		&g.Iprep,
 		&g.Ivoter,
@@ -237,6 +254,7 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 		g.IISSVersion,
 		g.StartHeight,
 		g.OffsetLimit,
+		g.Revision,
 		g.Iglobal,
 		g.Iprep,
 		g.Ivoter,
@@ -246,8 +264,9 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (g *GlobalV2) String() string {
-	return fmt.Sprintf("IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Iglobal: %s, Iprep: %s, "+
-		"Ivoter: %d, ElectedPRepCount: %d, BondRequirement: %d",
+	return fmt.Sprintf("Revision: %d, IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Iglobal: %s, "+
+		"Iprep: %s, Ivoter: %d, ElectedPRepCount: %d, BondRequirement: %d",
+		g.Revision,
 		g.IISSVersion,
 		g.StartHeight,
 		g.OffsetLimit,
@@ -264,6 +283,7 @@ func (g *GlobalV2) Equal(impl icobject.Impl) bool {
 		return g.IISSVersion == g2.IISSVersion &&
 			g.StartHeight == g2.StartHeight &&
 			g.OffsetLimit == g2.OffsetLimit &&
+			g.Revision == g2.Revision &&
 			g.Iglobal.Cmp(g2.Iglobal) == 0 &&
 			g.Iprep.Cmp(g2.Iprep) == 0 &&
 			g.Ivoter.Cmp(g2.Ivoter) == 0 &&
@@ -278,6 +298,7 @@ func (g *GlobalV2) Clear() {
 	g.IISSVersion = 0
 	g.StartHeight = 0
 	g.OffsetLimit = 0
+	g.Revision = 0
 	g.Iglobal = new(big.Int)
 	g.Iprep = new(big.Int)
 	g.Ivoter = new(big.Int)

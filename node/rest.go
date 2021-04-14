@@ -194,6 +194,12 @@ func RegisterRest(n *Node) {
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
 	_ = RegisterInspectFunc("network", network.Inspect)
 	_ = RegisterInspectFunc("service", service.Inspect)
+
+	// json rpc
+	n.srv.RegisterAPIHandler(n.cliSrv.e.Group("/api"))
+
+	// metric
+	n.srv.RegisterMetricsHandler(n.cliSrv.e.Group("/metrics"))
 }
 
 func (r *Rest) RegisterChainHandlers(g *echo.Group) {

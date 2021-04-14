@@ -118,6 +118,14 @@ func validateCallDataParam(sl validator.StructLevel, field interface{}, data map
 	}
 }
 
+func isHexString(v interface{}) bool {
+	if v == nil {
+		return false
+	}
+	s, _ := v.(string)
+	return hexString.MatchString(s)
+}
+
 func validateDeployDataParam(sl validator.StructLevel, field interface{}, data map[string]interface{}) {
 	// data.contentType : required
 	if v, ok := data["contentType"]; ok {
@@ -140,11 +148,7 @@ func validateDeployDataParam(sl validator.StructLevel, field interface{}, data m
 	}
 	// data.content : required
 	if v, ok := data["content"]; ok {
-		if content, ok := v.(string); ok {
-			if !(hexString.MatchString(content) && len(content)%2 == 0) {
-				sl.ReportError(field, "Data", "", "data.content", "")
-			}
-		} else {
+		if !isHexString(v) {
 			sl.ReportError(field, "Data", "", "data.content", "")
 		}
 	}
@@ -167,22 +171,23 @@ func validateDepositDataParam(sl validator.StructLevel, field interface{}, data 
 	case contract.DepositActionAdd:
 		if len(data) > 1 {
 			sl.ReportError(field, "Data", "", "data.unknown", "")
+			return
 		}
 	case contract.DepositActionWithdraw:
-		id, ok := data["id"]
-		if !ok {
-			sl.ReportError(field, "Data", "", "data.id", "")
+		id, _ := data["id"]
+		if id != nil && !isHexString(id) {
+			sl.ReportError(field, "Data", "id", "data.id", "Invalid T_HASH format")
 			return
-		} else {
-			if s, ok := id.(string); ok {
-				if !hexString.MatchString(s) {
-					sl.ReportError(field, "Data", "id", "data.id", "")
-				}
-			} else {
-				sl.ReportError(field, "Data", "id", "data.id", "")
-			}
 		}
-		return
+		amount, _ := data["amount"]
+		if amount != nil && !isHexString(amount) {
+			sl.ReportError(field, "Data", "amount", "data.amount", "Invalid T_NUMBER format")
+			return
+		}
+		if len(data) != 2 {
+			sl.ReportError(field, "Data", "data", "data", "InvalidDataForDeposit")
+			return
+		}
 	default:
 		sl.ReportError(field, "Data", "", "data.action", "")
 	}

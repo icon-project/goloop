@@ -19,6 +19,10 @@ package icon
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"os"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -33,9 +37,6 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
-	"io/ioutil"
-	"math/big"
-	"os"
 )
 
 type chainMethod struct {
@@ -500,6 +501,12 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "burn",
+		scoreapi.FlagExternal | scoreapi.FlagPayable, 0,
+		nil,
+		nil,
+	}, icmodule.Revision12, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
@@ -564,6 +571,8 @@ const (
 
 	InitialDepositTerm = 1_296_000
 	DisableDepositTerm = 0
+
+	InitialUnstakeSlotMax = 1
 )
 
 const (
