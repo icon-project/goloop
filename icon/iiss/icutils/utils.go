@@ -17,6 +17,8 @@
 package icutils
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
@@ -26,7 +28,7 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
-	"math/big"
+
 	"regexp"
 	"strconv"
 	"strings"
@@ -140,11 +142,11 @@ func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error)
 	return IncreaseTotalSupply(ws, new(big.Int).Neg(amount))
 }
 
-func OnBurn(cc contract.CallContext, amount, ts *big.Int) {
+func OnBurn(cc contract.CallContext, address module.Address, amount, ts *big.Int) {
 	rev := cc.Revision().Value()
-	if rev < icmodule.Revision12 {
+	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string
-		if rev < icmodule.Revision9 {
+		if rev < icmodule.RevisionFixBurnEventSignature {
 			burnSig = "ICXBurned"
 		} else {
 			burnSig = "ICXBurned(int)"
@@ -155,7 +157,7 @@ func OnBurn(cc contract.CallContext, amount, ts *big.Int) {
 		)
 	} else {
 		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), state.SystemAddress.Bytes()},
+			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), address.Bytes()},
 			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
 		)
 	}

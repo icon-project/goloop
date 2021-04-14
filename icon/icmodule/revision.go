@@ -43,10 +43,19 @@ const (
 )
 
 const (
-	RevisionIISS               = Revision5
-	RevisionDecentralize       = Revision6
-	RevisionICON2              = Revision13
-	RevisionFixEmailValidation = Revision9
+	RevisionIISS = Revision5
+
+	RevisionDecentralize = Revision6
+
+	RevisionFixTotalDelegated = Revision7
+
+	RevisionFixBurnEventSignature = Revision9
+	RevisionMultipleUnstakes      = Revision9
+	RevisionFixEmailValidation    = Revision9
+
+	RevisionBurnV2 = Revision12
+
+	RevisionICON2 = Revision13
 )
 
 var revisionFlags = []module.Revision{
