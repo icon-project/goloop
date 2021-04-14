@@ -119,9 +119,9 @@ func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error)
 
 func OnBurn(cc contract.CallContext, address module.Address, amount, ts *big.Int) {
 	rev := cc.Revision().Value()
-	if rev < icmodule.Revision12 {
+	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string
-		if rev < icmodule.Revision9 {
+		if rev < icmodule.RevisionFixBurnEventSignature {
 			burnSig = "ICXBurned"
 		} else {
 			burnSig = "ICXBurned(int)"
