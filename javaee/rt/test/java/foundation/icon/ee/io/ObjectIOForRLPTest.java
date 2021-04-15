@@ -47,7 +47,7 @@ public class ObjectIOForRLPTest {
     }
 
     private static String hex(byte[] ba) {
-        return Strings.hexFromBytes(ba);
+        return Strings.hexFromBytes(ba, " ");
     }
 
     static void assertAvmObjectEquals(IObject a, IObject b) {

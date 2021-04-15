@@ -53,15 +53,15 @@ public class AnyDBImpl extends s.java.lang.Object implements AnyDB {
 
     private byte[] hashWithCharge(byte[] data) {
         IInstrumentation.charge(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
-                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length : 0));
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_base +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_per_bytes * (data != null ? data.length : 0));
         return Crypto.sha3_256(data);
     }
 
     private byte[] getStorageKey(byte type) {
         IInstrumentation.charge(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base +
-                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * prefix.length);
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_base +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_per_bytes * prefix.length);
         if (hash == null) {
             prefix[0] = type;
             hash = Crypto.sha3_256(prefix);

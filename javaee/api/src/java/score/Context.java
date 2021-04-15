@@ -311,45 +311,52 @@ public final class Context {
     }
 
     /**
-     * Computes the SHA3-256 hash using the input data.
-     *
-     * @param data the input data to be hashed
-     * @return the hashed data in bytes
+     * Returns hash value of the given message.
+     * @param alg hash algorithm. One of sha-256, sha3-256, xxhash-128,
+     *            blake2b-128 and blake2b-256.
+     * @param msg message
+     * @return hash value
+     * @throws IllegalArgumentException if the algorithm is unsupported.
      */
-    public static byte[] sha3_256(byte[] data) throws IllegalArgumentException {
+    public static byte[] hash(String alg, byte[] msg) {
         return null;
     }
 
     /**
-     * Computes the SHA-256 hash using the input data.
-     *
-     * @param data the input data to be hashed
-     * @return the hashed data in bytes
+     * Returns {@code true} if the given signature for the given message by
+     * the given public key is correct.
+     * @param alg signature algorithm. One of ed25519 and ecdsa-secp256k1
+     * @param msg message
+     * @param sig signature
+     * @param pubKey public key
+     * @return {@code true} if the given signature for the given message by
+     * the given public key is correct.
+     * @throws IllegalArgumentException if the algorithm is unsupported.
      */
-    public static byte[] sha256(byte[] data) throws IllegalArgumentException {
-        return null;
+    public static boolean verifySignature(String alg, byte[] msg, byte[] sig, byte[] pubKey) {
+        return false;
     }
 
     /**
-     * Recovers the public key from the message hash and the recoverable signature.
-     *
-     * @param msgHash the 32 bytes hash data
-     * @param signature signature_data(64) + recovery_id(1)
+     * Recovers the public key from the message and the recoverable signature.
+     * @param alg signature algorithm. ecdsa-secp256k1 is supported.
+     * @param msg message
+     * @param sig signature
      * @param compressed the type of public key to be returned
-     * @return the public key recovered from msgHash and signature
-     *         (compressed: 33 bytes key, uncompressed: 65 bytes key)
+     * @return the public key recovered from message and signature
+     * @throws IllegalArgumentException if the algorithm is unsupported.
      */
-    public static byte[] recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
+    public static byte[] recoverKey(String alg, byte[] msg, byte[] sig, boolean compressed) {
         return null;
     }
 
     /**
      * Returns the address that is associated with the given public key.
      *
-     * @param publicKey a byte array that represents the public key
+     * @param pubKey a byte array that represents the public key
      * @return the address that is associated with the public key
      */
-    public static Address getAddressFromKey(byte[] publicKey) {
+    public static Address getAddressFromKey(byte[] pubKey) {
         return null;
     }
 
@@ -447,7 +454,6 @@ public final class Context {
      */
     public static void logEvent(Object[] indexed, Object[] data) {
     }
-
     /**
      * Returns a new object reader reading from a byte array.
      * @param codec codec. Currently "RLPn" is supported.

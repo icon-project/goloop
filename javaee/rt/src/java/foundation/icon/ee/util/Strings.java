@@ -30,7 +30,7 @@ public class Strings {
     private static final String hexDigits = "0123456789abcdef";
 
     public static String hexFromBytes(byte[] ba) {
-        return hexFromBytes(ba, " ");
+        return hexFromBytes(ba, "");
     }
 
     public static String hexFromBytes(byte[] ba, String sep) {

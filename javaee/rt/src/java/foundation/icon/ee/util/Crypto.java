@@ -16,14 +16,18 @@
 
 package foundation.icon.ee.util;
 
+import foundation.icon.ee.util.xxhash.XxHash;
 import i.RuntimeAssertionError;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.asn1.x9.X9IntegerConverter;
+import org.bouncycastle.crypto.digests.Blake2bDigest;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
+import org.bouncycastle.jcajce.provider.digest.Blake2b;
 import org.bouncycastle.math.ec.ECAlgorithms;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
+import org.bouncycastle.math.ec.rfc8032.Ed25519;
 import org.bouncycastle.util.BigIntegers;
 
 import java.math.BigInteger;
@@ -48,6 +52,67 @@ public class Crypto {
         } catch (NoSuchAlgorithmException e) {
             throw RuntimeAssertionError.unexpected(e);
         }
+    }
+
+    static void require(boolean cond, String msg) {
+        if (!cond) {
+            throw new IllegalArgumentException(msg);
+        }
+    }
+
+    public static byte[] hash(String alg, byte[] msg) {
+        switch (alg) {
+            case "sha-256":
+                return sha256(msg);
+            case "sha3-256":
+                return sha3_256(msg);
+            case "xxhash-128":
+                return XxHash.hash128(msg);
+            case "blake2b-128": {
+                var digest = new Blake2bDigest(128);
+                digest.update(msg, 0, msg.length);
+                var res = new byte[128/8];
+                digest.doFinal(res, 0);
+                return res;
+            }
+            case "blake2b-256": {
+                var digest = new Blake2bDigest(256);
+                digest.update(msg, 0, msg.length);
+                var res = new byte[256/8];
+                digest.doFinal(res, 0);
+                return res;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported algorithm " + alg);
+    }
+
+    public static boolean verifySignature(String alg, byte[] msg, byte[] sig, byte[] pk) {
+        switch (alg) {
+            case "ed25519": {
+                require(sig.length == Ed25519.SIGNATURE_SIZE, "invalid signature length");
+                require(pk.length == Ed25519.PUBLIC_KEY_SIZE, "invalid public key length");
+                return Ed25519.verify(sig, 0, pk, 0, msg, 0, msg.length);
+            }
+            case "ecdsa-secp256k1": {
+                require(msg.length == 32, "the length of message must be 32");
+                require(sig.length == 65, "the length of signature must be 65");
+                require(pk.length == 33 || pk.length == 65, "invalid public key length");
+                var recovered = recoverKey(msg, sig, pk.length==33);
+                return Arrays.equals(recovered, pk);
+            }
+        }
+        throw new IllegalArgumentException("Unsupported algorithm " + alg);
+    }
+
+    public static byte[] recoverKey(String alg, byte[] msg, byte[] sig, boolean compressed) {
+        switch (alg) {
+            case "ecdsa-secp256k1": {
+                require(msg.length == 32, "the length of msgHash must be 32");
+                require(sig.length == 65, "the length of signature must be 65");
+                return recoverKey(msg, sig, compressed);
+            }
+        }
+        throw new IllegalArgumentException("Unsupported algorithm " + alg);
     }
 
     public static byte[] recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {

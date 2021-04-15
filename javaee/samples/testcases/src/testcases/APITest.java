@@ -191,30 +191,30 @@ public class APITest
     @External
     public void computeHash(int algorithm, byte[] data) {
         if (algorithm == ALGORITHM_SHA3_256) {
-            EmitEvent(Context.sha3_256(data));
+            EmitEvent(Context.hash("sha3-256", data));
         } else if (algorithm == ALGORITHM_SHA_256) {
-            EmitEvent(Context.sha256(data));
+            EmitEvent(Context.hash("sha-256", data));
         }
     }
 
     @External(readonly=true)
     public byte[] computeHashQuery(int algorithm, byte[] data) {
         if (algorithm == ALGORITHM_SHA3_256) {
-            return Context.sha3_256(data);
+            return Context.hash("sha3-256", data);
         } else if (algorithm == ALGORITHM_SHA_256) {
-            return Context.sha256(data);
+            return Context.hash("sha-256", data);
         }
         return null;
     }
 
     @External
     public void recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
-        EmitEvent(Context.recoverKey(msgHash, signature, compressed));
+        EmitEvent(Context.recoverKey("ecdsa-secp256k1", msgHash, signature, compressed));
     }
 
     @External(readonly=true)
-    public byte[] recoverKeyQuery(byte[] msgHash, byte[] signature, boolean compressed) {
-        return Context.recoverKey(msgHash, signature, compressed);
+    public byte[]recoverKeyQuery(byte[] msgHash, byte[] signature, boolean compressed) {
+        return Context.recoverKey("ecdsa-secp256k1", msgHash, signature, compressed);
     }
 
     @External

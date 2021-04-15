@@ -12,7 +12,6 @@ type VoteItem struct {
 	Signature      common.Signature
 }
 
-// TODO rename -> voteList
 type voteList struct {
 	Prototypes []voteBase
 	VoteItems  []VoteItem

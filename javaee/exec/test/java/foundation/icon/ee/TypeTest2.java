@@ -846,7 +846,7 @@ public class TypeTest2 extends SimpleTest {
             if (value instanceof Object[]) {
                 return Arrays.asList((Object[])value).toString();
             } else if (value instanceof byte[]) {
-                return "[" + Strings.hexFromBytes((byte[])value) + "]";
+                return "[" + Strings.hexFromBytes((byte[])value, " ") + "]";
             }
             return value.toString();
         }
