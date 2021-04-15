@@ -36,7 +36,7 @@ public class StepTest extends SimpleTest {
 
         @External
         public void hash(byte[] v) {
-            Context.sha3_256(v);
+            Context.hash("sha3-256", v);
         }
     }
 

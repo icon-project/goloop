@@ -318,25 +318,32 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public ByteArray avm_sha3_256(ByteArray data) {
+    public ByteArray avm_hash(s.java.lang.String alg, ByteArray data) {
+        require(null != alg, "Algorithm can't be NULL");
         require(null != data, "Input data can't be NULL");
-        return new ByteArray(Crypto.sha3_256(data.getUnderlying()));
+        return new ByteArray(Crypto.hash(alg.getUnderlying(),
+                data.getUnderlying()));
     }
 
     @Override
-    public ByteArray avm_sha256(ByteArray data) {
-        require(null != data, "Input data can't be NULL");
-        return new ByteArray(Crypto.sha256(data.getUnderlying()));
+    public boolean avm_verifySignature(s.java.lang.String alg, ByteArray msg,
+            ByteArray sig, ByteArray pubKey) {
+        require(null != alg, "Algorithm can't be NULL");
+        require(null != msg, "Message can't be NULL");
+        require(null != sig, "Signature can't be NULL");
+        require(null != pubKey, "Public key can't be NULL");
+        return Crypto.verifySignature(alg.getUnderlying(), msg.getUnderlying(),
+                sig.getUnderlying(), pubKey.getUnderlying());
     }
 
     @Override
-    public ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed) {
-        require(null != msgHash && null != signature, "msgHash or signature is NULL");
-        byte[] msgBytes = msgHash.getUnderlying();
-        byte[] sigBytes = signature.getUnderlying();
-        require(msgBytes.length == 32, "the length of msgHash must be 32");
-        require(sigBytes.length == 65, "the length of signature must be 65");
-        return new ByteArray(Crypto.recoverKey(msgBytes, sigBytes, compressed));
+    public ByteArray avm_recoverKey(s.java.lang.String alg, ByteArray msg,
+            ByteArray sig, boolean compressed) {
+        require(null != alg, "Algorithm can't be NULL");
+        require(null != msg, "Message can't be NULL");
+        require(null != sig, "Signature can't be NULL");
+        return new ByteArray(Crypto.recoverKey(alg.getUnderlying(),
+                msg.getUnderlying(), sig.getUnderlying(), compressed));
     }
 
     @Override

@@ -135,20 +135,11 @@ public interface IBlockchainRuntime {
      */
     void avm_println(String message);
 
-    /**
-     * Computes the SHA3-256 hash using the input data
-     */
-    ByteArray avm_sha3_256(ByteArray data);
-
-    /**
-     * Computes the SHA-256 hash using the input data
-     */
-    ByteArray avm_sha256(ByteArray data);
-
-    /**
-     * Recovers the public key from the message hash and the recoverable signature
-     */
-    ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed);
+    ByteArray avm_hash(String alg, ByteArray msg);
+    boolean avm_verifySignature(String alg, ByteArray msg, ByteArray sig,
+            ByteArray pubKey);
+    ByteArray avm_recoverKey(String alg, ByteArray msg, ByteArray sig,
+            boolean compressed);
 
     /**
      * Returns the address that is associated with the given public key

@@ -155,23 +155,27 @@ public final class Context extends Object {
         blockchainRuntime.avm_println(message);
     }
 
-    public static ByteArray avm_sha3_256(ByteArray data) {
+    public static ByteArray avm_hash(String alg, ByteArray data) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base
-                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length() : 0));
-        return blockchainRuntime.avm_sha3_256(data);
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_base
+                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_hash_per_bytes * (data != null ? data.length() : 0));
+        return blockchainRuntime.avm_hash(alg, data);
     }
 
-    public static ByteArray avm_sha256(ByteArray data) {
+    public static boolean avm_verifySignature(String alg, ByteArray msg,
+            ByteArray sig, ByteArray pubKey) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base
-                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length() : 0));
-        return blockchainRuntime.avm_sha256(data);
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_verifySignature
+                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_verifySignature_per_bytes * (msg != null ? msg.length() : 0));
+        return blockchainRuntime.avm_verifySignature(alg, msg, sig, pubKey);
     }
 
-    public static ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_recoverKey);
-        return blockchainRuntime.avm_recoverKey(msgHash, signature, compressed);
+    public static ByteArray avm_recoverKey(String alg, ByteArray msg,
+            ByteArray signature, boolean compressed) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_recoverKey
+                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_recoverKey_per_bytes * (msg != null ? msg.length() : 0));
+        return blockchainRuntime.avm_recoverKey(alg, msg, signature, compressed);
     }
 
     public static Address avm_getAddressFromKey(ByteArray publicKey) {
