@@ -35,12 +35,12 @@ import (
 )
 
 const (
-	SchemePattern   = "^(http://|https://)"
-	HostNamePattern = "(localhost|(?:[\\w\\d](?:[\\w\\d-]{0,61}[\\w\\d])\\.)+[\\w\\d][\\w\\d-]{0,61}[\\w\\d])"
-	IPv4Pattern     = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
-	PortPattern     = "(:[0-9]{1,5})?"
-	PathPattern     = "(\\/\\S*)?$"
-	EmailPattern    = "^[a-zA-Z0-9]+(.[a-zA-Z0-9]+)*@" + HostNamePattern + "$"
+	SchemePattern   = `^(http:\/\/|https:\/\/)`
+	HostNamePattern = `(localhost|(?:[\w\d](?:[\w\d-]{0,61}[\w\d])\.)+[\w\d][\w\d-]{0,61}[\w\d])`
+	IPv4Pattern     = `(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])`
+	PortPattern     = `(:[0-9]{1,5})?`
+	PathPattern     = `(\/\S*)?$`
+	EmailPattern    = `^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*@` + HostNamePattern + `$`
 
 	PortMax       = 65536
 	EmailLocalMax = 64

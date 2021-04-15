@@ -232,7 +232,7 @@ func TestOnBurn(t *testing.T) {
 
 func TestValidateEndpoint(t *testing.T) {
 	shouldMatch := []string{
-		"foo.com:1", "192.10.6.2:8000", "localhost:1234",
+		"foo.com:1", "192.10.6.2:8000", "localhost:1234", "127.0.0.12:7100",
 	}
 
 	for _, x := range shouldMatch {
