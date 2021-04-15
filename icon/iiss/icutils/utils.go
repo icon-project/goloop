@@ -18,6 +18,9 @@ package icutils
 
 import (
 	"math/big"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -28,19 +31,15 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
-
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 const (
-	SchemePattern   = `^(http:\/\/|https:\/\/)`
+	SchemePattern   = `(http:\/\/|https:\/\/)`
 	HostNamePattern = `(localhost|(?:[\w\d](?:[\w\d-]{0,61}[\w\d])\.)+[\w\d][\w\d-]{0,61}[\w\d])`
 	IPv4Pattern     = `(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])`
 	PortPattern     = `(:[0-9]{1,5})?`
-	PathPattern     = `(\/\S*)?$`
-	EmailPattern    = `^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*@` + HostNamePattern + `$`
+	PathPattern     = `(\/\S*)?`
+	EmailPattern    = `[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*@` + HostNamePattern
 
 	PortMax       = 65536
 	EmailLocalMax = 64
@@ -48,11 +47,11 @@ const (
 )
 
 var (
-	websiteDNTemplate    = regexp.MustCompile(SchemePattern + HostNamePattern + PortPattern + PathPattern)
-	websiteIPv4Template  = regexp.MustCompile(SchemePattern + IPv4Pattern + PortPattern + PathPattern)
-	emailTemplate        = regexp.MustCompile(EmailPattern)
-	endpointDNTemplate   = regexp.MustCompile(IPv4Pattern + PortPattern)
-	endpointIPv4Template = regexp.MustCompile(HostNamePattern + PortPattern)
+	websiteDNTemplate    = regexp.MustCompile(`^` + SchemePattern + HostNamePattern + PortPattern + PathPattern + `$`)
+	websiteIPv4Template  = regexp.MustCompile(`^` + SchemePattern + IPv4Pattern + PortPattern + PathPattern + `$`)
+	emailTemplate        = regexp.MustCompile(`^` + EmailPattern + `$`)
+	endpointDNTemplate   = regexp.MustCompile(`^` + IPv4Pattern + PortPattern + `$`)
+	endpointIPv4Template = regexp.MustCompile(`^` + HostNamePattern + PortPattern + `$`)
 )
 
 var BigIntICX = big.NewInt(1_000_000_000_000_000_000)

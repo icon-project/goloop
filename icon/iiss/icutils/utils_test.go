@@ -236,8 +236,10 @@ func TestValidateEndpoint(t *testing.T) {
 	}
 
 	for _, x := range shouldMatch {
-		err := ValidateEndpoint(x)
-		assert.Nil(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateEndpoint(x)
+			assert.NoError(t, err)
+		})
 	}
 
 	shouldFail := []string{
@@ -255,11 +257,14 @@ func TestValidateEndpoint(t *testing.T) {
 		"ftps://foo.bar/:8080", "http://-error-.invalid/:8080", "http://-a.b.co:8080",
 		"http://a.b-.co:8080", "http://3628126748:8080", "http://.www.foo.bar/:8080",
 		"http://www.foo.bar./:8080", "http://.www.foo.bar./:8080",
+		".www.goo.bar:8080", "9.127.0.0.1:9090",
 	}
 
 	for _, x := range shouldFail {
-		err := ValidateEndpoint(x)
-		assert.Error(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateEndpoint(x)
+			assert.Error(t, err)
+		})
 	}
 }
 
@@ -276,8 +281,10 @@ func TestValidateURL(t *testing.T) {
 	}
 
 	for _, x := range shouldMatch {
-		err := ValidateURL(x)
-		assert.Nil(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateURL(x)
+			assert.NoError(t, err)
+		})
 	}
 
 	shouldFail := []string{
@@ -291,8 +298,10 @@ func TestValidateURL(t *testing.T) {
 	}
 
 	for _, x := range shouldFail {
-		err := ValidateURL(x)
-		assert.Error(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateURL(x)
+			assert.Error(t, err)
+		})
 	}
 
 }
@@ -305,8 +314,10 @@ func TestValidateEmail(t *testing.T) {
 	}
 
 	for _, x := range shouldFailBeforeRev9 {
-		err := ValidateEmail(x, 5)
-		assert.Error(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateEmail(x, 5)
+			assert.Error(t, err)
+		})
 	}
 
 	e := 253
@@ -328,7 +339,9 @@ func TestValidateEmail(t *testing.T) {
 	}
 
 	for _, x := range shouldFailAfterRev9 {
-		err := ValidateEmail(x, 9)
-		assert.Error(t, err)
+		t.Run(x, func(t *testing.T) {
+			err := ValidateEmail(x, 9)
+			assert.Error(t, err)
+		})
 	}
 }
