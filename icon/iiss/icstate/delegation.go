@@ -135,16 +135,12 @@ func (ds *Delegations) Delete(i int) error {
 	return nil
 }
 
-func (ds Delegations) ToJSON(v module.JSONVersion) []interface{} {
-	if !ds.Has() {
-		return nil
-	}
-	delegations := make([]interface{}, len(ds))
-
+func (ds Delegations) ToJSON(_ module.JSONVersion) []interface{} {
+	jso := make([]interface{}, len(ds))
 	for idx, d := range ds {
-		delegations[idx] = d.ToJSON()
+		jso[idx] = d.ToJSON()
 	}
-	return delegations
+	return jso
 }
 
 func (ds *Delegations) getVotings() []Voting {

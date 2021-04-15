@@ -210,9 +210,7 @@ func (a Account) GetTotalStake() *big.Int {
 func (a Account) GetStakeInJSON(blockHeight int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["stake"] = a.stake
-	if unstakes := a.unstakes.ToJSON(module.JSONVersion3, blockHeight); unstakes != nil {
-		jso["unstakes"] = unstakes
-	}
+	jso["unstakes"] = a.unstakes.ToJSON(module.JSONVersion3, blockHeight)
 	return jso
 }
 
@@ -230,15 +228,11 @@ func (a *Account) SetDelegation(ds Delegations) {
 	a.delegating.Set(a.delegations.GetDelegationAmount())
 }
 
-func (a Account) GetDelegationInfo() map[string]interface{} {
+func (a Account) GetDelegationInJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["totalDelegated"] = a.delegating
 	jso["votingPower"] = a.GetVotingPower()
-
-	if delegations := a.delegations.ToJSON(module.JSONVersion3); delegations != nil {
-		jso["delegations"] = delegations
-	}
-
+	jso["delegations"] = a.delegations.ToJSON(module.JSONVersion3)
 	return jso
 }
 
@@ -271,11 +265,11 @@ func (a *Account) Unbond() *big.Int {
 	return a.unbonding
 }
 
-func (a *Account) GetBondsInfo() []interface{} {
+func (a *Account) GetBondsInJSON() []interface{} {
 	return a.bonds.ToJSON(module.JSONVersion3)
 }
 
-func (a *Account) GetUnbondsInfo() []interface{} {
+func (a *Account) GetUnbondsInJSON() []interface{} {
 	return a.unbonds.ToJSON(module.JSONVersion3)
 }
 

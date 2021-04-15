@@ -258,7 +258,7 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 		return nil, err
 	}
 	ia := es.GetAccount(address)
-	return ia.GetDelegationInfo(), nil
+	return ia.GetDelegationInJSON(), nil
 }
 
 var regPRepFee = icutils.ToLoop(2000)
@@ -523,8 +523,8 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 	}
 	account := es.GetAccount(address)
 	data := make(map[string]interface{})
-	data["bonds"] = account.GetBondsInfo()
-	data["unbonds"] = account.GetUnbondsInfo()
+	data["bonds"] = account.GetBondsInJSON()
+	data["unbonds"] = account.GetUnbondsInJSON()
 	return data, nil
 }
 

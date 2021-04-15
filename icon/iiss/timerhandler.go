@@ -71,7 +71,7 @@ func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64)
 		if err := as.RemoveUnbonding(h); err != nil {
 			return err
 		}
-		s.logger.Tracef("after remove unbonds, unbond information of %s : %s", a, as.GetUnbondsInfo())
+		s.logger.Tracef("after remove unbonds, unbond information of %s : %s", a, as.GetUnbondsInJSON())
 	}
 	s.logger.Tracef("handleUnbondingTimer() end")
 	return nil
