@@ -151,11 +151,13 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 				"NotPayable(value=%d)", h.Value), nil, nil
 		}
 
-		id := h.data.ID.Bytes()
-		value := h.data.Amount.Value()
-		if id == nil {
+		var id []byte
+		if h.data.ID != nil {
+			id = h.data.ID.Bytes()
+		} else {
 			id = []byte{}
 		}
+		value := h.data.Amount.Value()
 
 		if amount, fee, err := as2.WithdrawDeposit(cc, id, value); err != nil {
 			return err, nil, nil
