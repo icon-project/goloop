@@ -418,7 +418,11 @@ func (t *transition) canceled() bool {
 func (t *transition) doForceSync() {
 	t.reportValidation(nil)
 
-	sr := t.syncer.ForceSync()
+	sr, err := t.syncer.ForceSync()
+	if err != nil {
+		t.reportExecution(err)
+		return
+	}
 	t.logsBloom.SetInt64(0)
 	for _, receipts := range []module.ReceiptList{sr.PatchReceipts, sr.NormalReceipts} {
 		for itr := receipts.Iterator(); itr.Has(); itr.Next() {
@@ -437,6 +441,7 @@ func (t *transition) doForceSync() {
 		t.worldSnapshot.ExtensionData(),
 	}
 	t.result = tresult.Bytes()
+	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
 	t.reportExecution(nil)
 }
 
@@ -667,6 +672,9 @@ func (t *transition) cancelExecution() bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	if t.step != stepComplete && t.step != stepError {
+		if t.step != stepCanceled && t.syncer != nil {
+			t.syncer.Stop()
+		}
 		t.step = stepCanceled
 	} else if t.step == stepComplete {
 		return false

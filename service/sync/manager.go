@@ -20,7 +20,8 @@ const (
 var c = codec.MP
 
 type Syncer interface {
-	ForceSync() *Result
+	ForceSync() (*Result, error)
+	Stop()
 	Finalize() error
 }
 
@@ -102,9 +103,6 @@ func (m *Manager) OnLeave(id module.PeerID) {
 }
 
 func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte) Syncer {
-	m.log.Debugf(
-		"NewSyncer accountHash(%#x), prh(%#x), nrh(%#x), vlh(%#x)\n",
-		ah, prh, nrh, vh)
 	m.syncer = newSyncer(
 		m.db, m.client, m.pool, m.plt,
 		ah, prh, nrh, vh, ed, m.log,

@@ -188,7 +188,7 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	vh := ws.GetValidatorState().GetSnapshot().Hash()
 
 	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh, nil)
-	r := syncer1.ForceSync()
+	r, _ := syncer1.ForceSync()
 
 	log.Printf("END\n")
 	as := r.Wss.GetAccountSnapshot([]byte("ABC"))

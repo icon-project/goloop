@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
@@ -19,9 +20,12 @@ const (
 	syncWorldState syncType = 1 << iota
 	syncPatchReceipts
 	syncNormalReceipts
+	syncExtensionState
+	syncTypeReserved
 )
 
 const (
+	syncTypeAll          = syncTypeReserved - 1
 	configMaxRequestHash = 50
 )
 
@@ -34,6 +38,8 @@ func (s syncType) toIndex() int {
 		index = 1
 	case syncNormalReceipts:
 		index = 2
+	case syncExtensionState:
+		index = 3
 	}
 	return index
 }
@@ -47,16 +53,17 @@ func (s syncType) String() string {
 		str = "syncPatchReceipts"
 	case syncNormalReceipts:
 		str = "syncNormalReceipts"
+	case syncExtensionState:
+		str = "syncExtensionState"
 	}
 	return str
 }
 
 func (s syncType) isValid() bool {
-	return int(syncWorldState|syncPatchReceipts|syncNormalReceipts)|int(s) != 0
+	return (s & syncTypeAll) == s
 }
 
 const (
-	syncComplete         = int(syncWorldState | syncPatchReceipts | syncNormalReceipts)
 	configMaxPeerForSync = 10
 )
 
@@ -72,11 +79,11 @@ type syncer struct {
 	vpool    *peerPool
 	ivpool   *peerPool
 	sentReq  map[module.PeerID]*peer
-	reqValue [3]map[string]bool
+	reqValue [4]map[string]bool
 
-	builder  [3]merkle.Builder
-	bMutex   [3]sync.Mutex // for builder
-	rPeerCnt [3]int
+	builder  [4]merkle.Builder
+	bMutex   [4]sync.Mutex // for builder
+	rPeerCnt [4]int
 
 	ah  []byte
 	vlh []byte
@@ -84,7 +91,7 @@ type syncer struct {
 	prh []byte
 	nrh []byte
 
-	finishCh chan syncType
+	finishCh chan error
 	log      log.Logger
 
 	wss state.WorldSnapshot
@@ -93,7 +100,7 @@ type syncer struct {
 	cb  func(syncing bool)
 
 	waitingPeerCnt int
-	complete       int
+	complete       syncType
 	startTime      time.Time
 }
 
@@ -197,9 +204,11 @@ func (s *syncer) _onNodeData(builder merkle.Builder, reqValue map[string]bool, d
 func (s *syncer) Complete(st syncType) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if s.complete&int(st) != int(st) {
-		s.complete |= int(st)
-		s.finishCh <- st
+	if s.complete&st != st {
+		s.complete |= st
+		if s.complete == syncTypeAll {
+			s.finishCh <- nil
+		}
 	}
 }
 
@@ -228,11 +237,7 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 			s.log.Debugf("reqUnresolved st(%s), unused(%d), unresolved(%d)\n",
 				st, len(unused), unresolved)
 			if unresolved == 0 {
-				s.mutex.Lock()
-				if s.complete&int(st) != int(st) {
-					s.finishCh <- st
-				}
-				s.mutex.Unlock()
+				s.Complete(st)
 			}
 			break
 		}
@@ -348,7 +353,7 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	}()
 }
 
-func (s *syncer) stop() {
+func (s *syncer) Stop() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	for k, p := range s.sentReq {
@@ -357,7 +362,7 @@ func (s *syncer) stop() {
 		s.vpool.push(p)
 	}
 	s.cond.Broadcast()
-	close(s.finishCh)
+	s.finishCh <- errors.ErrInterrupted
 }
 
 func (s *syncer) _updateValidPool() {
@@ -420,7 +425,7 @@ func (s *syncer) _reservePeers(need int, st syncType) []*peer {
 	var size int
 	s.waitingPeerCnt += 1
 	for {
-		if s.complete&int(st) == int(st) {
+		if s.complete&st == st {
 			s.waitingPeerCnt -= 1
 			if s.waitingPeerCnt > 0 {
 				s.cond.Signal()
@@ -462,11 +467,17 @@ func (s *syncer) onResult(status errCode, p *peer) {
 	}
 }
 
-func (s *syncer) ForceSync() *Result {
+func (s *syncer) ForceSync() (*Result, error) {
 	s.log.Debugln("ForceSync")
 	startTime := time.Now()
 	s.startTime = startTime
 	s.cb(true)
+	defer func() {
+		s.cb(false)
+		syncDuration := time.Now().Sub(startTime)
+		elapsedMS := float64(syncDuration/time.Microsecond) / 1000
+		s.log.Infof("ForceSync : Elapsed: %9.3f ms\n", elapsedMS)
+	}()
 
 	pl := s.pool.peerList()
 	s.mutex.Lock()
@@ -480,14 +491,24 @@ func (s *syncer) ForceSync() *Result {
 	}
 	s.mutex.Unlock()
 
+	var ess state.ExtensionSnapshot
+	if len(s.ed) > 0 {
+		eb := merkle.NewBuilder(s.database)
+		s.builder[syncExtensionState.toIndex()] = eb
+		s.reqValue[syncExtensionState.toIndex()] = make(map[string]bool)
+		ess = s.plt.NewExtensionWithBuilder(eb, s.ed)
+		go s.reqUnresolved(syncExtensionState, eb, 1)
+	} else {
+		s.Complete(syncExtensionState)
+	}
+
 	builder := merkle.NewBuilder(s.database)
 	s.builder[syncWorldState.toIndex()] = builder
 	s.reqValue[syncWorldState.toIndex()] = make(map[string]bool)
-	ess := s.plt.NewExtensionWithBuilder(builder, s.ed)
 	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh, ess); err == nil {
 		s.wss = wss
 	} else {
-		s.log.Panicf("Failed to call NewWorldSnapshotWithBuilder, ah(%#x), vlh(%#x)\n", s.ah, s.vlh)
+		return nil, err
 	}
 	go s.reqUnresolved(syncWorldState, builder, 1)
 
@@ -500,33 +521,24 @@ func (s *syncer) ForceSync() *Result {
 			go s.reqUnresolved(t, builder, 1)
 		} else {
 			*rl = txresult.NewReceiptListFromSlice(s.database, []txresult.Receipt{})
-			s.mutex.Lock()
-			s.complete |= int(t)
-			s.mutex.Unlock()
+			s.Complete(t)
 		}
 	}
 
 	rf(syncPatchReceipts, &s.prl, s.prh)
 	rf(syncNormalReceipts, &s.nrl, s.nrh)
 
-	for s.complete != syncComplete {
-		c := <-s.finishCh
-		s.mutex.Lock()
-		s.complete |= int(c)
-		s.log.Debugf("complete (%b) / (%b)\n", c, s.complete)
-		s.mutex.Unlock()
+	if err := <-s.finishCh; err != nil {
+		return nil, err
+	} else {
+		return &Result{s.wss, s.prl, s.nrl}, nil
 	}
-	s.cb(false)
-	syncDuration := time.Now().Sub(startTime)
-	elapsedMS := float64(syncDuration/time.Microsecond) / 1000
-	s.log.Infof("ForceSync : Elapsed: %9.3f ms\n", elapsedMS)
-	return &Result{s.wss, s.prl, s.nrl}
 }
 
 func (s *syncer) Finalize() error {
-	s.log.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x)\n",
-		s.ah, s.prh, s.nrh, s.vlh)
-	for i, t := range []syncType{syncWorldState, syncPatchReceipts, syncNormalReceipts} {
+	s.log.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)\n",
+		s.ah, s.prh, s.nrh, s.vlh, s.ed)
+	for i, t := range []syncType{syncWorldState, syncPatchReceipts, syncNormalReceipts, syncExtensionState} {
 		builder := s.builder[t.toIndex()]
 		if builder == nil {
 			continue
@@ -547,8 +559,8 @@ func (s *syncer) Finalize() error {
 func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte,
 	log log.Logger, cb func(syncing bool)) *syncer {
-	log.Debugf("newSyncer ah(%#x), pReceiptsHash(%#x), nReceiptsHash(%#x), vlh(%#x)\n",
-		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash)
+	log.Debugf("newSyncer ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
+		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 
 	s := &syncer{
 		database: database,
@@ -563,7 +575,7 @@ func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 		nrh:      nReceiptsHash,
 		vlh:      validatorListHash,
 		ed:       extensionData,
-		finishCh: make(chan syncType, 3),
+		finishCh: make(chan error, 1),
 		log:      log,
 		cb:       cb,
 	}
