@@ -62,8 +62,10 @@ func (dl depositList) Clone() depositList {
 		return nil
 	}
 	deposits := make([]*deposit, len(dl))
-	copy(deposits, dl)
-	return depositList(deposits)
+	for i, d := range dl {
+		deposits[i] = d.Clone()
+	}
+	return deposits
 }
 
 func (dl *depositList) AddDeposit(dc DepositContext, value *big.Int) error {

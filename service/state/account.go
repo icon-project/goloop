@@ -847,7 +847,6 @@ func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *
 	if err != nil {
 		return nil, nil, err
 	}
-	s.balance = new(common.HexInt).AddValue(s.balance.Value(), amount)
 	s.markDirty()
 	return amount, fee, nil
 }
