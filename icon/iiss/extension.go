@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -132,6 +133,20 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 		return nil
 	}
 	return s
+}
+
+func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
+	var hashes [4][]byte
+	if _, err := codec.BC.UnmarshalFromBytes(raw, &hashes); err != nil {
+		return nil
+	}
+	return &ExtensionSnapshotImpl{
+		database: builder.Database(),
+		state:    icstate.NewSnapshotWithBuilder(builder, hashes[0]),
+		front:    icstage.NewSnapshotWithBuilder(builder, hashes[1]),
+		back:     icstage.NewSnapshotWithBuilder(builder, hashes[2]),
+		reward:   icreward.NewSnapshotWithBuilder(builder, hashes[3]),
+	}
 }
 
 type ExtensionStateImpl struct {

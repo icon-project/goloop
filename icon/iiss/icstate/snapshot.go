@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -71,6 +72,13 @@ func (ss *Snapshot) NewState(readonly bool) *State {
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {
 	dbase = icobject.AttachObjectFactory(dbase, NewObjectImpl)
 	t := trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType)
+	return newSnapshotFromImmutableForObject(t)
+}
+
+func NewSnapshotWithBuilder(builder merkle.Builder, h []byte) *Snapshot {
+	dbase := icobject.AttachObjectFactory(builder.Database(), NewObjectImpl)
+	t := trie_manager.NewImmutableForObject(dbase, h, icobject.ObjectType)
+	t.Resolve(builder)
 	return newSnapshotFromImmutableForObject(t)
 }
 

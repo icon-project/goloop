@@ -18,6 +18,7 @@ package icstage
 
 import (
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -72,6 +73,15 @@ func (ss *Snapshot) GetEventSize() (*EventSize, error) {
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {
 	database = icobject.AttachObjectFactory(database, NewObjectImpl)
 	t := trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType)
+	return &Snapshot{
+		store: icobject.NewObjectStoreSnapshot(t),
+	}
+}
+
+func NewSnapshotWithBuilder(builder merkle.Builder, hash []byte) *Snapshot {
+	database := icobject.AttachObjectFactory(builder.Database(), NewObjectImpl)
+	t := trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType)
+	t.Resolve(builder)
 	return &Snapshot{
 		store: icobject.NewObjectStoreSnapshot(t),
 	}

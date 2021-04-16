@@ -53,9 +53,7 @@ func (p *platform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.Ext
 }
 
 func (p *platform) NewExtensionWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
-	// TODO return ExtensionSnapshot instance after requesting required data to
-	//  the builder.
-	return nil
+	return iiss.NewExtensionSnapshotWithBuilder(builder, raw)
 }
 
 func (p *platform) ToRevision(value int) module.Revision {
