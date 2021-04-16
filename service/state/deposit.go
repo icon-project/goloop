@@ -372,8 +372,8 @@ func (d *depositV2) Withdraw(height int64, price, value *big.Int) (*big.Int, *bi
 		amount = d.DepositRemain
 	}
 	if cmp := d.DepositRemain.Cmp(amount); cmp > 0 {
-		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, value)
-		return value, new(big.Int), false, nil
+		d.DepositRemain = new(big.Int).Sub(d.DepositRemain, amount)
+		return amount, new(big.Int), false, nil
 	} else if cmp == 0 {
 		if value != nil {
 			d.DepositRemain = new(big.Int)
