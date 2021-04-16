@@ -14,28 +14,19 @@ func FormatBigInt(i *big.Int) string {
 }
 
 func ParseBigInt(i *big.Int, s string) error {
-	negate := false
-	if s[0] == '-' {
-		negate = true
-		s = s[1:]
+	s2 := s
+	if s2[0] == '-' {
+		s2 = s[1:]
 	}
-	if strings.HasPrefix(s, "0x") {
-		s = s[2:]
-		if _, ok := i.SetString(s, 16); !ok {
-			return errors.New("InvalidHexNumber")
-		}
-		if i.Sign() < 0 {
-			return errors.New("InvalidHexNumber")
-		}
-	} else {
-		if _, ok := i.SetString(s, 10); !ok {
-			return errors.New("InvalidDecimalNumber")
-		}
+	if strings.HasPrefix(s2, "0o") || strings.HasPrefix(s2, "0b") ||
+		strings.HasPrefix(s2, "0O") || strings.HasPrefix(s2, "0B") ||
+		strings.HasPrefix(s2, "0X") {
+		return errors.New("InvalidPrefix")
 	}
-	if negate {
-		i.Neg(i)
+	if _, ok := i.SetString(s, 0); ok {
+		return nil
 	}
-	return nil
+	return errors.New("InvalidNumberFormat")
 }
 
 func encodeHexNumber(neg bool, b []byte) string {
