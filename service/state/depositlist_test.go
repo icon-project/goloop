@@ -295,10 +295,26 @@ func TestDepositList_WithdrawDepositV2(t *testing.T) {
 		assert.True(t, dl.Has())
 
 		exp := new(big.Int).Mul(amount, big.NewInt(3))
-		am, tr, err := dl.WithdrawDeposit(dc, nil, nil)
+		assert.Equal(t, 0, dl.getAvailableDeposit(0).Cmp(exp))
+
+		exp1 := exp
+		dl1 := dl.Clone()
+
+		exp = new(big.Int).Sub(exp, amount)
+		am, tr, err := dl.WithdrawDeposit(dc, nil, amount)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, tr.Sign())
+		assert.Equal(t, 0, amount.Cmp(am))
+
+		assert.Equal(t, 0, dl1.getAvailableDeposit(0).Cmp(exp1))
+
+		am, tr, err = dl.WithdrawDeposit(dc, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, exp, am)
 		assert.Equal(t, 0, tr.Sign())
+		assert.Equal(t, 0, dl.getAvailableDeposit(0).Sign())
+
+		assert.Equal(t, 0, dl1.getAvailableDeposit(0).Cmp(exp1))
 	})
 
 	t.Run("invalid withdraw", func(t *testing.T) {
