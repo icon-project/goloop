@@ -2,10 +2,12 @@ package iiss
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func newAddress(idx int) module.Address {

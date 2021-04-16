@@ -162,6 +162,10 @@ type ExtensionStateImpl struct {
 	Reward *icreward.State
 }
 
+func (s *ExtensionStateImpl) Logger() log.Logger {
+	return s.logger
+}
+
 func (s *ExtensionStateImpl) SetLogger(logger log.Logger) {
 	if logger != nil {
 		s.logger = logger

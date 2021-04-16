@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -63,7 +64,7 @@ func (s *chainScore) toScoreResultError(code errors.Code, err error) error {
 		logger = icutils.NewIconLogger(logger)
 		logger.Infof(msg)
 	}
-	return code.Errorf(msg)
+	return code.Wrap(err, msg)
 }
 
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
@@ -75,7 +76,12 @@ func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 		return err
 	}
 	if err = es.State.SetIRep(new(big.Int).Set(&value.Int)); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set IRep: from=%v value=%v",
+			s.from,
+			value,
+		)
 	}
 	return nil
 }
@@ -115,12 +121,13 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	}
 	ia := es.GetAccount(s.from)
 	v := &value.Int
-	logger := s.cc.Logger()
 
-	if v.Cmp(ia.UsingStake()) < 0 {
-		msg := "Failed to stake: stake < voting"
-		logger.Infof(msg)
-		return scoreresult.InvalidParameterError.Errorf(msg)
+	usingStake := ia.UsingStake()
+	if v.Cmp(usingStake) < 0 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Failed to set stake: newStake=%v < usingStake=%v from=%v",
+			v, usingStake, s.from,
+		)
 	}
 
 	stakeInc := new(big.Int).Sub(v, ia.Stake())
@@ -137,7 +144,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 
 	tStake := es.State.GetTotalStake()
 	tSupply := icutils.GetTotalSupply(s.cc)
-	prevTotalStake := ia.GetTotalStake()
+	oldTotalStake := ia.GetTotalStake()
 
 	//update IISS account
 	revision := s.cc.Revision().Value()
@@ -152,31 +159,51 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
 	}
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("Error while updating unstakes(%v)", err)
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Error while updating unstakes: from=%v",
+			s.from,
+		)
 	}
 
 	for _, t := range tl {
 		ts := es.GetUnstakingTimerState(t.Height, true)
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return scoreresult.UnknownFailureError.Errorf("Error while scheduling UnStaking Timer Job(%v)", err)
+			return scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Error while scheduling UnStaking Timer Job: from=%v",
+				s.from,
+			)
 		}
 	}
 	if err = ia.SetStake(v); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set stake: from=%v stake=%v",
+			s.from,
+			v,
+		)
 	}
-
 	if err = es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to set totalStake: from=%v totalStake=%v stakeInc=%v",
+			s.from,
+			tStake,
+			stakeInc,
+		)
 	}
 
 	// update world account
 	totalStake := ia.GetTotalStake()
-	cmp := prevTotalStake.Cmp(totalStake)
-	if cmp != 0 {
-		if cmp > 0 {
-			logger.Panicf("Fail to setStake: account.totalStake < prevTotalStake(invalid state)")
-		}
-		diff := new(big.Int).Sub(totalStake, prevTotalStake)
+	cmp := oldTotalStake.Cmp(totalStake)
+	if cmp > 0 {
+		es.Logger().Panicf(
+			"Failed to set stake: newTotalStake=%v < oldTotalStake=%v from=%v",
+			totalStake, oldTotalStake, s.from,
+		)
+	} else if cmp < 0 {
+		diff := new(big.Int).Sub(totalStake, oldTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
 	return
@@ -236,12 +263,18 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	}
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set delegation: from=%v",
+			s.from,
+		)
 	}
-	err = es.SetDelegation(s.cc, s.from, ds)
-	if err != nil {
-		s.cc.Logger().Infof(err.Error())
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+	if err = es.SetDelegation(s.cc, s.from, ds); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to set delegation: from=%v",
+			s.from,
+		)
 	}
 	return nil
 }
@@ -276,30 +309,47 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
 	}
 	if (nodeAddress != nil && nodeAddress.IsContract()) || s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+		return scoreresult.InvalidParameterError.Errorf(
+			"Invalid address: from=%v node=%v",
+			s.from,
+			nodeAddress,
+		)
 	}
-	if s.value.Cmp(regPRepFee) == -1 {
-		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+	if s.value.Cmp(regPRepFee) != 0 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Invalid registration fee: value=%v != fee=%v",
+			s.value,
+			regPRepFee,
+		)
 	}
 
 	// Subtract regPRepFee from chainScore
 	as := s.cc.GetAccountState(state.SystemID)
 	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
 	if balance.Sign() < 0 {
-		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+		return scoreresult.InvalidParameterError.Errorf("Not enough value: value=%v", s.value)
 	}
 	as.SetBalance(balance)
 
 	// Burn regPRepFee
 	if ts, err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to burn regPRepFee: from=%v fee=%v",
+			s.from,
+			regPRepFee,
+		)
 	} else {
 		icutils.OnBurn(s.cc, state.SystemAddress, regPRepFee, ts)
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
 	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to validate regInfo: from=%v",
+			s.from,
+		)
 	}
 
 	es, err := s.getExtensionState()
@@ -314,7 +364,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 
 	err = es.RegisterPRep(regInfo, irep)
 	if err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to register PRep: from=%v", s.from,
+		)
 	}
 
 	term := es.State.GetTerm()
@@ -329,7 +381,9 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		[][]byte{s.from.Bytes()},
 	)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err, "Failed to record PRepRegistered eventlog: from=%v", s.from,
+		)
 	}
 	return nil
 }
@@ -346,12 +400,15 @@ func (s *chainScore) Ex_unregisterPRep() error {
 		return err
 	}
 	if s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+		return scoreresult.InvalidParameterError.Errorf(
+			"Invalid address: from=%v", s.from,
+		)
 	}
 	err = es.UnregisterPRep(s.cc, s.from)
 	if err != nil {
-		s.cc.Logger().Infof(err.Error())
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err, "Failed to unregister PRep: from=%v", s.from,
+		)
 	}
 	return nil
 }
@@ -369,7 +426,7 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	}
 	res, err := es.GetPRepInJSON(address, s.cc.BlockHeight())
 	if err != nil {
-		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
+		return nil, scoreresult.InvalidInstanceError.Wrap(err, "Failed to get PRep")
 	} else {
 		return res, nil
 	}
@@ -382,13 +439,15 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
-	var start, end int = 0, 0
+	var start, end = 0, 0
 	if startRanking != nil && endRanking != nil {
 		start = int(startRanking.Int.Int64())
 		end = int(endRanking.Int.Int64())
 	}
 	if start > end {
-		return nil, scoreresult.InvalidParameterError.Errorf("Invalid parameter")
+		return nil, scoreresult.InvalidParameterError.Errorf(
+			"Invalid ranking: start=%d > end=%d", start, end,
+		)
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
@@ -397,7 +456,9 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 	blockHeight := s.cc.BlockHeight()
 	jso, err := es.GetPRepsInJSON(blockHeight, start, end)
 	if err != nil {
-		return nil, scoreresult.InvalidParameterError.Errorf(err.Error())
+		return nil, scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to get PReps: start=%d end=%d", start, end,
+		)
 	}
 	return jso, nil
 }
@@ -455,12 +516,16 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 
 	if (node != nil && node.IsContract()) || s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("nodeAddress must be EOA")
+		return scoreresult.InvalidParameterError.Errorf(
+			"Invalid address: from=%v node=%v", s.from, node,
+		)
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
 	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Wrapf(
+			err, "Failed to validate regInfo: from=%v", s.from,
+		)
 	}
 
 	s.cc.OnEvent(state.SystemAddress,
@@ -474,7 +539,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 	err = es.SetPRep(regInfo)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
 	return nil
 }
@@ -487,12 +552,17 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	return es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight())
+	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to set governance variables: from=%v", s.from,
+		)
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	logger := s.cc.Logger()
-	logger.Tracef("Ex_setBond() start: from=%s", s.from)
+	logger.Tracef("Ex_setBond() start: from=%v", s.from)
 
 	if err := s.tryChargeCall(true); err != nil {
 		return err
@@ -557,13 +627,14 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 	}
 	res, err := es.GetBonderList(address)
 	if err != nil {
-		return nil, scoreresult.InvalidInstanceError.Errorf(err.Error())
-	} else {
-		return res, nil
+		return nil, scoreresult.InvalidInstanceError.Wrapf(
+			err, "Failed to get bonderList: address=%v", address,
+		)
 	}
+	return res, nil
 }
 
-var skipedClaimTX, _ = hex.DecodeString("b9eeb235f715b166cf4b91ffcf8cc48a81913896086d30104ffc0cf47eed1cbd")
+var skippedClaimTX, _ = hex.DecodeString("b9eeb235f715b166cf4b91ffcf8cc48a81913896086d30104ffc0cf47eed1cbd")
 
 func (s *chainScore) Ex_claimIScore() error {
 	if err := s.tryChargeCall(true); err != nil {
@@ -572,7 +643,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
-	if bytes.Compare(s.cc.TransactionID(), skipedClaimTX) == 0 {
+	if bytes.Compare(s.cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
 		return nil
@@ -584,7 +655,11 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	fClaimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
-		return scoreresult.InvalidInstanceError.Errorf(err.Error())
+		return scoreresult.InvalidInstanceError.Wrapf(
+			err,
+			"Failed to claim IScore: from=%v",
+			s.from,
+		)
 	}
 	if fClaimed != nil {
 		// claim already in this calculation period. there is no IScore to claim
@@ -594,7 +669,11 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	is, err := es.Reward.GetIScore(s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("Failed to get IScore data(%v)", err)
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get IScore data: from=%v",
+			s.from,
+		)
 	}
 	if is == nil {
 		// there is no IScore to claim.
@@ -604,7 +683,11 @@ func (s *chainScore) Ex_claimIScore() error {
 	iScore := is.Clone()
 	bClaimed, err := es.Back.GetIScoreClaim(s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("Failed to get claim data from back (%s)", err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get claim data from back: from=%v",
+			s.from,
+		)
 	}
 	if bClaimed != nil {
 		iScore.Value.Sub(iScore.Value, bClaimed.Value)
@@ -622,7 +705,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	// increase account icx balance
 	account := s.cc.GetAccountState(s.from.ID())
 	if account == nil {
-		return scoreresult.InvalidInstanceError.Errorf("Invalid account %s", s.from.String())
+		return scoreresult.InvalidInstanceError.Errorf("Invalid account: from=%v", s.from)
 	}
 	balance := account.GetBalance()
 	account.SetBalance(new(big.Int).Add(balance, icx))
@@ -642,11 +725,14 @@ func (s *chainScore) Ex_claimIScore() error {
 		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
 	}
 	if err != nil {
-		return scoreresult.UnknownFailureError.Errorf("Failed to add IScore claim event. (%s)", err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to add IScore claim event: from=%v",
+			s.from,
+		)
 	}
 
 	s.claimEventLog(s.from, claim, icx)
-
 	return nil
 }
 
@@ -677,10 +763,11 @@ func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
-	if err := s.tryChargeCall(true); err != nil {
+	var err error
+	if err = s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
+	if err = s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -689,22 +776,35 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	}
 	fClaim, err := es.Front.GetIScoreClaim(address)
 	if err != nil {
-		return nil, scoreresult.InvalidInstanceError.Errorf("Invalid account")
+		return nil, scoreresult.InvalidInstanceError.Wrapf(
+			err,
+			"Invalid account: from=%v",
+			s.from,
+		)
 	}
-	is := new(big.Int)
+
+	var iScore *icreward.IScore
+	var bClaim *icstage.IScoreClaim
+	is := big.NewInt(0)
 	if fClaim == nil {
-		iScore, err := es.Reward.GetIScore(address)
+		iScore, err = es.Reward.GetIScore(address)
 		if err != nil {
-			return nil, scoreresult.UnknownFailureError.Errorf("error while querying IScore")
+			return nil, scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"error while querying IScore: from=%v",
+				s.from,
+			)
 		}
-		if iScore == nil || iScore.IsEmpty() {
-			is.SetInt64(0)
-		} else {
+		if iScore != nil && !iScore.IsEmpty() {
 			is.Set(iScore.Value)
 		}
-		bClaim, err := es.Back.GetIScoreClaim(address)
+		bClaim, err = es.Back.GetIScoreClaim(address)
 		if err != nil {
-			return nil, scoreresult.UnknownFailureError.Errorf("error while querying IScore")
+			return nil, scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"error while querying IScore: from=%v",
+				s.from,
+			)
 		}
 		if bClaim != nil {
 			is.Sub(is, bClaim.Value)
@@ -716,12 +816,11 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		bh = es.CalculationBlockHeight() - 1
 	}
 
-	data := make(map[string]interface{})
-	data["blockHeight"] = bh
-	data["iscore"] = is
-	data["estimatedICX"] = new(big.Int).Div(is, big.NewInt(iiss.IScoreICXRatio))
-
-	return data, nil
+	jso := make(map[string]interface{})
+	jso["blockHeight"] = bh
+	jso["iscore"] = is
+	jso["estimatedICX"] = new(big.Int).Div(is, big.NewInt(iiss.IScoreICXRatio))
+	return jso, nil
 }
 
 func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, error) {
@@ -737,9 +836,9 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	}
 	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
-	result := make(map[string]interface{})
-	result["unstakeLockPeriod"] = calcUnstakeLockPeriod(es.State, totalStake, totalSupply)
-	return result, nil
+	jso := make(map[string]interface{})
+	jso["unstakeLockPeriod"] = calcUnstakeLockPeriod(es.State, totalStake, totalSupply)
+	return jso, nil
 }
 
 func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
@@ -755,7 +854,7 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	}
 	jso, err := es.GetPRepTermInJSON()
 	if err != nil {
-		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
+		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get PRepTerm")
 	}
 	jso["blockHeight"] = s.cc.BlockHeight()
 	return jso, nil
@@ -771,7 +870,7 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 	}
 	res, err := es.GetNetworkValueInJSON()
 	if err != nil {
-		return nil, scoreresult.UnknownFailureError.Errorf(err.Error())
+		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get NetworkValue")
 	}
 	return res, nil
 }
@@ -800,7 +899,9 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 
 	rcInfo, err := es.State.GetRewardCalcInfo()
 	if err != nil {
-		return nil, err
+		return nil, scoreresult.UnknownFailureError.Wrap(
+			err, "Failed to get RewardCalcInfo",
+		)
 	}
 	rcResult := make(map[string]interface{})
 	rcResult["iscore"] = rcInfo.PrevCalcReward()
@@ -809,10 +910,11 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	rcResult["endBlockHeight"] = rcInfo.GetEndHeight()
 	rcResult["stateHash"] = es.Reward.GetSnapshot().Bytes()
 
+	endBlockHeight := term.GetEndBlockHeight()
 	jso := make(map[string]interface{})
 	jso["blockHeight"] = s.cc.BlockHeight()
-	jso["nextCalculation"] = term.GetEndBlockHeight() + 1
-	jso["nextPRepTerm"] = term.GetEndBlockHeight() + 1
+	jso["nextCalculation"] = endBlockHeight + 1
+	jso["nextPRepTerm"] = endBlockHeight + 1
 	jso["variable"] = iissVariables
 	jso["rcResult"] = rcResult
 	return jso, nil
@@ -838,7 +940,12 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 		return err
 	}
 	if err = es.DisqualifyPRep(address); err != nil {
-		return scoreresult.UnknownFailureError.Errorf(err.Error())
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to disqualify PRep: from=%v prep=%v",
+			s.from,
+			address,
+		)
 	}
 	return nil
 }
@@ -852,8 +959,10 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 		return false, err
 	}
 	term := es.State.GetTerm()
-	if err := es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
-		return false, scoreresult.InvalidParameterError.Errorf(err.Error())
+	if err = es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
+		return false, scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate IRep: irep=%v", irep.Value(),
+		)
 	}
 	return true, nil
 }
@@ -863,13 +972,20 @@ func (s *chainScore) Ex_burn() error {
 	as := s.cc.GetAccountState(state.SystemID)
 	balance := new(big.Int).Sub(as.GetBalance(), s.value)
 	if balance.Sign() < 0 {
-		return scoreresult.InvalidParameterError.Errorf("Not enough value. %v", s.value)
+		return scoreresult.InvalidParameterError.Errorf(
+			"Not enough value: from=%v value=%v", s.from, s.value,
+		)
 	}
 	as.SetBalance(balance)
 
 	// Burn value
 	if ts, err := icutils.DecreaseTotalSupply(s.cc, s.value); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(err.Error())
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to decrease totalSupply: from=%v value=%v",
+			s.from,
+			s.value,
+		)
 	} else {
 		icutils.OnBurn(s.cc, s.from, s.value, ts)
 	}
