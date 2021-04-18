@@ -91,6 +91,19 @@ func (b *Bond) String() string {
 	return fmt.Sprintf("{address=%s, value=%s}", b.Address, b.Value)
 }
 
+func (b *Bond) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Bond{address=%s value=%s}", b.Address, b.Value)
+		} else {
+			fmt.Fprintf(f, "Bond{%s %s}", b.Address, b.Value)
+		}
+	case 's':
+		fmt.Fprint(f, b.String())
+	}
+}
+
 type Bonds []*Bond
 
 func (bl Bonds) Has() bool {
