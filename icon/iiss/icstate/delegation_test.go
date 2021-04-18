@@ -212,3 +212,27 @@ func TestNewDelegations(t *testing.T) {
 		})
 	}
 }
+
+func TestDelegation_Format(t *testing.T) {
+	d1 := &Delegation{
+		Address: common.MustNewAddressFromString("hx1"),
+		Value:   common.NewHexInt(100),
+	}
+	d2 := &Delegation{
+		Address: common.MustNewAddressFromString("hx2"),
+		Value:   common.NewHexInt(200),
+	}
+	ds1 := Delegations{
+		d1, d2,
+	}
+
+	result1 := fmt.Sprintf("%v", d1)
+	expectedDelegation := "Delegation{hx0000000000000000000000000000000000000001 100}"
+
+	assert.Equal(t, result1, expectedDelegation)
+
+	result2 := fmt.Sprintf("%v", ds1)
+	expectedDs := "[Delegation{hx0000000000000000000000000000000000000001 100}" +
+		" Delegation{hx0000000000000000000000000000000000000002 200}]"
+	assert.Equal(t, result2, expectedDs)
+}

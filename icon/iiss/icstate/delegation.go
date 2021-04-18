@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -85,6 +86,23 @@ func (dg *Delegation) To() module.Address {
 
 func (dg *Delegation) Amount() *big.Int {
 	return dg.Value.Value()
+}
+
+func (dg *Delegation) String() string {
+	return fmt.Sprintf("{address=%s value=%s}", dg.Address, dg.Value)
+}
+
+func (dg *Delegation) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Delegation{address=%s value=%s}", dg.Address, dg.Value)
+		} else {
+			fmt.Fprintf(f, "Delegation{%s %s}", dg.Address, dg.Value)
+		}
+	case 's':
+		fmt.Fprint(f, dg.String())
+	}
 }
 
 type Delegations []*Delegation
