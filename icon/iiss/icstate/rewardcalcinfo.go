@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -137,4 +138,18 @@ func (rc *RewardCalcInfo) Start(
 	rc.isDecentralized = isDecentralized
 	rc.prevCalcReward.Set(calcReward)
 	rc.additionalReward.Set(additionalReward)
+}
+
+func (rc *RewardCalcInfo) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "rcInfo{start=%d period=%d isDecentralized=%v prevHeight=%d prevCalcReward=%s addReward=%s}",
+				rc.startHeight, rc.period, rc.isDecentralized, rc.prevHeight, rc.prevCalcReward, rc.additionalReward)
+		} else {
+			fmt.Fprintf(f, "rcInfo{%d %d %v %d %s %s}",
+				rc.startHeight, rc.period, rc.isDecentralized, rc.prevHeight, rc.prevCalcReward, rc.additionalReward)
+
+		}
+	}
 }

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -51,7 +52,7 @@ func TestRewardCalcInfo(t *testing.T) {
 	assert.True(t, rc1.Equal(rc2))
 	assert.Equal(t, startHeight, rc1.startHeight)
 	assert.Equal(t, prevHeight, rc1.prevHeight)
-	assert.Equal(t, startHeight - prevHeight, rc1.period)
+	assert.Equal(t, startHeight-prevHeight, rc1.period)
 	assert.Equal(t, int64(0), rc1.prevCalcReward.Int64())
 }
 
@@ -77,4 +78,12 @@ func TestRewardCalcInfo_Start(t *testing.T) {
 	assert.Equal(t, isDecentralized, rc1.isDecentralized)
 	assert.Equal(t, reward, rc1.prevCalcReward.Int64())
 	assert.Equal(t, additionalReward, rc1.additionalReward.Int64())
+}
+
+func TestRewardCalcInfo_Format(t *testing.T) {
+	rc := NewRewardCalcInfo()
+
+	result := fmt.Sprintf("%v", rc)
+	expected := "rcInfo{0 0 false 0 0 0}"
+	assert.Equal(t, result, expected)
 }
