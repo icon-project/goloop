@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -114,4 +115,17 @@ func (rf *RewardFund) GetPRepFund() *big.Int {
 func (rf *RewardFund) GetVoterFund() *big.Int {
 	fund := new(big.Int).Mul(rf.Iglobal, rf.Ivoter)
 	return fund.Div(fund, big.NewInt(100))
+}
+
+func (rf *RewardFund) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "RewardFund{Iglobal=%s Iprep=%s Icps=%s Irelay=%s Ivoter=%s}",
+				rf.Iglobal, rf.Iprep, rf.Icps, rf.Irelay, rf.Ivoter)
+		} else {
+			fmt.Fprintf(f, "RewardFund{%s %s %s %s %s}",
+				rf.Iglobal, rf.Iprep, rf.Icps, rf.Irelay, rf.Ivoter)
+		}
+	}
 }

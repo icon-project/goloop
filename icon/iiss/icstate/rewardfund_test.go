@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,17 @@ func TestRewardFund(t *testing.T) {
 	rf3 := rf.Clone()
 	assert.True(t, rf.Equal(rf3))
 
-	assert.Equal(t, int64(iglobal * iprep / 100), rf.GetPRepFund().Int64())
-	assert.Equal(t, int64(iglobal * ivoter / 100), rf.GetVoterFund().Int64())
+	assert.Equal(t, int64(iglobal*iprep/100), rf.GetPRepFund().Int64())
+	assert.Equal(t, int64(iglobal*ivoter/100), rf.GetVoterFund().Int64())
+}
+
+func TestRewardFund_Format(t *testing.T) {
+	rf := NewRewardFund()
+	rf.Iglobal.SetInt64(int64(100000))
+	rf.Iprep.SetInt64(int64(50))
+	rf.Ivoter.SetInt64(int64(50))
+
+	result := fmt.Sprintf("%v", rf)
+	expected := "RewardFund{100000 50 0 0 50}"
+	assert.Equal(t, result, expected)
 }
