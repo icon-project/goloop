@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -66,6 +67,17 @@ func (u *Unbond) Clone() *Unbond {
 	n.Value.Set(u.Value)
 	n.Expire = u.Expire
 	return n
+}
+
+func (u *Unbond) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Unbond{address=%s value=%s expire=%d}", u.Address, u.Value, u.Expire)
+		} else {
+			fmt.Fprintf(f, "Unbond{%s %s %d}", u.Address, u.Value, u.Expire)
+		}
+	}
 }
 
 type Unbonds []*Unbond

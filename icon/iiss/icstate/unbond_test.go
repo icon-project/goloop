@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"math/big"
 	"testing"
@@ -154,4 +155,29 @@ func TestUnbonds_Slash(t *testing.T) {
 			assert.Equal(t, out.length, len(ubl1))
 		})
 	}
+}
+
+func TestUnbond_Format(t *testing.T) {
+	ub1 := &Unbond{
+		Address: common.MustNewAddressFromString("hx1"),
+		Value:   big.NewInt(100),
+		Expire:  100,
+	}
+	ub2 := &Unbond{
+		Address: common.MustNewAddressFromString("hx2"),
+		Value:   big.NewInt(200),
+		Expire:  200,
+	}
+	ubl1 := Unbonds{
+		ub1, ub2,
+	}
+
+	result1 := fmt.Sprintf("%v", ub1)
+	expectedUnbond := "Unbond{hx0000000000000000000000000000000000000001 100 100}"
+	assert.Equal(t, result1, expectedUnbond)
+
+	result2 := fmt.Sprintf("%v", ubl1)
+	expectedUnbonds := "[Unbond{hx0000000000000000000000000000000000000001 100 100}" +
+		" Unbond{hx0000000000000000000000000000000000000002 200 200}]"
+	assert.Equal(t, result2, expectedUnbonds)
 }
