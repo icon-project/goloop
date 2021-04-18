@@ -43,6 +43,23 @@ func (r *RegInfo) String() string {
 	)
 }
 
+func (r *RegInfo) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"RegInfo{city=%s country=%s details=%s email=%s p2p=%s website=%s owner=%s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.owner)
+		} else {
+			fmt.Fprintf(f, "RegInfo{%s %s %s %s %s %s %s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.owner)
+		}
+	case 's':
+		fmt.Fprint(f, r.String())
+	}
+}
+
 func (r *RegInfo) UpdateRegInfo(prepInfo *icstate.PRepBase) {
 	if len(r.city) == 0 {
 		r.city = prepInfo.City()
