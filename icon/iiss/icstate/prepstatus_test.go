@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -339,8 +340,8 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
 			ps := &PRepStatus{
-				lastState:  in.lastState,
-				lastHeight: in.lastBH,
+				lastState:       in.lastState,
+				lastHeight:      in.lastBH,
 				vFailContOffset: in.vFailContOffset,
 			}
 
@@ -700,4 +701,17 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 			assert.Equal(t, out.getVFailCont, ps.GetVFailCont(bh))
 		})
 	}
+}
+
+func TestPRepStatus_Format(t *testing.T) {
+	ps := &PRepStatus{
+		owner:           common.MustNewAddressFromString("hx1"),
+		vFail:           1,
+		vTotal:          8,
+		vFailContOffset: 1,
+	}
+
+	result := fmt.Sprintf("%v", ps)
+	expected := "PRepStatus{hx0000000000000000000000000000000000000001 A M N 0 1 8 0 1}"
+	assert.Equal(t, result, expected)
 }
