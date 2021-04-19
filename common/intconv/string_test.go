@@ -3,8 +3,6 @@ package intconv
 import (
 	"math/big"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestParseUint(t *testing.T) {
@@ -67,14 +65,6 @@ func TestParseInt(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test10Int(t *testing.T) {
-	v1 := new(big.Int)
-	v, ok := v1.SetString("0_700", 0)
-	assert.True(t, ok)
-	assert.Zero(t, v.Cmp(big.NewInt(700)))
-	assert.Zero(t, v1.Cmp(big.NewInt(700)))
 }
 
 func TestParseBigInt(t *testing.T) {
