@@ -309,28 +309,3 @@ func TestBonds_Slash(t *testing.T) {
 		})
 	}
 }
-
-func TestBond_Format(t *testing.T) {
-	b1 := &Bond{
-		Address: common.MustNewAddressFromString("hx1"),
-		Value:   common.NewHexInt(100),
-	}
-	b2 := &Bond{
-		Address: common.MustNewAddressFromString("hx2"),
-		Value:   common.NewHexInt(200),
-	}
-	bl1 := Bonds{
-		b1, b2,
-	}
-
-	result1 := fmt.Sprintf("%v", b1)
-	expectedBond := "Bond{hx0000000000000000000000000000000000000001 100}"
-
-	assert.Equal(t, result1, expectedBond)
-
-	result2 := fmt.Sprintf("%v", bl1)
-	expectedBonds := "[Bond{hx0000000000000000000000000000000000000001 100}" +
-		" Bond{hx0000000000000000000000000000000000000002 200}]"
-
-	assert.Equal(t, result2, expectedBonds)
-}

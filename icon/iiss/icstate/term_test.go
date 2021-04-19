@@ -1,7 +1,6 @@
 package icstate
 
 import (
-	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -269,12 +268,4 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
 	assert.Equal(t, revision, nTerm.revision)
 	assert.Equal(t, FlagNextTerm, nTerm.flags&FlagNextTerm)
-}
-
-func TestTerm_Format(t *testing.T) {
-	term := newTerm(0, 10)
-
-	result := fmt.Sprintf("%v", term)
-	expected := "Term{0 0 9 10 0 0 0 0 0}"
-	assert.Equal(t, result, expected)
 }

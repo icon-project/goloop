@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -78,12 +77,4 @@ func TestRewardCalcInfo_Start(t *testing.T) {
 	assert.Equal(t, isDecentralized, rc1.isDecentralized)
 	assert.Equal(t, reward, rc1.prevCalcReward.Int64())
 	assert.Equal(t, additionalReward, rc1.additionalReward.Int64())
-}
-
-func TestRewardCalcInfo_Format(t *testing.T) {
-	rc := NewRewardCalcInfo()
-
-	result := fmt.Sprintf("%v", rc)
-	expected := "rcInfo{0 0 false 0 0 0}"
-	assert.Equal(t, result, expected)
 }
