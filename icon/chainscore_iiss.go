@@ -263,7 +263,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	}
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
+		return icmodule.IllegalArgumentError.Wrapf(
 			err,
 			"Failed to set delegation: from=%v",
 			s.from,
