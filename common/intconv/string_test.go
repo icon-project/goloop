@@ -3,6 +3,8 @@ package intconv
 import (
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseUint(t *testing.T) {
@@ -67,6 +69,14 @@ func TestParseInt(t *testing.T) {
 	}
 }
 
+func Test10Int(t *testing.T) {
+	v1 := new(big.Int)
+	v, ok := v1.SetString("0_700", 0)
+	assert.True(t, ok)
+	assert.Zero(t, v.Cmp(big.NewInt(700)))
+	assert.Zero(t, v1.Cmp(big.NewInt(700)))
+}
+
 func TestParseBigInt(t *testing.T) {
 	type args struct {
 		s string
@@ -89,8 +99,8 @@ func TestParseBigInt(t *testing.T) {
 		{"T7", args{"887234"}, big.NewInt(887234), false},
 		{"T8E", args{"0x-b"}, nil, true},
 		{"T9E", args{"0x-0"}, nil, true},
-		{"T10E", args{"0x_1_1"}, big.NewInt(0x11), false},
-		{"T11E", args{"10_000"}, big.NewInt(10_000), false},
+		{"T10", args{"0x_1_1"}, big.NewInt(0x11), false},
+		{"T11", args{"10_000"}, big.NewInt(10_000), false},
 		{"T12E", args{"10__000"}, nil, true},
 		{"T13E", args{"10_000_"}, nil, true},
 		{"T14E", args{"0b00"}, nil, true},
@@ -98,6 +108,13 @@ func TestParseBigInt(t *testing.T) {
 		{"T14E", args{"0B00"}, nil, true},
 		{"T15E", args{"0O12"}, nil, true},
 		{"T16E", args{"0X12"}, nil, true},
+		{"T17", args{"0700"}, big.NewInt(700), false},
+		{"T18", args{"0_700"}, big.NewInt(700), false},
+		{"T19", args{"-0_700"}, big.NewInt(-700), false},
+		{"T20E", args{"-_700"}, nil, true},
+		{"T21", args{"-0"}, big.NewInt(0), false},
+		{"T22E", args{"-0__100"}, nil, true},
+		{"T23E", args{"-0_100_"}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

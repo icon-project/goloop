@@ -3,8 +3,8 @@ package intconv
 import (
 	"encoding/hex"
 	"math/big"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -13,17 +13,26 @@ func FormatBigInt(i *big.Int) string {
 	return encodeHexNumber(i.Sign() < 0, i.Bytes())
 }
 
+var underDigit = regexp.MustCompile(`_([0-9]+)`)
+
 func ParseBigInt(i *big.Int, s string) error {
 	s2 := s
-	if s2[0] == '-' {
-		s2 = s[1:]
+	base := 0
+	if len(s2) > 0 && s2[0] == '-' {
+		s2 = s2[1:]
 	}
-	if strings.HasPrefix(s2, "0o") || strings.HasPrefix(s2, "0b") ||
-		strings.HasPrefix(s2, "0O") || strings.HasPrefix(s2, "0B") ||
-		strings.HasPrefix(s2, "0X") {
-		return errors.New("InvalidPrefix")
+	if len(s2) > 1 && s2[0] == '0' {
+		switch s2[1] {
+		case 'o', 'O', 'X', 'b', 'B':
+			return errors.New("InvalidPrefix")
+		case 'x':
+			break
+		default:
+			base = 10
+			s = underDigit.ReplaceAllString(s, "$1")
+		}
 	}
-	if _, ok := i.SetString(s, 0); ok {
+	if _, ok := i.SetString(s, base); ok {
 		return nil
 	}
 	return errors.New("InvalidNumberFormat")
