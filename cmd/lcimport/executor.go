@@ -257,21 +257,68 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	}
 }
 
-func (e *Executor) ProposeTransition(last *Transition, noCache bool) (*Transition, error) {
+func (e *Executor) PrefetchBlocks(last *Block, from, to int64, noCache bool) <-chan interface{} {
+	chn := make(chan interface{}, 64)
+	go func() {
+		for height := from; to < 0 || height <= to; height = height + 1 {
+			var blk *Block
+			if !noCache {
+				if b, err := e.GetBlockByHeight(height); err != nil {
+					chn <- err
+					break
+				} else {
+					if b != nil {
+						blk = b
+					} else {
+						noCache = true
+					}
+				}
+			}
+			if blk == nil {
+				if b, err := e.LoadBlockByHeight(last, height); err != nil {
+					chn <- err
+					break
+				} else {
+					blk = b
+				}
+			}
+			if blk != nil {
+				chn <- blk
+				last = blk
+			} else {
+				break
+			}
+		}
+		close(chn)
+	}()
+	return chn
+}
+
+func FetchBlock(chn <- chan interface{}) (*Block, error) {
+	out, ok := <- chn
+	if !ok {
+		return nil, errors.InvalidStateError.New("NoMoreBlock")
+	}
+	switch obj := out.(type) {
+	case *Block:
+		return obj, nil
+	case error:
+		return nil, obj
+	default:
+		panic("InvalidObjectType")
+	}
+}
+
+func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) (*Transition, error) {
 	var height int64
 	if last.Block != nil {
 		height = last.Block.Height() + 1
 	} else {
 		height = 0
 	}
-	blk, err := e.GetBlockByHeight(height)
+	blk, err := FetchBlock(chn)
 	if err != nil {
 		return nil, err
-	}
-	if blk == nil || noCache {
-		if blk, err = e.LoadBlockByHeight(last.Block, height); err != nil {
-			return nil, err
-		}
 	}
 	var csi module.ConsensusInfo
 	if height == 0 {
@@ -525,7 +572,7 @@ func D(v interface{}) string {
 	return ret
 }
 
-func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
+func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
@@ -539,11 +586,12 @@ func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 	if err != nil {
 		return err
 	}
+	chn := e.PrefetchBlocks(prevTR.Block, from, to, noCache)
 	callback := make(transitionCallback, 1)
 	var rps, tps float32
 	tm := new(lcimporter.TPSMeasure).Init(100)
 	for height := from; to < 0 || height <= to; height = height + 1 {
-		tr, err := e.ProposeTransition(prevTR, useCache)
+		tr, err := e.ProposeTransition(prevTR, chn)
 		if err != nil {
 			return errors.Wrapf(err, "FailureInPropose(height=%d)", height)
 		}
