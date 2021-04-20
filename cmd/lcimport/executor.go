@@ -577,8 +577,8 @@ func (e *Executor) Execute(from, to int64, useCache, dryRun bool) error {
 		}
 
 		if dryRun {
-			e.log.Infof("Check Block[ %9d ]", height, txTotal)
-			if err := tr.Block.CheckResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
+			e.log.Infof("Check Block[ %9d ] Tx[ %9d ]", height, txTotal)
+			if err := tr.Block.CheckResult(e.log, tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
 				return err
 			}
 		} else {

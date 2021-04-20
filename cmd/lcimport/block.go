@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -68,11 +69,20 @@ func (b *Block) SetResult(result []byte, validators module.ValidatorList, rcts m
 	b.validators = validators
 }
 
-func (b *Block) CheckResult(result []byte, validators module.ValidatorList, rcts module.ReceiptList, txTotal *big.Int) error {
+func (b *Block) CheckResult(logger log.Logger, result []byte, validators module.ValidatorList, rcts module.ReceiptList, txTotal *big.Int) error {
 	if len(b.result) == 0 {
 		return errors.New("NoStoredResult")
 	}
 	if !bytes.Equal(b.result, result) {
+		if rv, err :=ParseResult(b.result); err == nil && rv != nil {
+			js, _ := JSONMarshalIndent(rv)
+			logger.Errorf("Expected   : %s", js)
+		}
+
+		if rv, err :=ParseResult(result); err == nil && rv != nil {
+			js, _ := JSONMarshalIndent(rv)
+			logger.Errorf("Calculated : %s", js)
+		}
 		return errors.Errorf("DifferentResult(stored=%#x,real=%#x)", b.result, result)
 	}
 	if exp, real := b.validators.Hash(), validators.Hash(); !bytes.Equal(exp, real) {

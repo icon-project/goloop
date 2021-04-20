@@ -405,6 +405,37 @@ func showExtension(dbase db.Database, ess state.ExtensionSnapshot, params []stri
 	return nil
 }
 
+func showValidators(snapshot state.ValidatorSnapshot, params []string) error {
+	if len(params) < 1 {
+		fmt.Printf("%#x\n", snapshot.Hash())
+		return nil
+	}
+	param := params[0]
+	params = params[1:]
+	switch param {
+	case "all", "*":
+		vl := snapshot.Len()
+		for i := 0 ; i<vl ; i++ {
+			if validator, ok := snapshot.Get(i); ok {
+				fmt.Println(validator.Address())
+			}
+		}
+		return nil
+	default:
+		if idx, err := strconv.ParseInt(param, 0, 64); err != nil {
+			return errors.IllegalArgumentError.Wrapf(err, "InvalidIndex(param=%s)", param)
+		} else {
+			if validator, ok := snapshot.Get(int(idx)); ok {
+				fmt.Println(validator.Address())
+				return nil
+			} else {
+				return errors.IllegalArgumentError.Errorf("OutOfRange(idx=%d,len=%d)", idx, snapshot.Len())
+			}
+		}
+	}
+	return nil
+}
+
 func showWorld(wss state.WorldSnapshot, params []string) error {
 	if len(params) < 1 {
 		return errors.IllegalArgumentError.New("" +
@@ -415,6 +446,8 @@ func showWorld(wss state.WorldSnapshot, params []string) error {
 	switch param {
 	case "ext":
 		return showExtension(wss.Database(), wss.GetExtensionSnapshot(), params)
+	case "validators", "val":
+		return showValidators(wss.GetValidatorSnapshot(), params)
 	default:
 		addr, err := common.NewAddressFromString(param)
 		if err != nil {
@@ -426,22 +459,65 @@ func showWorld(wss state.WorldSnapshot, params []string) error {
 	}
 }
 
-func showBlockDetail(blk *Block) error {
-	fmt.Printf("Block[%d] - %#x\n", blk.Height(), blk.ID())
-	var values [][]byte
-	result := blk.Result()
-	if len(result) > 0 {
-		if _, err := codec.BC.UnmarshalFromBytes(result, &values); err != nil {
+type ExtensionValues struct {
+	State  common.HexBytes `json:"state"`
+	Front  common.HexBytes `json:"front"`
+	Back   common.HexBytes `json:"back"`
+	Reward common.HexBytes `json:"reward"`
+}
+
+func (ev *ExtensionValues) RLPDecodeSelf(d codec.Decoder) error {
+	var bs []byte
+	if err := d.Decode(&bs); err != nil {
+		return err
+	} else {
+		var inner [4]common.HexBytes
+		if _, err := codec.BC.UnmarshalFromBytes(bs, &inner); err != nil {
 			return err
 		}
-		fmt.Printf("- World State Hash  : %#x\n", values[0])
-		fmt.Printf("- Patch Result Hash : %#x\n", values[1])
-		fmt.Printf("- Normal Result Hash: %#x\n", values[2])
-		if len(values) > 3 {
-			fmt.Printf("- Extension Data    : %#x\n", values[3])
-		}
+		ev.State = inner[0]
+		ev.Front = inner[1]
+		ev.Back = inner[2]
+		ev.Reward = inner[3]
+		return nil
 	}
-	fmt.Printf("- Total Transactions: %d\n", blk.TxTotal())
+}
+
+type ResultValues struct {
+	State          common.HexBytes  `json:"stateHash"`
+	PatchReceipts  common.HexBytes  `json:"patchReceipts"`
+	NormalReceipts common.HexBytes  `json:"normalReceipts"`
+	ExtensionData  *ExtensionValues `json:"extensionData,omitempty"`
+}
+
+func ParseResult(result []byte) (*ResultValues, error) {
+	var rv *ResultValues
+	if _, err := codec.BC.UnmarshalFromBytes(result, &rv); err != nil {
+		return nil, err
+	} else {
+		return rv, nil
+	}
+}
+
+func showBlockDetail(blk *Block) error {
+	fmt.Printf("Block[%d] - %#x\n", blk.Height(), blk.ID())
+	result := blk.Result()
+	if len(result) > 0 {
+		rv, err := ParseResult(result)
+		if err != nil {
+			return err
+		}
+		js, err := JSONMarshalIndent(rv)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("- Result : %s\n", js)
+	}
+	if vh := blk.validators.Hash() ; len(vh) > 0 {
+		fmt.Printf("- Validator : %#x\n", vh)
+	}
+	fmt.Printf("- Block Transactions : %d\n", blk.TxCount())
+	fmt.Printf("- Total Transactions : %d\n", blk.TxTotal())
 	return nil
 }
 
