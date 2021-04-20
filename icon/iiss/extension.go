@@ -747,8 +747,7 @@ func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bo
 }
 
 func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
-	term := s.State.GetTerm()
-	if term == nil || !term.IsDecentralized() {
+	if !s.IsDecentralized() {
 		return nil
 	}
 	is, err := s.State.GetIssue()
@@ -791,7 +790,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	var totalSupply *big.Int
 	mainPRepCount := int(s.State.GetMainPRepCount())
 	subPRepCount := int(s.State.GetSubPRepCount())
-	isDecentralized := s.IsDecentralized()
+	isDecentralized := s.IsDecentralized() || s.IsDecentralizationTriggered(wc.Revision().Value())
 
 	if isDecentralized {
 		// Assign grades to PReps ordered by bondedDelegation
@@ -835,27 +834,29 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 	)
 
 	// Take prep snapshots only if mainPReps exist
-	mainPRepCount := 0
-	if s.pm.GetPRepSize(icstate.Main) > 0 {
-		size := icutils.Min(s.pm.Size(), int(s.State.GetPRepCount()))
-		if size > 0 {
-			prepSnapshots := make(icstate.PRepSnapshots, size, size)
-			br := s.GetBondRequirement()
-			for i := 0; i < size; i++ {
-				prep := s.pm.GetPRepByIndex(i)
-				prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
-				if prep.Grade() == icstate.Main {
-					mainPRepCount++
+	if revision >= icmodule.RevisionDecentralize {
+		mainPRepCount := 0
+		if s.pm.GetPRepSize(icstate.Main) > 0 {
+			size := icutils.Min(s.pm.Size(), int(s.State.GetPRepCount()))
+			if size > 0 {
+				prepSnapshots := make(icstate.PRepSnapshots, size, size)
+				br := s.GetBondRequirement()
+				for i := 0; i < size; i++ {
+					prep := s.pm.GetPRepByIndex(i)
+					prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.PRepStatus, br)
+					if prep.Grade() == icstate.Main {
+						mainPRepCount++
+					}
 				}
-			}
 
-			nextTerm.SetMainPRepCount(mainPRepCount)
-			nextTerm.SetPRepSnapshots(prepSnapshots)
+				nextTerm.SetMainPRepCount(mainPRepCount)
+				nextTerm.SetPRepSnapshots(prepSnapshots)
+			}
 		}
-	}
-	irep := s.pm.CalculateIRep(revision)
-	if irep != nil {
-		nextTerm.SetIrep(irep)
+		irep := s.pm.CalculateIRep(revision)
+		if irep != nil {
+			nextTerm.SetIrep(irep)
+		}
 	}
 	rrep := s.pm.CalculateRRep(totalSupply, revision)
 	if rrep != nil {
@@ -948,7 +949,18 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 
 func (s *ExtensionStateImpl) IsDecentralized() bool {
 	term := s.State.GetTerm()
-	return term.IsDecentralized() || s.pm.Size() >= int(s.State.GetMainPRepCount())
+	if term == nil {
+		return false
+	}
+	return term.IsDecentralized()
+}
+
+func (s *ExtensionStateImpl) IsDecentralizationTriggered(revision int) bool {
+	if revision >= icmodule.RevisionDecentralize && s.pm.Size() >= int(s.State.GetMainPRepCount()) {
+		// TODO check delegated amount of 22nd P-Reps
+		return true
+	}
+	return false
 }
 
 func (s *ExtensionStateImpl) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {

@@ -19,12 +19,13 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"math/big"
 )
 
 type IssuePRepJSON struct {
@@ -171,10 +172,10 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 
 //GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
-	term := es.State.GetTerm()
-	if term == nil || !term.IsDecentralized() {
+	if !es.IsDecentralized() {
 		return nil, nil
 	}
+	term := es.State.GetTerm()
 	issueInfo, _ := es.State.GetIssue()
 	if term.GetIISSVersion() == icstate.IISSVersion1 {
 		return getIssueDataV1(es, term, es.pm.TotalDelegated())

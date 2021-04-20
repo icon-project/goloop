@@ -18,6 +18,7 @@ package icon
 
 import (
 	"encoding/json"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -63,7 +64,7 @@ func (p *platform) ToRevision(value int) module.Revision {
 func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction, error) {
 	// calculate issued i-score and amount balance. No changes on world context.
 	es := p.getExtensionState(wc, nil)
-	if es == nil || !es.State.GetTerm().IsDecentralized() {
+	if es == nil || !es.IsDecentralized() {
 		return nil, nil
 	}
 
