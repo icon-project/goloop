@@ -629,6 +629,7 @@ func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
 			if err := tr.Block.CheckResult(e.log, tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
 				return err
 			}
+			service.FinalizeTransition(tr.Transition, module.FinalizeResult)
 		} else {
 			e.log.Infof("Finalize Block[ %9d ] Tx[ %9d ]", height, txTotal)
 			tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
