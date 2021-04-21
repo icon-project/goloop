@@ -73,7 +73,7 @@ consistentValidationPenaltyMask defines the number of opportunities of it.
 This defines percentage of bond slashed when it gets a penalty.
 
 ### rewardFund
-rewardFund variables are newly introduced in ICON2. Please refer to the document of ICON2.(link needed)
+rewardFund variables are newly introduced in ICON2. Please refer to the document of ICON2.
 
 ## Example
 ~~~json
