@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 )
@@ -46,7 +45,6 @@ var AccountDictPrefix = containerdb.ToKey(
 type Account struct {
 	icobject.NoDatabase
 	StateAndSnapshot
-	address module.Address
 
 	stake       *big.Int
 	unstakes    Unstakes
@@ -58,22 +56,12 @@ type Account struct {
 	unbonds     Unbonds
 }
 
-func (a *Account) Address() module.Address {
-	return a.address
-}
-
-func (a *Account) SetAddress(address module.Address) {
-	a.checkWritable()
-	a.address = address
-}
-
 func (a *Account) equal(other *Account) bool {
 	if a == other {
 		return true
 	}
 
-	return icutils.EqualAddress(a.address, other.address) &&
-		a.stake.Cmp(other.stake) == 0 &&
+	return a.stake.Cmp(other.stake) == 0 &&
 		a.unstakes.Equal(other.unstakes) &&
 		a.delegating.Cmp(other.delegating) == 0 &&
 		a.delegations.Equal(other.delegations) &&
@@ -97,7 +85,6 @@ func (a *Account) Equal(object icobject.Impl) bool {
 
 func (a *Account) Set(other *Account) {
 	a.checkWritable()
-	a.address = other.address
 
 	a.stake.Set(other.stake)
 	a.unstakes = other.unstakes.Clone()
@@ -111,7 +98,6 @@ func (a *Account) Set(other *Account) {
 
 func (a *Account) Clone() *Account {
 	return &Account{
-		address:     a.address,
 		stake:       new(big.Int).Set(a.stake),
 		unstakes:    a.unstakes.Clone(),
 		delegating:  new(big.Int).Set(a.delegating),
@@ -156,7 +142,6 @@ func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (a *Account) Clear() {
 	a.checkWritable()
-	a.address = nil
 	a.stake = big.NewInt(0)
 	a.unstakes = nil
 	a.delegating = big.NewInt(0)
@@ -168,7 +153,7 @@ func (a *Account) Clear() {
 }
 
 func (a *Account) IsEmpty() bool {
-	return a.address == nil
+	return a.stake.Cmp(big.NewInt(0)) == 0 && len(a.unstakes) == 0
 }
 
 // SetStake set stake Value
@@ -367,7 +352,7 @@ func (a *Account) RemoveUnbonding(height int64) error {
 	}
 
 	if len(tmp) == len(a.unbonds) {
-		return errors.Errorf("%s does not have unbonding entry with expire(%d)", a.address, height)
+		return errors.Errorf("does not have unbonding entry with expire(%d)", height)
 	}
 	a.unbonds = tmp
 	a.unbonding.Sub(a.Unbond(), removed)
@@ -390,9 +375,9 @@ func (a *Account) RemoveUnstaking(height int64) (ra *big.Int, err error) {
 	ul := len(a.unstakes)
 
 	if tl == ul {
-		err = errors.Errorf("%s does not have unstaking timer at %d", a.address.String(), height)
+		err = errors.Errorf("does not have unstaking timer at %d", height)
 	} else if tl != ul-1 {
-		err = errors.Errorf("%s has too many unstaking timer at %d", a.address.String(), height)
+		err = errors.Errorf("has too many unstaking timer at %d", height)
 	}
 	a.unstakes = tmp
 
@@ -428,8 +413,8 @@ func (a *Account) GetSnapshot() *Account {
 
 func (a *Account) String() string {
 	return fmt.Sprintf(
-		"addr=%s stake=%s unstake=%s delegating=%s bonding=%s unbonding=%s",
-		a.address, a.stake, a.unstakes.GetUnstakeAmount(), a.delegating, a.bonding, a.unbonding,
+		"stake=%s unstake=%s delegating=%s bonding=%s unbonding=%s",
+		a.stake, a.unstakes.GetUnstakeAmount(), a.delegating, a.bonding, a.unbonding,
 	)
 }
 
@@ -455,7 +440,6 @@ func newAccountWithTag(_ icobject.Tag) *Account {
 
 func newAccount(addr module.Address) *Account {
 	return &Account{
-		address:    addr,
 		stake:      new(big.Int),
 		delegating: new(big.Int),
 		bonding:    new(big.Int),

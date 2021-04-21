@@ -48,7 +48,7 @@ func (c *AccountCache) Get(owner module.Address, createIfNotExist bool) *Account
 			// return nil
 		}
 	} else {
-		account = ToAccount(o.Object(), owner)
+		account = ToAccount(o.Object())
 		c.accounts[key] = account
 	}
 	return account
@@ -69,7 +69,7 @@ func (c *AccountCache) Reset() {
 		if value == nil {
 			delete(c.accounts, key)
 		} else {
-			account.Set(ToAccount(value.Object(), addr))
+			account.Set(ToAccount(value.Object()))
 		}
 	}
 }
@@ -86,10 +86,13 @@ func (c *AccountCache) Flush() {
 			}
 			delete(c.accounts, k)
 		} else {
-			key := account.address
+			key, err := common.BytesToAddress([]byte(k))
+			if err != nil {
+				panic(errors.Errorf("AccountCache is broken: %s", k))
+			}
 			o := icobject.New(TypeAccount, account.Clone())
 			if err := c.dict.Set(key, o); err != nil {
-				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
+				log.Errorf("Failed to set state for %x, err+%+v", key, err)
 			}
 		}
 	}
