@@ -567,6 +567,44 @@ func (term *Term) String() string {
 	)
 }
 
+func (term *Term) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"Term{seq=%d start=%d end=%d period=%d totalSupply=%s totalDelegated=%s "+
+					"prepSnapshot=%d irep=%s rrep=%s}",
+				term.sequence,
+				term.startHeight,
+				term.GetEndBlockHeight(),
+				term.period,
+				term.totalSupply,
+				term.totalDelegated,
+				len(term.prepSnapshots),
+				term.irep,
+				term.rrep,
+			)
+		} else {
+			fmt.Fprintf(
+				f,
+				"Term{%d %d %d %d %s %s %d %s %s}",
+				term.sequence,
+				term.startHeight,
+				term.GetEndBlockHeight(),
+				term.period,
+				term.totalSupply,
+				term.totalDelegated,
+				len(term.prepSnapshots),
+				term.irep,
+				term.rrep,
+			)
+		}
+	case 's':
+		fmt.Fprint(f, term.String())
+	}
+}
+
 func (term *Term) IsDecentralized() bool {
 	if term == nil {
 		return false

@@ -535,6 +535,43 @@ func (ps *PRepStatus) String() string {
 	)
 }
 
+func (ps *PRepStatus) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"PRepStatus{owner=%s status=%s grade=%s lastState=%s lastHeight=%d "+
+					"vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d}",
+				ps.owner,
+				ps.status,
+				ps.grade,
+				ps.lastState,
+				ps.lastHeight,
+				ps.vFail,
+				ps.vTotal,
+				ps.GetVPenaltyCount(),
+				ps.vFailContOffset,
+			)
+		} else {
+			fmt.Fprintf(
+				f, "PRepStatus{%s %s %s %s %d %d %d %d %d}",
+				ps.owner,
+				ps.status,
+				ps.grade,
+				ps.lastState,
+				ps.lastHeight,
+				ps.vFail,
+				ps.vTotal,
+				ps.GetVPenaltyCount(),
+				ps.vFailContOffset,
+			)
+		}
+	case 's':
+		fmt.Fprint(f, ps.String())
+	}
+}
+
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
 	return NewPRepStatus(nil)
 }

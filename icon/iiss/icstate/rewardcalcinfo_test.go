@@ -51,7 +51,7 @@ func TestRewardCalcInfo(t *testing.T) {
 	assert.True(t, rc1.Equal(rc2))
 	assert.Equal(t, startHeight, rc1.startHeight)
 	assert.Equal(t, prevHeight, rc1.prevHeight)
-	assert.Equal(t, startHeight - prevHeight, rc1.period)
+	assert.Equal(t, startHeight-prevHeight, rc1.period)
 	assert.Equal(t, int64(0), rc1.prevCalcReward.Int64())
 }
 

@@ -267,5 +267,5 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	assert.True(t, rf.Equal(nTerm.rewardFund))
 	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
 	assert.Equal(t, revision, nTerm.revision)
-	assert.Equal(t, FlagNextTerm, nTerm.flags & FlagNextTerm)
+	assert.Equal(t, FlagNextTerm, nTerm.flags&FlagNextTerm)
 }

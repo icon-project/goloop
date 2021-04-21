@@ -641,6 +641,55 @@ func (c *config) String() string {
 	)
 }
 
+func (c *config) Format(f fmt.State, r rune) {
+	switch r {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"Config{termPeriod=%s mainPReps=%s subPReps=%s "+
+					"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
+					"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s %v}",
+				c.TermPeriod,
+				c.MainPRepCount,
+				c.SubPRepCount,
+				c.Irep,
+				c.Rrep,
+				c.BondRequirement,
+				c.UnbondingPeriodMultiplier,
+				c.UnstakeSlotMax,
+				c.UnbondingMax,
+				c.ValidationPenaltyCondition,
+				c.ConsistentValidationPenaltyCondition,
+				c.ConsistentValidationPenaltyMask,
+				c.ConsistentValidationPenaltySlashRatio,
+				c.RewardFund,
+			)
+		} else {
+			fmt.Fprintf(
+				f,
+				"Config{%s %s %s %s %s %s %s %s %s %s %s %s %s %v}",
+				c.TermPeriod,
+				c.MainPRepCount,
+				c.SubPRepCount,
+				c.Irep,
+				c.Rrep,
+				c.BondRequirement,
+				c.UnbondingPeriodMultiplier,
+				c.UnstakeSlotMax,
+				c.UnbondingMax,
+				c.ValidationPenaltyCondition,
+				c.ConsistentValidationPenaltyCondition,
+				c.ConsistentValidationPenaltyMask,
+				c.ConsistentValidationPenaltySlashRatio,
+				c.RewardFund,
+			)
+		}
+	case 's':
+		fmt.Fprint(f, c.String())
+	}
+}
+
 type rewardFund struct {
 	Iglobal *common.HexInt `json:"Iglobal"`
 	Iprep   *common.HexInt `json:"Iprep"`
@@ -654,6 +703,21 @@ func (r rewardFund) String() string {
 		"Iglobal=%s Iprep=%s Icps=%s Irelay=%s Ivoter=%s",
 		r.Iglobal, r.Iprep, r.Icps, r.Irelay, r.Ivoter,
 	)
+}
+
+func (r rewardFund) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "rewardFund{Iglobal=%s Iprep=%s Icps=%s Irelay=%s Ivoter=%s}",
+				r.Iglobal, r.Iprep, r.Icps, r.Irelay, r.Ivoter)
+		} else {
+			fmt.Fprintf(f, "rewardFund{%s %s %s %s %s}",
+				r.Iglobal, r.Iprep, r.Icps, r.Irelay, r.Ivoter)
+		}
+	case 's':
+		fmt.Fprint(f, r.String())
+	}
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {

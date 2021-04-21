@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -53,6 +54,17 @@ func (v *Vote) Equal(v2 *Vote) bool {
 
 func (v *Vote) Clone() *Vote {
 	return NewVote(v.Address, v.Value)
+}
+
+func (v *Vote) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Vote{address=%s value=%s}", v.Address, v.Value)
+		} else {
+			fmt.Fprintf(f, "Vote{%s %s}", v.Address, v.Value)
+		}
+	}
 }
 
 type VoteList []*Vote

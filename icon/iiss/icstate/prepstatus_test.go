@@ -339,8 +339,8 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
 			ps := &PRepStatus{
-				lastState:  in.lastState,
-				lastHeight: in.lastBH,
+				lastState:       in.lastState,
+				lastHeight:      in.lastBH,
 				vFailContOffset: in.vFailContOffset,
 			}
 

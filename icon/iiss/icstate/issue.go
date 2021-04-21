@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -101,4 +102,17 @@ func (i *Issue) Clone() *Issue {
 func (i *Issue) ResetTotalIssued() {
 	i.PrevTotalIssued.Set(i.TotalIssued)
 	i.TotalIssued.SetInt64(0)
+}
+
+func (i *Issue) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Issue{totalIssued=%s prevTotalIssued=%s overIssued=%s iscoreRemains=%s prevBlockFee=%s}",
+				i.TotalIssued, i.PrevTotalIssued, i.OverIssued, i.IScoreRemains, i.PrevBlockFee)
+		} else {
+			fmt.Fprintf(f, "Issue{%s %s %s %s %s}",
+				i.TotalIssued, i.PrevTotalIssued, i.OverIssued, i.IScoreRemains, i.PrevBlockFee)
+		}
+	}
 }

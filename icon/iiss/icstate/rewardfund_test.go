@@ -42,6 +42,6 @@ func TestRewardFund(t *testing.T) {
 	rf3 := rf.Clone()
 	assert.True(t, rf.Equal(rf3))
 
-	assert.Equal(t, int64(iglobal * iprep / 100), rf.GetPRepFund().Int64())
-	assert.Equal(t, int64(iglobal * ivoter / 100), rf.GetVoterFund().Int64())
+	assert.Equal(t, int64(iglobal*iprep/100), rf.GetPRepFund().Int64())
+	assert.Equal(t, int64(iglobal*ivoter/100), rf.GetVoterFund().Int64())
 }
