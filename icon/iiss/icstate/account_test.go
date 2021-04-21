@@ -98,8 +98,7 @@ func TestAccount_Bytes(t *testing.T) {
 }
 
 func TestAccount_SetStake(t *testing.T) {
-	address := common.MustNewAddressFromString("hx1")
-	account := newAccount(address)
+	account := newAccount()
 
 	assert.Equal(t, 0, account.Stake().Cmp(new(big.Int)))
 

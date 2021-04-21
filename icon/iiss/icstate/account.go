@@ -438,7 +438,7 @@ func newAccountWithTag(_ icobject.Tag) *Account {
 	return &Account{}
 }
 
-func newAccount(addr module.Address) *Account {
+func newAccount() *Account {
 	return &Account{
 		stake:      new(big.Int),
 		delegating: new(big.Int),

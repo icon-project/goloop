@@ -41,7 +41,7 @@ func (c *AccountCache) Get(owner module.Address, createIfNotExist bool) *Account
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			account = newAccount(owner)
+			account = newAccount()
 			//c.Add(account)
 			c.accounts[key] = account
 		} else {
