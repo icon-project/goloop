@@ -618,16 +618,14 @@ func (t *transition) finalizePatchTransaction() error {
 }
 
 func (t *transition) finalizeResult() error {
-	// TODO check worldTS
 	var worldTS time.Time
 	startTS := time.Now()
 	if t.syncer != nil {
-		log.Debugf("finalizeResult with syncer\n")
+		worldTS = time.Now()
 		if err := t.syncer.Finalize(); err != nil {
-			log.Errorf("Failed to finalize with state syncer err(%+v)\n", err)
-			return err
+			return errors.Wrap(err, "Fail to finalize with syncer")
 		}
-		return nil
+		t.parent = nil
 	} else {
 		if err := t.worldSnapshot.Flush(); err != nil {
 			return err
