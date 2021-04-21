@@ -76,20 +76,17 @@ func (c *AccountCache) Reset() {
 
 func (c *AccountCache) Flush() {
 	for k, account := range c.accounts {
+		key, err := common.BytesToAddress([]byte(k))
+		if err != nil {
+			panic(errors.Errorf("AccountCache is broken: %s", k))
+		}
+
 		if account.IsEmpty() {
-			key, err := common.BytesToAddress([]byte(k))
-			if err != nil {
-				panic(errors.Errorf("AccountCache is broken: %s", k))
-			}
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete Account key %x, err+%+v", key, err)
 			}
 			delete(c.accounts, k)
 		} else {
-			key, err := common.BytesToAddress([]byte(k))
-			if err != nil {
-				panic(errors.Errorf("AccountCache is broken: %s", k))
-			}
 			o := icobject.New(TypeAccount, account.Clone())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set state for %x, err+%+v", key, err)
