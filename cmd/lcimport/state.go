@@ -328,7 +328,7 @@ var extensionStageShortcuts = map[string]shortcut{
 	"event":     {[]string{"rlp", "0x20"}, []string{"obj"}}, // <offset>/<index>
 	"block":     {[]string{"rlp", "0x30"}, []string{"obj"}}, // <offset>
 	"validator": {[]string{"rlp", "0x40"}, []string{"obj"}}, // <index>
-	"events":    {[]string{"ph", "0x70", "events"}, []string{"int"}},
+	"events":    {[]string{"ph", "0x70", "events"}, []string{"obj"}},
 	"global":    {[]string{"ph", "0x70", "global"}, []string{"obj"}},
 }
 
@@ -499,7 +499,7 @@ func getDiffHandlerFor(logger log.Logger, name string) func(op int, key []byte, 
 		case -1:
 			logger.Errorf("%s [-] key=%#x value=%+v\n", name, key, exp)
 		case 0:
-			logger.Errorf("%s [=] key=%#x value=%+v value=%+v\n", name, key, exp, real)
+			logger.Errorf("%s [=] key=%#x exp=%+v real=%+v\n", name, key, exp, real)
 		case 1:
 			logger.Errorf("%s [+] key=%#x value=%+v\n", name, key, real)
 		}
