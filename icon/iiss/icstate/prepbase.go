@@ -40,7 +40,6 @@ type PRepBase struct {
 
 	// memory variables
 	readonly bool
-	owner    module.Address
 
 	// database variables
 	name        string
@@ -101,8 +100,7 @@ func (p *PRepBase) equal(other *PRepBase) bool {
 		return true
 	}
 
-	return icutils.EqualAddress(p.owner, other.owner) &&
-		p.name == other.name &&
+	return p.name == other.name &&
 		p.country == other.country &&
 		p.city == other.city &&
 		p.email == other.email &&
@@ -115,26 +113,9 @@ func (p *PRepBase) equal(other *PRepBase) bool {
 		p.bonderList.Equal(other.bonderList)
 }
 
-func (p *PRepBase) Owner() module.Address {
-	return p.owner
-}
-
-func (p *PRepBase) SetOwner(owner module.Address) {
-	p.checkWritable()
-	p.owner = owner
-}
-
-func (p *PRepBase) GetNode() module.Address {
-	if p.node != nil {
-		return p.node
-	}
-	return p.owner
-}
-
 func (p *PRepBase) Set(other *PRepBase) {
 	p.checkWritable()
 
-	p.owner = other.owner
 	p.name = other.name
 	p.country = other.country
 	p.city = other.city
@@ -151,7 +132,6 @@ func (p *PRepBase) Set(other *PRepBase) {
 func (p *PRepBase) Clone() *PRepBase {
 	return &PRepBase{
 		readonly:    false,
-		owner:       p.owner,
 		name:        p.name,
 		city:        p.city,
 		country:     p.country,
@@ -178,7 +158,6 @@ func (p *PRepBase) GetSnapshot() *PRepBase {
 func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["name"] = p.name
-	jso["address"] = p.owner
 	jso["email"] = p.email
 	jso["website"] = p.website
 	jso["country"] = p.country
@@ -255,7 +234,6 @@ func (p *PRepBase) Equal(object icobject.Impl) bool {
 func (p *PRepBase) Clear() {
 	p.checkWritable()
 
-	p.owner = nil
 	p.city = ""
 	p.country = ""
 	p.details = ""
@@ -269,7 +247,8 @@ func (p *PRepBase) Clear() {
 }
 
 func (p *PRepBase) IsEmpty() bool {
-	return p == nil || p.owner == nil
+	o := NewPRepBase()
+	return p.equal(o)
 }
 
 func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
@@ -307,10 +286,9 @@ func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
 	return &PRepBase{irep: new(big.Int)}
 }
 
-func NewPRepBase(owner module.Address) *PRepBase {
+func NewPRepBase() *PRepBase {
 	return &PRepBase{
-		owner: owner,
-		irep:  new(big.Int),
+		irep: new(big.Int),
 	}
 }
 

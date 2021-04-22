@@ -35,7 +35,6 @@ func TestPRepBase_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	ss1 := newPRepBaseWithTag(icobject.MakeTag(TypePRepBase, prepVersion))
 	n := "name"
-	ss1.SetOwner(owner)
 	ss1.name = n
 
 	o1 := icobject.New(TypePRepBase, ss1)
@@ -51,6 +50,5 @@ func TestPRepBase_Bytes(t *testing.T) {
 
 	ss2 := ToPRepBase(o2, owner)
 	assert.Equal(t, true, ss1.Equal(ss2))
-	assert.Equal(t, true, ss1.owner.Equal(owner))
-	assert.Equal(t, true, ss2.owner.Equal(owner))
+	assert.Equal(t, true, ss2.Equal(ss1))
 }

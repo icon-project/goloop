@@ -135,26 +135,36 @@ func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string
 }
 
 type PRep struct {
+	owner module.Address
+
 	*icstate.PRepBase
 	*icstate.PRepStatus
 }
 
 func (p *PRep) Owner() module.Address {
-	return p.PRepBase.Owner()
+	return p.owner
+}
+
+func (p *PRep) GetNode() module.Address {
+	if p.Node() != nil {
+		return p.Node()
+	}
+	return p.owner
 }
 
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
+	jso["address"] = p.owner
+	return jso
 }
 
 func (p *PRep) Clone() *PRep {
-	return newPRep(p.Owner(), p.PRepBase.Clone(), p.PRepStatus.Clone())
+	return newPRep(p.owner, p.PRepBase.Clone(), p.PRepStatus.Clone())
 }
 
 func newPRep(owner module.Address, pb *icstate.PRepBase, ps *icstate.PRepStatus) *PRep {
-	pb.SetOwner(owner)
 	ps.SetOwner(owner)
-	return &PRep{PRepBase: pb, PRepStatus: ps}
+	return &PRep{owner: owner, PRepBase: pb, PRepStatus: ps}
 }
 
 func setPRep(pb *icstate.PRepBase, regInfo *RegInfo) error {
@@ -231,7 +241,7 @@ func (pm *PRepManager) getPRepFromState(owner module.Address) *PRep {
 }
 
 func (pm *PRepManager) appendPRep(p *PRep) {
-	pm.prepMap[icutils.ToKey(p.Owner())] = p
+	pm.prepMap[icutils.ToKey(p.owner)] = p
 	if p.PRepStatus.Status() == icstate.Active {
 		pm.orderedPReps = append(pm.orderedPReps, p)
 		pm.totalBonded.Add(pm.totalBonded, p.Bonded())
@@ -284,7 +294,7 @@ func (pm *PRepManager) sort() {
 			return false
 		}
 
-		return bytes.Compare(pm.orderedPReps[i].Owner().Bytes(), pm.orderedPReps[j].Owner().Bytes()) > 0
+		return bytes.Compare(pm.orderedPReps[i].owner.Bytes(), pm.orderedPReps[j].owner.Bytes()) > 0
 	})
 }
 
@@ -538,7 +548,7 @@ func (pm *PRepManager) removeFromOrderedPReps(owner module.Address) error {
 	size := len(pm.orderedPReps)
 
 	for i = 0; i < size; i++ {
-		if owner.Equal(pm.orderedPReps[i].Owner()) {
+		if owner.Equal(pm.orderedPReps[i].owner) {
 			break
 		}
 	}

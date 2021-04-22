@@ -98,7 +98,6 @@ func ToPRepBase(object trie.Object, owner module.Address) *PRepBase {
 	}
 	pb := object.(*icobject.Object).Real().(*PRepBase)
 	pb = pb.Clone()
-	pb.SetOwner(owner)
 	return pb
 }
 
