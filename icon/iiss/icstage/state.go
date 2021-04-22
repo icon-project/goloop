@@ -94,8 +94,9 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 	}
 
 	index := size.Value.Int64()
-	size.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(size)
+	ns := newEventSize(0)
+	ns.Value.Add(size.Value, intconv.BigIntOne)
+	return index, s.setEventSize(ns)
 }
 
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
@@ -114,8 +115,9 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 	}
 
 	index := size.Value.Int64()
-	size.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(size)
+	ns := newEventSize(0)
+	ns.Value.Add(size.Value, intconv.BigIntOne)
+	return index, s.setEventSize(ns)
 }
 
 func (s *State) AddEventEnable(offset int, target module.Address, flag EnableFlag) (int64, error) {
@@ -134,8 +136,9 @@ func (s *State) AddEventEnable(offset int, target module.Address, flag EnableFla
 	}
 
 	index := size.Value.Int64()
-	size.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(size)
+	ns := newEventSize(0)
+	ns.Value.Add(size.Value, intconv.BigIntOne)
+	return index, s.setEventSize(ns)
 }
 
 func (s *State) GetEventSize() (*EventSize, error) {
