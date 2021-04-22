@@ -78,6 +78,39 @@ type transitionID struct {
 	dummy int
 }
 
+type transitionContext struct {
+	db    db.Database
+	cm    contract.ContractManager
+	eem   eeproxy.Manager
+	chain module.Chain
+	log   log.Logger
+	plt   Platform
+	tsc   *TxTimestampChecker
+	sass  state.AccountSnapshot
+}
+
+func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	if ass != nil && ass.StorageChangedAfter(tc.sass) {
+		regulator := tc.chain.Regulator()
+		as := scoredb.NewStateStoreWith(ass)
+		timeout := scoredb.NewVarDB(as, state.VarCommitTimeout).Int64()
+		interval := scoredb.NewVarDB(as, state.VarBlockInterval).Int64()
+		if timeout > 0 || interval > 0 {
+			regulator.SetBlockInterval(
+				time.Duration(interval)*time.Millisecond,
+				time.Duration(timeout)*time.Millisecond)
+		}
+
+		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()
+		if tsThreshold > 0 {
+			tc.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
+		}
+		tc.sass = ass
+	}
+	tc.plt.OnExtensionSnapshotFinalization(wss.GetExtensionSnapshot(), tc.log)
+}
+
 type transition struct {
 	parent *transition
 	pid    *transitionID
@@ -89,12 +122,7 @@ type transition struct {
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
 
-	db    db.Database
-	cm    contract.ContractManager
-	eem   eeproxy.Manager
-	chain module.Chain
-	log   log.Logger
-	plt   Platform
+	*transitionContext
 
 	cb module.TransitionCallback
 
@@ -111,7 +139,6 @@ type transition struct {
 	transactionCount int
 	executeDuration  time.Duration
 	flushDuration    time.Duration
-	tsc              *TxTimestampChecker
 
 	syncer ssync.Syncer
 
@@ -134,14 +161,8 @@ func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.Transac
 		csi:                t.csi,
 		patchTransactions:  patchTXs,
 		normalTransactions: t.normalTransactions,
-		db:                 t.db,
-		cm:                 t.cm,
-		eem:                t.eem,
-		chain:              t.chain,
-		log:                t.log,
-		plt:                t.plt,
+		transitionContext:  t.transitionContext,
 		step:               stepInited,
-		tsc:                t.tsc,
 	}
 }
 
@@ -175,14 +196,8 @@ func newTransition(
 		csi:                csi,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
-		db:                 parent.db,
-		cm:                 parent.cm,
-		tsc:                parent.tsc,
-		eem:                parent.eem,
+		transitionContext:  parent.transitionContext,
 		step:               step,
-		chain:              parent.chain,
-		log:                parent.log,
-		plt:                plt,
 	}
 }
 
@@ -196,25 +211,29 @@ func newInitTransition(db db.Database,
 	logger log.Logger, plt Platform,
 	tsc *TxTimestampChecker,
 ) (*transition, error) {
-	ws := state.NewWorldState(db, stateHash, validatorList, es)
+	wss := state.NewWorldSnapshot(db, stateHash, validatorList, es)
 
-	return &transition{
+	tr := &transition{
 		id:                 new(transitionID),
 		patchTransactions:  transaction.NewTransactionListFromSlice(db, nil),
 		normalTransactions: transaction.NewTransactionListFromSlice(db, nil),
 		patchReceipts:      txresult.NewReceiptListFromHash(db, nil),
 		normalReceipts:     txresult.NewReceiptListFromHash(db, nil),
 		bi:                 common.NewBlockInfo(0, 0),
-		db:                 db,
-		cm:                 cm,
-		eem:                em,
-		step:               stepComplete,
-		worldSnapshot:      ws.GetSnapshot(),
-		chain:              chain,
-		log:                logger,
-		plt:                plt,
-		tsc:                tsc,
-	}, nil
+		transitionContext: &transitionContext{
+			db:    db,
+			cm:    cm,
+			eem:   em,
+			chain: chain,
+			log:   logger,
+			plt:   plt,
+			tsc:   tsc,
+		},
+		step:          stepComplete,
+		worldSnapshot: wss,
+	}
+	tr.onWorldFinalize(wss)
+	return tr, nil
 }
 
 func (t *transition) PatchTransactions() module.TransactionList {
@@ -617,50 +636,33 @@ func (t *transition) finalizePatchTransaction() error {
 	return t.patchTransactions.Flush()
 }
 
-func (t *transition) finalizeResult() error {
+func (t *transition) finalizeResult(noFlush bool) error {
 	var worldTS time.Time
 	startTS := time.Now()
-	if t.syncer != nil {
-		worldTS = time.Now()
-		if err := t.syncer.Finalize(); err != nil {
-			return errors.Wrap(err, "Fail to finalize with syncer")
+	if !noFlush {
+		if t.syncer != nil {
+			worldTS = time.Now()
+			if err := t.syncer.Finalize(); err != nil {
+				return errors.Wrap(err, "Fail to finalize with syncer")
+			}
+		} else {
+			if err := t.worldSnapshot.Flush(); err != nil {
+				return err
+			}
+			worldTS = time.Now()
+			if err := t.patchReceipts.Flush(); err != nil {
+				return err
+			}
+			if err := t.normalReceipts.Flush(); err != nil {
+				return err
+			}
 		}
-		t.parent = nil
-	} else {
-		if err := t.worldSnapshot.Flush(); err != nil {
-			return err
-		}
-		worldTS = time.Now()
-		if err := t.patchReceipts.Flush(); err != nil {
-			return err
-		}
-		if err := t.normalReceipts.Flush(); err != nil {
-			return err
-		}
-		t.parent = nil
 	}
+	t.parent = nil
 	finalTS := time.Now()
 
-	regulator := t.chain.Regulator()
-	ass := t.worldSnapshot.GetAccountSnapshot(state.SystemID)
-	if ass != nil {
-		as := scoredb.NewStateStoreWith(ass)
-		timeout := scoredb.NewVarDB(as, state.VarCommitTimeout).Int64()
-		interval := scoredb.NewVarDB(as, state.VarBlockInterval).Int64()
-		if timeout > 0 || interval > 0 {
-			regulator.SetBlockInterval(
-				time.Duration(interval)*time.Millisecond,
-				time.Duration(timeout)*time.Millisecond)
-		}
-
-		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()
-		if tsThreshold > 0 {
-			t.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
-		}
-	}
-	t.plt.OnExtensionSnapshotFinalization(t.worldSnapshot.GetExtensionSnapshot(), t.log)
-	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
-
+	t.onWorldFinalize(t.worldSnapshot)
+	t.chain.Regulator().OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 	t.log.Infof("finalizeResult() total=%s world=%s receipts=%s",
 		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 	return nil

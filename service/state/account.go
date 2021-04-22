@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"math/big"
+	"reflect"
 
 	"golang.org/x/crypto/sha3"
 
@@ -27,6 +28,8 @@ const (
 	AccountVersion2
 	AccountVersion = AccountVersion1
 )
+
+var AccountType = reflect.TypeOf((*accountSnapshotImpl)(nil))
 
 // AccountSnapshot represents immutable account state
 // It can be get from AccountState or WorldSnapshot.
