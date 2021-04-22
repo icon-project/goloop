@@ -628,6 +628,12 @@ func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
 		if dryRun {
 			e.log.Infof("Check Block[ %9d ] Tx[ %9d ]", height, txTotal)
 			if err := tr.Block.CheckResult(e.log, tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
+				service.FinalizeTransition(tr.Transition, module.FinalizeResult, false)
+				erv, _ := ParseResult(tr.Block.Result())
+				rrv, _ := ParseResult(tr.Transition.Result())
+				if erv != nil && rrv != nil {
+					showResultDiff(e.database, e.log, erv, rrv)
+				}
 				return err
 			}
 			service.FinalizeTransition(tr.Transition, module.FinalizeResult, true)
