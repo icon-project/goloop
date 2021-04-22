@@ -87,7 +87,7 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 	key := EventKey.Append(offset, size.Value).Build()
 	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
 	event.Votes = votes
-	event.From = from.(*common.Address)
+	event.From = common.AddressToPtr(from)
 	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, event))
 	if err != nil {
 		return 0, err
@@ -107,7 +107,7 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 
 	key := EventKey.Append(offset, size.Value).Build()
 	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
-	ed.From = from.(*common.Address)
+	ed.From = common.AddressToPtr(from)
 	ed.Votes = votes
 	_, err = s.store.Set(key, icobject.New(TypeEventBond, ed))
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *State) AddEventEnable(offset int, target module.Address, flag EnableFla
 
 	key := EventKey.Append(offset, size.Value).Build()
 	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
-	obj.Target = target.(*common.Address)
+	obj.Target = common.AddressToPtr(target)
 	obj.Flag = flag
 	_, err = s.store.Set(key, icobject.New(TypeEventEnable, obj))
 	if err != nil {
@@ -193,10 +193,10 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 	return err
 }
 
-func (s *State) addValidator(offset int, validator module.Address) error {
-	key := ValidatorKey.Append(offset).Build()
+func (s *State) addValidator(idx int, validator module.Address) error {
+	key := ValidatorKey.Append(idx).Build()
 	obj := newValidator(icobject.MakeTag(TypeValidator, 0))
-	obj.Address = validator.(*common.Address)
+	obj.Address = common.AddressToPtr(validator)
 	_, err := s.store.Set(key, icobject.New(TypeValidator, obj))
 	return err
 }
