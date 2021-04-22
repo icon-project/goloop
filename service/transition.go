@@ -617,28 +617,29 @@ func (t *transition) finalizePatchTransaction() error {
 	return t.patchTransactions.Flush()
 }
 
-func (t *transition) finalizeResult() error {
+func (t *transition) finalizeResult(noFlush bool) error {
 	var worldTS time.Time
 	startTS := time.Now()
-	if t.syncer != nil {
-		worldTS = time.Now()
-		if err := t.syncer.Finalize(); err != nil {
-			return errors.Wrap(err, "Fail to finalize with syncer")
+	if !noFlush {
+		if t.syncer != nil {
+			worldTS = time.Now()
+			if err := t.syncer.Finalize(); err != nil {
+				return errors.Wrap(err, "Fail to finalize with syncer")
+			}
+		} else {
+			if err := t.worldSnapshot.Flush(); err != nil {
+				return err
+			}
+			worldTS = time.Now()
+			if err := t.patchReceipts.Flush(); err != nil {
+				return err
+			}
+			if err := t.normalReceipts.Flush(); err != nil {
+				return err
+			}
 		}
-		t.parent = nil
-	} else {
-		if err := t.worldSnapshot.Flush(); err != nil {
-			return err
-		}
-		worldTS = time.Now()
-		if err := t.patchReceipts.Flush(); err != nil {
-			return err
-		}
-		if err := t.normalReceipts.Flush(); err != nil {
-			return err
-		}
-		t.parent = nil
 	}
+	t.parent = nil
 	finalTS := time.Now()
 
 	regulator := t.chain.Regulator()
