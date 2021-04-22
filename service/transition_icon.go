@@ -90,20 +90,20 @@ func NewTransition(
 // FinalizeTransition finalize parts of transition result without
 // updating other information of service manager.
 // It's only for development purpose. So, normally it should not be used.
-func FinalizeTransition(tr module.Transition, opt int) error {
+func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 	tst := tr.(*transition)
-	if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction {
+	if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction && !noFlush {
 		if err := tst.finalizeNormalTransaction(); err != nil {
 			return err
 		}
 	}
-	if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
+	if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction && !noFlush {
 		if err := tst.finalizePatchTransaction(); err != nil {
 			return err
 		}
 	}
 	if opt&module.FinalizeResult == module.FinalizeResult {
-		if err := tst.finalizeResult(); err != nil {
+		if err := tst.finalizeResult(noFlush); err != nil {
 			return err
 		}
 	}

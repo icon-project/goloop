@@ -420,6 +420,7 @@ func (e *Executor) StoreBlock(blk *Block) error {
 func (e *Executor) FinalizeTransition(tr *Transition) error {
 	service.FinalizeTransition(tr.Transition,
 		module.FinalizeNormalTransaction|module.FinalizeResult,
+		false,
 	)
 	if err := e.StoreBlock(tr.Block); err != nil {
 		return err
@@ -629,7 +630,7 @@ func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
 			if err := tr.Block.CheckResult(e.log, tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal); err != nil {
 				return err
 			}
-			service.FinalizeTransition(tr.Transition, module.FinalizeResult)
+			service.FinalizeTransition(tr.Transition, module.FinalizeResult, true)
 		} else {
 			e.log.Infof("Finalize Block[ %9d ] Tx[ %9d ]", height, txTotal)
 			tr.Block.SetResult(tr.Result(), tr.NextValidators(), tr.NormalReceipts(), txTotal)
