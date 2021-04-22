@@ -61,15 +61,6 @@ func (ss *Snapshot) GetBlockProduce(offset int) (*BlockProduce, error) {
 	return ToBlockProduce(o), nil
 }
 
-func (ss *Snapshot) GetEventSize() (*EventSize, error) {
-	key := HashKey.Append(eventsKey).Build()
-	o, err := ss.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	return ToEventSize(o), nil
-}
-
 func NewSnapshot(database db.Database, hash []byte) *Snapshot {
 	database = icobject.AttachObjectFactory(database, NewObjectImpl)
 	t := trie_manager.NewImmutableForObject(database, hash, icobject.ObjectType)

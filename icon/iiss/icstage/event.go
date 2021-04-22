@@ -222,25 +222,3 @@ func (ee *EventEnable) IsEmpty() bool {
 func newEventEnable(tag icobject.Tag) *EventEnable {
 	return new(EventEnable)
 }
-
-type EventSize struct {
-	icobject.ObjectBigInt
-}
-
-func (e *EventSize) Version() int {
-	return 0
-}
-
-func (e *EventSize) Equal(o icobject.Impl) bool {
-	if e2, ok := o.(*EventSize); ok {
-		return e.Value.Cmp(e2.Value) == 0
-	} else {
-		return false
-	}
-}
-
-func newEventSize(tag icobject.Tag) *EventSize {
-	return &EventSize{
-		*icobject.NewObjectBigInt(tag),
-	}
-}

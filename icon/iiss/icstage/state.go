@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 const (
@@ -40,6 +41,9 @@ var (
 	BlockProduceKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
 	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
 	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
+	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
+	eventSizeKey    = containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, eventsKey)
+	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, eventSizeKey.Build())
 )
 
 type State struct {
@@ -79,86 +83,57 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 }
 
 func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
-	size, err := s.GetEventSize()
-	if err != nil {
-		return 0, err
-	}
-
-	key := EventKey.Append(offset, size.Value).Build()
+	index := s.getEventSize()
+	key := EventKey.Append(offset, index).Build()
 	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
 	event.Votes = votes
 	event.From = common.AddressToPtr(from)
-	_, err = s.store.Set(key, icobject.New(TypeEventDelegation, event))
+	_, err := s.store.Set(key, icobject.New(TypeEventDelegation, event))
 	if err != nil {
 		return 0, err
 	}
 
-	index := size.Value.Int64()
-	ns := newEventSize(0)
-	ns.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(ns)
+	return index, s.setEventSize(index + 1)
 }
 
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
-	size, err := s.GetEventSize()
-	if err != nil {
-		return 0, err
-	}
-
-	key := EventKey.Append(offset, size.Value).Build()
+	index := s.getEventSize()
+	key := EventKey.Append(offset, index).Build()
 	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
 	ed.From = common.AddressToPtr(from)
 	ed.Votes = votes
-	_, err = s.store.Set(key, icobject.New(TypeEventBond, ed))
+	_, err := s.store.Set(key, icobject.New(TypeEventBond, ed))
 	if err != nil {
 		return 0, err
 	}
 
-	index := size.Value.Int64()
-	ns := newEventSize(0)
-	ns.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(ns)
+	return index, s.setEventSize(index + 1)
 }
 
 func (s *State) AddEventEnable(offset int, target module.Address, flag EnableFlag) (int64, error) {
-	size, err := s.GetEventSize()
-	if err != nil {
-		return 0, err
-	}
-
-	key := EventKey.Append(offset, size.Value).Build()
+	index := s.getEventSize()
+	key := EventKey.Append(offset, index).Build()
 	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
 	obj.Target = common.AddressToPtr(target)
 	obj.Flag = flag
-	_, err = s.store.Set(key, icobject.New(TypeEventEnable, obj))
+	_, err := s.store.Set(key, icobject.New(TypeEventEnable, obj))
 	if err != nil {
 		return 0, err
 	}
 
-	index := size.Value.Int64()
-	ns := newEventSize(0)
-	ns.Value.Add(size.Value, intconv.BigIntOne)
-	return index, s.setEventSize(ns)
+	return index, s.setEventSize(index + 1)
 }
 
-func (s *State) GetEventSize() (*EventSize, error) {
-	key := HashKey.Append(eventsKey).Build()
-	o, err := s.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	size := ToEventSize(o)
-	if size == nil {
-		size = newEventSize(icobject.MakeTag(TypeEventSize, 0))
-	}
-	return size, nil
+func (s *State) getEventSize() int64 {
+	return containerdb.NewVarDB(s.store, EventSizeKey).Int64()
 }
 
-func (s *State) setEventSize(size *EventSize) error {
-	key := HashKey.Append(eventsKey).Build()
-	_, err := s.store.Set(key, icobject.New(TypeEventSize, size))
-	return err
+func (s *State) setEventSize(size int64) error {
+	return containerdb.NewVarDB(s.store, EventSizeKey).Set(size)
+}
+
+func (s *State) ResetEventSize() error {
+	return s.setEventSize(0)
 }
 
 func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
@@ -204,7 +179,6 @@ func (s *State) addValidator(idx int, validator module.Address) error {
 func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
 	mainPRepCount int, electedPRepCount int,
 ) error {
-	key := HashKey.Append(globalKey).Build()
 	g := newGlobalV1()
 	g.Revision = revision
 	g.IISSVersion = icstate.IISSVersion1
@@ -214,14 +188,13 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	g.Rrep.Set(rrep)
 	g.MainPRepCount = mainPRepCount
 	g.ElectedPRepCount = electedPRepCount
-	_, err := s.store.Set(key, icobject.New(TypeGlobal, g))
+	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
 
 func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
 	ivoter *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
-	key := HashKey.Append(globalKey).Build()
 	g := newGlobalV2()
 	g.Revision = revision
 	g.IISSVersion = icstate.IISSVersion2
@@ -232,7 +205,7 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	g.Ivoter.Set(ivoter)
 	g.ElectedPRepCount = electedPRepCount
 	g.BondRequirement = bondRequirement
-	_, err := s.store.Set(key, icobject.New(TypeGlobal, g))
+	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
 

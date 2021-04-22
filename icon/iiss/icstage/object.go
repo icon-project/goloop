@@ -27,7 +27,6 @@ const (
 	TypeEventDelegation
 	TypeEventBond
 	TypeEventEnable
-	TypeEventSize
 	TypeBlockProduce
 	TypeValidator
 	TypeGlobal
@@ -43,8 +42,6 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newEventVote(tag), nil
 	case TypeEventEnable:
 		return newEventEnable(tag), nil
-	case TypeEventSize:
-		return newEventSize(tag), nil
 	case TypeBlockProduce:
 		return newBlockProduce(tag), nil
 	case TypeValidator:
@@ -76,13 +73,6 @@ func ToEventEnable(obj trie.Object) *EventEnable {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*EventEnable)
-}
-
-func ToEventSize(obj trie.Object) *EventSize {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*EventSize)
 }
 
 func ToBlockProduce(obj trie.Object) *BlockProduce {

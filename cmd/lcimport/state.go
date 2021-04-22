@@ -328,7 +328,7 @@ var extensionStageShortcuts = map[string]shortcut{
 	"event":     {[]string{"rlp", "0x20"}, []string{"obj"}}, // <offset>/<index>
 	"block":     {[]string{"rlp", "0x30"}, []string{"obj"}}, // <offset>
 	"validator": {[]string{"rlp", "0x40"}, []string{"obj"}}, // <index>
-	"events":    {[]string{"ph", "0x70", "events"}, []string{"obj"}},
+	"events":    {[]string{"var", "events"}, []string{"int"}},
 	"global":    {[]string{"ph", "0x70", "global"}, []string{"obj"}},
 }
 

@@ -780,9 +780,15 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 		}
 	}
 
-	err = s.updateValidators(wc)
+	if err = s.updateValidators(wc); err != nil {
+		return err
+	}
 	s.logger.Tracef("bh=%d %s", blockHeight, s.vm)
-	return err
+
+	if err = s.Front.ResetEventSize(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
