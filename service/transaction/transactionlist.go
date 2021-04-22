@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"bytes"
-	"reflect"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -80,15 +79,13 @@ func (l *transactionList) Flush() error {
 	return nil
 }
 
-var transactionType = reflect.TypeOf((*transaction)(nil))
-
 func NewTransactionListFromHash(d db.Database, h []byte) module.TransactionList {
-	t := trie_manager.NewImmutableForObject(d, h, transactionType)
+	t := trie_manager.NewImmutableForObject(d, h, TransactionType)
 	return &transactionList{t}
 }
 
 func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) module.TransactionList {
-	mt := trie_manager.NewMutableForObject(dbase, nil, transactionType)
+	mt := trie_manager.NewMutableForObject(dbase, nil, TransactionType)
 	for idx, tx := range list {
 		mt.Set(intToKey(idx), tx.(trie.Object))
 	}
@@ -97,7 +94,7 @@ func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) m
 
 func NewTransactionListWithBuilder(builder merkle.Builder, h []byte) module.TransactionList {
 	d := builder.Database()
-	snapshot := trie_manager.NewImmutableForObject(d, h, transactionType)
+	snapshot := trie_manager.NewImmutableForObject(d, h, TransactionType)
 	snapshot.Resolve(builder)
 	// log.Printf("NewTransactionListWithBuilder: hash=%x size=%d", h, builder.UnresolvedCount())
 	return &transactionList{snapshot}

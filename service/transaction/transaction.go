@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"math/big"
+	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/merkle"
@@ -12,6 +13,8 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 )
+
+var TransactionType = reflect.TypeOf((*transaction)(nil))
 
 // TODO It assumes normal transaction. When supporting patch, add skipping
 // timestamp checking for it at PreValidate().
