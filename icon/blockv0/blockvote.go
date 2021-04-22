@@ -110,7 +110,7 @@ func (v *BlockVote) UnmarshalJSON(b []byte) error {
 
 type BlockVoteList struct {
 	votes []*BlockVote
-	hash  []byte
+	root  []byte
 }
 
 func (s *BlockVoteList) UnmarshalJSON(b []byte) error {
@@ -121,21 +121,21 @@ func (s *BlockVoteList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.votes)
 }
 
-func (s *BlockVoteList) Hash() []byte {
-	if s.hash == nil {
-		s.calcHash()
+func (s *BlockVoteList) Root() []byte {
+	if s.root == nil {
+		s.calcRoot()
 	}
-	return s.hash
+	return s.root
 }
 
-func (s *BlockVoteList) calcHash() {
+func (s *BlockVoteList) calcRoot() {
 	items := make([]merkle.Item, len(s.votes))
 	for i, v := range s.votes {
 		if v != nil {
 			items[i] = v
 		}
 	}
-	s.hash = merkle.CalcHashOfList(items)
+	s.root = merkle.CalcHashOfList(items)
 }
 
 func (s *BlockVoteList) Verify(reps *RepsList) error {
