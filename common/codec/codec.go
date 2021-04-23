@@ -562,9 +562,10 @@ func decodeRecursiveFields(d *decoderImpl, elem reflect.Value) error {
 		if !fv.CanSet() {
 			continue
 		}
-		if err := d.decodeNullableValue(fv.Addr()); err != nil {
+		if err := d.decodeValue(fv.Addr()); err != nil {
 			if err == io.EOF {
-				break
+				fv.Set(reflect.Zero(fv.Type()))
+				continue
 			}
 			return err
 		}
@@ -656,7 +657,11 @@ func (d *decoderImpl) decodeValue(v reflect.Value) error {
 	case reflect.Ptr:
 		v2 := reflect.New(elem.Type().Elem())
 		if err := d.decodeValue(v2); err != nil {
-			return err
+			if err == ErrNilValue {
+				v2 = reflect.Zero(elem.Type())
+			} else {
+				return err
+			}
 		}
 		elem.Set(v2)
 		return nil
