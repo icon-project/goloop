@@ -17,24 +17,42 @@
 package blockv0
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/merkle"
 )
 
-type BlockVoteJSON struct {
-	Rep         common.Address   `json:"rep"`
-	Timestamp   common.HexInt64  `json:"timestamp"`
+type BlockVoteJSONSharable struct {
 	BlockHeight common.HexInt64  `json:"blockHeight"`
 	Round_      *int             `json:"round_,omitempty"`
 	Round       *common.HexInt64 `json:"round,omitempty"`
 	BlockHash   common.HexHash   `json:"blockHash"`
-	Signature   common.Signature `json:"signature"`
+}
+
+func (s *BlockVoteJSONSharable) Equal(s2 *BlockVoteJSONSharable) bool {
+	return s.BlockHeight == s2.BlockHeight &&
+		(s.Round_ == s2.Round_ || (s.Round_ != nil && s2.Round_ != nil && *s.Round_ == *s2.Round_)) &&
+		(s.Round == s2.Round || (s.Round != nil && s2.Round != nil && *s.Round == *s2.Round)) &&
+		bytes.Equal(s.BlockHash, s2.BlockHash)
+}
+
+type BlockVoteJSONIndividual struct {
+	Rep       common.Address   `json:"rep"`
+	Timestamp common.HexInt64  `json:"timestamp"`
+	Signature common.Signature `json:"signature"`
+}
+
+type BlockVoteJSON struct {
+	BlockVoteJSONSharable
+	BlockVoteJSONIndividual
 }
 
 type BlockVote struct {
@@ -206,4 +224,73 @@ func (s *BlockVoteList) CheckVoters(reps *RepsList) error {
 		}
 	}
 	return nil
+}
+
+type compactBlockVoteList struct {
+	Sharable []BlockVoteJSONSharable
+	Entries  []*compactBlockVoteEntry
+}
+
+type compactBlockVoteEntry struct {
+	SharableIndex int16
+	BlockVoteJSONIndividual
+}
+
+func (s *BlockVoteList) compactFormat() *compactBlockVoteList {
+	var sharable []BlockVoteJSONSharable
+	entries := make([]*compactBlockVoteEntry, len(s.votes))
+	for i, v := range s.votes {
+		if v==nil {
+			entries[i] = nil
+		} else {
+			index := len(sharable)
+			for j, _ := range sharable {
+				if sharable[j].Equal(&v.json.BlockVoteJSONSharable) {
+					index = j
+					break
+				}
+			}
+			if index==len(sharable) {
+				sharable = append(sharable, v.json.BlockVoteJSONSharable)
+			}
+			entries[i] = &compactBlockVoteEntry{
+				int16(index),
+				v.json.BlockVoteJSONIndividual,
+			}
+		}
+	}
+	return &compactBlockVoteList{sharable, entries}
+}
+
+func (s *BlockVoteList) RLPEncodeSelf(e codec.Encoder) error {
+	return e.Encode(s.compactFormat())
+}
+
+func (s *BlockVoteList) RLPDecodeSelf(d codec.Decoder) error {
+	var cbvl compactBlockVoteList
+	err := d.Decode(&cbvl)
+	if err != nil {
+		return err
+	}
+	s.votes = make([]*BlockVote, len(cbvl.Entries))
+	for i, e := range cbvl.Entries {
+		if e==nil {
+			s.votes[i] = nil
+		} else {
+			s.votes[i] = &BlockVote{
+				BlockVoteJSON{
+					cbvl.Sharable[e.SharableIndex],
+					e.BlockVoteJSONIndividual,
+				},
+				nil,
+			}
+		}
+	}
+	s.root = nil
+	return nil
+}
+
+func (s* BlockVoteList) Hash() []byte {
+	bs := codec.BC.MustMarshalToBytes(s)
+	return crypto.SHA3Sum256(bs)
 }
