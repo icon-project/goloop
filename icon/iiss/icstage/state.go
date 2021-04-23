@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoredb"
 )
 
 const (
@@ -42,8 +41,7 @@ var (
 	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
 	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
 	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
-	eventSizeKey    = containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, eventsKey)
-	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, eventSizeKey.Build())
+	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
 )
 
 type State struct {
