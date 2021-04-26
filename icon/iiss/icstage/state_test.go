@@ -214,8 +214,8 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From))
-	assert.True(t, votes.Equal(event.Votes))
+	assert.True(t, address.Equal(event.From()))
+	assert.True(t, votes.Equal(event.Votes()))
 }
 
 func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
@@ -226,8 +226,8 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From))
-	assert.True(t, votes.Equal(event.Votes))
+	assert.True(t, address.Equal(event.From()))
+	assert.True(t, votes.Equal(event.Votes()))
 }
 
 func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableFlag) {

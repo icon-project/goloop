@@ -83,9 +83,7 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
-	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
-	event.Votes = votes
-	event.From = common.AddressToPtr(from)
+	event := NewEventVote(common.AddressToPtr(from), votes)
 	_, err := s.store.Set(key, icobject.New(TypeEventDelegation, event))
 	if err != nil {
 		return 0, err
@@ -97,10 +95,8 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
-	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
-	ed.From = common.AddressToPtr(from)
-	ed.Votes = votes
-	_, err := s.store.Set(key, icobject.New(TypeEventBond, ed))
+	event := NewEventVote(common.AddressToPtr(from), votes)
+	_, err := s.store.Set(key, icobject.New(TypeEventBond, event))
 	if err != nil {
 		return 0, err
 	}

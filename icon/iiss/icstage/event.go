@@ -155,33 +155,48 @@ func (vl *VoteList) Update(vl2 VoteList) {
 
 type EventVote struct {
 	icobject.NoDatabase
-	From  *common.Address
-	Votes VoteList
+	from  *common.Address
+	votes VoteList
 }
 
 func (ed *EventVote) Version() int {
 	return 0
 }
 
+func (ed *EventVote) From() *common.Address {
+	return ed.from
+}
+
+func (ed *EventVote) Votes() VoteList {
+	return ed.votes
+}
+
 func (ed *EventVote) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ed.From, &ed.Votes)
+	_, err := decoder.DecodeMulti(&ed.from, &ed.votes)
 	return err
 }
 
 func (ed *EventVote) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ed.From, ed.Votes)
+	return encoder.EncodeMulti(ed.from, ed.votes)
 }
 
 func (ed *EventVote) Equal(o icobject.Impl) bool {
 	if ee2, ok := o.(*EventVote); ok {
-		return ed.From.Equal(ee2.From) && ed.Votes.Equal(ee2.Votes)
+		return ed.from.Equal(ee2.from) && ed.votes.Equal(ee2.votes)
 	} else {
 		return false
 	}
 }
 
-func newEventVote(tag icobject.Tag) *EventVote {
+func newEventVote(_ icobject.Tag) *EventVote {
 	return new(EventVote)
+}
+
+func NewEventVote(addr *common.Address, votes VoteList) *EventVote {
+	return &EventVote{
+		from: addr,
+		votes: votes,
+	}
 }
 
 type EnableFlag int

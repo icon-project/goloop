@@ -415,10 +415,10 @@ func (c *Calculator) calculateVotedReward() error {
 			}
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateDelegated(obj.Votes)
+			vInfo.updateDelegated(obj.Votes())
 		case icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateBonded(obj.Votes)
+			vInfo.updateBonded(obj.Votes())
 		}
 	}
 	if offset < c.global.GetOffsetLimit() {
@@ -593,7 +593,7 @@ func (c *Calculator) calculateVotingReward() error {
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
-			idx := string(event.From.Bytes())
+			idx := icutils.ToKey(event.From())
 			if _type == icstage.TypeEventDelegation {
 				_, ok := delegatingMap[idx]
 				if !ok {
@@ -601,12 +601,12 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				votes, ok := delegatingMap[idx][offset]
 				if ok {
-					votes.Update(event.Votes)
+					votes.Update(event.Votes())
 					delegatingMap[idx][offset] = votes
 				} else {
-					delegatingMap[idx][offset] = event.Votes
+					delegatingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateDelegated(event.Votes)
+				vInfo.updateDelegated(event.Votes())
 			} else {
 				_, ok := bondingMap[idx]
 				if !ok {
@@ -614,12 +614,12 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				votes, ok := bondingMap[idx][offset]
 				if ok {
-					votes.Update(event.Votes)
+					votes.Update(event.Votes())
 					bondingMap[idx][offset] = votes
 				} else {
-					bondingMap[idx][offset] = event.Votes
+					bondingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateBonded(event.Votes)
+				vInfo.updateBonded(event.Votes())
 			}
 		}
 		// find MAX totalVotingAmount

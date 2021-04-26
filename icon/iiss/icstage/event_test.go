@@ -36,9 +36,7 @@ func TestEvent_Delegation(t *testing.T) {
 	v1 := int64(1)
 	vote1 := NewVote(common.MustNewAddressFromString(addr1), big.NewInt(v1))
 
-	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.MustNewAddressFromString(addr1)
-	t1.Votes = VoteList{vote1}
+	t1 := NewEventVote(common.MustNewAddressFromString(addr1), VoteList{vote1})
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -55,8 +53,8 @@ func TestEvent_Delegation(t *testing.T) {
 
 	t2 := ToEventVote(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.From.Equal(t2.From))
-	assert.Equal(t, true, t1.Votes.Equal(t2.Votes), "\n%v\n%v", t1, t2)
+	assert.Equal(t, true, t1.From().Equal(t2.From()))
+	assert.Equal(t, true, t1.Votes().Equal(t2.Votes()))
 }
 
 func TestEvent_Bond(t *testing.T) {
@@ -68,9 +66,7 @@ func TestEvent_Bond(t *testing.T) {
 	v1 := int64(1)
 	vote1 := NewVote(common.MustNewAddressFromString(addr1), big.NewInt(v1))
 
-	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.MustNewAddressFromString(addr1)
-	t1.Votes = VoteList{vote1}
+	t1 := NewEventVote(common.MustNewAddressFromString(addr1), VoteList{vote1})
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -87,8 +83,8 @@ func TestEvent_Bond(t *testing.T) {
 
 	t2 := ToEventVote(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.From.Equal(t2.From))
-	assert.Equal(t, true, t1.Votes.Equal(t2.Votes))
+	assert.Equal(t, true, t1.From().Equal(t2.From()))
+	assert.Equal(t, true, t1.Votes().Equal(t2.Votes()))
 }
 
 func TestEvent_Enable(t *testing.T) {
