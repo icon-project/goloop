@@ -346,9 +346,9 @@ func TestState_AddBlockProduce(t *testing.T) {
 			assert.NotNil(t, obj)
 
 			o := ToBlockProduce(obj)
-			assert.Equal(t, w.proposerIndex, o.ProposerIndex)
-			assert.Equal(t, w.voteCount, o.VoteCount)
-			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask))
+			assert.Equal(t, w.proposerIndex, o.ProposerIndex())
+			assert.Equal(t, w.voteCount, o.VoteCount())
+			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask()))
 		})
 	}
 

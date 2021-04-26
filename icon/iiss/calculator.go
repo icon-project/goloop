@@ -327,21 +327,24 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 	}
 
 	vLen := len(validators)
-	maxIndex := bp.VoteMask.BitLen()
-	if bp.ProposerIndex >= vLen || maxIndex > vLen {
+	pIndex := bp.ProposerIndex()
+	vCount := bp.VoteCount()
+	vMask := bp.VoteMask()
+	maxIndex := vMask.BitLen()
+	if pIndex >= vLen || maxIndex > vLen {
 		return errors.Errorf("Can't find validator with %v", bp)
 	}
 	beta1Reward := new(big.Int).Set(variable)
 
 	// for proposer
-	proposer := validators[bp.ProposerIndex]
+	proposer := validators[pIndex]
 	proposer.iScore.Add(proposer.iScore, beta1Reward)
 
 	// for validator
-	if bp.VoteCount > 0 {
-		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
+	if vCount > 0 {
+		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(vCount)))
 		for i := 0; i < maxIndex; i += 1 {
-			if (bp.VoteMask.Bit(i)) != 0 {
+			if (vMask.Bit(i)) != 0 {
 				validators[i].iScore.Add(validators[i].iScore, beta1Validate)
 			}
 		}

@@ -145,9 +145,6 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		}
 	}
 	key := BlockProduceKey.Append(offset).Build()
-	obj := newBlockProduce(icobject.MakeTag(TypeBlockProduce, 0))
-	obj.ProposerIndex = pIdx
-	obj.VoteCount = len(voters)
 	voteMask := big.NewInt(0)
 	for _, v := range voters {
 		vKey := string(v.Bytes())
@@ -161,8 +158,8 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		}
 		voteMask.SetBit(voteMask, idx, 1)
 	}
-	obj.VoteMask = voteMask
-	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, obj))
+	bp := NewBlockProduce(pIdx, len(voters), voteMask)
+	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, bp))
 	return err
 }
 

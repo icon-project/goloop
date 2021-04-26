@@ -126,11 +126,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			name: "Zero Irep",
 			args: args{
-				&icstage.BlockProduce{
-					ProposerIndex: 0,
-					VoteCount:     0,
-					VoteMask:      new(big.Int).SetInt64(int64(0b0)),
-				},
+				icstage.NewBlockProduce(0, 0, new(big.Int).SetInt64(int64(0b0))),
 				new(big.Int),
 			},
 			err:   false,
@@ -139,11 +135,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			name: "All voted",
 			args: args{
-				&icstage.BlockProduce{
-					ProposerIndex: 0,
-					VoteCount:     4,
-					VoteMask:      new(big.Int).SetInt64(int64(0b1111)),
-				},
+				icstage.NewBlockProduce(0, 4, new(big.Int).SetInt64(int64(0b1111))),
 				variable,
 			},
 			err: false,
@@ -157,11 +149,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			name: "3 P-Rep voted",
 			args: args{
-				&icstage.BlockProduce{
-					ProposerIndex: 2,
-					VoteCount:     3,
-					VoteMask:      new(big.Int).SetInt64(int64(0b0111)),
-				},
+				icstage.NewBlockProduce(2, 3, new(big.Int).SetInt64(int64(0b0111))),
 				variable,
 			},
 			err: false,
@@ -175,11 +163,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			name: "Invalid proposerIndex",
 			args: args{
-				&icstage.BlockProduce{
-					ProposerIndex: 5,
-					VoteCount:     3,
-					VoteMask:      new(big.Int).SetInt64(int64(0b0111)),
-				},
+				icstage.NewBlockProduce(5, 3, new(big.Int).SetInt64(int64(0b0111))),
 				variable,
 			},
 			err:   true,
@@ -188,11 +172,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 		{
 			name: "There is no validator Info. for voter",
 			args: args{
-				&icstage.BlockProduce{
-					ProposerIndex: 5,
-					VoteCount:     16,
-					VoteMask:      new(big.Int).SetInt64(int64(0b01111111111111111)),
-				},
+				icstage.NewBlockProduce(5, 16, new(big.Int).SetInt64(int64(0b01111111111111111))),
 				variable,
 			},
 			err:   true,
