@@ -215,7 +215,7 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore = iScore.Added(new(big.Int).Neg(claim.Value))
+			iScore = iScore.Added(new(big.Int).Neg(claim.Value()))
 			if iScore.Value.Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
 			}

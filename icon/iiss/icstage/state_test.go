@@ -85,7 +85,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
 			claim := ToIScoreClaim(obj)
-			assert.Equal(t, tt.want, claim.Value.Int64())
+			assert.Equal(t, tt.want, claim.Value().Int64())
 		})
 	}
 

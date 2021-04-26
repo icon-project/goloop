@@ -690,7 +690,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		)
 	}
 	if bClaimed != nil {
-		iScore.Value.Sub(iScore.Value, bClaimed.Value)
+		iScore.Value.Sub(iScore.Value, bClaimed.Value())
 	}
 
 	if iScore.IsEmpty() {
@@ -807,7 +807,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 			)
 		}
 		if bClaim != nil {
-			is.Sub(is, bClaim.Value)
+			is.Sub(is, bClaim.Value())
 		}
 	}
 
