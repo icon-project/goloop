@@ -264,7 +264,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	var err error
 	var validators []*validator
 	global := c.global.GetV1()
-	variable := varForBlockProduceReward(global.Irep, global.MainPRepCount)
+	variable := varForBlockProduceReward(global.GetIRep(), global.GetMainRepCount())
 	validators, err = c.loadValidators()
 	if err != nil {
 		return err
@@ -368,14 +368,14 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.(*icstage.GlobalV1)
-		multiplier.Mul(g.Irep, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
+		multiplier.Mul(g.GetIRep(), big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
 		g := global.(*icstage.GlobalV2)
 		if g.GetTermPeriod() == 0 {
 			return
 		}
-		multiplier.Mul(g.Iglobal, g.Iprep)
+		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
 		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 	}
@@ -525,17 +525,17 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.GetV1()
-		if g.Rrep.Sign() == 0 {
+		if g.GetRRep().Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.Rrep, new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
+		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
 		divider.SetInt64(int64(YearBlock * RrepDivider))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.Iglobal, g.Ivoter)
+		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
 		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 		divider.Mul(divider, totalVotingAmount)
@@ -914,13 +914,13 @@ func (c *Calculator) postWork() (err error) {
 			return errors.CriticalUnknownError.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
 		}
 		g := c.global.GetV2()
-		maxVotedReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
 		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
 			return errors.CriticalUnknownError.Errorf("Too much Voted Reward. %s < %s",
 				maxVotedReward, c.stats.voted.String())
 		}
-		maxVotingReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
 		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
 			return errors.CriticalUnknownError.Errorf("Too much Voting Reward. %s < %s",

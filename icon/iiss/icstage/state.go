@@ -168,15 +168,16 @@ func (s *State) addValidator(idx int, validator module.Address) error {
 func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
 	mainPRepCount int, electedPRepCount int,
 ) error {
-	g := newGlobalV1()
-	g.Revision = revision
-	g.IISSVersion = icstate.IISSVersion1
-	g.StartHeight = startHeight
-	g.OffsetLimit = offsetLimit
-	g.Irep.Set(irep)
-	g.Rrep.Set(rrep)
-	g.MainPRepCount = mainPRepCount
-	g.ElectedPRepCount = electedPRepCount
+	g := NewGlobalV1(
+		icstate.IISSVersion1,
+		startHeight,
+		offsetLimit,
+		revision,
+		irep,
+		rrep,
+		mainPRepCount,
+		electedPRepCount,
+	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
@@ -184,16 +185,17 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
 	ivoter *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
-	g := newGlobalV2()
-	g.Revision = revision
-	g.IISSVersion = icstate.IISSVersion2
-	g.StartHeight = startHeight
-	g.OffsetLimit = offsetLimit
-	g.Iglobal.Set(iglobal)
-	g.Iprep.Set(iprep)
-	g.Ivoter.Set(ivoter)
-	g.ElectedPRepCount = electedPRepCount
-	g.BondRequirement = bondRequirement
+	g := NewGlobalV2(
+		icstate.IISSVersion2,
+		startHeight,
+		offsetLimit,
+		revision,
+		iglobal,
+		iprep,
+		ivoter,
+		electedPRepCount,
+		bondRequirement,
+	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
