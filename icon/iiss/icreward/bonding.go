@@ -94,7 +94,7 @@ func (d *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 			}
 		}
 		if index == -1 { // add new bond
-			if vote.Value.Sign() != 1 {
+			if vote.Amount().Sign() != 1 {
 				return errors.Errorf("Negative bond value %v", vote)
 			}
 			nb := icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())

@@ -29,40 +29,63 @@ import (
 )
 
 type Vote struct {
-	Address *common.Address
-	Value   *big.Int
+	address *common.Address
+	value   *big.Int
 }
 
 func NewVote(address *common.Address, value *big.Int) *Vote {
 	return &Vote{
-		Address: address,
-		Value:   new(big.Int).Set(value),
+		address: address,
+		value:   value,
 	}
 }
 
 func (v *Vote) To() module.Address {
-	return v.Address
+	return v.address
+}
+
+func (v *Vote) SetTo(addr module.Address) {
+	v.address = common.AddressToPtr(addr)
 }
 
 func (v *Vote) Amount() *big.Int {
-	return v.Value
+	return v.value
+}
+
+func (v *Vote) SetAmount(amount *big.Int) {
+	v.value = amount
+}
+
+func (v *Vote) RLPDecodeSelf(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(
+		&v.address,
+		&v.value,
+	)
+	return err
+}
+
+func (v *Vote) RLPEncodeSelf(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		v.address,
+		v.value,
+	)
 }
 
 func (v *Vote) Equal(v2 *Vote) bool {
-	return v.Address.Equal(v2.Address) && v.Value.Cmp(v2.Value) == 0
+	return v.address.Equal(v2.address) && v.value.Cmp(v2.value) == 0
 }
 
 func (v *Vote) Clone() *Vote {
-	return NewVote(v.Address, v.Value)
+	return NewVote(v.address, v.value)
 }
 
 func (v *Vote) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Vote{address=%s value=%s}", v.Address, v.Value)
+			fmt.Fprintf(f, "Vote{address=%s value=%s}", v.address, v.value)
 		} else {
-			fmt.Fprintf(f, "Vote{%s %s}", v.Address, v.Value)
+			fmt.Fprintf(f, "Vote{%s %s}", v.address, v.value)
 		}
 	}
 }
@@ -112,7 +135,7 @@ func (vl *VoteList) Update(vl2 VoteList) {
 			vote := newVL[idx]
 			if vote.To().Equal(vote2.To()) {
 				find = true
-				vote.Amount().Add(vote.Amount(), vote2.Amount())
+				vote.SetAmount(new(big.Int).Add(vote.Amount(), vote2.Amount()))
 				if vote.Amount().Sign() == 0 {
 					deleteIdx = append(deleteIdx, idx)
 				}

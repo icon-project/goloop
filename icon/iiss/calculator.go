@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -743,7 +744,7 @@ func (c *Calculator) votingReward(
 		} else {
 			s := from
 			e := to
-			if prep, ok := prepInfo[string(voting.To().Bytes())]; ok {
+			if prep, ok := prepInfo[icutils.ToKey(voting.To())]; ok {
 				if prep.startOffset != 0 && prep.startOffset > s {
 					s = prep.startOffset
 				}
@@ -1059,7 +1060,7 @@ func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableFlag) {
 
 func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if data, ok := vi.preps[string(vote.To().Bytes())]; ok {
+		if data, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
 			current := data.voted.Delegated
 			current.Add(current, vote.Amount())
 			if data.Enable() {
@@ -1067,7 +1068,7 @@ func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.Delegated.Set(vote.Value)
+			voted.Delegated.Set(vote.Amount())
 			data = newVotedData(voted)
 			vi.addVotedData(vote.To(), data)
 		}
@@ -1076,15 +1077,15 @@ func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 
 func (vi *votedInfo) updateBonded(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if vData, ok := vi.preps[string(vote.To().Bytes())]; ok {
+		if vData, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
 			current := vData.GetBonded()
-			current.Add(current, vote.Value)
+			current.Add(current, vote.Amount())
 			if vData.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.SetBonded(vote.Value)
+			voted.SetBonded(vote.Amount())
 			vData = newVotedData(voted)
 			vi.addVotedData(vote.To(), vData)
 		}

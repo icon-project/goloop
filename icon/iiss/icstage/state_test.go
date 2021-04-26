@@ -124,14 +124,8 @@ func TestState_AddEvent(t *testing.T) {
 	addr2 := common.MustNewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
-	vote1 := Vote{
-		Address: addr1,
-		Value:   big.NewInt(v1),
-	}
-	vote2 := Vote{
-		Address: addr2,
-		Value:   big.NewInt(v2),
-	}
+	vote1 := NewVote(addr1, big.NewInt(v1))
+	vote2 := NewVote(addr2, big.NewInt(v2))
 
 	type args struct {
 		type_         int
@@ -156,7 +150,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:   TypeEventDelegation,
 				offset:  offset1,
 				address: addr1,
-				votes:   VoteList{&vote1, &vote2},
+				votes:   VoteList{vote1, vote2},
 			},
 		},
 		{
@@ -165,7 +159,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:   TypeEventBond,
 				offset:  offset1,
 				address: addr1,
-				votes:   VoteList{&vote1, &vote2},
+				votes:   VoteList{vote1, vote2},
 			},
 		},
 		{

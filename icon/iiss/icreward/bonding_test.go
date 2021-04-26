@@ -66,30 +66,15 @@ func TestBonding_ApplyVotes(t *testing.T) {
 	val3 := int64(3)
 	vBig := int64(100)
 	b1 := icstate.NewBond(common.MustNewAddressFromString(addr1), big.NewInt(val1))
-	v1Delete := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(-val1),
-	}
-	v1TooBig := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(-vBig),
-	}
+	v1Delete := icstage.NewVote(common.MustNewAddressFromString(addr1), big.NewInt(-val1))
+	v1TooBig := icstage.NewVote(common.MustNewAddressFromString(addr1), big.NewInt(-vBig))
 	b2 := icstate.NewBond(common.MustNewAddressFromString(addr2), big.NewInt(val2))
-	v2 := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   big.NewInt(val2),
-	}
+	v2 := icstage.NewVote(common.MustNewAddressFromString(addr2), big.NewInt(val2))
 	b2Double := icstate.NewBond(common.MustNewAddressFromString(addr2), big.NewInt(val2*2))
 	b3 := icstate.NewBond(common.MustNewAddressFromString(addr3), big.NewInt(val3))
 	bNew := icstate.NewBond(common.MustNewAddressFromString(addr4), big.NewInt(val3))
-	vNew := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr4),
-		Value:   big.NewInt(val3),
-	}
-	vNewNegative := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr4),
-		Value:   big.NewInt(-val3),
-	}
+	vNew := icstage.NewVote(common.MustNewAddressFromString(addr4), big.NewInt(val3))
+	vNewNegative := icstage.NewVote(common.MustNewAddressFromString(addr4), big.NewInt(-val3))
 	bonding := Bonding{
 		Bonds: icstate.Bonds{b1, b2, b3},
 	}
@@ -100,9 +85,9 @@ func TestBonding_ApplyVotes(t *testing.T) {
 		err  bool
 		want icstate.Bonds
 	}{
-		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Bonds{b2Double, b3, bNew}},
-		{"New with negative value", icstage.VoteList{&vNewNegative}, true, icstate.Bonds{}},
-		{"Update result value is negative", icstage.VoteList{&v1TooBig}, true, icstate.Bonds{}},
+		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Bonds{b2Double, b3, bNew}},
+		{"New with negative value", icstage.VoteList{vNewNegative}, true, icstate.Bonds{}},
+		{"Update result value is negative", icstage.VoteList{v1TooBig}, true, icstate.Bonds{}},
 	}
 
 	for _, tt := range tests {

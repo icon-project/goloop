@@ -66,30 +66,15 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 	val3 := int64(3)
 	vBig := int64(100)
 	d1 := icstate.NewDelegation(common.MustNewAddressFromString(addr1), big.NewInt(val1))
-	v1Delete := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(-val1),
-	}
-	v1TooBig := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(-vBig),
-	}
+	v1Delete := icstage.NewVote(common.MustNewAddressFromString(addr1), big.NewInt(-val1))
+	v1TooBig := icstage.NewVote(common.MustNewAddressFromString(addr1), big.NewInt(-vBig))
 	d2 := icstate.NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(val2))
-	v2 := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   big.NewInt(val2),
-	}
+	v2 := icstage.NewVote(common.MustNewAddressFromString(addr2), big.NewInt(val2))
 	d2Double := icstate.NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(val2*2))
 	d3 := icstate.NewDelegation(common.MustNewAddressFromString(addr3), big.NewInt(val3))
 	dNew := icstate.NewDelegation(common.MustNewAddressFromString(addr4), big.NewInt(val3))
-	vNew := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr4),
-		Value:   big.NewInt(val3),
-	}
-	vNewNegative := icstage.Vote{
-		Address: common.MustNewAddressFromString(addr4),
-		Value:   big.NewInt(-val3),
-	}
+	vNew := icstage.NewVote(common.MustNewAddressFromString(addr4), big.NewInt(val3))
+	vNewNegative := icstage.NewVote(common.MustNewAddressFromString(addr4), big.NewInt(-val3))
 	delegating := Delegating{
 		Delegations: icstate.Delegations{d1, d2, d3},
 	}
@@ -100,9 +85,9 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		err  bool
 		want icstate.Delegations
 	}{
-		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Delegations{d2Double, d3, dNew}},
-		{"New with negative value", icstage.VoteList{&vNewNegative}, true, icstate.Delegations{}},
-		{"Update result value is negative", icstage.VoteList{&v1TooBig}, true, icstate.Delegations{}},
+		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Delegations{d2Double, d3, dNew}},
+		{"New with negative value", icstage.VoteList{vNewNegative}, true, icstate.Delegations{}},
+		{"Update result value is negative", icstage.VoteList{v1TooBig}, true, icstate.Delegations{}},
 	}
 
 	for _, tt := range tests {

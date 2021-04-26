@@ -29,6 +29,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
@@ -400,35 +401,23 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 		data := newVotedDataForTest(enable, i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
 
-		votes = append(
-			votes,
-			&icstage.Vote{
-				Address: addr,
-				Value:   big.NewInt(i),
-			},
-		)
+		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
 	}
 	newAddr := common.MustNewAddressFromString("hx321321")
-	votes = append(
-		votes,
-		&icstage.Vote{
-			Address: newAddr,
-			Value:   big.NewInt(100),
-		},
-	)
+	votes = append(votes, icstage.NewVote(newAddr, big.NewInt(100)))
 
 	totalVoted := new(big.Int).Set(vInfo.totalVoted)
 	vInfo.updateDelegated(votes)
 	for _, v := range votes {
-		expect := v.Value.Int64() * 2
-		if v.Address.Equal(newAddr) {
-			expect = v.Value.Int64()
+		expect := v.Amount().Int64() * 2
+		if v.To().Equal(newAddr) {
+			expect = v.Amount().Int64()
 		}
-		vData := vInfo.preps[string(v.Address.Bytes())]
+		vData := vInfo.preps[icutils.ToKey(v.To())]
 		assert.Equal(t, expect, vData.GetDelegated().Int64())
 
 		if vData.Enable() {
-			totalVoted.Add(totalVoted, v.Value)
+			totalVoted.Add(totalVoted, v.Amount())
 		}
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
@@ -444,35 +433,23 @@ func TestVotedInfo_updateBonded(t *testing.T) {
 		data := newVotedDataForTest(enable, i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
 
-		votes = append(
-			votes,
-			&icstage.Vote{
-				Address: addr,
-				Value:   big.NewInt(i),
-			},
-		)
+		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
 	}
 	newAddr := common.MustNewAddressFromString("hx321321")
-	votes = append(
-		votes,
-		&icstage.Vote{
-			Address: newAddr,
-			Value:   big.NewInt(100),
-		},
-	)
+	votes = append(votes, icstage.NewVote(newAddr, big.NewInt(100)))
 
 	totalVoted := new(big.Int).Set(vInfo.totalVoted)
 	vInfo.updateBonded(votes)
 	for _, v := range votes {
-		expect := v.Value.Int64() * 2
-		if v.Address.Equal(newAddr) {
-			expect = v.Value.Int64()
+		expect := v.Amount().Int64() * 2
+		if v.To().Equal(newAddr) {
+			expect = v.Amount().Int64()
 		}
-		vData := vInfo.preps[string(v.Address.Bytes())]
+		vData := vInfo.preps[icutils.ToKey(v.To())]
 		assert.Equal(t, expect, vData.GetBonded().Int64())
 
 		if vData.Enable() {
-			totalVoted.Add(totalVoted, v.Value)
+			totalVoted.Add(totalVoted, v.Amount())
 		}
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
