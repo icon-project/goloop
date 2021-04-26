@@ -35,7 +35,7 @@ type IssuePRepJSON struct {
 	Value           *common.HexInt `json:"value"`
 }
 
-func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
+func ParseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -48,7 +48,23 @@ func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
 	return jso, nil
 }
 
-func (i *IssuePRepJSON) equal(i2 *IssuePRepJSON) bool {
+func (i *IssuePRepJSON) GetIRep() *big.Int {
+	return i.IRep.Value()
+}
+
+func (i *IssuePRepJSON) GetRRep() *big.Int {
+	return i.RRep.Value()
+}
+
+func (i *IssuePRepJSON) GetTotalDelegation() *big.Int {
+	return i.TotalDelegation.Value()
+}
+
+func (i *IssuePRepJSON) GetValue() *big.Int {
+	return i.Value.Value()
+}
+
+func (i *IssuePRepJSON) Equal(i2 *IssuePRepJSON) bool {
 	return i.IRep.Cmp(i2.IRep.Value()) == 0 &&
 		i.RRep.Cmp(i2.RRep.Value()) == 0 &&
 		i.TotalDelegation.Cmp(i2.TotalDelegation.Value()) == 0 &&
@@ -61,7 +77,7 @@ type IssueResultJSON struct {
 	Issue           *common.HexInt `json:"issue"`
 }
 
-func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
+func ParseIssueResultData(data []byte) (*IssueResultJSON, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -74,7 +90,19 @@ func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
 	return jso, nil
 }
 
-func (i *IssueResultJSON) equal(i2 *IssueResultJSON) bool {
+func (i *IssueResultJSON) GetByFee() *big.Int {
+	return i.ByFee.Value()
+}
+
+func (i *IssueResultJSON) GetByOverIssuedICX() *big.Int {
+	return i.ByOverIssuedICX.Value()
+}
+
+func (i *IssueResultJSON) GetIssue() *big.Int {
+	return i.Issue.Value()
+}
+
+func (i *IssueResultJSON) Equal(i2 *IssueResultJSON) bool {
 	return i.ByFee.Cmp(i2.ByFee.Value()) == 0 &&
 		i.ByOverIssuedICX.Cmp(i2.ByOverIssuedICX.Value()) == 0 &&
 		i.Issue.Cmp(i2.Issue.Value()) == 0

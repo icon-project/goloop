@@ -38,17 +38,17 @@ func TestIssuer_IssuePRepJSON(t *testing.T) {
 	bs, err := json.Marshal(prep1)
 	assert.NoError(t, err)
 
-	prep2, err := parseIssuePRepData(bs)
+	prep2, err := ParseIssuePRepData(bs)
 	assert.NoError(t, err)
 
-	assert.True(t, prep1.equal(prep2))
+	assert.True(t, prep1.Equal(prep2))
 
-	assert.Equal(t, 0, prep1.IRep.Cmp(prep2.IRep.Value()))
-	assert.Equal(t, 0, prep1.RRep.Cmp(prep2.RRep.Value()))
-	assert.Equal(t, 0, prep1.TotalDelegation.Cmp(prep2.TotalDelegation.Value()))
-	assert.Equal(t, 0, prep1.Value.Cmp(prep2.Value.Value()))
+	assert.Equal(t, 0, prep1.GetIRep().Cmp(prep2.GetIRep()))
+	assert.Equal(t, 0, prep1.GetRRep().Cmp(prep2.GetRRep()))
+	assert.Equal(t, 0, prep1.GetTotalDelegation().Cmp(prep2.GetTotalDelegation()))
+	assert.Equal(t, 0, prep1.GetValue().Cmp(prep2.GetValue()))
 
-	prep3, err := parseIssuePRepData(nil)
+	prep3, err := ParseIssuePRepData(nil)
 	assert.NoError(t, err)
 	assert.Nil(t, prep3)
 }
@@ -62,16 +62,16 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 	bs, err := json.Marshal(result1)
 	assert.NoError(t, err)
 
-	result2, err := parseIssueResultData(bs)
+	result2, err := ParseIssueResultData(bs)
 	assert.NoError(t, err)
 
-	assert.True(t, result1.equal(result2))
+	assert.True(t, result1.Equal(result2))
 
-	assert.Equal(t, 0, result1.ByFee.Cmp(result2.ByFee.Value()))
-	assert.Equal(t, 0, result1.ByOverIssuedICX.Cmp(result2.ByOverIssuedICX.Value()))
-	assert.Equal(t, 0, result1.Issue.Cmp(result2.Issue.Value()))
+	assert.Equal(t, 0, result1.GetByFee().Cmp(result2.GetByFee()))
+	assert.Equal(t, 0, result1.GetByOverIssuedICX().Cmp(result2.GetByOverIssuedICX()))
+	assert.Equal(t, 0, result1.GetIssue().Cmp(result2.GetIssue()))
 
-	result3, err := parseIssueResultData(nil)
+	result3, err := ParseIssueResultData(nil)
 	assert.NoError(t, err)
 	assert.Nil(t, result3)
 }
