@@ -18,14 +18,14 @@ package iiss
 
 import (
 	"encoding/json"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func TestIssuer_IssuePRepJSON(t *testing.T) {
@@ -77,16 +77,16 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 }
 
 func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
-	issue.TotalIssued.SetInt64(totalIssued)
-	issue.PrevTotalIssued.SetInt64(prevTotalIssued)
-	issue.OverIssued.SetInt64(overIssued)
-	issue.IScoreRemains.SetInt64(iScoreRemains)
-	issue.PrevBlockFee.SetInt64(prevBlockFee)
+	issue.SetTotalIssued(big.NewInt(totalIssued))
+	issue.SetPrevTotalIssued(big.NewInt(prevTotalIssued))
+	issue.SetOverIssued(big.NewInt(overIssued))
+	issue.SetIScoreRemains(big.NewInt(iScoreRemains))
+	issue.SetPrevBlockFee(big.NewInt(prevBlockFee))
 }
 
 func TestIssuer_RegulateIssueInfo(t *testing.T) {
 	type values struct {
-		prevtotalIssued int64
+		prevTotalIssued int64
 		totalIssued     int64
 		overIssued      int64
 		iScoreRemains   int64
@@ -101,7 +101,7 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 		out              values
 	}{
 		{
-			"Nill iScore reward",
+			"Nil iScore reward",
 			values{
 				0, 100, 0, 0, 0,
 			},
@@ -195,11 +195,11 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.prevtotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
+			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
 			RegulateIssueInfo(issue, tt.iScore, tt.additionalReward)
-			assert.Equal(t, out.overIssued, issue.OverIssued.Int64())
-			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains.Int64())
-			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee.Int64())
+			assert.Equal(t, out.overIssued, issue.OverIssued().Int64())
+			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains().Int64())
+			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee().Int64())
 		})
 	}
 }

@@ -294,14 +294,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
 	}
-	issue := is.Clone()
-	issue.TotalIssued.Add(issue.TotalIssued, result.GetTotalReward())
-	if result.ByFee.Sign() != 0 {
-		issue.PrevBlockFee.Sub(issue.PrevBlockFee, result.ByFee.Value())
-	}
-	if result.ByOverIssuedICX.Sign() != 0 {
-		issue.OverIssued.Sub(issue.OverIssued, result.ByOverIssuedICX.Value())
-	}
+	issue := is.Update(result.GetTotalReward(), result.ByFee.Value(), result.ByOverIssuedICX.Value())
 	if err = es.State.SetIssue(issue); err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to set issue Info.")
 	}
@@ -324,7 +317,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			intconv.BigIntToBytes(result.ByFee.Value()),
 			intconv.BigIntToBytes(result.ByOverIssuedICX.Value()),
 			intconv.BigIntToBytes(result.Issue.Value()),
-			intconv.BigIntToBytes(issue.OverIssued),
+			intconv.BigIntToBytes(issue.OverIssued()),
 		},
 	)
 	term := es.State.GetTerm()

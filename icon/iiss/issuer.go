@@ -91,7 +91,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	var icx, remains *big.Int
 
 	// Do not regulate ICX issue if there is no ICX issuance.
-	if issue.PrevTotalIssued.Sign() == 0 {
+	if issue.PrevTotalIssued().Sign() == 0 {
 		return
 	}
 	if iScore == nil || iScore.Sign() == 0 {
@@ -100,17 +100,17 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	} else {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
-	overIssued := new(big.Int).Sub(issue.PrevTotalIssued, additionalReward)
+	overIssued := new(big.Int).Sub(issue.PrevTotalIssued(), additionalReward)
 	overIssued.Sub(overIssued, icx)
 	if overIssued.Sign() == -1 {
 		log.Debugf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
-			issue.PrevTotalIssued.String(), icx.String())
+			issue.PrevTotalIssued(), icx)
 	}
-	issue.OverIssued.Add(issue.OverIssued, overIssued)
-	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
-	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
-		issue.OverIssued.Sub(issue.OverIssued, intconv.BigIntOne)
-		issue.IScoreRemains.Sub(issue.IScoreRemains, BigIntIScoreICXRatio)
+	issue.SetOverIssued(new(big.Int).Add(issue.OverIssued(), overIssued))
+	issue.SetIScoreRemains(new(big.Int).Add(issue.IScoreRemains(), remains))
+	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains()) < 0 {
+		issue.SetOverIssued(new(big.Int).Sub(issue.OverIssued(), intconv.BigIntOne))
+		issue.SetIScoreRemains(new(big.Int).Sub(issue.IScoreRemains(), BigIntIScoreICXRatio))
 	}
 }
 
@@ -151,18 +151,18 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	byFee = new(big.Int)
 	byOverIssued = new(big.Int)
 
-	if issue.Cmp(i.OverIssued) > 0 {
-		byOverIssued.Set(i.OverIssued)
-		issue.Sub(issue, i.OverIssued)
+	if issue.Cmp(i.OverIssued()) > 0 {
+		byOverIssued.Set(i.OverIssued())
+		issue.Sub(issue, i.OverIssued())
 	} else {
 		byOverIssued.Set(issue)
 		issue.SetInt64(0)
 		return
 	}
 
-	if issue.Cmp(i.PrevBlockFee) > 0 {
-		byFee.Set(i.PrevBlockFee)
-		issue.Sub(issue, i.PrevBlockFee)
+	if issue.Cmp(i.PrevBlockFee()) > 0 {
+		byFee.Set(i.PrevBlockFee())
+		issue.Sub(issue, i.PrevBlockFee())
 	} else {
 		byFee.Set(issue)
 		issue.SetInt64(0)

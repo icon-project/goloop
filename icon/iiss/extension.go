@@ -755,7 +755,7 @@ func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
 		return err
 	}
 	issue := is.Clone()
-	issue.PrevBlockFee.Add(issue.PrevBlockFee, fee)
+	issue.SetPrevBlockFee(new(big.Int).Add(issue.PrevBlockFee(), fee))
 	if err = s.State.SetIssue(issue); err != nil {
 		return err
 	}
