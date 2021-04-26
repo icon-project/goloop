@@ -373,7 +373,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	_, err = es.Front.AddEventEnable(
 		int(s.cc.BlockHeight()-term.StartHeight()),
 		s.from,
-		icstage.EfEnable,
+		icstage.ESEnable,
 	)
 
 	s.cc.OnEvent(state.SystemAddress,

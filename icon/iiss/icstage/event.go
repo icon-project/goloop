@@ -159,32 +159,43 @@ type EventVote struct {
 	votes VoteList
 }
 
-func (ed *EventVote) Version() int {
+func (e *EventVote) Version() int {
 	return 0
 }
 
-func (ed *EventVote) From() *common.Address {
-	return ed.from
+func (e *EventVote) From() *common.Address {
+	return e.from
 }
 
-func (ed *EventVote) Votes() VoteList {
-	return ed.votes
+func (e *EventVote) Votes() VoteList {
+	return e.votes
 }
 
-func (ed *EventVote) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&ed.from, &ed.votes)
+func (e *EventVote) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(&e.from, &e.votes)
 	return err
 }
 
-func (ed *EventVote) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(ed.from, ed.votes)
+func (e *EventVote) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(e.from, e.votes)
 }
 
-func (ed *EventVote) Equal(o icobject.Impl) bool {
+func (e *EventVote) Equal(o icobject.Impl) bool {
 	if ee2, ok := o.(*EventVote); ok {
-		return ed.from.Equal(ee2.from) && ed.votes.Equal(ee2.votes)
+		return e.from.Equal(ee2.from) && e.votes.Equal(ee2.votes)
 	} else {
 		return false
+	}
+}
+
+func (e *EventVote) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "EventVote{address=%s value=%+v}", e.from, e.votes)
+		} else {
+			fmt.Fprintf(f, "EventVote{%s %v}", e.from, e.votes)
+		}
 	}
 }
 
@@ -199,64 +210,95 @@ func NewEventVote(addr *common.Address, votes VoteList) *EventVote {
 	}
 }
 
-type EnableFlag int
+type EnableStatus int
 
 const (
-	EfEnable EnableFlag = iota
-	EfDisableTemp
-	EfDisablePermanent
-	EfMAX
+	ESEnable EnableStatus = iota
+	ESDisableTemp
+	ESDisablePermanent
+	ESMax
 )
 
-func (ef EnableFlag) IsEnable() bool {
-	return ef == EfEnable
+func (ef EnableStatus) IsEnabled() bool {
+	return ef == ESEnable
 }
 
-func (ef EnableFlag) IsTemporarilyDisabled() bool {
-	return ef == EfDisableTemp
+func (ef EnableStatus) IsDisabledTemporarily() bool {
+	return ef == ESDisableTemp
+}
+
+func (ef EnableStatus) String() string {
+	switch ef {
+	case ESEnable:
+		return "Enabled"
+	case ESDisableTemp:
+		return "DisabledTemporarily"
+	case ESDisablePermanent:
+		return "DisabledPermanently"
+	default:
+		return "Unknown"
+	}
 }
 
 type EventEnable struct {
 	icobject.NoDatabase
-	Target *common.Address
-	Flag   EnableFlag
+	target *common.Address
+	status EnableStatus
 }
 
 func (ee *EventEnable) Version() int {
 	return 0
 }
 
+func (ee *EventEnable) Target() *common.Address {
+	return ee.target
+}
+
+func (ee *EventEnable) Status() EnableStatus {
+	return ee.status
+}
+
 func (ee *EventEnable) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
-		&ee.Target,
-		&ee.Flag,
+		&ee.target,
+		&ee.status,
 	)
 	return err
 }
 
 func (ee *EventEnable) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
-		ee.Target,
-		ee.Flag,
+		ee.target,
+		ee.status,
 	)
 }
 
 func (ee *EventEnable) Equal(o icobject.Impl) bool {
 	if ee2, ok := o.(*EventEnable); ok {
-		return ee.Target.Equal(ee2.Target) && ee.Flag == ee2.Flag
+		return ee.target.Equal(ee2.target) && ee.status == ee2.status
 	} else {
 		return false
 	}
 }
 
-func (ee *EventEnable) Clear() {
-	ee.Target = nil
+func (ee *EventEnable) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "EventVote{target=%s status=%s}", ee.target, ee.status)
+		} else {
+			fmt.Fprintf(f, "EventVote{%s %s}", ee.target, ee.status)
+		}
+	}
 }
 
-func (ee *EventEnable) IsEmpty() bool {
-	return ee.Target == nil
-}
-
-func newEventEnable(tag icobject.Tag) *EventEnable {
+func newEventEnable(_ icobject.Tag) *EventEnable {
 	return new(EventEnable)
+}
+
+func NewEventEnable(target *common.Address, status EnableStatus) *EventEnable {
+	return &EventEnable{
+		target: target,
+		status: status,
+	}
 }

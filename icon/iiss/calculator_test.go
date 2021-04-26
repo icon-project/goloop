@@ -350,39 +350,39 @@ func TestDelegatedData_compare(t *testing.T) {
 func TestVotedInfo_setEnable(t *testing.T) {
 	totalVoted := new(big.Int)
 	vInfo := newVotedInfo(100)
-	enableFlag := icstage.EfDisablePermanent
+	status := icstage.ESDisablePermanent
 	for i := int64(1); i < 6; i += 1 {
-		enableFlag = enableFlag % icstage.EfMAX
+		status = status % icstage.ESMax
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(enableFlag.IsEnable(), i, i, 1, 0)
+		data := newVotedDataForTest(status.IsEnabled(), i, i, 1, 0)
 		vInfo.addVotedData(addr, data)
-		if enableFlag.IsEnable() {
+		if status.IsEnabled() {
 			totalVoted.Add(totalVoted, data.GetVotedAmount())
 		}
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
 
-	enableFlag = icstage.EfEnable
+	status = icstage.ESEnable
 	for key, vData := range vInfo.preps {
-		enableFlag = enableFlag % icstage.EfMAX
+		status = status % icstage.ESMax
 		addr, err := common.NewAddress([]byte(key))
 		assert.NoError(t, err)
 
-		if enableFlag.IsEnable() != vData.voted.Enable {
-			if enableFlag.IsEnable() {
+		if status.IsEnabled() != vData.voted.Enable {
+			if status.IsEnabled() {
 				totalVoted.Add(totalVoted, vData.GetVotedAmount())
 			} else {
 				totalVoted.Sub(totalVoted, vData.GetVotedAmount())
 			}
 		}
-		vInfo.setEnable(addr, enableFlag)
-		assert.Equal(t, enableFlag, vData.flag)
-		assert.Equal(t, enableFlag.IsEnable(), vData.voted.Enable)
+		vInfo.setEnable(addr, status)
+		assert.Equal(t, status, vData.flag)
+		assert.Equal(t, status.IsEnabled(), vData.voted.Enable)
 		assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted), "%s: %v\t%v", addr.String(), totalVoted, vInfo.totalVoted)
 	}
 
 	addr := common.MustNewAddressFromString("hx123412341234")
-	vInfo.setEnable(addr, icstage.EfDisablePermanent)
+	vInfo.setEnable(addr, icstage.ESDisablePermanent)
 	prep, ok := vInfo.preps[string(addr.Bytes())]
 	assert.True(t, ok)
 	assert.Equal(t, false, prep.Enable())

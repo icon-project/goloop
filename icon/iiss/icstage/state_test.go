@@ -132,7 +132,7 @@ func TestState_AddEvent(t *testing.T) {
 		offset        int
 		address       *common.Address
 		votes         VoteList
-		enableFlag    EnableFlag
+		enableFlag    EnableStatus
 		irep          *big.Int
 		rrep          *big.Int
 		mainPRepCount int64
@@ -168,7 +168,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:      TypeEventEnable,
 				offset:     offset2,
 				address:    addr2,
-				enableFlag: EfDisablePermanent,
+				enableFlag: ESDisablePermanent,
 			},
 		},
 	}
@@ -230,7 +230,7 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	assert.True(t, votes.Equal(event.Votes()))
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableFlag) {
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableStatus) {
 	index, err := s.AddEventEnable(offset, address, flag)
 	assert.NoError(t, err)
 
@@ -238,8 +238,8 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventEnable(obj)
-	assert.True(t, address.Equal(event.Target))
-	assert.Equal(t, flag, event.Flag)
+	assert.True(t, address.Equal(event.Target()))
+	assert.Equal(t, flag, event.Status())
 }
 
 func TestState_AddBlockProduce(t *testing.T) {

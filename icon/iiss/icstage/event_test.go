@@ -93,11 +93,9 @@ func TestEvent_Enable(t *testing.T) {
 	type_ := TypeEventEnable
 	version := 0
 	addr1 := "hx1"
-	flag := EfDisablePermanent
+	status := ESDisablePermanent
 
-	t1 := newEventEnable(icobject.MakeTag(type_, version))
-	t1.Target = common.MustNewAddressFromString(addr1)
-	t1.Flag = flag
+	t1 := NewEventEnable(common.MustNewAddressFromString(addr1), status)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -114,8 +112,8 @@ func TestEvent_Enable(t *testing.T) {
 
 	t2 := ToEventEnable(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.Target.Equal(t2.Target))
-	assert.Equal(t, t1.Flag, t2.Flag)
+	assert.Equal(t, true, t1.Target().Equal(t2.Target()))
+	assert.Equal(t, t1.Status(), t2.Status())
 }
 
 func TestVoteList_Update(t *testing.T) {
