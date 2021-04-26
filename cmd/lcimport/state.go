@@ -31,6 +31,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
@@ -39,6 +40,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 func parseParams(p string) ([]string, error) {
@@ -488,6 +490,72 @@ type ResultValues struct {
 	PatchReceipts  common.HexBytes  `json:"patchReceipts"`
 	NormalReceipts common.HexBytes  `json:"normalReceipts"`
 	ExtensionData  *ExtensionValues `json:"extensionData,omitempty"`
+}
+
+
+func getDiffHandlerFor(logger log.Logger, name string) func(op int, key []byte, exp, real trie.Object) {
+	return func(op int, key []byte, exp, real trie.Object) {
+		switch op {
+		case -1:
+			logger.Errorf("%s [-] key=%#x value=%+v\n", name, key, exp)
+		case 0:
+			logger.Errorf("%s [=] key=%#x exp=%+v real=%+v\n", name, key, exp, real)
+		case 1:
+			logger.Errorf("%s [+] key=%#x value=%+v\n", name, key, real)
+		}
+	}
+}
+
+func showExtensionDiff(dbase db.Database, logger log.Logger, e, r *ExtensionValues) {
+	if !bytes.Equal(e.State.Bytes(), r.State.Bytes()) {
+		tdb := icobject.AttachObjectFactory(dbase, icstate.NewObjectImpl)
+		et := trie_manager.NewImmutableForObject(tdb, e.State.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.State.Bytes(), icobject.ObjectType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.state"))
+	}
+	if !bytes.Equal(e.Front.Bytes(), r.Front.Bytes()) {
+		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
+		et := trie_manager.NewImmutableForObject(tdb, e.Front.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.Front.Bytes(), icobject.ObjectType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.front"))
+	}
+	if !bytes.Equal(e.Back.Bytes(), r.Back.Bytes()) {
+		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
+		et := trie_manager.NewImmutableForObject(tdb, e.Front.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.Front.Bytes(), icobject.ObjectType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back"))
+	}
+	if !bytes.Equal(e.Reward.Bytes(), r.Reward.Bytes()) {
+		tdb := icobject.AttachObjectFactory(dbase, icreward.NewObjectImpl)
+		et := trie_manager.NewImmutableForObject(tdb, e.Reward.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.Reward.Bytes(), icobject.ObjectType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.reward"))
+	}
+}
+
+func showResultDiff(dbase db.Database, logger log.Logger, e, r *ResultValues) {
+	if !bytes.Equal(e.State.Bytes(), r.State.Bytes()) {
+		et := trie_manager.NewImmutableForObject(dbase, e.State.Bytes(), state.AccountType)
+		rt := trie_manager.NewImmutableForObject(dbase, r.State.Bytes(), state.AccountType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "world"))
+	}
+
+	if !bytes.Equal(e.NormalReceipts.Bytes(), r.NormalReceipts.Bytes()) {
+		el := txresult.NewReceiptListFromHash(dbase, e.NormalReceipts.Bytes())
+		rl := txresult.NewReceiptListFromHash(dbase, r.NormalReceipts.Bytes())
+		idx := 0
+		for expect, result := el.Iterator(), rl.Iterator(); expect.Has() && result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {
+			rct1, _ := expect.Get()
+			rct2, _ := result.Get()
+			if err := rct1.Check(rct2); err != nil {
+				rct1js, _ := JSONMarshalIndent(rct1)
+				rct2js, _ := JSONMarshalIndent(rct2)
+				logger.Errorf("Expected Receipt[%d]:%s", idx, rct1js)
+				logger.Errorf("Returned Receipt[%d]:%s", idx, rct2js)
+			}
+		}
+	}
+	showExtensionDiff(dbase, logger, e.ExtensionData, r.ExtensionData)
 }
 
 func ParseResult(result []byte) (*ResultValues, error) {

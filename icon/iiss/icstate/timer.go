@@ -131,7 +131,7 @@ func (t *Timer) Set(other *Timer) {
 
 func (t *Timer) Add(address module.Address) {
 	if !t.Addresses.Contains(address) {
-		t.Addresses = append(t.Addresses, address.(*common.Address))
+		t.Addresses = append(t.Addresses, common.AddressToPtr(address))
 	}
 }
 

@@ -152,15 +152,15 @@ func (b *BlockV03) Verify(prev Block) error {
 			"InvalidTransactionHash(exp=%#x,calc=%#x)",
 			b.json.TransactionsHash.Bytes(), txs)
 	}
-	if !bytes.Equal(b.json.LeaderVotesHash.Bytes(), b.json.LeaderVotes.Hash()) {
+	if !bytes.Equal(b.json.LeaderVotesHash.Bytes(), b.json.LeaderVotes.Root()) {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidLeaderVotesHash(exp=%#x,calc=%#x)",
-			b.json.LeaderVotesHash.Bytes(), b.json.LeaderVotes.Hash())
+			b.json.LeaderVotesHash.Bytes(), b.json.LeaderVotes.Root())
 	}
-	if !bytes.Equal(b.json.PrevVotesHash.Bytes(), b.json.PrevVotes.Hash()) {
+	if !bytes.Equal(b.json.PrevVotesHash.Bytes(), b.json.PrevVotes.Root()) {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidPrevVotesHash(exp=%#x,calc=%#x)",
-			b.json.PrevVotesHash.Bytes(), b.json.PrevVotes.Hash())
+			b.json.PrevVotesHash.Bytes(), b.json.PrevVotes.Root())
 	}
 	if hash := b.calcHash(); !bytes.Equal(b.json.Hash.Bytes(), hash) {
 		return errors.CriticalFormatError.Errorf(

@@ -1114,6 +1114,9 @@ func (cs *consensus) getProposerIndex(height int64, round int32) int {
 }
 
 func (cs *consensus) isProposerFor(height int64, round int32) bool {
+	if cs.validators == nil || cs.validators.Len() == 0 {
+		return false
+	}
 	pindex := getProposerIndex(cs.validators, height, round)
 	v, _ := cs.validators.Get(pindex)
 	if v == nil {

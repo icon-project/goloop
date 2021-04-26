@@ -1,7 +1,6 @@
 package state
 
 import (
-	"reflect"
 	"sync"
 
 	"github.com/icon-project/goloop/common/crypto"
@@ -268,7 +267,7 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot) WorldState {
 	ws := new(worldStateImpl)
 	ws.database = database
-	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
+	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, AccountType)
 	ws.mutableAccounts = make(map[string]AccountState)
 	if vs == nil {
 		ws.validators, _ = ValidatorStateFromHash(database, nil)
@@ -282,8 +281,7 @@ func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot,
 func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot) WorldSnapshot {
 	ws := new(worldSnapshotImpl)
 	ws.database = dbase
-	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash,
-		reflect.TypeOf((*accountSnapshotImpl)(nil)))
+	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash, AccountType)
 	if vs == nil {
 		vs, _ = ValidatorSnapshotFromHash(dbase, nil)
 	}
@@ -335,8 +333,7 @@ func (r *validatorSnapshotRequester) OnData(value []byte, builder merkle.Builder
 func NewWorldSnapshotWithBuilder(builder merkle.Builder, sh []byte, vh []byte, ess ExtensionSnapshot) (WorldSnapshot, error) {
 	ws := new(worldSnapshotImpl)
 	ws.database = builder.Database()
-	ws.accounts = trie_manager.NewImmutableForObject(ws.database, sh,
-		reflect.TypeOf((*accountSnapshotImpl)(nil)))
+	ws.accounts = trie_manager.NewImmutableForObject(ws.database, sh, AccountType)
 	ws.accounts.Resolve(builder)
 	if vs, err := NewValidatorSnapshotWithBuilder(builder, vh); err != nil {
 		return nil, err

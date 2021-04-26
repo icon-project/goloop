@@ -19,6 +19,7 @@ package codec
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -171,5 +172,60 @@ func TestDecoder_Struct1(t *testing.T) {
 			assert.Equal(t, v4.StructPublic, v4v.StructPublic)
 			assert.Equal(t, v4.MyValue, v4v.MyValue)
 		})
+	}
+}
+
+type nullableStruct1 struct {
+	V1 *string
+	V2 *big.Int
+}
+
+type nullableStruct2 struct {
+	V1 *string
+	V2 *big.Int
+	V3 *string
+	V4 *big.Int
+	V5 int
+	V6 string
+}
+
+func TestNilValueEncoding(t *testing.T) {
+	testString := "TEST"
+	for _, co := range []Codec{MP, RLP} {
+		s1 := &nullableStruct1{
+			V1: nil,
+			V2: nil,
+		}
+		s2 := &nullableStruct1{
+			V1: &testString,
+			V2: big.NewInt(2),
+		}
+		s3 := &nullableStruct2{
+			V1: &testString,
+			V2: big.NewInt(2),
+			V3: &testString,
+			V4: big.NewInt(3),
+			V5: 4,
+			V6: "TEST",
+		}
+		bs, err := co.MarshalToBytes(s1)
+		assert.NoError(t, err)
+
+		t.Logf("Encoded:%#x", bs)
+
+		exb, err := co.UnmarshalFromBytes(bs, s2)
+		assert.NoError(t, err)
+		assert.Len(t, exb, 0, "Should be empty")
+		assert.Equal(t, s1, s2)
+
+		exb, err = co.UnmarshalFromBytes(bs, s3)
+		assert.NoError(t, err)
+		assert.Len(t, exb, 0, "Should be empty")
+		assert.Equal(t, s1.V1, s3.V1)
+		assert.Equal(t, s1.V2, s3.V2)
+		assert.Nil(t, s3.V3)
+		assert.Nil(t, s3.V4)
+		assert.Equal(t, 0, s3.V5)
+		assert.Equal(t, "", s3.V6)
 	}
 }

@@ -153,7 +153,7 @@ func (a *Account) Clear() {
 }
 
 func (a *Account) IsEmpty() bool {
-	return a.stake.Cmp(big.NewInt(0)) == 0 && len(a.unstakes) == 0
+	return (a.stake == nil || a.stake.Sign() == 0) && len(a.unstakes) == 0
 }
 
 // SetStake set stake Value
@@ -375,9 +375,9 @@ func (a *Account) RemoveUnstaking(height int64) (ra *big.Int, err error) {
 	ul := len(a.unstakes)
 
 	if tl == ul {
-		err = errors.Errorf("does not have unstaking timer at %d", height)
+		err = errors.Errorf("Unstaking timer not found at %d", height)
 	} else if tl != ul-1 {
-		err = errors.Errorf("has too many unstaking timer at %d", height)
+		err = errors.Errorf("Too many unstaking timer at %d", height)
 	}
 	a.unstakes = tmp
 
