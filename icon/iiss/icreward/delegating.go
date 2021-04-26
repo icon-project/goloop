@@ -17,6 +17,9 @@
 package icreward
 
 import (
+	"math/big"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -73,10 +76,10 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 		for i, delegation := range ds {
 			if delegation.To().Equal(vote.To()) {
 				index = i
-				delegation.Amount().Add(delegation.Amount(), vote.Amount())
+				delegation.SetAmount(new(big.Int).Add(delegation.Amount(), vote.Amount()))
 				switch delegation.Value.Sign() {
 				case -1:
-					return errors.Errorf("Negative delegation value %d", delegation.Amount().Int64())
+					return errors.Errorf("Negative delegation value %s", delegation.Amount())
 				case 0:
 					if err := ds.Delete(i); err != nil {
 						return err
@@ -92,9 +95,7 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 			if vote.Value.Sign() == 0 {
 				continue
 			}
-			nd := icstate.NewDelegation()
-			nd.Address.Set(vote.To())
-			nd.Amount().Set(vote.Amount())
+			nd := icstate.NewDelegation(common.AddressToPtr(vote.To()), vote.Amount())
 			add = append(add, nd)
 		}
 	}

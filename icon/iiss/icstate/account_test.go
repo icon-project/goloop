@@ -42,14 +42,8 @@ var assTest = &Account{
 	},
 	delegating: big.NewInt(20),
 	delegations: []*Delegation{
-		{
-			Address: common.MustNewAddressFromString("hx1"),
-			Value:   common.NewHexInt(10),
-		},
-		{
-			Address: common.MustNewAddressFromString("hx2"),
-			Value:   common.NewHexInt(10),
-		},
+		NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10)),
+		NewDelegation(common.MustNewAddressFromString("hx2"), big.NewInt(10)),
 	},
 	bonding: big.NewInt(20),
 	bonds: []*Bond{

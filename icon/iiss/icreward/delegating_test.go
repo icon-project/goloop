@@ -17,7 +17,6 @@
 package icreward
 
 import (
-	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"math/big"
 	"testing"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
@@ -36,10 +36,7 @@ func TestDelegating(t *testing.T) {
 	version := 0
 
 	t1 := newDelegating(icobject.MakeTag(type_, version))
-	d := &icstate.Delegation{
-		Address: common.MustNewAddressFromString("hx1"),
-		Value:   common.NewHexInt(10),
-	}
+	d := icstate.NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10))
 	t1.Delegations = append(t1.Delegations, d)
 
 	o1 := icobject.New(type_, t1)
@@ -68,10 +65,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 	val2 := int64(2)
 	val3 := int64(3)
 	vBig := int64(100)
-	d1 := icstate.Delegation{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   common.NewHexInt(val1),
-	}
+	d1 := icstate.NewDelegation(common.MustNewAddressFromString(addr1), big.NewInt(val1))
 	v1Delete := icstage.Vote{
 		Address: common.MustNewAddressFromString(addr1),
 		Value:   big.NewInt(-val1),
@@ -80,26 +74,14 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		Address: common.MustNewAddressFromString(addr1),
 		Value:   big.NewInt(-vBig),
 	}
-	d2 := icstate.Delegation{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(val2),
-	}
+	d2 := icstate.NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(val2))
 	v2 := icstage.Vote{
 		Address: common.MustNewAddressFromString(addr2),
 		Value:   big.NewInt(val2),
 	}
-	d2Double := icstate.Delegation{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(val2 * 2),
-	}
-	d3 := icstate.Delegation{
-		Address: common.MustNewAddressFromString(addr3),
-		Value:   common.NewHexInt(val3),
-	}
-	dNew := icstate.Delegation{
-		Address: common.MustNewAddressFromString(addr4),
-		Value:   common.NewHexInt(val3),
-	}
+	d2Double := icstate.NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(val2*2))
+	d3 := icstate.NewDelegation(common.MustNewAddressFromString(addr3), big.NewInt(val3))
+	dNew := icstate.NewDelegation(common.MustNewAddressFromString(addr4), big.NewInt(val3))
 	vNew := icstage.Vote{
 		Address: common.MustNewAddressFromString(addr4),
 		Value:   big.NewInt(val3),
@@ -109,7 +91,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		Value:   big.NewInt(-val3),
 	}
 	delegating := Delegating{
-		Delegations: icstate.Delegations{&d1, &d2, &d3},
+		Delegations: icstate.Delegations{d1, d2, d3},
 	}
 
 	tests := []struct {
@@ -118,7 +100,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		err  bool
 		want icstate.Delegations
 	}{
-		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Delegations{&d2Double, &d3, &dNew}},
+		{"Success", icstage.VoteList{&v1Delete, &v2, &vNew}, false, icstate.Delegations{d2Double, d3, dNew}},
 		{"New with negative value", icstage.VoteList{&vNewNegative}, true, icstate.Delegations{}},
 		{"Update result value is negative", icstage.VoteList{&v1TooBig}, true, icstate.Delegations{}},
 	}

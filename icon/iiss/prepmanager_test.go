@@ -48,10 +48,7 @@ func newBond(address module.Address, amount int64) *icstate.Bond {
 }
 
 func newDelegation(address module.Address, amount int64) *icstate.Delegation {
-	d := icstate.NewDelegation()
-	d.Address.Set(address)
-	d.Value.SetInt64(amount)
-	return d
+	return icstate.NewDelegation(common.AddressToPtr(address), big.NewInt(amount))
 }
 
 func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {

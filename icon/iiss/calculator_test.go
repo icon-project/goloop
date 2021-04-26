@@ -668,22 +668,10 @@ func TestCalculator_VotingReward(t *testing.T) {
 		string(addr3.Bytes()): {100, 200},
 	}
 
-	d1 := &icstate.Delegation{
-		Address: addr1,
-		Value:   common.NewHexInt(100),
-	}
-	d2 := &icstate.Delegation{
-		Address: addr2,
-		Value:   common.NewHexInt(100),
-	}
-	d3 := &icstate.Delegation{
-		Address: addr3,
-		Value:   common.NewHexInt(100),
-	}
-	d4 := &icstate.Delegation{
-		Address: addr4,
-		Value:   common.NewHexInt(100),
-	}
+	d1 := icstate.NewDelegation(addr1, big.NewInt(100))
+	d2 := icstate.NewDelegation(addr2, big.NewInt(100))
+	d3 := icstate.NewDelegation(addr3, big.NewInt(100))
+	d4 := icstate.NewDelegation(addr4, big.NewInt(100))
 	type args struct {
 		multiplier int
 		divider    int

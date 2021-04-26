@@ -18,12 +18,13 @@ package icstate
 
 import (
 	"fmt"
+	"math/big"
+	"math/bits"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
-	"math/big"
-	"math/bits"
 )
 
 const (
@@ -171,7 +172,8 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 	ps.delegated.Set(delegated)
 }
 
-// Bond Delegation formula
+// GetBondedDelegation return amount of bonded delegation
+// Bonded delegation formula
 // totalVoted = bond + delegation
 // bondRatio = bond / totalVoted * 100
 // bondedDelegation = totalVoted * (bondRatio / bondRequirement)
