@@ -17,6 +17,9 @@
 package icreward
 
 import (
+	"math/big"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -78,10 +81,10 @@ func (d *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 		for i, bond := range bonds {
 			if bond.To().Equal(vote.To()) {
 				index = i
-				bond.Amount().Add(bond.Amount(), vote.Amount())
+				bond.SetAmount(new(big.Int).Add(bond.Amount(), vote.Amount()))
 				switch bond.Amount().Sign() {
 				case -1:
-					return errors.Errorf("Negative bond value %d", bond.Amount().Int64())
+					return errors.Errorf("Negative bond value %s", bond.Amount())
 				case 0:
 					if err := bonds.Delete(i); err != nil {
 						return err
@@ -94,9 +97,7 @@ func (d *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 			if vote.Value.Sign() != 1 {
 				return errors.Errorf("Negative bond value %v", vote)
 			}
-			nb := icstate.NewBond()
-			nb.Address.Set(vote.To())
-			nb.Amount().Set(vote.Amount())
+			nb := icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())
 			add = append(add, nb)
 		}
 	}

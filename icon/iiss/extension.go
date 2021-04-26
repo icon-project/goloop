@@ -594,7 +594,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 			return errors.Errorf("PRep not found: %v", from)
 		}
 		if !prep.BonderList().Contains(from) {
-			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.To().String())
+			return errors.Errorf("%s is not in bonder List of %s", from, bond.To())
 		}
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {

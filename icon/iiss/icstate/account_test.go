@@ -53,14 +53,8 @@ var assTest = &Account{
 	},
 	bonding: big.NewInt(20),
 	bonds: []*Bond{
-		{
-			Address: common.MustNewAddressFromString("hx3"),
-			Value:   common.NewHexInt(10),
-		},
-		{
-			Address: common.MustNewAddressFromString("hx4"),
-			Value:   common.NewHexInt(10),
-		},
+		NewBond(common.MustNewAddressFromString("hx3"), big.NewInt(10)),
+		NewBond(common.MustNewAddressFromString("hx4"), big.NewInt(10)),
 	},
 	unbonding: big.NewInt(20),
 	unbonds: []*Unbond{
@@ -279,7 +273,7 @@ func TestAccount_SlashBond(t *testing.T) {
 	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), 10)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	b1 := a.Bonds()[0]
-	assert.Equal(t, 0, b1.Value.Cmp(big.NewInt(9)))
+	assert.Equal(t, 0, b1.Amount().Cmp(big.NewInt(9)))
 	bl := len(a.Bonds())
 	assert.Equal(t, 2, bl)
 
