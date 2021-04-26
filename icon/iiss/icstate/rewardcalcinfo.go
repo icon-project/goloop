@@ -41,7 +41,7 @@ type RewardCalcInfo struct {
 }
 
 func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
-	return NewRewardCalcInfo()
+	return new(RewardCalcInfo)
 }
 
 func NewRewardCalcInfo() *RewardCalcInfo {
@@ -59,24 +59,48 @@ func (rc *RewardCalcInfo) StartHeight() int64 {
 	return rc.startHeight
 }
 
+func (rc *RewardCalcInfo) SetStartHeight(height int64) {
+	rc.startHeight = height
+}
+
 func (rc *RewardCalcInfo) Period() int64 {
 	return rc.period
+}
+
+func (rc *RewardCalcInfo) SetPeriod(period int64) {
+	rc.period = period
 }
 
 func (rc *RewardCalcInfo) IsDecentralized() bool {
 	return rc.isDecentralized
 }
 
+func (rc *RewardCalcInfo) SetIsDecentralized(v bool) {
+	rc.isDecentralized = v
+}
+
 func (rc *RewardCalcInfo) PrevHeight() int64 {
 	return rc.prevHeight
+}
+
+func (rc *RewardCalcInfo) SetPrevHeight(height int64) {
+	rc.prevHeight = height
 }
 
 func (rc *RewardCalcInfo) PrevCalcReward() *big.Int {
 	return rc.prevCalcReward
 }
 
+func (rc *RewardCalcInfo) SetPrevCalcReward(v *big.Int) {
+	rc.prevCalcReward = v
+}
+
 func (rc *RewardCalcInfo) AdditionalReward() *big.Int {
 	return rc.additionalReward
+}
+
+func (rc *RewardCalcInfo) SetAdditionalReward(v *big.Int) {
+	rc.additionalReward = v
 }
 
 func (rc *RewardCalcInfo) GetEndHeight() int64 {
@@ -124,8 +148,8 @@ func (rc *RewardCalcInfo) Clone() *RewardCalcInfo {
 	nrc.period = rc.period
 	nrc.isDecentralized = rc.isDecentralized
 	nrc.prevHeight = rc.prevHeight
-	nrc.prevCalcReward = new(big.Int).Set(rc.prevCalcReward)
-	nrc.additionalReward = new(big.Int).Set(rc.additionalReward)
+	nrc.prevCalcReward = rc.prevCalcReward
+	nrc.additionalReward = rc.additionalReward
 	return nrc
 }
 
@@ -136,8 +160,8 @@ func (rc *RewardCalcInfo) Start(
 	rc.startHeight = blockHeight
 	rc.period = period
 	rc.isDecentralized = isDecentralized
-	rc.prevCalcReward.Set(calcReward)
-	rc.additionalReward.Set(additionalReward)
+	rc.prevCalcReward = calcReward
+	rc.additionalReward = additionalReward
 }
 
 func (rc *RewardCalcInfo) Format(f fmt.State, c rune) {
