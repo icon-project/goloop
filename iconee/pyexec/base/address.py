@@ -279,14 +279,15 @@ class MalformedAddress(Address):
 
 
 # cx0000000000000000000000000000000000000000
-ZERO_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 0)
+SYSTEM_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 0)
+ZERO_SCORE_ADDRESS = SYSTEM_SCORE_ADDRESS
 # cx0000000000000000000000000000000000000001
 GOVERNANCE_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 1)
 # A dummy address for handling GETAPI message
 GETAPI_DUMMY_ADDRESS = Address.from_data(AddressPrefix.CONTRACT, "SCORE_API".encode())
 
 BUILTIN_SCORE_ADDRESS_MAPPER = {
-    'system': ZERO_SCORE_ADDRESS,
+    'system': SYSTEM_SCORE_ADDRESS,
     'governance': GOVERNANCE_SCORE_ADDRESS,
     'getapi_dummy': GETAPI_DUMMY_ADDRESS,
 }

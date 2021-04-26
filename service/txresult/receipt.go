@@ -25,6 +25,8 @@ const (
 	EventLogICXTransfer = "ICXTransfer(Address,Address,int)"
 )
 
+var ReceiptType = reflect.TypeOf((*receipt)(nil))
+
 type eventLogJSON struct {
 	Addr    common.Address `json:"scoreAddress"`
 	Indexed []interface{}  `json:"indexed"`

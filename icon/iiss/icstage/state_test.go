@@ -193,9 +193,8 @@ func TestState_AddEvent(t *testing.T) {
 	}
 
 	// check event size
-	es, err := s.GetEventSize()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(len(tests)), es.Value.Int64())
+	es := s.getEventSize()
+	assert.Equal(t, int64(len(tests)), es)
 
 	// check Filter
 	ss := s.GetSnapshot()
@@ -211,9 +210,6 @@ func TestState_AddEvent(t *testing.T) {
 
 		count += 1
 	}
-	size, err := ss.GetEventSize()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(len(tests)), size.Value.Int64())
 }
 
 func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {

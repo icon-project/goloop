@@ -146,7 +146,7 @@ func (ul Unbonds) ExpireRefCount() map[int64]int {
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
 	unbond := newUnbond()
-	unbond.Address = address.(*common.Address)
+	unbond.Address = common.AddressToPtr(address)
 	unbond.Value.Set(value)
 	unbond.Expire = expireHeight
 	*ul = append(*ul, unbond)

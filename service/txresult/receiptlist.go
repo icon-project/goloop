@@ -1,8 +1,6 @@
 package txresult
 
 import (
-	"reflect"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 
@@ -76,10 +74,8 @@ func (l *receiptList) Flush() error {
 	return nil
 }
 
-var receiptType = reflect.TypeOf((*receipt)(nil))
-
 func NewReceiptListFromSlice(database db.Database, list []Receipt) module.ReceiptList {
-	mt := trie_manager.NewMutableForObject(database, nil, receiptType)
+	mt := trie_manager.NewMutableForObject(database, nil, ReceiptType)
 	for idx, r := range list {
 		k, _ := codec.BC.MarshalToBytes(uint(idx))
 		_, err := mt.Set(k, r.(*receipt))
@@ -92,13 +88,13 @@ func NewReceiptListFromSlice(database db.Database, list []Receipt) module.Receip
 }
 
 func NewReceiptListFromHash(database db.Database, h []byte) module.ReceiptList {
-	immutable := trie_manager.NewImmutableForObject(database, h, receiptType)
+	immutable := trie_manager.NewImmutableForObject(database, h, ReceiptType)
 	return &receiptList{immutable}
 }
 
 func NewReceiptListWithBuilder(builder merkle.Builder, h []byte) module.ReceiptList {
 	database := builder.Database()
-	snapshot := trie_manager.NewImmutableForObject(database, h, receiptType)
+	snapshot := trie_manager.NewImmutableForObject(database, h, ReceiptType)
 	snapshot.Resolve(builder)
 	return &receiptList{snapshot}
 }

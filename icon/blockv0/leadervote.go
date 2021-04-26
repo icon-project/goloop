@@ -23,21 +23,36 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
-type LeaderVote struct {
-	Rep         common.Address  `json:"rep"`
-	Timestamp   common.HexInt64 `json:"timestamp"`
+type LeaderVoteSharable struct {
 	BlockHeight common.HexInt64 `json:"blockHeight"`
 	OldLeader   common.Address  `json:"oldLeader"`
 	NewLeader   common.Address  `json:"newLeader"`
 	Round       int             `json:"round_"`
-	Signature   []byte          `json:"signature"`
+}
 
+func (s *LeaderVoteSharable) Equal(s2 *LeaderVoteSharable) bool {
+	return s.BlockHeight == s2.BlockHeight &&
+		s.Round == s2.Round &&
+		common.AddressEqual(&s.OldLeader, &s2.OldLeader) &&
+		common.AddressEqual(&s.NewLeader, &s2.NewLeader)
+}
+
+type LeaderVoteIndividual struct {
+	Rep         common.Address  `json:"rep"`
+	Timestamp   common.HexInt64 `json:"timestamp"`
+	Signature   []byte          `json:"signature"`
+}
+
+type LeaderVote struct {
+	LeaderVoteSharable
+	LeaderVoteIndividual
 	hash []byte
 }
 
@@ -97,7 +112,7 @@ func (v *LeaderVote) Verify() error {
 
 type LeaderVoteList struct {
 	votes []*LeaderVote
-	hash  []byte
+	root  []byte
 }
 
 func (s *LeaderVoteList) UnmarshalJSON(b []byte) error {
@@ -108,21 +123,21 @@ func (s *LeaderVoteList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.votes)
 }
 
-func (s *LeaderVoteList) Hash() []byte {
-	if s.hash == nil {
-		s.calcHash()
+func (s *LeaderVoteList) Root() []byte {
+	if s.root == nil {
+		s.calcRoot()
 	}
-	return s.hash
+	return s.root
 }
 
-func (s *LeaderVoteList) calcHash() {
+func (s *LeaderVoteList) calcRoot() {
 	items := make([]merkle.Item, len(s.votes))
 	for i, v := range s.votes {
 		if v != nil {
 			items[i] = v
 		}
 	}
-	s.hash = merkle.CalcHashOfList(items)
+	s.root = merkle.CalcHashOfList(items)
 }
 
 func (s *LeaderVoteList) Quorum() module.Address {
@@ -168,4 +183,71 @@ func (s *LeaderVoteList) Verify(reps *RepsList) error {
 	}
 	// TODO check votes for the next
 	return nil
+}
+
+type compactLeaderVoteList struct {
+	Sharable []LeaderVoteSharable
+	Entries []*compactLeaderVoteEntry
+}
+
+type compactLeaderVoteEntry struct {
+	SharableIndex int16
+	LeaderVoteIndividual
+}
+
+func (s *LeaderVoteList) compactFormat() *compactLeaderVoteList {
+	var sharable []LeaderVoteSharable
+	entries := make([]*compactLeaderVoteEntry, len(s.votes))
+	for i, v := range s.votes {
+		if v==nil {
+			entries[i] = nil
+		} else {
+			index := len(sharable)
+			for j, _ := range sharable {
+				if sharable[j].Equal(&v.LeaderVoteSharable) {
+					index = j
+					break
+				}
+			}
+			if index==len(sharable) {
+				sharable = append(sharable, v.LeaderVoteSharable)
+			}
+			entries[i] = &compactLeaderVoteEntry{
+				int16(index),
+				v.LeaderVoteIndividual,
+			}
+		}
+	}
+	return &compactLeaderVoteList{sharable, entries}
+}
+
+func (s *LeaderVoteList) RLPEncodeSelf(e codec.Encoder) error {
+	return e.Encode(s.compactFormat())
+}
+
+func (s *LeaderVoteList) RLPDecodeSelf(d codec.Decoder) error {
+	var cbvl compactLeaderVoteList
+	err := d.Decode(&cbvl)
+	if err != nil {
+		return err
+	}
+	s.votes = make([]*LeaderVote, len(cbvl.Entries))
+	for i, e := range cbvl.Entries {
+		if e==nil {
+			s.votes[i] = nil
+		} else {
+			s.votes[i] = &LeaderVote{
+				cbvl.Sharable[e.SharableIndex],
+				e.LeaderVoteIndividual,
+				nil,
+			}
+		}
+	}
+	s.root = nil
+	return nil
+}
+
+func (s* LeaderVoteList) Hash() []byte {
+	bs := codec.BC.MustMarshalToBytes(s)
+	return crypto.SHA3Sum256(bs)
 }
