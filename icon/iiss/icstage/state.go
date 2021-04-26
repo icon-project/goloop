@@ -130,6 +130,9 @@ func (s *State) ResetEventSize() error {
 }
 
 func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
+	if err := s.loadValidators(s.GetSnapshot()); err != nil {
+		return err
+	}
 	pKey := string(proposer.Bytes())
 	pIdx, ok := s.validatorToIdx[pKey]
 	if !ok {
@@ -225,7 +228,6 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 	s := &State{
 		store: icobject.NewObjectStoreState(t),
 	}
-	s.loadValidators(ss)
 	return s
 }
 
@@ -234,6 +236,5 @@ func NewState(database db.Database) *State {
 	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	return &State{
 		store:          icobject.NewObjectStoreState(t),
-		validatorToIdx: make(map[string]int),
 	}
 }

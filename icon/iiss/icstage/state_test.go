@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -519,7 +520,7 @@ func TestState_AddLoadValidators(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, data := range datas {
-		offset, ok := s.validatorToIdx[string(data.addr.Bytes())]
+		offset, ok := s.validatorToIdx[icutils.ToKey(data.addr)]
 		assert.True(t, ok)
 		assert.Equal(t, data.offset, offset)
 	}
