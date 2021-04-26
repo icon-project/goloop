@@ -28,44 +28,48 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
-var assTest = &Account{
-	stake: big.NewInt(100),
-	unstakes: []*Unstake{
-		{
-			Amount:       big.NewInt(5),
-			ExpireHeight: 10,
+func getTestAccount() *Account {
+	assTest := &Account{
+		stake: big.NewInt(100),
+		unstakes: []*Unstake{
+			{
+				Amount:       big.NewInt(5),
+				ExpireHeight: 10,
+			},
+			{
+				Amount:       big.NewInt(10),
+				ExpireHeight: 20,
+			},
 		},
-		{
-			Amount:       big.NewInt(10),
-			ExpireHeight: 20,
+		delegating: big.NewInt(20),
+		delegations: []*Delegation{
+			NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10)),
+			NewDelegation(common.MustNewAddressFromString("hx2"), big.NewInt(10)),
 		},
-	},
-	delegating: big.NewInt(20),
-	delegations: []*Delegation{
-		NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10)),
-		NewDelegation(common.MustNewAddressFromString("hx2"), big.NewInt(10)),
-	},
-	bonding: big.NewInt(20),
-	bonds: []*Bond{
-		NewBond(common.MustNewAddressFromString("hx3"), big.NewInt(10)),
-		NewBond(common.MustNewAddressFromString("hx4"), big.NewInt(10)),
-	},
-	unbonding: big.NewInt(20),
-	unbonds: []*Unbond{
-		{
-			Address: common.MustNewAddressFromString("hx5"),
-			Value:   big.NewInt(10),
-			Expire:  20,
+		bonding: big.NewInt(20),
+		bonds: []*Bond{
+			NewBond(common.MustNewAddressFromString("hx3"), big.NewInt(10)),
+			NewBond(common.MustNewAddressFromString("hx4"), big.NewInt(10)),
 		},
-		{
-			Address: common.MustNewAddressFromString("hx6"),
-			Value:   big.NewInt(10),
-			Expire:  30,
+		unbonding: big.NewInt(20),
+		unbonds: []*Unbond{
+			{
+				Address: common.MustNewAddressFromString("hx5"),
+				Value:   big.NewInt(10),
+				Expire:  20,
+			},
+			{
+				Address: common.MustNewAddressFromString("hx6"),
+				Value:   big.NewInt(10),
+				Expire:  30,
+			},
 		},
-	},
+	}
+	return assTest
 }
 
 func TestAccount_Bytes(t *testing.T) {
+	assTest := getTestAccount()
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	o1 := icobject.New(TypeAccount, assTest.GetSnapshot())
@@ -101,7 +105,7 @@ func TestAccount_SetStake(t *testing.T) {
 }
 
 func TestAccount_UpdateUnbonds(t *testing.T) {
-	a := assTest.Clone() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
+	a := getTestAccount() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 
 	key5 := icutils.ToKey(common.MustNewAddressFromString("hx5"))
 	key6 := icutils.ToKey(common.MustNewAddressFromString("hx6"))
@@ -177,7 +181,7 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 }
 
 func TestAccount_RemoveUnbonding(t *testing.T) {
-	a := assTest.Clone() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
+	a := getTestAccount() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
 	ub1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(10), 20}
 	ub2 := &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
 	assert.Contains(t, a.unbonds, ub1)
@@ -212,7 +216,7 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 }
 
 func TestAccount_RemoveUnstaking(t *testing.T) {
-	a := assTest.Clone() // unstakes : [{value:5, bh: 10}, {10, 20}]
+	a := getTestAccount() // unstakes : [{value:5, bh: 10}, {10, 20}]
 	us1 := &Unstake{big.NewInt(5), 10}
 	us2 := &Unstake{big.NewInt(10), 20}
 	assert.Contains(t, a.unstakes, us1)
@@ -246,7 +250,7 @@ func TestAccount_RemoveUnstaking(t *testing.T) {
 }
 
 func TestAccount_SlashStake(t *testing.T) {
-	a := assTest.Clone() // a.stake = 100
+	a := getTestAccount() // a.stake = 100
 
 	err := a.SlashStake(big.NewInt(10))
 	assert.NoError(t, err)
@@ -262,7 +266,7 @@ func TestAccount_SlashStake(t *testing.T) {
 }
 
 func TestAccount_SlashBond(t *testing.T) {
-	a := assTest.Clone() //[{hx3, 10}, {hx4, 10}]
+	a := getTestAccount() //[{hx3, 10}, {hx4, 10}]
 
 	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), 10)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
@@ -278,7 +282,7 @@ func TestAccount_SlashBond(t *testing.T) {
 }
 
 func TestAccount_SlashUnbond(t *testing.T) {
-	a := assTest.Clone() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
+	a := getTestAccount() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
 
 	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), 10)
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
