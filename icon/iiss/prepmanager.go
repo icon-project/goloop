@@ -163,7 +163,6 @@ func (p *PRep) Clone() *PRep {
 }
 
 func newPRep(owner module.Address, pb *icstate.PRepBase, ps *icstate.PRepStatus) *PRep {
-	ps.SetOwner(owner)
 	return &PRep{owner: owner, PRepBase: pb, PRepStatus: ps}
 }
 

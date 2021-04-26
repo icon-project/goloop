@@ -114,7 +114,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			status = NewPRepStatus(owner)
+			status = NewPRepStatus()
 			c.statuses[key] = status
 		} else {
 			// return nil
@@ -150,17 +150,17 @@ func (c *PRepStatusCache) Reset() {
 
 func (c *PRepStatusCache) Flush() {
 	for k, status := range c.statuses {
+		key, err := common.BytesToAddress([]byte(k))
+		if err != nil {
+			panic(errors.Errorf("PRepStatusCache is broken: %s", k))
+		}
+
 		if status.IsEmpty() {
-			key, err := common.BytesToAddress([]byte(k))
-			if err != nil {
-				panic(errors.Errorf("PRepStatusCache is broken: %s", k))
-			}
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 			delete(c.statuses, k)
 		} else {
-			key := status.owner
 			o := icobject.New(TypePRepStatus, status.Clone())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)

@@ -21,7 +21,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/module"
 	"math/big"
 	"math/bits"
 )
@@ -104,8 +103,6 @@ type PRepStatus struct {
 	icobject.NoDatabase
 	StateAndSnapshot
 
-	owner module.Address
-
 	grade           Grade
 	status          Status
 	delegated       *big.Int
@@ -116,15 +113,6 @@ type PRepStatus struct {
 	vPenaltyMask    uint32
 	lastState       ValidationState
 	lastHeight      int64
-}
-
-func (ps *PRepStatus) Owner() module.Address {
-	return ps.owner
-}
-
-func (ps *PRepStatus) SetOwner(owner module.Address) {
-	ps.checkWritable()
-	ps.owner = owner
 }
 
 func (ps *PRepStatus) Bonded() *big.Int {
@@ -271,7 +259,6 @@ func (ps *PRepStatus) equal(other *PRepStatus) bool {
 
 func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.checkWritable()
-	ps.owner = other.owner
 	ps.grade = other.grade
 	ps.status = other.status
 	ps.delegated.Set(other.delegated)
@@ -286,7 +273,6 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 
 func (ps *PRepStatus) Clone() *PRepStatus {
 	return &PRepStatus{
-		owner:           ps.owner,
 		grade:           ps.grade,
 		status:          ps.status,
 		delegated:       new(big.Int).Set(ps.delegated),
@@ -317,7 +303,6 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 
 func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["address"] = ps.owner
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
 	jso["lastHeight"] = ps.lastHeight
@@ -377,8 +362,7 @@ func (ps *PRepStatus) Equal(o icobject.Impl) bool {
 
 func (ps *PRepStatus) Clear() {
 	ps.checkWritable()
-	ps.owner = nil
-	ps.status = Active
+	ps.status = NotReady
 	ps.grade = Candidate
 	ps.delegated = big.NewInt(0)
 	ps.bonded = big.NewInt(0)
@@ -400,7 +384,9 @@ func (ps *PRepStatus) GetSnapshot() *PRepStatus {
 }
 
 func (ps *PRepStatus) IsEmpty() bool {
-	return ps == nil || ps.owner == nil
+	o := NewPRepStatus()
+	return ps.equal(o)
+	//return ps == nil
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
@@ -522,8 +508,7 @@ func (ps *PRepStatus) OnPenaltyImposed(blockHeight int64) error {
 
 func (ps *PRepStatus) String() string {
 	return fmt.Sprintf(
-		"owner=%s st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
-		ps.owner,
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -541,9 +526,8 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 		if f.Flag('+') {
 			fmt.Fprintf(
 				f,
-				"PRepStatus{owner=%s status=%s grade=%s lastState=%s lastHeight=%d "+
+				"PRepStatus{status=%s grade=%s lastState=%s lastHeight=%d "+
 					"vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d}",
-				ps.owner,
 				ps.status,
 				ps.grade,
 				ps.lastState,
@@ -555,8 +539,7 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 			)
 		} else {
 			fmt.Fprintf(
-				f, "PRepStatus{%s %s %s %s %d %d %d %d %d}",
-				ps.owner,
+				f, "PRepStatus{%s %s %s %d %d %d %d %d}",
 				ps.status,
 				ps.grade,
 				ps.lastState,
@@ -573,12 +556,11 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 }
 
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
-	return NewPRepStatus(nil)
+	return NewPRepStatus()
 }
 
-func NewPRepStatus(owner module.Address) *PRepStatus {
+func NewPRepStatus() *PRepStatus {
 	return &PRepStatus{
-		owner:           owner,
 		grade:           Candidate,
 		delegated:       new(big.Int),
 		bonded:          new(big.Int),

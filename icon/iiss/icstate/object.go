@@ -88,7 +88,6 @@ func ToPRepStatus(object trie.Object, owner module.Address) *PRepStatus {
 	}
 	ps := object.(*icobject.Object).Real().(*PRepStatus)
 	ps = ps.Clone()
-	ps.SetOwner(owner)
 	return ps
 }
 

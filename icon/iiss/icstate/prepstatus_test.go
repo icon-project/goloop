@@ -33,7 +33,6 @@ func TestPRepStatus_Bytes(t *testing.T) {
 	ss1 := newPRepStatusWithTag(icobject.MakeTag(TypePRepStatus, prepStatusVersion))
 	g := Candidate
 	ss1.grade = g
-	ss1.SetOwner(owner)
 
 	o1 := icobject.New(TypePRepStatus, ss1)
 	serialized := o1.Bytes()
@@ -48,9 +47,8 @@ func TestPRepStatus_Bytes(t *testing.T) {
 
 	ss2 := ToPRepStatus(o2, owner)
 	assert.Equal(t, true, ss1.Equal(ss2))
+	assert.Equal(t, true, ss2.Equal(ss1))
 	assert.Equal(t, false, ss2.readonly)
-	assert.Equal(t, true, ss1.owner.Equal(owner))
-	assert.Equal(t, true, ss2.owner.Equal(owner))
 }
 
 // test for GetBondedDelegation
