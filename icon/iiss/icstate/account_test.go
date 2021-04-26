@@ -29,8 +29,7 @@ import (
 )
 
 var assTest = &Account{
-	address: common.MustNewAddressFromString("hx0"),
-	stake:   big.NewInt(100),
+	stake: big.NewInt(100),
 	unstakes: []*Unstake{
 		{
 			Amount:       big.NewInt(5),
@@ -79,11 +78,6 @@ var assTest = &Account{
 }
 
 func TestAccount_Bytes(t *testing.T) {
-	address, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
-	if err != nil {
-		t.Errorf("Failed to create an address")
-	}
-	assTest.SetAddress(address)
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	o1 := icobject.New(TypeAccount, assTest.GetSnapshot())
@@ -99,13 +93,12 @@ func TestAccount_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ass2 := ToAccount(o2, address)
+	ass2 := ToAccount(o2)
 	assert.Equal(t, true, assTest.Equal(ass2))
 }
 
 func TestAccount_SetStake(t *testing.T) {
-	address := common.MustNewAddressFromString("hx1")
-	account := newAccount(address)
+	account := newAccount()
 
 	assert.Equal(t, 0, account.Stake().Cmp(new(big.Int)))
 

@@ -73,13 +73,12 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	}
 }
 
-func ToAccount(object trie.Object, address module.Address) *Account {
+func ToAccount(object trie.Object) *Account {
 	if object == nil {
 		return nil
 	}
 	a := object.(*icobject.Object).Real().(*Account)
 	a = a.Clone()
-	a.SetAddress(address)
 	return a
 }
 
