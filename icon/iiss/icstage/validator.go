@@ -24,38 +24,40 @@ import (
 
 type Validator struct {
 	icobject.NoDatabase
-	Address *common.Address
+	address *common.Address
 }
 
 func (v *Validator) Version() int {
 	return 0
 }
 
+func (v *Validator) Address() *common.Address {
+	return v.address
+}
+
 func (v *Validator) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&v.Address)
+	return decoder.Decode(&v.address)
 }
 
 func (v *Validator) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(v.Address)
+	return encoder.Encode(v.address)
 }
 
 func (v *Validator) Equal(o icobject.Impl) bool {
 	if v2, ok := o.(*Validator); ok {
-		return v.Address.Equal(v2.Address)
+		return v.address.Equal(v2.address)
 	} else {
 		return false
 	}
 }
 
-func (v *Validator) Clear() {
-	v.Address = nil
+func newValidator(_ icobject.Tag) *Validator {
+	return new(Validator)
 }
 
-func (v *Validator) IsEmpty() bool {
-	return v.Address == nil
-}
-
-func newValidator(tag icobject.Tag) *Validator {
-	return &Validator{}
+func NewValidator(addr *common.Address) *Validator {
+	return &Validator{
+		address: addr,
+	}
 }
 

@@ -311,7 +311,7 @@ func (c *Calculator) loadValidators() ([]*validator, error) {
 			return nil, errors.ErrExecutionFail
 		}
 		obj := icstage.ToValidator(o)
-		vs = append(vs, newValidator(obj.Address))
+		vs = append(vs, newValidator(obj.Address()))
 		count += 1
 	}
 

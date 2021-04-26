@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -159,8 +160,7 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 
 func (s *State) addValidator(idx int, validator module.Address) error {
 	key := ValidatorKey.Append(idx).Build()
-	obj := newValidator(icobject.MakeTag(TypeValidator, 0))
-	obj.Address = common.AddressToPtr(validator)
+	obj := NewValidator(common.AddressToPtr(validator))
 	_, err := s.store.Set(key, icobject.New(TypeValidator, obj))
 	return err
 }
@@ -214,7 +214,7 @@ func (s *State) loadValidators(ss *Snapshot) error {
 		}
 		idx := int(intconv.BytesToInt64(keySplit[1]))
 		v := ToValidator(o)
-		nvs[string(v.Address.Bytes())] = idx
+		nvs[icutils.ToKey(v.Address())] = idx
 	}
 	s.validatorToIdx = nvs
 	return nil

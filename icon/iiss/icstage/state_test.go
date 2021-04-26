@@ -356,7 +356,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 		keySplit, _ := containerdb.SplitKeys(key)
 		assert.Equal(t, ValidatorKey.Build(), keySplit[0])
 		assert.Equal(t, count, int(intconv.BytesToInt64(keySplit[1])))
-		assert.True(t, addrs[count].Equal(v.Address))
+		assert.True(t, addrs[count].Equal(v.Address()))
 
 		count += 1
 	}
@@ -511,7 +511,7 @@ func TestState_AddLoadValidators(t *testing.T) {
 		obj, err := icobject.GetFromMutableForObject(s.store, key)
 		assert.NoError(t, err)
 		validator := ToValidator(obj)
-		assert.True(t, data.addr.Equal(validator.Address))
+		assert.True(t, data.addr.Equal(validator.Address()))
 	}
 
 	ss := s.GetSnapshot()
