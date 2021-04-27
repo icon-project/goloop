@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
@@ -85,7 +84,7 @@ func (c *Calculator) StartHeight() int64 {
 }
 
 func (c *Calculator) TotalReward() *big.Int {
-	return c.stats.totalReward()
+	return c.stats.TotalReward()
 }
 
 func (c *Calculator) Back() *icstage.Snapshot {
@@ -157,10 +156,7 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 		votedTS.Sub(bpTS), votingTS.Sub(votedTS), finalTS.Sub(votingTS),
 	)
 	c.log.Infof("Calculation statistics: BlockProduce=%s Voted=%s Voting=%s",
-		c.stats.blockProduce.String(),
-		c.stats.voted.String(),
-		c.stats.voting.String(),
-	)
+		c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
 	return
 }
 
@@ -171,7 +167,7 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	// make new State with hash value to decoupling base and temp
 	c.temp = icreward.NewState(ss.database, c.base.Bytes())
 	c.result = nil
-	c.stats.clear()
+	c.stats.Clear()
 
 	// read global variables
 	c.global, err = c.back.GetGlobal()
@@ -215,7 +211,7 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore = iScore.Added(new(big.Int).Neg(claim.Value()))
+			iScore = iScore.Subtracted(claim.Value())
 			if iScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
 			}
@@ -239,11 +235,11 @@ func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t Reward
 
 	switch t {
 	case TypeBlockProduce:
-		c.stats.increaseBlockProduce(reward)
+		c.stats.IncreaseBlockProduce(reward)
 	case TypeVoted:
-		c.stats.increaseVoted(reward)
+		c.stats.IncreaseVoted(reward)
 	case TypeVoting:
-		c.stats.increaseVoting(reward)
+		c.stats.IncreaseVoting(reward)
 	}
 	return nil
 }
@@ -284,7 +280,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	}
 
 	for _, v := range validators {
-		if err = c.updateIScore(v.addr, v.iScore, TypeBlockProduce); err != nil {
+		if err = c.updateIScore(v.Address(), v.IScore(), TypeBlockProduce); err != nil {
 			return err
 		}
 	}
@@ -325,14 +321,14 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 
 	// for proposer
 	proposer := validators[pIndex]
-	proposer.iScore.Add(proposer.iScore, beta1Reward)
+	proposer.SetIScore(new(big.Int).Add(proposer.IScore(), beta1Reward))
 
 	// for validator
 	if vCount > 0 {
 		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(vCount)))
 		for i := 0; i < maxIndex; i += 1 {
 			if (vMask.Bit(i)) != 0 {
-				validators[i].iScore.Add(validators[i].iScore, beta1Validate)
+				validators[i].SetIScore(new(big.Int).Add(validators[i].IScore(), beta1Validate))
 			}
 		}
 	}
@@ -390,50 +386,50 @@ func (c *Calculator) calculateVotedReward() error {
 		keyOffset := int(intconv.BytesToInt64(keySplit[1]))
 		switch type_ {
 		case icstage.TypeEventEnable:
-			vInfo.calculateReward(multiplier, divider, keyOffset-offset)
+			vInfo.CalculateReward(multiplier, divider, keyOffset-offset)
 			offset = keyOffset
 
 			obj := icstage.ToEventEnable(o)
-			vInfo.setEnable(obj.Target(), obj.Status())
+			vInfo.SetEnable(obj.Target(), obj.Status())
 			// If revision < 7, do not update totalBondedDelegation with EventEnable
 			if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
-				vInfo.updateTotalBondedDelegation()
+				vInfo.UpdateTotalBondedDelegation()
 			}
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateDelegated(obj.Votes())
+			vInfo.UpdateDelegated(obj.Votes())
 		case icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateBonded(obj.Votes())
+			vInfo.UpdateBonded(obj.Votes())
 		}
 	}
 	if offset < c.global.GetOffsetLimit() {
-		vInfo.calculateReward(multiplier, divider, c.global.GetTermPeriod()-offset)
+		vInfo.CalculateReward(multiplier, divider, c.global.GetTermPeriod()-offset)
 	}
 
 	// write result to temp and update statistics
-	for key, prep := range vInfo.preps {
+	for key, prep := range vInfo.PReps() {
 		var addr *common.Address
 		addr, err = common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
 		prep.UpdateToWrite()
-		if prep.voted.IsEmpty() {
+		if prep.IsEmpty() {
 			if err = c.temp.DeleteVoted(addr); err != nil {
 				return err
 			}
 		} else {
-			if err = c.temp.SetVoted(addr, prep.voted); err != nil {
+			if err = c.temp.SetVoted(addr, prep.Voted()); err != nil {
 				return err
 			}
 		}
 
-		if prep.iScore.Sign() == 0 {
+		if prep.IScore().Sign() == 0 {
 			continue
 		}
 
-		if err = c.updateIScore(addr, prep.iScore, TypeVoted); err != nil {
+		if err = c.updateIScore(addr, prep.IScore(), TypeVoted); err != nil {
 			return err
 		}
 	}
@@ -461,11 +457,11 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 		}
 		obj := icreward.ToVoted(o)
 		data := newVotedData(obj.Clone()) // Clone Voted instance as we will modify it later
-		data.voted.UpdateBondedDelegation(bondRequirement)
-		vInfo.addVotedData(addr, data)
+		data.UpdateBondedDelegation(bondRequirement)
+		vInfo.AddVotedData(addr, data)
 	}
-	vInfo.sort()
-	vInfo.updateTotalBondedDelegation()
+	vInfo.Sort()
+	vInfo.UpdateTotalBondedDelegation()
 
 	return vInfo, nil
 }
@@ -541,7 +537,7 @@ func (c *Calculator) calculateVotingReward() error {
 	if err != nil {
 		return err
 	}
-	totalVotingAmount.Set(vInfo.totalVoted)
+	totalVotingAmount.Set(vInfo.TotalVoted())
 
 	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
 		var o trie.Object
@@ -570,12 +566,12 @@ func (c *Calculator) calculateVotingReward() error {
 				prepInfo[idx] = pe
 			}
 			if event.Status().IsEnabled() {
-				prepInfo[idx].startOffset = offset
+				prepInfo[idx].SetStartOffset(offset)
 			} else {
-				prepInfo[idx].endOffset = offset
+				prepInfo[idx].SetEndOffset(offset)
 			}
 			// update vInfo
-			vInfo.setEnable(event.Target(), event.Status())
+			vInfo.SetEnable(event.Target(), event.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
@@ -592,7 +588,7 @@ func (c *Calculator) calculateVotingReward() error {
 				} else {
 					delegatingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateDelegated(event.Votes())
+				vInfo.UpdateDelegated(event.Votes())
 			} else {
 				_, ok := bondingMap[idx]
 				if !ok {
@@ -605,12 +601,12 @@ func (c *Calculator) calculateVotingReward() error {
 				} else {
 					bondingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateBonded(event.Votes())
+				vInfo.UpdateBonded(event.Votes())
 			}
 		}
 		// find MAX totalVotingAmount
-		if totalVotingAmount.Cmp(vInfo.totalVoted) == -1 {
-			totalVotingAmount.Set(vInfo.totalVoted)
+		if totalVotingAmount.Cmp(vInfo.TotalVoted()) == -1 {
+			totalVotingAmount.Set(vInfo.TotalVoted())
 		}
 	}
 
@@ -731,11 +727,11 @@ func (c *Calculator) votingReward(
 			s := from
 			e := to
 			if prep, ok := prepInfo[icutils.ToKey(voting.To())]; ok {
-				if prep.startOffset != 0 && prep.startOffset > s {
-					s = prep.startOffset
+				if prep.StartOffset() != 0 && prep.StartOffset() > s {
+					s = prep.StartOffset()
 				}
-				if prep.endOffset != 0 && prep.endOffset < e {
-					e = prep.endOffset
+				if prep.EndOffset() != 0 && prep.EndOffset() < e {
+					e = prep.EndOffset()
 				}
 				period := e - s
 				reward := new(big.Int).Mul(multiplier, voting.Amount())
@@ -938,6 +934,18 @@ type validator struct {
 	iScore *big.Int
 }
 
+func (v *validator) Address() module.Address {
+	return v.addr
+}
+
+func (v *validator) IScore() *big.Int {
+	return v.iScore
+}
+
+func (v *validator) SetIScore(value *big.Int) {
+	v.iScore = value
+}
+
 func newValidator(addr *common.Address) *validator {
 	return &validator{
 		addr:   addr,
@@ -948,10 +956,10 @@ func newValidator(addr *common.Address) *validator {
 type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
-	flag   icstage.EnableStatus
+	status icstage.EnableStatus
 }
 
-func (vd *votedData) compare(vd2 *votedData) int {
+func (vd *votedData) Compare(vd2 *votedData) int {
 	dv := new(big.Int)
 	if vd.Enable() {
 		dv = vd.GetBondedDelegation()
@@ -974,21 +982,45 @@ func (vd *votedData) compare(vd2 *votedData) int {
 	return dv.Cmp(dv2)
 }
 
+func (vd *votedData) Voted() *icreward.Voted {
+	return vd.voted
+}
+
+func (vd *votedData) IScore() *big.Int {
+	return vd.iScore
+}
+
+func (vd *votedData) SetIScore(value *big.Int) {
+	vd.iScore = value
+}
+
+func (vd *votedData) Status() icstage.EnableStatus {
+	return vd.status
+}
+
 func (vd *votedData) Enable() bool {
 	return vd.voted.Enable()
 }
 
-func (vd *votedData) SetEnable(flag icstage.EnableStatus) {
-	vd.voted.SetEnable(flag.IsEnabled())
-	vd.flag = flag
+func (vd *votedData) SetEnable(status icstage.EnableStatus) {
+	vd.voted.SetEnable(status.IsEnabled())
+	vd.status = status
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
 	return vd.voted.Delegated()
 }
 
+func (vd *votedData) SetDelegated(value *big.Int) {
+	vd.voted.SetDelegated(value)
+}
+
 func (vd *votedData) GetBonded() *big.Int {
 	return vd.voted.Bonded()
+}
+
+func (vd *votedData) SetBonded(value *big.Int) {
+	vd.voted.SetBonded(value)
 }
 
 func (vd *votedData) GetBondedDelegation() *big.Int {
@@ -999,10 +1031,18 @@ func (vd *votedData) GetVotedAmount() *big.Int {
 	return vd.voted.GetVotedAmount()
 }
 
+func (vd *votedData) IsEmpty() bool {
+	return vd.voted.IsEmpty()
+}
+
 func (vd *votedData) UpdateToWrite() {
-	if vd.flag.IsDisabledTemporarily() {
+	if vd.status.IsDisabledTemporarily() {
 		vd.voted.SetEnable(true)
 	}
+}
+
+func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
+	vd.voted.UpdateBondedDelegation(bondRequirement)
 }
 
 func newVotedData(d *icreward.Voted) *votedData {
@@ -1020,64 +1060,90 @@ type votedInfo struct {
 	preps                 map[string]*votedData
 }
 
-func (vi *votedInfo) addVotedData(addr module.Address, data *votedData) {
-	vi.preps[string(addr.Bytes())] = data
+func (vi *votedInfo) TotalBondedDelegation() *big.Int {
+	return vi.totalBondedDelegation
+}
+
+func (vi *votedInfo) TotalVoted() *big.Int {
+	return vi.totalVoted
+}
+
+func (vi *votedInfo) MaxRankForReward() int {
+	return vi.maxRankForReward
+}
+
+func (vi *votedInfo) Rank() []string {
+	return vi.rank
+}
+
+func (vi *votedInfo) PReps() map[string]*votedData {
+	return vi.preps
+}
+
+func (vi *votedInfo) GetPRepByAddress(addr module.Address) *votedData {
+	key := icutils.ToKey(addr)
+	return vi.preps[key]
+}
+
+func (vi *votedInfo) AddVotedData(addr module.Address, data *votedData) {
+	vi.preps[icutils.ToKey(addr)] = data
 	if data.Enable() {
 		vi.updateTotalVoted(data.GetVotedAmount())
 	}
 }
 
-func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableStatus) {
-	if vData, ok := vi.preps[string(addr.Bytes())]; ok {
-		if flag.IsEnabled() != vData.Enable() {
-			if flag.IsEnabled() {
+func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus) {
+	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
+		if status.IsEnabled() != vData.Enable() {
+			if status.IsEnabled() {
 				vi.updateTotalVoted(vData.GetVotedAmount())
 			} else {
 				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
 			}
 		}
-		vData.SetEnable(flag)
+		vData.SetEnable(status)
 	} else {
 		voted := icreward.NewVoted()
 		vData = newVotedData(voted)
-		vData.SetEnable(flag)
-		vi.addVotedData(addr, vData)
+		vData.SetEnable(status)
+		vi.AddVotedData(addr, vData)
 	}
 }
 
-func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
+func (vi *votedInfo) UpdateDelegated(votes icstage.VoteList) {
 	for _, vote := range votes {
+		// vote got diff value
 		if data, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
-			data.voted.SetDelegated(new(big.Int).Add(data.GetDelegated(), vote.Amount()))
+			data.SetDelegated(new(big.Int).Add(data.GetDelegated(), vote.Amount()))
 			if data.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.SetDelegated(vote.Amount())
 			data = newVotedData(voted)
-			vi.addVotedData(vote.To(), data)
+			data.SetDelegated(vote.Amount())
+			vi.AddVotedData(vote.To(), data)
 		}
 	}
 }
 
-func (vi *votedInfo) updateBonded(votes icstage.VoteList) {
+func (vi *votedInfo) UpdateBonded(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if vData, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
-			vData.voted.SetBonded(new(big.Int).Add(vData.GetBonded(), vote.Amount()))
-			if vData.Enable() {
+		if data, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
+			data.SetBonded(new(big.Int).Add(data.GetBonded(), vote.Amount()))
+			if data.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.SetBonded(vote.Amount())
-			vData = newVotedData(voted)
-			vi.addVotedData(vote.To(), vData)
+			data = newVotedData(voted)
+			data.SetBonded(vote.Amount())
+			vi.AddVotedData(vote.To(), data)
 		}
 	}
 }
 
-func (vi *votedInfo) sort() {
+func (vi *votedInfo) Sort() {
 	// sort prep list with bondedDelegation amount
 	size := len(vi.preps)
 	temp := make(map[votedData]string, size)
@@ -1089,7 +1155,7 @@ func (vi *votedInfo) sort() {
 		i += 1
 	}
 	sort.Slice(tempKeys, func(i, j int) bool {
-		ret := tempKeys[i].compare(&tempKeys[j])
+		ret := tempKeys[i].Compare(&tempKeys[j])
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
@@ -1105,13 +1171,13 @@ func (vi *votedInfo) sort() {
 	vi.rank = rank
 }
 
-func (vi *votedInfo) updateTotalBondedDelegation() {
+func (vi *votedInfo) UpdateTotalBondedDelegation() {
 	total := new(big.Int)
-	for i, address := range vi.rank {
+	for i, addrKey := range vi.rank {
 		if i == vi.maxRankForReward {
 			break
 		}
-		vData := vi.preps[address]
+		vData := vi.preps[addrKey]
 		if vData.Enable() {
 			total.Add(total, vData.GetBondedDelegation())
 		}
@@ -1120,11 +1186,11 @@ func (vi *votedInfo) updateTotalBondedDelegation() {
 }
 
 func (vi *votedInfo) updateTotalVoted(amount *big.Int) {
-	vi.totalVoted.Add(vi.totalVoted, amount)
+	vi.totalVoted = new(big.Int).Add(vi.totalVoted, amount)
 }
 
-// calculateReward calculate P-Rep voted reward
-func (vi *votedInfo) calculateReward(multiplier, divider *big.Int, period int) {
+// CalculateReward calculate P-Rep voted reward
+func (vi *votedInfo) CalculateReward(multiplier, divider *big.Int, period int) {
 	if multiplier.Sign() == 0 || period == 0 {
 		return
 	}
@@ -1133,22 +1199,21 @@ func (vi *votedInfo) calculateReward(multiplier, divider *big.Int, period int) {
 	}
 	// reward = multiplier * period * bondedDelegation / (divider * totalBondedDelegation)
 	base := new(big.Int).Mul(multiplier, big.NewInt(int64(period)))
-	for i, addr := range vi.rank {
+	reward := new(big.Int)
+	for i, addrKey := range vi.rank {
 		if i == vi.maxRankForReward {
 			break
 		}
-		prep := vi.preps[addr]
-
+		prep := vi.preps[addrKey]
 		if prep.Enable() == false {
 			continue
 		}
 
-		reward := new(big.Int).Set(base)
-		reward.Mul(reward, prep.voted.BondedDelegation())
+		reward.Mul(base, prep.GetBondedDelegation())
 		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 
-		prep.iScore.Add(prep.iScore, reward)
+		prep.SetIScore(new(big.Int).Add(prep.IScore(), reward))
 	}
 }
 
@@ -1166,71 +1231,79 @@ type pRepEnable struct {
 	endOffset   int
 }
 
+func (p *pRepEnable) StartOffset() int {
+	return p.startOffset
+}
+
+func (p *pRepEnable) EndOffset() int {
+	return p.endOffset
+}
+
+func (p *pRepEnable) SetStartOffset(value int) {
+	p.startOffset = value
+}
+
+func (p *pRepEnable) SetEndOffset(value int) {
+	p.endOffset = value
+}
+
 type statistics struct {
 	blockProduce *big.Int
 	voted        *big.Int
 	voting       *big.Int
 }
 
-func newStatistics() *statistics {
-	return &statistics{
-		blockProduce: new(big.Int),
-		voted:        new(big.Int),
-		voting:       new(big.Int),
-	}
+func (s *statistics) BlockProduce() *big.Int {
+	return s.blockProduce
 }
 
-func (s *statistics) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(
-		s.blockProduce,
-		s.voted,
-		s.voting,
-	)
+func (s *statistics) Voted() *big.Int {
+	return s.voted
 }
 
-func (s *statistics) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeListOf(
-		&s.blockProduce,
-		&s.voted,
-		&s.voting,
-	)
-}
-
-func (s *statistics) equal(s2 *statistics) bool {
-	return s.blockProduce.Cmp(s2.blockProduce) == 0 &&
-		s.voted.Cmp(s2.voted) == 0 &&
-		s.voting.Cmp(s2.voting) == 0
-}
-
-func (s *statistics) clear() {
-	s.blockProduce.SetInt64(0)
-	s.voted.SetInt64(0)
-	s.voting.SetInt64(0)
+func (s *statistics) Voting() *big.Int {
+	return s.voting
 }
 
 func increaseStats(src *big.Int, amount *big.Int) *big.Int {
+	n := new(big.Int)
 	if src == nil {
-		src = new(big.Int).Set(amount)
+		n.Set(amount)
 	} else {
-		src.Add(src, amount)
+		n.Add(src, amount)
 	}
-	return src
+	return n
 }
 
-func (s *statistics) increaseBlockProduce(amount *big.Int) {
+func (s *statistics) IncreaseBlockProduce(amount *big.Int) {
 	s.blockProduce = increaseStats(s.blockProduce, amount)
 }
 
-func (s *statistics) increaseVoted(amount *big.Int) {
+func (s *statistics) IncreaseVoted(amount *big.Int) {
 	s.voted = increaseStats(s.voted, amount)
 }
 
-func (s *statistics) increaseVoting(amount *big.Int) {
+func (s *statistics) IncreaseVoting(amount *big.Int) {
 	s.voting = increaseStats(s.voting, amount)
 }
-func (s *statistics) totalReward() *big.Int {
+
+func (s *statistics) TotalReward() *big.Int {
 	reward := new(big.Int)
-	reward.Add(s.blockProduce, s.voted)
-	reward.Add(reward, s.voting)
+	reward.Add(s.BlockProduce(), s.Voted())
+	reward.Add(reward, s.Voting())
 	return reward
+}
+
+func (s *statistics) Clear() {
+	s.blockProduce = new(big.Int)
+	s.voted = new(big.Int)
+	s.voting = new(big.Int)
+}
+
+func newStatistics() *statistics {
+	return &statistics{
+		new(big.Int),
+		new(big.Int),
+		new(big.Int),
+	}
 }

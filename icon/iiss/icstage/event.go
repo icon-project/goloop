@@ -131,8 +131,7 @@ func (vl *VoteList) Update(vl2 VoteList) {
 	deleteIdx := make([]int, 0)
 	for _, vote2 := range vl2 {
 		find := false
-		for idx, _ := range *vl {
-			vote := newVL[idx]
+		for idx, vote := range newVL {
 			if vote.To().Equal(vote2.To()) {
 				find = true
 				vote.SetAmount(new(big.Int).Add(vote.Amount(), vote2.Amount()))

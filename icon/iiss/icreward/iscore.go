@@ -70,6 +70,16 @@ func (is *IScore) Added(amount *big.Int) *IScore {
 	return n
 }
 
+func (is *IScore) Subtracted(amount *big.Int) *IScore {
+	n := new(IScore)
+	if is == nil {
+		n.value = amount
+	} else {
+		n.value = new(big.Int).Sub(is.value, amount)
+	}
+	return n
+}
+
 func (is *IScore) Clone() *IScore {
 	if is == nil {
 		return nil
