@@ -17,59 +17,92 @@
 package icstage
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"math/big"
 )
 
 type BlockProduce struct {
 	icobject.NoDatabase
-	ProposerIndex int
-	VoteCount     int
-	VoteMask      *big.Int
+	proposerIndex int
+	voteCount     int
+	voteMask      *big.Int
 }
 
 func (bp *BlockProduce) Version() int {
 	return 0
 }
 
+func (bp *BlockProduce) ProposerIndex() int {
+	return bp.proposerIndex
+}
+
+func (bp *BlockProduce) SetProposerIndex(index int) {
+	bp.proposerIndex = index
+}
+
+func (bp *BlockProduce) VoteCount() int {
+	return bp.voteCount
+}
+
+func (bp *BlockProduce) SetVoteCount(count int) {
+	bp.voteCount = count
+}
+
+func (bp *BlockProduce) VoteMask() *big.Int {
+	return bp.voteMask
+}
+
+func (bp *BlockProduce) SetVoteMask(mask *big.Int) {
+	bp.voteMask = mask
+}
+
 func (bp *BlockProduce) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
-		&bp.ProposerIndex,
-		&bp.VoteCount,
-		&bp.VoteMask,
+		&bp.proposerIndex,
+		&bp.voteCount,
+		&bp.voteMask,
 	)
 	return err
 }
 
 func (bp *BlockProduce) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
-		bp.ProposerIndex,
-		bp.VoteCount,
-		bp.VoteMask,
+		bp.proposerIndex,
+		bp.voteCount,
+		bp.voteMask,
 	)
 }
 
 func (bp *BlockProduce) Equal(o icobject.Impl) bool {
 	if bp2, ok := o.(*BlockProduce); ok {
-		return bp.ProposerIndex == bp2.ProposerIndex &&
-			bp.VoteCount == bp2.VoteCount &&
-			bp.VoteMask.Cmp(bp2.VoteMask) == 0
+		return bp.proposerIndex == bp2.proposerIndex &&
+			bp.voteCount == bp2.voteCount &&
+			bp.voteMask.Cmp(bp2.voteMask) == 0
 	} else {
 		return false
 	}
 }
 
 func (bp *BlockProduce) Clear() {
-	bp.ProposerIndex = 0
-	bp.VoteCount = 0
-	bp.VoteMask = nil
+	bp.proposerIndex = 0
+	bp.voteCount = 0
+	bp.voteMask = new(big.Int)
 }
 
 func (bp *BlockProduce) IsEmpty() bool {
-	return bp.VoteCount == 0
+	return bp.voteCount == 0
 }
 
-func newBlockProduce(tag icobject.Tag) *BlockProduce {
+func newBlockProduce(_ icobject.Tag) *BlockProduce {
 	return new(BlockProduce)
+}
+
+func NewBlockProduce(pIndex, vCount int, vMask *big.Int) *BlockProduce {
+	return &BlockProduce{
+		proposerIndex: pIndex,
+		voteCount: vCount,
+		voteMask: vMask,
+	}
 }

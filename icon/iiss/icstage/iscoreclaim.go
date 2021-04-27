@@ -19,16 +19,34 @@ package icstage
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 type IScoreClaim struct {
-	icobject.ObjectBigInt
+	icobject.NoDatabase
+	value *big.Int
 }
 
-func (ic *IScoreClaim) Equal(o icobject.Impl) bool {
-	if ic2, ok := o.(*IScoreClaim); ok {
-		return ic.Value.Cmp(ic2.Value) == 0
+func (ic *IScoreClaim) Version() int {
+	return 0
+}
+
+func (ic *IScoreClaim) Value() *big.Int {
+	return ic.value
+}
+
+func (ic *IScoreClaim) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.Decode(&ic.value)
+}
+
+func (ic *IScoreClaim) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.Encode(ic.value)
+}
+
+func (ic *IScoreClaim) Equal(impl icobject.Impl) bool {
+	if ic2, ok := impl.(*IScoreClaim); ok {
+		return ic.value.Cmp(ic2.value) == 0
 	} else {
 		return false
 	}
@@ -37,15 +55,19 @@ func (ic *IScoreClaim) Equal(o icobject.Impl) bool {
 func (ic *IScoreClaim) Added(amount *big.Int) *IScoreClaim {
 	n := new(IScoreClaim)
 	if ic == nil {
-		n.Value = amount
+		n.value = amount
 	} else {
-		n.Value = new(big.Int).Add(ic.Value, amount)
+		n.value = new(big.Int).Add(ic.value, amount)
 	}
 	return n
 }
 
-func newIScoreClaim(tag icobject.Tag) *IScoreClaim {
+func newIScoreClaim(_ icobject.Tag) *IScoreClaim {
+	return new(IScoreClaim)
+}
+
+func NewIScoreClaim(value *big.Int) *IScoreClaim {
 	return &IScoreClaim{
-		*icobject.NewObjectBigInt(tag),
+		value: value,
 	}
 }

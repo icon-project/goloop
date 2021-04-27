@@ -37,7 +37,7 @@ func TestGlobalV1(t *testing.T) {
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV1()
 	assert.NotNil(t, g1)
-	g1.OffsetLimit = offsetLimit
+	g1.offsetLimit = offsetLimit
 
 	o1 := icobject.New(type_, g)
 	serialized := o1.Bytes()
@@ -55,7 +55,7 @@ func TestGlobalV1(t *testing.T) {
 	global := ToGlobal(o2)
 	g2 := global.GetV1()
 	assert.Equal(t, true, g1.Equal(g2))
-	assert.Equal(t, offsetLimit, g2.OffsetLimit)
+	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 }
 
 func TestGlobalV2(t *testing.T) {
@@ -70,7 +70,7 @@ func TestGlobalV2(t *testing.T) {
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV2()
 	assert.NotNil(t, g1)
-	g1.OffsetLimit = offsetLimit
+	g1.offsetLimit = offsetLimit
 
 	o1 := icobject.New(type_, g)
 	serialized := o1.Bytes()
@@ -88,5 +88,5 @@ func TestGlobalV2(t *testing.T) {
 	global := ToGlobal(o2)
 	g2 := global.GetV2()
 	assert.Equal(t, true, g1.Equal(g2))
-	assert.Equal(t, offsetLimit, g2.OffsetLimit)
+	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 }

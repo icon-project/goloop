@@ -25,31 +25,85 @@ import (
 
 type Voted struct {
 	icobject.NoDatabase
-	Enable           bool     // update via ENABLE event
-	Delegated        *big.Int // update via DELEGATE event
-	Bonded           *big.Int // update via BOND event
-	BondedDelegation *big.Int // update when start calculation for P-Rep voted reward
+	enable           bool     // update via ENABLE event
+	delegated        *big.Int // update via DELEGATE event
+	bonded           *big.Int // update via BOND event
+	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
 }
 
 func (v *Voted) Version() int {
 	return 0
 }
 
+func (v *Voted) Enable() bool {
+	return v.enable
+}
+
+func (v *Voted) SetEnable(enable bool) {
+	v.enable = enable
+}
+
+func (v *Voted) Delegated() *big.Int {
+	return v.delegated
+}
+
+func (v *Voted) SetDelegated(value *big.Int) {
+	v.delegated = value
+}
+
+func (v *Voted) Bonded() *big.Int {
+	return v.bonded
+}
+
+func (v *Voted) SetBonded(value *big.Int) {
+	v.bonded = value
+}
+
+func (v *Voted) BondedDelegation() *big.Int {
+	return v.bondedDelegation
+}
+
+func (v *Voted) SetBondedDelegation(value *big.Int) {
+	v.bondedDelegation = value
+}
+
+func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
+	if bondRequirement == 0 {
+		// IISSVersion1: bondedDelegation = delegated
+		// IISSVersion2 and bondRequirement is disabled: bondedDelegation = delegated + bonded
+		v.bondedDelegation = new(big.Int).Add(v.delegated, v.bonded)
+	} else {
+		// IISSVersion2 and bondRequirement is enabled
+		voted := new(big.Int).Add(v.delegated, v.bonded)
+		bondedDelegation := new(big.Int).Mul(v.bonded, big.NewInt(100))
+		bondedDelegation.Div(bondedDelegation, big.NewInt(int64(bondRequirement)))
+		if voted.Cmp(bondedDelegation) > 0 {
+			v.bondedDelegation = bondedDelegation
+		} else {
+			v.bondedDelegation = voted
+		}
+	}
+}
+
+func (v *Voted) GetVotedAmount() *big.Int {
+	return new(big.Int).Add(v.bonded, v.delegated)
+}
+
 func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&v.Enable, &v.Delegated, &v.Bonded, &v.BondedDelegation)
+	_, err := decoder.DecodeMulti(&v.enable, &v.delegated, &v.bonded, &v.bondedDelegation)
 	return err
 }
 
 func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(v.Enable, v.Delegated, v.Bonded, v.BondedDelegation)
+	return encoder.EncodeMulti(v.enable, v.delegated, v.bonded, v.bondedDelegation)
 }
 
 func (v *Voted) Equal(o icobject.Impl) bool {
 	if ic2, ok := o.(*Voted); ok {
-		return v.Enable == ic2.Enable &&
-			v.Delegated.Cmp(ic2.Delegated) == 0 &&
-			v.Bonded.Cmp(ic2.Bonded) == 0 &&
-			v.BondedDelegation.Cmp(ic2.BondedDelegation) == 0
+		return v.enable == ic2.enable &&
+			v.delegated.Cmp(ic2.delegated) == 0 &&
+			v.bonded.Cmp(ic2.bonded) == 0 &&
+			v.bondedDelegation.Cmp(ic2.bondedDelegation) == 0
 	} else {
 		return false
 	}
@@ -59,56 +113,26 @@ func (v *Voted) Clone() *Voted {
 	if v == nil {
 		return nil
 	}
-	nv := NewVoted()
-	nv.Enable = v.Enable
-	nv.Delegated.Set(v.Delegated)
-	nv.Bonded.Set(v.Bonded)
-	nv.BondedDelegation.Set(v.BondedDelegation)
+	nv := new(Voted)
+	nv.enable = v.enable
+	nv.delegated = v.delegated
+	nv.bonded = v.bonded
+	nv.bondedDelegation = v.bondedDelegation
 	return nv
 }
 
 func (v *Voted) IsEmpty() bool {
-	return v.Enable == false && v.Delegated.Sign() == 0 && v.Bonded.Sign() == 0 && v.BondedDelegation.Sign() == 0
+	return v.enable == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.bondedDelegation.Sign() == 0
 }
 
-func (v *Voted) SetEnable(enable bool) {
-	v.Enable = enable
-}
-
-func (v *Voted) SetBonded(bonded *big.Int) {
-	v.Bonded.Set(bonded)
-}
-
-func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
-	if bondRequirement == 0 {
-		// IISSVersion1: bondedDelegation = delegated
-		// IISSVersion2 and bondRequirement is disabled: bondedDelegation = delegated + bonded
-		v.BondedDelegation.Set(new(big.Int).Add(v.Delegated, v.Bonded))
-	} else {
-		// IISSVersion2 and bondRequirement is enabled
-		voted := new(big.Int).Add(v.Delegated, v.Bonded)
-		bondedDelegation := new(big.Int).Mul(v.Bonded, big.NewInt(100))
-		bondedDelegation.Div(bondedDelegation, big.NewInt(int64(bondRequirement)))
-		if voted.Cmp(bondedDelegation) > 0 {
-			v.BondedDelegation.Set(bondedDelegation)
-		} else {
-			v.BondedDelegation.Set(voted)
-		}
-	}
-}
-
-func (v *Voted) GetVoted() *big.Int {
-	return new(big.Int).Add(v.Bonded, v.Delegated)
-}
-
-func newVoted(tag icobject.Tag) *Voted {
-	return NewVoted()
+func newVoted(_ icobject.Tag) *Voted {
+	return new(Voted)
 }
 
 func NewVoted() *Voted {
 	return &Voted{
-		Delegated:        new(big.Int),
-		Bonded:           new(big.Int),
-		BondedDelegation: new(big.Int),
+		delegated:        new(big.Int),
+		bonded:           new(big.Int),
+		bondedDelegation: new(big.Int),
 	}
 }

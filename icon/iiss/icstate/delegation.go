@@ -23,6 +23,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -49,17 +50,17 @@ type Delegation struct {
 	Value   *common.HexInt  `json:"value"`
 }
 
-func NewDelegation() *Delegation {
+func NewDelegation(addr *common.Address, v *big.Int) *Delegation {
 	return &Delegation{
-		Address: new(common.Address),
-		Value:   new(common.HexInt),
+		Address: addr,
+		Value:   new(common.HexInt).SetValue(v),
 	}
 }
 
 func (dg *Delegation) Clone() *Delegation {
-	n := NewDelegation()
-	n.Address.Set(dg.Address)
-	n.Value.Set(dg.Value.Value())
+	n := new(Delegation)
+	n.Address = dg.Address
+	n.Value = dg.Value
 	return n
 }
 
@@ -86,6 +87,15 @@ func (dg *Delegation) To() module.Address {
 
 func (dg *Delegation) Amount() *big.Int {
 	return dg.Value.Value()
+}
+
+func (dg *Delegation) SetTo(address *common.Address) {
+	dg.Address = address
+}
+
+func (dg *Delegation) SetAmount(amount *big.Int) {
+	n := new(common.HexInt)
+	dg.Value = n.SetValue(amount)
 }
 
 func (dg *Delegation) String() string {
@@ -137,7 +147,7 @@ func (ds Delegations) Equal(ds2 Delegations) bool {
 func (ds Delegations) GetDelegationAmount() *big.Int {
 	total := new(big.Int)
 	for _, d := range ds {
-		total.Add(total, d.Value.Value())
+		total.Add(total, d.Amount())
 	}
 	return total
 }
@@ -188,7 +198,7 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 	targets := make(map[string]struct{}, count)
 	delegations := make([]*Delegation, 0)
 	for _, p := range param {
-		dg := NewDelegation()
+		dg := new(Delegation)
 		bs, err := json.Marshal(p)
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)
@@ -196,10 +206,10 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 		if err = json.Unmarshal(bs, dg); err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)
 		}
-		if dg.Value.Sign() == -1 {
+		if dg.Amount().Sign() == -1 {
 			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to delegation")
 		}
-		target := dg.Address.String()
+		target := icutils.ToKey(dg.To())
 		if _, ok := targets[target]; ok {
 			return nil, errors.IllegalArgumentError.Errorf("Duplicated delegation address")
 		}

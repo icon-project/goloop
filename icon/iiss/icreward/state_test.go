@@ -17,6 +17,7 @@
 package icreward
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,8 +34,7 @@ func TestState_NewState(t *testing.T) {
 	s := NewState(database, nil)
 
 	addr1 := common.MustNewAddressFromString("hx1")
-	iScore := NewIScore()
-	iScore.Value.SetInt64(int64(10))
+	iScore := NewIScore(big.NewInt(10))
 	s.SetIScore(addr1, iScore)
 
 	is, err := s.GetIScore(addr1)
@@ -69,17 +69,17 @@ func TestState_SetVoted(t *testing.T) {
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	voted1 := NewVoted()
-	voted1.Enable = true
-	voted1.Delegated.SetInt64(100)
-	voted1.BondedDelegation.SetInt64(100)
+	voted1.SetEnable(true)
+	voted1.SetDelegated(big.NewInt(100))
+	voted1.SetBondedDelegation(big.NewInt(100))
 	err := s.SetVoted(addr1, voted1)
 	assert.NoError(t, err)
 
 	addr2 := common.MustNewAddressFromString("hx2")
 	voted2 := NewVoted()
-	voted2.Enable = false
-	voted2.Delegated.SetInt64(200)
-	voted2.BondedDelegation.SetInt64(200)
+	voted2.SetEnable(false)
+	voted2.SetDelegated(big.NewInt(200))
+	voted2.SetBondedDelegation(big.NewInt(200))
 	err = s.SetVoted(addr2, voted2)
 	assert.NoError(t, err)
 

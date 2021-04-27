@@ -18,12 +18,13 @@ package icstate
 
 import (
 	"fmt"
+	"math/big"
+	"math/bits"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
-	"math/big"
-	"math/bits"
 )
 
 const (
@@ -168,10 +169,11 @@ func (ps *PRepStatus) GetVoted() *big.Int {
 }
 
 func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
-	ps.delegated.Set(delegated)
+	ps.delegated = delegated
 }
 
-// Bond Delegation formula
+// GetBondedDelegation return amount of bonded delegation
+// Bonded delegation formula
 // totalVoted = bond + delegation
 // bondRatio = bond / totalVoted * 100
 // bondedDelegation = totalVoted * (bondRatio / bondRequirement)
@@ -274,8 +276,8 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.owner = other.owner
 	ps.grade = other.grade
 	ps.status = other.status
-	ps.delegated.Set(other.delegated)
-	ps.bonded.Set(other.bonded)
+	ps.delegated = other.delegated
+	ps.bonded = other.bonded
 	ps.vTotal = other.vTotal
 	ps.vFail = other.vFail
 	ps.vFailContOffset = other.vFailContOffset
@@ -307,7 +309,7 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	//	jso["voted"] = ps.GetVoted()
+	//	jso["voted"] = ps.GetVotedAmount()
 	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
@@ -404,7 +406,7 @@ func (ps *PRepStatus) IsEmpty() bool {
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
-	ps.bonded.Set(v)
+	ps.bonded = v
 }
 
 func (ps *PRepStatus) SetGrade(g Grade) {
@@ -573,7 +575,7 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 }
 
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
-	return NewPRepStatus(nil)
+	return new(PRepStatus)
 }
 
 func NewPRepStatus(owner module.Address) *PRepStatus {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -47,10 +48,10 @@ type Bond struct {
 	Value   *common.HexInt  `json:"value"`
 }
 
-func NewBond() *Bond {
+func NewBond(addr *common.Address, v *big.Int) *Bond {
 	return &Bond{
-		Address: new(common.Address),
-		Value:   new(common.HexInt),
+		Address: addr,
+		Value:   new(common.HexInt).SetValue(v),
 	}
 }
 
@@ -66,9 +67,9 @@ func (b *Bond) ToJSON() map[string]interface{} {
 }
 
 func (b *Bond) Clone() *Bond {
-	n := NewBond()
-	n.Address.Set(b.Address)
-	n.Value.Set(b.Value.Value())
+	n := new(Bond)
+	n.Address = b.Address
+	n.Value = b.Value
 	return n
 }
 
@@ -80,10 +81,20 @@ func (b *Bond) Amount() *big.Int {
 	return b.Value.Value()
 }
 
+func (b *Bond) SetTo(address *common.Address) {
+	b.Address = address
+}
+
+func (b *Bond) SetAmount(amount *big.Int) {
+	n := new(common.HexInt)
+	b.Value = n.SetValue(amount)
+}
+
 func (b *Bond) Slash(ratio int) *big.Int {
 	slashAmount := new(big.Int).Mul(b.Value.Value(), big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
-	b.Value.Sub(b.Value.Value(), slashAmount)
+	nBigInt := new(big.Int).Sub(b.Value.Value(), slashAmount)
+	b.Value = new(common.HexInt).SetValue(nBigInt)
 	return slashAmount
 }
 
@@ -136,7 +147,7 @@ func (bl Bonds) Clone() Bonds {
 func (bl Bonds) GetBondAmount() *big.Int {
 	total := new(big.Int)
 	for _, b := range bl {
-		total.Add(total, b.Value.Value())
+		total.Add(total, b.Amount())
 	}
 	return total
 }
@@ -155,7 +166,7 @@ func (bl *Bonds) Delete(i int) error {
 func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
 	bonds := *bl
 	for idx, b := range *bl {
-		if b.Address.Equal(address) {
+		if b.To().Equal(address) {
 			if ratio == 100 {
 				copy(bonds[idx:], bonds[idx+1:])
 				bonds = bonds[0 : len(bonds)-1]
@@ -164,7 +175,7 @@ func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
 				} else {
 					*bl = nil
 				}
-				return b.Value.Value()
+				return b.Amount()
 			} else {
 				return b.Slash(ratio)
 			}
@@ -212,7 +223,7 @@ func NewBonds(param []interface{}) (Bonds, error) {
 	targets := make(map[string]struct{}, count)
 	bonds := make([]*Bond, 0)
 	for _, p := range param {
-		bond := NewBond()
+		bond := new(Bond)
 		bs, err := json.Marshal(p)
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
@@ -220,10 +231,10 @@ func NewBonds(param []interface{}) (Bonds, error) {
 		if err = json.Unmarshal(bs, bond); err != nil {
 			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
 		}
-		if bond.Value.Sign() == -1 {
+		if bond.Amount().Sign() == -1 {
 			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to bond")
 		}
-		target := bond.Address.String()
+		target := icutils.ToKey(bond.To())
 		if _, ok := targets[target]; ok {
 			return nil, errors.IllegalArgumentError.Errorf("Duplicated bond Address")
 		}

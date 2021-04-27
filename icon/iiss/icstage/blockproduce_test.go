@@ -35,10 +35,7 @@ func Test_BlockVote(t *testing.T) {
 	voteCount := 4
 	voteMask := big.NewInt(0b1111)
 
-	g1 := newBlockProduce(icobject.MakeTag(type_, version))
-	g1.ProposerIndex = proposerIndex
-	g1.VoteCount = voteCount
-	g1.VoteMask = voteMask
+	g1 := NewBlockProduce(proposerIndex, voteCount, voteMask)
 
 	o1 := icobject.New(type_, g1)
 	serialized := o1.Bytes()
@@ -55,7 +52,7 @@ func Test_BlockVote(t *testing.T) {
 
 	g2 := ToBlockProduce(o2)
 	assert.Equal(t, true, g1.Equal(g2))
-	assert.Equal(t, proposerIndex, g2.ProposerIndex)
-	assert.Equal(t, voteCount, g2.VoteCount)
-	assert.Equal(t, voteMask, g2.VoteMask)
+	assert.Equal(t, proposerIndex, g2.ProposerIndex())
+	assert.Equal(t, voteCount, g2.VoteCount())
+	assert.Equal(t, 0, voteMask.Cmp(g2.VoteMask()))
 }

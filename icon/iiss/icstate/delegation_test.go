@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,15 +28,12 @@ import (
 )
 
 func TestDelegation(t *testing.T) {
-	d1 := NewDelegation()
-	d1.Address.SetString("hx1")
-	d1.Value.SetInt64(100)
-
+	d1 := NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(100))
 	d2 := d1.Clone()
 
 	assert.True(t, d1.Equal(d2))
-	assert.True(t, d1.Address.Equal(d2.Address))
-	assert.Equal(t, 0, d1.Value.Cmp(d2.Value.Value()))
+	assert.True(t, d1.To().Equal(d2.To()))
+	assert.Equal(t, 0, d1.Amount().Cmp(d2.Amount()))
 }
 
 func TestDelegations(t *testing.T) {
@@ -43,17 +41,9 @@ func TestDelegations(t *testing.T) {
 	addr2 := "hx2"
 	v1 := int64(1)
 	v2 := int64(2)
-	d1 := Delegation{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   common.NewHexInt(v1),
-	}
-	d2 := Delegation{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(v2),
-	}
-	ds1 := Delegations{
-		&d1, &d2,
-	}
+	d1 := NewDelegation(common.MustNewAddressFromString(addr1), big.NewInt(v1))
+	d2 := NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(v2))
+	ds1 := Delegations{d1, d2}
 
 	ds2 := ds1.Clone()
 
@@ -69,19 +59,10 @@ func TestDelegations_Delete(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	v3 := int64(3)
-	d1 := Delegation{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   common.NewHexInt(v1),
-	}
-	d2 := Delegation{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(v2),
-	}
-	d3 := Delegation{
-		Address: common.MustNewAddressFromString(addr3),
-		Value:   common.NewHexInt(v3),
-	}
-	ds := Delegations{&d1, &d2, &d3}
+	d1 := NewDelegation(common.MustNewAddressFromString(addr1), big.NewInt(v1))
+	d2 := NewDelegation(common.MustNewAddressFromString(addr2), big.NewInt(v2))
+	d3 := NewDelegation(common.MustNewAddressFromString(addr3), big.NewInt(v3))
+	ds := Delegations{d1, d2, d3}
 
 	tests := []struct {
 		name  string
@@ -89,9 +70,9 @@ func TestDelegations_Delete(t *testing.T) {
 		err   bool
 		want  Delegations
 	}{
-		{"Delete first item", 0, false, Delegations{&d2, &d3}},
-		{"Delete middle item", 1, false, Delegations{&d1, &d3}},
-		{"Delete last item", 2, false, Delegations{&d1, &d2}},
+		{"Delete first item", 0, false, Delegations{d2, d3}},
+		{"Delete middle item", 1, false, Delegations{d1, d3}},
+		{"Delete last item", 2, false, Delegations{d1, d2}},
 		{"Negative index", -1, true, Delegations{}},
 		{"Too big index", 100, true, Delegations{}},
 	}
@@ -110,7 +91,7 @@ func TestDelegations_Delete(t *testing.T) {
 	}
 
 	t.Run("Delete and empty", func(t *testing.T) {
-		ds1 := Delegations{&d1}
+		ds1 := Delegations{d1}
 		err := ds1.Delete(0)
 		assert.NoError(t, err)
 		assert.False(t, ds1.Has())

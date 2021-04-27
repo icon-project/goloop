@@ -75,7 +75,7 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	if err = s.replaceValidator(owner); err != nil {
 		return err
 	}
-	if err = s.addEventEnable(blockHeight, owner, icstage.EfDisableTemp); err != nil {
+	if err = s.addEventEnable(blockHeight, owner, icstage.ESDisableTemp); err != nil {
 		return err
 	}
 	return nil

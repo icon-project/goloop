@@ -35,8 +35,8 @@ func TestVoted(t *testing.T) {
 	v1 := int64(100)
 
 	t1 := newVoted(icobject.MakeTag(type_, version))
-	t1.Delegated = big.NewInt(v1)
-	t1.BondedDelegation = big.NewInt(v1)
+	t1.SetDelegated(big.NewInt(v1))
+	t1.SetBondedDelegation(big.NewInt(v1))
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -53,18 +53,16 @@ func TestVoted(t *testing.T) {
 
 	t2 := ToVoted(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Delegated.Cmp(t2.Delegated))
-	assert.Equal(t, 0, t1.BondedDelegation.Cmp(t2.BondedDelegation))
+	assert.Equal(t, 0, t1.Delegated().Cmp(t2.Delegated()))
+	assert.Equal(t, 0, t1.BondedDelegation().Cmp(t2.BondedDelegation()))
 
 	fmt.Printf("%+v %+v", t1, t2)
 }
 
 func makeVotedFotTest(delegated int64, bonded int64) *Voted {
-	type_ := TypeVoted
-	version := 0
-	voted := newVoted(icobject.MakeTag(type_, version))
-	voted.Delegated = big.NewInt(delegated)
-	voted.Bonded = big.NewInt(bonded)
+	voted := NewVoted()
+	voted.SetDelegated(big.NewInt(delegated))
+	voted.SetBonded(big.NewInt(bonded))
 	return voted
 
 }
@@ -125,7 +123,7 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 			t1 := makeVotedFotTest(in.delegated, in.bonded)
 			t1.UpdateBondedDelegation(in.bondRequirement)
 
-			assert.Equal(t, tt.want, t1.BondedDelegation.Int64())
+			assert.Equal(t, tt.want, t1.BondedDelegation().Int64())
 		})
 	}
 }

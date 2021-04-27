@@ -86,12 +86,12 @@ func (a *Account) Equal(object icobject.Impl) bool {
 func (a *Account) Set(other *Account) {
 	a.checkWritable()
 
-	a.stake.Set(other.stake)
+	a.stake = other.stake
 	a.unstakes = other.unstakes.Clone()
-	a.delegating.Set(other.delegating)
+	a.delegating = other.delegating
 	a.delegations = other.delegations.Clone()
-	a.bonding.Set(other.bonding)
-	a.unbonding.Set(other.unbonding)
+	a.bonding = other.bonding
+	a.unbonding = other.unbonding
 	a.bonds = other.bonds.Clone()
 	a.unbonds = other.unbonds.Clone()
 }
@@ -142,12 +142,12 @@ func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (a *Account) Clear() {
 	a.checkWritable()
-	a.stake = big.NewInt(0)
+	a.stake = new(big.Int)
 	a.unstakes = nil
-	a.delegating = big.NewInt(0)
+	a.delegating = new(big.Int)
 	a.delegations = nil
-	a.bonding = big.NewInt(0)
-	a.unbonding = big.NewInt(0)
+	a.bonding = new(big.Int)
+	a.unbonding = new(big.Int)
 	a.bonds = nil
 	a.unbonds = nil
 }
@@ -162,7 +162,7 @@ func (a *Account) SetStake(v *big.Int) error {
 	if v.Sign() == -1 {
 		return errors.Errorf("negative stake is not allowed")
 	}
-	a.stake.Set(v)
+	a.stake = v
 	return nil
 }
 
@@ -210,7 +210,7 @@ func (a *Account) Delegations() Delegations {
 func (a *Account) SetDelegation(ds Delegations) {
 	a.checkWritable()
 	a.delegations = ds
-	a.delegating.Set(a.delegations.GetDelegationAmount())
+	a.delegating = a.delegations.GetDelegationAmount()
 }
 
 func (a Account) GetDelegationInJSON() map[string]interface{} {
@@ -261,7 +261,7 @@ func (a *Account) GetUnbondsInJSON() []interface{} {
 func (a *Account) SetBonds(bonds Bonds) {
 	a.checkWritable()
 	a.bonds = bonds
-	a.bonding.Set(a.bonds.GetBondAmount())
+	a.bonding = a.bonds.GetBondAmount()
 }
 
 func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int64) ([]TimerJobInfo, error) {
@@ -276,8 +276,9 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 	}
 	sort.Strings(keys)
 
-	unbondsMapByAddr := a.unbonds.MapByAddr()
-	expireRefCount := a.unbonds.ExpireRefCount()
+	ubs := a.unbonds.Clone()
+	unbondsMapByAddr := ubs.MapByAddr()
+	expireRefCount := ubs.ExpireRefCount()
 
 	for _, key := range keys {
 		value := bondDelta[key]
@@ -295,13 +296,13 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 			expireRefCount[expireHeight]++
 
 			if ok {
-				if expireRefCount[unbond.Expire] == 1 {
-					tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.Expire})
+				if expireRefCount[unbond.ExpireHeight()] == 1 {
+					tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.ExpireHeight()})
 				}
-				expireRefCount[unbond.Expire]--
+				expireRefCount[unbond.ExpireHeight()]--
 				// update unbond
-				unbond.Value.Sub(unbond.Value, value)
-				unbond.Expire = expireHeight
+				unbond.SetValue(new(big.Int).Sub(unbond.Amount(), value))
+				unbond.SetExpire(expireHeight)
 			} else {
 				// add new unbond
 				addr, err := common.NewAddress([]byte(key))
@@ -309,33 +310,34 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 					return nil, err
 				}
 
-				a.unbonds.Add(addr, new(big.Int).Neg(value), expireHeight)
+				ubs.Add(addr, new(big.Int).Neg(value), expireHeight)
 			}
 		} else { // value is positive. decrease unbond value
 			if ok {
 				// decrease unbond value
-				unbond.Value.Sub(unbond.Value, value)
+				unbond.SetValue(new(big.Int).Sub(unbond.Amount(), value))
 				if unbond.Value.Sign() <= 0 {
 					// remove unbond
 					addr, err := common.NewAddress([]byte(key))
 					if err != nil {
 						return nil, err
 					}
-					if err := a.unbonds.DeleteByAddress(addr); err != nil {
+					if err := ubs.DeleteByAddress(addr); err != nil {
 						return nil, err
 					}
-					if expireRefCount[unbond.Expire] == 1 {
+					if expireRefCount[unbond.ExpireHeight()] == 1 {
 						// remove timer
-						tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.Expire})
+						tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.ExpireHeight()})
 					}
-					expireRefCount[unbond.Expire]--
+					expireRefCount[unbond.ExpireHeight()]--
 				}
 			} else {
 				// do nothing
 			}
 		}
 	}
-	a.unbonding.Set(a.unbonds.GetUnbondAmount())
+	a.unbonds = ubs
+	a.unbonding = a.unbonds.GetUnbondAmount()
 	return tl, nil
 }
 
@@ -355,7 +357,7 @@ func (a *Account) RemoveUnbonding(height int64) error {
 		return errors.Errorf("does not have unbonding entry with expire(%d)", height)
 	}
 	a.unbonds = tmp
-	a.unbonding.Sub(a.Unbond(), removed)
+	a.unbonding = new(big.Int).Sub(a.Unbond(), removed)
 
 	return nil
 }
@@ -391,14 +393,20 @@ func (a *Account) SlashStake(amount *big.Int) error {
 }
 
 func (a *Account) SlashBond(address module.Address, ratio int) *big.Int {
-	amount := a.bonds.Slash(address, ratio)
-	a.bonding.Sub(a.bonding, amount)
+	bl := a.bonds.Clone()
+
+	amount := bl.Slash(address, ratio)
+	a.bonds = bl
+	a.bonding = new(big.Int).Sub(a.bonding, amount)
 	return amount
 }
 
 func (a *Account) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
-	amount, expire := a.unbonds.Slash(address, ratio)
-	a.unbonding.Sub(a.unbonding, amount)
+	ul := a.unbonds.Clone()
+
+	amount, expire := ul.Slash(address, ratio)
+	a.unbonds = ul
+	a.unbonding = new(big.Int).Sub(a.unbonding, amount)
 	return amount, expire
 }
 
@@ -435,7 +443,7 @@ func (a *Account) Format(f fmt.State, c rune) {
 
 func newAccountWithTag(_ icobject.Tag) *Account {
 	// versioning with tag.Version() if necessary
-	return &Account{}
+	return new(Account)
 }
 
 func newAccount() *Account {

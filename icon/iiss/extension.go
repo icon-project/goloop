@@ -468,7 +468,7 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 	return
 }
 
-func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableFlag) (err error) {
+func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableStatus) (err error) {
 	term := s.State.GetTerm()
 	_, err = s.Front.AddEventEnable(
 		int(blockHeight-term.StartHeight()),
@@ -495,7 +495,7 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 		}
 	}
 
-	s.addEventEnable(cc.BlockHeight(), owner, icstage.EfDisablePermanent)
+	s.addEventEnable(cc.BlockHeight(), owner, icstage.ESDisablePermanent)
 
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepUnregistered(Address)")},
@@ -594,7 +594,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 			return errors.Errorf("PRep not found: %v", from)
 		}
 		if !prep.BonderList().Contains(from) {
-			return errors.Errorf("%s is not in bonder List of %s", from.String(), bond.To().String())
+			return errors.Errorf("%s is not in bonder List of %s", from, bond.To())
 		}
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
@@ -755,7 +755,7 @@ func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
 		return err
 	}
 	issue := is.Clone()
-	issue.PrevBlockFee.Add(issue.PrevBlockFee, fee)
+	issue.SetPrevBlockFee(new(big.Int).Add(issue.PrevBlockFee(), fee))
 	if err = s.State.SetIssue(issue); err != nil {
 		return err
 	}

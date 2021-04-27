@@ -43,7 +43,7 @@ func TestUnbonds(t *testing.T) {
 
 	ubl2 := ubl1.Clone()
 
-	assert.True(t, ubl1.Has())
+	assert.True(t, !ubl1.IsEmpty())
 	assert.True(t, ubl1.Equal(ubl2))
 	assert.Equal(t, v1+v2, ubl2.GetUnbondAmount().Int64())
 }
