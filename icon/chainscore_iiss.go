@@ -356,10 +356,13 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	if err != nil {
 		return err
 	}
-	irep := new(big.Int).Set(iiss.BigIntInitialIRep)
+
+	var irep *big.Int
 	if es.IsDecentralized() {
 		term := es.State.GetTerm()
-		irep.Set(term.Irep())
+		irep = term.Irep()
+	} else {
+		irep = iiss.BigIntInitialIRep
 	}
 
 	err = es.RegisterPRep(regInfo, irep)
@@ -959,7 +962,7 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 		return false, err
 	}
 	term := es.State.GetTerm()
-	if err = es.ValidateIRep(term.Irep(), new(big.Int).Set(irep.Value()), 0); err != nil {
+	if err = es.ValidateIRep(term.Irep(), irep.Value(), 0); err != nil {
 		return false, scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate IRep: irep=%v", irep.Value(),
 		)

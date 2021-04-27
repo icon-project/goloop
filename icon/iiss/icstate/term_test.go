@@ -1,6 +1,12 @@
 package icstate
 
 import (
+	"math/big"
+	"math/rand"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -8,10 +14,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
-	"math/big"
-	"math/rand"
-	"testing"
 )
 
 func newAddress(value byte) module.Address {
@@ -115,13 +117,13 @@ func TestTerm_Equal(t *testing.T) {
 	tPeriod := t0.Clone()
 	tPeriod.period = t0.period + 1
 	tIrep := t0.Clone()
-	tIrep.irep.SetInt64(t0.irep.Int64() + 1)
+	tIrep.irep = new(big.Int).SetInt64(t0.irep.Int64() + 1)
 	tRrep := t0.Clone()
-	tRrep.rrep.SetInt64(t0.rrep.Int64() + 1)
+	tRrep.rrep = new(big.Int).SetInt64(t0.rrep.Int64() + 1)
 	tTS := t0.Clone()
-	tTS.totalSupply.SetInt64(t0.totalSupply.Int64() + 1)
+	tTS.totalSupply = new(big.Int).SetInt64(t0.totalSupply.Int64() + 1)
 	tTD := t0.Clone()
-	tTD.totalDelegated.SetInt64(t0.totalDelegated.Int64() + 1)
+	tTD.totalDelegated = new(big.Int).SetInt64(t0.totalDelegated.Int64() + 1)
 	tSnapshots := t0.Clone()
 	tSnapshots.SetPRepSnapshots(newPRepSnapshots(1, 2))
 
@@ -199,7 +201,7 @@ func TestTerm_PRepSnapshot(t *testing.T) {
 	// check snapshot values
 	totalBondedDelegation := new(big.Int)
 	for i, ps := range prepSnapshots {
-		owner := ps.owner
+		owner := ps.Owner()
 		key := icutils.ToKey(owner)
 
 		ps1 := term.prepSnapshots[i]
@@ -217,12 +219,12 @@ func TestTerm_PRepSnapshot(t *testing.T) {
 	for i := 0; i < size; i++ {
 		ps := term.GetPRepSnapshotByIndex(i)
 		assert.Equal(t, ps, prepSnapshots[i])
-		assert.Equal(t, ps, term.GetPRepSnapshotByOwner(ps.owner))
+		assert.Equal(t, ps, term.GetPRepSnapshotByOwner(ps.Owner()))
 	}
 
 	// RemovePRepSnapshot()
 	for _, ps := range prepSnapshots {
-		owner := ps.owner
+		owner := ps.Owner()
 		key := icutils.ToKey(owner)
 
 		_, ok := term.snapshotMap[key]
@@ -257,15 +259,15 @@ func TestTerm_NewNextTerm(t *testing.T) {
 	term := newTerm(0, 100)
 	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated, rf, bondRequirement, revision)
 
-	assert.Equal(t, term.sequence+1, nTerm.sequence)
-	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.startHeight)
-	assert.Equal(t, period, nTerm.period)
-	assert.Equal(t, irep.Int64(), nTerm.irep.Int64())
-	assert.Equal(t, rrep.Int64(), nTerm.rrep.Int64())
-	assert.Equal(t, totalSupply.Int64(), nTerm.totalSupply.Int64())
-	assert.Equal(t, totalDelegated.Int64(), nTerm.totalDelegated.Int64())
-	assert.True(t, rf.Equal(nTerm.rewardFund))
-	assert.Equal(t, bondRequirement, nTerm.bondRequirement)
-	assert.Equal(t, revision, nTerm.revision)
+	assert.Equal(t, term.Sequence()+1, nTerm.Sequence())
+	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.StartHeight())
+	assert.Equal(t, period, nTerm.Period())
+	assert.Equal(t, irep.Int64(), nTerm.Irep().Int64())
+	assert.Equal(t, rrep.Int64(), nTerm.Rrep().Int64())
+	assert.Equal(t, totalSupply.Int64(), nTerm.TotalSupply().Int64())
+	assert.Equal(t, totalDelegated.Int64(), nTerm.TotalDelegated().Int64())
+	assert.True(t, rf.Equal(nTerm.RewardFund()))
+	assert.Equal(t, bondRequirement, nTerm.BondRequirement())
+	assert.Equal(t, revision, nTerm.Revision())
 	assert.Equal(t, FlagNextTerm, nTerm.flags&FlagNextTerm)
 }

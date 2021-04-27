@@ -724,7 +724,7 @@ func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRep
 	divider := new(big.Int).SetInt64(int64(100 * MonthPerYear * (term.MainPRepCount() + VotedRewardMultiplier)))
 	limit.Div(limit, divider)
 	if newIRep.Cmp(limit) == 1 {
-		return errors.Errorf("IRep is out of range: %s > %s", newIRep.String(), limit.String())
+		return errors.Errorf("IRep is out of range: %v > %v", newIRep, limit)
 	}
 	return nil
 }

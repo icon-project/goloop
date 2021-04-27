@@ -177,8 +177,7 @@ func BigInt2HexInt(value *big.Int) *common.HexInt {
 }
 
 func ValidateRange(oldValue *big.Int, newValue *big.Int, minPct int, maxPct int) error {
-	diff := new(big.Int).Sub(oldValue, newValue)
-	switch diff.Sign() {
+	switch oldValue.Cmp(newValue) {
 	case 1:
 		threshold := new(big.Int).Mul(oldValue, new(big.Int).SetInt64(int64(100-minPct)))
 		threshold.Div(threshold, new(big.Int).SetInt64(100))

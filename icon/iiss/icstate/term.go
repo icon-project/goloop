@@ -2,6 +2,8 @@ package icstate
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
@@ -10,7 +12,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"math/big"
 )
 
 type PRepSnapshot struct {
@@ -40,12 +41,12 @@ func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
 func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            pss.owner,
-		bondedDelegation: new(big.Int).Set(pss.bondedDelegation),
+		bondedDelegation: pss.bondedDelegation,
 	}
 }
 
 func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
-	jso := make(map[string]interface{}, 2)
+	jso := make(map[string]interface{})
 	jso["address"] = pss.owner
 	jso["bondedDelegation"] = pss.bondedDelegation
 	jso["delegated"] = pss.bondedDelegation
@@ -69,7 +70,7 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 func NewPRepSnapshotFromPRepStatus(ps *PRepStatus, bondRequirement int64) *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            ps.owner,
-		bondedDelegation: new(big.Int).Set(ps.GetBondedDelegation(bondRequirement)),
+		bondedDelegation: ps.GetBondedDelegation(bondRequirement),
 	}
 }
 
@@ -231,8 +232,8 @@ func (term *Term) Set(other *Term) {
 	term.period = other.period
 	term.irep = other.irep
 	term.rrep = other.rrep
-	term.totalSupply.Set(other.totalSupply)
-	term.totalDelegated.Set(other.totalDelegated)
+	term.totalSupply = other.totalSupply
+	term.totalDelegated = other.totalDelegated
 	term.rewardFund = other.rewardFund.Clone()
 	term.bondRequirement = other.bondRequirement
 	term.revision = other.revision
@@ -250,10 +251,10 @@ func (term *Term) Clone() *Term {
 		sequence:        term.sequence,
 		startHeight:     term.startHeight,
 		period:          term.period,
-		irep:            new(big.Int).Set(term.irep),
-		rrep:            new(big.Int).Set(term.rrep),
-		totalSupply:     new(big.Int).Set(term.totalSupply),
-		totalDelegated:  new(big.Int).Set(term.totalDelegated),
+		irep:            term.irep,
+		rrep:            term.rrep,
+		totalSupply:     term.totalSupply,
+		totalDelegated:  term.totalDelegated,
 		rewardFund:      term.rewardFund.Clone(),
 		bondRequirement: term.bondRequirement,
 		revision:        term.revision,
@@ -352,7 +353,7 @@ func (term *Term) getPRepSnapshotIndex(owner module.Address) int {
 	if ps != nil {
 		size := len(term.prepSnapshots)
 		for i := 0; i < size; i++ {
-			if owner.Equal(term.prepSnapshots[i].owner) {
+			if owner.Equal(term.prepSnapshots[i].Owner()) {
 				return i
 			}
 		}
@@ -396,7 +397,7 @@ func (term *Term) GetTotalBondedDelegation() *big.Int {
 	totalBondedDelegation := new(big.Int)
 	if term.prepSnapshots != nil {
 		for _, ps := range term.prepSnapshots {
-			totalBondedDelegation.Add(totalBondedDelegation, ps.bondedDelegation)
+			totalBondedDelegation.Add(totalBondedDelegation, ps.BondedDelegation())
 		}
 	}
 
@@ -443,10 +444,10 @@ func NewNextTerm(
 		sequence:        term.sequence + 1,
 		startHeight:     term.GetEndBlockHeight() + 1,
 		period:          period,
-		irep:            new(big.Int).Set(irep),
-		rrep:            new(big.Int).Set(rrep),
-		totalSupply:     new(big.Int).Set(totalSupply),
-		totalDelegated:  new(big.Int).Set(totalDelegated),
+		irep:            irep,
+		rrep:            rrep,
+		totalSupply:     totalSupply,
+		totalDelegated:  totalDelegated,
 		rewardFund:      rewardFund.Clone(),
 		bondRequirement: bondRequirement,
 		revision:        revision,
@@ -545,11 +546,11 @@ func (term *Term) SetMainPRepCount(mainPRepCount int) {
 }
 
 func (term *Term) SetIrep(irep *big.Int) {
-	term.irep.Set(irep)
+	term.irep = irep
 }
 
 func (term *Term) SetRrep(rrep *big.Int) {
-	term.rrep.Set(rrep)
+	term.rrep = rrep
 }
 
 func (term *Term) String() string {
@@ -622,10 +623,10 @@ func newTerm(startHeight, termPeriod int64) *Term {
 	return &Term{
 		startHeight:    startHeight,
 		period:         termPeriod,
-		irep:           big.NewInt(0),
-		rrep:           big.NewInt(0),
-		totalSupply:    big.NewInt(0),
-		totalDelegated: big.NewInt(0),
+		irep:           new(big.Int),
+		rrep:           new(big.Int),
+		totalSupply:    new(big.Int),
+		totalDelegated: new(big.Int),
 		rewardFund:     NewRewardFund(),
 		prepSnapshots:  nil,
 
