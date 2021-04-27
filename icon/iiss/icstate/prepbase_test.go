@@ -33,7 +33,7 @@ func TestPRepBase_Bytes(t *testing.T) {
 	}
 
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepBase(owner)
+	ss1 := NewPRepBase()
 	n := "name"
 	ss1.name = n
 
