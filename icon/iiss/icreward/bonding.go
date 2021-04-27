@@ -106,8 +106,8 @@ func (d *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 	return nil
 }
 
-func newBonding(tag icobject.Tag) *Bonding {
-	return NewBonding()
+func newBonding(_ icobject.Tag) *Bonding {
+	return new(Bonding)
 }
 
 func NewBonding() *Bonding {

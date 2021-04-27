@@ -216,7 +216,7 @@ func (c *Calculator) processClaim() error {
 				return nil
 			}
 			iScore = iScore.Added(new(big.Int).Neg(claim.Value()))
-			if iScore.Value.Sign() == -1 {
+			if iScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
 			}
 			if err = c.temp.SetIScore(addr, iScore); err != nil {
@@ -501,7 +501,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		if obj.Enable == false {
+		if obj.Enable() == false {
 			// do not collect disabled P-Rep
 			continue
 		}
@@ -809,7 +809,7 @@ func (c *Calculator) processVotingEvent(
 				c.log.Tracef("VotingEvent %s %d: %d, %d: %s", addr, i, start, end, ret)
 			}
 
-			// update delegating
+			// update Bonding or Delegating
 			votes := events[end]
 			if err = votings.ApplyVotes(votes); err != nil {
 				return err
@@ -842,6 +842,7 @@ func toVoting(_type int, o trie.Object) icreward.Voting {
 	return nil
 }
 
+// getVoting read Voting object from MPT and return cloned object
 func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
 	switch _type {
 	case icreward.TypeDelegating:
@@ -988,7 +989,7 @@ func (vd *votedData) compare(vd2 *votedData) int {
 }
 
 func (vd *votedData) Enable() bool {
-	return vd.voted.Enable
+	return vd.voted.Enable()
 }
 
 func (vd *votedData) SetEnable(flag icstage.EnableStatus) {
@@ -997,24 +998,24 @@ func (vd *votedData) SetEnable(flag icstage.EnableStatus) {
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
-	return vd.voted.Delegated
+	return vd.voted.Delegated()
 }
 
 func (vd *votedData) GetBonded() *big.Int {
-	return vd.voted.Bonded
+	return vd.voted.Bonded()
 }
 
 func (vd *votedData) GetBondedDelegation() *big.Int {
-	return vd.voted.BondedDelegation
+	return vd.voted.BondedDelegation()
 }
 
 func (vd *votedData) GetVotedAmount() *big.Int {
-	return vd.voted.GetVoted()
+	return vd.voted.GetVotedAmount()
 }
 
 func (vd *votedData) UpdateToWrite() {
 	if vd.flag.IsDisabledTemporarily() {
-		vd.voted.Enable = true
+		vd.voted.SetEnable(true)
 	}
 }
 
@@ -1061,14 +1062,13 @@ func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableStatus) {
 func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 	for _, vote := range votes {
 		if data, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
-			current := data.voted.Delegated
-			current.Add(current, vote.Amount())
+			data.voted.SetDelegated(new(big.Int).Add(data.GetDelegated(), vote.Amount()))
 			if data.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.Delegated.Set(vote.Amount())
+			voted.SetDelegated(vote.Amount())
 			data = newVotedData(voted)
 			vi.addVotedData(vote.To(), data)
 		}
@@ -1078,8 +1078,7 @@ func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 func (vi *votedInfo) updateBonded(votes icstage.VoteList) {
 	for _, vote := range votes {
 		if vData, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
-			current := vData.GetBonded()
-			current.Add(current, vote.Amount())
+			vData.voted.SetBonded(new(big.Int).Add(vData.GetBonded(), vote.Amount()))
 			if vData.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
@@ -1159,7 +1158,7 @@ func (vi *votedInfo) calculateReward(multiplier, divider *big.Int, period int) {
 		}
 
 		reward := new(big.Int).Set(base)
-		reward.Mul(reward, prep.voted.BondedDelegation)
+		reward.Mul(reward, prep.voted.BondedDelegation())
 		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 

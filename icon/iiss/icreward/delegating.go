@@ -104,8 +104,8 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 	return nil
 }
 
-func newDelegating(tag icobject.Tag) *Delegating {
-	return NewDelegating()
+func newDelegating(_ icobject.Tag) *Delegating {
+	return new(Delegating)
 }
 
 func NewDelegating() *Delegating {

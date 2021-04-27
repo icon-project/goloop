@@ -83,8 +83,7 @@ func TestCalculator_processClaim(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			iScore := icreward.NewIScore()
-			iScore.Value.Set(args.value)
+			iScore := icreward.NewIScore(args.value)
 			err := c.temp.SetIScore(args.addr, iScore)
 			assert.NoError(t, err)
 
@@ -101,7 +100,7 @@ func TestCalculator_processClaim(t *testing.T) {
 			args := tt.args
 			iScore, err := c.temp.GetIScore(args.addr)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, args.value.Cmp(iScore.Value))
+			assert.Equal(t, 0, args.value.Cmp(iScore.Value()))
 		})
 	}
 }
@@ -289,15 +288,13 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 }
 
 func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequirement int, iScore int64) *votedData {
-	data := &votedData{
-		voted: &icreward.Voted{
-			Enable:           enable,
-			Delegated:        big.NewInt(delegated),
-			Bonded:           big.NewInt(bonded),
-			BondedDelegation: big.NewInt(0),
-		},
-		iScore: big.NewInt(iScore),
-	}
+	voted := icreward.NewVoted()
+	voted.SetEnable(enable)
+	voted.SetDelegated(big.NewInt(delegated))
+	voted.SetBonded(big.NewInt(bonded))
+	voted.SetBondedDelegation(big.NewInt(0))
+	data := newVotedData(voted)
+	data.iScore = big.NewInt(iScore)
 	data.voted.UpdateBondedDelegation(bondRequirement)
 	return data
 }
@@ -377,7 +374,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 		addr, err := common.NewAddress([]byte(key))
 		assert.NoError(t, err)
 
-		if status.IsEnabled() != vData.voted.Enable {
+		if status.IsEnabled() != vData.Enable() {
 			if status.IsEnabled() {
 				totalVoted.Add(totalVoted, vData.GetVotedAmount())
 			} else {
@@ -386,7 +383,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 		}
 		vInfo.setEnable(addr, status)
 		assert.Equal(t, status, vData.flag)
-		assert.Equal(t, status.IsEnabled(), vData.voted.Enable)
+		assert.Equal(t, status.IsEnabled(), vData.Enable())
 		assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted), "%s: %v\t%v", addr.String(), totalVoted, vInfo.totalVoted)
 	}
 

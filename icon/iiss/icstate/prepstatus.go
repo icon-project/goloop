@@ -309,7 +309,7 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	//	jso["voted"] = ps.GetVoted()
+	//	jso["voted"] = ps.GetVotedAmount()
 	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
