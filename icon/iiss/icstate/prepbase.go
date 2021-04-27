@@ -143,7 +143,7 @@ func (p *PRepBase) Set(other *PRepBase) {
 	p.details = other.details
 	p.p2pEndpoint = other.p2pEndpoint
 	p.node = other.node
-	p.irep.Set(other.irep)
+	p.irep = other.irep
 	p.irepHeight = other.irepHeight
 	p.bonderList = other.bonderList.Clone()
 }
@@ -262,7 +262,7 @@ func (p *PRepBase) Clear() {
 	p.email = ""
 	p.name = ""
 	p.node = nil
-	p.irep.SetInt64(0)
+	p.irep = new(big.Int)
 	p.irepHeight = 0
 	p.p2pEndpoint = ""
 	p.website = ""
@@ -287,7 +287,7 @@ func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoin
 }
 
 func (p *PRepBase) SetIrep(irep *big.Int, irepHeight int64) {
-	p.irep.Set(irep)
+	p.irep = irep
 	p.irepHeight = irepHeight
 }
 
@@ -304,7 +304,7 @@ func (p *PRepBase) GetBonderListInJSON() []interface{} {
 }
 
 func newPRepBaseWithTag(_ icobject.Tag) *PRepBase {
-	return &PRepBase{irep: new(big.Int)}
+	return new(PRepBase)
 }
 
 func NewPRepBase(owner module.Address) *PRepBase {
