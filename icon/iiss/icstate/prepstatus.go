@@ -169,7 +169,7 @@ func (ps *PRepStatus) GetVoted() *big.Int {
 }
 
 func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
-	ps.delegated.Set(delegated)
+	ps.delegated = delegated
 }
 
 // GetBondedDelegation return amount of bonded delegation
@@ -276,8 +276,8 @@ func (ps *PRepStatus) Set(other *PRepStatus) {
 	ps.owner = other.owner
 	ps.grade = other.grade
 	ps.status = other.status
-	ps.delegated.Set(other.delegated)
-	ps.bonded.Set(other.bonded)
+	ps.delegated = other.delegated
+	ps.bonded = other.bonded
 	ps.vTotal = other.vTotal
 	ps.vFail = other.vFail
 	ps.vFailContOffset = other.vFailContOffset
@@ -406,7 +406,7 @@ func (ps *PRepStatus) IsEmpty() bool {
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
-	ps.bonded.Set(v)
+	ps.bonded = v
 }
 
 func (ps *PRepStatus) SetGrade(g Grade) {
@@ -575,7 +575,7 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 }
 
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
-	return NewPRepStatus(nil)
+	return new(PRepStatus)
 }
 
 func NewPRepStatus(owner module.Address) *PRepStatus {
