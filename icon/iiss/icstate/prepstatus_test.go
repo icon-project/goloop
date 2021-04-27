@@ -30,7 +30,7 @@ import (
 func TestPRepStatus_Bytes(t *testing.T) {
 	owner := common.NewAccountAddress(make([]byte, common.AddressIDBytes, common.AddressIDBytes))
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepStatus(owner)
+	ss1 := NewPRepStatus()
 	g := Candidate
 	ss1.grade = g
 
