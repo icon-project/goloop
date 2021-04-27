@@ -42,10 +42,10 @@ func NewRewardFund() *RewardFund {
 }
 
 func newRewardFundFromByte(bs []byte) (*RewardFund, error) {
-	rc := NewRewardFund()
 	if bs == nil {
-		return rc, nil
+		return NewRewardFund(), nil
 	}
+	rc := &RewardFund{}
 	if _, err := codec.BC.UnmarshalFromBytes(bs, rc); err != nil {
 		return nil, err
 	}
@@ -88,13 +88,13 @@ func (rf *RewardFund) Equal(rc2 *RewardFund) bool {
 }
 
 func (rf *RewardFund) Clone() *RewardFund {
-	rewardFund := NewRewardFund()
-	rewardFund.Iglobal.Set(rf.Iglobal)
-	rewardFund.Iprep.Set(rf.Iprep)
-	rewardFund.Icps.Set(rf.Icps)
-	rewardFund.Irelay.Set(rf.Irelay)
-	rewardFund.Ivoter.Set(rf.Ivoter)
-	return rewardFund
+	return &RewardFund{
+		Iglobal: rf.Iglobal,
+		Iprep: rf.Iprep,
+		Icps: rf.Icps,
+		Irelay: rf.Irelay,
+		Ivoter: rf.Ivoter,
+	}
 }
 
 func (rf *RewardFund) ToJSON() map[string]interface{} {
