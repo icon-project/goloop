@@ -17,11 +17,16 @@
 package icstage
 
 import (
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/module"
 )
 
 type Snapshot struct {
@@ -41,6 +46,37 @@ func (ss *Snapshot) Bytes() []byte {
 
 func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
 	return ss.store.Filter(prefix)
+}
+
+func (ss *Snapshot) GetValidators() (ret []module.Address, err error) {
+	defer func() {
+		if obj := recover(); obj != nil {
+			ret = nil
+			err = errors.Errorf("FailToLoadValidators(err=%+v)", obj)
+		}
+	}()
+	vm := make(map[int]module.Address)
+	for itr := ss.store.Filter(ValidatorKey.Build()); itr.Has() ; itr.Next() {
+		v, k, err := itr.Get()
+		if err != nil {
+			return nil, err
+		}
+		indexBytes := v.(*icobject.Object).Real().(icobject.BytesImpl)
+		keyWords, err := containerdb.SplitKeys(k)
+		if err != nil {
+			return nil, err
+		}
+		addr, err := common.NewAddress(keyWords[1])
+		if err != nil {
+			return nil, err
+		}
+		vm[int(intconv.BytesToInt64(indexBytes))] = addr
+	}
+	vl := make([]module.Address, len(vm))
+	for i := 0 ; i<len(vm) ; i++ {
+		vl[i] = vm[i]
+	}
+	return vl, nil
 }
 
 func (ss *Snapshot) GetGlobal() (Global, error) {

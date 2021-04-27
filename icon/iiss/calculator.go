@@ -293,28 +293,14 @@ func (c *Calculator) calculateBlockProduce() error {
 }
 
 func (c *Calculator) loadValidators() ([]*validator, error) {
-	vs := make([]*validator, 0)
-	count := 0
-
-	prefix := icstage.ValidatorKey.Build()
-	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return nil, err
-		}
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return nil, err
-		}
-		idx := int(intconv.BytesToInt64(keySplit[1]))
-		if idx != count {
-			return nil, errors.ErrExecutionFail
-		}
-		obj := icstage.ToValidator(o)
-		vs = append(vs, newValidator(obj.Address()))
-		count += 1
+	vl, err := c.back.GetValidators()
+	if err != nil {
+		return nil, err
 	}
-
+	vs := make([]*validator, len(vl))
+	for i, a := range vl {
+		vs[i] = newValidator(common.AddressToPtr(a))
+	}
 	return vs, nil
 }
 

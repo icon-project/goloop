@@ -28,7 +28,6 @@ const (
 	TypeEventBond
 	TypeEventEnable
 	TypeBlockProduce
-	TypeValidator
 	TypeGlobal
 )
 
@@ -44,8 +43,6 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newEventEnable(tag), nil
 	case TypeBlockProduce:
 		return newBlockProduce(tag), nil
-	case TypeValidator:
-		return newValidator(tag), nil
 	case TypeGlobal:
 		return NewGlobal(tag.Version())
 	default:
@@ -80,13 +77,6 @@ func ToBlockProduce(obj trie.Object) *BlockProduce {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*BlockProduce)
-}
-
-func ToValidator(obj trie.Object) *Validator {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*icobject.Object).Real().(*Validator)
 }
 
 func ToGlobal(obj trie.Object) Global {

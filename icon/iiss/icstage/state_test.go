@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -331,35 +330,26 @@ func TestState_AddBlockProduce(t *testing.T) {
 	for _, tt := range tests {
 		a := tt.args
 		w := tt.wants
-		t.Run(tt.name, func(t *testing.T) {
-			err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
-			assert.NoError(t, err)
+		t.Log("Step", tt.name)
+		err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
+		assert.NoError(t, err)
 
-			key := BlockProduceKey.Append(a.offset).Build()
-			obj, err := icobject.GetFromMutableForObject(s.store, key)
-			assert.NoError(t, err)
-			assert.NotNil(t, obj)
+		key := BlockProduceKey.Append(a.offset).Build()
+		obj, err := icobject.GetFromMutableForObject(s.store, key)
+		assert.NoError(t, err)
+		assert.NotNil(t, obj)
 
-			o := ToBlockProduce(obj)
-			assert.Equal(t, w.proposerIndex, o.ProposerIndex())
-			assert.Equal(t, w.voteCount, o.VoteCount())
-			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask()))
-		})
+		o := ToBlockProduce(obj)
+		assert.Equal(t, w.proposerIndex, o.ProposerIndex())
+		assert.Equal(t, w.voteCount, o.VoteCount())
+		assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask()))
 	}
 
 	ss := s.GetSnapshot()
-	count := 0
-	for iter := ss.Filter(ValidatorKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		assert.NoError(t, err)
-		v := ToValidator(o)
-
-		keySplit, _ := containerdb.SplitKeys(key)
-		assert.Equal(t, ValidatorKey.Build(), keySplit[0])
-		assert.Equal(t, count, int(intconv.BytesToInt64(keySplit[1])))
-		assert.True(t, addrs[count].Equal(v.Address()))
-
-		count += 1
+	validators, err := ss.GetValidators()
+	assert.NoError(t, err)
+	for i, v := range validators {
+		assert.True(t, addrs[i].Equal(v))
 	}
 }
 
@@ -503,25 +493,25 @@ func TestState_AddLoadValidators(t *testing.T) {
 			5,
 			common.MustNewAddressFromString("hx5"),
 		},
+		{
+			7,
+			common.MustNewAddressFromString("hx3"),
+		},
 	}
+	idxToAddr := make(map[int]module.Address)
+	addrToIdx := make(map[string]int)
 	for _, data := range datas {
-		err := s.addValidator(data.offset, data.addr)
+		idx, err := s.getValidatorIndex(data.addr)
 		assert.NoError(t, err)
-
-		key := ValidatorKey.Append(data.offset).Build()
-		obj, err := icobject.GetFromMutableForObject(s.store, key)
-		assert.NoError(t, err)
-		validator := ToValidator(obj)
-		assert.True(t, data.addr.Equal(validator.Address()))
+		idxToAddr[idx] = data.addr
+		addrToIdx[data.addr.String()] = idx
 	}
 
 	ss := s.GetSnapshot()
-	err := s.loadValidators(ss)
+	vl, err := ss.GetValidators()
 	assert.NoError(t, err)
-
-	for _, data := range datas {
-		offset, ok := s.validatorToIdx[icutils.ToKey(data.addr)]
-		assert.True(t, ok)
-		assert.Equal(t, data.offset, offset)
+	for i, v := range vl {
+		assert.True(t, idxToAddr[i].Equal(v))
+		assert.Equal(t, addrToIdx[v.String()], i)
 	}
 }
