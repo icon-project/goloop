@@ -33,8 +33,7 @@ func Test_Validator(t *testing.T) {
 	version := 0
 	validator := common.MustNewAddressFromString("hx1")
 
-	t1 := newValidator(icobject.MakeTag(type_, version))
-	t1.Address = validator
+	t1 := NewValidator(validator)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -51,5 +50,5 @@ func Test_Validator(t *testing.T) {
 
 	t2 := ToValidator(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.True(t, t1.Address.Equal(t2.Address))
+	assert.True(t, t1.Address().Equal(t2.Address()))
 }

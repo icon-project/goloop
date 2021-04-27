@@ -33,8 +33,7 @@ func TestIScore(t *testing.T) {
 	version := 0
 	v1 := int64(100)
 
-	t1 := newIScore(icobject.MakeTag(type_, version))
-	t1.Value = big.NewInt(v1)
+	t1 := NewIScore(big.NewInt(v1))
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -51,5 +50,5 @@ func TestIScore(t *testing.T) {
 
 	t2 := ToIScore(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, 0, t1.Value.Cmp(t2.Value))
+	assert.Equal(t, 0, t1.Value().Cmp(t2.Value()))
 }

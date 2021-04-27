@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -83,9 +84,7 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
-	event := newEventVote(icobject.MakeTag(TypeEventDelegation, 0))
-	event.Votes = votes
-	event.From = common.AddressToPtr(from)
+	event := NewEventVote(common.AddressToPtr(from), votes)
 	_, err := s.store.Set(key, icobject.New(TypeEventDelegation, event))
 	if err != nil {
 		return 0, err
@@ -97,10 +96,8 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
-	ed := newEventVote(icobject.MakeTag(TypeEventBond, 0))
-	ed.From = common.AddressToPtr(from)
-	ed.Votes = votes
-	_, err := s.store.Set(key, icobject.New(TypeEventBond, ed))
+	event := NewEventVote(common.AddressToPtr(from), votes)
+	_, err := s.store.Set(key, icobject.New(TypeEventBond, event))
 	if err != nil {
 		return 0, err
 	}
@@ -108,12 +105,10 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 	return index, s.setEventSize(index + 1)
 }
 
-func (s *State) AddEventEnable(offset int, target module.Address, flag EnableFlag) (int64, error) {
+func (s *State) AddEventEnable(offset int, target module.Address, status EnableStatus) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
-	obj := newEventEnable(icobject.MakeTag(TypeEventEnable, 0))
-	obj.Target = common.AddressToPtr(target)
-	obj.Flag = flag
+	obj := NewEventEnable(common.AddressToPtr(target), status)
 	_, err := s.store.Set(key, icobject.New(TypeEventEnable, obj))
 	if err != nil {
 		return 0, err
@@ -135,6 +130,9 @@ func (s *State) ResetEventSize() error {
 }
 
 func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
+	if err := s.loadValidators(s.GetSnapshot()); err != nil {
+		return err
+	}
 	pKey := string(proposer.Bytes())
 	pIdx, ok := s.validatorToIdx[pKey]
 	if !ok {
@@ -145,9 +143,6 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		}
 	}
 	key := BlockProduceKey.Append(offset).Build()
-	obj := newBlockProduce(icobject.MakeTag(TypeBlockProduce, 0))
-	obj.ProposerIndex = pIdx
-	obj.VoteCount = len(voters)
 	voteMask := big.NewInt(0)
 	for _, v := range voters {
 		vKey := string(v.Bytes())
@@ -161,15 +156,14 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		}
 		voteMask.SetBit(voteMask, idx, 1)
 	}
-	obj.VoteMask = voteMask
-	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, obj))
+	bp := NewBlockProduce(pIdx, len(voters), voteMask)
+	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, bp))
 	return err
 }
 
 func (s *State) addValidator(idx int, validator module.Address) error {
 	key := ValidatorKey.Append(idx).Build()
-	obj := newValidator(icobject.MakeTag(TypeValidator, 0))
-	obj.Address = common.AddressToPtr(validator)
+	obj := NewValidator(common.AddressToPtr(validator))
 	_, err := s.store.Set(key, icobject.New(TypeValidator, obj))
 	return err
 }
@@ -177,15 +171,16 @@ func (s *State) addValidator(idx int, validator module.Address) error {
 func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
 	mainPRepCount int, electedPRepCount int,
 ) error {
-	g := newGlobalV1()
-	g.Revision = revision
-	g.IISSVersion = icstate.IISSVersion1
-	g.StartHeight = startHeight
-	g.OffsetLimit = offsetLimit
-	g.Irep.Set(irep)
-	g.Rrep.Set(rrep)
-	g.MainPRepCount = mainPRepCount
-	g.ElectedPRepCount = electedPRepCount
+	g := NewGlobalV1(
+		icstate.IISSVersion1,
+		startHeight,
+		offsetLimit,
+		revision,
+		irep,
+		rrep,
+		mainPRepCount,
+		electedPRepCount,
+	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
@@ -193,16 +188,17 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
 	ivoter *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
-	g := newGlobalV2()
-	g.Revision = revision
-	g.IISSVersion = icstate.IISSVersion2
-	g.StartHeight = startHeight
-	g.OffsetLimit = offsetLimit
-	g.Iglobal.Set(iglobal)
-	g.Iprep.Set(iprep)
-	g.Ivoter.Set(ivoter)
-	g.ElectedPRepCount = electedPRepCount
-	g.BondRequirement = bondRequirement
+	g := NewGlobalV2(
+		icstate.IISSVersion2,
+		startHeight,
+		offsetLimit,
+		revision,
+		iglobal,
+		iprep,
+		ivoter,
+		electedPRepCount,
+		bondRequirement,
+	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }
@@ -221,7 +217,7 @@ func (s *State) loadValidators(ss *Snapshot) error {
 		}
 		idx := int(intconv.BytesToInt64(keySplit[1]))
 		v := ToValidator(o)
-		nvs[string(v.Address.Bytes())] = idx
+		nvs[icutils.ToKey(v.Address())] = idx
 	}
 	s.validatorToIdx = nvs
 	return nil
@@ -232,7 +228,6 @@ func NewStateFromSnapshot(ss *Snapshot) *State {
 	s := &State{
 		store: icobject.NewObjectStoreState(t),
 	}
-	s.loadValidators(ss)
 	return s
 }
 
@@ -241,6 +236,5 @@ func NewState(database db.Database) *State {
 	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	return &State{
 		store:          icobject.NewObjectStoreState(t),
-		validatorToIdx: make(map[string]int),
 	}
 }

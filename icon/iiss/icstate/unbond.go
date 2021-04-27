@@ -26,8 +26,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-var UnbondingPeriod = int64(10)
-
 type Unbond struct {
 	Address *common.Address
 	Value   *big.Int
@@ -41,10 +39,35 @@ func newUnbond() *Unbond {
 	}
 }
 
+func (u *Unbond) To() *common.Address {
+	return u.Address
+}
+
+func (u *Unbond) SetTo(t *common.Address) {
+	u.Address = t
+}
+
+func (u *Unbond) SetValue(v *big.Int) {
+	u.Value = v
+}
+
+func (u *Unbond) Amount() *big.Int {
+	return u.Value
+}
+
+func (u *Unbond) SetExpire(e int64) {
+	u.Expire = e
+}
+
+func (u *Unbond) ExpireHeight() int64 {
+	return u.Expire
+}
+
 func (u *Unbond) Slash(ratio int) *big.Int {
 	slashAmount := new(big.Int).Mul(u.Value, big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
-	u.Value.Sub(u.Value, slashAmount)
+	newValue := new(big.Int).Sub(u.Value, slashAmount)
+	u.SetValue(newValue)
 	return slashAmount
 }
 
@@ -63,8 +86,8 @@ func (u *Unbond) ToJSON() map[string]interface{} {
 
 func (u *Unbond) Clone() *Unbond {
 	n := newUnbond()
-	n.Address.Set(u.Address)
-	n.Value.Set(u.Value)
+	n.Address = u.Address
+	n.Value = u.Value
 	n.Expire = u.Expire
 	return n
 }
@@ -82,8 +105,8 @@ func (u *Unbond) Format(f fmt.State, c rune) {
 
 type Unbonds []*Unbond
 
-func (ul Unbonds) Has() bool {
-	return len(ul) > 0
+func (ul Unbonds) IsEmpty() bool {
+	return len(ul) == 0
 }
 
 func (ul Unbonds) Equal(ul2 Unbonds) bool {
@@ -146,8 +169,8 @@ func (ul Unbonds) ExpireRefCount() map[int64]int {
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
 	unbond := newUnbond()
-	unbond.Address = common.AddressToPtr(address)
-	unbond.Value.Set(value)
+	unbond.SetTo(common.AddressToPtr(address))
+	unbond.SetValue(value)
 	unbond.Expire = expireHeight
 	*ul = append(*ul, unbond)
 }
@@ -190,7 +213,7 @@ func (ul *Unbonds) Slash(address module.Address, ratio int) (*big.Int, int64) {
 }
 
 func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {
-	if !ul.Has() {
+	if ul.IsEmpty() {
 		return nil
 	}
 	unbonds := make([]interface{}, len(ul))

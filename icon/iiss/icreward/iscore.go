@@ -19,27 +19,53 @@ package icreward
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 type IScore struct {
-	icobject.ObjectBigInt
+	icobject.NoDatabase
+	value *big.Int
+}
+
+func (is *IScore) Version() int {
+	return 0
+}
+
+func (is *IScore) Value() *big.Int {
+	return is.value
+}
+
+func (is *IScore) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.Decode(&is.value)
+}
+
+func (is *IScore) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.Encode(is.value)
 }
 
 func (is *IScore) Equal(o icobject.Impl) bool {
 	if is2, ok := o.(*IScore); ok {
-		return is.Value.Cmp(is2.Value) == 0
+		return is.value.Cmp(is2.value) == 0
 	} else {
 		return false
 	}
 }
 
+func (is *IScore) Clear() {
+	is.value = new(big.Int)
+}
+
+func (is *IScore) IsEmpty() bool {
+	return is.value == nil || is.value.Sign() == 0
+}
+
 func (is *IScore) Added(amount *big.Int) *IScore {
 	n := new(IScore)
 	if is == nil {
-		n.Value = amount
+		n.value = amount
 	} else {
-		n.Value = new(big.Int).Add(is.Value, amount)
+		n.value = new(big.Int).Add(is.value, amount)
 	}
 	return n
 }
@@ -48,17 +74,15 @@ func (is *IScore) Clone() *IScore {
 	if is == nil {
 		return nil
 	}
-	nIS := NewIScore()
-	nIS.Value.Set(is.Value)
-	return nIS
+	return NewIScore(is.value)
 }
 
-func newIScore(tag icobject.Tag) *IScore {
+func newIScore(_ icobject.Tag) *IScore {
+	return new(IScore)
+}
+
+func NewIScore(value *big.Int) *IScore {
 	return &IScore{
-		*icobject.NewObjectBigInt(tag),
+		value: value,
 	}
-}
-
-func NewIScore() *IScore {
-	return newIScore(icobject.MakeTag(TypeIScore, 0))
 }

@@ -373,7 +373,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	_, err = es.Front.AddEventEnable(
 		int(s.cc.BlockHeight()-term.StartHeight()),
 		s.from,
-		icstage.EfEnable,
+		icstage.ESEnable,
 	)
 
 	s.cc.OnEvent(state.SystemAddress,
@@ -680,7 +680,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
 		return nil
 	}
-	iScore := is.Clone()
+	iScore := new(big.Int).Set(is.Value())
 	bClaimed, err := es.Back.GetIScoreClaim(s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
@@ -690,17 +690,17 @@ func (s *chainScore) Ex_claimIScore() error {
 		)
 	}
 	if bClaimed != nil {
-		iScore.Value.Sub(iScore.Value, bClaimed.Value)
+		iScore.Sub(iScore, bClaimed.Value())
 	}
 
-	if iScore.IsEmpty() {
+	if iScore.Sign() == 0 {
 		// there is no IScore to claim
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
 		return nil
 	}
 
-	icx, remains := new(big.Int).DivMod(iScore.Value, iiss.BigIntIScoreICXRatio, new(big.Int))
-	claim := new(big.Int).Sub(iScore.Value, remains)
+	icx, remains := new(big.Int).DivMod(iScore, iiss.BigIntIScoreICXRatio, new(big.Int))
+	claim := new(big.Int).Sub(iScore, remains)
 
 	// increase account icx balance
 	account := s.cc.GetAccountState(s.from.ID())
@@ -722,7 +722,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	if revision < icmodule.RevisionICON2 {
 		err = es.Front.AddIScoreClaim(s.from, claim)
 	} else {
-		err = es.Front.AddIScoreClaim(s.from, iScore.Value)
+		err = es.Front.AddIScoreClaim(s.from, iScore)
 	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
@@ -796,7 +796,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 			)
 		}
 		if iScore != nil && !iScore.IsEmpty() {
-			is.Set(iScore.Value)
+			is.Set(iScore.Value())
 		}
 		bClaim, err = es.Back.GetIScoreClaim(address)
 		if err != nil {
@@ -807,7 +807,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 			)
 		}
 		if bClaim != nil {
-			is.Sub(is, bClaim.Value)
+			is.Sub(is, bClaim.Value())
 		}
 	}
 

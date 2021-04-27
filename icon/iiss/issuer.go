@@ -35,7 +35,7 @@ type IssuePRepJSON struct {
 	Value           *common.HexInt `json:"value"`
 }
 
-func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
+func ParseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -48,7 +48,23 @@ func parseIssuePRepData(data []byte) (*IssuePRepJSON, error) {
 	return jso, nil
 }
 
-func (i *IssuePRepJSON) equal(i2 *IssuePRepJSON) bool {
+func (i *IssuePRepJSON) GetIRep() *big.Int {
+	return i.IRep.Value()
+}
+
+func (i *IssuePRepJSON) GetRRep() *big.Int {
+	return i.RRep.Value()
+}
+
+func (i *IssuePRepJSON) GetTotalDelegation() *big.Int {
+	return i.TotalDelegation.Value()
+}
+
+func (i *IssuePRepJSON) GetValue() *big.Int {
+	return i.Value.Value()
+}
+
+func (i *IssuePRepJSON) Equal(i2 *IssuePRepJSON) bool {
 	return i.IRep.Cmp(i2.IRep.Value()) == 0 &&
 		i.RRep.Cmp(i2.RRep.Value()) == 0 &&
 		i.TotalDelegation.Cmp(i2.TotalDelegation.Value()) == 0 &&
@@ -61,7 +77,7 @@ type IssueResultJSON struct {
 	Issue           *common.HexInt `json:"issue"`
 }
 
-func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
+func ParseIssueResultData(data []byte) (*IssueResultJSON, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -74,7 +90,19 @@ func parseIssueResultData(data []byte) (*IssueResultJSON, error) {
 	return jso, nil
 }
 
-func (i *IssueResultJSON) equal(i2 *IssueResultJSON) bool {
+func (i *IssueResultJSON) GetByFee() *big.Int {
+	return i.ByFee.Value()
+}
+
+func (i *IssueResultJSON) GetByOverIssuedICX() *big.Int {
+	return i.ByOverIssuedICX.Value()
+}
+
+func (i *IssueResultJSON) GetIssue() *big.Int {
+	return i.Issue.Value()
+}
+
+func (i *IssueResultJSON) Equal(i2 *IssueResultJSON) bool {
 	return i.ByFee.Cmp(i2.ByFee.Value()) == 0 &&
 		i.ByOverIssuedICX.Cmp(i2.ByOverIssuedICX.Value()) == 0 &&
 		i.Issue.Cmp(i2.Issue.Value()) == 0
@@ -91,7 +119,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	var icx, remains *big.Int
 
 	// Do not regulate ICX issue if there is no ICX issuance.
-	if issue.PrevTotalIssued.Sign() == 0 {
+	if issue.PrevTotalIssued().Sign() == 0 {
 		return
 	}
 	if iScore == nil || iScore.Sign() == 0 {
@@ -100,17 +128,17 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	} else {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
-	overIssued := new(big.Int).Sub(issue.PrevTotalIssued, additionalReward)
+	overIssued := new(big.Int).Sub(issue.PrevTotalIssued(), additionalReward)
 	overIssued.Sub(overIssued, icx)
 	if overIssued.Sign() == -1 {
 		log.Debugf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
-			issue.PrevTotalIssued.String(), icx.String())
+			issue.PrevTotalIssued(), icx)
 	}
-	issue.OverIssued.Add(issue.OverIssued, overIssued)
-	issue.IScoreRemains.Add(issue.IScoreRemains, remains)
-	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains) < 0 {
-		issue.OverIssued.Sub(issue.OverIssued, intconv.BigIntOne)
-		issue.IScoreRemains.Sub(issue.IScoreRemains, BigIntIScoreICXRatio)
+	issue.SetOverIssued(new(big.Int).Add(issue.OverIssued(), overIssued))
+	issue.SetIScoreRemains(new(big.Int).Add(issue.IScoreRemains(), remains))
+	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains()) < 0 {
+		issue.SetOverIssued(new(big.Int).Sub(issue.OverIssued(), intconv.BigIntOne))
+		issue.SetIScoreRemains(new(big.Int).Sub(issue.IScoreRemains(), BigIntIScoreICXRatio))
 	}
 }
 
@@ -151,18 +179,18 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	byFee = new(big.Int)
 	byOverIssued = new(big.Int)
 
-	if issue.Cmp(i.OverIssued) > 0 {
-		byOverIssued.Set(i.OverIssued)
-		issue.Sub(issue, i.OverIssued)
+	if issue.Cmp(i.OverIssued()) > 0 {
+		byOverIssued.Set(i.OverIssued())
+		issue.Sub(issue, i.OverIssued())
 	} else {
 		byOverIssued.Set(issue)
 		issue.SetInt64(0)
 		return
 	}
 
-	if issue.Cmp(i.PrevBlockFee) > 0 {
-		byFee.Set(i.PrevBlockFee)
-		issue.Sub(issue, i.PrevBlockFee)
+	if issue.Cmp(i.PrevBlockFee()) > 0 {
+		byFee.Set(i.PrevBlockFee())
+		issue.Sub(issue, i.PrevBlockFee())
 	} else {
 		byFee.Set(issue)
 		issue.SetInt64(0)

@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -85,7 +86,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 			obj, err := icobject.GetFromMutableForObject(s.store, key)
 			assert.NoError(t, err)
 			claim := ToIScoreClaim(obj)
-			assert.Equal(t, tt.want, claim.Value.Int64())
+			assert.Equal(t, tt.want, claim.Value().Int64())
 		})
 	}
 
@@ -124,21 +125,15 @@ func TestState_AddEvent(t *testing.T) {
 	addr2 := common.MustNewAddressFromString("hx2")
 	v1 := int64(100)
 	v2 := int64(200)
-	vote1 := Vote{
-		Address: addr1,
-		Value:   big.NewInt(v1),
-	}
-	vote2 := Vote{
-		Address: addr2,
-		Value:   big.NewInt(v2),
-	}
+	vote1 := NewVote(addr1, big.NewInt(v1))
+	vote2 := NewVote(addr2, big.NewInt(v2))
 
 	type args struct {
 		type_         int
 		offset        int
 		address       *common.Address
 		votes         VoteList
-		enableFlag    EnableFlag
+		enableFlag    EnableStatus
 		irep          *big.Int
 		rrep          *big.Int
 		mainPRepCount int64
@@ -156,7 +151,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:   TypeEventDelegation,
 				offset:  offset1,
 				address: addr1,
-				votes:   VoteList{&vote1, &vote2},
+				votes:   VoteList{vote1, vote2},
 			},
 		},
 		{
@@ -165,7 +160,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:   TypeEventBond,
 				offset:  offset1,
 				address: addr1,
-				votes:   VoteList{&vote1, &vote2},
+				votes:   VoteList{vote1, vote2},
 			},
 		},
 		{
@@ -174,7 +169,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:      TypeEventEnable,
 				offset:     offset2,
 				address:    addr2,
-				enableFlag: EfDisablePermanent,
+				enableFlag: ESDisablePermanent,
 			},
 		},
 	}
@@ -220,8 +215,8 @@ func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From))
-	assert.True(t, votes.Equal(event.Votes))
+	assert.True(t, address.Equal(event.From()))
+	assert.True(t, votes.Equal(event.Votes()))
 }
 
 func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
@@ -232,11 +227,11 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From))
-	assert.True(t, votes.Equal(event.Votes))
+	assert.True(t, address.Equal(event.From()))
+	assert.True(t, votes.Equal(event.Votes()))
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableFlag) {
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableStatus) {
 	index, err := s.AddEventEnable(offset, address, flag)
 	assert.NoError(t, err)
 
@@ -244,8 +239,8 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	obj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	event := ToEventEnable(obj)
-	assert.True(t, address.Equal(event.Target))
-	assert.Equal(t, flag, event.Flag)
+	assert.True(t, address.Equal(event.Target()))
+	assert.Equal(t, flag, event.Status())
 }
 
 func TestState_AddBlockProduce(t *testing.T) {
@@ -346,9 +341,9 @@ func TestState_AddBlockProduce(t *testing.T) {
 			assert.NotNil(t, obj)
 
 			o := ToBlockProduce(obj)
-			assert.Equal(t, w.proposerIndex, o.ProposerIndex)
-			assert.Equal(t, w.voteCount, o.VoteCount)
-			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask))
+			assert.Equal(t, w.proposerIndex, o.ProposerIndex())
+			assert.Equal(t, w.voteCount, o.VoteCount())
+			assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask()))
 		})
 	}
 
@@ -362,7 +357,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 		keySplit, _ := containerdb.SplitKeys(key)
 		assert.Equal(t, ValidatorKey.Build(), keySplit[0])
 		assert.Equal(t, count, int(intconv.BytesToInt64(keySplit[1])))
-		assert.True(t, addrs[count].Equal(v.Address))
+		assert.True(t, addrs[count].Equal(v.Address()))
 
 		count += 1
 	}
@@ -462,22 +457,22 @@ func TestState_AddGlobal(t *testing.T) {
 				assert.NotNil(t, global)
 				assert.Equal(t, a.version, global.Version())
 				assert.Equal(t, a.revision, global.GetRevision())
-				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
-				assert.Equal(t, 0, a.irep.Cmp(global.Irep))
-				assert.Equal(t, 0, a.rrep.Cmp(global.Rrep))
-				assert.Equal(t, a.mainPRepCount, global.MainPRepCount)
-				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
+				assert.Equal(t, a.offsetLimit, global.GetOffsetLimit())
+				assert.Equal(t, 0, a.irep.Cmp(global.GetIRep()))
+				assert.Equal(t, 0, a.rrep.Cmp(global.GetRRep()))
+				assert.Equal(t, a.mainPRepCount, global.GetMainRepCount())
+				assert.Equal(t, a.electedPRepCount, global.GetElectedPRepCount())
 			case GlobalVersion2:
 				global := g.GetV2()
 				assert.NotNil(t, global)
 				assert.Equal(t, a.version, global.Version())
 				assert.Equal(t, a.revision, global.GetRevision())
-				assert.Equal(t, a.offsetLimit, global.OffsetLimit)
-				assert.Equal(t, 0, a.iglobal.Cmp(global.Iglobal))
-				assert.Equal(t, 0, a.iprep.Cmp(global.Iprep))
-				assert.Equal(t, 0, a.ivoter.Cmp(global.Ivoter))
-				assert.Equal(t, a.electedPRepCount, global.ElectedPRepCount)
-				assert.Equal(t, a.bondRequirement, global.BondRequirement)
+				assert.Equal(t, a.offsetLimit, global.GetOffsetLimit())
+				assert.Equal(t, 0, a.iglobal.Cmp(global.GetIGlobal()))
+				assert.Equal(t, 0, a.iprep.Cmp(global.GetIPRep()))
+				assert.Equal(t, 0, a.ivoter.Cmp(global.GetIVoter()))
+				assert.Equal(t, a.electedPRepCount, global.GetElectedPRepCount())
+				assert.Equal(t, a.bondRequirement, global.GetBondRequirement())
 			}
 		})
 	}
@@ -517,7 +512,7 @@ func TestState_AddLoadValidators(t *testing.T) {
 		obj, err := icobject.GetFromMutableForObject(s.store, key)
 		assert.NoError(t, err)
 		validator := ToValidator(obj)
-		assert.True(t, data.addr.Equal(validator.Address))
+		assert.True(t, data.addr.Equal(validator.Address()))
 	}
 
 	ss := s.GetSnapshot()
@@ -525,7 +520,7 @@ func TestState_AddLoadValidators(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, data := range datas {
-		offset, ok := s.validatorToIdx[string(data.addr.Bytes())]
+		offset, ok := s.validatorToIdx[icutils.ToKey(data.addr)]
 		assert.True(t, ok)
 		assert.Equal(t, data.offset, offset)
 	}

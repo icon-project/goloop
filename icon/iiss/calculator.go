@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -214,8 +215,8 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore = iScore.Added(new(big.Int).Neg(claim.Value))
-			if iScore.Value.Sign() == -1 {
+			iScore = iScore.Added(new(big.Int).Neg(claim.Value()))
+			if iScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
 			}
 			if err = c.temp.SetIScore(addr, iScore); err != nil {
@@ -263,7 +264,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	var err error
 	var validators []*validator
 	global := c.global.GetV1()
-	variable := varForBlockProduceReward(global.Irep, global.MainPRepCount)
+	variable := varForBlockProduceReward(global.GetIRep(), global.GetMainRepCount())
 	validators, err = c.loadValidators()
 	if err != nil {
 		return err
@@ -310,7 +311,7 @@ func (c *Calculator) loadValidators() ([]*validator, error) {
 			return nil, errors.ErrExecutionFail
 		}
 		obj := icstage.ToValidator(o)
-		vs = append(vs, newValidator(obj.Address))
+		vs = append(vs, newValidator(obj.Address()))
 		count += 1
 	}
 
@@ -327,21 +328,24 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 	}
 
 	vLen := len(validators)
-	maxIndex := bp.VoteMask.BitLen()
-	if bp.ProposerIndex >= vLen || maxIndex > vLen {
+	pIndex := bp.ProposerIndex()
+	vCount := bp.VoteCount()
+	vMask := bp.VoteMask()
+	maxIndex := vMask.BitLen()
+	if pIndex >= vLen || maxIndex > vLen {
 		return errors.Errorf("Can't find validator with %v", bp)
 	}
 	beta1Reward := new(big.Int).Set(variable)
 
 	// for proposer
-	proposer := validators[bp.ProposerIndex]
+	proposer := validators[pIndex]
 	proposer.iScore.Add(proposer.iScore, beta1Reward)
 
 	// for validator
-	if bp.VoteCount > 0 {
-		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(bp.VoteCount)))
+	if vCount > 0 {
+		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(vCount)))
 		for i := 0; i < maxIndex; i += 1 {
-			if (bp.VoteMask.Bit(i)) != 0 {
+			if (vMask.Bit(i)) != 0 {
 				validators[i].iScore.Add(validators[i].iScore, beta1Validate)
 			}
 		}
@@ -364,14 +368,14 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.(*icstage.GlobalV1)
-		multiplier.Mul(g.Irep, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
+		multiplier.Mul(g.GetIRep(), big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
 		g := global.(*icstage.GlobalV2)
 		if g.GetTermPeriod() == 0 {
 			return
 		}
-		multiplier.Mul(g.Iglobal, g.Iprep)
+		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
 		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 	}
@@ -404,17 +408,17 @@ func (c *Calculator) calculateVotedReward() error {
 			offset = keyOffset
 
 			obj := icstage.ToEventEnable(o)
-			vInfo.setEnable(obj.Target, obj.Flag)
+			vInfo.setEnable(obj.Target(), obj.Status())
 			// If revision < 7, do not update totalBondedDelegation with EventEnable
 			if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
 				vInfo.updateTotalBondedDelegation()
 			}
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateDelegated(obj.Votes)
+			vInfo.updateDelegated(obj.Votes())
 		case icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
-			vInfo.updateBonded(obj.Votes)
+			vInfo.updateBonded(obj.Votes())
 		}
 	}
 	if offset < c.global.GetOffsetLimit() {
@@ -497,7 +501,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		if obj.Enable == false {
+		if obj.Enable() == false {
 			// do not collect disabled P-Rep
 			continue
 		}
@@ -521,17 +525,17 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion1 {
 		g := global.GetV1()
-		if g.Rrep.Sign() == 0 {
+		if g.GetRRep().Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.Rrep, new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
+		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
 		divider.SetInt64(int64(YearBlock * RrepDivider))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.Iglobal, g.Ivoter)
+		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
 		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 		divider.Mul(divider, totalVotingAmount)
@@ -574,22 +578,22 @@ func (c *Calculator) calculateVotingReward() error {
 		case icstage.TypeEventEnable:
 			// update prepInfo
 			event := icstage.ToEventEnable(obj)
-			idx := string(event.Target.Bytes())
+			idx := icutils.ToKey(event.Target())
 			if _, ok := prepInfo[idx]; !ok {
 				pe := new(pRepEnable)
 				prepInfo[idx] = pe
 			}
-			if event.Flag.IsEnable() {
+			if event.Status().IsEnabled() {
 				prepInfo[idx].startOffset = offset
 			} else {
 				prepInfo[idx].endOffset = offset
 			}
 			// update vInfo
-			vInfo.setEnable(event.Target, event.Flag)
+			vInfo.setEnable(event.Target(), event.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
-			idx := string(event.From.Bytes())
+			idx := icutils.ToKey(event.From())
 			if _type == icstage.TypeEventDelegation {
 				_, ok := delegatingMap[idx]
 				if !ok {
@@ -597,12 +601,12 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				votes, ok := delegatingMap[idx][offset]
 				if ok {
-					votes.Update(event.Votes)
+					votes.Update(event.Votes())
 					delegatingMap[idx][offset] = votes
 				} else {
-					delegatingMap[idx][offset] = event.Votes
+					delegatingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateDelegated(event.Votes)
+				vInfo.updateDelegated(event.Votes())
 			} else {
 				_, ok := bondingMap[idx]
 				if !ok {
@@ -610,12 +614,12 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				votes, ok := bondingMap[idx][offset]
 				if ok {
-					votes.Update(event.Votes)
+					votes.Update(event.Votes())
 					bondingMap[idx][offset] = votes
 				} else {
-					bondingMap[idx][offset] = event.Votes
+					bondingMap[idx][offset] = event.Votes()
 				}
-				vInfo.updateBonded(event.Votes)
+				vInfo.updateBonded(event.Votes())
 			}
 		}
 		// find MAX totalVotingAmount
@@ -740,7 +744,7 @@ func (c *Calculator) votingReward(
 		} else {
 			s := from
 			e := to
-			if prep, ok := prepInfo[string(voting.To().Bytes())]; ok {
+			if prep, ok := prepInfo[icutils.ToKey(voting.To())]; ok {
 				if prep.startOffset != 0 && prep.startOffset > s {
 					s = prep.startOffset
 				}
@@ -805,7 +809,7 @@ func (c *Calculator) processVotingEvent(
 				c.log.Tracef("VotingEvent %s %d: %d, %d: %s", addr, i, start, end, ret)
 			}
 
-			// update delegating
+			// update Bonding or Delegating
 			votes := events[end]
 			if err = votings.ApplyVotes(votes); err != nil {
 				return err
@@ -838,6 +842,7 @@ func toVoting(_type int, o trie.Object) icreward.Voting {
 	return nil
 }
 
+// getVoting read Voting object from MPT and return cloned object
 func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
 	switch _type {
 	case icreward.TypeDelegating:
@@ -910,13 +915,13 @@ func (c *Calculator) postWork() (err error) {
 			return errors.CriticalUnknownError.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
 		}
 		g := c.global.GetV2()
-		maxVotedReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
 		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
 			return errors.CriticalUnknownError.Errorf("Too much Voted Reward. %s < %s",
 				maxVotedReward, c.stats.voted.String())
 		}
-		maxVotingReward := new(big.Int).Mul(g.Iglobal, g.Ivoter)
+		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
 		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
 			return errors.CriticalUnknownError.Errorf("Too much Voting Reward. %s < %s",
@@ -957,7 +962,7 @@ func newValidator(addr *common.Address) *validator {
 type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
-	flag   icstage.EnableFlag
+	flag   icstage.EnableStatus
 }
 
 func (vd *votedData) compare(vd2 *votedData) int {
@@ -984,33 +989,33 @@ func (vd *votedData) compare(vd2 *votedData) int {
 }
 
 func (vd *votedData) Enable() bool {
-	return vd.voted.Enable
+	return vd.voted.Enable()
 }
 
-func (vd *votedData) SetEnable(flag icstage.EnableFlag) {
-	vd.voted.SetEnable(flag.IsEnable())
+func (vd *votedData) SetEnable(flag icstage.EnableStatus) {
+	vd.voted.SetEnable(flag.IsEnabled())
 	vd.flag = flag
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
-	return vd.voted.Delegated
+	return vd.voted.Delegated()
 }
 
 func (vd *votedData) GetBonded() *big.Int {
-	return vd.voted.Bonded
+	return vd.voted.Bonded()
 }
 
 func (vd *votedData) GetBondedDelegation() *big.Int {
-	return vd.voted.BondedDelegation
+	return vd.voted.BondedDelegation()
 }
 
 func (vd *votedData) GetVotedAmount() *big.Int {
-	return vd.voted.GetVoted()
+	return vd.voted.GetVotedAmount()
 }
 
 func (vd *votedData) UpdateToWrite() {
-	if vd.flag.IsTemporarilyDisabled() {
-		vd.voted.Enable = true
+	if vd.flag.IsDisabledTemporarily() {
+		vd.voted.SetEnable(true)
 	}
 }
 
@@ -1036,10 +1041,10 @@ func (vi *votedInfo) addVotedData(addr module.Address, data *votedData) {
 	}
 }
 
-func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableFlag) {
+func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableStatus) {
 	if vData, ok := vi.preps[string(addr.Bytes())]; ok {
-		if flag.IsEnable() != vData.Enable() {
-			if flag.IsEnable() {
+		if flag.IsEnabled() != vData.Enable() {
+			if flag.IsEnabled() {
 				vi.updateTotalVoted(vData.GetVotedAmount())
 			} else {
 				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
@@ -1056,15 +1061,14 @@ func (vi *votedInfo) setEnable(addr module.Address, flag icstage.EnableFlag) {
 
 func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if data, ok := vi.preps[string(vote.To().Bytes())]; ok {
-			current := data.voted.Delegated
-			current.Add(current, vote.Amount())
+		if data, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
+			data.voted.SetDelegated(new(big.Int).Add(data.GetDelegated(), vote.Amount()))
 			if data.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.Delegated.Set(vote.Value)
+			voted.SetDelegated(vote.Amount())
 			data = newVotedData(voted)
 			vi.addVotedData(vote.To(), data)
 		}
@@ -1073,15 +1077,14 @@ func (vi *votedInfo) updateDelegated(votes icstage.VoteList) {
 
 func (vi *votedInfo) updateBonded(votes icstage.VoteList) {
 	for _, vote := range votes {
-		if vData, ok := vi.preps[string(vote.To().Bytes())]; ok {
-			current := vData.GetBonded()
-			current.Add(current, vote.Value)
+		if vData, ok := vi.preps[icutils.ToKey(vote.To())]; ok {
+			vData.voted.SetBonded(new(big.Int).Add(vData.GetBonded(), vote.Amount()))
 			if vData.Enable() {
 				vi.updateTotalVoted(vote.Amount())
 			}
 		} else {
 			voted := icreward.NewVoted()
-			voted.SetBonded(vote.Value)
+			voted.SetBonded(vote.Amount())
 			vData = newVotedData(voted)
 			vi.addVotedData(vote.To(), vData)
 		}
@@ -1155,7 +1158,7 @@ func (vi *votedInfo) calculateReward(multiplier, divider *big.Int, period int) {
 		}
 
 		reward := new(big.Int).Set(base)
-		reward.Mul(reward, prep.voted.BondedDelegation)
+		reward.Mul(reward, prep.voted.BondedDelegation())
 		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 

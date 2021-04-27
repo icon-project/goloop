@@ -33,9 +33,25 @@ type Unstake struct {
 
 func newUnstake(amount *big.Int, expireHeight int64) *Unstake {
 	return &Unstake{
-		Amount:       new(big.Int).Set(amount),
+		Amount:       amount,
 		ExpireHeight: expireHeight,
 	}
+}
+
+func (u *Unstake) Value() *big.Int {
+	return u.Amount
+}
+
+func (u *Unstake) SetAmount(amount *big.Int) {
+	u.Amount = amount
+}
+
+func (u *Unstake) Expire() int64 {
+	return u.ExpireHeight
+}
+
+func (u *Unstake) SetExpire(e int64) {
+	u.ExpireHeight = e
 }
 
 func (u *Unstake) Clone() *Unstake {
@@ -102,8 +118,8 @@ func (us Unstakes) Equal(us2 Unstakes) bool {
 	return true
 }
 
-func (us Unstakes) Has() bool {
-	return len(us) > 0
+func (us Unstakes) IsEmpty() bool {
+	return len(us) == 0
 }
 
 // GetUnstakeAmount return unstake Value
@@ -116,7 +132,7 @@ func (us Unstakes) GetUnstakeAmount() *big.Int {
 }
 
 func (us Unstakes) ToJSON(v module.JSONVersion, blockHeight int64) []interface{} {
-	if us.Has() == false {
+	if us.IsEmpty() {
 		return nil
 	}
 	unstakes := make([]interface{}, len(us))
@@ -137,14 +153,15 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 		modExpireHeight := false
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
-		last.Amount.Add(last.Amount, v)
+		newValue := new(big.Int).Add(last.Amount, v)
+		last.SetAmount(newValue)
 		if revision < icmodule.RevisionMultipleUnstakes || eh > last.ExpireHeight {
 			modExpireHeight = true
 		}
 		if modExpireHeight {
 			tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
 			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
-			last.ExpireHeight = eh
+			last.SetExpire(eh)
 		}
 	} else {
 		unstake := newUnstake(v, eh)
@@ -189,12 +206,13 @@ func (us *Unstakes) decreaseUnstake(v *big.Int, expireHeight int64, revision int
 				remain.Sub(remain, u.Amount)
 			}
 		case -1:
-			u.Amount.Sub(u.Amount, remain)
+			newValue := new(big.Int).Sub(u.Amount, remain)
+			u.SetAmount(newValue)
 			if revision < icmodule.RevisionMultipleUnstakes {
 				// must update expire height
 				tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 				tl = append(tl, TimerJobInfo{Type: JobTypeAdd, Height: expireHeight})
-				u.ExpireHeight = expireHeight
+				u.SetExpire(expireHeight)
 			}
 			return tl, nil
 		}

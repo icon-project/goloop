@@ -2,7 +2,6 @@ package iiss
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math"
 	"math/big"
 	"math/rand"
@@ -15,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -44,17 +44,11 @@ func newRegInfo(i int) *RegInfo {
 }
 
 func newBond(address module.Address, amount int64) *icstate.Bond {
-	b := icstate.NewBond()
-	b.Address.Set(address)
-	b.Value.SetInt64(amount)
-	return b
+	return icstate.NewBond(common.AddressToPtr(address), big.NewInt(amount))
 }
 
 func newDelegation(address module.Address, amount int64) *icstate.Delegation {
-	d := icstate.NewDelegation()
-	d.Address.Set(address)
-	d.Value.SetInt64(amount)
-	return d
+	return icstate.NewDelegation(common.AddressToPtr(address), big.NewInt(amount))
 }
 
 func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
@@ -417,7 +411,7 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 	bs1, sum1 := createBonds(0, size)
 	bs2, _ := createBonds(size, size)
 	bs3, _ := createBonds(0, size)
-	bs3[0].Value.SetInt64(-100)
+	bs3[0].SetAmount(big.NewInt(-100))
 
 	type test struct {
 		name    string

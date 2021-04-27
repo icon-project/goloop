@@ -256,11 +256,11 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	var iPrep *IssuePRepJSON
 	var iResult *IssueResultJSON
 	if bd != nil {
-		iPrep, err = parseIssuePRepData(bd.PRep)
+		iPrep, err = ParseIssuePRepData(bd.PRep)
 		if err != nil {
 			return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
 		}
-		iResult, err = parseIssueResultData(bd.Result)
+		iResult, err = ParseIssueResultData(bd.Result)
 		if err != nil {
 			return scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
 		}
@@ -275,17 +275,17 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	}
 
 	// check Issue result
-	if (iPrep != nil && !iPrep.equal(prep)) || (iResult != nil && !iResult.equal(result)) {
+	if (iPrep != nil && !iPrep.Equal(prep)) || (iResult != nil && !iResult.Equal(result)) {
 		return scoreresult.InvalidParameterError.New("Invalid issue data")
 	}
 
 	// transfer issued ICX to treasury
 	tr := cc.GetAccountState(cc.Treasury().ID())
 	tb := tr.GetBalance()
-	tr.SetBalance(new(big.Int).Add(tb, result.Issue.Value()))
+	tr.SetBalance(new(big.Int).Add(tb, result.GetIssue()))
 
 	// increase total supply
-	if _, err = icutils.IncreaseTotalSupply(cc, result.Issue.Value()); err != nil {
+	if _, err = icutils.IncreaseTotalSupply(cc, result.GetIssue()); err != nil {
 		return err
 	}
 
@@ -294,14 +294,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
 	}
-	issue := is.Clone()
-	issue.TotalIssued.Add(issue.TotalIssued, result.GetTotalReward())
-	if result.ByFee.Sign() != 0 {
-		issue.PrevBlockFee.Sub(issue.PrevBlockFee, result.ByFee.Value())
-	}
-	if result.ByOverIssuedICX.Sign() != 0 {
-		issue.OverIssued.Sub(issue.OverIssued, result.ByOverIssuedICX.Value())
-	}
+	issue := is.Update(result.GetTotalReward(), result.GetByFee(), result.GetByOverIssuedICX())
 	if err = es.State.SetIssue(issue); err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to set issue Info.")
 	}
@@ -311,20 +304,20 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 		cc.OnEvent(state.SystemAddress,
 			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
 			[][]byte{
-				intconv.BigIntToBytes(prep.IRep.Value()),
-				intconv.BigIntToBytes(prep.RRep.Value()),
-				intconv.BigIntToBytes(prep.TotalDelegation.Value()),
-				intconv.BigIntToBytes(prep.Value.Value()),
+				intconv.BigIntToBytes(prep.GetIRep()),
+				intconv.BigIntToBytes(prep.GetRRep()),
+				intconv.BigIntToBytes(prep.GetTotalDelegation()),
+				intconv.BigIntToBytes(prep.GetValue()),
 			},
 		)
 	}
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
 		[][]byte{
-			intconv.BigIntToBytes(result.ByFee.Value()),
-			intconv.BigIntToBytes(result.ByOverIssuedICX.Value()),
-			intconv.BigIntToBytes(result.Issue.Value()),
-			intconv.BigIntToBytes(issue.OverIssued),
+			intconv.BigIntToBytes(result.GetByFee()),
+			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
+			intconv.BigIntToBytes(result.GetIssue()),
+			intconv.BigIntToBytes(issue.OverIssued()),
 		},
 	)
 	term := es.State.GetTerm()

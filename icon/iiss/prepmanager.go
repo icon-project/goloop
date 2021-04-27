@@ -3,6 +3,10 @@ package iiss
 import (
 	"bytes"
 	"fmt"
+	"math"
+	"math/big"
+	"sort"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -11,9 +15,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
-	"math"
-	"math/big"
-	"sort"
 )
 
 const (
@@ -581,14 +582,14 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 
 	for _, d := range od {
 		key := icutils.ToKey(d.To())
-		delta[key] = new(big.Int).Neg(d.Value.Value())
+		delta[key] = new(big.Int).Neg(d.Amount())
 	}
 	for _, d := range nd {
 		key := icutils.ToKey(d.To())
 		if delta[key] == nil {
 			delta[key] = new(big.Int)
 		}
-		delta[key].Add(delta[key], d.Value.Value())
+		delta[key].Add(delta[key], d.Amount())
 	}
 
 	delegatedToInactiveNode := big.NewInt(0)

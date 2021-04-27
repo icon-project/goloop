@@ -18,23 +18,22 @@ package icstate
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/module"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestBond(t *testing.T) {
-	b1 := NewBond()
-	b1.Address.SetString("hx1")
-	b1.Value.SetInt64(100)
-
+	b1 := NewBond(common.MustNewAddressFromString("hx1"), big.NewInt(100))
 	b2 := b1.Clone()
 
 	assert.True(t, b1.Equal(b2))
-	assert.True(t, b1.Address.Equal(b2.Address))
-	assert.Equal(t, 0, b1.Value.Cmp(b2.Value.Value()))
+	assert.True(t, b1.To().Equal(b2.To()))
+	assert.Equal(t, 0, b1.Amount().Cmp(b2.Amount()))
 }
 
 func TestBonds(t *testing.T) {
@@ -42,17 +41,9 @@ func TestBonds(t *testing.T) {
 	addr2 := "hx2"
 	v1 := int64(1)
 	v2 := int64(2)
-	b1 := Bond{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   common.NewHexInt(v1),
-	}
-	b2 := Bond{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(v2),
-	}
-	bl1 := Bonds{
-		&b1, &b2,
-	}
+	b1 := NewBond(common.MustNewAddressFromString(addr1), big.NewInt(v1))
+	b2 := NewBond(common.MustNewAddressFromString(addr2), big.NewInt(v2))
+	bl1 := Bonds{b1, b2}
 
 	bl2 := bl1.Clone()
 
@@ -68,19 +59,10 @@ func TestBonds_Delete(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	v3 := int64(3)
-	bond1 := Bond{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   common.NewHexInt(v1),
-	}
-	bond2 := Bond{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   common.NewHexInt(v2),
-	}
-	bond3 := Bond{
-		Address: common.MustNewAddressFromString(addr3),
-		Value:   common.NewHexInt(v3),
-	}
-	bonds := Bonds{&bond1, &bond2, &bond3}
+	bond1 := NewBond(common.MustNewAddressFromString(addr1), big.NewInt(v1))
+	bond2 := NewBond(common.MustNewAddressFromString(addr2), big.NewInt(v2))
+	bond3 := NewBond(common.MustNewAddressFromString(addr3), big.NewInt(v3))
+	bonds := Bonds{bond1, bond2, bond3}
 
 	tests := []struct {
 		name  string
@@ -88,9 +70,9 @@ func TestBonds_Delete(t *testing.T) {
 		err   bool
 		want  Bonds
 	}{
-		{"Delete first item", 0, false, Bonds{&bond2, &bond3}},
-		{"Delete middle item", 1, false, Bonds{&bond1, &bond3}},
-		{"Delete last item", 2, false, Bonds{&bond1, &bond2}},
+		{"Delete first item", 0, false, Bonds{bond2, bond3}},
+		{"Delete middle item", 1, false, Bonds{bond1, bond3}},
+		{"Delete last item", 2, false, Bonds{bond1, bond2}},
 		{"Negative index", -1, true, Bonds{}},
 		{"Too big index", 100, true, Bonds{}},
 	}
@@ -109,7 +91,7 @@ func TestBonds_Delete(t *testing.T) {
 	}
 
 	t.Run("Delete and empty", func(t *testing.T) {
-		bonds1 := Bonds{&bond1}
+		bonds1 := Bonds{bond1}
 		err := bonds1.Delete(0)
 		assert.NoError(t, err)
 		assert.False(t, bonds1.Has())
@@ -214,17 +196,9 @@ func TestNewBonds(t *testing.T) {
 func TestBonds_Slash(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
-	b1 := Bond{
-		Address: addr1,
-		Value:   common.NewHexInt(100),
-	}
-	b2 := Bond{
-		Address: addr2,
-		Value:   common.NewHexInt(200),
-	}
-	bl1 := Bonds{
-		&b1, &b2,
-	}
+	b1 := NewBond(addr1, big.NewInt(100))
+	b2 := NewBond(addr2, big.NewInt(200))
+	bl1 := Bonds{b1, b2}
 
 	type values struct {
 		target *common.Address

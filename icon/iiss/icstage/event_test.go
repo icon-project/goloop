@@ -34,14 +34,9 @@ func TestEvent_Delegation(t *testing.T) {
 	version := 0
 	addr1 := "hx1"
 	v1 := int64(1)
-	vote1 := Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(v1),
-	}
+	vote1 := NewVote(common.MustNewAddressFromString(addr1), big.NewInt(v1))
 
-	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.MustNewAddressFromString(addr1)
-	t1.Votes = VoteList{&vote1}
+	t1 := NewEventVote(common.MustNewAddressFromString(addr1), VoteList{vote1})
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -58,8 +53,8 @@ func TestEvent_Delegation(t *testing.T) {
 
 	t2 := ToEventVote(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.From.Equal(t2.From))
-	assert.Equal(t, true, t1.Votes.Equal(t2.Votes))
+	assert.Equal(t, true, t1.From().Equal(t2.From()))
+	assert.Equal(t, true, t1.Votes().Equal(t2.Votes()))
 }
 
 func TestEvent_Bond(t *testing.T) {
@@ -69,14 +64,9 @@ func TestEvent_Bond(t *testing.T) {
 	version := 0
 	addr1 := "hx1"
 	v1 := int64(1)
-	vote1 := Vote{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(v1),
-	}
+	vote1 := NewVote(common.MustNewAddressFromString(addr1), big.NewInt(v1))
 
-	t1 := newEventVote(icobject.MakeTag(type_, version))
-	t1.From = common.MustNewAddressFromString(addr1)
-	t1.Votes = VoteList{&vote1}
+	t1 := NewEventVote(common.MustNewAddressFromString(addr1), VoteList{vote1})
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -93,8 +83,8 @@ func TestEvent_Bond(t *testing.T) {
 
 	t2 := ToEventVote(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.From.Equal(t2.From))
-	assert.Equal(t, true, t1.Votes.Equal(t2.Votes))
+	assert.Equal(t, true, t1.From().Equal(t2.From()))
+	assert.Equal(t, true, t1.Votes().Equal(t2.Votes()))
 }
 
 func TestEvent_Enable(t *testing.T) {
@@ -103,11 +93,9 @@ func TestEvent_Enable(t *testing.T) {
 	type_ := TypeEventEnable
 	version := 0
 	addr1 := "hx1"
-	flag := EfDisablePermanent
+	status := ESDisablePermanent
 
-	t1 := newEventEnable(icobject.MakeTag(type_, version))
-	t1.Target = common.MustNewAddressFromString(addr1)
-	t1.Flag = flag
+	t1 := NewEventEnable(common.MustNewAddressFromString(addr1), status)
 
 	o1 := icobject.New(type_, t1)
 	serialized := o1.Bytes()
@@ -124,8 +112,8 @@ func TestEvent_Enable(t *testing.T) {
 
 	t2 := ToEventEnable(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.Target.Equal(t2.Target))
-	assert.Equal(t, t1.Flag, t2.Flag)
+	assert.Equal(t, true, t1.Target().Equal(t2.Target()))
+	assert.Equal(t, t1.Status(), t2.Status())
 }
 
 func TestVoteList_Update(t *testing.T) {
