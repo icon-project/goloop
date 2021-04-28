@@ -85,7 +85,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 		err  bool
 		want icstate.Delegations
 	}{
-		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Delegations{d2Double, d3, dNew}},
+		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Delegations{d3, d2Double, dNew}},
 		{"New with negative value", icstage.VoteList{vNewNegative}, true, icstate.Delegations{}},
 		{"Update result value is negative", icstage.VoteList{v1TooBig}, true, icstate.Delegations{}},
 	}
@@ -98,7 +98,7 @@ func TestDelegating_ApplyVotes(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.True(t, tt.want.Equal(test.Delegations), "%v\n%v")
+				assert.True(t, tt.want.Equal(test.Delegations), "%v\n%v", tt.want, test.Delegations)
 			}
 		})
 	}

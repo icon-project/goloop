@@ -411,7 +411,7 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 	bs1, sum1 := createBonds(0, size)
 	bs2, _ := createBonds(size, size)
 	bs3, _ := createBonds(0, size)
-	bs3[0].SetAmount(big.NewInt(-100))
+	bs3[0].Value.SetValue(big.NewInt(-100))
 
 	type test struct {
 		name    string

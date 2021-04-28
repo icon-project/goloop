@@ -81,15 +81,6 @@ func (b *Bond) Amount() *big.Int {
 	return b.Value.Value()
 }
 
-func (b *Bond) SetTo(address *common.Address) {
-	b.Address = address
-}
-
-func (b *Bond) SetAmount(amount *big.Int) {
-	n := new(common.HexInt)
-	b.Value = n.SetValue(amount)
-}
-
 func (b *Bond) Slash(ratio int) *big.Int {
 	slashAmount := new(big.Int).Mul(b.Value.Value(), big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
@@ -117,15 +108,15 @@ func (b *Bond) Format(f fmt.State, c rune) {
 
 type Bonds []*Bond
 
-func (bl Bonds) Has() bool {
-	return len(bl) > 0
+func (bs *Bonds) Has() bool {
+	return len(*bs) > 0
 }
 
-func (bl Bonds) Equal(bl2 Bonds) bool {
-	if len(bl) != len(bl2) {
+func (bs *Bonds) Equal(bl2 Bonds) bool {
+	if len(*bs) != len(bl2) {
 		return false
 	}
-	for i, b := range bl {
+	for i, b := range *bs {
 		if !b.Equal(bl2[i]) {
 			return false
 		}
@@ -133,47 +124,47 @@ func (bl Bonds) Equal(bl2 Bonds) bool {
 	return true
 }
 
-func (bl Bonds) Clone() Bonds {
-	if bl == nil {
+func (bs *Bonds) Clone() Bonds {
+	if *bs == nil {
 		return nil
 	}
-	bonds := make([]*Bond, len(bl))
-	for i, b := range bl {
+	bonds := make([]*Bond, len(*bs))
+	for i, b := range *bs {
 		bonds[i] = b.Clone()
 	}
 	return bonds
 }
 
-func (bl Bonds) GetBondAmount() *big.Int {
+func (bs *Bonds) GetBondAmount() *big.Int {
 	total := new(big.Int)
-	for _, b := range bl {
+	for _, b := range *bs {
 		total.Add(total, b.Amount())
 	}
 	return total
 }
 
-func (bl *Bonds) Delete(i int) error {
-	if i < 0 || i >= len(*bl) {
+func (bs *Bonds) Delete(i int) error {
+	if i < 0 || i >= len(*bs) {
 		return errors.Errorf("Invalid index")
 	}
 
-	copy((*bl)[i:], (*bl)[i+1:])
-	(*bl)[len(*bl)-1] = nil // or the zero value of T
-	*bl = (*bl)[:len(*bl)-1]
+	copy((*bs)[i:], (*bs)[i+1:])
+	(*bs)[len(*bs)-1] = nil // or the zero value of T
+	*bs = (*bs)[:len(*bs)-1]
 	return nil
 }
 
-func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
-	bonds := *bl
-	for idx, b := range *bl {
+func (bs *Bonds) Slash(address module.Address, ratio int) *big.Int {
+	bonds := *bs
+	for idx, b := range *bs {
 		if b.To().Equal(address) {
 			if ratio == 100 {
 				copy(bonds[idx:], bonds[idx+1:])
 				bonds = bonds[0 : len(bonds)-1]
 				if len(bonds) > 0 {
-					*bl = bonds
+					*bs = bonds
 				} else {
-					*bl = nil
+					*bs = nil
 				}
 				return b.Amount()
 			} else {
@@ -184,35 +175,47 @@ func (bl *Bonds) Slash(address module.Address, ratio int) *big.Int {
 	return new(big.Int)
 }
 
-func (bl Bonds) ToJSON(v module.JSONVersion) []interface{} {
-	if !bl.Has() {
+func (bs *Bonds) ToJSON(v module.JSONVersion) []interface{} {
+	if !bs.Has() {
 		return nil
 	}
-	bonds := make([]interface{}, len(bl))
+	bonds := make([]interface{}, len(*bs))
 
-	for idx, b := range bl {
+	for idx, b := range *bs {
 		bonds[idx] = b.ToJSON()
 	}
 	return bonds
 }
 
-func (bl *Bonds) getVotings() []Voting {
-	size := len(*bl)
+func (bs *Bonds) ToMap() map[string]*Bond {
+	if !bs.Has() {
+		return nil
+	}
+	m := make(map[string]*Bond, len(*bs))
+
+	for _, b := range *bs {
+		m[icutils.ToKey(b.To())] = b
+	}
+	return m
+}
+
+func (bs *Bonds) getVotings() []Voting {
+	size := len(*bs)
 	votings := make([]Voting, size)
-	if !bl.Has() {
+	if !bs.Has() {
 		return votings
 	}
 	for i := 0; i < size; i++ {
-		votings[i] = (*bl)[i]
+		votings[i] = (*bs)[i]
 	}
 	return votings
 }
 
-func (bl *Bonds) Iterator() VotingIterator {
-	if bl == nil {
+func (bs *Bonds) Iterator() VotingIterator {
+	if bs == nil {
 		return nil
 	}
-	return NewVotingIterator(bl.getVotings())
+	return NewVotingIterator(bs.getVotings())
 }
 
 func NewBonds(param []interface{}) (Bonds, error) {

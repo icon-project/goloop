@@ -19,12 +19,12 @@ package icstage
 import (
 	"fmt"
 	"math/big"
-	"sort"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -42,10 +42,6 @@ func NewVote(address *common.Address, value *big.Int) *Vote {
 
 func (v *Vote) To() module.Address {
 	return v.address
-}
-
-func (v *Vote) SetTo(addr module.Address) {
-	v.address = common.AddressToPtr(addr)
 }
 
 func (v *Vote) Amount() *big.Int {
@@ -92,6 +88,10 @@ func (v *Vote) Format(f fmt.State, c rune) {
 
 type VoteList []*Vote
 
+func (vl VoteList) Has() bool {
+	return len(vl) > 0
+}
+
 func (vl VoteList) Equal(vl2 VoteList) bool {
 	if len(vl) != len(vl2) {
 		return false
@@ -127,29 +127,42 @@ func (vl *VoteList) Delete(i int) error {
 }
 
 func (vl *VoteList) Update(vl2 VoteList) {
-	newVL := vl.Clone()
-	deleteIdx := make([]int, 0)
-	for _, vote2 := range vl2 {
-		find := false
-		for idx, vote := range newVL {
-			if vote.To().Equal(vote2.To()) {
-				find = true
-				vote.SetAmount(new(big.Int).Add(vote.Amount(), vote2.Amount()))
-				if vote.Amount().Sign() == 0 {
-					deleteIdx = append(deleteIdx, idx)
-				}
-				break
-			}
-		}
-		if !find {
-			newVL = append(newVL, vote2)
+	var newVL VoteList
+
+	map1 := vl.ToMap()
+	map2 := vl2.ToMap()
+
+	for _, vote := range *vl {
+		_, ok := map2[icutils.ToKey(vote.To())]
+		if !ok {
+			newVL = append(newVL, vote)
 		}
 	}
-	sort.Ints(deleteIdx)
-	for i, value := range deleteIdx {
-		newVL.Delete(value - i)
+
+	for _, vote2 := range vl2 {
+		vote1, ok := map1[icutils.ToKey(vote2.To())]
+		if ok {
+			value := new(big.Int).Add(vote1.Amount(), vote2.Amount())
+			if value.Sign() == 0 {
+				continue
+			}
+			vote2 = NewVote(common.AddressToPtr(vote2.To()), value)
+		}
+		newVL = append(newVL, vote2)
 	}
 	*vl = newVL
+}
+
+func (vl VoteList) ToMap() map[string]*Vote {
+	if !vl.Has() {
+		return nil
+	}
+	m := make(map[string]*Vote, len(vl))
+
+	for _, v := range vl {
+		m[icutils.ToKey(v.To())] = v
+	}
+	return m
 }
 
 type EventVote struct {
