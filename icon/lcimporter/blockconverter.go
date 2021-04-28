@@ -21,7 +21,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -59,7 +58,7 @@ type BlockConverter struct {
 
 	jsBucket    db.Bucket
 	blkIndex    db.Bucket
-	blkByID     db.Bucket
+	blkByHash   db.Bucket
 	chainBucket db.Bucket
 }
 
@@ -89,7 +88,7 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=HashByHeight)")
 	}
-	blkByID, err := database.GetBucket(icdb.BlockV1ByID)
+	blkByHash, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByID)")
 	}
@@ -105,7 +104,7 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 		plt:         plt,
 		jsBucket:    jsBucket,
 		blkIndex:    blkIndex,
-		blkByID:     blkByID,
+		blkByHash:   blkByHash,
 		chainBucket: chainBucket,
 	}
 	ex.trace = logger.WithFields(log.Fields{

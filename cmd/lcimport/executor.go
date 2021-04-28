@@ -33,7 +33,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -60,6 +59,7 @@ const (
 
 const (
 	JSONByHash db.BucketID = "J"
+	BlockV1ByID db.BucketID = "B"
 )
 
 // executeTransactions executes transactions from lc and confirm results.
@@ -122,7 +122,7 @@ func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=HashByHeight)")
 	}
-	blkByID, err := database.GetBucket(icdb.BlockV1ByID)
+	blkByID, err := database.GetBucket(BlockV1ByID)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByID)")
 	}

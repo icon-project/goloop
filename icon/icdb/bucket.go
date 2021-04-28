@@ -19,6 +19,6 @@ package icdb
 import "github.com/icon-project/goloop/common/db"
 
 const (
-	// BlockV1ByID maps block V1 from block V1 ID.
-	BlockV1ByID db.BucketID = "B"
+	// IDToHash maps id of a v1 block to hash of the block
+	IDToHash db.BucketID = "I"
 )
