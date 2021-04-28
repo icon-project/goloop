@@ -24,12 +24,6 @@ const (
 	// BlockHeaderHashByHeight maps hash of encoded block header from height.
 	BlockHeaderHashByHeight BucketID = "H"
 
-	// BlockV1ByHash maps block V1 from block V1 hash.
-	BlockV1ByHash BucketID = "B"
-
-	// ReceiptV1ByHash maps receipt V1 from tx V3 hash.
-	ReceiptV1ByHash BucketID = "R"
-
 	// ChainProperty is general key value map for chain property.
 	ChainProperty BucketID = "C"
 )
