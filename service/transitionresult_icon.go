@@ -23,16 +23,5 @@ import (
 )
 
 func NewWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
-	var stateHash []byte
-	var ess state.ExtensionSnapshot
-	if len(result) > 0 {
-		tr, err := newTransitionResultFromBytes(result)
-		if err != nil {
-			return nil, err
-		}
-		stateHash = tr.StateHash
-		ess = plt.NewExtensionSnapshot(database, tr.ExtensionData)
-	}
-	wss := state.NewWorldSnapshot(database, stateHash, vl, ess)
-	return wss, nil
+	return newWorldSnapshot(database, plt, result, vl)
 }

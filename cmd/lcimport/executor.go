@@ -236,6 +236,9 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := service.FinalizeTransition(tr, module.FinalizeResult, true); err != nil {
+			return nil, err
+		}
 		return &Transition{tr, blk}, nil
 	} else {
 		tsc := service.NewTimestampChecker()

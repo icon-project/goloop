@@ -22,7 +22,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
-	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/sync"
 )
 
@@ -37,21 +36,10 @@ func NewInitTransition(
 	logger log.Logger, plt Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
-	var stateHash []byte
-	var es state.ExtensionSnapshot
-	if len(result) > 0 {
-		if tsr, err := newTransitionResultFromBytes(result); err != nil {
-			return nil, err
-		} else {
-			stateHash = tsr.StateHash
-			es = plt.NewExtensionSnapshot(db, tsr.ExtensionData)
-		}
-	}
 	if tr, err := newInitTransition(
 		db,
-		stateHash,
+		result,
 		vl,
-		es,
 		cm,
 		em,
 		chain,
