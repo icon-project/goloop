@@ -172,7 +172,6 @@ func newTransition(
 	normaltxs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
-	plt Platform,
 	alreadyValidated bool,
 ) *transition {
 	var step transitionStep
