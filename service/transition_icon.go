@@ -82,7 +82,6 @@ func NewTransition(
 		normaltxs,
 		bi,
 		csi,
-		plt,
 		alreadyValidated,
 	)
 }
