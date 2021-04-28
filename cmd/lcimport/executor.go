@@ -333,7 +333,6 @@ func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) 
 		blk.Transactions(),
 		common.NewBlockInfo(height, blk.Timestamp()),
 		csi,
-		e.plt,
 		true,
 	)
 	return &Transition{tr, blk}, nil

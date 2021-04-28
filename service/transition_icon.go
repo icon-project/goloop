@@ -74,7 +74,6 @@ func NewTransition(
 	normaltxs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
-	plt Platform,
 	alreadyValidated bool,
 ) module.Transition {
 	return newTransition(
