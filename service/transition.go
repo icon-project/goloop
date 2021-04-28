@@ -200,18 +200,33 @@ func newTransition(
 	}
 }
 
+func newWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
+	var stateHash, extensionData []byte
+	if len(result) > 0 {
+		tr, err := newTransitionResultFromBytes(result)
+		if err != nil {
+			return nil, err
+		}
+		stateHash = tr.StateHash
+		extensionData = tr.ExtensionData
+	}
+	ess := plt.NewExtensionSnapshot(database, extensionData)
+	return state.NewWorldSnapshot(database, stateHash, vl, ess), nil
+}
+
 // all parameters should be valid.
 func newInitTransition(db db.Database,
-	stateHash []byte,
+	result []byte,
 	validatorList module.ValidatorList,
-	es state.ExtensionSnapshot,
 	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 	logger log.Logger, plt Platform,
 	tsc *TxTimestampChecker,
 ) (*transition, error) {
-	wss := state.NewWorldSnapshot(db, stateHash, validatorList, es)
-
+	wss, err := newWorldSnapshot(db, plt, result, validatorList)
+	if err != nil {
+		return nil, err
+	}
 	tr := &transition{
 		id:                 new(transitionID),
 		patchTransactions:  transaction.NewTransactionListFromSlice(db, nil),

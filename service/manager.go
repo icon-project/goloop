@@ -161,17 +161,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	var stateHash []byte
-	var ess state.ExtensionSnapshot
-	if len(result) > 0 {
-		if tr, err := newTransitionResultFromBytes(result); err != nil {
-			return nil, errors.IllegalArgumentError.Wrap(err, "InvalidResultBytes")
-		} else {
-			stateHash = tr.StateHash
-			ess = m.plt.NewExtensionSnapshot(m.db, tr.ExtensionData)
-		}
-	}
-	return newInitTransition(m.db, stateHash, valList, ess, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
