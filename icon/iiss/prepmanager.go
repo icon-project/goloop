@@ -171,7 +171,7 @@ func setPRep(pb *icstate.PRepBase, regInfo *RegInfo) error {
 	)
 }
 
-// Manage PRepBase, PRepStatus and ActivePRep
+// PRepManager manages PRepBase, PRepStatus and ActivePRep objects
 type PRepManager struct {
 	logger log.Logger
 	state  *icstate.State
@@ -235,8 +235,8 @@ func (pm *PRepManager) appendPRep(p *PRep) {
 	pm.prepMap[icutils.ToKey(p.Owner())] = p
 	if p.PRepStatus.Status() == icstate.Active {
 		pm.orderedPReps = append(pm.orderedPReps, p)
-		pm.totalBonded.Add(pm.totalBonded, p.Bonded())
-		pm.totalDelegated.Add(pm.totalDelegated, p.Delegated())
+		pm.totalBonded = new(big.Int).Add(pm.totalBonded, p.Bonded())
+		pm.totalDelegated = new(big.Int).Add(pm.totalDelegated, p.Delegated())
 		pm.adjustPRepSize(p.Grade(), true)
 	}
 }
@@ -513,8 +513,8 @@ func (pm *PRepManager) disablePRep(owner module.Address, status icstate.Status) 
 		return err
 	}
 
-	pm.totalDelegated.Sub(pm.totalDelegated, prep.Delegated())
-	pm.totalBonded.Sub(pm.totalBonded, prep.Bonded())
+	pm.totalDelegated = new(big.Int).Sub(pm.totalDelegated, prep.Delegated())
+	pm.totalBonded = new(big.Int).Sub(pm.totalBonded, prep.Bonded())
 	pm.adjustPRepSize(prep.Grade(), false)
 	prep.SetGrade(icstate.Candidate)
 	prep.SetStatus(status)
@@ -645,12 +645,13 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 		}
 	}
 
-	totalBonded := pm.totalBonded
+	totalBonded := new(big.Int).Set(pm.totalBonded)
 	totalBonded.Add(totalBonded, nBonds.GetBondAmount())
 	totalBonded.Sub(totalBonded, oBonds.GetBondAmount())
 	// Ignore the bonded amount to inactive P-Rep
 	totalBonded.Sub(totalBonded, bondedToInactiveNode)
 
+	pm.totalBonded = totalBonded
 	pm.sort()
 	return delta, nil
 }
@@ -752,12 +753,11 @@ func (pm *PRepManager) Slash(owner module.Address, amount *big.Int) error {
 		return errors.Errorf("PRep not found: %v", owner)
 	}
 
-	bonded := new(big.Int).Set(prep.Bonded())
-	if bonded.Cmp(amount) < 0 {
-		return errors.Errorf("bonded=%v < slash=%v", bonded, amount)
+	if prep.Bonded().Cmp(amount) < 0 {
+		return errors.Errorf("bonded=%v < slash=%v", prep.Bonded(), amount)
 	}
-	prep.SetBonded(bonded.Sub(bonded, amount))
-	pm.totalBonded.Sub(pm.totalBonded, amount)
+	prep.SetBonded(new(big.Int).Sub(prep.Bonded(), amount))
+	pm.totalBonded = new(big.Int).Sub(pm.totalBonded, amount)
 
 	pm.logger.Debugf(
 		"Slash: addr=%s amount=%s tb=%s",
