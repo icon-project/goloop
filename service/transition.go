@@ -231,7 +231,6 @@ func newInitTransition(db db.Database,
 		step:          stepComplete,
 		worldSnapshot: wss,
 	}
-	tr.onWorldFinalize(wss)
 	return tr, nil
 }
 
