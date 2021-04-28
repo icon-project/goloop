@@ -149,6 +149,7 @@ func (term *Term) Sequence() int {
 }
 
 func (term *Term) ResetSequence() {
+	term.checkWritable()
 	term.sequence = 0
 }
 
@@ -488,6 +489,7 @@ func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
 }
 
 func (term *Term) RemovePRepSnapshot(owner module.Address) error {
+	term.checkWritable()
 	if term == nil {
 		return errors.Errorf("Term is nil")
 	}
@@ -526,6 +528,7 @@ func (term *Term) removePRepSnapshotByIndex(idx int) error {
 }
 
 func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
+	term.checkWritable()
 	var snapshotMap map[string]*PRepSnapshot = nil
 	term.prepSnapshots = prepSnapshots
 
@@ -542,14 +545,17 @@ func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
 }
 
 func (term *Term) SetMainPRepCount(mainPRepCount int) {
+	term.checkWritable()
 	term.mainPRepCount = mainPRepCount
 }
 
 func (term *Term) SetIrep(irep *big.Int) {
+	term.checkWritable()
 	term.irep = irep
 }
 
 func (term *Term) SetRrep(rrep *big.Int) {
+	term.checkWritable()
 	term.rrep = rrep
 }
 
