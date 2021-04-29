@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	prepBaseDictPrefix   = containerdb.ToKey(
+	prepBaseDictPrefix = containerdb.ToKey(
 		containerdb.HashBuilder,
 		scoredb.DictDBPrefix,
 		"prep_base",
@@ -38,7 +38,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBa
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			base = NewPRepBase(owner)
+			base = NewPRepBase()
 			c.bases[key] = base
 		} else {
 			// return nil
@@ -57,7 +57,7 @@ func (c *PRepBaseCache) Clear() {
 }
 
 func (c *PRepBaseCache) Reset() {
-	for key , base := range c.bases {
+	for key, base := range c.bases {
 		addr, err := common.NewAddress([]byte(key))
 		if err != nil {
 			panic(errors.Errorf("Address convert error"))
@@ -74,17 +74,17 @@ func (c *PRepBaseCache) Reset() {
 
 func (c *PRepBaseCache) Flush() {
 	for k, base := range c.bases {
+		key, err := common.BytesToAddress([]byte(k))
+		if err != nil {
+			panic(errors.Errorf("PRepBaseCache is broken: %s", k))
+		}
+
 		if base.IsEmpty() {
-			key, err := common.BytesToAddress([]byte(k))
-			if err != nil {
-				panic(errors.Errorf("PRepBaseCache is broken: %s", k))
-			}
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 			delete(c.bases, k)
 		} else {
-			key := base.owner
 			o := icobject.New(TypePRepBase, base.Clone())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
@@ -133,7 +133,7 @@ func (c *PRepStatusCache) Clear() {
 }
 
 func (c *PRepStatusCache) Reset() {
-	for key , status := range c.statuses {
+	for key, status := range c.statuses {
 		addr, err := common.NewAddress([]byte(key))
 		if err != nil {
 			panic(errors.Errorf("Address convert error"))

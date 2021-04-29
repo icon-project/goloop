@@ -136,26 +136,36 @@ func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string
 }
 
 type PRep struct {
+	owner module.Address
+
 	*icstate.PRepBase
 	*icstate.PRepStatus
 }
 
 func (p *PRep) Owner() module.Address {
-	return p.PRepBase.Owner()
+	return p.owner
+}
+
+func (p *PRep) GetNode() module.Address {
+	if p.Node() != nil {
+		return p.Node()
+	}
+	return p.owner
 }
 
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	return icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
+	jso["address"] = p.owner
+	return jso
 }
 
 func (p *PRep) Clone() *PRep {
-	return newPRep(p.Owner(), p.PRepBase.Clone(), p.PRepStatus.Clone())
+	return newPRep(p.owner, p.PRepBase.Clone(), p.PRepStatus.Clone())
 }
 
 func newPRep(owner module.Address, pb *icstate.PRepBase, ps *icstate.PRepStatus) *PRep {
-	pb.SetOwner(owner)
 	ps.SetOwner(owner)
-	return &PRep{PRepBase: pb, PRepStatus: ps}
+	return &PRep{owner: owner, PRepBase: pb, PRepStatus: ps}
 }
 
 func setPRep(pb *icstate.PRepBase, regInfo *RegInfo) error {
