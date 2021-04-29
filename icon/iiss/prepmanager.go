@@ -242,7 +242,7 @@ func (pm *PRepManager) getPRepFromState(owner module.Address) *PRep {
 }
 
 func (pm *PRepManager) appendPRep(p *PRep) {
-	pm.prepMap[icutils.ToKey(p.owner)] = p
+	pm.prepMap[icutils.ToKey(p.Owner())] = p
 	if p.PRepStatus.Status() == icstate.Active {
 		pm.orderedPReps = append(pm.orderedPReps, p)
 		pm.totalBonded.Add(pm.totalBonded, p.Bonded())
@@ -295,7 +295,7 @@ func (pm *PRepManager) sort() {
 			return false
 		}
 
-		return bytes.Compare(pm.orderedPReps[i].owner.Bytes(), pm.orderedPReps[j].owner.Bytes()) > 0
+		return bytes.Compare(pm.orderedPReps[i].Owner().Bytes(), pm.orderedPReps[j].Owner().Bytes()) > 0
 	})
 }
 
@@ -549,7 +549,7 @@ func (pm *PRepManager) removeFromOrderedPReps(owner module.Address) error {
 	size := len(pm.orderedPReps)
 
 	for i = 0; i < size; i++ {
-		if owner.Equal(pm.orderedPReps[i].owner) {
+		if owner.Equal(pm.orderedPReps[i].Owner()) {
 			break
 		}
 	}
