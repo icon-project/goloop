@@ -31,31 +31,12 @@ type Unstake struct {
 	ExpireHeight int64
 }
 
-func newUnstake(amount *big.Int, expireHeight int64) *Unstake {
-	return &Unstake{
-		Amount:       amount,
-		ExpireHeight: expireHeight,
-	}
-}
-
 func (u *Unstake) Value() *big.Int {
 	return u.Amount
 }
 
-func (u *Unstake) SetAmount(amount *big.Int) {
-	u.Amount = amount
-}
-
-func (u *Unstake) Expire() int64 {
-	return u.ExpireHeight
-}
-
-func (u *Unstake) SetExpire(e int64) {
-	u.ExpireHeight = e
-}
-
 func (u *Unstake) Clone() *Unstake {
-	return newUnstake(u.Amount, u.ExpireHeight)
+	return &Unstake{u.Amount, u.ExpireHeight}
 }
 
 func (u *Unstake) Equal(u2 *Unstake) bool {
@@ -153,18 +134,17 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 		modExpireHeight := false
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
-		newValue := new(big.Int).Add(last.Amount, v)
-		last.SetAmount(newValue)
+		last.Amount = new(big.Int).Add(last.Amount, v)
 		if revision < icmodule.RevisionMultipleUnstakes || eh > last.ExpireHeight {
 			modExpireHeight = true
 		}
 		if modExpireHeight {
 			tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
 			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
-			last.SetExpire(eh)
+			last.ExpireHeight = eh
 		}
 	} else {
-		unstake := newUnstake(v, eh)
+		unstake := &Unstake{v, eh}
 		unstakes := *us
 		index := us.findIndex(eh)
 		unstakes = append(unstakes, unstake)
@@ -206,13 +186,12 @@ func (us *Unstakes) decreaseUnstake(v *big.Int, expireHeight int64, revision int
 				remain.Sub(remain, u.Amount)
 			}
 		case -1:
-			newValue := new(big.Int).Sub(u.Amount, remain)
-			u.SetAmount(newValue)
+			u.Amount = new(big.Int).Sub(u.Amount, remain)
 			if revision < icmodule.RevisionMultipleUnstakes {
 				// must update expire height
 				tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
 				tl = append(tl, TimerJobInfo{Type: JobTypeAdd, Height: expireHeight})
-				u.SetExpire(expireHeight)
+				u.ExpireHeight = expireHeight
 			}
 			return tl, nil
 		}

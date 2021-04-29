@@ -376,7 +376,7 @@ func (a *Account) RemoveUnstake(height int64) (ra *big.Int, err error) {
 	ra = new(big.Int)
 	for _, u := range a.unstakes {
 		if u.ExpireHeight == height {
-			ra.Set(u.Amount)
+			ra.Set(u.Value())
 		} else {
 			tmp = append(tmp, u)
 		}
