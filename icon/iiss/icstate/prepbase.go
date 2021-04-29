@@ -247,8 +247,16 @@ func (p *PRepBase) Clear() {
 }
 
 func (p *PRepBase) IsEmpty() bool {
-	o := NewPRepBase()
-	return p.equal(o)
+	return p.city == "" &&
+		p.country == "" &&
+		p.details == "" &&
+		p.email == "" &&
+		p.name == "" &&
+		p.node == nil &&
+		p.irep.Sign() == 0 &&
+		p.irepHeight == 0 &&
+		p.p2pEndpoint == "" &&
+		p.website == ""
 }
 
 func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
