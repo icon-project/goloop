@@ -154,25 +154,23 @@ func (bs *Bonds) Delete(i int) error {
 	return nil
 }
 
-func (bs *Bonds) Slash(address module.Address, ratio int) *big.Int {
-	bonds := *bs
-	for idx, b := range *bs {
+func (bs *Bonds) Slash(address module.Address, ratio int) (Bonds, *big.Int) {
+	amount := big.NewInt(0)
+	newBonds := make(Bonds, 0)
+
+	for _, b := range *bs {
 		if b.To().Equal(address) {
-			if ratio == 100 {
-				copy(bonds[idx:], bonds[idx+1:])
-				bonds = bonds[0 : len(bonds)-1]
-				if len(bonds) > 0 {
-					*bs = bonds
-				} else {
-					*bs = nil
-				}
-				return b.Amount()
-			} else {
-				return b.Slash(ratio)
+			bond := b.Clone()
+			amount = bond.Slash(ratio)
+
+			if ratio < 100 {
+				newBonds = append(newBonds, bond)
 			}
+		} else {
+			newBonds = append(newBonds, b)
 		}
 	}
-	return new(big.Int)
+	return newBonds, amount
 }
 
 func (bs *Bonds) ToJSON(v module.JSONVersion) []interface{} {

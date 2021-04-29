@@ -191,25 +191,26 @@ func (ul *Unbonds) DeleteByAddress(address module.Address) error {
 	return ul.Delete(idx)
 }
 
-func (ul *Unbonds) Slash(address module.Address, ratio int) (*big.Int, int64) {
-	unbonds := *ul
-	for idx, u := range *ul {
-		if u.Address.Equal(address) {
-			if ratio == 100 {
-				copy(unbonds[idx:], unbonds[idx+1:])
-				unbonds = unbonds[0 : len(unbonds)-1]
-				if len(unbonds) > 0 {
-					*ul = unbonds
-				} else {
-					*ul = nil
-				}
-				return u.Value, u.Expire
-			} else {
-				return u.Slash(ratio), -1
+func (ul *Unbonds) Slash(address module.Address, ratio int) (Unbonds, *big.Int, int64) {
+	expire := int64(-1)
+	amount := big.NewInt(0)
+	newUnbonds := make(Unbonds, 0)
+
+	for _, u := range *ul {
+		if u.To().Equal(address) {
+			unbond := u.Clone()
+			amount = unbond.Slash(ratio)
+
+			if ratio < 100 {
+				newUnbonds = append(newUnbonds, unbond)
+			} else if ratio == 100 {
+				expire = unbond.ExpireHeight()
 			}
+		} else {
+			newUnbonds = append(newUnbonds, u)
 		}
 	}
-	return new(big.Int), -1
+	return newUnbonds, amount, expire
 }
 
 func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {
