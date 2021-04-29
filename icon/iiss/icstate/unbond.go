@@ -32,19 +32,8 @@ type Unbond struct {
 	Expire  int64
 }
 
-func newUnbond() *Unbond {
-	return &Unbond{
-		Address: new(common.Address),
-		Value:   new(big.Int),
-	}
-}
-
 func (u *Unbond) To() *common.Address {
 	return u.Address
-}
-
-func (u *Unbond) SetTo(t *common.Address) {
-	u.Address = t
 }
 
 func (u *Unbond) SetValue(v *big.Int) {
@@ -66,8 +55,7 @@ func (u *Unbond) ExpireHeight() int64 {
 func (u *Unbond) Slash(ratio int) *big.Int {
 	slashAmount := new(big.Int).Mul(u.Value, big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
-	newValue := new(big.Int).Sub(u.Value, slashAmount)
-	u.SetValue(newValue)
+	u.Value = new(big.Int).Sub(u.Value, slashAmount)
 	return slashAmount
 }
 
@@ -85,11 +73,11 @@ func (u *Unbond) ToJSON() map[string]interface{} {
 }
 
 func (u *Unbond) Clone() *Unbond {
-	n := newUnbond()
-	n.Address = u.Address
-	n.Value = u.Value
-	n.Expire = u.Expire
-	return n
+	return &Unbond{
+		Address: u.Address,
+		Value:   u.Value,
+		Expire:  u.Expire,
+	}
 }
 
 func (u *Unbond) Format(f fmt.State, c rune) {
@@ -168,10 +156,11 @@ func (ul Unbonds) ExpireRefCount() map[int64]int {
 }
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
-	unbond := newUnbond()
-	unbond.SetTo(common.AddressToPtr(address))
-	unbond.SetValue(value)
-	unbond.Expire = expireHeight
+	unbond := &Unbond{
+		Address: common.AddressToPtr(address),
+		Value:   value,
+		Expire:  expireHeight,
+	}
 	*ul = append(*ul, unbond)
 }
 
