@@ -277,8 +277,8 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	return &PRepStatus{
 		grade:           ps.grade,
 		status:          ps.status,
-		delegated:       new(big.Int).Set(ps.delegated),
-		bonded:          new(big.Int).Set(ps.bonded),
+		delegated:       ps.delegated,
+		bonded:          ps.bonded,
 		vTotal:          ps.vTotal,
 		vFail:           ps.vFail,
 		vFailContOffset: ps.vFailContOffset,
