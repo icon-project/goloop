@@ -21,62 +21,84 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
 type Unbond struct {
-	Address *common.Address
-	Value   *big.Int
-	Expire  int64
+	address *common.Address
+	value   *big.Int
+	expire  int64
 }
 
-func (u *Unbond) To() *common.Address {
-	return u.Address
+func (u *Unbond) Version() int {
+	return 0
+}
+
+func (u *Unbond) RLPDecodeSelf(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(
+		&u.address,
+		&u.value,
+		&u.expire,
+	)
+	return err
+}
+
+func (u *Unbond) RLPEncodeSelf(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		u.address,
+		u.value,
+		u.expire,
+	)
+}
+
+func (u *Unbond) Equal(o *Unbond) bool {
+	return u.address.Equal(o.address) && u.value.Cmp(o.value) == 0 && u.expire == o.expire
+}
+
+func (u *Unbond) Address() *common.Address {
+	return u.address
 }
 
 func (u *Unbond) SetValue(v *big.Int) {
-	u.Value = v
+	u.value = v
 }
 
-func (u *Unbond) Amount() *big.Int {
-	return u.Value
+func (u *Unbond) Value() *big.Int {
+	return u.value
 }
 
 func (u *Unbond) SetExpire(e int64) {
-	u.Expire = e
+	u.expire = e
 }
 
-func (u *Unbond) ExpireHeight() int64 {
-	return u.Expire
+func (u *Unbond) Expire() int64 {
+	return u.expire
 }
 
 func (u *Unbond) Slash(ratio int) *big.Int {
-	slashAmount := new(big.Int).Mul(u.Value, big.NewInt(int64(ratio)))
+	slashAmount := new(big.Int).Mul(u.value, big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
-	u.Value = new(big.Int).Sub(u.Value, slashAmount)
+	u.value = new(big.Int).Sub(u.value, slashAmount)
 	return slashAmount
-}
-
-func (u *Unbond) Equal(ub2 *Unbond) bool {
-	return u.Address.Equal(ub2.Address) && u.Value.Cmp(ub2.Value) == 0 && u.Expire == ub2.Expire
 }
 
 func (u *Unbond) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["address"] = u.Address
-	jso["value"] = u.Value
-	jso["expireBlockHeight"] = u.Expire
+	jso["address"] = u.address
+	jso["value"] = u.value
+	jso["expireBlockHeight"] = u.expire
 
 	return jso
 }
 
 func (u *Unbond) Clone() *Unbond {
 	return &Unbond{
-		Address: u.Address,
-		Value:   u.Value,
-		Expire:  u.Expire,
+		address: u.address,
+		value:   u.value,
+		expire:  u.expire,
 	}
 }
 
@@ -84,10 +106,18 @@ func (u *Unbond) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Unbond{address=%s value=%s expire=%d}", u.Address, u.Value, u.Expire)
+			fmt.Fprintf(f, "Unbond{address=%s value=%s expire=%d}", u.address, u.value, u.expire)
 		} else {
-			fmt.Fprintf(f, "Unbond{%s %s %d}", u.Address, u.Value, u.Expire)
+			fmt.Fprintf(f, "Unbond{%s %s %d}", u.address, u.value, u.expire)
 		}
+	}
+}
+
+func NewUnbond(a *common.Address, v *big.Int, e int64) *Unbond {
+	return &Unbond{
+		address: a,
+		value:   v,
+		expire:  e,
 	}
 }
 
@@ -123,14 +153,14 @@ func (ul Unbonds) Clone() Unbonds {
 func (ul Unbonds) GetUnbondAmount() *big.Int {
 	total := new(big.Int)
 	for _, b := range ul {
-		total.Add(total, b.Value)
+		total.Add(total, b.value)
 	}
 	return total
 }
 
 func (ul Unbonds) GetUnbondByAddress(address module.Address) (*Unbond, int) {
 	for i, ub := range ul {
-		if address.Equal(ub.Address) {
+		if address.Equal(ub.address) {
 			return ub, i
 		}
 	}
@@ -140,7 +170,7 @@ func (ul Unbonds) GetUnbondByAddress(address module.Address) (*Unbond, int) {
 func (ul Unbonds) MapByAddr() map[string]*Unbond {
 	newMap := make(map[string]*Unbond)
 	for _, ub := range ul {
-		key := icutils.ToKey(ub.Address)
+		key := icutils.ToKey(ub.Address())
 		newMap[key] = ub
 	}
 	return newMap
@@ -149,7 +179,7 @@ func (ul Unbonds) MapByAddr() map[string]*Unbond {
 func (ul Unbonds) ExpireRefCount() map[int64]int {
 	newMap := make(map[int64]int)
 	for _, ub := range ul {
-		key := ub.Expire
+		key := ub.expire
 		newMap[key] = newMap[key] + 1
 	}
 	return newMap
@@ -157,9 +187,9 @@ func (ul Unbonds) ExpireRefCount() map[int64]int {
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
 	unbond := &Unbond{
-		Address: common.AddressToPtr(address),
-		Value:   value,
-		Expire:  expireHeight,
+		address: common.AddressToPtr(address),
+		value:   value,
+		expire:  expireHeight,
 	}
 	*ul = append(*ul, unbond)
 }
@@ -186,14 +216,14 @@ func (ul *Unbonds) Slash(address module.Address, ratio int) (Unbonds, *big.Int, 
 	newUnbonds := make(Unbonds, 0)
 
 	for _, u := range *ul {
-		if u.To().Equal(address) {
+		if u.Address().Equal(address) {
 			unbond := u.Clone()
 			amount = unbond.Slash(ratio)
 
 			if ratio < 100 {
 				newUnbonds = append(newUnbonds, unbond)
 			} else if ratio == 100 {
-				expire = unbond.ExpireHeight()
+				expire = unbond.Expire()
 			}
 		} else {
 			newUnbonds = append(newUnbonds, u)
