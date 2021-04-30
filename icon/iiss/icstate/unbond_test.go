@@ -29,17 +29,10 @@ func TestUnbonds(t *testing.T) {
 	addr2 := "hx2"
 	v1 := int64(1)
 	v2 := int64(2)
-	ub1 := Unbond{
-		address: common.MustNewAddressFromString(addr1),
-		value:   big.NewInt(v1),
-	}
-	ub2 := Unbond{
-		address: common.MustNewAddressFromString(addr2),
-		value:   big.NewInt(v2),
-	}
-	ubl1 := Unbonds{
-		&ub1, &ub2,
-	}
+	ub1 := NewUnbond(common.MustNewAddressFromString(addr1), big.NewInt(v1), 0)
+
+	ub2 := NewUnbond(common.MustNewAddressFromString(addr2), big.NewInt(v2), 0)
+	ubl1 := Unbonds{ub1, ub2}
 
 	ubl2 := ubl1.Clone()
 
@@ -51,19 +44,9 @@ func TestUnbonds(t *testing.T) {
 func TestUnbonds_Slash(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
-	ub1 := Unbond{
-		address: addr1,
-		value:   big.NewInt(100),
-		expire:  100,
-	}
-	ub2 := Unbond{
-		address: addr2,
-		value:   big.NewInt(200),
-		expire:  200,
-	}
-	ubl1 := Unbonds{
-		&ub1, &ub2,
-	}
+	ub1 := NewUnbond(addr1, big.NewInt(100), 100)
+	ub2 := NewUnbond(addr2, big.NewInt(200), 200)
+	ubl1 := Unbonds{ub1, ub2}
 
 	type values struct {
 		target *common.Address
