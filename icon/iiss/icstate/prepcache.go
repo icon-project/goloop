@@ -44,7 +44,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBa
 			// return nil
 		}
 	} else {
-		base = ToPRepBase(o.Object(), owner)
+		base = ToPRepBase(o.Object())
 		if base != nil {
 			c.bases[key] = base
 		}
@@ -67,7 +67,7 @@ func (c *PRepBaseCache) Reset() {
 		if value == nil {
 			delete(c.bases, key)
 		} else {
-			base.Set(ToPRepBase(value.Object(), addr))
+			base.Set(ToPRepBase(value.Object()))
 		}
 	}
 }
@@ -120,7 +120,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 			// return nil
 		}
 	} else {
-		status = ToPRepStatus(o.Object(), owner)
+		status = ToPRepStatus(o.Object())
 		if status != nil {
 			c.statuses[key] = status
 		}
@@ -143,7 +143,7 @@ func (c *PRepStatusCache) Reset() {
 		if value == nil {
 			delete(c.statuses, key)
 		} else {
-			status.Set(ToPRepStatus(value.Object(), addr))
+			status.Set(ToPRepStatus(value.Object()))
 		}
 	}
 }

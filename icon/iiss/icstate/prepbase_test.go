@@ -21,17 +21,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
 func TestPRepBase_Bytes(t *testing.T) {
-	owner, err := common.NewAddress(make([]byte, common.AddressBytes, common.AddressBytes))
-	if err != nil {
-		t.Errorf("Failed to create an address")
-	}
-
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	ss1 := NewPRepBase()
 	n := "name"
@@ -48,7 +42,7 @@ func TestPRepBase_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := ToPRepBase(o2, owner)
+	ss2 := ToPRepBase(o2)
 	assert.Equal(t, true, ss1.Equal(ss2))
 	assert.Equal(t, true, ss2.Equal(ss1))
 }

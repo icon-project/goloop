@@ -849,7 +849,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 				br := s.GetBondRequirement()
 				for i := 0; i < size; i++ {
 					prep := s.pm.GetPRepByIndex(i)
-					prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.owner, prep.PRepStatus, br)
+					prepSnapshots[i] = icstate.NewPRepSnapshotFromPRepStatus(prep.Owner(), prep.PRepStatus, br)
 					if prep.Grade() == icstate.Main {
 						mainPRepCount++
 					}

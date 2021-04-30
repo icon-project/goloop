@@ -20,7 +20,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -82,7 +81,7 @@ func ToAccount(object trie.Object) *Account {
 	return a
 }
 
-func ToPRepStatus(object trie.Object, owner module.Address) *PRepStatus {
+func ToPRepStatus(object trie.Object) *PRepStatus {
 	if object == nil {
 		return nil
 	}
@@ -91,7 +90,7 @@ func ToPRepStatus(object trie.Object, owner module.Address) *PRepStatus {
 	return ps
 }
 
-func ToPRepBase(object trie.Object, owner module.Address) *PRepBase {
+func ToPRepBase(object trie.Object) *PRepBase {
 	if object == nil {
 		return nil
 	}
