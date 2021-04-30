@@ -31,7 +31,7 @@ func TestUnstake(t *testing.T) {
 	amount := big.NewInt(12)
 	eh := int64(100)
 
-	u1 := &Unstake{amount, eh}
+	u1 := NewUnstake(amount, eh)
 	u2 := u1.Clone()
 
 	assert.True(t, u1.Equal(u2))
@@ -153,12 +153,12 @@ func TestIncreaseUnstake_multiple(t *testing.T) {
 	eh2 := int64(30)
 	eh3 := int64(40)
 
-	u0 := Unstake{value: big.NewInt(a0), expire: eh0}
-	u1 := Unstake{value: big.NewInt(a1), expire: eh1}
-	u2 := Unstake{value: big.NewInt(a2), expire: eh2}
-	u3 := Unstake{value: big.NewInt(a3), expire: eh3}
+	u0 := NewUnstake(big.NewInt(a0), eh0)
+	u1 := NewUnstake(big.NewInt(a1), eh1)
+	u2 := NewUnstake(big.NewInt(a2), eh2)
+	u3 := NewUnstake(big.NewInt(a3), eh3)
 
-	us := Unstakes{&u1}
+	us := Unstakes{u1}
 
 	//u0 will place in 0 index(front of u1)
 	_, err := us.increaseUnstake(big.NewInt(a0), eh0, unstakeSlotMax, revision)
@@ -226,7 +226,7 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	j, err = us.decreaseUnstake(v, noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
-	expectedUnstake := &Unstake{value: big.NewInt(a0 - 1), expire: eh0}
+	expectedUnstake := NewUnstake(big.NewInt(a0 - 1), eh0)
 	assert.True(t, us[0].Equal(expectedUnstake))
 	assert.Equal(t, 1, len(j))
 	assert.Equal(t, eh1, j[0].Height)

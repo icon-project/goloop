@@ -173,7 +173,7 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 		}
 		(*us)[lastIndex] = NewUnstake(newValue, newHeight)
 	} else {
-		unstake := &Unstake{v, eh}
+		unstake := NewUnstake(v, eh)
 		unstakes := *us
 		index := us.findIndex(eh)
 		unstakes = append(unstakes, unstake)
@@ -187,7 +187,7 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 
 func (us Unstakes) findIndex(h int64) int64 {
 	for i := len(us) - 1; i >= 0; i-- {
-		if h >= us[i].expire {
+		if h >= us[i].Expire() {
 			return int64(i + 1)
 		}
 	}
