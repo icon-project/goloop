@@ -46,22 +46,11 @@ func TestUnstakes(t *testing.T) {
 	eh2 := int64(20)
 	eh3 := int64(30)
 
-	u1 := Unstake{
-		Amount:       big.NewInt(a1),
-		ExpireHeight: eh1,
-	}
-	u2 := Unstake{
-		Amount:       big.NewInt(a2),
-		ExpireHeight: eh2,
-	}
-	u3 := Unstake{
-		Amount:       big.NewInt(a3),
-		ExpireHeight: eh3,
-	}
+	u1 := NewUnstake(big.NewInt(a1), eh1)
+	u2 := NewUnstake(big.NewInt(a2), eh2)
+	u3 := NewUnstake(big.NewInt(a3), eh3)
 
-	var us1 = Unstakes{
-		&u1, &u2, &u3,
-	}
+	var us1 = Unstakes{u1, u2, u3}
 
 	us2 := us1.Clone()
 
@@ -74,7 +63,7 @@ func TestUnstakes(t *testing.T) {
 		unstakeSlotMax := 2
 
 		// add unstake u1
-		tl, err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax, revision)
+		tl, err := unstakes.increaseUnstake(u1.Value(), u1.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
 		assert.True(t, !unstakes.IsEmpty())
 		assert.Equal(t, 1, len(unstakes))
@@ -82,10 +71,10 @@ func TestUnstakes(t *testing.T) {
 		assert.Equal(t, a1, unstakes.GetUnstakeAmount().Int64())
 		assert.Equal(t, len(tl), 1)
 		assert.Equal(t, tl[0].Type, JobTypeAdd)
-		assert.Equal(t, tl[0].Height, u1.ExpireHeight)
+		assert.Equal(t, tl[0].Height, u1.Expire())
 
 		// add unstake u2
-		tl, err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax, revision)
+		tl, err = unstakes.increaseUnstake(u2.Value(), u2.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
 		assert.True(t, !unstakes.IsEmpty())
 		assert.Equal(t, 2, len(unstakes))
@@ -93,32 +82,32 @@ func TestUnstakes(t *testing.T) {
 		assert.Equal(t, a1+a2, unstakes.GetUnstakeAmount().Int64())
 		assert.Equal(t, len(tl), 1)
 		assert.Equal(t, tl[0].Type, JobTypeAdd)
-		assert.Equal(t, tl[0].Height, u2.ExpireHeight)
+		assert.Equal(t, tl[0].Height, u2.Expire())
 
 		// update last unstake
-		tl, err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax, revision)
+		tl, err = unstakes.increaseUnstake(u3.Value(), u3.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
 		assert.True(t, !unstakes.IsEmpty())
 		assert.Equal(t, 2, len(unstakes))
-		assert.Equal(t, a2+a3, unstakes[1].Amount.Int64())
-		assert.Equal(t, eh3, unstakes[1].ExpireHeight)
+		assert.Equal(t, a2+a3, unstakes[1].Value().Int64())
+		assert.Equal(t, eh3, unstakes[1].Expire())
 		assert.Equal(t, a1+a2+a3, unstakes.GetUnstakeAmount().Int64())
 		assert.Equal(t, len(tl), 2)
 		assert.Equal(t, tl[0].Type, JobTypeRemove)
-		assert.Equal(t, tl[0].Height, u2.ExpireHeight)
+		assert.Equal(t, tl[0].Height, u2.Expire())
 		assert.Equal(t, tl[1].Type, JobTypeAdd)
-		assert.Equal(t, tl[1].Height, u3.ExpireHeight)
+		assert.Equal(t, tl[1].Height, u3.Expire())
 	})
 
 	t.Run("decrease Unstakes", func(t *testing.T) {
 		noMeaning := int64(0)
 		unstakes := Unstakes{}
 		unstakeSlotMax := 3
-		_, err := unstakes.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax, revision)
+		_, err := unstakes.increaseUnstake(u1.Value(), u1.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
-		_, err = unstakes.increaseUnstake(u2.Amount, u2.ExpireHeight, unstakeSlotMax, revision)
+		_, err = unstakes.increaseUnstake(u2.Value(), u2.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
-		_, err = unstakes.increaseUnstake(u3.Amount, u3.ExpireHeight, unstakeSlotMax, revision)
+		_, err = unstakes.increaseUnstake(u3.Value(), u3.Expire(), unstakeSlotMax, revision)
 		assert.NoError(t, err)
 
 		total := a1 + a2 + a3
@@ -130,21 +119,21 @@ func TestUnstakes(t *testing.T) {
 		assert.Equal(t, total-bigOne.Int64(), unstakes.GetUnstakeAmount().Int64())
 
 		// delete 1 slot
-		_, err = unstakes.decreaseUnstake(new(big.Int).Sub(u3.Amount, bigOne), noMeaning, revision)
+		_, err = unstakes.decreaseUnstake(new(big.Int).Sub(u3.Value(), bigOne), noMeaning, revision)
 		assert.NoError(t, err)
 		assert.True(t, !unstakes.IsEmpty())
 		assert.Equal(t, 2, len(unstakes))
 		assert.Equal(t, total-a3, unstakes.GetUnstakeAmount().Int64())
 
 		// delete 1 slot and decrease 1 slot
-		_, err = unstakes.decreaseUnstake(new(big.Int).Add(u2.Amount, bigOne), noMeaning, revision)
+		_, err = unstakes.decreaseUnstake(new(big.Int).Add(u2.Value(), bigOne), noMeaning, revision)
 		assert.NoError(t, err)
 		assert.True(t, !unstakes.IsEmpty())
 		assert.Equal(t, 1, len(unstakes))
 		assert.Equal(t, a1-bigOne.Int64(), unstakes.GetUnstakeAmount().Int64())
 
 		// > total unstake. delete all
-		_, err = unstakes.decreaseUnstake(u1.Amount, noMeaning, revision)
+		_, err = unstakes.decreaseUnstake(u1.Value(), noMeaning, revision)
 		assert.NoError(t, err)
 		assert.False(t, !unstakes.IsEmpty())
 		assert.Equal(t, 0, len(unstakes))
@@ -164,10 +153,10 @@ func TestIncreaseUnstake_multiple(t *testing.T) {
 	eh2 := int64(30)
 	eh3 := int64(40)
 
-	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
-	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
-	u2 := Unstake{Amount: big.NewInt(a2), ExpireHeight: eh2}
-	u3 := Unstake{Amount: big.NewInt(a3), ExpireHeight: eh3}
+	u0 := Unstake{value: big.NewInt(a0), expire: eh0}
+	u1 := Unstake{value: big.NewInt(a1), expire: eh1}
+	u2 := Unstake{value: big.NewInt(a2), expire: eh2}
+	u3 := Unstake{value: big.NewInt(a3), expire: eh3}
 
 	us := Unstakes{&u1}
 
@@ -205,29 +194,29 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	eh3 := int64(40)
 	eh4 := int64(50)
 
-	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
-	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
-	u2 := Unstake{Amount: big.NewInt(a2), ExpireHeight: eh2}
-	u3 := Unstake{Amount: big.NewInt(a3), ExpireHeight: eh3}
-	u4 := Unstake{Amount: big.NewInt(a4), ExpireHeight: eh4}
+	u0 := NewUnstake(big.NewInt(a0), eh0)
+	u1 := NewUnstake(big.NewInt(a1), eh1)
+	u2 := NewUnstake(big.NewInt(a2), eh2)
+	u3 := NewUnstake(big.NewInt(a3), eh3)
+	u4 := NewUnstake(big.NewInt(a4), eh4)
 
-	us := Unstakes{&u0, &u1, &u2, &u3, &u4}
+	us := Unstakes{u0, u1, u2, u3, u4}
 	assert.Equal(t, len(us), 5)
 
 	//remove last unstake
-	j, err := us.decreaseUnstake(u4.Amount, noMeaning, revision)
+	j, err := us.decreaseUnstake(u4.Value(), noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(us))
-	assert.True(t, us[0].Equal(&u0))
+	assert.True(t, us[0].Equal(u0))
 	assert.Equal(t, 1, len(j))
 	assert.Equal(t, eh4, j[0].Height)
 
 	//remove 2 unstakes
-	j, err = us.decreaseUnstake(new(big.Int).Add(u2.Amount, u3.Amount), noMeaning, revision)
+	j, err = us.decreaseUnstake(new(big.Int).Add(u2.Value(), u3.Value()), noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(us))
-	assert.True(t, us[0].Equal(&u0))
-	assert.True(t, us[1].Equal(&u1))
+	assert.True(t, us[0].Equal(u0))
+	assert.True(t, us[1].Equal(u1))
 	assert.Equal(t, 2, len(j))
 	assert.Equal(t, eh3, j[0].Height)
 	assert.Equal(t, eh2, j[1].Height)
@@ -237,7 +226,7 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	j, err = us.decreaseUnstake(v, noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
-	expectedUnstake := &Unstake{Amount: big.NewInt(a0 - 1), ExpireHeight: eh0}
+	expectedUnstake := &Unstake{value: big.NewInt(a0 - 1), expire: eh0}
 	assert.True(t, us[0].Equal(expectedUnstake))
 	assert.Equal(t, 1, len(j))
 	assert.Equal(t, eh1, j[0].Height)
@@ -251,23 +240,23 @@ func TestIncreaseUnstake_single(t *testing.T) {
 	eh0 := int64(10)
 	eh1 := int64(20)
 
-	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
-	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
+	u0 := NewUnstake(big.NewInt(a0), eh0)
+	u1 := NewUnstake(big.NewInt(a1), eh1)
 
 	us := Unstakes{}
 
 	// add unstakes
-	_, err := us.increaseUnstake(u0.Amount, u0.ExpireHeight, unstakeSlotMax, revision)
+	_, err := us.increaseUnstake(u0.Value(), u0.Expire(), unstakeSlotMax, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
 	assert.True(t, u0.Equal(us[0]))
 
 	// update unstakes
-	_, err = us.increaseUnstake(u1.Amount, u1.ExpireHeight, unstakeSlotMax, revision)
+	_, err = us.increaseUnstake(u1.Value(), u1.Expire(), unstakeSlotMax, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
-	assert.Equal(t, u0.Amount.Int64()+u1.Amount.Int64(), us[0].Amount.Int64())
-	assert.Equal(t, u1.ExpireHeight, us[0].ExpireHeight)
+	assert.Equal(t, u0.Value().Int64()+u1.Value().Int64(), us[0].Value().Int64())
+	assert.Equal(t, u1.Expire(), us[0].Expire())
 }
 
 func TestDecreaseUnstake_single(t *testing.T) {
@@ -277,21 +266,21 @@ func TestDecreaseUnstake_single(t *testing.T) {
 	eh0 := int64(10)
 	eh1 := int64(20)
 
-	u0 := Unstake{Amount: big.NewInt(a0), ExpireHeight: eh0}
-	u1 := Unstake{Amount: big.NewInt(a1), ExpireHeight: eh1}
+	u0 := NewUnstake(big.NewInt(a0), eh0)
+	u1 := NewUnstake(big.NewInt(a1), eh1)
 
 	us := Unstakes{u0.Clone()}
 	assert.Equal(t, len(us), 1)
 	assert.True(t, u0.Equal(us[0]))
 
 	// update unstake
-	_, err := us.decreaseUnstake(u1.Amount, u1.ExpireHeight, revision)
+	_, err := us.decreaseUnstake(u1.Value(), u1.Expire(), revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
-	assert.Equal(t, u0.Amount.Int64()-u1.Amount.Int64(), us[0].Amount.Int64())
-	assert.Equal(t, u1.ExpireHeight, us[0].ExpireHeight)
+	assert.Equal(t, u0.Value().Int64()-u1.Value().Int64(), us[0].Value().Int64())
+	assert.Equal(t, u1.Expire(), us[0].Expire())
 
 	// remove unstake
-	_, err = us.decreaseUnstake(u0.Amount, u0.ExpireHeight, revision)
+	_, err = us.decreaseUnstake(u0.Value(), u0.Expire(), revision)
 	assert.Equal(t, 0, len(us))
 }

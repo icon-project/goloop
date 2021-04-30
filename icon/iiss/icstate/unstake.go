@@ -20,52 +20,79 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 )
 
 type Unstake struct {
-	Amount *big.Int
+	value *big.Int
 	// Unstake is done on OnExecutionEnd of ExpireHeight
-	ExpireHeight int64
+	expire int64
+}
+
+func NewUnstake(v *big.Int, e int64) *Unstake {
+	return &Unstake{
+		value:  v,
+		expire: e,
+	}
+}
+
+func (u *Unstake) RLPDecodeSelf(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(
+		&u.value,
+		&u.expire,
+	)
+	return err
+}
+
+func (u *Unstake) RLPEncodeSelf(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		u.value,
+		u.expire,
+	)
 }
 
 func (u *Unstake) Value() *big.Int {
-	return u.Amount
+	return u.value
+}
+
+func (u *Unstake) Expire() int64 {
+	return u.expire
 }
 
 func (u *Unstake) Clone() *Unstake {
-	return &Unstake{u.Amount, u.ExpireHeight}
+	return &Unstake{u.value, u.expire}
 }
 
 func (u *Unstake) Equal(u2 *Unstake) bool {
 	if u == u2 {
 		return true
 	}
-	return u.Amount.Cmp(u2.Amount) == 0 &&
-		u.ExpireHeight == u2.ExpireHeight
+	return u.value.Cmp(u2.value) == 0 &&
+		u.expire == u2.expire
 }
 
 func (u Unstake) ToJSON(_ module.JSONVersion, blockHeight int64) interface{} {
 	jso := make(map[string]interface{})
 
-	jso["unstake"] = u.Amount
-	jso["unstakeBlockHeight"] = u.ExpireHeight
-	jso["remainingBlocks"] = u.ExpireHeight - blockHeight
+	jso["unstake"] = u.value
+	jso["unstakeBlockHeight"] = u.expire
+	jso["remainingBlocks"] = u.expire - blockHeight
 
 	return jso
 }
 
 func (u Unstake) String() string {
-	return fmt.Sprintf("Unstake{%d %d}", u.Amount, u.ExpireHeight)
+	return fmt.Sprintf("Unstake{%d %d}", u.value, u.expire)
 }
 
 func (u Unstake) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Unstake{amount=%d expire=%d}", u.Amount, u.ExpireHeight)
+			fmt.Fprintf(f, "Unstake{amount=%d expire=%d}", u.value, u.expire)
 			return
 		}
 		fallthrough
@@ -107,7 +134,7 @@ func (us Unstakes) IsEmpty() bool {
 func (us Unstakes) GetUnstakeAmount() *big.Int {
 	total := new(big.Int)
 	for _, u := range us {
-		total.Add(total, u.Amount)
+		total.Add(total, u.Value())
 	}
 	return total
 }
@@ -134,15 +161,17 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 		modExpireHeight := false
 		lastIndex := len(*us) - 1
 		last := (*us)[lastIndex]
-		last.Amount = new(big.Int).Add(last.Amount, v)
-		if revision < icmodule.RevisionMultipleUnstakes || eh > last.ExpireHeight {
+		newValue := new(big.Int).Add(last.Value(), v)
+		newHeight := eh
+		if revision < icmodule.RevisionMultipleUnstakes || eh > last.Expire() {
 			modExpireHeight = true
 		}
 		if modExpireHeight {
-			tl = append(tl, TimerJobInfo{JobTypeRemove, last.ExpireHeight})
+			tl = append(tl, TimerJobInfo{JobTypeRemove, last.Expire()})
 			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
-			last.ExpireHeight = eh
+			newHeight = eh
 		}
+		(*us)[lastIndex] = NewUnstake(newValue, newHeight)
 	} else {
 		unstake := &Unstake{v, eh}
 		unstakes := *us
@@ -158,7 +187,7 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 
 func (us Unstakes) findIndex(h int64) int64 {
 	for i := len(us) - 1; i >= 0; i-- {
-		if h >= us[i].ExpireHeight {
+		if h >= us[i].expire {
 			return int64(i + 1)
 		}
 	}
@@ -174,25 +203,27 @@ func (us *Unstakes) decreaseUnstake(v *big.Int, expireHeight int64, revision int
 	uLen := len(*us)
 	for i := uLen - 1; i >= 0; i-- {
 		u := (*us)[i]
-		cmp := remain.Cmp(u.Amount)
+		cmp := remain.Cmp(u.Value())
 		switch cmp {
 		case 0, 1:
 			// Remove an unstake slot
 			*us = (*us)[:i]
-			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
+			tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.Expire()})
 			if cmp == 0 {
 				return tl, nil
 			} else {
-				remain.Sub(remain, u.Amount)
+				remain.Sub(remain, u.Value())
 			}
 		case -1:
-			u.Amount = new(big.Int).Sub(u.Amount, remain)
+			newValue := new(big.Int).Sub(u.Value(), remain)
+			newExpire := u.Expire()
 			if revision < icmodule.RevisionMultipleUnstakes {
 				// must update expire height
-				tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.ExpireHeight})
+				tl = append(tl, TimerJobInfo{Type: JobTypeRemove, Height: u.Expire()})
 				tl = append(tl, TimerJobInfo{Type: JobTypeAdd, Height: expireHeight})
-				u.ExpireHeight = expireHeight
+				newExpire = expireHeight
 			}
+			(*us)[i] = NewUnstake(newValue, newExpire)
 			return tl, nil
 		}
 	}

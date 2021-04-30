@@ -33,12 +33,12 @@ func getTestAccount() *Account {
 		stake: big.NewInt(100),
 		unstakes: []*Unstake{
 			{
-				Amount:       big.NewInt(5),
-				ExpireHeight: 10,
+				value:  big.NewInt(5),
+				expire: 10,
 			},
 			{
-				Amount:       big.NewInt(10),
-				ExpireHeight: 20,
+				value:  big.NewInt(10),
+				expire: 20,
 			},
 		},
 		totalDelegation: big.NewInt(20),
