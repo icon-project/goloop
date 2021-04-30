@@ -32,14 +32,8 @@ func getTestAccount() *Account {
 	assTest := &Account{
 		stake: big.NewInt(100),
 		unstakes: []*Unstake{
-			{
-				value:  big.NewInt(5),
-				expire: 10,
-			},
-			{
-				value:  big.NewInt(10),
-				expire: 20,
-			},
+			NewUnstake(big.NewInt(5), 10),
+			NewUnstake(big.NewInt(10), 20),
 		},
 		totalDelegation: big.NewInt(20),
 		delegations: []*Delegation{
@@ -53,16 +47,8 @@ func getTestAccount() *Account {
 		},
 		totalUnbond: big.NewInt(20),
 		unbonds: []*Unbond{
-			{
-				address: common.MustNewAddressFromString("hx5"),
-				value:   big.NewInt(10),
-				expire:  20,
-			},
-			{
-				address: common.MustNewAddressFromString("hx6"),
-				value:   big.NewInt(10),
-				expire:  30,
-			},
+			NewUnbond(common.MustNewAddressFromString("hx5"), big.NewInt(10), 20),
+			NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30),
 		},
 	}
 	return assTest
@@ -217,8 +203,8 @@ func TestAccount_RemoveUnbonding(t *testing.T) {
 
 func TestAccount_RemoveUnstaking(t *testing.T) {
 	a := getTestAccount() // unstakes : [{value:5, bh: 10}, {10, 20}]
-	us1 := &Unstake{big.NewInt(5), 10}
-	us2 := &Unstake{big.NewInt(10), 20}
+	us1 := NewUnstake(big.NewInt(5), 10)
+	us2 := NewUnstake(big.NewInt(10), 20)
 	assert.Contains(t, a.unstakes, us1)
 	assert.Contains(t, a.unstakes, us2)
 	expected := big.NewInt(15)

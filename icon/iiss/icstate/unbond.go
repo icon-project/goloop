@@ -145,14 +145,14 @@ func (ul Unbonds) Clone() Unbonds {
 func (ul Unbonds) GetUnbondAmount() *big.Int {
 	total := new(big.Int)
 	for _, b := range ul {
-		total.Add(total, b.value)
+		total.Add(total, b.Value())
 	}
 	return total
 }
 
 func (ul Unbonds) GetUnbondByAddress(address module.Address) (*Unbond, int) {
 	for i, ub := range ul {
-		if address.Equal(ub.address) {
+		if address.Equal(ub.Address()) {
 			return ub, i
 		}
 	}
