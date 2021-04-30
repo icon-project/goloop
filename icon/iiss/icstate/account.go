@@ -293,7 +293,7 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 		unbond, ok := unbondsMapByAddr[key]
 		var unbondExpireHeight int64
 		if ok {
-			unbondExpireHeight = unbond.ExpireHeight()
+			unbondExpireHeight = unbond.Expire()
 		}
 
 		if sign == -1 { // value is negative. increase unbond value
@@ -304,12 +304,12 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 			expireRefCount[expireHeight]++
 
 			if ok {
-				if expireRefCount[unbond.ExpireHeight()] == 1 {
+				if expireRefCount[unbond.Expire()] == 1 {
 					tl = append(tl, TimerJobInfo{JobTypeRemove, unbondExpireHeight})
 				}
 				expireRefCount[unbondExpireHeight]--
 				// update unbond
-				unbond.SetValue(new(big.Int).Sub(unbond.Amount(), value))
+				unbond.SetValue(new(big.Int).Sub(unbond.Value(), value))
 				unbond.SetExpire(expireHeight)
 			} else {
 				// add new unbond
@@ -323,8 +323,8 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 		} else { // value is positive. decrease unbond value
 			if ok {
 				// decrease unbond value
-				unbond.SetValue(new(big.Int).Sub(unbond.Amount(), value))
-				if unbond.Value.Sign() <= 0 {
+				unbond.SetValue(new(big.Int).Sub(unbond.Value(), value))
+				if unbond.Value().Sign() <= 0 {
 					// remove unbond
 					addr, err := common.NewAddress([]byte(key))
 					if err != nil {
@@ -354,10 +354,10 @@ func (a *Account) RemoveUnbond(height int64) error {
 	var tmp Unbonds
 	removed := new(big.Int)
 	for _, u := range a.unbonds {
-		if u.Expire != height {
+		if u.Expire() != height {
 			tmp = append(tmp, u)
 		} else {
-			removed.Add(removed, u.Value)
+			removed.Add(removed, u.Value())
 		}
 	}
 

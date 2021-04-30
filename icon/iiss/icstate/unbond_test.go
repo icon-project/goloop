@@ -30,12 +30,12 @@ func TestUnbonds(t *testing.T) {
 	v1 := int64(1)
 	v2 := int64(2)
 	ub1 := Unbond{
-		Address: common.MustNewAddressFromString(addr1),
-		Value:   big.NewInt(v1),
+		address: common.MustNewAddressFromString(addr1),
+		value:   big.NewInt(v1),
 	}
 	ub2 := Unbond{
-		Address: common.MustNewAddressFromString(addr2),
-		Value:   big.NewInt(v2),
+		address: common.MustNewAddressFromString(addr2),
+		value:   big.NewInt(v2),
 	}
 	ubl1 := Unbonds{
 		&ub1, &ub2,
@@ -52,14 +52,14 @@ func TestUnbonds_Slash(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
 	ub1 := Unbond{
-		Address: addr1,
-		Value:   big.NewInt(100),
-		Expire:  100,
+		address: addr1,
+		value:   big.NewInt(100),
+		expire:  100,
 	}
 	ub2 := Unbond{
-		Address: addr2,
-		Value:   big.NewInt(200),
-		Expire:  200,
+		address: addr2,
+		value:   big.NewInt(200),
+		expire:  200,
 	}
 	ubl1 := Unbonds{
 		&ub1, &ub2,

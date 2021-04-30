@@ -54,14 +54,14 @@ func getTestAccount() *Account {
 		totalUnbond: big.NewInt(20),
 		unbonds: []*Unbond{
 			{
-				Address: common.MustNewAddressFromString("hx5"),
-				Value:   big.NewInt(10),
-				Expire:  20,
+				address: common.MustNewAddressFromString("hx5"),
+				value:   big.NewInt(10),
+				expire:  20,
 			},
 			{
-				Address: common.MustNewAddressFromString("hx6"),
-				Value:   big.NewInt(10),
-				Expire:  30,
+				address: common.MustNewAddressFromString("hx6"),
+				value:   big.NewInt(10),
+				expire:  30,
 			},
 		},
 	}
@@ -121,9 +121,9 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	}
 	expireHeight := int64(50)
 	expectedUnbonds := Unbonds{
-		&Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(40), 50},
-		&Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30},
-		&Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50},
+		NewUnbond(common.MustNewAddressFromString("hx5"), big.NewInt(40), 50),
+		NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30),
+		NewUnbond(common.MustNewAddressFromString("hx7"), big.NewInt(40), 50),
 	}
 	expectedTL := []TimerJobInfo{{JobTypeAdd, expireHeight}, {JobTypeRemove, 20}}
 
@@ -142,10 +142,10 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 	}
 	expireHeight = int64(100)
 	expectedUnbonds = Unbonds{
-		&Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30},
-		&Unbond{common.MustNewAddressFromString("hx7"), big.NewInt(40), 50},
-		&Unbond{common.MustNewAddressFromString("hx8"), big.NewInt(50), 100},
-		&Unbond{common.MustNewAddressFromString("hx9"), big.NewInt(50), 100},
+		NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30),
+		NewUnbond(common.MustNewAddressFromString("hx7"), big.NewInt(40), 50),
+		NewUnbond(common.MustNewAddressFromString("hx8"), big.NewInt(50), 100),
+		NewUnbond(common.MustNewAddressFromString("hx9"), big.NewInt(50), 100),
 	}
 	expectedTL = []TimerJobInfo{
 		{JobTypeAdd, expireHeight},
@@ -182,8 +182,8 @@ func TestAccount_UpdateUnbonds(t *testing.T) {
 
 func TestAccount_RemoveUnbonding(t *testing.T) {
 	a := getTestAccount() // unbonds : [{address: hx5, value:10, bh: 20}, {hx6, 10, 30}]
-	ub1 := &Unbond{common.MustNewAddressFromString("hx5"), big.NewInt(10), 20}
-	ub2 := &Unbond{common.MustNewAddressFromString("hx6"), big.NewInt(10), 30}
+	ub1 := NewUnbond(common.MustNewAddressFromString("hx5"), big.NewInt(10), 20)
+	ub2 := NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30)
 	assert.Contains(t, a.unbonds, ub1)
 	assert.Contains(t, a.unbonds, ub2)
 	expected := big.NewInt(20)
@@ -287,7 +287,7 @@ func TestAccount_SlashUnbond(t *testing.T) {
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	assert.Equal(t, int64(-1), eh)
 	u1 := a.Unbonds()[0]
-	assert.Equal(t, 0, u1.Value.Cmp(big.NewInt(9)))
+	assert.Equal(t, 0, u1.Value().Cmp(big.NewInt(9)))
 	ul := len(a.Unbonds())
 	assert.Equal(t, 2, ul)
 
