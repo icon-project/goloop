@@ -33,8 +33,12 @@ type Unbond struct {
 	expire  int64
 }
 
-func (u *Unbond) Version() int {
-	return 0
+func NewUnbond(a *common.Address, v *big.Int, e int64) *Unbond {
+	return &Unbond{
+		address: a,
+		value:   v,
+		expire:  e,
+	}
 }
 
 func (u *Unbond) RLPDecodeSelf(decoder codec.Decoder) error {
@@ -95,11 +99,7 @@ func (u *Unbond) ToJSON() map[string]interface{} {
 }
 
 func (u *Unbond) Clone() *Unbond {
-	return &Unbond{
-		address: u.address,
-		value:   u.value,
-		expire:  u.expire,
-	}
+	return NewUnbond(u.address, u.value, u.expire)
 }
 
 func (u *Unbond) Format(f fmt.State, c rune) {
@@ -110,14 +110,6 @@ func (u *Unbond) Format(f fmt.State, c rune) {
 		} else {
 			fmt.Fprintf(f, "Unbond{%s %s %d}", u.address, u.value, u.expire)
 		}
-	}
-}
-
-func NewUnbond(a *common.Address, v *big.Int, e int64) *Unbond {
-	return &Unbond{
-		address: a,
-		value:   v,
-		expire:  e,
 	}
 }
 
@@ -179,18 +171,14 @@ func (ul Unbonds) MapByAddr() map[string]*Unbond {
 func (ul Unbonds) ExpireRefCount() map[int64]int {
 	newMap := make(map[int64]int)
 	for _, ub := range ul {
-		key := ub.expire
+		key := ub.Expire()
 		newMap[key] = newMap[key] + 1
 	}
 	return newMap
 }
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
-	unbond := &Unbond{
-		address: common.AddressToPtr(address),
-		value:   value,
-		expire:  expireHeight,
-	}
+	unbond := NewUnbond(common.AddressToPtr(address), value, expireHeight)
 	*ul = append(*ul, unbond)
 }
 
