@@ -386,9 +386,15 @@ func (ps *PRepStatus) GetSnapshot() *PRepStatus {
 }
 
 func (ps *PRepStatus) IsEmpty() bool {
-	o := NewPRepStatus()
-	return ps.equal(o)
-	//return ps == nil
+	return ps.grade == Candidate &&
+		ps.delegated.Sign() == 0 &&
+		ps.bonded.Sign() == 0 &&
+		ps.vFail == 0 &&
+		ps.vFailContOffset == 0 &&
+		ps.vTotal == 0 &&
+		ps.lastState == None &&
+		ps.lastHeight == 0 &&
+		ps.status == NotReady
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
