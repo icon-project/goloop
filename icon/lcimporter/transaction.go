@@ -39,6 +39,7 @@ type BlockTransaction struct {
 	BlockID       []byte
 	Result        []byte
 	ValidatorHash []byte
+	TXCount       int32
 
 	hash []byte
 }
