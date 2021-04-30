@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 type Voting interface {
@@ -37,72 +38,77 @@ type Bonding struct {
 	icstate.Bonds
 }
 
-func (d *Bonding) Version() int {
+func (b *Bonding) Version() int {
 	return 0
 }
 
-func (d *Bonding) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&d.Bonds)
+func (b *Bonding) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.Decode(&b.Bonds)
 }
 
-func (d *Bonding) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(d.Bonds)
+func (b *Bonding) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.Encode(b.Bonds)
 }
 
-func (d *Bonding) Equal(o icobject.Impl) bool {
+func (b *Bonding) Equal(o icobject.Impl) bool {
 	if d2, ok := o.(*Bonding); ok {
-		return d.Bonds.Equal(d2.Bonds)
+		return b.Bonds.Equal(d2.Bonds)
 	} else {
 		return false
 	}
 }
 
-func (d *Bonding) Clone() *Bonding {
-	if d == nil {
+func (b *Bonding) Clone() *Bonding {
+	if b == nil {
 		return nil
 	}
 	nd := NewBonding()
-	for _, ds := range d.Bonds {
+	for _, ds := range b.Bonds {
 		nd.Bonds = append(nd.Bonds,  ds.Clone())
 	}
 	return nd
 }
 
-func (d *Bonding) IsEmpty() bool {
-	return len(d.Bonds) == 0
+func (b *Bonding) IsEmpty() bool {
+	return len(b.Bonds) == 0
 }
 
-func (d *Bonding) ApplyVotes(deltas icstage.VoteList) error {
-	var index int
-	bonds := d.Bonds.Clone()
-	add := make([]*icstate.Bond, 0)
-	for _, vote := range deltas {
-		index = -1
-		for i, bond := range bonds {
-			if bond.To().Equal(vote.To()) {
-				index = i
-				bond.SetAmount(new(big.Int).Add(bond.Amount(), vote.Amount()))
-				switch bond.Amount().Sign() {
-				case -1:
-					return errors.Errorf("Negative bond value %s", bond.Amount())
-				case 0:
-					if err := bonds.Delete(i); err != nil {
-						return err
-					}
-				}
-				break
-			}
-		}
-		if index == -1 { // add new bond
-			if vote.Amount().Sign() != 1 {
-				return errors.Errorf("Negative bond value %v", vote)
-			}
-			nb := icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())
-			add = append(add, nb)
+func (b *Bonding) ApplyVotes(deltas icstage.VoteList) error {
+	var nBonds icstate.Bonds
+
+	// add Bond not in old Bonds
+	deltaMap := deltas.ToMap()
+	for _, bond := range b.Bonds {
+		_, ok := deltaMap[icutils.ToKey(bond.To())]
+		if !ok {
+			nBonds = append(nBonds, bond)
 		}
 	}
-	bonds = append(bonds, add...)
-	d.Bonds = bonds
+
+	// apply deltas
+	bondMap := b.Bonds.ToMap()
+	for _, vote := range deltas {
+		bond, ok := bondMap[icutils.ToKey(vote.To())]
+		if ok {
+			value := new(big.Int).Add(bond.Amount(), vote.Amount())
+			switch value.Sign() {
+			case -1:
+				return errors.Errorf("Negative bond value %s", value)
+			case 0:
+				continue
+			case 1:
+				bond = icstate.NewBond(common.AddressToPtr(bond.To()), value)
+			}
+		} else {
+			if vote.Amount().Sign() == -1 {
+				return errors.Errorf("Negative bond value %s", vote.Amount())
+			}
+			bond = icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())
+		}
+		nBonds = append(nBonds, bond)
+	}
+
+	b.Bonds = nBonds
 	return nil
 }
 

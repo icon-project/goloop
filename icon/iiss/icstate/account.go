@@ -46,14 +46,16 @@ type Account struct {
 	icobject.NoDatabase
 	StateAndSnapshot
 
-	stake       *big.Int
+	stake *big.Int
+
 	unstakes    Unstakes
-	delegating  *big.Int
 	delegations Delegations
-	bonding     *big.Int
-	unbonding   *big.Int
 	bonds       Bonds
 	unbonds     Unbonds
+
+	totalDelegation *big.Int
+	totalBond       *big.Int
+	totalUnbond     *big.Int
 }
 
 func (a *Account) equal(other *Account) bool {
@@ -63,10 +65,10 @@ func (a *Account) equal(other *Account) bool {
 
 	return a.stake.Cmp(other.stake) == 0 &&
 		a.unstakes.Equal(other.unstakes) &&
-		a.delegating.Cmp(other.delegating) == 0 &&
+		a.totalDelegation.Cmp(other.totalDelegation) == 0 &&
 		a.delegations.Equal(other.delegations) &&
-		a.bonding.Cmp(other.bonding) == 0 &&
-		a.unbonding.Cmp(other.unbonding) == 0 &&
+		a.totalBond.Cmp(other.totalBond) == 0 &&
+		a.totalUnbond.Cmp(other.totalUnbond) == 0 &&
 		a.bonds.Equal(other.bonds) &&
 		a.unbonds.Equal(other.unbonds)
 }
@@ -88,24 +90,24 @@ func (a *Account) Set(other *Account) {
 
 	a.stake = other.stake
 	a.unstakes = other.unstakes.Clone()
-	a.delegating = other.delegating
+	a.totalDelegation = other.totalDelegation
 	a.delegations = other.delegations.Clone()
-	a.bonding = other.bonding
-	a.unbonding = other.unbonding
+	a.totalBond = other.totalBond
+	a.totalUnbond = other.totalUnbond
 	a.bonds = other.bonds.Clone()
 	a.unbonds = other.unbonds.Clone()
 }
 
 func (a *Account) Clone() *Account {
 	return &Account{
-		stake:       new(big.Int).Set(a.stake),
-		unstakes:    a.unstakes.Clone(),
-		delegating:  new(big.Int).Set(a.delegating),
-		delegations: a.delegations.Clone(),
-		bonding:     new(big.Int).Set(a.bonding),
-		unbonding:   new(big.Int).Set(a.unbonding),
-		bonds:       a.bonds.Clone(),
-		unbonds:     a.unbonds.Clone(),
+		stake:           a.stake,
+		unstakes:        a.unstakes.Clone(),
+		delegations:     a.delegations.Clone(),
+		bonds:           a.bonds.Clone(),
+		unbonds:         a.unbonds.Clone(),
+		totalDelegation: a.totalDelegation,
+		totalBond:       a.totalBond,
+		totalUnbond:     a.totalUnbond,
 	}
 }
 
@@ -118,10 +120,10 @@ func (a *Account) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
 		&a.stake,
 		&a.unstakes,
-		&a.delegating,
+		&a.totalDelegation,
 		&a.delegations,
-		&a.bonding,
-		&a.unbonding,
+		&a.totalBond,
+		&a.totalUnbond,
 		&a.bonds,
 		&a.unbonds,
 	)
@@ -131,10 +133,10 @@ func (a *Account) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
 		a.stake,
 		a.unstakes,
-		a.delegating,
+		a.totalDelegation,
 		a.delegations,
-		a.bonding,
-		a.unbonding,
+		a.totalBond,
+		a.totalUnbond,
 		a.bonds,
 		a.unbonds,
 	)
@@ -144,10 +146,10 @@ func (a *Account) Clear() {
 	a.checkWritable()
 	a.stake = new(big.Int)
 	a.unstakes = nil
-	a.delegating = new(big.Int)
+	a.totalDelegation = new(big.Int)
 	a.delegations = nil
-	a.bonding = new(big.Int)
-	a.unbonding = new(big.Int)
+	a.totalBond = new(big.Int)
+	a.totalUnbond = new(big.Int)
 	a.bonds = nil
 	a.unbonds = nil
 }
@@ -200,7 +202,7 @@ func (a Account) GetStakeInJSON(blockHeight int64) map[string]interface{} {
 }
 
 func (a *Account) Delegating() *big.Int {
-	return a.delegating
+	return a.totalDelegation
 }
 
 func (a *Account) Delegations() Delegations {
@@ -210,12 +212,12 @@ func (a *Account) Delegations() Delegations {
 func (a *Account) SetDelegation(ds Delegations) {
 	a.checkWritable()
 	a.delegations = ds
-	a.delegating = a.delegations.GetDelegationAmount()
+	a.totalDelegation = a.delegations.GetDelegationAmount()
 }
 
 func (a Account) GetDelegationInJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["totalDelegated"] = a.delegating
+	jso["totalDelegated"] = a.totalDelegation
 	jso["votingPower"] = a.GetVotingPower()
 	jso["delegations"] = a.delegations.ToJSON(module.JSONVersion3)
 	return jso
@@ -231,11 +233,11 @@ func (a *Account) GetVoting() *big.Int {
 
 func (a *Account) UsingStake() *big.Int {
 	using := a.GetVoting()
-	return using.Add(using, a.unbonding)
+	return using.Add(using, a.totalUnbond)
 }
 
 func (a *Account) Bond() *big.Int {
-	return a.bonding
+	return a.totalBond
 }
 
 func (a *Account) Bonds() Bonds {
@@ -247,7 +249,7 @@ func (a *Account) Unbonds() Unbonds {
 }
 
 func (a *Account) Unbond() *big.Int {
-	return a.unbonding
+	return a.totalUnbond
 }
 
 func (a *Account) GetBondsInJSON() []interface{} {
@@ -261,7 +263,7 @@ func (a *Account) GetUnbondsInJSON() []interface{} {
 func (a *Account) SetBonds(bonds Bonds) {
 	a.checkWritable()
 	a.bonds = bonds
-	a.bonding = a.bonds.GetBondAmount()
+	a.totalBond = a.bonds.GetBondAmount()
 }
 
 func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int64) ([]TimerJobInfo, error) {
@@ -278,7 +280,7 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 
 	ubs := a.unbonds.Clone()
 	unbondsMapByAddr := ubs.MapByAddr()
-	expireRefCount := ubs.ExpireRefCount()
+	expireRefCount := ubs.ExpireRefCount() // Get ExpireRefCount
 
 	for _, key := range keys {
 		value := bondDelta[key]
@@ -287,7 +289,13 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 			// there is no change
 			continue
 		}
+
 		unbond, ok := unbondsMapByAddr[key]
+		var unbondExpireHeight int64
+		if ok {
+			unbondExpireHeight = unbond.ExpireHeight()
+		}
+
 		if sign == -1 { // value is negative. increase unbond value
 			if expireRefCount[expireHeight] == 0 {
 				// add new timer
@@ -297,9 +305,9 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 
 			if ok {
 				if expireRefCount[unbond.ExpireHeight()] == 1 {
-					tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.ExpireHeight()})
+					tl = append(tl, TimerJobInfo{JobTypeRemove, unbondExpireHeight})
 				}
-				expireRefCount[unbond.ExpireHeight()]--
+				expireRefCount[unbondExpireHeight]--
 				// update unbond
 				unbond.SetValue(new(big.Int).Sub(unbond.Amount(), value))
 				unbond.SetExpire(expireHeight)
@@ -325,11 +333,11 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 					if err := ubs.DeleteByAddress(addr); err != nil {
 						return nil, err
 					}
-					if expireRefCount[unbond.ExpireHeight()] == 1 {
+					if expireRefCount[unbondExpireHeight] == 1 {
 						// remove timer
-						tl = append(tl, TimerJobInfo{JobTypeRemove, unbond.ExpireHeight()})
+						tl = append(tl, TimerJobInfo{JobTypeRemove, unbondExpireHeight})
 					}
-					expireRefCount[unbond.ExpireHeight()]--
+					expireRefCount[unbondExpireHeight]--
 				}
 			} else {
 				// do nothing
@@ -337,11 +345,11 @@ func (a *Account) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight int6
 		}
 	}
 	a.unbonds = ubs
-	a.unbonding = a.unbonds.GetUnbondAmount()
+	a.totalUnbond = a.unbonds.GetUnbondAmount()
 	return tl, nil
 }
 
-func (a *Account) RemoveUnbonding(height int64) error {
+func (a *Account) RemoveUnbond(height int64) error {
 	a.checkWritable()
 	var tmp Unbonds
 	removed := new(big.Int)
@@ -354,21 +362,21 @@ func (a *Account) RemoveUnbonding(height int64) error {
 	}
 
 	if len(tmp) == len(a.unbonds) {
-		return errors.Errorf("does not have unbonding entry with expire(%d)", height)
+		return errors.Errorf("does not have totalUnbond entry with expire(%d)", height)
 	}
 	a.unbonds = tmp
-	a.unbonding = new(big.Int).Sub(a.Unbond(), removed)
+	a.totalUnbond = new(big.Int).Sub(a.Unbond(), removed)
 
 	return nil
 }
 
-func (a *Account) RemoveUnstaking(height int64) (ra *big.Int, err error) {
+func (a *Account) RemoveUnstake(height int64) (ra *big.Int, err error) {
 	a.checkWritable()
 	var tmp Unstakes
 	ra = new(big.Int)
 	for _, u := range a.unstakes {
 		if u.ExpireHeight == height {
-			ra.Set(u.Amount)
+			ra.Set(u.Value())
 		} else {
 			tmp = append(tmp, u)
 		}
@@ -387,26 +395,25 @@ func (a *Account) RemoveUnstaking(height int64) (ra *big.Int, err error) {
 }
 
 func (a *Account) SlashStake(amount *big.Int) error {
+	a.checkWritable()
 	stake := new(big.Int).Set(a.Stake())
 	stake.Sub(stake, amount)
 	return a.SetStake(stake)
 }
 
 func (a *Account) SlashBond(address module.Address, ratio int) *big.Int {
-	bl := a.bonds.Clone()
-
-	amount := bl.Slash(address, ratio)
-	a.bonds = bl
-	a.bonding = new(big.Int).Sub(a.bonding, amount)
+	a.checkWritable()
+	newBonds, amount := a.bonds.Slash(address, ratio)
+	a.bonds = newBonds
+	a.totalBond = new(big.Int).Sub(a.totalBond, amount)
 	return amount
 }
 
 func (a *Account) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
-	ul := a.unbonds.Clone()
-
-	amount, expire := ul.Slash(address, ratio)
-	a.unbonds = ul
-	a.unbonding = new(big.Int).Sub(a.unbonding, amount)
+	a.checkWritable()
+	newUnbonds, amount, expire := a.unbonds.Slash(address, ratio)
+	a.unbonds = newUnbonds
+	a.totalUnbond = new(big.Int).Sub(a.totalUnbond, amount)
 	return amount, expire
 }
 
@@ -421,8 +428,8 @@ func (a *Account) GetSnapshot() *Account {
 
 func (a *Account) String() string {
 	return fmt.Sprintf(
-		"stake=%s unstake=%s delegating=%s bonding=%s unbonding=%s",
-		a.stake, a.unstakes.GetUnstakeAmount(), a.delegating, a.bonding, a.unbonding,
+		"stake=%s unstake=%s totalDelegation=%s totalBond=%s totalUnbond=%s",
+		a.stake, a.unstakes.GetUnstakeAmount(), a.totalDelegation, a.totalBond, a.totalUnbond,
 	)
 }
 
@@ -430,11 +437,11 @@ func (a *Account) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Account{stake=%d unstakes=%+v delegating=%d delegations=%+v bonding=%d unbonding=%d bonds=%+v unbonds=%+v}",
-				a.stake, a.unstakes, a.delegating, a.delegations, a.bonding, a.unbonding, a.bonds, a.unbonds)
+			fmt.Fprintf(f, "Account{stake=%d unstakes=%+v totalDelegation=%d delegations=%+v totalBond=%d totalUnbond=%d bonds=%+v unbonds=%+v}",
+				a.stake, a.unstakes, a.totalDelegation, a.delegations, a.totalBond, a.totalUnbond, a.bonds, a.unbonds)
 		} else {
 			fmt.Fprintf(f, "Account{%d %v %d %v %d %d %v %v}",
-				a.stake, a.unstakes, a.delegating, a.delegations, a.bonding, a.unbonding, a.bonds, a.unbonds)
+				a.stake, a.unstakes, a.totalDelegation, a.delegations, a.totalBond, a.totalUnbond, a.bonds, a.unbonds)
 		}
 	case 's':
 		fmt.Fprint(f, a.String())
@@ -448,9 +455,9 @@ func newAccountWithTag(_ icobject.Tag) *Account {
 
 func newAccount() *Account {
 	return &Account{
-		stake:      new(big.Int),
-		delegating: new(big.Int),
-		bonding:    new(big.Int),
-		unbonding:  new(big.Int),
+		stake:           new(big.Int),
+		totalDelegation: new(big.Int),
+		totalBond:       new(big.Int),
+		totalUnbond:     new(big.Int),
 	}
 }

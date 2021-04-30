@@ -276,7 +276,8 @@ func TestBonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			slashAmount := bl1.Slash(in.target, in.ratio)
+			newBl, slashAmount := bl1.Slash(in.target, in.ratio)
+			bl1 = newBl
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())
 			assert.Equal(t, out.length, len(bl1))

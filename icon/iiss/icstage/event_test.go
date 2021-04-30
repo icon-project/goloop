@@ -173,15 +173,15 @@ func TestVoteList_Update(t *testing.T) {
 		{
 			"Delete first and update second",
 			VoteList{&vote1Neg, &vote2},
-			VoteList{&Vote{addr2, big.NewInt(4)}, &vote3},
+			VoteList{&vote3, &Vote{addr2, big.NewInt(4)}},
 		},
 		{
 			"Add new vote",
 			VoteList{&vote1, &vote2, &vote4},
 			VoteList{
+				&vote3,
 				&Vote{addr1, big.NewInt(2)},
 				&Vote{addr2, big.NewInt(4)},
-				&vote3,
 				&vote4,
 			},
 		},
@@ -190,7 +190,7 @@ func TestVoteList_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vl := voteList.Clone()
 			vl.Update(tt.input)
-			assert.True(t, vl.Equal(tt.want))
+			assert.True(t, vl.Equal(tt.want), "%v\n%v", tt.want, vl)
 		})
 	}
 }

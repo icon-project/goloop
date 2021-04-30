@@ -59,6 +59,7 @@ const (
 
 const (
 	JSONByHash db.BucketID = "J"
+	BlockV1ByID db.BucketID = "B"
 )
 
 // executeTransactions executes transactions from lc and confirm results.
@@ -121,9 +122,9 @@ func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=HashByHeight)")
 	}
-	blkByID, err := database.GetBucket(db.BlockV1ByHash)
+	blkByID, err := database.GetBucket(BlockV1ByID)
 	if err != nil {
-		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByHash)")
+		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByID)")
 	}
 	chainBucket, err := database.GetBucket(db.ChainProperty)
 	if err != nil {
@@ -235,6 +236,9 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := service.FinalizeTransition(tr, module.FinalizeResult, true); err != nil {
+			return nil, err
+		}
 		return &Transition{tr, blk}, nil
 	} else {
 		tsc := service.NewTimestampChecker()
@@ -333,7 +337,6 @@ func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) 
 		blk.Transactions(),
 		common.NewBlockInfo(height, blk.Timestamp()),
 		csi,
-		e.plt,
 		true,
 	)
 	return &Transition{tr, blk}, nil

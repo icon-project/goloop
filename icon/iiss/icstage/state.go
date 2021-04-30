@@ -22,17 +22,16 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
 const (
-	globalKey = "global"
-	eventsKey = "events"
+	globalKey     = "global"
+	eventsKey     = "events"
+	validatorsKey = "validators"
 )
 
 var (
@@ -43,6 +42,7 @@ var (
 	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
 	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
 	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
+	ValidatorsKey   = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
 )
 
 type State struct {
@@ -129,43 +129,39 @@ func (s *State) ResetEventSize() error {
 	return s.setEventSize(0)
 }
 
+func (s *State) getValidatorIndex(addr module.Address) (int, error) {
+	vm := containerdb.NewDictDB(s.store, 1, ValidatorKey)
+	if value := vm.Get(addr); value == nil {
+		vs := containerdb.NewVarDB(s.store, ValidatorsKey)
+		idx := vs.Int64()
+		if err := vm.Set(addr, idx); err != nil {
+			return 0, err
+		}
+		if err := vs.Set(idx+1); err != nil {
+			return 0, err
+		}
+		return int(idx), nil
+	} else {
+		return int(value.Int64()), nil
+	}
+}
+
 func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
-	if err := s.loadValidators(s.GetSnapshot()); err != nil {
+	pIdx, err := s.getValidatorIndex(proposer)
+	if err != nil {
 		return err
 	}
-	pKey := string(proposer.Bytes())
-	pIdx, ok := s.validatorToIdx[pKey]
-	if !ok {
-		pIdx = len(s.validatorToIdx)
-		s.validatorToIdx[pKey] = pIdx
-		if err := s.addValidator(pIdx, proposer); err != nil {
-			return err
-		}
-	}
-	key := BlockProduceKey.Append(offset).Build()
 	voteMask := big.NewInt(0)
 	for _, v := range voters {
-		vKey := string(v.Bytes())
-		idx, ok := s.validatorToIdx[vKey]
-		if !ok {
-			idx = len(s.validatorToIdx)
-			s.validatorToIdx[vKey] = idx
-			if err := s.addValidator(idx, v); err != nil {
-				return err
-			}
+		idx, err := s.getValidatorIndex(v)
+		if err != nil {
+			return err
 		}
 		voteMask.SetBit(voteMask, idx, 1)
 	}
 	bp := NewBlockProduce(pIdx, len(voters), voteMask)
-	_, err := s.store.Set(key, icobject.New(TypeBlockProduce, bp))
-	return err
-}
-
-func (s *State) addValidator(idx int, validator module.Address) error {
-	key := ValidatorKey.Append(idx).Build()
-	obj := NewValidator(common.AddressToPtr(validator))
-	_, err := s.store.Set(key, icobject.New(TypeValidator, obj))
-	return err
+	bpv := containerdb.NewVarDB(s.store, BlockProduceKey.Append(offset))
+	return bpv.Set(icobject.New(TypeBlockProduce, bp))
 }
 
 func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
@@ -201,26 +197,6 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
-}
-
-func (s *State) loadValidators(ss *Snapshot) error {
-	nvs := make(map[string]int)
-	prefix := ValidatorKey.Build()
-	for iter := ss.Filter(prefix); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		idx := int(intconv.BytesToInt64(keySplit[1]))
-		v := ToValidator(o)
-		nvs[icutils.ToKey(v.Address())] = idx
-	}
-	s.validatorToIdx = nvs
-	return nil
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {

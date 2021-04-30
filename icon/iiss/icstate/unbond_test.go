@@ -147,7 +147,8 @@ func TestUnbonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			slashAmount, expire := ubl1.Slash(in.target, in.ratio)
+			newUbs, slashAmount, expire := ubl1.Slash(in.target, in.ratio)
+			ubl1 = newUbs
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())
 			assert.Equal(t, out.expire, expire)

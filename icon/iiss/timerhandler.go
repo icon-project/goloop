@@ -45,7 +45,7 @@ func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*c
 	for _, a := range al {
 		ea := s.GetAccount(a)
 		s.logger.Tracef("account : %s", ea)
-		ra, err := ea.RemoveUnstaking(h)
+		ra, err := ea.RemoveUnstake(h)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64)
 	for _, a := range al {
 		s.logger.Tracef("account : %s", a)
 		as := s.GetAccount(a)
-		if err := as.RemoveUnbonding(h); err != nil {
+		if err := as.RemoveUnbond(h); err != nil {
 			return err
 		}
 		s.logger.Tracef("after remove unbonds, unbond information of %s : %s", a, as.GetUnbondsInJSON())

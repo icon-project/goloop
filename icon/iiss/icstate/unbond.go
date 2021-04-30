@@ -32,19 +32,8 @@ type Unbond struct {
 	Expire  int64
 }
 
-func newUnbond() *Unbond {
-	return &Unbond{
-		Address: new(common.Address),
-		Value:   new(big.Int),
-	}
-}
-
 func (u *Unbond) To() *common.Address {
 	return u.Address
-}
-
-func (u *Unbond) SetTo(t *common.Address) {
-	u.Address = t
 }
 
 func (u *Unbond) SetValue(v *big.Int) {
@@ -66,8 +55,7 @@ func (u *Unbond) ExpireHeight() int64 {
 func (u *Unbond) Slash(ratio int) *big.Int {
 	slashAmount := new(big.Int).Mul(u.Value, big.NewInt(int64(ratio)))
 	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
-	newValue := new(big.Int).Sub(u.Value, slashAmount)
-	u.SetValue(newValue)
+	u.Value = new(big.Int).Sub(u.Value, slashAmount)
 	return slashAmount
 }
 
@@ -85,11 +73,11 @@ func (u *Unbond) ToJSON() map[string]interface{} {
 }
 
 func (u *Unbond) Clone() *Unbond {
-	n := newUnbond()
-	n.Address = u.Address
-	n.Value = u.Value
-	n.Expire = u.Expire
-	return n
+	return &Unbond{
+		Address: u.Address,
+		Value:   u.Value,
+		Expire:  u.Expire,
+	}
 }
 
 func (u *Unbond) Format(f fmt.State, c rune) {
@@ -168,10 +156,11 @@ func (ul Unbonds) ExpireRefCount() map[int64]int {
 }
 
 func (ul *Unbonds) Add(address module.Address, value *big.Int, expireHeight int64) {
-	unbond := newUnbond()
-	unbond.SetTo(common.AddressToPtr(address))
-	unbond.SetValue(value)
-	unbond.Expire = expireHeight
+	unbond := &Unbond{
+		Address: common.AddressToPtr(address),
+		Value:   value,
+		Expire:  expireHeight,
+	}
 	*ul = append(*ul, unbond)
 }
 
@@ -191,25 +180,26 @@ func (ul *Unbonds) DeleteByAddress(address module.Address) error {
 	return ul.Delete(idx)
 }
 
-func (ul *Unbonds) Slash(address module.Address, ratio int) (*big.Int, int64) {
-	unbonds := *ul
-	for idx, u := range *ul {
-		if u.Address.Equal(address) {
-			if ratio == 100 {
-				copy(unbonds[idx:], unbonds[idx+1:])
-				unbonds = unbonds[0 : len(unbonds)-1]
-				if len(unbonds) > 0 {
-					*ul = unbonds
-				} else {
-					*ul = nil
-				}
-				return u.Value, u.Expire
-			} else {
-				return u.Slash(ratio), -1
+func (ul *Unbonds) Slash(address module.Address, ratio int) (Unbonds, *big.Int, int64) {
+	expire := int64(-1)
+	amount := big.NewInt(0)
+	newUnbonds := make(Unbonds, 0)
+
+	for _, u := range *ul {
+		if u.To().Equal(address) {
+			unbond := u.Clone()
+			amount = unbond.Slash(ratio)
+
+			if ratio < 100 {
+				newUnbonds = append(newUnbonds, unbond)
+			} else if ratio == 100 {
+				expire = unbond.ExpireHeight()
 			}
+		} else {
+			newUnbonds = append(newUnbonds, u)
 		}
 	}
-	return new(big.Int), -1
+	return newUnbonds, amount, expire
 }
 
 func (ul Unbonds) ToJSON(_ module.JSONVersion) []interface{} {

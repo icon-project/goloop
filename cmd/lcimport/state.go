@@ -324,12 +324,13 @@ var extensionStateShortcuts = map[string]shortcut{
 }
 
 var extensionStageShortcuts = map[string]shortcut{
-	"iscore":    {[]string{"rlp", "0x10"}, []string{"obj"}}, // <address>
-	"event":     {[]string{"rlp", "0x20"}, []string{"obj"}}, // <offset>/<index>
-	"block":     {[]string{"rlp", "0x30"}, []string{"obj"}}, // <offset>
-	"validator": {[]string{"rlp", "0x40"}, []string{"obj"}}, // <index>
-	"events":    {[]string{"ph", "0x70", "events"}, []string{"int"}},
-	"global":    {[]string{"ph", "0x70", "global"}, []string{"obj"}},
+	"iscore":     {[]string{"rlp", "0x10"}, []string{"obj"}}, // <address>
+	"event":      {[]string{"rlp", "0x20"}, []string{"obj"}}, // <offset>/<index>
+	"block":      {[]string{"rlp", "0x30"}, []string{"obj"}}, // <offset>
+	"validator":  {[]string{"rlp", "0x40"}, []string{"int"}}, // <address>
+	"events":     {[]string{"ph", "0x70", "events"}, []string{"int"}},
+	"validators": {[]string{"ph", "0x70", "validators"}, []string{"int"}},
+	"global":     {[]string{"ph", "0x70", "global"}, []string{"obj"}},
 }
 
 var extensionRewardShortcuts = map[string]shortcut{

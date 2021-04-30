@@ -89,15 +89,6 @@ func (dg *Delegation) Amount() *big.Int {
 	return dg.Value.Value()
 }
 
-func (dg *Delegation) SetTo(address *common.Address) {
-	dg.Address = address
-}
-
-func (dg *Delegation) SetAmount(amount *big.Int) {
-	n := new(common.HexInt)
-	dg.Value = n.SetValue(amount)
-}
-
 func (dg *Delegation) String() string {
 	return fmt.Sprintf("{address=%s value=%s}", dg.Address, dg.Value)
 }
@@ -169,6 +160,18 @@ func (ds Delegations) ToJSON(_ module.JSONVersion) []interface{} {
 		jso[idx] = d.ToJSON()
 	}
 	return jso
+}
+
+func (ds *Delegations) ToMap() map[string]*Delegation {
+	if !ds.Has() {
+		return nil
+	}
+	m := make(map[string]*Delegation, len(*ds))
+
+	for _, d := range *ds {
+		m[icutils.ToKey(d.To())] = d
+	}
+	return m
 }
 
 func (ds *Delegations) getVotings() []Voting {

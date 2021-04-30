@@ -30,7 +30,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
@@ -44,7 +43,7 @@ func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 
 func TestCalculator_processClaim(t *testing.T) {
 	database := db.NewMapDB()
-	s := icstage.NewState(database)
+	front := icstage.NewState(database)
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
@@ -70,7 +69,7 @@ func TestCalculator_processClaim(t *testing.T) {
 			v1,
 		},
 		{
-			"Add Claim 200 to new address",
+			"Add Claim 200",
 			args{
 				addr2,
 				big.NewInt(v2),
@@ -79,22 +78,25 @@ func TestCalculator_processClaim(t *testing.T) {
 		},
 	}
 
-	c := MakeCalculator(database, s.GetSnapshot())
+	// initialize data
+	c := MakeCalculator(database, nil)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			args := tt.args
-			iScore := icreward.NewIScore(args.value)
-			err := c.temp.SetIScore(args.addr, iScore)
-			assert.NoError(t, err)
+		args := tt.args
+		// temp IScore : args.value * 2
+		iScore := icreward.NewIScore(new(big.Int).Mul(args.value, big.NewInt(2)))
+		err := c.temp.SetIScore(args.addr, iScore)
+		assert.NoError(t, err)
 
-			err = s.AddIScoreClaim(args.addr, args.value)
-			assert.NoError(t, err)
-		})
+		// add Claim : args.value
+		err = front.AddIScoreClaim(args.addr, args.value)
+		assert.NoError(t, err)
 	}
+	c.back = front.GetSnapshot()
 
 	err := c.processClaim()
 	assert.NoError(t, err)
 
+	// check result
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
@@ -191,7 +193,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				for i, v := range vs {
-					assert.Equal(t, tt.wants[i], v.iScore.Int64(), "index %d", i)
+					assert.Equal(t, tt.wants[i], v.IScore().Int64(), "index %d", i)
 				}
 			}
 		})
@@ -294,8 +296,8 @@ func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequire
 	voted.SetBonded(big.NewInt(bonded))
 	voted.SetBondedDelegation(big.NewInt(0))
 	data := newVotedData(voted)
-	data.iScore = big.NewInt(iScore)
-	data.voted.UpdateBondedDelegation(bondRequirement)
+	data.SetIScore(big.NewInt(iScore))
+	data.UpdateBondedDelegation(bondRequirement)
 	return data
 }
 
@@ -348,7 +350,7 @@ func TestDelegatedData_compare(t *testing.T) {
 	for _, tt := range tests {
 		args := tt.args
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, args.d1.compare(args.d2))
+			assert.Equal(t, tt.want, args.d1.Compare(args.d2))
 		})
 	}
 }
@@ -361,15 +363,15 @@ func TestVotedInfo_setEnable(t *testing.T) {
 		status = status % icstage.ESMax
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(status.IsEnabled(), i, i, 1, 0)
-		vInfo.addVotedData(addr, data)
+		vInfo.AddVotedData(addr, data)
 		if status.IsEnabled() {
 			totalVoted.Add(totalVoted, data.GetVotedAmount())
 		}
 	}
-	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
+	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 
 	status = icstage.ESEnable
-	for key, vData := range vInfo.preps {
+	for key, vData := range vInfo.PReps() {
 		status = status % icstage.ESMax
 		addr, err := common.NewAddress([]byte(key))
 		assert.NoError(t, err)
@@ -381,20 +383,19 @@ func TestVotedInfo_setEnable(t *testing.T) {
 				totalVoted.Sub(totalVoted, vData.GetVotedAmount())
 			}
 		}
-		vInfo.setEnable(addr, status)
-		assert.Equal(t, status, vData.flag)
+		vInfo.SetEnable(addr, status)
+		assert.Equal(t, status, vData.Status())
 		assert.Equal(t, status.IsEnabled(), vData.Enable())
-		assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted), "%s: %v\t%v", addr.String(), totalVoted, vInfo.totalVoted)
+		assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 	}
 
 	addr := common.MustNewAddressFromString("hx123412341234")
-	vInfo.setEnable(addr, icstage.ESDisablePermanent)
-	prep, ok := vInfo.preps[string(addr.Bytes())]
-	assert.True(t, ok)
+	vInfo.SetEnable(addr, icstage.ESDisablePermanent)
+	prep := vInfo.GetPRepByAddress(addr)
 	assert.Equal(t, false, prep.Enable())
-	assert.True(t, prep.voted.IsEmpty())
-	assert.Equal(t, 0, prep.iScore.Sign())
-	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
+	assert.True(t, prep.IsEmpty())
+	assert.Equal(t, 0, prep.IScore().Sign())
+	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 }
 
 func TestVotedInfo_updateDelegated(t *testing.T) {
@@ -405,28 +406,28 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 		enable = !enable
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(enable, i, i, 1, 0)
-		vInfo.addVotedData(addr, data)
+		vInfo.AddVotedData(addr, data)
 
 		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
 	}
 	newAddr := common.MustNewAddressFromString("hx321321")
 	votes = append(votes, icstage.NewVote(newAddr, big.NewInt(100)))
 
-	totalVoted := new(big.Int).Set(vInfo.totalVoted)
-	vInfo.updateDelegated(votes)
+	totalVoted := new(big.Int).Set(vInfo.TotalVoted())
+	vInfo.UpdateDelegated(votes)
 	for _, v := range votes {
 		expect := v.Amount().Int64() * 2
 		if v.To().Equal(newAddr) {
 			expect = v.Amount().Int64()
 		}
-		vData := vInfo.preps[icutils.ToKey(v.To())]
+		vData := vInfo.GetPRepByAddress(v.To())
 		assert.Equal(t, expect, vData.GetDelegated().Int64())
 
 		if vData.Enable() {
 			totalVoted.Add(totalVoted, v.Amount())
 		}
 	}
-	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
+	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 }
 
 func TestVotedInfo_updateBonded(t *testing.T) {
@@ -437,48 +438,48 @@ func TestVotedInfo_updateBonded(t *testing.T) {
 		enable = !enable
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(enable, i, i, 1, 0)
-		vInfo.addVotedData(addr, data)
+		vInfo.AddVotedData(addr, data)
 
 		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
 	}
 	newAddr := common.MustNewAddressFromString("hx321321")
 	votes = append(votes, icstage.NewVote(newAddr, big.NewInt(100)))
 
-	totalVoted := new(big.Int).Set(vInfo.totalVoted)
-	vInfo.updateBonded(votes)
+	totalVoted := new(big.Int).Set(vInfo.TotalVoted())
+	vInfo.UpdateBonded(votes)
 	for _, v := range votes {
 		expect := v.Amount().Int64() * 2
 		if v.To().Equal(newAddr) {
 			expect = v.Amount().Int64()
 		}
-		vData := vInfo.preps[icutils.ToKey(v.To())]
+		vData := vInfo.GetPRepByAddress(v.To())
 		assert.Equal(t, expect, vData.GetBonded().Int64())
 
 		if vData.Enable() {
 			totalVoted.Add(totalVoted, v.Amount())
 		}
 	}
-	assert.Equal(t, 0, totalVoted.Cmp(vInfo.totalVoted))
+	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 }
 
 func TestVotedInfo_SortAndUpdateTotalBondedDelegation(t *testing.T) {
 	d := newVotedInfo(100)
 	total := int64(0)
 	more := int64(10)
-	maxIndex := int64(d.maxRankForReward) + more
+	maxIndex := int64(d.MaxRankForReward()) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(true, i, 0, 0, i)
-		d.addVotedData(addr, data)
+		d.AddVotedData(addr, data)
 		if i > more {
 			total += i
 		}
 	}
-	d.sort()
-	d.updateTotalBondedDelegation()
-	assert.Equal(t, total, d.totalBondedDelegation.Int64())
+	d.Sort()
+	d.UpdateTotalBondedDelegation()
+	assert.Equal(t, total, d.TotalBondedDelegation().Int64())
 
-	for i, rank := range d.rank {
+	for i, rank := range d.Rank() {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
 		assert.Equal(t, string(addr.Bytes()), rank)
 	}
@@ -488,36 +489,36 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	total := int64(0)
 	more := int64(10)
-	maxIndex := int64(vInfo.maxRankForReward) + more
+	maxIndex := int64(vInfo.MaxRankForReward()) + more
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(true, i, 0, 0, 0)
-		vInfo.addVotedData(addr, data)
+		vInfo.AddVotedData(addr, data)
 		if i > more {
 			total += i
 		}
 	}
-	vInfo.sort()
-	vInfo.updateTotalBondedDelegation()
-	assert.Equal(t, total, vInfo.totalBondedDelegation.Int64())
+	vInfo.Sort()
+	vInfo.UpdateTotalBondedDelegation()
+	assert.Equal(t, total, vInfo.TotalBondedDelegation().Int64())
 
 	variable := big.NewInt(YearBlock)
 	divider := big.NewInt(1)
 	period := 10000
 	bigIntPeriod := big.NewInt(int64(period))
 
-	vInfo.calculateReward(variable, divider, period)
+	vInfo.CalculateReward(variable, divider, period)
 
-	for i, addr := range vInfo.rank {
+	for i, addrKey := range vInfo.Rank() {
 		expect := big.NewInt(maxIndex - int64(i))
-		if i >= vInfo.maxRankForReward {
+		if i >= vInfo.MaxRankForReward() {
 			expect.SetInt64(0)
 		} else {
 			expect.Mul(expect, variable)
 			expect.Mul(expect, bigIntPeriod)
-			expect.Div(expect, vInfo.totalBondedDelegation)
+			expect.Div(expect, vInfo.TotalBondedDelegation())
 		}
-		assert.Equal(t, expect.Int64(), vInfo.preps[addr].iScore.Int64())
+		assert.Equal(t, expect.Int64(), vInfo.PReps()[addrKey].IScore().Int64())
 	}
 }
 

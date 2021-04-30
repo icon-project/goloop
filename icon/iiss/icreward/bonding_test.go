@@ -85,7 +85,7 @@ func TestBonding_ApplyVotes(t *testing.T) {
 		err  bool
 		want icstate.Bonds
 	}{
-		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Bonds{b2Double, b3, bNew}},
+		{"Success", icstage.VoteList{v1Delete, v2, vNew}, false, icstate.Bonds{b3, b2Double, bNew}},
 		{"New with negative value", icstage.VoteList{vNewNegative}, true, icstate.Bonds{}},
 		{"Update result value is negative", icstage.VoteList{v1TooBig}, true, icstate.Bonds{}},
 	}
@@ -98,7 +98,7 @@ func TestBonding_ApplyVotes(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.True(t, tt.want.Equal(test.Bonds), "%v\n%v")
+				assert.True(t, tt.want.Equal(test.Bonds), "%v\n%v", tt.want, test.Bonds)
 			}
 		})
 	}

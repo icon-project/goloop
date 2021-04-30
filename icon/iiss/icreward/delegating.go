@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 type Delegating struct {
@@ -68,39 +69,41 @@ func (d *Delegating) IsEmpty() bool {
 }
 
 func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
-	var index int
-	ds := d.Delegations.Clone()
-	add := make([]*icstate.Delegation, 0)
-	for _, vote := range deltas {
-		index = -1
-		for i, delegation := range ds {
-			if delegation.To().Equal(vote.To()) {
-				index = i
-				delegation.SetAmount(new(big.Int).Add(delegation.Amount(), vote.Amount()))
-				switch delegation.Value.Sign() {
-				case -1:
-					return errors.Errorf("Negative delegation value %s", delegation.Amount())
-				case 0:
-					if err := ds.Delete(i); err != nil {
-						return err
-					}
-				}
-				break
-			}
-		}
-		if index == -1 { // add new delegation
-			if vote.Amount().Sign() < 0 {
-				return errors.Errorf("Negative delegation value %v", vote)
-			}
-			if vote.Amount().Sign() == 0 {
-				continue
-			}
-			nd := icstate.NewDelegation(common.AddressToPtr(vote.To()), vote.Amount())
-			add = append(add, nd)
+	var nDelegations icstate.Delegations
+
+	// add Delegation not in old Delegations
+	deltaMap := deltas.ToMap()
+	for _, dg := range d.Delegations {
+		_, ok := deltaMap[icutils.ToKey(dg.To())]
+		if !ok {
+			nDelegations = append(nDelegations, dg)
 		}
 	}
-	ds = append(ds, add...)
-	d.Delegations = ds
+
+	// apply deltas
+	delegationMap := d.Delegations.ToMap()
+	for _, vote := range deltas {
+		dg, ok := delegationMap[icutils.ToKey(vote.To())]
+		if ok {
+			value := new(big.Int).Add(dg.Amount(), vote.Amount())
+			switch value.Sign() {
+			case -1:
+				return errors.Errorf("Negative delegation value %s", value)
+			case 0:
+				continue
+			case 1:
+				dg = icstate.NewDelegation(common.AddressToPtr(dg.To()), value)
+			}
+		} else {
+			if vote.Amount().Sign() == -1 {
+				return errors.Errorf("Negative delegation value %s", vote.Amount())
+			}
+			dg = icstate.NewDelegation(common.AddressToPtr(vote.To()), vote.Amount())
+		}
+		nDelegations = append(nDelegations, dg)
+	}
+
+	d.Delegations = nDelegations
 	return nil
 }
 

@@ -31,7 +31,7 @@ func TestUnstake(t *testing.T) {
 	amount := big.NewInt(12)
 	eh := int64(100)
 
-	u1 := newUnstake(amount, eh)
+	u1 := &Unstake{amount, eh}
 	u2 := u1.Clone()
 
 	assert.True(t, u1.Equal(u2))

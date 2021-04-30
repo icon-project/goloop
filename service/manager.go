@@ -151,7 +151,6 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 			transaction.NewTransactionListFromSlice(m.db, normalTxs),
 			bi,
 			csi,
-			m.plt,
 			true,
 		),
 		nil
@@ -162,17 +161,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	var stateHash []byte
-	var ess state.ExtensionSnapshot
-	if len(result) > 0 {
-		if tr, err := newTransitionResultFromBytes(result); err != nil {
-			return nil, errors.IllegalArgumentError.Wrap(err, "InvalidResultBytes")
-		} else {
-			stateHash = tr.StateHash
-			ess = m.plt.NewExtensionSnapshot(m.db, tr.ExtensionData)
-		}
-	}
-	return newInitTransition(m.db, stateHash, valList, ess, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -189,7 +178,7 @@ func (m *manager) CreateTransition(
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txs, bi, csi, m.plt, false), nil
+	return newTransition(pt, nil, txs, bi, csi, false), nil
 }
 
 func (m *manager) SendPatch(data module.Patch) error {
@@ -271,8 +260,7 @@ func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHas
 		m.log.Panicf("Illegal transition for CreateSyncTransition type=%T", t)
 		return nil
 	}
-	ntr := newTransition(
-		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, m.plt, true)
+	ntr := newTransition(tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, true)
 	r, _ := newTransitionResultFromBytes(result)
 	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
 		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)

@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-package service
+package icdb
 
-import (
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
+import "github.com/icon-project/goloop/common/db"
+
+const (
+	// IDToHash maps id of a v1 block to hash of the block
+	IDToHash db.BucketID = "I"
 )
-
-func NewWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
-	return newWorldSnapshot(database, plt, result, vl)
-}

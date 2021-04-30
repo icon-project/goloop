@@ -58,7 +58,7 @@ type BlockConverter struct {
 
 	jsBucket    db.Bucket
 	blkIndex    db.Bucket
-	blkByID     db.Bucket
+	blkByHash   db.Bucket
 	chainBucket db.Bucket
 }
 
@@ -88,9 +88,9 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=HashByHeight)")
 	}
-	blkByID, err := database.GetBucket(db.BlockV1ByHash)
+	blkByHash, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
-		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByHash)")
+		return nil, errors.Wrap(err, "FailureInBucket(bucket=BlockV1ByID)")
 	}
 	chainBucket, err := database.GetBucket(db.ChainProperty)
 	if err != nil {
@@ -104,7 +104,7 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 		plt:         plt,
 		jsBucket:    jsBucket,
 		blkIndex:    blkIndex,
-		blkByID:     blkByID,
+		blkByHash:   blkByHash,
 		chainBucket: chainBucket,
 	}
 	ex.trace = logger.WithFields(log.Fields{
