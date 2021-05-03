@@ -20,8 +20,10 @@ import (
 	"encoding/json"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 )
 
 type RepJSON struct {
@@ -62,4 +64,16 @@ func (l *RepsList) ToJSON(version module.JSONVersion) (interface{}, error) {
 		return nil, nil
 	}
 	return l.json, nil
+}
+
+func (l *RepsList) GetValidatorList(dbase db.Database) (module.ValidatorList, error) {
+	vs := make([]module.Validator, len(l.json))
+	for i, r := range l.json {
+		v, err := state.ValidatorFromAddress(&r.Address)
+		if err != nil {
+			return nil, err
+		}
+		vs[i] = v
+	}
+	return state.ValidatorSnapshotFromSlice(dbase, vs)
 }
