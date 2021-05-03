@@ -105,6 +105,30 @@ func (b *BlockV03) ReceiptsHash() []byte {
 	return b.json.ReceiptsHash.Bytes()
 }
 
+func (b *BlockV03) Signature() common.Signature {
+	return b.json.Signature
+}
+
+func (b *BlockV03) StateHash() []byte {
+	return b.json.StateHash.Bytes()
+}
+
+func (b *BlockV03) RepsHash() []byte {
+	return b.json.RepsHash.Bytes()
+}
+
+func (b *BlockV03) NextLeader() common.Address {
+	return b.json.NextLeader
+}
+
+func (b *BlockV03) PrevVotes() *BlockVoteList {
+	return b.json.PrevVotes
+}
+
+func (b *BlockV03) LeaderVotes() *LeaderVoteList {
+	return b.json.LeaderVotes
+}
+
 func (b *BlockV03) ToJSON(rcpVersion module.JSONVersion) (interface{}, error) {
 	return b.json, nil
 }
