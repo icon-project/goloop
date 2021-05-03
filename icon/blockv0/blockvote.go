@@ -206,11 +206,12 @@ func (s *BlockVoteList) Quorum() []byte {
 	return nil
 }
 
-func (s *BlockVoteList) CheckVoters(reps *RepsList) error {
+func (s *BlockVoteList) CheckVoters(reps *RepsList, voted []bool) error {
 	if s == nil || len(s.votes) == 0 {
 		return nil
 	}
 	count := reps.Size()
+	q := s.Quorum()
 	for i := 0; i < count; i++ {
 		vote := s.votes[i]
 		if vote != nil {
@@ -220,6 +221,11 @@ func (s *BlockVoteList) CheckVoters(reps *RepsList) error {
 					reps.Get(i).String(),
 					vote.json.Rep.String(),
 				)
+			}
+			if voted != nil {
+				if bytes.Equal(vote.json.BlockHash, q) {
+					voted[i] = true
+				}
 			}
 		}
 	}
