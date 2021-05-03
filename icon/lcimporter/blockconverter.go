@@ -19,7 +19,6 @@ package lcimporter
 import (
 	"bytes"
 	"fmt"
-	"path"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -27,21 +26,12 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
-	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/eeproxy"
-	"github.com/icon-project/goloop/service/sync"
 	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
-)
-
-const (
-	ContractPath = "contract"
-	EESocketPath = "ee.sock"
 )
 
 const (
@@ -52,8 +42,6 @@ type BlockConverter struct {
 	baseDir  string
 	cs       Store
 	database db.Database
-	cm       contract.ContractManager
-	em       eeproxy.Manager
 	chain    module.Chain
 	log      log.Logger
 	plt      service.Platform
@@ -65,8 +53,7 @@ type BlockConverter struct {
 	blkByHash   db.Bucket
 	chainBucket db.Bucket
 
-	syncMan service.SyncManager
-
+	svc    Service
 	stopCh chan<- struct{}
 	resCh  <-chan interface{}
 }
@@ -88,7 +75,21 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
-func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data string) (*BlockConverter, error) {
+func NewBlockConverter(c module.Chain, plt service.Platform, cs Store, data string) (*BlockConverter, error) {
+	svc, err := NewService(c, plt, data)
+	if err != nil {
+		return nil, err
+	}
+	return NewBlockConverterWithService(c, plt, cs, data, svc)
+}
+
+func NewBlockConverterWithService(
+	chain module.Chain,
+	plt service.Platform,
+	cs Store,
+	data string,
+	svc Service,
+) (*BlockConverter, error) {
 	database := chain.Database()
 	logger := chain.Logger()
 	blkIndex, err := database.GetBucket(db.BlockHeaderHashByHeight)
@@ -103,13 +104,6 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=ChainProperty)")
 	}
-	var syncMan service.SyncManager
-	if chain.NetworkManager() != nil {
-		syncMan = sync.NewSyncManager(database, chain.NetworkManager(), plt, logger)
-		if syncMan != nil {
-			return nil, errors.Errorf("Fail to create sync manager")
-		}
-	}
 	ex := &BlockConverter{
 		baseDir:     data,
 		cs:          cs,
@@ -119,7 +113,7 @@ func NewBlockConverter(chain module.Chain, plt service.Platform, cs Store, data 
 		blkIndex:    blkIndex,
 		blkByHash:   blkByHash,
 		chainBucket: chainBucket,
-		syncMan:     syncMan,
+		svc:         svc,
 	}
 	ex.trace = logger.WithFields(log.Fields{
 		log.FieldKeyModule: "TRACE",
@@ -138,6 +132,9 @@ func (e *BlockConverter) Start(from, to int64) (<-chan interface{}, error) {
 // *BlockTransaction or error.
 func (e *BlockConverter) Rebase(from, to int64, firstNForcedResults []*BlockTransaction) (<-chan interface{}, error) {
 	return e.execute(from, to, firstNForcedResults)
+}
+
+func (e *BlockConverter) Term() {
 }
 
 func BlockIndexKey(height int64) []byte {
@@ -181,11 +178,6 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	if height < 0 {
 		return nil, errors.Errorf("InvalidHeight(height=%d)", height)
 	}
-	if e.em == nil || e.cm == nil {
-		if err := e.setupEE(); err != nil {
-			return nil, err
-		}
-	}
 	logger := trace.NewLogger(e.log, e)
 	if height > 0 {
 		blk, err := e.GetBlockByHeight(height)
@@ -193,35 +185,13 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "NoLastState(height=%d)", height)
 		}
-		tsc := service.NewTimestampChecker()
-		tr, err := service.NewInitTransition(
-			e.database,
-			blk.Result(),
-			nil,
-			e.cm,
-			e.em,
-			e.chain,
-			logger,
-			e.plt,
-			tsc,
-		)
+		tr, err := e.svc.NewInitTransition(blk.Result(), nil, logger)
 		if err != nil {
 			return nil, err
 		}
 		return &Transition{tr, blkV0, nil, blk.Hash()}, nil
 	} else {
-		tsc := service.NewTimestampChecker()
-		tr, err := service.NewInitTransition(
-			e.database,
-			nil,
-			nil,
-			e.cm,
-			e.em,
-			e.chain,
-			logger,
-			e.plt,
-			tsc,
-		)
+		tr, err := e.svc.NewInitTransition(nil, nil, logger)
 		if err != nil {
 			return nil, err
 		} else {
@@ -263,7 +233,7 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 		}
 		csi = common.NewConsensusInfo(blkv0.Proposer(), voters, voted)
 	}
-	tr := service.NewTransition(
+	tr := e.svc.NewTransition(
 		last.Transition,
 		nil,
 		transaction.NewTransactionListFromSlice(e.database, blkv0.NormalTransactions()),
@@ -346,29 +316,6 @@ func TimestampToString(ts int64) string {
 	return tm.Format("2006-01-02 15:04:05")
 }
 
-func (e *BlockConverter) setupEE() error {
-	e.database = cache.AttachManager(e.database, path.Join(e.baseDir, "cache"), 5, 0)
-	cm, err := e.plt.NewContractManager(e.database, path.Join(e.baseDir, ContractPath), e.log)
-	if err != nil {
-		return errors.Wrap(err, "NewContractManagerFailure")
-	}
-	ee, err := eeproxy.AllocEngines(e.log, "python")
-	if err != nil {
-		return errors.Wrap(err, "FailureInAllocEngines")
-	}
-	em, err := eeproxy.NewManager("unix", path.Join(e.baseDir, EESocketPath), e.log, ee...)
-	if err != nil {
-		return errors.Wrap(err, "FailureInAllocProxyManager")
-	}
-
-	go em.Loop()
-	em.SetInstances(1, 1, 1)
-
-	e.cm = cm
-	e.em = em
-	return nil
-}
-
 var diskSpin = []string{"⠁", "⠁", "⠉", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠤", "⠄", "⠄", "⠤", "⠠", "⠠", "⠤", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋", "⠉", "⠈", "⠈"}
 var netSpin = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
@@ -443,7 +390,7 @@ func (e *BlockConverter) doExecute(
 	forcedEnd := from + int64(len(firstNForcedResults))
 	for height := from; to < 0 || height <= to; height = height + 1 {
 		select {
-		case <- stopCh:
+		case <-stopCh:
 			return nil
 		default:
 		}
@@ -470,7 +417,7 @@ func (e *BlockConverter) doExecute(
 		}
 		if height < forcedEnd {
 			fr := firstNForcedResults[height-from]
-			tr.Transition = service.NewSyncTransition(tr, e.syncMan, fr.Result, fr.ValidatorHash)
+			tr.Transition = e.svc.NewSyncTransition(tr, fr.Result, fr.ValidatorHash)
 		}
 		if _, err = tr.Execute(callback); err != nil {
 			return errors.Wrapf(err, "FailureInExecute(height=%d)", height)
@@ -498,7 +445,7 @@ func (e *BlockConverter) doExecute(
 			return err
 		}
 		// TODO pile block merkle tree
-		if err = service.FinalizeTransition(tr.Transition,
+		if err = e.svc.FinalizeTransition(tr.Transition,
 			module.FinalizeNormalTransaction|module.FinalizeResult,
 			false,
 		); err != nil {
