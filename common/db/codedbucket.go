@@ -83,7 +83,11 @@ func (b *CodedBucket) Set(key interface{}, value interface{}) error {
 	if err != nil {
 		return err
 	}
-	return b.dbBucket.Set(keyBS, valueBS)
+	err = b.dbBucket.Set(keyBS, valueBS)
+	if err != nil {
+		err = errors.Wrap(err, "Fail to set KV DB")
+	}
+	return err
 }
 
 func (b *CodedBucket) Put(value interface{}) error {
@@ -92,5 +96,9 @@ func (b *CodedBucket) Put(value interface{}) error {
 		return err
 	}
 	keyBS := crypto.SHA3Sum256(valueBS)
-	return b.dbBucket.Set(keyBS, valueBS)
+	err = b.dbBucket.Set(keyBS, valueBS)
+	if err != nil {
+		err = errors.Wrap(err, "Fail to set KV DB")
+	}
+	return err
 }

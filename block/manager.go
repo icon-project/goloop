@@ -775,37 +775,13 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 		return nil, errors.CriticalUnknownError.Wrap(err, "FailOnBlockIndex")
 	}
 
-	lb, err := m.bucketFor(db.TransactionLocatorByHash)
-	if err != nil {
+	if err = WriteTransactionLocators(
+		m.db(),
+		blk.Height(),
+		blk.PatchTransactions(),
+		blk.NormalTransactions(),
+	); err != nil {
 		return nil, err
-	}
-	for it := blk.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      blk.Height(),
-			TransactionGroup: module.TransactionGroupPatch,
-			IndexInGroup:     i,
-		}
-		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
-		}
-	}
-	for it := blk.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      blk.Height(),
-			TransactionGroup: module.TransactionGroupNormal,
-			IndexInGroup:     i,
-		}
-		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
-		}
 	}
 	return blk, nil
 }
@@ -1034,37 +1010,13 @@ func (m *manager) finalize(bn *bnode) error {
 		return err
 	}
 
-	lb, err := m.bucketFor(db.TransactionLocatorByHash)
-	if err != nil {
+	if err = WriteTransactionLocators(
+		m.db(),
+		block.Height(),
+		block.PatchTransactions(),
+		block.NormalTransactions(),
+	); err != nil {
 		return err
-	}
-	for it := block.PatchTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return err
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      block.Height(),
-			TransactionGroup: module.TransactionGroupPatch,
-			IndexInGroup:     i,
-		}
-		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return err
-		}
-	}
-	for it := block.NormalTransactions().Iterator(); it.Has(); m.log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return err
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      block.Height(),
-			TransactionGroup: module.TransactionGroupNormal,
-			IndexInGroup:     i,
-		}
-		if err = lb.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return err
-		}
 	}
 	chainProp, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
@@ -1084,6 +1036,47 @@ func (m *manager) finalize(bn *bnode) error {
 			continue
 		}
 		i++
+	}
+	return nil
+}
+
+func WriteTransactionLocators(
+	dbase db.Database,
+	height int64,
+	ptl module.TransactionList,
+	ntl module.TransactionList,
+) error {
+	bk, err := db.NewCodedBucket(dbase, db.TransactionLocatorByHash, nil)
+	if err != nil {
+		return err
+	}
+	for it := ptl.Iterator(); it.Has(); log.Must(it.Next()) {
+		tr, i, err := it.Get()
+		if err != nil {
+			return err
+		}
+		trLoc := transactionLocator{
+			BlockHeight:      height,
+			TransactionGroup: module.TransactionGroupPatch,
+			IndexInGroup:     i,
+		}
+		if err = bk.Set(db.Raw(tr.ID()), trLoc); err != nil {
+			return err
+		}
+	}
+	for it := ntl.Iterator(); it.Has(); log.Must(it.Next()) {
+		tr, i, err := it.Get()
+		if err != nil {
+			return err
+		}
+		trLoc := transactionLocator{
+			BlockHeight:      height,
+			TransactionGroup: module.TransactionGroupNormal,
+			IndexInGroup:     i,
+		}
+		if err = bk.Set(db.Raw(tr.ID()), trLoc); err != nil {
+			return err
+		}
 	}
 	return nil
 }

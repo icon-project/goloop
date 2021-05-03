@@ -53,10 +53,17 @@ func (sig *Signature) UnmarshalJSON(s []byte) error {
 }
 
 func (sig *Signature) MarshalBinary() ([]byte, error) {
+	if sig.Signature == nil {
+		return []byte{}, nil
+	}
 	return sig.Signature.SerializeRSV()
 }
 
 func (sig *Signature) UnmarshalBinary(s []byte) error {
+	if len(s) == 0 {
+		sig.Signature = nil
+		return nil
+	}
 	sig0, err := crypto.ParseSignature(s)
 	if err == nil {
 		sig.Signature = sig0
