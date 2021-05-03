@@ -23,15 +23,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/icon-project/goloop/common"
 )
 
 const (
 	ValidationPenaltyCondition = 30
 )
+
 func TestPenalty_checkValidationPenalty(t *testing.T) {
-	addr1 := common.MustNewAddressFromString("hx1")
 
 	type args struct {
 		vPenaltyMask uint32
@@ -100,7 +98,7 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
-			ps := icstate.NewPRepStatus(addr1)
+			ps := icstate.NewPRepStatus()
 			ps.SetVPenaltyMask(in.vPenaltyMask)
 			ps.SetLastState(in.lastState)
 			ps.SetLastHeight(in.lastBH)

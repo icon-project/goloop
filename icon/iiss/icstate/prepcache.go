@@ -44,7 +44,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBa
 			// return nil
 		}
 	} else {
-		base = ToPRepBase(o.Object(), owner)
+		base = ToPRepBase(o.Object())
 		if base != nil {
 			c.bases[key] = base
 		}
@@ -67,7 +67,7 @@ func (c *PRepBaseCache) Reset() {
 		if value == nil {
 			delete(c.bases, key)
 		} else {
-			base.Set(ToPRepBase(value.Object(), addr))
+			base.Set(ToPRepBase(value.Object()))
 		}
 	}
 }
@@ -114,13 +114,13 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			status = NewPRepStatus(owner)
+			status = NewPRepStatus()
 			c.statuses[key] = status
 		} else {
 			// return nil
 		}
 	} else {
-		status = ToPRepStatus(o.Object(), owner)
+		status = ToPRepStatus(o.Object())
 		if status != nil {
 			c.statuses[key] = status
 		}
@@ -143,24 +143,24 @@ func (c *PRepStatusCache) Reset() {
 		if value == nil {
 			delete(c.statuses, key)
 		} else {
-			status.Set(ToPRepStatus(value.Object(), addr))
+			status.Set(ToPRepStatus(value.Object()))
 		}
 	}
 }
 
 func (c *PRepStatusCache) Flush() {
 	for k, status := range c.statuses {
+		key, err := common.BytesToAddress([]byte(k))
+		if err != nil {
+			panic(errors.Errorf("PRepStatusCache is broken: %s", k))
+		}
+
 		if status.IsEmpty() {
-			key, err := common.BytesToAddress([]byte(k))
-			if err != nil {
-				panic(errors.Errorf("PRepStatusCache is broken: %s", k))
-			}
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 			delete(c.statuses, k)
 		} else {
-			key := status.owner
 			o := icobject.New(TypePRepStatus, status.Clone())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)

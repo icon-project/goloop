@@ -24,11 +24,11 @@ func newAddress(value byte) module.Address {
 }
 
 func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSnapshot {
-	status := NewPRepStatus(owner)
+	status := NewPRepStatus()
 	status.SetDelegated(big.NewInt(delegated))
 	status.SetBonded(big.NewInt(bond))
 
-	return NewPRepSnapshotFromPRepStatus(status, 5)
+	return NewPRepSnapshotFromPRepStatus(owner, status, 5)
 }
 
 func newPRepSnapshots(seed int, size int) PRepSnapshots {

@@ -140,7 +140,7 @@ func (p *PRepBase) Clone() *PRepBase {
 		details:     p.details,
 		p2pEndpoint: p.p2pEndpoint,
 		node:        p.node,
-		irep:        new(big.Int).Set(p.irep),
+		irep:        p.irep,
 		irepHeight:  p.irepHeight,
 		bonderList:  p.bonderList.Clone(),
 	}

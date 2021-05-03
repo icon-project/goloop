@@ -28,12 +28,10 @@ import (
 )
 
 func TestPRepStatus_Bytes(t *testing.T) {
-	owner := common.NewAccountAddress(make([]byte, common.AddressIDBytes, common.AddressIDBytes))
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepStatus(owner)
+	ss1 := NewPRepStatus()
 	g := Candidate
 	ss1.grade = g
-	ss1.SetOwner(owner)
 
 	o1 := icobject.New(TypePRepStatus, ss1)
 	serialized := o1.Bytes()
@@ -46,11 +44,10 @@ func TestPRepStatus_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := ToPRepStatus(o2, owner)
+	ss2 := ToPRepStatus(o2)
 	assert.Equal(t, true, ss1.Equal(ss2))
+	assert.Equal(t, true, ss2.Equal(ss1))
 	assert.Equal(t, false, ss2.readonly)
-	assert.Equal(t, true, ss1.owner.Equal(owner))
-	assert.Equal(t, true, ss2.owner.Equal(owner))
 }
 
 // test for GetBondedDelegation
