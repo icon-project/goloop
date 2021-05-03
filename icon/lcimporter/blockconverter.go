@@ -42,18 +42,14 @@ type BlockConverter struct {
 	baseDir  string
 	cs       Store
 	database db.Database
-	chain    module.Chain
 	log      log.Logger
-	plt      service.Platform
 	trace    log.Logger
-
-	sHeight int64
 
 	blkIndex    db.Bucket
 	blkByHash   db.Bucket
 	chainBucket db.Bucket
+	svc         Service
 
-	svc    Service
 	stopCh chan<- struct{}
 	resCh  <-chan interface{}
 }
@@ -108,8 +104,6 @@ func NewBlockConverterWithService(
 		baseDir:     data,
 		cs:          cs,
 		log:         logger,
-		chain:       chain,
-		plt:         plt,
 		blkIndex:    blkIndex,
 		blkByHash:   blkByHash,
 		chainBucket: chainBucket,
