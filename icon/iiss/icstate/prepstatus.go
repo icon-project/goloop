@@ -535,11 +535,13 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 			fmt.Fprintf(
 				f,
 				"PRepStatus{status=%s grade=%s lastState=%s lastHeight=%d "+
-					"vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d}",
+					"delegated=%s bonded=%s vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d}",
 				ps.status,
 				ps.grade,
 				ps.lastState,
 				ps.lastHeight,
+				ps.delegated,
+				ps.bonded,
 				ps.vFail,
 				ps.vTotal,
 				ps.GetVPenaltyCount(),
@@ -547,11 +549,13 @@ func (ps *PRepStatus) Format(f fmt.State, c rune) {
 			)
 		} else {
 			fmt.Fprintf(
-				f, "PRepStatus{%s %s %s %d %d %d %d %d}",
+				f, "PRepStatus{%s %s %s %d %s %s %d %d %d %d}",
 				ps.status,
 				ps.grade,
 				ps.lastState,
 				ps.lastHeight,
+				ps.delegated,
+				ps.bonded,
 				ps.vFail,
 				ps.vTotal,
 				ps.GetVPenaltyCount(),

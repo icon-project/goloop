@@ -600,7 +600,7 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 		}
 		if value.Sign() != 0 {
 			ps := pm.state.GetPRepStatus(owner, true)
-			ps.Delegated().Add(ps.Delegated(), value)
+			ps.SetDelegated(new(big.Int).Add(ps.Delegated(), value))
 			if !ps.IsActive() {
 				delegatedToInactiveNode.Add(delegatedToInactiveNode, value)
 			}
@@ -646,7 +646,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 			}
 
 			if ps.IsActive() {
-				ps.Bonded().Add(ps.Bonded(), value)
+				ps.SetBonded(new(big.Int).Add(ps.Bonded(), value))
 			} else {
 				// this code is not reachable, because there is no case of bonding to not-registered PRep
 				bondedToInactiveNode.Add(bondedToInactiveNode, value)
