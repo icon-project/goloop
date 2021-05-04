@@ -18,9 +18,9 @@ package lcimporter
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -32,25 +32,56 @@ import (
 
 const (
 	KeyNextBlockHeight = "block.lastFinalizedHeight"
+	TransactionsPerBlock = 3_000
 )
 
-type GetBlockTxCallback func([]*BlockTransaction, error)
+const (
+	terminationMark = -1
+)
+
+type OnBlockTransactions func([]*BlockTransaction, error)
 type Canceler func()
 
+type IBlockConverter interface {
+	Rebase(from, to int64, txs []*BlockTransaction) (<-chan interface{}, error)
+	// Term()
+}
+
+type consumeID *int
+
 type Executor struct {
-	cdb db.Database
-	rdb db.Database
+	idb db.Database // database for import chain
+	rdb db.Database // database for real chain
 	log log.Logger
 
 	chainBucket db.Bucket
 
-	lock    sync.Mutex
-	txs     list.List
-	offset  int64
-	next    int64
-	getters map[int64][]*txGetter
+	lock   sync.Mutex
+	txs    list.List // cached transactions (start <= tx.Height < next)
+	start  int64     // first transaction height
+	next   int64     // next height for a next transaction
+	waiter *txWaiter
 
-	bc *BlockConverter
+	consumer consumeID
+	bc       IBlockConverter
+}
+
+func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
+	if e.start > from || e.next <= from {
+		return nil, errors.InvalidStateError.New("NoTransactionReady")
+	}
+	txe := e.txs.Front()
+	for txe.Value.(*BlockTransaction).Height < from {
+		txe = txe.Next()
+	}
+
+	var txs []*BlockTransaction
+	for cnt := 0 ; txe != nil && cnt < TransactionsPerBlock ; txe = txe.Next() {
+		tx := txe.Value.(*BlockTransaction)
+		txs = append(txs, tx)
+		cnt += int(tx.TXCount)
+	}
+	return txs, nil
 }
 
 // ProposeTransactions propose transactions for blocks to be consensus
@@ -59,130 +90,181 @@ func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	var txs []*BlockTransaction
-	cnt := 0
-	for itr := e.txs.Front(); itr != nil && cnt < 300 ; itr = itr.Next() {
-		tx := itr.Value.(*BlockTransaction)
-		txs = append(txs, tx)
-		cnt += 1
+	if e.start == terminationMark {
+		return nil, errors.InvalidStateError.New("AlreadyTerminated")
 	}
-	return txs, nil
-}
 
-type txGetter struct {
-	ex   *Executor
-	from int64
-	to   int64
-	cb   GetBlockTxCallback
-}
-
-func (g *txGetter) cancel() {
-	g.ex.removeGetter(g.to)
-}
-
-func (g *txGetter) OnAdded() {
-	if txs, err := g.ex.getTransactions(g.from, g.to); err != nil {
-		g.cb(nil, err)
-	} else {
-		g.cb(txs, nil)
-	}
-}
-
-// GetTransactions get already processed transactions in the range.
-func (e *Executor) GetTransactions(from, to int64, callback GetBlockTxCallback) (Canceler, error) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	if to < from {
-		return nil, errors.IllegalArgumentError.Errorf(
-			"InvalidRequest(from=%d,to=%d)",
-			from,
-			to,
-		)
-	}
-	if from != e.offset {
-		return nil, errors.InvalidStateError.Errorf(
-			"GetFinalizedTransactions(from=%d,offset=%d)",
-			from,
-			e.offset,
-		)
-	}
-	if to < e.next {
-		if txs, err := e.getTransactionsInLock(from, to); err != nil {
+	next := e.getNextBlockHeight()
+	if txs, err := e.candidateInLock(next); err != nil {
+		if err := e.rebaseInLock(next, 0, nil); err != nil {
 			return nil, err
-		} else {
-			go callback(txs, nil)
-			canceler := func() {
-				return
-			}
-			return canceler, nil
+		}
+		e.cancelWaiterInLock()
+	} else {
+		if len(txs) > 0 {
+			return txs, nil
+		}
+	}
+	return nil, errors.InvalidStateError.New("NoTransactionReady")
+}
+
+type txWaiter struct {
+	ex       *Executor
+	cb       OnBlockTransactions
+	next, to int64
+	txs      []*BlockTransaction
+}
+
+func (w *txWaiter) addAndCheck(tx *BlockTransaction) bool {
+	if tx.Height == w.next && w.next <= w.to {
+		w.txs = append(w.txs, tx)
+		w.next += 1
+		if tx.Height == w.to {
+			go w.cb(w.txs, nil)
+			return true
+		}
+	}
+	return false
+}
+
+func (w *txWaiter) notifyCanceled(err error) {
+	go w.cb(nil, err)
+}
+
+func (w *txWaiter) cancel() {
+	 if w.ex.removeWaiter(w) {
+		 w.notifyCanceled(errors.InterruptedError.New("Canceled"))
+	 }
+}
+
+func (w *txWaiter) String() string {
+	return fmt.Sprintf("GetTransaction(from=%d,to=%d)", w.next, w.to)
+}
+
+func (e *Executor) dummyCanceler() {
+	e.log.Debugln("RESULT already sent")
+}
+
+// GetTransactions get transactions in the range.
+func (e *Executor) GetTransactions(from, to int64, callback OnBlockTransactions) (Canceler, error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if e.start == terminationMark {
+		return nil, errors.InvalidStateError.New("AlreadyTerminated")
+	}
+	if to < from {
+		return nil, errors.IllegalArgumentError.Errorf("InvalidRequest(from=%d,to=%d)", from, to)
+	}
+	w := &txWaiter{
+		ex:   e,
+		cb:   callback,
+		next: from,
+		to:   to,
+	}
+	if from < e.start {
+		if err := e.rebaseInLock(from, 0, nil); err != nil {
+			return nil, err
 		}
 	} else {
-	}
-
-	return nil, nil
-}
-
-func (e *Executor) getTransactions(from, to int64) ([]*BlockTransaction, error) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	return e.getTransactionsInLock(from, to)
-}
-
-func (e *Executor) getTransactionsInLock(from, to int64) ([]*BlockTransaction, error) {
-	if from != e.offset {
-		return nil, errors.InvalidStateError.Errorf(
-			"GetFinalizedTransactions(from=%d,offset=%d)",
-			from,
-			e.offset,
-		)
-	}
-	cnt := int(to-from+1)
-	txs := make([]*BlockTransaction, 0, cnt)
-	for itr := e.txs.Front(); itr != nil ; itr = itr.Next() {
-		tx := itr.Value.(*BlockTransaction)
-		if tx.Height <= to {
-			txs = append(txs, tx)
-		} else {
-			break
+		if from < e.next {
+			for itr := e.txs.Front() ; itr != nil ; itr = itr.Next() {
+				if r := w.addAndCheck(itr.Value.(*BlockTransaction)); r {
+					return e.dummyCanceler, nil
+				}
+			}
 		}
 	}
-	if len(txs) != cnt {
-		return nil, errors.InvalidStateError.New("WeiredTransactions")
-	}
-	return txs, nil
+	e.resetWaiterInLock(w)
+	return w.cancel, nil
 }
 
-func (e *Executor) removeGetter(h int64) {
+func (e *Executor) removeWaiter(w *txWaiter) bool {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	delete(e.getters, h)
+	if e.waiter == w {
+		e.waiter = nil
+		return true
+	}
+	return false
 }
 
-// FinalizeTransactions finalize transactions by specific range.
+func (e *Executor) resetWaiterInLock(nw *txWaiter) {
+	if w := e.waiter ; w != nil {
+		w.notifyCanceled(errors.ErrInterrupted)
+	}
+	e.waiter = nw
+}
+
+// FinalizeTransactions finalize transactions to the height
 func (e *Executor) FinalizeTransactions(to int64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	if to < e.offset || to >= e.next {
-		return errors.InvalidStateError.Errorf("FailToFinalize(height=%d,offset=%d,next=%d)",
-			to, e.offset, e.next)
+	if e.start == terminationMark {
+		return errors.InvalidStateError.New("AlreadyTerminated")
 	}
-	itr := e.txs.Front()
-	for itr.Value.(*BlockTransaction).Height <= to {
-		next := itr.Next()
-		e.txs.Remove(itr)
-		itr = next
+
+	if to < e.start {
+		// already it's finalized, so nothing to do
+		return nil
 	}
-	e.offset = to+1
+	if to >= e.next {
+		return errors.InvalidStateError.Errorf("NotReachedYet(to=%d,next=%d)", to, e.next)
+	}
+	for height, txe := e.start, e.txs.Front(); txe!= nil && height <= to ; height = height+1 {
+		txe, _ = txe.Next(), e.txs.Remove(txe)
+	}
+	e.start = to+1
+	return e.setNextBlockHeight(e.start)
+}
+
+func (e *Executor) cancelWaiterInLock() {
+	if w := e.waiter ; w != nil {
+		e.waiter = nil
+		w.notifyCanceled(errors.ErrInterrupted)
+	}
+}
+
+func (e *Executor) rebaseInLock(from, to int64, txs []*BlockTransaction) error {
+	chn, err := e.bc.Rebase(from, to, txs);
+	if err != nil {
+		e.log.Errorf("Failure in BlockConverter.Rebase err=%+v", err)
+		return err
+	}
+	e.txs.Init()
+	e.start = from
+	e.next = from
+	e.consumer = new(int)
+	go e.consumeBlocks(e.consumer, chn)
 	return nil
 }
 
 // SyncTransactions sync transactions
-func (e *Executor) SyncTransactions([]*BlockTransaction) error {
-	return errors.ErrUnsupported
+func (e *Executor) SyncTransactions(txs []*BlockTransaction) error {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if len(txs) == 0 {
+		return errors.IllegalArgumentError.New("EmptyTransactions")
+	}
+	if e.start == terminationMark {
+		return errors.InvalidStateError.New("AlreadyTerminated")
+	}
+
+	next := e.getNextBlockHeight()
+	from := txs[0].Height
+	if from != next {
+		return errors.IllegalArgumentError.Errorf("InvalidSync(height=%d,offset=%d)", from, next)
+	}
+
+	e.log.Debugf("SyncTransactions(from=%d,cnt=%d)", from, len(txs))
+	if err := e.rebaseInLock(from, 0, txs); err != nil {
+		return err
+	}
+	e.resetWaiterInLock(nil)
+	return nil
 }
 
 func (e *Executor) setNextBlockHeight(h int64) error {
@@ -192,46 +274,59 @@ func (e *Executor) setNextBlockHeight(h int64) error {
 func (e *Executor) getNextBlockHeight() int64 {
 	if bs, err := e.chainBucket.Get([]byte(KeyNextBlockHeight)); err == nil {
 		var height int64
-		codec.BC.MustUnmarshalFromBytes(bs, &height)
+		if len(bs) > 0 {
+			codec.BC.MustUnmarshalFromBytes(bs, &height)
+		} else {
+			height = 0
+		}
 		return height
 	} else {
 		return 0
 	}
 }
 
-func (e *Executor) addTransaction(tx *BlockTransaction) bool {
-	locker := common.LockForAutoCall(&e.lock)
-	defer locker.Unlock()
+// addTransaction add transaction from block converter
+// it's called by consumeBlocks.
+func (e *Executor) addTransaction(id consumeID, tx *BlockTransaction) bool {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 
-	if e.next == tx.Height {
+	if e.consumer == id && e.next == tx.Height {
+		e.log.Tracef("addTransaction height=%d", tx.Height)
 		e.txs.PushBack(tx)
-		e.next += 1
-		if getters, ok := e.getters[tx.Height]; ok {
-			delete(e.getters, tx.Height)
-			locker.CallAfterUnlock(func() {
-				for _, getter := range getters {
-					getter.OnAdded()
-				}
-			})
+		e.next = tx.Height+1
+		if w := e.waiter ; w != nil {
+			if ok := w.addAndCheck(tx); ok {
+				e.waiter = nil
+			}
 		}
 		return true
 	}
 	return false
 }
 
-func (e *Executor) consumeBlocks(chn <-chan interface{}) {
+// consumeBlocks consume all data from the channel
+// until it's closed. So, if it will not send anything
+// through the channel, it should be closed.
+func (e *Executor) consumeBlocks(id consumeID, chn <-chan interface{}) {
+	var err error
+	e.log.Debugf("consumeBlocks START chn=%+v", chn)
+	defer e.log.Debugf("consumeBlocks STOP chn=%+v err=%v", chn, err)
 	for true {
-		tx, ok := <- chn
+		tx, ok := <-chn
 		if !ok {
 			return
 		}
+		if err != nil {
+			continue
+		}
 		switch obj := tx.(type) {
 		case *BlockTransaction:
-			if ok := e.addTransaction(obj); !ok {
-				return
+			if ok := e.addTransaction(id, obj); !ok {
+				err = errors.ErrInvalidState
 			}
-		default:
-			return
+		case error:
+			err = obj
 		}
 	}
 }
@@ -241,24 +336,42 @@ func (e *Executor) Start() error {
 	defer e.lock.Unlock()
 
 	next := e.getNextBlockHeight()
-	if chn, err := e.bc.Start(e.next, 0); err != nil {
-		return err
-	} else {
-		e.next = next
-		e.offset = next
-		go e.consumeBlocks(chn)
-	}
+	return e.rebaseInLock(next, 0, nil)
+}
 
-	return nil
+func (e *Executor) Term() {
+	// TODO terminate BC
+	// e.bc.Term()
+
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	e.start = terminationMark
+	e.next = terminationMark
+	e.txs.Init()
+	e.resetWaiterInLock(nil)
+}
+
+func NewExecutorWithBC(rdb, idb db.Database, logger log.Logger, bc IBlockConverter) (*Executor, error) {
+	chainBucket, err := idb.GetBucket(db.ChainProperty)
+	if err != nil {
+		return nil, errors.Wrap(err, "FailureInBucket(bucket=ChainProperty)")
+	}
+	ex := &Executor{
+		rdb: rdb,
+		idb: idb,
+		log: logger,
+
+		chainBucket: chainBucket,
+
+		bc: bc,
+	}
+	ex.txs.Init()
+	return ex, nil
 }
 
 func NewExecutor(chain module.Chain, dbase db.Database, cfg *Config) (*Executor, error) {
 	logger := chain.Logger()
-	cdb := chain.Database()
-	chainBucket, err := cdb.GetBucket(db.ChainProperty)
-	if err != nil {
-		return nil, errors.Wrap(err, "FailureInBucket(bucket=ChainProperty)")
-	}
+	idb := chain.Database()
 
 	// build converter
 	rdb := cache.AttachManager(dbase, "", 0, 0)
@@ -274,17 +387,5 @@ func NewExecutor(chain module.Chain, dbase db.Database, cfg *Config) (*Executor,
 		return nil, err
 	}
 
-	ex := &Executor{
-		rdb: rdb,
-		cdb: cdb,
-		log: logger,
-
-		chainBucket: chainBucket,
-
-		getters: make(map[int64][]*txGetter),
-
-		bc: bc,
-	}
-	ex.txs.Init()
-	return ex, nil
+	return NewExecutorWithBC(rdb, idb, logger, bc)
 }

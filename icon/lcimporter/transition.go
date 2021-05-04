@@ -19,6 +19,7 @@ package lcimporter
 import (
 	"sync"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -51,6 +52,26 @@ type transitionBase struct {
 	log log.Logger
 }
 
+type transitionResult struct {
+	State   []byte
+	Receipt []byte
+}
+
+func (r *transitionResult) SetBytes(bs []byte) *transitionResult {
+	if len(bs) > 0 {
+		if _, err := codec.BC.UnmarshalFromBytes(bs, r); err == nil {
+			return r
+		}
+	}
+	r.State = nil
+	r.Receipt = nil
+	return r
+}
+
+func (r *transitionResult) Bytes() []byte {
+	return codec.BC.MustMarshalToBytes(r)
+}
+
 type transition struct {
 	*transitionBase
 
@@ -58,6 +79,7 @@ type transition struct {
 	parent *transition
 
 	lock  sync.Mutex
+	chn   chan interface{}
 	state transitionState
 	bi    module.BlockInfo
 	txs   module.TransactionList
@@ -149,11 +171,8 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 		}
 	}()
 
+	vls := t.sm.getInitialValidators()
 	if t.bi.Height() == 0 {
-		vls, err := t.sm.getValidators()
-		if err != nil {
-			return err
-		}
 		t.setResult(1, 1, vls)
 		return nil
 	}
@@ -167,59 +186,66 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 	}
 
 	if check {
-		chn := make(chan interface{}, 1)
-		blockCallback := func(txs []*BlockTransaction, err error) {
-			if err != nil {
-				chn <- err
-			} else {
-				chn <- txs
-			}
-		}
-		if _, err := t.ex.GetTransactions(txs[0].Height, txs[len(txs)-1].Height, blockCallback); err != nil {
+		if err := t.checkTransactions(txs); err != nil {
 			return err
-		}
-		var rtxs []*BlockTransaction
-		select {
-		case result := <-chn:
-			if err, ok := result.(error); ok {
-				return err
-			}
-			rtxs = result.([]*BlockTransaction)
-		}
-
-		// check length
-		if len(rtxs) != len(txs) {
-			return errors.InvalidStateError.Errorf(
-				"InvalidTxList(rtxs=%d,txs=%d)",
-				len(rtxs),
-				len(txs),
-			)
-		}
-
-		// compare each transactions
-		for idx, tx := range txs {
-			rtx := rtxs[idx]
-			if !tx.Equal(rtx) {
-				return errors.InvalidStateError.Errorf(
-					"HasDifferentResult(exp=%+v,real=%+v)",
-					tx,
-					rtx,
-				)
-			}
 		}
 	}
 
-	t.setResult(txs[len(txs)-1].Height+1, len(txs), nil)
+	t.setResult(txs[len(txs)-1].Height+1, len(txs), vls)
+	return nil
+}
+
+func (t *transition) onTransactions(txs []*BlockTransaction, err error) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	if err != nil {
+		if t.state == stepExecuting {
+			t.chn <- err
+		}
+	} else {
+		t.chn <- txs
+	}
+}
+
+func (t *transition) checkTransactions(txs []*BlockTransaction) error {
+	cancel, err := t.ex.GetTransactions(txs[0].Height, txs[len(txs)-1].Height, t.onTransactions)
+	if err != nil {
+		return err
+	}
+
+	result := <-t.chn
+	if err, ok := result.(error); ok {
+		if err == ErrCanceled {
+			cancel()
+		}
+		return err
+	}
+	rtxs := result.([]*BlockTransaction)
+
+	// check length
+	if len(rtxs) != len(txs) {
+		return errors.InvalidStateError.Errorf("DifferentLength(rtxs=%d,txs=%d)", len(rtxs), len(txs))
+	}
+
+	// compare each transactions
+	for idx, tx := range txs {
+		rtx := rtxs[idx]
+		if !tx.Equal(rtx) {
+			return errors.InvalidStateError.Errorf("DifferentTx(idx=%d,exp=%+v,real=%+v)", idx, tx, rtx)
+		}
+	}
 	return nil
 }
 
 func (t *transition) doSync(cb module.TransitionCallback) (ret error) {
-	cb.OnValidate(t, nil)
-
 	defer func() {
 		if ret != nil {
 			t.transitState(stepFailed, stepExecuting)
-			cb.OnExecute(t, ret)
+			cb.OnValidate(t, ret)
+		} else {
+			cb.OnValidate(t, nil)
+			t.transitState(stepComplete)
+			cb.OnExecute(t, nil)
 		}
 	}()
 
@@ -230,22 +256,34 @@ func (t *transition) doSync(cb module.TransitionCallback) (ret error) {
 	if len(txs) < 1 {
 		return errors.CriticalFormatError.New("NoTransactions")
 	}
+
 	if err := t.ex.SyncTransactions(txs); err != nil {
 		return err
 	}
 
-	t.setResult(txs[len(txs)-1].Height, len(txs), nil)
-	cb.OnExecute(t, nil)
+	if err := t.checkTransactions(txs); err != nil {
+		return err
+	}
+
+	t.setResult(txs[len(txs)-1].Height+1, len(txs), t.sm.getInitialValidators())
 	return nil
 }
+
+var ErrCanceled = errors.NewBase(errors.InterruptedError, "Canceled")
 
 func (t *transition) cancel() bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	if t.state == stepComplete {
+	switch t.state {
+	case stepComplete:
 		return false
+	default:
+		if t.state == stepExecuting {
+			t.chn <- ErrCanceled
+		}
+		t.state = stepCanceled
+		return true
 	}
-	t.state = stepCanceled
 	return true
 }
 
@@ -257,10 +295,12 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	case stepInitial, stepProposed:
 		check := t.state == stepInitial
 		t.state = stepExecuting
+		t.chn = make(chan interface{},2)
 		go t.doExecute(cb, check)
 		return t.cancel, nil
 	case stepNeedSync:
 		t.state = stepExecuting
+		t.chn = make(chan interface{},2)
 		go t.doSync(cb)
 		return t.cancel, nil
 	default:
@@ -279,7 +319,11 @@ func (t *transition) Result() []byte {
 	if t.state != stepComplete {
 		return nil
 	}
-	return t.worldSnapshot.Hash()
+	result := &transitionResult{
+		t.worldSnapshot.Hash(),
+		t.receipts.Hash(),
+	}
+	return result.Bytes()
 }
 
 func (t *transition) NextValidators() module.ValidatorList {
@@ -319,11 +363,34 @@ func (t *transition) finalizeTransactions() error {
 	if err := t.txs.Flush(); err != nil {
 		return err
 	}
-	return nil
+	// special case for genesis block
+	if t.bi.Height() == 0 {
+		return nil
+	}
+	// finalize transactions
+	var ltx module.Transaction
+	for itr := t.txs.Iterator(); itr.Has() ; itr.Next() {
+		if tx, _, err := itr.Get() ; err != nil {
+			return err
+		} else {
+			ltx = tx
+		}
+	}
+	if ltx == nil {
+		return nil
+	}
+	if btx, ok := transaction.Unwrap(ltx).(*BlockTransaction) ; ok {
+		return t.ex.FinalizeTransactions(btx.Height)
+	} else {
+		return errors.CriticalFormatError.New("InvalidLastTransaction")
+	}
 }
 
 func (t *transition) finalizeResult() error {
 	if err := t.worldSnapshot.(trie.Snapshot).Flush(); err != nil {
+		return err
+	}
+	if err := t.nextValidators.Flush(); err != nil {
 		return err
 	}
 	if err := t.receipts.Flush(); err != nil {
@@ -332,7 +399,8 @@ func (t *transition) finalizeResult() error {
 	return nil
 }
 
-func CreateInitialTransition(dbase db.Database, result []byte, nvl module.ValidatorList, sm *ServiceManager, ex *Executor) *transition {
+func createInitialTransition(dbase db.Database, result []byte, nvl module.ValidatorList, sm *ServiceManager, ex *Executor) *transition {
+	r := new(transitionResult).SetBytes(result)
 	return &transition{
 		transitionBase: &transitionBase{
 			sm:  sm,
@@ -343,12 +411,13 @@ func CreateInitialTransition(dbase db.Database, result []byte, nvl module.Valida
 		pid: new(transitionID),
 
 		state:          stepComplete,
-		worldSnapshot:  trie_manager.NewImmutable(dbase, result),
+		worldSnapshot:  trie_manager.NewImmutable(dbase, r.State),
+		receipts:       txresult.NewReceiptListFromHash(dbase, r.Receipt),
 		nextValidators: nvl,
 	}
 }
 
-func CreateTransition(parent *transition, bi module.BlockInfo, txs module.TransactionList, executed bool) *transition {
+func createTransition(parent *transition, bi module.BlockInfo, txs module.TransactionList, executed bool) *transition {
 	var state transitionState
 	if executed {
 		state = stepProposed
@@ -368,7 +437,7 @@ func CreateTransition(parent *transition, bi module.BlockInfo, txs module.Transa
 	return tr
 }
 
-func CreateSyncTransition(tr *transition) *transition {
+func createSyncTransition(tr *transition) *transition {
 	return &transition{
 		transitionBase: tr.transitionBase,
 

@@ -34,11 +34,11 @@ const (
 )
 
 type ServiceManager struct {
-	cfg *Config
 	ex  *Executor
 	log log.Logger
 	db  db.Database
 
+	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
 	emptyReceipts     module.ReceiptList
 	defaultReceipt    txresult.Receipt
@@ -52,20 +52,20 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 	}
 	txs := make([]module.Transaction, 0, len(bts))
 	for _, bt := range bts {
-		txs = append(txs, bt)
+		txs = append(txs, transaction.Wrap(bt))
 	}
 	txl := transaction.NewTransactionListFromSlice(sm.db, txs)
-	return CreateTransition(pt, bi, txl, true), nil
+	return createTransition(pt, bi, txl, true), nil
 }
 
 func (sm *ServiceManager) CreateInitialTransition(result []byte, nextValidators module.ValidatorList) (module.Transition, error) {
-	tr := CreateInitialTransition(sm.db, result, nextValidators, sm, sm.ex)
+	tr := createInitialTransition(sm.db, result, nextValidators, sm, sm.ex)
 	return tr, nil
 }
 
 func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
 	pt := parent.(*transition)
-	tr := CreateTransition(pt, bi, txs, false)
+	tr := createTransition(pt, bi, txs, false)
 	return tr, nil
 }
 
@@ -78,7 +78,7 @@ func (sm *ServiceManager) PatchTransition(tr module.Transition, patches module.T
 }
 
 func (sm *ServiceManager) CreateSyncTransition(tr module.Transition, result []byte, vlHash []byte) module.Transition {
-	return CreateSyncTransition(tr.(*transition))
+	return createSyncTransition(tr.(*transition))
 }
 
 func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
@@ -102,11 +102,11 @@ func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module
 }
 
 func (sm *ServiceManager) Start() {
-	// TODO need to start executor
+	sm.ex.Start()
 }
 
 func (sm *ServiceManager) Term() {
-	// TODO Stop executor
+	sm.ex.Term()
 }
 
 func (sm *ServiceManager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
@@ -220,42 +220,53 @@ func (sm *ServiceManager) ExecuteTransaction(result []byte, vh []byte, js []byte
 	return nil, errors.ErrInvalidState
 }
 
-func (sm *ServiceManager) getValidators() (module.ValidatorList, error) {
-	vls := make([]module.Validator, len(sm.cfg.Validators))
-	for i, addr := range sm.cfg.Validators {
+func newValidatorListFromSlice(dbase db.Database, addrs []*common.Address) (module.ValidatorList, error) {
+	vls := make([]module.Validator, len(addrs))
+	for i, addr := range addrs {
 		if validator, err := state.ValidatorFromAddress(addr); err != nil {
 			return nil, err
 		} else {
 			vls[i] = validator
 		}
 	}
-	if vl, err := state.ValidatorSnapshotFromSlice(sm.db, vls); err != nil {
+	if vl, err := state.ValidatorSnapshotFromSlice(dbase, vls); err != nil {
 		return nil, err
 	} else {
 		return vl, nil
 	}
 }
 
-func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config) (*ServiceManager, error) {
-	logger := chain.Logger()
-	ex, err := NewExecutor(chain, rdb, cfg)
-	if err != nil {
-		return nil, err
-	}
+func (sm *ServiceManager) getInitialValidators() module.ValidatorList {
+	return sm.initialValidators
+}
 
+func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*common.Address) (*ServiceManager, error) {
+	logger := chain.Logger()
 	dbase := chain.Database()
 	zero := new(big.Int)
 	rct := txresult.NewReceipt(dbase, module.LatestRevision, state.SystemAddress)
 	rct.SetResult(module.StatusSuccess, zero, zero, nil)
 
+	vl, err := newValidatorListFromSlice(dbase, vs)
+	if err != nil {
+		return nil, err
+	}
 	return &ServiceManager{
-		cfg: cfg,
 		ex:  ex,
 		log: logger,
 		db:  dbase,
 
+		initialValidators: vl,
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),
 		emptyReceipts:     txresult.NewReceiptListFromHash(dbase, nil),
 		defaultReceipt:    rct,
 	}, nil
+}
+
+func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config) (*ServiceManager, error) {
+	ex, err := NewExecutor(chain, rdb, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return NewServiceManagerWithExecutor(chain, ex, cfg.Validators)
 }

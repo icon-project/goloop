@@ -23,7 +23,10 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -42,6 +45,36 @@ type BlockTransaction struct {
 	TXCount       int32
 
 	hash []byte
+}
+
+func (tx *BlockTransaction) Reset(s db.Database, k []byte) error {
+	_, err := codec.BC.UnmarshalFromBytes(k, tx)
+	return err
+}
+
+func (tx *BlockTransaction) Flush() error {
+	// do nothing
+	return nil
+}
+
+func (tx *BlockTransaction) Equal(object trie.Object) bool {
+	if tx2, ok := object.(*BlockTransaction); ok {
+		return tx.Height == tx2.Height &&
+			bytes.Equal(tx.BlockID, tx2.BlockID) &&
+			bytes.Equal(tx.Result, tx2.Result) &&
+			bytes.Equal(tx.ValidatorHash, tx2.ValidatorHash) &&
+			tx.TXCount == tx2.TXCount
+	}
+	return false
+}
+
+func (tx *BlockTransaction) Resolve(builder merkle.Builder) error {
+	// do nothing
+	return nil
+}
+
+func (tx *BlockTransaction) ClearCache() {
+	// do nothing
 }
 
 func (tx *BlockTransaction) PreValidate(wc state.WorldContext, update bool) error {
@@ -84,7 +117,7 @@ func (tx *BlockTransaction) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(tx)
 }
 
-func (tx *BlockTransaction) Equal(tx2 *BlockTransaction) bool {
+func (tx *BlockTransaction) equal(tx2 *BlockTransaction) bool {
 	return tx.Height == tx2.Height &&
 		bytes.Equal(tx.BlockID, tx2.BlockID) &&
 		bytes.Equal(tx.Result, tx2.Result) &&
@@ -99,6 +132,7 @@ func (tx *BlockTransaction) RLPEncodeSelf(e codec.Encoder) error {
 		tx.BlockID,
 		tx.Result,
 		tx.ValidatorHash,
+		tx.TXCount,
 	)
 }
 
@@ -111,6 +145,8 @@ func (tx *BlockTransaction) RLPDecodeSelf(d codec.Decoder) error {
 		&tx.Height,
 		&tx.BlockID,
 		&tx.Result,
+		&tx.ValidatorHash,
+		&tx.TXCount,
 	); err != nil {
 		return err
 	}
