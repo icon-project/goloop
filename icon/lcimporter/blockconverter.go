@@ -36,6 +36,7 @@ import (
 
 const (
 	KeyLastBlockHeight = "block.lastHeight"
+	ChanBuf = 2048
 )
 
 type BlockConverter struct {
@@ -115,8 +116,6 @@ func NewBlockConverterWithService(
 	ex.database = database
 	return ex, nil
 }
-
-const ChanBuf = 2048
 
 func (e *BlockConverter) Start(from, to int64) (<-chan interface{}, error) {
 	return e.execute(from, to, nil)
@@ -238,7 +237,7 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 	return &Transition{tr, blkv0, nil, nil}, nil
 }
 
-func (e *BlockConverter) getLastHeight() int64 {
+func (e *BlockConverter) GetLastHeight() int64 {
 	bs, err := e.chainBucket.Get([]byte(KeyLastBlockHeight))
 	if err != nil || len(bs) == 0 {
 		e.log.Debugf("Fail to get last block height")
@@ -351,11 +350,40 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 	stopCh := make(chan struct{}, 1)
 	e.stopCh = stopCh
 	go func() {
+		defer close(resCh)
+		Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
+		last := e.GetLastHeight()
+		if from < 0 {
+			from = last + 1
+		}
+		if last > 0 && len(firstNForcedResults) == 0 {
+			if last < to {
+				last = to
+			}
+			for i := from; i<=last; i++ {
+				blk, err := e.GetBlockByHeight(i)
+				if err != nil {
+					resCh <- err
+					return
+				}
+				blkv0, err := e.cs.GetBlockByHeight(int(i))
+				if err != nil {
+					resCh <- err
+					return
+				}
+				resCh <- &BlockTransaction{
+					Height: blk.Height(),
+					BlockID: blk.ID(),
+					Result: blk.Result(),
+					ValidatorHash: blk.NextValidatorsHash(),
+					TXCount: int32(len(blkv0.NormalTransactions())),
+				}
+			}
+		}
 		err := e.doExecute(from, to, firstNForcedResults, resCh, stopCh)
 		if err != nil {
 			resCh <- err
 		}
-		close(resCh)
 	}()
 	return resCh, nil
 }
@@ -366,10 +394,6 @@ func (e *BlockConverter) doExecute(
 	resCh chan<- interface{},
 	stopCh <-chan struct{},
 ) error {
-	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
-	if from < 0 {
-		from = e.getLastHeight() + 1
-	}
 	getTPSer, _ := e.cs.(GetTPSer)
 	if to >= 0 && to < from {
 		return errors.IllegalArgumentError.Errorf("InvalidArgument(from=%d,to=%d)", from, to)
