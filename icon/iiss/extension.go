@@ -36,6 +36,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -419,15 +420,15 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 	using.Add(using, account.Unbond())
 	using.Add(using, account.Bond())
 	if account.Stake().Cmp(using) < 0 {
-		return errors.Errorf("Not enough voting power")
+		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 	delta, err = s.pm.ChangeDelegation(account.Delegations(), ds)
 	if err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
 	}
 
 	if err = s.addEventDelegation(cc.BlockHeight(), from, delta); err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
 	}
 
 	account.SetDelegation(ds)
@@ -482,20 +483,23 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	var err error
 	prep := s.pm.GetPRepByOwner(owner)
 	if prep == nil {
-		return errors.Errorf("PRep not found: %s", owner)
+		return scoreresult.InvalidParameterError.Errorf("PRep is not found: %s", owner)
 	}
 
 	if err = s.pm.UnregisterPRep(owner); err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
 
 	if s.IsDecentralized() && prep.Grade() == icstate.Main {
 		if err = s.replaceValidator(owner); err != nil {
-			return err
+			return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 		}
 	}
 
-	s.addEventEnable(cc.BlockHeight(), owner, icstage.ESDisablePermanent)
+	err = s.addEventEnable(cc.BlockHeight(), owner, icstage.ESDisablePermanent)
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
+	}
 
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepUnregistered(Address)")},
@@ -591,34 +595,34 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 
 		prep := s.pm.GetPRepByOwner(bond.To())
 		if prep == nil {
-			return errors.Errorf("PRep not found: %v", from)
+			return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 		}
 		if !prep.BonderList().Contains(from) {
-			return errors.Errorf("%s is not in bonder List of %s", from, bond.To())
+			return scoreresult.InvalidParameterError.Errorf("%s is not in bonder List of %s", from, bond.To())
 		}
 	}
 	if account.Stake().Cmp(new(big.Int).Add(bondAmount, account.Delegating())) == -1 {
-		return errors.Errorf("Not enough voting power")
+		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 
 	var delta map[string]*big.Int
 	delta, err = s.pm.ChangeBond(account.Bonds(), bonds)
 	if err != nil {
-		return err
+		return icmodule.IllegalArgumentError.Wrapf(err, "Failed to change bond")
 	}
 
 	account.SetBonds(bonds)
 	unbondingHeight := s.State.GetUnbondingPeriodMultiplier()*s.State.GetTermPeriod() + blockHeight
 	tl, err := account.UpdateUnbonds(delta, unbondingHeight)
 	if err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update unbonds")
 	}
 	unbondingCount := len(account.Unbonds())
 	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
-		return errors.Errorf("Too many unbonds %d", unbondingCount)
+		return icmodule.IllegalArgumentError.Errorf("Too many unbonds %d", unbondingCount)
 	}
 	if account.Stake().Cmp(account.UsingStake()) == -1 {
-		return errors.Errorf("Not enough voting power")
+		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 	for _, timerJobInfo := range tl {
 		creatIfNotExist := true
@@ -630,12 +634,12 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 			panic(errors.Errorf("There is no timer"))
 		}
 		if err = icstate.ScheduleTimerJob(unbondingTimer, timerJobInfo, from); err != nil {
-			return errors.Errorf("Error while scheduling Unbonding Timer Job")
+			return scoreresult.UnknownFailureError.Errorf("Error while scheduling Unbonding Timer Job")
 		}
 	}
 
 	if err = s.AddEventBond(blockHeight, from, delta); err != nil {
-		return err
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventBond")
 	}
 
 	s.logger.Tracef("SetBond() end")
@@ -661,7 +665,7 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 
 	pb := s.State.GetPRepBase(from, false)
 	if pb == nil {
-		return errors.Errorf("PRep not found: %v", from)
+		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
 
 	var account *icstate.Account
@@ -669,7 +673,8 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 		if !bl.Contains(old) {
 			account = s.GetAccount(old)
 			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
-				return errors.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d", len(account.Bonds()), len(account.Unbonds()))
+				return scoreresult.InvalidParameterError.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d",
+					len(account.Bonds()), len(account.Unbonds()))
 			}
 		}
 	}

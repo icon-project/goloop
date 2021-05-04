@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -227,17 +228,17 @@ func NewBonds(param []interface{}) (Bonds, error) {
 		bond := new(Bond)
 		bs, err := json.Marshal(p)
 		if err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to convert bond")
 		}
 		if err = json.Unmarshal(bs, bond); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get bond %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to convert bond")
 		}
 		if bond.Amount().Sign() == -1 {
-			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to bond")
+			return nil, scoreresult.InvalidParameterError.Errorf("Can not set negative value to bond")
 		}
 		target := icutils.ToKey(bond.To())
 		if _, ok := targets[target]; ok {
-			return nil, errors.IllegalArgumentError.Errorf("Duplicated bond Address")
+			return nil, scoreresult.InvalidParameterError.Errorf("Duplicated bond Address")
 		}
 		targets[target] = struct{}{}
 		bonds = append(bonds, bond)

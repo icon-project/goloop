@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -196,7 +197,7 @@ func (ds *Delegations) Iterator() VotingIterator {
 func NewDelegations(param []interface{}) (Delegations, error) {
 	count := len(param)
 	if count > getMaxDelegationCount() {
-		return nil, errors.Errorf("Too many delegations %d", count)
+		return nil, scoreresult.InvalidParameterError.Errorf("Too many delegations %d", count)
 	}
 	targets := make(map[string]struct{}, count)
 	delegations := make([]*Delegation, 0)
@@ -204,17 +205,17 @@ func NewDelegations(param []interface{}) (Delegations, error) {
 		dg := new(Delegation)
 		bs, err := json.Marshal(p)
 		if err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get delegation")
 		}
 		if err = json.Unmarshal(bs, dg); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get delegation %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get delegation")
 		}
 		if dg.Amount().Sign() == -1 {
-			return nil, errors.IllegalArgumentError.Errorf("Can not set negative value to delegation")
+			return nil, scoreresult.InvalidParameterError.Errorf("Can not set negative value to delegation")
 		}
 		target := icutils.ToKey(dg.To())
 		if _, ok := targets[target]; ok {
-			return nil, errors.IllegalArgumentError.Errorf("Duplicated delegation address")
+			return nil, scoreresult.InvalidParameterError.Errorf("Duplicated delegation address")
 		}
 		targets[target] = struct{}{}
 		delegations = append(delegations, dg)

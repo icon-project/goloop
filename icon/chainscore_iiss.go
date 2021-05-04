@@ -263,18 +263,10 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	}
 	ds, err := icstate.NewDelegations(param)
 	if err != nil {
-		return icmodule.IllegalArgumentError.Wrapf(
-			err,
-			"Failed to set delegation: from=%v",
-			s.from,
-		)
+		return err
 	}
 	if err = es.SetDelegation(s.cc, s.from, ds); err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to set delegation: from=%v",
-			s.from,
-		)
+		return err
 	}
 	return nil
 }
@@ -309,7 +301,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		return scoreresult.InvalidParameterError.Errorf("Required param is missed")
 	}
 	if (nodeAddress != nil && nodeAddress.IsContract()) || s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.AccessDeniedError.Errorf(
 			"Invalid address: from=%v node=%v",
 			s.from,
 			nodeAddress,
@@ -327,13 +319,13 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	as := s.cc.GetAccountState(state.SystemID)
 	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
 	if balance.Sign() < 0 {
-		return scoreresult.InvalidParameterError.Errorf("Not enough value: value=%v", s.value)
+		return scoreresult.UnknownFailureError.Errorf("Not enough balance: %s, value=%v", state.SystemAddress, s.value)
 	}
 	as.SetBalance(balance)
 
 	// Burn regPRepFee
 	if ts, err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
+		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to burn regPRepFee: from=%v fee=%v",
 			s.from,
@@ -378,16 +370,16 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		s.from,
 		icstage.ESEnable,
 	)
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err, "Failed to add EventEnable: from=%v", s.from,
+		)
+	}
 
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepRegistered(Address)")},
 		[][]byte{s.from.Bytes()},
 	)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err, "Failed to record PRepRegistered eventlog: from=%v", s.from,
-		)
-	}
 	return nil
 }
 
@@ -403,15 +395,13 @@ func (s *chainScore) Ex_unregisterPRep() error {
 		return err
 	}
 	if s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.AccessDeniedError.Errorf(
 			"Invalid address: from=%v", s.from,
 		)
 	}
 	err = es.UnregisterPRep(s.cc, s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err, "Failed to unregister PRep: from=%v", s.from,
-		)
+		return err
 	}
 	return nil
 }
@@ -519,14 +509,14 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 
 	if (node != nil && node.IsContract()) || s.from.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.AccessDeniedError.Errorf(
 			"Invalid address: from=%v node=%v", s.from, node,
 		)
 	}
 
 	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
 	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
+		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate regInfo: from=%v", s.from,
 		)
 	}
@@ -542,7 +532,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 	err = es.SetPRep(regInfo)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
+		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
 	return nil
 }
@@ -554,6 +544,9 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
+	}
+	if s.from.IsContract() {
+		return scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
 	}
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
@@ -572,7 +565,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	}
 	bonds, err := icstate.NewBonds(bondList)
 	if err != nil {
-		return s.toScoreResultError(scoreresult.InvalidParameterError, err)
+		return err
 	}
 
 	es, err := s.getExtensionState()
@@ -580,7 +573,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 		return err
 	}
 	if err = es.SetBond(s.cc, s.from, bonds); err != nil {
-		return s.toScoreResultError(scoreresult.UnknownFailureError, err)
+		return err
 	}
 	logger.Tracef("Ex_setBond() end")
 	return nil
@@ -607,7 +600,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 	}
 	bl, err := icstate.NewBonderList(bonderList)
 	if err != nil {
-		return s.toScoreResultError(scoreresult.InvalidParameterError, err)
+		return err
 	}
 
 	es, err := s.getExtensionState()
@@ -615,7 +608,7 @@ func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
 		return err
 	}
 	if err = es.SetBonderList(s.from, bl); err != nil {
-		return s.toScoreResultError(scoreresult.UnknownFailureError, err)
+		return err
 	}
 	return nil
 }
@@ -658,7 +651,7 @@ func (s *chainScore) Ex_claimIScore() error {
 
 	fClaimed, err := es.Front.GetIScoreClaim(s.from)
 	if err != nil {
-		return scoreresult.InvalidInstanceError.Wrapf(
+		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to claim IScore: from=%v",
 			s.from,

@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -351,17 +352,17 @@ func (bl BonderList) ToJSON() []interface{} {
 func NewBonderList(param []interface{}) (BonderList, error) {
 	count := len(param)
 	if count > getMaxBonderListCount() {
-		return nil, errors.Errorf("Too many bonder List %d", count)
+		return nil, scoreresult.InvalidParameterError.Errorf("Too many bonder List %d", count)
 	}
 	bl := make([]*common.Address, 0)
 	for _, p := range param {
 		b := new(common.Address)
 		bs, err := json.Marshal(p)
 		if err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get address %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
 		}
 		if err = json.Unmarshal(bs, b); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("Failed to get address %v", err)
+			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
 		}
 		bl = append(bl, b)
 	}
