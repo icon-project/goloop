@@ -128,6 +128,16 @@ func (e *BlockConverter) Rebase(from, to int64, firstNForcedResults []*BlockTran
 }
 
 func (e *BlockConverter) Term() {
+	if e.resCh != nil {
+		e.stopCh <- struct{}{}
+		// unblocks writer
+		switch e.resCh {
+		case <-e.resCh:
+		default:
+		}
+		e.resCh = nil
+		e.stopCh = nil
+	}
 }
 
 func BlockIndexKey(height int64) []byte {
@@ -337,14 +347,7 @@ func D(v interface{}) string {
 }
 
 func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTransaction) (<-chan interface{}, error) {
-	if e.resCh != nil {
-		e.stopCh <- struct{}{}
-		// unblocks writer
-		switch e.resCh {
-		case <-e.resCh:
-		default:
-		}
-	}
+	e.Term()
 	resCh := make(chan interface{}, ChanBuf)
 	e.resCh = resCh
 	stopCh := make(chan struct{}, 1)
