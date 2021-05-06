@@ -66,11 +66,13 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	}
 	if revision.Value() < icmodule.Revision13 {
 		defer func() {
-			logger.TSystemf(
-				"FRAME[%d] result patch code=IllegalArgument to=IllegalFormat",
-				cc.FrameID(),
-			)
 			if icmodule.IllegalArgumentError.Equals(err) {
+				logger.TSystemf(
+					"FRAME[%d] result patch from=%v to=%v",
+					cc.FrameID(),
+					err,
+					scoreresult.IllegalFormatError,
+				)
 				err = errors.WithCode(err, scoreresult.IllegalFormatError)
 			}
 		}()
