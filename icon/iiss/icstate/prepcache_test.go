@@ -1,127 +1,179 @@
 package icstate
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
+
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPrepBaseCache(t *testing.T) {
+func newDummyObjectStore(readonly bool) containerdb.ObjectStoreState {
+	dbase := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+	t := trie_manager.NewMutableForObject(dbase, nil, icobject.ObjectType)
+	return icobject.NewObjectStoreState(t)
+}
+
+func newDummyState(readonly bool) *State {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
+	return NewStateFromSnapshot(NewSnapshot(database, nil), readonly, nil)
+}
 
-	addr := common.MustNewAddressFromString("hx1")
+func newDummyRegInfo(i int) *RegInfo {
+	city := fmt.Sprintf("Seoul%d", i)
+	country := "KOR"
+	name := fmt.Sprintf("node%d", i)
+	email := fmt.Sprintf("%s@email.com", name)
+	website := fmt.Sprintf("https://%s.example.com/", name)
+	details := fmt.Sprintf("%sdetails/", website)
+	endpoint := fmt.Sprintf("%s.example.com:9080", name)
+	node := module.Address(nil)
+
+	return NewRegInfo(city, country, details, email, name, endpoint, website, node)
+}
+
+func TestPRepBaseCache(t *testing.T) {
+	var err error
+	var created bool
+	var base, base1, base2 *PRepBase
+	var addr1, addr2 module.Address
+
+	s := newDummyState(false)
+
+	addr1 = common.MustNewAddressFromString("hx1")
+	ri1 := newDummyRegInfo(1)
 
 	// cache added
-	base := s.prepBaseCache.Get(addr, false)
+	base, created = s.prepBaseCache.Get(addr1, false)
 	assert.Nil(t, base)
-	base = s.prepBaseCache.Get(addr, true)
+	assert.False(t, created)
+	base, created = s.prepBaseCache.Get(addr1, true)
+	assert.True(t, created)
+	assert.True(t, base.IsEmpty())
+	err = base.SetRegInfo(ri1)
+	assert.NoError(t, err)
 
-	addr = common.MustNewAddressFromString("hx2")
+	addr2 = common.MustNewAddressFromString("hx2")
+	ri2 := newDummyRegInfo(2)
 
 	// cache added
-	base = s.prepBaseCache.Get(addr, true)
-	base.SetPRep("name", "emal", "web", "country", "city", "deatil", "end", addr)
-
-	key := icutils.ToKey(addr)
-	val := s.prepBaseCache.dict.Get(key)
-
-	assert.Nil(t, val)
+	base, created = s.prepBaseCache.Get(addr2, true)
+	assert.NotNil(t, base)
+	assert.True(t, created)
+	err = base.SetRegInfo(ri2)
+	assert.NoError(t, err)
 
 	// DB write
 	s.prepBaseCache.Flush()
-	key = icutils.ToKey(addr)
-	val = s.prepBaseCache.dict.Get(key)
-	assert.NotNil(t, val)
+	base, created = s.prepBaseCache.Get(addr2, false)
+	assert.NotNil(t, base)
+	assert.False(t, created)
 
 	// Reset() reverts Clear(), should get after reset()
-	base = s.prepBaseCache.Get(addr, true)
+	base, created = s.prepBaseCache.Get(addr2, true)
+	assert.False(t, created)
 	base.Clear()
+	assert.True(t, base.IsEmpty())
+
+	base, created = s.prepBaseCache.Get(addr2, false)
+	assert.True(t, base.IsEmpty())
+	assert.False(t, created)
 
 	s.prepBaseCache.Reset()
-	base = s.prepBaseCache.Get(addr, true)
+	base, created = s.prepBaseCache.Get(addr2, true)
 	assert.False(t, base.IsEmpty())
-	assert.Equal(t, "name", base.name)
+	assert.False(t, created)
+	assert.Equal(t, "node2", base.name)
 
-	// item is removed in the map,
+	// item is removed from the map,
 	// after it flush to DB, it is removed in DB
-	base = s.prepBaseCache.Get(addr, true)
+	base, created = s.prepBaseCache.Get(addr2, true)
 	base.Clear()
 	s.prepBaseCache.Flush()
-	key = icutils.ToKey(addr)
-	val = s.prepBaseCache.dict.Get(key)
-	assert.Nil(t, val)
+	base, created = s.prepBaseCache.Get(addr2, false)
+	assert.Nil(t, base)
+	assert.False(t, created)
 
 	// Reset cannot get items from DB after clear()
 	s.prepBaseCache.Clear()
 	s.prepBaseCache.Reset()
 
-	assert.Equal(t, 0, len(s.prepBaseCache.bases))
-
 	// but it can get item, using Get() specifically
-	addr = common.MustNewAddressFromString("hx1")
-	base = s.prepBaseCache.Get(addr, true)
+	base1, created = s.prepBaseCache.Get(addr1, false)
+	assert.NotNil(t, base1)
+	assert.False(t, created)
 
-	assert.Equal(t, 1, len(s.prepBaseCache.bases))
+	base2, created = s.prepBaseCache.Get(addr2, false)
+	assert.Nil(t, base2)
+	assert.False(t, created)
 }
 
-func TestPrepStatusCache(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
+func TestPRepStatusCache(t *testing.T) {
+	var created bool
+	var status, status1 *PRepStatus
+	var addr1, addr2 module.Address
 
-	addr := common.MustNewAddressFromString("hx1")
+	s := newDummyState(true)
 
-	// cache added
-	status := s.prepStatusCache.Get(addr, false)
+	addr1 = common.MustNewAddressFromString("hx1")
+	vTotal := int64(100)
+
+	// check if item is not present
+	status1, created = s.prepStatusCache.Get(addr1, false)
 	assert.Nil(t, status)
-	status = s.prepStatusCache.Get(addr, true)
-
-	addr = common.MustNewAddressFromString("hx2")
-	status = s.prepStatusCache.Get(addr, true)
-	status.SetVTotal(100)
+	assert.False(t, created)
 
 	// cache added
-	key := icutils.ToKey(addr)
-	val := s.prepStatusCache.dict.Get(key)
+	status, created = s.prepStatusCache.Get(addr1, true)
+	assert.NotNil(t, status)
+	assert.True(t, created)
+	status.SetStatus(Active)
+	status1 = status
 
-	assert.Nil(t, val)
+	addr2 = common.MustNewAddressFromString("hx2")
+	status, created = s.prepStatusCache.Get(addr2, true)
+	assert.NotNil(t, status)
+	assert.True(t, created)
+	status.SetVTotal(vTotal)
+	assert.Equal(t, vTotal, status.VTotal())
 
-	// DB write
+	// Flush & ClearCache
 	s.prepStatusCache.Flush()
-	key = icutils.ToKey(addr)
-	val = s.prepStatusCache.dict.Get(key)
-	assert.NotNil(t, val)
+	s.prepStatusCache.Clear()
 
 	// Reset() reverts Clear(), should get after reset()
-	status = s.prepStatusCache.Get(addr, true)
+	status, created = s.prepStatusCache.Get(addr2, false)
 	status.Clear()
 	s.prepStatusCache.Reset()
-	status = s.prepStatusCache.Get(addr, true)
+
+	status, created = s.prepStatusCache.Get(addr2, false)
 	assert.False(t, status.IsEmpty())
-	assert.Equal(t, int64(100), status.vTotal)
+	assert.False(t, created)
+	assert.Equal(t, vTotal, status.VTotal())
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
-	status = s.prepStatusCache.Get(addr, true)
+	status, created = s.prepStatusCache.Get(addr2, false)
 	status.Clear()
 	s.prepStatusCache.Flush()
-	key = icutils.ToKey(addr)
-	val = s.prepStatusCache.dict.Get(key)
-	assert.Nil(t, val)
+
+	status, created = s.prepStatusCache.Get(addr2, false)
+	assert.Nil(t, status)
+	assert.False(t, created)
 
 	// Reset cannot get items from DB after clear()
 	s.prepStatusCache.Clear()
 	s.prepStatusCache.Reset()
 
-	assert.Equal(t, 0, len(s.prepStatusCache.statuses))
-
 	// but it can get item, using Get() specifically
-	addr = common.MustNewAddressFromString("hx1")
-	status = s.prepStatusCache.Get(addr, true)
-
-	assert.Equal(t, 1, len(s.prepStatusCache.statuses))
+	status, created = s.prepStatusCache.Get(addr1, false)
+	assert.NotNil(t, status)
+	assert.True(t, status.Equal(status1))
+	assert.False(t, created)
 }

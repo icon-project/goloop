@@ -7,7 +7,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -63,54 +62,154 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	if err == nil {
 		pss.owner = owner
 	}
-
 	return err
 }
 
-func NewPRepSnapshotFromPRepStatus(owner module.Address, ps *PRepStatus, bondRequirement int64) *PRepSnapshot {
+func NewPRepSnapshot(owner module.Address, bondedDelegation *big.Int) *PRepSnapshot {
 	return &PRepSnapshot{
 		owner:            owner,
-		bondedDelegation: ps.GetBondedDelegation(bondRequirement),
+		bondedDelegation: bondedDelegation,
 	}
 }
 
-type PRepSnapshots []*PRepSnapshot
+type PRepSnapshots struct {
+	pssList []*PRepSnapshot
 
-func (p PRepSnapshots) Equal(other PRepSnapshots) bool {
-	if len(p) != len(other) {
+	pssMap                map[string]int
+	totalBondedDelegation *big.Int
+}
+
+func (p *PRepSnapshots) Equal(other *PRepSnapshots) bool {
+	if p == other {
+		return true
+	}
+	if p == nil || other == nil {
+		return false
+	}
+	if p.Len() != other.Len() {
 		return false
 	}
 
-	for i := range p {
-		if !p[i].Equal(other[i]) {
+	for i, pss := range p.pssList {
+		if !pss.Equal(other.pssList[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p PRepSnapshots) Clone() PRepSnapshots {
+func (p *PRepSnapshots) Clone() *PRepSnapshots {
 	if p == nil {
 		return nil
 	}
 
-	size := len(p)
-	ret := make(PRepSnapshots, size, size)
-	for i := 0; i < size; i++ {
-		ret[i] = p[i].Clone()
+	size := p.Len()
+	pssList := make([]*PRepSnapshot, size, size)
+	pssMap := make(map[string]int)
+
+	for i, pss := range p.pssList {
+		pssList[i] = pss.Clone()
+		pssMap[icutils.ToKey(pss.Owner())] = i
 	}
-	return ret
+	return &PRepSnapshots{
+		pssList:               pssList,
+		pssMap:                pssMap,
+		totalBondedDelegation: p.totalBondedDelegation,
+	}
 }
 
-func (p PRepSnapshots) toJSON() []interface{} {
-	size := len(p)
+func (p *PRepSnapshots) toJSON() []interface{} {
+	size := p.Len()
 	jso := make([]interface{}, size, size)
 
-	for i, pss := range p {
+	for i, pss := range p.pssList {
 		jso[i] = pss.ToJSON()
 	}
 
 	return jso
+}
+
+func (p *PRepSnapshots) RLPDecodeSelf(d codec.Decoder) error {
+	if err := d.Decode(&p.pssList); err != nil {
+		return err
+	}
+
+	tbd := new(big.Int)
+	p.pssMap = make(map[string]int)
+
+	for i, pss := range p.pssList {
+		p.pssMap[icutils.ToKey(pss.Owner())] = i
+		tbd.Add(tbd, pss.BondedDelegation())
+	}
+	p.totalBondedDelegation = tbd
+	return nil
+}
+
+func (p *PRepSnapshots) RLPEncodeSelf(e codec.Encoder) error {
+	return e.Encode(p.pssList)
+}
+
+func (p *PRepSnapshots) IndexOf(value interface{}) int {
+	owner := value.(module.Address)
+	i, ok := p.pssMap[icutils.ToKey(owner)]
+	if !ok {
+		return -1
+	}
+	return i
+}
+
+func (p *PRepSnapshots) Get(i int) interface{} {
+	if i < 0 || i >= p.Len() {
+		return nil
+	}
+	return p.pssList[i]
+}
+
+func (p *PRepSnapshots) Len() int {
+	if p == nil {
+		return 0
+	}
+	return len(p.pssList)
+}
+
+func (p *PRepSnapshots) TotalBondedDelegation() *big.Int {
+	return p.totalBondedDelegation
+}
+
+func (p *PRepSnapshots) append(i int, owner module.Address, bondedDelegation *big.Int) {
+	pss := NewPRepSnapshot(owner, bondedDelegation)
+	p.pssList = append(p.pssList, pss)
+	p.pssMap[icutils.ToKey(owner)] = i
+}
+
+func NewEmptyPRepSnapshots() *PRepSnapshots {
+	return &PRepSnapshots{
+		pssMap:                make(map[string]int),
+		totalBondedDelegation: new(big.Int),
+	}
+}
+
+func NewPRepSnapshots(preps *PReps, electedPRepCount int, br int64) *PRepSnapshots {
+	size := icutils.Min(preps.Size(), electedPRepCount)
+	var pssList []*PRepSnapshot = make([]*PRepSnapshot, size, size)
+	pssMap := make(map[string]int)
+	tbd := new(big.Int)
+
+	for i := 0; i < size; i++ {
+		prep := preps.GetPRepByIndex(i)
+		owner := prep.Owner()
+		pss := NewPRepSnapshot(owner, prep.GetBondedDelegation(br))
+
+		pssList[i] = pss
+		pssMap[icutils.ToKey(owner)] = i
+		tbd.Add(tbd, pss.BondedDelegation())
+	}
+
+	return &PRepSnapshots{
+		pssList:               pssList,
+		pssMap:                pssMap,
+		totalBondedDelegation: tbd,
+	}
 }
 
 type TermFlag int
@@ -139,10 +238,9 @@ type Term struct {
 	rewardFund      *RewardFund
 	bondRequirement int
 	mainPRepCount   int
-	prepSnapshots   PRepSnapshots
+	prepSnapshots   *PRepSnapshots
 
-	flags       TermFlag
-	snapshotMap map[string]*PRepSnapshot
+	flags TermFlag
 }
 
 func (term *Term) Sequence() int {
@@ -175,7 +273,7 @@ func (term *Term) MainPRepCount() int {
 }
 
 func (term *Term) GetElectedPRepCount() int {
-	return len(term.prepSnapshots)
+	return term.prepSnapshots.Len()
 }
 
 func (term *Term) RewardFund() *RewardFund {
@@ -214,7 +312,7 @@ func (term *Term) SetRevision(revision int) {
 	term.revision = revision
 }
 
-func (term *Term) GetEndBlockHeight() int64 {
+func (term *Term) GetEndHeight() int64 {
 	if term == nil {
 		return -1
 	}
@@ -357,34 +455,23 @@ func (term *Term) equal(other *Term) bool {
 }
 
 func (term *Term) GetPRepSnapshotCount() int {
-	return len(term.prepSnapshots)
+	return term.prepSnapshots.Len()
 }
 
 func (term *Term) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
-	if index < 0 || index >= term.GetPRepSnapshotCount() {
-		return nil
-	}
-	return term.prepSnapshots[index]
+	return term.prepSnapshots.Get(index).(*PRepSnapshot)
 }
 
 func (term *Term) GetPRepSnapshotByOwner(owner module.Address) *PRepSnapshot {
-	if term.snapshotMap == nil {
+	i := term.prepSnapshots.IndexOf(owner)
+	if i < 0 {
 		return nil
 	}
-	return term.snapshotMap[icutils.ToKey(owner)]
+	return term.prepSnapshots.Get(i).(*PRepSnapshot)
 }
 
 func (term *Term) getPRepSnapshotIndex(owner module.Address) int {
-	ps := term.snapshotMap[icutils.ToKey(owner)]
-	if ps != nil {
-		size := len(term.prepSnapshots)
-		for i := 0; i < size; i++ {
-			if owner.Equal(term.prepSnapshots[i].Owner()) {
-				return i
-			}
-		}
-	}
-	return -1
+	return term.prepSnapshots.IndexOf(owner)
 }
 
 func (term *Term) IsUpdated() bool {
@@ -427,15 +514,11 @@ func (term *Term) SetIsDecentralized(value bool) {
 	term.isDecentralized = value
 }
 
-func (term *Term) GetTotalBondedDelegation() *big.Int {
-	totalBondedDelegation := new(big.Int)
+func (term *Term) TotalBondedDelegation() *big.Int {
 	if term.prepSnapshots != nil {
-		for _, ps := range term.prepSnapshots {
-			totalBondedDelegation.Add(totalBondedDelegation, ps.BondedDelegation())
-		}
+		return term.prepSnapshots.TotalBondedDelegation()
 	}
-
-	return totalBondedDelegation
+	return new(big.Int)
 }
 
 func (term *Term) ToJSON() map[string]interface{} {
@@ -443,10 +526,10 @@ func (term *Term) ToJSON() map[string]interface{} {
 
 	jso["sequence"] = term.sequence
 	jso["startBlockHeight"] = term.startHeight
-	jso["endBlockHeight"] = term.GetEndBlockHeight()
+	jso["endBlockHeight"] = term.GetEndHeight()
 	jso["totalSupply"] = term.totalSupply
 	jso["totalDelegated"] = term.totalDelegated
-	jso["totalBondedDelegation"] = term.GetTotalBondedDelegation()
+	jso["totalBondedDelegation"] = term.TotalBondedDelegation()
 	jso["irep"] = term.irep
 	jso["rrep"] = term.rrep
 	jso["period"] = term.period
@@ -461,27 +544,28 @@ func (term *Term) ToJSON() map[string]interface{} {
 	return jso
 }
 
-func NewNextTerm(term *Term, state *State, totalSupply *big.Int, totalDelegated *big.Int, revision int) *Term {
+func NewNextTerm(state *State, totalSupply *big.Int, revision int) *Term {
+	term := state.GetTerm()
 	if term == nil {
 		return nil
 	}
 
-	nextTerm := &Term{
+	return &Term{
 		sequence:        term.sequence + 1,
-		startHeight:     term.GetEndBlockHeight() + 1,
+		startHeight:     term.GetEndHeight() + 1,
 		period:          state.GetTermPeriod(),
 		irep:            state.GetIRep(),
 		rrep:            state.GetRRep(),
 		totalSupply:     totalSupply,
-		totalDelegated:  totalDelegated,
+		totalDelegated:  state.GetTotalDelegation(),
 		rewardFund:      state.GetRewardFund().Clone(),
 		bondRequirement: int(state.GetBondRequirement()),
 		revision:        revision,
+		prepSnapshots:   term.prepSnapshots.Clone(),
 		isDecentralized: term.IsDecentralized(),
 
 		flags: term.flags | FlagNextTerm,
 	}
-	return nextTerm
 }
 
 func GenesisTerm(
@@ -515,59 +599,9 @@ func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
 	return varDB.Set(o)
 }
 
-func (term *Term) RemovePRepSnapshot(owner module.Address) error {
+func (term *Term) SetPRepSnapshots(prepSnapshots *PRepSnapshots) {
 	term.checkWritable()
-	if term == nil {
-		return errors.Errorf("Term is nil")
-	}
-
-	key := icutils.ToKey(owner)
-	ps := term.snapshotMap[key]
-	if ps == nil {
-		return errors.Errorf("PRepSnapshot not found: %s", owner)
-	}
-
-	// Remove prepSnapshot from slice
-	idx := term.getPRepSnapshotIndex(owner)
-	if err := term.removePRepSnapshotByIndex(idx); err != nil {
-		return err
-	}
-
-	// Remove prepSnapshot from map
-	delete(term.snapshotMap, key)
-	return nil
-}
-
-func (term *Term) removePRepSnapshotByIndex(idx int) error {
-	prepSnapshots := term.prepSnapshots
-	size := len(prepSnapshots)
-
-	if idx < 0 || idx >= size {
-		return errors.Errorf("Index out of range")
-	}
-
-	for i := idx + 1; i < size; i++ {
-		prepSnapshots[i-1] = prepSnapshots[i]
-	}
-
-	term.prepSnapshots = prepSnapshots[:size-1]
-	return nil
-}
-
-func (term *Term) SetPRepSnapshots(prepSnapshots []*PRepSnapshot) {
-	term.checkWritable()
-	var snapshotMap map[string]*PRepSnapshot = nil
 	term.prepSnapshots = prepSnapshots
-
-	if prepSnapshots != nil {
-		snapshotMap = make(map[string]*PRepSnapshot)
-		for _, ps := range prepSnapshots {
-			key := icutils.ToKey(ps.owner)
-			snapshotMap[key] = ps
-		}
-	}
-
-	term.snapshotMap = snapshotMap
 	term.flags |= FlagValidator
 }
 
@@ -591,11 +625,11 @@ func (term *Term) String() string {
 		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d irep=%s rrep=%s revision=%d isDecentralized=%v",
 		term.sequence,
 		term.startHeight,
-		term.GetEndBlockHeight(),
+		term.GetEndHeight(),
 		term.period,
 		term.totalSupply,
 		term.totalDelegated,
-		len(term.prepSnapshots),
+		term.prepSnapshots.Len(),
 		term.irep,
 		term.rrep,
 		term.revision,
@@ -604,6 +638,7 @@ func (term *Term) String() string {
 }
 
 func (term *Term) Format(f fmt.State, c rune) {
+	size := term.prepSnapshots.Len()
 	switch c {
 	case 'v':
 		if f.Flag('+') {
@@ -613,11 +648,11 @@ func (term *Term) Format(f fmt.State, c rune) {
 					"prepSnapshot=%d irep=%s rrep=%s revision=%d isDecentralized=%v}",
 				term.sequence,
 				term.startHeight,
-				term.GetEndBlockHeight(),
+				term.GetEndHeight(),
 				term.period,
 				term.totalSupply,
 				term.totalDelegated,
-				len(term.prepSnapshots),
+				size,
 				term.irep,
 				term.rrep,
 				term.revision,
@@ -629,11 +664,11 @@ func (term *Term) Format(f fmt.State, c rune) {
 				"Term{%d %d %d %d %s %s %d %s %s %d %v}",
 				term.sequence,
 				term.startHeight,
-				term.GetEndBlockHeight(),
+				term.GetEndHeight(),
 				term.period,
 				term.totalSupply,
 				term.totalDelegated,
-				len(term.prepSnapshots),
+				size,
 				term.irep,
 				term.rrep,
 				term.revision,
@@ -662,9 +697,8 @@ func NewTerm(startHeight, termPeriod int64) *Term {
 		totalSupply:    new(big.Int),
 		totalDelegated: new(big.Int),
 		rewardFund:     NewRewardFund(),
-		prepSnapshots:  nil,
+		prepSnapshots:  NewEmptyPRepSnapshots(),
 
-		flags:       FlagNone,
-		snapshotMap: nil,
+		flags: FlagNone,
 	}
 }

@@ -2,7 +2,6 @@ package iiss
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -29,7 +28,7 @@ func createAddress(i int) module.Address {
 	return address
 }
 
-func newRegInfo(i int) *RegInfo {
+func newRegInfo(i int) *icstate.RegInfo {
 	city := fmt.Sprintf("Seoul%d", i)
 	country := "KOR"
 	name := fmt.Sprintf("node%d", i)
@@ -38,9 +37,8 @@ func newRegInfo(i int) *RegInfo {
 	details := fmt.Sprintf("%sdetails/", website)
 	endpoint := fmt.Sprintf("%s.example.com:9080", name)
 	node := module.Address(nil)
-	owner := createAddress(i)
 
-	return NewRegInfo(city, country, details, email, name, endpoint, website, node, owner)
+	return icstate.NewRegInfo(city, country, details, email, name, endpoint, website, node)
 }
 
 func newBond(address module.Address, amount int64) *icstate.Bond {
@@ -51,47 +49,33 @@ func newDelegation(address module.Address, amount int64) *icstate.Delegation {
 	return icstate.NewDelegation(common.AddressToPtr(address), big.NewInt(amount))
 }
 
-func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
+func newDummyState(readonly bool) *icstate.State {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
-	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), readonly)
-	pm := newPRepManager(s, nil)
+	return icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), readonly, nil)
+}
+
+func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
+	state := newDummyState(readonly)
 
 	for i := 0; i < size; i++ {
-		assert.NoError(t, pm.RegisterPRep(newRegInfo(i), BigIntInitialIRep))
+		owner := createAddress(i)
+		ri := newRegInfo(i)
+		assert.NoError(t, state.RegisterPRep(owner, ri, icstate.BigIntInitialIRep))
 	}
-	pm.Sort()
-	assert.NoError(t, pm.state.Flush())
-	assert.Equal(t, 0, pm.GetPRepSize(icstate.Main))
-	assert.Equal(t, 0, pm.GetPRepSize(icstate.Sub))
-	assert.Equal(t, size, pm.GetPRepSize(icstate.Candidate))
-	assert.Equal(t, size, pm.Size())
-	return pm
+
+	return newPRepManager(state, nil)
 }
 
-func compareRegInfo(prep *PRep, regInfo *RegInfo) bool {
-	return prep.City() == regInfo.city &&
-		prep.Country() == regInfo.country &&
-		prep.Details() == regInfo.details &&
-		prep.Email() == regInfo.email &&
-		prep.P2pEndpoint() == regInfo.p2pEndpoint &&
-		prep.Website() == regInfo.website &&
-		prep.Node() == regInfo.node &&
-		prep.Owner().Equal(regInfo.owner)
-}
-
-func checkOrderedByBondedDelegation(pm *PRepManager, br int64) bool {
-	prev := big.NewInt(math.MaxInt64)
-	size := pm.Size()
-	for i := 0; i < size; i++ {
-		prep := pm.GetPRepByIndex(i)
-		bd := prep.GetBondedDelegation(br)
-
-		if prev.Cmp(bd) < 0 {
-			return false
-		}
-	}
-	return true
-}
+//func compareRegInfo(prep *icstate.PRep, regInfo *icstate.RegInfo) bool {
+//	return prep.City() == regInfo.city &&
+//		prep.Country() == regInfo.country &&
+//		prep.Details() == regInfo.details &&
+//		prep.Email() == regInfo.email &&
+//		prep.P2pEndpoint() == regInfo.p2pEndpoint &&
+//		prep.Website() == regInfo.website &&
+//		prep.Node() == regInfo.node &&
+//		prep.Owner().Equal(regInfo.owner)
+//}
 
 func createBonds(start, size int) ([]*icstate.Bond, int64) {
 	var sum int64
@@ -121,184 +105,12 @@ func createDelegations(start, size int) ([]*icstate.Delegation, int64) {
 	return ret, sum
 }
 
-func createActivePRep(s *icstate.State, addr module.Address, bonded, delegated int64) {
-	s.GetPRepBase(addr, true)
-	ps := s.GetPRepStatus(addr, true)
-	ps.SetStatus(icstate.Active)
-	ps.SetBonded(big.NewInt(bonded))
-	ps.SetDelegated(big.NewInt(delegated))
-	s.AddActivePRep(addr)
-}
-
-// test for GetBondedDelegation
-func TestPRepManager_Sort(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), icstate.NewObjectImpl)
-	s := icstate.NewStateFromSnapshot(icstate.NewSnapshot(database, nil), false)
-	pm := newPRepManager(s, nil)
-
-	br := int64(5)
-	size := 10
-	for i := 0; i < size; i++ {
-		addr := createAddress(i + 1)
-		bonded := rand.Int63()
-		delegated := rand.Int63()
-		createActivePRep(s, addr, bonded, delegated)
-	}
-
-	assert.NoError(t, pm.state.SetBondRequirement(5))
-	pm.init()
-	pm.sort()
-
-	checkOrderedByBondedDelegation(pm, br)
-}
-
-func TestPRepManager_new(t *testing.T) {
-	pm := createPRepManager(t, false, 0)
-	assert.Zero(t, pm.Size())
-	assert.Equal(t, 0, pm.GetPRepSize(icstate.Main))
-	assert.Equal(t, 0, pm.GetPRepSize(icstate.Sub))
-	assert.Equal(t, 0, pm.GetPRepSize(icstate.Candidate))
-	assert.Zero(t, len(pm.orderedPReps))
-	assert.Zero(t, len(pm.prepMap))
-	assert.Zero(t, pm.TotalDelegated().Int64())
-}
-
-func TestPRepManager_Add(t *testing.T) {
-	br := int64(5) // 5%
-	size := 10
-	pm := createPRepManager(t, false, size)
-	assert.Equal(t, size, pm.Size())
-
-	totalDelegated := big.NewInt(0)
-	prev := big.NewInt(math.MaxInt64)
-	for i := 0; i < size; i++ {
-		prep := pm.GetPRepByIndex(i)
-		bondedDelegation := prep.GetBondedDelegation(br)
-
-		if prev.Cmp(bondedDelegation) < 0 {
-			t.Errorf("PRepManager.Sort() is failed")
-		}
-
-		prev.Set(bondedDelegation)
-		totalDelegated.Add(totalDelegated, prep.Delegated())
-	}
-
-	assert.NoError(t, pm.state.Flush())
-	assert.Zero(t, totalDelegated.Cmp(pm.TotalDelegated()))
-}
-
-func TestPRepManager_RegisterPRep(t *testing.T) {
-	size := 10
-	pm := createPRepManager(t, false, 0)
-
-	for i := 0; i < size; i++ {
-		regInfo := newRegInfo(i)
-		assert.NoError(t, regInfo.Validate(i))
-		owner := regInfo.owner
-
-		err := pm.RegisterPRep(regInfo, BigIntInitialIRep)
-		assert.NoError(t, err)
-		assert.Equal(t, i+1, pm.Size())
-
-		owner = createAddress(i)
-		prep := pm.GetPRepByOwner(owner)
-		assert.Equal(t, icstate.Candidate, prep.Grade())
-		assert.Equal(t, icstate.Active, prep.Status())
-		assert.Equal(t, 0, BigIntInitialIRep.Cmp(prep.IRep()))
-		assert.True(t, compareRegInfo(prep, regInfo))
-
-		pb := pm.state.GetPRepBase(owner, false)
-		assert.True(t, pb == prep.PRepBase)
-		ps := pm.state.GetPRepStatus(owner, false)
-		assert.True(t, ps == prep.PRepStatus)
-	}
-
-	assert.True(t, checkOrderedByBondedDelegation(pm, 5))
-}
-
-func TestPRepManager_RegisterPRepWithNotReadyPRep(t *testing.T) {
-	size := 5
-	start := 10
-	br := int64(5)
-	pm := createPRepManager(t, false, 0)
-
-	nd, sum := createDelegations(start, size)
-	delta, err := pm.ChangeDelegation(nil, nd)
-	assert.NoError(t, err)
-	etd := big.NewInt(sum)
-	td := new(big.Int)
-	for _, value := range delta {
-		assert.True(t, value.Sign() >= 0)
-		td.Add(td, value)
-	}
-	assert.Zero(t, etd.Cmp(td))
-
-	for i := 0; i < size; i++ {
-		regInfo := newRegInfo(start + i)
-		err = pm.RegisterPRep(regInfo, BigIntInitialIRep)
-		assert.NoError(t, err)
-	}
-
-	assert.Zero(t, etd.Cmp(pm.TotalDelegated()))
-	assert.Equal(t, int64(0), pm.TotalBonded().Int64())
-	checkOrderedByBondedDelegation(pm, br)
-}
-
-func TestPRepManager_disablePRep(t *testing.T) {
-	size := 5
-	pm := createPRepManager(t, false, size)
-	assert.Equal(t, size, pm.Size())
-
-	ss := []icstate.Status{
-		icstate.Unregistered,
-		icstate.Disqualified,
-		icstate.Unregistered,
-		icstate.Disqualified,
-		icstate.Unregistered,
-	}
-	totalDelegated := new(big.Int).Set(pm.TotalDelegated())
-	for i := 0; i < size; i++ {
-		status := ss[i]
-		owner := createAddress(i)
-		prep := pm.GetPRepByOwner(owner)
-		assert.True(t, prep.Owner().Equal(owner))
-
-		err := pm.disablePRep(owner, status)
-		assert.NoError(t, err)
-
-		noPRep := pm.GetPRepByOwner(owner)
-		assert.NotNil(t, noPRep)
-
-		assert.Equal(t, size-i-1, pm.Size())
-
-		totalDelegated.Sub(totalDelegated, prep.Delegated())
-		assert.Zero(t, totalDelegated.Cmp(pm.TotalDelegated()))
-		assert.Equal(t, status, prep.Status())
-		assert.Equal(t, icstate.Candidate, prep.Grade())
-
-		ps := pm.state.GetPRepStatus(owner, false)
-		assert.True(t, ps == prep.PRepStatus)
-
-		assert.Equal(t, size-i-1, pm.Size())
-		assert.Zero(t, pm.GetPRepSize(icstate.Main))
-		assert.Zero(t, pm.GetPRepSize(icstate.Sub))
-		assert.Equal(t, size-i-1, pm.GetPRepSize(icstate.Candidate))
-	}
-
-	assert.Zero(t, pm.Size())
-	assert.Zero(t, pm.GetPRepSize(icstate.Main))
-	assert.Zero(t, pm.GetPRepSize(icstate.Sub))
-	assert.Zero(t, pm.GetPRepSize(icstate.Candidate))
-	assert.Zero(t, pm.TotalDelegated().Cmp(big.NewInt(0)))
-}
-
 func TestPRepManager_ChangeDelegation(t *testing.T) {
 	var err error
-	br := int64(5)
 	size := 5
 
 	pm := createPRepManager(t, false, size)
-	assert.Zero(t, pm.TotalDelegated().Int64())
+	state := pm.state
 
 	dSize := 3
 	ds0, sum0 := createDelegations(0, dSize)
@@ -385,13 +197,12 @@ func TestPRepManager_ChangeDelegation(t *testing.T) {
 			_, err = pm.ChangeDelegation(ods, nds)
 			if success {
 				assert.NoError(t, err)
-				assert.Zero(t, pm.TotalBonded().Int64())
-				assert.Equal(t, sum, pm.TotalDelegated().Int64())
-				assert.True(t, checkOrderedByBondedDelegation(pm, br))
+				assert.Zero(t, state.GetTotalBond().Int64())
+				assert.Equal(t, sum, state.GetTotalDelegation().Int64())
 
 				for i := 0; i < size; i++ {
 					owner := createAddress(i)
-					prep := pm.GetPRepByOwner(owner)
+					prep := state.GetPRepByOwner(owner)
 					assert.Equal(t, exds[icutils.ToKey(owner)], prep.Delegated().Int64())
 				}
 			} else {
@@ -402,10 +213,9 @@ func TestPRepManager_ChangeDelegation(t *testing.T) {
 }
 
 func TestPRepManager_ChangeBond(t *testing.T) {
-	br := int64(5) // 5%
 	size := 5
 	pm := createPRepManager(t, false, size)
-	assert.Zero(t, pm.TotalDelegated().Int64())
+	assert.Zero(t, pm.state.GetTotalDelegation().Int64())
 
 	bs0, sum0 := createBonds(0, size)
 	bs1, sum1 := createBonds(0, size)
@@ -469,12 +279,11 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 			_, err := pm.ChangeBond(obs, nbs)
 			if success {
 				assert.NoError(t, err)
-				assert.Equal(t, want, pm.TotalBonded().Int64())
-				assert.True(t, checkOrderedByBondedDelegation(pm, br))
+				assert.Equal(t, want, pm.state.GetTotalBond().Int64())
 
 				for j := 0; j < size; j++ {
 					owner := createAddress(j)
-					prep := pm.GetPRepByOwner(owner)
+					prep := pm.state.GetPRepByOwner(owner)
 					bonded := prep.Bonded()
 					assert.True(t, bonded.Int64() >= 0)
 
@@ -487,70 +296,6 @@ func TestPRepManager_ChangeBond(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 			}
-		})
-	}
-}
-
-func TestPRepManager_OnTermEnd(t *testing.T) {
-	type test struct {
-		size          int
-		mainPRepCount int
-		subPRepCount  int
-
-		expectedMainPReps      int
-		expectedSubPReps       int
-		expectedCandidatePReps int
-	}
-
-	tests := [...]test{
-		{
-			size:                   10,
-			mainPRepCount:          4,
-			subPRepCount:           3,
-			expectedMainPReps:      4,
-			expectedSubPReps:       3,
-			expectedCandidatePReps: 3,
-		},
-		{
-			size:                   10,
-			mainPRepCount:          8,
-			subPRepCount:           12,
-			expectedMainPReps:      8,
-			expectedSubPReps:       2,
-			expectedCandidatePReps: 0,
-		},
-		{
-			size:                   10,
-			mainPRepCount:          13,
-			subPRepCount:           17,
-			expectedMainPReps:      10,
-			expectedSubPReps:       0,
-			expectedCandidatePReps: 0,
-		},
-		{
-			size:                   10,
-			mainPRepCount:          13,
-			subPRepCount:           17,
-			expectedMainPReps:      10,
-			expectedSubPReps:       0,
-			expectedCandidatePReps: 0,
-		},
-	}
-
-	for i, tt := range tests {
-		bh := int64(123)
-		name := fmt.Sprintf("test-%d", i)
-		t.Run(name, func(t *testing.T) {
-			pm := createPRepManager(t, false, tt.size)
-			err := pm.OnTermEnd(tt.mainPRepCount, tt.subPRepCount, bh)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedMainPReps, pm.GetPRepSize(icstate.Main))
-			assert.Equal(t, tt.expectedSubPReps, pm.GetPRepSize(icstate.Sub))
-			assert.Equal(t, tt.expectedCandidatePReps, pm.GetPRepSize(icstate.Candidate))
-			assert.Equal(t, tt.size, pm.Size())
-
-			err = pm.UnregisterPRep(createAddress(0))
-			assert.NoError(t, err)
 		})
 	}
 }

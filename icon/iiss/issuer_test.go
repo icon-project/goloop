@@ -228,7 +228,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"MainNet-10,362,083-Decentralized",
 			values{
-				BigIntInitialIRep,
+				icstate.BigIntInitialIRep,
 				new(big.Int).SetInt64(0x2ac),
 				new(big.Int).SetInt64(22),
 				new(big.Int).Add(
@@ -241,7 +241,7 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"MainNet-10,405,202",
 			values{
-				BigIntInitialIRep,
+				icstate.BigIntInitialIRep,
 				new(big.Int).SetInt64(0x2ac),
 				new(big.Int).SetInt64(22),
 				new(big.Int).Add(

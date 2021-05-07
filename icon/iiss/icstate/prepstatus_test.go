@@ -22,7 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
@@ -52,87 +51,37 @@ func TestPRepStatus_Bytes(t *testing.T) {
 
 // test for GetBondedDelegation
 func TestPRepStatus_GetBondedDelegation(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
+	type args struct {
+		delegated int64
+		bonded    int64
+	}
+	tests := []struct {
+		name string
+		args args
+		bd   int64
+	}{
+		{
+			"d=99, b=1, bd=20",
+			args{
+				int64(100),
+				int64(0),
+			},
+			int64(0),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			br := int64(5)
+			in := tt.args
 
-	addr1 := common.MustNewAddressFromString("hx1")
-
-	delegated := big.NewInt(int64(99))
-	status1 := s.GetPRepStatus(addr1, true)
-	status1.SetDelegated(delegated)
-	bonded := big.NewInt(int64(1))
-	status1.SetBonded(bonded)
-	res := status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(20))))
-
-	delegated = big.NewInt(int64(99))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(2))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(40))))
-
-	delegated = big.NewInt(int64(93))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(7))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100))))
-
-	delegated = big.NewInt(int64(90))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(10))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(100))))
-
-	// 0 input, exptected 0 output
-	delegated = big.NewInt(int64(0))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(0))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
-
-	// extreme
-	delegated = big.NewInt(int64(99999999999))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(999))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(5)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(19980))))
-
-	// different requirement
-	delegated = big.NewInt(int64(99999))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(999))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(4)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(24975))))
-
-	// 0 for bond requirement
-	delegated = big.NewInt(int64(99999))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(999))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(0)
-	assert.Equal(t, 0, res.Cmp(status1.GetVoted()))
-
-	// 101 for bond requirement
-	delegated = big.NewInt(int64(99999))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(999))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(101)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(0))))
-
-	// 100 for bond requirement
-	delegated = big.NewInt(int64(99999))
-	s.GetPRepStatus(addr1, true).SetDelegated(delegated)
-	bonded = big.NewInt(int64(999))
-	s.GetPRepStatus(addr1, true).SetBonded(bonded)
-	res = status1.GetBondedDelegation(100)
-	assert.Equal(t, 0, res.Cmp(big.NewInt(int64(999))))
+			ps := NewPRepStatus()
+			ps.SetDelegated(big.NewInt(in.delegated))
+			ps.SetBonded(big.NewInt(in.bonded))
+			assert.Equal(t, in.delegated, ps.Delegated().Int64())
+			assert.Equal(t, in.bonded, ps.Bonded().Int64())
+			assert.Equal(t, tt.bd, ps.GetBondedDelegation(br).Int64())
+		})
+	}
 }
 
 func TestPRepStatus_GetVTotal(t *testing.T) {
@@ -695,6 +644,80 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 			assert.Equal(t, out.getVFail, ps.GetVFail(bh))
 			assert.Equal(t, out.getVTotal, ps.GetVTotal(bh))
 			assert.Equal(t, out.getVFailCont, ps.GetVFailCont(bh))
+		})
+	}
+}
+
+func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
+	type attr struct {
+		lh   int64
+		ls   ValidationState
+		vf   int64
+		vt   int64
+		vfco int64
+		vpm  uint32
+	}
+	type input struct {
+		bh int64
+	}
+	type output struct {
+		attr
+		getVFail         int64
+		getVTotal        int64
+		getVFailCont     int64
+		getVPenaltyCount int
+	}
+	type test struct {
+		name string
+		init attr
+		in   input
+		out  output
+	}
+
+	tests := [...]test{
+		{
+			// 0 == in.bh - init.lh
+			name: "F,N",
+			init: attr{lh: 10, ls: Failure, vf: 5, vt: 8, vfco: 5, vpm: 0x2},
+			in:   input{bh: 10},
+			out: output{
+				attr:             attr{lh: 10, ls: None, vf: 5, vt: 8, vfco: 0, vpm: 0x3},
+				getVFail:         5,
+				getVTotal:        8,
+				getVFailCont:     0,
+				getVPenaltyCount: 2,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err error
+			init := tt.init
+			in := tt.in
+			out := tt.out
+			bh := in.bh
+
+			ps := &PRepStatus{
+				vFail:           init.vf,
+				vTotal:          init.vt,
+				vFailContOffset: init.vfco,
+				lastHeight:      init.lh,
+				lastState:       init.ls,
+				vPenaltyMask:    init.vpm,
+			}
+
+			err = ps.OnPenaltyImposed(bh)
+			assert.NoError(t, err)
+			assert.Equal(t, out.lh, ps.lastHeight)
+			assert.Equal(t, out.ls, ps.lastState)
+			assert.Equal(t, out.vf, ps.vFail)
+			assert.Equal(t, out.vt, ps.vTotal)
+			assert.Equal(t, out.vfco, ps.vFailContOffset)
+			assert.Equal(t, out.vpm, ps.vPenaltyMask)
+			assert.Equal(t, out.getVFail, ps.GetVFail(bh))
+			assert.Equal(t, out.getVTotal, ps.GetVTotal(bh))
+			assert.Equal(t, out.getVFailCont, ps.GetVFailCont(bh))
+			assert.Equal(t, out.getVPenaltyCount, ps.GetVPenaltyCount())
 		})
 	}
 }

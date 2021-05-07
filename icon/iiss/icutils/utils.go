@@ -195,10 +195,11 @@ func ValidateRange(oldValue *big.Int, newValue *big.Int, minPct int, maxPct int)
 }
 
 func NewIconLogger(logger log.Logger) log.Logger {
+	fields := log.Fields{log.FieldKeyModule: "ICON"}
 	if logger == nil {
-		return nil
+		return log.WithFields(fields)
 	}
-	return logger.WithFields(log.Fields{log.FieldKeyModule: "ICON"})
+	return logger.WithFields(fields)
 }
 
 func ValidateEndpoint(endpoint string) error {

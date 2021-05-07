@@ -19,22 +19,29 @@ var nodeOwnerDictPrefix = containerdb.ToKey(
 type NodeOwnerCache struct {
 	dict        *containerdb.DictDB
 	nodeToOwner map[string]module.Address
-	ownerToNode map[string]module.Address
 }
 
 func (c *NodeOwnerCache) Add(node, owner module.Address) error {
-	// TODO: node must not be an owner of other PRep
-	oldOwner := c.Get(node)
-	if oldOwner != nil {
+	if node == nil || owner == nil {
+		// No need to add
+		return nil
+	}
+	if c.Contains(node) {
 		return errors.Errorf("Node already exists: %s", node)
+	}
+	if node.Equal(owner) {
+		return nil
 	}
 
 	c.nodeToOwner[icutils.ToKey(node)] = owner
-	c.ownerToNode[icutils.ToKey(owner)] = node
 	return nil
 }
 
 func (c *NodeOwnerCache) Get(node module.Address) module.Address {
+	return c.get(node, node)
+}
+
+func (c *NodeOwnerCache) get(node module.Address, fallback module.Address) module.Address {
 	key := icutils.ToKey(node)
 	owner := c.nodeToOwner[key]
 	if owner != nil {
@@ -43,20 +50,24 @@ func (c *NodeOwnerCache) Get(node module.Address) module.Address {
 
 	o := c.dict.Get(node)
 	if o == nil {
-		return nil
+		// owner address is equal to node address
+		return fallback
 	}
+	return o.Address()
+}
 
-	owner = o.Address()
+func (c *NodeOwnerCache) Contains(node module.Address) bool {
+	key := icutils.ToKey(node)
+	owner := c.nodeToOwner[key]
 	if owner != nil {
-		c.nodeToOwner[key] = owner
+		return true
 	}
-
-	return owner
+	o := c.dict.Get(node)
+	return o != nil
 }
 
 func (c *NodeOwnerCache) Clear() {
 	c.nodeToOwner = make(map[string]module.Address)
-	c.ownerToNode = make(map[string]module.Address)
 }
 
 func (c *NodeOwnerCache) Reset() {
@@ -76,6 +87,5 @@ func newNodeOwnerCache(store containerdb.ObjectStoreState) *NodeOwnerCache {
 	return &NodeOwnerCache{
 		dict:        containerdb.NewDictDB(store, 1, nodeOwnerDictPrefix),
 		nodeToOwner: make(map[string]module.Address),
-		ownerToNode: make(map[string]module.Address),
 	}
 }

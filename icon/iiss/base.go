@@ -192,7 +192,7 @@ func CompileVoters(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address,
 
 	for i := 0; i < size; i += 1 {
 		v, _ := voters.Get(i)
-		owner := pm.GetOwnerByNode(v.Address())
+		owner := pm.state.GetOwnerByNode(v.Address())
 		if owner == nil {
 			return nil, nil, errors.Errorf("Owner not found: %s", v.Address())
 		}
@@ -208,9 +208,10 @@ func CompileVoters(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address,
 // updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
 func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, voted []bool) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	blockHeight := cc.BlockHeight()
 
 	for i, owner := range owners {
-		if err := es.UpdateBlockVoteStats(cc, owner, voted[i]); err != nil {
+		if err := es.State.UpdateBlockVoteStats(owner, voted[i], blockHeight); err != nil {
 			return err
 		}
 		if !voted[i] {
@@ -220,7 +221,6 @@ func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, vote
 		}
 	}
 
-	es.pm.Sort()
 	return nil
 }
 
@@ -305,7 +305,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			[][]byte{
 				intconv.Int64ToBytes(int64(term.Sequence())),
 				intconv.Int64ToBytes(term.StartHeight()),
-				intconv.Int64ToBytes(term.GetEndBlockHeight()),
+				intconv.Int64ToBytes(term.GetEndHeight()),
 			},
 		)
 	}

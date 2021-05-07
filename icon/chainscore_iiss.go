@@ -342,8 +342,8 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		icutils.OnBurn(s.cc, state.SystemAddress, regPRepFee, ts)
 	}
 
-	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress, s.from)
-	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
+	ri := icstate.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress)
+	if err := ri.Validate(s.cc.Revision().Value()); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err,
 			"Failed to validate regInfo: from=%v",
@@ -361,11 +361,10 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		term := es.State.GetTerm()
 		irep = term.Irep()
 	} else {
-		irep = iiss.BigIntInitialIRep
+		irep = icstate.BigIntInitialIRep
 	}
 
-	err = es.RegisterPRep(regInfo, irep)
-	if err != nil {
+	if err = es.State.RegisterPRep(s.from, ri, irep); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to register PRep: from=%v", s.from,
 		)
@@ -521,8 +520,8 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 		)
 	}
 
-	regInfo := iiss.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node, s.from)
-	if err := regInfo.Validate(s.cc.Revision().Value()); err != nil {
+	ri := icstate.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node)
+	if err := ri.Validate(s.cc.Revision().Value()); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate regInfo: from=%v", s.from,
 		)
@@ -537,7 +536,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	if err != nil {
 		return err
 	}
-	err = es.SetPRep(regInfo)
+	err = es.State.SetPRep(s.from, ri)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
@@ -915,7 +914,7 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 		)
 	}
 
-	endBlockHeight := term.GetEndBlockHeight()
+	endBlockHeight := term.GetEndHeight()
 	jso := make(map[string]interface{})
 	jso["blockHeight"] = s.cc.BlockHeight()
 	jso["nextCalculation"] = endBlockHeight + 1

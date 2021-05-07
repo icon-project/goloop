@@ -1,39 +1,116 @@
 package icstate
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/module"
 )
 
-func TestNodeOwnerCache(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
+func newDummyNodeOwnerCache(readonly bool) *NodeOwnerCache {
+	store := newDummyObjectStore(false)
+	return newNodeOwnerCache(store)
+}
 
-	addr1node := common.MustNewAddressFromString("hx11")
-	addr1owner := common.MustNewAddressFromString("hx12")
-	addr2node := common.MustNewAddressFromString("hx21")
-	addr2owner := common.MustNewAddressFromString("hx22")
+func TestNodeOwnerCache_Clear(t *testing.T) {
+	var err error
+	cache := newDummyNodeOwnerCache(false)
 
-	// add
-	s.nodeOwnerCache.Add(addr1node, addr1owner)
-	s.nodeOwnerCache.Add(addr2node, addr2owner)
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		err = cache.Add(node, owner)
+		assert.NoError(t, err)
+	}
 
-	// get from map
-	addrRes := s.nodeOwnerCache.Get(addr1node)
-	fmt.Println(addrRes)
-	assert.Equal(t, "hx0000000000000000000000000000000000000012", addrRes.String())
-	// write in dictDB
-	s.nodeOwnerCache.Flush()
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, owner.Equal(cache.Get(node)))
+	}
 
-	// remove all items in map
+	cache.Clear()
+
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.False(t, owner.Equal(cache.Get(node)))
+	}
+
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		err = cache.Add(node, owner)
+		assert.NoError(t, err)
+	}
+
+	cache.Flush()
+
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, owner.Equal(cache.Get(node)))
+	}
+
+	cache.Clear()
+
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, owner.Equal(cache.Get(node)))
+	}
+}
+
+func TestNodeOwnerCache_Contains(t *testing.T) {
+	var err error
+
+	size := 10
+	s := newDummyState(false)
+
+	for i := 0; i < size; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		err = s.nodeOwnerCache.Add(node, owner)
+		assert.NoError(t, err)
+		s.nodeOwnerCache.Flush()
+	}
+
+	for i := 0; i < size; i++ {
+		node := newDummyAddress(i + 100)
+		assert.True(t, s.nodeOwnerCache.Contains(node))
+	}
+
+	for i := size; i < size; i++ {
+		node := newDummyAddress(i + 100 + 100)
+		assert.False(t, s.nodeOwnerCache.Contains(node))
+		assert.True(t, node.Equal(s.nodeOwnerCache.Get(node)))
+	}
+}
+
+func TestNodeOwnerCache_Add(t *testing.T) {
+	var err error
+	var node module.Address
+	s := newDummyState(false)
+
+	for i := 0; i < 2; i++ {
+		owner := newDummyAddress(i)
+		node = newDummyAddress(i + 100)
+		err = s.nodeOwnerCache.Add(node, owner)
+		assert.NoError(t, err)
+		s.nodeOwnerCache.Flush()
+	}
 	s.nodeOwnerCache.Clear()
 
-	// get from dictDB
-	addrRes = s.nodeOwnerCache.Get(addr1node)
-	assert.Equal(t, "hx0000000000000000000000000000000000000012", addrRes.String())
+	for i := 0; i < 2; i++ {
+		// Node address is already in use
+		node = newDummyAddress(i + 100)
+		err = s.nodeOwnerCache.Add(node, node)
+		assert.Error(t, err)
+
+		// owner is the same as node
+		node = newDummyAddress(i + 100 + 3)
+		err = s.nodeOwnerCache.Add(node, node)
+		assert.NoError(t, err)
+	}
 }

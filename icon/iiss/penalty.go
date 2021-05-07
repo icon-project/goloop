@@ -30,20 +30,8 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (s *ExtensionStateImpl) UpdateBlockVoteStats(
-	cc contract.CallContext, owner module.Address, voted bool) error {
-	blockHeight := cc.BlockHeight()
-	if !voted {
-		s.logger.Debugf("Nil vote: bh=%d addr=%s", blockHeight, owner)
-	}
-	if err := s.pm.UpdateBlockVoteStats(owner, voted, blockHeight); err != nil {
-		return err
-	}
-	return nil
-}
-
 const (
-	prepDisqualification int64 = iota+1
+	prepDisqualification int64 = iota + 1
 	lowProductivity
 	blockValidation
 )
@@ -51,46 +39,47 @@ const (
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
 	var err error = nil
 
-	prep := s.pm.GetPRepByOwner(owner)
-	if prep == nil {
+	ps, _ := s.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
 		return nil
 	}
-	if prep.LastState() != icstate.Failure {
+	if ps.LastState() != icstate.Failure {
 		return nil
 	}
 
 	blockHeight := cc.BlockHeight()
 
+	// Penalty check
 	penaltyCondition := s.State.GetValidationPenaltyCondition().Int64()
-	if !checkValidationPenalty(prep.PRepStatus, blockHeight, penaltyCondition) {
+	if !checkValidationPenalty(ps, blockHeight, penaltyCondition) {
 		return nil
 	}
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(prep.Status())),
-			intconv.Int64ToBytes(blockValidation),
-		},
-	)
-	if err = s.pm.ImposePenalty(owner, blockHeight); err != nil {
+
+	// Impose penalty
+	if err = s.State.ImposePenalty(owner, ps, blockHeight); err != nil {
 		return err
 	}
 
+	// Record PenaltyImposed eventlog
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(ps.Status())),
+			intconv.Int64ToBytes(blockValidation),
+		},
+	)
+
+	// Slashing
 	penaltyCondition = s.State.GetConsistentValidationPenaltyCondition().Int64()
-	if checkConsistentValidationPenalty(prep.PRepStatus, int(penaltyCondition)) {
+	if checkConsistentValidationPenalty(ps, int(penaltyCondition)) {
 		slashRatio := int(s.State.GetConsistentValidationPenaltySlashRatio().Int64())
 		if err = s.slash(cc, owner, slashRatio); err != nil {
 			return err
 		}
 	}
 
-	if err = s.replaceValidator(owner); err != nil {
-		return err
-	}
-	if err = s.addEventEnable(blockHeight, owner, icstage.ESDisableTemp); err != nil {
-		return err
-	}
-	return nil
+	// Record event for reward calculation
+	return s.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
 }
 
 func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight, condition int64) bool {
@@ -112,8 +101,11 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	logger := cc.Logger().WithFields(log.Fields{log.FieldKeyModule: "ICON"})
 	logger.Tracef("slash() start: addr=%s ratio=%d", address, ratio)
 
-	pm := s.pm
-	bonders := pm.GetPRepByOwner(address).BonderList()
+	pb, _ := s.State.GetPRepBaseByOwner(address, false)
+	if pb == nil {
+		return errors.Errorf("PRep not found: %s", address)
+	}
+	bonders := pb.BonderList()
 	totalSlashBond := new(big.Int)
 
 	// slash all bonder
@@ -176,7 +168,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	} else {
 		icutils.OnBurn(cc, state.SystemAddress, totalSlashBond, ts)
 	}
-	ret := s.pm.Slash(address, totalSlashBond)
+	ret := s.State.Slash(address, totalSlashBond)
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return ret
 }

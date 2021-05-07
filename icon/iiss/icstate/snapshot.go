@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 type Snapshot struct {
@@ -66,7 +67,7 @@ func (ss *Snapshot) GetRewardCalcInfo() (*RewardCalcInfo, error) {
 }
 
 func (ss *Snapshot) NewState(readonly bool) *State {
-	return NewStateFromSnapshot(ss, readonly)
+	return NewStateFromSnapshot(ss, readonly, icutils.NewIconLogger(nil))
 }
 
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {

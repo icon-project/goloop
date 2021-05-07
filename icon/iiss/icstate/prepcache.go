@@ -29,17 +29,20 @@ type PRepBaseCache struct {
 	dict  *containerdb.DictDB
 }
 
-func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBase {
+func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepBase, bool) {
 	key := icutils.ToKey(owner)
 	base := c.bases[key]
 	if base != nil {
-		return base
+		return base, false
 	}
+
+	created := false
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
 			base = NewPRepBase()
 			c.bases[key] = base
+			created = true
 		} else {
 			// return nil
 		}
@@ -49,7 +52,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBa
 			c.bases[key] = base
 		}
 	}
-	return base
+	return base, created
 }
 
 func (c *PRepBaseCache) Clear() {
@@ -100,22 +103,27 @@ func newPRepBaseCache(store containerdb.ObjectStoreState) *PRepBaseCache {
 	}
 }
 
+// ====================================
+
 type PRepStatusCache struct {
 	statuses map[string]*PRepStatus
 	dict     *containerdb.DictDB
 }
 
-func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRepStatus {
+func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRepStatus, bool) {
 	key := icutils.ToKey(owner)
 	status := c.statuses[key]
 	if status != nil {
-		return status
+		return status, false
 	}
+
+	created := false
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
 			status = NewPRepStatus()
 			c.statuses[key] = status
+			created = true
 		} else {
 			// return nil
 		}
@@ -125,7 +133,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 			c.statuses[key] = status
 		}
 	}
-	return status
+	return status, created
 }
 
 func (c *PRepStatusCache) Clear() {

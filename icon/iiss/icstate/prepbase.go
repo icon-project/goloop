@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -35,57 +36,172 @@ const (
 	bonderListMax = 10
 )
 
+type RegInfo struct {
+	city        string
+	country     string
+	details     string
+	email       string
+	name        string
+	p2pEndpoint string
+	website     string
+	node        module.Address
+}
+
+func (r *RegInfo) Node() module.Address {
+	return r.node
+}
+
+func (r *RegInfo) String() string {
+	return fmt.Sprintf(
+		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s",
+		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website,
+	)
+}
+
+func (r *RegInfo) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"RegInfo{city=%s country=%s details=%s email=%s p2p=%s website=%s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website)
+		} else {
+			fmt.Fprintf(f, "RegInfo{%s %s %s %s %s %s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website)
+		}
+	case 's':
+		fmt.Fprint(f, r.String())
+	}
+}
+
+func (r *RegInfo) Set(other *RegInfo) {
+	r.city = other.city
+	r.country = other.country
+	r.details = other.details
+	r.email = other.email
+	r.name = other.name
+	r.p2pEndpoint = other.p2pEndpoint
+	r.website = other.website
+	r.node = other.node
+}
+
+func (r *RegInfo) fillInEmptyInfo(other *RegInfo) {
+	if len(r.city) == 0 {
+		r.city = other.city
+	}
+	if len(r.country) == 0 {
+		r.country = other.country
+	}
+	if len(r.details) == 0 {
+		r.details = other.details
+	}
+	if len(r.email) == 0 {
+		r.email = other.email
+	}
+	if len(r.name) == 0 {
+		r.name = other.name
+	}
+	if len(r.p2pEndpoint) == 0 {
+		r.p2pEndpoint = other.p2pEndpoint
+	}
+	if len(r.website) == 0 {
+		r.website = other.website
+	}
+	if r.node == nil {
+		r.node = other.node
+	}
+}
+
+func (r *RegInfo) Validate(revision int) error {
+	if err := icutils.ValidateEndpoint(r.p2pEndpoint); err != nil {
+		return err
+	}
+	if err := icutils.ValidateURL(r.website); err != nil {
+		return err
+	}
+	if err := icutils.ValidateURL(r.details); err != nil {
+		return err
+	}
+	if err := icutils.ValidateEmail(r.email, revision); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RegInfo) Clone() *RegInfo {
+	return &RegInfo{
+		city:        r.city,
+		country:     r.country,
+		details:     r.details,
+		email:       r.email,
+		name:        r.name,
+		p2pEndpoint: r.p2pEndpoint,
+		website:     r.website,
+		node:        r.node,
+	}
+}
+
+func (r *RegInfo) Equal(other *RegInfo) bool {
+	if r == other {
+		return true
+	}
+	return r.city == other.city &&
+		r.country == other.country &&
+		r.details == other.details &&
+		r.email == other.email &&
+		r.name == other.name &&
+		r.p2pEndpoint == other.p2pEndpoint &&
+		r.website == other.website &&
+		icutils.EqualAddress(r.node, other.node)
+}
+
+func (r *RegInfo) IsEmpty() bool {
+	return r.city == "" &&
+		r.country == "" &&
+		r.details == "" &&
+		r.email == "" &&
+		r.name == "" &&
+		r.p2pEndpoint == "" &&
+		r.website == "" &&
+		r.node == nil
+}
+
+func (r *RegInfo) Clear() {
+	r.city = ""
+	r.country = ""
+	r.details = ""
+	r.email = ""
+	r.name = ""
+	r.p2pEndpoint = ""
+	r.website = ""
+	r.node = nil
+}
+
+func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node module.Address) *RegInfo {
+	return &RegInfo{
+		city:        city,
+		country:     country,
+		details:     details,
+		email:       email,
+		name:        name,
+		p2pEndpoint: p2pEndpoint,
+		website:     website,
+		node:        node,
+	}
+}
+
+// ===================================================
+
 type PRepBase struct {
 	icobject.NoDatabase
 	StateAndSnapshot
-
-	// memory variables
-	readonly bool
-
 	// database variables
-	name        string
-	country     string
-	city        string
-	email       string
-	website     string
-	details     string
-	p2pEndpoint string
-	node        module.Address
-	irep        *big.Int
-	irepHeight  int64
-	bonderList  BonderList
-}
+	RegInfo
 
-func (p *PRepBase) Name() string {
-	return p.name
-}
-
-func (p *PRepBase) City() string {
-	return p.city
-}
-
-func (p *PRepBase) Country() string {
-	return p.country
-}
-
-func (p *PRepBase) Details() string {
-	return p.details
-}
-
-func (p *PRepBase) Email() string {
-	return p.email
-}
-
-func (p *PRepBase) P2pEndpoint() string {
-	return p.p2pEndpoint
-}
-
-func (p *PRepBase) Website() string {
-	return p.website
-}
-
-func (p *PRepBase) Node() module.Address {
-	return p.node
+	irep       *big.Int
+	irepHeight int64
+	bonderList BonderList
 }
 
 func (p *PRepBase) IRep() *big.Int {
@@ -96,19 +212,19 @@ func (p *PRepBase) IRepHeight() int64 {
 	return p.irepHeight
 }
 
+func (p *PRepBase) GetNode(owner module.Address) module.Address {
+	if p.node != nil {
+		return p.node
+	}
+	return owner
+}
+
 func (p *PRepBase) equal(other *PRepBase) bool {
 	if p == other {
 		return true
 	}
 
-	return p.name == other.name &&
-		p.country == other.country &&
-		p.city == other.city &&
-		p.email == other.email &&
-		p.website == other.website &&
-		p.details == other.details &&
-		p.p2pEndpoint == other.p2pEndpoint &&
-		icutils.EqualAddress(p.node, other.node) &&
+	return p.RegInfo.Equal(&other.RegInfo) &&
 		p.irep.Cmp(other.irep) == 0 &&
 		p.irepHeight == other.irepHeight &&
 		p.bonderList.Equal(other.bonderList)
@@ -117,52 +233,29 @@ func (p *PRepBase) equal(other *PRepBase) bool {
 func (p *PRepBase) Set(other *PRepBase) {
 	p.checkWritable()
 
-	p.name = other.name
-	p.country = other.country
-	p.city = other.city
-	p.email = other.email
-	p.website = other.website
-	p.details = other.details
-	p.p2pEndpoint = other.p2pEndpoint
-	p.node = other.node
+	p.RegInfo.Set(&other.RegInfo)
 	p.irep = other.irep
 	p.irepHeight = other.irepHeight
 	p.bonderList = other.bonderList.Clone()
 }
 
 func (p *PRepBase) Clone() *PRepBase {
-	return &PRepBase{
-		readonly:    false,
-		name:        p.name,
-		city:        p.city,
-		country:     p.country,
-		email:       p.email,
-		website:     p.website,
-		details:     p.details,
-		p2pEndpoint: p.p2pEndpoint,
-		node:        p.node,
-		irep:        p.irep,
-		irepHeight:  p.irepHeight,
-		bonderList:  p.bonderList.Clone(),
+	pb := &PRepBase{
+		irep:       p.irep,
+		irepHeight: p.irepHeight,
+		bonderList: p.bonderList.Clone(),
 	}
-}
-
-func (p *PRepBase) GetSnapshot() *PRepBase {
-	if p.IsReadonly() {
-		return p
-	}
-	ret := p.Clone()
-	ret.freeze()
-	return ret
+	pb.RegInfo.Set(&p.RegInfo)
+	return pb
 }
 
 func (p *PRepBase) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["name"] = p.name
-	jso["email"] = p.email
-	jso["website"] = p.website
 	jso["country"] = p.country
 	jso["city"] = p.city
+	jso["email"] = p.email
+	jso["website"] = p.website
 	jso["details"] = p.details
 	jso["p2pEndpoint"] = p.p2pEndpoint
 	jso["nodeAddress"] = p.node
@@ -212,10 +305,6 @@ func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
 	return nil
 }
 
-func (p *PRepBase) freeze() {
-	p.readonly = true
-}
-
 func (p *PRepBase) Version() int {
 	return prepVersion
 }
@@ -234,52 +323,37 @@ func (p *PRepBase) Equal(object icobject.Impl) bool {
 
 func (p *PRepBase) Clear() {
 	p.checkWritable()
-
-	p.city = ""
-	p.country = ""
-	p.details = ""
-	p.email = ""
-	p.name = ""
-	p.node = nil
+	p.RegInfo.Clear()
 	p.irep = new(big.Int)
 	p.irepHeight = 0
-	p.p2pEndpoint = ""
-	p.website = ""
 }
 
 func (p *PRepBase) IsEmpty() bool {
-	return p.city == "" &&
-		p.country == "" &&
-		p.details == "" &&
-		p.email == "" &&
-		p.name == "" &&
-		p.node == nil &&
+	return p.RegInfo.IsEmpty() &&
 		p.irep.Sign() == 0 &&
-		p.irepHeight == 0 &&
-		p.p2pEndpoint == "" &&
-		p.website == ""
+		p.irepHeight == 0
 }
 
-func (p *PRepBase) SetPRep(name, email, website, country, city, details, endpoint string, node module.Address) error {
+func (p *PRepBase) SetRegInfo(ri *RegInfo) error {
 	p.checkWritable()
+	p.RegInfo.Set(ri)
+	return nil
+}
 
-	p.name = name
-	p.email = email
-	p.website = website
-	p.country = country
-	p.city = city
-	p.details = details
-	p.p2pEndpoint = endpoint
-	p.node = node
+func (p *PRepBase) fillEmptyRegInfo(ri *RegInfo) error {
+	p.checkWritable()
+	p.RegInfo.fillInEmptyInfo(ri)
 	return nil
 }
 
 func (p *PRepBase) SetIrep(irep *big.Int, irepHeight int64) {
+	p.checkWritable()
 	p.irep = irep
 	p.irepHeight = irepHeight
 }
 
 func (p *PRepBase) SetBonderList(bonderList BonderList) {
+	p.checkWritable()
 	p.bonderList = bonderList
 }
 

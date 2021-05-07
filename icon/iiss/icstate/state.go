@@ -17,10 +17,17 @@
 package icstate
 
 import (
+	"bytes"
+	"math/big"
+	"sort"
+
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -30,11 +37,17 @@ import (
 var (
 	IssueKey          = containerdb.ToKey(containerdb.HashBuilder, "issue_icx").Build()
 	RewardCalcInfoKey = containerdb.ToKey(containerdb.HashBuilder, "reward_calc_info").Build()
-	LastValidatorsKey = containerdb.ToKey(
-		containerdb.HashBuilder, scoredb.ArrayDBPrefix, "last_validators",
+	ValidatorsKey     = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.VarDBPrefix, "validators",
 	)
 	UnstakeSlotMaxKey = containerdb.ToKey(
 		containerdb.HashBuilder, scoredb.VarDBPrefix, "unstake_slot_max",
+	)
+	TotalDelegationKey = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.VarDBPrefix, "total_delegation",
+	)
+	TotalBondKey = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.VarDBPrefix, "total_bond",
 	)
 )
 
@@ -48,7 +61,12 @@ type State struct {
 	unstakingTimerCache *TimerCache
 	unbondingTimerCache *TimerCache
 	termCache           *termCache
-	store               *icobject.ObjectStoreState
+	logger              log.Logger
+
+	store                *icobject.ObjectStoreState
+	totalDelegationVarDB *containerdb.VarDB
+	totalBondVarDB       *containerdb.VarDB
+	validatorsVarDB      *containerdb.VarDB
 }
 
 func (s *State) Reset(ss *Snapshot) error {
@@ -113,7 +131,7 @@ func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
 	return timer
 }
 
-func (s *State) AddActivePRep(owner module.Address) {
+func (s *State) addActivePRep(owner module.Address) {
 	s.activePRepCache.Add(owner)
 }
 
@@ -129,30 +147,46 @@ func (s *State) GetActivePRep(i int) module.Address {
 	return s.activePRepCache.Get(i)
 }
 
-/*func (s *State) AddPRepBase(base *PRepBase) {
-	s.prepBaseCache.Add(base)
-}*/
-
-func (s *State) GetPRepBase(owner module.Address, createIfNotExist bool) *PRepBase {
+func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) (*PRepBase, bool) {
 	return s.prepBaseCache.Get(owner, createIfNotExist)
 }
 
-func (s *State) GetPRepStatus(owner module.Address, createIfNotExist bool) *PRepStatus {
+func (s *State) GetPRepBaseByNode(node module.Address) *PRepBase {
+	pb, _ := s.GetPRepBaseByOwner(s.GetOwnerByNode(node), false)
+	return pb
+}
+
+func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) (*PRepStatus, bool) {
 	return s.prepStatusCache.Get(owner, createIfNotExist)
 }
 
-func NewStateFromSnapshot(ss *Snapshot, readonly bool) *State {
+func (s *State) GetPRepByOwner(owner module.Address) *PRep {
+	pb, _ := s.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return nil
+	}
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		panic(errors.Errorf("PRepStatus not found: %s", owner))
+	}
+	return newPRep(owner, pb, ps)
+}
+
+func NewStateFromSnapshot(ss *Snapshot, readonly bool, logger log.Logger) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	if c := iccache.StateNodeCacheOf(t.Database()); c != nil && !readonly {
 		ompt.SetCacheOfMutableForObject(t, c)
 	}
-	return NewStateFromTrie(t, readonly)
+	return NewStateFromTrie(t, readonly, logger)
 }
 
-func NewStateFromTrie(t trie.MutableForObject, readonly bool) *State {
+func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger) *State {
 	store := icobject.NewObjectStoreState(t)
+	tdVarDB := containerdb.NewVarDB(store, TotalDelegationKey)
+	tbVarDB := containerdb.NewVarDB(store, TotalBondKey)
+	validatorsVarDB := containerdb.NewVarDB(store, ValidatorsKey)
 
-	s := &State{
+	return &State{
 		readonly:            readonly,
 		accountCache:        newAccountCache(store),
 		activePRepCache:     newActivePRepCache(store),
@@ -162,18 +196,17 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool) *State {
 		unstakingTimerCache: newTimerCache(store, unstakingTimerDictPrefix),
 		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
 		termCache:           newTermCache(store),
-		store:               store,
+		logger:              logger,
+
+		store:                store,
+		totalDelegationVarDB: tdVarDB,
+		totalBondVarDB:       tbVarDB,
+		validatorsVarDB:      validatorsVarDB,
 	}
-
-	return s
 }
 
-func (s *State) AddNodeToOwner(node, owner module.Address) error {
+func (s *State) addNodeToOwner(node, owner module.Address) error {
 	return s.nodeOwnerCache.Add(node, owner)
-}
-
-func (s *State) GetOwnerByNode(node module.Address) module.Address {
-	return s.nodeOwnerCache.Get(node)
 }
 
 func (s *State) SetIssue(issue *Issue) error {
@@ -224,34 +257,6 @@ func (s *State) GetRewardCalcInfo() (*RewardCalcInfo, error) {
 	return rc, nil
 }
 
-func (s *State) SetLastValidators(al []module.Address) error {
-	var err error
-	db := containerdb.NewArrayDB(s.store, LastValidatorsKey)
-	size := db.Size()
-	for i, a := range al {
-		value := a.Bytes()
-		if i < size {
-			err = db.Set(i, value)
-		} else {
-			err = db.Put(value)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *State) GetLastValidators() []module.Address {
-	db := containerdb.NewArrayDB(s.store, LastValidatorsKey)
-	size := db.Size()
-	al := make([]module.Address, size, size)
-	for i := 0; i < size; i += 1 {
-		al[i] = db.Get(i).Address()
-	}
-	return al
-}
-
 func (s *State) SetUnstakeSlotMax(v int64) error {
 	db := containerdb.NewVarDB(s.store, UnstakeSlotMaxKey)
 	err := db.Set(v)
@@ -267,6 +272,276 @@ func (s *State) ClearCache() {
 	s.accountCache.Clear()
 	s.unstakingTimerCache.Clear()
 	s.unbondingTimerCache.Clear()
+	s.nodeOwnerCache.Clear()
 	// TODO clear other caches
 	s.store.ClearCache()
+}
+
+func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) error {
+	if ri == nil {
+		return errors.Errorf("Invalid argument: ri")
+	}
+
+	var err error
+	ps, _ := s.GetPRepStatusByOwner(owner, true)
+	if ps.Status() != NotReady {
+		return errors.Errorf("Already in use: addr=%s %+v", owner, ps)
+	}
+
+	s.addActivePRep(owner)
+
+	// Update PRepBase
+	pb, created := s.GetPRepBaseByOwner(owner, true)
+	if !created {
+		return errors.Errorf("Already in use: addr=%s %+v", owner, pb)
+	}
+	if err = pb.SetRegInfo(ri); err != nil {
+		return err
+	}
+	pb.SetIrep(irep, 0)
+	ps.SetStatus(Active)
+
+	// Register a node address
+	node := ri.Node()
+	if node == nil || owner.Equal(node) {
+		return nil
+	}
+	if pb, _ = s.GetPRepBaseByOwner(node, false); pb != nil {
+		return errors.Errorf("Node address in use: %s", ri.node)
+	}
+	return s.addNodeToOwner(node, owner)
+}
+
+func (s *State) SetPRep(owner module.Address, ri *RegInfo) error {
+	// owner -> node
+	// node1 -> node2
+	// node -> owner
+
+	pb, _ := s.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+
+	oldNode := pb.GetNode(owner)
+	if err := pb.fillEmptyRegInfo(ri); err != nil {
+		return nil
+	}
+
+	// If node address is changed and the node is a main prep, validator set should be changed too.
+	newNode := ri.Node()
+	if newNode == nil || oldNode.Equal(newNode) {
+		return nil
+	}
+
+	if !owner.Equal(newNode) {
+		// Forbidden to use other node's owner address as a node address
+		if pb, _ = s.GetPRepBaseByOwner(newNode, false); pb != nil {
+			return errors.Errorf("Node address in use: %s", ri.node)
+		}
+	}
+
+	if err := s.addNodeToOwner(newNode, owner); err != nil {
+		return err
+	}
+
+	return s.changeValidatorNodeAddress(owner, oldNode, newNode)
+}
+
+func (s *State) SetTotalDelegation(value *big.Int) error {
+	return s.totalDelegationVarDB.Set(value)
+}
+
+func (s *State) GetTotalDelegation() *big.Int {
+	ret := s.totalDelegationVarDB.BigInt()
+	if ret == nil {
+		ret = new(big.Int)
+	}
+	return ret
+}
+
+func (s *State) SetTotalBond(value *big.Int) error {
+	return s.totalBondVarDB.Set(value)
+}
+
+func (s *State) GetTotalBond() *big.Int {
+	ret := s.totalBondVarDB.BigInt()
+	if ret == nil {
+		ret = new(big.Int)
+	}
+	return ret
+}
+
+func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
+	owner := s.GetOwnerByNode(node)
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: node=%v owner=%v", node, owner)
+	}
+
+	ps.ShiftVPenaltyMask(buildPenaltyMask(s.GetConsistentValidationPenaltyMask()))
+	return nil
+}
+
+func (s *State) GetOwnerByNode(node module.Address) module.Address {
+	owner := s.nodeOwnerCache.Get(node)
+	if owner == nil {
+		owner = node
+	}
+	return owner
+}
+
+func (s *State) GetNodeByOwner(owner module.Address) module.Address {
+	pb, _ := s.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return nil
+	}
+	return pb.GetNode(owner)
+}
+
+func buildPenaltyMask(input *big.Int) (res uint32) {
+	mid := uint32(1)
+	for i := 0; i < int(input.Int64()); i++ {
+		res |= mid
+		mid <<= 1
+	}
+	return
+}
+
+func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeight int64) error {
+	if !voted {
+		s.logger.Debugf("Nil vote: bh=%d addr=%s", blockHeight, owner)
+	}
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+	return ps.UpdateBlockVoteStats(blockHeight, voted)
+}
+
+// GetPRepStatuses returns PRepStatus list ordered by bonded delegation
+func (s *State) GetPRepStatuses() ([]*PRepStatus, error) {
+	br := s.GetBondRequirement()
+
+	size := s.activePRepCache.Size()
+	owners := make([]module.Address, 0)
+	pss := make([]*PRepStatus, 0)
+
+	for i := 0; i < size; i++ {
+		owner := s.GetActivePRep(i)
+		ps, _ := s.GetPRepStatusByOwner(owner, false)
+		if ps.Status() == Active {
+			owners = append(owners, owner)
+			pss = append(pss, ps)
+		}
+	}
+
+	sortPRepStatuses(owners, pss, br)
+	return pss, nil
+}
+
+func sortPRepStatuses(owners []module.Address, pss []*PRepStatus, br int64) {
+	sort.Slice(pss, func(i, j int) bool {
+		ret := pss[i].GetBondedDelegation(br).Cmp(pss[j].GetBondedDelegation(br))
+		if ret > 0 {
+			return true
+		} else if ret < 0 {
+			return false
+		}
+
+		ret = pss[i].Delegated().Cmp(pss[j].Delegated())
+		if ret > 0 {
+			return true
+		} else if ret < 0 {
+			return false
+		}
+
+		return bytes.Compare(owners[i].Bytes(), owners[j].Bytes()) > 0
+	})
+}
+
+// ImposePenalty changes grade change and set LastState to icstate.None
+func (s *State) ImposePenalty(owner module.Address, ps *PRepStatus, blockHeight int64) error {
+	var err error
+
+	// Update status of the penalized main prep
+	s.logger.Debugf("ImposePenalty() start: bh=%d %+v", blockHeight, ps)
+
+	oldGrade := ps.Grade()
+	err = ps.OnPenaltyImposed(blockHeight)
+
+	s.logger.Debugf("ImposePenalty() end: bh=%d %+v", blockHeight, ps)
+
+	// If a penalized prep is a main prep, choose a new validator from prep snapshots
+	if err == nil && oldGrade == Main {
+		err = s.replaceValidatorByOwner(owner)
+	}
+	return err
+}
+
+// Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
+// Do not change PRep grade here
+// Caution: amount should not include the amount from unbonded
+func (s *State) Slash(owner module.Address, amount *big.Int) error {
+	if owner == nil {
+		return errors.Errorf("Owner is nil")
+	}
+	if amount == nil {
+		return errors.Errorf("Amount is nil")
+	}
+	if amount.Sign() < 0 {
+		return errors.Errorf("Amount is less than zero: %v", amount)
+	}
+	if amount.Sign() == 0 {
+		return nil
+	}
+
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %v", owner)
+	}
+
+	bonded := ps.Bonded()
+	if bonded.Cmp(amount) < 0 {
+		return errors.Errorf("bonded=%v < slash=%v", bonded, amount)
+	}
+	ps.SetBonded(new(big.Int).Sub(bonded, amount))
+	return s.SetTotalBond(new(big.Int).Sub(s.GetTotalBond(), amount))
+}
+
+func (s *State) DisablePRep(owner module.Address, status Status) error {
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+
+	oldGrade := ps.Grade()
+	ps.SetGrade(Candidate)
+	ps.SetStatus(status)
+
+	if oldGrade == Main {
+		if err := s.replaceValidatorByOwner(owner); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *State) GetValidatorsSnapshot() *ValidatorsSnapshot {
+	return ToValidators(s.validatorsVarDB.Object())
+}
+
+func (s *State) SetValidatorsSnapshot(vss *ValidatorsSnapshot) error {
+	o := icobject.New(TypeValidators, vss)
+	return s.validatorsVarDB.Set(o)
+}
+
+func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.Int, preps *PReps) bool {
+	predefinedMainPRepCount := int(s.GetMainPRepCount())
+	br := s.GetBondRequirement()
+
+	if revision >= icmodule.RevisionDecentralize && s.GetActivePRepSize() >= predefinedMainPRepCount {
+		prep := preps.GetPRepByIndex(predefinedMainPRepCount - 1)
+		return totalSupply.Cmp(new(big.Int).Mul(prep.GetBondedDelegation(br), big.NewInt(500))) <= 0
+	}
+	return false
 }

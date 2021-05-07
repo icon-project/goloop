@@ -157,6 +157,7 @@ func (ps *PRepStatus) GetVoted() *big.Int {
 }
 
 func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
+	ps.checkWritable()
 	ps.delegated = delegated
 }
 
@@ -398,51 +399,63 @@ func (ps *PRepStatus) IsEmpty() bool {
 }
 
 func (ps *PRepStatus) SetBonded(v *big.Int) {
+	ps.checkWritable()
 	ps.bonded = v
 }
 
 func (ps *PRepStatus) SetGrade(g Grade) {
+	ps.checkWritable()
 	ps.grade = g
 }
 
 func (ps *PRepStatus) SetStatus(s Status) {
+	ps.checkWritable()
 	ps.status = s
 }
 
 func (ps *PRepStatus) SetVTotal(t int64) {
+	ps.checkWritable()
 	ps.vTotal = t
 }
 
 func (ps *PRepStatus) SetVFail(f int64) {
+	ps.checkWritable()
 	ps.vFail = f
 }
 
 func (ps *PRepStatus) ResetVFailContOffset() {
+	ps.checkWritable()
 	ps.vFailContOffset = 0
 }
 
 func (ps *PRepStatus) SetVPenaltyMask(p uint32) {
+	ps.checkWritable()
 	ps.vPenaltyMask = p
 }
 
 func (ps *PRepStatus) IncrementVPenalty() {
+	ps.checkWritable()
 	ps.vPenaltyMask |= 1
 }
 
 func (ps *PRepStatus) ShiftVPenaltyMask(mask uint32) {
+	ps.checkWritable()
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & mask
 }
 
 func (ps *PRepStatus) SetLastState(l ValidationState) {
+	ps.checkWritable()
 	ps.lastState = l
 }
 
 func (ps *PRepStatus) SetLastHeight(h int64) {
+	ps.checkWritable()
 	ps.lastHeight = h
 }
 
 // UpdateBlockVoteStats updates Penalty-related info based on ConsensusInfo
 func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error {
+	ps.checkWritable()
 	vs := Success
 	if !voted {
 		vs = Failure
@@ -489,7 +502,9 @@ func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error 
 	return nil
 }
 
+// SyncBlockVoteStats updates vote stats data at a given blockHeight
 func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
+	ps.checkWritable()
 	lh := ps.lastHeight
 	if blockHeight < lh {
 		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
@@ -506,11 +521,13 @@ func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
 }
 
 func (ps *PRepStatus) OnPenaltyImposed(blockHeight int64) error {
+	ps.checkWritable()
 	if err := ps.SyncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vPenaltyMask |= 1
 	ps.vFailContOffset = 0
+	ps.grade = Candidate
 	return nil
 }
 
