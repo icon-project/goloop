@@ -106,7 +106,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 
 	// slash all bonder
 	for _, bonder := range bonders {
-		account := s.GetAccount(bonder)
+		account := s.GetAccount(bonder, false)
 		totalSlash := new(big.Int)
 
 		logger.Debugf("Before slashing: %s", account)
@@ -140,6 +140,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		if err := s.State.SetTotalStake(totalStake); err != nil {
 			return err
 		}
+		s.SetAccount(bonder, account)
 
 		// add icstage.EventBond
 		delta := make(map[string]*big.Int)
@@ -172,7 +173,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 func buildPenaltyMask(input *big.Int) (res uint32) {
 	var mid uint32
 	mid = 0x00000001
-	for i := 0; i < int(input.Int64()) ; i++ {
+	for i := 0; i < int(input.Int64()); i++ {
 		res = res | mid
 		mid = mid << 1
 	}

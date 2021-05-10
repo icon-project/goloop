@@ -76,9 +76,7 @@ func ToAccount(object trie.Object) *Account {
 	if object == nil {
 		return nil
 	}
-	a := object.(*icobject.Object).Real().(*Account)
-	a = a.Clone()
-	return a
+	return object.(*icobject.Object).Real().(*Account)
 }
 
 func ToPRepStatus(object trie.Object) *PRepStatus {

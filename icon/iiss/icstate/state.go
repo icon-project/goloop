@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
@@ -39,8 +40,10 @@ var (
 )
 
 type State struct {
-	readonly            bool
-	accountCache        *AccountCache
+	readonly bool
+
+	accountDB *containerdb.DictDB
+
 	activePRepCache     *ActivePRepCache
 	nodeOwnerCache      *NodeOwnerCache
 	prepBaseCache       *PRepBaseCache
@@ -48,13 +51,13 @@ type State struct {
 	unstakingTimerCache *TimerCache
 	unbondingTimerCache *TimerCache
 	termCache           *termCache
-	store               *icobject.ObjectStoreState
+
+	store *icobject.ObjectStoreState
 }
 
 func (s *State) Reset(ss *Snapshot) error {
 	var err error
 	s.store.Reset(ss.store.ImmutableForObject)
-	s.accountCache.Reset()
 	s.activePRepCache.Reset()
 	s.nodeOwnerCache.Reset()
 	s.prepBaseCache.Reset()
@@ -68,7 +71,6 @@ func (s *State) Reset(ss *Snapshot) error {
 }
 
 func (s *State) Flush() error {
-	s.accountCache.Flush()
 	s.activePRepCache.Flush()
 	s.nodeOwnerCache.Flush()
 	s.prepBaseCache.Flush()
@@ -85,9 +87,29 @@ func (s *State) GetSnapshot() *Snapshot {
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
-func (s *State) GetAccount(addr module.Address) *Account {
-	a := s.accountCache.Get(addr, true)
-	return a
+func (s *State) GetAccount(addr module.Address, readonly bool) (account *Account) {
+	o := s.accountDB.Get(addr)
+	if o == nil {
+		account = newAccount()
+	} else if !readonly {
+		account = ToAccount(o.Object()).Clone()
+	} else {
+		account = ToAccount(o.Object())
+	}
+	return
+}
+
+func (s *State) SetAccount(addr module.Address, account *Account) {
+	if account.IsEmpty() {
+		if err := s.accountDB.Delete(addr); err != nil {
+			log.Errorf("Failed to delete Account key %x, err+%+v", addr, err)
+		}
+	} else {
+		o := icobject.New(TypeAccount, account)
+		if err := s.accountDB.Set(addr, o); err != nil {
+			log.Errorf("Failed to set state for %x, err+%+v", addr, err)
+		}
+	}
 }
 
 func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) *Timer {
@@ -141,7 +163,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool) *State {
 
 	s := &State{
 		readonly:            readonly,
-		accountCache:        newAccountCache(store),
+		accountDB:           containerdb.NewDictDB(store, 1, AccountDictPrefix),
 		activePRepCache:     newActivePRepCache(store),
 		nodeOwnerCache:      newNodeOwnerCache(store),
 		prepBaseCache:       newPRepBaseCache(store),
