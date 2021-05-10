@@ -39,6 +39,8 @@ const (
 	ChanBuf = 2048
 )
 
+var ErrAfterLastBlock = errors.NewBase(errors.IllegalArgumentError, "AfterLastBlock")
+
 type BlockConverter struct {
 	baseDir  string
 	cs       Store
