@@ -8,9 +8,9 @@ import example.token.IRC2;
 import example.token.IRC2Basic;
 import example.token.IRC3;
 import example.token.IRC3Basic;
-import example.util.EnumerableMap;
+import example.util.EnumerableIntMap;
+import example.util.EnumerableSet;
 import example.util.IntSet;
-import example.util.IntToAddressMap;
 import foundation.icon.ee.test.GoldenTest;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +58,7 @@ public class SampleTest extends GoldenTest {
     public void testIRC3() {
         var owner = sm.getOrigin();
         var app = sm.mustDeploy(new Class<?>[]{IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
-                EnumerableMap.class, IntSet.class, IntToAddressMap.class}, "MyNFT", "NFT");
+                EnumerableIntMap.class, EnumerableSet.class, IntSet.class}, "MyNFT", "NFT");
         app.invoke("balanceOf", owner);
         app.invoke("totalSupply");
         BigInteger[] tokenIds = new BigInteger[3];
