@@ -109,7 +109,7 @@ func TestServiceManager_Basic(t *testing.T) {
 	go func() {
 		req := <-bc.channel
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		req.sendTxs(txs1[:5])
 
 		time.Sleep(delayForConfirm)
@@ -121,7 +121,7 @@ func TestServiceManager_Basic(t *testing.T) {
 		time.Sleep(delayForConfirm)
 		toTC<-"on_send_10"
 
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	assert.Equal(t, "on_send_5", <-toTC)
@@ -217,22 +217,22 @@ func TestServiceManager_Basic(t *testing.T) {
 		req := <-bc.channel
 		t.Log("BC reload from finalized")
 		assert.Equal(t, int64(10), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 
-		close(req.channel)
+		req.interrupt()
 		toTC <- "confirm_start"
 
 		req = <-bc.channel
 		t.Log("BC reload for last transition")
 		assert.Equal(t, int64(5), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		req.sendTxs(txs1[5:])
 
 		t.Log("BC send new transactions")
 		req.sendTxs(txs2)
 		time.Sleep(delayForConfirm)
 		toTC <- "confirm_send_new"
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	sm.Start()

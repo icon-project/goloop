@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 )
 
@@ -67,6 +68,15 @@ func (r *testBCRequest) generateTxs(from, to int64, suffix string) {
 	}
 }
 
+func (r *testBCRequest) interrupt() {
+	r.channel <- errors.ErrInterrupted
+	close(r.channel)
+}
+
+func (r *testBCRequest) term() {
+	close(r.channel)
+}
+
 type testBlockConverter struct {
 	channel chan *testBCRequest
 }
@@ -107,7 +117,7 @@ func TestExecutor_Basic(t *testing.T) {
 		req := <- bc.channel
 		t.Log("request received")
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Nil(t, req.txs)
 		t.Log("sending 0~4")
 		req.sendTxs(txs1[0:5])
@@ -120,7 +130,7 @@ func TestExecutor_Basic(t *testing.T) {
 		req.sendTxs(txs1[5:])
 
 		assert.Equal(t, "quit", <-toBC)
-		close(req.channel)
+		req.interrupt()
 	}()
 	_, err = ex.GetTransactions(0, 9, func(txs []*BlockTransaction, err error) {
 		t.Logf("transaction arrives size=%d", len(txs))
@@ -166,7 +176,7 @@ func TestExecutor_Propose(t *testing.T) {
 		req := <- bc.channel
 		t.Log("request received")
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Nil(t, req.txs)
 		t.Log("sending 0~4")
 		req.sendTxs(txs1[0:5])
@@ -180,7 +190,7 @@ func TestExecutor_Propose(t *testing.T) {
 
 		time.Sleep(delayForConfirm)
 		toTC <- "on_send_10"
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	assert.Equal(t, "on_send_5", <-toTC)
@@ -211,7 +221,7 @@ func TestExecutor_Propose(t *testing.T) {
 	go func() {
 		req := <-bc.channel
 		assert.Equal(t, int64(10), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Nil(t, req.txs)
 
 		t.Log("sending 5 more")
@@ -221,7 +231,7 @@ func TestExecutor_Propose(t *testing.T) {
 		toTC <- "on_send_15"
 
 		assert.Equal(t, "quit", <-toBC)
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	assert.Equal(t, "on_send_15", <-toTC)
@@ -259,7 +269,7 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 		req := <- bc.channel
 		t.Log("request received")
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Nil(t, req.txs)
 		t.Log("sending 0~9")
 		req.sendTxs(txs1[0:5])
@@ -267,7 +277,7 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 		assert.Equal(t, "send_old_remain", <-toBC)
 
 		req.sendTxs(txs1[5:])
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	t.Log("try to get 0~9 (should block)")
@@ -310,12 +320,12 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 		req := <- bc.channel
 		t.Log("sync request received")
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Equal(t, txs2[0:5], req.txs)
 
 		req.sendTxs(txs2)
 
-		close(req.channel)
+		req.interrupt()
 	}()
 
 	err = ex.SyncTransactions(txs2[0:5])
@@ -376,7 +386,7 @@ func TestExecutor_Term(t *testing.T) {
 		req := <- bc.channel
 		t.Log("request received")
 		assert.Equal(t, int64(0), req.from)
-		assert.Equal(t, int64(0), req.to)
+		assert.Equal(t, int64(-1), req.to)
 		assert.Nil(t, req.txs)
 		t.Log("sending 0~8")
 		req.sendTxs(txs1[:9])
@@ -385,7 +395,7 @@ func TestExecutor_Term(t *testing.T) {
 
 		t.Log("sending 9")
 		req.sendTxs(txs1[9:])
-		close(req.channel)
+		req.interrupt()
 
 		toTest<-"closed"
 	}()

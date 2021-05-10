@@ -96,7 +96,7 @@ func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
 
 	next := e.getNextBlockHeight()
 	if txs, err := e.candidateInLock(next); err != nil {
-		if err := e.rebaseInLock(next, 0, nil); err != nil {
+		if err := e.rebaseInLock(next, -1, nil); err != nil {
 			return nil, err
 		}
 		e.cancelWaiterInLock()
@@ -163,7 +163,7 @@ func (e *Executor) GetTransactions(from, to int64, callback OnBlockTransactions)
 		to:   to,
 	}
 	if from < e.start {
-		if err := e.rebaseInLock(from, 0, nil); err != nil {
+		if err := e.rebaseInLock(from, -1, nil); err != nil {
 			return nil, err
 		}
 	} else {
@@ -260,7 +260,7 @@ func (e *Executor) SyncTransactions(txs []*BlockTransaction) error {
 	}
 
 	e.log.Debugf("SyncTransactions(from=%d,cnt=%d)", from, len(txs))
-	if err := e.rebaseInLock(from, 0, txs); err != nil {
+	if err := e.rebaseInLock(from, -1, txs); err != nil {
 		return err
 	}
 	e.resetWaiterInLock(nil)
@@ -336,7 +336,7 @@ func (e *Executor) Start() error {
 	defer e.lock.Unlock()
 
 	next := e.getNextBlockHeight()
-	return e.rebaseInLock(next, 0, nil)
+	return e.rebaseInLock(next, -1, nil)
 }
 
 func (e *Executor) Term() {
