@@ -16,8 +16,18 @@
 
 package icmodule
 
-import "github.com/icon-project/goloop/service/scoreresult"
+import (
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoreresult"
+)
 
 const(
 	IllegalArgumentError = scoreresult.RevertedError + iota
 )
+
+func PatchIllegalArgumentError(err error, revision int) error {
+	if revision < Revision13 && IllegalArgumentError.Equals(err) {
+		return errors.WithCode(err, scoreresult.IllegalFormatError)
+	}
+	return err
+}

@@ -266,7 +266,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 		return err
 	}
 	if err = es.SetDelegation(s.cc, s.from, ds); err != nil {
-		return err
+		return icmodule.PatchIllegalArgumentError(err, s.cc.Revision().Value())
 	}
 	return nil
 }
