@@ -412,7 +412,7 @@ func (e *BlockConverter) doExecute(
 	for height := from; to < 0 || height <= to; height = height + 1 {
 		select {
 		case <-stopCh:
-			return nil
+			return errors.InterruptedError.Errorf("Execution interrupted")
 		default:
 		}
 		if getTPSer != nil {
