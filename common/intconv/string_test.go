@@ -105,6 +105,7 @@ func TestParseBigInt(t *testing.T) {
 		{"T21", args{"-0"}, big.NewInt(0), false},
 		{"T22E", args{"-0__100"}, nil, true},
 		{"T23E", args{"-0_100_"}, nil, true},
+		{"T24E", args{"19928560000000000000x0"}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,6 +119,8 @@ func TestParseBigInt(t *testing.T) {
 				if tt.want.Cmp(&got) != 0 {
 					t.Errorf("ParseBigInt() = %v, want %v", &got, tt.want)
 				}
+			} else {
+				t.Logf("Expected error for %q err=%v", tt.args.s, err)
 			}
 		})
 	}

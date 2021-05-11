@@ -24,7 +24,7 @@ func ParseBigInt(i *big.Int, s string) error {
 	if len(s2) > 1 && s2[0] == '0' {
 		switch s2[1] {
 		case 'o', 'O', 'X', 'b', 'B':
-			return errors.New("InvalidPrefix")
+			return errors.Errorf("InvalidPrefix(str=%q)", s)
 		case 'x':
 			break
 		default:
@@ -35,7 +35,7 @@ func ParseBigInt(i *big.Int, s string) error {
 	if _, ok := i.SetString(s, base); ok {
 		return nil
 	}
-	return errors.New("InvalidNumberFormat")
+	return errors.Errorf("InvalidNumberFormat(str=%q)", s)
 }
 
 func encodeHexNumber(neg bool, b []byte) string {
