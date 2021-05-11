@@ -29,13 +29,32 @@ import (
 	"github.com/icon-project/goloop/service/trace"
 )
 
-var methodsAllowingExtraParams = map[string]bool  {
+var methodsAllowingExtraParams = map[string]bool{
 	"registerPRep": true,
-	"setPRep": true,
+	"setPRep":      true,
 }
 
 func allowExtraParams(method string) bool {
-	yn, _ :=  methodsAllowingExtraParams[method]
+	yn, _ := methodsAllowingExtraParams[method]
+	return yn
+}
+
+var methodsNotChargingContractCallStep = map[string]bool{
+	"setStake":                  true,
+	"setDelegation":             true,
+	"registerPRep":              true,
+	"unregisterPRep":            true,
+	"setPRep":                   true,
+	"setGovernanceVariables":    true,
+	"claimIScore":               true,
+	"estimateUnstakeLockPeriod": true,
+}
+
+func doNotChargeContractCallStep(method string, revision int) bool {
+	if revision >= icmodule.RevisionICON2 {
+		return false
+	}
+	yn, _ := methodsNotChargingContractCallStep[method]
 	return yn
 }
 
@@ -64,7 +83,13 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	h.TLogStart()
 	defer func() {
 		if err != nil {
-			// TODO need to applySteps for some methods.
+			// do not charge contractCall step for some external methods
+			if !doNotChargeContractCallStep(h.GetMethodName(), h.revision.Value()) {
+				// charge contractCall step if preprocessing is failed
+				if !h.ApplyCallSteps(cc) {
+					err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+				}
+			}
 			h.TLogDone(err, cc.StepUsed(), nil)
 		}
 	}()
@@ -90,7 +115,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 }
 
 func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	if h.revision.Value() < icmodule.Revision13 {
+	if h.revision.Value() < icmodule.RevisionICON2 {
 		if icmodule.IllegalArgumentError.Equals(status) {
 			status = errors.WithCode(status, scoreresult.IllegalFormatError)
 		}
