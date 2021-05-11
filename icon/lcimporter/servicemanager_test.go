@@ -54,6 +54,12 @@ func (tcb testTransitionCallback) OnExecute(t module.Transition, err error) {
 	tcb <- err
 }
 
+type testResultCallback chan error
+
+func (trb testResultCallback) OnResult(err error) {
+	trb <- err
+}
+
 func TestServiceManager_Basic(t *testing.T) {
 	rdb := db.NewMapDB()
 	idb := db.NewMapDB()
@@ -71,7 +77,7 @@ func TestServiceManager_Basic(t *testing.T) {
 		common.MustNewAddressFromString("hx02"),
 		common.MustNewAddressFromString("hx03"),
 	}
-	sm, err := NewServiceManagerWithExecutor(chain, ex, vls)
+	sm, err := NewServiceManagerWithExecutor(chain, ex, vls, nil)
 	assert.NoError(t, err)
 
 	vl, err := newValidatorListFromSlice(idb, vls)
@@ -209,7 +215,8 @@ func TestServiceManager_Basic(t *testing.T) {
 	ex, err = NewExecutorWithBC(rdb, idb, logger, bc)
 	assert.NoError(t, err)
 
-	sm, err = NewServiceManagerWithExecutor(chain, ex, vls)
+	trb := testResultCallback(make(chan error, 1))
+	sm, err = NewServiceManagerWithExecutor(chain, ex, vls, trb)
 	assert.NoError(t, err)
 
 	txs2 := buildTestTxs(10, 19, "OK")
@@ -232,7 +239,7 @@ func TestServiceManager_Basic(t *testing.T) {
 		req.sendTxs(txs2)
 		time.Sleep(delayForConfirm)
 		toTC <- "confirm_send_new"
-		req.interrupt()
+		req.end(19)
 	}()
 
 	sm.Start()
@@ -263,41 +270,56 @@ func TestServiceManager_Basic(t *testing.T) {
 
 	assert.Equal(t, "confirm_send_new", <-toTC)
 
-	t.Log("propose block3")
-	// propose 10~19 transactions
+	// process 10~19 transactions
+	txo := 0
+
+	trp := tr3
+	var trc module.Transition
+	for txo < 10 {
+		height += 1
+		ts += 10
+		t.Logf("propose block height=%d offset=%d", height, txo)
+		trc, err = sm.ProposeTransition(trp, common.NewBlockInfo(height, ts), nil)
+		assert.NoError(t, err)
+
+		tcb = testTransitionCallback(make(chan error, 1))
+		_, err = trc.Execute(tcb)
+		assert.NoError(t, err)
+
+		t.Log("finalize block", height)
+		// pre validation success
+		assert.NoError(t, <-tcb)
+		err = sm.Finalize(trp, module.FinalizeResult)
+		assert.NoError(t, err)
+		err = sm.Finalize(trc, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
+		assert.NoError(t, err)
+
+		t.Log("check block", height)
+		// check result & transactions
+		assert.Equal(t, vl.Hash(), trc.NextValidators().Hash())
+		tls3 := trc.NormalTransactions()
+		txsum := 0
+		for itr := tls3.Iterator() ; itr.Has() ; txo, _ = txo+1, itr.Next() {
+			tx, _, err := itr.Get()
+			assert.NoError(t, err)
+			assert.Equal(t, txs2[txo], transaction.Unwrap(tx))
+			txsum += int(txs2[txo].TXCount)
+		}
+		assert.LessOrEqual(t, txsum, TransactionsPerBlock)
+
+		// execution success
+		assert.NoError(t, <-tcb)
+	}
+
+	// propose expecting failure
 	height += 1
 	ts += 10
-	tr4, err := sm.ProposeTransition(tr3, common.NewBlockInfo(height, ts), nil)
-	assert.NoError(t, err)
+	t.Log("propose block", height)
+	_, err = sm.ProposeTransition(trc, common.NewBlockInfo(height, ts), nil)
+	assert.Error(t, err)
 
-	tcb = testTransitionCallback(make(chan error, 1))
-	_, err = tr4.Execute(tcb)
-	assert.NoError(t, err)
-
-	t.Log("finalize block3")
-	// pre validation success
-	assert.NoError(t, <-tcb)
-	err = sm.Finalize(tr3, module.FinalizeResult)
-	assert.NoError(t, err)
-	err = sm.Finalize(tr4, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
-	assert.NoError(t, err)
-
-	t.Log("check block3")
-	// check result & transactions
-	assert.Equal(t, vl.Hash(), tr4.NextValidators().Hash())
-	tls3 := tr4.NormalTransactions()
-	txsum := 0
-	for itr, idx := tls3.Iterator(), 0 ; itr.Has() ; idx, _ = idx+1, itr.Next() {
-		tx, i, err := itr.Get()
-		assert.NoError(t, err)
-		assert.Equal(t, idx, i)
-		assert.Equal(t, txs2[idx], transaction.Unwrap(tx))
-		txsum += int(txs2[idx].TXCount)
-	}
-	assert.LessOrEqual(t, txsum, TransactionsPerBlock)
-
-	// execution success
-	assert.NoError(t, <-tcb)
+	// get end of blocks
+	assert.NoError(t, <-trb)
 
 	sm.Term()
 }

@@ -52,6 +52,7 @@ func buildTestTxs(from, to int64, suffix string) []*BlockTransaction {
 type testBCRequest struct {
 	from, to int64
 	txs      []*BlockTransaction
+	bc       *testBlockConverter
 	channel  chan interface{}
 }
 
@@ -73,16 +74,22 @@ func (r *testBCRequest) interrupt() {
 	close(r.channel)
 }
 
-func (r *testBCRequest) term() {
+func (r *testBCRequest) end(h int64) {
+	r.bc.setLastHeight(h)
 	close(r.channel)
 }
 
 type testBlockConverter struct {
 	channel chan *testBCRequest
+	last    int64
 }
 
 func (t *testBlockConverter) Rebase(from, to int64, txs []*BlockTransaction) (<-chan interface{}, error) {
+	if t.last > 0 && from >= t.last {
+		return nil, ErrAfterLastBlock
+	}
 	req := &testBCRequest{
+		bc:      t,
 		from:    from,
 		to:      to,
 		txs:     txs,
@@ -92,8 +99,14 @@ func (t *testBlockConverter) Rebase(from, to int64, txs []*BlockTransaction) (<-
 	return req.channel, nil
 }
 
+func (t *testBlockConverter) setLastHeight(h int64) {
+	t.last = h
+}
+
 func newTestBlockConverter(rdb db.Database) *testBlockConverter {
-	return &testBlockConverter{ make(chan *testBCRequest, 1)}
+	return &testBlockConverter{
+		channel: make(chan *testBCRequest, 1),
+	}
 }
 
 func TestExecutor_Basic(t *testing.T) {
@@ -412,4 +425,78 @@ func TestExecutor_Term(t *testing.T) {
 
 	assert.Equal(t, "closed", <-toTest)
 	time.Sleep(delayForConfirm)
+}
+
+func TestExecutor_LastBlock(t *testing.T) {
+	rdb := db.NewMapDB()
+	idb := db.NewMapDB()
+	logger := log.GlobalLogger()
+	bc := newTestBlockConverter(rdb)
+	ex, err := NewExecutorWithBC(rdb, idb, logger, bc)
+	assert.NoError(t, err)
+
+	err = ex.Start()
+	assert.NoError(t, err)
+
+	toTC := make(chan string, 3)
+	toBC := make(chan string, 3)
+
+	txs1 := buildTestTxs(0, 9, "OK")
+	go func() {
+		req := <-bc.channel
+		t.Log("request received")
+		assert.Equal(t, int64(0), req.from)
+		assert.Equal(t, int64(-1), req.to)
+		assert.Nil(t, req.txs)
+
+		t.Log("sending 0~8")
+		req.sendTxs(txs1[:9])
+		time.Sleep(100*time.Millisecond)
+		toTC <- "sent 0~8"
+
+		assert.Equal(t, "send_last", <-toBC)
+
+		t.Log("sending 9")
+		req.sendTxs(txs1[9:])
+		time.Sleep(delayForConfirm)
+		toTC <- "send 9"
+
+		req.end(9)
+
+		toTC <- "closed"
+	}()
+
+	height := 0
+
+	assert.Equal(t, "sent 0~8", <-toTC)
+	txs, err := ex.ProposeTransactions()
+	assert.NoError(t, err)
+	assert.Equal(t, txs1[:len(txs)], txs)
+	height += len(txs)
+	t.Logf("set height=%d", height)
+
+	err = ex.FinalizeTransactions(int64(height-1))
+	assert.NoError(t, err)
+
+	toBC <- "send_last"
+	assert.Equal(t, "send 9", <-toTC)
+	for height < 10 {
+		txs, err = ex.ProposeTransactions()
+		assert.NoError(t, err)
+		assert.Equal(t, txs1[height:height+len(txs)], txs)
+		height += len(txs)
+
+		err = ex.FinalizeTransactions(int64(height-1))
+		assert.NoError(t, err)
+		t.Logf("set height=%d", height)
+	}
+
+	t.Log("start last propose")
+	txs, err = ex.ProposeTransactions()
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, ErrAfterLastBlock))
+
+	assert.Equal(t, "closed", <-toTC)
+
+	ex.Term()
 }

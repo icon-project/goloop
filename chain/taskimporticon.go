@@ -77,7 +77,7 @@ func (t *taskImportICON) String() string {
 func (t *taskImportICON) DetailOf(s State) string {
 	switch s {
 	case Started:
-		return fmt.Sprint()
+		return fmt.Sprintf("%s %d", ImportICONTask, t.sm.GetImportedBlocks())
 	default:
 		return ImportICONTask +" "+s.String()
 	}
@@ -184,7 +184,7 @@ func (t *taskImportICON) _import() (ret error) {
 	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
 
 	// initialize service manager
-	if sm, err := lcimporter.NewServiceManager(c, t.dbase, config); err != nil {
+	if sm, err := lcimporter.NewServiceManager(c, t.dbase, config, t); err != nil {
 		return err
 	} else {
 		c.sm = sm
@@ -220,6 +220,10 @@ func (t *taskImportICON) Wait() error {
 	t.chain.releaseManagers()
 	t._releaseDatabase()
 	return result
+}
+
+func (t *taskImportICON) OnResult(err error) {
+	t.result.SetValue(err)
 }
 
 func taskImportIconFactory(c *singleChain, params json.RawMessage) (chainTask, error) {

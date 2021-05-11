@@ -37,6 +37,7 @@ type ServiceManager struct {
 	ex  *Executor
 	log log.Logger
 	db  db.Database
+	cb  ImportCallback
 
 	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
@@ -44,10 +45,15 @@ type ServiceManager struct {
 	defaultReceipt    txresult.Receipt
 }
 
+type ImportCallback interface {
+	OnResult(err error)
+}
+
 func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
 	pt := parent.(*transition)
 	bts, err := sm.ex.ProposeTransactions()
 	if err != nil {
+		sm.handleError(err)
 		return nil, err
 	}
 	txs := make([]module.Transaction, 0, len(bts))
@@ -85,11 +91,13 @@ func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
 	t := tr.(*transition)
 	if (opt & module.FinalizeNormalTransaction) != 0 {
 		if err := t.finalizeTransactions(); err != nil {
+			sm.handleError(err)
 			return err
 		}
 	}
 	if (opt & module.FinalizeResult) != 0 {
 		if err := t.finalizeResult(); err != nil {
+			sm.handleError(err)
 			return err
 		}
 	}
@@ -240,7 +248,18 @@ func (sm *ServiceManager) getInitialValidators() module.ValidatorList {
 	return sm.initialValidators
 }
 
-func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*common.Address) (*ServiceManager, error) {
+func (sm *ServiceManager) handleError(err error) {
+	if errors.Is(err, ErrAfterLastBlock) {
+		err = nil
+	}
+	go sm.cb.OnResult(err)
+}
+
+func (sm *ServiceManager) GetImportedBlocks() int64 {
+	return sm.ex.GetImportedBlocks()
+}
+
+func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
 	logger := chain.Logger()
 	dbase := chain.Database()
 	zero := new(big.Int)
@@ -255,6 +274,7 @@ func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*commo
 		ex:  ex,
 		log: logger,
 		db:  dbase,
+		cb:  cb,
 
 		initialValidators: vl,
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),
@@ -263,10 +283,10 @@ func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*commo
 	}, nil
 }
 
-func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config) (*ServiceManager, error) {
+func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config, cb ImportCallback) (*ServiceManager, error) {
 	ex, err := NewExecutor(chain, rdb, cfg)
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceManagerWithExecutor(chain, ex, cfg.Validators)
+	return NewServiceManagerWithExecutor(chain, ex, cfg.Validators, cb)
 }
