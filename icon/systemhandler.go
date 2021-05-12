@@ -17,9 +17,14 @@
 package icon
 
 import (
+	"math/big"
+
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/trace"
 )
@@ -38,23 +43,40 @@ type CallHandler interface {
 	contract.AsyncContractHandler
 	GetMethodName() string
 	AllowExtra()
+	DoExecuteAsync(cc contract.CallContext, ch eeproxy.CallContext) error
+	TLogStart()
+	TLogDone(status error, steps *big.Int, result *codec.TypedObj)
+	ApplyCallSteps(cc contract.CallContext) bool
 }
 
 type SystemCallHandler struct {
 	CallHandler
+	cc       contract.CallContext
+	log      *trace.Logger
+	revision module.Revision
 }
 
 func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
-	logger := trace.LoggerOf(cc.Logger())
-	revision := cc.Revision()
-	if revision.Value() < icmodule.Revision9 {
+	h.cc = cc
+	h.revision = cc.Revision()
+	h.log = trace.LoggerOf(cc.Logger())
+
+	h.TLogStart()
+	defer func() {
+		if err != nil {
+			// TODO need to applySteps for some methods.
+			h.TLogDone(err, cc.StepUsed(), nil)
+		}
+	}()
+
+	if h.revision.Value() < icmodule.Revision9 {
 		if allowExtraParams(h.GetMethodName()) {
-			logger.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
+			h.log.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
 			h.AllowExtra()
 		}
 		defer func() {
 			if scoreresult.MethodNotFoundError.Equals(err) {
-				logger.TSystemf(
+				h.log.TSystemf(
 					"FRAME[%d] result patch from=%v to=%v",
 					cc.FrameID(),
 					err,
@@ -64,9 +86,18 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			}
 		}()
 	}
-	return h.CallHandler.ExecuteAsync(cc)
+	return h.CallHandler.DoExecuteAsync(cc, h)
+}
+
+func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+	if h.revision.Value() < icmodule.Revision13 {
+		if icmodule.IllegalArgumentError.Equals(status) {
+			status = errors.WithCode(status, scoreresult.IllegalFormatError)
+		}
+	}
+	h.CallHandler.OnResult(status, steps, result)
 }
 
 func newSystemHandler(ch CallHandler) contract.ContractHandler {
-	return &SystemCallHandler{ ch }
+	return &SystemCallHandler{ CallHandler: ch }
 }
