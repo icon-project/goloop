@@ -110,6 +110,7 @@ class ChainTest extends Test {
         commands.add("gochain-" + dockerEnv)
         commands.add("goloop/gochain")
         process = commands.execute()
+        process.waitFor(1, TimeUnit.SECONDS)
     }
 
     @TaskAction
