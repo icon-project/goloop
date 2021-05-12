@@ -17,9 +17,19 @@
 package icmodule
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
-const(
+const (
 	IllegalArgumentError = scoreresult.RevertedError + iota
+)
+
+const (
+	CodeIISS = errors.CodeCritical + errors.CodeSegment * (iota + 1)
+)
+
+const (
+	CalculationFailedError = CodeIISS + iota
+	CalculationNotFinishedError
 )

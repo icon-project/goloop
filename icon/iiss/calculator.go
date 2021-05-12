@@ -73,6 +73,7 @@ type Calculator struct {
 	temp        *icreward.State
 	result      *icreward.Snapshot
 	stats       *statistics
+	err         error
 }
 
 func (c *Calculator) Result() *icreward.Snapshot {
@@ -99,6 +100,10 @@ func (c *Calculator) Temp() *icreward.State {
 	return c.temp
 }
 
+func (c *Calculator) Error() error {
+	return c.err
+}
+
 func (c *Calculator) IsCalcDone(blockHeight int64) bool {
 	if c.startHeight == InitBlockHeight {
 		return true
@@ -119,34 +124,38 @@ func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
 }
 
 func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err error) {
+	defer func() {
+		c.err = err
+	}()
 	c.log = logger
 	ss := ess.(*ExtensionSnapshotImpl)
 	startTS := time.Now()
 	if err = c.prepare(ss); err != nil {
-		err = errors.Wrapf(err, "Failed to prepare calculator")
+		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
 	prepareTS := time.Now()
 
 	if err = c.calculateBlockProduce(); err != nil {
-		err = errors.Wrapf(err, "Failed to calculate block produce reward")
+		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
 		return
 	}
 	bpTS := time.Now()
 
 	if err = c.calculateVotedReward(); err != nil {
-		err = errors.Wrapf(err, "Failed to calculate P-Rep voted reward")
+		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate P-Rep voted reward")
 		return
 	}
 	votedTS := time.Now()
 
 	if err = c.calculateVotingReward(); err != nil {
-		err = errors.Wrapf(err, "Failed to calculate ICONist voting reward")
+		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate ICONist voting reward")
 		return
 	}
 	votingTS := time.Now()
 
 	if err = c.postWork(); err != nil {
+		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
 		return
 	}
 	finalTS := time.Now()
@@ -894,20 +903,18 @@ func (c *Calculator) postWork() (err error) {
 	// check result
 	if c.global.GetIISSVersion() == icstate.IISSVersion2 {
 		if c.stats.blockProduce.Sign() != 0 {
-			return errors.CriticalUnknownError.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
+			return errors.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
 		}
 		g := c.global.GetV2()
 		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
 		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
-			return errors.CriticalUnknownError.Errorf("Too much Voted Reward. %s < %s",
-				maxVotedReward, c.stats.voted.String())
+			return errors.Errorf("Too much Voted Reward. %s < %s", maxVotedReward, c.stats.voted.String())
 		}
 		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
 		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
-			return errors.CriticalUnknownError.Errorf("Too much Voting Reward. %s < %s",
-				maxVotingReward, c.stats.voting.String())
+			return errors.Errorf("Too much Voting Reward. %s < %s", maxVotingReward, c.stats.voting.String())
 		}
 	}
 

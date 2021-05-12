@@ -233,8 +233,10 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 		return err
 	}
 	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
-		err = CriticalCalculatorError.Errorf("Reward calculation is not finished (%d)", rcInfo.StartHeight())
-		return err
+		if err = calculator.Error(); err != nil {
+			return err
+		}
+		return icmodule.CalculationNotFinishedError.Errorf("Calculation is not finished %d", rcInfo.StartHeight())
 	}
 
 	// apply calculation result
