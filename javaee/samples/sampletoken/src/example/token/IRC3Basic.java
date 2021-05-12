@@ -16,8 +16,8 @@
 
 package example.token;
 
+import example.util.EnumerableIntMap;
 import example.util.IntSet;
-import example.util.IntToAddressMap;
 import score.Address;
 import score.Context;
 import score.DictDB;
@@ -31,7 +31,7 @@ public abstract class IRC3Basic implements IRC3 {
     private final String name;
     private final String symbol;
     private final DictDB<Address, IntSet> holderTokens = Context.newDictDB("holders", IntSet.class);
-    private final IntToAddressMap tokenOwners = new IntToAddressMap("owners");
+    private final EnumerableIntMap<Address> tokenOwners = new EnumerableIntMap<>("owners", Address.class);
     private final DictDB<BigInteger, Address> tokenApprovals = Context.newDictDB("approvals", Address.class);
 
     public IRC3Basic(String _name, String _symbol) {

@@ -23,6 +23,6 @@ import java.lang.annotation.Target;
  *  Denotes that the element should not be removed when the code is optimized by
  *  tool kit.
  */
-@Target({ElementType.METHOD, ElementType.FIELD})
+@Target({ElementType.METHOD, ElementType.FIELD, ElementType.CONSTRUCTOR})
 public @interface Keep {
 }

@@ -22,9 +22,9 @@ import example.token.IRC2;
 import example.token.IRC2Basic;
 import example.token.IRC3;
 import example.token.IRC3Basic;
-import example.util.EnumerableMap;
+import example.util.EnumerableIntMap;
+import example.util.EnumerableSet;
 import example.util.IntSet;
-import example.util.IntToAddressMap;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -188,7 +188,7 @@ class JavaScoreTest extends TestBase {
         IRC3TokenScore tokenScore = IRC3TokenScore.mustDeploy(
                 txHandler, ownerWallet, new Class<?>[]{
                         IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
-                        EnumerableMap.class, IntSet.class, IntToAddressMap.class});
+                        EnumerableIntMap.class, EnumerableSet.class, IntSet.class});
 
         // 2. initial check
         LOG.infoEntering("initial check");

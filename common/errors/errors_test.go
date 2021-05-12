@@ -151,17 +151,3 @@ func TestIs(t *testing.T) {
 		t.Error("Fail to check Is(Wrapc(origin) origin) is TRUE")
 	}
 }
-
-func TestAsValue(t *testing.T) {
-	var coder ErrorCoder
-	if AsValue(&coder, Errorc(IllegalArgumentError, "Test")) {
-		if coder == nil {
-			t.Error("Returned object is nil")
-		}
-		if c := coder.ErrorCode(); c != IllegalArgumentError {
-			t.Error("Fail to find ErrorCoder")
-		}
-	} else {
-		t.Error("Fail to get ErrorCoder from result of Errorc()")
-	}
-}

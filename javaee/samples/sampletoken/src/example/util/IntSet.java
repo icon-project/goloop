@@ -23,11 +23,11 @@ import java.math.BigInteger;
 
 public class IntSet {
     private final String id;
-    private final EnumerableMap<BigInteger, BigInteger> map;
+    private final EnumerableSet<BigInteger> set;
 
     public IntSet(String id) {
         this.id = id;
-        this.map = new EnumerableMap<>(id, BigInteger.class);
+        this.set = new EnumerableSet<>(id, BigInteger.class);
     }
 
     // for serialize
@@ -43,19 +43,18 @@ public class IntSet {
     }
 
     public int length() {
-        return map.length();
+        return set.length();
     }
 
     public BigInteger at(int index) {
-        return map.get(index);
+        return set.at(index);
     }
 
     public void add(BigInteger value) {
-        map.set(value, value);
+        set.add(value);
     }
 
     public void remove(BigInteger value) {
-        var lastValue = at(length() - 1);
-        map.popAndSwap(value, lastValue);
+        set.remove(value);
     }
 }

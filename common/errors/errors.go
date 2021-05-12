@@ -2,7 +2,6 @@ package errors
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/pkg/errors"
 )
@@ -285,11 +284,15 @@ type ErrorCoder interface {
 }
 
 func CoderOf(e error) (ErrorCoder, bool) {
-	var coder ErrorCoder
-	if AsValue(&coder, e) {
-		return coder, true
+	coder := FindCause(e, func(err error) bool {
+		_, ok := err.(ErrorCoder)
+		return ok
+	})
+	if coder != nil {
+		return coder.(ErrorCoder), true
+	} else {
+		return nil, false
 	}
-	return nil, false
 }
 
 func CodeOf(e error) Code {
@@ -309,31 +312,13 @@ type Unwrapper interface {
 
 // Is checks whether err is caused by the target.
 func Is(err, target error) bool {
-	type causer interface {
-		Cause() error
-	}
-
-	type unwrapper interface {
-		Unwrap() error
-	}
-
-	for {
-		if err == target {
-			return true
-		}
-		if cause, ok := err.(causer); ok {
-			err = cause.Cause()
-		} else if unwrap, ok := err.(unwrapper); ok {
-			err = unwrap.Unwrap()
-		} else {
-			return false
-		}
-	}
+	cause := FindCause(err, func(err error) bool {
+		return err == target
+	})
+	return cause != nil
 }
 
-// AsValue checks whether the err is caused by specified typed error, and
-// store it to the ptr.
-func AsValue(ptr interface{}, err error) bool {
+func FindCause(err error, cb func(err error) bool) error {
 	type causer interface {
 		Cause() error
 	}
@@ -341,27 +326,20 @@ func AsValue(ptr interface{}, err error) bool {
 	type unwrapper interface {
 		Unwrap() error
 	}
-
-	value := reflect.ValueOf(ptr)
-	if value.Kind() != reflect.Ptr {
-		return false
-	} else {
-		value = value.Elem()
-	}
-	valueType := value.Type()
-
 	for {
-		errValue := reflect.ValueOf(err)
-		if errValue.Type().AssignableTo(valueType) {
-			value.Set(errValue)
-			return true
+		if err == nil {
+			return nil
 		}
-		if cause, ok := err.(causer); ok {
-			err = cause.Cause()
-		} else if unwrap, ok := err.(unwrapper); ok {
-			err = unwrap.Unwrap()
-		} else {
-			return false
+		if cb(err) {
+			return err
+		}
+		switch obj := err.(type) {
+		case causer:
+			err = obj.Cause()
+		case unwrapper:
+			err = obj.Unwrap()
+		default:
+			return nil
 		}
 	}
 }
