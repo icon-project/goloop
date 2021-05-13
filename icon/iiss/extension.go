@@ -418,7 +418,7 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 
 	account = s.State.GetAccount(from)
 
-	using := ds.GetDelegationAmount()
+	using := new(big.Int).Set(ds.GetDelegationAmount())
 	using.Add(using, account.Unbond())
 	using.Add(using, account.Bond())
 	if account.Stake().Cmp(using) < 0 {

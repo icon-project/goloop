@@ -135,7 +135,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		if err := account.SlashStake(totalSlash); err != nil {
 			return err
 		}
-		totalStake := s.State.GetTotalStake()
+		totalStake := new(big.Int).Set(s.State.GetTotalStake())
 		totalStake.Sub(totalStake, totalSlash)
 		if err := s.State.SetTotalStake(totalStake); err != nil {
 			return err
