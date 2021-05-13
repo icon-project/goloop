@@ -607,11 +607,12 @@ func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]
 		}
 	}
 
-	totalDelegated := pm.totalDelegated
+	totalDelegated := new(big.Int).Set(pm.totalDelegated)
 	totalDelegated.Add(totalDelegated, nd.GetDelegationAmount())
 	totalDelegated.Sub(totalDelegated, od.GetDelegationAmount())
 	// Ignore the delegated amount to Inactive P-Rep
 	totalDelegated.Sub(totalDelegated, delegatedToInactiveNode)
+	pm.totalDelegated = totalDelegated
 
 	pm.sort()
 	return delta, nil
