@@ -83,6 +83,8 @@ func (v *Vote) Format(f fmt.State, c rune) {
 		} else {
 			fmt.Fprintf(f, "Vote{%s %s}", v.address, v.value)
 		}
+	case 's':
+		fmt.Fprintf(f, "address=%s value=%s", v.address, v.value)
 	}
 }
 
@@ -217,7 +219,7 @@ func newEventVote(_ icobject.Tag) *EventVote {
 
 func NewEventVote(addr *common.Address, votes VoteList) *EventVote {
 	return &EventVote{
-		from: addr,
+		from:  addr,
 		votes: votes,
 	}
 }

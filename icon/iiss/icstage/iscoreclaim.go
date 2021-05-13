@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -60,6 +61,23 @@ func (ic *IScoreClaim) Added(amount *big.Int) *IScoreClaim {
 		n.value = new(big.Int).Add(ic.value, amount)
 	}
 	return n
+}
+
+func (ic *IScoreClaim) String() string {
+	return fmt.Sprintf("value=%d", ic.value)
+}
+
+func (ic *IScoreClaim) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "IScoreClaim{value=%d}", ic.value)
+		} else {
+			fmt.Fprintf(f, "IScoreClaim{%d}", ic.value)
+		}
+	case 's':
+		fmt.Fprint(f, ic.String())
+	}
 }
 
 func newIScoreClaim(_ icobject.Tag) *IScoreClaim {

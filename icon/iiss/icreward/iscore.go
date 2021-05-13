@@ -17,6 +17,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -85,6 +86,19 @@ func (is *IScore) Clone() *IScore {
 		return nil
 	}
 	return NewIScore(is.value)
+}
+
+func (is *IScore) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "IScore{value=%d}", is.value)
+		} else {
+			fmt.Fprintf(f, "IScore{%d}", is.value)
+		}
+	case 's':
+		fmt.Fprintf(f, "value=%d", is.value)
+	}
 }
 
 func newIScore(_ icobject.Tag) *IScore {

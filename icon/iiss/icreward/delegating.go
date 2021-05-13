@@ -17,6 +17,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -105,6 +106,19 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 
 	d.Delegations = nDelegations
 	return nil
+}
+
+func (d *Delegating) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Delegating{%+v}", d.Delegations)
+		} else {
+			fmt.Fprintf(f, "Delegating{%v}", d.Delegations)
+		}
+	case 's':
+		fmt.Fprintf(f, "%s", d.Delegations)
+	}
 }
 
 func newDelegating(_ icobject.Tag) *Delegating {

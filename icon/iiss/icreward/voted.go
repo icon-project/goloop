@@ -17,6 +17,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -123,6 +124,22 @@ func (v *Voted) Clone() *Voted {
 
 func (v *Voted) IsEmpty() bool {
 	return v.enable == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.bondedDelegation.Sign() == 0
+}
+
+func (v *Voted) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Voted{enable=%v delegated=%d bonded=%d bondedDelegation=%d}",
+				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+		} else {
+			fmt.Fprintf(f, "Voted{%v %d %d %d}",
+				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+		}
+	case 's':
+		fmt.Fprintf(f, "enable=%v delegated=%d bonded=%d bondedDelegation=%d",
+			v.enable, v.delegated, v.bonded, v.bondedDelegation)
+	}
 }
 
 func newVoted(_ icobject.Tag) *Voted {

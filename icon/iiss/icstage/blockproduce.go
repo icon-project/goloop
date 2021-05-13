@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -95,6 +96,26 @@ func (bp *BlockProduce) IsEmpty() bool {
 	return bp.voteCount == 0
 }
 
+func (bp *BlockProduce) String() string {
+	return fmt.Sprintf("proposerIndex=%d votecount=%d voteMask=%b",
+		bp.proposerIndex, bp.voteCount, bp.voteMask)
+}
+
+func (bp *BlockProduce) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "BlockProduce{proposerIndex=%d votecount=%d voteMask=%b}",
+				bp.proposerIndex, bp.voteCount, bp.voteMask)
+		} else {
+			fmt.Fprintf(f, "BlockProduce{%d %d %b}",
+				bp.proposerIndex, bp.voteCount, bp.voteMask)
+		}
+	case 's':
+		fmt.Fprint(f, bp.String())
+	}
+}
+
 func newBlockProduce(_ icobject.Tag) *BlockProduce {
 	return new(BlockProduce)
 }
@@ -102,7 +123,7 @@ func newBlockProduce(_ icobject.Tag) *BlockProduce {
 func NewBlockProduce(pIndex, vCount int, vMask *big.Int) *BlockProduce {
 	return &BlockProduce{
 		proposerIndex: pIndex,
-		voteCount: vCount,
-		voteMask: vMask,
+		voteCount:     vCount,
+		voteMask:      vMask,
 	}
 }

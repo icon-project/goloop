@@ -139,8 +139,8 @@ func (g *GlobalV1) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (g *GlobalV1) String() string {
-	return fmt.Sprintf("Revision: %d, IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Irep: %s, Rrep: %s, "+
-		"MainPRepCount: %d, ElectedPRepCount: %d",
+	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d irep=%s rrep=%s "+
+		"mainPRepCount=%d electedPRepCount=%d",
 		g.revision,
 		g.iissVersion,
 		g.startHeight,
@@ -150,6 +150,36 @@ func (g *GlobalV1) String() string {
 		g.mainPRepCount,
 		g.electedPRepCount,
 	)
+}
+
+func (g *GlobalV1) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "GlobalV1{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d irep=%s "+
+				"rrep=%s mainPRepCount=%d electedPRepCount=%d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.irep,
+				g.rrep,
+				g.mainPRepCount,
+				g.electedPRepCount,
+			)
+		} else {
+			fmt.Fprintf(f, "GlobalV1{%d %d %d %d %s %s %d %d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.irep,
+				g.rrep,
+				g.mainPRepCount,
+				g.electedPRepCount,
+			)
+		}
+	}
 }
 
 func (g *GlobalV1) Equal(impl icobject.Impl) bool {
@@ -291,8 +321,8 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (g *GlobalV2) String() string {
-	return fmt.Sprintf("Revision: %d, IISSVersion: %d, StartHeight: %d, OffsetLimit: %d, Iglobal: %s, "+
-		"Iprep: %s, Ivoter: %d, ElectedPRepCount: %d, BondRequirement: %d",
+	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
+		"iprep=%s ivoter=%d electedPRepCount=%d bondRequirement=%d",
 		g.revision,
 		g.iissVersion,
 		g.startHeight,
@@ -303,6 +333,38 @@ func (g *GlobalV2) String() string {
 		g.electedPRepCount,
 		g.bondRequirement,
 	)
+}
+
+func (g *GlobalV2) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "GlobalV2{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
+				"iprep=%s ivoter=%d electedPRepCount=%d bondRequirement=%d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.iglobal,
+				g.iprep,
+				g.ivoter,
+				g.electedPRepCount,
+				g.bondRequirement,
+			)
+		} else {
+			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %s %s %d %d %d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.iglobal,
+				g.iprep,
+				g.ivoter,
+				g.electedPRepCount,
+				g.bondRequirement,
+			)
+		}
+	}
 }
 
 func (g *GlobalV2) Equal(impl icobject.Impl) bool {

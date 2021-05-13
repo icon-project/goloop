@@ -17,7 +17,6 @@
 package icreward
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -55,8 +54,6 @@ func TestVoted(t *testing.T) {
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, 0, t1.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t1.BondedDelegation().Cmp(t2.BondedDelegation()))
-
-	fmt.Printf("%+v %+v", t1, t2)
 }
 
 func makeVotedFotTest(delegated int64, bonded int64) *Voted {

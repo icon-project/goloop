@@ -17,6 +17,7 @@
 package icreward
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -110,6 +111,19 @@ func (b *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 
 	b.Bonds = nBonds
 	return nil
+}
+
+func (b *Bonding) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "Bonding{%+v}", b.Bonds)
+		} else {
+			fmt.Fprintf(f, "Bonding{%v}", b.Bonds)
+		}
+	case 's':
+		fmt.Fprintf(f, "%s", b.Bonds)
+	}
 }
 
 func newBonding(_ icobject.Tag) *Bonding {
