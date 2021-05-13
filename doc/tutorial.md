@@ -33,6 +33,12 @@ Now, you may start the server with it.
 ./bin/gochain --config config.json
 ```
 
+In another terminal, you can test if everything is working fine by making a JSON RPC request using GOLOOP binary.
+
+```bash
+./bin/goloop rpc lastblock --uri http://127.0.0.1:9080/api/v3
+```
+
 You may send transactions with the wallet, `wallet.json`, for the initial balance of other wallets.
 
 This is a single node configuration. If you want to make a network with multiple nodes,
