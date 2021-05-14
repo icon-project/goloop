@@ -27,8 +27,16 @@ import (
 )
 
 type RepJSON struct {
-	Address common.Address `json:"id"`
-	P2P     string         `json:"p2pEndPoint,omitempty"`
+	Address *common.Address `json:"address,omitempty"`
+	ID      *common.Address `json:"id,omitempty"`
+	P2P     string          `json:"p2pEndPoint,omitempty"`
+}
+
+func (r *RepJSON) Normalize() {
+	if r.Address == nil {
+		r.Address = r.ID
+		r.ID = nil
+	}
 }
 
 type RepsList struct {
@@ -37,7 +45,11 @@ type RepsList struct {
 }
 
 func (l *RepsList) UnmarshalJSON(bs []byte) error {
-	return json.Unmarshal(bs, &l.json)
+	err := json.Unmarshal(bs, &l.json)
+	for _, j := range l.json {
+		j.Normalize()
+	}
+	return err
 }
 
 func (l *RepsList) Size() int {
@@ -56,7 +68,7 @@ func (l *RepsList) Hash() []byte {
 }
 
 func (l *RepsList) Get(i int) module.Address {
-	return &l.json[i].Address
+	return l.json[i].Address
 }
 
 func (l *RepsList) ToJSON(version module.JSONVersion) (interface{}, error) {
@@ -69,7 +81,7 @@ func (l *RepsList) ToJSON(version module.JSONVersion) (interface{}, error) {
 func (l *RepsList) GetValidatorList(dbase db.Database) (module.ValidatorList, error) {
 	vs := make([]module.Validator, len(l.json))
 	for i, r := range l.json {
-		v, err := state.ValidatorFromAddress(&r.Address)
+		v, err := state.ValidatorFromAddress(r.Address)
 		if err != nil {
 			return nil, err
 		}
