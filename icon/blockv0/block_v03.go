@@ -112,7 +112,6 @@ func (b *BlockV03) Signature() common.Signature {
 func (b *BlockV03) StateHash() []byte {
 	return b.json.StateHash.Bytes()
 }
-
 func (b *BlockV03) RepsHash() []byte {
 	return b.json.RepsHash.Bytes()
 }
@@ -193,6 +192,15 @@ func (b *BlockV03) Verify(prev Block) error {
 	var prevReps *RepsList
 	if prev != nil {
 		switch pb := prev.(type) {
+		case *BlockV01a:
+			// We assume first V03 reps list is the same as initial reps list
+			// which is true in ICON main net.
+			prevReps = b.reps
+			voted := b.json.PrevVotes.Quorum()
+			if !bytes.Equal(pb.ID(), voted) {
+				return errors.InvalidStateError.Errorf(
+					"InvalidConsensus(voted=%#x,id=%#x)", voted, pb.ID())
+			}
 		case *BlockV03:
 			prevReps = pb.reps
 			voted := b.json.PrevVotes.Quorum()
