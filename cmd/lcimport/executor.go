@@ -313,6 +313,43 @@ func FetchBlock(chn <- chan interface{}) (*Block, error) {
 	}
 }
 
+func (e *Executor) consensusInfoFor(block_ blockv0.Block, prev_ blockv0.Block) (module.ConsensusInfo, error) {
+	var voters module.ValidatorList
+	var voted []bool
+	var err error
+	switch block := block_.(type) {
+	case *blockv0.BlockV01a:
+	case *blockv0.BlockV03:
+		switch prev := prev_.(type) {
+		case *blockv0.BlockV01a:
+			voters, err = block.Validators().GetValidatorList(e.database)
+			if err != nil {
+				return nil, err
+			}
+			voted = make([]bool, voters.Len())
+			err = block.PrevVotes().CheckVoters(block.Validators(), voted)
+			if err != nil {
+				return nil, err
+			}
+		case *blockv0.BlockV03:
+			voters, err = prev.Validators().GetValidatorList(e.database)
+			if err != nil {
+				return nil, err
+			}
+			voted = make([]bool, voters.Len())
+			err = block.PrevVotes().CheckVoters(prev.Validators(), voted)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errors.UnsupportedError.New("Unsupported")
+		}
+	default:
+		return nil, errors.UnsupportedError.New("Unsupported")
+	}
+	return common.NewConsensusInfo(block_.Proposer(), voters, voted), nil
+}
+
 func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) (*Transition, error) {
 	var height int64
 	if last.Block != nil {
@@ -328,8 +365,10 @@ func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) 
 	if height == 0 {
 		csi = common.NewConsensusInfo(nil, nil, nil)
 	} else {
-		// TODO need to fill up consensus information
-		csi = common.NewConsensusInfo(nil, nil, nil)
+		csi, err = e.consensusInfoFor(blk.Original(), last.Block.Original())
+		if err != nil {
+			return nil, err
+		}
 	}
 	tr := service.NewTransition(
 		last.Transition,
