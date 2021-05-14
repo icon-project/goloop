@@ -573,6 +573,8 @@ const (
 	DisableDepositTerm = 0
 
 	InitialUnstakeSlotMax = 1
+
+	InitialDelegationSlotMax = 10
 )
 
 const (
@@ -598,6 +600,7 @@ const (
 	defaultConsistentValidationPenaltyCondition  = 5
 	defaultConsistentValidationPenaltyMask       = 30
 	defaultConsistentValidationPenaltySlashRatio = 10
+	defaultDelegationSlotMax                     = 100
 )
 
 type config struct {
@@ -617,6 +620,7 @@ type config struct {
 	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
 	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
 	ConsistentValidationPenaltySlashRatio *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
+	DelegationSlotMax                     *common.HexInt `json:"delegationSlotMax"`
 }
 
 func (c *config) String() string {
@@ -770,6 +774,7 @@ func newIconConfig() *config {
 		ConsistentValidationPenaltyCondition:  common.NewHexInt(defaultConsistentValidationPenaltyCondition),
 		ConsistentValidationPenaltyMask:       common.NewHexInt(defaultConsistentValidationPenaltyMask),
 		ConsistentValidationPenaltySlashRatio: common.NewHexInt(defaultConsistentValidationPenaltySlashRatio),
+		DelegationSlotMax:                     common.NewHexInt(defaultDelegationSlotMax),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(defaultIglobal),
 			Iprep:   common.NewHexInt(defaultIprep),

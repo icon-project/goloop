@@ -28,24 +28,6 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
-const (
-	maxDelegations = 100
-)
-
-var maxDelegationCount = maxDelegations
-
-func getMaxDelegationCount() int {
-	return maxDelegationCount
-}
-
-func setMaxDelegationCount(v int) {
-	if v == 0 {
-		maxDelegationCount = maxDelegations
-	} else {
-		maxDelegationCount = v
-	}
-}
-
 type Delegation struct {
 	Address *common.Address `json:"address"`
 	Value   *common.HexInt  `json:"value"`
@@ -194,9 +176,9 @@ func (ds *Delegations) Iterator() VotingIterator {
 	return NewVotingIterator(ds.getVotings())
 }
 
-func NewDelegations(param []interface{}) (Delegations, error) {
+func NewDelegations(param []interface{}, max int) (Delegations, error) {
 	count := len(param)
-	if count > getMaxDelegationCount() {
+	if count > max {
 		return nil, scoreresult.InvalidParameterError.Errorf("Too many delegations %d", count)
 	}
 	targets := make(map[string]struct{}, count)

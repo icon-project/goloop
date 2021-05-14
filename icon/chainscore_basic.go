@@ -152,6 +152,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetUnbondingPeriodMultiplier(iconConfig.UnbondingPeriodMultiplier.Int64()); err != nil {
 			return err
 		}
+		if err := es.State.SetDelegationSlotMax(iconConfig.DelegationSlotMax.Int64()); err != nil {
+			return err
+		}
 		if err := applyRewardFund(iconConfig, es.State); err != nil {
 			return err
 		}
@@ -187,6 +190,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
+			if delegationSlotMax := es.State.GetDelegationSlotMax(); delegationSlotMax == defaultDelegationSlotMax {
+				if err := es.State.SetDelegationSlotMax(InitialDelegationSlotMax); err != nil {
+					return err
+				}
+			}
 		}
 
 		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
@@ -200,6 +208,14 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if r1 < icmodule.RevisionMultipleUnstakes && r2 >= icmodule.RevisionMultipleUnstakes {
 			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == InitialUnstakeSlotMax {
 				if err := es.State.SetUnstakeSlotMax(defaultUnstakeSlotMax); err != nil {
+					return err
+				}
+			}
+		}
+
+		if r1 < icmodule.RevisionDelegationSlotMaxTo100 && r2 >= icmodule.RevisionDelegationSlotMaxTo100 {
+			if dSlotMax := es.State.GetDelegationSlotMax(); dSlotMax == InitialDelegationSlotMax {
+				if err := es.State.SetDelegationSlotMax(defaultDelegationSlotMax); err != nil {
 					return err
 				}
 			}

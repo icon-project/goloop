@@ -99,9 +99,6 @@ func TestDelegations_Delete(t *testing.T) {
 }
 
 func TestNewDelegations(t *testing.T) {
-	setMaxDelegationCount(2)
-	defer setMaxDelegationCount(0)
-
 	v1 := 1
 	v2 := 2
 	tests := []struct {
@@ -176,7 +173,7 @@ func TestNewDelegations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			delegations, err := NewDelegations(tt.param)
+			delegations, err := NewDelegations(tt.param, 2)
 			if tt.err {
 				assert.Error(t, err, "NewDelegations() was not failed for %v.", tt.param)
 			} else {

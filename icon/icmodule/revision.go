@@ -49,9 +49,10 @@ const (
 
 	RevisionFixTotalDelegated = Revision7
 
-	RevisionFixBurnEventSignature = Revision9
-	RevisionMultipleUnstakes      = Revision9
-	RevisionFixEmailValidation    = Revision9
+	RevisionFixBurnEventSignature  = Revision9
+	RevisionMultipleUnstakes       = Revision9
+	RevisionFixEmailValidation     = Revision9
+	RevisionDelegationSlotMaxTo100 = Revision9
 
 	RevisionBurnV2 = Revision12
 

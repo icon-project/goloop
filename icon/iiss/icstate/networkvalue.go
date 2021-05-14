@@ -17,11 +17,11 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/service/scoredb"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoredb"
 )
 
 const (
@@ -42,6 +42,7 @@ const (
 	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
 	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
 	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
+	VarDelegationSlotMax                     = "delegation_slot_max"
 )
 
 const (
@@ -263,6 +264,15 @@ func (s *State) SetConsistentValidationPenaltySlashRatio(value *big.Int) error {
 	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
 }
 
+func (s *State) GetDelegationSlotMax() int {
+	value := getValue(s.store, VarDelegationSlotMax).Int64()
+	return int(value)
+}
+
+func (s *State) SetDelegationSlotMax(value int64) error {
+	return setValue(s.store, VarDelegationSlotMax, value)
+}
+
 func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["irep"] = s.GetIRep()
@@ -283,5 +293,6 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
+	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
 	return jso
 }

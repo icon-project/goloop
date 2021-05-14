@@ -261,7 +261,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err != nil {
 		return err
 	}
-	ds, err := icstate.NewDelegations(param)
+	ds, err := icstate.NewDelegations(param, es.State.GetDelegationSlotMax())
 	if err != nil {
 		return err
 	}
