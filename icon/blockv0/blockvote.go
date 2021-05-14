@@ -126,6 +126,10 @@ func (v *BlockVote) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &v.json)
 }
 
+func (v *BlockVote) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.json)
+}
+
 type BlockVoteList struct {
 	votes []*BlockVote
 	root  []byte
