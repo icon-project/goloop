@@ -312,7 +312,7 @@ public final class Context {
 
     /**
      * Returns hash value of the given message.
-     * @param alg hash algorithm. One of sha-256, sha3-256, xxhash-128,
+     * @param alg hash algorithm. One of sha-256, sha3-256, keccak-256, xxhash-128,
      *            blake2b-128 and blake2b-256.
      * @param msg message
      * @return hash value

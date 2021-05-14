@@ -593,12 +593,12 @@ class JavaScoreTest extends TestBase {
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
-        Map<BigInteger, String> algoMap = Map.of(
-                BigInteger.ZERO, "SHA3_256",
-                BigInteger.ONE, "SHA256"
+        final List<String> algoList = List.of(
+                "sha-256", "sha3-256", "keccak-256",
+                "xxhash-128", "blake2b-128", "blake2b-256"
         );
-        for (BigInteger algorithm : algoMap.keySet()) {
-            LOG.infoEntering("computeHash", "invoke - " + algoMap.get(algorithm));
+        for (String algorithm : algoList) {
+            LOG.infoEntering("computeHash", "invoke - " + algorithm);
             byte[] data = "Hello world".getBytes();
             RpcObject params = new RpcObject.Builder()
                     .put("algorithm", new RpcValue(algorithm))
@@ -610,16 +610,12 @@ class JavaScoreTest extends TestBase {
                 result = e.getData().get(0);
             }
             Bytes expected;
-            if (algorithm.equals(BigInteger.ZERO)) {
-                expected = new Bytes(Crypto.sha3_256(data));
-            } else {
-                expected = new Bytes(Crypto.sha256(data));
-            }
+            expected = new Bytes(Crypto.hash(algorithm, data));
             LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
             assertEquals(expected.toString(), result.asString());
             LOG.infoExiting();
 
-            LOG.infoEntering("computeHash", "query - " + algoMap.get(algorithm));
+            LOG.infoEntering("computeHash", "query - " + algorithm);
             result = apiScore.call("computeHashQuery", params);
             LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
             assertEquals(expected.toString(), result.asString());
@@ -636,7 +632,7 @@ class JavaScoreTest extends TestBase {
         // invoke a transaction to be verified later
         byte[] data = "Hello world".getBytes();
         RpcObject params = new RpcObject.Builder()
-                .put("algorithm", new RpcValue(BigInteger.ZERO))
+                .put("algorithm", new RpcValue("sha3-256"))
                 .put("data", new RpcValue(data))
                 .build();
         tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);
@@ -808,7 +804,7 @@ class JavaScoreTest extends TestBase {
         var classes = new Class<?>[]{APITest.class};
         byte[] jarBytes = txHandler.makeJar(classes[0].getName(), classes);
         int len = jarBytes.length;
-        for (int i = 2; i <= 256; i *= 2) {
+        for (int i = 2; i <= 128; i *= 2) {
             int modLen = len / i;
             LOG.info("len=" + len + ", modLen=" + modLen);
             var content = new byte[len];
@@ -825,7 +821,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoEntering("deploy", "indirectly");
         var deployScore = txHandler.deploy(ownerWallet, DeployScore.class, null);
         LOG.info("scoreAddress = " + deployScore.getAddress());
-        for (int i = 2; i <= 256; i *= 2) {
+        for (int i = 2; i <= 128; i *= 2) {
             int modLen = len / i;
             LOG.info("len=" + len + ", modLen=" + modLen);
             var content = new byte[len];
