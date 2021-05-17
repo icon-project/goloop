@@ -21,6 +21,7 @@ from ..base.exception import IllegalFormatException
 CODE_ATTR = 'co_code'
 CODE_NAMES_ATTR = 'co_names'
 
+BUILTIN_ALLOW_LIST = ['abc', 'functools', 'inspect', 'typing', 'typing_extensions']
 BLACKLIST_RESERVED_KEYWORD = ['exec', 'eval', 'compile', '__import__']
 
 LOAD_CONST = 100
@@ -39,7 +40,7 @@ OPCODE_HEADER_END_INDEX = 4
 
 
 class ScorePackageValidator(object):
-    WHITELIST_IMPORT = {'iconservice': []}
+    WHITELIST_IMPORT = {'iconservice': ['*']}
     CUSTOM_IMPORT_LIST = []
     ICONSERVICE_WHITELIST = []
 
@@ -66,7 +67,8 @@ class ScorePackageValidator(object):
             if IMPORT_NAME == key:
                 name_index = byte_code_list[code_index + 1]
                 from_list_index = byte_code_list[code_index - 1]
-                if code.co_names[name_index].startswith('pyexec'):
+                co_names = code.co_names[name_index]
+                if co_names in BUILTIN_ALLOW_LIST or co_names.startswith('pyexec'):
                     from_list = code.co_consts[from_list_index]
                     cls.ICONSERVICE_WHITELIST.extend(from_list)
         return cls.ICONSERVICE_WHITELIST
