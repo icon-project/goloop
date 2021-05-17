@@ -24,6 +24,7 @@ import score.annotation.Optional;
 import score.annotation.Payable;
 
 import java.math.BigInteger;
+import java.util.List;
 
 public class APITest
 {
@@ -185,24 +186,22 @@ public class APITest
     // Crypto
     //================================
 
-    private static final int ALGORITHM_SHA3_256 = 0;
-    private static final int ALGORITHM_SHA_256 = 1;
+    private static final List<String> ALGORITHMS = List.of(
+            "sha-256", "sha3-256", "keccak-256",
+            "xxhash-128", "blake2b-128", "blake2b-256"
+    );
 
     @External
-    public void computeHash(int algorithm, byte[] data) {
-        if (algorithm == ALGORITHM_SHA3_256) {
-            EmitEvent(Context.hash("sha3-256", data));
-        } else if (algorithm == ALGORITHM_SHA_256) {
-            EmitEvent(Context.hash("sha-256", data));
+    public void computeHash(String algorithm, byte[] data) {
+        if (ALGORITHMS.contains(algorithm)) {
+            EmitEvent(Context.hash(algorithm, data));
         }
     }
 
     @External(readonly=true)
-    public byte[] computeHashQuery(int algorithm, byte[] data) {
-        if (algorithm == ALGORITHM_SHA3_256) {
-            return Context.hash("sha3-256", data);
-        } else if (algorithm == ALGORITHM_SHA_256) {
-            return Context.hash("sha-256", data);
+    public byte[] computeHashQuery(String algorithm, byte[] data) {
+        if (ALGORITHMS.contains(algorithm)) {
+            return Context.hash(algorithm, data);
         }
         return null;
     }
