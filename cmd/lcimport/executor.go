@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/big"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/chain"
@@ -261,13 +262,157 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	}
 }
 
+const (
+	maxBlockWorkers = 8
+	maxBlockCache   = 32
+)
+
+type blockTask struct {
+	height int64
+	chn    chan interface{}
+}
+
+type blockForwardCache struct {
+	e       *Executor
+
+	lock    sync.Mutex
+	active  int
+	blocks  map[int64]*blockTask
+	tasks   chan *blockTask
+	pool    sync.Pool
+}
+
+func (bp *blockForwardCache) runTasks() {
+	defer func() {
+		func() {
+			bp.lock.Lock()
+			defer bp.lock.Unlock()
+			bp.active -= 1
+		}()
+	}()
+
+	for {
+		select {
+		case task := <-bp.tasks:
+			if blk, err := bp.e.GetBlockByHeight(task.height); err != nil {
+				task.chn <- err
+			} else if blk != nil {
+				bp.scheduleBlocksFor(task.height)
+				// preload transactions and receipts to the memory
+				txs := blk.Transactions()
+				for itr := txs.Iterator(); itr.Has(); itr.Next() {
+					// do nothing
+				}
+				rts := blk.Receipts()
+				for itr := rts.Iterator(); itr.Has(); itr.Next() {
+					// do nothing
+				}
+				task.chn <- blk
+			} else {
+				task.chn <- blk
+			}
+		default:
+			return
+		}
+	}
+}
+
+func (bp *blockForwardCache) scheduleBlockInLock(height int64) bool {
+	if len(bp.blocks) >= maxBlockCache {
+		return false
+	}
+	if bt, ok := bp.blocks[height]; !ok {
+		bt = bp.allocBlockTask(height)
+		bp.blocks[height] = bt
+		bp.tasks <- bt
+	}
+	return true
+}
+
+func (bp *blockForwardCache) scheduleBlocksFor(height int64) {
+	bp.lock.Lock()
+	defer bp.lock.Unlock()
+
+	for h := height + 1; h < height+1+maxBlockWorkers; h += 1 {
+		if bp.scheduleBlockInLock(h) {
+			bp.tryNewWorkerInLock()
+		} else {
+			return
+		}
+	}
+}
+
+func (bp *blockForwardCache) tryNewWorkerInLock() {
+	if bp.active < maxBlockWorkers {
+		bp.active += 1
+		go bp.runTasks()
+	}
+}
+
+func (bp *blockForwardCache) allocBlockTask(height int64) *blockTask {
+	bt := bp.pool.Get().(*blockTask)
+	bt.height = height
+	return bt
+}
+
+func (bp *blockForwardCache) deallocBlockTask(bt *blockTask) {
+	bp.pool.Put(bt)
+}
+
+// fetchBlockTask fetch blockTask from scheduled blockTasks or make
+// new one with scheduling
+func (bp *blockForwardCache) fetchBlockTask(height int64) *blockTask {
+	bp.lock.Lock()
+	defer bp.lock.Unlock()
+
+	if bt, ok := bp.blocks[height]; ok {
+		delete(bp.blocks, height)
+		return bt
+	} else {
+		bt = bp.allocBlockTask(height)
+		bp.tasks <- bt
+		bp.tryNewWorkerInLock()
+		return bt
+	}
+}
+
+func (bp *blockForwardCache) GetBlock(height int64) (*Block, error){
+	bt := bp.fetchBlockTask(height)
+	res := <-bt.chn
+	bp.deallocBlockTask(bt)
+	switch obj := res.(type) {
+	case *Block:
+		return obj, nil
+	case error:
+		return nil, obj
+	default:
+		return nil, errors.InvalidStateError.Errorf("InvalidObjectReturned(obj=%+v)", res)
+	}
+}
+
+func newBlockForwardCache(e *Executor) *blockForwardCache {
+	return &blockForwardCache{
+		e:      e,
+		blocks: make(map[int64]*blockTask),
+		tasks:  make(chan *blockTask, maxBlockCache),
+		pool: sync.Pool{
+			New: func() interface{} {
+				return &blockTask{
+					chn: make(chan interface{}, 1),
+				}
+			},
+		},
+	}
+}
+
 func (e *Executor) PrefetchBlocks(last *Block, from, to int64, noStored bool) <-chan interface{} {
-	chn := make(chan interface{}, 64)
+	bp  := newBlockForwardCache(e)
+	chn := make(chan interface{}, maxBlockWorkers)
 	go func() {
 		for height := from; to < 0 || height <= to; height = height + 1 {
 			var blk *Block
 			if !noStored {
-				if b, err := e.GetBlockByHeight(height); err != nil {
+				if b, err := bp.GetBlock(height); err != nil {
 					chn <- err
 					break
 				} else {
