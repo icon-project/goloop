@@ -65,12 +65,6 @@ func (s *State) SetIScore(addr module.Address, iScore *IScore) error {
 	}
 }
 
-func (s *State) DeleteIScore(addr module.Address) error {
-	key := IScoreKey.Append(addr).Build()
-	_, err := s.store.Delete(key)
-	return err
-}
-
 func (s *State) GetVoted(addr module.Address) (*Voted, error) {
 	key := VotedKey.Append(addr).Build()
 	obj, err := s.store.Get(key)
@@ -82,14 +76,13 @@ func (s *State) GetVoted(addr module.Address) (*Voted, error) {
 
 func (s *State) SetVoted(addr module.Address, voted *Voted) error {
 	key := VotedKey.Append(addr).Build()
-	_, err := s.store.Set(key, icobject.New(TypeVoted, voted))
-	return err
-}
-
-func (s *State) DeleteVoted(addr module.Address) error {
-	key := VotedKey.Append(addr).Build()
-	_, err := s.store.Delete(key)
-	return err
+	if voted.IsEmpty() {
+		_, err := s.store.Delete(key)
+		return err
+	} else {
+		_, err := s.store.Set(key, icobject.New(TypeVoted, voted))
+		return err
+	}
 }
 
 func (s *State) GetDelegating(addr module.Address) (*Delegating, error) {
@@ -103,14 +96,13 @@ func (s *State) GetDelegating(addr module.Address) (*Delegating, error) {
 
 func (s *State) SetDelegating(addr module.Address, delegating *Delegating) error {
 	key := DelegatingKey.Append(addr).Build()
-	_, err := s.store.Set(key, icobject.New(TypeDelegating, delegating))
-	return err
-}
-
-func (s *State) DeleteDelegating(addr module.Address) error {
-	key := DelegatingKey.Append(addr).Build()
-	_, err := s.store.Delete(key)
-	return err
+	if delegating.IsEmpty() {
+		_, err := s.store.Delete(key)
+		return err
+	} else {
+		_, err := s.store.Set(key, icobject.New(TypeDelegating, delegating))
+		return err
+	}
 }
 
 func (s *State) GetBonding(addr module.Address) (*Bonding, error) {
@@ -124,14 +116,13 @@ func (s *State) GetBonding(addr module.Address) (*Bonding, error) {
 
 func (s *State) SetBonding(addr module.Address, bonding *Bonding) error {
 	key := BondingKey.Append(addr).Build()
-	_, err := s.store.Set(key, icobject.New(TypeBonding, bonding))
-	return err
-}
-
-func (s *State) DeleteBonding(addr module.Address) error {
-	key := BondingKey.Append(addr).Build()
-	_, err := s.store.Delete(key)
-	return err
+	if bonding.IsEmpty() {
+		_, err := s.store.Delete(key)
+		return err
+	} else {
+		_, err := s.store.Set(key, icobject.New(TypeBonding, bonding))
+		return err
+	}
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {

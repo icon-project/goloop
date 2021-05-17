@@ -220,11 +220,12 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore = iScore.Subtracted(claim.Value())
-			if iScore.Value().Sign() == -1 {
-				return errors.Errorf("Invalid negative I-Score for %s", addr.String())
+			nIScore := iScore.Subtracted(claim.Value())
+			if nIScore.Value().Sign() == -1 {
+				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
 			}
-			if err = c.temp.SetIScore(addr, iScore); err != nil {
+			c.log.Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
+			if err = c.temp.SetIScore(addr, nIScore); err != nil {
 				return err
 			}
 		}
@@ -237,10 +238,11 @@ func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t Reward
 	if err != nil {
 		return err
 	}
-	if err = c.temp.SetIScore(addr, iScore.Added(reward)); err != nil {
+	nIScore := iScore.Added(reward)
+	if err = c.temp.SetIScore(addr, nIScore); err != nil {
 		return err
 	}
-	c.log.Tracef("Update IScore %s by %d: + %s = %+v", addr.String(), t, reward, iScore)
+	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
 
 	switch t {
 	case TypeBlockProduce:
@@ -324,7 +326,7 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 	vMask := bp.VoteMask()
 	maxIndex := vMask.BitLen()
 	if pIndex >= vLen || maxIndex > vLen {
-		return errors.Errorf("Can't find validator with %v", bp)
+		return errors.Errorf("Can't find validator with %+v", bp)
 	}
 	beta1Reward := new(big.Int).Set(variable)
 
@@ -424,14 +426,8 @@ func (c *Calculator) calculateVotedReward() error {
 			return err
 		}
 		prep.UpdateToWrite()
-		if prep.IsEmpty() {
-			if err = c.temp.DeleteVoted(addr); err != nil {
-				return err
-			}
-		} else {
-			if err = c.temp.SetVoted(addr, prep.Voted()); err != nil {
-				return err
-			}
+		if err = c.temp.SetVoted(addr, prep.Voted()); err != nil {
+			return err
 		}
 
 		if prep.IScore().Sign() == 0 {
@@ -773,7 +769,7 @@ func (c *Calculator) processVotingEvent(
 		// sort with offset
 		sort.Ints(offsets)
 
-		votings, err := c.getVoting(_type, addr)
+		voting, err := c.getVoting(_type, addr)
 		if err != nil {
 			return err
 		}
@@ -787,33 +783,34 @@ func (c *Calculator) processVotingEvent(
 			end = offsets[i]
 			switch iissVersion {
 			case icstate.IISSVersion1:
-				ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, votings.Iterator())
+				ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
 				c.log.Tracef("VotingEvent %s %d add: %d, %d: %s", addr, i, start, offsetLimit, ret)
-				ret = c.votingReward(multiplier, divider, end, offsetLimit, prepInfo, votings.Iterator())
+				ret = c.votingReward(multiplier, divider, end, offsetLimit, prepInfo, voting.Iterator())
 				reward.Sub(reward, ret)
 				c.log.Tracef("VotingEvent %s %d sub: %d, %d: %s", addr, i, end, offsetLimit, ret)
 			case icstate.IISSVersion2:
 				end = offsets[i]
-				ret := c.votingReward(multiplier, divider, start, end, prepInfo, votings.Iterator())
+				ret := c.votingReward(multiplier, divider, start, end, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
 				c.log.Tracef("VotingEvent %s %d: %d, %d: %s", addr, i, start, end, ret)
 			}
 
 			// update Bonding or Delegating
 			votes := events[end]
-			if err = votings.ApplyVotes(votes); err != nil {
+			if err = voting.ApplyVotes(votes); err != nil {
+				errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, end, votes)
 				return err
 			}
 
 			start = end
 		}
 		// calculate reward for last event
-		ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, votings.Iterator())
+		ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
 		reward.Add(reward, ret)
 		c.log.Tracef("VotingEvent %s last: %d, %d: %s", addr, start, offsetLimit, ret)
 
-		if err = c.writeVoting(addr, votings); err != nil {
+		if err = c.writeVoting(addr, voting); err != nil {
 			return nil
 		}
 		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
@@ -866,35 +863,9 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 func (c *Calculator) writeVoting(addr *common.Address, data interface{}) error {
 	switch o := data.(type) {
 	case *icreward.Delegating:
-		return c.writeDelegating(addr, o)
+		return c.temp.SetDelegating(addr, o)
 	case *icreward.Bonding:
-		return c.writeBonding(addr, o)
-	}
-	return nil
-}
-
-func (c *Calculator) writeDelegating(addr *common.Address, delegating *icreward.Delegating) error {
-	if delegating.IsEmpty() {
-		if err := c.temp.DeleteDelegating(addr); err != nil {
-			return err
-		}
-	} else {
-		if err := c.temp.SetDelegating(addr, delegating); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Calculator) writeBonding(addr *common.Address, bonding *icreward.Bonding) error {
-	if bonding.IsEmpty() {
-		if err := c.temp.DeleteBonding(addr); err != nil {
-			return err
-		}
-	} else {
-		if err := c.temp.SetBonding(addr, bonding); err != nil {
-			return err
-		}
+		return c.temp.SetBonding(addr, o)
 	}
 	return nil
 }
@@ -903,18 +874,18 @@ func (c *Calculator) postWork() (err error) {
 	// check result
 	if c.global.GetIISSVersion() == icstate.IISSVersion2 {
 		if c.stats.blockProduce.Sign() != 0 {
-			return errors.Errorf("Too much BlockProduce Reward. %s", c.stats.blockProduce.String())
+			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
 		}
 		g := c.global.GetV2()
 		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
 		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
-			return errors.Errorf("Too much Voted Reward. %s < %s", maxVotedReward, c.stats.voted.String())
+			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
 		}
 		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
 		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
-			return errors.Errorf("Too much Voting Reward. %s < %s", maxVotingReward, c.stats.voting.String())
+			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
 	}
 

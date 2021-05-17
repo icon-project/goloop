@@ -37,6 +37,7 @@ func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
 	c.back = back
 	c.base = icreward.NewSnapshot(database, nil)
 	c.temp = c.base.NewState()
+	c.log = log.New()
 
 	return c
 }
