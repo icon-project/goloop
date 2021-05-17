@@ -261,12 +261,12 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 	}
 }
 
-func (e *Executor) PrefetchBlocks(last *Block, from, to int64, noCache bool) <-chan interface{} {
+func (e *Executor) PrefetchBlocks(last *Block, from, to int64, noStored bool) <-chan interface{} {
 	chn := make(chan interface{}, 64)
 	go func() {
 		for height := from; to < 0 || height <= to; height = height + 1 {
 			var blk *Block
-			if !noCache {
+			if !noStored {
 				if b, err := e.GetBlockByHeight(height); err != nil {
 					chn <- err
 					break
@@ -274,7 +274,7 @@ func (e *Executor) PrefetchBlocks(last *Block, from, to int64, noCache bool) <-c
 					if b != nil {
 						blk = b
 					} else {
-						noCache = true
+						noStored = true
 					}
 				}
 			}
@@ -615,7 +615,7 @@ func D(v interface{}) string {
 	return ret
 }
 
-func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
+func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
@@ -629,7 +629,7 @@ func (e *Executor) Execute(from, to int64, noCache, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	chn := e.PrefetchBlocks(prevTR.Block, from, to, noCache)
+	chn := e.PrefetchBlocks(prevTR.Block, from, to, noStored)
 	callback := make(transitionCallback, 1)
 	var rps, tps float32
 	tm := new(lcimporter.TPSMeasure).Init(100)
