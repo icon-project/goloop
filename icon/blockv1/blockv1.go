@@ -507,6 +507,12 @@ func NewBlockV03FromHeaderFormat(database db.Database, header *headerFormat) (*B
 		return nil, err
 	}
 	bs, err := bk.Get(header.BlockVotesHash)
+	if err != nil {
+		return nil, err
+	}
+	if bs == nil {
+		return nil, errors.NotFoundError.New("block vote not found")
+	}
 	var blockVoteList blockv0.BlockVoteList
 	_, err = codec.BC.UnmarshalFromBytes(bs, &blockVoteList)
 	if err != nil {
