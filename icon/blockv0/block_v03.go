@@ -212,16 +212,13 @@ func (b *BlockV03) Verify(prev Block) error {
 			// New term starts, so the next leader should be the first
 			// one of next leaders. For remarking, it uses empty user address.
 			if leader.String() == "hx0000000000000000000000000000000000000000" {
-				leader = b.nextReps.Get(0)
+				leader = b.reps.Get(0)
 			}
 			if b.json.LeaderVotesHash.Bytes() != nil {
-				if addr := b.json.LeaderVotes.Quorum(); addr == nil {
+				if !b.json.LeaderVotes.HasQuorumFor(&b.json.Leader) {
 					return errors.InvalidStateError.New("NoValidLeader")
-				} else {
-					leader = addr
 				}
-			}
-			if !b.json.Leader.Equal(leader) {
+			} else if !b.json.Leader.Equal(leader) {
 				return errors.InvalidStateError.Errorf(
 					"InvalidLeader(exp=%s,real=%s)",
 					leader,
