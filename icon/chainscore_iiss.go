@@ -119,7 +119,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	if err != nil {
 		return err
 	}
-	ia := es.GetAccount(s.from)
+	ia := es.State.GetAccountState(s.from)
 	v := &value.Int
 
 	usingStake := ia.UsingStake()
@@ -245,7 +245,7 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
-	ia := es.GetAccount(address)
+	ia := es.State.GetAccountSnapshot(address)
 	blockHeight := s.cc.BlockHeight()
 	return ia.GetStakeInJSON(blockHeight), nil
 }
@@ -282,7 +282,7 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	if err != nil {
 		return nil, err
 	}
-	ia := es.GetAccount(address)
+	ia := es.State.GetAccountSnapshot(address)
 	return ia.GetDelegationInJSON(), nil
 }
 
@@ -587,7 +587,7 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
-	account := es.GetAccount(address)
+	account := es.State.GetAccountSnapshot(address)
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInJSON()
 	data["unbonds"] = account.GetUnbondsInJSON()

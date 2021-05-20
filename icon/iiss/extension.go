@@ -193,13 +193,11 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	s.Reward.Reset(snapshot.reward)
 }
 
+// ClearCache clear cache. It's called before executing first transaction
+// and also it could be called at the end of base transaction
 func (s *ExtensionStateImpl) ClearCache() {
-	// TODO clear cached objects
-	// It is called whenever executing a transaction is finish
-}
-
-func (s *ExtensionStateImpl) GetAccount(address module.Address) *icstate.Account {
-	return s.State.GetAccount(address)
+	s.State.ClearCache()
+	s.Front.ClearCache()
 }
 
 func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
@@ -413,10 +411,10 @@ func (s *ExtensionStateImpl) RegisterPRep(regInfo *RegInfo, irep *big.Int) error
 
 func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
 	var err error
-	var account *icstate.Account
+	var account *icstate.AccountState
 	var delta map[string]*big.Int
 
-	account = s.State.GetAccount(from)
+	account = s.State.GetAccountState(from)
 
 	using := new(big.Int).Set(ds.GetDelegationAmount())
 	using.Add(using, account.Unbond())
@@ -586,10 +584,10 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 	s.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 
 	var err error
-	var account *icstate.Account
+	var account *icstate.AccountState
 	blockHeight := cc.BlockHeight()
 
-	account = s.GetAccount(from)
+	account = s.State.GetAccountState(from)
 
 	bondAmount := big.NewInt(0)
 	for _, bond := range bonds {
@@ -670,10 +668,10 @@ func (s *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bonde
 		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
 
-	var account *icstate.Account
+	var account *icstate.AccountState
 	for _, old := range pb.BonderList() {
 		if !bl.Contains(old) {
-			account = s.GetAccount(old)
+			account = s.State.GetAccountState(old)
 			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
 				return scoreresult.InvalidParameterError.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d",
 					len(account.Bonds()), len(account.Unbonds()))

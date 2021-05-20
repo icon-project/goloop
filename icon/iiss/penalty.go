@@ -106,7 +106,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 
 	// slash all bonder
 	for _, bonder := range bonders {
-		account := s.GetAccount(bonder)
+		account := s.State.GetAccountState(bonder)
 		totalSlash := new(big.Int)
 
 		logger.Debugf("Before slashing: %s", account)

@@ -85,9 +85,13 @@ func (s *State) GetSnapshot() *Snapshot {
 	return newSnapshotFromImmutableForObject(s.store.GetSnapshot())
 }
 
-func (s *State) GetAccount(addr module.Address) *Account {
+func (s *State) GetAccountState(addr module.Address) *AccountState {
 	a := s.accountCache.Get(addr, true)
 	return a
+}
+
+func (s *State) GetAccountSnapshot(addr module.Address) *AccountSnapshot {
+	return s.accountCache.GetSnapshot(addr)
 }
 
 func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) *Timer {
@@ -248,4 +252,10 @@ func (s *State) SetUnstakeSlotMax(v int64) error {
 func (s *State) GetUnstakeSlotMax() int64 {
 	db := containerdb.NewVarDB(s.store, UnstakeSlotMaxKey)
 	return db.Int64()
+}
+
+func (s *State) ClearCache() {
+	s.accountCache.Clear()
+	// TODO clear other caches
+	s.store.ClearCache()
 }

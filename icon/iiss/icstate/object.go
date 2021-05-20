@@ -72,12 +72,11 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	}
 }
 
-func ToAccount(object trie.Object) *Account {
+func ToAccount(object trie.Object) *AccountSnapshot {
 	if object == nil {
 		return nil
 	}
-	a := object.(*icobject.Object).Real().(*Account)
-	a = a.Clone()
+	a := object.(*icobject.Object).Real().(*AccountSnapshot)
 	return a
 }
 

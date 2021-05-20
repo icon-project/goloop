@@ -16,9 +16,10 @@
 package iiss
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/service/state"
-	"math/big"
 )
 
 func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
@@ -43,7 +44,7 @@ func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*common.Address, h int64) error {
 	s.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
 	for _, a := range al {
-		ea := s.GetAccount(a)
+		ea := s.State.GetAccountState(a)
 		s.logger.Tracef("account : %s", ea)
 		ra, err := ea.RemoveUnstake(h)
 		if err != nil {
@@ -67,7 +68,7 @@ func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64)
 	s.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
 	for _, a := range al {
 		s.logger.Tracef("account : %s", a)
-		as := s.GetAccount(a)
+		as := s.State.GetAccountState(a)
 		if err := as.RemoveUnbond(h); err != nil {
 			return err
 		}

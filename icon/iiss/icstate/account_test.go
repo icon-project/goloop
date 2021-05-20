@@ -28,27 +28,29 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
-func getTestAccount() *Account {
-	assTest := &Account{
-		stake: big.NewInt(100),
-		unstakes: []*Unstake{
-			NewUnstake(big.NewInt(5), 10),
-			NewUnstake(big.NewInt(10), 20),
-		},
-		totalDelegation: big.NewInt(20),
-		delegations: []*Delegation{
-			NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10)),
-			NewDelegation(common.MustNewAddressFromString("hx2"), big.NewInt(10)),
-		},
-		totalBond: big.NewInt(20),
-		bonds: []*Bond{
-			NewBond(common.MustNewAddressFromString("hx3"), big.NewInt(10)),
-			NewBond(common.MustNewAddressFromString("hx4"), big.NewInt(10)),
-		},
-		totalUnbond: big.NewInt(20),
-		unbonds: []*Unbond{
-			NewUnbond(common.MustNewAddressFromString("hx5"), big.NewInt(10), 20),
-			NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30),
+func getTestAccount() *AccountState {
+	assTest := &AccountState {
+		accountData: accountData {
+			stake: big.NewInt(100),
+			unstakes: []*Unstake{
+				NewUnstake(big.NewInt(5), 10),
+				NewUnstake(big.NewInt(10), 20),
+			},
+			totalDelegation: big.NewInt(20),
+			delegations: []*Delegation{
+				NewDelegation(common.MustNewAddressFromString("hx1"), big.NewInt(10)),
+				NewDelegation(common.MustNewAddressFromString("hx2"), big.NewInt(10)),
+			},
+			totalBond: big.NewInt(20),
+			bonds: []*Bond{
+				NewBond(common.MustNewAddressFromString("hx3"), big.NewInt(10)),
+				NewBond(common.MustNewAddressFromString("hx4"), big.NewInt(10)),
+			},
+			totalUnbond: big.NewInt(20),
+			unbonds: []*Unbond{
+				NewUnbond(common.MustNewAddressFromString("hx5"), big.NewInt(10), 20),
+				NewUnbond(common.MustNewAddressFromString("hx6"), big.NewInt(10), 30),
+			},
 		},
 	}
 	return assTest
@@ -72,11 +74,11 @@ func TestAccount_Bytes(t *testing.T) {
 	assert.Equal(t, serialized, o2.Bytes())
 
 	ass2 := ToAccount(o2)
-	assert.Equal(t, true, assTest.Equal(ass2))
+	assert.Equal(t, true, assTest.GetSnapshot().Equal(ass2))
 }
 
 func TestAccount_SetStake(t *testing.T) {
-	account := newAccount()
+	account := newAccountStateWithSnapshot(nil)
 
 	assert.Equal(t, 0, account.Stake().Cmp(new(big.Int)))
 

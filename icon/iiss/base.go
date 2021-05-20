@@ -149,6 +149,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 		r.DisableLogsBloom()
 	}
 	r.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
+	cc.GetExtensionState().ClearCache()
 	return r, nil
 }
 

@@ -199,6 +199,10 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	return err
 }
 
+func (s *State) ClearCache() {
+	s.store.ClearCache()
+}
+
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	s := &State{

@@ -1,90 +1,77 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAccountCache(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	s := NewStateFromSnapshot(NewSnapshot(database, nil), false)
+	mutable := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
+	oss := icobject.NewObjectStoreState(mutable)
+	cache := newAccountCache(oss)
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
 
-	account := s.accountCache.Get(addr1, false)
+	account := cache.Get(addr1, false)
 	assert.Nil(t, account)
 
-	account = s.accountCache.Get(addr1, true)
+	account = cache.Get(addr1, true)
 	account.SetStake(big.NewInt(int64(40)))
 
-	account = s.accountCache.Get(addr2, true)
+	account = cache.Get(addr2, true)
 	account.SetStake(big.NewInt(int64(100)))
 
-	// flush
-	s.accountCache.Flush()
+	// flush to the database
+	cache.Flush()
+	ss1 := mutable.GetSnapshot()
+	err := ss1.Flush()
+	assert.NoError(t, err)
 
-	// there should be addr1 in DB after Flush()
-	o := s.accountCache.dict.Get(addr1)
-	account = ToAccount(o.Object())
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(40)))
+	// check stored value with new cache instance
+	mutable = trie_manager.NewMutableForObject(database, ss1.Hash(), icobject.ObjectType)
+	oss = icobject.NewObjectStoreState(mutable)
+	cache = newAccountCache(oss)
+	ass1 := cache.GetSnapshot(addr1)
+	assert.NotNil(t, ass1)
+	assert.Equal(t, 0, ass1.Stake().Cmp(big.NewInt(40)))
 
-	// item(addr2) should be gotten from the map, although it is deleted in DB
-	s.accountCache.dict.Delete(addr2)
-	account = s.accountCache.Get(addr2, true)
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(100)))
+	ass2 := cache.GetSnapshot(addr2)
+	assert.NotNil(t, ass2)
+	assert.Equal(t, 0, ass2.Stake().Cmp(big.NewInt(100)))
 
-	// reset
-	s.accountCache.Reset()
+	// take snapshot for the state ( addr1 -> 40, addr2 -> 100 )
+	ss1 = mutable.GetSnapshot()
 
-	// Reset() will affect on items in map
-	// Get() will return empty object, not nil, if there is no both in map and db
-	account = s.accountCache.Get(addr2, true)
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(0)))
-	assert.True(t, account.IsEmpty())
+	ac1 := cache.Get(addr1, true)
+	ac2 := cache.Get(addr2, true)
+	assert.NotNil(t, ac1)
+	ac1.SetStake(big.NewInt(50))
+	assert.Equal(t, 0, ac1.Stake().Cmp(big.NewInt(50)))
+	ac2.Clear()
+	assert.True(t, ac2.IsEmpty())
 
-	account.SetStake(big.NewInt(int64(100)))
+	// take snapshot for the state ( addr1 -> 50, addr2 -> 0 )
+	cache.Flush()
+	ss2 := mutable.GetSnapshot()
 
-	// flush without add
-	s.accountCache.Flush()
+	// reset to ss1 and check values
+	mutable.Reset(ss1)
+	cache.Reset()
+	assert.Equal(t, 0, ac1.Stake().Cmp(big.NewInt(40)))
+	assert.Equal(t, 0, ac2.Stake().Cmp(big.NewInt(100)))
 
-	// DB reflected after Flush()
-	o = s.accountCache.dict.Get(addr2)
-	account = ToAccount(o.Object())
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(100)))
-
-	// remove
-	account = s.accountCache.Get(addr1, true)
-	account.Clear()
-	account = s.accountCache.Get(addr1, true)
-	assert.True(t, account.IsEmpty())
-
-	// Should get after reset()
-	s.accountCache.Reset()
-	account = s.accountCache.Get(addr1, true)
-	assert.False(t, account.IsEmpty())
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(40)))
-
-	// clear
-	s.accountCache.Clear()
-	// nothing to flush, cannot affect dictDB
-	s.accountCache.Flush()
-	// Get() gets data directly from dictDB, if there's no in Map
-	account = s.accountCache.Get(addr2, true)
-	assert.Equal(t, false, account.IsEmpty())
-	assert.Equal(t, 0, account.stake.Cmp(big.NewInt(100)))
-
-	account = s.accountCache.Get(addr2, true)
-	account.Clear()
-	s.accountCache.Flush()
-
-	key := icutils.ToKey(addr2)
-	account = s.accountCache.accounts[key]
-	assert.Nil(t, account)
+	// reset to ss2 and check values
+	mutable.Reset(ss2)
+	cache.Reset()
+	assert.Equal(t, 0, ac1.Stake().Cmp(big.NewInt(50)))
+	assert.True(t, ac2.IsEmpty())
 }

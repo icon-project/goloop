@@ -28,34 +28,47 @@ import (
 
 type AccountCache struct {
 	dict     *containerdb.DictDB
-	accounts map[string]*Account
+	accounts map[string]*AccountState
 }
 
-func (c *AccountCache) Get(owner module.Address, createIfNotExist bool) *Account {
+func (c *AccountCache) Get(owner module.Address, createIfNotExist bool) *AccountState {
 	key := icutils.ToKey(owner)
-	account := c.accounts[key]
-	if account != nil {
+	account, ok := c.accounts[key]
+	if ok {
 		return account
 	}
 
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			account = newAccount()
-			//c.Add(account)
-			c.accounts[key] = account
+			account = newAccountStateWithSnapshot(nil)
 		} else {
-			// return nil
+			return nil
 		}
 	} else {
-		account = ToAccount(o.Object())
-		c.accounts[key] = account
+		account = newAccountStateWithSnapshot(ToAccount(o.Object()))
 	}
+	c.accounts[key] = account
 	return account
 }
 
 func (c *AccountCache) Clear() {
-	c.accounts = make(map[string]*Account)
+	c.Flush()
+	c.accounts = make(map[string]*AccountState)
+}
+
+func (c *AccountCache) GetSnapshot(owner module.Address) *AccountSnapshot {
+	key := icutils.ToKey(owner)
+	account, ok := c.accounts[key]
+	if ok {
+		return account.GetSnapshot()
+	}
+	o := c.dict.Get(owner)
+	if o == nil {
+		return nil
+	} else {
+		return ToAccount(o.Object())
+	}
 }
 
 func (c *AccountCache) Reset() {
@@ -65,11 +78,10 @@ func (c *AccountCache) Reset() {
 			panic(errors.Errorf("Address convert error"))
 		}
 		value := c.dict.Get(addr)
-		account.Clear()
 		if value == nil {
-			delete(c.accounts, key)
+			account.Reset(emptyAccountSnapshot)
 		} else {
-			account.Set(ToAccount(value.Object()))
+			account.Reset(ToAccount(value.Object()))
 		}
 	}
 }
@@ -81,13 +93,13 @@ func (c *AccountCache) Flush() {
 			panic(errors.Errorf("AccountCache is broken: %s", k))
 		}
 
-		if account.IsEmpty() {
+		ass := account.GetSnapshot()
+		if ass.IsEmpty() {
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete Account key %x, err+%+v", key, err)
 			}
-			delete(c.accounts, k)
 		} else {
-			o := icobject.New(TypeAccount, account.Clone())
+			o := icobject.New(TypeAccount, ass)
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set state for %x, err+%+v", key, err)
 			}
@@ -97,7 +109,7 @@ func (c *AccountCache) Flush() {
 
 func newAccountCache(store containerdb.ObjectStoreState) *AccountCache {
 	return &AccountCache{
-		accounts: make(map[string]*Account),
+		accounts: make(map[string]*AccountState),
 		dict:     containerdb.NewDictDB(store, 1, AccountDictPrefix),
 	}
 }
