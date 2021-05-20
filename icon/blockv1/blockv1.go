@@ -436,18 +436,6 @@ func (b *blockV13) Resolve(tr module.Transition) *blockV13 {
 	return &blk
 }
 
-func commitVoteSetFromHash(database db.Database, hash []byte, decoder module.CommitVoteSetDecoder) module.CommitVoteSet {
-	hb, err := database.GetBucket(db.BytesByHash)
-	if err != nil {
-		return nil
-	}
-	bs, err := hb.Get(hash)
-	if err != nil {
-		return nil
-	}
-	return decoder(bs)
-}
-
 func newProposer(bs []byte) (module.Address, error) {
 	if bs != nil {
 		addr, err := common.NewAddress(bs)
