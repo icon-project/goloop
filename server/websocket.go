@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -161,7 +162,11 @@ type WSResponse struct {
 }
 
 func Upgrader() *websocket.Upgrader {
-	return &websocket.Upgrader{}
+	return &websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
 }
 
 func readLoop(c *websocket.Conn, ech chan<- error) {
