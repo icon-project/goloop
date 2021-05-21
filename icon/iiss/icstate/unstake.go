@@ -40,7 +40,11 @@ func NewUnstake(v *big.Int, e int64) *Unstake {
 }
 
 func (u *Unstake) RLPDecodeSelf(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(
+	d, err := decoder.DecodeList()
+	if err != nil {
+		return err
+	}
+	_, err = d.DecodeMulti(
 		&u.value,
 		&u.expire,
 	)
@@ -48,7 +52,11 @@ func (u *Unstake) RLPDecodeSelf(decoder codec.Decoder) error {
 }
 
 func (u *Unstake) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
+	e, err := encoder.EncodeList()
+	if err != nil {
+		return err
+	}
+	return e.EncodeMulti(
 		u.value,
 		u.expire,
 	)

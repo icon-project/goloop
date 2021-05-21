@@ -42,7 +42,11 @@ func NewUnbond(a *common.Address, v *big.Int, e int64) *Unbond {
 }
 
 func (u *Unbond) RLPDecodeSelf(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(
+	d, err := decoder.DecodeList()
+	if err != nil {
+		return err
+	}
+	_, err = d.DecodeMulti(
 		&u.address,
 		&u.value,
 		&u.expire,
@@ -51,7 +55,11 @@ func (u *Unbond) RLPDecodeSelf(decoder codec.Decoder) error {
 }
 
 func (u *Unbond) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
+	e, err := encoder.EncodeList()
+	if err != nil {
+		return err
+	}
+	return e.EncodeMulti(
 		u.address,
 		u.value,
 		u.expire,
