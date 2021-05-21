@@ -216,7 +216,7 @@ func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
 	return rcInfo.PrevHeight()
 }
 
-func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calculator) error {
+func (s *ExtensionStateImpl) ApplyCalculation(calculator *Calculator) error {
 	rc, err := s.State.GetRewardCalcInfo()
 	rcInfo := rc.Clone()
 	if err != nil {
@@ -238,44 +238,10 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 		return err
 	}
 
-	// switch icstage and write global
-	s.Back = s.Front
-	s.Front = icstage.NewState(s.database)
-	iissVersion := s.State.GetIISSVersion()
-	switch iissVersion {
-	case icstate.IISSVersion1:
-		if err = s.Back.AddGlobalV1(
-			term.Revision(),
-			term.StartHeight(),
-			int(term.Period()-1),
-			term.Irep(),
-			term.Rrep(),
-			term.MainPRepCount(),
-			term.GetElectedPRepCount(),
-		); err != nil {
-			return err
-		}
-	case icstate.IISSVersion2:
-		if err = s.Back.AddGlobalV2(
-			term.Revision(),
-			term.StartHeight(),
-			int(term.Period()-1),
-			term.Iglobal(),
-			term.Iprep(),
-			term.Ivoter(),
-			term.GetElectedPRepCount(),
-			term.BondRequirement(),
-		); err != nil {
-			return err
-		}
-	default:
-		return errors.CriticalFormatError.Errorf(
-			"InvalidIISSVersion(version=%d)", iissVersion)
-	}
-
 	// update rewardCalcInfo
+	term := s.State.GetTerm()
 	additionalReward := new(big.Int)
-	if iissVersion == icstate.IISSVersion2 {
+	if icstate.IISSVersion2 == term.GetIISSVersion() {
 		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
 		rewardCPS.Div(rewardCPS, big.NewInt(100))
 		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())
@@ -288,6 +254,47 @@ func (s *ExtensionStateImpl) NewCalculation(term *icstate.Term, calculator *Calc
 	}
 
 	return nil
+}
+
+func (s *ExtensionStateImpl) NewCalculation() (err error) {
+	// swap icstage.Front to icstage.Back
+	s.Back = s.Front
+	s.Front = icstage.NewState(s.database)
+
+	// write icstage.Global to Front
+	term := s.State.GetTerm()
+	iissVersion := term.GetIISSVersion()
+	switch iissVersion {
+	case icstate.IISSVersion1:
+		if err = s.Front.AddGlobalV1(
+			term.Revision(),
+			term.StartHeight(),
+			int(term.Period()-1),
+			term.Irep(),
+			term.Rrep(),
+			term.MainPRepCount(),
+			term.GetElectedPRepCount(),
+		); err != nil {
+			return
+		}
+	case icstate.IISSVersion2:
+		if err = s.Front.AddGlobalV2(
+			term.Revision(),
+			term.StartHeight(),
+			int(term.Period()-1),
+			term.Iglobal(),
+			term.Iprep(),
+			term.Ivoter(),
+			term.GetElectedPRepCount(),
+			term.BondRequirement(),
+		); err != nil {
+			return
+		}
+	default:
+		return errors.CriticalFormatError.Errorf(
+			"InvalidIISSVersion(version=%d)", iissVersion)
+	}
+	return
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
@@ -765,7 +772,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 	blockHeight := wc.BlockHeight()
 
 	if blockHeight == term.GetEndBlockHeight() {
-		if err = s.NewCalculation(term, calculator); err != nil {
+		if err = s.ApplyCalculation(calculator); err != nil {
 			return err
 		}
 		if err = s.onTermEnd(wc); err != nil {

@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 
@@ -138,6 +139,10 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 		return nil, err
 	}
 
+	if err := handleCalculation(cc); err != nil {
+		return nil, err
+	}
+
 	if err := handleICXIssue(cc, tx.Data); err != nil {
 		return nil, err
 	}
@@ -157,10 +162,15 @@ func handleConsensusInfo(cc contract.CallContext) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	csi := cc.ConsensusInfo()
 	if csi == nil {
-		//return errors.CriticalUnknownError.Errorf("There is no consensus Info.")
 		return nil
 	}
 	if !es.IsDecentralized() {
+		return nil
+	}
+	term := es.State.GetTerm()
+	if term.Sequence() == 0 && cc.BlockHeight() < term.StartHeight() + 2 {
+		// Ignore the first two starting decentralization blocks
+		log.Tracef("Ignore the first two starting decentralization blocks")
 		return nil
 	}
 	// if PrepManager is not ready, it returns immediately
@@ -174,7 +184,7 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		return err
 	}
 
-	// Make block produce Info for calculator
+	// Make block produce Info.
 	if err = addBlockProduce(cc, trueVoters); err != nil {
 		return err
 	}
@@ -212,19 +222,17 @@ func nodeToOwner(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, [
 
 // addBlockProduce makes Block produce Info for calculator
 // trueVoters contain the addresses which vote for block approval
-func addBlockProduce(cc contract.CallContext, trueVoters []module.Address) error {
+func addBlockProduce(cc contract.CallContext, voters []module.Address) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	csi := cc.ConsensusInfo()
 
 	// if PRepManager is not ready, it returns immediately
 	proposer := csi.Proposer()
 	po := es.pm.GetOwnerByNode(proposer)
-	term := es.State.GetTerm()
-
 	return es.Front.AddBlockProduce(
-		int(cc.BlockHeight()-term.StartHeight()),
+		cc.BlockHeight(),
 		po,
-		trueVoters,
+		voters,
 	)
 }
 
@@ -245,6 +253,18 @@ func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, vote
 
 	es.pm.Sort()
 	return nil
+}
+
+func handleCalculation(cc contract.CallContext) error {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+
+	term := es.State.GetTerm()
+	blockHeight := cc.BlockHeight()
+	if blockHeight != term.StartHeight() {
+		return nil
+	}
+
+	return es.NewCalculation()
 }
 
 func handleICXIssue(cc contract.CallContext, data []byte) error {

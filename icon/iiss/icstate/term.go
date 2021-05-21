@@ -621,6 +621,10 @@ func (term *Term) IsDecentralized() bool {
 		term.totalDelegated.Sign() == 1
 }
 
+func (term *Term) IsFirstBlockOnDecentralized(blockHeight int64) bool {
+	return term.IsDecentralized() && term.sequence == 0 && term.startHeight == blockHeight
+}
+
 func newTermWithTag(_ icobject.Tag) *Term {
 	return &Term{}
 }

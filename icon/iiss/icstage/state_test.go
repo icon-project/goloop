@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
@@ -246,8 +247,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
-
-	offset1 := 0
+	s.AddGlobalV1(icmodule.RevisionIISS, 0, 4, nil, nil, 0, 0)
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
@@ -258,7 +258,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 	addrs := []*common.Address{addr1, addr2, addr3, addr4, addr5}
 
 	type args struct {
-		offset   int
 		proposer module.Address
 		voters   []module.Address
 	}
@@ -277,7 +276,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 		{
 			"genesis block produce",
 			args{
-				offset:   offset1,
 				proposer: addr1,
 				voters:   []module.Address{},
 			},
@@ -290,7 +288,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 		{
 			"block produce 1",
 			args{
-				offset:   offset1,
 				proposer: addr1,
 				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
@@ -303,7 +300,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 		{
 			"block produce 2",
 			args{
-				offset:   offset1 + 1,
 				proposer: addr2,
 				voters:   []module.Address{addr1, addr2, addr3, addr4},
 			},
@@ -316,7 +312,6 @@ func TestState_AddBlockProduce(t *testing.T) {
 		{
 			"block produce 3",
 			args{
-				offset:   offset1 + 2,
 				proposer: addr5,
 				voters:   []module.Address{addr1, addr4, addr5},
 			},
@@ -327,25 +322,24 @@ func TestState_AddBlockProduce(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
+	for i, tt := range tests {
 		a := tt.args
-		w := tt.wants
+		err := s.AddBlockProduce(int64(i+1), a.proposer, a.voters)
+		assert.NoError(t, err)
+	}
+
+	ss := s.GetSnapshot()
+
+	for i, tt := range tests {
 		t.Log("Step", tt.name)
-		err := s.AddBlockProduce(a.offset, a.proposer, a.voters)
+		w := tt.wants
+		o, err := ss.GetBlockProduce(i)
 		assert.NoError(t, err)
-
-		key := BlockProduceKey.Append(a.offset).Build()
-		obj, err := icobject.GetFromMutableForObject(s.store, key)
-		assert.NoError(t, err)
-		assert.NotNil(t, obj)
-
-		o := ToBlockProduce(obj)
 		assert.Equal(t, w.proposerIndex, o.ProposerIndex())
 		assert.Equal(t, w.voteCount, o.VoteCount())
 		assert.Equal(t, 0, w.voteMask.Cmp(o.VoteMask()))
 	}
 
-	ss := s.GetSnapshot()
 	validators, err := ss.GetValidators()
 	assert.NoError(t, err)
 	for i, v := range validators {

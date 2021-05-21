@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -146,7 +147,12 @@ func (s *State) getValidatorIndex(addr module.Address) (int, error) {
 	}
 }
 
-func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []module.Address) error {
+func (s *State) AddBlockProduce(blockHeight int64, proposer module.Address, voters []module.Address) error {
+	global, err := s.getGlobal()
+	if err != nil || global == nil {
+		return err
+	}
+	offset := blockHeight - global.GetStartHeight() - 1
 	pIdx, err := s.getValidatorIndex(proposer)
 	if err != nil {
 		return err
@@ -159,9 +165,19 @@ func (s *State) AddBlockProduce(offset int, proposer module.Address, voters []mo
 		}
 		voteMask.SetBit(voteMask, idx, 1)
 	}
+	log.Tracef("BlockProduce(blockHeight=%d, offset=%d, proposer=%s, voter=%+v)", blockHeight, offset, proposer, voters)
 	bp := NewBlockProduce(pIdx, len(voters), voteMask)
 	bpv := containerdb.NewVarDB(s.store, BlockProduceKey.Append(offset))
 	return bpv.Set(icobject.New(TypeBlockProduce, bp))
+}
+
+func (s *State) getGlobal() (Global, error) {
+	key := HashKey.Append(globalKey).Build()
+	o, err := s.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToGlobal(o), nil
 }
 
 func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, irep *big.Int, rrep *big.Int,
