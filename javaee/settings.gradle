@@ -5,6 +5,7 @@ include 'rt',
     'tooling',
     'logger',
     'samples',
+    'app:allowlist',
     'app:proxytest',
     'app:execman',
     'app:dappcomp'

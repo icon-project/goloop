@@ -1,0 +1,9 @@
+apply plugin: 'application'
+
+dependencies {
+    implementation project(':rt')
+}
+
+application {
+    mainClassName = 'JCLAllowlistPrinter'
+}
