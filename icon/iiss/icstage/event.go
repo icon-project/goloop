@@ -53,23 +53,14 @@ func (v *Vote) SetAmount(amount *big.Int) {
 }
 
 func (v *Vote) RLPDecodeSelf(decoder codec.Decoder) error {
-	d, err := decoder.DecodeList()
-	if err != nil {
-		return err
-	}
-	_, err = d.DecodeMulti(
+	return decoder.DecodeListOf(
 		&v.address,
 		&v.value,
 	)
-	return err
 }
 
 func (v *Vote) RLPEncodeSelf(encoder codec.Encoder) error {
-	e, err := encoder.EncodeList()
-	if err != nil {
-		return err
-	}
-	return e.EncodeMulti(
+	return encoder.EncodeListOf(
 		v.address,
 		v.value,
 	)
