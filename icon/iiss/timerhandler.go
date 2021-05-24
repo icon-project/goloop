@@ -18,32 +18,33 @@ package iiss
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/service/state"
 )
 
 func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 	bh := wc.BlockHeight()
 	s.logger.Tracef("HandleTimerJob() start BH-%d", bh)
-	bt := s.GetUnbondingTimerState(bh, false)
+	bt := s.State.GetUnbondingTimerSnapshot(bh)
 	if bt != nil {
-		err = s.handleUnbondingTimer(bt.Addresses, bh)
+		err = s.handleUnbondingTimer(bt, bh)
 		if err != nil {
 			return
 		}
 	}
 
-	st := s.GetUnstakingTimerState(wc.BlockHeight(), false)
+	st := s.State.GetUnstakingTimerSnapshot(wc.BlockHeight())
 	if st != nil {
-		err = s.handleUnstakingTimer(wc, st.Addresses, bh)
+		err = s.handleUnstakingTimer(wc, st, bh)
 	}
 	s.logger.Tracef("HandleTimerJob() end BH-%d", bh)
 	return
 }
 
-func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*common.Address, h int64) error {
+func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
 	s.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
-	for _, a := range al {
+	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
+		a, _ := itr.Get()
 		ea := s.State.GetAccountState(a)
 		s.logger.Tracef("account : %s", ea)
 		ra, err := ea.RemoveUnstake(h)
@@ -64,9 +65,10 @@ func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, al []*c
 	return nil
 }
 
-func (s *ExtensionStateImpl) handleUnbondingTimer(al []*common.Address, h int64) error {
+func (s *ExtensionStateImpl) handleUnbondingTimer(ts *icstate.TimerSnapshot, h int64) error {
 	s.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
-	for _, a := range al {
+	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
+		a, _ := itr.Get()
 		s.logger.Tracef("account : %s", a)
 		as := s.State.GetAccountState(a)
 		if err := as.RemoveUnbond(h); err != nil {

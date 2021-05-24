@@ -17,29 +17,24 @@
 package icstate
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestTimerSnapshot_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	t1 := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
+	t1 := newTimer()
+	t1.Add(common.NewAccountAddress([]byte("1")))
+	t1.Add(common.NewAccountAddress([]byte("2")))
+	t1.Add(common.NewAccountAddress([]byte("3")))
 
-	al1 := make(addresses, 3)
-	a1 := common.NewAccountAddress([]byte("1"))
-	a2 := common.NewAccountAddress([]byte("2"))
-	a3 := common.NewAccountAddress([]byte("3"))
-	al1 = append(al1, a1)
-	al1 = append(al1, a2)
-	al1 = append(al1, a3)
-
-	t1.Addresses = al1
-
-	o1 := icobject.New(TypeTimer, t1)
+	ts1 := t1.GetSnapshot()
+	o1 := icobject.New(TypeTimer, ts1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -51,117 +46,62 @@ func TestTimerSnapshot_Bytes(t *testing.T) {
 }
 
 func TestTimer_Add(t *testing.T) {
-	timer := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
+	timer := newTimer()
+	tc1 := []*common.Address {
+		common.NewAccountAddress([]byte("1")),
+		common.NewAccountAddress([]byte("2")),
+		common.NewAccountAddress([]byte("3")),
+	}
+	for _, a := range tc1 {
+		timer.Add(a)
+	}
 
-	a1 := common.NewAccountAddress([]byte("1"))
-	a2 := common.NewAccountAddress([]byte("2"))
-	a3 := common.NewAccountAddress([]byte("3"))
-	timer.Add(a1)
-	timer.Add(a2)
-	timer.Add(a3)
-	assert.Contains(t, timer.Addresses, a1)
-	assert.Contains(t, timer.Addresses, a2)
-	assert.Contains(t, timer.Addresses, a3)
+	for _, a := range tc1 {
+		assert.True(t, timer.Contains(a))
+	}
+
+	var ret1 []*common.Address
+	for itr := timer.Iterator(); itr.Has() ; itr.Next() {
+		a, ok := itr.Get()
+		assert.True(t, ok)
+		ret1 = append(ret1, common.AddressToPtr(a))
+	}
+	assert.Equal(t, tc1, ret1)
 }
 
 func TestTimer_Delete(t *testing.T) {
-	timer := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
-
-	a1 := common.NewAccountAddress([]byte("1"))
-	a2 := common.NewAccountAddress([]byte("2"))
-	a3 := common.NewAccountAddress([]byte("3"))
-	a4 := common.NewAccountAddress([]byte("4"))
-	timer.Add(a1)
-	timer.Add(a2)
-	timer.Add(a3)
-	timer.Add(a4)
-	assert.Contains(t, timer.Addresses, a1)
-	assert.Contains(t, timer.Addresses, a2)
-	assert.Contains(t, timer.Addresses, a3)
-	assert.Contains(t, timer.Addresses, a4)
-	length := len(timer.Addresses)
-
-	err := timer.Delete(a2)
-	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a2)
-	assert.Equal(t, length-1, len(timer.Addresses))
-	length -= 1
-
-	err = timer.Delete(a2)
-	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), errors.Errorf("%s not in timer", a2.String()).Error())
+	timer := newTimer()
+	tc1 := []*common.Address {
+		common.NewAccountAddress([]byte("1")),
+		common.NewAccountAddress([]byte("2")),
+		common.NewAccountAddress([]byte("3")),
+		common.NewAccountAddress([]byte("4")),
+	}
+	for _, a := range tc1 {
+		timer.Add(a)
 	}
 
-	err = timer.Delete(a4)
+	for _, a := range tc1 {
+		assert.True(t, timer.Contains(a))
+	}
+
+	err := timer.Delete(tc1[1])
 	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a4)
-	assert.Equal(t, length-1, len(timer.Addresses))
-	length -= 1
+	assert.False(t, timer.Contains(tc1[1]))
 
-	err = timer.Delete(a1)
-	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a1)
-	assert.Equal(t, length-1, len(timer.Addresses))
-	length -= 1
-
-	err = timer.Delete(a3)
-	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a3)
-	assert.Equal(t, length-1, len(timer.Addresses))
-}
-
-func Test_ScheduleTimerJob(t *testing.T) {
-	timer := newTimerWithTag(icobject.MakeTag(TypeTimer, timerVersion))
-
-	a1 := common.NewAccountAddress([]byte("1"))
-	a2 := common.NewAccountAddress([]byte("2"))
-	a3 := common.NewAccountAddress([]byte("3"))
-	j1 := &TimerJobInfo{JobTypeAdd, 1}
-	length := 0
-
-	assert.NotContains(t, timer.Addresses, a1)
-	assert.NotContains(t, timer.Addresses, a2)
-	assert.NotContains(t, timer.Addresses, a3)
-	assert.Equal(t, length, len(timer.Addresses))
-
-	err := ScheduleTimerJob(timer, *j1, a1)
-	assert.NoError(t, err)
-	assert.Contains(t, timer.Addresses, a1)
-	length += 1
-	assert.Equal(t, length, len(timer.Addresses))
-
-	err = ScheduleTimerJob(timer, *j1, a2)
-	assert.NoError(t, err)
-	assert.Contains(t, timer.Addresses, a2)
-	length += 1
-	assert.Equal(t, length, len(timer.Addresses))
-
-	err = ScheduleTimerJob(timer, *j1, a3)
-	assert.NoError(t, err)
-	assert.Contains(t, timer.Addresses, a3)
-	length += 1
-	assert.Equal(t, length, len(timer.Addresses))
-
-	j2 := &TimerJobInfo{JobTypeRemove, 1}
-
-	err = ScheduleTimerJob(timer, *j2, a2)
-	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a2)
-	length -= 1
-	assert.Equal(t, length, len(timer.Addresses))
-
-	err = ScheduleTimerJob(timer, *j2, a2)
+	// double remove
+	err = timer.Delete(tc1[1])
 	assert.Error(t, err)
 
-	err = ScheduleTimerJob(timer, *j2, a3)
+	err = timer.Delete(tc1[0])
 	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a3)
-	length -= 1
-	assert.Equal(t, length, len(timer.Addresses))
+	assert.False(t, timer.Contains(tc1[0]))
 
-	err = ScheduleTimerJob(timer, *j2, a1)
+	err = timer.Delete(tc1[2])
 	assert.NoError(t, err)
-	assert.NotContains(t, timer.Addresses, a1)
-	length -= 1
-	assert.Equal(t, length, len(timer.Addresses))
+	assert.False(t, timer.Contains(tc1[2]))
+
+	err = timer.Delete(tc1[3])
+	assert.NoError(t, err)
+	assert.False(t, timer.Contains(tc1[3]))
 }

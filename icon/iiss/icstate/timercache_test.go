@@ -1,15 +1,17 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/service/scoredb"
 	"testing"
+
+	"github.com/icon-project/goloop/service/scoredb"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/stretchr/testify/assert"
 )
 
 var testTimerDictPrefix = containerdb.ToKey(
@@ -23,65 +25,65 @@ func TestTimerCache(t *testing.T) {
 
 	tc := newTimerCache(oss, testTimerDictPrefix)
 
-	timer := tc.Get(100, false)
-	assert.Nil(t, timer)
-	timer = tc.Get(100, true)
-	addr := common.MustNewAddressFromString("hx1")
+	tss1 := tc.GetSnapshot(100)
+	assert.Nil(t, tss1)
+	timer := tc.Get(100)
+	addr1 := common.MustNewAddressFromString("hx1")
 	// add address to timer 100
-	timer.Add(addr)
+	timer.Add(addr1)
 	// add timer 100 to tc
 
 	// should get 100
-	res := tc.Get(100, true)
-	assert.NotNil(t, res)
+	tss1 = tc.GetSnapshot(100)
+	assert.NotNil(t, tss1)
+	assert.True(t, tss1.Contains(addr1))
 
-	// should not get 100 from DB, because it didn't flush
-	o := tc.dict.Get(100)
-	assert.Nil(t, o)
-
-	// flushed(100)
 	tc.Flush()
 
-	// should not be nil
-	o = tc.dict.Get(100)
-	assert.NotNil(t, o)
+	timer = tc.Get(110)
+	addr2 := common.MustNewAddressFromString("hx2")
+	timer.Add(addr2)
 
-	timer = tc.Get(110, true)
-	addr = common.MustNewAddressFromString("hx2")
-	timer.Add(addr)
-	// new timer 110 added
+	tss2 := tc.GetSnapshot(110)
+	assert.NotNil(t, tss2)
+	assert.False(t, tss2.IsEmpty())
 
-	// 110 should not be empty
-	timer = tc.Get(110, true)
-	assert.False(t, timer.IsEmpty())
-
-	// the item 110 in map will be removed after reset(), because there is no in DB
+	// revert changes and check.
 	tc.Reset()
-	timer = tc.Get(110, true)
-	assert.NotNil(t, timer)
 	assert.True(t, timer.IsEmpty())
 
-	timer = tc.Get(110, true)
-	addr = common.MustNewAddressFromString("hx2")
+	ss1 := tree.GetSnapshot()
 
 	// item 110 added and flushed, DB will have both 100, 110
-	timer.Add(addr)
+	timer.Add(addr2)
 	tc.Flush()
 
-	// remove item 100 in the map, not DB
-	timer = tc.Get(100, true)
-	timer.Clear()
+	ss2 := tree.GetSnapshot()
+
+	// switch back to ss1 and check
+	tree.Reset(ss1)
 	tc.Reset()
-	timer = tc.Get(100, true)
-	// should not be empty
+
+	timer = tc.Get(110)
+	assert.True(t, timer.IsEmpty())
+
+	// switch forward to ss2 and check
+	tree.Reset(ss2)
+	tc.Reset()
+
+	timer = tc.Get(110)
 	assert.False(t, timer.IsEmpty())
 
-	// after Clear(), it cannot recover any data from DB by Reset()
+	// test Clear() whether it flushes the change
+	addr3 := common.MustNewAddressFromString("hx3")
+	timer.Add(addr3)
 	tc.Clear()
-	tc.Reset()
-	assert.Equal(t, 0, len(tc.timers))
 
-	// but, it can recover specific item, using Get()
-	timer = tc.Get(110, true)
-	assert.NotNil(t, timer)
+	// original tc may reuse the object, so use new one.
+	tc2 := newTimerCache(oss, testTimerDictPrefix)
+	tss3 := tc2.GetSnapshot(110)
+	assert.True(t, tss3.Contains(addr3))
+	assert.True(t, tss3.Contains(addr2))
+	tss4 := tc2.GetSnapshot(100)
+	assert.True(t, tss4.Contains(addr1))
 }

@@ -49,122 +49,185 @@ type TimerJobInfo struct {
 	Height int64
 }
 
-func (a addresses) Equal(a2 addresses) bool {
-	if len(a) != len(a2) {
+type timerData struct {
+	addresses []*common.Address
+}
+
+func (t *timerData) equal(t2 *timerData) bool {
+	if t == t2 {
+		return true
+	}
+	if len(t.addresses) != len(t2.addresses) {
 		return false
 	}
-	for i, b := range a {
-		if !b.Equal(a2[i]) {
+	for i, a := range t.addresses {
+		if !a.Equal(t2.addresses[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (a addresses) Clone() addresses {
-	if a == nil {
-		return nil
+func (t timerData) clone() timerData {
+	addrs := make([]*common.Address,len(t.addresses))
+	copy(addrs, t.addresses)
+	return timerData{
+		addresses: addrs,
 	}
-	c := make([]*common.Address, len(a))
-	for i, address := range a {
-		c[i] = address
-	}
-	return c
 }
 
-func (a addresses) Contains(address module.Address) bool {
-	for _, addr := range a {
-		if addr.Equal(address) {
-			return true
+func (t timerData) IsEmpty() bool {
+	return len(t.addresses) == 0
+}
+
+func (t timerData) IndexOf(addr module.Address) int {
+	for i, a := range t.addresses {
+		if a.Equal(addr) {
+			return i
 		}
 	}
-	return false
+	return -1
 }
 
-type Timer struct {
+func (t timerData) Contains(addr module.Address) bool {
+	return t.IndexOf(addr) >= 0
+}
+
+type TimerIterator interface {
+	Get() (module.Address, bool)
+	Next()
+	Has() bool
+}
+
+type timerIteratorImpl struct {
+	addresses []*common.Address
+	idx       int
+}
+
+func (t *timerIteratorImpl) Get() (module.Address, bool) {
+	if t.idx >= len(t.addresses) {
+		return nil, false
+	}
+	return t.addresses[t.idx], true
+}
+
+func (t *timerIteratorImpl) Next() {
+	if t.idx < len(t.addresses) {
+		t.idx += 1
+	}
+}
+
+func (t *timerIteratorImpl) Has() bool {
+	return t.idx < len(t.addresses)
+}
+
+func (t timerData) Iterator() TimerIterator {
+	return &timerIteratorImpl{
+		addresses: t.addresses,
+		idx:       0,
+	}
+}
+
+type TimerSnapshot struct {
 	icobject.NoDatabase
-	StateAndSnapshot
-
-	Addresses addresses
+	timerData
 }
 
-func (t *Timer) Version() int {
+func (t *TimerSnapshot) Version() int {
 	return timerVersion
 }
 
-func (t *Timer) RLPDecodeFields(decoder codec.Decoder) error {
+func (t *TimerSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	_, err := decoder.DecodeMulti(
-		&t.Addresses,
+		&t.addresses,
 	)
 	return err
 }
 
-func (t *Timer) RLPEncodeFields(encoder codec.Encoder) error {
+func (t *TimerSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
-		t.Addresses,
+		t.addresses,
 	)
 }
 
-func (t *Timer) Equal(object icobject.Impl) bool {
-	tt, ok := object.(*Timer)
+func (t *TimerSnapshot) Equal(object icobject.Impl) bool {
+	tt, ok := object.(*TimerSnapshot)
 	if !ok {
 		return false
 	}
 	if tt == t {
 		return true
 	}
-	return t.Addresses.Equal(tt.Addresses)
+	return t.timerData.equal(&tt.timerData)
 }
 
-func (t *Timer) Clear() {
-	t.Addresses = nil
+type TimerState struct {
+	snapshot *TimerSnapshot
+	timerData
 }
 
-func (t Timer) IsEmpty() bool {
-	return len(t.Addresses) == 0
+func (t *TimerState) Reset(ts *TimerSnapshot) *TimerState {
+	if t.snapshot == ts {
+		return t
+	}
+	t.snapshot = ts
+	t.timerData = ts.timerData.clone()
+	return t
 }
 
-func (t *Timer) Set(other *Timer) {
-	t.checkWritable()
-	t.Addresses = other.Addresses.Clone()
-}
-
-func (t *Timer) Add(address module.Address) {
-	if !t.Addresses.Contains(address) {
-		t.Addresses = append(t.Addresses, common.AddressToPtr(address))
+func (t *TimerState) setDirty() {
+	if t.snapshot != nil {
+		t.snapshot = nil
 	}
 }
 
-func (t *Timer) Delete(address module.Address) error {
-	tmp := make(addresses, 0)
-	for _, a := range t.Addresses {
-		if !a.Equal(address) {
-			tmp = append(tmp, a)
+func (t *TimerState) GetSnapshot() *TimerSnapshot {
+	if t.snapshot == nil {
+		t.snapshot = &TimerSnapshot{timerData: t.timerData.clone()}
+	}
+	return t.snapshot
+}
+
+func (t *TimerState) Delete(address module.Address) error {
+	idx := t.IndexOf(address)
+	if idx >= 0 {
+		l := len(t.addresses)
+		if idx+1 < l {
+			copy(t.addresses[idx:], t.addresses[idx+1:])
+		} else {
+			t.addresses[idx] = nil
 		}
-	}
-
-	if len(tmp) == len(t.Addresses) {
+		t.addresses = t.addresses[0:l-1]
+		t.setDirty()
+		return nil
+	} else {
 		return errors.Errorf("%s not in timer", address.String())
 	}
-
-	t.Addresses = tmp
-	return nil
 }
-func (t *Timer) Clone() *Timer {
-	return &Timer{
-		Addresses: t.Addresses.Clone(),
+
+func (t *TimerState) Add(address module.Address) {
+	if t.Contains(address) {
+		return
 	}
+	t.addresses = append(t.addresses, common.AddressToPtr(address))
+	t.setDirty()
 }
 
-func newTimer() *Timer {
-	return &Timer{}
+var emptyTimerSnapshot = &TimerSnapshot{}
+
+func NewTimerWithSnapshot(tss *TimerSnapshot) *TimerState {
+	return new(TimerState).Reset(tss)
 }
 
-func newTimerWithTag(_ icobject.Tag) *Timer {
-	return &Timer{}
+func newTimer() *TimerState {
+	return new(TimerState).Reset(emptyTimerSnapshot)
 }
 
-func ScheduleTimerJob(t *Timer, info TimerJobInfo, address module.Address) error {
+func newTimerWithTag(_ icobject.Tag) *TimerSnapshot {
+	return &TimerSnapshot{}
+}
+
+func ScheduleTimerJob(t *TimerState, info TimerJobInfo, address module.Address) error {
 	switch info.Type {
 	case JobTypeAdd:
 		t.Add(address)

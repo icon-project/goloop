@@ -24,10 +24,10 @@ import (
 
 type TimerCache struct {
 	dict   *containerdb.DictDB
-	timers map[int64]*Timer
+	timers map[int64]*TimerState
 }
 
-func (c *TimerCache) Get(height int64, createIfNotExist bool) *Timer {
+func (c *TimerCache) Get(height int64) *TimerState {
 	timer := c.timers[height]
 	if timer != nil {
 		return timer
@@ -35,21 +35,30 @@ func (c *TimerCache) Get(height int64, createIfNotExist bool) *Timer {
 
 	o := c.dict.Get(height)
 	if o == nil {
-		if createIfNotExist {
-			timer = newTimer()
-			c.timers[height] = timer
-		} else {
-			// return nil
-		}
+		timer = newTimer()
 	} else {
-		timer = ToTimer(o.Object())
-		c.timers[height] = timer
+		timer = NewTimerWithSnapshot(ToTimer(o.Object()))
 	}
+	c.timers[height] = timer
 	return timer
 }
 
+func (c *TimerCache) GetSnapshot(height int64) *TimerSnapshot {
+	timer := c.timers[height]
+	if timer != nil {
+		return timer.GetSnapshot()
+	}
+	o := c.dict.Get(height)
+	if o == nil {
+		return nil
+	} else {
+		return ToTimer(o.Object())
+	}
+}
+
 func (c *TimerCache) Clear() {
-	c.timers = make(map[int64]*Timer)
+	c.Flush()
+	c.timers = make(map[int64]*TimerState)
 }
 
 func (c *TimerCache) Reset() {
@@ -57,9 +66,9 @@ func (c *TimerCache) Reset() {
 		value := c.dict.Get(key)
 
 		if value == nil {
-			delete(c.timers, key)
+			timer.Reset(emptyTimerSnapshot)
 		} else {
-			timer.Set(ToTimer(value.Object()))
+			timer.Reset(ToTimer(value.Object()))
 		}
 	}
 }
@@ -70,11 +79,10 @@ func (c *TimerCache) Flush() {
 			if err := c.dict.Delete(height); err != nil {
 				log.Errorf("Failed to delete Timer on %d, err+%+v", height, err)
 			}
-			delete(c.timers, height)
 		} else {
-			o := icobject.New(TypeTimer, timer.Clone())
+			o := icobject.New(TypeTimer, timer.GetSnapshot())
 			if err := c.dict.Set(height, o); err != nil {
-				log.Errorf("Failed to set snapshotMap for %x, err+%+v", height, err)
+				log.Errorf("Failed to set Timer for %d, err+%+v", height, err)
 			}
 		}
 	}
@@ -82,7 +90,7 @@ func (c *TimerCache) Flush() {
 
 func newTimerCache(store containerdb.ObjectStoreState, prefix containerdb.KeyBuilder) *TimerCache {
 	return &TimerCache{
-		timers: make(map[int64]*Timer),
+		timers: make(map[int64]*TimerState),
 		dict:   containerdb.NewDictDB(store, 1, prefix),
 	}
 }

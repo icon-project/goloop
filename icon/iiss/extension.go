@@ -200,14 +200,6 @@ func (s *ExtensionStateImpl) ClearCache() {
 	s.Front.ClearCache()
 }
 
-func (s *ExtensionStateImpl) GetUnstakingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
-	return s.State.GetUnstakingTimer(height, createIfNotExist)
-}
-
-func (s *ExtensionStateImpl) GetUnbondingTimerState(height int64, createIfNotExist bool) *icstate.Timer {
-	return s.State.GetUnbondingTimer(height, createIfNotExist)
-}
-
 func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
 	rcInfo, err := s.State.GetRewardCalcInfo()
 	if err != nil || rcInfo == nil {
@@ -625,11 +617,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 	for _, timerJobInfo := range tl {
-		creatIfNotExist := true
-		if timerJobInfo.Type == icstate.JobTypeRemove {
-			creatIfNotExist = false
-		}
-		unbondingTimer := s.State.GetUnbondingTimer(timerJobInfo.Height, creatIfNotExist)
+		unbondingTimer := s.State.GetUnbondingTimerState(timerJobInfo.Height)
 		if unbondingTimer == nil {
 			panic(errors.Errorf("There is no timer"))
 		}

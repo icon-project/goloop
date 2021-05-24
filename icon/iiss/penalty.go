@@ -121,7 +121,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		slashUnbond, expire := account.SlashUnbond(address, ratio)
 		totalSlash.Add(totalSlash, slashUnbond)
 		if expire != -1 {
-			timer := s.GetUnbondingTimerState(expire, false)
+			timer := s.State.GetUnbondingTimerState(expire)
 			if timer != nil {
 				if err := timer.Delete(address); err != nil {
 					return err

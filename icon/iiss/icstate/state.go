@@ -94,13 +94,22 @@ func (s *State) GetAccountSnapshot(addr module.Address) *AccountSnapshot {
 	return s.accountCache.GetSnapshot(addr)
 }
 
-func (s *State) GetUnstakingTimer(height int64, createIfNotExist bool) *Timer {
-	timer := s.unstakingTimerCache.Get(height, createIfNotExist)
+func (s *State) GetUnstakingTimerState(height int64) *TimerState {
+	timer := s.unstakingTimerCache.Get(height)
 	return timer
 }
 
-func (s *State) GetUnbondingTimer(height int64, createIfNotExist bool) *Timer {
-	timer := s.unbondingTimerCache.Get(height, createIfNotExist)
+func (s *State) GetUnstakingTimerSnapshot(height int64) *TimerSnapshot {
+	return s.unstakingTimerCache.GetSnapshot(height)
+}
+
+func (s *State) GetUnbondingTimerState(height int64) *TimerState {
+	timer := s.unbondingTimerCache.Get(height)
+	return timer
+}
+
+func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
+	timer := s.unbondingTimerCache.GetSnapshot(height)
 	return timer
 }
 
@@ -256,6 +265,8 @@ func (s *State) GetUnstakeSlotMax() int64 {
 
 func (s *State) ClearCache() {
 	s.accountCache.Clear()
+	s.unstakingTimerCache.Clear()
+	s.unbondingTimerCache.Clear()
 	// TODO clear other caches
 	s.store.ClearCache()
 }

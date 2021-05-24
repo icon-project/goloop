@@ -98,11 +98,11 @@ func ToPRepBase(object trie.Object) *PRepBase {
 	return pb
 }
 
-func ToTimer(object trie.Object) *Timer {
+func ToTimer(object trie.Object) *TimerSnapshot {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*Timer)
+	return object.(*icobject.Object).Real().(*TimerSnapshot)
 }
 
 func ToIssue(object trie.Object) *Issue {

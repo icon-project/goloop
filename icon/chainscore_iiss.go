@@ -167,7 +167,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	}
 
 	for _, t := range tl {
-		ts := es.GetUnstakingTimerState(t.Height, true)
+		ts := es.State.GetUnstakingTimerState(t.Height)
 		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
 			return scoreresult.UnknownFailureError.Wrapf(
 				err,
