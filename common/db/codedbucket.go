@@ -43,6 +43,16 @@ func NewCodedBucket(database Database, id BucketID, c codec.Codec) (*CodedBucket
 	return b, nil
 }
 
+func NewCodedBucketFromBucket(bk Bucket, c codec.Codec) *CodedBucket {
+	b := &CodedBucket{}
+	b.dbBucket = bk
+	if c == nil {
+		c = codec.BC
+	}
+	b.codec = c
+	return b
+}
+
 type Raw []byte
 
 func (b *CodedBucket) _marshal(obj interface{}) ([]byte, error) {
