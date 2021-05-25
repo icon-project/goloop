@@ -246,6 +246,9 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 		return nil, err
 	}
 	ia := es.State.GetAccountSnapshot(address)
+	if ia == nil {
+		ia = icstate.GetEmptyAccountSnapshot()
+	}
 	blockHeight := s.cc.BlockHeight()
 	return ia.GetStakeInJSON(blockHeight), nil
 }
@@ -283,6 +286,10 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 		return nil, err
 	}
 	ia := es.State.GetAccountSnapshot(address)
+	if ia == nil {
+		ia = icstate.GetEmptyAccountSnapshot()
+	}
+
 	return ia.GetDelegationInJSON(), nil
 }
 
@@ -588,6 +595,9 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 		return nil, err
 	}
 	account := es.State.GetAccountSnapshot(address)
+	if account == nil {
+		account = icstate.GetEmptyAccountSnapshot()
+	}
 	data := make(map[string]interface{})
 	data["bonds"] = account.GetBondsInJSON()
 	data["unbonds"] = account.GetUnbondsInJSON()

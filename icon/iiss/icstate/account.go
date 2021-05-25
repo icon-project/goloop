@@ -71,7 +71,7 @@ func (a *accountData) equal(other *accountData) bool {
 
 func (a accountData) clone() accountData {
 	return accountData{
-		stake:       a.stake,
+		stake: a.stake,
 
 		unstakes:    a.unstakes.Clone(),
 		delegations: a.delegations.Clone(),
@@ -181,7 +181,6 @@ func (a *accountData) Format(f fmt.State, c rune) {
 		fmt.Fprint(f, a.String())
 	}
 }
-
 
 type AccountSnapshot struct {
 	icobject.NoDatabase
@@ -400,7 +399,6 @@ func (a *AccountState) UpdateUnbonds(bondDelta map[string]*big.Int, expireHeight
 	return tl, nil
 }
 
-
 func (a *AccountState) RemoveUnbond(height int64) error {
 	var tmp Unbonds
 	removed := new(big.Int)
@@ -474,4 +472,8 @@ func newAccountStateWithSnapshot(ass *AccountSnapshot) *AccountState {
 	}
 	a.Reset(ass)
 	return a
+}
+
+func GetEmptyAccountSnapshot() *AccountSnapshot {
+	return emptyAccountSnapshot
 }
