@@ -168,10 +168,17 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		return nil
 	}
 	term := es.State.GetTerm()
-	if term.Sequence() == 0 && cc.BlockHeight() < term.StartHeight() + 2 {
-		// Ignore the first two starting decentralization blocks
-		log.Tracef("Ignore the first two starting decentralization blocks")
-		return nil
+	if term.Sequence() == 0 {
+		skipCount := int64(1)
+		// TODO implement consensusByGoloop
+		//if consensusByGoloop {
+		//	skipCount := int64(2)
+		//}
+		if cc.BlockHeight() < term.StartHeight()+skipCount {
+			// Ignore the first N decentralization blocks
+			log.Tracef("BlockProduce: Skip the first %d decentralization blocks", skipCount)
+			return nil
+		}
 	}
 	// if PrepManager is not ready, it returns immediately
 	if es.pm.GetPRepByNode(csi.Proposer()) == nil {
