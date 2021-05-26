@@ -241,7 +241,7 @@ func (s *ExtensionStateImpl) ApplyCalculation(calculator *Calculator) error {
 	// update rewardCalcInfo
 	term := s.State.GetTerm()
 	additionalReward := new(big.Int)
-	if icstate.IISSVersion2 == term.GetIISSVersion() {
+	if icstate.IISSVersion3 == term.GetIISSVersion() {
 		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
 		rewardCPS.Div(rewardCPS, big.NewInt(100))
 		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())
@@ -265,7 +265,7 @@ func (s *ExtensionStateImpl) NewCalculation() (err error) {
 	term := s.State.GetTerm()
 	iissVersion := term.GetIISSVersion()
 	switch iissVersion {
-	case icstate.IISSVersion1:
+	case icstate.IISSVersion2:
 		if err = s.Front.AddGlobalV1(
 			term.Revision(),
 			term.StartHeight(),
@@ -277,7 +277,7 @@ func (s *ExtensionStateImpl) NewCalculation() (err error) {
 		); err != nil {
 			return
 		}
-	case icstate.IISSVersion2:
+	case icstate.IISSVersion3:
 		if err = s.Front.AddGlobalV2(
 			term.Revision(),
 			term.StartHeight(),
@@ -323,7 +323,7 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 }
 
 func (s *ExtensionStateImpl) GetBondRequirement() int64 {
-	if s.State.GetIISSVersion() < icstate.IISSVersion2 {
+	if s.State.GetIISSVersion() < icstate.IISSVersion3 {
 		return 0
 	}
 	return s.State.GetBondRequirement()

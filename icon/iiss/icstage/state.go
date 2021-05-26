@@ -184,7 +184,7 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	mainPRepCount int, electedPRepCount int,
 ) error {
 	g := NewGlobalV1(
-		icstate.IISSVersion1,
+		icstate.IISSVersion2,
 		startHeight,
 		offsetLimit,
 		revision,
@@ -201,7 +201,7 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	ivoter *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
 	g := NewGlobalV2(
-		icstate.IISSVersion2,
+		icstate.IISSVersion3,
 		startHeight,
 		offsetLimit,
 		revision,

@@ -219,7 +219,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		{
 			"Global Version1",
 			icstage.NewGlobalV1(
-				icstate.IISSVersion1,
+				icstate.IISSVersion2,
 				0,
 				100-1,
 				icmodule.RevisionIISS,
@@ -235,7 +235,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		{
 			"Global Version1 - disabled",
 			icstage.NewGlobalV1(
-				icstate.IISSVersion1,
+				icstate.IISSVersion2,
 				0,
 				100-1,
 				icmodule.RevisionIISS,
@@ -250,7 +250,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		{
 			"Global Version2",
 			icstage.NewGlobalV2(
-				icstate.IISSVersion2,
+				icstate.IISSVersion3,
 				0,
 				1000-1,
 				icmodule.Revision13,
@@ -267,7 +267,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 		{
 			"Global Version2 - disabled",
 			icstage.NewGlobalV2(
-				icstate.IISSVersion2,
+				icstate.IISSVersion3,
 				0,
 				-1,
 				icmodule.Revision13,
@@ -541,7 +541,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			"Global Version1",
 			args{
 				icstage.NewGlobalV1(
-					icstate.IISSVersion1,
+					icstate.IISSVersion2,
 					0,
 					100-1,
 					icmodule.RevisionIISS,
@@ -561,7 +561,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			"Global Version1 - disabled",
 			args{
 				icstage.NewGlobalV1(
-					icstate.IISSVersion1,
+					icstate.IISSVersion2,
 					0,
 					100-1,
 					icmodule.RevisionIISS,
@@ -581,7 +581,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			"Global Version2",
 			args{
 				icstage.NewGlobalV2(
-					icstate.IISSVersion2,
+					icstate.IISSVersion3,
 					0,
 					1000-1,
 					icmodule.Revision13,
@@ -603,7 +603,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			"Global Version2 - disabled",
 			args{
 				icstage.NewGlobalV2(
-					icstate.IISSVersion2,
+					icstate.IISSVersion3,
 					0,
 					0-1,
 					icmodule.RevisionIISS,

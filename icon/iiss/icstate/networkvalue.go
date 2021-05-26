@@ -46,8 +46,8 @@ const (
 )
 
 const (
-	IISSVersion1 int = iota // IISS 2.0
-	IISSVersion2            // IISS 3.1
+	IISSVersion2 int = iota + 2
+	IISSVersion3
 )
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {

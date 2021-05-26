@@ -896,10 +896,10 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	iissVersion := es.State.GetIISSVersion()
 
 	iissVariables := make(map[string]interface{})
-	if iissVersion == icstate.IISSVersion1 {
+	if iissVersion == icstate.IISSVersion2 {
 		iissVariables["irep"] = term.Irep()
 		iissVariables["rrep"] = term.Rrep()
-	} else if iissVersion == icstate.IISSVersion2 {
+	} else if iissVersion == icstate.IISSVersion3 {
 		iissVariables = term.RewardFund().ToJSON()
 	}
 

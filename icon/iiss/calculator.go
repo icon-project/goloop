@@ -265,7 +265,7 @@ func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 }
 
 func (c *Calculator) calculateBlockProduce() error {
-	if c.global.GetIISSVersion() == icstate.IISSVersion2 {
+	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
 		return nil
 	}
 	var err error
@@ -359,7 +359,7 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	divider = new(big.Int)
 
 	iissVersion := global.GetIISSVersion()
-	if iissVersion == icstate.IISSVersion1 {
+	if iissVersion == icstate.IISSVersion2 {
 		g := global.(*icstage.GlobalV1)
 		multiplier.Mul(g.GetIRep(), big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
@@ -510,7 +510,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 	divider = new(big.Int)
 
 	iissVersion := global.GetIISSVersion()
-	if iissVersion == icstate.IISSVersion1 {
+	if iissVersion == icstate.IISSVersion2 {
 		g := global.GetV1()
 		if g.GetRRep().Sign() == 0 {
 			return
@@ -782,14 +782,14 @@ func (c *Calculator) processVotingEvent(
 		for i := 0; i < len(events); i += 1 {
 			end = offsets[i]
 			switch iissVersion {
-			case icstate.IISSVersion1:
+			case icstate.IISSVersion2:
 				ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
 				c.log.Tracef("VotingEvent %s %d add: %d, %d: %s", addr, i, start, offsetLimit, ret)
 				ret = c.votingReward(multiplier, divider, end, offsetLimit, prepInfo, voting.Iterator())
 				reward.Sub(reward, ret)
 				c.log.Tracef("VotingEvent %s %d sub: %d, %d: %s", addr, i, end, offsetLimit, ret)
-			case icstate.IISSVersion2:
+			case icstate.IISSVersion3:
 				end = offsets[i]
 				ret := c.votingReward(multiplier, divider, start, end, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
@@ -872,7 +872,7 @@ func (c *Calculator) writeVoting(addr *common.Address, data interface{}) error {
 
 func (c *Calculator) postWork() (err error) {
 	// check result
-	if c.global.GetIISSVersion() == icstate.IISSVersion2 {
+	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
 		if c.stats.blockProduce.Sign() != 0 {
 			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
 		}

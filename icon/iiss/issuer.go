@@ -205,7 +205,7 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	}
 	term := es.State.GetTerm()
 	issueInfo, _ := es.State.GetIssue()
-	if term.GetIISSVersion() == icstate.IISSVersion1 {
+	if term.GetIISSVersion() == icstate.IISSVersion2 {
 		return getIssueDataV1(es, term, es.pm.TotalDelegated())
 	} else {
 		return nil, getIssueDataV2(issueInfo, term)

@@ -218,12 +218,12 @@ func (term *Term) GetEndBlockHeight() int64 {
 
 func (term *Term) GetIISSVersion() int {
 	if term.revision >= icmodule.RevisionICON2 {
-		return IISSVersion2
+		return IISSVersion3
 	}
 	if term.revision >= icmodule.RevisionIISS {
-		return IISSVersion1
+		return IISSVersion2
 	}
-	return IISSVersion1
+	return IISSVersion2
 }
 
 func (term *Term) VoteStartHeight() int64 {

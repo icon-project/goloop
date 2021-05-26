@@ -125,7 +125,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
 		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-		if err := es.State.SetIISSVersion(icstate.IISSVersion1); err != nil {
+		if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 			return err
 		}
 		if err := es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
@@ -182,8 +182,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		iissVersion := es.State.GetIISSVersion()
 
 		if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
-			if iissVersion < icstate.IISSVersion1 {
-				iissVersion = icstate.IISSVersion1
+			if iissVersion < icstate.IISSVersion2 {
+				iissVersion = icstate.IISSVersion2
 			}
 			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == defaultUnstakeSlotMax {
 				if err := es.State.SetUnstakeSlotMax(InitialUnstakeSlotMax); err != nil {
@@ -222,8 +222,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 
 		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
-			if iissVersion < icstate.IISSVersion2 {
-				iissVersion = icstate.IISSVersion2
+			if iissVersion < icstate.IISSVersion3 {
+				iissVersion = icstate.IISSVersion3
 			}
 		}
 
