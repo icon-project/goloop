@@ -130,13 +130,14 @@ type Term struct {
 	sequence        int
 	startHeight     int64
 	period          int64
+	revision        int
+	isDecentralized bool
 	irep            *big.Int
 	rrep            *big.Int
 	totalSupply     *big.Int
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	rewardFund      *RewardFund
 	bondRequirement int
-	revision        int
 	mainPRepCount   int
 	prepSnapshots   PRepSnapshots
 
@@ -248,6 +249,7 @@ func (term *Term) Set(other *Term) {
 	term.rewardFund = other.rewardFund.Clone()
 	term.bondRequirement = other.bondRequirement
 	term.revision = other.revision
+	term.isDecentralized = other.isDecentralized
 	term.mainPRepCount = other.mainPRepCount
 	term.SetPRepSnapshots(other.prepSnapshots.Clone())
 	term.flags = FlagNone
@@ -269,6 +271,7 @@ func (term *Term) Clone() *Term {
 		rewardFund:      term.rewardFund.Clone(),
 		bondRequirement: term.bondRequirement,
 		revision:        term.revision,
+		isDecentralized: term.isDecentralized,
 		mainPRepCount:   term.mainPRepCount,
 		prepSnapshots:   term.prepSnapshots.Clone(),
 	}
@@ -290,6 +293,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.rewardFund,
 		&term.bondRequirement,
 		&term.revision,
+		&term.isDecentralized,
 		&term.mainPRepCount,
 		&term.prepSnapshots,
 	)
@@ -307,6 +311,7 @@ func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
 		term.rewardFund,
 		term.bondRequirement,
 		term.revision,
+		term.isDecentralized,
 		term.mainPRepCount,
 		term.prepSnapshots,
 	)
@@ -337,6 +342,7 @@ func (term *Term) equal(other *Term) bool {
 		term.rewardFund.Equal(other.rewardFund) &&
 		term.bondRequirement == other.bondRequirement &&
 		term.revision == other.revision &&
+		term.isDecentralized == other.isDecentralized &&
 		term.mainPRepCount == other.mainPRepCount &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
@@ -404,6 +410,14 @@ func (term *Term) TotalDelegated() *big.Int {
 	return term.totalDelegated
 }
 
+func (term *Term) IsDecentralized() bool {
+	return term.isDecentralized
+}
+
+func (term *Term) SetIsDecentralized(value bool) {
+	term.isDecentralized = value
+}
+
 func (term *Term) GetTotalBondedDelegation() *big.Int {
 	totalBondedDelegation := new(big.Int)
 	if term.prepSnapshots != nil {
@@ -430,6 +444,7 @@ func (term *Term) ToJSON() map[string]interface{} {
 	jso["rewardFund"] = term.rewardFund.ToJSON()
 	jso["bondRequirement"] = term.bondRequirement
 	jso["revision"] = term.revision
+	jso["isDecentralized"] = term.isDecentralized
 	jso["mainPRepCount"] = term.mainPRepCount
 	jso["iissVersion"] = term.GetIISSVersion()
 	jso["preps"] = term.prepSnapshots.toJSON()
@@ -437,31 +452,23 @@ func (term *Term) ToJSON() map[string]interface{} {
 	return jso
 }
 
-func NewNextTerm(
-	term *Term,
-	period int64,
-	irep *big.Int,
-	rrep *big.Int,
-	totalSupply *big.Int,
-	totalDelegated *big.Int,
-	rewardFund *RewardFund,
-	bondRequirement int,
-	revision int,
-) *Term {
+func NewNextTerm(term *Term, state *State, totalSupply *big.Int, totalDelegated *big.Int, revision int) *Term {
 	if term == nil {
 		return nil
 	}
+
 	nextTerm := &Term{
 		sequence:        term.sequence + 1,
 		startHeight:     term.GetEndBlockHeight() + 1,
-		period:          period,
-		irep:            irep,
-		rrep:            rrep,
+		period:          state.GetTermPeriod(),
+		irep:            state.GetIRep(),
+		rrep:            state.GetRRep(),
 		totalSupply:     totalSupply,
 		totalDelegated:  totalDelegated,
-		rewardFund:      rewardFund.Clone(),
-		bondRequirement: bondRequirement,
+		rewardFund:      state.GetRewardFund().Clone(),
+		bondRequirement: int(state.GetBondRequirement()),
 		revision:        revision,
+		isDecentralized: term.IsDecentralized(),
 
 		flags: term.flags | FlagNextTerm,
 	}
@@ -484,6 +491,7 @@ func GenesisTerm(
 		rewardFund:      state.GetRewardFund().Clone(),
 		bondRequirement: int(state.GetBondRequirement()),
 		revision:        revision,
+		isDecentralized: false,
 
 		flags: FlagNextTerm,
 	}
@@ -571,7 +579,7 @@ func (term *Term) SetRrep(rrep *big.Int) {
 
 func (term *Term) String() string {
 	return fmt.Sprintf(
-		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d irep:%s rrep:%s",
+		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d irep=%s rrep=%s revision=%d isDecentralized=%v",
 		term.sequence,
 		term.startHeight,
 		term.GetEndBlockHeight(),
@@ -581,6 +589,8 @@ func (term *Term) String() string {
 		len(term.prepSnapshots),
 		term.irep,
 		term.rrep,
+		term.revision,
+		term.isDecentralized,
 	)
 }
 
@@ -591,7 +601,7 @@ func (term *Term) Format(f fmt.State, c rune) {
 			fmt.Fprintf(
 				f,
 				"Term{seq=%d start=%d end=%d period=%d totalSupply=%s totalDelegated=%s "+
-					"prepSnapshot=%d irep=%s rrep=%s}",
+					"prepSnapshot=%d irep=%s rrep=%s revision=%d isDecentralized=%v}",
 				term.sequence,
 				term.startHeight,
 				term.GetEndBlockHeight(),
@@ -601,11 +611,13 @@ func (term *Term) Format(f fmt.State, c rune) {
 				len(term.prepSnapshots),
 				term.irep,
 				term.rrep,
+				term.revision,
+				term.isDecentralized,
 			)
 		} else {
 			fmt.Fprintf(
 				f,
-				"Term{%d %d %d %d %s %s %d %s %s}",
+				"Term{%d %d %d %d %s %s %d %s %s %d %v}",
 				term.sequence,
 				term.startHeight,
 				term.GetEndBlockHeight(),
@@ -615,20 +627,13 @@ func (term *Term) Format(f fmt.State, c rune) {
 				len(term.prepSnapshots),
 				term.irep,
 				term.rrep,
+				term.revision,
+				term.isDecentralized,
 			)
 		}
 	case 's':
 		fmt.Fprint(f, term.String())
 	}
-}
-
-func (term *Term) IsDecentralized() bool {
-	if term == nil {
-		return false
-	}
-	return term.revision >= icmodule.RevisionDecentralize &&
-		len(term.prepSnapshots) > 0 &&
-		term.totalDelegated.Sign() == 1
 }
 
 func (term *Term) IsFirstBlockOnDecentralized(blockHeight int64) bool {

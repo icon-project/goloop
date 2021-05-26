@@ -829,13 +829,9 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 	term := s.State.GetTerm()
 	nextTerm := icstate.NewNextTerm(
 		term,
-		s.State.GetTermPeriod(),
-		s.State.GetIRep(),
-		s.State.GetRRep(),
+		s.State,
 		totalSupply,
 		s.pm.TotalDelegated(),
-		s.State.GetRewardFund(),
-		int(s.GetBondRequirement()),
 		revision,
 	)
 
@@ -857,6 +853,12 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 
 				nextTerm.SetMainPRepCount(mainPRepCount)
 				nextTerm.SetPRepSnapshots(prepSnapshots)
+			}
+			if !nextTerm.IsDecentralized() {
+				prep := nextTerm.GetPRepSnapshotByIndex(mainPRepCount-1)
+				if nextTerm.TotalSupply().Cmp(new(big.Int).Mul(prep.BondedDelegation(), big.NewInt(500))) <= 0 {
+					nextTerm.SetIsDecentralized(true)
+				}
 			}
 		}
 		irep := s.pm.CalculateIRep(revision)

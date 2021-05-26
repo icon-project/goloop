@@ -10,7 +10,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -241,33 +240,4 @@ func TestTerm_PRepSnapshot(t *testing.T) {
 
 	assert.Equal(t, 0, len(term.prepSnapshots))
 	assert.Equal(t, 0, len(term.snapshotMap))
-}
-
-func TestTerm_NewNextTerm(t *testing.T) {
-	totalSupply := big.NewInt(1000)
-	totalDelegated := big.NewInt(100)
-	period := int64(100)
-	irep := big.NewInt(2000)
-	rrep := big.NewInt(1500)
-	rf := NewRewardFund()
-	rf.Iglobal.SetInt64(150000)
-	rf.Iprep.SetInt64(50)
-	rf.Ivoter.SetInt64(50)
-	bondRequirement := 5
-	revision := icmodule.Revision1
-
-	term := newTerm(0, 100)
-	nTerm := NewNextTerm(term, period, irep, rrep, totalSupply, totalDelegated, rf, bondRequirement, revision)
-
-	assert.Equal(t, term.Sequence()+1, nTerm.Sequence())
-	assert.Equal(t, term.GetEndBlockHeight()+1, nTerm.StartHeight())
-	assert.Equal(t, period, nTerm.Period())
-	assert.Equal(t, irep.Int64(), nTerm.Irep().Int64())
-	assert.Equal(t, rrep.Int64(), nTerm.Rrep().Int64())
-	assert.Equal(t, totalSupply.Int64(), nTerm.TotalSupply().Int64())
-	assert.Equal(t, totalDelegated.Int64(), nTerm.TotalDelegated().Int64())
-	assert.True(t, rf.Equal(nTerm.RewardFund()))
-	assert.Equal(t, bondRequirement, nTerm.BondRequirement())
-	assert.Equal(t, revision, nTerm.Revision())
-	assert.Equal(t, FlagNextTerm, nTerm.flags&FlagNextTerm)
 }
