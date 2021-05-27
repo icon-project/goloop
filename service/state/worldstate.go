@@ -181,10 +181,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	return ac
 }
 
-func (ws *worldStateImpl) ClearCache() {
-	ws.mutex.Lock()
-	defer ws.mutex.Unlock()
-
+func (ws *worldStateImpl) flushAccountCacheInLock() {
 	for _, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
@@ -198,6 +195,13 @@ func (ws *worldStateImpl) ClearCache() {
 			}
 		}
 	}
+}
+
+func (ws *worldStateImpl) ClearCache() {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
+	ws.flushAccountCacheInLock()
 	ws.accounts.ClearCache()
 	ws.extension.ClearCache()
 	ws.mutableAccounts = make(map[string]AccountState)
@@ -243,19 +247,8 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
-	for _, as := range ws.mutableAccounts {
-		key := as.(*accountStateImpl).key
-		s := as.GetSnapshot()
-		if s.IsEmpty() {
-			if _, err := ws.accounts.Delete(key); err != nil {
-				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
-			}
-		} else {
-			if _, err := ws.accounts.Set(key, s); err != nil {
-				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
-			}
-		}
-	}
+	ws.flushAccountCacheInLock()
+
 	return &worldSnapshotImpl{
 		database:   ws.database,
 		accounts:   ws.accounts.GetSnapshot(),

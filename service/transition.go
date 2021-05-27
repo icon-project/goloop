@@ -529,6 +529,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
+	if err := t.plt.OnExecutionBegin(ctx, t.log); err != nil {
+		t.reportExecution(err)
+		return
+	}
 	patchReceipts := make([]txresult.Receipt, patchCount)
 	if err := t.executeTxsSequential(t.patchTransactions, ctx, patchReceipts); err != nil {
 		t.reportExecution(err)

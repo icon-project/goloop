@@ -71,6 +71,10 @@ func (t *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, 
 	// do nothing
 }
 
+func (t *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
+	return nil
+}
+
 func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
 	return nil
 }
