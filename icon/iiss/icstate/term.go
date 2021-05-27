@@ -226,6 +226,16 @@ func (term *Term) GetIISSVersion() int {
 	return IISSVersion1
 }
 
+func (term *Term) VoteStartHeight() int64 {
+	if term.sequence == 0 && term.GetIISSVersion() == IISSVersion2 {
+		// It's decentralized in test network under GOLOOP
+		return term.startHeight + 2
+	} else {
+		// It's decentralized in main network under LOOPCHAIN
+		return term.startHeight + 1
+	}
+}
+
 func (term *Term) Set(other *Term) {
 	term.checkWritable()
 	term.sequence = other.sequence
