@@ -107,6 +107,10 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, 
 	}
 }
 
+func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
+	return nil
+}
+
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
 	revision := wc.Revision().Value()
 	if revision < icmodule.RevisionIISS {
