@@ -19,6 +19,7 @@ package iiss
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -71,6 +72,24 @@ func (i *IssuePRepJSON) Equal(i2 *IssuePRepJSON) bool {
 		i.Value.Cmp(i2.Value.Value()) == 0
 }
 
+func (i *IssuePRepJSON) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"IssuePRepJSON{IRep=%s RRep=%s TotalDelegation=%s Value=%s}",
+				i.IRep, i.RRep, i.TotalDelegation, i.Value)
+		} else {
+			fmt.Fprintf(f, "IssuePRepJSON{%s %s %s %s}",
+				i.IRep, i.RRep, i.TotalDelegation, i.Value)
+		}
+	case 's':
+		fmt.Fprintf(f, "IssuePRepJSON{%s %s %s %s}",
+			i.IRep, i.RRep, i.TotalDelegation, i.Value)
+	}
+}
+
 type IssueResultJSON struct {
 	ByFee           *common.HexInt `json:"coveredByFee"`
 	ByOverIssuedICX *common.HexInt `json:"coveredByOverIssuedICX"`
@@ -112,6 +131,24 @@ func (i *IssueResultJSON) GetTotalReward() *big.Int {
 	total := new(big.Int).Add(i.ByFee.Value(), i.ByOverIssuedICX.Value())
 	total.Add(total, i.Issue.Value())
 	return total
+}
+
+func (i *IssueResultJSON) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"IssueResultJSON{ByFee=%s ByOverIssuedICX=%s Issue=%s}",
+				i.ByFee, i.ByOverIssuedICX, i.Issue)
+		} else {
+			fmt.Fprintf(f, "IssueResultJSON{%s %s %s}",
+				i.ByFee, i.ByOverIssuedICX, i.Issue)
+		}
+	case 's':
+		fmt.Fprintf(f, "IssueResultJSON{%s %s %s}",
+			i.ByFee, i.ByOverIssuedICX, i.Issue)
+	}
 }
 
 // RegulateIssueInfo regulate icx issue amount with previous period data.
