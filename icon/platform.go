@@ -108,7 +108,16 @@ func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, 
 }
 
 func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
-	return nil
+	revision := wc.Revision().Value()
+	if revision < icmodule.RevisionIISS {
+		return nil
+	}
+	es := p.getExtensionState(wc, logger)
+	if es == nil {
+		return nil
+	}
+	return es.OnExecutionBegin(wc)
+
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
@@ -121,8 +130,11 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 		return nil
 	}
 
-	if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
-		return err
+	term := es.State.GetTerm()
+	if term.IsDecentralized() || wc.BlockHeight() == 10362082 {
+		if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
+			return err
+		}
 	}
 	if err := es.HandleTimerJob(wc); err != nil {
 		return err

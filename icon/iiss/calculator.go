@@ -113,14 +113,15 @@ func (c *Calculator) IsCalcDone(blockHeight int64) bool {
 
 func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
 	ss := ess.(*ExtensionSnapshotImpl)
-	if ss.back == nil {
+	back := ss.Back1()
+	if back == nil {
 		return false
 	}
-	global, err := ss.back.GetGlobal()
+	global, err := back.GetGlobal()
 	if err != nil || global == nil {
 		return false
 	}
-	return c.back == nil || !bytes.Equal(c.back.Bytes(), ss.back.Bytes())
+	return c.back == nil || !bytes.Equal(c.back.Bytes(), back.Bytes())
 }
 
 func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err error) {
@@ -171,8 +172,8 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 
 func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	var err error
-	c.back = ss.back
-	c.base = ss.reward
+	c.back = ss.Back1()
+	c.base = ss.Reward()
 	// make new State with hash value to decoupling base and temp
 	c.temp = icreward.NewState(ss.database, c.base.Bytes())
 	c.result = nil
@@ -189,7 +190,7 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	c.startHeight = c.global.GetStartHeight()
 
 	c.log.Infof("Start calculation %d", c.startHeight)
-	c.log.Infof("Global Option: %s", c.global)
+	c.log.Infof("Global Option: %+v", c.global)
 
 	// write claim data to temp
 	if err = c.processClaim(); err != nil {
@@ -727,7 +728,7 @@ func (c *Calculator) votingReward(
 	total := new(big.Int)
 	for ; iter.Has(); iter.Next() {
 		if voting, err := iter.Get(); err != nil {
-			c.log.Errorf("Fail to iterating votings err=%+v", err)
+			c.log.Errorf("Failed to iterate votings err=%+v", err)
 		} else {
 			s := from
 			e := to
@@ -785,15 +786,15 @@ func (c *Calculator) processVotingEvent(
 			case icstate.IISSVersion2:
 				ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d add: %d, %d: %s", addr, i, start, offsetLimit, ret)
+				c.log.Tracef("VotingEvent %s %d add: %d-%d %s", addr, i, start, offsetLimit, ret)
 				ret = c.votingReward(multiplier, divider, end, offsetLimit, prepInfo, voting.Iterator())
 				reward.Sub(reward, ret)
-				c.log.Tracef("VotingEvent %s %d sub: %d, %d: %s", addr, i, end, offsetLimit, ret)
+				c.log.Tracef("VotingEvent %s %d sub: %d-%d %s", addr, i, end, offsetLimit, ret)
 			case icstate.IISSVersion3:
 				end = offsets[i]
 				ret := c.votingReward(multiplier, divider, start, end, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d: %d, %d: %s", addr, i, start, end, ret)
+				c.log.Tracef("VotingEvent %s %d: %d-%d %s", addr, i, start, end, ret)
 			}
 
 			// update Bonding or Delegating

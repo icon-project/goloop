@@ -34,7 +34,6 @@ func TestRewardCalcInfo(t *testing.T) {
 	rc1 := NewRewardCalcInfo()
 	rc1.SetStartHeight(startHeight)
 	rc1.SetPrevHeight(prevHeight)
-	rc1.SetPeriod(startHeight - prevHeight)
 
 	o1 := icobject.New(TypeRewardCalcInfo, rc1)
 	serialized := o1.Bytes()
@@ -49,10 +48,6 @@ func TestRewardCalcInfo(t *testing.T) {
 
 	rc2 := ToRewardCalcInfo(o2)
 	assert.True(t, rc1.Equal(rc2))
-	assert.Equal(t, startHeight, rc1.StartHeight())
-	assert.Equal(t, prevHeight, rc1.PrevHeight())
-	assert.Equal(t, startHeight-prevHeight, rc1.Period())
-	assert.Equal(t, int64(0), rc1.PrevCalcReward().Int64())
 }
 
 func TestRewardCalcInfo_Start(t *testing.T) {
@@ -63,18 +58,13 @@ func TestRewardCalcInfo_Start(t *testing.T) {
 	rc1.SetStartHeight(startHeight)
 	rc1.SetPrevHeight(prevHeight)
 
-	period := int64(5)
-	nBH := startHeight + period
+	nBH := startHeight + int64(5)
 	reward := int64(100)
-	isDecentralized := false
-	additionalReward := int64(100)
 
-	rc1.Start(nBH, period, isDecentralized, new(big.Int).SetInt64(reward), new(big.Int).SetInt64(additionalReward))
+	rc1.Update(nBH, new(big.Int).SetInt64(reward), nil)
 
 	assert.Equal(t, nBH, rc1.StartHeight())
 	assert.Equal(t, startHeight, rc1.PrevHeight())
-	assert.Equal(t, period, rc1.Period())
-	assert.Equal(t, isDecentralized, rc1.IsDecentralized())
+	assert.Equal(t, startHeight-prevHeight, rc1.PrevPeriod())
 	assert.Equal(t, reward, rc1.PrevCalcReward().Int64())
-	assert.Equal(t, additionalReward, rc1.AdditionalReward().Int64())
 }

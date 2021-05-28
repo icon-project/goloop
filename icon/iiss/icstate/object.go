@@ -63,7 +63,7 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypeIssue:
 		return newIssue(tag), nil
 	case TypeTerm:
-		return newTermWithTag(tag), nil
+		return NewTermWithTag(tag), nil
 	case TypeRewardCalcInfo:
 		return newRewardCalcInfo(tag), nil
 	default:

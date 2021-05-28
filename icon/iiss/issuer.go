@@ -152,7 +152,7 @@ func (i *IssueResultJSON) Format(f fmt.State, c rune) {
 }
 
 // RegulateIssueInfo regulate icx issue amount with previous period data.
-func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *big.Int) {
+func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	var icx, remains *big.Int
 
 	// Do not regulate ICX issue if there is no ICX issuance.
@@ -165,8 +165,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int, additionalReward *
 	} else {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
-	overIssued := new(big.Int).Sub(issue.PrevTotalIssued(), additionalReward)
-	overIssued.Sub(overIssued, icx)
+	overIssued := new(big.Int).Sub(issue.PrevTotalIssued(), icx)
 	if overIssued.Sign() == -1 {
 		log.Debugf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
 			issue.PrevTotalIssued(), icx)

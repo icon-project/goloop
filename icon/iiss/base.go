@@ -23,15 +23,14 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -135,20 +134,16 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(state.StepLimitTypeInvoke), false)
 	defer cc.Dispose()
 
-	if err := handleConsensusInfo(cc); err != nil {
-		return nil, err
-	}
-
-	if err := handleCalculation(cc); err != nil {
-		return nil, err
-	}
-
 	if err := handleICXIssue(cc, tx.Data); err != nil {
 		return nil, err
 	}
 
+	if err := handleConsensusInfo(cc); err != nil {
+		return nil, err
+	}
+
 	// Make a receipt
-	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), cc.Treasury())
 	cc.GetEventLogs(r)
 	if ctx.Revision().Value() < icmodule.Revision9 {
 		r.DisableLogsBloom()
@@ -160,51 +155,40 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 
 func handleConsensusInfo(cc contract.CallContext) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	term := es.State.GetTerm()
+	if !term.IsDecentralized() {
+		return nil
+	}
+	if cc.BlockHeight() < term.GetVoteStartHeight() {
+		// skip the first N decentralization blocks
+		return nil
+	}
 	csi := cc.ConsensusInfo()
 	if csi == nil {
 		return nil
 	}
-	if !es.IsDecentralized() {
-		return nil
-	}
-	term := es.State.GetTerm()
-	if cc.BlockHeight() < term.VoteStartHeight() {
-		// Ignore the first N decentralization blocks
-		log.Tracef("BlockProduce: Skip %d block (vote start=%d)",
-			cc.BlockHeight(), term.VoteStartHeight())
-		return nil
-	}
-	// if PrepManager is not ready, it returns immediately
-	if es.pm.GetPRepByNode(csi.Proposer()) == nil {
-		return nil
-	}
-
-	// Convert node address to owner address
-	owners, trueVoters, err := nodeToOwner(es.pm, csi)
+	voters, _, err := CompileVoters(es.pm, csi)
 	if err != nil {
 		return err
 	}
 
-	// Make block produce Info.
-	if err = addBlockProduce(cc, trueVoters); err != nil {
-		return err
-	}
-
-	// Update Block vote stats
-	voted := csi.Voted()
-	return updateBlockVoteStats(cc, owners, voted)
+	return updateBlockVoteStats(cc, voters, csi.Voted())
 }
 
-func nodeToOwner(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
+// CompileVoters return slice of owner address of voters
+// It returns slice of owner address of all voters, slice of owner address of voted voters
+// and any error encountered.
+func CompileVoters(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
+	log.Tracef("CSI: %+v", csi)
 	voters := csi.Voters()
 	if voters == nil {
-		return nil, nil, errors.Errorf("Voters are nil")
+		return nil, nil, nil
 	}
 	voted := csi.Voted()
 
 	size := voters.Len()
 	owners := make([]module.Address, size, size)
-	trueVoters := make([]module.Address, 0)
+	votedOwners := make([]module.Address, 0)
 
 	for i := 0; i < size; i += 1 {
 		v, _ := voters.Get(i)
@@ -214,27 +198,11 @@ func nodeToOwner(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, [
 		}
 		owners[i] = owner
 		if voted[i] {
-			trueVoters = append(trueVoters, owner)
+			votedOwners = append(votedOwners, owner)
 		}
 	}
 
-	return owners, trueVoters, nil
-}
-
-// addBlockProduce makes Block produce Info for calculator
-// trueVoters contain the addresses which vote for block approval
-func addBlockProduce(cc contract.CallContext, voters []module.Address) error {
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
-	csi := cc.ConsensusInfo()
-
-	// if PRepManager is not ready, it returns immediately
-	proposer := csi.Proposer()
-	po := es.pm.GetOwnerByNode(proposer)
-	return es.Front.AddBlockProduce(
-		cc.BlockHeight(),
-		po,
-		voters,
-	)
+	return owners, votedOwners, nil
 }
 
 // updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
@@ -254,18 +222,6 @@ func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, vote
 
 	es.pm.Sort()
 	return nil
-}
-
-func handleCalculation(cc contract.CallContext) error {
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
-
-	term := es.State.GetTerm()
-	blockHeight := cc.BlockHeight()
-	if blockHeight != term.StartHeight() {
-		return nil
-	}
-
-	return es.NewCalculation()
 }
 
 func handleICXIssue(cc contract.CallContext, data []byte) error {

@@ -365,6 +365,8 @@ func TestState_AddGlobal(t *testing.T) {
 		iglobal          *big.Int
 		iprep            *big.Int
 		ivoter           *big.Int
+		icps             *big.Int
+		irelay           *big.Int
 		bondRequirement  int
 	}
 
@@ -395,6 +397,8 @@ func TestState_AddGlobal(t *testing.T) {
 				iglobal:          big.NewInt(100),
 				iprep:            big.NewInt(50),
 				ivoter:           big.NewInt(50),
+				icps:             big.NewInt(0),
+				irelay:           big.NewInt(0),
 				electedPRepCount: 100,
 				bondRequirement:  5,
 			},
@@ -423,6 +427,8 @@ func TestState_AddGlobal(t *testing.T) {
 					a.iglobal,
 					a.iprep,
 					a.ivoter,
+					a.icps,
+					a.irelay,
 					a.electedPRepCount,
 					a.bondRequirement,
 				)
@@ -455,6 +461,8 @@ func TestState_AddGlobal(t *testing.T) {
 				assert.Equal(t, 0, a.iglobal.Cmp(global.GetIGlobal()))
 				assert.Equal(t, 0, a.iprep.Cmp(global.GetIPRep()))
 				assert.Equal(t, 0, a.ivoter.Cmp(global.GetIVoter()))
+				assert.Equal(t, 0, a.icps.Cmp(global.GetICps()))
+				assert.Equal(t, 0, a.irelay.Cmp(global.GetIRelay()))
 				assert.Equal(t, a.electedPRepCount, global.GetElectedPRepCount())
 				assert.Equal(t, a.bondRequirement, global.GetBondRequirement())
 			}

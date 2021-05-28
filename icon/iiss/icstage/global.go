@@ -243,6 +243,8 @@ type GlobalV2 struct {
 	iglobal          *big.Int
 	iprep            *big.Int
 	ivoter           *big.Int
+	icps             *big.Int
+	irelay           *big.Int
 	electedPRepCount int
 	bondRequirement  int
 }
@@ -283,6 +285,14 @@ func (g *GlobalV2) GetIVoter() *big.Int {
 	return g.ivoter
 }
 
+func (g *GlobalV2) GetICps() *big.Int {
+	return g.icps
+}
+
+func (g *GlobalV2) GetIRelay() *big.Int {
+	return g.irelay
+}
+
 func (g *GlobalV2) GetElectedPRepCount() int {
 	return g.electedPRepCount
 }
@@ -300,6 +310,8 @@ func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
 		&g.iglobal,
 		&g.iprep,
 		&g.ivoter,
+		&g.icps,
+		&g.irelay,
 		&g.electedPRepCount,
 		&g.bondRequirement,
 	)
@@ -315,6 +327,8 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 		g.iglobal,
 		g.iprep,
 		g.ivoter,
+		g.icps,
+		g.irelay,
 		g.electedPRepCount,
 		g.bondRequirement,
 	)
@@ -322,7 +336,7 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (g *GlobalV2) String() string {
 	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
-		"iprep=%s ivoter=%d electedPRepCount=%d bondRequirement=%d",
+		"iprep=%s ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d",
 		g.revision,
 		g.iissVersion,
 		g.startHeight,
@@ -330,6 +344,8 @@ func (g *GlobalV2) String() string {
 		g.iglobal,
 		g.iprep,
 		g.ivoter,
+		g.icps,
+		g.irelay,
 		g.electedPRepCount,
 		g.bondRequirement,
 	)
@@ -340,7 +356,7 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 	case 'v':
 		if f.Flag('+') {
 			fmt.Fprintf(f, "GlobalV2{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
-				"iprep=%s ivoter=%d electedPRepCount=%d bondRequirement=%d}",
+				"iprep=%s ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
@@ -348,11 +364,13 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 				g.iglobal,
 				g.iprep,
 				g.ivoter,
+				g.icps,
+				g.irelay,
 				g.electedPRepCount,
 				g.bondRequirement,
 			)
 		} else {
-			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %s %s %d %d %d}",
+			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %s %s %d %d %d %d %d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
@@ -360,6 +378,8 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 				g.iglobal,
 				g.iprep,
 				g.ivoter,
+				g.icps,
+				g.irelay,
 				g.electedPRepCount,
 				g.bondRequirement,
 			)
@@ -376,6 +396,8 @@ func (g *GlobalV2) Equal(impl icobject.Impl) bool {
 			g.iglobal.Cmp(g2.iglobal) == 0 &&
 			g.iprep.Cmp(g2.iprep) == 0 &&
 			g.ivoter.Cmp(g2.ivoter) == 0 &&
+			g.icps.Cmp(g2.icps) == 0 &&
+			g.irelay.Cmp(g2.irelay) == 0 &&
 			g.electedPRepCount == g2.electedPRepCount &&
 			g.bondRequirement == g2.bondRequirement
 	} else {
@@ -396,6 +418,8 @@ func newGlobalV2() *GlobalV2 {
 		iglobal: new(big.Int),
 		iprep:   new(big.Int),
 		ivoter:  new(big.Int),
+		icps:    new(big.Int),
+		irelay:  new(big.Int),
 	}
 }
 
@@ -407,6 +431,8 @@ func NewGlobalV2(
 	iglobal *big.Int,
 	iprep *big.Int,
 	ivoter *big.Int,
+	icps *big.Int,
+	irelay *big.Int,
 	electedPRepCount int,
 	bondRequirement int,
 ) *GlobalV2 {
@@ -418,6 +444,8 @@ func NewGlobalV2(
 		iglobal:          iglobal,
 		iprep:            iprep,
 		ivoter:           ivoter,
+		icps:             icps,
+		irelay:           irelay,
 		electedPRepCount: electedPRepCount,
 		bondRequirement:  bondRequirement,
 	}

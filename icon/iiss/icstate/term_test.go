@@ -106,7 +106,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 }
 
 func TestTerm_Equal(t *testing.T) {
-	t0 := newTerm(0, 10)
+	t0 := NewTerm(0, 10)
 	tSequence := t0.Clone()
 	tSequence.sequence = t0.sequence + 1
 	tSet := tSequence.Clone()
@@ -134,7 +134,7 @@ func TestTerm_Equal(t *testing.T) {
 		{"nil comp", nil, nil, true},
 		{"same instance", t0, t0, true},
 		{"clone", t0, t0.Clone(), true},
-		{"newTerm() with same param", t0, newTerm(0, 10), true},
+		{"NewTerm() with same param", t0, NewTerm(0, 10), true},
 		{"nil to instance", nil, t0, false},
 		{"instance to nil", t0, nil, false},
 		{"Set()", t0, tSet, true},
@@ -156,7 +156,7 @@ func TestTerm_Equal(t *testing.T) {
 }
 
 func TestTerm_Bytes(t *testing.T) {
-	term := newTerm(0, 10)
+	term := NewTerm(0, 10)
 
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	o1 := icobject.New(TypeTerm, term)
@@ -173,7 +173,7 @@ func TestTerm_Bytes(t *testing.T) {
 }
 
 func TestTerm_Clone(t *testing.T) {
-	term := newTerm(0, 43120)
+	term := NewTerm(0, 43120)
 	term2 := term.Clone()
 	assert.True(t, term.Equal(term2))
 
@@ -190,7 +190,7 @@ func TestTerm_Clone(t *testing.T) {
 
 func TestTerm_PRepSnapshot(t *testing.T) {
 	size := 100
-	term := newTerm(0, 43120)
+	term := NewTerm(0, 43120)
 	prepSnapshots := newPRepSnapshots(0, size)
 	term.SetPRepSnapshots(prepSnapshots.Clone())
 

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 
@@ -33,11 +34,10 @@ type RewardCalcInfo struct {
 	icobject.NoDatabase
 
 	startHeight      int64
-	period           int64
-	isDecentralized  bool
 	prevHeight       int64
-	prevCalcReward   *big.Int
-	additionalReward *big.Int
+	prevPeriod       int64
+	prevHash         []byte
+	prevReward       *big.Int
 }
 
 func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
@@ -46,8 +46,7 @@ func newRewardCalcInfo(_ icobject.Tag) *RewardCalcInfo {
 
 func NewRewardCalcInfo() *RewardCalcInfo {
 	return &RewardCalcInfo{
-		prevCalcReward:   new(big.Int),
-		additionalReward: new(big.Int),
+		prevReward:       new(big.Int),
 	}
 }
 
@@ -63,22 +62,6 @@ func (rc *RewardCalcInfo) SetStartHeight(height int64) {
 	rc.startHeight = height
 }
 
-func (rc *RewardCalcInfo) Period() int64 {
-	return rc.period
-}
-
-func (rc *RewardCalcInfo) SetPeriod(period int64) {
-	rc.period = period
-}
-
-func (rc *RewardCalcInfo) IsDecentralized() bool {
-	return rc.isDecentralized
-}
-
-func (rc *RewardCalcInfo) SetIsDecentralized(v bool) {
-	rc.isDecentralized = v
-}
-
 func (rc *RewardCalcInfo) PrevHeight() int64 {
 	return rc.prevHeight
 }
@@ -87,56 +70,63 @@ func (rc *RewardCalcInfo) SetPrevHeight(height int64) {
 	rc.prevHeight = height
 }
 
+func (rc *RewardCalcInfo) PrevPeriod() int64 {
+	return rc.prevPeriod
+}
+
+func (rc *RewardCalcInfo) PrevHash() []byte {
+	return rc.prevHash
+}
+
+func (rc *RewardCalcInfo) SetPrevHash(hash []byte) {
+	rc.prevHash = hash
+}
+
 func (rc *RewardCalcInfo) PrevCalcReward() *big.Int {
-	return rc.prevCalcReward
+	return rc.prevReward
 }
 
 func (rc *RewardCalcInfo) SetPrevCalcReward(v *big.Int) {
-	rc.prevCalcReward = v
+	rc.prevReward = v
 }
 
-func (rc *RewardCalcInfo) AdditionalReward() *big.Int {
-	return rc.additionalReward
-}
-
-func (rc *RewardCalcInfo) SetAdditionalReward(v *big.Int) {
-	rc.additionalReward = v
-}
-
-func (rc *RewardCalcInfo) GetEndHeight() int64 {
-	return rc.startHeight + rc.period - 1
+func (rc *RewardCalcInfo) GetResultInJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["iscore"] = rc.prevReward
+	jso["estimatedICX"] = new(big.Int).Div(rc.prevReward, big.NewInt(1000))
+	jso["startBlockHeight"] = rc.prevHeight
+	jso["endBlockHeight"] = rc.prevHeight + rc.prevPeriod - 1
+	jso["stateHash"] = rc.prevHash
+	return jso
 }
 
 func (rc *RewardCalcInfo) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
 		&rc.startHeight,
-		&rc.period,
-		&rc.isDecentralized,
 		&rc.prevHeight,
-		&rc.prevCalcReward,
-		&rc.additionalReward,
+		&rc.prevPeriod,
+		&rc.prevHash,
+		&rc.prevReward,
 	)
 }
 
 func (rc *RewardCalcInfo) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
 		rc.startHeight,
-		rc.period,
-		rc.isDecentralized,
 		rc.prevHeight,
-		rc.prevCalcReward,
-		rc.additionalReward,
+		rc.prevPeriod,
+		rc.prevHash,
+		rc.prevReward,
 	)
 }
 
 func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 	if rc2, ok := o.(*RewardCalcInfo); ok {
 		return rc.startHeight == rc2.startHeight &&
-			rc.period == rc2.period &&
-			rc.isDecentralized == rc2.isDecentralized &&
 			rc.prevHeight == rc2.prevHeight &&
-			rc.prevCalcReward.Cmp(rc2.prevCalcReward) == 0 &&
-			rc.additionalReward.Cmp(rc2.additionalReward) == 0
+			rc.prevPeriod == rc2.prevPeriod &&
+			bytes.Compare(rc.prevHash, rc2.prevHash) == 0 &&
+			rc.prevReward.Cmp(rc2.prevReward) == 0
 	} else {
 		return false
 	}
@@ -145,34 +135,30 @@ func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 func (rc *RewardCalcInfo) Clone() *RewardCalcInfo {
 	nrc := NewRewardCalcInfo()
 	nrc.startHeight = rc.startHeight
-	nrc.period = rc.period
-	nrc.isDecentralized = rc.isDecentralized
 	nrc.prevHeight = rc.prevHeight
-	nrc.prevCalcReward = rc.prevCalcReward
-	nrc.additionalReward = rc.additionalReward
+	nrc.prevPeriod = rc.prevPeriod
+	nrc.prevHash = rc.prevHash
+	nrc.prevReward = rc.prevReward
 	return nrc
 }
 
-func (rc *RewardCalcInfo) Start(
-	blockHeight int64, period int64, isDecentralized bool, calcReward *big.Int, additionalReward *big.Int,
-) {
+func (rc *RewardCalcInfo) Update(blockHeight int64, reward *big.Int, hash []byte) {
+	rc.prevPeriod = rc.startHeight - rc.prevHeight
 	rc.prevHeight = rc.startHeight
 	rc.startHeight = blockHeight
-	rc.period = period
-	rc.isDecentralized = isDecentralized
-	rc.prevCalcReward = calcReward
-	rc.additionalReward = additionalReward
+	rc.prevHash = hash
+	rc.prevReward = reward
 }
 
 func (rc *RewardCalcInfo) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "rcInfo{start=%d period=%d isDecentralized=%v prevHeight=%d prevCalcReward=%s addReward=%s}",
-				rc.startHeight, rc.period, rc.isDecentralized, rc.prevHeight, rc.prevCalcReward, rc.additionalReward)
+			fmt.Fprintf(f, "rcInfo{start=%d prevHeight=%d prevPeriod=%d prevReward=%s}",
+				rc.startHeight, rc.prevHeight, rc.prevPeriod, rc.prevReward)
 		} else {
-			fmt.Fprintf(f, "rcInfo{%d %d %v %d %s %s}",
-				rc.startHeight, rc.period, rc.isDecentralized, rc.prevHeight, rc.prevCalcReward, rc.additionalReward)
+			fmt.Fprintf(f, "rcInfo{%d %v %d %s}",
+				rc.startHeight, rc.prevHeight, rc.prevPeriod, rc.prevReward)
 
 		}
 	}

@@ -45,8 +45,17 @@ type ExtensionSnapshotImpl struct {
 
 	state  *icstate.Snapshot
 	front  *icstage.Snapshot
-	back   *icstage.Snapshot
+	back1  *icstage.Snapshot
+	back2  *icstage.Snapshot
 	reward *icreward.Snapshot
+}
+
+func (s *ExtensionSnapshotImpl) Back1() *icstage.Snapshot {
+	return s.back1
+}
+
+func (s *ExtensionSnapshotImpl) Reward() *icreward.Snapshot {
+	return s.reward
 }
 
 func (s *ExtensionSnapshotImpl) Bytes() []byte {
@@ -57,19 +66,21 @@ func (s *ExtensionSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		s.state.Bytes(),
 		s.front.Bytes(),
-		s.back.Bytes(),
+		s.back1.Bytes(),
+		s.back2.Bytes(),
 		s.reward.Bytes(),
 	)
 }
 
 func (s *ExtensionSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
-	var stateHash, frontHash, backHash, rewardHash []byte
-	if err := d.DecodeListOf(&stateHash, &frontHash, &backHash, &rewardHash); err != nil {
+	var stateHash, frontHash, back1Hash, back2Hash, rewardHash []byte
+	if err := d.DecodeListOf(&stateHash, &frontHash, &back1Hash, &back2Hash, &rewardHash); err != nil {
 		return err
 	}
 	s.state = icstate.NewSnapshot(s.database, stateHash)
 	s.front = icstage.NewSnapshot(s.database, frontHash)
-	s.back = icstage.NewSnapshot(s.database, backHash)
+	s.back1 = icstage.NewSnapshot(s.database, back1Hash)
+	s.back2 = icstage.NewSnapshot(s.database, back2Hash)
 	s.reward = icreward.NewSnapshot(s.database, rewardHash)
 	return nil
 }
@@ -81,7 +92,10 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 	if err := s.front.Flush(); err != nil {
 		return err
 	}
-	if err := s.back.Flush(); err != nil {
+	if err := s.back1.Flush(); err != nil {
+		return err
+	}
+	if err := s.back2.Flush(); err != nil {
 		return err
 	}
 	if err := s.reward.Flush(); err != nil {
@@ -100,7 +114,8 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		logger:   esLogger,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly),
 		Front:    icstage.NewStateFromSnapshot(s.front),
-		Back:     icstage.NewStateFromSnapshot(s.back),
+		Back1:    icstage.NewStateFromSnapshot(s.back1),
+		Back2:    icstage.NewStateFromSnapshot(s.back2),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
 
@@ -123,7 +138,8 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 			database: database,
 			state:    icstate.NewSnapshot(database, nil),
 			front:    icstage.NewSnapshot(database, nil),
-			back:     icstage.NewSnapshot(database, nil),
+			back1:    icstage.NewSnapshot(database, nil),
+			back2:    icstage.NewSnapshot(database, nil),
 			reward:   icreward.NewSnapshot(database, nil),
 		}
 	}
@@ -137,7 +153,7 @@ func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnap
 }
 
 func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.ExtensionSnapshot {
-	var hashes [4][]byte
+	var hashes [5][]byte
 	if _, err := codec.BC.UnmarshalFromBytes(raw, &hashes); err != nil {
 		return nil
 	}
@@ -145,8 +161,9 @@ func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.E
 		database: builder.Database(),
 		state:    icstate.NewSnapshotWithBuilder(builder, hashes[0]),
 		front:    icstage.NewSnapshotWithBuilder(builder, hashes[1]),
-		back:     icstage.NewSnapshotWithBuilder(builder, hashes[2]),
-		reward:   icreward.NewSnapshotWithBuilder(builder, hashes[3]),
+		back1:    icstage.NewSnapshotWithBuilder(builder, hashes[2]),
+		back2:    icstage.NewSnapshotWithBuilder(builder, hashes[3]),
+		reward:   icreward.NewSnapshotWithBuilder(builder, hashes[4]),
 	}
 }
 
@@ -159,7 +176,8 @@ type ExtensionStateImpl struct {
 
 	State  *icstate.State
 	Front  *icstage.State
-	Back   *icstage.State
+	Back1  *icstage.State
+	Back2  *icstage.State
 	Reward *icreward.State
 }
 
@@ -178,7 +196,8 @@ func (s *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 		database: s.database,
 		state:    s.State.GetSnapshot(),
 		front:    s.Front.GetSnapshot(),
-		back:     s.Back.GetSnapshot(),
+		back1:    s.Back1.GetSnapshot(),
+		back2:    s.Back2.GetSnapshot(),
 		reward:   s.Reward.GetSnapshot(),
 	}
 }
@@ -189,7 +208,8 @@ func (s *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 		panic(err)
 	}
 	s.Front.Reset(snapshot.front)
-	s.Back.Reset(snapshot.back)
+	s.Back1.Reset(snapshot.back1)
+	s.Back2.Reset(snapshot.back2)
 	s.Reward.Reset(snapshot.reward)
 }
 
@@ -216,53 +236,15 @@ func (s *ExtensionStateImpl) PrevCalculationBlockHeight() int64 {
 	return rcInfo.PrevHeight()
 }
 
-func (s *ExtensionStateImpl) ApplyCalculation(calculator *Calculator) error {
-	rc, err := s.State.GetRewardCalcInfo()
-	rcInfo := rc.Clone()
-	if err != nil {
-		return err
-	}
-	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
-		if err = calculator.Error(); err != nil {
-			return err
-		}
-		return icmodule.CalculationNotFinishedError.Errorf("Calculation is not finished %d", rcInfo.StartHeight())
-	}
-
-	// apply calculation result
-	if calculator.Result() != nil {
-		s.Reward = calculator.Result().NewState()
-	}
-
-	if err = s.UpdateIssueInfo(calculator.TotalReward(), rcInfo.IsDecentralized(), rcInfo.AdditionalReward()); err != nil {
-		return err
-	}
-
-	// update rewardCalcInfo
+func (s *ExtensionStateImpl) newCalculation() (err error) {
 	term := s.State.GetTerm()
-	additionalReward := new(big.Int)
-	if icstate.IISSVersion3 == term.GetIISSVersion() {
-		rewardCPS := new(big.Int).Mul(term.Iglobal(), term.Icps())
-		rewardCPS.Div(rewardCPS, big.NewInt(100))
-		rewardRelay := new(big.Int).Mul(term.Iglobal(), term.Irelay())
-		rewardRelay.Div(rewardCPS, big.NewInt(100))
-		additionalReward.Add(rewardCPS, rewardRelay)
-	}
-	rcInfo.Start(term.StartHeight(), term.Period(), term.IsDecentralized(), calculator.TotalReward(), additionalReward)
-	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
-		return err
-	}
 
-	return nil
-}
-
-func (s *ExtensionStateImpl) NewCalculation() (err error) {
-	// swap icstage.Front to icstage.Back
-	s.Back = s.Front
+	// switch icstage values
+	s.Back2 = s.Back1
+	s.Back1 = s.Front
 	s.Front = icstage.NewState(s.database)
 
-	// write icstage.Global to Front
-	term := s.State.GetTerm()
+	// write icstage.Global for new calculation to Front
 	iissVersion := term.GetIISSVersion()
 	switch iissVersion {
 	case icstate.IISSVersion2:
@@ -285,6 +267,8 @@ func (s *ExtensionStateImpl) NewCalculation() (err error) {
 			term.Iglobal(),
 			term.Iprep(),
 			term.Ivoter(),
+			term.Icps(),
+			term.Irelay(),
 			term.GetElectedPRepCount(),
 			term.BondRequirement(),
 		); err != nil {
@@ -295,6 +279,60 @@ func (s *ExtensionStateImpl) NewCalculation() (err error) {
 			"InvalidIISSVersion(version=%d)", iissVersion)
 	}
 	return
+}
+
+func (s *ExtensionStateImpl) applyCalculationResult(calculator *Calculator) error {
+	rc, err := s.State.GetRewardCalcInfo()
+	rcInfo := rc.Clone()
+	if err != nil {
+		return err
+	}
+
+	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
+		if err = calculator.Error(); err != nil {
+			return err
+		}
+		return icmodule.CalculationNotFinishedError.Errorf("Calculation is not finished %d", rcInfo.StartHeight())
+	}
+
+	var calcHash []byte
+	if calculator.Result() != nil {
+		s.Reward = calculator.Result().NewState()
+		calcHash = calculator.Result().Bytes()
+	}
+
+	prevGlobal, err := s.Back2.GetGlobal()
+	if err != nil {
+		return err
+	}
+	reward := new(big.Int).Set(calculator.TotalReward())
+	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
+		pg := prevGlobal.GetV2()
+		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps())
+		rewardCPS.Mul(rewardCPS, big.NewInt(10)) // 10 = IScoreICXRation / 100
+		reward.Add(reward, rewardCPS)
+		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay())
+		rewardRelay.Mul(rewardCPS, big.NewInt(10))
+		reward.Add(reward, rewardRelay)
+	}
+
+	if err = s.UpdateIssueInfo(reward); err != nil {
+		return err
+	}
+
+	// update rewardCalcInfo
+	prevGlobal, err = s.Back1.GetGlobal()
+	if err != nil {
+		return err
+	}
+	if prevGlobal != nil {
+		rcInfo.Update(prevGlobal.GetStartHeight(), reward, calcHash)
+	}
+	if err = s.State.SetRewardCalcInfo(rcInfo); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
@@ -475,6 +513,37 @@ func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Addre
 		from,
 		flag,
 	)
+	return
+}
+
+func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) {
+	global, err := s.Front.GetGlobal()
+	if err != nil || global == nil {
+		return
+	}
+	if global.GetIISSVersion() != icstate.IISSVersion2 {
+		// Only IISS 2.0 support Block Produce Reward
+		return
+	}
+	term := s.State.GetTerm()
+	blockHeight := wc.BlockHeight()
+	if blockHeight < term.GetVoteStartHeight() {
+		return
+	}
+
+	csi := wc.ConsensusInfo()
+	// if PrepManager is not ready, it returns immediately
+	proposer := s.pm.GetOwnerByNode(csi.Proposer())
+	if proposer == nil {
+		return
+	}
+	_, voters, err := CompileVoters(s.pm, csi)
+	if err != nil || voters == nil {
+		return
+	}
+	if err = s.Front.AddBlockProduce(wc.BlockHeight(), proposer, voters); err != nil {
+		return
+	}
 	return
 }
 
@@ -729,14 +798,14 @@ func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRep
 	return nil
 }
 
-func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bool, additionalReward *big.Int) error {
+func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int) error {
 	is, err := s.State.GetIssue()
 	issue := is.Clone()
 	if err != nil {
 		return err
 	}
 
-	RegulateIssueInfo(issue, reward, additionalReward)
+	RegulateIssueInfo(issue, reward)
 
 	issue.ResetTotalIssued()
 
@@ -747,9 +816,6 @@ func (s *ExtensionStateImpl) UpdateIssueInfo(reward *big.Int, isDecentralized bo
 }
 
 func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
-	if !s.IsDecentralized() {
-		return nil
-	}
 	is, err := s.State.GetIssue()
 	if err != nil {
 		return err
@@ -758,6 +824,21 @@ func (s *ExtensionStateImpl) UpdateIssueInfoFee(fee *big.Int) error {
 	issue.SetPrevBlockFee(new(big.Int).Add(issue.PrevBlockFee(), fee))
 	if err = s.State.SetIssue(issue); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *ExtensionStateImpl) OnExecutionBegin(wc state.WorldContext) error {
+	term := s.State.GetTerm()
+	if term.IsDecentralized() {
+		if err := s.addBlockProduce(wc); err != nil {
+			return err
+		}
+	}
+	if wc.BlockHeight() == term.StartHeight() {
+		if err := s.newCalculation(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -772,10 +853,13 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, calculator *C
 	blockHeight := wc.BlockHeight()
 
 	if blockHeight == term.GetEndBlockHeight() {
-		if err = s.ApplyCalculation(calculator); err != nil {
+		if err = s.onTermEnd(wc); err != nil {
 			return err
 		}
-		if err = s.onTermEnd(wc); err != nil {
+	}
+
+	if blockHeight == term.StartHeight() {
+		if err = s.applyCalculationResult(calculator); err != nil {
 			return err
 		}
 	}
@@ -855,7 +939,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(totalSupply *big.Int, revision int
 				nextTerm.SetPRepSnapshots(prepSnapshots)
 			}
 			if !nextTerm.IsDecentralized() {
-				prep := nextTerm.GetPRepSnapshotByIndex(mainPRepCount-1)
+				prep := nextTerm.GetPRepSnapshotByIndex(mainPRepCount - 1)
 				if nextTerm.TotalSupply().Cmp(new(big.Int).Mul(prep.BondedDelegation(), big.NewInt(500))) <= 0 {
 					nextTerm.SetIsDecentralized(true)
 				}

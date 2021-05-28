@@ -148,7 +148,7 @@ func (s *State) getValidatorIndex(addr module.Address) (int, error) {
 }
 
 func (s *State) AddBlockProduce(blockHeight int64, proposer module.Address, voters []module.Address) error {
-	global, err := s.getGlobal()
+	global, err := s.GetGlobal()
 	if err != nil || global == nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (s *State) AddBlockProduce(blockHeight int64, proposer module.Address, vote
 	return bpv.Set(icobject.New(TypeBlockProduce, bp))
 }
 
-func (s *State) getGlobal() (Global, error) {
+func (s *State) GetGlobal() (Global, error) {
 	key := HashKey.Append(globalKey).Build()
 	o, err := s.store.Get(key)
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 }
 
 func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
-	ivoter *big.Int, electedPRepCount int, bondRequirement int,
+	ivoter *big.Int, icps *big.Int, irelay *big.Int, electedPRepCount int, bondRequirement int,
 ) error {
 	g := NewGlobalV2(
 		icstate.IISSVersion3,
@@ -208,6 +208,8 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 		iglobal,
 		iprep,
 		ivoter,
+		icps,
+		irelay,
 		electedPRepCount,
 		bondRequirement,
 	)

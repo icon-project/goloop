@@ -210,6 +210,10 @@ func (term *Term) Revision() int {
 	return term.revision
 }
 
+func (term *Term) SetRevision(revision int) {
+	term.revision = revision
+}
+
 func (term *Term) GetEndBlockHeight() int64 {
 	if term == nil {
 		return -1
@@ -227,14 +231,19 @@ func (term *Term) GetIISSVersion() int {
 	return IISSVersion2
 }
 
-func (term *Term) VoteStartHeight() int64 {
-	if term.sequence == 0 && term.GetIISSVersion() == IISSVersion2 {
-		// It's decentralized in test network under GOLOOP
-		return term.startHeight + 2
-	} else {
-		// It's decentralized in main network under LOOPCHAIN
-		return term.startHeight + 1
+const DecentralizedHeight = 10362083
+
+func (term *Term) GetVoteStartHeight() int64 {
+	if term.sequence == 0 {
+		if term.startHeight == DecentralizedHeight {
+			// It's decentralized in main network under LOOPCHAIN
+			return term.startHeight + 1
+		} else {
+			// It's decentralized in test network under GOLOOP
+			return term.startHeight + 2
+		}
 	}
+	return -1
 }
 
 func (term *Term) Set(other *Term) {
@@ -640,11 +649,11 @@ func (term *Term) IsFirstBlockOnDecentralized(blockHeight int64) bool {
 	return term.IsDecentralized() && term.sequence == 0 && term.startHeight == blockHeight
 }
 
-func newTermWithTag(_ icobject.Tag) *Term {
+func NewTermWithTag(_ icobject.Tag) *Term {
 	return &Term{}
 }
 
-func newTerm(startHeight, termPeriod int64) *Term {
+func NewTerm(startHeight, termPeriod int64) *Term {
 	return &Term{
 		startHeight:    startHeight,
 		period:         termPeriod,
