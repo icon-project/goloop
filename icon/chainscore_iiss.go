@@ -659,20 +659,6 @@ func (s *chainScore) Ex_claimIScore() error {
 		return err
 	}
 
-	fClaimed, err := es.Front.GetIScoreClaim(s.from)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to claim IScore: from=%v",
-			s.from,
-		)
-	}
-	if fClaimed != nil {
-		// claim already in this calculation period. there is no IScore to claim
-		s.claimEventLog(s.from, new(big.Int), new(big.Int))
-		return nil
-	}
-
 	is, err := es.Reward.GetIScore(s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
@@ -686,8 +672,20 @@ func (s *chainScore) Ex_claimIScore() error {
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
 		return nil
 	}
+
 	iScore := new(big.Int).Set(is.Value())
-	bClaimed, err := es.Back.GetIScoreClaim(s.from)
+	fClaimed, err := es.Front.GetIScoreClaim(s.from)
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get claim data from back: from=%v",
+			s.from,
+		)
+	}
+	if fClaimed != nil {
+		iScore.Sub(iScore, fClaimed.Value())
+	}
+	bClaimed, err := es.Back1.GetIScoreClaim(s.from)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
@@ -699,6 +697,13 @@ func (s *chainScore) Ex_claimIScore() error {
 		iScore.Sub(iScore, bClaimed.Value())
 	}
 
+	if iScore.Sign() == -1 {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Invalid negative I-Score: from=%v",
+			s.from,
+		)
+	}
 	if iScore.Sign() == 0 {
 		// there is no IScore to claim
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
@@ -804,7 +809,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 		if iScore != nil && !iScore.IsEmpty() {
 			is.Set(iScore.Value())
 		}
-		bClaim, err = es.Back.GetIScoreClaim(address)
+		bClaim, err = es.Back1.GetIScoreClaim(address)
 		if err != nil {
 			return nil, scoreresult.UnknownFailureError.Wrapf(
 				err,
@@ -909,12 +914,6 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 			err, "Failed to get RewardCalcInfo",
 		)
 	}
-	rcResult := make(map[string]interface{})
-	rcResult["iscore"] = rcInfo.PrevCalcReward()
-	rcResult["estimatedICX"] = new(big.Int).Div(rcInfo.PrevCalcReward(), iiss.BigIntIScoreICXRatio)
-	rcResult["startBlockHeight"] = rcInfo.StartHeight()
-	rcResult["endBlockHeight"] = rcInfo.GetEndHeight()
-	rcResult["stateHash"] = es.Reward.GetSnapshot().Bytes()
 
 	endBlockHeight := term.GetEndBlockHeight()
 	jso := make(map[string]interface{})
@@ -922,7 +921,7 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	jso["nextCalculation"] = endBlockHeight + 1
 	jso["nextPRepTerm"] = endBlockHeight + 1
 	jso["variable"] = iissVariables
-	jso["rcResult"] = rcResult
+	jso["rcResult"] = rcInfo.GetResultInJSON()
 	return jso, nil
 }
 
