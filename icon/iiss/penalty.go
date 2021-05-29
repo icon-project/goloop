@@ -42,6 +42,12 @@ func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 	return nil
 }
 
+const (
+	prepDisqualification int64 = iota+1
+	logProductivity
+	blockValidation
+)
+
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
 	var err error = nil
 
@@ -59,7 +65,13 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	if !checkValidationPenalty(prep.PRepStatus, blockHeight, penaltyCondition) {
 		return nil
 	}
-
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(prep.Status())),
+			intconv.Int64ToBytes(blockValidation),
+		},
+	)
 	if err = s.pm.ImposePenalty(owner, blockHeight); err != nil {
 		return err
 	}
@@ -172,7 +184,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 func buildPenaltyMask(input *big.Int) (res uint32) {
 	var mid uint32
 	mid = 0x00000001
-	for i := 0; i < int(input.Int64()) ; i++ {
+	for i := 0; i < int(input.Int64()); i++ {
 		res = res | mid
 		mid = mid << 1
 	}
