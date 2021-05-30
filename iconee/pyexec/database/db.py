@@ -68,7 +68,11 @@ def _is_db_writable_on_context(context: 'IconScoreContext'):
 
 class DummyDatabase(object):
 
-    ALLOWLIST = [
+    ALLOWLIST_ON_GET = [
+        bytes.fromhex('a94937feb20bfcce69564deb964f84c585ccc0a2e9e1cbe662d2b32f35c90787'),
+    ]
+
+    ALLOWLIST_ON_PUT = [
         bytes.fromhex('3a9348059e2ce915d14d46e0105e1f1894df5410877fe153176ed7388c70d838'),
         bytes.fromhex('bf96b93bc0a12900af7f6d6d311e0f4ed7ec4cad52c09762aa4cb77071a2697d'),
     ]
@@ -77,11 +81,13 @@ class DummyDatabase(object):
     def writable(self) -> bool:
         return False
 
-    def get(self, key: bytes) -> bytes:
-        raise DatabaseException('No permission')
+    def get(self, key: bytes) -> Optional[bytes]:
+        if key not in self.ALLOWLIST_ON_GET:
+            raise DatabaseException('No permission')
+        return None
 
     def put(self, key: bytes, value: bytes, cb: callable) -> None:
-        if key not in self.ALLOWLIST:
+        if key not in self.ALLOWLIST_ON_PUT:
             raise DatabaseException('No permission')
 
     def delete(self, key: bytes) -> None:
