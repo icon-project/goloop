@@ -616,6 +616,8 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 }
 
 func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (err error) {
+	h.cc = cc
+	h.ch = ch
 	status, _, _ := h.th.DoExecuteSync(cc)
 	if status != nil {
 		return status
