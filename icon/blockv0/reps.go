@@ -46,8 +46,8 @@ type RepsList struct {
 
 func (l *RepsList) UnmarshalJSON(bs []byte) error {
 	err := json.Unmarshal(bs, &l.json)
-	for _, j := range l.json {
-		j.Normalize()
+	for i, _ := range l.json {
+		l.json[i].Normalize()
 	}
 	return err
 }

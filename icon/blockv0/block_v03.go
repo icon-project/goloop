@@ -116,6 +116,14 @@ func (b *BlockV03) RepsHash() []byte {
 	return b.json.RepsHash.Bytes()
 }
 
+func (b *BlockV03) GetNextLeader() module.Address {
+	if len(b.json.NextRepsHash) > 0 && !bytes.Equal(b.json.RepsHash, b.json.NextRepsHash) {
+		return b.nextReps.Get(0)
+	} else {
+		return new(common.Address).Set(&b.json.NextLeader)
+	}
+}
+
 func (b *BlockV03) NextLeader() common.Address {
 	return b.json.NextLeader
 }
@@ -161,6 +169,20 @@ func (b *BlockV03) calcHash() []byte {
 }
 
 func (b *BlockV03) Verify(prev Block) error {
+	if b.json.RepsHash != nil {
+		if exp, calc := b.json.RepsHash.Bytes(), b.reps.Hash(); !bytes.Equal(exp, calc) {
+			return errors.CriticalFormatError.Errorf(
+				"InvalidRepsHash(exp=%#x,calc=%#x)", exp, calc,
+			)
+		}
+	}
+	if b.json.NextRepsHash != nil {
+		if exp, calc := b.json.NextRepsHash.Bytes(), b.nextReps.Hash(); !bytes.Equal(exp, calc) {
+			return errors.CriticalFormatError.Errorf(
+				"InvalidNextRepsHash(exp=%#x,calc=%#x)", exp, calc,
+			)
+		}
+	}
 	if err := b.json.LeaderVotes.Verify(b.reps); err != nil {
 		return err
 	}
@@ -208,9 +230,7 @@ func (b *BlockV03) Verify(prev Block) error {
 				return errors.InvalidStateError.Errorf(
 					"InvalidConsensus(voted=%#x,id=%#x)", voted, pb.ID())
 			}
-			var leader module.Address = &pb.json.NextLeader
-			// New term starts, so the next leader should be the first
-			// one of next leaders. For remarking, it uses empty user address.
+			leader := pb.GetNextLeader()
 			if leader.String() == "hx0000000000000000000000000000000000000000" {
 				leader = b.reps.Get(0)
 			}
