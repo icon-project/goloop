@@ -57,7 +57,6 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 		r1.StepUsed().Cmp(r2.StepUsed()) == 0 &&
 		r1.StepPrice().Cmp(r2.StepPrice()) == 0 &&
 		common.AddressEqual(r1.SCOREAddress(), r2.SCOREAddress()) &&
-		r1.LogsBloomDisabled() == r2.LogsBloomDisabled() &&
 		r1.LogsBloom().Equal(r2.LogsBloom())) {
 		return errors.InvalidStateError.New("DifferentResultValue")
 	}
