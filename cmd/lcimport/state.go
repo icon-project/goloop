@@ -180,7 +180,7 @@ func showContainerData(store interface{}, params []string) error {
 	}
 	ts := params[pLen-1]
 	ct := params[0]
-	params = params[1:pLen-1]
+	params = params[1 : pLen-1]
 	pLen = len(params)
 
 	handleDict := func(hashType containerdb.KeyBuilderType) error {
@@ -253,7 +253,6 @@ func showContainerData(store interface{}, params []string) error {
 	}
 }
 
-
 func showAccount(addr module.Address, ass state.AccountSnapshot, params []string) error {
 	if len(params) == 0 {
 		fmt.Printf("Account[%s]\n", addr.String())
@@ -274,7 +273,7 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 			if err != nil {
 				return err
 			}
-			if len(params)>1 {
+			if len(params) > 1 {
 				m := api.GetMethod(params[1])
 				if m != nil {
 					bs, err := JSONMarshalIndent(m)
@@ -286,7 +285,7 @@ func showAccount(addr module.Address, ass state.AccountSnapshot, params []string
 					return errors.NotFoundError.Errorf("MethodNotFound(name=%s)", params[1])
 				}
 			} else {
-				for itr := api.MethodIterator(); itr.Has() ; itr.Next() {
+				for itr := api.MethodIterator(); itr.Has(); itr.Next() {
 					fmt.Println(itr.Get().String())
 				}
 			}
@@ -320,7 +319,7 @@ var extensionStateShortcuts = map[string]shortcut{
 	"prep_status": {[]string{"dict", "prep_status"}, []string{"obj"}}, // <address>
 	"active_prep": {[]string{"array", "active_prep"}, []string{"addr"}},
 	"account":     {[]string{"dict", "account_db"}, []string{"obj"}}, // <address>
-	"value":       {[]string{"var"}, []string{}},                   // <name>
+	"value":       {[]string{"var"}, []string{}},                     // <name>
 }
 
 var extensionStageShortcuts = map[string]shortcut{
@@ -388,7 +387,8 @@ func showExtension(dbase db.Database, ess state.ExtensionSnapshot, params []stri
 		fmt.Printf("State  : <%#x>\n", hashes[0])
 		fmt.Printf("Front  : <%#x>\n", hashes[1])
 		fmt.Printf("Back   : <%#x>\n", hashes[2])
-		fmt.Printf("Reward : <%#x>\n", hashes[3])
+		fmt.Printf("Back2  : <%#x>\n", hashes[3])
+		fmt.Printf("Reward : <%#x>\n", hashes[4])
 		return nil
 	}
 	param := params[0]
@@ -400,8 +400,10 @@ func showExtension(dbase db.Database, ess state.ExtensionSnapshot, params []stri
 		return showExtensionStage(dbase, hashes[1], params)
 	case "back":
 		return showExtensionStage(dbase, hashes[2], params)
+	case "back2":
+		return showExtensionStage(dbase, hashes[3], params)
 	case "reward":
-		return showExtensionReward(dbase, hashes[3], params)
+		return showExtensionReward(dbase, hashes[4], params)
 	default:
 		return errors.IllegalArgumentError.Errorf("UnknownExtensionData(data=%s)", param)
 	}
@@ -418,7 +420,7 @@ func showValidators(snapshot state.ValidatorSnapshot, params []string) error {
 	switch param {
 	case "all", "*":
 		vl := snapshot.Len()
-		for i := 0 ; i<vl ; i++ {
+		for i := 0; i < vl; i++ {
 			if validator, ok := snapshot.Get(i); ok {
 				fmt.Println(validator.Address())
 			}
@@ -466,6 +468,7 @@ type ExtensionValues struct {
 	State  common.HexBytes `json:"state"`
 	Front  common.HexBytes `json:"front"`
 	Back   common.HexBytes `json:"back"`
+	Back2  common.HexBytes `json:"back2"`
 	Reward common.HexBytes `json:"reward"`
 }
 
@@ -474,14 +477,15 @@ func (ev *ExtensionValues) RLPDecodeSelf(d codec.Decoder) error {
 	if err := d.Decode(&bs); err != nil {
 		return err
 	} else {
-		var inner [4]common.HexBytes
+		var inner [5]common.HexBytes
 		if _, err := codec.BC.UnmarshalFromBytes(bs, &inner); err != nil {
 			return err
 		}
 		ev.State = inner[0]
 		ev.Front = inner[1]
 		ev.Back = inner[2]
-		ev.Reward = inner[3]
+		ev.Back2 = inner[3]
+		ev.Reward = inner[4]
 		return nil
 	}
 }
@@ -492,7 +496,6 @@ type ResultValues struct {
 	NormalReceipts common.HexBytes  `json:"normalReceipts"`
 	ExtensionData  *ExtensionValues `json:"extensionData,omitempty"`
 }
-
 
 func getDiffHandlerFor(logger log.Logger, name string) func(op int, key []byte, exp, real trie.Object) {
 	return func(op int, key []byte, exp, real trie.Object) {
@@ -522,9 +525,15 @@ func showExtensionDiff(dbase db.Database, logger log.Logger, e, r *ExtensionValu
 	}
 	if !bytes.Equal(e.Back.Bytes(), r.Back.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
-		et := trie_manager.NewImmutableForObject(tdb, e.Front.Bytes(), icobject.ObjectType)
-		rt := trie_manager.NewImmutableForObject(tdb, r.Front.Bytes(), icobject.ObjectType)
+		et := trie_manager.NewImmutableForObject(tdb, e.Back.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.Back.Bytes(), icobject.ObjectType)
 		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back"))
+	}
+	if !bytes.Equal(e.Back2.Bytes(), r.Back2.Bytes()) {
+		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
+		et := trie_manager.NewImmutableForObject(tdb, e.Back2.Bytes(), icobject.ObjectType)
+		rt := trie_manager.NewImmutableForObject(tdb, r.Back2.Bytes(), icobject.ObjectType)
+		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back2"))
 	}
 	if !bytes.Equal(e.Reward.Bytes(), r.Reward.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icreward.NewObjectImpl)
@@ -582,11 +591,10 @@ func showBlockDetail(blk *Block) error {
 		}
 		fmt.Printf("- Result : %s\n", js)
 	}
-	if vh := blk.validators.Hash() ; len(vh) > 0 {
+	if vh := blk.validators.Hash(); len(vh) > 0 {
 		fmt.Printf("- Validator : %#x\n", vh)
 	}
 	fmt.Printf("- Block Transactions : %d\n", blk.TxCount())
 	fmt.Printf("- Total Transactions : %d\n", blk.TxTotal())
 	return nil
 }
-
