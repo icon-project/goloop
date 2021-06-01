@@ -44,7 +44,7 @@ func (s *ExtensionStateImpl) UpdateBlockVoteStats(
 
 const (
 	prepDisqualification int64 = iota+1
-	logProductivity
+	lowProductivity
 	blockValidation
 )
 
