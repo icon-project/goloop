@@ -5,7 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/consensus/internal/fastsync"
+	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 )
 
