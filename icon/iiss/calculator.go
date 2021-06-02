@@ -361,11 +361,11 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion2 {
-		g := global.(*icstage.GlobalV1)
+		g := global.GetV1()
 		multiplier.Mul(g.GetIRep(), big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 		divider.SetInt64(int64(MonthBlock * 2))
 	} else {
-		g := global.(*icstage.GlobalV2)
+		g := global.GetV2()
 		if g.GetTermPeriod() == 0 {
 			return
 		}
@@ -377,7 +377,8 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 }
 
 func (c *Calculator) calculateVotedReward() error {
-	offset := 0
+	// Calculate reward with a new configuration from next block
+	from := -1
 	multiplier, divider := varForVotedReward(c.global)
 	vInfo, err := c.loadVotedInfo()
 	if err != nil {
@@ -398,8 +399,8 @@ func (c *Calculator) calculateVotedReward() error {
 		keyOffset := int(intconv.BytesToInt64(keySplit[1]))
 		switch type_ {
 		case icstage.TypeEventEnable:
-			vInfo.CalculateReward(multiplier, divider, keyOffset-offset)
-			offset = keyOffset
+			vInfo.CalculateReward(multiplier, divider, keyOffset-from)
+			from = keyOffset
 
 			obj := icstage.ToEventEnable(o)
 			vInfo.SetEnable(obj.Target(), obj.Status())
@@ -415,8 +416,8 @@ func (c *Calculator) calculateVotedReward() error {
 			vInfo.UpdateBonded(obj.Votes())
 		}
 	}
-	if offset < c.global.GetOffsetLimit() {
-		vInfo.CalculateReward(multiplier, divider, c.global.GetTermPeriod()-offset)
+	if from < c.global.GetOffsetLimit() {
+		vInfo.CalculateReward(multiplier, divider, c.global.GetOffsetLimit()-from)
 	}
 
 	// write result to temp and update statistics
@@ -666,7 +667,9 @@ func (c *Calculator) processVoting(
 		return nil
 	}
 
-	to := c.global.GetTermPeriod()
+	// voting took place in the previous period
+	from := -1
+	to := c.global.GetOffsetLimit()
 	var prefix []byte
 	if _type == icreward.TypeDelegating {
 		prefix = icreward.DelegatingKey.Build()
@@ -697,7 +700,7 @@ func (c *Calculator) processVoting(
 				c.log.Errorf("Failed to convert data to voting instance")
 				continue
 			}
-			reward = c.votingReward(multiplier, divider, 0, to, prepInfo, voting.Iterator())
+			reward = c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 		}
 		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
 			return err
@@ -775,41 +778,41 @@ func (c *Calculator) processVotingEvent(
 			return err
 		}
 
-		// Voting took place in the previous period. Add a reward of offset 0.
-		start := -1
-		end := 0
+		// initial voting took place in the previous period
+		// New configuration works from the next block
+		from := -1
 		offsetLimit := c.global.GetOffsetLimit()
 		iissVersion := c.global.GetIISSVersion()
 		for i := 0; i < len(events); i += 1 {
-			end = offsets[i]
+			to := offsets[i]
 			switch iissVersion {
 			case icstate.IISSVersion2:
-				ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
+				ret := c.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d add: %d-%d %s", addr, i, start, offsetLimit, ret)
-				ret = c.votingReward(multiplier, divider, end, offsetLimit, prepInfo, voting.Iterator())
+				c.log.Tracef("VotingEvent %s %d add: %d-%d %s", addr, i, from, offsetLimit, ret)
+				ret = c.votingReward(multiplier, divider, to, offsetLimit, prepInfo, voting.Iterator())
 				reward.Sub(reward, ret)
-				c.log.Tracef("VotingEvent %s %d sub: %d-%d %s", addr, i, end, offsetLimit, ret)
+				c.log.Tracef("VotingEvent %s %d sub: %d-%d %s", addr, i, to, offsetLimit, ret)
 			case icstate.IISSVersion3:
-				end = offsets[i]
-				ret := c.votingReward(multiplier, divider, start, end, prepInfo, voting.Iterator())
+				to = offsets[i]
+				ret := c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d: %d-%d %s", addr, i, start, end, ret)
+				c.log.Tracef("VotingEvent %s %d: %d-%d %s", addr, i, from, to, ret)
 			}
 
 			// update Bonding or Delegating
-			votes := events[end]
+			votes := events[to]
 			if err = voting.ApplyVotes(votes); err != nil {
-				errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, end, votes)
+				errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, to, votes)
 				return err
 			}
 
-			start = end
+			from = to
 		}
 		// calculate reward for last event
-		ret := c.votingReward(multiplier, divider, start, offsetLimit, prepInfo, voting.Iterator())
+		ret := c.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
 		reward.Add(reward, ret)
-		c.log.Tracef("VotingEvent %s last: %d, %d: %s", addr, start, offsetLimit, ret)
+		c.log.Tracef("VotingEvent %s last: %d, %d: %s", addr, from, offsetLimit, ret)
 
 		if err = c.writeVoting(addr, voting); err != nil {
 			return nil
