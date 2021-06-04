@@ -25,7 +25,7 @@ type BlockRequest struct {
 type BlockMetadata struct {
 	RequestID   uint32
 	BlockLength int32 // -1 if fails
-	VoteList    []byte
+	Proof       []byte
 }
 
 type BlockData struct {

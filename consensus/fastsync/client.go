@@ -529,7 +529,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 			})
 		}
 		f.left = msg.BlockLength
-		f.voteList = msg.VoteList
+		f.voteList = msg.Proof
 		f.step = fstepWaitData
 	} else if f.step == fstepWaitData {
 		if pi != protoBlockData {

@@ -211,7 +211,7 @@ func (h *sconHandler) updateCurrentTask() {
 		h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 			RequestID:   ni.RequestID,
 			BlockLength: -1,
-			VoteList:    nil,
+			Proof:       nil,
 		})
 		h.buf = nil
 		return
@@ -223,7 +223,7 @@ func (h *sconHandler) updateCurrentTask() {
 	h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 		RequestID:   ni.RequestID,
 		BlockLength: int32(h.buf.Len()),
-		VoteList:    nblk.Votes().Bytes(),
+		Proof:       nblk.Votes().Bytes(),
 	})
 }
 

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/crypto"
@@ -44,6 +45,10 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.True(t, s.Add(v2), "true")
 	assert.Equal(t, 2, s.Len(), "2")
 	assert.False(t, s.Add(v2_1), "false")
+	assert.Equal(t, 2, s.Len(), "2")
+	assert.True(t, s.Remove(v2_1), "true") // removed v2
+	assert.Equal(t, 1, s.Len(), "1")
+	assert.True(t, s.Add(v2_1), "true")
 	assert.Equal(t, 2, s.Len(), "2")
 	assert.True(t, s.Add(v2_2), "true")
 	assert.Equal(t, 3, s.Len(), "3")
@@ -122,7 +127,9 @@ func Test_set_PeerIDSet(t *testing.T) {
 
 	v1 := generatePeerID()
 	v2 := generatePeerID()
-	v2_1 := NewPeerID(v2.Bytes())
+	v2_1 := &peerID{
+		Address: common.NewAccountAddress(v2.Bytes()),
+	}
 	v3 := generatePeerID()
 
 	assert.True(t, s.IsEmpty(), "true")
