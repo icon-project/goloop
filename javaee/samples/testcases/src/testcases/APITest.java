@@ -60,7 +60,7 @@ public class APITest
 
     @External
     public void getOrigin(Address origin) {
-        Context.require(Context.getOrigin().equals(origin));
+        Context.require(Context.getOrigin().equals(origin), "Not an origin");
     }
 
     @External(readonly=true)
@@ -70,7 +70,7 @@ public class APITest
 
     @External
     public void getOwner(Address owner) {
-        Context.require(Context.getOwner().equals(owner));
+        Context.require(Context.getOwner().equals(owner), "Not an owner");
     }
 
     @External(readonly=true)

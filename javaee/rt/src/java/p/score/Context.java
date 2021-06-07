@@ -145,6 +145,11 @@ public final class Context extends Object {
         avm_revert(0);
     }
 
+    public static void avm_require(boolean condition, String message) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_require);
+        blockchainRuntime.avm_require(condition, message);
+    }
+
     public static void avm_require(boolean condition) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_require);
         blockchainRuntime.avm_require(condition);

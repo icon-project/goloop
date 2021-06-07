@@ -58,7 +58,6 @@ import testcases.HelloWorld;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
