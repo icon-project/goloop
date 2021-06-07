@@ -112,7 +112,7 @@ func (br *blockResult) Reject() {
 		cb := fr.cb
 		cl.log.Tracef("OnEnd Reject %d\n", br.blk.Height())
 		fr._cancel()
-		go cb.OnEnd(nil)
+		go cb.OnEnd(errors.UnknownError.Errorf("no more peer to try"))
 	}
 }
 
@@ -324,7 +324,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 			fr._cancel()
 			cl.CallAfterUnlock(func() {
 				cl.log.Tracef("OnEnd onResult\n")
-				cb.OnEnd(nil)
+				cb.OnEnd(errors.UnknownError.Errorf("no more peer to try"))
 			})
 		}
 		return
