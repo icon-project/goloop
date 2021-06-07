@@ -68,7 +68,17 @@ func TestValidatorsData_init(t *testing.T) {
 	snapshots := newDummyPRepSnapshots(size)
 	m := newDummyOwnerToNodeMapper(size)
 
-	vd := new(validatorsData)
+	type a struct {
+		m int
+		n string
+	}
+
+	b := a{1, "hello"}
+	c := a{2, "w"}
+	b.m = c.m
+	b.n = c.n
+
+	vd := validatorsData{}
 	vd.init(snapshots, m, size)
 	assert.Equal(t, size, vd.Len())
 

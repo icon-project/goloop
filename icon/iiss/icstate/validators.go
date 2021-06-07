@@ -26,7 +26,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-var emptyValidatorsData = &validatorsData{
+var emptyValidatorsData = validatorsData{
 	nodeMap: make(map[string]int),
 }
 
@@ -45,7 +45,7 @@ type validatorsData struct {
 
 func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) {
 	size = icutils.Min(prepSnapshots.Len(), size)
-	vd.nodeList = make([]module.Address, size, size)
+	vd.nodeList = make([]module.Address, size)
 	vd.nodeMap = make(map[string]int)
 
 	for i := 0; i < size; i++ {
@@ -56,13 +56,12 @@ func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerT
 		}
 
 		vd.nodeList[i] = node
-		key := icutils.ToKey(node)
-		vd.nodeMap[key] = i
+		vd.nodeMap[icutils.ToKey(node)] = i
 	}
 	vd.nextPssIdx = size
 }
 
-func (vd validatorsData) Hash() []byte {
+func (vd *validatorsData) Hash() []byte {
 	if vd.hash == nil && len(vd.nodeList) > 0 {
 		s := vd.serialize()
 		vd.hash = crypto.SHA3Sum256(s)
@@ -77,10 +76,7 @@ func (vd *validatorsData) serialize() []byte {
 	return vd.serialized
 }
 
-func (vd *validatorsData) equal(other *validatorsData) bool {
-	if vd == other {
-		return true
-	}
+func (vd *validatorsData) equal(other validatorsData) bool {
 	if vd.Len() != other.Len() {
 		return false
 	}
@@ -95,18 +91,18 @@ func (vd *validatorsData) equal(other *validatorsData) bool {
 	return true
 }
 
-func (vd *validatorsData) clone() *validatorsData {
+func (vd *validatorsData) clone() validatorsData {
 	size := len(vd.nodeList)
 	nodeMap := make(map[string]int)
-	nodeList := make([]module.Address, size, size)
+	nodeList := make([]module.Address, size)
 
 	for i, node := range vd.nodeList {
 		nodeList[i] = node
 		nodeMap[icutils.ToKey(node)] = i
 	}
-	return &validatorsData{
-		nodeList: nodeList,
-		nodeMap: nodeMap,
+	return validatorsData{
+		nodeList:   nodeList,
+		nodeMap:    nodeMap,
 		nextPssIdx: vd.nextPssIdx,
 	}
 }
@@ -136,7 +132,8 @@ func (vd *validatorsData) NextPRepSnapshotIndex() int {
 }
 
 func (vd *validatorsData) NewValidatorSet() []module.Validator {
-	vSet := make([]module.Validator, 0, vd.Len())
+	size := vd.Len()
+	vSet := make([]module.Validator, size, size)
 	for i, node := range vd.nodeList {
 		vSet[i], _ = state.ValidatorFromAddress(node)
 	}
@@ -154,8 +151,8 @@ func newValidatorsData(nodes []module.Address) *validatorsData {
 	}
 
 	return &validatorsData{
-		nodeList: nodeList,
-		nodeMap: nodeMap,
+		nodeList:   nodeList,
+		nodeMap:    nodeMap,
 		nextPssIdx: size,
 	}
 }
@@ -164,10 +161,7 @@ func newValidatorsData(nodes []module.Address) *validatorsData {
 
 type ValidatorsSnapshot struct {
 	icobject.NoDatabase
-	*validatorsData
-
-	serialized []byte
-	hash       []byte
+	validatorsData
 }
 
 func (vss *ValidatorsSnapshot) Version() int {
@@ -202,7 +196,7 @@ func (vss *ValidatorsSnapshot) Equal(object icobject.Impl) bool {
 
 type ValidatorsState struct {
 	snapshot *ValidatorsSnapshot
-	*validatorsData
+	validatorsData
 }
 
 func (vs *ValidatorsState) setDirty() {
@@ -215,19 +209,11 @@ func (vs *ValidatorsState) IsDirty() bool {
 	return vs.snapshot == nil
 }
 
-func (vs *ValidatorsState) lazyInit() {
-	if !vs.IsDirty() {
-		vs.validatorsData = vs.snapshot.validatorsData.clone()
-	}
-}
-
 func (vs *ValidatorsState) Set(i int, node module.Address) {
 	old := vs.nodeList[i]
 	if old.Equal(node) {
 		return
 	}
-
-	vs.lazyInit()
 
 	delete(vs.nodeMap, icutils.ToKey(old))
 
@@ -238,8 +224,6 @@ func (vs *ValidatorsState) Set(i int, node module.Address) {
 }
 
 func (vs *ValidatorsState) Remove(i int) {
-	vs.lazyInit()
-
 	size := len(vs.nodeList)
 	if i < 0 || i >= size {
 		return
@@ -274,10 +258,10 @@ func (vs *ValidatorsState) Reset(vss *ValidatorsSnapshot) {
 		return
 	}
 	vs.snapshot = vss
-	vs.validatorsData = vss.validatorsData
+	vs.validatorsData = vss.validatorsData.clone()
 }
 
-func newValidators(_ icobject.Tag) *ValidatorsSnapshot {
+func newValidatorsWithTag(_ icobject.Tag) *ValidatorsSnapshot {
 	return new(ValidatorsSnapshot)
 }
 
@@ -292,7 +276,7 @@ func NewValidatorStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 
 func NewValidatorSnapshotWithPRepSnapshot(
 	prepSnapshot Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
-	vd := new(validatorsData)
+	vd := validatorsData{}
 	vd.init(prepSnapshot, ownerToNodeMapper, size)
 
 	return &ValidatorsSnapshot{

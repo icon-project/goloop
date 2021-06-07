@@ -89,6 +89,11 @@ func (is *IScore) Clone() *IScore {
 }
 
 func (is *IScore) Format(f fmt.State, c rune) {
+	if is == nil {
+		fmt.Fprintf(f, "nil")
+		return
+	}
+
 	switch c {
 	case 'v':
 		if f.Flag('+') {

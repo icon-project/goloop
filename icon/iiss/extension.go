@@ -878,11 +878,9 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd b
 	}
 
 	newValidators := vss.NewValidatorSet()
-	if err := wc.GetValidatorState().Set(newValidators); err != nil {
-		return err
-	}
+	err := wc.GetValidatorState().Set(newValidators)
 	s.logNewValidators(wc.BlockHeight(), newValidators)
-	return nil
+	return err
 }
 
 func (s *ExtensionStateImpl) logNewValidators(blockHeight int64, vs []module.Validator) {
