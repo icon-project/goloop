@@ -304,6 +304,14 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public void avm_require(boolean condition, s.java.lang.String message) {
+        if (!condition) {
+            throw new ManualRevertException(Status.UserReversionStart,
+                    message.getUnderlying());
+        }
+    }
+
+    @Override
     public void avm_require(boolean condition) {
         if (!condition) {
             throw new ManualRevertException(Status.UserReversionStart);

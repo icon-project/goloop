@@ -128,6 +128,8 @@ public interface IBlockchainRuntime {
     /**
      * Requires that condition is true, otherwise triggers a revert.
      */
+    void avm_require(boolean condition, String message);
+
     void avm_require(boolean condition);
 
     /**

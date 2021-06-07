@@ -295,6 +295,18 @@ public final class Context {
      * Checks that the provided condition is true and if it is false, triggers a revert.
      * <p>
      * In other words, if {@code condition == true}, this method does nothing,
+     * otherwise it is equivalent to calling {@link Context#revert(String)}.
+     *
+     * @param condition the condition that is required to be {@code true}.
+     * @param message a message
+     */
+    public static void require(boolean condition, String message) {
+    }
+
+    /**
+     * Checks that the provided condition is true and if it is false, triggers a revert.
+     * <p>
+     * In other words, if {@code condition == true}, this method does nothing,
      * otherwise it is equivalent to calling {@link Context#revert()}.
      *
      * @param condition the condition that is required to be {@code true}.
@@ -454,6 +466,7 @@ public final class Context {
      */
     public static void logEvent(Object[] indexed, Object[] data) {
     }
+
     /**
      * Returns a new object reader reading from a byte array.
      * @param codec codec. Currently "RLPn" is supported.
