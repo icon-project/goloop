@@ -140,7 +140,7 @@ func (vd *validatorsData) NewValidatorSet() []module.Validator {
 	return vSet
 }
 
-func newValidatorsData(nodes []module.Address) *validatorsData {
+func newValidatorsData(nodes []module.Address) validatorsData {
 	size := len(nodes)
 	nodeList := make([]module.Address, size)
 	nodeMap := make(map[string]int)
@@ -150,7 +150,7 @@ func newValidatorsData(nodes []module.Address) *validatorsData {
 		nodeMap[icutils.ToKey(node)] = i
 	}
 
-	return &validatorsData{
+	return validatorsData{
 		nodeList:   nodeList,
 		nodeMap:    nodeMap,
 		nextPssIdx: size,
@@ -268,7 +268,7 @@ func newValidatorsWithTag(_ icobject.Tag) *ValidatorsSnapshot {
 	return new(ValidatorsSnapshot)
 }
 
-func NewValidatorStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
+func NewValidatorsStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 	vs := new(ValidatorsState)
 	if vss == nil {
 		vss = emptyValidatorsSnapshot
@@ -277,7 +277,7 @@ func NewValidatorStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 	return vs
 }
 
-func NewValidatorSnapshotWithPRepSnapshot(
+func NewValidatorsSnapshotWithPRepSnapshot(
 	prepSnapshot Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
 	vd := validatorsData{}
 	vd.init(prepSnapshot, ownerToNodeMapper, size)
@@ -318,7 +318,7 @@ func (s *State) changeValidatorNodeAddress(
 		return errors.Errorf("Invalid validator: node=%s", oldNode)
 	}
 
-	vs := NewValidatorStateWithSnapshot(vss)
+	vs := NewValidatorsStateWithSnapshot(vss)
 	vs.Set(i, -1, newNode)
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
@@ -339,7 +339,7 @@ func (s *State) replaceValidatorByNode(node module.Address) error {
 	newOwner, nextPssIdx, _ := s.chooseNewValidator(term.prepSnapshots, vss.NextPRepSnapshotIndex())
 	newNode := s.GetNodeByOwner(newOwner)
 
-	vs := NewValidatorStateWithSnapshot(vss)
+	vs := NewValidatorsStateWithSnapshot(vss)
 	if newNode != nil {
 		vs.Set(i, nextPssIdx, newNode)
 	} else {

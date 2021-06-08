@@ -18,63 +18,6 @@ type PRepManager struct {
 	state  *icstate.State
 }
 
-func (pm *PRepManager) ToJSON(totalStake *big.Int, br int64) map[string]interface{} {
-	preps, _ := pm.state.GetOrderedPReps()
-	if preps == nil {
-		return nil
-	}
-
-	jso := make(map[string]interface{})
-	jso["totalStake"] = totalStake
-	jso["totalBonded"] = preps.TotalBonded()
-	jso["totalDelegated"] = preps.TotalDelegated()
-	jso["totalBondedDelegation"] = preps.GetTotalBondedDelegation(br)
-	jso["preps"] = preps.Size()
-	return jso
-}
-
-func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	preps, err := pm.state.GetOrderedPReps()
-	if err != nil {
-		return nil, err
-	}
-
-	if start < 0 {
-		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
-	}
-	if end < 0 {
-		return nil, errors.IllegalArgumentError.Errorf("end(%d) < 0", end)
-	}
-
-	size := preps.Size()
-	if start > end {
-		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
-	}
-	if start > size {
-		return nil, errors.IllegalArgumentError.Errorf("start(%d) > # of preps(%d)", start, size)
-	}
-	if start == 0 {
-		start = 1
-	}
-	if end == 0 || end > size {
-		end = size
-	}
-
-	jso := make(map[string]interface{})
-	prepList := make([]interface{}, 0, end)
-	br := pm.state.GetBondRequirement()
-
-	for i := start - 1; i < end; i++ {
-		prep := preps.GetPRepByIndex(i)
-		prepList = append(prepList, prep.ToJSON(blockHeight, br))
-	}
-
-	jso["startRanking"] = start
-	jso["preps"] = prepList
-	jso["totalDelegated"] = preps.TotalDelegated()
-	return jso, nil
-}
-
 func (pm *PRepManager) ChangeDelegation(od, nd icstate.Delegations) (map[string]*big.Int, error) {
 	delta := make(map[string]*big.Int)
 
@@ -170,26 +113,6 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 		}
 	}
 	return delta, nil
-}
-
-func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	pss, err := pm.state.GetPRepStatuses()
-	if err != nil {
-		return nil, err
-	}
-
-	size := len(pss)
-	jso := make(map[string]interface{})
-	psList := make([]interface{}, size)
-
-	for i := 0; i < size; i++ {
-		ps := pss[i]
-		psList[i] = ps.GetStatsInJSON(blockHeight)
-	}
-
-	jso["blockHeight"] = blockHeight
-	jso["preps"] = psList
-	return jso, nil
 }
 
 func (pm *PRepManager) CalculateIRep(preps *icstate.PReps, revision int) *big.Int {

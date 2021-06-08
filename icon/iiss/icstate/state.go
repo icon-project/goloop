@@ -409,7 +409,9 @@ func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeig
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	return ps.UpdateBlockVoteStats(blockHeight, voted)
+	err := ps.UpdateBlockVoteStats(blockHeight, voted)
+	s.logger.Debugf("voted=%t %+v", voted, ps)
+	return err
 }
 
 // GetPRepStatuses returns PRepStatus list ordered by bonded delegation
@@ -553,4 +555,84 @@ func (s *State) GetOrderedPReps() (*PReps, error) {
 	}
 
 	return newPReps(prepList, s.GetBondRequirement()), nil
+}
+
+func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
+	pss, err := s.GetPRepStatuses()
+	if err != nil {
+		return nil, err
+	}
+
+	size := len(pss)
+	jso := make(map[string]interface{})
+	psList := make([]interface{}, size)
+
+	for i := 0; i < size; i++ {
+		ps := pss[i]
+		psList[i] = ps.GetStatsInJSON(blockHeight)
+	}
+
+	jso["blockHeight"] = blockHeight
+	jso["preps"] = psList
+	return jso, nil
+}
+
+func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
+	preps, err := s.GetOrderedPReps()
+	if err != nil {
+		return nil, err
+	}
+
+	if start < 0 {
+		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
+	}
+	if end < 0 {
+		return nil, errors.IllegalArgumentError.Errorf("end(%d) < 0", end)
+	}
+
+	size := preps.Size()
+	if start > end {
+		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
+	}
+	if start > size {
+		return nil, errors.IllegalArgumentError.Errorf("start(%d) > # of preps(%d)", start, size)
+	}
+	if start == 0 {
+		start = 1
+	}
+	if end == 0 || end > size {
+		end = size
+	}
+
+	jso := make(map[string]interface{})
+	prepList := make([]interface{}, 0, end)
+	br := s.GetBondRequirement()
+
+	for i := start - 1; i < end; i++ {
+		prep := preps.GetPRepByIndex(i)
+		prepList = append(prepList, prep.ToJSON(blockHeight, br))
+	}
+
+	jso["startRanking"] = start
+	jso["blockHeight"] = blockHeight
+	jso["totalStake"] = s.GetTotalStake()
+	jso["totalDelegated"] = preps.TotalDelegated()
+	jso["preps"] = prepList
+	return jso, nil
+}
+
+func (s *State) GetPRepManagerInJSON() map[string]interface{} {
+	br := s.GetBondRequirement()
+	preps, _ := s.GetOrderedPReps()
+	if preps == nil {
+		return nil
+	}
+
+	return map[string]interface{}{
+		"totalStake": s.GetTotalStake(),
+		"totalBonded": preps.TotalBonded(),
+		"totalDelegated": preps.TotalDelegated(),
+		"totalBondedDelegation": preps.GetTotalBondedDelegation(br),
+		"preps": preps.Size(),
+	}
 }

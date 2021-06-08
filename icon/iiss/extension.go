@@ -325,23 +325,6 @@ func (s *ExtensionStateImpl) applyCalculationResult(calculator *Calculator) erro
 	return nil
 }
 
-func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
-	totalStake := s.State.GetTotalStake()
-	br := s.State.GetBondRequirement()
-	return s.pm.ToJSON(totalStake, br)
-}
-
-func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	jso, err := s.pm.GetPRepsInJSON(blockHeight, start, end)
-	if err != nil {
-		return nil, err
-	}
-
-	jso["totalStake"] = s.State.GetTotalStake()
-	jso["blockHeight"] = blockHeight
-	return jso, nil
-}
-
 func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
 	prep := s.State.GetPRepByOwner(address)
 	if prep == nil {
@@ -795,6 +778,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 	isDecentralized := s.IsDecentralized()
 	if !isDecentralized {
+		// After decentralization is finished, this code will not be reached
 		if preps, err = s.State.GetOrderedPReps(); err != nil {
 			return err
 		}
@@ -839,7 +823,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 		}
 
 		// Record new validator list for the next term to State
-		vss := icstate.NewValidatorSnapshotWithPRepSnapshot(pss, s.State, mainPRepCount)
+		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, s.State, mainPRepCount)
 		if err := s.State.SetValidatorsSnapshot(vss); err != nil {
 			return err
 		}
@@ -928,17 +912,4 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 func (s *ExtensionStateImpl) IsDecentralized() bool {
 	term := s.State.GetTerm()
 	return term != nil && term.IsDecentralized()
-}
-
-func (s *ExtensionStateImpl) IsDecentralizationConditionMet(revision int) bool {
-	if revision >= icmodule.RevisionDecentralize &&
-		s.State.GetActivePRepSize() >= int(s.State.GetMainPRepCount()) {
-		// TODO check delegated amount of 22nd P-Reps
-		return true
-	}
-	return false
-}
-
-func (s *ExtensionStateImpl) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	return s.pm.GetPRepStatsInJSON(blockHeight)
 }

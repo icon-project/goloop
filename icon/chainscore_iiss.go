@@ -453,7 +453,7 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 		return nil, err
 	}
 	blockHeight := s.cc.BlockHeight()
-	jso, err := es.GetPRepsInJSON(blockHeight, start, end)
+	jso, err := es.State.GetPRepsInJSON(blockHeight, start, end)
 	if err != nil {
 		return nil, scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to get PReps: start=%d end=%d", start, end,
@@ -501,7 +501,7 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	jso := es.GetPRepManagerInJSON()
+	jso := es.State.GetPRepManagerInJSON()
 	return jso, nil
 }
 
@@ -932,7 +932,7 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return es.GetPRepStatsInJSON(s.cc.BlockHeight())
+	return es.State.GetPRepStatsInJSON(s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {

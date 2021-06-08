@@ -99,33 +99,42 @@ func TestValidatorsData_clone(t *testing.T) {
 	vd := newDummyValidatorsData(size)
 	vd2 := vd.clone()
 	assert.True(t, vd.equal(&vd2))
+	vss := ValidatorsSnapshot{}
+	vss.validatorsData = vd2
 
 	hash := vd.Hash()
 	assert.Zero(t, bytes.Compare(vd.Hash(), vd2.Hash()))
 	assert.Equal(t, 32, len(hash))
+	assert.True(t, vd2.equal(&vss.validatorsData))
 }
 
-/*
 func TestValidatorsSnapshot_RLPEncodeDecode(t *testing.T) {
-	vd := newValidatorsData(nil)
+	state := newDummyState(false)
+
+	size := 10
+	nodes := make([]module.Address, size)
+	for i := 0; i < size; i++ {
+		nodes[i] = newDummyAddress(i)
+	}
+
+	vd := newValidatorsData(nodes)
 	vss := &ValidatorsSnapshot{
 		validatorsData: vd,
 	}
+	assert.Equal(t, size, vss.Len())
 
-	bs, err := codec.BC.MarshalToBytes(vss)
+	err := state.SetValidatorsSnapshot(vss)
 	assert.NoError(t, err)
 
-	var vss2 *ValidatorsSnapshot
-	bs, err = codec.BC.UnmarshalFromBytes(bs, &vss2)
-	assert.Zero(t, len(bs))
-	assert.NoError(t, err)
+	vss2 := state.GetValidatorsSnapshot()
+	assert.NotNil(t, vss2)
 
 	assert.True(t, vss.Equal(vss2))
+	assert.Equal(t, size, vss2.Len())
 }
- */
 
 func TestNewValidatorStateWithSnapshot(t *testing.T) {
 	var snapshot *ValidatorsSnapshot
-	vs := NewValidatorStateWithSnapshot(snapshot)
+	vs := NewValidatorsStateWithSnapshot(snapshot)
 	assert.Zero(t, vs.Len())
 }
