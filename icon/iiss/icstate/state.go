@@ -143,7 +143,7 @@ func (s *State) GetActivePRepSize() int {
 	return s.activePRepCache.Size()
 }
 
-func (s *State) GetActivePRep(i int) module.Address {
+func (s *State) getActivePRepOwner(i int) module.Address {
 	return s.activePRepCache.Get(i)
 }
 
@@ -427,7 +427,7 @@ func (s *State) GetPRepStatuses() ([]*PRepStatus, error) {
 	pss := make([]*PRepStatus, 0)
 
 	for i := 0; i < size; i++ {
-		owner := s.GetActivePRep(i)
+		owner := s.getActivePRepOwner(i)
 		ps, _ := s.GetPRepStatusByOwner(owner, false)
 		if ps.Status() == Active {
 			owners = append(owners, owner)
@@ -547,5 +547,16 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 }
 
 func (s *State) GetOrderedPReps() (*PReps, error) {
-	return newOrderedPRepsWithState(s, s.logger)
+	size := s.GetActivePRepSize()
+	prepList := make([]*PRep, size)
+
+	for i := 0; i < size; i++ {
+		owner := s.getActivePRepOwner(i)
+		prep := s.GetPRepByOwner(owner)
+		if prep != nil {
+			prepList[i] = prep
+		}
+	}
+
+	return newPReps(prepList, s.GetBondRequirement()), nil
 }

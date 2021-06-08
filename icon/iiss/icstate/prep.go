@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
@@ -43,20 +42,6 @@ func newPRep(owner module.Address, pb *PRepBase, ps *PRepStatus) *PRep {
 	return &PRep{owner: owner, PRepBase: pb, PRepStatus: ps}
 }
 
-func getPRepFromState(state *State, owner module.Address) *PRep {
-	pb, _ := state.GetPRepBaseByOwner(owner, false)
-	if pb == nil {
-		return nil
-	}
-
-	ps, _ := state.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		panic(errors.Errorf("PRepStatus not found: %s", owner))
-	}
-
-	return newPRep(owner, pb, ps)
-}
-
 type PReps struct {
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
@@ -64,22 +49,6 @@ type PReps struct {
 	subPReps       int
 	orderedPReps   []*PRep
 	prepMap        map[string]*PRep
-}
-
-func (p *PReps) load(state *State, logger log.Logger) error {
-	size := state.GetActivePRepSize()
-
-	for i := 0; i < size; i++ {
-		owner := state.GetActivePRep(i)
-		prep := getPRepFromState(state, owner)
-		if prep == nil {
-			logger.Warnf("Failed to load PRep: %s", owner)
-		} else {
-			p.appendPRep(owner, prep)
-		}
-	}
-
-	return nil
 }
 
 func (p *PReps) appendPRep(owner module.Address, prep *PRep) {
@@ -206,27 +175,6 @@ func (p *PReps) GetPRepByIndex(i int) *PRep {
 		return nil
 	}
 	return p.orderedPReps[i]
-}
-
-// newOrderedPRepsWithState returns active prep list ordered by bonded delegation
-func newOrderedPRepsWithState(state *State, logger log.Logger) (*PReps, error) {
-	if logger == nil {
-		logger = log.WithFields(log.Fields{
-			log.FieldKeyModule: "ICON",
-		})
-	}
-
-	p := &PReps{
-		totalDelegated: big.NewInt(0),
-		totalBonded:    big.NewInt(0),
-		prepMap:        make(map[string]*PRep),
-	}
-
-	if err := p.load(state, logger); err != nil {
-		return nil, err
-	}
-	p.sort(state.GetBondRequirement())
-	return p, nil
 }
 
 func newPReps(prepList []*PRep, br int64) *PReps {
