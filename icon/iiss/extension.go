@@ -455,7 +455,7 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 	}
 	sort.Strings(keys)
 
-	votes = make([]*icstage.Vote, size, size)
+	votes = make([]*icstage.Vote, size)
 	for i, key := range keys {
 		var addr *common.Address
 		addr, err = common.NewAddress([]byte(key))

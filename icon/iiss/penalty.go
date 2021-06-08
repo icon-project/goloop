@@ -106,6 +106,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 	}
 	bonders := pb.BonderList()
 	totalSlashBond := new(big.Int)
+	totalStake := new(big.Int).Set(s.State.GetTotalStake())
 
 	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
@@ -138,16 +139,12 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		if err := account.SlashStake(totalSlash); err != nil {
 			return err
 		}
-		totalStake := new(big.Int).Set(s.State.GetTotalStake())
 		totalStake.Sub(totalStake, totalSlash)
-		if err := s.State.SetTotalStake(totalStake); err != nil {
-			return err
-		}
 
 		// add icstage.EventBond
-		delta := make(map[string]*big.Int)
-		key := icutils.ToKey(bonder)
-		delta[key] = slashBond
+		delta := map[string]*big.Int{
+			icutils.ToKey(bonder): new(big.Int).Neg(slashBond),
+		}
 		if err := s.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 			return err
 		}
@@ -162,6 +159,9 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		logger.Debugf("After slashing: %s", account)
 	}
 
+	if err := s.State.SetTotalStake(totalStake); err != nil {
+		return err
+	}
 	if ts, err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
 		return err
 	} else {
