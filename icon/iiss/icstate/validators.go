@@ -209,7 +209,7 @@ func (vs *ValidatorsState) IsDirty() bool {
 	return vs.snapshot == nil
 }
 
-func (vs *ValidatorsState) Set(i int, node module.Address) {
+func (vs *ValidatorsState) Set(i, nextPssIdx int, node module.Address) {
 	old := vs.nodeList[i]
 	if old.Equal(node) {
 		return
@@ -219,6 +219,9 @@ func (vs *ValidatorsState) Set(i int, node module.Address) {
 
 	vs.nodeList[i] = node
 	vs.nodeMap[icutils.ToKey(node)] = i
+	if nextPssIdx >= 0 {
+		vs.nextPssIdx = nextPssIdx
+	}
 
 	vs.setDirty()
 }
@@ -316,7 +319,7 @@ func (s *State) changeValidatorNodeAddress(
 	}
 
 	vs := NewValidatorStateWithSnapshot(vss)
-	vs.Set(i, newNode)
+	vs.Set(i, -1, newNode)
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
@@ -333,12 +336,12 @@ func (s *State) replaceValidatorByNode(node module.Address) error {
 	}
 
 	term := s.GetTerm()
-	newOwner, _ := s.chooseNewValidator(term.prepSnapshots, vss.NextPRepSnapshotIndex())
+	newOwner, nextPssIdx, _ := s.chooseNewValidator(term.prepSnapshots, vss.NextPRepSnapshotIndex())
 	newNode := s.GetNodeByOwner(newOwner)
 
 	vs := NewValidatorStateWithSnapshot(vss)
 	if newNode != nil {
-		vs.Set(i, newNode)
+		vs.Set(i, nextPssIdx, newNode)
 	} else {
 		vs.Remove(i)
 	}
@@ -347,7 +350,7 @@ func (s *State) replaceValidatorByNode(node module.Address) error {
 
 // chooseNewValidator returns the owner address of a new validator from PRepSnapshots
 // changing its grade from Sub to Main
-func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (module.Address, error) {
+func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (module.Address, int, error) {
 	var ps *PRepStatus
 	var pss *PRepSnapshot
 
@@ -363,12 +366,12 @@ func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (modul
 
 		switch ps.Grade() {
 		case Main:
-			return nil, errors.Errorf("Critical problem in PRep grade management")
+			return nil, size, errors.Errorf("Critical problem in PRep grade management")
 		case Sub:
 			ps.SetGrade(Main)
-			return owner, nil
+			return owner, i + 1, nil
 		}
 	}
 	// No SubPRep remains to replace old one
-	return nil, nil
+	return nil, size, nil
 }
