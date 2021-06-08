@@ -24,7 +24,7 @@ func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSna
 }
 
 func newDummyAddress(value int) module.Address {
-	bs := make([]byte, common.AddressBytes, common.AddressBytes)
+	bs := make([]byte, common.AddressBytes)
 	for i := 0; value != 0 && i < 8; i++ {
 		bs[common.AddressBytes-1] = byte(value & 0xFF)
 		value >>= 8
@@ -59,7 +59,7 @@ func newDummyPRep(i int) *PRep {
 }
 
 func newDummyPReps(size int, br int64) *PReps {
-	preps := make([]*PRep, size, size)
+	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
 		preps[i] = newDummyPRep(i)
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -156,7 +157,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 func handleConsensusInfo(cc contract.CallContext) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	term := es.State.GetTerm()
-	if !term.IsDecentralized() {
+	if term == nil || !term.IsDecentralized() {
 		return nil
 	}
 	if cc.BlockHeight() < term.GetVoteStartHeight() {
@@ -167,7 +168,7 @@ func handleConsensusInfo(cc contract.CallContext) error {
 	if csi == nil {
 		return nil
 	}
-	voters, _, err := CompileVoters(es.pm, csi)
+	voters, _, err := CompileVoters(es.State, csi)
 	if err != nil {
 		return err
 	}
@@ -178,7 +179,7 @@ func handleConsensusInfo(cc contract.CallContext) error {
 // CompileVoters return slice of owner address of voters
 // It returns slice of owner address of all voters, slice of owner address of voted voters
 // and any error encountered.
-func CompileVoters(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
+func CompileVoters(state *icstate.State, csi module.ConsensusInfo) ([]module.Address, []module.Address, error) {
 	log.Tracef("CSI: %+v", csi)
 	voters := csi.Voters()
 	if voters == nil {
@@ -187,18 +188,14 @@ func CompileVoters(pm *PRepManager, csi module.ConsensusInfo) ([]module.Address,
 	voted := csi.Voted()
 
 	size := voters.Len()
-	owners := make([]module.Address, size, size)
-	votedOwners := make([]module.Address, 0)
+	owners := make([]module.Address, size)
+	votedOwners := make([]module.Address, 0, size)
 
 	for i := 0; i < size; i += 1 {
 		v, _ := voters.Get(i)
-		owner := pm.state.GetOwnerByNode(v.Address())
-		if owner == nil {
-			return nil, nil, errors.Errorf("Owner not found: %s", v.Address())
-		}
-		owners[i] = owner
+		owners[i] = state.GetOwnerByNode(v.Address())
 		if voted[i] {
-			votedOwners = append(votedOwners, owner)
+			votedOwners = append(votedOwners, owners[i])
 		}
 	}
 

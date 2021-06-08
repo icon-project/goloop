@@ -21,7 +21,6 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -37,7 +36,7 @@ const (
 )
 
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
-	var err error = nil
+	var err error
 
 	ps, _ := s.State.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
@@ -50,7 +49,7 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	blockHeight := cc.BlockHeight()
 
 	// Penalty check
-	penaltyCondition := s.State.GetValidationPenaltyCondition().Int64()
+	penaltyCondition := s.State.GetValidationPenaltyCondition()
 	if !checkValidationPenalty(ps, blockHeight, penaltyCondition) {
 		return nil
 	}
@@ -70,9 +69,9 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	)
 
 	// Slashing
-	penaltyCondition = s.State.GetConsistentValidationPenaltyCondition().Int64()
-	if checkConsistentValidationPenalty(ps, int(penaltyCondition)) {
-		slashRatio := int(s.State.GetConsistentValidationPenaltySlashRatio().Int64())
+	penaltyCondition = s.State.GetConsistentValidationPenaltyCondition()
+	if checkConsistentValidationPenalty(ps, penaltyCondition) {
+		slashRatio := s.State.GetConsistentValidationPenaltySlashRatio()
 		if err = s.slash(cc, owner, slashRatio); err != nil {
 			return err
 		}
@@ -86,11 +85,11 @@ func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight, condition int64
 	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= condition
 }
 
-func checkConsistentValidationPenalty(ps *icstate.PRepStatus, condition int) bool {
-	return ps.GetVPenaltyCount() >= condition
+func checkConsistentValidationPenalty(ps *icstate.PRepStatus, condition int64) bool {
+	return ps.GetVPenaltyCount() >= int(condition)
 }
 
-func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Address, ratio int) error {
+func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address, ratio int) error {
 	if ratio == 0 {
 		return nil
 	}
@@ -98,17 +97,17 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
 
-	logger := cc.Logger().WithFields(log.Fields{log.FieldKeyModule: "ICON"})
-	logger.Tracef("slash() start: addr=%s ratio=%d", address, ratio)
+	logger := s.Logger()
+	logger.Tracef("slash() start: addr=%s ratio=%d", owner, ratio)
 
-	pb, _ := s.State.GetPRepBaseByOwner(address, false)
+	pb, _ := s.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
-		return errors.Errorf("PRep not found: %s", address)
+		return errors.Errorf("PRep not found: %s", owner)
 	}
 	bonders := pb.BonderList()
 	totalSlashBond := new(big.Int)
 
-	// slash all bonder
+	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
 		account := s.State.GetAccountState(bonder)
 		totalSlash := new(big.Int)
@@ -116,18 +115,18 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		logger.Debugf("Before slashing: %s", account)
 
 		// from bonds
-		slashBond := account.SlashBond(address, ratio)
+		slashBond := account.SlashBond(owner, ratio)
 		totalSlash.Add(totalSlash, slashBond)
 		totalSlashBond.Add(totalSlashBond, slashBond)
-		logger.Debugf("addr=%s ratio=%d slashBond=%s", address, ratio, slashBond)
+		logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
 
 		// from unbondings
-		slashUnbond, expire := account.SlashUnbond(address, ratio)
+		slashUnbond, expire := account.SlashUnbond(owner, ratio)
 		totalSlash.Add(totalSlash, slashUnbond)
 		if expire != -1 {
 			timer := s.State.GetUnbondingTimerState(expire)
 			if timer != nil {
-				if err := timer.Delete(address); err != nil {
+				if err := timer.Delete(owner); err != nil {
 					return err
 				}
 			} else {
@@ -156,7 +155,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 		// event log
 		cc.OnEvent(
 			state.SystemAddress,
-			[][]byte{[]byte("Slashed(Address,Address,int)"), address.Bytes()},
+			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
 			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(totalSlash)},
 		)
 
@@ -168,17 +167,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, address module.Addre
 	} else {
 		icutils.OnBurn(cc, state.SystemAddress, totalSlashBond, ts)
 	}
-	ret := s.State.Slash(address, totalSlashBond)
+	ret := s.State.Slash(owner, totalSlashBond)
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return ret
-}
-
-func buildPenaltyMask(input *big.Int) (res uint32) {
-	var mid uint32
-	mid = 0x00000001
-	for i := 0; i < int(input.Int64()); i++ {
-		res = res | mid
-		mid = mid << 1
-	}
-	return
 }

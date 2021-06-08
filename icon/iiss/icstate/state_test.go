@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -96,9 +97,16 @@ func TestState_SetPRep(t *testing.T) {
 	}
 }
 
-func TestState_ImposePenalty(t *testing.T) {
-}
+func TestPenalty_buildPenaltyMask(t *testing.T) {
+	mask := buildPenaltyMask(30)
+	str := fmt.Sprintf("%x", mask)
+	assert.Equal(t, "3fffffff", str)
 
-func TestState_UpdateBlockVoteStats(t *testing.T) {
+	mask = buildPenaltyMask(1)
+	str = fmt.Sprintf("%x", mask)
+	assert.Equal(t, "1", str)
 
+	mask = buildPenaltyMask(2)
+	str = fmt.Sprintf("%x", mask)
+	assert.Equal(t, "3", str)
 }

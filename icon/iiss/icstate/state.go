@@ -383,11 +383,7 @@ func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
 }
 
 func (s *State) GetOwnerByNode(node module.Address) module.Address {
-	owner := s.nodeOwnerCache.Get(node)
-	if owner == nil {
-		owner = node
-	}
-	return owner
+	return s.nodeOwnerCache.Get(node)
 }
 
 func (s *State) GetNodeByOwner(owner module.Address) module.Address {
@@ -398,11 +394,9 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	return pb.GetNode(owner)
 }
 
-func buildPenaltyMask(input *big.Int) (res uint32) {
-	mid := uint32(1)
-	for i := 0; i < int(input.Int64()); i++ {
-		res |= mid
-		mid <<= 1
+func buildPenaltyMask(input int) (res uint32) {
+	for i := 0; i < input; i++ {
+		res = (res << 1) | uint32(1)
 	}
 	return
 }

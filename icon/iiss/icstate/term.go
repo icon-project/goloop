@@ -104,7 +104,7 @@ func (p *PRepSnapshots) Clone() *PRepSnapshots {
 	}
 
 	size := p.Len()
-	pssList := make([]*PRepSnapshot, size, size)
+	pssList := make([]*PRepSnapshot, size)
 	pssMap := make(map[string]int)
 
 	for i, pss := range p.pssList {
@@ -120,7 +120,7 @@ func (p *PRepSnapshots) Clone() *PRepSnapshots {
 
 func (p *PRepSnapshots) toJSON() []interface{} {
 	size := p.Len()
-	jso := make([]interface{}, size, size)
+	jso := make([]interface{}, size)
 
 	for i, pss := range p.pssList {
 		jso[i] = pss.ToJSON()
@@ -191,7 +191,7 @@ func NewEmptyPRepSnapshots() *PRepSnapshots {
 
 func NewPRepSnapshots(preps *PReps, electedPRepCount int, br int64) *PRepSnapshots {
 	size := icutils.Min(preps.Size(), electedPRepCount)
-	var pssList []*PRepSnapshot = make([]*PRepSnapshot, size, size)
+	pssList := make([]*PRepSnapshot, size)
 	pssMap := make(map[string]int)
 	tbd := new(big.Int)
 

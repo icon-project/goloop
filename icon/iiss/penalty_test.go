@@ -17,10 +17,9 @@
 package iiss
 
 import (
-	"fmt"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"math/big"
 	"testing"
+
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -108,21 +107,4 @@ func TestPenalty_checkValidationPenalty(t *testing.T) {
 			assert.Equal(t, tt.want, ret)
 		})
 	}
-}
-
-func TestPenalty_bitOperation(t *testing.T) {
-	input := new(big.Int).SetInt64(30)
-	res := buildPenaltyMask(input)
-	str := fmt.Sprintf("%x", res)
-	assert.Equal(t, "3fffffff", str)
-
-	input = new(big.Int).SetInt64(1)
-	res = buildPenaltyMask(input)
-	str = fmt.Sprintf("%x", res)
-	assert.Equal(t, "1", str)
-
-	input = new(big.Int).SetInt64(2)
-	res = buildPenaltyMask(input)
-	str = fmt.Sprintf("%x", res)
-	assert.Equal(t, "3", str)
 }

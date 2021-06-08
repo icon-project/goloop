@@ -133,7 +133,7 @@ func (vd *validatorsData) NextPRepSnapshotIndex() int {
 
 func (vd *validatorsData) NewValidatorSet() []module.Validator {
 	size := vd.Len()
-	vSet := make([]module.Validator, size, size)
+	vSet := make([]module.Validator, size)
 	for i, node := range vd.nodeList {
 		vSet[i], _ = state.ValidatorFromAddress(node)
 	}
@@ -142,7 +142,7 @@ func (vd *validatorsData) NewValidatorSet() []module.Validator {
 
 func newValidatorsData(nodes []module.Address) *validatorsData {
 	size := len(nodes)
-	nodeList := make([]module.Address, size, size)
+	nodeList := make([]module.Address, size)
 	nodeMap := make(map[string]int)
 
 	for i, node := range nodes {

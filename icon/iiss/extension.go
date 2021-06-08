@@ -492,7 +492,10 @@ func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Addre
 }
 
 func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) {
-	global, err := s.Front.GetGlobal()
+	var global icstage.Global
+	var voters []module.Address
+
+	global, err = s.Front.GetGlobal()
 	if err != nil || global == nil {
 		return
 	}
@@ -512,7 +515,7 @@ func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) 
 	if proposer == nil {
 		return
 	}
-	_, voters, err := CompileVoters(s.pm, csi)
+	_, voters, err = CompileVoters(s.State, csi)
 	if err != nil || voters == nil {
 		return
 	}
@@ -585,7 +588,7 @@ func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Addres
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update unbonds")
 	}
 	unbondingCount := len(account.Unbonds())
-	if unbondingCount > int(s.State.GetUnbondingMax().Int64()) {
+	if unbondingCount > int(s.State.GetUnbondingMax()) {
 		return icmodule.IllegalArgumentError.Errorf("Too many unbonds %d", unbondingCount)
 	}
 	if account.Stake().Cmp(account.UsingStake()) == -1 {

@@ -204,61 +204,56 @@ func (s *State) SetRewardFund(rc *RewardFund) error {
 	return setValue(s.store, VarRewardFund, rc.Bytes())
 }
 
-func (s *State) GetUnbondingMax() *big.Int {
-	value := getValue(s.store, VarUnbondingMax).BigInt()
-	return value
+func (s *State) GetUnbondingMax() int64 {
+	return getValue(s.store, VarUnbondingMax).Int64()
 }
 
-func (s *State) SetUnbondingMax(value *big.Int) error {
-	if value.Sign() != 1 {
+func (s *State) SetUnbondingMax(value int64) error {
+	if value <= 0 {
 		return errors.IllegalArgumentError.New("UnbondingMax must have positive value")
 	}
 	return setValue(s.store, VarUnbondingMax, value)
 }
 
-func (s *State) GetValidationPenaltyCondition() *big.Int {
-	value := getValue(s.store, VarValidationPenaltyCondition).BigInt()
-	return value
+func (s *State) GetValidationPenaltyCondition() int64 {
+	return getValue(s.store, VarValidationPenaltyCondition).Int64()
 }
 
-func (s *State) SetValidationPenaltyCondition(value *big.Int) error {
-	if value.Sign() != 1 {
+func (s *State) SetValidationPenaltyCondition(value int) error {
+	if value <= 0 {
 		return errors.IllegalArgumentError.New("ValidationPenaltyCondition must have positive value")
 	}
 	return setValue(s.store, VarValidationPenaltyCondition, value)
 }
 
-func (s *State) GetConsistentValidationPenaltyCondition() *big.Int {
-	value := getValue(s.store, VarConsistentValidationPenaltyCondition).BigInt()
-	return value
+func (s *State) GetConsistentValidationPenaltyCondition() int64 {
+	return getValue(s.store, VarConsistentValidationPenaltyCondition).Int64()
 }
 
-func (s *State) SetConsistentValidationPenaltyCondition(value *big.Int) error {
-	if value.Sign() != 1 {
+func (s *State) SetConsistentValidationPenaltyCondition(value int64) error {
+	if value <= 0 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltyCondition must have positive value")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltyCondition, value)
 }
 
-func (s *State) GetConsistentValidationPenaltyMask() *big.Int {
-	value := getValue(s.store, VarConsistentValidationPenaltyMask).BigInt()
-	return value
+func (s *State) GetConsistentValidationPenaltyMask() int {
+	return int(getValue(s.store, VarConsistentValidationPenaltyMask).Int64())
 }
 
-func (s *State) SetConsistentValidationPenaltyMask(value *big.Int) error {
-	if value.Sign() != 1 || value.Int64() > 30 {
+func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
+	if value <= 0 || value > 30 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltyMask over range(1~30)")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRatio() *big.Int {
-	value := getValue(s.store, VarConsistentValidationPenaltySlashRatio).BigInt()
-	return value
+func (s *State) GetConsistentValidationPenaltySlashRatio() int {
+	return int(getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64())
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRatio(value *big.Int) error {
-	if value.Sign() != 1 {
+func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
+	if value <= 0 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)

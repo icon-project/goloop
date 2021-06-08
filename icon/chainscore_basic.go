@@ -161,19 +161,22 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetUnbondingMax(iconConfig.UnbondingMax.Value()); err != nil {
+		if err := es.State.SetUnbondingMax(iconConfig.UnbondingMax.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetValidationPenaltyCondition(iconConfig.ValidationPenaltyCondition.Value()); err != nil {
+		if err := es.State.SetValidationPenaltyCondition(int(iconConfig.ValidationPenaltyCondition.Int64())); err != nil {
 			return err
 		}
-		if err := es.State.SetConsistentValidationPenaltyCondition(iconConfig.ConsistentValidationPenaltyCondition.Value()); err != nil {
+		if err := es.State.SetConsistentValidationPenaltyCondition(
+			iconConfig.ConsistentValidationPenaltyCondition.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetConsistentValidationPenaltyMask(iconConfig.ConsistentValidationPenaltyMask.Value()); err != nil {
+		if err := es.State.SetConsistentValidationPenaltyMask(
+			iconConfig.ConsistentValidationPenaltyMask.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetConsistentValidationPenaltySlashRatio(iconConfig.ConsistentValidationPenaltySlashRatio.Value()); err != nil {
+		if err := es.State.SetConsistentValidationPenaltySlashRatio(
+			int(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
 			return err
 		}
 	}
