@@ -130,6 +130,7 @@ func (p *PReps) sort(br int64) {
 	})
 }
 
+// ResetAllStatus initializes all prep status including grade on term end
 func (p *PReps) ResetAllStatus(mainPRepCount, subPRepCount int, blockHeight int64) error {
 	mainPReps := 0
 	subPReps := 0
@@ -192,6 +193,14 @@ func (p *PReps) TotalDelegated() *big.Int {
 	return p.totalDelegated
 }
 
+func (p *PReps) GetTotalBondedDelegation(br int64) *big.Int {
+	tbd := new(big.Int)
+	for _, prep := range p.orderedPReps {
+		tbd.Add(tbd, prep.GetBondedDelegation(br))
+	}
+	return tbd
+}
+
 func (p *PReps) GetPRepByIndex(i int) *PRep {
 	if i < 0 || i >= len(p.orderedPReps) {
 		return nil
@@ -199,8 +208,8 @@ func (p *PReps) GetPRepByIndex(i int) *PRep {
 	return p.orderedPReps[i]
 }
 
-// NewOrderedPRepsWithState returns active prep list ordered by bonded delegation
-func NewOrderedPRepsWithState(state *State, logger log.Logger) (*PReps, error) {
+// newOrderedPRepsWithState returns active prep list ordered by bonded delegation
+func newOrderedPRepsWithState(state *State, logger log.Logger) (*PReps, error) {
 	if logger == nil {
 		logger = log.WithFields(log.Fields{
 			log.FieldKeyModule: "ICON",

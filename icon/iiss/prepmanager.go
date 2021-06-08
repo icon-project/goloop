@@ -18,8 +18,8 @@ type PRepManager struct {
 	state  *icstate.State
 }
 
-func (pm *PRepManager) ToJSON(totalStake *big.Int) map[string]interface{} {
-	preps, _ := icstate.NewOrderedPRepsWithState(pm.state, pm.logger)
+func (pm *PRepManager) ToJSON(totalStake *big.Int, br int64) map[string]interface{} {
+	preps, _ := pm.state.GetOrderedPReps()
 	if preps == nil {
 		return nil
 	}
@@ -28,12 +28,13 @@ func (pm *PRepManager) ToJSON(totalStake *big.Int) map[string]interface{} {
 	jso["totalStake"] = totalStake
 	jso["totalBonded"] = preps.TotalBonded()
 	jso["totalDelegated"] = preps.TotalDelegated()
+	jso["totalBondedDelegation"] = preps.GetTotalBondedDelegation(br)
 	jso["preps"] = preps.Size()
 	return jso
 }
 
 func (pm *PRepManager) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	preps, err := icstate.NewOrderedPRepsWithState(pm.state, pm.logger)
+	preps, err := pm.state.GetOrderedPReps()
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +180,7 @@ func (pm *PRepManager) GetPRepStatsInJSON(blockHeight int64) (map[string]interfa
 
 	size := len(pss)
 	jso := make(map[string]interface{})
-	psList := make([]interface{}, size, size)
+	psList := make([]interface{}, size)
 
 	for i := 0; i < size; i++ {
 		ps := pss[i]

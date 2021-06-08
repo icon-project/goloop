@@ -327,7 +327,8 @@ func (s *ExtensionStateImpl) applyCalculationResult(calculator *Calculator) erro
 
 func (s *ExtensionStateImpl) GetPRepManagerInJSON() map[string]interface{} {
 	totalStake := s.State.GetTotalStake()
-	return s.pm.ToJSON(totalStake)
+	br := s.State.GetBondRequirement()
+	return s.pm.ToJSON(totalStake, br)
 }
 
 func (s *ExtensionStateImpl) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
@@ -791,14 +792,18 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 	isDecentralized := s.IsDecentralized()
 	if !isDecentralized {
-		preps, err = icstate.NewOrderedPRepsWithState(s.State, s.logger)
-		if err != nil {
+		if preps, err = s.State.GetOrderedPReps(); err != nil {
 			return err
 		}
 		isDecentralized = s.State.IsDecentralizationConditionMet(revision, totalSupply, preps)
 	}
 
 	if isDecentralized {
+		if preps == nil {
+			if preps, err = s.State.GetOrderedPReps(); err != nil {
+				return err
+			}
+		}
 		// Reset the status of all active preps ordered by bondedDelegation
 		if err = preps.ResetAllStatus(mainPRepCount, subPRepCount, wc.BlockHeight()); err != nil {
 			return err

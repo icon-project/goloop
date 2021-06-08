@@ -98,7 +98,7 @@ func TestValidatorsData_clone(t *testing.T) {
 	size := 22
 	vd := newDummyValidatorsData(size)
 	vd2 := vd.clone()
-	assert.True(t, vd.equal(vd2))
+	assert.True(t, vd.equal(&vd2))
 
 	hash := vd.Hash()
 	assert.Zero(t, bytes.Compare(vd.Hash(), vd2.Hash()))

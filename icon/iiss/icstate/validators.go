@@ -76,7 +76,7 @@ func (vd *validatorsData) serialize() []byte {
 	return vd.serialized
 }
 
-func (vd *validatorsData) equal(other validatorsData) bool {
+func (vd *validatorsData) equal(other *validatorsData) bool {
 	if vd.Len() != other.Len() {
 		return false
 	}
@@ -189,7 +189,7 @@ func (vss *ValidatorsSnapshot) Equal(object icobject.Impl) bool {
 	if !ok {
 		return false
 	}
-	return vss.equal(other.validatorsData)
+	return vss.equal(&other.validatorsData)
 }
 
 // =======================================================

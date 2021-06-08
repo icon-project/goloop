@@ -545,3 +545,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	}
 	return false
 }
+
+func (s *State) GetOrderedPReps() (*PReps, error) {
+	return newOrderedPRepsWithState(s, s.logger)
+}
