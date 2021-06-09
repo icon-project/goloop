@@ -522,7 +522,7 @@ func (cs *consensus) notifySyncer() {
 }
 
 func (cs *consensus) processPrefetchItems() {
-	for i := 0; i < len(cs.prefetchItems); i++ {
+	for i := 0; i < len(cs.prefetchItems); {
 		pi := cs.prefetchItems[i]
 		if pi.Block().Height() < cs.height {
 			last := len(cs.prefetchItems) - 1
@@ -530,6 +530,7 @@ func (cs *consensus) processPrefetchItems() {
 			cs.prefetchItems[last] = nil
 			cs.prefetchItems = cs.prefetchItems[:last]
 			pi.Consume()
+			continue
 		} else if pi.Block().Height() == cs.height {
 			last := len(cs.prefetchItems) - 1
 			cs.prefetchItems[i] = cs.prefetchItems[last]
@@ -538,6 +539,7 @@ func (cs *consensus) processPrefetchItems() {
 			cs.processBlock(pi)
 			return
 		}
+		i++
 	}
 }
 
