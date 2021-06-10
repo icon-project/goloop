@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -35,7 +36,7 @@ var emptyValidatorsSnapshot = &ValidatorsSnapshot{
 }
 
 type validatorsData struct {
-	nodeList   []module.Address
+	nodeList   []*common.Address
 	nextPssIdx int
 
 	nodeMap    map[string]int
@@ -45,7 +46,7 @@ type validatorsData struct {
 
 func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) {
 	size = icutils.Min(prepSnapshots.Len(), size)
-	vd.nodeList = make([]module.Address, size)
+	vd.nodeList = make([]*common.Address, size)
 	vd.nodeMap = make(map[string]int)
 
 	for i := 0; i < size; i++ {
@@ -55,7 +56,7 @@ func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerT
 			node = owner
 		}
 
-		vd.nodeList[i] = node
+		vd.nodeList[i] = common.AddressToPtr(node)
 		vd.nodeMap[icutils.ToKey(node)] = i
 	}
 	vd.nextPssIdx = size
@@ -84,7 +85,7 @@ func (vd *validatorsData) equal(other *validatorsData) bool {
 		return false
 	}
 	for i, node := range vd.nodeList {
-		if node != other.nodeList[i] {
+		if !node.Equal(other.nodeList[i]) {
 			return false
 		}
 	}
@@ -94,7 +95,7 @@ func (vd *validatorsData) equal(other *validatorsData) bool {
 func (vd *validatorsData) clone() validatorsData {
 	size := len(vd.nodeList)
 	nodeMap := make(map[string]int)
-	nodeList := make([]module.Address, size)
+	nodeList := make([]*common.Address, size)
 
 	for i, node := range vd.nodeList {
 		nodeList[i] = node
@@ -142,11 +143,11 @@ func (vd *validatorsData) NewValidatorSet() []module.Validator {
 
 func newValidatorsData(nodes []module.Address) validatorsData {
 	size := len(nodes)
-	nodeList := make([]module.Address, size)
+	nodeList := make([]*common.Address, size)
 	nodeMap := make(map[string]int)
 
 	for i, node := range nodes {
-		nodeList[i] = node
+		nodeList[i] = common.AddressToPtr(node)
 		nodeMap[icutils.ToKey(node)] = i
 	}
 
@@ -169,8 +170,8 @@ func (vss *ValidatorsSnapshot) Version() int {
 }
 
 func (vss *ValidatorsSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	if err := decoder.DecodeListOf(&vss.nodeList, &vss.nextPssIdx); err != nil {
-		return err
+	if _, err := decoder.DecodeMulti(&vss.nodeList, &vss.nextPssIdx); err != nil {
+		return codec.ErrInvalidFormat
 	}
 
 	vss.nodeMap = make(map[string]int)
@@ -181,7 +182,7 @@ func (vss *ValidatorsSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (vss *ValidatorsSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(vss.nodeList, vss.nextPssIdx)
+	return encoder.EncodeMulti(vss.nodeList, vss.nextPssIdx)
 }
 
 func (vss *ValidatorsSnapshot) Equal(object icobject.Impl) bool {
@@ -217,7 +218,7 @@ func (vs *ValidatorsState) Set(i, nextPssIdx int, node module.Address) {
 
 	delete(vs.nodeMap, icutils.ToKey(old))
 
-	vs.nodeList[i] = node
+	vs.nodeList[i] = common.AddressToPtr(node)
 	vs.nodeMap[icutils.ToKey(node)] = i
 	if nextPssIdx >= 0 {
 		vs.nextPssIdx = nextPssIdx

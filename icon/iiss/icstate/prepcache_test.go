@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func newDummyObjectStore(readonly bool) containerdb.ObjectStoreState {
@@ -23,6 +23,12 @@ func newDummyObjectStore(readonly bool) containerdb.ObjectStoreState {
 func newDummyState(readonly bool) *State {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	return NewStateFromSnapshot(NewSnapshot(database, nil), readonly, nil)
+}
+
+func flushAndNewState(s *State, readonly bool) *State {
+	ss := s.GetSnapshot()
+	ss.Flush()
+	return NewStateFromSnapshot(NewSnapshot(ss.store.Database(), ss.Bytes()), false, nil)
 }
 
 func newDummyRegInfo(i int) *RegInfo {
@@ -69,8 +75,8 @@ func TestPRepBaseCache(t *testing.T) {
 	err = base.SetRegInfo(ri2)
 	assert.NoError(t, err)
 
-	// DB write
-	s.prepBaseCache.Flush()
+	s = flushAndNewState(s, false)
+
 	base, created = s.prepBaseCache.Get(addr2, false)
 	assert.NotNil(t, base)
 	assert.False(t, created)
@@ -143,9 +149,7 @@ func TestPRepStatusCache(t *testing.T) {
 	status.SetVTotal(vTotal)
 	assert.Equal(t, vTotal, status.VTotal())
 
-	// Flush & ClearCache
-	s.prepStatusCache.Flush()
-	s.prepStatusCache.Clear()
+	s = flushAndNewState(s, false)
 
 	// Reset() reverts Clear(), should get after reset()
 	status, created = s.prepStatusCache.Get(addr2, false)

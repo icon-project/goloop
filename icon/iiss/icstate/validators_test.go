@@ -126,6 +126,8 @@ func TestValidatorsSnapshot_RLPEncodeDecode(t *testing.T) {
 	err := state.SetValidatorsSnapshot(vss)
 	assert.NoError(t, err)
 
+	state = flushAndNewState(state, false)
+
 	vss2 := state.GetValidatorsSnapshot()
 	assert.NotNil(t, vss2)
 
