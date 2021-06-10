@@ -21,4 +21,8 @@ import "github.com/icon-project/goloop/common/db"
 const (
 	// IDToHash maps id of a v1 block to hash of the block
 	IDToHash db.BucketID = "I"
+
+	// BlockMerkle basically maps node hash to block merkle node for v1 block.
+	// In addition, it also has merkleTreeData.
+	BlockMerkle db.BucketID = "H"
 )
