@@ -1,3 +1,5 @@
+// +build rocksdb
+
 /*
  * Copyright 2021 ICON Foundation
  *
@@ -13,8 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// +build rocksdb
 
 package db
 
