@@ -24,6 +24,8 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
+const defaultMerkleTreeKey = "merkleTree"
+
 var ErrVerify = errors.NewBase(errors.IllegalArgumentError, "VerifyError")
 
 type Prover interface {
@@ -47,7 +49,7 @@ type MerkleTree interface {
 }
 
 type merkleTreeData struct {
-	Len      int64
+	Cap      int64
 	RootHash []byte
 }
 
@@ -64,14 +66,29 @@ func LevelFromLen(len int64) int {
 	return (bits.Len64(uint64(len)-1) + 3) / 4
 }
 
+func CapOfMerkleTree(bk db.Bucket, storageKey string) (int64, error) {
+	mtd := merkleTreeData{}
+	cbk := db.NewCodedBucketFromBucket(bk, nil)
+	if len(storageKey) == 0 {
+		storageKey = defaultMerkleTreeKey
+	}
+	if err := cbk.Get(db.Raw(storageKey), &mtd); err != nil {
+		return -1, err
+	}
+	return mtd.Cap, nil
+}
+
 func NewMerkleTreeFromDB(
 	bk db.Bucket,
-	storageKey []byte,
+	storageKey string,
 	cacheCap int,
 ) (MerkleTree, error) {
 	mtd := merkleTreeData{}
 	cbk := db.NewCodedBucketFromBucket(bk, nil)
-	if err := cbk.Get(storageKey, &mtd); err != nil {
+	if len(storageKey) == 0 {
+		storageKey = defaultMerkleTreeKey
+	}
+	if err := cbk.Get(db.Raw(storageKey), &mtd); err != nil {
 		return nil, err
 	}
 	rootHash, err := newNodeFromBytes(mtd.RootHash)
@@ -80,7 +97,7 @@ func NewMerkleTreeFromDB(
 	}
 	return &merkleTree{
 		bdb:      newCachedNodeDB(bk, cacheCap),
-		level:    LevelFromLen(mtd.Len),
+		level:    LevelFromLen(mtd.Cap),
 		rootHash: rootHash,
 	}, nil
 }

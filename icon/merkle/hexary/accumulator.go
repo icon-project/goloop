@@ -76,6 +76,9 @@ func (ba *accumulator) Len() int64 {
 }
 
 func (ba *accumulator) Finalize(merkleKey string) (rootHash []byte, length int64, err error) {
+	if len(merkleKey) == 0 {
+		merkleKey = defaultMerkleTreeKey
+	}
 	var prevHash []byte
 	for _, r := range ba.data.Roots {
 		if prevHash != nil {
@@ -96,14 +99,14 @@ func (ba *accumulator) Finalize(merkleKey string) (rootHash []byte, length int64
 		ba.data.Roots = append(ba.data.Roots, root)
 	}
 	mtd := merkleTreeData{
-		Len: ba.data.Len,
+		Cap:      ba.data.Len,
 		RootHash: root.Get(0),
 	}
 	err = db.NewCodedBucketFromBucket(ba.treeBucket, nil).Set(merkleKey, &mtd)
 	if err != nil {
 		return nil, 0, err
 	}
-	return mtd.RootHash, mtd.Len, nil
+	return mtd.RootHash, mtd.Cap, nil
 }
 
 // NewAccumulator creates a new accumulator. Merkle node is written in tree
