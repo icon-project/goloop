@@ -299,7 +299,7 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		}
 		logger := log.GlobalLogger()
 		fc := lcstore.NewForwardCache(lcDB, logger, cc)
-		if executor, err := NewExecutor(logger, fc, vc.GetString("data")); err != nil {
+		if executor, err := NewExecutor(logger, fc, vc.GetString("data"), vc.GetString("db_type")); err != nil {
 			return err
 		} else {
 			vc.Set(vcKeyExecutor, executor)
@@ -310,6 +310,7 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	flags.Int("max_blocks", 32, "Max number of blocks to cache")
 	flags.Int("max_workers", 8, "Max number of workers for cache")
 	flags.Int("max_rps", 0, "Max RPS for the server(0:unlimited)")
+	flags.String("db_type", "goleveldb", "Database type for storage")
 	vc.BindPFlags(flags)
 
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))

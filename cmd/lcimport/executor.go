@@ -101,8 +101,8 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
-func NewExecutor(logger log.Logger, cs Store, data string) (*Executor, error) {
-	database, err := db.Open(data, "goleveldb", "database")
+func NewExecutor(logger log.Logger, cs Store, data string, dbtype string) (*Executor, error) {
+	database, err := db.Open(data, dbtype, "database")
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
 	}
