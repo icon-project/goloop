@@ -45,11 +45,12 @@ func TestPReps_ResetAllStatus(t *testing.T) {
 	subPRepCount := 78
 	electedPRepCount := mainPRepCount + subPRepCount
 	bh := int64(100)
+	penaltyMask := 0x3FFFFFFF
 
 	preps := newDummyPReps(size, br)
 	assert.Equal(t, size, preps.Size())
 
-	err = preps.ResetAllStatus(mainPRepCount, subPRepCount, bh)
+	err = preps.ResetAllStatus(bh, mainPRepCount, subPRepCount, penaltyMask)
 	assert.NoError(t, err)
 	assert.Equal(t, mainPRepCount, preps.GetPRepSize(Main))
 	assert.Equal(t, subPRepCount, preps.GetPRepSize(Sub))

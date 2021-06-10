@@ -26,11 +26,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
-const (
-	prepStatusVersion1 = iota + 1
-	prepStatusVersion  = prepStatusVersion1
-)
-
 type Grade int
 
 const (
@@ -132,8 +127,9 @@ func (ps *PRepStatus) IsActive() bool {
 	return ps.status == Active
 }
 
-func (ps *PRepStatus) VPenaltyMask() uint32 {
-	return ps.vPenaltyMask
+// IsAlreadyPenalized returns true if this PRep got penalized during this term
+func (ps *PRepStatus) IsAlreadyPenalized() bool {
+	return (ps.vPenaltyMask & 1) != 0
 }
 
 func (ps *PRepStatus) GetVPenaltyCount() int {
@@ -428,29 +424,24 @@ func (ps *PRepStatus) ResetVFailContOffset() {
 	ps.vFailContOffset = 0
 }
 
-func (ps *PRepStatus) SetVPenaltyMask(p uint32) {
+func (ps *PRepStatus) setVPenaltyMask(p uint32) {
 	ps.checkWritable()
 	ps.vPenaltyMask = p
 }
 
-func (ps *PRepStatus) IncrementVPenalty() {
+func (ps *PRepStatus) setLastHeight(blockHeight int64) {
 	ps.checkWritable()
-	ps.vPenaltyMask |= 1
+	ps.lastHeight = blockHeight
 }
 
-func (ps *PRepStatus) ShiftVPenaltyMask(mask uint32) {
+func (ps *PRepStatus) setLastState(lastState ValidationState) {
+	ps.checkWritable()
+	ps.lastState = lastState
+}
+
+func (ps *PRepStatus) shiftVPenaltyMask(mask uint32) {
 	ps.checkWritable()
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & mask
-}
-
-func (ps *PRepStatus) SetLastState(l ValidationState) {
-	ps.checkWritable()
-	ps.lastState = l
-}
-
-func (ps *PRepStatus) SetLastHeight(h int64) {
-	ps.checkWritable()
-	ps.lastHeight = h
 }
 
 // UpdateBlockVoteStats updates Penalty-related info based on ConsensusInfo
@@ -502,8 +493,8 @@ func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error 
 	return nil
 }
 
-// SyncBlockVoteStats updates vote stats data at a given blockHeight
-func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
+// syncBlockVoteStats updates vote stats data at a given blockHeight
+func (ps *PRepStatus) syncBlockVoteStats(blockHeight int64) error {
 	ps.checkWritable()
 	lh := ps.lastHeight
 	if blockHeight < lh {
@@ -520,14 +511,43 @@ func (ps *PRepStatus) SyncBlockVoteStats(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatus) OnPenaltyImposed(blockHeight int64) error {
+func (ps *PRepStatus) ImposePenalty(blockHeight int64) error {
 	ps.checkWritable()
-	if err := ps.SyncBlockVoteStats(blockHeight); err != nil {
+	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vPenaltyMask |= 1
 	ps.vFailContOffset = 0
 	ps.grade = Candidate
+	return nil
+}
+
+func (ps *PRepStatus) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask int) error {
+	ps.checkWritable()
+	if ps.grade == newGrade {
+		return nil
+	}
+	if ps.grade == Main && ps.lastState == None {
+		panic(errors.Errorf("Invalid PRepStatus: grade=%v lastState=%v", ps.grade, ps.lastState))
+	}
+	if ps.grade != Main && ps.lastState != None {
+		panic(errors.Errorf("Invalid PRepStatus: grade=%v lastState=%v", ps.grade, ps.lastState))
+	}
+
+	if newGrade == Main {
+		if ps.lastState == None {
+			ps.lastState = Ready
+			ps.lastHeight = blockHeight
+		}
+		ps.shiftVPenaltyMask(buildPenaltyMask(penaltyMask))
+	} else {
+		if ps.lastState != None {
+			if err := ps.syncBlockVoteStats(blockHeight); err != nil {
+				return err
+			}
+		}
+	}
+	ps.grade = newGrade
 	return nil
 }
 

@@ -943,7 +943,7 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err != nil {
 		return err
 	}
-	if err = es.DisqualifyPRep(address); err != nil {
+	if err = es.DisqualifyPRep(s.cc, address); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to disqualify PRep: from=%v prep=%v",

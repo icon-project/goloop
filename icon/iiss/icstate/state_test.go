@@ -110,3 +110,87 @@ func TestPenalty_buildPenaltyMask(t *testing.T) {
 	str = fmt.Sprintf("%x", mask)
 	assert.Equal(t, "3", str)
 }
+
+func Test_checkValidationPenalty(t *testing.T) {
+	ValidationPenaltyCondition := int64(30)
+
+	type args struct {
+		vPenaltyMask uint32
+		lastState    ValidationState
+		lastBH       int64
+		blockHeight  int64
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"True",
+			args{
+				0,
+				Failure,
+				0,
+				ValidationPenaltyCondition,
+			},
+			true,
+		},
+		{
+			"False - State(None)",
+			args{
+				0,
+				None,
+				0,
+				ValidationPenaltyCondition,
+			},
+			false,
+		},
+		{
+			"False - State(Success)",
+			args{
+				0,
+				Success,
+				0,
+				ValidationPenaltyCondition,
+			},
+			false,
+		},
+		{
+			"False - Not enough fail count)",
+			args{
+				0,
+				Failure,
+				0,
+				ValidationPenaltyCondition - 100,
+			},
+			false,
+		},
+		{
+			"False - already got penalty)",
+			args{
+				1,
+				Failure,
+				0,
+				ValidationPenaltyCondition,
+			},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := tt.args
+			ps := NewPRepStatus()
+			ps.setVPenaltyMask(in.vPenaltyMask)
+			ps.setLastState(in.lastState)
+			ps.setLastHeight(in.lastBH)
+
+			ret := checkValidationPenalty(ps, in.blockHeight, ValidationPenaltyCondition)
+
+			assert.Equal(t, tt.want, ret)
+		})
+	}
+}
+
+

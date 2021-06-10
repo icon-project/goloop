@@ -22,7 +22,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -42,15 +41,11 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	if ps == nil {
 		return nil
 	}
-	if ps.LastState() != icstate.Failure {
-		return nil
-	}
 
 	blockHeight := cc.BlockHeight()
 
 	// Penalty check
-	penaltyCondition := s.State.GetValidationPenaltyCondition()
-	if !checkValidationPenalty(ps, blockHeight, penaltyCondition) {
+	if !s.State.CheckValidationPenalty(ps, blockHeight) {
 		return nil
 	}
 
@@ -69,8 +64,7 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	)
 
 	// Slashing
-	penaltyCondition = s.State.GetConsistentValidationPenaltyCondition()
-	if checkConsistentValidationPenalty(ps, penaltyCondition) {
+	if s.State.CheckConsistentValidationPenalty(ps) {
 		slashRatio := s.State.GetConsistentValidationPenaltySlashRatio()
 		if err = s.slash(cc, owner, slashRatio); err != nil {
 			return err
@@ -79,14 +73,6 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 
 	// Record event for reward calculation
 	return s.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
-}
-
-func checkValidationPenalty(ps *icstate.PRepStatus, blockHeight, condition int64) bool {
-	return (ps.VPenaltyMask()&1 == 0) && ps.GetVFailCont(blockHeight) >= condition
-}
-
-func checkConsistentValidationPenalty(ps *icstate.PRepStatus, condition int64) bool {
-	return ps.GetVPenaltyCount() >= int(condition)
 }
 
 func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address, ratio int) error {

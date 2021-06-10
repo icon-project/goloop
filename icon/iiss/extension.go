@@ -510,12 +510,13 @@ func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) 
 
 func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
 	var err error
+	blockHeight := cc.BlockHeight()
 
-	if err = s.State.DisablePRep(owner, icstate.Unregistered); err != nil {
+	if err = s.State.DisablePRep(owner, icstate.Unregistered, blockHeight); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
 
-	err = s.addEventEnable(cc.BlockHeight(), owner, icstage.ESDisablePermanent)
+	err = s.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent)
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
@@ -528,9 +529,10 @@ func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner modul
 	return err
 }
 
-func (s *ExtensionStateImpl) DisqualifyPRep(owner module.Address) error {
+func (s *ExtensionStateImpl) DisqualifyPRep(cc contract.CallContext, owner module.Address) error {
 	// TODO: add PRepDisqualified eventlog
-	return s.State.DisablePRep(owner, icstate.Disqualified)
+	blockHeight := cc.BlockHeight()
+	return s.State.DisablePRep(owner, icstate.Disqualified, blockHeight)
 }
 
 func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
@@ -792,7 +794,8 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 			}
 		}
 		// Reset the status of all active preps ordered by bondedDelegation
-		if err = preps.ResetAllStatus(mainPRepCount, subPRepCount, wc.BlockHeight()); err != nil {
+		penaltyMask := s.State.GetConsistentValidationPenaltyMask()
+		if err = preps.ResetAllStatus(wc.BlockHeight(), mainPRepCount, subPRepCount, penaltyMask); err != nil {
 			return err
 		}
 	} else {

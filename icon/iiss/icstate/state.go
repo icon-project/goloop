@@ -378,7 +378,7 @@ func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
 		return errors.Errorf("PRep not found: node=%v owner=%v", node, owner)
 	}
 
-	ps.ShiftVPenaltyMask(buildPenaltyMask(s.GetConsistentValidationPenaltyMask()))
+	ps.shiftVPenaltyMask(buildPenaltyMask(s.GetConsistentValidationPenaltyMask()))
 	return nil
 }
 
@@ -403,14 +403,14 @@ func buildPenaltyMask(input int) (res uint32) {
 
 func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeight int64) error {
 	if !voted {
-		s.logger.Debugf("Nil vote: bh=%d addr=%s", blockHeight, owner)
+		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
 	}
 	ps, _ := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	err := ps.UpdateBlockVoteStats(blockHeight, voted)
-	s.logger.Debugf("voted=%t %+v", voted, ps)
+	s.logger.Debugf("owner=%v voted=%t %+v", owner, voted, ps)
 	return err
 }
 
@@ -460,18 +460,20 @@ func (s *State) ImposePenalty(owner module.Address, ps *PRepStatus, blockHeight 
 	var err error
 
 	// Update status of the penalized main prep
-	s.logger.Debugf("ImposePenalty() start: bh=%d %+v", blockHeight, ps)
+	s.logger.Debugf("ImposePenalty() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
 	oldGrade := ps.Grade()
-	err = ps.OnPenaltyImposed(blockHeight)
-
-	s.logger.Debugf("ImposePenalty() end: bh=%d %+v", blockHeight, ps)
+	err = ps.ImposePenalty(blockHeight)
+	s.logger.Debugf("ImposePenalty() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	if err != nil {
+		return err
+	}
 
 	// If a penalized prep is a main prep, choose a new validator from prep snapshots
-	if err == nil && oldGrade == Main {
-		err = s.replaceValidatorByOwner(owner)
+	if oldGrade == Main {
+		return s.replaceValidatorByOwner(owner, blockHeight)
 	}
-	return err
+	return nil
 }
 
 // Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
@@ -504,7 +506,7 @@ func (s *State) Slash(owner module.Address, amount *big.Int) error {
 	return s.SetTotalBond(new(big.Int).Sub(s.GetTotalBond(), amount))
 }
 
-func (s *State) DisablePRep(owner module.Address, status Status) error {
+func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int64) error {
 	ps, _ := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
@@ -515,7 +517,7 @@ func (s *State) DisablePRep(owner module.Address, status Status) error {
 	ps.SetStatus(status)
 
 	if oldGrade == Main {
-		if err := s.replaceValidatorByOwner(owner); err != nil {
+		if err := s.replaceValidatorByOwner(owner, blockHeight); err != nil {
 			return err
 		}
 	}
@@ -635,4 +637,22 @@ func (s *State) GetPRepManagerInJSON() map[string]interface{} {
 		"totalBondedDelegation": preps.GetTotalBondedDelegation(br),
 		"preps": preps.Size(),
 	}
+}
+
+func (s *State) CheckValidationPenalty(ps *PRepStatus, blockHeight int64) bool {
+	condition := s.GetValidationPenaltyCondition()
+	return checkValidationPenalty(ps, blockHeight, condition)
+}
+
+func checkValidationPenalty(ps *PRepStatus, blockHeight, condition int64) bool {
+	return !ps.IsAlreadyPenalized() && ps.GetVFailCont(blockHeight) >= condition
+}
+
+func (s *State) CheckConsistentValidationPenalty(ps *PRepStatus) bool {
+	condition := int(s.GetConsistentValidationPenaltyCondition())
+	return checkConsistentValidationPenalty(ps, condition)
+}
+
+func checkConsistentValidationPenalty(ps *PRepStatus, condition int) bool {
+	return ps.GetVPenaltyCount() >= condition
 }

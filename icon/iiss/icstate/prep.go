@@ -100,35 +100,25 @@ func (p *PReps) sort(br int64) {
 }
 
 // ResetAllStatus initializes all prep status including grade on term end
-func (p *PReps) ResetAllStatus(mainPRepCount, subPRepCount int, blockHeight int64) error {
+func (p *PReps) ResetAllStatus(blockHeight int64, mainPRepCount, subPRepCount, penaltyMask int) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
 
+	var newGrade Grade
 	for i, prep := range p.orderedPReps {
-		ls := prep.LastState()
-
 		if i < mainPRepCount {
-			prep.SetGrade(Main)
+			newGrade = Main
 			mainPReps++
 		} else if i < electedPRepCount {
-			prep.SetGrade(Sub)
+			newGrade = Sub
 			subPReps++
 		} else {
-			prep.SetGrade(Candidate)
+			newGrade = Candidate
 		}
 
-		if prep.Grade() == Main {
-			if ls == None {
-				prep.SetLastState(Ready)
-				prep.SetLastHeight(blockHeight)
-			}
-		} else {
-			if ls != None {
-				if err := prep.SyncBlockVoteStats(blockHeight); err != nil {
-					return err
-				}
-			}
+		if err := prep.ChangeGrade(newGrade, blockHeight, penaltyMask); err != nil {
+			return err
 		}
 	}
 

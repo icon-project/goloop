@@ -333,7 +333,7 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 				vPenaltyMask: in.vPenaltyMask,
 			}
 
-			ps.ShiftVPenaltyMask(in.mask)
+			ps.shiftVPenaltyMask(in.mask)
 
 			assert.Equal(t, tt.want, ps.vPenaltyMask)
 		})
@@ -633,7 +633,7 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 				vPenaltyMask:    init.vpm,
 			}
 
-			err = ps.SyncBlockVoteStats(in.bh)
+			err = ps.syncBlockVoteStats(in.bh)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -706,7 +706,7 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 				vPenaltyMask:    init.vpm,
 			}
 
-			err = ps.OnPenaltyImposed(bh)
+			err = ps.ImposePenalty(bh)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
