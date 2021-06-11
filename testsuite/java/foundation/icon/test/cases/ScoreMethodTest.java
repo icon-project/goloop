@@ -17,7 +17,9 @@
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
+import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -145,6 +147,7 @@ public class ScoreMethodTest {
     }
 
     final static int RpcCodeBase = -30000;
+    final static int ResultContractNotFound = 2;
     final static int ResultInvalidFormat = 5;
     final static int ResultAccessDenied = 9;
     final static int RpcInvalidFormat = RpcCodeBase - ResultInvalidFormat;
@@ -241,6 +244,56 @@ public class ScoreMethodTest {
         }
         LOG.infoExiting();
 
+        LOG.infoExiting();
+    }
+
+    @Test
+    void internalCallToEOA() throws Exception {
+        LOG.infoEntering("internalCallToEOA");
+        var tempWallet = KeyWallet.create();
+        var invalidContract = new Address(Address.AddressPrefix.CONTRACT,
+                IconKeys.getAddressHash(tempWallet.getPublicKey().toByteArray()));
+
+        var params = new ArrayList<RpcObject>();
+        var expects = new ArrayList<BigInteger>();
+        // Success: valid contract
+        params.add(new RpcObject.Builder()
+                .put("addr", new RpcValue(methodCaller.getAddress()))
+                .build());
+        expects.add(BigInteger.ZERO);
+        // Failure: invalid contract
+        params.add(new RpcObject.Builder()
+                .put("addr", new RpcValue(invalidContract))
+                .build());
+        expects.add(BigInteger.valueOf(ResultContractNotFound));
+        // Success: existing EOA
+        params.add(new RpcObject.Builder()
+                .put("addr", new RpcValue(owner.getAddress()))
+                .build());
+        expects.add(BigInteger.ZERO);
+        // Success: non-existing EOA
+        params.add(new RpcObject.Builder()
+                .put("addr", new RpcValue(tempWallet.getAddress()))
+                .build());
+        expects.add(BigInteger.ZERO);
+
+        var txs = new ArrayList<Bytes>();
+        for (RpcObject param : params) {
+            txs.add(methodCaller.invoke(owner, "intercallProxy", param));
+        }
+        for (int i = 0 ; i < txs.size(); i++) {
+            var tx = txs.get(i);
+            var expect = expects.get(i);
+            LOG.info("case" + i + ": " + tx.toHexString(true));
+            var result = txHandler.getResult(tx);
+            if (expect.equals(BigInteger.ZERO)) {
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            } else {
+                assertEquals(Constants.STATUS_FAILURE, result.getStatus());
+                var failure = result.getFailure();
+                assertEquals(expect, failure.getCode());
+            }
+        }
         LOG.infoExiting();
     }
 }

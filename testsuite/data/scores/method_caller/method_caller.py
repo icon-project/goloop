@@ -3,6 +3,11 @@ from iconservice import *
 TAG = 'MethodCaller'
 
 
+def require(condition: bool):
+    if not condition:
+        revert("Unexpected return value")
+
+
 class IMethodCaller(InterfaceScore):
     @interface
     def externalDummy(self):
@@ -150,3 +155,12 @@ class MethodCaller(IconScoreBase):
         score.externalDummy()
         Logger.debug('readonlyCallExternalDummy#3')
         return 0
+
+    @external
+    def intercallProxy(self, addr: Address):
+        score = self.create_interface_score(addr, IMethodCaller)
+        value = score.readonlyReturnInt()
+        if addr.is_contract:
+            require(value == 0)
+        else:
+            require(value is None)
