@@ -428,8 +428,10 @@ func NewBonderList(param []interface{}) (BonderList, error) {
 	if count > getMaxBonderListCount() {
 		return nil, scoreresult.InvalidParameterError.Errorf("Too many bonder List %d", count)
 	}
-	bl := make([]*common.Address, 0)
-	for _, p := range param {
+	bonderList := make([]*common.Address, count)
+	bonderMap := make(map[string]int)
+
+	for i, p := range param {
 		b := new(common.Address)
 		bs, err := json.Marshal(p)
 		if err != nil {
@@ -438,7 +440,13 @@ func NewBonderList(param []interface{}) (BonderList, error) {
 		if err = json.Unmarshal(bs, b); err != nil {
 			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
 		}
-		bl = append(bl, b)
+
+		key := icutils.ToKey(b)
+		if bonderMap[key] > 0 {
+			return nil, scoreresult.InvalidParameterError.Errorf("Duplicate bonder: %v", b)
+		}
+		bonderMap[key]++
+		bonderList[i] = b
 	}
-	return bl, nil
+	return bonderList, nil
 }

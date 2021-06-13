@@ -346,7 +346,6 @@ func (s *State) replaceValidatorByNode(node module.Address, blockHeight int64) e
 	}
 
 	if ps != nil {
-		s.logger.Debugf("OnElectedMainPRep(): bh=%d owner=%v", blockHeight, newOwner)
 		penaltyMask := s.GetConsistentValidationPenaltyMask()
 		if err := ps.ChangeGrade(Main, blockHeight, penaltyMask); err != nil {
 			return err
