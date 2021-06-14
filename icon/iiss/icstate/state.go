@@ -273,6 +273,8 @@ func (s *State) ClearCache() {
 	s.unstakingTimerCache.Clear()
 	s.unbondingTimerCache.Clear()
 	s.nodeOwnerCache.Clear()
+	s.prepBaseCache.Clear()
+	s.prepStatusCache.Clear()
 	// TODO clear other caches
 	s.store.ClearCache()
 }

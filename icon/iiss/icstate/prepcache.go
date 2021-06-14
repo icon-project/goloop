@@ -56,6 +56,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepB
 }
 
 func (c *PRepBaseCache) Clear() {
+	c.Flush()
 	c.bases = make(map[string]*PRepBase)
 }
 
@@ -137,6 +138,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRe
 }
 
 func (c *PRepStatusCache) Clear() {
+	c.Flush()
 	c.statuses = make(map[string]*PRepStatus)
 }
 
