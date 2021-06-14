@@ -3,7 +3,6 @@ package icstate
 import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -57,30 +56,24 @@ func (c *NodeOwnerCache) get(node module.Address, fallback module.Address) modul
 }
 
 func (c *NodeOwnerCache) Contains(node module.Address) bool {
-	key := icutils.ToKey(node)
-	owner := c.nodeToOwner[key]
-	if owner != nil {
-		return true
-	}
-	o := c.dict.Get(node)
-	return o != nil
+	return c.get(node, nil) != nil
 }
 
 func (c *NodeOwnerCache) Clear() {
-	c.nodeToOwner = make(map[string]module.Address)
+	c.Flush()
 }
 
 func (c *NodeOwnerCache) Reset() {
-	c.Clear()
+	c.nodeToOwner = make(map[string]module.Address)
 }
 
 func (c *NodeOwnerCache) Flush() {
 	for node, owner := range c.nodeToOwner {
-		o := icobject.NewBytesObject(owner.Bytes())
-		if err := c.dict.Set(node, o); err != nil {
+		if err := c.dict.Set(node, owner); err != nil {
 			panic(errors.Errorf("DictDB.Set(%s, %s) is failed", node, owner))
 		}
 	}
+	c.nodeToOwner = make(map[string]module.Address)
 }
 
 func newNodeOwnerCache(store containerdb.ObjectStoreState) *NodeOwnerCache {

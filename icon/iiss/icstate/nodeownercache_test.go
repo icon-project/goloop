@@ -5,17 +5,51 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
 
-func newDummyNodeOwnerCache(readonly bool) *NodeOwnerCache {
+type dummyObjectStore struct {
+	Database db.Database
+	Trie     trie.MutableForObject
+	containerdb.ObjectStoreState
+}
+
+func newDummyObjectStore(readonly bool) *dummyObjectStore {
+	dbase := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+	t := trie_manager.NewMutableForObject(dbase, nil, icobject.ObjectType)
+	os := icobject.NewObjectStoreState(t)
+	return &dummyObjectStore{
+		Database:         dbase,
+		Trie:             t,
+		ObjectStoreState: os,
+	}
+}
+
+func (os *dummyObjectStore) flushAndNewStore() *dummyObjectStore {
+	ss := os.Trie.GetSnapshot()
+	ss.Flush()
+	trie := trie_manager.NewMutableForObject(os.Database, ss.Hash(),icobject.ObjectType)
+	os2 := icobject.NewObjectStoreState(trie)
+	return &dummyObjectStore{
+		Database:         os.Database,
+		Trie:             trie,
+		ObjectStoreState: os2,
+	}
+}
+
+func newDummyNodeOwnerCache(readonly bool) (*NodeOwnerCache, *dummyObjectStore) {
 	store := newDummyObjectStore(false)
-	return newNodeOwnerCache(store)
+	return newNodeOwnerCache(store), store
 }
 
 func TestNodeOwnerCache_Clear(t *testing.T) {
 	var err error
-	cache := newDummyNodeOwnerCache(false)
+	cache, store := newDummyNodeOwnerCache(false)
 
 	for i := 0; i < 5; i++ {
 		owner := newDummyAddress(i)
@@ -28,21 +62,6 @@ func TestNodeOwnerCache_Clear(t *testing.T) {
 		owner := newDummyAddress(i)
 		node := newDummyAddress(i + 100)
 		assert.True(t, owner.Equal(cache.Get(node)))
-	}
-
-	cache.Clear()
-
-	for i := 0; i < 5; i++ {
-		owner := newDummyAddress(i)
-		node := newDummyAddress(i + 100)
-		assert.False(t, owner.Equal(cache.Get(node)))
-	}
-
-	for i := 0; i < 5; i++ {
-		owner := newDummyAddress(i)
-		node := newDummyAddress(i + 100)
-		err = cache.Add(node, owner)
-		assert.NoError(t, err)
 	}
 
 	cache.Flush()
@@ -53,9 +72,33 @@ func TestNodeOwnerCache_Clear(t *testing.T) {
 		assert.True(t, owner.Equal(cache.Get(node)))
 	}
 
-	cache.Clear()
+	store = store.flushAndNewStore()
+	cache = newNodeOwnerCache(store)
 
 	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, owner.Equal(cache.Get(node)))
+	}
+
+	for i := 5; i < 10; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		err = cache.Add(node, owner)
+		assert.NoError(t, err)
+	}
+
+	cache.Clear()
+
+	for i := 0; i < 10; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, owner.Equal(cache.Get(node)))
+	}
+
+	store = store.flushAndNewStore()
+
+	for i := 0; i < 10; i++ {
 		owner := newDummyAddress(i)
 		node := newDummyAddress(i + 100)
 		assert.True(t, owner.Equal(cache.Get(node)))
@@ -64,53 +107,77 @@ func TestNodeOwnerCache_Clear(t *testing.T) {
 
 func TestNodeOwnerCache_Contains(t *testing.T) {
 	var err error
+	cache, store := newDummyNodeOwnerCache(false)
 
-	size := 10
-	s := newDummyState(false)
-
-	for i := 0; i < size; i++ {
+	for i := 0; i < 5; i++ {
 		owner := newDummyAddress(i)
 		node := newDummyAddress(i + 100)
-		err = s.nodeOwnerCache.Add(node, owner)
+		err = cache.Add(node, owner)
 		assert.NoError(t, err)
-		s.nodeOwnerCache.Flush()
 	}
 
-	for i := 0; i < size; i++ {
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
 		node := newDummyAddress(i + 100)
-		assert.True(t, s.nodeOwnerCache.Contains(node))
+		assert.True(t, cache.Contains(node))
+		assert.False(t, cache.Contains(owner))
 	}
 
-	for i := size; i < size; i++ {
-		node := newDummyAddress(i + 100 + 100)
-		assert.False(t, s.nodeOwnerCache.Contains(node))
-		assert.True(t, node.Equal(s.nodeOwnerCache.Get(node)))
+	cache.Flush()
+
+	store = store.flushAndNewStore()
+	cache = newNodeOwnerCache(store)
+
+	for i := 0; i < 5; i++ {
+		owner := newDummyAddress(i)
+		node := newDummyAddress(i + 100)
+		assert.True(t, cache.Contains(node))
+		assert.False(t, cache.Contains(owner))
 	}
 }
 
 func TestNodeOwnerCache_Add(t *testing.T) {
 	var err error
 	var node module.Address
-	s := newDummyState(false)
+
+	cache, store := newDummyNodeOwnerCache(false)
 
 	for i := 0; i < 2; i++ {
 		owner := newDummyAddress(i)
 		node = newDummyAddress(i + 100)
-		err = s.nodeOwnerCache.Add(node, owner)
+		err = cache.Add(node, owner)
 		assert.NoError(t, err)
-		s.nodeOwnerCache.Flush()
 	}
-	s.nodeOwnerCache.Clear()
 
 	for i := 0; i < 2; i++ {
 		// Node address is already in use
 		node = newDummyAddress(i + 100)
-		err = s.nodeOwnerCache.Add(node, node)
+		err = cache.Add(node, node)
 		assert.Error(t, err)
 
 		// owner is the same as node
 		node = newDummyAddress(i + 100 + 3)
-		err = s.nodeOwnerCache.Add(node, node)
+		err = cache.Add(node, node)
+		assert.NoError(t, err)
+
+		nodeB := newDummyAddress(i + 100 + 3)
+		err = cache.Add(node, nodeB)
+		assert.NoError(t, err)
+	}
+
+	cache.Clear()
+	store = store.flushAndNewStore()
+	cache = newNodeOwnerCache(store)
+
+	for i := 0; i < 2; i++ {
+		// Node address is already in use
+		node = newDummyAddress(i + 100)
+		err = cache.Add(node, node)
+		assert.Error(t, err)
+
+		// owner is the same as node (and new)
+		node = newDummyAddress(i + 100 + 3)
+		err = cache.Add(node, node)
 		assert.NoError(t, err)
 	}
 }

@@ -7,18 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
-
-func newDummyObjectStore(readonly bool) containerdb.ObjectStoreState {
-	dbase := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	t := trie_manager.NewMutableForObject(dbase, nil, icobject.ObjectType)
-	return icobject.NewObjectStoreState(t)
-}
 
 func newDummyState(readonly bool) *State {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
