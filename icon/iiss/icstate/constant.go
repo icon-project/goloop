@@ -27,6 +27,8 @@ const (
 	MinIRep     = 10_000
 )
 
-var BigIntZero = new(big.Int)
-var BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
-var BigIntMinIRep = new(big.Int).Mul(new(big.Int).SetInt64(MinIRep), icutils.BigIntICX)
+var (
+	BigIntZero = new(big.Int)
+	BigIntInitialIRep = new(big.Int).Mul(new(big.Int).SetInt64(InitialIRep), icutils.BigIntICX)
+	BigIntMinIRep = new(big.Int).Mul(new(big.Int).SetInt64(MinIRep), icutils.BigIntICX)
+)

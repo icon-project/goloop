@@ -17,9 +17,10 @@
 package icstate
 
 import (
+	"fmt"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -38,10 +39,11 @@ var emptyValidatorsSnapshot = &ValidatorsSnapshot{
 type validatorsData struct {
 	nodeList   []*common.Address
 	nextPssIdx int
+	// The last block height when validatorList was updated
+	// But it is exceptionally 0 if validatorList is updated at the end of the current term
+	lastHeight int64
 
 	nodeMap    map[string]int
-	serialized []byte
-	hash       []byte
 }
 
 func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) {
@@ -62,26 +64,17 @@ func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerT
 	vd.nextPssIdx = size
 }
 
-func (vd *validatorsData) Hash() []byte {
-	if vd.hash == nil && len(vd.nodeList) > 0 {
-		s := vd.serialize()
-		vd.hash = crypto.SHA3Sum256(s)
-	}
-	return vd.hash
-}
-
-func (vd *validatorsData) serialize() []byte {
-	if vd.serialized == nil && len(vd.nodeList) > 0 {
-		vd.serialized, _ = codec.BC.MarshalToBytes(vd.nodeList)
-	}
-	return vd.serialized
-}
-
 func (vd *validatorsData) equal(other *validatorsData) bool {
+	if vd == other {
+		return true
+	}
 	if vd.Len() != other.Len() {
 		return false
 	}
 	if vd.nextPssIdx != other.nextPssIdx {
+		return false
+	}
+	if vd.lastHeight != other.lastHeight {
 		return false
 	}
 	for i, node := range vd.nodeList {
@@ -105,7 +98,23 @@ func (vd *validatorsData) clone() validatorsData {
 		nodeList:   nodeList,
 		nodeMap:    nodeMap,
 		nextPssIdx: vd.nextPssIdx,
+		lastHeight: vd.lastHeight,
 	}
+}
+
+func (vd *validatorsData) set(other *validatorsData) {
+	size := len(other.nodeList)
+	nodeMap := make(map[string]int)
+	nodeList := make([]*common.Address, size)
+
+	for i, node := range other.nodeList {
+		nodeList[i] = node
+		nodeMap[icutils.ToKey(node)] = i
+	}
+	vd.nodeList = nodeList
+	vd.nodeMap = nodeMap
+	vd.nextPssIdx = other.nextPssIdx
+	vd.lastHeight = other.lastHeight
 }
 
 func (vd *validatorsData) IndexOf(node module.Address) int {
@@ -141,6 +150,26 @@ func (vd *validatorsData) NewValidatorSet() []module.Validator {
 	return vSet
 }
 
+func (vd *validatorsData) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if f.Flag('+') {
+			_, _ = fmt.Fprintf(f,
+				"{nodeList:%+v nextPssIdx:%+v lastHeight:%+v}",
+				vd.nodeList, vd.nextPssIdx, vd.lastHeight,
+			)
+		} else {
+			_, _ = fmt.Fprintf(f, "{%v %v %v", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
+		}
+	case 's':
+		_, _ = fmt.Fprintf(f, vd.String())
+	}
+}
+
+func (vd *validatorsData) String() string {
+	return fmt.Sprintf("{%s %d %d}", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
+}
+
 func newValidatorsData(nodes []module.Address) validatorsData {
 	size := len(nodes)
 	nodeList := make([]*common.Address, size)
@@ -170,7 +199,7 @@ func (vss *ValidatorsSnapshot) Version() int {
 }
 
 func (vss *ValidatorsSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	if err := decoder.DecodeAll(&vss.nodeList, &vss.nextPssIdx); err != nil {
+	if err := decoder.DecodeAll(&vss.nodeList, &vss.nextPssIdx, &vss.lastHeight); err != nil {
 		return err
 	}
 
@@ -182,7 +211,7 @@ func (vss *ValidatorsSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (vss *ValidatorsSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(vss.nodeList, vss.nextPssIdx)
+	return encoder.EncodeMulti(vss.nodeList, vss.nextPssIdx, vss.lastHeight)
 }
 
 func (vss *ValidatorsSnapshot) Equal(object icobject.Impl) bool {
@@ -194,6 +223,14 @@ func (vss *ValidatorsSnapshot) Equal(object icobject.Impl) bool {
 		return true
 	}
 	return vss.equal(&other.validatorsData)
+}
+
+// IsUpdated returns true if validatorList is updated at this block
+func (vss *ValidatorsSnapshot) IsUpdated(blockHeight int64) bool {
+	if blockHeight < vss.lastHeight {
+		panic(errors.Errorf("Invalid blockHeight: bh=%d < lh=%d", blockHeight, vss.lastHeight))
+	}
+	return blockHeight == vss.lastHeight
 }
 
 // =======================================================
@@ -213,7 +250,24 @@ func (vs *ValidatorsState) IsDirty() bool {
 	return vs.snapshot == nil
 }
 
-func (vs *ValidatorsState) Set(i, nextPssIdx int, node module.Address) {
+func (vs *ValidatorsState) Set(blockHeight int64, i, nextPssIdx int, node module.Address) {
+	if node == nil {
+		vs.remove(i)
+	} else {
+		oldNode := vs.nodeList[i]
+		if oldNode.Equal(node) {
+			// No need to update
+			return
+		}
+		vs.set(i, nextPssIdx, node)
+	}
+
+	// Record the blockHeight when ValidatorsState is updated
+	vs.lastHeight = blockHeight
+	vs.setDirty()
+}
+
+func (vs *ValidatorsState) set(i, nextPssIdx int, node module.Address) {
 	old := vs.nodeList[i]
 	if old.Equal(node) {
 		return
@@ -226,11 +280,9 @@ func (vs *ValidatorsState) Set(i, nextPssIdx int, node module.Address) {
 	if nextPssIdx >= 0 {
 		vs.nextPssIdx = nextPssIdx
 	}
-
-	vs.setDirty()
 }
 
-func (vs *ValidatorsState) Remove(i int) {
+func (vs *ValidatorsState) remove(i int) {
 	size := len(vs.nodeList)
 	if i < 0 || i >= size {
 		return
@@ -248,7 +300,6 @@ func (vs *ValidatorsState) Remove(i int) {
 	}
 
 	vs.nodeList = nodeList[:size-1]
-	vs.setDirty()
 }
 
 func (vs *ValidatorsState) GetSnapshot() *ValidatorsSnapshot {
@@ -293,7 +344,7 @@ func NewValidatorsSnapshotWithPRepSnapshot(
 
 // changeValidatorNodeAddress is called when a main prep wants to change its node address
 func (s *State) changeValidatorNodeAddress(
-	owner module.Address, oldNode module.Address, newNode module.Address) error {
+	blockHeight int64, owner module.Address, oldNode module.Address, newNode module.Address) error {
 	if owner == nil || oldNode == nil || newNode == nil {
 		return errors.Errorf(
 			"Invalid argument: owner=%s oldNode=%s newNode=%s",
@@ -323,7 +374,7 @@ func (s *State) changeValidatorNodeAddress(
 	}
 
 	vs := NewValidatorsStateWithSnapshot(vss)
-	vs.Set(i, -1, newNode)
+	vs.Set(blockHeight, i, -1, newNode)
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
@@ -353,11 +404,7 @@ func (s *State) replaceValidatorByNode(node module.Address, blockHeight int64) e
 	}
 
 	vs := NewValidatorsStateWithSnapshot(vss)
-	if newOwner != nil {
-		vs.Set(i, nextPssIdx, s.GetNodeByOwner(newOwner))
-	} else {
-		vs.Remove(i)
-	}
+	vs.Set(blockHeight, i, nextPssIdx, s.GetNodeByOwner(newOwner))
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 

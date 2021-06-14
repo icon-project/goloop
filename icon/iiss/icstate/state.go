@@ -319,7 +319,7 @@ func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) e
 	return s.addNodeToOwner(node, owner)
 }
 
-func (s *State) SetPRep(owner module.Address, ri *RegInfo) error {
+func (s *State) SetPRep(blockHeight int64, owner module.Address, ri *RegInfo) error {
 	// owner -> node
 	// node1 -> node2
 	// node -> owner
@@ -356,7 +356,7 @@ func (s *State) SetPRep(owner module.Address, ri *RegInfo) error {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	if ps.Grade() == Main {
-		return s.changeValidatorNodeAddress(owner, oldNode, newNode)
+		return s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
 	}
 	return nil
 }
@@ -401,6 +401,9 @@ func (s *State) GetOwnerByNode(node module.Address) module.Address {
 }
 
 func (s *State) GetNodeByOwner(owner module.Address) module.Address {
+	if owner == nil {
+		return nil
+	}
 	pb, _ := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return nil

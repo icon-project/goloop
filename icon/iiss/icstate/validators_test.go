@@ -1,7 +1,7 @@
 package icstate
 
 import (
-	"bytes"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,6 +63,18 @@ func newDummyValidatorsData(size int) *validatorsData {
 	return vd
 }
 
+func newDummyValidatorSnapshot(size int) *ValidatorsSnapshot {
+	nodes := make([]module.Address, size)
+	for i := 0; i < size; i++ {
+		nodes[i] = newDummyAddress(i)
+	}
+
+	vd := newValidatorsData(nodes)
+	return &ValidatorsSnapshot{
+		validatorsData: vd,
+	}
+}
+
 func TestValidatorsData_init(t *testing.T) {
 	size := 10
 	snapshots := newDummyPRepSnapshots(size)
@@ -99,28 +111,13 @@ func TestValidatorsData_clone(t *testing.T) {
 	vd := newDummyValidatorsData(size)
 	vd2 := vd.clone()
 	assert.True(t, vd.equal(&vd2))
-	vss := ValidatorsSnapshot{}
-	vss.validatorsData = vd2
-
-	hash := vd.Hash()
-	assert.Zero(t, bytes.Compare(vd.Hash(), vd2.Hash()))
-	assert.Equal(t, 32, len(hash))
-	assert.True(t, vd2.equal(&vss.validatorsData))
 }
 
 func TestValidatorsSnapshot_RLPEncodeDecode(t *testing.T) {
 	state := newDummyState(false)
 
 	size := 10
-	nodes := make([]module.Address, size)
-	for i := 0; i < size; i++ {
-		nodes[i] = newDummyAddress(i)
-	}
-
-	vd := newValidatorsData(nodes)
-	vss := &ValidatorsSnapshot{
-		validatorsData: vd,
-	}
+	vss := newDummyValidatorSnapshot(size)
 	assert.Equal(t, size, vss.Len())
 
 	err := state.SetValidatorsSnapshot(vss)
@@ -139,4 +136,49 @@ func TestNewValidatorStateWithSnapshot(t *testing.T) {
 	var snapshot *ValidatorsSnapshot
 	vs := NewValidatorsStateWithSnapshot(snapshot)
 	assert.Zero(t, vs.Len())
+	assert.False(t, vs.IsDirty())
+}
+
+func TestValidatorsState_Set(t *testing.T) {
+	size := 22
+	nextPssIdx := size
+	bh := int64(100)
+	vss := newDummyValidatorSnapshot(size)
+	vs := NewValidatorsStateWithSnapshot(vss)
+	assert.False(t, vs.IsDirty())
+
+	for i := 0; i < size; i++ {
+		node := vs.Get(i).(module.Address)
+		assert.NotNil(t, node)
+		vs.Set(bh, i, nextPssIdx, node)
+		assert.False(t, vs.IsDirty())
+	}
+
+	for i := 0; i < size; i++ {
+		newNode := newDummyAddress(999 + i)
+		oldNode := vs.Get(i).(module.Address)
+		assert.False(t, oldNode.Equal(newNode))
+
+		vs.Set(bh, i, -1, newNode)
+		assert.True(t, vs.IsDirty())
+		assert.True(t, vs.Get(i).(module.Address).Equal(newNode))
+
+		vss2 := vs.GetSnapshot()
+		assert.True(t, vss2.IsUpdated(bh))
+		assert.False(t, vss2.IsUpdated(bh+1))
+		assert.Equal(t, size, vss2.Len())
+		assert.Panicsf(t, func() { vss2.IsUpdated(bh - 1) }, "ValidatorsState.IsUpdate() did not panic")
+
+	}
+
+	for i := 0; i < size; i++ {
+		idx := rand.Intn(vs.Len())
+		vs.Set(bh, idx, -1, nil)
+		assert.Equal(t, size-i-1, vs.Len())
+
+		vss2 := vs.GetSnapshot()
+		assert.True(t, vss2.IsUpdated(bh))
+		assert.False(t, vss2.IsUpdated(bh+1))
+		assert.Panicsf(t, func() { vss2.IsUpdated(bh - 1) }, "ValidatorsState.IsUpdate() did not panic")
+	}
 }

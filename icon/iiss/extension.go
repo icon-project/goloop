@@ -17,11 +17,8 @@
 package iiss
 
 import (
-	"bytes"
-	"fmt"
 	"math/big"
 	"sort"
-	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -852,34 +849,19 @@ func (s *ExtensionStateImpl) GenesisTerm(blockHeight int64, revision int) error 
 
 // updateValidators set a new validator set to world context
 func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd bool) error {
+	var err error
 	vss := s.State.GetValidatorsSnapshot()
 	if vss == nil {
 		return nil
 	}
 
-	if !isTermEnd {
-		hash := wc.GetValidatorState().GetSnapshot().Hash()
-		if bytes.Compare(vss.Hash(), hash) == 0 {
-			// ValidatorList is not changed during a term
-			return nil
-		}
+	blockHeight := wc.BlockHeight()
+	if isTermEnd || vss.IsUpdated(blockHeight) {
+		newValidators := vss.NewValidatorSet()
+		err = wc.GetValidatorState().Set(newValidators)
+		s.logger.Debugf("New validators: bh=%d vss=%+v", blockHeight, vss)
 	}
-
-	newValidators := vss.NewValidatorSet()
-	err := wc.GetValidatorState().Set(newValidators)
-	s.logNewValidators(wc.BlockHeight(), newValidators)
 	return err
-}
-
-func (s *ExtensionStateImpl) logNewValidators(blockHeight int64, vs []module.Validator) {
-	var b strings.Builder
-	b.WriteString("New validators: ")
-	b.WriteString(fmt.Sprintf("bh=%d cnt=%d", blockHeight, len(vs)))
-
-	for _, v := range vs {
-		b.WriteString(fmt.Sprintf(" %s", v.Address()))
-	}
-	s.logger.Debugf(b.String())
 }
 
 func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
@@ -902,7 +884,7 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 	if ts := tsVar.BigInt(); ts != nil {
 		return ts, nil
 	}
-	return big.NewInt(0), nil
+	return icstate.BigIntZero, nil
 }
 
 func (s *ExtensionStateImpl) IsDecentralized() bool {

@@ -74,6 +74,7 @@ func TestState_SetPRep(t *testing.T) {
 	var err error
 	size := 10
 	irep := BigIntInitialIRep
+	bh := int64(100)
 	state := newDummyState(false)
 
 	for i := 0; i < size; i++ {
@@ -88,7 +89,7 @@ func TestState_SetPRep(t *testing.T) {
 		node := newDummyAddress(i + 100)
 		assert.False(t, node.Equal(owner))
 		ri = newNodeOnlyRegInfo(node)
-		err = state.SetPRep(owner, ri)
+		err = state.SetPRep(bh, owner, ri)
 		assert.NoError(t, err)
 
 		err = state.Flush()

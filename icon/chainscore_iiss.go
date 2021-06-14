@@ -507,10 +507,13 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
-	if err := s.tryChargeCall(true); err != nil {
+	var err error
+	var es *iiss.ExtensionStateImpl
+
+	if err = s.tryChargeCall(true); err != nil {
 		return err
 	}
-	if err := s.iissHandleRevision(); err != nil {
+	if err = s.iissHandleRevision(); err != nil {
 		return err
 	}
 
@@ -521,25 +524,22 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 
 	ri := icstate.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node)
-	if err := ri.Validate(s.cc.Revision().Value()); err != nil {
+	if err = ri.Validate(s.cc.Revision().Value()); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate regInfo: from=%v", s.from,
 		)
 	}
 
+	if es, err = s.getExtensionState(); err != nil {
+		return err
+	}
+	if err = es.State.SetPRep(s.cc.BlockHeight(), s.from, ri); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
+	}
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
 		[][]byte{s.from.Bytes()},
 	)
-
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
-	err = es.State.SetPRep(s.from, ri)
-	if err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
-	}
 	return nil
 }
 

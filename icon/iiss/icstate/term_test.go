@@ -26,7 +26,7 @@ func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSna
 func newDummyAddress(value int) module.Address {
 	bs := make([]byte, common.AddressBytes)
 	for i := 0; value != 0 && i < 8; i++ {
-		bs[common.AddressBytes-1] = byte(value & 0xFF)
+		bs[common.AddressBytes-1-i] = byte(value & 0xFF)
 		value >>= 8
 	}
 	return common.MustNewAddress(bs)
@@ -71,7 +71,7 @@ func newDummyPRepSnapshots(size int) *PRepSnapshots {
 	tbd := new(big.Int)
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
-		bd := big.NewInt(int64(size-i))
+		bd := big.NewInt(int64(size - i))
 		ret.append(i, owner, bd)
 		tbd.Add(tbd, bd)
 	}
@@ -148,13 +148,13 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 	br := int64(5)
 
 	type args struct {
-		size int
+		size             int
 		electedPRepCount int
 	}
 
-	tests := []struct{
+	tests := []struct {
 		name string
-		in args
+		in   args
 	}{
 		{
 			"size == electedPRepCount",
