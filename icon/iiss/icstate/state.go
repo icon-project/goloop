@@ -303,9 +303,14 @@ func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) e
 	pb.SetIrep(irep, 0)
 	ps.SetStatus(Active)
 
-	// Register a node address
 	node := ri.Node()
-	if node == nil || owner.Equal(node) {
+	if node == nil {
+		pb.SetNode(owner)
+		return nil
+	}
+
+	// Register a node address
+	if owner.Equal(node) {
 		return nil
 	}
 	if pb, _ = s.GetPRepBaseByOwner(node, false); pb != nil {

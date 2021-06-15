@@ -346,6 +346,11 @@ func (p *PRepBase) fillEmptyRegInfo(ri *RegInfo) error {
 	return nil
 }
 
+func (p *PRepBase) SetNode(node module.Address) {
+	p.checkWritable()
+	p.node = common.AddressToPtr(node)
+}
+
 func (p *PRepBase) SetIrep(irep *big.Int, irepHeight int64) {
 	p.checkWritable()
 	p.irep = irep
