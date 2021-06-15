@@ -48,6 +48,7 @@ type EncodeAndCloser interface {
 type Decoder interface {
 	Decode(o interface{}) error
 	DecodeMulti(objs ...interface{}) (int, error)
+	DecodeAll(objs ...interface{}) error
 	DecodeBytes() ([]byte, error)
 	DecodeList() (Decoder, error)
 	DecodeListOf(objs ...interface{}) error
@@ -466,6 +467,14 @@ func (d *decoderImpl) DecodeMulti(objs ...interface{}) (int, error) {
 		}
 	}
 	return len(objs), nil
+}
+
+func (d *decoderImpl) DecodeAll(objs ...interface{}) error {
+	if _, err := d.DecodeMulti(objs...); err != nil {
+		return ErrInvalidFormat
+	} else {
+		return nil
+	}
 }
 
 func (d *decoderImpl) DecodeListOf(objs ...interface{}) error {
