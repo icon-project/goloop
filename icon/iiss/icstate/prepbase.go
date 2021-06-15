@@ -47,6 +47,10 @@ type RegInfo struct {
 	node        *common.Address
 }
 
+func (r *RegInfo) SetNode(node module.Address) {
+	r.node = common.AddressToPtr(node)
+}
+
 func (r *RegInfo) Node() module.Address {
 	if r.node == nil {
 		return nil
@@ -348,7 +352,7 @@ func (p *PRepBase) ApplyRegInfo(ri *RegInfo) error {
 
 func (p *PRepBase) SetNode(node module.Address) {
 	p.checkWritable()
-	p.node = common.AddressToPtr(node)
+	p.RegInfo.SetNode(node)
 }
 
 func (p *PRepBase) SetIrep(irep *big.Int, irepHeight int64) {
