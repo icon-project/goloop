@@ -50,6 +50,17 @@ const (
 
 var lcDB *lcstore.Store
 
+
+func newCmdVersion(name string) *cobra.Command {
+	return &cobra.Command{
+		Use: name,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println(version)
+			return nil
+		},
+	}
+}
 func newCmdGetTx(name string) *cobra.Command {
 	return &cobra.Command{
 		Use: name + " <tid> ...",
@@ -514,6 +525,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	root.AddCommand(newCmdVersion("version"))
 	root.AddCommand(newCmdGetTx("tx"))
 	root.AddCommand(newCmdGetResult("result"))
 	root.AddCommand(newCmdGetBlock("block"))
