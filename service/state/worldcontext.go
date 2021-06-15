@@ -193,8 +193,8 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	}
 
 	si.ass = ass
-
-	as := scoredb.NewStateStoreWith(ass)
+	acs := wc.GetAccountState(SystemID)
+	as := scoredb.NewStateStoreWith(acs)
 	revision := int(scoredb.NewVarDB(as, VarRevision).Int64())
 	si.revision = wc.platform.ToRevision(revision)
 
@@ -480,6 +480,7 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, csi module.ConsensusInf
 		csInfo:       csi,
 		platform:     plt,
 	}
+	ws.EnableAccountNodeCache(SystemID)
 	wc.UpdateSystemInfo()
 	return wc
 }

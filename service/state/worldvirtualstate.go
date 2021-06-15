@@ -454,6 +454,11 @@ func (wvs *worldVirtualState) Database() db.Database {
 	return wvs.real.Database()
 }
 
+func (wvs *worldVirtualState) EnableAccountNodeCache(id []byte) bool {
+	panic("EnableAccountNodeCache() should not be called.")
+	return false
+}
+
 func (wvs *worldVirtualState) Ensure() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
