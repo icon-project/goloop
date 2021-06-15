@@ -322,7 +322,7 @@ func (ps *PRepStatus) Version() int {
 
 func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
 	ps.checkWritable()
-	return decoder.DecodeListOf(
+	return decoder.DecodeAll(
 		&ps.grade,
 		&ps.status,
 		&ps.delegated,
@@ -337,7 +337,7 @@ func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (ps *PRepStatus) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
+	return encoder.EncodeMulti(
 		ps.grade,
 		ps.status,
 		ps.delegated,

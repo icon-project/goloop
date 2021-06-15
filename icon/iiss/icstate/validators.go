@@ -170,8 +170,8 @@ func (vss *ValidatorsSnapshot) Version() int {
 }
 
 func (vss *ValidatorsSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	if _, err := decoder.DecodeMulti(&vss.nodeList, &vss.nextPssIdx); err != nil {
-		return codec.ErrInvalidFormat
+	if err := decoder.DecodeAll(&vss.nodeList, &vss.nextPssIdx); err != nil {
+		return err
 	}
 
 	vss.nodeMap = make(map[string]int)

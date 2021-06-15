@@ -272,7 +272,7 @@ func (p *PRepBase) ToJSON() map[string]interface{} {
 }
 
 func (p *PRepBase) RLPEncodeFields(e codec.Encoder) error {
-	if err := e.EncodeListOf(
+	if err := e.EncodeMulti(
 		p.name,
 		p.country,
 		p.city,
@@ -292,7 +292,7 @@ func (p *PRepBase) RLPEncodeFields(e codec.Encoder) error {
 func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
 	p.checkWritable()
 
-	if err := d.DecodeListOf(
+	if err := d.DecodeAll(
 		&p.name,
 		&p.country,
 		&p.city,

@@ -203,7 +203,7 @@ func (a *AccountSnapshot) Version() int {
 }
 
 func (a *AccountSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
+	return decoder.DecodeAll(
 		&a.stake,
 		&a.unstakes,
 		&a.totalDelegation,
@@ -216,7 +216,7 @@ func (a *AccountSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (a *AccountSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
+	return encoder.EncodeMulti(
 		a.stake,
 		a.unstakes,
 		a.totalDelegation,

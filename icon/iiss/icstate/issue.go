@@ -58,7 +58,7 @@ func (i *Issue) Version() int {
 }
 
 func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
+	return decoder.DecodeAll(
 		&i.totalIssued,
 		&i.prevTotalIssued,
 		&i.overIssued,
@@ -68,7 +68,7 @@ func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
+	return encoder.EncodeMulti(
 		i.totalIssued,
 		i.prevTotalIssued,
 		i.overIssued,

@@ -138,10 +138,9 @@ func (t *TimerSnapshot) Version() int {
 }
 
 func (t *TimerSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(
+	return decoder.DecodeAll(
 		&t.addresses,
 	)
-	return err
 }
 
 func (t *TimerSnapshot) RLPEncodeFields(encoder codec.Encoder) error {

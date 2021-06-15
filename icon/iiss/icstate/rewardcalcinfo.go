@@ -101,7 +101,7 @@ func (rc *RewardCalcInfo) GetResultInJSON() map[string]interface{} {
 }
 
 func (rc *RewardCalcInfo) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
+	return decoder.DecodeAll(
 		&rc.startHeight,
 		&rc.prevHeight,
 		&rc.prevPeriod,
@@ -111,7 +111,7 @@ func (rc *RewardCalcInfo) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (rc *RewardCalcInfo) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
+	return encoder.EncodeMulti(
 		rc.startHeight,
 		rc.prevHeight,
 		rc.prevPeriod,

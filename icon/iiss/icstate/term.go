@@ -389,7 +389,7 @@ func (term *Term) Version() int {
 }
 
 func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
+	return decoder.DecodeAll(
 		&term.sequence,
 		&term.startHeight,
 		&term.period,
@@ -407,7 +407,7 @@ func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
+	return encoder.EncodeMulti(
 		term.sequence,
 		term.startHeight,
 		term.period,
