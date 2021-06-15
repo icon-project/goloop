@@ -575,6 +575,8 @@ const (
 	InitialUnstakeSlotMax = 1
 
 	InitialDelegationSlotMax = 10
+
+	IISS2BondRequirement = 0
 )
 
 const (

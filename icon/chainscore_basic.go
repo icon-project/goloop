@@ -198,6 +198,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
+			if br := es.State.GetBondRequirement(); br == defaultBondRequirement {
+				if err := es.State.SetBondRequirement(IISS2BondRequirement); err != nil {
+					return err
+				}
+			}
 		}
 
 		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
@@ -227,6 +232,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
+			}
+			if br := es.State.GetBondRequirement(); br == IISS2BondRequirement {
+				if err := es.State.SetBondRequirement(defaultBondRequirement); err != nil {
+					return err
+				}
 			}
 		}
 

@@ -330,14 +330,7 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	return prep.ToJSON(blockHeight, s.GetBondRequirement()), nil
-}
-
-func (s *ExtensionStateImpl) GetBondRequirement() int64 {
-	if s.State.GetIISSVersion() < icstate.IISSVersion3 {
-		return 0
-	}
-	return s.State.GetBondRequirement()
+	return prep.ToJSON(blockHeight, s.State.GetBondRequirement()), nil
 }
 
 func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -813,7 +806,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 
 	// Valid preps means that decentralization is activated
 	if preps != nil {
-		br := s.GetBondRequirement()
+		br := s.State.GetBondRequirement()
 		mainPRepCount := preps.GetPRepSize(icstate.Main)
 		pss := icstate.NewPRepSnapshots(preps, electedPRepCount, br)
 
