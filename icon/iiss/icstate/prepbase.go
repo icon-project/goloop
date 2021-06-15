@@ -89,29 +89,29 @@ func (r *RegInfo) Set(other *RegInfo) {
 	r.node = other.node
 }
 
-func (r *RegInfo) fillInEmptyInfo(other *RegInfo) {
-	if len(r.city) == 0 {
+func (r *RegInfo) Update(other *RegInfo) {
+	if len(other.city) != 0 {
 		r.city = other.city
 	}
-	if len(r.country) == 0 {
+	if len(other.country) != 0 {
 		r.country = other.country
 	}
-	if len(r.details) == 0 {
+	if len(other.details) != 0 {
 		r.details = other.details
 	}
-	if len(r.email) == 0 {
+	if len(other.email) != 0 {
 		r.email = other.email
 	}
-	if len(r.name) == 0 {
+	if len(other.name) != 0 {
 		r.name = other.name
 	}
-	if len(r.p2pEndpoint) == 0 {
+	if len(other.p2pEndpoint) != 0 {
 		r.p2pEndpoint = other.p2pEndpoint
 	}
-	if len(r.website) == 0 {
+	if len(other.website) != 0 {
 		r.website = other.website
 	}
-	if r.node == nil {
+	if other.node != nil {
 		r.node = other.node
 	}
 }
@@ -340,9 +340,9 @@ func (p *PRepBase) SetRegInfo(ri *RegInfo) error {
 	return nil
 }
 
-func (p *PRepBase) fillEmptyRegInfo(ri *RegInfo) error {
+func (p *PRepBase) ApplyRegInfo(ri *RegInfo) error {
 	p.checkWritable()
-	p.RegInfo.fillInEmptyInfo(ri)
+	p.RegInfo.Update(ri)
 	return nil
 }
 

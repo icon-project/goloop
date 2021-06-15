@@ -330,7 +330,7 @@ func (s *State) SetPRep(owner module.Address, ri *RegInfo) error {
 	}
 
 	oldNode := pb.GetNode(owner)
-	if err := pb.fillEmptyRegInfo(ri); err != nil {
+	if err := pb.ApplyRegInfo(ri); err != nil {
 		return nil
 	}
 
@@ -351,7 +351,14 @@ func (s *State) SetPRep(owner module.Address, ri *RegInfo) error {
 		return err
 	}
 
-	return s.changeValidatorNodeAddress(owner, oldNode, newNode)
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+	if ps.Grade() == Main {
+		return s.changeValidatorNodeAddress(owner, oldNode, newNode)
+	}
+	return nil
 }
 
 func (s *State) SetTotalDelegation(value *big.Int) error {
