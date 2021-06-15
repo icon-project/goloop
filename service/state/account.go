@@ -863,6 +863,9 @@ func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, er
 }
 
 func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
+	if s.IsContract() && (s.IsDisabled() || s.IsBlocked()) {
+		return false
+	}
 	if pc.FeeSharingEnabled() && s.deposits.Has() {
 		return s.deposits.CanPay(pc)
 	}

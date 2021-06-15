@@ -11,6 +11,7 @@ import (
 const (
 	nodeCacheManager    = "nodeCM"
 	defaultAccountDepth = 5
+	defaultStoreDepth   = 5
 )
 
 type cacheManager struct {
@@ -28,17 +29,27 @@ func (m *cacheManager) getWorldNodeCache() *NodeCache {
 func (m *cacheManager) getAccountNodeCache(id []byte) *NodeCache {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if m.depth[0] == 0 {
-		return nil
-	}
 	sid := string(id)
 	if c, ok := m.store[sid]; ok {
 		return c
 	} else {
-		path := path.Join(m.path, hex.EncodeToString(id))
-		c = NewNodeCache(m.depth[0], m.depth[1], path)
-		m.store[sid] = c
+		if m.depth[0] == 0 {
+			return nil
+		}
+		m.store[sid] = m.newAccountNodeCache(id, m.depth[0], m.depth[1])
 		return c
+	}
+}
+
+func (m *cacheManager) newAccountNodeCache(id []byte, mem, file int) *NodeCache {
+	path := path.Join(m.path, hex.EncodeToString(id))
+	return NewNodeCache(mem, file, path)
+}
+
+func (m *cacheManager) enableAccountNodeCache(id []byte, mem, file int) {
+	sid := string(id)
+	if _, ok := m.store[sid]; !ok {
+		m.store[sid] = m.newAccountNodeCache(id, mem, file)
 	}
 }
 
@@ -67,6 +78,17 @@ func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
 		return cm.getAccountNodeCache(id)
 	} else {
 		return nil
+	}
+}
+
+// EnableAccountNodeCacheByForce enable AccountNodeCache ignoring default setting.
+// Default setting for account node cache is specified by call in AttachManager.
+func EnableAccountNodeCacheByForce(database db.Database, id []byte) bool {
+	if cm := cacheManagerOf(database); cm != nil {
+		cm.enableAccountNodeCache(id, defaultStoreDepth, 0)
+		return true
+	} else {
+		return false
 	}
 }
 

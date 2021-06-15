@@ -39,6 +39,7 @@ type WorldState interface {
 	EnableNodeCache()
 	NodeCacheEnabled() bool
 	Database() db.Database
+	EnableAccountNodeCache(id []byte) bool
 }
 
 type worldSnapshotImpl struct {
@@ -220,6 +221,13 @@ func (ws *worldStateImpl) NodeCacheEnabled() bool {
 
 func (ws *worldStateImpl) Database() db.Database {
 	return ws.database
+}
+
+func (ws *worldStateImpl) EnableAccountNodeCache(id []byte) bool {
+	if ws.nodeCacheEnabled {
+		return cache.EnableAccountNodeCacheByForce(ws.database, addressIDToKey(id))
+	}
+	return false
 }
 
 func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {

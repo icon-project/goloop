@@ -379,12 +379,8 @@ func (c *singleChain) prepareDatabase(chainDir string) error {
 		cdb.Close()
 		return errors.Errorf("Unknown cache strategy:%s", c.cfg.NodeCache)
 	}
-	if mLevel > 0 || fLevel > 0 {
-		cacheDir := path.Join(chainDir, DefaultCacheDir)
-		c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
-	} else {
-		c.database = cdb
-	}
+	cacheDir := path.Join(chainDir, DefaultCacheDir)
+	c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
 	return nil
 }
 

@@ -63,6 +63,10 @@ func (ws *readOnlyWorldState) NodeCacheEnabled() bool {
 	return false
 }
 
+func (ws *readOnlyWorldState) EnableAccountNodeCache(id []byte) bool {
+	return false
+}
+
 type readonlyValidatorState struct {
 	ValidatorSnapshot
 }
