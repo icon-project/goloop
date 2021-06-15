@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static foundation.icon.test.cases.ScoreMethodTest.RpcAccessDenied;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -154,7 +155,11 @@ public class ChainScoreTest extends TestBase {
 
                 LOG.infoEntering("invokeHello", "disabled=" + disabled);
                 if (disabled) {
-                    assertFailure(helloWorld.invokeHello(caller));
+                    try {
+                        assertFailure(helloWorld.invokeHello(caller));
+                    } catch (RpcError e) {
+                        // expected failure
+                    }
                 } else {
                     assertSuccess(helloWorld.invokeHello(caller));
                 }
@@ -317,6 +322,8 @@ public class ChainScoreTest extends TestBase {
                 result = helloWorld.invokeHello(caller);
                 assertEquals(!blocked, Constants.STATUS_SUCCESS.equals(result.getStatus()));
             } catch (ResultTimeoutException ex) {
+                assertTrue(blocked);
+            } catch (RpcError err) {
                 assertTrue(blocked);
             }
             LOG.infoExiting();
