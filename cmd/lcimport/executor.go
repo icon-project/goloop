@@ -46,6 +46,10 @@ import (
 )
 
 const (
+	TraceBFC = false
+)
+
+const (
 	ContractPath = "contract"
 	EESocketPath = "ee.sock"
 )
@@ -282,13 +286,19 @@ type blockForwardCache struct {
 	pool    sync.Pool
 }
 
+func (bp *blockForwardCache) Tracef(s string, args ...interface{}) {
+	if TraceBFC {
+		bp.e.log.Tracef(s, args...)
+	}
+}
+
 func (bp *blockForwardCache) runTasks() {
 	defer func() {
 		func() {
 			bp.lock.Lock()
 			defer bp.lock.Unlock()
 			bp.active -= 1
-			bp.e.log.Tracef("BFC.exitTask(active=%d)", bp.active)
+			bp.Tracef("BFC.exitTask(active=%d)", bp.active)
 		}()
 	}()
 
@@ -298,7 +308,7 @@ func (bp *blockForwardCache) runTasks() {
 			if blk, err := bp.e.GetBlockByHeight(task.height); err != nil {
 				task.chn <- err
 			} else if blk != nil {
-				bp.e.log.Tracef("BFC.done(height=%d)", task.height)
+				bp.Tracef("BFC.done(height=%d)", task.height)
 				bp.scheduleBlocksFor(task.height)
 				// preload transactions and receipts to the memory
 				txs := blk.Transactions()
@@ -324,7 +334,7 @@ func (bp *blockForwardCache) scheduleBlockInLock(height int64) bool {
 		return false
 	}
 	if bt, ok := bp.blocks[height]; !ok {
-		bp.e.log.Tracef("BFC.schedule(height=%d)", height)
+		bp.Tracef("BFC.schedule(height=%d)", height)
 		bt = bp.allocBlockTask(height)
 		bp.blocks[height] = bt
 		bp.tasks <- bt
@@ -349,7 +359,7 @@ func (bp *blockForwardCache) scheduleBlocksFor(height int64) {
 func (bp *blockForwardCache) tryNewWorkerInLock() {
 	if bp.active < maxBlockWorkers {
 		bp.active += 1
-		bp.e.log.Tracef("BFC.newTask(active=%d)", bp.active)
+		bp.Tracef("BFC.newTask(active=%d)", bp.active)
 		go bp.runTasks()
 	}
 }
@@ -375,7 +385,7 @@ func (bp *blockForwardCache) fetchBlockTask(height int64) *blockTask {
 		return bt
 	} else {
 		bt = bp.allocBlockTask(height)
-		bp.e.log.Tracef("BFC.schedule2(height=%d)", height)
+		bp.Tracef("BFC.schedule2(height=%d)", height)
 		bp.tasks <- bt
 		bp.tryNewWorkerInLock()
 		return bt
