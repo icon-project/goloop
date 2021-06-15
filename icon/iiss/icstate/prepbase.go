@@ -44,17 +44,20 @@ type RegInfo struct {
 	name        string
 	p2pEndpoint string
 	website     string
-	node        module.Address
+	node        *common.Address
 }
 
 func (r *RegInfo) Node() module.Address {
+	if r.node == nil {
+		return nil
+	}
 	return r.node
 }
 
 func (r *RegInfo) String() string {
 	return fmt.Sprintf(
-		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s",
-		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website,
+		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s node=%s",
+		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website, r.node,
 	)
 }
 
@@ -64,11 +67,11 @@ func (r *RegInfo) Format(f fmt.State, c rune) {
 		if f.Flag('+') {
 			fmt.Fprintf(
 				f,
-				"RegInfo{city=%s country=%s details=%s email=%s p2p=%s website=%s}",
-				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website)
+				"RegInfo{city=%s country=%s details=%s email=%s p2p=%s website=%s node=%s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.node)
 		} else {
-			fmt.Fprintf(f, "RegInfo{%s %s %s %s %s %s}",
-				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website)
+			fmt.Fprintf(f, "RegInfo{%s %s %s %s %s %s %s}",
+				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.node)
 		}
 	case 's':
 		fmt.Fprint(f, r.String())
@@ -187,7 +190,7 @@ func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string
 		name:        name,
 		p2pEndpoint: p2pEndpoint,
 		website:     website,
-		node:        node,
+		node:        common.AddressToPtr(node),
 	}
 }
 
@@ -285,8 +288,6 @@ func (p *PRepBase) RLPEncodeFields(e codec.Encoder) error {
 func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
 	p.checkWritable()
 
-	var node *common.Address
-
 	if err := d.DecodeListOf(
 		&p.name,
 		&p.country,
@@ -295,13 +296,12 @@ func (p *PRepBase) RLPDecodeFields(d codec.Decoder) error {
 		&p.website,
 		&p.details,
 		&p.p2pEndpoint,
-		&node,
+		&p.node,
 		&p.irep,
 		&p.irepHeight,
 		&p.bonderList); err != nil {
 		return errors.Wrap(err, "Fail to decode PRepBase")
 	}
-	p.node = node
 	return nil
 }
 
