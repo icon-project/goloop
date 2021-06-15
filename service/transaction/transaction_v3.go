@@ -258,6 +258,10 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 		return NotEnoughBalanceError.Errorf("OutOfBalance(balance:%s, value:%s)", balance1, trans)
 	}
 
+	if as1.IsBlocked() {
+		return AccessDeniedError.New("BlockedAccount")
+	}
+
 	as2 := wc.GetAccountState(tx.To().ID())
 	if tx.DataType == nil || *tx.DataType == contract.DataTypeCall || *tx.DataType == contract.DataTypeMessage {
 		if !as2.CanAcceptTx(wc) {
