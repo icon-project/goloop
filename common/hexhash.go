@@ -28,8 +28,9 @@ import (
 type HexHash []byte
 
 var (
-	NullHashBytes = make([]byte, crypto.HashLen)
-	NullHashJSON  = []byte("\"0x" + hex.EncodeToString(NullHashBytes) + "\"")
+	NullHashBytes  = make([]byte, crypto.HashLen)
+	NullHashJSON   = []byte("\"0x" + hex.EncodeToString(NullHashBytes) + "\"")
+	NullHashString = "0x"+hex.EncodeToString(NullHashBytes)
 )
 
 func (hs HexHash) MarshalJSON() ([]byte, error) {
@@ -77,7 +78,7 @@ func (hs HexHash) Bytes() []byte {
 
 func (hs HexHash) String() string {
 	if hs == nil {
-		return "null"
+		return NullHashString
 	}
 	return "0x" + hex.EncodeToString(hs)
 }
