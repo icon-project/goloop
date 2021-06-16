@@ -129,7 +129,7 @@ func TestClient_Success(t *testing.T) {
 	_, err := s.m.FetchBlocks(1, 10, s.cb)
 	assert.Nil(t, err)
 	ev := <-s.reactors[1].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].ID, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequestV1{0x10000, 1}, s.nms[0].ID, ev)
 
 	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].ID)
 
@@ -144,16 +144,16 @@ func TestClient_SuccessMulti(t *testing.T) {
 	assert.Nil(t, err)
 
 	ev := <-s.reactors[1].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].ID, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequestV1{0x10000, 1}, s.nms[0].ID, ev)
 
 	ev = <-s.reactors[2].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 2}, s.nms[0].ID, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequestV1{0x10000, 2}, s.nms[0].ID, ev)
 
 	s.respondBlockRequest(s.phs[2], 0x10000, s.rawBlocks[2], s.votes[3], s.nms[0].ID)
 	s.assertNoEvent(s.cb.ch)
 
 	ev = <-s.reactors[2].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10001, 3}, s.nms[0].ID, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequestV1{0x10001, 3}, s.nms[0].ID, ev)
 
 	s.respondBlockRequest(s.phs[2], 0x10001, s.rawBlocks[3], s.votes[4], s.nms[0].ID)
 	s.assertNoEvent(s.cb.ch)
