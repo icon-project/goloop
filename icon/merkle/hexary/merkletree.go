@@ -46,6 +46,7 @@ type MerkleTree interface {
 	// (nil, wrapped ErrVerify) if proof is incorrect and
 	// (nil, other error) if correctness cannot be checked due to some error.
 	Add(key int64, hash []byte, proof [][]byte) (err error)
+	Cap() int64
 }
 
 type merkleTreeData struct {
@@ -57,6 +58,7 @@ type merkleTree struct {
 	bdb      *nodeDB
 	level    int
 	rootHash *node
+	cap      int64
 }
 
 func LevelFromLen(len int64) int {
@@ -99,6 +101,7 @@ func NewMerkleTreeFromDB(
 		bdb:      newCachedNodeDB(bk, cacheCap),
 		level:    LevelFromLen(mtd.Cap),
 		rootHash: rootHash,
+		cap:      mtd.Cap,
 	}, nil
 }
 
@@ -119,7 +122,12 @@ func NewMerkleTree(
 		bdb:      newCachedNodeDB(bk, cacheCap),
 		level:    LevelFromLen(len),
 		rootHash: br,
+		cap:      len,
 	}, nil
+}
+
+func (sa *merkleTree) Cap() int64 {
+	return sa.cap
 }
 
 func (sa *merkleTree) minProofLenForKey(key int64) int {
