@@ -1,6 +1,11 @@
 package fastsync
 
-import "github.com/icon-project/goloop/module"
+import (
+	"io"
+
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/module"
+)
 
 // TODO: close message
 const (
@@ -17,9 +22,43 @@ var protocols = []module.ProtocolInfo{
 	protoCancelAllBlockRequests,
 }
 
-type BlockRequest struct {
-	RequestID uint32
-	Height    int64
+type BlockRequestV1 struct {
+	RequestID   uint32
+	Height      int64
+}
+
+type BlockRequestV2 struct {
+	RequestID   uint32
+	Height      int64
+	ProofOption int32
+}
+
+type BlockRequest = BlockRequestV2
+
+func (m *BlockRequest) RLPEncodeSelf(e codec.Encoder) error {
+	var err error
+	if m.ProofOption == 0 {
+		err = e.EncodeListOf(m.RequestID, m.Height)
+	} else {
+		err = e.EncodeListOf(m.RequestID, m.Height, m.ProofOption)
+	}
+	return err
+}
+
+func (m *BlockRequest) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	cnt, err := d2.DecodeMulti(&m.RequestID, &m.Height, &m.ProofOption)
+	if cnt == 2 && err == io.EOF {
+		m.ProofOption = 0
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type BlockMetadata struct {
