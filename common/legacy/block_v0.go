@@ -181,6 +181,10 @@ func (b *blockV0) NewBlock(vl module.ValidatorList) module.Block {
 	return nil
 }
 
+func (b *blockV0) Hash() []byte {
+	return nil
+}
+
 type Block interface {
 	module.Block
 	Verify() error

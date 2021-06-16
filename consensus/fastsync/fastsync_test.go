@@ -25,7 +25,7 @@ type tBlockBody struct {
 }
 
 type tBlock struct {
-	test.BlockBase
+	module.Block
 	tBlockHeader
 	tBlockBody
 }
@@ -122,6 +122,14 @@ func (bm *tBlockManager) GetBlockByHeight(height int64) (module.Block, error) {
 		return nil, errors.New("NoBlock")
 	}
 	return blk, nil
+}
+
+func (bm *tBlockManager) GetBlockProof(height int64, opt int32) ([]byte, error) {
+	blk, err := bm.GetBlockByHeight(height + 1)
+	if err != nil {
+		return nil, err
+	}
+	return blk.Votes().Bytes(), nil
 }
 
 func (bm *tBlockManager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {

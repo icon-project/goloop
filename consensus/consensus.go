@@ -135,6 +135,7 @@ type consensus struct {
 	commitWAL   *walMessageWriter
 	timestamper module.Timestamper
 	nid         []byte
+	bpp         fastsync.BlockProofProvider
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -168,13 +169,24 @@ type consensus struct {
 	metric *metric.ConsensusMetric
 }
 
-func NewConsensus(c module.Chain, walDir string, timestamper module.Timestamper) module.Consensus {
-	cs := newConsensus(c, walDir, defaultWALManager, timestamper)
+func NewConsensus(
+	c module.Chain,
+	walDir string,
+	timestamper module.Timestamper,
+	bpp fastsync.BlockProofProvider,
+) module.Consensus {
+	cs := newConsensus(c, walDir, defaultWALManager, timestamper, bpp)
 	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
 
-func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper module.Timestamper) *consensus {
+func newConsensus(
+	c module.Chain,
+	walDir string,
+	wm WALManager,
+	timestamper module.Timestamper,
+	bpp fastsync.BlockProofProvider,
+) *consensus {
 	cs := &consensus{
 		c:           c,
 		walDir:      walDir,
@@ -183,6 +195,7 @@ func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper modu
 		metric:      metric.NewConsensusMetric(c.MetricContext()),
 		timestamper: timestamper,
 		nid:         codec.MustMarshalToBytes(c.NID()),
+		bpp:         bpp,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
@@ -1645,10 +1658,7 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 	return res
 }
 
-func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
-	cs.mutex.Lock()
-	defer cs.mutex.Unlock()
-
+func (cs *consensus) getVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	c, err := cs.getCommit(height)
 	if err != nil {
 		return nil, err
@@ -1657,6 +1667,12 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 		return nil, errors.ErrNotFound
 	}
 	return c.commitVotes, nil
+}
+
+func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+	return cs.getVotesByHeight(height)
 }
 
 func (cs *consensus) getCommit(h int64) (*commit, error) {
@@ -1832,6 +1848,27 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	} else {
 		cs.commitAndEnterNewHeight()
 	}
+}
+
+func (cs *consensus) GetBlockProof(height int64, opt int32) ([]byte, error) {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
+	if cs.bpp != nil {
+		proof, err := cs.bpp.GetBlockProof(height, opt)
+		if err != nil {
+			return nil, err
+		}
+		if proof != nil {
+			return proof, nil
+		}
+	}
+
+	cvs, err := cs.getVotesByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	return cvs.Bytes(), nil
 }
 
 type walMessageWriter struct {

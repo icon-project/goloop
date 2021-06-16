@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/test"
 )
 
 type tBlock struct {
-	test.BlockBase
+	module.Block
 	height int64
 }
 

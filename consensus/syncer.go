@@ -16,6 +16,8 @@ const (
 )
 
 type Engine interface {
+	fastsync.BlockProofProvider
+
 	GetCommitBlockParts(h int64) PartSet
 	GetCommitPrecommits(h int64) *voteList
 	GetPrecommits(r int32) *voteList
@@ -246,7 +248,7 @@ type syncer struct {
 }
 
 func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
-	fsm, err := fastsync.NewManager(nm, bm, logger)
+	fsm, err := fastsync.NewManager(nm, bm, e, logger)
 	if err != nil {
 		return nil
 	}
