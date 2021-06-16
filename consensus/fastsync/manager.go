@@ -92,13 +92,22 @@ func (m *manager) FetchBlocks(
 	}, nil
 }
 
-func NewManager(nm module.NetworkManager, bm module.BlockManager, logger log.Logger) (Manager, error) {
+func NewManager(
+	nm module.NetworkManager,
+	bm module.BlockManager,
+	bpp BlockProofProvider,
+	logger log.Logger,
+) (Manager, error) {
 	m := &manager{}
 	ph, err := nm.RegisterReactorForStreams("fastsync", module.ProtoFastSync, m, protocols, configFastSyncPriority)
 	if err != nil {
 		return nil, err
 	}
-	m.server = newServer(nm, ph, bm, logger)
+	m.server = newServer(nm, ph, bm, bpp, logger)
 	m.client = newClient(nm, ph, bm, logger)
 	return m, nil
+}
+
+type BlockProofProvider interface {
+	GetBlockProof(h int64, opt int32) (proof []byte, err error)
 }

@@ -32,17 +32,25 @@ type server struct {
 	nm    module.NetworkManager
 	ph    module.ProtocolHandler
 	bm    module.BlockManager
+	bpp   BlockProofProvider
 	log   log.Logger
 	peers []*speer
 
 	running bool
 }
 
-func newServer(nm module.NetworkManager, ph module.ProtocolHandler, bm module.BlockManager, logger log.Logger) *server {
+func newServer(
+	nm module.NetworkManager,
+	ph module.ProtocolHandler,
+	bm module.BlockManager,
+	bpp BlockProofProvider,
+	logger log.Logger,
+) *server {
 	s := &server{
 		nm:  nm,
 		ph:  ph,
 		bm:  bm,
+		bpp: bpp,
 		log: logger,
 	}
 	return s
@@ -69,7 +77,10 @@ func (s *server) _addPeer(id module.PeerID) {
 		stoppedCh: make(chan struct{}),
 	}
 	s.peers = append(s.peers, speer)
-	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.log)
+	h := newSConHandler(
+		speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id,
+		s.ph, s.bm, s.bpp, s.log,
+	)
 	go h.handle()
 }
 
@@ -152,6 +163,7 @@ type sconHandler struct {
 	id        module.PeerID
 	ph        module.ProtocolHandler
 	bm        module.BlockManager
+	bpp       BlockProofProvider
 	log       log.Logger
 
 	nextItems []*BlockRequest
@@ -168,6 +180,7 @@ func newSConHandler(
 	id module.PeerID,
 	ph module.ProtocolHandler,
 	bm module.BlockManager,
+	bpp BlockProofProvider,
 	logger log.Logger,
 ) *sconHandler {
 	h := &sconHandler{
@@ -177,6 +190,7 @@ func newSConHandler(
 		id:        id,
 		ph:        ph,
 		bm:        bm,
+		bpp:       bpp,
 		log: logger.WithFields(log.Fields{
 			"peer": common.HexPre(id.Bytes()),
 		}),
@@ -205,8 +219,18 @@ func (h *sconHandler) updateCurrentTask() {
 	h.nextItems = h.nextItems[:len(h.nextItems)-1]
 	h.requestID = ni.RequestID
 	blk, err := h.bm.GetBlockByHeight(ni.Height)
-	nblk, err2 := h.bm.GetBlockByHeight(ni.Height + 1)
-	if err != nil || err2 != nil {
+	if err != nil {
+		h.nextMsgPI = protoBlockMetadata
+		h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
+			RequestID:   ni.RequestID,
+			BlockLength: -1,
+			Proof:       nil,
+		})
+		h.buf = nil
+		return
+	}
+	proof, err := h.bpp.GetBlockProof(ni.Height, ni.ProofOption)
+	if err != nil {
 		h.nextMsgPI = protoBlockMetadata
 		h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 			RequestID:   ni.RequestID,
@@ -223,7 +247,7 @@ func (h *sconHandler) updateCurrentTask() {
 	h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 		RequestID:   ni.RequestID,
 		BlockLength: int32(h.buf.Len()),
-		Proof:       nblk.Votes().Bytes(),
+		Proof:       proof,
 	})
 }
 

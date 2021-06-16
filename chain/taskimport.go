@@ -122,7 +122,7 @@ func (t *taskImport) _import() error {
 	}
 
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, ts)
+	c.cs = consensus.NewConsensus(c, WALDir, ts, nil)
 
 	if err := c.nm.Start(); err != nil {
 		return err

@@ -431,17 +431,16 @@ func (c *singleChain) prepareManagers() error {
 	chainDir := c.cfg.AbsBaseDir()
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
-	var ts module.Timestamper
 	c.sm, err = service.NewManager(c, c.nm, c.pm, c.plt, ContractDir)
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, ts, nil)
+	c.bm, err = block.NewManager(c, nil, nil)
 	if err != nil {
 		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, ts)
+	c.cs = consensus.NewConsensus(c, WALDir, nil, nil)
 	return nil
 }
 
