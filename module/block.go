@@ -33,6 +33,7 @@ type BlockData interface {
 
 	ToJSON(version JSONVersion) (interface{}, error)
 	NewBlock(vl ValidatorList) Block
+	Hash() []byte
 }
 
 type Block interface {

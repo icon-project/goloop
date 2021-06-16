@@ -25,7 +25,7 @@ type tBlockBody struct {
 }
 
 type tBlock struct {
-	test.BlockBase
+	module.Block
 	tBlockHeader
 	tBlockBody
 }

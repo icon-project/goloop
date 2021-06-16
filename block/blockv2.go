@@ -212,6 +212,10 @@ func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
 	return &blk
 }
 
+func (b *blockV2) Hash() []byte {
+	return b.ID()
+}
+
 type blockBuilder struct {
 	vld   module.CommitVoteSetDecoder
 	block *blockV2
