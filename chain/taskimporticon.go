@@ -199,7 +199,7 @@ func (t *taskImportICON) _import() (ret error) {
 
 	// initialize consensus
 	WALDir := path.Join(c.cfg.AbsBaseDir(), DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, nil)
+	c.cs = consensus.NewConsensus(c, WALDir, nil, nil)
 
 	// start migration
 	if err := c.nm.Start(); err != nil {

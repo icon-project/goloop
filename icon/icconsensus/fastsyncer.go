@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -28,12 +29,6 @@ import (
 )
 
 const sleepInterval = 3 * time.Second
-
-type FinalizerWithProof interface {
-	module.BlockManager
-	VerifyBlock(blk module.BlockData, proof []byte) error
-	FinalizeWithProof(blk module.BlockCandidate, proof []byte) error
-}
 
 type fastSyncer struct {
 	mu            sync.Mutex
@@ -45,8 +40,8 @@ type fastSyncer struct {
 	fetchCanceler func() bool
 	blockCanceler module.Canceler
 	log           log.Logger
-	bm            FinalizerWithProof
 	running       bool
+	bpp           bpp
 }
 
 func newFastSyncer(
@@ -64,11 +59,10 @@ func newFastSyncer(
 	f.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS|V1|",
 	})
-	bm, ok := f.c.BlockManager().(FinalizerWithProof)
-	if !ok {
-		return nil, errors.InvalidStateError.Errorf("bad block manager type")
+	err := f.bpp.init(c.Database())
+	if err != nil {
+		return nil, err
 	}
-	f.bm = bm
 	return f, nil
 }
 
@@ -79,6 +73,7 @@ func (f *fastSyncer) Start() error {
 	fsm, err := fastsync.NewManager(
 		f.c.NetworkManager(),
 		f.c.BlockManager(),
+		f,
 		f.c.Logger(),
 	)
 	if err != nil {
@@ -128,6 +123,10 @@ func (f *fastSyncer) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 	return nil, errors.NotFoundError.New("not found")
 }
 
+func (f *fastSyncer) GetBlockProof(height int64, opt int32) ([]byte, error) {
+	return f.bpp.GetBlockProof(height, opt)
+}
+
 func (f *fastSyncer) OnBlock(br fastsync.BlockResult) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -143,11 +142,17 @@ func (f *fastSyncer) OnBlock(br fastsync.BlockResult) {
 }
 
 func (f *fastSyncer) processBlock(br fastsync.BlockResult) {
-	err := f.bm.VerifyBlock(br.Block(), br.Votes())
+	blk := br.Block()
+	var proof [][]byte
+	_, err := codec.UnmarshalFromBytes(br.Votes(), &proof)
 	if err != nil {
 		br.Reject()
 	}
-	canceler, err := f.bm.ImportBlock(
+	err = f.bpp.mt.Add(blk.Height(), blk.Hash(), proof)
+	if err != nil {
+		br.Reject()
+	}
+	canceler, err := f.c.BlockManager().ImportBlock(
 		br.Block(),
 		module.ImportByForce,
 		func(bc module.BlockCandidate, err error) {
@@ -160,7 +165,7 @@ func (f *fastSyncer) processBlock(br fastsync.BlockResult) {
 			if err != nil {
 				f.log.Panicf("import cb error %+v", err)
 			}
-			err = f.bm.FinalizeWithProof(bc, br.Votes())
+			err = f.c.BlockManager().Finalize(bc)
 			if err != nil {
 				f.log.Panicf("finalize error %+v", err)
 			}
