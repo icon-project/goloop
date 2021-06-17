@@ -215,7 +215,6 @@ func (s *BlockVoteList) CheckVoters(reps *RepsList, voted []bool) error {
 		return nil
 	}
 	count := reps.Size()
-	q := s.Quorum()
 	for i := 0; i < count; i++ {
 		vote := s.votes[i]
 		if vote != nil {
@@ -227,9 +226,7 @@ func (s *BlockVoteList) CheckVoters(reps *RepsList, voted []bool) error {
 				)
 			}
 			if voted != nil {
-				if bytes.Equal(vote.json.BlockHash, q) {
-					voted[i] = true
-				}
+				voted[i] = true
 			}
 		}
 	}
