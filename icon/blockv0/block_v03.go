@@ -234,11 +234,7 @@ func (b *BlockV03) Verify(prev Block) error {
 			if leader.String() == "hx0000000000000000000000000000000000000000" {
 				leader = b.reps.Get(0)
 			}
-			if b.json.LeaderVotesHash.Bytes() != nil {
-				if !b.json.LeaderVotes.HasQuorumFor(&b.json.Leader) {
-					return errors.InvalidStateError.New("NoValidLeader")
-				}
-			} else if !b.json.Leader.Equal(leader) {
+			if b.json.LeaderVotesHash.Bytes() == nil && !b.json.Leader.Equal(leader) {
 				return errors.InvalidStateError.Errorf(
 					"InvalidLeader(exp=%s,real=%s)",
 					leader,
