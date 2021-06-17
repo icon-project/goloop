@@ -102,9 +102,9 @@ public class TransactionExecutor {
         try {
             proxy.connect(uuid);
             proxy.handleMessages();
-            proxy.close();
         } finally {
             avmExecutor.shutdown();
+            proxy.close();
         }
     }
 
