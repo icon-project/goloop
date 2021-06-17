@@ -421,7 +421,9 @@ func (ps *PRepStatus) SetVFail(f int64) {
 
 func (ps *PRepStatus) ResetVFailContOffset() {
 	ps.checkWritable()
-	ps.vFailContOffset = 0
+	if ps.IsAlreadyPenalized() {
+		ps.vFailContOffset = 0
+	}
 }
 
 func (ps *PRepStatus) setVPenaltyMask(p uint32) {

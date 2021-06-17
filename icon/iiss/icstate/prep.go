@@ -117,6 +117,8 @@ func (p *PReps) ResetAllStatus(blockHeight int64, mainPRepCount, subPRepCount, p
 			newGrade = Candidate
 		}
 
+		// Reset VFailContOffset if this prep got penalized during this term
+		prep.ResetVFailContOffset()
 		if err := prep.ChangeGrade(newGrade, blockHeight, penaltyMask); err != nil {
 			return err
 		}
