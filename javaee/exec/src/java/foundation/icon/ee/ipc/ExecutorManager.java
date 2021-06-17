@@ -27,11 +27,11 @@ import org.slf4j.LoggerFactory;
 
 public class ExecutorManager {
     private static final Logger logger = LoggerFactory.getLogger(ExecutorManager.class);
-    private Map<String, TransactionExecutor> execMap;
-    private ManagerProxy proxy;
-    private String execSockAddr;
-    private Connector connector;
-    private Loader loader = new Loader();
+    private final Map<String, TransactionExecutor> execMap;
+    private final ManagerProxy proxy;
+    private final String execSockAddr;
+    private final Connector connector;
+    private final Loader loader = new Loader();
 
     public ExecutorManager(String sockAddr, Connector c) throws IOException {
         Connection client = c.connect(sockAddr);

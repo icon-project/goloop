@@ -112,13 +112,13 @@ public class Validator {
             for (int i=0; i<eeParams.length; ++i) {
                 var eep = eeParams[i];
                 var pt = pts[i];
+                if (!structDB.isValidParamType(pt)) {
+                    throw fail("Invalid param %s for method %s",
+                            eep.getName(), eem.getDebugName());
+                }
                 var ptd = structDB.getDetailFromParameterType(pt);
                 if (!eep.getTypeDetail().equals(ptd)) {
                     throw fail("Incompatible param %s for method %s",
-                            eep.getName(), eem.getDebugName());
-                }
-                if (!structDB.isValidParamType(pt)) {
-                    throw fail("Invalid param %s for method %s",
                             eep.getName(), eem.getDebugName());
                 }
             }
