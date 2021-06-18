@@ -1,10 +1,5 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.22.0"
-    }
+plugins {
+    id "io.github.gradle-nexus.publish-plugin" version "1.1.0"
 }
 
 subprojects {
@@ -96,15 +91,18 @@ configure([project(':api'),  project(':rt'), project(':tooling')]) {
     }
 
     signing {
+        required rootProject.hasProperty('release')
         sign publishing.publications.mavenJava
     }
 }
 
-apply plugin: 'io.codearte.nexus-staging'
-
-nexusStaging {
+nexusPublishing {
     packageGroup = GROUP
-    stagingProfileId = project.hasProperty('mavenProfileId') ? "$mavenProfileId" : ''
-    username = project.hasProperty('mavenCentralUsername') ? "$mavenCentralUsername" : ''
-    password = project.hasProperty('mavenCentralPassword') ? "$mavenCentralPassword" : ''
+    repositories {
+        sonatype {
+            stagingProfileId = project.hasProperty('mavenProfileId') ? "$mavenProfileId" : ''
+            username = project.hasProperty('mavenCentralUsername') ? "$mavenCentralUsername" : ''
+            password = project.hasProperty('mavenCentralPassword') ? "$mavenCentralPassword" : ''
+        }
+    }
 }
