@@ -156,7 +156,7 @@ func (s *State) GetPRepBaseByNode(node module.Address) *PRepBase {
 	return pb
 }
 
-func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) (*PRepStatus, bool) {
+func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
 	return s.prepStatusCache.Get(owner, createIfNotExist)
 }
 
@@ -392,7 +392,7 @@ func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
 		return errors.Errorf("PRep not found: node=%v owner=%v", node, owner)
 	}
 
-	ps.shiftVPenaltyMask(buildPenaltyMask(s.GetConsistentValidationPenaltyMask()))
+	ps.shiftVPenaltyMask(s.GetConsistentValidationPenaltyMask())
 	return nil
 }
 
@@ -411,13 +411,6 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	return pb.GetNode(owner)
 }
 
-func buildPenaltyMask(input int) (res uint32) {
-	for i := 0; i < input; i++ {
-		res = (res << 1) | uint32(1)
-	}
-	return
-}
-
 func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeight int64) error {
 	if !voted {
 		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
@@ -432,12 +425,12 @@ func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeig
 }
 
 // GetPRepStatuses returns PRepStatus list ordered by bonded delegation
-func (s *State) GetPRepStatuses() ([]*PRepStatus, error) {
+func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 	br := s.GetBondRequirement()
 
 	size := s.activePRepCache.Size()
 	owners := make([]module.Address, 0)
-	pss := make([]*PRepStatus, 0)
+	pss := make([]*PRepStatusState, 0)
 
 	for i := 0; i < size; i++ {
 		owner := s.getActivePRepOwner(i)
@@ -452,7 +445,7 @@ func (s *State) GetPRepStatuses() ([]*PRepStatus, error) {
 	return pss, nil
 }
 
-func sortPRepStatuses(owners []module.Address, pss []*PRepStatus, br int64) {
+func sortPRepStatuses(owners []module.Address, pss []*PRepStatusState, br int64) {
 	sort.Slice(pss, func(i, j int) bool {
 		ret := pss[i].GetBondedDelegation(br).Cmp(pss[j].GetBondedDelegation(br))
 		if ret > 0 {
@@ -473,7 +466,7 @@ func sortPRepStatuses(owners []module.Address, pss []*PRepStatus, br int64) {
 }
 
 // ImposePenalty changes grade change and set LastState to icstate.None
-func (s *State) ImposePenalty(owner module.Address, ps *PRepStatus, blockHeight int64) error {
+func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHeight int64) error {
 	var err error
 
 	// Update status of the penalized main prep
@@ -656,20 +649,20 @@ func (s *State) GetPRepManagerInJSON() map[string]interface{} {
 	}
 }
 
-func (s *State) CheckValidationPenalty(ps *PRepStatus, blockHeight int64) bool {
+func (s *State) CheckValidationPenalty(ps *PRepStatusState, blockHeight int64) bool {
 	condition := s.GetValidationPenaltyCondition()
 	return checkValidationPenalty(ps, blockHeight, condition)
 }
 
-func checkValidationPenalty(ps *PRepStatus, blockHeight, condition int64) bool {
+func checkValidationPenalty(ps *PRepStatusState, blockHeight, condition int64) bool {
 	return !ps.IsAlreadyPenalized() && ps.GetVFailCont(blockHeight) >= condition
 }
 
-func (s *State) CheckConsistentValidationPenalty(ps *PRepStatus) bool {
+func (s *State) CheckConsistentValidationPenalty(ps *PRepStatusState) bool {
 	condition := int(s.GetConsistentValidationPenaltyCondition())
 	return checkConsistentValidationPenalty(ps, condition)
 }
 
-func checkConsistentValidationPenalty(ps *PRepStatus, condition int) bool {
+func checkConsistentValidationPenalty(ps *PRepStatusState, condition int) bool {
 	return ps.GetVPenaltyCount() >= condition
 }

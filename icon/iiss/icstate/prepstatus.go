@@ -95,10 +95,7 @@ func (vs ValidationState) String() string {
 	}
 }
 
-type PRepStatus struct {
-	icobject.NoDatabase
-	StateAndSnapshot
-
+type prepStatusData struct {
 	grade           Grade
 	status          Status
 	delegated       *big.Int
@@ -111,50 +108,45 @@ type PRepStatus struct {
 	lastHeight      int64
 }
 
-func (ps *PRepStatus) Bonded() *big.Int {
+func (ps *prepStatusData) Bonded() *big.Int {
 	return ps.bonded
 }
 
-func (ps *PRepStatus) Grade() Grade {
+func (ps *prepStatusData) Grade() Grade {
 	return ps.grade
 }
 
-func (ps *PRepStatus) Status() Status {
+func (ps *prepStatusData) Status() Status {
 	return ps.status
 }
 
-func (ps *PRepStatus) IsActive() bool {
+func (ps *prepStatusData) IsActive() bool {
 	return ps.status == Active
 }
 
 // IsAlreadyPenalized returns true if this PRep got penalized during this term
-func (ps *PRepStatus) IsAlreadyPenalized() bool {
+func (ps *prepStatusData) IsAlreadyPenalized() bool {
 	return (ps.vPenaltyMask & 1) != 0
 }
 
-func (ps *PRepStatus) GetVPenaltyCount() int {
+func (ps *prepStatusData) GetVPenaltyCount() int {
 	return bits.OnesCount32(ps.vPenaltyMask)
 }
 
-func (ps *PRepStatus) LastState() ValidationState {
+func (ps *prepStatusData) LastState() ValidationState {
 	return ps.lastState
 }
 
-func (ps *PRepStatus) LastHeight() int64 {
+func (ps *prepStatusData) LastHeight() int64 {
 	return ps.lastHeight
 }
 
-func (ps *PRepStatus) Delegated() *big.Int {
+func (ps *prepStatusData) Delegated() *big.Int {
 	return ps.delegated
 }
 
-func (ps *PRepStatus) GetVoted() *big.Int {
+func (ps *prepStatusData) GetVoted() *big.Int {
 	return new(big.Int).Add(ps.delegated, ps.bonded)
-}
-
-func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
-	ps.checkWritable()
-	ps.delegated = delegated
 }
 
 // GetBondedDelegation return amount of bonded delegation
@@ -165,7 +157,7 @@ func (ps *PRepStatus) SetDelegated(delegated *big.Int) {
 //                  = bond * 100 / bondRequirement
 // if bondedDelegation > totalVoted
 //    bondedDelegation = totalVoted
-func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
+func (ps *prepStatusData) GetBondedDelegation(bondRequirement int64) *big.Int {
 	if bondRequirement < 0 || bondRequirement > 100 {
 		// should not be negative or over 100 for bond requirement
 		return big.NewInt(0)
@@ -190,12 +182,12 @@ func (ps *PRepStatus) GetBondedDelegation(bondRequirement int64) *big.Int {
 	}
 }
 
-func (ps *PRepStatus) VTotal() int64 {
+func (ps *prepStatusData) VTotal() int64 {
 	return ps.vTotal
 }
 
 // GetVTotal returns the calculated number of validation
-func (ps *PRepStatus) GetVTotal(blockHeight int64) int64 {
+func (ps *prepStatusData) GetVTotal(blockHeight int64) int64 {
 	if ps.lastState == None {
 		return ps.vTotal
 	} else {
@@ -203,12 +195,12 @@ func (ps *PRepStatus) GetVTotal(blockHeight int64) int64 {
 	}
 }
 
-func (ps *PRepStatus) VFail() int64 {
+func (ps *prepStatusData) VFail() int64 {
 	return ps.vFail
 }
 
 // GetVFail returns the calculated number of validation failures
-func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
+func (ps *prepStatusData) GetVFail(blockHeight int64) int64 {
 	diff := blockHeight - ps.lastHeight
 	if ps.lastState == Failure && diff >= 0 {
 		return ps.vFail + diff
@@ -217,7 +209,7 @@ func (ps *PRepStatus) GetVFail(blockHeight int64) int64 {
 }
 
 // GetVFailCont returns the number of consecutive validation failures
-func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
+func (ps *prepStatusData) GetVFailCont(blockHeight int64) int64 {
 	switch ps.lastState {
 	case Ready:
 		return ps.vFailContOffset
@@ -232,14 +224,14 @@ func (ps *PRepStatus) GetVFailCont(blockHeight int64) int64 {
 	return 0
 }
 
-func (ps *PRepStatus) getSafeHeightDiff(blockHeight int64) int64 {
+func (ps *prepStatusData) getSafeHeightDiff(blockHeight int64) int64 {
 	if blockHeight < ps.lastHeight {
 		return 0
 	}
 	return blockHeight - ps.lastHeight
 }
 
-func (ps *PRepStatus) equal(other *PRepStatus) bool {
+func (ps *prepStatusData) equal(other *prepStatusData) bool {
 	if ps == other {
 		return true
 	}
@@ -256,22 +248,8 @@ func (ps *PRepStatus) equal(other *PRepStatus) bool {
 		ps.lastHeight == other.lastHeight
 }
 
-func (ps *PRepStatus) Set(other *PRepStatus) {
-	ps.checkWritable()
-	ps.grade = other.grade
-	ps.status = other.status
-	ps.delegated = other.delegated
-	ps.bonded = other.bonded
-	ps.vTotal = other.vTotal
-	ps.vFail = other.vFail
-	ps.vFailContOffset = other.vFailContOffset
-	ps.vPenaltyMask = other.vPenaltyMask
-	ps.lastState = other.lastState
-	ps.lastHeight = other.lastHeight
-}
-
-func (ps *PRepStatus) Clone() *PRepStatus {
-	return &PRepStatus{
+func (ps prepStatusData) clone() prepStatusData {
+	return prepStatusData{
 		grade:           ps.grade,
 		status:          ps.status,
 		delegated:       ps.delegated,
@@ -285,7 +263,7 @@ func (ps *PRepStatus) Clone() *PRepStatus {
 	}
 }
 
-func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
@@ -300,7 +278,7 @@ func (ps *PRepStatus) ToJSON(blockHeight int64, bondRequirement int64) map[strin
 	return jso
 }
 
-func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
+func (ps *prepStatusData) GetStatsInJSON(blockHeight int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
@@ -316,12 +294,84 @@ func (ps *PRepStatus) GetStatsInJSON(blockHeight int64) map[string]interface{} {
 	return jso
 }
 
-func (ps *PRepStatus) Version() int {
+func (ps *prepStatusData) IsEmpty() bool {
+	return ps.grade == Candidate &&
+		ps.delegated.Sign() == 0 &&
+		ps.bonded.Sign() == 0 &&
+		ps.vFail == 0 &&
+		ps.vFailContOffset == 0 &&
+		ps.vTotal == 0 &&
+		ps.lastState == None &&
+		ps.lastHeight == 0 &&
+		ps.status == NotReady
+}
+
+func (ps *prepStatusData) String() string {
+	return fmt.Sprintf(
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
+		ps.status,
+		ps.grade,
+		ps.lastState,
+		ps.lastHeight,
+		ps.vFail,
+		ps.vTotal,
+		ps.GetVPenaltyCount(),
+		ps.vFailContOffset,
+	)
+}
+
+func (ps *prepStatusData) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(
+				f,
+				"PRepStatus{"+
+					"status=%s grade=%s lastState=%s lastHeight=%d "+
+					"vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d "+
+					"delegated=%s bonded=%s}",
+				ps.status,
+				ps.grade,
+				ps.lastState,
+				ps.lastHeight,
+				ps.vFail,
+				ps.vTotal,
+				ps.GetVPenaltyCount(),
+				ps.vFailContOffset,
+				ps.delegated,
+				ps.bonded,
+			)
+		} else {
+			fmt.Fprintf(
+				f, "PRepStatus{%s %s %s %d %d %d %d %d %s %s}",
+				ps.status,
+				ps.grade,
+				ps.lastState,
+				ps.lastHeight,
+				ps.vFail,
+				ps.vTotal,
+				ps.GetVPenaltyCount(),
+				ps.vFailContOffset,
+				ps.delegated,
+				ps.bonded,
+			)
+		}
+	case 's':
+		fmt.Fprint(f, ps.String())
+	}
+}
+
+
+type PRepStatusSnapshot struct {
+	icobject.NoDatabase
+	prepStatusData
+}
+
+func (ps *PRepStatusSnapshot) Version() int {
 	return 0
 }
 
-func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
-	ps.checkWritable()
+func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeAll(
 		&ps.grade,
 		&ps.status,
@@ -336,7 +386,7 @@ func (ps *PRepStatus) RLPDecodeFields(decoder codec.Decoder) error {
 	)
 }
 
-func (ps *PRepStatus) RLPEncodeFields(encoder codec.Encoder) error {
+func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		ps.grade,
 		ps.status,
@@ -351,38 +401,57 @@ func (ps *PRepStatus) RLPEncodeFields(encoder codec.Encoder) error {
 	)
 }
 
-func (ps *PRepStatus) Equal(o icobject.Impl) bool {
-	other, ok := o.(*PRepStatus)
+func (ps *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
+	other, ok := o.(*PRepStatusSnapshot)
 	if !ok {
 		return false
 	}
-	return ps.equal(other)
+	return ps.equal(&other.prepStatusData)
 }
 
-func (ps *PRepStatus) Clear() {
-	ps.checkWritable()
-	ps.status = NotReady
-	ps.grade = Candidate
-	ps.delegated = big.NewInt(0)
-	ps.bonded = big.NewInt(0)
-	ps.vTotal = 0
-	ps.vFail = 0
-	ps.vFailContOffset = 0
-	ps.vPenaltyMask = 0
-	ps.lastState = None
-	ps.lastHeight = 0
+var emptyPRepStatusSnapshot = &PRepStatusSnapshot{
+	prepStatusData: prepStatusData{
+		grade:           Candidate,
+		delegated:       new(big.Int),
+		bonded:          new(big.Int),
+		vFail:           0,
+		vFailContOffset: 0,
+		vTotal:          0,
+		lastState:       None,
+		lastHeight:      0,
+		status:          NotReady,
+	},
 }
 
-func (ps *PRepStatus) GetSnapshot() *PRepStatus {
-	if ps.IsReadonly() {
-		return ps
+type PRepStatusState struct {
+	prepStatusData
+	last *PRepStatusSnapshot
+}
+
+func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
+	ps.last = ss
+	ps.prepStatusData = ss.prepStatusData.clone()
+	return ps
+}
+
+func (ps *PRepStatusState) setDirty() {
+	ps.last = nil
+}
+
+func (ps *PRepStatusState) Clear() {
+	ps.Reset(emptyPRepStatusSnapshot)
+}
+
+func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {
+	if ps.last == nil {
+		ps.last = &PRepStatusSnapshot{
+			prepStatusData: ps.prepStatusData.clone(),
+		}
 	}
-	ret := ps.Clone()
-	ret.freeze()
-	return ret
+	return ps.last
 }
 
-func (ps *PRepStatus) IsEmpty() bool {
+func (ps *PRepStatusState) IsEmpty() bool {
 	return ps.grade == Candidate &&
 		ps.delegated.Sign() == 0 &&
 		ps.bonded.Sign() == 0 &&
@@ -394,61 +463,67 @@ func (ps *PRepStatus) IsEmpty() bool {
 		ps.status == NotReady
 }
 
-func (ps *PRepStatus) SetBonded(v *big.Int) {
-	ps.checkWritable()
+func (ps *PRepStatusState) SetDelegated(delegated *big.Int) {
+	ps.delegated = delegated
+	ps.setDirty()
+}
+
+
+func (ps *PRepStatusState) SetBonded(v *big.Int) {
 	ps.bonded = v
+	ps.setDirty()
 }
 
-func (ps *PRepStatus) SetGrade(g Grade) {
-	ps.checkWritable()
+func (ps *PRepStatusState) SetGrade(g Grade) {
 	ps.grade = g
+	ps.setDirty()
 }
 
-func (ps *PRepStatus) SetStatus(s Status) {
-	ps.checkWritable()
+func (ps *PRepStatusState) SetStatus(s Status) {
 	ps.status = s
+	ps.setDirty()
 }
 
-func (ps *PRepStatus) SetVTotal(t int64) {
-	ps.checkWritable()
+func (ps *PRepStatusState) SetVTotal(t int64) {
 	ps.vTotal = t
+	ps.setDirty()
 }
 
-func (ps *PRepStatus) SetVFail(f int64) {
-	ps.checkWritable()
+func (ps *PRepStatusState) SetVFail(f int64) {
 	ps.vFail = f
+	ps.setDirty()
 }
 
-func (ps *PRepStatus) ResetVFailContOffset() {
-	ps.checkWritable()
+func (ps *PRepStatusState) ResetVFailContOffset() {
 	if ps.IsAlreadyPenalized() {
 		ps.vFailContOffset = 0
+		ps.setDirty()
 	}
 }
 
-func (ps *PRepStatus) setVPenaltyMask(p uint32) {
-	ps.checkWritable()
+func (ps *PRepStatusState) setVPenaltyMask(p uint32) {
 	ps.vPenaltyMask = p
 }
 
-func (ps *PRepStatus) setLastHeight(blockHeight int64) {
-	ps.checkWritable()
+func (ps *PRepStatusState) setLastHeight(blockHeight int64) {
 	ps.lastHeight = blockHeight
 }
 
-func (ps *PRepStatus) setLastState(lastState ValidationState) {
-	ps.checkWritable()
+func (ps *PRepStatusState) setLastState(lastState ValidationState) {
 	ps.lastState = lastState
 }
 
-func (ps *PRepStatus) shiftVPenaltyMask(mask uint32) {
-	ps.checkWritable()
-	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & mask
+func buildPenaltyMask(input int) (res uint32) {
+	res = uint32((uint64(1) << input) - 1)
+	return
+}
+
+func (ps *PRepStatusState) shiftVPenaltyMask(limit int) {
+	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & buildPenaltyMask(limit)
 }
 
 // UpdateBlockVoteStats updates Penalty-related info based on ConsensusInfo
-func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error {
-	ps.checkWritable()
+func (ps *PRepStatusState) UpdateBlockVoteStats(blockHeight int64, voted bool) error {
 	vs := Success
 	if !voted {
 		vs = Failure
@@ -492,12 +567,12 @@ func (ps *PRepStatus) UpdateBlockVoteStats(blockHeight int64, voted bool) error 
 			ps.lastHeight = blockHeight
 		}
 	}
+	ps.setDirty()
 	return nil
 }
 
 // syncBlockVoteStats updates vote stats data at a given blockHeight
-func (ps *PRepStatus) syncBlockVoteStats(blockHeight int64) error {
-	ps.checkWritable()
+func (ps *PRepStatusState) syncBlockVoteStats(blockHeight int64) error {
 	lh := ps.lastHeight
 	if blockHeight < lh {
 		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
@@ -513,19 +588,18 @@ func (ps *PRepStatus) syncBlockVoteStats(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatus) ImposePenalty(blockHeight int64) error {
-	ps.checkWritable()
+func (ps *PRepStatusState) ImposePenalty(blockHeight int64) error {
 	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vPenaltyMask |= 1
 	ps.vFailContOffset = 0
 	ps.grade = Candidate
+	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatus) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask int) error {
-	ps.checkWritable()
+func (ps *PRepStatusState) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask int) error {
 	if ps.grade == newGrade {
 		return nil
 	}
@@ -541,7 +615,7 @@ func (ps *PRepStatus) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask
 			ps.lastState = Ready
 			ps.lastHeight = blockHeight
 		}
-		ps.shiftVPenaltyMask(buildPenaltyMask(penaltyMask))
+		ps.shiftVPenaltyMask(penaltyMask)
 	} else {
 		if ps.lastState != None {
 			if err := ps.syncBlockVoteStats(blockHeight); err != nil {
@@ -550,78 +624,18 @@ func (ps *PRepStatus) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask
 		}
 	}
 	ps.grade = newGrade
+	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatus) String() string {
-	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
-		ps.status,
-		ps.grade,
-		ps.lastState,
-		ps.lastHeight,
-		ps.vFail,
-		ps.vTotal,
-		ps.GetVPenaltyCount(),
-		ps.vFailContOffset,
-	)
+func newPRepStatusWithTag(_ icobject.Tag) *PRepStatusSnapshot {
+	return new(PRepStatusSnapshot)
 }
 
-func (ps *PRepStatus) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(
-				f,
-				"PRepStatus{"+
-					"status=%s grade=%s lastState=%s lastHeight=%d "+
-					"vFail=%d vTotal=%d vPenaltyCount=%d vFailContOffset=%d "+
-					"delegated=%s bonded=%s}",
-				ps.status,
-				ps.grade,
-				ps.lastState,
-				ps.lastHeight,
-				ps.vFail,
-				ps.vTotal,
-				ps.GetVPenaltyCount(),
-				ps.vFailContOffset,
-				ps.delegated,
-				ps.bonded,
-			)
-		} else {
-			fmt.Fprintf(
-				f, "PRepStatus{%s %s %s %d %d %d %d %d %s %s}",
-				ps.status,
-				ps.grade,
-				ps.lastState,
-				ps.lastHeight,
-				ps.vFail,
-				ps.vTotal,
-				ps.GetVPenaltyCount(),
-				ps.vFailContOffset,
-				ps.delegated,
-				ps.bonded,
-			)
-		}
-	case 's':
-		fmt.Fprint(f, ps.String())
-	}
+func NewPRepStatusWithSnapshot(snapshot *PRepStatusSnapshot) *PRepStatusState {
+	return new(PRepStatusState).Reset(snapshot)
 }
 
-func newPRepStatusWithTag(_ icobject.Tag) *PRepStatus {
-	return new(PRepStatus)
-}
-
-func NewPRepStatus() *PRepStatus {
-	return &PRepStatus{
-		grade:           Candidate,
-		delegated:       new(big.Int),
-		bonded:          new(big.Int),
-		vFail:           0,
-		vFailContOffset: 0,
-		vTotal:          0,
-		lastState:       None,
-		lastHeight:      0,
-		status:          NotReady,
-	}
+func NewPRepStatus() *PRepStatusState {
+	return new(PRepStatusState).Reset(emptyPRepStatusSnapshot)
 }

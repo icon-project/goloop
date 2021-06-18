@@ -14,7 +14,7 @@ type PRep struct {
 	owner module.Address
 
 	*PRepBase
-	*PRepStatus
+	*PRepStatusState
 }
 
 func (p *PRep) Owner() module.Address {
@@ -29,17 +29,13 @@ func (p *PRep) GetNode() module.Address {
 }
 
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	jso := icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatus.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
 	jso["address"] = p.owner
 	return jso
 }
 
-func (p *PRep) Clone() *PRep {
-	return newPRep(p.owner, p.PRepBase.Clone(), p.PRepStatus.Clone())
-}
-
-func newPRep(owner module.Address, pb *PRepBase, ps *PRepStatus) *PRep {
-	return &PRep{owner: owner, PRepBase: pb, PRepStatus: ps}
+func newPRep(owner module.Address, pb *PRepBase, ps *PRepStatusState) *PRep {
+	return &PRep{owner: owner, PRepBase: pb, PRepStatusState: ps}
 }
 
 type PReps struct {
@@ -53,7 +49,7 @@ type PReps struct {
 
 func (p *PReps) appendPRep(owner module.Address, prep *PRep) {
 	p.prepMap[icutils.ToKey(owner)] = prep
-	if prep.PRepStatus.Status() == Active {
+	if prep.PRepStatusState.Status() == Active {
 		p.orderedPReps = append(p.orderedPReps, prep)
 		p.totalBonded.Add(p.totalBonded, prep.Bonded())
 		p.totalDelegated.Add(p.totalDelegated, prep.Delegated())

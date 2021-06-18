@@ -107,11 +107,11 @@ func newPRepBaseCache(store containerdb.ObjectStoreState) *PRepBaseCache {
 // ====================================
 
 type PRepStatusCache struct {
-	statuses map[string]*PRepStatus
+	statuses map[string]*PRepStatusState
 	dict     *containerdb.DictDB
 }
 
-func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRepStatus, bool) {
+func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
 	key := icutils.ToKey(owner)
 	status := c.statuses[key]
 	if status != nil {
@@ -129,8 +129,9 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRe
 			// return nil
 		}
 	} else {
-		status = ToPRepStatus(o.Object())
-		if status != nil {
+		snapshot := ToPRepStatus(o.Object())
+		if snapshot != nil {
+			status = NewPRepStatusWithSnapshot(snapshot)
 			c.statuses[key] = status
 		}
 	}
@@ -139,7 +140,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRe
 
 func (c *PRepStatusCache) Clear() {
 	c.Flush()
-	c.statuses = make(map[string]*PRepStatus)
+	c.statuses = make(map[string]*PRepStatusState)
 }
 
 func (c *PRepStatusCache) Reset() {
@@ -153,7 +154,7 @@ func (c *PRepStatusCache) Reset() {
 		if value == nil {
 			delete(c.statuses, key)
 		} else {
-			status.Set(ToPRepStatus(value.Object()))
+			status.Reset(ToPRepStatus(value.Object()))
 		}
 	}
 }
@@ -171,7 +172,7 @@ func (c *PRepStatusCache) Flush() {
 			}
 			delete(c.statuses, k)
 		} else {
-			o := icobject.New(TypePRepStatus, status.Clone())
+			o := icobject.New(TypePRepStatus, status.GetSnapshot())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
@@ -181,7 +182,7 @@ func (c *PRepStatusCache) Flush() {
 
 func newPRepStatusCache(store containerdb.ObjectStoreState) *PRepStatusCache {
 	return &PRepStatusCache{
-		statuses: make(map[string]*PRepStatus),
+		statuses: make(map[string]*PRepStatusState),
 		dict:     containerdb.NewDictDB(store, 1, prepStatusDictPrefix),
 	}
 }

@@ -410,8 +410,8 @@ func (s *State) replaceValidatorByNode(node module.Address, blockHeight int64) e
 
 // chooseNewValidator returns the owner address of a new validator from PRepSnapshots
 // DO NOT change any fields of PRepStatus here
-func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (module.Address, *PRepStatus, int) {
-	var ps *PRepStatus
+func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (module.Address, *PRepStatusState, int) {
+	var ps *PRepStatusState
 	var pss *PRepSnapshot
 
 	size := prepSnapshots.Len()

@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -98,20 +97,6 @@ func TestState_SetPRep(t *testing.T) {
 		node2 := state.GetNodeByOwner(owner)
 		assert.True(t, node2.Equal(node))
 	}
-}
-
-func TestPenalty_buildPenaltyMask(t *testing.T) {
-	mask := buildPenaltyMask(30)
-	str := fmt.Sprintf("%x", mask)
-	assert.Equal(t, "3fffffff", str)
-
-	mask = buildPenaltyMask(1)
-	str = fmt.Sprintf("%x", mask)
-	assert.Equal(t, "1", str)
-
-	mask = buildPenaltyMask(2)
-	str = fmt.Sprintf("%x", mask)
-	assert.Equal(t, "3", str)
 }
 
 func Test_checkValidationPenalty(t *testing.T) {

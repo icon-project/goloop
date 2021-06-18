@@ -83,12 +83,11 @@ func ToAccount(object trie.Object) *AccountSnapshot {
 	return a
 }
 
-func ToPRepStatus(object trie.Object) *PRepStatus {
+func ToPRepStatus(object trie.Object) *PRepStatusSnapshot {
 	if object == nil {
 		return nil
 	}
-	ps := object.(*icobject.Object).Real().(*PRepStatus)
-	ps = ps.Clone()
+	ps := object.(*icobject.Object).Real().(*PRepStatusSnapshot)
 	return ps
 }
 

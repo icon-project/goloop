@@ -39,7 +39,7 @@ func newDummyPRepBase(i int) *PRepBase {
 	return pb
 }
 
-func newDummyPRepStatus() *PRepStatus {
+func newDummyPRepStatus() *PRepStatusState {
 	ps := NewPRepStatus()
 	ps.SetStatus(Active)
 	ps.SetDelegated(big.NewInt(rand.Int63n(1000)))
@@ -52,9 +52,9 @@ func newDummyPRep(i int) *PRep {
 	pb := newDummyPRepBase(i)
 	ps := newDummyPRepStatus()
 	return &PRep{
-		owner:      owner,
-		PRepBase:   pb,
-		PRepStatus: ps,
+		owner:           owner,
+		PRepBase:        pb,
+		PRepStatusState: ps,
 	}
 }
 

@@ -114,7 +114,7 @@ func TestPRepBaseCache(t *testing.T) {
 
 func TestPRepStatusCache(t *testing.T) {
 	var created bool
-	var status, status1 *PRepStatus
+	var status *PRepStatusState
 	var addr1, addr2 module.Address
 
 	s := newDummyState(true)
@@ -123,7 +123,7 @@ func TestPRepStatusCache(t *testing.T) {
 	vTotal := int64(100)
 
 	// check if item is not present
-	status1, created = s.prepStatusCache.Get(addr1, false)
+	status, created = s.prepStatusCache.Get(addr1, false)
 	assert.Nil(t, status)
 	assert.False(t, created)
 
@@ -132,7 +132,7 @@ func TestPRepStatusCache(t *testing.T) {
 	assert.NotNil(t, status)
 	assert.True(t, created)
 	status.SetStatus(Active)
-	status1 = status
+	ss1 := status.GetSnapshot()
 
 	addr2 = common.MustNewAddressFromString("hx2")
 	status, created = s.prepStatusCache.Get(addr2, true)
@@ -170,6 +170,6 @@ func TestPRepStatusCache(t *testing.T) {
 	// but it can get item, using Get() specifically
 	status, created = s.prepStatusCache.Get(addr1, false)
 	assert.NotNil(t, status)
-	assert.True(t, status.Equal(status1))
+	assert.True(t, ss1.Equal(status.GetSnapshot()))
 	assert.False(t, created)
 }

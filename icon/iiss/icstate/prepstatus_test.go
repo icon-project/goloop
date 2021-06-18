@@ -28,9 +28,7 @@ import (
 
 func TestPRepStatus_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepStatus()
-	g := Candidate
-	ss1.grade = g
+	ss1 := NewPRepStatus().GetSnapshot()
 
 	o1 := icobject.New(TypePRepStatus, ss1)
 	serialized := o1.Bytes()
@@ -46,7 +44,6 @@ func TestPRepStatus_Bytes(t *testing.T) {
 	ss2 := ToPRepStatus(o2)
 	assert.Equal(t, true, ss1.Equal(ss2))
 	assert.Equal(t, true, ss2.Equal(ss1))
-	assert.Equal(t, false, ss2.readonly)
 }
 
 // test for GetBondedDelegation
@@ -142,7 +139,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
-			ps := &PRepStatus{
+			ps := &prepStatusData{
 				vTotal:     in.vTotal,
 				lastState:  in.lastState,
 				lastHeight: in.lastBH,
@@ -213,7 +210,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
-			ps := &PRepStatus{
+			ps := &prepStatusData{
 				vFail:      in.vFail,
 				lastState:  in.lastState,
 				lastHeight: in.lastBH,
@@ -284,7 +281,7 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
-			ps := &PRepStatus{
+			ps := &prepStatusData{
 				lastState:       in.lastState,
 				lastHeight:      in.lastBH,
 				vFailContOffset: in.vFailContOffset,
@@ -297,10 +294,22 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 	}
 }
 
+func TestPRepStatus_buildPenaltyMask(t *testing.T) {
+	var mask uint32
+	mask = buildPenaltyMask(30)
+	assert.Equal(t, uint32(0x3fffffff), mask)
+
+	mask = buildPenaltyMask(1)
+	assert.Equal(t, uint32(0x1), mask)
+
+	mask = buildPenaltyMask(2)
+	assert.Equal(t, uint32(0x3), mask)
+}
+
 func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 	type args struct {
 		vPenaltyMask uint32
-		mask         uint32
+		mask         int
 	}
 
 	tests := []struct {
@@ -312,7 +321,7 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 			"Normal",
 			args{
 				0x3,
-				0x3fffffff,
+				30,
 			},
 			0x6,
 		},
@@ -320,7 +329,7 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 			"Masked",
 			args{
 				0x3fffffff,
-				0x3fffffff,
+				30,
 			},
 			0x3ffffffe,
 		},
@@ -329,9 +338,9 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
-			ps := &PRepStatus{
+			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vPenaltyMask: in.vPenaltyMask,
-			}
+			}}
 
 			ps.shiftVPenaltyMask(in.mask)
 
@@ -476,14 +485,14 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 			out := tt.out
 			bh := in.bh
 
-			ps := &PRepStatus{
+			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vFail:           init.vf,
 				vTotal:          init.vt,
 				vFailContOffset: init.vfco,
 				lastHeight:      init.lh,
 				lastState:       init.ls,
 				vPenaltyMask:    init.vpm,
-			}
+			}}
 
 			err = ps.UpdateBlockVoteStats(in.bh, in.voted)
 			assert.NoError(t, err)
@@ -624,14 +633,14 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 			out := tt.out
 			bh := in.bh
 
-			ps := &PRepStatus{
+			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vFail:           init.vf,
 				vTotal:          init.vt,
 				vFailContOffset: init.vfco,
 				lastHeight:      init.lh,
 				lastState:       init.ls,
 				vPenaltyMask:    init.vpm,
-			}
+			}}
 
 			err = ps.syncBlockVoteStats(in.bh)
 			assert.NoError(t, err)
@@ -697,14 +706,14 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			out := tt.out
 			bh := in.bh
 
-			ps := &PRepStatus{
+			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vFail:           init.vf,
 				vTotal:          init.vt,
 				vFailContOffset: init.vfco,
 				lastHeight:      init.lh,
 				lastState:       init.ls,
 				vPenaltyMask:    init.vpm,
-			}
+			}}
 
 			err = ps.ImposePenalty(bh)
 			assert.NoError(t, err)
