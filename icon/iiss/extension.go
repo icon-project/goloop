@@ -32,7 +32,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
@@ -394,7 +393,7 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 	return jso, nil
 }
 
-func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.Address, ds icstate.Delegations) error {
+func (s *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations) error {
 	var err error
 	var account *icstate.AccountState
 	var delta map[string]*big.Int
@@ -412,7 +411,7 @@ func (s *ExtensionStateImpl) SetDelegation(cc contract.CallContext, from module.
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
 	}
 
-	if err = s.addEventDelegation(cc.BlockHeight(), from, delta); err != nil {
+	if err = s.addEventDelegation(blockHeight, from, delta); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
 	}
 
@@ -498,40 +497,27 @@ func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) 
 	return
 }
 
-func (s *ExtensionStateImpl) UnregisterPRep(cc contract.CallContext, owner module.Address) error {
+func (s *ExtensionStateImpl) UnregisterPRep(blockHeight int64, owner module.Address) error {
 	var err error
-	blockHeight := cc.BlockHeight()
-
 	if err = s.State.DisablePRep(owner, icstate.Unregistered, blockHeight); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
-
-	err = s.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent)
-	if err != nil {
+	if err = s.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
-
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnregistered(Address)")},
-		[][]byte{owner.Bytes()},
-	)
-
-	return err
+	return nil
 }
 
-func (s *ExtensionStateImpl) DisqualifyPRep(cc contract.CallContext, owner module.Address) error {
+func (s *ExtensionStateImpl) DisqualifyPRep(blockHeight int64, owner module.Address) error {
 	// TODO: add PRepDisqualified eventlog
-	blockHeight := cc.BlockHeight()
 	return s.State.DisablePRep(owner, icstate.Disqualified, blockHeight)
 }
 
-func (s *ExtensionStateImpl) SetBond(cc contract.CallContext, from module.Address, bonds icstate.Bonds) error {
+func (s *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
 	s.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 
 	var err error
 	var account *icstate.AccountState
-	blockHeight := cc.BlockHeight()
-
 	account = s.State.GetAccountState(from)
 
 	bondAmount := big.NewInt(0)

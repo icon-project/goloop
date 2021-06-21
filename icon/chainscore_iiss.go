@@ -268,7 +268,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = es.SetDelegation(s.cc, s.from, ds); err != nil {
+	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds); err != nil {
 		return err
 	}
 	return nil
@@ -405,10 +405,15 @@ func (s *chainScore) Ex_unregisterPRep() error {
 			"Invalid address: from=%v", s.from,
 		)
 	}
-	err = es.UnregisterPRep(s.cc, s.from)
+	err = es.UnregisterPRep(s.cc.BlockHeight(), s.from)
 	if err != nil {
 		return err
 	}
+
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepUnregistered(Address)")},
+		[][]byte{s.from.Bytes()},
+	)
 	return nil
 }
 
@@ -578,7 +583,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = es.SetBond(s.cc, s.from, bonds); err != nil {
+	if err = es.SetBond(s.cc.BlockHeight(), s.from, bonds); err != nil {
 		return err
 	}
 	logger.Tracef("Ex_setBond() end")
@@ -943,7 +948,7 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err != nil {
 		return err
 	}
-	if err = es.DisqualifyPRep(s.cc, address); err != nil {
+	if err = es.DisqualifyPRep(s.cc.BlockHeight(), address); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to disqualify PRep: from=%v prep=%v",
