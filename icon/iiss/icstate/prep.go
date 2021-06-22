@@ -57,11 +57,11 @@ func (p *PReps) adjustPRepSize(grade Grade, increment bool) {
 	}
 
 	switch grade {
-	case Main:
+	case GradeMain:
 		p.mainPReps += delta
-	case Sub:
+	case GradeSub:
 		p.subPReps += delta
-	case Candidate:
+	case GradeCandidate:
 		// Nothing to do
 	default:
 		panic(errors.Errorf("Invalid grade: %d", grade))
@@ -88,8 +88,8 @@ func (p *PReps) sort(br int64) {
 	})
 }
 
-// ResetAllStatus initializes all prep status including grade on term end
-func (p *PReps) ResetAllStatus(blockHeight int64, mainPRepCount, subPRepCount, penaltyMask int) error {
+// OnTermEnd initializes all prep status including grade on term end
+func (p *PReps) OnTermEnd(blockHeight int64, mainPRepCount, subPRepCount, limit int) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -97,18 +97,17 @@ func (p *PReps) ResetAllStatus(blockHeight int64, mainPRepCount, subPRepCount, p
 	var newGrade Grade
 	for i, prep := range p.orderedPReps {
 		if i < mainPRepCount {
-			newGrade = Main
+			newGrade = GradeMain
 			mainPReps++
 		} else if i < electedPRepCount {
-			newGrade = Sub
+			newGrade = GradeSub
 			subPReps++
 		} else {
-			newGrade = Candidate
+			newGrade = GradeCandidate
 		}
 
 		// Reset VFailContOffset if this prep got penalized during this term
-		prep.ResetVFailContOffset()
-		if err := prep.ChangeGrade(newGrade, blockHeight, penaltyMask); err != nil {
+		if err := prep.OnTermEnd(newGrade, limit); err != nil {
 			return err
 		}
 	}
@@ -120,11 +119,11 @@ func (p *PReps) ResetAllStatus(blockHeight int64, mainPRepCount, subPRepCount, p
 
 func (p *PReps) GetPRepSize(grade Grade) int {
 	switch grade {
-	case Main:
+	case GradeMain:
 		return p.mainPReps
-	case Sub:
+	case GradeSub:
 		return p.subPReps
-	case Candidate:
+	case GradeCandidate:
 		return p.Size() - p.mainPReps - p.subPReps
 	default:
 		panic(errors.Errorf("Invalid grade: %d", grade))

@@ -31,6 +31,7 @@ const (
 	TypeTerm
 	TypeRewardCalcInfo
 	TypeValidators
+	TypeBlockVoters
 )
 
 type StateAndSnapshot struct {
@@ -69,6 +70,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newRewardCalcInfo(tag), nil
 	case TypeValidators:
 		return newValidatorsWithTag(tag), nil
+	case TypeBlockVoters:
+		return NewBlockVotersWithTag(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -132,4 +135,11 @@ func ToValidators(object trie.Object) *ValidatorsSnapshot {
 		return nil
 	}
 	return object.(*icobject.Object).Real().(*ValidatorsSnapshot)
+}
+
+func ToBlockVoters(object trie.Object) *BlockVotersSnapshot {
+	if object == nil {
+		return nil
+	}
+	return object.(*icobject.Object).Real().(*BlockVotersSnapshot)
 }

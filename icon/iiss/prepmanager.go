@@ -126,7 +126,7 @@ func (pm *PRepManager) CalculateIRep(preps *icstate.PReps, revision int) *big.In
 		return nil
 	}
 
-	mainPRepCount := preps.GetPRepSize(icstate.Main)
+	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
 	totalDelegated := new(big.Int)
 	totalWeightedIrep := new(big.Int)
 	value := new(big.Int)

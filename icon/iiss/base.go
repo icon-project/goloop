@@ -173,7 +173,8 @@ func handleConsensusInfo(cc contract.CallContext) error {
 		return err
 	}
 
-	return updateBlockVoteStats(cc, voters, csi.Voted())
+	blockVoters := icstate.NewBlockVotersSnapshot(voters)
+	return updateBlockVoteStats(cc, blockVoters, csi.Voted())
 }
 
 // CompileVoters return slice of owner address of voters
@@ -203,21 +204,40 @@ func CompileVoters(state *icstate.State, csi module.ConsensusInfo) ([]module.Add
 }
 
 // updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
-func updateBlockVoteStats(cc contract.CallContext, owners []module.Address, voted []bool) error {
+func updateBlockVoteStats(cc contract.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
+	var err error
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	blockHeight := cc.BlockHeight()
 
-	for i, owner := range owners {
-		if err := es.State.UpdateBlockVoteStats(owner, voted[i], blockHeight); err != nil {
+	size := voters.Len()
+	for i := 0; i < size; i++ {
+		voter := voters.Get(i)
+		if err = es.State.OnBlockVote(voter, voted[i], blockHeight); err != nil {
 			return err
 		}
 		if !voted[i] {
-			if err := es.handlePenalty(cc, owner); err != nil {
+			if err = es.handlePenalty(cc, voter); err != nil {
 				return err
 			}
 		}
 	}
 
+	lastVoters := es.State.GetLastBlockVotersSnapshot()
+	if lastVoters != nil {
+		size = lastVoters.Len()
+		for i := 0; i < size; i++ {
+			voter := lastVoters.Get(i)
+			if voters.IndexOf(voter) < 0 {
+				if err = es.State.OnValidatorOut(blockHeight-1, voter); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if lastVoters == nil || !voters.Equal(lastVoters) {
+		return es.State.SetLastBlockVotersSnapshot(voters)
+	}
 	return nil
 }
 

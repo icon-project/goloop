@@ -346,7 +346,7 @@ func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]i
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := s.State.GetPRepStatusByOwner(pss.Owner(), false)
 
-		if ps != nil && ps.Grade() == icstate.Main {
+		if ps != nil && ps.Grade() == icstate.GradeMain {
 			preps = append(preps, pss.ToJSON())
 			sum.Add(sum, pss.BondedDelegation())
 			if len(preps) == mainPRepCount {
@@ -380,7 +380,7 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := s.State.GetPRepStatusByOwner(pss.Owner(), false)
 
-		if ps != nil && ps.Grade() == icstate.Sub {
+		if ps != nil && ps.Grade() == icstate.GradeSub {
 			preps = append(preps, pss.ToJSON())
 			sum.Add(sum, pss.BondedDelegation())
 		}
@@ -770,8 +770,8 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 			}
 		}
 		// Reset the status of all active preps ordered by bondedDelegation
-		penaltyMask := s.State.GetConsistentValidationPenaltyMask()
-		if err = preps.ResetAllStatus(wc.BlockHeight(), mainPRepCount, subPRepCount, penaltyMask); err != nil {
+		limit := s.State.GetConsistentValidationPenaltyMask()
+		if err = preps.OnTermEnd(wc.BlockHeight(), mainPRepCount, subPRepCount, limit); err != nil {
 			return err
 		}
 	} else {
@@ -790,7 +790,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 	// Valid preps means that decentralization is activated
 	if preps != nil {
 		br := s.State.GetBondRequirement()
-		mainPRepCount := preps.GetPRepSize(icstate.Main)
+		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
 		pss := icstate.NewPRepSnapshots(preps, electedPRepCount, br)
 
 		nextTerm.SetMainPRepCount(mainPRepCount)

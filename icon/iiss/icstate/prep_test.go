@@ -51,20 +51,20 @@ func TestPReps_ResetAllStatus(t *testing.T) {
 	preps := newDummyPReps(size, br)
 	assert.Equal(t, size, preps.Size())
 
-	err = preps.ResetAllStatus(bh, mainPRepCount, subPRepCount, penaltyMask)
+	err = preps.OnTermEnd(bh, mainPRepCount, subPRepCount, penaltyMask)
 	assert.NoError(t, err)
-	assert.Equal(t, mainPRepCount, preps.GetPRepSize(Main))
-	assert.Equal(t, subPRepCount, preps.GetPRepSize(Sub))
-	assert.Equal(t, size - mainPRepCount - subPRepCount, preps.GetPRepSize(Candidate))
+	assert.Equal(t, mainPRepCount, preps.GetPRepSize(GradeMain))
+	assert.Equal(t, subPRepCount, preps.GetPRepSize(GradeSub))
+	assert.Equal(t, size - mainPRepCount - subPRepCount, preps.GetPRepSize(GradeCandidate))
 
 	for i := 0; i < size; i++ {
 		prep := preps.GetPRepByIndex(i)
 		if i < mainPRepCount {
-			assert.Equal(t, Main, prep.Grade())
+			assert.Equal(t, GradeMain, prep.Grade())
 		} else if i < electedPRepCount {
-			assert.Equal(t, Sub, prep.Grade())
+			assert.Equal(t, GradeSub, prep.Grade())
 		} else {
-			assert.Equal(t, Candidate, prep.Grade())
+			assert.Equal(t, GradeCandidate, prep.Grade())
 		}
 	}
 }

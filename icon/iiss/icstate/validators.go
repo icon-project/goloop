@@ -378,39 +378,40 @@ func (s *State) changeValidatorNodeAddress(
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
-func (s *State) replaceValidatorByOwner(owner module.Address, blockHeight int64) error {
+func (s *State) replaceMainPRepByOwner(owner module.Address, blockHeight int64) error {
 	node := s.GetNodeByOwner(owner)
-	return s.replaceValidatorByNode(node, blockHeight)
+	newMainPRepOwner, err := s.replaceMainPRepByNode(node, blockHeight)
+	if err != nil {
+		return err
+	}
+	if newMainPRepOwner != nil {
+		err = s.OnMainPRepReplaced(blockHeight, owner, newMainPRepOwner)
+	}
+	return err
 }
 
-func (s *State) replaceValidatorByNode(node module.Address, blockHeight int64) error {
+// Do not modify PRepStatusState fields here
+func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (module.Address, error) {
 	vss := s.GetValidatorsSnapshot()
 	i := vss.IndexOf(node)
 	if i < 0 {
-		return errors.Errorf("Invalid validator: node=%s", node)
+		return nil, errors.Errorf("Invalid validator: node=%s", node)
 	}
 
 	term := s.GetTerm()
-	newOwner, ps, nextPssIdx := s.chooseNewValidator(term.prepSnapshots, vss.NextPRepSnapshotIndex())
+	newOwner, nextPssIdx := s.chooseNewMainPRep(term.prepSnapshots, vss.NextPRepSnapshotIndex())
 	if nextPssIdx < 0 {
-		return errors.Errorf("Failed to choose a new validator: oldNode=%s", node)
-	}
-
-	if ps != nil {
-		penaltyMask := s.GetConsistentValidationPenaltyMask()
-		if err := ps.ChangeGrade(Main, blockHeight, penaltyMask); err != nil {
-			return err
-		}
+		return nil, errors.Errorf("Failed to choose a new validator: oldNode=%s", node)
 	}
 
 	vs := NewValidatorsStateWithSnapshot(vss)
 	vs.Set(blockHeight, i, nextPssIdx, s.GetNodeByOwner(newOwner))
-	return s.SetValidatorsSnapshot(vs.GetSnapshot())
+	return newOwner, s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
-// chooseNewValidator returns the owner address of a new validator from PRepSnapshots
+// chooseNewMainPRep returns the owner address of a new validator from PRepSnapshots
 // DO NOT change any fields of PRepStatus here
-func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (module.Address, *PRepStatusState, int) {
+func (s *State) chooseNewMainPRep(prepSnapshots Arrayable, startIdx int) (module.Address, int) {
 	var ps *PRepStatusState
 	var pss *PRepSnapshot
 
@@ -425,12 +426,12 @@ func (s *State) chooseNewValidator(prepSnapshots Arrayable, startIdx int) (modul
 		}
 
 		switch ps.Grade() {
-		case Main:
-			return nil, nil, -1
-		case Sub:
-			return owner, ps, i + 1
+		case GradeMain:
+			return nil, -1
+		case GradeSub:
+			return owner, i + 1
 		}
 	}
 	// No SubPRep remains to replace old one
-	return nil, nil, size
+	return nil, size
 }

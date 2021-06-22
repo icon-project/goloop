@@ -84,7 +84,7 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 func TestPRepStatus_GetVTotal(t *testing.T) {
 	type args struct {
 		vTotal      int64
-		lastState   ValidationState
+		lastState   VoteState
 		lastBH      int64
 		blockHeight int64
 	}
@@ -124,16 +124,6 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 			},
 			100,
 		},
-		{
-			"Invalid block height",
-			args{
-				100,
-				Failure,
-				200,
-				1,
-			},
-			100,
-		},
 	}
 
 	for _, tt := range tests {
@@ -146,7 +136,6 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 			}
 
 			ret := ps.GetVTotal(in.blockHeight)
-
 			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
@@ -155,7 +144,7 @@ func TestPRepStatus_GetVTotal(t *testing.T) {
 func TestPRepStatus_GetVFail(t *testing.T) {
 	type args struct {
 		vFail       int64
-		lastState   ValidationState
+		lastState   VoteState
 		lastBH      int64
 		blockHeight int64
 	}
@@ -195,16 +184,6 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 			},
 			100,
 		},
-		{
-			"Invalid block height",
-			args{
-				100,
-				Failure,
-				200,
-				1,
-			},
-			100,
-		},
 	}
 
 	for _, tt := range tests {
@@ -225,7 +204,7 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 
 func TestPRepStatus_GetVFailCont(t *testing.T) {
 	type args struct {
-		lastState       ValidationState
+		lastState       VoteState
 		lastBH          int64
 		vFailContOffset int64
 		blockHeight     int64
@@ -266,25 +245,15 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 			},
 			3,
 		},
-		{
-			"Invalid block height",
-			args{
-				Failure,
-				200,
-				0,
-				1,
-			},
-			0,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.args
 			ps := &prepStatusData{
-				lastState:       in.lastState,
-				lastHeight:      in.lastBH,
-				vFailContOffset: in.vFailContOffset,
+				lastState:  in.lastState,
+				lastHeight: in.lastBH,
+				vFailCont:  in.vFailContOffset,
 			}
 
 			ret := ps.GetVFailCont(in.blockHeight)
@@ -352,10 +321,10 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 	type attr struct {
 		lh   int64
-		ls   ValidationState
+		ls   VoteState
 		vf   int64
 		vt   int64
-		vfco int64
+		vfc int64
 		vpm  uint32
 	}
 	type input struct {
@@ -378,10 +347,10 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 	tests := [...]test{
 		{
 			name: "S,S,tv",
-			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: true},
 			out: output{
-				attr:         attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+				attr:         attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    9,
 				getVFailCont: 0,
@@ -389,10 +358,10 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 		},
 		{
 			name: "S,F,fv",
-			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: false},
 			out: output{
-				attr:         attr{lh: 11, ls: Failure, vf: 2, vt: 9, vfco: 1, vpm: 0},
+				attr:         attr{lh: 11, ls: Failure, vf: 2, vt: 9, vfc: 1, vpm: 0},
 				getVFail:     2,
 				getVTotal:    9,
 				getVFailCont: 1,
@@ -400,10 +369,10 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 		},
 		{
 			name: "F,F,fv",
-			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: false},
 			out: output{
-				attr:         attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 0, vpm: 0},
+				attr:         attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 0, vpm: 0},
 				getVFail:     2,
 				getVTotal:    9,
 				getVFailCont: 1,
@@ -411,68 +380,46 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 		},
 		{
 			name: "F,S,tv",
-			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: true},
 			out: output{
-				attr:         attr{lh: 11, ls: Success, vf: 1, vt: 9, vfco: 0, vpm: 0},
+				attr:         attr{lh: 11, ls: Success, vf: 1, vt: 9, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    9,
 				getVFailCont: 0,
 			},
 		},
 		{
-			name: "N,N,tv",
-			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			name: "N,S,tv",
+			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: true},
 			out: output{
-				attr:         attr{lh: 11, ls: None, vf: 1, vt: 9, vfco: 0, vpm: 0},
+				attr:         attr{lh: 11, ls: Success, vf: 1, vt: 9, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    9,
 				getVFailCont: 0,
 			},
 		},
 		{
-			name: "N,N,fv",
-			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			name: "N,F,fv",
+			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11, voted: false},
 			out: output{
-				attr:         attr{lh: 11, ls: None, vf: 2, vt: 9, vfco: 1, vpm: 0},
+				attr:         attr{lh: 11, ls: Failure, vf: 2, vt: 9, vfc: 1, vpm: 0},
 				getVFail:     2,
 				getVTotal:    9,
 				getVFailCont: 1,
 			},
 		},
 		{
-			name: "R,S,tv",
-			init: attr{lh: 10, ls: Ready, vf: 1, vt: 8, vfco: 1, vpm: 0},
-			in:   input{bh: 11, voted: true},
+			name: "S,F,fv",
+			init: attr{lh: 33, ls: Success, vf: 0, vt: 1, vfc: 0, vpm: 0},
+			in:   input{bh: 60, voted: false},
 			out: output{
-				attr:         attr{lh: 11, ls: Success, vf: 1, vt: 9, vfco: 0, vpm: 0},
+				attr:         attr{lh: 60, ls: Failure, vf: 1, vt: 28, vfc: 1, vpm: 0},
 				getVFail:     1,
-				getVTotal:    9,
-				getVFailCont: 0,
-			},
-		},
-		{
-			name: "R,F,fv",
-			init: attr{lh: 9, ls: Ready, vf: 1, vt: 8, vfco: 1, vpm: 0},
-			in:   input{bh: 12, voted: false},
-			out: output{
-				attr:         attr{lh: 12, ls: Failure, vf: 2, vt: 9, vfco: 2, vpm: 0},
-				getVFail:     2,
-				getVTotal:    9,
-				getVFailCont: 2,
-			},
-		},
-		{
-			name: "R,S,tv",
-			init: attr{lh: 9, ls: Ready, vf: 1, vt: 8, vfco: 1, vpm: 0},
-			in:   input{bh: 12, voted: true},
-			out: output{
-				attr:         attr{lh: 12, ls: Success, vf: 1, vt: 9, vfco: 0, vpm: 0},
-				getVFail:     1,
-				getVTotal:    9,
-				getVFailCont: 0,
+				getVTotal:    28,
+				getVFailCont: 1,
 			},
 		},
 	}
@@ -486,21 +433,21 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 			bh := in.bh
 
 			ps := &PRepStatusState{prepStatusData: prepStatusData{
-				vFail:           init.vf,
-				vTotal:          init.vt,
-				vFailContOffset: init.vfco,
-				lastHeight:      init.lh,
-				lastState:       init.ls,
-				vPenaltyMask:    init.vpm,
+				vFail:        init.vf,
+				vTotal:       init.vt,
+				vFailCont:    init.vfc,
+				lastHeight:   init.lh,
+				lastState:    init.ls,
+				vPenaltyMask: init.vpm,
 			}}
 
-			err = ps.UpdateBlockVoteStats(in.bh, in.voted)
+			err = ps.OnBlockVote(in.bh, in.voted)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
 			assert.Equal(t, out.vf, ps.vFail)
 			assert.Equal(t, out.vt, ps.vTotal)
-			assert.Equal(t, out.vfco, ps.vFailContOffset)
+			assert.Equal(t, out.vfc, ps.vFailCont)
 			assert.Equal(t, out.vpm, ps.vPenaltyMask)
 			assert.Equal(t, out.getVFail, ps.GetVFail(bh))
 			assert.Equal(t, out.getVTotal, ps.GetVTotal(bh))
@@ -509,13 +456,13 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 	}
 }
 
-func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
+func TestPRepStatus_syncBlockVoteStats(t *testing.T) {
 	type attr struct {
 		lh   int64
-		ls   ValidationState
+		ls   VoteState
 		vf   int64
 		vt   int64
-		vfco int64
+		vfc int64
 		vpm  uint32
 	}
 	type input struct {
@@ -537,91 +484,91 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 	tests := [...]test{
 		{
 			// 0 == in.bh - init.lh
-			name: "S,N,0",
-			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			name: "S,0",
+			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 10},
 			out: output{
-				attr:         attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 0, vpm: 0},
+				attr:         attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    8,
 				getVFailCont: 0,
 			},
 		},
 		{
-			name: "S,N,1",
-			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			name: "S,1",
+			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 11},
 			out: output{
-				attr:         attr{lh: 11, ls: None, vf: 1, vt: 9, vfco: 0, vpm: 0},
+				attr:         attr{lh: 11, ls: Success, vf: 1, vt: 9, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    9,
 				getVFailCont: 0,
 			},
 		},
 		{
-			name: "S,N,2",
-			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfco: 0, vpm: 0},
+			name: "S,2",
+			init: attr{lh: 10, ls: Success, vf: 1, vt: 8, vfc: 0, vpm: 0},
 			in:   input{bh: 12},
 			out: output{
-				attr:         attr{lh: 12, ls: None, vf: 1, vt: 10, vfco: 0, vpm: 0},
+				attr:         attr{lh: 12, ls: Success, vf: 1, vt: 10, vfc: 0, vpm: 0},
 				getVFail:     1,
 				getVTotal:    10,
 				getVFailCont: 0,
 			},
 		},
 		{
-			name: "F,N,0",
-			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 1, vpm: 0},
+			name: "F,0",
+			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 1, vpm: 0},
 			in:   input{bh: 10},
 			out: output{
-				attr:         attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 1, vpm: 0},
+				attr:         attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 1, vpm: 0},
 				getVFail:     1,
 				getVTotal:    8,
 				getVFailCont: 1,
 			},
 		},
 		{
-			name: "F,N,1",
-			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 1, vpm: 0},
+			name: "F,1",
+			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 1, vpm: 0},
 			in:   input{bh: 11},
 			out: output{
-				attr:         attr{lh: 11, ls: None, vf: 2, vt: 9, vfco: 2, vpm: 0},
+				attr:         attr{lh: 11, ls: Failure, vf: 2, vt: 9, vfc: 2, vpm: 0},
 				getVFail:     2,
 				getVTotal:    9,
 				getVFailCont: 2,
 			},
 		},
 		{
-			name: "F,N,2",
-			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfco: 1, vpm: 0},
+			name: "F,2",
+			init: attr{lh: 10, ls: Failure, vf: 1, vt: 8, vfc: 1, vpm: 0},
 			in:   input{bh: 12},
 			out: output{
-				attr:         attr{lh: 12, ls: None, vf: 3, vt: 10, vfco: 3, vpm: 0},
+				attr:         attr{lh: 12, ls: Failure, vf: 3, vt: 10, vfc: 3, vpm: 0},
 				getVFail:     3,
 				getVTotal:    10,
 				getVFailCont: 3,
 			},
 		},
 		{
-			name: "N,N,0",
-			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 1, vpm: 0},
+			name: "N,0",
+			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 1, vpm: 0},
 			in:   input{bh: 10},
 			out: output{
-				attr:         attr{lh: 10, ls: None, vf: 1, vt: 8, vfco: 1, vpm: 0},
+				attr:         attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 1, vpm: 0},
 				getVFail:     1,
 				getVTotal:    8,
 				getVFailCont: 1,
 			},
 		},
 		{
-			name: "N,N,0,C,M",
-			init: attr{lh: 0, ls: None, vf: 0, vt: 0, vfco: 0, vpm: 0},
-			in:   input{bh: 9},
+			name: "N,1",
+			init: attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 1, vpm: 0},
+			in:   input{bh: 10},
 			out: output{
-				attr:         attr{lh: 0, ls: None, vf: 0, vt: 0, vfco: 0, vpm: 0},
-				getVFail:     0,
-				getVTotal:    0,
-				getVFailCont: 0,
+				attr:         attr{lh: 10, ls: None, vf: 1, vt: 8, vfc: 1, vpm: 0},
+				getVFail:     1,
+				getVTotal:    8,
+				getVFailCont: 1,
 			},
 		},
 	}
@@ -634,12 +581,12 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 			bh := in.bh
 
 			ps := &PRepStatusState{prepStatusData: prepStatusData{
-				vFail:           init.vf,
-				vTotal:          init.vt,
-				vFailContOffset: init.vfco,
-				lastHeight:      init.lh,
-				lastState:       init.ls,
-				vPenaltyMask:    init.vpm,
+				vFail:        init.vf,
+				vTotal:       init.vt,
+				vFailCont:    init.vfc,
+				lastHeight:   init.lh,
+				lastState:    init.ls,
+				vPenaltyMask: init.vpm,
 			}}
 
 			err = ps.syncBlockVoteStats(in.bh)
@@ -648,7 +595,7 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 			assert.Equal(t, out.ls, ps.lastState)
 			assert.Equal(t, out.vf, ps.vFail)
 			assert.Equal(t, out.vt, ps.vTotal)
-			assert.Equal(t, out.vfco, ps.vFailContOffset)
+			assert.Equal(t, out.vfc, ps.vFailCont)
 			assert.Equal(t, out.vpm, ps.vPenaltyMask)
 			assert.Equal(t, out.getVFail, ps.GetVFail(bh))
 			assert.Equal(t, out.getVTotal, ps.GetVTotal(bh))
@@ -660,10 +607,10 @@ func TestPRepStatus_SyncBlockVoteStats(t *testing.T) {
 func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 	type attr struct {
 		lh   int64
-		ls   ValidationState
+		ls   VoteState
 		vf   int64
 		vt   int64
-		vfco int64
+		vfc int64
 		vpm  uint32
 	}
 	type input struct {
@@ -687,10 +634,10 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 		{
 			// 0 == in.bh - init.lh
 			name: "F,N",
-			init: attr{lh: 10, ls: Failure, vf: 5, vt: 8, vfco: 5, vpm: 0x2},
+			init: attr{lh: 10, ls: Failure, vf: 5, vt: 8, vfc: 5, vpm: 0x2},
 			in:   input{bh: 10},
 			out: output{
-				attr:             attr{lh: 10, ls: None, vf: 5, vt: 8, vfco: 0, vpm: 0x3},
+				attr:             attr{lh: 10, ls: Failure, vf: 5, vt: 8, vfc: 0, vpm: 0x3},
 				getVFail:         5,
 				getVTotal:        8,
 				getVFailCont:     0,
@@ -707,26 +654,27 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			bh := in.bh
 
 			ps := &PRepStatusState{prepStatusData: prepStatusData{
-				vFail:           init.vf,
-				vTotal:          init.vt,
-				vFailContOffset: init.vfco,
-				lastHeight:      init.lh,
-				lastState:       init.ls,
-				vPenaltyMask:    init.vpm,
+				vFail:        init.vf,
+				vTotal:       init.vt,
+				vFailCont:    init.vfc,
+				lastHeight:   init.lh,
+				lastState:    init.ls,
+				vPenaltyMask: init.vpm,
 			}}
 
-			err = ps.ImposePenalty(bh)
+			err = ps.OnPenaltyImposed(bh)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
 			assert.Equal(t, out.vf, ps.vFail)
 			assert.Equal(t, out.vt, ps.vTotal)
-			assert.Equal(t, out.vfco, ps.vFailContOffset)
+			assert.Equal(t, out.vfc, ps.vFailCont)
 			assert.Equal(t, out.vpm, ps.vPenaltyMask)
 			assert.Equal(t, out.getVFail, ps.GetVFail(bh))
 			assert.Equal(t, out.getVTotal, ps.GetVTotal(bh))
 			assert.Equal(t, out.getVFailCont, ps.GetVFailCont(bh))
 			assert.Equal(t, out.getVPenaltyCount, ps.GetVPenaltyCount())
+			assert.Equal(t, ps.Grade(), GradeCandidate)
 		})
 	}
 }

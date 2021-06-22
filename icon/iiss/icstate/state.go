@@ -49,6 +49,9 @@ var (
 	TotalBondKey = containerdb.ToKey(
 		containerdb.HashBuilder, scoredb.VarDBPrefix, "total_bond",
 	)
+	LastBlockVotersKey = containerdb.ToKey(
+		containerdb.HashBuilder, scoredb.VarDBPrefix, "lastBlockVoters",
+	)
 )
 
 type State struct {
@@ -67,6 +70,7 @@ type State struct {
 	totalDelegationVarDB *containerdb.VarDB
 	totalBondVarDB       *containerdb.VarDB
 	validatorsVarDB      *containerdb.VarDB
+	lastBlockVotersVarDB *containerdb.VarDB
 }
 
 func (s *State) Reset(ss *Snapshot) error {
@@ -181,6 +185,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	tdVarDB := containerdb.NewVarDB(store, TotalDelegationKey)
 	tbVarDB := containerdb.NewVarDB(store, TotalBondKey)
 	validatorsVarDB := containerdb.NewVarDB(store, ValidatorsKey)
+	lastBlockVotersVarDB := containerdb.NewVarDB(store, LastBlockVotersKey)
 
 	return &State{
 		readonly:            readonly,
@@ -198,6 +203,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 		totalDelegationVarDB: tdVarDB,
 		totalBondVarDB:       tbVarDB,
 		validatorsVarDB:      validatorsVarDB,
+		lastBlockVotersVarDB: lastBlockVotersVarDB,
 	}
 }
 
@@ -330,7 +336,7 @@ func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo)
 
 	if !oldNode.Equal(newNode) {
 		ps, _ := s.GetPRepStatusByOwner(owner, false)
-		if ps.Grade() == Main {
+		if ps.Grade() == GradeMain {
 			return s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
 		}
 	}
@@ -387,7 +393,7 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	return pb.GetNode(owner)
 }
 
-func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeight int64) error {
+func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64) error {
 	if !voted {
 		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
 	}
@@ -395,8 +401,35 @@ func (s *State) UpdateBlockVoteStats(owner module.Address, voted bool, blockHeig
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.UpdateBlockVoteStats(blockHeight, voted)
-	s.logger.Debugf("owner=%v voted=%t %+v", owner, voted, ps)
+	err := ps.OnBlockVote(blockHeight, voted)
+	s.logger.Tracef("OnBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
+	return err
+}
+
+func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.Address) error {
+	s.logger.Tracef("OnMainPRepReplaced() start: bh=%d old=%v new=%v", blockHeight, oldOwner, newOwner)
+	if newOwner == nil {
+		// No sub prep remains
+		return nil
+	}
+
+	ps, _ := s.GetPRepStatusByOwner(newOwner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %s", newOwner)
+	}
+	err := ps.OnMainPRepIn(s.GetConsistentValidationPenaltyMask())
+	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
+	return err
+}
+
+func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
+	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return errors.Errorf("PRep not found: %s", owner)
+	}
+	err := ps.OnValidatorOut(blockHeight)
+	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", blockHeight, owner, ps)
+
 	return err
 }
 
@@ -446,20 +479,20 @@ func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHe
 	var err error
 
 	// Update status of the penalized main prep
-	s.logger.Debugf("ImposePenalty() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
 	oldGrade := ps.Grade()
-	err = ps.ImposePenalty(blockHeight)
-	s.logger.Debugf("ImposePenalty() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	err = ps.OnPenaltyImposed(blockHeight)
+	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err
 	}
 
 	// If a penalized prep is a main prep, choose a new validator from prep snapshots
-	if oldGrade == Main {
-		return s.replaceValidatorByOwner(owner, blockHeight)
+	if oldGrade == GradeMain {
+		err = s.replaceMainPRepByOwner(owner, blockHeight)
 	}
-	return nil
+	return err
 }
 
 // Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
@@ -502,8 +535,8 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 	if err != nil {
 		return err
 	}
-	if oldGrade == Main {
-		if err := s.replaceValidatorByOwner(owner, blockHeight); err != nil {
+	if oldGrade == GradeMain {
+		if err = s.replaceMainPRepByOwner(owner, blockHeight); err != nil {
 			return err
 		}
 	}
@@ -519,12 +552,24 @@ func (s *State) SetValidatorsSnapshot(vss *ValidatorsSnapshot) error {
 	return s.validatorsVarDB.Set(o)
 }
 
+func (s *State) GetLastBlockVotersSnapshot() *BlockVotersSnapshot {
+	return ToBlockVoters(s.lastBlockVotersVarDB.Object())
+}
+
+func (s *State) SetLastBlockVotersSnapshot(value *BlockVotersSnapshot) error {
+	o := icobject.New(TypeBlockVoters, value)
+	return s.lastBlockVotersVarDB.Set(o)
+}
+
 func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.Int, preps *PReps) bool {
 	predefinedMainPRepCount := int(s.GetMainPRepCount())
 	br := s.GetBondRequirement()
 
 	if revision >= icmodule.RevisionDecentralize && s.GetActivePRepSize() >= predefinedMainPRepCount {
 		prep := preps.GetPRepByIndex(predefinedMainPRepCount - 1)
+		if prep == nil {
+			return false
+		}
 		return totalSupply.Cmp(new(big.Int).Mul(prep.GetBondedDelegation(br), big.NewInt(500))) <= 0
 	}
 	return false
@@ -617,11 +662,11 @@ func (s *State) GetPRepManagerInJSON() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"totalStake": s.GetTotalStake(),
-		"totalBonded": preps.TotalBonded(),
-		"totalDelegated": preps.TotalDelegated(),
+		"totalStake":            s.GetTotalStake(),
+		"totalBonded":           preps.TotalBonded(),
+		"totalDelegated":        preps.TotalDelegated(),
 		"totalBondedDelegation": preps.GetTotalBondedDelegation(br),
-		"preps": preps.Size(),
+		"preps":                 preps.Size(),
 	}
 }
 
