@@ -240,6 +240,10 @@ func (ef EnableStatus) IsDisabledTemporarily() bool {
 	return ef == ESDisableTemp
 }
 
+func (ef EnableStatus) IsDisabledPermanently() bool {
+	return ef == ESDisablePermanent
+}
+
 func (ef EnableStatus) String() string {
 	switch ef {
 	case ESEnable:

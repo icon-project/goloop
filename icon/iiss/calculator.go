@@ -583,7 +583,8 @@ func (c *Calculator) calculateVotingReward() error {
 			}
 			if event.Status().IsEnabled() {
 				prepInfo[idx].SetStartOffset(offset)
-			} else {
+			} else if event.Status().IsDisabledPermanently() {
+				// ICONist can't get voting reward when target PRep was unregistered or disqualified
 				prepInfo[idx].SetEndOffset(offset)
 			}
 			// update vInfo
