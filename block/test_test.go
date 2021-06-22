@@ -33,6 +33,7 @@ type testChain struct {
 	gs       *testGenesisStorage
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
+	bm       module.BlockManager
 }
 
 func (c *testChain) DefaultWaitTimeout() time.Duration {
@@ -73,6 +74,10 @@ func (c *testChain) NetID() int {
 
 func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
+}
+
+func (c *testChain) BlockManager() module.BlockManager {
+	return c.bm
 }
 
 func (c *testChain) ServiceManager() module.ServiceManager {

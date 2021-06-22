@@ -112,6 +112,10 @@ type BlockManager interface {
 	// GetGenesisVotes returns available votes from genesis storage.
 	// They are available only when it starts from genesis.
 	GetGenesisData() (Block, CommitVoteSet, error)
+
+	// NewConsensusInfo returns a ConsensusInfo with blk's proposer and
+	// votes in blk.
+	NewConsensusInfo(blk Block) (ConsensusInfo, error)
 }
 
 type TransactionInfo interface {

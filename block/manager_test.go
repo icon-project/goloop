@@ -94,6 +94,7 @@ func newBlockManagerTestSetUp(t *testing.T) *blockManagerTestSetUp {
 	var err error
 	s.bm, err = NewManager(s.chain, nil, nil)
 	assert.Nil(t, err)
+	s.chain.bm = s.bm
 	s.bg = newBlockGenerator(t, s.gtx)
 	return s
 }

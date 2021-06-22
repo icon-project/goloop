@@ -70,6 +70,15 @@ type chainContext struct {
 
 type finalizationCB = func(module.Block) bool
 
+type handlerContext struct {
+	*manager
+}
+
+func (c handlerContext) GetBlockByHeight(height int64) (module.Block, error) {
+	// without acquiring lock
+	return c.manager.getBlockByHeight(height)
+}
+
 type manager struct {
 	*chainContext
 	bntr  RefTracer
@@ -80,6 +89,7 @@ type manager struct {
 	finalizationCBs []finalizationCB
 	timestamper     module.Timestamper
 	handler         Handler
+	handlerContext  handlerContext
 }
 
 func (m *manager) db() db.Database {
@@ -235,15 +245,10 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	var validators module.ValidatorList
-	if block.Height() == 1 {
-		validators = nil
-	} else {
-		pprev, err := m.getBlock(bn.block.PrevID())
-		if err != nil {
-			return nil, errors.InvalidStateError.Wrapf(err, "Cannot get prev block %x", bn.block.PrevID())
-		}
-		validators = pprev.NextValidators()
+	var err error
+	validators, err := m.handler.GetVoters(m.handlerContext, block.Height()-1)
+	if err != nil {
+		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
 	var csi module.ConsensusInfo
 	if vt, err := verifyBlock(block, bn.block, validators); err != nil {
@@ -261,7 +266,6 @@ func (m *manager) _import(
 		},
 	}
 	it.state = executingIn
-	var err error
 	it.in, err = bn.preexe.patch(it.block.PatchTransactions(), block, it)
 	if err != nil {
 		return nil, err
@@ -495,6 +499,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
 	block := pt.manager.handler.NewBlock(
+		pt.manager.handlerContext,
 		height,
 		timestamp,
 		pt.manager.chain.Wallet().Address(),
@@ -555,6 +560,7 @@ func NewManager(
 		timestamper: timestamper,
 		handler: handler,
 	}
+	m.handlerContext.manager = m
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM|BNODE",
 	})
@@ -623,24 +629,9 @@ func NewManager(
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return nil, err
 	}
-	var csi module.ConsensusInfo
-	if pBlock, err := m.getBlock(lastFinalized.PrevID()); err != nil {
+	csi, err := m.newConsensusInfo(lastFinalized)
+	if err != nil {
 		return nil, err
-	} else {
-		var voters module.ValidatorList
-		var voted []bool
-		if ppID := pBlock.PrevID(); len(ppID) > 0 {
-			if ppBlock, err := m.getBlock(ppID); err != nil {
-				return nil, err
-			} else {
-				voters = ppBlock.NextValidators()
-				voted, err = lastFinalized.Votes().Verify(pBlock, voters)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-		csi = common.NewConsensusInfo(lastFinalized.Proposer(), voters, voted)
 	}
 	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil)
 	if err != nil {
@@ -682,7 +673,7 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 }
 
 func (m *manager) doGetBlock(id []byte) (module.Block, error) {
-	blk, err := m.handler.GetBlock(id)
+	blk, err := m.handler.GetBlock(m.handlerContext, id)
 	if blk != nil {
 		m.cache.Put(blk)
 	}
@@ -699,7 +690,7 @@ func (m *manager) Import(
 
 	m.log.Debugf("Import(%x)\n", r)
 
-	block, err := m.handler.NewBlockDataFromReader(r)
+	block, err := m.handler.NewBlockDataFromReader(m.handlerContext, r)
 	if err != nil {
 		return nil, err
 	}
@@ -803,20 +794,15 @@ func (m *manager) finalizePrunedBlock() error {
 	if err != nil {
 		return err
 	}
-	var csi module.ConsensusInfo
 	if ppid := pblk.PrevID(); len(ppid) > 0 {
-		ppblk, err := m._importBlockByID(d, ppid)
+		_, err := m._importBlockByID(d, ppid)
 		if err != nil {
 			return transaction.InvalidGenesisError.Wrap(err, "NoVoterInformation")
 		}
-		voters := ppblk.NextValidators()
-		voted, err := blk.Votes().Verify(pblk, voters)
-		if err != nil {
-			return transaction.InvalidGenesisError.Wrap(err, "InvalidVotesInTheBlock")
-		}
-		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
-	} else {
-		csi = common.NewConsensusInfo(blk.Proposer(), nil, nil)
+	}
+	csi, err := m.newConsensusInfo(blk)
+	if err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetConsensusInfo")
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())
@@ -917,6 +903,7 @@ func (m *manager) finalizeGenesisBlock(
 	bn.in = in
 	bn.preexe = gtr
 	bn.block = m.handler.NewBlock(
+		m.handlerContext,
 		genesisHeight,
 		timestamp,
 		proposer,
@@ -1005,7 +992,7 @@ func (m *manager) finalize(bn *bnode) error {
 		m.bntr.TraceRef(bn)
 	}
 
-	err = m.handler.FinalizeHeader(block)
+	err = m.handler.FinalizeHeader(m.handlerContext, block)
 	if err != nil {
 		return err
 	}
@@ -1111,7 +1098,7 @@ func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	return m.handler.NewBlockDataFromReader(r)
+	return m.handler.NewBlockDataFromReader(m.handlerContext, r)
 }
 
 type transactionInfo struct {
@@ -1313,7 +1300,11 @@ func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) doGetBlockByHeight(height int64) (module.Block, error) {
-	return m.handler.GetBlockByHeight(height)
+	blk, err := m.handler.GetBlockByHeight(m.handlerContext, height)
+	if blk != nil {
+		m.cache.Put(blk)
+	}
+	return blk, err
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {
@@ -1561,6 +1552,29 @@ func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get block for id=%x", genesis.Block)
 	}
 	return block, voteSetDecoder(bs), nil
+}
+
+func (m *manager) NewConsensusInfo(blk module.Block) (module.ConsensusInfo, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.newConsensusInfo(blk)
+}
+
+func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, error) {
+	vl, err := m.handler.GetVoters(m.handlerContext, blk.Height()-1)
+	if err != nil {
+		return nil, err
+	}
+	pblk, err := m.getBlockByHeight(blk.Height()-1)
+	if err != nil {
+		return nil, err
+	}
+	voted, err := blk.Votes().Verify(pblk, vl)
+	if err != nil {
+		return nil, err
+	}
+	return common.NewConsensusInfo(blk.Proposer(), vl, voted), nil
 }
 
 func GetLastHeight(dbase db.Database) (int64, error) {
