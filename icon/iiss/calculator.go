@@ -257,11 +257,13 @@ func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t Reward
 }
 
 // varForBlockProduceReward return variable for block produce reward
-// return irep * mainPRepCount * IScoreICXRatio / (2 * 2 * MonthBlock)
+// return (((irep * MonthPerYear) / (YearBlock * 2)) * mainPRepCount * IScoreICXRatio) / 2
 func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 	v := new(big.Int)
-	v.Mul(irep, big.NewInt(int64(mainPRepCount)*IScoreICXRatio))
-	v.Div(v, big.NewInt(int64(MonthBlock*2*2)))
+	v.Mul(irep, big.NewInt(MonthPerYear))
+	v.Div(v, big.NewInt(int64(YearBlock*2)))
+	v.Mul(v, big.NewInt(int64(mainPRepCount)*IScoreICXRatio))
+	v.Div(v, big.NewInt(int64(2)))
 	return v
 }
 
@@ -329,6 +331,10 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 	if pIndex >= vLen || maxIndex > vLen {
 		return errors.Errorf("Can't find validator with %+v", bp)
 	}
+	// ICON1 did not give validate reward to proposer
+	if vMask.Bit(pIndex) == uint(1) {
+		vCount -= 1
+	}
 	beta1Reward := new(big.Int).Set(variable)
 
 	// for proposer
@@ -339,7 +345,7 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 	if vCount > 0 {
 		beta1Validate := new(big.Int).Div(beta1Reward, big.NewInt(int64(vCount)))
 		for i := 0; i < maxIndex; i += 1 {
-			if (vMask.Bit(i)) != 0 {
+			if pIndex != i && vMask.Bit(i) == uint(1) {
 				validators[i].SetIScore(new(big.Int).Add(validators[i].IScore(), beta1Validate))
 			}
 		}
