@@ -356,20 +356,21 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 
 // varForVotedReward return variable for P-Rep voted reward
 // IISS 2.0
-// 	multiplier = irep * electedPRepCount * IScoreICXRatio
-//	divider = 2 * MonthBlock
+//	multiplier = (((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio) / 2
+//	divider = 1
 // IISS 3.1
 // 	multiplier = iglobal * iprep * IScoreICXRatio
 //	divider = 100 * TermPeriod
 func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
-	divider = new(big.Int)
+	divider = new(big.Int).SetInt64(1)
 
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion2 {
 		g := global.GetV1()
-		multiplier.Mul(g.GetIRep(), big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
-		divider.SetInt64(int64(MonthBlock * 2))
+		multiplier.Mul(g.GetIRep(), big.NewInt(MonthPerYear))
+		multiplier.Div(multiplier, big.NewInt(int64(YearBlock*2)))
+		multiplier.Mul(multiplier, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 {
@@ -405,15 +406,17 @@ func (c *Calculator) calculateVotedReward() error {
 		keyOffset := int(intconv.BytesToInt64(keySplit[1]))
 		switch type_ {
 		case icstage.TypeEventEnable:
-			vInfo.CalculateReward(multiplier, divider, keyOffset-from)
-			from = keyOffset
-
 			obj := icstage.ToEventEnable(o)
-			vInfo.SetEnable(obj.Target(), obj.Status())
-			// If revision < 7, do not update totalBondedDelegation with EventEnable
-			if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
-				vInfo.UpdateTotalBondedDelegation()
+			if obj.Status().IsEnabled() == false {
+				vInfo.CalculateReward(multiplier, divider, keyOffset-from)
+				from = keyOffset
+
+				// If revision < 7, do not update totalBondedDelegation with EventEnable
+				if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
+					vInfo.UpdateTotalBondedDelegation()
+				}
 			}
+			vInfo.SetEnable(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateDelegated(obj.Votes())
