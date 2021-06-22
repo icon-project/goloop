@@ -409,7 +409,7 @@ func (m *manager) _propose(
 		validators = pprev.NextValidators()
 	}
 	var csi module.ConsensusInfo
-	if voted, err := votes.Verify(bn.block, validators); err != nil {
+	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
 		return nil, err
 	} else {
 		csi = common.NewConsensusInfo(m.chain.Wallet().Address(), validators, voted)
@@ -1570,7 +1570,7 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	if err != nil {
 		return nil, err
 	}
-	voted, err := blk.Votes().Verify(pblk, vl)
+	voted, err := blk.Votes().VerifyBlock(pblk, vl)
 	if err != nil {
 		return nil, err
 	}

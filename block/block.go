@@ -15,7 +15,7 @@ func verifyBlock(b module.BlockData, prev module.BlockData, validators module.Va
 		return nil, errors.New("bad prev ID")
 	}
 	var voted []bool
-	if vt, err := b.Votes().Verify(prev, validators); err != nil {
+	if vt, err := b.Votes().VerifyBlock(prev, validators); err != nil {
 		return nil, err
 	} else {
 		voted = vt

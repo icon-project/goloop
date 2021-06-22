@@ -91,7 +91,7 @@ func newTCommitVoteSet(b []byte) module.CommitVoteSet {
 	return &tCommitVoteSet{b: b}
 }
 
-func (vs *tCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (vs *tCommitVoteSet) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	return nil, nil
 }
 

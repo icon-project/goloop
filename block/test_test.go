@@ -812,7 +812,7 @@ func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.TimestampedCommit
 	return &testCommitVoteSet{Pass: pass, Timestamp_: ts}
 }
 
-func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (vs *testCommitVoteSet) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	if block.Height() == 0 && vs.zero {
 		return nil, nil
 	}
