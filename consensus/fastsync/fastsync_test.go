@@ -100,7 +100,7 @@ func (vs *tCommitVoteSet) Bytes() []byte {
 }
 
 type tBlockManager struct {
-	test.BlockManagerBase
+	module.BlockManager
 	bmap map[int64]module.Block
 }
 

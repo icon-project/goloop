@@ -71,7 +71,7 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Proposed block can be Commited or
 	// 	Finalized.
-	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler Canceler, err error)
+	Propose(parentID []byte, votes TimestampedCommitVoteSet, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the

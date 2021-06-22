@@ -145,7 +145,7 @@ type cbResult struct {
 	err error
 }
 
-func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *blockResult {
+func proposeSync(bm module.BlockManager, pid []byte, vs module.TimestampedCommitVoteSet) *blockResult {
 	ch := make(chan cbResult)
 	_, err := bm.Propose(pid, vs, func(blk module.BlockCandidate, err error) {
 		ch <- cbResult{blk, err}
@@ -199,7 +199,7 @@ func TestBlockManager_Propose_ErrorOnInvalidCommitVoteSet(t *testing.T) {
 	pid := getLastBlockID(t, bm)
 
 	cases := []struct {
-		vs module.CommitVoteSet
+		vs module.TimestampedCommitVoteSet
 		ok bool
 	}{
 		{newCommitVoteSet(false), false},
@@ -338,8 +338,9 @@ func TestBlockManager_Import_NonAscendingTimestamp(t *testing.T) {
 	// height 2 - change timestamp (2 -> 10)
 	blk := s.bg.getBlock(2)
 	assert.NotNil(t, blk)
-	blk.(*blockV2).votes = newCommitVoteSetWithTimestamp(true, 10)
-	blk.(*blockV2).timestamp = blk.(*blockV2).votes.Timestamp()
+	votes := newCommitVoteSetWithTimestamp(true, 10)
+	blk.(*blockV2).votes = votes
+	blk.(*blockV2).timestamp = votes.Timestamp()
 	blk.(*blockV2)._id = nil
 	r = getReaderForBlock(t, blk)
 	br = importSync(s.bm, r)

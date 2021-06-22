@@ -799,11 +799,11 @@ func newCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 	return vs
 }
 
-func newCommitVoteSet(pass bool) module.CommitVoteSet {
+func newCommitVoteSet(pass bool) module.TimestampedCommitVoteSet {
 	return &testCommitVoteSet{Pass: pass}
 }
 
-func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.CommitVoteSet {
+func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.TimestampedCommitVoteSet {
 	return &testCommitVoteSet{Pass: pass, Timestamp_: ts}
 }
 
