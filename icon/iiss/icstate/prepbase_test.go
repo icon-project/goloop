@@ -27,11 +27,10 @@ import (
 
 func TestPRepBase_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepBase()
-	n := "name"
-	ss1.name = n
+	pb := newDummyPRepBase(0)
+	pbs1 := pb.GetSnapshot()
 
-	o1 := icobject.New(TypePRepBase, ss1)
+	o1 := icobject.New(TypePRepBase, pbs1)
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -42,7 +41,7 @@ func TestPRepBase_Bytes(t *testing.T) {
 
 	assert.Equal(t, serialized, o2.Bytes())
 
-	ss2 := ToPRepBase(o2)
-	assert.Equal(t, true, ss1.Equal(ss2))
-	assert.Equal(t, true, ss2.Equal(ss1))
+	pbs2 := ToPRepBase(o2)
+	assert.Equal(t, true, pbs1.Equal(pbs2))
+	assert.Equal(t, true, pbs2.Equal(pbs1))
 }

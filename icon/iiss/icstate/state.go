@@ -131,10 +131,6 @@ func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
 	return timer
 }
 
-func (s *State) addActivePRep(owner module.Address) {
-	s.activePRepCache.Add(owner)
-}
-
 func (s *State) RemoveActivePRep(owner module.Address) error {
 	return s.activePRepCache.Remove(owner)
 }
@@ -147,11 +143,11 @@ func (s *State) getActivePRepOwner(i int) module.Address {
 	return s.activePRepCache.Get(i)
 }
 
-func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) (*PRepBase, bool) {
+func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) (*PRepBaseState, bool) {
 	return s.prepBaseCache.Get(owner, createIfNotExist)
 }
 
-func (s *State) GetPRepBaseByNode(node module.Address) *PRepBase {
+func (s *State) GetPRepBaseByNode(node module.Address) *PRepBaseState {
 	pb, _ := s.GetPRepBaseByOwner(s.GetOwnerByNode(node), false)
 	return pb
 }
@@ -205,7 +201,17 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	}
 }
 
+// addNodeToOwner adds alias from node to owner
+// If the alias already exists, then it silently ignores
+// If node is already used by others, then it returns errors.
 func (s *State) addNodeToOwner(node, owner module.Address) error {
+	if !node.Equal(owner) {
+		ps, _ := s.GetPRepStatusByOwner(node, false)
+		if ps != nil && ps.Status() != NotReady {
+			return errors.InvalidStateError.Errorf("AlreadyUsedByPRep(node=%s)", node)
+		}
+	}
+	// nodeOwner map stores the entry only if node is different from owner
 	return s.nodeOwnerCache.Add(node, owner)
 }
 
@@ -279,84 +285,56 @@ func (s *State) ClearCache() {
 	s.store.ClearCache()
 }
 
+func (s *State) updateRegInfoOfPRep(owner module.Address, pb *PRepBaseState, ri *RegInfo) error {
+	if err := pb.UpdateRegInfo(ri); err != nil {
+		return err
+	}
+	node := ri.GetNode(owner)
+	if err := s.addNodeToOwner(node, owner); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) error {
 	if ri == nil {
 		return errors.Errorf("Invalid argument: ri")
 	}
 
-	var err error
 	ps, _ := s.GetPRepStatusByOwner(owner, true)
-	if ps.Status() != NotReady {
-		return errors.Errorf("Already in use: addr=%s %+v", owner, ps)
+	if err := ps.Activate(); err != nil {
+		return errors.Wrapf(err, "ActivationFail(addr=%s)", owner)
 	}
+	s.activePRepCache.Add(owner)
 
-	s.addActivePRep(owner)
-
-	// Update PRepBase
 	pb, created := s.GetPRepBaseByOwner(owner, true)
 	if !created {
 		return errors.Errorf("Already in use: addr=%s %+v", owner, pb)
 	}
-	if err = pb.SetRegInfo(ri); err != nil {
+	if err := s.updateRegInfoOfPRep(owner, pb, ri); err != nil {
 		return err
 	}
 	pb.SetIrep(irep, 0)
-	ps.SetStatus(Active)
-
-	node := ri.Node()
-	if node == nil {
-		pb.SetNode(owner)
-		return nil
-	}
-
-	// Register a node address
-	if owner.Equal(node) {
-		return nil
-	}
-	if pb, _ = s.GetPRepBaseByOwner(node, false); pb != nil {
-		return errors.Errorf("Node address in use: %s", ri.node)
-	}
-	return s.addNodeToOwner(node, owner)
+	return nil
 }
 
 func (s *State) SetPRep(blockHeight int64, owner module.Address, ri *RegInfo) error {
-	// owner -> node
-	// node1 -> node2
-	// node -> owner
-
 	pb, _ := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
 	oldNode := pb.GetNode(owner)
-	if err := pb.ApplyRegInfo(ri); err != nil {
-		return nil
-	}
-
-	// If node address is changed and the node is a main prep, validator set should be changed too.
-	newNode := ri.Node()
-	if newNode == nil || oldNode.Equal(newNode) {
-		return nil
-	}
-
-	if !owner.Equal(newNode) {
-		// Forbidden to use other node's owner address as a node address
-		if pb, _ = s.GetPRepBaseByOwner(newNode, false); pb != nil {
-			return errors.Errorf("Node address in use: %s", ri.node)
-		}
-	}
-
-	if err := s.addNodeToOwner(newNode, owner); err != nil {
+	if err := s.updateRegInfoOfPRep(owner, pb, ri); err != nil {
 		return err
 	}
+	newNode := pb.GetNode(owner)
 
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		return errors.Errorf("PRep not found: %s", owner)
-	}
-	if ps.Grade() == Main {
-		return s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
+	if !oldNode.Equal(newNode) {
+		ps, _ := s.GetPRepStatusByOwner(owner, false)
+		if ps.Grade() == Main {
+			return s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
+		}
 	}
 	return nil
 }
@@ -522,10 +500,10 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
-	oldGrade := ps.Grade()
-	ps.SetGrade(Candidate)
-	ps.SetStatus(status)
-
+	oldGrade, err := ps.DisableAs(status)
+	if err != nil {
+		return err
+	}
 	if oldGrade == Main {
 		if err := s.replaceValidatorByOwner(owner, blockHeight); err != nil {
 			return err

@@ -13,7 +13,7 @@ import (
 type PRep struct {
 	owner module.Address
 
-	*PRepBase
+	*PRepBaseState
 	*PRepStatusState
 }
 
@@ -21,21 +21,14 @@ func (p *PRep) Owner() module.Address {
 	return p.owner
 }
 
-func (p *PRep) GetNode() module.Address {
-	if p.Node() != nil {
-		return p.Node()
-	}
-	return p.owner
-}
-
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	jso := icutils.MergeMaps(p.PRepBase.ToJSON(), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(p.PRepBaseState.ToJSON(), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
 	jso["address"] = p.owner
 	return jso
 }
 
-func newPRep(owner module.Address, pb *PRepBase, ps *PRepStatusState) *PRep {
-	return &PRep{owner: owner, PRepBase: pb, PRepStatusState: ps}
+func newPRep(owner module.Address, pb *PRepBaseState, ps *PRepStatusState) *PRep {
+	return &PRep{owner: owner, PRepBaseState: pb, PRepStatusState: ps}
 }
 
 type PReps struct {

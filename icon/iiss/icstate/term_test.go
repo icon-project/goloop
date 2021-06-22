@@ -32,16 +32,16 @@ func newDummyAddress(value int) module.Address {
 	return common.MustNewAddress(bs)
 }
 
-func newDummyPRepBase(i int) *PRepBase {
+func newDummyPRepBase(i int) *PRepBaseState {
 	ri := newDummyRegInfo(i)
-	pb := NewPRepBase()
-	_ = pb.SetRegInfo(ri)
+	pb := NewPRepBaseState()
+	pb.SetRegInfo(ri)
 	return pb
 }
 
 func newDummyPRepStatus() *PRepStatusState {
 	ps := NewPRepStatus()
-	ps.SetStatus(Active)
+	ps.Activate()
 	ps.SetDelegated(big.NewInt(rand.Int63n(1000)))
 	ps.SetBonded(big.NewInt(rand.Int63n(1000)))
 	return ps
@@ -53,7 +53,7 @@ func newDummyPRep(i int) *PRep {
 	ps := newDummyPRepStatus()
 	return &PRep{
 		owner:           owner,
-		PRepBase:        pb,
+		PRepBaseState:   pb,
 		PRepStatusState: ps,
 	}
 }

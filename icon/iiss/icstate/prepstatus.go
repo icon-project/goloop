@@ -484,6 +484,14 @@ func (ps *PRepStatusState) SetStatus(s Status) {
 	ps.setDirty()
 }
 
+func (ps *PRepStatusState) Activate() error {
+	if ps.status != NotReady {
+		return errors.InvalidStateError.Errorf("AlreadyUsed")
+	}
+	ps.status = Active
+	return nil
+}
+
 func (ps *PRepStatusState) SetVTotal(t int64) {
 	ps.vTotal = t
 	ps.setDirty()
@@ -597,6 +605,19 @@ func (ps *PRepStatusState) ImposePenalty(blockHeight int64) error {
 	ps.grade = Candidate
 	ps.setDirty()
 	return nil
+}
+
+func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
+	switch ps.status {
+	case Active:
+		grade := ps.grade
+		ps.grade = Candidate
+		ps.status = status
+		ps.setDirty()
+		return grade, nil
+	default:
+		return ps.grade, errors.InvalidStateError.Errorf("InvalidState(status=%s)", ps.status)
+	}
 }
 
 func (ps *PRepStatusState) ChangeGrade(newGrade Grade, blockHeight int64, penaltyMask int) error {

@@ -51,10 +51,10 @@ func TestState_RegisterPRep(t *testing.T) {
 		assert.NoError(t, err)
 
 		riApplied := ri.Clone()
-		riApplied.SetNode(owner)
 		pb, _ := state.GetPRepBaseByOwner(owner, false)
 		assert.NotNil(t, pb)
-		assert.True(t, pb.RegInfo.Equal(riApplied))
+		info := pb.RegInfo()
+		assert.True(t, info.Equal(riApplied))
 
 		ps, _ := state.GetPRepStatusByOwner(owner, false)
 		assert.NotNil(t, ps)

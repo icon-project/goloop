@@ -39,7 +39,7 @@ func newDummyRegInfo(i int) *RegInfo {
 func TestPRepBaseCache(t *testing.T) {
 	var err error
 	var created bool
-	var base, base1, base2 *PRepBase
+	var base, base1, base2 *PRepBaseState
 	var addr1, addr2 module.Address
 
 	s := newDummyState(false)
@@ -87,7 +87,7 @@ func TestPRepBaseCache(t *testing.T) {
 	base, created = s.prepBaseCache.Get(addr2, true)
 	assert.False(t, base.IsEmpty())
 	assert.False(t, created)
-	assert.Equal(t, "node2", base.name)
+	assert.Equal(t, "node2", base.info.name)
 
 	// item is removed from the map,
 	// after it flush to DB, it is removed in DB
@@ -131,7 +131,8 @@ func TestPRepStatusCache(t *testing.T) {
 	status, created = s.prepStatusCache.Get(addr1, true)
 	assert.NotNil(t, status)
 	assert.True(t, created)
-	status.SetStatus(Active)
+	err := status.Activate()
+	assert.NoError(t, err)
 	ss1 := status.GetSnapshot()
 
 	addr2 = common.MustNewAddressFromString("hx2")

@@ -25,11 +25,11 @@ var (
 )
 
 type PRepBaseCache struct {
-	bases map[string]*PRepBase
+	bases map[string]*PRepBaseState
 	dict  *containerdb.DictDB
 }
 
-func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepBase, bool) {
+func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepBaseState, bool) {
 	key := icutils.ToKey(owner)
 	base := c.bases[key]
 	if base != nil {
@@ -40,15 +40,16 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepB
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			base = NewPRepBase()
+			base = NewPRepBaseState()
 			c.bases[key] = base
 			created = true
 		} else {
 			// return nil
 		}
 	} else {
-		base = ToPRepBase(o.Object())
-		if base != nil {
+		ps := ToPRepBase(o.Object())
+		if ps != nil {
+			base = new(PRepBaseState).Reset(ps)
 			c.bases[key] = base
 		}
 	}
@@ -57,7 +58,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepB
 
 func (c *PRepBaseCache) Clear() {
 	c.Flush()
-	c.bases = make(map[string]*PRepBase)
+	c.bases = make(map[string]*PRepBaseState)
 }
 
 func (c *PRepBaseCache) Reset() {
@@ -71,7 +72,7 @@ func (c *PRepBaseCache) Reset() {
 		if value == nil {
 			delete(c.bases, key)
 		} else {
-			base.Set(ToPRepBase(value.Object()))
+			base.Reset(ToPRepBase(value.Object()))
 		}
 	}
 }
@@ -89,7 +90,7 @@ func (c *PRepBaseCache) Flush() {
 			}
 			delete(c.bases, k)
 		} else {
-			o := icobject.New(TypePRepBase, base.Clone())
+			o := icobject.New(TypePRepBase, base.GetSnapshot())
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
@@ -99,7 +100,7 @@ func (c *PRepBaseCache) Flush() {
 
 func newPRepBaseCache(store containerdb.ObjectStoreState) *PRepBaseCache {
 	return &PRepBaseCache{
-		bases: make(map[string]*PRepBase),
+		bases: make(map[string]*PRepBaseState),
 		dict:  containerdb.NewDictDB(store, 1, prepBaseDictPrefix),
 	}
 }

@@ -91,13 +91,12 @@ func ToPRepStatus(object trie.Object) *PRepStatusSnapshot {
 	return ps
 }
 
-func ToPRepBase(object trie.Object) *PRepBase {
+func ToPRepBase(object trie.Object) *PRepBaseSnapshot {
 	if object == nil {
 		return nil
 	}
-	pb := object.(*icobject.Object).Real().(*PRepBase)
-	pb = pb.Clone()
-	return pb
+	pbs := object.(*icobject.Object).Real().(*PRepBaseSnapshot)
+	return pbs
 }
 
 func ToTimer(object trie.Object) *TimerSnapshot {

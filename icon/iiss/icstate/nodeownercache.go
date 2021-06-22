@@ -20,18 +20,25 @@ type NodeOwnerCache struct {
 	nodeToOwner map[string]module.Address
 }
 
+// Add adds alias, node-to-owner.
+// It doesn't record alias to self.
+// If there is same alias, it ignores the request.
 func (c *NodeOwnerCache) Add(node, owner module.Address) error {
 	if node == nil || owner == nil {
 		// No need to add
 		return nil
 	}
-	if c.Contains(node) {
-		return errors.Errorf("Node already exists: %s", node)
+	if cur := c.get(node, nil); cur == nil {
+		if node.Equal(owner) {
+			return nil
+		}
+	} else {
+		if cur.Equal(owner) {
+			return nil
+		} else {
+			return errors.Errorf("AlreadyExist(owner=%s,node=%s)", cur, node)
+		}
 	}
-	if node.Equal(owner) {
-		return nil
-	}
-
 	c.nodeToOwner[icutils.ToKey(node)] = owner
 	return nil
 }
