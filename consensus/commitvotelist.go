@@ -26,7 +26,7 @@ type commitVoteList struct {
 	Items          []commitVoteItem
 }
 
-func (vl *commitVoteList) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (vl *commitVoteList) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	if block.Height() == 0 {
 		if len(vl.Items) == 0 {
 			return nil, nil
@@ -49,7 +49,7 @@ func (vl *commitVoteList) Verify(block module.BlockData, validators module.Valid
 			return nil, errors.Errorf("bad voter %x at index %d in vote list", msg.address(), i)
 		}
 		if vset[index] {
-			return nil, errors.Errorf("vl.Verify: duplicated validator %v\n", msg.address())
+			return nil, errors.Errorf("vl.VerifyBlock: duplicated validator %v\n", msg.address())
 		}
 		vset[index] = true
 	}

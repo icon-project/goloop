@@ -33,6 +33,7 @@ type testChain struct {
 	gs       *testGenesisStorage
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
+	bm       module.BlockManager
 }
 
 func (c *testChain) DefaultWaitTimeout() time.Duration {
@@ -73,6 +74,10 @@ func (c *testChain) NetID() int {
 
 func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
+}
+
+func (c *testChain) BlockManager() module.BlockManager {
+	return c.bm
 }
 
 func (c *testChain) ServiceManager() module.ServiceManager {
@@ -799,15 +804,15 @@ func newCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 	return vs
 }
 
-func newCommitVoteSet(pass bool) module.CommitVoteSet {
+func newCommitVoteSet(pass bool) module.TimestampedCommitVoteSet {
 	return &testCommitVoteSet{Pass: pass}
 }
 
-func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.CommitVoteSet {
+func newCommitVoteSetWithTimestamp(pass bool, ts int64) module.TimestampedCommitVoteSet {
 	return &testCommitVoteSet{Pass: pass, Timestamp_: ts}
 }
 
-func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (vs *testCommitVoteSet) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	if block.Height() == 0 && vs.zero {
 		return nil, nil
 	}

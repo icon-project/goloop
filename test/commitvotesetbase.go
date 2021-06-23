@@ -5,7 +5,7 @@ import "github.com/icon-project/goloop/module"
 
 type CommitVoteSetBase struct{}
 
-func (_r *CommitVoteSetBase) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (_r *CommitVoteSetBase) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	panic("not implemented")
 }
 

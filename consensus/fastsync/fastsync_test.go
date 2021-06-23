@@ -91,7 +91,7 @@ func newTCommitVoteSet(b []byte) module.CommitVoteSet {
 	return &tCommitVoteSet{b: b}
 }
 
-func (vs *tCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+func (vs *tCommitVoteSet) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
 	return nil, nil
 }
 
@@ -100,7 +100,7 @@ func (vs *tCommitVoteSet) Bytes() []byte {
 }
 
 type tBlockManager struct {
-	test.BlockManagerBase
+	module.BlockManager
 	bmap map[int64]module.Block
 }
 

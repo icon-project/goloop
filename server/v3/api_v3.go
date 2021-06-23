@@ -899,28 +899,9 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	var csi module.ConsensusInfo
-	if pblkid := blk.PrevID(); len(pblkid) > 0 {
-		pblk, err := bm.GetBlock(pblkid)
-		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-		}
-		var voters module.ValidatorList
-		var voted []bool
-		if ppblkid := pblk.PrevID(); len(ppblkid) > 0 {
-			if ppblk, err := bm.GetBlock(ppblkid); err != nil {
-				return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-			} else {
-				voters = ppblk.NextValidators()
-				voted, err = blk.Votes().Verify(pblk, voters)
-				if err != nil {
-					return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-				}
-			}
-		}
-		csi = common.NewConsensusInfo(blk.Proposer(), voters, voted)
-	} else {
-		csi = common.NewConsensusInfo(blk.Proposer(), nil, nil)
+	csi, err := bm.NewConsensusInfo(blk)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	nblk, err := bm.GetBlockByHeight(blk.Height() + 1)
 	if err != nil {

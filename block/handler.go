@@ -27,20 +27,27 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
+type HandlerContext interface {
+	GetBlockByHeight(height int64) (module.Block, error)
+}
+
 type Handler interface {
 	// propose or genesis
 	NewBlock(
+		ctx HandlerContext,
 		height int64, ts int64, proposer module.Address, prevID []byte,
 		logsBloom module.LogsBloom, result []byte,
 		patchTransactions module.TransactionList,
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
 	) module.Block
-	NewBlockFromHeaderReader(r io.Reader) (module.Block, error)
-	NewBlockDataFromReader(r io.Reader) (module.BlockData, error)
-	GetBlock(id []byte) (module.Block, error)
-	GetBlockByHeight(height int64) (module.Block, error)
-	FinalizeHeader(blk module.Block) error
+	NewBlockDataFromReader(ctx HandlerContext, r io.Reader) (module.BlockData, error)
+	GetBlock(ctx HandlerContext, id []byte) (module.Block, error)
+	GetBlockByHeight(ctx HandlerContext, height int64) (module.Block, error)
+	FinalizeHeader(ctx HandlerContext, blk module.Block) error
+	// GetVoters returns the voters for the block. Note that this is different
+	// from the voted, which is a subset of the voters.
+	GetVoters(ctx HandlerContext, height int64) (module.ValidatorList, error)
 }
 
 type blockV2Handler struct {
@@ -48,7 +55,9 @@ type blockV2Handler struct {
 }
 
 func NewBlockV2Handler(chain module.Chain) Handler {
-	return &blockV2Handler{chain: chain}
+	return &blockV2Handler{
+		chain: chain,
+	}
 }
 
 func (b *blockV2Handler) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
@@ -69,6 +78,7 @@ func (b *blockV2Handler) commitVoteSetFromHash(hash []byte) module.CommitVoteSet
 }
 
 func (b *blockV2Handler) NewBlock(
+	ctx HandlerContext,
 	height int64, ts int64, proposer module.Address, prevID []byte,
 	logsBloom module.LogsBloom, result []byte,
 	patchTransactions module.TransactionList,
@@ -90,7 +100,7 @@ func (b *blockV2Handler) NewBlock(
 	}
 }
 
-func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, error) {
+func (b *blockV2Handler) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	var header blockV2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
@@ -132,7 +142,7 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, er
 	}, nil
 }
 
-func (b *blockV2Handler) GetBlock(id []byte) (module.Block, error) {
+func (b *blockV2Handler) GetBlock(ctx HandlerContext, id []byte) (module.Block, error) {
 	hb, err := b.bucketFor(db.BytesByHash)
 	if err != nil {
 		return nil, err
@@ -144,7 +154,7 @@ func (b *blockV2Handler) GetBlock(id []byte) (module.Block, error) {
 	if headerBytes == nil {
 		return nil, errors.InvalidStateError.Errorf("nil header")
 	}
-	return b.NewBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	return b.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
 }
 
 func newTransactionListFromBSS(
@@ -161,7 +171,7 @@ func newTransactionListFromBSS(
 	return sm.TransactionListFromSlice(ts, version), nil
 }
 
-func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
+func (b *blockV2Handler) NewBlockDataFromReader(ctx HandlerContext, r io.Reader) (module.BlockData, error) {
 	sm := b.chain.ServiceManager()
 	r = bufio.NewReader(r)
 	var blockFormat blockV2Format
@@ -220,7 +230,7 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, 
 	}, nil
 }
 
-func (b* blockV2Handler) GetBlockByHeight(height int64) (module.Block, error) {
+func (b *blockV2Handler) GetBlockByHeight(ctx HandlerContext, height int64) (module.Block, error) {
 	headerHashByHeight, err := b.bucketFor(db.BlockHeaderHashByHeight)
 	if err != nil {
 		return nil, err
@@ -229,14 +239,14 @@ func (b* blockV2Handler) GetBlockByHeight(height int64) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	blk, err := b.GetBlock(hash)
+	blk, err := b.GetBlock(ctx, hash)
 	if errors.NotFoundError.Equals(err) {
 		return blk, errors.InvalidStateError.Wrapf(err, "block h=%d by hash=%x not found", height, hash)
 	}
 	return blk, err
 }
 
-func (b *blockV2Handler) FinalizeHeader(blk module.Block) error {
+func (b *blockV2Handler) FinalizeHeader(ctx HandlerContext, blk module.Block) error {
 	hb, err := b.bucketFor(db.BytesByHash)
 	if err != nil {
 		return err
@@ -256,4 +266,15 @@ func (b *blockV2Handler) FinalizeHeader(blk module.Block) error {
 		return err
 	}
 	return nil
+}
+
+func (b *blockV2Handler) GetVoters(ctx HandlerContext, height int64) (module.ValidatorList, error) {
+	if height == 0 {
+		return nil, nil
+	}
+	nextBlk, err := ctx.GetBlockByHeight(height - 1)
+	if err != nil {
+		return nil, err
+	}
+	return nextBlk.NextValidators(), nil
 }

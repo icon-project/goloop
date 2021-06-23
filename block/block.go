@@ -15,14 +15,16 @@ func verifyBlock(b module.BlockData, prev module.BlockData, validators module.Va
 		return nil, errors.New("bad prev ID")
 	}
 	var voted []bool
-	if vt, err := b.Votes().Verify(prev, validators); err != nil {
+	if vt, err := b.Votes().VerifyBlock(prev, validators); err != nil {
 		return nil, err
 	} else {
 		voted = vt
 	}
 
-	if b.Height() > 1 && b.Timestamp() != b.Votes().Timestamp() {
-		return nil, errors.New("bad timestamp")
+	if tcvs, ok := b.Votes().(module.TimestampedCommitVoteSet); ok {
+		if b.Height() > 1 && b.Timestamp() != tcvs.Timestamp() {
+			return nil, errors.New("bad timestamp")
+		}
 	}
 	if b.Height() > 1 && prev.Timestamp() >= b.Timestamp() {
 		return nil, errors.New("non-increasing timestamp")

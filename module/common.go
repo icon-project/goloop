@@ -40,9 +40,13 @@ type MemberList interface {
 }
 
 type CommitVoteSet interface {
-	Verify(block BlockData, validators ValidatorList) ([]bool, error)
+	VerifyBlock(block BlockData, validators ValidatorList) ([]bool, error)
 	Bytes() []byte
 	Hash() []byte
+}
+
+type TimestampedCommitVoteSet interface {
+	CommitVoteSet
 	Timestamp() int64
 }
 
