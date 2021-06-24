@@ -144,24 +144,38 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 			},
 			err: false,
 			wants: [4]int64{
-				rewardGenerate + rewardValidate/4,
-				rewardValidate / 4,
-				rewardValidate / 4,
-				rewardValidate / 4,
+				rewardGenerate,
+				rewardValidate / 3,
+				rewardValidate / 3,
+				rewardValidate / 3,
 			},
 		},
 		{
-			name: "3 P-Rep voted",
+			name: "3 P-Rep voted include proposer",
 			args: args{
 				icstage.NewBlockProduce(2, 3, new(big.Int).SetInt64(int64(0b0111))),
 				variable,
 			},
 			err: false,
 			wants: [4]int64{
-				rewardValidate / 3,
-				rewardValidate / 3,
-				rewardGenerate + rewardValidate/3,
+				rewardValidate / 2,
+				rewardValidate / 2,
+				rewardGenerate,
 				0,
+			},
+		},
+		{
+			name: "3 P-Rep voted exclude proposer",
+			args: args{
+				icstage.NewBlockProduce(2, 3, new(big.Int).SetInt64(int64(0b1011))),
+				variable,
+			},
+			err: false,
+			wants: [4]int64{
+				rewardValidate / 3,
+				rewardValidate / 3,
+				rewardGenerate,
+				rewardValidate / 3,
 			},
 		},
 		{
@@ -223,14 +237,14 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				0,
 				100-1,
 				icmodule.RevisionIISS,
-				big.NewInt(MonthBlock),
+				big.NewInt(YearBlock),
 				big.NewInt(200),
 				22,
 				100,
 			),
-			// 	variable = irep * electedPRepCount * IScoreICXRatio / (2 * MonthBlock)
-			MonthBlock * 100 * IScoreICXRatio,
-			2 * MonthBlock,
+			//	multiplier = ((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio
+			((YearBlock * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio,
+			1,
 		},
 		{
 			"Global Version1 - disabled",
@@ -245,7 +259,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				100,
 			),
 			0,
-			MonthBlock * 2,
+			1,
 		},
 		{
 			"Global Version2",
@@ -282,7 +296,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				0,
 			),
 			0,
-			0,
+			1,
 		},
 	}
 	for _, tt := range tests {
