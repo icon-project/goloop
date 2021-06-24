@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
-	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -682,50 +681,9 @@ func (s *chainScore) Ex_claimIScore() error {
 		return err
 	}
 
-	is, err := es.Reward.GetIScore(s.from)
+	iScore, err := s.getIScore(es, s.from)
 	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to get IScore data: from=%v",
-			s.from,
-		)
-	}
-	if is == nil {
-		// there is no IScore to claim.
-		s.claimEventLog(s.from, new(big.Int), new(big.Int))
-		return nil
-	}
-
-	iScore := new(big.Int).Set(is.Value())
-	fClaimed, err := es.Front.GetIScoreClaim(s.from)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to get claim data from back: from=%v",
-			s.from,
-		)
-	}
-	if fClaimed != nil {
-		iScore.Sub(iScore, fClaimed.Value())
-	}
-	bClaimed, err := es.Back1.GetIScoreClaim(s.from)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to get claim data from back: from=%v",
-			s.from,
-		)
-	}
-	if bClaimed != nil {
-		iScore.Sub(iScore, bClaimed.Value())
-	}
-
-	if iScore.Sign() == -1 {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Invalid negative I-Score: from=%v",
-			s.from,
-		)
+		return err
 	}
 	if iScore.Sign() == 0 {
 		// there is no IScore to claim
@@ -765,9 +723,46 @@ func (s *chainScore) Ex_claimIScore() error {
 			s.from,
 		)
 	}
-
 	s.claimEventLog(s.from, claim, icx)
 	return nil
+}
+
+func (s *chainScore) getIScore(es *iiss.ExtensionStateImpl, from module.Address) (*big.Int, error) {
+	iScore := new(big.Int)
+	if es.Reward == nil {
+		return iScore, nil
+	}
+	is, err := es.Reward.GetIScore(from)
+	if err != nil {
+		return nil, scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get IScore data: from=%v",
+			from,
+		)
+	}
+	if is == nil {
+		return iScore, nil
+	}
+
+	iScore.Set(is.Value())
+	stages := []*icstage.State{es.Front, es.Back1, es.Back2}
+	for _, stage := range stages {
+		if stage == nil {
+			continue
+		}
+		claim, err := stage.GetIScoreClaim(from)
+		if err != nil {
+			return nil, scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Failed to get claim data from back: from=%v",
+				from,
+			)
+		}
+		if claim != nil {
+			iScore.Sub(iScore, claim.Value())
+		}
+	}
+	return iScore, nil
 }
 
 func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *big.Int) {
@@ -808,43 +803,10 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	if err != nil {
 		return nil, err
 	}
-	fClaim, err := es.Front.GetIScoreClaim(address)
+	is, err := s.getIScore(es, address)
 	if err != nil {
-		return nil, scoreresult.InvalidInstanceError.Wrapf(
-			err,
-			"Invalid account: from=%v",
-			s.from,
-		)
+		return nil, err
 	}
-
-	var iScore *icreward.IScore
-	var bClaim *icstage.IScoreClaim
-	is := big.NewInt(0)
-	if fClaim == nil {
-		iScore, err = es.Reward.GetIScore(address)
-		if err != nil {
-			return nil, scoreresult.UnknownFailureError.Wrapf(
-				err,
-				"error while querying IScore: from=%v",
-				s.from,
-			)
-		}
-		if iScore != nil && !iScore.IsEmpty() {
-			is.Set(iScore.Value())
-		}
-		bClaim, err = es.Back1.GetIScoreClaim(address)
-		if err != nil {
-			return nil, scoreresult.UnknownFailureError.Wrapf(
-				err,
-				"error while querying IScore: from=%v",
-				s.from,
-			)
-		}
-		if bClaim != nil {
-			is.Sub(is, bClaim.Value())
-		}
-	}
-
 	bh := int64(0)
 	if is.Sign() != 0 {
 		bh = es.CalculationBlockHeight() - 1

@@ -271,7 +271,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 
 	// check Issue result
 	if (iPrep != nil && !iPrep.Equal(prep)) || (iResult != nil && !iResult.Equal(result)) {
-		return scoreresult.InvalidParameterError.New("Invalid issue data")
+		return scoreresult.InvalidParameterError.Errorf("Invalid issue data \n%+v\n%+v", iResult, result)
 	}
 
 	// transfer issued ICX to treasury

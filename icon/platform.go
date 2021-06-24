@@ -117,7 +117,6 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 		return nil
 	}
 	return es.OnExecutionBegin(wc)
-
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
@@ -129,17 +128,10 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	if es == nil {
 		return nil
 	}
-
-	term := es.State.GetTerm()
-	if term.IsDecentralized() || wc.BlockHeight() == 10362082 {
-		if err := es.UpdateIssueInfoFee(er.TotalFee()); err != nil {
-			return err
-		}
-	}
 	if err := es.HandleTimerJob(wc); err != nil {
 		return err
 	}
-	return es.OnExecutionEnd(wc, p.calculator)
+	return es.OnExecutionEnd(wc, er.TotalFee(), p.calculator)
 }
 
 func (p *platform) Term() {

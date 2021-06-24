@@ -113,7 +113,7 @@ func (c *Calculator) IsCalcDone(blockHeight int64) bool {
 
 func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
 	ss := ess.(*ExtensionSnapshotImpl)
-	back := ss.Back1()
+	back := ss.Back2()
 	if back == nil {
 		return false
 	}
@@ -172,7 +172,7 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 
 func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 	var err error
-	c.back = ss.Back1()
+	c.back = ss.Back2()
 	c.base = ss.Reward()
 	// make new State with hash value to decoupling base and temp
 	c.temp = icreward.NewState(ss.database, c.base.Bytes())

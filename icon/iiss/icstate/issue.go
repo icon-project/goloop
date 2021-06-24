@@ -32,10 +32,10 @@ const (
 type Issue struct {
 	icobject.NoDatabase
 
-	totalIssued     *big.Int // amount of issued ICX while current calculation period
-	prevTotalIssued *big.Int // amount of issued ICX while previous calculation period
-	overIssued      *big.Int // prevTotalIssued - reward calculated by calculator
-	iScoreRemains   *big.Int // not issued ICX
+	totalReward     *big.Int // amount of reward calculated by Issuer in current term
+	prevTotalReward *big.Int
+	overIssued      *big.Int // prevTotalReward - reward calculated by calculator
+	iScoreRemains   *big.Int // not issued IScore
 	prevBlockFee    *big.Int
 }
 
@@ -45,8 +45,8 @@ func newIssue(_ icobject.Tag) *Issue {
 
 func NewIssue() *Issue {
 	return &Issue{
-		totalIssued:     new(big.Int),
-		prevTotalIssued: new(big.Int),
+		totalReward:     new(big.Int),
+		prevTotalReward: new(big.Int),
 		overIssued:      new(big.Int),
 		iScoreRemains:   new(big.Int),
 		prevBlockFee:    new(big.Int),
@@ -59,8 +59,8 @@ func (i *Issue) Version() int {
 
 func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeAll(
-		&i.totalIssued,
-		&i.prevTotalIssued,
+		&i.totalReward,
+		&i.prevTotalReward,
 		&i.overIssued,
 		&i.iScoreRemains,
 		&i.prevBlockFee,
@@ -69,8 +69,8 @@ func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 
 func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
-		i.totalIssued,
-		i.prevTotalIssued,
+		i.totalReward,
+		i.prevTotalReward,
 		i.overIssued,
 		i.iScoreRemains,
 		i.prevBlockFee,
@@ -79,8 +79,8 @@ func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (i *Issue) Equal(o icobject.Impl) bool {
 	if i2, ok := o.(*Issue); ok {
-		return i.totalIssued.Cmp(i2.totalIssued) == 0 &&
-			i.prevTotalIssued.Cmp(i2.prevTotalIssued) == 0 &&
+		return i.totalReward.Cmp(i2.totalReward) == 0 &&
+			i.prevTotalReward.Cmp(i2.prevTotalReward) == 0 &&
 			i.overIssued.Cmp(i2.overIssued) == 0 &&
 			i.iScoreRemains.Cmp(i2.iScoreRemains) == 0 &&
 			i.prevBlockFee.Cmp(i2.prevBlockFee) == 0
@@ -91,28 +91,28 @@ func (i *Issue) Equal(o icobject.Impl) bool {
 
 func (i *Issue) Clone() *Issue {
 	ni := NewIssue()
-	ni.totalIssued = i.totalIssued
-	ni.prevTotalIssued = i.prevTotalIssued
+	ni.totalReward = i.totalReward
+	ni.prevTotalReward = i.prevTotalReward
 	ni.overIssued = i.overIssued
 	ni.iScoreRemains = i.iScoreRemains
 	ni.prevBlockFee = i.prevBlockFee
 	return ni
 }
 
-func (i *Issue) TotalIssued() *big.Int {
-	return i.totalIssued
+func (i *Issue) TotalReward() *big.Int {
+	return i.totalReward
 }
 
-func (i *Issue) SetTotalIssued(v *big.Int) {
-	i.totalIssued = v
+func (i *Issue) SetTotalReward(v *big.Int) {
+	i.totalReward = v
 }
 
-func (i *Issue) PrevTotalIssued() *big.Int {
-	return i.prevTotalIssued
+func (i *Issue) PrevTotalReward() *big.Int {
+	return i.prevTotalReward
 }
 
-func (i *Issue) SetPrevTotalIssued(v *big.Int) {
-	i.prevTotalIssued = v
+func (i *Issue) SetPrevTotalReward(v *big.Int) {
+	i.prevTotalReward = v
 }
 
 func (i *Issue) OverIssued() *big.Int {
@@ -141,7 +141,7 @@ func (i *Issue) SetPrevBlockFee(v *big.Int) {
 
 func (i *Issue) Update(totalReward *big.Int, byFee *big.Int, byOverIssued *big.Int) *Issue {
 	issue := i.Clone()
-	issue.totalIssued = new(big.Int).Add(issue.totalIssued, totalReward)
+	issue.totalReward = new(big.Int).Add(issue.totalReward, totalReward)
 	if byFee.Sign() != 0 {
 		issue.prevBlockFee = new(big.Int).Sub(issue.prevBlockFee, byFee)
 	}
@@ -151,20 +151,20 @@ func (i *Issue) Update(totalReward *big.Int, byFee *big.Int, byOverIssued *big.I
 	return issue
 }
 
-func (i *Issue) ResetTotalIssued() {
-	i.prevTotalIssued = i.totalIssued
-	i.totalIssued = new(big.Int)
+func (i *Issue) ResetTotalReward() {
+	i.prevTotalReward = i.totalReward
+	i.totalReward = new(big.Int)
 }
 
 func (i *Issue) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Issue{totalIssued=%s prevTotalIssued=%s overIssued=%s iscoreRemains=%s prevBlockFee=%s}",
-				i.totalIssued, i.prevTotalIssued, i.overIssued, i.iScoreRemains, i.prevBlockFee)
+			fmt.Fprintf(f, "Issue{totalReward=%s prevTotalReward=%s overIssued=%s iscoreRemains=%s prevBlockFee=%s}",
+				i.totalReward, i.prevTotalReward, i.overIssued, i.iScoreRemains, i.prevBlockFee)
 		} else {
 			fmt.Fprintf(f, "Issue{%s %s %s %s %s}",
-				i.totalIssued, i.prevTotalIssued, i.overIssued, i.iScoreRemains, i.prevBlockFee)
+				i.totalReward, i.prevTotalReward, i.overIssued, i.iScoreRemains, i.prevBlockFee)
 		}
 	}
 }

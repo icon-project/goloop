@@ -77,8 +77,8 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 }
 
 func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
-	issue.SetTotalIssued(big.NewInt(totalIssued))
-	issue.SetPrevTotalIssued(big.NewInt(prevTotalIssued))
+	issue.SetTotalReward(big.NewInt(totalIssued))
+	issue.SetPrevTotalReward(big.NewInt(prevTotalIssued))
 	issue.SetOverIssued(big.NewInt(overIssued))
 	issue.SetIScoreRemains(big.NewInt(iScoreRemains))
 	issue.SetPrevBlockFee(big.NewInt(prevBlockFee))

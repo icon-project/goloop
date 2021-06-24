@@ -24,7 +24,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -156,7 +155,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	var icx, remains *big.Int
 
 	// Do not regulate ICX issue if there is no ICX issuance.
-	if issue.PrevTotalIssued().Sign() == 0 {
+	if issue.PrevTotalReward().Sign() == 0 {
 		return
 	}
 	if iScore == nil || iScore.Sign() == 0 {
@@ -165,14 +164,10 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	} else {
 		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
 	}
-	overIssued := new(big.Int).Sub(issue.PrevTotalIssued(), icx)
-	if overIssued.Sign() == -1 {
-		log.Debugf("Invalid issue Info. and calculation result. Issued:%s reward:%s",
-			issue.PrevTotalIssued(), icx)
-	}
+	overIssued := new(big.Int).Sub(issue.PrevTotalReward(), icx)
 	issue.SetOverIssued(new(big.Int).Add(issue.OverIssued(), overIssued))
 	issue.SetIScoreRemains(new(big.Int).Add(issue.IScoreRemains(), remains))
-	if BigIntIScoreICXRatio.Cmp(issue.IScoreRemains()) < 0 {
+	if issue.IScoreRemains().Cmp(BigIntIScoreICXRatio) >= 0 {
 		issue.SetOverIssued(new(big.Int).Sub(issue.OverIssued(), intconv.BigIntOne))
 		issue.SetIScoreRemains(new(big.Int).Sub(issue.IScoreRemains(), BigIntIScoreICXRatio))
 	}
