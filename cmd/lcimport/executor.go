@@ -509,7 +509,7 @@ func (e *Executor) consensusInfoFor(block_ blockv0.Block, prev_ blockv0.Block) (
 	default:
 		return nil, errors.UnsupportedError.New("Unsupported")
 	}
-	return common.NewConsensusInfo(block_.Proposer(), voters, voted), nil
+	return common.NewConsensusInfo(prev_.Proposer(), voters, voted), nil
 }
 
 func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) (*Transition, error) {
