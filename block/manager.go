@@ -254,7 +254,7 @@ func (m *manager) _import(
 	if vt, err := verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
 	} else {
-		csi = common.NewConsensusInfo(block.Proposer(), validators, vt)
+		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, vt)
 	}
 	it := &importTask{
 		block: block,
@@ -412,7 +412,7 @@ func (m *manager) _propose(
 	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
 		return nil, err
 	} else {
-		csi = common.NewConsensusInfo(m.chain.Wallet().Address(), validators, voted)
+		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, voted)
 	}
 	pt := &proposeTask{
 		task: task{
@@ -558,7 +558,7 @@ func NewManager(
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(configCacheCap),
 		timestamper: timestamper,
-		handler: handler,
+		handler:     handler,
 	}
 	m.handlerContext.manager = m
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
@@ -1566,7 +1566,7 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	if err != nil {
 		return nil, err
 	}
-	pblk, err := m.getBlockByHeight(blk.Height()-1)
+	pblk, err := m.getBlockByHeight(blk.Height() - 1)
 	if err != nil {
 		return nil, err
 	}
@@ -1574,7 +1574,7 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	if err != nil {
 		return nil, err
 	}
-	return common.NewConsensusInfo(blk.Proposer(), vl, voted), nil
+	return common.NewConsensusInfo(pblk.Proposer(), vl, voted), nil
 }
 
 func GetLastHeight(dbase db.Database) (int64, error) {
