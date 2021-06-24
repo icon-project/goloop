@@ -489,6 +489,7 @@ func (ps *PRepStatusState) Activate() error {
 		return errors.InvalidStateError.Errorf("AlreadyUsed")
 	}
 	ps.status = Active
+	ps.setDirty()
 	return nil
 }
 
