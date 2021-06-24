@@ -342,8 +342,17 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		icutils.OnBurn(s.cc, state.SystemAddress, regPRepFee, ts)
 	}
 
-	ri := icstate.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, nodeAddress)
-	if err := ri.Validate(s.cc.Revision().Value()); err != nil {
+	info := &icstate.PRepInfo{
+		City:        &city,
+		Country:     &country,
+		Details:     &details,
+		Email:       &email,
+		Name:        &name,
+		P2PEndpoint: &p2pEndpoint,
+		WebSite:     &website,
+		Node:        nodeAddress,
+	}
+	if err := info.Validate(s.cc.Revision().Value(), true); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err,
 			"Failed to validate regInfo: from=%v",
@@ -364,7 +373,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		irep = icstate.BigIntInitialIRep
 	}
 
-	if err = es.State.RegisterPRep(s.from, ri, irep); err != nil {
+	if err = es.State.RegisterPRep(s.from, info, irep); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to register PRep: from=%v", s.from,
 		)
@@ -528,8 +537,18 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 		)
 	}
 
-	ri := icstate.NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node)
-	if err = ri.Validate(s.cc.Revision().Value()); err != nil {
+	info := &icstate.PRepInfo{
+		City:        &city,
+		Country:     &country,
+		Details:     &details,
+		Email:       &email,
+		Name:        &name,
+		P2PEndpoint: &p2pEndpoint,
+		WebSite:     &website,
+		Node:        node,
+	}
+
+	if err = info.Validate(s.cc.Revision().Value(), false); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate regInfo: from=%v", s.from,
 		)
@@ -538,7 +557,7 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	if es, err = s.getExtensionState(); err != nil {
 		return err
 	}
-	if err = es.State.SetPRep(s.cc.BlockHeight(), s.from, ri); err != nil {
+	if err = es.State.SetPRep(s.cc.BlockHeight(), s.from, info); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
 	s.cc.OnEvent(state.SystemAddress,

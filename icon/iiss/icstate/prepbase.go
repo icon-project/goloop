@@ -20,9 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -35,7 +37,130 @@ const (
 	bonderListMax = 10
 )
 
-type RegInfo struct {
+type PRepInfo struct {
+	City        *string
+	Country     *string
+	Details     *string
+	Email       *string
+	Name        *string
+	P2PEndpoint *string
+	WebSite     *string
+	Node        module.Address
+}
+
+// checkStringPtrValue check field value.
+// mandatory should be true if it's required field.
+// n is name of field for errors.
+func checkStringPtrValue(s *string, name string, mandatory bool) (bool, error) {
+	if s == nil {
+		if mandatory {
+			return false, errors.IllegalArgumentError.Errorf("MandatoryField(field=%s)", name)
+		} else {
+			return false, nil
+		}
+	}
+	if len(strings.TrimSpace(*s)) == 0 {
+		return false, errors.IllegalArgumentError.Errorf("EmptyField(field=%s)", name)
+	}
+	return true, nil
+}
+
+// Validate check validity of fields
+// reg: whether it's for registration
+// revision: revision value
+func (r *PRepInfo) Validate(revision int, reg bool) error {
+	if _, err := checkStringPtrValue(r.Name, "name", reg); err != nil {
+		return err
+	}
+	if _, err := checkStringPtrValue(r.City, "city", reg); err != nil {
+		return err
+	}
+	if has, err := checkStringPtrValue(r.Country, "country", reg); err != nil {
+		return err
+	} else if has {
+		if err = icutils.ValidateCountryAlpha3(*r.Country); err != nil {
+			return err
+		}
+	}
+	if has, err := checkStringPtrValue(r.Details, "details", reg); err != nil {
+		return err
+	} else if has {
+		if err = icutils.ValidateURL(*r.Details); err != nil {
+			return errors.IllegalArgumentError.Wrap(err, "InvalidURL(field=details)")
+		}
+	}
+	if has, err := checkStringPtrValue(r.P2PEndpoint, "p2pEndpoint", reg); err != nil {
+		return err
+	} else if has {
+		if err = icutils.ValidateEndpoint(*r.P2PEndpoint); err != nil {
+			return err
+		}
+	}
+	if has, err := checkStringPtrValue(r.WebSite, "website", reg); err != nil {
+		return err
+	} else if has {
+		if err = icutils.ValidateURL(*r.WebSite); err != nil {
+			return errors.IllegalArgumentError.Wrap(err, "InvalidURL(field=website)")
+		}
+	}
+	if has, err := checkStringPtrValue(r.Email, "email", reg); err != nil {
+		return err
+	} else if has {
+		if err = icutils.ValidateEmail(*r.Email, revision); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *PRepInfo) GetNode(owner module.Address) module.Address {
+	if r.Node != nil {
+		return r.Node
+	}
+	return owner
+}
+
+func toString(sp *string) string {
+	if sp == nil {
+		return "nil"
+	} else {
+		return *sp
+	}
+}
+
+func (r *PRepInfo) String() string {
+	return fmt.Sprintf(
+		"PRepInfo{name=%s country=%s city=%s email=%s website=%s detail=%s p2pEndpoint=%s node=%v}",
+		toString(r.Name), toString(r.Country), toString(r.City),
+		toString(r.Email), toString(r.WebSite), toString(r.Details), toString(r.P2PEndpoint), r.Node,
+	)
+}
+
+func equalStrPtr(s1, s2 *string) bool {
+	if s1 == s2 {
+		return true
+	}
+	if s1 == nil || s2 == nil {
+		return false
+	}
+	return *s1 == *s2
+}
+
+func (r *PRepInfo) equal(r2 *PRepInfo) bool {
+	if r == r2 {
+		return true
+	}
+	return equalStrPtr(r.City, r2.City) &&
+		equalStrPtr(r.Country, r2.Country) &&
+		equalStrPtr(r.Details, r2.Details) &&
+		equalStrPtr(r.Email, r2.Email) &&
+		equalStrPtr(r.Name, r2.Name) &&
+		equalStrPtr(r.P2PEndpoint, r2.P2PEndpoint) &&
+		equalStrPtr(r.WebSite, r2.WebSite) &&
+		common.AddressEqual(r.Node, r2.Node)
+}
+
+type PRepBaseData struct {
 	city        string
 	country     string
 	details     string
@@ -44,148 +169,9 @@ type RegInfo struct {
 	p2pEndpoint string
 	website     string
 	node        *common.Address
-}
-
-func (r *RegInfo) GetNode(owner module.Address) module.Address {
-	if r.node == nil {
-		return owner
-	}
-	return r.node
-}
-
-func (r *RegInfo) String() string {
-	return fmt.Sprintf(
-		"city=%s country=%s details=%s email=%s name=%s p2p=%s website=%s node=%s",
-		r.city, r.country, r.details, r.email, r.name, r.p2pEndpoint, r.website, r.node,
-	)
-}
-
-func (r *RegInfo) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(
-				f,
-				"RegInfo{city=%s country=%s details=%s email=%s p2p=%s website=%s node=%s}",
-				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.node)
-		} else {
-			fmt.Fprintf(f, "RegInfo{%s %s %s %s %s %s %s}",
-				r.city, r.country, r.details, r.email, r.p2pEndpoint, r.website, r.node)
-		}
-	case 's':
-		fmt.Fprint(f, r.String())
-	}
-}
-
-func (r *RegInfo) Set(other *RegInfo) *RegInfo {
-	*r = *other
-	return r
-}
-
-func (r *RegInfo) Update(other *RegInfo) bool {
-	var dirty bool
-	if len(other.city) != 0 && r.city != other.city {
-		r.city = other.city
-		dirty = true
-	}
-	if len(other.country) != 0 && r.country != other.country {
-		r.country = other.country
-		dirty = true
-	}
-	if len(other.details) != 0 && r.details != other.details {
-		r.details = other.details
-		dirty = true
-	}
-	if len(other.email) != 0 && r.email != other.email {
-		r.email = other.email
-		dirty = true
-	}
-	if len(other.name) != 0 && r.name != other.name {
-		r.name = other.name
-		dirty = true
-	}
-	if len(other.p2pEndpoint) != 0 && r.p2pEndpoint != other.p2pEndpoint {
-		r.p2pEndpoint = other.p2pEndpoint
-		dirty = true
-	}
-	if len(other.website) != 0 && r.website != other.website {
-		r.website = other.website
-		dirty = true
-	}
-	if other.node != nil && !other.node.Equal(r.node){
-		r.node = other.node
-		dirty = true
-	}
-	return dirty
-}
-
-func (r *RegInfo) Validate(revision int) error {
-	if err := icutils.ValidateEndpoint(r.p2pEndpoint); err != nil {
-		return err
-	}
-	if err := icutils.ValidateURL(r.website); err != nil {
-		return err
-	}
-	if err := icutils.ValidateURL(r.details); err != nil {
-		return err
-	}
-	if err := icutils.ValidateEmail(r.email, revision); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *RegInfo) Clone() *RegInfo {
-	return new(RegInfo).Set(r)
-}
-
-func (r *RegInfo) Equal(other *RegInfo) bool {
-	if r == other {
-		return true
-	}
-	return r.city == other.city &&
-		r.country == other.country &&
-		r.details == other.details &&
-		r.email == other.email &&
-		r.name == other.name &&
-		r.p2pEndpoint == other.p2pEndpoint &&
-		r.website == other.website &&
-		icutils.EqualAddress(r.node, other.node)
-}
-
-func (r *RegInfo) IsEmpty() bool {
-	return r.city == "" &&
-		r.country == "" &&
-		r.details == "" &&
-		r.email == "" &&
-		r.name == "" &&
-		r.p2pEndpoint == "" &&
-		r.website == "" &&
-		r.node == nil
-}
-
-func NewRegInfo(city, country, details, email, name, p2pEndpoint, website string, node module.Address) *RegInfo {
-	return &RegInfo{
-		city:        city,
-		country:     country,
-		details:     details,
-		email:       email,
-		name:        name,
-		p2pEndpoint: p2pEndpoint,
-		website:     website,
-		node:        common.AddressToPtr(node),
-	}
-}
-
-type PRepBaseData struct {
-	info       RegInfo
 	irep       *big.Int
 	irepHeight int64
 	bonderList BonderList
-}
-
-func (p *PRepBaseData) RegInfo() RegInfo {
-	return p.info
 }
 
 func (p *PRepBaseData) IRep() *big.Int {
@@ -200,18 +186,35 @@ func (p *PRepBaseData) equal(p2 *PRepBaseData) bool {
 	if p == p2 {
 		return true
 	}
-	return p.info.Equal(&p2.info) &&
+	return p.city == p2.city &&
+		p.country == p2.country &&
+		p.details == p2.details &&
+		p.email == p2.email &&
+		p.name == p2.name &&
+		p.p2pEndpoint == p2.p2pEndpoint &&
+		p.website == p2.website &&
+		common.AddressEqual(p.node, p2.node) &&
 		p.irep.Cmp(p2.irep) == 0 &&
 		p.irepHeight == p2.irepHeight &&
 		p.bonderList.Equal(p2.bonderList)
 }
 
 func (p *PRepBaseData) GetNode(owner module.Address) module.Address {
-	return p.info.GetNode(owner)
+	if p.node != nil {
+		return p.node
+	}
+	return owner
 }
 
 func (p *PRepBaseData) IsEmpty() bool {
-	return p.info.IsEmpty() &&
+	return p.city == "" &&
+		p.country == "" &&
+		p.details == "" &&
+		p.email == "" &&
+		p.name == "" &&
+		p.p2pEndpoint == "" &&
+		p.website == "" &&
+		p.node == nil &&
 		p.irep.Sign() == 0 &&
 		p.irepHeight == 0 &&
 		p.bonderList.IsEmpty()
@@ -226,25 +229,38 @@ func (p *PRepBaseData) GetBonderListInJSON() []interface{} {
 }
 
 func (p PRepBaseData) clone() PRepBaseData {
-	return PRepBaseData{
-		info:       p.info,
-		irep:       p.irep,
-		irepHeight: p.irepHeight,
-		bonderList: p.bonderList.Clone(),
+	p.bonderList = p.bonderList.Clone()
+	return p
+}
+
+func NewStringPtr(s string) *string {
+	return &s
+}
+
+func (p *PRepBaseData) info() *PRepInfo {
+	return &PRepInfo{
+		City:        NewStringPtr(p.city),
+		Country:     NewStringPtr(p.country),
+		Details:     NewStringPtr(p.details),
+		Email:       NewStringPtr(p.email),
+		Name:        NewStringPtr(p.name),
+		P2PEndpoint: NewStringPtr(p.p2pEndpoint),
+		WebSite:     NewStringPtr(p.website),
+		Node:        p.GetNode(nil),
 	}
 }
 
 func (p *PRepBaseData) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["name"] = p.info.name
-	jso["country"] = p.info.country
-	jso["city"] = p.info.city
-	jso["email"] = p.info.email
-	jso["website"] = p.info.website
-	jso["details"] = p.info.details
-	jso["p2pEndpoint"] = p.info.p2pEndpoint
-	if p.info.node != nil {
-		jso["nodeAddress"] = p.info.node
+	jso["name"] = p.name
+	jso["country"] = p.country
+	jso["city"] = p.city
+	jso["email"] = p.email
+	jso["website"] = p.website
+	jso["details"] = p.details
+	jso["p2pEndpoint"] = p.p2pEndpoint
+	if p.node != nil {
+		jso["nodeAddress"] = p.node
 	}
 	jso["irep"] = p.irep
 	jso["irepUpdateBlockHeight"] = p.irepHeight
@@ -252,17 +268,23 @@ func (p *PRepBaseData) ToJSON() map[string]interface{} {
 }
 
 func (p *PRepBaseData) String() string {
-	return fmt.Sprintf("PRepBase{RegInfo{%s} irep=%d irepHeight=%d}",
-		p.info.String(), p.irep, p.irepHeight)
+	return fmt.Sprintf("PRepBase{city=%s country=%s details=%s email=%s p2p=%s website=%s node=%s irep=%d irepHeight=%d}",
+		p.city, p.country, p.details, p.email, p.p2pEndpoint, p.website, p.node, p.irep, p.irepHeight)
 }
 
 func (p *PRepBaseData) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "PRepBase{%+v irep=%d irepHeight=%d}", &p.info, p.irep, p.irepHeight)
+			fmt.Fprintf(f,
+				"PRepBase{city=%s country=%s details=%s email=%s p2p=%s website=%s node=%s irep=%d irepHeight=%d}",
+				p.city, p.country, p.details, p.email, p.p2pEndpoint, p.website, p.node, p.irep, p.irepHeight,
+			)
 		} else {
-			fmt.Fprintf(f, "PRepBase{%v %d %d}", &p.info, p.irep, p.irepHeight)
+			fmt.Fprintf(f,
+				"PRepBase{%s %s %s %s %s %s %s %d %d}",
+				p.city, p.country, p.details, p.email, p.p2pEndpoint, p.website, p.node, p.irep, p.irepHeight,
+			)
 		}
 	case 's':
 		fmt.Fprint(f, p.String())
@@ -280,14 +302,14 @@ func (p *PRepBaseSnapshot) Version() int {
 
 func (p *PRepBaseSnapshot) RLPEncodeFields(e codec.Encoder) error {
 	return e.EncodeMulti(
-		p.info.name,
-		p.info.country,
-		p.info.city,
-		p.info.email,
-		p.info.website,
-		p.info.details,
-		p.info.p2pEndpoint,
-		p.info.node,
+		p.name,
+		p.country,
+		p.city,
+		p.email,
+		p.website,
+		p.details,
+		p.p2pEndpoint,
+		p.node,
 		p.irep,
 		p.irepHeight,
 		p.bonderList,
@@ -296,14 +318,14 @@ func (p *PRepBaseSnapshot) RLPEncodeFields(e codec.Encoder) error {
 
 func (p *PRepBaseSnapshot) RLPDecodeFields(d codec.Decoder) error {
 	return d.DecodeAll(
-		&p.info.name,
-		&p.info.country,
-		&p.info.city,
-		&p.info.email,
-		&p.info.website,
-		&p.info.details,
-		&p.info.p2pEndpoint,
-		&p.info.node,
+		&p.name,
+		&p.country,
+		&p.city,
+		&p.email,
+		&p.website,
+		&p.details,
+		&p.p2pEndpoint,
+		&p.node,
 		&p.irep,
 		&p.irepHeight,
 		&p.bonderList,
@@ -347,17 +369,44 @@ func (p *PRepBaseState) Clear() {
 	p.Reset(emptyPRepBaseSnapshot)
 }
 
-func (p *PRepBaseState) UpdateRegInfo(ri *RegInfo) error {
-	if p.info.Update(ri) {
+func (p *PRepBaseState) UpdateInfo(info *PRepInfo) {
+	dirty := false
+	if info.City != nil && *info.City != p.city {
+		p.city = *info.City
+		dirty = true
+	}
+	if info.Country != nil && *info.Country != p.country {
+		p.country = *info.Country
+		dirty = true
+	}
+	if info.Details != nil && *info.Details != p.details {
+		p.details = *info.Details
+		dirty = true
+	}
+	if info.Email != nil && *info.Email != p.email {
+		p.email = *info.Email
+		dirty = true
+	}
+	if info.Name != nil && *info.Name != p.name {
+		p.name = *info.Name
+		dirty = true
+	}
+	if info.P2PEndpoint != nil && *info.P2PEndpoint != p.p2pEndpoint {
+		p.p2pEndpoint = *info.P2PEndpoint
+		dirty = true
+	}
+	if info.WebSite != nil && *info.WebSite != p.website {
+		p.website = *info.WebSite
+		dirty = true
+	}
+	if info.Node != nil && !info.Node.Equal(p.node) {
+		p.node = common.AddressToPtr(info.Node)
+		dirty = true
+	}
+	if dirty {
 		p.setDirty()
 	}
-	return nil
-}
-
-func (p *PRepBaseState) SetRegInfo(ri *RegInfo) error {
-	p.info.Set(ri)
-	p.setDirty()
-	return nil
+	return
 }
 
 func (p *PRepBaseState) SetIrep(irep *big.Int, irepHeight int64) {

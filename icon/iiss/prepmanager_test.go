@@ -28,7 +28,7 @@ func createAddress(i int) module.Address {
 	return address
 }
 
-func newRegInfo(i int) *icstate.RegInfo {
+func newPRepInfo(i int) *icstate.PRepInfo {
 	city := fmt.Sprintf("Seoul%d", i)
 	country := "KOR"
 	name := fmt.Sprintf("node%d", i)
@@ -36,9 +36,16 @@ func newRegInfo(i int) *icstate.RegInfo {
 	website := fmt.Sprintf("https://%s.example.com/", name)
 	details := fmt.Sprintf("%sdetails/", website)
 	endpoint := fmt.Sprintf("%s.example.com:9080", name)
-	node := module.Address(nil)
 
-	return icstate.NewRegInfo(city, country, details, email, name, endpoint, website, node)
+	return &icstate.PRepInfo{
+		City: &city,
+		Country: &country,
+		Name: &name,
+		Email: &email,
+		WebSite: &website,
+		Details: &details,
+		P2PEndpoint: &endpoint,
+	}
 }
 
 func newBond(address module.Address, amount int64) *icstate.Bond {
@@ -59,7 +66,7 @@ func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 
 	for i := 0; i < size; i++ {
 		owner := createAddress(i)
-		ri := newRegInfo(i)
+		ri := newPRepInfo(i)
 		assert.NoError(t, state.RegisterPRep(owner, ri, icstate.BigIntInitialIRep))
 	}
 

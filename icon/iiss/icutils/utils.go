@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/biter777/countries"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
@@ -265,5 +267,17 @@ func ValidateEmail(email string, revision int) error {
 		}
 	}
 
+	return nil
+}
+
+func ValidateCountryAlpha3(alpha3 string) error {
+	code := countries.ByName(alpha3)
+	if code == countries.Unknown {
+		return errors.IllegalArgumentError.Errorf("UnknownCountry(alpha3=%s)", alpha3)
+	}
+	if code.Alpha3() != strings.ToUpper(alpha3) {
+		return errors.IllegalArgumentError.Errorf("UseAlpha3(alpha3=%s,name=%s)",
+			code.Alpha3(), alpha3)
+	}
 	return nil
 }

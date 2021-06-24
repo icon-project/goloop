@@ -23,7 +23,7 @@ func flushAndNewState(s *State, readonly bool) *State {
 	return NewStateFromSnapshot(NewSnapshot(ss.store.Database(), ss.Bytes()), false, nil)
 }
 
-func newDummyRegInfo(i int) *RegInfo {
+func newDummyPRepInfo(i int) *PRepInfo {
 	city := fmt.Sprintf("Seoul%d", i)
 	country := "KOR"
 	name := fmt.Sprintf("node%d", i)
@@ -31,13 +31,18 @@ func newDummyRegInfo(i int) *RegInfo {
 	website := fmt.Sprintf("https://%s.example.com/", name)
 	details := fmt.Sprintf("%sdetails/", website)
 	endpoint := fmt.Sprintf("%s.example.com:9080", name)
-	node := module.Address(nil)
-
-	return NewRegInfo(city, country, details, email, name, endpoint, website, node)
+	return &PRepInfo {
+		City: &city,
+		Country: &country,
+		Name: &name,
+		Email: &email,
+		WebSite: &website,
+		Details: &details,
+		P2PEndpoint: &endpoint,
+	}
 }
 
 func TestPRepBaseCache(t *testing.T) {
-	var err error
 	var created bool
 	var base, base1, base2 *PRepBaseState
 	var addr1, addr2 module.Address
@@ -45,7 +50,7 @@ func TestPRepBaseCache(t *testing.T) {
 	s := newDummyState(false)
 
 	addr1 = common.MustNewAddressFromString("hx1")
-	ri1 := newDummyRegInfo(1)
+	ri1 := newDummyPRepInfo(1)
 
 	// cache added
 	base, created = s.prepBaseCache.Get(addr1, false)
@@ -54,18 +59,16 @@ func TestPRepBaseCache(t *testing.T) {
 	base, created = s.prepBaseCache.Get(addr1, true)
 	assert.True(t, created)
 	assert.True(t, base.IsEmpty())
-	err = base.SetRegInfo(ri1)
-	assert.NoError(t, err)
+	base.UpdateInfo(ri1)
 
 	addr2 = common.MustNewAddressFromString("hx2")
-	ri2 := newDummyRegInfo(2)
+	ri2 := newDummyPRepInfo(2)
 
 	// cache added
 	base, created = s.prepBaseCache.Get(addr2, true)
 	assert.NotNil(t, base)
 	assert.True(t, created)
-	err = base.SetRegInfo(ri2)
-	assert.NoError(t, err)
+	base.UpdateInfo(ri2)
 
 	s = flushAndNewState(s, false)
 
@@ -87,7 +90,7 @@ func TestPRepBaseCache(t *testing.T) {
 	base, created = s.prepBaseCache.Get(addr2, true)
 	assert.False(t, base.IsEmpty())
 	assert.False(t, created)
-	assert.Equal(t, "node2", base.info.name)
+	assert.True(t, base.info().equal(ri2))
 
 	// item is removed from the map,
 	// after it flush to DB, it is removed in DB

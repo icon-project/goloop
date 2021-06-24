@@ -285,18 +285,16 @@ func (s *State) ClearCache() {
 	s.store.ClearCache()
 }
 
-func (s *State) updateRegInfoOfPRep(owner module.Address, pb *PRepBaseState, ri *RegInfo) error {
-	if err := pb.UpdateRegInfo(ri); err != nil {
-		return err
-	}
-	node := ri.GetNode(owner)
+func (s *State) updatePRepInfoOf(owner module.Address, pb *PRepBaseState, info *PRepInfo) error {
+	pb.UpdateInfo(info)
+	node := info.GetNode(owner)
 	if err := s.addNodeToOwner(node, owner); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) error {
+func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int) error {
 	if ri == nil {
 		return errors.Errorf("Invalid argument: ri")
 	}
@@ -311,21 +309,21 @@ func (s *State) RegisterPRep(owner module.Address, ri *RegInfo, irep *big.Int) e
 	if !created {
 		return errors.Errorf("Already in use: addr=%s %+v", owner, pb)
 	}
-	if err := s.updateRegInfoOfPRep(owner, pb, ri); err != nil {
+	if err := s.updatePRepInfoOf(owner, pb, ri); err != nil {
 		return err
 	}
 	pb.SetIrep(irep, 0)
 	return nil
 }
 
-func (s *State) SetPRep(blockHeight int64, owner module.Address, ri *RegInfo) error {
+func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo) error {
 	pb, _ := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
 	oldNode := pb.GetNode(owner)
-	if err := s.updateRegInfoOfPRep(owner, pb, ri); err != nil {
+	if err := s.updatePRepInfoOf(owner, pb, info); err != nil {
 		return err
 	}
 	newNode := pb.GetNode(owner)

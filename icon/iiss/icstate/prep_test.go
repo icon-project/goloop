@@ -30,7 +30,8 @@ func TestPReps_GetPRepByIndex(t *testing.T) {
 	prevBd := big.NewInt(-1)
 	for i := 0; i < preps.Size(); i++ {
 		prep := preps.GetPRepByIndex(i)
-		assert.Equal(t, "KOR", prep.RegInfo().country)
+		info := prep.info()
+		assert.Equal(t, "KOR", *info.Country)
 
 		bd := prep.GetBondedDelegation(br)
 		assert.True(t, prevBd.Cmp(bd) <= 0)

@@ -24,16 +24,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func newNodeOnlyRegInfo(node module.Address) *RegInfo {
-	city := ""
-	country := ""
-	email := ""
-	website := ""
-	details := ""
-	name := ""
-	p2pEndpoint := ""
-
-	return NewRegInfo(city, country, details, email, name, p2pEndpoint, website, node)
+func newNodeOnlyRegInfo(node module.Address) *PRepInfo {
+	return &PRepInfo {
+		Node: node,
+	}
 }
 
 func TestState_RegisterPRep(t *testing.T) {
@@ -44,17 +38,16 @@ func TestState_RegisterPRep(t *testing.T) {
 
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
-		ri := newDummyRegInfo(i)
+		ri := newDummyPRepInfo(i)
 		err = state.RegisterPRep(owner, ri, irep)
 		assert.NoError(t, err)
 		err = state.Flush()
 		assert.NoError(t, err)
 
-		riApplied := ri.Clone()
 		pb, _ := state.GetPRepBaseByOwner(owner, false)
 		assert.NotNil(t, pb)
-		info := pb.RegInfo()
-		assert.True(t, info.Equal(riApplied))
+		info := pb.info()
+		assert.Truef(t, info.equal(ri), "DifferentInfo exp=%+v real=%+v", ri, info)
 
 		ps, _ := state.GetPRepStatusByOwner(owner, false)
 		assert.NotNil(t, ps)
@@ -78,7 +71,7 @@ func TestState_SetPRep(t *testing.T) {
 
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
-		ri := newDummyRegInfo(i)
+		ri := newDummyPRepInfo(i)
 		err = state.RegisterPRep(owner, ri, irep)
 		assert.NoError(t, err)
 

@@ -33,9 +33,9 @@ func newDummyAddress(value int) module.Address {
 }
 
 func newDummyPRepBase(i int) *PRepBaseState {
-	ri := newDummyRegInfo(i)
+	info := newDummyPRepInfo(i)
 	pb := NewPRepBaseState()
-	pb.SetRegInfo(ri)
+	pb.UpdateInfo(info)
 	return pb
 }
 
