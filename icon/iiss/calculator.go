@@ -197,6 +197,10 @@ func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
 		return err
 	}
 
+	// replay BugDisabledPRep
+	if err = c.replayBugDisabledPRep(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -229,6 +233,33 @@ func (c *Calculator) processClaim() error {
 			if err = c.temp.SetIScore(addr, nIScore); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func (c *Calculator) replayBugDisabledPRep() error {
+	revision := c.global.GetRevision()
+	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
+		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
+		return nil
+	}
+	for iter := c.base.Filter(icreward.BugDisabledPRepKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		if err != nil {
+			return err
+		}
+		keySplit, err := containerdb.SplitKeys(key)
+		if err != nil {
+			return err
+		}
+		addr, err := common.NewAddress(keySplit[1])
+		if err != nil {
+			return err
+		}
+		obj := icreward.ToBugDisabledPRep(o)
+		if err = c.updateIScore(addr, obj.Value(), TypeVoting); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -665,6 +696,54 @@ func (c *Calculator) calculateVotingReward() error {
 	return nil
 }
 
+func (c *Calculator) addDataForBugDisabledPRep() error {
+	revision := c.global.GetRevision()
+	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
+		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
+		return nil
+	}
+	prepInfo := make(map[string]*pRepEnable)
+	multiplier, divider := varForVotingReward(c.global, nil)
+	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		if err != nil {
+			return err
+		}
+
+		obj := o.(*icobject.Object)
+		_type := obj.Tag().Type()
+
+		var keySplit [][]byte
+		keySplit, err = containerdb.SplitKeys(key)
+		if err != nil {
+			return err
+		}
+		// DisabledPRep bug condition
+		// - got a disabled event
+		// - had a delegating
+		if _type == icstage.TypeEventEnable {
+			event := icstage.ToEventEnable(obj)
+			if !event.Status().IsEnabled() {
+				delegating, err := c.temp.GetDelegating(event.Target())
+				if err != nil {
+					return err
+				}
+				if delegating != nil {
+					idx := icutils.ToKey(event.Target())
+					offset := int(intconv.BytesToInt64(keySplit[1]))
+					prepInfo[idx] = new(pRepEnable)
+					reward := c.votingReward(multiplier, divider, offset, c.global.GetOffsetLimit(), prepInfo, delegating.Iterator())
+					bug := icreward.NewBugDisabledPRep(reward)
+					if err = c.temp.AddBugDisabledPRep(event.Target(), bug); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // processVoting calculator voting reward with delegating and bonding data.
 func (c *Calculator) processVoting(
 	_type int,
@@ -902,6 +981,9 @@ func (c *Calculator) postWork() (err error) {
 			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
 	}
+
+	// add preprocessed data for BugDisabledPRep
+	c.addDataForBugDisabledPRep()
 
 	// save calculation result to MPT
 	c.result = c.temp.GetSnapshot()

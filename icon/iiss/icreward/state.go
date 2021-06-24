@@ -25,10 +25,11 @@ import (
 )
 
 var (
-	VotedKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
-	DelegatingKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
-	BondingKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
-	IScoreKey     = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	VotedKey           = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
+	DelegatingKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
+	BondingKey         = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
+	IScoreKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BugDisabledPRepKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
 )
 
 type State struct {
@@ -123,6 +124,12 @@ func (s *State) SetBonding(addr module.Address, bonding *Bonding) error {
 		_, err := s.store.Set(key, icobject.New(TypeBonding, bonding))
 		return err
 	}
+}
+
+func (s *State) AddBugDisabledPRep(addr module.Address, value *BugDisabledPRep) error {
+	key := BugDisabledPRepKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeBugDisabledPRep, value))
+	return err
 }
 
 func NewStateFromSnapshot(ss *Snapshot) *State {

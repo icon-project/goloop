@@ -49,6 +49,8 @@ const (
 
 	RevisionFixTotalDelegated = Revision7
 
+	RevisionFixBugDisabledPRep = Revision8
+
 	RevisionFixBurnEventSignature  = Revision9
 	RevisionMultipleUnstakes       = Revision9
 	RevisionFixEmailValidation     = Revision9

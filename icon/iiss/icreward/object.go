@@ -27,6 +27,7 @@ const (
 	TypeDelegating
 	TypeBonding
 	TypeIScore
+	TypeBugDisabledPRep
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -39,6 +40,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newBonding(tag), nil
 	case TypeIScore:
 		return newIScore(tag), nil
+	case TypeBugDisabledPRep:
+		return newBugDisabledPRep(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -71,4 +74,11 @@ func ToBonding(obj trie.Object) *Bonding {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*Bonding)
+}
+
+func ToBugDisabledPRep(obj trie.Object) *BugDisabledPRep {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*BugDisabledPRep)
 }
