@@ -57,7 +57,7 @@ var (
 type State struct {
 	readonly            bool
 	accountCache        *AccountCache
-	activePRepCache     *ActivePRepCache
+	allPRepCache        *AllPRepCache
 	nodeOwnerCache      *NodeOwnerCache
 	prepBaseCache       *PRepBaseCache
 	prepStatusCache     *PRepStatusCache
@@ -77,7 +77,6 @@ func (s *State) Reset(ss *Snapshot) error {
 	var err error
 	s.store.Reset(ss.store.ImmutableForObject)
 	s.accountCache.Reset()
-	s.activePRepCache.Reset()
 	s.nodeOwnerCache.Reset()
 	s.prepBaseCache.Reset()
 	s.prepStatusCache.Reset()
@@ -91,7 +90,6 @@ func (s *State) Reset(ss *Snapshot) error {
 
 func (s *State) Flush() error {
 	s.accountCache.Flush()
-	s.activePRepCache.Flush()
 	s.nodeOwnerCache.Flush()
 	s.prepBaseCache.Flush()
 	s.prepStatusCache.Flush()
@@ -133,18 +131,6 @@ func (s *State) GetUnbondingTimerState(height int64) *TimerState {
 func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
 	timer := s.unbondingTimerCache.GetSnapshot(height)
 	return timer
-}
-
-func (s *State) RemoveActivePRep(owner module.Address) error {
-	return s.activePRepCache.Remove(owner)
-}
-
-func (s *State) GetActivePRepSize() int {
-	return s.activePRepCache.Size()
-}
-
-func (s *State) getActivePRepOwner(i int) module.Address {
-	return s.activePRepCache.Get(i)
 }
 
 func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) (*PRepBaseState, bool) {
@@ -190,7 +176,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	return &State{
 		readonly:            readonly,
 		accountCache:        newAccountCache(store),
-		activePRepCache:     newActivePRepCache(store),
+		allPRepCache:        NewAllPRepCache(store),
 		nodeOwnerCache:      newNodeOwnerCache(store),
 		prepBaseCache:       newPRepBaseCache(store),
 		prepStatusCache:     newPRepStatusCache(store),
@@ -309,8 +295,9 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int) 
 	if err := ps.Activate(); err != nil {
 		return errors.Wrapf(err, "ActivationFail(addr=%s)", owner)
 	}
-	s.activePRepCache.Add(owner)
-
+	if err := s.allPRepCache.Add(owner); err != nil {
+		return err
+	}
 	pb, created := s.GetPRepBaseByOwner(owner, true)
 	if !created {
 		return errors.Errorf("Already in use: addr=%s %+v", owner, pb)
@@ -437,12 +424,12 @@ func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
 func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 	br := s.GetBondRequirement()
 
-	size := s.activePRepCache.Size()
+	size := s.allPRepCache.Size()
 	owners := make([]module.Address, 0)
 	pss := make([]*PRepStatusState, 0)
 
 	for i := 0; i < size; i++ {
-		owner := s.getActivePRepOwner(i)
+		owner := s.allPRepCache.Get(i)
 		ps, _ := s.GetPRepStatusByOwner(owner, false)
 		if ps.Status() == Active {
 			owners = append(owners, owner)
@@ -565,7 +552,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	predefinedMainPRepCount := int(s.GetMainPRepCount())
 	br := s.GetBondRequirement()
 
-	if revision >= icmodule.RevisionDecentralize && s.GetActivePRepSize() >= predefinedMainPRepCount {
+	if revision >= icmodule.RevisionDecentralize && s.allPRepCache.Size() >= predefinedMainPRepCount {
 		prep := preps.GetPRepByIndex(predefinedMainPRepCount - 1)
 		if prep == nil {
 			return false
@@ -576,11 +563,11 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 }
 
 func (s *State) GetOrderedPReps() (*PReps, error) {
-	size := s.GetActivePRepSize()
+	size := s.allPRepCache.Size()
 	prepList := make([]*PRep, size)
 
 	for i := 0; i < size; i++ {
-		owner := s.getActivePRepOwner(i)
+		owner := s.allPRepCache.Get(i)
 		prep := s.GetPRepByOwner(owner)
 		if prep != nil {
 			prepList[i] = prep
