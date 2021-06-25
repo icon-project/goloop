@@ -589,6 +589,10 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 			err, "Failed to set governance variables: from=%v", s.from,
 		)
 	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), s.from.Bytes()},
+		[][]byte{intconv.BigIntToBytes(irep.Value())},
+	)
 	return nil
 }
 
