@@ -4,9 +4,9 @@ import foundation.icon.ee.io.DataReader;
 import foundation.icon.ee.io.DataWriter;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.util.Crypto;
-import org.java_websocket.util.Base64;
 
 import java.util.ArrayList;
+import java.util.Base64;
 
 public class Votes {
     private final byte[] bytes;
@@ -126,9 +126,10 @@ public class Votes {
             var addr = new Address(Crypto.getAddressBytesFromKey(pubKey));
             var idx = validators.indexOf(addr);
             if (idx < 0) {
-                System.err.println("VoteMsg: " + Base64.encodeBytes(voteMsg));
-                System.err.println("Signature: " + Base64.encodeBytes(item.getSignature()));
-                System.err.println("Address: " + addr.toString());
+                var encoder = Base64.getEncoder();
+                System.err.println("VoteMsg: " + encoder.encodeToString(voteMsg));
+                System.err.println("Signature: " + encoder.encodeToString(item.getSignature()));
+                System.err.println("Address: " + addr);
                 continue;
             }
             if (checked[idx]) {
