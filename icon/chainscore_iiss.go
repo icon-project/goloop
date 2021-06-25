@@ -518,6 +518,13 @@ func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 	return jso, nil
 }
 
+func paramStrToPtr(value string) *string {
+	if len(value) == 0 {
+		return nil
+	}
+	return &value
+}
+
 func (s *chainScore) Ex_setPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, node module.Address) error {
 	var err error
@@ -537,13 +544,13 @@ func (s *chainScore) Ex_setPRep(name string, email string, website string, count
 	}
 
 	info := &icstate.PRepInfo{
-		City:        &city,
-		Country:     &country,
-		Details:     &details,
-		Email:       &email,
-		Name:        &name,
-		P2PEndpoint: &p2pEndpoint,
-		WebSite:     &website,
+		City:        paramStrToPtr(city),
+		Country:     paramStrToPtr(country),
+		Details:     paramStrToPtr(details),
+		Email:       paramStrToPtr(email),
+		Name:        paramStrToPtr(name),
+		P2PEndpoint: paramStrToPtr(p2pEndpoint),
+		WebSite:     paramStrToPtr(website),
 		Node:        node,
 	}
 
