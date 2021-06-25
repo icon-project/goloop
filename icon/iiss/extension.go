@@ -797,7 +797,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetPRepSnapshots(pss)
 		nextTerm.SetIsDecentralized(true)
 
-		if irep := s.pm.CalculateIRep(preps, revision); irep != nil {
+		if irep := CalculateIRep(preps, revision); irep != nil {
 			nextTerm.SetIrep(irep)
 		}
 
@@ -808,7 +808,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 		}
 	}
 
-	rrep := s.pm.CalculateRRep(totalSupply, revision, s.State.GetTotalDelegation())
+	rrep := CalculateRRep(totalSupply, revision, s.State.GetTotalDelegation())
 	if rrep != nil {
 		nextTerm.SetRrep(rrep)
 	}

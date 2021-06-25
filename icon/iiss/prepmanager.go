@@ -115,7 +115,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 	return delta, nil
 }
 
-func (pm *PRepManager) CalculateIRep(preps *icstate.PReps, revision int) *big.Int {
+func CalculateIRep(preps *icstate.PReps, revision int) *big.Int {
 	irep := new(big.Int)
 	if revision < icmodule.RevisionDecentralize ||
 		revision >= icmodule.RevisionICON2 {
@@ -148,7 +148,7 @@ func (pm *PRepManager) CalculateIRep(preps *icstate.PReps, revision int) *big.In
 	return irep
 }
 
-func (pm *PRepManager) CalculateRRep(totalSupply *big.Int, revision int, totalDelegation *big.Int) *big.Int {
+func CalculateRRep(totalSupply *big.Int, revision int, totalDelegation *big.Int) *big.Int {
 	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
 		// rrep is disabled
 		return new(big.Int)
