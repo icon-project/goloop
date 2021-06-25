@@ -80,17 +80,17 @@ func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, ov
 	issue.SetTotalReward(big.NewInt(totalIssued))
 	issue.SetPrevTotalReward(big.NewInt(prevTotalIssued))
 	issue.SetOverIssued(big.NewInt(overIssued))
-	issue.SetIScoreRemains(big.NewInt(iScoreRemains))
+	issue.SetOverIssuedIScore(big.NewInt(iScoreRemains))
 	issue.SetPrevBlockFee(big.NewInt(prevBlockFee))
 }
 
 func TestIssuer_RegulateIssueInfo(t *testing.T) {
 	type values struct {
-		prevTotalIssued int64
-		totalIssued     int64
-		overIssued      int64
-		iScoreRemains   int64
-		prevBlockFee    int64
+		prevTotalIssued  int64
+		totalIssued      int64
+		overIssuedICX    int64
+		overIssuedIScore int64
+		prevBlockFee     int64
 	}
 
 	tests := []struct {
@@ -136,7 +136,7 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(90*IScoreICXRatio + 123),
 			values{
-				0, 0, 20, 124, 0,
+				0, 0, 10 + 100 - 91, 1 + 1000 - 123, 0,
 			},
 		},
 		{
@@ -146,7 +146,7 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			},
 			new(big.Int).SetInt64(200*IScoreICXRatio + 123),
 			values{
-				100, 200, -90, 124, 0,
+				100, 200, 10 + 100 - 201, 1 + 1000 - 123, 0,
 			},
 		},
 	}
@@ -156,10 +156,10 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
+			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssuedICX, in.overIssuedIScore, in.prevBlockFee)
 			RegulateIssueInfo(issue, tt.iScore)
-			assert.Equal(t, out.overIssued, issue.OverIssued().Int64())
-			assert.Equal(t, out.iScoreRemains, issue.IScoreRemains().Int64())
+			assert.Equal(t, out.overIssuedICX, issue.OverIssuedICX().Int64())
+			assert.Equal(t, out.overIssuedIScore, issue.OverIssuedIScore().Int64())
 			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee().Int64())
 		})
 	}

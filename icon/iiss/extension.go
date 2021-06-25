@@ -625,7 +625,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *big
 	}
 
 	if term.IsDecentralized() {
-		if err = s.updateIssueInfoFee(totalFee); err != nil {
+		if err = s.setIssuePrevBlockFee(totalFee); err != nil {
 			return err
 		}
 	}
@@ -654,7 +654,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *big
 			}
 		} else if nTerm.IsDecentralized() {
 			// last centralized block
-			if err := s.updateIssueInfoFee(totalFee); err != nil {
+			if err := s.setIssuePrevBlockFee(totalFee); err != nil {
 				return err
 			}
 		}
@@ -826,13 +826,13 @@ func (s *ExtensionStateImpl) resetIssueTotalReward() error {
 	return nil
 }
 
-func (s *ExtensionStateImpl) updateIssueInfoFee(fee *big.Int) error {
+func (s *ExtensionStateImpl) setIssuePrevBlockFee(fee *big.Int) error {
 	is, err := s.State.GetIssue()
 	if err != nil {
 		return err
 	}
 	issue := is.Clone()
-	issue.SetPrevBlockFee(new(big.Int).Add(issue.PrevBlockFee(), fee))
+	issue.SetPrevBlockFee(fee)
 	if err = s.State.SetIssue(issue); err != nil {
 		return err
 	}

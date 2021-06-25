@@ -152,24 +152,21 @@ func (i *IssueResultJSON) Format(f fmt.State, c rune) {
 
 // RegulateIssueInfo regulate icx issue amount with previous period data.
 func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
-	var icx, remains *big.Int
-
 	// Do not regulate ICX issue if there is no ICX issuance.
 	if issue.PrevTotalReward().Sign() == 0 {
 		return
 	}
 	if iScore == nil || iScore.Sign() == 0 {
-		icx = new(big.Int)
-		remains = new(big.Int)
-	} else {
-		icx, remains = new(big.Int).DivMod(iScore, BigIntIScoreICXRatio, new(big.Int))
+		return
 	}
-	overIssued := new(big.Int).Sub(issue.PrevTotalReward(), icx)
-	issue.SetOverIssued(new(big.Int).Add(issue.OverIssued(), overIssued))
-	issue.SetIScoreRemains(new(big.Int).Add(issue.IScoreRemains(), remains))
-	if issue.IScoreRemains().Cmp(BigIntIScoreICXRatio) >= 0 {
-		issue.SetOverIssued(new(big.Int).Sub(issue.OverIssued(), intconv.BigIntOne))
-		issue.SetIScoreRemains(new(big.Int).Sub(issue.IScoreRemains(), BigIntIScoreICXRatio))
+	prevTotalIScore := new(big.Int).Mul(issue.PrevTotalReward(), BigIntIScoreICXRatio)
+	overIssuedIScore := new(big.Int).Sub(prevTotalIScore, iScore)
+	icx, remains := new(big.Int).DivMod(overIssuedIScore, BigIntIScoreICXRatio, new(big.Int))
+	issue.SetOverIssued(new(big.Int).Add(issue.OverIssuedICX(), icx))
+	issue.SetOverIssuedIScore(new(big.Int).Add(issue.OverIssuedIScore(), remains))
+	if issue.OverIssuedIScore().Cmp(BigIntIScoreICXRatio) >= 0 {
+		issue.SetOverIssued(new(big.Int).Add(issue.OverIssuedICX(), intconv.BigIntOne))
+		issue.SetOverIssuedIScore(new(big.Int).Sub(issue.OverIssuedIScore(), BigIntIScoreICXRatio))
 	}
 }
 
@@ -210,9 +207,9 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	byFee = new(big.Int)
 	byOverIssued = new(big.Int)
 
-	if issue.Cmp(i.OverIssued()) > 0 {
-		byOverIssued.Set(i.OverIssued())
-		issue.Sub(issue, i.OverIssued())
+	if issue.Cmp(i.OverIssuedICX()) > 0 {
+		byOverIssued.Set(i.OverIssuedICX())
+		issue.Sub(issue, i.OverIssuedICX())
 	} else {
 		byOverIssued.Set(issue)
 		issue.SetInt64(0)

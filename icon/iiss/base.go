@@ -285,11 +285,11 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	}
 
 	// write Issue Info
-	is, err := es.State.GetIssue()
+	issue, err := es.State.GetIssue()
 	if err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to get issue Info.")
 	}
-	issue := is.Update(result.GetTotalReward(), result.GetByFee(), result.GetByOverIssuedICX())
+	issue = issue.Update(result.GetTotalReward(), result.GetByFee(), result.GetByOverIssuedICX())
 	if err = es.State.SetIssue(issue); err != nil {
 		return scoreresult.InvalidContainerAccessError.Wrap(err, "Failed to set issue Info.")
 	}
@@ -312,7 +312,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			intconv.BigIntToBytes(result.GetByFee()),
 			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
 			intconv.BigIntToBytes(result.GetIssue()),
-			intconv.BigIntToBytes(issue.OverIssued()),
+			intconv.BigIntToBytes(issue.OverIssuedICX()),
 		},
 	)
 	term := es.State.GetTerm()
