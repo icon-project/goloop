@@ -129,7 +129,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 
 		// add icstage.EventBond
 		delta := map[string]*big.Int{
-			icutils.ToKey(bonder): new(big.Int).Neg(slashBond),
+			icutils.ToKey(owner): new(big.Int).Neg(slashBond),
 		}
 		if err := s.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 			return err
