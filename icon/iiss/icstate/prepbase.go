@@ -250,7 +250,7 @@ func (p *PRepBaseData) info() *PRepInfo {
 	}
 }
 
-func (p *PRepBaseData) ToJSON() map[string]interface{} {
+func (p *PRepBaseData) ToJSON(owner module.Address) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["name"] = p.name
 	jso["country"] = p.country
@@ -261,6 +261,8 @@ func (p *PRepBaseData) ToJSON() map[string]interface{} {
 	jso["p2pEndpoint"] = p.p2pEndpoint
 	if p.node != nil {
 		jso["nodeAddress"] = p.node
+	} else {
+		jso["nodeAddress"] = owner
 	}
 	jso["irep"] = p.irep
 	jso["irepUpdateBlockHeight"] = p.irepHeight

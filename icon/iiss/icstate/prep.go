@@ -22,7 +22,7 @@ func (p *PRep) Owner() module.Address {
 }
 
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	jso := icutils.MergeMaps(p.PRepBaseState.ToJSON(), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(p.PRepBaseState.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
 	jso["address"] = p.owner
 	return jso
 }
