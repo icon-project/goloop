@@ -132,6 +132,12 @@ func (s *State) AddBugDisabledPRep(addr module.Address, value *BugDisabledPRep) 
 	return err
 }
 
+func (s *State) DeleteBugDisabledPRep(addr module.Address) error {
+	key := BugDisabledPRepKey.Append(addr).Build()
+	_, err := s.store.Delete(key)
+	return err
+}
+
 func NewStateFromSnapshot(ss *Snapshot) *State {
 	t := trie_manager.NewMutableFromImmutableForObject(ss.store.ImmutableForObject)
 	return &State{

@@ -261,6 +261,9 @@ func (c *Calculator) replayBugDisabledPRep() error {
 		if err = c.updateIScore(addr, obj.Value(), TypeVoting); err != nil {
 			return err
 		}
+		if err = c.temp.DeleteBugDisabledPRep(addr); err != nil {
+			return err
+		}
 	}
 	return nil
 }
