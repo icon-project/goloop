@@ -12,8 +12,9 @@ import (
 
 type PRep struct {
 	owner module.Address
+	state *State
 
-	*PRepBaseState
+	pb *PRepBaseState
 	*PRepStatusState
 }
 
@@ -21,14 +22,51 @@ func (p *PRep) Owner() module.Address {
 	return p.owner
 }
 
+func (p *PRep) IRep() *big.Int {
+	pb := p.getPRepBaseState()
+	if pb == nil {
+		return new(big.Int)
+	}
+	return pb.IRep()
+}
+
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
-	jso := icutils.MergeMaps(p.PRepBaseState.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
+	pb := p.getPRepBaseState()
+	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
 	jso["address"] = p.owner
 	return jso
 }
 
-func newPRep(owner module.Address, pb *PRepBaseState, ps *PRepStatusState) *PRep {
-	return &PRep{owner: owner, PRepBaseState: pb, PRepStatusState: ps}
+func (p *PRep) init() error {
+	ps, _ := p.state.GetPRepStatusByOwner(p.owner, false)
+	if ps == nil {
+		return errors.Errorf("PRepStatus not found: %s", p.owner)
+	}
+	p.PRepStatusState = ps
+	return nil
+}
+
+func (p *PRep) getPRepBaseState() *PRepBaseState {
+	if p.pb == nil {
+		p.pb, _ = p.state.GetPRepBaseByOwner(p.owner, false)
+	}
+	return p.pb
+}
+
+func (p *PRep) info() *PRepInfo {
+	pb := p.getPRepBaseState()
+	if pb == nil {
+		return nil
+	}
+	return pb.info()
+}
+
+func NewPRep(owner module.Address, state *State) *PRep {
+	prep := &PRep{owner: owner, state: state}
+	if err := prep.init(); err != nil {
+		return nil
+	}
+	return prep
 }
 
 type PReps struct {

@@ -53,7 +53,7 @@ func newDummyPRep(i int) *PRep {
 	ps := newDummyPRepStatus()
 	return &PRep{
 		owner:           owner,
-		PRepBaseState:   pb,
+		pb:              pb,
 		PRepStatusState: ps,
 	}
 }

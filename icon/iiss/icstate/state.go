@@ -147,15 +147,7 @@ func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool
 }
 
 func (s *State) GetPRepByOwner(owner module.Address) *PRep {
-	pb, _ := s.GetPRepBaseByOwner(owner, false)
-	if pb == nil {
-		return nil
-	}
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		panic(errors.Errorf("PRepStatus not found: %s", owner))
-	}
-	return newPRep(owner, pb, ps)
+	return NewPRep(owner, s)
 }
 
 func NewStateFromSnapshot(ss *Snapshot, readonly bool, logger log.Logger) *State {
