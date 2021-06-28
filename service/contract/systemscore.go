@@ -60,10 +60,6 @@ func CheckStruct(t reflect.Type, fields []scoreapi.Field) error {
 	return nil
 }
 
-var (
-	typeHexInt = reflect.TypeOf((*common.HexInt)(nil))
-)
-
 func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) error {
 	for i := mt.ListDepth(); i > 0; i-- {
 		if t.Kind() != reflect.Slice {
@@ -79,12 +75,20 @@ func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) er
 	}
 	switch mt.Tag() {
 	case scoreapi.TInteger:
-		if typeHexInt == t {
+		if ptrOfHexIntType.AssignableTo(t) {
+			return nil
+		}
+		if ptrOfBigIntType.AssignableTo(t) {
 			return nil
 		}
 	case scoreapi.TString:
-		if reflect.TypeOf(string("")) == t {
+		switch t.Kind() {
+		case reflect.String:
 			return nil
+		case reflect.Ptr:
+			if t.Elem().Kind() == reflect.String {
+				return nil
+			}
 		}
 	case scoreapi.TBytes:
 		if reflect.TypeOf([]byte{}) == t {
@@ -190,6 +194,226 @@ func CheckMethod(obj SystemScore) error {
 	return nil
 }
 
+var (
+	ptrOfHexIntType  = reflect.TypeOf((*common.HexInt)(nil))
+	ptrOfBigIntType  = reflect.TypeOf((*big.Int)(nil))
+	sliceOfByteType  = reflect.TypeOf([]byte(nil))
+	addressType      = reflect.TypeOf((*module.Address)(nil)).Elem()
+	ptrOfAddressType = reflect.TypeOf((*common.Address)(nil))
+)
+
+func AssignHexInt(dstValue reflect.Value, srcValue *common.HexInt) error {
+	dstType := dstValue.Type()
+	if ptrOfHexIntType.AssignableTo(dstType) {
+		dstValue.Set(reflect.ValueOf(srcValue))
+		return nil
+	}
+	if ptrOfBigIntType.AssignableTo(dstType) {
+		dstValue.Set(reflect.ValueOf(srcValue.Value()))
+		return nil
+	}
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		dstValue.SetUint(srcValue.Uint64())
+		return nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		dstValue.SetInt(srcValue.Int64())
+		return nil
+	case reflect.Bool:
+		dstValue.SetBool(srcValue.Sign() != 0)
+		return nil
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignHexInt(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForInt(type=%s)", dstType)
+}
+
+func AssignString(dstValue reflect.Value, srcValue string) error {
+	dstType := dstValue.Type()
+	if sliceOfByteType == dstType {
+		dstValue.SetBytes([]byte(srcValue))
+		return nil
+	}
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.String:
+		dstValue.SetString(srcValue)
+		return nil
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignString(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForString(type=%s)", dstType)
+}
+
+func AssignBytes(dstValue reflect.Value, srcValue []byte) error {
+	dstType := dstValue.Type()
+	if sliceOfByteType == dstType {
+		dstValue.SetBytes(srcValue)
+		return nil
+	}
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.String:
+		dstValue.SetString(string(srcValue))
+		return nil
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignBytes(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
+}
+
+func AssignBool(dstValue reflect.Value, srcValue bool) error {
+	dstType := dstValue.Type()
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.Bool:
+		dstValue.SetBool(srcValue)
+		return nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if srcValue {
+			dstValue.SetUint(1)
+		} else {
+			dstValue.SetUint(0)
+		}
+		return nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if srcValue {
+			dstValue.SetInt(1)
+		} else {
+			dstValue.SetInt(0)
+		}
+		return nil
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignBool(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
+}
+
+func AssignAddress(dstValue reflect.Value, srcValue *common.Address) error {
+	dstType := dstValue.Type()
+	if ptrOfAddressType.AssignableTo(dstType) {
+		dstValue.Set(reflect.ValueOf(srcValue))
+		return nil
+	}
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignAddress(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForAddress(type=%s)", dstType)
+}
+
+func AssignList(dstValue reflect.Value, srcValue []interface{}) error {
+	dstType := dstValue.Type()
+	dstKind := dstType.Kind()
+	switch dstKind {
+	case reflect.Slice:
+		value := reflect.MakeSlice(dstType.Elem(), len(srcValue), len(srcValue))
+		for i, v := range srcValue {
+			child := value.Index(i)
+			if err := AssignParameter(child, v); err != nil {
+				return err
+			}
+		}
+		dstValue.Set(value)
+		return nil
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignList(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
+}
+
+func AssignDict(dstValue reflect.Value, srcValue map[string]interface{}) error {
+	dstType := dstValue.Type()
+	dstKind := dstType.Kind()
+typeHandler:
+	switch dstKind {
+	case reflect.Map:
+		if dstType.Key().Kind() != reflect.String {
+			break
+		}
+		value := reflect.MakeMap(dstType)
+		for k, v := range srcValue {
+			child := reflect.New(dstType.Elem()).Elem()
+			if err := AssignParameter(child, v); err != nil {
+				break typeHandler
+			}
+			value.SetMapIndex(reflect.ValueOf(k), child)
+		}
+		dstValue.Set(value)
+		return nil
+	case reflect.Struct:
+		// TODO support struct
+	case reflect.Ptr:
+		child := reflect.New(dstType.Elem())
+		if err := AssignDict(child.Elem(), srcValue); err == nil {
+			dstValue.Set(child)
+			return nil
+		}
+	}
+	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
+}
+
+func AssignParameter(dstValue reflect.Value, value interface{}) error {
+	// handle nil
+	if value == nil {
+		return nil
+	}
+
+	// general assignment
+	srcValue := reflect.ValueOf(value)
+	srcType := srcValue.Type()
+	dstType := dstValue.Type()
+	if srcType.AssignableTo(dstType) {
+		dstValue.Set(srcValue)
+		return nil
+	}
+
+	// let's handle conversion
+	switch obj := value.(type) {
+	case *common.HexInt:
+		return AssignHexInt(dstValue, obj)
+	case string:
+		return AssignString(dstValue, obj)
+	case map[string]interface{}:
+		return AssignDict(dstValue, obj)
+	case []interface{}:
+		return AssignList(dstValue, obj)
+	case []byte:
+		return AssignBytes(dstValue, obj)
+	case bool:
+		return AssignBool(dstValue, obj)
+	case *common.Address:
+		return AssignAddress(dstValue, obj)
+	}
+	return scoreresult.InvalidParameterError.Errorf("UnknownInputType(%s)", srcType)
+}
+
 func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status error, result *codec.TypedObj, steps *big.Int) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -222,18 +446,17 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	objects := make([]reflect.Value, len(params))
 	for i, p := range params {
 		oType := mType.In(i)
-		pValue := reflect.ValueOf(p)
-		if !pValue.IsValid() {
-			objects[i] = reflect.New(mType.In(i)).Elem()
-			continue
-		}
-		if !pValue.Type().AssignableTo(oType) {
-			return scoreresult.InvalidInstanceError.Errorf(
-					"InCompatibleType(to=%s,with=%s)", oType, pValue.Type()),
+		oValue := reflect.New(oType).Elem()
+		if err := AssignParameter(oValue, p); err != nil {
+			return scoreresult.InvalidInstanceError.Wrapf(
+					err,
+					"InCompatibleType(to=%s,with=%T)",
+					oType,
+					p,
+				),
 				nil, steps
 		}
-		objects[i] = reflect.New(mType.In(i)).Elem()
-		objects[i].Set(pValue)
+		objects[i] = oValue
 	}
 
 	r := m.Call(objects)
