@@ -337,6 +337,7 @@ var extensionRewardShortcuts = map[string]shortcut{
 	"delegating": {[]string{"rlp", "0x20"}, []string{"obj"}}, // <address>
 	"bonding":    {[]string{"rlp", "0x30"}, []string{"obj"}}, // <address>
 	"iscore":     {[]string{"rlp", "0x40"}, []string{"obj"}}, // <address>
+	"bug":        {[]string{"rlp", "0x50"}, []string{"obj"}}, // <address>
 }
 
 func showExtensionState(dbase db.Database, hash []byte, params []string) error {
