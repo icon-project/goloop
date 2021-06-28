@@ -268,7 +268,7 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func NetworkValueToJSON(s *State) map[string]interface{} {
+func (s *State) GetNetworkValueInJSON() (map[string]interface{}, error) {
 	jso := make(map[string]interface{})
 	jso["irep"] = s.GetIRep()
 	jso["rrep"] = s.GetRRep()
@@ -289,5 +289,5 @@ func NetworkValueToJSON(s *State) map[string]interface{} {
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	return jso
+	return jso, nil
 }

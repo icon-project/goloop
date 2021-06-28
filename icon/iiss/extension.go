@@ -927,10 +927,6 @@ func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error)
 	return term.ToJSON(), nil
 }
 
-func (s *ExtensionStateImpl) GetNetworkValueInJSON() (map[string]interface{}, error) {
-	return icstate.NetworkValueToJSON(s.State), nil
-}
-
 func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {
 	ass := wc.GetAccountState(state.SystemID).GetSnapshot()
 	as := scoredb.NewStateStoreWith(ass)

@@ -868,7 +868,7 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := es.GetNetworkValueInJSON()
+	res, err := es.State.GetNetworkValueInJSON()
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get NetworkValue")
 	}
