@@ -89,7 +89,7 @@ func CompareImmutableForObject(exp, real trie.ImmutableForObject, handler Object
 				return err
 			}
 		case 0:
-			if !ve.Equal(vr) {
+			if !bytes.Equal(ve.Bytes(), vr.Bytes()) {
 				handler(0, ke, ve, vr)
 			}
 			if err := ie.Next(); err != nil {
