@@ -46,13 +46,13 @@ type validatorsData struct {
 	nodeMap    map[string]int
 }
 
-func (vd *validatorsData) init(prepSnapshots Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) {
-	size = icutils.Min(prepSnapshots.Len(), size)
+func (vd *validatorsData) init(prepSnapshots PRepSnapshots, ownerToNodeMapper OwnerToNodeMappable, size int) {
+	size = icutils.Min(len(prepSnapshots), size)
 	vd.nodeList = make([]*common.Address, size)
 	vd.nodeMap = make(map[string]int)
 
 	for i := 0; i < size; i++ {
-		owner := prepSnapshots.Get(i).(*PRepSnapshot).Owner()
+		owner := prepSnapshots[i].Owner()
 		node := ownerToNodeMapper.GetNodeByOwner(owner)
 		if node == nil {
 			node = owner
@@ -333,9 +333,9 @@ func NewValidatorsStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 }
 
 func NewValidatorsSnapshotWithPRepSnapshot(
-	prepSnapshot Arrayable, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
+	prepSnapshots PRepSnapshots, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
 	vd := validatorsData{}
-	vd.init(prepSnapshot, ownerToNodeMapper, size)
+	vd.init(prepSnapshots, ownerToNodeMapper, size)
 
 	return &ValidatorsSnapshot{
 		validatorsData: vd,
@@ -398,7 +398,7 @@ func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (m
 		return nil, errors.Errorf("Invalid validator: node=%s", node)
 	}
 
-	term := s.GetTerm()
+	term := s.GetTermSnapshot()
 	newOwner, nextPssIdx := s.chooseNewMainPRep(term.prepSnapshots, vss.NextPRepSnapshotIndex())
 	if nextPssIdx < 0 {
 		return nil, errors.Errorf("Failed to choose a new validator: oldNode=%s", node)
@@ -411,13 +411,13 @@ func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (m
 
 // chooseNewMainPRep returns the owner address of a new validator from PRepSnapshots
 // DO NOT change any fields of PRepStatus here
-func (s *State) chooseNewMainPRep(prepSnapshots Arrayable, startIdx int) (module.Address, int) {
+func (s *State) chooseNewMainPRep(prepSnapshots PRepSnapshots, startIdx int) (module.Address, int) {
 	var ps *PRepStatusState
 	var pss *PRepSnapshot
 
-	size := prepSnapshots.Len()
+	size := len(prepSnapshots)
 	for i := startIdx; i < size; i++ {
-		pss = prepSnapshots.Get(i).(*PRepSnapshot)
+		pss = prepSnapshots[i]
 		owner := pss.Owner()
 
 		ps, _ = s.GetPRepStatusByOwner(owner, false)

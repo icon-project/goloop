@@ -6,7 +6,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -14,7 +13,7 @@ import (
 )
 
 type PRepSnapshot struct {
-	owner            module.Address
+	owner            *common.Address
 	bondedDelegation *big.Int
 }
 
@@ -45,11 +44,11 @@ func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 }
 
 func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
-	jso := make(map[string]interface{})
-	jso["address"] = pss.owner
-	jso["bondedDelegation"] = pss.bondedDelegation
-	jso["delegated"] = pss.bondedDelegation
-	return jso
+	return map[string]interface{}{
+		"address":          pss.owner,
+		"bondedDelegation": pss.bondedDelegation,
+		"delegated":        pss.bondedDelegation,
+	}
 }
 
 func (pss *PRepSnapshot) RLPEncodeSelf(e codec.Encoder) error {
@@ -57,175 +56,72 @@ func (pss *PRepSnapshot) RLPEncodeSelf(e codec.Encoder) error {
 }
 
 func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
-	var owner *common.Address
-	err := d.DecodeListOf(&owner, &pss.bondedDelegation)
-	if err == nil {
-		pss.owner = owner
-	}
-	return err
+	return d.DecodeListOf(&pss.owner, &pss.bondedDelegation)
 }
 
 func NewPRepSnapshot(owner module.Address, bondedDelegation *big.Int) *PRepSnapshot {
 	return &PRepSnapshot{
-		owner:            owner,
+		owner:            common.AddressToPtr(owner),
 		bondedDelegation: bondedDelegation,
 	}
 }
 
-type PRepSnapshots struct {
-	pssList []*PRepSnapshot
+// =============================================================================
 
-	pssMap                map[string]int
-	totalBondedDelegation *big.Int
-}
+type PRepSnapshots []*PRepSnapshot
 
-func (p *PRepSnapshots) Equal(other *PRepSnapshots) bool {
-	if p == other {
+func (p PRepSnapshots) Equal(other PRepSnapshots) bool {
+
+	if p == nil && other == nil {
 		return true
 	}
 	if p == nil || other == nil {
 		return false
 	}
-	if p.Len() != other.Len() {
+	if len(p) != len(other) {
 		return false
 	}
-
-	for i, pss := range p.pssList {
-		if !pss.Equal(other.pssList[i]) {
+	for i, pss := range p {
+		if !pss.Equal(other[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p *PRepSnapshots) Clone() *PRepSnapshots {
+func (p PRepSnapshots) Clone() PRepSnapshots {
 	if p == nil {
 		return nil
 	}
-
-	size := p.Len()
-	pssList := make([]*PRepSnapshot, size)
-	pssMap := make(map[string]int)
-
-	for i, pss := range p.pssList {
-		pssList[i] = pss.Clone()
-		pssMap[icutils.ToKey(pss.Owner())] = i
-	}
-	return &PRepSnapshots{
-		pssList:               pssList,
-		pssMap:                pssMap,
-		totalBondedDelegation: p.totalBondedDelegation,
-	}
+	ret := make(PRepSnapshots, len(p))
+	copy(ret, p)
+	return ret
 }
 
-func (p *PRepSnapshots) toJSON() []interface{} {
-	size := p.Len()
-	jso := make([]interface{}, size)
-
-	for i, pss := range p.pssList {
+func (p PRepSnapshots) toJSON() []interface{} {
+	jso := make([]interface{}, len(p))
+	for i, pss := range p {
 		jso[i] = pss.ToJSON()
 	}
-
 	return jso
 }
 
-func (p *PRepSnapshots) RLPDecodeSelf(d codec.Decoder) error {
-	if err := d.Decode(&p.pssList); err != nil {
-		return err
-	}
-
-	tbd := new(big.Int)
-	p.pssMap = make(map[string]int)
-
-	for i, pss := range p.pssList {
-		p.pssMap[icutils.ToKey(pss.Owner())] = i
-		tbd.Add(tbd, pss.BondedDelegation())
-	}
-	p.totalBondedDelegation = tbd
-	return nil
-}
-
-func (p *PRepSnapshots) RLPEncodeSelf(e codec.Encoder) error {
-	return e.Encode(p.pssList)
-}
-
-func (p *PRepSnapshots) IndexOf(value interface{}) int {
-	owner := value.(module.Address)
-	i, ok := p.pssMap[icutils.ToKey(owner)]
-	if !ok {
-		return -1
-	}
-	return i
-}
-
-func (p *PRepSnapshots) Get(i int) interface{} {
-	if i < 0 || i >= p.Len() {
+func NewPRepSnapshots(preps *PReps, electedPRepCount int, br int64) PRepSnapshots {
+	size := icutils.Min(preps.Size(), electedPRepCount)
+	if size == 0 {
 		return nil
 	}
-	return p.pssList[i]
-}
-
-func (p *PRepSnapshots) Len() int {
-	if p == nil {
-		return 0
-	}
-	return len(p.pssList)
-}
-
-func (p *PRepSnapshots) TotalBondedDelegation() *big.Int {
-	return p.totalBondedDelegation
-}
-
-func (p *PRepSnapshots) append(i int, owner module.Address, bondedDelegation *big.Int) {
-	pss := NewPRepSnapshot(owner, bondedDelegation)
-	p.pssList = append(p.pssList, pss)
-	p.pssMap[icutils.ToKey(owner)] = i
-}
-
-func NewEmptyPRepSnapshots() *PRepSnapshots {
-	return &PRepSnapshots{
-		pssMap:                make(map[string]int),
-		totalBondedDelegation: new(big.Int),
-	}
-}
-
-func NewPRepSnapshots(preps *PReps, electedPRepCount int, br int64) *PRepSnapshots {
-	size := icutils.Min(preps.Size(), electedPRepCount)
-	pssList := make([]*PRepSnapshot, size)
-	pssMap := make(map[string]int)
-	tbd := new(big.Int)
-
+	ret := make(PRepSnapshots, size)
 	for i := 0; i < size; i++ {
 		prep := preps.GetPRepByIndex(i)
-		owner := prep.Owner()
-		pss := NewPRepSnapshot(owner, prep.GetBondedDelegation(br))
-
-		pssList[i] = pss
-		pssMap[icutils.ToKey(owner)] = i
-		tbd.Add(tbd, pss.BondedDelegation())
+		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetBondedDelegation(br))
 	}
-
-	return &PRepSnapshots{
-		pssList:               pssList,
-		pssMap:                pssMap,
-		totalBondedDelegation: tbd,
-	}
+	return ret
 }
 
-type TermFlag int
+// =============================================================================
 
-const (
-	FlagNextTerm TermFlag = 1 << iota
-	FlagValidator
-
-	FlagNone TermFlag = 0
-	FlagAll  TermFlag = 0xFFFFFFFF
-)
-
-type Term struct {
-	icobject.NoDatabase
-	StateAndSnapshot
-
+type termData struct {
 	sequence        int
 	startHeight     int64
 	period          int64
@@ -238,88 +134,78 @@ type Term struct {
 	rewardFund      *RewardFund
 	bondRequirement int
 	mainPRepCount   int
-	prepSnapshots   *PRepSnapshots
-
-	flags TermFlag
+	// If the length of prepSnapshots is 0, prepSnapshots should be nil
+	prepSnapshots PRepSnapshots
 }
 
-func (term *Term) Sequence() int {
+func (term *termData) Sequence() int {
 	return term.sequence
 }
 
-func (term *Term) ResetSequence() {
-	term.checkWritable()
-	term.sequence = 0
-}
-
-func (term *Term) StartHeight() int64 {
+func (term *termData) StartHeight() int64 {
 	return term.startHeight
 }
 
-func (term *Term) Period() int64 {
+func (term *termData) Period() int64 {
 	return term.period
 }
 
-func (term *Term) Irep() *big.Int {
+func (term *termData) Irep() *big.Int {
 	return term.irep
 }
 
-func (term *Term) Rrep() *big.Int {
+func (term *termData) Rrep() *big.Int {
 	return term.rrep
 }
 
-func (term *Term) MainPRepCount() int {
+func (term *termData) MainPRepCount() int {
 	return term.mainPRepCount
 }
 
-func (term *Term) GetElectedPRepCount() int {
-	return term.prepSnapshots.Len()
+func (term *termData) GetElectedPRepCount() int {
+	return len(term.prepSnapshots)
 }
 
-func (term *Term) RewardFund() *RewardFund {
+func (term *termData) RewardFund() *RewardFund {
 	return term.rewardFund
 }
 
-func (term *Term) Iglobal() *big.Int {
+func (term *termData) Iglobal() *big.Int {
 	return term.rewardFund.Iglobal
 }
 
-func (term *Term) Iprep() *big.Int {
+func (term *termData) Iprep() *big.Int {
 	return term.rewardFund.Iprep
 }
 
-func (term *Term) Icps() *big.Int {
+func (term *termData) Icps() *big.Int {
 	return term.rewardFund.Icps
 }
 
-func (term *Term) Irelay() *big.Int {
+func (term *termData) Irelay() *big.Int {
 	return term.rewardFund.Irelay
 }
 
-func (term *Term) Ivoter() *big.Int {
+func (term *termData) Ivoter() *big.Int {
 	return term.rewardFund.Ivoter
 }
 
-func (term *Term) BondRequirement() int {
+func (term *termData) BondRequirement() int {
 	return term.bondRequirement
 }
 
-func (term *Term) Revision() int {
+func (term *termData) Revision() int {
 	return term.revision
 }
 
-func (term *Term) SetRevision(revision int) {
-	term.revision = revision
-}
-
-func (term *Term) GetEndHeight() int64 {
+func (term *termData) GetEndHeight() int64 {
 	if term == nil {
 		return -1
 	}
 	return term.startHeight + term.period - 1
 }
 
-func (term *Term) GetIISSVersion() int {
+func (term *termData) GetIISSVersion() int {
 	if term.revision >= icmodule.RevisionICON2 {
 		return IISSVersion3
 	}
@@ -331,7 +217,7 @@ func (term *Term) GetIISSVersion() int {
 
 const DecentralizedHeight = 10362083
 
-func (term *Term) GetVoteStartHeight() int64 {
+func (term *termData) GetVoteStartHeight() int64 {
 	if term.sequence == 0 {
 		if term.startHeight == DecentralizedHeight {
 			// It's decentralized in main network under LOOPCHAIN
@@ -344,94 +230,27 @@ func (term *Term) GetVoteStartHeight() int64 {
 	return -1
 }
 
-func (term *Term) Set(other *Term) {
-	term.checkWritable()
-	term.sequence = other.sequence
-	term.startHeight = other.startHeight
-	term.period = other.period
-	term.irep = other.irep
-	term.rrep = other.rrep
-	term.totalSupply = other.totalSupply
-	term.totalDelegated = other.totalDelegated
-	term.rewardFund = other.rewardFund.Clone()
-	term.bondRequirement = other.bondRequirement
-	term.revision = other.revision
-	term.isDecentralized = other.isDecentralized
-	term.mainPRepCount = other.mainPRepCount
-	term.SetPRepSnapshots(other.prepSnapshots.Clone())
-	term.flags = FlagNone
+func (term *termData) GetPRepSnapshotCount() int {
+	return len(term.prepSnapshots)
 }
 
-func (term *Term) Clone() *Term {
-	if term == nil {
-		return nil
-	}
-
-	return &Term{
-		sequence:        term.sequence,
-		startHeight:     term.startHeight,
-		period:          term.period,
-		irep:            term.irep,
-		rrep:            term.rrep,
-		totalSupply:     term.totalSupply,
-		totalDelegated:  term.totalDelegated,
-		rewardFund:      term.rewardFund.Clone(),
-		bondRequirement: term.bondRequirement,
-		revision:        term.revision,
-		isDecentralized: term.isDecentralized,
-		mainPRepCount:   term.mainPRepCount,
-		prepSnapshots:   term.prepSnapshots.Clone(),
-	}
+func (term *termData) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
+	return term.prepSnapshots[index]
 }
 
-func (term *Term) Version() int {
-	return 0
+func (term *termData) TotalSupply() *big.Int {
+	return term.totalSupply
 }
 
-func (term *Term) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeAll(
-		&term.sequence,
-		&term.startHeight,
-		&term.period,
-		&term.irep,
-		&term.rrep,
-		&term.totalSupply,
-		&term.totalDelegated,
-		&term.rewardFund,
-		&term.bondRequirement,
-		&term.revision,
-		&term.isDecentralized,
-		&term.mainPRepCount,
-		&term.prepSnapshots,
-	)
+func (term *termData) IsDecentralized() bool {
+	return term.isDecentralized
 }
 
-func (term *Term) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
-		term.sequence,
-		term.startHeight,
-		term.period,
-		term.irep,
-		term.rrep,
-		term.totalSupply,
-		term.totalDelegated,
-		term.rewardFund,
-		term.bondRequirement,
-		term.revision,
-		term.isDecentralized,
-		term.mainPRepCount,
-		term.prepSnapshots,
-	)
+func (term *termData) IsFirstBlockOnDecentralized(blockHeight int64) bool {
+	return term.isDecentralized && term.sequence == 0 && term.startHeight == blockHeight
 }
 
-func (term *Term) Equal(o icobject.Impl) bool {
-	if other, ok := o.(*Term); ok {
-		return term.equal(other)
-	}
-	return false
-}
-
-func (term *Term) equal(other *Term) bool {
+func (term *termData) equal(other *termData) bool {
 	if term == other {
 		return true
 	}
@@ -454,182 +273,63 @@ func (term *Term) equal(other *Term) bool {
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
-func (term *Term) GetPRepSnapshotCount() int {
-	return term.prepSnapshots.Len()
-}
-
-func (term *Term) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
-	return term.prepSnapshots.Get(index).(*PRepSnapshot)
-}
-
-func (term *Term) GetPRepSnapshotByOwner(owner module.Address) *PRepSnapshot {
-	i := term.prepSnapshots.IndexOf(owner)
-	if i < 0 {
-		return nil
-	}
-	return term.prepSnapshots.Get(i).(*PRepSnapshot)
-}
-
-func (term *Term) getPRepSnapshotIndex(owner module.Address) int {
-	return term.prepSnapshots.IndexOf(owner)
-}
-
-func (term *Term) IsUpdated() bool {
-	return term.flags != FlagNone
-}
-
-func (term *Term) IsAnyFlagOn(flags TermFlag) bool {
-	return term.flags&flags != FlagNone
-}
-
-func (term *Term) GetFlag() TermFlag {
-	return term.flags
-}
-
-func (term *Term) ResetFlag() {
-	term.flags = FlagNone
-}
-
-func (term *Term) SetFlag(flags TermFlag, on bool) {
-	if on {
-		term.flags |= flags
-	} else {
-		term.flags &= ^flags
-	}
-}
-
-func (term *Term) TotalSupply() *big.Int {
-	return term.totalSupply
-}
-
-func (term *Term) TotalDelegated() *big.Int {
-	return term.totalDelegated
-}
-
-func (term *Term) IsDecentralized() bool {
-	return term.isDecentralized
-}
-
-func (term *Term) SetIsDecentralized(value bool) {
-	term.isDecentralized = value
-}
-
-func (term *Term) TotalBondedDelegation() *big.Int {
-	if term.prepSnapshots != nil {
-		return term.prepSnapshots.TotalBondedDelegation()
-	}
-	return new(big.Int)
-}
-
-func (term *Term) ToJSON() map[string]interface{} {
-	jso := make(map[string]interface{})
-
-	jso["sequence"] = term.sequence
-	jso["startBlockHeight"] = term.startHeight
-	jso["endBlockHeight"] = term.GetEndHeight()
-	jso["totalSupply"] = term.totalSupply
-	jso["totalDelegated"] = term.totalDelegated
-	jso["totalBondedDelegation"] = term.TotalBondedDelegation()
-	jso["irep"] = term.irep
-	jso["rrep"] = term.rrep
-	jso["period"] = term.period
-	jso["rewardFund"] = term.rewardFund.ToJSON()
-	jso["bondRequirement"] = term.bondRequirement
-	jso["revision"] = term.revision
-	jso["isDecentralized"] = term.isDecentralized
-	jso["mainPRepCount"] = term.mainPRepCount
-	jso["iissVersion"] = term.GetIISSVersion()
-	jso["preps"] = term.prepSnapshots.toJSON()
-
-	return jso
-}
-
-func NewNextTerm(state *State, totalSupply *big.Int, revision int) *Term {
-	term := state.GetTerm()
-	if term == nil {
-		return nil
-	}
-
-	return &Term{
-		sequence:        term.sequence + 1,
-		startHeight:     term.GetEndHeight() + 1,
-		period:          state.GetTermPeriod(),
-		irep:            state.GetIRep(),
-		rrep:            state.GetRRep(),
-		totalSupply:     totalSupply,
-		totalDelegated:  state.GetTotalDelegation(),
-		rewardFund:      state.GetRewardFund().Clone(),
-		bondRequirement: int(state.GetBondRequirement()),
-		revision:        revision,
+func (term *termData) clone() termData {
+	return termData{
+		sequence:        term.sequence,
+		startHeight:     term.startHeight,
+		period:          term.period,
+		irep:            term.irep,
+		rrep:            term.rrep,
+		totalSupply:     term.totalSupply,
+		totalDelegated:  term.totalDelegated,
+		rewardFund:      term.rewardFund.Clone(),
+		bondRequirement: term.bondRequirement,
+		revision:        term.revision,
+		isDecentralized: term.isDecentralized,
+		mainPRepCount:   term.mainPRepCount,
 		prepSnapshots:   term.prepSnapshots.Clone(),
-		isDecentralized: term.IsDecentralized(),
-
-		flags: term.flags | FlagNextTerm,
 	}
 }
 
-func GenesisTerm(
-	state *State,
-	startHeight int64,
-	revision int,
-) *Term {
-	return &Term{
-		sequence:        0,
-		startHeight:     startHeight,
-		period:          state.GetTermPeriod(),
-		irep:            state.GetIRep(),
-		rrep:            state.GetRRep(),
-		totalSupply:     new(big.Int),
-		totalDelegated:  new(big.Int),
-		rewardFund:      state.GetRewardFund().Clone(),
-		bondRequirement: int(state.GetBondRequirement()),
-		revision:        revision,
-		isDecentralized: false,
-
-		flags: FlagNextTerm,
+func (term *termData) ToJSON() map[string]interface{} {
+	return map[string]interface{}{
+		"sequence":              term.sequence,
+		"startBlockHeight":      term.startHeight,
+		"endBlockHeight":        term.GetEndHeight(),
+		"totalSupply":           term.totalSupply,
+		"totalDelegated":        term.totalDelegated,
+		"totalBondedDelegation": term.getTotalBondedDelegation(),
+		"irep":                  term.irep,
+		"rrep":                  term.rrep,
+		"period":                term.period,
+		"rewardFund":            term.rewardFund.ToJSON(),
+		"bondRequirement":       term.bondRequirement,
+		"revision":              term.revision,
+		"isDecentralized":       term.isDecentralized,
+		"mainPRepCount":         term.mainPRepCount,
+		"iissVersion":           term.GetIISSVersion(),
+		"preps":                 term.prepSnapshots.toJSON(),
 	}
 }
 
-func (term *Term) GetSnapshot(store *icobject.ObjectStoreState) error {
-	if !term.IsAnyFlagOn(FlagAll) {
-		return nil
+func (term *termData) getTotalBondedDelegation() *big.Int {
+	tbd := new(big.Int)
+	for _, snapshot := range term.prepSnapshots {
+		tbd.Add(tbd, snapshot.BondedDelegation())
 	}
-	o := icobject.New(TypeTerm, term)
-	varDB := containerdb.NewVarDB(store, termVarPrefix)
-	return varDB.Set(o)
+	return tbd
 }
 
-func (term *Term) SetPRepSnapshots(prepSnapshots *PRepSnapshots) {
-	term.checkWritable()
-	term.prepSnapshots = prepSnapshots
-	term.flags |= FlagValidator
-}
-
-func (term *Term) SetMainPRepCount(mainPRepCount int) {
-	term.checkWritable()
-	term.mainPRepCount = mainPRepCount
-}
-
-func (term *Term) SetIrep(irep *big.Int) {
-	term.checkWritable()
-	term.irep = irep
-}
-
-func (term *Term) SetRrep(rrep *big.Int) {
-	term.checkWritable()
-	term.rrep = rrep
-}
-
-func (term *Term) String() string {
+func (term *termData) String() string {
 	return fmt.Sprintf(
-		"Term: seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d irep=%s rrep=%s revision=%d isDecentralized=%v",
+		"Term{seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s revision:%d isDecentralized:%v}",
 		term.sequence,
 		term.startHeight,
 		term.GetEndHeight(),
 		term.period,
 		term.totalSupply,
 		term.totalDelegated,
-		term.prepSnapshots.Len(),
+		len(term.prepSnapshots),
 		term.irep,
 		term.rrep,
 		term.revision,
@@ -637,68 +337,180 @@ func (term *Term) String() string {
 	)
 }
 
-func (term *Term) Format(f fmt.State, c rune) {
-	size := term.prepSnapshots.Len()
+func (term *termData) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
+		var format string
 		if f.Flag('+') {
-			fmt.Fprintf(
-				f,
-				"Term{seq=%d start=%d end=%d period=%d totalSupply=%s totalDelegated=%s "+
-					"prepSnapshot=%d irep=%s rrep=%s revision=%d isDecentralized=%v}",
-				term.sequence,
-				term.startHeight,
-				term.GetEndHeight(),
-				term.period,
-				term.totalSupply,
-				term.totalDelegated,
-				size,
-				term.irep,
-				term.rrep,
-				term.revision,
-				term.isDecentralized,
-			)
+			format = "Term{seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
+				"prepSnapshots:%d irep:%s rrep:%s revision:%d isDecentralized:%v}"
 		} else {
-			fmt.Fprintf(
-				f,
-				"Term{%d %d %d %d %s %s %d %s %s %d %v}",
-				term.sequence,
-				term.startHeight,
-				term.GetEndHeight(),
-				term.period,
-				term.totalSupply,
-				term.totalDelegated,
-				size,
-				term.irep,
-				term.rrep,
-				term.revision,
-				term.isDecentralized,
-			)
+			format = "Term{%d %d %d %d %s %s %d %s %s %d %v}"
 		}
+		_, _ = fmt.Fprintf(
+			f,
+			format,
+			term.sequence,
+			term.startHeight,
+			term.GetEndHeight(),
+			term.period,
+			term.totalSupply,
+			term.totalDelegated,
+			len(term.prepSnapshots),
+			term.irep,
+			term.rrep,
+			term.revision,
+			term.isDecentralized,
+		)
 	case 's':
-		fmt.Fprint(f, term.String())
+		_, _ = fmt.Fprint(f, term.String())
 	}
 }
 
-func (term *Term) IsFirstBlockOnDecentralized(blockHeight int64) bool {
-	return term.IsDecentralized() && term.sequence == 0 && term.startHeight == blockHeight
+// ========================================================
+
+type TermSnapshot struct {
+	icobject.NoDatabase
+	termData
 }
 
-func NewTermWithTag(_ icobject.Tag) *Term {
-	return &Term{}
+func (term *TermSnapshot) Version() int {
+	return 0
 }
 
-func NewTerm(startHeight, termPeriod int64) *Term {
-	return &Term{
-		startHeight:    startHeight,
-		period:         termPeriod,
-		irep:           new(big.Int),
-		rrep:           new(big.Int),
-		totalSupply:    new(big.Int),
-		totalDelegated: new(big.Int),
-		rewardFund:     NewRewardFund(),
-		prepSnapshots:  NewEmptyPRepSnapshots(),
+func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.DecodeAll(
+		&term.sequence,
+		&term.startHeight,
+		&term.period,
+		&term.irep,
+		&term.rrep,
+		&term.totalSupply,
+		&term.totalDelegated,
+		&term.rewardFund,
+		&term.bondRequirement,
+		&term.revision,
+		&term.isDecentralized,
+		&term.mainPRepCount,
+		&term.prepSnapshots,
+	)
+}
 
-		flags: FlagNone,
+func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		term.sequence,
+		term.startHeight,
+		term.period,
+		term.irep,
+		term.rrep,
+		term.totalSupply,
+		term.totalDelegated,
+		term.rewardFund,
+		term.bondRequirement,
+		term.revision,
+		term.isDecentralized,
+		term.mainPRepCount,
+		term.prepSnapshots,
+	)
+}
+
+func (term *TermSnapshot) Equal(o icobject.Impl) bool {
+	other, ok := o.(*TermSnapshot)
+	if !ok {
+		return false
+	}
+	if term == other {
+		return true
+	}
+	return term.equal(&other.termData)
+}
+
+func (term *TermSnapshot) GetPRepSnapshotCount() int {
+	return len(term.prepSnapshots)
+}
+
+func NewTermWithTag(_ icobject.Tag) *TermSnapshot {
+	return &TermSnapshot{}
+}
+
+// ==================================================================
+
+type TermState struct {
+	snapshot *TermSnapshot
+	termData
+}
+
+func (term *TermState) GetSnapshot() *TermSnapshot {
+	if term.snapshot == nil {
+		term.snapshot = &TermSnapshot{
+			termData: term.termData.clone(),
+		}
+	}
+	return term.snapshot
+}
+
+func (term *TermState) ResetSequence() {
+	term.sequence = 0
+}
+
+func (term *TermState) SetIsDecentralized(value bool) {
+	term.isDecentralized = value
+}
+
+func (term *TermState) SetPRepSnapshots(prepSnapshots PRepSnapshots) {
+	term.prepSnapshots = prepSnapshots.Clone()
+}
+
+func (term *TermState) SetMainPRepCount(mainPRepCount int) {
+	term.mainPRepCount = mainPRepCount
+}
+
+func (term *TermState) SetIrep(irep *big.Int) {
+	term.irep = irep
+}
+
+func (term *TermState) SetRrep(rrep *big.Int) {
+	term.rrep = rrep
+}
+
+func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
+	ts := state.GetTermSnapshot()
+	if ts == nil {
+		return nil
+	}
+
+	return &TermState{
+		termData: termData{
+			sequence:        ts.Sequence() + 1,
+			startHeight:     ts.GetEndHeight() + 1,
+			period:          state.GetTermPeriod(),
+			irep:            state.GetIRep(),
+			rrep:            state.GetRRep(),
+			totalSupply:     totalSupply,
+			totalDelegated:  state.GetTotalDelegation(),
+			rewardFund:      state.GetRewardFund().Clone(),
+			bondRequirement: int(state.GetBondRequirement()),
+			revision:        revision,
+			prepSnapshots:   ts.prepSnapshots.Clone(),
+			isDecentralized: ts.IsDecentralized(),
+		},
+	}
+}
+
+func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
+	return &TermState{
+		termData: termData{
+			sequence:        0,
+			startHeight:     startHeight,
+			period:          state.GetTermPeriod(),
+			irep:            state.GetIRep(),
+			rrep:            state.GetRRep(),
+			totalSupply:     new(big.Int),
+			totalDelegated:  new(big.Int),
+			rewardFund:      state.GetRewardFund().Clone(),
+			bondRequirement: int(state.GetBondRequirement()),
+			revision:        revision,
+			isDecentralized: false,
+		},
 	}
 }

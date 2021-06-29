@@ -116,11 +116,11 @@ func ToIssue(object trie.Object) *Issue {
 	return object.(*icobject.Object).Real().(*Issue)
 }
 
-func ToTerm(object trie.Object) *Term {
+func ToTerm(object trie.Object) *TermSnapshot {
 	if object == nil {
 		return nil
 	}
-	return object.(*icobject.Object).Real().(*Term)
+	return object.(*icobject.Object).Real().(*TermSnapshot)
 }
 
 func ToRewardCalcInfo(object trie.Object) *RewardCalcInfo {

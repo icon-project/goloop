@@ -219,7 +219,7 @@ func (s *ExtensionStateImpl) CalculationBlockHeight() int64 {
 }
 
 func (s *ExtensionStateImpl) setNewFront() (err error) {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 
 	// switch icstage values
 	s.Back1 = s.Front
@@ -271,7 +271,7 @@ func (s *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight i
 }
 
 func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
@@ -307,7 +307,7 @@ func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]i
 }
 
 func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
@@ -315,9 +315,10 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 
 	pssCount := term.GetPRepSnapshotCount()
 	mainPRepCount := int(s.State.GetMainPRepCount())
+	subPRepCount := int(s.State.GetSubPRepCount())
 
 	jso := make(map[string]interface{})
-	preps := make([]interface{}, 0, mainPRepCount)
+	preps := make([]interface{}, 0, subPRepCount)
 	sum := new(big.Int)
 
 	for i := mainPRepCount; i < pssCount; i++ {
@@ -391,7 +392,7 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 	if err != nil {
 		return
 	}
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	_, err = s.Front.AddEventDelegation(
 		int(blockHeight-term.StartHeight()),
 		from,
@@ -401,7 +402,7 @@ func (s *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.A
 }
 
 func (s *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableStatus) (err error) {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	_, err = s.Front.AddEventEnable(
 		int(blockHeight-term.StartHeight()),
 		from,
@@ -422,7 +423,7 @@ func (s *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) 
 		// Only IISS 2.0 support Block Produce Reward
 		return
 	}
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	blockHeight := wc.BlockHeight()
 	if blockHeight < term.GetVoteStartHeight() {
 		return
@@ -524,7 +525,7 @@ func (s *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Address
 	if err != nil {
 		return
 	}
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	_, err = s.Front.AddEventBond(
 		int(blockHeight-term.StartHeight()),
 		from,
@@ -583,7 +584,7 @@ func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *b
 const IrepInflationLimit = 14 // 14%
 
 func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if prevSetIRepHeight >= term.StartHeight() {
 		return errors.Errorf("IRep can be changed only once during a term")
 	}
@@ -608,7 +609,7 @@ func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRep
 }
 
 func (s *ExtensionStateImpl) OnExecutionBegin(wc state.WorldContext) error {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if term.IsDecentralized() {
 		if err := s.addBlockProduce(wc); err != nil {
 			return err
@@ -624,7 +625,7 @@ func (s *ExtensionStateImpl) OnExecutionBegin(wc state.WorldContext) error {
 
 func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *big.Int, calculator *Calculator) error {
 	var err error
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if term == nil {
 		return nil
 	}
@@ -652,7 +653,7 @@ func (s *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *big
 		}
 		isTermEnd = true
 
-		nTerm := s.State.GetTerm()
+		nTerm := s.State.GetTermSnapshot()
 		if term.IsDecentralized() {
 			if err := s.resetIssueTotalReward(); err != nil {
 				return err
@@ -699,7 +700,7 @@ func (s *ExtensionStateImpl) checkCalculationDone(calculator *Calculator) error 
 
 func (s *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 	// Update Issue with calculation result from 2nd Term of decentralization
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if !term.IsDecentralized() || term.Sequence() == 0 {
 		return nil
 	}
@@ -808,14 +809,14 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetRrep(rrep)
 	}
 
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
 		// reset sequence when network is decentralized
 		nextTerm.ResetSequence()
 	}
 
 	s.logger.Debugf(nextTerm.String())
-	return s.State.SetTerm(nextTerm)
+	return s.State.SetTermSnapshot(nextTerm.GetSnapshot())
 }
 
 func (s *ExtensionStateImpl) resetIssueTotalReward() error {
@@ -897,9 +898,9 @@ func (s *ExtensionStateImpl) applyCalculationResult(calculator *Calculator, bloc
 }
 
 func (s *ExtensionStateImpl) GenesisTerm(blockHeight int64, revision int) error {
-	if revision >= icmodule.RevisionIISS && s.State.GetTerm() == nil {
+	if revision >= icmodule.RevisionIISS && s.State.GetTermSnapshot() == nil {
 		term := icstate.GenesisTerm(s.State, blockHeight+1, revision)
-		if err := s.State.SetTerm(term); err != nil {
+		if err := s.State.SetTermSnapshot(term.GetSnapshot()); err != nil {
 			return err
 		}
 	}
@@ -924,7 +925,7 @@ func (s *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd b
 }
 
 func (s *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
@@ -943,6 +944,6 @@ func (s *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, er
 }
 
 func (s *ExtensionStateImpl) IsDecentralized() bool {
-	term := s.State.GetTerm()
+	term := s.State.GetTermSnapshot()
 	return term != nil && term.IsDecentralized()
 }

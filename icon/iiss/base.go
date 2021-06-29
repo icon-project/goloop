@@ -156,7 +156,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 
 func handleConsensusInfo(cc contract.CallContext) error {
 	es := cc.GetExtensionState().(*ExtensionStateImpl)
-	term := es.State.GetTerm()
+	term := es.State.GetTermSnapshot()
 	if term == nil || !term.IsDecentralized() {
 		return nil
 	}
@@ -315,7 +315,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			intconv.BigIntToBytes(issue.GetOverIssuedICX()),
 		},
 	)
-	term := es.State.GetTerm()
+	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
 		cc.OnEvent(state.SystemAddress,
 			[][]byte{[]byte("TermStarted(int,int,int)")},

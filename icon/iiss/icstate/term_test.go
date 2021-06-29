@@ -41,7 +41,7 @@ func newDummyPRepBase(i int) *PRepBaseState {
 
 func newDummyPRepStatus() *PRepStatusState {
 	ps := NewPRepStatus()
-	ps.Activate()
+	_ = ps.Activate()
 	ps.SetDelegated(big.NewInt(rand.Int63n(1000)))
 	ps.SetBonded(big.NewInt(rand.Int63n(1000)))
 	return ps
@@ -66,17 +66,27 @@ func newDummyPReps(size int, br int64) *PReps {
 	return newPReps(preps, br)
 }
 
-func newDummyPRepSnapshots(size int) *PRepSnapshots {
-	ret := NewEmptyPRepSnapshots()
-	tbd := new(big.Int)
+func newDummyPRepSnapshots(size int) PRepSnapshots {
+	if size == 0 {
+		return nil
+	}
+	ret := make(PRepSnapshots, size)
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
 		bd := big.NewInt(int64(size - i))
-		ret.append(i, owner, bd)
-		tbd.Add(tbd, bd)
+		ret[i] = NewPRepSnapshot(owner, bd)
 	}
-	ret.totalBondedDelegation = tbd
 	return ret
+}
+
+func newTermState(sequence int, period int64) *TermState {
+	return &TermState{
+		termData: termData{
+			sequence: sequence,
+			period: period,
+			rewardFund: NewRewardFund(),
+		},
+	}
 }
 
 func TestPRepSnapshot_Equal(t *testing.T) {
@@ -129,7 +139,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 	snapshots := NewPRepSnapshots(preps, electedPRepCount, br)
 
 	cases := []struct {
-		p0, p1 *PRepSnapshots
+		p0, p1 PRepSnapshots
 		result bool
 	}{
 		{nil, nil, true},
@@ -177,13 +187,7 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 			preps := newDummyPReps(in.size, br)
 			snapshots := NewPRepSnapshots(preps, in.electedPRepCount, br)
 			count := icutils.Min(in.size, in.electedPRepCount)
-			assert.Equal(t, count, snapshots.Len())
-
-			tbd := new(big.Int)
-			for i := 0; i < count; i++ {
-				tbd.Add(tbd, preps.GetPRepByIndex(i).GetBondedDelegation(br))
-			}
-			assert.Zero(t, tbd.Cmp(snapshots.TotalBondedDelegation()))
+			assert.Equal(t, count, len(snapshots))
 		})
 	}
 }
@@ -192,7 +196,7 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 	br := int64(5)
 	size := 10
 	electedPRepCount := size
-	var pss0, pss1 *PRepSnapshots
+	var pss0, pss1 PRepSnapshots
 
 	preps := newDummyPReps(size, br)
 	pss0 = NewPRepSnapshots(preps, electedPRepCount, br)
@@ -205,10 +209,10 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, pss0.Equal(pss1))
-	assert.Equal(t, size, pss0.Len())
-	assert.Equal(t, size, pss1.Len())
+	assert.Equal(t, size, len(pss0))
+	assert.Equal(t, size, len(pss1))
 
-	pss0 = NewEmptyPRepSnapshots()
+	pss0 = make(PRepSnapshots, 0)
 	bs, err = codec.BC.MarshalToBytes(pss0)
 	_, err = codec.BC.UnmarshalFromBytes(bs, &pss1)
 	assert.True(t, pss0.Equal(pss1))
@@ -216,6 +220,7 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 
 // ============================================================
 
+/*
 func TestTerm_Equal(t *testing.T) {
 	t0 := NewTerm(0, 10)
 	tSequence := t0.Clone()
@@ -266,11 +271,13 @@ func TestTerm_Equal(t *testing.T) {
 	}
 }
 
+ */
+
 func TestTerm_Bytes(t *testing.T) {
-	term := NewTerm(0, 10)
+	term := newTermState(0, 10)
 
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	o1 := icobject.New(TypeTerm, term)
+	o1 := icobject.New(TypeTerm, term.GetSnapshot())
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
@@ -283,6 +290,7 @@ func TestTerm_Bytes(t *testing.T) {
 	assert.True(t, o1.Equal(o2))
 }
 
+/*
 func TestTerm_Clone(t *testing.T) {
 	term := NewTerm(0, 43120)
 	term2 := term.Clone()
@@ -295,19 +303,23 @@ func TestTerm_Clone(t *testing.T) {
 	assert.True(t, term.Equal(term2))
 	assert.True(t, term.prepSnapshots.Equal(term2.prepSnapshots))
 }
+ */
 
 func TestTerm_TotalBondedDelegation(t *testing.T) {
 	size := 100
-	term := NewTerm(0, 43120)
+	term := newTermState(0, 43120)
 	prepSnapshots := newDummyPRepSnapshots(size)
 	term.SetPRepSnapshots(prepSnapshots.Clone())
-	assert.Equal(t, term.GetElectedPRepCount(), prepSnapshots.Len())
-	assert.Zero(t, prepSnapshots.TotalBondedDelegation().Cmp(term.TotalBondedDelegation()))
+	assert.Equal(t, term.GetElectedPRepCount(), len(prepSnapshots))
 
-	// GetPRepSnapshot...()
+	tbd := new(big.Int)
+	for _, snapshot := range prepSnapshots {
+		tbd.Add(tbd, snapshot.BondedDelegation())
+	}
+	assert.Zero(t, tbd.Cmp(term.getTotalBondedDelegation()))
+
 	for i := 0; i < size; i++ {
 		ps := term.GetPRepSnapshotByIndex(i)
-		assert.Equal(t, ps, prepSnapshots.Get(i))
-		assert.Equal(t, ps, term.GetPRepSnapshotByOwner(ps.Owner()))
+		assert.Equal(t, ps, prepSnapshots[i])
 	}
 }

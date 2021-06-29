@@ -182,7 +182,7 @@ func NewDelegations(param []interface{}, max int) (Delegations, error) {
 		return nil, scoreresult.InvalidParameterError.Errorf("Too many delegations %d", count)
 	}
 	targets := make(map[string]struct{}, count)
-	delegations := make([]*Delegation, 0)
+	delegations := make([]*Delegation, 0, count)
 	for _, p := range param {
 		dg := new(Delegation)
 		bs, err := json.Marshal(p)

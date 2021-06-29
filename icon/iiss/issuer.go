@@ -232,7 +232,7 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	if !es.IsDecentralized() {
 		return nil, nil
 	}
-	term := es.State.GetTerm()
+	term := es.State.GetTermSnapshot()
 	issueInfo, _ := es.State.GetIssue()
 	if term.GetIISSVersion() == icstate.IISSVersion2 {
 		return getIssueDataV1(es, term, es.State.GetTotalDelegation())
@@ -243,7 +243,7 @@ func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 
 func getIssueDataV1(
 	es *ExtensionStateImpl,
-	term *icstate.Term,
+	term *icstate.TermSnapshot,
 	totalDelegated *big.Int,
 ) (*IssuePRepJSON, *IssueResultJSON) {
 	irep := term.Irep()
@@ -272,7 +272,7 @@ func getIssueDataV1(
 	return prep, result
 }
 
-func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.Term) *IssueResultJSON {
+func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.TermSnapshot) *IssueResultJSON {
 	reward, remains := new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
 	if remains.Sign() == 1 {
 		reward.Add(reward, intconv.BigIntOne)

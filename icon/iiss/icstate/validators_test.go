@@ -94,8 +94,7 @@ func TestValidatorsData_init(t *testing.T) {
 	vd.init(snapshots, m, size)
 	assert.Equal(t, size, vd.Len())
 
-	for i := 0; i < size; i++ {
-		snapshot := snapshots.Get(i).(*PRepSnapshot)
+	for i, snapshot := range snapshots {
 		node := m.GetNodeByOwner(snapshot.Owner())
 
 		node2 := vd.Get(i)

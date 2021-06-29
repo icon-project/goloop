@@ -52,6 +52,7 @@ var (
 	LastBlockVotersKey = containerdb.ToKey(
 		containerdb.HashBuilder, scoredb.VarDBPrefix, "lastBlockVoters",
 	)
+	termKey = containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, "term")
 )
 
 type State struct {
@@ -63,7 +64,6 @@ type State struct {
 	prepStatusCache     *PRepStatusCache
 	unstakingTimerCache *TimerCache
 	unbondingTimerCache *TimerCache
-	termCache           *termCache
 	logger              log.Logger
 
 	store                *icobject.ObjectStoreState
@@ -71,10 +71,10 @@ type State struct {
 	totalBondVarDB       *containerdb.VarDB
 	validatorsVarDB      *containerdb.VarDB
 	lastBlockVotersVarDB *containerdb.VarDB
+	termVarDB            *containerdb.VarDB
 }
 
 func (s *State) Reset(ss *Snapshot) error {
-	var err error
 	s.store.Reset(ss.store.ImmutableForObject)
 	s.accountCache.Reset()
 	s.nodeOwnerCache.Reset()
@@ -82,9 +82,6 @@ func (s *State) Reset(ss *Snapshot) error {
 	s.prepStatusCache.Reset()
 	s.unstakingTimerCache.Reset()
 	s.unbondingTimerCache.Reset()
-	if err = s.termCache.Reset(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -95,7 +92,7 @@ func (s *State) Flush() error {
 	s.prepStatusCache.Flush()
 	s.unstakingTimerCache.Flush()
 	s.unbondingTimerCache.Flush()
-	return s.termCache.Flush()
+	return nil
 }
 
 func (s *State) GetSnapshot() *Snapshot {
@@ -164,6 +161,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	tbVarDB := containerdb.NewVarDB(store, TotalBondKey)
 	validatorsVarDB := containerdb.NewVarDB(store, ValidatorsKey)
 	lastBlockVotersVarDB := containerdb.NewVarDB(store, LastBlockVotersKey)
+	termVarDB := containerdb.NewVarDB(store, termKey)
 
 	return &State{
 		readonly:            readonly,
@@ -174,7 +172,6 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 		prepStatusCache:     newPRepStatusCache(store),
 		unstakingTimerCache: newTimerCache(store, unstakingTimerDictPrefix),
 		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
-		termCache:           newTermCache(store),
 		logger:              logger,
 
 		store:                store,
@@ -182,6 +179,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 		totalBondVarDB:       tbVarDB,
 		validatorsVarDB:      validatorsVarDB,
 		lastBlockVotersVarDB: lastBlockVotersVarDB,
+		termVarDB:            termVarDB,
 	}
 }
 
@@ -219,12 +217,12 @@ func (s *State) GetIssue() (*Issue, error) {
 	return issue, nil
 }
 
-func (s *State) GetTerm() *Term {
-	return s.termCache.Get()
+func (s *State) GetTermSnapshot() *TermSnapshot {
+	return ToTerm(s.termVarDB.Object())
 }
 
-func (s *State) SetTerm(term *Term) error {
-	return s.termCache.Set(term)
+func (s *State) SetTermSnapshot(term *TermSnapshot) error {
+	return s.termVarDB.Set(icobject.New(TypeTerm, term))
 }
 
 func (s *State) SetRewardCalcInfo(rc *RewardCalcInfo) error {
