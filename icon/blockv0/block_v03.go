@@ -168,6 +168,8 @@ func (b *BlockV03) calcHash() []byte {
 	return merkle.CalcHashOfList(items)
 }
 
+var emtpyAddress = common.NewAccountAddress([]byte{})
+
 func (b *BlockV03) Verify(prev Block) error {
 	if b.json.RepsHash != nil {
 		if exp, calc := b.json.RepsHash.Bytes(), b.reps.Hash(); !bytes.Equal(exp, calc) {
@@ -231,10 +233,24 @@ func (b *BlockV03) Verify(prev Block) error {
 					"InvalidConsensus(voted=%#x,id=%#x)", voted, pb.ID())
 			}
 			leader := pb.GetNextLeader()
-			if leader.String() == "hx0000000000000000000000000000000000000000" {
+			if leader.Equal(emtpyAddress) {
 				leader = b.reps.Get(0)
 			}
-			if b.json.LeaderVotesHash.Bytes() == nil && !b.json.Leader.Equal(leader) {
+			if len(b.json.LeaderVotesHash.Bytes()) > 0 {
+				if newLeader := b.json.LeaderVotes.Quorum(); newLeader != nil {
+					if newLeader.Equal(emtpyAddress) {
+						if next := b.reps.GetNextOf(leader); next != nil {
+							leader = next
+						} else {
+							return errors.InvalidStateError.Errorf(
+								"InvalidLeader(leader=%s)", leader)
+						}
+					} else {
+						leader = newLeader
+					}
+				}
+			}
+			if !b.json.Leader.Equal(leader) {
 				return errors.InvalidStateError.Errorf(
 					"InvalidLeader(exp=%s,real=%s)",
 					leader,

@@ -140,24 +140,24 @@ func (s *LeaderVoteList) calcRoot() {
 	s.root = merkle.CalcHashOfList(items)
 }
 
-func (s *LeaderVoteList) HasQuorumFor(addr module.Address) bool {
+func (s *LeaderVoteList) Quorum() module.Address {
 	if len(s.votes) == 0 {
-		return false
+		return nil
 	}
-	quorum := len(s.votes) * 1 / 3
-	cnt := 0
+	quorum := len(s.votes) * 2 / 3
+	votes := make(map[string]int)
 	for _, vote := range s.votes {
 		if vote == nil {
 			continue
 		}
-		if vote.NewLeader.Equal(addr) {
-			cnt += 1
-			if cnt > quorum {
-				return true
-			}
+		vKey := vote.NewLeader.String()
+		vCount := votes[vKey] + 1
+		if vCount > quorum {
+			return &vote.NewLeader
 		}
+		votes[vKey] = vCount
 	}
-	return false
+	return nil
 }
 
 func (s *LeaderVoteList) Verify(reps *RepsList) error {
