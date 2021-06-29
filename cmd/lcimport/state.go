@@ -504,7 +504,11 @@ func getDiffHandlerFor(logger log.Logger, name string) func(op int, key []byte, 
 		case -1:
 			logger.Errorf("%s [-] key=%#x value=%+v\n", name, key, exp)
 		case 0:
-			logger.Errorf("%s [=] key=%#x exp=%+v real=%+v\n", name, key, exp, real)
+			if exp.Equal(real) {
+				logger.Errorf("%s [=] key=%#x exp=<%#x> real=<%#x>\n", name, key, exp.Bytes(), real.Bytes())
+			} else {
+				logger.Errorf("%s [=] key=%#x exp=%+v real=%+v\n", name, key, exp, real)
+			}
 		case 1:
 			logger.Errorf("%s [+] key=%#x value=%+v\n", name, key, real)
 		}
@@ -516,31 +520,46 @@ func showExtensionDiff(dbase db.Database, logger log.Logger, e, r *ExtensionValu
 		tdb := icobject.AttachObjectFactory(dbase, icstate.NewObjectImpl)
 		et := trie_manager.NewImmutableForObject(tdb, e.State.Bytes(), icobject.ObjectType)
 		rt := trie_manager.NewImmutableForObject(tdb, r.State.Bytes(), icobject.ObjectType)
-		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.state"))
+		err := trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.state"))
+		if err != nil {
+			logger.Errorf("Fail to compare ext.state err=%+v", err)
+		}
 	}
 	if !bytes.Equal(e.Front.Bytes(), r.Front.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
 		et := trie_manager.NewImmutableForObject(tdb, e.Front.Bytes(), icobject.ObjectType)
 		rt := trie_manager.NewImmutableForObject(tdb, r.Front.Bytes(), icobject.ObjectType)
-		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.front"))
+		err := trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.front"))
+		if err != nil {
+			logger.Errorf("Fail to compare ext.front err=%+v", err)
+		}
 	}
 	if !bytes.Equal(e.Back.Bytes(), r.Back.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
 		et := trie_manager.NewImmutableForObject(tdb, e.Back.Bytes(), icobject.ObjectType)
 		rt := trie_manager.NewImmutableForObject(tdb, r.Back.Bytes(), icobject.ObjectType)
-		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back"))
+		err := trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back"))
+		if err != nil {
+			logger.Errorf("Fail to compare ext.back err=%+v", err)
+		}
 	}
 	if !bytes.Equal(e.Back2.Bytes(), r.Back2.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icstage.NewObjectImpl)
 		et := trie_manager.NewImmutableForObject(tdb, e.Back2.Bytes(), icobject.ObjectType)
 		rt := trie_manager.NewImmutableForObject(tdb, r.Back2.Bytes(), icobject.ObjectType)
-		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back2"))
+		err := trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.back2"))
+		if err != nil {
+			logger.Errorf("Fail to compare ext.back2 err=%+v", err)
+		}
 	}
 	if !bytes.Equal(e.Reward.Bytes(), r.Reward.Bytes()) {
 		tdb := icobject.AttachObjectFactory(dbase, icreward.NewObjectImpl)
 		et := trie_manager.NewImmutableForObject(tdb, e.Reward.Bytes(), icobject.ObjectType)
 		rt := trie_manager.NewImmutableForObject(tdb, r.Reward.Bytes(), icobject.ObjectType)
-		trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.reward"))
+		err := trie_manager.CompareImmutableForObject(et, rt, getDiffHandlerFor(logger, "ext.reward"))
+		if err != nil {
+			logger.Errorf("Fail to compare ext.reward err=%+v", err)
+		}
 	}
 }
 
