@@ -680,6 +680,24 @@ func (e *Executor) CheckResult(tr *Transition) error {
 		return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
 			eLogBloom.LogBytes(), rLogBloom.LogBytes())
 	}
+	if reps := tr.Block.Original().NextValidators(); reps != nil {
+		rs := reps.Size()
+		validators := tr.Transition.NextValidators()
+		vs := validators.Len()
+		if vs > 0 {
+			if vs != rs {
+				return errors.Errorf("InvalidValidatorLen(exp=%d,calc=%d)", rs, vs)
+			}
+			for i:=0 ; i< rs; i++ {
+				rep := reps.Get(i)
+				val, _ := validators.Get(i)
+				if !rep.Equal(val.Address()) {
+					return errors.Errorf("InvalidValidator(idx=%d,exp=%s,calc=%s)",
+						i, rep.String(), val.Address().String())
+				}
+			}
+		}
+	}
 	return nil
 }
 
