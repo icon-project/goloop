@@ -113,6 +113,8 @@ func (v *LeaderVote) Verify() error {
 type LeaderVoteList struct {
 	votes []*LeaderVote
 	root  []byte
+	hash  []byte
+	bytes []byte
 }
 
 func (s *LeaderVoteList) UnmarshalJSON(b []byte) error {
@@ -258,6 +260,15 @@ func (s *LeaderVoteList) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (s* LeaderVoteList) Hash() []byte {
-	bs := codec.BC.MustMarshalToBytes(s)
-	return crypto.SHA3Sum256(bs)
+	if s.hash == nil {
+		s.hash = crypto.SHA3Sum256(s.Bytes())
+	}
+	return s.hash
+}
+
+func (s *LeaderVoteList) Bytes() []byte {
+	if s.bytes == nil {
+		s.bytes = codec.BC.MustMarshalToBytes(s)
+	}
+	return s.bytes
 }

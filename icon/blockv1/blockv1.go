@@ -17,8 +17,9 @@
 package blockv1
 
 import (
-	"bytes"
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"io"
 
 	"github.com/icon-project/goloop/block"
@@ -37,8 +38,6 @@ import (
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
-
-const blockV1String = "1.0"
 
 type headerFormat struct {
 	// V10 and V20 common
@@ -59,9 +58,12 @@ type headerFormat struct {
 	VersionV0 string
 	Signature common.Signature
 
-	// V13 only
+	// V13 only, final value (after executing TXes in this block)
 	StateHashV0     []byte
+	ReceiptRoot     []byte
 	RepsRoot        []byte
+	NextRepsRoot    []byte
+	LogsBloomV0     []byte
 	LeaderVotesHash []byte
 	NextLeader      []byte
 }
@@ -86,6 +88,8 @@ type blockDetail interface {
 	BlockVotes() *blockv0.BlockVoteList
 	LeaderVotes() *blockv0.LeaderVoteList
 	NextValidatorsHash() []byte
+	NextValidators() module.ValidatorList
+	NewBlock(vl module.ValidatorList) module.Block
 }
 
 type Block struct {
@@ -179,6 +183,47 @@ func (b *Block) NormalTransactions() module.TransactionList {
 	return b.normalTransactions
 }
 
+func (b *Block) MarshalHeader(w io.Writer) error {
+	return codec.BC.Marshal(w, b.headerFormat())
+}
+
+func (b *Block) MarshalBody(w io.Writer) error {
+	bf, err := b.bodyFormat()
+	if err != nil {
+		return err
+	}
+	return codec.BC.Marshal(w, bf)
+}
+
+func (b *Block) Marshal(w io.Writer) error {
+	if err := b.MarshalHeader(w); err != nil {
+		return err
+	}
+	return b.MarshalBody(w)
+}
+
+func (b *Block) ToJSON(version module.JSONVersion) (interface{}, error) {
+	res := make(map[string]interface{})
+	res["version"] = b.versionV0
+	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
+	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
+	res["time_stamp"] = b.Timestamp()
+	res["confirmed_transaction_list"] = b.NormalTransactions()
+	res["block_hash"] = hex.EncodeToString(b.ID())
+	res["height"] = b.Height()
+	if b.Proposer() != nil {
+		res["peer_id"] = fmt.Sprintf("hx%x", b.Proposer().ID())
+	} else {
+		res["peer_id"] = ""
+	}
+	res["signature"] = ""
+	return res, nil
+}
+
+func (b *Block) Votes() module.CommitVoteSet {
+	return b.BlockVotes()
+}
+
 type blockV11 struct {
 	Block
 }
@@ -206,7 +251,10 @@ func (b *blockV11) headerFormat() *headerFormat {
 		Signature: b.signature,
 
 		StateHashV0:     nil,
+		ReceiptRoot:     nil,
 		RepsRoot:        nil,
+		NextRepsRoot:    nil,
+		LogsBloomV0:     nil,
 		LeaderVotesHash: nil,
 		NextLeader:      nil,
 	}
@@ -262,41 +310,28 @@ func (b *blockV11) NextValidatorsHash() []byte {
 	return nil
 }
 
+func (b *blockV11) NextValidators() module.ValidatorList {
+	return nil
+}
+
+func (b *blockV11) NewBlock(vl module.ValidatorList) module.Block {
+	res := *b
+	return &res
+}
+
 type blockV13 struct {
 	Block
 	nextValidatorsHash []byte
 	stateHashV0        []byte
+	receiptsRoot       []byte
 	repsRoot           []byte
+	nextRepsRoot       []byte
+	logsBloomV0        module.LogsBloom
 	nextLeader         module.Address
-	_receiptsRoot      []byte
-	_nextRepsRoot      []byte
 	_nextValidators    module.ValidatorList
 	_receipts          module.ReceiptList
 	blockVotes         *blockv0.BlockVoteList
 	leaderVotes        *blockv0.LeaderVoteList
-}
-
-func (b *blockV13) ReceiptsRoot() []byte {
-	if b._receiptsRoot == nil {
-		b._receiptsRoot = blockv0.CalcMerkleRootOfReceiptList(
-			b._receipts,
-			b.normalTransactions,
-			b.height,
-		)
-	}
-	return b._receiptsRoot
-}
-
-func (b *blockV13) NextRepsRoot() []byte {
-	if b._nextRepsRoot == nil {
-		items := make([]merkle.Item, b._nextValidators.Len())
-		for i := 0; i < len(items); i++ {
-			v, _ := b._nextValidators.Get(i)
-			items[i] = merkle.ValueItem(v.Address().Bytes())
-		}
-		b._nextRepsRoot = merkle.CalcHashOfList(items)
-	}
-	return b._nextRepsRoot
 }
 
 func (b *blockV13) headerFormat() *headerFormat {
@@ -322,7 +357,10 @@ func (b *blockV13) headerFormat() *headerFormat {
 		Signature: b.signature,
 
 		StateHashV0:     b.stateHashV0,
+		ReceiptRoot:     b.receiptsRoot,
 		RepsRoot:        b.repsRoot,
+		NextRepsRoot:    b.nextRepsRoot,
+		LogsBloomV0:     b.logsBloomV0.CompressedBytes(),
 		LeaderVotesHash: b.leaderVotes.Hash(),
 		NextLeader:      b.nextLeader.Bytes(),
 	}
@@ -333,13 +371,13 @@ func (b *blockV13) id() []byte {
 	items = append(items,
 		merkle.HashedItem(b.prevID),
 		merkle.HashedItem(b.TransactionsRoot()),
-		merkle.HashedItem(b.ReceiptsRoot()),
+		merkle.HashedItem(b.receiptsRoot),
 		merkle.HashedItem(b.stateHashV0),
 		merkle.HashedItem(b.repsRoot),
-		merkle.HashedItem(b.NextRepsRoot()),
+		merkle.HashedItem(b.nextRepsRoot),
 		merkle.HashedItem(b.leaderVotes.Root()),
 		merkle.HashedItem(b.blockVotes.Root()),
-		merkle.ValueItem(b.logsBloom.LogBytes()),
+		merkle.ValueItem(b.logsBloomV0.LogBytes()),
 		merkle.ValueItem(intconv.SizeToBytes(uint64(b.height))),
 		merkle.ValueItem(intconv.SizeToBytes(uint64(b.timestamp))),
 		merkle.ValueItem(b.proposer.ID()),
@@ -373,27 +411,10 @@ func (b *blockV13) NextValidators() module.ValidatorList {
 	return b._nextValidators
 }
 
-func (b *Block) MarshalHeader(w io.Writer) error {
-	return codec.BC.Marshal(w, b.headerFormat())
-}
-
-func (b *Block) MarshalBody(w io.Writer) error {
-	bf, err := b.bodyFormat()
-	if err != nil {
-		return err
-	}
-	return codec.BC.Marshal(w, bf)
-}
-
-func (b *blockV13) Marshal(w io.Writer) error {
-	if err := b.MarshalHeader(w); err != nil {
-		return err
-	}
-	return b.MarshalBody(w)
-}
-
-func (b *Block) ToJSON(version module.JSONVersion) (interface{}, error) {
-	panic("implement me")
+func (b *blockV13) NewBlock(vl module.ValidatorList) module.Block {
+	res := *b
+	res._nextValidators = vl
+	return &res
 }
 
 func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
@@ -426,16 +447,6 @@ func (b *blockV13) bodyFormat() (*bodyFormat, error) {
 	}, nil
 }
 
-func (b *blockV13) Resolve(tr module.Transition) *blockV13 {
-	if !bytes.Equal(b.nextValidatorsHash, tr.NextValidators().Hash()) {
-		return nil
-	}
-	blk := *b
-	blk._nextValidators = tr.NextValidators()
-	blk._receipts = tr.NormalReceipts()
-	return &blk
-}
-
 func newProposer(bs []byte) (module.Address, error) {
 	if bs != nil {
 		addr, err := common.NewAddress(bs)
@@ -449,15 +460,22 @@ func newProposer(bs []byte) (module.Address, error) {
 	return nil, nil
 }
 
-func NewBlockV01FromHeaderFormat(database db.Database, header *headerFormat) (*Block, error) {
-	patches := transaction.NewTransactionListFromHash(database, header.PatchTransactionsHash)
-	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+func newTransactionListFromBSS(
+	dbase db.Database, bss [][]byte,
+) (module.TransactionList, error) {
+	ts := make([]module.Transaction, len(bss))
+	for i, bs := range bss {
+		if tx, err := transaction.NewTransaction(bs); err != nil {
+			return nil, err
+		} else {
+			ts[i] = tx
+		}
 	}
-	normalTxs := transaction.NewTransactionListFromHash(database, header.NormalTransactionsHash)
-	if normalTxs == nil {
-		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
-	}
+	return transaction.NewTransactionListFromSlice(dbase, ts), nil
+}
+
+func newBlockV11FromHeader(dbase db.Database, header *headerFormat, patches module.TransactionList,
+	normalTxs module.TransactionList) (*Block, error) {
 	proposer, err := newProposer(header.Proposer)
 	if err != nil {
 		return nil, err
@@ -481,40 +499,44 @@ func NewBlockV01FromHeaderFormat(database db.Database, header *headerFormat) (*B
 	return &blk.Block, nil
 }
 
-func NewBlockV03FromHeaderFormat(database db.Database, header *headerFormat) (*Block, error) {
-	patches := transaction.NewTransactionListFromHash(database, header.PatchTransactionsHash)
+func newBlockV11FromBlockFormat(dbase db.Database, format *format) (*Block, error) {
+	patches, err := newTransactionListFromBSS(dbase, format.PatchTransactions)
+	if err != nil {
+		return nil, err
+	}
+	normalTxs, err := newTransactionListFromBSS(dbase, format.NormalTransactions)
+	if err != nil {
+		return nil, err
+	}
+	return newBlockV11FromHeader(dbase, &format.headerFormat, patches, normalTxs)
+}
+
+func newBlockV11FromHeaderFormat(dbase db.Database, header *headerFormat) (*Block, error) {
+	patches := transaction.NewTransactionListFromHash(dbase, header.PatchTransactionsHash)
 	if patches == nil {
 		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
 	}
-	normalTxs := transaction.NewTransactionListFromHash(database, header.NormalTransactionsHash)
+	normalTxs := transaction.NewTransactionListFromHash(dbase, header.NormalTransactionsHash)
 	if normalTxs == nil {
 		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
 	}
+	return newBlockV11FromHeader(dbase, header, patches, normalTxs)
+}
+
+func newBlockV13FromHeader(
+	dbase db.Database,
+	header *headerFormat,
+	patches module.TransactionList,
+	normalTxs module.TransactionList,
+	nextValidators module.ValidatorList,
+	blockVotes *blockv0.BlockVoteList,
+	leaderVotes *blockv0.LeaderVoteList,
+) (*Block, error) {
 	proposer, err := newProposer(header.Proposer)
 	if err != nil {
 		return nil, err
 	}
 	nextLeader, err := newProposer(header.NextLeader)
-	if err != nil {
-		return nil, err
-	}
-	nextValidators, err := state.ValidatorSnapshotFromHash(database, header.NextValidatorsHash)
-	if err != nil {
-		return nil, err
-	}
-	bk, err := database.GetBucket(db.BytesByHash)
-	if err != nil {
-		return nil, err
-	}
-	bs, err := bk.Get(header.BlockVotesHash)
-	if err != nil {
-		return nil, err
-	}
-	if bs == nil {
-		return nil, errors.NotFoundError.New("block vote not found")
-	}
-	var blockVoteList blockv0.BlockVoteList
-	_, err = codec.BC.UnmarshalFromBytes(bs, &blockVoteList)
 	if err != nil {
 		return nil, err
 	}
@@ -534,14 +556,89 @@ func NewBlockV03FromHeaderFormat(database db.Database, header *headerFormat) (*B
 		},
 		nextValidatorsHash: header.NextValidatorsHash,
 		stateHashV0:        header.StateHashV0,
+		receiptsRoot:       header.ReceiptRoot,
 		repsRoot:           header.RepsRoot,
+		nextRepsRoot:       header.NextRepsRoot,
+		logsBloomV0:        txresult.NewLogsBloomFromCompressed(header.LogsBloomV0),
 		nextLeader:         nextLeader,
 		_nextValidators:    nextValidators,
-		blockVotes:         &blockVoteList,
-		leaderVotes:        nil,
+		blockVotes:         blockVotes,
+		leaderVotes:        leaderVotes,
 	}
 	blk.Block.blockDetail = blk
 	return &blk.Block, nil
+}
+
+func newBlockV13FromBlockFormat(dbase db.Database, format *format) (*Block, error) {
+	patches := transaction.NewTransactionListFromHash(dbase, format.PatchTransactionsHash)
+	if patches == nil {
+		return nil, errors.Errorf("TranscationListFromHash(%x) failed", format.PatchTransactionsHash)
+	}
+	normalTxs := transaction.NewTransactionListFromHash(dbase, format.NormalTransactionsHash)
+	if normalTxs == nil {
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", format.NormalTransactionsHash)
+	}
+	return newBlockV13FromHeader(
+		dbase,
+		&format.headerFormat,
+		patches,
+		normalTxs,
+		nil,
+		format.BlockVotes,
+		format.LeaderVotes,
+	)
+}
+
+func newBlockV13FromHeaderFormat(dbase db.Database, header *headerFormat) (*Block, error) {
+	patches := transaction.NewTransactionListFromHash(dbase, header.PatchTransactionsHash)
+	if patches == nil {
+		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+	}
+	normalTxs := transaction.NewTransactionListFromHash(dbase, header.NormalTransactionsHash)
+	if normalTxs == nil {
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
+	}
+	nextValidators, err := state.ValidatorSnapshotFromHash(dbase, header.NextValidatorsHash)
+	if err != nil {
+		return nil, err
+	}
+	bk, err := dbase.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	bs, err := bk.Get(header.BlockVotesHash)
+	if err != nil {
+		return nil, err
+	}
+	if bs == nil {
+		return nil, errors.NotFoundError.New("block vote not found")
+	}
+	var blockVotes blockv0.BlockVoteList
+	_, err = codec.BC.UnmarshalFromBytes(bs, &blockVotes)
+	if err != nil {
+		return nil, err
+	}
+	bs, err = bk.Get(header.LeaderVotesHash)
+	if err != nil {
+		return nil, err
+	}
+	if bs == nil {
+		return nil, errors.NotFoundError.New("block vote not found")
+	}
+	var leaderVotes blockv0.LeaderVoteList
+	_, err = codec.BC.UnmarshalFromBytes(bs, &leaderVotes)
+	if err != nil {
+		return nil, err
+	}
+	return newBlockV13FromHeader(
+		dbase,
+		header,
+		patches,
+		normalTxs,
+		nextValidators,
+		&blockVotes,
+		&leaderVotes,
+	)
 }
 
 func NewBlockFromHeaderReader(database db.Database, r io.Reader) (*Block, error) {
@@ -552,11 +649,30 @@ func NewBlockFromHeaderReader(database db.Database, r io.Reader) (*Block, error)
 	}
 	switch header.VersionV0 {
 	case "0.1a":
-		return NewBlockV01FromHeaderFormat(database, &header)
-	case "0.3":
-		return NewBlockV03FromHeaderFormat(database, &header)
+		return newBlockV11FromHeaderFormat(database, &header)
+	case "0.3", "0.4":
+		return newBlockV13FromHeaderFormat(database, &header)
 	}
 	return nil, errors.UnsupportedError.Errorf("block version %s", header.VersionV0)
+}
+
+func NewBlockFromReader(dbase db.Database, r io.Reader) (*Block, error) {
+	var blockFormat format
+	err := codec.BC.Unmarshal(r, &blockFormat.headerFormat)
+	if err != nil {
+		return nil, err
+	}
+	err = codec.BC.Unmarshal(r, &blockFormat.bodyFormat)
+	if err != nil {
+		return nil, err
+	}
+	switch blockFormat.VersionV0 {
+	case "0.1a":
+		return newBlockV11FromBlockFormat(dbase, &blockFormat)
+	case "0.3", "0.4":
+		return newBlockV13FromBlockFormat(dbase, &blockFormat)
+	}
+	return nil, errors.UnsupportedError.Errorf("block version %s", blockFormat.VersionV0)
 }
 
 func NewFromV0(
@@ -603,7 +719,10 @@ func NewFromV0(
 			},
 			nextValidatorsHash: tr.NextValidators().Hash(),
 			stateHashV0:        blk.StateHash(),
+			receiptsRoot:       blk.ReceiptsHash(),
 			repsRoot:           blk.RepsHash(),
+			nextRepsRoot:       blk.NextRepsHash(),
+			logsBloomV0:        blk.LogsBloom(),
 			nextLeader:         &nl,
 			_nextValidators:    tr.NextValidators(),
 			_receipts:          tr.NormalReceipts(),

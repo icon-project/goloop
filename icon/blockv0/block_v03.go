@@ -112,8 +112,13 @@ func (b *BlockV03) Signature() common.Signature {
 func (b *BlockV03) StateHash() []byte {
 	return b.json.StateHash.Bytes()
 }
+
 func (b *BlockV03) RepsHash() []byte {
 	return b.json.RepsHash.Bytes()
+}
+
+func (b *BlockV03) NextRepsHash() []byte {
+	return b.json.NextRepsHash.Bytes()
 }
 
 func (b *BlockV03) GetNextLeader() module.Address {

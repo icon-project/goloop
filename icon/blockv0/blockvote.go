@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/merkle"
+	"github.com/icon-project/goloop/module"
 )
 
 type BlockVoteJSONSharable struct {
@@ -133,6 +134,8 @@ func (v *BlockVote) MarshalJSON() ([]byte, error) {
 type BlockVoteList struct {
 	votes []*BlockVote
 	root  []byte
+	hash  []byte
+	bytes []byte
 }
 
 func (s *BlockVoteList) UnmarshalJSON(b []byte) error {
@@ -298,6 +301,51 @@ func (s *BlockVoteList) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (s* BlockVoteList) Hash() []byte {
-	bs := codec.BC.MustMarshalToBytes(s)
-	return crypto.SHA3Sum256(bs)
+	if s.hash == nil {
+		s.hash = crypto.SHA3Sum256(s.Bytes())
+	}
+	return s.hash
+}
+
+func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
+	if validators==nil || validators.Len()==0 {
+		return nil, nil
+	}
+	voted := make([]bool, len(s.votes))
+	var count int
+	for i, v := range s.votes {
+		if v == nil {
+			continue
+		}
+		if err := v.Verify(); err != nil {
+			continue
+		}
+		idx := validators.IndexOf(&v.json.Rep)
+		if idx < 0 {
+			return nil, errors.InvalidStateError.Errorf(
+				"bad validator %s at %d",
+				v.json.Rep,
+				i,
+			)
+		}
+		if bytes.Equal(v.json.BlockHash, block.ID()) {
+			voted[i] = true
+			count++
+		}
+	}
+	if count <= validators.Len() * 2 / 3 {
+		return voted, errors.InvalidStateError.Errorf(
+			"quorum fail validators=%d vote for block=%d",
+			validators.Len(),
+			count,
+		)
+	}
+	return voted, nil
+}
+
+func (s *BlockVoteList) Bytes() []byte {
+	if s.bytes == nil {
+		s.bytes = codec.BC.MustMarshalToBytes(s)
+	}
+	return s.bytes
 }
