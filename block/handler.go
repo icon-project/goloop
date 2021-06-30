@@ -41,6 +41,7 @@ type Handler interface {
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
 	) module.Block
+	NewBlockFromHeaderReader(ctx HandlerContext, r io.Reader) (module.Block, error)
 	NewBlockDataFromReader(ctx HandlerContext, r io.Reader) (module.BlockData, error)
 	GetBlock(ctx HandlerContext, id []byte) (module.Block, error)
 	GetBlockByHeight(ctx HandlerContext, height int64) (module.Block, error)
@@ -100,7 +101,7 @@ func (b *blockV2Handler) NewBlock(
 	}
 }
 
-func (b *blockV2Handler) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
+func (b *blockV2Handler) NewBlockFromHeaderReader(ctx HandlerContext, r io.Reader) (module.Block, error) {
 	var header blockV2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
@@ -154,7 +155,7 @@ func (b *blockV2Handler) GetBlock(ctx HandlerContext, id []byte) (module.Block, 
 	if headerBytes == nil {
 		return nil, errors.InvalidStateError.Errorf("nil header")
 	}
-	return b.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	return b.NewBlockFromHeaderReader(ctx, bytes.NewReader(headerBytes))
 }
 
 func newTransactionListFromBSS(
