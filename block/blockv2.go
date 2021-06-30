@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/hex"
 	"fmt"
@@ -20,6 +21,25 @@ import (
 var v2Codec = codec.BC
 
 const blockV2String = "2.0"
+
+func PeekVersion(r *bufio.Reader) (int, error) {
+	header, err := r.Peek(32)
+	if err != nil {
+		return -1, err
+	}
+	d := codec.BC.NewDecoder(bytes.NewReader(header))
+	d2, err := d.DecodeList()
+	if err != nil {
+		return -1, err
+	}
+	var version int
+	err = d2.Decode(&version)
+	if err != nil {
+		return -1, err
+	}
+	_ = d.Close()
+	return version, nil
+}
 
 type blockV2HeaderFormat struct {
 	Version                int
