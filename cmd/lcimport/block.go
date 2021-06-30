@@ -62,6 +62,10 @@ func (b *Block) Result() []byte {
 	return b.result
 }
 
+func (b *Block) NextValidators() module.ValidatorList {
+	return b.validators
+}
+
 func (b *Block) SetResult(result []byte, validators module.ValidatorList, rcts module.ReceiptList, txTotal *big.Int) {
 	b.result = result
 	b.rcts = rcts

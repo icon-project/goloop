@@ -230,7 +230,7 @@ func (e *Executor) InitTransitionFor(height int64) (*Transition, error) {
 		tr, err := service.NewInitTransition(
 			e.database,
 			blk.Result(),
-			nil,
+			blk.NextValidators(),
 			e.cm,
 			e.em,
 			e.chain,
