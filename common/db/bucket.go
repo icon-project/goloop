@@ -53,3 +53,11 @@ func DoGet(bk Bucket, key []byte) ([]byte, error) {
 	}
 	return v, err
 }
+
+func DoGetWithBucketID(dbase Database, bid BucketID, key []byte) ([]byte, error) {
+	bk, err := dbase.GetBucket(bid)
+	if err != nil {
+		return nil, err
+	}
+	return DoGet(bk, key)
+}
