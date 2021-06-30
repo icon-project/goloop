@@ -185,8 +185,8 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	}
 	logger := trace.NewLogger(e.log, e)
 	if height > 0 {
-		blk, err := e.GetBlockByHeight(height)
-		blkV0, err := e.cs.GetBlockByHeight(int(height))
+		blk, err := e.GetBlockByHeight(height - 1)
+		blkV0, err := e.cs.GetBlockByHeight(int(height - 1))
 		if err != nil {
 			return nil, errors.Wrapf(err, "NoLastState(height=%d)", height)
 		}
@@ -219,8 +219,17 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 	}
 	// TODO add old receipts
 	var csi module.ConsensusInfo
+	var tr module.Transition
 	if height == 0 {
 		csi = common.NewConsensusInfo(nil, nil, nil)
+		tr = e.svc.NewTransition(
+			last.Transition,
+			nil,
+			transaction.NewTransactionListFromSlice(e.database, nil),
+			common.NewBlockInfo(-1, 0),
+			csi,
+			true,
+		)
 	} else {
 		var voters module.ValidatorList
 		var err error
@@ -236,16 +245,16 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 				return nil, err
 			}
 		}
-		csi = common.NewConsensusInfo(blkv0.Proposer(), voters, voted)
+		csi = common.NewConsensusInfo(last.block.Proposer(), voters, voted)
+		tr = e.svc.NewTransition(
+			last.Transition,
+			nil,
+			transaction.NewTransactionListFromSlice(e.database, last.block.NormalTransactions()),
+			common.NewBlockInfo(last.block.Height(), last.block.Timestamp()),
+			csi,
+			true,
+		)
 	}
-	tr := e.svc.NewTransition(
-		last.Transition,
-		nil,
-		transaction.NewTransactionListFromSlice(e.database, blkv0.NormalTransactions()),
-		common.NewBlockInfo(height, blkv0.Timestamp()),
-		csi,
-		true,
-	)
 	return &Transition{tr, blkv0, nil, nil}, nil
 }
 
@@ -467,7 +476,6 @@ func (e *BlockConverter) doExecute(
 		if err = blk.WriteTo(e.database); err != nil {
 			return err
 		}
-		// TODO pile block merkle tree
 		if err = e.svc.FinalizeTransition(tr.Transition,
 			module.FinalizeNormalTransaction|module.FinalizeResult,
 			false,
