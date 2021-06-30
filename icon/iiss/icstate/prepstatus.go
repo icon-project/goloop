@@ -412,13 +412,17 @@ type PRepStatusState struct {
 }
 
 func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
-	ps.last = ss
-	ps.prepStatusData = ss.prepStatusData.clone()
+	if ps.last != ss {
+		ps.last = ss
+		ps.prepStatusData = ss.prepStatusData.clone()
+	}
 	return ps
 }
 
 func (ps *PRepStatusState) setDirty() {
-	ps.last = nil
+	if ps.last != nil {
+		ps.last = nil
+	}
 }
 
 func (ps *PRepStatusState) Clear() {
