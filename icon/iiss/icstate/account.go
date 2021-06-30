@@ -250,7 +250,7 @@ type AccountState struct {
 }
 
 func (a *AccountState) Reset(s *AccountSnapshot) {
-	if a.snapshot != nil && a.snapshot.Equal(s) {
+	if a.snapshot != s {
 		return
 	}
 	a.snapshot = s
