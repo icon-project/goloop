@@ -55,12 +55,16 @@ const (
 
 	IScoreICXRatio        = 1_000
 	VotedRewardMultiplier = 100
-	RrepMultiplier        = 3      // rrep = rrep + eep + dbp = 3 * rrep
-	RrepDivider           = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+
+	MinRrep        = 200
+	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
+	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+	MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
 )
 
 var (
 	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
+	BigIntMinDelegation  = big.NewInt(int64(MinDelegation))
 )
 
 type Calculator struct {
@@ -821,10 +825,14 @@ func (c *Calculator) votingReward(
 	iter icstate.VotingIterator,
 ) *big.Int {
 	total := new(big.Int)
+	checkMinVoting := c.global.GetIISSVersion() == icstate.IISSVersion2
 	for ; iter.Has(); iter.Next() {
 		if voting, err := iter.Get(); err != nil {
 			c.log.Errorf("Failed to iterate votings err=%+v", err)
 		} else {
+			if checkMinVoting && voting.Amount().Cmp(BigIntMinDelegation) < 0 {
+				continue
+			}
 			s := from
 			e := to
 			if prep, ok := prepInfo[icutils.ToKey(voting.To())]; ok {

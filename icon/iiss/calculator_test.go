@@ -652,6 +652,15 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 	}
 }
 
+type testGlobal struct {
+	icstage.Global
+	iissVersion int
+}
+
+func (tg *testGlobal) GetIISSVersion() int {
+	return tg.iissVersion
+}
+
 func TestCalculator_VotingReward(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
@@ -663,16 +672,18 @@ func TestCalculator_VotingReward(t *testing.T) {
 		string(addr3.Bytes()): {100, 200},
 	}
 
-	d1 := icstate.NewDelegation(addr1, big.NewInt(100))
-	d2 := icstate.NewDelegation(addr2, big.NewInt(100))
-	d3 := icstate.NewDelegation(addr3, big.NewInt(100))
-	d4 := icstate.NewDelegation(addr4, big.NewInt(100))
+	d0 := icstate.NewDelegation(addr1, big.NewInt(MinDelegation-1))
+	d1 := icstate.NewDelegation(addr1, big.NewInt(MinDelegation))
+	d2 := icstate.NewDelegation(addr2, big.NewInt(MinDelegation))
+	d3 := icstate.NewDelegation(addr3, big.NewInt(MinDelegation))
+	d4 := icstate.NewDelegation(addr4, big.NewInt(MinDelegation))
 	type args struct {
-		multiplier int
-		divider    int
-		from       int
-		to         int
-		delegating icstate.Delegations
+		iissVersion int
+		multiplier  int
+		divider     int
+		from        int
+		to          int
+		delegating  icstate.Delegations
 	}
 	tests := []struct {
 		name string
@@ -680,41 +691,69 @@ func TestCalculator_VotingReward(t *testing.T) {
 		want int64
 	}{
 		{
+			name: "Delegate too small in IISS 2.x",
+			args: args{
+				icstate.IISSVersion2,
+				100,
+				10,
+				0,
+				1000,
+				icstate.Delegations{d0},
+			},
+			want: 0,
+		},
+		{
+			name: "Delegate too small in IISS 3.x",
+			args: args{
+				icstate.IISSVersion3,
+				100,
+				10,
+				0,
+				1000,
+				icstate.Delegations{d0},
+			},
+			want: 100 * d0.Value.Int64() * 1000 / 10,
+		},
+		{
 			name: "PRep-full",
 			args: args{
+				icstate.IISSVersion3,
 				100,
 				10,
 				0,
 				1000,
 				icstate.Delegations{d1},
 			},
-			want: 100 * 100 * 1000 / 10,
+			want: 100 * d1.Value.Int64() * 1000 / 10,
 		},
 		{
 			name: "PRep-enabled",
 			args: args{
+				icstate.IISSVersion3,
 				100,
 				10,
 				0,
 				1000,
 				icstate.Delegations{d2},
 			},
-			want: 100 * 100 * (1000 - 10) / 10,
+			want: 100 * d2.Value.Int64() * (1000 - 10) / 10,
 		},
 		{
 			name: "PRep-disabled",
 			args: args{
+				icstate.IISSVersion3,
 				100,
 				10,
 				0,
 				1000,
 				icstate.Delegations{d3},
 			},
-			want: 100 * 100 * (200 - 100) / 10,
+			want: 100 * d3.Value.Int64() * (200 - 100) / 10,
 		},
 		{
 			name: "PRep-None",
 			args: args{
+				icstate.IISSVersion3,
 				100,
 				10,
 				0,
@@ -726,15 +765,16 @@ func TestCalculator_VotingReward(t *testing.T) {
 		{
 			name: "PRep-combination",
 			args: args{
+				icstate.IISSVersion3,
 				100,
 				10,
 				0,
 				1000,
 				icstate.Delegations{d1, d2, d3, d4},
 			},
-			want: (100*100*1000)/10 +
-				(100*100*(1000-10))/10 +
-				(100*100*(200-100))/10,
+			want: (100*d1.Value.Int64()*1000)/10 +
+				(100*d2.Value.Int64()*(1000-10))/10 +
+				(100*d3.Value.Int64()*(200-100))/10,
 		},
 	}
 
@@ -744,6 +784,7 @@ func TestCalculator_VotingReward(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
+			calculator.global = &testGlobal{iissVersion: args.iissVersion}
 			reward := calculator.votingReward(
 				big.NewInt(int64(args.multiplier)),
 				big.NewInt(int64(args.divider)),
