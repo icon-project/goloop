@@ -159,15 +159,12 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	if iScore == nil || iScore.Sign() == 0 {
 		return
 	}
-	prevTotalIScore := new(big.Int).Mul(issue.PrevTotalReward(), BigIntIScoreICXRatio)
+	prevTotalIScore := new(big.Int).Mul(new(big.Int).Add(issue.PrevTotalReward(), issue.OverIssuedICX()), BigIntIScoreICXRatio)
+	prevTotalIScore.Add(prevTotalIScore, issue.OverIssuedIScore())
 	overIssuedIScore := new(big.Int).Sub(prevTotalIScore, iScore)
 	icx, remains := new(big.Int).DivMod(overIssuedIScore, BigIntIScoreICXRatio, new(big.Int))
-	issue.SetOverIssued(new(big.Int).Add(issue.OverIssuedICX(), icx))
-	issue.SetOverIssuedIScore(new(big.Int).Add(issue.OverIssuedIScore(), remains))
-	if issue.OverIssuedIScore().Cmp(BigIntIScoreICXRatio) >= 0 {
-		issue.SetOverIssued(new(big.Int).Add(issue.OverIssuedICX(), intconv.BigIntOne))
-		issue.SetOverIssuedIScore(new(big.Int).Sub(issue.OverIssuedIScore(), BigIntIScoreICXRatio))
-	}
+	issue.SetOverIssued(icx)
+	issue.SetOverIssuedIScore(remains)
 }
 
 // calcRewardPerBlock calculate reward per block
