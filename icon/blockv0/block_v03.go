@@ -175,6 +175,20 @@ func (b *BlockV03) calcHash() []byte {
 
 var emtpyAddress = common.NewAccountAddress([]byte{})
 
+func (b *BlockV03) VotedLeaderByComplain() module.Address {
+	if len(b.json.LeaderVotesHash.Bytes()) == 0 {
+		return nil
+	}
+	var votedLeader module.Address
+	switch b.json.Version {
+	case Version03:
+		votedLeader = b.json.LeaderVotes.VotedOverHalf()
+	default:
+		votedLeader = b.json.LeaderVotes.VotedOverTwoThirds()
+	}
+	return votedLeader
+}
+
 func (b *BlockV03) Verify(prev Block) error {
 	if b.json.RepsHash != nil {
 		if exp, calc := b.json.RepsHash.Bytes(), b.reps.Hash(); !bytes.Equal(exp, calc) {
@@ -241,18 +255,17 @@ func (b *BlockV03) Verify(prev Block) error {
 			if leader.Equal(emtpyAddress) {
 				leader = b.reps.Get(0)
 			}
-			if len(b.json.LeaderVotesHash.Bytes()) > 0 {
-				if newLeader := b.json.LeaderVotes.Quorum(); newLeader != nil {
-					if newLeader.Equal(emtpyAddress) {
-						if next := b.reps.GetNextOf(leader); next != nil {
-							leader = next
-						} else {
-							return errors.InvalidStateError.Errorf(
-								"InvalidLeader(leader=%s)", leader)
-						}
+
+			if newLeader := b.VotedLeaderByComplain(); newLeader != nil {
+				if newLeader.Equal(emtpyAddress) {
+					if next := b.reps.GetNextOf(leader); next != nil {
+						leader = next
 					} else {
-						leader = newLeader
+						return errors.InvalidStateError.Errorf(
+							"InvalidLeader(leader=%s)", leader)
 					}
+				} else {
+					leader = newLeader
 				}
 			}
 			if !b.json.Leader.Equal(leader) {

@@ -142,11 +142,20 @@ func (s *LeaderVoteList) calcRoot() {
 	s.root = merkle.CalcHashOfList(items)
 }
 
-func (s *LeaderVoteList) Quorum() module.Address {
+func (s *LeaderVoteList) VotedOverHalf() module.Address {
+	quorum := len(s.votes) / 2
+	return s.findVoted(quorum)
+}
+
+func (s *LeaderVoteList) VotedOverTwoThirds() module.Address {
+	quorum := len(s.votes) * 2 / 3
+	return s.findVoted(quorum)
+}
+
+func (s *LeaderVoteList) findVoted(quorum int) module.Address {
 	if len(s.votes) == 0 {
 		return nil
 	}
-	quorum := len(s.votes) * 2 / 3
 	votes := make(map[string]int)
 	for _, vote := range s.votes {
 		if vote == nil {
