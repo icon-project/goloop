@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -205,6 +206,17 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		diff := new(big.Int).Sub(totalStake, oldTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		txID := hex.EncodeToString(s.cc.TransactionID())
+		if amount, ok := migrate.StakeData[txID]; ok {
+			balance = account.GetBalance()
+			v := new(big.Int)
+			v.SetString(amount, 10)
+			account.SetBalance(new(big.Int).Add(balance, v))
+			s.log.Tracef("%s get %d illegal icx", s.from, v)
+		}
+
+	}
 	return
 }
 
@@ -269,6 +281,18 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	}
 	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds); err != nil {
 		return err
+	}
+	revision := s.cc.Revision().Value()
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		txID := hex.EncodeToString(s.cc.TransactionID())
+		if amount, ok := migrate.DelegationData[txID]; ok {
+			account := s.cc.GetAccountState(s.from.ID())
+			balance := account.GetBalance()
+			v := new(big.Int)
+			v.SetString(amount, 10)
+			account.SetBalance(new(big.Int).Add(balance, v))
+			s.log.Tracef("%s get %d illegal icx", s.from, v)
+		}
 	}
 	return nil
 }

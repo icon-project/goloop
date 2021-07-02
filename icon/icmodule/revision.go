@@ -56,6 +56,8 @@ const (
 	RevisionFixEmailValidation     = Revision9
 	RevisionDelegationSlotMaxTo100 = Revision9
 
+	RevisionFixInvalidUnstake = Revision11
+
 	RevisionBurnV2 = Revision12
 
 	RevisionICON2 = Revision13

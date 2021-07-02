@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -226,6 +228,17 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				if err := es.State.SetDelegationSlotMax(defaultDelegationSlotMax); err != nil {
 					return err
 				}
+			}
+		}
+
+		if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
+			for i := 0; i < len(migrate.IndexedAddresses); i++ {
+				address, _ := common.NewAddressFromString(migrate.IndexedAddresses[i])
+				indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.ID()}
+				data1, _ := hex.DecodeString(migrate.EventlogData[i][0])
+				data2, _ := hex.DecodeString(migrate.EventlogData[i][1])
+				data := [][]byte{data1, data2}
+				s.cc.OnEvent(state.SystemAddress, indexed, data)
 			}
 		}
 
