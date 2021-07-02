@@ -510,12 +510,18 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
+	oldStatus := ps.Status()
 	oldGrade, err := ps.DisableAs(status)
 	if err != nil {
 		return err
 	}
 	if oldGrade == GradeMain {
 		if err = s.replaceMainPRepByOwner(owner, blockHeight); err != nil {
+			return err
+		}
+	}
+	if oldStatus == Active && oldStatus != status {
+		if err = s.SetTotalDelegation(new(big.Int).Sub(s.GetTotalDelegation(), ps.Delegated())); err != nil {
 			return err
 		}
 	}
