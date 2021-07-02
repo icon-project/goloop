@@ -26,6 +26,13 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	Version01a = "0.1a"
+	Version03  = "0.3"
+	Version04  = "0.4"
+	Version05  = "0.5"
+)
+
 type Transaction struct {
 	module.Transaction
 }
@@ -82,9 +89,9 @@ func ParseBlock(b []byte, lc Store) (Block, error) {
 		return nil, err
 	}
 	switch rawBlk.Version {
-	case "0.1a":
+	case Version01a:
 		return ParseBlockV01a(b)
-	case "0.3", "0.4":
+	case Version03, Version04:
 		return ParseBlockV03(b, lc)
 	default:
 		return nil, errors.UnsupportedError.Errorf(
