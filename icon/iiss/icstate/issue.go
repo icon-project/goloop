@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -34,8 +35,7 @@ type Issue struct {
 
 	totalReward      *big.Int // sum of rewards calculated by Issuer in current term
 	prevTotalReward  *big.Int
-	overIssuedICX    *big.Int // prevTotalReward - reward calculated by calculator
-	overIssuedIScore *big.Int
+	overIssuedIScore *big.Int // prevTotalReward - reward calculated by calculator
 	prevBlockFee     *big.Int
 }
 
@@ -47,7 +47,6 @@ func NewIssue() *Issue {
 	return &Issue{
 		totalReward:      new(big.Int),
 		prevTotalReward:  new(big.Int),
-		overIssuedICX:    new(big.Int),
 		overIssuedIScore: new(big.Int),
 		prevBlockFee:     new(big.Int),
 	}
@@ -61,7 +60,6 @@ func (i *Issue) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeAll(
 		&i.totalReward,
 		&i.prevTotalReward,
-		&i.overIssuedICX,
 		&i.overIssuedIScore,
 		&i.prevBlockFee,
 	)
@@ -71,7 +69,6 @@ func (i *Issue) RLPEncodeFields(encoder codec.Encoder) error {
 	return encoder.EncodeMulti(
 		i.totalReward,
 		i.prevTotalReward,
-		i.overIssuedICX,
 		i.overIssuedIScore,
 		i.prevBlockFee,
 	)
@@ -81,7 +78,6 @@ func (i *Issue) Equal(o icobject.Impl) bool {
 	if i2, ok := o.(*Issue); ok {
 		return i.totalReward.Cmp(i2.totalReward) == 0 &&
 			i.prevTotalReward.Cmp(i2.prevTotalReward) == 0 &&
-			i.overIssuedICX.Cmp(i2.overIssuedICX) == 0 &&
 			i.overIssuedIScore.Cmp(i2.overIssuedIScore) == 0 &&
 			i.prevBlockFee.Cmp(i2.prevBlockFee) == 0
 	} else {
@@ -93,7 +89,6 @@ func (i *Issue) Clone() *Issue {
 	ni := NewIssue()
 	ni.totalReward = i.totalReward
 	ni.prevTotalReward = i.prevTotalReward
-	ni.overIssuedICX = i.overIssuedICX
 	ni.overIssuedIScore = i.overIssuedIScore
 	ni.prevBlockFee = i.prevBlockFee
 	return ni
@@ -115,20 +110,16 @@ func (i *Issue) SetPrevTotalReward(v *big.Int) {
 	i.prevTotalReward = v
 }
 
-func (i *Issue) OverIssuedICX() *big.Int {
-	return i.overIssuedICX
-}
-
-func (i *Issue) SetOverIssued(v *big.Int) {
-	i.overIssuedICX = v
-}
-
 func (i *Issue) OverIssuedIScore() *big.Int {
 	return i.overIssuedIScore
 }
 
 func (i *Issue) SetOverIssuedIScore(v *big.Int) {
 	i.overIssuedIScore = v
+}
+
+func (i *Issue) GetOverIssuedICX() *big.Int {
+	return icmodule.IScoreToICX(i.overIssuedIScore)
 }
 
 func (i *Issue) PrevBlockFee() *big.Int {
@@ -142,8 +133,9 @@ func (i *Issue) SetPrevBlockFee(v *big.Int) {
 func (i *Issue) Update(totalReward *big.Int, byFee *big.Int, byOverIssued *big.Int) *Issue {
 	issue := i.Clone()
 	issue.totalReward = new(big.Int).Add(issue.totalReward, totalReward)
-	overIssued := new(big.Int).Add(issue.overIssuedICX, issue.prevBlockFee)
-	issue.overIssuedICX = overIssued.Sub(overIssued, new(big.Int).Add(byFee, byOverIssued))
+	overIssued := new(big.Int).Add(issue.overIssuedIScore, icmodule.ICXToIScore(issue.prevBlockFee))
+	overIssued.Sub(overIssued, icmodule.ICXToIScore(new(big.Int).Add(byFee, byOverIssued)))
+	issue.overIssuedIScore = overIssued
 	return issue
 }
 
@@ -156,11 +148,11 @@ func (i *Issue) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Issue{totalReward=%s prevTotalReward=%s overIssuedICX=%s overIssuedIScore=%s prevBlockFee=%s}",
-				i.totalReward, i.prevTotalReward, i.overIssuedICX, i.overIssuedIScore, i.prevBlockFee)
+			fmt.Fprintf(f, "Issue{totalReward=%s prevTotalReward=%s overIssuedIScore=%s prevBlockFee=%s}",
+				i.totalReward, i.prevTotalReward, i.overIssuedIScore, i.prevBlockFee)
 		} else {
-			fmt.Fprintf(f, "Issue{%s %s %s %s %s}",
-				i.totalReward, i.prevTotalReward, i.overIssuedICX, i.overIssuedIScore, i.prevBlockFee)
+			fmt.Fprintf(f, "Issue{%s %s %s %s}",
+				i.totalReward, i.prevTotalReward, i.overIssuedIScore, i.prevBlockFee)
 		}
 	}
 }

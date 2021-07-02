@@ -592,7 +592,7 @@ const (
 	defaultLockMinMultiplier                     = 5
 	defaultLockMaxMultiplier                     = 20
 	rewardPoint                                  = 0.7
-	defaultIglobal                               = iiss.YearBlock * iiss.IScoreICXRatio
+	defaultIglobal                               = iiss.YearBlock * icmodule.IScoreICXRatio
 	defaultIprep                                 = 50
 	defaultIcps                                  = 0
 	defaultIrelay                                = 0

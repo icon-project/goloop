@@ -312,7 +312,7 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 			intconv.BigIntToBytes(result.GetByFee()),
 			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
 			intconv.BigIntToBytes(result.GetIssue()),
-			intconv.BigIntToBytes(issue.OverIssuedICX()),
+			intconv.BigIntToBytes(issue.GetOverIssuedICX()),
 		},
 	)
 	term := es.State.GetTerm()

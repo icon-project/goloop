@@ -113,7 +113,7 @@ func TestCalculator_processBlockProduce(t *testing.T) {
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
 	addr3 := common.MustNewAddressFromString("hx3")
-	variable := big.NewInt(int64(YearBlock * IScoreICXRatio))
+	variable := big.NewInt(int64(YearBlock * icmodule.IScoreICXRatio))
 	rewardGenerate := variable.Int64()
 	rewardValidate := variable.Int64()
 
@@ -243,7 +243,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				100,
 			),
 			//	multiplier = ((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio
-			((YearBlock * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio,
+			((YearBlock * MonthPerYear) / (YearBlock * 2)) * 100 * icmodule.IScoreICXRatio,
 			1,
 		},
 		{
@@ -277,7 +277,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				5,
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
-			10000 * 50 * IScoreICXRatio,
+			10000 * 50 * icmodule.IScoreICXRatio,
 			100 * 1000,
 		},
 		{
@@ -571,7 +571,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 				nil,
 			},
 			want{
-				RrepMultiplier * 20000000 * IScoreICXRatio,
+				RrepMultiplier * 20000000 * icmodule.IScoreICXRatio,
 				YearBlock * RrepDivider,
 			},
 		},
@@ -615,7 +615,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			},
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
-				10000 * 50 * IScoreICXRatio,
+				10000 * 50 * icmodule.IScoreICXRatio,
 				100 * 1000 * 10,
 			},
 		},

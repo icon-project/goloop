@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -76,11 +77,10 @@ func TestIssuer_IssueResultJSON(t *testing.T) {
 	assert.Nil(t, result3)
 }
 
-func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, iScoreRemains int64, prevBlockFee int64) {
+func setIssue(issue *icstate.Issue, totalIssued int64, prevTotalIssued int64, overIssued int64, prevBlockFee int64) {
 	issue.SetTotalReward(big.NewInt(totalIssued))
 	issue.SetPrevTotalReward(big.NewInt(prevTotalIssued))
-	issue.SetOverIssued(big.NewInt(overIssued))
-	issue.SetOverIssuedIScore(big.NewInt(iScoreRemains))
+	issue.SetOverIssuedIScore(big.NewInt(overIssued))
 	issue.SetPrevBlockFee(big.NewInt(prevBlockFee))
 }
 
@@ -88,65 +88,64 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 	type values struct {
 		prevTotalIssued  int64
 		totalIssued      int64
-		overIssuedICX    int64
 		overIssuedIScore int64
 		prevBlockFee     int64
 	}
 
 	tests := []struct {
-		name             string
-		in               values
-		iScore           *big.Int
-		out              values
+		name   string
+		in     values
+		reward *big.Int
+		out    values
 	}{
 		{
 			"Nil iScore reward",
 			values{
-				0, 100, 0, 0, 0,
+				0, 100, 0, 0,
 			},
 			nil,
 			values{
-				0, 0, 0, 0, 0,
+				0, 0, 0, 0,
 			},
 		},
 		{
 			"Zero iScore reward",
 			values{
-				0, 100, 0, 0, 0,
+				0, 100, 0, 0,
 			},
 			new(big.Int).SetInt64(0),
 			values{
-				0, 0, 0, 0, 0,
+				0, 0, 0, 0,
 			},
 		},
 		{
 			"No overIssue",
 			values{
-				100, 200, 0, 100, 0,
+				100, 200, 100, 0,
 			},
-			new(big.Int).SetInt64(100 * IScoreICXRatio),
+			new(big.Int).SetInt64(100 * icmodule.IScoreICXRatio),
 			values{
-				0, 0, 0, 100, 0,
+				0, 0, 100, 0,
 			},
 		},
 		{
 			"Positive overIssue",
 			values{
-				100, 200, 10, 1, 0,
+				100, 200, 10001, 0,
 			},
-			new(big.Int).SetInt64(90*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(90*icmodule.IScoreICXRatio + 123),
 			values{
-				0, 0, 10 + 100 - 91, 1 + 1000 - 123, 0,
+				0, 0, 100*icmodule.IScoreICXRatio + 10001 - (90*icmodule.IScoreICXRatio + 123), 0,
 			},
 		},
 		{
 			"Negative overIssue",
 			values{
-				100, 200, 10, 1, 0,
+				100, 200, 1, 0,
 			},
-			new(big.Int).SetInt64(200*IScoreICXRatio + 123),
+			new(big.Int).SetInt64(100*icmodule.IScoreICXRatio + 123),
 			values{
-				100, 200, 10 + 100 - 201, 1 + 1000 - 123, 0,
+				100, 200, 1 - 123, 0,
 			},
 		},
 	}
@@ -156,9 +155,8 @@ func TestIssuer_RegulateIssueInfo(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssuedICX, in.overIssuedIScore, in.prevBlockFee)
-			RegulateIssueInfo(issue, tt.iScore)
-			assert.Equal(t, out.overIssuedICX, issue.OverIssuedICX().Int64())
+			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssuedIScore, in.prevBlockFee)
+			RegulateIssueInfo(issue, tt.reward)
 			assert.Equal(t, out.overIssuedIScore, issue.OverIssuedIScore().Int64())
 			assert.Equal(t, out.prevBlockFee, issue.PrevBlockFee().Int64())
 		})
@@ -283,11 +281,10 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 
 func TestIssuer_calcIssueAmount(t *testing.T) {
 	type values struct {
-		prevTotalIssued int64
-		totalIssued     int64
-		overIssued      int64
-		iScoreRemains   int64
-		prevBlockFee    int64
+		prevTotalIssued  int64
+		totalIssued      int64
+		overIssuedIScore int64
+		prevBlockFee     int64
 	}
 	type wants struct {
 		byFee        int64
@@ -304,7 +301,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"First",
 			values{
-				0, 0, 0, 0, 0,
+				0, 0, 0, 0,
 			},
 			100,
 			wants{
@@ -314,7 +311,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued",
 			values{
-				0, 0, 10, 0, 0,
+				0, 0, 10*icmodule.IScoreICXRatio, 0,
 			},
 			100,
 			wants{
@@ -324,7 +321,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued-larger than reward",
 			values{
-				0, 0, 300, 0, 0,
+				0, 0, 300*icmodule.IScoreICXRatio, 0,
 			},
 			100,
 			wants{
@@ -334,7 +331,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"Fee",
 			values{
-				0, 0, 000, 0, 10,
+				0, 0, 0, 10,
 			},
 			100,
 			wants{
@@ -344,7 +341,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"Fee-larger than reward",
 			values{
-				0, 0, 0, 0, 200,
+				0, 0, 0, 200,
 			},
 			100,
 			wants{
@@ -354,7 +351,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued and fee",
 			values{
-				0, 0, 10, 0, 20,
+				0, 0, 10*icmodule.IScoreICXRatio, 20,
 			},
 			100,
 			wants{
@@ -362,9 +359,9 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 			},
 		},
 		{
-			"OverIssued and fee - larger than reward (overIssued has priority",
+			"OverIssued and fee - larger than reward (overIssuedIScore has priority",
 			values{
-				0, 0, 300, 0, 200,
+				0, 0, 300*icmodule.IScoreICXRatio, 200,
 			},
 			100,
 			wants{
@@ -378,7 +375,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 			in := tt.in
 			out := tt.out
 			issue := icstate.NewIssue()
-			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssued, in.iScoreRemains, in.prevBlockFee)
+			setIssue(issue, in.totalIssued, in.prevTotalIssued, in.overIssuedIScore, in.prevBlockFee)
 			issued, byOverIssued, byFee := calcIssueAmount(new(big.Int).SetInt64(tt.reward), issue)
 
 			assert.Equal(t, out.issue, issued.Int64())

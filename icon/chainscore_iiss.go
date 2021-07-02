@@ -719,7 +719,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		return nil
 	}
 
-	icx, remains := new(big.Int).DivMod(iScore, iiss.BigIntIScoreICXRatio, new(big.Int))
+	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
 	claim := new(big.Int).Sub(iScore, remains)
 
 	// increase account icx balance
@@ -843,7 +843,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	jso := make(map[string]interface{})
 	jso["blockHeight"] = bh
 	jso["iscore"] = is
-	jso["estimatedICX"] = new(big.Int).Div(is, big.NewInt(iiss.IScoreICXRatio))
+	jso["estimatedICX"] = icmodule.IScoreToICX(is)
 	return jso, nil
 }
 

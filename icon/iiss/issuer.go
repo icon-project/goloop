@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -159,12 +160,10 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	if iScore == nil || iScore.Sign() == 0 {
 		return
 	}
-	prevTotalIScore := new(big.Int).Mul(new(big.Int).Add(issue.PrevTotalReward(), issue.OverIssuedICX()), BigIntIScoreICXRatio)
+	prevTotalIScore := icmodule.ICXToIScore(issue.PrevTotalReward())
 	prevTotalIScore.Add(prevTotalIScore, issue.OverIssuedIScore())
 	overIssuedIScore := new(big.Int).Sub(prevTotalIScore, iScore)
-	icx, remains := new(big.Int).DivMod(overIssuedIScore, BigIntIScoreICXRatio, new(big.Int))
-	issue.SetOverIssued(icx)
-	issue.SetOverIssuedIScore(remains)
+	issue.SetOverIssuedIScore(overIssuedIScore)
 }
 
 // calcRewardPerBlock calculate reward per block
@@ -204,9 +203,14 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	byFee = new(big.Int)
 	byOverIssued = new(big.Int)
 
-	if issue.Cmp(i.OverIssuedICX()) > 0 {
-		byOverIssued.Set(i.OverIssuedICX())
-		issue.Sub(issue, i.OverIssuedICX())
+	overIssuedICX := i.GetOverIssuedICX()
+	if overIssuedICX.Sign() == -1 {
+		overIssuedICX.Add(overIssuedICX, intconv.BigIntOne)
+	}
+
+	if issue.Cmp(overIssuedICX) > 0 {
+		byOverIssued.Set(overIssuedICX)
+		issue.Sub(issue, overIssuedICX)
 	} else {
 		byOverIssued.Set(issue)
 		issue.SetInt64(0)

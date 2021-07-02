@@ -53,17 +53,13 @@ const (
 	MonthPerYear = 12
 	YearBlock    = MonthBlock * MonthPerYear
 
-	IScoreICXRatio        = 1_000
-	VotedRewardMultiplier = 100
-
 	MinRrep        = 200
 	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
 	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-	MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
+	MinDelegation  = YearBlock / icmodule.IScoreICXRatio * (RrepDivider / MinRrep)
 )
 
 var (
-	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
 	BigIntMinDelegation  = big.NewInt(int64(MinDelegation))
 )
 
@@ -300,7 +296,7 @@ func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 	v := new(big.Int)
 	v.Mul(irep, big.NewInt(MonthPerYear))
 	v.Div(v, big.NewInt(int64(YearBlock*2)))
-	v.Mul(v, big.NewInt(int64(mainPRepCount)*IScoreICXRatio))
+	v.Mul(v, big.NewInt(int64(mainPRepCount)*icmodule.IScoreICXRatio))
 	v.Div(v, big.NewInt(int64(2)))
 	return v
 }
@@ -408,14 +404,14 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 		g := global.GetV1()
 		multiplier.Mul(g.GetIRep(), big.NewInt(MonthPerYear))
 		multiplier.Div(multiplier, big.NewInt(int64(YearBlock*2)))
-		multiplier.Mul(multiplier, big.NewInt(int64(VotedRewardMultiplier*IScoreICXRatio)))
+		multiplier.Mul(multiplier, big.NewInt(int64(icmodule.VotedRewardMultiplier*icmodule.IScoreICXRatio)))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 {
 			return
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
-		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
+		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 	}
 	return
@@ -564,7 +560,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		if g.GetRRep().Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(IScoreICXRatio*RrepMultiplier))
+		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(icmodule.IScoreICXRatio*RrepMultiplier))
 		divider.SetInt64(int64(YearBlock * RrepDivider))
 	} else {
 		g := global.GetV2()
@@ -572,7 +568,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 			return
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
-		multiplier.Mul(multiplier, BigIntIScoreICXRatio)
+		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
 		divider.SetInt64(int64(100 * g.GetTermPeriod()))
 		divider.Mul(divider, totalVotingAmount)
 	}
@@ -982,12 +978,12 @@ func (c *Calculator) postWork() (err error) {
 		}
 		g := c.global.GetV2()
 		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
-		maxVotedReward.Mul(maxVotedReward, BigIntIScoreICXRatio)
+		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
 			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
 		}
 		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
-		maxVotingReward.Mul(maxVotingReward, BigIntIScoreICXRatio)
+		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
 			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
