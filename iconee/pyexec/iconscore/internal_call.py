@@ -109,3 +109,15 @@ class ChainScore(object):
                        score_address: 'Address') -> Optional[dict]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
                                          'getScoreStatus', tuple([score_address]))
+
+    @staticmethod
+    def getPRepTerm(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getPRepTerm')
+
+    @staticmethod
+    def getMainPReps(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getMainPReps')
+
+    @staticmethod
+    def getSubPReps(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getSubPReps')

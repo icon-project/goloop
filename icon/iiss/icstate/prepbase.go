@@ -174,6 +174,10 @@ type PRepBaseData struct {
 	bonderList BonderList
 }
 
+func (p *PRepBaseData) Name() string {
+	return p.name
+}
+
 func (p *PRepBaseData) IRep() *big.Int {
 	return p.irep
 }

@@ -16,17 +16,18 @@ import hashlib
 import json
 from abc import ABC, ABCMeta
 from enum import IntEnum
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, Tuple, List
 
 from coincurve import PublicKey
 
 from .icon_score_constant import T, FORMAT_IS_NOT_DERIVED_OF_OBJECT
 from .icon_score_context import ContextContainer, IconScoreContext
 from .icon_score_step import StepType
-from .internal_call import InternalCall
+from .internal_call import ChainScore, InternalCall
 from ..base.address import Address, AddressPrefix
 from ..base.exception import InvalidParamsException, IconScoreException, InvalidInstanceException
 from ..icon_constant import CHARSET_ENCODING, Revision
+from ..logger import Logger
 
 
 class InterfaceScoreMeta(ABCMeta):
@@ -399,3 +400,44 @@ def create_interface_score(addr_to: 'Address',
     if interface_cls is InterfaceScore:
         raise InvalidInstanceException(FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
     return interface_cls(addr_to)
+
+
+class PRepInfo(object):
+    def __init__(self, address: 'Address', delegated: int, name: str):
+        self.address = address
+        self.delegated = delegated
+        self.name = name
+
+
+def get_main_prep_info() -> Tuple[List[PRepInfo], int]:
+    return _get_prep_info("main")
+
+
+def get_sub_prep_info() -> Tuple[List[PRepInfo], int]:
+    return _get_prep_info("sub")
+
+
+def _get_prep_info(type_: str) -> Tuple[List[PRepInfo], int]:
+    context = ContextContainer._get_context()
+    assert context
+
+    term = ChainScore.getPRepTerm(context, context.owner)
+    if term is None:
+        return [], -1
+    end_block_height = term.get("endBlockHeight")
+
+    if type_ == "main":
+        preps = ChainScore.getMainPReps(context, context.owner)
+    elif type_ == "sub":
+        preps = ChainScore.getSubPReps(context, context.owner)
+    else:
+        preps = {}
+
+    prep_info_list: List[PRepInfo] = []
+    for prep in preps.get("preps"):
+        prep_info_list.append(PRepInfo(
+            prep.get("address"),
+            prep.get("bondedDelegation"),
+            prep.get("name")
+        ))
+    return prep_info_list, end_block_height

@@ -286,9 +286,12 @@ func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]i
 	for i := 0; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := s.State.GetPRepStatusByOwner(pss.Owner(), false)
+		pb, _ := s.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeMain {
-			preps = append(preps, pss.ToJSON())
+			pj := pss.ToJSON()
+			pj["name"] = pb.Name()
+			preps = append(preps, pj)
 			sum.Add(sum, pss.BondedDelegation())
 			if len(preps) == mainPRepCount {
 				break
@@ -320,9 +323,12 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 	for i := mainPRepCount; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := s.State.GetPRepStatusByOwner(pss.Owner(), false)
+		pb, _ := s.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeSub {
-			preps = append(preps, pss.ToJSON())
+			pj := pss.ToJSON()
+			pj["name"] = pb.Name()
+			preps = append(preps, pj)
 			sum.Add(sum, pss.BondedDelegation())
 		}
 	}
