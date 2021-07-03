@@ -60,7 +60,7 @@ const (
 )
 
 var (
-	BigIntMinDelegation  = big.NewInt(int64(MinDelegation))
+	BigIntMinDelegation = big.NewInt(int64(MinDelegation))
 )
 
 type Calculator struct {
@@ -165,8 +165,8 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 		finalTS.Sub(startTS), prepareTS.Sub(startTS), bpTS.Sub(prepareTS),
 		votedTS.Sub(bpTS), votingTS.Sub(votedTS), finalTS.Sub(votingTS),
 	)
-	c.log.Infof("Calculation statistics: BlockProduce=%s Voted=%s Voting=%s",
-		c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
+	c.log.Infof("Calculation statistics: Total=%d BlockProduce=%s Voted=%s Voting=%s",
+		c.stats.TotalReward(), c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
 	return
 }
 
@@ -444,13 +444,15 @@ func (c *Calculator) calculateVotedReward() error {
 			if obj.Status().IsEnabled() == false {
 				vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 				from = keyOffset
-
-				// If revision < 7, do not update totalBondedDelegation with EventEnable
-				if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated {
+				vInfo.SetEnable(obj.Target(), obj.Status())
+				// If revision < 7, do not update totalBondedDelegation with temporarily disabled P-Rep
+				if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated || !obj.Status().IsDisabledTemporarily() {
 					vInfo.UpdateTotalBondedDelegation()
 				}
+			} else {
+				vInfo.SetEnable(obj.Target(), obj.Status())
+				// do not update total bonded delegation when P-Rep is activated
 			}
-			vInfo.SetEnable(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateDelegated(obj.Votes())
@@ -1294,6 +1296,9 @@ func (vi *votedInfo) CalculateReward(multiplier, divider *big.Int, period int) {
 		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 
+		log.Tracef("VOTED REWARD %d = %d * %d * %d / (%d * %d)",
+			reward, multiplier, period, prep.GetBondedDelegation(), divider, vi.totalBondedDelegation)
+
 		prep.SetIScore(new(big.Int).Add(prep.IScore(), reward))
 	}
 }
@@ -1370,8 +1375,8 @@ func (s *statistics) IncreaseVoting(amount *big.Int) {
 
 func (s *statistics) TotalReward() *big.Int {
 	reward := new(big.Int)
-	reward.Add(s.BlockProduce(), s.Voted())
-	reward.Add(reward, s.Voting())
+	reward.Add(s.blockProduce, s.voted)
+	reward.Add(reward, s.voting)
 	return reward
 }
 
