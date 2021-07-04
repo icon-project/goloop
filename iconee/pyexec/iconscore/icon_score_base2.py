@@ -27,7 +27,6 @@ from .internal_call import ChainScore, InternalCall
 from ..base.address import Address, AddressPrefix
 from ..base.exception import InvalidParamsException, IconScoreException, InvalidInstanceException
 from ..icon_constant import CHARSET_ENCODING, Revision
-from ..logger import Logger
 
 
 class InterfaceScoreMeta(ABCMeta):

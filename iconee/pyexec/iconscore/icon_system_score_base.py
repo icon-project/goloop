@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 from .internal_call import ChainScore
 from ..base.address import Address, BUILTIN_SCORE_ADDRESS_MAPPER
-from ..base.exception import AccessDeniedException
+from ..base.exception import AccessDeniedException, IconServiceBaseException, InvalidRequestException
 from ..database.db import IconScoreDatabase
-from ..icon_constant import IconServiceFlag
+from ..icon_constant import IconServiceFlag, Revision
 from ..iconscore.icon_score_base import IconScoreBase
 
 
@@ -99,3 +99,21 @@ class IconSystemScoreBase(IconScoreBase):
             return False
         current = status.get('current', None)
         return current is not None and current['status'] == 'active'
+
+    def disqualify_prep(self, address: 'Address') -> Tuple[bool, str]:
+        success: bool = True
+        reason: str = ""
+        try:
+            ChainScore.disqualify_prep(self._context, self.address, address)
+        except IconServiceBaseException as e:
+            success = False
+            reason = str(e)
+        finally:
+            return success, reason
+
+    def validate_irep(self, irep: int):
+        if self._context.revision < Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value:
+            raise InvalidRequestException(f"Can't register I-Rep proposal. Revision must be larger than "
+                                          f"{Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value - 1}")
+
+        ChainScore.validate_irep(self._context, self.address, irep)

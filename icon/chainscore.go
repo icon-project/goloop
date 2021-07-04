@@ -500,7 +500,7 @@ var chainMethods = []*chainMethod{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision6, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "burn",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 0,

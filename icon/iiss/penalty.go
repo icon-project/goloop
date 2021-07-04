@@ -29,9 +29,9 @@ import (
 )
 
 const (
-	prepDisqualification int64 = iota + 1
-	lowProductivity
-	blockValidation
+	PRepDisqualification int64 = iota + 1
+	LowProductivity
+	BlockValidation
 )
 
 func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
@@ -59,7 +59,7 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(blockValidation),
+			intconv.Int64ToBytes(BlockValidation),
 		},
 	)
 

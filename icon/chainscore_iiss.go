@@ -965,6 +965,17 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 			address,
 		)
 	}
+
+	ps, _ := es.State.GetPRepStatusByOwner(address, false)
+	// Record PenaltyImposed eventlog
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(ps.Status())),
+			intconv.Int64ToBytes(iiss.PRepDisqualification),
+		},
+	)
+
 	return nil
 }
 

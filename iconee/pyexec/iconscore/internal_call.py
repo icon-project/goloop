@@ -121,3 +121,13 @@ class ChainScore(object):
     @staticmethod
     def getSubPReps(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getSubPReps')
+
+    @staticmethod
+    def disqualify_prep(context: 'IconScoreContext', _from: 'Address', address: 'Address') -> Tuple[bool, str]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'disqualifyPRep', tuple([address]))
+
+    @staticmethod
+    def validate_irep(context: 'IconScoreContext', _from: 'Address', irep: int) -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'validateIRep', tuple([irep]))

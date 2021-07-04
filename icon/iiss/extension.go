@@ -456,7 +456,6 @@ func (s *ExtensionStateImpl) UnregisterPRep(blockHeight int64, owner module.Addr
 }
 
 func (s *ExtensionStateImpl) DisqualifyPRep(blockHeight int64, owner module.Address) error {
-	// TODO: add PRepDisqualified eventlog
 	return s.State.DisablePRep(owner, icstate.Disqualified, blockHeight)
 }
 
