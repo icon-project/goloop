@@ -698,17 +698,17 @@ func (c *Calculator) calculateVotingReward() error {
 			return err
 		}
 	}
+	// add preprocessed data for BugDisabledPRep
+	c.addDataForBugDisabledPRep(prepInfo, multiplier, divider)
 	return nil
 }
 
-func (c *Calculator) addDataForBugDisabledPRep() error {
+func (c *Calculator) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, multiplier, divider *big.Int) error {
 	revision := c.global.GetRevision()
 	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
 		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
 		return nil
 	}
-	prepInfo := make(map[string]*pRepEnable)
-	multiplier, divider := varForVotingReward(c.global, nil)
 	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
@@ -734,9 +734,7 @@ func (c *Calculator) addDataForBugDisabledPRep() error {
 					return err
 				}
 				if delegating != nil {
-					idx := icutils.ToKey(event.Target())
 					offset := int(intconv.BytesToInt64(keySplit[1]))
-					prepInfo[idx] = new(pRepEnable)
 					reward := c.votingReward(multiplier, divider, offset, c.global.GetOffsetLimit(), prepInfo, delegating.Iterator())
 					bug := icreward.NewBugDisabledPRep(reward)
 					if err = c.temp.AddBugDisabledPRep(event.Target(), bug); err != nil {
@@ -990,9 +988,6 @@ func (c *Calculator) postWork() (err error) {
 			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
 	}
-
-	// add preprocessed data for BugDisabledPRep
-	c.addDataForBugDisabledPRep()
 
 	// save calculation result to MPT
 	c.result = c.temp.GetSnapshot()
