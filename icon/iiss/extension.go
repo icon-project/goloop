@@ -457,7 +457,13 @@ func (s *ExtensionStateImpl) UnregisterPRep(blockHeight int64, owner module.Addr
 }
 
 func (s *ExtensionStateImpl) DisqualifyPRep(blockHeight int64, owner module.Address) error {
-	return s.State.DisablePRep(owner, icstate.Disqualified, blockHeight)
+	if err := s.State.DisablePRep(owner, icstate.Disqualified, blockHeight); err != nil {
+		return err
+	}
+	if err := s.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
+	}
+	return nil
 }
 
 func (s *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
