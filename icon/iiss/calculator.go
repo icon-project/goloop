@@ -839,6 +839,9 @@ func (c *Calculator) votingReward(
 					e = prep.EndOffset()
 				}
 				period := e - s
+				if period <= 0 {
+					continue
+				}
 				reward := new(big.Int).Mul(multiplier, voting.Amount())
 				reward.Mul(reward, big.NewInt(int64(period)))
 				reward.Div(reward, divider)
