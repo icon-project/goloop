@@ -158,6 +158,7 @@ func (s *LeaderVoteList) checkVoted(quorum int, leader module.Address) bool {
 	}
 	var vEmpty int
 	var vCount int
+	voted := make(map[string]int)
 	for _, vote := range s.votes {
 		if vote == nil {
 			continue
@@ -166,12 +167,19 @@ func (s *LeaderVoteList) checkVoted(quorum int, leader module.Address) bool {
 			vEmpty += 1
 		} else if vote.NewLeader.Equal(leader) {
 			vCount += 1
-		}
-		if vEmpty + vCount > quorum {
-			return true
+		} else {
+			voted[vote.NewLeader.String()] += 1
 		}
 	}
-	return false
+	if vEmpty + vCount <= quorum {
+		return false
+	}
+	for _, cnt := range voted {
+		if cnt > vCount {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *LeaderVoteList) Verify(reps *RepsList) error {
