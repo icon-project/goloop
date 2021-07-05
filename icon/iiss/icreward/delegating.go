@@ -96,10 +96,14 @@ func (d *Delegating) ApplyVotes(deltas icstage.VoteList) error {
 				dg = icstate.NewDelegation(common.AddressToPtr(dg.To()), value)
 			}
 		} else {
-			if vote.Amount().Sign() == -1 {
+			switch vote.Amount().Sign() {
+			case -1:
 				return errors.Errorf("Negative delegation to %s, value %d", vote.To(), vote.Amount())
+			case 0:
+				continue
+			case 1:
+				dg = icstate.NewDelegation(common.AddressToPtr(vote.To()), vote.Amount())
 			}
-			dg = icstate.NewDelegation(common.AddressToPtr(vote.To()), vote.Amount())
 		}
 		nDelegations = append(nDelegations, dg)
 	}

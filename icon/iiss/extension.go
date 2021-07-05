@@ -370,7 +370,11 @@ func (s *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addres
 func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
 	size := len(delta)
 	keys := make([]string, 0, size)
-	for key := range delta {
+	for key, value := range delta {
+		if value.Sign() == 0 {
+			// skip zero-valued
+			continue
+		}
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)

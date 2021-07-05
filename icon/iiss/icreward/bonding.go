@@ -101,10 +101,14 @@ func (b *Bonding) ApplyVotes(deltas icstage.VoteList) error {
 				bond = icstate.NewBond(common.AddressToPtr(bond.To()), value)
 			}
 		} else {
-			if vote.Amount().Sign() == -1 {
+			switch vote.Amount().Sign() {
+			case -1:
 				return errors.Errorf("Negative bond to %s, value %d", vote.To(), vote.Amount())
+			case 0:
+				continue
+			case 1:
+				bond = icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())
 			}
-			bond = icstate.NewBond(common.AddressToPtr(vote.To()), vote.Amount())
 		}
 		nBonds = append(nBonds, bond)
 	}
