@@ -368,8 +368,7 @@ func (s *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addres
 }
 
 func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error) {
-	size := len(delta)
-	keys := make([]string, 0, size)
+	keys := make([]string, 0)
 	for key, value := range delta {
 		if value.Sign() == 0 {
 			// skip zero-valued
@@ -379,6 +378,7 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 	}
 	sort.Strings(keys)
 
+	size := len(keys)
 	votes = make([]*icstage.Vote, size)
 	for i, key := range keys {
 		var addr *common.Address
