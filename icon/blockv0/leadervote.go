@@ -142,33 +142,36 @@ func (s *LeaderVoteList) calcRoot() {
 	s.root = merkle.CalcHashOfList(items)
 }
 
-func (s *LeaderVoteList) VotedOverHalf() module.Address {
+func (s *LeaderVoteList) isVotedOverHalf(leader module.Address) bool {
 	quorum := len(s.votes) / 2
-	return s.findVoted(quorum)
+	return s.checkVoted(quorum, leader)
 }
 
-func (s *LeaderVoteList) VotedOverTwoThirds() module.Address {
+func (s *LeaderVoteList) isVotedOverTwoThirds(leader module.Address) bool {
 	quorum := len(s.votes) * 2 / 3
-	return s.findVoted(quorum)
+	return s.checkVoted(quorum, leader)
 }
 
-func (s *LeaderVoteList) findVoted(quorum int) module.Address {
+func (s *LeaderVoteList) checkVoted(quorum int, leader module.Address) bool {
 	if len(s.votes) == 0 {
-		return nil
+		return false
 	}
-	votes := make(map[string]int)
+	var vEmpty int
+	var vCount int
 	for _, vote := range s.votes {
 		if vote == nil {
 			continue
 		}
-		vKey := vote.NewLeader.String()
-		vCount := votes[vKey] + 1
-		if vCount > quorum {
-			return &vote.NewLeader
+		if vote.NewLeader.Equal(emtpyAddress) {
+			vEmpty += 1
+		} else if vote.NewLeader.Equal(leader) {
+			vCount += 1
 		}
-		votes[vKey] = vCount
+		if vEmpty + vCount > quorum {
+			return true
+		}
 	}
-	return nil
+	return false
 }
 
 func (s *LeaderVoteList) Verify(reps *RepsList) error {
