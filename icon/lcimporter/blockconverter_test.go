@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -32,6 +33,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/platform/basic"
+	"github.com/icon-project/goloop/service/transaction"
 )
 
 type BTX = lcimporter.BlockTransaction
@@ -235,27 +237,63 @@ func (s *testStore) GetReceipt(id []byte) (module.Receipt, error) {
 type blockConverterTest struct {
 	*testing.T
 	*lcimporter.BlockConverter
-	chain *testChain
-	store *testStore
-	svc   *testService
+	chain       *testChain
+	store       *testStore
+	svc         *testService
+	emptyResult []byte
+}
+
+type transitionCallback chan error
+
+func (cb transitionCallback) OnValidate(transition module.Transition, err error) {
+	cb <- err
+}
+
+func (cb transitionCallback) OnExecute(transition module.Transition, err error) {
+	cb <- err
 }
 
 func newBlockConverterTest(t *testing.T) *blockConverterTest {
+	return newBlockConverterTestWithDB(t, db.NewMapDB())
+}
+
+func newBlockConverterTestWithDB(t *testing.T, dbase db.Database) *blockConverterTest {
 	base, err := ioutil.TempDir("", "goloop-blockconverter-test")
-	c, err := newTestChain(db.NewMapDB(), log.New())
+	c, err := newTestChain(dbase, log.New())
 	assert.NoError(t, err)
 	plt := basic.Platform
 	s, err := newTestStore()
 	assert.NoError(t, err)
 	svc := newTestService(c, plt, base)
+
+	itr, err := svc.NewInitTransition(nil, nil, c.Logger())
+	assert.NoError(t, err)
+	tr := svc.NewTransition(
+		itr,
+		transaction.NewTransactionListFromSlice(c.Database(), nil),
+		transaction.NewTransactionListFromSlice(c.Database(), nil),
+		common.NewBlockInfo(0, 0),
+		common.NewConsensusInfo(nil, nil, nil),
+		true,
+	)
+	cb := make(transitionCallback, 1)
+	_, err = tr.Execute(cb)
+	assert.NoError(t, err)
+	err = <-cb
+	assert.Nil(t, err)
+	err = <-cb
+	assert.Nil(t, err)
+	emptyResult := tr.Result()
+
 	bc, err := lcimporter.NewBlockConverterWithService(c, plt, s, base, svc)
 	assert.NoError(t, err)
 	return &blockConverterTest{
-		T: t,
+		T:              t,
 		BlockConverter: bc,
-		chain: c,
-		store: s,
-		svc: svc,
+		chain:          c,
+		store:          s,
+		svc:            svc,
+		emptyResult:    emptyResult,
 	}
 }
 
@@ -278,7 +316,7 @@ func TestBlockConverter_Genesis(t_ *testing.T) {
 	assert.NoError(t, err)
 	for res := range ch {
 		assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
-			assert.Nil(t, r.Result)
+			assert.Equal(t, t.emptyResult, r.Result)
 			assert.Nil(t, r.ValidatorHash)
 		})
 	}
@@ -288,21 +326,50 @@ func TestBlockConverter_Continue(t_ *testing.T) {
 	t := newBlockConverterTest(t_)
 	ch, err := t.Start(0, 1)
 	assert.NoError(t, err)
-	res:= <- ch
+	res := <-ch
 	assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
-		assert.Nil(t, r.Result)
+		assert.Equal(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
 	ch, err = t.Rebase(0, 1, nil)
 	assert.NoError(t, err)
-	res = <- ch
+	res = <-ch
 	assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
-		assert.Nil(t, r.Result)
+		assert.Equal(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
-	res = <- ch
+	res = <-ch
 	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
 		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+	})
+}
+
+func TestBlockConverter_Continue2(t_ *testing.T) {
+	t := newBlockConverterTest(t_)
+	ch, err := t.Start(0, 1)
+	assert.Nil(t, err)
+	res := <-ch
+	res = <-ch
+	var eResult []byte
+	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
+		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+		eResult = r.Result
+	})
+
+	t = newBlockConverterTest(t_)
+	ch, err = t.Start(0, 0)
+	assert.NoError(t, err)
+	res = <-ch
+	t = newBlockConverterTestWithDB(t_, t.chain.Database())
+	ch, err = t.Start(1, 1)
+	assert.NoError(t, err)
+	res = <-ch
+	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
+		assert.Equal(t, eResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
 }
@@ -311,22 +378,23 @@ func TestBlockConverter_Term(t_ *testing.T) {
 	t := newBlockConverterTest(t_)
 	ch, err := t.Start(0, 1)
 	assert.NoError(t, err)
-	res:= <- ch
+	res := <-ch
 	assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
-		assert.Nil(t, r.Result)
+		assert.Equal(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
 	t.Term()
 	ch, err = t.Start(0, 1)
 	assert.NoError(t, err)
-	res = <- ch
+	res = <-ch
 	assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
-		assert.Nil(t, r.Result)
+		assert.Equal(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
-	res = <- ch
+	res = <-ch
 	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
 		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
 }
