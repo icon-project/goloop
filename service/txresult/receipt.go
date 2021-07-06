@@ -402,6 +402,9 @@ func (i *eventLogIteratorV2) Get() (module.EventLog, error) {
 	if err != nil {
 		return nil, err
 	}
+	if obj == nil {
+		return nil, nil
+	}
 	return obj.(module.EventLog), nil
 }
 
