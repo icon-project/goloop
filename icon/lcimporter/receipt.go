@@ -31,6 +31,12 @@ func FeePaymentEqual(p1, p2 module.FeePayment) bool {
 }
 
 func EventLogEqual(e1, e2 module.EventLog) bool {
+	if e1 == e2 {
+		return true
+	}
+	if e1 == nil || e2 == nil {
+		return false
+	}
 	return common.AddressEqual(e1.Address(), e2.Address()) &&
 		reflect.DeepEqual(e1.Indexed(), e2.Indexed()) &&
 		reflect.DeepEqual(e1.Data(), e2.Data())
