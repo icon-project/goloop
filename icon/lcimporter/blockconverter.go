@@ -226,7 +226,7 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 			last.Transition,
 			nil,
 			transaction.NewTransactionListFromSlice(e.database, nil),
-			common.NewBlockInfo(-1, 0),
+			blkv0,
 			csi,
 			true,
 		)
@@ -250,7 +250,7 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 			last.Transition,
 			nil,
 			transaction.NewTransactionListFromSlice(e.database, last.block.NormalTransactions()),
-			common.NewBlockInfo(last.block.Height(), last.block.Timestamp()),
+			blkv0,
 			csi,
 			true,
 		)
@@ -467,7 +467,7 @@ func (e *BlockConverter) doExecute(
 		}
 
 		e.log.Infof("Finalize Block[ %9d ]", height)
-		blk, err := blockv1.NewFromV0(tr.block, e.database, prevTR.blockHash, prevTR)
+		blk, err := blockv1.NewFromV0(tr.block, e.database, prevTR.blockHash, tr)
 		if err != nil {
 			return err
 		}
