@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -64,7 +65,8 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	)
 
 	// Slashing
-	if s.State.CheckConsistentValidationPenalty(ps) {
+	revision := cc.Revision().Value()
+	if revision >= icmodule.RevisionICON2 && s.State.CheckConsistentValidationPenalty(ps) {
 		slashRatio := s.State.GetConsistentValidationPenaltySlashRatio()
 		if err = s.slash(cc, owner, slashRatio); err != nil {
 			return err
