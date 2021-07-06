@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/service/scoredb"
 )
 
@@ -29,6 +30,7 @@ const (
 	VarRRep                                  = "rrep"
 	VarMainPRepCount                         = "main_prep_count"
 	VarSubPRepCount                          = "sub_prep_count"
+	VarExtraMainPRepCount					 = "extra_main_prep_count"
 	VarTotalStake                            = "total_stake"
 	VarIISSVersion                           = "iiss_version"
 	VarTermPeriod                            = "term_period"
@@ -100,27 +102,50 @@ func (s *State) SetRRep(value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
 }
 
-// MainPrepCount
+// GetMainPRepCount returns the number of main preps including extra main preps
+// This value is the number of main preps as configuration
+// If you want to get the number of main preps in this term, use termData.MainPRepCount()
 func (s *State) GetMainPRepCount() int64 {
 	return getValue(s.store, VarMainPRepCount).Int64()
 }
 
 func (s *State) SetMainPRepCount(value int64) error {
+	if value < 0 {
+		return errors.ErrIllegalArgument
+	}
 	return setValue(s.store, VarMainPRepCount, value)
 }
 
-// SubPrepCount
+// GetExtraMainPRepCount returns # of extra main preps
+// Extra MainPRep means the PRep which plays a validator least recently
+func (s *State) GetExtraMainPRepCount() int64 {
+	varDB := containerdb.NewVarDB(
+		s.store,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, VarExtraMainPRepCount),
+	)
+	if varDB.Bytes() == nil {
+		return icmodule.DefaultExtraMainPRepCount
+	}
+	return varDB.Int64()
+}
+
+func (s *State) SetExtraMainPRepCount(value int64) error {
+	if value < 0 {
+		return errors.ErrIllegalArgument
+	}
+	return setValue(s.store, VarExtraMainPRepCount, value)
+}
+
+// GetSubPRepCount returns the number of sub preps excluding extra main preps
 func (s *State) GetSubPRepCount() int64 {
 	return getValue(s.store, VarSubPRepCount).Int64()
 }
 
 func (s *State) SetSubPRepCount(value int64) error {
+	if value < 0 {
+		return errors.ErrIllegalArgument
+	}
 	return setValue(s.store, VarSubPRepCount, value)
-}
-
-// GetPRepCount returns the number of mainPReps and subPReps based on ICON Network Value
-func (s *State) GetPRepCount() int64 {
-	return s.GetMainPRepCount() + s.GetSubPRepCount()
 }
 
 func (s *State) GetTotalStake() *big.Int {

@@ -69,65 +69,29 @@ func NewPRep(owner module.Address, state *State) *PRep {
 	return prep
 }
 
-type PReps struct {
+// ===============================================================
+
+type PRepSet interface {
+	OnTermEnd(mainPRepCount, subPRepCount, limit int) error
+	GetPRepSize(grade Grade) int
+	Size() int
+	TotalBonded() *big.Int
+	TotalDelegated() *big.Int
+	GetTotalBondedDelegation(br int64) *big.Int
+	GetPRepByIndex(i int) *PRep
+	ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots
+}
+
+type prepsBase struct {
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
 	mainPReps      int
 	subPReps       int
 	orderedPReps   []*PRep
-	prepMap        map[string]*PRep
-}
-
-func (p *PReps) appendPRep(owner module.Address, prep *PRep) {
-	p.prepMap[icutils.ToKey(owner)] = prep
-	if prep.PRepStatusState.Status() == Active {
-		p.orderedPReps = append(p.orderedPReps, prep)
-		p.totalBonded.Add(p.totalBonded, prep.Bonded())
-		p.totalDelegated.Add(p.totalDelegated, prep.Delegated())
-		p.adjustPRepSize(prep.Grade(), true)
-	}
-}
-
-func (p *PReps) adjustPRepSize(grade Grade, increment bool) {
-	delta := 1
-	if !increment {
-		delta = -1
-	}
-
-	switch grade {
-	case GradeMain:
-		p.mainPReps += delta
-	case GradeSub:
-		p.subPReps += delta
-	case GradeCandidate:
-		// Nothing to do
-	default:
-		panic(errors.Errorf("Invalid grade: %d", grade))
-	}
-}
-
-func (p *PReps) sort(br int64) {
-	sort.Slice(p.orderedPReps, func(i, j int) bool {
-		ret := p.orderedPReps[i].GetBondedDelegation(br).Cmp(p.orderedPReps[j].GetBondedDelegation(br))
-		if ret > 0 {
-			return true
-		} else if ret < 0 {
-			return false
-		}
-
-		ret = p.orderedPReps[i].Delegated().Cmp(p.orderedPReps[j].Delegated())
-		if ret > 0 {
-			return true
-		} else if ret < 0 {
-			return false
-		}
-
-		return bytes.Compare(p.orderedPReps[i].owner.Bytes(), p.orderedPReps[j].owner.Bytes()) > 0
-	})
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *PReps) OnTermEnd(blockHeight int64, mainPRepCount, subPRepCount, limit int) error {
+func (p *prepsBase) OnTermEnd(mainPRepCount, subPRepCount, limit int) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -155,7 +119,7 @@ func (p *PReps) OnTermEnd(blockHeight int64, mainPRepCount, subPRepCount, limit 
 	return nil
 }
 
-func (p *PReps) GetPRepSize(grade Grade) int {
+func (p *prepsBase) GetPRepSize(grade Grade) int {
 	switch grade {
 	case GradeMain:
 		return p.mainPReps
@@ -168,19 +132,19 @@ func (p *PReps) GetPRepSize(grade Grade) int {
 	}
 }
 
-func (p *PReps) Size() int {
+func (p *prepsBase) Size() int {
 	return len(p.orderedPReps)
 }
 
-func (p *PReps) TotalBonded() *big.Int {
+func (p *prepsBase) TotalBonded() *big.Int {
 	return p.totalBonded
 }
 
-func (p *PReps) TotalDelegated() *big.Int {
+func (p *prepsBase) TotalDelegated() *big.Int {
 	return p.totalDelegated
 }
 
-func (p *PReps) GetTotalBondedDelegation(br int64) *big.Int {
+func (p *prepsBase) GetTotalBondedDelegation(br int64) *big.Int {
 	tbd := new(big.Int)
 	for _, prep := range p.orderedPReps {
 		tbd.Add(tbd, prep.GetBondedDelegation(br))
@@ -188,27 +152,190 @@ func (p *PReps) GetTotalBondedDelegation(br int64) *big.Int {
 	return tbd
 }
 
-func (p *PReps) GetPRepByIndex(i int) *PRep {
+func (p *prepsBase) GetPRepByIndex(i int) *PRep {
 	if i < 0 || i >= len(p.orderedPReps) {
 		return nil
 	}
 	return p.orderedPReps[i]
 }
 
-func newPReps(prepList []*PRep, br int64) *PReps {
-	preps := newEmptyPReps()
+func (p *prepsBase) ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots {
+	size := icutils.Min(len(p.orderedPReps), electedPRepCount)
+	if size == 0 {
+		return nil
+	}
+
+	ret := make(PRepSnapshots, size)
+	for i := 0; i < size; i++ {
+		prep := p.orderedPReps[i]
+		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetBondedDelegation(br))
+	}
+	return ret
+}
+
+func (p *prepsBase) appendPRep(prep *PRep) {
+	if prep.PRepStatusState.Status() == Active {
+		p.orderedPReps = append(p.orderedPReps, prep)
+		p.totalBonded.Add(p.totalBonded, prep.Bonded())
+		p.totalDelegated.Add(p.totalDelegated, prep.Delegated())
+		p.adjustPRepSize(prep.Grade(), true)
+	}
+}
+
+func (p *prepsBase) adjustPRepSize(grade Grade, increment bool) {
+	delta := 1
+	if !increment {
+		delta = -1
+	}
+
+	switch grade {
+	case GradeMain:
+		p.mainPReps += delta
+	case GradeSub:
+		p.subPReps += delta
+	case GradeCandidate:
+		// Nothing to do
+	default:
+		panic(errors.Errorf("Invalid grade: %d", grade))
+	}
+}
+
+func (p *prepsBase) sortByBondedDelegation(br int64) {
+	sort.Slice(p.orderedPReps, func(i, j int) bool {
+		p0, p1 := p.orderedPReps[i], p.orderedPReps[j]
+		return lessByBondedDelegation(p0, p1, br)
+	})
+}
+
+func lessByBondedDelegation(p0, p1 *PRep, br int64) bool {
+	ret := p0.GetBondedDelegation(br).Cmp(p1.GetBondedDelegation(br))
+	if ret > 0 {
+		return true
+	} else if ret < 0 {
+		return false
+	}
+
+	ret = p0.Delegated().Cmp(p1.Delegated())
+	if ret > 0 {
+		return true
+	} else if ret < 0 {
+		return false
+	}
+
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
+}
+
+// ======================================================================
+
+func NewPRepsOrderedByBondedDelegation(prepList []*PRep, br int64) PRepSet {
+	preps := &prepsBase{
+		totalDelegated: new(big.Int),
+		totalBonded:    new(big.Int),
+	}
 
 	for _, prep := range prepList {
-		preps.appendPRep(prep.Owner(), prep)
+		preps.appendPRep(prep)
 	}
-	preps.sort(br)
+	preps.sortByBondedDelegation(br)
 	return preps
 }
 
-func newEmptyPReps() *PReps {
-	return &PReps{
-		totalDelegated: new(big.Int),
-		totalBonded:    new(big.Int),
-		prepMap:        make(map[string]*PRep),
+// ================================================================
+
+type prepsIncludingExtraMainPRep struct {
+	prepsBase
+}
+
+func (p *prepsIncludingExtraMainPRep) sort(
+	mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) {
+	p.sortByBondedDelegation(br)
+	p.sortForExtraMainPRep(mainPRepCount, extraMainPRepCount, electedPRepCount, br)
+}
+
+func (p *prepsIncludingExtraMainPRep) sortForExtraMainPRep(
+	mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) {
+
+	// No need to consider extra main preps
+	pureMainPRepCount := mainPRepCount - extraMainPRepCount
+	size := len(p.orderedPReps)
+	if size <= pureMainPRepCount || extraMainPRepCount == 0 {
+		return
 	}
+
+	// Copy the rest of preps excluding pure main preps to dubRestPReps slice
+	restPReps := p.orderedPReps[pureMainPRepCount:electedPRepCount]
+	dubRestPReps := make([]*PRep, len(restPReps))
+	copy(dubRestPReps, restPReps)
+
+	// Sort restPReps by LRU logic
+	sortByLRU(restPReps, br)
+
+	// Add extra main preps to map
+	extraMainPReps := make(map[string]*PRep)
+	for i := 0; i < extraMainPRepCount; i++ {
+		prep := restPReps[i]
+		extraMainPReps[icutils.ToKey(prep.Owner())] = prep
+	}
+
+	// Append sub preps
+	i := extraMainPRepCount
+	for _, prep := range dubRestPReps {
+		// If prep is not a extra main prep
+		if _, ok := extraMainPReps[icutils.ToKey(prep.Owner())]; !ok {
+			restPReps[i] = prep
+			i++
+		}
+	}
+}
+
+func sortByLRU(preps []*PRep, br int64) {
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByLRU(preps[i], preps[j], br)
+	})
+}
+
+func lessByLRU(p0, p1 *PRep, br int64) bool {
+	// Sort by lastState
+	if p0.LastState() == None {
+		if p1.LastState() != None {
+			return true
+		}
+	} else {
+		if p1.LastState() == None {
+			return false
+		}
+	}
+
+	// p0 and p1 have the same last states at this moment
+	// Sort by lastHeight
+	if p0.LastState() == None && p0.LastHeight() != p1.LastHeight() {
+		return p0.LastHeight() < p1.LastHeight()
+	}
+
+	// Sort by bondedDelegation
+	cmp := p0.GetBondedDelegation(br).Cmp(p1.GetBondedDelegation(br))
+	if cmp > 0 {
+		return true
+	} else if cmp < 0 {
+		return false
+	}
+
+	// Sort by address
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
+}
+
+func NewPRepsIncludingExtraMainPRep(
+	prepList []*PRep, mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) PRepSet {
+	preps := &prepsIncludingExtraMainPRep{
+		prepsBase: prepsBase{
+			totalDelegated: new(big.Int),
+			totalBonded:    new(big.Int),
+		},
+	}
+
+	for _, prep := range prepList {
+		preps.appendPRep(prep)
+	}
+	preps.sort(mainPRepCount, extraMainPRepCount, electedPRepCount, br)
+	return preps
 }

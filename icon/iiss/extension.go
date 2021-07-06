@@ -278,7 +278,7 @@ func (s *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]i
 	}
 
 	pssCount := term.GetPRepSnapshotCount()
-	mainPRepCount := int(s.State.GetMainPRepCount())
+	mainPRepCount := term.MainPRepCount()
 	jso := make(map[string]interface{})
 	preps := make([]interface{}, 0, mainPRepCount)
 	sum := new(big.Int)
@@ -314,8 +314,8 @@ func (s *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]in
 	}
 
 	pssCount := term.GetPRepSnapshotCount()
-	mainPRepCount := int(s.State.GetMainPRepCount())
-	subPRepCount := int(s.State.GetSubPRepCount())
+	mainPRepCount := term.MainPRepCount()
+	subPRepCount := term.GetElectedPRepCount() - mainPRepCount
 
 	jso := make(map[string]interface{})
 	preps := make([]interface{}, 0, subPRepCount)
@@ -748,7 +748,7 @@ func (s *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	var err error
 	var totalSupply *big.Int
-	var preps *icstate.PReps
+	var preps icstate.PRepSet
 
 	revision := wc.Revision().Value()
 	mainPRepCount := int(s.State.GetMainPRepCount())
@@ -763,7 +763,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	isDecentralized := s.IsDecentralized()
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
-		if preps, err = s.State.GetOrderedPReps(); err != nil {
+		if preps, err = s.State.GetPRepsOnTermEnd(revision); err != nil {
 			return err
 		}
 		isDecentralized = s.State.IsDecentralizationConditionMet(revision, totalSupply, preps)
@@ -771,13 +771,13 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 
 	if isDecentralized {
 		if preps == nil {
-			if preps, err = s.State.GetOrderedPReps(); err != nil {
+			if preps, err = s.State.GetPRepsOnTermEnd(revision); err != nil {
 				return err
 			}
 		}
 		// Reset the status of all active preps ordered by bondedDelegation
 		limit := s.State.GetConsistentValidationPenaltyMask()
-		if err = preps.OnTermEnd(wc.BlockHeight(), mainPRepCount, subPRepCount, limit); err != nil {
+		if err = preps.OnTermEnd(mainPRepCount, subPRepCount, limit); err != nil {
 			return err
 		}
 	} else {
@@ -788,7 +788,7 @@ func (s *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 }
 
 func (s *ExtensionStateImpl) moveOnToNextTerm(
-	preps *icstate.PReps, totalSupply *big.Int, revision int, electedPRepCount int) error {
+	preps icstate.PRepSet, totalSupply *big.Int, revision int, electedPRepCount int) error {
 
 	// Create a new term
 	nextTerm := icstate.NewNextTerm(s.State, totalSupply, revision)
@@ -797,7 +797,7 @@ func (s *ExtensionStateImpl) moveOnToNextTerm(
 	if preps != nil {
 		br := s.State.GetBondRequirement()
 		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
-		pss := icstate.NewPRepSnapshots(preps, electedPRepCount, br)
+		pss := preps.ToPRepSnapshots(electedPRepCount, br)
 
 		nextTerm.SetMainPRepCount(mainPRepCount)
 		nextTerm.SetPRepSnapshots(pss)

@@ -263,6 +263,22 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			return err
 		}
 	}
+
+	// Enable ExtraMainPReps
+	if r2 >= icmodule.RevisionExtraMainPReps {
+		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+		mainPRepCount := es.State.GetMainPRepCount()
+		subPRepCount := es.State.GetSubPRepCount()
+		extraMainPRepCount := es.State.GetExtraMainPRepCount()
+		if extraMainPRepCount > 0 {
+			if err := es.State.SetMainPRepCount(mainPRepCount + extraMainPRepCount); err != nil {
+				return err
+			}
+			if err := es.State.SetSubPRepCount(subPRepCount - extraMainPRepCount); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

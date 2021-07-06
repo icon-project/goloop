@@ -17,16 +17,18 @@
 package icstate
 
 import (
+	"math/big"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
-func testFactory(tag icobject.Tag) (icobject.Impl, error) {
+func testFactory(_ icobject.Tag) (icobject.Impl, error) {
 	return nil, errors.New("Unsupported")
 }
 
@@ -79,7 +81,7 @@ func setTermPeriodTest(t *testing.T, s *State) {
 	assert.Equal(t, int64(0), actual)
 
 	tp := int64(10)
-	s.SetTermPeriod(tp)
+	assert.NoError(t, s.SetTermPeriod(tp))
 	actual = s.GetTermPeriod()
 	assert.Equal(t, tp, actual)
 
@@ -90,7 +92,7 @@ func setIRepTest(t *testing.T, s *State) {
 	assert.Nil(t, actual)
 
 	irep := big.NewInt(10)
-	s.SetIRep(irep)
+	assert.NoError(t, s.SetIRep(irep))
 	actual = s.GetIRep()
 	assert.Equal(t, 0, actual.Cmp(irep))
 }
@@ -100,20 +102,19 @@ func setRRepTest(t *testing.T, s *State) {
 	assert.Nil(t, actual)
 
 	rrep := big.NewInt(10)
-	s.SetIRep(rrep)
+	assert.NoError(t, s.SetIRep(rrep))
 	actual = s.GetIRep()
 	assert.Equal(t, 0, actual.Cmp(rrep))
 }
 
 func setMainPRepCountTest(t *testing.T, s *State) {
-	count := int64(0)
 	actual := s.GetMainPRepCount()
 	sCount := s.GetMainPRepCount()
-	assert.Equal(t, count, actual)
-	assert.Equal(t, count, sCount)
+	assert.Zero(t, actual)
+	assert.Zero(t, sCount)
 
-	count = int64(10)
-	s.SetMainPRepCount(count)
+	count := int64(10)
+	assert.NoError(t, s.SetMainPRepCount(count))
 	actual = s.GetMainPRepCount()
 	sCount = s.GetMainPRepCount()
 	assert.Equal(t, count, actual)
@@ -121,18 +122,17 @@ func setMainPRepCountTest(t *testing.T, s *State) {
 }
 
 func setSubPRepCountTest(t *testing.T, s *State) {
-	count := int64(0)
-	actual := s.GetSubPRepCount()
-	sCount := s.GetSubPRepCount()
-	assert.Equal(t, count, actual)
-	assert.Equal(t, count, sCount)
+	for i := 0; i < 2; i++ {
+		actual := s.GetSubPRepCount()
+		assert.Zero(t, actual)
+	}
 
-	count = int64(20)
-	s.SetSubPRepCount(count)
-	actual = s.GetSubPRepCount()
-	sCount = s.GetSubPRepCount()
-	assert.Equal(t, count, actual)
-	assert.Equal(t, count, sCount)
+	count := int64(20)
+	assert.NoError(t, s.SetSubPRepCount(count))
+	for i := 0; i < 2; i++ {
+		actual := s.GetSubPRepCount()
+		assert.Equal(t, count, actual)
+	}
 }
 
 func setTotalStakeTest(t *testing.T, s *State) {
@@ -141,7 +141,7 @@ func setTotalStakeTest(t *testing.T, s *State) {
 	assert.Equal(t, 0, actual.Cmp(ts))
 
 	ts = big.NewInt(20)
-	s.SetTotalStake(ts)
+	assert.NoError(t, s.SetTotalStake(ts))
 	actual = s.GetTotalStake()
 	assert.Equal(t, 0, actual.Cmp(ts))
 }
@@ -152,7 +152,7 @@ func setBondRequirementTest(t *testing.T, s *State) {
 	assert.Equal(t, br, actual)
 
 	br = 5
-	s.SetBondRequirement(br)
+	assert.NoError(t, s.SetBondRequirement(br))
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 

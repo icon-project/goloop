@@ -58,12 +58,20 @@ func newDummyPRep(i int) *PRep {
 	}
 }
 
-func newDummyPReps(size int, br int64) *PReps {
+func newDummyPRepSlice(size int) []*PRep {
 	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
 		preps[i] = newDummyPRep(i)
 	}
-	return newPReps(preps, br)
+	return preps
+}
+
+func newDummyPReps(size int, br int64) PRepSet {
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		preps[i] = newDummyPRep(i)
+	}
+	return NewPRepsOrderedByBondedDelegation(preps, br)
 }
 
 func newDummyPRepSnapshots(size int) PRepSnapshots {
@@ -136,7 +144,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 	electedPRepCount := 100
 	br := int64(5)
 	preps := newDummyPReps(size, br)
-	snapshots := NewPRepSnapshots(preps, electedPRepCount, br)
+	snapshots := preps.ToPRepSnapshots(electedPRepCount, br)
 
 	cases := []struct {
 		p0, p1 PRepSnapshots
@@ -185,7 +193,7 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 			in := tt.in
 
 			preps := newDummyPReps(in.size, br)
-			snapshots := NewPRepSnapshots(preps, in.electedPRepCount, br)
+			snapshots := preps.ToPRepSnapshots(in.electedPRepCount, br)
 			count := icutils.Min(in.size, in.electedPRepCount)
 			assert.Equal(t, count, len(snapshots))
 		})
@@ -199,7 +207,7 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 	var pss0, pss1 PRepSnapshots
 
 	preps := newDummyPReps(size, br)
-	pss0 = NewPRepSnapshots(preps, electedPRepCount, br)
+	pss0 = preps.ToPRepSnapshots(electedPRepCount, br)
 
 	bs, err := codec.BC.MarshalToBytes(pss0)
 	assert.NoError(t, err)

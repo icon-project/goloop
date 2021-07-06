@@ -33,6 +33,7 @@ const (
 	Revision12
 	Revision13
 	Revision14
+	Revision15
 	RevisionReserved
 )
 
@@ -62,6 +63,8 @@ const (
 
 	RevisionICON2     = Revision13
 	RevisionICON1Last = RevisionICON2 - 1
+
+	RevisionExtraMainPReps = Revision14
 )
 
 var revisionFlags = []module.Revision{

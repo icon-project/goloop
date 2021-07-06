@@ -21,6 +21,7 @@ import "math/big"
 const (
 	IScoreICXRatio = 1_000
 	VotedRewardMultiplier = 100
+	DefaultExtraMainPRepCount = 3
 )
 
 var BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))

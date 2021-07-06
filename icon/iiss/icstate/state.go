@@ -544,7 +544,7 @@ func (s *State) SetLastBlockVotersSnapshot(value *BlockVotersSnapshot) error {
 	return s.lastBlockVotersVarDB.Set(o)
 }
 
-func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.Int, preps *PReps) bool {
+func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.Int, preps PRepSet) bool {
 	predefinedMainPRepCount := int(s.GetMainPRepCount())
 	br := s.GetBondRequirement()
 
@@ -558,19 +558,41 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetOrderedPReps() (*PReps, error) {
+func (s *State) GetPRepsOrderedByDelegation() (PRepSet, error) {
+	preps := s.getActivePReps()
+	return NewPRepsOrderedByBondedDelegation(preps, s.GetBondRequirement()), nil
+}
+
+func (s *State) GetPRepsOnTermEnd(rev int) (PRepSet, error) {
+	if rev < icmodule.RevisionExtraMainPReps {
+		return s.GetPRepsOrderedByDelegation()
+	}
+	return s.getPRepsIncludingExtraMainPReps()
+}
+
+func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
+	preps := s.getActivePReps()
+	mainPRepCount := int(s.GetMainPRepCount())
+	extraMainPRepCount := int(s.GetExtraMainPRepCount())
+	subPRepCount := int(s.GetSubPRepCount())
+	br := s.GetBondRequirement()
+	return NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, extraMainPRepCount, mainPRepCount + subPRepCount, br,
+	), nil
+}
+
+func (s *State) getActivePReps() []*PRep {
 	size := s.allPRepCache.Size()
-	prepList := make([]*PRep, size)
+	preps := make([]*PRep, size)
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
 		prep := s.GetPRepByOwner(owner)
 		if prep != nil {
-			prepList[i] = prep
+			preps[i] = prep
 		}
 	}
-
-	return newPReps(prepList, s.GetBondRequirement()), nil
+	return preps
 }
 
 func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -594,7 +616,7 @@ func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, e
 }
 
 func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	preps, err := s.GetOrderedPReps()
+	preps, err := s.GetPRepsOrderedByDelegation()
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +661,7 @@ func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]in
 
 func (s *State) GetPRepManagerInJSON() map[string]interface{} {
 	br := s.GetBondRequirement()
-	preps, _ := s.GetOrderedPReps()
+	preps, _ := s.GetPRepsOrderedByDelegation()
 	if preps == nil {
 		return nil
 	}

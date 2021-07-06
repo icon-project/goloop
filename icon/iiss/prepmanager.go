@@ -115,7 +115,7 @@ func (pm *PRepManager) ChangeBond(oBonds, nBonds icstate.Bonds) (map[string]*big
 	return delta, nil
 }
 
-func CalculateIRep(preps *icstate.PReps, revision int) *big.Int {
+func CalculateIRep(preps icstate.PRepSet, revision int) *big.Int {
 	irep := new(big.Int)
 	if revision < icmodule.RevisionDecentralize ||
 		revision >= icmodule.RevisionICON2 {

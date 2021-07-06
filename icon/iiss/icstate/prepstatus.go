@@ -303,7 +303,7 @@ func (ps *prepStatusData) IsEmpty() bool {
 
 func (ps *prepStatusData) String() string {
 	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d",
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -312,6 +312,9 @@ func (ps *prepStatusData) String() string {
 		ps.vTotal,
 		ps.GetVPenaltyCount(),
 		ps.vFailCont,
+		ps.delegated,
+		ps.bonded,
+		ps.GetVoted(),
 	)
 }
 

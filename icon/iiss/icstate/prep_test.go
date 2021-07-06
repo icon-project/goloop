@@ -18,12 +18,18 @@ package icstate
 
 import (
 	"math/big"
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPReps_GetPRepByIndex(t *testing.T) {
+func getRandomVoteState() VoteState {
+	return []VoteState{None, Success, Failure}[rand.Intn(3)]
+}
+
+func TestPRepSet_GetPRepByIndex(t *testing.T) {
 	br := int64(5)
 	preps := newDummyPReps(10, br)
 
@@ -38,24 +44,23 @@ func TestPReps_GetPRepByIndex(t *testing.T) {
 	}
 }
 
-func TestPReps_ResetAllStatus(t *testing.T) {
+func TestPRepSet_OnTermEnd(t *testing.T) {
 	var err error
 	size := 150
 	br := int64(5)
 	mainPRepCount := 22
 	subPRepCount := 78
 	electedPRepCount := mainPRepCount + subPRepCount
-	bh := int64(100)
-	penaltyMask := 0x3FFFFFFF
+	limit := 30
 
 	preps := newDummyPReps(size, br)
 	assert.Equal(t, size, preps.Size())
 
-	err = preps.OnTermEnd(bh, mainPRepCount, subPRepCount, penaltyMask)
+	err = preps.OnTermEnd(mainPRepCount, subPRepCount, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, mainPRepCount, preps.GetPRepSize(GradeMain))
 	assert.Equal(t, subPRepCount, preps.GetPRepSize(GradeSub))
-	assert.Equal(t, size - mainPRepCount - subPRepCount, preps.GetPRepSize(GradeCandidate))
+	assert.Equal(t, size-mainPRepCount-subPRepCount, preps.GetPRepSize(GradeCandidate))
 
 	for i := 0; i < size; i++ {
 		prep := preps.GetPRepByIndex(i)
@@ -66,5 +71,90 @@ func TestPReps_ResetAllStatus(t *testing.T) {
 		} else {
 			assert.Equal(t, GradeCandidate, prep.Grade())
 		}
+	}
+}
+
+func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
+	size := 200
+	br := int64(5)
+	mainPRepCount := 25
+	extraMainPRepCount := 3
+	pureMainPRepCount := mainPRepCount - extraMainPRepCount
+	subPRepCount := 75
+
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		prep := newDummyPRep(i)
+		prep.lastHeight = rand.Int63n(10000)
+		prep.lastState = getRandomVoteState()
+		preps[i] = prep
+	}
+
+	prepSet := NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
+	)
+	assert.Equal(t, size, prepSet.Size())
+
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByBondedDelegation(preps[i], preps[j], br)
+	})
+
+	extraMainPRepIdxRange := []int{mainPRepCount - extraMainPRepCount, mainPRepCount}
+	prevPRep := prepSet.GetPRepByIndex(0)
+	for i := 1; i < size; i++ {
+		if i >= extraMainPRepIdxRange[0] && i < extraMainPRepIdxRange[1] {
+			// Skip extra main preps
+			continue
+		}
+		prep := prepSet.GetPRepByIndex(i)
+		assert.True(t, lessByBondedDelegation(prevPRep, prep, br))
+		prevPRep = prep
+	}
+
+	restPReps := make([]*PRep, extraMainPRepCount+subPRepCount)
+	for i := 0; i < len(restPReps); i++ {
+		restPReps[i] = prepSet.GetPRepByIndex(pureMainPRepCount + i)
+	}
+	sort.Slice(restPReps, func(i, j int) bool {
+		return lessByLRU(restPReps[i], restPReps[j], br)
+	})
+
+	for i := 0; i < extraMainPRepCount; i++ {
+		assert.True(t, restPReps[i] == prepSet.GetPRepByIndex(i+pureMainPRepCount))
+	}
+}
+
+// In the case when the number of extra main preps is 0,
+// Check if both of two NewPReps functions return the same results
+func TestPRepSet_NewPReps(t *testing.T) {
+	size := 200
+	br := int64(5)
+	mainPRepCount := 25
+	extraMainPRepCount := 0
+	subPRepCount := 75
+
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		prep := newDummyPRep(i)
+		prep.lastHeight = rand.Int63n(10000)
+		prep.lastState = getRandomVoteState()
+		preps[i] = prep
+	}
+
+	prepSet0 := NewPRepsOrderedByBondedDelegation(preps, br)
+	prepSet1 := NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
+	)
+
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByBondedDelegation(preps[i], preps[j], br)
+	})
+
+	assert.Equal(t, len(preps), prepSet0.Size())
+	assert.Equal(t, len(preps), prepSet1.Size())
+
+	for i, prep := range preps {
+		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
+		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
 	}
 }

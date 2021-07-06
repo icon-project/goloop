@@ -8,7 +8,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -104,19 +103,6 @@ func (p PRepSnapshots) toJSON() []interface{} {
 		jso[i] = pss.ToJSON()
 	}
 	return jso
-}
-
-func NewPRepSnapshots(preps *PReps, electedPRepCount int, br int64) PRepSnapshots {
-	size := icutils.Min(preps.Size(), electedPRepCount)
-	if size == 0 {
-		return nil
-	}
-	ret := make(PRepSnapshots, size)
-	for i := 0; i < size; i++ {
-		prep := preps.GetPRepByIndex(i)
-		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetBondedDelegation(br))
-	}
-	return ret
 }
 
 // =============================================================================
