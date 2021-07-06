@@ -169,6 +169,12 @@ func TestNewDelegations(t *testing.T) {
 			true,
 			0,
 		},
+		{
+			"empty delegation",
+			nil,
+			false,
+			0,
+		},
 	}
 
 	for _, tt := range tests {

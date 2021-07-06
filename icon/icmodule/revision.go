@@ -60,7 +60,8 @@ const (
 
 	RevisionBurnV2 = Revision12
 
-	RevisionICON2 = Revision13
+	RevisionICON2     = Revision13
+	RevisionICON1Last = RevisionICON2 - 1
 )
 
 var revisionFlags = []module.Revision{

@@ -292,6 +292,19 @@ var chainMethods = []*chainMethod{
 	}, icmodule.Revision4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setDelegation",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"address", scoreapi.Address, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.Revision4, icmodule.RevisionICON1Last},
+	{scoreapi.Method{
+		scoreapi.Function, "setDelegation",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"delegations", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
@@ -302,7 +315,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getDelegation",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
