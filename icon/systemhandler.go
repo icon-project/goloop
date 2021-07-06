@@ -51,7 +51,7 @@ var methodsNotChargingContractCallStep = map[string]bool{
 }
 
 func doNotChargeContractCallStep(method string, revision int) bool {
-	if revision >= icmodule.RevisionICON2 {
+	if revision >= icmodule.RevisionICON2 || revision < icmodule.RevisionIISS {
 		return false
 	}
 	yn, _ := methodsNotChargingContractCallStep[method]

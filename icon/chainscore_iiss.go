@@ -35,18 +35,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (s *chainScore) iissHandleRevision() error {
-	revision := s.cc.Revision().Value()
-	if revision < icmodule.RevisionIISS {
-		// chain SCORE was added on RevisionIISS
-		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.OutOfStepError.New("ChargeCallFailureOnContractNotFound")
-		}
-		return scoreresult.ErrContractNotFound
-	}
-	return nil
-}
-
 func (s *chainScore) getExtensionState() (*iiss.ExtensionStateImpl, error) {
 	es := s.cc.GetExtensionState()
 	if es == nil {
@@ -110,9 +98,6 @@ func (s *chainScore) Ex_getRRep() (int64, error) {
 
 func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	if err = s.tryChargeCall(true); err != nil {
-		return
-	}
-	if err = s.iissHandleRevision(); err != nil {
 		return
 	}
 	es, err := s.getExtensionState()
@@ -249,9 +234,6 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -266,9 +248,6 @@ func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}
 
 func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err := s.tryChargeCall(true); err != nil {
-		return err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
 	es, err := s.getExtensionState()
@@ -301,9 +280,6 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -321,9 +297,6 @@ var regPRepFee = icutils.ToLoop(2000)
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
 	if err := s.tryChargeCall(true); err != nil {
-		return err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return err
 	}
 	if name == "" || email == "" || website == "" || country == "" || city == "" || details == "" ||
@@ -425,9 +398,6 @@ func (s *chainScore) Ex_unregisterPRep() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
@@ -453,9 +423,6 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -470,9 +437,6 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 
 func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
-		return nil, err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
 	var start, end = 0, 0
@@ -503,9 +467,6 @@ func (s *chainScore) Ex_getMainPReps() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -517,9 +478,6 @@ func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -529,9 +487,6 @@ func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
-		return nil, err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -548,9 +503,6 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 	var es *iiss.ExtensionStateImpl
 
 	if err = s.tryChargeCall(true); err != nil {
-		return err
-	}
-	if err = s.iissHandleRevision(); err != nil {
 		return err
 	}
 
@@ -696,9 +648,6 @@ func (s *chainScore) Ex_claimIScore() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return err
-	}
 	if bytes.Compare(s.cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
 		s.claimEventLog(s.from, new(big.Int), new(big.Int))
@@ -824,9 +773,6 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	if err = s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err = s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -851,9 +797,6 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	if err := s.iissHandleRevision(); err != nil {
-		return nil, err
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -867,9 +810,6 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 
 func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
-		return nil, err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()
@@ -901,9 +841,6 @@ func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
 
 func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
-		return nil, err
-	}
-	if err := s.iissHandleRevision(); err != nil {
 		return nil, err
 	}
 	es, err := s.getExtensionState()

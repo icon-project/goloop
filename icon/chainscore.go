@@ -279,7 +279,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getStake",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -289,7 +289,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setDelegation",
 		scoreapi.FlagExternal, 0,
@@ -302,7 +302,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.Revision4, icmodule.RevisionICON1Last},
+	}, icmodule.RevisionIISS, icmodule.RevisionICON1Last},
 	{scoreapi.Method{
 		scoreapi.Function, "setDelegation",
 		scoreapi.FlagExternal, 1,
@@ -325,13 +325,13 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "claimIScore",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "queryIScore",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -341,7 +341,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "registerPRep",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 7,
@@ -356,7 +356,7 @@ var chainMethods = []*chainMethod{
 			{"nodeAddress", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -366,13 +366,13 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "unregisterPRep",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setPRep",
 		scoreapi.FlagExternal, 0,
@@ -387,7 +387,7 @@ var chainMethods = []*chainMethod{
 			{"nodeAddress", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setGovernanceVariables",
 		scoreapi.FlagExternal, 1,
@@ -414,7 +414,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getMainPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -422,7 +422,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getSubPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -430,7 +430,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setBond",
 		scoreapi.FlagExternal, 1,
@@ -479,7 +479,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepTerm",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -487,7 +487,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.Revision4, 0},
+	}, icmodule.RevisionIISS, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepStats",
 		scoreapi.FlagReadOnly, 0,
