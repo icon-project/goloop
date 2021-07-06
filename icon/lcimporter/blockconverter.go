@@ -365,7 +365,7 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 	e.stopCh = stopCh
 	go func() {
 		defer close(resCh)
-		Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
+		e.log.Infof("Executing Blocks from=%d, to=%d", from, to)
 		last := e.GetLastHeight()
 		if from < 0 {
 			from = last + 1
@@ -434,8 +434,7 @@ func (e *BlockConverter) doExecute(
 		if prevTR.block != nil {
 			ts = prevTR.block.Timestamp()
 		}
-		Statusf(
-			e.log,
+		e.log.Infof(
 			"[%s] Executing Block[ %10s ] %s RPS[ %6.2f ] TPS[ %6.2f ]",
 			spinner(height, height),
 			D(height),

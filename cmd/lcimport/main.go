@@ -46,6 +46,10 @@ const (
 
 const (
 	vcKeyExecutor = "internal.executor"
+	vcLoopchainDB = "internal.loopchain"
+	vcNoLoopchainDB = "internal.nostore"
+	vcLogger = "internal.logger"
+	vcImporter = "internal.importer"
 )
 
 var lcDB *lcstore.Store
@@ -303,13 +307,15 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		if err := parent.PersistentPreRunE(cmd, args); err != nil {
 			return err
 		}
+
+		lcdb := vc.Get(vcLoopchainDB).(*lcstore.Store)
+		logger := vc.Get(vcLogger).(log.Logger)
 		cc := &lcstore.CacheConfig{
 			MaxBlocks:  vc.GetInt("max_blocks"),
 			MaxWorkers: vc.GetInt("max_workers"),
 			MaxRPS:     vc.GetInt("max_rps"),
 		}
-		logger := log.GlobalLogger()
-		fc := lcstore.NewForwardCache(lcDB, logger, cc)
+		fc := lcstore.NewForwardCache(lcdb, logger, cc)
 		if executor, err := NewExecutor(logger, fc, vc.GetString("data"), vc.GetString("db_type")); err != nil {
 			return err
 		} else {
@@ -317,18 +323,61 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		}
 		return nil
 	}
-	flags := cmd.PersistentFlags()
-	flags.Int("max_blocks", 32, "Max number of blocks to cache")
-	flags.Int("max_workers", 8, "Max number of workers for cache")
-	flags.Int("max_rps", 0, "Max RPS for the server(0:unlimited)")
-	flags.String("db_type", "goleveldb", "Database type for storage")
-	vc.BindPFlags(flags)
+	pflags := cmd.PersistentFlags()
+	pflags.StringP("data", "d",
+		".chain/import", "Data path to store node data")
+	vc.BindPFlags(pflags)
+
 
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
 	cmd.AddCommand(newCmdLastHeight(cmd, "last", vc))
 	cmd.AddCommand(newCmdState(cmd, "state", vc))
 	cmd.AddCommand(newCmdStoredHeight(cmd, "stored", vc))
 	cmd.AddCommand(newCmdDownloadBlocks(cmd, "load", vc))
+	return cmd
+}
+
+func newCmdImporter(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: name,
+	}
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		vc.Set(vcNoLoopchainDB, true)
+		if err := parent.PersistentPreRunE(cmd, args); err != nil {
+			return err
+		}
+
+		im, err := NewImporter(
+			vc.GetString("bc_data"),
+			vc.GetString("db_type"),
+			vc.GetString("store_uri"),
+			&lcstore.CacheConfig{
+				MaxBlocks:  vc.GetInt("max_blocks"),
+				MaxWorkers: vc.GetInt("max_workers"),
+				MaxRPS:     vc.GetInt("max_rps"),
+			},
+			vc.Get(vcLogger).(log.Logger),
+		)
+		if err != nil {
+			return err
+		}
+		vc.Set(vcImporter, im)
+		return nil
+	}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return nil
+	}
+	pflags := cmd.PersistentFlags()
+	pflags.String("bc_data", ".chain/bc_data", "Data path to store converted blocks")
+	vc.BindPFlags(pflags)
+
+	cmd.AddCommand(&cobra.Command{
+		Use: "run",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			im := vc.Get(vcImporter).(*Importer)
+			return im.Run()
+		},
+	})
 	return cmd
 }
 
@@ -513,13 +562,15 @@ func main() {
 	pflags := root.PersistentFlags()
 	pflags.StringP("store_uri", "b",
 		"", "LoopChain Storage URI (leveldb or node endpoint)")
-	pflags.StringP("data", "d",
-		".chain/import", "Data path to store node data")
 	pflags.String("log_level", "debug", "Default log level")
 	pflags.String("console_level", "info", "Console log level")
 	pflags.String("log_file", "", "Output logfile")
 	pflags.String("cpuprofile", "", "CPU Profile")
 	pflags.String("memprofile", "", "Memory Profile")
+	pflags.Int("max_blocks", 32, "Max number of blocks to cache")
+	pflags.Int("max_workers", 8, "Max number of workers for cache")
+	pflags.Int("max_rps", 0, "Max RPS for the server(0:unlimited)")
+	pflags.String("db_type", "goleveldb", "Database type for storage")
 	if err := vc.BindPFlags(pflags); err != nil {
 		log.Errorf("Fail to bind flags err=%+v", err)
 		os.Exit(1)
@@ -532,6 +583,7 @@ func main() {
 	root.AddCommand(newCmdVerifyBlock("verify"))
 	root.AddCommand(newCmdGetReps("reps"))
 	root.AddCommand(newCmdExecutor(root, "executor", vc))
+	root.AddCommand(newCmdImporter(root, "importer", vc))
 
 	root.SilenceUsage = true
 	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -564,11 +616,16 @@ func main() {
 				logger.SetFileWriter(fw)
 			}
 		}
-		uri := vc.GetString("store_uri")
-		if db, err := lcstore.OpenStore(uri); err != nil {
-			return errors.Wrapf(err, "OpenFailure(uri=%s)", uri)
-		} else {
-			lcDB = db
+		vc.Set(vcLogger, logger)
+
+		if !vc.GetBool(vcNoLoopchainDB) {
+			uri := vc.GetString("store_uri")
+			if db, err := lcstore.OpenStore(uri); err != nil {
+				return errors.Wrapf(err, "OpenFailure(uri=%s)", uri)
+			} else {
+				lcDB = db
+				vc.Set(vcLoopchainDB, db)
+			}
 		}
 		return nil
 	}

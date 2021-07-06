@@ -26,6 +26,12 @@ import (
 )
 
 func FeePaymentEqual(p1, p2 module.FeePayment) bool {
+	if p1 == p2 {
+		return true
+	}
+	if p1 == nil || p2 == nil {
+		return false
+	}
 	return common.AddressEqual(p1.Payer(), p2.Payer()) &&
 		p1.Amount().Cmp(p2.Amount()) == 0
 }

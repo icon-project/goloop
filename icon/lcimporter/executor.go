@@ -100,6 +100,7 @@ func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
 			return nil, err
 		}
 		e.cancelWaiterInLock()
+		return []*BlockTransaction{}, nil
 	} else {
 		if len(txs) > 0 {
 			return txs, nil

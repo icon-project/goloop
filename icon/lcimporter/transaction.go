@@ -18,6 +18,7 @@ package lcimporter
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -184,6 +185,11 @@ func (tx *BlockTransaction) ToJSON(version module.JSONVersion) (interface{}, err
 
 func (tx *BlockTransaction) ValidateNetwork(nid int) bool {
 	return true
+}
+
+func (tx *BlockTransaction) String() string {
+	return fmt.Sprintf("BlockTransaction{height=%d,id=%#x,result=%#x,vh=%#x}",
+		tx.Height, tx.BlockID, tx.Result, tx.ValidatorHash)
 }
 
 type txHeader struct {

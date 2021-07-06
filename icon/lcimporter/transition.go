@@ -181,17 +181,19 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 	if err != nil {
 		return err
 	}
-	if len(txs) < 1 {
-		return errors.UnknownError.New("EmptyTransactions")
-	}
 
-	if check {
-		if err := t.checkTransactions(txs); err != nil {
-			return err
+	if len(txs)>0 {
+		if check {
+			if err := t.checkTransactions(txs); err != nil {
+				return err
+			}
 		}
+		t.setResult(txs[len(txs)-1].Height+1, len(txs), vls)
+	} else {
+		ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
+		height := scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Int64()
+		t.setResult(height, 0, vls)
 	}
-
-	t.setResult(txs[len(txs)-1].Height+1, len(txs), vls)
 	return nil
 }
 
