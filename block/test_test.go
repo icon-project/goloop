@@ -536,7 +536,7 @@ func (tr *testTransition) Equal(t2 module.Transition) bool {
 }
 
 type testServiceManager struct {
-	test.ServiceManagerBase
+	module.ServiceManager
 	transactions [][]*testTransaction
 	bucket       *db.CodedBucket
 	exeChan      chan struct{}

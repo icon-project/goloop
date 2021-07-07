@@ -577,6 +577,20 @@ func (m *manager) GetMinimizeBlockGen(result []byte) bool {
 	return scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Bool()
 }
 
+func (m *manager) GetNextBlockVersion(result []byte) int {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return -1
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	v := int(scoredb.NewVarDB(as, state.VarNextBlockVersion).Int64())
+	if v == 0 {
+		return m.plt.DefaultBlockVersion()
+	}
+	return v
+}
+
 func (m *manager) HasTransaction(id []byte) bool {
 	return m.tm.HasTx(id)
 }

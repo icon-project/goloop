@@ -37,6 +37,7 @@ type Platform interface {
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
 	Term()
+	DefaultBlockVersion() int
 }
 
 type ExecutionResult interface {

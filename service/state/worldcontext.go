@@ -36,6 +36,7 @@ const (
 	VarTxHashToAddress    = "tx_to_address"
 	VarDepositTerm        = "deposit_term"
 	VarDepositIssueRate   = "deposit_issue_rate"
+	VarNextBlockVersion   = "next_block_version"
 )
 
 const (
