@@ -348,6 +348,9 @@ type ServiceManager interface {
 	// GetMinimizeEmptyBlock returns minimize empty block generation flag
 	GetMinimizeBlockGen(result []byte) bool
 
+	// GetNextBlockVersion returns version of next block
+	GetNextBlockVersion(result []byte) int
+
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
 

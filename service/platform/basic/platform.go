@@ -82,3 +82,7 @@ func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 func (t *platform) Term() {
 	// do nothing
 }
+
+func (t *platform) DefaultBlockVersion() int {
+	return module.BlockVersion2
+}
