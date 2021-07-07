@@ -204,6 +204,10 @@ func (sm *ServiceManager) GetMinimizeBlockGen(result []byte) bool {
 	return false
 }
 
+func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
+	return 0
+}
+
 func (sm *ServiceManager) HasTransaction(id []byte) bool {
 	return false
 }
