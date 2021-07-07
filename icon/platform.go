@@ -138,6 +138,10 @@ func (p *platform) Term() {
 	// Terminate
 }
 
+func (p *platform) DefaultBlockVersion() int {
+	return module.BlockVersion1
+}
+
 func NewPlatform(base string, cid int) (service.Platform, error) {
 	return &platform{
 		calculator: iiss.NewCalculator(),
