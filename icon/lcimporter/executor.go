@@ -19,6 +19,7 @@ package lcimporter
 import (
 	"container/list"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -68,16 +69,32 @@ type Executor struct {
 }
 
 func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
-	if e.start > from || e.end <= from {
-		return nil, errors.InvalidStateError.New("NoTransactionReady")
+	if e.start > from {
+		return nil, errors.InvalidStateError.New("NeedToRebase")
 	}
+	if e.end <= from {
+		return []*BlockTransaction{}, nil
+	}
+
 	txe := e.txs.Front()
-	for txe.Value.(*BlockTransaction).Height < from {
+	for txe != nil {
+		if txe.Value == io.EOF {
+			return nil, errors.InvalidStateError.New("AlreadyEnded")
+		}
+		if txe.Value.(*BlockTransaction).Height == from {
+			break
+		}
 		txe = txe.Next()
 	}
 
 	var txs []*BlockTransaction
 	for cnt := 0 ; txe != nil && cnt < TransactionsPerBlock ; txe = txe.Next() {
+		if txe.Value == io.EOF {
+			if len(txs) == 0 {
+				return nil, errors.InvalidStateError.New("AlreadyEnded")
+			}
+			break
+		}
 		tx := txe.Value.(*BlockTransaction)
 		txs = append(txs, tx)
 		cnt += int(tx.TXCount)
@@ -102,11 +119,8 @@ func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
 		e.cancelWaiterInLock()
 		return []*BlockTransaction{}, nil
 	} else {
-		if len(txs) > 0 {
-			return txs, nil
-		}
+		return txs, nil
 	}
-	return nil, errors.InvalidStateError.New("NoTransactionReady")
 }
 
 type txWaiter struct {
@@ -170,6 +184,9 @@ func (e *Executor) GetTransactions(from, to int64, callback OnBlockTransactions)
 	} else {
 		if from < e.end {
 			for itr := e.txs.Front() ; itr != nil ; itr = itr.Next() {
+				if itr.Value == io.EOF {
+					return nil,  errors.InvalidStateError.New("AlreadyEnded")
+				}
 				if r := w.addAndCheck(itr.Value.(*BlockTransaction)); r {
 					return e.dummyCanceler, nil
 				}
@@ -308,6 +325,26 @@ func (e *Executor) addTransaction(id consumeID, tx *BlockTransaction) bool {
 	return false
 }
 
+func (e *Executor) notifyEnd(id consumeID) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if e.consumer == id {
+		txe := e.txs.Back()
+		if txe != nil && txe.Value == io.EOF {
+			e.log.Tracef("notifyEnd already notified")
+			return
+		}
+		e.log.Tracef("notifyEnd height=%d", e.end)
+		e.txs.PushBack(io.EOF)
+		e.end += 1
+		if w := e.waiter; w != nil {
+			w.notifyCanceled(errors.InterruptedError.New("EndedTransaction"))
+			e.waiter = nil
+		}
+	}
+}
+
 // consumeBlocks consume all data from the channel
 // until it's closed. So, if it will not send anything
 // through the channel, it should be closed.
@@ -318,6 +355,9 @@ func (e *Executor) consumeBlocks(id consumeID, chn <-chan interface{}) {
 	for true {
 		tx, ok := <-chn
 		if !ok {
+			if err == nil {
+				e.notifyEnd(id)
+			}
 			return
 		}
 		if err != nil {
