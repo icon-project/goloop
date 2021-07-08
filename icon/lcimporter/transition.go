@@ -147,9 +147,13 @@ func (t *transition) setResult(next int64, txs int, vl module.ValidatorList) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
-	scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Set(next)
-	t.worldSnapshot = ws.GetSnapshot()
+	if next >= 0 {
+		ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
+		scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Set(next)
+		t.worldSnapshot = ws.GetSnapshot()
+	} else {
+		t.worldSnapshot = t.parent.worldSnapshot
+	}
 	t.receipts = makeReceiptList(t.sm.db, txs, t.sm.defaultReceipt)
 	if vl != nil {
 		t.nextValidators = vl
@@ -190,9 +194,7 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 		}
 		t.setResult(txs[len(txs)-1].Height+1, len(txs), vls)
 	} else {
-		ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
-		height := scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Int64()
-		t.setResult(height, 0, vls)
+		t.setResult(-1, 0, vls)
 	}
 	return nil
 }
