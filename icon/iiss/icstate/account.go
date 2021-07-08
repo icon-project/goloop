@@ -92,6 +92,10 @@ func (a accountData) Stake() *big.Int {
 	return a.stake
 }
 
+func (a accountData) UnStakes() Unstakes {
+	return a.unstakes
+}
+
 func (a accountData) GetUnstakeAmount() *big.Int {
 	return a.unstakes.GetUnstakeAmount()
 }
@@ -423,8 +427,8 @@ func (a *AccountState) RemoveUnstake(height int64) (ra *big.Int, err error) {
 	var tmp Unstakes
 	ra = new(big.Int)
 	for _, u := range a.unstakes {
-		if u.Expire() == height {
-			ra.Set(u.Value())
+		if u.GetExpire() == height {
+			ra.Set(u.GetValue())
 		} else {
 			tmp = append(tmp, u)
 		}

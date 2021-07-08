@@ -45,19 +45,18 @@ const (
 )
 
 const (
-	vcKeyExecutor = "internal.executor"
-	vcLoopchainDB = "internal.loopchain"
+	vcKeyExecutor   = "internal.executor"
+	vcLoopchainDB   = "internal.loopchain"
 	vcNoLoopchainDB = "internal.nostore"
-	vcLogger = "internal.logger"
-	vcImporter = "internal.importer"
+	vcLogger        = "internal.logger"
+	vcImporter      = "internal.importer"
 )
 
 var lcDB *lcstore.Store
 
-
 func newCmdVersion(name string) *cobra.Command {
 	return &cobra.Command{
-		Use: name,
+		Use:  name,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Println(version)
@@ -191,7 +190,7 @@ func newCmdGetBlock(name string) *cobra.Command {
 func newCmdGetReps(name string) *cobra.Command {
 	return &cobra.Command{
 		Args: cobra.ExactArgs(1),
-		Use: name + " <hash>",
+		Use:  name + " <hash>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, arg := range args {
 
@@ -328,12 +327,12 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		".chain/import", "Data path to store node data")
 	vc.BindPFlags(pflags)
 
-
 	cmd.AddCommand(newCmdExecuteBlocks(cmd, "run", vc))
 	cmd.AddCommand(newCmdLastHeight(cmd, "last", vc))
 	cmd.AddCommand(newCmdState(cmd, "state", vc))
 	cmd.AddCommand(newCmdStoredHeight(cmd, "stored", vc))
 	cmd.AddCommand(newCmdDownloadBlocks(cmd, "load", vc))
+	cmd.AddCommand(newCmdCheck(cmd, "check", vc))
 	return cmd
 }
 
@@ -419,42 +418,42 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if err :=  showBlockDetail(blk); err != nil {
+			if err := showBlockDetail(blk); err != nil {
 				return err
 			}
 			/*
-			if *pReadLine {
-				wss, err := ex.NewWorldSnapshot(height)
-				if err != nil {
-					return err
-				}
-				r, err := readline.New("state> ")
-				if err != nil {
-					return err
-				}
-				for {
-					line, err := r.Readline()
+				if *pReadLine {
+					wss, err := ex.NewWorldSnapshot(height)
 					if err != nil {
-						break
+						return err
 					}
-					arg := strings.TrimSpace(line)
-					if arg == "" {
-						continue
-					}
-					if arg == "." {
-						break
-					}
-					params, err := parseParams(arg)
+					r, err := readline.New("state> ")
 					if err != nil {
-						fmt.Printf("Error:%+v", err)
-						continue
+						return err
 					}
-					if err := showWorld(wss, params); err != nil {
-						fmt.Printf("Error:%+v", err)
-						continue
+					for {
+						line, err := r.Readline()
+						if err != nil {
+							break
+						}
+						arg := strings.TrimSpace(line)
+						if arg == "" {
+							continue
+						}
+						if arg == "." {
+							break
+						}
+						params, err := parseParams(arg)
+						if err != nil {
+							fmt.Printf("Error:%+v", err)
+							continue
+						}
+						if err := showWorld(wss, params); err != nil {
+							fmt.Printf("Error:%+v", err)
+							continue
+						}
 					}
 				}
-			}
 			*/
 		}
 		return nil
@@ -550,6 +549,37 @@ func newCmdStoredHeight(parent *cobra.Command, name string, vc *viper.Viper) *co
 				return errors.New("NoValidExecutor")
 			}
 		},
+	}
+	return cmd
+}
+
+func newCmdCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Args:  cobra.RangeArgs(0, 1),
+		Use:   name,
+		Short: "Inspect state",
+	}
+	pflags := cmd.PersistentFlags()
+	pPath := pflags.String("path", "", "path of ICON1 account info file")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		ex := vc.Get(vcKeyExecutor).(*Executor)
+		path := *pPath
+		if len(path) == 0 {
+			return errors.New("Input path")
+		}
+		icon1, err := LoadICON1AccountInfo(path)
+		if err != nil {
+			return err
+		}
+		height := icon1.Block
+		wss, err := ex.NewWorldSnapshot(height)
+		if err != nil {
+			return err
+		}
+		if err = CheckState(icon1, wss); err != nil {
+			return err
+		}
+		return nil
 	}
 	return cmd
 }
