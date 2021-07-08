@@ -17,6 +17,7 @@
 
 import hashlib
 from enum import IntEnum
+from typing import Optional
 
 from ..icon_constant import DATA_BYTE_ORDER
 from ..utils import is_lowercase_hex_string, int_to_bytes
@@ -204,14 +205,19 @@ class Address(object):
         return Address(prefix, hash_value[-20:])
 
     @staticmethod
-    def from_bytes(buf: bytes) -> 'Address':
+    def from_bytes(buf: bytes) -> Optional['Address']:
         """
         Creates an Address object from given raw bytes that represent address
 
         :param buf: :class:`.bytes` raw bytes data
         :return: :class:`.Address`
         """
+        if not isinstance(buf, bytes):
+            return None
+
         buf_size = len(buf)
+        if buf_size not in (ICON_ADDRESS_BODY_SIZE, ICON_ADDRESS_BYTES_SIZE):
+            return None
 
         prefix = AddressPrefix.EOA
         if buf_size != ICON_ADDRESS_BODY_SIZE:
