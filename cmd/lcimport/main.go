@@ -407,7 +407,10 @@ func newCmdState(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 				if err != nil {
 					return err
 				}
-				if err := showWorld(wss, params); err != nil {
+				ctx := map[string]interface{} {
+					BlockHeight: int64(height+1),
+				}
+				if err := showWorld(ctx, wss, params); err != nil {
 					return err
 				}
 			}

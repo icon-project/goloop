@@ -43,6 +43,16 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
+type Context map[string]interface{}
+
+const (
+	BlockHeight = "BlockHeight"
+)
+
+func (c Context) BlockHeight() int64 {
+	return c[BlockHeight].(int64)
+}
+
 func parseParams(p string) ([]string, error) {
 	var params []string
 	s := new(scanner.Scanner)
@@ -253,13 +263,27 @@ func showContainerData(store interface{}, params []string) error {
 	}
 }
 
-func showAccount(addr module.Address, ass state.AccountSnapshot, params []string) error {
+type depositContext struct {
+	state.DepositContext
+	height int64
+}
+
+func (c *depositContext) BlockHeight() int64 {
+	return c.height
+}
+
+func showAccount(ctx Context, addr module.Address, ass state.AccountSnapshot, params []string) error {
 	if len(params) == 0 {
 		fmt.Printf("Account[%s]\n", addr.String())
-		fmt.Printf("- Balance : %#d\n", ass.GetBalance())
+		fmt.Printf("- Balance : %s\n", D(ass.GetBalance()))
 		if ass.IsContract() {
 			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
 			fmt.Printf("- CodeHash: %#x\n", ass.Contract().CodeHash())
+			jso, err := ass.GetDepositInfo(&depositContext{height: ctx.BlockHeight()}, module.JSONVersionLast)
+			if err == nil && jso != nil {
+				js, _ := JSONMarshalIndent(jso)
+				fmt.Printf("- Deposit : %s\n", js)
+			}
 		}
 		return nil
 	} else {
@@ -442,7 +466,7 @@ func showValidators(snapshot state.ValidatorSnapshot, params []string) error {
 	return nil
 }
 
-func showWorld(wss state.WorldSnapshot, params []string) error {
+func showWorld(ctx Context, wss state.WorldSnapshot, params []string) error {
 	if len(params) < 1 {
 		return errors.IllegalArgumentError.New("" +
 			"Address need to be specified")
@@ -461,7 +485,7 @@ func showWorld(wss state.WorldSnapshot, params []string) error {
 				err, "InvalidAddress(addr=%s)", param)
 		}
 		ass := wss.GetAccountSnapshot(addr.ID())
-		return showAccount(addr, ass, params)
+		return showAccount(ctx, addr, ass, params)
 	}
 }
 
