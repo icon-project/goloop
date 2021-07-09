@@ -554,9 +554,16 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 		return scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
 	}
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to set governance variables: from=%v", s.from,
-		)
+		revision := s.cc.Revision().Value()
+		if revision < icmodule.RevisionICON2 {
+			return scoreresult.IllegalFormatError.Wrapf(
+				err, "Failed to set governance variables: from=%v", s.from,
+			)
+		} else {
+			return scoreresult.InvalidParameterError.Wrapf(
+				err, "Failed to set governance variables: from=%v", s.from,
+			)
+		}
 	}
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), s.from.Bytes()},
