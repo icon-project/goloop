@@ -105,10 +105,11 @@ func TestNewDelegations(t *testing.T) {
 		name          string
 		param         []interface{}
 		err           bool
+		len           int
 		totalDelegate int
 	}{
-		{"Nil param", nil, false, 0},
-		{"Empty param", []interface{}{}, false, 0},
+		{"Nil param", nil, false, 0, 0},
+		{"Empty param", []interface{}{}, false, 0, 0},
 		{
 			"Success",
 			[]interface{}{
@@ -122,6 +123,7 @@ func TestNewDelegations(t *testing.T) {
 				},
 			},
 			false,
+			2,
 			v1 + v2,
 		},
 		{
@@ -137,6 +139,7 @@ func TestNewDelegations(t *testing.T) {
 				},
 			},
 			true,
+			0,
 			0,
 		},
 		{
@@ -157,6 +160,23 @@ func TestNewDelegations(t *testing.T) {
 			},
 			true,
 			0,
+			0,
+		},
+		{
+			"delegate zero amount",
+			[]interface{}{
+				map[string]interface{}{
+					"Address": "hx1",
+					"Value":   fmt.Sprintf("0x0"),
+				},
+				map[string]interface{}{
+					"Address": "hx2",
+					"Value":   fmt.Sprintf("0x%x", v2),
+				},
+			},
+			false,
+			1,
+			v2,
 		},
 		{
 			"negative delegation",
@@ -168,11 +188,13 @@ func TestNewDelegations(t *testing.T) {
 			},
 			true,
 			0,
+			0,
 		},
 		{
 			"empty delegation",
 			nil,
 			false,
+			0,
 			0,
 		},
 	}
@@ -186,7 +208,7 @@ func TestNewDelegations(t *testing.T) {
 				assert.NoError(t, err, "NewDelegations() was failed for %v. err=%v", tt.param, err)
 
 				got := delegations.ToJSON(module.JSONVersion3)
-				if len(tt.param) != len(got) {
+				if tt.len != len(got) {
 					t.Errorf("NewDelegations() = %v, want %v", got, tt.param)
 				}
 				if int64(tt.totalDelegate) != delegations.GetDelegationAmount().Int64() {
