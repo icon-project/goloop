@@ -716,3 +716,91 @@ func (t *transition) Equal(tr module.Transition) bool {
 		common.ConsensusInfoEqual(t.csi, t2.csi) &&
 		t.pid == t2.pid
 }
+
+// NewInitTransition creates initial transition based on the last result.
+// It's only for development purpose. So, normally it should not be used.
+func NewInitTransition(
+	db db.Database,
+	result []byte,
+	vl module.ValidatorList,
+	cm contract.ContractManager,
+	em eeproxy.Manager, chain module.Chain,
+	logger log.Logger, plt Platform,
+	tsc *TxTimestampChecker,
+) (module.Transition, error) {
+	if tr, err := newInitTransition(
+		db,
+		result,
+		vl,
+		cm,
+		em,
+		chain,
+		logger,
+		plt,
+		tsc,
+	); err != nil {
+		return nil, err
+	} else {
+		return tr, nil
+	}
+}
+
+// NewTransition creates new transition based on the parent to execute
+// given transactions under given environments.
+// It's only for development purpose. So, normally it should not be used.
+func NewTransition(
+	parent module.Transition,
+	patchtxs module.TransactionList,
+	normaltxs module.TransactionList,
+	bi module.BlockInfo,
+	csi module.ConsensusInfo,
+	alreadyValidated bool,
+) module.Transition {
+	return newTransition(
+		parent.(*transition),
+		patchtxs,
+		normaltxs,
+		bi,
+		csi,
+		alreadyValidated,
+	)
+}
+
+// FinalizeTransition finalize parts of transition result without
+// updating other information of service manager.
+// It's only for development purpose. So, normally it should not be used.
+func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
+	tst := tr.(*transition)
+	if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction && !noFlush {
+		if err := tst.finalizeNormalTransaction(); err != nil {
+			return err
+		}
+	}
+	if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction && !noFlush {
+		if err := tst.finalizePatchTransaction(); err != nil {
+			return err
+		}
+	}
+	if opt&module.FinalizeResult == module.FinalizeResult {
+		if err := tst.finalizeResult(noFlush); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SyncManager interface {
+	NewSyncer(ah, prh, nrh, vh, ed []byte) ssync.Syncer
+}
+
+func NewSyncTransition(
+	tr module.Transition,
+	sm SyncManager,
+	result []byte, vl []byte,
+) module.Transition {
+	tst := tr.(*transition)
+	ntr := newTransition(tst.parent, tst.patchTransactions, tst.normalTransactions, tst.bi, tst.csi, true)
+	r, _ := newTransitionResultFromBytes(result)
+	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData)
+	return ntr
+}
