@@ -552,17 +552,17 @@ func applyStepCosts(fee *FeeConfig, as state.AccountState) error {
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	if fee.StepCosts != nil {
-		for _, k := range state.AllStepTypes {
-			if err := stepTypes.Put(k); err != nil {
-				return err
+		for k, cost := range fee.StepCosts {
+			if !state.IsValidStepType(k) {
+				return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", k)
 			}
-			icost := fee.StepCosts[k]
-			if err := stepCostDB.Set(k, icost.Value); err != nil {
+			if err := stepTypes.Put(k); err != nil { return err }
+			if err := stepCostDB.Set(k, cost.Value); err != nil {
 				return err
 			}
 		}
 	} else {
-		for _, k := range state.AllStepTypes {
+		for _, k := range state.InitialStepTypes {
 			if err := stepTypes.Put(k); err != nil {
 				return err
 			}
