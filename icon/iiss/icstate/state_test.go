@@ -39,7 +39,7 @@ func TestState_RegisterPRep(t *testing.T) {
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
 		ri := newDummyPRepInfo(i)
-		err = state.RegisterPRep(owner, ri, irep)
+		err = state.RegisterPRep(owner, ri, irep, 0)
 		assert.NoError(t, err)
 		err = state.Flush()
 		assert.NoError(t, err)
@@ -72,7 +72,7 @@ func TestState_SetPRep(t *testing.T) {
 	for i := 0; i < size; i++ {
 		owner := newDummyAddress(i)
 		ri := newDummyPRepInfo(i)
-		err = state.RegisterPRep(owner, ri, irep)
+		err = state.RegisterPRep(owner, ri, irep, 0)
 		assert.NoError(t, err)
 
 		err = state.Flush()

@@ -581,7 +581,7 @@ func (s *ExtensionStateImpl) GetBonderList(address module.Address) (map[string]i
 func (s *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *big.Int, blockHeight int64) error {
 	pb, _ := s.State.GetPRepBaseByOwner(from, false)
 	if pb == nil {
-		return errors.Errorf("PRep not found: %v", from)
+		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
 	if err := s.ValidateIRep(pb.IRep(), irep, pb.IRepHeight()); err != nil {
 		return err
@@ -596,10 +596,10 @@ const IrepInflationLimit = 14 // 14%
 func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
 	term := s.State.GetTermSnapshot()
 	if prevSetIRepHeight >= term.StartHeight() {
-		return errors.Errorf("IRep can be changed only once during a term")
+		return scoreresult.IllegalFormatError.Errorf("IRep can be changed only once during a term")
 	}
 	if err := icutils.ValidateRange(oldIRep, newIRep, 20, 20); err != nil {
-		return err
+		return scoreresult.InvalidParameterError.Wrapf(err, "IRep is out of range")
 	}
 
 	/* annual amount of beta1 + beta2 <= totalSupply * IrepInflationLimit / 100
@@ -613,7 +613,7 @@ func (s *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRep
 	divider := new(big.Int).SetInt64(int64(100 * MonthPerYear * (term.MainPRepCount() + icmodule.VotedRewardMultiplier)))
 	limit.Div(limit, divider)
 	if newIRep.Cmp(limit) == 1 {
-		return errors.Errorf("IRep is out of range: %v > %v", newIRep, limit)
+		return scoreresult.InvalidParameterError.Errorf("IRep is out of range: %v > %v", newIRep, limit)
 	}
 	return nil
 }

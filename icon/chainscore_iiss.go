@@ -362,14 +362,16 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 	}
 
 	var irep *big.Int
+	irepHeight := int64(0)
 	if es.IsDecentralized() {
 		term := es.State.GetTermSnapshot()
 		irep = term.Irep()
+		irepHeight = s.cc.BlockHeight()
 	} else {
 		irep = icstate.BigIntInitialIRep
 	}
 
-	if err = es.State.RegisterPRep(s.from, info, irep); err != nil {
+	if err = es.State.RegisterPRep(s.from, info, irep, irepHeight); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to register PRep: from=%v", s.from,
 		)
@@ -554,16 +556,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 		return scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
 	}
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
-		revision := s.cc.Revision().Value()
-		if revision < icmodule.RevisionICON2 {
-			return scoreresult.IllegalFormatError.Wrapf(
-				err, "Failed to set governance variables: from=%v", s.from,
-			)
-		} else {
-			return scoreresult.InvalidParameterError.Wrapf(
-				err, "Failed to set governance variables: from=%v", s.from,
-			)
-		}
+		return err
 	}
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), s.from.Bytes()},

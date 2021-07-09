@@ -276,7 +276,7 @@ func (s *State) updatePRepInfoOf(owner module.Address, pb *PRepBaseState, info *
 	return nil
 }
 
-func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int) error {
+func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, irepHeight int64) error {
 	if ri == nil {
 		return errors.Errorf("Invalid argument: ri")
 	}
@@ -295,7 +295,7 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int) 
 	if err := s.updatePRepInfoOf(owner, pb, ri); err != nil {
 		return err
 	}
-	pb.SetIrep(irep, 0)
+	pb.SetIrep(irep, irepHeight)
 	return nil
 }
 

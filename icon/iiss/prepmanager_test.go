@@ -67,7 +67,7 @@ func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 	for i := 0; i < size; i++ {
 		owner := createAddress(i)
 		ri := newPRepInfo(i)
-		assert.NoError(t, state.RegisterPRep(owner, ri, icstate.BigIntInitialIRep))
+		assert.NoError(t, state.RegisterPRep(owner, ri, icstate.BigIntInitialIRep, 0))
 	}
 
 	return newPRepManager(state, nil)
