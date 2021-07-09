@@ -561,6 +561,16 @@ func applyStepCosts(fee *FeeConfig, as state.AccountState) error {
 				return err
 			}
 		}
+		for _, k := range state.AllStepTypes {
+			cost, ok := fee.StepCosts[k]
+			if !ok {
+				continue
+			}
+			if err := stepTypes.Put(k); err != nil { return err }
+			if err := stepCostDB.Set(k, cost.Value); err != nil {
+				return err
+			}
+		}
 	} else {
 		for _, k := range state.InitialStepTypes {
 			if err := stepTypes.Put(k); err != nil {
