@@ -54,6 +54,7 @@ type AccountSnapshot interface {
 	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
 
 	CanAcceptTx(pc PayContext) bool
+	CheckDeposit(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
@@ -98,6 +99,7 @@ type AccountState interface {
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
 	PaySteps(pc PayContext, steps *big.Int) (*big.Int, error)
 	CanAcceptTx(pc PayContext) bool
+	CheckDeposit(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
@@ -326,6 +328,10 @@ func (s *accountSnapshotImpl) CanAcceptTx(pc PayContext) bool {
 	if s.IsContract() && (s.IsDisabled() || s.IsBlocked()) {
 		return false
 	}
+	return s.CheckDeposit(pc)
+}
+
+func (s *accountSnapshotImpl) CheckDeposit(pc PayContext) bool {
 	if pc.FeeSharingEnabled() {
 		if s.deposits.Has() {
 			return s.deposits.CanPay(pc)
@@ -869,6 +875,10 @@ func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
 	if s.IsContract() && (s.IsDisabled() || s.IsBlocked()) {
 		return false
 	}
+	return s.CheckDeposit(pc)
+}
+
+func (s *accountStateImpl) CheckDeposit(pc PayContext) bool {
 	if pc.FeeSharingEnabled() && s.deposits.Has() {
 		return s.deposits.CanPay(pc)
 	}

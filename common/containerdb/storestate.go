@@ -286,3 +286,12 @@ func (s bytesStoreStateForRaw) DeleteValue(key []byte) ([]byte, error) {
 func NewBytesStoreStateFromRaw(s RawBytesStoreState) BytesStoreState {
 	return bytesStoreStateForRaw{s}
 }
+
+type emptyBytesStoreSnapshot struct{}
+
+func (s emptyBytesStoreSnapshot) GetValue(k []byte) ([]byte, error) {
+	return nil, nil
+}
+
+var EmptyBytesStoreSnapshot BytesStoreSnapshot = emptyBytesStoreSnapshot{}
+var EmptyBytesStoreState BytesStoreState = &snapshotStore{EmptyBytesStoreSnapshot}

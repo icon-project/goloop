@@ -96,6 +96,12 @@ func (th *transactionHandler) checkBalance(cc contract.CallContext) error {
 	if bal.Cmp(value) < 0 {
 		return scoreresult.ErrOutOfBalance
 	}
+	as2 := cc.GetAccountState(th.to.ID())
+	if !as2.CheckDeposit(cc) {
+		// ICON throws InvalidRequestError and it's mapped to IllegalFormatError.
+		// This may be changed to proper one, but now it throws same error.
+		return scoreresult.IllegalFormatError.New("EmptyDeposit")
+	}
 	return nil
 }
 

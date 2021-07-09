@@ -362,8 +362,15 @@ func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
+func (h *AcceptHandler) ExecuteSync(cc CallContext) (err error, obj *codec.TypedObj, addr module.Address) {
 	h.Log.TSystemf("FRAME[%d] ACCEPT start txhash=0x%x audit=0x%x", h.FID, h.txHash, h.auditTxHash)
+	defer func() {
+		if err != nil {
+			h.Log.TSystemf("FRAME[%d] ACCEPT done status=%v", h.FID, err)
+		} else {
+			h.Log.TSystemf("FRAME[%d] ACCEPT done status=SUCCESS", h.FID)
+		}
+	}()
 
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
@@ -433,7 +440,6 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if status != nil {
 		return status, nil, nil
 	}
-	h.Log.TSystemf("FRAME[%d] ACCEPT done score=%s", h.FID, scoreAddr)
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return err, nil, nil
 	}
