@@ -653,7 +653,7 @@ func (t *transition) finalizePatchTransaction() error {
 	return t.patchTransactions.Flush()
 }
 
-func (t *transition) finalizeResult(noFlush bool) error {
+func (t *transition) finalizeResult(noFlush bool, keepParent bool) error {
 	var worldTS time.Time
 	startTS := time.Now()
 	if !noFlush {
@@ -675,7 +675,9 @@ func (t *transition) finalizeResult(noFlush bool) error {
 			}
 		}
 	}
-	t.parent = nil
+	if !keepParent {
+		t.parent = nil
+	}
 	finalTS := time.Now()
 
 	t.onWorldFinalize(t.worldSnapshot)
@@ -782,7 +784,8 @@ func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 		}
 	}
 	if opt&module.FinalizeResult == module.FinalizeResult {
-		if err := tst.finalizeResult(noFlush); err != nil {
+		keepParent := (opt & module.KeepingParent) != 0
+		if err := tst.finalizeResult(noFlush, keepParent); err != nil {
 			return err
 		}
 	}

@@ -289,7 +289,8 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			m.tm.RemoveOldTxByBlockTS(module.TransactionGroupPatch, tst.bi.Timestamp())
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
-			if err := tst.finalizeResult(false); err != nil {
+			keepParent := (opt & module.KeepingParent) != 0
+			if err := tst.finalizeResult(false, keepParent); err != nil {
 				return err
 			}
 			m.tm.NotifyFinalized(tst.patchTransactions, tst.patchReceipts, tst.normalTransactions, tst.normalReceipts)
