@@ -672,9 +672,15 @@ func (s *ChainScore) Install(param []byte) error {
 		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
 		}
-		for k, cost := range stepTypesMap {
+		for k, _ := range stepTypesMap {
 			if !state.IsValidStepType(k) {
 				return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", k)
+			}
+		}
+		for _, k := range state.AllStepTypes {
+			cost, ok := stepTypesMap[k]
+			if !ok {
+				continue
 			}
 			if err := stepTypes.Put(k); err != nil {
 				return err
