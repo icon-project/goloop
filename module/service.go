@@ -237,6 +237,7 @@ const (
 	FinalizeNormalTransaction = 1 << iota
 	FinalizePatchTransaction
 	FinalizeResult
+	KeepingParent
 
 	// TODO It's only necessary if storing receipt index is determined by
 	// block manager. The current service manager determines by itself according

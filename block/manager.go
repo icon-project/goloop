@@ -923,7 +923,7 @@ func (m *manager) finalizeGenesisBlock(
 	if err != nil {
 		return nil, err
 	}
-	err = m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
+	err = m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult|module.KeepingParent)
 	if err != nil {
 		return nil, err
 	}
