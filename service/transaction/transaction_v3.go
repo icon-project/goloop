@@ -263,7 +263,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 
 	as2 := wc.GetAccountState(tx.To().ID())
-	if tx.DataType == nil || *tx.DataType == contract.DataTypeCall || *tx.DataType == contract.DataTypeMessage {
+	if contract.IsCallableDataType(tx.DataType) {
 		if !as2.CanAcceptTx(wc) {
 			return ContractNotUsable.New("NotAcceptable")
 		}

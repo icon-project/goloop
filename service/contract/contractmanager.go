@@ -74,6 +74,12 @@ const (
 	DataTypePatch   = "patch"
 )
 
+func IsCallableDataType(dt *string) bool {
+	return dt == nil ||
+		*dt == DataTypeCall ||
+		*dt == DataTypeMessage
+}
+
 func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
 	cm := cc.ContractManager()
 	sas := cc.GetAccountState(to.ID())

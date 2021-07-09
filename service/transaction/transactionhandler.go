@@ -27,6 +27,7 @@ type transactionHandler struct {
 	to        module.Address
 	value     *big.Int
 	stepLimit *big.Int
+	dataType  *string
 	data      []byte
 
 	chandler contract.ContractHandler
@@ -42,6 +43,7 @@ func NewHandler(cm contract.ContractManager, group module.TransactionGroup, from
 		to:        to,
 		value:     value,
 		stepLimit: stepLimit,
+		dataType:  dataType,
 		data:      data,
 	}
 	ctype := contract.CTypeNone // invalid contract type
@@ -96,11 +98,13 @@ func (th *transactionHandler) checkBalance(cc contract.CallContext) error {
 	if bal.Cmp(value) < 0 {
 		return scoreresult.ErrOutOfBalance
 	}
-	as2 := cc.GetAccountState(th.to.ID())
-	if !as2.CheckDeposit(cc) {
-		// ICON throws InvalidRequestError and it's mapped to IllegalFormatError.
-		// This may be changed to proper one, but now it throws same error.
-		return scoreresult.IllegalFormatError.New("EmptyDeposit")
+	if th.to.IsContract() && contract.IsCallableDataType(th.dataType) {
+		as2 := cc.GetAccountState(th.to.ID())
+		if !as2.CheckDeposit(cc) {
+			// ICON throws InvalidRequestError and it's mapped to IllegalFormatError.
+			// This may be changed to proper one, but now it throws same error.
+			return scoreresult.IllegalFormatError.New("EmptyDeposit")
+		}
 	}
 	return nil
 }
