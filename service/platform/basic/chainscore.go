@@ -668,29 +668,23 @@ func (s *ChainScore) Install(param []byte) error {
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	if price.StepCosts != nil {
-		stepTypesMap := make(map[string]string)
+		stepTypesMap := make(map[string]common.HexInt64)
 		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
 		}
-		for _, k := range state.AllStepTypes {
-			cost := stepTypesMap[k]
+		for k, cost := range stepTypesMap {
+			if !state.IsValidStepType(k) {
+				return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", k)
+			}
 			if err := stepTypes.Put(k); err != nil {
 				return err
 			}
-			var icost int64
-			if cost != "" {
-				var err error
-				icost, err = strconv.ParseInt(cost, 0, 64)
-				if err != nil {
-					return err
-				}
-			}
-			if err := stepCostDB.Set(k, icost); err != nil {
+			if err := stepCostDB.Set(k, cost.Value); err != nil {
 				return err
 			}
 		}
 	} else {
-		for _, k := range state.AllStepTypes {
+		for _, k := range state.InitialStepTypes {
 			if err := stepTypes.Put(k); err != nil {
 				return err
 			}

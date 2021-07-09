@@ -41,6 +41,22 @@ var AllStepLimitTypes = []string{
 	StepLimitTypeQuery,
 }
 
+var InitialStepTypes = []string{
+	StepTypeDefault,
+	StepTypeContractCall,
+	StepTypeContractCreate,
+	StepTypeContractUpdate,
+	StepTypeContractDestruct,
+	StepTypeContractSet,
+	StepTypeGet,
+	StepTypeSet,
+	StepTypeReplace,
+	StepTypeDelete,
+	StepTypeInput,
+	StepTypeEventLog,
+	StepTypeApiCall,
+}
+
 var AllStepTypes = []string{
 	StepTypeDefault,
 	StepTypeContractCall,
@@ -60,4 +76,31 @@ var AllStepTypes = []string{
 	StepTypeReplaceBase,
 	StepTypeDefaultDelete,
 	StepTypeEventLogBase,
+}
+
+func IsValidStepType(s string) bool {
+	switch s {
+	case StepTypeDefault,
+		StepTypeContractCall,
+		StepTypeContractCreate,
+		StepTypeContractUpdate,
+		StepTypeContractDestruct,
+		StepTypeContractSet,
+		StepTypeGet,
+		StepTypeSet,
+		StepTypeReplace,
+		StepTypeDelete,
+		StepTypeInput,
+		StepTypeEventLog,
+		StepTypeApiCall:
+		return true
+	case StepTypeDefaultGet,
+		StepTypeDefaultSet,
+		StepTypeReplaceBase,
+		StepTypeDefaultDelete,
+		StepTypeEventLogBase:
+		return true
+	default:
+		return false
+	}
 }
