@@ -4,6 +4,7 @@ import "github.com/icon-project/goloop/module"
 
 type blockCandidate struct {
 	module.Block
+	VersionSpec
 	m *manager
 }
 

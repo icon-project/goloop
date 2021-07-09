@@ -579,6 +579,9 @@ func (m *manager) GetMinimizeBlockGen(result []byte) bool {
 }
 
 func (m *manager) GetNextBlockVersion(result []byte) int {
+	if result == nil {
+		return m.plt.DefaultBlockVersion()
+	}
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return -1
