@@ -83,7 +83,12 @@ func (a *account) isExtAccountEmpty() bool {
 }
 
 func (a *account) checkBalance(address module.Address, wss state.WorldSnapshot) bool {
-	ass := wss.GetAccountSnapshot(address.ID())
+	var ass state.AccountSnapshot
+	if address.Equal(state.LostAddress) {
+		ass = wss.GetAccountSnapshot(state.LostAddress.ID())
+	} else {
+		ass = wss.GetAccountSnapshot(address.ID())
+	}
 	if ass == nil {
 		if a.Balance.Sign() != 0 {
 			fmt.Printf("%s : ICON2 has no world account info\n", address)
