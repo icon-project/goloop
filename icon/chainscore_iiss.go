@@ -115,8 +115,10 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		)
 	}
 
+	revision := s.cc.Revision().Value()
 	stakeInc := new(big.Int).Sub(v, ia.Stake())
-	if stakeInc.Sign() == 0 {
+	// ICON1 update unstakes when stakeInc == 0
+	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2{
 		return nil
 	}
 
@@ -132,11 +134,10 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	oldTotalStake := ia.GetTotalStake()
 
 	//update IISS account
-	revision := s.cc.Revision().Value()
 	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tSupply).Int64()
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
-	case 1:
+	case 0, 1:
 		// Condition: stakeInc > 0
 		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
 	case -1:
