@@ -122,11 +122,7 @@ func (b *BlockV03) NextRepsHash() []byte {
 }
 
 func (b *BlockV03) GetNextLeader() module.Address {
-	if len(b.json.NextRepsHash) > 0 && !bytes.Equal(b.json.RepsHash, b.json.NextRepsHash) {
-		return b.nextReps.Get(0)
-	} else {
-		return new(common.Address).Set(&b.json.NextLeader)
-	}
+	return new(common.Address).Set(&b.json.NextLeader)
 }
 
 func (b *BlockV03) NextLeader() common.Address {
