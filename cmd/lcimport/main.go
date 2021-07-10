@@ -571,8 +571,7 @@ func newCmdCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 		if err != nil {
 			return err
 		}
-		height := icon1.Block
-		wss, err := ex.NewWorldSnapshot(height)
+		wss, err := ex.NewWorldSnapshot(icon1.BlockHeight)
 		if err != nil {
 			return err
 		}

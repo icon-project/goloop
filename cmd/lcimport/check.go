@@ -33,12 +33,39 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
 type ICON1AccountInfo struct {
-	Block    int64              `json:"block"`
-	Accounts map[string]account `json:"accounts"`
+	BlockHeight int64              `json:"blockHeight"`
+	Status      status             `json:"status"`
+	Accounts    map[string]account `json:"accounts"`
+}
+
+type status struct {
+	TotalSupply *big.Int	`json:"totalSupply"`
+	TotalStake  *big.Int	`json:"totalStake"`
+}
+
+func (s *status) Check(wss state.WorldSnapshot, hash []byte) {
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+	ts := tsVar.BigInt()
+	if s.TotalSupply.Cmp(ts) != 0 {
+		fmt.Printf("TotalSupply: icon1(%d) icon2(%d) diff=%d\n",
+			s.TotalSupply, ts, new(big.Int).Sub(s.TotalSupply, ts))
+	}
+
+	os := getObjectStoreState(wss.Database(), hash, icstate.NewObjectImpl)
+	tsVar = containerdb.NewVarDB(os,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, icstate.VarTotalStake))
+	ts = tsVar.BigInt()
+	if s.TotalStake.Cmp(ts) != 0 {
+		fmt.Printf("TotalStake: icon1(%d) icon2(%d) diff=%d\n",
+			s.TotalStake, ts, new(big.Int).Sub(s.TotalStake, ts))
+	}
 }
 
 type account struct {
@@ -186,13 +213,15 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 }
 
 func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot) error {
-	height := icon1.Block
+	height := icon1.BlockHeight
 	fmt.Printf("Check %d entries @ %d\n", len(icon1.Accounts), height)
 	ess := wss.GetExtensionSnapshot()
 	var hashes [][]byte
 	if _, err := codec.BC.UnmarshalFromBytes(ess.Bytes(), &hashes); err != nil {
 		return err
 	}
+
+	icon1.Status.Check(wss, hashes[0])
 
 	count := 0
 	for key, value := range icon1.Accounts {
@@ -224,4 +253,10 @@ func getObjectStoreSnapshot(dbase db.Database, hash []byte, factory icobject.Imp
 	dbase = icobject.AttachObjectFactory(dbase, factory)
 	snapshot := trie_manager.NewImmutableForObject(dbase, hash, icobject.ObjectType)
 	return icobject.NewObjectStoreSnapshot(snapshot)
+}
+
+func getObjectStoreState(dbase db.Database, hash []byte, factory icobject.ImplFactory) *icobject.ObjectStoreState {
+	dbase = icobject.AttachObjectFactory(dbase, factory)
+	state := trie_manager.NewMutableForObject(dbase, hash, icobject.ObjectType)
+	return icobject.NewObjectStoreState(state)
 }
