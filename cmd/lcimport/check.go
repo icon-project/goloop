@@ -84,7 +84,7 @@ func (a *account) isExtAccountEmpty() bool {
 
 func (a *account) checkBalance(address module.Address, wss state.WorldSnapshot) bool {
 	var ass state.AccountSnapshot
-	if address.Equal(state.LostAddress) {
+	if address.String() == "hx0000000000000000000000000000000000000000" {
 		ass = wss.GetAccountSnapshot(state.LostAddress.ID())
 	} else {
 		ass = wss.GetAccountSnapshot(address.ID())
