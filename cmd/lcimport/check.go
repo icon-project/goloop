@@ -19,7 +19,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
@@ -48,7 +48,7 @@ type status struct {
 	TotalStake  *big.Int	`json:"totalStake"`
 }
 
-func (s *status) Check(wss state.WorldSnapshot, hash []byte) {
+func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStoreState) {
 	ass := wss.GetAccountSnapshot(state.SystemID)
 	as := scoredb.NewStateStoreWith(ass)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
@@ -58,8 +58,7 @@ func (s *status) Check(wss state.WorldSnapshot, hash []byte) {
 			s.TotalSupply, ts, new(big.Int).Sub(s.TotalSupply, ts))
 	}
 
-	os := getObjectStoreState(wss.Database(), hash, icstate.NewObjectImpl)
-	tsVar = containerdb.NewVarDB(os,
+	tsVar = containerdb.NewVarDB(extState,
 		containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, icstate.VarTotalStake))
 	ts = tsVar.BigInt()
 	if s.TotalStake.Cmp(ts) != 0 {
@@ -82,18 +81,23 @@ func (a *account) isExtAccountEmpty() bool {
 		len(a.Delegations) == 0
 }
 
-func (a *account) checkBalance(address module.Address, wss state.WorldSnapshot) bool {
+func (a *account) checkBalance(address module.Address, lost *big.Int, wss state.WorldSnapshot) bool {
 	var ass state.AccountSnapshot
-	if address.String() == "hx0000000000000000000000000000000000000000" {
-		ass = wss.GetAccountSnapshot(state.LostAddress.ID())
-	} else {
-		ass = wss.GetAccountSnapshot(address.ID())
-	}
+	ass = wss.GetAccountSnapshot(address.ID())
 	if ass == nil {
 		if a.Balance.Sign() != 0 {
 			fmt.Printf("%s : ICON2 has no world account info\n", address)
 			return false
 		} else {
+			return true
+		}
+	}
+	if address.IsContract() != ass.IsContract() {
+		if address.IsContract() {
+			fmt.Printf("%s : ICON2 has no contract\n", address)
+			return false
+		} else {
+			lost.Add(lost, a.Balance)
 			return true
 		}
 	}
@@ -105,8 +109,8 @@ func (a *account) checkBalance(address module.Address, wss state.WorldSnapshot) 
 	return true
 }
 
-func (a *account) checkExtAccount(address module.Address, dbase db.Database, hash []byte) bool {
-	acctDB := getAccountDB(dbase, hash)
+func (a *account) checkExtAccount(address module.Address, extState containerdb.ObjectStoreState) bool {
+	acctDB := getAccountDB(extState)
 	value := acctDB.Get(address)
 	if value == nil {
 		if !a.isExtAccountEmpty() {
@@ -144,13 +148,13 @@ func (a *account) checkExtAccount(address module.Address, dbase db.Database, has
 	return result
 }
 
-func (a *account) checkIScore(address module.Address, dbase db.Database, hashes [][]byte) bool {
+func (a *account) checkIScore(address module.Address, extStages []containerdb.ObjectStoreState, extReward containerdb.ObjectStoreState) bool {
 	// get iScore from icreward
-	iScore := getIScoreFromReward(address, dbase, hashes[4])
+	iScore := getIScoreFromReward(address, extReward)
 
 	// get claim data from icstage Front, Back, Back2
-	for i := 1; i < 4; i++ {
-		claim := getIScoreFromStage(address, dbase, hashes[i])
+	for _, stage := range extStages {
+		claim := getIScoreFromStage(address, stage)
 		iScore.Sub(iScore, claim)
 	}
 
@@ -166,34 +170,26 @@ func (a *account) checkIScore(address module.Address, dbase db.Database, hashes 
 	return true
 }
 
-func getIScoreFromReward(addr module.Address, dbase db.Database, hash []byte) *big.Int {
-	iscore := new(big.Int)
-	oss := getObjectStoreSnapshot(dbase, hash, icreward.NewObjectImpl)
+func getIScoreFromReward(addr module.Address, rewardState containerdb.ObjectStoreState) *big.Int {
 	key := icreward.IScoreKey.Append(addr)
-	value := containerdb.NewVarDB(oss, key)
-	if value == nil {
-		return iscore
-	}
+	value := containerdb.NewVarDB(rewardState, key)
 	is := icreward.ToIScore(value.Object())
-	if is != nil {
-		iscore.Set(is.Value())
+	if is == nil {
+		return new(big.Int)
+	} else {
+		return is.Value()
 	}
-	return iscore
 }
 
-func getIScoreFromStage(addr module.Address, dbase db.Database, hash []byte) *big.Int {
-	oss := getObjectStoreSnapshot(dbase, hash, icstage.NewObjectImpl)
+func getIScoreFromStage(addr module.Address, stage containerdb.ObjectStoreState) *big.Int {
 	key := icstage.IScoreClaimKey.Append(addr)
-	value := containerdb.NewVarDB(oss, key)
-	iscore := new(big.Int)
-	if value == nil {
-		return iscore
-	}
+	value := containerdb.NewVarDB(stage, key)
 	is := icstage.ToIScoreClaim(value.Object())
-	if is != nil {
-		iscore.Set(is.Value())
+	if is == nil {
+		return new(big.Int)
+	} else {
+		return is.Value()
 	}
-	return iscore
 }
 
 func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
@@ -203,17 +199,11 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 	}
 	defer jf.Close()
 
-	bs, err := ioutil.ReadAll(jf)
-	if err != nil {
+	jd := json.NewDecoder(jf)
+	var accountInfo *ICON1AccountInfo
+	if err := jd.Decode(&accountInfo); err != nil {
 		return nil, err
 	}
-
-	accountInfo := new(ICON1AccountInfo)
-	err = json.Unmarshal(bs, accountInfo)
-	if err != nil {
-		return nil, err
-	}
-
 	return accountInfo, nil
 }
 
@@ -226,32 +216,47 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot) error {
 		return err
 	}
 
-	icon1.Status.Check(wss, hashes[0])
+	extState := getObjectStoreState(wss.Database(), hashes[0], icstate.NewObjectImpl)
+	extFront := getObjectStoreState(wss.Database(), hashes[1], icstage.NewObjectImpl)
+	extBack1 := getObjectStoreState(wss.Database(), hashes[2], icstage.NewObjectImpl)
+	extBack2 := getObjectStoreState(wss.Database(), hashes[3], icstage.NewObjectImpl)
+	extStages := []containerdb.ObjectStoreState{extFront, extBack1, extBack2}
+	extReward := getObjectStoreState(wss.Database(), hashes[4], icreward.NewObjectImpl)
+
+	icon1.Status.Check(wss, extState)
 
 	count := 0
+	lost := new(big.Int)
 	for key, value := range icon1.Accounts {
 		failed := false
 		addr := common.MustNewAddressFromString(key)
-		if !value.checkBalance(addr, wss) {
+		if !value.checkBalance(addr, lost, wss) {
 			failed = true
 		}
-		if !value.checkExtAccount(addr, wss.Database(), hashes[0]) {
+		if !value.checkExtAccount(addr, extState) {
 			failed = true
 		}
-		if !value.checkIScore(addr, wss.Database(), hashes) {
+		if !value.checkIScore(addr, extStages, extReward) {
 			failed = true
 		}
 		if failed {
 			count++
 		}
 	}
+	la := wss.GetAccountSnapshot(state.LostID)
+	if lost2 := la.GetBalance(); lost2.Cmp(lost) != 0 {
+		fmt.Printf("%s exp=%d real=%d diff=%d\n",
+			state.LostAddress, lost, lost2, new(big.Int).Sub(lost2, lost))
+	}
 	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(icon1.Accounts), height)
+	if count>0 {
+		return errors.InvalidStateError.New("FailInComparison")
+	}
 	return nil
 }
 
-func getAccountDB(dbase db.Database, hash []byte) *containerdb.DictDB {
-	oss := getObjectStoreSnapshot(dbase, hash, icstate.NewObjectImpl)
-	return containerdb.NewDictDB(oss, 1, icstate.AccountDictPrefix)
+func getAccountDB(extState containerdb.ObjectStoreState) *containerdb.DictDB {
+	return containerdb.NewDictDB(extState, 1, icstate.AccountDictPrefix)
 }
 
 func getObjectStoreSnapshot(dbase db.Database, hash []byte, factory icobject.ImplFactory) *icobject.ObjectStoreSnapshot {
