@@ -56,3 +56,7 @@ func (tr *transitionResult) Bytes() []byte {
 		return bs
 	}
 }
+
+func NewWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
+	return newWorldSnapshot(database, plt, result, vl)
+}
