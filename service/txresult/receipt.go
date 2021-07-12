@@ -644,6 +644,17 @@ func (r *receipt) StepUsed() *big.Int {
 	return p
 }
 
+func (r *receipt) stepPayed() *big.Int {
+	if r.data.FeeDetail.Has() {
+		return r.data.FeeDetail.PayedByEOA()
+	}
+	return r.data.StepUsed.Value()
+}
+
+func (r *receipt) Fee() *big.Int {
+	return new(big.Int).Mul(r.stepPayed(), r.data.StepPrice.Value())
+}
+
 func (r *receipt) Status() module.Status {
 	return r.data.Status
 }
