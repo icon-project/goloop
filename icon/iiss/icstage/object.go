@@ -29,6 +29,7 @@ const (
 	TypeEventEnable
 	TypeBlockProduce
 	TypeGlobal
+	TypeEventVotedReward
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -45,6 +46,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newBlockProduce(tag), nil
 	case TypeGlobal:
 		return NewGlobal(tag.Version())
+	case TypeEventVotedReward:
+		return newEventVotedReward(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -70,6 +73,13 @@ func ToEventEnable(obj trie.Object) *EventEnable {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*EventEnable)
+}
+
+func ToEventVotedReward(obj trie.Object) *EventVotedReward {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventVotedReward)
 }
 
 func ToBlockProduce(obj trie.Object) *BlockProduce {

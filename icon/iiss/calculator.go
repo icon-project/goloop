@@ -459,6 +459,9 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateBonded(obj.Votes())
+		case icstage.TypeEventVotedReward:
+			vInfo.CalculateReward(multiplier, divider, keyOffset-from)
+			from = keyOffset
 		}
 	}
 	if from < c.global.GetOffsetLimit() {

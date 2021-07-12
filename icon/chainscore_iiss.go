@@ -118,7 +118,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	revision := s.cc.Revision().Value()
 	stakeInc := new(big.Int).Sub(v, ia.Stake())
 	// ICON1 update unstakes when stakeInc == 0
-	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2{
+	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2 {
 		return nil
 	}
 
@@ -526,7 +526,8 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 		Node:        node,
 	}
 
-	if err = info.Validate(s.cc.Revision().Value(), false); err != nil {
+	revision := s.cc.Revision().Value()
+	if err = info.Validate(revision, false); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to validate regInfo: from=%v", s.from,
 		)
@@ -535,13 +536,27 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 	if es, err = s.getExtensionState(); err != nil {
 		return err
 	}
-	if err = es.State.SetPRep(s.cc.BlockHeight(), s.from, info); err != nil {
+	blockHeight := s.cc.BlockHeight()
+	if err = es.State.SetPRep(blockHeight, s.from, info); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
 		[][]byte{s.from.Bytes()},
 	)
+
+	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 &&
+		((p2pEndpoint != nil && len(*p2pEndpoint) > 0) || info.Node != nil) {
+		// ICON1 make new term when main+sub P-Rep modify p2p endpoint or node address
+		// Thus reward calculator segment VotedReward period
+		ps, _ := es.State.GetPRepStatusByOwner(s.from, false)
+		if ps.Grade() == icstate.GradeMain {
+			term := es.State.GetTermSnapshot()
+			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

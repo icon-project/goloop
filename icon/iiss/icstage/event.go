@@ -302,9 +302,9 @@ func (ee *EventEnable) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "EventVote{target=%s status=%s}", ee.target, ee.status)
+			fmt.Fprintf(f, "EventEnable{target=%s status=%s}", ee.target, ee.status)
 		} else {
-			fmt.Fprintf(f, "EventVote{%s %s}", ee.target, ee.status)
+			fmt.Fprintf(f, "EventEnable{%s %s}", ee.target, ee.status)
 		}
 	}
 }
@@ -318,4 +318,36 @@ func NewEventEnable(target *common.Address, status EnableStatus) *EventEnable {
 		target: target,
 		status: status,
 	}
+}
+
+type EventVotedReward struct {
+	icobject.NoDatabase
+}
+
+func (ee *EventVotedReward) Version() int {
+	return 0
+}
+
+func (ee *EventVotedReward) RLPDecodeFields(decoder codec.Decoder) error {
+	return nil
+}
+
+func (ee *EventVotedReward) RLPEncodeFields(encoder codec.Encoder) error {
+	return nil
+}
+
+func (ee *EventVotedReward) Equal(o icobject.Impl) bool {
+	return true
+}
+
+func (ee *EventVotedReward) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "EventVotedRewward{}")
+}
+
+func newEventVotedReward(_ icobject.Tag) *EventVotedReward {
+	return new(EventVotedReward)
+}
+
+func NewEventVotedReward() *EventVotedReward {
+	return new(EventVotedReward)
 }
