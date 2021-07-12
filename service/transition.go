@@ -545,7 +545,6 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	}
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
-	fee := big.NewInt(0)
 
 	t.logsBloom.SetInt64(0)
 	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
@@ -554,8 +553,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			cumulativeSteps.Add(cumulativeSteps, used)
 			r.SetCumulativeStepUsed(cumulativeSteps)
 
-			fee.Mul(r.StepPrice(), used)
-			gatheredFee.Add(gatheredFee, fee)
+			gatheredFee.Add(gatheredFee, r.Fee())
 
 			t.logsBloom.Merge(r.LogsBloom())
 		}

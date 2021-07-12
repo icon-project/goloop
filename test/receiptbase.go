@@ -29,6 +29,10 @@ func (_r *ReceiptBase) StepUsed() *big.Int {
 	panic("not implemented")
 }
 
+func (_r *ReceiptBase) Fee() *big.Int {
+	panic("not implemented")
+}
+
 func (_r *ReceiptBase) Status() module.Status {
 	panic("not implemented")
 }

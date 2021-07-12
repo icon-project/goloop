@@ -164,6 +164,7 @@ type Receipt interface {
 	CumulativeStepUsed() *big.Int
 	StepPrice() *big.Int
 	StepUsed() *big.Int
+	Fee() *big.Int
 	Status() Status
 	SCOREAddress() Address
 	Check(r Receipt) error
