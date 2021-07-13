@@ -18,6 +18,7 @@ package icon
 
 import (
 	"encoding/json"
+	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -131,7 +132,13 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	if err := es.HandleTimerJob(wc); err != nil {
 		return err
 	}
-	return es.OnExecutionEnd(wc, er.TotalFee(), p.calculator)
+	var totalFee *big.Int
+	if revision < icmodule.RevisionICON2 {
+		totalFee = er.VirtualFee()
+	} else {
+		totalFee = er.TotalFee()
+	}
+	return es.OnExecutionEnd(wc, totalFee, p.calculator)
 }
 
 func (p *platform) Term() {
