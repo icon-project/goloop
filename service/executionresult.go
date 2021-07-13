@@ -25,7 +25,7 @@ import (
 type executionResult struct {
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
-	totalSteps     *big.Int
+	virtualFee     *big.Int
 	totalFee       *big.Int
 }
 
@@ -37,14 +37,14 @@ func (e *executionResult) NormalReceipts() module.ReceiptList {
 	return e.normalReceipts
 }
 
-func (e *executionResult) TotalSteps() *big.Int {
-	return e.totalSteps
+func (e *executionResult) VirtualFee() *big.Int {
+	return e.virtualFee
 }
 
 func (e *executionResult) TotalFee() *big.Int {
 	return e.totalFee
 }
 
-func NewExecutionResult(p, n module.ReceiptList, steps, fee *big.Int) ExecutionResult {
-	return &executionResult{p, n, steps, fee}
+func NewExecutionResult(p, n module.ReceiptList, vfee, fee *big.Int) ExecutionResult {
+	return &executionResult{p, n, vfee, fee}
 }
