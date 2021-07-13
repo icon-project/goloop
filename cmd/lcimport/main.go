@@ -557,10 +557,11 @@ func newCmdCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 	cmd := &cobra.Command{
 		Args:  cobra.RangeArgs(0, 1),
 		Use:   name,
-		Short: "Inspect state",
+		Short: "Check state",
 	}
 	pflags := cmd.PersistentFlags()
 	pPath := pflags.String("path", "", "path of ICON1 account info file")
+	pAddr := pflags.String("address", "", "address to check")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		ex := vc.Get(vcKeyExecutor).(*Executor)
 		path := *pPath
@@ -575,7 +576,7 @@ func newCmdCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Com
 		if err != nil {
 			return err
 		}
-		if err = CheckState(icon1, wss); err != nil {
+		if err = CheckState(icon1, wss, *pAddr); err != nil {
 			return err
 		}
 		return nil

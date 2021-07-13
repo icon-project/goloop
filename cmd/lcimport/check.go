@@ -207,9 +207,22 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 	return accountInfo, nil
 }
 
-func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot) error {
+func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string) error {
 	height := icon1.BlockHeight
-	fmt.Printf("Check %d entries @ %d\n", len(icon1.Accounts), height)
+	accounts := icon1.Accounts
+	addrSpecified := false
+	if len(address) != 0 {
+		value, ok := icon1.Accounts[address]
+		if ok {
+			accounts = make(map[string]account)
+			accounts[address] = value
+			addrSpecified = true
+		} else {
+			fmt.Printf("There is no account %s", address)
+			return nil
+		}
+	}
+	fmt.Printf("Check %d entries @ %d\n", len(accounts), height)
 	ess := wss.GetExtensionSnapshot()
 	var hashes [][]byte
 	if _, err := codec.BC.UnmarshalFromBytes(ess.Bytes(), &hashes); err != nil {
@@ -227,7 +240,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot) error {
 
 	count := 0
 	lost := new(big.Int)
-	for key, value := range icon1.Accounts {
+	for key, value := range accounts {
 		failed := false
 		addr := common.MustNewAddressFromString(key)
 		if !value.checkBalance(addr, lost, wss) {
@@ -243,12 +256,14 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot) error {
 			count++
 		}
 	}
-	la := wss.GetAccountSnapshot(state.LostID)
-	if lost2 := la.GetBalance(); lost2.Cmp(lost) != 0 {
-		fmt.Printf("%s exp=%d real=%d diff=%d\n",
-			state.LostAddress, lost, lost2, new(big.Int).Sub(lost2, lost))
+	if !addrSpecified {
+		la := wss.GetAccountSnapshot(state.LostID)
+		if lost2 := la.GetBalance(); lost2.Cmp(lost) != 0 {
+			fmt.Printf("%s exp=%d real=%d diff=%d\n",
+				state.LostAddress, lost, lost2, new(big.Int).Sub(lost2, lost))
+		}
 	}
-	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(icon1.Accounts), height)
+	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(accounts), height)
 	if count>0 {
 		return errors.InvalidStateError.New("FailInComparison")
 	}
