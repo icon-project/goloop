@@ -134,7 +134,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	oldTotalStake := ia.GetTotalStake()
 
 	//update IISS account
-	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(es.State, tStake, tSupply).Int64()
+	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(revision, es.State, tStake, tSupply).Int64()
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
 	case 0, 1:
@@ -206,12 +206,17 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	return
 }
 
-func calcUnstakeLockPeriod(state *icstate.State, totalStake *big.Int, totalSupply *big.Int) *big.Int {
+func calcUnstakeLockPeriod(revision int, state *icstate.State, totalStake *big.Int, totalSupply *big.Int) *big.Int {
 	fstake := new(big.Float).SetInt(totalStake)
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
 	rPoint := big.NewFloat(rewardPoint)
-	termPeriod := new(big.Int).SetInt64(state.GetTermPeriod())
+	termPeriod := new(big.Int)
+	if revision < icmodule.RevisionICON2 {
+		termPeriod.SetInt64(InitialTermPeriod)
+	} else {
+		termPeriod.SetInt64(state.GetTermPeriod())
+	}
 	lMin := new(big.Int).Mul(state.GetLockMinMultiplier(), termPeriod)
 	lMax := new(big.Int).Mul(state.GetLockMaxMultiplier(), termPeriod)
 	if stakeRate.Cmp(rPoint) == 1 {
@@ -813,6 +818,7 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
+	revision := s.cc.Revision().Value()
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
@@ -820,7 +826,7 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
 	jso := make(map[string]interface{})
-	jso["unstakeLockPeriod"] = calcUnstakeLockPeriod(es.State, totalStake, totalSupply)
+	jso["unstakeLockPeriod"] = calcUnstakeLockPeriod(revision, es.State, totalStake, totalSupply)
 	return jso, nil
 }
 
