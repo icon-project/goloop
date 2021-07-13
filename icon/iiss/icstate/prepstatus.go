@@ -497,14 +497,6 @@ func (ps *PRepStatusState) setVPenaltyMask(p uint32) {
 	ps.vPenaltyMask = p
 }
 
-func (ps *PRepStatusState) setLastHeight(blockHeight int64) {
-	ps.lastHeight = blockHeight
-}
-
-func (ps *PRepStatusState) setLastState(lastState VoteState) {
-	ps.lastState = lastState
-}
-
 func buildPenaltyMask(input int) (res uint32) {
 	res = uint32((uint64(1) << input) - 1)
 	return
