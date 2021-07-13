@@ -44,5 +44,5 @@ type ExecutionResult interface {
 	PatchReceipts() module.ReceiptList
 	NormalReceipts() module.ReceiptList
 	TotalFee() *big.Int
-	TotalSteps() *big.Int
+	VirtualFee() *big.Int
 }

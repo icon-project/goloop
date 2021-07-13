@@ -545,6 +545,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	}
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
+	virtualFee := new(big.Int)
 
 	t.logsBloom.SetInt64(0)
 	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
@@ -553,6 +554,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			cumulativeSteps.Add(cumulativeSteps, used)
 			r.SetCumulativeStepUsed(cumulativeSteps)
 
+			virtualFee.Add(virtualFee, new(big.Int).Mul(used, r.StepPrice()))
 			gatheredFee.Add(gatheredFee, r.Fee())
 
 			t.logsBloom.Merge(r.LogsBloom())
@@ -566,7 +568,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
-	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, cumulativeSteps, gatheredFee)
+	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
 	if err := t.plt.OnExecutionEnd(ctx, er, t.log); err != nil {
 		t.reportExecution(err)
 		return
