@@ -138,11 +138,8 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(state.StepLimitTypeInvoke), false)
 	defer cc.Dispose()
 
-	if err := handleICXIssue(cc, tx.Data); err != nil {
-		return nil, err
-	}
-
-	if err := handleConsensusInfo(cc); err != nil {
+	es := cc.GetExtensionState().(*ExtensionStateImpl)
+	if err := es.OnBaseTx(cc, tx.Data); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +150,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 		r.DisableLogsBloom()
 	}
 	r.SetResult(module.StatusSuccess, new(big.Int), new(big.Int), nil)
-	cc.GetExtensionState().ClearCache()
+	es.ClearCache()
 	return r, nil
 }
 
@@ -466,4 +463,14 @@ func RegisterBaseTx() {
 		CheckBinary: checkBaseV3Bytes,
 		ParseBinary: parseBaseV3Bytes,
 	})
+}
+
+func (s *ExtensionStateImpl) OnBaseTx(cc contract.CallContext, data []byte) error {
+	if err := handleICXIssue(cc, data); err != nil {
+		return err
+	}
+	if err := handleConsensusInfo(cc); err != nil {
+		return err
+	}
+	return nil
 }
