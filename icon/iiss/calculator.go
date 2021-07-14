@@ -995,10 +995,20 @@ func (c *Calculator) postWork() (err error) {
 const InitBlockHeight = -1
 
 func NewCalculator(back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
-	global, err := back.GetGlobal()
+	var err error
+	var global icstage.Global
+	var startHeight int64
+
+	global, err = back.GetGlobal()
 	if err != nil {
-		logger.Errorf("There is no Global values for calcaultor")
+		logger.Errorf("Failed to get Global values for calculator. %+v", err)
 		return nil
+	}
+	if global == nil {
+		// back has no global at first term
+		startHeight = InitBlockHeight
+	} else {
+		startHeight = global.GetStartHeight()
 	}
 	c := &Calculator{
 		back:        back,
@@ -1006,10 +1016,12 @@ func NewCalculator(back *icstage.Snapshot, reward *icreward.Snapshot, logger log
 		temp:        icreward.NewStateFromSnapshot(reward),
 		log:         logger,
 		global:      global,
-		startHeight: global.GetStartHeight(),
+		startHeight: startHeight,
 		stats:       newStatistics(),
 	}
-	go c.run()
+	if startHeight != InitBlockHeight {
+		go c.run()
+	}
 	return c
 }
 
