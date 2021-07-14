@@ -40,8 +40,8 @@ type BlockVoteJSONSharable struct {
 
 func (s *BlockVoteJSONSharable) Equal(s2 *BlockVoteJSONSharable) bool {
 	return s.BlockHeight == s2.BlockHeight &&
-		(s.Round_ == s2.Round_ || (s.Round_ != nil && s2.Round_ != nil && *s.Round_ == *s2.Round_)) &&
-		(s.Round == s2.Round || (s.Round != nil && s2.Round != nil && *s.Round == *s2.Round)) &&
+		intPtrEqual(s.Round_, s2.Round_) &&
+		hexInt64PtrEqual(s.Round, s2.Round) &&
 		bytes.Equal(s.BlockHash, s2.BlockHash)
 }
 

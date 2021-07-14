@@ -31,15 +31,17 @@ import (
 )
 
 type LeaderVoteSharable struct {
-	BlockHeight common.HexInt64 `json:"blockHeight"`
-	OldLeader   common.Address  `json:"oldLeader"`
-	NewLeader   common.Address  `json:"newLeader"`
-	Round       int             `json:"round_"`
+	BlockHeight common.HexInt64  `json:"blockHeight"`
+	OldLeader   common.Address   `json:"oldLeader"`
+	NewLeader   common.Address   `json:"newLeader"`
+	Round_      *int             `json:"round_,omitempty"`
+	Round       *common.HexInt64 `json:"round,omitempty"`
 }
 
 func (s *LeaderVoteSharable) Equal(s2 *LeaderVoteSharable) bool {
 	return s.BlockHeight == s2.BlockHeight &&
-		s.Round == s2.Round &&
+		intPtrEqual(s.Round_, s2.Round_) &&
+		hexInt64PtrEqual(s.Round, s2.Round) &&
 		common.AddressEqual(&s.OldLeader, &s2.OldLeader) &&
 		common.AddressEqual(&s.NewLeader, &s2.NewLeader)
 }
@@ -73,13 +75,30 @@ func (v *LeaderVote) calcHash() {
 	hash.Write([]byte(".rep."))
 	hash.Write([]byte(v.Rep.String()))
 
-	hash.Write([]byte(".round_."))
-	hash.Write([]byte(strconv.Itoa(v.Round)))
+	if v.Round != nil {
+		hash.Write([]byte(".round."))
+		hash.Write([]byte(v.Round.String()))
+	}
+
+	if v.Round_ != nil {
+		hash.Write([]byte(".round_."))
+		hash.Write([]byte(strconv.Itoa(*v.Round_)))
+	}
 
 	hash.Write([]byte(".timestamp."))
 	hash.Write([]byte(v.Timestamp.String()))
 
 	v.hash = hash.Sum(nil)
+}
+
+func (v *LeaderVote) GetRound() int {
+	if v.Round_ != nil {
+		return *v.Round_
+	}
+	if v.Round != nil {
+		return int(v.Round.Value)
+	}
+	return -1
 }
 
 func (v *LeaderVote) Hash() []byte {
@@ -204,13 +223,13 @@ func (s *LeaderVoteList) Verify(reps *RepsList) error {
 			)
 		}
 		if round == -1 {
-			round = v.Round
-		} else if round != v.Round {
+			round = v.GetRound()
+		} else if round != v.GetRound() {
 			return errors.InvalidStateError.Errorf(
 				"InvalidVoteRound(idx=%d,exp=%d,real=%d)",
 				i,
 				round,
-				v.Round,
+				v.GetRound(),
 			)
 		}
 	}
