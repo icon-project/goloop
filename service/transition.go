@@ -807,3 +807,11 @@ func NewSyncTransition(
 	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData)
 	return ntr
 }
+
+func PatchTransition(
+	tr module.Transition,
+	bi module.BlockInfo,
+	ptxs module.TransactionList,
+) module.Transition {
+	return patchTransition(tr.(*transition), bi, ptxs)
+}
