@@ -36,7 +36,7 @@ import (
 )
 
 type platform struct {
-	calculator *iiss.Calculator
+	calculator iiss.CalculatorHolder
 }
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
@@ -98,14 +98,7 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// Start background calculator if it's not started.
-	if ess != nil && p.calculator.CheckToRun(ess) {
-		go func(snapshot state.ExtensionSnapshot) {
-			err := p.calculator.Run(snapshot, logger)
-			if err != nil {
-				logger.Errorf("Failed to calculate reward. %+v", err)
-			}
-		}(ess)
-	}
+	p.calculator.Start(ess, logger)
 }
 
 func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
@@ -138,7 +131,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	} else {
 		totalFee = er.TotalFee()
 	}
-	return es.OnExecutionEnd(wc, totalFee, p.calculator)
+	return es.OnExecutionEnd(wc, totalFee, p.calculator.Get())
 }
 
 func (p *platform) Term() {
@@ -151,7 +144,6 @@ func (p *platform) DefaultBlockVersion() int {
 
 func NewPlatform(base string, cid int) (service.Platform, error) {
 	return &platform{
-		calculator: iiss.NewCalculator(),
 	}, nil
 }
 

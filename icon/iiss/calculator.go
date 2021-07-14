@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"math/big"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -111,27 +112,31 @@ func (c *Calculator) IsCalcDone(blockHeight int64) bool {
 	return c.startHeight == blockHeight && c.result != nil
 }
 
-func (c *Calculator) CheckToRun(ess state.ExtensionSnapshot) bool {
-	ss := ess.(*ExtensionSnapshotImpl)
-	back := ss.Back2()
-	if back == nil {
-		return false
-	}
-	global, err := back.GetGlobal()
-	if err != nil || global == nil {
-		return false
-	}
-	return c.back == nil || !bytes.Equal(c.back.Bytes(), back.Bytes())
+func (c *Calculator) Stop() {
+	// TODO stop calculation
 }
 
-func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err error) {
+func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Logger) *Calculator {
+	essi := ess.(*ExtensionSnapshotImpl)
+	back := essi.Back2()
+	reward := essi.Reward()
+	if c != nil {
+		if bytes.Equal(c.back.Bytes(), back.Bytes()) &&
+			bytes.Equal(c.base.Bytes(), reward.Bytes()) {
+			return c
+		}
+		c.Stop()
+	}
+	return NewCalculator(back, reward, logger)
+}
+
+func (c *Calculator) run() (err error) {
 	defer func() {
 		c.err = err
 	}()
-	c.log = logger
-	ss := ess.(*ExtensionSnapshotImpl)
+
 	startTS := time.Now()
-	if err = c.prepare(ss); err != nil {
+	if err = c.prepare(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
 		return
 	}
@@ -170,25 +175,8 @@ func (c *Calculator) Run(ess state.ExtensionSnapshot, logger log.Logger) (err er
 	return
 }
 
-func (c *Calculator) prepare(ss *ExtensionSnapshotImpl) error {
+func (c *Calculator) prepare() error {
 	var err error
-	c.back = ss.Back2()
-	c.base = ss.Reward()
-	// make new State with hash value to decoupling base and temp
-	c.temp = icreward.NewState(ss.database, c.base.Bytes())
-	c.result = nil
-	c.stats.Clear()
-
-	// read global variables
-	c.global, err = c.back.GetGlobal()
-	if err != nil {
-		return err
-	}
-	if c.global == nil {
-		return errors.Errorf("There is no Global values for calculator")
-	}
-	c.startHeight = c.global.GetStartHeight()
-
 	c.log.Infof("Start calculation %d", c.startHeight)
 	c.log.Infof("Global Option: %+v", c.global)
 
@@ -1006,11 +994,49 @@ func (c *Calculator) postWork() (err error) {
 
 const InitBlockHeight = -1
 
-func NewCalculator() *Calculator {
-	return &Calculator{
-		startHeight: InitBlockHeight,
+func NewCalculator(back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
+	global, err := back.GetGlobal()
+	if err != nil {
+		logger.Errorf("There is no Global values for calcaultor")
+		return nil
+	}
+	c := &Calculator{
+		back:        back,
+		base:        reward,
+		temp:        icreward.NewStateFromSnapshot(reward),
+		log:         logger,
+		global:      global,
+		startHeight: global.GetStartHeight(),
 		stats:       newStatistics(),
 	}
+	go c.run()
+	return c
+}
+
+type CalculatorHolder struct {
+	lock   sync.Mutex
+	runner *Calculator
+}
+
+func (h *CalculatorHolder) Start(ess state.ExtensionSnapshot, logger log.Logger) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	if ess != nil {
+		h.runner = UpdateCalculator(h.runner, ess, logger)
+	} else {
+		if h.runner != nil {
+			h.runner.Stop()
+			h.runner = nil
+		}
+	}
+}
+
+func (h *CalculatorHolder) Get() *Calculator {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	return h.runner
 }
 
 type validator struct {
