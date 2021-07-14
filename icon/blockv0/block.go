@@ -91,7 +91,7 @@ func ParseBlock(b []byte, lc Store) (Block, error) {
 	switch rawBlk.Version {
 	case Version01a:
 		return ParseBlockV01a(b)
-	case Version03, Version04:
+	case Version03, Version04, Version05:
 		return ParseBlockV03(b, lc)
 	default:
 		return nil, errors.UnsupportedError.Errorf(

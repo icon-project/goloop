@@ -650,7 +650,7 @@ func NewBlockFromHeaderReader(database db.Database, r io.Reader) (*Block, error)
 	switch header.VersionV0 {
 	case blockv0.Version01a:
 		return newBlockV11FromHeaderFormat(database, &header)
-	case blockv0.Version03, blockv0.Version04:
+	case blockv0.Version03, blockv0.Version04, blockv0.Version05:
 		return newBlockV13FromHeaderFormat(database, &header)
 	}
 	return nil, errors.UnsupportedError.Errorf("block version %s", header.VersionV0)
@@ -669,7 +669,7 @@ func NewBlockFromReader(dbase db.Database, r io.Reader) (*Block, error) {
 	switch blockFormat.VersionV0 {
 	case blockv0.Version01a:
 		return newBlockV11FromBlockFormat(dbase, &blockFormat)
-	case blockv0.Version03, blockv0.Version04:
+	case blockv0.Version03, blockv0.Version04, blockv0.Version05:
 		return newBlockV13FromBlockFormat(dbase, &blockFormat)
 	}
 	return nil, errors.UnsupportedError.Errorf("block version %s", blockFormat.VersionV0)
