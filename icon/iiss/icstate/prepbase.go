@@ -182,10 +182,6 @@ func (p *PRepBaseData) P2PEndpoint() string {
 	return p.p2pEndpoint
 }
 
-func (p *PRepBaseData) Node() module.Address {
-	return p.node
-}
-
 func (p *PRepBaseData) IRep() *big.Int {
 	return p.irep
 }

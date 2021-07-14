@@ -299,25 +299,27 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, 
 	return nil
 }
 
-func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo) error {
+func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo) (bool, error) {
 	pb, _ := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
-		return errors.Errorf("PRep not found: %s", owner)
+		return false, errors.Errorf("PRep not found: %s", owner)
 	}
 
 	oldNode := pb.GetNode(owner)
+	oldP2P := pb.P2PEndpoint()
 	if err := s.updatePRepInfoOf(owner, pb, info); err != nil {
-		return err
+		return false, err
 	}
 	newNode := pb.GetNode(owner)
+	nodeUpdate := pb.P2PEndpoint() != oldP2P || !newNode.Equal(oldNode)
 
 	if !oldNode.Equal(newNode) {
 		ps, _ := s.GetPRepStatusByOwner(owner, false)
 		if ps.Grade() == GradeMain {
-			return s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
+			return nodeUpdate, s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
 		}
 	}
-	return nil
+	return nodeUpdate, nil
 }
 
 func (s *State) SetTotalDelegation(value *big.Int) error {

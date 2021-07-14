@@ -82,7 +82,7 @@ func TestState_SetPRep(t *testing.T) {
 		node := newDummyAddress(i + 100)
 		assert.False(t, node.Equal(owner))
 		ri = newNodeOnlyRegInfo(node)
-		err = state.SetPRep(bh, owner, ri)
+		_, err = state.SetPRep(bh, owner, ri)
 		assert.NoError(t, err)
 
 		err = state.Flush()

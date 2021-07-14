@@ -543,7 +543,8 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 		return err
 	}
 	blockHeight := s.cc.BlockHeight()
-	if err = es.State.SetPRep(blockHeight, s.from, info); err != nil {
+	nodeUpdate, err := es.State.SetPRep(blockHeight, s.from, info)
+	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
 	}
 	s.cc.OnEvent(state.SystemAddress,
@@ -551,18 +552,14 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 		[][]byte{s.from.Bytes()},
 	)
 
-	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 &&
-		((p2pEndpoint != nil && len(*p2pEndpoint) > 0) || info.Node != nil) {
+	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
 		// Thus reward calculator segment VotedReward period
 		ps, _ := es.State.GetPRepStatusByOwner(s.from, false)
 		if ps.Grade() == icstate.GradeMain {
-			pb, _ := es.State.GetPRepBaseByOwner(s.from, false)
-			if !pb.Node().Equal(info.Node) || pb.P2PEndpoint() != *p2pEndpoint {
-				term := es.State.GetTermSnapshot()
-				if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
-					return err
-				}
+			term := es.State.GetTermSnapshot()
+			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
+				return err
 			}
 		}
 	}
