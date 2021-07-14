@@ -33,7 +33,7 @@ import (
 )
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
-	c := NewCalculator()
+	c := new(Calculator)
 	c.back = back
 	c.base = icreward.NewSnapshot(database, nil)
 	c.temp = c.base.NewState()
@@ -778,7 +778,7 @@ func TestCalculator_VotingReward(t *testing.T) {
 		},
 	}
 
-	calculator := NewCalculator()
+	calculator := new(Calculator)
 	calculator.log = log.New()
 
 	for _, tt := range tests {
