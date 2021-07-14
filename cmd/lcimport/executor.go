@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -543,6 +544,10 @@ func (e *Executor) ProposeTransition(last *Transition, chn <- chan interface{}) 
 	return &Transition{tr, blk}, nil
 }
 
+func (e *Executor) ResetTransition(tr *Transition) {
+	tr.Transition = service.PatchTransition(tr.Transition, nil, nil)
+}
+
 func (e *Executor) setLastHeight(height int64) error {
 	e.log.Tracef("setLastHeight(%d)", height)
 	return e.chainBucket.Set(
@@ -831,16 +836,27 @@ func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 			rps,
 			tps,
 		)
-		if _, err = tr.Execute(callback); err != nil {
-			return errors.Wrapf(err, "FailureInExecute(height=%d)", height)
-		}
-		err = <-callback
-		if err != nil {
-			return errors.Wrapf(err, "PreValidationFail(height=%d)", height)
-		}
-		err = <-callback
-		if err != nil {
-			return errors.Wrapf(err, "ExecutionFailure(height=%d)", height)
+
+		// repeating execution if Reward Calculator has not finished its job.
+		for true {
+			if _, err = tr.Execute(callback); err != nil {
+				return errors.Wrapf(err, "FailureInExecute(height=%d)", height)
+			}
+			err = <-callback
+			if err != nil {
+				return errors.Wrapf(err, "PreValidationFail(height=%d)", height)
+			}
+			err = <-callback
+			if err != nil {
+				if icmodule.CalculationNotFinishedError.Equals(err) {
+					e.ResetTransition(tr)
+					time.Sleep(time.Second*5)
+					continue
+				}
+				return errors.Wrapf(err, "ExecutionFailure(height=%d)", height)
+			} else {
+				break
+			}
 		}
 
 		if err := e.CheckResult(tr); err != nil {
