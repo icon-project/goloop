@@ -552,13 +552,16 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 &&
 		((p2pEndpoint != nil && len(*p2pEndpoint) > 0) || info.Node != nil) {
-		// ICON1 make new term when main+sub P-Rep modify p2p endpoint or node address
+		// ICON1 update term when main P-Rep modify p2p endpoint or node address
 		// Thus reward calculator segment VotedReward period
 		ps, _ := es.State.GetPRepStatusByOwner(s.from, false)
 		if ps.Grade() == icstate.GradeMain {
-			term := es.State.GetTermSnapshot()
-			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
-				return err
+			pb, _ := es.State.GetPRepBaseByOwner(s.from, false)
+			if !pb.Node().Equal(info.Node) || pb.P2PEndpoint() != *p2pEndpoint {
+				term := es.State.GetTermSnapshot()
+				if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
+					return err
+				}
 			}
 		}
 	}
