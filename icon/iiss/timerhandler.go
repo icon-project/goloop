@@ -22,31 +22,31 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (s *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
+func (es *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
 	bh := wc.BlockHeight()
-	s.logger.Tracef("HandleTimerJob() start BH-%d", bh)
-	bt := s.State.GetUnbondingTimerSnapshot(bh)
+	es.logger.Tracef("HandleTimerJob() start BH-%d", bh)
+	bt := es.State.GetUnbondingTimerSnapshot(bh)
 	if bt != nil {
-		err = s.handleUnbondingTimer(bt, bh)
+		err = es.handleUnbondingTimer(bt, bh)
 		if err != nil {
 			return
 		}
 	}
 
-	st := s.State.GetUnstakingTimerSnapshot(wc.BlockHeight())
+	st := es.State.GetUnstakingTimerSnapshot(wc.BlockHeight())
 	if st != nil {
-		err = s.handleUnstakingTimer(wc, st, bh)
+		err = es.handleUnstakingTimer(wc, st, bh)
 	}
-	s.logger.Tracef("HandleTimerJob() end BH-%d", bh)
+	es.logger.Tracef("HandleTimerJob() end BH-%d", bh)
 	return
 }
 
-func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
-	s.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
+func (es *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
+	es.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
 	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
 		a, _ := itr.Get()
-		ea := s.State.GetAccountState(a)
-		s.logger.Tracef("account : %s", ea)
+		ea := es.State.GetAccountState(a)
+		es.logger.Tracef("account : %s", ea)
 		ra, err := ea.RemoveUnstake(h)
 		if err != nil {
 			return err
@@ -56,26 +56,26 @@ func (s *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *ics
 		b := wa.GetBalance()
 		wa.SetBalance(new(big.Int).Add(b, ra))
 		blockHeight := wc.BlockHeight()
-		s.logger.Tracef(
+		es.logger.Tracef(
 			"after remove unstake, stake information of %s : %s",
 			a, ea.GetStakeInJSON(blockHeight),
 		)
 	}
-	s.logger.Tracef("handleUnstakingTimer() end")
+	es.logger.Tracef("handleUnstakingTimer() end")
 	return nil
 }
 
-func (s *ExtensionStateImpl) handleUnbondingTimer(ts *icstate.TimerSnapshot, h int64) error {
-	s.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
+func (es *ExtensionStateImpl) handleUnbondingTimer(ts *icstate.TimerSnapshot, h int64) error {
+	es.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
 	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
 		a, _ := itr.Get()
-		s.logger.Tracef("account : %s", a)
-		as := s.State.GetAccountState(a)
+		es.logger.Tracef("account : %s", a)
+		as := es.State.GetAccountState(a)
 		if err := as.RemoveUnbond(h); err != nil {
 			return err
 		}
-		s.logger.Tracef("after remove unbonds, unbond information of %s : %s", a, as.GetUnbondsInJSON())
+		es.logger.Tracef("after remove unbonds, unbond information of %s : %s", a, as.GetUnbondsInJSON())
 	}
-	s.logger.Tracef("handleUnbondingTimer() end")
+	es.logger.Tracef("handleUnbondingTimer() end")
 	return nil
 }

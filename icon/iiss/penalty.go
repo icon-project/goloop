@@ -35,10 +35,10 @@ const (
 	BlockValidation
 )
 
-func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
+func (es *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
 	var err error
 
-	ps, _ := s.State.GetPRepStatusByOwner(owner, false)
+	ps, _ := es.State.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return nil
 	}
@@ -46,12 +46,12 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 	blockHeight := cc.BlockHeight()
 
 	// Penalty check
-	if !s.State.CheckValidationPenalty(ps, blockHeight) {
+	if !es.State.CheckValidationPenalty(ps, blockHeight) {
 		return nil
 	}
 
 	// Impose penalty
-	if err = s.State.ImposePenalty(owner, ps, blockHeight); err != nil {
+	if err = es.State.ImposePenalty(owner, ps, blockHeight); err != nil {
 		return err
 	}
 
@@ -66,18 +66,18 @@ func (s *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module
 
 	// Slashing
 	revision := cc.Revision().Value()
-	if revision >= icmodule.RevisionICON2 && s.State.CheckConsistentValidationPenalty(ps) {
-		slashRatio := s.State.GetConsistentValidationPenaltySlashRatio()
-		if err = s.slash(cc, owner, slashRatio); err != nil {
+	if revision >= icmodule.RevisionICON2 && es.State.CheckConsistentValidationPenalty(ps) {
+		slashRatio := es.State.GetConsistentValidationPenaltySlashRatio()
+		if err = es.slash(cc, owner, slashRatio); err != nil {
 			return err
 		}
 	}
 
 	// Record event for reward calculation
-	return s.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
+	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
 }
 
-func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address, ratio int) error {
+func (es *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address, ratio int) error {
 	if ratio == 0 {
 		return nil
 	}
@@ -85,20 +85,20 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
 
-	logger := s.Logger()
+	logger := es.Logger()
 	logger.Tracef("slash() start: addr=%s ratio=%d", owner, ratio)
 
-	pb, _ := s.State.GetPRepBaseByOwner(owner, false)
+	pb, _ := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	bonders := pb.BonderList()
 	totalSlashBond := new(big.Int)
-	totalStake := new(big.Int).Set(s.State.GetTotalStake())
+	totalStake := new(big.Int).Set(es.State.GetTotalStake())
 
 	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
-		account := s.State.GetAccountState(bonder)
+		account := es.State.GetAccountState(bonder)
 		totalSlash := new(big.Int)
 
 		logger.Debugf("Before slashing: %s", account)
@@ -113,7 +113,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		slashUnbond, expire := account.SlashUnbond(owner, ratio)
 		totalSlash.Add(totalSlash, slashUnbond)
 		if expire != -1 {
-			timer := s.State.GetUnbondingTimerState(expire)
+			timer := es.State.GetUnbondingTimerState(expire)
 			if timer != nil {
 				if err := timer.Delete(owner); err != nil {
 					return err
@@ -133,7 +133,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		delta := map[string]*big.Int{
 			icutils.ToKey(owner): new(big.Int).Neg(slashBond),
 		}
-		if err := s.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
+		if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 			return err
 		}
 
@@ -147,7 +147,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 		logger.Debugf("After slashing: %s", account)
 	}
 
-	if err := s.State.SetTotalStake(totalStake); err != nil {
+	if err := es.State.SetTotalStake(totalStake); err != nil {
 		return err
 	}
 	if ts, err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
@@ -155,7 +155,7 @@ func (s *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address
 	} else {
 		icutils.OnBurn(cc, state.SystemAddress, totalSlashBond, ts)
 	}
-	ret := s.State.Slash(owner, totalSlashBond)
+	ret := es.State.Slash(owner, totalSlashBond)
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return ret
 }

@@ -465,7 +465,7 @@ func RegisterBaseTx() {
 	})
 }
 
-func (s *ExtensionStateImpl) OnBaseTx(cc contract.CallContext, data []byte) error {
+func (es *ExtensionStateImpl) OnBaseTx(cc contract.CallContext, data []byte) error {
 	if err := handleICXIssue(cc, data); err != nil {
 		return err
 	}
