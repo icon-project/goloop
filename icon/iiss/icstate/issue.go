@@ -21,8 +21,8 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 const (
@@ -119,7 +119,7 @@ func (i *Issue) SetOverIssuedIScore(v *big.Int) {
 }
 
 func (i *Issue) GetOverIssuedICX() *big.Int {
-	return icmodule.IScoreToICX(i.overIssuedIScore)
+	return icutils.IScoreToICX(i.overIssuedIScore)
 }
 
 func (i *Issue) PrevBlockFee() *big.Int {
@@ -133,8 +133,8 @@ func (i *Issue) SetPrevBlockFee(v *big.Int) {
 func (i *Issue) Update(totalReward *big.Int, byFee *big.Int, byOverIssued *big.Int) *Issue {
 	issue := i.Clone()
 	issue.totalReward = new(big.Int).Add(issue.totalReward, totalReward)
-	overIssued := new(big.Int).Add(issue.overIssuedIScore, icmodule.ICXToIScore(issue.prevBlockFee))
-	overIssued.Sub(overIssued, icmodule.ICXToIScore(new(big.Int).Add(byFee, byOverIssued)))
+	overIssued := new(big.Int).Add(issue.overIssuedIScore, icutils.ICXToIScore(issue.prevBlockFee))
+	overIssued.Sub(overIssued, icutils.ICXToIScore(new(big.Int).Add(byFee, byOverIssued)))
 	issue.overIssuedIScore = overIssued
 	return issue
 }

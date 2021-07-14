@@ -142,8 +142,8 @@ func CalculateIRep(preps icstate.PRepSet, revision int) *big.Int {
 	}
 
 	irep.Div(totalWeightedIrep, totalDelegated)
-	if irep.Cmp(icstate.BigIntMinIRep) == -1 {
-		irep.Set(icstate.BigIntMinIRep)
+	if irep.Cmp(icmodule.BigIntMinIRep) == -1 {
+		irep.Set(icmodule.BigIntMinIRep)
 	}
 	return irep
 }

@@ -281,3 +281,11 @@ func ValidateCountryAlpha3(alpha3 string) error {
 	}
 	return nil
 }
+
+func ICXToIScore(icx *big.Int) *big.Int {
+	return new(big.Int).Mul(icx, icmodule.BigIntIScoreICXRatio)
+}
+
+func IScoreToICX(iScore *big.Int) *big.Int {
+	return new(big.Int).Div(iScore, icmodule.BigIntIScoreICXRatio)
+}

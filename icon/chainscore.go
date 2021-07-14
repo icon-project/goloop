@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -588,46 +587,6 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
-const (
-	InitialTermPeriod       = 43200
-	DecentralizedTermPeriod = 43120
-
-	InitialDepositTerm = 1_296_000
-	DisableDepositTerm = 0
-
-	InitialUnstakeSlotMax = 1
-
-	InitialDelegationSlotMax = 10
-
-	IISS2BondRequirement = 0
-)
-
-const (
-	configFile                                   = "./icon_config.json"
-	defaultTermPeriod                            = InitialTermPeriod
-	defaultUnbondingPeriodMultiplier             = 7
-	defaultUnstakeSlotMax                        = 1000
-	defaultMainPRepCount                         = 22
-	defaultSubPRepCount                          = 78
-	defaultIRep                                  = 0
-	defaultRRep                                  = 1200
-	defaultBondRequirement                       = 5
-	defaultLockMinMultiplier                     = 5
-	defaultLockMaxMultiplier                     = 20
-	rewardPoint                                  = 0.7
-	defaultIglobal                               = iiss.YearBlock * icmodule.IScoreICXRatio
-	defaultIprep                                 = 50
-	defaultIcps                                  = 0
-	defaultIrelay                                = 0
-	defaultIvoter                                = 50
-	defaultUnbondingMax                          = 100
-	defaultValidationPenaltyCondition            = 660
-	defaultConsistentValidationPenaltyCondition  = 5
-	defaultConsistentValidationPenaltyMask       = 30
-	defaultConsistentValidationPenaltySlashRatio = 10
-	defaultDelegationSlotMax                     = 100
-)
-
 type config struct {
 	TermPeriod                            *common.HexInt `json:"termPeriod"`
 	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
@@ -784,35 +743,35 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:                            common.NewHexInt(defaultTermPeriod),
-		MainPRepCount:                         common.NewHexInt(defaultMainPRepCount),
-		SubPRepCount:                          common.NewHexInt(defaultSubPRepCount),
-		Irep:                                  common.NewHexInt(defaultIRep),
-		Rrep:                                  common.NewHexInt(defaultRRep),
-		BondRequirement:                       common.NewHexInt(defaultBondRequirement),
-		LockMinMultiplier:                     common.NewHexInt(defaultLockMinMultiplier),
-		LockMaxMultiplier:                     common.NewHexInt(defaultLockMaxMultiplier),
-		UnbondingPeriodMultiplier:             common.NewHexInt(defaultUnbondingPeriodMultiplier),
-		UnstakeSlotMax:                        common.NewHexInt(defaultUnstakeSlotMax),
-		UnbondingMax:                          common.NewHexInt(defaultUnbondingMax),
-		ValidationPenaltyCondition:            common.NewHexInt(defaultValidationPenaltyCondition),
-		ConsistentValidationPenaltyCondition:  common.NewHexInt(defaultConsistentValidationPenaltyCondition),
-		ConsistentValidationPenaltyMask:       common.NewHexInt(defaultConsistentValidationPenaltyMask),
-		ConsistentValidationPenaltySlashRatio: common.NewHexInt(defaultConsistentValidationPenaltySlashRatio),
-		DelegationSlotMax:                     common.NewHexInt(defaultDelegationSlotMax),
+		TermPeriod:                            common.NewHexInt(icmodule.DefaultTermPeriod),
+		MainPRepCount:                         common.NewHexInt(icmodule.DefaultMainPRepCount),
+		SubPRepCount:                          common.NewHexInt(icmodule.DefaultSubPRepCount),
+		Irep:                                  common.NewHexInt(icmodule.DefaultIRep),
+		Rrep:                                  common.NewHexInt(icmodule.DefaultRRep),
+		BondRequirement:                       common.NewHexInt(icmodule.DefaultBondRequirement),
+		LockMinMultiplier:                     common.NewHexInt(icmodule.DefaultLockMinMultiplier),
+		LockMaxMultiplier:                     common.NewHexInt(icmodule.DefaultLockMaxMultiplier),
+		UnbondingPeriodMultiplier:             common.NewHexInt(icmodule.DefaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:                        common.NewHexInt(icmodule.DefaultUnstakeSlotMax),
+		UnbondingMax:                          common.NewHexInt(icmodule.DefaultUnbondingMax),
+		ValidationPenaltyCondition:            common.NewHexInt(icmodule.DefaultValidationPenaltyCondition),
+		ConsistentValidationPenaltyCondition:  common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyCondition),
+		ConsistentValidationPenaltyMask:       common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyMask),
+		ConsistentValidationPenaltySlashRatio: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltySlashRatio),
+		DelegationSlotMax:                     common.NewHexInt(icmodule.DefaultDelegationSlotMax),
 		RewardFund: rewardFund{
-			Iglobal: common.NewHexInt(defaultIglobal),
-			Iprep:   common.NewHexInt(defaultIprep),
-			Icps:    common.NewHexInt(defaultIcps),
-			Irelay:  common.NewHexInt(defaultIrelay),
-			Ivoter:  common.NewHexInt(defaultIvoter),
+			Iglobal: common.NewHexInt(icmodule.DefaultIglobal),
+			Iprep:   common.NewHexInt(icmodule.DefaultIprep),
+			Icps:    common.NewHexInt(icmodule.DefaultIcps),
+			Irelay:  common.NewHexInt(icmodule.DefaultIrelay),
+			Ivoter:  common.NewHexInt(icmodule.DefaultIvoter),
 		},
 	}
 }
 
 func (s *chainScore) loadIconConfig() *config {
 	iconConfig := newIconConfig()
-	f, err := os.Open(configFile)
+	f, err := os.Open(icmodule.ConfigFile)
 	if err != nil {
 		s.log.Infof("Failed to open configuration file %+v. Use default config", err)
 		return iconConfig

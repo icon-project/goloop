@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -67,7 +68,7 @@ func createPRepManager(t *testing.T, readonly bool, size int) *PRepManager {
 	for i := 0; i < size; i++ {
 		owner := createAddress(i)
 		ri := newPRepInfo(i)
-		assert.NoError(t, state.RegisterPRep(owner, ri, icstate.BigIntInitialIRep, 0))
+		assert.NoError(t, state.RegisterPRep(owner, ri, icmodule.BigIntInitialIRep, 0))
 	}
 
 	return newPRepManager(state, nil)

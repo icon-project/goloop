@@ -102,8 +102,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 		// enable Virtual step
 		depositTerm := scoredb.NewVarDB(as, state.VarDepositTerm).Int64()
-		if depositTerm == DisableDepositTerm {
-			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(InitialDepositTerm); err != nil {
+		if depositTerm == icmodule.DisableDepositTerm {
+			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.InitialDepositTerm); err != nil {
 				return err
 			}
 		}
@@ -111,7 +111,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 	if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
 		// disable Virtual step
-		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(DisableDepositTerm); err != nil {
+		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
 			return err
 		}
 	}
@@ -190,42 +190,42 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion2 {
 				iissVersion = icstate.IISSVersion2
 			}
-			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == defaultUnstakeSlotMax {
-				if err := es.State.SetUnstakeSlotMax(InitialUnstakeSlotMax); err != nil {
+			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.DefaultUnstakeSlotMax {
+				if err := es.State.SetUnstakeSlotMax(icmodule.InitialUnstakeSlotMax); err != nil {
 					return err
 				}
 			}
-			if delegationSlotMax := es.State.GetDelegationSlotMax(); delegationSlotMax == defaultDelegationSlotMax {
-				if err := es.State.SetDelegationSlotMax(InitialDelegationSlotMax); err != nil {
+			if delegationSlotMax := es.State.GetDelegationSlotMax(); delegationSlotMax == icmodule.DefaultDelegationSlotMax {
+				if err := es.State.SetDelegationSlotMax(icmodule.InitialDelegationSlotMax); err != nil {
 					return err
 				}
 			}
-			if br := es.State.GetBondRequirement(); br == defaultBondRequirement {
-				if err := es.State.SetBondRequirement(IISS2BondRequirement); err != nil {
+			if br := es.State.GetBondRequirement(); br == icmodule.DefaultBondRequirement {
+				if err := es.State.SetBondRequirement(icmodule.IISS2BondRequirement); err != nil {
 					return err
 				}
 			}
 		}
 
 		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
-			if termPeriod := es.State.GetTermPeriod(); termPeriod == InitialTermPeriod {
-				if err := es.State.SetTermPeriod(DecentralizedTermPeriod); err != nil {
+			if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
+				if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 					return err
 				}
 			}
 		}
 
 		if r1 < icmodule.RevisionMultipleUnstakes && r2 >= icmodule.RevisionMultipleUnstakes {
-			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == InitialUnstakeSlotMax {
-				if err := es.State.SetUnstakeSlotMax(defaultUnstakeSlotMax); err != nil {
+			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
+				if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
 					return err
 				}
 			}
 		}
 
 		if r1 < icmodule.RevisionDelegationSlotMaxTo100 && r2 >= icmodule.RevisionDelegationSlotMaxTo100 {
-			if dSlotMax := es.State.GetDelegationSlotMax(); dSlotMax == InitialDelegationSlotMax {
-				if err := es.State.SetDelegationSlotMax(defaultDelegationSlotMax); err != nil {
+			if dSlotMax := es.State.GetDelegationSlotMax(); dSlotMax == icmodule.InitialDelegationSlotMax {
+				if err := es.State.SetDelegationSlotMax(icmodule.DefaultDelegationSlotMax); err != nil {
 					return err
 				}
 			}
@@ -246,8 +246,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}
-			if br := es.State.GetBondRequirement(); br == IISS2BondRequirement {
-				if err := es.State.SetBondRequirement(defaultBondRequirement); err != nil {
+			if br := es.State.GetBondRequirement(); br == icmodule.IISS2BondRequirement {
+				if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
 					return err
 				}
 			}

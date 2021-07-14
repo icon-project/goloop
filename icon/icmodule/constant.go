@@ -16,20 +16,70 @@
 
 package icmodule
 
-import "math/big"
-
-const (
-	IScoreICXRatio = 1_000
-	VotedRewardMultiplier = 100
-	DefaultExtraMainPRepCount = 3
+import (
+	"math/big"
 )
 
-var BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
+// From iiss.calculator.go
+const (
+	DayBlock     = 24 * 60 * 60 / 2
+	DayPerMonth  = 30
+	MonthBlock   = DayBlock * DayPerMonth
+	MonthPerYear = 12
+	YearBlock    = MonthBlock * MonthPerYear
 
-func ICXToIScore(icx *big.Int) *big.Int {
-	return new(big.Int).Mul(icx, BigIntIScoreICXRatio)
-}
+	/*
+		MinRrep        = 200
+		RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+		RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
+		MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
+	*/
+)
 
-func IScoreToICX(iScore*big.Int) *big.Int {
-	return new(big.Int).Div(iScore, BigIntIScoreICXRatio)
-}
+const (
+	ConfigFile               = "./icon_config.json"
+	IScoreICXRatio           = 1_000
+	VotedRewardMultiplier    = 100
+	InitialTermPeriod        = 43200
+	DecentralizedTermPeriod  = 43120
+	InitialDepositTerm       = 1_296_000
+	DisableDepositTerm       = 0
+	InitialUnstakeSlotMax    = 1
+	InitialDelegationSlotMax = 10
+	IISS2BondRequirement     = 0
+	InitialIRep              = 50_000 // in icx, not loop
+	MinIRep                  = 10_000
+	RewardPoint              = 0.7
+
+	DefaultTermPeriod                            = InitialTermPeriod
+	DefaultUnbondingPeriodMultiplier             = 7
+	DefaultUnstakeSlotMax                        = 1000
+	DefaultMainPRepCount                         = 22
+	DefaultSubPRepCount                          = 78
+	DefaultIRep                                  = 0
+	DefaultRRep                                  = 1200
+	DefaultBondRequirement                       = 5
+	DefaultLockMinMultiplier                     = 5
+	DefaultLockMaxMultiplier                     = 20
+	DefaultIglobal                               = YearBlock * IScoreICXRatio
+	DefaultIprep                                 = 50
+	DefaultIcps                                  = 0
+	DefaultIrelay                                = 0
+	DefaultIvoter                                = 50
+	DefaultUnbondingMax                          = 100
+	DefaultValidationPenaltyCondition            = 660
+	DefaultConsistentValidationPenaltyCondition  = 5
+	DefaultConsistentValidationPenaltyMask       = 30
+	DefaultConsistentValidationPenaltySlashRatio = 10
+	DefaultDelegationSlotMax                     = 100
+	DefaultExtraMainPRepCount                    = 3
+)
+
+// The following variables are read-only
+var (
+	BigIntZero           = new(big.Int)
+	BigIntICX            = big.NewInt(1_000_000_000_000_000_000)
+	BigIntInitialIRep    = new(big.Int).Mul(big.NewInt(InitialIRep), BigIntICX)
+	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
+	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
+)

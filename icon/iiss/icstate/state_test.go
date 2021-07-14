@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -33,7 +34,7 @@ func newNodeOnlyRegInfo(node module.Address) *PRepInfo {
 func TestState_RegisterPRep(t *testing.T) {
 	var err error
 	size := 10
-	irep := BigIntInitialIRep
+	irep := icmodule.BigIntInitialIRep
 	state := newDummyState(false)
 
 	for i := 0; i < size; i++ {
@@ -65,7 +66,7 @@ func TestState_RegisterPRep(t *testing.T) {
 func TestState_SetPRep(t *testing.T) {
 	var err error
 	size := 10
-	irep := BigIntInitialIRep
+	irep := icmodule.BigIntInitialIRep
 	bh := int64(100)
 	state := newDummyState(false)
 

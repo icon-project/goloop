@@ -104,6 +104,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	if err != nil {
 		return err
 	}
+
 	ia := es.State.GetAccountState(s.from)
 	v := &value.Int
 
@@ -210,10 +211,10 @@ func calcUnstakeLockPeriod(revision int, state *icstate.State, totalStake *big.I
 	fstake := new(big.Float).SetInt(totalStake)
 	fsupply := new(big.Float).SetInt(totalSupply)
 	stakeRate := new(big.Float).Quo(fstake, fsupply)
-	rPoint := big.NewFloat(rewardPoint)
+	rPoint := big.NewFloat(icmodule.RewardPoint)
 	termPeriod := new(big.Int)
 	if revision < icmodule.RevisionICON2 {
-		termPeriod.SetInt64(InitialTermPeriod)
+		termPeriod.SetInt64(icmodule.InitialTermPeriod)
 	} else {
 		termPeriod.SetInt64(state.GetTermPeriod())
 	}
@@ -374,7 +375,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		irep = term.Irep()
 		irepHeight = s.cc.BlockHeight()
 	} else {
-		irep = icstate.BigIntInitialIRep
+		irep = icmodule.BigIntInitialIRep
 	}
 
 	if err = es.State.RegisterPRep(s.from, info, irep, irepHeight); err != nil {
@@ -813,7 +814,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	jso := make(map[string]interface{})
 	jso["blockHeight"] = bh
 	jso["iscore"] = is
-	jso["estimatedICX"] = icmodule.IScoreToICX(is)
+	jso["estimatedICX"] = icutils.IScoreToICX(is)
 	return jso, nil
 }
 

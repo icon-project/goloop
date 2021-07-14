@@ -24,7 +24,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -160,7 +159,7 @@ func RegulateIssueInfo(issue *icstate.Issue, iScore *big.Int) {
 	if iScore == nil || iScore.Sign() == 0 {
 		return
 	}
-	prevTotalIScore := icmodule.ICXToIScore(issue.PrevTotalReward())
+	prevTotalIScore := icutils.ICXToIScore(issue.PrevTotalReward())
 	prevTotalIScore.Add(prevTotalIScore, issue.OverIssuedIScore())
 	overIssuedIScore := new(big.Int).Sub(prevTotalIScore, iScore)
 	issue.SetOverIssuedIScore(overIssuedIScore)

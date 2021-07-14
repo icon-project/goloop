@@ -950,7 +950,7 @@ func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, e
 	if ts := tsVar.BigInt(); ts != nil {
 		return ts, nil
 	}
-	return icstate.BigIntZero, nil
+	return icmodule.BigIntZero, nil
 }
 
 func (es *ExtensionStateImpl) IsDecentralized() bool {
@@ -958,6 +958,105 @@ func (es *ExtensionStateImpl) IsDecentralized() bool {
 	return term != nil && term.IsDecentralized()
 }
 
-func (es *ExtensionStateImpl) SetStake(value *big.Int) (err error) {
-	return nil
+/*
+func (es *ExtensionStateImpl) SetStake(from module.Address, v *big.Int) (err error) {
+	ia := es.State.GetAccountState(s.from)
+	usingStake := ia.UsingStake()
+	if v.Cmp(usingStake) < 0 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Failed to set stake: newStake=%v < usingStake=%v from=%v",
+			v, usingStake, s.from,
+		)
+	}
+
+	revision := s.cc.Revision().Value()
+	stakeInc := new(big.Int).Sub(v, ia.Stake())
+	// ICON1 update unstakes when stakeInc == 0
+	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2 {
+		return nil
+	}
+
+	account := s.cc.GetAccountState(s.from.ID())
+	balance := account.GetBalance()
+	availableStake := new(big.Int).Add(balance, ia.GetTotalStake())
+	if availableStake.Cmp(v) == -1 {
+		return scoreresult.OutOfBalanceError.Errorf("Not enough balance")
+	}
+
+	tStake := es.State.GetTotalStake()
+	tSupply := icutils.GetTotalSupply(s.cc)
+	oldTotalStake := ia.GetTotalStake()
+
+	//update IISS account
+	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(revision, es.State, tStake, tSupply).Int64()
+	var tl []icstate.TimerJobInfo
+	switch stakeInc.Sign() {
+	case 0, 1:
+		// Condition: stakeInc > 0
+		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
+	case -1:
+		slotMax := int(es.State.GetUnstakeSlotMax())
+		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
+	}
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Error while updating unstakes: from=%v",
+			s.from,
+		)
+	}
+
+	for _, t := range tl {
+		ts := es.State.GetUnstakingTimerState(t.Height)
+		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Error while scheduling UnStaking Timer Job: from=%v",
+				s.from,
+			)
+		}
+	}
+	if err = ia.SetStake(v); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set stake: from=%v stake=%v",
+			s.from,
+			v,
+		)
+	}
+	if err = es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to set totalStake: from=%v totalStake=%v stakeInc=%v",
+			s.from,
+			tStake,
+			stakeInc,
+		)
+	}
+
+	// update world account
+	totalStake := ia.GetTotalStake()
+	cmp := oldTotalStake.Cmp(totalStake)
+	if cmp > 0 {
+		es.Logger().Panicf(
+			"Failed to set stake: newTotalStake=%v < oldTotalStake=%v from=%v",
+			totalStake, oldTotalStake, s.from,
+		)
+	} else if cmp < 0 {
+		diff := new(big.Int).Sub(totalStake, oldTotalStake)
+		account.SetBalance(new(big.Int).Sub(balance, diff))
+	}
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		txID := hex.EncodeToString(s.cc.TransactionID())
+		if amount, ok := migrate.StakeData[txID]; ok {
+			balance = account.GetBalance()
+			v := new(big.Int)
+			v.SetString(amount, 10)
+			account.SetBalance(new(big.Int).Add(balance, v))
+			s.log.Tracef("%s get %d illegal icx", s.from, v)
+		}
+
+	}
+	return
 }
+ */
