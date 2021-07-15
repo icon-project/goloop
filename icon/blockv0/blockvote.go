@@ -19,6 +19,7 @@ package blockv0
 import (
 	"bytes"
 	"encoding/json"
+	"sort"
 	"strconv"
 
 	"golang.org/x/crypto/sha3"
@@ -59,6 +60,21 @@ type BlockVoteJSON struct {
 type BlockVote struct {
 	json BlockVoteJSON
 	hash []byte
+}
+
+func NewBlockVote(
+	w module.Wallet,
+	height int64, round int64, blockHash []byte, ts int64,
+) *BlockVote {
+	res := new(BlockVote)
+	res.json.BlockHeight = common.HexInt64{Value: height}
+	res.json.Round = &common.HexInt64{Value: round}
+	res.json.BlockHash = blockHash
+	res.json.Timestamp = common.HexInt64{Value: ts}
+	bs := w.Address().Bytes()
+	copy(res.json.Rep[:], bs)
+	_ = res.Sign(w)
+	return res
 }
 
 func (v *BlockVote) calcHash() {
@@ -123,6 +139,16 @@ func (v *BlockVote) Verify() error {
 	return nil
 }
 
+// Sign updates Signature field
+func (v *BlockVote) Sign(w module.Wallet) error {
+	hash := v.Hash()
+	sigBs, err := w.Sign(hash)
+	if err != nil {
+		return err
+	}
+	return v.json.Signature.UnmarshalBinary(sigBs)
+}
+
 func (v *BlockVote) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &v.json)
 }
@@ -138,6 +164,10 @@ type BlockVoteList struct {
 	bytes []byte
 }
 
+func NewBlockVoteList(votes ...*BlockVote) *BlockVoteList {
+	return &BlockVoteList{ votes: votes }
+}
+
 func (s *BlockVoteList) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &s.votes)
 }
@@ -147,6 +177,9 @@ func (s *BlockVoteList) MarshalJSON() ([]byte, error) {
 }
 
 func (s *BlockVoteList) Root() []byte {
+	if s == nil {
+		return nil
+	}
 	if s.root == nil {
 		s.calcRoot()
 	}
@@ -250,7 +283,7 @@ func (s *BlockVoteList) compactFormat() *compactBlockVoteList {
 	var sharable []BlockVoteJSONSharable
 	entries := make([]*compactBlockVoteEntry, len(s.votes))
 	for i, v := range s.votes {
-		if v==nil {
+		if v == nil {
 			entries[i] = nil
 		} else {
 			index := len(sharable)
@@ -260,7 +293,7 @@ func (s *BlockVoteList) compactFormat() *compactBlockVoteList {
 					break
 				}
 			}
-			if index==len(sharable) {
+			if index == len(sharable) {
 				sharable = append(sharable, v.json.BlockVoteJSONSharable)
 			}
 			entries[i] = &compactBlockVoteEntry{
@@ -284,7 +317,7 @@ func (s *BlockVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	}
 	s.votes = make([]*BlockVote, len(cbvl.Entries))
 	for i, e := range cbvl.Entries {
-		if e==nil {
+		if e == nil {
 			s.votes[i] = nil
 		} else {
 			s.votes[i] = &BlockVote{
@@ -300,7 +333,10 @@ func (s *BlockVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	return nil
 }
 
-func (s* BlockVoteList) Hash() []byte {
+func (s *BlockVoteList) Hash() []byte {
+	if s == nil {
+		return nil
+	}
 	if s.hash == nil {
 		s.hash = crypto.SHA3Sum256(s.Bytes())
 	}
@@ -308,7 +344,8 @@ func (s* BlockVoteList) Hash() []byte {
 }
 
 func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
-	if validators==nil || validators.Len()==0 {
+	if validators == nil || validators.Len() == 0 {
+		// BlockVoteList can be nil in this case
 		return nil, nil
 	}
 	voted := make([]bool, len(s.votes))
@@ -333,7 +370,7 @@ func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.Va
 			count++
 		}
 	}
-	if count <= validators.Len() * 2 / 3 {
+	if count <= validators.Len()*2/3 {
 		return voted, errors.InvalidStateError.Errorf(
 			"quorum fail validators=%d vote for block=%d",
 			validators.Len(),
@@ -348,4 +385,31 @@ func (s *BlockVoteList) Bytes() []byte {
 		s.bytes = codec.BC.MustMarshalToBytes(s)
 	}
 	return s.bytes
+}
+
+func (s *BlockVoteList) Timestamp() int64 {
+	if s == nil {
+		return 0
+	}
+	l := len(s.votes)
+	if l == 0 {
+		return 0
+	}
+	ts := make([]int64, l)
+	for i := range ts {
+		ts[i] = s.votes[i].json.Timestamp.Value
+	}
+	sort.Slice(ts, func(i, j int) bool {
+		return ts[i] < ts[j]
+	})
+	if l%2 == 1 {
+		return ts[l/2]
+	}
+	return (ts[l/2-1] + ts[l/2]) / 2
+}
+
+func NewBlockVotesFromBytes(bs []byte) (*BlockVoteList, error) {
+	var res BlockVoteList
+	_, err := codec.UnmarshalFromBytes(bs, &res)
+	return &res, err
 }

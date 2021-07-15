@@ -39,7 +39,7 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-type headerFormat struct {
+type HeaderFormat struct {
 	// V10 and V20 common
 	Version                int
 	Height                 int64
@@ -68,21 +68,30 @@ type headerFormat struct {
 	NextLeader      []byte
 }
 
-type bodyFormat struct {
+type BodyFormat struct {
 	PatchTransactions  [][]byte
 	NormalTransactions [][]byte
 	BlockVotes         *blockv0.BlockVoteList
 	LeaderVotes        *blockv0.LeaderVoteList
 }
 
-type format struct {
-	headerFormat
-	bodyFormat
+type Format struct {
+	HeaderFormat
+	BodyFormat
+}
+
+func (f *Format) RLPEncodeSelf(e codec.Encoder) error {
+	return e.EncodeMulti(&f.HeaderFormat, &f.BodyFormat)
+}
+
+func (f *Format) RLPDecodeSelf(d codec.Decoder) error {
+	_, err := d.DecodeMulti(&f.HeaderFormat, &f.BodyFormat)
+	return err
 }
 
 type blockDetail interface {
-	headerFormat() *headerFormat
-	bodyFormat() (*bodyFormat, error)
+	headerFormat() *HeaderFormat
+	bodyFormat() (*BodyFormat, error)
 	id() []byte
 	transactionsRoot() []byte
 	BlockVotes() *blockv0.BlockVoteList
@@ -224,16 +233,28 @@ func (b *Block) Votes() module.CommitVoteSet {
 	return b.BlockVotes()
 }
 
+func (b *Block) FinalizeHeader(dbase db.Database) error {
+	return b.WriteTo(dbase)
+}
+
+func (b *Block) GetVoters(ctx block.HandlerContext) (module.ValidatorList, error) {
+	return b.NextValidators(), nil
+}
+
+func (b *Block) VerifyTimestamp(prev module.BlockData, prevVoters module.ValidatorList) error {
+	return nil
+}
+
 type blockV11 struct {
 	Block
 }
 
-func (b *blockV11) headerFormat() *headerFormat {
+func (b *blockV11) headerFormat() *HeaderFormat {
 	var proposerBS []byte
 	if b.proposer != nil {
 		proposerBS = b.proposer.Bytes()
 	}
-	return &headerFormat{
+	return &HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
 		Timestamp:              b.timestamp,
@@ -274,7 +295,7 @@ func (b *blockV11) id() []byte {
 	return crypto.SHA3Sum256(bs)
 }
 
-func (b *blockV11) bodyFormat() (*bodyFormat, error) {
+func (b *blockV11) bodyFormat() (*BodyFormat, error) {
 	ptBss, err := bssFromTransactionList(b.patchTransactions)
 	if err != nil {
 		return nil, err
@@ -283,7 +304,7 @@ func (b *blockV11) bodyFormat() (*bodyFormat, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &bodyFormat{
+	return &BodyFormat{
 		PatchTransactions:  ptBss,
 		NormalTransactions: ntBss,
 	}, nil
@@ -334,19 +355,15 @@ type blockV13 struct {
 	leaderVotes        *blockv0.LeaderVoteList
 }
 
-func (b *blockV13) headerFormat() *headerFormat {
-	var proposerBS []byte
-	if b.proposer != nil {
-		proposerBS = b.proposer.Bytes()
-	}
-	return &headerFormat{
+func (b *blockV13) headerFormat() *HeaderFormat {
+	return &HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
 		Timestamp:              b.timestamp,
-		Proposer:               proposerBS,
+		Proposer:               common.BytesOfAddress(b.proposer),
 		PrevHash:               b.prevHash,
 		BlockVotesHash:         b.blockVotes.Hash(),
-		NextValidatorsHash:     b._nextValidators.Hash(),
+		NextValidatorsHash:     b.nextValidatorsHash,
 		PatchTransactionsHash:  b.patchTransactions.Hash(),
 		NormalTransactionsHash: b.normalTransactions.Hash(),
 		LogsBloom:              b.logsBloom.CompressedBytes(),
@@ -362,12 +379,20 @@ func (b *blockV13) headerFormat() *headerFormat {
 		NextRepsRoot:    b.nextRepsRoot,
 		LogsBloomV0:     b.logsBloomV0.CompressedBytes(),
 		LeaderVotesHash: b.leaderVotes.Hash(),
-		NextLeader:      b.nextLeader.Bytes(),
+		NextLeader:      common.BytesOfAddress(b.nextLeader),
 	}
 }
 
 func (b *blockV13) id() []byte {
 	items := make([]merkle.Item, 0, 13)
+	var proposerID []byte
+	if b.proposer != nil {
+		proposerID = b.proposer.ID()
+	}
+	var nextLeaderID []byte
+	if b.nextLeader != nil {
+		nextLeaderID = b.nextLeader.ID()
+	}
 	items = append(items,
 		merkle.HashedItem(b.prevID),
 		merkle.HashedItem(b.TransactionsRoot()),
@@ -380,8 +405,8 @@ func (b *blockV13) id() []byte {
 		merkle.ValueItem(b.logsBloomV0.LogBytes()),
 		merkle.ValueItem(intconv.SizeToBytes(uint64(b.height))),
 		merkle.ValueItem(intconv.SizeToBytes(uint64(b.timestamp))),
-		merkle.ValueItem(b.proposer.ID()),
-		merkle.ValueItem(b.nextLeader.ID()),
+		merkle.ValueItem(proposerID),
+		merkle.ValueItem(nextLeaderID),
 	)
 	return merkle.CalcHashOfList(items)
 }
@@ -430,7 +455,7 @@ func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 	return res, nil
 }
 
-func (b *blockV13) bodyFormat() (*bodyFormat, error) {
+func (b *blockV13) bodyFormat() (*BodyFormat, error) {
 	ptBss, err := bssFromTransactionList(b.patchTransactions)
 	if err != nil {
 		return nil, err
@@ -439,12 +464,16 @@ func (b *blockV13) bodyFormat() (*bodyFormat, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &bodyFormat{
+	return &BodyFormat{
 		PatchTransactions:  ptBss,
 		NormalTransactions: ntBss,
 		BlockVotes:         b.blockVotes,
 		LeaderVotes:        b.leaderVotes,
 	}, nil
+}
+
+func (b *blockV13) LeaderVotes() *blockv0.LeaderVoteList {
+	return b.leaderVotes
 }
 
 func newProposer(bs []byte) (module.Address, error) {
@@ -474,7 +503,38 @@ func newTransactionListFromBSS(
 	return transaction.NewTransactionListFromSlice(dbase, ts), nil
 }
 
-func newBlockV11FromHeader(dbase db.Database, header *headerFormat, patches module.TransactionList,
+func NewBlockV11(
+	height int64, ts int64, proposer module.Address, prev module.Block,
+	logsBloom module.LogsBloom, result []byte,
+	patchTransactions module.TransactionList,
+	normalTransactions module.TransactionList,
+) *Block {
+	var prevHash []byte
+	var prevID []byte
+	if prev != nil {
+		prevHash = prev.Hash()
+		prevID = prev.ID()
+	}
+	blkV1 := &blockV11{
+		Block: Block{
+			height:    height,
+			timestamp: ts,
+			proposer:  proposer,
+			prevHash:  prevHash,
+			logsBloom: logsBloom,
+			result:    result,
+			// use zero value for signature
+			prevID:             prevID,
+			versionV0:          "0.1a",
+			patchTransactions:  patchTransactions,
+			normalTransactions: normalTransactions,
+		},
+	}
+	blkV1.blockDetail = blkV1
+	return &blkV1.Block
+}
+
+func newBlockV11FromHeader(dbase db.Database, header *HeaderFormat, patches module.TransactionList,
 	normalTxs module.TransactionList) (*Block, error) {
 	proposer, err := newProposer(header.Proposer)
 	if err != nil {
@@ -499,7 +559,7 @@ func newBlockV11FromHeader(dbase db.Database, header *headerFormat, patches modu
 	return &blk.Block, nil
 }
 
-func newBlockV11FromBlockFormat(dbase db.Database, format *format) (*Block, error) {
+func newBlockV11FromBlockFormat(dbase db.Database, format *Format) (*Block, error) {
 	patches, err := newTransactionListFromBSS(dbase, format.PatchTransactions)
 	if err != nil {
 		return nil, err
@@ -508,13 +568,13 @@ func newBlockV11FromBlockFormat(dbase db.Database, format *format) (*Block, erro
 	if err != nil {
 		return nil, err
 	}
-	return newBlockV11FromHeader(dbase, &format.headerFormat, patches, normalTxs)
+	return newBlockV11FromHeader(dbase, &format.HeaderFormat, patches, normalTxs)
 }
 
-func newBlockV11FromHeaderFormat(dbase db.Database, header *headerFormat) (*Block, error) {
+func newBlockV11FromHeaderFormat(dbase db.Database, header *HeaderFormat) (*Block, error) {
 	patches := transaction.NewTransactionListFromHash(dbase, header.PatchTransactionsHash)
 	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.PatchTransactionsHash)
 	}
 	normalTxs := transaction.NewTransactionListFromHash(dbase, header.NormalTransactionsHash)
 	if normalTxs == nil {
@@ -525,7 +585,7 @@ func newBlockV11FromHeaderFormat(dbase db.Database, header *headerFormat) (*Bloc
 
 func newBlockV13FromHeader(
 	dbase db.Database,
-	header *headerFormat,
+	header *HeaderFormat,
 	patches module.TransactionList,
 	normalTxs module.TransactionList,
 	nextValidators module.ValidatorList,
@@ -569,7 +629,7 @@ func newBlockV13FromHeader(
 	return &blk.Block, nil
 }
 
-func newBlockV13FromBlockFormat(dbase db.Database, format *format) (*Block, error) {
+func newBlockV13FromBlockFormat(dbase db.Database, format *Format) (*Block, error) {
 	patches := transaction.NewTransactionListFromHash(dbase, format.PatchTransactionsHash)
 	if patches == nil {
 		return nil, errors.Errorf("TranscationListFromHash(%x) failed", format.PatchTransactionsHash)
@@ -580,7 +640,7 @@ func newBlockV13FromBlockFormat(dbase db.Database, format *format) (*Block, erro
 	}
 	return newBlockV13FromHeader(
 		dbase,
-		&format.headerFormat,
+		&format.HeaderFormat,
 		patches,
 		normalTxs,
 		nil,
@@ -589,7 +649,7 @@ func newBlockV13FromBlockFormat(dbase db.Database, format *format) (*Block, erro
 	)
 }
 
-func newBlockV13FromHeaderFormat(dbase db.Database, header *headerFormat) (*Block, error) {
+func newBlockV13FromHeaderFormat(dbase db.Database, header *HeaderFormat) (*Block, error) {
 	patches := transaction.NewTransactionListFromHash(dbase, header.PatchTransactionsHash)
 	if patches == nil {
 		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
@@ -610,25 +670,31 @@ func newBlockV13FromHeaderFormat(dbase db.Database, header *headerFormat) (*Bloc
 	if err != nil {
 		return nil, err
 	}
-	if bs == nil {
+	if header.BlockVotesHash != nil && bs == nil {
 		return nil, errors.NotFoundError.New("block vote not found")
 	}
-	var blockVotes blockv0.BlockVoteList
-	_, err = codec.BC.UnmarshalFromBytes(bs, &blockVotes)
-	if err != nil {
-		return nil, err
+	var blockVotes *blockv0.BlockVoteList
+	if header.BlockVotesHash != nil {
+		blockVotes = new(blockv0.BlockVoteList)
+		_, err = codec.BC.UnmarshalFromBytes(bs, blockVotes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	bs, err = bk.Get(header.LeaderVotesHash)
 	if err != nil {
 		return nil, err
 	}
-	if bs == nil {
+	if header.LeaderVotesHash != nil && bs == nil {
 		return nil, errors.NotFoundError.New("block vote not found")
 	}
-	var leaderVotes blockv0.LeaderVoteList
-	_, err = codec.BC.UnmarshalFromBytes(bs, &leaderVotes)
-	if err != nil {
-		return nil, err
+	var leaderVotes *blockv0.LeaderVoteList
+	if header.LeaderVotesHash != nil {
+		leaderVotes = new(blockv0.LeaderVoteList)
+		_, err = codec.BC.UnmarshalFromBytes(bs, leaderVotes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return newBlockV13FromHeader(
 		dbase,
@@ -636,13 +702,13 @@ func newBlockV13FromHeaderFormat(dbase db.Database, header *headerFormat) (*Bloc
 		patches,
 		normalTxs,
 		nextValidators,
-		&blockVotes,
-		&leaderVotes,
+		blockVotes,
+		leaderVotes,
 	)
 }
 
 func NewBlockFromHeaderReader(database db.Database, r io.Reader) (*Block, error) {
-	var header headerFormat
+	var header HeaderFormat
 	err := codec.BC.Unmarshal(r, &header)
 	if err != nil {
 		return nil, err
@@ -657,12 +723,12 @@ func NewBlockFromHeaderReader(database db.Database, r io.Reader) (*Block, error)
 }
 
 func NewBlockFromReader(dbase db.Database, r io.Reader) (*Block, error) {
-	var blockFormat format
-	err := codec.BC.Unmarshal(r, &blockFormat.headerFormat)
+	var blockFormat Format
+	err := codec.BC.Unmarshal(r, &blockFormat.HeaderFormat)
 	if err != nil {
 		return nil, err
 	}
-	err = codec.BC.Unmarshal(r, &blockFormat.bodyFormat)
+	err = codec.BC.Unmarshal(r, &blockFormat.BodyFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -673,6 +739,38 @@ func NewBlockFromReader(dbase db.Database, r io.Reader) (*Block, error) {
 		return newBlockV13FromBlockFormat(dbase, &blockFormat)
 	}
 	return nil, errors.UnsupportedError.Errorf("block version %s", blockFormat.VersionV0)
+}
+
+func NewBlockV13(
+	height int64, ts int64, proposer module.Address, prev module.Block,
+	logsBloom module.LogsBloom, result []byte,
+	patchTransactions module.TransactionList,
+	normalTransactions module.TransactionList,
+	nextValidators module.ValidatorList, blockVote module.CommitVoteSet,
+) *Block {
+	blkV1 := &blockV13{
+		Block: Block{
+			height:             height,
+			timestamp:          ts,
+			proposer:           proposer,
+			prevHash:           prev.Hash(),
+			logsBloom:          logsBloom,
+			result:             result,
+			signature:          common.Signature{},
+			prevID:             prev.ID(),
+			versionV0:          blockv0.Version03,
+			patchTransactions:  patchTransactions,
+			normalTransactions: normalTransactions,
+		},
+		nextValidatorsHash: nextValidators.Hash(),
+		_nextValidators:    nextValidators,
+		logsBloomV0:        txresult.NewLogsBloom(nil),
+	}
+	blkV1.blockDetail = blkV1
+	if bv, ok := blockVote.(*blockv0.BlockVoteList); ok {
+		blkV1.blockVotes = bv
+	}
+	return &blkV1.Block
 }
 
 func NewFromV0(

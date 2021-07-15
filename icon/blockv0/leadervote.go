@@ -145,6 +145,9 @@ func (s *LeaderVoteList) MarshalJSON() ([]byte, error) {
 }
 
 func (s *LeaderVoteList) Root() []byte {
+	if s == nil {
+		return nil
+	}
 	if s.root == nil {
 		s.calcRoot()
 	}
@@ -299,6 +302,9 @@ func (s *LeaderVoteList) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (s* LeaderVoteList) Hash() []byte {
+	if s == nil {
+		return nil
+	}
 	if s.hash == nil {
 		s.hash = crypto.SHA3Sum256(s.Bytes())
 	}
