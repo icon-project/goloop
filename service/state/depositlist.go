@@ -118,7 +118,7 @@ func (dl *depositList) WithdrawDeposit(dc DepositContext, id []byte, value *big.
 			return amount, penalty, nil
 		}
 	}
-	return nil, nil, scoreresult.InvalidParameterError.New("DepositNotFound")
+	return nil, nil, scoreresult.InvalidRequestError.New("DepositNotFound")
 }
 
 func (dl depositList) getAvailableDeposit(bh int64) *big.Int {

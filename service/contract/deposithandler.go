@@ -35,6 +35,7 @@ const (
 )
 
 var depositMinimumValue, _ = new(big.Int).SetString("5000000000000000000000", 10)
+var depositMaximumValue, _ = new(big.Int).SetString("100_000_000_000_000_000_000_000_000", 0)
 
 type DepositJSON struct {
 	Action string           `json:"action"`
@@ -90,18 +91,18 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 
 	as1 := cc.GetAccountState(h.From.ID())
 	if as1.IsContract() != h.From.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.InvalidRequestError.Errorf(
 			"InvalidAddress(%s)", h.From.String()), nil, nil
 	}
 
 	as2 := cc.GetAccountState(h.To.ID())
 	if as2.IsContract() != h.To.IsContract() || !as2.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.InvalidRequestError.Errorf(
 			"InvalidAddress(%s)", h.To.String()), nil, nil
 	}
 
 	if owner := as2.ContractOwner(); !owner.Equal(h.From) {
-		return scoreresult.AccessDeniedError.New("NotOwner"), nil, nil
+		return scoreresult.InvalidRequestError.New("NotOwner"), nil, nil
 	}
 
 	switch h.data.Action {
@@ -110,18 +111,18 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 			return scoreresult.MethodNotFoundError.New("NotSupported"), nil, nil
 		}
 
-		if h.data.ID != nil {
-			return scoreresult.InvalidParameterError.New("UnknownField(id)"), nil, nil
-		}
+		// if h.data.ID != nil {
+		// 	return scoreresult.IllegalFormatError.New("UnknownField(id)"), nil, nil
+		// }
 		if h.Value == nil || h.Value.Sign() == -1 {
-			return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
+			return scoreresult.InvalidRequestError.New("InvalidValue"), nil, nil
 		}
 
 		id := cc.TransactionID()
 		term := cc.DepositTerm()
 		if term > 0 {
-			if h.Value.Cmp(depositMinimumValue) < 0 {
-				return scoreresult.InvalidParameterError.New("InvalidValue"), nil, nil
+			if h.Value.Cmp(depositMinimumValue) < 0 || h.Value.Cmp(depositMaximumValue) > 0 {
+				return scoreresult.InvalidRequestError.New("InvalidValue"), nil, nil
 			}
 		} else {
 			id = []byte{}
@@ -178,7 +179,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 			return nil, nil, nil
 		}
 	default:
-		return scoreresult.InvalidParameterError.Errorf(
+		return scoreresult.InvalidRequestError.Errorf(
 			"InvalidAction(action=%s)", h.data.Action), nil, nil
 	}
 }

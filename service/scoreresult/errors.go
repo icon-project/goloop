@@ -80,6 +80,11 @@ const (
 	RevertedError = errors.CodeSCORE + errors.Code(module.StatusReverted)
 )
 
+const (
+	// InvalidRequestError is used by ICON
+	InvalidRequestError = IllegalFormatError
+)
+
 var (
 	ErrUnknownFailure         = errors.NewBase(UnknownFailureError, "UnknownFailure")
 	ErrContractNotFound       = errors.NewBase(ContractNotFoundError, "ContractNotFound")
