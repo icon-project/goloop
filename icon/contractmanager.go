@@ -76,7 +76,21 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 			return newTransferHandler(from, to, value, true, cm.log), nil
 		}
 	}
-	return cm.ContractManager.GetCallHandler(from, to, value, ctype, paramObj)
+	ch, err := cm.ContractManager.GetCallHandler(from, to, value, ctype, paramObj)
+	if err != nil {
+		return nil, err
+	}
+	if (ctype == contract.CTypeDeploy || ctype == contract.CTypeCall) &&
+		to.Equal(govAddress){
+		ch = newGovernanceHandler(ch)
+	}
+	if (ctype == contract.CTypeCall || ctype == contract.CTypeTransfer) &&
+		to.Equal(state.SystemAddress) {
+		if h, ok := ch.(CallHandler); ok {
+			ch = newSystemHandler(h)
+		}
+	}
+	return ch, nil
 }
 
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
