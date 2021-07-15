@@ -56,6 +56,7 @@ const (
 	RevisionMultipleUnstakes       = Revision9
 	RevisionFixEmailValidation     = Revision9
 	RevisionDelegationSlotMaxTo100 = Revision9
+	RevisionSystemSCORE            = Revision9
 
 	RevisionFixInvalidUnstake = Revision11
 

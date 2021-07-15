@@ -39,23 +39,14 @@ func allowExtraParams(method string) bool {
 	return yn
 }
 
-var methodsNotChargingContractCallStep = map[string]bool{
-	"setStake":                  true,
-	"setDelegation":             true,
-	"registerPRep":              true,
-	"unregisterPRep":            true,
-	"setPRep":                   true,
-	"setGovernanceVariables":    true,
-	"claimIScore":               true,
-	"estimateUnstakeLockPeriod": true,
-}
-
 func doNotChargeContractCallStep(method string, revision int) bool {
 	if revision >= icmodule.RevisionICON2 || revision < icmodule.RevisionIISS {
 		return false
 	}
-	yn, _ := methodsNotChargingContractCallStep[method]
-	return yn
+	if method == "" && revision < icmodule.RevisionSystemSCORE {
+		return false
+	}
+	return true
 }
 
 type CallHandler interface {
@@ -99,6 +90,8 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			h.log.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
 			h.AllowExtra()
 		}
+	}
+	if h.revision.Value() < icmodule.RevisionIISS {
 		defer func() {
 			if scoreresult.MethodNotFoundError.Equals(err) {
 				h.log.TSystemf(
