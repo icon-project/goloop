@@ -59,10 +59,39 @@ func (bn *bnode) String() string {
 	return fmt.Sprintf("%p{nRef:%d ID:%s}", bn, bn.nRef, common.HexPre(bn.block.ID()))
 }
 
+type ServiceManager interface {
+	module.TransitionManager
+	TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
+	GetChainID(result []byte) (int64, error)
+	GetNetworkID(result []byte) (int64, error)
+	GetNextBlockVersion(result []byte) int
+	ImportResult(result []byte, vh []byte, src db.Database) error
+	GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
+	TransactionListFromHash(hash []byte) module.TransactionList
+	ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error)
+	SendTransaction(tx interface{}) ([]byte, error)
+	ValidatorListFromHash(hash []byte) module.ValidatorList
+	TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList
+	SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error)
+	WaitTransactionResult(id []byte) (<-chan interface{}, error)
+	ExportResult(result []byte, vh []byte, dst db.Database) error
+}
+
+type Chain interface {
+	Database() db.Database
+	Wallet() module.Wallet
+	ServiceManager() module.ServiceManager
+	NID() int
+	CID() int
+	GenesisStorage() module.GenesisStorage
+	CommitVoteSetDecoder() module.CommitVoteSetDecoder
+	Genesis() []byte
+}
+
 type chainContext struct {
 	syncer  syncer
-	chain   module.Chain
-	sm      module.ServiceManager
+	chain   Chain
+	sm      ServiceManager
 	log     log.Logger
 	running bool
 	trtr    RefTracer
@@ -587,7 +616,7 @@ func NewManager(
 		handlers:    handlers,
 	}
 	m.activeHandlers = m.handlers.upTo(
-		m.chain.ServiceManager().GetNextBlockVersion(nil),
+		m.sm.GetNextBlockVersion(nil),
 	)
 	m.handlerContext.manager = m
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{

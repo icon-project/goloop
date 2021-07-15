@@ -46,12 +46,14 @@ type Handler interface {
 }
 
 type blockV2Handler struct {
-	chain module.Chain
+	chain Chain
+	sm ServiceManager
 }
 
-func NewBlockV2Handler(chain module.Chain) Handler {
+func NewBlockV2Handler(chain Chain) Handler {
 	return &blockV2Handler{
 		chain: chain,
+		sm: chain.ServiceManager(),
 	}
 }
 
@@ -108,10 +110,10 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, er
 	if err != nil {
 		return nil, err
 	}
-	sm := b.chain.ServiceManager()
+	sm := b.sm
 	patches := sm.TransactionListFromHash(header.PatchTransactionsHash)
 	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.PatchTransactionsHash)
 	}
 	normalTxs := sm.TransactionListFromHash(header.NormalTransactionsHash)
 	if normalTxs == nil {
@@ -145,7 +147,7 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, er
 }
 
 func newTransactionListFromBSS(
-	sm module.ServiceManager, bss [][]byte, version int,
+	sm ServiceManager, bss [][]byte, version int,
 ) (module.TransactionList, error) {
 	ts := make([]module.Transaction, len(bss))
 	for i, bs := range bss {
@@ -159,7 +161,7 @@ func newTransactionListFromBSS(
 }
 
 func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
-	sm := b.chain.ServiceManager()
+	sm := b.sm
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
 	if err != nil {

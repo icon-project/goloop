@@ -217,6 +217,21 @@ func newVoteMessage() *voteMessage {
 	return msg
 }
 
+func NewPrecommitMessage(
+	w module.Wallet,
+	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
+) *voteMessage {
+	vm := newVoteMessage()
+	vm.Height = height
+	vm.Round = round
+	vm.Type = voteTypePrecommit
+	vm.BlockID = id
+	vm.BlockPartSetID = partSetID
+	vm.Timestamp = ts
+	_ = vm.sign(w)
+	return vm
+}
+
 func (msg *voteMessage) verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
