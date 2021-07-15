@@ -694,3 +694,17 @@ func (s *State) CheckConsistentValidationPenalty(ps *PRepStatusState) bool {
 func checkConsistentValidationPenalty(ps *PRepStatusState, condition int) bool {
 	return ps.GetVPenaltyCount() >= condition
 }
+
+func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
+	totalStake := s.GetTotalStake()
+	termPeriod := new(big.Int)
+	if revision < icmodule.RevisionICON2 {
+		termPeriod.SetInt64(icmodule.InitialTermPeriod)
+	} else {
+		termPeriod.SetInt64(s.GetTermPeriod())
+	}
+	lMin := new(big.Int).Mul(s.GetLockMinMultiplier(), termPeriod)
+	lMax := new(big.Int).Mul(s.GetLockMaxMultiplier(), termPeriod)
+
+	return CalcUnstakeLockPeriod(lMin, lMax, totalStake, totalSupply)
+}

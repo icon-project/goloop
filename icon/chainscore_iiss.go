@@ -107,7 +107,6 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 
 	ia := es.State.GetAccountState(s.from)
 	v := &value.Int
-
 	usingStake := ia.UsingStake()
 	if v.Cmp(usingStake) < 0 {
 		return scoreresult.InvalidParameterError.Errorf(
@@ -135,7 +134,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	oldTotalStake := ia.GetTotalStake()
 
 	//update IISS account
-	expireHeight := s.cc.BlockHeight() + calcUnstakeLockPeriod(revision, es.State, tStake, tSupply).Int64()
+	expireHeight := s.cc.BlockHeight() + es.State.GetUnstakeLockPeriod(revision, tSupply)
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
 	case 0, 1:
@@ -205,36 +204,6 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 
 	}
 	return
-}
-
-func calcUnstakeLockPeriod(revision int, state *icstate.State, totalStake *big.Int, totalSupply *big.Int) *big.Int {
-	fstake := new(big.Float).SetInt(totalStake)
-	fsupply := new(big.Float).SetInt(totalSupply)
-	stakeRate := new(big.Float).Quo(fstake, fsupply)
-	rPoint := big.NewFloat(icmodule.RewardPoint)
-	termPeriod := new(big.Int)
-	if revision < icmodule.RevisionICON2 {
-		termPeriod.SetInt64(icmodule.InitialTermPeriod)
-	} else {
-		termPeriod.SetInt64(state.GetTermPeriod())
-	}
-	lMin := new(big.Int).Mul(state.GetLockMinMultiplier(), termPeriod)
-	lMax := new(big.Int).Mul(state.GetLockMaxMultiplier(), termPeriod)
-	if stakeRate.Cmp(rPoint) == 1 {
-		return lMin
-	}
-
-	fNumerator := new(big.Float).SetInt(new(big.Int).Sub(lMax, lMin))
-	fDenominator := new(big.Float).Mul(rPoint, rPoint)
-	firstOperand := new(big.Float).Quo(fNumerator, fDenominator)
-	s := new(big.Float).Sub(stakeRate, rPoint)
-	secondOperand := new(big.Float).Mul(s, s)
-
-	iResult := new(big.Int)
-	fResult := new(big.Float).Mul(firstOperand, secondOperand)
-	fResult.Int(iResult)
-
-	return new(big.Int).Add(iResult, lMin)
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
@@ -819,15 +788,13 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
-	revision := s.cc.Revision().Value()
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
 	}
-	totalStake := es.State.GetTotalStake()
 	totalSupply := icutils.GetTotalSupply(s.cc)
 	jso := make(map[string]interface{})
-	jso["unstakeLockPeriod"] = calcUnstakeLockPeriod(revision, es.State, totalStake, totalSupply)
+	jso["unstakeLockPeriod"] = es.State.GetUnstakeLockPeriod(s.cc.Revision().Value(), totalSupply)
 	return jso, nil
 }
 

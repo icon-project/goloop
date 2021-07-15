@@ -81,5 +81,5 @@ var (
 	BigIntICX            = big.NewInt(1_000_000_000_000_000_000)
 	BigIntInitialIRep    = new(big.Int).Mul(big.NewInt(InitialIRep), BigIntICX)
 	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
-	BigIntIScoreICXRatio = big.NewInt(int64(IScoreICXRatio))
+	BigIntIScoreICXRatio = big.NewInt(IScoreICXRatio)
 )

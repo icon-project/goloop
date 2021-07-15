@@ -91,12 +91,12 @@ func (u Unstake) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Unstake{amount=%d expire=%d}", u.Value, u.Expire)
+			_, _ = fmt.Fprintf(f, "Unstake{amount=%d expire=%d}", u.Value, u.Expire)
 			return
 		}
 		fallthrough
 	case 's':
-		fmt.Fprint(f, u.String())
+		_, _ = fmt.Fprint(f, u.String())
 	}
 }
 
@@ -227,4 +227,27 @@ func (us *Unstakes) decreaseUnstake(v *big.Int, expireHeight int64, revision int
 		}
 	}
 	return tl, nil
+}
+
+func CalcUnstakeLockPeriod(lMin *big.Int, lMax *big.Int, totalStake *big.Int, totalSupply *big.Int) int64 {
+	fstake := new(big.Float).SetInt(totalStake)
+	fsupply := new(big.Float).SetInt(totalSupply)
+	stakeRate := new(big.Float).Quo(fstake, fsupply)
+	rPoint := big.NewFloat(icmodule.RewardPoint)
+
+	if stakeRate.Cmp(rPoint) == 1 {
+		return lMin.Int64()
+	}
+
+	fNumerator := new(big.Float).SetInt(new(big.Int).Sub(lMax, lMin))
+	fDenominator := new(big.Float).Mul(rPoint, rPoint)
+	firstOperand := new(big.Float).Quo(fNumerator, fDenominator)
+	s := new(big.Float).Sub(stakeRate, rPoint)
+	secondOperand := new(big.Float).Mul(s, s)
+
+	iResult := new(big.Int)
+	fResult := new(big.Float).Mul(firstOperand, secondOperand)
+	fResult.Int(iResult)
+
+	return iResult.Add(iResult, lMin).Int64()
 }
