@@ -83,7 +83,7 @@ func ConsensusInfoEqual(csi1, csi2 module.ConsensusInfo) bool {
 	if csi1 == nil || csi2 == nil {
 		return false
 	}
-	return csi1.Proposer().Equal(csi2.Proposer()) &&
+	return AddressEqual(csi1.Proposer(), csi2.Proposer()) &&
 		ValidatorListEqual(csi1.Voters(), csi2.Voters()) &&
 		compareVoted(csi1.Voted(), csi2.Voted())
 }

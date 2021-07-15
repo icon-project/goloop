@@ -723,6 +723,10 @@ func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.Validato
 	return tvl
 }
 
+func (sm *testServiceManager) GetNextBlockVersion(result []byte) int {
+	return module.BlockVersion2
+}
+
 type testValidator struct {
 	Address_ *common.Address
 }

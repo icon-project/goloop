@@ -27,11 +27,11 @@ type commitVoteList struct {
 }
 
 func (vl *commitVoteList) VerifyBlock(block module.BlockData, validators module.ValidatorList) ([]bool, error) {
-	if block.Height() == 0 {
+	if block.Height() == 0 || validators == nil {
 		if len(vl.Items) == 0 {
 			return nil, nil
 		} else {
-			return nil, errors.Errorf("voters for height 0\n")
+			return nil, errors.Errorf("voters for height 0 or nil validator list\n")
 		}
 	}
 	vset := make([]bool, validators.Len())
@@ -130,6 +130,14 @@ func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
 		}
 	}
 	return vl
+}
+
+func NewCommitVoteList(msgs ...*voteMessage) module.TimestampedCommitVoteSet {
+	return newCommitVoteList(msgs)
+}
+
+func NewEmptyCommitVoteList() module.TimestampedCommitVoteSet {
+	return newCommitVoteList(nil)
 }
 
 // NewCommitVoteSetFromBytes returns VoteList from serialized bytes

@@ -59,10 +59,39 @@ func (bn *bnode) String() string {
 	return fmt.Sprintf("%p{nRef:%d ID:%s}", bn, bn.nRef, common.HexPre(bn.block.ID()))
 }
 
+type ServiceManager interface {
+	module.TransitionManager
+	TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
+	GetChainID(result []byte) (int64, error)
+	GetNetworkID(result []byte) (int64, error)
+	GetNextBlockVersion(result []byte) int
+	ImportResult(result []byte, vh []byte, src db.Database) error
+	GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
+	TransactionListFromHash(hash []byte) module.TransactionList
+	ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error)
+	SendTransaction(tx interface{}) ([]byte, error)
+	ValidatorListFromHash(hash []byte) module.ValidatorList
+	TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList
+	SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error)
+	WaitTransactionResult(id []byte) (<-chan interface{}, error)
+	ExportResult(result []byte, vh []byte, dst db.Database) error
+}
+
+type Chain interface {
+	Database() db.Database
+	Wallet() module.Wallet
+	ServiceManager() module.ServiceManager
+	NID() int
+	CID() int
+	GenesisStorage() module.GenesisStorage
+	CommitVoteSetDecoder() module.CommitVoteSetDecoder
+	Genesis() []byte
+}
+
 type chainContext struct {
 	syncer  syncer
-	chain   module.Chain
-	sm      module.ServiceManager
+	chain   Chain
+	sm      ServiceManager
 	log     log.Logger
 	running bool
 	trtr    RefTracer
@@ -88,8 +117,34 @@ type manager struct {
 	finalized       *bnode
 	finalizationCBs []finalizationCB
 	timestamper     module.Timestamper
-	handler         Handler
-	handlerContext  handlerContext
+
+	handlers       handlerList
+	activeHandlers handlerList
+	handlerContext handlerContext
+}
+
+type handlerList []Handler
+
+func (hl handlerList) upTo(version int) handlerList {
+	for i, h := range hl {
+		if h.Version() == version {
+			return hl[:i+1]
+		}
+	}
+	return hl
+}
+
+func (hl handlerList) forVersion(version int) (Handler, bool) {
+	for i := len(hl)-1 ; i >= 0 ; i-- {
+		if hl[i].Version() == version {
+			return hl[i], true
+		}
+	}
+	return nil, false
+}
+
+func (hl handlerList) last() Handler {
+	return hl[len(hl)-1]
 }
 
 func (m *manager) db() db.Database {
@@ -154,8 +209,9 @@ func (m *manager) newCandidate(bn *bnode) *blockCandidate {
 		m.bntr.TraceRef(bn)
 	}
 	return &blockCandidate{
-		Block: bn.block,
-		m:     m,
+		Block:       bn.block,
+		VersionSpec: bn.block.(VersionSpec),
+		m:           m,
 	}
 }
 
@@ -246,7 +302,7 @@ func (m *manager) _import(
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
 	var err error
-	validators, err := m.handler.GetVoters(m.handlerContext, block.Height()-1)
+	validators, err := bn.block.(VersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
@@ -498,12 +554,11 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
-	block := pt.manager.handler.NewBlock(
-		pt.manager.handlerContext,
+	block := pt.manager.activeHandlers.last().NewBlock(
 		height,
 		timestamp,
 		pt.manager.chain.Wallet().Address(),
-		pt.parentBlock.ID(),
+		pt.parentBlock,
 		pmtr.LogsBloom(),
 		pmtr.Result(),
 		pmtr.PatchTransactions(),
@@ -537,15 +592,15 @@ func (pt *proposeTask) _onExecute(err error) {
 func NewManager(
 	chain module.Chain,
 	timestamper module.Timestamper,
-	handler Handler,
+	handlers []Handler,
 ) (module.BlockManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM",
 	})
 	logger.Debugf("NewBlockManager\n")
 
-	if handler == nil {
-		handler = NewBlockV2Handler(chain)
+	if handlers == nil {
+		handlers = []Handler{NewBlockV2Handler(chain)}
 	}
 
 	m := &manager{
@@ -558,8 +613,11 @@ func NewManager(
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(configCacheCap),
 		timestamper: timestamper,
-		handler:     handler,
+		handlers:    handlers,
 	}
+	m.activeHandlers = m.handlers.upTo(
+		m.sm.GetNextBlockVersion(nil),
+	)
 	m.handlerContext.manager = m
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM|BNODE",
@@ -582,7 +640,7 @@ func NewManager(
 	} else if err != nil {
 		return nil, err
 	}
-	lastFinalized, err := m.getBlockByHeight(height)
+	lastFinalized, err := m.getBlockByHeightWithHandlerList(height, m.handlers)
 	if err != nil {
 		return nil, err
 	}
@@ -592,6 +650,9 @@ func NewManager(
 		return nil, errors.InvalidNetworkError.Errorf(
 			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
 	}
+	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
+		lastFinalized.Result(),
+	))
 
 	var cid int
 	if gBlock, err := m.getBlockByHeight(0); err == nil {
@@ -673,10 +734,42 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 }
 
 func (m *manager) doGetBlock(id []byte) (module.Block, error) {
-	blk, err := m.handler.GetBlock(m.handlerContext, id)
-	if blk != nil {
+	for i := len(m.activeHandlers) - 1; i >= 0; i-- {
+		h := m.activeHandlers[i]
+		blk, err := h.GetBlock(id)
+		if errors.Is(err, errors.ErrUnsupported) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
 		m.cache.Put(blk)
+		return blk, nil
 	}
+	return nil, errors.NotFoundError.Errorf("block not found %x", id)
+}
+
+func (m *manager) doGetBlockByHash(hash []byte) (module.Block, error) {
+	hb, err := m.bucketFor(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	headerBytes, err := hb.GetBytes(db.Raw(hash))
+	if err != nil {
+		return nil, err
+	}
+	if headerBytes == nil {
+		return nil, errors.InvalidStateError.Errorf("nil header")
+	}
+	v, r, err := PeekVersion(bytes.NewReader(headerBytes))
+	h, ok := m.activeHandlers.forVersion(v)
+	if !ok {
+		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
+	}
+	blk, err := h.NewBlockFromHeaderReader(r)
+	if err != nil {
+		return nil, err
+	}
+	m.cache.Put(blk)
 	return blk, err
 }
 
@@ -690,7 +783,15 @@ func (m *manager) Import(
 
 	m.log.Debugf("Import(%x)\n", r)
 
-	block, err := m.handler.NewBlockDataFromReader(m.handlerContext, r)
+	v, r, err := PeekVersion(r)
+	if err != nil {
+		return nil, err
+	}
+	h, ok := m.activeHandlers.forVersion(v)
+	if !ok {
+		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
+	}
+	block, err := h.NewBlockDataFromReader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -800,6 +901,8 @@ func (m *manager) finalizePrunedBlock() error {
 			return transaction.InvalidGenesisError.Wrap(err, "NoVoterInformation")
 		}
 	}
+
+	m.activeHandlers = m.handlers.upTo(blk.Version())
 	csi, err := m.newConsensusInfo(blk)
 	if err != nil {
 		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetConsensusInfo")
@@ -872,7 +975,9 @@ func (m *manager) finalizeGenesisBlock(
 	in := newInitialTransition(mtr, m.chainContext)
 	ch := make(chan error)
 	gtxbs := m.chain.Genesis()
-	gtx, err := m.sm.GenesisTransactionFromBytes(gtxbs, module.BlockVersion2)
+	gtx, err := m.sm.GenesisTransactionFromBytes(
+		gtxbs, m.activeHandlers.last().Version(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -880,7 +985,9 @@ func (m *manager) finalizeGenesisBlock(
 		return nil, errors.InvalidNetworkError.Errorf(
 			"Invalid Network ID config=%#x genesis=%s", m.chain.NID(), gtxbs)
 	}
-	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
+	gtxl := m.sm.TransactionListFromSlice(
+		[]module.Transaction{gtx}, m.activeHandlers.last().Version(),
+	)
 	m.syncer.begin()
 	csi := common.NewConsensusInfo(nil, nil, nil)
 	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch})
@@ -902,8 +1009,7 @@ func (m *manager) finalizeGenesisBlock(
 	bn := &bnode{}
 	bn.in = in
 	bn.preexe = gtr
-	bn.block = m.handler.NewBlock(
-		m.handlerContext,
+	bn.block = m.activeHandlers.last().NewBlock(
 		genesisHeight,
 		timestamp,
 		proposer,
@@ -992,9 +1098,13 @@ func (m *manager) finalize(bn *bnode) error {
 		m.bntr.TraceRef(bn)
 	}
 
-	err = m.handler.FinalizeHeader(m.handlerContext, block)
+	err = block.(VersionSpec).FinalizeHeader(m.chain.Database())
 	if err != nil {
 		return err
+	}
+	nextVer := m.sm.GetNextBlockVersion(m.finalized.in.mtransition().Result())
+	if m.activeHandlers.last().Version() != nextVer {
+		m.activeHandlers = m.handlers.upTo(nextVer)
 	}
 
 	if err = WriteTransactionLocators(
@@ -1012,6 +1122,7 @@ func (m *manager) finalize(bn *bnode) error {
 	if err = chainProp.Set(db.Raw(keyLastBlockHeight), block.Height()); err != nil {
 		return err
 	}
+
 	m.log.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
 		cb := m.finalizationCBs[i]
@@ -1098,7 +1209,15 @@ func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	return m.handler.NewBlockDataFromReader(m.handlerContext, r)
+	v, r, err := PeekVersion(r)
+	if err != nil {
+		return nil, err
+	}
+	h, ok := m.activeHandlers.forVersion(v)
+	if !ok {
+		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
+	}
+	return h.NewBlockDataFromReader(r)
 }
 
 type transactionInfo struct {
@@ -1292,18 +1411,56 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
+	return m.getBlockByHeightWithHandlerList(height, m.activeHandlers)
+}
+
+func (m *manager) getBlockByHeightWithHandlerList(
+	height int64,
+	hl handlerList,
+) (module.Block, error) {
 	blk := m.cache.GetByHeight(height)
 	if blk != nil {
 		return blk, nil
 	}
-	return m.doGetBlockByHeight(height)
+	return m.doGetBlockByHeight(height, hl)
 }
 
-func (m *manager) doGetBlockByHeight(height int64) (module.Block, error) {
-	blk, err := m.handler.GetBlockByHeight(m.handlerContext, height)
-	if blk != nil {
-		m.cache.Put(blk)
+func (m *manager) doGetBlockByHeight(
+	height int64,
+	hl handlerList,
+) (module.Block, error) {
+	if height > m.finalized.block.Height() {
+		return nil, errors.NotFoundError.Errorf("no block for %d", height)
 	}
+	// For now, assume all versions have same height to hash database structure
+	dbase := m.chain.Database()
+	headerHashByHeight, err := db.NewCodedBucket(
+		dbase,
+		db.BlockHeaderHashByHeight,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	hash, err := headerHashByHeight.GetBytes(height)
+	if err != nil {
+		return nil, err
+	}
+	headerBytes, err := db.DoGetWithBucketID(dbase, db.BytesByHash, hash)
+	if err != nil {
+		return nil, err
+	}
+	br := bytes.NewReader(headerBytes)
+	v, r, err := PeekVersion(br)
+	h, ok := hl.forVersion(v)
+	if !ok {
+		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
+	}
+	blk, err := h.NewBlockFromHeaderReader(r)
+	if err != nil {
+		return nil, err
+	}
+	m.cache.Put(blk)
 	return blk, err
 }
 
@@ -1562,11 +1719,11 @@ func (m *manager) NewConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 }
 
 func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, error) {
-	vl, err := m.handler.GetVoters(m.handlerContext, blk.Height()-1)
+	pblk, err := m.getBlockByHeight(blk.Height() - 1)
 	if err != nil {
 		return nil, err
 	}
-	pblk, err := m.getBlockByHeight(blk.Height() - 1)
+	vl, err := pblk.(VersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, err
 	}

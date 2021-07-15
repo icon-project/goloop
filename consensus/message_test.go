@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package block_test
+package consensus
 
 import (
 	"testing"
 
-	"github.com/icon-project/goloop/block/test"
-	"github.com/icon-project/goloop/consensus"
-	"github.com/icon-project/goloop/module"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/wallet"
 )
 
-func TestBlockManager_Basics(t_ *testing.T) {
-	t := test.NewFixture(t_, nil)
-	defer t.Close()
-
-	t.AssertLastBlock(nil, module.BlockVersion2)
-
-	t.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
-	t.AssertLastBlock(t.PrevBlock, module.BlockVersion2)
+func TestNewPrecommitMessage(t *testing.T) {
+	w := wallet.New()
+	vm := NewPrecommitMessage(
+		w,
+		1, 0, nil, nil, 0,
+	)
+	err := vm.verify()
+	assert.NoError(t, err)
 }

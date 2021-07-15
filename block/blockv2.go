@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
@@ -21,25 +21,6 @@ import (
 var v2Codec = codec.BC
 
 const blockV2String = "2.0"
-
-func PeekVersion(r *bufio.Reader) (int, error) {
-	header, err := r.Peek(32)
-	if err != nil {
-		return -1, err
-	}
-	d := codec.BC.NewDecoder(bytes.NewReader(header))
-	d2, err := d.DecodeList()
-	if err != nil {
-		return -1, err
-	}
-	var version int
-	err = d2.Decode(&version)
-	if err != nil {
-		return -1, err
-	}
-	_ = d.Close()
-	return version, nil
-}
 
 type blockV2HeaderFormat struct {
 	Version                int
@@ -234,6 +215,52 @@ func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
 
 func (b *blockV2) Hash() []byte {
 	return b.ID()
+}
+
+func (b *blockV2) FinalizeHeader(dbase db.Database) error {
+	hb, err := db.NewCodedBucket(dbase, db.BytesByHash, nil)
+	if err != nil {
+		return err
+	}
+	if err = hb.Put(b._headerFormat()); err != nil {
+		return err
+	}
+	if err = hb.Set(db.Raw(b.Votes().Hash()), db.Raw(b.Votes().Bytes())); err != nil {
+		return err
+	}
+	hh, err := db.NewCodedBucket(dbase, db.BlockHeaderHashByHeight, nil)
+	if err != nil {
+		return err
+	}
+	if err = hh.Set(b.Height(), db.Raw(b.ID())); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *blockV2) GetVoters(ctx HandlerContext) (module.ValidatorList, error) {
+	if b.Height() == 0 {
+		return nil, nil
+	}
+	nextBlk, err := ctx.GetBlockByHeight(b.Height() - 1)
+	if err != nil {
+		return nil, err
+	}
+	return nextBlk.NextValidators(), nil
+}
+
+func (b *blockV2) VerifyTimestamp(
+	prev module.BlockData, prevVoters module.ValidatorList,
+) error {
+	if tcvs, ok := b.Votes().(module.TimestampedCommitVoteSet); ok {
+		if b.Height() > 1 && b.Timestamp() != tcvs.Timestamp() {
+			return errors.New("bad timestamp")
+		}
+	}
+	if b.Height() > 1 && prev.Timestamp() >= b.Timestamp() {
+		return errors.New("non-increasing timestamp")
+	}
+	return nil
 }
 
 type blockBuilder struct {

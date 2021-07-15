@@ -279,13 +279,13 @@ func (ti *transitionImpl) sync(result []byte, vlHash []byte, cb transitionCallba
 func (ti *transitionImpl) verifyResult(block module.BlockData) error {
 	mtr := ti._mtransition
 	if !bytes.Equal(mtr.Result(), block.Result()) {
-		return errors.New("bad result")
+		return errors.Errorf("bad result calc:%+v block:%+v", mtr.Result(), block.Result())
 	}
 	if !mtr.LogsBloom().Equal(block.LogsBloom()) {
 		return errors.New("bad log bloom")
 	}
 	if !bytes.Equal(mtr.NextValidators().Hash(), block.NextValidatorsHash()) {
-		return errors.New("bad next validators")
+		return errors.Errorf("bad next validators calc:%+v block:%+v", mtr.NextValidators().Hash(), block.NextValidatorsHash())
 	}
 	return nil
 }

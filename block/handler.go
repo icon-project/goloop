@@ -17,7 +17,6 @@
 package block
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 
@@ -32,33 +31,34 @@ type HandlerContext interface {
 }
 
 type Handler interface {
+	Version() int
 	// propose or genesis
 	NewBlock(
-		ctx HandlerContext,
-		height int64, ts int64, proposer module.Address, prevID []byte,
+		height int64, ts int64, proposer module.Address, prev module.Block,
 		logsBloom module.LogsBloom, result []byte,
 		patchTransactions module.TransactionList,
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
 	) module.Block
-	NewBlockFromHeaderReader(ctx HandlerContext, r io.Reader) (module.Block, error)
-	NewBlockDataFromReader(ctx HandlerContext, r io.Reader) (module.BlockData, error)
-	GetBlock(ctx HandlerContext, id []byte) (module.Block, error)
-	GetBlockByHeight(ctx HandlerContext, height int64) (module.Block, error)
-	FinalizeHeader(ctx HandlerContext, blk module.Block) error
-	// GetVoters returns the voters for the block. Note that this is different
-	// from the voted, which is a subset of the voters.
-	GetVoters(ctx HandlerContext, height int64) (module.ValidatorList, error)
+	NewBlockFromHeaderReader(r io.Reader) (module.Block, error)
+	NewBlockDataFromReader(io.Reader) (module.BlockData, error)
+	GetBlock(id []byte) (module.Block, error)
 }
 
 type blockV2Handler struct {
-	chain module.Chain
+	chain Chain
+	sm ServiceManager
 }
 
-func NewBlockV2Handler(chain module.Chain) Handler {
+func NewBlockV2Handler(chain Chain) Handler {
 	return &blockV2Handler{
 		chain: chain,
+		sm: chain.ServiceManager(),
 	}
+}
+
+func (b *blockV2Handler) Version() int {
+	return module.BlockVersion2
 }
 
 func (b *blockV2Handler) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
@@ -79,13 +79,16 @@ func (b *blockV2Handler) commitVoteSetFromHash(hash []byte) module.CommitVoteSet
 }
 
 func (b *blockV2Handler) NewBlock(
-	ctx HandlerContext,
-	height int64, ts int64, proposer module.Address, prevID []byte,
+	height int64, ts int64, proposer module.Address, prev module.Block,
 	logsBloom module.LogsBloom, result []byte,
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, votes module.CommitVoteSet,
 ) module.Block {
+	var prevID []byte
+	if prev != nil {
+		prevID = prev.ID()
+	}
 	return &blockV2{
 		height:             height,
 		timestamp:          ts,
@@ -101,16 +104,16 @@ func (b *blockV2Handler) NewBlock(
 	}
 }
 
-func (b *blockV2Handler) NewBlockFromHeaderReader(ctx HandlerContext, r io.Reader) (module.Block, error) {
+func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	var header blockV2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
 		return nil, err
 	}
-	sm := b.chain.ServiceManager()
+	sm := b.sm
 	patches := sm.TransactionListFromHash(header.PatchTransactionsHash)
 	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.PatchTransactionsHash)
 	}
 	normalTxs := sm.TransactionListFromHash(header.NormalTransactionsHash)
 	if normalTxs == nil {
@@ -143,23 +146,8 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(ctx HandlerContext, r io.Reade
 	}, nil
 }
 
-func (b *blockV2Handler) GetBlock(ctx HandlerContext, id []byte) (module.Block, error) {
-	hb, err := b.bucketFor(db.BytesByHash)
-	if err != nil {
-		return nil, err
-	}
-	headerBytes, err := hb.GetBytes(db.Raw(id))
-	if err != nil {
-		return nil, err
-	}
-	if headerBytes == nil {
-		return nil, errors.InvalidStateError.Errorf("nil header")
-	}
-	return b.NewBlockFromHeaderReader(ctx, bytes.NewReader(headerBytes))
-}
-
 func newTransactionListFromBSS(
-	sm module.ServiceManager, bss [][]byte, version int,
+	sm ServiceManager, bss [][]byte, version int,
 ) (module.TransactionList, error) {
 	ts := make([]module.Transaction, len(bss))
 	for i, bs := range bss {
@@ -172,9 +160,8 @@ func newTransactionListFromBSS(
 	return sm.TransactionListFromSlice(ts, version), nil
 }
 
-func (b *blockV2Handler) NewBlockDataFromReader(ctx HandlerContext, r io.Reader) (module.BlockData, error) {
-	sm := b.chain.ServiceManager()
-	r = bufio.NewReader(r)
+func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
+	sm := b.sm
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
 	if err != nil {
@@ -231,51 +218,13 @@ func (b *blockV2Handler) NewBlockDataFromReader(ctx HandlerContext, r io.Reader)
 	}, nil
 }
 
-func (b *blockV2Handler) GetBlockByHeight(ctx HandlerContext, height int64) (module.Block, error) {
-	headerHashByHeight, err := b.bucketFor(db.BlockHeaderHashByHeight)
-	if err != nil {
-		return nil, err
-	}
-	hash, err := headerHashByHeight.GetBytes(height)
-	if err != nil {
-		return nil, err
-	}
-	blk, err := b.GetBlock(ctx, hash)
+func (b *blockV2Handler) GetBlock(id []byte) (module.Block, error) {
+	dbase := b.chain.Database()
+	headerBytes, err := db.DoGetWithBucketID(dbase, db.BytesByHash, id)
 	if errors.NotFoundError.Equals(err) {
-		return blk, errors.InvalidStateError.Wrapf(err, "block h=%d by hash=%x not found", height, hash)
-	}
-	return blk, err
-}
-
-func (b *blockV2Handler) FinalizeHeader(ctx HandlerContext, blk module.Block) error {
-	hb, err := b.bucketFor(db.BytesByHash)
-	if err != nil {
-		return err
-	}
-	blkV2 := blk.(*blockV2)
-	if err = hb.Put(blkV2._headerFormat()); err != nil {
-		return err
-	}
-	if err = hb.Set(db.Raw(blk.Votes().Hash()), db.Raw(blk.Votes().Bytes())); err != nil {
-		return err
-	}
-	hh, err := b.bucketFor(db.BlockHeaderHashByHeight)
-	if err != nil {
-		return err
-	}
-	if err = hh.Set(blk.Height(), db.Raw(blk.ID())); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *blockV2Handler) GetVoters(ctx HandlerContext, height int64) (module.ValidatorList, error) {
-	if height == 0 {
-		return nil, nil
-	}
-	nextBlk, err := ctx.GetBlockByHeight(height - 1)
-	if err != nil {
+		return nil, errors.WithStack(errors.ErrUnsupported)
+	} else if err != nil {
 		return nil, err
 	}
-	return nextBlk.NextValidators(), nil
+	return b.NewBlockFromHeaderReader(bytes.NewReader(headerBytes))
 }
