@@ -35,7 +35,7 @@ const (
 )
 
 var depositMinimumValue, _ = new(big.Int).SetString("5000000000000000000000", 10)
-var depositMaximumValue, _ = new(big.Int).SetString("100_000_000_000_000_000_000_000_000", 0)
+var depositMaximumValue, _ = new(big.Int).SetString("100_000_000000000000000000", 0)
 
 type DepositJSON struct {
 	Action string           `json:"action"`
