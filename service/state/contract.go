@@ -88,12 +88,10 @@ func (c *contractSnapshotImpl) Equal(s ContractSnapshot) bool {
 		if c == nil || c2 == nil {
 			return false
 		}
-		if c.state != c2.state {
-			return false
-		}
-		if bytes.Equal(c.codeHash, c2.codeHash) == false {
-			return false
-		}
+		return c.state == c2.state &&
+			bytes.Equal(c.deployTxHash, c2.deployTxHash) &&
+			bytes.Equal(c.auditTxHash, c2.auditTxHash) &&
+			bytes.Equal(c.codeHash, c2.codeHash)
 	} else {
 		log.Panicf("Invalid object")
 	}
