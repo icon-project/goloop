@@ -41,9 +41,9 @@ func (s *chainScore) tryChargeCall(iiss bool) error {
 		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
 			return scoreresult.OutOfStepError.New("UserCodeError")
 		}
-	}
-	if iiss && (s.iiss&IISSDisabled) != 0 {
-		return scoreresult.ContractNotFoundError.New("ProhibitInterCall")
+		if iiss && (s.iiss&IISSDisabled) != 0 {
+			return scoreresult.ContractNotFoundError.New("ProhibitInterCall")
+		}
 	}
 	return nil
 }
