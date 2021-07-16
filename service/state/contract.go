@@ -244,6 +244,11 @@ func (c *contractSnapshotImpl) ResetDB(dbase db.Database) error {
 	}
 }
 
+func (c *contractSnapshotImpl) String() string {
+	return fmt.Sprintf("Contract{hash=%#x ee=%s deploy=%#x audit=%#x}",
+		c.codeHash, c.eeType, c.deployTxHash, c.auditTxHash)
+}
+
 type Contract interface {
 	ContractSnapshot
 	SetStatus(state ContractState)
