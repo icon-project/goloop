@@ -278,7 +278,8 @@ func showAccount(ctx Context, addr module.Address, ass state.AccountSnapshot, pa
 		fmt.Printf("- Balance : %s\n", D(ass.GetBalance()))
 		if ass.IsContract() {
 			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
-			fmt.Printf("- CodeHash: %#x\n", ass.Contract().CodeHash())
+			fmt.Printf("- Current : %+v\n", ass.Contract())
+			fmt.Printf("- Next    : %+v\n", ass.NextContract())
 			jso, err := ass.GetDepositInfo(&depositContext{height: ctx.BlockHeight()}, module.JSONVersionLast)
 			if err == nil && jso != nil {
 				js, _ := JSONMarshalIndent(jso)
