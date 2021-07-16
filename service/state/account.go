@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math/big"
 	"reflect"
@@ -464,6 +465,15 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 func (s *accountSnapshotImpl) ClearCache() {
 	if s.store != nil {
 		s.store.ClearCache()
+	}
+}
+
+func (s *accountSnapshotImpl) String() string {
+	if s.IsContract() {
+		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v}",
+			s.balance, s.state, s.curContract, s.nextContract, s.store)
+	} else {
+		return fmt.Sprintf("Account{balance=%d state=%d}", s.balance, s.state)
 	}
 }
 
