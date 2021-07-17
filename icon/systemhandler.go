@@ -95,6 +95,17 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			h.log.TSystemf("FRAME[%d] system contract is unavailable for fallback", cc.FrameID())
 			return scoreresult.ContractNotFoundError.New("NoFallback")
 		}
+		defer func() {
+			if scoreresult.MethodNotPayableError.Equals(err) {
+				h.log.TSystemf(
+					"FRAME[%d] result patch from=%v to=%v",
+					cc.FrameID(),
+					err,
+					scoreresult.ErrInvalidParameter,
+				)
+				err = errors.WithCode(err, scoreresult.InvalidParameterError)
+			}
+		}()
 	}
 	if h.revision.Value() < icmodule.RevisionIISS {
 		defer func() {
