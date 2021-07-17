@@ -80,16 +80,6 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 	if err != nil {
 		return nil, err
 	}
-	if (ctype == contract.CTypeDeploy || ctype == contract.CTypeCall) &&
-		to.Equal(govAddress){
-		return newGovernanceHandler(ch), nil
-	}
-	if (ctype == contract.CTypeCall || ctype == contract.CTypeTransfer) &&
-		to.Equal(state.SystemAddress) {
-		if h, ok := ch.(CallHandler); ok {
-			return newSystemHandler(h), nil
-		}
-	}
 	if h, ok := ch.(CallHandler); ok {
 		return newCallHandler(h, to), nil
 	}
