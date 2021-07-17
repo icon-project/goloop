@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/trace"
 )
@@ -43,7 +44,7 @@ func doNotChargeContractCallStep(method string, revision int) bool {
 	if revision >= icmodule.RevisionICON2 || revision < icmodule.RevisionIISS {
 		return false
 	}
-	if method == "" && revision < icmodule.RevisionSystemSCORE {
+	if method == scoreapi.FallbackMethodName && revision < icmodule.RevisionSystemSCORE {
 		return false
 	}
 	return true
@@ -85,7 +86,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		}
 	}()
 
-	if h.revision.Value() < icmodule.Revision9 {
+	if h.revision.Value() < icmodule.RevisionSystemSCORE {
 		if allowExtraParams(h.GetMethodName()) {
 			h.log.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
 			h.AllowExtra()

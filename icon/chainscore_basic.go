@@ -34,16 +34,17 @@ import (
 )
 
 func (s *chainScore) tryChargeCall(iiss bool) error {
-	if iiss && (s.iiss&IISSNoCharge) != 0 {
+	if s.gov {
 		return nil
 	}
-	if !s.gov {
+	noCharge := iiss && (s.iiss&IISSNoCharge) != 0
+	if !noCharge {
 		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
 			return scoreresult.OutOfStepError.New("UserCodeError")
 		}
-		if iiss && (s.iiss&IISSDisabled) != 0 {
-			return scoreresult.ContractNotFoundError.New("ProhibitInterCall")
-		}
+	}
+	if iiss && (s.iiss&IISSDisabled) != 0 {
+		return scoreresult.ContractNotFoundError.New("Disabled")
 	}
 	return nil
 }
