@@ -91,6 +91,10 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			h.log.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
 			h.AllowExtra()
 		}
+		if h.GetMethodName() == scoreapi.FallbackMethodName {
+			h.log.TSystemf("FRAME[%d] system contract is unavailable for fallback", cc.FrameID())
+			return scoreresult.ContractNotFoundError.New("NoFallback")
+		}
 	}
 	if h.revision.Value() < icmodule.RevisionIISS {
 		defer func() {
