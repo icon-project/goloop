@@ -125,6 +125,11 @@ func (b *BlockV03) GetNextLeader() module.Address {
 	return new(common.Address).Set(&b.json.NextLeader)
 }
 
+func (b *BlockV03) RepsChanged() bool {
+	return len(b.json.NextRepsHash) > 0 &&
+		!bytes.Equal(b.json.RepsHash, b.json.NextRepsHash)
+}
+
 func (b *BlockV03) NextLeader() common.Address {
 	return b.json.NextLeader
 }
@@ -245,19 +250,26 @@ func (b *BlockV03) Verify(prev Block) error {
 				return errors.InvalidStateError.Errorf(
 					"InvalidConsensus(voted=%#x,id=%#x)", voted, pb.ID())
 			}
+			proposer := b.Proposer()
 			leader := pb.GetNextLeader()
 			if leader.Equal(emtpyAddress) {
 				leader = b.reps.Get(0)
 			}
 
-			if b.IsVotedLeaderByComplain(&b.json.Leader) {
-				leader = &b.json.Leader
+			if b.IsVotedLeaderByComplain(proposer) {
+				leader = proposer
+			} else if pb.RepsChanged() {
+				if next := b.reps.Get(0); proposer.Equal(next) {
+					leader = proposer
+				} else if next := b.reps.GetNextOf(pb.Proposer()); proposer.Equal(next) {
+					leader = proposer
+				}
 			}
-			if !b.json.Leader.Equal(leader) {
+			if !proposer.Equal(leader) {
 				return errors.InvalidStateError.Errorf(
 					"InvalidLeader(exp=%s,real=%s)",
 					leader,
-					&b.json.Leader,
+					proposer,
 				)
 			}
 		default:
