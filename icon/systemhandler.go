@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/trace"
 )
 
@@ -94,6 +95,13 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		if h.GetMethodName() == scoreapi.FallbackMethodName {
 			h.log.TSystemf("FRAME[%d] system contract is unavailable for fallback", cc.FrameID())
 			return scoreresult.ContractNotFoundError.New("NoFallback")
+		}
+		as := cc.GetAccountState(state.SystemID)
+		apiInfo, _ := as.APIInfo()
+		m := apiInfo.GetMethod(h.GetMethodName())
+		if m.IsReadOnly() {
+			h.log.TSystemf("FRAME[%d] readonly methods cannot be called before rev9", cc.FrameID())
+			return scoreresult.UnknownFailureError.New("ReadOnlyMethod")
 		}
 		defer func() {
 			if scoreresult.MethodNotPayableError.Equals(err) {
