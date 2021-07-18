@@ -99,7 +99,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		as := cc.GetAccountState(state.SystemID)
 		apiInfo, _ := as.APIInfo()
 		m := apiInfo.GetMethod(h.GetMethodName())
-		if m.IsReadOnly() {
+		if m != nil && m.IsReadOnly() {
 			h.log.TSystemf("FRAME[%d] readonly methods cannot be called before rev9", cc.FrameID())
 			return scoreresult.UnknownFailureError.New("ReadOnlyMethod")
 		}
