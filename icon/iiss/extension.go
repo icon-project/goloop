@@ -592,11 +592,15 @@ func (es *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *
 }
 
 const IrepInflationLimit = 14 // 14%
+var BigIntMinIRep = new(big.Int).Mul(icmodule.BigIntICX, big.NewInt(10000))
 
 func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRepHeight int64) error {
 	term := es.State.GetTermSnapshot()
 	if prevSetIRepHeight >= term.StartHeight() {
 		return scoreresult.IllegalFormatError.Errorf("IRep can be changed only once during a term")
+	}
+	if newIRep.Cmp(BigIntMinIRep) == -1 {
+		return scoreresult.InvalidParameterError.Errorf("IRep is out of range. %d < %d", newIRep, BigIntMinIRep)
 	}
 	if err := icutils.ValidateRange(oldIRep, newIRep, 20, 20); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "IRep is out of range")
