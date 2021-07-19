@@ -33,8 +33,10 @@ type transitionResult struct {
 
 func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
 	tresult := new(transitionResult)
-	if _, err := codec.UnmarshalFromBytes(bs, tresult); err != nil {
-		return nil, err
+	if len(bs) > 0 {
+		if _, err := codec.UnmarshalFromBytes(bs, tresult); err != nil {
+			return nil, err
+		}
 	}
 	return tresult, nil
 }
