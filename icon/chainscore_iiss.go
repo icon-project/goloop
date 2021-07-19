@@ -26,11 +26,10 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
-	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -104,102 +103,8 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	if err != nil {
 		return err
 	}
-
-	ia := es.State.GetAccountState(s.from)
-	v := &value.Int
-	usingStake := ia.UsingStake()
-	if v.Cmp(usingStake) < 0 {
-		return scoreresult.InvalidParameterError.Errorf(
-			"Failed to set stake: newStake=%v < usingStake=%v from=%v",
-			v, usingStake, s.from,
-		)
-	}
-
-	revision := s.cc.Revision().Value()
-	stakeInc := new(big.Int).Sub(v, ia.Stake())
-	// ICON1 update unstakes when stakeInc == 0
-	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2 {
-		return nil
-	}
-
-	account := s.cc.GetAccountState(s.from.ID())
-	balance := account.GetBalance()
-	availableStake := new(big.Int).Add(balance, ia.GetTotalStake())
-	if revision < icmodule.RevisionSystemSCORE {
-		availableStake.Sub(availableStake, new(big.Int).Mul(s.cc.SumOfStepUsed(),s.cc.StepPrice()))
-	}
-	if availableStake.Cmp(v) == -1 {
-		return scoreresult.OutOfBalanceError.Errorf("Not enough balance")
-	}
-
-	tStake := es.State.GetTotalStake()
-	tSupply := icutils.GetTotalSupply(s.cc)
-	oldTotalStake := ia.GetTotalStake()
-
-	//update IISS account
-	expireHeight := s.cc.BlockHeight() + es.State.GetUnstakeLockPeriod(revision, tSupply)
-	var tl []icstate.TimerJobInfo
-	switch stakeInc.Sign() {
-	case 0, 1:
-		// Condition: stakeInc > 0
-		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
-	case -1:
-		slotMax := int(es.State.GetUnstakeSlotMax())
-		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
-	}
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Error while updating unstakes: from=%v",
-			s.from,
-		)
-	}
-
-	for _, t := range tl {
-		ts := es.State.GetUnstakingTimerState(t.Height)
-		if err = icstate.ScheduleTimerJob(ts, t, s.from); err != nil {
-			return scoreresult.UnknownFailureError.Wrapf(
-				err,
-				"Error while scheduling UnStaking Timer Job: from=%v",
-				s.from,
-			)
-		}
-	}
-	if err = ia.SetStake(v); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err,
-			"Failed to set stake: from=%v stake=%v",
-			s.from,
-			v,
-		)
-	}
-	if err = es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to set totalStake: from=%v totalStake=%v stakeInc=%v",
-			s.from,
-			tStake,
-			stakeInc,
-		)
-	}
-
-	// update world account
-	totalStake := ia.GetTotalStake()
-	cmp := oldTotalStake.Cmp(totalStake)
-	if cmp > 0 {
-		es.Logger().Panicf(
-			"Failed to set stake: newTotalStake=%v < oldTotalStake=%v from=%v",
-			totalStake, oldTotalStake, s.from,
-		)
-	} else if cmp < 0 {
-		diff := new(big.Int).Sub(totalStake, oldTotalStake)
-		account.SetBalance(new(big.Int).Sub(balance, diff))
-	}
-
-	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
-		migrate.ReproduceUnstakeBugForStake(s.cc, s.log)
-	}
-	return
+	cc := s.newCallContext(s.cc)
+	return es.SetStake(cc, &value.Int)
 }
 
 func (s *chainScore) Ex_getStake(address module.Address) (map[string]interface{}, error) {
@@ -230,14 +135,8 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err != nil {
 		return err
 	}
-	revision := s.cc.Revision().Value()
-	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds, revision); err != nil {
-		return err
-	}
-	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
-		migrate.ReproduceUnstakeBugForDelegation(s.cc, s.log)
-	}
-	return nil
+	cc := s.newCallContext(s.cc)
+	return es.SetDelegation(cc, ds)
 }
 
 func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interface{}, error) {
@@ -256,8 +155,6 @@ func (s *chainScore) Ex_getDelegation(address module.Address) (map[string]interf
 	return ia.GetDelegationInJSON(), nil
 }
 
-var regPRepFee = icutils.ToLoop(2000)
-
 func (s *chainScore) Ex_registerPRep(name string, email string, website string, country string,
 	city string, details string, p2pEndpoint string, nodeAddress module.Address) error {
 	if err := s.tryChargeCall(true); err != nil {
@@ -274,33 +171,19 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 			nodeAddress,
 		)
 	}
-	if s.value.Cmp(regPRepFee) != 0 {
+	if s.value.Cmp(icmodule.BigIntRegPRepFee) != 0 {
 		return scoreresult.InvalidParameterError.Errorf(
 			"Invalid registration fee: value=%v != fee=%v",
 			s.value,
-			regPRepFee,
+			icmodule.BigIntRegPRepFee,
 		)
 	}
 
-	// Subtract regPRepFee from chainScore
-	as := s.cc.GetAccountState(state.SystemID)
-	balance := new(big.Int).Sub(as.GetBalance(), regPRepFee)
-	if balance.Sign() < 0 {
-		return scoreresult.UnknownFailureError.Errorf("Not enough balance: %s, value=%v", state.SystemAddress, s.value)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
 	}
-	as.SetBalance(balance)
-
-	// Burn regPRepFee
-	if ts, err := icutils.DecreaseTotalSupply(s.cc, regPRepFee); err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to burn regPRepFee: from=%v fee=%v",
-			s.from,
-			regPRepFee,
-		)
-	} else {
-		icutils.OnBurn(s.cc, state.SystemAddress, regPRepFee, ts)
-	}
+	cc := s.newCallContext(s.cc)
 
 	info := &icstate.PRepInfo{
 		City:        &city,
@@ -312,52 +195,7 @@ func (s *chainScore) Ex_registerPRep(name string, email string, website string, 
 		WebSite:     &website,
 		Node:        nodeAddress,
 	}
-	if err := info.Validate(s.cc.Revision().Value(), true); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err,
-			"Failed to validate regInfo: from=%v",
-			s.from,
-		)
-	}
-
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
-
-	var irep *big.Int
-	irepHeight := int64(0)
-	if es.IsDecentralized() {
-		term := es.State.GetTermSnapshot()
-		irep = term.Irep()
-		irepHeight = s.cc.BlockHeight()
-	} else {
-		irep = icmodule.BigIntInitialIRep
-	}
-
-	if err = es.State.RegisterPRep(s.from, info, irep, irepHeight); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to register PRep: from=%v", s.from,
-		)
-	}
-
-	term := es.State.GetTermSnapshot()
-	_, err = es.Front.AddEventEnable(
-		int(s.cc.BlockHeight()-term.StartHeight()),
-		s.from,
-		icstage.ESEnable,
-	)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err, "Failed to add EventEnable: from=%v", s.from,
-		)
-	}
-
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepRegistered(Address)")},
-		[][]byte{s.from.Bytes()},
-	)
-	return nil
+	return es.RegisterPRep(cc, info)
 }
 
 func (s *chainScore) Ex_unregisterPRep() error {
@@ -373,16 +211,8 @@ func (s *chainScore) Ex_unregisterPRep() error {
 			"Invalid address: from=%v", s.from,
 		)
 	}
-	err = es.UnregisterPRep(s.cc.BlockHeight(), s.from)
-	if err != nil {
-		return err
-	}
-
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnregistered(Address)")},
-		[][]byte{s.from.Bytes()},
-	)
-	return nil
+	cc := s.newCallContext(s.cc)
+	return es.UnregisterPRep(cc)
 }
 
 func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{}, error) {
@@ -471,13 +301,14 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 	if err = s.tryChargeCall(true); err != nil {
 		return err
 	}
-
 	if (node != nil && node.IsContract()) || s.from.IsContract() {
 		return scoreresult.AccessDeniedError.Errorf(
 			"Invalid address: from=%v node=%v", s.from, node,
 		)
 	}
-
+	if es, err = s.getExtensionState(); err != nil {
+		return err
+	}
 	info := &icstate.PRepInfo{
 		City:        city,
 		Country:     country,
@@ -488,59 +319,7 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 		WebSite:     website,
 		Node:        node,
 	}
-
-	revision := s.cc.Revision().Value()
-	if err = info.Validate(revision, false); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to validate regInfo: from=%v", s.from,
-		)
-	}
-	if err = s.validateEndpoint(info.P2PEndpoint); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to validate regInfo: from=%v", s.from,
-		)
-	}
-
-	if es, err = s.getExtensionState(); err != nil {
-		return err
-	}
-
-	blockHeight := s.cc.BlockHeight()
-	nodeUpdate, err := es.State.SetPRep(blockHeight, s.from, info)
-	if err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", s.from)
-	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepSet(Address)")},
-		[][]byte{s.from.Bytes()},
-	)
-
-	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 && nodeUpdate {
-		// ICON1 update term when main P-Rep modify p2p endpoint or node address
-		// Thus reward calculator segment VotedReward period
-		ps, _ := es.State.GetPRepStatusByOwner(s.from, false)
-		if ps.Grade() == icstate.GradeMain {
-			term := es.State.GetTermSnapshot()
-			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (s *chainScore) validateEndpoint(p2pEndpoint *string) error {
-	revision := s.cc.Revision().Value()
-	if p2pEndpoint == nil || revision < icmodule.RevisionPreventDuplicatedEndpoint {
-		return nil
-	}
-
-	txID := s.cc.TransactionID()
-	switch string(txID) {
-	case "\x52\x9c\x33\xba\x49\x5f\x85\x88\x83\xd1\x31\x39\x5a\x97\x24\x8b\x37\x36\x99\xa4\x4f\x1a\xbe\x49\x60\xd7\x50\x1b\x0a\x53\x07\x4e":
-		return errors.Errorf("Duplicated endpoint")
-	}
-	return nil
+	return es.SetPRep(s.newCallContext(s.cc), info)
 }
 
 func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
@@ -642,134 +421,21 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 }
 
 var skippedClaimTX, _ = hex.DecodeString("b9eeb235f715b166cf4b91ffcf8cc48a81913896086d30104ffc0cf47eed1cbd")
-
 func (s *chainScore) Ex_claimIScore() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
-	if bytes.Compare(s.cc.TransactionID(), skippedClaimTX) == 0 {
+	cc := s.newCallContext(s.cc)
+	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
-		s.claimEventLog(s.from, new(big.Int), new(big.Int))
+		iiss.ClaimEventLog(cc, s.from, new(big.Int), new(big.Int))
 		return nil
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
 	}
-
-	iScore, err := s.getIScore(es, s.from)
-	if err != nil {
-		return err
-	}
-	if iScore.Sign() == 0 {
-		// there is no IScore to claim
-		s.claimEventLog(s.from, new(big.Int), new(big.Int))
-		return nil
-	}
-
-	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
-	claim := new(big.Int).Sub(iScore, remains)
-
-	// increase account icx balance
-	account := s.cc.GetAccountState(s.from.ID())
-	if account == nil {
-		return scoreresult.InvalidInstanceError.Errorf("Invalid account: from=%v", s.from)
-	}
-	balance := account.GetBalance()
-	account.SetBalance(new(big.Int).Add(balance, icx))
-
-	// decrease treasury icx balance
-	tr := s.cc.GetAccountState(s.cc.Treasury().ID())
-	tb := tr.GetBalance()
-	tr.SetBalance(new(big.Int).Sub(tb, icx))
-
-	// write claim data to front
-	// IISS 2.0 : do not burn iScore < 1000
-	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
-	var ic *icstage.IScoreClaim
-	revision := s.cc.Revision().Value()
-	if revision < icmodule.RevisionICON2 {
-		ic, err = es.Front.AddIScoreClaim(s.from, claim)
-	} else {
-		ic, err = es.Front.AddIScoreClaim(s.from, iScore)
-	}
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to add IScore claim event: from=%v",
-			s.from,
-		)
-	}
-	if revision < icmodule.RevisionFixClaimIScore {
-		cl := iiss.NewClaimIScoreLog(s.from, claim, ic)
-		es.AppendExtensionLog(cl)
-	}
-	s.claimEventLog(s.from, claim, icx)
-	return nil
-}
-
-func (s *chainScore) getIScore(es *iiss.ExtensionStateImpl, from module.Address) (*big.Int, error) {
-	iScore := new(big.Int)
-	if es.Reward == nil {
-		return iScore, nil
-	}
-	is, err := es.Reward.GetIScore(from)
-	if err != nil {
-		return nil, scoreresult.UnknownFailureError.Wrapf(
-			err,
-			"Failed to get IScore data: from=%v",
-			from,
-		)
-	}
-	if is == nil {
-		return iScore, nil
-	}
-
-	iScore.Set(is.Value())
-	stages := []*icstage.State{es.Front, es.Back1, es.Back2}
-	for _, stage := range stages {
-		if stage == nil {
-			continue
-		}
-		claim, err := stage.GetIScoreClaim(from)
-		if err != nil {
-			return nil, scoreresult.UnknownFailureError.Wrapf(
-				err,
-				"Failed to get claim data from back: from=%v",
-				from,
-			)
-		}
-		if claim != nil {
-			iScore.Sub(iScore, claim.Value())
-		}
-	}
-	return iScore, nil
-}
-
-func (s *chainScore) claimEventLog(address module.Address, claim *big.Int, icx *big.Int) {
-	revision := s.cc.Revision().Value()
-	if revision < icmodule.Revision9 {
-		s.cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimed(int,int)"),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	} else {
-		s.cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimedV2(Address,int,int)"),
-				address.Bytes(),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	}
+	return es.ClaimIScore(cc)
 }
 
 func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interface{}, error) {
@@ -781,7 +447,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	if err != nil {
 		return nil, err
 	}
-	is, err := s.getIScore(es, address)
+	is, err := es.GetIScore(address)
 	if err != nil {
 		return nil, err
 	}
@@ -805,9 +471,10 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	totalSupply := icutils.GetTotalSupply(s.cc)
+	cc := s.newCallContext(s.cc)
+	totalSupply := cc.GetTotalSupply()
 	jso := make(map[string]interface{})
-	jso["unstakeLockPeriod"] = es.State.GetUnstakeLockPeriod(s.cc.Revision().Value(), totalSupply)
+	jso["unstakeLockPeriod"] = es.State.GetUnstakeLockPeriod(cc.Revision().Value(), totalSupply)
 	return jso, nil
 }
 
@@ -897,7 +564,8 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err != nil {
 		return err
 	}
-	if err = es.DisqualifyPRep(s.cc.BlockHeight(), address); err != nil {
+	cc := s.newCallContext(s.cc)
+	if err = es.DisqualifyPRep(cc, address); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to disqualify PRep: from=%v prep=%v",
@@ -905,17 +573,6 @@ func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 			address,
 		)
 	}
-
-	ps, _ := es.State.GetPRepStatusByOwner(address, false)
-	// Record PenaltyImposed eventlog
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(iiss.PRepDisqualification),
-		},
-	)
-
 	return nil
 }
 
@@ -937,26 +594,14 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 }
 
 func (s *chainScore) Ex_burn() error {
-	// Subtract value from chainScore
-	as := s.cc.GetAccountState(state.SystemID)
-	balance := new(big.Int).Sub(as.GetBalance(), s.value)
-	if balance.Sign() < 0 {
-		return scoreresult.InvalidParameterError.Errorf(
-			"Not enough value: from=%v value=%v", s.from, s.value,
-		)
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
 	}
-	as.SetBalance(balance)
+	cc := s.newCallContext(s.cc)
+	return es.Burn(cc, s.value)
+}
 
-	// Burn value
-	if ts, err := icutils.DecreaseTotalSupply(s.cc, s.value); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err,
-			"Failed to decrease totalSupply: from=%v value=%v",
-			s.from,
-			s.value,
-		)
-	} else {
-		icutils.OnBurn(s.cc, s.from, s.value, ts)
-	}
-	return nil
+func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
+	return iiss.NewCallContext(cc, s.from)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -31,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -343,11 +345,15 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 	return jso, nil
 }
 
-func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations, revision int) error {
+func (es *ExtensionStateImpl) SetDelegation(
+	cc icmodule.CallContext, ds icstate.Delegations) error {
+
 	var err error
 	var account *icstate.AccountState
 	var delta map[string]*big.Int
 
+	from := cc.From()
+	blockHeight := cc.BlockHeight()
 	account = es.State.GetAccountState(from)
 
 	using := new(big.Int).Set(ds.GetDelegationAmount())
@@ -378,12 +384,16 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 		}
 	}
 
+	revision := cc.Revision().Value()
 	if revision < icmodule.RevisionFixSetDelegation {
 		dLog := newDelegationLog(from, offset, idx, obj, ds)
 		es.AppendExtensionLog(dLog)
 	}
 
 	account.SetDelegation(ds)
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		migrate.ReproduceUnstakeBugForDelegation(cc, es.logger)
+	}
 	return nil
 }
 
@@ -485,24 +495,42 @@ func (es *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error)
 	return
 }
 
-func (es *ExtensionStateImpl) UnregisterPRep(blockHeight int64, owner module.Address) error {
+func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 	var err error
+	blockHeight := cc.BlockHeight()
+	owner := cc.From()
+
 	if err = es.State.DisablePRep(owner, icstate.Unregistered, blockHeight); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
 	if err = es.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
+
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepUnregistered(Address)")},
+		[][]byte{owner.Bytes()},
+	)
 	return nil
 }
 
-func (es *ExtensionStateImpl) DisqualifyPRep(blockHeight int64, owner module.Address) error {
-	if err := es.State.DisablePRep(owner, icstate.Disqualified, blockHeight); err != nil {
+func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address module.Address) error {
+	blockHeight := cc.BlockHeight()
+	if err := es.State.DisablePRep(address, icstate.Disqualified, blockHeight); err != nil {
 		return err
 	}
-	if err := es.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
+	if err := es.addEventEnable(blockHeight, address, icstage.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
+	ps, _ := es.State.GetPRepStatusByOwner(address, false)
+	// Record PenaltyImposed eventlog
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(ps.Status())),
+			intconv.Int64ToBytes(PRepDisqualification),
+		},
+	)
 	return nil
 }
 
@@ -1016,5 +1044,385 @@ func (es *ExtensionStateImpl) HandleExtensionLog() error {
 		}
 	}
 	es.log = nil
+	return nil
+}
+
+func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err error) {
+	from := cc.From()
+	ia := es.State.GetAccountState(from)
+
+	usingStake := ia.UsingStake()
+	if v.Cmp(usingStake) < 0 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Failed to set stake: newStake=%v < usingStake=%v from=%v",
+			v, usingStake, from,
+		)
+	}
+
+	revision := cc.Revision().Value()
+	stakeInc := new(big.Int).Sub(v, ia.Stake())
+	// ICON1 update unstakes when stakeInc == 0
+	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2 {
+		return nil
+	}
+
+	balance := cc.GetBalance(from)
+	maxStake := new(big.Int).Add(balance, ia.GetTotalStake())
+	if revision < icmodule.RevisionSystemSCORE {
+		maxStake.Sub(maxStake, new(big.Int).Mul(cc.SumOfStepUsed(), cc.StepPrice()))
+	}
+	if maxStake.Cmp(v) == -1 {
+		return scoreresult.OutOfBalanceError.Errorf("Not enough balance")
+	}
+
+	tStake := es.State.GetTotalStake()
+	tSupply := cc.GetTotalSupply()
+	oldTotalStake := ia.GetTotalStake()
+
+	//update IISS account
+	expireHeight := cc.BlockHeight() + es.State.GetUnstakeLockPeriod(revision, tSupply)
+	var tl []icstate.TimerJobInfo
+	switch stakeInc.Sign() {
+	case 0, 1:
+		// Condition: stakeInc >= 0
+		tl, err = ia.DecreaseUnstake(stakeInc, expireHeight, revision)
+	case -1:
+		slotMax := int(es.State.GetUnstakeSlotMax())
+		tl, err = ia.IncreaseUnstake(new(big.Int).Abs(stakeInc), expireHeight, slotMax, revision)
+	}
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Error while updating unstakes: from=%v",
+			from,
+		)
+	}
+
+	for _, t := range tl {
+		ts := es.State.GetUnstakingTimerState(t.Height)
+		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Error while scheduling UnStaking Timer Job: from=%v",
+				from,
+			)
+		}
+	}
+	if err = ia.SetStake(v); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set stake: from=%v stake=%v",
+			from,
+			v,
+		)
+	}
+	if err = es.State.SetTotalStake(new(big.Int).Add(tStake, stakeInc)); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to set totalStake: from=%v totalStake=%v stakeInc=%v",
+			from,
+			tStake,
+			stakeInc,
+		)
+	}
+
+	// Update the balance
+	totalStake := ia.GetTotalStake()
+	diff := new(big.Int).Sub(totalStake, oldTotalStake)
+	sign := diff.Sign()
+	if sign < 0 {
+		es.Logger().Panicf(
+			"Failed to setStake: oldTotalStake=%v > newTotalStake=%v from=%v",
+			totalStake, oldTotalStake, from,
+		)
+	} else if sign > 0 {
+		if err = cc.Withdraw(from, diff); err != nil {
+			return err
+		}
+	}
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		migrate.ReproduceUnstakeBugForStake(cc, es.logger)
+	}
+	return
+}
+
+func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstate.PRepInfo) error {
+	var err error
+	from := cc.From()
+
+	if err = info.Validate(cc.Revision().Value(), true); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate regInfo: from=%v", from,
+		)
+	}
+
+	// Subtract RegPRepFee from SystemAddress
+	err = cc.Withdraw(state.SystemAddress, icmodule.BigIntRegPRepFee)
+	if err != nil {
+		return err
+	}
+	// Burn regPRepFee
+	if err = cc.Burn(state.SystemAddress, icmodule.BigIntRegPRepFee); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to burn regPRepFee: from=%v fee=%v",
+			from,
+			icmodule.BigIntRegPRepFee,
+		)
+	}
+
+	var irep *big.Int
+	irepHeight := int64(0)
+	blockHeight := cc.BlockHeight()
+	term := es.State.GetTermSnapshot()
+
+	if es.IsDecentralized() {
+		irep = term.Irep()
+		irepHeight = blockHeight
+	} else {
+		irep = icmodule.BigIntInitialIRep
+	}
+
+	if err = es.State.RegisterPRep(from, info, irep, irepHeight); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to register PRep: from=%v", from,
+		)
+	}
+
+	_, err = es.Front.AddEventEnable(
+		int(blockHeight-term.StartHeight()),
+		from,
+		icstage.ESEnable,
+	)
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err, "Failed to add EventEnable: from=%v", from,
+		)
+	}
+
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepRegistered(Address)")},
+		[][]byte{from.Bytes()},
+	)
+	return nil
+}
+
+func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRepInfo) error {
+	var err error
+	var nodeUpdate bool
+	from := cc.From()
+	blockHeight := cc.BlockHeight()
+	revision := cc.Revision().Value()
+
+	if err = info.Validate(revision, false); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate regInfo: from=%v", from,
+		)
+	}
+	if err = validateEndpoint(cc, info.P2PEndpoint); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate regInfo: from=%v", from,
+		)
+	}
+
+	nodeUpdate, err = es.State.SetPRep(blockHeight, from, info)
+	if err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", from)
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepSet(Address)")},
+		[][]byte{from.Bytes()},
+	)
+
+	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 && nodeUpdate {
+		// ICON1 update term when main P-Rep modify p2p endpoint or node address
+		// Thus reward calculator segment VotedReward period
+		ps, _ := es.State.GetPRepStatusByOwner(from, false)
+		if ps.Grade() == icstate.GradeMain {
+			term := es.State.GetTermSnapshot()
+			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateEndpoint(cc icmodule.CallContext, p2pEndpoint *string) error {
+	revision := cc.Revision().Value()
+	if p2pEndpoint == nil || revision < icmodule.RevisionPreventDuplicatedEndpoint {
+		return nil
+	}
+
+	txID := cc.TransactionID()
+	switch string(txID) {
+	case "\x52\x9c\x33\xba\x49\x5f\x85\x88\x83\xd1\x31\x39\x5a\x97\x24\x8b\x37\x36\x99\xa4\x4f\x1a\xbe\x49\x60\xd7\x50\x1b\x0a\x53\x07\x4e":
+		return errors.Errorf("Duplicated endpoint")
+	}
+	return nil
+}
+
+func (es *ExtensionStateImpl) GetIScore(from module.Address) (*big.Int, error) {
+	iScore := new(big.Int)
+	if es.Reward == nil {
+		return iScore, nil
+	}
+	is, err := es.Reward.GetIScore(from)
+	if err != nil {
+		return nil, scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get IScore data: from=%v",
+			from,
+		)
+	}
+	if is == nil {
+		return iScore, nil
+	}
+
+	iScore.Set(is.Value())
+	stages := []*icstage.State{es.Front, es.Back1, es.Back2}
+	for _, stage := range stages {
+		if stage == nil {
+			continue
+		}
+		claim, err := stage.GetIScoreClaim(from)
+		if err != nil {
+			return nil, scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Failed to get claim data from back: from=%v",
+				from,
+			)
+		}
+		if claim != nil {
+			iScore.Sub(iScore, claim.Value())
+		}
+	}
+	return iScore, nil
+}
+
+func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
+	from := cc.From()
+
+	iScore, err := es.getIScore(from)
+	if err != nil {
+		return err
+	}
+	if iScore.Sign() == 0 {
+		// there is no IScore to claim
+		ClaimEventLog(cc, from, new(big.Int), new(big.Int))
+		return nil
+	}
+
+	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
+	claim := new(big.Int).Sub(iScore, remains)
+
+	if err = cc.Transfer(cc.Treasury(), from ,icx); err != nil {
+		return scoreresult.InvalidInstanceError.Errorf(
+			"Failed to transfer: from=%v to=%v amount=%v",
+			cc.Treasury(), from, icx,
+		)
+	}
+
+	// write claim data to front
+	// IISS 2.0 : do not burn iScore < 1000
+	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
+	var ic *icstage.IScoreClaim
+	revision := cc.Revision().Value()
+	if revision < icmodule.RevisionICON2 {
+		ic, err = es.Front.AddIScoreClaim(from, claim)
+	} else {
+		ic, err = es.Front.AddIScoreClaim(from, iScore)
+	}
+	if err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to add IScore claim event: from=%v",
+			from,
+		)
+	}
+	if revision < icmodule.RevisionFixClaimIScore {
+		cl := NewClaimIScoreLog(from, claim, ic)
+		es.AppendExtensionLog(cl)
+	}
+	ClaimEventLog(cc, from, claim, icx)
+	return nil
+}
+
+func (es *ExtensionStateImpl) getIScore(from module.Address) (*big.Int, error) {
+	iScore := new(big.Int)
+	if es.Reward == nil {
+		return iScore, nil
+	}
+	is, err := es.Reward.GetIScore(from)
+	if err != nil {
+		return nil, scoreresult.UnknownFailureError.Wrapf(
+			err,
+			"Failed to get IScore data: from=%v",
+			from,
+		)
+	}
+	if is == nil {
+		return iScore, nil
+	}
+
+	iScore.Set(is.Value())
+	stages := []*icstage.State{es.Front, es.Back1, es.Back2}
+	for _, stage := range stages {
+		if stage == nil {
+			continue
+		}
+		claim, err := stage.GetIScoreClaim(from)
+		if err != nil {
+			return nil, scoreresult.UnknownFailureError.Wrapf(
+				err,
+				"Failed to get claim data from back: from=%v",
+				from,
+			)
+		}
+		if claim != nil {
+			iScore.Sub(iScore, claim.Value())
+		}
+	}
+	return iScore, nil
+}
+
+func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.Int, icx *big.Int) {
+	revision := cc.Revision().Value()
+	if revision < icmodule.Revision9 {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("IScoreClaimed(int,int)"),
+			},
+			[][]byte{
+				intconv.BigIntToBytes(claim),
+				intconv.BigIntToBytes(icx),
+			},
+		)
+	} else {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("IScoreClaimedV2(Address,int,int)"),
+				address.Bytes(),
+			},
+			[][]byte{
+				intconv.BigIntToBytes(claim),
+				intconv.BigIntToBytes(icx),
+			},
+		)
+	}
+}
+
+func (es *ExtensionStateImpl) Burn(cc icmodule.CallContext, amount *big.Int) error {
+	from := cc.From()
+	if err := cc.Withdraw(state.SystemAddress, amount); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Not enough value: from=%v value=%v", from, amount,
+		)
+	}
+	if err := cc.Burn(from, amount); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to burn: from=%v value=%v", from, amount,
+		)
+	}
 	return nil
 }

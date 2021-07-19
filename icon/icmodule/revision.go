@@ -69,6 +69,7 @@ const (
 
 	RevisionICON2     = Revision14
 	RevisionICON1Last = RevisionICON2 - 1
+	RevisionICON2R0   = RevisionICON2
 
 	RevisionExtraMainPReps = RevisionICON2 + 1
 )

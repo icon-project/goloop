@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -821,22 +822,20 @@ var delegationData = map[string]string{
 	"\xe0\x67\xef\x28\xf6\xe8\xe1\xb0\x2f\x68\xb0\x08\x81\x2f\x60\xc9\x5d\xf3\x09\x00\x4e\x49\x49\x2f\x1d\x0a\xf3\x8d\x17\x72\x63\x17": "010298080600000000000000",
 }
 
-func ReproduceUnstakeBugForStake(cc contract.CallContext, logger log.Logger) {
+func ReproduceUnstakeBugForStake(cc icmodule.CallContext, logger log.Logger) {
 	reproduceUnstakeBug(cc, logger, stakeData)
 }
 
-func ReproduceUnstakeBugForDelegation(cc contract.CallContext, logger log.Logger) {
+func ReproduceUnstakeBugForDelegation(cc icmodule.CallContext, logger log.Logger) {
 	reproduceUnstakeBug(cc, logger, delegationData)
 }
 
-func reproduceUnstakeBug(cc contract.CallContext, logger log.Logger, bugInfo map[string]string) {
+func reproduceUnstakeBug(cc icmodule.CallContext, logger log.Logger, bugInfo map[string]string) {
 	if amount, ok := bugInfo[string(cc.TransactionID())]; ok {
-		address := cc.TransactionInfo().From
-		account := cc.GetAccountState(address.ID())
-		balance := account.GetBalance()
+		address := cc.Origin()
 		v := new(big.Int)
 		v.SetString(amount, 10)
-		account.SetBalance(new(big.Int).Add(balance, v))
+		_ = cc.Deposit(address, v)
 		logger.Tracef("%s get %d illegal icx", address, v)
 	}
 }

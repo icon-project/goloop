@@ -25,7 +25,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -35,7 +34,7 @@ const (
 	BlockValidation
 )
 
-func (es *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner module.Address) error {
+func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
 	ps, _ := es.State.GetPRepStatusByOwner(owner, false)
@@ -77,7 +76,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc contract.CallContext, owner modul
 	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
 }
 
-func (es *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Address, ratio int) error {
+func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio int) error {
 	if ratio == 0 {
 		return nil
 	}
@@ -150,12 +149,11 @@ func (es *ExtensionStateImpl) slash(cc contract.CallContext, owner module.Addres
 	if err := es.State.SetTotalStake(totalStake); err != nil {
 		return err
 	}
-	if ts, err := icutils.DecreaseTotalSupply(cc, totalSlashBond); err != nil {
+	if err := es.State.Slash(owner, totalSlashBond); err != nil {
 		return err
-	} else {
-		icutils.OnBurn(cc, state.SystemAddress, totalSlashBond, ts)
 	}
-	ret := es.State.Slash(owner, totalSlashBond)
+	err := cc.Burn(state.SystemAddress, totalSlashBond)
+
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
-	return ret
+	return err
 }

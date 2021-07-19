@@ -31,7 +31,6 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -154,8 +153,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	return r, nil
 }
 
-func handleConsensusInfo(cc contract.CallContext) error {
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
+func (es *ExtensionStateImpl) handleConsensusInfo(cc icmodule.CallContext) error {
 	term := es.State.GetTermSnapshot()
 	if term == nil || !term.IsDecentralized() {
 		return nil
@@ -174,7 +172,7 @@ func handleConsensusInfo(cc contract.CallContext) error {
 	}
 
 	blockVoters := icstate.NewBlockVotersSnapshot(voters)
-	return updateBlockVoteStats(cc, blockVoters, csi.Voted())
+	return es.updateBlockVoteStats(cc, blockVoters, csi.Voted())
 }
 
 // CompileVoters return slice of owner address of voters
@@ -204,9 +202,10 @@ func CompileVoters(state *icstate.State, csi module.ConsensusInfo) ([]module.Add
 }
 
 // updateBlockVoteStats updates validation state of each PRep and checks PReps for penalty
-func updateBlockVoteStats(cc contract.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
+func (es *ExtensionStateImpl) updateBlockVoteStats(
+	cc icmodule.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
+
 	var err error
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	blockHeight := cc.BlockHeight()
 
 	size := voters.Len()
@@ -241,7 +240,7 @@ func updateBlockVoteStats(cc contract.CallContext, voters *icstate.BlockVotersSn
 	return nil
 }
 
-func handleICXIssue(cc contract.CallContext, data []byte) error {
+func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byte) error {
 	// parse Issue Info. from TX data
 	bd, err := parseBaseData(data)
 	if err != nil {
@@ -262,7 +261,6 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	}
 
 	// get Issue result from state
-	es := cc.GetExtensionState().(*ExtensionStateImpl)
 	prep, result := GetIssueData(es)
 	// there is no issue data
 	if iPrep == nil && iResult == nil && prep == nil && result == nil {
@@ -273,14 +271,12 @@ func handleICXIssue(cc contract.CallContext, data []byte) error {
 	if (iPrep != nil && !iPrep.Equal(prep)) || (iResult != nil && !iResult.Equal(result)) {
 		return scoreresult.InvalidParameterError.Errorf("Invalid issue data \n%+v\n%+v", iResult, result)
 	}
-
 	// transfer issued ICX to treasury
-	tr := cc.GetAccountState(cc.Treasury().ID())
-	tb := tr.GetBalance()
-	tr.SetBalance(new(big.Int).Add(tb, result.GetIssue()))
-
+	if err = cc.Deposit(cc.Treasury(), result.GetIssue()); err != nil {
+		return err
+	}
 	// increase total supply
-	if _, err = icutils.IncreaseTotalSupply(cc, result.GetIssue()); err != nil {
+	if _, err = cc.AddTotalSupply(result.GetIssue()); err != nil {
 		return err
 	}
 
@@ -466,10 +462,11 @@ func RegisterBaseTx() {
 }
 
 func (es *ExtensionStateImpl) OnBaseTx(cc contract.CallContext, data []byte) error {
-	if err := handleICXIssue(cc, data); err != nil {
+	ctx := NewCallContext(cc, nil)
+	if err := es.handleICXIssue(ctx, data); err != nil {
 		return err
 	}
-	if err := handleConsensusInfo(cc); err != nil {
+	if err := es.handleConsensusInfo(ctx); err != nil {
 		return err
 	}
 	return nil
