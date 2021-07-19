@@ -1429,7 +1429,7 @@ func (m *manager) doGetBlockByHeight(
 	height int64,
 	hl handlerList,
 ) (module.Block, error) {
-	if height > m.finalized.block.Height() {
+	if  m.finalized != nil &&  height > m.finalized.block.Height() {
 		return nil, errors.NotFoundError.Errorf("no block for %d", height)
 	}
 	// For now, assume all versions have same height to hash database structure

@@ -1,7 +1,6 @@
 package contract
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -247,10 +246,21 @@ func getIDWithSalt(id []byte, salt *big.Int) []byte {
 	}
 }
 
-func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
-	sysAs := cc.GetAccountState(state.SystemID)
-
+func (h *DeployHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, score module.Address) {
 	h.Log.TSystemf("FRAME[%d] DEPLOY start to=%s", h.FID, h.To)
+	defer func() {
+		if err != nil {
+			h.Log.TSystemf("FRAME[%d] DEPLOY done status=%v", h.FID, err)
+		} else {
+			h.Log.TSystemf("FRAME[%d] DEPLOY done status=%s score=%s", h.FID, module.StatusSuccess, score)
+		}
+	}()
+
+	return h.DoExecuteSync(cc)
+}
+
+func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
+	sysAs := cc.GetAccountState(state.SystemID)
 
 	update := false
 	txInfo := cc.TransactionInfo()
@@ -261,15 +271,23 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 
 	var contractID []byte
 	var as state.AccountState
-	if bytes.Equal(h.To.ID(), state.SystemID) { // install
+	if h.To.Equal(state.SystemAddress) {
 		// preDefinedAddr is not nil, it is pre-installed score.
 		if h.preDefinedAddr != nil {
+			if !h.preDefinedAddr.IsContract() {
+				return scoreresult.InvalidParameterError.Errorf(
+					"TargetMustBeContract(to=%s)", h.preDefinedAddr), nil, nil
+			}
 			contractID = h.preDefinedAddr.ID()
 		} else {
 			contractID = genContractAddr(h.From, txInfo.Timestamp, txInfo.Nonce, salt)
 		}
 		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
+		if !h.To.IsContract() {
+			return scoreresult.InvalidParameterError.Errorf(
+				"TargetMustBeContract(to=%s)", h.To), nil, nil
+		}
 		contractID = h.To.ID()
 		as = cc.GetAccountState(contractID)
 		if h.To.Equal(cc.Governance()) && as.IsContract() == false {
@@ -339,7 +357,6 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 			return status, nil, nil
 		}
 	}
-	h.Log.TSystemf("FRAME[%d] DEPLOY done score=%s", h.FID, scoreAddr)
 
 	return nil, common.MustEncodeAny(scoreAddr), scoreAddr
 }
