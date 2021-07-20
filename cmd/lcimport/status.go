@@ -40,3 +40,7 @@ func Statusf(l log.Logger, format string, args ...interface{}) {
 		statusDisplay = true
 	}
 }
+
+func StatusCleared() {
+	statusDisplay = false
+}

@@ -18,9 +18,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -332,7 +334,8 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	cmd.AddCommand(newCmdState(cmd, "state", vc))
 	cmd.AddCommand(newCmdStoredHeight(cmd, "stored", vc))
 	cmd.AddCommand(newCmdDownloadBlocks(cmd, "load", vc))
-	cmd.AddCommand(newCmdCheck(cmd, "check", vc))
+	cmd.AddCommand(newCmdBalanceCheck(cmd, "check", vc))
+	cmd.AddCommand(newCmdVerifyExecution(cmd, "verify", vc))
 	return cmd
 }
 
@@ -553,31 +556,102 @@ func newCmdStoredHeight(parent *cobra.Command, name string, vc *viper.Viper) *co
 	return cmd
 }
 
-func newCmdCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+func newCmdBalanceCheck(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Args:  cobra.RangeArgs(0, 1),
-		Use:   name,
-		Short: "Check state",
+		Args:  cobra.MinimumNArgs(1),
+		Use:   name+" [<account information files>...]",
+		Short: "Check state of accounts with exported account information file from ICON1",
 	}
 	pflags := cmd.PersistentFlags()
-	pPath := pflags.String("path", "", "path of ICON1 account info file")
 	pAddr := pflags.String("address", "", "address to check")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		ex := vc.Get(vcKeyExecutor).(*Executor)
-		path := *pPath
-		if len(path) == 0 {
-			return errors.New("Input path")
+		for _, arg := range args {
+			icon1, err := LoadICON1AccountInfo(arg)
+			if err != nil {
+				return err
+			}
+			wss, err := ex.NewWorldSnapshot(icon1.BlockHeight)
+			if err != nil {
+				return err
+			}
+			if err = CheckState(icon1, wss, *pAddr); err != nil {
+				return err
+			}
 		}
-		icon1, err := LoadICON1AccountInfo(path)
+		return nil
+	}
+	return cmd
+}
+
+func verifyBlocksOfCSVFile(ex *Executor, file string) error {
+	last := ex.getLastHeight()
+	fd, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+	cfd := csv.NewReader(fd)
+	hidx := -1
+	for {
+		record, err := cfd.Read()
+		if err == io.EOF {
+			return nil
+		}
+		if hidx == -1 {
+			for i, r := range record {
+				if strings.ToLower(strings.TrimSpace(r))=="height" {
+					hidx = i
+					break
+				}
+			}
+			continue
+		}
+		if len(record)<= hidx {
+			continue
+		}
+		height, err := intconv.ParseInt(record[hidx], 54)
 		if err != nil {
-			return err
+			continue
 		}
-		wss, err := ex.NewWorldSnapshot(icon1.BlockHeight)
-		if err != nil {
-			return err
+		if height > last || height < 0 {
+			Statusf( ex.log, "Verify Block[ %8d ] SKIPPED msg=%v",
+				height,
+				record[hidx+1:],
+			)
+			StatusCleared()
+			continue
 		}
-		if err = CheckState(icon1, wss, *pAddr); err != nil {
-			return err
+		Statusf(ex.log, "Verify Block[ %8d ] START",
+			height,
+		)
+		if err := ex.Execute(height, height, false, true) ; err != nil {
+			Statusf(ex.log, "Verify Block[ %8d ] FAILED msg=%v",
+				height,
+				record[hidx+1:],
+			)
+			StatusCleared()
+		} else {
+			Statusf(ex.log, "Verify Block[ %8d ] SUCCESS",
+				height,
+			)
+		}
+	}
+}
+
+func newCmdVerifyExecution(parent *cobra.Command, name string, vc *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Args: cobra.MinimumNArgs(1),
+		Use: name+" [regression.csv]",
+		Short: "Run and check regression at heights in the files",
+	}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		ex := vc.Get(vcKeyExecutor).(*Executor)
+		for _, arg := range args {
+			if err := verifyBlocksOfCSVFile(ex, arg); err != nil {
+				log.Errorf("[!] FAIL to process file=%s", arg)
+				return err
+			}
 		}
 		return nil
 	}
