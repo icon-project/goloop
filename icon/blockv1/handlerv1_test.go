@@ -24,13 +24,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/block"
-	"github.com/icon-project/goloop/block/test"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/test"
 )
 
 type platform struct {
