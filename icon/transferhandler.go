@@ -48,8 +48,8 @@ func (h *TransferHandler) ExecuteSync(cc contract.CallContext) (err error, ro *c
 		}
 	}()
 
-	if !h.ApplyStepsForInterCall(cc) {
-		return scoreresult.OutOfStepError.New("OutOfStepForInterCall"), nil, nil
+	if err2 := h.ApplyStepsForInterCall(cc); err2 != nil {
+		return err2, nil, nil
 	}
 	return h.DoExecuteSync(cc)
 }
