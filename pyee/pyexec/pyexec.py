@@ -195,6 +195,10 @@ class PyExecEngine(object):
         Logger.debug(f"set_value({repr(k)},{repr(v)})", TAG)
         self.__proxy.set_value(k, v, cb)
 
+    def contains(self, prefix: bytes, value: bytes, limit: int) -> Tuple[bool,int,int]:
+        Logger.debug(f"contains({repr(prefix)},{repr(value)},{repr(limit)})", TAG)
+        return self.__proxy.contains(prefix, value, limit)
+
     def set_fee_proportion(self, pct: int):
         Logger.debug(f"set_fee_proportion({repr(pct)})", TAG)
         self.__proxy.set_fee_proportion(pct)

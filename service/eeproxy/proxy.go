@@ -36,6 +36,7 @@ const (
 	msgGETOBJGRAPH = 13
 	msgSETOBJGRAPH = 14
 	msgSETFEEPCT   = 15
+	msgCONTAINS    = 16
 )
 
 type proxyState int
@@ -62,6 +63,7 @@ type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key []byte, value []byte) ([]byte, error)
 	DeleteValue(key []byte) ([]byte, error)
+	ArrayDBContains(prefix, value []byte, limit int64) (bool, int, int, error)
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte) error
@@ -192,6 +194,18 @@ type setObjGraphMessage struct {
 	Flags       int
 	NextHash    int
 	ObjectGraph []byte
+}
+
+type containsMessage struct {
+	Prefix []byte
+	Value  []byte
+	Limit  int64
+}
+
+type containsResponse struct {
+	YN    bool
+	Count int
+	Size  int
 }
 
 func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
@@ -539,6 +553,21 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return nil
 
+	case msgCONTAINS:
+		var m containsMessage
+		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+			return err
+		}
+		yn, cnt, sz, err := p.frame.ctx.ArrayDBContains(m.Prefix, m.Value, 0)
+		if err != nil {
+			return err
+		}
+		res := containsResponse{
+			YN:    yn,
+			Count: cnt,
+			Size:  sz,
+		}
+		return p.conn.Send(msgCONTAINS, &res)
 	default:
 		p.log.Warnf("Proxy[%p].HandleMessage(msg=%d) UnknownMessage", msg)
 		return errors.ErrIllegalArgument
@@ -634,6 +663,7 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgGETOBJGRAPH, p)
 	c.SetHandler(msgSETOBJGRAPH, p)
 	c.SetHandler(msgSETFEEPCT, p)
+	c.SetHandler(msgCONTAINS, p)
 
 	if err := m.onReady(t, p); err != nil {
 		p.state = stateStopped

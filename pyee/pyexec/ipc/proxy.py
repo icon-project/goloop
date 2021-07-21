@@ -49,6 +49,7 @@ class Message(object):
     LOG = 10
     CLOSE = 11
     SETFEEPCT = 15
+    CONTAINS = 16
 
 
 class Log(object):
@@ -492,6 +493,12 @@ class ServiceManagerProxy:
         if pct < 0 or pct > 100:
             raise Exception('InvalidParameter')
         self.__client.send(Message.SETFEEPCT, pct)
+
+    def contains(self, prefix: bytes, value: bytes, limit: int) -> Tuple[bool, int, int]:
+        msg, ret = self.send_and_receive(Message.CONTAINS, [prefix, value, limit])
+        if msg != Message.CONTAINS:
+            raise Exception(f'InvalidMsg({msg}) exp={Message.CONTAINS}')
+        return ret[0], ret[1], ret[2]
 
     def get_info(self) -> Any:
         msg, value = self.send_and_receive(Message.GETINFO, b'')

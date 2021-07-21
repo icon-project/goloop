@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/common/log"
@@ -61,6 +63,26 @@ func (cc *callContext) SetValue(key []byte, value []byte) ([]byte, error) {
 			key, value)
 	}
 	return old, err
+}
+
+func (cc *callContext) ArrayDBContains(prefix, value []byte, limit int64) (bool, int, int, error) {
+	adb := containerdb.NewArrayDB(cc, containerdb.NewHashKey(prefix))
+
+	var count int
+	var size int
+	items := adb.Size()
+	for i := 0; i < items; i++ {
+		v := adb.Get(i)
+		count += 1
+		if v != nil {
+			bs := v.Bytes()
+			size += len(bs)
+			if bytes.Equal(value, bs) {
+				return true, count, size, nil
+			}
+		}
+	}
+	return false, count, size, nil
 }
 
 func (cc *callContext) DeleteValue(key []byte) ([]byte, error) {
