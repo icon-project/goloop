@@ -32,8 +32,8 @@ func (h *callHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	h.TLogStart()
 	defer func() {
 		if err != nil {
-			if !h.ApplyCallSteps(cc) {
-				err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+			if err2 := h.ApplyCallSteps(cc) ; err2 != nil {
+				err = err2
 			}
 			h.TLogDone(err, cc.StepUsed(), nil)
 		}

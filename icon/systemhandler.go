@@ -58,7 +58,7 @@ type CallHandler interface {
 	DoExecuteAsync(cc contract.CallContext, ch eeproxy.CallContext) error
 	TLogStart()
 	TLogDone(status error, steps *big.Int, result *codec.TypedObj)
-	ApplyCallSteps(cc contract.CallContext) bool
+	ApplyCallSteps(cc contract.CallContext) error
 }
 
 type SystemCallHandler struct {
@@ -79,8 +79,8 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			// do not charge contractCall step for some external methods
 			if !doNotChargeContractCallStep(h.GetMethodName(), h.revision.Value()) {
 				// charge contractCall step if preprocessing is failed
-				if !h.ApplyCallSteps(cc) {
-					err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+				if err2 := h.ApplyCallSteps(cc) ; err2 != nil {
+					err = err2
 				}
 			}
 			h.TLogDone(err, cc.StepUsed(), nil)
