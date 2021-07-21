@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/big"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -474,6 +476,45 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 		return nil, errors.CriticalUnknownError.Errorf(
 			"DeleteValue: No Account(%s) exists", h.To)
 	}
+}
+
+func (h *CallHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, int, int, error) {
+	if h.as == nil {
+		return false, 0, 0, errors.CriticalUnknownError.Errorf(
+			"ArrayDBContains: No Account(%s) exists", h.To)
+	}
+
+	get := h.cc.StepsFor(state.StepTypeGet, 1)
+	defGet := h.cc.StepsFor(state.StepTypeDefaultGet, 1)
+
+	var cost int64
+	var found bool
+	var count, size int
+	adb := containerdb.NewArrayDB(h.as, containerdb.NewHashKey(prefix))
+	h.cc.DoIOTask(func() {
+		s := adb.Size()
+		for i := 0; i < s; i++ {
+			v := adb.Get(i)
+			count += 1
+			cost += defGet
+			if v != nil {
+				bs := v.Bytes()
+				bl := len(bs)
+				size += bl
+				cost += get * int64(bl)
+				if bytes.Equal(bs, value) {
+					found = true
+					return
+				}
+			}
+			if cost > limit {
+				return
+			}
+		}
+	})
+	h.Log.TSystemf("FRAME[%d] CONTAINS prefix=<%x> value=<%x> found=%v count=%d size=%d",
+		h.FID, prefix, value, found, count, size)
+	return found, count, size, nil
 }
 
 func (h *CallHandler) GetInfo() *codec.TypedObj {

@@ -235,11 +235,11 @@ class ArrayDB(object):
     def __getitem__(self, index: int) -> V:
         return ArrayDB._get(self._db, self.__get_size(), index, self.__value_type)
 
-    def __contains__(self, item: V):
-        for e in self:
-            if e == item:
-                return True
-        return False
+    def __contains__(self, item: V) -> bool:
+        sz = self.__get_size()
+        if sz == 0:
+            return False
+        return self._db.contains(ContainerUtil.encode_value(item))
 
     @staticmethod
     def _get(db: 'IconScoreDatabase', size: int, index: int, value_type: type) -> V:

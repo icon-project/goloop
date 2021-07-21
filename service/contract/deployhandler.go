@@ -570,6 +570,11 @@ func (h *callGetAPIHandler) DeleteValue(key []byte) ([]byte, error) {
 	return nil, nil
 }
 
+func (h *callGetAPIHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, int, int, error) {
+	h.Log.Panicln("Unexpected ArrayDBContains() call")
+	return false, 0, 9, nil
+}
+
 func (h *callGetAPIHandler) GetInfo() *codec.TypedObj {
 	h.Log.Panicln("Unexpected GetInfo() call")
 	return nil
