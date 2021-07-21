@@ -50,12 +50,14 @@ type CommonHandler struct {
 	Value    *big.Int
 	FID      int
 	Log      *trace.Logger
-	call     bool
+
+	isInterCall bool
+	callCharged bool
 }
 
 func NewCommonHandler(from, to module.Address, value *big.Int, call bool, log log.Logger) *CommonHandler {
 	return &CommonHandler{
-		From: from, To: to, Value: value, call: call,
+		From: from, To: to, Value: value, isInterCall: call,
 		Log: trace.LoggerOf(log)}
 }
 
@@ -67,13 +69,19 @@ func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *CommonHandler) ApplyStepsForInterCall(cc CallContext) bool {
-	if h.call {
-		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return false
-		}
+func (h *CommonHandler) ApplyCallSteps(cc CallContext) error {
+	if !h.callCharged {
+		h.callCharged = true
+		return cc.ApplyCallSteps()
 	}
-	return true
+	return nil
+}
+
+func (h *CommonHandler) ApplyStepsForInterCall(cc CallContext) error {
+	if h.isInterCall {
+		return h.ApplyCallSteps(cc)
+	}
+	return nil
 }
 
 func (h *CommonHandler) Init(fid int, logger log.Logger) {
