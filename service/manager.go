@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -465,6 +466,18 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	return valList
 }
 
+func (m *manager) getSystemByteStoreState(result []byte) (containerdb.BytesStoreState, error) {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return nil, err
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	if ass == nil {
+		return containerdb.EmptyBytesStoreState, nil
+	}
+	return scoredb.NewStateStoreWith(ass), nil
+}
+
 func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, error) {
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
@@ -478,12 +491,10 @@ func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, erro
 }
 
 func (m *manager) GetTotalSupply(result []byte) (*big.Int, error) {
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return nil, err
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 
 	if ts := tsVar.BigInt(); ts != nil {
@@ -493,12 +504,10 @@ func (m *manager) GetTotalSupply(result []byte) (*big.Int, error) {
 }
 
 func (m *manager) GetNetworkID(result []byte) (int64, error) {
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return 0, err
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
 	if nidVar.Bytes() == nil {
 		return 0, errors.ErrNotFound
@@ -507,12 +516,10 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 }
 
 func (m *manager) GetChainID(result []byte) (int64, error) {
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return 0, err
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	nidVar := scoredb.NewVarDB(as, state.VarChainID)
 	if nidVar.Bytes() == nil {
 		return 0, errors.ErrNotFound
@@ -552,12 +559,10 @@ func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
 }
 
 func (m *manager) GetRoundLimit(result []byte, vl int) int64 {
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return 0
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64()
 	if factor == 0 {
 		return 0
@@ -569,12 +574,10 @@ func (m *manager) GetRoundLimit(result []byte, vl int) int64 {
 }
 
 func (m *manager) GetMinimizeBlockGen(result []byte) bool {
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return false
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	return scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Bool()
 }
 
@@ -582,12 +585,10 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	if result == nil {
 		return m.plt.DefaultBlockVersion()
 	}
-	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return -1
 	}
-	ass := wss.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
 	v := int(scoredb.NewVarDB(as, state.VarNextBlockVersion).Int64())
 	if v == 0 {
 		return m.plt.DefaultBlockVersion()

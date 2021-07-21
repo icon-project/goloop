@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"sync"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -80,9 +81,6 @@ func (m *memberList) Equal(m2 module.MemberList) bool {
 }
 
 func (m *memberList) Iterator() module.MemberIterator {
-	if m == nil {
-		return nil
-	}
 	if members, err := m.getMembers(); err == nil {
 		return &memberIterator{
 			index:   0,
@@ -93,7 +91,7 @@ func (m *memberList) Iterator() module.MemberIterator {
 }
 
 func (m *memberList) equal(m2 *memberList) bool {
-	if m == nil && m2 == nil {
+	if m == m2 {
 		return true
 	}
 	if m == nil || m2 == nil {
@@ -165,11 +163,14 @@ func (m *memberList) IsEmpty() bool {
 	if members, err := m.getMembers(); err != nil {
 		return true
 	} else {
-		return members == nil
+		return len(members) == 0
 	}
 }
 
 func newMemberList(snapshot state.AccountSnapshot) *memberList {
+	if snapshot == nil {
+		return (*memberList)(nil)
+	}
 	return &memberList{
 		snapshot: snapshot,
 	}

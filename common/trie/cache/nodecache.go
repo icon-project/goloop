@@ -63,6 +63,10 @@ func (c *NodeCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	return nil, true
 }
 
+func (c *NodeCache) String() string {
+	return fmt.Sprintf("NodeCache{%p depth=%d offset=%d}", c, c.depth, c.offset)
+}
+
 func (c *NodeCache) Put(nibs []byte, h []byte, serialized []byte) {
 	if c == nil || nibs == nil || len(serialized) > dataMaxSize || len(nibs) >= c.depth {
 		return

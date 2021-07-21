@@ -3,7 +3,6 @@ package cache
 import (
 	"encoding/hex"
 	"path"
-	"sync"
 
 	"github.com/icon-project/goloop/common/db"
 )
@@ -12,14 +11,14 @@ const (
 	nodeCacheManager    = "nodeCM"
 	defaultAccountDepth = 5
 	defaultStoreDepth   = 5
+	defaultStoreCount   = 100
 )
 
 type cacheManager struct {
-	lock  sync.Mutex
 	path  string
 	depth [2]int
 	world *NodeCache
-	store map[string]*NodeCache
+	store *nodeCacheList
 }
 
 func (m *cacheManager) getWorldNodeCache() *NodeCache {
@@ -27,18 +26,8 @@ func (m *cacheManager) getWorldNodeCache() *NodeCache {
 }
 
 func (m *cacheManager) getAccountNodeCache(id []byte) *NodeCache {
-	m.lock.Lock()
-	defer m.lock.Unlock()
 	sid := string(id)
-	if c, ok := m.store[sid]; ok {
-		return c
-	} else {
-		if m.depth[0] == 0 {
-			return nil
-		}
-		m.store[sid] = m.newAccountNodeCache(id, m.depth[0], m.depth[1])
-		return c
-	}
+	return m.store.Get(sid)
 }
 
 func (m *cacheManager) newAccountNodeCache(id []byte, mem, file int) *NodeCache {
@@ -46,11 +35,13 @@ func (m *cacheManager) newAccountNodeCache(id []byte, mem, file int) *NodeCache 
 	return NewNodeCache(mem, file, path)
 }
 
+func (m *cacheManager) newNodeCache(id string) *NodeCache {
+	return m.newAccountNodeCache([]byte(id), m.depth[0], m.depth[1])
+}
+
 func (m *cacheManager) enableAccountNodeCache(id []byte, mem, file int) {
 	sid := string(id)
-	if _, ok := m.store[sid]; !ok {
-		m.store[sid] = m.newAccountNodeCache(id, mem, file)
-	}
+	m.store.SetCache(sid, m.newAccountNodeCache(id, mem, file))
 }
 
 func cacheManagerOf(database db.Database) *cacheManager {
@@ -96,13 +87,23 @@ func EnableAccountNodeCacheByForce(database db.Database, id []byte) bool {
 // dir is root directory for storing files for cache.
 // mem is number of levels of tree items to store in the memory.
 // file is number of levels of tree items to store in files.
-func AttachManager(database db.Database, dir string, mem, file int) db.Database {
+// stores is number of stores to cache.
+func AttachManager(database db.Database, dir string, mem, file, stores int) db.Database {
+	cm := &cacheManager{
+		path:  dir,
+		depth: [2]int{mem, file},
+		world: NewNodeCache(defaultAccountDepth, 0, ""),
+	}
+	if mem+file > 0 {
+		if stores < 1 {
+			stores = defaultStoreCount
+		}
+		samples := stores * 100
+		cm.store = NewNodeCacheList(samples, stores, cm.newNodeCache)
+	} else {
+		cm.store = NewNodeCacheList(0, 0, cm.newNodeCache)
+	}
 	return db.WithFlags(database, db.Flags{
-		nodeCacheManager: &cacheManager{
-			path:  dir,
-			depth: [2]int{mem, file},
-			world: NewNodeCache(defaultAccountDepth, 0, ""),
-			store: make(map[string]*NodeCache),
-		},
+		nodeCacheManager: cm,
 	})
 }

@@ -127,7 +127,7 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	if err != nil {
 		return nil, err
 	}
-	if item.worldSnapshot == nil && len(item.transactionResult.StateHash) > 0 {
+	if item.worldSnapshot == nil {
 		item.worldSnapshot = state.NewWorldSnapshot(
 			item.database,
 			item.transactionResult.StateHash,
