@@ -238,6 +238,10 @@ func (h *asyncHandler) DeleteValue(key []byte) ([]byte, error) {
 	panic("implement me")
 }
 
+func (h *asyncHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, int, int, error) {
+	panic("implement me")
+}
+
 func (h *asyncHandler) GetInfo() *codec.TypedObj {
 	panic("implement me")
 }
