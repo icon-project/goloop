@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
@@ -131,6 +131,18 @@ class ProxyDatabase(object):
         """
         self._proxy.set_value(key, None, cb)
 
+    def contains(self, prefix: bytes, value: bytes, limit: int) -> Tuple[bool, int, int]:
+        """
+        Check whether the value is in the ArrayDB with the prefix
+
+        :param prefix: ArrayDB prefix
+        :param value: value to search
+        :param limit: available steps
+        :return: whether it's in or not, number of value retrieval, size of
+                retrieved values
+        """
+        return self._proxy.contains(prefix, value, limit)
+
     def close(self) -> None:
         """Close the database.
         """
@@ -199,6 +211,18 @@ class ContextDatabase(object):
             raise DatabaseException('No permission to delete')
 
         self._db.delete(key, self.__delete_handler)
+
+    def contains(self, context: Optional['IconScoreContext'], prefix: bytes, value: bytes) -> bool:
+        """
+        Check whether specified value is included or not
+
+        :param context:
+        :param prefix: prefix of the ArrayDB
+        :param value: value to find
+        """
+        yn, cnt, size = self._db.contains(prefix, value, context.step_counter.step_remained)
+        context.step_counter.apply_step(StepType.GET, size)
+        return yn
 
     def close(self, context: 'IconScoreContext') -> None:
         """close db
@@ -326,6 +350,16 @@ class IconScoreDatabase(ContextGetter):
         """
         hashed_key = self._hash_key(key)
         self._context_db.delete(self._context, hashed_key)
+
+    def contains(self, value: bytes) -> bool:
+        """
+        Returns whether the value is included in the ArrayDB
+
+        :param value:
+        :return:
+        """
+        prefix = concat_encoded(self._tag, self._prefix)
+        return self._context_db.contains(self._context, prefix, value)
 
     def close(self):
         self._context_db.close(self._context)
