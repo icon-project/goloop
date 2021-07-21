@@ -816,8 +816,9 @@ func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 	}
 	chn := e.PrefetchBlocks(prevTR.Block, from, to, noStored)
 	callback := make(transitionCallback, 1)
-	var rps, tps float32
+	var rps, tps, bps float32
 	tm := new(lcimporter.TPSMeasure).Init(100)
+	bm := new(lcimporter.BPSMeasure).Init(100)
 	for height := from; to < 0 || height <= to; height = height + 1 {
 		tr, err := e.ProposeTransition(prevTR, chn)
 		if err != nil {
@@ -826,15 +827,17 @@ func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 		txTotal := new(big.Int).Add(prevTR.Block.TxTotal(), tr.Block.TxCount())
 		rps = getTPSer.GetTPS()
 		tps = tm.GetTPS()
+		bps = bm.GetBPS()
 		Statusf(
 			e.log,
-			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ]",
+			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ] BPS [ %6.1f ]",
 			spinner(height, stored),
 			D(height),
 			D(txTotal),
 			TimestampToString(tr.Block.Timestamp()),
 			rps,
 			tps,
+			bps,
 		)
 
 		// repeating execution if Reward Calculator has not finished its job.
@@ -888,6 +891,7 @@ func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 			}
 		}
 		tm.OnTransactions(tr.Block.TxCount())
+		bm.OnBlock()
 		prevTR = tr
 	}
 	return nil

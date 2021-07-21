@@ -74,3 +74,25 @@ func (m *TPSMeasure) OnTransactions(c *big.Int) {
 	m.lastTime = now
 	m.Record(t, c.Int64())
 }
+
+type BPSMeasure struct {
+	RateMeasure
+	lastTime time.Time
+}
+
+func (m *BPSMeasure) GetBPS() float32 {
+	return m.GetRate(time.Second)
+}
+
+func (m *BPSMeasure) Init(cnt int) *BPSMeasure {
+	m.RateMeasure.Init(cnt)
+	m.lastTime = time.Now()
+	return m
+}
+
+func (m *BPSMeasure) OnBlock() {
+	now := time.Now()
+	t := now.Sub(m.lastTime)
+	m.lastTime = now
+	m.Record(t, int64(1))
+}
