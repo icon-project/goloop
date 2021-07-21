@@ -236,12 +236,12 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 
 		if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
-			for i := 0; i < len(migrate.IndexedAddresses); i++ {
-				address, _ := common.NewAddressFromString(migrate.IndexedAddresses[i])
+			for _, event := range migrate.InvalidUnstakeFixed {
+				address := common.MustNewAddressFromString(event.Address)
 				indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.ID()}
-				data1, _ := hex.DecodeString(migrate.EventlogData[i][0])
-				data2, _ := hex.DecodeString(migrate.EventlogData[i][1])
-				data := [][]byte{data1, data2}
+				data1, _ := hex.DecodeString(event.Amount)
+				data2, _ := hex.DecodeString(event.Height)
+				data := [][]byte{ data1, data2 }
 				s.cc.OnEvent(state.SystemAddress, indexed, data)
 			}
 		}
