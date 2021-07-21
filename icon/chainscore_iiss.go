@@ -192,17 +192,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 		diff := new(big.Int).Sub(totalStake, oldTotalStake)
 		account.SetBalance(new(big.Int).Sub(balance, diff))
 	}
-	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
-		var txID [migrate.HashSize]byte
-		copy(txID[:], s.cc.TransactionID()[:])
-		if amount, ok := migrate.BugTXData[txID]; ok {
-			balance = account.GetBalance()
-			v := new(big.Int)
-			v.SetString(amount, 10)
-			account.SetBalance(new(big.Int).Add(balance, v))
-			s.log.Tracef("%s get %d illegal icx", s.from, v)
-		}
-	}
+	s.reproduceUnstakeBug()
 	return
 }
 
@@ -237,19 +227,7 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds); err != nil {
 		return err
 	}
-	revision := s.cc.Revision().Value()
-	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
-		var txID [migrate.HashSize]byte
-		copy(txID[:], s.cc.TransactionID()[:])
-		if amount, ok := migrate.BugTXData[txID]; ok {
-			account := s.cc.GetAccountState(s.from.ID())
-			balance := account.GetBalance()
-			v := new(big.Int)
-			v.SetString(amount, 10)
-			account.SetBalance(new(big.Int).Add(balance, v))
-			s.log.Tracef("%s get %d illegal icx", s.from, v)
-		}
-	}
+	s.reproduceUnstakeBug()
 	return nil
 }
 
@@ -947,4 +925,20 @@ func (s *chainScore) Ex_burn() error {
 		icutils.OnBurn(s.cc, s.from, s.value, ts)
 	}
 	return nil
+}
+
+func (s *chainScore) reproduceUnstakeBug() {
+	revision := s.cc.Revision().Value()
+	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
+		var txID [migrate.HashSize]byte
+		copy(txID[:], s.cc.TransactionID()[:])
+		if amount, ok := migrate.BugTXData[txID]; ok {
+			account := s.cc.GetAccountState(s.from.ID())
+			balance := account.GetBalance()
+			v := new(big.Int)
+			v.SetString(amount, 10)
+			account.SetBalance(new(big.Int).Add(balance, v))
+			s.log.Tracef("%s get %d illegal icx", s.from, v)
+		}
+	}
 }
