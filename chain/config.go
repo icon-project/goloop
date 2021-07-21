@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -24,10 +25,6 @@ const (
 	NodeCacheLarge   = "large"
 	NodeCacheDefault = NodeCacheNone
 )
-
-var NodeCacheOptions = [...]string{
-	NodeCacheNone, NodeCacheSmall, NodeCacheLarge,
-}
 
 type Config struct {
 	// fixed
@@ -111,4 +108,24 @@ func GetChannel(channel string, nid int) string {
 		return strconv.FormatInt(int64(nid), 16)
 	}
 	return channel
+}
+
+func IsNodeCacheOption(s string) bool {
+	_, _, _, err := ParseNodeCacheOption(s)
+	return err == nil
+}
+
+func ParseNodeCacheOption(s string) (int, int, int, error) {
+	switch s {
+	case NodeCacheNone:
+		return 0, 0, 0, nil
+	case NodeCacheSmall:
+		return 5, 0, 0, nil
+	case NodeCacheLarge:
+		return 5, 1, 0, nil
+	default:
+		// TODO support custom cache policy
+		return 0, 0, 0, errors.IllegalArgumentError.Errorf(
+			"InvalidCacheStrategy(%q)", s)
+	}
 }

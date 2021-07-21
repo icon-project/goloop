@@ -367,20 +367,13 @@ func (c *singleChain) prepareDatabase(chainDir string) error {
 	if len(c.cfg.NodeCache) == 0 {
 		c.cfg.NodeCache = NodeCacheDefault
 	}
-	var mLevel, fLevel int
-	switch c.cfg.NodeCache {
-	case NodeCacheNone:
-	case NodeCacheSmall:
-		mLevel = 5
-	case NodeCacheLarge:
-		mLevel = 5
-		fLevel = 1
-	default:
-		cdb.Close()
-		return errors.Errorf("Unknown cache strategy:%s", c.cfg.NodeCache)
+	mLevel, fLevel, stores, err := ParseNodeCacheOption(c.cfg.NodeCache)
+	if err != nil {
+		_ = cdb.Close()
+		return errors.Wrapf(err, "UnknownCacheStrategy(%s)", c.cfg.NodeCache)
 	}
 	cacheDir := path.Join(chainDir, DefaultCacheDir)
-	c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
+	c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel, stores)
 	return nil
 }
 
@@ -653,13 +646,4 @@ func NewChain(
 		metricCtx: metric.GetMetricContextByCID(cid),
 	}
 	return c
-}
-
-func IsNodeCacheOption(s string) bool {
-	for _, k := range NodeCacheOptions {
-		if k == s {
-			return true
-		}
-	}
-	return false
 }
