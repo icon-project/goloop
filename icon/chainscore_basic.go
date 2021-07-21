@@ -39,8 +39,8 @@ func (s *chainScore) tryChargeCall(iiss bool) error {
 	}
 	noCharge := iiss && (s.iiss&IISSNoCharge) != 0
 	if !noCharge {
-		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.OutOfStepError.New("UserCodeError")
+		if err := s.cc.ApplyCallSteps(); err != nil {
+			return err
 		}
 	}
 	if iiss && (s.iiss&IISSDisabled) != 0 {

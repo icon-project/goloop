@@ -961,8 +961,8 @@ func (s *chainScore) GetAPI() *scoreapi.Info {
 func (s *chainScore) checkGovernance(charge bool) error {
 	if !s.gov {
 		if charge {
-			if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
-				return scoreresult.OutOfStepError.New("UserCodeError")
+			if err := s.cc.ApplyCallSteps(); err != nil {
+				return err
 			}
 		}
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
