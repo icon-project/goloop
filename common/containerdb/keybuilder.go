@@ -80,6 +80,10 @@ const (
 	RawBuilder
 )
 
+func NewHashKey(prefix []byte, keys ...interface{}) KeyBuilder {
+	return hashKeyBuilder(AppendKeys(prefix, keys...))
+}
+
 func ToKey(builderType KeyBuilderType, keys ...interface{}) KeyBuilder {
 	switch builderType {
 	case HashBuilder:
