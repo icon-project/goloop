@@ -751,7 +751,7 @@ func (e *Executor) LoadBlockByHeight(prev *Block, height int64) (*Block, error) 
 }
 
 func (e *Executor) SetupEE() error {
-	e.database = cache.AttachManager(e.database, path.Join(e.baseDir, chain.DefaultCacheDir), 0, 0)
+	e.database = cache.AttachManager(e.database, path.Join(e.baseDir, chain.DefaultCacheDir), 5, 0, 0)
 	cm, err := e.plt.NewContractManager(e.database, path.Join(e.baseDir, ContractPath), e.log)
 	if err != nil {
 		return errors.Wrap(err, "NewContractManagerFailure")

@@ -424,7 +424,7 @@ func NewExecutor(chain module.Chain, dbase db.Database, cfg *Config) (*Executor,
 	idb := chain.Database()
 
 	// build converter
-	rdb := cache.AttachManager(dbase, "", 0, 0)
+	rdb := cache.AttachManager(dbase, "", 5, 0, 0)
 	chain = NewChain(chain, rdb)
 	store, err := lcstore.OpenStore(cfg.StoreURI)
 	if err != nil {
