@@ -20,8 +20,10 @@ import (
 	"encoding/hex"
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/state"
 )
 
 var stakeMap = map[string]string{}
@@ -842,11 +844,11 @@ func reproduceUnstakeBug(cc contract.CallContext, logger log.Logger, bugInfo map
 	}
 }
 
-type InvalidUnstakeFixedData struct {
+type invalidUnstakeFixedData struct {
 	Address, Amount, Height string
 }
 
-var InvalidUnstakeFixed = []InvalidUnstakeFixedData{
+var invalidUnstakeFixed = []invalidUnstakeFixedData{
 	{
 		"hx001977f6b796a8f0e9c6b6ce3ae1c1a6851099e4",
 		"0x4d7a1705640d00000",
@@ -2152,6 +2154,17 @@ var InvalidUnstakeFixed = []InvalidUnstakeFixedData{
 		"0x1714faf1a262c54000",
 		"0x159fb03",
 	},
+}
+
+func WriteInvalidUnstakeFixedEventLogs(cc contract.CallContext) {
+	for _, event := range invalidUnstakeFixed {
+		address := common.MustNewAddressFromString(event.Address)
+		indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.ID()}
+		data1, _ := hex.DecodeString(event.Amount)
+		data2, _ := hex.DecodeString(event.Height)
+		data := [][]byte{data1, data2}
+		cc.OnEvent(state.SystemAddress, indexed, data)
+	}
 }
 
 func init() {

@@ -17,7 +17,6 @@
 package icon
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -236,14 +235,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 
 		if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
-			for _, event := range migrate.InvalidUnstakeFixed {
-				address := common.MustNewAddressFromString(event.Address)
-				indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.ID()}
-				data1, _ := hex.DecodeString(event.Amount)
-				data2, _ := hex.DecodeString(event.Height)
-				data := [][]byte{ data1, data2 }
-				s.cc.OnEvent(state.SystemAddress, indexed, data)
-			}
+			migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
 		}
 
 		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
