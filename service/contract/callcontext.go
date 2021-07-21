@@ -17,6 +17,10 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
+const (
+	InterCallLimit = 1024
+)
+
 type (
 	CallContext interface {
 		Context
@@ -32,6 +36,7 @@ type (
 		StepUsed() *big.Int
 		StepAvailable() *big.Int
 		ApplySteps(t state.StepType, n int) bool
+		ApplyCallSteps() error
 		DeductSteps(s *big.Int) bool
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
@@ -81,6 +86,7 @@ type callContext struct {
 	lock   sync.Mutex
 	frame  *callFrame
 	waiter chan interface{}
+	calls  int64
 
 	timer   <-chan time.Time
 	ioStart *time.Time
@@ -465,10 +471,29 @@ func (cc *callContext) StepAvailable() *big.Int {
 func (cc *callContext) ApplySteps(t state.StepType, n int) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
+	return cc.applyStepsInLock(t, n)
+}
+
+func (cc *callContext) applyStepsInLock(t state.StepType, n int) bool {
 	steps := big.NewInt(cc.StepsFor(t, n))
 	ok := cc.frame.deductSteps(steps)
 	cc.log.TSystemf("FRAME[%d] STEP apply type=%s count=%d cost=%s total=%s", cc.frame.fid, t, n, steps, &cc.frame.stepUsed)
 	return ok
+}
+
+func (cc *callContext) ApplyCallSteps() error {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	cc.calls += 1
+	if cc.calls-1 > InterCallLimit {
+		cc.log.TSystemf("FRAME[%d] too many inter-calls count=%d", cc.frame.fid, cc.calls-1)
+		return scoreresult.IllegalFormatError.New("TooManyExternalCalls")
+	}
+	if ok := cc.applyStepsInLock(state.StepTypeContractCall, 1); !ok {
+		return scoreresult.OutOfStepError.New("OutOfStepFor(contractCall)")
+	}
+	return nil
 }
 
 func (cc *callContext) DeductSteps(s *big.Int) bool {

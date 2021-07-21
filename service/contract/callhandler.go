@@ -46,7 +46,6 @@ type CallHandler struct {
 	cs        ContractStore
 	isSysCall bool
 	isQuery   bool
-	charged   bool
 	allowEx   bool
 	codeID    []byte
 }
@@ -185,24 +184,14 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.TLogStart()
 	defer func() {
 		if err != nil {
-			if !h.ApplyCallSteps(cc) {
-				err = scoreresult.OutOfStepError.Wrap(err, "OutOfStepForCall")
+			if err2 := h.ApplyCallSteps(cc); err2 != nil {
+				err = err2
 			}
 			h.TLogDone(err, cc.StepUsed(), nil)
 		}
 	}()
 
 	return h.DoExecuteAsync(cc, h)
-}
-
-func (h *CallHandler) ApplyCallSteps(cc CallContext) bool {
-	if !h.charged {
-		h.charged = true
-		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return false
-		}
-	}
-	return true
 }
 
 func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (err error) {
@@ -228,8 +217,8 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (er
 	// Calculate steps
 	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
 	if !h.forDeploy && !isSystem {
-		if !h.ApplyCallSteps(cc) {
-			return scoreresult.OutOfStepError.New("OutOfStepForCall")
+		if err2 := h.ApplyCallSteps(cc); err2 != nil {
+			return err2
 		}
 	}
 
@@ -606,8 +595,8 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.TLogStart()
 	defer func() {
 		if err != nil {
-			if !h.ApplyCallSteps(cc) {
-				err = scoreresult.OutOfStepError.New("OutOfStepForCall")
+			if err2 := h.ApplyCallSteps(cc); err2 != nil {
+				err = err2
 			}
 			h.TLogDone(err, cc.StepUsed(), nil)
 		}
@@ -639,8 +628,8 @@ func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallC
 					return scoreresult.ErrMethodNotPayable
 				}
 				if m == nil {
-					if !h.ApplyCallSteps(cc) {
-						return scoreresult.OutOfStepError.New("OutOfStepForCall")
+					if err := h.ApplyCallSteps(cc); err != nil {
+						return err
 					}
 					go func() {
 						ch.OnResult(nil, new(big.Int), nil)

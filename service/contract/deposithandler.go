@@ -81,8 +81,8 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		}
 	}()
 
-	if !h.ApplyStepsForInterCall(cc) {
-		return scoreresult.OutOfStepError.New("OutOfStepForInterCall"), nil, nil
+	if err2 := h.ApplyStepsForInterCall(cc); err2 != nil {
+		return err2, nil, nil
 	}
 
 	if cc.QueryMode() {

@@ -749,8 +749,8 @@ func (s *ChainScore) Update(param []byte) error {
 
 func (s *ChainScore) tryChargeCall() error {
 	if !s.gov {
-		if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
-			return scoreresult.OutOfStepError.New("UserCodeError")
+		if err := s.cc.ApplyCallSteps(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -759,8 +759,8 @@ func (s *ChainScore) tryChargeCall() error {
 func (s *ChainScore) checkGovernance(charge bool) error {
 	if !s.gov {
 		if charge {
-			if !s.cc.ApplySteps(state.StepTypeContractCall, 1) {
-				return scoreresult.OutOfStepError.New("UserCodeError")
+			if err := s.cc.ApplyCallSteps(); err != nil {
+				return err
 			}
 		}
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
