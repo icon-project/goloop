@@ -175,18 +175,21 @@ func NewConsensus(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 ) module.Consensus {
-	cs := newConsensus(c, walDir, defaultWALManager, timestamper, bpp)
+	cs := New(c, walDir, nil, timestamper, bpp)
 	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
 
-func newConsensus(
+func New(
 	c module.Chain,
 	walDir string,
 	wm WALManager,
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 ) *consensus {
+	if wm == nil {
+		wm = defaultWALManager
+	}
 	cs := &consensus{
 		c:           c,
 		walDir:      walDir,
