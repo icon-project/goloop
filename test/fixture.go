@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,8 +41,10 @@ type Fixture struct {
 	Chain     *Chain
 	Base      string
 	em        eeproxy.Manager
+	NM        *NetworkManager
 	SM        module.ServiceManager
 	BM        module.BlockManager
+	CS        module.Consensus
 	PrevBlock module.Block
 	LastBlock module.Block
 }
@@ -53,6 +56,7 @@ type FixtureOption struct {
 	NewPlatform func(plt service.Platform) service.Platform
 	NewSM       func(sm *ServiceManager) module.ServiceManager
 	NewBM       func(bm module.BlockManager, c *Chain) module.BlockManager
+	NewCS       func(cs module.Consensus) module.Consensus
 }
 
 func (o *FixtureOption) fillDefault() *FixtureOption {
@@ -84,6 +88,11 @@ func (o *FixtureOption) fillDefault() *FixtureOption {
 			return bm
 		}
 	}
+	if res.NewCS == nil {
+		res.NewCS = func(cs module.Consensus) module.Consensus {
+			return cs
+		}
+	}
 	return &res
 }
 
@@ -93,7 +102,7 @@ func NewFixture(t *testing.T, opt *FixtureOption) *Fixture {
 	assert.NoError(t, err)
 	dbase := opt.Dbase
 	logger := log.New()
-	c, err := NewChain(dbase, logger, opt.CVSD)
+	c, err := NewChain(t, dbase, logger, opt.CVSD)
 	assert.NoError(t, err)
 
 	// set up sm
@@ -125,13 +134,20 @@ func NewFixture(t *testing.T, opt *FixtureOption) *Fixture {
 	lastBlk, err := c.bm.GetLastBlock()
 	assert.NoError(t, err)
 
+	wm := NewWAL()
+	cs := consensus.New(c, base, wm, nil, nil)
+	assert.NotNil(t, cs)
+	c.cs = opt.NewCS(cs)
+
 	return &Fixture{
 		T:         t,
 		Chain:     c,
 		Base:      base,
 		em:        em,
+		NM:        c.nm.(*NetworkManager),
 		SM:        c.sm,
 		BM:        c.bm,
+		CS:        c.cs,
 		PrevBlock: nil,
 		LastBlock: lastBlk,
 	}
@@ -142,6 +158,8 @@ func (t *Fixture) Close() {
 	assert.NoError(t, err)
 	err = os.RemoveAll(t.Base)
 	assert.NoError(t, err)
+	t.CS.Term()
+	ResetJobChan()
 }
 
 func (t *Fixture) GetLastBlock() module.Block {
@@ -246,4 +264,35 @@ func (t *Fixture) NewVoteListForLastBlock() module.TimestampedCommitVoteSet {
 		nil,
 		t.LastBlock.Timestamp()+1,
 	))
+}
+
+var jobChan chan func()
+var lock sync.Mutex
+
+const jobChLen = 1024
+
+func Go(f func()) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if jobChan == nil {
+		jobChan = make(chan func(), jobChLen)
+		jc := jobChan
+		go func() {
+			for job := range jc {
+				job()
+			}
+		}()
+	}
+	jobChan <- f
+}
+
+func ResetJobChan() {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if jobChan != nil {
+		close(jobChan)
+		jobChan = nil
+	}
 }

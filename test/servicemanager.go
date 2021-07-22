@@ -135,6 +135,41 @@ func (sm *ServiceManager) GetNetworkID(result []byte) (int64, error) {
 	return int64(sm.chain.NID()), nil
 }
 
+func (sm *ServiceManager) GetMembers(result []byte) (module.MemberList, error) {
+	return nil, nil
+}
+
+func (sm *ServiceManager) GetRoundLimit(result []byte, vl int) int64 {
+	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
+	if err != nil {
+		return 0
+	}
+	ass := ws.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	if as == nil {
+		return 0
+	}
+	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64()
+	if factor == 0 {
+		return 0
+	}
+	limit := contract.RoundLimitFactorToRound(vl, factor)
+	return limit
+}
+
+func (sm *ServiceManager) GetMinimizeBlockGen(result []byte) bool {
+	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
+	if err != nil {
+		return false
+	}
+	ass := ws.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	if as == nil {
+		return false
+	}
+	return scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Bool()
+}
+
 func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	if result == nil {
 		return sm.plt.DefaultBlockVersion()

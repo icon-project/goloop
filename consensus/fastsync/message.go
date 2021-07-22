@@ -9,17 +9,17 @@ import (
 
 // TODO: close message
 const (
-	protoBlockRequest module.ProtocolInfo = iota << 8
-	protoBlockMetadata
-	protoBlockData
-	protoCancelAllBlockRequests
+	ProtoBlockRequest module.ProtocolInfo = iota << 8
+	ProtoBlockMetadata
+	ProtoBlockData
+	ProtoCancelAllBlockRequests
 )
 
 var protocols = []module.ProtocolInfo{
-	protoBlockRequest,
-	protoBlockMetadata,
-	protoBlockData,
-	protoCancelAllBlockRequests,
+	ProtoBlockRequest,
+	ProtoBlockMetadata,
+	ProtoBlockData,
+	ProtoCancelAllBlockRequests,
 }
 
 type BlockRequestV1 struct {

@@ -17,7 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/icon-project/goloop/test"
 )
 
 const (
@@ -26,7 +25,7 @@ const (
 )
 
 type testChain struct {
-	test.ChainBase
+	module.Chain
 	wallet   module.Wallet
 	database db.Database
 	gtx      *testTransaction
@@ -111,7 +110,7 @@ type testReceiptData struct {
 }
 
 type testReceipt struct {
-	test.ReceiptBase
+	module.Receipt
 	Data testReceiptData
 }
 
@@ -170,7 +169,7 @@ type testTransactionData struct {
 }
 
 type testTransaction struct {
-	test.TransactionBase
+	module.Transaction
 	Data testTransactionData
 }
 
@@ -233,7 +232,7 @@ func (it *testTransactionIterator) Get() (module.Transaction, int, error) {
 }
 
 type testTransactionList struct {
-	test.TransactionListBase
+	module.TransactionList
 	Transactions []*testTransaction
 	_effect      *testTransactionEffect
 	_receipts    []*testReceipt
@@ -750,7 +749,7 @@ func (v *testValidator) Bytes() []byte {
 }
 
 type testValidatorList struct {
-	test.ValidatorListBase
+	module.ValidatorList
 	Validators []*testValidator
 }
 

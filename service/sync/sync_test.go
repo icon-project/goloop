@@ -18,7 +18,6 @@ import (
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/icon-project/goloop/test"
 )
 
 type tReactorItem struct {
@@ -35,7 +34,7 @@ type tPacket struct {
 }
 
 type tNetworkManager struct {
-	test.NetworkManagerBase
+	module.NetworkManager
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	peers        []*tNetworkManager

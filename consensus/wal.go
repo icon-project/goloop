@@ -37,15 +37,12 @@ const (
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
 
 type WALWriter interface {
-	Write(v interface{}) error
 	WriteBytes([]byte) (int, error)
 	Sync() error
-	Shift() error
 	Close() error
 }
 
 type WALReader interface {
-	Read(v interface{}) (left []byte, err error)
 	ReadBytes() ([]byte, error)
 	// multiple Close is safe
 	Close() error
@@ -216,7 +213,7 @@ func (w *walWriter) WriteBytes(payload []byte) (int, error) {
 	return n, err
 }
 
-func (w *walWriter) Write(v interface{}) error {
+func WALWriteObject(w WALWriter, v interface{}) error {
 	bs, err := msgCodec.MarshalToBytes(v)
 	if err != nil {
 		return err
@@ -421,7 +418,7 @@ func (w *walReader) ReadBytes() ([]byte, error) {
 	return payload, nil
 }
 
-func (w *walReader) Read(v interface{}) ([]byte, error) {
+func WALReadObject(w WALReader, v interface{}) ([]byte, error) {
 	bs, err := w.ReadBytes()
 	if err != nil {
 		return nil, err

@@ -45,9 +45,9 @@ type manager struct {
 
 func (m *manager) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
 	switch pi {
-	case protoBlockRequest, protoCancelAllBlockRequests:
+	case ProtoBlockRequest, ProtoCancelAllBlockRequests:
 		m.server.onReceive(pi, b, id)
-	case protoBlockMetadata, protoBlockData:
+	case ProtoBlockMetadata, ProtoBlockData:
 		m.client.onReceive(pi, b, id)
 	}
 	return false, nil

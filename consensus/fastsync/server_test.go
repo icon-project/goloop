@@ -54,7 +54,7 @@ func (s *serverTestSetUp) sendBlockRequest(ph module.ProtocolHandler, rid uint32
 		RequestID: rid,
 		Height:    height,
 	})
-	err := s.ph2.Unicast(protoBlockRequest, bs, s.nm.ID)
+	err := s.ph2.Unicast(ProtoBlockRequest, bs, s.nm.ID)
 	assert.Nil(s.t, err)
 }
 
@@ -68,7 +68,7 @@ func TestServer_Success(t *testing.T) {
 	s.sendBlockRequest(s.ph2, 0, 0)
 	ev := <-s.r2.ch
 	md := &BlockMetadata{0, int32(len(s.rawBlocks[0])), s.votes[1]}
-	s.assertEqualReceiveEvent(protoBlockMetadata, md, s.nm.ID, ev)
+	s.assertEqualReceiveEvent(ProtoBlockMetadata, md, s.nm.ID, ev)
 	recv := 0
 	data := make([]byte, md.BlockLength)
 	for recv < int(md.BlockLength) {

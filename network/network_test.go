@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/icon-project/goloop/test"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -267,7 +266,7 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 }
 
 type dummyChain struct {
-	test.ChainBase
+	module.Chain
 	nid       int
 	metricCtx context.Context
 	logger    log.Logger

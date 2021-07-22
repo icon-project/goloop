@@ -229,3 +229,16 @@ func TestNilValueEncoding(t *testing.T) {
 		assert.Equal(t, "", s3.V6)
 	}
 }
+
+func TestEmbeddedInterface(t *testing.T) {
+	type I interface {
+		M()
+	}
+	type S struct {
+		I
+	}
+	var s S
+	bs := MustMarshalToBytes(&s)
+	_, err := UnmarshalFromBytes(bs, &s)
+	assert.NoError(t, err)
+}

@@ -436,7 +436,7 @@ func (f *fetcher) _doSend() {
 		f.timer.Stop()
 		f.timer = nil
 	}
-	err := f.cl.ph.Unicast(protoBlockRequest, bs, f.id)
+	err := f.cl.ph.Unicast(ProtoBlockRequest, bs, f.id)
 	if err == nil {
 		f.step = fstepWaitResp
 		var timer *time.Timer
@@ -492,7 +492,7 @@ func (f *fetcher) _cancel() {
 	bs := codec.MustMarshalToBytes(&msg)
 	f.step = fstepFin
 	for {
-		err := f.cl.ph.Unicast(protoCancelAllBlockRequests, bs, f.id)
+		err := f.cl.ph.Unicast(ProtoCancelAllBlockRequests, bs, f.id)
 		if err == nil || !isTemporary(err) {
 			return
 		}
@@ -505,7 +505,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 	defer f.Unlock()
 
 	if f.step == fstepWaitResp {
-		if pi != protoBlockMetadata {
+		if pi != ProtoBlockMetadata {
 			return
 		}
 		var msg BlockMetadata
@@ -532,7 +532,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		f.voteList = msg.Proof
 		f.step = fstepWaitData
 	} else if f.step == fstepWaitData {
-		if pi != protoBlockData {
+		if pi != ProtoBlockData {
 			return
 		}
 		var msg BlockData

@@ -148,7 +148,7 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	}
 	for _, p := range s.peers {
 		if p.id.Equal(id) {
-			if pi == protoCancelAllBlockRequests {
+			if pi == ProtoCancelAllBlockRequests {
 				p.cancelCh <- struct{}{}
 			}
 			p.msgCh <- MessageItem{pi, b}
@@ -204,7 +204,7 @@ func (h *sconHandler) cancelAllRequests() {
 	h.nextItems = nil
 	for {
 		msgItem := <-h.msgCh
-		if msgItem.pi == protoCancelAllBlockRequests {
+		if msgItem.pi == ProtoCancelAllBlockRequests {
 			break
 		}
 	}
@@ -220,7 +220,7 @@ func (h *sconHandler) updateCurrentTask() {
 	h.requestID = ni.RequestID
 	blk, err := h.bm.GetBlockByHeight(ni.Height)
 	if err != nil {
-		h.nextMsgPI = protoBlockMetadata
+		h.nextMsgPI = ProtoBlockMetadata
 		h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 			RequestID:   ni.RequestID,
 			BlockLength: -1,
@@ -231,7 +231,7 @@ func (h *sconHandler) updateCurrentTask() {
 	}
 	proof, err := h.bpp.GetBlockProof(ni.Height, ni.ProofOption)
 	if err != nil {
-		h.nextMsgPI = protoBlockMetadata
+		h.nextMsgPI = ProtoBlockMetadata
 		h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 			RequestID:   ni.RequestID,
 			BlockLength: -1,
@@ -243,7 +243,7 @@ func (h *sconHandler) updateCurrentTask() {
 	h.buf = bytes.NewBuffer(nil)
 	h.log.Must(blk.MarshalHeader(h.buf))
 	h.log.Must(blk.MarshalBody(h.buf))
-	h.nextMsgPI = protoBlockMetadata
+	h.nextMsgPI = ProtoBlockMetadata
 	h.nextMsg = codec.MustMarshalToBytes(&BlockMetadata{
 		RequestID:   ni.RequestID,
 		BlockLength: int32(h.buf.Len()),
@@ -274,12 +274,12 @@ func (h *sconHandler) updateNextMsg() {
 	var msg BlockData
 	msg.RequestID = h.requestID
 	msg.Data = data
-	h.nextMsgPI = protoBlockData
+	h.nextMsgPI = ProtoBlockData
 	h.nextMsg = codec.MustMarshalToBytes(&msg)
 }
 
 func (h *sconHandler) processRequestMsg(msgItem *MessageItem) {
-	if msgItem.pi == protoBlockRequest {
+	if msgItem.pi == ProtoBlockRequest {
 		var msg BlockRequest
 		_, err := codec.UnmarshalFromBytes(msgItem.b, &msg)
 		if err != nil {

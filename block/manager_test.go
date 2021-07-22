@@ -19,9 +19,9 @@ package block_test
 import (
 	"testing"
 
-	"github.com/icon-project/goloop/block/test"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/test"
 )
 
 func TestBlockManager_Basics(t_ *testing.T) {
