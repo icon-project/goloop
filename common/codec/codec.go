@@ -261,6 +261,9 @@ func encodeRecursiveFields(e *encoderImpl, v reflect.Value) error {
 	for i := 0; i < n; i++ {
 		fv := v.Field(i)
 		ft := vt.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Interface {
+			continue
+		}
 		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := encodeRecursiveFields(e, fv); err != nil {
 				return err
@@ -562,6 +565,9 @@ func decodeRecursiveFields(d *decoderImpl, elem reflect.Value) error {
 	for i := 0; i < n; i++ {
 		fv := elem.Field(i)
 		ft := et.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Interface {
+			continue
+		}
 		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := decodeRecursiveFields(d, fv); err != nil {
 				return err
