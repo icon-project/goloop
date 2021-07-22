@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"testing"
 	"time"
 
 	"github.com/icon-project/goloop/chain/gs"
@@ -30,12 +31,15 @@ import (
 )
 
 type Chain struct {
+	t         *testing.T
 	database  db.Database
 	wallet    module.Wallet
 	log       log.Logger
 	regulator module.Regulator
+	nm        module.NetworkManager
 	bm        module.BlockManager
 	sm        module.ServiceManager
+	cs        module.Consensus
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
 }
@@ -115,24 +119,15 @@ func (c *Chain) BlockManager() module.BlockManager {
 }
 
 func (c *Chain) Consensus() module.Consensus {
-	panic("implement me")
+	return c.cs
 }
 
 func (c *Chain) ServiceManager() module.ServiceManager {
 	return c.sm
 }
 
-type networkManager struct {
-	module.NetworkManager
-}
-
-func (nm *networkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	return nil, nil
-}
-
 func (c *Chain) NetworkManager() module.NetworkManager {
-	return &networkManager{
-	}
+	return c.nm
 }
 
 func (c *Chain) Regulator() module.Regulator {
@@ -192,7 +187,7 @@ func (c *Chain) Verify() error {
 }
 
 func (c *Chain) MetricContext() context.Context {
-	panic("implement me")
+	return nil
 }
 
 func (c *Chain) Logger() log.Logger {
@@ -207,13 +202,18 @@ func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 	c.sm = sm
 }
 
-func NewChain(database db.Database, logger log.Logger, cvd module.CommitVoteSetDecoder) (*Chain, error) {
+func NewChain(
+	t *testing.T, database db.Database, logger log.Logger,
+	cvd module.CommitVoteSetDecoder,
+) (*Chain, error) {
 	w := wallet.New()
 	return &Chain{
+		t:         t,
 		database:  database,
 		wallet:    w,
 		log:       logger,
 		regulator: NewRegulator(),
+		nm:        NewNetworkManager(t, w.Address()),
 		gs:        gs.NewFromTx(genesis),
 		cvd:       cvd,
 	}, nil
