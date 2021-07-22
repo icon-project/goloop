@@ -52,7 +52,7 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 	if s1 == s2 {
 		return nil
 	}
-	if s1 == module.StatusUnknownFailure && s2 == module.StatusInvalidParameter {
+	if (s1 == module.StatusUnknownFailure || s1 == module.StatusReverted) && s2 == module.StatusInvalidParameter {
 		logger.Warnf("Ignore status difference(e=%s,r=%s)", s1, s2)
 		return nil
 	}
