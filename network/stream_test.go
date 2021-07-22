@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/test"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	clock "github.com/icon-project/goloop/test/clock"
 )
 
 type tReactorItem struct {
@@ -193,14 +194,14 @@ type streamTestSetUp struct {
 	r2  *tReactor
 	ph2 module.ProtocolHandler
 
-	clock    *common.TestClock
+	clock    *clock.Clock
 	payloads [][]byte
 	tick     time.Duration
 }
 
 func newStreamTestSetUp(t *testing.T) *streamTestSetUp {
 	s := &streamTestSetUp{}
-	s.clock = &common.TestClock{}
+	s.clock = &clock.Clock{}
 	s.nm = newTNetworkManager(createAPeerID())
 	s.nm2 = newTNetworkManager(createAPeerID())
 	s.nm.join(s.nm2)
@@ -275,7 +276,7 @@ func TestStream_SendAndReceive(t *testing.T) {
 }
 
 func TestStream_SendAndReceiveComplex(t *testing.T) {
-	clock := &common.TestClock{}
+	clock := &clock.Clock{}
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	nm.join(nm2)
