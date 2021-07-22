@@ -224,11 +224,13 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 		if cs.members == nil || !cs.members.Equal(nextMembers) {
 			cs.members = nextMembers
 			var peerIDs []module.PeerID
-			for it := nextMembers.Iterator(); it.Has(); cs.log.Must(it.Next()) {
-				addr, _ := it.Get()
-				peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
+			if nextMembers != nil {
+				for it := nextMembers.Iterator(); it.Has(); cs.log.Must(it.Next()) {
+					addr, _ := it.Get()
+					peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
+				}
+				cs.c.NetworkManager().SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
 			}
-			cs.c.NetworkManager().SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
 		}
 	}
 	cs.minimizeBlockGen = cs.c.ServiceManager().GetMinimizeBlockGen(cs.lastBlock.Result())
