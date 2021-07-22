@@ -6,11 +6,11 @@ import (
 	"log"
 	"testing"
 
-	"github.com/icon-project/goloop/test"
+	"github.com/icon-project/goloop/module"
 )
 
 type testBlock struct {
-	test.BlockBase
+	module.Block
 }
 
 func (*testBlock) MarshalHeader(w io.Writer) error {

@@ -28,7 +28,7 @@ type tPacket struct {
 }
 
 type tNetworkManager struct {
-	test.NetworkManagerBase
+	module.NetworkManager
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	peers        []*tNetworkManager

@@ -13,7 +13,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/test"
 )
 
 func TestCallContext_Call(t *testing.T) {
@@ -121,7 +120,7 @@ func (d dummyPlatformType) ToRevision(value int) module.Revision {
 }
 
 type dummyChain struct {
-	test.ChainBase
+	module.Chain
 }
 
 func (c *dummyChain) TransactionTimeout() time.Duration {

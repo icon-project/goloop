@@ -11,7 +11,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/test"
 )
 
 type tBlockHeader struct {
@@ -83,7 +82,7 @@ func (b *tBlock) Marshal(w io.Writer) error {
 }
 
 type tCommitVoteSet struct {
-	test.CommitVoteSetBase
+	module.CommitVoteSet
 	b []byte
 }
 
