@@ -274,8 +274,13 @@ func (t DataType) String() string {
 
 // DecodeJSO decode json object comes from JSON.
 func (t DataType) ConvertJSONToTypedObj(bs []byte, fields []Field, nullable bool) (*codec.TypedObj, error) {
-	if nullable && string(bs) == "null" {
-		return codec.Nil, nil
+	if string(bs) == "null" {
+		if nullable {
+			return codec.Nil, nil
+		} else {
+			return nil, scoreresult.InvalidParameterError.Errorf(
+				"NilIsNotAllowed(type=%s)", t.String())
+		}
 	}
 
 	if t.ListDepth() > 0 {

@@ -18,7 +18,6 @@ const (
 	logCacheEvents = false
 )
 
-
 type cacheManager struct {
 	path  string
 	depth [2]int
@@ -71,7 +70,7 @@ func WorldNodeCacheOf(database db.Database) *NodeCache {
 // If node cache for the account is not enabled, it returns nil.
 func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
 	if cm := cacheManagerOf(database); cm != nil {
-		return cm.getAccountNodeCache(id)
+		return cm.getAccountNodeCache(id).OnAttach(id)
 	} else {
 		return nil
 	}
