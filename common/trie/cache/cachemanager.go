@@ -14,6 +14,11 @@ const (
 	defaultStoreCount   = 100
 )
 
+const (
+	logCacheEvents = false
+)
+
+
 type cacheManager struct {
 	path  string
 	depth [2]int

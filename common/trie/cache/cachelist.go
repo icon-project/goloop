@@ -20,6 +20,8 @@ import (
 	"container/list"
 	"sort"
 	"sync"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 type nodeCacheItem struct {
@@ -67,6 +69,9 @@ func (l *nodeCacheList) updateSorted(removed, added *nodeCacheItem) {
 			item := l.sorted[idx]
 			if item.count == 0 {
 				if l.idToItem[item.id] == item {
+					if item.cache != nil {
+						log.Warnf("RemoveCacheFor(%#x)", item.id)
+					}
 					delete(l.idToItem, item.id)
 				}
 				l.sorted = l.sorted[:idx]
@@ -79,9 +84,15 @@ func (l *nodeCacheList) updateSorted(removed, added *nodeCacheItem) {
 			if idx < l.limit {
 				if item.cache == nil {
 					item.cache = l.factory(item.id)
+					if logCacheEvents {
+						log.Warnf("AddCacheFor(%#x)", item.id)
+					}
 				}
 			} else {
 				if item.cache != nil {
+					if logCacheEvents {
+						log.Warnf("RemoveCacheFor(%#x)", item.id)
+					}
 					item.cache = nil
 				}
 			}
@@ -95,7 +106,12 @@ func (l *nodeCacheList) updateSorted(removed, added *nodeCacheItem) {
 		}
 	} else {
 		if len(l.sorted) <= l.limit {
-			added.cache = l.factory(added.id)
+			if added.cache == nil {
+				added.cache = l.factory(added.id)
+				if logCacheEvents {
+					log.Warnf("AddCacheFor(%#x)", added.id)
+				}
+			}
 		}
 	}
 }
