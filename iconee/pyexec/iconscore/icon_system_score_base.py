@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from abc import abstractmethod
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any, List
 
 from .internal_call import ChainScore
 from ..base.address import Address, BUILTIN_SCORE_ADDRESS_MAPPER
-from ..base.exception import AccessDeniedException, IconServiceBaseException, InvalidRequestException
+from ..base.exception import AccessDeniedException, IconServiceBaseException, InvalidRequestException, \
+    InvalidParamsException
 from ..database.db import IconScoreDatabase
-from ..icon_constant import IconServiceFlag, Revision
+from ..icon_constant import IconServiceFlag, Revision, IconNetworkValueType
 from ..iconscore.icon_score_base import IconScoreBase
 
 
@@ -115,5 +116,56 @@ class IconSystemScoreBase(IconScoreBase):
         if self._context.revision < Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value:
             raise InvalidRequestException(f"Can't register I-Rep proposal. Revision must be larger than "
                                           f"{Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value - 1}")
-
         ChainScore.validate_irep(self._context, self.address, irep)
+
+    def migrate_icon_network_value(self, data: Dict['IconNetworkValueType', Any]):
+        for type_, value in data.items():
+            if type_ == IconNetworkValueType.SCORE_BLACK_LIST:
+                items: List['Address'] = value
+                for item in items:
+                    ChainScore.blockScore(self._context, self.address, item)
+
+    def get_icon_network_value(self, type_: 'IconNetworkValueType') -> Any:
+        if type_ == IconNetworkValueType.STEP_PRICE:
+            return ChainScore.getStepPrice(self._context, self.address)
+        elif type_ == IconNetworkValueType.STEP_COSTS:
+            return ChainScore.getStepCosts(self._context, self.address)
+        elif type_ == IconNetworkValueType.MAX_STEP_LIMITS:
+            return {
+                'invoke': ChainScore.getMaxStepLimit(self._context, self.address, 'invoke'),
+                'query': ChainScore.getMaxStepLimit(self._context, self.address, 'query')
+            }
+        elif type_ == IconNetworkValueType.SCORE_BLACK_LIST:
+            return ChainScore.getBlockedScores(self._context, self.address)
+        elif type_ == IconNetworkValueType.IMPORT_WHITE_LIST:
+            return {'iconservice': ['*']}
+        elif type_ == IconNetworkValueType.SERVICE_CONFIG:
+            return self.get_icon_service_flag()
+        elif type_ == IconNetworkValueType.REVISION_CODE:
+            return ChainScore.getRevision(self._context, self.address)
+        elif type_ == IconNetworkValueType.REVISION_NAME:
+            rev = ChainScore.getRevision(self._context, self.address)
+            return f'Revision{rev}'
+        elif type_ == IconNetworkValueType.IREP:
+            return ChainScore.getIRep(self._context, self.address)
+        else:
+            raise InvalidParamsException(f"Invalid INV type: {type_}")
+
+    def set_icon_network_value(self, type_: 'IconNetworkValueType', value: Any):
+        if type_ not in IconNetworkValueType:
+            raise InvalidParamsException(f"Invalid INV type: {type_}")
+
+        if type_ == IconNetworkValueType.STEP_PRICE:
+            return ChainScore.setStepPrice(self._context, self.address, value)
+        elif type_ == IconNetworkValueType.SCORE_BLACK_LIST:
+            stored = ChainScore.getBlockedScores(self._context, self.address)
+            if len(stored) < len(value):
+                added = set(value).difference(set(stored))
+                ChainScore.blockScore(self._context, self.address, list(added)[0])
+            elif len(stored) > len(value):
+                removed = set(stored).difference(set(value))
+                ChainScore.unblockScore(self._context, self.address, list(removed)[0])
+        elif type_ == IconNetworkValueType.REVISION_CODE:
+            return ChainScore.setRevision(self._context, self.address, value)
+        elif type_ == IconNetworkValueType.IREP:
+            return ChainScore.setIRep(self._context, self.address, value)

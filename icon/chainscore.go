@@ -128,6 +128,14 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, 0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "getBlockedScores",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, icmodule.Revision9, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "setRevision",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{

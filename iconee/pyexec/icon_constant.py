@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import IntFlag, unique, IntEnum
+from enum import IntFlag, unique, IntEnum, Enum
 
 CHARSET_ENCODING = 'utf-8'
 
@@ -26,7 +26,6 @@ GOV_REJECTED_EVENT_LOG = 'Rejected(str,str)'
 
 
 # Revisions
-# @unique
 class Revision(IntEnum):
     TWO = 2
     THREE = 3
@@ -85,6 +84,39 @@ class IconServiceFlag(IntFlag):
     AUDIT = 2
     DEPLOYER_WHITE_LIST = 4
     SCORE_PACKAGE_VALIDATOR = 8
+
+
+class IconNetworkValueType(Enum):
+    SERVICE_CONFIG = b'service_config'
+
+    STEP_PRICE = b'step_price'
+    STEP_COSTS = b'step_costs'
+    MAX_STEP_LIMITS = b'max_step_limits'
+
+    REVISION_CODE = b'revision_code'
+    REVISION_NAME = b'revision_name'
+
+    SCORE_BLACK_LIST = b'score_black_list'
+    IMPORT_WHITE_LIST = b'import_white_list'
+
+    IREP = b'irep'
+
+    @classmethod
+    def gs_migration_type_list(cls) -> list:
+        return [
+            cls.SERVICE_CONFIG,
+            cls.STEP_PRICE,
+            cls.STEP_COSTS,
+            cls.MAX_STEP_LIMITS,
+            cls.REVISION_CODE,
+            cls.REVISION_NAME,
+            cls.SCORE_BLACK_LIST,
+            cls.IMPORT_WHITE_LIST,
+        ]
+
+    @classmethod
+    def gs_migration_count(cls) -> int:
+        return len(cls.gs_migration_type_list())
 
 
 @unique

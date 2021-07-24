@@ -408,6 +408,10 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false {
 		as.SetBlock(true)
+		// add to blocked score list
+		sas := s.cc.GetAccountState(state.SystemID)
+		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
+		return db.Put(address)
 	}
 	return nil
 }
@@ -426,8 +430,35 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true {
 		as.SetBlock(false)
+		// remove from blocked score list
+		sas := s.cc.GetAccountState(state.SystemID)
+		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
+		for i := 0; i < db.Size(); i++ {
+			if db.Get(i).Address().Equal(address) == true {
+				rAddr := db.Pop().Address()
+				if i < db.Size() { // addr is not rAddr
+					if err := db.Set(i, rAddr); err != nil {
+						return err
+					}
+				}
+				break
+			}
+		}
 	}
 	return nil
+}
+
+func (s *chainScore) Ex_getBlockedScores() ([]interface{}, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return nil, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarBlockedScores)
+	scores := make([]interface{}, db.Size())
+	for i := 0; i < db.Size(); i++ {
+		scores[i] = db.Get(i).Address()
+	}
+	return scores, nil
 }
 
 func (s *chainScore) Ex_setStepPrice(price *common.HexInt) error {

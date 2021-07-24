@@ -40,7 +40,8 @@ OPCODE_HEADER_END_INDEX = 4
 
 
 class ScorePackageValidator(object):
-    WHITELIST_IMPORT = {'iconservice': ['*']}
+    WHITELIST_IMPORT = {'iconservice': ['*'],
+                        'iconservice.iconscore.system': ['*']}
     CUSTOM_IMPORT_LIST = []
     ICONSERVICE_WHITELIST = []
 

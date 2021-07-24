@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -52,6 +53,10 @@ func (g *governanceHandler) Init(fid int, logger log.Logger) {
 
 func applyGovernanceVariablesToSytstem(cc contract.CallContext, govAs, sysAs containerdb.BytesStoreState) error {
 	price := scoredb.NewVarDB(govAs, state.VarStepPrice).Int64()
+	if price == 0 {
+		// INV migration happened
+		return nil
+	}
 	_ = scoredb.NewVarDB(sysAs, state.VarStepPrice).Set(price)
 	// stepCosts
 	stepTypes := scoredb.NewArrayDB(sysAs, state.VarStepTypes)
@@ -95,7 +100,7 @@ func (g *governanceHandler) ExecuteSync(cc contract.CallContext) (error, *codec.
 	gss := cc.GetAccountSnapshot(govAddress.ID())
 	status, steps, result, score := cc.Call(g.ch, cc.StepAvailable())
 	cc.DeductSteps(steps)
-	if status == nil {
+	if status == nil && cc.Revision().Value() <= icmodule.Revision8 {
 		if gss2 := cc.GetAccountSnapshot(govAddress.ID()); gss2.StorageChangedAfter(gss) {
 			sysAs := cc.GetAccountState(state.SystemID)
 			govAs := scoredb.NewStateStoreWith(gss2)

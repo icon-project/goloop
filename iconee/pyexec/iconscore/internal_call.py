@@ -111,6 +111,56 @@ class ChainScore(object):
                                          'getScoreStatus', tuple([score_address]))
 
     @staticmethod
+    def getRevision(context: 'IconScoreContext', _from: 'Address') -> Optional[int]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getRevision')
+
+    @staticmethod
+    def setRevision(context: 'IconScoreContext', _from: 'Address', code: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setRevision', tuple([code]))
+
+    @staticmethod
+    def getStepPrice(context: 'IconScoreContext', _from: 'Address') -> Optional[int]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getStepPrice')
+
+    @staticmethod
+    def setStepPrice(context: 'IconScoreContext', _from: 'Address', price: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setStepPrice', tuple([price]))
+
+    @staticmethod
+    def getStepCosts(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getStepCosts')
+
+    @staticmethod
+    def getMaxStepLimit(context: 'IconScoreContext', _from: 'Address', _type: str) -> Optional[int]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'getMaxStepLimit', tuple([_type]))
+
+    @staticmethod
+    def blockScore(context: 'IconScoreContext', _from: 'Address', address: 'Address'):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'blockScore', tuple([address]))
+
+    @staticmethod
+    def unblockScore(context: 'IconScoreContext', _from: 'Address', address: 'Address'):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'unblockScore', tuple([address]))
+
+    @staticmethod
+    def getBlockedScores(context: 'IconScoreContext', _from: 'Address') -> Optional[list]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getBlockedScores')
+
+    @staticmethod
+    def getIRep(context: 'IconScoreContext', _from: 'Address') -> Optional[int]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getIRep')
+
+    @staticmethod
+    def setIRep(context: 'IconScoreContext', _from: 'Address', value: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setIRep', tuple([value]))
+
+    @staticmethod
     def getPRepTerm(context: 'IconScoreContext', _from: 'Address') -> Optional[dict]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0, 'getPRepTerm')
 
