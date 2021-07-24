@@ -280,6 +280,7 @@ func showAccount(ctx Context, addr module.Address, ass state.AccountSnapshot, pa
 			fmt.Printf("- Owner   : %s\n", ass.ContractOwner())
 			fmt.Printf("- Current : %+v\n", ass.Contract())
 			fmt.Printf("- Next    : %+v\n", ass.NextContract())
+			fmt.Printf("- Blocked : %+v\n", ass.IsBlocked())
 			jso, err := ass.GetDepositInfo(&depositContext{height: ctx.BlockHeight()}, module.JSONVersionLast)
 			if err == nil && jso != nil {
 				js, _ := JSONMarshalIndent(jso)
