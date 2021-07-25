@@ -169,3 +169,7 @@ class IconSystemScoreBase(IconScoreBase):
             return ChainScore.setRevision(self._context, self.address, value)
         elif type_ == IconNetworkValueType.IREP:
             return ChainScore.setIRep(self._context, self.address, value)
+
+    def apply_revision_change(self, revision: int):
+        # just for backward compatibility, no action needed
+        pass
