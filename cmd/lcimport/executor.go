@@ -830,7 +830,7 @@ func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
 		bps = bm.GetBPS()
 		Statusf(
 			e.log,
-			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ] BPS [ %6.1f ]",
+			"[%s] Executing Block[ %10s ] Tx[ %11s ] %s RPS[ %6.1f ] TPS[ %6.1f ] BPS[ %6.1f ]",
 			spinner(height, stored),
 			D(height),
 			D(txTotal),
