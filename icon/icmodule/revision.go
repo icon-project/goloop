@@ -58,6 +58,7 @@ const (
 	RevisionDelegationSlotMaxTo100    = Revision9
 	RevisionSystemSCORE               = Revision9
 	RevisionSetIRepViaNetworkProposal = Revision9
+	RevisionPreventDuplicatedEndpoint = Revision9
 
 	RevisionFixInvalidUnstake = Revision11
 
