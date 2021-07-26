@@ -234,6 +234,15 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
+		if r1 < icmodule.RevisionSetIRepViaNetworkProposal && r2 >= icmodule.RevisionSetIRepViaNetworkProposal {
+			if irep := es.State.GetIRep(); irep.Sign() == 0 {
+				term := es.State.GetTermSnapshot()
+				if err := es.State.SetIRep(term.Irep()); err != nil {
+					return err
+				}
+			}
+		}
+
 		if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
 			migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
 		}

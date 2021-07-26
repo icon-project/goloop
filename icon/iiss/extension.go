@@ -808,6 +808,9 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 
 		if irep := CalculateIRep(preps, revision); irep != nil {
 			nextTerm.SetIrep(irep)
+		} else {
+			irep = new(big.Int).Set(es.State.GetIRep())
+			nextTerm.SetIrep(irep)
 		}
 
 		// Record new validator list for the next term to State

@@ -52,11 +52,12 @@ const (
 
 	RevisionFixBugDisabledPRep = Revision8
 
-	RevisionFixBurnEventSignature  = Revision9
-	RevisionMultipleUnstakes       = Revision9
-	RevisionFixEmailValidation     = Revision9
-	RevisionDelegationSlotMaxTo100 = Revision9
-	RevisionSystemSCORE            = Revision9
+	RevisionFixBurnEventSignature     = Revision9
+	RevisionMultipleUnstakes          = Revision9
+	RevisionFixEmailValidation        = Revision9
+	RevisionDelegationSlotMaxTo100    = Revision9
+	RevisionSystemSCORE               = Revision9
+	RevisionSetIRepViaNetworkProposal = Revision9
 
 	RevisionFixInvalidUnstake = Revision11
 
