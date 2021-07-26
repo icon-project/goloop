@@ -262,7 +262,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision11, 0},
+	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -270,7 +270,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision11, 0},
+	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -278,7 +278,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision11, 0},
+	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
 		scoreapi.FlagExternal | scoreapi.FlagPayable, 1,
