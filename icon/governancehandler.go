@@ -51,7 +51,7 @@ func (g *governanceHandler) Init(fid int, logger log.Logger) {
 	g.log = trace.LoggerOf(logger)
 }
 
-func applyGovernanceVariablesToSytstem(cc contract.CallContext, govAs, sysAs containerdb.BytesStoreState) error {
+func applyGovernanceVariablesToSystem(cc contract.CallContext, govAs, sysAs containerdb.BytesStoreState) error {
 	price := scoredb.NewVarDB(govAs, state.VarStepPrice).Int64()
 	if price == 0 {
 		// INV migration happened
@@ -104,7 +104,7 @@ func (g *governanceHandler) ExecuteSync(cc contract.CallContext) (error, *codec.
 		if gss2 := cc.GetAccountSnapshot(govAddress.ID()); gss2.StorageChangedAfter(gss) {
 			sysAs := cc.GetAccountState(state.SystemID)
 			govAs := scoredb.NewStateStoreWith(gss2)
-			if err := applyGovernanceVariablesToSytstem(cc, govAs, sysAs); err != nil {
+			if err := applyGovernanceVariablesToSystem(cc, govAs, sysAs); err != nil {
 				return err, nil, nil
 			}
 		}
