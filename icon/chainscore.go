@@ -830,7 +830,7 @@ func (s *chainScore) Install(param []byte) error {
 			state.StepTypeEventLog:         {100},
 			state.StepTypeApiCall:          {0},
 		}
-		systemConfig = state.SysConfigAudit
+		systemConfig = state.SysConfigAudit | state.SysConfigScorePackageValidator
 		revision = icmodule.Revision1
 
 		// prepare Governance SCORE
@@ -913,6 +913,7 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	if feeConfig != nil {
+		systemConfig |= state.SysConfigFee
 		if err := applyStepLimits(feeConfig, as); err != nil {
 			return err
 		}
