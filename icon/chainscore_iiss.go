@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"math/big"
-	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -533,12 +532,9 @@ func (s *chainScore) validateEndpoint(p2pEndpoint *string) error {
 		return nil
 	}
 
-	failedBlockHeight := int64(22748235)
-	failedTxID := "\x52\x9c\x33\xba\x49\x5f\x85\x88\x83\xd1\x31\x39\x5a\x97\x24\x8b\x37\x36\x99\xa4\x4f\x1a\xbe\x49\x60\xd7\x50\x1b\x0a\x53\x07\x4e"
-
-	blockHeight := s.cc.BlockHeight()
 	txID := s.cc.TransactionID()
-	if blockHeight == failedBlockHeight && strings.Compare(string(txID), failedTxID) == 0 {
+	switch string(txID) {
+	case "\x52\x9c\x33\xba\x49\x5f\x85\x88\x83\xd1\x31\x39\x5a\x97\x24\x8b\x37\x36\x99\xa4\x4f\x1a\xbe\x49\x60\xd7\x50\x1b\x0a\x53\x07\x4e":
 		return errors.Errorf("Duplicated endpoint")
 	}
 	return nil
