@@ -994,6 +994,9 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 		if revision < icmodule.Revision9 {
 			flags |= IISSDisabled
 		}
+		if revision < icmodule.RevisionIISS && !fromGov {
+			flags |= BasicHidden
+		}
 	} else {
 		// External-call case
 		if revision < icmodule.RevisionICON2 {
