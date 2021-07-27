@@ -213,7 +213,7 @@ func newPartSetBuffer(sz int) PartSetBuffer {
 	return &partSetBuffer{ps: new(partSet), size: sz}
 }
 
-func newPartSetFromID(h *PartSetID) PartSet {
+func NewPartSetFromID(h *PartSetID) PartSet {
 	return &partSet{
 		parts: make([]*part, h.Count),
 		tree:  trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
@@ -249,7 +249,7 @@ func (p *part) Bytes() []byte {
 	}
 }
 
-func newPart(b []byte) (Part, error) {
+func NewPart(b []byte) (Part, error) {
 	var pb partBinary
 	if _, err := codec.UnmarshalFromBytes(b, &pb); err != nil {
 		return nil, err

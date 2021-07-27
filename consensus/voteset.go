@@ -192,7 +192,7 @@ func (hvs *heightVoteSet) add(index int, v *voteMessage) (bool, *voteSet) {
 	return vs.add(index, v), vs
 }
 
-func (hvs *heightVoteSet) votesFor(round int32, voteType voteType) *voteSet {
+func (hvs *heightVoteSet) votesFor(round int32, voteType VoteType) *voteSet {
 	rvs := hvs._votes[round]
 	if rvs[voteType] == nil {
 		rvs[voteType] = newVoteSet(hvs._nValidators)
@@ -209,13 +209,13 @@ func (hvs *heightVoteSet) reset(nValidators int) {
 
 func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList {
 	rvl := newVoteList()
-	prevotes := hvs.votesFor(round, voteTypePrevote)
+	prevotes := hvs.votesFor(round, VoteTypePrevote)
 	for i, msg := range prevotes.msgs {
 		if prevotesMask.Get(i) && msg != nil {
 			rvl.AddVote(msg)
 		}
 	}
-	precommits := hvs.votesFor(round, voteTypePrecommit)
+	precommits := hvs.votesFor(round, VoteTypePrecommit)
 	for i, msg := range precommits.msgs {
 		if precommitsMask.Get(i) && msg != nil {
 			rvl.AddVote(msg)
@@ -227,7 +227,7 @@ func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray
 func (hvs *heightVoteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
 	for round := range hvs._votes {
 		if round >= minRound {
-			evidences := hvs.votesFor(round, voteTypePrevote).getRoundEvidences(minRound, nid)
+			evidences := hvs.votesFor(round, VoteTypePrevote).getRoundEvidences(minRound, nid)
 			if evidences != nil {
 				return evidences
 			}

@@ -38,7 +38,7 @@ func (vl *commitVoteList) VerifyBlock(block module.BlockData, validators module.
 	msg := newVoteMessage()
 	msg.Height = block.Height()
 	msg.Round = vl.Round
-	msg.Type = voteTypePrecommit
+	msg.Type = VoteTypePrecommit
 	msg.BlockID = block.ID()
 	msg.BlockPartSetID = vl.BlockPartSetID
 	for i, item := range vl.Items {
@@ -107,7 +107,7 @@ func (vl *commitVoteList) voteList(h int64, bid []byte) *voteList {
 	msg := newVoteMessage()
 	msg.Height = h
 	msg.Round = vl.Round
-	msg.Type = voteTypePrecommit
+	msg.Type = VoteTypePrecommit
 	msg.BlockID = bid
 	msg.BlockPartSetID = vl.BlockPartSetID
 	for _, item := range vl.Items {

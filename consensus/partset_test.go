@@ -49,7 +49,7 @@ func TestBlockParts(t *testing.T) {
 		p := ps.GetPart(i)
 		bs := p.Bytes()
 		log.Printf("Part[%d] %d bytes\n", i, len(bs))
-		if p2, err := newPart(bs); err != nil {
+		if p2, err := NewPart(bs); err != nil {
 			t.Errorf("Fail to parse part[%d]", i)
 			return
 		} else {
@@ -57,7 +57,7 @@ func TestBlockParts(t *testing.T) {
 		}
 	}
 
-	ps2 := newPartSetFromID(hdr)
+	ps2 := NewPartSetFromID(hdr)
 	if ps2.IsComplete() {
 		t.Error("Before adding parts, it's already completed")
 	}
