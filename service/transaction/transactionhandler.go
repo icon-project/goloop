@@ -203,6 +203,16 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
 	for bal.Cmp(fee) < 0 {
+		if  cc.Revision().ResetStepOnFailure() {
+			logger.TSystemf("FRAME[%d] STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
+			if redeemed != nil {
+				cc.ClearRedeemLogs()
+			}
+			stepUsed = new(big.Int)
+			stepAll = new(big.Int)
+			fee.SetInt64(0)
+			break
+		}
 		if status == nil {
 			// rollback all changes
 			logger.TSystemf("FRAME[%d] TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d",
@@ -225,14 +235,8 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 				stepUsed = stepAll
 			}
 			status = scoreresult.ErrOutOfBalance
-			if cc.Revision().ResetStepOnFailure() {
-				logger.TSystemf("FRAME[%d] STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
-				stepUsed = new(big.Int)
-				stepAll = new(big.Int)
-			} else {
-				logger.TSystemf("FRAME[%d] TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
-				stepPrice = new(big.Int)
-			}
+			logger.TSystemf("FRAME[%d] TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
+			stepPrice = new(big.Int)
 			fee.SetInt64(0)
 		}
 	}
