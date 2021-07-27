@@ -28,3 +28,21 @@ func TestCommitVoteList_Timestamp(t *testing.T) {
 		assert.Equal(t, cvl.Timestamp(), c.out)
 	}
 }
+
+func TestCommitVoteList_enoughVote(t *testing.T) {
+	assert.True(t, enoughVote(0, 0))
+	assert.False(t, enoughVote(0, 1))
+	assert.True(t, enoughVote(1, 1))
+	assert.False(t, enoughVote(1, 2))
+	assert.True(t, enoughVote(2, 2))
+	assert.False(t, enoughVote(2, 3))
+	assert.True(t, enoughVote(3, 3))
+	assert.False(t, enoughVote(2, 4))
+	assert.True(t, enoughVote(3, 4))
+	assert.False(t, enoughVote(3, 5))
+	assert.True(t, enoughVote(4, 5))
+	assert.False(t, enoughVote(4, 6))
+	assert.True(t, enoughVote(5, 6))
+	assert.False(t, enoughVote(4, 7))
+	assert.True(t, enoughVote(5, 7))
+}

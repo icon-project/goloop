@@ -53,11 +53,18 @@ func (vl *commitVoteList) VerifyBlock(block module.BlockData, validators module.
 		}
 		vset[index] = true
 	}
-	twoThirds := validators.Len() * 2 / 3
-	if len(vl.Items) > twoThirds {
+	if enoughVote(len(vl.Items), validators.Len()) {
 		return vset, nil
 	}
 	return nil, errors.Errorf("votes(%d) <= 2/3 of validators(%d)", len(vl.Items), validators.Len())
+}
+
+func enoughVote(voted int, voters int) bool {
+	if voters == 0 {
+		return true
+	}
+	twoThirds := voters * 2 / 3
+	return voted > twoThirds
 }
 
 func (vl *commitVoteList) Bytes() []byte {
