@@ -17,10 +17,10 @@
 package migrate
 
 import (
-	"encoding/hex"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -2156,9 +2156,13 @@ var invalidUnstakeFixed = []invalidUnstakeFixedData{
 func WriteInvalidUnstakeFixedEventLogs(cc contract.CallContext) {
 	for _, event := range invalidUnstakeFixed {
 		address := common.MustNewAddressFromString(event.Address)
-		indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.ID()}
-		data1, _ := hex.DecodeString(event.Amount)
-		data2, _ := hex.DecodeString(event.Height)
+		indexed := [][]byte{[]byte("InvalidUnstakeFixed(Address,int,int)"), address.Bytes()}
+		var amount big.Int
+		var height int64
+		_ = intconv.ParseBigInt(&amount, event.Amount)
+		height, _ = intconv.ParseInt(event.Height, 64)
+		data1 := intconv.BigIntToBytes(&amount)
+		data2 := intconv.Int64ToBytes(height)
 		data := [][]byte{data1, data2}
 		cc.OnEvent(state.SystemAddress, indexed, data)
 	}
