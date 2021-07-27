@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -93,20 +94,39 @@ func applyGovernanceVariablesToSystem(cc contract.CallContext, govAs, sysAs cont
 	return nil
 }
 
+func (g *governanceHandler) handleRevisionChange(cc contract.CallContext, r1, r2 int) {
+	if r1 >= r2 {
+		return
+	}
+	if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
+		migrate.WriteInvalidUnstakeFixedEventLogs(cc)
+	}
+}
+
 func (g *governanceHandler) ExecuteSync(cc contract.CallContext) (error, *codec.TypedObj, module.Address) {
 	g.log.TSystemf("FRAME[%d] GOV start", g.fid)
 	defer g.log.TSystemf("FRAME[%d] GOV end", g.fid)
 
+	rev := cc.Revision().Value()
+
 	gss := cc.GetAccountSnapshot(govAddress.ID())
 	status, steps, result, score := cc.Call(g.ch, cc.StepAvailable())
 	cc.DeductSteps(steps)
-	if status == nil && cc.Revision().Value() <= icmodule.Revision8 {
+	if status == nil && rev <= icmodule.Revision8 {
 		if gss2 := cc.GetAccountSnapshot(govAddress.ID()); gss2.StorageChangedAfter(gss) {
 			sysAs := cc.GetAccountState(state.SystemID)
 			govAs := scoredb.NewStateStoreWith(gss2)
 			if err := applyGovernanceVariablesToSystem(cc, govAs, sysAs); err != nil {
 				return err, nil, nil
 			}
+		}
+	}
+	if status == nil {
+		sysAs := cc.GetAccountState(state.SystemID)
+		rev2 := int(scoredb.NewVarDB(sysAs, state.VarRevision).Int64())
+		if rev != rev2 {
+			g.log.TSystemf("FRAME[%d] GOV handleRevisionChange rev1=%d rev2=%d", g.fid, rev, rev2)
+			g.handleRevisionChange(cc, rev, rev2)
 		}
 	}
 	return status, result, score

@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -249,9 +248,10 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
-		if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
-			migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
-		}
+		// It's handled in governanceHandler.handleRevisionChange
+		// if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
+		// 	migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
+		// }
 
 		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
 			if iissVersion < icstate.IISSVersion3 {
