@@ -92,6 +92,7 @@ func NewImporter(
 	base string,
 	dbType string,
 	storeURI string,
+	maxRPS int,
 	cacheConfig *lcstore.CacheConfig,
 	logger log.Logger,
 ) (*Importer, error) {
@@ -111,6 +112,7 @@ func NewImporter(
 	cfg := &lcimporter.Config{
 		Validators:  nil,
 		StoreURI:    storeURI,
+		MaxRPS:      maxRPS,
 		CacheConfig: *cacheConfig,
 		BaseDir:     base,
 		Platform:    plt,

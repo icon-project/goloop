@@ -314,7 +314,6 @@ func newCmdExecutor(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 		cc := &lcstore.CacheConfig{
 			MaxBlocks:  vc.GetInt("max_blocks"),
 			MaxWorkers: vc.GetInt("max_workers"),
-			MaxRPS:     vc.GetInt("max_rps"),
 		}
 		fc := lcstore.NewForwardCache(lcdb, logger, cc)
 		if executor, err := NewExecutor(logger, fc, vc.GetString("data"), vc.GetString("db_type")); err != nil {
@@ -353,10 +352,10 @@ func newCmdImporter(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 			vc.GetString("bc_data"),
 			vc.GetString("db_type"),
 			vc.GetString("store_uri"),
+			vc.GetInt("max_rps"),
 			&lcstore.CacheConfig{
 				MaxBlocks:  vc.GetInt("max_blocks"),
 				MaxWorkers: vc.GetInt("max_workers"),
-				MaxRPS:     vc.GetInt("max_rps"),
 			},
 			vc.Get(vcLogger).(log.Logger),
 		)
@@ -727,7 +726,8 @@ func main() {
 
 		if !vc.GetBool(vcNoLoopchainDB) {
 			uri := vc.GetString("store_uri")
-			if db, err := lcstore.OpenStore(uri); err != nil {
+			maxRPS := vc.GetInt("max_rps")
+			if db, err := lcstore.OpenStore(uri, maxRPS); err != nil {
 				return errors.Wrapf(err, "OpenFailure(uri=%s)", uri)
 			} else {
 				lcDB = db

@@ -14,19 +14,4 @@
  * limitations under the License.
  */
 
-package lcimporter
-
-import (
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/icon/blockv0/lcstore"
-	"github.com/icon-project/goloop/service"
-)
-
-type Config struct {
-	Validators  []*common.Address   `json:"validators"`
-	StoreURI    string              `json:"store_uri"`
-	MaxRPS      int                 `json:"max_rps"`
-	CacheConfig lcstore.CacheConfig `json:"cache_config"`
-	BaseDir     string
-	Platform    service.Platform
-}
+package lcstore

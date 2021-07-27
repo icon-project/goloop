@@ -37,6 +37,7 @@ type Database interface {
 	GetTransactionJSON(id []byte) ([]byte, error)
 	GetRepsJSONByHash(id []byte) ([]byte, error)
 	GetReceiptJSON(id []byte) ([]byte, error)
+	GetTPS() float32
 	Close() error
 }
 
@@ -134,21 +135,30 @@ func (lc *Store) SetReceiptParameter(dbase db.Database, rev module.Revision) {
 	lc.ReceiptRevision = rev
 }
 
-func OpenStore(blockuri string) (*Store, error) {
+func OpenStore(blockuri string, rps int) (*Store, error) {
 	lcdb := new(Store)
-	if strings.HasPrefix(blockuri, "http://") ||
-		strings.HasPrefix(blockuri, "https://") {
-		if bs, err := OpenNodeDB(blockuri); err != nil {
-			return nil, err
+	uris := strings.Split(blockuri, ",")
+	var dbs []Database
+	for _, uri := range uris {
+		if strings.HasPrefix(uri, "http://") ||
+			strings.HasPrefix(uri, "https://") {
+			if bs, err := OpenNodeDB(uri, rps); err != nil {
+				return nil, err
+			} else {
+				dbs = append(dbs, bs)
+			}
 		} else {
-			lcdb.Database = bs
+			if bs, err := OpenLevelDB(uri); err != nil {
+				return nil, err
+			} else {
+				dbs = append(dbs, bs)
+			}
 		}
+	}
+	if len(dbs) > 1 {
+		lcdb.Database = NewMergedDB(dbs)
 	} else {
-		if bs, err := OpenLevelDB(blockuri); err != nil {
-			return nil, err
-		} else {
-			lcdb.Database = bs
-		}
+		lcdb.Database = dbs[0]
 	}
 	return lcdb, nil
 }

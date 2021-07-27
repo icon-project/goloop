@@ -136,6 +136,10 @@ func (ds *LevelDB) Close() error {
 	return ds.leveldb.Close()
 }
 
+func (ds *LevelDB) GetTPS() float32 {
+	return 0
+}
+
 func OpenLevelDB(dir string) (Database, error) {
 	opts := &opt.Options{
 		ReadOnly: true,

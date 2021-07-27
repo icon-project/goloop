@@ -47,12 +47,12 @@ const (
 var lcStoreDefaultCacheConfig = lcstore.CacheConfig{
 	MaxWorkers: 8,
 	MaxBlocks:  32,
-	MaxRPS:     0,
 }
 
 type importICONParams struct {
 	StoreURI    string               `json:"store_uri"`
 	ConfigURL   string               `json:"config_url"`
+	MaxRPS      int                  `json:"max_rps"`
 	CacheConfig *lcstore.CacheConfig `json:"cache_config,omitempty"`
 }
 
@@ -170,6 +170,7 @@ func (t *taskImportICON) _import() (ret error) {
 	config := &lcimporter.Config{
 		Validators:  tc.Validators,
 		StoreURI:    t.params.StoreURI,
+		MaxRPS:      t.params.MaxRPS,
 	}
 	if t.params.CacheConfig != nil {
 		config.CacheConfig = *t.params.CacheConfig

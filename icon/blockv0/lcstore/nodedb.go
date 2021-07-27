@@ -27,6 +27,7 @@ import (
 
 type NodeDB struct {
 	client *client.JsonRpcClient
+	tr     *tpsRegulator
 }
 
 type heightParam struct {
@@ -42,7 +43,8 @@ type txHashParam struct {
 }
 
 func (s *NodeDB) GetBlockJSONByHeight(height int) ([]byte, error) {
-	result, err := s.client.Do("icx_getBlock", &heightParam{
+	s.tr.Wait()
+	result, err := s.Do("icx_getBlock", &heightParam{
 		common.HexInt64{Value: int64(height)},
 	}, nil)
 	if err != nil {
@@ -53,7 +55,8 @@ func (s *NodeDB) GetBlockJSONByHeight(height int) ([]byte, error) {
 }
 
 func (s *NodeDB) GetBlockJSONByID(id []byte) ([]byte, error) {
-	result, err := s.client.Do("icx_getBlock", &hashParam{
+	s.tr.Wait()
+	result, err := s.Do("icx_getBlock", &hashParam{
 		common.HexBytes(id),
 	}, nil)
 	if err != nil {
@@ -64,7 +67,8 @@ func (s *NodeDB) GetBlockJSONByID(id []byte) ([]byte, error) {
 }
 
 func (s *NodeDB) GetLastBlockJSON() ([]byte, error) {
-	result, err := s.client.Do("icx_getBlock", nil, nil)
+	s.tr.Wait()
+	result, err := s.Do("icx_getBlock", nil, nil)
 	if err != nil {
 		return nil, err
 	} else {
@@ -74,7 +78,7 @@ func (s *NodeDB) GetLastBlockJSON() ([]byte, error) {
 
 func (s *NodeDB) GetTransactionJSON(id []byte) ([]byte, error) {
 	var tx json.RawMessage
-	_, err := s.client.Do("icx_getTransactionByHash", &txHashParam{
+	_, err := s.Do("icx_getTransactionByHash", &txHashParam{
 		common.HexBytes(id),
 	}, &tx)
 	if err != nil {
@@ -84,16 +88,21 @@ func (s *NodeDB) GetTransactionJSON(id []byte) ([]byte, error) {
 	}
 }
 
+func (s *NodeDB) Do(method string, param interface{}, res interface{}) (*client.Response, error) {
+	s.tr.Wait()
+	return s.client.Do(method, param, res)
+}
+
 func (s *NodeDB) GetResultJSON(id []byte) ([]byte, error) {
 	var receipt map[string]interface{}
-	_, err := s.client.Do("icx_getTransactionResult", &txHashParam{
+	_, err := s.Do("icx_getTransactionResult", &txHashParam{
 		common.HexBytes(id),
 	}, &receipt)
 	if err != nil {
 		return nil, err
 	}
 	var tx map[string]interface{}
-	_, err = s.client.Do("icx_getTransactionByHash", &txHashParam{
+	_, err = s.Do("icx_getTransactionByHash", &txHashParam{
 		common.HexBytes(id),
 	}, &tx)
 	if err != nil {
@@ -114,7 +123,7 @@ func (s *NodeDB) GetResultJSON(id []byte) ([]byte, error) {
 
 func (s *NodeDB) GetReceiptJSON(id []byte) ([]byte, error) {
 	var receipt json.RawMessage
-	_, err := s.client.Do("icx_getTransactionResult", &txHashParam{
+	_, err := s.Do("icx_getTransactionResult", &txHashParam{
 		common.HexBytes(id),
 	}, &receipt)
 	if err != nil {
@@ -125,7 +134,7 @@ func (s *NodeDB) GetReceiptJSON(id []byte) ([]byte, error) {
 }
 
 func (s *NodeDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
-	result, err := s.client.Do(
+	result, err := s.Do(
 		"rep_getListByHash",
 		map[string]interface{}{
 			"repsHash": common.HexBytes(id),
@@ -142,8 +151,13 @@ func (s *NodeDB) Close() error {
 	return nil
 }
 
-func OpenNodeDB(endpoint string) (Database, error) {
+func (s *NodeDB) GetTPS() float32 {
+	return s.tr.GetTPS()
+}
+
+func OpenNodeDB(endpoint string, rps int) (Database, error) {
 	hc := new(http.Client)
 	jc := client.NewJsonRpcClient(hc, endpoint)
-	return &NodeDB{jc}, nil
+	tr := new(tpsRegulator).Init(rps)
+	return &NodeDB{jc, tr}, nil
 }
