@@ -49,7 +49,7 @@ type chainScore struct {
 	from   module.Address
 	value  *big.Int
 	gov    bool
-	iiss   int
+	flags  int
 }
 
 const (
@@ -980,23 +980,25 @@ func (s *chainScore) checkGovernance(charge bool) error {
 }
 
 const (
-	IISSNoCharge = 1 << iota
+	SysNoCharge = 1 << iota
 	IISSDisabled
+	BasicHidden
 )
 
 func newChainScore(cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
 	revision := cc.Revision().Value()
 	fromGov := cc.Governance().Equal(from)
-	iissBehavior := 0
+	flags := 0
 	if from != nil && from.IsContract() {
 		// Inter-call case
 		if revision < icmodule.Revision9 {
-			iissBehavior |= IISSDisabled
+			flags |= IISSDisabled
 		}
 	} else {
 		// External-call case
 		if revision < icmodule.RevisionICON2 {
-			iissBehavior |= IISSNoCharge
+			flags |= SysNoCharge
+			flags |= BasicHidden
 		}
 	}
 	return &chainScore{
@@ -1005,7 +1007,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 			value:  value,
 			log:    icutils.NewIconLogger(cc.Logger()),
 			gov:    fromGov,
-			iiss:   iissBehavior,
+			flags:  flags,
 		},
 		nil
 }

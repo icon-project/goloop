@@ -36,14 +36,20 @@ func (s *chainScore) tryChargeCall(iiss bool) error {
 	if s.gov {
 		return nil
 	}
-	noCharge := iiss && (s.iiss&IISSNoCharge) != 0
+	noCharge := (s.flags & SysNoCharge) != 0
 	if !noCharge {
 		if err := s.cc.ApplyCallSteps(); err != nil {
 			return err
 		}
 	}
-	if iiss && (s.iiss&IISSDisabled) != 0 {
-		return scoreresult.ContractNotFoundError.New("Disabled")
+	if iiss {
+		if (s.flags & IISSDisabled) != 0 {
+			return scoreresult.ContractNotFoundError.New("IISSIsDisabled")
+		}
+	} else {
+		if (s.flags & BasicHidden) != 0 {
+			return scoreresult.MethodNotFoundError.New("BasicIsHidden")
+		}
 	}
 	return nil
 }
