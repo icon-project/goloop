@@ -1,6 +1,7 @@
 package module
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/icon-project/goloop/common/db"
@@ -34,6 +35,12 @@ type BlockData interface {
 	ToJSON(version JSONVersion) (interface{}, error)
 	NewBlock(vl ValidatorList) Block
 	Hash() []byte
+}
+
+func BlockDataToBytes(blk BlockData) ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	err := blk.Marshal(buf)
+	return buf.Bytes(), err
 }
 
 type Block interface {
