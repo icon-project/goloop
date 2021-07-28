@@ -23,49 +23,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
+	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/test"
 )
 
-type platform struct {
-	service.Platform
-}
-
-func (plt *platform) DefaultBlockVersion() int {
-	return module.BlockVersion1
-}
-
-func newPlatform(plt service.Platform) service.Platform {
-	return &platform{plt}
-}
-
 func newFixture(t *testing.T) *test.Fixture {
-	return test.NewFixture(t, &test.FixtureOption{
-		CVSD: func(bytes []byte) module.CommitVoteSet {
-			vs := consensus.NewCommitVoteSetFromBytes(bytes)
-			if vs != nil {
-				return vs
-			}
-			vl, _ := blockv0.NewBlockVotesFromBytes(bytes)
-			return vl
-		},
-		NewPlatform: newPlatform,
-		NewBM: func(bm module.BlockManager, c *test.Chain) module.BlockManager {
-			handlers := []block.Handler{
-				blockv1.NewHandler(c),
-				block.NewBlockV2Handler(c),
-			}
-			bm, err := block.NewManager(c, nil, handlers)
-			assert.NoError(t, err)
-			return bm
-		},
-	})
+	return test.NewFixture(t, ictest.UseBMForBlockV1)
 }
 
 func TestHandler_Basics(t_ *testing.T) {
