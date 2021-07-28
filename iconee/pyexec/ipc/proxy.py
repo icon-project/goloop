@@ -382,7 +382,7 @@ class ServiceManagerProxy:
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
-                self.encode_any(None)
+                self.encode_any('ExceptionInInvoke')
             ])
         finally:
             self.__readonly = self.__readonly_stack.pop(-1)
