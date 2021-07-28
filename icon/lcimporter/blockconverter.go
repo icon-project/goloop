@@ -318,9 +318,8 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 	}
 	rLogBloom := tr.Transition.LogsBloom()
 	eLogBloom := tr.block.LogsBloom()
-	if eLogBloom != nil && !rLogBloom.Equal(eLogBloom) {
-		return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
-			eLogBloom.LogBytes(), rLogBloom.LogBytes())
+	if err := CheckLogsBloom(e.log, eLogBloom, rLogBloom); err != nil {
+		return err
 	}
 	return nil
 }

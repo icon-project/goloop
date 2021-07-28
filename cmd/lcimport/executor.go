@@ -681,9 +681,8 @@ func (e *Executor) CheckResult(tr *Transition) error {
 	}
 	rLogBloom := tr.Transition.LogsBloom()
 	eLogBloom := tr.Block.LogBloom()
-	if eLogBloom != nil && !rLogBloom.Equal(eLogBloom) {
-		return errors.Errorf("InvalidLogBloom(exp=%x,res=%x)",
-			eLogBloom.LogBytes(), rLogBloom.LogBytes())
+	if err := lcimporter.CheckLogsBloom(e.log, eLogBloom, rLogBloom); err != nil {
+		return err
 	}
 	if reps := tr.Block.Original().NextValidators(); reps != nil {
 		rs := reps.Size()

@@ -59,8 +59,27 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 	return errors.InvalidStateError.Errorf("InvalidStatus(e=%s,r=%s)", s1, s2)
 }
 
+func CheckLogsBloom(logger log.Logger, e, r module.LogsBloom) error {
+	if e == nil {
+		return nil
+	}
+	if e.Equal(r) {
+		return nil
+	}
+	if r.Contain(e) {
+		logger.Warnln("IGNORE LogBloom Difference(more events)")
+		return nil
+	}
+	return errors.InvalidStateError.Errorf("InvalidLogBloom(exp=%x,res=%x)",
+		e.LogBytes(), r.LogBytes())
+}
+
 func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 	if err := CheckStatus(logger, r1.Status(), r2.Status()); err != nil {
+		return err
+	}
+
+	if err := CheckLogsBloom(logger, r1.LogsBloom(), r2.LogsBloom()); err != nil {
 		return err
 	}
 
@@ -68,8 +87,7 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 		r1.CumulativeStepUsed().Cmp(r2.CumulativeStepUsed()) == 0 &&
 		r1.StepUsed().Cmp(r2.StepUsed()) == 0 &&
 		r1.StepPrice().Cmp(r2.StepPrice()) == 0 &&
-		common.AddressEqual(r1.SCOREAddress(), r2.SCOREAddress()) &&
-		r1.LogsBloom().Equal(r2.LogsBloom())) {
+		common.AddressEqual(r1.SCOREAddress(), r2.SCOREAddress())) {
 		return errors.InvalidStateError.New("DifferentResultValue")
 	}
 
