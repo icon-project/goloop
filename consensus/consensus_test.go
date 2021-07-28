@@ -17,7 +17,7 @@
 package consensus_test
 
 import (
-	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,29 +31,188 @@ import (
 func TestConsensus_FastSyncServer(t *testing.T) {
 	f := test.NewFixture(t)
 	defer f.Close()
+
+	const maxHeight = 2
+	blks := make([][]byte, maxHeight)
+	f.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+
 	err := f.CS.Start()
 	assert.NoError(t, err)
-	blk, err := f.BM.GetLastBlock()
+
+	for h := 0; h < len(blks); h++ {
+		blk, err := f.BM.GetBlockByHeight(int64(h))
+		assert.NoError(t, err)
+		blks[h], err = module.BlockDataToBytes(blk)
+		assert.NoError(t, err)
+	}
+
+	_, h1 := f.NM.NewPeerFor(module.ProtoFastSync)
+	for h := 0; h < len(blks); h++ {
+		h1.Unicast(
+			fastsync.ProtoBlockRequest,
+			&fastsync.BlockRequest{
+				RequestID:   uint32(h),
+				Height:      int64(h),
+				ProofOption: 0,
+			},
+			nil,
+		)
+	}
+	for h := 0; h < len(blks); h++ {
+		h1.AssertReceiveUnicast(
+			fastsync.ProtoBlockMetadata,
+			&fastsync.BlockMetadata{
+				RequestID: uint32(h),
+				BlockLength: int32(len(blks[h])),
+				Proof: consensus.NewEmptyCommitVoteList().Bytes(),
+			},
+		)
+		var bs []byte
+		for len(bs) < len(blks[h]) {
+			var bd fastsync.BlockData
+			_ = h1.Receive(
+				fastsync.ProtoBlockData,
+				nil,
+				&bd,
+			)
+			assert.EqualValues(t, h, bd.RequestID)
+			bs = append(bs, bd.Data...)
+		}
+		assert.Equal(t, blks[h], bs)
+	}
+}
+
+func TestConsensus_FastSyncServerFail(t *testing.T) {
+	f := test.NewFixture(t)
+	defer f.Close()
+	err := f.CS.Start()
 	assert.NoError(t, err)
-	buf := bytes.NewBuffer(nil)
-	err = blk.Marshal(buf)
-	assert.NoError(t, err)
+
 	_, h1 := f.NM.NewPeerFor(module.ProtoFastSync)
 	h1.Unicast(
 		fastsync.ProtoBlockRequest,
 		&fastsync.BlockRequest {
 			RequestID: 0,
-			Height: 0,
+			Height: 1,
 			ProofOption: 0,
 		},
 		nil,
 	)
-	h1.ReceiveUnicast(
+	h1.AssertReceiveUnicast(
 		fastsync.ProtoBlockMetadata,
 		&fastsync.BlockMetadata{
 			RequestID: 0,
-			BlockLength: int32(buf.Len()),
-			Proof: consensus.NewEmptyCommitVoteList().Bytes(),
+			BlockLength: -1,
+			Proof: nil,
 		},
 	)
+}
+
+func TestConsensus_ClientBasics(t *testing.T) {
+	f := test.NewFixture(t)
+	defer f.Close()
+
+	err := f.CS.Start()
+	assert.NoError(t, err)
+
+	_, csh := f.NM.NewPeerFor(module.ProtoConsensusSync)
+	fsh := csh.Peer().Join(module.ProtoFastSync)
+
+	var rsm consensus.RoundStateMessage
+	rsm.Height = 10
+	rsm.Sync = true
+	csh.Unicast(consensus.ProtoRoundState, &rsm, nil)
+
+	var brm fastsync.BlockRequest
+	fsh.Receive(fastsync.ProtoBlockRequest, nil, &brm)
+	assert.EqualValues(t, 1, brm.Height)
+}
+
+func TestConsensus_BasicConsensus(t *testing.T) {
+	f := test.NewFixture(t)
+	defer f.Close()
+
+	h := make([]*test.SimplePeerHandler, 3)
+	for i:=0; i<len(h); i++ {
+		_, h[i] = f.NM.NewPeerFor(module.ProtoConsensus)
+	}
+
+	f.ProposeImportFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(),
+		fmt.Sprintf(
+			`{
+				"type": "test",
+				"timestamp": "0x0",
+				"validators": [ "%s", "%s", "%s", "%s" ]
+			}`,
+			h[0].Address(),
+			h[1].Address(),
+			h[2].Address(),
+			f.Chain.Wallet().Address(),
+		),
+	)
+	f.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+
+	err := f.CS.Start()
+	assert.NoError(t, err)
+
+	var pm consensus.ProposalMessage
+	h[0].Receive(
+		consensus.ProtoProposal,
+		nil,
+		&pm,
+	)
+	assert.EqualValues(t, pm.Height, 3)
+	assert.EqualValues(t, pm.Round, 0)
+
+	ps := consensus.NewPartSetFromID(pm.BlockPartSetID)
+	for !ps.IsComplete() {
+		var bpm consensus.BlockPartMessage
+		h[0].Receive(consensus.ProtoBlockPart, nil, &bpm)
+		pt, err := consensus.NewPart(bpm.BlockPart)
+		assert.NoError(t, err)
+		err = ps.AddPart(pt)
+		assert.NoError(t, err)
+	}
+	blk, err := f.BM.NewBlockDataFromReader(ps.NewReader())
+	assert.NoError(t, err)
+
+	for i:=0; i<len(h); i++ {
+		h[i].Unicast(
+			consensus.ProtoVote,
+			consensus.NewVoteMessage(
+				h[i].Wallet(),
+				consensus.VoteTypePrevote, 3, 0, blk.ID(),
+				ps.ID(), blk.Timestamp() + 1,
+			),
+			func(rb bool, e error) {
+				assert.True(t, rb)
+				assert.NoError(t, e)
+			},
+		)
+	}
+
+	for i:=0; i<len(h); i++ {
+		h[i].Unicast(
+			consensus.ProtoVote,
+			consensus.NewVoteMessage(
+				h[i].Wallet(),
+				consensus.VoteTypePrecommit, 3, 0, blk.ID(),
+				ps.ID(), blk.Timestamp() + 1,
+			),
+			func(rb bool, e error) {
+				assert.True(t, rb)
+				assert.NoError(t, e)
+			},
+		)
+	}
+
+	hcs0 := h[0].Peer().Join(module.ProtoConsensusSync)
+	for {
+		var rs consensus.RoundStateMessage
+		hcs0.Receive(consensus.ProtoRoundState, nil, &rs)
+		if rs.Height == 4 {
+			break
+		}
+	}
 }

@@ -48,6 +48,7 @@ func NewNetworkManager(t *testing.T, a module.Address) *NetworkManager {
 	const chLen = 1024
 	return &NetworkManager{
 		t:   t,
+		roles: make(map[string]module.Role),
 		id:  network.NewPeerIDFromAddress(a),
 		rCh: make(chan packetEntry, chLen),
 	}
@@ -129,6 +130,16 @@ func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, r
 	}
 	n.handlers = append(n.handlers, h)
 	n.joinedMPI = append(n.joinedMPI, mpi)
+	for _, p := range n.peers {
+		for _, pmpi := range p.joinedProto() {
+			if mpi == pmpi {
+				id := p.ID()
+				Go(func() {
+					h.reactor.OnJoin(id)
+				})
+			}
+		}
+	}
 	return h, nil
 }
 
@@ -149,6 +160,13 @@ func (n *NetworkManager) UnregisterReactor(reactor module.Reactor) error {
 					n.joinedMPI[i] = n.joinedMPI[last]
 					n.joinedMPI[last] = 0
 					n.joinedMPI = n.joinedMPI[:last]
+				}
+			}
+			for _, p := range n.peers {
+				for _, pmpi := range p.joinedProto() {
+					if h.mpi == pmpi {
+						p.notifyLeave(n, h.mpi)
+					}
 				}
 			}
 			return nil
