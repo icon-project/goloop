@@ -845,7 +845,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte, allowExtra bool) (*codec.Typ
 				"MissingParam(param=%s)", input.Name)
 		}
 		matched += 1
-		if obj, err := input.Type.ConvertJSONToTypedObj(param, input.Fields, false); err != nil {
+		if obj, err := input.Type.ConvertJSONToTypedObj(param, input.Fields, i >= a.Indexed); err != nil {
 			return nil, err
 		} else {
 			inputs[i] = obj
