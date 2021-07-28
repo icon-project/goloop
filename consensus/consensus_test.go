@@ -29,7 +29,7 @@ import (
 )
 
 func TestConsensus_FastSyncServer(t *testing.T) {
-	f := test.NewFixture(t, nil)
+	f := test.NewFixture(t)
 	defer f.Close()
 	err := f.CS.Start()
 	assert.NoError(t, err)
