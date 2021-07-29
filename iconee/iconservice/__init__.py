@@ -35,3 +35,4 @@ from pyexec.iconscore.icon_score_base2 import (revert, sha3_256, sha_256, json_l
                                                InterfaceScore, create_interface_score,
                                                get_main_prep_info, get_sub_prep_info)
 from pyexec.iconscore.icon_system_score_base import IconSystemScoreBase
+from pyexec.iconscore.system_score import InterfaceSystemScore
