@@ -72,7 +72,7 @@ const (
 
 var revisionFlags = []module.Revision{
 	// Revision0
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.ResetStepOnFailure | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout,
+	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.LegacyFeeCharge | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout,
 	// Revision1
 	0,
 	// Revision2
@@ -98,7 +98,7 @@ var revisionFlags = []module.Revision{
 	// Revision12
 	0,
 	// Revision13
-	module.ResetStepOnFailure | module.LegacyNoTimeout,
+	module.LegacyFeeCharge | module.LegacyNoTimeout,
 }
 
 func init() {
