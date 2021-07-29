@@ -203,7 +203,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
 	for bal.Cmp(fee) < 0 {
-		if  cc.Revision().ResetStepOnFailure() {
+		if cc.Revision().LegacyFeeCharge() {
 			logger.TSystemf("FRAME[%d] STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
 			if redeemed != nil {
 				cc.ClearRedeemLogs()
