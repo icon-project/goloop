@@ -125,7 +125,7 @@ func (s *chainScore) Ex_setStake(value *common.HexInt) (err error) {
 	account := s.cc.GetAccountState(s.from.ID())
 	balance := account.GetBalance()
 	availableStake := new(big.Int).Add(balance, ia.GetTotalStake())
-	if s.cc.Revision().LegacyFeeCharge() {
+	if revision < icmodule.RevisionSystemSCORE {
 		availableStake.Sub(availableStake, new(big.Int).Mul(s.cc.SumOfStepUsed(),s.cc.StepPrice()))
 	}
 	if availableStake.Cmp(v) == -1 {
