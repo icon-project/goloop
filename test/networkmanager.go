@@ -192,6 +192,10 @@ func (n *NetworkManager) NewPeerFor(mpi module.ProtocolInfo) (*SimplePeer, *Simp
 	return p, h
 }
 
+func (n *NetworkManager) Connect(n2 *NetworkManager) {
+	PeerConnect(n, n2)
+}
+
 func (n *NetworkManager) ID() module.PeerID {
 	return n.id
 }

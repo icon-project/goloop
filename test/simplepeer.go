@@ -92,8 +92,7 @@ func (p *SimplePeer) ID() module.PeerID {
 }
 
 func (p *SimplePeer) Connect(p2 Peer) *SimplePeer {
-	p2.attach(p)
-	p.attach(p2)
+	PeerConnect(p, p2)
 	return p
 }
 
