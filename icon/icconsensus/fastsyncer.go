@@ -36,12 +36,12 @@ type fastSyncer struct {
 	to            int64
 	c             module.Chain
 	parent        *wrapper
+	bpp           *bpp
 	fsm           fastsync.Manager
 	fetchCanceler func() bool
 	blockCanceler module.Canceler
 	log           log.Logger
 	running       bool
-	bpp           bpp
 }
 
 func newFastSyncer(
@@ -49,21 +49,18 @@ func newFastSyncer(
 	to int64,
 	c module.Chain,
 	parent *wrapper,
-) (*fastSyncer, error) {
+) *fastSyncer {
 	f := &fastSyncer{
 		height: height,
 		to:     to,
 		c:      c,
 		parent: parent,
+		bpp:    parent.bpp,
 	}
 	f.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS|V1|",
 	})
-	err := f.bpp.init(c.Database())
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
+	return f
 }
 
 func (f *fastSyncer) Start() error {
@@ -148,7 +145,7 @@ func (f *fastSyncer) processBlock(br fastsync.BlockResult) {
 	if err != nil {
 		br.Reject()
 	}
-	err = f.bpp.mt.Add(blk.Height(), blk.Hash(), proof)
+	err = f.bpp.Add(blk.Height(), blk.Hash(), proof)
 	if err != nil {
 		br.Reject()
 	}

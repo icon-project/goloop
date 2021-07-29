@@ -31,6 +31,7 @@ type wrapper struct {
 	module.Consensus
 	c           module.Chain
 	walDir      string
+	wm          consensus.WALManager
 	timestamper module.Timestamper
 	mtCap       int64
 	bpp         *bpp
@@ -40,6 +41,19 @@ func NewConsensus(
 	c module.Chain,
 	walDir string,
 	timestamper module.Timestamper,
+	mtRoot []byte,
+	mtCap int64,
+) (module.Consensus, error) {
+	return New(c, walDir, nil, timestamper, mtRoot, mtCap)
+}
+
+func New(
+	c module.Chain,
+	walDir string,
+	wm consensus.WALManager,
+	timestamper module.Timestamper,
+	mtRoot []byte,
+	mtCap int64,
 ) (module.Consensus, error) {
 	h, err := block.GetLastHeight(c.Database())
 	if err != nil {
@@ -49,27 +63,22 @@ func NewConsensus(
 	if err != nil {
 		return nil, err
 	}
-	mtCap, err := hexary.CapOfMerkleTree(bk, "")
+	mt, err := hexary.NewMerkleTree(bk, mtRoot, mtCap, -1)
 	if err != nil {
 		return nil, err
 	}
 	cse := &wrapper{
 		c:           c,
 		walDir:      walDir,
+		wm:          wm,
 		timestamper: timestamper,
 		mtCap:       mtCap,
 	}
+	cse.bpp = newBPP(mt)
 	if h < mtCap {
-		cse.Consensus, err = newFastSyncer(h+1, mtCap-1, c, cse)
+		cse.Consensus = newFastSyncer(h+1, mtCap-1, c, cse)
 	} else {
-		cse.bpp, err = newBPP(c.Database())
-		if err != nil {
-			return nil, err
-		}
-		cse.Consensus = consensus.NewConsensus(c, walDir, timestamper, cse.bpp)
-	}
-	if err != nil {
-		return nil, err
+		cse.Consensus = consensus.New(c, walDir, wm, timestamper, cse.bpp)
 	}
 	return cse, nil
 }
@@ -92,10 +101,5 @@ func (c *wrapper) upgrade() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var err error
-	c.bpp, err = newBPP(c.c.Database())
-	if err != nil {
-		c.c.Logger().Panicf("cannot upgrade consensus %+v", err)
-	}
-	c.Consensus = consensus.NewConsensus(c.c, c.walDir, c.timestamper, c.bpp)
+	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, c.bpp)
 }

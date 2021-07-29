@@ -24,18 +24,22 @@ import (
 )
 
 type bpp struct {
-	mt hexary.MerkleTree
+	hexary.MerkleTree
 }
 
-func newBPP(dbase db.Database) (*bpp, error) {
+func newBPP(mt hexary.MerkleTree) *bpp {
+	return &bpp{ mt }
+}
+
+func newBPPWithDB(dbase db.Database) (*bpp, error) {
 	bpp := new(bpp)
-	if err := bpp.init(dbase); err != nil {
+	if err := bpp.initWithDB(dbase); err != nil {
 		return nil, err
 	}
 	return bpp, nil
 }
 
-func (bpp *bpp) init(dbase db.Database) error {
+func (bpp *bpp) initWithDB(dbase db.Database) error {
 	bk, err := dbase.GetBucket(icdb.BlockMerkle)
 	if err != nil {
 		return err
@@ -44,15 +48,15 @@ func (bpp *bpp) init(dbase db.Database) error {
 	if err != nil {
 		return err
 	}
-	bpp.mt = mt
+	bpp.MerkleTree = mt
 	return nil
 }
 
 func (bpp *bpp) GetBlockProof(height int64, opt int32) ([]byte, error) {
-	if height >= bpp.mt.Cap() {
+	if height >= bpp.Cap() {
 		return nil, nil
 	}
-	proof, err := bpp.mt.Prove(height, int(opt))
+	proof, err := bpp.Prove(height, int(opt))
 	if err != nil {
 		return nil, err
 	}
