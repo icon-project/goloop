@@ -28,7 +28,7 @@ type Engine interface {
 	Round() int32
 	Step() step
 
-	ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool) (int, error)
+	ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error)
 	ReceiveVoteListMessage(msg *voteListMessage, unicast bool) error
 	ReceiveBlock(br fastsync.BlockResult)
 }
@@ -40,9 +40,9 @@ type Syncer interface {
 }
 
 var syncerProtocols = []module.ProtocolInfo{
-	protoBlockPart,
-	protoRoundState,
-	protoVoteList,
+	ProtoBlockPart,
+	ProtoRoundState,
+	ProtoVoteList,
 }
 
 type peer struct {
@@ -94,7 +94,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg.VoteList = vl
 			p.BlockPartsMask = newBitArray(e.GetCommitBlockParts(p.Height).Parts())
 			p.log.Tracef("PC for commit %v\n", p.Height)
-			return protoVoteList, msg
+			return ProtoVoteList, msg
 		}
 		partSet := e.GetCommitBlockParts(p.Height)
 		mask := p.BlockPartsMask.Copy()
@@ -111,7 +111,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg.Index = uint16(idx)
 		msg.BlockPart = part.Bytes()
 		p.BlockPartsMask.Set(idx)
-		return protoBlockPart, msg
+		return ProtoBlockPart, msg
 	}
 	if p.Height > e.Height() {
 		p.log.Tracef("higher peer height %v > %v\n", p.Height, e.Height())
@@ -127,7 +127,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg.VoteList = vl
 		p.peerRoundState = nil
 		p.log.Tracef("PC for round %v\n", e.Round())
-		return protoVoteList, msg
+		return ProtoVoteList, msg
 	} else if p.Round < e.Round() {
 		// TODO: check peer step
 		vl := e.GetPrecommits(e.Round() - 1)
@@ -135,7 +135,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg.VoteList = vl
 		p.peerRoundState = nil
 		p.log.Tracef("PC for round %v (prev round)\n", e.Round())
-		return protoVoteList, msg
+		return ProtoVoteList, msg
 	} else if p.Round == e.Round() {
 		rs := e.GetRoundState()
 		p.log.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
@@ -148,7 +148,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			p.peerRoundState = nil
-			return protoVoteList, msg
+			return ProtoVoteList, msg
 		}
 	}
 
@@ -304,7 +304,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	}
 	var idx int
 	switch m := msg.(type) {
-	case *blockPartMessage:
+	case *BlockPartMessage:
 		idx, err = s.engine.ReceiveBlockPartMessage(m, true)
 		if idx < 0 && err != nil {
 			return false, err
@@ -316,7 +316,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 				p.wakeUp()
 			}
 		}
-	case *roundStateMessage:
+	case *RoundStateMessage:
 		for _, p := range s.peers {
 			if p.id.Equal(id) {
 				p.setRoundState(&m.peerRoundState)
@@ -425,11 +425,11 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	if id == nil {
 		if len(s.peers) > 0 {
 			s.log.Debugf("neighborcastRoundState %v\n", msg)
-			err = s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
+			err = s.ph.Broadcast(ProtoRoundState, bs, module.BROADCAST_NEIGHBOR)
 		}
 	} else {
 		s.log.Debugf("sendRoundState %v To:%v\n", msg, common.HexPre(id.Bytes()))
-		err = s.ph.Unicast(protoRoundState, bs, id)
+		err = s.ph.Unicast(ProtoRoundState, bs, id)
 	}
 	if err != nil {
 		s.log.Warnf("doSendRoundStateMessage: %+v\n", err)

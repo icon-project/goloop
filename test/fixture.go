@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/platform/basic"
 )
@@ -49,61 +50,102 @@ type Fixture struct {
 	LastBlock module.Block
 }
 
-type FixtureOption struct {
-	Prefix      string
-	Dbase       db.Database
-	CVSD        module.CommitVoteSetDecoder
-	NewPlatform func(plt service.Platform) service.Platform
-	NewSM       func(sm *ServiceManager) module.ServiceManager
-	NewBM       func(bm module.BlockManager, c *Chain) module.BlockManager
-	NewCS       func(cs module.Consensus) module.Consensus
+type FixtureConfig struct {
+	T            *testing.T
+	MerkleRoot   []byte
+	MerkleLeaves int64
+	Prefix       string
+	Dbase        db.Database
+	CVSD         module.CommitVoteSetDecoder
+	NewPlatform  func(ctx *FixtureContext) service.Platform
+	NewSM        func(ctx *FixtureContext) module.ServiceManager
+	NewBM        func(ctx *FixtureContext) module.BlockManager
+	NewCS        func(ctx *FixtureContext) module.Consensus
 }
 
-func (o *FixtureOption) fillDefault() *FixtureOption {
-	var res FixtureOption
-	if o != nil {
-		res = *o
-	}
-	if len(res.Prefix) == 0 {
-		res.Prefix = "goloop-block-fixture"
-	}
-	if res.Dbase == nil {
-		res.Dbase = db.NewMapDB()
-	}
-	if res.CVSD == nil {
-		res.CVSD = consensus.NewCommitVoteSetFromBytes
-	}
-	if res.NewPlatform == nil {
-		res.NewPlatform = func(plt service.Platform) service.Platform {
-			return plt
-		}
-	}
-	if res.NewSM == nil {
-		res.NewSM = func(sm *ServiceManager) module.ServiceManager {
-			return sm
-		}
-	}
-	if res.NewBM == nil {
-		res.NewBM = func(bm module.BlockManager, c *Chain) module.BlockManager {
+type FixtureContext struct {
+	C        *Chain
+	Config   *FixtureConfig
+	Base     string
+	Platform service.Platform
+	CM       contract.ContractManager
+	EM       eeproxy.Manager
+}
+
+func NewFixtureConfig(t *testing.T) *FixtureConfig {
+	return &FixtureConfig{
+		T:      t,
+		Prefix: "goloop-block-fixture",
+		Dbase:  db.NewMapDB(),
+		CVSD:   consensus.NewCommitVoteSetFromBytes,
+		NewPlatform: func(ctx *FixtureContext) service.Platform {
+			return basic.Platform
+		},
+		NewSM: func(ctx *FixtureContext) module.ServiceManager {
+			return NewServiceManager(ctx.C, ctx.Platform, ctx.CM, ctx.EM)
+		},
+		NewBM: func(ctx *FixtureContext) module.BlockManager {
+			bm, err := block.NewManager(ctx.C, nil, nil)
+			assert.NoError(ctx.Config.T, err)
 			return bm
-		}
-	}
-	if res.NewCS == nil {
-		res.NewCS = func(cs module.Consensus) module.Consensus {
+		},
+		NewCS: func(ctx *FixtureContext) module.Consensus {
+			wm := NewWAL()
+			wal := path.Join(ctx.Base, "wal")
+			cs := consensus.New(ctx.C, wal, wm, nil, nil)
+			assert.NotNil(ctx.Config.T, cs)
 			return cs
-		}
+		},
+	}
+}
+
+type FixtureOption func(cf *FixtureConfig) *FixtureConfig
+
+func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
+	res := *cf
+	if cf2.T != nil {
+		res.T = cf2.T
+	}
+	if cf2.MerkleRoot != nil {
+		res.MerkleRoot = cf2.MerkleRoot
+		res.MerkleLeaves = cf2.MerkleLeaves
+	}
+	if len(cf2.Prefix) != 0 {
+		res.Prefix = cf2.Prefix
+	}
+	if cf2.Dbase != nil {
+		res.Dbase = cf2.Dbase
+	}
+	if cf2.CVSD != nil {
+		res.CVSD = cf2.CVSD
+	}
+	if cf2.NewPlatform != nil {
+		res.NewPlatform = cf2.NewPlatform
+	}
+	if cf2.NewSM != nil {
+		res.NewSM = cf2.NewSM
+	}
+	if cf2.NewBM != nil {
+		res.NewBM = cf2.NewBM
+	}
+	if cf2.NewCS != nil {
+		res.NewCS = cf2.NewCS
 	}
 	return &res
 }
 
-func NewFixture(t *testing.T, opt *FixtureOption) *Fixture {
-	opt = opt.fillDefault()
-	base, err := ioutil.TempDir("", opt.Prefix)
+func NewFixture(t *testing.T, opt ...FixtureOption) *Fixture {
+	cf := NewFixtureConfig(t)
+	for _, o := range opt {
+		cf = o(cf)
+	}
+	base, err := ioutil.TempDir("", cf.Prefix)
 	assert.NoError(t, err)
-	dbase := opt.Dbase
+	dbase := cf.Dbase
 	logger := log.New()
-	c, err := NewChain(t, dbase, logger, opt.CVSD)
+	c, err := NewChain(t, dbase, logger, cf.CVSD)
 	assert.NoError(t, err)
+	c.Logger().SetLevel(log.TraceLevel)
 
 	// set up sm
 	RegisterTransactionFactory()
@@ -111,7 +153,13 @@ func NewFixture(t *testing.T, opt *FixtureOption) *Fixture {
 		ContractPath = "contract"
 		EESocketPath = "ee.sock"
 	)
-	plt := opt.NewPlatform(basic.Platform)
+	ctx := &FixtureContext{
+		C:      c,
+		Config: cf,
+		Base:   base,
+	}
+	plt := cf.NewPlatform(ctx)
+	ctx.Platform = plt
 	cm, err := plt.NewContractManager(c.Database(), path.Join(base, ContractPath), c.Logger())
 	assert.NoError(t, err)
 	ee, err := eeproxy.AllocEngines(c.Logger(), "python")
@@ -125,19 +173,15 @@ func NewFixture(t *testing.T, opt *FixtureOption) *Fixture {
 	err = em.SetInstances(0, 0, 0)
 	assert.NoError(t, err)
 
-	sm := NewServiceManager(c, plt, cm, em)
-	c.sm = opt.NewSM(sm)
+	ctx.CM = cm
+	ctx.EM = em
+	c.sm = NewServiceManager(c, plt, cm, em)
 
-	bm, err := block.NewManager(c, nil, nil)
-	assert.NoError(t, err)
-	c.bm = opt.NewBM(bm, c)
+	c.bm = cf.NewBM(ctx)
 	lastBlk, err := c.bm.GetLastBlock()
 	assert.NoError(t, err)
 
-	wm := NewWAL()
-	cs := consensus.New(c, base, wm, nil, nil)
-	assert.NotNil(t, cs)
-	c.cs = opt.NewCS(cs)
+	c.cs = cf.NewCS(ctx)
 
 	return &Fixture{
 		T:         t,

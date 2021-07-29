@@ -14,11 +14,11 @@ import (
 var msgCodec = codec.BC
 
 const (
-	protoProposal module.ProtocolInfo = iota << 8
-	protoBlockPart
-	protoVote
-	protoRoundState
-	protoVoteList
+	ProtoProposal module.ProtocolInfo = iota << 8
+	ProtoBlockPart
+	ProtoVote
+	ProtoRoundState
+	ProtoVoteList
 )
 
 type protocolConstructor struct {
@@ -27,11 +27,11 @@ type protocolConstructor struct {
 }
 
 var protocolConstructors = [...]protocolConstructor{
-	{protoProposal, func() message { return newProposalMessage() }},
-	{protoBlockPart, func() message { return newBlockPartMessage() }},
-	{protoVote, func() message { return newVoteMessage() }},
-	{protoRoundState, func() message { return newRoundStateMessage() }},
-	{protoVoteList, func() message { return newVoteListMessage() }},
+	{ProtoProposal, func() message { return NewProposalMessage() }},
+	{ProtoBlockPart, func() message { return newBlockPartMessage() }},
+	{ProtoVote, func() message { return newVoteMessage() }},
+	{ProtoRoundState, func() message { return newRoundStateMessage() }},
+	{ProtoVoteList, func() message { return newVoteListMessage() }},
 }
 
 func unmarshalMessage(sp uint16, bs []byte) (message, error) {
@@ -89,18 +89,18 @@ func (p *proposal) bytes() []byte {
 	return bs
 }
 
-type proposalMessage struct {
+type ProposalMessage struct {
 	signedBase
 	proposal
 }
 
-func newProposalMessage() *proposalMessage {
-	msg := &proposalMessage{}
+func NewProposalMessage() *ProposalMessage {
+	msg := &ProposalMessage{}
 	msg.signedBase._byteser = msg
 	return msg
 }
 
-func (msg *proposalMessage) verify() error {
+func (msg *ProposalMessage) verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
@@ -110,15 +110,15 @@ func (msg *proposalMessage) verify() error {
 	return msg.signedBase.verify()
 }
 
-func (msg *proposalMessage) subprotocol() uint16 {
-	return uint16(protoProposal)
+func (msg *ProposalMessage) subprotocol() uint16 {
+	return uint16(ProtoProposal)
 }
 
-func (msg *proposalMessage) String() string {
+func (msg *ProposalMessage) String() string {
 	return fmt.Sprintf("ProposalMessage{H:%d R:%d BPSID:%v Addr:%v}", msg.Height, msg.Round, msg.BlockPartSetID, common.HexPre(msg.address().ID()))
 }
 
-type blockPartMessage struct {
+type BlockPartMessage struct {
 	// V1 Fields
 	// for debugging
 	Height int64
@@ -130,38 +130,38 @@ type blockPartMessage struct {
 	Nonce int32
 }
 
-func newBlockPartMessage() *blockPartMessage {
-	return &blockPartMessage{}
+func newBlockPartMessage() *BlockPartMessage {
+	return &BlockPartMessage{}
 }
 
-func (msg *blockPartMessage) verify() error {
+func (msg *BlockPartMessage) verify() error {
 	if msg.Height <= 0 {
 		return errors.Errorf("bad height %v", msg.Height)
 	}
 	return nil
 }
 
-func (msg *blockPartMessage) subprotocol() uint16 {
-	return uint16(protoBlockPart)
+func (msg *BlockPartMessage) subprotocol() uint16 {
+	return uint16(ProtoBlockPart)
 }
 
-func (msg *blockPartMessage) String() string {
+func (msg *BlockPartMessage) String() string {
 	return fmt.Sprintf("BlockPartMessage{H:%d,I:%d}", msg.Height, msg.Index)
 }
 
-type voteType byte
+type VoteType byte
 
 const (
-	voteTypePrevote voteType = iota
-	voteTypePrecommit
+	VoteTypePrevote VoteType = iota
+	VoteTypePrecommit
 	numberOfVoteTypes
 )
 
-func (vt voteType) String() string {
+func (vt VoteType) String() string {
 	switch vt {
-	case voteTypePrevote:
+	case VoteTypePrevote:
 		return "PreVote"
-	case voteTypePrecommit:
+	case VoteTypePrecommit:
 		return "PreCommit"
 	default:
 		return "Unknown"
@@ -170,7 +170,7 @@ func (vt voteType) String() string {
 
 type voteBase struct {
 	_HR
-	Type           voteType
+	Type           VoteType
 	BlockID        []byte
 	BlockPartSetID *PartSetID
 }
@@ -217,14 +217,15 @@ func newVoteMessage() *voteMessage {
 	return msg
 }
 
-func NewPrecommitMessage(
+func NewVoteMessage(
 	w module.Wallet,
-	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
+	voteType VoteType, height int64, round int32, id []byte,
+	partSetID *PartSetID, ts int64,
 ) *voteMessage {
 	vm := newVoteMessage()
 	vm.Height = height
 	vm.Round = round
-	vm.Type = voteTypePrecommit
+	vm.Type = voteType
 	vm.BlockID = id
 	vm.BlockPartSetID = partSetID
 	vm.Timestamp = ts
@@ -232,18 +233,27 @@ func NewPrecommitMessage(
 	return vm
 }
 
+func NewPrecommitMessage(
+	w module.Wallet,
+	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
+) *voteMessage {
+	return NewVoteMessage(
+		w, VoteTypePrecommit, height, round, id, partSetID, ts,
+	)
+}
+
 func (msg *voteMessage) verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
-	if msg.Type < voteTypePrevote || msg.Type > numberOfVoteTypes {
+	if msg.Type < VoteTypePrevote || msg.Type > numberOfVoteTypes {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
 }
 
 func (msg *voteMessage) subprotocol() uint16 {
-	return uint16(protoVote)
+	return uint16(ProtoVote)
 }
 
 func (msg *voteMessage) String() string {
@@ -262,31 +272,31 @@ func (prs peerRoundState) String() string {
 	return fmt.Sprintf("PeerRoundState{H:%v R:%v PV:%v PC:%v BP:%v Sync:%t}", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask, prs.Sync)
 }
 
-type roundStateMessage struct {
+type RoundStateMessage struct {
 	peerRoundState
 	Timestamp int64
 	// TODO: add LastMaskType, LastIndex
 }
 
-func (msg roundStateMessage) String() string {
+func (msg RoundStateMessage) String() string {
 	return fmt.Sprintf("PeerRoundStateMessage{H:%v R:%v PV:%v PC:%v BP:%v Sync:%t}", msg.Height, msg.Round, msg.PrevotesMask, msg.PrecommitsMask, msg.BlockPartsMask, msg.Sync)
 }
 
-func newRoundStateMessage() *roundStateMessage {
-	return &roundStateMessage{
+func newRoundStateMessage() *RoundStateMessage {
+	return &RoundStateMessage{
 		Timestamp: time.Now().UnixNano(),
 	}
 }
 
-func (msg *roundStateMessage) verify() error {
+func (msg *RoundStateMessage) verify() error {
 	if err := msg.peerRoundState._HR.verify(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (msg *roundStateMessage) subprotocol() uint16 {
-	return uint16(protoRoundState)
+func (msg *RoundStateMessage) subprotocol() uint16 {
+	return uint16(ProtoRoundState)
 }
 
 type voteListMessage struct {
@@ -309,5 +319,5 @@ func (msg voteListMessage) String() string {
 }
 
 func (msg *voteListMessage) subprotocol() uint16 {
-	return uint16(protoVoteList)
+	return uint16(ProtoVoteList)
 }

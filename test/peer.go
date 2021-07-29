@@ -28,6 +28,11 @@ type Peer interface {
 	notifyLeave(p Peer, mpi module.ProtocolInfo)
 }
 
+func PeerConnect(p1 Peer, p2 Peer) {
+	p1.attach(p2)
+	p2.attach(p1)
+}
+
 type SendType int
 
 const (

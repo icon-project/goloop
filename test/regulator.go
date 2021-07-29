@@ -34,11 +34,11 @@ func (r *regulatorImpl) OnPropose(now time.Time) {
 }
 
 func (r *regulatorImpl) CommitTimeout() time.Duration {
-	panic("not implemented")
+	return 50 * time.Millisecond
 }
 
 func (r *regulatorImpl) MinCommitTimeout() time.Duration {
-	panic("not implemented")
+	return 50 * time.Millisecond
 }
 
 func (r *regulatorImpl) OnTxExecution(count int, ed time.Duration, fd time.Duration) {

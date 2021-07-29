@@ -74,3 +74,9 @@ class ResultGenerator(IconScoreBase):
         result['address'] = addr
         result['bytes'] = self._bytes_db[addr][index]
         return result
+
+    @external(readonly=True)
+    def get_invalid_key(self) -> dict:
+        return {
+            1: 100
+        }

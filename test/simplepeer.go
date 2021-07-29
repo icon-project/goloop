@@ -33,20 +33,32 @@ type SimplePeer struct {
 	p         Peer
 	handlers  []*SimplePeerHandler
 	joinedMPI []module.ProtocolInfo
+	w         module.Wallet
 }
 
 func NewPeer(t *testing.T) *SimplePeer {
+	w := wallet.New()
 	return &SimplePeer{
 		t:  t,
-		id: network.NewPeerIDFromAddress(wallet.New().Address()),
+		id: network.NewPeerIDFromAddress(w.Address()),
+		w:  w,
 	}
 }
 
-func NewPeerWithAddress(t *testing.T, a module.Address) *SimplePeer {
+func NewPeerWithAddress(t *testing.T, w module.Wallet) *SimplePeer {
 	return &SimplePeer{
 		t:  t,
-		id: network.NewPeerIDFromAddress(a),
+		id: network.NewPeerIDFromAddress(w.Address()),
+		w:  w,
 	}
+}
+
+func (p *SimplePeer) Wallet() module.Wallet {
+	return p.w
+}
+
+func (p *SimplePeer) Address() module.Address {
+	return p.w.Address()
 }
 
 func (p *SimplePeer) attach(p2 Peer) {
@@ -80,8 +92,7 @@ func (p *SimplePeer) ID() module.PeerID {
 }
 
 func (p *SimplePeer) Connect(p2 Peer) *SimplePeer {
-	p2.attach(p)
-	p.attach(p2)
+	PeerConnect(p, p2)
 	return p
 }
 
@@ -94,6 +105,7 @@ func (p *SimplePeer) Join(mpi module.ProtocolInfo) *SimplePeerHandler {
 		rCh: make(chan packetEntry, chanSize),
 	}
 	p.handlers = append(p.handlers, h)
+	p.joinedMPI = append(p.joinedMPI, mpi)
 	return h
 }
 
@@ -101,6 +113,14 @@ type SimplePeerHandler struct {
 	p   *SimplePeer
 	mpi module.ProtocolInfo
 	rCh chan packetEntry
+}
+
+func (h *SimplePeerHandler) Wallet() module.Wallet {
+	return h.p.w
+}
+
+func (h *SimplePeerHandler) Address() module.Address {
+	return h.p.w.Address()
 }
 
 func (h *SimplePeerHandler) Peer() *SimplePeer {
@@ -124,12 +144,28 @@ func (h *SimplePeerHandler) Unicast(
 	h.p.p.notifyPacket(pk, cb)
 }
 
-func (h *SimplePeerHandler) ReceiveUnicast(pi module.ProtocolInfo, m interface{}) {
+func (h *SimplePeerHandler) AssertReceiveUnicast(pi module.ProtocolInfo, m interface{}) {
 	pe := <-h.rCh
 	assert.Equal(h.p.t, SendTypeUnicast, pe.pk.SendType)
 	bs := codec.MustMarshalToBytes(m)
 	assert.Equal(h.p.t, bs, pe.pk.Data)
 	assert.Equal(h.p.t, pi, pe.pk.PI)
+}
+
+func (h *SimplePeerHandler) Receive(
+	pi module.ProtocolInfo,
+	expMsg interface{},
+	outMsg interface{},
+) *Packet {
+	pe := <-h.rCh
+	assert.Equal(h.p.t, pi, pe.pk.PI)
+	if expMsg != nil {
+		bs := codec.MustMarshalToBytes(expMsg)
+		assert.Equal(h.p.t, bs, pe.pk.Data)
+	}
+	_, err := codec.UnmarshalFromBytes(pe.pk.Data, outMsg)
+	assert.NoError(h.p.t, err)
+	return pe.pk
 }
 
 func (h *SimplePeerHandler) Multicast(

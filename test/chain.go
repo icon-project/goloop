@@ -208,7 +208,6 @@ func NewChain(
 ) (*Chain, error) {
 	w := wallet.New()
 	return &Chain{
-		t:         t,
 		database:  database,
 		wallet:    w,
 		log:       logger,
