@@ -34,6 +34,7 @@ type (
 		GetProxy(eeType state.EEType) eeproxy.Proxy
 		Dispose()
 		StepUsed() *big.Int
+		SumOfStepUsed() *big.Int
 		StepAvailable() *big.Int
 		ApplySteps(t state.StepType, n int) bool
 		ApplyCallSteps() error
@@ -451,6 +452,17 @@ func (cc *callContext) StepUsed() *big.Int {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	return cc.frame.getStepUsed()
+}
+
+func (cc *callContext) SumOfStepUsed() *big.Int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	used := new(big.Int)
+	for frame := cc.frame; frame != nil; frame = frame.parent {
+		used.Add(used, frame.getStepUsed())
+	}
+	return used
 }
 
 func (cc *callContext) ResetStepLimit(limit *big.Int) {
