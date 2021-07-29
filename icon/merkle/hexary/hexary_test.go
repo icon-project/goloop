@@ -34,8 +34,6 @@ func newMapBucket() db.Bucket {
 }
 
 const (
-	accumulatorKey = "accumulator"
-	merkleTreeKey = "merkleTree"
 	maxHash    = 16*16 + 1
 	cacheMax   = 64
 )
@@ -43,7 +41,7 @@ const (
 func TestBasics(t *testing.T) {
 	hashes := make([][]byte, maxHash)
 	perm := newMapBucket()
-	ac, err := hexary.NewAccumulator(perm, newMapBucket(), accumulatorKey)
+	ac, err := hexary.NewAccumulator(perm, newMapBucket(), "")
 	assert.NoError(t, err)
 	for i:=int64(0); i < maxHash; i++ {
 		bs := codec.MustMarshalToBytes(&i)
@@ -52,7 +50,7 @@ func TestBasics(t *testing.T) {
 		err = ac.Add(hashes[i])
 		assert.NoError(t, err)
 	}
-	rootHash, length, err := ac.Finalize(merkleTreeKey)
+	rootHash, length, err := ac.Finalize("")
 	assert.NoError(t, err)
 
 	prover, err := hexary.NewMerkleTree(perm, rootHash, length, cacheMax)
@@ -99,7 +97,7 @@ func TestProofLen(t *testing.T) {
 	hashes := make([][]byte, maxHash)
 
 	perm := newMapBucket()
-	ac, err := hexary.NewAccumulator(perm, newMapBucket(), accumulatorKey)
+	ac, err := hexary.NewAccumulator(perm, newMapBucket(), "")
 	assert.NoError(t, err)
 	for i:=int64(0); i < maxHash; i++ {
 		bs := codec.MustMarshalToBytes(&i)
@@ -107,7 +105,7 @@ func TestProofLen(t *testing.T) {
 		err = ac.Add(hashes[i])
 		assert.NoError(t, err)
 	}
-	rootHash, length, err := ac.Finalize(merkleTreeKey)
+	rootHash, length, err := ac.Finalize("")
 	assert.NoError(t, err)
 
 	prover, err := hexary.NewMerkleTree(perm, rootHash, length, cacheMax)

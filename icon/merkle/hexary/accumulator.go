@@ -21,6 +21,10 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
+const (
+	defaultAccumulatorKey = "accumulator"
+)
+
 type Accumulator interface {
 	Add(hash []byte) error
 
@@ -120,6 +124,9 @@ func NewAccumulator(
 		treeBucket:         treeBucket,
 		accumulatorBucket:  db.NewCodedBucketFromBucket(accumulatorBucket, nil),
 		accumulatorDataKey: []byte(accumulatorDataKey),
+	}
+	if len(accumulatorDataKey) == 0 {
+		accumulatorDataKey = defaultAccumulatorKey
 	}
 	err := ba.accumulatorBucket.Get(db.Raw(accumulatorDataKey), &ba.data)
 	if err != nil && !errors.NotFoundError.Equals(err) {
