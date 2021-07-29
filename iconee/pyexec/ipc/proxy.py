@@ -326,6 +326,8 @@ class ServiceManagerProxy:
         elif isinstance(o, dict):
             m = {}
             for k, v in o.items():
+                if not isinstance(k, str):
+                    raise Exception(f'InvalidKeyType: {type(k)}')
                 m[k] = self.encode_any(v)
             return TypeTag.DICT, m
         elif isinstance(o, list) or isinstance(o, tuple):
