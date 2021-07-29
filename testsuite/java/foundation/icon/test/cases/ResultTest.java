@@ -205,4 +205,16 @@ public class ResultTest extends TestBase {
         }
         LOG.infoExiting();
     }
+
+    @Test
+    void checkInvalidKeyReturns() throws Exception {
+        LOG.infoEntering("checkInvalidKeyReturns");
+        try {
+            score1.call("get_invalid_key", null);
+        } catch (RpcError e) {
+            assertEquals(-30001, e.getCode());
+            LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+        }
+        LOG.infoExiting();
+    }
 }
