@@ -25,7 +25,7 @@ const (
 	UseMPTOnEvents
 	UseCompactAPIInfo
 	AutoAcceptGovernance
-	ResetStepOnFailure
+	LegacyFeeCharge
 	LegacyFallbackCheck
 	LegacyContentCount
 	LegacyBalanceCheck
@@ -36,7 +36,7 @@ const (
 
 const (
 	NoRevision       = 0
-	BackwardRevision = AutoAcceptGovernance | ResetStepOnFailure | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck | LegacyInputJSON | LegacyNoTimeout
+	BackwardRevision = AutoAcceptGovernance | LegacyFeeCharge | LegacyFallbackCheck | LegacyContentCount | LegacyBalanceCheck | LegacyInputJSON | LegacyNoTimeout
 	AllRevision      = LastRevisionBit - 1
 	LatestRevision   = AllRevision ^ BackwardRevision
 )
@@ -69,8 +69,8 @@ func (r Revision) AutoAcceptGovernance() bool {
 	return (r & AutoAcceptGovernance) != 0
 }
 
-func (r Revision) ResetStepOnFailure() bool {
-	return (r & ResetStepOnFailure) != 0
+func (r Revision) LegacyFeeCharge() bool {
+	return (r & LegacyFeeCharge) != 0
 }
 
 func (r Revision) LegacyFallbackCheck() bool {
