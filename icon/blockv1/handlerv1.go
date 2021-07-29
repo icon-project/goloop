@@ -55,7 +55,7 @@ func (b *handler) NewBlock(
 	if nextValidators == nil || nextValidators.Len() == 0 {
 		return NewBlockV11(
 			height, ts, proposer, prev, logsBloom, result, patchTransactions,
-			normalTransactions,
+			normalTransactions, nextValidators,
 		)
 	}
 	return NewBlockV13(

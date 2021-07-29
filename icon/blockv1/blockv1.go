@@ -97,7 +97,6 @@ type blockDetail interface {
 	BlockVotes() *blockv0.BlockVoteList
 	LeaderVotes() *blockv0.LeaderVoteList
 	NextValidatorsHash() []byte
-	NextValidators() module.ValidatorList
 	NewBlock(vl module.ValidatorList) module.Block
 }
 
@@ -117,6 +116,7 @@ type Block struct {
 	_transactionsRoot  []byte
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
+	_nextValidators    module.ValidatorList
 }
 
 func (b *Block) Version() int {
@@ -245,6 +245,10 @@ func (b *Block) VerifyTimestamp(prev module.BlockData, prevVoters module.Validat
 	return nil
 }
 
+func (b *Block) NextValidators() module.ValidatorList {
+	return b._nextValidators
+}
+
 type blockV11 struct {
 	Block
 }
@@ -331,12 +335,9 @@ func (b *blockV11) NextValidatorsHash() []byte {
 	return nil
 }
 
-func (b *blockV11) NextValidators() module.ValidatorList {
-	return nil
-}
-
 func (b *blockV11) NewBlock(vl module.ValidatorList) module.Block {
 	res := *b
+	res._nextValidators = vl
 	return &res
 }
 
@@ -349,7 +350,6 @@ type blockV13 struct {
 	nextRepsRoot       []byte
 	logsBloomV0        module.LogsBloom
 	nextLeader         module.Address
-	_nextValidators    module.ValidatorList
 	_receipts          module.ReceiptList
 	blockVotes         *blockv0.BlockVoteList
 	leaderVotes        *blockv0.LeaderVoteList
@@ -432,10 +432,6 @@ func (b *blockV13) BlockVotes() *blockv0.BlockVoteList {
 	return b.blockVotes
 }
 
-func (b *blockV13) NextValidators() module.ValidatorList {
-	return b._nextValidators
-}
-
 func (b *blockV13) NewBlock(vl module.ValidatorList) module.Block {
 	res := *b
 	res._nextValidators = vl
@@ -508,6 +504,7 @@ func NewBlockV11(
 	logsBloom module.LogsBloom, result []byte,
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
+	nextValidators module.ValidatorList,
 ) *Block {
 	var prevHash []byte
 	var prevID []byte
@@ -528,14 +525,17 @@ func NewBlockV11(
 			versionV0:          "0.1a",
 			patchTransactions:  patchTransactions,
 			normalTransactions: normalTransactions,
+			_nextValidators:    nextValidators,
 		},
 	}
 	blkV1.blockDetail = blkV1
 	return &blkV1.Block
 }
 
-func newBlockV11FromHeader(dbase db.Database, header *HeaderFormat, patches module.TransactionList,
-	normalTxs module.TransactionList) (*Block, error) {
+func newBlockV11FromHeader(
+	dbase db.Database, header *HeaderFormat, patches module.TransactionList,
+	normalTxs module.TransactionList, nextValidators module.ValidatorList,
+) (*Block, error) {
 	proposer, err := newProposer(header.Proposer)
 	if err != nil {
 		return nil, err
@@ -553,6 +553,7 @@ func newBlockV11FromHeader(dbase db.Database, header *HeaderFormat, patches modu
 			versionV0:          header.VersionV0,
 			patchTransactions:  patches,
 			normalTransactions: normalTxs,
+			_nextValidators:    nextValidators,
 		},
 	}
 	blk.Block.blockDetail = blk
@@ -568,7 +569,9 @@ func newBlockV11FromBlockFormat(dbase db.Database, format *Format) (*Block, erro
 	if err != nil {
 		return nil, err
 	}
-	return newBlockV11FromHeader(dbase, &format.HeaderFormat, patches, normalTxs)
+	return newBlockV11FromHeader(
+		dbase, &format.HeaderFormat, patches, normalTxs, nil,
+	)
 }
 
 func newBlockV11FromHeaderFormat(dbase db.Database, header *HeaderFormat) (*Block, error) {
@@ -580,7 +583,13 @@ func newBlockV11FromHeaderFormat(dbase db.Database, header *HeaderFormat) (*Bloc
 	if normalTxs == nil {
 		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
 	}
-	return newBlockV11FromHeader(dbase, header, patches, normalTxs)
+	nextValidators, err := state.ValidatorSnapshotFromHash(dbase, header.NextValidatorsHash)
+	if err != nil {
+		return nil, err
+	}
+	return newBlockV11FromHeader(
+		dbase, header, patches, normalTxs, nextValidators,
+	)
 }
 
 func newBlockV13FromHeader(
@@ -613,6 +622,7 @@ func newBlockV13FromHeader(
 			versionV0:          header.VersionV0,
 			patchTransactions:  patches,
 			normalTransactions: normalTxs,
+			_nextValidators:    nextValidators,
 		},
 		nextValidatorsHash: header.NextValidatorsHash,
 		stateHashV0:        header.StateHashV0,
@@ -621,7 +631,6 @@ func newBlockV13FromHeader(
 		nextRepsRoot:       header.NextRepsRoot,
 		logsBloomV0:        txresult.NewLogsBloomFromCompressed(header.LogsBloomV0),
 		nextLeader:         nextLeader,
-		_nextValidators:    nextValidators,
 		blockVotes:         blockVotes,
 		leaderVotes:        leaderVotes,
 	}
@@ -761,9 +770,9 @@ func NewBlockV13(
 			versionV0:          blockv0.Version03,
 			patchTransactions:  patchTransactions,
 			normalTransactions: normalTransactions,
+			_nextValidators:    nextValidators,
 		},
 		nextValidatorsHash: nextValidators.Hash(),
-		_nextValidators:    nextValidators,
 		logsBloomV0:        txresult.NewLogsBloom(nil),
 	}
 	blkV1.blockDetail = blkV1
@@ -795,6 +804,7 @@ func NewFromV0(
 				versionV0:          blk.Version(),
 				patchTransactions:  transaction.NewTransactionListFromSlice(dbase, nil),
 				normalTransactions: transaction.NewTransactionListFromSlice(dbase, txs),
+				_nextValidators:    tr.NextValidators(),
 			},
 		}
 		blkV1.blockDetail = blkV1
@@ -814,6 +824,7 @@ func NewFromV0(
 				versionV0:          blk.Version(),
 				patchTransactions:  transaction.NewTransactionListFromSlice(dbase, nil),
 				normalTransactions: transaction.NewTransactionListFromSlice(dbase, txs),
+				_nextValidators:    tr.NextValidators(),
 			},
 			nextValidatorsHash: tr.NextValidators().Hash(),
 			stateHashV0:        blk.StateHash(),
@@ -822,7 +833,6 @@ func NewFromV0(
 			nextRepsRoot:       blk.NextRepsHash(),
 			logsBloomV0:        blk.LogsBloom(),
 			nextLeader:         &nl,
-			_nextValidators:    tr.NextValidators(),
 			_receipts:          tr.NormalReceipts(),
 			blockVotes:         blk.PrevVotes(),
 			leaderVotes:        blk.LeaderVotes(),
