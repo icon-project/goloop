@@ -18,44 +18,29 @@ package icconsensus_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/icon/blockv0"
-	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/ictest"
-	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/test"
 )
 
-func TestConsensus_WithAccumulator(t *testing.T) {
+func TestConsensus_WithAccumulatorBasics(t *testing.T) {
 	gen := test.NewFixture(t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1)
 	defer gen.Close()
 
-	temp, err := gen.Chain.Database().GetBucket("temp")
-	assert.NoError(t, err)
-	mkl, err := gen.Chain.Database().GetBucket(icdb.BlockMerkle)
-	ac, err := hexary.NewAccumulator(mkl, temp, "")
 	const height = 10
-	// add genesis
-	err = ac.Add(gen.LastBlock.Hash())
-	assert.NoError(t, err)
-	for i:=1; i<height; i++ {
-		gen.ProposeFinalizeBlock((*blockv0.BlockVoteList)(nil))
-		err = ac.Add(gen.LastBlock.Hash())
-		assert.NoError(t, err)
-	}
-	root, leaves, err := ac.Finalize("")
-	assert.NoError(t, err)
+	root, leaves := ictest.NodeGenerateBlocksAndFinalizeMerkle(gen, height)
 
 	gen = test.NewFixture(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(root, leaves), ictest.UseDB(gen.Chain.Database()),
 	)
 	defer gen.Close()
+
+	var err error
 	for i:=0; i<height; i++ {
-		_, err = gen.BM.GetBlockByHeight(1)
+		_, err = gen.BM.GetBlockByHeight(int64(i))
 		assert.NoError(t, err)
 	}
 
@@ -73,10 +58,9 @@ func TestConsensus_WithAccumulator(t *testing.T) {
 
 	f.NM.Connect(gen.NM)
 
-	for f.CS.GetStatus().Height < height {
-		time.Sleep(50 * time.Millisecond)
-	}
-	blk, err := f.BM.GetLastBlock()
+	chn, err := f.BM.WaitForBlock(height-1)
 	assert.NoError(t, err)
+	blk := <-chn
 	assert.EqualValues(t, height-1, blk.Height())
+	assert.EqualValues(t, height, f.CS.GetStatus().Height)
 }
