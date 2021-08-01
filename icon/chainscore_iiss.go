@@ -230,10 +230,10 @@ func (s *chainScore) Ex_setDelegation(param []interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds); err != nil {
+	revision := s.cc.Revision().Value()
+	if err = es.SetDelegation(s.cc.BlockHeight(), s.from, ds, revision); err != nil {
 		return err
 	}
-	revision := s.cc.Revision().Value()
 	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
 		migrate.ReproduceUnstakeBugForDelegation(s.cc, s.log)
 	}

@@ -161,8 +161,9 @@ func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.E
 type ExtensionStateImpl struct {
 	database db.Database
 
-	pm     *PRepManager
-	logger log.Logger
+	pm            *PRepManager
+	logger        log.Logger
+	delegationBug []*icstate.DelegationBug
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -201,6 +202,15 @@ func (es *ExtensionStateImpl) Reset(isnapshot state.ExtensionSnapshot) {
 	es.Back1.Reset(snapshot.back1)
 	es.Back2.Reset(snapshot.back2)
 	es.Reward.Reset(snapshot.reward)
+
+	// TODO is it possible to replay only at last Reset() of TX
+	if err := es.replayDelegationBug(); err != nil {
+		panic(err)
+	}
+}
+
+func (es *ExtensionStateImpl) Release() {
+	es.delegationBug = nil
 }
 
 // ClearCache clear cache. It's called before executing first transaction
@@ -341,7 +351,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 	return jso, nil
 }
 
-func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations) error {
+func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations, revision int) error {
 	var err error
 	var account *icstate.AccountState
 	var delta map[string]*big.Int
@@ -358,9 +368,24 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
 	}
-
+	dBug := es.State.GetDelegationBug(from)
+	if dBug != nil {
+		delta = dBug.Delegations().Delta(ds)
+	}
 	if err = es.addEventDelegation(blockHeight, from, delta); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
+	}
+
+	if err = es.State.DeleteDelegationBug(from); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to delete DelegationBug")
+	}
+
+	if revision <= icmodule.Revision12 {
+		bug := icstate.NewDelegationBug(from, blockHeight, ds)
+		if es.delegationBug == nil {
+			es.delegationBug = make([]*icstate.DelegationBug, 0)
+		}
+		es.delegationBug = append(es.delegationBug, bug)
 	}
 
 	account.SetDelegation(ds)
@@ -962,4 +987,25 @@ func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, e
 func (es *ExtensionStateImpl) IsDecentralized() bool {
 	term := es.State.GetTermSnapshot()
 	return term != nil && term.IsDecentralized()
+}
+
+func (es *ExtensionStateImpl) replayDelegationBug() error {
+	var delta map[string]*big.Int
+	for i, bug := range es.delegationBug {
+		es.Logger().Tracef("Replay DelegationBug %d: %+v", i, bug)
+		oBug := es.State.GetDelegationBug(bug.Address())
+		if oBug == nil {
+			account := es.State.GetAccountState(bug.Address())
+			delta = account.Delegations().Delta(bug.Delegations())
+		} else {
+			delta = oBug.Delegations().Delta(bug.Delegations())
+		}
+		if err := es.addEventDelegation(bug.BlockHeight(), bug.Address(), delta); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation for DelegationBug replay")
+		}
+		if err := es.State.AddDelegationBug(bug); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add DelegationBug")
+		}
+	}
+	return nil
 }

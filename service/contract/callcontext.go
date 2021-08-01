@@ -446,6 +446,9 @@ func (cc *callContext) Dispose() {
 	if cc.executor != nil {
 		cc.executor.Release()
 	}
+	if cc.GetExtensionState() != nil {
+		cc.GetExtensionState().Release()
+	}
 }
 
 func (cc *callContext) StepUsed() *big.Int {

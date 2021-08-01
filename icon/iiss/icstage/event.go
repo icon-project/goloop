@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
@@ -164,6 +165,17 @@ func (vl VoteList) ToMap() map[string]*Vote {
 		m[icutils.ToKey(v.To())] = v
 	}
 	return m
+}
+
+func NewVoteListFromDelegations(delegations icstate.Delegations) VoteList {
+	var newVL VoteList
+
+	for _, d := range delegations {
+		vote := NewVote(common.AddressToPtr(d.To()), new(big.Int).Neg(d.Amount()))
+		newVL = append(newVL, vote)
+	}
+
+	return newVL
 }
 
 type EventVote struct {

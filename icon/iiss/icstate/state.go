@@ -708,3 +708,23 @@ func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
 
 	return CalcUnstakeLockPeriod(lMin, lMax, totalStake, totalSupply)
 }
+
+func (s *State) AddDelegationBug(d *DelegationBug) error {
+	dict := containerdb.NewDictDB(s.store, 1, DelegationBugPrefix)
+	o := icobject.New(TypeDelegationBug, d)
+	return dict.Set(d.Address(), o)
+}
+
+func (s *State) DeleteDelegationBug(addr module.Address) error {
+	dict := containerdb.NewDictDB(s.store, 1, DelegationBugPrefix)
+	return dict.Delete(addr)
+}
+
+func (s *State) GetDelegationBug(addr module.Address) *DelegationBug {
+	dict := containerdb.NewDictDB(s.store, 1, DelegationBugPrefix)
+	obj := dict.Get(addr)
+	if obj == nil {
+		return nil
+	}
+	return ToDelegationBug(obj.Object())
+}

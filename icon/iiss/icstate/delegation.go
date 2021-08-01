@@ -118,6 +118,23 @@ func (ds Delegations) Equal(ds2 Delegations) bool {
 	return true
 }
 
+func (ds Delegations) Delta(ds2 Delegations) map[string]*big.Int {
+	delta := make(map[string]*big.Int)
+
+	for _, d := range ds {
+		key := icutils.ToKey(d.To())
+		delta[key] = new(big.Int).Neg(d.Amount())
+	}
+	for _, d := range ds2 {
+		key := icutils.ToKey(d.To())
+		if delta[key] == nil {
+			delta[key] = new(big.Int)
+		}
+		delta[key].Add(delta[key], d.Amount())
+	}
+	return delta
+}
+
 func (ds Delegations) GetDelegationAmount() *big.Int {
 	total := new(big.Int)
 	for _, d := range ds {
