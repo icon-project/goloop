@@ -135,9 +135,7 @@ func (a *Address) SetTypeAndID(ic bool, id []byte) {
 }
 
 func NewAccountAddress(b []byte) *Address {
-	a := new(Address)
-	a.SetTypeAndID(false, b)
-	return a
+	return NewAddressWithTypeAndID(false, b)
 }
 
 func NewAddress(b []byte) (*Address, error) {
@@ -186,16 +184,12 @@ func AddressToPtr(addr module.Address) *Address {
 	if addrPtr, ok := addr.(*Address); ok {
 		return addrPtr
 	} else {
-		addrPtr = new(Address)
-		addrPtr.SetTypeAndID(addr.IsContract(), addr.ID())
-		return addrPtr
+		return NewAddressWithTypeAndID(addr.IsContract(), addr.ID())
 	}
 }
 
 func NewContractAddress(b []byte) *Address {
-	a := new(Address)
-	a.SetTypeAndID(true, b)
-	return a
+	return NewAddressWithTypeAndID(true, b)
 }
 
 func MustNewAddressFromString(s string) *Address {
@@ -274,14 +268,9 @@ func ToAddress(addr interface{}) *Address {
 		addr = ToAddress(a.Address())
 	}
 
-	if a, ok := addr.(*Address); ok {
-		return a
-	} else if a, ok := addr.(module.Address); ok {
-		res, err := NewAddress(a.Bytes())
-		if err != nil {
-			return nil
-		}
-		return res
+	if a, ok := addr.(module.Address); ok {
+		return AddressToPtr(a)
 	}
+	return nil
 	return nil
 }
