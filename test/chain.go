@@ -18,6 +18,7 @@ package test
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"testing"
 	"time"
@@ -25,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )
@@ -42,6 +42,7 @@ type Chain struct {
 	cs        module.Consensus
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
+	gsBytes   []byte
 }
 
 func (c *Chain) Database() db.Database {
@@ -96,10 +97,10 @@ func (c *Chain) TransactionTimeout() time.Duration {
 	return time.Second * 5
 }
 
-var genesis = []byte("{\n  \"accounts\": [\n    {\n      \"name\": \"god\",\n      \"address\": \"hx54f7853dc6481b670caf69c5a27c7c8fe5be8269\",\n      \"balance\": \"0x2961fff8ca4a62327800000\"\n    },\n    {\n      \"name\": \"treasury\",\n      \"address\": \"hx1000000000000000000000000000000000000000\",\n      \"balance\": \"0x0\"\n    }\n  ],\n  \"message\": \"A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \\\"to be\\\" but the fabric of the rhizome is the conjunction, \\\"and ... and ...and...\\\"This conjunction carries enough force to shake and uproot the verb \\\"to be.\\\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\\n\\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\\n\\n\\\"Hyperconnect the world\\\"\"\n}\n")
+var defaultGenesis = "{\n  \"accounts\": [\n    {\n      \"name\": \"god\",\n      \"address\": \"hx54f7853dc6481b670caf69c5a27c7c8fe5be8269\",\n      \"balance\": \"0x2961fff8ca4a62327800000\"\n    },\n    {\n      \"name\": \"treasury\",\n      \"address\": \"hx1000000000000000000000000000000000000000\",\n      \"balance\": \"0x0\"\n    }\n  ],\n  \"message\": \"A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \\\"to be\\\" but the fabric of the rhizome is the conjunction, \\\"and ... and ...and...\\\"This conjunction carries enough force to shake and uproot the verb \\\"to be.\\\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\\n\\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\\n\\n\\\"Hyperconnect the world\\\"\"\n}\n"
 
 func (c *Chain) Genesis() []byte {
-	return genesis
+	return c.gsBytes
 }
 
 func (c *Chain) GenesisStorage() module.GenesisStorage {
@@ -203,17 +204,25 @@ func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 }
 
 func NewChain(
-	t *testing.T, database db.Database, logger log.Logger,
+	t *testing.T,
+	w module.Wallet,
+	database db.Database,
+	logger log.Logger,
 	cvd module.CommitVoteSetDecoder,
+	gsStr string,
 ) (*Chain, error) {
-	w := wallet.New()
+	logger = logger.WithFields(log.Fields{
+		log.FieldKeyWallet: hex.EncodeToString(w.Address().ID()),
+	})
+	gsBytes := []byte(gsStr)
 	return &Chain{
 		database:  database,
 		wallet:    w,
 		log:       logger,
 		regulator: NewRegulator(),
 		nm:        NewNetworkManager(t, w.Address()),
-		gs:        gs.NewFromTx(genesis),
+		gs:        gs.NewFromTx(gsBytes),
 		cvd:       cvd,
+		gsBytes:   gsBytes,
 	}, nil
 }

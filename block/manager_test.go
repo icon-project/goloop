@@ -25,7 +25,7 @@ import (
 )
 
 func TestBlockManager_Basics(t_ *testing.T) {
-	t := test.NewFixture(t_)
+	t := test.NewNode(t_)
 	defer t.Close()
 
 	t.AssertLastBlock(nil, module.BlockVersion2)
