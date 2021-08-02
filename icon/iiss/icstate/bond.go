@@ -125,6 +125,23 @@ func (bs *Bonds) Equal(bl2 Bonds) bool {
 	return true
 }
 
+func (bs *Bonds) Delta(bs2 Bonds) map[string]*big.Int {
+	delta := make(map[string]*big.Int)
+
+	for _, d := range *bs {
+		key := icutils.ToKey(d.To())
+		delta[key] = new(big.Int).Neg(d.Amount())
+	}
+	for _, d := range bs2 {
+		key := icutils.ToKey(d.To())
+		if delta[key] == nil {
+			delta[key] = new(big.Int)
+		}
+		delta[key].Add(delta[key], d.Amount())
+	}
+	return delta
+}
+
 func (bs *Bonds) Clone() Bonds {
 	if *bs == nil {
 		return nil

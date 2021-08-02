@@ -82,6 +82,15 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	return err
 }
 
+func (s *State) GetEvent(offset int, index int64) (*icobject.Object, error) {
+	key := EventKey.Append(offset, index).Build()
+	obj, err := s.store.Get(key)
+	if err != nil || obj == nil {
+		return nil, err
+	}
+	return obj.(*icobject.Object), nil
+}
+
 func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()

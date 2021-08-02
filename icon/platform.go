@@ -139,11 +139,7 @@ func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) er
 	if es == nil {
 		return nil
 	}
-	// TODO For es.delegationLog not in es.Front.EventDelegation
-	// Add IllegalDelegating to es.State
-	// Add EventDelegationV2 to es.Front
-	es.ClearDelegationLog()
-	return nil
+	return es.ReplayDelegationLog()
 }
 
 func (p *platform) Term() {

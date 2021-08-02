@@ -184,6 +184,10 @@ func (es *ExtensionStateImpl) SetLogger(logger log.Logger) {
 	}
 }
 
+func (es *ExtensionStateImpl) DelegationLog() []*delegationLog {
+	return es.dLog
+}
+
 func (es *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
 	return &ExtensionSnapshotImpl{
 		database: es.database,
@@ -362,13 +366,30 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
 	}
 
-	idx, obj, err := es.addEventDelegation(blockHeight, from, delta)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
+	var offset int
+	var idx int64
+	var obj *icobject.Object
+	id := es.State.GetIllegalDelegation(from)
+	if id == nil {
+		offset, idx, obj, err = es.addEventDelegation(blockHeight, from, delta)
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
+		}
+	} else {
+		delegatingDelta := id.Delegations().Delta(ds)
+		offset, idx, obj, err = es.addEventDelegationV2(blockHeight, from, delta, delegatingDelta)
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
+		}
 	}
 
 	if revision <= icmodule.Revision12 {
-		es.appendDelegationLog(blockHeight, idx, obj, ds)
+		dLog := newDelegationLog(from, offset, idx, obj, ds)
+		es.Logger().Tracef("Append DelegationLog %+v", dLog)
+		if es.dLog == nil {
+			es.dLog = make([]*delegationLog, 0)
+		}
+		es.dLog = append(es.dLog, dLog)
 	}
 
 	account.SetDelegation(ds)
@@ -400,17 +421,32 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 }
 
 func (es *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int,
-) (idx int64, obj *icobject.Object, err error) {
+) (offset int, idx int64, obj *icobject.Object, err error) {
 	votes, err := deltaToVotes(delta)
 	if err != nil {
 		return
 	}
 	term := es.State.GetTermSnapshot()
-	idx, obj, err = es.Front.AddEventDelegation(
-		int(blockHeight-term.StartHeight()),
-		from,
-		votes,
-	)
+	offset = int(blockHeight - term.StartHeight())
+	idx, obj, err = es.Front.AddEventDelegation(offset, from, votes)
+	return
+}
+
+func (es *ExtensionStateImpl) addEventDelegationV2(
+	blockHeight int64, from module.Address, delegatedDelta map[string]*big.Int, delegatingDelta map[string]*big.Int,
+) (offset int, idx int64, obj *icobject.Object, err error) {
+	delegated, err := deltaToVotes(delegatedDelta)
+	if err != nil {
+		return
+	}
+
+	delegating, err := deltaToVotes(delegatingDelta)
+	if err != nil {
+		return
+	}
+	term := es.State.GetTermSnapshot()
+	offset = int(blockHeight - term.StartHeight())
+	idx, obj, err = es.Front.AddEventDelegationV2(offset, from, delegated, delegating)
 	return
 }
 
@@ -973,44 +1009,93 @@ func (es *ExtensionStateImpl) IsDecentralized() bool {
 	return term != nil && term.IsDecentralized()
 }
 
-func (es *ExtensionStateImpl) appendDelegationLog(blockHeight int64, idx int64, obj *icobject.Object, ds icstate.Delegations) {
-	es.Logger().Tracef("Append DelegationLog %d, %s: %+v %+v", blockHeight, idx, obj, ds)
-	dLog := newDelegationLog(blockHeight, idx, obj, ds)
-	if es.dLog == nil {
-		es.dLog = make([]*delegationLog, 0)
+func (es *ExtensionStateImpl) ReplayDelegationLog() error {
+	for i, dLog := range es.DelegationLog() {
+		es.Logger().Tracef("Replay DelegationLog %d %+v", i, dLog)
+		event, err := es.Front.GetEvent(dLog.Offset(), dLog.Index())
+		if err != nil {
+			return err
+		}
+		// setDelegation was failed
+		if event == nil || dLog.Event().Equal(event) == false {
+			// Add IllegalDelegating to es.State
+			if err = es.State.AddIllegalDelegation(icstate.NewIllegalDelegation(dLog.From(), dLog.Delegations())); err != nil {
+				return err
+			}
+			// Add EventDelegationV2 to es.Front
+			var delegated, delegating icstage.VoteList
+			switch dLog.Event().Tag().Type() {
+			case icstage.TypeEventDelegation:
+				e := icstage.ToEventVote(dLog.Event())
+				delegating = e.Votes()
+			case icstage.TypeEventDelegationV2:
+				e := icstage.ToEventDelegationV2(dLog.Event())
+				delegating = e.Delegating()
+			default:
+				return errors.IllegalArgumentError.Errorf("Illegal type icstage event object %d",
+					dLog.Event().Tag().Type())
+			}
+			_, _, err = es.Front.AddEventDelegationV2(dLog.Offset(), dLog.From(), delegated, delegating)
+			if err != nil {
+				return err
+			}
+		} else {
+			// delegate IllegalDelegation from es.State
+			if err = es.State.DeleteIllegalDelegation(dLog.From()); err != nil {
+				return err
+			}
+		}
 	}
-	es.dLog = append(es.dLog, dLog)
-}
-
-func (es *ExtensionStateImpl) ClearDelegationLog() {
-	es.Logger().Tracef("Clear DelegationLog %+v", len(es.dLog))
 	es.dLog = nil
+	return nil
 }
 
 type delegationLog struct {
-	blockHeight int64
-	index       int64
-	obj         *icobject.Object
-	ds          icstate.Delegations
+	from   module.Address
+	offset int
+	index  int64
+	event  *icobject.Object
+	ds     icstate.Delegations
 }
 
-func (d *delegationLog) Format(f fmt.State, c rune) {
+func (dl *delegationLog) From() module.Address {
+	return dl.from
+}
+
+func (dl *delegationLog) Offset() int {
+	return dl.offset
+}
+
+func (dl *delegationLog) Index() int64 {
+	return dl.index
+}
+
+func (dl *delegationLog) Event() *icobject.Object {
+	return dl.event
+}
+
+func (dl *delegationLog) Delegations() icstate.Delegations {
+	return dl.ds
+}
+
+func (dl *delegationLog) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "delegationLog{blockHeight=%d index=%d obj=%+v}",
-				d.blockHeight, d.index, d.obj)
+			fmt.Fprintf(f, "delegationLog{from=%s offset=%d index=%d event=%+v}",
+				dl.from, dl.offset, dl.index, dl.event)
 		} else {
-			fmt.Fprintf(f, "delegationLog{%d %d %+v}", d.blockHeight, d.index, d.obj)
+			fmt.Fprintf(f, "delegationLog{%s %d %d %+v}", dl.from, dl.offset, dl.index, dl.event)
 		}
 	}
 }
 
-func newDelegationLog(height, idx int64, obj *icobject.Object, ds icstate.Delegations) *delegationLog {
+func newDelegationLog(from module.Address, offset int, idx int64, obj *icobject.Object, ds icstate.Delegations) *delegationLog {
 	return &delegationLog{
-		blockHeight: height,
-		index:       idx,
-		obj:         obj,
-		ds:          ds,
+		from:   from,
+		offset: offset,
+		index:  idx,
+		event:  obj,
+		ds:     ds,
 	}
 }
