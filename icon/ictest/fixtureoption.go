@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/block"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
@@ -56,18 +55,8 @@ func (plt *platform) MerkleLeaves() int64 {
 	return plt.mtCap
 }
 
-func UseConfig(cf2 *test.FixtureConfig) test.FixtureOption {
-	return func(cf *test.FixtureConfig) *test.FixtureConfig {
-		return cf.Override(cf2)
-	}
-}
-
-func UseDB(dbase db.Database) test.FixtureOption {
-	return UseConfig(&test.FixtureConfig{ Dbase: dbase })
-}
-
 func UseMerkle(root []byte, leaves int64) test.FixtureOption {
-	return UseConfig(&test.FixtureConfig{
+	return test.UseConfig(&test.FixtureConfig{
 		MerkleRoot: root,
 		MerkleLeaves: leaves,
 	})
@@ -83,14 +72,14 @@ func UseBMForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 			vl, _ := blockv0.NewBlockVotesFromBytes(bytes)
 			return vl
 		},
-		NewPlatform: func(ctx *test.FixtureContext) service.Platform {
+		NewPlatform: func(ctx *test.NodeContext) service.Platform {
 			return &platform{
 				basic.Platform,
 				ctx.Config.MerkleRoot,
 				ctx.Config.MerkleLeaves,
 			}
 		},
-		NewBM: func(ctx *test.FixtureContext) module.BlockManager {
+		NewBM: func(ctx *test.NodeContext) module.BlockManager {
 			c := ctx.C
 			handlers := []block.Handler{
 				blockv1.NewHandler(c),
@@ -105,7 +94,7 @@ func UseBMForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 
 func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 	return cf.Override(&test.FixtureConfig{
-		NewCS: func(ctx *test.FixtureContext) module.Consensus {
+		NewCS: func(ctx *test.NodeContext) module.Consensus {
 			t := ctx.Config.T
 			iplt, ok := ctx.Platform.(MerkleInfo)
 			assert.True(t, ok)

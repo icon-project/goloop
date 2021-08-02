@@ -31,8 +31,8 @@ import (
 	"github.com/icon-project/goloop/test"
 )
 
-func newFixture(t *testing.T) *test.Fixture {
-	return test.NewFixture(t, ictest.UseBMForBlockV1)
+func newFixture(t *testing.T) *test.Node {
+	return test.NewNode(t, ictest.UseBMForBlockV1)
 }
 
 func TestHandler_Basics(t_ *testing.T) {
@@ -65,7 +65,7 @@ func TestHandler_BlockV13(t_ *testing.T) {
 	t.AssertLastBlock(t.PrevBlock, module.BlockVersion1)
 }
 
-func NewVoteListV1ForLastBlock(t *test.Fixture) *blockv0.BlockVoteList {
+func NewVoteListV1ForLastBlock(t *test.Node) *blockv0.BlockVoteList {
 	bv := blockv0.NewBlockVote(
 		t.Chain.Wallet(),
 		t.LastBlock.Height(),

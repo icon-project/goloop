@@ -26,15 +26,15 @@ import (
 )
 
 func TestConsensus_WithAccumulatorBasics(t *testing.T) {
-	gen := test.NewFixture(t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1)
+	gen := test.NewNode(t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1)
 	defer gen.Close()
 
 	const height = 10
 	root, leaves := ictest.NodeGenerateBlocksAndFinalizeMerkle(gen, height)
 
-	gen = test.NewFixture(
+	gen = test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(root, leaves), ictest.UseDB(gen.Chain.Database()),
+		ictest.UseMerkle(root, leaves), test.UseDB(gen.Chain.Database()),
 	)
 	defer gen.Close()
 
@@ -44,7 +44,7 @@ func TestConsensus_WithAccumulatorBasics(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	f := test.NewFixture(
+	f := test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(root, leaves),
 	)
