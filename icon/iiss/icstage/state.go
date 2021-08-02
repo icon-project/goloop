@@ -82,28 +82,30 @@ func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
 	return err
 }
 
-func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, error) {
+func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	event := NewEventVote(common.AddressToPtr(from), votes)
-	_, err := s.store.Set(key, icobject.New(TypeEventDelegation, event))
+	obj := icobject.New(TypeEventDelegation, event)
+	_, err := s.store.Set(key, obj)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
-	return index, s.setEventSize(index + 1)
+	return index, obj, s.setEventSize(index + 1)
 }
 
-func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated VoteList, delegating VoteList) (int64, error) {
+func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated VoteList, delegating VoteList) (int64, *icobject.Object, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	event := NewEventDelegationV2(common.AddressToPtr(from), delegated, delegating)
-	_, err := s.store.Set(key, icobject.New(TypeEventDelegationV2, event))
+	obj := icobject.New(TypeEventDelegationV2, event)
+	_, err := s.store.Set(key, obj)
 	if err != nil {
-		return 0, err
+		return 0, obj, err
 	}
 
-	return index, s.setEventSize(index + 1)
+	return index, obj, s.setEventSize(index + 1)
 }
 
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {

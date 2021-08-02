@@ -208,15 +208,13 @@ func TestState_AddEvent(t *testing.T) {
 }
 
 func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
-	index, err := s.AddEventDelegation(offset, address, votes)
+	index, obj, err := s.AddEventDelegation(offset, address, votes)
 	assert.NoError(t, err)
 
 	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
+	nObj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
-	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From()))
-	assert.True(t, votes.Equal(event.Votes()))
+	assert.True(t, obj.Equal(nObj))
 }
 
 func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {

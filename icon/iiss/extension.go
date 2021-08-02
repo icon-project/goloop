@@ -17,6 +17,7 @@
 package iiss
 
 import (
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -163,6 +165,7 @@ type ExtensionStateImpl struct {
 
 	pm     *PRepManager
 	logger log.Logger
+	dLog   []*delegationLog
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -341,7 +344,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 	return jso, nil
 }
 
-func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations) error {
+func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Address, ds icstate.Delegations, revision int) error {
 	var err error
 	var account *icstate.AccountState
 	var delta map[string]*big.Int
@@ -359,8 +362,13 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
 	}
 
-	if err = es.addEventDelegation(blockHeight, from, delta); err != nil {
+	idx, obj, err := es.addEventDelegation(blockHeight, from, delta)
+	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
+	}
+
+	if revision <= icmodule.Revision12 {
+		es.appendDelegationLog(blockHeight, idx, obj, ds)
 	}
 
 	account.SetDelegation(ds)
@@ -391,13 +399,14 @@ func deltaToVotes(delta map[string]*big.Int) (votes icstage.VoteList, err error)
 	return
 }
 
-func (es *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
+func (es *ExtensionStateImpl) addEventDelegation(blockHeight int64, from module.Address, delta map[string]*big.Int,
+) (idx int64, obj *icobject.Object, err error) {
 	votes, err := deltaToVotes(delta)
 	if err != nil {
 		return
 	}
 	term := es.State.GetTermSnapshot()
-	_, err = es.Front.AddEventDelegation(
+	idx, obj, err = es.Front.AddEventDelegation(
 		int(blockHeight-term.StartHeight()),
 		from,
 		votes,
@@ -962,4 +971,46 @@ func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, e
 func (es *ExtensionStateImpl) IsDecentralized() bool {
 	term := es.State.GetTermSnapshot()
 	return term != nil && term.IsDecentralized()
+}
+
+func (es *ExtensionStateImpl) appendDelegationLog(blockHeight int64, idx int64, obj *icobject.Object, ds icstate.Delegations) {
+	es.Logger().Tracef("Append DelegationLog %d, %s: %+v %+v", blockHeight, idx, obj, ds)
+	dLog := newDelegationLog(blockHeight, idx, obj, ds)
+	if es.dLog == nil {
+		es.dLog = make([]*delegationLog, 0)
+	}
+	es.dLog = append(es.dLog, dLog)
+}
+
+func (es *ExtensionStateImpl) ClearDelegationLog() {
+	es.Logger().Tracef("Clear DelegationLog %+v", len(es.dLog))
+	es.dLog = nil
+}
+
+type delegationLog struct {
+	blockHeight int64
+	index       int64
+	obj         *icobject.Object
+	ds          icstate.Delegations
+}
+
+func (d *delegationLog) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "delegationLog{blockHeight=%d index=%d obj=%+v}",
+				d.blockHeight, d.index, d.obj)
+		} else {
+			fmt.Fprintf(f, "delegationLog{%d %d %+v}", d.blockHeight, d.index, d.obj)
+		}
+	}
+}
+
+func newDelegationLog(height, idx int64, obj *icobject.Object, ds icstate.Delegations) *delegationLog {
+	return &delegationLog{
+		blockHeight: height,
+		index:       idx,
+		obj:         obj,
+		ds:          ds,
+	}
 }

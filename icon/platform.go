@@ -135,6 +135,14 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 }
 
 func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) error {
+	es := p.getExtensionState(wc, logger)
+	if es == nil {
+		return nil
+	}
+	// TODO For es.delegationLog not in es.Front.EventDelegation
+	// Add IllegalDelegating to es.State
+	// Add EventDelegationV2 to es.Front
+	es.ClearDelegationLog()
 	return nil
 }
 
