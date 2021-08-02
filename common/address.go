@@ -264,3 +264,24 @@ func (a *Address) RLPDecodeSelf(d codec.Decoder) error {
 		return a.SetBytes(bs)
 	}
 }
+
+func ToAddress(addr interface{}) *Address {
+	type addresser interface {
+		Address() module.Address
+	}
+
+	if a, ok := addr.(addresser); ok {
+		addr = ToAddress(a.Address())
+	}
+
+	if a, ok := addr.(*Address); ok {
+		return a
+	} else if a, ok := addr.(module.Address); ok {
+		res, err := NewAddress(a.Bytes())
+		if err != nil {
+			return nil
+		}
+		return res
+	}
+	return nil
+}
