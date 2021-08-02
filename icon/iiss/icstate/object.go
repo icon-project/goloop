@@ -32,6 +32,7 @@ const (
 	TypeRewardCalcInfo
 	TypeValidators
 	TypeBlockVoters
+	TypeIllegalDelegation
 )
 
 type StateAndSnapshot struct {
@@ -72,6 +73,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newValidatorsWithTag(tag), nil
 	case TypeBlockVoters:
 		return NewBlockVotersWithTag(tag), nil
+	case TypeIllegalDelegation:
+		return NewIllegalDelegationWithTag(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -142,4 +145,11 @@ func ToBlockVoters(object trie.Object) *BlockVotersSnapshot {
 		return nil
 	}
 	return object.(*icobject.Object).Real().(*BlockVotersSnapshot)
+}
+
+func ToIllegalDelegation(object trie.Object) *IllegalDelegation {
+	if object == nil {
+		return nil
+	}
+	return object.(*icobject.Object).Real().(*IllegalDelegation)
 }

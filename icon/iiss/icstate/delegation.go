@@ -22,9 +22,13 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
@@ -207,4 +211,75 @@ func NewDelegations(param []interface{}, max int) (Delegations, error) {
 	}
 
 	return delegations, nil
+}
+
+var IllegalDelegationPrefix = containerdb.ToKey(
+	containerdb.HashBuilder,
+	scoredb.DictDBPrefix,
+	"illegal_delegation",
+)
+
+type IllegalDelegation struct {
+	icobject.NoDatabase
+
+	address     *common.Address
+	delegations Delegations
+}
+
+func NewIllegalDelegationWithTag(_ icobject.Tag) *IllegalDelegation {
+	return new(IllegalDelegation)
+}
+
+func NewIllegalDelegation(addr module.Address, ds Delegations) *IllegalDelegation {
+	return &IllegalDelegation{
+		address:     common.AddressToPtr(addr),
+		delegations: ds,
+	}
+}
+
+func (d *IllegalDelegation) Version() int {
+	return 1
+}
+
+func (d *IllegalDelegation) Address() module.Address {
+	return d.address
+}
+
+func (d *IllegalDelegation) Delegations() Delegations {
+	return d.delegations
+}
+
+func (d *IllegalDelegation) RLPDecodeFields(decoder codec.Decoder) error {
+	return decoder.DecodeAll(
+		&d.address,
+		&d.delegations,
+	)
+}
+
+func (d *IllegalDelegation) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		d.address,
+		d.delegations,
+	)
+}
+
+func (d *IllegalDelegation) Equal(o icobject.Impl) bool {
+	if d2, ok := o.(*IllegalDelegation); ok {
+		return d.address.Equal(d2.address) &&
+			d.delegations.Equal(d2.delegations)
+	} else {
+		return false
+	}
+}
+
+func (d *IllegalDelegation) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "IllegalDelegation{address=%s delegations=%+v}",
+				d.address, d.delegations)
+		} else {
+			fmt.Fprintf(f, "IllegalDelegation{%s %v}", d.address, d.delegations)
+		}
+	}
 }

@@ -579,7 +579,7 @@ func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
 	subPRepCount := int(s.GetSubPRepCount())
 	br := s.GetBondRequirement()
 	return NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, extraMainPRepCount, mainPRepCount + subPRepCount, br,
+		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
 	), nil
 }
 
@@ -707,4 +707,24 @@ func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
 	lMax := new(big.Int).Mul(s.GetLockMaxMultiplier(), termPeriod)
 
 	return CalcUnstakeLockPeriod(lMin, lMax, totalStake, totalSupply)
+}
+
+func (s *State) AddIllegalDelegation(id *IllegalDelegation) error {
+	dict := containerdb.NewDictDB(s.store, 1, IllegalDelegationPrefix)
+	o := icobject.New(TypeIllegalDelegation, id)
+	return dict.Set(id.Address(), o)
+}
+
+func (s *State) DeleteIllegalDelegation(addr module.Address) error {
+	dict := containerdb.NewDictDB(s.store, 1, IllegalDelegationPrefix)
+	return dict.Delete(addr)
+}
+
+func (s *State) GetIllegalDelegation(addr module.Address) *IllegalDelegation {
+	dict := containerdb.NewDictDB(s.store, 1, IllegalDelegationPrefix)
+	obj := dict.Get(addr)
+	if obj == nil {
+		return nil
+	}
+	return ToIllegalDelegation(obj.Object())
 }
