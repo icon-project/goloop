@@ -223,6 +223,72 @@ func NewEventVote(addr *common.Address, votes VoteList) *EventVote {
 	}
 }
 
+type EventDelegationV2 struct {
+	icobject.NoDatabase
+	from       *common.Address
+	delegated  VoteList
+	delegating VoteList
+}
+
+func (e *EventDelegationV2) Version() int {
+	return 0
+}
+
+func (e *EventDelegationV2) From() *common.Address {
+	return e.from
+}
+
+func (e *EventDelegationV2) Delegated() VoteList {
+	return e.delegated
+}
+
+func (e *EventDelegationV2) Delegating() VoteList {
+	return e.delegating
+}
+
+func (e *EventDelegationV2) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(&e.from, &e.delegated, &e.delegating)
+	return err
+}
+
+func (e *EventDelegationV2) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(e.from, e.delegated, e.delegating)
+}
+
+func (e *EventDelegationV2) Equal(o icobject.Impl) bool {
+	if e2, ok := o.(*EventDelegationV2); ok {
+		return e.from.Equal(e2.from) &&
+			e.delegated.Equal(e2.delegated) &&
+			e.delegating.Equal(e2.delegating)
+	} else {
+		return false
+	}
+}
+
+func (e *EventDelegationV2) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "EventDelegationV2{from=%s delegated=%+v delegating=%+v}",
+				e.from, e.delegated, e.delegating)
+		} else {
+			fmt.Fprintf(f, "EventDelegationV2{%s %v %v}", e.from, e.delegated, e.delegating)
+		}
+	}
+}
+
+func newEventDelegationV2(_ icobject.Tag) *EventDelegationV2 {
+	return new(EventDelegationV2)
+}
+
+func NewEventDelegationV2(addr *common.Address, delegated VoteList, delegating VoteList) *EventDelegationV2 {
+	return &EventDelegationV2{
+		from:  addr,
+		delegated: delegated,
+		delegating: delegating,
+	}
+}
+
 type EnableStatus int
 
 const (

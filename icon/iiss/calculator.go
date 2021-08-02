@@ -444,6 +444,9 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventDelegation:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateDelegated(obj.Votes())
+		case icstage.TypeEventDelegationV2:
+			obj := icstage.ToEventDelegationV2(o)
+			vInfo.UpdateDelegated(obj.Delegated())
 		case icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateBonded(obj.Votes())
@@ -647,6 +650,21 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				vInfo.UpdateBonded(event.Votes())
 			}
+		case icstage.TypeEventDelegationV2:
+			event := icstage.ToEventDelegationV2(obj)
+			idx := icutils.ToKey(event.From())
+			_, ok := delegatingMap[idx]
+			if !ok {
+				delegatingMap[idx] = make(map[int]icstage.VoteList)
+			}
+			votes, ok := delegatingMap[idx][offset]
+			if ok {
+				votes.Update(event.Delegating())
+				delegatingMap[idx][offset] = votes
+			} else {
+				delegatingMap[idx][offset] = event.Delegating()
+			}
+			vInfo.UpdateDelegated(event.Delegated())
 		}
 		// find MAX totalVotingAmount
 		if totalVotingAmount.Cmp(vInfo.TotalVoted()) == -1 {

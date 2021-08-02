@@ -94,6 +94,18 @@ func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteLi
 	return index, s.setEventSize(index + 1)
 }
 
+func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated VoteList, delegating VoteList) (int64, error) {
+	index := s.getEventSize()
+	key := EventKey.Append(offset, index).Build()
+	event := NewEventDelegationV2(common.AddressToPtr(from), delegated, delegating)
+	_, err := s.store.Set(key, icobject.New(TypeEventDelegationV2, event))
+	if err != nil {
+		return 0, err
+	}
+
+	return index, s.setEventSize(index + 1)
+}
+
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()

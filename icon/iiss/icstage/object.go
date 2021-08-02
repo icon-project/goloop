@@ -30,6 +30,7 @@ const (
 	TypeBlockProduce
 	TypeGlobal
 	TypeEventVotedReward
+	TypeEventDelegationV2
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -38,6 +39,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newIScoreClaim(tag), nil
 	case TypeEventDelegation:
 		return newEventVote(tag), nil
+	case TypeEventDelegationV2:
+		return newEventDelegationV2(tag), nil
 	case TypeEventBond:
 		return newEventVote(tag), nil
 	case TypeEventEnable:
@@ -94,4 +97,11 @@ func ToGlobal(obj trie.Object) Global {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(Global)
+}
+
+func ToEventDelegationV2(obj trie.Object) *EventDelegationV2 {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*EventDelegationV2)
 }
