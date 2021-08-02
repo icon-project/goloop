@@ -54,6 +54,9 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			rct, err := txh.Execute(ctx, false)
 			txh.Dispose()
 			if err == nil {
+				err = t.plt.OnTransactionEnd(ctx, t.log)
+			}
+			if err == nil {
 				rctBuf[cnt] = rct
 				break
 			}
