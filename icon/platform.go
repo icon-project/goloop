@@ -134,6 +134,10 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	return es.OnExecutionEnd(wc, totalFee, p.calculator.Get())
 }
 
+func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) error {
+	return nil
+}
+
 func (p *platform) Term() {
 	// Terminate
 }
