@@ -17,7 +17,6 @@
 package consensus_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +28,7 @@ import (
 )
 
 func TestConsensus_FastSyncServer(t *testing.T) {
-	f := test.NewFixture(t)
+	f := test.NewNode(t)
 	defer f.Close()
 
 	const maxHeight = 2
@@ -62,9 +61,9 @@ func TestConsensus_FastSyncServer(t *testing.T) {
 		h1.AssertReceiveUnicast(
 			fastsync.ProtoBlockMetadata,
 			&fastsync.BlockMetadata{
-				RequestID: uint32(h),
+				RequestID:   uint32(h),
 				BlockLength: int32(len(blks[h])),
-				Proof: consensus.NewEmptyCommitVoteList().Bytes(),
+				Proof:       consensus.NewEmptyCommitVoteList().Bytes(),
 			},
 		)
 		var bs []byte
@@ -83,7 +82,7 @@ func TestConsensus_FastSyncServer(t *testing.T) {
 }
 
 func TestConsensus_FastSyncServerFail(t *testing.T) {
-	f := test.NewFixture(t)
+	f := test.NewNode(t)
 	defer f.Close()
 	err := f.CS.Start()
 	assert.NoError(t, err)
@@ -91,9 +90,9 @@ func TestConsensus_FastSyncServerFail(t *testing.T) {
 	_, h1 := f.NM.NewPeerFor(module.ProtoFastSync)
 	h1.Unicast(
 		fastsync.ProtoBlockRequest,
-		&fastsync.BlockRequest {
-			RequestID: 0,
-			Height: 1,
+		&fastsync.BlockRequest{
+			RequestID:   0,
+			Height:      1,
 			ProofOption: 0,
 		},
 		nil,
@@ -101,15 +100,15 @@ func TestConsensus_FastSyncServerFail(t *testing.T) {
 	h1.AssertReceiveUnicast(
 		fastsync.ProtoBlockMetadata,
 		&fastsync.BlockMetadata{
-			RequestID: 0,
+			RequestID:   0,
 			BlockLength: -1,
-			Proof: nil,
+			Proof:       nil,
 		},
 	)
 }
 
 func TestConsensus_ClientBasics(t *testing.T) {
-	f := test.NewFixture(t)
+	f := test.NewNode(t)
 	defer f.Close()
 
 	err := f.CS.Start()
@@ -129,27 +128,19 @@ func TestConsensus_ClientBasics(t *testing.T) {
 }
 
 func TestConsensus_BasicConsensus(t *testing.T) {
-	f := test.NewFixture(t)
+	f := test.NewNode(t)
 	defer f.Close()
 
 	h := make([]*test.SimplePeerHandler, 3)
-	for i:=0; i<len(h); i++ {
+	for i := 0; i < len(h); i++ {
 		_, h[i] = f.NM.NewPeerFor(module.ProtoConsensus)
 	}
 
 	f.ProposeImportFinalizeBlockWithTX(
 		consensus.NewEmptyCommitVoteList(),
-		fmt.Sprintf(
-			`{
-				"type": "test",
-				"timestamp": "0x0",
-				"validators": [ "%s", "%s", "%s", "%s" ]
-			}`,
-			h[0].Address(),
-			h[1].Address(),
-			h[2].Address(),
-			f.Chain.Wallet().Address(),
-		),
+		test.NewTx().SetValidatorsAddresser(
+			h[0], h[1], h[2], f.Chain.Wallet(),
+		).String(),
 	)
 	f.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 
@@ -177,13 +168,13 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 	blk, err := f.BM.NewBlockDataFromReader(ps.NewReader())
 	assert.NoError(t, err)
 
-	for i:=0; i<len(h); i++ {
+	for i := 0; i < len(h); i++ {
 		h[i].Unicast(
 			consensus.ProtoVote,
 			consensus.NewVoteMessage(
 				h[i].Wallet(),
 				consensus.VoteTypePrevote, 3, 0, blk.ID(),
-				ps.ID(), blk.Timestamp() + 1,
+				ps.ID(), blk.Timestamp()+1,
 			),
 			func(rb bool, e error) {
 				assert.True(t, rb)
@@ -192,13 +183,13 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 		)
 	}
 
-	for i:=0; i<len(h); i++ {
+	for i := 0; i < len(h); i++ {
 		h[i].Unicast(
 			consensus.ProtoVote,
 			consensus.NewVoteMessage(
 				h[i].Wallet(),
 				consensus.VoteTypePrecommit, 3, 0, blk.ID(),
-				ps.ID(), blk.Timestamp() + 1,
+				ps.ID(), blk.Timestamp()+1,
 			),
 			func(rb bool, e error) {
 				assert.True(t, rb)
@@ -215,4 +206,20 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 			break
 		}
 	}
+}
+
+func TestConsensus_BasicConsensus2(t *testing.T) {
+	f := test.NewFixture(t, test.AddValidatorNodes(4))
+	defer f.Close()
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(t, err)
+	}
+	chn, err := f.BM.WaitForBlock(3)
+	assert.NoError(t, err)
+	blk := <-chn
+	assert.EqualValues(t, 3, blk.Height())
+	assert.EqualValues(t, 4, f.CS.GetStatus().Height)
 }

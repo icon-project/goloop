@@ -47,6 +47,37 @@ type Transaction struct {
 	id []byte
 }
 
+func NewTx() *Transaction {
+	return NewTransaction()
+}
+
+func NewTransaction() *Transaction {
+	tx := &Transaction{}
+	tx.json.Type = "test"
+	tx.json.TimeStamp = common.HexInt64{}
+	return tx
+}
+
+type addresser interface {
+	Address() module.Address
+}
+
+func (t *Transaction) SetValidatorsAddresser(addrs ...addresser) *Transaction {
+	t.json.Validators = make([]*common.Address, len(addrs))
+	for i, a := range addrs {
+		t.json.Validators[i] = common.ToAddress(a)
+	}
+	return t
+}
+
+func (t *Transaction) SetValidatorsNode(addrs ...*Node) *Transaction {
+	t.json.Validators = make([]*common.Address, len(addrs))
+	for i, a := range addrs {
+		t.json.Validators[i] = common.ToAddress(a)
+	}
+	return t
+}
+
 func (t *Transaction) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{state.WorldIDStr, state.AccountWriteLock},
@@ -106,6 +137,10 @@ func (t *Transaction) From() module.Address {
 func (t *Transaction) Bytes() []byte {
 	jsn, _ := json.Marshal(t.json)
 	return jsn
+}
+
+func (t Transaction) String() string {
+	return string(t.Bytes())
 }
 
 func (t *Transaction) Hash() []byte {

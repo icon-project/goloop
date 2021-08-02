@@ -188,3 +188,6 @@ test% : $(BIN_DIR)/gochain
 
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
+
+-include local.mk
+
