@@ -251,6 +251,15 @@ func (t *Node) Address() module.Address {
 	return t.Chain.Wallet().Address()
 }
 
+func NodeInterconnect(nodes []*Node) {
+	l := len(nodes)
+	for i := 0; i < l; i++ {
+		for j := i; j < l; j++ {
+			nodes[i].NM.Connect(nodes[j].NM)
+		}
+	}
+}
+
 var jobChan chan func()
 var lock sync.Mutex
 

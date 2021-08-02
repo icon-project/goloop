@@ -207,3 +207,19 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 		}
 	}
 }
+
+func TestConsensus_BasicConsensus2(t *testing.T) {
+	f := test.NewFixture(t, test.AddValidatorNodes(4))
+	defer f.Close()
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(t, err)
+	}
+	chn, err := f.BM.WaitForBlock(3)
+	assert.NoError(t, err)
+	blk := <-chn
+	assert.EqualValues(t, 3, blk.Height())
+	assert.EqualValues(t, 4, f.CS.GetStatus().Height)
+}
