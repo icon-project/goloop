@@ -79,6 +79,10 @@ func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	return nil
 }
 
+func (t *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) error {
+	return nil
+}
+
 func (t *platform) Term() {
 	// do nothing
 }

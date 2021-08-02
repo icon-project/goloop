@@ -36,6 +36,7 @@ type Platform interface {
 	NewBaseTransaction(wc state.WorldContext) (module.Transaction, error)
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
+	OnTransactionEnd(wc state.WorldContext, logger log.Logger) error
 	Term()
 	DefaultBlockVersion() int
 }
