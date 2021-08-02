@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
@@ -33,6 +34,7 @@ type wrapper struct {
 	walDir      string
 	wm          consensus.WALManager
 	timestamper module.Timestamper
+	mtRoot      []byte
 	mtCap       int64
 	bpp         *bpp
 }
@@ -55,37 +57,45 @@ func New(
 	mtRoot []byte,
 	mtCap int64,
 ) (module.Consensus, error) {
-	h, err := block.GetLastHeight(c.Database())
-	if err != nil {
-		return nil, err
-	}
-	bk, err := c.Database().GetBucket(icdb.BlockMerkle)
-	if err != nil {
-		return nil, err
-	}
-	mt, err := hexary.NewMerkleTree(bk, mtRoot, mtCap, -1)
-	if err != nil {
-		return nil, err
-	}
-	cse := &wrapper{
+	return &wrapper{
 		c:           c,
 		walDir:      walDir,
 		wm:          wm,
 		timestamper: timestamper,
+		mtRoot:      mtRoot,
 		mtCap:       mtCap,
+	}, nil
+}
+
+func (c *wrapper) Start() error {
+	h, err := block.GetLastHeight(c.c.Database())
+	if err != nil {
+		return err
 	}
-	cse.bpp = newBPP(mt)
-	if h < mtCap {
-		cse.Consensus = newFastSyncer(h+1, mtCap-1, c, cse)
+	bk, err := c.c.Database().GetBucket(icdb.BlockMerkle)
+	if err != nil {
+		return err
+	}
+	mt, err := hexary.NewMerkleTree(bk, c.mtRoot, c.mtCap, -1)
+	if err != nil {
+		return err
+	}
+	c.bpp = newBPP(mt)
+	if h < c.mtCap {
+		c.Consensus = newFastSyncer(h+1, c.mtCap-1, c.c, c)
 	} else {
-		cse.Consensus = consensus.New(c, walDir, wm, timestamper, cse.bpp)
+		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, c.bpp)
 	}
-	return cse, nil
+	return c.Consensus.Start()
 }
 
 func (c *wrapper) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if c.Consensus == nil {
+		return nil, errors.WithStack(errors.ErrNotFound)
+	}
 
 	if height < c.mtCap {
 		blk, err := c.c.BlockManager().GetBlockByHeight(height + 1)
@@ -102,4 +112,13 @@ func (c *wrapper) upgrade() {
 	defer c.mu.Unlock()
 
 	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, c.bpp)
+}
+
+func (c *wrapper) Term() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.Consensus != nil {
+		c.Consensus.Term()
+	}
 }
