@@ -58,6 +58,14 @@ func NewTransaction() *Transaction {
 	return tx
 }
 
+func (t *Transaction) SetValidators(addrs ...module.Address) *Transaction {
+	t.json.Validators = make([]*common.Address, len(addrs))
+	for i, a := range addrs {
+		t.json.Validators[i] = common.ToAddress(a)
+	}
+	return t
+}
+
 type addresser interface {
 	Address() module.Address
 }
@@ -75,6 +83,20 @@ func (t *Transaction) SetValidatorsNode(addrs ...*Node) *Transaction {
 	for i, a := range addrs {
 		t.json.Validators[i] = common.ToAddress(a)
 	}
+	return t
+}
+
+func (t *Transaction) SetNextBlockVersion(v *int32) *Transaction {
+	if v != nil {
+		t.json.NextBlockVersion = &common.HexInt32{Value: *v}
+	} else {
+		t.json.NextBlockVersion = nil
+	}
+	return t
+}
+
+func (t *Transaction) SetVarTest(v *string) *Transaction {
+	t.json.VarTest = v
 	return t
 }
 
