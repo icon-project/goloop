@@ -699,6 +699,10 @@ func (s *chainScore) Ex_claimIScore() error {
 			s.from,
 		)
 	}
+	if revision < icmodule.Revision13 {
+		cl := iiss.NewClaimIScoreLog(s.from, claim)
+		es.AppendExtensionLog(cl)
+	}
 	s.claimEventLog(s.from, claim, icx)
 	return nil
 }

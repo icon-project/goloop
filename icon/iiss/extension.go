@@ -17,7 +17,6 @@
 package iiss
 
 import (
-	"fmt"
 	"math/big"
 	"sort"
 
@@ -165,7 +164,7 @@ type ExtensionStateImpl struct {
 
 	pm     *PRepManager
 	logger log.Logger
-	dLog   []*delegationLog
+	log    []ExtensionLog
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -182,10 +181,6 @@ func (es *ExtensionStateImpl) SetLogger(logger log.Logger) {
 	if logger != nil {
 		es.logger = logger
 	}
-}
-
-func (es *ExtensionStateImpl) DelegationLog() []*delegationLog {
-	return es.dLog
 }
 
 func (es *ExtensionStateImpl) GetSnapshot() state.ExtensionSnapshot {
@@ -383,13 +378,9 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 		}
 	}
 
-	if revision <= icmodule.Revision12 {
+	if revision < icmodule.Revision13 {
 		dLog := newDelegationLog(from, offset, idx, obj, ds)
-		es.Logger().Tracef("Append DelegationLog %+v", dLog)
-		if es.dLog == nil {
-			es.dLog = make([]*delegationLog, 0)
-		}
-		es.dLog = append(es.dLog, dLog)
+		es.AppendExtensionLog(dLog)
 	}
 
 	account.SetDelegation(ds)
@@ -1009,93 +1000,21 @@ func (es *ExtensionStateImpl) IsDecentralized() bool {
 	return term != nil && term.IsDecentralized()
 }
 
-func (es *ExtensionStateImpl) ReplayDelegationLog() error {
-	for i, dLog := range es.DelegationLog() {
-		es.Logger().Tracef("Replay DelegationLog %d %+v", i, dLog)
-		event, err := es.Front.GetEvent(dLog.Offset(), dLog.Index())
-		if err != nil {
+func (es *ExtensionStateImpl) AppendExtensionLog(el ExtensionLog) {
+	es.Logger().Tracef("Append ExtensionLog %+v", el)
+	if es.log == nil {
+		es.log = make([]ExtensionLog, 0)
+	}
+	es.log = append(es.log, el)
+}
+
+func (es *ExtensionStateImpl) HandleExtensionLog() error {
+	for _, el := range es.log {
+		es.Logger().Tracef("Handle ExtensionLog %+v", el)
+		if err := el.Handle(es); err != nil {
 			return err
 		}
-		// setDelegation was failed
-		if event == nil || dLog.Event().Equal(event) == false {
-			// Add IllegalDelegating to es.State
-			if err = es.State.AddIllegalDelegation(icstate.NewIllegalDelegation(dLog.From(), dLog.Delegations())); err != nil {
-				return err
-			}
-			// Add EventDelegationV2 to es.Front
-			var delegated, delegating icstage.VoteList
-			switch dLog.Event().Tag().Type() {
-			case icstage.TypeEventDelegation:
-				e := icstage.ToEventVote(dLog.Event())
-				delegating = e.Votes()
-			case icstage.TypeEventDelegationV2:
-				e := icstage.ToEventDelegationV2(dLog.Event())
-				delegating = e.Delegating()
-			default:
-				return errors.IllegalArgumentError.Errorf("Illegal type icstage event object %d",
-					dLog.Event().Tag().Type())
-			}
-			_, _, err = es.Front.AddEventDelegationV2(dLog.Offset(), dLog.From(), delegated, delegating)
-			if err != nil {
-				return err
-			}
-		} else {
-			// delegate IllegalDelegation from es.State
-			if err = es.State.DeleteIllegalDelegation(dLog.From()); err != nil {
-				return err
-			}
-		}
 	}
-	es.dLog = nil
+	es.log = nil
 	return nil
-}
-
-type delegationLog struct {
-	from   module.Address
-	offset int
-	index  int64
-	event  *icobject.Object
-	ds     icstate.Delegations
-}
-
-func (dl *delegationLog) From() module.Address {
-	return dl.from
-}
-
-func (dl *delegationLog) Offset() int {
-	return dl.offset
-}
-
-func (dl *delegationLog) Index() int64 {
-	return dl.index
-}
-
-func (dl *delegationLog) Event() *icobject.Object {
-	return dl.event
-}
-
-func (dl *delegationLog) Delegations() icstate.Delegations {
-	return dl.ds
-}
-
-func (dl *delegationLog) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "delegationLog{from=%s offset=%d index=%d event=%+v}",
-				dl.from, dl.offset, dl.index, dl.event)
-		} else {
-			fmt.Fprintf(f, "delegationLog{%s %d %d %+v}", dl.from, dl.offset, dl.index, dl.event)
-		}
-	}
-}
-
-func newDelegationLog(from module.Address, offset int, idx int64, obj *icobject.Object, ds icstate.Delegations) *delegationLog {
-	return &delegationLog{
-		from:   from,
-		offset: offset,
-		index:  idx,
-		event:  obj,
-		ds:     ds,
-	}
 }

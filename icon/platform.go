@@ -139,7 +139,7 @@ func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) er
 	if es == nil {
 		return nil
 	}
-	return es.ReplayDelegationLog()
+	return es.HandleExtensionLog()
 }
 
 func (p *platform) Term() {
