@@ -202,9 +202,10 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	byFee = new(big.Int)
 	byOverIssued = new(big.Int)
 
-	overIssuedICX := i.GetOverIssuedICX()
-	if overIssuedICX.Sign() == -1 {
-		overIssuedICX.Add(overIssuedICX, intconv.BigIntOne)
+	oIScore := new(big.Int).Abs(i.OverIssuedIScore())
+	overIssuedICX := icutils.IScoreToICX(oIScore)
+	if i.OverIssuedIScore().Sign() == -1 {
+		overIssuedICX = new(big.Int).Neg(overIssuedICX)
 	}
 
 	if issue.Cmp(overIssuedICX) > 0 {
