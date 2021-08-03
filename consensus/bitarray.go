@@ -64,10 +64,7 @@ func (ba *bitArray) Flip() {
 func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 	lba := len(ba.Words)
 	lba2 := len(ba2.Words)
-	if lba < lba2 {
-		ba2.Words = ba2.Words[:lba]
-		ba2.NumBits = ba.NumBits
-	} else if lba > lba2 {
+	if lba > lba2 {
 		ba.Words = ba.Words[:lba2]
 		ba.NumBits = ba2.NumBits
 		lba = lba2
