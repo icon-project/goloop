@@ -65,17 +65,6 @@ func TestHandler_BlockV13(t_ *testing.T) {
 	t.AssertLastBlock(t.PrevBlock, module.BlockVersion1)
 }
 
-func NewVoteListV1ForLastBlock(t *test.Node) *blockv0.BlockVoteList {
-	bv := blockv0.NewBlockVote(
-		t.Chain.Wallet(),
-		t.LastBlock.Height(),
-		0,
-		t.LastBlock.ID(),
-		t.LastBlock.Timestamp() + 1,
-	)
-	return blockv0.NewBlockVoteList(bv)
-}
-
 func TestHandler_ValidatorChange(t_ *testing.T) {
 	t := newFixture(t_)
 	defer t.Close()
@@ -96,7 +85,7 @@ func TestHandler_ValidatorChange(t_ *testing.T) {
 	// still no votes
 	assert.Nil(t, t.LastBlock.Votes())
 
-	t.ProposeImportFinalizeBlock(NewVoteListV1ForLastBlock(t))
+	t.ProposeImportFinalizeBlock(ictest.NodeNewVoteListV1ForLastBlock(t))
 	// now there is some votes
 	assert.NotNil(t, t.LastBlock.Votes())
 }
@@ -121,12 +110,12 @@ func TestHandler_BlockVersionChange(t_ *testing.T) {
 	// still no votes
 	assert.Nil(t, t.LastBlock.Votes())
 
-	t.ProposeImportFinalizeBlock(NewVoteListV1ForLastBlock(t))
+	t.ProposeImportFinalizeBlock(ictest.NodeNewVoteListV1ForLastBlock(t))
 	// now there is some votes
 	assert.NotNil(t, t.LastBlock.Votes())
 
 	t.ProposeImportFinalizeBlockWithTX(
-		NewVoteListV1ForLastBlock(t),
+		ictest.NodeNewVoteListV1ForLastBlock(t),
 		`{
 			"type": "test",
 			"timestamp": "0x0",
@@ -137,7 +126,7 @@ func TestHandler_BlockVersionChange(t_ *testing.T) {
 		t, module.BlockVersion1, t.SM.GetNextBlockVersion(t.LastBlock.Result()),
 	)
 
-	t.ProposeImportFinalizeBlock(NewVoteListV1ForLastBlock(t))
+	t.ProposeImportFinalizeBlock(ictest.NodeNewVoteListV1ForLastBlock(t))
 	t.AssertLastBlock(t.PrevBlock, module.BlockVersion1)
 	// now the tx is applied in the tx
 	assert.EqualValues(

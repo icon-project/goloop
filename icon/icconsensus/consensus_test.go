@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/test"
 )
@@ -30,7 +31,10 @@ func TestConsensus_WithAccumulatorBasics(t *testing.T) {
 	defer gen.Close()
 
 	const height = 10
-	root, leaves := ictest.NodeGenerateBlocksAndFinalizeMerkle(gen, height)
+	for i:=1; i<height; i++ {
+		gen.ProposeFinalizeBlock((*blockv0.BlockVoteList)(nil))
+	}
+	root, leaves := ictest.NodeFinalizeMerkle(gen)
 
 	gen = test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,

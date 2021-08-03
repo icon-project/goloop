@@ -25,22 +25,30 @@ import (
 	"github.com/icon-project/goloop/test"
 )
 
-func NodeGenerateBlocksAndFinalizeMerkle(n* test.Node, blks int64) ([]byte, int64) {
+func NodeFinalizeMerkle(n* test.Node) ([]byte, int64) {
 	t := n.T
 	temp, err := n.Chain.Database().GetBucket("temp")
 	assert.NoError(t, err)
 	mkl, err := n.Chain.Database().GetBucket(icdb.BlockMerkle)
 	ac, err := hexary.NewAccumulator(mkl, temp, "")
-	const height = 10
-	// add genesis
-	err = ac.Add(n.LastBlock.Hash())
-	assert.NoError(t, err)
-	for i:=1; i<height; i++ {
-		n.ProposeFinalizeBlock((*blockv0.BlockVoteList)(nil))
-		err = ac.Add(n.LastBlock.Hash())
+	for i:=int64(0); i<=n.LastBlock.Height(); i++ {
+		blk , err := n.BM.GetBlockByHeight(i)
+		assert.NoError(t, err)
+		err = ac.Add(blk.Hash())
 		assert.NoError(t, err)
 	}
 	root, leaves, err := ac.Finalize("")
 	assert.NoError(t, err)
 	return root, leaves
+}
+
+func NodeNewVoteListV1ForLastBlock(t *test.Node) *blockv0.BlockVoteList {
+	bv := blockv0.NewBlockVote(
+		t.Chain.Wallet(),
+		t.LastBlock.Height(),
+		0,
+		t.LastBlock.ID(),
+		t.LastBlock.Timestamp()+1,
+	)
+	return blockv0.NewBlockVoteList(bv)
 }
