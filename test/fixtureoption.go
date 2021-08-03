@@ -46,3 +46,7 @@ func UseGenesis(gs string) FixtureOption {
 func UseWallet(w module.Wallet) FixtureOption {
 	return UseConfig(&FixtureConfig{ Wallet: w })
 }
+
+func AddDefaultNode(v bool) FixtureOption {
+	return UseConfig(&FixtureConfig{ AddDefaultNode: &v })
+}

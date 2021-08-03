@@ -44,9 +44,11 @@ type FixtureConfig struct {
 	AddValidatorNodes int
 	Genesis           string
 	Wallet            module.Wallet
+	AddDefaultNode    *bool
 }
 
 func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
+	tru := true
 	cf := &FixtureConfig{
 		T:      t,
 		Prefix: "goloop-block-fixture",
@@ -71,7 +73,8 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 			return cs
 		},
 		AddValidatorNodes: 0,
-		Genesis: defaultGenesis,
+		Genesis:           defaultGenesis,
+		AddDefaultNode:    &tru,
 	}
 	return cf.ApplyOption(o...)
 }
@@ -122,6 +125,9 @@ func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
 	}
 	if cf2.Wallet != nil {
 		res.Wallet = cf2.Wallet
+	}
+	if cf2.AddDefaultNode != nil {
+		res.AddDefaultNode = cf2.AddDefaultNode
 	}
 	return &res
 }

@@ -38,6 +38,10 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 	f := &Fixture{
 		BaseConfig: cf,
 	}
+	if *cf.AddDefaultNode {
+		node := f.AddNode()
+		f.Node = node
+	}
 	if cf.AddValidatorNodes > 0 {
 		wallets := make([]module.Wallet, cf.AddValidatorNodes)
 		for i := range wallets {
@@ -72,10 +76,6 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 		for i := range wallets {
 			f.AddNode(UseGenesis(gs), UseWallet(wallets[i]))
 		}
-		f.Node = f.Nodes[0]
-	} else {
-		node := f.AddNode()
-		f.Node = node
 	}
 	return f
 }
@@ -86,6 +86,9 @@ func (f *Fixture) AddNode(o ...FixtureOption) *Node {
 	eo = append(eo, o...)
 	node := NewNode(f.BaseConfig.T, eo...)
 	f.Nodes = append(f.Nodes, node)
+	if f.Node == nil {
+		f.Node = node
+	}
 	return node
 }
 
