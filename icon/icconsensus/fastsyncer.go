@@ -49,13 +49,14 @@ func newFastSyncer(
 	to int64,
 	c module.Chain,
 	parent *wrapper,
+	bpp *bpp,
 ) *fastSyncer {
 	f := &fastSyncer{
 		height: height,
 		to:     to,
 		c:      c,
 		parent: parent,
-		bpp:    parent.bpp,
+		bpp:    bpp,
 	}
 	f.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS|V1|",
@@ -91,10 +92,6 @@ func (f *fastSyncer) Term() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	f.term()
-}
-
-func (f *fastSyncer) term() {
 	f.fsm.StopServer()
 	if f.fetchCanceler != nil {
 		f.fetchCanceler()
@@ -121,6 +118,9 @@ func (f *fastSyncer) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 }
 
 func (f *fastSyncer) GetBlockProof(height int64, opt int32) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	return f.bpp.GetBlockProof(height, opt)
 }
 
@@ -177,14 +177,18 @@ func (f *fastSyncer) processBlock(br fastsync.BlockResult) {
 	f.blockCanceler = canceler
 }
 
-func (f *fastSyncer) tryLater() {
+func (f *fastSyncer) RepeatTryFetch() {
 	for {
 		time.Sleep(sleepInterval)
+
+		f.mu.Lock()
 		canceler, err := f.fsm.FetchBlocks(f.height, f.to, f)
 		if err != nil {
+			f.mu.Unlock()
 			continue
 		}
 		f.fetchCanceler = canceler
+		f.mu.Unlock()
 		return
 	}
 }
@@ -195,15 +199,11 @@ func (f *fastSyncer) OnEnd(err error) {
 
 	if f.height < f.to {
 		f.log.Warnf("fast syncer failed: %+v", err)
-		go f.tryLater()
+		go f.RepeatTryFetch()
 		return
 	}
 	parent := f.parent
-	f.term()
 	ul.Unlock()
-	parent.upgrade()
-	err = parent.Start()
-	if err != nil {
-		f.log.Panicf("fail to start consensus %+v", err)
-	}
+
+	parent.Upgrade(f.bpp)
 }

@@ -36,7 +36,6 @@ type wrapper struct {
 	timestamper module.Timestamper
 	mtRoot      []byte
 	mtCap       int64
-	bpp         *bpp
 }
 
 func NewConsensus(
@@ -68,6 +67,9 @@ func New(
 }
 
 func (c *wrapper) Start() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	h, err := block.GetLastHeight(c.c.Database())
 	if err != nil {
 		return err
@@ -80,13 +82,24 @@ func (c *wrapper) Start() error {
 	if err != nil {
 		return err
 	}
-	c.bpp = newBPP(mt)
+	bpp := newBPP(mt)
 	if h < c.mtCap {
-		c.Consensus = newFastSyncer(h+1, c.mtCap-1, c.c, c)
+		c.Consensus = newFastSyncer(h+1, c.mtCap-1, c.c, c, bpp)
 	} else {
-		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, c.bpp)
+		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
 	}
 	return c.Consensus.Start()
+}
+
+func (c *wrapper) GetStatus() *module.ConsensusStatus {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.Consensus == nil {
+		return nil
+	}
+
+	return c.Consensus.GetStatus()
 }
 
 func (c *wrapper) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
@@ -107,11 +120,16 @@ func (c *wrapper) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	return c.Consensus.GetVotesByHeight(height)
 }
 
-func (c *wrapper) upgrade() {
+func (c *wrapper) Upgrade(bpp *bpp) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, c.bpp)
+	c.Consensus.Term()
+	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
+	err := c.Consensus.Start()
+	if err != nil {
+		c.c.Logger().Panicf("fail to start consensus %+v", err)
+	}
 }
 
 func (c *wrapper) Term() {
