@@ -189,7 +189,7 @@ type importTask struct {
 type proposeTask struct {
 	task
 	parentBlock module.Block
-	votes       module.TimestampedCommitVoteSet
+	votes       module.CommitVoteSet
 	csi         module.ConsensusInfo
 }
 
@@ -447,7 +447,7 @@ func (it *importTask) _onExecute(err error) {
 
 func (m *manager) _propose(
 	parentID []byte,
-	votes module.TimestampedCommitVoteSet,
+	votes module.CommitVoteSet,
 	cb func(module.BlockCandidate, error),
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
@@ -1038,7 +1038,7 @@ func (m *manager) finalizeGenesisBlock(
 
 func (m *manager) Propose(
 	parentID []byte,
-	votes module.TimestampedCommitVoteSet,
+	votes module.CommitVoteSet,
 	cb func(module.BlockCandidate, error),
 ) (canceler module.Canceler, err error) {
 	m.syncer.begin()

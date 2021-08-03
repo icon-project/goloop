@@ -71,7 +71,7 @@ type cbResult struct {
 
 func ProposeBlock(
 	bm module.BlockManager,
-	prevID []byte, votes module.TimestampedCommitVoteSet,
+	prevID []byte, votes module.CommitVoteSet,
 ) (bc module.BlockCandidate, err error, cbError error) {
 	ch := make(chan cbResult)
 	_, err = bm.Propose(

@@ -43,10 +43,6 @@ type CommitVoteSet interface {
 	VerifyBlock(block BlockData, validators ValidatorList) ([]bool, error)
 	Bytes() []byte
 	Hash() []byte
-}
-
-type TimestampedCommitVoteSet interface {
-	CommitVoteSet
 	Timestamp() int64
 }
 
