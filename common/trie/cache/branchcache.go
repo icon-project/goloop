@@ -39,10 +39,12 @@ type BranchCache struct {
 	depth  int
 	size   int
 	f      *os.File
+	missed int
 }
 
 func (c *BranchCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	if c == nil || nibs == nil || len(nibs) >= c.depth {
+		c.missed += 1
 		return nil, false
 	}
 	idx := indexByNibs(nibs)
@@ -59,6 +61,7 @@ func (c *BranchCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	if bytes.Equal(node[0], h) {
 		return node[1], true
 	}
+	c.missed += 1
 	return nil, true
 }
 
@@ -148,13 +151,14 @@ func openfile(path string) (f *os.File, err error) {
 	return f, nil
 }
 
-func (c *BranchCache) OnAttach(count int32, id []byte) cacheImpl {
-	if count >= fullCacheMigrationThreshold {
+func (c *BranchCache) OnAttach(id []byte) cacheImpl {
+	if c.missed >= fullCacheMigrationThreshold {
 		if logCacheEvents {
-			log.Warnf("MigrateCacheFor(id=%#x, count=%d)", id, count)
+			log.Warnf("MigrateCacheFor(id=%#x,missed=%d)", id, c.missed)
 		}
 		return NewFullCacheFromBranch(c)
 	}
+	c.missed = 0
 	return c
 }
 

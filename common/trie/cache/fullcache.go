@@ -21,7 +21,6 @@ import (
 	"container/list"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/icon-project/goloop/common/log"
 )
@@ -29,7 +28,9 @@ import (
 const (
 	fullCacheBranchDepth = 5
 	fullCacheBranchSize  = ((1 << uint(4*fullCacheBranchDepth)) - 1) / 15
-	fullCacheLRUSize     = 80_000
+	fullCacheLRUInitial  = 1_024
+	fullCacheLRULimit    = 320_000
+	fullCacheLRUFragment = 512
 )
 
 type FullCache struct {
@@ -37,9 +38,10 @@ type FullCache struct {
 	nodes  [][2][]byte
 	hash2e map[string]*list.Element
 	lru    list.List
+	size   int
+	branch int32
 	hits   int32
 	out    int32
-	in     int32
 }
 
 type nodeItem struct {
@@ -51,7 +53,7 @@ func (c *FullCache) getNode(h []byte) []byte {
 	key := string(h)
 	if e, ok := c.hash2e[key]; ok {
 		c.lru.MoveToBack(e)
-		atomic.AddInt32(&c.hits, 1)
+		c.hits += 1
 		return e.Value.(*nodeItem).value
 	} else {
 		return nil
@@ -63,17 +65,16 @@ func (c *FullCache) putNode(h, v []byte) {
 	if e, ok := c.hash2e[key]; ok {
 		c.lru.MoveToBack(e)
 	} else {
-		if c.lru.Len() >= fullCacheLRUSize {
+		if c.lru.Len() >= c.size {
 			e = c.lru.Front()
 			c.lru.Remove(e)
-			atomic.AddInt32(&c.out, 1)
+			c.out += 1
 			delete(c.hash2e, e.Value.(*nodeItem).key)
 		}
 		item := &nodeItem{
 			key:   key,
 			value: v,
 		}
-		atomic.AddInt32(&c.in, 1)
 		c.hash2e[key] = c.lru.PushBack(item)
 	}
 }
@@ -90,7 +91,6 @@ func (c *FullCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	if idx < fullCacheBranchSize {
 		node := c.nodes[idx][:]
 		if bytes.Equal(node[0], h) {
-			atomic.AddInt32(&c.hits, 1)
 			return node[1], true
 		}
 		return nil, true
@@ -109,7 +109,6 @@ func (c *FullCache) Put(nibs []byte, h, v []byte) {
 	defer c.lock.Unlock()
 
 	if idx < fullCacheBranchSize {
-		atomic.AddInt32(&c.in, 1)
 		c.nodes[idx] = [2][]byte{h, v}
 	} else {
 		c.putNode(h, v)
@@ -120,13 +119,34 @@ func (c *FullCache) String() string {
 	return fmt.Sprintf("FullCache{%p}", c)
 }
 
-func (c *FullCache) OnAttach(count int32, id []byte) cacheImpl {
-	in := atomic.SwapInt32(&c.in, 0)
-	out := atomic.SwapInt32(&c.out, 0)
-	hits := atomic.SwapInt32(&c.hits, 0)
-	if logCacheEvents && out > 0 {
-		log.Warnf("FullCacheOnAttach(id=%#x,count=%d,in=%d,out=%d,hits=%d)",
-			id, count, in, out, hits)
+func (c *FullCache) tryMigrate(id []byte) bool {
+	if int(c.out) < c.size/2 && int(c.out) < fullCacheMigrationThreshold {
+		return false
+	}
+	sizeMin := c.size + int(c.out)/2
+	size := c.size + fullCacheLRUFragment
+	for size < fullCacheLRULimit && size < sizeMin {
+		size = size + fullCacheLRUFragment
+	}
+	if size > fullCacheLRULimit {
+		size = fullCacheLRULimit
+	}
+	if c.size != size {
+		if logCacheEvents {
+			log.Warnf("FullCacheMigrate(id=%#x,hits=%d,out=%d,size=%d,new=%d)",
+				id, c.hits, c.out, c.size, size)
+		}
+		c.size = size
+		return true
+	}
+	return false
+}
+
+func (c *FullCache) OnAttach(id []byte) cacheImpl {
+	if c.out > 0 {
+		c.tryMigrate(id)
+		c.out = 0
+		c.hits = 0
 	}
 	return c
 }
@@ -154,6 +174,7 @@ func NewFullCacheFromBranch(bc *BranchCache) *FullCache {
 	fc := &FullCache{
 		nodes:  nodes,
 		hash2e: make(map[string]*list.Element),
+		size:   fullCacheLRUInitial,
 	}
 	fc.lru.Init()
 	return fc

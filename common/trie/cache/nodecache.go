@@ -3,11 +3,10 @@ package cache
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 )
 
 const (
-	fullCacheMigrationThreshold = 150
+	fullCacheMigrationThreshold = 256
 )
 
 func indexByNibs(nibs []byte) int {
@@ -25,13 +24,12 @@ func sizeByDepth(d int) int {
 type cacheImpl interface {
 	Get(nibs []byte, h []byte) ([]byte, bool)
 	Put(nibs []byte, h []byte, serialized []byte)
-	OnAttach(cnt int32, id []byte) cacheImpl
+	OnAttach(id []byte) cacheImpl
 }
 
 type NodeCache struct {
 	lock     sync.Mutex
 	impl     cacheImpl
-	countGet int32
 }
 
 func (c *NodeCache) Get(nibs []byte, h []byte) ([]byte, bool) {
@@ -41,7 +39,6 @@ func (c *NodeCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	atomic.AddInt32(&c.countGet, 1)
 	return c.impl.Get(nibs, h)
 }
 
@@ -59,10 +56,14 @@ func (c *NodeCache) Put(nibs []byte, h []byte, serialized []byte) {
 }
 
 func (c *NodeCache) OnAttach(id []byte) *NodeCache {
-	if c != nil {
-		cnt := atomic.SwapInt32(&c.countGet, 0)
-		c.impl = c.impl.OnAttach(cnt, id)
+	if c == nil {
+		return nil
 	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.impl = c.impl.OnAttach(id)
 	return c
 }
 
