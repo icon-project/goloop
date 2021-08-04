@@ -10,6 +10,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -27,6 +28,13 @@ var csProtocols = []module.ProtocolInfo{
 	ProtoBlockPart,
 	ProtoVote,
 	ProtoVoteList,
+}
+
+var KeyLastVotes = []byte("consensus.lastVotes")
+
+type LastVoteData struct {
+	Height     int64
+	VotesBytes []byte
 }
 
 const (
@@ -144,7 +152,7 @@ type consensus struct {
 	minimizeBlockGen   bool
 	roundLimit         int32
 	sentPatch          bool
-	lastVotes          *voteSet
+	lastVotes          VoteSet
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
 	lockedRound        int32
@@ -425,18 +433,15 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 }
 
 func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error) {
-	psid, ok := cs.lastVotes.getOverTwoThirdsPartSetID()
-	lastPC := ok &&
+	lastPC :=
 		msg.Height == cs.height-1 &&
-		cs.step <= stepTransactionWait &&
-		msg.Type == VoteTypePrecommit &&
-		msg.Round == cs.lastVotes.getRound() &&
-		msg.BlockPartSetID.Equal(psid)
+			cs.step <= stepTransactionWait &&
+			msg.Type == VoteTypePrecommit
 	if lastPC {
 		if cs.prevValidators != nil {
 			index := cs.prevValidators.IndexOf(msg.address())
 			if index >= 0 {
-				cs.lastVotes.add(index, msg)
+				cs.lastVotes.Add(index, msg)
 			}
 		}
 	}
@@ -598,7 +603,7 @@ func (cs *consensus) enterPropose() {
 				}
 			}
 			var err error
-			cvl := cs.lastVotes.commitVoteListForOverTwoThirds()
+			cvl := cs.lastVotes.CommitVoteSet()
 			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl,
 				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
@@ -628,7 +633,7 @@ func (cs *consensus) enterPropose() {
 				},
 			)
 			if err != nil {
-				cs.log.Panicf("propose error: %+v\n", err)
+				cs.log.Warnf("propose error: %+v\n", err)
 			}
 		}
 	} else {
@@ -1498,20 +1503,17 @@ func (vl *emptyAddressIndexer) Len() int {
 	return 0
 }
 
-func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
-	// apply genesis commit vote set in the same way as commit WAL
-	blk, cvs, err := cs.c.BlockManager().GetGenesisData()
-	if err != nil {
-		return err
-	}
-	if blk == nil {
-		return nil
-	}
-	if blk.Height() != cs.lastBlock.Height() {
-		return nil
-	}
+func (cs *consensus) applyLastVote(
+	cvs module.CommitVoteSet,
+	prevValidators addressIndexer,
+) error {
+	blk := cs.lastBlock
 	cvl, ok := cvs.(*commitVoteList)
 	if !ok {
+		if vs, ok := cvs.(VoteSet); ok {
+			cs.lastVotes = vs
+			return nil
+		}
 		return errors.ErrInvalidState
 	}
 	vl := cvl.voteList(blk.Height(), blk.ID())
@@ -1530,6 +1532,40 @@ func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
 		cs.lastVotes = vs.voteSetForOverTwoThird()
 	}
 	return nil
+}
+
+func (cs *consensus) applyRevisionLastVotes(prevValidators addressIndexer) error {
+	bk, err := db.NewCodedBucket(cs.c.Database(), db.ChainProperty, nil)
+	if err != nil {
+		return err
+	}
+	var lastVoteData LastVoteData
+	err = bk.Get(db.Raw(KeyLastVotes), &lastVoteData)
+	if errors.NotFoundError.Equals(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if cs.lastBlock.Height() == lastVoteData.Height {
+		cvs := cs.c.CommitVoteSetDecoder()(lastVoteData.VotesBytes)
+		return cs.applyLastVote(cvs, prevValidators)
+	}
+	return nil
+}
+
+func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
+	// apply genesis commit vote set in the same way as commit WAL
+	blk, cvs, err := cs.c.BlockManager().GetGenesisData()
+	if err != nil {
+		return err
+	}
+	if blk == nil {
+		return nil
+	}
+	if blk.Height() != cs.lastBlock.Height() {
+		return nil
+	}
+	return cs.applyLastVote(cvs, prevValidators)
 }
 
 func (cs *consensus) Start() error {
@@ -1562,6 +1598,9 @@ func (cs *consensus) Start() error {
 		return err
 	}
 	if err := cs.applyGenesis(validators); err != nil {
+		return err
+	}
+	if err := cs.applyRevisionLastVotes(validators); err != nil {
 		return err
 	}
 
@@ -1713,24 +1752,28 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		if err != nil {
 			return nil, err
 		}
-		var cvl *commitVoteList
+		var cvs module.CommitVoteSet
 		if h == cs.height-1 {
-			cvl = cs.lastVotes.commitVoteListForOverTwoThirds()
+			cvs = cs.lastVotes.CommitVoteSet()
 		} else {
 			nb, err := cs.c.BlockManager().GetBlockByHeight(h + 1)
 			if err != nil {
 				return nil, err
 			}
-			cvl = nb.Votes().(*commitVoteList)
+			cvs = nb.Votes()
 		}
-		vl := cvl.voteList(h, b.ID())
-		psb := newPartSetBuffer(configBlockPartSize)
-		cs.log.Must(b.MarshalHeader(psb))
-		cs.log.Must(b.MarshalBody(psb))
-		bps := psb.PartSet()
+		var bps PartSet
+		var vl *voteList
+		if cvl, ok := cvs.(*commitVoteList); ok {
+			vl = cvl.voteList(h, b.ID())
+			psb := newPartSetBuffer(configBlockPartSize)
+			cs.log.Must(b.MarshalHeader(psb))
+			cs.log.Must(b.MarshalBody(psb))
+			bps = psb.PartSet()
+		}
 		c = &commit{
 			height:       h,
-			commitVotes:  cvl,
+			commitVotes:  cvs,
 			votes:        vl,
 			blockPartSet: bps,
 		}
@@ -1742,7 +1785,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 	c, err := cs.getCommit(h)
 	if err != nil {
-		cs.log.Panicf("cs.GetCommitBlockParts: %+v\n", err)
+		return nil
 	}
 	return c.blockPartSet
 }
@@ -1750,7 +1793,7 @@ func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
 	c, err := cs.getCommit(h)
 	if err != nil {
-		cs.log.Panicf("cs.GetCommitPrecommits: %+v\n", err)
+		return nil
 	}
 	return c.votes
 }

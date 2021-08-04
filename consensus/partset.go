@@ -97,6 +97,9 @@ func (ps *partSet) IsComplete() bool {
 }
 
 func (ps *partSet) GetMask() *bitArray {
+	if ps == nil {
+		return &bitArray{0, nil}
+	}
 	return ps.ba
 }
 

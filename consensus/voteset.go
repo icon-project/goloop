@@ -1,6 +1,15 @@
 package consensus
 
-import "bytes"
+import (
+	"bytes"
+
+	"github.com/icon-project/goloop/module"
+)
+
+type VoteSet interface {
+	CommitVoteSet() module.CommitVoteSet
+	Add(idx int, vote interface{}) bool
+}
 
 type counter struct {
 	partsID *PartSetID
@@ -169,6 +178,22 @@ func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
 // shall not modify returned array. invalidated if a vote is added.
 func (vs *voteSet) getMask() *bitArray {
 	return vs.mask
+}
+
+func (vs *voteSet) CommitVoteSet() module.CommitVoteSet {
+	return vs.commitVoteListForOverTwoThirds()
+}
+
+func (vs *voteSet) checkAndAdd(idx int, msg *voteMessage) bool {
+	psid, ok := vs.getOverTwoThirdsPartSetID()
+	if !ok || msg.Round != vs.getRound() || !msg.BlockPartSetID.Equal(psid) {
+		return false
+	}
+	return vs.add(idx, msg)
+}
+
+func (vs *voteSet) Add(idx int, msg interface{}) bool {
+	return vs.checkAndAdd(idx, msg.(*voteMessage))
 }
 
 func newVoteSet(nValidators int) *voteSet {
