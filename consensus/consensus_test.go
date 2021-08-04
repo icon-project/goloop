@@ -209,7 +209,10 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 }
 
 func TestConsensus_BasicConsensus2(t *testing.T) {
-	f := test.NewFixture(t, test.AddValidatorNodes(4))
+	f := test.NewFixture(t,
+		test.AddDefaultNode(false),
+		test.AddValidatorNodes(4),
+	)
 	defer f.Close()
 
 	test.NodeInterconnect(f.Nodes)

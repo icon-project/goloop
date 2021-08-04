@@ -147,7 +147,7 @@ func (t *Node) AssertLastBlock(
 }
 
 func (t *Node) ProposeBlock(
-	votes module.TimestampedCommitVoteSet,
+	votes module.CommitVoteSet,
 ) module.BlockCandidate {
 	blk, err, cbErr := ProposeBlock(t.BM, t.LastBlock.ID(), votes)
 	assert.NoError(t, err)
@@ -188,14 +188,14 @@ func (t *Node) FinalizeBlock(bc module.BlockCandidate) {
 	t.LastBlock = blk
 }
 
-func (t *Node) ProposeFinalizeBlock(votes module.TimestampedCommitVoteSet) {
+func (t *Node) ProposeFinalizeBlock(votes module.CommitVoteSet) {
 	bc := t.ProposeBlock(votes)
 	t.FinalizeBlock(bc)
 	bc.Dispose()
 }
 
 func (t *Node) ProposeImportFinalizeBlock(
-	votes module.TimestampedCommitVoteSet,
+	votes module.CommitVoteSet,
 ) {
 	bc := t.ProposeBlock(votes)
 	t.ImportBlock(bc, 0)
@@ -210,7 +210,7 @@ func (t *Node) ImportFinalizeBlockByReader(r io.Reader) {
 }
 
 func (t *Node) ProposeFinalizeBlockWithTX(
-	votes module.TimestampedCommitVoteSet, txJson string,
+	votes module.CommitVoteSet, txJson string,
 ) {
 	tid, err := t.SM.SendTransaction(txJson)
 	assert.NoError(t, err)
@@ -223,7 +223,7 @@ func (t *Node) ProposeFinalizeBlockWithTX(
 }
 
 func (t *Node) ProposeImportFinalizeBlockWithTX(
-	votes module.TimestampedCommitVoteSet, txJson string,
+	votes module.CommitVoteSet, txJson string,
 ) {
 	tid, err := t.SM.SendTransaction(txJson)
 	assert.NoError(t, err)
@@ -236,7 +236,7 @@ func (t *Node) ProposeImportFinalizeBlockWithTX(
 	bc.Dispose()
 }
 
-func (t *Node) NewVoteListForLastBlock() module.TimestampedCommitVoteSet {
+func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
 	return consensus.NewCommitVoteList(consensus.NewPrecommitMessage(
 		t.Chain.Wallet(),
 		t.LastBlock.Height(),

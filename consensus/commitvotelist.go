@@ -139,11 +139,11 @@ func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
 	return vl
 }
 
-func NewCommitVoteList(msgs ...*voteMessage) module.TimestampedCommitVoteSet {
+func NewCommitVoteList(msgs ...*voteMessage) module.CommitVoteSet {
 	return newCommitVoteList(msgs)
 }
 
-func NewEmptyCommitVoteList() module.TimestampedCommitVoteSet {
+func NewEmptyCommitVoteList() module.CommitVoteSet {
 	return newCommitVoteList(nil)
 }
 

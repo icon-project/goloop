@@ -2,11 +2,13 @@ package consensus
 
 import (
 	"container/list"
+
+	"github.com/icon-project/goloop/module"
 )
 
 type commit struct {
 	height       int64
-	commitVotes  *commitVoteList
+	commitVotes  module.CommitVoteSet
 	votes        *voteList
 	blockPartSet PartSet
 }

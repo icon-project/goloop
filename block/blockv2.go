@@ -252,10 +252,8 @@ func (b *blockV2) GetVoters(ctx HandlerContext) (module.ValidatorList, error) {
 func (b *blockV2) VerifyTimestamp(
 	prev module.BlockData, prevVoters module.ValidatorList,
 ) error {
-	if tcvs, ok := b.Votes().(module.TimestampedCommitVoteSet); ok {
-		if b.Height() > 1 && b.Timestamp() != tcvs.Timestamp() {
-			return errors.New("bad timestamp")
-		}
+	if b.Height() > 1 && b.Timestamp() != b.Votes().Timestamp() {
+		return errors.New("bad timestamp")
 	}
 	if b.Height() > 1 && prev.Timestamp() >= b.Timestamp() {
 		return errors.New("non-increasing timestamp")

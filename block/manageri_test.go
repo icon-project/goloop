@@ -146,7 +146,7 @@ type cbResult struct {
 	err error
 }
 
-func proposeSync(bm module.BlockManager, pid []byte, vs module.TimestampedCommitVoteSet) *blockResult {
+func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *blockResult {
 	ch := make(chan cbResult)
 	_, err := bm.Propose(pid, vs, func(blk module.BlockCandidate, err error) {
 		ch <- cbResult{blk, err}
@@ -200,7 +200,7 @@ func TestBlockManager_Propose_ErrorOnInvalidCommitVoteSet(t *testing.T) {
 	pid := getLastBlockID(t, bm)
 
 	cases := []struct {
-		vs module.TimestampedCommitVoteSet
+		vs module.CommitVoteSet
 		ok bool
 	}{
 		{newCommitVoteSet(false), false},

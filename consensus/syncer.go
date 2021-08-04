@@ -92,7 +92,12 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			vl := e.GetCommitPrecommits(p.Height)
 			msg := newVoteListMessage()
 			msg.VoteList = vl
-			p.BlockPartsMask = newBitArray(e.GetCommitBlockParts(p.Height).Parts())
+			partSet := e.GetCommitBlockParts(p.Height)
+			var nParts int
+			if partSet != nil {
+				nParts = partSet.Parts()
+			}
+			p.BlockPartsMask = newBitArray(nParts)
 			p.log.Tracef("PC for commit %v\n", p.Height)
 			return ProtoVoteList, msg
 		}
