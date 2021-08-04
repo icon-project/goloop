@@ -297,8 +297,10 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, 
 	}
 	pb.SetIrep(irep, irepHeight)
 
-	if err := s.SetTotalDelegation(new(big.Int).Add(s.GetTotalDelegation(), ps.Delegated())); err != nil {
-		return err
+	if ps.Delegated().Sign() == 1 {
+		if err := s.SetTotalDelegation(new(big.Int).Add(s.GetTotalDelegation(), ps.Delegated())); err != nil {
+			return err
+		}
 	}
 	return nil
 }
