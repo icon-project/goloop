@@ -99,12 +99,20 @@ func NewManager(
 	logger log.Logger,
 ) (Manager, error) {
 	m := &manager{}
+	m.server = newServer(nm, nil, bm, bpp, logger)
+	m.client = newClient(nm, nil, bm, logger)
+
+	// lock to prevent enter server.onJoin / client.onJoin
+	m.server.Lock()
+	defer m.server.Unlock()
+	m.client.Lock()
+	defer m.client.Unlock()
 	ph, err := nm.RegisterReactorForStreams("fastsync", module.ProtoFastSync, m, protocols, configFastSyncPriority)
 	if err != nil {
 		return nil, err
 	}
-	m.server = newServer(nm, ph, bm, bpp, logger)
-	m.client = newClient(nm, ph, bm, logger)
+	m.server.ph = ph
+	m.client.ph = ph
 	return m, nil
 }
 

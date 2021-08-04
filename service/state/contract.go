@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"golang.org/x/crypto/sha3"
-
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
@@ -57,7 +55,6 @@ type ContractSnapshot interface {
 	CodeID() []byte
 	CodeHash() []byte
 	Code() ([]byte, error)
-	SetCode([]byte) error
 	EEType() EEType
 	ContentType() string
 	DeployTxHash() []byte
@@ -124,18 +121,6 @@ func (c *contractSnapshotImpl) Code() ([]byte, error) {
 	return c.code, nil
 }
 
-func (c *contractSnapshotImpl) SetCode(code []byte) error {
-	if len(code) == 0 {
-		c.code = nil
-		c.codeHash = nil
-		return nil
-	}
-	c.code = code
-	codeHash := sha3.Sum256(code)
-	c.codeHash = codeHash[:]
-	return nil
-}
-
 func (c *contractSnapshotImpl) EEType() EEType {
 	return c.eeType
 }
@@ -200,13 +185,6 @@ func (c *contractSnapshotImpl) flush() error {
 	if c.isNew == false {
 		return nil
 	}
-	code, err := c.bk.Get(c.codeHash)
-	if err != nil {
-		return err
-	}
-	if len(code) != 0 {
-		return nil
-	}
 	if err := c.bk.Set(c.codeHash, c.code); err != nil {
 		return err
 	}
@@ -251,15 +229,30 @@ func (c *contractSnapshotImpl) String() string {
 
 type Contract interface {
 	ContractSnapshot
-	SetStatus(state ContractState)
+	SetCode([]byte) error
 }
 
 type contractImpl struct {
 	contractSnapshotImpl
+	markDirty func()
 }
 
-func (c *contractImpl) SetStatus(state ContractState) {
-	c.state = state
+func (c *contractImpl) SetCode(code []byte) error {
+	if len(code) == 0 {
+		c.code = nil
+		c.codeHash = nil
+		c.markDirty()
+		return nil
+	}
+	codeHash := crypto.SHA3Sum256(code)
+	if bytes.Equal(codeHash, c.codeHash) {
+		return nil
+	}
+	c.code = code
+	c.codeHash = codeHash
+	c.isNew = true
+	c.markDirty()
+	return nil
 }
 
 func (c *contractImpl) getSnapshot() *contractSnapshotImpl {
@@ -279,8 +272,9 @@ type contractROState struct {
 	ContractSnapshot
 }
 
-func (c *contractROState) SetStatus(state ContractState) {
-	log.Panicf("contractROState().SetStatus() is invoked")
+func (c *contractROState) SetCode(code []byte) error {
+	log.Panicf("contractROState().SetCode() is invoked")
+	return errors.InvalidStateError.New("ReadOnlyContract")
 }
 
 func newContractROState(snapshot ContractSnapshot) Contract {
@@ -288,4 +282,13 @@ func newContractROState(snapshot ContractSnapshot) Contract {
 		return nil
 	}
 	return &contractROState{snapshot}
+}
+
+func newContractState(snapshot *contractSnapshotImpl, markDirty func()) *contractImpl {
+	if snapshot == nil {
+		return nil
+	}
+	c := &contractImpl{markDirty: markDirty}
+	c.reset(snapshot)
+	return c
 }
