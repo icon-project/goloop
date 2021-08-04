@@ -41,7 +41,7 @@ func (h *callHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 
 	if cc.Revision().Value() < icmodule.RevisionICON2 {
 		ass := cc.GetAccountSnapshot(h.to.ID())
-		if ass == nil || ass.IsEmpty() {
+		if ass == nil || ass.IsEmpty() || ass.ActiveContract() == nil {
 			return scoreresult.UnknownFailureError.New("NoAccount")
 		}
 	}
