@@ -395,8 +395,8 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
 
     private boolean isValidLength(int length) {
         if (length > 32) {
-            //we're limiting the size of BigInteger to 32 bytes to have better control over the billing
-            throw new ArithmeticException();
+            // we're limiting the size of BigInteger to 32 bytes to have better control over the billing
+            throw new ArithmeticException("Out of the supported range");
         }
         return true;
     }
@@ -404,7 +404,7 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     private void verifyBitLength(int length) {
         if (length > 256) {
             // since the maximum length is 32 bytes, the designated bit position cannot be bigger than 256
-            throw new ArithmeticException();
+            throw new ArithmeticException("Out of the supported range");
         }
     }
     //========================================================

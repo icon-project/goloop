@@ -119,6 +119,10 @@ public class DAppExecutor {
             }
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());
+        } catch (AvmError e) {
+            e.printStackTrace();
+            long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
+            result = new Result(Status.UnknownFailure, stepUsed, e.getMessage());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);

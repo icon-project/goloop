@@ -249,6 +249,14 @@ public class JavaTokenTest extends TestBase {
         assertThrows(RpcError.class, () -> tokenScore.ownerOf(nonExistToken));
         assertFailure(txHandler.getResult(
                 tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), tokenId[2])));
+        // out of the supported range
+        final var bigLengthToken = new BigInteger(getRandomBytes(34));
+        try {
+            tokenScore.ownerOf(bigLengthToken);
+        } catch (RpcError e) {
+            assertEquals(-30001, e.getCode());
+            LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+        }
         LOG.infoExiting();
     }
 
