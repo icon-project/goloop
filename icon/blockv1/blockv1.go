@@ -639,13 +639,13 @@ func newBlockV13FromHeader(
 }
 
 func newBlockV13FromBlockFormat(dbase db.Database, format *Format) (*Block, error) {
-	patches := transaction.NewTransactionListFromHash(dbase, format.PatchTransactionsHash)
-	if patches == nil {
-		return nil, errors.Errorf("TranscationListFromHash(%x) failed", format.PatchTransactionsHash)
+	patches, err := newTransactionListFromBSS(dbase, format.PatchTransactions)
+	if err != nil {
+		return nil, err
 	}
-	normalTxs := transaction.NewTransactionListFromHash(dbase, format.NormalTransactionsHash)
-	if normalTxs == nil {
-		return nil, errors.Errorf("TransactionListFromHash(%x) failed", format.NormalTransactionsHash)
+	normalTxs, err := newTransactionListFromBSS(dbase, format.NormalTransactions)
+	if err != nil {
+		return nil, err
 	}
 	return newBlockV13FromHeader(
 		dbase,
