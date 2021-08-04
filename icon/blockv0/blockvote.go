@@ -408,6 +408,14 @@ func (s *BlockVoteList) Timestamp() int64 {
 	return (ts[l/2-1] + ts[l/2]) / 2
 }
 
+func (s *BlockVoteList) CommitVoteSet() module.CommitVoteSet {
+	return s
+}
+
+func (s *BlockVoteList) Add(idx int, vote interface{}) bool {
+	return false
+}
+
 func NewBlockVotesFromBytes(bs []byte) (*BlockVoteList, error) {
 	var res BlockVoteList
 	_, err := codec.UnmarshalFromBytes(bs, &res)
