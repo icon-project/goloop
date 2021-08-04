@@ -33,11 +33,7 @@ func (c *NodeOwnerCache) Add(node, owner module.Address) error {
 			return nil
 		}
 	} else {
-		if cur.Equal(owner) {
-			return nil
-		} else {
-			return errors.Errorf("AlreadyExist(owner=%s,node=%s)", cur, node)
-		}
+		return errors.Errorf("AlreadyExist(owner=%s,node=%s)", cur, node)
 	}
 	c.nodeToOwner[icutils.ToKey(node)] = owner
 	return nil

@@ -313,6 +313,9 @@ func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo)
 
 	oldNode := pb.GetNode(owner)
 	oldP2P := pb.P2PEndpoint()
+	if info.Node != nil && info.Node.Equal(oldNode) {
+		return false, errors.Errorf("SameAsOld(%s)", info.Node)
+	}
 	if err := s.updatePRepInfoOf(owner, pb, info); err != nil {
 		return false, err
 	}
