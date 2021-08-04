@@ -21,12 +21,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/ictest"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/test"
 )
 
-func TestConsensus_WithAccumulatorBasics(t *testing.T) {
+func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 	gen := test.NewNode(t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1)
 	defer gen.Close()
 
@@ -67,4 +71,68 @@ func TestConsensus_WithAccumulatorBasics(t *testing.T) {
 	blk := <-chn
 	assert.EqualValues(t, height-1, blk.Height())
 	assert.EqualValues(t, height, f.CS.GetStatus().Height)
+}
+
+func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
+	gen := test.NewNode(t, ictest.UseBMForBlockV1)
+	defer gen.Close()
+
+	nilVotes := (*blockv0.BlockVoteList)(nil)
+	gen.ProposeFinalizeBlockWithTX(
+		nilVotes,
+		test.NewTx().SetValidators(gen.Chain.Wallet().Address()).String(),
+	)
+	gen.ProposeFinalizeBlock(nilVotes)
+	nextBlockVersion := int32(module.BlockVersion2)
+	gen.ProposeFinalizeBlockWithTX(
+		ictest.NodeNewVoteListV1ForLastBlock(gen),
+		test.NewTx().SetNextBlockVersion(&nextBlockVersion).String(),
+	)
+
+	wallets := make([]module.Wallet, 3)
+	for i := range wallets {
+		wallets[i] = wallet.New()
+	}
+	gen.ProposeFinalizeBlockWithTX(
+		ictest.NodeNewVoteListV1ForLastBlock(gen),
+		test.NewTx().SetValidatorsAddresser(
+			gen.Chain.Wallet(), wallets[0], wallets[1], wallets[2],
+		).String(),
+	)
+	root, leaves := ictest.NodeFinalizeMerkle(gen)
+
+	lastVotes := ictest.NodeNewVoteListV1ForLastBlock(gen)
+	bk, err := db.NewCodedBucket(gen.Chain.Database(), db.ChainProperty, nil)
+	assert.NoError(t, err)
+	lastVotesData := consensus.LastVoteData{
+		Height: gen.LastBlock.Height(),
+		VotesBytes: lastVotes.Bytes(),
+	}
+	err = bk.Set(db.Raw(consensus.KeyLastVotes), &lastVotesData)
+	assert.NoError(t, err)
+
+	f := test.NewFixture(
+		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
+		ictest.UseMerkle(root, leaves),
+		test.AddDefaultNode(false),
+	)
+	defer f.Close()
+
+	f.AddNode(
+		test.UseWallet(gen.Chain.Wallet()), test.UseDB(gen.Chain.Database()),
+	)
+	for _, w := range wallets {
+		f.AddNode(test.UseWallet(w))
+	}
+	test.NodeInterconnect(f.Nodes)
+
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(t, err)
+	}
+	chn, err := f.BM.WaitForBlock(10)
+	assert.NoError(t, err)
+	blk := <-chn
+	assert.EqualValues(t, 10, blk.Height())
+	assert.EqualValues(t, 11, f.CS.GetStatus().Height)
 }
