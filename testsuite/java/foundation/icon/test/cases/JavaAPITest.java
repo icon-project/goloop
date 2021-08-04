@@ -16,15 +16,6 @@
 
 package foundation.icon.test.cases;
 
-import example.IRC2BasicToken;
-import example.IRC3BasicToken;
-import example.token.IRC2;
-import example.token.IRC2Basic;
-import example.token.IRC3;
-import example.token.IRC3Basic;
-import example.util.EnumerableIntMap;
-import example.util.EnumerableSet;
-import example.util.IntSet;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -44,8 +35,6 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.score.IRC3TokenScore;
-import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -67,8 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_JAVA_SCORE)
-class JavaScoreTest extends TestBase {
-    private static final Address ZERO_ADDRESS = new Address("hx0000000000000000000000000000000000000000");
+class JavaAPITest extends TestBase {
     private static IconService iconService;
     private static TransactionHandler txHandler;
     private static SecureRandom secureRandom;
@@ -106,71 +94,6 @@ class JavaScoreTest extends TestBase {
         }
     }
 
-    @Test
-    public void testSampleToken() throws Exception {
-        // 1. deploy
-        BigInteger decimals = BigInteger.valueOf(18);
-        BigInteger initialSupply = BigInteger.valueOf(1000);
-        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
-                decimals, initialSupply, Constants.CONTENT_TYPE_JAVA);
-        startTokenTest(tokenScore, decimals, initialSupply);
-    }
-
-    @Test
-    public void testIRC2Token() throws Exception {
-        // 1. deploy
-        BigInteger decimals = BigInteger.valueOf(18);
-        BigInteger initialSupply = BigInteger.valueOf(1000);
-        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
-                decimals, initialSupply, new Class<?>[]{IRC2BasicToken.class, IRC2Basic.class, IRC2.class});
-        startTokenTest(tokenScore, decimals, initialSupply);
-    }
-
-    private void startTokenTest(SampleTokenScore tokenScore, BigInteger decimals, BigInteger initialSupply)
-            throws Exception {
-        KeyWallet calleeWallet = KeyWallet.create();
-
-        // 2. balanceOf
-        LOG.infoEntering("balanceOf", "owner (initial)");
-        BigInteger oneToken = BigInteger.TEN.pow(decimals.intValue());
-        BigInteger totalSupply = oneToken.multiply(initialSupply);
-        BigInteger bal = tokenScore.balanceOf(ownerWallet.getAddress());
-        LOG.info("expected (" + totalSupply + "), got (" + bal + ")");
-        assertEquals(totalSupply, bal);
-        LOG.infoExiting();
-
-        // 3. transfer #1
-        LOG.infoEntering("transfer", "#1");
-        TransactionResult result = tokenScore.transfer(ownerWallet, calleeWallet.getAddress(), oneToken);
-        tokenScore.ensureTransfer(result, ownerWallet.getAddress(), calleeWallet.getAddress(), oneToken, null);
-        LOG.infoExiting();
-
-        // 3.1 transfer #2
-        LOG.infoEntering("transfer", "#2");
-        BigInteger two = oneToken.add(oneToken);
-        byte[] data = "Hello".getBytes();
-        result = tokenScore.transfer(ownerWallet, calleeWallet.getAddress(), two, data);
-        assertSuccess(result);
-        tokenScore.ensureTransfer(result, ownerWallet.getAddress(), calleeWallet.getAddress(), two, data);
-        LOG.infoExiting();
-
-        // 4. check balance of callee
-        LOG.infoEntering("balanceOf", "callee");
-        BigInteger expected = oneToken.add(two);
-        bal = tokenScore.balanceOf(calleeWallet.getAddress());
-        LOG.info("expected (" + expected + "), got (" + bal + ")");
-        assertEquals(expected, bal);
-        LOG.infoExiting();
-
-        // 5. check balance of owner
-        LOG.infoEntering("balanceOf", "owner");
-        expected = totalSupply.subtract(expected);
-        bal = tokenScore.balanceOf(ownerWallet.getAddress());
-        LOG.info("expected (" + expected + "), got (" + bal + ")");
-        assertEquals(expected, bal);
-        LOG.infoExiting();
-    }
-
     private Score deployAPITest() throws Exception {
         if (testScore == null) {
             LOG.infoEntering("deploy", "apiTest");
@@ -179,122 +102,6 @@ class JavaScoreTest extends TestBase {
             LOG.infoExiting();
         }
         return testScore;
-    }
-
-    @Test
-    public void testIRC3Token() throws Exception {
-        // 1. deploy
-        IRC3TokenScore tokenScore = IRC3TokenScore.mustDeploy(
-                txHandler, ownerWallet, new Class<?>[]{
-                        IRC3BasicToken.class, IRC3Basic.class, IRC3.class,
-                        EnumerableIntMap.class, EnumerableSet.class, IntSet.class});
-
-        // 2. initial check
-        LOG.infoEntering("initial check");
-        assertEquals(BigInteger.ZERO, tokenScore.balanceOf(ownerWallet.getAddress()));
-        assertEquals(BigInteger.ZERO, tokenScore.balanceOf(caller.getAddress()));
-        assertEquals(BigInteger.ZERO, tokenScore.totalSupply());
-        LOG.infoExiting();
-
-        // 3. mint some tokens
-        LOG.infoEntering("mint some tokens");
-        BigInteger[] tokenId = new BigInteger[] {
-                new BigInteger(getRandomBytes(8)),
-                new BigInteger(getRandomBytes(8)),
-                new BigInteger(getRandomBytes(8)),
-                new BigInteger(getRandomBytes(8)),
-        };
-        Bytes[] ids = new Bytes[tokenId.length];
-        for (int i = 0; i < ids.length; i++) {
-            ids[i] = tokenScore.mint(ownerWallet, tokenId[i]);
-        }
-        for (Bytes id : ids) {
-            assertSuccess(txHandler.getResult(id));
-        }
-        assertEquals(BigInteger.valueOf(tokenId.length), tokenScore.balanceOf(ownerWallet.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length), tokenScore.totalSupply());
-        showTokenStatus(tokenScore);
-        LOG.infoExiting();
-
-        // 4. transfer and check
-        LOG.infoEntering("transfer and check");
-        BigInteger token = tokenId[0];
-        assertEquals(ownerWallet.getAddress(), tokenScore.ownerOf(token));
-        ids[0] = tokenScore.transfer(ownerWallet, caller.getAddress(), token);
-        assertSuccess(txHandler.getResult(ids[0]));
-        assertEquals(caller.getAddress(), tokenScore.ownerOf(token));
-        assertEquals(BigInteger.ONE, tokenScore.balanceOf(caller.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length-1), tokenScore.balanceOf(ownerWallet.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length), tokenScore.totalSupply());
-        assertEquals(token, tokenScore.tokenOfOwnerByIndex(caller.getAddress(), 0));
-        assertEquals(tokenId[tokenId.length-1], tokenScore.tokenOfOwnerByIndex(ownerWallet.getAddress(), 0));
-        showTokenStatus(tokenScore);
-        LOG.infoExiting();
-
-        // 5. approve and check
-        LOG.infoEntering("approve and check");
-        token = tokenId[1];
-        assertEquals(ZERO_ADDRESS, tokenScore.getApproved(token));
-        ids[1] = tokenScore.approve(ownerWallet, caller.getAddress(), token);
-        assertSuccess(txHandler.getResult(ids[1]));
-        assertEquals(caller.getAddress(), tokenScore.getApproved(token));
-        showTokenStatus(tokenScore);
-
-        assertEquals(ownerWallet.getAddress(), tokenScore.ownerOf(token));
-        ids[2] = tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), token);
-        assertSuccess(txHandler.getResult(ids[2]));
-        assertEquals(ZERO_ADDRESS, tokenScore.getApproved(token));
-        assertEquals(caller.getAddress(), tokenScore.ownerOf(token));
-        assertEquals(BigInteger.TWO, tokenScore.balanceOf(caller.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length-2), tokenScore.balanceOf(ownerWallet.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length), tokenScore.totalSupply());
-        assertEquals(token, tokenScore.tokenOfOwnerByIndex(caller.getAddress(), 1));
-        assertEquals(tokenId[tokenId.length-2], tokenScore.tokenOfOwnerByIndex(ownerWallet.getAddress(), 1));
-        showTokenStatus(tokenScore);
-        LOG.infoExiting();
-
-        // 6. burn and check
-        LOG.infoEntering("burn and check");
-        var balance = tokenScore.balanceOf(ownerWallet.getAddress());
-        token = tokenScore.tokenOfOwnerByIndex(ownerWallet.getAddress(), 0);
-        ids[0] = tokenScore.burn(ownerWallet, token);
-        assertSuccess(txHandler.getResult(ids[0]));
-        assertEquals(balance.subtract(BigInteger.ONE), tokenScore.balanceOf(ownerWallet.getAddress()));
-        assertEquals(BigInteger.valueOf(tokenId.length-1), tokenScore.totalSupply());
-        showTokenStatus(tokenScore);
-        LOG.infoExiting();
-
-        // 7. negative tests
-        LOG.infoEntering("negative tests");
-        final var nonExistToken = token; // burned token
-        assertThrows(RpcError.class, () -> tokenScore.ownerOf(nonExistToken));
-        assertFailure(txHandler.getResult(
-                tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), tokenId[2])));
-        LOG.infoExiting();
-    }
-
-    private void showTokenStatus(IRC3TokenScore tokenScore) throws Exception {
-        var totalSupply = tokenScore.totalSupply();
-        System.out.println(">>> totalSupply = " + totalSupply);
-        for (int i = 0; i < totalSupply.intValue(); i++) {
-            var token = tokenScore.tokenByIndex(i);
-            var owner = tokenScore.ownerOf(token);
-            var approved = tokenScore.getApproved(token);
-            System.out.printf("   [%s](%s)<%s>\n", token, owner,
-                    approved.equals(ZERO_ADDRESS) ? "null" : approved);
-        }
-        var ownerBalance = tokenScore.balanceOf(ownerWallet.getAddress());
-        System.out.println("   == balanceOf owner: " + ownerBalance);
-        for (int i = 0; i < ownerBalance.intValue(); i++) {
-            var token = tokenScore.tokenOfOwnerByIndex(ownerWallet.getAddress(), i);
-            System.out.printf("     -- %d: [%s]\n", i, token);
-        }
-        var callerBalance = tokenScore.balanceOf(caller.getAddress());
-        System.out.println("   == balanceOf caller: " + callerBalance);
-        for (int i = 0; i < callerBalance.intValue(); i++) {
-            var token = tokenScore.tokenOfOwnerByIndex(caller.getAddress(), i);
-            System.out.printf("     -- %d: [%s]\n", i, token);
-        }
     }
 
     private byte[] getRandomBytes(int size) {
