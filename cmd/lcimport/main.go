@@ -625,6 +625,7 @@ func verifyBlocksOfCSVFile(ex *Executor, file string) error {
 			height,
 		)
 		if err := ex.Execute(height, height, false, true) ; err != nil {
+			StatusCleared()
 			Statusf(ex.log, "Verify Block[ %8d ] FAILED msg=%v",
 				height,
 				record[hidx+1:],
