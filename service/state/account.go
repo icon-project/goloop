@@ -82,6 +82,7 @@ type AccountState interface {
 	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
 	APIInfo() (*scoreapi.Info, error)
 	SetAPIInfo(*scoreapi.Info)
+	ActivateNextContract() error
 	AcceptContract(txHash []byte, auditTxHash []byte) error
 	RejectContract(txHash []byte, auditTxHash []byte) error
 	Contract() Contract
@@ -625,9 +626,25 @@ func (s *accountStateImpl) DeployContract(code []byte, eeType EEType, contentTyp
 		bk: bk, isNew: true, state: state, contentType: contentType,
 		eeType: eeType, deployTxHash: txHash, codeHash: codeHash[:],
 		params: params, code: code},
+		s.markDirty,
 	}
 	s.markDirty()
 	return old, nil
+}
+
+func (s *accountStateImpl) ActivateNextContract() error {
+	if s.nextContract == nil {
+		return scoreresult.InvalidParameterError.New("NoNextContract")
+	}
+	if s.nextContract.state == CSActive {
+		return scoreresult.InvalidParameterError.New("InvalidNextContract")
+	}
+	if s.curContract != nil {
+		s.curContract.state = CSInactive
+	}
+	s.nextContract.state = CSActive
+	s.markDirty()
+	return nil
 }
 
 func (s *accountStateImpl) AcceptContract(
@@ -763,19 +780,8 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.apiInfo = snapshot.apiInfo
 	s.state = snapshot.state
 	s.contractOwner = snapshot.contractOwner
-
-	if snapshot.curContract != nil {
-		s.curContract = new(contractImpl)
-		s.curContract.reset(snapshot.curContract)
-	} else {
-		s.curContract = nil
-	}
-	if snapshot.nextContract != nil {
-		s.nextContract = new(contractImpl)
-		s.nextContract.reset(snapshot.nextContract)
-	} else {
-		s.nextContract = nil
-	}
+	s.curContract = newContractState(snapshot.curContract, s.markDirty)
+	s.nextContract = newContractState(snapshot.nextContract, s.markDirty)
 	s.objCache = snapshot.objCache.Clone()
 	s.deposits = snapshot.deposits.Clone()
 	if snapshot.store == nil {
@@ -992,6 +998,10 @@ func (a *accountROState) InitContractAccount(address module.Address) bool {
 func (a *accountROState) DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error) {
 	log.Panic("accountROState().DeployContract() is invoked")
 	return nil, nil
+}
+
+func (a *accountROState) ActivateNextContract() error {
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) AcceptContract(

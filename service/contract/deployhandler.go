@@ -440,10 +440,9 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (err error, obj *codec.Typed
 	}
 
 	// 2. call on_install or on_update of the contract
-	if current != nil {
-		current.SetStatus(state.CSInactive)
+	if err := scoreAs.ActivateNextContract(); err != nil {
+		return err, nil, nil
 	}
-	next.SetStatus(state.CSActive)
 	handler := newCallHandlerWithParams(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
