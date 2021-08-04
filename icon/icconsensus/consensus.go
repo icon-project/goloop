@@ -83,7 +83,7 @@ func (c *wrapper) Start() error {
 		return err
 	}
 	bpp := newBPP(mt)
-	if h < c.mtCap {
+	if h+1 < c.mtCap {
 		c.Consensus = newFastSyncer(h+1, c.mtCap-1, c.c, c, bpp)
 	} else {
 		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
