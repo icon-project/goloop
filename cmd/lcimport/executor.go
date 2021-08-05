@@ -800,7 +800,7 @@ func D(v interface{}) string {
 }
 
 func (e *Executor) Execute(from, to int64, noStored, dryRun bool) error {
-	Statusf(e.log, "Executing Blocks from=%d, to=%d", from, to)
+	e.log.Infof("Executing Blocks from=%d, to=%d", from, to)
 	if from < 0 {
 		from = e.getLastHeight() + 1
 	}
