@@ -46,7 +46,7 @@ func (es *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *ic
 	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
 		a, _ := itr.Get()
 		ea := es.State.GetAccountState(a)
-		es.logger.Tracef("account : %s", ea)
+		es.logger.Tracef("account %s: %s", a, ea)
 		ra, err := ea.RemoveUnstake(h)
 		if err != nil {
 			return err

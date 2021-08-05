@@ -415,7 +415,7 @@ func (a *AccountState) RemoveUnbond(height int64) error {
 	}
 
 	if len(tmp) == len(a.unbonds) {
-		return errors.Errorf("does not have totalUnbond entry with expire(%d)", height)
+		return errors.Errorf("Unbond timer not found at %d", height)
 	}
 	a.unbonds = tmp
 	a.totalUnbond = new(big.Int).Sub(a.Unbond(), removed)
@@ -428,22 +428,16 @@ func (a *AccountState) RemoveUnstake(height int64) (ra *big.Int, err error) {
 	ra = new(big.Int)
 	for _, u := range a.unstakes {
 		if u.GetExpire() == height {
-			ra.Set(u.GetValue())
+			ra.Add(ra, u.GetValue())
 		} else {
 			tmp = append(tmp, u)
 		}
 	}
-	tl := len(tmp)
-	ul := len(a.unstakes)
-
-	if tl == ul {
-		err = errors.Errorf("Unstaking timer not found at %d", height)
-	} else if tl != ul-1 {
-		err = errors.Errorf("Too many unstaking timer at %d", height)
-	} else {
-		a.unstakes = tmp
-		a.setDirty()
+	if len(tmp) == len(a.unstakes) {
+		return nil, errors.Errorf("Unstaking timer not found at %d", height)
 	}
+	a.unstakes = tmp
+	a.setDirty()
 	return
 }
 

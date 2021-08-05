@@ -215,10 +215,10 @@ func TestAccount_RemoveUnstaking(t *testing.T) {
 	//invalid height
 	ra, err := a.RemoveUnstake(1)
 	assert.Error(t, err)
+	assert.Nil(t, ra)
 	assert.Contains(t, a.unstakes, us1)
 	assert.Contains(t, a.unstakes, us2)
 	assert.Equal(t, 0, expected.Cmp(a.GetUnstakeAmount()))
-	assert.Equal(t, 0, big.NewInt(0).Cmp(ra))
 
 	ra, err = a.RemoveUnstake(20)
 	assert.NoError(t, err)
