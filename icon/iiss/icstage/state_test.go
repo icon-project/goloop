@@ -79,7 +79,7 @@ func TestState_AddIScoreClaim(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			err := s.AddIScoreClaim(args.addr, args.value)
+			_, err := s.AddIScoreClaim(args.addr, args.value)
 			assert.NoError(t, err)
 
 			key := IScoreClaimKey.Append(args.addr).Build()

@@ -89,7 +89,7 @@ func TestCalculator_processClaim(t *testing.T) {
 		assert.NoError(t, err)
 
 		// add Claim : args.value
-		err = front.AddIScoreClaim(args.addr, args.value)
+		_, err = front.AddIScoreClaim(args.addr, args.value)
 		assert.NoError(t, err)
 	}
 	c.back = front.GetSnapshot()
@@ -267,7 +267,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				icstate.IISSVersion3,
 				0,
 				1000-1,
-				icmodule.Revision13,
+				icmodule.RevisionICON2,
 				big.NewInt(10000),
 				big.NewInt(50),
 				big.NewInt(50),
@@ -286,7 +286,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				icstate.IISSVersion3,
 				0,
 				-1,
-				icmodule.Revision13,
+				icmodule.RevisionICON2,
 				big.NewInt(0),
 				big.NewInt(0),
 				big.NewInt(0),
@@ -602,7 +602,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 					icstate.IISSVersion3,
 					0,
 					1000-1,
-					icmodule.Revision13,
+					icmodule.RevisionICON2,
 					big.NewInt(10000),
 					big.NewInt(50),
 					big.NewInt(50),

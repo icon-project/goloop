@@ -70,16 +70,16 @@ func (s *State) GetIScoreClaim(addr module.Address) (*IScoreClaim, error) {
 	return ToIScoreClaim(obj), nil
 }
 
-func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) error {
+func (s *State) AddIScoreClaim(addr module.Address, amount *big.Int) (*IScoreClaim, error) {
 	key := IScoreClaimKey.Append(addr).Build()
 	obj, err := s.store.Get(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	claim := ToIScoreClaim(obj)
 	claim = claim.Added(amount)
 	_, err = s.store.Set(key, icobject.New(TypeIScoreClaim, claim))
-	return err
+	return claim, err
 }
 
 func (s *State) GetEvent(offset int, index int64) (*icobject.Object, error) {

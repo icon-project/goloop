@@ -686,11 +686,12 @@ func (s *chainScore) Ex_claimIScore() error {
 	// write claim data to front
 	// IISS 2.0 : do not burn iScore < 1000
 	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
+	var ic *icstage.IScoreClaim
 	revision := s.cc.Revision().Value()
 	if revision < icmodule.RevisionICON2 {
-		err = es.Front.AddIScoreClaim(s.from, claim)
+		ic, err = es.Front.AddIScoreClaim(s.from, claim)
 	} else {
-		err = es.Front.AddIScoreClaim(s.from, iScore)
+		ic, err = es.Front.AddIScoreClaim(s.from, iScore)
 	}
 	if err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
@@ -700,7 +701,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		)
 	}
 	if revision < icmodule.Revision13 {
-		cl := iiss.NewClaimIScoreLog(s.from, claim)
+		cl := iiss.NewClaimIScoreLog(s.from, claim, ic)
 		es.AppendExtensionLog(cl)
 	}
 	s.claimEventLog(s.from, claim, icx)

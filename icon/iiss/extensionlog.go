@@ -100,6 +100,7 @@ func newDelegationLog(from module.Address, offset int, idx int64, obj *icobject.
 type claimIScoreLog struct {
 	from   module.Address
 	amount *big.Int
+	claim  *icstage.IScoreClaim
 }
 
 func (cl *claimIScoreLog) Format(f fmt.State, c rune) {
@@ -119,18 +120,19 @@ func (cl *claimIScoreLog) Handle(es *ExtensionStateImpl) error {
 		return err
 	}
 	// claimIScore was failed
-	if claim == nil || cl.amount.Cmp(claim.Value()) != 0 {
+	if claim == nil || cl.claim.Equal(claim) == false {
 		// Add IScoreClaim to es.Front
-		if err = es.Front.AddIScoreClaim(cl.from, cl.amount); err != nil {
+		if _, err = es.Front.AddIScoreClaim(cl.from, cl.amount); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func NewClaimIScoreLog(from module.Address, amount *big.Int) *claimIScoreLog {
+func NewClaimIScoreLog(from module.Address, amount *big.Int, claim *icstage.IScoreClaim) *claimIScoreLog {
 	return &claimIScoreLog{
 		from:   from,
 		amount: amount,
+		claim:  claim,
 	}
 }
