@@ -216,9 +216,15 @@ func AssignHexInt(dstValue reflect.Value, srcValue *common.HexInt) error {
 	dstKind := dstType.Kind()
 	switch dstKind {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if !srcValue.IsUint64() || srcValue.BitLen() > int(dstType.Size()*8) {
+			return scoreresult.InvalidParameterError.Errorf("Overflow(type=%s)", dstType)
+		}
 		dstValue.SetUint(srcValue.Uint64())
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if !srcValue.IsInt64() || len(srcValue.Bytes()) > int(dstType.Size()) {
+			return scoreresult.InvalidParameterError.Errorf("Overflow(type=%s)", dstType)
+		}
 		dstValue.SetInt(srcValue.Int64())
 		return nil
 	case reflect.Bool:
