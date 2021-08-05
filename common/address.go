@@ -272,5 +272,4 @@ func ToAddress(addr interface{}) *Address {
 		return AddressToPtr(a)
 	}
 	return nil
-	return nil
 }
