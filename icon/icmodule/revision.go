@@ -40,7 +40,7 @@ const (
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision13
+	LatestRevision  = Revision14
 )
 
 const (
@@ -64,10 +64,13 @@ const (
 
 	RevisionBurnV2 = Revision12
 
-	RevisionICON2     = Revision13
+	RevisionFixClaimIScore   = Revision13
+	RevisionFixSetDelegation = Revision13
+
+	RevisionICON2     = Revision14
 	RevisionICON1Last = RevisionICON2 - 1
 
-	RevisionExtraMainPReps = Revision14
+	RevisionExtraMainPReps = RevisionICON2 + 1
 )
 
 var revisionFlags = []module.Revision{

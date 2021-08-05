@@ -378,7 +378,7 @@ func (es *ExtensionStateImpl) SetDelegation(blockHeight int64, from module.Addre
 		}
 	}
 
-	if revision < icmodule.Revision13 {
+	if revision < icmodule.RevisionFixSetDelegation {
 		dLog := newDelegationLog(from, offset, idx, obj, ds)
 		es.AppendExtensionLog(dLog)
 	}

@@ -700,7 +700,7 @@ func (s *chainScore) Ex_claimIScore() error {
 			s.from,
 		)
 	}
-	if revision < icmodule.Revision13 {
+	if revision < icmodule.RevisionFixClaimIScore {
 		cl := iiss.NewClaimIScoreLog(s.from, claim, ic)
 		es.AppendExtensionLog(cl)
 	}
