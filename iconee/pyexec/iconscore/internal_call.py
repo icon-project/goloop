@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional, Any, Tuple
 
 from ..base.address import Address, ZERO_SCORE_ADDRESS
 from ..base.exception import ExceptionCode, IconServiceBaseException
+from ..icon_constant import Revision
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..ipc import MethodName
 from ..logger import Logger
@@ -70,6 +71,9 @@ class InternalCall(object):
         if status == ExceptionCode.OK:
             return result
         else:
+            if Revision.to_value(context.revision) < Revision.ICON2 and \
+                    status == 1 and result == "NoAccount":
+                raise AttributeError("'NoneType' object has no attribute '_IconScoreBase__is_func_readonly'")
             raise IconServiceBaseException.create(result, status)
 
 
