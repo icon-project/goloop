@@ -70,6 +70,7 @@ class DummyDatabase(object):
 
     ALLOWLIST_ON_GET = [
         bytes.fromhex('a94937feb20bfcce69564deb964f84c585ccc0a2e9e1cbe662d2b32f35c90787'),
+        bytes.fromhex('cd4f164db8505d187ef6f763791cb8fb4eb80b74371fbde7b29e14b7c3d8a04f'),
     ]
 
     ALLOWLIST_ON_PUT = [
