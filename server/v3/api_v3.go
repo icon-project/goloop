@@ -814,19 +814,26 @@ type traceCallback struct {
 	lock    sync.Mutex
 	logs    []interface{}
 	last    error
+	ts      time.Time
 	channel chan interface{}
 }
 
 type traceLog struct {
-	Level module.TraceLevel
-	Msg   string
+	Level module.TraceLevel `json:"level""`
+	Msg   string            `json:"msg"`
+	Ts    int64             `json:"ts"`
 }
 
 func (t *traceCallback) OnLog(level module.TraceLevel, msg string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.logs = append(t.logs, traceLog{level, msg})
+	ts := time.Now()
+	if len(t.logs) == 0 {
+		t.ts = ts
+	}
+	dur := ts.Sub(t.ts) / time.Microsecond
+	t.logs = append(t.logs, traceLog{level, msg, int64(dur)})
 }
 
 func (t *traceCallback) OnEnd(e error) {
