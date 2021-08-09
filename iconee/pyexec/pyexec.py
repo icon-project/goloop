@@ -114,6 +114,10 @@ def convert_output(params: list) -> List[int]:
 
 
 class PyExecEngine(object):
+    ACCEPT_TX_MAP = {
+        '6b93c461e6aa171f1d3ecdfb45f1fad2031899235392a90c0504ae60c044a24e': True
+    }
+
     def __init__(self, proxy: 'ServiceManagerProxy', verify_package: bool):
         self.__proxy = proxy
         self.__verify_package = verify_package
@@ -133,11 +137,13 @@ class PyExecEngine(object):
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
-        context.tx = Transaction(tx_hash=info.get(Info.TX_HASH),
-                                 index=info.get(Info.TX_INDEX),
-                                 origin=info.get(Info.TX_FROM),
-                                 timestamp=info.get(Info.TX_TIMESTAMP),
-                                 nonce=info.get(Info.TX_NONCE))
+        tx_hash = info.get(Info.TX_HASH)
+        if tx_hash.hex() not in self.ACCEPT_TX_MAP or method == 'acceptScore':
+            context.tx = Transaction(tx_hash=tx_hash,
+                                     index=info.get(Info.TX_INDEX),
+                                     origin=info.get(Info.TX_FROM),
+                                     timestamp=info.get(Info.TX_TIMESTAMP),
+                                     nonce=info.get(Info.TX_NONCE))
         context.block = Block(info.get(Info.BLOCK_HEIGHT),
                               info.get(Info.BLOCK_TIMESTAMP))
         context.msg = Message(sender=_from, value=value)

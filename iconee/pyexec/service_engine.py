@@ -92,7 +92,7 @@ class ServiceEngine(ContextContainer):
         try:
             ret = cls._internal_call(context)
             status = Status.SUCCESS
-            if context.tx.hash:
+            if context.tx and context.tx.hash:
                 PostTxHandler.run(context.tx.hash, cls._proxy)
         except BaseException as e:
             status, ret = cls._get_status_from_exception(e)
