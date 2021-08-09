@@ -29,7 +29,7 @@ import (
 	"github.com/icon-project/goloop/service/transaction"
 )
 
-type blockV01aJSON struct {
+type BlockV01aJSON struct {
 	Version            string             `json:"version"`
 	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash,omitempty"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
@@ -42,24 +42,24 @@ type blockV01aJSON struct {
 }
 
 type BlockV01a struct {
-	*blockV01aJSON
+	*BlockV01aJSON
 	txs []module.Transaction
 }
 
 func (b *BlockV01a) Version() string {
-	return b.blockV01aJSON.Version
+	return b.BlockV01aJSON.Version
 }
 
 func (b *BlockV01a) ID() []byte {
-	return b.blockV01aJSON.BlockHash.Bytes()
+	return b.BlockV01aJSON.BlockHash.Bytes()
 }
 
 func (b *BlockV01a) Height() int64 {
-	return b.blockV01aJSON.Height
+	return b.BlockV01aJSON.Height
 }
 
 func (b *BlockV01a) PrevID() []byte {
-	return b.blockV01aJSON.PrevBlockHash.Bytes()
+	return b.BlockV01aJSON.PrevBlockHash.Bytes()
 }
 
 func (b *BlockV01a) Votes() *BlockVoteList {
@@ -117,7 +117,7 @@ func (b *BlockV01a) Verify(prev Block) error {
 }
 
 func (b *BlockV01a) String() string {
-	return fmt.Sprint(b.blockV01aJSON)
+	return fmt.Sprint(b.BlockV01aJSON)
 }
 
 func (b *BlockV01a) NormalTransactions() []module.Transaction {
@@ -145,7 +145,7 @@ func (b *BlockV01a) NextValidators() *RepsList {
 }
 
 func (b *BlockV01a) ToJSON(version module.JSONVersion) (interface{}, error) {
-	return b.blockV01aJSON, nil
+	return b.BlockV01aJSON, nil
 }
 
 func (b *BlockV01a) TransactionRoot() []byte {
@@ -153,7 +153,7 @@ func (b *BlockV01a) TransactionRoot() []byte {
 }
 
 func ParseBlockV01a(b []byte) (Block, error) {
-	var blk = new(blockV01aJSON)
+	var blk = new(BlockV01aJSON)
 	err := json.Unmarshal(b, blk)
 	if err != nil {
 		return nil, err
