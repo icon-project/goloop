@@ -73,6 +73,7 @@ type Block interface {
 	LogsBloom() module.LogsBloom
 	Verify(prev Block) error
 	ToJSON(version module.JSONVersion) (interface{}, error)
+	TransactionRoot() []byte
 }
 
 type Store interface {

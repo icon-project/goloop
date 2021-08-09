@@ -401,6 +401,16 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 	return resCh, nil
 }
 
+func checkBlock(v1 *blockv1.Block, v0 blockv0.Block) error {
+	if !bytes.Equal(v1.ID(), v0.ID()) {
+		return errors.Errorf("block ID is different v1:%v v0:%v", v1.ID(), v0.ID())
+	}
+	if !bytes.Equal(v1.TransactionsRoot(), v0.TransactionRoot()) {
+		return errors.Errorf("transaction root is different v1:%v v0:%v", v1.TransactionsRoot(), v0.TransactionRoot())
+	}
+	return nil
+}
+
 func (e *BlockConverter) doExecute(
 	from, to int64,
 	firstNForcedResults []*BlockTransaction,
@@ -468,6 +478,9 @@ func (e *BlockConverter) doExecute(
 		e.log.Infof("Finalize Block[ %9d ]", height)
 		blk, err := blockv1.NewFromV0(tr.block, e.database, prevTR.blockHash, tr)
 		if err != nil {
+			return err
+		}
+		if err := checkBlock(blk, tr.block); err != nil {
 			return err
 		}
 		tr.blockHash = blk.Hash()

@@ -282,6 +282,10 @@ func (b *BlockV03) Verify(prev Block) error {
 	return nil
 }
 
+func (b *BlockV03) TransactionRoot() []byte {
+	return b.json.TransactionsHash
+}
+
 func ParseBlockV03(b []byte, lc Store) (Block, error) {
 	jso := new(BlockV03JSON)
 	if err := json.Unmarshal(b, jso); err != nil {

@@ -148,6 +148,10 @@ func (b *BlockV01a) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return b.blockV01aJSON, nil
 }
 
+func (b *BlockV01a) TransactionRoot() []byte {
+	return b.MerkleTreeRootHash
+}
+
 func ParseBlockV01a(b []byte) (Block, error) {
 	var blk = new(blockV01aJSON)
 	err := json.Unmarshal(b, blk)
