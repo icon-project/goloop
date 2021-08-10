@@ -68,43 +68,6 @@ func LevelFromLen(len int64) int {
 	return (bits.Len64(uint64(len)-1) + 3) / 4
 }
 
-func CapOfMerkleTree(bk db.Bucket, storageKey string) (int64, error) {
-	mtd := merkleTreeData{}
-	cbk := db.NewCodedBucketFromBucket(bk, nil)
-	if len(storageKey) == 0 {
-		storageKey = defaultMerkleTreeKey
-	}
-	if err := cbk.Get(db.Raw(storageKey), &mtd); err != nil {
-		return -1, err
-	}
-	return mtd.Cap, nil
-}
-
-func NewMerkleTreeFromDB(
-	bk db.Bucket,
-	storageKey string,
-	cacheCap int,
-) (MerkleTree, error) {
-	mtd := merkleTreeData{}
-	cbk := db.NewCodedBucketFromBucket(bk, nil)
-	if len(storageKey) == 0 {
-		storageKey = defaultMerkleTreeKey
-	}
-	if err := cbk.Get(db.Raw(storageKey), &mtd); err != nil {
-		return nil, err
-	}
-	rootHash, err := newNodeFromBytes(mtd.RootHash)
-	if err != nil {
-		return nil, err
-	}
-	return &merkleTree{
-		bdb:      newCachedNodeDB(bk, cacheCap),
-		level:    LevelFromLen(mtd.Cap),
-		rootHash: rootHash,
-		cap:      mtd.Cap,
-	}, nil
-}
-
 // NewMerkleTree creates a new hex-ary merkle tree.
 // cacheCap is max number of branches in cache. Default value is used
 // if -1.
