@@ -188,6 +188,7 @@ func (t *taskImportICON) _import() (ret error) {
 	if sm, err := lcimporter.NewServiceManager(c, t.dbase, config, t); err != nil {
 		return err
 	} else {
+		t.sm = sm
 		c.sm = sm
 	}
 
@@ -206,6 +207,7 @@ func (t *taskImportICON) _import() (ret error) {
 	if err := c.nm.Start(); err != nil {
 		return err
 	}
+	c.sm.Start()
 	if err := c.cs.Start(); err != nil {
 		return err
 	}
