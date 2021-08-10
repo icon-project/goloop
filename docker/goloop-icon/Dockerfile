@@ -24,6 +24,7 @@ ENV JAVAEE_BIN /goloop/execman/bin/execman
 # install goloop and other stuff
 ADD dist/bin/* /goloop/bin/
 ENV PATH $PATH:/goloop/bin
+ADD icon_governance.zip /goloop/
 WORKDIR /goloop
 
 # container configuration
