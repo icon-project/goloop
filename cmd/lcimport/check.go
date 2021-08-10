@@ -40,12 +40,13 @@ import (
 type ICON1AccountInfo struct {
 	BlockHeight int64              `json:"blockHeight"`
 	Status      status             `json:"status"`
+	Issue       issue              `json:"issue"`
 	Accounts    map[string]account `json:"accounts"`
 }
 
 type status struct {
-	TotalSupply *big.Int	`json:"totalSupply"`
-	TotalStake  *big.Int	`json:"totalStake"`
+	TotalSupply *big.Int `json:"totalSupply"`
+	TotalStake  *big.Int `json:"totalStake"`
 }
 
 func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStoreState) {
@@ -64,6 +65,28 @@ func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStore
 	if s.TotalStake.Cmp(ts) != 0 {
 		fmt.Printf("TotalStake: icon1(%d) icon2(%d) diff=%d\n",
 			s.TotalStake, ts, new(big.Int).Sub(s.TotalStake, ts))
+	}
+}
+
+type issue struct {
+	IssuedICX        *big.Int `json:"issuedICX"`
+	PrevIssuedICX    *big.Int `json:"prevIssuedICX"`
+	OverIssuedIScore *big.Int `json:"overIssuedIScore"`
+}
+
+func (i *issue) Check(extState containerdb.ObjectStoreState) {
+	if i == nil {
+		return
+	}
+	value, err := extState.Get(icstate.IssueKey)
+	if err != nil || value == nil {
+		return
+	}
+	is := icstate.ToIssue(value)
+	if is == nil || i.IssuedICX.Cmp(is.TotalReward()) != 0 ||
+		i.PrevIssuedICX.Cmp(is.PrevTotalReward()) != 0 ||
+		i.OverIssuedIScore.Cmp(is.OverIssuedIScore()) != 0 {
+		fmt.Printf("Failed Issue: icon1(%+v) icon2(%+v)\n", i, is)
 	}
 }
 
@@ -237,6 +260,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 	extReward := getObjectStoreState(wss.Database(), hashes[4], icreward.NewObjectImpl)
 
 	icon1.Status.Check(wss, extState)
+	icon1.Issue.Check(extState)
 
 	count := 0
 	lost := new(big.Int)
@@ -264,7 +288,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 		}
 	}
 	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(accounts), height)
-	if count>0 {
+	if count > 0 {
 		return errors.InvalidStateError.New("FailInComparison")
 	}
 	return nil
