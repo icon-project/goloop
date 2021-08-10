@@ -47,11 +47,6 @@ type MerkleTree interface {
 	Cap() int64
 }
 
-type merkleTreeData struct {
-	Cap      int64
-	RootHash []byte
-}
-
 type merkleTree struct {
 	bdb      *nodeDB
 	level    int
