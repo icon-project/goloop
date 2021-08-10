@@ -742,6 +742,9 @@ func (es *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *bi
 			}
 		}
 	case term.StartHeight():
+		if err = es.checkCalculationDone(calculator); err != nil {
+			return err
+		}
 		if err = es.applyCalculationResult(calculator, blockHeight); err != nil {
 			return err
 		}
