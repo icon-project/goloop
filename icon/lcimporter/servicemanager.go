@@ -193,7 +193,7 @@ func (sm *ServiceManager) GetAPIInfo(result []byte, addr module.Address) (module
 }
 
 func (sm *ServiceManager) GetMembers(result []byte) (module.MemberList, error) {
-	return nil, common.ErrInvalidState
+	return nil, nil
 }
 
 func (sm *ServiceManager) GetRoundLimit(result []byte, vl int) int64 {
