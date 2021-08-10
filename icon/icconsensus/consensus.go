@@ -30,22 +30,20 @@ import (
 type wrapper struct {
 	mu sync.Mutex
 	module.Consensus
-	c           module.Chain
-	walDir      string
-	wm          consensus.WALManager
-	timestamper module.Timestamper
-	mtRoot      []byte
-	mtCap       int64
+	c            module.Chain
+	walDir       string
+	wm           consensus.WALManager
+	timestamper  module.Timestamper
+	merkleHeader *hexary.MerkleHeader
 }
 
 func NewConsensus(
 	c module.Chain,
 	walDir string,
 	timestamper module.Timestamper,
-	mtRoot []byte,
-	mtCap int64,
+	merkleHeader *hexary.MerkleHeader,
 ) (module.Consensus, error) {
-	return New(c, walDir, nil, timestamper, mtRoot, mtCap)
+	return New(c, walDir, nil, timestamper, merkleHeader)
 }
 
 func New(
@@ -53,16 +51,14 @@ func New(
 	walDir string,
 	wm consensus.WALManager,
 	timestamper module.Timestamper,
-	mtRoot []byte,
-	mtCap int64,
+	merkleHeader *hexary.MerkleHeader,
 ) (module.Consensus, error) {
 	return &wrapper{
-		c:           c,
-		walDir:      walDir,
-		wm:          wm,
-		timestamper: timestamper,
-		mtRoot:      mtRoot,
-		mtCap:       mtCap,
+		c:            c,
+		walDir:       walDir,
+		wm:           wm,
+		timestamper:  timestamper,
+		merkleHeader: merkleHeader,
 	}, nil
 }
 
@@ -78,13 +74,13 @@ func (c *wrapper) Start() error {
 	if err != nil {
 		return err
 	}
-	mt, err := hexary.NewMerkleTree(bk, c.mtRoot, c.mtCap, -1)
+	mt, err := hexary.NewMerkleTree(bk, c.merkleHeader, -1)
 	if err != nil {
 		return err
 	}
 	bpp := newBPP(mt)
-	if h+1 < c.mtCap {
-		c.Consensus = newFastSyncer(h+1, c.mtCap-1, c.c, c, bpp)
+	if h+1 < c.merkleHeader.Leaves {
+		c.Consensus = newFastSyncer(h+1, c.merkleHeader.Leaves-1, c.c, c, bpp)
 	} else {
 		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
 	}
@@ -110,7 +106,7 @@ func (c *wrapper) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 		return nil, errors.WithStack(errors.ErrNotFound)
 	}
 
-	if height < c.mtCap {
+	if height < c.merkleHeader.Leaves {
 		blk, err := c.c.BlockManager().GetBlockByHeight(height + 1)
 		if err != nil {
 			return nil, err

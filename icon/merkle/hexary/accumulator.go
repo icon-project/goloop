@@ -31,9 +31,10 @@ type Accumulator interface {
 	// Len returns number of added hashes.
 	Len() int64
 
-	// Finalize finalizes node data and write merkle tree data on the given
-	// key in tree bucket.
-	Finalize(key string) (rootHash []byte, length int64, err error)
+	GetMerkleHeader() *MerkleHeader
+
+	// Finalize finalizes node data
+	Finalize() (header *MerkleHeader, err error)
 }
 
 type accumulatorData struct {
@@ -118,17 +119,14 @@ func (ba *accumulator) GetMerkleHeader() *MerkleHeader {
 	return data.finalize()
 }
 
-func (ba *accumulator) Finalize(merkleKey string) (rootHash []byte, length int64, err error) {
-	if len(merkleKey) == 0 {
-		merkleKey = defaultMerkleTreeKey
-	}
+func (ba *accumulator) Finalize() (header *MerkleHeader, err error) {
 	var prevHash []byte
 	for _, r := range ba.data.Roots {
 		if prevHash != nil {
 			r.Add(prevHash)
 		}
 		if err = ba.treeBucket.Set(r.Hash(), r.Bytes()); err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		prevHash = r.Hash()
 	}
@@ -137,19 +135,14 @@ func (ba *accumulator) Finalize(merkleKey string) (rootHash []byte, length int64
 		root = newNode()
 		root.Add(prevHash)
 		if err = ba.treeBucket.Set(root.Hash(), root.Bytes()); err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		ba.data.Roots = append(ba.data.Roots, root)
 	}
-	mtd := merkleTreeData{
-		Cap:      ba.data.Len,
+	return &MerkleHeader{
 		RootHash: root.Get(0),
-	}
-	err = db.NewCodedBucketFromBucket(ba.treeBucket, nil).Set(merkleKey, &mtd)
-	if err != nil {
-		return nil, 0, err
-	}
-	return mtd.RootHash, mtd.Cap, nil
+		Leaves: ba.data.Len,
+	}, nil
 }
 
 // NewAccumulator creates a new accumulator. Merkle node is written in tree

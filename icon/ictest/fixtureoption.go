@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/icconsensus"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -105,8 +106,10 @@ func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 				wal,
 				wm,
 				nil,
-				iplt.MerkleRoot(),
-				iplt.MerkleLeaves(),
+				&hexary.MerkleHeader{
+					RootHash: iplt.MerkleRoot(),
+					Leaves:   iplt.MerkleLeaves(),
+				},
 			)
 			assert.NoError(t, err)
 			return cs

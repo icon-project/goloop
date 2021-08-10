@@ -37,9 +37,9 @@ func NodeFinalizeMerkle(n* test.Node) ([]byte, int64) {
 		err = ac.Add(blk.Hash())
 		assert.NoError(t, err)
 	}
-	root, leaves, err := ac.Finalize("")
+	header, err := ac.Finalize()
 	assert.NoError(t, err)
-	return root, leaves
+	return header.RootHash, header.Leaves
 }
 
 func NodeNewVoteListV1ForLastBlock(t *test.Node) *blockv0.BlockVoteList {

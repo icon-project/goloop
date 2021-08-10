@@ -24,8 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
-const defaultMerkleTreeKey = "merkleTree"
-
 var ErrVerify = errors.NewBase(errors.IllegalArgumentError, "VerifyError")
 
 type Prover interface {
@@ -73,19 +71,18 @@ func LevelFromLen(len int64) int {
 // if -1.
 func NewMerkleTree(
 	bk db.Bucket,
-	rootHash []byte,
-	len int64,
+	header *MerkleHeader,
 	cacheCap int,
 ) (MerkleTree, error) {
-	br, err := newNodeFromBytes(rootHash)
+	br, err := newNodeFromBytes(header.RootHash)
 	if err != nil {
 		return nil, err
 	}
 	return &merkleTree{
 		bdb:      newCachedNodeDB(bk, cacheCap),
-		level:    LevelFromLen(len),
+		level:    LevelFromLen(header.Leaves),
 		rootHash: br,
-		cap:      len,
+		cap:      header.Leaves,
 	}, nil
 }
 

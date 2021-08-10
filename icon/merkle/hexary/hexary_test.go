@@ -50,11 +50,11 @@ func TestBasics(t *testing.T) {
 		err = ac.Add(hashes[i])
 		assert.NoError(t, err)
 	}
-	rootHash, length, err := ac.Finalize("")
+	header, err := ac.Finalize()
 	assert.NoError(t, err)
 
-	prover, err := hexary.NewMerkleTree(perm, rootHash, length, cacheMax)
-	builder, err := hexary.NewMerkleTree(newMapBucket(), rootHash, length, cacheMax)
+	prover, err := hexary.NewMerkleTree(perm, header, cacheMax)
+	builder, err := hexary.NewMerkleTree(newMapBucket(), header, cacheMax)
 	assert.NoError(t, err)
 	for i := int64(0); i < maxHash; i++ {
 		proof, err := prover.Prove(i, -1)
@@ -105,10 +105,10 @@ func TestProofLen(t *testing.T) {
 		err = ac.Add(hashes[i])
 		assert.NoError(t, err)
 	}
-	rootHash, length, err := ac.Finalize("")
+	header, err := ac.Finalize()
 	assert.NoError(t, err)
 
-	prover, err := hexary.NewMerkleTree(perm, rootHash, length, cacheMax)
+	prover, err := hexary.NewMerkleTree(perm, header, cacheMax)
 	assert.NoError(t, err)
 	for i := int64(0); i < maxHash; i++ {
 		proof, err := prover.Prove(i, -1)
