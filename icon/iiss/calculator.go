@@ -429,7 +429,7 @@ func (c *Calculator) calculateVotedReward() error {
 		switch type_ {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
-			if obj.Status().IsEnabled() == false {
+			if obj.Status().IsEnabled() == false && vInfo.IsElectedPRep(obj.Target()) {
 				vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 				from = keyOffset
 				vInfo.SetEnable(obj.Target(), obj.Status())
@@ -1223,6 +1223,19 @@ func (vi *votedInfo) PReps() map[string]*votedData {
 func (vi *votedInfo) GetPRepByAddress(addr module.Address) *votedData {
 	key := icutils.ToKey(addr)
 	return vi.preps[key]
+}
+
+func (vi *votedInfo) IsElectedPRep(addr module.Address) bool {
+	key := icutils.ToKey(addr)
+	for i, addrKey := range vi.rank {
+		if i == vi.maxRankForReward {
+			return false
+		}
+		if key == addrKey {
+			return true
+		}
+	}
+	return false
 }
 
 func (vi *votedInfo) AddVotedData(addr module.Address, data *votedData) {
