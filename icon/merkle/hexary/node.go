@@ -46,6 +46,13 @@ type node struct {
 	_hash []byte
 }
 
+func (b *node) Clone() *node {
+	return &node {
+		bytes: append(b.bytes[:0:0], b.bytes...),
+		_hash: b._hash,
+	}
+}
+
 func newNode() *node {
 	return &node{
 		bytes: make([]byte, 0, maxNodeBytes),

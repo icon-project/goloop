@@ -41,6 +41,40 @@ type accumulatorData struct {
 	Roots []*node
 }
 
+func (ad *accumulatorData) Clone() *accumulatorData {
+	var roots []*node
+	if ad.Roots != nil {
+		roots = make([]*node, len(ad.Roots))
+		for i := range ad.Roots {
+			roots[i] = ad.Roots[i].Clone()
+		}
+	}
+	return &accumulatorData{
+		Len:   ad.Len,
+		Roots: ad.Roots,
+	}
+}
+
+func (ad *accumulatorData) finalize() *MerkleHeader {
+	var prevHash []byte
+	for _, r := range ad.Roots {
+		if prevHash != nil {
+			r.Add(prevHash)
+		}
+		prevHash = r.Hash()
+	}
+	root := ad.Roots[len(ad.Roots)-1]
+	if root.Len() != 1 {
+		root = newNode()
+		root.Add(prevHash)
+		ad.Roots = append(ad.Roots, root)
+	}
+	return &MerkleHeader{
+		root.Get(0),
+		ad.Len,
+	}
+}
+
 type accumulator struct {
 	data               accumulatorData
 	treeBucket         db.Bucket
@@ -77,6 +111,11 @@ func (ba *accumulator) Add(hash []byte) error {
 
 func (ba *accumulator) Len() int64 {
 	return ba.data.Len
+}
+
+func (ba *accumulator) GetMerkleHeader() *MerkleHeader {
+	data := ba.data.Clone()
+	return data.finalize()
 }
 
 func (ba *accumulator) Finalize(merkleKey string) (rootHash []byte, length int64, err error) {
