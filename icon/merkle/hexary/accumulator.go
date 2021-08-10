@@ -52,7 +52,7 @@ func (ad *accumulatorData) Clone() *accumulatorData {
 	}
 	return &accumulatorData{
 		Len:   ad.Len,
-		Roots: ad.Roots,
+		Roots: roots,
 	}
 }
 
