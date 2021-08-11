@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 )
 
@@ -126,4 +127,39 @@ func TestRequiredLevel(t *testing.T) {
 	assert.Equal(t, 3, hexary.LevelFromLen(257))
 	assert.Equal(t, 3, hexary.LevelFromLen(4096))
 	assert.Equal(t, 4, hexary.LevelFromLen(4097))
+}
+
+func TestAccumulator_ZeroValue(t *testing.T) {
+	tdb := db.NewMapDB()
+	tbk, err := tdb.GetBucket(icdb.BlockMerkle)
+	assert.NoError(t, err)
+	ibk, err := tdb.GetBucket("i")
+	assert.NoError(t, err)
+	hac, err := hexary.NewAccumulator(tbk, ibk, "")
+	hd := hac.GetMerkleHeader()
+	assert.EqualValues(t, &hexary.MerkleHeader{}, hd)
+	hd, err = hac.Finalize()
+	assert.NoError(t, err)
+	assert.EqualValues(t, &hexary.MerkleHeader{}, hd)
+}
+
+func TestAccumulator_Persistence(t *testing.T) {
+	tdb := db.NewMapDB()
+	tbk, err := tdb.GetBucket(icdb.BlockMerkle)
+	assert.NoError(t, err)
+	ibk, err := tdb.GetBucket("i")
+	assert.NoError(t, err)
+	hac, err := hexary.NewAccumulator(tbk, ibk, "")
+	assert.NoError(t, err)
+	bs := codec.MustMarshalToBytes(1)
+	hash := crypto.SHA3Sum256(bs)
+	err = hac.Add(hash)
+	assert.NoError(t, err)
+	hd1 := hac.GetMerkleHeader()
+
+	hac2, err := hexary.NewAccumulator(tbk, ibk, "")
+	assert.NoError(t, err)
+	hd2 := hac2.GetMerkleHeader()
+
+	assert.Equal(t, hd1, hd2)
 }

@@ -122,7 +122,7 @@ func (b *node) RLPEncodeSelf(e codec.Encoder) error {
 
 func (b *node) RLPDecodeSelf(d codec.Decoder) error {
 	bytes := make([]byte, 0, maxNodeBytes)
-	if err := d.Decode(bytes); err != nil {
+	if err := d.Decode(&bytes); err != nil {
 		return err
 	}
 	if err := validateNodeBytes(bytes); err != nil {

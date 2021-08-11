@@ -57,6 +57,9 @@ func (ad *accumulatorData) Clone() *accumulatorData {
 }
 
 func (ad *accumulatorData) finalize() *MerkleHeader {
+	if ad.Len == 0 {
+		return &MerkleHeader{}
+	}
 	var prevHash []byte
 	for _, r := range ad.Roots {
 		if prevHash != nil {
@@ -107,7 +110,7 @@ func (ba *accumulator) Add(hash []byte) error {
 		return err
 	}
 	ba.data.Len++
-	return ba.accumulatorBucket.Set(ba.accumulatorDataKey, &ba.data)
+	return ba.accumulatorBucket.Set(db.Raw(ba.accumulatorDataKey), &ba.data)
 }
 
 func (ba *accumulator) Len() int64 {
@@ -120,6 +123,9 @@ func (ba *accumulator) GetMerkleHeader() *MerkleHeader {
 }
 
 func (ba *accumulator) Finalize() (header *MerkleHeader, err error) {
+	if ba.data.Len == 0 {
+		return &MerkleHeader{}, nil
+	}
 	var prevHash []byte
 	for _, r := range ba.data.Roots {
 		if prevHash != nil {
@@ -152,13 +158,13 @@ func NewAccumulator(
 	accumulatorBucket db.Bucket,
 	accumulatorDataKey string,
 ) (Accumulator, error) {
+	if len(accumulatorDataKey) == 0 {
+		accumulatorDataKey = defaultAccumulatorKey
+	}
 	ba := &accumulator{
 		treeBucket:         treeBucket,
 		accumulatorBucket:  db.NewCodedBucketFromBucket(accumulatorBucket, nil),
 		accumulatorDataKey: []byte(accumulatorDataKey),
-	}
-	if len(accumulatorDataKey) == 0 {
-		accumulatorDataKey = defaultAccumulatorKey
 	}
 	err := ba.accumulatorBucket.Get(db.Raw(accumulatorDataKey), &ba.data)
 	if err != nil && !errors.NotFoundError.Equals(err) {
