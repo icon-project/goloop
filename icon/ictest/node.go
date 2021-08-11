@@ -25,7 +25,7 @@ import (
 	"github.com/icon-project/goloop/test"
 )
 
-func NodeFinalizeMerkle(n* test.Node) ([]byte, int64) {
+func NodeFinalizeMerkle(n* test.Node) *hexary.MerkleHeader {
 	t := n.T
 	temp, err := n.Chain.Database().GetBucket("temp")
 	assert.NoError(t, err)
@@ -39,7 +39,7 @@ func NodeFinalizeMerkle(n* test.Node) ([]byte, int64) {
 	}
 	header, err := ac.Finalize()
 	assert.NoError(t, err)
-	return header.RootHash, header.Leaves
+	return header
 }
 
 func NodeNewVoteListV1ForLastBlock(t *test.Node) *blockv0.BlockVoteList {

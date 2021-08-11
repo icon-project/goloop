@@ -56,10 +56,10 @@ func (plt *platform) MerkleLeaves() int64 {
 	return plt.mtCap
 }
 
-func UseMerkle(root []byte, leaves int64) test.FixtureOption {
+func UseMerkle(header *hexary.MerkleHeader) test.FixtureOption {
 	return test.UseConfig(&test.FixtureConfig{
-		MerkleRoot: root,
-		MerkleLeaves: leaves,
+		MerkleRoot: header.RootHash,
+		MerkleLeaves: header.Leaves,
 	})
 }
 

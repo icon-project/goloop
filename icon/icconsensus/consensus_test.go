@@ -38,11 +38,11 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 	for i:=1; i<height; i++ {
 		gen.ProposeFinalizeBlock((*blockv0.BlockVoteList)(nil))
 	}
-	root, leaves := ictest.NodeFinalizeMerkle(gen)
+	header := ictest.NodeFinalizeMerkle(gen)
 
 	gen = test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(root, leaves), test.UseDB(gen.Chain.Database()),
+		ictest.UseMerkle(header), test.UseDB(gen.Chain.Database()),
 	)
 	defer gen.Close()
 
@@ -54,7 +54,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 
 	f := test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(root, leaves),
+		ictest.UseMerkle(header),
 	)
 	defer f.Close()
 
@@ -99,7 +99,7 @@ func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
 			gen.Chain.Wallet(), wallets[0], wallets[1], wallets[2],
 		).String(),
 	)
-	root, leaves := ictest.NodeFinalizeMerkle(gen)
+	header := ictest.NodeFinalizeMerkle(gen)
 
 	lastVotes := ictest.NodeNewVoteListV1ForLastBlock(gen)
 	bk, err := db.NewCodedBucket(gen.Chain.Database(), db.ChainProperty, nil)
@@ -113,7 +113,7 @@ func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
 
 	f := test.NewFixture(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(root, leaves),
+		ictest.UseMerkle(header),
 		test.AddDefaultNode(false),
 	)
 	defer f.Close()
