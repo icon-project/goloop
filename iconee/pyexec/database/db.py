@@ -200,7 +200,9 @@ class ContextDatabase(object):
                     context.step_counter.apply_step(StepType.SET, len(value))
                 self._db.put(key, value, None)
         else:
-            self._db.delete(key, self.__delete_handler)
+            if value is None:
+                raise DatabaseException('value should not be None')
+            self._db.put(key, value, self.__delete_handler)
 
     def delete(self, context: Optional['IconScoreContext'], key: bytes):
         """Delete the entry for the specified key

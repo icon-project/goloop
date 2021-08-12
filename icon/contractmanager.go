@@ -62,6 +62,9 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 			ch = newSystemHandler(h)
 		}
 	}
+	if h, ok := ch.(CallHandler); ok {
+		return newCallHandler(h, to, true), nil
+	}
 	return ch, nil
 }
 
@@ -81,7 +84,7 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 		return nil, err
 	}
 	if h, ok := ch.(CallHandler); ok {
-		return newCallHandler(h, to), nil
+		return newCallHandler(h, to, false), nil
 	}
 	return ch, nil
 }
