@@ -37,7 +37,7 @@ public class RuntimeAssertionError extends AvmError {
      * @return The thrown exception (for caller reachability convenience).
      */
     public static RuntimeAssertionError unexpected(Throwable t) {
-        throw new RuntimeAssertionError("Unexpected Throwable: " + t.getClass().getName(), t);
+        throw new RuntimeAssertionError("Unexpected Throwable", t);
     }
 
     /**

@@ -330,7 +330,7 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	deployID := getIDWithSalt(txInfo.Hash, salt)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
 	for h2a.Get(deployID) != nil {
-		return scoreresult.InvalidInstanceError.New("DuplicateDeployID"), nil, nil
+		return scoreresult.AccessDeniedError.New("DuplicateDeployID"), nil, nil
 	}
 
 	oldTx, err := as.DeployContract(h.content.GetBytes(), h.eeType, h.contentType, h.params, deployID)

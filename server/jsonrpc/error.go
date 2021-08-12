@@ -12,29 +12,75 @@ import (
 
 type ErrorCode int
 
-func (c ErrorCode) Wrap(err error, debug bool) *Error {
-	return NewError(c, err, debug)
-}
-
-func (c ErrorCode) New(msg string) *Error {
+func (c ErrorCode) New(msg string, data ...interface{}) *Error {
 	return &Error{
 		Code:    c,
-		Message: msg,
+		Message: fmt.Sprintf("%s : %s", c.String(), msg),
+		Data:    firstOf(data...),
 	}
 }
 
-func (c ErrorCode) NewWithData(msg string, data interface{}) *Error {
+func (c ErrorCode) NewWithData(data interface{}) *Error {
 	return &Error{
 		Code:    c,
-		Message: msg,
+		Message: c.String(),
 		Data:    data,
 	}
 }
 
+func (c ErrorCode) Wrap(err error, debug bool) *Error {
+	var data interface{}
+	if debug {
+		data = fmt.Sprintf("%+v", err)
+	}
+	return c.New(fmt.Sprintf("%v", err), data)
+}
+
 func (c ErrorCode) Errorf(f string, args ...interface{}) *Error {
-	return &Error{
-		Code:    c,
-		Message: fmt.Sprintf(f, args...),
+	return c.New(fmt.Sprintf(f, args...))
+}
+
+func (c ErrorCode) String() string {
+	switch c {
+	case ErrorCodeJsonParse:
+		return "ParseError"
+	case ErrorCodeInvalidRequest:
+		return "InvalidRequest"
+	case ErrorCodeMethodNotFound:
+		return "MethodNotFound"
+	case ErrorCodeInvalidParams:
+		return "InvalidParams"
+	case ErrorCodeInternal:
+		return "InternalError"
+	case ErrorCodeServer:
+		return "ServerError"
+	case ErrorCodeSystem:
+		return "SystemError"
+
+	case ErrorCodeTxPoolOverflow:
+		return "PoolOverflow"
+	case ErrorCodePending:
+		return "Pending"
+	case ErrorCodeExecuting:
+		return "Executing"
+	case ErrorCodeNotFound:
+		return "NotFound"
+	case ErrorLackOfResource:
+		return "LackOfResource"
+	case ErrorCodeTimeout:
+		return "Timeout"
+	case ErrorCodeSystemTimeout:
+		return "SystemTimeout"
+	default:
+		switch {
+		case c >= ErrorCodeServer && c < ErrorCodeServer+1000:
+			return fmt.Sprintf("ServerError(%d)", c)
+		case c >= ErrorCodeSystem && c < ErrorCodeSystem+1000:
+			return fmt.Sprintf("SystemError(%d)", c)
+		case c >= ErrorCodeScore && c < ErrorCodeScore+1000:
+			return fmt.Sprintf("SCOREError(%d)", c)
+		}
+		return fmt.Sprintf("UnknownError(%d)", c)
 	}
 }
 
@@ -69,94 +115,39 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("jsonrpc: code: %d, message: %s, data: %+v", e.Code, e.Message, e.Data)
 }
 
-func ErrParse(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeJsonParse,
-		Message: "Parse error",
-	}
+func firstOf(message ...interface{}) interface{} {
 	if len(message) > 0 {
-		re.Data = message[0]
+		return message[0]
+	} else {
+		return nil
 	}
-	return re
+}
+
+func ErrParse(message ...interface{}) *Error {
+	return ErrorCodeJsonParse.NewWithData(firstOf(message...))
 }
 
 func ErrInvalidRequest(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeInvalidRequest,
-		Message: "Invalid Request",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
-	}
-	return re
+	return ErrorCodeInvalidRequest.NewWithData(firstOf(message...))
 }
 
 func ErrMethodNotFound(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeMethodNotFound,
-		Message: "Method not found",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
-	}
-	return re
+	return ErrorCodeMethodNotFound.NewWithData(firstOf(message...))
 }
 
 func ErrInvalidParams(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeInvalidParams,
-		Message: "Invalid params",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
-	}
-	return re
-}
-
-func ErrInternal(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeInternal,
-		Message: "Internal error",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
-	}
-	return re
-}
-
-func AttachDebug(je *Error, err error) {
-	je.Data = fmt.Sprintf("%+v", err)
-}
-
-func NewError(code ErrorCode, err error, debug bool) *Error {
-	re := &Error{
-		Code:    code,
-		Message: fmt.Sprintf("%s", err),
-	}
-	if debug {
-		AttachDebug(re, err)
-	}
-	return re
+	return ErrorCodeInvalidParams.NewWithData(firstOf(message...))
 }
 
 func ErrScore(err error, debug bool) *Error {
 	s, _ := scoreresult.StatusOf(err)
-	return NewError(ErrorCodeScore-ErrorCode(s), err, debug)
+	code := ErrorCodeScore - ErrorCode(s)
+	return code.Wrap(err, debug)
 }
 
 func ErrScoreWithStatus(s module.Status) *Error {
-	return &Error{
-		Code:    ErrorCodeScore - ErrorCode(s),
-		Message: s.String(),
-	}
-}
-
-func ErrServer(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeServer,
-		Message: fmt.Sprint(message...),
-	}
-	return re
+	code := ErrorCodeScore - ErrorCode(s)
+	return code.New(s.String())
 }
 
 func ErrorHandler(re *Error, c echo.Context) {

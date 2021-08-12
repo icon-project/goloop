@@ -3,7 +3,6 @@ package jsonrpc
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -155,10 +155,10 @@ func (p *Params) Convert(v interface{}) error {
 	jd := json.NewDecoder(bytes.NewBuffer(p.rawMessage))
 	jd.DisallowUnknownFields()
 	if err := jd.Decode(v); err != nil {
-		return err
+		return errors.Wrapf(err, "JSONParseFail(Type=%T)", v)
 	}
 	if err := p.validator.Validate(v); err != nil {
-		return err
+		return errors.Wrapf(err, "ValidationFail(Type=%T,err=%T)", v, err)
 	}
 	return nil
 }

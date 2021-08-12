@@ -254,7 +254,8 @@ public class JavaTokenTest extends TestBase {
         try {
             tokenScore.ownerOf(bigLengthToken);
         } catch (RpcError e) {
-            assertEquals(-30001, e.getCode());
+            final int ErrInvalidParameter = -30006;
+            assertEquals(ErrInvalidParameter, e.getCode());
             LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
         }
         LOG.infoExiting();

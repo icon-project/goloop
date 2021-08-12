@@ -309,7 +309,7 @@ public class LoadedDApp {
             handleUncaughtException(e.getTargetException());
         } catch (ExceptionInInitializerError e) {
             handleUncaughtException(e.getException());
-        } catch (ReflectiveOperationException | RuntimeException e) {
+        } catch (ReflectiveOperationException | IllegalArgumentException e) {
             throw RuntimeAssertionError.unexpected(e);
         }
         return null;

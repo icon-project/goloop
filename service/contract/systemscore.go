@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -48,14 +49,14 @@ func getSystemScore(contentID string, cc CallContext, from module.Address, value
 
 func CheckStruct(t reflect.Type, fields []scoreapi.Field) error {
 	if t.Kind() != reflect.Map {
-		return scoreresult.InvalidInstanceError.Errorf("NotMapType(%s)", t)
+		return scoreresult.IllegalFormatError.Errorf("NotMapType(%s)", t)
 	}
 	if t.Key().Kind() != reflect.String {
-		return scoreresult.InvalidInstanceError.Errorf("KeyTypeInvalid(%s)", t.Key())
+		return scoreresult.IllegalFormatError.Errorf("KeyTypeInvalid(%s)", t.Key())
 	}
 	et := t.Elem()
 	if et.Kind() != reflect.Interface || et.NumMethod() != 0 {
-		return scoreresult.InvalidInstanceError.Errorf("ValueTypeInvalid(%s)", et)
+		return scoreresult.IllegalFormatError.Errorf("ValueTypeInvalid(%s)", et)
 	}
 	return nil
 }
@@ -63,7 +64,7 @@ func CheckStruct(t reflect.Type, fields []scoreapi.Field) error {
 func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) error {
 	for i := mt.ListDepth(); i > 0; i-- {
 		if t.Kind() != reflect.Slice {
-			return scoreresult.InvalidInstanceError.Errorf("NotCompatibleType(%s)", t)
+			return scoreresult.IllegalFormatError.Errorf("NotCompatibleType(%s)", t)
 		}
 		t = t.Elem()
 	}
@@ -106,12 +107,12 @@ func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) er
 		if err := CheckStruct(t, fields); err == nil {
 			return nil
 		} else {
-			return scoreresult.InvalidInstanceError.Wrapf(err, "NotCompatibleType(%s)", t)
+			return scoreresult.IllegalFormatError.Wrapf(err, "NotCompatibleType(%s)", t)
 		}
 	default:
 		return scoreresult.UnknownFailureError.Errorf("UnknownTypeTag(tag=%#x)", mt.Tag())
 	}
-	return scoreresult.InvalidInstanceError.Errorf("NotCompatibleType(%s)", t)
+	return scoreresult.IllegalFormatError.Errorf("NotCompatibleType(%s)", t)
 }
 
 func CheckMethod(obj SystemScore) error {
@@ -131,7 +132,7 @@ func CheckMethod(obj SystemScore) error {
 		// CHECK INPUT
 		numIn := m.Type.NumIn()
 		if len(methodInfo.Inputs) != numIn-1 {
-			return scoreresult.InvalidInstanceError.Errorf(
+			return scoreresult.IllegalFormatError.Errorf(
 				"Wrong method input. method[%s]", mName)
 		}
 		for j := 1; j < numIn; j++ {
@@ -139,7 +140,7 @@ func CheckMethod(obj SystemScore) error {
 			mt := methodInfo.Inputs[j-1].Type
 			mf := methodInfo.Inputs[j-1].Fields
 			if err := CheckType(t, mt, mf); err != nil {
-				return scoreresult.InvalidInstanceError.Wrapf(err,
+				return scoreresult.IllegalFormatError.Wrapf(err,
 					"wrong system score signature. method : %s, "+
 						"expected input[%d] : %v BUT real type : %v", mName, j-1, mt, t)
 			}
@@ -147,7 +148,7 @@ func CheckMethod(obj SystemScore) error {
 
 		numOut := m.Type.NumOut()
 		if len(methodInfo.Outputs) != numOut-1 {
-			return scoreresult.InvalidInstanceError.Errorf(
+			return scoreresult.IllegalFormatError.Errorf(
 				"Wrong method output. method[%s]", mName)
 		}
 		for j := 0; j < len(methodInfo.Outputs); j++ {
@@ -185,7 +186,7 @@ func CheckMethod(obj SystemScore) error {
 				invalid = true
 			}
 			if invalid == true {
-				return scoreresult.InvalidInstanceError.Errorf(
+				return scoreresult.IllegalFormatError.Errorf(
 					"Wrong system score signature. method : %s, "+
 						"expected output[%d] : %v BUT real type : %v", mName, j, methodInfo.Outputs[j], t)
 			}
@@ -215,9 +216,15 @@ func AssignHexInt(dstValue reflect.Value, srcValue *common.HexInt) error {
 	dstKind := dstType.Kind()
 	switch dstKind {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if !srcValue.IsUint64() || srcValue.BitLen() > int(dstType.Size()*8) {
+			return scoreresult.InvalidParameterError.Errorf("Overflow(type=%s)", dstType)
+		}
 		dstValue.SetUint(srcValue.Uint64())
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if !srcValue.IsInt64() || len(srcValue.Bytes()) > int(dstType.Size()) {
+			return scoreresult.InvalidParameterError.Errorf("Overflow(type=%s)", dstType)
+		}
 		dstValue.SetInt(srcValue.Int64())
 		return nil
 	case reflect.Bool:
@@ -230,7 +237,7 @@ func AssignHexInt(dstValue reflect.Value, srcValue *common.HexInt) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForInt(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForInt(type=%s)", dstType)
 }
 
 func AssignString(dstValue reflect.Value, srcValue string) error {
@@ -251,7 +258,7 @@ func AssignString(dstValue reflect.Value, srcValue string) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForString(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForString(type=%s)", dstType)
 }
 
 func AssignBytes(dstValue reflect.Value, srcValue []byte) error {
@@ -272,7 +279,7 @@ func AssignBytes(dstValue reflect.Value, srcValue []byte) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
 }
 
 func AssignBool(dstValue reflect.Value, srcValue bool) error {
@@ -303,7 +310,7 @@ func AssignBool(dstValue reflect.Value, srcValue bool) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForBytes(type=%s)", dstType)
 }
 
 func AssignAddress(dstValue reflect.Value, srcValue *common.Address) error {
@@ -321,7 +328,7 @@ func AssignAddress(dstValue reflect.Value, srcValue *common.Address) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForAddress(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForAddress(type=%s)", dstType)
 }
 
 func AssignList(dstValue reflect.Value, srcValue []interface{}) error {
@@ -345,7 +352,7 @@ func AssignList(dstValue reflect.Value, srcValue []interface{}) error {
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
 }
 
 func AssignDict(dstValue reflect.Value, srcValue map[string]interface{}) error {
@@ -376,7 +383,7 @@ typeHandler:
 			return nil
 		}
 	}
-	return scoreresult.InvalidInstanceError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
+	return scoreresult.IllegalFormatError.Errorf("IncompatibleTypeForList(type=%s)", dstType)
 }
 
 func AssignParameter(dstValue reflect.Value, value interface{}) error {
@@ -438,7 +445,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	}
 
 	if len(params) != mType.NumIn() {
-		return scoreresult.InvalidInstanceError.Errorf(
+		return scoreresult.IllegalFormatError.Errorf(
 			"NotEnoughParameter(exp=%d,real=%d)",
 			mType.NumIn(), len(params)), nil, steps
 	}
@@ -448,7 +455,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 		oType := mType.In(i)
 		oValue := reflect.New(oType).Elem()
 		if err := AssignParameter(oValue, p); err != nil {
-			return scoreresult.InvalidInstanceError.Wrapf(
+			return errors.Wrapf(
 					err,
 					"InCompatibleType(to=%s,with=%T)",
 					oType,
@@ -468,12 +475,12 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 			if err, ok := last.(error); ok {
 				status = err
 			} else {
-				status = scoreresult.ErrInvalidInstance
+				status = scoreresult.UnknownFailureError.New("InvalidReturnValue")
 			}
 		} else if rLen >= 2 {
 			if rLen == 2 {
 				if ret, err := common.EncodeAny(r[0].Interface()); err != nil {
-					status = scoreresult.InvalidInstanceError.Wrap(err, "InvalidReturnValue")
+					status = scoreresult.UnknownFailureError.Wrap(err, "InvalidReturnValue")
 				} else {
 					result = ret
 				}

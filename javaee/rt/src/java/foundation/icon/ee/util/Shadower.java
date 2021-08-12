@@ -2,6 +2,8 @@ package foundation.icon.ee.util;
 
 import foundation.icon.ee.struct.Property;
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Status;
+import i.GenericPredefinedException;
 import i.IObject;
 import i.IObjectArray;
 import i.RuntimeAssertionError;
@@ -158,7 +160,11 @@ public class Shadower {
         } else if (c == s.java.lang.Long.class) {
             return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
         } else if (c == s.java.math.BigInteger.class) {
-            return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
+            try {
+                return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
+            } catch (ArithmeticException e) {
+                throw new GenericPredefinedException(Status.InvalidParameter, e);
+            }
         } else if (c == s.java.lang.String.class) {
             return s.java.lang.String.newWithCharge((String)obj);
         } else if (c == p.score.Address.class) {
@@ -243,6 +249,7 @@ public class Shadower {
             }
             return new UnmodifiableArrayList<>(sa);
         } else if (c == s.java.util.Map.class) {
+            @SuppressWarnings("unchecked")
             var o = (Map<String, Object>) obj;
             var skv = new IObject[o.size() * 2];
             int i = 0;

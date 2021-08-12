@@ -663,12 +663,12 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 
 	dt := chain.DefaultWaitTimeout()
 	if dt <= 0 {
-		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(waitTimeout=%d)", dt)
+		return nil, jsonrpc.ErrorCodeMethodNotFound.New("NotEnabled")
 	}
 
 	ut := ctx.GetTimeout(dt)
 	if ut <= 0 {
-		return nil, jsonrpc.ErrorCodeInvalidParams.Errorf("InvalidTimeout(%d)", ut)
+		return nil, jsonrpc.ErrorCodeInvalidRequest.Errorf("InvalidTimeout(%dms)", ut/time.Millisecond)
 	}
 	mt := chain.MaxWaitTimeout()
 	timeout := ut
@@ -774,13 +774,13 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 		}
 	case <-tc:
 		if maxLimit {
-			return nil, jsonrpc.ErrorCodeSystemTimeout.NewWithData(
-				fmt.Sprintf("SystemTimeout(dur=%s)", timeout),
+			return nil, jsonrpc.ErrorCodeSystemTimeout.New(
+				fmt.Sprintf("SystemTimeoutExpire(dur=%s)", timeout),
 				"0x"+hex.EncodeToString(id),
 			)
 		}
-		return nil, jsonrpc.ErrorCodeTimeout.NewWithData(
-			fmt.Sprintf("Timeout(dur=%s)", timeout),
+		return nil, jsonrpc.ErrorCodeTimeout.New(
+			fmt.Sprintf("UserTimeoutExpire(dur=%s)", timeout),
 			"0x"+hex.EncodeToString(id),
 		)
 	case <-ctx.Request().Context().Done():
@@ -814,19 +814,26 @@ type traceCallback struct {
 	lock    sync.Mutex
 	logs    []interface{}
 	last    error
+	ts      time.Time
 	channel chan interface{}
 }
 
 type traceLog struct {
-	Level module.TraceLevel
-	Msg   string
+	Level module.TraceLevel `json:"level""`
+	Msg   string            `json:"msg"`
+	Ts    int64             `json:"ts"`
 }
 
 func (t *traceCallback) OnLog(level module.TraceLevel, msg string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.logs = append(t.logs, traceLog{level, msg})
+	ts := time.Now()
+	if len(t.logs) == 0 {
+		t.ts = ts
+	}
+	dur := ts.Sub(t.ts) / time.Microsecond
+	t.logs = append(t.logs, traceLog{level, msg, int64(dur)})
 }
 
 func (t *traceCallback) OnEnd(e error) {
