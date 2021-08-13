@@ -19,6 +19,7 @@ package hexary
 import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 const (
@@ -31,6 +32,10 @@ type Accumulator interface {
 	// Len returns number of added hashes.
 	Len() int64
 
+	// SetLen sets length and rewinds an accumulator. Error if l is larger
+	// than Len() of the accumulator.
+	SetLen(l int64) error
+
 	GetMerkleHeader() *MerkleHeader
 
 	// Finalize finalizes node data
@@ -42,48 +47,88 @@ type accumulatorData struct {
 	Roots []*node
 }
 
-func (ad *accumulatorData) Clone() *accumulatorData {
-	var roots []*node
-	if ad.Roots != nil {
-		roots = make([]*node, len(ad.Roots))
-		for i := range ad.Roots {
-			roots[i] = ad.Roots[i].Clone()
-		}
-	}
-	return &accumulatorData{
-		Len:   ad.Len,
-		Roots: roots,
-	}
-}
-
-func (ad *accumulatorData) finalize() *MerkleHeader {
-	if ad.Len == 0 {
-		return &MerkleHeader{}
-	}
-	var prevHash []byte
-	for _, r := range ad.Roots {
-		if prevHash != nil {
-			r.Add(prevHash)
-		}
-		prevHash = r.Hash()
-	}
-	root := ad.Roots[len(ad.Roots)-1]
-	if root.Len() != 1 {
-		root = newNode()
-		root.Add(prevHash)
-		ad.Roots = append(ad.Roots, root)
-	}
-	return &MerkleHeader{
-		root.Get(0),
-		ad.Len,
-	}
-}
-
 type accumulator struct {
 	data               accumulatorData
 	treeBucket         db.Bucket
 	accumulatorBucket  *db.CodedBucket
 	accumulatorDataKey []byte
+}
+
+func (ba *accumulator) GetMerkleHeader() *MerkleHeader {
+	var carry []byte
+	for i, r := range ba.data.Roots {
+		var restore bool
+		if carry != nil {
+			r.Add(carry)
+			restore = true
+		}
+		if i == len(ba.data.Roots)-1 && r.Len() == 1 {
+			carry = r.GetCopy(0)
+		} else {
+			carry = r.Hash()
+		}
+		if restore {
+			r.RemoveBack()
+		}
+	}
+	return &MerkleHeader{carry, ba.data.Len }
+}
+
+func powerOf16(n uint64) bool {
+	for n > 0xf {
+		if n&0xf != 0 {
+			return false
+		}
+		n = n >> 4
+	}
+	return n == 1
+}
+
+func (ba *accumulator) SetLen(l int64) error {
+	if l > ba.data.Len {
+		return errors.IllegalArgumentError.Errorf(
+			"l(=%d) > Len(=%d)", l, ba.data.Len,
+		)
+	}
+	if l == 0 {
+		ba.data = accumulatorData{ 0, nil }
+		return nil
+	}
+	hd, err := ba.Finalize()
+	mt, err := NewMerkleTree(ba.treeBucket, hd, 0)
+	if err != nil {
+		return err
+	}
+	proof, err := mt.Prove(ba.data.Len-1, 0)
+	if err != nil {
+		return err
+	}
+	lvl := LevelFromLen(l)
+	if powerOf16(uint64(l)) {
+		lvl++
+	}
+	if len(proof) < lvl {
+		if len(proof) + 1 != lvl {
+			log.Panicf("invalid proof length %d for SetLen(%d)", len(proof), l)
+		}
+		tmp := append([][]byte(nil), hd.RootHash)
+		proof = append(tmp, proof...)
+	} else {
+		proof = proof[:lvl]
+	}
+	roots := make([]*node, lvl)
+	d := l
+	for i := range roots {
+		copied := append([]byte(nil), proof[len(proof)-1-i]...)
+		roots[i], err = newNodeFromBytes(copied)
+		if err != nil {
+			return err
+		}
+		roots[i].SetLen(int(d%16))
+		d = d/16
+	}
+	ba.data = accumulatorData{ l, roots }
+	return ba.accumulatorBucket.Set(db.Raw(ba.accumulatorDataKey), &ba.data)
 }
 
 func (ba *accumulator) add(i int, hash []byte) error {
@@ -117,38 +162,30 @@ func (ba *accumulator) Len() int64 {
 	return ba.data.Len
 }
 
-func (ba *accumulator) GetMerkleHeader() *MerkleHeader {
-	data := ba.data.Clone()
-	return data.finalize()
-}
-
 func (ba *accumulator) Finalize() (header *MerkleHeader, err error) {
-	if ba.data.Len == 0 {
-		return &MerkleHeader{}, nil
-	}
-	var prevHash []byte
-	for _, r := range ba.data.Roots {
-		if prevHash != nil {
-			r.Add(prevHash)
+	var carry []byte
+	for i, r := range ba.data.Roots {
+		var restore bool
+		if carry != nil {
+			r.Add(carry)
+			restore = true
 		}
-		if err = ba.treeBucket.Set(r.Hash(), r.Bytes()); err != nil {
-			return nil, err
+		if i == len(ba.data.Roots)-1 && r.Len() == 1 {
+			carry = r.GetCopy(0)
+		} else {
+			hash := r.Hash()
+			if hash != nil {
+				if err = ba.treeBucket.Set(hash, r.Bytes()); err != nil {
+					return nil, err
+				}
+			}
+			carry = hash
 		}
-		prevHash = r.Hash()
-	}
-	root := ba.data.Roots[len(ba.data.Roots)-1]
-	if root.Len() != 1 {
-		root = newNode()
-		root.Add(prevHash)
-		if err = ba.treeBucket.Set(root.Hash(), root.Bytes()); err != nil {
-			return nil, err
+		if restore {
+			r.RemoveBack()
 		}
-		ba.data.Roots = append(ba.data.Roots, root)
 	}
-	return &MerkleHeader{
-		RootHash: root.Get(0),
-		Leaves: ba.data.Len,
-	}, nil
+	return &MerkleHeader{ carry, ba.data.Len }, nil
 }
 
 // NewAccumulator creates a new accumulator. Merkle node is written in tree

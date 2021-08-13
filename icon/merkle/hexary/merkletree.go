@@ -55,8 +55,8 @@ type merkleTree struct {
 }
 
 func LevelFromLen(len int64) int {
-	if len < 2 {
-		return int(len)
+	if len == 0 {
+		return 0
 	}
 	return (bits.Len64(uint64(len)-1) + 3) / 4
 }

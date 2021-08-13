@@ -17,13 +17,12 @@
 package hexary
 
 import (
-	"fmt"
-
 	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 const (
@@ -44,13 +43,6 @@ func validateNodeBytes(bytes []byte) error {
 type node struct {
 	bytes []byte
 	_hash []byte
-}
-
-func (b *node) Clone() *node {
-	return &node {
-		bytes: append(b.bytes[:0:0], b.bytes...),
-		_hash: b._hash,
-	}
 }
 
 func newNode() *node {
@@ -74,18 +66,31 @@ func (b *node) Len() int {
 	return len(b.bytes) / hashLen
 }
 
+func (b *node) SetLen(l int) {
+	b.bytes = b.bytes[:l*hashLen]
+	b._hash = nil
+}
+
 func (b *node) Full() bool {
 	return len(b.bytes) == maxNodeBytes
 }
 
+func (b *node) Empty() bool {
+	return len(b.bytes) == 0
+}
+
 func (b *node) Get(i int) []byte {
 	if i >= maxChildren {
-		panic(fmt.Sprintf("bad index %d for node", i))
+		log.Panicf("bad index %d for node", i)
 	}
 	if i < b.Len() {
 		return b.bytes[i*hashLen : (i+1)*hashLen]
 	}
 	return nil
+}
+
+func (b *node) GetCopy(i int) []byte {
+	return append([]byte(nil), b.Get(i)...)
 }
 
 func (b *node) Bytes() []byte {
@@ -94,25 +99,36 @@ func (b *node) Bytes() []byte {
 
 func (b *node) Add(hash []byte) bool {
 	if len(hash) != hashLen {
-		panic("bad hash len")
+		log.Panicf("bad hash len")
 	}
 	if b.Full() {
-		panic("add on full node")
+		log.Panicf("add on full node")
 	}
 	b.bytes = append(b.bytes, hash...)
 	b._hash = nil
 	return b.Full()
 }
 
+func (b *node) RemoveBack() {
+	if b.Empty() {
+		log.Panicf("unadding on zero length node")
+	}
+	b.bytes = b.bytes[:len(b.bytes)-hashLen]
+	b._hash = nil
+}
+
 func (b *node) Hash() []byte {
-	if b._hash == nil && b.bytes != nil {
+	if b.Empty() {
+		return nil
+	}
+	if b._hash == nil {
 		b._hash = crypto.SHA3Sum256(b.bytes)
 	}
 	return b._hash
 }
 
 func (b *node) Clear() {
-	b.bytes = b.bytes[0:0]
+	b.bytes = b.bytes[:0]
 	b._hash = nil
 }
 
