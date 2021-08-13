@@ -393,6 +393,18 @@ public class IconService {
     }
 
     /**
+     * Gets a monitor for block notification
+     *
+     * @param height the start height
+     * @param eventFilters array of eventFilter
+     * @return a {@code Monitor} object
+     */
+    public Monitor<BlockNotification> monitorBlocks(BigInteger height, EventMonitorSpec.EventFilter[] eventFilters) {
+        MonitorSpec ms = new BlockMonitorSpec(height, eventFilters);
+        return provider.monitor(ms, findConverter(BlockNotification.class));
+    }
+
+    /**
      * Gets a monitor for event notification
      *
      * @param height the start height

@@ -16,6 +16,7 @@
 
 package foundation.icon.icx.data;
 
+import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 
@@ -34,7 +35,54 @@ public class BlockNotification {
     }
 
     public BigInteger getHeight() {
-        RpcItem item = properties.getItem("height");
+        return asInteger(properties.getItem("height"));
+    }
+
+    public BigInteger[][] getIndexes() {
+        return asIntegerArrayArray(properties.getItem("indexes"));
+    }
+
+    public BigInteger[][][] getEvents() {
+        RpcItem item = properties.getItem("events");
+        BigInteger[][][] events = null;
+        if (item != null) {
+            RpcArray rpcArray = item.asArray();
+            int size = rpcArray.size();
+            events = new BigInteger[size][][];
+            for (int i = 0; i < size; i++) {
+                events[i] = asIntegerArrayArray(rpcArray.get(i));
+            }
+        }
+        return events;
+    }
+
+    public static BigInteger[][] asIntegerArrayArray(RpcItem item) {
+        BigInteger[][] arr = null;
+        if (item != null) {
+            RpcArray rpcArray = item.asArray();
+            int size = rpcArray.size();
+            arr = new BigInteger[size][];
+            for (int i = 0; i < size; i++) {
+                arr[i] = asIntegerArray(rpcArray.get(i));
+            }
+        }
+        return arr;
+    }
+
+    public static BigInteger[] asIntegerArray(RpcItem item) {
+        BigInteger[] arr = null;
+        if (item != null) {
+            RpcArray rpcArray = item.asArray();
+            int size = rpcArray.size();
+            arr = new BigInteger[size];
+            for (int i = 0; i < size; i++) {
+                arr[i] = asInteger(rpcArray.get(i));
+            }
+        }
+        return arr;
+    }
+
+    public static BigInteger asInteger(RpcItem item) {
         return item != null ? item.asInteger() : null;
     }
 }

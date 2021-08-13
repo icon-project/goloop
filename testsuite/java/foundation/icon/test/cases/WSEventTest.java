@@ -25,6 +25,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.EventNotification;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.monitor.EventMonitorSpec;
 import foundation.icon.icx.transport.monitor.Monitor;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
@@ -35,8 +36,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -139,6 +139,119 @@ public class WSEventTest {
             assertEquals(0, notiList.size());
         }
         LOG.infoExiting();
+    }
+
+    @Test
+    public void wsBlkMonitorWithEventFiltersTest() throws Exception {
+        KeyWallet ownerWallet = KeyWallet.create();
+        KeyWallet aliceWallet = KeyWallet.create();
+        KeyWallet bobWallet = KeyWallet.create();
+
+        // deploy 2 scores with same source
+        EventGen[] eventGen = new EventGen[2];
+        LOG.infoEntering("deploy", "event gen SCORE");
+        eventGen[0] = EventGen.install(txHandler, ownerWallet);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy", "event gen SCORE");
+        eventGen[1] = EventGen.install(txHandler, ownerWallet);
+        LOG.infoExiting();
+
+        String event = "Event(Address,int,bytes)";
+        Address[] addrs = new Address[] {
+                null, eventGen[0].getAddress(), eventGen[0].getAddress(),
+        };
+        String[][] data = new String[][] {
+                null,
+                null,
+                {bobWallet.getAddress().toString(), "500", "0x0A"},
+        };
+        LOG.info("bobAddr : " + bobWallet.getAddress().toString());
+        int[] expectedEventNum = {4,2,1};
+
+        for(int i = 0; i < 3; i++) {
+            Map<BigInteger, BigInteger[][]> eventIndexesMap = new HashMap<>();
+            LOG.infoEntering("request monitor[" + i + "]");
+            Block lastBlk = iconService.getLastBlock().execute();
+
+            /*
+            1. monitor with event
+            2. monitor with event and address
+            3. monitor with event, address and data
+             */
+            EventMonitorSpec.EventFilter eventFilter = new EventMonitorSpec.EventFilter(
+                    event, addrs[i], data[i], null);
+            Monitor<BlockNotification> em = iconService.monitorBlocks(lastBlk.getHeight(), new EventMonitorSpec.EventFilter[]{eventFilter});
+            boolean started = em.start(new Monitor.Listener<BlockNotification>() {
+                boolean stop = false;
+
+                @Override
+                public void onStart() {
+                    synchronized (condVar) {
+                        assertFalse(stop);
+                    }
+                }
+
+                @Override
+                public void onEvent(BlockNotification event) {
+                    synchronized (condVar) {
+                        assertFalse(stop);
+                        LOG.info("receive height : " + event.getHeight() + ", numOfTx : " +
+                                (event.getIndexes() != null ? event.getIndexes()[0].length : 0));
+                        if (event.getIndexes() != null) {
+                            eventIndexesMap.put(event.getHeight(), event.getEvents()[0]);
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(long code) {
+                    LOG.warning("onError code : " + code);
+                    throw new RuntimeException();
+                }
+
+                @Override
+                public void onClose() {
+                    synchronized (condVar) {
+                        assertFalse(stop);
+                        stop = true;
+                    }
+                }
+            });
+            if(!started) {
+                throw new IllegalStateException();
+            }
+
+            for(EventGen eg : eventGen) {
+                Bytes txHash = eg.invokeGenerate(aliceWallet, bobWallet.getAddress(), new BigInteger("100"), new byte[]{1});
+                LOG.info("sendTx : " + txHash);
+            }
+
+            for(EventGen eg : eventGen) {
+                TransactionResult txResult = eg.invokeGenerateAndWait(aliceWallet, bobWallet.getAddress(), new BigInteger(data[2][1]), new byte[]{Byte.decode(data[2][2])});
+                LOG.info("sendTx : " + txResult.getTxHash());
+            }
+
+            synchronized (condVar) {
+                condVar.wait(5000);
+                Optional<Integer> numOfEvent = eventIndexesMap.values().stream()
+                        .map((l) -> Arrays.stream(l)
+                                .map((e) -> e.length)
+                                .reduce(Integer::sum)
+                                .orElse(0))
+                        .reduce(Integer::sum);
+                assertEquals(expectedEventNum[i], numOfEvent.orElse(0));
+            }
+            em.stop();
+            LOG.infoExiting("close");
+
+            try {
+                em.stop();
+            }
+            catch(IllegalStateException ex) {
+                LOG.info(ex.getMessage());
+            }
+        }
     }
 
     @Test
