@@ -87,7 +87,7 @@ func (c *JsonRpcClient) DoURL(url string, method string, reqPtr, respPtr interfa
 	jrReq := &jsonrpc.Request{
 		ID:      time.Now().UnixNano() / int64(time.Millisecond),
 		Version: jsonrpc.Version,
-		Method:  method,
+		Method:  &method,
 	}
 	if reqPtr != nil {
 		b, mErr := json.Marshal(reqPtr)

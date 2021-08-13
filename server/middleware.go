@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -13,26 +13,18 @@ import (
 )
 
 // JsonRpc()
-func JsonRpc(mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
+func JsonRpc() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			ctype := c.Request().Header.Get(echo.HeaderContentType)
 			if !strings.HasPrefix(ctype, echo.MIMEApplicationJSON) {
 				c.Request().Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			}
-			r := new(jsonrpc.Request)
-			if err := c.Bind(r); err != nil {
+			var raw json.RawMessage
+			if err := c.Bind(&raw); err != nil {
 				return jsonrpc.ErrParse()
 			}
-			c.Set("request", r)
-			if err := c.Validate(r); err != nil {
-				return jsonrpc.ErrInvalidRequest()
-			}
-			method, err := mr.TakeMethod(r)
-			if err != nil {
-				return err
-			}
-			c.Set("method", method)
+			c.Set("raw", raw)
 			return next(c)
 		}
 	}
@@ -48,19 +40,6 @@ func ChainInjector(srv *Manager) echo.MiddlewareFunc {
 			}
 			ctx.Set("chain", c)
 			return next(ctx)
-		}
-	}
-}
-
-// JsonRpcLogger()
-func JsonRpcLogger() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			req := c.Get("request").(*jsonrpc.Request)
-			method := req.Method
-			// TODO : jsonrpc logging
-			fmt.Printf("method: %s\n", method)
-			return next(c)
 		}
 	}
 }

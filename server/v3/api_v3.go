@@ -46,6 +46,8 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
 	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
 
+	mr.SetAllowedNotification("icx_sendTransaction")
+	mr.SetAllowedNotification("icx_sendTransactionAndWait")
 	return mr
 }
 
@@ -70,8 +72,11 @@ func fillTransactions(blockJson interface{}, b module.Block, v module.JSONVersio
 	return nil
 }
 
-func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
+func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
+	if !params.IsEmpty() {
+		return nil, jsonrpc.ErrInvalidParams()
+	}
 
 	chain, err := ctx.Chain()
 	if err != nil {

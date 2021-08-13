@@ -151,24 +151,14 @@ func ErrScoreWithStatus(s module.Status) *Error {
 }
 
 func ErrorHandler(re *Error, c echo.Context) {
-	var res *ErrorResponse
+	var res *Response
 	status := 0
 
-	if re.Code == ErrorCodeJsonParse {
-		res = &ErrorResponse{
-			Version: Version,
-			Error:   re,
-		}
-		status = http.StatusBadRequest
-	} else {
-		req := c.Get("request").(*Request)
-		res = &ErrorResponse{
-			ID:      req.ID,
-			Version: Version,
-			Error:   re,
-		}
-		status = http.StatusBadRequest
+	res = &Response{
+		Version: Version,
+		Error:   re,
 	}
+	status = http.StatusBadRequest
 
 	// Send response
 	if !c.Response().Committed {
