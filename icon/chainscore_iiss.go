@@ -594,6 +594,9 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 }
 
 func (s *chainScore) Ex_burn() error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
