@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type Platform interface {
@@ -36,7 +37,7 @@ type Platform interface {
 	NewBaseTransaction(wc state.WorldContext) (module.Transaction, error)
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
-	OnTransactionEnd(wc state.WorldContext, logger log.Logger) error
+	OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error
 	Term()
 	DefaultBlockVersion() int
 }
