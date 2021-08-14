@@ -54,12 +54,12 @@ func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, c
 	}
 	if (ctype == contract.CTypeDeploy || ctype == contract.CTypeCall) &&
 		to.Equal(govAddress){
-		ch = newGovernanceHandler(ch)
+		return newGovernanceHandler(ch), nil
 	}
 	if (ctype == contract.CTypeCall || ctype == contract.CTypeTransfer) &&
 		to.Equal(state.SystemAddress) {
 		if h, ok := ch.(CallHandler); ok {
-			ch = newSystemHandler(h)
+			return newSystemHandler(h), nil
 		}
 	}
 	if h, ok := ch.(CallHandler); ok {
