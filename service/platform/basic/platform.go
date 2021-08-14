@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type platform struct{}
@@ -79,7 +80,7 @@ func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	return nil
 }
 
-func (t *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) error {
+func (t *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error {
 	return nil
 }
 

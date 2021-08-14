@@ -26,6 +26,7 @@ type Context interface {
 	TraceInfo() *module.TraceInfo
 	ChainID() int
 	GetProperty(name string) interface{}
+	SetProperty(name string, value interface{})
 }
 
 type context struct {
