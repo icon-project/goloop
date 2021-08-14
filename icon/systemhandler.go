@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
@@ -55,7 +56,7 @@ type CallHandler interface {
 	contract.AsyncContractHandler
 	GetMethodName() string
 	AllowExtra()
-	DoExecuteAsync(cc contract.CallContext, ch eeproxy.CallContext) error
+	DoExecuteAsync(cc contract.CallContext, ch eeproxy.CallContext, store containerdb.BytesStoreState) error
 	TLogStart()
 	TLogDone(status error, steps *big.Int, result *codec.TypedObj)
 	ApplyCallSteps(cc contract.CallContext) error
@@ -128,7 +129,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			}
 		}()
 	}
-	return h.CallHandler.DoExecuteAsync(cc, h)
+	return h.CallHandler.DoExecuteAsync(cc, h, nil)
 }
 
 func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {

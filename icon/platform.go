@@ -33,6 +33,7 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type platform struct {
@@ -106,6 +107,10 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	if revision < icmodule.RevisionIISS {
 		return nil
 	}
+	if revision >= icmodule.Revision12 && revision < icmodule.RevisionICON2 {
+		// Set batch data root storing block batch data and tx batch data
+		wc.(contract.Context).SetProperty(BatchKey, new(batchRoot).Init(nil))
+	}
 	es := p.getExtensionState(wc, logger)
 	if es == nil {
 		return nil
@@ -134,7 +139,12 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 	return es.OnExecutionEnd(wc, totalFee, p.calculator.Get())
 }
 
-func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger) error {
+func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error {
+	// Apply stored tx batch data
+	if value := wc.(contract.Context).GetProperty(BatchKey); value != nil {
+		root := value.(*batchRoot)
+		root.handleTxBatch(rct.Status() == module.StatusSuccess)
+	}
 	es := p.getExtensionState(wc, logger)
 	if es == nil {
 		return nil
