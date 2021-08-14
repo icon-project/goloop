@@ -41,6 +41,7 @@ type CallHandler struct {
 	cc        CallContext
 	ch        eeproxy.CallContext
 	as        state.AccountState
+	store     containerdb.BytesStoreState
 	info      *scoreapi.Info
 	method    *scoreapi.Method
 	cm        ContractManager
@@ -193,10 +194,10 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		}
 	}()
 
-	return h.DoExecuteAsync(cc, h)
+	return h.DoExecuteAsync(cc, h, nil)
 }
 
-func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (err error) {
+func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext, store containerdb.BytesStoreState) (err error) {
 	h.cc = cc
 	h.ch = ch
 	h.cm = cc.ContractManager()
@@ -206,6 +207,10 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (er
 		return scoreresult.InvalidParameterError.Errorf("InvalidAddressForCall(%s)", h.To.String())
 	}
 	h.as = cc.GetAccountState(h.To.ID())
+	h.store = h.as
+	if store != nil {
+		h.store = store
+	}
 	c := h.contract(h.as)
 	if c == nil || c.Status() != state.CSActive {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
@@ -414,11 +419,11 @@ func (h *CallHandler) EEType() state.EEType {
 }
 
 func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
-	if h.as != nil {
+	if h.store != nil {
 		var value []byte
 		var err error
 		h.cc.DoIOTask(func() {
-			value, err = h.as.GetValue(key)
+			value, err = h.store.GetValue(key)
 		})
 		if err != nil {
 			h.Log.TSystemf("FRAME[%d] GETVALUE key=<%x> err=%+v", h.FID, key, err)
@@ -437,11 +442,11 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 		return nil, scoreresult.AccessDeniedError.New(
 			"DeleteValueInQuery")
 	}
-	if h.as != nil {
+	if h.store != nil {
 		var old []byte
 		var err error
 		h.cc.DoIOTask(func() {
-			old, err = h.as.SetValue(key, value)
+			old, err = h.store.SetValue(key, value)
 		})
 		if err != nil {
 			h.Log.TSystemf("FRAME[%d] SETVALUE key=<%x> value=<%x> err=%+v", h.FID, key, value, err)
@@ -460,11 +465,11 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 		return nil, scoreresult.AccessDeniedError.New(
 			"DeleteValueInQuery")
 	}
-	if h.as != nil {
+	if h.store != nil {
 		var old []byte
 		var err error
 		h.cc.DoIOTask(func() {
-			old, err = h.as.DeleteValue(key)
+			old, err = h.store.DeleteValue(key)
 		})
 		if err != nil {
 			h.Log.TSystemf("FRAME[%d] DELETE key=<%x> err=%+v", h.FID, key, err)
@@ -490,7 +495,7 @@ func (h *CallHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, 
 	var cost int64
 	var found bool
 	var count, size int
-	adb := containerdb.NewArrayDB(h.as, containerdb.NewHashKey(prefix))
+	adb := containerdb.NewArrayDB(h.store, containerdb.NewHashKey(prefix))
 	h.cc.DoIOTask(func() {
 		s := adb.Size()
 		for i := 0; i < s; i++ {
@@ -642,10 +647,10 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) (err error) {
 			h.TLogDone(err, cc.StepUsed(), nil)
 		}
 	}()
-	return h.DoExecuteAsync(cc, h)
+	return h.DoExecuteAsync(cc, h, nil)
 }
 
-func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext) (err error) {
+func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext, store containerdb.BytesStoreState) (err error) {
 	h.cc = cc
 	h.ch = ch
 	status, _, _ := h.th.DoExecuteSync(cc)
@@ -695,7 +700,7 @@ func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallC
 		}
 	}
 
-	return h.CallHandler.DoExecuteAsync(cc, ch)
+	return h.CallHandler.DoExecuteAsync(cc, ch, store)
 }
 
 func newTransferAndCallHandler(ch *CommonHandler, call *CallHandler) *TransferAndCallHandler {
