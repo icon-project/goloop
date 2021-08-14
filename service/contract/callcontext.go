@@ -2,6 +2,7 @@ package contract
 
 import (
 	"math/big"
+	"reflect"
 	"sync"
 	"time"
 
@@ -47,6 +48,7 @@ type (
 		NewExecution() int
 		GetReturnEID() int
 		FrameID() int
+		GetCustomLogs(name string, ot reflect.Type) CustomLogs
 		SetFeeProportion(addr module.Address, portion int)
 		RedeemSteps(s *big.Int) (*big.Int, error)
 		GetRedeemLogs(r txresult.Receipt) bool
@@ -154,7 +156,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	cc.log.TSystemf("FRAME[%d] END success=%v steps=%d", frame.fid, success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
-			frame.parent.pushBackEventLogsOf(frame)
+			frame.parent.applyFrameLogsOf(frame)
 		} else {
 			cc.Reset(frame.snapshot)
 		}
@@ -593,6 +595,14 @@ func (cc *callContext) ClearRedeemLogs() {
 	if cc.payers != nil {
 		cc.payers.ClearLogs()
 	}
+}
+
+func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	top, _ := cc.GetProperty(name).(CustomLogs)
+	return cc.frame.getFrameData(name, ot, top)
 }
 
 type stepPayers struct {

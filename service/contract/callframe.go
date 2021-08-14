@@ -3,6 +3,7 @@ package contract
 import (
 	"container/list"
 	"math/big"
+	"reflect"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
@@ -28,6 +29,7 @@ type callFrame struct {
 	stepLimit *big.Int
 	eventLogs list.List
 	code2EID  map[string]int
+	logsMap   map[string]CustomLogs
 }
 
 func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
@@ -85,9 +87,12 @@ func (f *callFrame) addLog(addr module.Address, indexed, data [][]byte) {
 	f.eventLogs.PushBack(e)
 }
 
-func (f *callFrame) pushBackEventLogsOf(frame *callFrame) {
+func (f *callFrame) applyFrameLogsOf(frame *callFrame) {
 	if f != nil {
 		f.eventLogs.PushBackList(&frame.eventLogs)
+		for name, data := range frame.logsMap {
+			f.logsMap[name].Apply(data)
+		}
 	}
 }
 
@@ -143,4 +148,22 @@ func (f *callFrame) getReturnEID() int {
 		return eid
 	}
 	return f.eid
+}
+
+func (f *callFrame) getFrameData(name string, ot reflect.Type, top CustomLogs) CustomLogs {
+	if f == nil {
+		return top
+	}
+	if f.logsMap == nil {
+		f.logsMap = make(map[string]CustomLogs)
+	}
+	if obj, ok := f.logsMap[name]; ok {
+		return obj
+	} else {
+		parent := f.parent.getFrameData(name, ot, top)
+		obj = reflect.New(ot).Interface().(CustomLogs)
+		obj.Init(parent)
+		f.logsMap[name] = obj
+		return obj
+	}
 }
