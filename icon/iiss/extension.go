@@ -1013,7 +1013,7 @@ func (es *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	return term.ToJSON(), nil
+	return term.ToJSON(es.State), nil
 }
 
 func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {
