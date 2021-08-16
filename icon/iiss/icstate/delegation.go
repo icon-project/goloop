@@ -213,17 +213,17 @@ func NewDelegations(param []interface{}, max int) (Delegations, error) {
 		if err = json.Unmarshal(bs, dg); err != nil {
 			return nil, scoreresult.IllegalFormatError.Wrapf(err, "Failed to get delegation")
 		}
+		target := icutils.ToKey(dg.To())
+		if _, ok := targets[target]; ok {
+			return nil, scoreresult.InvalidParameterError.Errorf("Duplicated delegation address")
+		}
+		targets[target] = struct{}{}
 		switch dg.Amount().Sign() {
 		case -1:
 			return nil, scoreresult.InvalidParameterError.Errorf("Can not set negative value to delegation")
 		case 0:
 			continue
 		}
-		target := icutils.ToKey(dg.To())
-		if _, ok := targets[target]; ok {
-			return nil, scoreresult.InvalidParameterError.Errorf("Duplicated delegation address")
-		}
-		targets[target] = struct{}{}
 		delegations = append(delegations, dg)
 	}
 
