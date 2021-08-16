@@ -1165,7 +1165,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		return err
 	}
 	// Burn regPRepFee
-	if err = cc.Burn(state.SystemAddress, icmodule.BigIntRegPRepFee); err != nil {
+	if err = cc.Burn(from, icmodule.BigIntRegPRepFee); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to burn regPRepFee: from=%v fee=%v",
