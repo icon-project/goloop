@@ -79,10 +79,6 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 		return err
 	}
 
-	if err := CheckLogsBloom(logger, r1.LogsBloom(), r2.LogsBloom()); err != nil {
-		return err
-	}
-
 	if !(r1.To().Equal(r2.To()) &&
 		r1.CumulativeStepUsed().Cmp(r2.CumulativeStepUsed()) == 0 &&
 		r1.StepUsed().Cmp(r2.StepUsed()) == 0 &&
@@ -102,7 +98,7 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 			return errors.InvalidStateError.Wrap(err, "EndOfPayments")
 		}
 		if !FeePaymentEqual(p1, p2) {
-			return errors.InvalidStateError.New("DifferentPayment")
+			return errors.InvalidStateError.Errorf("DifferentPayment(idx=%d,exp=%v,real=%v)", idx, p1, p2)
 		}
 	}
 
@@ -118,8 +114,11 @@ func CheckReceipt(logger log.Logger, r1, r2 module.Receipt) error {
 		}
 
 		if !EventLogEqual(e1, e2) {
-			return errors.InvalidStateError.Errorf("DifferentEvent(idx=%d)", idx)
+			return errors.InvalidStateError.Errorf("DifferentEvent(idx=%d,exp=%v,real=%v)", idx, e1, e2)
 		}
+	}
+	if err := CheckLogsBloom(logger, r1.LogsBloom(), r2.LogsBloom()); err != nil {
+		return err
 	}
 	return nil
 }
