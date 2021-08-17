@@ -817,6 +817,9 @@ func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 }
 
 func (s *accountStateImpl) SetValue(k, v []byte) ([]byte, error) {
+	if len(v) == 0 {
+		return s.DeleteValue(k)
+	}
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
 		s.attachCacheForStore()
@@ -833,7 +836,7 @@ func (s *accountStateImpl) DeleteValue(k []byte) ([]byte, error) {
 	if s.store == nil {
 		return nil, nil
 	}
-	if old, err := s.store.Delete(k); err == nil {
+	if old, err := s.store.Delete(k); err == nil && len(old) > 0 {
 		s.markDirty()
 		return old, nil
 	} else {

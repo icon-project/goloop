@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -55,6 +56,9 @@ func (a *Address) SetStringStrict(s string) error {
 		isContract = true
 	case "hx":
 	default:
+		return ErrIllegalArgument
+	}
+	if strings.ToLower(body) != body {
 		return ErrIllegalArgument
 	}
 	if bytes, err := hex.DecodeString(body); err != nil {
