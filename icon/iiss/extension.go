@@ -382,6 +382,12 @@ func (es *ExtensionStateImpl) SetDelegation(
 		if err != nil {
 			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventDelegation")
 		}
+		// update IllegalDelegation
+		nId := id.Clone()
+		nId.SetDelegations(ds)
+		if err = es.State.SetIllegalDelegation(nId); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to set IllegalDelegation")
+		}
 	}
 
 	revision := cc.Revision().Value()

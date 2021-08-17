@@ -266,6 +266,17 @@ func (d *IllegalDelegation) Delegations() Delegations {
 	return d.delegations
 }
 
+func (d *IllegalDelegation) SetDelegations(ds Delegations) {
+	d.delegations = ds
+}
+
+func (d *IllegalDelegation) Clone() *IllegalDelegation {
+	return &IllegalDelegation{
+		address: d.address,
+		delegations:  d.delegations,
+	}
+}
+
 func (d *IllegalDelegation) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.DecodeAll(
 		&d.address,

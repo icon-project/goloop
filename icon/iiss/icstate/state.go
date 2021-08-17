@@ -718,7 +718,7 @@ func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
 	return CalcUnstakeLockPeriod(lMin, lMax, totalStake, totalSupply)
 }
 
-func (s *State) AddIllegalDelegation(id *IllegalDelegation) error {
+func (s *State) SetIllegalDelegation(id *IllegalDelegation) error {
 	dict := containerdb.NewDictDB(s.store, 1, IllegalDelegationPrefix)
 	o := icobject.New(TypeIllegalDelegation, id)
 	return dict.Set(id.Address(), o)

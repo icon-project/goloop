@@ -58,8 +58,7 @@ func (dl *delegationLog) Handle(es *ExtensionStateImpl) error {
 	}
 	// setDelegation was failed
 	if event == nil || dl.event.Equal(event) == false {
-		// Add IllegalDelegating to es.State
-		if err = es.State.AddIllegalDelegation(icstate.NewIllegalDelegation(dl.from, dl.ds)); err != nil {
+		if err = es.State.SetIllegalDelegation(icstate.NewIllegalDelegation(dl.from, dl.ds)); err != nil {
 			return err
 		}
 		// Add EventDelegationV2 to es.Front
@@ -79,7 +78,6 @@ func (dl *delegationLog) Handle(es *ExtensionStateImpl) error {
 			return err
 		}
 	} else {
-		// delegate IllegalDelegation from es.State
 		if err = es.State.DeleteIllegalDelegation(dl.from); err != nil {
 			return err
 		}
