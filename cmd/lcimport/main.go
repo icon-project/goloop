@@ -563,6 +563,7 @@ func newCmdBalanceCheck(parent *cobra.Command, name string, vc *viper.Viper) *co
 	}
 	pflags := cmd.PersistentFlags()
 	pAddr := pflags.String("address", "", "address to check")
+	pNoBalance := pflags.Bool("no_balance", false, "skip balance check for accounts")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		ex := vc.Get(vcKeyExecutor).(*Executor)
 		for _, arg := range args {
@@ -574,7 +575,7 @@ func newCmdBalanceCheck(parent *cobra.Command, name string, vc *viper.Viper) *co
 			if err != nil {
 				return err
 			}
-			if err = CheckState(icon1, wss, *pAddr); err != nil {
+			if err = CheckState(icon1, wss, *pAddr, *pNoBalance); err != nil {
 				return err
 			}
 		}

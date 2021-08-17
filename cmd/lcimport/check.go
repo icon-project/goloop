@@ -49,14 +49,16 @@ type status struct {
 	TotalStake  *big.Int `json:"totalStake"`
 }
 
-func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStoreState) {
+func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStoreState) error {
 	ass := wss.GetAccountSnapshot(state.SystemID)
 	as := scoredb.NewStateStoreWith(ass)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 	ts := tsVar.BigInt()
+	failure := 0
 	if s.TotalSupply.Cmp(ts) != 0 {
 		fmt.Printf("TotalSupply: icon1(%d) icon2(%d) diff=%d\n",
 			s.TotalSupply, ts, new(big.Int).Sub(s.TotalSupply, ts))
+		failure += 1
 	}
 
 	tsVar = containerdb.NewVarDB(extState,
@@ -65,6 +67,12 @@ func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStore
 	if s.TotalStake.Cmp(ts) != 0 {
 		fmt.Printf("TotalStake: icon1(%d) icon2(%d) diff=%d\n",
 			s.TotalStake, ts, new(big.Int).Sub(s.TotalStake, ts))
+		failure += 1
+	}
+	if failure > 0 {
+		return errors.ErrInvalidState
+	} else {
+		return nil
 	}
 }
 
@@ -74,20 +82,22 @@ type issue struct {
 	OverIssuedIScore *big.Int `json:"overIssuedIScore"`
 }
 
-func (i *issue) Check(extState containerdb.ObjectStoreState) {
+func (i *issue) Check(extState containerdb.ObjectStoreState) error {
 	if i == nil {
-		return
+		return nil
 	}
 	value, err := extState.Get(icstate.IssueKey)
 	if err != nil || value == nil {
-		return
+		return err
 	}
 	is := icstate.ToIssue(value)
 	if is == nil || i.IssuedICX.Cmp(is.TotalReward()) != 0 ||
 		i.PrevIssuedICX.Cmp(is.PrevTotalReward()) != 0 ||
 		i.OverIssuedIScore.Cmp(is.OverIssuedIScore()) != 0 {
 		fmt.Printf("Failed Issue: icon1(%+v) icon2(%+v)\n", i, is)
+		return common.ErrInvalidState
 	}
+	return nil
 }
 
 type account struct {
@@ -230,7 +240,7 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 	return accountInfo, nil
 }
 
-func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string) error {
+func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string, noBalance bool) error {
 	height := icon1.BlockHeight
 	accounts := icon1.Accounts
 	addrSpecified := false
@@ -259,9 +269,22 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 	extStages := []containerdb.ObjectStoreState{extFront, extBack1, extBack2}
 	extReward := getObjectStoreState(wss.Database(), hashes[4], icreward.NewObjectImpl)
 
-	icon1.Status.Check(wss, extState)
-	icon1.Issue.Check(extState)
-
+	iissFailed := 0
+	if err := icon1.Status.Check(wss, extState); err != nil {
+		iissFailed += 1
+	}
+	if err := icon1.Issue.Check(extState); err != nil {
+		iissFailed += 1
+	}
+	if noBalance {
+		if iissFailed > 0 {
+			fmt.Printf("%d different state values @ %d\n", iissFailed, height)
+			return errors.InvalidStateError.New("IISSstateComparisonFailure")
+		} else {
+			return nil
+		}
+	}
+	fmt.Printf("Check %d account entries\n", len(accounts))
 	count := 0
 	lost := new(big.Int)
 	for key, value := range accounts {
@@ -288,7 +311,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 		}
 	}
 	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(accounts), height)
-	if count > 0 {
+	if count > 0 || iissFailed > 0 {
 		return errors.InvalidStateError.New("FailInComparison")
 	}
 	return nil
