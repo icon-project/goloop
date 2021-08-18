@@ -33,7 +33,7 @@ func (i HashedItem) Hash() []byte {
 	return i
 }
 func (i HashedItem) String() string {
-	return fmt.Sprintf("hash(%#x)", i)
+	return fmt.Sprintf("hash(%#x)", []byte(i))
 }
 
 type ValueItem []byte
@@ -48,7 +48,7 @@ func (i ValueItem) Hash() []byte {
 	return crypto.SHA3Sum256(i)
 }
 func (i ValueItem) String() string {
-	return fmt.Sprintf("value(%#x)", i)
+	return fmt.Sprintf("value(%#x)", []byte(i))
 }
 
 var nullHashBytes = make([]byte, crypto.HashLen)
