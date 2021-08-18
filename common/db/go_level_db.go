@@ -2,6 +2,7 @@ package db
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -25,7 +26,8 @@ func NewGoLevelDBWithOpts(name string, dir string, o *opt.Options) (*GoLevelDB, 
 		return nil, err
 	}
 	database := &GoLevelDB{
-		db: db,
+		db:      db,
+		buckets: make(map[BucketID]Bucket),
 	}
 	return database, nil
 }
@@ -36,14 +38,25 @@ func NewGoLevelDBWithOpts(name string, dir string, o *opt.Options) (*GoLevelDB, 
 var _ Database = (*GoLevelDB)(nil)
 
 type GoLevelDB struct {
-	db *leveldb.DB
+	lock    sync.Mutex
+	db      *leveldb.DB
+	buckets map[BucketID]Bucket
 }
 
 func (db *GoLevelDB) GetBucket(id BucketID) (Bucket, error) {
-	return &goLevelBucket{
-		id: id,
-		db: db.db,
-	}, nil
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if bk, ok := db.buckets[id]; ok {
+		return bk, nil
+	} else {
+		bk = &goLevelBucket{
+			id: id,
+			db: db.db,
+		}
+		db.buckets[id] = bk
+		return bk, nil
+	}
 }
 
 func (db *GoLevelDB) Close() error {
