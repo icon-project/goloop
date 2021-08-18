@@ -47,7 +47,7 @@ type Canceler func()
 
 type IBlockConverter interface {
 	Rebase(from, to int64, txs []*BlockTransaction) (<-chan interface{}, error)
-	// Term()
+	Term()
 }
 
 type consumeID *int
@@ -372,8 +372,7 @@ func (e *Executor) Start() error {
 }
 
 func (e *Executor) Term() {
-	// TODO terminate BC
-	// e.bc.Term()
+	e.bc.Term()
 
 	e.lock.Lock()
 	defer e.lock.Unlock()

@@ -102,6 +102,10 @@ func (t *testBlockConverter) Rebase(from, to int64, txs []*BlockTransaction) (<-
 	return req.channel, nil
 }
 
+func (t *testBlockConverter) Term() {
+	close(t.channel)
+}
+
 func (t *testBlockConverter) setLastHeight(h int64) {
 	t.last = h
 }
@@ -252,6 +256,7 @@ func TestExecutor_Propose(t *testing.T) {
 	ex.Term()
 
 	t.Log("continue from 10")
+	bc = newTestBlockConverter(rdb)
 	ex, err = NewExecutorWithBC(rdb, idb, logger, bc)
 	assert.NoError(t, err)
 	err = ex.Start()
