@@ -74,8 +74,9 @@ func fillTransactions(blockJson interface{}, b module.Block, v module.JSONVersio
 
 func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
-	if !params.IsEmpty() {
-		return nil, jsonrpc.ErrInvalidParams()
+	var param struct{}
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
 	}
 
 	chain, err := ctx.Chain()

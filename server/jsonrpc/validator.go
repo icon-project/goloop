@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"reflect"
 	"regexp"
 
 	"gopkg.in/go-playground/validator.v9"
@@ -25,6 +26,7 @@ func NewValidator() *Validator {
 	v.RegisterAlias("optional", "omitempty")
 
 	v.RegisterValidation("version", isJsonRpcVersion)
+	v.RegisterValidation("id", isValidIdType)
 
 	v.RegisterValidation("t_addr_eoa", isEoaAddress)
 	v.RegisterValidation("t_addr_score", isScoreAddress)
@@ -55,6 +57,11 @@ func (v *Validator) RegisterAlias(alias string, tags string) {
 
 func isJsonRpcVersion(fl validator.FieldLevel) bool {
 	return fl.Field().String() == Version
+}
+
+func isValidIdType(fl validator.FieldLevel) bool {
+	k := fl.Field().Kind()
+	return k != reflect.Bool && k != reflect.Array && k != reflect.Map
 }
 
 func isEoaAddress(fl validator.FieldLevel) bool {
