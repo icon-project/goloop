@@ -48,7 +48,7 @@ type ServiceManager struct {
 	log log.Logger
 	db  db.Database
 	cb ImportCallback
-	ms BlockV1ProofStorage
+	ps BlockV1ProofStorage
 
 	next int64
 
@@ -75,7 +75,7 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 	if err != nil {
 		if errors.Is(err, ErrAfterLastBlock) {
 			// if it has finished migration, there is nothing to do
-			mh, _, err2 := sm.ms.GetBlockV1Proof()
+			mh, _, err2 := sm.ps.GetBlockV1Proof()
 			if err2 == nil {
 				return nil, err
 			}
@@ -305,7 +305,7 @@ func (sm *ServiceManager) GetImportedBlocks() int64 {
 	return sm.next
 }
 
-func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ms BlockV1ProofStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
+func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ps BlockV1ProofStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
 	logger := chain.Logger()
 	dbase := chain.Database()
 	zero := new(big.Int)
@@ -321,7 +321,7 @@ func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ms BlockV1P
 		log: logger,
 		db:  dbase,
 		cb:  cb,
-		ms:  ms,
+		ps:  ps,
 
 		initialValidators: vl,
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),

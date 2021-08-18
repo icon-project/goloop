@@ -444,7 +444,7 @@ func (t *transition) finalizeTransactions() error {
 				return errors.InvalidStateError.Errorf("DifferentFinalizeData(%#x!=%#x or %d!=%d)",
 					btx.Result, mh.RootHash, btx.Height, mh.Leaves)
 			}
-			if err := t.sm.ms.SetBlockV1Proof(btx.Result, btx.Height, votes); err != nil {
+			if err := t.sm.ps.SetBlockV1Proof(btx.Result, btx.Height, votes); err != nil {
 				return err
 			}
 			return errors.Wrap(ErrAfterLastBlock, "Finalized")

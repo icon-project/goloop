@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
@@ -167,33 +168,41 @@ func (p *platform) DefaultBlockVersion() int {
 }
 
 const (
-	BlockV1MerkleFile = "block_v1_merkle.bin"
+	BlockV1ProofFile = "block_v1_proof.bin"
 )
 
-func (p *platform) GetBlockV1Proof() (*hexary.MerkleHeader, error) {
-	file := path.Join(p.base, BlockV1MerkleFile)
-	reader, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-	mh := new(hexary.MerkleHeader)
-	if err := codec.BC.Unmarshal(reader, mh); err != nil {
-		return nil, err
-	}
-	return mh, nil
+type BlockV1Proof struct {
+	MerkleHeader *hexary.MerkleHeader
+	LastVotes    *blockv0.BlockVoteList
 }
 
-func (p *platform) SetBlockV1Proof(root []byte, size int64, votes *interface{}) error {
-	hdr := &hexary.MerkleHeader{
-		RootHash: root,
-		Leaves:   size,
+func (p *platform) GetBlockV1Proof() (*hexary.MerkleHeader, *blockv0.BlockVoteList, error) {
+	file := path.Join(p.base, BlockV1ProofFile)
+	reader, err := os.Open(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer reader.Close()
+	bp := new(BlockV1Proof)
+	if err := codec.BC.Unmarshal(reader, bp); err != nil {
+		return nil, nil, err
+	}
+	return bp.MerkleHeader, bp.LastVotes, nil
+}
+
+func (p *platform) SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error {
+	hdr := &BlockV1Proof{
+		MerkleHeader: &hexary.MerkleHeader{
+			RootHash: root,
+			Leaves:   size,
+		},
+		LastVotes: votes,
 	}
 	bs, err := codec.BC.MarshalToBytes(hdr)
 	if err != nil {
 		return err
 	}
-	file := path.Join(p.base, BlockV1MerkleFile)
+	file := path.Join(p.base, BlockV1ProofFile)
 	return ioutil.WriteFile(file, bs, os.FileMode(0500))
 }
 
