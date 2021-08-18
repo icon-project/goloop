@@ -1,11 +1,11 @@
 package jsonrpc
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/labstack/echo/v4"
 )
 
@@ -61,16 +61,15 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 
 	resp := &Response{Version: Version}
 	req := new(Request)
-	jd := json.NewDecoder(bytes.NewBuffer(raw))
-	jd.DisallowUnknownFields()
-	if err := jd.Decode(req); err != nil {
+	if err := UnmarshalWithValidate(raw, req, ctx.Validator()); err != nil{
 		resp.ID = req.ID
-		resp.Error = ErrInvalidRequest()
+		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
 	}
 	resp.ID = req.ID
-	if err := ctx.Validate(req); err != nil || req.Method == nil {
-		resp.Error = ErrInvalidRequest()
+	if req.Method == nil {
+		err := errors.New(ValidateFailPrefix+ "required('method')")
+		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
 	}
 	method := mr.GetMethod(*req.Method)

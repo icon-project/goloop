@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labstack/echo/v4"
-
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+	"github.com/labstack/echo/v4"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 const (
@@ -25,7 +25,7 @@ type Request struct {
 	Version string          `json:"jsonrpc" validate:"required,version"`
 	Method  *string         `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
-	ID      interface{}     `json:"id"`
+	ID      interface{}     `json:"id" validate:"optional,id"`
 }
 
 type Response struct {
@@ -149,22 +149,19 @@ type Params struct {
 }
 
 func (p *Params) Convert(v interface{}) error {
-	if p.rawMessage == nil {
-		return errors.New("params message is null")
-	}
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return errors.New("v is not pointer type or v is nil")
 	}
-	jd := json.NewDecoder(bytes.NewBuffer(p.rawMessage))
-	jd.DisallowUnknownFields()
-	if err := jd.Decode(v); err != nil {
-		return errors.Wrapf(err, "JSONParseFail(Type=%T)", v)
+	if p.rawMessage == nil || string(p.rawMessage) == "null" {
+		nf := rv.Elem().NumField()
+		if nf > 0 {
+			return errors.New(UnmarshalFailPrefix+"'params' of request is required ")
+		} else {
+			return nil
+		}
 	}
-	if err := p.validator.Validate(v); err != nil {
-		return errors.Wrapf(err, "ValidationFail(Type=%T,err=%T)", v, err)
-	}
-	return nil
+	return UnmarshalWithValidate(p.rawMessage, v, p.validator)
 }
 
 func (p *Params) RawMessage() []byte {
@@ -178,3 +175,75 @@ func (p *Params) IsEmpty() bool {
 	}
 	return false
 }
+
+const (
+	UnmarshalFailPrefix = "fail to unmarshal, "
+	ValidateFailPrefix = "fail to validate, "
+	JsonErrorPrefix = "json: "
+)
+
+func UnmarshalWithValidate(data []byte, v interface{}, vd echo.Validator) error {
+	jd := json.NewDecoder(bytes.NewBuffer(data))
+	jd.DisallowUnknownFields()
+	if err := jd.Decode(v); err != nil {
+		var msg string
+		if ute, ok := err.(*json.UnmarshalTypeError); ok {
+			if ute.Field == "" {
+				switch v.(type) {
+				case *Request:
+					msg = "request must be object type"
+				default:
+					msg = "'params' of request must be object type"
+				}
+			} else {
+				msg = fmt.Sprintf("'%s' must be %s type", ute.Field, ute.Type)
+			}
+		} else {
+			msg = err.Error()
+			if strings.HasPrefix(msg,JsonErrorPrefix) {
+				msg = strings.ReplaceAll(msg[len(JsonErrorPrefix):], "\"", "'")
+			}
+		}
+		return errors.Wrap(err, UnmarshalFailPrefix+msg)
+	}
+	if err := vd.Validate(v); err != nil {
+		var msg string
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			val := reflect.ValueOf(v)
+			if val.Kind() == reflect.Ptr && !val.IsNil() {
+				val = val.Elem()
+			}
+			vt := val.Type()
+			m := make(map[string][]string)
+			for _, fe := range ve {
+				sf, _ := vt.FieldByName(fe.StructField())
+				jt := sf.Tag.Get("json")
+				if jt == "" {
+					jt = fe.Field()
+				}
+				if idx := strings.Index(jt, ","); idx >= 0 {
+					jt = jt[:idx]
+				}
+				jt = "'"+jt+"'"
+				l, has := m[fe.Tag()]
+				if !has {
+					l = make([]string,0)
+				}
+				l = append(l, jt)
+				m[fe.Tag()] = l
+			}
+			sl := make([]string, len(m))
+			idx := 0
+			for k, l := range m {
+				sl[idx] = fmt.Sprintf("%s(%s)", k, strings.Join(l, ","))
+			}
+			msg = strings.Join(sl, ",")
+		} else {
+			fmt.Printf(ValidateFailPrefix+"err:%T %+v", err, err)
+			msg = err.Error()
+		}
+		return errors.Wrap(err,ValidateFailPrefix + msg)
+	}
+	return nil
+}
+
