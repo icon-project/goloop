@@ -455,7 +455,12 @@ func (t *transition) finalizeTransactions() error {
 	}
 }
 
-func (t *transition) finalizeResult() error {
+func (t *transition) finalizeResult() (ret error) {
+	defer func() {
+		if ret == nil {
+			t.parent = nil
+		}
+	}()
 	if err := t.worldSnapshot.(trie.Snapshot).Flush(); err != nil {
 		return err
 	}
