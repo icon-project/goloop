@@ -435,6 +435,10 @@ func (e *BlockConverter) doExecute(
 			return errors.InterruptedError.Errorf("Execution interrupted")
 		default:
 		}
+		nbv := e.svc.GetNextBlockVersion(prevTR.Result(), prevTR.NextValidators())
+		if nbv == module.BlockVersion2 {
+			return nil
+		}
 		if getTPSer != nil {
 			rps = getTPSer.GetTPS()
 		}
