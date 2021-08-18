@@ -31,7 +31,7 @@ type LevelDB struct {
 	leveldb *leveldb.DB
 }
 
-func (ds *LevelDB) GetBlockJSONByHeight(height int) ([]byte, error) {
+func (ds *LevelDB) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
 	prefix := "block_height_key"
 	key := make([]byte, len(prefix)+12)
 	copy(key, prefix)

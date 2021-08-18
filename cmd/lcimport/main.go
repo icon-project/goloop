@@ -177,7 +177,7 @@ func newCmdGetBlock(name string) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					block, err = lcDB.GetBlockJSONByHeight(int(height))
+					block, err = lcDB.GetBlockJSONByHeight(int(height), false)
 					if err != nil {
 						return err
 					}
@@ -235,7 +235,7 @@ func newCmdVerifyBlock(name string) *cobra.Command {
 			var prev blockv0.Block
 			for idx := from; to == -1 || idx <= to; idx = idx + 1 {
 				fmt.Fprintf(os.Stderr, "\r\x1b[2k[#] Block[%12d]..", idx)
-				blkJSON, err := lcDB.GetBlockJSONByHeight(int(idx))
+				blkJSON, err := lcDB.GetBlockJSONByHeight(int(idx), false)
 				if err != nil {
 					return err
 				}

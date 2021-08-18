@@ -30,7 +30,7 @@ import (
 )
 
 type Database interface {
-	GetBlockJSONByHeight(height int) ([]byte, error)
+	GetBlockJSONByHeight(h int, unconfirmed bool) ([]byte, error)
 	GetBlockJSONByID(id []byte) ([]byte, error)
 	GetLastBlockJSON() ([]byte, error)
 	GetResultJSON(id []byte) ([]byte, error)
@@ -48,7 +48,7 @@ type Store struct {
 }
 
 func (lc *Store) GetBlockByHeight(height int) (blockv0.Block, error) {
-	if bs, err := lc.Database.GetBlockJSONByHeight(height); err != nil {
+	if bs, err := lc.Database.GetBlockJSONByHeight(height, false); err != nil {
 		return nil, err
 	} else {
 		b, err := blockv0.ParseBlock(bs, lc)
@@ -56,6 +56,23 @@ func (lc *Store) GetBlockByHeight(height int) (blockv0.Block, error) {
 			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 		}
 		return b, err
+	}
+}
+
+func (lc *Store) GetVotesByHeight(height int) (*blockv0.BlockVoteList, error) {
+	if bs, err := lc.Database.GetBlockJSONByHeight(height, true); err != nil {
+		return nil, err
+	} else {
+		b, err := blockv0.ParseBlock(bs, lc)
+		if err != nil {
+			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
+			return nil, err
+		}
+		if v3, ok := b.(*blockv0.BlockV03); ok {
+			return v3.PrevVotes(), nil
+		} else {
+			return nil, errors.IllegalArgumentError.New("InvalidBlock")
+		}
 	}
 }
 

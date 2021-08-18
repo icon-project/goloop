@@ -45,10 +45,10 @@ func (m *mergedDatabase) GetTPS() float32 {
 	return m.dbs[m.current].GetTPS()
 }
 
-func (m *mergedDatabase) GetBlockJSONByHeight(height int) ([]byte, error) {
+func (m *mergedDatabase) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
 	start := m.getCurrent()
 	for idx := start; idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetBlockJSONByHeight(height); err != nil {
+		if bs, err := m.dbs[idx].GetBlockJSONByHeight(height, pre); err != nil {
 			return nil, err
 		} else if len(bs) > 0 {
 			if start != idx {

@@ -31,7 +31,8 @@ type NodeDB struct {
 }
 
 type heightParam struct {
-	Height common.HexInt64 `json:"height"`
+	Height      common.HexInt64 `json:"height"`
+	Unconfirmed bool            `json:"unconfirmed,omitempty"`
 }
 
 type hashParam struct {
@@ -42,10 +43,11 @@ type txHashParam struct {
 	TxHash common.HexBytes `json:"txHash"`
 }
 
-func (s *NodeDB) GetBlockJSONByHeight(height int) ([]byte, error) {
+func (s *NodeDB) GetBlockJSONByHeight(height int, unconfirmed bool) ([]byte, error) {
 	s.tr.Wait()
 	result, err := s.Do("icx_getBlock", &heightParam{
 		common.HexInt64{Value: int64(height)},
+		unconfirmed,
 	}, nil)
 	if err != nil {
 		return nil, err

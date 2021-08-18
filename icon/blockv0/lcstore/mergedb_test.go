@@ -38,7 +38,7 @@ func testIDForHeight(h int) []byte {
 	return []byte(fmt.Sprint(h))
 }
 
-func (tdb *testDatabase) GetBlockJSONByHeight(h int) ([]byte, error) {
+func (tdb *testDatabase) GetBlockJSONByHeight(h int, unconfirmed bool) ([]byte, error) {
 	if h <= tdb.last {
 		return testBlockForHeight(h), nil
 	} else {
@@ -84,7 +84,7 @@ func Test_mergedDatabase_GetBlockJSONByHeight(t *testing.T) {
 	assert.NotNil(t, blk)
 
 	for i := 0 ; i<22 ; i++ {
-		blk, err = mdb.GetBlockJSONByHeight(i)
+		blk, err = mdb.GetBlockJSONByHeight(i, false)
 		if i <= 20 {
 			assert.NoError(t, err)
 			assert.NotNil(t, blk)
