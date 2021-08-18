@@ -60,7 +60,7 @@ func (lc *Store) GetBlockByHeight(height int) (blockv0.Block, error) {
 }
 
 func (lc *Store) GetVotesByHeight(height int) (*blockv0.BlockVoteList, error) {
-	if bs, err := lc.Database.GetBlockJSONByHeight(height, true); err != nil {
+	if bs, err := lc.Database.GetBlockJSONByHeight(height+1, true); err != nil {
 		return nil, err
 	} else {
 		b, err := blockv0.ParseBlock(bs, lc)
