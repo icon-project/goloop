@@ -114,9 +114,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		if expire != -1 {
 			timer := es.State.GetUnbondingTimerState(expire)
 			if timer != nil {
-				if err := timer.Delete(owner); err != nil {
-					return err
-				}
+				timer.Delete(owner)
 			} else {
 				return errors.Errorf("timer doesn't exist for height %d", expire)
 			}

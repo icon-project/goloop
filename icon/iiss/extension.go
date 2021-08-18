@@ -587,9 +587,7 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 		if unbondingTimer == nil {
 			panic(errors.Errorf("There is no timer"))
 		}
-		if err = icstate.ScheduleTimerJob(unbondingTimer, timerJobInfo, from); err != nil {
-			return scoreresult.UnknownFailureError.Errorf("Error while scheduling Unbonding Timer Job")
-		}
+		icstate.ScheduleTimerJob(unbondingTimer, timerJobInfo, from)
 	}
 
 	if err = es.AddEventBond(blockHeight, from, delta); err != nil {
@@ -1109,13 +1107,7 @@ func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err
 
 	for _, t := range tl {
 		ts := es.State.GetUnstakingTimerState(t.Height)
-		if err = icstate.ScheduleTimerJob(ts, t, from); err != nil {
-			return scoreresult.UnknownFailureError.Wrapf(
-				err,
-				"Error while scheduling UnStaking Timer Job: from=%v",
-				from,
-			)
-		}
+		icstate.ScheduleTimerJob(ts, t, from)
 	}
 	if err = ia.SetStake(v); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(

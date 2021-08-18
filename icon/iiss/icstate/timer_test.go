@@ -85,23 +85,15 @@ func TestTimer_Delete(t *testing.T) {
 		assert.True(t, timer.Contains(a))
 	}
 
-	err := timer.Delete(tc1[1])
-	assert.NoError(t, err)
+	timer.Delete(tc1[1])
 	assert.False(t, timer.Contains(tc1[1]))
 
-	// double remove
-	err = timer.Delete(tc1[1])
-	assert.Error(t, err)
-
-	err = timer.Delete(tc1[0])
-	assert.NoError(t, err)
+	timer.Delete(tc1[0])
 	assert.False(t, timer.Contains(tc1[0]))
 
-	err = timer.Delete(tc1[2])
-	assert.NoError(t, err)
+	timer.Delete(tc1[2])
 	assert.False(t, timer.Contains(tc1[2]))
 
-	err = timer.Delete(tc1[3])
-	assert.NoError(t, err)
+	timer.Delete(tc1[3])
 	assert.False(t, timer.Contains(tc1[3]))
 }

@@ -17,10 +17,11 @@
 package icstate
 
 import (
+	"fmt"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -69,7 +70,7 @@ func (t *timerData) equal(t2 *timerData) bool {
 }
 
 func (t timerData) clone() timerData {
-	addrs := make([]*common.Address,len(t.addresses))
+	addrs := make([]*common.Address, len(t.addresses))
 	copy(addrs, t.addresses)
 	return timerData{
 		addresses: addrs,
@@ -91,6 +92,17 @@ func (t timerData) IndexOf(addr module.Address) int {
 
 func (t timerData) Contains(addr module.Address) bool {
 	return t.IndexOf(addr) >= 0
+}
+
+func (t *timerData) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "timerData{addresses=%+v}", t.addresses)
+		} else {
+			fmt.Fprintf(f, "timerData{%v}", t.addresses)
+		}
+	}
 }
 
 type TimerIterator interface {
@@ -187,7 +199,7 @@ func (t *TimerState) GetSnapshot() *TimerSnapshot {
 	return t.snapshot
 }
 
-func (t *TimerState) Delete(address module.Address) error {
+func (t *TimerState) Delete(address module.Address) {
 	idx := t.IndexOf(address)
 	if idx >= 0 {
 		l := len(t.addresses)
@@ -196,11 +208,8 @@ func (t *TimerState) Delete(address module.Address) error {
 		} else {
 			t.addresses[idx] = nil
 		}
-		t.addresses = t.addresses[0:l-1]
+		t.addresses = t.addresses[0 : l-1]
 		t.setDirty()
-		return nil
-	} else {
-		return errors.Errorf("%s not in timer", address.String())
 	}
 }
 
@@ -226,14 +235,11 @@ func newTimerWithTag(_ icobject.Tag) *TimerSnapshot {
 	return &TimerSnapshot{}
 }
 
-func ScheduleTimerJob(t *TimerState, info TimerJobInfo, address module.Address) error {
+func ScheduleTimerJob(t *TimerState, info TimerJobInfo, address module.Address) {
 	switch info.Type {
 	case JobTypeAdd:
 		t.Add(address)
 	case JobTypeRemove:
-		if err := t.Delete(address); err != nil {
-			return err
-		}
+		t.Delete(address)
 	}
-	return nil
 }
