@@ -16,6 +16,7 @@
 
 package foundation.icon.icx.transport.monitor;
 
+import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
@@ -36,9 +37,13 @@ public class BlockMonitorSpec extends MonitorSpec {
         RpcObject.Builder builder = new RpcObject.Builder()
                 .put("height", new RpcValue(this.height));
         if (this.eventFilters != null) {
+            RpcArray.Builder arrBuilder = new RpcArray.Builder();
             for (EventMonitorSpec.EventFilter ef : this.eventFilters) {
-                ef.apply(builder);
+                RpcObject.Builder efBuilder = new RpcObject.Builder();
+                ef.apply(efBuilder);
+                arrBuilder.add(efBuilder.build());
             }
+            builder.put("eventFilters", arrBuilder.build());
         }
         return builder.build();
     }

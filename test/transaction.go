@@ -17,12 +17,16 @@
 package test
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/big"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -48,10 +52,12 @@ type Transaction struct {
 }
 
 func NewTx() *Transaction {
+	RegisterTransactionFactory()
 	return NewTransaction()
 }
 
 func NewTransaction() *Transaction {
+	RegisterTransactionFactory()
 	tx := &Transaction{}
 	tx.json.Type = "test"
 	tx.json.TimeStamp = common.HexInt64{}
@@ -220,6 +226,31 @@ func (t *Transaction) To() module.Address {
 
 func (t *Transaction) IsSkippable() bool {
 	return false
+}
+
+func (t *Transaction) Reset(s db.Database, k []byte) error {
+	if err := json.Unmarshal(k, &t.json); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Transaction) Flush() error {
+	return nil
+}
+
+func (t *Transaction) Equal(object trie.Object) bool {
+	if tx, ok := object.(*Transaction); ok {
+		return bytes.Equal(tx.ID(), t.ID())
+	}
+	return false
+}
+
+func (t *Transaction) Resolve(builder merkle.Builder) error {
+	return nil
+}
+
+func (t *Transaction) ClearCache() {
 }
 
 func checkJSONTX(tx map[string]interface{}) bool {

@@ -16,25 +16,22 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const Version = "2.0"
+const (
+	Version      = "2.0"
+	LimitOfBatch = 10
+)
 
 type Request struct {
 	Version string          `json:"jsonrpc" validate:"required,version"`
-	Method  string          `json:"method" validate:"required"`
+	Method  *string         `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 	ID      interface{}     `json:"id"`
 }
 
 type Response struct {
 	Version string      `json:"jsonrpc"`
-	Result  interface{} `json:"result"`
+	Result  interface{} `json:"result,omitempty"`
 	Error   *Error      `json:"error,omitempty"`
-	ID      interface{} `json:"id"`
-}
-
-type ErrorResponse struct {
-	Version string      `json:"jsonrpc"`
-	Error   *Error      `json:"error"`
 	ID      interface{} `json:"id"`
 }
 
@@ -113,7 +110,10 @@ type Context struct {
 }
 
 func NewContext(c echo.Context) *Context {
-	ctx := &Context{Context: c, opts: NewIconOptionsByHeader(c.Request().Header)}
+	ctx := &Context{
+		Context: c,
+		opts:    NewIconOptionsByHeader(c.Request().Header),
+	}
 	return ctx
 }
 
@@ -137,6 +137,10 @@ func (ctx *Context) GetTimeout(t time.Duration) time.Duration {
 	} else {
 		return time.Duration(v) * time.Millisecond
 	}
+}
+
+func (ctx *Context) Validator() echo.Validator {
+	return ctx.Echo().Validator
 }
 
 type Params struct {

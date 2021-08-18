@@ -26,6 +26,8 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.test.common.*;
+import foundation.icon.test.score.ChainScore;
+import foundation.icon.test.score.EventGen;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,7 @@ public class BtpApiTest extends TestBase {
     private static TransactionHandler txHandler;
     private static IconService iconService;
     private static Codec codec;
+    private static ChainScore chainScore;
 
     @BeforeAll
     static void init() {
@@ -55,6 +58,7 @@ public class BtpApiTest extends TestBase {
         } else {
             codec = Codec.messagePack;
         }
+        chainScore = new ChainScore(txHandler);
     }
 
     /*
@@ -223,6 +227,67 @@ public class BtpApiTest extends TestBase {
             } else {
                 LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
                 fail();
+            }
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("getProofForEvents");
+        KeyWallet ownerWallet = KeyWallet.create();
+        EventGen eventGen = EventGen.install(txHandler, ownerWallet);
+        txHash = eventGen.invokeGenerate(ownerWallet, ownerWallet.getAddress(), BigInteger.ONE, new byte[]{1});
+        txResult = txHandler.getResult(txHash);
+        height = txResult.getBlockHeight();
+        txBlock = iconService.getBlock(height).execute();
+        resultBlock = iconService.getBlock(height.add(BigInteger.ONE)).execute();
+        Bytes blockHash = resultBlock.getBlockHash();
+        BigInteger index = txResult.getTxIndex();
+        BigInteger[] events = new BigInteger[txResult.getEventLogs().size()];
+        for (int i = 0; i < txResult.getEventLogs().size(); i++) {
+            events[i] = BigInteger.valueOf(i);
+        }
+        try {
+            // test with invalid block hash
+            Bytes invalidBlockHash = txBlock.getBlockHash();
+            iconService.getProofForEvents(invalidBlockHash, index, events).execute();
+            fail();
+        } catch (RpcError e) {
+            if (e.getCode() == ErrNotFound) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            } else {
+                LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                fail();
+            }
+        }
+        try {
+            // test with invalid index
+            BigInteger invalidIndex = BigInteger.valueOf(txBlock.getTransactions().size() + 1);
+            iconService.getProofForEvents(blockHash, invalidIndex, events).execute();
+            fail();
+        } catch (RpcError e) {
+            if (e.getCode() == ErrNotFound) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            } else {
+                LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                fail();
+            }
+        }
+        final int requiredRevision = 7;
+        int revision = chainScore.getRevision();
+        if (revision < requiredRevision) {
+            LOG.info("Ignore invalid events test at revision : "+revision);
+        } else {
+            try {
+                // test with invalid events
+                BigInteger[] invalidEvetns = new BigInteger[]{BigInteger.valueOf(txResult.getEventLogs().size() + 1)};
+                iconService.getProofForEvents(blockHash, index, invalidEvetns).execute();
+                fail();
+            } catch (RpcError e) {
+                if (e.getCode() == ErrNotFound) {
+                    LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                } else {
+                    LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                    fail();
+                }
             }
         }
         LOG.infoExiting();

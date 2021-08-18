@@ -451,9 +451,9 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 						if !ok {
 							if he, ok := err.(*client.HttpError); ok {
 								if he.Response() != "" {
-									jre := &jsonrpc.ErrorResponse{}
+									jre := &jsonrpc.Response{}
 									if uErr := json.Unmarshal([]byte(he.Response()), jre); uErr != nil {
-										done <- fmt.Errorf("fail to unmarshall jsonrpc.ErrorResponse err:%+v httpError:%+v", uErr, he)
+										done <- fmt.Errorf("fail to unmarshall jsonrpc.Response err:%+v httpError:%+v", uErr, he)
 										return
 									}
 									je = jre.Error

@@ -187,6 +187,29 @@ public final class Converters {
         }
     };
 
+    public static final RpcConverter<Base64[][]> BASE64_ARRAY_ARRAY
+            = new RpcConverter<Base64[][]>() {
+        @Override
+        public Base64[][] convertTo(RpcItem rpcItem) {
+            RpcArray arrayArray = rpcItem.asArray();
+            Base64[][] base64ArrayArray = new Base64[arrayArray.size()][];
+            for (int i = 0; i < arrayArray.size(); i++) {
+                RpcArray array = arrayArray.get(i).asArray();
+                Base64[] base64Array = new Base64[array.size()];
+                for (int j = 0; j < array.size(); j++) {
+                    base64Array[j] = new Base64(array.get(i).asString());
+                }
+                base64ArrayArray[i] = base64Array;
+            }
+            return base64ArrayArray;
+        }
+
+        @Override
+        public RpcItem convertFrom(Base64[][] object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
     public static final RpcConverter<Base64[]> BASE64_ARRAY
             = new RpcConverter<Base64[]>() {
         @Override

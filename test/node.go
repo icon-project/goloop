@@ -46,6 +46,7 @@ type Node struct {
 	CS        module.Consensus
 	PrevBlock module.Block
 	LastBlock module.Block
+	Platform  service.Platform
 }
 
 type NodeContext struct {
@@ -118,6 +119,7 @@ func NewNode(t *testing.T, o ...FixtureOption) *Node {
 		CS:        c.cs,
 		PrevBlock: nil,
 		LastBlock: lastBlk,
+		Platform:  plt,
 	}
 }
 
