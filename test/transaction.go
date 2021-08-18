@@ -48,10 +48,12 @@ type Transaction struct {
 }
 
 func NewTx() *Transaction {
+	RegisterTransactionFactory()
 	return NewTransaction()
 }
 
 func NewTransaction() *Transaction {
+	RegisterTransactionFactory()
 	tx := &Transaction{}
 	tx.json.Type = "test"
 	tx.json.TimeStamp = common.HexInt64{}
