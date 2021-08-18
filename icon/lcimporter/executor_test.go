@@ -86,6 +86,7 @@ func (r *testBCRequest) end(h int64) {
 type testBlockConverter struct {
 	channel chan *testBCRequest
 	last    int64
+	votes   *blockv0.BlockVoteList
 }
 
 func (t *testBlockConverter) Rebase(from, to int64, txs []*BlockTransaction) (<-chan interface{}, error) {
@@ -108,7 +109,7 @@ func (t *testBlockConverter) Term() {
 }
 
 func (t *testBlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
-	return nil, errors.ErrUnsupported
+	return t.votes, nil
 }
 
 func (t *testBlockConverter) setLastHeight(h int64) {
@@ -118,6 +119,7 @@ func (t *testBlockConverter) setLastHeight(h int64) {
 func newTestBlockConverter(rdb db.Database) *testBlockConverter {
 	return &testBlockConverter{
 		channel: make(chan *testBCRequest, 1),
+		votes:   new(blockv0.BlockVoteList),
 	}
 }
 

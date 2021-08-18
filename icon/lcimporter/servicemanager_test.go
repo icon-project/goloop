@@ -47,26 +47,28 @@ func (c *testChain) Database() db.Database {
 	return c.idb
 }
 
-type testMerkleStorage struct {
-	Root []byte
-	Size int64
+type testProofStorage struct {
+	Root  []byte
+	Size  int64
+	Votes *blockv0.BlockVoteList
 }
 
-func (t *testMerkleStorage) GetBlockV1Proof() (*hexary.MerkleHeader, *blockv0.BlockVoteList, error) {
+func (t *testProofStorage) GetBlockV1Proof() (*hexary.MerkleHeader, *blockv0.BlockVoteList, error) {
 	if len(t.Root) > 0 {
 		return &hexary.MerkleHeader{
 			RootHash: t.Root,
 			Leaves:   t.Size,
-		}, nil, nil
+		}, t.Votes, nil
 	} else {
 		return nil, nil, common.ErrNotFound
 	}
 }
 
-func (t *testMerkleStorage) SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error {
+func (t *testProofStorage) SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error {
 	if len(t.Root) == 0 {
 		t.Root = root
 		t.Size = size
+		t.Votes = votes
 		return nil
 	} else {
 		return common.ErrInvalidState
@@ -106,8 +108,8 @@ func TestServiceManager_Basic(t *testing.T) {
 		common.MustNewAddressFromString("hx02"),
 		common.MustNewAddressFromString("hx03"),
 	}
-	ms := &testMerkleStorage{}
-	sm, err := NewServiceManagerWithExecutor(chain, ex, ms, vls, nil)
+	ps := &testProofStorage{}
+	sm, err := NewServiceManagerWithExecutor(chain, ex, ps, vls, nil)
 	assert.NoError(t, err)
 
 	vl, err := newValidatorListFromSlice(idb, vls)
@@ -247,7 +249,7 @@ func TestServiceManager_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	trb := testResultCallback(make(chan error, 1))
-	sm, err = NewServiceManagerWithExecutor(chain, ex, ms, vls, trb)
+	sm, err = NewServiceManagerWithExecutor(chain, ex, ps, vls, trb)
 	assert.NoError(t, err)
 
 	txs2 := buildTestTxs(10, 19, "OK")
@@ -384,8 +386,9 @@ func TestServiceManager_Basic(t *testing.T) {
 	mh, err := acc.Finalize()
 	assert.NoError(t, err)
 
-	assert.Equal(t, mh.RootHash, ms.Root)
-	assert.Equal(t, mh.Leaves, ms.Size)
+	assert.Equal(t, mh.RootHash, ps.Root)
+	assert.Equal(t, mh.Leaves, ps.Size)
+	assert.True(t, bc.votes == ps.Votes)
 
 	sm.Term()
 }
