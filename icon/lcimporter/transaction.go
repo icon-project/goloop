@@ -39,9 +39,9 @@ var transactionTag = []byte{0x00}
 const transactionVersion = module.TransactionVersion3
 
 type BlockTransaction struct {
-	Height        int64
-	BlockID       []byte
-	Result        []byte
+	Height    int64
+	BlockHash []byte
+	Result    []byte
 	ValidatorHash []byte
 	TXCount       int32
 
@@ -61,7 +61,7 @@ func (tx *BlockTransaction) Flush() error {
 func (tx *BlockTransaction) Equal(object trie.Object) bool {
 	if tx2, ok := object.(*BlockTransaction); ok {
 		return tx.Height == tx2.Height &&
-			bytes.Equal(tx.BlockID, tx2.BlockID) &&
+			bytes.Equal(tx.BlockHash, tx2.BlockHash) &&
 			bytes.Equal(tx.Result, tx2.Result) &&
 			bytes.Equal(tx.ValidatorHash, tx2.ValidatorHash) &&
 			tx.TXCount == tx2.TXCount
@@ -120,7 +120,7 @@ func (tx *BlockTransaction) Bytes() []byte {
 
 func (tx *BlockTransaction) equal(tx2 *BlockTransaction) bool {
 	return tx.Height == tx2.Height &&
-		bytes.Equal(tx.BlockID, tx2.BlockID) &&
+		bytes.Equal(tx.BlockHash, tx2.BlockHash) &&
 		bytes.Equal(tx.Result, tx2.Result) &&
 		bytes.Equal(tx.ValidatorHash, tx2.ValidatorHash)
 }
@@ -130,7 +130,7 @@ func (tx *BlockTransaction) RLPEncodeSelf(e codec.Encoder) error {
 		transactionVersion,
 		transactionTag,
 		tx.Height,
-		tx.BlockID,
+		tx.BlockHash,
 		tx.Result,
 		tx.ValidatorHash,
 		tx.TXCount,
@@ -144,7 +144,7 @@ func (tx *BlockTransaction) RLPDecodeSelf(d codec.Decoder) error {
 		&version,
 		&tag,
 		&tx.Height,
-		&tx.BlockID,
+		&tx.BlockHash,
 		&tx.Result,
 		&tx.ValidatorHash,
 		&tx.TXCount,
@@ -177,7 +177,7 @@ func (tx *BlockTransaction) ToJSON(version module.JSONVersion) (interface{}, err
 	return map[string]interface{}{
 		"version":        transactionVersion,
 		"height":         &common.HexInt64{Value: tx.Height},
-		"block_id":       common.HexBytes(tx.BlockID),
+		"block_id":       common.HexBytes(tx.BlockHash),
 		"result":         common.HexBytes(tx.Result),
 		"validator_hash": common.HexBytes(tx.ValidatorHash),
 	}, nil
@@ -189,7 +189,11 @@ func (tx *BlockTransaction) ValidateNetwork(nid int) bool {
 
 func (tx *BlockTransaction) String() string {
 	return fmt.Sprintf("BlockTransaction{height=%d,id=%#x,result=%#x,vh=%#x}",
-		tx.Height, tx.BlockID, tx.Result, tx.ValidatorHash)
+		tx.Height, tx.BlockHash, tx.Result, tx.ValidatorHash)
+}
+
+func (tx *BlockTransaction) IsLast() bool {
+	return len(tx.BlockHash) == 0
 }
 
 type txHeader struct {

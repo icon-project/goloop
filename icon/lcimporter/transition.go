@@ -17,6 +17,7 @@
 package lcimporter
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -26,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
@@ -143,14 +145,24 @@ func makeReceiptList(dbase db.Database, size int, rct txresult.Receipt) module.R
 	return txresult.NewReceiptListFromSlice(dbase, rcts)
 }
 
-func (t *transition) setResult(next int64, txs int, vl module.ValidatorList) {
+func (t *transition) getNextHeight() int64 {
+	bsn := containerdb.NewBytesStoreSnapshotFromRaw(t.worldSnapshot)
+	store := containerdb.NewBytesStoreStateWithSnapshot(bsn)
+	return scoredb.NewVarDB(store, VarNextBlockHeight).Int64()
+}
+
+func (t *transition) setResult(txs int, next int64, mh *hexary.MerkleHeader, vl module.ValidatorList) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	if next >= 0 {
+	if txs > 0 {
 		ws := trie_manager.NewMutableFromImmutable(t.parent.worldSnapshot)
-		scoredb.NewVarDB(containerdb.NewBytesStoreStateFromRaw(ws), VarNextBlockHeight).Set(next)
+		store := containerdb.NewBytesStoreStateFromRaw(ws)
+		scoredb.NewVarDB(store, VarNextBlockHeight).Set(next)
+		mhBytes := codec.BC.MustMarshalToBytes(mh)
+		scoredb.NewVarDB(store, VarCurrentMerkle).Set(mhBytes)
 		t.worldSnapshot = ws.GetSnapshot()
+		t.log.Warnf("T_%p.SetResult(next=%d,mh=%s)", t, next, mh)
 	} else {
 		t.worldSnapshot = t.parent.worldSnapshot
 	}
@@ -177,7 +189,8 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 
 	vls := t.sm.getInitialValidators()
 	if t.bi.Height() == 0 {
-		t.setResult(1, 1, vls)
+		mh := &hexary.MerkleHeader{}
+		t.setResult(1, 0, mh, vls)
 		return nil
 	}
 
@@ -192,9 +205,15 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 				return err
 			}
 		}
-		t.setResult(txs[len(txs)-1].Height+1, len(txs), vls)
+		from := txs[0].Height
+		next := txs[len(txs)-1].Height+1
+		mh, err := t.ex.GetMerkleHeader(from)
+		if err != nil {
+			return err
+		}
+		t.setResult(len(txs), next, mh, vls)
 	} else {
-		t.setResult(-1, 0, vls)
+		t.setResult(0, -1, nil, vls)
 	}
 	return nil
 }
@@ -212,8 +231,26 @@ func (t *transition) onTransactions(txs []*BlockTransaction, err error) {
 }
 
 func (t *transition) checkTransactions(txs []*BlockTransaction) error {
-	cancel, err := t.ex.GetTransactions(txs[0].Height, txs[len(txs)-1].Height, t.onTransactions)
+	if tx := txs[0]; tx.IsLast() {
+		mh, err := t.ex.GetMerkleHeader(tx.Height)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(tx.Result, mh.RootHash) {
+			return errors.InvalidStateError.Errorf("DifferentAccumulatorHash(%#x!=%#x",
+				tx.Result, mh.RootHash)
+		} else {
+			return nil
+		}
+	}
+	from := txs[0].Height
+	to := txs[len(txs)-1].Height
+	if logServiceManager {
+		t.log.Warnf("T_%p.GetTransactions(%d,%d)", t, from, to)
+	}
+	cancel, err := t.ex.GetTransactions(from, to, t.onTransactions)
 	if err != nil {
+		t.log.Warnf("FailToGetTransaction(from=%d,to=%d,err=%+v)", from, to, err)
 		return err
 	}
 
@@ -222,6 +259,7 @@ func (t *transition) checkTransactions(txs []*BlockTransaction) error {
 		if err == ErrCanceled {
 			cancel()
 		}
+		t.log.Warnf("FailToGetTransaction(from=%d,to=%d,err=%+v)", from, to, err)
 		return err
 	}
 	rtxs := result.([]*BlockTransaction)
@@ -261,6 +299,10 @@ func (t *transition) doSync(cb module.TransitionCallback) (ret error) {
 		return errors.CriticalFormatError.New("NoTransactions")
 	}
 
+	if logServiceManager {
+		t.log.Warnf("T_%p.SyncTransactions(from=%d,to=%d)",
+			t, txs[0].Height, txs[len(txs)-1].Height)
+	}
 	if err := t.ex.SyncTransactions(txs); err != nil {
 		return err
 	}
@@ -269,7 +311,12 @@ func (t *transition) doSync(cb module.TransitionCallback) (ret error) {
 		return err
 	}
 
-	t.setResult(txs[len(txs)-1].Height+1, len(txs), t.sm.getInitialValidators())
+	from := txs[0].Height
+	mh, err := t.ex.getMerkleHeaderInLock(from)
+	if err != nil {
+		return err
+	}
+	t.setResult(len(txs), from, mh, t.sm.getInitialValidators())
 	return nil
 }
 
@@ -384,7 +431,25 @@ func (t *transition) finalizeTransactions() error {
 		return nil
 	}
 	if btx, ok := transaction.Unwrap(ltx).(*BlockTransaction) ; ok {
-		return t.ex.FinalizeTransactions(btx.Height)
+		if btx.IsLast() {
+			if logServiceManager {
+				t.log.Warnf("T_%p.FinalizeAll(root=%#x,blocks=%d)",
+					btx.Result, btx.Height)
+			}
+			mh, err := t.ex.FinalizeMerkle(btx.Height)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(btx.Result, mh.RootHash) || btx.Height != mh.Leaves {
+				return errors.InvalidStateError.Errorf("DifferentFinalizeData(%#x!=%#x or %d!=%d)",
+					btx.Result, mh.RootHash, btx.Height, mh.Leaves)
+			}
+			if err := t.sm.ms.SetBlockV1Merkle(btx.Result, btx.Height); err != nil {
+				return err
+			}
+			return errors.Wrap(ErrAfterLastBlock, "Finalized")
+		}
+		return nil
 	} else {
 		return errors.CriticalFormatError.New("InvalidLastTransaction")
 	}
@@ -400,7 +465,11 @@ func (t *transition) finalizeResult() error {
 	if err := t.receipts.Flush(); err != nil {
 		return err
 	}
-	return nil
+	next := t.getNextHeight()
+	if logServiceManager {
+		t.log.Warnf("T_%p.FinalizeResult(next=%d)", t, next)
+	}
+	return t.ex.FinalizeTransactions(next-1)
 }
 
 func createInitialTransition(dbase db.Database, result []byte, nvl module.ValidatorList, sm *ServiceManager, ex *Executor) *transition {

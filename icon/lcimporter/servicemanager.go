@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -31,13 +32,24 @@ import (
 
 const (
 	VarNextBlockHeight = "nextBlockHeight"
+	VarCurrentMerkle   = "currentMerkleHeader"
 )
+
+const logServiceManager = false
+
+type MerkleStorage interface {
+	GetBlockV1Merkle() (*hexary.MerkleHeader, error)
+	SetBlockV1Merkle(root []byte, size int64) error
+}
 
 type ServiceManager struct {
 	ex  *Executor
 	log log.Logger
 	db  db.Database
 	cb  ImportCallback
+	ms  MerkleStorage
+
+	next int64
 
 	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
@@ -49,12 +61,38 @@ type ImportCallback interface {
 	OnResult(err error)
 }
 
-func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
+func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (ntr module.Transition, ret error) {
+	defer func() {
+		_ = sm.handleError(ret)
+	}()
 	pt := parent.(*transition)
-	bts, err := sm.ex.ProposeTransactions()
+	from := pt.getNextHeight()
+	if logServiceManager {
+		sm.log.Warnf("ServiceManager.ProposeTransactions(from=%d)", from)
+	}
+	bts, err := sm.ex.ProposeTransactions(from)
 	if err != nil {
-		sm.handleError(err)
-		return nil, err
+		if errors.Is(err, ErrAfterLastBlock) {
+			// if it has finished migration, there is nothing to do
+			mh, err2 := sm.ms.GetBlockV1Merkle()
+			if err2 == nil {
+				return nil, err
+			}
+
+			// we finish our migration
+			mh, err = sm.ex.GetMerkleHeader(from)
+			if err != nil {
+				return nil, err
+			}
+			bts = []*BlockTransaction{
+				&BlockTransaction{
+					Height: mh.Leaves,
+					Result: mh.RootHash,
+				},
+			}
+		} else {
+			return nil, err
+		}
 	}
 	txs := make([]module.Transaction, 0, len(bts))
 	for _, bt := range bts {
@@ -90,14 +128,12 @@ func (sm *ServiceManager) CreateSyncTransition(tr module.Transition, result []by
 func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
 	t := tr.(*transition)
 	if (opt & module.FinalizeNormalTransaction) != 0 {
-		if err := t.finalizeTransactions(); err != nil {
-			sm.handleError(err)
+		if err := sm.handleError(t.finalizeTransactions()); err != nil {
 			return err
 		}
 	}
 	if (opt & module.FinalizeResult) != 0 {
-		if err := t.finalizeResult(); err != nil {
-			sm.handleError(err)
+		if err := sm.handleError(t.finalizeResult()); err != nil {
 			return err
 		}
 	}
@@ -252,18 +288,22 @@ func (sm *ServiceManager) getInitialValidators() module.ValidatorList {
 	return sm.initialValidators
 }
 
-func (sm *ServiceManager) handleError(err error) {
+func (sm *ServiceManager) handleError(err error) error {
+	if err == nil {
+		return nil
+	}
 	if errors.Is(err, ErrAfterLastBlock) {
 		err = nil
 	}
 	go sm.cb.OnResult(err)
+	return err
 }
 
 func (sm *ServiceManager) GetImportedBlocks() int64 {
-	return sm.ex.GetImportedBlocks()
+	return sm.next
 }
 
-func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
+func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ms MerkleStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
 	logger := chain.Logger()
 	dbase := chain.Database()
 	zero := new(big.Int)
@@ -279,6 +319,7 @@ func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, vs []*commo
 		log: logger,
 		db:  dbase,
 		cb:  cb,
+		ms:  ms,
 
 		initialValidators: vl,
 		emptyTransactions: transaction.NewTransactionListFromHash(dbase, nil),
@@ -292,5 +333,5 @@ func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config, cb Impo
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceManagerWithExecutor(chain, ex, cfg.Validators, cb)
+	return NewServiceManagerWithExecutor(chain, ex, cfg.Platform.(MerkleStorage), cfg.Validators, cb)
 }

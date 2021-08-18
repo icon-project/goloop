@@ -385,11 +385,11 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 					return
 				}
 				resCh <- &BlockTransaction{
-					Height: blk.Height(),
-					BlockID: blk.ID(),
-					Result: blk.Result(),
+					Height:        blk.Height(),
+					BlockHash:     blk.Hash(),
+					Result:        blk.Result(),
 					ValidatorHash: blk.NextValidatorsHash(),
-					TXCount: int32(len(blkv0.NormalTransactions())),
+					TXCount:       int32(len(blkv0.NormalTransactions())),
 				}
 			}
 		}

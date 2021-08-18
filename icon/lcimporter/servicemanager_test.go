@@ -25,6 +25,8 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icdb"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -42,6 +44,32 @@ func (c *testChain) Logger() log.Logger {
 
 func (c *testChain) Database() db.Database {
 	return c.idb
+}
+
+type testMerkleStorage struct {
+	Root []byte
+	Size int64
+}
+
+func (t *testMerkleStorage) GetBlockV1Merkle() (*hexary.MerkleHeader, error) {
+	if len(t.Root) > 0 {
+		return &hexary.MerkleHeader{
+			RootHash: t.Root,
+			Leaves:   t.Size,
+		}, nil
+	} else {
+		return nil, common.ErrNotFound
+	}
+}
+
+func (t *testMerkleStorage) SetBlockV1Merkle(root []byte, size int64) error {
+	if len(t.Root) == 0 {
+		t.Root = root
+		t.Size = size
+		return nil
+	} else {
+		return common.ErrInvalidState
+	}
 }
 
 type testTransitionCallback chan error
@@ -77,7 +105,8 @@ func TestServiceManager_Basic(t *testing.T) {
 		common.MustNewAddressFromString("hx02"),
 		common.MustNewAddressFromString("hx03"),
 	}
-	sm, err := NewServiceManagerWithExecutor(chain, ex, vls, nil)
+	ms := &testMerkleStorage{}
+	sm, err := NewServiceManagerWithExecutor(chain, ex, ms, vls, nil)
 	assert.NoError(t, err)
 
 	vl, err := newValidatorListFromSlice(idb, vls)
@@ -204,6 +233,7 @@ func TestServiceManager_Basic(t *testing.T) {
 
 	result1 := tr2.Result()
 	vh1 := tr2.NextValidators().Hash()
+	t.Logf("TXH=%#x", tls2.Hash())
 	txh1 := tr3.NormalTransactions().Hash()
 	t.Logf("Finalized: result=%#x, vh=%#x, txh=%#x", result1, vh1, txh1)
 
@@ -216,20 +246,20 @@ func TestServiceManager_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	trb := testResultCallback(make(chan error, 1))
-	sm, err = NewServiceManagerWithExecutor(chain, ex, vls, trb)
+	sm, err = NewServiceManagerWithExecutor(chain, ex, ms, vls, trb)
 	assert.NoError(t, err)
 
 	txs2 := buildTestTxs(10, 19, "OK")
 	go func() {
-		req := <-bc.channel
-		t.Log("BC reload from finalized")
-		assert.Equal(t, int64(10), req.from)
-		assert.Equal(t, int64(-1), req.to)
-
-		req.interrupt()
+		// req := <-bc.channel
+		// t.Log("BC reload from finalized")
+		// assert.Equal(t, int64(10), req.from)
+		// assert.Equal(t, int64(-1), req.to)
+		//
+		// req.interrupt()
 		toTC <- "confirm_start"
 
-		req = <-bc.channel
+		req := <-bc.channel
 		t.Log("BC reload for last transition")
 		assert.Equal(t, int64(5), req.from)
 		assert.Equal(t, int64(-1), req.to)
@@ -244,8 +274,6 @@ func TestServiceManager_Basic(t *testing.T) {
 
 	sm.Start()
 
-	assert.Equal(t, "confirm_start", <-toTC)
-
 	t.Log("transition from block2")
 	vl1, err := state.ValidatorSnapshotFromHash(idb, vh1)
 	assert.NoError(t, err)
@@ -255,6 +283,9 @@ func TestServiceManager_Basic(t *testing.T) {
 	tls2 = transaction.NewTransactionListFromHash(idb, txh1)
 	err = sm.Finalize(tr2, module.FinalizeResult)
 	assert.NoError(t, err)
+
+	assert.Equal(t, "confirm_start", <-toTC)
+
 	tr3, err = sm.CreateTransition(tr2, tls2, common.NewBlockInfo(height, ts), nil)
 	assert.NoError(t, err)
 
@@ -309,17 +340,51 @@ func TestServiceManager_Basic(t *testing.T) {
 
 		// execution success
 		assert.NoError(t, <-tcb)
+
+		trp = trc
 	}
 
-	// propose expecting failure
+	// propose last block with LAST TX
 	height += 1
 	ts += 10
 	t.Log("propose block", height)
-	_, err = sm.ProposeTransition(trc, common.NewBlockInfo(height, ts), nil)
-	assert.Error(t, err)
+	trc, err = sm.ProposeTransition(trp, common.NewBlockInfo(height, ts), nil)
+	assert.NoError(t, err)
+
+	tcb = testTransitionCallback(make(chan error, 1))
+	_, err = trc.Execute(tcb)
+	assert.NoError(t, err)
+
+	t.Log("finalize block", height)
+	assert.NoError(t, <-tcb)
+	err = sm.Finalize(trp, module.FinalizeResult)
+	assert.NoError(t, err)
+	err = sm.Finalize(trc, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
+	assert.NoError(t, err)
 
 	// get end of blocks
 	assert.NoError(t, <-trb)
+
+	tmp_db := db.NewMapDB()
+	tmp, err := tmp_db.GetBucket(db.MerkleTrie)
+	assert.NoError(t, err)
+	real, err := tmp_db.GetBucket(icdb.BlockMerkle)
+	assert.NoError(t, err)
+	acc, err := hexary.NewAccumulator(tmp, real, "")
+	assert.NoError(t, err)
+	for _, tx := range txs1 {
+		err = acc.Add(tx.BlockHash)
+		assert.NoError(t, err)
+	}
+	for _, tx := range txs2 {
+		err = acc.Add(tx.BlockHash)
+		assert.NoError(t, err)
+	}
+	mh, err := acc.Finalize()
+	assert.NoError(t, err)
+
+	assert.Equal(t, mh.RootHash, ms.Root)
+	assert.Equal(t, mh.Leaves, ms.Size)
 
 	sm.Term()
 }

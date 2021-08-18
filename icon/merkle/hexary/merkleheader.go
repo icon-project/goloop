@@ -16,7 +16,13 @@
 
 package hexary
 
+import "fmt"
+
 type MerkleHeader struct {
 	RootHash []byte
 	Leaves   int64
+}
+
+func (mh MerkleHeader) String() string {
+	return fmt.Sprintf("MerkleHeader{%#x,%d}", mh.RootHash, mh.Leaves)
 }

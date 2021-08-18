@@ -23,9 +23,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icdb"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 )
 
 const delayForConfirm = 10*time.Millisecond
@@ -33,7 +36,7 @@ const delayForConfirm = 10*time.Millisecond
 func buildTestTx(height int64, suffix string) *BlockTransaction {
 	return &BlockTransaction{
 		Height:        height,
-		BlockID:       []byte(fmt.Sprintf("BLOCKID[%d,%s]", height, suffix)),
+		BlockHash:     crypto.SHA3Sum256([]byte(fmt.Sprintf("BLOCKID[%d,%s]", height, suffix))),
 		Result:        []byte(fmt.Sprintf("RESULT[%d,%s]", height, suffix)),
 		ValidatorHash: []byte(fmt.Sprintf("VALIDATOR[%d,%s]", height, suffix)),
 		TXCount:       TransactionsPerBlock/6,
@@ -109,6 +112,23 @@ func newTestBlockConverter(rdb db.Database) *testBlockConverter {
 	}
 }
 
+func newTestAcc(t *testing.T) hexary.Accumulator {
+	dbase := db.NewMapDB()
+	bmk, err := dbase.GetBucket(icdb.BlockMerkle)
+	assert.NoError(t, err)
+	tmp, err := dbase.GetBucket(icdb.IDToHash)
+	acc, err := hexary.NewAccumulator(tmp, bmk, "")
+	assert.NoError(t, err)
+	return acc
+}
+
+func applyTxsOnAcc(t *testing.T, acc hexary.Accumulator, txs []*BlockTransaction) {
+	for _, tx := range txs {
+		err := acc.Add(tx.BlockHash)
+		assert.NoError(t, err)
+	}
+}
+
 func TestExecutor_Basic(t *testing.T) {
 	rdb := db.NewMapDB()
 	idb := db.NewMapDB()
@@ -179,6 +199,8 @@ func TestExecutor_Propose(t *testing.T) {
 	t.Log("start executor")
 	err = ex.Start()
 	assert.NoError(t, err)
+	err = ex.FinalizeTransactions(-1)
+	assert.NoError(t, err)
 	t.Log("executor started")
 
 	toTC := make(chan string, 3)
@@ -206,21 +228,25 @@ func TestExecutor_Propose(t *testing.T) {
 		req.interrupt()
 	}()
 
+	height := 0
 	assert.Equal(t, "on_send_5", <-toTC)
-	txs, err := ex.ProposeTransactions()
+	txs, err := ex.ProposeTransactions(int64(height))
 	assert.NoError(t, err)
 	assert.Equal(t, txs1[0:5], txs)
+	height += len(txs)
 	toBC <- "send_remain"
 
-	err = ex.FinalizeTransactions(4)
+	err = ex.FinalizeTransactions(int64(height-1))
 	assert.NoError(t, err)
 
 	assert.Equal(t, "on_send_10", <-toTC)
-	txs, err = ex.ProposeTransactions()
+
+	txs, err = ex.ProposeTransactions(int64(height))
 	assert.NoError(t, err)
 	assert.Equal(t, txs1[5:], txs)
+	height += len(txs)
 
-	err = ex.FinalizeTransactions(9)
+	err = ex.FinalizeTransactions(int64(height-1))
 	assert.NoError(t, err)
 
 	ex.Term()
@@ -229,6 +255,8 @@ func TestExecutor_Propose(t *testing.T) {
 	ex, err = NewExecutorWithBC(rdb, idb, logger, bc)
 	assert.NoError(t, err)
 	err = ex.Start()
+	assert.NoError(t, err)
+	err = ex.FinalizeTransactions(int64(height-1))
 	assert.NoError(t, err)
 
 	go func() {
@@ -249,10 +277,11 @@ func TestExecutor_Propose(t *testing.T) {
 
 	assert.Equal(t, "on_send_15", <-toTC)
 	t.Log("propose and finalize to=14")
-	txs2, err := ex.ProposeTransactions()
+	txs2, err := ex.ProposeTransactions(int64(height))
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(txs2))
-	err = ex.FinalizeTransactions(14)
+	height += len(txs2)
+	err = ex.FinalizeTransactions(int64(height-1))
 	assert.NoError(t, err)
 
 	t.Log("cleanup")
@@ -271,7 +300,11 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 	t.Log("start executor")
 	err = ex.Start()
 	assert.NoError(t, err)
+	err = ex.FinalizeTransactions(-1)
+	assert.NoError(t, err)
 	t.Log("executor started")
+
+	acc := newTestAcc(t)
 
 	toTest := make(chan string, 3)
 	toBC := make(chan string, 3)
@@ -300,67 +333,104 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 
 		toTest <- "on_failure_for_previous"
 	})
+	assert.NoError(t, err)
 
-	t.Log("try to get 0~4 (trigger failure on previous request)")
+	t.Log("try to get 0~1 (trigger failure on previous request)")
 
-	_, err = ex.GetTransactions(0, 4, func(txs []*BlockTransaction, err error) {
+	_, err = ex.GetTransactions(0, 1, func(txs []*BlockTransaction, err error) {
 		assert.NoError(t, err)
-		assert.Equal(t, txs1[0:5], txs)
+		assert.Equal(t, txs1[0:2], txs)
 
-		toTest <- "on_receive_old_5"
+		toTest <- "on_receive_old_2"
 	})
+	assert.NoError(t, err)
+
+	t.Log("wait for results of both GetTransactions()")
 
 	msgs := append([]string{}, <-toTest)
 	msgs = append(msgs, <-toTest)
 	t.Log("check failure of get(0~9)")
 	assert.Contains(t, msgs, "on_failure_for_previous")
 
-	t.Log("check result of get(0~4)")
-	assert.Contains(t, msgs, "on_receive_old_5")
+	t.Log("check result of get(0~1)")
+	assert.Contains(t, msgs, "on_receive_old_2")
 
-	t.Log("try to get 1~4 (should success)")
-	_, err = ex.GetTransactions(1, 4, func(txs []*BlockTransaction, err error) {
+	mh, err := ex.GetMerkleHeader(0)
+	assert.NoError(t, err)
+	assert.Equal(t, &hexary.MerkleHeader{nil, 0}, mh)
+
+	err = ex.FinalizeTransactions(1)
+	assert.NoError(t, err)
+
+	t.Log("try to get 2~4 (should success)")
+	_, err = ex.GetTransactions(2, 4, func(txs []*BlockTransaction, err error) {
 		assert.NoError(t, err)
-		assert.Equal(t, txs1[1:5], txs)
+		assert.Equal(t, txs1[2:5], txs)
 
-		toTest <- "confirm_1~4"
+		toTest <- "confirm_2~4"
 	})
+	mh, err = ex.GetMerkleHeader(2)
+	assert.NoError(t, err)
+	applyTxsOnAcc(t, acc, txs1[0:2])
+	assert.Equal(t, acc.GetMerkleHeader(), mh)
 
-	t.Log("check result of get(1~4)")
-	assert.Equal(t, "confirm_1~4", <-toTest)
+	t.Log("check result of get(2~4)")
+	assert.Equal(t, "confirm_2~4", <-toTest)
 
 	go func() {
 		req := <- bc.channel
 		t.Log("sync request received")
-		assert.Equal(t, int64(0), req.from)
+		assert.Equal(t, int64(2), req.from)
 		assert.Equal(t, int64(-1), req.to)
-		assert.Equal(t, txs2[0:5], req.txs)
+		assert.Equal(t, txs2[2:5], req.txs)
 
-		req.sendTxs(txs2)
+		req.sendTxs(txs2[2:])
 
 		req.interrupt()
 	}()
 
-	err = ex.SyncTransactions(txs2[0:5])
+	err = ex.SyncTransactions(txs2[2:5])
 	assert.NoError(t, err)
 
 	toBC <- "send_old_remain"
 
-	_, err = ex.GetTransactions(0, 4, func(txs []*BlockTransaction, err error) {
-		t.Log("receive new 5")
+	t.Log("wait for new 2~4")
+	_, err = ex.GetTransactions(2, 4, func(txs []*BlockTransaction, err error) {
+		t.Log("receive new 3")
 		assert.NoError(t, err)
-		assert.Equal(t, txs2[0:5], txs)
+		assert.Equal(t, txs2[2:5], txs)
 
-		toTest <- "on_receive_new_5"
+		toTest <- "on_receive_new_3"
 	})
-	assert.Equal(t, "on_receive_new_5", <-toTest)
+	t.Log("check result for new 3")
+	assert.Equal(t, "on_receive_new_3", <-toTest)
+
+	mh, err = ex.GetMerkleHeader(2)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.GetMerkleHeader(), mh)
 
 	t.Log("finalize to=4")
 	err = ex.FinalizeTransactions(4)
 	assert.NoError(t, err)
 
-	canceler, err := ex.GetTransactions(5, 10, func(txs []*BlockTransaction, err error) {
-		t.Logf("canceled err=%v", err)
+	canceler, err := ex.GetTransactions(5, 9, func(txs []*BlockTransaction, err error) {
+		t.Log("receive new 5")
+		assert.NoError(t, err)
+		assert.Equal(t, txs2[5:], txs)
+
+		toTest <- "on_success"
+	})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "on_success", <-toTest)
+
+	mh, err = ex.GetMerkleHeader(5)
+	applyTxsOnAcc(t, acc, txs2[2:5])
+	assert.NoError(t, err)
+	assert.Equal(t, acc.GetMerkleHeader(), mh)
+
+	canceler, err = ex.GetTransactions(10, 10, func(txs []*BlockTransaction, err error) {
+		t.Log("expected failure from cancelation")
 		assert.Error(t, err)
 
 		toTest <- "on_expected_failure"
@@ -437,6 +507,8 @@ func TestExecutor_LastBlock(t *testing.T) {
 
 	err = ex.Start()
 	assert.NoError(t, err)
+	err = ex.FinalizeTransactions(-1)
+	assert.NoError(t, err)
 
 	toTC := make(chan string, 3)
 	toBC := make(chan string, 3)
@@ -469,7 +541,7 @@ func TestExecutor_LastBlock(t *testing.T) {
 	height := 0
 
 	assert.Equal(t, "sent 0~8", <-toTC)
-	txs, err := ex.ProposeTransactions()
+	txs, err := ex.ProposeTransactions(int64(height))
 	assert.NoError(t, err)
 	assert.Equal(t, txs1[:len(txs)], txs)
 	height += len(txs)
@@ -481,7 +553,7 @@ func TestExecutor_LastBlock(t *testing.T) {
 	toBC <- "send_last"
 	assert.Equal(t, "send 9", <-toTC)
 	for height < 10 {
-		txs, err = ex.ProposeTransactions()
+		txs, err = ex.ProposeTransactions(int64(height))
 		assert.NoError(t, err)
 		assert.Equal(t, txs1[height:height+len(txs)], txs)
 		height += len(txs)
@@ -492,7 +564,7 @@ func TestExecutor_LastBlock(t *testing.T) {
 	}
 
 	t.Log("start last propose")
-	txs, err = ex.ProposeTransactions()
+	txs, err = ex.ProposeTransactions(int64(height))
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrAfterLastBlock))
 

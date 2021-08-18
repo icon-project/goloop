@@ -20,14 +20,16 @@ import (
 	"container/list"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
+	"github.com/icon-project/goloop/icon/icdb"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -61,11 +63,12 @@ type Executor struct {
 	txs    list.List // cached transactions (start <= tx.Height < end)
 	start  int64
 	end    int64
-	next   int64
 	waiter *txWaiter
 
 	consumer consumeID
 	bc       IBlockConverter
+
+	acc hexary.Accumulator
 }
 
 func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
@@ -104,7 +107,7 @@ func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
 
 // ProposeTransactions propose transactions for blocks to be consensus
 // after finalized.
-func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
+func (e *Executor) ProposeTransactions(from int64) ([]*BlockTransaction, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -112,8 +115,8 @@ func (e *Executor) ProposeTransactions() ([]*BlockTransaction, error) {
 		return nil, errors.InvalidStateError.New("AlreadyTerminated")
 	}
 
-	if txs, err := e.candidateInLock(e.next); err != nil {
-		if err := e.rebaseInLock(e.next, -1, nil); err != nil {
+	if txs, err := e.candidateInLock(from); err != nil {
+		if err := e.rebaseInLock(from, -1, nil); err != nil {
 			return nil, err
 		}
 		e.cancelWaiterInLock()
@@ -187,7 +190,9 @@ func (e *Executor) GetTransactions(from, to int64, callback OnBlockTransactions)
 				if itr.Value == io.EOF {
 					return nil,  errors.InvalidStateError.New("AlreadyEnded")
 				}
-				if r := w.addAndCheck(itr.Value.(*BlockTransaction)); r {
+				btx := itr.Value.(*BlockTransaction)
+				if r := w.addAndCheck(btx); r {
+					e.cancelWaiterInLock()
 					return e.dummyCanceler, nil
 				}
 			}
@@ -227,19 +232,30 @@ func (e *Executor) FinalizeTransactions(to int64) error {
 	if e.start == terminationMark {
 		return errors.InvalidStateError.New("AlreadyTerminated")
 	}
-
 	if to < e.start {
-		// already it's finalized, so nothing to do
+		if to+1 < e.start {
+			return e.rebaseInLock(to+1, -1, nil)
+		}
 		return nil
 	}
 	if to >= e.end {
 		return errors.InvalidStateError.Errorf("NotReachedYet(to=%d,end=%d)", to, e.end)
 	}
+	accLen := e.acc.Len()
+	if accLen < e.start {
+		return errors.InvalidStateError.Errorf("AccumulatorIsLackOfTx(len=%d,from=%d)", accLen, e.start)
+	}
 	for txe := e.txs.Front(); txe!= nil && e.start <= to ; e.start += 1 {
+		btx := txe.Value.(*BlockTransaction)
+		if accLen == btx.Height {
+			if err := e.acc.Add(btx.BlockHash); err != nil {
+				return err
+			}
+			accLen += 1
+		}
 		txe, _ = txe.Next(), e.txs.Remove(txe)
 	}
-	e.next = to+1
-	return storeNextBlockHeight(e.chainBucket, e.next)
+	return nil
 }
 
 func (e *Executor) rebaseInLock(from, to int64, txs []*BlockTransaction) error {
@@ -247,6 +263,11 @@ func (e *Executor) rebaseInLock(from, to int64, txs []*BlockTransaction) error {
 	if err != nil {
 		e.log.Errorf("Failure in BlockConverter.Rebase err=%+v", err)
 		return err
+	}
+	if len(txs) > 0 && e.acc.Len() > from {
+		if err := e.acc.SetLen(from); err != nil {
+			return err
+		}
 	}
 	e.txs.Init()
 	e.start = from
@@ -269,40 +290,11 @@ func (e *Executor) SyncTransactions(txs []*BlockTransaction) error {
 	}
 
 	from := txs[0].Height
-	if from != e.next {
-		return errors.IllegalArgumentError.Errorf("InvalidSync(height=%d,next=%d)", from, e.next)
-	}
-
-	e.log.Debugf("SyncTransactions(from=%d,cnt=%d)", from, len(txs))
 	if err := e.rebaseInLock(from, -1, txs); err != nil {
 		return err
 	}
 	e.cancelWaiterInLock()
 	return nil
-}
-
-func storeNextBlockHeight(bk db.Bucket, h int64) error {
-	return bk.Set([]byte(KeyNextBlockHeight), codec.BC.MustMarshalToBytes(h))
-}
-
-func loadNextBlockHeight(bk db.Bucket) (int64, error) {
-	bs, err := bk.Get([]byte(KeyNextBlockHeight))
-	if err != nil {
-		return 0, err
-	}
-	if len(bs) > 0 {
-		var height int64
-		if _, err := codec.BC.UnmarshalFromBytes(bs, &height); err == nil {
-			return height, nil
-		}
-	}
-	return 0, nil
-}
-
-func (e *Executor) GetImportedBlocks() int64 {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-	return e.next
 }
 
 // addTransaction add transaction from block converter
@@ -375,10 +367,8 @@ func (e *Executor) consumeBlocks(id consumeID, chn <-chan interface{}) {
 }
 
 func (e *Executor) Start() error {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	return e.rebaseInLock(e.next, -1, nil)
+	// nothing to do
+	return nil
 }
 
 func (e *Executor) Term() {
@@ -393,15 +383,76 @@ func (e *Executor) Term() {
 	e.cancelWaiterInLock()
 }
 
+func (e *Executor) GetMerkleHeader(height int64) (*hexary.MerkleHeader, error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	return e.getMerkleHeaderInLock(height)
+}
+
+func (e *Executor) getMerkleHeaderInLock(height int64) (*hexary.MerkleHeader, error) {
+	accLen := e.acc.Len()
+	if accLen > height {
+		if err := e.acc.SetLen(height); err != nil {
+			return nil, err
+		}
+	} else if accLen < height {
+		if accLen < e.start || height > e.end {
+			return nil, errors.InvalidStateError.Errorf("FailToMakeMerkle(start=%d,end=%d,current=%d,target=%d)",
+				e.start, e.end, accLen, height)
+		}
+		for txe := e.txs.Front(); txe!= nil ; txe = txe.Next() {
+			btx := txe.Value.(*BlockTransaction)
+			if accLen == btx.Height {
+				if err := e.acc.Add(btx.BlockHash); err != nil {
+					return nil, err
+				}
+				accLen += 1
+				if accLen == height {
+					break
+				}
+			}
+		}
+	}
+	if accLen = e.acc.Len() ; accLen != height {
+		return nil, errors.InvalidStateError.Errorf("FailToBuildMerkle(size=%d,height=%d)",
+			accLen, height)
+	}
+	return e.acc.GetMerkleHeader(), nil
+}
+
+func (e *Executor) FinalizeMerkle(height int64) (*hexary.MerkleHeader, error){
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if size := e.acc.Len() ; size != height {
+		return nil, errors.InvalidStateError.Errorf("InvalidAccumulatorState(height=%d,size=%d)",
+			height, size)
+	}
+	return e.acc.Finalize()
+}
+
+func newAccumulator(rdb, idb db.Database) (hexary.Accumulator, error) {
+	treeBucket, err := rdb.GetBucket(icdb.BlockMerkle)
+	if err != nil {
+		return nil, err
+	}
+	tmpBucket, err := idb.GetBucket(icdb.BlockMerkle)
+	if err != nil {
+		return nil, err
+	}
+	return hexary.NewAccumulator(treeBucket, tmpBucket, "")
+}
+
 func NewExecutorWithBC(rdb, idb db.Database, logger log.Logger, bc IBlockConverter) (*Executor, error) {
 	chainBucket, err := idb.GetBucket(db.ChainProperty)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInBucket(bucket=ChainProperty)")
 	}
 
-	next, err := loadNextBlockHeight(chainBucket)
+	acc, err := newAccumulator(rdb, idb)
 	if err != nil {
-		return nil, errors.Wrap(err, "FailureInLoadNextBlockHeight")
+		return nil, errors.Wrap(err, "FailInAccumulator")
 	}
 
 	ex := &Executor{
@@ -409,11 +460,13 @@ func NewExecutorWithBC(rdb, idb db.Database, logger log.Logger, bc IBlockConvert
 		idb: idb,
 		log: logger,
 
-		next: next,
-
 		chainBucket: chainBucket,
 
 		bc: bc,
+
+		acc:   acc,
+		start: math.MaxInt64,
+		end:   math.MaxInt64,
 	}
 	ex.txs.Init()
 	return ex, nil

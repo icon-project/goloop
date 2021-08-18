@@ -18,9 +18,13 @@ package icon
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"math/big"
+	"os"
+	"path"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -28,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -38,6 +43,7 @@ import (
 
 type platform struct {
 	calculator iiss.CalculatorHolder
+	base       string
 }
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
@@ -160,8 +166,40 @@ func (p *platform) DefaultBlockVersion() int {
 	return module.BlockVersion1
 }
 
+const (
+	BlockV1MerkleFile = "block_v1_merkle.bin"
+)
+
+func (p *platform) GetBlockV1Merkle() (*hexary.MerkleHeader, error) {
+	file := path.Join(p.base, BlockV1MerkleFile)
+	reader, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	mh := new(hexary.MerkleHeader)
+	if err := codec.BC.Unmarshal(reader, mh); err != nil {
+		return nil, err
+	}
+	return mh, nil
+}
+
+func (p *platform) SetBlockV1Merkle(root []byte, size int64) error {
+	hdr := &hexary.MerkleHeader{
+		RootHash: root,
+		Leaves:   size,
+	}
+	bs, err := codec.BC.MarshalToBytes(hdr)
+	if err != nil {
+		return err
+	}
+	file := path.Join(p.base, BlockV1MerkleFile)
+	return ioutil.WriteFile(file, bs, os.FileMode(0500))
+}
+
 func NewPlatform(base string, cid int) (service.Platform, error) {
 	return &platform{
+		base: base,
 	}, nil
 }
 
