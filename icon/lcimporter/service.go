@@ -19,12 +19,15 @@ package lcimporter
 import (
 	"path"
 
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/sync"
 )
 
@@ -41,6 +44,7 @@ type Service interface {
 		tr module.Transition, result []byte, vl []byte,
 	) module.Transition
 	FinalizeTransition(tr module.Transition, opt int, noFlush bool) error
+	GetNextBlockVersion(result []byte, vl module.ValidatorList) int
 }
 
 type BasicService struct {
@@ -83,6 +87,28 @@ func (s *BasicService) NewSyncTransition(tr module.Transition, result []byte,
 
 func (s *BasicService) FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 	return service.FinalizeTransition(tr, opt, noFlush)
+}
+
+func (s *BasicService) GetNextBlockVersion(result []byte, vl module.ValidatorList) int {
+	if result == nil {
+		return s.Plt.DefaultBlockVersion()
+	}
+	wss, err := service.NewWorldSnapshot(s.Chain.Database(), s.Plt, result, vl)
+	if err != nil {
+		return -1
+	}
+	var bss containerdb.BytesStoreState
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	if ass == nil {
+		bss = containerdb.EmptyBytesStoreState
+	} else {
+		bss = scoredb.NewStateStoreWith(ass)
+	}
+	v := int(scoredb.NewVarDB(bss, state.VarNextBlockVersion).Int64())
+	if v == 0 {
+		return s.Plt.DefaultBlockVersion()
+	}
+	return v
 }
 
 const (
