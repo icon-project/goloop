@@ -136,6 +136,7 @@ func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
 		if err := sm.handleError(t.finalizeResult()); err != nil {
 			return err
 		}
+		sm.next = t.getNextHeight()
 	}
 	return nil
 }
