@@ -29,10 +29,18 @@ type BytesStoreState interface {
 	DeleteValue(key []byte) ([]byte, error)
 }
 
+type BytesStoreSnapshot interface {
+	GetValue(key []byte) ([]byte, error)
+}
+
 type RawBytesStoreState interface {
 	Get(key []byte) ([]byte, error)
 	Set(key []byte, value []byte) ([]byte, error)
 	Delete(key []byte) ([]byte, error)
+}
+
+type RawBytesStoreSnapshot interface {
+	Get(key []byte) ([]byte, error)
 }
 
 type ObjectStoreState interface {
@@ -41,10 +49,6 @@ type ObjectStoreState interface {
 	Delete(key []byte) (trie.Object, error)
 	ObjectToBytes(value trie.Object) []byte
 	BytesToObject(value []byte) trie.Object
-}
-
-type BytesStoreSnapshot interface {
-	GetValue(key []byte) ([]byte, error)
 }
 
 type ObjectStoreSnapshot interface {
@@ -285,6 +289,18 @@ func (s bytesStoreStateForRaw) DeleteValue(key []byte) ([]byte, error) {
 
 func NewBytesStoreStateFromRaw(s RawBytesStoreState) BytesStoreState {
 	return bytesStoreStateForRaw{s}
+}
+
+type bytesStoreSnapshotForRaw struct {
+	rbs RawBytesStoreSnapshot
+}
+
+func (b bytesStoreSnapshotForRaw) GetValue(key []byte) ([]byte, error) {
+	return b.rbs.Get(key)
+}
+
+func NewBytesStoreSnapshotFromRaw(s RawBytesStoreSnapshot) BytesStoreSnapshot {
+	return bytesStoreSnapshotForRaw{s}
 }
 
 type emptyBytesStoreSnapshot struct{}
