@@ -66,7 +66,7 @@ func (b *BlockV01a) Votes() *BlockVoteList {
 	return nil
 }
 
-func (b *BlockV01a) calcHash() []byte {
+func (b *BlockV01aJSON) CalcHash() []byte {
 	bs := make([]byte, 0, 128+8)
 	bs = append(bs, []byte(b.PrevBlockHash.String())...)
 	bs = append(bs, []byte(b.MerkleTreeRootHash.String())...)
@@ -77,7 +77,7 @@ func (b *BlockV01a) calcHash() []byte {
 }
 
 func (b *BlockV01a) Verify(prev Block) error {
-	if hash := b.calcHash(); bytes.Compare(hash, b.BlockHash) != 0 {
+	if hash := b.CalcHash(); bytes.Compare(hash, b.BlockHash) != 0 {
 		return errors.CriticalFormatError.Errorf(
 			"IncorrectID(exp=%#x,calc=%#x", b.BlockHash, hash)
 	}
@@ -152,15 +152,19 @@ func (b *BlockV01a) TransactionRoot() []byte {
 	return b.MerkleTreeRootHash
 }
 
+func NewBlockV01a(jsn *BlockV01aJSON) Block {
+	trs := make([]module.Transaction, len(jsn.Transactions))
+	for i, tx := range jsn.Transactions {
+		trs[i] = tx.Transaction
+	}
+	return &BlockV01a{jsn, trs}
+}
+
 func ParseBlockV01a(b []byte) (Block, error) {
 	var blk = new(BlockV01aJSON)
 	err := json.Unmarshal(b, blk)
 	if err != nil {
 		return nil, err
 	}
-	trs := make([]module.Transaction, len(blk.Transactions))
-	for i, tx := range blk.Transactions {
-		trs[i] = tx.Transaction
-	}
-	return &BlockV01a{blk, trs}, nil
+	return NewBlockV01a(blk), nil
 }

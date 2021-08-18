@@ -44,6 +44,14 @@ type RepsList struct {
 	hash []byte
 }
 
+func NewRepsList(addresses ...*common.Address) *RepsList {
+	res := &RepsList{}
+	for _, a := range addresses {
+		res.json = append(res.json, RepJSON{Address:a})
+	}
+	return res
+}
+
 func (l *RepsList) UnmarshalJSON(bs []byte) error {
 	err := json.Unmarshal(bs, &l.json)
 	for i, _ := range l.json {

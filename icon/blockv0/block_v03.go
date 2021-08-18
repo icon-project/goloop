@@ -50,6 +50,26 @@ type BlockV03JSON struct {
 	Signature        common.Signature   `json:"signature"`
 }
 
+func (jsn *BlockV03JSON) CalcHash() []byte {
+	items := make([]merkle.Item, 0, 13)
+	items = append(items,
+		merkle.HashedItem(jsn.PrevHash.Bytes()),
+		merkle.HashedItem(jsn.TransactionsHash.Bytes()),
+		merkle.HashedItem(jsn.ReceiptsHash.Bytes()),
+		merkle.HashedItem(jsn.StateHash.Bytes()),
+		merkle.HashedItem(jsn.RepsHash.Bytes()),
+		merkle.HashedItem(jsn.NextRepsHash.Bytes()),
+		merkle.HashedItem(jsn.LeaderVotesHash.Bytes()),
+		merkle.HashedItem(jsn.PrevVotesHash.Bytes()),
+		merkle.ValueItem(jsn.LogsBloom.LogBytes()),
+		merkle.ValueItem(intconv.SizeToBytes(uint64(jsn.Height.Value))),
+		merkle.ValueItem(intconv.SizeToBytes(uint64(jsn.Timestamp.Value))),
+		merkle.ValueItem(jsn.Leader.ID()),
+		merkle.ValueItem(jsn.NextLeader.ID()),
+	)
+	return merkle.CalcHashOfList(items)
+}
+
 type BlockV03 struct {
 	json     *BlockV03JSON
 	txs      []module.Transaction
@@ -146,7 +166,7 @@ func (b *BlockV03) ToJSON(rcpVersion module.JSONVersion) (interface{}, error) {
 	return b.json, nil
 }
 
-func calcMerkleRootOfTransactions(txs []Transaction) []byte {
+func TransactionRootForBlockV03(txs []Transaction) []byte {
 	items := make([]merkle.Item, len(txs))
 	for i, tx := range txs {
 		items[i] = merkle.HashedItem(tx.ID())
@@ -155,23 +175,7 @@ func calcMerkleRootOfTransactions(txs []Transaction) []byte {
 }
 
 func (b *BlockV03) calcHash() []byte {
-	items := make([]merkle.Item, 0, 13)
-	items = append(items,
-		merkle.HashedItem(b.json.PrevHash.Bytes()),
-		merkle.HashedItem(b.json.TransactionsHash.Bytes()),
-		merkle.HashedItem(b.json.ReceiptsHash.Bytes()),
-		merkle.HashedItem(b.json.StateHash.Bytes()),
-		merkle.HashedItem(b.json.RepsHash.Bytes()),
-		merkle.HashedItem(b.json.NextRepsHash.Bytes()),
-		merkle.HashedItem(b.json.LeaderVotesHash.Bytes()),
-		merkle.HashedItem(b.json.PrevVotesHash.Bytes()),
-		merkle.ValueItem(b.json.LogsBloom.LogBytes()),
-		merkle.ValueItem(intconv.SizeToBytes(uint64(b.json.Height.Value))),
-		merkle.ValueItem(intconv.SizeToBytes(uint64(b.json.Timestamp.Value))),
-		merkle.ValueItem(b.json.Leader.ID()),
-		merkle.ValueItem(b.json.NextLeader.ID()),
-	)
-	return merkle.CalcHashOfList(items)
+	return b.json.CalcHash()
 }
 
 var emtpyAddress = common.NewAccountAddress([]byte{})
@@ -211,7 +215,7 @@ func (b *BlockV03) Verify(prev Block) error {
 			return err
 		}
 	}
-	txs := calcMerkleRootOfTransactions(b.json.Transactions)
+	txs := TransactionRootForBlockV03(b.json.Transactions)
 	if !bytes.Equal(b.json.TransactionsHash.Bytes(), txs) {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidTransactionHash(exp=%#x,calc=%#x)",
@@ -291,6 +295,10 @@ func ParseBlockV03(b []byte, lc Store) (Block, error) {
 	if err := json.Unmarshal(b, jso); err != nil {
 		return nil, err
 	}
+	return NewBlockV03(jso, lc)
+}
+
+func NewBlockV03(jso *BlockV03JSON, lc Store) (Block, error) {
 	txs := make([]module.Transaction, len(jso.Transactions))
 	for i, tx := range jso.Transactions {
 		txs[i] = tx.Transaction
