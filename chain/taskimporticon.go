@@ -218,10 +218,34 @@ func (t *taskImportICON) Stop() {
 	t.result.SetValue(errors.ErrInterrupted)
 }
 
+func (t *taskImportICON) prepareConsensus() error {
+	chainDir := t.chain.cfg.AbsBaseDir()
+	t.chain.releaseDatabase()
+	defer t.chain.ensureDatabase()
+
+	walDir := path.Join(chainDir, DefaultWALDir)
+	tmpDir := path.Join(chainDir, DefaultTmpDBDir)
+	dbDir := path.Join(chainDir, DefaultDBDir)
+
+	if err := os.RemoveAll(walDir); err != nil {
+		return errors.Wrapf(err, "FailToRemoveWAL(%s)", walDir)
+	}
+	if err := os.RemoveAll(dbDir); err != nil {
+		return errors.Wrapf(err, "FailToRemoveDB(%s)", dbDir)
+	}
+	if err := os.Rename(tmpDir, dbDir); err != nil {
+		return errors.Wrapf(err, "FailToRenameDB(%s->%s)", tmpDir, dbDir)
+	}
+	return nil
+}
+
 func (t *taskImportICON) Wait() error {
 	result := t.result.Wait()
 	t.chain.releaseManagers()
 	t._releaseDatabase()
+	if result == nil {
+		return t.prepareConsensus()
+	}
 	return result
 }
 

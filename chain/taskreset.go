@@ -82,6 +82,10 @@ func (t *taskReset) _reset() error {
 		return err
 	}
 
+	TmpDir := path.Join(chainDir, DefaultTmpDBDir)
+	if err := os.RemoveAll(TmpDir); err != nil {
+		return err
+	}
 	return nil
 }
 
