@@ -401,12 +401,26 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 	return resCh, nil
 }
 
+func check(bsv1 []byte, bsv0 []byte, name string) (bool, string) {
+	if !bytes.Equal(bsv1, bsv0) {
+		return false, fmt.Sprintf("%s is different\n\tv1:%v\n\tv0:%v\n", name, bsv1, bsv0)
+	}
+	return true, ""
+}
+
 func checkBlock(v1 *blockv1.Block, v0 blockv0.Block) error {
 	if !bytes.Equal(v1.ID(), v0.ID()) {
-		return errors.Errorf("block ID is different v1:%v v0:%v", v1.ID(), v0.ID())
-	}
-	if !bytes.Equal(v1.TransactionsRoot(), v0.TransactionRoot()) {
-		return errors.Errorf("transaction root is different v1:%v v0:%v", v1.TransactionsRoot(), v0.TransactionRoot())
+		var msg string
+		if ok, m := check(v1.PrevID(), v0.PrevID(), "PrevID"); !ok {
+			msg += m
+		}
+		if ok, m := check(v1.TransactionsRoot(), v0.TransactionRoot(), "TransactionRoot"); !ok {
+			msg += m
+		}
+		if ok, m := check(common.BytesOfAddress(v1.Proposer()), common.BytesOfAddress(v0.Proposer()), "Proposer"); !ok {
+			msg += m
+		}
+		return errors.Errorf("block ID is different\n\tv1:%v\n\tv0:%v\n%s", v1.ID(), v0.ID(), msg)
 	}
 	return nil
 }
