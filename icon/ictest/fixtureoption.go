@@ -44,6 +44,10 @@ type platform struct {
 	mtCap  int64
 }
 
+func NewPlatform() service.Platform {
+	return &platform{ basic.Platform, nil, 0 }
+}
+
 func (plt *platform) DefaultBlockVersion() int {
 	return module.BlockVersion1
 }

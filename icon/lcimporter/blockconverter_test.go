@@ -29,10 +29,10 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
-	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
@@ -238,7 +238,7 @@ type blockConverterTest struct {
 	*testing.T
 	*lcimporter.BlockConverter
 	chain       *testChain
-	store       *testStore
+	store       lcimporter.Store
 	svc         *testService
 	emptyResult []byte
 }
@@ -256,13 +256,17 @@ func (cb transitionCallback) OnExecute(transition module.Transition, err error) 
 func newBlockConverterTest(t *testing.T) *blockConverterTest {
 	return newBlockConverterTestWithDB(t, db.NewMapDB())
 }
-
 func newBlockConverterTestWithDB(t *testing.T, dbase db.Database) *blockConverterTest {
+	s, err := newTestStore()
+	assert.NoError(t, err)
+	plt := ictest.NewPlatform()
+	return newBlockConverterTest2(t, dbase, s, plt)
+}
+
+func newBlockConverterTest2(t *testing.T, dbase db.Database, s lcimporter.Store, plt service.Platform) *blockConverterTest {
 	base, err := ioutil.TempDir("", "goloop-blockconverter-test")
 	c, err := newTestChain(dbase, log.New())
 	assert.NoError(t, err)
-	plt := basic.Platform
-	s, err := newTestStore()
 	assert.NoError(t, err)
 	svc := newTestService(c, plt, base)
 
@@ -306,7 +310,7 @@ func assertBlockTransaction(t assert.TestingT, res interface{}, height int, txCo
 	case error:
 		assert.NoError(t, r)
 	default:
-		assert.Fail(t, "Unknown result type %+v", res)
+		assert.Fail(t, "Unknown result type", "%+v", res)
 	}
 }
 
@@ -397,4 +401,40 @@ func TestBlockConverter_Term(t_ *testing.T) {
 		assert.NotEqual(t, t.emptyResult, r.Result)
 		assert.Nil(t, r.ValidatorHash)
 	})
+}
+
+func TestBlockConverter_CloseOnVersionChange(_t *testing.T) {
+	bg := ictest.NewBlockV0Generator(_t, "")
+	bg.AddSetRandomValidatorsTx(4)
+	w := bg.ValidatorsInTx()[0]
+	bg.GenerateNext(w)
+	bg.AddSetNextBlockVersionTx(module.BlockVersion2)
+	bg.GenerateNext(w)
+	bg.GenerateNext(w)
+
+	t := newBlockConverterTest2(_t, db.NewMapDB(), bg, ictest.NewPlatform())
+	ch, err := t.Start(0, -1)
+	assert.NoError(t, err)
+	res := <-ch
+	assertBlockTransaction(t, res, 0, 1, func(r *BTX) {
+		assert.NotNil(t, r.Result)
+		assert.Equal(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+	})
+	res = <-ch
+	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
+		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+	})
+	res = <-ch
+	assertBlockTransaction(t, res, 2, 1, func(r *BTX) {
+		assert.NotNil(t, r.ValidatorHash)
+	})
+	res = <-ch
+	assertBlockTransaction(t, res, 3, 0, func(r *BTX) {
+		assert.NotNil(t, r.ValidatorHash)
+	})
+	res, ok := <-ch
+	assert.False(_t, ok)
 }
