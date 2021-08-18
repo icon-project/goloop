@@ -130,6 +130,7 @@ func accumulateUpTo(t *testing.T, hac hexary.Accumulator, l int64) {
 		err := hac.Add(crypto.SHA3Sum256(codec.MustMarshalToBytes(i)))
 		assert.NoError(t, err)
 	}
+	assert.EqualValues(t, l, hac.Len())
 }
 
 func TestAccumulator_SetLen(t *testing.T) {
@@ -151,10 +152,40 @@ func TestAccumulator_SetLen(t *testing.T) {
 		accumulateUpTo(t, hac, i)
 		for j:=i; j>=0; j-- {
 			err := hac.SetLen(j)
-			assert.NoError(t, err)
+			assert.NoError(t, err, "at i=%d j=%d", i, j)
 			hd := hac.GetMerkleHeader()
 			assert.EqualValues(t, headerForLen[j], hd, "at i=%d j=%d", i, j)
 			assert.Equal(t, j, hd.Leaves)
 		}
 	}
+}
+
+func testSetLen(t *testing.T, old, new int64) {
+	hac := newAccumulator(t, nil)
+	accumulateUpTo(t, hac, new)
+	hd := hac.GetMerkleHeader()
+	accumulateUpTo(t, hac, old)
+	err := hac.SetLen(new)
+	assert.NoError(t, err)
+	assert.Equal(t, hd, hac.GetMerkleHeader())
+}
+
+func TestAccumulator_SetLen2(t *testing.T) {
+	testSetLen(t, 19459, 16980)
+	testSetLen(t, 16, 16)
+	testSetLen(t, 1000, 255)
+}
+
+func TestAccumulator_SetLen3(t *testing.T) {
+	/*
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	const from = 1024
+	for step:=1; step <= from; step++ {
+		for i:=from; i>=0; i -= step {
+			testSetLen(t, from, int64(i))
+		}
+	}
+	 */
 }

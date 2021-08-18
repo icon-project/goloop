@@ -94,12 +94,15 @@ func (ba *accumulator) SetLen(l int64) error {
 		ba.data = accumulatorData{ 0, nil }
 		return nil
 	}
+	if l == ba.data.Len {
+		return nil
+	}
 	hd, err := ba.Finalize()
 	mt, err := NewMerkleTree(ba.treeBucket, hd, 0)
 	if err != nil {
 		return err
 	}
-	proof, err := mt.Prove(ba.data.Len-1, 0)
+	proof, err := mt.Prove(l-1, 0)
 	if err != nil {
 		return err
 	}
@@ -114,7 +117,8 @@ func (ba *accumulator) SetLen(l int64) error {
 		tmp := append([][]byte(nil), hd.RootHash)
 		proof = append(tmp, proof...)
 	} else {
-		proof = proof[:lvl]
+		over := len(proof) - lvl
+		proof = proof[over:]
 	}
 	roots := make([]*node, lvl)
 	d := l
