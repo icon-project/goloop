@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/cache"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
@@ -47,6 +48,7 @@ type Canceler func()
 
 type IBlockConverter interface {
 	Rebase(from, to int64, txs []*BlockTransaction) (<-chan interface{}, error)
+	GetBlockVotes(height int64) (*blockv0.BlockVoteList, error)
 	Term()
 }
 
@@ -420,15 +422,23 @@ func (e *Executor) getMerkleHeaderInLock(height int64) (*hexary.MerkleHeader, er
 	return e.acc.GetMerkleHeader(), nil
 }
 
-func (e *Executor) FinalizeMerkle(height int64) (*hexary.MerkleHeader, error){
+func (e *Executor) FinalizeBlocks(height int64) (*hexary.MerkleHeader, *blockv0.BlockVoteList, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
 	if size := e.acc.Len() ; size != height {
-		return nil, errors.InvalidStateError.Errorf("InvalidAccumulatorState(height=%d,size=%d)",
+		return nil, nil, errors.InvalidStateError.Errorf("InvalidAccumulatorState(height=%d,size=%d)",
 			height, size)
 	}
-	return e.acc.Finalize()
+	mh, err :=  e.acc.Finalize()
+	if err != nil {
+		return nil, nil, err
+	}
+	votes, err := e.bc.GetBlockVotes(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	return mh, votes, nil
 }
 
 func newAccumulator(rdb, idb db.Database) (hexary.Accumulator, error) {

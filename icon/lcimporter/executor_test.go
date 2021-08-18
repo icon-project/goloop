@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 )
@@ -104,6 +105,10 @@ func (t *testBlockConverter) Rebase(from, to int64, txs []*BlockTransaction) (<-
 
 func (t *testBlockConverter) Term() {
 	close(t.channel)
+}
+
+func (t *testBlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
+	return nil, errors.ErrUnsupported
 }
 
 func (t *testBlockConverter) setLastHeight(h int64) {

@@ -436,7 +436,7 @@ func (t *transition) finalizeTransactions() error {
 				t.log.Warnf("T_%p.FinalizeAll(root=%#x,blocks=%d)",
 					btx.Result, btx.Height)
 			}
-			mh, err := t.ex.FinalizeMerkle(btx.Height)
+			mh, votes, err := t.ex.FinalizeBlocks(btx.Height)
 			if err != nil {
 				return err
 			}
@@ -444,7 +444,7 @@ func (t *transition) finalizeTransactions() error {
 				return errors.InvalidStateError.Errorf("DifferentFinalizeData(%#x!=%#x or %d!=%d)",
 					btx.Result, mh.RootHash, btx.Height, mh.Leaves)
 			}
-			if err := t.sm.ms.SetBlockV1Merkle(btx.Result, btx.Height); err != nil {
+			if err := t.sm.ms.SetBlockV1Proof(btx.Result, btx.Height, votes); err != nil {
 				return err
 			}
 			return errors.Wrap(ErrAfterLastBlock, "Finalized")

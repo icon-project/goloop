@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
@@ -51,18 +52,18 @@ type testMerkleStorage struct {
 	Size int64
 }
 
-func (t *testMerkleStorage) GetBlockV1Merkle() (*hexary.MerkleHeader, error) {
+func (t *testMerkleStorage) GetBlockV1Proof() (*hexary.MerkleHeader, *blockv0.BlockVoteList, error) {
 	if len(t.Root) > 0 {
 		return &hexary.MerkleHeader{
 			RootHash: t.Root,
 			Leaves:   t.Size,
-		}, nil
+		}, nil, nil
 	} else {
-		return nil, common.ErrNotFound
+		return nil, nil, common.ErrNotFound
 	}
 }
 
-func (t *testMerkleStorage) SetBlockV1Merkle(root []byte, size int64) error {
+func (t *testMerkleStorage) SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error {
 	if len(t.Root) == 0 {
 		t.Root = root
 		t.Size = size

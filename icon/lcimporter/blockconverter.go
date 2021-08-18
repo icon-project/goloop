@@ -528,3 +528,8 @@ func (e *BlockConverter) doExecute(
 	}
 	return nil
 }
+
+func (e *BlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
+	// TODO Implement
+	return nil, nil
+}

@@ -170,7 +170,7 @@ const (
 	BlockV1MerkleFile = "block_v1_merkle.bin"
 )
 
-func (p *platform) GetBlockV1Merkle() (*hexary.MerkleHeader, error) {
+func (p *platform) GetBlockV1Proof() (*hexary.MerkleHeader, error) {
 	file := path.Join(p.base, BlockV1MerkleFile)
 	reader, err := os.Open(file)
 	if err != nil {
@@ -184,7 +184,7 @@ func (p *platform) GetBlockV1Merkle() (*hexary.MerkleHeader, error) {
 	return mh, nil
 }
 
-func (p *platform) SetBlockV1Merkle(root []byte, size int64) error {
+func (p *platform) SetBlockV1Proof(root []byte, size int64, votes *interface{}) error {
 	hdr := &hexary.MerkleHeader{
 		RootHash: root,
 		Leaves:   size,

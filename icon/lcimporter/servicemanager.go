@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
@@ -37,17 +38,17 @@ const (
 
 const logServiceManager = false
 
-type MerkleStorage interface {
-	GetBlockV1Merkle() (*hexary.MerkleHeader, error)
-	SetBlockV1Merkle(root []byte, size int64) error
+type BlockV1ProofStorage interface {
+	GetBlockV1Proof() (*hexary.MerkleHeader, *blockv0.BlockVoteList, error)
+	SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error
 }
 
 type ServiceManager struct {
 	ex  *Executor
 	log log.Logger
 	db  db.Database
-	cb  ImportCallback
-	ms  MerkleStorage
+	cb ImportCallback
+	ms BlockV1ProofStorage
 
 	next int64
 
@@ -74,7 +75,7 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 	if err != nil {
 		if errors.Is(err, ErrAfterLastBlock) {
 			// if it has finished migration, there is nothing to do
-			mh, err2 := sm.ms.GetBlockV1Merkle()
+			mh, _, err2 := sm.ms.GetBlockV1Proof()
 			if err2 == nil {
 				return nil, err
 			}
@@ -304,7 +305,7 @@ func (sm *ServiceManager) GetImportedBlocks() int64 {
 	return sm.next
 }
 
-func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ms MerkleStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
+func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ms BlockV1ProofStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
 	logger := chain.Logger()
 	dbase := chain.Database()
 	zero := new(big.Int)
@@ -334,5 +335,5 @@ func NewServiceManager(chain module.Chain, rdb db.Database, cfg *Config, cb Impo
 	if err != nil {
 		return nil, err
 	}
-	return NewServiceManagerWithExecutor(chain, ex, cfg.Platform.(MerkleStorage), cfg.Validators, cb)
+	return NewServiceManagerWithExecutor(chain, ex, cfg.Platform.(BlockV1ProofStorage), cfg.Validators, cb)
 }
