@@ -132,10 +132,8 @@ func (e *BlockConverter) Rebase(from, to int64, firstNForcedResults []*BlockTran
 func (e *BlockConverter) Term() {
 	if e.resCh != nil {
 		e.stopCh <- struct{}{}
-		// unblocks writer
-		switch e.resCh {
-		case <-e.resCh:
-		default:
+		// unblocks writer and wait for close
+		for _ = range e.resCh {
 		}
 		e.resCh = nil
 		e.stopCh = nil
