@@ -71,13 +71,17 @@ class InternalCall(object):
         if status == ExceptionCode.OK:
             return result
         else:
-            if Revision.to_value(context.revision) < Revision.ICON2 and status == 1:
-                if result == "NoAccount":
-                    raise AttributeError("'NoneType' object has no attribute '_IconScoreBase__is_func_readonly'")
-                else:
-                    raise Exception(result)
-            if status >= ExceptionCode.SCORE_ERROR:
-                raise IconScoreException(result, status - ExceptionCode.SCORE_ERROR)
+            if Revision.to_value(context.revision) < Revision.ICON2:
+                if status == 1:
+                    if result == "NoAccount":
+                        raise AttributeError("'NoneType' object has no attribute '_IconScoreBase__is_func_readonly'")
+                    else:
+                        raise Exception(result)
+                elif status >= ExceptionCode.SCORE_ERROR:
+                    if result == "Invalid bool value":
+                        raise IconScoreException(result)
+                    else:
+                        raise IconScoreException(result, status - ExceptionCode.SCORE_ERROR)
             raise IconServiceBaseException.create(result, status)
 
 
