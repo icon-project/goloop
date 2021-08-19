@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -203,6 +204,21 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	}
 }
 
+func (e *BlockConverter) originalReceipts(txs []module.Transaction) ([]txresult.Receipt, error) {
+	rcts := make([]txresult.Receipt, len(txs))
+	for idx, tx := range txs {
+		if err := tx.Verify(); err != nil {
+			return nil, err
+		}
+		rct, err := e.cs.GetReceipt(tx.ID())
+		if err != nil {
+			return nil, errors.Wrapf(err, "FailureInGetReceipts(txid=%#x)", tx.ID())
+		}
+		rcts[idx] = rct.(txresult.Receipt)
+	}
+	return rcts, nil
+}
+
 func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error) {
 	var height int64
 	if last.block != nil {
@@ -211,11 +227,28 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 		height = 0
 	}
 	blkv0, err := e.cs.GetBlockByHeight(int(height))
-	// TODO handle EOF
 	if err != nil {
 		return nil, err
 	}
-	// TODO add old receipts
+	if err := blkv0.Verify(last.block); err != nil {
+		return nil, err
+	}
+	var rcts []txresult.Receipt
+	if height > 0 {
+		txs := blkv0.NormalTransactions()
+		rcts, err := e.originalReceipts(txs)
+		if err != nil {
+			return nil, err
+		}
+		if blkv03, ok := blkv0.(*blockv0.BlockV03); ok {
+			eReceiptListHash := blkv03.ReceiptsHash()
+			rReceiptListHash := blockv0.CalcMerkleRootOfReceiptSlice(rcts, txs, blkv0.Height())
+			if !bytes.Equal(eReceiptListHash, rReceiptListHash) {
+				return nil, errors.Errorf("DifferentReceiptListHash(stored=%#x,real=%#x)",
+					eReceiptListHash, rReceiptListHash)
+			}
+		}
+	}
 	var csi module.ConsensusInfo
 	var tr module.Transition
 	if height == 0 {
@@ -253,7 +286,8 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 			true,
 		)
 	}
-	return &Transition{tr, blkv0, nil, nil}, nil
+	rctList := txresult.NewReceiptListFromSlice(e.database, rcts)
+	return &Transition{tr, blkv0, rctList, nil}, nil
 }
 
 func (e *BlockConverter) GetLastHeight() int64 {
@@ -285,11 +319,11 @@ func (cb transitionCallback) OnExecute(transition module.Transition, err error) 
 func (e *BlockConverter) checkResult(tr *Transition) error {
 	results := tr.NormalReceipts()
 	expects := tr.oldReceipts
-	if expects == nil {
-		return nil
-	}
 	idx := 0
 	if !bytes.Equal(expects.Hash(), results.Hash()) {
+		e.log.Errorf("ReceiptsList Hash is different")
+		e.log.Errorf("Expected ReceiptList:%s", expects.Hash())
+		e.log.Errorf("Actual ReceiptList:%s", results.Hash())
 		for expect, result := expects.Iterator(), results.Iterator(); expect.Has() && result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {
 			rct1, err := expect.Get()
 			if err != nil {
@@ -312,6 +346,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 				e.log.Errorf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)
 			}
+			return errors.Errorf("ReceiptListHashMismatch")
 		}
 	}
 	rLogBloom := tr.Transition.LogsBloom()

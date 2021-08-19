@@ -17,6 +17,7 @@
 package lcimporter_test
 
 import (
+	"encoding/hex"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type BTX = lcimporter.BlockTransaction
@@ -130,7 +132,7 @@ func (s *testService) NewSyncTransition(tr module.Transition, result []byte, vl 
 	panic("implement me")
 }
 
-func newTestStore() (*testStore, error) {
+func newTestStore(dbase db.Database) (*testStore, error) {
 	s := &testStore{
 		blocks:   make(map[int]blockv0.Block),
 		reps:     make(map[string]*blockv0.RepsList),
@@ -143,6 +145,17 @@ func newTestStore() (*testStore, error) {
 		}
 		s.blocks[h] = blk
 	}
+	for idStr, r := range receipts {
+		receipt, err := txresult.NewReceiptFromJSON(dbase, module.LatestRevision, []byte(r))
+		if err != nil {
+			return nil, err
+		}
+		id, err := hex.DecodeString(idStr)
+		if err != nil {
+			return nil, err
+		}
+		s.receipts[string(id)] = receipt
+	}
 	return s, nil
 }
 
@@ -150,6 +163,7 @@ type testStore struct {
 	blocks   map[int]blockv0.Block
 	reps     map[string]*blockv0.RepsList
 	receipts map[string]module.Receipt
+	dbase    db.Database
 }
 
 var blocks = map[int]string{
@@ -210,6 +224,24 @@ var blocks = map[int]string{
 `,
 }
 
+var receipts = map[string]string{
+	"375540830d475a73b704cf8dee9fa9eba2798f9d2af1fa55a85482e48daefd3b": `
+{
+    "blockHash": "0x3add53134014e940f6f6010173781c4d8bd677d9931a697f962483e04a685e5c",
+    "blockHeight": "0x1",
+    "cumulativeStepUsed": "0xf4240",
+    "eventLogs": [],
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "status": "0x1",
+    "stepPrice": "0x2540be400",
+    "stepUsed": "0xf4240",
+    "to": "hx49a23bd156932485471f582897bf1bec5f875751",
+    "txHash": "0x375540830d475a73b704cf8dee9fa9eba2798f9d2af1fa55a85482e48daefd3b",
+    "txIndex": "0x0"
+}
+`,
+}
+
 func (s *testStore) GetRepsByHash(id []byte) (*blockv0.RepsList, error) {
 	reps, ok := s.reps[string(id)]
 	if !ok {
@@ -227,11 +259,15 @@ func (s *testStore) GetBlockByHeight(height int) (blockv0.Block, error) {
 }
 
 func (s *testStore) GetReceipt(id []byte) (module.Receipt, error) {
-	receipts, ok := s.receipts[string(id)]
+	receipt, ok := s.receipts[string(id)]
 	if !ok {
 		return nil, errors.NotFoundError.New("receipts not found")
 	}
-	return receipts, nil
+	return receipt, nil
+}
+
+func (s *testStore) GetVotesByHeight(h int) (*blockv0.BlockVoteList, error) {
+	return nil, errors.NotFoundError.New("votes not found")
 }
 
 type blockConverterTest struct {
@@ -257,7 +293,7 @@ func newBlockConverterTest(t *testing.T) *blockConverterTest {
 	return newBlockConverterTestWithDB(t, db.NewMapDB())
 }
 func newBlockConverterTestWithDB(t *testing.T, dbase db.Database) *blockConverterTest {
-	s, err := newTestStore()
+	s, err := newTestStore(dbase)
 	assert.NoError(t, err)
 	plt := ictest.NewPlatform()
 	return newBlockConverterTest2(t, dbase, s, plt)
