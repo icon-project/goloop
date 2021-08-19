@@ -27,11 +27,13 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -39,9 +41,27 @@ import (
 
 type ICON1AccountInfo struct {
 	BlockHeight int64              `json:"blockHeight"`
+	TermHeight  int64              `json:"termHeight,omitempty"`
 	Status      status             `json:"status"`
 	Issue       issue              `json:"issue"`
+	Front       stage              `json:"front"`
 	Accounts    map[string]account `json:"accounts"`
+}
+
+func (i *ICON1AccountInfo) Summary() string {
+	return fmt.Sprintf("Block height: %d\n"+
+		"Term height: %d\n"+
+		"Status: %s\n"+
+		"Issue: %s\n"+
+		"Front: %s\n"+
+		"Accounts count: %d\n",
+		i.BlockHeight,
+		i.TermHeight,
+		i.Status.Summary(),
+		i.Issue.Summary(),
+		i.Front.Summary(),
+		len(i.Accounts),
+	)
 }
 
 type status struct {
@@ -49,7 +69,12 @@ type status struct {
 	TotalStake  *big.Int `json:"totalStake"`
 }
 
+func (s *status) Summary() string {
+	return fmt.Sprintf("Supply=%d Stake=%d", s.TotalSupply, s.TotalStake)
+}
+
 func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStoreState) error {
+	printTitle("Checking Status")
 	ass := wss.GetAccountSnapshot(state.SystemID)
 	as := scoredb.NewStateStoreWith(ass)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
@@ -72,6 +97,7 @@ func (s *status) Check(wss state.WorldSnapshot, extState containerdb.ObjectStore
 	if failure > 0 {
 		return errors.ErrInvalidState
 	} else {
+		printResult("passed")
 		return nil
 	}
 }
@@ -82,10 +108,16 @@ type issue struct {
 	OverIssuedIScore *big.Int `json:"overIssuedIScore"`
 }
 
+func (i *issue) Summary() string {
+	return fmt.Sprintf("Issued ICX=%d Prev Issued ICX=%d OverIssued IScore=%d",
+		i.IssuedICX, i.PrevIssuedICX, i.OverIssuedIScore)
+}
+
 func (i *issue) Check(extState containerdb.ObjectStoreState) error {
 	if i == nil {
 		return nil
 	}
+	printTitle("Checking Issue")
 	value, err := extState.Get(icstate.IssueKey)
 	if err != nil || value == nil {
 		return err
@@ -97,7 +129,160 @@ func (i *issue) Check(extState containerdb.ObjectStoreState) error {
 		fmt.Printf("Failed Issue: icon1(%+v) icon2(%+v)\n", i, is)
 		return common.ErrInvalidState
 	}
+	printResult("passed")
 	return nil
+}
+
+type stage struct {
+	Event []event `json:"event"`
+}
+
+func (s *stage) Summary() string {
+	return fmt.Sprintf("Event count=%d",len(s.Event))
+}
+
+const (
+	typeDelegation = iota
+	typePRepRegister
+	typePRepUnregister
+)
+
+func (s *stage) Check(stateTerm, front containerdb.ObjectStoreState) error {
+	var err error
+	if s == nil {
+		return nil
+	}
+	printTitle("Checking Front")
+	obj, err := front.Get(icstage.GlobalKey)
+	if err != nil || obj == nil {
+		return err
+	}
+	global := icstage.ToGlobal(obj)
+	startHeight := global.GetStartHeight()
+
+	acctDB := getAccountDB(stateTerm)
+	dMap := make(map[string]icreward.Delegating)
+	bh := int64(0)
+	index := 0
+	failCount := 0
+	for i, e := range s.Event {
+		offset := e.Height - startHeight
+		if bh == e.Height {
+			index++
+		} else {
+			index = 0
+			bh = e.Height
+		}
+		obj = getEventObject(int(offset), index, front)
+		if obj == nil {
+			fmt.Printf("Failed icstage event %d: icon1(%+v) icon2(nil)\n", i, e)
+			failCount++
+			continue
+		}
+		switch e.Type {
+		case typeDelegation:
+			// update delegating map with Delegation Event
+			key := icutils.ToKey(e.Address)
+			delegating, ok := dMap[key]
+			if !ok {
+				// read delegations from state of term start block
+				value := acctDB.Get(e.Address)
+				if value == nil {
+					delegating = icreward.Delegating{}
+				} else {
+					ea := icstate.ToAccount(value.Object())
+					delegating = icreward.Delegating{
+						Delegations: ea.Delegations().Clone(),
+					}
+				}
+			}
+			voteList := getDelegationEventVoteList(obj)
+			if voteList == nil {
+				failCount++
+				break
+			}
+			err = delegating.ApplyVotes(voteList)
+			if err != nil {
+				fmt.Printf("Failed to apply votes %+v\n%+v\n%+v\n", e, delegating, voteList)
+				return err
+			}
+			dMap[key] = delegating
+
+			// compare icon1
+			if !compareDelegations(e.Data, delegating.Delegations) {
+				fmt.Printf("Failed icstage event %d: icon1(%+v) icon2(%d:%d:%+v) delegating(%+v)\n",
+					i, e, offset, index, obj, delegating)
+				failCount++
+			}
+		case typePRepRegister:
+			o := icstage.ToEventEnable(obj)
+			if !o.Status().IsEnabled() {
+				fmt.Printf("Failed icstage event %d: icon1(%+v) icon2(%d:%d:%+v)\n", i, e, offset, index, obj)
+				failCount++
+			}
+		case typePRepUnregister:
+			o := icstage.ToEventEnable(obj)
+			if o.Status().IsEnabled() {
+				fmt.Printf("Failed icstage event %d: icon1(%+v) icon2(%d:%d:%+v)\\n", i, e, offset, index, obj)
+				failCount++
+			}
+		}
+	}
+	printResult("%d/%d entries got diff values", failCount, len(s.Event))
+	if failCount > 0 {
+		return common.ErrInvalidState
+	}
+	return nil
+}
+
+func getEventObject(offset, index int, front containerdb.ObjectStoreState) trie.Object {
+	key := icstage.EventKey.Append(offset, index).Build()
+	obj, err := front.Get(key)
+	if err != nil || obj == nil {
+		return nil
+	}
+	return obj
+}
+
+func getDelegationEventVoteList(obj trie.Object) icstage.VoteList {
+	oType := obj.(*icobject.Object).Tag().Type()
+	switch oType {
+	case icstage.TypeEventDelegation:
+		o := icstage.ToEventVote(obj)
+		if o == nil {
+			return nil
+		}
+		return o.Votes()
+	case icstage.TypeEventDelegationV2:
+		o := icstage.ToEventDelegationV2(obj)
+		if o == nil {
+			return nil
+		}
+		return o.Delegating()
+	default:
+		return nil
+	}
+}
+
+func compareDelegations(d1, d2 icstate.Delegations) bool {
+	if len(d1) != len(d2) {
+		return false
+	}
+	d1Map := d1.ToMap()
+	d2Map := d2.ToMap()
+	for key, value := range d1Map {
+		if !value.Equal(d2Map[key]) {
+			return false
+		}
+	}
+	return true
+}
+
+type event struct {
+	Height  int64               `json:"height"`
+	Address *common.Address     `json:"address"`
+	Type    int                 `json:"type"`
+	Data    icstate.Delegations `json:"data,omitempty"`
 }
 
 type account struct {
@@ -226,6 +411,7 @@ func getIScoreFromStage(addr module.Address, stage containerdb.ObjectStoreState)
 }
 
 func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
+	printTitle("Load ICON1 export file %s", path)
 	jf, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -237,10 +423,12 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 	if err := jd.Decode(&accountInfo); err != nil {
 		return nil, err
 	}
+	fmt.Printf("%s", accountInfo.Summary())
 	return accountInfo, nil
 }
 
-func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string, noBalance bool) error {
+func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, wssTerm state.WorldSnapshot,
+	address string, noBalance bool) error {
 	height := icon1.BlockHeight
 	accounts := icon1.Accounts
 	addrSpecified := false
@@ -255,7 +443,6 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 			return nil
 		}
 	}
-	fmt.Printf("Check %d entries @ %d\n", len(accounts), height)
 	ess := wss.GetExtensionSnapshot()
 	var hashes [][]byte
 	if _, err := codec.BC.UnmarshalFromBytes(ess.Bytes(), &hashes); err != nil {
@@ -276,6 +463,17 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 	if err := icon1.Issue.Check(extState); err != nil {
 		iissFailed += 1
 	}
+	if icon1.TermHeight != 0 {
+		essTerm := wssTerm.GetExtensionSnapshot()
+		if _, err := codec.BC.UnmarshalFromBytes(essTerm.Bytes(), &hashes); err != nil {
+			return err
+		}
+		extStateTerm := getObjectStoreState(wssTerm.Database(), hashes[0], icstate.NewObjectImpl)
+
+		if err := icon1.Front.Check(extStateTerm, extFront); err != nil {
+			iissFailed += 1
+		}
+	}
 	if noBalance {
 		if iissFailed > 0 {
 			fmt.Printf("%d different state values @ %d\n", iissFailed, height)
@@ -284,7 +482,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 			return nil
 		}
 	}
-	fmt.Printf("Check %d account entries\n", len(accounts))
+	printTitle("Checking Accounts. %d account entries", len(accounts))
 	count := 0
 	lost := new(big.Int)
 	for key, value := range accounts {
@@ -310,7 +508,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, address string
 				state.LostAddress, lost, lost2, new(big.Int).Sub(lost2, lost))
 		}
 	}
-	fmt.Printf("%d/%d entries got diff values @ %d\n", count, len(accounts), height)
+	printResult("%d/%d entries got diff values", count, len(accounts))
 	if count > 0 || iissFailed > 0 {
 		return errors.InvalidStateError.New("FailInComparison")
 	}
@@ -331,4 +529,16 @@ func getObjectStoreState(dbase db.Database, hash []byte, factory icobject.ImplFa
 	dbase = icobject.AttachObjectFactory(dbase, factory)
 	state := trie_manager.NewMutableForObject(dbase, hash, icobject.ObjectType)
 	return icobject.NewObjectStoreState(state)
+}
+
+func printTitle(format string, a ...interface{}) {
+	fmt.Printf("<<<<< ")
+	fmt.Printf(format, a...)
+	fmt.Printf("\n")
+}
+
+func printResult(format string, a ...interface{}) {
+	fmt.Printf("  >> ")
+	fmt.Printf(format, a...)
+	fmt.Printf("\n")
 }

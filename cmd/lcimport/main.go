@@ -39,6 +39,7 @@ import (
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -575,7 +576,14 @@ func newCmdBalanceCheck(parent *cobra.Command, name string, vc *viper.Viper) *co
 			if err != nil {
 				return err
 			}
-			if err = CheckState(icon1, wss, *pAddr, *pNoBalance); err != nil {
+			var wssTerm state.WorldSnapshot
+			if icon1.TermHeight != 0 {
+				wssTerm, err = ex.NewWorldSnapshot(icon1.TermHeight - 1)
+				if err != nil {
+					return err
+				}
+			}
+			if err = CheckState(icon1, wss, wssTerm, *pAddr, *pNoBalance); err != nil {
 				return err
 			}
 		}
