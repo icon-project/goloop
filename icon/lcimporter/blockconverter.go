@@ -126,7 +126,8 @@ func (e *BlockConverter) Start(from, to int64) (<-chan interface{}, error) {
 }
 
 // Rebase re-bases blocks and returns a channel of
-// *BlockTransaction or error.
+// *BlockTransaction or error. ErrAfterLastBlock is sent if from is beyond
+// the last block.
 func (e *BlockConverter) Rebase(from, to int64, firstNForcedResults []*BlockTransaction) (<-chan interface{}, error) {
 	return e.execute(from, to, firstNForcedResults)
 }
@@ -473,6 +474,10 @@ func (e *BlockConverter) doExecute(
 	if err != nil {
 		return err
 	}
+	nbv := e.svc.GetNextBlockVersion(prevTR.Result(), prevTR.NextValidators())
+	if nbv == module.BlockVersion2 {
+		return ErrAfterLastBlock
+	}
 	callback := make(transitionCallback, 1)
 	var rps, tps float32
 	tm := new(TPSMeasure).Init(100)
@@ -482,10 +487,6 @@ func (e *BlockConverter) doExecute(
 		case <-stopCh:
 			return errors.InterruptedError.Errorf("Execution interrupted")
 		default:
-		}
-		nbv := e.svc.GetNextBlockVersion(prevTR.Result(), prevTR.NextValidators())
-		if nbv == module.BlockVersion2 {
-			return nil
 		}
 		if getTPSer != nil {
 			rps = getTPSer.GetTPS()
