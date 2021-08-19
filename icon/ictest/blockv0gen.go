@@ -32,6 +32,7 @@ import (
 
 type BlockV0Generator struct {
 	t              *testing.T
+	node           *test.Node
 	validators     []module.Wallet
 	reps           *blockv0.RepsList
 	validatorsInTx []module.Wallet
@@ -40,7 +41,9 @@ type BlockV0Generator struct {
 	lastVotes      *blockv0.BlockVoteList
 	txs            []blockv0.Transaction
 	repsByHash     map[string]*blockv0.RepsList
+	receiptByHash  map[string]module.Receipt
 	blocks         []blockv0.Block
+	lastTr         module.Transition
 }
 
 const defaultGenesis = `
@@ -79,14 +82,83 @@ func NewBlockV0Generator(t *testing.T, genesis string) *BlockV0Generator {
 		genesis = defaultGenesis
 	}
 	g := &BlockV0Generator{
-		t:          t,
-		repsByHash: make(map[string]*blockv0.RepsList),
+		t:             t,
+		repsByHash:    make(map[string]*blockv0.RepsList),
+		receiptByHash: make(map[string]module.Receipt),
 	}
 	last, err := blockv0.ParseBlock([]byte(genesis), g)
+	bs := last.NormalTransactions()[0].Bytes()
+	g.node = test.NewNode(t, test.UseGenesis(string(bs)))
 	assert.NoError(t, err)
 	g.last = last
 	g.blocks = append(g.blocks, g.last)
+	itr, err := g.node.SM.CreateInitialTransition(nil, nil)
+	assert.NoError(t, err)
+	g.lastTr = itr
+	g.executeAndAddReceipts(
+		g.last.NormalTransactions(), g.last.Height(), g.last.Timestamp(),
+	)
 	return g
+}
+
+func (g *BlockV0Generator) executeAndAddReceiptsV0TXs(
+	txs []blockv0.Transaction,
+	height int64,
+	ts int64,
+) []byte {
+	txs_ := make([]module.Transaction, len(txs))
+	for i := range txs {
+		txs_[i] = txs[i].Transaction
+	}
+	return g.executeAndAddReceipts(txs_, height, ts)
+}
+
+func (g *BlockV0Generator) executeAndAddReceipts(
+	txs []module.Transaction,
+	height int64,
+	ts int64,
+) []byte {
+	txl := transaction.NewTransactionListFromSlice(g.node.Chain.Database(), txs)
+	tr, err := g.node.SM.CreateTransition(
+		g.lastTr, txl, common.NewBlockInfo(height, ts), nil,
+	)
+	assert.NoError(g.t, err)
+	transitionExecute(g.t, tr)
+	receipts := tr.NormalReceipts()
+	for i, it := 0, receipts.Iterator(); it.Has(); i, _ = i+1, it.Next() {
+		r, err := it.Get()
+		assert.NoError(g.t, err)
+		g.receiptByHash[string(txs[i].ID())] = r
+	}
+	g.lastTr = tr
+	root := blockv0.CalcMerkleRootOfReceiptList(receipts, txl, height)
+	return root
+}
+
+func (g *BlockV0Generator) Close() {
+	g.node.Close()
+}
+
+type trCB struct {
+	chn chan<- error
+}
+
+func (t trCB) OnValidate(transition module.Transition, err error) {
+	t.chn <- err
+}
+
+func (t trCB) OnExecute(transition module.Transition, err error) {
+	t.chn <- err
+}
+
+func transitionExecute(t *testing.T, tr module.Transition) {
+	chn := make(chan error)
+	_, err := tr.Execute(trCB{chn})
+	assert.NoError(t, err)
+	err = <-chn
+	assert.NoError(t, err)
+	err = <-chn
+	assert.NoError(t, err)
 }
 
 func (g *BlockV0Generator) Validators() []module.Wallet {
@@ -132,6 +204,9 @@ func (g *BlockV0Generator) GenerateNext(w module.Wallet) {
 			},
 			g.last,
 		)
+		g.executeAndAddReceiptsV0TXs(
+			g.txs, g.last.Height(), g.last.Timestamp(),
+		)
 	} else {
 		next, err = NewNextV03(
 			w,
@@ -139,6 +214,9 @@ func (g *BlockV0Generator) GenerateNext(w module.Wallet) {
 				Transactions: g.txs,
 				PrevVotes:    g.lastVotes,
 				RepsHash:     g.reps.Hash(),
+				ReceiptsHash: g.executeAndAddReceiptsV0TXs(
+					g.txs, g.last.Height()+1, g.last.Timestamp()+defaultDelta,
+				),
 			},
 			g.last,
 			g,
@@ -270,6 +348,10 @@ func (g *BlockV0Generator) GetBlockByHeight(height int) (blockv0.Block, error) {
 }
 
 func (g *BlockV0Generator) GetReceipt(id []byte) (module.Receipt, error) {
+	r, ok := g.receiptByHash[string(id)]
+	if ok {
+		return r, nil
+	}
 	return nil, errors.NotFoundError.Errorf("NotFound")
 }
 
@@ -279,4 +361,13 @@ func (g *BlockV0Generator) GetRepsByHash(hash []byte) (*blockv0.RepsList, error)
 		return reps, nil
 	}
 	return nil, errors.NotFoundError.Errorf("unknown reps for hash %s", hash)
+}
+
+func (g *BlockV0Generator) GetVotesByHeight(h int) (*blockv0.BlockVoteList, error) {
+	if h == len(g.blocks)-1 {
+		return g.lastVotes, nil
+	} else if h < len(g.blocks) {
+		return g.blocks[h+1].Votes(), nil
+	}
+	return nil, errors.NotFoundError.Errorf("NotFound")
 }
