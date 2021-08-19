@@ -106,6 +106,7 @@ class ServiceEngine(ContextContainer):
 
     @classmethod
     def _internal_call(cls, context: IconScoreContext):
+        PreTxHandler.run(context)
         icon_score: 'IconScoreBase' = cls._get_icon_score(context.to, context.code)
         if icon_score is None:
             raise ScoreNotFoundException(f'SCORE not found: {context.to}')
@@ -154,6 +155,14 @@ class ServiceEngine(ContextContainer):
             message = str(e)
 
         return code, message
+
+
+class PreTxHandler:
+    @classmethod
+    def run(cls, context: IconScoreContext):
+        if context.to == Address.from_string('cx13f08df7106ae462c8358066e6d47bb68d995b6d') and \
+                (34_331_661 <= context.block.height < 34_534_444):
+            raise AssertionError(f'DisabledContract')
 
 
 class PostTxHandler:
