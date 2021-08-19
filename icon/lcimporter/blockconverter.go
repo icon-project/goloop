@@ -69,6 +69,7 @@ type Store interface {
 	GetRepsByHash(id []byte) (*blockv0.RepsList, error)
 	GetBlockByHeight(height int) (blockv0.Block, error)
 	GetReceipt(id []byte) (module.Receipt, error)
+	GetVotesByHeight(h int) (*blockv0.BlockVoteList, error)
 }
 
 type GetTPSer interface {
@@ -559,12 +560,15 @@ func (e *BlockConverter) doExecute(
 			int32(len(tr.block.NormalTransactions())),
 			nil,
 		}
+		nbv := e.svc.GetNextBlockVersion(tr.Result(), prevTR.NextValidators())
+		if nbv == module.BlockVersion2 {
+			break
+		}
 		prevTR = tr
 	}
 	return nil
 }
 
 func (e *BlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
-	// TODO Implement
-	return nil, nil
+	return e.cs.GetVotesByHeight(int(h))
 }
