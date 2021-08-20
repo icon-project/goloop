@@ -205,7 +205,7 @@ func (g *BlockV0Generator) GenerateNext(w module.Wallet) {
 			g.last,
 		)
 		g.executeAndAddReceiptsV0TXs(
-			g.txs, g.last.Height(), g.last.Timestamp(),
+			g.txs, g.last.Height()+1, g.last.Timestamp()+defaultDelta,
 		)
 	} else {
 		next, err = NewNextV03(
