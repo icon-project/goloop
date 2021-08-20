@@ -38,7 +38,7 @@ import (
 
 const (
 	KeyLastBlockHeight = "block.lastHeight"
-	ChanBuf = 2048
+	ChanBuf            = 2048
 )
 
 var ErrAfterLastBlock = errors.NewBase(errors.IllegalArgumentError, "AfterLastBlock")
@@ -62,6 +62,7 @@ type BlockConverter struct {
 type Transition struct {
 	module.Transition
 	block       blockv0.Block
+	prevBlock   blockv0.Block
 	oldReceipts module.ReceiptList
 	blockHash   []byte
 }
@@ -187,6 +188,14 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	}
 	logger := trace.NewLogger(e.log, e)
 	if height > 0 {
+		var prevV0 blockv0.Block
+		var err error
+		if height > 1 {
+			prevV0, err = e.cs.GetBlockByHeight(int(height - 2))
+			if err != nil {
+				return nil, errors.Wrapf(err, "NoLastState(height=%d)", height)
+			}
+		}
 		blk, err := e.GetBlockByHeight(height - 1)
 		blkV0, err := e.cs.GetBlockByHeight(int(height - 1))
 		if err != nil {
@@ -196,13 +205,13 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &Transition{tr, blkV0, nil, blk.Hash()}, nil
+		return &Transition{tr, blkV0, prevV0, nil, blk.Hash()}, nil
 	} else {
 		tr, err := e.svc.NewInitTransition(nil, nil, logger)
 		if err != nil {
 			return nil, err
 		} else {
-			return &Transition{tr, nil, nil, nil}, nil
+			return &Transition{tr, nil, nil, nil, nil}, nil
 		}
 	}
 }
@@ -222,6 +231,33 @@ func (e *BlockConverter) originalReceipts(txs []module.Transaction) ([]txresult.
 	return rcts, nil
 }
 
+func (e *BlockConverter) newConsensusInfoForTxsInBlock(
+	blk blockv0.Block,
+	prevBlk blockv0.Block,
+) (module.ConsensusInfo, error) {
+	var csi module.ConsensusInfo
+	if prevBlk == nil {
+		csi = common.NewConsensusInfo(nil, nil, nil)
+	} else {
+		var voters module.ValidatorList
+		var err error
+		var voted []bool
+		if prevV03, ok := prevBlk.(*blockv0.BlockV03); ok {
+			voters, err = prevV03.Validators().GetValidatorList(e.database)
+			if err != nil {
+				return nil, err
+			}
+			voted = make([]bool, voters.Len())
+			err = blk.(*blockv0.BlockV03).PrevVotes().CheckVoters(prevV03.Validators(), voted)
+			if err != nil {
+				return nil, err
+			}
+		}
+		csi = common.NewConsensusInfo(prevBlk.Proposer(), voters, voted)
+	}
+	return csi, nil
+}
+
 func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error) {
 	var height int64
 	if last.block != nil {
@@ -229,6 +265,7 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 	} else {
 		height = 0
 	}
+	prevV0 := last.block
 	blkv0, err := e.cs.GetBlockByHeight(int(height))
 	if err != nil {
 		return nil, err
@@ -252,45 +289,32 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 			}
 		}
 	}
-	var csi module.ConsensusInfo
+	csi, err := e.newConsensusInfoForTxsInBlock(last.block, last.prevBlock)
+	if err != nil {
+		return nil, err
+	}
 	var tr module.Transition
 	if height == 0 {
-		csi = common.NewConsensusInfo(nil, nil, nil)
 		tr = e.svc.NewTransition(
 			last.Transition,
 			nil,
 			transaction.NewTransactionListFromSlice(e.database, nil),
-			blkv0,
+			blkv0, // to avoid nil access
 			csi,
 			true,
 		)
 	} else {
-		var voters module.ValidatorList
-		var err error
-		var voted []bool
-		if prev, ok := last.block.(*blockv0.BlockV03); ok {
-			voters, err = prev.Validators().GetValidatorList(e.database)
-			if err != nil {
-				return nil, err
-			}
-			voted = make([]bool, voters.Len())
-			err = blkv0.(*blockv0.BlockV03).PrevVotes().CheckVoters(prev.Validators(), voted)
-			if err != nil {
-				return nil, err
-			}
-		}
-		csi = common.NewConsensusInfo(last.block.Proposer(), voters, voted)
 		tr = e.svc.NewTransition(
 			last.Transition,
 			nil,
 			transaction.NewTransactionListFromSlice(e.database, last.block.NormalTransactions()),
-			blkv0,
+			last.block,
 			csi,
 			true,
 		)
 	}
 	rctList := txresult.NewReceiptListFromSlice(e.database, rcts)
-	return &Transition{tr, blkv0, rctList, nil}, nil
+	return &Transition{tr, blkv0, prevV0, rctList, nil}, nil
 }
 
 func (e *BlockConverter) GetLastHeight() int64 {
@@ -405,7 +429,7 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 			if last < to {
 				last = to
 			}
-			for i := from; i<=last; i++ {
+			for i := from; i <= last; i++ {
 				blk, err := e.GetBlockByHeight(i)
 				if err != nil {
 					resCh <- err

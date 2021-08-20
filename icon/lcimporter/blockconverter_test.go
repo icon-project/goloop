@@ -116,6 +116,7 @@ func newTestChain(database db.Database, logger log.Logger) (*testChain, error) {
 
 type testService struct {
 	lcimporter.BasicService
+	chn chan<- *TransitionRequest
 }
 
 func newTestService(c module.Chain, plt service.Platform, baseDir string) *testService {
@@ -130,6 +131,35 @@ func newTestService(c module.Chain, plt service.Platform, baseDir string) *testS
 
 func (s *testService) NewSyncTransition(tr module.Transition, result []byte, vl []byte) module.Transition {
 	panic("implement me")
+}
+
+type TransitionRequest struct {
+	parent           module.Transition
+	patchtxs         module.TransactionList
+	normaltxs        module.TransactionList
+	bi               module.BlockInfo
+	csi              module.ConsensusInfo
+	alreadyValidated bool
+}
+
+func (s *testService) ForwardTransitionRequest(chn chan<-*TransitionRequest) {
+	s.chn = chn
+}
+
+func (s *testService) NewTransition(
+	parent module.Transition, patchtxs module.TransactionList,
+	normaltxs module.TransactionList, bi module.BlockInfo,
+	csi module.ConsensusInfo, alreadyValidated bool,
+) module.Transition {
+	if s.chn != nil {
+		s.chn <- &TransitionRequest{
+			parent, patchtxs, normaltxs, bi,
+			csi, alreadyValidated,
+		}
+	}
+	return s.BasicService.NewTransition(
+		parent, patchtxs, normaltxs, bi, csi, alreadyValidated,
+	)
 }
 
 func newTestStore(dbase db.Database) (*testStore, error) {
@@ -349,7 +379,9 @@ func assertBlockTransaction(t assert.TestingT, res interface{}, height int, txCo
 	case *lcimporter.BlockTransaction:
 		assert.EqualValues(t, height, r.Height)
 		assert.EqualValues(t, txCount, r.TXCount)
-		f(r)
+		if f!= nil {
+			f(r)
+		}
 	case error:
 		assert.NoError(t, r)
 	default:
@@ -448,6 +480,8 @@ func TestBlockConverter_Term(t_ *testing.T) {
 
 func TestBlockConverter_CloseOnVersionChange(_t *testing.T) {
 	bg := ictest.NewBlockV0Generator(_t, "")
+	defer bg.Close()
+
 	bg.AddSetRandomValidatorsTx(4)
 	w := bg.ValidatorsInTx()[0]
 	bg.GenerateNext(w)
@@ -478,6 +512,80 @@ func TestBlockConverter_CloseOnVersionChange(_t *testing.T) {
 	assertBlockTransaction(t, res, 3, 0, func(r *BTX) {
 		assert.NotNil(t, r.ValidatorHash)
 	})
+	res, ok := <-ch
+	assert.False(_t, ok)
+}
+
+func TestBlockConverter_BlockInfoAndConsensusInfo(_t *testing.T) {
+	bg := ictest.NewBlockV0Generator(_t, "")
+	defer bg.Close()
+
+	bg.AddSetRandomValidatorsTx(4)
+	w := bg.ValidatorsInTx()[0]
+	bg.GenerateNext(w)
+	bg.GenerateNext(w)
+	bg.AddSetNextBlockVersionTx(module.BlockVersion2)
+	bg.GenerateNext(w)
+	bg.GenerateNext(w)
+
+	getBlock := func (h int) blockv0.Block {
+		blk, err := bg.GetBlockByHeight(h)
+		assert.NoError(_t, err)
+		return blk
+	}
+
+	mdb := db.NewMapDB()
+	getTXLOfBlock := func (h int) module.TransactionList {
+		blk, err := bg.GetBlockByHeight(h)
+		assert.NoError(_t, err)
+		txs := blk.NormalTransactions()
+		txl := transaction.NewTransactionListFromSlice(mdb, txs)
+		return txl
+	}
+
+	t := newBlockConverterTest2(_t, db.NewMapDB(), bg, ictest.NewPlatform())
+	trChn := make(chan *TransitionRequest)
+	t.svc.ForwardTransitionRequest(trChn)
+	ch, err := t.Start(0, -1)
+	assert.NoError(t, err)
+
+	tr := <-trChn
+	assert.Nil(t, tr.normaltxs.Hash())
+	assert.EqualValues(t, 0, tr.bi.Height())
+	assert.Nil(t, tr.csi.Proposer())
+	res := <-ch
+	assertBlockTransaction(t, res, 0, 1, nil)
+
+	tr = <-trChn
+	assert.EqualValues(t, 0, tr.bi.Height())
+	assert.Equal(t, getTXLOfBlock(0).Hash(), tr.normaltxs.Hash())
+	assert.Nil(t, tr.csi.Proposer())
+	res = <-ch
+	assertBlockTransaction(t, res, 1, 1, nil)
+
+	tr = <-trChn
+	assert.EqualValues(t, 1, tr.bi.Height())
+	assert.Equal(t, getTXLOfBlock(1).Hash(), tr.normaltxs.Hash())
+	assert.Equal(t, getBlock(0).Proposer().Bytes(), tr.csi.Proposer().Bytes())
+	res = <-ch
+	assertBlockTransaction(t, res, 2, 0, nil)
+
+	tr = <-trChn
+	assert.EqualValues(t, 2, tr.bi.Height())
+	assert.Equal(t, getTXLOfBlock(2).Hash(), tr.normaltxs.Hash())
+	assert.Equal(t, getBlock(1).Proposer().Bytes(), tr.csi.Proposer().Bytes())
+	assert.EqualValues(t, 0, len(tr.csi.Voted()))
+	res = <-ch
+	assertBlockTransaction(t, res, 3, 1, nil)
+
+	tr = <-trChn
+	assert.EqualValues(t, 3, tr.bi.Height())
+	assert.Equal(t, getTXLOfBlock(3).Hash(), tr.normaltxs.Hash())
+	assert.Equal(t, getBlock(2).Proposer().Bytes(), tr.csi.Proposer().Bytes())
+	assert.Equal(t, []bool{true, true, true, true}, tr.csi.Voted())
+	res = <-ch
+	assertBlockTransaction(t, res, 4, 0, nil)
+
 	res, ok := <-ch
 	assert.False(_t, ok)
 }
