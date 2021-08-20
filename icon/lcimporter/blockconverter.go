@@ -237,15 +237,15 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 		return nil, err
 	}
 	var rcts []txresult.Receipt
-	if height > 0 {
-		txs := blkv0.NormalTransactions()
-		rcts, err := e.originalReceipts(txs)
+	if last.block != nil {
+		txs := last.block.NormalTransactions()
+		rcts, err = e.originalReceipts(txs)
 		if err != nil {
 			return nil, err
 		}
-		if blkv03, ok := blkv0.(*blockv0.BlockV03); ok {
-			eReceiptListHash := blkv03.ReceiptsHash()
-			rReceiptListHash := blockv0.CalcMerkleRootOfReceiptSlice(rcts, txs, blkv0.Height())
+		if lastV03, ok := last.block.(*blockv0.BlockV03); ok {
+			eReceiptListHash := lastV03.ReceiptsHash()
+			rReceiptListHash := blockv0.CalcMerkleRootOfReceiptSlice(rcts, txs, lastV03.Height())
 			if !bytes.Equal(eReceiptListHash, rReceiptListHash) {
 				return nil, errors.Errorf("DifferentReceiptListHash(stored=%#x,real=%#x)",
 					eReceiptListHash, rReceiptListHash)
@@ -324,7 +324,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 	expects := tr.oldReceipts
 	idx := 0
 	if !bytes.Equal(expects.Hash(), results.Hash()) {
-		for expect, result := expects.Iterator(), results.Iterator(); expect.Has() && result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {
+		for expect, result := expects.Iterator(), results.Iterator(); expect.Has() || result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {
 			rct1, err := expect.Get()
 			if err != nil {
 				return errors.Wrapf(err, "ExpectReceiptGetFailure(idx=%d)", idx)
