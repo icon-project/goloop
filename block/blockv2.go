@@ -242,11 +242,11 @@ func (b *blockV2) GetVoters(ctx HandlerContext) (module.ValidatorList, error) {
 	if b.Height() == 0 {
 		return nil, nil
 	}
-	nextBlk, err := ctx.GetBlockByHeight(b.Height() - 1)
+	prevBlk, err := ctx.GetBlockByHeight(b.Height() - 1)
 	if err != nil {
 		return nil, err
 	}
-	return nextBlk.NextValidators(), nil
+	return prevBlk.NextValidators(), nil
 }
 
 func (b *blockV2) VerifyTimestamp(
