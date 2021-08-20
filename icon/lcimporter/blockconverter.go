@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
@@ -76,8 +77,8 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
-func NewBlockConverter(c module.Chain, plt service.Platform, cs Store, data string) (*BlockConverter, error) {
-	svc, err := NewService(c, plt, data)
+func NewBlockConverter(c module.Chain, plt service.Platform, pm eeproxy.Manager, cs Store, data string) (*BlockConverter, error) {
+	svc, err := NewService(c, plt, pm, data)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "NoLastState(height=%d)", height)
 		}
-		tr, err := e.svc.NewInitTransition(blk.Result(), nil, logger)
+		tr, err := e.svc.NewInitTransition(blk.Result(), blk.NextValidators(), logger)
 		if err != nil {
 			return nil, err
 		}
@@ -323,9 +324,6 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 	expects := tr.oldReceipts
 	idx := 0
 	if !bytes.Equal(expects.Hash(), results.Hash()) {
-		e.log.Errorf("ReceiptsList Hash is different")
-		e.log.Errorf("Expected ReceiptList:%s", expects.Hash())
-		e.log.Errorf("Actual ReceiptList:%s", results.Hash())
 		for expect, result := expects.Iterator(), results.Iterator(); expect.Has() && result.Has(); _, _, idx = expect.Next(), result.Next(), idx+1 {
 			rct1, err := expect.Get()
 			if err != nil {
@@ -348,7 +346,6 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 				e.log.Errorf("Returned Receipt[%d]:%s", idx, rct2js)
 				return errors.Wrapf(err, "ReceiptComparisonFailure(idx=%d)", idx)
 			}
-			return errors.Errorf("ReceiptListHashMismatch")
 		}
 	}
 	rLogBloom := tr.Transition.LogsBloom()

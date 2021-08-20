@@ -20,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/blockv0/lcstore"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 type Config struct {
@@ -29,4 +30,5 @@ type Config struct {
 	CacheConfig lcstore.CacheConfig `json:"cache_config"`
 	BaseDir     string
 	Platform    service.Platform
+	ProxyMgr    eeproxy.Manager
 }

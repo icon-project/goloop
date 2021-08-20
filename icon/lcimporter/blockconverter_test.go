@@ -225,6 +225,13 @@ var blocks = map[int]string{
 }
 
 var receipts = map[string]string{
+	"5aa2453a84ba2fb1e3394b9e3471f5dcebc6225fc311a97ca505728153b9d246": `
+{
+  "cumulativeStepUsed": "0x0",
+  "stepUsed": "0x0",
+  "stepPrice": "0x0",
+  "status": "0x1"
+}`,
 	"375540830d475a73b704cf8dee9fa9eba2798f9d2af1fa55a85482e48daefd3b": `
 {
     "blockHash": "0x3add53134014e940f6f6010173781c4d8bd677d9931a697f962483e04a685e5c",

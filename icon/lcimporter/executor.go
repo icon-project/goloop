@@ -494,7 +494,7 @@ func NewExecutor(chain module.Chain, dbase db.Database, cfg *Config) (*Executor,
 	}
 	cs := lcstore.NewForwardCache(store, logger, &cfg.CacheConfig)
 	cs.SetReceiptParameter(rdb, module.LatestRevision)
-	bc, err := NewBlockConverter(chain, cfg.Platform, cs, cfg.BaseDir)
+	bc, err := NewBlockConverter(chain, cfg.Platform, cfg.ProxyMgr, cs, cfg.BaseDir)
 	if err != nil {
 		return nil, err
 	}

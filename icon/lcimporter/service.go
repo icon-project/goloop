@@ -20,7 +20,6 @@ import (
 	"path"
 
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -52,7 +51,10 @@ type BasicService struct {
 	Plt     service.Platform
 	BaseDir string
 	cm      contract.ContractManager
+	pm      eeproxy.Manager
 }
+
+const ContractPath = "contract"
 
 func (s *BasicService) NewInitTransition(
 	result []byte, vl module.ValidatorList, logger log.Logger,
@@ -67,7 +69,7 @@ func (s *BasicService) NewInitTransition(
 		}
 		s.cm = cm
 	}
-	return service.NewInitTransition(s.Chain.Database(), result, vl, s.cm, nil,
+	return service.NewInitTransition(s.Chain.Database(), result, vl, s.cm, s.pm,
 		s.Chain, logger, s.Plt, service.NewTimestampChecker())
 }
 
@@ -111,64 +113,21 @@ func (s *BasicService) GetNextBlockVersion(result []byte, vl module.ValidatorLis
 	return v
 }
 
-const (
-	ContractPath = "contract"
-	EESocketPath = "ee.sock"
-)
-
 type defaultService struct {
 	BasicService
 	syncMan service.SyncManager
-	cm      contract.ContractManager
-	em      eeproxy.Manager
 }
 
-func NewService(c module.Chain, plt service.Platform, baseDir string) (Service, error) {
+func NewService(c module.Chain, plt service.Platform, pm eeproxy.Manager, baseDir string) (Service, error) {
 	return &defaultService{
 		BasicService: BasicService{
 			Chain:   c,
 			Plt:     plt,
 			BaseDir: baseDir,
+			pm:      pm,
 		},
 		syncMan: sync.NewSyncManager(c.Database(), c.NetworkManager(), plt, c.Logger()),
 	}, nil
-}
-
-func (s *defaultService) setupEE() error {
-	cm, err := s.Plt.NewContractManager(s.Chain.Database(), path.Join(s.BaseDir, ContractPath), s.Chain.Logger())
-	if err != nil {
-		return errors.Wrap(err, "NewContractManagerFailure")
-	}
-	ee, err := eeproxy.AllocEngines(s.Chain.Logger(), "python")
-	if err != nil {
-		return errors.Wrap(err, "FailureInAllocEngines")
-	}
-	em, err := eeproxy.NewManager("unix", path.Join(s.BaseDir, EESocketPath), s.Chain.Logger(), ee...)
-	if err != nil {
-		return errors.Wrap(err, "FailureInAllocProxyManager")
-	}
-
-	go em.Loop()
-	em.SetInstances(1, 1, 1)
-
-	s.cm = cm
-	s.em = em
-	return nil
-}
-
-func (s *defaultService) NewInitTransition(
-	result []byte, vl module.ValidatorList, logger log.Logger,
-) (module.Transition, error) {
-	if s.cm == nil || s.em == nil {
-		if err := s.setupEE(); err != nil {
-			return nil, err
-		}
-	}
-	if logger == nil {
-		logger = s.Chain.Logger()
-	}
-	return service.NewInitTransition(s.Chain.Database(), result, vl, s.cm, s.em,
-		s.Chain, logger, s.Plt, service.NewTimestampChecker())
 }
 
 func (s *defaultService) NewSyncTransition(tr module.Transition, result []byte,

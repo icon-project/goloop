@@ -179,6 +179,7 @@ func (t *taskImportICON) _import() (ret error) {
 	}
 	config.BaseDir = c.cfg.AbsBaseDir()
 	config.Platform = c.plt
+	config.ProxyMgr = c.pm
 
 	// initialize network manager
 	pr := network.PeerRoleFlag(c.cfg.Role)
