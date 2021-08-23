@@ -98,6 +98,8 @@ type blockDetail interface {
 	LeaderVotes() *blockv0.LeaderVoteList
 	NextValidatorsHash() []byte
 	NewBlock(vl module.ValidatorList) module.Block
+	RepsRoot() []byte
+	NextRepsRoot() []byte
 }
 
 type Block struct {
@@ -341,6 +343,14 @@ func (b *blockV11) NewBlock(vl module.ValidatorList) module.Block {
 	return &res
 }
 
+func (b *blockV11) RepsRoot() []byte {
+	return nil
+}
+
+func (b *blockV11) NextRepsRoot() []byte {
+	return nil
+}
+
 type blockV13 struct {
 	Block
 	nextValidatorsHash []byte
@@ -436,6 +446,14 @@ func (b *blockV13) NewBlock(vl module.ValidatorList) module.Block {
 	res := *b
 	res._nextValidators = vl
 	return &res
+}
+
+func (b *blockV13) RepsRoot() []byte {
+	return b.repsRoot
+}
+
+func (b *blockV13) NextRepsRoot() []byte {
+	return b.nextRepsRoot
 }
 
 func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
@@ -882,6 +900,15 @@ func (b *Block) WriteTo(dbase db.Database) error {
 		b.normalTransactions,
 	); err != nil {
 		return err
+	}
+	if b.RepsRoot() != nil {
+		rbk, err := dbase.GetBucket(icdb.IDToHash)
+		if err != nil {
+			return err
+		}
+		if err = rbk.Set(b.RepsRoot(), b.NextValidatorsHash()); err != nil {
+			return err
+		}
 	}
 	return nil
 }

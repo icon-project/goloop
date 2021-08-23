@@ -19,7 +19,8 @@ package icdb
 import "github.com/icon-project/goloop/common/db"
 
 const (
-	// IDToHash maps id of a v1 block to hash of the block
+	// IDToHash maps id of a v1 block to hash of the block and root of reps
+	// to validator list hash
 	IDToHash db.BucketID = "I"
 
 	// BlockMerkle basically maps node hash to block merkle node for v1 block.
