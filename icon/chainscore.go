@@ -281,7 +281,7 @@ var chainMethods = []*chainMethod{
 	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
-		scoreapi.FlagExternal | scoreapi.FlagPayable, 1,
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"value", scoreapi.Integer, nil, nil},
 		},
