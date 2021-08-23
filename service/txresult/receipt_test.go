@@ -67,8 +67,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 	}
 	ev.eventLogData.Data = nil
 
-	evj, err := ev.ToJSON(module.JSONVersion3)
-	assert.NoError(t, err)
+	evj := ev.ToJSON(module.JSONVersion3)
 	evs, err := json.Marshal(evj)
 	t.Logf("JSON:%s", evs)
 
@@ -81,7 +80,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 	_, err = codec.UnmarshalFromBytes(bs, &ev2)
 	assert.NoError(t, err)
 
-	evj, err = ev2.ToJSON(module.JSONVersion3)
+	evj = ev2.ToJSON(module.JSONVersion3)
 	assert.NoError(t, err)
 	evs2, err := json.Marshal(evj)
 	t.Logf("JSON:%s", evs2)

@@ -85,7 +85,35 @@ func (log *eventLog) Data() [][]byte {
 	return log.eventLogData.Data
 }
 
-func (log *eventLog) ToJSON(module.JSONVersion) (*eventLogJSON, error) {
+func (log *eventLog) MarshalJSON() ([]byte, error) {
+	jso := log.ToJSON(module.JSONVersionLast)
+	return json.Marshal(jso)
+}
+
+func (log *eventLog) ToJSON(v module.JSONVersion) *eventLogJSON {
+	if jso, err := log.toValidJSON(v); err == nil {
+		return jso
+	}
+	return log.toFallbackJSON()
+}
+
+func (log *eventLog) toFallbackJSON() *eventLogJSON {
+	indexed := make([]interface{}, len(log.eventLogData.Indexed))
+	data := make([]interface{}, len(log.eventLogData.Data))
+	for i, d := range log.eventLogData.Indexed {
+		indexed[i] = d
+	}
+	for i, d := range log.eventLogData.Data {
+		data[i] = d
+	}
+	return &eventLogJSON{
+		Addr:    log.eventLogData.Addr,
+		Indexed: indexed,
+		Data:    data,
+	}
+}
+
+func (log *eventLog) toValidJSON(module.JSONVersion) (*eventLogJSON, error) {
 	sig := string(log.eventLogData.Indexed[0])
 	_, pts := DecomposeEventSignature(sig)
 	count := len(log.eventLogData.Indexed) + len(log.eventLogData.Data)
@@ -495,11 +523,7 @@ func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if jso, err := item.(*eventLog).ToJSON(version); err != nil {
-			return nil, err
-		} else {
-			logs = append(logs, jso)
-		}
+		logs = append(logs, item.(*eventLog).ToJSON(version))
 	}
 	jso["eventLogs"] = logs
 

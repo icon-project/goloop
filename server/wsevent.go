@@ -16,6 +16,7 @@ import (
 type EventRequest struct {
 	EventFilter
 	Height common.HexInt64 `json:"height"`
+	Logs   common.HexInt32 `json:"logs,omitempty""`
 }
 
 type EventFilter struct {
@@ -35,6 +36,7 @@ type EventNotification struct {
 	Height common.HexInt64   `json:"height"`
 	Index  common.HexInt32   `json:"index"`
 	Events []common.HexInt32 `json:"events"`
+	Logs   []module.EventLog `json:"logs,omitempty"`
 }
 
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
@@ -95,12 +97,13 @@ loop:
 				if err != nil {
 					break loop
 				}
-				if es, ok := er.match(r); ok {
+				if es, el, err := er.matchWithLogs(r, er.Logs.Value != 0); err == nil && len(es) > 0 {
 					var en EventNotification
 					en.Height.Value = h
 					en.Hash = blk.ID()
 					en.Index.Value = index
 					en.Events = es
+					en.Logs = el
 					if err := wss.WriteJSON(&en); err != nil {
 						wm.logger.Infof("fail to write json EventNotification err:%+v\n", err)
 						break loop
@@ -166,37 +169,64 @@ func bytesEqual(b1 []byte, b2 []byte) bool {
 	return bytes.Equal(b1, b2)
 }
 
+func (f *EventFilter) matchWithLogs(r module.Receipt, includeLogs bool) ([]common.HexInt32, []module.EventLog, error) {
+	var indexes []common.HexInt32
+	var logs []module.EventLog
+	if err := f.filterFunc(r, func(idx int, log module.EventLog) {
+		indexes = append(indexes, common.HexInt32{Value: int32(idx)})
+		if includeLogs {
+			logs = append(logs, log)
+		}
+	}); err != nil {
+		return nil, nil, err
+	}
+	return indexes, logs, nil
+}
+
 func (f *EventFilter) match(r module.Receipt) ([]common.HexInt32, bool) {
 	eventIndexes := make([]common.HexInt32, 0)
-	if r.LogsBloom().Contain(f.lb) {
-	loop:
-		for it, idx := r.EventLogIterator(), int32(0); it.Has(); _, idx = it.Next(), idx+1 {
-			if el, err := it.Get(); err == nil {
-				if bytes.Equal([]byte(f.Signature), el.Indexed()[0]) {
-					if f.Addr != nil && !el.Address().Equal(f.Addr) {
-						continue loop
-					}
-					if f.numOfArgs > 0 {
-						if (len(el.Indexed()) + len(el.Data())) <= f.numOfArgs {
-							continue loop
-						}
-
-						for i, arg := range f.indexedBSs {
-							if arg != nil && !bytesEqual(arg, el.Indexed()[i+1]) {
-								continue loop
-							}
-						}
-						for i, arg := range f.dataBSs {
-							if arg != nil && !bytesEqual(arg, el.Data()[i]) {
-								continue loop
-							}
-						}
-					}
-					eventIndexes = append(eventIndexes, common.HexInt32{Value: idx})
-				}
-			}
-		}
+	if err := f.filterFunc(r, func(idx int, log module.EventLog) {
+		eventIndexes = append(eventIndexes, common.HexInt32{int32(idx)})
+	}); err != nil {
+		return []common.HexInt32{}, false
+	} else {
 		return eventIndexes, len(eventIndexes) > 0
 	}
 	return eventIndexes, false
+}
+
+func (f *EventFilter) filterFunc(r module.Receipt, v func(idx int, log module.EventLog)) error {
+	if r.LogsBloom().Contain(f.lb) {
+	loop:
+		for it, idx := r.EventLogIterator(), 0; it.Has(); _, idx = it.Next(), idx+1 {
+			el, err := it.Get()
+			if err != nil {
+				return err
+			}
+
+			if bytes.Equal([]byte(f.Signature), el.Indexed()[0]) {
+				if f.Addr != nil && !el.Address().Equal(f.Addr) {
+					continue loop
+				}
+				if f.numOfArgs > 0 {
+					if (len(el.Indexed()) + len(el.Data())) <= f.numOfArgs {
+						continue loop
+					}
+
+					for i, arg := range f.indexedBSs {
+						if arg != nil && !bytesEqual(arg, el.Indexed()[i+1]) {
+							continue loop
+						}
+					}
+					for i, arg := range f.dataBSs {
+						if arg != nil && !bytesEqual(arg, el.Data()[i]) {
+							continue loop
+						}
+					}
+				}
+				v(idx, el)
+			}
+		}
+	}
+	return nil
 }

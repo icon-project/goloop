@@ -139,6 +139,7 @@ Summarize the document to following items.
 |:----------------------------------|:-------|:---------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | height                            | T_INT  | true     | Start height                                                                                                                                                                       |
 | addr                              | T_ADDR | false    | SCORE address of Event                                                                                                                                                             |
+| logs                              | T_BOOL | false    | Whether it includes JSON log data (default: false)                                                                                                                                 |
 | event                             | String | true     | Event signature                                                                                                                                                                    |
 | <a id="eventsindexed">indexed</a> | Array  | false    | Array of arguments to match with indexed parameters of event. null matches any value.                                                                                              |
 | data                              | Array  | false    | Array of arguments to match with not indexed parameters of event. null matches any value. If indexed parameters of event are exists, require ['indexed'](#eventsindexed) parameter |
@@ -177,7 +178,14 @@ Summarize the document to following items.
   "hash": "0xdbc...",
   "height": "0x11",
   "index": "0x0",
-  "events": [ "0x0" ]
+  "events": [ "0x0" ],
+  "logs" : [
+    {
+      "scoreAddress": "cx38fd2687b202caf4bd1bda55223578f39dbb6561",
+      "indexed": [ "EventTriggered(int)", "0x2" ],
+      "data": []
+    }
+  ]
 }
 ```
 
@@ -189,6 +197,7 @@ Summarize the document to following items.
 | height                        | T_INT  | true     | Height of the block including the events              |
 | <a id="resultindex">index</a> | T_INT  | true     | Index of the result including the events in the block |
 | <a id="eventlist">events</a>  | Array  | true     | List of indexes of the event in the result            |
+| logs                          | Array  | false    | List of event log data                                |
 
 
 You may use `hash` and `index` to get proof of the result including

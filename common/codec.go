@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"strconv"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -13,6 +14,7 @@ import (
 const (
 	TypeAddress = iota + codec.TypeCustom
 	TypeInt
+	TypeFloat
 )
 
 type typeCodec struct{}
@@ -32,6 +34,8 @@ func (*typeCodec) Decode(tag uint8, data []byte) (interface{}, error) {
 		i := new(HexInt)
 		i.SetBytes(data)
 		return i, nil
+	case TypeFloat:
+		return strconv.ParseFloat(string(data), 64)
 	default:
 		return 0, errors.Errorf("InvalidTypeTag:%d", tag)
 	}

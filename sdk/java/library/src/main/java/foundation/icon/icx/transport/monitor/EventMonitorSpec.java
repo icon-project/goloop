@@ -26,6 +26,7 @@ import java.math.BigInteger;
 public class EventMonitorSpec extends MonitorSpec {
     private final BigInteger height;
     private final EventFilter filter;
+    private final boolean logs;
 
     public static class EventFilter {
         private final String event;
@@ -69,15 +70,23 @@ public class EventMonitorSpec extends MonitorSpec {
     }
 
     public EventMonitorSpec(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
+        this(height, event, addr, indexed, data, false);
+    }
+
+    public EventMonitorSpec(BigInteger height, String event, Address addr, String[] indexed, String[] data, boolean logs) {
         this.path = "event";
         this.height = height;
         this.filter = new EventFilter(event, addr, indexed, data);
+        this.logs = logs;
     }
 
     @Override
     public RpcObject getParams() {
         RpcObject.Builder builder = new RpcObject.Builder()
                 .put("height", new RpcValue(height));
+        if (this.logs) {
+            builder = builder.put("logs", new RpcValue(true));
+        }
         this.filter.apply(builder);
         return builder.build();
     }
