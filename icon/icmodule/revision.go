@@ -60,6 +60,8 @@ const (
 	RevisionSetIRepViaNetworkProposal = Revision9
 	RevisionPreventDuplicatedEndpoint = Revision9
 
+	RevisionLockAddress = Revision10
+
 	RevisionFixInvalidUnstake = Revision11
 
 	RevisionBurnV2 = Revision12
