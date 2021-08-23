@@ -53,7 +53,7 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 		return nil
 	}
 	if (s1 == module.StatusUnknownFailure || s1 == module.StatusReverted) && s2 == module.StatusInvalidParameter {
-		logger.Warnf("Ignore status difference(e=%s,r=%s)", s1, s2)
+		logger.Infof("Ignore status difference(e=%s,r=%s)", s1, s2)
 		return nil
 	}
 	if s1 == module.StatusUnknownFailure && s2 == module.StatusMethodNotPayable {
@@ -71,7 +71,7 @@ func CheckLogsBloom(logger log.Logger, e, r module.LogsBloom) error {
 		return nil
 	}
 	if r.Contain(e) {
-		logger.Warnln("IGNORE LogBloom Difference(more events)")
+		logger.Infof("IGNORE LogBloom Difference(more events)")
 		return nil
 	}
 	return errors.InvalidStateError.Errorf("InvalidLogBloom(exp=%x,res=%x)",
