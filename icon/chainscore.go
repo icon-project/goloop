@@ -805,6 +805,7 @@ func (s *chainScore) Install(param []byte) error {
 	var revision int
 	var validators []module.Validator
 	var handlers []contract.ContractHandler
+	roundLimitFactor := int64(3)
 
 	switch s.cc.ChainID() {
 	case CIDForMainNet:
@@ -877,6 +878,10 @@ func (s *chainScore) Install(param []byte) error {
 			}
 		}
 
+		if chainConfig.RoundLimitFactor != nil {
+			roundLimitFactor = chainConfig.RoundLimitFactor.Value
+		}
+
 		if chainConfig.DepositTerm != nil {
 			if chainConfig.DepositTerm.Value < 0 {
 				return scoreresult.IllegalFormatError.Errorf("InvalidDepositTerm(%s)", chainConfig.DepositTerm)
@@ -904,7 +909,7 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	// skip transaction
-	if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(3); err != nil {
+	if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(roundLimitFactor); err != nil {
 		return err
 	}
 
