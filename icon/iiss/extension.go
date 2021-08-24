@@ -524,7 +524,9 @@ func (es *ExtensionStateImpl) addBlockProduce(wc icmodule.WorldContext) (err err
 	}
 
 	csi := wc.ConsensusInfo()
-	// if PrepManager is not ready, it returns immediately
+	if csi == nil {
+		return
+	}
 	proposer := es.State.GetOwnerByNode(csi.Proposer())
 	if proposer == nil {
 		return

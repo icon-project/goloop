@@ -154,7 +154,7 @@ func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt
 	return r, nil
 }
 
-func (es *ExtensionStateImpl) handleConsensusInfo(cc icmodule.CallContext) error {
+func (es *ExtensionStateImpl) HandleConsensusInfo(cc icmodule.CallContext) error {
 	term := es.State.GetTermSnapshot()
 	if term == nil || !term.IsDecentralized() {
 		return nil
@@ -466,7 +466,7 @@ func (es *ExtensionStateImpl) OnBaseTx(cc icmodule.CallContext, data []byte) err
 	if err := es.handleICXIssue(cc, data); err != nil {
 		return err
 	}
-	if err := es.handleConsensusInfo(cc); err != nil {
+	if err := es.HandleConsensusInfo(cc); err != nil {
 		return err
 	}
 	return nil
