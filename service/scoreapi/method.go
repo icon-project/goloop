@@ -680,6 +680,14 @@ func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return m, nil
 }
 
+func getPositionalInKeywordParams(obj *codec.TypedDict) []*codec.TypedObj {
+	p, ok := obj.Map["."]
+	if !ok || p.Type != codec.TypeList {
+		return nil
+	}
+	return p.Object.([]*codec.TypedObj)
+}
+
 func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedObj, error) {
 	if paramObj.Type == codec.TypeList {
 		tol := paramObj.Object.([]*codec.TypedObj)
@@ -722,8 +730,16 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 			"FailToCastDictToMap(type=%[1]T, obj=%+[1]v)", paramObj.Object)
 	}
 	inputs := make([]*codec.TypedObj, len(a.Inputs))
+	positional := getPositionalInKeywordParams(params)
 	for i, input := range a.Inputs {
-		if obj, ok := params.Map[input.Name]; ok {
+		var obj *codec.TypedObj
+		var ok bool
+		if i < len(positional) {
+			obj, ok = positional[i], true
+		} else {
+			obj, ok = params.Map[input.Name]
+		}
+		if ok {
 			nullable := (i >= a.Indexed) && input.Default == nil
 			if err := input.Type.ValidateInput(obj, input.Fields, nullable); err != nil {
 				return nil, scoreresult.InvalidParameterError.Wrapf(err,
