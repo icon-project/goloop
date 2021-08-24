@@ -31,16 +31,8 @@ func setBalance(address module.Address, as state.AccountState, balance *big.Int)
 }
 
 type callContextImpl struct {
+	contract.CallContext
 	from module.Address
-	cc contract.CallContext
-}
-
-func (ctx *callContextImpl) Revision() module.Revision {
-	return ctx.cc.Revision()
-}
-
-func (ctx *callContextImpl) BlockHeight() int64 {
-	return ctx.cc.BlockHeight()
 }
 
 func (ctx *callContextImpl) From() module.Address {
@@ -48,23 +40,11 @@ func (ctx *callContextImpl) From() module.Address {
 }
 
 func (ctx *callContextImpl) Origin() module.Address {
-	return ctx.cc.TransactionInfo().From
-}
-
-func (ctx *callContextImpl) Treasury() module.Address {
-	return ctx.cc.Treasury()
-}
-
-func (ctx *callContextImpl) TransactionID() []byte {
-	return ctx.cc.TransactionID()
-}
-
-func (ctx *callContextImpl) ConsensusInfo() module.ConsensusInfo {
-	return ctx.cc.ConsensusInfo()
+	return ctx.TransactionInfo().From
 }
 
 func (ctx *callContextImpl) GetBalance(address module.Address) *big.Int {
-	account := ctx.cc.GetAccountState(address.ID())
+	account := ctx.GetAccountState(address.ID())
 	return account.GetBalance()
 }
 
@@ -107,7 +87,7 @@ func (ctx *callContextImpl) Transfer(from module.Address, to module.Address, amo
 }
 
 func (ctx *callContextImpl) addBalance(address module.Address, amount *big.Int) error {
-	as := ctx.cc.GetAccountState(address.ID())
+	as := ctx.GetAccountState(address.ID())
 	ob := as.GetBalance()
 	return setBalance(address, as, new(big.Int).Add(ob, amount))
 }
@@ -148,12 +128,8 @@ func (ctx *callContextImpl) OnBurn(address module.Address, amount, ts *big.Int) 
 	}
 }
 
-func (ctx *callContextImpl) OnEvent(address module.Address, indexed, data [][]byte) {
-	ctx.cc.OnEvent(address, indexed, data)
-}
-
 func (ctx *callContextImpl) GetTotalSupply() *big.Int {
-	as := ctx.cc.GetAccountState(state.SystemID)
+	as := ctx.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
 	if ts := tsVar.BigInt(); ts != nil {
 		return ts
@@ -162,7 +138,7 @@ func (ctx *callContextImpl) GetTotalSupply() *big.Int {
 }
 
 func (ctx *callContextImpl) AddTotalSupply(amount *big.Int) (*big.Int, error) {
-	as := ctx.cc.GetAccountState(state.SystemID)
+	as := ctx.GetAccountState(state.SystemID)
 	varDB := scoredb.NewVarDB(as, state.VarTotalSupply)
 	ts := new(big.Int).Add(varDB.BigInt(), amount)
 	if ts.Sign() < 0 {
@@ -172,20 +148,12 @@ func (ctx *callContextImpl) AddTotalSupply(amount *big.Int) (*big.Int, error) {
 }
 
 func (ctx *callContextImpl) SetValidators(validators []module.Validator) error {
-	return ctx.cc.GetValidatorState().Set(validators)
-}
-
-func (ctx *callContextImpl) SumOfStepUsed() *big.Int {
-	return ctx.cc.SumOfStepUsed()
-}
-
-func (ctx *callContextImpl) StepPrice() *big.Int {
-	return ctx.cc.StepPrice()
+	return ctx.GetValidatorState().Set(validators)
 }
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
 	return &callContextImpl{
+		CallContext: cc,
 		from: from,
-		cc: cc,
 	}
 }
