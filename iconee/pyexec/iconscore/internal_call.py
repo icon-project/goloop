@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
 from typing import TYPE_CHECKING, Optional, Any, Tuple
 
 from ..base.address import Address, ZERO_SCORE_ADDRESS
@@ -50,10 +51,12 @@ class InternalCall(object):
         if func_name is None or func_name == STR_FALLBACK:
             func_name = MethodName.FALLBACK
         new_limit = context.step_counter.step_remained
-        if arg_params is not None:
+        if kw_params is not None and len(kw_params) > 0:
+            params = deepcopy(kw_params)
+            if arg_params is not None and len(arg_params) > 0:
+                params["."] = arg_params
+        elif arg_params is not None:
             params = arg_params
-        elif kw_params is not None:
-            params = kw_params
         else:
             params = []
         if Logger.isDebugEnabled():
