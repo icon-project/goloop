@@ -17,12 +17,15 @@
 package lcstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 
 	"github.com/icon-project/goloop/client"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
 type NodeDB struct {
@@ -43,6 +46,13 @@ type txHashParam struct {
 	TxHash common.HexBytes `json:"txHash"`
 }
 
+func isJSONRpcError(err error, code jsonrpc.ErrorCode, msg string) bool {
+	if rpcErr, ok := err.(*jsonrpc.Error); ok {
+		return rpcErr.Code == code && (len(msg) == 0 || rpcErr.Message == msg)
+	}
+	return false
+}
+
 func (s *NodeDB) GetBlockJSONByHeight(height int, unconfirmed bool) ([]byte, error) {
 	s.tr.Wait()
 	result, err := s.Do("icx_getBlock", &heightParam{
@@ -50,6 +60,9 @@ func (s *NodeDB) GetBlockJSONByHeight(height int, unconfirmed bool) ([]byte, err
 		unconfirmed,
 	}, nil)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "fail wrong block height") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	} else {
 		return result.Result, nil
@@ -62,6 +75,9 @@ func (s *NodeDB) GetBlockJSONByID(id []byte) ([]byte, error) {
 		common.HexBytes(id),
 	}, nil)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "fail wrong block hash") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	} else {
 		return result.Result, nil
@@ -84,6 +100,9 @@ func (s *NodeDB) GetTransactionJSON(id []byte) ([]byte, error) {
 		common.HexBytes(id),
 	}, &tx)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "Invalid params txHash") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	} else {
 		return tx, nil
@@ -101,6 +120,9 @@ func (s *NodeDB) GetResultJSON(id []byte) ([]byte, error) {
 		common.HexBytes(id),
 	}, &receipt)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "Invalid params txHash") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	}
 	var tx map[string]interface{}
@@ -108,6 +130,9 @@ func (s *NodeDB) GetResultJSON(id []byte) ([]byte, error) {
 		common.HexBytes(id),
 	}, &tx)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "Invalid params txHash") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	}
 	info := make(map[string]interface{})
@@ -129,6 +154,9 @@ func (s *NodeDB) GetReceiptJSON(id []byte) ([]byte, error) {
 		common.HexBytes(id),
 	}, &receipt)
 	if err != nil {
+		if isJSONRpcError(err, jsonrpc.ErrorCodeInvalidParams, "Invalid params txHash") {
+			return nil, errors.ErrNotFound
+		}
 		return nil, err
 	} else {
 		return receipt, nil
@@ -145,6 +173,9 @@ func (s *NodeDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
 	)
 	if err != nil {
 		return nil, err
+	}
+	if bytes.Equal(result.Result, []byte("[]")) {
+		return nil, errors.ErrNotFound
 	}
 	return result.Result, nil
 }

@@ -16,43 +16,54 @@
 
 package lcstore
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/icon-project/goloop/common/errors"
+)
 
 type mergedDatabase struct {
-	lock    sync.Mutex
-	dbs     []Database
-	current int
+	lock   sync.Mutex
+	dbs    []Database
+	offset int
 }
 
-func (m *mergedDatabase) getCurrent() int {
+func (m *mergedDatabase) getDBSlice() []Database {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return m.current
+	return m.dbs[m.offset:]
 }
 
-func (m *mergedDatabase) setCurrent(v int) {
+func (m *mergedDatabase) setFirstDB(current Database) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	m.current = v
+	for idx, item := range m.dbs {
+		if item == current {
+			m.offset = idx
+			return
+		}
+	}
 }
 
 func (m *mergedDatabase) GetTPS() float32 {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return m.dbs[m.current].GetTPS()
+	return m.dbs[m.offset].GetTPS()
 }
 
 func (m *mergedDatabase) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
-	start := m.getCurrent()
-	for idx := start; idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetBlockJSONByHeight(height, pre); err != nil {
+	for idx, db := range m.getDBSlice() {
+		if bs, err := db.GetBlockJSONByHeight(height, pre); err != nil {
+			if err != errors.ErrNotFound {
+				continue
+			}
 			return nil, err
 		} else if len(bs) > 0 {
-			if start != idx {
-				m.setCurrent(idx)
+			if idx != 0 {
+				m.setFirstDB(db)
 			}
 			return bs, nil
 		}
@@ -60,15 +71,24 @@ func (m *mergedDatabase) GetBlockJSONByHeight(height int, pre bool) ([]byte, err
 	return nil, nil
 }
 
-func (m *mergedDatabase) GetBlockJSONByID(id []byte) ([]byte, error) {
-	for idx := m.getCurrent(); idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetBlockJSONByID(id); err != nil {
+func (m *mergedDatabase) queryDB(yield func(db Database)([]byte, error)) ([]byte, error) {
+	for _, db := range m.getDBSlice() {
+		if bs, err := yield(db); err != nil {
+			if err == errors.ErrNotFound {
+				continue
+			}
 			return nil, err
 		} else if len(bs) > 0 {
 			return bs, nil
 		}
 	}
 	return nil, nil
+}
+
+func (m *mergedDatabase) GetBlockJSONByID(id []byte) ([]byte, error) {
+	return m.queryDB(func(db Database) ([]byte, error) {
+		return db.GetBlockJSONByID(id)
+	})
 }
 
 func (m *mergedDatabase) GetLastBlockJSON() ([]byte, error) {
@@ -76,47 +96,27 @@ func (m *mergedDatabase) GetLastBlockJSON() ([]byte, error) {
 }
 
 func (m *mergedDatabase) GetResultJSON(id []byte) ([]byte, error) {
-	for idx := m.getCurrent(); idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetResultJSON(id); err != nil {
-			return nil, err
-		} else if len(bs) > 0 {
-			return bs, nil
-		}
-	}
-	return nil, nil
+	return m.queryDB(func(db Database) ([]byte, error) {
+		return db.GetResultJSON(id)
+	})
 }
 
 func (m *mergedDatabase) GetTransactionJSON(id []byte) ([]byte, error) {
-	for idx := m.getCurrent(); idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetTransactionJSON(id); err != nil {
-			return nil, err
-		} else if len(bs) > 0 {
-			return bs, nil
-		}
-	}
-	return nil, nil
+	return m.queryDB(func(db Database) ([]byte, error) {
+		return db.GetTransactionJSON(id)
+	})
 }
 
 func (m *mergedDatabase) GetRepsJSONByHash(id []byte) ([]byte, error) {
-	for idx := m.getCurrent(); idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetRepsJSONByHash(id); err != nil {
-			return nil, err
-		} else if len(bs) > 0 {
-			return bs, nil
-		}
-	}
-	return nil, nil
+	return m.queryDB(func(db Database) ([]byte, error) {
+		return db.GetRepsJSONByHash(id)
+	})
 }
 
 func (m *mergedDatabase) GetReceiptJSON(id []byte) ([]byte, error) {
-	for idx := m.getCurrent(); idx<len(m.dbs) ; idx++ {
-		if bs, err := m.dbs[idx].GetReceiptJSON(id); err != nil {
-			return nil, err
-		} else if len(bs) > 0 {
-			return bs, nil
-		}
-	}
-	return nil, nil
+	return m.queryDB(func(db Database) ([]byte, error) {
+		return db.GetReceiptJSON(id)
+	})
 }
 
 func (m *mergedDatabase) Close() error {

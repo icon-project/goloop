@@ -61,7 +61,7 @@ func (tdb *testDatabase) GetLastBlockJSON() ([]byte, error) {
 	return testBlockForHeight(tdb.last), nil
 }
 
-func Test_mergedDatabase_GetBlockJSONByHeight(t *testing.T) {
+func Test_layeredDatabase_GetBlockJSONByHeight(t *testing.T) {
 	type fields struct {
 		lock    sync.Mutex
 		dbs     []Database

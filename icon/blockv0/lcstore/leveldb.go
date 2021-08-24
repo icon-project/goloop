@@ -25,10 +25,19 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type LevelDB struct {
 	leveldb *leveldb.DB
+}
+
+func (ds *LevelDB) get(key []byte) ([]byte, error) {
+	bs, err := ds.leveldb.Get(key, nil)
+	if err == leveldb.ErrNotFound {
+		return nil, errors.ErrNotFound
+	}
+	return bs, err
 }
 
 func (ds *LevelDB) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
@@ -36,40 +45,28 @@ func (ds *LevelDB) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
 	key := make([]byte, len(prefix)+12)
 	copy(key, prefix)
 	binary.BigEndian.PutUint64(key[len(prefix)+4:], uint64(height))
-	bid, err := ds.leveldb.Get(key, nil)
+	bid, err := ds.get(key)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return ds.GetBlockJSONByID(bid)
 }
 
 func (ds *LevelDB) GetBlockJSONByID(bid []byte) ([]byte, error) {
-	blockjson, err := ds.leveldb.Get(bid, nil)
+	blockjson, err := ds.get(bid)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return blockjson, nil
 }
 
 func (ds *LevelDB) GetLastBlockJSON() ([]byte, error) {
-	bid, err := ds.leveldb.Get([]byte("last_block_key"), nil)
+	bid, err := ds.get([]byte("last_block_key"))
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
-	blockjson, err := ds.leveldb.Get(bid, nil)
+	blockjson, err := ds.get(bid)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return blockjson, nil
@@ -77,11 +74,8 @@ func (ds *LevelDB) GetLastBlockJSON() ([]byte, error) {
 
 func (ds *LevelDB) GetResultJSON(id []byte) ([]byte, error) {
 	key := []byte(hex.EncodeToString(id))
-	tinfo, err := ds.leveldb.Get(key, nil)
+	tinfo, err := ds.get(key)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return tinfo, nil
@@ -122,11 +116,8 @@ func (ds *LevelDB) GetReceiptJSON(id []byte) ([]byte, error) {
 
 func (ds *LevelDB) GetRepsJSONByHash(id []byte) ([]byte, error) {
 	key := append([]byte("preps_key"), id...)
-	res, err := ds.leveldb.Get(key, nil)
+	res, err := ds.get(key)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return res, nil

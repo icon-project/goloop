@@ -50,6 +50,8 @@ type Store struct {
 func (lc *Store) GetBlockByHeight(height int) (blockv0.Block, error) {
 	if bs, err := lc.Database.GetBlockJSONByHeight(height, false); err != nil {
 		return nil, err
+	} else if len(bs) == 0 {
+		return nil, errors.NotFoundError.Errorf("UnavailableHeight(height=%d)", height)
 	} else {
 		b, err := blockv0.ParseBlock(bs, lc)
 		if err != nil {
