@@ -34,13 +34,16 @@ class EECodec(Codec):
     def encode(self, obj) -> Tuple[int, bytes]:
         if isinstance(obj, Address):
             return TypeTag.ADDRESS, obj.to_canonical_bytes()
+        elif isinstance(obj, float):
+            return TypeTag.FLOAT, str(obj).encode('utf-8')
         raise Exception(f"UnknownType: {type(obj)}")
 
     def decode(self, t: int, b: bytes) -> Any:
         if t == TypeTag.ADDRESS:
             return Address.from_bytes(b)
-        else:
-            raise Exception(f"UnknownType: {t}")
+        elif t == TypeTag.FLOAT:
+            return float(b.decode('utf-8'))
+        raise Exception(f"UnknownType: {t}")
 
 
 class ProxyStreamHandler(Handler):

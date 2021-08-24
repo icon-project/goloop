@@ -142,8 +142,9 @@ class TypeTag(object):
     BOOL = 5
 
     CUSTOM = 10
-    INT = CUSTOM + 1
     ADDRESS = CUSTOM
+    INT = CUSTOM + 1
+    FLOAT = CUSTOM + 2
 
 
 class APIType(object):
