@@ -381,6 +381,9 @@ func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.Va
 }
 
 func (s *BlockVoteList) Bytes() []byte {
+	if s == nil {
+		return nil
+	}
 	if s.bytes == nil {
 		s.bytes = codec.BC.MustMarshalToBytes(s)
 	}
