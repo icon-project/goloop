@@ -34,6 +34,7 @@ type FixtureConfig struct {
 	T                 *testing.T
 	MerkleRoot        []byte
 	MerkleLeaves      int64
+	MerkleLastVotes   []byte
 	Prefix            string
 	Dbase             db.Database
 	CVSD              module.CommitVoteSetDecoder
@@ -97,6 +98,7 @@ func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
 	if cf2.MerkleRoot != nil {
 		res.MerkleRoot = cf2.MerkleRoot
 		res.MerkleLeaves = cf2.MerkleLeaves
+		res.MerkleLastVotes = cf2.MerkleLastVotes
 	}
 	if len(cf2.Prefix) != 0 {
 		res.Prefix = cf2.Prefix
