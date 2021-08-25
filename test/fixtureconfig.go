@@ -68,7 +68,9 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 		NewCS: func(ctx *NodeContext) module.Consensus {
 			wm := NewWAL()
 			wal := path.Join(ctx.Base, "wal")
-			cs := consensus.New(ctx.C, wal, wm, nil, nil)
+			cs := consensus.New(
+				ctx.C, wal, wm, nil, nil, nil,
+			)
 			assert.NotNil(ctx.Config.T, cs)
 			return cs
 		},
