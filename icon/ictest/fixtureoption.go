@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/icconsensus"
+	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -33,37 +34,41 @@ import (
 	"github.com/icon-project/goloop/test"
 )
 
-type MerkleInfo interface {
-	MerkleRoot() []byte
-	MerkleLeaves() int64
-}
-
 type platform struct {
 	service.Platform
-	mtRoot []byte
-	mtCap  int64
+	mh          hexary.MerkleHeader
+	mtLastVotes *blockv0.BlockVoteList
 }
 
 func NewPlatform() service.Platform {
-	return &platform{ basic.Platform, nil, 0 }
+	return &platform{
+		Platform:    basic.Platform,
+		mh:          hexary.MerkleHeader{},
+		mtLastVotes: nil,
+	}
+}
+
+func (plt *platform) GetBlockV1Proof() (
+	*hexary.MerkleHeader, *blockv0.BlockVoteList, error,
+) {
+	return &plt.mh, plt.mtLastVotes, nil
+}
+
+func (plt *platform) SetBlockV1Proof(root []byte, size int64, votes *blockv0.BlockVoteList) error {
+	plt.mh = hexary.MerkleHeader{RootHash: root, Leaves: size}
+	plt.mtLastVotes = votes
+	return nil
 }
 
 func (plt *platform) DefaultBlockVersion() int {
 	return module.BlockVersion1
 }
 
-func (plt *platform) MerkleRoot() []byte {
-	return plt.mtRoot
-}
-
-func (plt *platform) MerkleLeaves() int64 {
-	return plt.mtCap
-}
-
-func UseMerkle(header *hexary.MerkleHeader) test.FixtureOption {
+func UseMerkle(header *hexary.MerkleHeader, lastVote []byte) test.FixtureOption {
 	return test.UseConfig(&test.FixtureConfig{
-		MerkleRoot: header.RootHash,
+		MerkleRoot:   header.RootHash,
 		MerkleLeaves: header.Leaves,
+		MerkleLastVotes: lastVote,
 	})
 }
 
@@ -78,10 +83,19 @@ func UseBMForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 			return vl
 		},
 		NewPlatform: func(ctx *test.NodeContext) service.Platform {
+			var bv *blockv0.BlockVoteList
+			var err error
+			if ctx.Config.MerkleLastVotes != nil {
+				bv, err = blockv0.NewBlockVotesFromBytes(ctx.Config.MerkleLastVotes)
+				assert.NoError(ctx.Config.T, err)
+			}
 			return &platform{
 				basic.Platform,
-				ctx.Config.MerkleRoot,
-				ctx.Config.MerkleLeaves,
+				hexary.MerkleHeader{
+					RootHash: ctx.Config.MerkleRoot,
+					Leaves: ctx.Config.MerkleLeaves,
+				},
+				bv,
 			}
 		},
 		NewBM: func(ctx *test.NodeContext) module.BlockManager {
@@ -101,8 +115,9 @@ func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 	return cf.Override(&test.FixtureConfig{
 		NewCS: func(ctx *test.NodeContext) module.Consensus {
 			t := ctx.Config.T
-			iplt, ok := ctx.Platform.(MerkleInfo)
-			assert.True(t, ok)
+			iplt := ctx.Platform.(lcimporter.BlockV1ProofStorage)
+			header, lastVotes, err := iplt.GetBlockV1Proof()
+			assert.NoError(t, err)
 			wal := path.Join(ctx.Base, "wal")
 			wm := test.NewWAL()
 			cs, err := icconsensus.New(
@@ -110,10 +125,8 @@ func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 				wal,
 				wm,
 				nil,
-				&hexary.MerkleHeader{
-					RootHash: iplt.MerkleRoot(),
-					Leaves:   iplt.MerkleLeaves(),
-				},
+				header,
+				lastVotes,
 			)
 			assert.NoError(t, err)
 			return cs

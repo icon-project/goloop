@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/consensus"
+	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
@@ -35,15 +36,7 @@ type wrapper struct {
 	wm           consensus.WALManager
 	timestamper  module.Timestamper
 	merkleHeader *hexary.MerkleHeader
-}
-
-func NewConsensus(
-	c module.Chain,
-	walDir string,
-	timestamper module.Timestamper,
-	merkleHeader *hexary.MerkleHeader,
-) (module.Consensus, error) {
-	return New(c, walDir, nil, timestamper, merkleHeader)
+	lastVoteData *consensus.LastVoteData
 }
 
 func New(
@@ -52,6 +45,7 @@ func New(
 	wm consensus.WALManager,
 	timestamper module.Timestamper,
 	merkleHeader *hexary.MerkleHeader,
+	lastVotes *blockv0.BlockVoteList,
 ) (module.Consensus, error) {
 	return &wrapper{
 		c:            c,
@@ -59,6 +53,10 @@ func New(
 		wm:           wm,
 		timestamper:  timestamper,
 		merkleHeader: merkleHeader,
+		lastVoteData: &consensus.LastVoteData{
+			Height: merkleHeader.Leaves-1,
+			VotesBytes: lastVotes.Bytes(),
+		},
 	}, nil
 }
 
@@ -82,7 +80,9 @@ func (c *wrapper) Start() error {
 	if h+1 < c.merkleHeader.Leaves {
 		c.Consensus = newFastSyncer(h+1, c.merkleHeader.Leaves-1, c.c, c, bpp)
 	} else {
-		c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
+		c.Consensus = consensus.New(
+			c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData,
+		)
 	}
 	return c.Consensus.Start()
 }
@@ -121,7 +121,7 @@ func (c *wrapper) Upgrade(bpp *bpp) {
 	defer c.mu.Unlock()
 
 	c.Consensus.Term()
-	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp)
+	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData)
 	err := c.Consensus.Start()
 	if err != nil {
 		c.c.Logger().Panicf("fail to start consensus %+v", err)

@@ -21,9 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/wallet"
-	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/module"
@@ -42,7 +40,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 
 	gen = test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(header), test.UseDB(gen.Chain.Database()),
+		ictest.UseMerkle(header, nil), test.UseDB(gen.Chain.Database()),
 	)
 	defer gen.Close()
 
@@ -54,7 +52,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 
 	f := test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(header),
+		ictest.UseMerkle(header, nil),
 	)
 	defer f.Close()
 
@@ -100,20 +98,11 @@ func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
 		).String(),
 	)
 	header := ictest.NodeFinalizeMerkle(gen)
-
 	lastVotes := ictest.NodeNewVoteListV1ForLastBlock(gen)
-	bk, err := db.NewCodedBucket(gen.Chain.Database(), db.ChainProperty, nil)
-	assert.NoError(t, err)
-	lastVotesData := consensus.LastVoteData{
-		Height: gen.LastBlock.Height(),
-		VotesBytes: lastVotes.Bytes(),
-	}
-	err = bk.Set(db.Raw(consensus.KeyLastVotes), &lastVotesData)
-	assert.NoError(t, err)
 
 	f := test.NewFixture(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
-		ictest.UseMerkle(header),
+		ictest.UseMerkle(header, lastVotes.Bytes()),
 		test.AddDefaultNode(false),
 	)
 	defer f.Close()
