@@ -1011,13 +1011,15 @@ func (es *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd 
 	return err
 }
 
-func (es *ExtensionStateImpl) GetPRepTermInJSON() (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetPRepTermInJSON(blockHeight int64) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	return term.ToJSON(es.State), nil
+	jso := term.ToJSON(blockHeight, es.State)
+	jso["blockHeight"] = blockHeight
+	return jso, nil
 }
 
 func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {

@@ -97,20 +97,6 @@ func (p PRepSnapshots) Clone() PRepSnapshots {
 	return ret
 }
 
-func (p PRepSnapshots) toJSON(state *State) []interface{} {
-	jso := make([]interface{}, 0, len(p))
-	for _, pss := range p {
-		ps, _ := state.GetPRepStatusByOwner(pss.Owner(), false)
-		grade := ps.Grade()
-		if ps != nil && (grade == GradeMain || grade == GradeSub) {
-			pssJson := pss.ToJSON()
-			pssJson["delegated"] = ps.Delegated()
-			jso = append(jso, pssJson)
-		}
-	}
-	return jso
-}
-
 // =============================================================================
 
 type termData struct {
@@ -283,7 +269,7 @@ func (term *termData) clone() termData {
 	}
 }
 
-func (term *termData) ToJSON(state *State) map[string]interface{} {
+func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interface{} {
 	return map[string]interface{}{
 		"sequence":              term.sequence,
 		"startBlockHeight":      term.startHeight,
@@ -300,8 +286,25 @@ func (term *termData) ToJSON(state *State) map[string]interface{} {
 		"isDecentralized":       term.isDecentralized,
 		"mainPRepCount":         term.mainPRepCount,
 		"iissVersion":           term.GetIISSVersion(),
-		"preps":                 term.prepSnapshots.toJSON(state),
+		"preps":                 term.prepsToJSON(blockHeight, state),
 	}
+}
+
+func (term *termData) prepsToJSON(blockHeight int64, state *State) []interface{} {
+	br := state.GetBondRequirement()
+	jso := make([]interface{}, 0, len(term.prepSnapshots))
+	for _, pss := range term.prepSnapshots {
+		prep := state.GetPRepByOwner(pss.Owner())
+		if prep == nil {
+			continue
+		}
+		grade := prep.Grade()
+		if grade == GradeMain || grade == GradeSub {
+			prepInJSON := prep.ToJSON(blockHeight, br)
+			jso = append(jso, prepInJSON)
+		}
+	}
+	return jso
 }
 
 func (term *termData) getTotalBondedDelegation() *big.Int {
