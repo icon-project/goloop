@@ -10,7 +10,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -29,8 +28,6 @@ var csProtocols = []module.ProtocolInfo{
 	ProtoVote,
 	ProtoVoteList,
 }
-
-var KeyLastVotes = []byte("consensus.lastVotes")
 
 type LastVoteData struct {
 	Height     int64
@@ -175,6 +172,8 @@ type consensus struct {
 
 	// monitor
 	metric *metric.ConsensusMetric
+
+	lastVoteData *LastVoteData
 }
 
 func NewConsensus(
@@ -183,7 +182,7 @@ func NewConsensus(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 ) module.Consensus {
-	cs := New(c, walDir, nil, timestamper, bpp)
+	cs := New(c, walDir, nil, timestamper, bpp, nil)
 	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
@@ -194,19 +193,21 @@ func New(
 	wm WALManager,
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
+	lastVoteData *LastVoteData,
 ) *consensus {
 	if wm == nil {
 		wm = defaultWALManager
 	}
 	cs := &consensus{
-		c:           c,
-		walDir:      walDir,
-		wm:          wm,
-		commitCache: newCommitCache(configCommitCacheCap),
-		metric:      metric.NewConsensusMetric(c.MetricContext()),
-		timestamper: timestamper,
-		nid:         codec.MustMarshalToBytes(c.NID()),
-		bpp:         bpp,
+		c:            c,
+		walDir:       walDir,
+		wm:           wm,
+		commitCache:  newCommitCache(configCommitCacheCap),
+		metric:       metric.NewConsensusMetric(c.MetricContext()),
+		timestamper:  timestamper,
+		nid:          codec.MustMarshalToBytes(c.NID()),
+		bpp:          bpp,
+		lastVoteData: lastVoteData,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
@@ -1534,18 +1535,12 @@ func (cs *consensus) applyLastVote(
 	return nil
 }
 
-func (cs *consensus) applyRevisionLastVotes(prevValidators addressIndexer) error {
-	bk, err := db.NewCodedBucket(cs.c.Database(), db.ChainProperty, nil)
-	if err != nil {
-		return err
-	}
-	var lastVoteData LastVoteData
-	err = bk.Get(db.Raw(KeyLastVotes), &lastVoteData)
-	if errors.NotFoundError.Equals(err) {
+func (cs *consensus) applyLastVoteData(prevValidators addressIndexer) error {
+	if cs.lastVoteData == nil {
 		return nil
-	} else if err != nil {
-		return err
 	}
+	lastVoteData := cs.lastVoteData
+	cs.lastVoteData = nil
 	if cs.lastBlock.Height() == lastVoteData.Height {
 		cvs := cs.c.CommitVoteSetDecoder()(lastVoteData.VotesBytes)
 		return cs.applyLastVote(cvs, prevValidators)
@@ -1600,7 +1595,7 @@ func (cs *consensus) Start() error {
 	if err := cs.applyGenesis(validators); err != nil {
 		return err
 	}
-	if err := cs.applyRevisionLastVotes(validators); err != nil {
+	if err := cs.applyLastVoteData(validators); err != nil {
 		return err
 	}
 

@@ -34,6 +34,7 @@ type FixtureConfig struct {
 	T                 *testing.T
 	MerkleRoot        []byte
 	MerkleLeaves      int64
+	MerkleLastVotes   []byte
 	Prefix            string
 	Dbase             db.Database
 	CVSD              module.CommitVoteSetDecoder
@@ -68,7 +69,9 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 		NewCS: func(ctx *NodeContext) module.Consensus {
 			wm := NewWAL()
 			wal := path.Join(ctx.Base, "wal")
-			cs := consensus.New(ctx.C, wal, wm, nil, nil)
+			cs := consensus.New(
+				ctx.C, wal, wm, nil, nil, nil,
+			)
 			assert.NotNil(ctx.Config.T, cs)
 			return cs
 		},
@@ -95,6 +98,7 @@ func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
 	if cf2.MerkleRoot != nil {
 		res.MerkleRoot = cf2.MerkleRoot
 		res.MerkleLeaves = cf2.MerkleLeaves
+		res.MerkleLastVotes = cf2.MerkleLastVotes
 	}
 	if len(cf2.Prefix) != 0 {
 		res.Prefix = cf2.Prefix
