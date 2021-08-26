@@ -236,7 +236,7 @@ func (b *Block) Votes() module.CommitVoteSet {
 }
 
 func (b *Block) FinalizeHeader(dbase db.Database) error {
-	return b.WriteTo(dbase)
+	return b.WriteHeaderTo(dbase)
 }
 
 func (b *Block) GetVoters(ctx block.HandlerContext) (module.ValidatorList, error) {
@@ -861,7 +861,7 @@ func NewFromV0(
 	return nil, errors.UnsupportedError.Errorf("Unknown block type %s", blkV0.Version())
 }
 
-func (b *Block) WriteTo(dbase db.Database) error {
+func (b *Block) WriteHeaderTo(dbase db.Database) error {
 	bk, err := db.NewCodedBucket(dbase, db.BytesByHash, nil)
 	if err != nil {
 		return err
@@ -893,14 +893,6 @@ func (b *Block) WriteTo(dbase db.Database) error {
 	if err = ibk.Set(b.ID(), b.Hash()); err != nil {
 		return err
 	}
-	if err = block.WriteTransactionLocators(
-		dbase,
-		b.Height(),
-		b.patchTransactions,
-		b.normalTransactions,
-	); err != nil {
-		return err
-	}
 	if b.RepsRoot() != nil {
 		rbk, err := dbase.GetBucket(icdb.IDToHash)
 		if err != nil {
@@ -909,6 +901,22 @@ func (b *Block) WriteTo(dbase db.Database) error {
 		if err = rbk.Set(b.RepsRoot(), b.NextValidatorsHash()); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (b *Block) WriteTo(dbase db.Database) error {
+	err := b.WriteHeaderTo(dbase)
+	if err != nil {
+		return err
+	}
+	if err = block.WriteTransactionLocators(
+		dbase,
+		b.Height(),
+		b.patchTransactions,
+		b.normalTransactions,
+	); err != nil {
+		return err
 	}
 	return nil
 }
