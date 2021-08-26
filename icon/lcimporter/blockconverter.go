@@ -373,7 +373,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 		}
 	}
 	rLogBloom := tr.Transition.LogsBloom()
-	eLogBloom := tr.block.LogsBloom()
+	eLogBloom := tr.prevBlock.LogsBloom()
 	if err := CheckLogsBloom(e.log, eLogBloom, rLogBloom); err != nil {
 		return err
 	}
