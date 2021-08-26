@@ -242,6 +242,9 @@ func (t *taskImportICON) prepareConsensus() error {
 
 func (t *taskImportICON) Wait() error {
 	result := t.result.Wait()
+	if t.sm.IsFinished() {
+		result = nil
+	}
 	t.chain.releaseManagers()
 	t._releaseDatabase()
 	if result == nil {

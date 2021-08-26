@@ -159,6 +159,7 @@ func TestServiceManager_Basic(t *testing.T) {
 		time.Sleep(delayForConfirm)
 		toTC<-"on_send_10"
 
+		assert.Equal(t, "interrupt", <-toBC)
 		req.interrupt()
 	}()
 
@@ -240,6 +241,7 @@ func TestServiceManager_Basic(t *testing.T) {
 	txh1 := tr3.NormalTransactions().Hash()
 	t.Logf("Finalized: result=%#x, vh=%#x, txh=%#x", result1, vh1, txh1)
 
+	toBC <- "interrupt"
 	sm.Term()
 
 	t.Log("Restart chain")
@@ -365,8 +367,14 @@ func TestServiceManager_Basic(t *testing.T) {
 	err = sm.Finalize(trc, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
 	assert.NoError(t, err)
 
-	// get end of blocks
-	assert.NoError(t, <-trb)
+	assert.True(t, sm.IsFinished())
+
+	select {
+	case err := <- trb:
+		assert.Failf(t, "Got error", "err=%+v", err)
+	default:
+		// do nothing
+	}
 
 	tmp_db := db.NewMapDB()
 	tmp, err := tmp_db.GetBucket(db.MerkleTrie)

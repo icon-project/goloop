@@ -335,6 +335,10 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 		assert.Equal(t, "send_old_remain", <-toBC)
 
 		req.sendTxs(txs1[5:])
+
+		toTest <- "after_send_old_remain"
+
+		assert.Equal(t, "interrupt1", <-toBC)
 		req.interrupt()
 	}()
 
@@ -389,8 +393,15 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 	t.Log("check result of get(2~4)")
 	assert.Equal(t, "confirm_2~4", <-toTest)
 
+	err = ex.SyncTransactions(txs2[2:5])
+	assert.NoError(t, err)
+
+	toBC <- "send_old_remain"
+	assert.Equal(t, "after_send_old_remain", <-toTest)
+
 	go func() {
 		req := <- bc.channel
+		toBC <- "interrupt1"
 		t.Log("sync request received")
 		assert.Equal(t, int64(2), req.from)
 		assert.Equal(t, int64(-1), req.to)
@@ -398,13 +409,9 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 
 		req.sendTxs(txs2[2:])
 
+		assert.Equal(t, "interrupt2", <-toBC)
 		req.interrupt()
 	}()
-
-	err = ex.SyncTransactions(txs2[2:5])
-	assert.NoError(t, err)
-
-	toBC <- "send_old_remain"
 
 	t.Log("wait for new 2~4")
 	_, err = ex.GetTransactions(2, 4, func(txs []*BlockTransaction, err error) {
@@ -457,6 +464,7 @@ func TestExecutor_SyncTransactions(t *testing.T) {
 	case v := <-toTest:
 		assert.Equal(t, "on_expected_failure", v)
 	}
+	toBC <- "interrupt2"
 	ex.Term()
 }
 
@@ -575,12 +583,13 @@ func TestExecutor_LastBlock(t *testing.T) {
 		t.Logf("set height=%d", height)
 	}
 
+	assert.Equal(t, "closed", <-toTC)
+	time.Sleep(delayForConfirm)
+
 	t.Log("start last propose")
 	txs, err = ex.ProposeTransactions(int64(height))
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrAfterLastBlock))
-
-	assert.Equal(t, "closed", <-toTC)
 
 	ex.Term()
 }

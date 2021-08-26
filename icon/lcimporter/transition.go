@@ -434,7 +434,7 @@ func (t *transition) finalizeTransactions() error {
 		if btx.IsLast() {
 			if logServiceManager {
 				t.log.Warnf("T_%p.FinalizeAll(root=%#x,blocks=%d)",
-					btx.Result, btx.Height)
+					t, btx.Result, btx.Height)
 			}
 			mh, votes, err := t.ex.FinalizeBlocks(btx.Height)
 			if err != nil {

@@ -375,6 +375,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 	rLogBloom := tr.Transition.LogsBloom()
 	eLogBloom := tr.prevBlock.LogsBloom()
 	if err := CheckLogsBloom(e.log, eLogBloom, rLogBloom); err != nil {
+		e.log.Errorf("Failed Block[ %9d ] LogBloomError err=%+v", err)
 		return err
 	}
 	return nil

@@ -18,6 +18,7 @@ package lcimporter
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -50,7 +51,9 @@ type ServiceManager struct {
 	cb ImportCallback
 	ps BlockV1ProofStorage
 
-	next int64
+	lock     sync.Mutex
+	next     int64
+	finished bool
 
 	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
@@ -142,9 +145,15 @@ func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
 	return nil
 }
 
-func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
-	// it should not be called. anyway, it returns false always because it will not call cb.
-	return false
+func (sm *ServiceManager) WaitForTransaction(tr module.Transition, bi module.BlockInfo, cb func()) bool {
+	if t, ok := tr.(*transition); ok {
+		if sm.ex.ReachLastHeight(t.getNextHeight()-1) {
+			// no callback ( stuck on the height )
+			return true
+		}
+	}
+	go cb()
+	return true
 }
 
 func (sm *ServiceManager) Start() {
@@ -239,7 +248,7 @@ func (sm *ServiceManager) GetRoundLimit(result []byte, vl int) int64 {
 }
 
 func (sm *ServiceManager) GetMinimizeBlockGen(result []byte) bool {
-	return false
+	return true
 }
 
 func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
@@ -290,12 +299,27 @@ func (sm *ServiceManager) getInitialValidators() module.ValidatorList {
 	return sm.initialValidators
 }
 
+func (sm *ServiceManager) IsFinished() bool {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	return sm.finished
+}
+
+func (sm *ServiceManager) setFinished() {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	sm.finished = true
+}
+
 func (sm *ServiceManager) handleError(err error) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, ErrAfterLastBlock) {
-		err = nil
+		sm.setFinished()
+		return nil
 	}
 	go sm.cb.OnResult(err)
 	return err

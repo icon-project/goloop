@@ -19,7 +19,6 @@ package lcimporter
 import (
 	"container/list"
 	"fmt"
-	"io"
 	"math"
 	"sync"
 
@@ -75,16 +74,21 @@ type Executor struct {
 
 func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
 	if e.start > from {
-		return nil, errors.InvalidStateError.New("NeedToRebase")
+		if err := e.rebaseInLock(from, -1, nil); err != nil {
+			return nil, err
+		}
+		e.cancelWaiterInLock()
+		return []*BlockTransaction{}, nil
 	}
+
 	if e.end <= from {
 		return []*BlockTransaction{}, nil
 	}
 
 	txe := e.txs.Front()
 	for txe != nil {
-		if txe.Value == io.EOF {
-			return nil, errors.InvalidStateError.New("AlreadyEnded")
+		if err, ok := txe.Value.(error); ok {
+			return nil, err
 		}
 		if txe.Value.(*BlockTransaction).Height == from {
 			break
@@ -94,9 +98,9 @@ func (e *Executor) candidateInLock(from int64) ([]*BlockTransaction, error) {
 
 	var txs []*BlockTransaction
 	for cnt := 0 ; txe != nil && cnt < TransactionsPerBlock ; txe = txe.Next() {
-		if txe.Value == io.EOF {
+		if err, ok := txe.Value.(error); ok {
 			if len(txs) == 0 {
-				return nil, errors.InvalidStateError.New("AlreadyEnded")
+				return nil, err
 			}
 			break
 		}
@@ -118,11 +122,7 @@ func (e *Executor) ProposeTransactions(from int64) ([]*BlockTransaction, error) 
 	}
 
 	if txs, err := e.candidateInLock(from); err != nil {
-		if err := e.rebaseInLock(from, -1, nil); err != nil {
-			return nil, err
-		}
-		e.cancelWaiterInLock()
-		return []*BlockTransaction{}, nil
+		return nil, err
 	} else {
 		return txs, nil
 	}
@@ -189,8 +189,12 @@ func (e *Executor) GetTransactions(from, to int64, callback OnBlockTransactions)
 	} else {
 		if from < e.end {
 			for itr := e.txs.Front() ; itr != nil ; itr = itr.Next() {
-				if itr.Value == io.EOF {
-					return nil,  errors.InvalidStateError.New("AlreadyEnded")
+				if err, ok := itr.Value.(error); ok {
+					if err == ErrAfterLastBlock {
+						return nil, errors.InvalidStateError.New("AlreadyEnded")
+					} else {
+						return nil, err
+					}
 				}
 				btx := itr.Value.(*BlockTransaction)
 				if r := w.addAndCheck(btx); r {
@@ -319,23 +323,26 @@ func (e *Executor) addTransaction(id consumeID, tx *BlockTransaction) bool {
 	return false
 }
 
-func (e *Executor) notifyEnd(id consumeID) {
+func (e *Executor) notifyEnd(id consumeID, err error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
 	if e.consumer == id {
+		e.consumer = nil
 		txe := e.txs.Back()
-		if txe != nil && txe.Value == io.EOF {
-			e.log.Tracef("notifyEnd already notified")
-			return
+		if txe != nil {
+			if _, ok := txe.Value.(error); ok {
+				return
+			}
 		}
-		e.log.Tracef("notifyEnd height=%d", e.end)
-		e.txs.PushBack(io.EOF)
+
+		e.txs.PushBack(err)
 		e.end += 1
 		if w := e.waiter; w != nil {
-			w.notifyCanceled(errors.InterruptedError.New("EndedTransaction"))
+			w.notifyCanceled(err)
 			e.waiter = nil
 		}
+		return
 	}
 }
 
@@ -345,12 +352,15 @@ func (e *Executor) notifyEnd(id consumeID) {
 func (e *Executor) consumeBlocks(id consumeID, chn <-chan interface{}) {
 	var err error
 	e.log.Debugf("consumeBlocks START chn=%+v", chn)
-	defer e.log.Debugf("consumeBlocks STOP chn=%+v err=%v", chn, err)
+	defer func() {
+		e.log.Debugf("consumeBlocks END chn=%+v err=%+v", chn, err)
+	}()
 	for true {
 		tx, ok := <-chn
 		if !ok {
 			if err == nil {
-				e.notifyEnd(id)
+				e.log.Debugf("consumeBlocks NOTIFY END chn=%+v", chn)
+				e.notifyEnd(id, ErrAfterLastBlock)
 			}
 			return
 		}
@@ -364,6 +374,9 @@ func (e *Executor) consumeBlocks(id consumeID, chn <-chan interface{}) {
 			}
 		case error:
 			err = obj
+			e.log.Errorf("consumeBlocks ERROR chn=%+v err=%+v", chn, err)
+			e.notifyEnd(id, obj)
+			return
 		}
 	}
 }
@@ -380,6 +393,7 @@ func (e *Executor) Term() {
 	defer e.lock.Unlock()
 	e.start = terminationMark
 	e.end = terminationMark
+	e.consumer = nil
 	e.txs.Init()
 	e.cancelWaiterInLock()
 }
@@ -439,6 +453,18 @@ func (e *Executor) FinalizeBlocks(height int64) (*hexary.MerkleHeader, *blockv0.
 		return nil, nil, err
 	}
 	return mh, votes, nil
+}
+
+func (e *Executor) ReachLastHeight(height int64) bool {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if txe := e.txs.Front(); txe != nil {
+		if e.start == height+1 && txe.Value == ErrAfterLastBlock {
+			return true
+		}
+	}
+	return false
 }
 
 func newAccumulator(rdb, idb db.Database) (hexary.Accumulator, error) {
