@@ -372,11 +372,35 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 			}
 		}
 	}
+
+	if tr.prevBlock == nil {
+		return nil
+	}
+
 	rLogBloom := tr.Transition.LogsBloom()
 	eLogBloom := tr.prevBlock.LogsBloom()
 	if err := CheckLogsBloom(e.log, eLogBloom, rLogBloom); err != nil {
 		e.log.Errorf("Failed Block[ %9d ] LogBloomError err=%+v", err)
 		return err
+	}
+
+	if reps := tr.prevBlock.NextValidators(); reps != nil {
+		rs := reps.Size()
+		validators := tr.Transition.NextValidators()
+		vs := validators.Len()
+		if vs > 0 {
+			if vs != rs {
+				return errors.Errorf("InvalidValidatorLen(exp=%d,calc=%d)", rs, vs)
+			}
+			for i:=0 ; i< rs; i++ {
+				rep := reps.Get(i)
+				val, _ := validators.Get(i)
+				if !rep.Equal(val.Address()) {
+					return errors.Errorf("InvalidValidator(idx=%d,exp=%s,calc=%s)",
+						i, rep.String(), val.Address().String())
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -449,6 +473,7 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 					TXCount:       int32(len(blkv0.NormalTransactions())),
 				}
 			}
+			from = last + 1
 		}
 		err := e.doExecute(from, to, firstNForcedResults, resCh, stopCh)
 		if err != nil {
@@ -572,7 +597,7 @@ func (e *BlockConverter) doExecute(
 		if err != nil {
 			return err
 		}
-		if err = bk.Set(KeyLastBlockHeight, blk.Height()); err != nil {
+		if err = bk.Set(db.Raw(KeyLastBlockHeight), blk.Height()); err != nil {
 			return err
 		}
 		resCh <- &BlockTransaction{
