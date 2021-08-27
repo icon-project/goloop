@@ -453,6 +453,32 @@ func TestBlockConverter_Continue2(t_ *testing.T) {
 	})
 }
 
+func TestBlockConverter_Continue3(t_ *testing.T) {
+	t := newBlockConverterTest(t_)
+	ch, err := t.Start(0, 1)
+	assert.NoError(t, err)
+	res := <-ch
+	res = <-ch
+	var blockHash []byte
+	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
+		blockHash = r.BlockHash
+		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+	})
+	t = newBlockConverterTestWithDB(t_, t.chain.Database())
+	ch, err = t.Start(0, 1)
+	assert.NoError(t, err)
+	res = <-ch
+	res = <-ch
+	assertBlockTransaction(t, res, 1, 1, func(r *BTX) {
+		assert.Equal(t, blockHash, r.BlockHash)
+		assert.NotNil(t, r.Result)
+		assert.NotEqual(t, t.emptyResult, r.Result)
+		assert.Nil(t, r.ValidatorHash)
+	})
+}
+
 func TestBlockConverter_Term(t_ *testing.T) {
 	t := newBlockConverterTest(t_)
 	ch, err := t.Start(0, 1)

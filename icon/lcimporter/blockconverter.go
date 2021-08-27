@@ -602,7 +602,7 @@ func (e *BlockConverter) doExecute(
 		}
 		resCh <- &BlockTransaction{
 			blk.Height(),
-			blk.ID(),
+			blk.Hash(),
 			blk.Result(),
 			blk.NextValidatorsHash(),
 			int32(len(tr.block.NormalTransactions())),
