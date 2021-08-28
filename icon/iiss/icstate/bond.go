@@ -125,10 +125,10 @@ func (bs *Bonds) Equal(bl2 Bonds) bool {
 	return true
 }
 
-func (bs *Bonds) Delta(bs2 Bonds) map[string]*big.Int {
+func (bs Bonds) Delta(bs2 Bonds) map[string]*big.Int {
 	delta := make(map[string]*big.Int)
 
-	for _, d := range *bs {
+	for _, d := range bs {
 		key := icutils.ToKey(d.To())
 		delta[key] = new(big.Int).Neg(d.Amount())
 	}

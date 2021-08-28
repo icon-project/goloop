@@ -17,6 +17,7 @@
 package iiss
 
 import (
+	"math"
 	"math/big"
 	"sort"
 
@@ -111,7 +112,7 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	logger := icutils.NewIconLogger(nil)
 
-	es := &ExtensionStateImpl{
+	return &ExtensionStateImpl{
 		database: s.database,
 		logger:   logger,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly, logger),
@@ -120,10 +121,6 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		Back2:    icstage.NewStateFromSnapshot(s.back2),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
-
-	pm := newPRepManager(es.State, logger)
-	es.pm = pm
-	return es
 }
 
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
@@ -164,7 +161,6 @@ func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.E
 type ExtensionStateImpl struct {
 	database db.Database
 
-	pm     *PRepManager
 	logger log.Logger
 	log    []ExtensionLog
 
@@ -348,9 +344,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 func (es *ExtensionStateImpl) SetDelegation(
 	cc icmodule.CallContext, ds icstate.Delegations) error {
 
-	var err error
 	var account *icstate.AccountState
-	var delta map[string]*big.Int
 
 	from := cc.From()
 	blockHeight := cc.BlockHeight()
@@ -362,11 +356,29 @@ func (es *ExtensionStateImpl) SetDelegation(
 	if account.Stake().Cmp(using) < 0 {
 		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
-	delta, err = es.pm.ChangeDelegation(account.Delegations(), ds)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
+
+	delta := account.Delegations().Delta(ds)
+
+	// apply delta to P-Rep and update total delegation
+	nTotal := new(big.Int).Set(es.State.GetTotalDelegation())
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep delegation")
+		}
+		if value.Sign() != 0 {
+			ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+			ps.SetDelegated(new(big.Int).Add(ps.Delegated(), value))
+			if ps.IsActive() {
+				nTotal.Add(nTotal, value)
+			}
+		}
+	}
+	if err := es.State.SetTotalDelegation(nTotal); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update total delegation")
 	}
 
+	var err error
 	var offset int
 	var idx int64
 	var obj *icobject.Object
@@ -543,7 +555,6 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
 	es.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 
-	var err error
 	var account *icstate.AccountState
 	account = es.State.GetAccountState(from)
 
@@ -563,10 +574,25 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 
-	var delta map[string]*big.Int
-	delta, err = es.pm.ChangeBond(account.Bonds(), bonds)
-	if err != nil {
-		return icmodule.IllegalArgumentError.Wrapf(err, "Failed to change bond")
+	delta := account.Bonds().Delta(bonds)
+
+	// apply delta to P-Rep and update total bond
+	nTotal := new(big.Int).Set(es.State.GetTotalBond())
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep bond")
+		}
+		if value.Sign() != 0 {
+			ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+			ps.SetBonded(new(big.Int).Add(ps.Bonded(), value))
+			if ps.IsActive() {
+				nTotal.Add(nTotal, value)
+			}
+		}
+	}
+	if err := es.State.SetTotalBond(nTotal); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update total bond")
 	}
 
 	account.SetBonds(bonds)
@@ -877,12 +903,17 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetPRepSnapshots(pss)
 		nextTerm.SetIsDecentralized(true)
 
-		if irep := CalculateIRep(preps, revision); irep != nil {
-			nextTerm.SetIrep(irep)
-		} else {
+		var irep *big.Int
+		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2 {
+			// disable IRep
+			irep = new(big.Int)
+		} else if revision > icmodule.Revision9 {
+			// use network value IRep
 			irep = new(big.Int).Set(es.State.GetIRep())
-			nextTerm.SetIrep(irep)
+		} else {
+			irep = calculateIRep(preps)
 		}
+		nextTerm.SetIrep(irep)
 
 		// Record new validator list for the next term to State
 		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, es.State, mainPRepCount)
@@ -891,10 +922,14 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		}
 	}
 
-	rrep := CalculateRRep(totalSupply, revision, es.State.GetTotalDelegation())
-	if rrep != nil {
-		nextTerm.SetRrep(rrep)
+	var rrep *big.Int
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
+		// disable Rrep
+		rrep = new(big.Int)
+	} else {
+		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
 	}
+	nextTerm.SetRrep(rrep)
 
 	term := es.State.GetTermSnapshot()
 	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
@@ -1428,4 +1463,50 @@ func (es *ExtensionStateImpl) Burn(cc icmodule.CallContext, amount *big.Int) err
 		)
 	}
 	return nil
+}
+
+func calculateIRep(preps icstate.PRepSet) *big.Int {
+	irep := new(big.Int)
+	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
+	totalDelegated := new(big.Int)
+	totalWeightedIrep := new(big.Int)
+	value := new(big.Int)
+
+	for i := 0; i < mainPRepCount; i++ {
+		prep := preps.GetPRepByIndex(i)
+		totalWeightedIrep.Add(totalWeightedIrep, value.Mul(prep.IRep(), prep.Delegated()))
+		totalDelegated.Add(totalDelegated, prep.Delegated())
+	}
+
+	if totalDelegated.Sign() == 0 {
+		return irep
+	}
+
+	irep.Div(totalWeightedIrep, totalDelegated)
+	if irep.Cmp(icmodule.BigIntMinIRep) == -1 {
+		irep.Set(icmodule.BigIntMinIRep)
+	}
+	return irep
+}
+
+const (
+	rrepMin        = 200   // 2%
+	rrepMax        = 1_200 // 12%
+	rrepPoint      = 7_000 // 70%
+	rrepMultiplier = 10_000
+)
+
+func calculateRRep(totalSupply, totalDelegated *big.Int) *big.Int {
+	ts := new(big.Float).SetInt(totalSupply)
+	td := new(big.Float).SetInt(totalDelegated)
+	delegatePercentage := new(big.Float).Quo(td, ts)
+	delegatePercentage.Mul(delegatePercentage, new(big.Float).SetInt64(rrepMultiplier))
+	dp, _ := delegatePercentage.Float64()
+	if dp >= rrepPoint {
+		return new(big.Int).SetInt64(rrepMin)
+	}
+
+	firstOperand := (rrepMax - rrepMin) / math.Pow(rrepPoint, 2)
+	secondOperand := math.Pow(dp-rrepPoint, 2)
+	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
 }
