@@ -441,7 +441,7 @@ func (c *Calculator) calculateVotedReward() error {
 				vInfo.SetEnable(obj.Target(), obj.Status())
 				// do not update total bonded delegation when P-Rep is activated
 			}
-		case icstage.TypeEventDelegation:
+		case icstage.TypeEventDelegation, icstage.TypeEventDelegated:
 			obj := icstage.ToEventVote(o)
 			vInfo.UpdateDelegated(obj.Votes())
 		case icstage.TypeEventDelegationV2:
@@ -650,6 +650,10 @@ func (c *Calculator) calculateVotingReward() error {
 				}
 				vInfo.UpdateBonded(event.Votes())
 			}
+		case icstage.TypeEventDelegated:
+			// update delegated only
+			event := icstage.ToEventVote(obj)
+			vInfo.UpdateDelegated(event.Votes())
 		case icstage.TypeEventDelegationV2:
 			event := icstage.ToEventDelegationV2(obj)
 			idx := icutils.ToKey(event.From())
