@@ -53,6 +53,8 @@ var (
 		containerdb.HashBuilder, scoredb.VarDBPrefix, "lastBlockVoters",
 	)
 	termKey = containerdb.ToKey(containerdb.HashBuilder, scoredb.VarDBPrefix, "term")
+
+	pRepIllegalDelegatedKey = containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, "prep_illegal_delegated")
 )
 
 type State struct {
@@ -72,6 +74,8 @@ type State struct {
 	validatorsVarDB      *containerdb.VarDB
 	lastBlockVotersVarDB *containerdb.VarDB
 	termVarDB            *containerdb.VarDB
+
+	pRepIllegalDelegatedDB *containerdb.DictDB
 }
 
 func (s *State) Reset(ss *Snapshot) error {
@@ -162,6 +166,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	validatorsVarDB := containerdb.NewVarDB(store, ValidatorsKey)
 	lastBlockVotersVarDB := containerdb.NewVarDB(store, LastBlockVotersKey)
 	termVarDB := containerdb.NewVarDB(store, termKey)
+	pRepIllegalDelegatedDB := containerdb.NewDictDB(store, 1, pRepIllegalDelegatedKey)
 
 	return &State{
 		readonly:            readonly,
@@ -180,6 +185,8 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 		validatorsVarDB:      validatorsVarDB,
 		lastBlockVotersVarDB: lastBlockVotersVarDB,
 		termVarDB:            termVarDB,
+
+		pRepIllegalDelegatedDB: pRepIllegalDelegatedDB,
 	}
 }
 
@@ -736,4 +743,21 @@ func (s *State) GetIllegalDelegation(addr module.Address) *IllegalDelegation {
 		return nil
 	}
 	return ToIllegalDelegation(obj.Object())
+}
+
+func (s *State) GetPRepIllegalDelegated(address module.Address) *big.Int {
+	value := s.pRepIllegalDelegatedDB.Get(address)
+	if value == nil {
+		return new(big.Int)
+	} else {
+		return value.BigInt()
+	}
+}
+
+func (s *State) SetPRepIllegalDelegated(address module.Address, value *big.Int) error {
+	if value.Sign() == 0 {
+		return s.pRepIllegalDelegatedDB.Delete(address)
+	} else {
+		return s.pRepIllegalDelegatedDB.Set(address, value)
+	}
 }

@@ -122,7 +122,7 @@ func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated 
 }
 
 func (s *State) AddEventDelegated(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
-	return s.addEventVote(TypeEventDelegation, offset, from, votes)
+	return s.addEventVote(TypeEventDelegated, offset, from, votes)
 }
 
 func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {

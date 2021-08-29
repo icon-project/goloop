@@ -1,6 +1,8 @@
 package icstate
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
@@ -110,6 +112,7 @@ func newPRepBaseCache(store containerdb.ObjectStoreState) *PRepBaseCache {
 type PRepStatusCache struct {
 	statuses map[string]*PRepStatusState
 	dict     *containerdb.DictDB
+	illegal  *containerdb.DictDB
 }
 
 func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
@@ -133,6 +136,9 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRe
 		snapshot := ToPRepStatus(o.Object())
 		if snapshot != nil {
 			status = NewPRepStatusWithSnapshot(snapshot)
+			if value := c.illegal.Get(owner); value != nil {
+				status.SetEffectiveDelegated(new(big.Int).Add(status.Delegated(), value.BigInt()))
+			}
 			c.statuses[key] = status
 		}
 	}
@@ -185,5 +191,6 @@ func newPRepStatusCache(store containerdb.ObjectStoreState) *PRepStatusCache {
 	return &PRepStatusCache{
 		statuses: make(map[string]*PRepStatusState),
 		dict:     containerdb.NewDictDB(store, 1, prepStatusDictPrefix),
+		illegal:  containerdb.NewDictDB(store, 1, pRepIllegalDelegatedKey),
 	}
 }

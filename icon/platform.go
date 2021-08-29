@@ -147,14 +147,18 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionRes
 }
 
 func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error {
+	success := rct.Status() == module.StatusSuccess
 	// Apply stored tx batch data
 	if value := wc.(contract.Context).GetProperty(BatchKey); value != nil {
 		root := value.(*batchRoot)
-		root.handleTxBatch(rct.Status() == module.StatusSuccess)
+		root.handleTxBatch(success)
 	}
 	es := p.getExtensionState(wc, logger)
 	if es == nil {
 		return nil
+	}
+	if err := es.HandlePRepIllegalDelegated(wc.BlockHeight(), success); err != nil {
+		return err
 	}
 	return es.HandleExtensionLog()
 }

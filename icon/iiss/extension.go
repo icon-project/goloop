@@ -161,8 +161,9 @@ func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.E
 type ExtensionStateImpl struct {
 	database db.Database
 
-	logger log.Logger
-	log    []ExtensionLog
+	logger           log.Logger
+	log              []ExtensionLog
+	illegalDelegated map[string]*icstate.PRepStatusState
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -349,6 +350,8 @@ func (es *ExtensionStateImpl) SetDelegation(
 	from := cc.From()
 	blockHeight := cc.BlockHeight()
 	account = es.State.GetAccountState(from)
+	revision := cc.Revision().Value()
+	replayPRepIllegalDelegated := revision >= icmodule.RevisionSystemSCORE && revision < icmodule.RevisionICON2
 
 	using := new(big.Int).Set(ds.GetDelegationAmount())
 	using.Add(using, account.Unbond())
@@ -366,12 +369,21 @@ func (es *ExtensionStateImpl) SetDelegation(
 		if err != nil {
 			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep delegation")
 		}
+		ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+		oDelegated := ps.Delegated()
 		if value.Sign() != 0 {
-			ps, _ := es.State.GetPRepStatusByOwner(owner, true)
-			ps.SetDelegated(new(big.Int).Add(ps.Delegated(), value))
+			ps.SetDelegated(new(big.Int).Add(oDelegated, value))
 			if ps.IsActive() {
 				nTotal.Add(nTotal, value)
 			}
+		}
+		if replayPRepIllegalDelegated {
+			// to replay PRep illegal delegated bug
+			ps.SetEffectiveDelegated(new(big.Int).Add(oDelegated, value))
+			if es.illegalDelegated == nil {
+				es.illegalDelegated = make(map[string]*icstate.PRepStatusState)
+			}
+			es.illegalDelegated[key] = ps
 		}
 	}
 	if err := es.State.SetTotalDelegation(nTotal); err != nil {
@@ -402,7 +414,6 @@ func (es *ExtensionStateImpl) SetDelegation(
 		}
 	}
 
-	revision := cc.Revision().Value()
 	if revision < icmodule.RevisionFixSetDelegation {
 		dLog := newDelegationLog(from, offset, idx, obj, ds)
 		es.AppendExtensionLog(dLog)
@@ -467,6 +478,17 @@ func (es *ExtensionStateImpl) addEventDelegationV2(
 	offset = int(blockHeight - term.StartHeight())
 	idx, obj, err = es.Front.AddEventDelegationV2(offset, from, delegated, delegating)
 	return
+}
+
+func (es *ExtensionStateImpl) addEventDelegated(blockHeight int64, delta map[string]*big.Int) error {
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return err
+	}
+	term := es.State.GetTermSnapshot()
+	offset := int(blockHeight - term.StartHeight())
+	_, _, err = es.Front.AddEventDelegated(offset, state.ZeroAddress, votes)
+	return err
 }
 
 func (es *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableStatus) (err error) {
@@ -630,7 +652,7 @@ func (es *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Addres
 		return
 	}
 	term := es.State.GetTermSnapshot()
-	_, err = es.Front.AddEventBond(
+	_, _, err = es.Front.AddEventBond(
 		int(blockHeight-term.StartHeight()),
 		from,
 		votes,
@@ -1354,7 +1376,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
 	claim := new(big.Int).Sub(iScore, remains)
 
-	if err = cc.Transfer(cc.Treasury(), from ,icx); err != nil {
+	if err = cc.Transfer(cc.Treasury(), from, icx); err != nil {
 		return scoreresult.InvalidInstanceError.Errorf(
 			"Failed to transfer: from=%v to=%v amount=%v",
 			cc.Treasury(), from, icx,
@@ -1509,4 +1531,42 @@ func calculateRRep(totalSupply, totalDelegated *big.Int) *big.Int {
 	firstOperand := (rrepMax - rrepMin) / math.Pow(rrepPoint, 2)
 	secondOperand := math.Pow(dp-rrepPoint, 2)
 	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
+}
+
+func (es *ExtensionStateImpl) HandlePRepIllegalDelegated(blockHeight int64, txSuccess bool) error {
+	delta := make(map[string]*big.Int)
+	nTotal := new(big.Int).Set(es.State.GetTotalDelegation())
+	for key, ps := range es.illegalDelegated {
+		owner := common.MustNewAddress([]byte(key))
+		es.logger.Tracef("HandlePRepIllegalDelegated %v %s: %+v", txSuccess, owner, ps)
+		eDelegated := ps.EffectiveDelegated()
+		if eDelegated == nil {
+			eDelegated = new(big.Int)
+		}
+		delegated := ps.Delegated()
+		nDiff := new(big.Int).Sub(eDelegated, delegated)
+		oDiff := es.State.GetPRepIllegalDelegated(owner)
+		if txSuccess {
+			if err := es.State.SetPRepIllegalDelegated(owner, nDiff); err != nil {
+				return err
+			}
+			delta[key] = new(big.Int).Sub(nDiff, oDiff)
+			if ps.IsActive() {
+				nTotal.Add(nTotal, delta[key])
+			}
+		} else {
+			// revert effectiveDelegated
+			ps.SetEffectiveDelegated(new(big.Int).Add(delegated, oDiff))
+		}
+	}
+	if len(delta) > 0 {
+		if err := es.addEventDelegated(blockHeight, delta); err != nil {
+			return err
+		}
+	}
+	if err := es.State.SetTotalDelegation(nTotal); err != nil {
+		return err
+	}
+	es.illegalDelegated = nil
+	return nil
 }
