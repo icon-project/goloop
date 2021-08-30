@@ -1102,7 +1102,7 @@ func (es *ExtensionStateImpl) AppendExtensionLog(el ExtensionLog) {
 	es.log = append(es.log, el)
 }
 
-func (es *ExtensionStateImpl) HandleExtensionLog() error {
+func (es *ExtensionStateImpl) handleExtensionLog() error {
 	for _, el := range es.log {
 		es.Logger().Tracef("Handle ExtensionLog %+v", el)
 		if err := el.Handle(es); err != nil {
@@ -1533,12 +1533,12 @@ func calculateRRep(totalSupply, totalDelegated *big.Int) *big.Int {
 	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
 }
 
-func (es *ExtensionStateImpl) HandlePRepIllegalDelegated(blockHeight int64, txSuccess bool) error {
+func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSuccess bool) error {
 	delta := make(map[string]*big.Int)
 	nTotal := new(big.Int).Set(es.State.GetTotalDelegation())
 	for key, ps := range es.illegalDelegated {
 		owner := common.MustNewAddress([]byte(key))
-		es.logger.Tracef("HandlePRepIllegalDelegated %v %s: %+v", txSuccess, owner, ps)
+		es.logger.Tracef("handlePRepIllegalDelegated %v %s: %+v", txSuccess, owner, ps)
 		eDelegated := ps.EffectiveDelegated()
 		if eDelegated == nil {
 			eDelegated = new(big.Int)
@@ -1575,4 +1575,11 @@ func (es *ExtensionStateImpl) HandlePRepIllegalDelegated(blockHeight int64, txSu
 	}
 	es.illegalDelegated = nil
 	return nil
+}
+
+func (es *ExtensionStateImpl) OnTransactionEnd(blockHeight int64, success bool) error {
+	if err := es.handlePRepIllegalDelegated(blockHeight, success); err != nil {
+		return err
+	}
+	return es.handleExtensionLog()
 }

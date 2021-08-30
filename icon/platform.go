@@ -157,10 +157,7 @@ func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rc
 	if es == nil {
 		return nil
 	}
-	if err := es.HandlePRepIllegalDelegated(wc.BlockHeight(), success); err != nil {
-		return err
-	}
-	return es.HandleExtensionLog()
+	return es.OnTransactionEnd(wc.BlockHeight(), success)
 }
 
 func (p *platform) Term() {
