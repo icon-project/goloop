@@ -1554,6 +1554,12 @@ func (es *ExtensionStateImpl) HandlePRepIllegalDelegated(blockHeight int64, txSu
 			if ps.IsActive() {
 				nTotal.Add(nTotal, delta[key])
 			}
+			if oDiff.Sign() != 0 && nDiff.Sign() == 0 {
+				es.logger.Warnf("PRepIllegalDelegated was cleared at %d. %s: %d", blockHeight, owner, oDiff)
+			}
+			if oDiff.Sign() == 0 && nDiff.Sign() != 0 {
+				es.logger.Warnf("PRepIllegalDelegated was occurred at %d. %s: %d", blockHeight, owner, nDiff)
+			}
 		} else {
 			// revert effectiveDelegated
 			ps.SetEffectiveDelegated(new(big.Int).Add(delegated, oDiff))
