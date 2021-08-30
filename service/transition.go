@@ -244,6 +244,7 @@ func newInitTransition(db db.Database,
 			tsc:   tsc,
 		},
 		step:          stepComplete,
+		result:        result,
 		worldSnapshot: wss,
 	}
 	return tr, nil
