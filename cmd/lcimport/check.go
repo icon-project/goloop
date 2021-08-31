@@ -428,7 +428,7 @@ func LoadICON1AccountInfo(path string) (*ICON1AccountInfo, error) {
 }
 
 func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, wssTerm state.WorldSnapshot,
-	address string, noBalance bool) error {
+	address string, noBalance bool, checkIcstage bool) error {
 	height := icon1.BlockHeight
 	accounts := icon1.Accounts
 	addrSpecified := false
@@ -463,7 +463,7 @@ func CheckState(icon1 *ICON1AccountInfo, wss state.WorldSnapshot, wssTerm state.
 	if err := icon1.Issue.Check(extState); err != nil {
 		iissFailed += 1
 	}
-	if icon1.TermHeight != 0 {
+	if checkIcstage && icon1.TermHeight != 0 {
 		essTerm := wssTerm.GetExtensionSnapshot()
 		if _, err := codec.BC.UnmarshalFromBytes(essTerm.Bytes(), &hashes); err != nil {
 			return err
