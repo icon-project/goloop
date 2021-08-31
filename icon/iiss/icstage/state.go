@@ -91,17 +91,21 @@ func (s *State) GetEvent(offset int, index int64) (*icobject.Object, error) {
 	return obj.(*icobject.Object), nil
 }
 
-func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
+func (s *State) addEventVote(type_ int, offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	event := NewEventVote(common.AddressToPtr(from), votes)
-	obj := icobject.New(TypeEventDelegation, event)
+	obj := icobject.New(type_, event)
 	_, err := s.store.Set(key, obj)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	return index, obj, s.setEventSize(index + 1)
+}
+
+func (s *State) AddEventDelegation(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
+	return s.addEventVote(TypeEventDelegation, offset, from, votes)
 }
 
 func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated VoteList, delegating VoteList) (int64, *icobject.Object, error) {
@@ -117,16 +121,12 @@ func (s *State) AddEventDelegationV2(offset int, from module.Address, delegated 
 	return index, obj, s.setEventSize(index + 1)
 }
 
-func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, error) {
-	index := s.getEventSize()
-	key := EventKey.Append(offset, index).Build()
-	event := NewEventVote(common.AddressToPtr(from), votes)
-	_, err := s.store.Set(key, icobject.New(TypeEventBond, event))
-	if err != nil {
-		return 0, err
-	}
+func (s *State) AddEventDelegated(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
+	return s.addEventVote(TypeEventDelegated, offset, from, votes)
+}
 
-	return index, s.setEventSize(index + 1)
+func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (int64, *icobject.Object, error) {
+	return s.addEventVote(TypeEventBond, offset, from, votes)
 }
 
 func (s *State) AddEventEnable(offset int, target module.Address, status EnableStatus) (int64, error) {

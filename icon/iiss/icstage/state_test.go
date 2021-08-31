@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -207,26 +208,29 @@ func TestState_AddEvent(t *testing.T) {
 	}
 }
 
-func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
-	index, obj, err := s.AddEventDelegation(offset, address, votes)
-	assert.NoError(t, err)
 
+func checkAddEventVote(t *testing.T, s *State, index int64, obj trie.Object, offset int, address *common.Address, votes VoteList) {
 	key := EventKey.Append(offset, index).Build()
 	nObj, err := icobject.GetFromMutableForObject(s.store, key)
 	assert.NoError(t, err)
 	assert.True(t, obj.Equal(nObj))
+	event := ToEventVote(nObj)
+	assert.True(t, address.Equal(event.From()))
+	assert.True(t, votes.Equal(event.Votes()))
+}
+
+func checkAddEventDelegation(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
+	index, obj, err := s.AddEventDelegation(offset, address, votes)
+	assert.NoError(t, err)
+	assert.Equal(t, TypeEventDelegation, obj.Tag().Type())
+	checkAddEventVote(t, s, index, obj, offset, address, votes)
 }
 
 func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Address, votes VoteList) {
-	index, err := s.AddEventBond(offset, address, votes)
+	index, obj, err := s.AddEventBond(offset, address, votes)
 	assert.NoError(t, err)
-
-	key := EventKey.Append(offset, index).Build()
-	obj, err := icobject.GetFromMutableForObject(s.store, key)
-	assert.NoError(t, err)
-	event := ToEventVote(obj)
-	assert.True(t, address.Equal(event.From()))
-	assert.True(t, votes.Equal(event.Votes()))
+	assert.Equal(t, TypeEventBond, obj.Tag().Type())
+	checkAddEventVote(t, s, index, obj, offset, address, votes)
 }
 
 func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableStatus) {

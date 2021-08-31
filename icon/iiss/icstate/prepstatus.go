@@ -109,6 +109,8 @@ type prepStatusData struct {
 	vPenaltyMask uint32
 	lastState    VoteState
 	lastHeight   int64
+
+	effectiveDelegated *big.Int
 }
 
 func (ps *prepStatusData) Bonded() *big.Int {
@@ -136,7 +138,6 @@ func (ps *prepStatusData) GetVPenaltyCount() int {
 	return bits.OnesCount32(ps.vPenaltyMask)
 }
 
-
 func (ps *prepStatusData) LastState() VoteState {
 	return ps.lastState
 }
@@ -147,6 +148,10 @@ func (ps *prepStatusData) LastHeight() int64 {
 
 func (ps *prepStatusData) Delegated() *big.Int {
 	return ps.delegated
+}
+
+func (ps *prepStatusData) EffectiveDelegated() *big.Int {
+	return ps.effectiveDelegated
 }
 
 func (ps *prepStatusData) GetVoted() *big.Int {
@@ -255,6 +260,8 @@ func (ps prepStatusData) clone() prepStatusData {
 		vPenaltyMask: ps.vPenaltyMask,
 		lastState:    ps.lastState,
 		lastHeight:   ps.lastHeight,
+
+		effectiveDelegated: ps.effectiveDelegated,
 	}
 }
 
@@ -303,7 +310,7 @@ func (ps *prepStatusData) IsEmpty() bool {
 
 func (ps *prepStatusData) String() string {
 	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s",
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s ed=%d",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -315,6 +322,7 @@ func (ps *prepStatusData) String() string {
 		ps.delegated,
 		ps.bonded,
 		ps.GetVoted(),
+		ps.effectiveDelegated,
 	)
 }
 
@@ -326,9 +334,9 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			format = "PRepStatus{" +
 				"status=%s grade=%s lastState=%s lastHeight=%d " +
 				"vFail=%d vTotal=%d vPenaltyCount=%d vFailCont=%d " +
-				"delegated=%s bonded=%s}"
+				"delegated=%s bonded=%s effectiveDelegated=%d}"
 		} else {
-			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s}"
+			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d}"
 		}
 		_, _ = fmt.Fprintf(
 			f, format,
@@ -342,6 +350,7 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			ps.vFailCont,
 			ps.delegated,
 			ps.bonded,
+			ps.effectiveDelegated,
 		)
 	case 's':
 		_, _ = fmt.Fprint(f, ps.String())
@@ -416,8 +425,10 @@ type PRepStatusState struct {
 
 func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
 	if ps.last != ss {
+		ed := ps.effectiveDelegated
 		ps.last = ss
 		ps.prepStatusData = ss.prepStatusData.clone()
+		ps.effectiveDelegated = ed
 	}
 	return ps
 }
@@ -455,6 +466,11 @@ func (ps *PRepStatusState) IsEmpty() bool {
 
 func (ps *PRepStatusState) SetDelegated(delegated *big.Int) {
 	ps.delegated = delegated
+	ps.setDirty()
+}
+
+func (ps *PRepStatusState) SetEffectiveDelegated(value *big.Int) {
+	ps.effectiveDelegated = value
 	ps.setDirty()
 }
 

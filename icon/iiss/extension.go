@@ -17,6 +17,7 @@
 package iiss
 
 import (
+	"math"
 	"math/big"
 	"sort"
 
@@ -111,7 +112,7 @@ func (s *ExtensionSnapshotImpl) Flush() error {
 func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 	logger := icutils.NewIconLogger(nil)
 
-	es := &ExtensionStateImpl{
+	return &ExtensionStateImpl{
 		database: s.database,
 		logger:   logger,
 		State:    icstate.NewStateFromSnapshot(s.state, readonly, logger),
@@ -120,10 +121,6 @@ func (s *ExtensionSnapshotImpl) NewState(readonly bool) state.ExtensionState {
 		Back2:    icstage.NewStateFromSnapshot(s.back2),
 		Reward:   icreward.NewStateFromSnapshot(s.reward),
 	}
-
-	pm := newPRepManager(es.State, logger)
-	es.pm = pm
-	return es
 }
 
 func NewExtensionSnapshot(database db.Database, hash []byte) state.ExtensionSnapshot {
@@ -164,9 +161,9 @@ func NewExtensionSnapshotWithBuilder(builder merkle.Builder, raw []byte) state.E
 type ExtensionStateImpl struct {
 	database db.Database
 
-	pm     *PRepManager
-	logger log.Logger
-	log    []ExtensionLog
+	logger           log.Logger
+	log              []ExtensionLog
+	illegalDelegated map[string]*icstate.PRepStatusState
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -348,13 +345,13 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 func (es *ExtensionStateImpl) SetDelegation(
 	cc icmodule.CallContext, ds icstate.Delegations) error {
 
-	var err error
 	var account *icstate.AccountState
-	var delta map[string]*big.Int
 
 	from := cc.From()
 	blockHeight := cc.BlockHeight()
 	account = es.State.GetAccountState(from)
+	revision := cc.Revision().Value()
+	replayPRepIllegalDelegated := revision >= icmodule.RevisionSystemSCORE && revision < icmodule.RevisionICON2
 
 	using := new(big.Int).Set(ds.GetDelegationAmount())
 	using.Add(using, account.Unbond())
@@ -362,11 +359,38 @@ func (es *ExtensionStateImpl) SetDelegation(
 	if account.Stake().Cmp(using) < 0 {
 		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
-	delta, err = es.pm.ChangeDelegation(account.Delegations(), ds)
-	if err != nil {
-		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to change delegation")
+
+	delta := account.Delegations().Delta(ds)
+
+	// apply delta to P-Rep and update total delegation
+	nTotal := new(big.Int).Set(es.State.GetTotalDelegation())
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep delegation")
+		}
+		ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+		oDelegated := ps.Delegated()
+		if value.Sign() != 0 {
+			ps.SetDelegated(new(big.Int).Add(oDelegated, value))
+			if ps.IsActive() {
+				nTotal.Add(nTotal, value)
+			}
+		}
+		if replayPRepIllegalDelegated {
+			// to replay PRep illegal delegated bug
+			ps.SetEffectiveDelegated(new(big.Int).Add(oDelegated, value))
+			if es.illegalDelegated == nil {
+				es.illegalDelegated = make(map[string]*icstate.PRepStatusState)
+			}
+			es.illegalDelegated[key] = ps
+		}
+	}
+	if err := es.State.SetTotalDelegation(nTotal); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update total delegation")
 	}
 
+	var err error
 	var offset int
 	var idx int64
 	var obj *icobject.Object
@@ -390,7 +414,6 @@ func (es *ExtensionStateImpl) SetDelegation(
 		}
 	}
 
-	revision := cc.Revision().Value()
 	if revision < icmodule.RevisionFixSetDelegation {
 		dLog := newDelegationLog(from, offset, idx, obj, ds)
 		es.AppendExtensionLog(dLog)
@@ -455,6 +478,17 @@ func (es *ExtensionStateImpl) addEventDelegationV2(
 	offset = int(blockHeight - term.StartHeight())
 	idx, obj, err = es.Front.AddEventDelegationV2(offset, from, delegated, delegating)
 	return
+}
+
+func (es *ExtensionStateImpl) addEventDelegated(blockHeight int64, delta map[string]*big.Int) error {
+	votes, err := deltaToVotes(delta)
+	if err != nil {
+		return err
+	}
+	term := es.State.GetTermSnapshot()
+	offset := int(blockHeight - term.StartHeight())
+	_, _, err = es.Front.AddEventDelegated(offset, state.ZeroAddress, votes)
+	return err
 }
 
 func (es *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableStatus) (err error) {
@@ -543,7 +577,6 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
 	es.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 
-	var err error
 	var account *icstate.AccountState
 	account = es.State.GetAccountState(from)
 
@@ -563,10 +596,25 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 		return icmodule.IllegalArgumentError.Errorf("Not enough voting power")
 	}
 
-	var delta map[string]*big.Int
-	delta, err = es.pm.ChangeBond(account.Bonds(), bonds)
-	if err != nil {
-		return icmodule.IllegalArgumentError.Wrapf(err, "Failed to change bond")
+	delta := account.Bonds().Delta(bonds)
+
+	// apply delta to P-Rep and update total bond
+	nTotal := new(big.Int).Set(es.State.GetTotalBond())
+	for key, value := range delta {
+		owner, err := common.NewAddress([]byte(key))
+		if err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep bond")
+		}
+		if value.Sign() != 0 {
+			ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+			ps.SetBonded(new(big.Int).Add(ps.Bonded(), value))
+			if ps.IsActive() {
+				nTotal.Add(nTotal, value)
+			}
+		}
+	}
+	if err := es.State.SetTotalBond(nTotal); err != nil {
+		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update total bond")
 	}
 
 	account.SetBonds(bonds)
@@ -604,7 +652,7 @@ func (es *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Addres
 		return
 	}
 	term := es.State.GetTermSnapshot()
-	_, err = es.Front.AddEventBond(
+	_, _, err = es.Front.AddEventBond(
 		int(blockHeight-term.StartHeight()),
 		from,
 		votes,
@@ -877,12 +925,17 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetPRepSnapshots(pss)
 		nextTerm.SetIsDecentralized(true)
 
-		if irep := CalculateIRep(preps, revision); irep != nil {
-			nextTerm.SetIrep(irep)
-		} else {
+		var irep *big.Int
+		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2 {
+			// disable IRep
+			irep = new(big.Int)
+		} else if revision > icmodule.Revision9 {
+			// use network value IRep
 			irep = new(big.Int).Set(es.State.GetIRep())
-			nextTerm.SetIrep(irep)
+		} else {
+			irep = calculateIRep(preps)
 		}
+		nextTerm.SetIrep(irep)
 
 		// Record new validator list for the next term to State
 		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, es.State, mainPRepCount)
@@ -891,10 +944,14 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		}
 	}
 
-	rrep := CalculateRRep(totalSupply, revision, es.State.GetTotalDelegation())
-	if rrep != nil {
-		nextTerm.SetRrep(rrep)
+	var rrep *big.Int
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
+		// disable Rrep
+		rrep = new(big.Int)
+	} else {
+		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
 	}
+	nextTerm.SetRrep(rrep)
 
 	term := es.State.GetTermSnapshot()
 	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
@@ -1045,7 +1102,7 @@ func (es *ExtensionStateImpl) AppendExtensionLog(el ExtensionLog) {
 	es.log = append(es.log, el)
 }
 
-func (es *ExtensionStateImpl) HandleExtensionLog() error {
+func (es *ExtensionStateImpl) handleExtensionLog() error {
 	for _, el := range es.log {
 		es.Logger().Tracef("Handle ExtensionLog %+v", el)
 		if err := el.Handle(es); err != nil {
@@ -1319,7 +1376,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
 	claim := new(big.Int).Sub(iScore, remains)
 
-	if err = cc.Transfer(cc.Treasury(), from ,icx); err != nil {
+	if err = cc.Transfer(cc.Treasury(), from, icx); err != nil {
 		return scoreresult.InvalidInstanceError.Errorf(
 			"Failed to transfer: from=%v to=%v amount=%v",
 			cc.Treasury(), from, icx,
@@ -1428,4 +1485,99 @@ func (es *ExtensionStateImpl) Burn(cc icmodule.CallContext, amount *big.Int) err
 		)
 	}
 	return nil
+}
+
+func calculateIRep(preps icstate.PRepSet) *big.Int {
+	irep := new(big.Int)
+	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
+	totalDelegated := new(big.Int)
+	totalWeightedIrep := new(big.Int)
+	value := new(big.Int)
+
+	for i := 0; i < mainPRepCount; i++ {
+		prep := preps.GetPRepByIndex(i)
+		totalWeightedIrep.Add(totalWeightedIrep, value.Mul(prep.IRep(), prep.Delegated()))
+		totalDelegated.Add(totalDelegated, prep.Delegated())
+	}
+
+	if totalDelegated.Sign() == 0 {
+		return irep
+	}
+
+	irep.Div(totalWeightedIrep, totalDelegated)
+	if irep.Cmp(icmodule.BigIntMinIRep) == -1 {
+		irep.Set(icmodule.BigIntMinIRep)
+	}
+	return irep
+}
+
+const (
+	rrepMin        = 200   // 2%
+	rrepMax        = 1_200 // 12%
+	rrepPoint      = 7_000 // 70%
+	rrepMultiplier = 10_000
+)
+
+func calculateRRep(totalSupply, totalDelegated *big.Int) *big.Int {
+	ts := new(big.Float).SetInt(totalSupply)
+	td := new(big.Float).SetInt(totalDelegated)
+	delegatePercentage := new(big.Float).Quo(td, ts)
+	delegatePercentage.Mul(delegatePercentage, new(big.Float).SetInt64(rrepMultiplier))
+	dp, _ := delegatePercentage.Float64()
+	if dp >= rrepPoint {
+		return new(big.Int).SetInt64(rrepMin)
+	}
+
+	firstOperand := (rrepMax - rrepMin) / math.Pow(rrepPoint, 2)
+	secondOperand := math.Pow(dp-rrepPoint, 2)
+	return new(big.Int).SetInt64(int64(firstOperand*secondOperand + rrepMin))
+}
+
+func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSuccess bool) error {
+	delta := make(map[string]*big.Int)
+	nTotal := new(big.Int).Set(es.State.GetTotalDelegation())
+	for key, ps := range es.illegalDelegated {
+		owner := common.MustNewAddress([]byte(key))
+		es.logger.Tracef("handlePRepIllegalDelegated %v %s: %+v", txSuccess, owner, ps)
+		eDelegated := ps.EffectiveDelegated()
+		delegated := ps.Delegated()
+		nDiff := new(big.Int).Sub(eDelegated, delegated)
+		oDiff := es.State.GetPRepIllegalDelegated(owner)
+		if txSuccess {
+			if err := es.State.SetPRepIllegalDelegated(owner, nDiff); err != nil {
+				return err
+			}
+			delta[key] = new(big.Int).Sub(nDiff, oDiff)
+			if ps.IsActive() {
+				nTotal.Add(nTotal, delta[key])
+			}
+			if oDiff.Sign() != 0 && nDiff.Sign() == 0 {
+				ps.SetEffectiveDelegated(nil)
+				es.logger.Warnf("PRepIllegalDelegated was cleared at %d. %s: %d", blockHeight, owner, oDiff)
+			}
+			if oDiff.Sign() == 0 && nDiff.Sign() != 0 {
+				es.logger.Warnf("PRepIllegalDelegated was occurred at %d. %s: %d", blockHeight, owner, nDiff)
+			}
+		} else {
+			// revert effectiveDelegated
+			ps.SetEffectiveDelegated(new(big.Int).Add(delegated, oDiff))
+		}
+	}
+	if len(delta) > 0 {
+		if err := es.addEventDelegated(blockHeight, delta); err != nil {
+			return err
+		}
+	}
+	if err := es.State.SetTotalDelegation(nTotal); err != nil {
+		return err
+	}
+	es.illegalDelegated = nil
+	return nil
+}
+
+func (es *ExtensionStateImpl) OnTransactionEnd(blockHeight int64, success bool) error {
+	if err := es.handlePRepIllegalDelegated(blockHeight, success); err != nil {
+		return err
+	}
+	return es.handleExtensionLog()
 }

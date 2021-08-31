@@ -31,6 +31,7 @@ const (
 	TypeGlobal
 	TypeEventVotedReward
 	TypeEventDelegationV2
+	TypeEventDelegated
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -41,6 +42,8 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newEventVote(tag), nil
 	case TypeEventDelegationV2:
 		return newEventDelegationV2(tag), nil
+	case TypeEventDelegated:
+		return newEventVote(tag), nil
 	case TypeEventBond:
 		return newEventVote(tag), nil
 	case TypeEventEnable:
