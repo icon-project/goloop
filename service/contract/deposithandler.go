@@ -74,7 +74,13 @@ func (h *DepositHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, h.data.Action)
+	var action string
+	if h.data != nil {
+		action = h.data.Action
+	} else {
+		action = "None"
+	}
+	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, action)
 	defer func() {
 		if err != nil {
 			h.Log.TSystemf("FRAME[%d] DEPOSIT done status=%s msg=%v", h.FID, err.Error(), err)
