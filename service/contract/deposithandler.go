@@ -89,6 +89,10 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		return scoreresult.AccessDeniedError.New("DepositControlIsNotAllowed"), nil, nil
 	}
 
+	if h.data == nil {
+		return scoreresult.InvalidParameterError.New("InvalidDepositData"), nil, nil
+	}
+
 	as1 := cc.GetAccountState(h.From.ID())
 	if as1.IsContract() != h.From.IsContract() {
 		return scoreresult.InvalidRequestError.Errorf(
@@ -185,10 +189,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 }
 
 func newDepositHandler(ch *CommonHandler, data []byte) (ContractHandler, error) {
-	dd, err := ParseDepositData(data)
-	if err != nil {
-		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
-	}
+	dd, _ := ParseDepositData(data)
 	return &DepositHandler{
 		CommonHandler: ch,
 		data:          dd,
