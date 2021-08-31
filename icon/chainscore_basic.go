@@ -271,6 +271,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
+			if err := es.ClearPRepIllegalDelegated(); err != nil {
+				return err
+			}
 		}
 
 		if err := es.State.SetIISSVersion(iissVersion); err != nil {

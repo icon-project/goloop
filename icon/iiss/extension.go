@@ -1575,6 +1575,23 @@ func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSu
 	return nil
 }
 
+func (es *ExtensionStateImpl) ClearPRepIllegalDelegated() error {
+	preps := es.State.GetActivePReps()
+	for _, prep := range preps {
+		if prep.EffectiveDelegated() != nil {
+			if es.illegalDelegated == nil {
+				es.illegalDelegated = make(map[string]*icstate.PRepStatusState)
+			}
+			ps := prep.PRepStatusState
+			ps.SetEffectiveDelegated(ps.Delegated())
+			key := icutils.ToKey(prep.Owner())
+			es.illegalDelegated[key] = ps
+		}
+	}
+	// will be cleared at OnTransactionEnd()
+	return nil
+}
+
 func (es *ExtensionStateImpl) OnTransactionEnd(blockHeight int64, success bool) error {
 	if err := es.handlePRepIllegalDelegated(blockHeight, success); err != nil {
 		return err

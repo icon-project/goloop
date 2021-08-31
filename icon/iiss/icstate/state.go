@@ -577,7 +577,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 }
 
 func (s *State) GetPRepsOrderedByDelegation() (PRepSet, error) {
-	preps := s.getActivePReps()
+	preps := s.GetActivePReps()
 	return NewPRepsOrderedByBondedDelegation(preps, s.GetBondRequirement()), nil
 }
 
@@ -589,7 +589,7 @@ func (s *State) GetPRepsOnTermEnd(rev int) (PRepSet, error) {
 }
 
 func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
-	preps := s.getActivePReps()
+	preps := s.GetActivePReps()
 	mainPRepCount := int(s.GetMainPRepCount())
 	extraMainPRepCount := int(s.GetExtraMainPRepCount())
 	subPRepCount := int(s.GetSubPRepCount())
@@ -599,7 +599,7 @@ func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
 	), nil
 }
 
-func (s *State) getActivePReps() []*PRep {
+func (s *State) GetActivePReps() []*PRep {
 	size := s.allPRepCache.Size()
 	preps := make([]*PRep, size)
 
