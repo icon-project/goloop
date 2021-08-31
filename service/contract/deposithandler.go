@@ -74,7 +74,13 @@ func (h *DepositHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, h.data.Action)
+	var action string
+	if h.data != nil {
+		action = h.data.Action
+	} else {
+		action = "None"
+	}
+	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, action)
 	defer func() {
 		if err != nil {
 			h.Log.TSystemf("FRAME[%d] DEPOSIT done status=%s msg=%v", h.FID, err.Error(), err)
@@ -87,6 +93,10 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 
 	if cc.QueryMode() {
 		return scoreresult.AccessDeniedError.New("DepositControlIsNotAllowed"), nil, nil
+	}
+
+	if h.data == nil {
+		return scoreresult.InvalidParameterError.New("InvalidDepositData"), nil, nil
 	}
 
 	as1 := cc.GetAccountState(h.From.ID())
@@ -185,10 +195,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 }
 
 func newDepositHandler(ch *CommonHandler, data []byte) (ContractHandler, error) {
-	dd, err := ParseDepositData(data)
-	if err != nil {
-		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidData")
-	}
+	dd, _ := ParseDepositData(data)
 	return &DepositHandler{
 		CommonHandler: ch,
 		data:          dd,
