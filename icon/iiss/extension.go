@@ -1540,9 +1540,6 @@ func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSu
 		owner := common.MustNewAddress([]byte(key))
 		es.logger.Tracef("handlePRepIllegalDelegated %v %s: %+v", txSuccess, owner, ps)
 		eDelegated := ps.EffectiveDelegated()
-		if eDelegated == nil {
-			eDelegated = new(big.Int)
-		}
 		delegated := ps.Delegated()
 		nDiff := new(big.Int).Sub(eDelegated, delegated)
 		oDiff := es.State.GetPRepIllegalDelegated(owner)
@@ -1555,6 +1552,7 @@ func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSu
 				nTotal.Add(nTotal, delta[key])
 			}
 			if oDiff.Sign() != 0 && nDiff.Sign() == 0 {
+				ps.SetEffectiveDelegated(nil)
 				es.logger.Warnf("PRepIllegalDelegated was cleared at %d. %s: %d", blockHeight, owner, oDiff)
 			}
 			if oDiff.Sign() == 0 && nDiff.Sign() != 0 {
