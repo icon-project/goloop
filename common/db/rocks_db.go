@@ -25,6 +25,8 @@ import (
 	"reflect"
 	"sync"
 	"unsafe"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 // #cgo LDFLAGS: -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy
@@ -54,21 +56,73 @@ type RocksDB struct {
 
 func NewRocksDB(name string, dir string) (*RocksDB, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
+		log.Errorln("fail to MkdirAll", err.Error())
 		return nil, err
 	}
 	opts := C.rocksdb_options_create()
 	C.rocksdb_options_set_create_if_missing(opts, C.uchar(1))
 	C.rocksdb_options_set_create_missing_column_families(opts, C.uchar(1))
+
 	var (
 		cErr  *C.char
 		cName = C.CString(path.Join(dir, name))
+		hdl   *C.rocksdb_t
+		buckets = make(map[BucketID]*RocksBucket)
 	)
 	defer C.free(unsafe.Pointer(cName))
 
-	hdl := C.rocksdb_open(opts, cName, &cErr)
-	if cErr != nil {
-		defer C.rocksdb_free(unsafe.Pointer(cErr))
-		return nil, errors.New(C.GoString(cErr))
+	var cfsLen C.size_t
+	if cfs := C.rocksdb_list_column_families(opts, cName, &cfsLen, &cErr); cErr != nil {
+		errMsg := C.GoString(cErr)
+		C.rocksdb_free(unsafe.Pointer(cErr))
+		log.Infoln("fail to rocksdb_list_column_families", errMsg)
+
+		//ignore and try open
+		cErr = nil
+		hdl = C.rocksdb_open(opts, cName, &cErr)
+		if cErr != nil {
+			errMsg = C.GoString(cErr)
+			defer C.rocksdb_free(unsafe.Pointer(cErr))
+			log.Errorln("fail to rocksdb_open", errMsg)
+			return nil, errors.New(errMsg)
+		}
+	} else {
+		numOfCfs := int(cfsLen)
+		log.Infoln("rocksdb_list_column_families returns num:", numOfCfs)
+
+		cfOpts := make([]*C.rocksdb_options_t, numOfCfs)
+		for i := 0; i < numOfCfs; i++ {
+			cfOpts[i] = C.rocksdb_options_create()
+		}
+		cfhs := make([]*C.rocksdb_column_family_handle_t, numOfCfs)
+		hdl = C.rocksdb_open_column_families(
+			opts,
+			cName,
+			C.int(numOfCfs),
+			cfs,
+			&cfOpts[0],
+			&cfhs[0],
+			&cErr)
+		if cErr != nil {
+			errMsg := C.GoString(cErr)
+			defer C.rocksdb_free(unsafe.Pointer(cErr))
+			log.Errorln("fail to rocksdb_column_family_handle_t", errMsg)
+			return nil, errors.New(errMsg)
+		}
+		if numOfCfs > 1 {
+			cNamesArr := (*[(1 << 29) - 1]*C.char)(unsafe.Pointer(cfs))[:int(cfsLen):int(cfsLen)]
+			for i := 1; i < numOfCfs; i++ {
+				id := C.GoString(cNamesArr[i])
+				bk := &RocksBucket{
+					cf: cfhs[i],
+				}
+				buckets[BucketID(id)] = bk
+			}
+		}
+		if cfsLen > 0 {
+			C.rocksdb_column_family_handle_destroy(cfhs[0])
+			C.rocksdb_list_column_families_destroy(cfs, cfsLen)
+		}
 	}
 
 	ro := C.rocksdb_readoptions_create()
@@ -77,20 +131,19 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 		db:      hdl,
 		ro:      ro,
 		wo:      wo,
-		buckets: make(map[BucketID]*RocksBucket),
+		buckets: buckets,
+	}
+	if len(buckets) > 0 {
+		for _, bk := range buckets {
+			bk.db = rdb
+		}
 	}
 	return rdb, nil
 }
 
 func (db *RocksDB) Close() error {
 	for _, bk := range db.buckets {
-		var cErr *C.char
-		C.rocksdb_drop_column_family(db.db, bk.cf, &cErr)
-		if cErr != nil {
-			err := errors.New(C.GoString(cErr))
-			C.rocksdb_free(unsafe.Pointer(cErr))
-			return err
-		}
+		C.rocksdb_column_family_handle_destroy(bk.cf)
 	}
 	C.rocksdb_close(db.db)
 	return nil
@@ -134,6 +187,9 @@ func (db *RocksDB) getValue(cf *C.rocksdb_column_family_handle_t, k []byte) ([]b
 	if cErr != nil {
 		defer C.rocksdb_free(unsafe.Pointer(cErr))
 		return nil, errors.New(C.GoString(cErr))
+	}
+	if cValue == nil {
+		return nil, nil
 	}
 	var org []byte
 	sH := (*reflect.SliceHeader)(unsafe.Pointer(&org))

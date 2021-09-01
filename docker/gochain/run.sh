@@ -11,6 +11,9 @@
 #                   Path to configuration file. If it doesn't exist, it will
 #                   automatically generate one.
 #
+#   GOCHAIN_DB_TYPE (default:"goleveldb")
+#                   Name of database system.
+#
 #   GOCHAIN_GENESIS (optional)
 #                   Path to the genesis transaction or template file.
 #                   It will override configuration file.
@@ -43,6 +46,7 @@ GOCHAIN="gochain"
 GOCHAIN_DATA=${GOCHAIN_DATA:-"./data"}
 GOCHAIN_CONFIG=${GOCHAIN_CONFIG:-"./config.json"}
 GOCHAIN_KEYSTORE=${GOCHAIN_KEYSTORE:-"./keystore.json"}
+GOCHAIN_DB_TYPE=${GOCHAIN_DB_TYPE:-"goleveldb"}
 
 if [ ${GOCHAIN_CLEAN_DATA} == "true" ] ; then
     rm -rf ${GOCHAIN_DATA} || exit 1
@@ -56,8 +60,11 @@ fi
 
 GOCHAIN_OPTIONS="--chain_dir ${GOCHAIN_DATA}"
 GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --ee_socket /tmp/socket"
-GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --db_type goleveldb"
 GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --role 3"
+
+if [ "${GOCHAIN_DB_TYPE}" != "" ] ; then
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --db_type ${GOCHAIN_DB_TYPE}"
+fi
 
 if [ "${GOCHAIN_GENESIS}" != "" ] ; then
     GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis ${GOCHAIN_GENESIS}"

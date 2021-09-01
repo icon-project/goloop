@@ -17,6 +17,13 @@
     pip install virtualenv setuptools wheel
     ```
 
+* Rocksdb 6.22+
+
+    **Mac OSX**
+    ```
+    brew install rocksdb
+    ```
+
 ## Environment
 
 ### Source checkout

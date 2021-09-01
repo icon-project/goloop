@@ -1,9 +1,6 @@
-ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION}
+ARG IMAGE_BASE
+FROM ${IMAGE_BASE}
 LABEL MAINTAINER="t_arch@iconloop.com"
-
-# install JRE
-RUN apk add --no-cache openjdk11-jre-headless
 
 ARG GOLOOP_VERSION
 LABEL GOLOOP_VERSION="$GOLOOP_VERSION"
@@ -19,9 +16,9 @@ ENV JAVAEE_BIN /goloop/execman/bin/execman
 # install goloop and other stuff
 ADD dist/bin/* /goloop/bin/
 ENV PATH $PATH:/goloop/bin
-WORKDIR /goloop
 
 # container configuration
+WORKDIR /goloop
 EXPOSE 9080/tcp
 EXPOSE 8080/tcp
 VOLUME ["/goloop/data"]
