@@ -412,7 +412,10 @@ func (c *singleChain) _init() error {
 		return err
 	}
 
-	c.vld = consensus.NewCommitVoteSetFromBytes
+	c.vld = c.plt.CommitVoteSetDecoder()
+	if c.vld == nil {
+		c.vld = consensus.NewCommitVoteSetFromBytes
+	}
 	c.pd = consensus.DecodePatch
 	c.metricCtx = metric.GetMetricContextByCID(c.CID())
 	return nil

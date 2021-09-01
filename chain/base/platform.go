@@ -41,6 +41,7 @@ type Platform interface {
 	DefaultBlockVersion() int
 	NewBlockHandlers(c Chain) []BlockHandler
 	NewConsensus(c Chain, walDir string) (module.Consensus, error)
+	CommitVoteSetDecoder() module.CommitVoteSetDecoder
 	Term()
 }
 

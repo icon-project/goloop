@@ -102,3 +102,7 @@ func (t *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, 
 	cs := consensus.NewConsensus(c, walDir, nil, nil)
 	return cs, nil
 }
+
+func (t *platform) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
+	return nil
+}
