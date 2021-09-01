@@ -1,9 +1,6 @@
-ARG IMAGE_PY_DEPS
-FROM ${IMAGE_PY_DEPS}
+ARG IMAGE_BASE
+FROM ${IMAGE_BASE}
 LABEL MAINTAINER="t_arch@iconloop.com"
-
-# install JRE
-RUN apk add --no-cache openjdk11-jre-headless
 
 ARG GOCHAIN_VERSION
 LABEL GOCHAIN_VERSION="$GOCHAIN_VERSION"
@@ -19,13 +16,14 @@ ADD dist/execman-${JAVAEE_VERSION}.zip /goloop/
 RUN unzip -q /goloop/execman-${JAVAEE_VERSION}.zip -d /goloop/ && \
     mv /goloop/execman-${JAVAEE_VERSION} /goloop/execman && \
     rm -f /goloop/execman-*.zip
+ENV JAVAEE_BIN /goloop/execman/bin/execman
 
 # install gochain and other stuff
 ADD dist/gochain /goloop/bin/
 ENV PATH $PATH:/goloop/bin
-WORKDIR /goloop
 
 # container configuration
+WORKDIR /goloop
 EXPOSE 9080/tcp
 EXPOSE 8080/tcp
 

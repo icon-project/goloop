@@ -1,6 +1,8 @@
 package db
 
 import (
+	"sort"
+
 	"github.com/pkg/errors"
 )
 
@@ -33,6 +35,15 @@ func registerDBCreator(backend BackendType, creator dbCreator, force bool) {
 		return
 	}
 	backends[backend] = creator
+}
+
+func RegisteredBackendTypes() []string {
+	l := make([]string, 0)
+	for k := range backends {
+		l = append(l, string(k))
+	}
+	sort.Strings(l)
+	return l
 }
 
 func Open(dir, dbtype, name string) (Database, error) {

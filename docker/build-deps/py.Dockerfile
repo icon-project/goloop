@@ -3,7 +3,7 @@ ARG ALPINE_VERSION
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}
 
 # required by 'pip install coincurve cryptography'
-RUN apk add --no-cache build-base libffi-dev libressl-dev
+RUN apk add --no-cache build-base libffi-dev openssl-dev
 
 # setup python env
 ADD requirements.txt /goloop/

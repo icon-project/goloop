@@ -35,7 +35,7 @@ func benchmarkTrend(depth, fdepth int, b *testing.B) {
 	dbType := "goleveldb"
 	dbPath := ".db"
 
-	d, err := db.Open(dbPath, dbType, b.Name()+string(b.N))
+	d, err := db.Open(dbPath, dbType, b.Name()+fmt.Sprint(b.N))
 	if err != nil {
 		b.Errorf("Fail to open DB err=%+v", err)
 		b.FailNow()

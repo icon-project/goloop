@@ -11,6 +11,8 @@ variables:
   IMAGE_GO_DEPS: "goloop/go-deps:${CI_COMMIT_REF_NAME}"
   IMAGE_PY_DEPS: "goloop/py-deps:${CI_COMMIT_REF_NAME}"
   IMAGE_JAVA_DEPS: "goloop/java-deps:${CI_COMMIT_REF_NAME}"
+  IMAGE_ROCKSDB_DEPS: "goloop/rocksdb-deps:${CI_COMMIT_REF_NAME}"
+  IMAGE_BUILD_DEPS: "goloop/build-deps:${CI_COMMIT_REF_NAME}"
   IMAGE_GOLOOP: "goloop:${CI_COMMIT_REF_NAME}"
   IMAGE_GOLOOP_PY: "goloop-py:${CI_COMMIT_REF_NAME}"
   IMAGE_GOLOOP_JAVA: "goloop-java:${CI_COMMIT_REF_NAME}"
@@ -24,7 +26,9 @@ deps:go:
   image: docker:git
   stage: deps
   script:
-    - sh docker/go-deps/build.sh
+    - sh docker/build-deps/build.sh go
+    - sh docker/build-deps/build.sh rocksdb
+    - sh docker/build-deps/build.sh build
   tags:
     - docker-build
 
@@ -32,7 +36,7 @@ deps:py:
   image: docker:git
   stage: deps
   script:
-    - sh docker/py-deps/build.sh
+    - sh docker/build-deps/build.sh py
   tags:
     - docker-build
 
@@ -40,12 +44,12 @@ deps:java:
   image: docker:git
   stage: deps
   script:
-    - sh docker/java-deps/build.sh
+    - sh docker/build-deps/build.sh java
   tags:
     - docker-build
 
 unit:go:
-  image: "${IMAGE_GO_DEPS}"
+  image: "${IMAGE_BUILD_DEPS}"
   stage: unit
   script:
     - make test
@@ -71,15 +75,17 @@ unit:java:
     - docker
 
 build:go:
-  image: "${IMAGE_GO_DEPS}"
+  image: "${IMAGE_BUILD_DEPS}"
   stage: build
   script:
     - make goloop
-    - make gstool
+    - GOBUILD_TAGS="" make gstool
+    - goloop doc ./doc/goloop_cli.md
   artifacts:
     expire_in: 1 day
     paths:
       - bin/
+      - doc/goloop_cli.md
   tags:
     - docker
 
@@ -114,12 +120,17 @@ build:java:
 .pack: &pack
   image: docker:git
   stage: pack
+  variables:
+    IMAGE_BASE: "goloop/base:${CI_COMMIT_REF_NAME}"
   tags:
     - docker-build
 
 pack:goloop:py:
   <<: *pack
+  variables:
+    IMAGE_BASE: "goloop/base-py:${CI_COMMIT_REF_NAME}"
   script:
+    - sh docker/base/build.sh py
     - sh docker/goloop-py/build.sh
   dependencies:
     - build:go
@@ -127,7 +138,10 @@ pack:goloop:py:
 
 pack:goloop:java:
   <<: *pack
+  variables:
+    IMAGE_BASE: "goloop/base-java:${CI_COMMIT_REF_NAME}"
   script:
+    - sh docker/base/build.sh java
     - sh docker/goloop-java/build.sh
   dependencies:
     - build:go
@@ -135,7 +149,10 @@ pack:goloop:java:
 
 pack:goloop:
   <<: *pack
+  variables:
+    IMAGE_BASE: "goloop/base-all:${CI_COMMIT_REF_NAME}"
   script:
+    - sh docker/base/build.sh all
     - sh docker/goloop/build.sh
   dependencies:
     - build:go
@@ -314,7 +331,6 @@ pages:doc:
     PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/doc"
     PAGES_SOURCE: "doc/dist"
   script:
-    - bin/goloop doc ./doc/goloop_cli.md
     - cd doc
     - npm install
     - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md

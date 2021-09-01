@@ -28,7 +28,7 @@ build_image() {
     JAVAEE_VERSION=$(grep "^VERSION=" ${SRC_DIR}/javaee/gradle.properties | cut -d= -f2)
     BIN_DIR=${BIN_DIR:-${SRC_DIR}/bin}
     if [ "${GOBUILD_TAGS}" != "" ] ; then
-	GOCHAIN_VERSION="${GOCHAIN_VERSION}-tags(${GOBUILD_TAGS})"
+	    GOCHAIN_VERSION="${GOCHAIN_VERSION}-tags(${GOBUILD_TAGS})"
     fi
 
     # copy required files to ${BUILD_DIR}/dist
@@ -43,16 +43,14 @@ build_image() {
 
     echo "Building image ${TAG}"
     docker build \
-        --build-arg IMAGE_PY_DEPS="${IMAGE_PY_DEPS}" \
+        --build-arg IMAGE_BASE="${IMAGE_BASE}" \
         --build-arg GOCHAIN_VERSION="${GOCHAIN_VERSION}" \
         --build-arg JAVAEE_VERSION="${JAVAEE_VERSION}" \
         --tag ${TAG} .
     local result=$?
 
     cd ${CDIR}
-
 #    rm -rf ${BUILD_DIR}/dist
-
     return $result
 }
 

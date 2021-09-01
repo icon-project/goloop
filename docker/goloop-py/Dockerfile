@@ -1,5 +1,5 @@
-ARG IMAGE_PY_DEPS
-FROM ${IMAGE_PY_DEPS}
+ARG IMAGE_BASE
+FROM ${IMAGE_BASE}
 LABEL MAINTAINER="t_arch@iconloop.com"
 
 ARG GOLOOP_VERSION
@@ -13,9 +13,9 @@ RUN /entrypoint python3 -m pip -q install /goloop/pyee/pyexec-*.whl && \
 # install goloop and other stuff
 ADD dist/bin/* /goloop/bin/
 ENV PATH $PATH:/goloop/bin
-WORKDIR /goloop
 
 # container configuration
+WORKDIR /goloop
 EXPOSE 9080/tcp
 EXPOSE 8080/tcp
 VOLUME ["/goloop/data"]

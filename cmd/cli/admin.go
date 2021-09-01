@@ -19,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
 )
@@ -173,7 +174,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.String("genesis_template", "", "Genesis template directory or file")
 	joinFlags.String("seed", "", "List of trust-seed ip-port, Comma separated string")
 	joinFlags.Uint("role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
-	joinFlags.String("db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
+	joinFlags.String("db_type", "goleveldb", "Name of database system("+strings.Join(db.RegisteredBackendTypes(),", ")+")")
 	joinFlags.String("platform", "", "Name of service platform")
 	joinFlags.Int("concurrency", 1, "Maximum number of executors to be used for concurrency")
 	joinFlags.Int("normal_tx_pool", 0, "Size of normal transaction pool")
