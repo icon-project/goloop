@@ -485,6 +485,9 @@ func (es *ExtensionStateImpl) addEventDelegated(blockHeight int64, delta map[str
 	if err != nil {
 		return err
 	}
+	if len(votes) == 0 {
+		return nil
+	}
 	term := es.State.GetTermSnapshot()
 	offset := int(blockHeight - term.StartHeight())
 	_, _, err = es.Front.AddEventDelegated(offset, state.ZeroAddress, votes)
