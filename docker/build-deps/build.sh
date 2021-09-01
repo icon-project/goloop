@@ -16,8 +16,30 @@ if [ $# -lt 1 ] ; then
     return 1
 fi
 TARGET=${1}
-IMAGE_BUILD_DEPS=${IMAGE_BUILD_DEPS:-goloop/${TARGET}-deps:latest}
+local IMAGE_DEPS
+case $TARGET in
+go)
+    IMAGE_DEPS=${IMAGE_GO_DEPS}
+;;
+py)
+    IMAGE_DEPS=${IMAGE_PY_DEPS}
+;;
+java)
+    IMAGE_DEPS=${IMAGE_JAVA_DEPS}
+;;
+rocksdb)
+    IMAGE_DEPS=${IMAGE_ROCKSDB_DEPS}
+;;
+build)
+    IMAGE_DEPS=${IMAGE_BUILD_DEPS}
+;;
+*)
+;;
+esac
+if [ -z "${IMAGE_DEPS}"]; then
+  IMAGE_DEPS=goloop/${TARGET}-deps:latest
+fi
 
-./update.sh ${TARGET} "${IMAGE_BUILD_DEPS}" ../..
+./update.sh ${TARGET} "${IMAGE_DEPS}" ../..
 
 cd $PRE_PWD
