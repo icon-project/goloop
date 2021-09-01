@@ -23,19 +23,21 @@ import (
 	"os"
 	"path"
 
+	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/blockv0"
+	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
@@ -125,7 +127,7 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	return es.OnExecutionBegin(wc)
 }
 
-func (p *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
+func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult, logger log.Logger) error {
 	revision := wc.Revision().Value()
 	if revision < icmodule.RevisionIISS {
 		return nil
@@ -168,6 +170,13 @@ func (p *platform) DefaultBlockVersion() int {
 	return module.BlockVersion1
 }
 
+func (p *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
+	return []base.BlockHandler {
+		blockv1.NewHandler(c),
+		block.NewBlockV2Handler(c),
+	}
+}
+
 const (
 	BlockV1ProofFile = "block_v1_proof.bin"
 )
@@ -207,7 +216,7 @@ func (p *platform) SetBlockV1Proof(root []byte, size int64, votes *blockv0.Block
 	return ioutil.WriteFile(file, bs, os.FileMode(0500))
 }
 
-func NewPlatform(base string, cid int) (service.Platform, error) {
+func NewPlatform(base string, cid int) (base.Platform, error) {
 	return &platform{
 		base: base,
 	}, nil

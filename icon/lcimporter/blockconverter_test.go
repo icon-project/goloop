@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -33,7 +34,6 @@ import (
 	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -119,7 +119,7 @@ type testService struct {
 	chn chan<- *TransitionRequest
 }
 
-func newTestService(c module.Chain, plt service.Platform, baseDir string) *testService {
+func newTestService(c module.Chain, plt base.Platform, baseDir string) *testService {
 	return &testService{
 		BasicService: lcimporter.BasicService{
 			Chain:   c,
@@ -336,7 +336,7 @@ func newBlockConverterTestWithDB(t *testing.T, dbase db.Database) *blockConverte
 	return newBlockConverterTest2(t, dbase, s, plt)
 }
 
-func newBlockConverterTest2(t *testing.T, dbase db.Database, s lcimporter.Store, plt service.Platform) *blockConverterTest {
+func newBlockConverterTest2(t *testing.T, dbase db.Database, s lcimporter.Store, plt base.Platform) *blockConverterTest {
 	base, err := ioutil.TempDir("", "goloop-blockconverter-test")
 	c, err := newTestChain(dbase, log.New())
 	assert.NoError(t, err)

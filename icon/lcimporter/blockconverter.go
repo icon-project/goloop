@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -29,7 +30,6 @@ import (
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
@@ -78,7 +78,7 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
-func NewBlockConverter(c module.Chain, plt service.Platform, pm eeproxy.Manager, cs Store, data string) (*BlockConverter, error) {
+func NewBlockConverter(c module.Chain, plt base.Platform, pm eeproxy.Manager, cs Store, data string) (*BlockConverter, error) {
 	svc, err := NewService(c, plt, pm, data)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func NewBlockConverter(c module.Chain, plt service.Platform, pm eeproxy.Manager,
 
 func NewBlockConverterWithService(
 	chain module.Chain,
-	plt service.Platform,
+	plt base.Platform,
 	cs Store,
 	data string,
 	svc Service,

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icdb"
@@ -28,12 +28,12 @@ import (
 )
 
 type handler struct {
-	chain module.Chain
+	chain base.Chain
 }
 
 func NewHandler(
-	chain module.Chain,
-) block.Handler {
+	chain base.Chain,
+) base.BlockHandler {
 	return &handler{
 		chain,
 	}

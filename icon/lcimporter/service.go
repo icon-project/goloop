@@ -19,6 +19,7 @@ package lcimporter
 import (
 	"path"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -48,7 +49,7 @@ type Service interface {
 
 type BasicService struct {
 	Chain   module.Chain
-	Plt     service.Platform
+	Plt     base.Platform
 	BaseDir string
 	cm      contract.ContractManager
 	pm      eeproxy.Manager
@@ -118,7 +119,7 @@ type defaultService struct {
 	syncMan service.SyncManager
 }
 
-func NewService(c module.Chain, plt service.Platform, pm eeproxy.Manager, baseDir string) (Service, error) {
+func NewService(c module.Chain, plt base.Platform, pm eeproxy.Manager, baseDir string) (Service, error) {
 	return &defaultService{
 		BasicService: BasicService{
 			Chain:   c,

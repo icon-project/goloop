@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
@@ -29,18 +30,17 @@ import (
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/test"
 )
 
 type platform struct {
-	service.Platform
+	base.Platform
 	mh          hexary.MerkleHeader
 	mtLastVotes *blockv0.BlockVoteList
 }
 
-func NewPlatform() service.Platform {
+func NewPlatform() base.Platform {
 	return &platform{
 		Platform:    basic.Platform,
 		mh:          hexary.MerkleHeader{},
@@ -64,6 +64,10 @@ func (plt *platform) DefaultBlockVersion() int {
 	return module.BlockVersion1
 }
 
+func (plt *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
+	return nil
+}
+
 func UseMerkle(header *hexary.MerkleHeader, lastVote []byte) test.FixtureOption {
 	return test.UseConfig(&test.FixtureConfig{
 		MerkleRoot:   header.RootHash,
@@ -82,7 +86,7 @@ func UseBMForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 			vl, _ := blockv0.NewBlockVotesFromBytes(bytes)
 			return vl
 		},
-		NewPlatform: func(ctx *test.NodeContext) service.Platform {
+		NewPlatform: func(ctx *test.NodeContext) base.Platform {
 			var bv *blockv0.BlockVoteList
 			var err error
 			if ctx.Config.MerkleLastVotes != nil {
@@ -100,7 +104,7 @@ func UseBMForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 		},
 		NewBM: func(ctx *test.NodeContext) module.BlockManager {
 			c := ctx.C
-			handlers := []block.Handler{
+			handlers := []base.BlockHandler{
 				blockv1.NewHandler(c),
 				block.NewBlockV2Handler(c),
 			}

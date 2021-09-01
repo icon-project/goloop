@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -170,7 +171,7 @@ func (b *Block) Reset(database db.Database, bs []byte) error {
 	return nil
 }
 
-func (b *Block) NewWorldSnapshot(database db.Database, plt service.Platform) (state.WorldSnapshot, error) {
+func (b *Block) NewWorldSnapshot(database db.Database, plt base.Platform) (state.WorldSnapshot, error) {
 	return service.NewWorldSnapshot(database, plt, b.result, b.validators)
 }
 

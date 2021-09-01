@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -239,7 +240,7 @@ func (b *Block) FinalizeHeader(dbase db.Database) error {
 	return b.WriteHeaderTo(dbase)
 }
 
-func (b *Block) GetVoters(ctx block.HandlerContext) (module.ValidatorList, error) {
+func (b *Block) GetVoters(ctx base.BlockHandlerContext) (module.ValidatorList, error) {
 	return b.NextValidators(), nil
 }
 

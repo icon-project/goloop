@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -78,9 +79,9 @@ type Executor struct {
 	cm       contract.ContractManager
 	em       eeproxy.Manager
 	chain    module.Chain
-	log      log.Logger
-	plt      service.Platform
-	trace    log.Logger
+	log   log.Logger
+	plt   base.Platform
+	trace log.Logger
 
 	sHeight int64
 
