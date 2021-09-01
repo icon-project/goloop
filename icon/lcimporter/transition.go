@@ -471,7 +471,7 @@ func (t *transition) finalizeResult() (ret error) {
 		if mhr == nil {
 			return errors.InvalidStateError.Errorf("NoMerkleHeader")
 		}
-		mh, votes, err := t.ex.FinalizeBlocks(last+1)
+		mh, votes, err := t.ex.FinalizeBlocks(last)
 		if err != nil {
 			return err
 		}

@@ -447,7 +447,7 @@ func (e *Executor) FinalizeBlocks(height int64) (*hexary.MerkleHeader, *blockv0.
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	if size := e.acc.Len() ; size != height {
+	if size := e.acc.Len() ; size != height+1 {
 		return nil, nil, errors.InvalidStateError.Errorf("InvalidAccumulatorState(height=%d,size=%d)",
 			height, size)
 	}
