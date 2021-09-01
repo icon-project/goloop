@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/icconsensus"
@@ -188,6 +189,17 @@ func (p *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, 
 		return nil, err
 	}
 	return cs, nil
+}
+
+func (t *platform) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
+	return func(bytes []byte) module.CommitVoteSet {
+		vs := consensus.NewCommitVoteSetFromBytes(bytes)
+		if vs != nil {
+			return vs
+		}
+		vl, _ := blockv0.NewBlockVotesFromBytes(bytes)
+		return vl
+	}
 }
 
 const (
