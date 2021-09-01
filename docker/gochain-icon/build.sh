@@ -21,8 +21,9 @@ PRE_PWD=$(pwd)
 WORKDIR=$(dirname "$(readlink -f ${0})")
 cd $WORKDIR
 
+export IMAGE_BASE=${IMAGE_BASE:-goloop/base-all:latest}
+
 export GOCHAIN_ICON_VERSION=${GOCHAIN_ICON_VERSION:-$(git describe --always --tags --dirty)}
-export IMAGE_PY_DEPS=${IMAGE_PY_DEPS:-goloop/py-deps:latest}
 IMAGE_GOCHAIN_ICON=${IMAGE_GOCHAIN_ICON:-goloop/gochain-icon:latest}
 
 ./update.sh "${IMAGE_GOCHAIN_ICON}" ../..

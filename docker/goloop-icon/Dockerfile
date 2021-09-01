@@ -1,9 +1,6 @@
-ARG IMAGE_PY_DEPS
-FROM ${IMAGE_PY_DEPS}
+ARG IMAGE_BASE
+FROM ${IMAGE_BASE}
 LABEL MAINTAINER="t_icondev@iconloop.com"
-
-# install JRE
-RUN apk add --no-cache openjdk11-jre-headless
 
 ARG GOLOOP_ICON_VERSION
 LABEL GOLOOP_ICON_VERSION="$GOLOOP_ICON_VERSION"
@@ -24,10 +21,12 @@ ENV JAVAEE_BIN /goloop/execman/bin/execman
 # install goloop and other stuff
 ADD dist/bin/* /goloop/bin/
 ENV PATH $PATH:/goloop/bin
+
+# install genesis governance
 ADD icon_governance.zip /goloop/
-WORKDIR /goloop
 
 # container configuration
+WORKDIR /goloop
 EXPOSE 9080/tcp
 EXPOSE 8080/tcp
 VOLUME ["/goloop/data"]

@@ -44,14 +44,16 @@ build_image() {
     JAVAEE_VERSION=$(grep "^VERSION=" ${SRC_DIR}/javaee/gradle.properties | cut -d= -f2)
     BIN_DIR=${BIN_DIR:-${SRC_DIR}/bin}
     if [ "${GOBUILD_TAGS}" != "" ] ; then
-	GOCHAIN_ICON_VERSION="${GOCHAIN_ICON_VERSION}-tags(${GOBUILD_TAGS})"
+        GOCHAIN_ICON_VERSION="${GOCHAIN_ICON_VERSION}-tags(${GOBUILD_TAGS})"
     fi
 
     # copy required files to ${BUILD_DIR}/dist
     rm -rf ${BUILD_DIR}/dist
-    mkdir -p ${BUILD_DIR}/dist
-    cp ${BIN_DIR}/gochain ${BUILD_DIR}/dist/
-    cp ${SRC_DIR}/build/iconee/dist/iconee-*.whl ${BUILD_DIR}/dist/
+    mkdir -p ${BUILD_DIR}/dist/bin
+    cp ${BIN_DIR}/gochain ${BUILD_DIR}/dist/bin/
+
+    mkdir -p ${BUILD_DIR}/dist/pyee
+    cp ${SRC_DIR}/build/iconee/dist/iconee-*.whl ${BUILD_DIR}/dist/pyee/
     cp ${SRC_DIR}/javaee/app/execman/build/distributions/execman-${JAVAEE_VERSION}.zip ${BUILD_DIR}/dist/
 
     CDIR=$(pwd)
@@ -59,16 +61,14 @@ build_image() {
 
     echo "Building image ${TAG}"
     docker build \
-        --build-arg IMAGE_PY_DEPS="${IMAGE_PY_DEPS}" \
+        --build-arg IMAGE_BASE="${IMAGE_BASE}" \
         --build-arg GOCHAIN_ICON_VERSION="${GOCHAIN_ICON_VERSION}" \
         --build-arg JAVAEE_VERSION="${JAVAEE_VERSION}" \
         --tag ${TAG} .
     local result=$?
 
     cd ${CDIR}
-
 #    rm -rf ${BUILD_DIR}/dist
-
     return $result
 }
 
