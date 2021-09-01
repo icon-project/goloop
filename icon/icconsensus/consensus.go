@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
@@ -31,7 +32,7 @@ import (
 type wrapper struct {
 	mu sync.Mutex
 	module.Consensus
-	c            module.Chain
+	c            base.Chain
 	walDir       string
 	wm           consensus.WALManager
 	timestamper  module.Timestamper
@@ -40,7 +41,7 @@ type wrapper struct {
 }
 
 func New(
-	c module.Chain,
+	c base.Chain,
 	walDir string,
 	wm consensus.WALManager,
 	timestamper module.Timestamper,

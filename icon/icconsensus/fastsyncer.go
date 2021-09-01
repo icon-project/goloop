@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -34,7 +35,7 @@ type fastSyncer struct {
 	mu            sync.Mutex
 	height        int64
 	to            int64
-	c             module.Chain
+	c             base.Chain
 	parent        *wrapper
 	bpp           *bpp
 	fsm           fastsync.Manager
@@ -47,7 +48,7 @@ type fastSyncer struct {
 func newFastSyncer(
 	height int64,
 	to int64,
-	c module.Chain,
+	c base.Chain,
 	parent *wrapper,
 	bpp *bpp,
 ) *fastSyncer {

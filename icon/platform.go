@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
+	"github.com/icon-project/goloop/icon/icconsensus"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
@@ -175,6 +176,18 @@ func (p *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
 		blockv1.NewHandler(c),
 		block.NewBlockV2Handler(c),
 	}
+}
+
+func (p *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, error) {
+	header, lastVotes, err := p.GetBlockV1Proof()
+	if err != nil {
+		return nil, err
+	}
+	cs, err := icconsensus.New(c, walDir, nil, nil, header, lastVotes)
+	if err != nil {
+		return nil, err
+	}
+	return cs, nil
 }
 
 const (
