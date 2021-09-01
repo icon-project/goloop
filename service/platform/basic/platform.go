@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -95,4 +96,9 @@ func (t *platform) DefaultBlockVersion() int {
 func (t *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
 	// use default handlers
 	return nil
+}
+
+func (t *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, error) {
+	cs := consensus.NewConsensus(c, walDir, nil, nil)
+	return cs, nil
 }

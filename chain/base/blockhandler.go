@@ -17,9 +17,11 @@
 package base
 
 import (
+	"context"
 	"io"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -46,4 +48,11 @@ type Chain interface {
 	Database() db.Database
 	CommitVoteSetDecoder() module.CommitVoteSetDecoder
 	ServiceManager() module.ServiceManager
+	MetricContext() context.Context
+	NID() int
+	Logger() log.Logger
+	NetworkManager() module.NetworkManager
+	BlockManager() module.BlockManager
+	Regulator() module.Regulator
+	Wallet() module.Wallet
 }

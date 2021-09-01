@@ -435,7 +435,10 @@ func (c *singleChain) prepareManagers() error {
 		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, nil, nil)
+	c.cs, err = c.plt.NewConsensus(c, WALDir)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

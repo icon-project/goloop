@@ -40,6 +40,7 @@ type Platform interface {
 	OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error
 	DefaultBlockVersion() int
 	NewBlockHandlers(c Chain) []BlockHandler
+	NewConsensus(c Chain, walDir string) (module.Consensus, error)
 	Term()
 }
 

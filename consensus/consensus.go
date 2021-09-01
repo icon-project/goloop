@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -128,7 +129,7 @@ func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCa
 type consensus struct {
 	hrs
 
-	c           module.Chain
+	c           base.Chain
 	log         log.Logger
 	ph          module.ProtocolHandler
 	mutex       common.Mutex
@@ -177,7 +178,7 @@ type consensus struct {
 }
 
 func NewConsensus(
-	c module.Chain,
+	c base.Chain,
 	walDir string,
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
@@ -188,7 +189,7 @@ func NewConsensus(
 }
 
 func New(
-	c module.Chain,
+	c base.Chain,
 	walDir string,
 	wm WALManager,
 	timestamper module.Timestamper,
