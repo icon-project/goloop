@@ -49,7 +49,7 @@ func (b *handler) NewBlock(
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, blockVote module.CommitVoteSet,
-) module.Block {
+) base.Block {
 	// called for genesis in product
 	// called for propose only in test
 	if nextValidators == nil || nextValidators.Len() == 0 {
@@ -66,17 +66,17 @@ func (b *handler) NewBlock(
 
 func (b *handler) NewBlockFromHeaderReader(
 	r io.Reader,
-) (module.Block, error) {
+) (base.Block, error) {
 	return NewBlockFromHeaderReader(b.chain.Database(), r)
 }
 
 func (b *handler) NewBlockDataFromReader(
 	r io.Reader,
-) (module.BlockData, error) {
+) (base.BlockData, error) {
 	return NewBlockFromReader(b.chain.Database(), r)
 }
 
-func (b *handler) GetBlock(id []byte) (module.Block, error) {
+func (b *handler) GetBlock(id []byte) (base.Block, error) {
 	dbase := b.chain.Database()
 	hash, err := db.DoGetWithBucketID(dbase, icdb.IDToHash, id)
 	if errors.NotFoundError.Equals(err) {
