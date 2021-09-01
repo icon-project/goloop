@@ -29,6 +29,25 @@ type BlockHandlerContext interface {
 	GetBlockByHeight(height int64) (module.Block, error)
 }
 
+type BlockVersionSpec interface {
+	FinalizeHeader(dbase db.Database) error
+	// GetVoters returns the voters for the block. Note that this is different
+	// from the voted, which is a subset of the voters.
+	GetVoters(ctx BlockHandlerContext) (module.ValidatorList, error)
+	// VerifyTimestamp verifies timestamp of the block.
+	VerifyTimestamp(prev module.BlockData, prevVoters module.ValidatorList) error
+}
+
+type Block interface {
+	BlockVersionSpec
+	module.Block
+}
+
+type BlockData interface {
+	BlockVersionSpec
+	module.BlockData
+}
+
 type BlockHandler interface {
 	Version() int
 	// propose or genesis
@@ -38,10 +57,10 @@ type BlockHandler interface {
 		patchTransactions module.TransactionList,
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
-	) module.Block
-	NewBlockFromHeaderReader(r io.Reader) (module.Block, error)
-	NewBlockDataFromReader(io.Reader) (module.BlockData, error)
-	GetBlock(id []byte) (module.Block, error)
+	) Block
+	NewBlockFromHeaderReader(r io.Reader) (Block, error)
+	NewBlockDataFromReader(io.Reader) (BlockData, error)
+	GetBlock(id []byte) (Block, error)
 }
 
 type Chain interface {

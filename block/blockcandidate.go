@@ -1,10 +1,12 @@
 package block
 
-import "github.com/icon-project/goloop/module"
+import (
+	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/module"
+)
 
 type blockCandidate struct {
-	module.Block
-	VersionSpec
+	base.Block
 	m *manager
 }
 

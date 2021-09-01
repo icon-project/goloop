@@ -21,20 +21,8 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/module"
 )
-
-type VersionSpec interface {
-	FinalizeHeader(dbase db.Database) error
-	// GetVoters returns the voters for the block. Note that this is different
-	// from the voted, which is a subset of the voters.
-	GetVoters(ctx base.BlockHandlerContext) (module.ValidatorList, error)
-	// VerifyTimestamp verifies timestamp of the block.
-	VerifyTimestamp(prev module.BlockData, prevVoters module.ValidatorList) error
-}
 
 func ReadVersion(r io.Reader) (int, error) {
 	d := codec.BC.NewDecoder(r)

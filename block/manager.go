@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -210,9 +210,8 @@ func (m *manager) newCandidate(bn *bnode) *blockCandidate {
 		m.bntr.TraceRef(bn)
 	}
 	return &blockCandidate{
-		Block:       bn.block,
-		VersionSpec: bn.block.(VersionSpec),
-		m:           m,
+		Block:            bn.block.(base.Block),
+		m:                m,
 	}
 }
 
@@ -303,7 +302,7 @@ func (m *manager) _import(
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
 	var err error
-	validators, err := bn.block.(VersionSpec).GetVoters(m.handlerContext)
+	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
@@ -1099,7 +1098,7 @@ func (m *manager) finalize(bn *bnode) error {
 		m.bntr.TraceRef(bn)
 	}
 
-	err = block.(VersionSpec).FinalizeHeader(m.chain.Database())
+	err = block.(base.BlockVersionSpec).FinalizeHeader(m.chain.Database())
 	if err != nil {
 		return err
 	}
@@ -1724,7 +1723,7 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	if err != nil {
 		return nil, err
 	}
-	vl, err := pblk.(VersionSpec).GetVoters(m.handlerContext)
+	vl, err := pblk.(base.BlockVersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, err
 	}
