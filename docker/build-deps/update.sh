@@ -82,19 +82,48 @@ get_hash_of_dir() {
     echo "${HASH_OF_DIR}"
 }
 
+cp_files() {
+  local CP_CMD="cp -r ${@} ./"
+  echo ${CP_CMD}
+  ${CP_CMD}
+}
+
+rm_files() {
+  local RM_CMD="rm -rf"
+  for arg in $@; do
+    RM_CMD="${RM_CMD} ${arg##*/}"
+  done
+  echo ${RM_CMD}
+  ${RM_CMD}
+}
+
 extra_files() {
-    local TARGET=$1
-    local SRC_DIR=$2
+    local CMD=$1
+    case $CMD in
+    cp)
+      CMD=cp_files
+    ;;
+    rm)
+      CMD=rm_files
+    ;;
+    *)
+      echo "invalid cmd $CMD"
+      exit 1
+    ;;
+    esac
+
+    local TARGET=$2
+    local SRC_DIR=$3
     local EXTRA_FILES
     case $TARGET in
     go)
-        EXTRA_FILES=("${SRC_DIR}/go.sum" "${SRC_DIR}/go.mod")
+        $CMD "${SRC_DIR}/go.sum" "${SRC_DIR}/go.mod"
     ;;
     py)
-        EXTRA_FILES=("${SRC_DIR}/pyee/requirements.txt")
+        $CMD "${SRC_DIR}/pyee/requirements.txt"
     ;;
     java)
-        EXTRA_FILES=("${SRC_DIR}/javaee/gradle*")
+        $CMD "${SRC_DIR}/javaee/gradle*"
     ;;
     rocksdb)
     ;;
@@ -103,7 +132,6 @@ extra_files() {
     *)
     ;;
     esac
-    echo ${EXTRA_FILES[@]}
 }
 
 update_image() {
@@ -151,13 +179,7 @@ update_image() {
             BUILD_DIR=${BASE_DIR}
         fi
 
-        EXTRA_FILES=$(extra_files ${TARGET} ${SRC_DIR})
-        if [ ! -z "${EXTRA_FILES}" ] ; then
-          CP_CMD="cp -r ${EXTRA_FILES} ${BUILD_DIR}/"
-          echo ${CP_CMD}
-          ${CP_CMD}
-        fi
-
+        extra_files cp ${TARGET} ${SRC_DIR}
         CDIR=$(pwd)
         cd ${BUILD_DIR}
 
@@ -177,17 +199,7 @@ update_image() {
             .
         local result=$?
 
-        if [ ! -z "${EXTRA_FILES}" ] ; then
-          RM_CMD="rm -rf "
-          EXTRA_FILES=($EXTRA_FILES)
-          for EXTRA_FILE in "${EXTRA_FILES[@]}"; do
-              echo "EXTRA_FILE=${EXTRA_FILE} STRIP=${EXTRA_FILE##*/}"
-              RM_CMD="${RM_CMD} ${EXTRA_FILE##*/}"
-          done
-
-          echo ${RM_CMD}
-          ${RM_CMD}
-        fi
+        extra_files rm ${TARGET} ${SRC_DIR}
 
         cd ${CDIR}
         return $result
