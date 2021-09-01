@@ -320,15 +320,15 @@ func (e *BlockConverter) proposeTransition(last *Transition) (*Transition, error
 func (e *BlockConverter) GetLastHeight() int64 {
 	bs, err := e.chainBucket.Get([]byte(KeyLastBlockHeight))
 	if err != nil || len(bs) == 0 {
-		e.log.Debugf("Fail to get last block height")
+		e.log.Warn("Fail to get last block height")
 		return -1
 	}
 	var height int64
 	if _, err := codec.BC.UnmarshalFromBytes(bs, &height); err != nil {
-		e.log.Debugf("Fail to parse last block height")
+		e.log.Error("Fail to parse last block height")
 		return -1
 	} else {
-		e.log.Tracef("Last block height:%d", height)
+		e.log.Debugf("Last block height:%d", height)
 		return height
 	}
 }

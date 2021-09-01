@@ -349,25 +349,30 @@ func TestServiceManager_Basic(t *testing.T) {
 		trp = trc
 	}
 
-	// propose last block with LAST TX
-	height += 1
-	ts += 10
-	t.Log("propose block", height)
-	trc, err = sm.ProposeTransition(trp, common.NewBlockInfo(height, ts), nil)
-	assert.NoError(t, err)
+	for i := 0 ; i<2 ; i++ {
+		assert.False(t, sm.Finished())
 
-	tcb = testTransitionCallback(make(chan error, 1))
-	_, err = trc.Execute(tcb)
-	assert.NoError(t, err)
+		height += 1
+		ts += 10
+		t.Log("propose block", height)
+		trc, err = sm.ProposeTransition(trp, common.NewBlockInfo(height, ts), nil)
+		assert.NoError(t, err)
 
-	t.Log("finalize block", height)
-	assert.NoError(t, <-tcb)
-	err = sm.Finalize(trp, module.FinalizeResult)
-	assert.NoError(t, err)
-	err = sm.Finalize(trc, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
-	assert.NoError(t, err)
+		tcb = testTransitionCallback(make(chan error, 1))
+		_, err = trc.Execute(tcb)
+		assert.NoError(t, err)
 
-	assert.True(t, sm.IsFinished())
+		t.Log("finalize block", height)
+		assert.NoError(t, <-tcb)
+		err = sm.Finalize(trp, module.FinalizeResult)
+		assert.NoError(t, err)
+		err = sm.Finalize(trc, module.FinalizeNormalTransaction|module.FinalizePatchTransaction)
+		assert.NoError(t, err)
+
+		trp = trc
+	}
+
+	assert.True(t, sm.Finished())
 
 	select {
 	case err := <- trb:

@@ -77,7 +77,7 @@ func (t *taskImportICON) String() string {
 func (t *taskImportICON) DetailOf(s State) string {
 	switch s {
 	case Started:
-		return fmt.Sprintf("%s %d", ImportICONTask, t.sm.GetImportedBlocks())
+		return fmt.Sprintf("%s %s", ImportICONTask, t.sm.GetStatus())
 	default:
 		return ImportICONTask +" "+s.String()
 	}

@@ -34,7 +34,6 @@ import (
 )
 
 const (
-	KeyNextBlockHeight = "block.lastFinalizedHeight"
 	TransactionsPerBlock = 3_000
 )
 
@@ -240,7 +239,15 @@ func (e *Executor) FinalizeTransactions(to int64) error {
 	}
 	if to < e.start {
 		if to+1 < e.start {
-			return e.rebaseInLock(to+1, -1, nil)
+			err := e.rebaseInLock(to+1, -1, nil)
+			if errors.Is(err, ErrAfterLastBlock) {
+				e.txs.Init()
+				e.start = to+1
+				e.end = e.start+1
+				e.txs.PushBack(ErrAfterLastBlock)
+			} else {
+				return err
+			}
 		}
 		return nil
 	}
@@ -453,18 +460,6 @@ func (e *Executor) FinalizeBlocks(height int64) (*hexary.MerkleHeader, *blockv0.
 		return nil, nil, err
 	}
 	return mh, votes, nil
-}
-
-func (e *Executor) ReachLastHeight(height int64) bool {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	if txe := e.txs.Front(); txe != nil {
-		if e.start == height+1 && txe.Value == ErrAfterLastBlock {
-			return true
-		}
-	}
-	return false
 }
 
 func newAccumulator(rdb, idb db.Database) (hexary.Accumulator, error) {

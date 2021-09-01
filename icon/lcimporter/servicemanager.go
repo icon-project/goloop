@@ -17,6 +17,7 @@
 package lcimporter
 
 import (
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -34,6 +35,7 @@ import (
 
 const (
 	VarNextBlockHeight = "nextBlockHeight"
+	VarLastBlockHeight = "lastBlockHeight"
 	VarCurrentMerkle   = "currentMerkleHeader"
 )
 
@@ -48,12 +50,12 @@ type ServiceManager struct {
 	ex  *Executor
 	log log.Logger
 	db  db.Database
-	cb ImportCallback
-	ps BlockV1ProofStorage
+	cb  ImportCallback
+	ps  BlockV1ProofStorage
 
 	lock     sync.Mutex
 	next     int64
-	finished bool
+	last     int64
 
 	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
@@ -72,27 +74,27 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 	pt := parent.(*transition)
 	from := pt.getNextHeight()
 	if logServiceManager {
-		sm.log.Warnf("ServiceManager.ProposeTransactions(from=%d)", from)
+		sm.log.Warnf("SM.ProposeTransactions(from=%d)", from)
 	}
 	bts, err := sm.ex.ProposeTransactions(from)
 	if err != nil {
 		if errors.Is(err, ErrAfterLastBlock) {
-			// if it has finished migration, there is nothing to do
-			mh, _, err2 := sm.ps.GetBlockV1Proof()
-			if err2 == nil {
-				return nil, err
-			}
-
-			// we finish our migration
-			mh, err = sm.ex.GetMerkleHeader(from)
-			if err != nil {
-				return nil, err
-			}
-			bts = []*BlockTransaction{
-				&BlockTransaction{
-					Height: mh.Leaves,
-					Result: mh.RootHash,
-				},
+			last := pt.getLastHeight()
+			if last == 0 {
+				// we finish our migration
+				mh, err := sm.ex.GetMerkleHeader(from)
+				if err != nil {
+					sm.log.Errorf("SM.ProposeTransactions: FAIL on GetMerkleHeader(%d)", from)
+					return nil, err
+				}
+				bts = []*BlockTransaction{
+					&BlockTransaction{
+						Height: mh.Leaves,
+						Result: mh.RootHash,
+					},
+				}
+			} else {
+				bts = []*BlockTransaction{}
 			}
 		} else {
 			return nil, err
@@ -140,19 +142,15 @@ func (sm *ServiceManager) Finalize(tr module.Transition, opt int) error {
 		if err := sm.handleError(t.finalizeResult()); err != nil {
 			return err
 		}
-		sm.next = t.getNextHeight()
+		sm.setState(t.getNextHeight(), t.getLastHeight())
 	}
 	return nil
 }
 
 func (sm *ServiceManager) WaitForTransaction(tr module.Transition, bi module.BlockInfo, cb func()) bool {
-	if t, ok := tr.(*transition); ok {
-		if sm.ex.ReachLastHeight(t.getNextHeight()-1) {
-			// no callback ( stuck on the height )
-			return true
-		}
+	if !sm.Finished() {
+		go cb()
 	}
-	go cb()
 	return true
 }
 
@@ -299,34 +297,48 @@ func (sm *ServiceManager) getInitialValidators() module.ValidatorList {
 	return sm.initialValidators
 }
 
-func (sm *ServiceManager) IsFinished() bool {
+func (sm *ServiceManager) Finished() bool {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	return sm.finished
+	return sm.finishedInLock()
 }
 
-func (sm *ServiceManager) setFinished() {
+func (sm *ServiceManager) finishedInLock() bool {
+	return sm.last > 0 && sm.next >= sm.last+2
+}
+
+func (sm *ServiceManager) setState(next, last int64) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	sm.finished = true
+	sm.next = next
+	sm.last = last
 }
 
 func (sm *ServiceManager) handleError(err error) error {
-	if err == nil {
-		return nil
+	if err != nil {
+		go sm.cb.OnResult(err)
 	}
-	if errors.Is(err, ErrAfterLastBlock) {
-		sm.setFinished()
-		return nil
-	}
-	go sm.cb.OnResult(err)
 	return err
 }
 
 func (sm *ServiceManager) GetImportedBlocks() int64 {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	return sm.next
+}
+
+func (sm *ServiceManager) GetStatus() string {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if sm.finishedInLock() {
+		return fmt.Sprintf("%d finished", sm.next)
+	} else {
+		return fmt.Sprintf("%d running", sm.next)
+	}
 }
 
 func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ps BlockV1ProofStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
