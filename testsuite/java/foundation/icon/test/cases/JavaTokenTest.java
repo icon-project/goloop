@@ -250,7 +250,11 @@ public class JavaTokenTest extends TestBase {
         assertFailure(txHandler.getResult(
                 tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), tokenId[2])));
         // out of the supported range
-        final var bigLengthToken = new BigInteger(getRandomBytes(34));
+        byte[] randBytes = getRandomBytes(34);
+        if (randBytes[1] == 0) {
+            randBytes[1] = (byte)0xFF;
+        }
+        final var bigLengthToken = new BigInteger(randBytes);
         try {
             tokenScore.ownerOf(bigLengthToken);
         } catch (RpcError e) {
