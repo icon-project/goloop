@@ -27,6 +27,8 @@ deps:go:
   stage: deps
   script:
     - sh docker/build-deps/build.sh go
+    - sh docker/build-deps/build.sh rocksdb
+    - sh docker/build-deps/build.sh build
   tags:
     - docker-build
 
@@ -45,28 +47,6 @@ deps:java:
     - sh docker/build-deps/build.sh java
   tags:
     - docker-build
-
-deps:rocksdb:
-  image: docker:git
-  stage: deps
-  script:
-    - sh docker/build-deps/build.sh rocksdb
-  tags:
-    - docker-build
-  dependencies:
-    - build:go
-    - build:pyee
-
-deps:build:
-  image: docker:git
-  stage: deps
-  script:
-    - sh docker/build-deps/build.sh build
-  tags:
-    - docker-build
-  dependencies:
-    - deps:go
-    - deps:rocksdb
 
 unit:go:
   image: "${IMAGE_BUILD_DEPS}"
