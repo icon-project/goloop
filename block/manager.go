@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -123,7 +124,7 @@ type manager struct {
 	handlerContext handlerContext
 }
 
-type handlerList []Handler
+type handlerList []base.BlockHandler
 
 func (hl handlerList) upTo(version int) handlerList {
 	for i, h := range hl {
@@ -134,7 +135,7 @@ func (hl handlerList) upTo(version int) handlerList {
 	return hl
 }
 
-func (hl handlerList) forVersion(version int) (Handler, bool) {
+func (hl handlerList) forVersion(version int) (base.BlockHandler, bool) {
 	for i := len(hl)-1 ; i >= 0 ; i-- {
 		if hl[i].Version() == version {
 			return hl[i], true
@@ -143,7 +144,7 @@ func (hl handlerList) forVersion(version int) (Handler, bool) {
 	return nil, false
 }
 
-func (hl handlerList) last() Handler {
+func (hl handlerList) last() base.BlockHandler {
 	return hl[len(hl)-1]
 }
 
@@ -592,7 +593,7 @@ func (pt *proposeTask) _onExecute(err error) {
 func NewManager(
 	chain module.Chain,
 	timestamper module.Timestamper,
-	handlers []Handler,
+	handlers []base.BlockHandler,
 ) (module.BlockManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM",
@@ -600,7 +601,7 @@ func NewManager(
 	logger.Debugf("NewBlockManager\n")
 
 	if handlers == nil {
-		handlers = []Handler{NewBlockV2Handler(chain)}
+		handlers = []base.BlockHandler{NewBlockV2Handler(chain)}
 	}
 
 	m := &manager{

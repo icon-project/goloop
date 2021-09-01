@@ -23,10 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/platform/basic"
 )
 
@@ -38,7 +38,7 @@ type FixtureConfig struct {
 	Prefix            string
 	Dbase             db.Database
 	CVSD              module.CommitVoteSetDecoder
-	NewPlatform       func(ctx *NodeContext) service.Platform
+	NewPlatform       func(ctx *NodeContext) base.Platform
 	NewSM             func(ctx *NodeContext) module.ServiceManager
 	NewBM             func(ctx *NodeContext) module.BlockManager
 	NewCS             func(ctx *NodeContext) module.Consensus
@@ -55,7 +55,7 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 		Prefix: "goloop-block-fixture",
 		Dbase:  db.NewMapDB(),
 		CVSD:   consensus.NewCommitVoteSetFromBytes,
-		NewPlatform: func(ctx *NodeContext) service.Platform {
+		NewPlatform: func(ctx *NodeContext) base.Platform {
 			return basic.Platform
 		},
 		NewSM: func(ctx *NodeContext) module.ServiceManager {

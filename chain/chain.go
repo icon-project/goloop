@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -84,8 +85,8 @@ type singleChain struct {
 	cs       module.Consensus
 	srv      *server.Manager
 	nt       module.NetworkTransport
-	nm       module.NetworkManager
-	plt      service.Platform
+	nm  module.NetworkManager
+	plt base.Platform
 
 	cid int
 	cfg Config
@@ -428,7 +429,8 @@ func (c *singleChain) prepareManagers() error {
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, nil, nil)
+	bhs := c.plt.NewBlockHandlers(c)
+	c.bm, err = block.NewManager(c, nil, bhs)
 	if err != nil {
 		return err
 	}

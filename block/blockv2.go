@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -238,7 +239,7 @@ func (b *blockV2) FinalizeHeader(dbase db.Database) error {
 	return nil
 }
 
-func (b *blockV2) GetVoters(ctx HandlerContext) (module.ValidatorList, error) {
+func (b *blockV2) GetVoters(ctx base.BlockHandlerContext) (module.ValidatorList, error) {
 	if b.Height() == 0 {
 		return nil, nil
 	}

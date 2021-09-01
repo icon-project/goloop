@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -27,11 +28,11 @@ import (
 )
 
 type blockV2Handler struct {
-	chain Chain
-	sm ServiceManager
+	chain base.Chain
+	sm    ServiceManager
 }
 
-func NewBlockV2Handler(chain Chain) Handler {
+func NewBlockV2Handler(chain base.Chain) base.BlockHandler {
 	return &blockV2Handler{
 		chain: chain,
 		sm: chain.ServiceManager(),

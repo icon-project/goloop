@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"sync"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -32,7 +33,7 @@ type transitionResultCache struct {
 	entrySize  int
 
 	database  db.Database
-	platform  Platform
+	platform  base.Platform
 	stateList *list.List
 	stateMap  map[string]*list.Element
 
@@ -174,7 +175,7 @@ func (c *transitionResultCache) TotalBytes() int {
 	return total
 }
 
-func newTransitionResultCache(database db.Database, plt Platform, count int, size int, log log.Logger) *transitionResultCache {
+func newTransitionResultCache(database db.Database, plt base.Platform, count int, size int, log log.Logger) *transitionResultCache {
 	trc := &transitionResultCache{
 		database:   database,
 		platform:   plt,

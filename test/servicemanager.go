@@ -17,6 +17,7 @@
 package test
 
 import (
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -31,9 +32,9 @@ import (
 type ServiceManager struct {
 	module.ServiceManager
 	dbase            db.Database
-	logger           log.Logger
-	plt              service.Platform
-	cm               contract.ContractManager
+	logger log.Logger
+	plt    base.Platform
+	cm     contract.ContractManager
 	em               eeproxy.Manager
 	chain            module.Chain
 	tsc              *service.TxTimestampChecker
@@ -44,7 +45,7 @@ type ServiceManager struct {
 
 func NewServiceManager(
 	c *Chain,
-	plt service.Platform,
+	plt base.Platform,
 	cm contract.ContractManager,
 	em eeproxy.Manager,
 ) *ServiceManager {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
@@ -27,7 +28,7 @@ type managerForImport struct {
 }
 
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, plt service.Platform, contractDir string, lcDBDir string,
+	eem eeproxy.Manager, plt base.Platform, contractDir string, lcDBDir string,
 	height int64, cb ImportCallback,
 ) (module.ServiceManager, module.Timestamper, error) {
 	manager, err := service.NewManager(chain, nm, eem, plt, contractDir)

@@ -19,6 +19,7 @@ package service
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -45,6 +46,6 @@ func (e *executionResult) TotalFee() *big.Int {
 	return e.totalFee
 }
 
-func NewExecutionResult(p, n module.ReceiptList, vfee, fee *big.Int) ExecutionResult {
+func NewExecutionResult(p, n module.ReceiptList, vfee, fee *big.Int) base.ExecutionResult {
 	return &executionResult{p, n, vfee, fee}
 }

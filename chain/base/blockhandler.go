@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package block
+package base
 
 import (
 	"io"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
-type HandlerContext interface {
+type BlockHandlerContext interface {
 	GetBlockByHeight(height int64) (module.Block, error)
 }
 
-type Handler interface {
+type BlockHandler interface {
 	Version() int
 	// propose or genesis
 	NewBlock(
@@ -39,4 +40,10 @@ type Handler interface {
 	NewBlockFromHeaderReader(r io.Reader) (module.Block, error)
 	NewBlockDataFromReader(io.Reader) (module.BlockData, error)
 	GetBlock(id []byte) (module.Block, error)
+}
+
+type Chain interface {
+	Database() db.Database
+	CommitVoteSetDecoder() module.CommitVoteSetDecoder
+	ServiceManager() module.ServiceManager
 }

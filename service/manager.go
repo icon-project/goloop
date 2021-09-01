@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
@@ -40,8 +41,8 @@ type manager struct {
 	patchMetric  *metric.TxMetric
 	normalMetric *metric.TxMetric
 
-	plt       Platform
-	db        db.Database
+	plt base.Platform
+	db  db.Database
 	chain     module.Chain
 	txReactor *TransactionReactor
 	cm        contract.ContractManager
@@ -56,7 +57,7 @@ type manager struct {
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, plt Platform, contractDir string,
+	eem eeproxy.Manager, plt base.Platform, contractDir string,
 ) (module.ServiceManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "SV",
