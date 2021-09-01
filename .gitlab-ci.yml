@@ -79,7 +79,7 @@ build:go:
   stage: build
   script:
     - make goloop
-    - make gstool
+    - GOBUILD_TAGS="" make gstool
   artifacts:
     expire_in: 1 day
     paths:
