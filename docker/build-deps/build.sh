@@ -16,7 +16,6 @@ if [ $# -lt 1 ] ; then
     return 1
 fi
 TARGET=${1}
-local IMAGE_DEPS
 case $TARGET in
 go)
     IMAGE_DEPS=${IMAGE_GO_DEPS}
@@ -36,7 +35,7 @@ build)
 *)
 ;;
 esac
-if [ -z "${IMAGE_DEPS}"]; then
+if [ -z "${IMAGE_DEPS}" ]; then
   IMAGE_DEPS=goloop/${TARGET}-deps:latest
 fi
 
