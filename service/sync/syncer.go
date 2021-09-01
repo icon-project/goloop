@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -269,7 +270,7 @@ func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte)
 	s.bMutex[bIndex].Lock()
 	if status == ErrTimeExpired {
 		for k, _ := range s.reqValue {
-			delete(s.reqValue[bIndex], string(k))
+			delete(s.reqValue[bIndex], fmt.Sprint(k))
 		}
 	}
 	builder := s.builder[bIndex]
