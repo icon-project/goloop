@@ -329,7 +329,7 @@ pages:doc:
     PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/doc"
     PAGES_SOURCE: "doc/dist"
   script:
-    - bin/goloop doc ./doc/goloop_cli.md
+    - docker run --rm -v $(pwd)/doc:/doc ${IMAGE_GOLOOP} goloop doc /doc/goloop_cli.md
     - cd doc
     - npm install
     - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md
@@ -338,6 +338,8 @@ pages:doc:
     - mv README.md documentation.md
     - cat .vuepress/hometags ../README.md > README.md && sed -i "s/doc\///g" README.md
     - ./node_modules/.bin/vuepress build --dest dist ./
+  tags:
+    - docker-service
 
 pages:javadoc:
   <<: *pages
