@@ -361,7 +361,7 @@ func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.Va
 		if idx < 0 {
 			return nil, errors.InvalidStateError.Errorf(
 				"bad validator %s at %d",
-				v.json.Rep,
+				&v.json.Rep,
 				i,
 			)
 		}
