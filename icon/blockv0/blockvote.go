@@ -19,6 +19,7 @@ package blockv0
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 
@@ -417,6 +418,14 @@ func (s *BlockVoteList) CommitVoteSet() module.CommitVoteSet {
 
 func (s *BlockVoteList) Add(idx int, vote interface{}) bool {
 	return false
+}
+
+func (s *BlockVoteList) String() string {
+	jsn, err := s.MarshalJSON()
+	if err != nil {
+		return fmt.Sprintf("BlockVoteList{err:%+v}", err)
+	}
+	return string(jsn)
 }
 
 func NewBlockVotesFromBytes(bs []byte) (*BlockVoteList, error) {
