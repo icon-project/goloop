@@ -218,7 +218,7 @@ func (b *Block) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := make(map[string]interface{})
 	res["version"] = b.versionV0
 	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
-	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
+	res["merkle_tree_root_hash"] = hex.EncodeToString(b.TransactionsRoot())
 	res["time_stamp"] = b.Timestamp()
 	res["confirmed_transaction_list"] = b.NormalTransactions()
 	res["block_hash"] = hex.EncodeToString(b.ID())
@@ -289,7 +289,7 @@ func (b *blockV11) headerFormat() *HeaderFormat {
 }
 
 func hexBytes(data []byte) []byte {
-	return []byte(common.RawHexBytes(data).String())
+	return []byte(hex.EncodeToString(data))
 }
 
 func (b *blockV11) id() []byte {
