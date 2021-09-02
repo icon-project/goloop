@@ -434,7 +434,8 @@ func (it *importTask) _onExecute(err error) {
 			it.cb(nil, err)
 			return
 		}
-		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it)
+		validated := it.flags & module.ImportByForce > 0
+		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it, validated)
 		if err != nil {
 			it.stop()
 			it.cb(nil, err)
@@ -687,7 +688,7 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil)
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -939,7 +940,7 @@ func (m *manager) finalizePrunedBlock() error {
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return err
 	}
-	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
+	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil, true)
 	if err != nil {
 		return err
 	}
@@ -983,7 +984,7 @@ func (m *manager) finalizeGenesisBlock(
 	)
 	m.syncer.begin()
 	csi := common.NewConsensusInfo(nil, nil, nil)
-	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch})
+	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch}, true)
 	if err != nil {
 		m.syncer.end()
 		return nil, err

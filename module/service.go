@@ -268,7 +268,7 @@ type TransitionManager interface {
 	// CreateInitialTransition creates an initial Transition.
 	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs TransactionList, bi BlockInfo, csi ConsensusInfo) (Transition, error)
+	CreateTransition(parent Transition, txs TransactionList, bi BlockInfo, csi ConsensusInfo, validated bool) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
 	// bi is the block info of the block that will contain the patches
 	GetPatches(parent Transition, bi BlockInfo) TransactionList

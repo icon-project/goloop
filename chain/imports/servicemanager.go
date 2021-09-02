@@ -108,7 +108,7 @@ func (m *managerForImport) ProposeTransition(
 		txs = append(txs, tx)
 	}
 	txl2 := m.ServiceManager.TransactionListFromSlice(txs, module.BlockVersion2)
-	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txl2, bi, csi)
+	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txl2, bi, csi, true)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,9 @@ func (m *managerForImport) CreateTransition(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
+	validated bool,
 ) (module.Transition, error) {
-	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txs, bi, csi)
+	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txs, bi, csi, true)
 	if err != nil {
 		return nil, err
 	}

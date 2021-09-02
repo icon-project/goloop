@@ -174,13 +174,14 @@ func (m *manager) CreateTransition(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
+	validated bool,
 ) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txs, bi, csi, false), nil
+	return newTransition(pt, nil, txs, bi, csi, validated), nil
 }
 
 func (m *manager) SendPatch(data module.Patch) error {

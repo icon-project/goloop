@@ -97,14 +97,14 @@ func (sm *ServiceManager) CreateInitialTransition(
 	)
 }
 
-func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
+func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo, validated bool) (module.Transition, error) {
 	return service.NewTransition(
 		parent,
 		sm.emptyTXs,
 		txs,
 		bi,
 		csi,
-		false,
+		validated,
 	), nil
 }
 
