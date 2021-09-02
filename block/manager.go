@@ -454,15 +454,9 @@ func (m *manager) _propose(
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
-	var validators module.ValidatorList
-	if bn.block.Height() == 0 {
-		validators = nil
-	} else {
-		pprev, err := m.getBlock(bn.block.PrevID())
-		if err != nil {
-			return nil, errors.InvalidStateError.Wrapf(err, "Cannot get prev block %x", bn.block.PrevID())
-		}
-		validators = pprev.NextValidators()
+	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	if err != nil {
+		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
 	var csi module.ConsensusInfo
 	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
@@ -485,7 +479,6 @@ func (m *manager) _propose(
 		bn.in.mtransition(),
 		bi,
 	)
-	var err error
 	pt.in, err = bn.preexe.patch(patches, bi, pt)
 	if err != nil {
 		return nil, err
