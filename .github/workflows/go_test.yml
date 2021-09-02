@@ -17,10 +17,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14
+          go-version: 1.16.7
 
       - name: Build
-        run: make
+        run: GOBUILD_TAGS= make
 
       - name: Test
-        run: make test
+        run: GOBUILD_TAGS= make test
