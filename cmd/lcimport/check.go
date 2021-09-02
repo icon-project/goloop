@@ -138,7 +138,7 @@ type stage struct {
 }
 
 func (s *stage) Summary() string {
-	return fmt.Sprintf("Event count=%d",len(s.Event))
+	return fmt.Sprintf("Event count=%d", len(s.Event))
 }
 
 const (
@@ -152,7 +152,7 @@ func (s *stage) Check(stateTerm, front containerdb.ObjectStoreState) error {
 	if s == nil {
 		return nil
 	}
-	printTitle("Checking Front")
+	printTitle("Checking Front. %d events", len(s.Event))
 	obj, err := front.Get(icstage.GlobalKey)
 	if err != nil || obj == nil {
 		return err
@@ -174,6 +174,11 @@ func (s *stage) Check(stateTerm, front containerdb.ObjectStoreState) error {
 			bh = e.Height
 		}
 		obj = getEventObject(int(offset), index, front)
+		if obj != nil && icstage.TypeEventDelegated == obj.(*icobject.Object).Tag().Type() {
+			// skip EventDelegated
+			index++
+			obj = getEventObject(int(offset), index, front)
+		}
 		if obj == nil {
 			fmt.Printf("Failed icstage event %d: icon1(%+v) icon2(nil)\n", i, e)
 			failCount++
