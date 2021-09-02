@@ -117,7 +117,8 @@ extra_files() {
     local EXTRA_FILES
     case $TARGET in
     go)
-        $CMD "${SRC_DIR}/go.sum" "${SRC_DIR}/go.mod"
+        $CMD "${SRC_DIR}/go.sum"
+        $CMD "${SRC_DIR}/go.mod"
     ;;
     py)
         $CMD "${SRC_DIR}/pyee/requirements.txt"
@@ -179,9 +180,9 @@ update_image() {
             BUILD_DIR=${BASE_DIR}
         fi
 
-        extra_files cp ${TARGET} ${SRC_DIR}
         CDIR=$(pwd)
         cd ${BUILD_DIR}
+        extra_files cp ${TARGET} ${SRC_DIR}
 
         local DOCKERFILE=$(get_dockerfile ${TARGET})
         echo "Building image ${TARGET_IMAGE} for ${HASH_OF_DIR}"
