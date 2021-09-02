@@ -126,7 +126,7 @@ func TestServiceManager_Basic(t *testing.T) {
 	ts := int64(0)
 	gtx := buildTestTx(0,  "GENESIS")
 	gtxs := transaction.NewTransactionListFromSlice(idb, []module.Transaction{gtx})
-	tr1, err := sm.CreateTransition(tr0, gtxs, common.NewBlockInfo(height, ts), nil)
+	tr1, err := sm.CreateTransition(tr0, gtxs, common.NewBlockInfo(height, ts), nil, true)
 	assert.NotNil(t, tr1)
 	assert.NoError(t, err)
 	tcb := testTransitionCallback(make(chan error, 1))
@@ -291,7 +291,7 @@ func TestServiceManager_Basic(t *testing.T) {
 
 	assert.Equal(t, "confirm_start", <-toTC)
 
-	tr3, err = sm.CreateTransition(tr2, tls2, common.NewBlockInfo(height, ts), nil)
+	tr3, err = sm.CreateTransition(tr2, tls2, common.NewBlockInfo(height, ts), nil, true)
 	assert.NoError(t, err)
 
 	tcb = testTransitionCallback(make(chan error, 1))

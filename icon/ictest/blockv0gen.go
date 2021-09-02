@@ -120,7 +120,7 @@ func (g *BlockV0Generator) executeAndAddReceipts(
 ) []byte {
 	txl := transaction.NewTransactionListFromSlice(g.node.Chain.Database(), txs)
 	tr, err := g.node.SM.CreateTransition(
-		g.lastTr, txl, common.NewBlockInfo(height, ts), nil,
+		g.lastTr, txl, common.NewBlockInfo(height, ts), nil, false,
 	)
 	assert.NoError(g.t, err)
 	transitionExecute(g.t, tr)

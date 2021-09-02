@@ -113,7 +113,7 @@ func (sm *ServiceManager) CreateInitialTransition(result []byte, nextValidators 
 	return tr, nil
 }
 
-func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
+func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo, validated bool) (module.Transition, error) {
 	pt := parent.(*transition)
 	tr := createTransition(pt, bi, txs, false)
 	return tr, nil
