@@ -80,7 +80,7 @@ build:go:
   script:
     - make goloop
     - GOBUILD_TAGS="" make gstool
-    - goloop doc ./doc/goloop_cli.md
+    - ./bin/goloop doc ./doc/goloop_cli.md
   artifacts:
     expire_in: 1 day
     paths:
