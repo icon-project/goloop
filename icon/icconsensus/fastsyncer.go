@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 )
@@ -43,6 +44,8 @@ type fastSyncer struct {
 	blockCanceler module.Canceler
 	log           log.Logger
 	running       bool
+	r1            consensusReactor
+	r2            consensusReactor
 }
 
 func newFastSyncer(
@@ -52,22 +55,34 @@ func newFastSyncer(
 	parent *wrapper,
 	bpp *bpp,
 ) *fastSyncer {
+	l := c.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "CS|V1",
+	})
 	f := &fastSyncer{
 		height: height,
 		to:     to,
 		c:      c,
 		parent: parent,
 		bpp:    bpp,
+		log:    l,
+		r1:     consensusReactor{l},
+		r2:     consensusReactor{l},
 	}
-	f.log = c.Logger().WithFields(log.Fields{
-		log.FieldKeyModule: "CS|V1|",
-	})
 	return f
 }
 
 func (f *fastSyncer) Start() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	_, err := f.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, &f.r1, consensus.CsProtocols, consensus.ConfigEnginePriority)
+	if err != nil {
+		return err
+	}
+	_, err = f.c.NetworkManager().RegisterReactor("consensus.sync", module.ProtoConsensusSync, &f.r2, consensus.SyncerProtocols, consensus.ConfigSyncerPriority)
+	if err != nil {
+		return err
+	}
 
 	fsm, err := fastsync.NewManager(
 		f.c.NetworkManager(),
@@ -100,6 +115,8 @@ func (f *fastSyncer) Term() {
 	if f.blockCanceler != nil {
 		f.blockCanceler.Cancel()
 	}
+	_ = f.c.NetworkManager().UnregisterReactor(&f.r1)
+	_ = f.c.NetworkManager().UnregisterReactor(&f.r2)
 	f.running = false
 }
 
@@ -207,4 +224,31 @@ func (f *fastSyncer) OnEnd(err error) {
 	ul.Unlock()
 
 	parent.Upgrade(f.bpp)
+}
+
+type consensusReactor struct {
+	log log.Logger
+}
+
+func (r *consensusReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
+	msg, err := consensus.UnmarshalMessage(pi.Uint16(), b)
+	if err != nil {
+		r.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", pi, common.HexPre(id.Bytes()), err)
+		return false, err
+	}
+	r.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
+	if err = msg.Verify(); err != nil {
+		r.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *consensusReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
+}
+
+func (r *consensusReactor) OnJoin(id module.PeerID) {
+}
+
+func (r *consensusReactor) OnLeave(id module.PeerID) {
 }
