@@ -32,7 +32,6 @@ type SimplePeer struct {
 	id        module.PeerID
 	p         Peer
 	handlers  []*SimplePeerHandler
-	joinedMPI []module.ProtocolInfo
 	w         module.Wallet
 }
 
@@ -80,16 +79,6 @@ func (p *SimplePeer) notifyPacket(pk *Packet, cb func(rebroadcast bool, err erro
 	}
 }
 
-func (p *SimplePeer) joinedProto() []module.ProtocolInfo {
-	return p.joinedMPI
-}
-
-func (p *SimplePeer) notifyJoin(p2 Peer, mpi module.ProtocolInfo) {
-}
-
-func (p *SimplePeer) notifyLeave(p2 Peer, mpi module.ProtocolInfo) {
-}
-
 func (p *SimplePeer) ID() module.PeerID {
 	return p.id
 }
@@ -99,16 +88,14 @@ func (p *SimplePeer) Connect(p2 Peer) *SimplePeer {
 	return p
 }
 
-func (p *SimplePeer) Join(mpi module.ProtocolInfo) *SimplePeerHandler {
+func (p *SimplePeer) RegisterProto(mpi module.ProtocolInfo) *SimplePeerHandler {
 	const chanSize = 1024
-	p.p.notifyJoin(p, mpi)
 	h := &SimplePeerHandler{
 		p:   p,
 		mpi: mpi,
 		rCh: make(chan packetEntry, chanSize),
 	}
 	p.handlers = append(p.handlers, h)
-	p.joinedMPI = append(p.joinedMPI, mpi)
 	return h
 }
 

@@ -115,7 +115,7 @@ func TestConsensus_ClientBasics(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, csh := f.NM.NewPeerFor(module.ProtoConsensusSync)
-	fsh := csh.Peer().Join(module.ProtoFastSync)
+	fsh := csh.Peer().RegisterProto(module.ProtoFastSync)
 
 	var rsm consensus.RoundStateMessage
 	rsm.Height = 10
@@ -198,7 +198,7 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 		)
 	}
 
-	hcs0 := h[0].Peer().Join(module.ProtoConsensusSync)
+	hcs0 := h[0].Peer().RegisterProto(module.ProtoConsensusSync)
 	for {
 		var rs consensus.RoundStateMessage
 		hcs0.Receive(consensus.ProtoRoundState, nil, &rs)

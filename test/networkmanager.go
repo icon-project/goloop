@@ -29,7 +29,6 @@ type NetworkManager struct {
 	t         *testing.T
 	peers     []Peer
 	handlers  []*nmHandler
-	joinedMPI []module.ProtocolInfo
 	roles     map[string]module.Role
 	id        module.PeerID
 	rCh       chan packetEntry
@@ -57,19 +56,13 @@ func NewNetworkManager(t *testing.T, a module.Address) *NetworkManager {
 func (n *NetworkManager) attach(p Peer) {
 	if indexOf(n.peers, p.ID()) < 0 {
 		n.peers = append(n.peers, p)
-		mpis := p.joinedProto()
-		for _, mpi := range mpis {
-			n.notifyJoin(p, mpi)
-		}
+		n.notifyJoin(p)
 	}
 }
 
 func (n *NetworkManager) detach(p Peer) {
 	if i := indexOf(n.peers, p.ID()); i >= 0 {
-		mpis := p.joinedProto()
-		for _, mpi := range mpis {
-			n.notifyLeave(p, mpi)
-		}
+		n.notifyLeave(p)
 		last := len(n.peers) - 1
 		n.peers[i] = n.peers[last]
 		n.peers[last] = nil
@@ -92,29 +85,21 @@ func (n *NetworkManager) notifyPacket(pk *Packet, cb func(rebroadcast bool, err 
 	}
 }
 
-func (n *NetworkManager) joinedProto() []module.ProtocolInfo {
-	return n.joinedMPI
-}
-
-func (n *NetworkManager) notifyJoin(p Peer, mpi module.ProtocolInfo) {
+func (n *NetworkManager) notifyJoin(p Peer) {
 	for _, h := range n.handlers {
-		if h.mpi == mpi {
-			reactor := h.reactor
-			Go(func() {
-				reactor.OnJoin(p.ID())
-			})
-		}
+		reactor := h.reactor
+		Go(func() {
+			reactor.OnJoin(p.ID())
+		})
 	}
 }
 
-func (n *NetworkManager) notifyLeave(p Peer, mpi module.ProtocolInfo) {
+func (n *NetworkManager) notifyLeave(p Peer) {
 	for _, h := range n.handlers {
-		if h.mpi == mpi {
-			reactor := h.reactor
-			Go(func() {
-				reactor.OnLeave(p.ID())
-			})
-		}
+		reactor := h.reactor
+		Go(func() {
+			reactor.OnLeave(p.ID())
+		})
 	}
 }
 
@@ -136,19 +121,6 @@ func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, r
 		priority,
 	}
 	n.handlers = append(n.handlers, h)
-	n.joinedMPI = append(n.joinedMPI, mpi)
-	for _, p := range n.peers {
-		p.notifyJoin(n, mpi)
-		for _, pmpi := range p.joinedProto() {
-			if mpi == pmpi {
-				id := p.ID()
-				reactor := h.reactor
-				Go(func() {
-					reactor.OnJoin(id)
-				})
-			}
-		}
-	}
 	return h, nil
 }
 
@@ -163,21 +135,6 @@ func (n *NetworkManager) UnregisterReactor(reactor module.Reactor) error {
 			n.handlers[i] = n.handlers[last]
 			n.handlers[last] = nil
 			n.handlers = n.handlers[:last]
-			for i, mpi := range n.joinedMPI {
-				if mpi == h.mpi {
-					last := len(n.joinedMPI) - 1
-					n.joinedMPI[i] = n.joinedMPI[last]
-					n.joinedMPI[last] = 0
-					n.joinedMPI = n.joinedMPI[:last]
-				}
-			}
-			for _, p := range n.peers {
-				for _, pmpi := range p.joinedProto() {
-					if h.mpi == pmpi {
-						p.notifyLeave(n, h.mpi)
-					}
-				}
-			}
 			return nil
 		}
 	}
@@ -197,7 +154,7 @@ func (n *NetworkManager) SetRole(version int64, role module.Role, peers ...modul
 
 func (n *NetworkManager) NewPeerFor(mpi module.ProtocolInfo) (*SimplePeer, *SimplePeerHandler) {
 	p := NewPeer(n.t).Connect(n)
-	h := p.Join(mpi)
+	h := p.RegisterProto(mpi)
 	return p, h
 }
 
