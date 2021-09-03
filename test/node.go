@@ -26,11 +26,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -46,14 +46,14 @@ type Node struct {
 	CS        module.Consensus
 	PrevBlock module.Block
 	LastBlock module.Block
-	Platform  service.Platform
+	Platform  base.Platform
 }
 
 type NodeContext struct {
 	C        *Chain
 	Config   *FixtureConfig
 	Base     string
-	Platform service.Platform
+	Platform base.Platform
 	CM       contract.ContractManager
 	EM       eeproxy.Manager
 }
@@ -256,7 +256,7 @@ func (t *Node) Address() module.Address {
 func NodeInterconnect(nodes []*Node) {
 	l := len(nodes)
 	for i := 0; i < l; i++ {
-		for j := i; j < l; j++ {
+		for j := i+1; j < l; j++ {
 			nodes[i].NM.Connect(nodes[j].NM)
 		}
 	}

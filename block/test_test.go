@@ -600,6 +600,7 @@ func (sm *testServiceManager) CreateTransition(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
+	validate bool,
 ) (module.Transition, error) {
 	if ttxl, ok := txs.(*testTransactionList); ok {
 		for _, ttx := range ttxl.Transactions {

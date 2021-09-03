@@ -522,11 +522,11 @@ func voteListBytesFromWAL(
 			return nil, errors.Errorf("too short wal message len=%v", len(bs))
 		}
 		sp := binary.BigEndian.Uint16(bs[0:2])
-		msg, err := unmarshalMessage(sp, bs[2:])
+		msg, err := UnmarshalMessage(sp, bs[2:])
 		if err != nil {
 			return nil, err
 		}
-		if err = msg.verify(); err != nil {
+		if err = msg.Verify(); err != nil {
 			return nil, err
 		}
 		switch m := msg.(type) {

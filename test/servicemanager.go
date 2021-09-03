@@ -17,6 +17,7 @@
 package test
 
 import (
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -31,9 +32,9 @@ import (
 type ServiceManager struct {
 	module.ServiceManager
 	dbase            db.Database
-	logger           log.Logger
-	plt              service.Platform
-	cm               contract.ContractManager
+	logger log.Logger
+	plt    base.Platform
+	cm     contract.ContractManager
 	em               eeproxy.Manager
 	chain            module.Chain
 	tsc              *service.TxTimestampChecker
@@ -44,7 +45,7 @@ type ServiceManager struct {
 
 func NewServiceManager(
 	c *Chain,
-	plt service.Platform,
+	plt base.Platform,
 	cm contract.ContractManager,
 	em eeproxy.Manager,
 ) *ServiceManager {
@@ -96,14 +97,14 @@ func (sm *ServiceManager) CreateInitialTransition(
 	)
 }
 
-func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
+func (sm *ServiceManager) CreateTransition(parent module.Transition, txs module.TransactionList, bi module.BlockInfo, csi module.ConsensusInfo, validated bool) (module.Transition, error) {
 	return service.NewTransition(
 		parent,
 		sm.emptyTXs,
 		txs,
 		bi,
 		csi,
-		false,
+		validated,
 	), nil
 }
 

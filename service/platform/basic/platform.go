@@ -19,11 +19,12 @@ package basic
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -31,7 +32,7 @@ import (
 
 type platform struct{}
 
-var Platform service.Platform = &platform{}
+var Platform base.Platform = &platform{}
 
 type basicContractManager struct {
 	contract.ContractManager
@@ -76,7 +77,7 @@ func (t *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	return nil
 }
 
-func (t *platform) OnExecutionEnd(wc state.WorldContext, er service.ExecutionResult, logger log.Logger) error {
+func (t *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult, logger log.Logger) error {
 	return nil
 }
 
@@ -90,4 +91,18 @@ func (t *platform) Term() {
 
 func (t *platform) DefaultBlockVersion() int {
 	return module.BlockVersion2
+}
+
+func (t *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
+	// use default handlers
+	return nil
+}
+
+func (t *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, error) {
+	cs := consensus.NewConsensus(c, walDir, nil, nil)
+	return cs, nil
+}
+
+func (t *platform) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
+	return nil
 }

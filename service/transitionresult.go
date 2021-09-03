@@ -17,6 +17,7 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -62,6 +63,6 @@ func (tr *transitionResult) Bytes() []byte {
 	}
 }
 
-func NewWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
+func NewWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
 	return newWorldSnapshot(database, plt, result, vl)
 }

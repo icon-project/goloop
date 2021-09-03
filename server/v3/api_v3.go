@@ -924,7 +924,7 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk, csi)
+	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk, csi, true)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}

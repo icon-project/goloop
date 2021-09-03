@@ -17,15 +17,15 @@
 package chain
 
 import (
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/platform/basic"
 )
 
-type PlatformFactory func(base string, cid int) (service.Platform, error)
+type PlatformFactory func(base string, cid int) (base.Platform, error)
 
 var platformFactories = map[string]PlatformFactory{
-	"basic": func(base string, cid int) (service.Platform, error) {
+	"basic": func(base string, cid int) (base.Platform, error) {
 		return basic.Platform, nil
 	},
 }
@@ -34,7 +34,7 @@ func RegisterPlatform(name string, factory PlatformFactory) {
 	platformFactories[name] = factory
 }
 
-func NewPlatform(name string, base string, cid int) (service.Platform, error) {
+func NewPlatform(name string, base string, cid int) (base.Platform, error) {
 	if len(name) == 0 {
 		name = "basic"
 	}

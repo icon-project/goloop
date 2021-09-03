@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -84,8 +85,8 @@ type singleChain struct {
 	cs       module.Consensus
 	srv      *server.Manager
 	nt       module.NetworkTransport
-	nm       module.NetworkManager
-	plt      service.Platform
+	nm  module.NetworkManager
+	plt base.Platform
 
 	cid int
 	cfg Config
@@ -411,7 +412,10 @@ func (c *singleChain) _init() error {
 		return err
 	}
 
-	c.vld = consensus.NewCommitVoteSetFromBytes
+	c.vld = c.plt.CommitVoteSetDecoder()
+	if c.vld == nil {
+		c.vld = consensus.NewCommitVoteSetFromBytes
+	}
 	c.pd = consensus.DecodePatch
 	c.metricCtx = metric.GetMetricContextByCID(c.CID())
 	return nil
@@ -428,12 +432,16 @@ func (c *singleChain) prepareManagers() error {
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, nil, nil)
+	bhs := c.plt.NewBlockHandlers(c)
+	c.bm, err = block.NewManager(c, nil, bhs)
 	if err != nil {
 		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, nil, nil)
+	c.cs, err = c.plt.NewConsensus(c, WALDir)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

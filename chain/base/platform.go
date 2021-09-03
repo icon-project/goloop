@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 ICON Foundation
+ * Copyright 2021 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package service
+package base
 
 import (
 	"math/big"
@@ -38,8 +38,11 @@ type Platform interface {
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
 	OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error
-	Term()
 	DefaultBlockVersion() int
+	NewBlockHandlers(c Chain) []BlockHandler
+	NewConsensus(c Chain, walDir string) (module.Consensus, error)
+	CommitVoteSetDecoder() module.CommitVoteSetDecoder
+	Term()
 }
 
 type ExecutionResult interface {

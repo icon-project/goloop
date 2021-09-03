@@ -224,8 +224,9 @@ func (ti *transitionImpl) transit(
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
 	cb transitionCallback,
+	validated bool,
 ) (*transition, error) {
-	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi, csi)
+	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi, csi, validated)
 	if err != nil {
 		return nil, err
 	}
@@ -343,11 +344,12 @@ func (tr *transition) transit(
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
 	cb transitionCallback,
+	validated bool,
 ) (*transition, error) {
 	if tr._ti == nil {
 		return nil, nil
 	}
-	return tr._ti.transit(txs, bi, csi, cb)
+	return tr._ti.transit(txs, bi, csi, cb, validated)
 }
 
 func (tr *transition) propose(bi module.BlockInfo, csi module.ConsensusInfo, cb transitionCallback) (*transition, error) {

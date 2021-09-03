@@ -21,13 +21,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/state"
 )
 
 type testPlatform struct {
-	Platform
+	base.Platform
 }
 
 func (p *testPlatform) NewExtensionSnapshot(dbase db.Database, raw []byte) state.ExtensionSnapshot {

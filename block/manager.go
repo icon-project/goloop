@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -123,7 +124,7 @@ type manager struct {
 	handlerContext handlerContext
 }
 
-type handlerList []Handler
+type handlerList []base.BlockHandler
 
 func (hl handlerList) upTo(version int) handlerList {
 	for i, h := range hl {
@@ -134,7 +135,7 @@ func (hl handlerList) upTo(version int) handlerList {
 	return hl
 }
 
-func (hl handlerList) forVersion(version int) (Handler, bool) {
+func (hl handlerList) forVersion(version int) (base.BlockHandler, bool) {
 	for i := len(hl)-1 ; i >= 0 ; i-- {
 		if hl[i].Version() == version {
 			return hl[i], true
@@ -143,7 +144,7 @@ func (hl handlerList) forVersion(version int) (Handler, bool) {
 	return nil, false
 }
 
-func (hl handlerList) last() Handler {
+func (hl handlerList) last() base.BlockHandler {
 	return hl[len(hl)-1]
 }
 
@@ -209,9 +210,8 @@ func (m *manager) newCandidate(bn *bnode) *blockCandidate {
 		m.bntr.TraceRef(bn)
 	}
 	return &blockCandidate{
-		Block:       bn.block,
-		VersionSpec: bn.block.(VersionSpec),
-		m:           m,
+		Block:            bn.block.(base.Block),
+		m:                m,
 	}
 }
 
@@ -302,7 +302,7 @@ func (m *manager) _import(
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
 	var err error
-	validators, err := bn.block.(VersionSpec).GetVoters(m.handlerContext)
+	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
@@ -434,7 +434,8 @@ func (it *importTask) _onExecute(err error) {
 			it.cb(nil, err)
 			return
 		}
-		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it)
+		validated := it.flags & module.ImportByForce > 0
+		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it, validated)
 		if err != nil {
 			it.stop()
 			it.cb(nil, err)
@@ -454,15 +455,9 @@ func (m *manager) _propose(
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
-	var validators module.ValidatorList
-	if bn.block.Height() == 0 {
-		validators = nil
-	} else {
-		pprev, err := m.getBlock(bn.block.PrevID())
-		if err != nil {
-			return nil, errors.InvalidStateError.Wrapf(err, "Cannot get prev block %x", bn.block.PrevID())
-		}
-		validators = pprev.NextValidators()
+	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	if err != nil {
+		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
 	var csi module.ConsensusInfo
 	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
@@ -485,7 +480,6 @@ func (m *manager) _propose(
 		bn.in.mtransition(),
 		bi,
 	)
-	var err error
 	pt.in, err = bn.preexe.patch(patches, bi, pt)
 	if err != nil {
 		return nil, err
@@ -592,7 +586,7 @@ func (pt *proposeTask) _onExecute(err error) {
 func NewManager(
 	chain module.Chain,
 	timestamper module.Timestamper,
-	handlers []Handler,
+	handlers []base.BlockHandler,
 ) (module.BlockManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM",
@@ -600,7 +594,7 @@ func NewManager(
 	logger.Debugf("NewBlockManager\n")
 
 	if handlers == nil {
-		handlers = []Handler{NewBlockV2Handler(chain)}
+		handlers = []base.BlockHandler{NewBlockV2Handler(chain)}
 	}
 
 	m := &manager{
@@ -694,7 +688,7 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil)
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -946,7 +940,7 @@ func (m *manager) finalizePrunedBlock() error {
 	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
 		return err
 	}
-	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil)
+	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil, true)
 	if err != nil {
 		return err
 	}
@@ -990,7 +984,7 @@ func (m *manager) finalizeGenesisBlock(
 	)
 	m.syncer.begin()
 	csi := common.NewConsensusInfo(nil, nil, nil)
-	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch})
+	gtr, err := in.transit(gtxl, common.NewBlockInfo(0, timestamp), csi, &channelingCB{ch: ch}, true)
 	if err != nil {
 		m.syncer.end()
 		return nil, err
@@ -1098,7 +1092,7 @@ func (m *manager) finalize(bn *bnode) error {
 		m.bntr.TraceRef(bn)
 	}
 
-	err = block.(VersionSpec).FinalizeHeader(m.chain.Database())
+	err = block.(base.BlockVersionSpec).FinalizeHeader(m.chain.Database())
 	if err != nil {
 		return err
 	}
@@ -1723,7 +1717,7 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	if err != nil {
 		return nil, err
 	}
-	vl, err := pblk.(VersionSpec).GetVoters(m.handlerContext)
+	vl, err := pblk.(base.BlockVersionSpec).GetVoters(m.handlerContext)
 	if err != nil {
 		return nil, err
 	}

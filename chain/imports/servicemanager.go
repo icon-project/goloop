@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
@@ -27,7 +28,7 @@ type managerForImport struct {
 }
 
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, plt service.Platform, contractDir string, lcDBDir string,
+	eem eeproxy.Manager, plt base.Platform, contractDir string, lcDBDir string,
 	height int64, cb ImportCallback,
 ) (module.ServiceManager, module.Timestamper, error) {
 	manager, err := service.NewManager(chain, nm, eem, plt, contractDir)
@@ -107,7 +108,7 @@ func (m *managerForImport) ProposeTransition(
 		txs = append(txs, tx)
 	}
 	txl2 := m.ServiceManager.TransactionListFromSlice(txs, module.BlockVersion2)
-	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txl2, bi, csi)
+	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txl2, bi, csi, true)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +137,9 @@ func (m *managerForImport) CreateTransition(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	csi module.ConsensusInfo,
+	validated bool,
 ) (module.Transition, error) {
-	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txs, bi, csi)
+	otr, err := m.ServiceManager.CreateTransition(unwrap(parent), txs, bi, csi, true)
 	if err != nil {
 		return nil, err
 	}

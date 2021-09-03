@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -83,9 +84,9 @@ type transitionContext struct {
 	cm    contract.ContractManager
 	eem   eeproxy.Manager
 	chain module.Chain
-	log   log.Logger
-	plt   Platform
-	tsc   *TxTimestampChecker
+	log log.Logger
+	plt base.Platform
+	tsc *TxTimestampChecker
 	sass  state.AccountSnapshot
 }
 
@@ -200,7 +201,7 @@ func newTransition(
 	}
 }
 
-func newWorldSnapshot(database db.Database, plt Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
+func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
 	var stateHash, extensionData []byte
 	if len(result) > 0 {
 		tr, err := newTransitionResultFromBytes(result)
@@ -220,7 +221,7 @@ func newInitTransition(db db.Database,
 	validatorList module.ValidatorList,
 	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
-	logger log.Logger, plt Platform,
+	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 ) (*transition, error) {
 	wss, err := newWorldSnapshot(db, plt, result, validatorList)
@@ -728,7 +729,7 @@ func NewInitTransition(
 	vl module.ValidatorList,
 	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
-	logger log.Logger, plt Platform,
+	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
 	if tr, err := newInitTransition(

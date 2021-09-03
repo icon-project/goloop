@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -21,7 +22,7 @@ func verifyBlock(b module.BlockData, prev module.BlockData, prevVoters module.Va
 		voted = vt
 	}
 
-	if err := b.(VersionSpec).VerifyTimestamp(prev, prevVoters); err != nil {
+	if err := b.(base.BlockVersionSpec).VerifyTimestamp(prev, prevVoters); err != nil {
 		return nil, err
 	}
 	return voted, nil

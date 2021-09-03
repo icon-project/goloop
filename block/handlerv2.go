@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -27,11 +28,11 @@ import (
 )
 
 type blockV2Handler struct {
-	chain Chain
-	sm ServiceManager
+	chain base.Chain
+	sm    ServiceManager
 }
 
-func NewBlockV2Handler(chain Chain) Handler {
+func NewBlockV2Handler(chain base.Chain) base.BlockHandler {
 	return &blockV2Handler{
 		chain: chain,
 		sm: chain.ServiceManager(),
@@ -65,7 +66,7 @@ func (b *blockV2Handler) NewBlock(
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, votes module.CommitVoteSet,
-) module.Block {
+) base.Block {
 	var prevID []byte
 	if prev != nil {
 		prevID = prev.ID()
@@ -85,7 +86,7 @@ func (b *blockV2Handler) NewBlock(
 	}
 }
 
-func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (module.Block, error) {
+func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, error) {
 	var header blockV2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
@@ -141,7 +142,7 @@ func newTransactionListFromBSS(
 	return sm.TransactionListFromSlice(ts, version), nil
 }
 
-func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
+func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, error) {
 	sm := b.sm
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
@@ -199,7 +200,7 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (module.BlockData, 
 	}, nil
 }
 
-func (b *blockV2Handler) GetBlock(id []byte) (module.Block, error) {
+func (b *blockV2Handler) GetBlock(id []byte) (base.Block, error) {
 	dbase := b.chain.Database()
 	headerBytes, err := db.DoGetWithBucketID(dbase, db.BytesByHash, id)
 	if errors.NotFoundError.Equals(err) {

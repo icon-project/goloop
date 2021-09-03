@@ -23,9 +23,6 @@ type Peer interface {
 	attach(p Peer)
 	detach(p Peer)
 	notifyPacket(pk *Packet, cb func(rebroadcast bool, err error))
-	joinedProto() []module.ProtocolInfo
-	notifyJoin(p Peer, mpi module.ProtocolInfo)
-	notifyLeave(p Peer, mpi module.ProtocolInfo)
 }
 
 func PeerConnect(p1 Peer, p2 Peer) {
