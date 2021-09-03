@@ -256,7 +256,7 @@ func (t *Node) Address() module.Address {
 func NodeInterconnect(nodes []*Node) {
 	l := len(nodes)
 	for i := 0; i < l; i++ {
-		for j := i; j < l; j++ {
+		for j := i+1; j < l; j++ {
 			nodes[i].NM.Connect(nodes[j].NM)
 		}
 	}

@@ -72,7 +72,10 @@ func (p *SimplePeer) detach(p2 Peer) {
 func (p *SimplePeer) notifyPacket(pk *Packet, cb func(rebroadcast bool, err error)) {
 	for _, h := range p.handlers {
 		if h.mpi == pk.MPI {
-			h.rCh <- packetEntry{pk, cb}
+			rCh := h.rCh
+			Go(func() {
+				rCh <- packetEntry{pk, cb}
+			})
 		}
 	}
 }
