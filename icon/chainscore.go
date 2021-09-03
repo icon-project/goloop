@@ -44,12 +44,12 @@ type chainMethod struct {
 }
 
 type chainScore struct {
-	cc     contract.CallContext
-	log    log.Logger
-	from   module.Address
-	value  *big.Int
-	gov    bool
-	flags  int
+	cc    contract.CallContext
+	log   log.Logger
+	from  module.Address
+	value *big.Int
+	gov   bool
+	flags int
 }
 
 const (
@@ -528,6 +528,51 @@ var chainMethods = []*chainMethod{
 		nil,
 		nil,
 	}, icmodule.Revision12, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "validateRewardFund",
+		scoreapi.FlagExternal | scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"iglobal", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRewardFund",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"iglobal", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRewardFundsRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"ratio", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"fund", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionICON2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "addNetworkScore",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getNetworkScores",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionICON2, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
@@ -570,7 +615,9 @@ func applyStepCosts(fee *FeeConfig, as state.AccountState) error {
 			if !ok {
 				continue
 			}
-			if err := stepTypes.Put(k); err != nil { return err }
+			if err := stepTypes.Put(k); err != nil {
+				return err
+			}
 			if err := stepCostDB.Set(k, cost.Value); err != nil {
 				return err
 			}
@@ -1051,12 +1098,12 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 		}
 	}
 	return &chainScore{
-			cc:     cc,
-			from:   from,
-			value:  value,
-			log:    icutils.NewIconLogger(cc.Logger()),
-			gov:    fromGov,
-			flags:  flags,
+			cc:    cc,
+			from:  from,
+			value: value,
+			log:   icutils.NewIconLogger(cc.Logger()),
+			gov:   fromGov,
+			flags: flags,
 		},
 		nil
 }

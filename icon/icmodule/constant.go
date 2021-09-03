@@ -75,6 +75,15 @@ const (
 	DefaultExtraMainPRepCount                    = 3
 )
 
+const (
+	PrepFundKey  = "Iprep"
+	CpsFundKey   = "Icps"
+	RelayFundKey = "Irelay"
+	VoterFundKey = "Ivoter"
+)
+
+var Rewards = []string{PrepFundKey, CpsFundKey, RelayFundKey, VoterFundKey}
+
 // The following variables are read-only
 var (
 	BigIntZero           = new(big.Int)

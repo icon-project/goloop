@@ -19,6 +19,7 @@ package icon
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -421,6 +422,7 @@ func (s *chainScore) Ex_getBonderList(address module.Address) (map[string]interf
 }
 
 var skippedClaimTX, _ = hex.DecodeString("b9eeb235f715b166cf4b91ffcf8cc48a81913896086d30104ffc0cf47eed1cbd")
+
 func (s *chainScore) Ex_claimIScore() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
@@ -602,6 +604,132 @@ func (s *chainScore) Ex_burn() error {
 	}
 	cc := s.newCallContext(s.cc)
 	return es.Burn(cc, s.value)
+}
+
+func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return false, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return false, err
+	}
+	rewardFund := es.State.GetRewardFund()
+	currentIglobal := rewardFund.Iglobal
+	min := new(big.Int).Mul(currentIglobal, big.NewInt(3))
+	min.Div(min, big.NewInt(4))
+	max := new(big.Int).Mul(currentIglobal, big.NewInt(5))
+	max.Div(max, big.NewInt(4))
+	if (iglobal.Cmp(min) < 0) || (iglobal.Cmp(max) > 0) {
+		return false, scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate IGlobal: iglobal=%v", iglobal.Value(),
+		)
+	}
+	cc := s.newCallContext(s.cc)
+	totalSupply := cc.GetTotalSupply()
+	rewardPerYear := new(big.Int).Mul(iglobal.Value(), big.NewInt(12))
+	maxRewardPerYear := new(big.Int).Mul(totalSupply, big.NewInt(115))
+	maxRewardPerYear.Div(totalSupply, big.NewInt(100))
+
+	if rewardPerYear.Cmp(maxRewardPerYear) > 0 {
+		return false, scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to validate IGlobal: iglobal=%v", iglobal.Value(),
+		)
+	}
+	return true, nil
+}
+
+func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	rewardFund := es.State.GetRewardFund()
+	rewardFund.Iglobal = iglobal.Value()
+	return es.State.SetRewardFund(rewardFund)
+}
+
+func (s *chainScore) Ex_setRewardFundsRate(param []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	rewardFund := es.State.GetRewardFund()
+	keyMax := len(icmodule.Rewards)
+	targets := make(map[string]struct{}, keyMax)
+	for _, p := range param {
+		reward := make(map[string]string)
+		bs, err := json.Marshal(p)
+		if err != nil {
+			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to convert reward")
+		}
+		if err = json.Unmarshal(bs, &reward); err != nil {
+			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to convert reward")
+		}
+		target := reward["fund"]
+		if _, ok := targets[target]; ok {
+			return scoreresult.InvalidParameterError.Errorf("Duplicated reward type")
+		}
+		targets[target] = struct{}{}
+		value, ok := new(big.Int).SetString(reward["value"][2:], 16)
+		if !ok {
+			return scoreresult.InvalidParameterError.Errorf("Invalid reward value")
+		}
+		switch target {
+		case icmodule.PrepFundKey:
+			rewardFund.Iprep = value
+			continue
+		case icmodule.CpsFundKey:
+			rewardFund.Icps = value
+			continue
+		case icmodule.RelayFundKey:
+			rewardFund.Irelay = value
+			continue
+		case icmodule.VoterFundKey:
+			rewardFund.Ivoter = value
+			continue
+		}
+	}
+	return es.State.SetRewardFund(rewardFund)
+}
+
+func (s *chainScore) Ex_addNetworkScore(address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.State.AddNetworkScore(address)
+}
+
+func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	scores := es.State.GetNetworkScores()
+	jso := make(map[string]interface{})
+	sl := make([]interface{}, 0)
+
+	for _, score := range scores {
+		if score == nil {
+			continue
+		}
+		sl = append(sl, score)
+	}
+	jso["networkScores"] = sl
+	return jso, nil
 }
 
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
