@@ -39,7 +39,7 @@ type Syncer interface {
 	OnEngineStepChange()
 }
 
-var syncerProtocols = []module.ProtocolInfo{
+var SyncerProtocols = []module.ProtocolInfo{
 	ProtoBlockPart,
 	ProtoRoundState,
 	ProtoVoteList,
@@ -75,7 +75,7 @@ func (p *peer) setRoundState(prs *peerRoundState) {
 	p.wakeUp()
 }
 
-func (p *peer) doSync() (module.ProtocolInfo, message) {
+func (p *peer) doSync() (module.ProtocolInfo, Message) {
 	e := p.engine
 	if p.peerRoundState == nil {
 		p.log.Tracef("nil peer round state\n")
@@ -271,7 +271,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 
 func (s *syncer) Start() error {
 	var err error
-	s.ph, err = s.nm.RegisterReactor("consensus.sync", module.ProtoConsensusSync, s, syncerProtocols, configSyncerPriority)
+	s.ph, err = s.nm.RegisterReactor("consensus.sync", module.ProtoConsensusSync, s, SyncerProtocols, ConfigSyncerPriority)
 	if err != nil {
 		return err
 	}
@@ -298,13 +298,13 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		return false, nil
 	}
 
-	msg, err := unmarshalMessage(sp.Uint16(), bs)
+	msg, err := UnmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		s.log.Warnf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
 	s.log.Debugf("OnReceive %v From:%v\n", msg, common.HexPre(id.Bytes()))
-	if err := msg.verify(); err != nil {
+	if err := msg.Verify(); err != nil {
 		return false, err
 	}
 	var idx int

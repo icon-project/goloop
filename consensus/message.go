@@ -23,18 +23,18 @@ const (
 
 type protocolConstructor struct {
 	proto       module.ProtocolInfo
-	constructor func() message
+	constructor func() Message
 }
 
 var protocolConstructors = [...]protocolConstructor{
-	{ProtoProposal, func() message { return NewProposalMessage() }},
-	{ProtoBlockPart, func() message { return newBlockPartMessage() }},
-	{ProtoVote, func() message { return newVoteMessage() }},
-	{ProtoRoundState, func() message { return newRoundStateMessage() }},
-	{ProtoVoteList, func() message { return newVoteListMessage() }},
+	{ProtoProposal, func() Message { return NewProposalMessage() }},
+	{ProtoBlockPart, func() Message { return newBlockPartMessage() }},
+	{ProtoVote, func() Message { return newVoteMessage() }},
+	{ProtoRoundState, func() Message { return newRoundStateMessage() }},
+	{ProtoVoteList, func() Message { return newVoteListMessage() }},
 }
 
-func unmarshalMessage(sp uint16, bs []byte) (message, error) {
+func UnmarshalMessage(sp uint16, bs []byte) (Message, error) {
 	for _, pc := range protocolConstructors {
 		if sp == uint16(pc.proto) {
 			msg := pc.constructor()
@@ -47,8 +47,8 @@ func unmarshalMessage(sp uint16, bs []byte) (message, error) {
 	return nil, errors.New("Unknown protocol")
 }
 
-type message interface {
-	verify() error
+type Message interface {
+	Verify() error
 	subprotocol() uint16
 }
 
@@ -100,7 +100,7 @@ func NewProposalMessage() *ProposalMessage {
 	return msg
 }
 
-func (msg *ProposalMessage) verify() error {
+func (msg *ProposalMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func newBlockPartMessage() *BlockPartMessage {
 	return &BlockPartMessage{}
 }
 
-func (msg *BlockPartMessage) verify() error {
+func (msg *BlockPartMessage) Verify() error {
 	if msg.Height <= 0 {
 		return errors.Errorf("bad height %v", msg.Height)
 	}
@@ -242,7 +242,7 @@ func NewPrecommitMessage(
 	)
 }
 
-func (msg *voteMessage) verify() error {
+func (msg *voteMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func newRoundStateMessage() *RoundStateMessage {
 	}
 }
 
-func (msg *RoundStateMessage) verify() error {
+func (msg *RoundStateMessage) Verify() error {
 	if err := msg.peerRoundState._HR.verify(); err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func newVoteListMessage() *voteListMessage {
 	return &voteListMessage{}
 }
 
-func (msg *voteListMessage) verify() error {
+func (msg *voteListMessage) Verify() error {
 	if msg.VoteList == nil {
 		return errors.Errorf("nil VoteList")
 	}

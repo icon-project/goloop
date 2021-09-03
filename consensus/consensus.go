@@ -23,7 +23,7 @@ const (
 	configRandomImportFail = false
 )
 
-var csProtocols = []module.ProtocolInfo{
+var CsProtocols = []module.ProtocolInfo{
 	ProtoProposal,
 	ProtoBlockPart,
 	ProtoVote,
@@ -43,10 +43,11 @@ const (
 )
 
 const (
+	ConfigEnginePriority = 2
+	ConfigSyncerPriority = 3
+
 	configBlockPartSize               = 1024 * 100
 	configCommitCacheCap              = 60
-	configEnginePriority              = 2
-	configSyncerPriority              = 3
 	configRoundWALID                  = "round"
 	configRoundWALDataSize            = 1024 * 500
 	configLockWALID                   = "lock"
@@ -332,13 +333,13 @@ func (cs *consensus) OnReceive(
 		return false, nil
 	}
 
-	msg, err := unmarshalMessage(sp.Uint16(), bs)
+	msg, err := UnmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		cs.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
-	if err = msg.verify(); err != nil {
+	if err = msg.Verify(); err != nil {
 		cs.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
@@ -1198,11 +1199,11 @@ func (cs *consensus) applyRoundWAL() error {
 			return errors.Errorf("too short wal message len=%v", len(bs))
 		}
 		sp := binary.BigEndian.Uint16(bs[0:2])
-		msg, err := unmarshalMessage(sp, bs[2:])
+		msg, err := UnmarshalMessage(sp, bs[2:])
 		if err != nil {
 			return err
 		}
-		if err = msg.verify(); err != nil {
+		if err = msg.Verify(); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -1308,11 +1309,11 @@ func (cs *consensus) applyLockWAL() error {
 			return errors.Errorf("too short wal message len=%v", len(bs))
 		}
 		sp := binary.BigEndian.Uint16(bs[0:2])
-		msg, err := unmarshalMessage(sp, bs[2:])
+		msg, err := UnmarshalMessage(sp, bs[2:])
 		if err != nil {
 			return err
 		}
-		if err = msg.verify(); err != nil {
+		if err = msg.Verify(); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -1415,11 +1416,11 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			return errors.Errorf("too short wal message len=%v", len(bs))
 		}
 		sp := binary.BigEndian.Uint16(bs[0:2])
-		msg, err := unmarshalMessage(sp, bs[2:])
+		msg, err := UnmarshalMessage(sp, bs[2:])
 		if err != nil {
 			return err
 		}
-		if err = msg.verify(); err != nil {
+		if err = msg.Verify(); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -1583,7 +1584,7 @@ func (cs *consensus) Start() error {
 		validators = &emptyAddressIndexer{}
 	}
 
-	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, csProtocols, configEnginePriority)
+	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, CsProtocols, ConfigEnginePriority)
 	if err != nil {
 		return err
 	}
@@ -1919,7 +1920,7 @@ type walMessageWriter struct {
 	WALWriter
 }
 
-func (w *walMessageWriter) writeMessage(msg message) error {
+func (w *walMessageWriter) writeMessage(msg Message) error {
 	bs := make([]byte, 2, 32)
 	binary.BigEndian.PutUint16(bs, msg.subprotocol())
 	writer := bytes.NewBuffer(bs)

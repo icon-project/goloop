@@ -30,6 +30,6 @@ func TestNewPrecommitMessage(t *testing.T) {
 		w,
 		1, 0, nil, nil, 0,
 	)
-	err := vm.verify()
+	err := vm.Verify()
 	assert.NoError(t, err)
 }
