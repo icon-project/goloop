@@ -31,20 +31,18 @@ type PRepBaseCache struct {
 	dict  *containerdb.DictDB
 }
 
-func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepBaseState, bool) {
+func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBaseState {
 	key := icutils.ToKey(owner)
 	base := c.bases[key]
 	if base != nil {
-		return base, false
+		return base
 	}
 
-	created := false
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
 			base = NewPRepBaseState()
 			c.bases[key] = base
-			created = true
 		} else {
 			// return nil
 		}
@@ -55,7 +53,7 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) (*PRepB
 			c.bases[key] = base
 		}
 	}
-	return base, created
+	return base
 }
 
 func (c *PRepBaseCache) Clear() {

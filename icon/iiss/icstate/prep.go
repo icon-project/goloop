@@ -48,7 +48,7 @@ func (p *PRep) init() error {
 
 func (p *PRep) getPRepBaseState() *PRepBaseState {
 	if p.pb == nil {
-		p.pb, _ = p.state.GetPRepBaseByOwner(p.owner, false)
+		p.pb = p.state.GetPRepBaseByOwner(p.owner, false)
 	}
 	return p.pb
 }

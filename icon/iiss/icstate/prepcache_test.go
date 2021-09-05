@@ -43,7 +43,6 @@ func newDummyPRepInfo(i int) *PRepInfo {
 }
 
 func TestPRepBaseCache(t *testing.T) {
-	var created bool
 	var base, base1, base2 *PRepBaseState
 	var addr1, addr2 module.Address
 
@@ -53,11 +52,10 @@ func TestPRepBaseCache(t *testing.T) {
 	ri1 := newDummyPRepInfo(1)
 
 	// cache added
-	base, created = s.prepBaseCache.Get(addr1, false)
+	base = s.prepBaseCache.Get(addr1, false)
 	assert.Nil(t, base)
-	assert.False(t, created)
-	base, created = s.prepBaseCache.Get(addr1, true)
-	assert.True(t, created)
+	base = s.prepBaseCache.Get(addr1, true)
+	assert.NotNil(t, base)
 	assert.True(t, base.IsEmpty())
 	base.UpdateInfo(ri1)
 
@@ -65,54 +63,51 @@ func TestPRepBaseCache(t *testing.T) {
 	ri2 := newDummyPRepInfo(2)
 
 	// cache added
-	base, created = s.prepBaseCache.Get(addr2, true)
+	base = s.prepBaseCache.Get(addr2, true)
 	assert.NotNil(t, base)
-	assert.True(t, created)
+	assert.True(t, base.IsEmpty())
 	base.UpdateInfo(ri2)
 
 	s = flushAndNewState(s, false)
 
-	base, created = s.prepBaseCache.Get(addr2, false)
+	base = s.prepBaseCache.Get(addr2, false)
 	assert.NotNil(t, base)
-	assert.False(t, created)
+	assert.False(t, base.IsEmpty())
 
 	// Reset() reverts Clear(), should get after reset()
-	base, created = s.prepBaseCache.Get(addr2, true)
-	assert.False(t, created)
+	base = s.prepBaseCache.Get(addr2, true)
+	assert.False(t, base.IsEmpty())
 	base.Clear()
 	assert.True(t, base.IsEmpty())
 
-	base, created = s.prepBaseCache.Get(addr2, false)
+	base = s.prepBaseCache.Get(addr2, false)
 	assert.True(t, base.IsEmpty())
-	assert.False(t, created)
 
 	s.prepBaseCache.Reset()
-	base, created = s.prepBaseCache.Get(addr2, true)
+	base = s.prepBaseCache.Get(addr2, true)
 	assert.False(t, base.IsEmpty())
-	assert.False(t, created)
 	assert.True(t, base.info().equal(ri2))
 
 	// item is removed from the map,
 	// after it flush to DB, it is removed in DB
-	base, created = s.prepBaseCache.Get(addr2, true)
+	base = s.prepBaseCache.Get(addr2, true)
 	base.Clear()
 	s.prepBaseCache.Flush()
-	base, created = s.prepBaseCache.Get(addr2, false)
+	base = s.prepBaseCache.Get(addr2, false)
 	assert.Nil(t, base)
-	assert.False(t, created)
 
 	// Reset cannot get items from DB after clear()
 	s.prepBaseCache.Clear()
 	s.prepBaseCache.Reset()
 
 	// but it can get item, using Get() specifically
-	base1, created = s.prepBaseCache.Get(addr1, false)
+	base1 = s.prepBaseCache.Get(addr1, false)
 	assert.NotNil(t, base1)
-	assert.False(t, created)
+	assert.False(t, base1.IsEmpty())
+	assert.True(t, base1.info().equal(ri1))
 
-	base2, created = s.prepBaseCache.Get(addr2, false)
+	base2 = s.prepBaseCache.Get(addr2, false)
 	assert.Nil(t, base2)
-	assert.False(t, created)
 }
 
 func TestPRepStatusCache(t *testing.T) {

@@ -87,7 +87,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	logger := es.Logger()
 	logger.Tracef("slash() start: addr=%s ratio=%d", owner, ratio)
 
-	pb, _ := es.State.GetPRepBaseByOwner(owner, false)
+	pb := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}

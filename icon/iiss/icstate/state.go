@@ -134,13 +134,8 @@ func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
 	return timer
 }
 
-func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) (*PRepBaseState, bool) {
+func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) *PRepBaseState {
 	return s.prepBaseCache.Get(owner, createIfNotExist)
-}
-
-func (s *State) GetPRepBaseByNode(node module.Address) *PRepBaseState {
-	pb, _ := s.GetPRepBaseByOwner(s.GetOwnerByNode(node), false)
-	return pb
 }
 
 func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
@@ -295,8 +290,8 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, 
 	if err := s.allPRepCache.Add(owner); err != nil {
 		return err
 	}
-	pb, created := s.GetPRepBaseByOwner(owner, true)
-	if !created {
+	pb := s.GetPRepBaseByOwner(owner, true)
+	if !pb.IsEmpty() {
 		return errors.Errorf("Already in use: addr=%s %+v", owner, pb)
 	}
 	if err := s.updatePRepInfoOf(owner, pb, ri); err != nil {
@@ -313,7 +308,7 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, 
 }
 
 func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo) (bool, error) {
-	pb, _ := s.GetPRepBaseByOwner(owner, false)
+	pb := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return false, errors.Errorf("PRep not found: %s", owner)
 	}
@@ -381,7 +376,7 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	if owner == nil {
 		return nil
 	}
-	pb, _ := s.GetPRepBaseByOwner(owner, false)
+	pb := s.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
 		return nil
 	}

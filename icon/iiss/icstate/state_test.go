@@ -45,7 +45,7 @@ func TestState_RegisterPRep(t *testing.T) {
 		err = state.Flush()
 		assert.NoError(t, err)
 
-		pb, _ := state.GetPRepBaseByOwner(owner, false)
+		pb := state.GetPRepBaseByOwner(owner, false)
 		assert.NotNil(t, pb)
 		info := pb.info()
 		assert.Truef(t, info.equal(ri), "DifferentInfo exp=%+v real=%+v", ri, info)

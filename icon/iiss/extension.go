@@ -287,7 +287,7 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 	for i := 0; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := es.State.GetPRepStatusByOwner(pss.Owner(), false)
-		pb, _ := es.State.GetPRepBaseByOwner(pss.Owner(), false)
+		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeMain {
 			pj := pss.ToJSON()
@@ -325,7 +325,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 	for i := mainPRepCount; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
 		ps, _ := es.State.GetPRepStatusByOwner(pss.Owner(), false)
-		pb, _ := es.State.GetPRepBaseByOwner(pss.Owner(), false)
+		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeSub {
 			pj := pss.ToJSON()
@@ -587,7 +587,7 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 	for _, bond := range bonds {
 		bondAmount.Add(bondAmount, bond.Amount())
 
-		pb, _ := es.State.GetPRepBaseByOwner(bond.To(), false)
+		pb := es.State.GetPRepBaseByOwner(bond.To(), false)
 		if pb == nil {
 			return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 		}
@@ -666,7 +666,7 @@ func (es *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Addres
 func (es *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.BonderList) error {
 	es.logger.Tracef("SetBonderList() start: from=%s bl=%s", from, bl)
 
-	pb, _ := es.State.GetPRepBaseByOwner(from, false)
+	pb := es.State.GetPRepBaseByOwner(from, false)
 	if pb == nil {
 		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
@@ -688,7 +688,7 @@ func (es *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bond
 }
 
 func (es *ExtensionStateImpl) GetBonderList(address module.Address) (map[string]interface{}, error) {
-	pb, _ := es.State.GetPRepBaseByOwner(address, false)
+	pb := es.State.GetPRepBaseByOwner(address, false)
 	if pb == nil {
 		return nil, errors.Errorf("PRep not found: %v", address)
 	}
@@ -698,7 +698,7 @@ func (es *ExtensionStateImpl) GetBonderList(address module.Address) (map[string]
 }
 
 func (es *ExtensionStateImpl) SetGovernanceVariables(from module.Address, irep *big.Int, blockHeight int64) error {
-	pb, _ := es.State.GetPRepBaseByOwner(from, false)
+	pb := es.State.GetPRepBaseByOwner(from, false)
 	if pb == nil {
 		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
