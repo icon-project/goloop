@@ -697,7 +697,10 @@ func checkValidationPenalty(ps *PRepStatusState, blockHeight, condition int64) b
 	return !ps.IsAlreadyPenalized() && ps.GetVFailCont(blockHeight) >= condition
 }
 
-func (s *State) CheckConsistentValidationPenalty(ps *PRepStatusState) bool {
+func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusState) bool {
+	if revision < icmodule.RevisionSlash {
+		return false
+	}
 	condition := int(s.GetConsistentValidationPenaltyCondition())
 	return checkConsistentValidationPenalty(ps, condition)
 }
@@ -709,7 +712,7 @@ func checkConsistentValidationPenalty(ps *PRepStatusState, condition int) bool {
 func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
 	totalStake := s.GetTotalStake()
 	termPeriod := new(big.Int)
-	if revision < icmodule.RevisionICON2 {
+	if revision < icmodule.RevisionICON2R0 {
 		termPeriod.SetInt64(icmodule.InitialTermPeriod)
 	} else {
 		termPeriod.SetInt64(s.GetTermPeriod())

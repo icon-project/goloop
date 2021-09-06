@@ -246,7 +246,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getIISSInfo",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -309,7 +309,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionIISS, icmodule.RevisionICON1Last},
+	}, icmodule.RevisionIISS, icmodule.Revision12},
 	{scoreapi.Method{
 		scoreapi.Function, "setDelegation",
 		scoreapi.FlagExternal, 1,
@@ -322,7 +322,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getDelegation",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -410,7 +410,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -450,7 +450,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBond",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -460,7 +460,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setBonderList",
 		scoreapi.FlagExternal, 1,
@@ -468,7 +468,7 @@ var chainMethods = []*chainMethod{
 			{"bonderList", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBonderList",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -478,7 +478,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "estimateUnstakeLockPeriod",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -502,7 +502,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "validateIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -996,7 +996,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 	flags := 0
 	if from != nil && from.IsContract() {
 		// Inter-call case
-		if revision < icmodule.Revision9 {
+		if revision < icmodule.RevisionSystemSCORE {
 			flags |= IISSDisabled
 		}
 		if revision < icmodule.RevisionIISS && !fromGov {
@@ -1004,7 +1004,7 @@ func newChainScore(cc contract.CallContext, from module.Address, value *big.Int)
 		}
 	} else {
 		// External-call case
-		if revision < icmodule.RevisionICON2 {
+		if revision < icmodule.RevisionICON2R0 {
 			flags |= SysNoCharge
 			flags |= BasicHidden
 		}

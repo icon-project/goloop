@@ -43,14 +43,14 @@ func (h *callHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	}()
 
 	rev := cc.Revision().Value()
-	if rev < icmodule.RevisionICON2 && !h.ext {
+	if rev < icmodule.RevisionICON2R0 && !h.ext {
 		ass := cc.GetAccountSnapshot(h.to.ID())
 		if ass == nil || ass.ActiveContract() == nil {
 			return scoreresult.UnknownFailureError.New("NoAccount")
 		}
 	}
 	var store containerdb.BytesStoreState
-	if rev >= icmodule.Revision12 && rev < icmodule.RevisionICON2 {
+	if rev >= icmodule.Revision12 && rev < icmodule.RevisionICON2R0 {
 		as := cc.GetAccountState(h.to.ID())
 		batch := cc.GetCustomLogs(BatchKey, BatchType).(*batchData)
 		store = newRLPBytesStore(h.to, as, batch)

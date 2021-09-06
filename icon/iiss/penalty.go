@@ -65,7 +65,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 
 	// Slashing
 	revision := cc.Revision().Value()
-	if revision >= icmodule.RevisionICON2 && es.State.CheckConsistentValidationPenalty(ps) {
+	if es.State.CheckConsistentValidationPenalty(revision, ps) {
 		slashRatio := es.State.GetConsistentValidationPenaltySlashRatio()
 		if err = es.slash(cc, owner, slashRatio); err != nil {
 			return err

@@ -351,7 +351,7 @@ func (es *ExtensionStateImpl) SetDelegation(
 	blockHeight := cc.BlockHeight()
 	account = es.State.GetAccountState(from)
 	revision := cc.Revision().Value()
-	replayPRepIllegalDelegated := revision >= icmodule.RevisionSystemSCORE && revision < icmodule.RevisionICON2
+	replayPRepIllegalDelegated := revision >= icmodule.RevisionSystemSCORE && revision < icmodule.RevisionICON2R0
 
 	using := new(big.Int).Set(ds.GetDelegationAmount())
 	using.Add(using, account.Unbond())
@@ -929,10 +929,10 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetIsDecentralized(true)
 
 		var irep *big.Int
-		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2 {
+		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2R0 {
 			// disable IRep
 			irep = new(big.Int)
-		} else if revision > icmodule.Revision9 {
+		} else if revision > icmodule.RevisionSetIRepViaNetworkProposal {
 			// use network value IRep
 			irep = new(big.Int).Set(es.State.GetIRep())
 		} else {
@@ -948,7 +948,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 	}
 
 	var rrep *big.Int
-	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2 {
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2R0 {
 		// disable Rrep
 		rrep = new(big.Int)
 	} else {
@@ -1131,7 +1131,7 @@ func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err
 	revision := cc.Revision().Value()
 	stakeInc := new(big.Int).Sub(v, ia.Stake())
 	// ICON1 update unstakes when stakeInc == 0
-	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2 {
+	if stakeInc.Sign() == 0 && revision >= icmodule.RevisionICON2R0 {
 		return nil
 	}
 
@@ -1297,7 +1297,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 		[][]byte{from.Bytes()},
 	)
 
-	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 && nodeUpdate {
+	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2R0 && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
 		// Thus reward calculator segment VotedReward period
 		ps := es.State.GetPRepStatusByOwner(from, false)
@@ -1391,7 +1391,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
 	var ic *icstage.IScoreClaim
 	revision := cc.Revision().Value()
-	if revision < icmodule.RevisionICON2 {
+	if revision < icmodule.RevisionICON2R0 {
 		ic, err = es.Front.AddIScoreClaim(from, claim)
 	} else {
 		ic, err = es.Front.AddIScoreClaim(from, iScore)

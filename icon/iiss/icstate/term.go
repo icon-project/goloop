@@ -184,7 +184,7 @@ func (term *termData) GetEndHeight() int64 {
 }
 
 func (term *termData) GetIISSVersion() int {
-	if term.revision >= icmodule.RevisionICON2 {
+	if term.revision >= icmodule.RevisionICON2R0 {
 		return IISSVersion3
 	}
 	if term.revision >= icmodule.RevisionIISS {

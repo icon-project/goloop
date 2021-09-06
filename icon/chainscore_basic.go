@@ -117,7 +117,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 	}
 
-	if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
+	if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
 		// disable Virtual step
 		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
 			return err
@@ -262,7 +262,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			s.lockAddresses()
 		}
 
-		if r1 < icmodule.RevisionICON2 && r2 >= icmodule.RevisionICON2 {
+		if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}

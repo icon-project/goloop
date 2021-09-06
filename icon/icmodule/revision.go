@@ -66,17 +66,16 @@ const (
 
 	RevisionBurnV2 = Revision12
 
-	RevisionFixClaimIScore   = Revision13
-	RevisionFixSetDelegation = Revision13
-
-	RevisionICON2     = Revision14
-	RevisionICON1Last = RevisionICON2 - 1
-	RevisionICON2R0   = RevisionICON2
+	RevisionICON2R0          = Revision13
+	RevisionFixClaimIScore   = RevisionICON2R0
+	RevisionFixSetDelegation = RevisionICON2R0
 
 	RevisionICON2R1      = RevisionICON2R0 + 1
 	RevisionEnableJavaEE = RevisionICON2R1
+	RevisionSlash        = RevisionICON2R1
 
-	RevisionExtraMainPReps = RevisionICON2 + 1
+	// TODO: Fix a revision for enabling extra main preps
+	RevisionExtraMainPReps = 100
 )
 
 var revisionFlags = []module.Revision{
