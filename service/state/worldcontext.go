@@ -37,6 +37,7 @@ const (
 	VarDepositTerm        = "deposit_term"
 	VarDepositIssueRate   = "deposit_issue_rate"
 	VarNextBlockVersion   = "next_block_version"
+	VarEnabledEETypes     = "enabled_ee_types"
 )
 
 const (
