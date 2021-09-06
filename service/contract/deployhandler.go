@@ -94,11 +94,12 @@ func newDeployHandler(
 	if err != nil {
 		return nil, err
 	}
+	eeType, _ := state.EETypeFromContentType(deploy.ContentType)
 	return &DeployHandler{
 		CommonHandler: ch,
 		content:       deploy.Content,
 		contentType:   deploy.ContentType,
-		eeType:        state.MustEETypeFromContentType(deploy.ContentType),
+		eeType:        eeType,
 		params:        deploy.Params,
 	}, nil
 }
@@ -314,6 +315,16 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
+	if !state.ValidateEEType(h.eeType) {
+		return scoreresult.InvalidParameterError.Errorf("InvalidContentType(ct=%s)",
+			h.contentType), nil, nil
+	}
+
+	if !cc.GetEnabledEETypes().Contains(h.eeType) {
+		return scoreresult.InvalidParameterError.Errorf("UnsupportedContentType(ct=%s,enabled=%s)",
+			h.contentType, cc.GetEnabledEETypes().String()), nil, nil
+	}
+
 	if update == false {
 		if as.InitContractAccount(h.From) == false {
 			return errors.ErrExecutionFail, nil, nil
@@ -324,6 +335,10 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 		}
 		if as.IsContractOwner(h.From) == false {
 			return scoreresult.ErrAccessDenied, nil, nil
+		}
+		if contract := as.Contract(); !h.eeType.AbleToUpdate(contract.EEType()) {
+			return scoreresult.InvalidParameterError.Errorf("ProhibitToUpdate(old=%s,new=%s)",
+				contract.EEType(), h.eeType), nil, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)

@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -27,6 +28,7 @@ type Context interface {
 	ChainID() int
 	GetProperty(name string) interface{}
 	SetProperty(name string, value interface{})
+	GetEnabledEETypes() state.EETypes
 }
 
 type context struct {
@@ -87,4 +89,15 @@ func (c *context) SetProperty(name string, value interface{}) {
 
 func (c *context) GetProperty(name string) interface{} {
 	return c.props[name]
+}
+
+func (c *context) GetEnabledEETypes() state.EETypes {
+	as := c.GetAccountState(state.SystemID)
+	s := scoredb.NewVarDB(as, state.VarEnabledEETypes).String()
+	if len(s) > 0 {
+		if ets, err := state.ParseEETypes(s); err == nil {
+			return ets
+		}
+	}
+	return c.cm.DefaultEnabledEETypes()
 }

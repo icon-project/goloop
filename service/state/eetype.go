@@ -2,14 +2,23 @@ package state
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type EEType string
 
 const (
+	NullEE   EEType = ""
 	PythonEE EEType = "python"
 	JavaEE   EEType = "java"
 	SystemEE EEType = "system"
+)
+
+const (
+	AllEETypeString = "*"
 )
 
 var (
@@ -54,6 +63,14 @@ func (e EEType) UpdateMethod(from EEType) (string, bool) {
 	return "", false
 }
 
+func (e EEType) AbleToUpdate(org EEType) bool {
+	if allowTo, ok := allowUpdateFromTo[org]; ok {
+		allow, _ := allowTo[e]
+		return allow
+	}
+	return false
+}
+
 func (e EEType) IsInternalMethod(s string) bool {
 	if method, ok := installMethods[e]; ok {
 		if method == s {
@@ -89,7 +106,7 @@ func EETypeFromContentType(ct string) (EEType, bool) {
 	case CTAppSystem:
 		return SystemEE, true
 	default:
-		return "", false
+		return NullEE, false
 	}
 }
 
@@ -99,4 +116,65 @@ func MustEETypeFromContentType(ct string) EEType {
 	} else {
 		return et
 	}
+}
+
+func ValidateEEType(et EEType) bool {
+	switch et {
+	case PythonEE, JavaEE, SystemEE:
+		return true
+	default:
+		return false
+	}
+}
+
+type EETypes interface {
+	Contains(et EEType) bool
+	String() string
+}
+
+type allEETypes struct{}
+
+func (ts allEETypes) Contains(et EEType) bool {
+	return true
+}
+
+func (ts allEETypes) String() string {
+	return AllEETypeString
+}
+
+var AllEETypes EETypes = allEETypes{}
+
+type EETypeFilter map[EEType]bool
+
+func (ets EETypeFilter) Contains(et EEType) bool {
+	yn, _ := ets[et]
+	return yn
+}
+
+func (ets EETypeFilter) String() string {
+	keys := make([]string, 0, len(ets))
+	for k, _ := range ets {
+		keys = append(keys, string(k))
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ",")
+}
+
+func ParseEETypes(s string) (EETypes, error) {
+	if s == AllEETypeString {
+		return AllEETypes, nil
+	}
+	etf := make(map[EEType]bool)
+	if len(s) > 0 {
+		ets := strings.Split(s, ",")
+		for _, ss := range ets {
+			if et := EEType(ss); ValidateEEType(et) {
+				etf[et] = true
+			} else {
+				return nil, errors.IllegalArgumentError.Errorf(
+					"InvalidEEType(EEType=%s)", et)
+			}
+		}
+	}
+	return EETypeFilter(etf), nil
 }
