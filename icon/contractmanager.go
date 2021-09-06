@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/state"
 
@@ -33,6 +34,8 @@ import (
 type contractManager struct {
 	contract.ContractManager
 	log log.Logger
+
+	eeTypes state.EETypes
 }
 
 func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallContext, from module.Address, value *big.Int) (contract.SystemScore, error) {
@@ -40,6 +43,10 @@ func (cm *contractManager) GetSystemScore(contentID string, cc contract.CallCont
 		return newChainScore(cc, from, value)
 	}
 	return cm.ContractManager.GetSystemScore(contentID, cc, from, value)
+}
+
+func (cm *contractManager) DefaultEnabledEETypes() state.EETypes {
+	return cm.eeTypes
 }
 
 var govAddress = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
@@ -89,11 +96,20 @@ func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.In
 	return ch, nil
 }
 
+const (
+	EETypesJavaAndPython = string(state.JavaEE + "," + state.PythonEE)
+	EETypesPythonOnly    = string(state.PythonEE)
+)
+
 func newContractManager(plt *platform, dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
 	logger = icutils.NewIconLogger(logger)
 	cm, err := contract.NewContractManager(dbase, dir, logger)
 	if err != nil {
 		return nil, err
 	}
-	return &contractManager{cm, logger}, nil
+	eeTypes, err := state.ParseEETypes(EETypesPythonOnly)
+	if err != nil {
+		return nil, errors.Wrapf(err, "InvalidEETypes(s=%s)", EETypesPythonOnly)
+	}
+	return &contractManager{cm, logger, eeTypes}, nil
 }

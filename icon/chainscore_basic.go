@@ -286,6 +286,13 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			return err
 		}
 
+		// Enable JavaEE
+		if r1 < icmodule.RevisionEnableJavaEE && r2 >= icmodule.RevisionEnableJavaEE {
+			if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(EETypesJavaAndPython); err != nil {
+				return err
+			}
+		}
+
 		// Enable ExtraMainPReps
 		if r1 < icmodule.RevisionExtraMainPReps && r2 >= icmodule.RevisionExtraMainPReps {
 			mainPRepCount := es.State.GetMainPRepCount()

@@ -73,6 +73,9 @@ const (
 	RevisionICON1Last = RevisionICON2 - 1
 	RevisionICON2R0   = RevisionICON2
 
+	RevisionICON2R1      = RevisionICON2R0 + 1
+	RevisionEnableJavaEE = RevisionICON2R1
+
 	RevisionExtraMainPReps = RevisionICON2 + 1
 )
 
