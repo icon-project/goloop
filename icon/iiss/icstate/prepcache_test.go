@@ -111,7 +111,6 @@ func TestPRepBaseCache(t *testing.T) {
 }
 
 func TestPRepStatusCache(t *testing.T) {
-	var created bool
 	var status *PRepStatusState
 	var addr1, addr2 module.Address
 
@@ -121,54 +120,52 @@ func TestPRepStatusCache(t *testing.T) {
 	vTotal := int64(100)
 
 	// check if item is not present
-	status, created = s.prepStatusCache.Get(addr1, false)
+	status = s.prepStatusCache.Get(addr1, false)
 	assert.Nil(t, status)
-	assert.False(t, created)
 
 	// cache added
-	status, created = s.prepStatusCache.Get(addr1, true)
+	status = s.prepStatusCache.Get(addr1, true)
 	assert.NotNil(t, status)
-	assert.True(t, created)
+	assert.True(t, status.IsEmpty())
 	err := status.Activate()
 	assert.NoError(t, err)
 	ss1 := status.GetSnapshot()
 
 	addr2 = common.MustNewAddressFromString("hx2")
-	status, created = s.prepStatusCache.Get(addr2, true)
+	status = s.prepStatusCache.Get(addr2, true)
 	assert.NotNil(t, status)
-	assert.True(t, created)
+	assert.True(t, status.IsEmpty())
 	status.SetVTotal(vTotal)
 	assert.Equal(t, vTotal, status.VTotal())
 
 	s = flushAndNewState(s, false)
 
 	// Reset() reverts Clear(), should get after reset()
-	status, created = s.prepStatusCache.Get(addr2, false)
+	status = s.prepStatusCache.Get(addr2, false)
 	status.Clear()
 	s.prepStatusCache.Reset()
 
-	status, created = s.prepStatusCache.Get(addr2, false)
+	status = s.prepStatusCache.Get(addr2, false)
+	assert.NotNil(t, status)
 	assert.False(t, status.IsEmpty())
-	assert.False(t, created)
 	assert.Equal(t, vTotal, status.VTotal())
 
 	// item is removed in the map,
 	// after it flush to DB, it is removed in DB
-	status, created = s.prepStatusCache.Get(addr2, false)
+	status = s.prepStatusCache.Get(addr2, false)
 	status.Clear()
 	s.prepStatusCache.Flush()
 
-	status, created = s.prepStatusCache.Get(addr2, false)
+	status = s.prepStatusCache.Get(addr2, false)
 	assert.Nil(t, status)
-	assert.False(t, created)
 
 	// Reset cannot get items from DB after clear()
 	s.prepStatusCache.Clear()
 	s.prepStatusCache.Reset()
 
 	// but it can get item, using Get() specifically
-	status, created = s.prepStatusCache.Get(addr1, false)
+	status = s.prepStatusCache.Get(addr1, false)
 	assert.NotNil(t, status)
 	assert.True(t, ss1.Equal(status.GetSnapshot()))
-	assert.False(t, created)
+	assert.False(t, status.IsEmpty())
 }

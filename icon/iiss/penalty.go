@@ -37,7 +37,7 @@ const (
 func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
-	ps, _ := es.State.GetPRepStatusByOwner(owner, false)
+	ps := es.State.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return nil
 	}

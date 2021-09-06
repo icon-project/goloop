@@ -38,7 +38,7 @@ func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]inter
 }
 
 func (p *PRep) init() error {
-	ps, _ := p.state.GetPRepStatusByOwner(p.owner, false)
+	ps := p.state.GetPRepStatusByOwner(p.owner, false)
 	if ps == nil {
 		return errors.Errorf("PRepStatus not found: %s", p.owner)
 	}

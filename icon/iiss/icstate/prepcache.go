@@ -113,20 +113,18 @@ type PRepStatusCache struct {
 	illegal  *containerdb.DictDB
 }
 
-func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
+func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRepStatusState {
 	key := icutils.ToKey(owner)
 	status := c.statuses[key]
 	if status != nil {
-		return status, false
+		return status
 	}
 
-	created := false
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
 			status = NewPRepStatus()
 			c.statuses[key] = status
-			created = true
 		} else {
 			// return nil
 		}
@@ -140,7 +138,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) (*PRe
 			c.statuses[key] = status
 		}
 	}
-	return status, created
+	return status
 }
 
 func (c *PRepStatusCache) Clear() {

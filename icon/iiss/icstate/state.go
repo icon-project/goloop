@@ -138,7 +138,7 @@ func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) 
 	return s.prepBaseCache.Get(owner, createIfNotExist)
 }
 
-func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) (*PRepStatusState, bool) {
+func (s *State) GetPRepStatusByOwner(owner module.Address, createIfNotExist bool) *PRepStatusState {
 	return s.prepStatusCache.Get(owner, createIfNotExist)
 }
 
@@ -190,7 +190,7 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 // If node is already used by others, then it returns errors.
 func (s *State) addNodeToOwner(node, owner module.Address) error {
 	if !node.Equal(owner) {
-		ps, _ := s.GetPRepStatusByOwner(node, false)
+		ps := s.GetPRepStatusByOwner(node, false)
 		if ps != nil && ps.Status() != NotReady {
 			return errors.InvalidStateError.Errorf("AlreadyUsedByPRep(node=%s)", node)
 		}
@@ -283,7 +283,7 @@ func (s *State) RegisterPRep(owner module.Address, ri *PRepInfo, irep *big.Int, 
 		return errors.Errorf("Invalid argument: ri")
 	}
 
-	ps, _ := s.GetPRepStatusByOwner(owner, true)
+	ps := s.GetPRepStatusByOwner(owner, true)
 	if err := ps.Activate(); err != nil {
 		return errors.Wrapf(err, "ActivationFail(addr=%s)", owner)
 	}
@@ -325,7 +325,7 @@ func (s *State) SetPRep(blockHeight int64, owner module.Address, info *PRepInfo)
 	nodeUpdate := pb.P2PEndpoint() != oldP2P || !newNode.Equal(oldNode)
 
 	if !oldNode.Equal(newNode) {
-		ps, _ := s.GetPRepStatusByOwner(owner, false)
+		ps := s.GetPRepStatusByOwner(owner, false)
 		if ps.Grade() == GradeMain {
 			return nodeUpdate, s.changeValidatorNodeAddress(blockHeight, owner, oldNode, newNode)
 		}
@@ -359,7 +359,7 @@ func (s *State) GetTotalBond() *big.Int {
 
 func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
 	owner := s.GetOwnerByNode(node)
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: node=%v owner=%v", node, owner)
 	}
@@ -387,7 +387,7 @@ func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64)
 	if !voted {
 		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
 	}
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
@@ -403,7 +403,7 @@ func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.
 		return nil
 	}
 
-	ps, _ := s.GetPRepStatusByOwner(newOwner, false)
+	ps := s.GetPRepStatusByOwner(newOwner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
@@ -413,7 +413,7 @@ func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.
 }
 
 func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
@@ -433,7 +433,7 @@ func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
-		ps, _ := s.GetPRepStatusByOwner(owner, false)
+		ps := s.GetPRepStatusByOwner(owner, false)
 		if ps.Status() == Active {
 			owners = append(owners, owner)
 			pss = append(pss, ps)
@@ -502,7 +502,7 @@ func (s *State) Slash(owner module.Address, amount *big.Int) error {
 		return nil
 	}
 
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %v", owner)
 	}
@@ -516,7 +516,7 @@ func (s *State) Slash(owner module.Address, amount *big.Int) error {
 }
 
 func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int64) error {
-	ps, _ := s.GetPRepStatusByOwner(owner, false)
+	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}

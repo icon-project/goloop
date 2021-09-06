@@ -420,7 +420,7 @@ func (s *State) chooseNewMainPRep(prepSnapshots PRepSnapshots, startIdx int) (mo
 		pss = prepSnapshots[i]
 		owner := pss.Owner()
 
-		ps, _ = s.GetPRepStatusByOwner(owner, false)
+		ps = s.GetPRepStatusByOwner(owner, false)
 		if ps == nil {
 			continue
 		}

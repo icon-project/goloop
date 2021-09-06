@@ -50,7 +50,7 @@ func TestState_RegisterPRep(t *testing.T) {
 		info := pb.info()
 		assert.Truef(t, info.equal(ri), "DifferentInfo exp=%+v real=%+v", ri, info)
 
-		ps, _ := state.GetPRepStatusByOwner(owner, false)
+		ps := state.GetPRepStatusByOwner(owner, false)
 		assert.NotNil(t, ps)
 		assert.Equal(t, GradeCandidate, ps.Grade())
 		assert.Equal(t, Active, ps.Status())

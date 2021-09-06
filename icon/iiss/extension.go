@@ -286,7 +286,7 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 
 	for i := 0; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
-		ps, _ := es.State.GetPRepStatusByOwner(pss.Owner(), false)
+		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeMain {
@@ -324,7 +324,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 
 	for i := mainPRepCount; i < pssCount; i++ {
 		pss := term.GetPRepSnapshotByIndex(i)
-		ps, _ := es.State.GetPRepStatusByOwner(pss.Owner(), false)
+		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
 		if ps != nil && ps.Grade() == icstate.GradeSub {
@@ -369,7 +369,7 @@ func (es *ExtensionStateImpl) SetDelegation(
 		if err != nil {
 			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep delegation")
 		}
-		ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+		ps := es.State.GetPRepStatusByOwner(owner, true)
 		oDelegated := ps.Delegated()
 		if value.Sign() != 0 {
 			ps.SetDelegated(new(big.Int).Add(oDelegated, value))
@@ -565,7 +565,7 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	if err := es.addEventEnable(blockHeight, address, icstage.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
-	ps, _ := es.State.GetPRepStatusByOwner(address, false)
+	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
@@ -609,7 +609,7 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 			return scoreresult.UnknownFailureError.Wrapf(err, "Failed to update P-Rep bond")
 		}
 		if value.Sign() != 0 {
-			ps, _ := es.State.GetPRepStatusByOwner(owner, true)
+			ps := es.State.GetPRepStatusByOwner(owner, true)
 			ps.SetBonded(new(big.Int).Add(ps.Bonded(), value))
 			if ps.IsActive() {
 				nTotal.Add(nTotal, value)
@@ -1300,7 +1300,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionICON2 && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
 		// Thus reward calculator segment VotedReward period
-		ps, _ := es.State.GetPRepStatusByOwner(from, false)
+		ps := es.State.GetPRepStatusByOwner(from, false)
 		if ps.Grade() == icstate.GradeMain {
 			term := es.State.GetTermSnapshot()
 			if _, err = es.Front.AddEventVotedReward(int(blockHeight - term.StartHeight())); err != nil {
