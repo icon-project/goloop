@@ -68,7 +68,7 @@ func (m *mergedDatabase) GetBlockJSONByHeight(height int, pre bool) ([]byte, err
 			return bs, nil
 		}
 	}
-	return nil, nil
+	return nil, errors.ErrNotFound
 }
 
 func (m *mergedDatabase) queryDB(yield func(db Database)([]byte, error)) ([]byte, error) {
@@ -82,7 +82,7 @@ func (m *mergedDatabase) queryDB(yield func(db Database)([]byte, error)) ([]byte
 			return bs, nil
 		}
 	}
-	return nil, nil
+	return nil, errors.ErrNotFound
 }
 
 func (m *mergedDatabase) GetBlockJSONByID(id []byte) ([]byte, error) {
