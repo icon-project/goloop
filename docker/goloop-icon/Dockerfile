@@ -24,6 +24,7 @@ ENV PATH $PATH:/goloop/bin
 
 # install genesis governance
 ADD icon_governance.zip /goloop/
+ADD icon_genesis.zip /goloop/
 
 # container configuration
 WORKDIR /goloop
