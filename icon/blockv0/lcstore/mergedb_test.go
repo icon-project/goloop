@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type testDatabase struct {
@@ -89,7 +91,7 @@ func Test_layeredDatabase_GetBlockJSONByHeight(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, blk)
 		} else {
-			assert.NoError(t, err)
+			assert.True(t, errors.NotFoundError.Equals(err))
 			assert.Nil(t, blk)
 		}
 	}
