@@ -38,7 +38,7 @@ type Platform interface {
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
 	OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error
-	DefaultBlockVersion() int
+	DefaultBlockVersionFor(cid int) int
 	NewBlockHandlers(c Chain) []BlockHandler
 	NewConsensus(c Chain, walDir string) (module.Consensus, error)
 	CommitVoteSetDecoder() module.CommitVoteSetDecoder

@@ -89,7 +89,7 @@ func (t *platform) Term() {
 	// do nothing
 }
 
-func (t *platform) DefaultBlockVersion() int {
+func (t *platform) DefaultBlockVersionFor(cid int) int {
 	return module.BlockVersion2
 }
 
