@@ -57,7 +57,7 @@ func (m *mergedDatabase) GetTPS() float32 {
 func (m *mergedDatabase) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
 	for idx, db := range m.getDBSlice() {
 		if bs, err := db.GetBlockJSONByHeight(height, pre); err != nil {
-			if err != errors.ErrNotFound {
+			if err == errors.ErrNotFound {
 				continue
 			}
 			return nil, err
