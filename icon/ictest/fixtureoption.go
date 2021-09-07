@@ -60,7 +60,7 @@ func (plt *platform) SetBlockV1Proof(root []byte, size int64, votes *blockv0.Blo
 	return nil
 }
 
-func (plt *platform) DefaultBlockVersion() int {
+func (plt *platform) DefaultBlockVersionFor(cid int) int {
 	return module.BlockVersion1
 }
 

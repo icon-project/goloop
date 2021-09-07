@@ -92,9 +92,11 @@ func (s *BasicService) FinalizeTransition(tr module.Transition, opt int, noFlush
 	return service.FinalizeTransition(tr, opt, noFlush)
 }
 
+const CIDOfMainNet = 1
+
 func (s *BasicService) GetNextBlockVersion(result []byte, vl module.ValidatorList) int {
 	if result == nil {
-		return s.Plt.DefaultBlockVersion()
+		return s.Plt.DefaultBlockVersionFor(CIDOfMainNet)
 	}
 	wss, err := service.NewWorldSnapshot(s.Chain.Database(), s.Plt, result, vl)
 	if err != nil {
@@ -109,7 +111,7 @@ func (s *BasicService) GetNextBlockVersion(result []byte, vl module.ValidatorLis
 	}
 	v := int(scoredb.NewVarDB(bss, state.VarNextBlockVersion).Int64())
 	if v == 0 {
-		return s.Plt.DefaultBlockVersion()
+		return s.Plt.DefaultBlockVersionFor(CIDOfMainNet)
 	}
 	return v
 }

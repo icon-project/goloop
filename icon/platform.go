@@ -41,6 +41,7 @@ import (
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
@@ -168,18 +169,27 @@ func (p *platform) Term() {
 	// Terminate
 }
 
-func (p *platform) DefaultBlockVersion() int {
-	return module.BlockVersion1
+func (p *platform) DefaultBlockVersionFor(cid int) int {
+	if  cid == CIDForMainNet {
+		return module.BlockVersion1
+	}
+	return basic.Platform.DefaultBlockVersionFor(cid)
 }
 
 func (p *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
-	return []base.BlockHandler {
+	if p.DefaultBlockVersionFor(c.CID()) != module.BlockVersion1 {
+		return basic.Platform.NewBlockHandlers(c)
+	}
+	return []base.BlockHandler{
 		blockv1.NewHandler(c),
 		block.NewBlockV2Handler(c),
 	}
 }
 
 func (p *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, error) {
+	if p.DefaultBlockVersionFor(c.CID()) != module.BlockVersion1 {
+		return basic.Platform.NewConsensus(c, walDir)
+	}
 	header, lastVotes, err := p.GetBlockV1Proof()
 	if err != nil {
 		return nil, err
