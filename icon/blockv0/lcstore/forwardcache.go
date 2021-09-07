@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/module"
@@ -163,26 +164,34 @@ func (cs *ForwardCache) scheduleFollowings(b blockv0.Block) {
 }
 
 func (cs *ForwardCache) doGetBlockByHeight(height int) (blockv0.Block, error) {
-	trial := 0
+	trial := 1
 	for {
 		block, err := cs.Store.GetBlockByHeight(height)
 		if err == nil {
 			cs.scheduleFollowings(block)
 			return block, nil
+		} else if errors.NotFoundError.Equals(err) {
+			return nil, err
 		} else {
 			trial += 1
-			if trial >= MaxTrials {
-				cs.log.Warnf("BLOCK failed height=%d", height)
+			if trial > MaxTrials {
+				cs.log.Warnf("BLOCK failed height=%d err=%+v",
+					height, err)
 				return nil, err
 			} else {
-				cs.log.Debugf("BLOCK retry height=%d trial=%d err=%+v", height, trial, err)
+				cs.log.Debugf("BLOCK retry height=%d trial=[%d/%d] err=%v",
+					height, trial, MaxTrials, err)
 				time.Sleep(DelayBeforeRetry)
 			}
 		}
 	}
 }
 
+const GetBlockMaxDuration = time.Minute*2
+const GetBlockRetryDelay = time.Second*2
+
 func (cs *ForwardCache) GetBlockByHeight(height int) (blockv0.Block, error) {
+	ts := time.Now()
 	if bt := cs.getBlockTask(int64(height)); bt != nil {
 		r := <-bt.chn
 		close(bt.chn)
@@ -191,12 +200,29 @@ func (cs *ForwardCache) GetBlockByHeight(height int) (blockv0.Block, error) {
 			cs.scheduleFollowings(obj)
 			return obj, nil
 		case error:
+			if errors.NotFoundError.Equals(obj) {
+				break
+			}
 			return nil, obj
 		default:
 			panic("UnknownType")
 		}
 	}
-	return cs.doGetBlockByHeight(height)
+	for {
+		blk, err := cs.doGetBlockByHeight(height)
+		if err == nil {
+			return blk, nil
+		}
+		dur := time.Now().Sub(ts)
+		if dur >= GetBlockMaxDuration {
+			return blk, err
+		}
+		if !errors.NotFoundError.Equals(err) {
+			return nil, err
+		}
+		cs.log.Debugf("GetBlockByHeight(height=%d) elapsed=%s TRY AGAIN", height, dur)
+		time.Sleep(GetBlockRetryDelay)
+	}
 }
 
 func (cs *ForwardCache) getReceiptTask(id []byte) *receiptTask {
