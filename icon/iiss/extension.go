@@ -932,7 +932,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2R0 {
 			// disable IRep
 			irep = new(big.Int)
-		} else if revision > icmodule.RevisionSetIRepViaNetworkProposal {
+		} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
 			// use network value IRep
 			irep = new(big.Int).Set(es.State.GetIRep())
 		} else {
