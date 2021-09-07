@@ -23,6 +23,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -269,6 +270,7 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[s
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
+	jso["penalty"] = int64(ps.getPenaltyType())
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
@@ -278,6 +280,18 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[s
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)
 	return jso
+}
+
+func (ps *prepStatusData) getPenaltyType() icmodule.PenaltyType {
+	if ps.status == Disqualified {
+		return icmodule.PenaltyPRepDisqualification
+	}
+
+	if (ps.vPenaltyMask & 1) == 0 {
+		return icmodule.PenaltyNone
+	} else {
+		return icmodule.PenaltyBlockValidation
+	}
 }
 
 func (ps *prepStatusData) GetStatsInJSON(blockHeight int64) map[string]interface{} {
@@ -507,10 +521,6 @@ func (ps *PRepStatusState) resetVFailContOffset() {
 	if ps.IsAlreadyPenalized() {
 		ps.vFailCont = 0
 	}
-}
-
-func (ps *PRepStatusState) setVPenaltyMask(p uint32) {
-	ps.vPenaltyMask = p
 }
 
 func buildPenaltyMask(input int) (res uint32) {

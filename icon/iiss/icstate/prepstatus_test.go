@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -677,4 +678,39 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			assert.Equal(t, ps.Grade(), GradeCandidate)
 		})
 	}
+}
+
+func TestPRepStatusData_getPenaltyType(t *testing.T) {
+	ps := NewPRepStatus()
+	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
+
+	for i := 0; i < 10; i +=2 {
+		ps.vPenaltyMask = uint32(i)
+		assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
+	}
+
+	for i := 1; i < 10; i +=2 {
+		ps.vPenaltyMask = uint32(i)
+		assert.Equal(t, icmodule.PenaltyBlockValidation, ps.getPenaltyType())
+	}
+
+	ps.SetStatus(Disqualified)
+	assert.Equal(t, icmodule.PenaltyPRepDisqualification, ps.getPenaltyType())
+}
+
+func TestPrepStatusData_ToJSON(t *testing.T) {
+	ps := NewPRepStatus()
+	jso := ps.ToJSON(100, 5)
+
+	penalty, ok := jso["penalty"].(int64)
+	assert.True(t, ok)
+	assert.Equal(t, int64(icmodule.PenaltyNone), penalty)
+
+	grade, ok := jso["grade"].(int)
+	assert.True(t, ok)
+	assert.Equal(t, int(GradeCandidate), grade)
+
+	status, ok := jso["status"].(int)
+	assert.True(t, ok)
+	assert.Equal(t, int(NotReady), status)
 }

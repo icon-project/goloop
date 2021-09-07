@@ -28,12 +28,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-const (
-	PRepDisqualification int64 = iota + 1
-	LowProductivity
-	BlockValidation
-)
-
 func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
@@ -59,7 +53,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(BlockValidation),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyBlockValidation)),
 		},
 	)
 

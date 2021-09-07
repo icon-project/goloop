@@ -571,7 +571,7 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(PRepDisqualification),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyPRepDisqualification)),
 		},
 	)
 	return nil
