@@ -545,33 +545,15 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, icmodule.RevisionICON2, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "setRewardFundsRate",
-		scoreapi.FlagExternal, 1,
+		scoreapi.Function, "setRewardFundAllocation",
+		scoreapi.FlagExternal, 4,
 		[]scoreapi.Parameter{
-			{"ratio", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
-				[]scoreapi.Field{
-					{"fund", scoreapi.String, nil},
-					{"value", scoreapi.Integer, nil},
-				},
-			},
+			{"iprep", scoreapi.Integer, nil, nil},
+			{"icps", scoreapi.Integer, nil, nil},
+			{"irelay", scoreapi.Integer, nil, nil},
+			{"ivoter", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "addNetworkScore",
-		scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"address", scoreapi.Address, nil, nil},
-		},
-		nil,
-	}, icmodule.RevisionICON2, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getNetworkScores",
-		scoreapi.FlagReadOnly, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
 	}, icmodule.RevisionICON2, 0},
 }
 

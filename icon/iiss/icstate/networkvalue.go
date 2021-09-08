@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/module"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -46,7 +45,6 @@ const (
 	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
 	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
 	VarDelegationSlotMax                     = "delegation_slot_max"
-	VarNetworkScores                         = "network_scores"
 )
 
 const (
@@ -70,53 +68,6 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 		return err
 	}
 	return nil
-}
-
-func (s *State) GetNetworkScores() []module.Address {
-	db := containerdb.NewArrayDB(
-		s.store,
-		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, VarNetworkScores),
-	)
-	size := db.Size()
-	addressList := make([]module.Address, size, size)
-	for i := 0; i < size; i++ {
-		addressList = append(addressList, db.Get(i).Address())
-	}
-	return addressList
-}
-
-func (s *State) AddNetworkScore(address module.Address) error {
-	db := containerdb.NewArrayDB(
-		s.store,
-		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, VarNetworkScores),
-	)
-	size := db.Size()
-	for i := 0; i < size; i++ {
-		a := db.Get(i).Address()
-		if address.Equal(a) {
-			return errors.IllegalArgumentError.New("already in network SCORE")
-		}
-	}
-
-	return db.Put(address)
-}
-
-func (s *State) RemoveNetworkScore(address module.Address) error {
-	db := containerdb.NewArrayDB(
-		s.store,
-		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, VarNetworkScores),
-	)
-	size := db.Size()
-	for i := 0; i < size; i++ {
-		a := db.Get(i).Address()
-		if address.Equal(a) {
-			l := db.Pop()
-			if err := db.Set(i, l); err != nil {
-				return err
-			}
-		}
-	}
-	return errors.IllegalArgumentError.New("not in network SCORE")
 }
 
 func (s *State) GetIISSVersion() int {
