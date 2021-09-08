@@ -488,6 +488,7 @@ func (s *syncer) Stop() {
 		s.fetchCanceler()
 		s.fetchCanceler = nil
 	}
+	s.fsm.Term()
 }
 
 func (s *syncer) OnBlock(br fastsync.BlockResult) {
