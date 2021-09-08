@@ -517,7 +517,7 @@ func (ps *PRepStatusState) SetVFail(f int64) {
 	ps.setDirty()
 }
 
-func (ps *PRepStatusState) resetVFailContOffset() {
+func (ps *PRepStatusState) resetVFailCont() {
 	if ps.IsAlreadyPenalized() {
 		ps.vFailCont = 0
 	}
@@ -530,6 +530,13 @@ func buildPenaltyMask(input int) (res uint32) {
 
 func (ps *PRepStatusState) shiftVPenaltyMask(limit int) {
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & buildPenaltyMask(limit)
+}
+
+func (ps *PRepStatusState) ResetVPenaltyMask() {
+	if ps.vPenaltyMask != 0 {
+		ps.vPenaltyMask = 0
+		ps.setDirty()
+	}
 }
 
 func (ps *PRepStatusState) OnBlockVote(blockHeight int64, voted bool) error {
@@ -622,7 +629,7 @@ func (ps *PRepStatusState) OnPenaltyImposed(blockHeight int64) error {
 }
 
 func (ps *PRepStatusState) OnTermEnd(newGrade Grade, limit int) error {
-	ps.resetVFailContOffset()
+	ps.resetVFailCont()
 	if newGrade == GradeMain {
 		ps.onMainPRepIn(limit)
 	} else {

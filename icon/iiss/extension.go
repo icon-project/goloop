@@ -902,7 +902,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 		}
 		// Reset the status of all active preps ordered by bondedDelegation
 		limit := es.State.GetConsistentValidationPenaltyMask()
-		if err = preps.OnTermEnd(mainPRepCount, subPRepCount, limit); err != nil {
+		if err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, limit); err != nil {
 			return err
 		}
 	} else {

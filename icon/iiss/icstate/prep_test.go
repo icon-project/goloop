@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func getRandomVoteState() VoteState {
@@ -52,18 +54,26 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 	subPRepCount := 78
 	electedPRepCount := mainPRepCount + subPRepCount
 	limit := 30
+	revision := icmodule.RevisionICON2R0
 
 	preps := newDummyPReps(size, br)
 	assert.Equal(t, size, preps.Size())
 
-	err = preps.OnTermEnd(mainPRepCount, subPRepCount, limit)
+	prep := preps.GetPRepByIndex(0)
+	prep.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
+	assert.True(t, prep.GetVPenaltyCount() > 0)
+
+	err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, mainPRepCount, preps.GetPRepSize(GradeMain))
 	assert.Equal(t, subPRepCount, preps.GetPRepSize(GradeSub))
 	assert.Equal(t, size-mainPRepCount-subPRepCount, preps.GetPRepSize(GradeCandidate))
 
 	for i := 0; i < size; i++ {
-		prep := preps.GetPRepByIndex(i)
+		prep = preps.GetPRepByIndex(i)
+		if revision == icmodule.RevisionICON2R0 {
+			assert.Zero(t, prep.GetVPenaltyCount())
+		}
 		if i < mainPRepCount {
 			assert.Equal(t, GradeMain, prep.Grade())
 		} else if i < electedPRepCount {

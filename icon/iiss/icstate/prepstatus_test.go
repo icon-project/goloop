@@ -205,10 +205,10 @@ func TestPRepStatus_GetVFail(t *testing.T) {
 
 func TestPRepStatus_GetVFailCont(t *testing.T) {
 	type args struct {
-		lastState       VoteState
-		lastBH          int64
-		vFailContOffset int64
-		blockHeight     int64
+		lastState   VoteState
+		lastBH      int64
+		vFailCont   int64
+		blockHeight int64
 	}
 
 	tests := []struct {
@@ -254,11 +254,10 @@ func TestPRepStatus_GetVFailCont(t *testing.T) {
 			ps := &prepStatusData{
 				lastState:  in.lastState,
 				lastHeight: in.lastBH,
-				vFailCont:  in.vFailContOffset,
+				vFailCont:  in.vFailCont,
 			}
 
 			ret := ps.GetVFailCont(in.blockHeight)
-
 			assert.Equal(t, int64(tt.want), ret)
 		})
 	}
@@ -321,12 +320,12 @@ func TestPRepStatus_ShiftVPenaltyMask(t *testing.T) {
 
 func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 	type attr struct {
-		lh   int64
-		ls   VoteState
-		vf   int64
-		vt   int64
+		lh  int64
+		ls  VoteState
+		vf  int64
+		vt  int64
 		vfc int64
-		vpm  uint32
+		vpm uint32
 	}
 	type input struct {
 		bh    int64
@@ -459,12 +458,12 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 
 func TestPRepStatus_syncBlockVoteStats(t *testing.T) {
 	type attr struct {
-		lh   int64
-		ls   VoteState
-		vf   int64
-		vt   int64
+		lh  int64
+		ls  VoteState
+		vf  int64
+		vt  int64
 		vfc int64
-		vpm  uint32
+		vpm uint32
 	}
 	type input struct {
 		bh int64
@@ -607,12 +606,12 @@ func TestPRepStatus_syncBlockVoteStats(t *testing.T) {
 
 func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 	type attr struct {
-		lh   int64
-		ls   VoteState
-		vf   int64
-		vt   int64
+		lh  int64
+		ls  VoteState
+		vf  int64
+		vt  int64
 		vfc int64
-		vpm  uint32
+		vpm uint32
 	}
 	type input struct {
 		bh int64
@@ -684,12 +683,12 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 	ps := NewPRepStatus()
 	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
 
-	for i := 0; i < 10; i +=2 {
+	for i := 0; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
 		assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
 	}
 
-	for i := 1; i < 10; i +=2 {
+	for i := 1; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
 		assert.Equal(t, icmodule.PenaltyBlockValidation, ps.getPenaltyType())
 	}

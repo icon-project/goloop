@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
@@ -72,7 +73,7 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(mainPRepCount, subPRepCount, limit int) error
+	OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) error
 	GetPRepSize(grade Grade) int
 	Size() int
 	TotalBonded() *big.Int
@@ -91,7 +92,7 @@ type prepsBase struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepsBase) OnTermEnd(mainPRepCount, subPRepCount, limit int) error {
+func (p *prepsBase) OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -108,9 +109,11 @@ func (p *prepsBase) OnTermEnd(mainPRepCount, subPRepCount, limit int) error {
 			newGrade = GradeCandidate
 		}
 
-		// Reset VFailContOffset if this prep got penalized during this term
 		if err := prep.OnTermEnd(newGrade, limit); err != nil {
 			return err
+		}
+		if revision == icmodule.RevisionICON2R0 {
+			prep.ResetVPenaltyMask()
 		}
 	}
 
