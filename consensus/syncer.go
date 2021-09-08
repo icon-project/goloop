@@ -257,10 +257,10 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) (Syncer, error) {
 	fsm, err := fastsync.NewManager(nm, bm, e, logger)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	fsm.StartServer()
 	return &syncer{
@@ -271,7 +271,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 		mutex:  mutex,
 		addr:   addr,
 		fsm:    fsm,
-	}
+	}, nil
 }
 
 func (s *syncer) Start() error {

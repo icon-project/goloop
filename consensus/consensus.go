@@ -1630,8 +1630,14 @@ func (cs *consensus) Start() error {
 
 	cs.started = true
 	cs.log.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
-	cs.syncer = newSyncer(cs, cs.log, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
-	cs.syncer.Start()
+	cs.syncer, err = newSyncer(cs, cs.log, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
+	if err != nil {
+		return err
+	}
+	err = cs.syncer.Start()
+	if err != nil {
+		return err
+	}
 	if cs.step == stepNewHeight && cs.round == 0 {
 		cs.enterTransactionWait()
 	} else if cs.step == stepNewHeight && cs.round > 0 {
