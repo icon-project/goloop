@@ -4,10 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -22,7 +23,7 @@ type streamMessage struct {
 	// TODO: NAcks to reduce retransmitted traffics
 }
 
-type reactor struct {
+type streamReactor struct {
 	sync.Mutex
 	clock       common.Clock
 	userReactor module.Reactor
@@ -39,7 +40,7 @@ type sendItem struct {
 }
 
 type stream struct {
-	r  *reactor
+	r  *streamReactor
 	id module.PeerID
 
 	seq          uint16
@@ -52,15 +53,15 @@ type stream struct {
 }
 
 func newReactor(clock common.Clock, ur module.Reactor,
-	spi module.ProtocolInfo) *reactor {
-	return &reactor{
+	spi module.ProtocolInfo) *streamReactor {
+	return &streamReactor{
 		clock:       clock,
 		userReactor: ur,
 		streamPI:    spi,
 	}
 }
 
-func (r *reactor) streamForPeer(id module.PeerID) *stream {
+func (r *streamReactor) streamForPeer(id module.PeerID) *stream {
 	for _, s := range r.streams {
 		if s.id.Equal(id) {
 			return s
@@ -69,7 +70,7 @@ func (r *reactor) streamForPeer(id module.PeerID) *stream {
 	return nil
 }
 
-func (r *reactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
+func (r *streamReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
 	var payload []byte
 	var err error
 	consume := func() bool {
@@ -102,11 +103,11 @@ func (r *reactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 	return r.userReactor.OnReceive(pi, payload, id)
 }
 
-func (r *reactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
+func (r *streamReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	panic("cannot happen")
 }
 
-func (r *reactor) OnJoin(id module.PeerID) {
+func (r *streamReactor) OnJoin(id module.PeerID) {
 	r.Lock()
 	defer r.userReactor.OnJoin(id)
 	defer r.Unlock()
@@ -116,7 +117,7 @@ func (r *reactor) OnJoin(id module.PeerID) {
 	}
 }
 
-func (r *reactor) OnLeave(id module.PeerID) {
+func (r *streamReactor) OnLeave(id module.PeerID) {
 	r.Lock()
 	defer r.userReactor.OnLeave(id)
 	defer r.Unlock()
@@ -140,15 +141,15 @@ func (r *reactor) OnLeave(id module.PeerID) {
 	}
 }
 
-func (r *reactor) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
+func (r *streamReactor) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
 	return errors.Errorf("Broadcast is not supported for stream")
 }
 
-func (r *reactor) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
+func (r *streamReactor) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
 	return errors.Errorf("Multicast is not supported for stream")
 }
 
-func (r *reactor) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
+func (r *streamReactor) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -159,7 +160,7 @@ func (r *reactor) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) er
 	return s.send(pi, b)
 }
 
-func newStream(r *reactor, id module.PeerID) *stream {
+func newStream(r *streamReactor, id module.PeerID) *stream {
 	return &stream{
 		r:  r,
 		id: id,

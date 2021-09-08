@@ -316,7 +316,7 @@ func TestStream_NoRepostOnTimelyAck(t *testing.T) {
 	repeat(t, 0xFFFF-1, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
 
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -338,7 +338,7 @@ func TestStream_RepostOnAckTimeout(t *testing.T) {
 	repeat(t, 0xFFFF-1, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
 
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -356,7 +356,7 @@ func TestStream_RepostOnAckTimeout(t *testing.T) {
 func TestStream_RepostSingleMessageOnAckTimeout(t *testing.T) {
 	repeat(t, 0xFFFF-2, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
 		assertStreamMessageReceived(t, s.r2.ch, base+1, 0, s.payloads[0])
@@ -381,7 +381,7 @@ func TestStream_RepostSingleMessageOnAckTimeout(t *testing.T) {
 func TestStream_PauseMessagePostingOnAckTimeout(t *testing.T) {
 	repeat(t, 0xFFFF, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -409,7 +409,7 @@ func TestStream_PauseMessagePostingOnAckTimeout(t *testing.T) {
 func TestStream_RetransmissionComplex(t *testing.T) {
 	repeat(t, 0xFFFF-5, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -488,7 +488,7 @@ func TestStream_RetransmissionComplex(t *testing.T) {
 func TestStream_RetransmitAllPendingOnAckAfterTimeout(t *testing.T) {
 	repeat(t, 0xFFFF-2, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -520,7 +520,7 @@ func TestStream_RetransmitAllPendingOnAckAfterTimeout(t *testing.T) {
 func TestStream_DoNothingOnFutureAck(t *testing.T) {
 	repeat(t, 0xFFFF-1, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -535,7 +535,7 @@ func TestStream_DoNothingOnFutureAck(t *testing.T) {
 func TestStream_DoNothingOnPastAck(t *testing.T) {
 	repeat(t, 0xFFFF-1, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setSeqByForce(base)
 
 		s.ph.Unicast(pi0, s.payloads[0], s.nm2.id)
 		s.nm2.processRecvBuf()
@@ -550,7 +550,7 @@ func TestStream_DoNothingOnPastAck(t *testing.T) {
 func TestStream_Reordering(t *testing.T) {
 	repeat(t, 0xFFFF-1, 0, func(t *testing.T, base uint16) {
 		s := newStreamTestSetUp(t)
-		s.ph.(*reactor).streamForPeer(s.nm2.id).setPeerSeqByForce(base)
+		s.ph.(*streamReactor).streamForPeer(s.nm2.id).setPeerSeqByForce(base)
 
 		unicastStreamMessage(s.ph2, pi0, base+1, 0, s.payloads[0], s.nm.id)
 		s.nm.processRecvBuf()
