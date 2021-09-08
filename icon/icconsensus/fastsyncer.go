@@ -115,6 +115,8 @@ func (f *fastSyncer) Term() {
 	if f.blockCanceler != nil {
 		f.blockCanceler.Cancel()
 	}
+	f.fsm.Term()
+
 	_ = f.c.NetworkManager().UnregisterReactor(&f.r1)
 	_ = f.c.NetworkManager().UnregisterReactor(&f.r2)
 	f.running = false
