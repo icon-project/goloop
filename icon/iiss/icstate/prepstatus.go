@@ -155,7 +155,7 @@ func (ps *prepStatusData) EffectiveDelegated() *big.Int {
 	return ps.effectiveDelegated
 }
 
-func (ps *prepStatusData) GetVoted() *big.Int {
+func (ps *prepStatusData) getVoted() *big.Int {
 	return new(big.Int).Add(ps.delegated, ps.bonded)
 }
 
@@ -172,7 +172,7 @@ func (ps *prepStatusData) GetBondedDelegation(bondRequirement int64) *big.Int {
 		// should not be negative or over 100 for bond requirement
 		return big.NewInt(0)
 	}
-	totalVoted := ps.GetVoted() // bonded + delegated
+	totalVoted := ps.getVoted() // bonded + delegated
 	if bondRequirement == 0 {
 		// when bondRequirement is 0, it means no threshold for BondedRequirement,
 		// so it returns 100% of totalVoted.
@@ -335,7 +335,7 @@ func (ps *prepStatusData) String() string {
 		ps.vFailCont,
 		ps.delegated,
 		ps.bonded,
-		ps.GetVoted(),
+		ps.getVoted(),
 		ps.effectiveDelegated,
 	)
 }

@@ -262,11 +262,14 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			s.lockAddresses()
 		}
 
-		if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
+		// R0: IISS-2.x works on goloop engine, enabling some IISS-3.x related APIs.
+		//     (getBond, setBond, getBonderList, setBonderList)
+		// R1: IISS-3.x works fully on goloop engine.
+		if r1 < icmodule.RevisionICON2R1 && r2 >= icmodule.RevisionICON2R1 {
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}
-			if br := es.State.GetBondRequirement(); br == icmodule.IISS2BondRequirement {
+			if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
 				if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
 					return err
 				}
