@@ -68,6 +68,7 @@ type Chain interface {
 	CommitVoteSetDecoder() module.CommitVoteSetDecoder
 	ServiceManager() module.ServiceManager
 	MetricContext() context.Context
+	CID() int
 	NID() int
 	Logger() log.Logger
 	NetworkManager() module.NetworkManager

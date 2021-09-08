@@ -307,7 +307,7 @@ func (m *manager) _import(
 		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
 	}
 	var csi module.ConsensusInfo
-	if vt, err := verifyBlock(block, bn.block, validators); err != nil {
+	if vt, err := m.verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
 	} else {
 		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, vt)

@@ -36,9 +36,11 @@ type Manager interface {
 		end int64,
 		cb FetchCallback,
 	) (canceler func() bool, err error)
+	Term()
 }
 
 type manager struct {
+	nm     module.NetworkManager
 	server *server
 	client *client
 }
@@ -92,13 +94,25 @@ func (m *manager) FetchBlocks(
 	}, nil
 }
 
+func (m *manager) Term() {
+	if m.nm != nil {
+		err := m.nm.UnregisterReactor(m)
+		if err != nil {
+			log.Warnf("fastsync.manager.Term: error=%+v", err)
+		}
+		m.nm = nil
+	}
+}
+
 func NewManager(
 	nm module.NetworkManager,
 	bm module.BlockManager,
 	bpp BlockProofProvider,
 	logger log.Logger,
 ) (Manager, error) {
-	m := &manager{}
+	m := &manager{
+		nm : nm,
+	}
 	m.server = newServer(nm, nil, bm, bpp, logger)
 	m.client = newClient(nm, nil, bm, logger)
 

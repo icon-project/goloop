@@ -173,7 +173,7 @@ func (sm *ServiceManager) GetMinimizeBlockGen(result []byte) bool {
 
 func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	if result == nil {
-		return sm.plt.DefaultBlockVersion()
+		return sm.plt.DefaultBlockVersionFor(sm.chain.CID())
 	}
 	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
 	if err != nil {
@@ -181,12 +181,12 @@ func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	}
 	ass := ws.GetAccountSnapshot(state.SystemID)
 	if ass == nil {
-		return sm.plt.DefaultBlockVersion()
+		return sm.plt.DefaultBlockVersionFor(sm.chain.CID())
 	}
 	as := scoredb.NewStateStoreWith(ass)
 	v := int(scoredb.NewVarDB(as, state.VarNextBlockVersion).Int64())
 	if v == 0 {
-		return sm.plt.DefaultBlockVersion()
+		return sm.plt.DefaultBlockVersionFor(sm.chain.CID())
 	}
 	return v
 }

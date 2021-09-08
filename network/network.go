@@ -30,6 +30,8 @@ type manager struct {
 
 	//monitor
 	mtr *metric.NetworkMetric
+
+	streamReactors []*streamReactor
 }
 
 func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
@@ -136,11 +138,11 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 	}
 
 	if _, ok := m.protocolHandlers[name]; ok {
-		return nil, ErrAlreadyRegisteredReactor
+		return nil, errors.WithStack(ErrAlreadyRegisteredReactor)
 	}
 
 	if _, ok := m.priority[pi]; ok {
-		return nil, ErrAlreadyRegisteredReactor
+		return nil, errors.WithStack(ErrAlreadyRegisteredReactor)
 	}
 
 	ph := newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
@@ -154,6 +156,10 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
+
+	if sr := m.tryUnregisterStreamReactor(reactor); sr != nil {
+		reactor = sr
+	}
 
 	for name, ph := range m.protocolHandlers {
 		if ph.reactor == reactor {

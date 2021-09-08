@@ -2,13 +2,20 @@ package block
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
-func verifyBlock(b module.BlockData, prev module.BlockData, prevVoters module.ValidatorList) ([]bool, error) {
+func (m* manager) verifyBlock(b module.BlockData, prev module.BlockData, prevVoters module.ValidatorList) ([]bool, error) {
+	var prevResult []byte
+	if prev != nil {
+		prevResult = prev.Result()
+	}
+	if b.Version() != m.sm.GetNextBlockVersion(prevResult) {
+		return nil, errors.Errorf("bad block version=%d exp=%d", b.Version(), m.sm.GetNextBlockVersion(prevResult))
+	}
 	if b.Height() != prev.Height()+1 {
 		return nil, errors.New("bad height")
 	}

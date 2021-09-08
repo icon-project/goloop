@@ -585,7 +585,7 @@ func (m *manager) GetMinimizeBlockGen(result []byte) bool {
 
 func (m *manager) GetNextBlockVersion(result []byte) int {
 	if result == nil {
-		return m.plt.DefaultBlockVersion()
+		return m.plt.DefaultBlockVersionFor(m.chain.CID())
 	}
 	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
@@ -593,7 +593,7 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	}
 	v := int(scoredb.NewVarDB(as, state.VarNextBlockVersion).Int64())
 	if v == 0 {
-		return m.plt.DefaultBlockVersion()
+		return m.plt.DefaultBlockVersionFor(m.chain.CID())
 	}
 	return v
 }

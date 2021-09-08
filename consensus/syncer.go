@@ -90,18 +90,23 @@ func (p *peer) doSync() (module.ProtocolInfo, Message) {
 	if p.Height < e.Height() || (p.Height == e.Height() && e.Step() >= stepCommit) {
 		if p.BlockPartsMask == nil {
 			vl := e.GetCommitPrecommits(p.Height)
+			if vl == nil {
+				return 0, nil
+			}
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			partSet := e.GetCommitBlockParts(p.Height)
-			var nParts int
-			if partSet != nil {
-				nParts = partSet.Parts()
+			if partSet == nil {
+				return 0, nil
 			}
-			p.BlockPartsMask = newBitArray(nParts)
+			p.BlockPartsMask = newBitArray(partSet.Parts())
 			p.log.Tracef("PC for commit %v\n", p.Height)
 			return ProtoVoteList, msg
 		}
 		partSet := e.GetCommitBlockParts(p.Height)
+		if partSet == nil {
+			return 0, nil
+		}
 		mask := p.BlockPartsMask.Copy()
 		mask.Flip()
 		mask.AssignAnd(partSet.GetMask())
@@ -252,10 +257,10 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) (Syncer, error) {
 	fsm, err := fastsync.NewManager(nm, bm, e, logger)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	fsm.StartServer()
 	return &syncer{
@@ -266,7 +271,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 		mutex:  mutex,
 		addr:   addr,
 		fsm:    fsm,
-	}
+	}, nil
 }
 
 func (s *syncer) Start() error {
@@ -483,6 +488,7 @@ func (s *syncer) Stop() {
 		s.fetchCanceler()
 		s.fetchCanceler = nil
 	}
+	s.fsm.Term()
 }
 
 func (s *syncer) OnBlock(br fastsync.BlockResult) {
