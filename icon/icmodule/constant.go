@@ -83,4 +83,5 @@ var (
 	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
 	BigIntIScoreICXRatio = big.NewInt(IScoreICXRatio)
 	BigIntRegPRepFee     = new(big.Int).Mul(big.NewInt(2000), BigIntICX)
+	BigIntDayBlocks      = big.NewInt(DayBlock)
 )

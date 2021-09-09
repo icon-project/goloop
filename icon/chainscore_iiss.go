@@ -472,10 +472,9 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 		return nil, err
 	}
 	cc := s.newCallContext(s.cc)
-	totalSupply := cc.GetTotalSupply()
-	jso := make(map[string]interface{})
-	jso["unstakeLockPeriod"] = es.State.GetUnstakeLockPeriod(cc.Revision().Value(), totalSupply)
-	return jso, nil
+	return map[string]interface{}{
+		"unstakeLockPeriod": es.State.GetUnstakeLockPeriod(cc.GetTotalSupply()),
+	}, nil
 }
 
 func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
