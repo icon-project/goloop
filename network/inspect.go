@@ -34,6 +34,7 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m["children"] = peerSetToMapArray(mgr.p2p.children, informal)
 	m["uncles"] = peerSetToMapArray(mgr.p2p.uncles, informal)
 	m["nephews"] = peerSetToMapArray(mgr.p2p.nephews, informal)
+	m["temporary"] = peerSetToMapArray(mgr.p2p.temporary, informal)
 	m["orphanages"] = peerSetToMapArray(mgr.p2p.orphanages, informal)
 	if informal {
 		m["pre"] = peerSetToMapArray(mgr.p2p.pre, informal)

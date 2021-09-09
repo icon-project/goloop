@@ -47,6 +47,7 @@ type Peer struct {
 	connType  PeerConnectionType
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
+	recvRole  PeerRoleFlag
 	children  *NetAddressSet
 	nephews   int32
 	//
@@ -65,8 +66,9 @@ type errorCbFunc func(err error, p *Peer, pkt *Packet)
 type closeCbFunc func(p *Peer)
 
 type NetAddress string
+
 func (na NetAddress) Validate() error {
-	_,port,err := net.SplitHostPort(string(na))
+	_, port, err := net.SplitHostPort(string(na))
 	if err != nil {
 		return err
 	}
@@ -176,6 +178,7 @@ const (
 	p2pConnTypeUncle
 	p2pConnTypeNephew
 	p2pConnTypeFriend
+	p2pConnTypeTemporary
 )
 
 var (
@@ -325,6 +328,16 @@ func (p *Peer) removeRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()
 	p.roleMtx.Lock()
 	p.role.UnSetFlag(r)
+}
+func (p *Peer) setRecvRole(r PeerRoleFlag) {
+	defer p.roleMtx.Unlock()
+	p.roleMtx.Lock()
+	p.recvRole = r
+}
+func (p *Peer) hasRecvRole(r PeerRoleFlag) bool {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.recvRole.Has(r)
 }
 
 func (p *Peer) _close() (err error) {
