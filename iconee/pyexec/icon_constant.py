@@ -62,7 +62,7 @@ class Revision(IntEnum):
     VERIFY_ASSET_INTEGRITY = 12
     USE_RLP = 12
 
-    ICON2 = 14
+    ICON2 = 13
 
     VALUE_MASK = 0xFF
 
