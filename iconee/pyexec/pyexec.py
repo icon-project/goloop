@@ -19,7 +19,7 @@ from .base.address import Address
 from .base.block import Block
 from .base.message import Message
 from .base.transaction import Transaction
-from .icon_constant import IconScoreContextType, Status
+from .icon_constant import IconScoreContextType, Status, Revision
 from .iconscore.icon_score_context import IconScoreContext
 from .iconscore.icon_score_step import IconScoreStepCounter
 from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info, Log, SetHandler
@@ -43,6 +43,18 @@ class EECodec(Codec):
             return Address.from_bytes(b)
         elif t == TypeTag.FLOAT:
             return float(b.decode('utf-8'))
+        raise Exception(f"UnknownType: {t}")
+
+
+class EECodecV2(Codec):
+    def encode(self, obj) -> Tuple[int, bytes]:
+        if isinstance(obj, Address):
+            return TypeTag.ADDRESS, obj.to_canonical_bytes()
+        raise Exception(f"UnknownType: {type(obj)}")
+
+    def decode(self, t: int, b: bytes) -> Any:
+        if t == TypeTag.ADDRESS:
+            return Address.from_bytes(b)
         raise Exception(f"UnknownType: {t}")
 
 
@@ -124,7 +136,9 @@ class PyExecEngine(object):
     def __init__(self, proxy: 'ServiceManagerProxy', verify_package: bool):
         self.__proxy = proxy
         self.__verify_package = verify_package
-        proxy.set_codec(EECodec())
+        self.__codec = EECodec()
+        self.__codec2 = EECodecV2()
+        proxy.set_codec(self.__codec2)
         proxy.set_invoke_handler(self.invoke_handler)
         proxy.set_api_handler(self.api_handler)
         ServiceEngine.open(self)
@@ -154,6 +168,10 @@ class PyExecEngine(object):
         context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS), limit,
                                                     self.handle_set_values)
         context.revision = info.get(Info.REVISION)
+        if Revision.to_value(context.revision) < Revision.ICON2:
+            self.__proxy.set_codec(self.__codec)
+        else:
+            self.__proxy.set_codec(self.__codec2)
         if Logger.isDebugEnabled():
             Logger.debug(f'[Transaction] {context.tx}', TAG)
             Logger.debug(f'[Block] {context.block}', TAG)
