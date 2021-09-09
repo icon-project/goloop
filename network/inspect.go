@@ -45,7 +45,7 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 func inspectProtocol(mgr *manager) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, ph := range mgr.protocolHandlers {
-		m[ph.name] = protocolHandlerToMap(ph)
+		m[ph.getName()] = protocolHandlerToMap(ph)
 	}
 	return m
 }
@@ -66,7 +66,7 @@ func peerToMap(p *Peer, informal bool) map[string]interface{} {
 		m["id"] = p.id.String()
 		m["addr"] = string(p.netAddress)
 		m["in"] = p.incomming
-		m["role"] = p.role
+		m["role"] = p.getRole()
 		if informal {
 			m["channel"] = p.channel
 			m["conn"] = p.connType
@@ -86,16 +86,17 @@ func protocolHandlerToMap(ph *protocolHandler) map[string]interface{} {
 	m := make(map[string]interface{})
 	if ph != nil {
 		m["protocol"] = fmt.Sprintf("%#04x,", ph.protocol.Uint16())
-		m["priority"] = ph.priority
+		m["priority"] = ph.getPriority()
 
-		parr := make([]int, 0)
-		for _, p := range ph.subProtocols {
-			parr = append(parr, int(p.Uint16()))
+		l := make([]int, 0)
+		spis := ph.getSubProtocols()
+		for _, spi := range spis {
+			l = append(l, int(spi.Uint16()))
 		}
-		sort.Ints(parr)
-		sarr := make([]string, len(parr))
-		for i, p := range parr {
-			sarr[i] = fmt.Sprintf("%#04x", p)
+		sort.Ints(l)
+		sarr := make([]string, len(spis))
+		for i, v := range l {
+			sarr[i] = fmt.Sprintf("%#04x", v)
 		}
 		m["subProtocols"] = strings.Join(sarr, ",")
 
