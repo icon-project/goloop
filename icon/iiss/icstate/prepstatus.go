@@ -512,11 +512,6 @@ func (ps *PRepStatusState) SetVTotal(t int64) {
 	ps.setDirty()
 }
 
-func (ps *PRepStatusState) SetVFail(f int64) {
-	ps.vFail = f
-	ps.setDirty()
-}
-
 func (ps *PRepStatusState) resetVFailCont() {
 	if ps.IsAlreadyPenalized() {
 		ps.vFailCont = 0

@@ -464,7 +464,7 @@ func sortPRepStatuses(owners []module.Address, pss []*PRepStatusState, br int64)
 	})
 }
 
-// ImposePenalty changes grade change and set LastState to icstate.None
+// ImposePenalty changes grade and set LastState to icstate.None
 func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHeight int64) error {
 	var err error
 

@@ -184,20 +184,17 @@ func (term *termData) GetEndHeight() int64 {
 }
 
 func (term *termData) GetIISSVersion() int {
-	if term.revision >= icmodule.RevisionICON2R0 {
+	if term.revision >= icmodule.RevisionICON2R1 {
 		return IISSVersion3
-	}
-	if term.revision >= icmodule.RevisionIISS {
-		return IISSVersion2
 	}
 	return IISSVersion2
 }
 
-const DecentralizedHeight = 10362083
+const decentralizedHeight = 10362083
 
 func (term *termData) GetVoteStartHeight() int64 {
 	if term.sequence == 0 {
-		if term.startHeight == DecentralizedHeight {
+		if term.startHeight == decentralizedHeight {
 			// It's decentralized in main network under LOOPCHAIN
 			return term.startHeight + 1
 		} else {

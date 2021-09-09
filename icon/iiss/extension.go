@@ -927,18 +927,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		nextTerm.SetMainPRepCount(mainPRepCount)
 		nextTerm.SetPRepSnapshots(pss)
 		nextTerm.SetIsDecentralized(true)
-
-		var irep *big.Int
-		if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2R0 {
-			// disable IRep
-			irep = new(big.Int)
-		} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
-			// use network value IRep
-			irep = new(big.Int).Set(es.State.GetIRep())
-		} else {
-			irep = calculateIRep(preps)
-		}
-		nextTerm.SetIrep(irep)
+		es.setIrepToTerm(revision, preps, nextTerm)
 
 		// Record new validator list for the next term to State
 		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, es.State, mainPRepCount)
@@ -947,14 +936,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 		}
 	}
 
-	var rrep *big.Int
-	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2R0 {
-		// disable Rrep
-		rrep = new(big.Int)
-	} else {
-		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
-	}
-	nextTerm.SetRrep(rrep)
+	es.setRrepToTerm(revision, totalSupply, nextTerm)
 
 	term := es.State.GetTermSnapshot()
 	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
@@ -964,6 +946,31 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 
 	es.logger.Debugf(nextTerm.String())
 	return es.State.SetTermSnapshot(nextTerm.GetSnapshot())
+}
+
+func (es *ExtensionStateImpl) setIrepToTerm(revision int, preps icstate.PRepSet, term *icstate.TermState) {
+	var irep *big.Int
+	if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionICON2R0 {
+		// disable IRep
+		irep = new(big.Int)
+	} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
+		// use network value IRep
+		irep = new(big.Int).Set(es.State.GetIRep())
+	} else {
+		irep = calculateIRep(preps)
+	}
+	term.SetIrep(irep)
+}
+
+func (es *ExtensionStateImpl) setRrepToTerm(revision int, totalSupply *big.Int, term *icstate.TermState) {
+	var rrep *big.Int
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionICON2R0 {
+		// disable Rrep
+		rrep = new(big.Int)
+	} else {
+		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
+	}
+	term.SetRrep(rrep)
 }
 
 func (es *ExtensionStateImpl) resetIssueTotalReward() error {
