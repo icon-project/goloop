@@ -54,7 +54,7 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 	subPRepCount := 78
 	electedPRepCount := mainPRepCount + subPRepCount
 	limit := 30
-	revision := icmodule.RevisionICON2R0
+	revision := icmodule.RevisionResetPenaltyMask
 
 	preps := newDummyPReps(size, br)
 	assert.Equal(t, size, preps.Size())
@@ -71,7 +71,7 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 
 	for i := 0; i < size; i++ {
 		prep = preps.GetPRepByIndex(i)
-		if revision == icmodule.RevisionICON2R0 {
+		if revision == icmodule.RevisionResetPenaltyMask {
 			assert.Zero(t, prep.GetVPenaltyCount())
 		}
 		if i < mainPRepCount {

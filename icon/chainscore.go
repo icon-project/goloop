@@ -322,7 +322,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionFixSetDelegation, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getDelegation",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -450,7 +450,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionEnableBondAPIs, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBond",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -460,7 +460,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionEnableBondAPIs, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setBonderList",
 		scoreapi.FlagExternal, 1,
@@ -468,7 +468,7 @@ var chainMethods = []*chainMethod{
 			{"bonderList", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionEnableBondAPIs, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getBonderList",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -478,7 +478,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionEnableBondAPIs, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "estimateUnstakeLockPeriod",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,

@@ -698,7 +698,7 @@ func checkValidationPenalty(ps *PRepStatusState, blockHeight, condition int64) b
 }
 
 func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusState) bool {
-	if revision < icmodule.RevisionSlash {
+	if revision < icmodule.RevisionEnableIISS3 {
 		return false
 	}
 	condition := int(s.GetConsistentValidationPenaltyCondition())

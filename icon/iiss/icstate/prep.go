@@ -112,7 +112,7 @@ func (p *prepsBase) OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) 
 		if err := prep.OnTermEnd(newGrade, limit); err != nil {
 			return err
 		}
-		if revision == icmodule.RevisionICON2R0 {
+		if revision == icmodule.RevisionResetPenaltyMask {
 			prep.ResetVPenaltyMask()
 		}
 	}

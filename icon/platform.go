@@ -119,7 +119,7 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	if revision < icmodule.RevisionIISS {
 		return nil
 	}
-	if revision >= icmodule.Revision12 && revision < icmodule.RevisionICON2R0 {
+	if revision >= icmodule.Revision12 && revision < icmodule.RevisionFixRLPBug {
 		// Set batch data root storing block batch data and tx batch data
 		wc.(contract.Context).SetProperty(BatchKey, new(batchRoot).Init(nil))
 	}
@@ -143,7 +143,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 		return err
 	}
 	var totalFee *big.Int
-	if revision < icmodule.RevisionICON2R0 {
+	if revision < icmodule.RevisionStopICON1Support {
 		totalFee = er.VirtualFee()
 	} else {
 		totalFee = er.TotalFee()

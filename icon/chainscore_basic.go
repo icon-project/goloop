@@ -117,7 +117,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		}
 	}
 
-	if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
+	if r1 < icmodule.RevisionEnableFee3 && r2 >= icmodule.RevisionEnableFee3 {
 		// disable Virtual step
 		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
 			return err
@@ -265,7 +265,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		// R0: IISS-2.x works on goloop engine, enabling some IISS-3.x related APIs.
 		//     (getBond, setBond, getBonderList, setBonderList)
 		// R1: IISS-3.x works fully on goloop engine.
-		if r1 < icmodule.RevisionICON2R1 && r2 >= icmodule.RevisionICON2R1 {
+		if r1 < icmodule.RevisionEnableIISS3 && r2 >= icmodule.RevisionEnableIISS3 {
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}

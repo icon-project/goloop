@@ -66,13 +66,23 @@ const (
 
 	RevisionBurnV2 = Revision12
 
-	RevisionICON2R0          = Revision13
-	RevisionFixClaimIScore   = RevisionICON2R0
-	RevisionFixSetDelegation = RevisionICON2R0
+	RevisionICON2R0              = Revision13
+	RevisionFixClaimIScore       = RevisionICON2R0
+	RevisionFixSetDelegation     = RevisionICON2R0
+	RevisionFixRLPBug            = RevisionICON2R0
+	RevisionResetPenaltyMask     = RevisionICON2R0
+	RevisionEnableBondAPIs       = RevisionICON2R0
+	RevisionDisableIRep          = RevisionICON2R0
+	RevisionDisableRRep          = RevisionICON2R0
+	RevisionFixIllegalDelegation = RevisionICON2R0
+	RevisionStopICON1Support     = RevisionICON2R0
 
-	RevisionICON2R1      = RevisionICON2R0 + 1
-	RevisionEnableJavaEE = RevisionICON2R1
-	RevisionSlash        = RevisionICON2R1
+	RevisionICON2R1     = Revision14
+	RevisionEnableIISS3 = RevisionICON2R1
+	RevisionEnableFee3  = RevisionICON2R1
+
+	RevisionICON2R2      = Revision15
+	RevisionEnableJavaEE = RevisionICON2R2
 
 	// TODO: Fix a revision for enabling extra main preps
 	RevisionExtraMainPReps = 100

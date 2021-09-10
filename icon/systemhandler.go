@@ -43,7 +43,7 @@ func allowExtraParams(method string) bool {
 }
 
 func doNotChargeContractCallStep(method string, revision int) bool {
-	if revision >= icmodule.RevisionICON2R0 || revision < icmodule.RevisionIISS {
+	if revision >= icmodule.RevisionStopICON1Support || revision < icmodule.RevisionIISS {
 		return false
 	}
 	if method == scoreapi.FallbackMethodName && revision < icmodule.RevisionSystemSCORE {
@@ -133,7 +133,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 }
 
 func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	if h.revision.Value() < icmodule.RevisionICON2R0 {
+	if h.revision.Value() < icmodule.RevisionStopICON1Support {
 		if icmodule.IllegalArgumentError.Equals(status) {
 			status = errors.WithCode(status, scoreresult.IllegalFormatError)
 		}
