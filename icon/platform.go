@@ -170,7 +170,7 @@ func (p *platform) Term() {
 }
 
 func (p *platform) DefaultBlockVersionFor(cid int) int {
-	if  cid == CIDForMainNet {
+	if  cid == CIDForMainNet || cid == CIDForTestNet {
 		return module.BlockVersion1
 	}
 	return basic.Platform.DefaultBlockVersionFor(cid)

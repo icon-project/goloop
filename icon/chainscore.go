@@ -54,6 +54,7 @@ type chainScore struct {
 
 const (
 	CIDForMainNet         = 0x1
+	CIDForTestNet         = 0xca97ec
 	StatusIllegalArgument = module.StatusReverted + iota
 	StatusNotFound
 )
@@ -842,6 +843,46 @@ func (s *chainScore) Install(param []byte) error {
 		params := json.RawMessage("{}")
 		handler := contract.NewDeployHandlerForPreInstall(
 			common.MustNewAddressFromString("hx677133298ed5319607a321a38169031a8867085c"),
+			s.cc.Governance(),
+			"application/zip",
+			governance,
+			&params,
+			s.cc.Logger(),
+		)
+		handlers = append(handlers, handler)
+
+	case CIDForTestNet:
+		// initialize for main network
+		feeConfig = new(FeeConfig)
+		feeConfig.StepPrice.SetString("10000000000", 10)
+		feeConfig.StepLimit = map[string]common.HexInt64{
+			state.StepLimitTypeInvoke: {0x78000000},
+			state.StepLimitTypeQuery:  {0x780000},
+		}
+		feeConfig.StepCosts = map[string]common.HexInt64{
+			state.StepTypeDefault:          {1_000_000},
+			state.StepTypeContractCall:     {15_000},
+			state.StepTypeContractCreate:   {200_000},
+			state.StepTypeContractUpdate:   {80_000},
+			state.StepTypeContractDestruct: {-70_000},
+			state.StepTypeContractSet:      {30_000},
+			state.StepTypeGet:              {0},
+			state.StepTypeSet:              {200},
+			state.StepTypeReplace:          {50},
+			state.StepTypeDelete:           {-150},
+			state.StepTypeInput:            {200},
+			state.StepTypeEventLog:         {100},
+			state.StepTypeApiCall:          {0},
+		}
+		systemConfig = state.SysConfigScorePackageValidator
+		revision = icmodule.Revision1
+		governance, err := ioutil.ReadFile("icon_governance.zip")
+		if err != nil || len(governance) == 0 {
+			return transaction.InvalidGenesisError.Wrap(err, "FailOnGovernance")
+		}
+		params := json.RawMessage("{}")
+		handler := contract.NewDeployHandlerForPreInstall(
+			common.MustNewAddressFromString("hx6e1dd0d4432620778b54b2bbc21ac3df961adf89"),
 			s.cc.Governance(),
 			"application/zip",
 			governance,

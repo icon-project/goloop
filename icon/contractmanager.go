@@ -49,6 +49,10 @@ func (cm *contractManager) DefaultEnabledEETypes() state.EETypes {
 	return cm.eeTypes
 }
 
+func (cm *contractManager) GenesisTo() module.Address {
+	return state.ZeroAddress
+}
+
 var govAddress = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 
 func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (contract.ContractHandler, error) {
