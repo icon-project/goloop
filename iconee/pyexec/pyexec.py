@@ -155,7 +155,7 @@ class PyExecEngine(object):
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
         tx_hash = info.get(Info.TX_HASH)
-        if tx_hash.hex() not in self.ACCEPT_TX_MAP or method == 'acceptScore':
+        if not is_query and tx_hash.hex() not in self.ACCEPT_TX_MAP or method == 'acceptScore':
             context.tx = Transaction(tx_hash=tx_hash,
                                      index=info.get(Info.TX_INDEX),
                                      origin=info.get(Info.TX_FROM),
