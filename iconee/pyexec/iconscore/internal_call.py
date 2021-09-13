@@ -196,3 +196,19 @@ class ChainScore(object):
     def validate_irep(context: 'IconScoreContext', _from: 'Address', irep: int) -> Optional[dict]:
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
                                          'validateIRep', tuple([irep]))
+
+    @staticmethod
+    def validate_reward_fund(context: 'IconScoreContext', _from: 'Address', iglobal: int) -> Optional[dict]:
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'validateRewardFund', tuple([iglobal]))
+
+    @staticmethod
+    def setRewardFund(context: 'IconScoreContext', _from: 'Address', iglobal: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setRewardFund', tuple([iglobal]))
+
+    @staticmethod
+    def setRewardFundAllocation(
+            context: 'IconScoreContext', _from: 'Address', iprep: int, icps: int, irelay: int, ivoter: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setRewardFundAllocation', tuple([iprep, icps, irelay, ivoter]))

@@ -534,8 +534,10 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.Parameter{
 			{"iglobal", scoreapi.Integer, nil, nil},
 		},
-		nil,
-	}, icmodule.RevisionICON2, 0},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setRewardFund",
 		scoreapi.FlagExternal, 1,
@@ -543,7 +545,7 @@ var chainMethods = []*chainMethod{
 			{"iglobal", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setRewardFundAllocation",
 		scoreapi.FlagExternal, 4,
@@ -554,7 +556,7 @@ var chainMethods = []*chainMethod{
 			{"ivoter", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2, 0},
+	}, icmodule.RevisionICON2R0, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
