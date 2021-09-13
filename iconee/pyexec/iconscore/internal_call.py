@@ -78,6 +78,8 @@ class InternalCall(object):
                 if status == 1:
                     if result == "NoAccount":
                         raise AttributeError("'NoneType' object has no attribute '_IconScoreBase__is_func_readonly'")
+                    elif result != "cxd8cd722d7e546809d3cd1dfa6e1ceddeefba759a":
+                        raise Exception(result)
                 elif status >= ExceptionCode.SCORE_ERROR:
                     if result == "Invalid bool value":
                         raise IconScoreException(result)
