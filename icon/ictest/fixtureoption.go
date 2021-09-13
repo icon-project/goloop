@@ -23,6 +23,8 @@ import (
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
@@ -30,7 +32,9 @@ import (
 	"github.com/icon-project/goloop/icon/lcimporter"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/platform/basic"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/test"
 )
 
@@ -66,6 +70,22 @@ func (plt *platform) DefaultBlockVersionFor(cid int) int {
 
 func (plt *platform) NewBlockHandlers(c base.Chain) []base.BlockHandler {
 	return nil
+}
+
+type contractManager struct {
+	contract.ContractManager
+}
+
+func (cm *contractManager) GenesisTo() module.Address {
+	return state.ZeroAddress
+}
+
+func (plt *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
+	if cm, err := plt.Platform.NewContractManager(dbase, dir, logger); err != nil {
+		return nil, err
+	} else {
+		return &contractManager{cm}, nil
+	}
 }
 
 func UseMerkle(header *hexary.MerkleHeader, lastVote []byte) test.FixtureOption {

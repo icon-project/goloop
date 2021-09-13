@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
@@ -76,6 +77,13 @@ const defaultGenesis = `
   "next_leader": ""
 }
 `
+func UseICONPlatform() test.FixtureOption {
+	return test.UseConfig(&test.FixtureConfig{
+		NewPlatform: func(ctx *test.NodeContext) base.Platform {
+			return NewPlatform()
+		},
+	})
+}
 
 func NewBlockV0Generator(t *testing.T, genesis string) *BlockV0Generator {
 	if len(genesis) == 0 {
@@ -88,7 +96,7 @@ func NewBlockV0Generator(t *testing.T, genesis string) *BlockV0Generator {
 	}
 	last, err := blockv0.ParseBlock([]byte(genesis), g)
 	bs := last.NormalTransactions()[0].Bytes()
-	g.node = test.NewNode(t, test.UseGenesis(string(bs)))
+	g.node = test.NewNode(t, test.UseGenesis(string(bs)), UseICONPlatform())
 	assert.NoError(t, err)
 	g.last = last
 	g.blocks = append(g.blocks, g.last)
