@@ -62,7 +62,7 @@ func NewNode(t *testing.T, o ...FixtureOption) *Node {
 	cf := NewFixtureConfig(t, o...)
 	base, err := ioutil.TempDir("", cf.Prefix)
 	assert.NoError(t, err)
-	dbase := cf.Dbase
+	dbase := cf.Dbase()
 	logger := log.New()
 	w := cf.Wallet
 	if w == nil {

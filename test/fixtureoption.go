@@ -30,7 +30,11 @@ func UseConfig(cf2 *FixtureConfig) FixtureOption {
 }
 
 func UseDB(dbase db.Database) FixtureOption {
-	return UseConfig(&FixtureConfig{ Dbase: dbase })
+	return UseConfig(&FixtureConfig{
+		Dbase: func() db.Database{
+			return dbase
+		},
+	})
 }
 
 // AddValidatorNodes option makes n validators and the first validator becomes

@@ -36,7 +36,7 @@ type FixtureConfig struct {
 	MerkleLeaves      int64
 	MerkleLastVotes   []byte
 	Prefix            string
-	Dbase             db.Database
+	Dbase             func() db.Database
 	CVSD              module.CommitVoteSetDecoder
 	NewPlatform       func(ctx *NodeContext) base.Platform
 	NewSM             func(ctx *NodeContext) module.ServiceManager
@@ -53,7 +53,9 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 	cf := &FixtureConfig{
 		T:      t,
 		Prefix: "goloop-block-fixture",
-		Dbase:  db.NewMapDB(),
+		Dbase:  func() db.Database {
+			return db.NewMapDB()
+		},
 		CVSD:   consensus.NewCommitVoteSetFromBytes,
 		NewPlatform: func(ctx *NodeContext) base.Platform {
 			return basic.Platform
