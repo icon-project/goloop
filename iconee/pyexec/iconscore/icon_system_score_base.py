@@ -113,7 +113,7 @@ class IconSystemScoreBase(IconScoreBase):
             return success, reason
 
     def validate_irep(self, irep: int):
-        if self._context.revision < Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value:
+        if Revision.to_value(self._context.revision) < Revision.SET_IREP_VIA_NETWORK_PROPOSAL:
             raise InvalidRequestException(f"Can't register I-Rep proposal. Revision must be larger than "
                                           f"{Revision.SET_IREP_VIA_NETWORK_PROPOSAL.value - 1}")
         ChainScore.validate_irep(self._context, self.address, irep)
@@ -175,19 +175,19 @@ class IconSystemScoreBase(IconScoreBase):
         pass
 
     def validate_reward_fund(self, iglobal: int):
-        if self._context.revision < Revision.ICON2.value:
+        if Revision.to_value(self._context.revision) < Revision.ICON2:
             raise InvalidRequestException(f"Can't register Monthly Reward Fund Setting Proposal. "
                                           f"Revision must be larger than {Revision.ICON2.value - 1}")
         ChainScore.validate_reward_fund(self._context, self.address, iglobal)
 
     def set_reward_fund(self, iglobal: int):
-        if self._context.revision < Revision.ICON2.value:
+        if Revision.to_value(self._context.revision) < Revision.ICON2:
             raise InvalidRequestException(f"Can't register Monthly Reward Fund Setting Proposal. "
                                           f"Revision must be larger than {Revision.ICON2.value - 1}")
         ChainScore.setRewardFund(self._context, self.address, iglobal)
 
     def set_reward_fund_allocation(self, iprep: int, icps: int, irelay: int, ivoter: int):
-        if self._context.revision < Revision.ICON2.value:
+        if Revision.to_value(self._context.revision) < Revision.ICON2:
             raise InvalidRequestException(f"Can't register Monthly Reward Fund Setting Proposal. "
                                           f"Revision must be larger than {Revision.ICON2.value - 1}")
         ChainScore.setRewardFundAllocation(self._context, self.address, iprep, icps, irelay, ivoter)
