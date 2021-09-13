@@ -111,7 +111,7 @@ func (b *BlockV01a) Verify(prev Block) error {
 	if bytes.Compare(b.MerkleTreeRootHash, mrh) != 0 {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidTransactionMerkleRoot(exp=%#x,calc=%#x)",
-			b.MerkleTreeRootHash, mrh)
+			[]byte(b.MerkleTreeRootHash), mrh)
 	}
 	return nil
 }
