@@ -11,7 +11,7 @@ import (
 type protocolHandler struct {
 	m            *manager
 	protocol     module.ProtocolInfo
-	subProtocols map[module.ProtocolInfo]module.ProtocolInfo
+	subProtocols map[uint16]module.ProtocolInfo
 	reactor      module.Reactor
 	name         string
 	priority     uint8
@@ -37,7 +37,7 @@ func newProtocolHandler(
 	ph := &protocolHandler{
 		m:            m,
 		protocol:     pi,
-		subProtocols: make(map[module.ProtocolInfo]module.ProtocolInfo),
+		subProtocols: make(map[uint16]module.ProtocolInfo),
 		reactor:      r,
 		name:         name,
 		priority:     priority,
@@ -47,10 +47,11 @@ func newProtocolHandler(
 		logger:       phLogger,
 	}
 	for _, sp := range spiList {
-		if _, ok := ph.subProtocols[sp]; ok {
+		k := sp.Uint16()
+		if _, ok := ph.subProtocols[k]; ok {
 			ph.logger.Infoln("newProtocolHandler", "already registered protocol", ph.name, ph.protocol, sp)
 		}
-		ph.subProtocols[sp] = sp
+		ph.subProtocols[k] = sp
 	}
 
 	ph.run = make(chan bool)
@@ -80,6 +81,54 @@ func (ph *protocolHandler) Term() {
 	close(ph.run)
 }
 
+func (ph *protocolHandler) setReactor(r module.Reactor) {
+	defer ph.mtx.Unlock()
+	ph.mtx.Lock()
+
+	ph.reactor = r
+}
+
+func (ph *protocolHandler) getReactor() module.Reactor {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+
+	return ph.reactor
+}
+
+func (ph *protocolHandler) getPriority() uint8 {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+
+	return ph.priority
+}
+
+func (ph *protocolHandler) getName() string {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+
+	return ph.name
+}
+
+func (ph *protocolHandler) getSubProtocol(spi module.ProtocolInfo) (module.ProtocolInfo, bool) {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+
+	p, ok := ph.subProtocols[spi.Uint16()]
+	return p, ok
+}
+
+func (ph *protocolHandler) getSubProtocols() []module.ProtocolInfo {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+	spis := make([]module.ProtocolInfo, len(ph.subProtocols))
+	i := 0
+	for _, spi := range ph.subProtocols {
+		spis[i] = spi
+		i++
+	}
+	return spis
+}
+
 func (ph *protocolHandler) receiveRoutine() {
 Loop:
 	for {
@@ -94,12 +143,13 @@ Loop:
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
-				r, err := ph.reactor.OnReceive(pkt.subProtocol, pkt.payload, p.id)
+				r := ph.getReactor()
+				isRelay, err := r.OnReceive(pkt.subProtocol, pkt.payload, p.id)
 				if err != nil {
 					//ph.logger.Debugln("receiveRoutine", err)
 				}
 
-				if r && pkt.ttl == 0 && pkt.dest != p2pDestPeer {
+				if isRelay && pkt.ttl == byte(module.BROADCAST_ALL) && pkt.dest != p2pDestPeer {
 					if err := ph.m.relay(pkt); err != nil {
 						ph.onFailure(err, pkt, nil)
 					}
@@ -117,11 +167,10 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 	//TODO protocolHandler.message_dump
 	//ph.logger.Traceln("onPacket", pkt, p)
 
-	k := pkt.subProtocol
-	if _, ok := ph.subProtocols[k]; ok {
+	if _, ok := ph.getSubProtocol(pkt.subProtocol); ok {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
-		if ok := ph.receiveQueue.Push(ctx); !ok {
+		if ok = ph.receiveQueue.Push(ctx); !ok {
 			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.id)
 		}
 	} else {
@@ -146,17 +195,16 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				c := ctx.Value(p2pContextKeyCounter).(*Counter)
 
-				k := pkt.subProtocol
-				if pi, ok := ph.subProtocols[k]; ok {
+				if pi, ok := ph.getSubProtocol(pkt.subProtocol); ok {
 					var netErr module.NetworkError
 					if pkt.sender == nil {
 						switch pkt.dest {
 						case p2pDestPeer:
 							netErr = NewUnicastError(err, pkt.destPeer)
 						case p2pDestAny:
-							if pkt.ttl == 1 {
+							if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
 								netErr = NewBroadcastError(err, module.BROADCAST_NEIGHBOR)
-							} else if pkt.ttl == 2 {
+							} else if pkt.ttl == byte(module.BROADCAST_CHILDREN) {
 								netErr = NewBroadcastError(err, module.BROADCAST_CHILDREN)
 							} else {
 								netErr = NewBroadcastError(err, module.BROADCAST_ALL)
@@ -164,7 +212,7 @@ Loop:
 						default: //p2pDestPeerGroup < dest < p2pDestPeer
 							netErr = NewMulticastError(err, ph.m.getRoleByDest(pkt.dest))
 						}
-						ph.reactor.OnFailure(netErr, pi, pkt.payload)
+						ph.getReactor().OnFailure(netErr, pi, pkt.payload)
 					} else {
 						//TODO retry relay
 						ph.logger.Infoln("receiveRoutine", "relay", err, c)
@@ -204,11 +252,12 @@ Loop:
 				}
 				evt := ctx.Value(p2pContextKeyEvent).(string)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
+				r := ph.getReactor()
 				switch evt {
 				case p2pEventJoin:
-					ph.reactor.OnJoin(p.id)
+					r.OnJoin(p.id)
 				case p2pEventLeave:
-					ph.reactor.OnLeave(p.id)
+					r.OnLeave(p.id)
 				case p2pEventDuplicate:
 					ph.logger.Traceln("p2pEventDuplicate", p.id)
 				}
@@ -229,16 +278,16 @@ func (ph *protocolHandler) onEvent(evt string, p *Peer) {
 	}
 }
 
-func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
+func (ph *protocolHandler) Unicast(spi module.ProtocolInfo, b []byte, id module.PeerID) error {
 	if !ph.IsRun() {
 		return NewUnicastError(ErrAlreadyClosed, id)
 	}
-	spi := module.ProtocolInfo(pi.Uint16())
-	if _, ok := ph.subProtocols[spi]; !ok {
+
+	if _, ok := ph.getSubProtocol(spi); !ok {
 		return NewUnicastError(ErrNotRegisteredProtocol, id)
 	}
 
-	ph.logger.Traceln("Unicast", pi, len(b), id)
+	ph.logger.Traceln("Unicast", spi, len(b), id)
 	if err := ph.m.unicast(ph.protocol, spi, b, id); err != nil {
 		return NewUnicastError(err, id)
 	}
@@ -251,7 +300,7 @@ func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role modu
 		return NewMulticastError(ErrAlreadyClosed, role)
 	}
 	spi := module.ProtocolInfo(pi.Uint16())
-	if _, ok := ph.subProtocols[spi]; !ok {
+	if _, ok := ph.getSubProtocol(spi); !ok {
 		return NewMulticastError(ErrNotRegisteredProtocol, role)
 	}
 
@@ -268,7 +317,7 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 		return NewBroadcastError(ErrAlreadyClosed, bt)
 	}
 	spi := module.ProtocolInfo(pi.Uint16())
-	if _, ok := ph.subProtocols[spi]; !ok {
+	if _, ok := ph.getSubProtocol(spi); !ok {
 		return NewBroadcastError(ErrNotRegisteredProtocol, bt)
 	}
 
@@ -278,3 +327,4 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 	}
 	return nil
 }
+

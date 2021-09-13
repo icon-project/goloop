@@ -58,14 +58,14 @@ func (t *taskConsensus) Start() error {
 }
 
 func (t *taskConsensus) _start(c *singleChain) error {
-	if err := c.nm.Start(); err != nil {
-		return err
-	}
 	c.sm.Start()
 	if err := c.cs.Start(); err != nil {
 		return err
 	}
 	c.srv.SetChain(c.cfg.Channel, c)
+	if err := c.nm.Start(); err != nil {
+		return err
+	}
 	return nil
 }
 

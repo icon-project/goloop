@@ -19,8 +19,7 @@ type manager struct {
 	destByRole map[module.Role]byte
 	roleByDest map[byte]module.Role
 	//
-	protocolHandlers map[string]*protocolHandler
-	priority         map[module.ProtocolInfo]uint8
+	protocolHandlers map[uint16]*protocolHandler
 
 	mtx sync.RWMutex
 
@@ -47,8 +46,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		roles:            make(map[module.Role]*PeerIDSet),
 		destByRole:       make(map[module.Role]byte),
 		roleByDest:       make(map[byte]module.Role),
-		protocolHandlers: make(map[string]*protocolHandler),
-		priority:         make(map[module.ProtocolInfo]uint8),
+		protocolHandlers: make(map[uint16]*protocolHandler),
 		pd:               t.pd,
 		logger:           networkLogger,
 		mtr:              mtr,
@@ -137,19 +135,38 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 		log.Panicf("priority must be positive value and less than %d", DefaultSendQueueMaxPriority)
 	}
 
-	if _, ok := m.protocolHandlers[name]; ok {
-		return nil, errors.WithStack(ErrAlreadyRegisteredReactor)
+	k := pi.Uint16()
+	ph, ok := m.protocolHandlers[k]
+	if ok {
+		if ph.getName() != name || ph.getPriority() != priority {
+			return nil, errors.WithStack(ErrIllegalArgument)
+		}
+		spis := ph.getSubProtocols()
+		if len(spis) != len(piList) {
+			return nil, errors.WithStack(ErrIllegalArgument)
+		}
+		for _, subProtocol := range piList {
+			has := false
+			for _, spi := range spis {
+				if subProtocol.Uint16() == spi.Uint16() {
+					has = true
+					break
+				}
+			}
+			if !has {
+				return nil, errors.WithStack(ErrIllegalArgument)
+			}
+		}
+		ph.setReactor(reactor)
+	} else {
+		if m.p2p.IsStarted() {
+			m.logger.Debugln("RegisterReactor, p2p started")
+		}
+
+		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
+		m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
+		m.protocolHandlers[k] = ph
 	}
-
-	if _, ok := m.priority[pi]; ok {
-		return nil, errors.WithStack(ErrAlreadyRegisteredReactor)
-	}
-
-	ph := newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
-	m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
-
-	m.protocolHandlers[name] = ph
-	m.priority[pi] = priority
 	return ph, nil
 }
 
@@ -161,34 +178,35 @@ func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 		reactor = sr
 	}
 
-	for name, ph := range m.protocolHandlers {
+	for k, ph := range m.protocolHandlers {
 		if ph.reactor == reactor {
 			ph.Term()
 			m.p2p.unsetCbFunc(ph.protocol)
-			delete(m.protocolHandlers, name)
-			delete(m.priority, ph.protocol)
+			delete(m.protocolHandlers, k)
 			return nil
 		}
 	}
 	return ErrNotRegisteredReactor
 }
 
-func (m *manager) hasProtocolHandler(pi module.ProtocolInfo) bool {
+func (m *manager) getProtocolHandler(pi module.ProtocolInfo) (*protocolHandler, bool) {
 	defer m.mtx.RUnlock()
 	m.mtx.RLock()
-	_, ok := m.priority[pi]
-	return ok
+
+	ph, ok := m.protocolHandlers[pi.Uint16()]
+	return ph, ok
 }
 
 func (m *manager) SetWeight(pi module.ProtocolInfo, weight int) error {
-	if !m.hasProtocolHandler(pi) {
+	if _, ok := m.getProtocolHandler(pi); !ok {
 		return ErrNotRegisteredReactor
 	}
 	return m.p2p.sendQueue.SetWeight(int(pi.ID()), weight)
 }
 
 func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, id module.PeerID) error {
-	if !m.hasProtocolHandler(pi) {
+	ph, ok := m.getProtocolHandler(pi)
+	if !ok {
 		return ErrNotRegisteredReactor
 	}
 	if DefaultPacketPayloadMax < len(bytes) {
@@ -199,7 +217,7 @@ func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes
 	pkt.dest = p2pDestPeer
 	pkt.ttl = 1
 	pkt.destPeer = id
-	pkt.priority = m.priority[pi]
+	pkt.priority = ph.getPriority()
 	pkt.src = m.PeerID()
 	pkt.forceSend = true
 	p := m.p2p.getPeer(id, true)
@@ -207,10 +225,11 @@ func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes
 }
 
 func (m *manager) multicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, role module.Role) error {
-	if !m.hasProtocolHandler(pi) {
+	ph, ok := m.getProtocolHandler(pi)
+	if !ok {
 		return ErrNotRegisteredReactor
 	}
-	if _, ok := m.roles[role]; !ok {
+	if _, ok = m.roles[role]; !ok {
 		return ErrNotRegisteredRole
 	}
 	if DefaultPacketPayloadMax < len(bytes) {
@@ -219,12 +238,13 @@ func (m *manager) multicast(pi module.ProtocolInfo, spi module.ProtocolInfo, byt
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = m.destByRole[role]
 	pkt.ttl = 0
-	pkt.priority = m.priority[pi]
+	pkt.priority = ph.getPriority()
 	return m.p2p.Send(pkt)
 }
 
 func (m *manager) broadcast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, bt module.BroadcastType) error {
-	if !m.hasProtocolHandler(pi) {
+	ph, ok := m.getProtocolHandler(pi)
+	if !ok {
 		return ErrNotRegisteredReactor
 	}
 	if DefaultPacketPayloadMax < len(bytes) {
@@ -233,7 +253,7 @@ func (m *manager) broadcast(pi module.ProtocolInfo, spi module.ProtocolInfo, byt
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
 	pkt.ttl = bt.TTL()
-	pkt.priority = m.priority[pi]
+	pkt.priority = ph.getPriority()
 	pkt.forceSend = bt.ForceSend()
 	return m.p2p.Send(pkt)
 }
@@ -242,7 +262,11 @@ func (m *manager) relay(pkt *Packet) error {
 	if pkt.ttl != 0 || pkt.dest == p2pDestPeer {
 		return errors.New("not allowed relay")
 	}
-	pkt.priority = m.priority[pkt.protocol]
+	ph, ok := m.getProtocolHandler(pkt.protocol)
+	if !ok {
+		return ErrNotRegisteredReactor
+	}
+	pkt.priority = ph.getPriority()
 	return m.p2p.Send(pkt)
 }
 
