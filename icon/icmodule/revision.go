@@ -116,7 +116,7 @@ var revisionFlags = []module.Revision{
 	// Revision12
 	0,
 	// Revision13
-	module.LegacyFeeCharge,
+	module.LegacyFeeCharge | module.LegacyNoTimeout,
 }
 
 func init() {
