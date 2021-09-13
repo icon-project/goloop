@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
@@ -48,19 +47,21 @@ func (c *chainImpl) Wallet() module.Wallet {
 }
 
 func (c *chainImpl) NID() int {
-	return 1
+	nid, _ := c.gs.NID()
+	return nid
 }
 
 func (c *chainImpl) CID() int {
-	return 1
+	 cid, _ := c.gs.CID()
+	 return cid
 }
 
 func (c *chainImpl) NetID() int {
-	return 1
+	return c.CID()
 }
 
 func (c *chainImpl) Channel() string {
-	return "icon"
+	return "icon_dex"
 }
 
 func (c *chainImpl) ConcurrencyLevel() int {
@@ -91,10 +92,8 @@ func (c *chainImpl) TransactionTimeout() time.Duration {
 	return time.Second * 5
 }
 
-var genesis = []byte("{\n  \"accounts\": [\n    {\n      \"name\": \"god\",\n      \"address\": \"hx54f7853dc6481b670caf69c5a27c7c8fe5be8269\",\n      \"balance\": \"0x2961fff8ca4a62327800000\"\n    },\n    {\n      \"name\": \"treasury\",\n      \"address\": \"hx1000000000000000000000000000000000000000\",\n      \"balance\": \"0x0\"\n    }\n  ],\n  \"message\": \"A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \\\"to be\\\" but the fabric of the rhizome is the conjunction, \\\"and ... and ...and...\\\"This conjunction carries enough force to shake and uproot the verb \\\"to be.\\\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\\n\\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\\n\\n\\\"Hyperconnect the world\\\"\"\n}\n")
-
 func (c *chainImpl) Genesis() []byte {
-	return genesis
+	return c.gs.Genesis()
 }
 
 func (c *chainImpl) GenesisStorage() module.GenesisStorage {
@@ -198,13 +197,13 @@ func (c *chainImpl) Logger() log.Logger {
 	return c.log
 }
 
-func NewChain(database db.Database, logger log.Logger) (*chainImpl, error) {
+func NewChain(database db.Database, gns module.GenesisStorage, logger log.Logger) (*chainImpl, error) {
 	w := wallet.New()
 	return &chainImpl{
 		database:  database,
 		wallet:    w,
 		log:       logger,
 		regulator: lcimporter.NewRegulator(),
-		gs:        gs.NewFromTx(genesis),
+		gs:        gns,
 	}, nil
 }

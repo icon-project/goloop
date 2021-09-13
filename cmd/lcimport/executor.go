@@ -21,12 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"path"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -107,13 +109,53 @@ type GetTPSer interface {
 	GetTPS() float32
 }
 
+func LoadGenesis(cs Store, data string) (module.GenesisStorage, error){
+	genesisFile := path.Join(data, "genesis.zip")
+	fd, err := os.OpenFile(genesisFile, os.O_RDONLY, 0)
+	if err != nil {
+		blk, err := cs.GetBlockByHeight(0)
+		if err != nil {
+			return nil, err
+		}
+		txs := blk.NormalTransactions()
+		jso, err := txs[0].ToJSON(module.JSONVersionLast)
+		if err != nil {
+			return nil, err
+		}
+		genesis, err := JSONMarshalAndCompact(jso)
+		if err != nil {
+			return nil, err
+		}
+		gs1 := gs.NewFromTx(genesis)
+
+		// write genesis
+		fd, err = os.OpenFile(genesisFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+		if err != nil {
+			return nil, err
+		}
+		defer fd.Close()
+		gsw := gs.NewGenesisStorageWriter(fd)
+		gsw.WriteGenesis(genesis)
+		gsw.Close()
+
+		return gs1, nil
+	} else {
+		defer fd.Close()
+		return gs.NewFromFile(fd)
+	}
+}
+
 func NewExecutor(logger log.Logger, cs Store, data string, dbtype string) (*Executor, error) {
 	database, err := db.Open(data, dbtype, "database")
 	if err != nil {
 		return nil, errors.Wrapf(err, "DatabaseFailure(path=%s)", data)
 	}
 	cs.SetReceiptParameter(database, module.LatestRevision)
-	chain, err := NewChain(database, logger)
+	gns, err := LoadGenesis(cs, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "FailOnLoadGenesis")
+	}
+	chain, err := NewChain(database, gns, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewChainFailure")
 	}

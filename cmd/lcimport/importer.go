@@ -17,9 +17,11 @@
 package main
 
 import (
+	"io/ioutil"
 	"time"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon"
@@ -93,6 +95,7 @@ func NewImporter(
 	dbType string,
 	storeURI string,
 	maxRPS int,
+	genesis string,
 	cacheConfig *lcstore.CacheConfig,
 	logger log.Logger,
 ) (*Importer, error) {
@@ -104,7 +107,15 @@ func NewImporter(
 	if err != nil {
 		return nil, err
 	}
-	chain, err := NewChain(cdb, logger)
+	gnsBytes, err := ioutil.ReadFile(genesis)
+	if err != nil {
+		return nil, err
+	}
+	gns, err := gs.New(gnsBytes)
+	if err != nil {
+		return nil, err
+	}
+	chain, err := NewChain(cdb, gns, logger)
 	if err != nil {
 		return nil, err
 	}

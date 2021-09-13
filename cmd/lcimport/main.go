@@ -354,6 +354,7 @@ func newCmdImporter(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 			vc.GetString("db_type"),
 			vc.GetString("store_uri"),
 			vc.GetInt("max_rps"),
+			vc.GetString("genesis"),
 			&lcstore.CacheConfig{
 				MaxBlocks:  vc.GetInt("max_blocks"),
 				MaxWorkers: vc.GetInt("max_workers"),
@@ -371,6 +372,7 @@ func newCmdImporter(parent *cobra.Command, name string, vc *viper.Viper) *cobra.
 	}
 	pflags := cmd.PersistentFlags()
 	pflags.String("bc_data", ".chain/bc_data", "Data path to store converted blocks")
+	pflags.String("genesis", "icon_genesis.zip", "Genesis storage for the network")
 	vc.BindPFlags(pflags)
 
 	cmd.AddCommand(&cobra.Command{
