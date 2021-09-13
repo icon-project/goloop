@@ -89,14 +89,24 @@ func legacySerializeMap(jso map[string]interface{}) ([]byte, error) {
 	return buf.Bytes()[1:], nil
 }
 
+// If there is "chain" field, we assume that it's enterprise
+// genesis. Otherwise, we assume that it's ICON genesis.
+func useNormalGenesisSerialize(jso map[string]interface{}) bool {
+	if _, ok := jso["chain"]; ok {
+		return true
+	}
+	if _, ok := jso["nid"]; ok {
+		return true
+	}
+	return false
+}
+
 func serializeGenesis(bs []byte) ([]byte, error) {
 	var jso map[string]interface{}
 	if err := json.Unmarshal(bs, &jso); err != nil {
 		return nil, err
 	}
-	// If there is "chain" field, we assume that it's enterprise
-	// genesis. Otherwise, we assume that it's ICON genesis.
-	if _, ok := jso["chain"]; ok {
+	if useNormalGenesisSerialize(jso) {
 		return SerializeMap(jso, nil, nil)
 	}
 	return legacySerializeMap(jso)
@@ -264,8 +274,7 @@ func (g *genesisV3) Execute(ctx contract.Context, estimate bool) (txresult.Recei
 
 	cc.UpdateSystemInfo()
 	cc.ResetStepLimit(cc.GetStepLimit(state.StepLimitTypeInvoke))
-
-	r := txresult.NewReceipt(cc.Database(), cc.Revision(), g.To())
+	r := txresult.NewReceipt(cc.Database(), cc.Revision(), cc.ContractManager().GenesisTo())
 	if err := g.installContracts(cc); err != nil {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err

@@ -312,6 +312,7 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	}
 
 	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.From.String()) && h.preDefinedAddr == nil {
+		h.Log.TSystemf("FRAME[%d] DEPLOY not in whitelist from=%s", h.FID, h.From)
 		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
@@ -334,6 +335,8 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 			return scoreresult.ErrContractNotFound, nil, nil
 		}
 		if as.IsContractOwner(h.From) == false {
+			h.Log.TSystemf("FRAME[%d] DEPLOY different owner exp=%s from=%s",
+				h.FID, as.ContractOwner(), h.From)
 			return scoreresult.ErrAccessDenied, nil, nil
 		}
 		if contract := as.Contract(); !h.eeType.AbleToUpdate(contract.EEType()) {
