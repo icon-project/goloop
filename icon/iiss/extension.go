@@ -823,12 +823,8 @@ func (es *ExtensionStateImpl) checkCalculationDone(calculator *Calculator) error
 		return err
 	}
 
-	if !calculator.IsCalcDone(rcInfo.StartHeight()) {
-		if err = calculator.Error(); err != nil {
-			return err
-		}
-		return icmodule.CalculationNotFinishedError.Errorf("Calculation is not finished %d, %d",
-			calculator.startHeight, rcInfo.StartHeight())
+	if err := calculator.WaitResult(rcInfo.StartHeight()) ; err != nil {
+		return err
 	}
 	return nil
 }

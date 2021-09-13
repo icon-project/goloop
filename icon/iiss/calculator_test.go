@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
@@ -796,4 +798,55 @@ func TestCalculator_VotingReward(t *testing.T) {
 			assert.Equal(t, tt.want, reward.Int64())
 		})
 	}
+}
+
+func TestCalculator_WaitResult(t *testing.T) {
+	c := &Calculator{
+		startHeight: InitBlockHeight,
+	}
+	err := c.WaitResult(1234)
+	assert.NoError(t, err)
+
+	c = &Calculator{
+		startHeight: 3414,
+	}
+	err = c.WaitResult(1234)
+	assert.Error(t, err)
+
+	toTC := make(chan string, 2)
+
+	go func() {
+		err := c.WaitResult(3414)
+		assert.True(t, err == errors.ErrInvalidState)
+		toTC <- "done"
+	}()
+	time.Sleep(time.Millisecond*10)
+
+	c.setResult(nil, errors.ErrInvalidState)
+	assert.Equal(t, "done", <-toTC)
+
+
+	c = &Calculator{
+		startHeight: 3414,
+	}
+	go func() {
+		err := c.WaitResult(3414)
+		assert.NoError(t, err)
+		toTC <- "done"
+	}()
+	go func() {
+		err := c.WaitResult(3414)
+		assert.NoError(t, err)
+		toTC <- "done"
+	}()
+	time.Sleep(time.Millisecond*20)
+
+	mdb := db.NewMapDB()
+	rss := icreward.NewSnapshot(mdb, nil)
+	c.setResult(rss, nil)
+
+	assert.Equal(t, "done", <-toTC)
+	assert.Equal(t, "done", <-toTC)
+
+	assert.True(t, c.Result() == rss)
 }

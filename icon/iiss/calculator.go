@@ -72,9 +72,12 @@ type Calculator struct {
 	base        *icreward.Snapshot
 	global      icstage.Global
 	temp        *icreward.State
-	result      *icreward.Snapshot
 	stats       *statistics
+
+	lock        sync.Mutex
+	waiters     []*sync.Cond
 	err         error
+	result      *icreward.Snapshot
 }
 
 func (c *Calculator) Result() *icreward.Snapshot {
@@ -105,11 +108,38 @@ func (c *Calculator) Error() error {
 	return c.err
 }
 
-func (c *Calculator) IsCalcDone(blockHeight int64) bool {
+func (c *Calculator) WaitResult(blockHeight int64) error {
 	if c.startHeight == InitBlockHeight {
-		return true
+		return nil
 	}
-	return c.startHeight == blockHeight && c.result != nil
+	if c.startHeight != blockHeight {
+		return errors.InvalidStateError.Errorf("Calculator(height=%d,exp=%d)",
+			c.startHeight, blockHeight)
+	}
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.err == nil && c.result == nil {
+		cond := sync.NewCond(&c.lock)
+		c.waiters = append(c.waiters, cond)
+		cond.Wait()
+	}
+	return c.err
+}
+
+func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
+	if result == nil && err == nil {
+		c.log.Panicf("InvalidParameters(result=%+v, err=%+v)")
+	}
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.result = result
+	c.err = err
+	for _, cond := range c.waiters {
+		cond.Signal()
+	}
+	c.waiters = nil
 }
 
 func (c *Calculator) Stop() {
@@ -132,7 +162,9 @@ func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Log
 
 func (c *Calculator) run() (err error) {
 	defer func() {
-		c.err = err
+		if err != nil {
+			c.setResult(nil, err)
+		}
 	}()
 
 	startTS := time.Now()
@@ -172,7 +204,9 @@ func (c *Calculator) run() (err error) {
 	)
 	c.log.Infof("Calculation statistics: Total=%d BlockProduce=%s Voted=%s Voting=%s",
 		c.stats.TotalReward(), c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
-	return
+
+	c.setResult(c.temp.GetSnapshot(), nil)
+	return nil
 }
 
 func (c *Calculator) prepare() error {
@@ -1004,14 +1038,7 @@ func (c *Calculator) postWork() (err error) {
 			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
 	}
-
-	// save calculation result to MPT
-	c.result = c.temp.GetSnapshot()
-	if err = c.result.Flush(); err != nil {
-		return
-	}
-
-	return
+	return nil
 }
 
 const InitBlockHeight = -1
