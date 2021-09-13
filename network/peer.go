@@ -178,7 +178,7 @@ const (
 	p2pConnTypeUncle
 	p2pConnTypeNephew
 	p2pConnTypeFriend
-	p2pConnTypeTemporary
+	p2pConnTypeOther
 )
 
 var (
@@ -189,6 +189,7 @@ var (
 		"Uncle",
 		"Nephew",
 		"Friend",
+		"Other",
 	}
 	defaultOnError = func(err error, p *Peer, pkt *Packet) { p.CloseByError(err) }
 	defaultOnClose = func(p *Peer) {}
