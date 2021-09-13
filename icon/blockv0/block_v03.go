@@ -242,7 +242,7 @@ func (b *BlockV03) Verify(prev Block) error {
 			// We assume first V03 reps list is the same as initial reps list
 			// which is true in ICON main net.
 			prevReps = b.reps
-			if b.json.PrevVotes != nil {
+			if b.json.PrevVotes != nil && len(b.json.PrevVotes.Root()) > 0 {
 				voted := b.json.PrevVotes.Quorum()
 				if !bytes.Equal(pb.ID(), voted) {
 					return errors.InvalidStateError.Errorf(
