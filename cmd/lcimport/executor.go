@@ -163,6 +163,9 @@ func NewExecutor(logger log.Logger, cs Store, data string, dbtype string) (*Exec
 	if err != nil {
 		return nil, errors.Wrap(err, "NewPlatformFailure")
 	}
+	if bv := plt.DefaultBlockVersionFor(chain.CID()); bv != module.BlockVersion1 {
+		return nil, errors.Errorf("InvalidCID(%#x)", chain.CID())
+	}
 	jsBucket, err := database.GetBucket(JSONByHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "FailureInGetBucketForJSON")
