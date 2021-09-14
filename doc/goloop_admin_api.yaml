@@ -562,6 +562,10 @@ components:
           type: boolean
           default: false
           description: "Start the chain automatically on node start"
+        platform:
+          type: string
+          default: basic
+          description: "Platform to handle transactions(defined by extended software)"
       example:
         dbType: "goleveldb"
         seedAddress: "localhost:8080"
@@ -578,6 +582,7 @@ components:
         txTimeout: 0
         maxWaitTimeout: 0
         autoStart: false
+        platform: "basic"
     ChainImportParam:
       type: object
       properties:
