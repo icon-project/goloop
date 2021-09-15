@@ -190,17 +190,11 @@ func (term *termData) GetIISSVersion() int {
 	return IISSVersion2
 }
 
-const decentralizedHeight = 10362083
-
 func (term *termData) GetVoteStartHeight() int64 {
 	if term.sequence == 0 {
-		if term.startHeight == decentralizedHeight {
-			// It's decentralized in main network under LOOPCHAIN
-			return term.startHeight + 1
-		} else {
-			// It's decentralized in test network under GOLOOP
-			return term.startHeight + 2
-		}
+		// If either of initial validators are not registered as PReps
+		// when it's decentralized, system will fail
+		return term.startHeight + 1
 	}
 	return -1
 }
