@@ -13,7 +13,7 @@ RUN cd /work && \
     git clone https://github.com/facebook/rocksdb.git && \
     cd rocksdb && \
     git checkout ${ROCKSDB_VERSION} && \
-    make shared_lib
+    PORTABLE=1 make shared_lib
 
 RUN cd /work/rocksdb && \
     mkdir lib && \
