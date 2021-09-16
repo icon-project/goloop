@@ -351,14 +351,14 @@ func (s *NetAddressSet) Add(a NetAddress) bool {
 
 	return s._add(a, "")
 }
-func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
+
+func (s *NetAddressSet) Put(a NetAddress, d string) (old string, removed NetAddress) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-	d := p.id.String()
-	od := s._set(p.netAddress, d)
+	od := s._set(a, d)
 	for k, v := range s.Set.m {
-		a := k.(NetAddress)
-		if a != p.netAddress && v == d {
+		na := k.(NetAddress)
+		if na != a && v == d {
 			s._remove(k)
 			removed = k.(NetAddress)
 		}
@@ -368,17 +368,15 @@ func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
 	}
 	return
 }
-func (s *NetAddressSet) RemoveByPeer(p *Peer) bool {
-	return s.Set.Remove(p.netAddress)
-}
+
 func (s *NetAddressSet) Contains(a NetAddress) bool {
 	return s.Set.Contains(a)
 }
-func (s *NetAddressSet) ContainsByPeer(p *Peer) bool {
+func (s *NetAddressSet) ContainsWithData(a NetAddress, d string) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
-	d := s.Set.m[p.netAddress]
-	return d != nil && d == p.id.String()
+	v, ok := s.Set.m[a]
+	return ok && v == d
 }
 func (s *NetAddressSet) Clear() {
 	defer s.Set.mtx.Unlock()

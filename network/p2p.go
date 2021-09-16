@@ -459,7 +459,7 @@ type RttMessage struct {
 }
 
 func (p2p *PeerToPeer) addSeed(p *Peer) {
-	c, o := p2p.seeds.PutByPeer(p)
+	c, o := p2p.seeds.Put(p.NetAddress(), p.ID().String())
 	if o != "" {
 		p2p.logger.Debugln("addSeed", "updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
 	}
@@ -468,10 +468,10 @@ func (p2p *PeerToPeer) addSeed(p *Peer) {
 	}
 }
 func (p2p *PeerToPeer) removeSeed(p *Peer) {
-	p2p.seeds.RemoveByPeer(p)
+	p2p.seeds.Remove(p.NetAddress())
 }
 func (p2p *PeerToPeer) addRoot(p *Peer) {
-	c, o := p2p.roots.PutByPeer(p)
+	c, o := p2p.roots.Put(p.NetAddress(), p.ID().String())
 	if o != "" {
 		p2p.logger.Debugln("addRoot", "updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
 	}
@@ -480,7 +480,7 @@ func (p2p *PeerToPeer) addRoot(p *Peer) {
 	}
 }
 func (p2p *PeerToPeer) removeRoot(p *Peer) {
-	p2p.roots.RemoveByPeer(p)
+	p2p.roots.Remove(p)
 }
 func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
 	switch p.getRole() {
