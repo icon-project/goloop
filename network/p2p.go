@@ -57,6 +57,10 @@ type PeerToPeer struct {
 	allowedSeeds *PeerIDSet
 	allowedPeers *PeerIDSet
 
+	//connection limit
+	cLimit    map[PeerConnectionType]int
+	cLimitMtx sync.RWMutex
+
 	//log
 	logger log.Logger
 
@@ -114,6 +118,8 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		allowedSeeds: NewPeerIDSet(),
 		allowedPeers: NewPeerIDSet(),
 		//
+		cLimit: make(map[PeerConnectionType]int),
+		//
 		logger: p2pLogger,
 		//
 		mtr: mtr,
@@ -127,7 +133,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 	p2p.allowedPeers.onUpdate = func(s *PeerIDSet) {
 		p2p.onAllowedPeerIDSetUpdate(s, p2pRoleNone)
 	}
-
 	return p2p
 }
 
@@ -592,11 +597,14 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	p2p.logger.Traceln("handleQuery", qm, p)
 
 	r := p2p.getRole()
+
 	m := &QueryResultMessage{
 		Role:     r,
-		Seeds:    p2p.seeds.Array(),
 		Children: p2p.children.NetAddresses(),
 		Nephews:  p2p.nephews.NetAddresses(),
+	}
+	if r != p2pRoleNone {
+		m.Seeds = p2p.seeds.Array()
 	}
 	rr := p2p.resolveRole(qm.Role, p.id, true)
 	if rr != qm.Role {
@@ -653,7 +661,9 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		p2p.applyPeerRole(p)
 	}
 	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
-		p.CloseByError(fmt.Errorf("handleQueryResult invalid query, resolved role %d", rr))
+		if !p2p.trustSeeds.ContainsWithData(p.NetAddress(), p.ID().String()) {
+			p.CloseByError(fmt.Errorf("handleQueryResult invalid query, resolved role %d", rr))
+		}
 		return
 	}
 
@@ -1257,19 +1267,17 @@ Loop:
 			}
 		case <-p2p.discoveryTicker.C:
 			r := p2p.getRole()
-			pr := PeerRoleFlag(p2pRoleSeed)
-			strRole := "p2pRoleSeed"
-			s := p2p.seeds
-			if r == p2pRoleSeed {
-				pr = PeerRoleFlag(p2pRoleRoot)
-				strRole = "p2pRoleRoot"
-				s = p2p.roots
-			}
-
 			if r.Has(p2pRoleRoot) {
 				p2p.discoverFriends()
 				p2p.discoverOthers()
 			} else {
+				pr := PeerRoleFlag(p2pRoleSeed)
+				s := p2p.seeds
+				if r == p2pRoleSeed {
+					pr = PeerRoleFlag(p2pRoleRoot)
+					s = p2p.roots
+				}
+
 				if p2p.friends.Len() > 0 {
 					ps := p2p.friends.Array()
 					for _, p := range ps {
@@ -1293,7 +1301,7 @@ Loop:
 						break NetAddressSetLoop
 					}
 					if !p2p.hasNetAddresseAndIncomming(na, false) {
-						p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", strRole, na)
+						p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", pr, na)
 						if err := p2p.dial(na); err == nil {
 							dialed++
 						}
@@ -1408,8 +1416,11 @@ func (p2p *PeerToPeer) discoverOthers() {
 	}
 }
 
+func (p2p *PeerToPeer) isTrustSeed(p *Peer) bool {
+	return !p.incomming && p2p.trustSeeds.ContainsWithData(p.NetAddress(), p.ID().String())
+}
+
 func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
-	//TODO connection between p2pRoleNone
 	if p2p.getParent() != nil {
 		p2p.logger.Traceln("discoverParent", "nothing to do")
 		return
@@ -1420,12 +1431,18 @@ func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
 		return
 	}
 
-	peers := p2p.orphanages.GetBy(pr, true, false)
-	if len(peers) < 1 {
-		peers = p2p.uncles.GetBy(pr, true, false)
-	}
-	if len(peers) < 1 {
-		return
+	var peers []*Peer
+	if peers = p2p.orphanages.GetBy(pr, true, false); len(peers) < 1 {
+		if peers = p2p.uncles.GetBy(pr, true, false); len(peers) < 1 {
+			if pr != p2pRoleSeed {
+				return
+			}
+			if peers = p2p.orphanages.Find(p2p.isTrustSeed); len(peers) < 1 {
+				if peers = p2p.uncles.Find(p2p.isTrustSeed); len(peers) < 1 {
+					return
+				}
+			}
+		}
 	}
 	sort.Slice(peers, func(i, j int) bool {
 		if peers[i].rtt.avg >= peers[j].rtt.avg {
@@ -1455,9 +1472,14 @@ func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag) {
 		return
 	}
 
-	peers := p2p.orphanages.GetBy(ur, true, false)
-	if len(peers) < 1 {
-		return
+	var peers []*Peer
+	if peers = p2p.orphanages.GetBy(ur, true, false); len(peers) < 1 {
+		if ur != p2pRoleSeed {
+			return
+		}
+		if peers = p2p.orphanages.Find(p2p.isTrustSeed); len(peers) < 1 {
+			return
+		}
 	}
 	sort.Slice(peers, func(i, j int) bool {
 		if peers[i].rtt.avg >= peers[j].rtt.avg {
@@ -1480,6 +1502,36 @@ func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag) {
 	}
 }
 
+func (p2p *PeerToPeer) setConnectionLimit(connType PeerConnectionType, v int) {
+	p2p.cLimitMtx.Lock()
+	defer p2p.cLimitMtx.Unlock()
+
+	if connType < p2pConnTypeNone || connType > p2pConnTypeOther ||
+		connType == p2pConnTypeParent {
+		return
+	}
+	p2p.cLimit[connType] = v
+}
+
+func (p2p *PeerToPeer) getConnectionLimit(connType PeerConnectionType) int {
+	p2p.cLimitMtx.RLock()
+	defer p2p.cLimitMtx.RUnlock()
+	v, ok := p2p.cLimit[connType]
+	if !ok || v < 0 {
+		switch connType {
+		case p2pConnTypeUncle:
+			return DefaultUncleLimit
+		case p2pConnTypeChildren:
+			return DefaultChildrenLimit
+		case p2pConnTypeNephew:
+			return DefaultNephewLimit
+		default:
+			v = -1
+		}
+	}
+	return v
+}
+
 func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnectionType) (updated bool) {
 	if p.connType == connType {
 		return
@@ -1489,7 +1541,7 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	var preset *PeerSet
 	var tset *PeerSet
 	var rset *PeerSet
-	var limit int = -1
+
 	switch pre {
 	case p2pConnTypeNone:
 		preset = p2p.orphanages
@@ -1515,13 +1567,10 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	case p2pConnTypeUncle:
 		tset = p2p.uncles
 		rset = p2p.reject
-		limit = DefaultUncleLimit
 	case p2pConnTypeChildren:
 		tset = p2p.children
-		limit = DefaultChildrenLimit
 	case p2pConnTypeNephew:
 		tset = p2p.nephews
-		limit = DefaultNephewLimit
 	case p2pConnTypeFriend:
 		tset = p2p.friends
 	case p2pConnTypeOther:
@@ -1534,6 +1583,7 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	if tset != nil {
 		tset.Add(p)
 		tl := tset.Len()
+		limit := p2p.getConnectionLimit(connType)
 		if limit > -1 {
 			if tl > limit {
 				p.connType = pre

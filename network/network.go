@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -62,6 +63,9 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 
 	m.SetInitialRoles(roles...)
 	m.SetTrustSeeds(trustSeeds)
+
+	m.p2p.setConnectionLimit(p2pConnTypeChildren, c.ChildrenLimit())
+	m.p2p.setConnectionLimit(p2pConnTypeNephew, c.NephewsLimit())
 
 	m.logger.Debugln("NewManager", channel)
 	return m
@@ -326,18 +330,37 @@ func (m *manager) getRoleByDest(dest byte) module.Role {
 	return m.roleByDest[dest]
 }
 
+func parseTrustSeed(s string) (na NetAddress, id module.PeerID) {
+	if strings.Contains(s, "@") {
+		ss := strings.Split(s, "@")
+		if len(ss) == 2 {
+			if a, err := common.NewAddressFromString(ss[0]); err == nil {
+				na = NetAddress(ss[1])
+				id = NewPeerIDFromAddress(a)
+			}
+		}
+	} else {
+		na = NetAddress(s)
+	}
+	return
+}
+
 func (m *manager) SetTrustSeeds(seeds string) {
+	m.p2p.trustSeeds.Clear()
 	ss := strings.Split(seeds, ",")
-	nas := make([]NetAddress, 0)
 	for _, s := range ss {
 		if s != "" {
-			na := NetAddress(s)
-			if na != m.p2p.getNetAddress() {
-				nas = append(nas, na)
+			na, id := parseTrustSeed(s)
+			if len(na) != 0 && na != m.p2p.getNetAddress() {
+				if id != nil {
+					m.logger.Infoln("Add TrustSeed[id:", id, ",na:", na)
+					m.p2p.trustSeeds.Put(na, id.String())
+				} else {
+					m.p2p.trustSeeds.Add(na)
+				}
 			}
 		}
 	}
-	m.p2p.trustSeeds.ClearAndAdd(nas...)
 }
 
 func (m *manager) SetInitialRoles(roles ...module.Role) {

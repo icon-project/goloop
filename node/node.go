@@ -758,6 +758,18 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 			} else {
 				c.cfg.AutoStart = as
 			}
+		case "childrenLimit":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.ChildrenLimit = &intVal
+			}
+		case "nephewsLimit":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.NephewsLimit = &intVal
+			}
 		default:
 			return errors.Errorf("not found key %s", key)
 		}

@@ -231,6 +231,20 @@ func (c *singleChain) TransactionTimeout() time.Duration {
 	return ConfigDefaultTxTimeout
 }
 
+func (c *singleChain) ChildrenLimit() int {
+	if c.cfg.ChildrenLimit != nil && *c.cfg.ChildrenLimit >= 0{
+		return *c.cfg.ChildrenLimit
+	}
+	return ConfigDefaultChildrenLimit
+}
+
+func (c *singleChain) NephewsLimit() int {
+	if c.cfg.NephewsLimit != nil && *c.cfg.NephewsLimit >= 0{
+		return *c.cfg.NephewsLimit
+	}
+	return ConfigDefaultNephewLimit
+}
+
 func (c *singleChain) State() (string, int64, error) {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()

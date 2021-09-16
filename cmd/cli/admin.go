@@ -136,6 +136,14 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			param.MaxWaitTimeout, _ = fs.GetInt64("max_wait_timeout")
 			param.TxTimeout, _ = fs.GetInt64("tx_timeout")
 			param.AutoStart, _ = fs.GetBool("auto_start")
+			if fs.Changed("children_limit") {
+				childrenLimit, _ := fs.GetInt("children_limit")
+				param.ChildrenLimit = &childrenLimit
+			}
+			if fs.Changed("nephews_limit") {
+				nephewsLimit, _ := fs.GetInt("nephews_limit")
+				param.NephewsLimit = &nephewsLimit
+			}
 
 			var buf *bytes.Buffer
 			if len(genesisZip) > 0 {
@@ -190,6 +198,8 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.Int64("max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
 	joinFlags.Int64("tx_timeout", 0, "Transaction timeout in milli-second (0: uses system default value)")
 	joinFlags.Bool("auto_start", false, "Auto start")
+	joinFlags.Int("children_limit", -1, "Maximum number of child connections (-1: uses system default value)")
+	joinFlags.Int("nephews_limit", -1, "Maximum number of nephew connections (-1: uses system default value)")
 
 	leaveCmd := &cobra.Command{
 		Use:   "leave CID",
@@ -383,7 +393,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	configCmd := &cobra.Command{
 		Use:   "config CID KEY VALUE",
 		Short: "Configure chain",
-		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(3))),
+		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(2), cobra.ExactArgs(3))),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqUrl := node.UrlChain + "/" + args[0] + "/configure"
 			if len(args) == 1 {
@@ -398,7 +408,15 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			} else {
 				param := &node.ConfigureParam{
 					Key:   args[1],
-					Value: args[2],
+				}
+				if len(args) == 2  {
+					fs := cmd.Flags()
+					param.Value, _ = fs.GetString("value")
+					if len(param.Value) == 0 {
+						return errors.Errorf("to configure value as empty string, use the third arg with \"\" or ''")
+					}
+				} else {
+					param.Value = args[2]
 				}
 				var v string
 				reqUrl := node.UrlChain + "/" + args[0] + "/configure"
@@ -412,6 +430,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		},
 	}
 	rootCmd.AddCommand(configCmd)
+	configFlags := configCmd.Flags()
+	configFlags.String("value", "", "use if value starts with '-'.\n" +
+		"(if the third arg is used, this flag will be ignored)")
 
 	rootCmd.Use = "chain TASK CID PARAM"
 	rootCmd.Args = ArgsWithDefaultErrorFunc(cobra.ExactArgs(3))
