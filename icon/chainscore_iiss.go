@@ -281,18 +281,6 @@ func (s *chainScore) Ex_getSubPReps() (map[string]interface{}, error) {
 	return es.GetSubPRepsInJSON(s.cc.BlockHeight())
 }
 
-func (s *chainScore) Ex_getPRepManager() (map[string]interface{}, error) {
-	if err := s.tryChargeCall(true); err != nil {
-		return nil, err
-	}
-	es, err := s.getExtensionState()
-	if err != nil {
-		return nil, err
-	}
-	jso := es.State.GetPRepManagerInJSON()
-	return jso, nil
-}
-
 func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, country *string,
 	city *string, details *string, p2pEndpoint *string, node module.Address) error {
 	var err error
@@ -494,15 +482,20 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	return jso, nil
 }
 
-func (s *chainScore) Ex_getNetworkValue() (map[string]interface{}, error) {
+func (s *chainScore) Ex_getNetworkInfo() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
+
+	if s.from != nil && s.from.IsContract() {
+		 return nil, scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
+	}
+
 	es, err := s.getExtensionState()
 	if err != nil {
 		return nil, err
 	}
-	res, err := es.State.GetNetworkValueInJSON()
+	res, err := es.State.GetNetworkInfoInJSON()
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get NetworkValue")
 	}

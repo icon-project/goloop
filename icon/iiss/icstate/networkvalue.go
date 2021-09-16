@@ -293,7 +293,8 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNetworkValueInJSON() (map[string]interface{}, error) {
+func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
+	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
 	jso["irep"] = s.GetIRep()
 	jso["rrep"] = s.GetRRep()
@@ -302,7 +303,7 @@ func (s *State) GetNetworkValueInJSON() (map[string]interface{}, error) {
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = s.GetBondRequirement()
+	jso["bondRequirement"] = br
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
@@ -314,5 +315,13 @@ func (s *State) GetNetworkValueInJSON() (map[string]interface{}, error) {
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
+
+	preps, _ := s.GetPRepsOrderedByDelegation()
+	if preps != nil {
+		jso["totalBonded"] = preps.TotalBonded()
+		jso["totalDelegated"] = preps.TotalDelegated()
+		jso["totalBondedDelegation"] = preps.GetTotalBondedDelegation(br)
+		jso["preps"] = preps.Size()
+	}
 	return jso, nil
 }

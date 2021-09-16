@@ -672,22 +672,6 @@ func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]in
 	return jso, nil
 }
 
-func (s *State) GetPRepManagerInJSON() map[string]interface{} {
-	br := s.GetBondRequirement()
-	preps, _ := s.GetPRepsOrderedByDelegation()
-	if preps == nil {
-		return nil
-	}
-
-	return map[string]interface{}{
-		"totalStake":            s.GetTotalStake(),
-		"totalBonded":           preps.TotalBonded(),
-		"totalDelegated":        preps.TotalDelegated(),
-		"totalBondedDelegation": preps.GetTotalBondedDelegation(br),
-		"preps":                 preps.Size(),
-	}
-}
-
 func (s *State) CheckValidationPenalty(ps *PRepStatusState, blockHeight int64) bool {
 	condition := s.GetValidationPenaltyCondition()
 	return checkValidationPenalty(ps, blockHeight, condition)

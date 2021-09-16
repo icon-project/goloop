@@ -241,7 +241,7 @@ var chainMethods = []*chainMethod{
 		},
 	}, icmodule.Revision5, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getNetworkValue",
+		scoreapi.Function, "getNetworkInfo",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
 		nil,
 		[]scoreapi.DataType{
@@ -404,14 +404,6 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionDecentralize, icmodule.Revision8},
-	{scoreapi.Method{
-		scoreapi.Function, "getPRepManager",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
-		nil,
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPReps",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
