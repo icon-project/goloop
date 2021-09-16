@@ -462,7 +462,7 @@ func (s *chainScore) Ex_estimateUnstakeLockPeriod() (map[string]interface{}, err
 	}
 	cc := s.newCallContext(s.cc)
 	return map[string]interface{}{
-		"unstakeLockPeriod": es.State.GetUnstakeLockPeriod(cc.GetTotalSupply()),
+		"unstakeLockPeriod": es.State.GetUnstakeLockPeriod(cc.Revision().Value(), cc.GetTotalSupply()),
 	}, nil
 }
 

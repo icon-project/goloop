@@ -40,7 +40,7 @@ const (
 	ConfigFile               = "./icon_config.json"
 	IScoreICXRatio           = 1_000
 	VotedRewardMultiplier    = 100
-	InitialTermPeriod        = 43200
+	InitialTermPeriod        = DayBlock
 	DecentralizedTermPeriod  = 43120
 	InitialDepositTerm       = 1_296_000
 	DisableDepositTerm       = 0

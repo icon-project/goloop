@@ -1152,7 +1152,7 @@ func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err
 	oldTotalStake := ia.GetTotalStake()
 
 	//update IISS account
-	expireHeight := cc.BlockHeight() + es.State.GetUnstakeLockPeriod(tSupply)
+	expireHeight := cc.BlockHeight() + es.State.GetUnstakeLockPeriod(revision, tSupply)
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
 	case 0, 1:
