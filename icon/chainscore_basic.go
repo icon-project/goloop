@@ -258,7 +258,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		// 	migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
 		// }
 
-		if r1 < icmodule.RevisionLockAddress && r2 >= icmodule.RevisionLockAddress {
+		if r1 < icmodule.RevisionLockAddress && r2 >= icmodule.RevisionLockAddress && s.cc.ChainID() == CIDForMainNet {
 			s.lockAddresses()
 		}
 

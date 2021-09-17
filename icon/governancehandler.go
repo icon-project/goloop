@@ -98,7 +98,7 @@ func (g *governanceHandler) handleRevisionChange(cc contract.CallContext, r1, r2
 	if r1 >= r2 {
 		return
 	}
-	if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
+	if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake && cc.ChainID() == CIDForMainNet {
 		migrate.WriteInvalidUnstakeFixedEventLogs(cc)
 	}
 }
