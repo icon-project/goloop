@@ -250,7 +250,7 @@ func (sm *ServiceManager) GetMinimizeBlockGen(result []byte) bool {
 }
 
 func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
-	return 0
+	return module.BlockVersion2
 }
 
 func (sm *ServiceManager) HasTransaction(id []byte) bool {
