@@ -56,7 +56,8 @@ func CheckStatus(logger log.Logger, s1, s2 module.Status) error {
 		logger.Infof("Ignore status difference(e=%s,r=%s)", s1, s2)
 		return nil
 	}
-	if (s1 == module.StatusUnknownFailure || s1 == module.StatusInvalidParameter) && s2 == module.StatusMethodNotPayable {
+	if (s1 == module.StatusUnknownFailure || s1 == module.StatusInvalidParameter) &&
+			(s2 == module.StatusMethodNotPayable || s2 == module.StatusMethodNotFound) {
 		logger.Infof("Ignore status difference(e=%s,r=%s)", s1, s2)
 		return nil
 	}
