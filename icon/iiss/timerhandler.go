@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package iiss
 
 import (
-	"math/big"
-
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/service/state"
 )
 
-func (es *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) {
+func (es *ExtensionStateImpl) handleTimerJob(wc icmodule.WorldContext) (err error) {
 	bh := wc.BlockHeight()
-	es.logger.Tracef("HandleTimerJob() start BH-%d", bh)
+	es.logger.Tracef("handleTimerJob() start BH-%d", bh)
 	bt := es.State.GetUnbondingTimerSnapshot(bh)
 	if bt != nil {
 		err = es.handleUnbondingTimer(bt, bh)
@@ -37,11 +36,11 @@ func (es *ExtensionStateImpl) HandleTimerJob(wc state.WorldContext) (err error) 
 	if st != nil {
 		err = es.handleUnstakingTimer(wc, st, bh)
 	}
-	es.logger.Tracef("HandleTimerJob() end BH-%d", bh)
+	es.logger.Tracef("handleTimerJob() end BH-%d", bh)
 	return
 }
 
-func (es *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
+func (es *ExtensionStateImpl) handleUnstakingTimer(wc icmodule.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
 	es.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
 	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
 		a, _ := itr.Get()
@@ -51,10 +50,9 @@ func (es *ExtensionStateImpl) handleUnstakingTimer(wc state.WorldContext, ts *ic
 		if err != nil {
 			return err
 		}
-
-		wa := wc.GetAccountState(a.ID())
-		b := wa.GetBalance()
-		wa.SetBalance(new(big.Int).Add(b, ra))
+		if err = wc.Deposit(a, ra); err != nil {
+			return err
+		}
 		blockHeight := wc.BlockHeight()
 		es.logger.Tracef(
 			"after remove unstake, stake information of %s : %s",

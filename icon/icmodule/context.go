@@ -9,7 +9,6 @@ import (
 type WorldContext interface {
 	Revision() module.Revision
 	BlockHeight() int64
-	From() module.Address
 	Origin() module.Address
 	Treasury() module.Address
 	TransactionID() []byte
@@ -20,13 +19,14 @@ type WorldContext interface {
 	Transfer(from module.Address, to module.Address, amount *big.Int) error
 	GetTotalSupply() *big.Int
 	AddTotalSupply(amount *big.Int) (*big.Int, error)
-	Burn(address module.Address, amount *big.Int) error
 	SetValidators(validators []module.Validator) error
-	SumOfStepUsed() *big.Int
 	StepPrice() *big.Int
 }
 
 type CallContext interface {
 	WorldContext
+	From() module.Address
+	Burn(address module.Address, amount *big.Int) error
+	SumOfStepUsed() *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 }

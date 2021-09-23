@@ -127,7 +127,7 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	if es == nil {
 		return nil
 	}
-	return es.OnExecutionBegin(wc)
+	return es.OnExecutionBegin(iiss.NewWorldContext(wc))
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult, logger log.Logger) error {
@@ -139,16 +139,13 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 	if es == nil {
 		return nil
 	}
-	if err := es.HandleTimerJob(wc); err != nil {
-		return err
-	}
 	var totalFee *big.Int
 	if revision < icmodule.RevisionStopICON1Support {
 		totalFee = er.VirtualFee()
 	} else {
 		totalFee = er.TotalFee()
 	}
-	return es.OnExecutionEnd(wc, totalFee, p.calculator.Get())
+	return es.OnExecutionEnd(iiss.NewWorldContext(wc), totalFee, p.calculator.Get())
 }
 
 func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error {

@@ -36,7 +36,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -504,7 +503,7 @@ func (es *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Addr
 	return
 }
 
-func (es *ExtensionStateImpl) addBlockProduce(wc state.WorldContext) (err error) {
+func (es *ExtensionStateImpl) addBlockProduce(wc icmodule.WorldContext) (err error) {
 	var global icstage.Global
 	var voters []module.Address
 
@@ -740,7 +739,7 @@ func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRe
 	return nil
 }
 
-func (es *ExtensionStateImpl) OnExecutionBegin(wc state.WorldContext) error {
+func (es *ExtensionStateImpl) OnExecutionBegin(wc icmodule.WorldContext) error {
 	term := es.State.GetTermSnapshot()
 	if term.IsDecentralized() {
 		if err := es.addBlockProduce(wc); err != nil {
@@ -755,8 +754,11 @@ func (es *ExtensionStateImpl) OnExecutionBegin(wc state.WorldContext) error {
 	return nil
 }
 
-func (es *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *big.Int, calculator *Calculator) error {
+func (es *ExtensionStateImpl) OnExecutionEnd(wc icmodule.WorldContext, totalFee *big.Int, calculator *Calculator) error {
 	var err error
+	if err = es.handleTimerJob(wc); err != nil {
+		return err
+	}
 	term := es.State.GetTermSnapshot()
 	if term == nil {
 		return nil
@@ -773,10 +775,10 @@ func (es *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *bi
 
 	switch blockHeight {
 	case term.GetEndHeight() - 1:
-		if err := es.checkCalculationDone(calculator); err != nil {
+		if err = es.checkCalculationDone(calculator); err != nil {
 			return err
 		}
-		if err := es.regulateIssue(calculator.TotalReward()); err != nil {
+		if err = es.regulateIssue(calculator.TotalReward()); err != nil {
 			return err
 		}
 	case term.GetEndHeight():
@@ -787,12 +789,12 @@ func (es *ExtensionStateImpl) OnExecutionEnd(wc state.WorldContext, totalFee *bi
 
 		nTerm := es.State.GetTermSnapshot()
 		if term.IsDecentralized() {
-			if err := es.resetIssueTotalReward(); err != nil {
+			if err = es.resetIssueTotalReward(); err != nil {
 				return err
 			}
 		} else if nTerm.IsDecentralized() {
 			// last centralized block
-			if err := es.setIssuePrevBlockFee(totalFee); err != nil {
+			if err = es.setIssuePrevBlockFee(totalFee); err != nil {
 				return err
 			}
 		}
@@ -866,9 +868,8 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 	return nil
 }
 
-func (es *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
+func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
-	var totalSupply *big.Int
 	var preps icstate.PRepSet
 
 	revision := wc.Revision().Value()
@@ -876,11 +877,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc state.WorldContext) error {
 	subPRepCount := int(es.State.GetSubPRepCount())
 	electedPRepCount := mainPRepCount + subPRepCount
 
-	totalSupply, err = es.getTotalSupply(wc)
-	if err != nil {
-		return err
-	}
-
+	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
@@ -1058,7 +1055,7 @@ func (es *ExtensionStateImpl) GenesisTerm(blockHeight int64, revision int) error
 }
 
 // updateValidators set a new validator set to world context
-func (es *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd bool) error {
+func (es *ExtensionStateImpl) updateValidators(wc icmodule.WorldContext, isTermEnd bool) error {
 	var err error
 	vss := es.State.GetValidatorsSnapshot()
 	if vss == nil {
@@ -1068,7 +1065,7 @@ func (es *ExtensionStateImpl) updateValidators(wc state.WorldContext, isTermEnd 
 	blockHeight := wc.BlockHeight()
 	if isTermEnd || vss.IsUpdated(blockHeight) {
 		newValidators := vss.NewValidatorSet()
-		err = wc.GetValidatorState().Set(newValidators)
+		err = wc.SetValidators(newValidators)
 		es.logger.Debugf("New validators: bh=%d vss=%+v", blockHeight, vss)
 	}
 	return err
@@ -1083,16 +1080,6 @@ func (es *ExtensionStateImpl) GetPRepTermInJSON(blockHeight int64) (map[string]i
 	jso := term.ToJSON(blockHeight, es.State)
 	jso["blockHeight"] = blockHeight
 	return jso, nil
-}
-
-func (es *ExtensionStateImpl) getTotalSupply(wc state.WorldContext) (*big.Int, error) {
-	ass := wc.GetAccountState(state.SystemID).GetSnapshot()
-	as := scoredb.NewStateStoreWith(ass)
-	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-	if ts := tsVar.BigInt(); ts != nil {
-		return ts, nil
-	}
-	return icmodule.BigIntZero, nil
 }
 
 func (es *ExtensionStateImpl) IsDecentralized() bool {

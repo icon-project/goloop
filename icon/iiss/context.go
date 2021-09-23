@@ -30,25 +30,20 @@ func setBalance(address module.Address, as state.AccountState, balance *big.Int)
 	return nil
 }
 
-type callContextImpl struct {
-	contract.CallContext
-	from module.Address
+type worldContextImpl struct {
+	state.WorldContext
 }
 
-func (ctx *callContextImpl) From() module.Address {
-	return ctx.from
-}
-
-func (ctx *callContextImpl) Origin() module.Address {
+func (ctx *worldContextImpl) Origin() module.Address {
 	return ctx.TransactionInfo().From
 }
 
-func (ctx *callContextImpl) GetBalance(address module.Address) *big.Int {
+func (ctx *worldContextImpl) GetBalance(address module.Address) *big.Int {
 	account := ctx.GetAccountState(address.ID())
 	return account.GetBalance()
 }
 
-func (ctx *callContextImpl) Deposit(address module.Address, amount *big.Int) error {
+func (ctx *worldContextImpl) Deposit(address module.Address, amount *big.Int) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
@@ -58,7 +53,7 @@ func (ctx *callContextImpl) Deposit(address module.Address, amount *big.Int) err
 	return ctx.addBalance(address, amount)
 }
 
-func (ctx *callContextImpl) Withdraw(address module.Address, amount *big.Int) error {
+func (ctx *worldContextImpl) Withdraw(address module.Address, amount *big.Int) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
@@ -68,7 +63,7 @@ func (ctx *callContextImpl) Withdraw(address module.Address, amount *big.Int) er
 	return ctx.addBalance(address, new(big.Int).Neg(amount))
 }
 
-func (ctx *callContextImpl) Transfer(from module.Address, to module.Address, amount *big.Int) (err error) {
+func (ctx *worldContextImpl) Transfer(from module.Address, to module.Address, amount *big.Int) (err error) {
 	if err = validateAmount(amount); err != nil {
 		return
 	}
@@ -86,10 +81,50 @@ func (ctx *callContextImpl) Transfer(from module.Address, to module.Address, amo
 	return
 }
 
-func (ctx *callContextImpl) addBalance(address module.Address, amount *big.Int) error {
+func (ctx *worldContextImpl) addBalance(address module.Address, amount *big.Int) error {
 	as := ctx.GetAccountState(address.ID())
 	ob := as.GetBalance()
 	return setBalance(address, as, new(big.Int).Add(ob, amount))
+}
+
+
+func (ctx *worldContextImpl) GetTotalSupply() *big.Int {
+	as := ctx.GetAccountState(state.SystemID)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+	if ts := tsVar.BigInt(); ts != nil {
+		return ts
+	}
+	return icmodule.BigIntZero
+}
+
+func (ctx *worldContextImpl) AddTotalSupply(amount *big.Int) (*big.Int, error) {
+	as := ctx.GetAccountState(state.SystemID)
+	varDB := scoredb.NewVarDB(as, state.VarTotalSupply)
+	ts := new(big.Int).Add(varDB.BigInt(), amount)
+	if ts.Sign() < 0 {
+		return nil, errors.Errorf("TotalSupply < 0")
+	}
+	return ts, varDB.Set(ts)
+}
+
+func (ctx *worldContextImpl) SetValidators(validators []module.Validator) error {
+	return ctx.GetValidatorState().Set(validators)
+}
+
+func NewWorldContext(ctx state.WorldContext) icmodule.WorldContext {
+	return &worldContextImpl{
+		WorldContext: ctx,
+	}
+}
+
+type callContextImpl struct {
+	icmodule.WorldContext
+	cc contract.CallContext
+	from module.Address
+}
+
+func (ctx *callContextImpl) From() module.Address {
+	return ctx.from
 }
 
 func (ctx *callContextImpl) Burn(address module.Address, amount *big.Int) error {
@@ -116,44 +151,30 @@ func (ctx *callContextImpl) OnBurn(address module.Address, amount, ts *big.Int) 
 		} else {
 			burnSig = "ICXBurned(int)"
 		}
-		ctx.OnEvent(state.SystemAddress,
+		ctx.cc.OnEvent(state.SystemAddress,
 			[][]byte{[]byte(burnSig)},
 			[][]byte{intconv.BigIntToBytes(amount)},
 		)
 	} else {
-		ctx.OnEvent(state.SystemAddress,
+		ctx.cc.OnEvent(state.SystemAddress,
 			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), address.Bytes()},
 			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
 		)
 	}
 }
 
-func (ctx *callContextImpl) GetTotalSupply() *big.Int {
-	as := ctx.GetAccountState(state.SystemID)
-	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-	if ts := tsVar.BigInt(); ts != nil {
-		return ts
-	}
-	return icmodule.BigIntZero
+func (ctx *callContextImpl) SumOfStepUsed() *big.Int {
+	return ctx.cc.SumOfStepUsed()
 }
 
-func (ctx *callContextImpl) AddTotalSupply(amount *big.Int) (*big.Int, error) {
-	as := ctx.GetAccountState(state.SystemID)
-	varDB := scoredb.NewVarDB(as, state.VarTotalSupply)
-	ts := new(big.Int).Add(varDB.BigInt(), amount)
-	if ts.Sign() < 0 {
-		return nil, errors.Errorf("TotalSupply < 0")
-	}
-	return ts, varDB.Set(ts)
-}
-
-func (ctx *callContextImpl) SetValidators(validators []module.Validator) error {
-	return ctx.GetValidatorState().Set(validators)
+func (ctx *callContextImpl) OnEvent(addr module.Address, indexed, data [][]byte) {
+	ctx.cc.OnEvent(addr, indexed, data)
 }
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
 	return &callContextImpl{
-		CallContext: cc,
+		WorldContext: NewWorldContext(cc),
+		cc: cc,
 		from: from,
 	}
 }
