@@ -578,6 +578,31 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionEnableSetScoreOwner, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setNetworkScore",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"role", scoreapi.String, nil, nil},
+			{"address", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2R2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getNetworkScores",
+		scoreapi.FlagExternal | scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionICON2R2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "addTask",
+		scoreapi.FlagExternal, 0,
+		[]scoreapi.Parameter{
+			{"blockHeight", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2R2, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

@@ -58,15 +58,16 @@ var (
 )
 
 type State struct {
-	readonly            bool
-	accountCache        *AccountCache
-	allPRepCache        *AllPRepCache
-	nodeOwnerCache      *NodeOwnerCache
-	prepBaseCache       *PRepBaseCache
-	prepStatusCache     *PRepStatusCache
-	unstakingTimerCache *TimerCache
-	unbondingTimerCache *TimerCache
-	logger              log.Logger
+	readonly               bool
+	accountCache           *AccountCache
+	allPRepCache           *AllPRepCache
+	nodeOwnerCache         *NodeOwnerCache
+	prepBaseCache          *PRepBaseCache
+	prepStatusCache        *PRepStatusCache
+	unstakingTimerCache    *TimerCache
+	unbondingTimerCache    *TimerCache
+	networkScoreTimerCache *TimerCache
+	logger                 log.Logger
 
 	store                *icobject.ObjectStoreState
 	totalDelegationVarDB *containerdb.VarDB
@@ -86,6 +87,7 @@ func (s *State) Reset(ss *Snapshot) error {
 	s.prepStatusCache.Reset()
 	s.unstakingTimerCache.Reset()
 	s.unbondingTimerCache.Reset()
+	s.networkScoreTimerCache.Reset()
 	return nil
 }
 
@@ -96,6 +98,7 @@ func (s *State) Flush() error {
 	s.prepStatusCache.Flush()
 	s.unstakingTimerCache.Flush()
 	s.unbondingTimerCache.Flush()
+	s.networkScoreTimerCache.Flush()
 	return nil
 }
 
@@ -134,6 +137,14 @@ func (s *State) GetUnbondingTimerSnapshot(height int64) *TimerSnapshot {
 	return timer
 }
 
+func (s *State) GetNetworkScoreTimerState(height int64) *TimerState {
+	return s.networkScoreTimerCache.Get(height)
+}
+
+func (s *State) GetNetworkScoreTimerSnapshot(height int64) *TimerSnapshot {
+	return s.networkScoreTimerCache.GetSnapshot(height)
+}
+
 func (s *State) GetPRepBaseByOwner(owner module.Address, createIfNotExist bool) *PRepBaseState {
 	return s.prepBaseCache.Get(owner, createIfNotExist)
 }
@@ -164,15 +175,16 @@ func NewStateFromTrie(t trie.MutableForObject, readonly bool, logger log.Logger)
 	pRepIllegalDelegatedDB := containerdb.NewDictDB(store, 1, pRepIllegalDelegatedKey)
 
 	return &State{
-		readonly:            readonly,
-		accountCache:        newAccountCache(store),
-		allPRepCache:        NewAllPRepCache(store),
-		nodeOwnerCache:      newNodeOwnerCache(store),
-		prepBaseCache:       newPRepBaseCache(store),
-		prepStatusCache:     newPRepStatusCache(store),
-		unstakingTimerCache: newTimerCache(store, unstakingTimerDictPrefix),
-		unbondingTimerCache: newTimerCache(store, unbondingTimerDictPrefix),
-		logger:              logger,
+		readonly:               readonly,
+		accountCache:           newAccountCache(store),
+		allPRepCache:           NewAllPRepCache(store),
+		nodeOwnerCache:         newNodeOwnerCache(store),
+		prepBaseCache:          newPRepBaseCache(store),
+		prepStatusCache:        newPRepStatusCache(store),
+		unstakingTimerCache:    newTimerCache(store, unstakingTimerDictPrefix),
+		unbondingTimerCache:    newTimerCache(store, unbondingTimerDictPrefix),
+		networkScoreTimerCache: newTimerCache(store, networkScoreTimerDictPrefix),
+		logger:                 logger,
 
 		store:                store,
 		totalDelegationVarDB: tdVarDB,

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/module"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/containerdb"
@@ -45,12 +46,20 @@ const (
 	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
 	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
 	VarDelegationSlotMax                     = "delegation_slot_max"
+	DictNetworkScores                        = "network_scores"
 )
 
 const (
 	IISSVersion2 int = iota + 2
 	IISSVersion3
 )
+
+const (
+	CPSKey   = "cps"
+	RelayKey = "relay"
+)
+
+var NetworkScoreKeys = [2]string{CPSKey, RelayKey}
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
@@ -68,6 +77,35 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 		return err
 	}
 	return nil
+}
+
+func (s *State) SetNetworkScore(role string, address module.Address) error {
+	for _, k := range NetworkScoreKeys {
+		if role == k {
+			db := containerdb.NewDictDB(
+				s.store,
+				1,
+				containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, DictNetworkScores))
+			return db.Set(role, address)
+		}
+	}
+	return errors.IllegalArgumentError.New("invalid Network SCORE role")
+}
+
+func (s *State) GetNetworkScores() map[string]interface{} {
+	networkdScores := make(map[string]interface{})
+	db := containerdb.NewDictDB(
+		s.store,
+		1,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, DictNetworkScores))
+	for _, k := range NetworkScoreKeys {
+		v := db.Get(k)
+		if v == nil {
+			continue
+		}
+		networkdScores[k] = v.Address()
+	}
+	return networkdScores
 }
 
 func (s *State) GetIISSVersion() int {

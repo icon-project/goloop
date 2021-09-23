@@ -33,6 +33,9 @@ var unstakingTimerDictPrefix = containerdb.ToKey(
 var unbondingTimerDictPrefix = containerdb.ToKey(
 	containerdb.HashBuilder, scoredb.DictDBPrefix, "timer_unbonding",
 )
+var networkScoreTimerDictPrefix = containerdb.ToKey(
+	containerdb.HashBuilder, scoredb.DictDBPrefix, "timer_network",
+)
 
 type addresses []*common.Address
 

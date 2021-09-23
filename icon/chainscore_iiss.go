@@ -666,6 +666,40 @@ func (s *chainScore) Ex_setScoreOwner(score module.Address, owner module.Address
 	}
 	return s.newCallContext(s.cc).SetScoreOwner(s.from, score, owner)
 }
+func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.State.SetNetworkScore(role, address)
+}
+
+func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.State.GetNetworkScores(), nil
+}
+
+func (s *chainScore) Ex_addTask(blockHeight *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	ts := es.State.GetNetworkScoreTimerState(blockHeight.Int64())
+	ts.Add(s.from)
+	return nil
+}
 
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
