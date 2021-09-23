@@ -100,7 +100,11 @@ func (ctx *worldContextImpl) GetTotalSupply() *big.Int {
 func (ctx *worldContextImpl) AddTotalSupply(amount *big.Int) (*big.Int, error) {
 	as := ctx.GetAccountState(state.SystemID)
 	varDB := scoredb.NewVarDB(as, state.VarTotalSupply)
-	ts := new(big.Int).Add(varDB.BigInt(), amount)
+	oldTs := varDB.BigInt()
+	if oldTs == nil {
+		oldTs = new(big.Int)
+	}
+	ts := new(big.Int).Add(oldTs, amount)
 	if ts.Sign() < 0 {
 		return nil, errors.Errorf("TotalSupply < 0")
 	}

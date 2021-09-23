@@ -31,7 +31,6 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -62,7 +61,6 @@ func ToLoop(icx int) *big.Int {
 	return ToDecimal(icx, 18)
 }
 
-// ToDecimal
 func ToDecimal(x, y int) *big.Int {
 	if y < 0 {
 		return nil
@@ -107,40 +105,6 @@ func ToKey(o interface{}) string {
 	default:
 		panic(errors.Errorf("Unsupported type: %v", o))
 	}
-}
-
-func EqualAddress(a1 module.Address, a2 module.Address) bool {
-	if a1 == a2 {
-		return true
-	}
-
-	if a1 != nil {
-		return a1.Equal(a2)
-	} else if a2 != nil {
-		return a2.Equal(a1)
-	}
-
-	return false
-}
-
-func GetTotalSupply(ws state.WorldState) *big.Int {
-	as := ws.GetAccountState(state.SystemID)
-	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-	return tsVar.BigInt()
-}
-
-func IncreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error) {
-	as := ws.GetAccountState(state.SystemID)
-	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-	ts := new(big.Int).Add(tsVar.BigInt(), amount)
-	if ts.Sign() < 0 {
-		return nil, errors.Errorf("TotalSupply < 0")
-	}
-	return ts, tsVar.Set(ts)
-}
-
-func DecreaseTotalSupply(ws state.WorldState, amount *big.Int) (*big.Int, error) {
-	return IncreaseTotalSupply(ws, new(big.Int).Neg(amount))
 }
 
 func OnBurn(cc contract.CallContext, address module.Address, amount, ts *big.Int) {
