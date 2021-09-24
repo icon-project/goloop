@@ -47,6 +47,7 @@ type BlockV1ProofStorage interface {
 }
 
 type ServiceManager struct {
+	ch  module.Chain
 	ex  *Executor
 	log log.Logger
 	db  db.Database
@@ -226,11 +227,13 @@ func (sm *ServiceManager) GetTotalSupply(result []byte) (*big.Int, error) {
 }
 
 func (sm *ServiceManager) GetNetworkID(result []byte) (int64, error) {
-	return 1, nil
+	// It doesn't store NID and CID, so return configuration value.
+	return int64(sm.ch.NID()), nil
 }
 
 func (sm *ServiceManager) GetChainID(result []byte) (int64, error) {
-	return 1, nil
+	// It doesn't store NID and CID, so return configuration value.
+	return int64(sm.ch.CID()), nil
 }
 
 func (sm *ServiceManager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
@@ -353,6 +356,7 @@ func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ps BlockV1P
 		return nil, err
 	}
 	return &ServiceManager{
+		ch:  chain,
 		ex:  ex,
 		log: logger,
 		db:  dbase,
