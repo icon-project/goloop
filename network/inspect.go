@@ -67,7 +67,7 @@ func peerToMap(p *Peer, informal bool) map[string]interface{} {
 	if p != nil {
 		m["id"] = p.id.String()
 		m["addr"] = string(p.netAddress)
-		m["in"] = p.incomming
+		m["in"] = p.in
 		m["role"] = p.getRole()
 		if informal {
 			m["channel"] = p.channel

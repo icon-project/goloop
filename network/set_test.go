@@ -35,7 +35,7 @@ func Test_set_PeerSet(t *testing.T) {
 	v1 := generatePeer()
 	v2 := generatePeer()
 	v2_1 := &Peer{id: v2.id, netAddress: v2.netAddress}
-	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, incomming: true}
+	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, in: true}
 	v3 := generatePeer()
 
 	assert.True(t, s.IsEmpty(), "true")
@@ -55,8 +55,8 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.True(t, s.Contains(v1), "true")
 	assert.False(t, s.Contains(v3), "false")
 
-	assert.True(t, s.HasNetAddresse(v2.netAddress), "true")
-	assert.False(t, s.HasNetAddresse(v3.netAddress), "false")
+	assert.True(t, s.HasNetAddress(v2.netAddress), "true")
+	assert.False(t, s.HasNetAddress(v3.netAddress), "false")
 	t.Log(s.NetAddresses())
 
 

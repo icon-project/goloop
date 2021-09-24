@@ -42,15 +42,15 @@ type Peer struct {
 	mtx          sync.Mutex
 	once         sync.Once
 	//
-	incomming bool
-	channel   string
-	rtt       PeerRTT
-	connType  PeerConnectionType
-	role      PeerRoleFlag
-	roleMtx   sync.RWMutex
-	recvRole  PeerRoleFlag
-	children  *NetAddressSet
-	nephews   int32
+	in       bool
+	channel  string
+	rtt      PeerRTT
+	connType PeerConnectionType
+	role     PeerRoleFlag
+	roleMtx  sync.RWMutex
+	recvRole PeerRoleFlag
+	children *NetAddressSet
+	nephews  int32
 	//
 	last context.Context
 
@@ -198,13 +198,13 @@ var (
 
 type PeerConnectionType byte
 
-func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool, l log.Logger) *Peer {
+func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, l log.Logger) *Peer {
 	p := &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
 		writer:      NewPacketWriter(conn),
 		q:           NewPriorityQueue(DefaultPeerSendQueueSize, DefaultSendQueueMaxPriority),
-		incomming:   incomming,
+		in:          in,
 		timestamp:   time.Now(),
 		pool:        NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
 		close:       make(chan error),
@@ -231,14 +231,14 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
-		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(),
+		p.id, p.ConnString(), p.netAddress, p.in, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(),
 		atomic.LoadInt32(&p.nephews))
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
 		return ""
 	}
-	if p.incomming {
+	if p.in {
 		return fmt.Sprint(p.conn.LocalAddr(), "<-", p.conn.RemoteAddr())
 	} else {
 		return fmt.Sprint(p.conn.LocalAddr(), "->", p.conn.RemoteAddr())
