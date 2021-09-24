@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -330,35 +329,12 @@ func (m *manager) getRoleByDest(dest byte) module.Role {
 	return m.roleByDest[dest]
 }
 
-func parseTrustSeed(s string) (na NetAddress, id module.PeerID) {
-	if strings.Contains(s, "@") {
-		ss := strings.Split(s, "@")
-		if len(ss) == 2 {
-			if a, err := common.NewAddressFromString(ss[0]); err == nil {
-				na = NetAddress(ss[1])
-				id = NewPeerIDFromAddress(a)
-			}
-		}
-	} else {
-		na = NetAddress(s)
-	}
-	return
-}
-
 func (m *manager) SetTrustSeeds(seeds string) {
 	m.p2p.trustSeeds.Clear()
 	ss := strings.Split(seeds, ",")
 	for _, s := range ss {
-		if s != "" {
-			na, id := parseTrustSeed(s)
-			if len(na) != 0 && na != m.p2p.getNetAddress() {
-				if id != nil {
-					m.logger.Infoln("Add TrustSeed[id:", id, ",na:", na)
-					m.p2p.trustSeeds.Put(na, id.String())
-				} else {
-					m.p2p.trustSeeds.Add(na)
-				}
-			}
+		if na := NetAddress(s); len(na) != 0 && na != m.p2p.getNetAddress() {
+			m.p2p.trustSeeds.Add(NetAddress(s))
 		}
 	}
 }

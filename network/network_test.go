@@ -882,7 +882,7 @@ func Test_network_trustSeeds(t *testing.T) {
 
 	trustSeeds := make([]string, 0)
 	for _, r := range m["TestCitizen"] {
-		trustSeeds = append(trustSeeds, fmt.Sprintf("%s@%s", r.p2p.getID().String(), r.p2p.getNetAddress()))
+		trustSeeds = append(trustSeeds, string(r.p2p.getNetAddress()))
 	}
 	strTrustSeeds := strings.Join(trustSeeds, ",")
 	fmt.Println("strTrustSeeds: ", strTrustSeeds)

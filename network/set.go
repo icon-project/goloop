@@ -352,7 +352,7 @@ func (s *NetAddressSet) Add(a NetAddress) bool {
 	return s._add(a, "")
 }
 
-func (s *NetAddressSet) Put(a NetAddress, d string) (old string, removed NetAddress) {
+func (s *NetAddressSet) SetAndRemoveByData(a NetAddress, d string) (old string, removed NetAddress) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	od := s._set(a, d)
@@ -367,6 +367,20 @@ func (s *NetAddressSet) Put(a NetAddress, d string) (old string, removed NetAddr
 		old = od.(string)
 	}
 	return
+}
+
+func (s *NetAddressSet) RemoveData(a NetAddress) string {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	old, ok := s.m[a]
+	if ok && old != "" {
+		s.m[a] = ""
+	}
+	if old != nil {
+		return old.(string)
+	}
+	return ""
 }
 
 func (s *NetAddressSet) Contains(a NetAddress) bool {

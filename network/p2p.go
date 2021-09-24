@@ -253,6 +253,9 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		p.CloseByError(fmt.Errorf("onPeer not allowed connection"))
 		return
 	}
+	if p2p.isTrustSeed(p) {
+		p2p.trustSeeds.SetAndRemoveByData(p.DialNetAddress(), string(p.NetAddress()))
+	}
 	if dp := p2p.getPeer(p.id, false); dp != nil {
 		p2p.onEvent(p2pEventDuplicate, p)
 
@@ -312,6 +315,9 @@ func (p2p *PeerToPeer) onClose(p *Peer) {
 			}
 		}
 	}
+	if p2p.isTrustSeed(p) {
+		p2p.trustSeeds.RemoveData(p.DialNetAddress())
+	}
 }
 
 func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
@@ -339,12 +345,10 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 	isLeave = false
 	if p.hasRole(p2pRoleSeed) {
-		p2p.removeSeed(p)
-		p2p.seeds.Add(p.netAddress)
+		p2p.seeds.RemoveData(p.netAddress)
 	}
 	if p.hasRole(p2pRoleRoot) {
-		p2p.removeRoot(p)
-		p2p.roots.Add(p.netAddress)
+		p2p.roots.RemoveData(p.netAddress)
 	}
 
 	isLeave = !(p.connType == p2pConnTypeNone)
@@ -464,7 +468,7 @@ type RttMessage struct {
 }
 
 func (p2p *PeerToPeer) addSeed(p *Peer) {
-	c, o := p2p.seeds.Put(p.NetAddress(), p.ID().String())
+	c, o := p2p.seeds.SetAndRemoveByData(p.NetAddress(), p.ID().String())
 	if o != "" {
 		p2p.logger.Debugln("addSeed", "updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
 	}
@@ -476,7 +480,7 @@ func (p2p *PeerToPeer) removeSeed(p *Peer) {
 	p2p.seeds.Remove(p.NetAddress())
 }
 func (p2p *PeerToPeer) addRoot(p *Peer) {
-	c, o := p2p.roots.Put(p.NetAddress(), p.ID().String())
+	c, o := p2p.roots.SetAndRemoveByData(p.NetAddress(), p.ID().String())
 	if o != "" {
 		p2p.logger.Debugln("addRoot", "updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
 	}
@@ -661,7 +665,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		p2p.applyPeerRole(p)
 	}
 	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
-		if !p2p.trustSeeds.ContainsWithData(p.NetAddress(), p.ID().String()) {
+		if !p2p.isTrustSeed(p) {
 			p.CloseByError(fmt.Errorf("handleQueryResult invalid query, resolved role %d", rr))
 		}
 		return
@@ -1244,8 +1248,20 @@ Loop:
 			p2p.logger.Debugln("discoverRoutine", "stop")
 			break Loop
 		case <-p2p.seedTicker.C:
-			seeds := p2p.orphanages.GetBy(p2pRoleSeed, true, false)
-			if p2p.syncSeeds() {
+			r := p2p.getRole()
+			if p2p.query(r) {
+				if r.Has(p2pRoleSeed) || p2p.seeds.Len() == 0 {
+					for na, d := range p2p.trustSeeds.Map() {
+						if len(d) != 0 {
+							na = NetAddress(d)
+						}
+						if !p2p.seeds.Contains(na) &&
+							!p2p.hasNetAddresse(na) {
+							p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to trustSeed", na)
+							p2p.dial(na)
+						}
+					}
+				}
 				for _, s := range p2p.seeds.Array() {
 					if !p2p.hasNetAddresse(s) {
 						p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to p2pRoleSeed", s)
@@ -1254,10 +1270,8 @@ Loop:
 						}
 					}
 				}
-				for _, p := range seeds {
-					p2p.sendQuery(p)
-				}
 			} else {
+				seeds := p2p.orphanages.GetBy(p2pRoleSeed, true, false)
 				for _, p := range seeds {
 					if !p.hasRole(p2pRoleRoot) {
 						p2p.logger.Debugln("discoverRoutine", "seedTicker", "no need outgoing p2pRoleSeed connection")
@@ -1271,10 +1285,10 @@ Loop:
 				p2p.discoverFriends()
 				p2p.discoverOthers()
 			} else {
-				pr := PeerRoleFlag(p2pRoleSeed)
+				rr := PeerRoleFlag(p2pRoleSeed)
 				s := p2p.seeds
 				if r == p2pRoleSeed {
-					pr = PeerRoleFlag(p2pRoleRoot)
+					rr = PeerRoleFlag(p2pRoleRoot)
 					s = p2p.roots
 				}
 
@@ -1285,12 +1299,12 @@ Loop:
 					}
 				}
 
-				p2p.discoverParent(pr)
+				p2p.discoverParent(rr)
 				if p2p.getParent() != nil {
-					p2p.discoverUncle(pr)
+					p2p.discoverUncle(rr)
 				}
 
-				n := DefaultUncleLimit + 1 - p2p.uncles.Len() - p2p.pre.Len()
+				n := p2p.getConnectionLimit(p2pConnTypeUncle) + 1 - p2p.uncles.Len() - p2p.pre.Len()
 				if p2p.getParent() != nil {
 					n--
 				}
@@ -1301,7 +1315,7 @@ Loop:
 						break NetAddressSetLoop
 					}
 					if !p2p.hasNetAddresseAndIncomming(na, false) {
-						p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", pr, na)
+						p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", rr, na)
 						if err := p2p.dial(na); err == nil {
 							dialed++
 						}
@@ -1315,53 +1329,42 @@ Loop:
 	}
 }
 
-func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
-	role := p2p.getRole()
-
-	//check trustSeeds
-	if role.Has(p2pRoleSeed) {
-		for _, ts := range p2p.trustSeeds.Array() {
-			if !p2p.seeds.Contains(ts) &&
-				!p2p.orphanages.HasNetAddresse(ts) {
-				p2p.dial(ts)
-			}
-		}
-	} else {
-		if p2p.seeds.Len() == 0 {
-			p2p.seeds.Merge(p2p.trustSeeds.Array()...)
-		}
-	}
-
-	if role.Has(p2pRoleRoot) {
-		numOfFailureNode := (p2p.allowedRoots.Len() - 1) / 3
-		if (2*numOfFailureNode) > p2p.friends.Len() || ((p2p.children.Len() + p2p.nephews.Len()) < 1) {
-			connectAndQuery = true
-		}
+func (p2p *PeerToPeer) query(r PeerRoleFlag) (isRequiredSeed bool) {
+	ps := make([]*Peer, 0)
+	if r.Has(p2pRoleRoot) {
 		for _, p := range p2p.friends.Array() {
 			if !p.incomming {
-				p2p.sendQuery(p)
+				ps = append(ps, p)
 			}
 		}
+		numOfFailureNode := (p2p.allowedRoots.Len() - 1) / 3
+		isRequiredSeed = (2*numOfFailureNode) > p2p.friends.Len() || ((p2p.children.Len() + p2p.nephews.Len()) < 1)
 	} else {
-		parent := p2p.getParent()
-		if parent == nil || p2p.uncles.Len() < DefaultUncleLimit {
-			connectAndQuery = true
-		}
-		if parent != nil {
-			p2p.sendQuery(parent)
+		if p := p2p.getParent(); p != nil {
+			ps = append(ps, p)
 		}
 		for _, p := range p2p.uncles.Array() {
-			p2p.sendQuery(p)
+			ps = append(ps, p)
 		}
-
-		if role == p2pRoleSeed {
+		if r == p2pRoleSeed {
 			roots := p2p.orphanages.GetBy(p2pRoleRoot, true, false)
 			for _, p := range roots {
-				p2p.sendQuery(p)
+				ps = append(ps, p)
 			}
 		}
+		isRequiredSeed = p2p.getParent() == nil || p2p.uncles.Len() < p2p.getConnectionLimit(p2pConnTypeUncle)
 	}
-	return
+
+	if isRequiredSeed {
+		seeds := p2p.orphanages.GetBy(p2pRoleSeed, true, false)
+		for _, p := range seeds {
+			ps = append(ps, p)
+		}
+	}
+	for _, p := range ps {
+		p2p.sendQuery(p)
+	}
+	return isRequiredSeed
 }
 
 func (p2p *PeerToPeer) discoverFriends() {
@@ -1417,7 +1420,7 @@ func (p2p *PeerToPeer) discoverOthers() {
 }
 
 func (p2p *PeerToPeer) isTrustSeed(p *Peer) bool {
-	return !p.incomming && p2p.trustSeeds.ContainsWithData(p.NetAddress(), p.ID().String())
+	return !p.incomming && p2p.trustSeeds.Contains(p.DialNetAddress())
 }
 
 func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
@@ -1461,12 +1464,13 @@ func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
 }
 
 func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag) {
-	if p2p.uncles.Len() >= DefaultUncleLimit {
+	limit := p2p.getConnectionLimit(p2pConnTypeUncle)
+	if p2p.uncles.Len() >= limit {
 		p2p.logger.Traceln("discoverUncle", "nothing to do")
 		return
 	}
 
-	n := DefaultUncleLimit - p2p.uncles.Len() - p2p.pre.Len()
+	n := limit - p2p.uncles.Len() - p2p.pre.Len()
 	if n < 1 {
 		p2p.logger.Traceln("discoverUncle", "waiting P2PConnectionResponse")
 		return
@@ -1561,6 +1565,10 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	p.connType = connType
 	switch connType {
 	case p2pConnTypeParent:
+		if p2p.getParent() != nil {
+			p.connType = pre
+			return
+		}
 		p2p.setParent(p)
 		p2p.reject.Clear()
 		p2p.logger.Debugln("updatePeerConnectionType", "complete", strPeerConnectionType[connType])
@@ -1694,7 +1702,7 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	switch resp.ReqConnType {
 	case p2pConnTypeParent:
 		if p2p.getParent() != nil {
-			p2p.logger.Traceln("handleP2PConnectionResponse already p2pConnTypeParent", resp, p)
+			p2p.logger.Debugln("handleP2PConnectionResponse already p2pConnTypeParent", resp, p)
 			return
 		}
 		if resp.ConnType != p2pConnTypeChildren {
@@ -1711,8 +1719,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 			p.CloseByError(fmt.Errorf("handleP2PConnectionResponse p2pConnTypeParent wrong connType:%v", p.connType))
 		}
 	case p2pConnTypeUncle:
-		if p2p.uncles.Len() >= DefaultUncleLimit {
-			p2p.logger.Traceln("handleP2PConnectionResponse already p2pConnTypeUncle", resp, p)
+		if p2p.uncles.Len() >= p2p.getConnectionLimit(p2pConnTypeUncle) {
+			p2p.logger.Debugln("handleP2PConnectionResponse already p2pConnTypeUncle", resp, p)
 			return
 		}
 		if resp.ConnType != p2pConnTypeNephew {

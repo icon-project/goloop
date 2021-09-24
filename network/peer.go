@@ -21,6 +21,7 @@ const isLoggingPacket = false
 type Peer struct {
 	id         module.PeerID
 	netAddress NetAddress
+	dial       NetAddress
 	secureKey  *secureKey
 	//
 	conn         net.Conn
@@ -250,6 +251,10 @@ func (p *Peer) ID() module.PeerID {
 
 func (p *Peer) NetAddress() NetAddress {
 	return p.netAddress
+}
+
+func (p *Peer) DialNetAddress() NetAddress {
+	return p.dial
 }
 
 func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
