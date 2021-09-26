@@ -648,6 +648,17 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 	return nil
 }
 
+func (es *ExtensionStateImpl) GetBond(address module.Address) (map[string]interface{}, error) {
+	account := es.State.GetAccountSnapshot(address)
+	if account == nil {
+		account = icstate.GetEmptyAccountSnapshot()
+	}
+	return map[string]interface{}{
+		"bonds":   account.GetBondsInJSON(),
+		"unbonds": account.GetUnbondsInJSON(),
+	}, nil
+}
+
 func (es *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
 	votes, err := deltaToVotes(delta)
 	if err != nil {
@@ -825,7 +836,7 @@ func (es *ExtensionStateImpl) checkCalculationDone(calculator *Calculator) error
 		return err
 	}
 
-	if err := calculator.WaitResult(rcInfo.StartHeight()) ; err != nil {
+	if err := calculator.WaitResult(rcInfo.StartHeight()); err != nil {
 		return err
 	}
 	return nil

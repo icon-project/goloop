@@ -362,14 +362,7 @@ func (s *chainScore) Ex_getBond(address module.Address) (map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
-	account := es.State.GetAccountSnapshot(address)
-	if account == nil {
-		account = icstate.GetEmptyAccountSnapshot()
-	}
-	data := make(map[string]interface{})
-	data["bonds"] = account.GetBondsInJSON()
-	data["unbonds"] = account.GetUnbondsInJSON()
-	return data, nil
+	return es.GetBond(address)
 }
 
 func (s *chainScore) Ex_setBonderList(bonderList []interface{}) error {
