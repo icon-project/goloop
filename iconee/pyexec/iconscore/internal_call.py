@@ -212,3 +212,8 @@ class ChainScore(object):
             context: 'IconScoreContext', _from: 'Address', iprep: int, icps: int, irelay: int, ivoter: int):
         return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
                                          'setRewardFundAllocation', tuple([iprep, icps, irelay, ivoter]))
+
+    @staticmethod
+    def setStepCost(context: 'IconScoreContext', _from: 'Address', _type: str, cost: int):
+        return InternalCall.message_call(context, _from, ZERO_SCORE_ADDRESS, 0,
+                                         'setStepCost', tuple([_type, cost]))
