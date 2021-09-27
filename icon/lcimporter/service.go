@@ -70,8 +70,16 @@ func (s *BasicService) NewInitTransition(
 		}
 		s.cm = cm
 	}
-	return service.NewInitTransition(s.Chain.Database(), result, vl, s.cm, s.pm,
+	tr, err := service.NewInitTransition(s.Chain.Database(), result, vl, s.cm, s.pm,
 		s.Chain, logger, s.Plt, service.NewTimestampChecker())
+	if err != nil {
+		return nil, err
+	}
+	err = service.FinalizeTransition(tr, module.FinalizeResult, true)
+	if err != nil {
+		return nil, err
+	}
+	return tr, nil
 }
 
 func (s *BasicService) NewTransition(
