@@ -35,6 +35,7 @@ import (
 
 const (
 	TransactionsPerBlock = 3_000
+	TransactionsToStore  = 4_000
 )
 
 const (
@@ -66,6 +67,7 @@ type Executor struct {
 	waiter *txWaiter
 
 	consumer consumeID
+	pending  *sync.Cond
 	bc       IBlockConverter
 
 	acc hexary.Accumulator
@@ -234,6 +236,13 @@ func (e *Executor) FinalizeTransactions(to int64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
+	defer func() {
+		if e.pending != nil && e.txs.Len() < TransactionsToStore {
+			e.pending.Signal()
+			e.pending = nil
+		}
+	}()
+
 	if e.start == terminationMark {
 		return errors.InvalidStateError.New("AlreadyTerminated")
 	}
@@ -286,6 +295,10 @@ func (e *Executor) rebaseInLock(from, to int64, txs []*BlockTransaction) error {
 	e.start = from
 	e.end = from
 	e.consumer = new(int)
+	if e.pending != nil {
+		e.pending.Signal()
+		e.pending = nil
+	}
 	go e.consumeBlocks(e.consumer, chn)
 	return nil
 }
@@ -315,6 +328,11 @@ func (e *Executor) SyncTransactions(txs []*BlockTransaction) error {
 func (e *Executor) addTransaction(id consumeID, tx *BlockTransaction) bool {
 	e.lock.Lock()
 	defer e.lock.Unlock()
+
+	if e.consumer == id && e.txs.Len() >= TransactionsToStore {
+		e.pending = sync.NewCond(&e.lock)
+		e.pending.Wait()
+	}
 
 	if e.consumer == id && e.end == tx.Height {
 		e.log.Tracef("addTransaction height=%d", tx.Height)
