@@ -25,6 +25,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -68,6 +69,7 @@ type Calculator struct {
 	log log.Logger
 
 	startHeight int64
+	database    db.Database
 	back        *icstage.Snapshot
 	base        *icreward.Snapshot
 	global      icstage.Global
@@ -134,6 +136,11 @@ func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	// it's already interrupted.
+	if c.err != nil {
+		return
+	}
+
 	c.result = result
 	c.err = err
 	for _, cond := range c.waiters {
@@ -143,7 +150,16 @@ func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
 }
 
 func (c *Calculator) Stop() {
-	// TODO stop calculation
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.err == nil && c.result == nil {
+		c.err = errors.ErrInterrupted
+		for _, w := range c.waiters {
+			w.Signal()
+		}
+		c.waiters = nil
+	}
 }
 
 func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Logger) *Calculator {
@@ -151,13 +167,14 @@ func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Log
 	back := essi.Back2()
 	reward := essi.Reward()
 	if c != nil {
-		if bytes.Equal(c.back.Bytes(), back.Bytes()) &&
+		if c.database == essi.database &&
+			bytes.Equal(c.back.Bytes(), back.Bytes()) &&
 			bytes.Equal(c.base.Bytes(), reward.Bytes()) {
 			return c
 		}
 		c.Stop()
 	}
-	return NewCalculator(back, reward, logger)
+	return NewCalculator(essi.database, back, reward, logger)
 }
 
 func (c *Calculator) run() (err error) {
@@ -1043,7 +1060,7 @@ func (c *Calculator) postWork() (err error) {
 
 const InitBlockHeight = -1
 
-func NewCalculator(back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
+func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
 	var err error
 	var global icstage.Global
 	var startHeight int64
@@ -1060,6 +1077,7 @@ func NewCalculator(back *icstage.Snapshot, reward *icreward.Snapshot, logger log
 		startHeight = global.GetStartHeight()
 	}
 	c := &Calculator{
+		database:    database,
 		back:        back,
 		base:        reward,
 		temp:        icreward.NewStateFromSnapshot(reward),
