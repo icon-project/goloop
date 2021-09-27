@@ -9,7 +9,11 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	if sm := c.ServiceManager(); sm == nil {
 		return nil
 	} else {
-		mgr = sm.(*manager)
+		if impl, ok := sm.(*manager); ok {
+			mgr = impl
+		} else {
+			return nil
+		}
 	}
 	m := make(map[string]interface{})
 	m["normalTxPool"] = inspectTxPool(mgr.tm.normalTxPool)
