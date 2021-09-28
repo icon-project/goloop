@@ -514,7 +514,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	p.rtt.Stop()
 	df := rm.Rtt - p.rtt.last
 	if df > DefaultRttAccuracy {
-		a.logger.Infoln("handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
+		a.logger.Debugln("handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
 
 	m := &SignatureResponse{
@@ -548,7 +548,7 @@ func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 
 	df := rm.Rtt - p.rtt.last
 	if df > DefaultRttAccuracy {
-		a.logger.Infoln("handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
+		a.logger.Debugln("handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
 
 	if rm.Error != "" {

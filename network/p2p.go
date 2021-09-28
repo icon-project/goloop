@@ -745,7 +745,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 
 	df := rm.Last - p.rtt.last
 	if df > DefaultRttAccuracy {
-		p2p.logger.Infoln("handleRttRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
+		p2p.logger.Debugln("handleRttRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
@@ -770,7 +770,7 @@ func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 
 	df := rm.Last - p.rtt.last
 	if df > DefaultRttAccuracy {
-		p2p.logger.Infoln("handleRttResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
+		p2p.logger.Debugln("handleRttResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
 	}
 }
 
