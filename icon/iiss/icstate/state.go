@@ -521,6 +521,10 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 
+	if status == Unregistered && ps.Bonded().Sign() > 0 {
+		return errors.Errorf("A P-Rep that has a bond can't unregister")
+	}
+
 	oldStatus := ps.Status()
 	oldGrade, err := ps.DisableAs(status)
 	if err != nil {
