@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/icon/icmodule"
 	"math/big"
 	"testing"
 
@@ -29,8 +30,8 @@ import (
 )
 
 func getTestAccount() *AccountState {
-	assTest := &AccountState {
-		accountData: accountData {
+	assTest := &AccountState{
+		accountData: accountData{
 			stake: big.NewInt(100),
 			unstakes: []*Unstake{
 				NewUnstake(big.NewInt(5), 10),
@@ -296,4 +297,83 @@ func equalTimerJobSlice(expected []TimerJobInfo, actual []TimerJobInfo) bool {
 		}
 	}
 	return true
+}
+
+func TestAccountState_ReversedExpireHeight(t *testing.T) {
+	slotMax := 3
+	revision := icmodule.RevisionICON2R0
+	a := &AccountState{}
+	eh1 := int64(1)
+	eh2 := int64(10)
+	eh3 := int64(4)
+	eh4 := int64(5)
+	v1 := big.NewInt(10)
+	v2 := big.NewInt(15)
+	v3 := big.NewInt(20)
+	v4 := big.NewInt(30)
+	a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+
+	unstakes := a.unstakes
+	// [(v1, eh1), (v3, eh3), (v2, eh2)]
+	assert.Equal(t, v1, unstakes[0].Value)
+	assert.Equal(t, v3, unstakes[1].Value)
+	assert.Equal(t, v2, unstakes[2].Value)
+	assert.Equal(t, eh1, unstakes[0].Expire)
+	assert.Equal(t, eh3, unstakes[1].Expire)
+	assert.Equal(t, eh2, unstakes[2].Expire)
+
+	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	unstakes = a.unstakes
+	// [(v1, eh1), (v3, eh3), (v2 + v4, eh2)]
+	assert.Equal(t, v1, unstakes[0].Value)
+	assert.Equal(t, v3, unstakes[1].Value)
+	assert.Equal(t, new(big.Int).Add(v2, v4), unstakes[2].Value)
+	assert.Equal(t, eh1, unstakes[0].Expire)
+	assert.Equal(t, eh3, unstakes[1].Expire)
+	assert.Equal(t, eh2, unstakes[2].Expire)
+}
+
+func TestAccountState_OverlappedExpireHeight(t *testing.T) {
+	slotMax := 3
+	revision := icmodule.RevisionICON2R0
+	a := &AccountState{}
+	eh1 := int64(1)
+	eh2 := int64(10)
+	eh3 := eh2
+	eh4 := int64(5)
+	v1 := big.NewInt(10)
+	v2 := big.NewInt(15)
+	v3 := big.NewInt(20)
+	v4 := big.NewInt(30)
+	a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+
+	unstakes := a.unstakes
+	// [(v1, eh1), (v2, eh2), (v3, eh3 = eh2)]
+	assert.Equal(t, v1, unstakes[0].Value)
+	assert.Equal(t, v2, unstakes[1].Value)
+	assert.Equal(t, v3, unstakes[2].Value)
+	assert.Equal(t, eh1, unstakes[0].Expire)
+	assert.Equal(t, eh2, unstakes[1].Expire)
+	assert.Equal(t, eh3, unstakes[2].Expire)
+
+	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	unstakes = a.unstakes
+	// [(v1, eh1), (v2, eh2), (v3 + v4, eh3 = eh2)]
+	assert.Equal(t, v1, unstakes[0].Value)
+	assert.Equal(t, v2, unstakes[1].Value)
+	assert.Equal(t, new(big.Int).Add(v3, v4), unstakes[2].Value)
+	assert.Equal(t, eh1, unstakes[0].Expire)
+	assert.Equal(t, eh2, unstakes[1].Expire)
+	assert.Equal(t, eh3, unstakes[2].Expire)
+
+	a.RemoveUnstake(eh2)
+	unstakes = a.unstakes
+	// [(v1, eh1)]
+	assert.Equal(t, 1, len(unstakes))
+	assert.Equal(t, v1, unstakes[0].Value)
+	assert.Equal(t, eh1, unstakes[0].Expire)
 }

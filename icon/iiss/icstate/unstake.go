@@ -162,13 +162,17 @@ func (us *Unstakes) increaseUnstake(v *big.Int, eh int64, sm, revision int) ([]T
 		last := (*us)[lastIndex]
 		newValue := new(big.Int).Add(last.GetValue(), v)
 		newHeight := eh
-		if revision < icmodule.RevisionMultipleUnstakes || eh > last.GetExpire() {
+		lastExpire := last.GetExpire()
+		if revision < icmodule.RevisionMultipleUnstakes || eh > lastExpire {
 			modExpireHeight = true
 		}
 		if modExpireHeight {
-			tl = append(tl, TimerJobInfo{JobTypeRemove, last.GetExpire()})
+			tl = append(tl, TimerJobInfo{JobTypeRemove, lastExpire})
 			tl = append(tl, TimerJobInfo{JobTypeAdd, eh})
 			newHeight = eh
+		}
+		if newHeight < lastExpire {
+			newHeight = lastExpire
 		}
 		(*us)[lastIndex] = NewUnstake(newValue, newHeight)
 	} else {
