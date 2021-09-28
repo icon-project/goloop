@@ -680,14 +680,17 @@ func (es *ExtensionStateImpl) SetBonderList(from module.Address, bl icstate.Bond
 	if pb == nil {
 		return scoreresult.InvalidParameterError.Errorf("PRep not found: %v", from)
 	}
+	ps := es.State.GetPRepStatusByOwner(from, false)
+	if ps == nil || !ps.IsActive() {
+		return scoreresult.InvalidParameterError.Errorf("Inactive PRep can't set bonder list: %v", from)
+	}
 
 	var account *icstate.AccountState
 	for _, old := range pb.BonderList() {
 		if !bl.Contains(old) {
 			account = es.State.GetAccountState(old)
-			if len(account.Bonds()) > 0 || len(account.Unbonds()) > 0 {
-				return scoreresult.InvalidParameterError.Errorf("Bonding/Unbonding exist. bonds : %d, unbonds : %d",
-					len(account.Bonds()), len(account.Unbonds()))
+			if account.Bonds().Contains(from) || account.Unbonds().Contains(from) {
+				return scoreresult.InvalidParameterError.Errorf("Can't remove bonder(%s) who bonded to you", old)
 			}
 		}
 	}

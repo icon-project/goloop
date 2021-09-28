@@ -130,6 +130,15 @@ func (ul Unbonds) Equal(ul2 Unbonds) bool {
 	return true
 }
 
+func (ul Unbonds) Contains(addr module.Address) bool {
+	for _, u := range ul {
+		if u.Address().Equal(addr) {
+			return true
+		}
+	}
+	return false
+}
+
 func (ul Unbonds) Clone() Unbonds {
 	if ul == nil {
 		return nil

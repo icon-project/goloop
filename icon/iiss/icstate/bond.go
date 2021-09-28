@@ -125,6 +125,15 @@ func (bs *Bonds) Equal(bl2 Bonds) bool {
 	return true
 }
 
+func (bs Bonds) Contains(addr module.Address) bool {
+	for _, b := range bs {
+		if b.Address.Equal(addr) {
+			return true
+		}
+	}
+	return false
+}
+
 func (bs Bonds) Delta(bs2 Bonds) map[string]*big.Int {
 	delta := make(map[string]*big.Int)
 
