@@ -140,7 +140,8 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 		return nil
 	}
 	var totalFee *big.Int
-	if revision < icmodule.RevisionStopICON1Support {
+	if revision < icmodule.RevisionEnableIISS3 {
+		// Use virtual fee instead of total fee for IISS 2.x
 		totalFee = er.VirtualFee()
 	} else {
 		totalFee = er.TotalFee()

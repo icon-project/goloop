@@ -957,7 +957,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 
 func (es *ExtensionStateImpl) setIrepToTerm(revision int, preps icstate.PRepSet, term *icstate.TermState) {
 	var irep *big.Int
-	if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionDisableIRep {
+	if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionEnableIISS3 {
 		// disable IRep
 		irep = new(big.Int)
 	} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
@@ -971,7 +971,7 @@ func (es *ExtensionStateImpl) setIrepToTerm(revision int, preps icstate.PRepSet,
 
 func (es *ExtensionStateImpl) setRrepToTerm(revision int, totalSupply *big.Int, term *icstate.TermState) {
 	var rrep *big.Int
-	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionDisableRRep {
+	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionEnableIISS3 {
 		// disable Rrep
 		rrep = new(big.Int)
 	} else {
@@ -1391,11 +1391,11 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	}
 
 	// write claim data to front
-	// IISS 2.0 : do not burn iScore < 1000
-	// IISS 3.1 : burn iScore < 1000. To burn remains, set full iScore
+	// IISS 2.x : do not burn iScore < 1000
+	// IISS 3.x : burn iScore < 1000. To burn remains, set full iScore
 	var ic *icstage.IScoreClaim
 	revision := cc.Revision().Value()
-	if revision < icmodule.RevisionFixClaimIScore {
+	if revision < icmodule.RevisionEnableIISS3 {
 		ic, err = es.Front.AddIScoreClaim(from, claim)
 	} else {
 		ic, err = es.Front.AddIScoreClaim(from, iScore)

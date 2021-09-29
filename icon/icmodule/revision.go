@@ -72,8 +72,6 @@ const (
 	RevisionFixRLPBug            = RevisionICON2R0
 	RevisionResetPenaltyMask     = RevisionICON2R0
 	RevisionEnableBondAPIs       = RevisionICON2R0
-	RevisionDisableIRep          = RevisionICON2R0
-	RevisionDisableRRep          = RevisionICON2R0
 	RevisionFixIllegalDelegation = RevisionICON2R0
 	RevisionStopICON1Support     = RevisionICON2R0
 
