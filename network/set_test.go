@@ -35,7 +35,7 @@ func Test_set_PeerSet(t *testing.T) {
 	v1 := generatePeer()
 	v2 := generatePeer()
 	v2_1 := &Peer{id: v2.id, netAddress: v2.netAddress}
-	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, incomming: true}
+	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, in: true}
 	v3 := generatePeer()
 
 	assert.True(t, s.IsEmpty(), "true")
@@ -55,8 +55,8 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.True(t, s.Contains(v1), "true")
 	assert.False(t, s.Contains(v3), "false")
 
-	assert.True(t, s.HasNetAddresse(v2.netAddress), "true")
-	assert.False(t, s.HasNetAddresse(v3.netAddress), "false")
+	assert.True(t, s.HasNetAddress(v2.netAddress), "true")
+	assert.False(t, s.HasNetAddress(v3.netAddress), "false")
 	t.Log(s.NetAddresses())
 
 
@@ -95,31 +95,36 @@ func Test_set_NetAddressSet(t *testing.T) {
 	// t.Log(s.Map())
 
 	//When Peer connected
-	o, r := s.PutByPeer(v1)
+	o, r := s.SetAndRemoveByData(v1.NetAddress(), v1.ID().String())
 	assert.EqualValues(t, []interface{}{"", NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
-	assert.True(t, s.Map()[v1.netAddress] == v1.id.String(), v1.id.String())
+	assert.True(t, s.Map()[v1.NetAddress()] == v1.id.String(), v1.id.String())
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
 	//Update NetAddress, NetAddressSet.PutByPeer returns old NetAddress
-	o, r = s.PutByPeer(v1_1)
-	assert.EqualValues(t, []interface{}{"", v1.netAddress}, []interface{}{o, r}, "empty NetAddress")
-	assert.Equal(t, v1_1.id.String(), s.Map()[v1_1.netAddress], v1_1.id.String())
+	o, r = s.SetAndRemoveByData(v1_1.NetAddress(), v1_1.ID().String())
+	assert.EqualValues(t, []interface{}{"", v1.NetAddress()}, []interface{}{o, r}, "empty NetAddress")
+	assert.Equal(t, v1_1.ID().String(), s.Map()[v1_1.NetAddress()],"equal data")
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
 	//When Peer connected with same NetAddress, NetAddressSet.PutByPeer returns conflict PeerID
-	o, r = s.PutByPeer(v2)
+	o, r = s.SetAndRemoveByData(v2.NetAddress(), v2.ID().String())
 	assert.EqualValues(t, []interface{}{v1_1.id.String(), NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
-	assert.True(t, s.RemoveByPeer(v2), "true")
-	assert.False(t, s.ContainsByPeer(v2), "false")
+	assert.True(t, s.Remove(v2.NetAddress()), "true")
+	assert.False(t, s.ContainsWithData(v2.NetAddress(), v2.ID().String()), "false")
 	assert.Equal(t, 0, s.Len(), "0")
 	t.Log(s.Map())
 	//
 	//v2_1 := &Peer{id: v2.id, netAddress: v1.netAddress}
+
+	na1 := NetAddress("localhost:1234")
+	na2 := NetAddress("localhost:1234")
+	s.Add(na1)
+	assert.True(t, s.Contains(na2))
 }
 
 func Test_set_PeerIDSet(t *testing.T) {

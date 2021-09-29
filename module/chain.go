@@ -29,6 +29,8 @@ type Chain interface {
 	DefaultWaitTimeout() time.Duration
 	MaxWaitTimeout() time.Duration
 	TransactionTimeout() time.Duration
+	ChildrenLimit() int
+	NephewsLimit() int
 	Genesis() []byte
 	GenesisStorage() GenesisStorage
 	CommitVoteSetDecoder() CommitVoteSetDecoder

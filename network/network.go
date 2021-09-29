@@ -63,6 +63,9 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 	m.SetInitialRoles(roles...)
 	m.SetTrustSeeds(trustSeeds)
 
+	m.p2p.setConnectionLimit(p2pConnTypeChildren, c.ChildrenLimit())
+	m.p2p.setConnectionLimit(p2pConnTypeNephew, c.NephewsLimit())
+
 	m.logger.Debugln("NewManager", channel)
 	return m
 }
@@ -327,17 +330,13 @@ func (m *manager) getRoleByDest(dest byte) module.Role {
 }
 
 func (m *manager) SetTrustSeeds(seeds string) {
+	m.p2p.trustSeeds.Clear()
 	ss := strings.Split(seeds, ",")
-	nas := make([]NetAddress, 0)
 	for _, s := range ss {
-		if s != "" {
-			na := NetAddress(s)
-			if na != m.p2p.getNetAddress() {
-				nas = append(nas, na)
-			}
+		if na := NetAddress(s); len(na) != 0 && na != m.p2p.getNetAddress() {
+			m.p2p.trustSeeds.Add(NetAddress(s))
 		}
 	}
-	m.p2p.trustSeeds.ClearAndAdd(nas...)
 }
 
 func (m *manager) SetInitialRoles(roles ...module.Role) {

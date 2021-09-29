@@ -17,6 +17,8 @@ const (
 	ConfigDefaultPatchTxPoolSize  = 1000
 	ConfigDefaultMaxBlockTxBytes  = 1024 * 1024
 	ConfigDefaultTxTimeout        = 5000 * time.Millisecond
+	ConfigDefaultChildrenLimit    = 10
+	ConfigDefaultNephewLimit      = 10
 )
 
 const (
@@ -42,6 +44,8 @@ type Config struct {
 	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
 	NodeCache        string `json:"node_cache,omitempty"`
 	AutoStart        bool   `json:"auto_start,omitempty"`
+	ChildrenLimit    *int   `json:"children_limit,omitempty"`
+	NephewsLimit     *int   `json:"nephews_limit,omitempty"`
 
 	// runtime
 	Channel        string `json:"channel"`

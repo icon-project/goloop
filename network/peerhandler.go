@@ -1,15 +1,22 @@
 package network
 
 import (
+	"crypto/elliptic"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+)
+
+var (
+	p2pProtoChanJoinReq  = module.ProtocolInfo(0x0500)
+	p2pProtoChanJoinResp = module.ProtocolInfo(0x0600)
 )
 
 //Negotiation map<channel, map<protocolHandler.name, {protocol, []subProtocol}>>
@@ -28,7 +35,7 @@ func newChannelNegotiator(netAddress NetAddress, l log.Logger) *ChannelNegotiato
 
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	cn.logger.Traceln("onPeer", p)
-	if !p.incomming {
+	if !p.in {
 		cn.sendJoinRequest(p)
 	}
 }
@@ -42,11 +49,11 @@ func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	//TODO negotiator.message_dump
 	//cn.logger.Traceln("onPacket", pkt, p)
 	switch pkt.protocol {
-	case PROTO_CONTOL:
+	case p2pProtoControl:
 		switch pkt.subProtocol {
-		case PROTO_CHAN_JOIN_REQ:
+		case p2pProtoChanJoinReq:
 			cn.handleJoinRequest(pkt, p)
-		case PROTO_CHAN_JOIN_RESP:
+		case p2pProtoChanJoinResp:
 			cn.handleJoinResponse(pkt, p)
 		default:
 			p.CloseByError(ErrNotRegisteredProtocol)
@@ -66,7 +73,7 @@ type JoinResponse struct {
 
 func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
 	m := &JoinRequest{Channel: p.channel, Addr: cn.netAddress}
-	cn.sendMessage(PROTO_CHAN_JOIN_REQ, m, p)
+	cn.sendMessage(p2pProtoChanJoinReq, m, p)
 	cn.logger.Traceln("sendJoinRequest", m, p)
 }
 
@@ -78,7 +85,7 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 	p.netAddress = rm.Addr
 
 	m := &JoinResponse{Channel: p.channel, Addr: cn.netAddress}
-	cn.sendMessage(PROTO_CHAN_JOIN_RESP, m, p)
+	cn.sendMessage(p2pProtoChanJoinResp, m, p)
 
 	cn.nextOnPeer(p)
 }
@@ -92,6 +99,26 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 
 	cn.nextOnPeer(p)
 }
+
+var (
+	p2pProtoAuthKeyReq   = module.ProtocolInfo(0x0100)
+	p2pProtoAuthKeyResp  = module.ProtocolInfo(0x0200)
+	p2pProtoAuthSignReq  = module.ProtocolInfo(0x0300)
+	p2pProtoAuthSignResp = module.ProtocolInfo(0x0400)
+
+	DefaultSecureEllipticCurve = elliptic.P256()
+	DefaultSecureSuites        = []SecureSuite{
+		SecureSuiteNone,
+		SecureSuiteTls,
+		SecureSuiteEcdhe,
+	}
+	DefaultSecureAeadSuites = []SecureAeadSuite{
+		SecureAeadSuiteChaCha20Poly1305,
+		SecureAeadSuiteAes128Gcm,
+		SecureAeadSuiteAes256Gcm,
+	}
+	DefaultSecureKeyLogWriter io.Writer
+)
 
 type Authenticator struct {
 	*peerHandler
@@ -121,7 +148,7 @@ func newAuthenticator(w module.Wallet, l log.Logger) *Authenticator {
 //callback from PeerHandler.nextOnPeer
 func (a *Authenticator) onPeer(p *Peer) {
 	a.logger.Traceln("onPeer", p)
-	if !p.incomming {
+	if !p.in {
 		a.sendSecureRequest(p)
 	}
 }
@@ -136,15 +163,15 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 	//TODO authenticator.message_dump
 	//a.logger.Traceln("onPacket", pkt, p)
 	switch pkt.protocol {
-	case PROTO_CONTOL:
+	case p2pProtoControl:
 		switch pkt.subProtocol {
-		case PROTO_AUTH_KEY_REQ:
+		case p2pProtoAuthKeyReq:
 			a.handleSecureRequest(pkt, p)
-		case PROTO_AUTH_KEY_RESP:
+		case p2pProtoAuthKeyResp:
 			a.handleSecureResponse(pkt, p)
-		case PROTO_AUTH_SIGN_REQ:
+		case p2pProtoAuthSignReq:
 			a.handleSignatureRequest(pkt, p)
-		case PROTO_AUTH_SIGN_RESP:
+		case p2pProtoAuthSignResp:
 			a.handleSignatureResponse(pkt, p)
 		default:
 			p.CloseByError(ErrNotRegisteredProtocol)
@@ -277,7 +304,7 @@ func (a *Authenticator) sendSecureRequest(p *Peer) {
 	}
 
 	p.rtt.Start()
-	a.sendMessage(PROTO_AUTH_KEY_REQ, m, p)
+	a.sendMessage(p2pProtoAuthKeyReq, m, p)
 	a.logger.Traceln("sendSecureRequest", m, p)
 }
 
@@ -341,7 +368,7 @@ SecureAeadLoop:
 	}
 
 	p.rtt.Start()
-	a.sendMessage(PROTO_AUTH_KEY_RESP, m, p)
+	a.sendMessage(p2pProtoAuthKeyResp, m, p)
 	if m.SecureError != SecureErrorNone {
 		err := fmt.Errorf("handleSecureRequest error[%v]", m.SecureError)
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "SecureError", err)
@@ -349,7 +376,7 @@ SecureAeadLoop:
 		return
 	}
 
-	err := p.secureKey.setup(m.SecureAeadSuite, rm.SecureParam, p.incomming, a.secureKeyNum)
+	err := p.secureKey.setup(m.SecureAeadSuite, rm.SecureParam, p.in, a.secureKeyNum)
 	if err != nil {
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
 		p.CloseByError(err)
@@ -441,7 +468,7 @@ SecureAeadLoop:
 		return
 	}
 
-	err := p.secureKey.setup(rm.SecureAeadSuite, rm.SecureParam, p.incomming, a.secureKeyNum)
+	err := p.secureKey.setup(rm.SecureAeadSuite, rm.SecureParam, p.in, a.secureKeyNum)
 	if err != nil {
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
 		p.CloseByError(err)
@@ -477,7 +504,7 @@ SecureAeadLoop:
 		Signature: a.Signature(p.secureKey.extra),
 		Rtt:       p.rtt.last,
 	}
-	a.sendMessage(PROTO_AUTH_SIGN_REQ, m, p)
+	a.sendMessage(p2pProtoAuthSignReq, m, p)
 }
 
 func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
@@ -487,7 +514,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	p.rtt.Stop()
 	df := rm.Rtt - p.rtt.last
 	if df > DefaultRttAccuracy {
-		a.logger.Infoln("handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
+		a.logger.Debugln("handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
 
 	m := &SignatureResponse{
@@ -503,7 +530,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 		m = &SignatureResponse{Error: "selfAddress"}
 	}
 	p.id = id
-	a.sendMessage(PROTO_AUTH_SIGN_RESP, m, p)
+	a.sendMessage(p2pProtoAuthSignResp, m, p)
 
 	if m.Error != "" {
 		err := fmt.Errorf("handleSignatureRequest error[%v]", m.Error)
@@ -521,7 +548,7 @@ func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 
 	df := rm.Rtt - p.rtt.last
 	if df > DefaultRttAccuracy {
-		a.logger.Infoln("handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
+		a.logger.Debugln("handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
 
 	if rm.Error != "" {

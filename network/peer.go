@@ -21,6 +21,7 @@ const isLoggingPacket = false
 type Peer struct {
 	id         module.PeerID
 	netAddress NetAddress
+	dial       NetAddress
 	secureKey  *secureKey
 	//
 	conn         net.Conn
@@ -41,15 +42,15 @@ type Peer struct {
 	mtx          sync.Mutex
 	once         sync.Once
 	//
-	incomming bool
-	channel   string
-	rtt       PeerRTT
-	connType  PeerConnectionType
-	role      PeerRoleFlag
-	roleMtx   sync.RWMutex
-	recvRole  PeerRoleFlag
-	children  *NetAddressSet
-	nephews   int32
+	in       bool
+	channel  string
+	rtt      PeerRTT
+	connType PeerConnectionType
+	role     PeerRoleFlag
+	roleMtx  sync.RWMutex
+	recvRole PeerRoleFlag
+	children *NetAddressSet
+	nephews  int32
 	//
 	last context.Context
 
@@ -197,13 +198,13 @@ var (
 
 type PeerConnectionType byte
 
-func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool, l log.Logger) *Peer {
+func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, l log.Logger) *Peer {
 	p := &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
 		writer:      NewPacketWriter(conn),
 		q:           NewPriorityQueue(DefaultPeerSendQueueSize, DefaultSendQueueMaxPriority),
-		incomming:   incomming,
+		in:          in,
 		timestamp:   time.Now(),
 		pool:        NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
 		close:       make(chan error),
@@ -230,14 +231,14 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
-		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(),
+		p.id, p.ConnString(), p.netAddress, p.in, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(),
 		atomic.LoadInt32(&p.nephews))
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
 		return ""
 	}
-	if p.incomming {
+	if p.in {
 		return fmt.Sprint(p.conn.LocalAddr(), "<-", p.conn.RemoteAddr())
 	} else {
 		return fmt.Sprint(p.conn.LocalAddr(), "->", p.conn.RemoteAddr())
@@ -250,6 +251,10 @@ func (p *Peer) ID() module.PeerID {
 
 func (p *Peer) NetAddress() NetAddress {
 	return p.netAddress
+}
+
+func (p *Peer) DialNetAddress() NetAddress {
+	return p.dial
 }
 
 func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
@@ -329,6 +334,11 @@ func (p *Peer) removeRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()
 	p.roleMtx.Lock()
 	p.role.UnSetFlag(r)
+}
+func (p *Peer) getRecvRole() PeerRoleFlag {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.recvRole
 }
 func (p *Peer) setRecvRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()

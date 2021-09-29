@@ -26,7 +26,7 @@ type transport struct {
 func NewTransport(address string, w module.Wallet, l log.Logger) module.NetworkTransport {
 	na := NetAddress(address)
 	if err := na.Validate(); err != nil {
-		l.Panicf("invalid P2P Address err:%+v",err)
+		l.Panicf("invalid P2P Address err:%+v", err)
 	}
 	transportLogger := l.WithFields(log.Fields{log.FieldKeyModule: "TP"})
 	a := newAuthenticator(w, transportLogger)
@@ -410,6 +410,7 @@ func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
 	pd.logger.Traceln("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
 	p := newPeer(conn, nil, false, pd.logger)
 	p.channel = d.channel
+	p.dial = NetAddress(addr)
 	p.netAddress = NetAddress(addr)
 	pd.dispatchPeer(p)
 }

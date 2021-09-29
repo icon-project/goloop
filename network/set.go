@@ -122,31 +122,31 @@ func (s *Set) String() string {
 }
 
 type PeerSet struct {
-	ids       *PeerIDSet
-	incomming *PeerIDSet
-	outgoing  *PeerIDSet
-	addrs     *NetAddressSet
-	arr       []*Peer
-	rnd       *rand.Rand
-	mtx       sync.RWMutex
+	ids   *PeerIDSet
+	in    *PeerIDSet
+	out   *PeerIDSet
+	addrs *NetAddressSet
+	arr   []*Peer
+	rnd   *rand.Rand
+	mtx   sync.RWMutex
 }
 
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		ids:       NewPeerIDSet(),
-		incomming: NewPeerIDSet(),
-		outgoing:  NewPeerIDSet(),
-		addrs:     NewNetAddressSet(),
-		arr:       make([]*Peer, 0),
-		rnd:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		ids:   NewPeerIDSet(),
+		in:    NewPeerIDSet(),
+		out:   NewPeerIDSet(),
+		addrs: NewNetAddressSet(),
+		arr:   make([]*Peer, 0),
+		rnd:   rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
 func (s *PeerSet) _contains(p *Peer) (r bool) {
-	if p.incomming {
-		r = s.incomming.Contains(p.id)
+	if p.in {
+		r = s.in.Contains(p.id)
 	} else {
-		r = s.outgoing.Contains(p.id)
+		r = s.out.Contains(p.id)
 	}
 	return
 }
@@ -164,10 +164,10 @@ func (s *PeerSet) _add(p *Peer, f PeerPredicate) bool {
 	s.mtx.Lock()
 
 	if !s._contains(p) && (f == nil || f(p)) {
-		if p.incomming {
-			s.incomming.Add(p.id)
+		if p.in {
+			s.in.Add(p.id)
 		} else {
-			s.outgoing.Add(p.id)
+			s.out.Add(p.id)
 		}
 		s.addrs.Add(p.netAddress)
 		s.ids.Add(p.id)
@@ -192,15 +192,15 @@ func (s *PeerSet) Remove(p *Peer) bool {
 	s.mtx.Lock()
 
 	if s._contains(p) {
-		if p.incomming {
-			s.incomming.Remove(p.id)
-			if !s.outgoing.Contains(p.id) {
+		if p.in {
+			s.in.Remove(p.id)
+			if !s.out.Contains(p.id) {
 				s.addrs.Remove(p.netAddress)
 				s.ids.Remove(p.id)
 			}
 		} else {
-			s.outgoing.Remove(p.id)
-			if !s.incomming.Contains(p.id) {
+			s.out.Remove(p.id)
+			if !s.in.Contains(p.id) {
 				s.addrs.Remove(p.netAddress)
 				s.ids.Remove(p.id)
 			}
@@ -208,7 +208,7 @@ func (s *PeerSet) Remove(p *Peer) bool {
 
 		last := len(s.arr)-1
 		for i, tp := range s.arr {
-			if tp.incomming == p.incomming && tp.id.Equal(p.id) {
+			if tp.in == p.in && tp.id.Equal(p.id) {
 				s.arr[i] = s.arr[last]
 				s.arr = s.arr[:last]
 				break
@@ -223,8 +223,8 @@ func (s *PeerSet) Clear() {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 
-	s.incomming.Clear()
-	s.outgoing.Clear()
+	s.in.Clear()
+	s.out.Clear()
 	s.addrs.Clear()
 	s.arr = make([]*Peer, 0)
 }
@@ -288,7 +288,7 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if p.incomming == in && has == p.hasRole(role) {
+		if p.in == in && has == p.hasRole(role) {
 			l = append(l, p)
 		}
 	}
@@ -298,15 +298,15 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 func (s *PeerSet) NetAddresses() []NetAddress {
 	return s.addrs.Array()
 }
-func (s *PeerSet) HasNetAddresse(a NetAddress) bool {
+func (s *PeerSet) HasNetAddress(a NetAddress) bool {
 	return s.addrs.Contains(a)
 }
-func (s *PeerSet) HasNetAddresseAndIncomming(a NetAddress, in bool) bool {
+func (s *PeerSet) HasNetAddressAndIn(a NetAddress, in bool) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
 	for _, p := range s.arr {
-		if p.incomming == in && p.netAddress == a {
+		if p.in == in && p.netAddress == a {
 			return true
 		}
 	}
@@ -351,14 +351,14 @@ func (s *NetAddressSet) Add(a NetAddress) bool {
 
 	return s._add(a, "")
 }
-func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
+
+func (s *NetAddressSet) SetAndRemoveByData(a NetAddress, d string) (old string, removed NetAddress) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-	d := p.id.String()
-	od := s._set(p.netAddress, d)
+	od := s._set(a, d)
 	for k, v := range s.Set.m {
-		a := k.(NetAddress)
-		if a != p.netAddress && v == d {
+		na := k.(NetAddress)
+		if na != a && v == d {
 			s._remove(k)
 			removed = k.(NetAddress)
 		}
@@ -368,17 +368,29 @@ func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
 	}
 	return
 }
-func (s *NetAddressSet) RemoveByPeer(p *Peer) bool {
-	return s.Set.Remove(p.netAddress)
+
+func (s *NetAddressSet) RemoveData(a NetAddress) string {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	old, ok := s.m[a]
+	if ok && old != "" {
+		s.m[a] = ""
+	}
+	if old != nil {
+		return old.(string)
+	}
+	return ""
 }
+
 func (s *NetAddressSet) Contains(a NetAddress) bool {
 	return s.Set.Contains(a)
 }
-func (s *NetAddressSet) ContainsByPeer(p *Peer) bool {
+func (s *NetAddressSet) ContainsWithData(a NetAddress, d string) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
-	d := s.Set.m[p.netAddress]
-	return d != nil && d == p.id.String()
+	v, ok := s.Set.m[a]
+	return ok && v == d
 }
 func (s *NetAddressSet) Clear() {
 	defer s.Set.mtx.Unlock()

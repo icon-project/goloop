@@ -46,7 +46,7 @@ type testTransportResponse struct {
 func (ph *testPeerHandler) onPeer(p *Peer) {
 	ph.logger.Println("onPeer", p)
 	p.setPacketCbFunc(ph.onPacket)
-	if !p.incomming {
+	if !p.in {
 		m := &testTransportRequest{Message: "Hello"}
 		ph.sendMessage(ProtoTestTransportRequest, m, p)
 		ph.logger.Println("sendProtoTestTransportRequest", m, p)
@@ -62,7 +62,7 @@ func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {
-	case PROTO_CONTOL:
+	case p2pProtoControl:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
 			rm := &testTransportRequest{}

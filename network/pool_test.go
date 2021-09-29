@@ -84,7 +84,7 @@ func Benchmark_pool_TimestamPool(b *testing.B) {
 	// p := NewTimestampPool(10)
 	l := list.New()
 	for i := 0; i < b.N; i++ {
-		// p.Put(i)
+		// p.SetAndRemoveByData(i)
 		l.PushBack(i)
 	}
 	b.StartTimer()
