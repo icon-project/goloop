@@ -36,7 +36,7 @@ def decode_params(values: dict) -> dict:
             if isinstance(k, bytes):
                 new_key = k.decode()
             elif not isinstance(k, str):
-                raise BaseException('Unexpected key type')
+                raise Exception('Unexpected key type')
 
             if isinstance(v, bytes):
                 result[new_key] = v.decode()

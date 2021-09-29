@@ -279,7 +279,7 @@ class ServiceManagerProxy:
             elif val == b'\x01':
                 return True
             else:
-                raise Exception(f'IllegalBoolBytes{val.hex()})')
+                raise Exception(f'IllegalBoolBytes:{val.hex()}')
         else:
             return self.__codec.decode(tag, val)
 
@@ -328,7 +328,7 @@ class ServiceManagerProxy:
             m = {}
             for k, v in o.items():
                 if not isinstance(k, str):
-                    raise Exception(f'InvalidKeyType: {type(k)}')
+                    raise Exception(f'InvalidKeyType:{type(k)}')
                 m[k] = self.encode_any(v)
             return TypeTag.DICT, m
         elif isinstance(o, list) or isinstance(o, tuple):
@@ -379,13 +379,13 @@ class ServiceManagerProxy:
                 self.encode(step_used),
                 self.encode_any(result)
             ])
-        except Exception:
+        except Exception as e:
             e_str = traceback.format_exc()
             self.debug(f"Exception in INVOKE:\n{e_str}", TAG)
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
-                self.encode_any('ExceptionInInvoke')
+                self.encode_any(f'ExceptionInInvoke({str(e)})')
             ])
         finally:
             self.__readonly = self.__readonly_stack.pop(-1)
@@ -531,4 +531,3 @@ class ServiceManagerProxy:
 
     def close(self):
         self.__client.close()
-
