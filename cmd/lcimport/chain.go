@@ -92,6 +92,15 @@ func (c *chainImpl) TransactionTimeout() time.Duration {
 	return time.Second * 5
 }
 
+func (c *chainImpl) ChildrenLimit() int {
+	panic("implement me")
+}
+
+func (c *chainImpl) NephewsLimit() int {
+	panic("implement me")
+}
+
+
 func (c *chainImpl) Genesis() []byte {
 	return c.gs.Genesis()
 }
