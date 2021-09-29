@@ -543,19 +543,16 @@ func (p2p *PeerToPeer) removeRoot(p *Peer) {
 	p2p.roots.Remove(p)
 }
 func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
-	switch p.getRole() {
-	case p2pRoleNone:
-		p2p.removeRoot(p)
-		p2p.removeSeed(p)
-	case p2pRoleSeed:
+	r := p.getRole()
+	if r.Has(p2pRoleSeed) {
 		p2p.addSeed(p)
-		p2p.removeRoot(p)
-	case p2pRoleRoot:
-		p2p.addRoot(p)
+	} else {
 		p2p.removeSeed(p)
-	case p2pRoleRootSeed:
+	}
+	if r.Has(p2pRoleRoot) {
 		p2p.addRoot(p)
-		p2p.addSeed(p)
+	} else {
+		p2p.removeRoot(p)
 	}
 }
 
@@ -583,8 +580,12 @@ func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
 		}
 	default:
 		for _, p := range peers {
-			if p.hasRole(r) && !s.Contains(p.id) {
-				p.removeRole(r)
+			if has, contains := p.hasRole(r), s.Contains(p.ID()); has != contains {
+				if contains {
+					p.addRole(r)
+				} else {
+					p.removeRole(r)
+				}
 				p2p.applyPeerRole(p)
 			}
 		}
@@ -645,14 +646,10 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	p2p.logger.Traceln("handleQuery", qm, p)
 
 	r := p2p.getRole()
-
 	m := &QueryResultMessage{
 		Role:     r,
 		Children: p2p.children.NetAddresses(),
 		Nephews:  p2p.nephews.NetAddresses(),
-	}
-	if r != p2pRoleNone {
-		m.Seeds = p2p.seeds.Array()
 	}
 	rr := p2p.resolveRole(qm.Role, p.id, true)
 	if rr != qm.Role {
@@ -666,13 +663,18 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	}
 	if rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot) {
 		m.Roots = p2p.roots.Array()
+		m.Seeds = p2p.seeds.Array()
 	} else {
-		if r.Has(p2pRoleRoot) && !r.Has(p2pRoleSeed) {
-			m.Message = fmt.Sprintf("not allowed to query %d", rr)
-			m.Seeds = nil
-			m.Children = nil
-			m.Nephews = nil
-			p2p.logger.Infoln("handleQuery", m.Message, p)
+		if r.Has(p2pRoleRoot) {
+			p2p.logger.Traceln("handleQuery", "not allowed connection", p.id)
+			p.Close("handleQuery not allowed connection")
+			return
+		}
+		m.Seeds = make([]NetAddress, 0)
+		for _, s := range p2p.seeds.Array()  {
+			if !p2p.roots.Contains(s) {
+				m.Seeds = append(m.Seeds, s)
+			}
 		}
 	}
 
@@ -1407,6 +1409,8 @@ func (p2p *PeerToPeer) discoverFriends() {
 	}
 
 	roots := p2p.orphanages.GetByRole(p2pRoleRoot, true)
+	roots = append(roots, p2p.parents.GetByRole(p2pRoleRoot, true)...)
+	roots = append(roots, p2p.uncles.GetByRole(p2pRoleRoot, true)...)
 	roots = append(roots, p2p.children.GetByRole(p2pRoleRoot, true)...)
 	roots = append(roots, p2p.nephews.GetByRole(p2pRoleRoot, true)...)
 	roots = append(roots, p2p.others.GetByRole(p2pRoleRoot, true)...)
@@ -1686,31 +1690,33 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	}
 	p2p.logger.Traceln("handleP2PConnectionRequest", req, p)
 	m := &P2PConnectionResponse{ConnType: p2pConnTypeNone}
-	switch req.ConnType {
-	case p2pConnTypeParent:
-		//TODO p2p.children condition
-		switch p.connType {
-		case p2pConnTypeNone:
-			p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
-		case p2pConnTypeNephew:
-			p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
-		case p2pConnTypeOther:
-			p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
+	if p2p.hasRole(p2pRoleRoot) && !p.hasRole(p2pRoleSeed) {
+		p2p.logger.Infoln("handleP2PConnectionRequest", "not allowed reqConnType", req.ConnType, "from", p.connType)
+	} else {
+		switch req.ConnType {
+		case p2pConnTypeParent:
+			switch p.connType {
+			case p2pConnTypeNone:
+				p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
+			case p2pConnTypeNephew:
+				p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
+			case p2pConnTypeOther:
+				p2p.updatePeerConnectionType(p, p2pConnTypeChildren)
+			default:
+				p2p.logger.Infoln("handleP2PConnectionRequest", "ignore", req.ConnType, "from", p.connType)
+			}
+		case p2pConnTypeUncle:
+			switch p.connType {
+			case p2pConnTypeNone:
+				p2p.updatePeerConnectionType(p, p2pConnTypeNephew)
+			case p2pConnTypeOther:
+				p2p.updatePeerConnectionType(p, p2pConnTypeNephew)
+			default:
+				p2p.logger.Infoln("handleP2PConnectionRequest", "ignore", req.ConnType, "from", p.connType)
+			}
 		default:
-			p2p.logger.Traceln("handleP2PConnectionRequest", "ignore", req.ConnType, "from", p.connType)
+			p2p.logger.Infoln("handleP2PConnectionRequest", "invalid reqConnType", req.ConnType, "from", p.connType)
 		}
-	case p2pConnTypeUncle:
-		//TODO p2p.nephews condition
-		switch p.connType {
-		case p2pConnTypeNone:
-			p2p.updatePeerConnectionType(p, p2pConnTypeNephew)
-		case p2pConnTypeOther:
-			p2p.updatePeerConnectionType(p, p2pConnTypeNephew)
-		default:
-			p2p.logger.Traceln("handleP2PConnectionRequest", "ignore", req.ConnType, "from", p.connType)
-		}
-	default:
-		p2p.logger.Traceln("handleP2PConnectionRequest", "invalid reqConnType", req.ConnType, "from", p.connType)
 	}
 	m.ReqConnType = req.ConnType
 	m.ConnType = p.connType
@@ -1734,7 +1740,10 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	}
 	p2p.logger.Traceln("handleP2PConnectionResponse", resp, p)
 
-	p2p.pre.Remove(p)
+	if !p2p.pre.Remove(p) {
+		p2p.logger.Infoln("handleP2PConnectionResponse", "invalid peer", resp, p)
+		return
+	}
 	switch resp.ReqConnType {
 	case p2pConnTypeParent:
 		if p2p.parents.Len() >= p2p.getConnectionLimit(p2pConnTypeParent) {

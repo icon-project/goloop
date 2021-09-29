@@ -335,6 +335,11 @@ func (p *Peer) removeRole(r PeerRoleFlag) {
 	p.roleMtx.Lock()
 	p.role.UnSetFlag(r)
 }
+func (p *Peer) getRecvRole() PeerRoleFlag {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.recvRole
+}
 func (p *Peer) setRecvRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()
 	p.roleMtx.Lock()
