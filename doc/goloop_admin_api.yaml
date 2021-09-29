@@ -566,6 +566,14 @@ components:
           type: string
           default: basic
           description: "Platform to handle transactions(defined by extended software)"
+        childrenLimit:
+          type: integer
+          default: -1
+          description: "Maximum number of child connections(-1: uses system default value)"
+        nephewsLimit:
+          type: integer
+          default: -1
+          description: "Maximum number of nephew connections(-1: uses system default value)"
       example:
         dbType: "goleveldb"
         seedAddress: "localhost:8080"
@@ -583,6 +591,8 @@ components:
         maxWaitTimeout: 0
         autoStart: false
         platform: "basic"
+        childrenLimit: -1
+        nephewsLimit: -1
     ChainImportParam:
       type: object
       properties:

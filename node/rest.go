@@ -94,6 +94,8 @@ type ChainConfig struct {
 	MaxWaitTimeout   int64  `json:"maxWaitTimeout"`
 	TxTimeout        int64  `json:"txTimeout"`
 	AutoStart        bool   `json:"autoStart"`
+	ChildrenLimit    *int    `json:"childrenLimit,omitempty"`
+	NephewsLimit     *int    `json:"nephewsLimit,omitempty"`
 }
 
 type ChainImportParam struct {
@@ -164,6 +166,8 @@ func NewChainConfig(cfg *chain.Config) *ChainConfig {
 		MaxWaitTimeout:   cfg.MaxWaitTimeout,
 		TxTimeout:        cfg.TxTimeout,
 		AutoStart:        cfg.AutoStart,
+		ChildrenLimit:    cfg.ChildrenLimit,
+		NephewsLimit:     cfg.NephewsLimit,
 	}
 	return v
 }

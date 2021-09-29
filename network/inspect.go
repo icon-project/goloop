@@ -40,6 +40,7 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 		m["pre"] = peerSetToMapArray(mgr.p2p.pre, informal)
 		m["reject"] = peerSetToMapArray(mgr.p2p.reject, informal)
 	}
+	m["trustSeeds"] = mgr.p2p.trustSeeds.Map()
 	return m
 }
 
@@ -66,7 +67,7 @@ func peerToMap(p *Peer, informal bool) map[string]interface{} {
 	if p != nil {
 		m["id"] = p.id.String()
 		m["addr"] = string(p.netAddress)
-		m["in"] = p.incomming
+		m["in"] = p.in
 		m["role"] = p.getRole()
 		if informal {
 			m["channel"] = p.channel
