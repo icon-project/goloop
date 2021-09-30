@@ -122,6 +122,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
 			return err
 		}
+	}
+
+	if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
 		// using v2 block for ICON2
 		if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 			return err
