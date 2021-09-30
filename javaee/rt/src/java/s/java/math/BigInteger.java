@@ -359,7 +359,7 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     }
 
     private void setUnderlying(java.math.BigInteger u) {
-        if (isValidLength(u.toByteArray().length)) {
+        if (isValidRange(u)) {
             v = u;
         }
     }
@@ -393,9 +393,10 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
         CodecIdioms.serializeByteArray(serializer, this.v.toByteArray());
     }
 
-    private boolean isValidLength(int length) {
-        if (length > 32) {
-            // we're limiting the size of BigInteger to 32 bytes to have better control over the billing
+    private boolean isValidRange(java.math.BigInteger u) {
+        var bl = u.bitLength();
+        // check if u is in the closed range [Int256 Min, UInt256 Max]
+        if (bl > 256 || (u.signum() < 0 && bl > 255)) {
             throw new ArithmeticException("Out of the supported range");
         }
         return true;
