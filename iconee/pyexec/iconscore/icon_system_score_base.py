@@ -101,6 +101,9 @@ class IconSystemScoreBase(IconScoreBase):
         current = status.get('current', None)
         return current is not None and current['status'] == 'active'
 
+    def get_score_status(self, score_address: 'Address') -> Optional[dict]:
+        return ChainScore.getScoreStatus(self._context, self.address, score_address)
+
     def disqualify_prep(self, address: 'Address') -> Tuple[bool, str]:
         success: bool = True
         reason: str = ""
