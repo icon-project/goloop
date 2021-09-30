@@ -233,7 +233,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, 0, 0},
+	}, icmodule.Revision4, icmodule.RevisionICON2R0},
 	{scoreapi.Method{
 		scoreapi.Function, "getServiceConfig",
 		scoreapi.FlagReadOnly, 0,
