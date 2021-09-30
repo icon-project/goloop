@@ -225,6 +225,16 @@ var chainMethods = []*chainMethod{
 		},
 	}, 0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "getScoreDepositInfo",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, 0, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "getServiceConfig",
 		scoreapi.FlagReadOnly, 0,
 		nil,

@@ -679,6 +679,27 @@ func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 	return scoreStatus, nil
 }
 
+func (s *chainScore) Ex_getScoreDepositInfo(address module.Address) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(false); err != nil {
+		return nil, err
+	}
+	if err := s.checkGovernance(true); err != nil {
+		return nil, err
+	}
+	if !address.IsContract() {
+		return nil, scoreresult.New(StatusIllegalArgument, "address must be contract")
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as == nil || !as.IsContract() {
+		return nil, scoreresult.New(StatusNotFound, "ContractNotFound")
+	}
+	scoreStatus := make(map[string]interface{})
+
+	scoreStatus["owner"] = as.ContractOwner()
+
+	return as.GetDepositInfo(s.cc, module.JSONVersion3)
+}
+
 func (s *chainScore) Ex_getServiceConfig() (int64, error) {
 	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
