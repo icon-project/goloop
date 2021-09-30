@@ -587,8 +587,11 @@ func (e *BlockConverter) doExecute(
 		if err = blk.WriteTo(e.database); err != nil {
 			return err
 		}
+		if err = blk.NormalTransactions().Flush(); err != nil {
+			return err
+		}
 		if err = e.svc.FinalizeTransition(tr.Transition,
-			module.FinalizeNormalTransaction|module.FinalizeResult,
+			module.FinalizeResult,
 			false,
 		); err != nil {
 			return errors.Wrapf(err, "FinalizationFailure(height=%d)", height)
