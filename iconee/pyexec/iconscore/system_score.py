@@ -66,9 +66,6 @@ class InterfaceSystemScore(InterfaceScore):
     def getPRepTerm(self) -> dict: pass
 
     @interface
-    def getInactivePReps(self) -> dict: pass
-
-    @interface
     def getScoreDepositInfo(self, address: Address) -> dict: pass
 
     @interface
