@@ -280,7 +280,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
 			10000 * 50 * icmodule.IScoreICXRatio,
-			100 * 1000,
+			100 * MonthBlock,
 		},
 		{
 			"Global Version2 - disabled",
