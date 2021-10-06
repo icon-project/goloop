@@ -618,7 +618,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
 				10000 * 50 * icmodule.IScoreICXRatio,
-				100 * 1000 * 10,
+				100 * MonthBlock * 10,
 			},
 		},
 		{

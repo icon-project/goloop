@@ -433,7 +433,7 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 //	divider = 1
 // IISS 3.1
 // 	multiplier = iglobal * iprep * IScoreICXRatio
-//	divider = 100 * TermPeriod
+//	divider = 100 * MonthBlock
 func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
 	divider = new(big.Int).SetInt64(1)
@@ -451,7 +451,7 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * g.GetTermPeriod()))
+		divider.SetInt64(int64(100 * MonthBlock))
 	}
 	return
 }
@@ -596,7 +596,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 //	divider = YearBlock * RrepDivider
 // IISS 3.1
 // 	multiplier = Iglobal * Ivoter * IScoreICXRatio
-//	divider = 100 * term period * total voting amount
+//	divider = 100 * MonthBlock * total voting amount
 func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
 	divider = new(big.Int)
@@ -616,7 +616,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * g.GetTermPeriod()))
+		divider.SetInt64(int64(100 * MonthBlock))
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
