@@ -164,7 +164,7 @@ type ExtensionStateImpl struct {
 	logger           log.Logger
 	log              []ExtensionLog
 	illegalDelegated map[string]*icstate.PRepStatusState
-	claimed          map[string][]byte
+	claimed          map[string]*Claimed
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -1363,16 +1363,17 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address, revision int, txID 
 				from,
 			)
 		}
-		if claim != nil {
-			if revision < icmodule.RevisionFixClaimIScore && i == 0 && len(txID) != 0 {
-				if claimTX, ok := es.claimed[icutils.ToKey(from)]; ok {
-					if bytes.Compare(claimTX, txID) == 0 {
-						iScore.Sub(iScore, claim.Value())
-					}
-				} else {
-					iScore.Sub(iScore, claim.Value())
+		// replay ICON1's queryIScore behavior
+		if revision < icmodule.RevisionFixClaimIScore && i == 0 && len(txID) != 0 {
+			if claimed, ok := es.claimed[icutils.ToKey(from)]; ok {
+				if bytes.Compare(claimed.ID(), txID) == 0 {
+					// Subtract claimed amount only when claimIScore and queryIScore are in the same TX
+					// Reverted claimIScore works the same
+					iScore.Sub(iScore, claimed.Amount())
 				}
-			} else {
+			}
+		} else {
+			if claim != nil {
 				iScore.Sub(iScore, claim.Value())
 			}
 		}
@@ -1424,9 +1425,9 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 		cl := NewClaimIScoreLog(from, claim, ic)
 		es.AppendExtensionLog(cl)
 		if es.claimed == nil {
-			es.claimed = make(map[string][]byte)
+			es.claimed = make(map[string]*Claimed)
 		}
-		es.claimed[icutils.ToKey(from)] = cc.TransactionID()
+		es.claimed[icutils.ToKey(from)] = newClaimed(cc.TransactionID(), claim)
 	}
 	ClaimEventLog(cc, from, claim, icx)
 	return nil
@@ -1621,4 +1622,24 @@ func (es *ExtensionStateImpl) OnTransactionEnd(blockHeight int64, success bool) 
 		return err
 	}
 	return es.handleExtensionLog()
+}
+
+type Claimed struct {
+	id     []byte
+	amount *big.Int
+}
+
+func (c *Claimed) ID() []byte {
+	return c.id
+}
+
+func (c *Claimed) Amount() *big.Int {
+	return c.amount
+}
+
+func newClaimed(id []byte, amount *big.Int) *Claimed {
+	return &Claimed{
+		id:     id,
+		amount: amount,
+	}
 }
