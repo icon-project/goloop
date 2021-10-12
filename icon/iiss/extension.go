@@ -17,6 +17,7 @@
 package iiss
 
 import (
+	"bytes"
 	"math"
 	"math/big"
 	"sort"
@@ -163,6 +164,7 @@ type ExtensionStateImpl struct {
 	logger           log.Logger
 	log              []ExtensionLog
 	illegalDelegated map[string]*icstate.PRepStatusState
+	claimed          map[string][]byte
 
 	State  *icstate.State
 	Front  *icstage.State
@@ -829,6 +831,7 @@ func (es *ExtensionStateImpl) OnExecutionEnd(wc icmodule.WorldContext, totalFee 
 	if err = es.Front.ResetEventSize(); err != nil {
 		return err
 	}
+	es.claimed = nil
 	return nil
 }
 
@@ -1329,7 +1332,7 @@ func validateEndpoint(cc icmodule.CallContext, p2pEndpoint *string) error {
 	return nil
 }
 
-func (es *ExtensionStateImpl) GetIScore(from module.Address) (*big.Int, error) {
+func (es *ExtensionStateImpl) GetIScore(from module.Address, revision int, txID []byte) (*big.Int, error) {
 	iScore := new(big.Int)
 	if es.Reward == nil {
 		return iScore, nil
@@ -1348,7 +1351,7 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address) (*big.Int, error) {
 
 	iScore.Set(is.Value())
 	stages := []*icstage.State{es.Front, es.Back1, es.Back2}
-	for _, stage := range stages {
+	for i, stage := range stages {
 		if stage == nil {
 			continue
 		}
@@ -1361,7 +1364,17 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address) (*big.Int, error) {
 			)
 		}
 		if claim != nil {
-			iScore.Sub(iScore, claim.Value())
+			if revision < icmodule.RevisionFixClaimIScore && i == 0 && len(txID) != 0 {
+				if claimTX, ok := es.claimed[icutils.ToKey(from)]; ok {
+					if bytes.Compare(claimTX, txID) == 0 {
+						iScore.Sub(iScore, claim.Value())
+					}
+				} else {
+					iScore.Sub(iScore, claim.Value())
+				}
+			} else {
+				iScore.Sub(iScore, claim.Value())
+			}
 		}
 	}
 	return iScore, nil
@@ -1410,6 +1423,10 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	if revision < icmodule.RevisionFixClaimIScore {
 		cl := NewClaimIScoreLog(from, claim, ic)
 		es.AppendExtensionLog(cl)
+		if es.claimed == nil {
+			es.claimed = make(map[string][]byte)
+		}
+		es.claimed[icutils.ToKey(from)] = cc.TransactionID()
 	}
 	ClaimEventLog(cc, from, claim, icx)
 	return nil

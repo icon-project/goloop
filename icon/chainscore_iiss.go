@@ -429,7 +429,7 @@ func (s *chainScore) Ex_queryIScore(address module.Address) (map[string]interfac
 	if err != nil {
 		return nil, err
 	}
-	is, err := es.GetIScore(address)
+	is, err := es.GetIScore(address, s.cc.Revision().Value(), s.cc.TransactionID())
 	if err != nil {
 		return nil, err
 	}
