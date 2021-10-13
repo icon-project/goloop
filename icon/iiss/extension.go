@@ -1371,6 +1371,10 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address, revision int, txID 
 					// Reverted claimIScore works the same
 					iScore.Sub(iScore, claimed.Amount())
 				}
+			} else {
+				if claim != nil {
+					iScore.Sub(iScore, claim.Value())
+				}
 			}
 		} else {
 			if claim != nil {
