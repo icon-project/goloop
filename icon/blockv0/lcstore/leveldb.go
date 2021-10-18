@@ -47,6 +47,9 @@ func (ds *LevelDB) GetBlockJSONByHeight(height int, pre bool) ([]byte, error) {
 	binary.BigEndian.PutUint64(key[len(prefix)+4:], uint64(height))
 	bid, err := ds.get(key)
 	if err != nil {
+		if err == errors.ErrNotFound && pre {
+			return ds.get([]byte("shutdown_unconfirmed_block"))
+		}
 		return nil, err
 	}
 	return ds.GetBlockJSONByID(bid)
