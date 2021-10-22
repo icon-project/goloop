@@ -129,6 +129,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 			return err
 		}
+		if s.cc.ChainID() == CIDForMainNet {
+			if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(9); err != nil {
+				return err
+			}
+		}
 	}
 
 	// for ICON platform IISS
