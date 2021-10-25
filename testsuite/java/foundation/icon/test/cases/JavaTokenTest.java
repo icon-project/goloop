@@ -250,7 +250,7 @@ public class JavaTokenTest extends TestBase {
         assertFailure(txHandler.getResult(
                 tokenScore.transferFrom(caller, ownerWallet.getAddress(), caller.getAddress(), tokenId[2])));
         // out of the supported range
-        byte[] randBytes = getRandomBytes(34);
+        byte[] randBytes = getRandomBytes(66);
         if (randBytes[1] == 0) {
             randBytes[1] = (byte)0xFF;
         }
