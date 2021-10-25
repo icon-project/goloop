@@ -17,13 +17,7 @@
 package iiss
 
 import (
-	"encoding/json"
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/state"
-	"math/big"
-
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
@@ -84,31 +78,16 @@ func (es *ExtensionStateImpl) handleUnbondingTimer(ts *icstate.TimerSnapshot, h 
 	return nil
 }
 
-func (es *ExtensionStateImpl) handleNetworkScoreTimer(cc contract.CallContext) (err error) {
+func (es *ExtensionStateImpl) handleNetworkScoreTimer(cc icmodule.CallContext) (err error) {
 	bh := cc.BlockHeight()
 	es.logger.Tracef("handleNetworkScoreTimer() start BH-%d", bh)
 	nt := es.State.GetNetworkScoreTimerSnapshot(bh)
 	if nt != nil {
-		cm := cc.ContractManager()
-		jso := new(contract.DataCallJSON)
-		jso.Method = "onTimer"
-		callData, _ := json.Marshal(jso)
-		sl := cc.GetStepLimit(state.StepLimitTypeInvoke)
 		for itr := nt.Iterator(); itr.Has(); itr.Next() {
 			a, _ := itr.Get()
 			es.logger.Tracef("account : %s", a)
-			ch, err := cm.GetHandler(
-				common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
-				a,
-				new(big.Int),
-				contract.CTypeCall,
-				callData,
-			)
-			if err != nil {
-				return err
-			}
-			if err, _, _, _ = cc.Call(ch, sl); err != nil {
-				return err
+			if err = cc.CallOnTimer(a, nil); err != nil {
+				es.logger.Infof("Failed to call onTimer(): addr=%s", a)
 			}
 		}
 	}

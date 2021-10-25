@@ -1,6 +1,7 @@
 package iiss
 
 import (
+	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -219,6 +220,28 @@ func (ctx *callContextImpl) SumOfStepUsed() *big.Int {
 
 func (ctx *callContextImpl) OnEvent(addr module.Address, indexed, data [][]byte) {
 	ctx.cc.OnEvent(addr, indexed, data)
+}
+
+func (ctx *callContextImpl) CallOnTimer(to module.Address, params []byte) error {
+	cc := ctx.cc
+	cm := cc.ContractManager()
+	jso := &contract.DataCallJSON{Method: "onTimer", Params: params}
+	callData, _ := json.Marshal(jso)
+	sl := cc.GetStepLimit(state.StepLimitTypeInvoke)
+	ch, err := cm.GetHandler(
+		state.SystemAddress,
+		to,
+		new(big.Int),
+		contract.CTypeCall,
+		callData,
+	)
+	if err != nil {
+		return err
+	}
+	if err, _, _, _ = cc.Call(ch, sl); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {

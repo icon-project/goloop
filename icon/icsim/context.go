@@ -265,6 +265,10 @@ func (ctx *callContext) SumOfStepUsed() *big.Int {
 func (ctx *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 }
 
+func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
+	return nil
+}
+
 func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
 	return &callContext{
 		WorldContext: wc,
