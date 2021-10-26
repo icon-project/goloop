@@ -70,9 +70,9 @@ func (lc *Store) GetVotesByHeight(height int) (*blockv0.BlockVoteList, error) {
 			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 			return nil, err
 		}
-		if b.Height() != int64(height) {
+		if b.Height() != int64(height+1) {
 			return nil, errors.NotFoundError.Errorf("IncorrectBlockReturned(real=%d,exp=%d)",
-				b.Height(), height)
+				b.Height(), height+1)
 		}
 		if v3, ok := b.(*blockv0.BlockV03); ok {
 			return v3.PrevVotes(), nil
