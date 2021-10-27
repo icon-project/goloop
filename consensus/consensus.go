@@ -503,7 +503,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 		}
 	}
 
-	if cs.round > msg.Round && cs.step < stepPrevote && msg.Round == cs.proposalPOLRound {
+	if cs.round > msg.Round && cs.step < stepPrevote && msg.Round == cs.proposalPOLRound && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
 	} else if cs.round == msg.Round && cs.step < stepPrevote {
 		cs.enterPrevote()

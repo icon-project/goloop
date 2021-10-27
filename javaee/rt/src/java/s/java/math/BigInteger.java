@@ -394,17 +394,14 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     }
 
     private boolean isValidRange(java.math.BigInteger u) {
-        var bl = u.bitLength();
-        // check if u is in the closed range [Int256 Min, UInt256 Max]
-        if (bl > 256 || (u.signum() < 0 && bl > 255)) {
+        if (u.abs().bitLength() > 512) {
             throw new ArithmeticException("Out of the supported range");
         }
         return true;
     }
 
     private void verifyBitLength(int length) {
-        if (length > 256) {
-            // since the maximum length is 32 bytes, the designated bit position cannot be bigger than 256
+        if (length > 512) {
             throw new ArithmeticException("Out of the supported range");
         }
     }

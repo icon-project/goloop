@@ -41,31 +41,27 @@ public class BigIntTest extends SimpleTest {
     public void bigInt() {
         var c = sm.mustDeploy(BigIntUser.class);
 
-        // 0x00ffff...
-        var uint256MaxBytes = new byte[33];
-        Arrays.fill(uint256MaxBytes, 1, 33, (byte)0xff);
-        var uint256Max = new BigInteger(uint256MaxBytes);
-        var res = c.tryInvoke("make", uint256Max.toString(16), 16);
+        // 2^512-1
+        var max = BigInteger.valueOf(2).pow(512).subtract(BigInteger.ONE);
+        var res = c.tryInvoke("make", max.toString(16), 16);
         Assertions.assertEquals(Status.Success, res.getStatus());
-        res = c.tryInvoke("take", uint256Max);
+        res = c.tryInvoke("take", max);
         Assertions.assertEquals(Status.Success, res.getStatus());
 
-        var aboveMax = uint256Max.add(BigInteger.ONE);
+        var aboveMax = max.add(BigInteger.ONE);
         res = c.tryInvoke("make", aboveMax.toString(16), 16);
         Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
         res = c.tryInvoke("take", aboveMax);
         Assertions.assertEquals(Status.InvalidParameter, res.getStatus());
 
-        // 0x8000...
-        var int256MinBytes = new byte[32];
-        int256MinBytes[0] = (byte)0x80;
-        var int256Min = new BigInteger(int256MinBytes);
-        res = c.tryInvoke("make", int256Min.toString(16), 16);
+        // -(2^512 - 1)
+        var min = max.negate();
+        res = c.tryInvoke("make", min.toString(16), 16);
         Assertions.assertEquals(Status.Success, res.getStatus());
-        res = c.tryInvoke("take", int256Min);
+        res = c.tryInvoke("take", min);
         Assertions.assertEquals(Status.Success, res.getStatus());
 
-        var belowMin = int256Min.subtract(BigInteger.ONE);
+        var belowMin = min.subtract(BigInteger.ONE);
         res = c.tryInvoke("make", belowMin.toString(16), 16);
         Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
         res = c.tryInvoke("take", belowMin);
