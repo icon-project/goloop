@@ -17,9 +17,11 @@
 package icmodule
 
 type PenaltyType int
+
 const (
 	PenaltyNone PenaltyType = iota
 	PenaltyPRepDisqualification
 	PenaltyLowProductivity
 	PenaltyBlockValidation
+	PenaltyNonVote
 )

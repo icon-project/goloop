@@ -19,6 +19,7 @@ package icon
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -481,7 +482,7 @@ func (s *chainScore) Ex_getNetworkInfo() (map[string]interface{}, error) {
 	}
 
 	if s.from != nil && s.from.IsContract() {
-		 return nil, scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
+		return nil, scoreresult.AccessDeniedError.Errorf("Invalid address: from=%s", s.from)
 	}
 
 	es, err := s.getExtensionState()
@@ -688,7 +689,7 @@ func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
 	return es.State.GetNetworkScores(), nil
 }
 
-func (s *chainScore) Ex_addTask(blockHeight *common.HexInt) error {
+func (s *chainScore) Ex_addTimer(blockHeight *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -698,6 +699,31 @@ func (s *chainScore) Ex_addTask(blockHeight *common.HexInt) error {
 	}
 	ts := es.State.GetNetworkScoreTimerState(blockHeight.Int64())
 	ts.Add(s.from)
+	return nil
+}
+
+func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	cc := s.newCallContext(s.cc)
+	for _, p := range params {
+		prep := new(common.Address)
+		bs, err := json.Marshal(p)
+		if err != nil {
+			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
+		}
+		if err = json.Unmarshal(bs, prep); err != nil {
+			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
+		}
+		if err := es.PenalizeNonVoters(cc, prep); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

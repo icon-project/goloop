@@ -580,6 +580,22 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	return nil
 }
 
+func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address module.Address) error {
+	if err := es.slash(cc, address, es.State.GetNonvotedPenaltySlashRatio()); err != nil {
+		return err
+	}
+	// Record PenaltyImposed eventlog
+	ps := es.State.GetPRepStatusByOwner(address, false)
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(ps.Status())),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyNonVote)),
+		},
+	)
+	return nil
+}
+
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
 	es.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 

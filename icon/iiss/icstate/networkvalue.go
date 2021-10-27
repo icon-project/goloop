@@ -47,6 +47,7 @@ const (
 	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
 	VarDelegationSlotMax                     = "delegation_slot_max"
 	DictNetworkScores                        = "network_scores"
+	VarNonvotedPenaltySlashRatio             = "nonvoted_penalty_slashRatio"
 )
 
 const (
@@ -329,6 +330,17 @@ func (s *State) GetDelegationSlotMax() int {
 
 func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
+}
+
+func (s *State) GetNonvotedPenaltySlashRatio() int {
+	return int(getValue(s.store, VarNonvotedPenaltySlashRatio).Int64())
+}
+
+func (s *State) SetNonvotedPenaltySlashRatio(value int) error {
+	if value <= 0 {
+		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
+	}
+	return setValue(s.store, VarNonvotedPenaltySlashRatio, value)
 }
 
 func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {

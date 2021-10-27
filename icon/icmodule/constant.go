@@ -73,6 +73,7 @@ const (
 	DefaultConsistentValidationPenaltySlashRatio = 10
 	DefaultDelegationSlotMax                     = 100
 	DefaultExtraMainPRepCount                    = 3
+	DefaultNonVotePenaltySlashRatio              = 10
 )
 
 // The following variables are read-only
