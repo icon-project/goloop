@@ -711,15 +711,6 @@ func (cs *consensus) enterPrevote() {
 	}
 
 	cs.notifySyncer()
-
-	// send vote may change step
-	// TODO simplify
-	if cs.step == stepPrevote {
-		prevotes := cs.hvs.votesFor(cs.round, VoteTypePrevote)
-		if prevotes.hasOverTwoThirds() {
-			cs.enterPrevoteWait()
-		}
-	}
 }
 
 func (cs *consensus) enterPrevoteWait() {
@@ -803,14 +794,6 @@ func (cs *consensus) enterPrecommit() {
 	}
 
 	cs.notifySyncer()
-
-	// sendVote may change step
-	if cs.step == stepPrecommit {
-		precommits := cs.hvs.votesFor(cs.round, VoteTypePrecommit)
-		if precommits.hasOverTwoThirds() {
-			cs.enterPrecommitWait()
-		}
-	}
 }
 
 func (cs *consensus) enterPrecommitWait() {
