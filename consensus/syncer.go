@@ -21,7 +21,11 @@ type Engine interface {
 	GetCommitBlockParts(h int64) PartSet
 	GetCommitPrecommits(h int64) *voteList
 	GetPrecommits(r int32) *voteList
-	GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList
+	// GetVotes returns union of a set of prevotes pv(i) where
+	// pvMask.Get(i) == 0 and a set of precommits pc(i) where
+	// pcMask.Get(i) == 0. For example, if the all bits for mask is 1,
+	// no votes are returned.
+	GetVotes(r int32, pvMask *bitArray, pcMask *bitArray) *voteList
 	GetRoundState() *peerRoundState
 
 	Height() int64
@@ -149,11 +153,7 @@ func (p *peer) doSync() (module.ProtocolInfo, Message) {
 	} else if p.Round == e.Round() {
 		rs := e.GetRoundState()
 		p.log.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
-		pv := p.PrevotesMask.Copy()
-		pv.Flip()
-		pc := p.PrecommitsMask.Copy()
-		pc.Flip()
-		vl := e.GetVotes(e.Round(), pv, pc)
+		vl := e.GetVotes(e.Round(), p.PrevotesMask, p.PrecommitsMask)
 		if vl.Len() > 0 {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
