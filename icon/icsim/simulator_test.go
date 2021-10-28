@@ -86,225 +86,6 @@ func checkValidatorList(vl0, vl1 []module.Validator) bool {
 	return true
 }
 
-/*
-// Initial prep balance: 3000 ICX
-// Initial user balance: 1000 ICX
-func TestSimulator_init(t *testing.T) {
-	//var err error
-	var jso map[string]interface{}
-	var block Block
-	var tx Transaction
-	var receipts []Receipt
-	totalSupply := new(big.Int)
-	const (
-		initRevision = icmodule.Revision5
-		validatorLen = 22
-		userLen      = 3
-		prepLen      = 30
-	)
-
-	userAddrs := make([]module.Address, userLen)
-	for i := 0; i < userLen; i++ {
-		userAddrs[i] = newDummyAddress(1000 + i)
-	}
-
-	initPRepBalance := icutils.ToLoop(2000)
-	initUserBalance := icutils.ToLoop(1000)
-
-	prepAddrs := make([]module.Address, prepLen)
-	for i := 0; i < prepLen; i++ {
-		prepAddrs[i] = newDummyAddress(i + 100)
-	}
-
-	validators := make([]module.Validator, validatorLen)
-	for i := 0; i < validatorLen; i++ {
-		validator, _ := state.ValidatorFromAddress(prepAddrs[i])
-		validators[i] = validator
-	}
-
-	// Assign initial balances to preps and users
-	balances := make(map[string]*big.Int)
-	for _, address := range prepAddrs {
-		balances[icutils.ToKey(address)] = initPRepBalance
-		totalSupply.Add(totalSupply, initPRepBalance)
-	}
-	for _, address := range userAddrs {
-		balances[icutils.ToKey(address)] = initUserBalance
-		totalSupply.Add(totalSupply, initUserBalance)
-	}
-
-	// Create a Simulator
-	c := NewConfig()
-	c.TermPeriod = 100
-	c.ValidationPenaltyCondition = 5
-	c.ConsistentValidationPenaltyCondition = 3
-	sim := NewSimulator(initRevision, validators, balances, c)
-	assert.Equal(t, initRevision, sim.Revision().Value())
-	assert.Zero(t, sim.BlockHeight())
-
-	// Check initial balances and totalSupply
-	for key, value := range balances {
-		address := common.MustNewAddress([]byte(key))
-		balance := sim.GetBalance(address)
-		assert.Zero(t, value.Cmp(balance))
-	}
-	assert.Zero(t, totalSupply.Cmp(sim.TotalSupply()))
-
-	// Check if no prep is registered
-	jso = sim.GetPReps()
-	assert.Zero(t, len(jso["preps"].([]interface{})))
-	jso = sim.GetMainPReps()
-	assert.Zero(t, len(jso["preps"].([]interface{})))
-	jso = sim.GetSubPReps()
-	assert.Zero(t, len(jso["preps"].([]interface{})))
-
-	// Generate blocks until block height reaches to 100
-	blockHeight := int64(100)
-	err := sim.GoTo(blockHeight)
-	assert.NoError(t, err)
-	assert.Equal(t, blockHeight, sim.BlockHeight())
-
-	// Add RegisterPRep transactions to a block
-	block = NewBlock()
-	for i, from := range prepAddrs {
-		info := newDummyPRepInfo(i)
-		tx := sim.RegisterPRep(from, info)
-		block.AddTransaction(tx)
-	}
-	receipts, err = sim.GoByBlock(block)
-	assert.NoError(t, err)
-	assert.True(t, checkReceipts(receipts))
-	blockHeight++
-	assert.Equal(t, blockHeight, sim.BlockHeight())
-
-	// Users set 1000 icx stakes
-	block = NewBlock()
-	stake := icutils.ToLoop(1000)
-	for _, from := range userAddrs {
-		tx := sim.SetStake(from, stake)
-		block.AddTransaction(tx)
-	}
-	blockHeight = sim.BlockHeight()
-	receipts, err = sim.GoByBlock(block)
-	checkBlockResult(t, receipts, err)
-	assert.Equal(t, blockHeight + 1, sim.BlockHeight())
-
-	// Check if RegisterPRep transactions are executed
-	sim.GetPReps()
-	jso = sim.GetPReps()
-	assert.Equal(t, len(prepAddrs), len(jso["preps"].([]interface{})))
-
-	// Check if RegPRepFee(2000 ICX) is charged from prep balances
-	for _, addr := range prepAddrs {
-		balance := sim.GetBalance(addr)
-		expected := new(big.Int).Sub(initPRepBalance, icmodule.BigIntRegPRepFee)
-		assert.Zero(t, expected.Cmp(balance))
-	}
-
-	for _, addr := range userAddrs {
-		jso = sim.GetStake(addr)
-		stake2 := jso["stake"].(*big.Int)
-		assert.Zero(t, stake.Cmp(stake2))
-	}
-
-	// Delegate 100 ICX to each PRep
-	block = NewBlock()
-	for j := 0; j < 3; j++ {
-		user := userAddrs[j]
-		ds := make([]*icstate.Delegation, 10)
-		for i := 0; i < 10; i++ {
-			prep := prepAddrs[j * 10 + i]
-			amount := icutils.ToLoop(100)
-			amount.Sub(amount, big.NewInt(int64(j * 10 + i)))
-			ds[i] = icstate.NewDelegation(common.AddressToPtr(prep), amount)
-		}
-		block.AddTransaction(sim.SetDelegation(user, ds))
-	}
-	receipts, err = sim.GoByBlock(block)
-	assert.NoError(t, err)
-	assert.True(t, checkReceipts(receipts))
-	blockHeight++
-	assert.Equal(t, blockHeight, sim.BlockHeight())
-
-	votingPower := int64(45)
-	for _, from := range userAddrs {
-		jso = sim.GetDelegation(from)
-		assert.Equal(t, votingPower, jso["votingPower"].(*big.Int).Int64())
-		votingPower += int64(100)
-	}
-
-	// Activate Decentralization
-	tx = sim.SetRevision(icmodule.RevisionDecentralize)
-	receipts, err = sim.GoByTransaction(tx)
-	checkBlockResult(t, receipts, err)
-
-	assert.NoError(t, sim.GoToTermEnd())
-	jso = sim.GetPRepTerm()
-	startBH := jso["startBlockHeight"].(int64)
-	assert.Equal(t, startBH - 1, sim.BlockHeight())
-
-	jso = sim.GetMainPReps()
-	preps := jso["preps"].([]interface{})
-	var prevTbd *big.Int
-	assert.Equal(t, validatorLen, len(preps))
-	for i, _ := range preps {
-		prep := preps[i].(map[string]interface{})
-		tbd := prep["delegated"].(*big.Int)
-		if prevTbd == nil {
-			prevTbd = tbd
-		} else {
-			assert.True(t, prevTbd.Cmp(tbd) > 0)
-		}
-	}
-
-	// Set Revision to 13
-	blockHeight = sim.BlockHeight()
-	term := sim.TermSnapshot()
-	tx = sim.SetRevision(icmodule.Revision13)
-	receipts, err = sim.GoByTransaction(tx)
-	checkBlockResult(t, receipts, err)
-	assert.NoError(t, sim.GoToTermEnd())
-	assert.Equal(t, icmodule.Revision13, sim.Revision().Value())
-	assert.Equal(t, blockHeight + term.Period(), sim.BlockHeight())
-
-	blockHeight = sim.BlockHeight()
-	for _, prepAddr := range prepAddrs {
-		prep := sim.GetPRep(prepAddr)
-		assert.Zero(t, prep.GetVPenaltyCount())
-		assert.Zero(t, prep.GetVFail(blockHeight))
-		assert.Zero(t, prep.GetVTotal(blockHeight))
-	}
-
-	//assert.NoError(t, sim.Go(6))
-	//jso = sim.GetPRep(prepAddrs[0])
-	//assert.Equal(t, int(icstate.GradeCandidate), jso["grade"].(int))
-	//assert.Equal(t, int64(icmodule.PenaltyBlockValidation), jso["penalty"].(int64))
-	//assert.Equal(t, int(icstate.Active), jso["status"].(int))
-	//assert.Equal(t, int64(0), jso["validatedBlocks"].(int64))
-	//assert.Equal(t, int64(5), jso["totalBlocks"].(int64))
-	//assert.NoError(t, sim.GoToTermEnd())
-	//
-	//for i := 0; i < 2; i++ {
-	//	assert.NoError(t, sim.GoToTermEnd())
-	//}
-	//jso = sim.GetPRepStats(prepAddrs[0])
-	//assert.Equal(t, int(icstate.GradeMain), jso["grade"].(int))
-	//assert.Equal(t, 3, jso["penalties"].(int))
-	//assert.Equal(t, int(icstate.Active), jso["status"].(int))
-
-	//assert.Equal(t, int64(0), jso["validatedBlocks"].(int64))
-	//assert.Equal(t, int64(15), jso["totalBlocks"].(int64))
-
-	//for i := 0; i < 3; i++ {
-	//	jso = sim.GetPRep(prep)
-	//	assert.Equal(t, int(icstate.GradeMain), jso["grade"].(int))
-	//	assert.Equal(t, int64(icmodule.PenaltyNone), jso["penalty"].(int64))
-	//	assert.Equal(t, int(icstate.Active), jso["status"].(int))
-	//	assert.Equal(t, jso["validatedBlocks"].(int64), jso["totalBlocks"].(int64))
-	//}
-}
- */
-
 func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -633,7 +414,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 
-	// Check if prep22 is newly included in validatorList instead of prep00
+	// Check if prep22 is newly included in validatorList instead of prep0
 	// Go ahead until term end
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl, vl1))
@@ -659,23 +440,23 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
-	// prep00 fails to vote for 7 consecutive blocks and gets penalized
+	// prep0 fails to vote for 7 consecutive blocks and gets penalized
 	voted[0] = false
 	csi = newConsensusInfo(sim.Database(), vl0, voted)
 	err = sim.Go(validationPenaltyCondition, csi)
 	assert.NoError(t, err)
-	// prep00: mainPRep -> candidate, prep22: subPRep -> mainPRep
+	// prep0: mainPRep -> candidate, prep22: subPRep -> mainPRep
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl1, vl))
 	prep = sim.GetPRep(env.preps[0])
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 
-	// prep00 fails to vote for 2 blocks, getting penalized
+	// prep0 fails to vote for 2 blocks, getting penalized
 	csi = newConsensusInfo(sim.Database(), vl0, voted)
 	err = sim.Go(2, csi)
 	assert.NoError(t, err)
 
-	// Check if prep22 becomes a main prep instead of prep00
+	// Check if prep22 becomes a main prep instead of prep0
 	prep = sim.GetPRep(env.preps[22])
 	assert.Equal(t, int64(2), prep.GetVFailCont(sim.BlockHeight()))
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
@@ -691,7 +472,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	// prep21 got penalized and its penaltyCount is set to 1
 	prep = sim.GetPRep(env.preps[22])
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
-	// prep00: candidate, prep21: mainPRep -> candidate, prep22: subPRep -> mainPRep
+	// prep0: candidate, prep21: mainPRep -> candidate, prep22: subPRep -> mainPRep
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl, vl2))
 
@@ -706,4 +487,128 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	prep = sim.GetPRep(env.preps[23])
 	assert.Zero(t, prep.GetVPenaltyCount())
 	assert.Zero(t, prep.GetVTotal(sim.BlockHeight()))
+}
+
+func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
+	const (
+		termPeriod                           = 100
+		mainPRepCount                        = 22
+		validationPenaltyCondition           = 5
+		consistentValidationPenaltyCondition = 3
+	)
+
+	var err error
+	var voted []bool
+	var csi module.ConsensusInfo
+	var vl []module.Validator
+	var env *Env
+	var prep *icstate.PRep
+	var blockHeight int64
+
+	c := NewConfig()
+	c.MainPRepCount = mainPRepCount
+	c.TermPeriod = termPeriod
+	c.ValidationPenaltyCondition = validationPenaltyCondition
+	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
+
+	voted = make([]bool, mainPRepCount)
+	for i := 0; i < len(voted); i++ {
+		voted[i] = true
+	}
+
+	// Decentralization is activated
+	env = initEnv(t, c, icmodule.Revision13)
+	sim := env.sim
+
+	vl0 := make([]module.Validator, mainPRepCount)
+	vl1 := make([]module.Validator, mainPRepCount)
+	for i := 0; i < mainPRepCount; i++ {
+		vl0[i], _ = state.ValidatorFromAddress(env.preps[i])
+		vl1[i], _ = state.ValidatorFromAddress(env.preps[i])
+	}
+	vl1[1], _ = state.ValidatorFromAddress(env.preps[22])
+	vl1[2], _ = state.ValidatorFromAddress(env.preps[23])
+
+	// Skip the first term after decentralization
+	err = sim.GoToTermEnd(nil)
+	assert.NoError(t, err)
+
+	// term 1
+	voted[1] = false  // prep1
+	voted[2] = false  // prep2
+	csi = newConsensusInfo(sim.Database(), vl0, voted)
+	err = sim.Go(validationPenaltyCondition, csi)
+	assert.NoError(t, err)
+
+	// Check if prep1 and prep2 got penalized after 5 blocks
+	for i := 1; i <= 2; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
+		assert.Equal(t, 1, prep.GetVPenaltyCount())
+	}
+	// Check if prep22 and prep23 become main preps
+	for i := 22; i <= 23; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeMain, prep.Grade())
+		assert.Equal(t, 0, prep.GetVPenaltyCount())
+	}
+
+	// Go ahead 2 blocks to simulate on the next mechanism
+	err = sim.Go(2, csi)
+	assert.NoError(t, err)
+
+	blockHeight = sim.BlockHeight()
+	// Check the states of prep1 and prep2 after additional 2 blocks
+	for i := 1; i <= 2; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
+		assert.Equal(t, 1, prep.GetVPenaltyCount())
+		assert.Equal(t, int64(7), prep.GetVTotal(blockHeight))
+		assert.Equal(t, int64(7), prep.GetVFail(blockHeight))
+		// VFailCont is reset to 0 when the validator gets penalized
+		assert.Equal(t, int64(2), prep.GetVFailCont(blockHeight))
+	}
+	// Check if prep22 and prep23 become main preps
+	for i := 22; i <= 23; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeMain, prep.Grade())
+		assert.Zero(t, prep.GetVPenaltyCount())
+		assert.Zero(t, prep.GetVTotal(blockHeight))
+		assert.Zero(t, prep.GetVFail(blockHeight))
+		assert.Zero(t, prep.GetVFailCont(blockHeight))
+	}
+
+	// Check if prep22 and prep23 are newly included in validatorList instead of prep0 and prep01
+	// Go ahead until term end
+	vl = sim.ValidatorList()
+	assert.True(t, checkValidatorList(vl, vl1))
+	voted[1] = true
+	voted[2] = true
+	csi = newConsensusInfo(sim.Database(), vl, voted)
+	err = sim.GoToTermEnd(csi)
+	assert.NoError(t, err)
+
+	// term 2
+	vl = sim.ValidatorList()
+	assert.True(t, checkValidatorList(vl, vl0))
+
+	blockHeight = sim.BlockHeight()
+	// Check if prep1 and prep2 return to main preps
+	for i := 1; i <= 2; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeMain, prep.Grade())
+		// PenaltyCount is reset to 0 when a prep becomes a main prep on rev13
+		assert.Equal(t, 0, prep.GetVPenaltyCount())
+		assert.Equal(t, int64(7), prep.GetVTotal(blockHeight))
+		assert.Equal(t, int64(7), prep.GetVFail(blockHeight))
+	}
+	// Check if prep22 and prep23 return to sub preps
+	for i := 22; i <= 23; i++ {
+		prep = sim.GetPRep(env.preps[i])
+		assert.Equal(t, icstate.GradeSub, prep.Grade())
+		assert.Equal(t, 0, prep.GetVPenaltyCount())
+		assert.Equal(t, int64(termPeriod - 7), prep.GetVTotal(blockHeight))
+		assert.Zero(t, prep.GetVFail(blockHeight))
+		assert.Zero(t, prep.GetVFailCont(blockHeight))
+	}
 }
