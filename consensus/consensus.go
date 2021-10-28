@@ -711,15 +711,6 @@ func (cs *consensus) enterPrevote() {
 	}
 
 	cs.notifySyncer()
-
-	// send vote may change step
-	// TODO simplify
-	if cs.step == stepPrevote {
-		prevotes := cs.hvs.votesFor(cs.round, VoteTypePrevote)
-		if prevotes.hasOverTwoThirds() {
-			cs.enterPrevoteWait()
-		}
-	}
 }
 
 func (cs *consensus) enterPrevoteWait() {
@@ -769,7 +760,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.log.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validatedBlock != nil {
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
 		cs.log.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
@@ -792,7 +783,8 @@ func (cs *consensus) enterPrecommit() {
 		}
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
 	} else {
-		// polka for a block we don't have
+		// polka for a block we don't have.
+		// send nil precommit because we cannot write locked block on the WAL.
 		cs.log.Traceln("enterPrecommit: polka for we don't have")
 		if !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
@@ -803,14 +795,6 @@ func (cs *consensus) enterPrecommit() {
 	}
 
 	cs.notifySyncer()
-
-	// sendVote may change step
-	if cs.step == stepPrecommit {
-		precommits := cs.hvs.votesFor(cs.round, VoteTypePrecommit)
-		if precommits.hasOverTwoThirds() {
-			cs.enterPrecommitWait()
-		}
-	}
 }
 
 func (cs *consensus) enterPrecommitWait() {

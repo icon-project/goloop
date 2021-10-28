@@ -236,13 +236,13 @@ func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray
 	rvl := newVoteList()
 	prevotes := hvs.votesFor(round, VoteTypePrevote)
 	for i, msg := range prevotes.msgs {
-		if prevotesMask.Get(i) && msg != nil {
+		if !prevotesMask.Get(i) && msg != nil {
 			rvl.AddVote(msg)
 		}
 	}
 	precommits := hvs.votesFor(round, VoteTypePrecommit)
 	for i, msg := range precommits.msgs {
-		if precommitsMask.Get(i) && msg != nil {
+		if !precommitsMask.Get(i) && msg != nil {
 			rvl.AddVote(msg)
 		}
 	}

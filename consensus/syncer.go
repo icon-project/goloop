@@ -21,7 +21,11 @@ type Engine interface {
 	GetCommitBlockParts(h int64) PartSet
 	GetCommitPrecommits(h int64) *voteList
 	GetPrecommits(r int32) *voteList
-	GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList
+	// GetVotes returns union of a set of prevotes pv(i) where
+	// pvMask.Get(i) == 0 and a set of precommits pc(i) where
+	// pcMask.Get(i) == 0. For example, if the all bits for mask is 1,
+	// no votes are returned.
+	GetVotes(r int32, pvMask *bitArray, pcMask *bitArray) *voteList
 	GetRoundState() *peerRoundState
 
 	Height() int64
@@ -89,7 +93,14 @@ func (p *peer) doSync() (module.ProtocolInfo, Message) {
 
 	if p.Height < e.Height() || (p.Height == e.Height() && e.Step() >= stepCommit) {
 		if p.BlockPartsMask == nil {
-			vl := e.GetCommitPrecommits(p.Height)
+			var vl *voteList
+			if p.Height == e.Height() {
+				// send prevotes to prevent the peer from entering precommit
+				// without polka and sending nil precommit
+				vl = e.GetVotes(e.Round(), p.PrevotesMask, p.PrecommitsMask)
+			} else {
+				vl = e.GetCommitPrecommits(p.Height)
+			}
 			if vl == nil {
 				return 0, nil
 			}
@@ -131,29 +142,24 @@ func (p *peer) doSync() (module.ProtocolInfo, Message) {
 		return 0, nil
 	}
 
-	if p.Round < e.Round() && e.Step() >= stepPrecommitWait {
-		vl := e.GetPrecommits(e.Round())
+	if p.Round < e.Round() && e.Step() >= stepPrevoteWait {
+		vl := e.GetVotes(e.Round(), p.PrevotesMask, p.PrecommitsMask)
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.log.Tracef("PC for round %v\n", e.Round())
+		p.log.Tracef("Votes for round %v\n", e.Round())
 		return ProtoVoteList, msg
 	} else if p.Round < e.Round() {
-		// TODO: check peer step
-		vl := e.GetPrecommits(e.Round() - 1)
+		vl := e.GetVotes(e.Round() - 1, p.PrevotesMask, p.PrecommitsMask)
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.log.Tracef("PC for round %v (prev round)\n", e.Round())
+		p.log.Tracef("Votes for prev round %v\n", e.Round()-1)
 		return ProtoVoteList, msg
 	} else if p.Round == e.Round() {
 		rs := e.GetRoundState()
 		p.log.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
-		pv := p.PrevotesMask.Copy()
-		pv.Flip()
-		pc := p.PrecommitsMask.Copy()
-		pc.Flip()
-		vl := e.GetVotes(e.Round(), pv, pc)
+		vl := e.GetVotes(e.Round(), p.PrevotesMask, p.PrecommitsMask)
 		if vl.Len() > 0 {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
