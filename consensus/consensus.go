@@ -711,6 +711,14 @@ func (cs *consensus) enterPrevote() {
 	}
 
 	cs.notifySyncer()
+
+	// we double-check vote count because we may not sendVote
+	if cs.step == stepPrevote {
+		prevotes := cs.hvs.votesFor(cs.round, VoteTypePrevote)
+		if prevotes.hasOverTwoThirds() {
+			cs.enterPrevoteWait()
+		}
+	}
 }
 
 func (cs *consensus) enterPrevoteWait() {
@@ -795,6 +803,17 @@ func (cs *consensus) enterPrecommit() {
 	}
 
 	cs.notifySyncer()
+
+	// sendVote increases vote count. We check the count there. However,
+	// we double-check the count because we may not send vote (e.g. not a
+	// validator).
+	// check current step since sendVote may have changed step
+	if cs.step == stepPrecommit {
+		precommits := cs.hvs.votesFor(cs.round, VoteTypePrecommit)
+		if precommits.hasOverTwoThirds() {
+			cs.enterPrecommitWait()
+		}
+	}
 }
 
 func (cs *consensus) enterPrecommitWait() {
