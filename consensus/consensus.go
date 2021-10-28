@@ -760,7 +760,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.log.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validatedBlock != nil {
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
 		cs.log.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
@@ -783,7 +783,8 @@ func (cs *consensus) enterPrecommit() {
 		}
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
 	} else {
-		// polka for a block we don't have
+		// polka for a block we don't have.
+		// send nil precommit because we cannot write locked block on the WAL.
 		cs.log.Traceln("enterPrecommit: polka for we don't have")
 		if !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
