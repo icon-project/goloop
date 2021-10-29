@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -138,4 +139,34 @@ func TestWorldContextImpl_TotalSupply(t *testing.T) {
 		assert.Zero(t, ts.Cmp(sum))
 	}
 	assert.Zero(t, ts.Cmp(iwc.GetTotalSupply()))
+}
+
+func TestWorldContextImpl_SetScoreOwner_SanityCheck(t *testing.T) {
+	var err error
+	from := common.MustNewAddressFromString("hx1")
+	score := common.MustNewAddressFromString("cx1")
+	owner := common.MustNewAddressFromString("hx2")
+
+	wc := NewWorldContext(newWorldContext())
+
+	// Case: from is nil
+	err = wc.SetScoreOwner(nil, score, owner)
+	assert.Error(t, err)
+
+	invalidScores := []module.Address{
+		nil, common.MustNewAddressFromString("hx3"),
+	}
+	for _, invalidScore := range invalidScores {
+		err = wc.SetScoreOwner(from, invalidScore, owner)
+		assert.Error(t, err)
+	}
+
+	invalidOwners := []module.Address{nil}
+	for _, invalidOwner := range invalidOwners {
+		err = wc.SetScoreOwner(from, score, invalidOwner)
+		assert.Error(t, err)
+	}
+
+	err = wc.SetScoreOwner(from, score, owner)
+	assert.Error(t, err)
 }

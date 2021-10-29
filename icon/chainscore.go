@@ -559,6 +559,25 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionICON2R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getScoreOwner",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"score", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Address,
+		},
+	}, icmodule.RevisionEnableSetScoreOwner, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setScoreOwner",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"score", scoreapi.Address, nil, nil},
+			{"owner", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionEnableSetScoreOwner, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

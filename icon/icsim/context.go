@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -156,6 +157,47 @@ func (ctx *worldContext) StepPrice() *big.Int {
 
 func (ctx *worldContext) BlockTimeStamp() int64 {
 	return ctx.blockTimestamp
+}
+
+func (ctx *worldContext) GetScoreOwner(score module.Address) (module.Address, error) {
+	if score == nil || !score.IsContract() {
+		return nil, scoreresult.InvalidParameterError.Errorf("Invalid score address")
+	}
+	as := ctx.GetAccountState(score.ID())
+	if as == nil || !as.IsContract() {
+		return nil, scoreresult.InvalidParameterError.Errorf("Invalid score account")
+	}
+	return as.ContractOwner(), nil
+}
+
+func (ctx *worldContext) SetScoreOwner(from module.Address, score module.Address, owner module.Address) error {
+	// Parameter sanity check
+	if !score.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("Invalid score address")
+	}
+	if from == nil || from.Equal(owner) {
+		return scoreresult.InvalidParameterError.Errorf("Invalid owner")
+	}
+
+	as := ctx.GetAccountState(score.ID())
+	if !as.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("Invalid score account")
+	}
+
+	// Check if s.from is the owner of a given contract
+	oldOwner := as.ContractOwner()
+	if oldOwner == nil || !oldOwner.Equal(from) {
+		return scoreresult.InvalidParameterError.Errorf("Invalid owner: %s != %s", oldOwner, owner)
+	}
+
+	// Check if the score is active
+	if as.IsBlocked() {
+		return scoreresult.AccessDeniedError.Errorf("Not allowed: blocked score")
+	}
+	if as.IsDisabled() {
+		return scoreresult.AccessDeniedError.Errorf("Not allowed: disabled score")
+	}
+	return as.SetContractOwner(owner)
 }
 
 func NewWorldContext(

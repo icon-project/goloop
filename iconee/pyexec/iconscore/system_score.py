@@ -70,3 +70,9 @@ class InterfaceSystemScore(InterfaceScore):
 
     @interface
     def burn(self): pass
+
+    @interface
+    def getScoreOwner(score: Address) -> Address: pass
+
+    @interface
+    def setScoreOwner(score: Address, owner: Address): pass

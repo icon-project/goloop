@@ -21,6 +21,8 @@ type WorldContext interface {
 	AddTotalSupply(amount *big.Int) (*big.Int, error)
 	SetValidators(validators []module.Validator) error
 	StepPrice() *big.Int
+	GetScoreOwner(score module.Address) (module.Address, error)
+	SetScoreOwner(from module.Address, score module.Address, owner module.Address) error
 }
 
 type CallContext interface {

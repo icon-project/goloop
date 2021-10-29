@@ -653,6 +653,20 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	return es.State.SetRewardFund(rewardFund)
 }
 
+func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	return s.newCallContext(s.cc).GetScoreOwner(score)
+}
+
+func (s *chainScore) Ex_setScoreOwner(score module.Address, owner module.Address) error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	return s.newCallContext(s.cc).SetScoreOwner(s.from, score, owner)
+}
+
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
 }

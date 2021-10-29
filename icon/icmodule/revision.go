@@ -34,6 +34,7 @@ const (
 	Revision13
 	Revision14
 	Revision15
+	Revision16
 	RevisionReserved
 )
 
@@ -81,6 +82,9 @@ const (
 
 	RevisionICON2R2      = Revision15
 	RevisionEnableJavaEE = RevisionICON2R2
+
+	RevisionICON2R3 = Revision16
+	RevisionEnableSetScoreOwner = RevisionICON2R3
 
 	// TODO: Fix a revision for enabling extra main preps
 	RevisionExtraMainPReps = 100
