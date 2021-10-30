@@ -35,6 +35,7 @@ var (
 	allowUpdateFromTo = map[EEType]map[EEType]bool{
 		PythonEE: {
 			PythonEE: true,
+			JavaEE: true,
 		},
 		JavaEE: {
 			JavaEE: true,
