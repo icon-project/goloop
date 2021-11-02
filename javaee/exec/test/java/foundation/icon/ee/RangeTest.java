@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Map;
 
-public class BigIntTest extends SimpleTest {
+public class RangeTest extends SimpleTest {
     public static class BigIntUser {
         @External
         public void take(BigInteger value) {
