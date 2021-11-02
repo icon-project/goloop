@@ -647,6 +647,25 @@ func (cs *consensus) enterPropose() {
 	cs.notifySyncer()
 }
 
+func (cs *consensus) proposalHasValidProposer() bool {
+	if !cs.isProposalAndPOLPrevotesComplete() {
+		return false
+	}
+	// if POLRound > 0, here we have polka for the round, which means at least
+	// +1/3 honest validators checked proposer before they send block prevote
+	if cs.proposalPOLRound == -1 {
+		proposer := cs.currentBlockParts.block.Proposer()
+		index := cs.validators.IndexOf(proposer)
+		if index < 0 {
+			return false
+		}
+		if cs.getProposerIndex(cs.height, cs.round) != index {
+			return false
+		}
+	}
+	return true
+}
+
 func (cs *consensus) enterPrevote() {
 	cs.resetForNewStep(stepPrevote)
 
@@ -656,6 +675,8 @@ func (cs *consensus) enterPrevote() {
 		hrs := cs.hrs
 		if cs.currentBlockParts.validatedBlock != nil {
 			cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
+		} else if !cs.proposalHasValidProposer() {
+			cs.sendVote(VoteTypePrevote, nil)
 		} else {
 			var err error
 			var canceler module.Canceler
