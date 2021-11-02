@@ -17,7 +17,7 @@ require (
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
 	github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6
 	github.com/jroimartin/gocui v0.4.0
-	github.com/labstack/echo/v4 v4.0.0
+	github.com/labstack/echo/v4 v4.6.1
 	github.com/leodido/go-urn v1.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
@@ -34,7 +34,7 @@ require (
 	github.com/vmihailenco/msgpack/v4 v4.3.11
 	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.22.3
-	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/tools v0.0.0-20190312170243-e65039ee4138
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.28.0
