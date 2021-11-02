@@ -26,6 +26,7 @@ public class Shadower {
      * @throws IllegalArgumentException thrown if obj and c does not match
      *                                  correctly or obj is not a valid parameter/return object or c is
      *                                  not a valid parameter/return class.
+     * @throws ArithmeticException if integer value is out of range.
      */
     public static <T> T shadow(Object obj, Class<T> c) {
         @SuppressWarnings("unchecked")
@@ -33,7 +34,16 @@ public class Shadower {
         return res;
     }
 
-    // throws IllegalArgumentException
+    /**
+     * Shadows internal objects according to shadow classes.
+     * @param objs internal objects.
+     * @param c shadow classes.
+     * @return shadow objects
+     * @throws IllegalArgumentException thrown if obj and c does not match
+     *                                  correctly or obj is not a valid parameter/return object or c is
+     *                                  not a valid parameter/return class.
+     * @throws ArithmeticException if integer value is out of range.
+     */
     public static Object[] shadowObjects(Object[] objs, Class<?>[] c) {
         if (objs.length != c.length) {
             throw new IllegalArgumentException();
@@ -45,6 +55,16 @@ public class Shadower {
         return res;
     }
 
+    /**
+     * Shadows internal objects according to shadow class for return value.
+     * @param obj internal object.
+     * @param c shadow class.
+     * @return shadow object.
+     * @throws IllegalArgumentException thrown if obj and c does not match
+     *                                  correctly or obj is not a valid parameter/return object or c is
+     *                                  not a valid parameter/return class.
+     * @throws ArithmeticException if integer value is out of range.
+     */
     public static <T, U extends IObject> U shadowReturnValue(Object obj, Class<T> c) {
         if (obj == null) {
             return null;
@@ -160,11 +180,7 @@ public class Shadower {
         } else if (c == s.java.lang.Long.class) {
             return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
         } else if (c == s.java.math.BigInteger.class) {
-            try {
-                return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
-            } catch (ArithmeticException e) {
-                throw new GenericPredefinedException(Status.InvalidParameter, e);
-            }
+            return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
         } else if (c == s.java.lang.String.class) {
             return s.java.lang.String.newWithCharge((String)obj);
         } else if (c == p.score.Address.class) {
