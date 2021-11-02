@@ -16,8 +16,14 @@
 
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.types.Result;
 import foundation.icon.ee.util.Crypto;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Map;
 
 public class Contract {
     private final byte[] id;
@@ -28,11 +34,17 @@ public class Contract {
     private byte[] objectGraphHash = null;
     // cleared at the end of external transaction
     private int eid = 0;
+    private final InvokeHandler invokeHandler;
 
-    public Contract(byte[] id, String codeID, Method[] methods) {
+    public Contract(byte[] id, String codeID, Method[] methods,
+            InvokeHandler ih) {
         this.id = id;
         this.codeID = codeID;
         this.methods = methods;
+        if (ih == null) {
+            ih = InvokeHandler.defaultHandler();
+        }
+        this.invokeHandler = ih;
     }
 
     public Contract(Contract other) {
@@ -43,6 +55,7 @@ public class Contract {
         this.objectGraph = other.objectGraph;
         this.objectGraphHash = other.objectGraphHash;
         this.eid = other.eid;
+        this.invokeHandler = other.invokeHandler;
     }
 
     public byte[] getID() {
@@ -93,5 +106,17 @@ public class Contract {
 
     public void setEID(int eid) {
         this.eid = eid;
+    }
+
+    public Result invoke(
+            ServiceManager sm,
+            String code, boolean isReadOnly,
+            Address from, Address to, BigInteger value,
+            BigInteger stepLimit, String method, Object[] params,
+            Map<String, Object> info, byte[] cid, int eid,
+            Object[] codeState) throws IOException {
+        return invokeHandler.invoke(sm, code, isReadOnly,
+                from, to, value, stepLimit, method, params, info,
+                cid, eid, codeState);
     }
 }

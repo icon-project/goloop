@@ -114,27 +114,39 @@ public class ServiceManager implements Agent {
         return addr;
     }
 
-    public ContractAddress mustDeploy(Class<?> main, Object ... params) {
+    public ContractAddress mustDeploy(Class<?> main, InvokeHandler ih,
+            Object ... params) {
         byte[] jar = makeJar(main);
-        return doMustDeploy(jar, params);
+        return doMustDeploy(jar, ih, params);
+    }
+
+    public ContractAddress mustDeploy(Class<?> main, Object ... params) {
+        return mustDeploy(main, null, params);
     }
 
     public ContractAddress mustDeploy(byte[] jar, Object ... params) {
-        return doMustDeploy(jar, params);
+        return doMustDeploy(jar, null, params);
     }
 
     private Result deployInner(Address to, BigInteger value, BigInteger stepLimit,
             String contentType, byte[] content, Object[] params) {
-        return doDeploy(to, value, stepLimit, contentType, content, params);
+        return doDeploy(to, value, stepLimit, contentType, content, null,
+                params);
     }
 
     public Address getOrigin() {
         return context.getOrigin();
     }
 
-    public ContractAddress mustDeploy(Class<?>[] all, Object ... params) {
+    public ContractAddress mustDeploy(Class<?>[] all, InvokeHandler ih,
+            Object ... params) {
         byte[] jar = makeJar(all[0].getName(), all);
-        return doMustDeploy(jar, params);
+        return doMustDeploy(jar, ih, params);
+    }
+
+
+    public ContractAddress mustDeploy(Class<?>[] all, Object ... params) {
+        return mustDeploy(all, null, params);
     }
 
     private Method[] getAPI(String path) throws IOException {
@@ -159,9 +171,10 @@ public class ServiceManager implements Agent {
         return res;
     }
 
-    private ContractAddress doMustDeploy(byte[] jar, Object ... params) {
+    private ContractAddress doMustDeploy(byte[] jar, InvokeHandler ih,
+            Object ... params) {
         var res = doDeploy(null, BigInteger.ZERO, stepLimit,
-                "application/java", jar, params);
+                "application/java", jar, ih, params);
         assert res != null;
         if (res.getStatus() != Status.Success) {
             throw new TransactionException(res);
@@ -171,7 +184,8 @@ public class ServiceManager implements Agent {
     }
 
     private Result doDeploy(Address to, BigInteger value, BigInteger stepLimit,
-            String contentType, byte[] jar, Object[] params) {
+            String contentType, byte[] jar, InvokeHandler ih,
+            Object[] params) {
         if (to == null) {
             to = newScoreAddress();
         }
@@ -184,7 +198,7 @@ public class ServiceManager implements Agent {
                 if (methods == null) {
                     return new Result(Status.IllegalFormat, 0, null);
                 }
-                context.beginFrame(to, codeID, methods);
+                context.beginFrame(to, codeID, methods, ih);
                 info.put(Info.CONTRACT_OWNER, context.getFrom());
                 var res = doInvoke(codeID, false, context.getFrom(), to, value, stepLimit, "<init>", params);
                 if (res.getStatus() == Status.Success) {
@@ -407,6 +421,26 @@ public class ServiceManager implements Agent {
         }
     }
 
+    public Result sendInvokeAndWaitForResult(
+            String code, boolean isReadOnly,
+            Address from, Address to, BigInteger value,
+            BigInteger stepLimit, String method, Object[] params,
+            Map<String, Object> info, byte[] cid, int eid,
+            Object[] codeState) throws IOException {
+        proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
+            to, value, stepLimit, method, TypedObj.encodeAny(params),
+            TypedObj.encodeAny(info), cid, eid, codeState);
+        var msg = waitFor(EEProxy.MsgType.RESULT);
+        if (msg.type != EEProxy.MsgType.RESULT) {
+            throw new AssertionError(String.format("unexpected message type %d", msg.type));
+        }
+        var data = msg.value.asArrayValue();
+        var status = data.get(0).asIntegerValue().asInt();
+        var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
+        var result = TypedObj.decodeAny(data.get(2));
+        return new Result(status, stepUsed, result);
+    }
+
     private Result doInvoke(String code, boolean isQuery, Address from,
                             Address to, BigInteger value, BigInteger stepLimit,
                             String method, Object[] params) throws IOException {
@@ -445,21 +479,14 @@ public class ServiceManager implements Agent {
                         value, stepLimit, method, params, context.getShortCID(),
                         context.getContextEID(), codeState);
             }
-            proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
-                    to, value, stepLimit, method, TypedObj.encodeAny(params),
-                    TypedObj.encodeAny(info), context.getContractID(),
+            var result = context.getContract(to).invoke(
+                    this, code, isReadOnly, from, to, value, stepLimit,
+                    method, params, info, context.getContractID(),
                     context.getContextEID(), codeState);
-            var msg = waitFor(EEProxy.MsgType.RESULT);
             proxy = prevProxy;
-            if (msg.type != EEProxy.MsgType.RESULT) {
-                throw new AssertionError(String.format("unexpected message type %d", msg.type));
-            }
-            var data = msg.value.asArrayValue();
-            var status = data.get(0).asIntegerValue().asInt();
-            var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
-            var result = TypedObj.decodeAny(data.get(2));
-            printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
-            return new Result(status, stepUsed, result);
+            printf("RECV result status=%d stepUsed=%d ret=%s%n",
+                    result.getStatus(), result.getStepUsed(), result.getRet());
+            return result;
         } finally {
             isReadOnly = prevIsReadOnly;
         }

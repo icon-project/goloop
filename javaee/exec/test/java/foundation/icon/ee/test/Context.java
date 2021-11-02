@@ -104,10 +104,11 @@ public class Context implements FileIO {
     }
 
     public SimpleCloseable beginFrame(Address address) {
-        return beginFrame(address, null, null);
+        return beginFrame(address, null, null, null);
     }
 
-    public SimpleCloseable beginFrame(Address address, String codeID, Method[] methods) {
+    public SimpleCloseable beginFrame(Address address, String codeID,
+            Method[] methods, InvokeHandler ih) {
         var last = lastFrame();
         TxFrame cur;
         if (codeID == null) {
@@ -119,7 +120,7 @@ public class Context implements FileIO {
             var contractID = Containers.concatArray(address.toByteArray(),
                     BigInteger.valueOf(++shortCID).toByteArray());
             cur = TxFrame.newDeployFrame(last.getState(),
-                    address, contractID, codeID, methods);
+                    address, contractID, codeID, methods, ih);
         }
         frames.add(cur);
         return this::endFrame;

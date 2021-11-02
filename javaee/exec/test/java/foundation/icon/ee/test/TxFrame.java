@@ -33,9 +33,10 @@ public class TxFrame implements Frame {
             Address to,
             byte[] contractID,
             String codeID,
-            Method[] methods) {
+            Method[] methods,
+            InvokeHandler ih) {
         var stateCopy = new State(state);
-        stateCopy.deploy(to, new Contract(contractID, codeID, methods));
+        stateCopy.deploy(to, new Contract(contractID, codeID, methods, ih));
         return new TxFrame(stateCopy, to);
     }
 
