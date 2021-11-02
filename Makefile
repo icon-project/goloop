@@ -100,7 +100,7 @@ builddeps-%:
 
 gorun-% : builddeps-go builddeps-rocksdb builddeps-build
 	@ \
-	docker run -it --rm \
+	docker run -t --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
 	    -e "GOBUILD_TAGS=$(GOBUILD_TAGS)" \
@@ -110,7 +110,7 @@ gorun-% : builddeps-go builddeps-rocksdb builddeps-build
 
 pyrun-% : builddeps-py | $(PYEE_DIST_DIR)
 	@ \
-	docker run -it --rm \
+	docker run -t --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
 	    -e "GL_VERSION=$(GL_VERSION)" \
@@ -128,7 +128,7 @@ pyexec:
 
 javarun-% : builddeps-java
 	@ \
-	docker run -it --rm \
+	docker run -t --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR)/javaee \
 	    $(JAVADEPS_IMAGE) \

@@ -516,7 +516,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootPFlags.Int("wait_interval", 1000, "Polling interval(msec) for wait transaction result")
 	rootPFlags.Int("wait_timeout", 10, "Timeout(sec) for wait transaction result")
 	rootPFlags.Bool("estimate", false, "Just estimate steps for the tx")
-	MarkAnnotationCustom(rootPFlags, "key_store", "nid", "step_limit")
+	MarkAnnotationCustom(rootPFlags, "key_store", "nid")
 	BindPFlags(vc, rootCmd.PersistentFlags())
 	MarkAnnotationHidden(rootPFlags, "wait", "wait_interval", "wait_timeout")
 
@@ -530,7 +530,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 
 	rawCmd := &cobra.Command{
 		Use:   "raw FILE",
-		Short: "Send transaction with json file",
+		Short: "Send transaction with json file filling nid,from,timestamp and signature",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := readFile(args[0])
@@ -572,7 +572,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 
 	raw2Cmd := &cobra.Command{
 		Use:   "raw2 FILE",
-		Short: "Send transaction with json file just timestamp & sign",
+		Short: "Send transaction with json file filling timestamp and signature",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := readFile(args[0])
@@ -592,6 +592,30 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		},
 	}
 	rootCmd.AddCommand(raw2Cmd)
+
+	raw3Cmd := &cobra.Command{
+		Use:   "raw3 FILE",
+		Short: "Send transaction with json file",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			b, err := readFile(args[0])
+			if err != nil {
+				return err
+			}
+			var param json.RawMessage
+			if err := json.Unmarshal(b, &param); err != nil {
+				return err
+			}
+			var result jsonrpc.HexBytes
+			_, err = rpcClient.Do("icx_sendTransaction", param, &result)
+			if err != nil {
+				return err
+			}
+			vc.Set("txhash", &result)
+			return JsonPrettyPrintln(os.Stdout, &result)
+		},
+	}
+	rootCmd.AddCommand(raw3Cmd)
 
 	transferCmd := &cobra.Command{
 		Use:   "transfer",
