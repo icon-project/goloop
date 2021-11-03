@@ -2,8 +2,6 @@ package foundation.icon.ee.util;
 
 import foundation.icon.ee.struct.Property;
 import foundation.icon.ee.types.Address;
-import foundation.icon.ee.types.Status;
-import i.GenericPredefinedException;
 import i.IObject;
 import i.IObjectArray;
 import i.RuntimeAssertionError;
@@ -137,18 +135,26 @@ public class Shadower {
         if (c == boolean.class) {
             return s.java.lang.Boolean.avm_valueOf((Boolean) obj);
         } else if(c == char.class) {
+            requireValidCharRange((BigInteger) obj);
             return s.java.lang.Character.avm_valueOf(
                     (char)((BigInteger)obj).intValue());
         } else if(c == byte.class) {
-            return s.java.lang.Byte.avm_valueOf(((BigInteger)obj).byteValue());
+            return s.java.lang.Byte.avm_valueOf(((BigInteger)obj).byteValueExact());
         } else if(c == short.class) {
-            return s.java.lang.Short.avm_valueOf(((BigInteger)obj).shortValue());
+            return s.java.lang.Short.avm_valueOf(((BigInteger)obj).shortValueExact());
         } else if(c == int.class) {
-            return s.java.lang.Integer.avm_valueOf(((BigInteger)obj).intValue());
+            return s.java.lang.Integer.avm_valueOf(((BigInteger)obj).intValueExact());
         } else if(c == long.class) {
-            return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
+            return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValueExact());
         }
         return null;
+    }
+
+    private static void requireValidCharRange(BigInteger v) {
+        if (v.compareTo(BigInteger.valueOf(Character.MAX_VALUE))>0 ||
+                v.compareTo(BigInteger.valueOf(Character.MIN_VALUE))<0) {
+            throw new ArithmeticException("out of char range");
+        }
     }
 
     private static Object _shadow(Object obj, Class<?> c) {
@@ -157,28 +163,30 @@ public class Shadower {
         } else if (c == boolean.class) {
             return obj;
         } else if (c == char.class) {
+            requireValidCharRange((BigInteger) obj);
             return (char) ((BigInteger) obj).intValue();
         } else if (c == byte.class) {
-            return ((BigInteger) obj).byteValue();
+            return ((BigInteger) obj).byteValueExact();
         } else if (c == short.class) {
-            return ((BigInteger) obj).shortValue();
+            return ((BigInteger) obj).shortValueExact();
         } else if (c == int.class) {
-            return ((BigInteger) obj).intValue();
+            return ((BigInteger) obj).intValueExact();
         } else if (c == long.class) {
-            return ((BigInteger) obj).longValue();
+            return ((BigInteger) obj).longValueExact();
         } else if (c == s.java.lang.Boolean.class) {
             return s.java.lang.Boolean.avm_valueOf((Boolean) obj);
         } else if (c == s.java.lang.Character.class) {
+            requireValidCharRange((BigInteger) obj);
             return s.java.lang.Character.avm_valueOf(
                     (char)((BigInteger)obj).intValue());
         } else if (c == s.java.lang.Byte.class) {
-            return s.java.lang.Byte.avm_valueOf(((BigInteger)obj).byteValue());
+            return s.java.lang.Byte.avm_valueOf(((BigInteger)obj).byteValueExact());
         } else if (c == s.java.lang.Short.class) {
-            return s.java.lang.Short.avm_valueOf(((BigInteger)obj).shortValue());
+            return s.java.lang.Short.avm_valueOf(((BigInteger)obj).shortValueExact());
         } else if (c == s.java.lang.Integer.class) {
-            return s.java.lang.Integer.avm_valueOf(((BigInteger)obj).intValue());
+            return s.java.lang.Integer.avm_valueOf(((BigInteger)obj).intValueExact());
         } else if (c == s.java.lang.Long.class) {
-            return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValue());
+            return s.java.lang.Long.avm_valueOf(((BigInteger)obj).longValueExact());
         } else if (c == s.java.math.BigInteger.class) {
             return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
         } else if (c == s.java.lang.String.class) {
