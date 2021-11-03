@@ -395,13 +395,15 @@ func (s *BlockVoteList) Timestamp() int64 {
 	if s == nil {
 		return 0
 	}
-	l := len(s.votes)
+	var ts []int64
+	for _, v := range s.votes {
+		if v != nil {
+			ts = append(ts, v.json.Timestamp.Value)
+		}
+	}
+	l := len(ts)
 	if l == 0 {
 		return 0
-	}
-	ts := make([]int64, l)
-	for i := range ts {
-		ts[i] = s.votes[i].json.Timestamp.Value
 	}
 	sort.Slice(ts, func(i, j int) bool {
 		return ts[i] < ts[j]
