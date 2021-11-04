@@ -109,6 +109,14 @@ func (th *transactionHandler) checkBalance(cc contract.CallContext) error {
 	return nil
 }
 
+func (th *transactionHandler) checkBlocked(cc contract.CallContext) error {
+	as := cc.GetAccountState(th.from.ID())
+	if as.IsBlocked() {
+		return scoreresult.AccessDeniedError.Errorf("BlockedAccount(addr=%s)", th.from.String())
+	}
+	return nil
+}
+
 func (th *transactionHandler) DoExecute(cc contract.CallContext, estimate, isPatch bool) (
 	status error,
 	score module.Address,
@@ -116,6 +124,11 @@ func (th *transactionHandler) DoExecute(cc contract.CallContext, estimate, isPat
 ) {
 	if !isPatch && !estimate {
 		if err := th.checkBalance(cc); err != nil {
+			return err, nil, nil
+		}
+	}
+	if !isPatch {
+		if err := th.checkBlocked(cc); err != nil {
 			return err, nil, nil
 		}
 	}

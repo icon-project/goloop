@@ -567,11 +567,9 @@ func (s *accountStateImpl) SetDisable(b bool) {
 }
 
 func (s *accountStateImpl) SetBlock(b bool) {
-	if s.isContract == true {
-		if ((s.state & ASBlocked) != 0) != b {
-			s.state = s.state ^ ASBlocked
-			s.markDirty()
-		}
+	if ((s.state & ASBlocked) != 0) != b {
+		s.state = s.state ^ ASBlocked
+		s.markDirty()
 	}
 }
 
