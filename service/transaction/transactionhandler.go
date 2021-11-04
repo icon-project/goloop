@@ -130,17 +130,16 @@ func (th *transactionHandler) DoExecute(cc contract.CallContext, estimate, isPat
 	if !cc.ApplySteps(state.StepTypeDefault, 1) {
 		return scoreresult.ErrOutOfStep, nil, nil
 	}
-	if !isPatch {
-		if err := th.checkBlocked(cc); err != nil {
-			return err, nil, nil
-		}
-	}
-
 	if cnt, err := MeasureBytesOfData(cc.Revision(), th.data); err != nil {
 		return nil, nil, err
 	} else {
 		if !cc.ApplySteps(state.StepTypeInput, cnt) {
 			return scoreresult.ErrOutOfStep, nil, nil
+		}
+	}
+	if !isPatch {
+		if err := th.checkBlocked(cc); err != nil {
+			return err, nil, nil
 		}
 	}
 
