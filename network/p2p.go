@@ -1420,9 +1420,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 	}
 
 	for _, na := range p2p.roots.Array() {
-		if p2p.getNetAddress() != na &&
-			!p2p.orphanages.HasNetAddress(na) &&
-			!p2p.friends.HasNetAddress(na) {
+		if !p2p.hasNetAddress(na) {
 			p2p.logger.Traceln("discoverFriends", "dial to p2pRoleRoot", na)
 			if err := p2p.dial(na); err != nil {
 				p2p.roots.Remove(na)
