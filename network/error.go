@@ -19,6 +19,8 @@ const (
 	QueueOverflowError
 	DuplicatedPacketError
 	DuplicatedPeerError
+	InvalidMessageSequenceError
+	InvalidSignatureError
 )
 
 var (
@@ -36,5 +38,7 @@ var (
 	ErrQueueOverflow             = errors.NewBase(QueueOverflowError, "QueueOverflow")
 	ErrDuplicatedPacket          = errors.NewBase(DuplicatedPacketError, "DuplicatedPacket")
 	ErrDuplicatedPeer            = errors.NewBase(DuplicatedPeerError, "DuplicatedPeer")
+	ErrInvalidMessageSequence    = errors.NewBase(InvalidMessageSequenceError, "InvalidMessageSequence")
+	ErrInvalidSignature          = errors.NewBase(InvalidSignatureError, "InvalidSignatureError")
 	ErrIllegalArgument           = errors.ErrIllegalArgument
 )

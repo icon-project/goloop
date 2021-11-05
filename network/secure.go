@@ -209,6 +209,8 @@ func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) error 
 func (k *secureKey) hkdf(numOfSecret int) error {
 	var secretLen int
 	switch k.sa {
+	case SecureAeadSuiteNone:
+		secretLen = 32
 	case SecureAeadSuiteAes128Gcm:
 		secretLen = 16
 	case SecureAeadSuiteAes256Gcm, SecureAeadSuiteChaCha20Poly1305:
@@ -251,14 +253,14 @@ func (k *secureKey) hkdf(numOfSecret int) error {
 }
 
 func (k *secureKey) tlsConfig() (*tls.Config, error) {
-	var cipher uint16 = 0
+	var cs uint16 = 0
 	switch k.sa {
 	case SecureAeadSuiteAes128Gcm:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+		cs = tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	case SecureAeadSuiteAes256Gcm:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+		cs = tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
 	case SecureAeadSuiteChaCha20Poly1305:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+		cs = tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
 	default:
 		return nil, fmt.Errorf("secureKey: unknown SecureAeadSuite")
 	}
@@ -282,7 +284,7 @@ func (k *secureKey) tlsConfig() (*tls.Config, error) {
 		InsecureSkipVerify:    true,
 		Certificates:          []tls.Certificate{cert},
 		ClientAuth:            tls.RequireAnyClientCert,
-		CipherSuites:          []uint16{cipher},
+		CipherSuites:          []uint16{cs},
 		CurvePreferences:      []tls.CurveID{curve},
 		VerifyPeerCertificate: k.verifyCertificate,
 		KeyLogWriter:          k.keyLogWriter,
@@ -390,7 +392,7 @@ func SecureSuiteFromString(s string) SecureSuite {
 type SecureAeadSuite byte
 
 const (
-	SecureAeadSuiteUnknown = iota
+	SecureAeadSuiteNone = iota
 	SecureAeadSuiteChaCha20Poly1305
 	SecureAeadSuiteAes128Gcm
 	SecureAeadSuiteAes256Gcm
@@ -418,7 +420,7 @@ func SecureAeadSuiteFromString(s string) SecureAeadSuite {
 	case "aes256":
 		return SecureAeadSuiteAes256Gcm
 	default:
-		return SecureAeadSuiteUnknown
+		return SecureAeadSuiteNone
 	}
 }
 

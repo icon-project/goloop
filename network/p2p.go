@@ -45,6 +45,8 @@ const (
 	DefaultPacketRewriteLimit   = 10
 	DefaultPacketRewriteDelay   = 100 * time.Millisecond
 	DefaultRttAccuracy          = 10 * time.Millisecond
+	DefaultRttLogTimeout        = 1 * time.Second
+	DefaultRttLogThreshold      = 1 * time.Second
 	DefaultFailureNodeMin       = 2
 	DefaultSelectiveFloodingAdd = 1
 	DefaultSimplePeerIDSize     = 4
@@ -94,14 +96,11 @@ type PeerToPeer struct {
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
 
-	//Addresses
-	trustSeeds *NetAddressSet
-	seeds      *NetAddressSet
-	roots      *NetAddressSet //For seed, root
-	//[TBD] 2hop peers of current tree for status change
-	grandParent   NetAddress
-	grandChildren *NetAddressSet
-
+	//NetAddresses  //if value of map is duplicated, then old will be removed.
+	trustSeeds *NetAddressSet //map[DialNetAddress]NetAddress
+	seeds      *NetAddressSet //map[NetAddress]PeerID
+	roots      *NetAddressSet //map[NetAddress]PeerID //Only for seed and root
+	
 	//managed PeerId
 	allowedRoots *PeerIDSet
 	allowedSeeds *PeerIDSet
@@ -163,7 +162,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		trustSeeds:    NewNetAddressSet(),
 		seeds:         NewNetAddressSet(),
 		roots:         NewNetAddressSet(),
-		grandChildren: NewNetAddressSet(),
 		//
 		allowedRoots: NewPeerIDSet(),
 		allowedSeeds: NewPeerIDSet(),
@@ -623,6 +621,19 @@ func (p2p *PeerToPeer) getParent() *Peer {
 	return nil
 }
 
+func (p2p *PeerToPeer) startRtt(p *Peer) {
+	p.rtt.StartWithAfterFunc(DefaultRttLogTimeout, func() {
+		p2p.logger.Warnln("RTT Timeout",DefaultRttLogTimeout, p)
+	})
+}
+
+func (p2p *PeerToPeer) stopRtt(p *Peer) {
+	p.rtt.Stop()
+	if p.rtt.last >= DefaultRttLogThreshold {
+		p2p.logger.Warnln("RTT Threshold", DefaultRttLogThreshold, p)
+	}
+}
+
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.getRole()}
 	pkt := newPacket(p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.getID())
@@ -684,7 +695,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	if err != nil {
 		p2p.logger.Infoln("handleQuery", "sendQueryResult", err, p)
 	} else {
-		p.rtt.Start()
+		p2p.startRtt(p)
 		p2p.logger.Traceln("handleQuery", "sendQueryResult", m, p)
 	}
 }
@@ -697,7 +708,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleQueryResult", qrm, p)
-	p.rtt.Stop()
+	p2p.stopRtt(p)
 	p.children.ClearAndAdd(qrm.Children...)
 	atomic.StoreInt32(&p.nephews, int32(len(qrm.Nephews)))
 
@@ -742,8 +753,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleRttRequest", rm, p)
-	p.rtt.Stop()
-	//p.rtt.et.Sub(pkt.timestamp)
+	p2p.stopRtt(p)
 
 	df := rm.Last - p.rtt.last
 	if df > DefaultRttAccuracy {
