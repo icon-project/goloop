@@ -51,8 +51,10 @@ type Peer struct {
 	recvRole PeerRoleFlag
 	children *NetAddressSet
 	nephews  int32
-	//
-	last context.Context
+
+	//attr
+	attr       map[string]interface{}
+	attrMtx    sync.RWMutex
 
 	//log
 	logger log.Logger
@@ -86,6 +88,7 @@ type PeerRTT struct {
 	avg  time.Duration
 	st   time.Time
 	et   time.Time
+	t    *time.Timer
 	mtx  sync.RWMutex
 }
 
@@ -97,6 +100,26 @@ func (r *PeerRTT) Start() time.Time {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
+	if r.t != nil {
+		//ignore
+		r.t.Stop()
+		r.t = nil
+	}
+	r.st = time.Now()
+	return r.st
+}
+
+func (r *PeerRTT) StartWithAfterFunc(to time.Duration, f func()) time.Time {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	if r.t != nil {
+		//ignore
+		r.t.Stop()
+		r.t = nil
+	}
+	r.t = time.AfterFunc(to, f)
+
 	r.st = time.Now()
 	return r.st
 }
@@ -104,6 +127,11 @@ func (r *PeerRTT) Start() time.Time {
 func (r *PeerRTT) Stop() time.Time {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
+
+	if r.t != nil {
+		r.t.Stop()
+		r.t = nil
+	}
 
 	r.et = time.Now()
 	r.last = r.et.Sub(r.st)
@@ -213,6 +241,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, l log.Logger) *Peer {
 		onError:     defaultOnError,
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
+		attr:        make(map[string]interface{}),
 	}
 	p.logger = l.WithFields(log.Fields{"peer": p.id})
 	p.setPacketCbFunc(cbFunc)
@@ -370,23 +399,34 @@ func (p *Peer) IsClosed() bool {
 	return atomic.LoadInt32(&p.closed) == 1
 }
 
-func (p *Peer) Close(reason string) error {
+func (p *Peer) addCloseReason(reason string) {
 	p.closeInfoMtx.Lock()
 	defer p.closeInfoMtx.Unlock()
 
 	p.closeReason = append(p.closeReason, reason)
+}
+
+func (p *Peer) Close(reason string) error {
+	p.addCloseReason(reason)
 	return p._close()
 }
 
-func (p *Peer) CloseByError(err error) error {
+func (p *Peer) addCloseError(err error) {
 	p.closeInfoMtx.Lock()
 	defer p.closeInfoMtx.Unlock()
 
 	p.closeErr = append(p.closeErr, err)
+}
+
+func (p *Peer) CloseByError(err error) error {
+	p.addCloseError(err)
 	return p._close()
 }
 
 func (p *Peer) CloseInfo() string {
+	p.closeInfoMtx.RLock()
+	defer p.closeInfoMtx.RUnlock()
+
 	reason := "reason:["
 	for i, s := range p.closeReason {
 		if i != 0 {
@@ -407,15 +447,6 @@ func (p *Peer) CloseInfo() string {
 	}
 	closeErr += "]"
 	return reason + closeErr
-}
-
-func (p *Peer) _recover() interface{} {
-	if err := recover(); err != nil {
-		p.logger.Infof("Peer[%s]._recover from %+v", p.ConnString(), err)
-		p.CloseByError(fmt.Errorf("_recover from %+v", err))
-		return err
-	}
-	return nil
 }
 
 func (p *Peer) isCloseError(err error) bool {
@@ -448,7 +479,10 @@ func (p *Peer) isTemporaryError(err error) bool {
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer func() {
-		if err := p._recover(); err == nil {
+		if err := recover(); err != nil {
+			p.logger.Warnf("Peer[%s].receiveRoutine recover from %+v", p.ConnString(), err)
+			p.CloseByError(fmt.Errorf("recover from %+v", err))
+		} else {
 			p.Close("receiveRoutine finish")
 		}
 	}()
@@ -588,4 +622,44 @@ func (p *Peer) getMetric() *metric.NetworkMetric {
 	p.metricMtx.RLock()
 	defer p.metricMtx.RUnlock()
 	return p.mtr
+}
+
+func (p *Peer) HasCloseError(err error) bool {
+	p.closeInfoMtx.RLock()
+	defer p.closeInfoMtx.RUnlock()
+
+	for _, cerr := range p.closeErr {
+		if err != nil && (cerr == err || cerr.Error() == err.Error()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Peer) GetAttr(k string) (interface{}, bool) {
+	p.attrMtx.RLock()
+	defer p.attrMtx.RUnlock()
+	v, ok := p.attr[k]
+	return v, ok
+}
+
+func (p *Peer) PutAttr(k string, v interface{}) {
+	p.attrMtx.Lock()
+	defer p.attrMtx.Unlock()
+	p.attr[k] = v
+}
+
+func (p *Peer) RemoveAttr(k string) {
+	p.attrMtx.Lock()
+	defer p.attrMtx.Unlock()
+	if _, ok := p.attr[k]; ok {
+		delete(p.attr, k)
+	}
+}
+
+func (p *Peer) EqualsAttr(k string, v interface{}) bool {
+	p.attrMtx.RLock()
+	defer p.attrMtx.RUnlock()
+	ov, ok := p.attr[k]
+	return ok && ov == v
 }

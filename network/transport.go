@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
@@ -116,7 +117,7 @@ func (t *transport) SetSecureAeads(channel string, secureAeads string) error {
 	aeads := make([]SecureAeadSuite, len(ss))
 	for i, s := range ss {
 		aead := SecureAeadSuiteFromString(s)
-		if aead == SecureAeadSuiteUnknown {
+		if aead == SecureAeadSuiteNone {
 			return fmt.Errorf("parse SecureAeadSuite error from %s", s)
 		}
 		aeads[i] = aead
@@ -276,6 +277,7 @@ func (ph *peerHandler) onPeer(p *Peer) {
 }
 
 func (ph *peerHandler) nextOnPeer(p *Peer) {
+	p.RemoveAttr("waitSubProtocolInfo")
 	if ph.next != nil {
 		p.setPacketCbFunc(ph.next.onPacket)
 		p.setErrorCbFunc(ph.next.onError)
@@ -290,7 +292,7 @@ func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
 }
 
 func (ph *peerHandler) onClose(p *Peer) {
-	ph.logger.Traceln("onClose", p)
+	ph.logger.Traceln("onClose", p.CloseInfo(), p)
 }
 
 func (ph *peerHandler) setNext(next PeerHandler) {
@@ -321,8 +323,38 @@ func (ph *peerHandler) encode(v interface{}) []byte {
 	return b
 }
 
-func (ph *peerHandler) decode(b []byte, v interface{}) {
-	codec.MP.MustUnmarshalFromBytes(b, v)
+func (ph *peerHandler) decodePeerPacket(p *Peer, buf interface{}, pkt *Packet) bool {
+	if err := ph.decode(pkt.payload, buf); err != nil {
+		p.CloseByError(err)
+		return false
+	}
+	return true
+}
+
+func (ph *peerHandler) decode(b []byte, v interface{}) error {
+	if remain, err := codec.MP.UnmarshalFromBytes(b, v); err == nil {
+		if len(remain) > 0 {
+			return errors.Errorf("ExtraBytes(size=%d)", len(remain))
+		}
+		return nil
+	} else {
+		return err
+	}
+}
+
+func (ph *peerHandler) setWaitInfo(pi module.ProtocolInfo, p *Peer) {
+	p.PutAttr("waitSubProtocolInfo", pi)
+}
+
+func (ph *peerHandler) checkWaitInfo(pkt *Packet, p *Peer) bool {
+	if v, ok := p.GetAttr("waitSubProtocolInfo"); ok {
+		if pi, ok := v.(module.ProtocolInfo); ok && pi.Uint16() != pkt.subProtocol.Uint16() {
+			err := errors.Wrapf(ErrInvalidMessageSequence, "expected:%s received:%s", pi, pkt.subProtocol)
+			p.CloseByError(err)
+			return false
+		}
+	}
+	return true
 }
 
 type PeerDispatcher struct {

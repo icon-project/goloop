@@ -45,6 +45,8 @@ const (
 	DefaultPacketRewriteLimit   = 10
 	DefaultPacketRewriteDelay   = 100 * time.Millisecond
 	DefaultRttAccuracy          = 10 * time.Millisecond
+	DefaultRttLogTimeout        = 1 * time.Second
+	DefaultRttLogThreshold      = 1 * time.Second
 	DefaultFailureNodeMin       = 2
 	DefaultSelectiveFloodingAdd = 1
 	DefaultSimplePeerIDSize     = 4
@@ -94,14 +96,11 @@ type PeerToPeer struct {
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
 
-	//Addresses
-	trustSeeds *NetAddressSet
-	seeds      *NetAddressSet
-	roots      *NetAddressSet //For seed, root
-	//[TBD] 2hop peers of current tree for status change
-	grandParent   NetAddress
-	grandChildren *NetAddressSet
-
+	//NetAddresses  //if value of map is duplicated, then old will be removed.
+	trustSeeds *NetAddressSet //map[DialNetAddress]NetAddress
+	seeds      *NetAddressSet //map[NetAddress]PeerID
+	roots      *NetAddressSet //map[NetAddress]PeerID //Only for seed and root
+	
 	//managed PeerId
 	allowedRoots *PeerIDSet
 	allowedSeeds *PeerIDSet
@@ -163,7 +162,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		trustSeeds:    NewNetAddressSet(),
 		seeds:         NewNetAddressSet(),
 		roots:         NewNetAddressSet(),
-		grandChildren: NewNetAddressSet(),
 		//
 		allowedRoots: NewPeerIDSet(),
 		allowedSeeds: NewPeerIDSet(),
@@ -623,6 +621,19 @@ func (p2p *PeerToPeer) getParent() *Peer {
 	return nil
 }
 
+func (p2p *PeerToPeer) startRtt(p *Peer) {
+	p.rtt.StartWithAfterFunc(DefaultRttLogTimeout, func() {
+		p2p.logger.Warnln("RTT Timeout",DefaultRttLogTimeout, p)
+	})
+}
+
+func (p2p *PeerToPeer) stopRtt(p *Peer) {
+	p.rtt.Stop()
+	if p.rtt.last >= DefaultRttLogThreshold {
+		p2p.logger.Warnln("RTT Threshold", DefaultRttLogThreshold, p)
+	}
+}
+
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.getRole()}
 	pkt := newPacket(p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.getID())
@@ -684,7 +695,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	if err != nil {
 		p2p.logger.Infoln("handleQuery", "sendQueryResult", err, p)
 	} else {
-		p.rtt.Start()
+		p2p.startRtt(p)
 		p2p.logger.Traceln("handleQuery", "sendQueryResult", m, p)
 	}
 }
@@ -697,7 +708,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleQueryResult", qrm, p)
-	p.rtt.Stop()
+	p2p.stopRtt(p)
 	p.children.ClearAndAdd(qrm.Children...)
 	atomic.StoreInt32(&p.nephews, int32(len(qrm.Nephews)))
 
@@ -742,8 +753,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleRttRequest", rm, p)
-	p.rtt.Stop()
-	//p.rtt.et.Sub(pkt.timestamp)
+	p2p.stopRtt(p)
 
 	df := rm.Last - p.rtt.last
 	if df > DefaultRttAccuracy {
@@ -1400,10 +1410,10 @@ func (p2p *PeerToPeer) discoverFriends() {
 	ps := p2p.friends.GetByRole(p2pRoleRoot, false)
 	for _, p := range ps {
 		if p.hasRole(p2pRoleSeed) {
-			p2p.logger.Traceln("discoverFriends", "not allowed friend connection", p.id)
+			p2p.logger.Debugln("discoverFriends", "not allowed friend connection", p.id)
 			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
 		} else {
-			p2p.logger.Traceln("discoverFriends", "not allowed connection", p.id)
+			p2p.logger.Debugln("discoverFriends", "not allowed connection", p.id)
 			p.Close("discoverFriends not allowed connection")
 		}
 	}
@@ -1415,15 +1425,13 @@ func (p2p *PeerToPeer) discoverFriends() {
 	roots = append(roots, p2p.nephews.GetByRole(p2pRoleRoot, true)...)
 	roots = append(roots, p2p.others.GetByRole(p2pRoleRoot, true)...)
 	for _, p := range roots {
-		p2p.logger.Traceln("discoverFriends", "p2pConnTypeFriend", p.id)
+		p2p.logger.Debugln("discoverFriends", "p2pConnTypeFriend", p.id)
 		p2p.updatePeerConnectionType(p, p2pConnTypeFriend)
 	}
 
 	for _, na := range p2p.roots.Array() {
-		if p2p.getNetAddress() != na &&
-			!p2p.orphanages.HasNetAddress(na) &&
-			!p2p.friends.HasNetAddress(na) {
-			p2p.logger.Traceln("discoverFriends", "dial to p2pRoleRoot", na)
+		if !p2p.hasNetAddress(na) {
+			p2p.logger.Debugln("discoverFriends", "dial to p2pRoleRoot", na)
 			if err := p2p.dial(na); err != nil {
 				p2p.roots.Remove(na)
 			}
@@ -1435,17 +1443,17 @@ func (p2p *PeerToPeer) discoverOthers() {
 	ps := p2p.others.GetByRecvRole(p2pRoleRoot, false)
 	for _, p := range ps {
 		if p.hasRole(p2pRoleSeed) {
-			p2p.logger.Traceln("discoverOthers", "not allowed others connection", p.id)
+			p2p.logger.Debugln("discoverOthers", "not allowed others connection", p.id)
 			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
 		} else {
-			p2p.logger.Traceln("discoverOthers", "not allowed connection", p.id)
+			p2p.logger.Debugln("discoverOthers", "not allowed connection", p.id)
 			p.Close("discoverOthers not allowed connection")
 		}
 	}
 
 	temporary := p2p.orphanages.GetByRecvRole(p2pRoleRoot, true)
 	for _, p := range temporary {
-		p2p.logger.Traceln("discoverOthers", "p2pConnTypeOther", p.id)
+		p2p.logger.Debugln("discoverOthers", "p2pConnTypeOther", p.id)
 		p2p.updatePeerConnectionType(p, p2pConnTypeOther)
 	}
 }
@@ -1493,7 +1501,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
-			p2p.logger.Traceln("discoverParents", "try p2pConnTypeParent", p.id, p.connType)
+			p2p.logger.Debugln("discoverParents", "try p2pConnTypeParent", p.id, p.connType)
 			n--
 		}
 	}
@@ -1540,7 +1548,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
-			p2p.logger.Traceln("discoverUncles", "try p2pConnTypeUncle", p.id, p.connType)
+			p2p.logger.Debugln("discoverUncles", "try p2pConnTypeUncle", p.id, p.connType)
 			n--
 		}
 	}

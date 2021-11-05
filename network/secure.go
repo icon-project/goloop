@@ -19,6 +19,8 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type SecureConn struct {
@@ -178,12 +180,18 @@ func (k *secureKey) marshalPublicKey() []byte {
 }
 func (k *secureKey) setup(sa SecureAeadSuite, peerPublicKey []byte, defaultLower bool, numOfSecret int) error {
 	k.sa = sa
-	k.setPeerPublicKey(peerPublicKey, defaultLower)
+	if err := k.setPeerPublicKey(peerPublicKey, defaultLower); err != nil {
+		return err
+	}
 	return k.hkdf(numOfSecret)
 }
-func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
+
+func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) error {
 	c := k.Curve
 	k.pX, k.pY = elliptic.Unmarshal(c, publicKey)
+	if k.pX == nil || k.pY == nil {
+		return errors.New("InvalidPublicKey")
+	}
 
 	xc := k.pX.Cmp(k.X)
 	yc := k.pY.Cmp(k.Y)
@@ -196,10 +204,13 @@ func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
 			k.isLower = defaultLower
 		}
 	}
+	return nil
 }
 func (k *secureKey) hkdf(numOfSecret int) error {
 	var secretLen int
 	switch k.sa {
+	case SecureAeadSuiteNone:
+		secretLen = 32
 	case SecureAeadSuiteAes128Gcm:
 		secretLen = 16
 	case SecureAeadSuiteAes256Gcm, SecureAeadSuiteChaCha20Poly1305:
@@ -242,14 +253,14 @@ func (k *secureKey) hkdf(numOfSecret int) error {
 }
 
 func (k *secureKey) tlsConfig() (*tls.Config, error) {
-	var cipher uint16 = 0
+	var cs uint16 = 0
 	switch k.sa {
 	case SecureAeadSuiteAes128Gcm:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+		cs = tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	case SecureAeadSuiteAes256Gcm:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+		cs = tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
 	case SecureAeadSuiteChaCha20Poly1305:
-		cipher = tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+		cs = tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
 	default:
 		return nil, fmt.Errorf("secureKey: unknown SecureAeadSuite")
 	}
@@ -273,7 +284,7 @@ func (k *secureKey) tlsConfig() (*tls.Config, error) {
 		InsecureSkipVerify:    true,
 		Certificates:          []tls.Certificate{cert},
 		ClientAuth:            tls.RequireAnyClientCert,
-		CipherSuites:          []uint16{cipher},
+		CipherSuites:          []uint16{cs},
 		CurvePreferences:      []tls.CurveID{curve},
 		VerifyPeerCertificate: k.verifyCertificate,
 		KeyLogWriter:          k.keyLogWriter,
@@ -354,7 +365,7 @@ const (
 
 func (s SecureSuite) String() string {
 	switch s {
-	case SecureSuiteNone :
+	case SecureSuiteNone:
 		return "none"
 	case SecureSuiteTls:
 		return "tls"
@@ -367,7 +378,7 @@ func (s SecureSuite) String() string {
 
 func SecureSuiteFromString(s string) SecureSuite {
 	switch s {
-	case "none" :
+	case "none":
 		return SecureSuiteNone
 	case "tls":
 		return SecureSuiteTls
@@ -381,16 +392,15 @@ func SecureSuiteFromString(s string) SecureSuite {
 type SecureAeadSuite byte
 
 const (
-	SecureAeadSuiteUnknown = iota
+	SecureAeadSuiteNone = iota
 	SecureAeadSuiteChaCha20Poly1305
 	SecureAeadSuiteAes128Gcm
 	SecureAeadSuiteAes256Gcm
 )
 
-
 func (s SecureAeadSuite) String() string {
 	switch s {
-	case SecureAeadSuiteChaCha20Poly1305 :
+	case SecureAeadSuiteChaCha20Poly1305:
 		return "chacha"
 	case SecureAeadSuiteAes128Gcm:
 		return "aes128"
@@ -403,14 +413,14 @@ func (s SecureAeadSuite) String() string {
 
 func SecureAeadSuiteFromString(s string) SecureAeadSuite {
 	switch s {
-	case "chacha" :
+	case "chacha":
 		return SecureAeadSuiteChaCha20Poly1305
 	case "aes128":
 		return SecureAeadSuiteAes128Gcm
 	case "aes256":
 		return SecureAeadSuiteAes256Gcm
 	default:
-		return SecureAeadSuiteUnknown
+		return SecureAeadSuiteNone
 	}
 }
 

@@ -11,6 +11,7 @@ import foundation.icon.ee.util.MethodUnpacker;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.AvmThrowable;
+import i.GenericPredefinedException;
 import i.Helper;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -283,6 +284,8 @@ public class LoadedDApp {
         try {
             mainInstance = ctor.newInstance(
                     Shadower.shadowObjects(params, ctor.getParameterTypes()));
+        } catch (ArithmeticException e) {
+            throw new GenericPredefinedException(Status.InvalidParameter, e);
         } catch (InvocationTargetException e) {
             handleUncaughtException(e.getTargetException());
         } catch (ExceptionInInitializerError e) {
@@ -305,6 +308,8 @@ public class LoadedDApp {
             } catch (IllegalArgumentException e) {
                 throw new UnknownFailureException("invalid return value");
             }
+        } catch (ArithmeticException e) {
+            throw new GenericPredefinedException(Status.InvalidParameter, e);
         } catch (InvocationTargetException e) {
             handleUncaughtException(e.getTargetException());
         } catch (ExceptionInInitializerError e) {
