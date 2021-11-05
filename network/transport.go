@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
@@ -290,7 +291,7 @@ func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
 }
 
 func (ph *peerHandler) onClose(p *Peer) {
-	ph.logger.Traceln("onClose", p)
+	ph.logger.Traceln("onClose", p.CloseInfo(), p)
 }
 
 func (ph *peerHandler) setNext(next PeerHandler) {
@@ -321,8 +322,23 @@ func (ph *peerHandler) encode(v interface{}) []byte {
 	return b
 }
 
-func (ph *peerHandler) decode(b []byte, v interface{}) {
-	codec.MP.MustUnmarshalFromBytes(b, v)
+func (ph *peerHandler) decodePeerPacket(p *Peer, buf interface{}, pkt *Packet) bool {
+	if err := ph.decode(pkt.payload, buf); err != nil {
+		p.CloseByError(err)
+		return false
+	}
+	return true
+}
+
+func (ph *peerHandler) decode(b []byte, v interface{}) error {
+	if remain, err := codec.MP.UnmarshalFromBytes(b, v); err == nil {
+		if len(remain) > 0 {
+			return errors.Errorf("ExtraBytes(size=%d)", len(remain))
+		}
+		return nil
+	} else {
+		return err
+	}
 }
 
 type PeerDispatcher struct {

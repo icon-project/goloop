@@ -79,7 +79,9 @@ func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
 
 func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 	rm := &JoinRequest{}
-	cn.decode(pkt.payload, rm)
+	if !cn.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	cn.logger.Traceln("handleJoinRequest", rm, p)
 	p.channel = rm.Channel
 	p.netAddress = rm.Addr
@@ -92,7 +94,9 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 
 func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 	rm := &JoinResponse{}
-	cn.decode(pkt.payload, rm)
+	if !cn.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	cn.logger.Traceln("handleJoinResponse", rm, p)
 	p.channel = rm.Channel
 	p.netAddress = rm.Addr
@@ -310,7 +314,9 @@ func (a *Authenticator) sendSecureRequest(p *Peer) {
 
 func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 	rm := &SecureRequest{}
-	a.decode(pkt.payload, rm)
+	if !a.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	a.logger.Traceln("handleSecureRequest", rm, p)
 	p.channel = rm.Channel
 	m := &SecureResponse{
@@ -405,7 +411,9 @@ SecureAeadLoop:
 
 func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 	rm := &SecureResponse{}
-	a.decode(pkt.payload, rm)
+	if !a.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	a.logger.Traceln("handleSecureResponse", rm, p)
 	p.rtt.Stop()
 
@@ -509,7 +517,9 @@ SecureAeadLoop:
 
 func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	rm := &SignatureRequest{}
-	a.decode(pkt.payload, rm)
+	if !a.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	a.logger.Traceln("handleSignatureRequest", rm, p)
 	p.rtt.Stop()
 	df := rm.Rtt - p.rtt.last
@@ -543,7 +553,9 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 
 func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 	rm := &SignatureResponse{}
-	a.decode(pkt.payload, rm)
+	if !a.decodePeerPacket(p, rm, pkt) {
+		return
+	}
 	a.logger.Traceln("handleSignatureResponse", rm, p)
 
 	df := rm.Rtt - p.rtt.last

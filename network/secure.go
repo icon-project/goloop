@@ -19,6 +19,8 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type SecureConn struct {
@@ -178,12 +180,18 @@ func (k *secureKey) marshalPublicKey() []byte {
 }
 func (k *secureKey) setup(sa SecureAeadSuite, peerPublicKey []byte, defaultLower bool, numOfSecret int) error {
 	k.sa = sa
-	k.setPeerPublicKey(peerPublicKey, defaultLower)
+	if err := k.setPeerPublicKey(peerPublicKey, defaultLower); err != nil {
+		return err
+	}
 	return k.hkdf(numOfSecret)
 }
-func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
+
+func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) error {
 	c := k.Curve
 	k.pX, k.pY = elliptic.Unmarshal(c, publicKey)
+	if k.pX == nil || k.pY == nil {
+		return errors.New("InvalidPublicKey")
+	}
 
 	xc := k.pX.Cmp(k.X)
 	yc := k.pY.Cmp(k.Y)
@@ -196,6 +204,7 @@ func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
 			k.isLower = defaultLower
 		}
 	}
+	return nil
 }
 func (k *secureKey) hkdf(numOfSecret int) error {
 	var secretLen int
@@ -354,7 +363,7 @@ const (
 
 func (s SecureSuite) String() string {
 	switch s {
-	case SecureSuiteNone :
+	case SecureSuiteNone:
 		return "none"
 	case SecureSuiteTls:
 		return "tls"
@@ -367,7 +376,7 @@ func (s SecureSuite) String() string {
 
 func SecureSuiteFromString(s string) SecureSuite {
 	switch s {
-	case "none" :
+	case "none":
 		return SecureSuiteNone
 	case "tls":
 		return SecureSuiteTls
@@ -387,10 +396,9 @@ const (
 	SecureAeadSuiteAes256Gcm
 )
 
-
 func (s SecureAeadSuite) String() string {
 	switch s {
-	case SecureAeadSuiteChaCha20Poly1305 :
+	case SecureAeadSuiteChaCha20Poly1305:
 		return "chacha"
 	case SecureAeadSuiteAes128Gcm:
 		return "aes128"
@@ -403,7 +411,7 @@ func (s SecureAeadSuite) String() string {
 
 func SecureAeadSuiteFromString(s string) SecureAeadSuite {
 	switch s {
-	case "chacha" :
+	case "chacha":
 		return SecureAeadSuiteChaCha20Poly1305
 	case "aes128":
 		return SecureAeadSuiteAes128Gcm

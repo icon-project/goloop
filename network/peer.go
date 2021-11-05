@@ -409,15 +409,6 @@ func (p *Peer) CloseInfo() string {
 	return reason + closeErr
 }
 
-func (p *Peer) _recover() interface{} {
-	if err := recover(); err != nil {
-		p.logger.Infof("Peer[%s]._recover from %+v", p.ConnString(), err)
-		p.CloseByError(fmt.Errorf("_recover from %+v", err))
-		return err
-	}
-	return nil
-}
-
 func (p *Peer) isCloseError(err error) bool {
 	if oe, ok := err.(*net.OpError); ok {
 		// if se, ok := oe.Err.(syscall.Errno); ok {
@@ -448,7 +439,10 @@ func (p *Peer) isTemporaryError(err error) bool {
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer func() {
-		if err := p._recover(); err == nil {
+		if err := recover(); err != nil {
+			p.logger.Warnf("Peer[%s].receiveRoutine recover from %+v", p.ConnString(), err)
+			p.CloseByError(fmt.Errorf("recover from %+v", err))
+		} else {
 			p.Close("receiveRoutine finish")
 		}
 	}()
