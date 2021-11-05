@@ -1400,10 +1400,10 @@ func (p2p *PeerToPeer) discoverFriends() {
 	ps := p2p.friends.GetByRole(p2pRoleRoot, false)
 	for _, p := range ps {
 		if p.hasRole(p2pRoleSeed) {
-			p2p.logger.Traceln("discoverFriends", "not allowed friend connection", p.id)
+			p2p.logger.Debugln("discoverFriends", "not allowed friend connection", p.id)
 			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
 		} else {
-			p2p.logger.Traceln("discoverFriends", "not allowed connection", p.id)
+			p2p.logger.Debugln("discoverFriends", "not allowed connection", p.id)
 			p.Close("discoverFriends not allowed connection")
 		}
 	}
@@ -1415,13 +1415,13 @@ func (p2p *PeerToPeer) discoverFriends() {
 	roots = append(roots, p2p.nephews.GetByRole(p2pRoleRoot, true)...)
 	roots = append(roots, p2p.others.GetByRole(p2pRoleRoot, true)...)
 	for _, p := range roots {
-		p2p.logger.Traceln("discoverFriends", "p2pConnTypeFriend", p.id)
+		p2p.logger.Debugln("discoverFriends", "p2pConnTypeFriend", p.id)
 		p2p.updatePeerConnectionType(p, p2pConnTypeFriend)
 	}
 
 	for _, na := range p2p.roots.Array() {
 		if !p2p.hasNetAddress(na) {
-			p2p.logger.Traceln("discoverFriends", "dial to p2pRoleRoot", na)
+			p2p.logger.Debugln("discoverFriends", "dial to p2pRoleRoot", na)
 			if err := p2p.dial(na); err != nil {
 				p2p.roots.Remove(na)
 			}
@@ -1433,17 +1433,17 @@ func (p2p *PeerToPeer) discoverOthers() {
 	ps := p2p.others.GetByRecvRole(p2pRoleRoot, false)
 	for _, p := range ps {
 		if p.hasRole(p2pRoleSeed) {
-			p2p.logger.Traceln("discoverOthers", "not allowed others connection", p.id)
+			p2p.logger.Debugln("discoverOthers", "not allowed others connection", p.id)
 			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
 		} else {
-			p2p.logger.Traceln("discoverOthers", "not allowed connection", p.id)
+			p2p.logger.Debugln("discoverOthers", "not allowed connection", p.id)
 			p.Close("discoverOthers not allowed connection")
 		}
 	}
 
 	temporary := p2p.orphanages.GetByRecvRole(p2pRoleRoot, true)
 	for _, p := range temporary {
-		p2p.logger.Traceln("discoverOthers", "p2pConnTypeOther", p.id)
+		p2p.logger.Debugln("discoverOthers", "p2pConnTypeOther", p.id)
 		p2p.updatePeerConnectionType(p, p2pConnTypeOther)
 	}
 }
@@ -1491,7 +1491,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
-			p2p.logger.Traceln("discoverParents", "try p2pConnTypeParent", p.id, p.connType)
+			p2p.logger.Debugln("discoverParents", "try p2pConnTypeParent", p.id, p.connType)
 			n--
 		}
 	}
@@ -1538,7 +1538,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) {
 		if !p2p.reject.Contains(p) && !p2p.pre.Contains(p) {
 			p2p.pre.Add(p)
 			p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
-			p2p.logger.Traceln("discoverUncles", "try p2pConnTypeUncle", p.id, p.connType)
+			p2p.logger.Debugln("discoverUncles", "try p2pConnTypeUncle", p.id, p.connType)
 			n--
 		}
 	}
