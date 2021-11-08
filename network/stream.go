@@ -128,15 +128,15 @@ func (r *streamReactor) OnLeave(id module.PeerID) {
 			r.streams[i] = r.streams[last]
 			r.streams[last] = nil
 			r.streams = r.streams[:last]
+			if s.repostTimer != nil {
+				s.repostTimer.Stop()
+				s.repostTimer = nil
+			}
+			if s.ackPostTimer != nil {
+				s.ackPostTimer.Stop()
+				s.ackPostTimer = nil
+			}
 			break
-		}
-		if s.repostTimer != nil {
-			s.repostTimer.Stop()
-			s.repostTimer = nil
-		}
-		if s.ackPostTimer != nil {
-			s.ackPostTimer.Stop()
-			s.ackPostTimer = nil
 		}
 	}
 }
