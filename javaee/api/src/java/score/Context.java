@@ -162,6 +162,7 @@ public final class Context {
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws ArithmeticException if returned value is out of range
      */
     public static<T> T call(Class<T> cls, BigInteger value,
             Address targetAddress, String method, Object... params) {
@@ -179,6 +180,7 @@ public final class Context {
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws ArithmeticException if returned value is out of range
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
@@ -197,6 +199,7 @@ public final class Context {
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws ArithmeticException if returned value is out of range
      */
     public static<T> T call(Class<T> cls, Address targetAddress, String method,
             Object... params) {
@@ -213,6 +216,7 @@ public final class Context {
      * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
+     * @throws ArithmeticException if returned value is out of range
      */
     public static Object call(Address targetAddress, String method, Object... params) {
         return null;
