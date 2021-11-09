@@ -189,10 +189,7 @@ func (cl *client) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 	}
 	for _, p := range fr.validPeers {
 		if p.f != nil && p.id.Equal(id) {
-			f := p.f
-			cl.CallAfterUnlock(func() {
-				f.onReceive(pi, b)
-			})
+			p.f.onReceive(pi, b)
 			return
 		}
 	}
@@ -281,9 +278,6 @@ func (cl *client) _findPeerByFetcher(f *fetcher) (int, *peer) {
 }
 
 func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []byte) {
-	cl.Lock()
-	defer cl.Unlock()
-
 	if isNoBlock(err) {
 		cl.log.Debugf("onResult %v\n", err)
 	} else if err != nil {
@@ -373,11 +367,11 @@ const (
 	fstepSend fstep = iota
 	fstepWaitResp
 	fstepWaitData
-	fstepFin  // canceled or succeeded
+	fstepFin // canceled or succeeded
 )
 
 type fetcher struct {
-	common.Mutex
+	*common.Mutex
 	id        module.PeerID
 	height    int64
 	requestID uint32
@@ -393,6 +387,7 @@ type fetcher struct {
 
 func (fr *fetchRequest) newFetcher(id module.PeerID, height int64, requestID uint32) *fetcher {
 	f := &fetcher{
+		Mutex:     &fr.cl.Mutex,
 		id:        id,
 		height:    height,
 		requestID: requestID,
@@ -400,8 +395,6 @@ func (fr *fetchRequest) newFetcher(id module.PeerID, height int64, requestID uin
 		cl:        fr.cl,
 	}
 
-	f.Lock()
-	defer f.Unlock()
 	f._doSend()
 	return f
 }
@@ -449,11 +442,8 @@ func (f *fetcher) _doSend() {
 				return
 			}
 			f.timer = nil
-			f._cancel()
-			cl := f.cl
-			f.CallAfterUnlock(func() {
-				cl.onResult(f, errors.Errorf("Timed out"), nil, nil)
-			})
+			f.cancel()
+			f.cl.onResult(f, errors.Errorf("Timed out"), nil, nil)
 		})
 		f.timer = timer
 	} else if isTemporary(err) {
@@ -469,22 +459,12 @@ func (f *fetcher) _doSend() {
 		})
 		f.timer = timer
 	} else {
-		f._cancel()
-		cl := f.cl
-		f.CallAfterUnlock(func() {
-			cl.onResult(f, err, nil, nil)
-		})
+		f.cancel()
+		f.cl.onResult(f, err, nil, nil)
 	}
 }
 
 func (f *fetcher) cancel() {
-	f.Lock()
-	defer f.Unlock()
-
-	f._cancel()
-}
-
-func (f *fetcher) _cancel() {
 	if f.timer != nil {
 		f.timer.Stop()
 		f.timer = nil
@@ -502,9 +482,6 @@ func (f *fetcher) _cancel() {
 }
 
 func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
-	f.Lock()
-	defer f.Unlock()
-
 	if f.step == fstepWaitResp {
 		if pi != ProtoBlockMetadata {
 			return
@@ -524,10 +501,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 				f.timer.Stop()
 				f.timer = nil
 			}
-			f.CallAfterUnlock(func() {
-				// TODO: remove stack trace
-				f.cl.onResult(f, errNoBlock, nil, nil)
-			})
+			f.cl.onResult(f, errNoBlock, nil, nil)
 		}
 		f.left = msg.BlockLength
 		f.voteList = msg.Proof
@@ -553,31 +527,26 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 				f.timer.Stop()
 				f.timer = nil
 			}
-			f.CallAfterUnlock(func() {
-				bufs := make([]io.Reader, len(f.dataList))
-				for i, d := range f.dataList {
-					bufs[i] = bytes.NewReader(d)
-				}
-				r := io.MultiReader(bufs...)
-				blk, err := f.cl.bm.NewBlockDataFromReader(r)
-				if err != nil {
-					f.cl.onResult(f, err, nil, nil)
-				} else if blk.Height() != f.height {
-					f.cl.onResult(f, errors.Errorf("bad Height"), nil, nil)
-				} else {
-					f.cl.onResult(f, nil, blk, f.voteList)
-				}
-			})
+			bufs := make([]io.Reader, len(f.dataList))
+			for i, d := range f.dataList {
+				bufs[i] = bytes.NewReader(d)
+			}
+			r := io.MultiReader(bufs...)
+			blk, err := f.cl.bm.NewBlockDataFromReader(r)
+			if err != nil {
+				f.cl.onResult(f, err, nil, nil)
+			} else if blk.Height() != f.height {
+				f.cl.onResult(f, errors.Errorf("bad Height"), nil, nil)
+			} else {
+				f.cl.onResult(f, nil, blk, f.voteList)
+			}
 		} else if f.left < 0 {
 			f.step = fstepFin
 			if f.timer != nil {
 				f.timer.Stop()
 				f.timer = nil
 			}
-			cl := f.cl
-			f.CallAfterUnlock(func() {
-				cl.onResult(f, errors.Errorf("bad data"), nil, nil)
-			})
+			f.cl.onResult(f, errors.Errorf("bad data"), nil, nil)
 		}
 	}
 }
