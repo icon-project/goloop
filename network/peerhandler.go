@@ -404,6 +404,10 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		if m.SecureAeadSuite == SecureAeadSuiteNone {
 			m.SecureError = SecureErrorInvalid
 		}
+	} else {
+		//in case of m.SecureSuite is SecureSuiteNone for legacy Authenticator which is not supported SecureAeadSuiteNone
+		m.SecureAeadSuite = a.resolveSecureAeadSuite(p.channel, rm.SecureAeadSuites)
+		a.logger.Traceln("handleSecureRequest", p.ConnString(), "SecureAeadSuite", m.SecureAeadSuite)
 	}
 
 	switch p.conn.(type) {
