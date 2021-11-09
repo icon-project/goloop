@@ -333,10 +333,11 @@ public class Shadower {
             }
             return new UnmodifiableArrayList<>(sa);
         } else if (obj instanceof Map) {
-            var o = (Map<?, ?>) obj;
+            @SuppressWarnings("unchecked")
+            var o = (Map<String, Object>) obj;
             var skv = new IObject[o.size() * 2];
             int i = 0;
-            for (Map.Entry<?, ?> e : o.entrySet()) {
+            for (Map.Entry<String, ?> e : o.entrySet()) {
                 skv[i++] = shadow(e.getKey());
                 skv[i++] = shadow(e.getValue());
             }

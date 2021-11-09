@@ -61,6 +61,12 @@ func newReactor(clock common.Clock, ur module.Reactor,
 	}
 }
 
+func (r *streamReactor) dispose() {
+	for _, s := range r.streams {
+		s.dispose()
+	}
+}
+
 func (r *streamReactor) streamForPeer(id module.PeerID) *stream {
 	for _, s := range r.streams {
 		if s.id.Equal(id) {
@@ -128,15 +134,8 @@ func (r *streamReactor) OnLeave(id module.PeerID) {
 			r.streams[i] = r.streams[last]
 			r.streams[last] = nil
 			r.streams = r.streams[:last]
+			s.dispose()
 			break
-		}
-		if s.repostTimer != nil {
-			s.repostTimer.Stop()
-			s.repostTimer = nil
-		}
-		if s.ackPostTimer != nil {
-			s.ackPostTimer.Stop()
-			s.ackPostTimer = nil
 		}
 	}
 }
@@ -164,6 +163,17 @@ func newStream(r *streamReactor, id module.PeerID) *stream {
 	return &stream{
 		r:  r,
 		id: id,
+	}
+}
+
+func (s *stream) dispose() {
+	if s.repostTimer != nil {
+		s.repostTimer.Stop()
+		s.repostTimer = nil
+	}
+	if s.ackPostTimer != nil {
+		s.ackPostTimer.Stop()
+		s.ackPostTimer = nil
 	}
 }
 
@@ -335,6 +345,7 @@ func (m *manager) tryUnregisterStreamReactor(reactor module.Reactor) *streamReac
 			m.streamReactors[i] = m.streamReactors[last]
 			m.streamReactors[last] = nil
 			m.streamReactors = m.streamReactors[:last]
+			sr.dispose()
 			return sr
 		}
 	}
