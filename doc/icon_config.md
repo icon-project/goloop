@@ -6,20 +6,22 @@ This document specifies ICON configurations.
 ## Attributes
 |  Attribute                               | Simple Description                                               | Default value      |
 |------------------------------------------|:-----------------------------------------------------------------|--------------------|
-| termPeriod                               | number of blocks that forms a period                             | 43120              |
+| termPeriod                               | number of blocks that forms a period                             | 43200              |
 | mainPRepCount                            | number of maximum main PRep nodes                                | 22                 |
 | subPRepCount                             | number of maximum sub PRep nodes                                 | 78                 |
 | irep                                     | expected Monthly Reward per Representative                       | 0                  |
 | rrep                                     | expected Monthly Reward per EEP                                  | 1200               |
 | bondRequirement                          | percentage that requires bond to make delegation fully staked    | 5                  |
+| unbondingMax                             | maximum unbonding slot per account                               | 10                 |
 | unbondingPeriodMultiplier                | unbond lock period multiplier                                    | 7                  |
-| unstakeSlotMax                           | maximum unstake slot per account                                 | 1000                |
+| unstakeSlotMax                           | maximum unstake slot per account                                 | 1000               |
 | lockMinMultiplier                        | mininum unstake lock period term multiplier                      | 5                  |
 | lockMaxMultiplier                        | maximum unstake lock period term multiplier                      | 20                 |
 | validationPenaltyCondition               | consecutive validation fail count that imposes penalty on PRep   | 660                |
 | consistentValidationPenaltyCondition     | cumulative validation fail count that imposes penalty on PRep    | 5                  |
 | consistentValidationPenaltyMask          | number of opportunities of consistentValidationPenaltyCondition  | 30                 |
 | consistentValidationPenaltySlashRatio    | percentage of bond slashed when it gets penalty                  | 10                 |
+| rewardFund                               | IISS 3.1 Reward Fund Attributes                                  |                    |
 
 ## rewardFund Attributes for ICON2
 |  Attribute                               | Simple Description                                                          | Default value      |
@@ -51,6 +53,7 @@ utilized. Based on bondRequirement, the system calculates bondedDelegation(not d
 
 ### unbondingPeriodMultiplier
 User can unbond its bonds, but it takes several lock period. unbondingPeriodMultiplier defines unbond lock period multiplier.
+unbonding lock period = unbondingPeriodMultiplier * termPeriod
 
 ### unstakeSlotMax
 User can unstake its staking, but it cannot do it unlimitedly. unstakeSlotMax maximum unstake slot per account
@@ -59,6 +62,8 @@ User can unstake its staking, but it cannot do it unlimitedly. unstakeSlotMax ma
 Unstaking takes a certain period of time just as unbonding. lockMinMultiplier defines mininum unstake lock period term multiplier
 and lockMaxMultiplier defines maximum unstake lock period term multiplier. Unstake lock period can vary based on system
 environment at a particular moment.
+unstake lock period MIN = lockMinMultiplier * termPeriod
+unstake lock period MAX = lockMaxMultiplier * termPeriod
 
 ### validationPenaltyCondition
 Although mainPRep has a permission to validate and vote, it can get penalty when it fails to do those actions.
@@ -78,7 +83,7 @@ rewardFund variables are newly introduced in ICON2. Please refer to the document
 ## Example
 ~~~json
 {
-    "termPeriod": 43120,
+    "termPeriod": 43200,
     "mainPRepCount": 22,
     "subPRepCount": 78,
     "irep": 0,
