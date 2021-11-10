@@ -30,7 +30,7 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m["seeds"] = mgr.p2p.seeds.Map()
 	m["roots"] = mgr.p2p.roots.Map()
 	m["friends"] = peerSetToMapArray(mgr.p2p.friends, informal)
-	m["parent"] = peerToMap(mgr.p2p.getParent(), informal)
+	m["parent"] = peerToMap(mgr.p2p.Parent(), informal)
 	m["children"] = peerSetToMapArray(mgr.p2p.children, informal)
 	m["uncles"] = peerSetToMapArray(mgr.p2p.uncles, informal)
 	m["nephews"] = peerSetToMapArray(mgr.p2p.nephews, informal)
@@ -65,13 +65,13 @@ func peerSetToMapArray(s *PeerSet, informal bool) []map[string]interface{} {
 func peerToMap(p *Peer, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
 	if p != nil {
-		m["id"] = p.id.String()
-		m["addr"] = string(p.netAddress)
-		m["in"] = p.in
-		m["role"] = p.getRole()
+		m["id"] = p.ID().String()
+		m["addr"] = string(p.NetAddress())
+		m["in"] = p.In()
+		m["role"] = p.Role()
 		if informal {
-			m["channel"] = p.channel
-			m["conn"] = p.connType
+			m["channel"] = p.Channel()
+			m["conn"] = p.ConnType()
 			m["rtt"] = p.rtt.String()
 			if p.q != nil {
 				sq := make([]string, DefaultSendQueueMaxPriority)

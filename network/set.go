@@ -143,10 +143,10 @@ func NewPeerSet() *PeerSet {
 }
 
 func (s *PeerSet) _contains(p *Peer) (r bool) {
-	if p.in {
-		r = s.in.Contains(p.id)
+	if p.In() {
+		r = s.in.Contains(p.ID())
 	} else {
-		r = s.out.Contains(p.id)
+		r = s.out.Contains(p.ID())
 	}
 	return
 }
@@ -164,13 +164,13 @@ func (s *PeerSet) _add(p *Peer, f PeerPredicate) bool {
 	s.mtx.Lock()
 
 	if !s._contains(p) && (f == nil || f(p)) {
-		if p.in {
-			s.in.Add(p.id)
+		if p.In() {
+			s.in.Add(p.ID())
 		} else {
-			s.out.Add(p.id)
+			s.out.Add(p.ID())
 		}
-		s.addrs.Add(p.netAddress)
-		s.ids.Add(p.id)
+		s.addrs.Add(p.NetAddress())
+		s.ids.Add(p.ID())
 
 		s.arr = append(s.arr, p)
 		s._shuffle()
@@ -192,23 +192,23 @@ func (s *PeerSet) Remove(p *Peer) bool {
 	s.mtx.Lock()
 
 	if s._contains(p) {
-		if p.in {
-			s.in.Remove(p.id)
-			if !s.out.Contains(p.id) {
-				s.addrs.Remove(p.netAddress)
-				s.ids.Remove(p.id)
+		if p.In() {
+			s.in.Remove(p.ID())
+			if !s.out.Contains(p.ID()) {
+				s.addrs.Remove(p.NetAddress())
+				s.ids.Remove(p.ID())
 			}
 		} else {
-			s.out.Remove(p.id)
-			if !s.in.Contains(p.id) {
-				s.addrs.Remove(p.netAddress)
-				s.ids.Remove(p.id)
+			s.out.Remove(p.ID())
+			if !s.in.Contains(p.ID()) {
+				s.addrs.Remove(p.NetAddress())
+				s.ids.Remove(p.ID())
 			}
 		}
 
 		last := len(s.arr)-1
 		for i, tp := range s.arr {
-			if tp.in == p.in && tp.id.Equal(p.id) {
+			if tp.In() == p.In() && tp.ID().Equal(p.ID()) {
 				s.arr[i] = s.arr[last]
 				s.arr = s.arr[:last]
 				break
@@ -249,7 +249,7 @@ func (s *PeerSet) GetByID(id module.PeerID) *Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	for _, p := range s.arr {
-		if p.id.Equal(id) {
+		if p.ID().Equal(id) {
 			return p
 		}
 	}
@@ -262,7 +262,7 @@ func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if has == p.hasRole(r) {
+		if has == p.HasRole(r) {
 			l = append(l, p)
 		}
 	}
@@ -275,7 +275,7 @@ func (s *PeerSet) GetByRecvRole(r PeerRoleFlag, has bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if has == p.hasRecvRole(r) {
+		if has == p.HasRecvRole(r) {
 			l = append(l, p)
 		}
 	}
@@ -288,7 +288,7 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if p.in == in && has == p.hasRole(role) {
+		if p.In() == in && has == p.HasRole(role) {
 			l = append(l, p)
 		}
 	}
@@ -306,20 +306,20 @@ func (s *PeerSet) HasNetAddressAndIn(a NetAddress, in bool) bool {
 	s.mtx.RLock()
 
 	for _, p := range s.arr {
-		if p.in == in && p.netAddress == a {
+		if p.In() == in && p.NetAddress() == a {
 			return true
 		}
 	}
 	return false
 }
 
-func (s *PeerSet) Find(foundFunc func(p *Peer) bool) []*Peer {
+func (s *PeerSet) Find(f func(p *Peer) bool) []*Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if foundFunc(p) {
+		if f(p) {
 			l = append(l, p)
 		}
 	}

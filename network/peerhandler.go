@@ -35,7 +35,7 @@ func newChannelNegotiator(netAddress NetAddress, l log.Logger) *ChannelNegotiato
 
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	cn.logger.Traceln("onPeer", p)
-	if !p.in {
+	if !p.In() {
 		cn.setWaitInfo(p2pProtoChanJoinResp, p)
 		cn.sendJoinRequest(p)
 	} else {
@@ -73,7 +73,7 @@ type JoinResponse struct {
 }
 
 func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
-	m := &JoinRequest{Channel: p.channel, Addr: cn.netAddress}
+	m := &JoinRequest{Channel: p.Channel(), Addr: cn.netAddress}
 	cn.sendMessage(p2pProtoChanJoinReq, m, p)
 	cn.logger.Traceln("sendJoinRequest", m, p)
 }
@@ -88,16 +88,16 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	cn.logger.Traceln("handleJoinRequest", rm, p)
-	if p.channel != rm.Channel {
+	if p.Channel() != rm.Channel {
 		err := fmt.Errorf("handleJoinRequest error[%v]", "invalid channel")
 		cn.logger.Infoln("handleJoinRequest", p.ConnString(), "ChannelNegotiatorError", err)
 		p.CloseByError(err)
 		return
 	}
 
-	p.netAddress = rm.Addr
+	p.setNetAddress(rm.Addr)
 
-	m := &JoinResponse{Channel: p.channel, Addr: cn.netAddress}
+	m := &JoinResponse{Channel: p.Channel(), Addr: cn.netAddress}
 	cn.sendMessage(p2pProtoChanJoinResp, m, p)
 
 	cn.nextOnPeer(p)
@@ -113,13 +113,13 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 		return
 	}
 	cn.logger.Traceln("handleJoinResponse", rm, p)
-	if p.channel != rm.Channel {
+	if p.Channel() != rm.Channel {
 		err := fmt.Errorf("handleJoinResponse error[%v]", "invalid channel")
 		cn.logger.Infoln("handleJoinResponse", p.ConnString(), "ChannelNegotiatorError", err)
 		p.CloseByError(err)
 		return
 	}
-	p.netAddress = rm.Addr
+	p.setNetAddress(rm.Addr)
 
 	cn.nextOnPeer(p)
 }
@@ -172,7 +172,7 @@ func newAuthenticator(w module.Wallet, l log.Logger) *Authenticator {
 //callback from PeerHandler.nextOnPeer
 func (a *Authenticator) onPeer(p *Peer) {
 	a.logger.Traceln("onPeer", p)
-	if !p.in {
+	if !p.In() {
 		a.setWaitInfo(p2pProtoAuthSecureResponse, p)
 		a.sendSecureRequest(p)
 	} else {
@@ -357,16 +357,16 @@ type SignatureResponse struct {
 
 func (a *Authenticator) sendSecureRequest(p *Peer) {
 	p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
-	sms := a.secureSuites[p.channel]
+	sms := a.secureSuites[p.Channel()]
 	if len(sms) == 0 {
 		sms = DefaultSecureSuites
 	}
-	sas := a.secureAeads[p.channel]
+	sas := a.secureAeads[p.Channel()]
 	if len(sas) == 0 {
 		sas = DefaultSecureAeadSuites
 	}
 	m := &SecureRequest{
-		Channel:          p.channel,
+		Channel:          p.Channel(),
 		SecureSuites:     sms,
 		SecureAeadSuites: sas,
 		SecureParam:      p.secureKey.marshalPublicKey(),
@@ -387,10 +387,10 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	a.logger.Traceln("handleSecureRequest", rm, p)
-	p.channel = rm.Channel
+	p.setChannel(rm.Channel)
 	m := &SecureResponse{
-		Channel:         p.channel,
-		SecureSuite:     a.resolveSecureSuite(p.channel, rm.SecureSuites),
+		Channel:         p.Channel(),
+		SecureSuite:     a.resolveSecureSuite(p.Channel(), rm.SecureSuites),
 		SecureAeadSuite: SecureAeadSuiteNone,
 		SecureError:     SecureErrorNone,
 	}
@@ -399,7 +399,7 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 	if m.SecureSuite == SecureSuiteUnknown {
 		m.SecureError = SecureErrorInvalid
 	} else if m.SecureSuite != SecureSuiteNone {
-		m.SecureAeadSuite = a.resolveSecureAeadSuite(p.channel, rm.SecureAeadSuites)
+		m.SecureAeadSuite = a.resolveSecureAeadSuite(p.Channel(), rm.SecureAeadSuites)
 		a.logger.Traceln("handleSecureRequest", p.ConnString(), "SecureAeadSuite", m.SecureAeadSuite)
 		if m.SecureAeadSuite == SecureAeadSuiteNone {
 			m.SecureError = SecureErrorInvalid
@@ -434,7 +434,12 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		return
 	}
 
-	if err := p.secureKey.setup(m.SecureAeadSuite, rm.SecureParam, p.in, a.secureKeyNum); err != nil {
+	//When SecureSuite is SecureSuiteNone, fix SecureAeadSuite as SecureAeadSuiteNone
+	rsas := m.SecureAeadSuite
+	if m.SecureSuite == SecureSuiteNone {
+		rsas = SecureAeadSuiteNone
+	}
+	if err := p.secureKey.setup(rsas, rm.SecureParam, p.In(), a.secureKeyNum); err != nil {
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
 		p.CloseByError(err)
 		return
@@ -483,7 +488,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 	}
 
 	rss := rm.SecureSuite
-	if !a.isSupportedSecureSuite(p.channel, rss) {
+	if !a.isSupportedSecureSuite(p.Channel(), rss) {
 		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d", rss)
 		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
 		p.CloseByError(err)
@@ -493,7 +498,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 	rsas := rm.SecureAeadSuite
 	if rm.SecureSuite == SecureSuiteNone {
 		rsas = SecureSuiteNone
-	} else if !a.isSupportedSecureAeadSuite(p.channel, rsas) {
+	} else if !a.isSupportedSecureAeadSuite(p.Channel(), rsas) {
 		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d SecureAeadSuite %d", rss, rsas)
 		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
 		p.CloseByError(err)
@@ -514,7 +519,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 		return
 	}
 
-	err := p.secureKey.setup(rsas, rm.SecureParam, p.in, a.secureKeyNum)
+	err := p.secureKey.setup(rsas, rm.SecureParam, p.In(), a.secureKeyNum)
 	if err != nil {
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
 		p.CloseByError(err)
@@ -583,7 +588,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	} else if id.Equal(a.self) {
 		m = &SignatureResponse{Error: "selfAddress"}
 	}
-	p.id = id
+	p.setID(id)
 	a.sendMessage(p2pProtoAuthSignatureResponse, m, p)
 
 	if m.Error != "" {
@@ -625,9 +630,9 @@ func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 		p.CloseByError(err)
 		return
 	}
-	p.id = id
-	if !p.id.Equal(pkt.src) {
-		a.logger.Infoln("handleSignatureResponse", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
+	p.setID(id)
+	if !p.ID().Equal(pkt.src) {
+		a.logger.Infoln("handleSignatureResponse", "id doesnt match pkt:", pkt.src, ",expected:", p.ID())
 	}
 	a.nextOnPeer(p)
 }

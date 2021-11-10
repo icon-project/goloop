@@ -34,8 +34,8 @@ func Test_set_PeerSet(t *testing.T) {
 
 	v1 := generatePeer()
 	v2 := generatePeer()
-	v2_1 := &Peer{id: v2.id, netAddress: v2.netAddress}
-	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, in: true}
+	v2_1 := &Peer{id: v2.ID(), netAddress: v2.NetAddress()}
+	v2_2 := &Peer{id: v2.ID(), netAddress: v2.NetAddress(), in: true}
 	v3 := generatePeer()
 
 	assert.True(t, s.IsEmpty(), "true")
@@ -55,8 +55,8 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.True(t, s.Contains(v1), "true")
 	assert.False(t, s.Contains(v3), "false")
 
-	assert.True(t, s.HasNetAddress(v2.netAddress), "true")
-	assert.False(t, s.HasNetAddress(v3.netAddress), "false")
+	assert.True(t, s.HasNetAddress(v2.NetAddress()), "true")
+	assert.False(t, s.HasNetAddress(v3.NetAddress()), "false")
 	t.Log(s.NetAddresses())
 
 
@@ -66,14 +66,14 @@ func Test_set_PeerSet(t *testing.T) {
 	arr := s.Array()
 	for i:=0;i<l;i++{
 		v := arr[i]
-		t.Log(i,v.id,v.netAddress)
+		t.Log(i,v.ID(),v.NetAddress())
 	}
 
 	for i:=0;i<100;i++ {
 		tarr := s.Array()
 		for ti := 0;ti<l;ti++{
-			if arr[ti].netAddress != tarr[ti].netAddress{
-				t.Log(i,ti,"Not equal",tarr[ti].netAddress, arr[ti].netAddress)
+			if arr[ti].NetAddress() != tarr[ti].NetAddress(){
+				t.Log(i,ti,"Not equal",tarr[ti].NetAddress(), arr[ti].NetAddress())
 			}
 		}
 	}
@@ -82,8 +82,8 @@ func Test_set_PeerSet(t *testing.T) {
 func Test_set_NetAddressSet(t *testing.T) {
 	s := NewNetAddressSet()
 	v1 := generatePeer()
-	v1_1 := &Peer{id: v1.id, netAddress: generateNetAddress()}
-	v2 := &Peer{id: generatePeerID(), netAddress: v1_1.netAddress}
+	v1_1 := &Peer{id: v1.ID(), netAddress: generateNetAddress()}
+	v2 := &Peer{id: generatePeerID(), netAddress: v1_1.NetAddress()}
 
 	// assert.True(t, s.IsEmpty(), "true")
 	// assert.True(t, s.Add(v1.netAddress), "true")
@@ -97,7 +97,7 @@ func Test_set_NetAddressSet(t *testing.T) {
 	//When Peer connected
 	o, r := s.SetAndRemoveByData(v1.NetAddress(), v1.ID().String())
 	assert.EqualValues(t, []interface{}{"", NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
-	assert.True(t, s.Map()[v1.NetAddress()] == v1.id.String(), v1.id.String())
+	assert.True(t, s.Map()[v1.NetAddress()] == v1.ID().String(), v1.ID().String())
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
@@ -110,7 +110,7 @@ func Test_set_NetAddressSet(t *testing.T) {
 
 	//When Peer connected with same NetAddress, NetAddressSet.PutByPeer returns conflict PeerID
 	o, r = s.SetAndRemoveByData(v2.NetAddress(), v2.ID().String())
-	assert.EqualValues(t, []interface{}{v1_1.id.String(), NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
+	assert.EqualValues(t, []interface{}{v1_1.ID().String(), NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
