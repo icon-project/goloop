@@ -1494,10 +1494,12 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) {
 		}
 	}
 	sort.Slice(peers, func(i, j int) bool {
-		if peers[i].rtt.avg >= peers[j].rtt.avg {
+		if peers[i].rtt.avg < peers[j].rtt.avg {
+			return true
+		} else if peers[i].rtt.avg == peers[j].rtt.avg {
 			return peers[i].children.Len() < peers[j].children.Len()
 		}
-		return true
+		return false
 	})
 	for _, p := range peers {
 		if n < 1 {
@@ -1539,10 +1541,12 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) {
 		}
 	}
 	sort.Slice(peers, func(i, j int) bool {
-		if peers[i].rtt.avg >= peers[j].rtt.avg {
+		if peers[i].rtt.avg < peers[j].rtt.avg {
+			return true
+		} else if peers[i].rtt.avg == peers[j].rtt.avg {
 			return peers[i].nephews.Len() < peers[j].nephews.Len()
 		}
-		return true
+		return false
 	})
 	for _, p := range peers {
 		if n < 1 {
