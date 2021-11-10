@@ -81,6 +81,7 @@ public class ByteArray extends Array {
     }
 
     public static ByteArray newWithCharge(byte[] underlying) {
+        chargeEnergyInitArray(underlying.length, ArrayElement.BYTE.getEnergy());
         IInstrumentation.charge(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
         return new ByteArray(underlying);
     }

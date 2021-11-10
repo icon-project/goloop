@@ -56,6 +56,7 @@ public class ObjectArray extends Array implements IObjectArray {
     }
 
     public static ObjectArray newWithCharge(Object[] src) {
+        chargeEnergyInitArray(src.length, ArrayElement.REF.getEnergy());
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor);
         return new ObjectArray(src);
     }
