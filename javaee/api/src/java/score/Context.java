@@ -10,8 +10,10 @@ import java.math.BigInteger;
 /**
  * Every SCORE has an associated <code>Context</code> which allows the application to interface
  * with the environment the SCORE is running.
- * <p>
- * Typically, it includes the transaction and block context, and other blockchain functionality.
+ *
+ * <p>Typically, it includes the transaction and block context, and other blockchain functionality.
+ *
+ * <p>Unless otherwise noted, passing a null argument to a method in this class will cause a {@code NullPointerException} to be thrown.
  */
 public final class Context {
 
@@ -139,7 +141,6 @@ public final class Context {
      *
      * @param address the account address
      * @return the account balance, or 0 if the account does not exist
-     * @throws IllegalArgumentException if the address is invalid, e.g. NULL address
      */
     public static BigInteger getBalance(Address address) throws IllegalArgumentException {
         return BigInteger.ZERO;
@@ -159,7 +160,7 @@ public final class Context {
      * @param method        method
      * @param params        parameters
      * @return the invocation result
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, etc.
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
@@ -177,7 +178,7 @@ public final class Context {
      * @param method        method
      * @param params        parameters
      * @return the invocation result
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, etc.
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
@@ -196,7 +197,7 @@ public final class Context {
      * @param method        method
      * @param params        parameters
      * @return the invocation result
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, etc.
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
@@ -213,7 +214,7 @@ public final class Context {
      * @param method        method
      * @param params        parameters
      * @return the invocation result
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, etc.
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
@@ -227,7 +228,7 @@ public final class Context {
      *
      * @param targetAddress the account address
      * @param value         the value in loop to transfer
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, etc.
      */
     public static void transfer(Address targetAddress, BigInteger value) {
     }
@@ -251,7 +252,7 @@ public final class Context {
      * @param content the byte streams of the SCORE
      * @param params parameters
      * @return the target SCORE address
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, NULL address
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, etc.
      */
     public static Address deploy(Address targetAddress, byte[] content, Object... params) {
         return null;
