@@ -37,7 +37,7 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m["others"] = peerSetToMapArray(mgr.p2p.others, informal)
 	m["orphanages"] = peerSetToMapArray(mgr.p2p.orphanages, informal)
 	if informal {
-		m["pre"] = peerSetToMapArray(mgr.p2p.pre, informal)
+		m["transiting"] = peerSetToMapArray(mgr.p2p.transiting, informal)
 		m["reject"] = peerSetToMapArray(mgr.p2p.reject, informal)
 	}
 	m["trustSeeds"] = mgr.p2p.trustSeeds.Map()
@@ -72,6 +72,8 @@ func peerToMap(p *Peer, informal bool) map[string]interface{} {
 		if informal {
 			m["channel"] = p.Channel()
 			m["conn"] = p.ConnType()
+			m["rrole"] = p.RecvRole()
+			m["rconn"] = p.RecvConnType()
 			m["rtt"] = p.rtt.String()
 			if p.q != nil {
 				sq := make([]string, DefaultSendQueueMaxPriority)

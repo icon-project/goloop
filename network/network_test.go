@@ -203,6 +203,7 @@ type p2pConnInfo struct {
 	uncles   int
 	children int
 	nephews  int
+	others  int
 }
 
 func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
@@ -213,16 +214,19 @@ func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
 		connInfo[p2pConnTypeParent],
 		connInfo[p2pConnTypeUncle],
 		connInfo[p2pConnTypeChildren],
-		connInfo[p2pConnTypeNephew]}
+		connInfo[p2pConnTypeNephew],
+		connInfo[p2pConnTypeOther],
+	}
 }
 func (ci *p2pConnInfo) String() string {
-	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d",
+	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d, others:%d",
 		ci.role,
 		ci.friends,
 		ci.parent,
 		ci.uncles,
 		ci.children,
-		ci.nephews)
+		ci.nephews,
+		ci.others)
 }
 
 func (r *testReactor) Broadcast(msg string) string {
@@ -526,8 +530,8 @@ func Test_network_basic(t *testing.T) {
 	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumSeed + testNumCitizen
 	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
@@ -558,7 +562,7 @@ func Test_network_basic(t *testing.T) {
 	assert.NoError(t, err, "Multicast", "Test4")
 
 	msg = m["TestCitizen"][0].Multicast("Test5")
-	n = testNumValidator + 1 + DefaultUncleLimit
+	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test5")
 
@@ -767,8 +771,8 @@ func Test_network_failure(t *testing.T) {
 	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumSeed + testNumCitizen
 	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
@@ -870,8 +874,8 @@ func Test_network_trustSeeds(t *testing.T) {
 	dailByList(t, m["TestCitizen"], sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 4)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	limit[p2pRoleRootSeed] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumCitizen
@@ -917,7 +921,7 @@ func Test_network_trustSeeds(t *testing.T) {
 	assert.NoError(t, err, "Multicast", "Test3")
 
 	msg = m["TestChild"][0].Multicast("Test4")
-	n = testNumValidator + 1 + DefaultUncleLimit
+	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test4")
 

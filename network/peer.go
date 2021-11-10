@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,6 +50,7 @@ type Peer struct {
 	channelMtx    sync.RWMutex
 	connType      PeerConnectionType
 	connTypeMtx   sync.RWMutex
+	recvConnType  PeerConnectionType
 	role          PeerRoleFlag
 	roleMtx       sync.RWMutex
 	recvRole      PeerRoleFlag
@@ -108,8 +110,8 @@ func (p *Peer) String() string {
 	if p == nil {
 		return ""
 	}
-	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
-		p.ID(), p.ConnString(), p.NetAddress(), p.In(), p.Channel(), p.Role(), p.ConnType(), p.rtt.String(), p.children.Len(), p.nephews.Len())
+	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, rrole:%v, type:%v, rtype:%v, rtt:%v, children:%d, nephews:%d}",
+		p.ID(), p.ConnString(), p.NetAddress(), p.In(), p.Channel(), p.Role(), p.RecvRole(), p.ConnType(), p.RecvConnType(), p.rtt.String(), p.children.Len(), p.nephews.Len())
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
@@ -224,6 +226,18 @@ func (p *Peer) ConnType() PeerConnectionType {
 	p.connTypeMtx.RLock()
 	defer p.connTypeMtx.RUnlock()
 	return p.connType
+}
+
+func (p *Peer) setRecvConnType(ct PeerConnectionType) {
+	p.connTypeMtx.Lock()
+	defer p.connTypeMtx.Unlock()
+	p.recvConnType = ct
+}
+
+func (p *Peer) RecvConnType() PeerConnectionType {
+	p.connTypeMtx.RLock()
+	defer p.connTypeMtx.RUnlock()
+	return p.recvConnType
 }
 
 func (p *Peer) setRole(r PeerRoleFlag) {
@@ -378,7 +392,7 @@ func (p *Peer) isTemporaryError(err error) bool {
 func (p *Peer) receiveRoutine() {
 	defer func() {
 		if err := recover(); err != nil {
-			p.logger.Warnf("Peer[%s].receiveRoutine recover from %+v", p.ConnString(), err)
+			p.logger.Warnf("Peer[%s].receiveRoutine recover from %+v\n %s", p.ConnString(), err, string(debug.Stack()))
 			p.CloseByError(fmt.Errorf("recover from %+v", err))
 		} else {
 			p.Close("receiveRoutine finish")
