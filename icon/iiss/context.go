@@ -125,14 +125,10 @@ func (ctx *worldContextImpl) GetScoreOwner(score module.Address) (module.Address
 	if icutils.IsNil(as) || !as.IsContract() {
 		return nil, scoreresult.InvalidParameterError.Errorf("Score not found")
 	}
-	owner := as.ContractOwner()
-	if icutils.IsNil(owner) {
-		return nil, scoreresult.InvalidParameterError.Errorf("No owner")
-	}
-	return owner, nil
+	return as.ContractOwner(), nil
 }
 
-func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Address, owner module.Address) error {
+func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Address, newOwner module.Address) error {
 	// Parameter sanity check
 	if from == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid sender")
@@ -140,29 +136,29 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 	if score == nil || !score.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf("Invalid score address")
 	}
-	if owner == nil {
+	if newOwner == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid owner")
 	}
 
 	as := ctx.GetAccountState(score.ID())
-	if as == nil || !as.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("Invalid score account")
+	if icutils.IsNil(as) || !as.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf("Score not found")
 	}
 
 	// Check if s.from is the owner of a given contract
-	oldOwner := as.ContractOwner()
-	if oldOwner == nil || !oldOwner.Equal(from) {
+	owner := as.ContractOwner()
+	if owner == nil || !owner.Equal(from) {
 		return scoreresult.AccessDeniedError.Errorf("Invalid owner")
 	}
 
 	// Check if the score is active
 	if as.IsBlocked() {
-		return scoreresult.AccessDeniedError.Errorf("Not allowed: blocked score")
+		return scoreresult.AccessDeniedError.Errorf("Blocked score")
 	}
 	if as.IsDisabled() {
-		return scoreresult.AccessDeniedError.Errorf("Not allowed: disabled score")
+		return scoreresult.AccessDeniedError.Errorf("Disabled score")
 	}
-	return as.SetContractOwner(owner)
+	return as.SetContractOwner(newOwner)
 }
 
 func NewWorldContext(ctx state.WorldContext) icmodule.WorldContext {
