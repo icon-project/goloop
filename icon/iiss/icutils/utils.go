@@ -18,6 +18,7 @@ package icutils
 
 import (
 	"math/big"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -252,4 +253,8 @@ func ICXToIScore(icx *big.Int) *big.Int {
 
 func IScoreToICX(iScore *big.Int) *big.Int {
 	return new(big.Int).Div(iScore, icmodule.BigIntIScoreICXRatio)
+}
+
+func IsNil(i interface{}) bool {
+	return i == nil || reflect.ValueOf(i).IsNil()
 }

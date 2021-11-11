@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -121,10 +122,14 @@ func (ctx *worldContextImpl) GetScoreOwner(score module.Address) (module.Address
 		return nil, scoreresult.InvalidParameterError.Errorf("Invalid score address")
 	}
 	as := ctx.GetAccountState(score.ID())
-	if as == nil || !as.IsContract() {
-		return nil, scoreresult.InvalidParameterError.Errorf("Invalid score account")
+	if icutils.IsNil(as) || !as.IsContract() {
+		return nil, scoreresult.InvalidParameterError.Errorf("Score not found")
 	}
-	return as.ContractOwner(), nil
+	owner := as.ContractOwner()
+	if icutils.IsNil(owner) {
+		return nil, scoreresult.InvalidParameterError.Errorf("No owner")
+	}
+	return owner, nil
 }
 
 func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Address, owner module.Address) error {
