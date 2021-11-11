@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/labstack/echo/v4"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type Handler func(ctx *Context, params *Params) (result interface{}, err error)
@@ -61,14 +62,14 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 
 	resp := &Response{Version: Version}
 	req := new(Request)
-	if err := UnmarshalWithValidate(raw, req, ctx.Validator()); err != nil{
+	if err := UnmarshalWithValidate(raw, req, ctx.Validator()); err != nil {
 		resp.ID = req.ID
 		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
 	}
 	resp.ID = req.ID
 	if req.Method == nil {
-		err := errors.New(ValidateFailPrefix+ "required('method')")
+		err := errors.New(ValidateFailPrefix + "required('method')")
 		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
 	}
@@ -78,7 +79,7 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 		return resp
 	}
 
-	if req.ID == nil && !mr.IsAllowedNotification(*req.Method){
+	if req.ID == nil && !mr.IsAllowedNotification(*req.Method) {
 		return nil
 	}
 
@@ -94,7 +95,11 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 			resp.Error = ErrorCodeInternal.Wrap(err, debug)
 		}
 	} else {
-		resp.Result = res
+		if res == nil {
+			resp.Result = json.RawMessage("null")
+		} else {
+			resp.Result = res
+		}
 	}
 	if req.ID == nil {
 		return nil
@@ -125,7 +130,7 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 		var wg sync.WaitGroup
 		wg.Add(n)
 		rs := make([]*Response, len(raws))
-		for i, r := range raws{
+		for i, r := range raws {
 			go func(r json.RawMessage, rs []*Response, i int) {
 				rs[i] = mr.handle(ctx, r)
 				wg.Done()
