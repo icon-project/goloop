@@ -129,6 +129,9 @@ type accountSnapshotImpl struct {
 }
 
 func (s *accountSnapshotImpl) ContractOwner() module.Address {
+	if s.contractOwner == nil {
+		return nil
+	}
 	return s.contractOwner
 }
 
@@ -528,6 +531,9 @@ func (s *accountStateImpl) SetObjGraph(id []byte, flags bool, nextHash int, objG
 }
 
 func (s *accountStateImpl) ContractOwner() module.Address {
+	if s.contractOwner == nil {
+		return nil
+	}
 	return s.contractOwner
 }
 
