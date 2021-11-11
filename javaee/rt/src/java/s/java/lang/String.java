@@ -416,7 +416,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public static String newWithCharge(java.lang.String u) {
-        IInstrumentation.charge(RuntimeMethodFeeSchedule.String_avm_constructor);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_2, u.length()));
         return new String(u);
     }
 

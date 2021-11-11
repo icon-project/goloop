@@ -36,6 +36,7 @@ import score.RevertedException;
 import score.UserRevertedException;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * The implementation of IBlockchainRuntime which is appropriate for exposure as a shadow Object instance within a DApp.
@@ -159,7 +160,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public s.java.math.BigInteger avm_getBalance(p.score.Address address) {
-        require(null != address, "Address can't be NULL");
+        Objects.requireNonNull(address, "Address can't be NULL");
         return new s.java.math.BigInteger(this.externalState.getBalance(new Address(address.toByteArray())));
     }
 
@@ -186,7 +187,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public p.score.Address avm_deploy(p.score.Address target,
                                       ByteArray content,
                                       IObjectArray params) {
-        require(content != null, "Content cannot be NULL");
+        Objects.requireNonNull(content, "Content cannot be NULL");
         if (target == null) {
             // make cx000...000
             byte[] raw = new byte[Address.LENGTH];
@@ -222,7 +223,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                 p.score.Address targetAddress,
                                 String dataType,
                                 Object dataObj) {
-        require(targetAddress != null, "Destination can't be NULL");
+        Objects.requireNonNull(targetAddress, "Destination can't be NULL");
         externalState.waitForCallbacks();
         IInstrumentation inst = IInstrumentation.attachedThreadInstrumentation.get();
         var hash = inst.peekNextHashCode();
@@ -286,12 +287,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         throw new RevertedException();
     }
 
-    private void require(boolean condition, String message) {
-        if (!condition) {
-            throw new IllegalArgumentException(message);
-        }
-    }
-
     @Override
     public void avm_revert(int code, s.java.lang.String message) {
         throw new ManualRevertException(Status.fromUserCode(code),
@@ -327,8 +322,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public ByteArray avm_hash(s.java.lang.String alg, ByteArray data) {
-        require(null != alg, "Algorithm can't be NULL");
-        require(null != data, "Input data can't be NULL");
+        Objects.requireNonNull(alg, "Algorithm can't be NULL");
+        Objects.requireNonNull(data, "Input data can't be NULL");
         return new ByteArray(Crypto.hash(alg.getUnderlying(),
                 data.getUnderlying()));
     }
@@ -336,10 +331,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public boolean avm_verifySignature(s.java.lang.String alg, ByteArray msg,
             ByteArray sig, ByteArray pubKey) {
-        require(null != alg, "Algorithm can't be NULL");
-        require(null != msg, "Message can't be NULL");
-        require(null != sig, "Signature can't be NULL");
-        require(null != pubKey, "Public key can't be NULL");
+        Objects.requireNonNull(alg, "Algorithm can't be NULL");
+        Objects.requireNonNull(msg, "Message can't be NULL");
+        Objects.requireNonNull(sig, "Signature can't be NULL");
+        Objects.requireNonNull(pubKey, "Public key can't be NULL");
         return Crypto.verifySignature(alg.getUnderlying(), msg.getUnderlying(),
                 sig.getUnderlying(), pubKey.getUnderlying());
     }
@@ -347,16 +342,16 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public ByteArray avm_recoverKey(s.java.lang.String alg, ByteArray msg,
             ByteArray sig, boolean compressed) {
-        require(null != alg, "Algorithm can't be NULL");
-        require(null != msg, "Message can't be NULL");
-        require(null != sig, "Signature can't be NULL");
+        Objects.requireNonNull(alg, "Algorithm can't be NULL");
+        Objects.requireNonNull(msg, "Message can't be NULL");
+        Objects.requireNonNull(sig, "Signature can't be NULL");
         return new ByteArray(Crypto.recoverKey(alg.getUnderlying(),
                 msg.getUnderlying(), sig.getUnderlying(), compressed));
     }
 
     @Override
     public p.score.Address avm_getAddressFromKey(ByteArray publicKey) {
-        require(null != publicKey, "publicKey is NULL");
+        Objects.requireNonNull(publicKey, "publicKey is NULL");
         return new p.score.Address(Crypto.getAddressBytesFromKey(publicKey.getUnderlying()));
     }
 

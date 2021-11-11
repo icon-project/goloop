@@ -74,14 +74,14 @@ func (m *manager) Channel() string {
 	return m.channel
 }
 func (m *manager) PeerID() module.PeerID {
-	return m.p2p.getID()
+	return m.p2p.ID()
 }
 
 func (m *manager) GetPeers() []module.PeerID {
 	arr := m.p2p.getPeers(true)
 	l := make([]module.PeerID, len(arr))
 	for i, p := range arr {
-		l[i] = p.id
+		l[i] = p.ID()
 	}
 	return l
 }
@@ -333,7 +333,7 @@ func (m *manager) SetTrustSeeds(seeds string) {
 	m.p2p.trustSeeds.Clear()
 	ss := strings.Split(seeds, ",")
 	for _, s := range ss {
-		if na := NetAddress(s); len(na) != 0 && na != m.p2p.getNetAddress() {
+		if na := NetAddress(s); len(na) != 0 && na != m.p2p.NetAddress() {
 			m.p2p.trustSeeds.Add(NetAddress(s))
 		}
 	}

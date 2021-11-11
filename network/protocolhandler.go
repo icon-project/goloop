@@ -144,7 +144,7 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
 				r := ph.getReactor()
-				isRelay, err := r.OnReceive(pkt.subProtocol, pkt.payload, p.id)
+				isRelay, err := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
 				if err != nil {
 					//ph.logger.Debugln("receiveRoutine", err)
 				}
@@ -171,11 +171,11 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 		if ok = ph.receiveQueue.Push(ctx); !ok {
-			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.id)
+			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	} else {
 		p.CloseByError(ErrNotRegisteredProtocol)
-		ph.logger.Infoln("onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.id)
+		ph.logger.Infoln("onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 	}
 }
 
@@ -255,11 +255,11 @@ Loop:
 				r := ph.getReactor()
 				switch evt {
 				case p2pEventJoin:
-					r.OnJoin(p.id)
+					r.OnJoin(p.ID())
 				case p2pEventLeave:
-					r.OnLeave(p.id)
+					r.OnLeave(p.ID())
 				case p2pEventDuplicate:
-					ph.logger.Traceln("p2pEventDuplicate", p.id)
+					ph.logger.Traceln("p2pEventDuplicate", p.ID())
 				}
 			}
 		}
@@ -274,7 +274,7 @@ func (ph *protocolHandler) onEvent(evt string, p *Peer) {
 	ctx := context.WithValue(context.Background(), p2pContextKeyEvent, evt)
 	ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 	if ok := ph.eventQueue.Push(ctx); !ok {
-		ph.logger.Infoln("onEvent", "eventQueue Push failure", evt, p.id)
+		ph.logger.Infoln("onEvent", "eventQueue Push failure", evt, p.ID())
 	}
 }
 

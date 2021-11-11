@@ -68,7 +68,7 @@ func newTestReactor(name string, nm module.NetworkManager, pi module.ProtocolInf
 	r.ph = ph
 	r.p2p = nm.(*manager).p2p
 	r.p2p.setEventCbFunc(p2pEventNotAllowed, r.ph.(*protocolHandler).protocol.Uint16(), r.onEvent)
-	r.t.Log(time.Now(), r.name, "newTestReactor", r.p2p.getID())
+	r.t.Log(time.Now(), r.name, "newTestReactor", r.p2p.ID())
 	return r
 }
 
@@ -167,11 +167,11 @@ func (r *testReactor) OnLeave(id module.PeerID) {
 	r.logger.Println("OnLeave", id)
 }
 func (r *testReactor) onEvent(evt string, p *Peer) {
-	r.logger.Println("onEvent", evt, p.id)
+	r.logger.Println("onEvent", evt, p.ID())
 	ctx := context.WithValue(context.Background(), "op", "event")
 	ctx = context.WithValue(ctx, "event", evt)
 	ctx = context.WithValue(ctx, "name", r.name)
-	ctx = context.WithValue(ctx, "peer", p.id)
+	ctx = context.WithValue(ctx, "peer", p.ID())
 	r.ch <- ctx
 }
 
@@ -203,26 +203,30 @@ type p2pConnInfo struct {
 	uncles   int
 	children int
 	nephews  int
+	others  int
 }
 
 func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
 	connInfo := p2p.connections()
 	return &p2pConnInfo{
-		p2p.getRole(),
+		p2p.Role(),
 		connInfo[p2pConnTypeFriend],
 		connInfo[p2pConnTypeParent],
 		connInfo[p2pConnTypeUncle],
 		connInfo[p2pConnTypeChildren],
-		connInfo[p2pConnTypeNephew]}
+		connInfo[p2pConnTypeNephew],
+		connInfo[p2pConnTypeOther],
+	}
 }
 func (ci *p2pConnInfo) String() string {
-	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d",
+	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d, others:%d",
 		ci.role,
 		ci.friends,
 		ci.parent,
 		ci.uncles,
 		ci.children,
-		ci.nephews)
+		ci.nephews,
+		ci.others)
 }
 
 func (r *testReactor) Broadcast(msg string) string {
@@ -397,22 +401,21 @@ func waitConnection(ch <-chan context.Context, limit [][]int, n int, d time.Dura
 			rname := ctx.Value("name").(string)
 			roleBasedLimit := limit[ci.role]
 			fmt.Println("rname:", rname, "roleBasedLimit:", roleBasedLimit, "ci:", ci)
-			switch ci.role {
-			case p2pRoleRoot, p2pRoleRootSeed:
+			if ci.role.Has(p2pRoleRoot) {
 				if ci.friends >= roleBasedLimit[p2pConnTypeFriend] &&
 					ci.children >= roleBasedLimit[p2pConnTypeChildren] && ci.nephews >= roleBasedLimit[p2pConnTypeNephew] {
 					if _, ok := m[rname]; !ok {
 						m[rname] = time.Since(s)
 					}
 				}
-			case p2pRoleSeed:
+			} else if ci.role.Has(p2pRoleSeed) {
 				if ci.parent >= roleBasedLimit[p2pConnTypeParent] && ci.uncles >= roleBasedLimit[p2pConnTypeUncle] &&
 					ci.children >= roleBasedLimit[p2pConnTypeChildren] && ci.nephews >= roleBasedLimit[p2pConnTypeNephew] {
 					if _, ok := m[rname]; !ok {
 						m[rname] = time.Since(s)
 					}
 				}
-			case p2pRoleNone:
+			} else {
 				if ci.parent >= roleBasedLimit[p2pConnTypeParent] && ci.uncles >= roleBasedLimit[p2pConnTypeUncle] {
 					if _, ok := m[rname]; !ok {
 						m[rname] = time.Since(s)
@@ -486,7 +489,7 @@ func dailByMap(t *testing.T, m map[string][]*testReactor, na NetAddress, delay t
 }
 func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Duration) {
 	for _, r := range arr {
-		if r.p2p.getNetAddress() != na {
+		if r.p2p.NetAddress() != na {
 			err := r.p2p.dial(na)
 			assert.NoError(t, err, "dial", r.name, "->", na)
 			if delay > 0 {
@@ -524,11 +527,11 @@ func Test_network_basic(t *testing.T) {
 	}
 
 	sr := m["TestSeed"][0]
-	dailByMap(t, m, sr.p2p.getNetAddress(), 100*time.Millisecond)
+	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumSeed + testNumCitizen
 	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
@@ -559,7 +562,7 @@ func Test_network_basic(t *testing.T) {
 	assert.NoError(t, err, "Multicast", "Test4")
 
 	msg = m["TestCitizen"][0].Multicast("Test5")
-	n = testNumValidator + 1 + DefaultUncleLimit
+	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test5")
 
@@ -622,7 +625,7 @@ func Test_network_allowedPeer(t *testing.T) {
 	}
 
 	sr := m["TestAllowed"][0]
-	dailByMap(t, m, sr.p2p.getNetAddress(), 100*time.Millisecond)
+	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 3)
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumAllowedPeer - 1}
@@ -633,7 +636,7 @@ func Test_network_allowedPeer(t *testing.T) {
 
 	go func() {
 		for _, r := range m["TestAllowed"] {
-			dailByList(t, m["TestNotAllowed"], r.p2p.getNetAddress(), 0)
+			dailByList(t, m["TestNotAllowed"], r.p2p.NetAddress(), 0)
 		}
 	}()
 	evtMap, err := waitEvent(ch, n, 2*time.Second, p2pEventNotAllowed, notAllowed...)
@@ -765,11 +768,11 @@ func Test_network_failure(t *testing.T) {
 	}
 
 	sr := m["TestSeed"][0]
-	dailByMap(t, m, sr.p2p.getNetAddress(), 100*time.Millisecond)
+	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumSeed + testNumCitizen
 	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
@@ -790,7 +793,7 @@ func Test_network_failure(t *testing.T) {
 	pArr = append(pArr, m["TestValidator"][0].p2p.nephews.Array()...)
 	//peer.send ErrQueueOverflow
 	for _, p := range pArr {
-		qm[p.id.String()] = replacePeerQueue(p.q, testProtoPriority, zeroQueue)
+		qm[p.ID().String()] = replacePeerQueue(p.q, testProtoPriority, zeroQueue)
 	}
 
 	msg = m["TestValidator"][0].Broadcast("Test2")
@@ -807,7 +810,7 @@ func Test_network_failure(t *testing.T) {
 	tqm := make(map[string]Queue)
 	for _, p := range pArr {
 		tq := newTestQueue(DefaultPeerSendQueueSize)
-		tqm[p.id.String()] = tq
+		tqm[p.ID().String()] = tq
 		tq.pending()
 		replacePeerQueue(p.q, testProtoPriority, tq)
 	}
@@ -815,8 +818,8 @@ func Test_network_failure(t *testing.T) {
 	msg = m["TestValidator"][0].Broadcast("Test3")
 	go func() {
 		for i, p := range pArr {
-			log.Println("Close by testErrNotAvailable", i, len(pArr), p.id)
-			tq := tqm[p.id.String()].(*testQueue)
+			log.Println("Close by testErrNotAvailable", i, len(pArr), p.ID())
+			tq := tqm[p.ID().String()].(*testQueue)
 			go func(tq *testQueue) {
 				tq.resume()
 			}(tq)
@@ -837,7 +840,7 @@ func Test_network_failure(t *testing.T) {
 	}
 
 	for _, p := range pArr {
-		replacePeerQueue(p.q, testProtoPriority, qm[p.id.String()])
+		replacePeerQueue(p.q, testProtoPriority, qm[p.ID().String()])
 	}
 
 	//msg = m["TestValidator"][0].Broadcast("Test4")
@@ -867,12 +870,12 @@ func Test_network_trustSeeds(t *testing.T) {
 		}
 	}
 	sr := m["TestValidator"][0]
-	dailByList(t, m["TestValidator"], sr.p2p.getNetAddress(), 100*time.Millisecond)
-	dailByList(t, m["TestCitizen"], sr.p2p.getNetAddress(), 100*time.Millisecond)
+	dailByList(t, m["TestValidator"], sr.p2p.NetAddress(), 100*time.Millisecond)
+	dailByList(t, m["TestCitizen"], sr.p2p.NetAddress(), 100*time.Millisecond)
 
 	limit := make([][]int, 4)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUncleLimit, 0, 0}
+	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
 	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	limit[p2pRoleRootSeed] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
 	n := testNumValidator + testNumCitizen
@@ -882,7 +885,7 @@ func Test_network_trustSeeds(t *testing.T) {
 
 	trustSeeds := make([]string, 0)
 	for _, r := range m["TestCitizen"] {
-		trustSeeds = append(trustSeeds, string(r.p2p.getNetAddress()))
+		trustSeeds = append(trustSeeds, string(r.p2p.NetAddress()))
 	}
 	strTrustSeeds := strings.Join(trustSeeds, ",")
 	fmt.Println("strTrustSeeds: ", strTrustSeeds)
@@ -918,7 +921,7 @@ func Test_network_trustSeeds(t *testing.T) {
 	assert.NoError(t, err, "Multicast", "Test3")
 
 	msg = m["TestChild"][0].Multicast("Test4")
-	n = testNumValidator + 1 + DefaultUncleLimit
+	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test4")
 

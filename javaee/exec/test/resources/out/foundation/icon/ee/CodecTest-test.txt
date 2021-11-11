@@ -13,4 +13,4 @@ RECV getObjGraph flag=1 => next=7 hash=a0c4292658b03802cfa93064b96fd8ad1713baabd
 RECV setValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c isDelete=false c6410a83616161
 RECV getValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c => c6410a83616161
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| User{name='A', visitCount=10, desc='aaa'}
-RECV result status=0 stepUsed=54207 ret=<null>
+RECV result status=0 stepUsed=54227 ret=<null>

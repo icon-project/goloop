@@ -433,17 +433,16 @@ func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
 //callback from Listener.acceptRoutine
 func (pd *PeerDispatcher) onAccept(conn net.Conn) {
 	pd.logger.Traceln("onAccept", conn.LocalAddr(), "<-", conn.RemoteAddr())
-	p := newPeer(conn, nil, true, pd.logger)
+	p := newPeer(conn, nil, true, "", pd.logger)
 	pd.dispatchPeer(p)
 }
 
 //callback from Dialer.Connect
 func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
 	pd.logger.Traceln("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
-	p := newPeer(conn, nil, false, pd.logger)
-	p.channel = d.channel
-	p.dial = NetAddress(addr)
-	p.netAddress = NetAddress(addr)
+	p := newPeer(conn, nil, false, NetAddress(addr), pd.logger)
+	p.setChannel(d.channel)
+	p.setNetAddress(NetAddress(addr))
 	pd.dispatchPeer(p)
 }
 
@@ -460,14 +459,14 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
 	pd.logger.Traceln("onPeer", p)
-	if p2p := pd.getPeerToPeer(p.channel); p2p != nil {
+	if p2p := pd.getPeerToPeer(p.Channel()); p2p != nil {
 		p.setMetric(p2p.mtr)
 		p.setPacketCbFunc(p2p.onPacket)
 		p.setErrorCbFunc(p2p.onError)
 		p.setCloseCbFunc(p2p.onClose)
 		p2p.onPeer(p)
 	} else {
-		err := fmt.Errorf("not exists PeerToPeer[%s]", p.channel)
+		err := fmt.Errorf("not exists PeerToPeer[%s]", p.Channel())
 		p.CloseByError(err)
 	}
 }

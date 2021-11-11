@@ -33,6 +33,119 @@ import java.lang.annotation.Target;
  * <p>NOTE: The special method, named {@code fallback}, cannot be annotated with {@code @External}.
  * (i.e., {@code fallback} method cannot be specified in the transaction message as a callee method,
  * and it can only be called via plain ICX transfer message.)
+ * </p>
+ *
+ * <h1> <a id="parameter">Parameter Type</a> </h1>
+ * <p>A parameter type of an external method is
+ *     <ul>
+ *         <li>a <a href="#simple-value">simple value type</a>,</li>
+ *         <li>a <a href="#writable-struct">writable struct</a>, or</li>
+ *         <li>an array of a <a href="#parameter">parameter type</a></li>
+ *     </ul>
+ *
+ * <h2> <a id="simple-value">Simple Value Type</a> </h2>
+ * <p>A simple value type is
+ * <ul>
+ *     <li>A {@code boolean}, {@code char}, {@code byte},
+ *     {@code short}, {@code int} or {@code long}, or</li>
+ *     <li> A {@code byte[]}, A {@link java.math.BigInteger},
+ *     {@link score.Address} or {@link String}</li>
+ * </ul>
+ *
+ * <h2> <a id="writable-struct">Writable Struct</a> </h2>
+ * <p>A type is writable struct if
+ * <ul>
+ *     <li> the type is a non-abstract class,</li>
+ *     <li>
+ *         the type has no constructor or public zero argument constructor and
+ *     </li>
+ *     <li>
+ *         the type has a public non-static setter method of
+ *         <a href="#writable-property">writable property type</a>.
+ *     </li>
+ * </ul>
+ *
+ * <p>For example, the following type is a writable struct.
+ * <blockquote><pre>
+ *      class Person {
+ *          public Person() {...}
+ *          public String getName() {...}
+ *          public void setName(String name) {...}
+ *          public int getAge() {...}
+ *          public void setAge(int age) {...}
+ *      }
+ * </pre></blockquote>
+ *
+ * <h2> <a id="writable-property">Writable Property</a> </h2>
+ * A type is writable property type if the type is
+ * <ul>
+ *     <li>A <a href="#simple-value">simple value type</a>,</li>
+ *     <li>
+ *         A {@link Boolean}, {@link Character}, {@link Byte}, {@link Short},
+ *         {@link Integer} or {@link Long},
+ *     </li>
+ *     <li>
+ *         A <a href="#writable-struct">writable struct type</a>
+ *         (recursion is not allowed), or
+ *     </li>
+ *     <li>
+ *         An array of <a href="#writable-property">writable property</a>
+ *     </li>
+ * </ul>
+ *
+ * <h1> <a id="return">Return Type</a> </h1>
+ * <p>
+ *     A return type of an external method is
+ *     <ul>
+ *         <li>void,</li>
+ *         <li>A <a href="#simple-value">simple value type</a>,</li>
+ *         <li>
+ *             A <a href="#readable-struct">readable struct</a>
+ *             (regarded as a map),
+ *         </li>
+ *         <li>
+ *             an array of a non-void <a href="#return">return type</a>
+ *             (regarded as a list),
+ *         </li>
+ *         <li>
+ *             {@link java.util.List} where each element is of a non-void
+ *             <a href="#return">return type</a> or null, or
+ *         </li>
+ *         <li>
+ *             {@link java.util.Map} where each key is of a {@code String}
+ *             and each value is of a non-void <a href="#return">return type</a>
+ *             or null.
+ *         </li>
+ *     </ul>
+ *
+ * <h2> <a id="readable-struct">Readable Struct</a> </h2>
+ * <p>
+ * A type is readable struct if the type has a public non-static getter
+ * method of <a href="readable-property">readable property type</a>.
+ * For example, the following type is a readable struct.
+ * <blockquote><pre>
+ *      class Person {
+ *          public String getName() {...}
+ *          public int getAge() {...}
+ *      }
+ * </pre></blockquote>
+ *
+ * <h2> <a id="readable-property">Readable Property</a> </h2>
+ * A type is readable property type if the type is
+ * <ul>
+ *     <li>A <a href="#simple-value">simple value type</a></li>
+ *     <li>
+ *         A {@link Boolean}, {@link Character}, {@link Byte},
+ *        {@link Short}, {@link Integer} and {@link Long},
+ *     </li>
+ *     <li>
+ *         A <a href="#readable-struct">readable struct type</a>
+ *         (recursion is not allowed in this case), or
+ *     </li>
+ *     <li>
+ *         An array of <a href="#readable-property">readable property</a>
+ *     </li>
+ * </ul>
  */
 @Target(ElementType.METHOD)
 public @interface External {

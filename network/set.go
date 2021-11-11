@@ -35,6 +35,7 @@ func (s *Set) _set(v interface{}, d interface{}) interface{} {
 	s.m[v] = d
 	return old
 }
+
 func (s *Set) _remove(v interface{}) bool {
 	if _, ok := s.m[v]; ok {
 		delete(s.m, v)
@@ -42,56 +43,68 @@ func (s *Set) _remove(v interface{}) bool {
 	}
 	return false
 }
+
 func (s *Set) _clear() {
 	s.m = make(map[interface{}]interface{})
 }
+
 func (s *Set) _merge(args ...interface{}) {
 	for _, v := range args {
 		s._set(v, true)
 	}
 }
+
 func (s *Set) Add(v interface{}) bool {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	return s._add(v, true)
 }
+
 func (s *Set) Set(v interface{}, d interface{}) interface{} {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	return s._set(v, d)
 }
+
 func (s *Set) Remove(v interface{}) bool {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	return s._remove(v)
 }
+
 func (s *Set) Clear() {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	s._clear()
 }
+
 func (s *Set) Merge(args ...interface{}) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
 	s._merge(args...)
 }
+
 func (s *Set) _contains(v interface{}) bool {
 	_, ok := s.m[v]
 	return ok
 }
+
 func (s *Set) _len() int {
 	return len(s.m)
 }
+
 func (s *Set) Contains(v interface{}) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	return s._contains(v)
 }
+
 func (s *Set) Len() int {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	return s._len()
 }
+
 func (s *Set) IsEmpty() bool {
 	return s.Len() == 0
 }
@@ -106,6 +119,7 @@ func (s *Set) Array() interface{} {
 	}
 	return arr
 }
+
 func (s *Set) Map() map[interface{}]interface{} {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
@@ -143,10 +157,10 @@ func NewPeerSet() *PeerSet {
 }
 
 func (s *PeerSet) _contains(p *Peer) (r bool) {
-	if p.in {
-		r = s.in.Contains(p.id)
+	if p.In() {
+		r = s.in.Contains(p.ID())
 	} else {
-		r = s.out.Contains(p.id)
+		r = s.out.Contains(p.ID())
 	}
 	return
 }
@@ -164,13 +178,13 @@ func (s *PeerSet) _add(p *Peer, f PeerPredicate) bool {
 	s.mtx.Lock()
 
 	if !s._contains(p) && (f == nil || f(p)) {
-		if p.in {
-			s.in.Add(p.id)
+		if p.In() {
+			s.in.Add(p.ID())
 		} else {
-			s.out.Add(p.id)
+			s.out.Add(p.ID())
 		}
-		s.addrs.Add(p.netAddress)
-		s.ids.Add(p.id)
+		s.addrs.Add(p.NetAddress())
+		s.ids.Add(p.ID())
 
 		s.arr = append(s.arr, p)
 		s._shuffle()
@@ -192,23 +206,23 @@ func (s *PeerSet) Remove(p *Peer) bool {
 	s.mtx.Lock()
 
 	if s._contains(p) {
-		if p.in {
-			s.in.Remove(p.id)
-			if !s.out.Contains(p.id) {
-				s.addrs.Remove(p.netAddress)
-				s.ids.Remove(p.id)
+		if p.In() {
+			s.in.Remove(p.ID())
+			if !s.out.Contains(p.ID()) {
+				s.addrs.Remove(p.NetAddress())
+				s.ids.Remove(p.ID())
 			}
 		} else {
-			s.out.Remove(p.id)
-			if !s.in.Contains(p.id) {
-				s.addrs.Remove(p.netAddress)
-				s.ids.Remove(p.id)
+			s.out.Remove(p.ID())
+			if !s.in.Contains(p.ID()) {
+				s.addrs.Remove(p.NetAddress())
+				s.ids.Remove(p.ID())
 			}
 		}
 
 		last := len(s.arr)-1
 		for i, tp := range s.arr {
-			if tp.in == p.in && tp.id.Equal(p.id) {
+			if tp.In() == p.In() && tp.ID().Equal(p.ID()) {
 				s.arr[i] = s.arr[last]
 				s.arr = s.arr[:last]
 				break
@@ -219,6 +233,7 @@ func (s *PeerSet) Remove(p *Peer) bool {
 	}
 	return false
 }
+
 func (s *PeerSet) Clear() {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
@@ -228,14 +243,17 @@ func (s *PeerSet) Clear() {
 	s.addrs.Clear()
 	s.arr = make([]*Peer, 0)
 }
+
 func (s *PeerSet) Contains(p *Peer) bool {
 	return s._contains(p)
 }
+
 func (s *PeerSet) Merge(args ...*Peer) {
 	for _, p := range args {
 		s.Add(p)
 	}
 }
+
 func (s *PeerSet) Array() []*Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
@@ -249,7 +267,7 @@ func (s *PeerSet) GetByID(id module.PeerID) *Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	for _, p := range s.arr {
-		if p.id.Equal(id) {
+		if p.ID().Equal(id) {
 			return p
 		}
 	}
@@ -262,7 +280,7 @@ func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if has == p.hasRole(r) {
+		if has == p.HasRole(r) {
 			l = append(l, p)
 		}
 	}
@@ -275,7 +293,7 @@ func (s *PeerSet) GetByRecvRole(r PeerRoleFlag, has bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if has == p.hasRecvRole(r) {
+		if has == p.HasRecvRole(r) {
 			l = append(l, p)
 		}
 	}
@@ -288,7 +306,7 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if p.in == in && has == p.hasRole(role) {
+		if p.In() == in && has == p.HasRole(role) {
 			l = append(l, p)
 		}
 	}
@@ -298,28 +316,30 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 func (s *PeerSet) NetAddresses() []NetAddress {
 	return s.addrs.Array()
 }
+
 func (s *PeerSet) HasNetAddress(a NetAddress) bool {
 	return s.addrs.Contains(a)
 }
+
 func (s *PeerSet) HasNetAddressAndIn(a NetAddress, in bool) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
 	for _, p := range s.arr {
-		if p.in == in && p.netAddress == a {
+		if p.In() == in && p.NetAddress() == a {
 			return true
 		}
 	}
 	return false
 }
 
-func (s *PeerSet) Find(foundFunc func(p *Peer) bool) []*Peer {
+func (s *PeerSet) Find(f func(p *Peer) bool) []*Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 
 	l := make([]*Peer, 0, len(s.arr))
 	for _, p := range s.arr {
-		if foundFunc(p) {
+		if f(p) {
 			l = append(l, p)
 		}
 	}
@@ -331,6 +351,7 @@ func (s *PeerSet) Len() int {
 	s.mtx.RLock()
 	return len(s.arr)
 }
+
 func (s *PeerSet) IsEmpty() bool {
 	return s.Len() == 0
 }
@@ -345,6 +366,7 @@ func NewNetAddressSet() *NetAddressSet {
 	s.cache = s.Map()
 	return s
 }
+
 func (s *NetAddressSet) Add(a NetAddress) bool {
 	defer s.Set.mtx.Unlock()
 	s.Set.mtx.Lock()
@@ -352,9 +374,19 @@ func (s *NetAddressSet) Add(a NetAddress) bool {
 	return s._add(a, "")
 }
 
+func (s *NetAddressSet) Data(a NetAddress) (string, bool) {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+	d, ok := s.Set.m[a]
+	if ok {
+		return d.(string), ok
+	}
+	return "", ok
+}
+
 func (s *NetAddressSet) SetAndRemoveByData(a NetAddress, d string) (old string, removed NetAddress) {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
 	od := s._set(a, d)
 	for k, v := range s.Set.m {
 		na := k.(NetAddress)
@@ -370,8 +402,8 @@ func (s *NetAddressSet) SetAndRemoveByData(a NetAddress, d string) (old string, 
 }
 
 func (s *NetAddressSet) RemoveData(a NetAddress) string {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
 
 	old, ok := s.m[a]
 	if ok && old != "" {
@@ -386,12 +418,14 @@ func (s *NetAddressSet) RemoveData(a NetAddress) string {
 func (s *NetAddressSet) Contains(a NetAddress) bool {
 	return s.Set.Contains(a)
 }
+
 func (s *NetAddressSet) ContainsWithData(a NetAddress, d string) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	v, ok := s.Set.m[a]
 	return ok && v == d
 }
+
 func (s *NetAddressSet) Clear() {
 	defer s.Set.mtx.Unlock()
 	s.Set.mtx.Lock()
@@ -399,6 +433,7 @@ func (s *NetAddressSet) Clear() {
 	s._clear()
 	s.cache = s._map()
 }
+
 func (s *NetAddressSet) Merge(args ...NetAddress) {
 	defer s.Set.mtx.Unlock()
 	s.Set.mtx.Lock()
@@ -421,6 +456,7 @@ func (s *NetAddressSet) Merge(args ...NetAddress) {
 	}
 	s.cache = s._map()
 }
+
 func (s *NetAddressSet) Array() []NetAddress {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
@@ -430,10 +466,12 @@ func (s *NetAddressSet) Array() []NetAddress {
 	}
 	return arr
 }
+
 func (s *NetAddressSet) ClearAndAdd(args ...NetAddress) {
 	s.Clear()
 	s.Merge(args...)
 }
+
 func (s *NetAddressSet) _map() map[NetAddress]string {
 	m := make(map[NetAddress]string)
 	for k, v := range s.Set.m {
@@ -441,6 +479,7 @@ func (s *NetAddressSet) _map() map[NetAddress]string {
 	}
 	return m
 }
+
 func (s *NetAddressSet) Map() map[NetAddress]string {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
@@ -500,6 +539,7 @@ func (s *PeerIDSet) Add(id module.PeerID) (r bool) {
 	}
 	return
 }
+
 func (s *PeerIDSet) Remove(id module.PeerID) (r bool) {
 	defer func() {
 		s.Set.mtx.Unlock()
@@ -515,6 +555,7 @@ func (s *PeerIDSet) Remove(id module.PeerID) (r bool) {
 	}
 	return
 }
+
 func (s *PeerIDSet) Removes(args ...module.PeerID) {
 	var r bool
 	defer func() {
@@ -531,12 +572,14 @@ func (s *PeerIDSet) Removes(args ...module.PeerID) {
 		}
 	}
 }
+
 func (s *PeerIDSet) Contains(id module.PeerID) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	ok, _ := s._contains(id)
 	return ok
 }
+
 func (s *PeerIDSet) Merge(args ...module.PeerID) {
 	var r bool
 	defer func() {
@@ -553,6 +596,7 @@ func (s *PeerIDSet) Merge(args ...module.PeerID) {
 		}
 	}
 }
+
 func (s *PeerIDSet) Array() []module.PeerID {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
@@ -562,10 +606,12 @@ func (s *PeerIDSet) Array() []module.PeerID {
 	}
 	return arr
 }
+
 func (s *PeerIDSet) ClearAndAdd(args ...module.PeerID) {
 	s.Clear()
 	s.Merge(args...)
 }
+
 func (s *PeerIDSet) Bytes() []byte {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
@@ -593,6 +639,7 @@ func NewBytesSet(size int) *BytesSet {
 	s := &BytesSet{Set: NewSet(), size: size}
 	return s
 }
+
 func NewBytesSetFromBytes(b []byte, size int) (*BytesSet, []byte) {
 	s := NewBytesSet(size)
 	tb := b[:]
@@ -604,6 +651,7 @@ func NewBytesSetFromBytes(b []byte, size int) (*BytesSet, []byte) {
 	}
 	return s, tb[:]
 }
+
 func (s *BytesSet) _contains(b []byte) bool {
 	for k := range s.Set.m {
 		tb := k.(*_bytes)
@@ -613,6 +661,7 @@ func (s *BytesSet) _contains(b []byte) bool {
 	}
 	return false
 }
+
 func (s *BytesSet) _get(b []byte) *_bytes {
 	for k := range s.Set.m {
 		tb := k.(*_bytes)
@@ -622,6 +671,7 @@ func (s *BytesSet) _get(b []byte) *_bytes {
 	}
 	return nil
 }
+
 func (s *BytesSet) Add(b []byte) (r bool) {
 	defer func() {
 		s.Set.mtx.Unlock()
@@ -635,6 +685,7 @@ func (s *BytesSet) Add(b []byte) (r bool) {
 	}
 	return
 }
+
 func (s *BytesSet) Remove(b []byte) (r bool) {
 	defer func() {
 		s.Set.mtx.Unlock()
@@ -646,11 +697,13 @@ func (s *BytesSet) Remove(b []byte) (r bool) {
 	}
 	return
 }
+
 func (s *BytesSet) Contains(b []byte) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	return s._contains(b)
 }
+
 func (s *BytesSet) Bytes() []byte {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
