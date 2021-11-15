@@ -333,6 +333,8 @@ class ScoreElementMetadataContainer(MutableMapping):
     def __setitem__(self, k: str, v: ScoreElementMetadata) -> None:
         self._check_writable()
         self._elements[k] = v
+        if k in (STR_ON_INSTALL, STR_ON_UPDATE):
+            return
 
         if isinstance(v, FunctionMetadata):
             self._externals += 1
@@ -378,6 +380,8 @@ def create_score_element_metadata(cls: type) -> Mapping:
 
         # goloop needs to have these init functions explicitly
         if name == STR_ON_INSTALL or name == STR_ON_UPDATE:
+            if hasattr(func, "__isabstractmethod__"):
+                continue
             if utils.is_any_flag_on(flag, ScoreFlag.ALL):
                 raise IllegalFormatException(f"Invalid decorators in {name}")
             elements[name] = FunctionMetadata(func)
