@@ -107,7 +107,7 @@ class SetValueFlag(object):
     OLDVALUE = 2
 
 
-SetHandler = Callable[[bool, int], None]
+SetHandler = Callable[[bool, int, int], None]
 
 
 class Info(object):
@@ -451,12 +451,9 @@ class ServiceManagerProxy:
                 raise Exception(f'InvalidMsg({msg}) exp={Message.SETVALUE}')
             if handler is not None:
                 if data[0]:
-                    if size > 0:
-                        handler(True, size)  # pass the size of new value
-                    else:
-                        handler(True, data[1])
+                    handler(True, data[1], size)
                 else:
-                    handler(False, 0)
+                    handler(False, 0, 0)
 
     def send_and_receive(self, msg: int, data: bytes) -> Tuple[int, Any]:
         self.__client.send(msg, data)

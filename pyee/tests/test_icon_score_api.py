@@ -66,12 +66,10 @@ class TestIconScoreApi(unittest.TestCase):
         }
 
         self.step_costs = {
-            StepType.CONTRACT_CALL: 25_000,
             StepType.GET: 0,
             StepType.SET: 320,
             StepType.REPLACE: 80,
             StepType.DELETE: -240,
-            StepType.INPUT: 200,
             StepType.EVENT_LOG: 100,
             StepType.API_CALL: 10_000
         }
