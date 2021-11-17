@@ -207,6 +207,9 @@ class ContextDatabase(object):
         :param value: value to find
         """
         yn, cnt, size = self._db.contains(prefix, value, context.step_counter.step_remained)
+        if cnt > 1:
+            base_step = context.step_counter.get_base_step(StepType.GET) * (cnt - 1)
+            context.step_counter.consume_step(StepType.GET, base_step)
         context.step_counter.apply_step(StepType.GET, size)
         return yn
 
