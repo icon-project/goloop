@@ -490,7 +490,7 @@ func (h *CallHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, 
 	}
 
 	get := h.cc.StepsFor(state.StepTypeGet, 1)
-	defGet := h.cc.StepsFor(state.StepTypeDefaultGet, 1)
+	getBase := h.cc.StepsFor(state.StepTypeGetBase, 1)
 
 	var cost int64
 	var found bool
@@ -501,7 +501,7 @@ func (h *CallHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, 
 		for i := 0; i < s; i++ {
 			v := adb.Get(i)
 			count += 1
-			cost += defGet
+			cost += getBase
 			if v != nil {
 				bs := v.Bytes()
 				bl := len(bs)
