@@ -3,8 +3,6 @@ package jsonrpc
 import (
 	"encoding/json"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 
 	"github.com/labstack/echo/v4"
@@ -122,11 +120,7 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 			}
 			return c.JSON(http.StatusBadRequest, resp)
 		}
-		limitOfBatch, err := strconv.Atoi(os.Getenv("GOLOOP_LIMIT_OF_BATCH"))
-		if err != nil || limitOfBatch < 1 {
-			limitOfBatch = LimitOfBatch
-		}
-		if n > limitOfBatch {
+		if n > LimitOfBatch {
 			resp := &Response{
 				Version: Version,
 				Error:   ErrInvalidRequest("too many request"),
