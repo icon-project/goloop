@@ -150,7 +150,6 @@ class PyExecEngine(object):
             Logger.debug(f'[Block] {context.block}', TAG)
             Logger.debug(f'[Message] {context.msg}', TAG)
             Logger.debug(f'[Owner] {context.owner}', TAG)
-            Logger.debug(f'[StepCounter] {context.step_counter}', TAG)
             Logger.debug(f'[Revision] {context.revision}', TAG)
         return ServiceEngine.invoke(context)
 

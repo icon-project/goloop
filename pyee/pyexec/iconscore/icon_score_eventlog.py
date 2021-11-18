@@ -111,9 +111,9 @@ class EventLogEmitter(object):
             else:
                 data.append(argument)
 
-        # skip counting steps for auto emitted event 'ICXTransfer(Address,Address,int)'
-        if event_signature != ICX_TRANSFER_EVENT_LOG:
-            context.step_counter.apply_step(StepType.EVENT_LOG, event_size)
+        # apply steps here
+        step_type = StepType.EVENT_LOG if context.step_counter.schema == 0 else StepType.LOG
+        context.step_counter.apply_step(step_type, event_size)
 
         event = EventLog(score_address, indexed, data)
         cls._proxy.send_event(

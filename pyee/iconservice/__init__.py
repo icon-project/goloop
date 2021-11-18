@@ -23,7 +23,7 @@ from typing_extensions import TypedDict
 
 from pyexec.logger import Logger
 
-from pyexec.base.address import Address, AddressPrefix, ZERO_SCORE_ADDRESS
+from pyexec.base.address import Address, AddressPrefix, SYSTEM_SCORE_ADDRESS, ZERO_SCORE_ADDRESS
 from pyexec.base.exception import IconScoreException
 from pyexec.icon_constant import IconServiceFlag
 

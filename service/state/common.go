@@ -24,11 +24,12 @@ const (
 	StepTypeInput            = "input"
 	StepTypeEventLog         = "eventLog"
 	StepTypeApiCall          = "apiCall"
-	StepTypeDefaultGet       = "defaultGet"
-	StepTypeDefaultSet       = "defaultSet"
-	StepTypeReplaceBase      = "replaceBase"
-	StepTypeDefaultDelete    = "defaultDelete"
-	StepTypeEventLogBase     = "eventLogBase"
+	StepTypeSchema           = "schema"
+	StepTypeGetBase          = "getBase"
+	StepTypeSetBase          = "setBase"
+	StepTypeDeleteBase       = "deleteBase"
+	StepTypeLogBase          = "logBase"
+	StepTypeLog              = "log"
 )
 
 const (
@@ -71,11 +72,12 @@ var AllStepTypes = []string{
 	StepTypeInput,
 	StepTypeEventLog,
 	StepTypeApiCall,
-	StepTypeDefaultGet,
-	StepTypeDefaultSet,
-	StepTypeReplaceBase,
-	StepTypeDefaultDelete,
-	StepTypeEventLogBase,
+	StepTypeSchema,
+	StepTypeGetBase,
+	StepTypeSetBase,
+	StepTypeDeleteBase,
+	StepTypeLogBase,
+	StepTypeLog,
 }
 
 func IsValidStepType(s string) bool {
@@ -94,11 +96,12 @@ func IsValidStepType(s string) bool {
 		StepTypeEventLog,
 		StepTypeApiCall:
 		return true
-	case StepTypeDefaultGet,
-		StepTypeDefaultSet,
-		StepTypeReplaceBase,
-		StepTypeDefaultDelete,
-		StepTypeEventLogBase:
+	case StepTypeSchema,
+		StepTypeGetBase,
+		StepTypeSetBase,
+		StepTypeDeleteBase,
+		StepTypeLogBase,
+		StepTypeLog:
 		return true
 	default:
 		return false

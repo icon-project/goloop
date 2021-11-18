@@ -17,6 +17,7 @@
 
 import hashlib
 from enum import IntEnum
+from typing import Optional
 
 from ..icon_constant import DATA_BYTE_ORDER
 from ..utils import is_lowercase_hex_string, int_to_bytes
@@ -24,8 +25,8 @@ from .exception import InvalidParamsException
 
 ICON_EOA_ADDRESS_PREFIX = 'hx'
 ICON_CONTRACT_ADDRESS_PREFIX = 'cx'
-ICON_EOA_ADDRESS_BYTES_SIZE = 20
-ICON_CONTRACT_ADDRESS_BYTES_SIZE = 21
+ICON_ADDRESS_BODY_SIZE = 20
+ICON_ADDRESS_BYTES_SIZE = 21
 
 
 def is_icon_address_valid(address: str) -> bool:
@@ -106,7 +107,7 @@ class Address(object):
             raise InvalidParamsException('Invalid address body type')
 
         if not ignore_length_validate:
-            if len(address_body) != 20:
+            if len(address_body) != ICON_ADDRESS_BODY_SIZE:
                 raise InvalidParamsException('Address length is not 20 in bytes')
 
         self.__prefix = address_prefix
@@ -204,17 +205,22 @@ class Address(object):
         return Address(prefix, hash_value[-20:])
 
     @staticmethod
-    def from_bytes(buf: bytes) -> 'Address':
+    def from_bytes(buf: bytes) -> Optional['Address']:
         """
         Creates an Address object from given raw bytes that represent address
 
         :param buf: :class:`.bytes` raw bytes data
         :return: :class:`.Address`
         """
+        if not isinstance(buf, bytes):
+            return None
+
         buf_size = len(buf)
+        if buf_size not in (ICON_ADDRESS_BODY_SIZE, ICON_ADDRESS_BYTES_SIZE):
+            return None
 
         prefix = AddressPrefix.EOA
-        if buf_size != ICON_EOA_ADDRESS_BYTES_SIZE:
+        if buf_size != ICON_ADDRESS_BODY_SIZE:
             prefix_byte = buf[0:1]
             prefix_int = int.from_bytes(prefix_byte, DATA_BYTE_ORDER)
             prefix = AddressPrefix(prefix_int)
@@ -231,9 +237,9 @@ class Address(object):
         return prefix_byte + self.body
 
     @staticmethod
-    def from_prefix_and_int(prefix: 'AddressPrefix', num: int):
+    def from_prefix_and_int(prefix: AddressPrefix, num: int):
         num_bytes = int_to_bytes(num)
-        zero_size = 20 - len(num_bytes)
+        zero_size = ICON_ADDRESS_BODY_SIZE - len(num_bytes)
         if zero_size < 0:
             raise InvalidParamsException(f'num_bytes is over 20 bytes num: {num}')
         return Address(prefix, b'\x00' * zero_size + num_bytes)
@@ -274,25 +280,15 @@ class MalformedAddress(Address):
 
 
 # cx0000000000000000000000000000000000000000
-ZERO_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 0)
+SYSTEM_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 0)
+ZERO_SCORE_ADDRESS = SYSTEM_SCORE_ADDRESS
 # cx0000000000000000000000000000000000000001
 GOVERNANCE_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 1)
 # A dummy address for handling GETAPI message
 GETAPI_DUMMY_ADDRESS = Address.from_data(AddressPrefix.CONTRACT, "SCORE_API".encode())
 
-
-def generate_score_address(from_: 'Address',
-                           timestamp: int,
-                           nonce: int = None) -> 'Address':
-    """Generates a SCORE address from the transaction information.
-
-    :param from_:
-    :param timestamp:
-    :param nonce:
-    :return: score address
-    """
-    data = from_.body + timestamp.to_bytes(32, DATA_BYTE_ORDER)
-    if nonce:
-        data += nonce.to_bytes(32, DATA_BYTE_ORDER)
-
-    return Address.from_data(AddressPrefix.CONTRACT, data)
+BUILTIN_SCORE_ADDRESS_MAPPER = {
+    'system': SYSTEM_SCORE_ADDRESS,
+    'governance': GOVERNANCE_SCORE_ADDRESS,
+    'getapi_dummy': GETAPI_DUMMY_ADDRESS,
+}

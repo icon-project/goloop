@@ -148,8 +148,7 @@ class ContextDatabase(object):
         :return: value
         """
         value = self._db.get(key)
-        if value is not None:
-            self._charge_step_get(context, value)
+        self._charge_step_get(context, value if value is not None else b'')
         return value
 
     def put(self, context: Optional['IconScoreContext'], key: bytes, value: Optional[bytes]) -> None:
@@ -171,14 +170,22 @@ class ContextDatabase(object):
                 # restore to the previous state
                 context.step_counter.add_step(e.step_used - e.step_limit)
                 # do fallback handling
-                has_old = self._db.get(key)
-                if has_old:
-                    context.step_counter.apply_step(StepType.REPLACE, len(value))
+                old_val = self._db.get(key)
+                if context.step_counter.schema == 0:
+                    if old_val:
+                        context.step_counter.apply_step(StepType.REPLACE, len(value))
+                    else:
+                        context.step_counter.apply_step(StepType.SET, len(value))
                 else:
+                    # refund first if old value exists
+                    if old_val:
+                        self.__refund_handler(True, len(old_val))
                     context.step_counter.apply_step(StepType.SET, len(value))
                 self._db.put(key, value, None)
         else:
-            self._db.delete(key, self.__delete_handler)
+            if value is None:
+                raise DatabaseException('value should not be None')
+            self._db.put(key, value, self.__delete_handler)
 
     def delete(self, context: Optional['IconScoreContext'], key: bytes):
         """Delete the entry for the specified key
@@ -200,6 +207,9 @@ class ContextDatabase(object):
         :param value: value to find
         """
         yn, cnt, size = self._db.contains(prefix, value, context.step_counter.step_remained)
+        if cnt > 1:
+            base_step = context.step_counter.get_base_step(StepType.GET) * (cnt - 1)
+            context.step_counter.consume_step(StepType.GET, base_step)
         context.step_counter.apply_step(StepType.GET, size)
         return yn
 
@@ -212,31 +222,31 @@ class ContextDatabase(object):
             raise DatabaseException('No permission to close')
 
     @staticmethod
-    def __delete_handler(has_old: bool, size: int) -> None:
+    def __delete_handler(has_old: bool, old_size: int, new_size: int = 0) -> None:
         """ callback for delete
         """
         context = ContextContainer._get_context()
         if context and context.step_counter and \
                 context.type == IconScoreContextType.INVOKE:
             if has_old:
-                context.step_counter.apply_step(StepType.DELETE, size)
+                context.step_counter.apply_step(StepType.DELETE, old_size)
 
     @staticmethod
-    def __refund_handler(has_old: bool, size: int) -> None:
+    def __refund_handler(has_old: bool, old_size: int, new_size: int = 0) -> None:
         """ callback for refund in case of replace
         """
         context = ContextContainer._get_context()
         if context and context.step_counter and \
                 context.type == IconScoreContextType.INVOKE:
             if has_old:
-                context.step_counter.refund_step(size)
+                count = new_size if context.step_counter.schema == 0 else old_size
+                context.step_counter.refund_step(count)
 
     @staticmethod
     def _charge_step_get(context: 'IconScoreContext', value: bytes):
         """ charge steps for get
         """
-        if context and context.step_counter and \
-                context.type != IconScoreContextType.DIRECT:
+        if context and context.step_counter:
             context.step_counter.apply_step(StepType.GET, len(value))
 
     @staticmethod

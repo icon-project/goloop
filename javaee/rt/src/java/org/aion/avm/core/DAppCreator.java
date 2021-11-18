@@ -96,7 +96,7 @@ public class DAppCreator {
     }
 
     /**
-     * Initializes all of the classes in the dapp by running their clinit code.
+     * Initializes all the classes in the dapp by running their clinit code.
      *
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
@@ -123,9 +123,9 @@ public class DAppCreator {
         // Save back the state before we return.
         var og = dapp.saveRuntimeState().getGraph();
         byte[] rawGraphData = og.getGraphData();
-        var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
-                rawGraphData.length);
+        var effectiveLen = rawGraphData.length;
         threadInstrumentation.chargeEnergy(
+                externalState.getStepCost().replaceBase() +
                 effectiveLen * externalState.getStepCost().replace());
         externalState.putObjectGraph(og);
 

@@ -36,7 +36,7 @@ def decode_params(values: dict) -> dict:
             if isinstance(k, bytes):
                 new_key = k.decode()
             elif not isinstance(k, str):
-                raise BaseException('Unexpected key type')
+                raise Exception('Unexpected key type')
 
             if isinstance(v, bytes):
                 result[new_key] = v.decode()
@@ -115,10 +115,8 @@ class ServiceEngine(ContextContainer):
             arg_params = []
             params: dict = decode_params(context.params)
             kw_params = cls._convert_score_params_by_annotations(icon_score, func_name, params)
-            Logger.debug(f'kw_params: {kw_params}', TAG)
         elif isinstance(context.params, list):
             arg_params: list = context.params
-            Logger.debug(f'arg_params: {arg_params}', TAG)
             kw_params = {}
         else:
             raise InvalidParamsException('Unknown params type')

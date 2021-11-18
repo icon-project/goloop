@@ -54,7 +54,7 @@ public class StepTest extends SimpleTest {
         // call, read OG, create storageKey object
         var baseCost = score.invoke("emptyBody1", (Object)storageKey)
                 .getStepUsed().intValue();
-        hashCost = score.invoke("hash", storageKey)
+        hashCost = score.invoke("hash", (Object) storageKey)
                 .getStepUsed().intValue() - baseCost;
     }
 
@@ -66,62 +66,66 @@ public class StepTest extends SimpleTest {
         var step = score.invoke("set", (Object) null).getStepUsed()
                 .intValue() -  baseStep;
         System.out.println("step = " + step);
-        assertEquals(stepCost.replace()*stepCost.replaceBase() +
-                hashCost, step);
+        assertEquals(stepCost.deleteBase() + hashCost, step);
 
-        // null -> non-null
-        var ba1 = new byte[0];
-        baseStep = score.invoke("emptyBody1", (Object) ba1).getStepUsed()
+        // null -> non-null (length 0)
+        var ba0 = new byte[0];
+        baseStep = score.invoke("emptyBody1", (Object) ba0).getStepUsed()
                 .intValue();
         score.invoke("set", (Object) null);
-        step = score.invoke("set", (Object) ba1).getStepUsed().intValue()
+        step = score.invoke("set", (Object) ba0).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.replace()*stepCost.replaceBase() +
-                stepCost.defaultSet() + hashCost, step);
+        assertEquals(stepCost.setBase() + hashCost, step);
 
-        // non-null -> non-null
-        baseStep = score.invoke("emptyBody1", (Object) ba1).getStepUsed()
+        // null -> non-null (length 10)
+        var ba10 = new byte[10];
+        baseStep = score.invoke("emptyBody1", (Object) ba10).getStepUsed()
                 .intValue();
-        score.invoke("set", (Object) ba1);
-        step = score.invoke("set", (Object) ba1).getStepUsed().intValue()
+        score.invoke("set", (Object) null);
+        step = score.invoke("set", (Object) ba10).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.replace()*stepCost.replaceBase() +
-                hashCost, step);
+        assertEquals(stepCost.setBase() + ba10.length * stepCost.set()
+                + hashCost, step);
 
         // non-null -> null
         baseStep = score.invoke("emptyBody0").getStepUsed().intValue();
-        score.invoke("set", (Object) ba1);
         step = score.invoke("set", (Object) null).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.defaultDelete() + hashCost, step);
+        assertEquals(stepCost.deleteBase() + ba10.length * stepCost.delete()
+                + hashCost, step);
     }
 
     @Test
     void testReplaceBase() {
-        var ba_0 = new byte[0];
-        score.invoke("set", (Object) ba_0);
-        var baseStep = score.invoke("emptyBody1", (Object) ba_0)
+        var ba1 = new byte[1];
+        score.invoke("set", (Object) ba1);
+        var baseStep = score.invoke("emptyBody1", (Object) ba1)
                 .getStepUsed().intValue();
-        var step = score.invoke("set", (Object) ba_0).getStepUsed().intValue()
+        var step = score.invoke("set", (Object) ba1).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.replace()*stepCost.replaceBase() + hashCost,
-                step);
+        assertEquals(stepCost.replaceBase()
+                + ba1.length * (stepCost.set() + stepCost.delete())
+                + hashCost, step);
 
         var ba_rb = new byte[stepCost.replaceBase()];
         baseStep = score.invoke("emptyBody1", (Object) ba_rb)
                 .getStepUsed().intValue();
         step = score.invoke("set", (Object) ba_rb).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.replace()*stepCost.replaceBase() + hashCost,
-                step);
+        assertEquals(stepCost.replaceBase()
+                + ba_rb.length * stepCost.set()
+                + ba1.length * stepCost.delete()
+                + hashCost, step);
 
         var ba_rbPlus1 = new byte[stepCost.replaceBase() + 1];
         baseStep = score.invoke("emptyBody1",
                 (Object) ba_rbPlus1).getStepUsed().intValue();
         step = score.invoke("set", (Object) ba_rbPlus1).getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.replace()*ba_rbPlus1.length + hashCost,
-                step);
+        assertEquals(stepCost.replaceBase()
+                + ba_rbPlus1.length * stepCost.set()
+                + ba_rb.length * stepCost.delete()
+                + hashCost, step);
     }
 
     @Test
@@ -133,7 +137,7 @@ public class StepTest extends SimpleTest {
         score.invoke("set", (Object)ba);
         var step = score.invoke("get").getStepUsed().intValue()
                 - baseStep;
-        assertEquals(stepCost.defaultGet() + stepCost.get()*ba.length +
+        assertEquals(stepCost.getBase() + stepCost.get()*ba.length +
                 hashCost, step);
     }
 }

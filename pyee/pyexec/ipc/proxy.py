@@ -107,7 +107,7 @@ class SetValueFlag(object):
     OLDVALUE = 2
 
 
-SetHandler = Callable[[bool, int], None]
+SetHandler = Callable[[bool, int, int], None]
 
 
 class Info(object):
@@ -142,8 +142,8 @@ class TypeTag(object):
     BOOL = 5
 
     CUSTOM = 10
-    INT = CUSTOM + 1
     ADDRESS = CUSTOM
+    INT = CUSTOM + 1
 
 
 class APIType(object):
@@ -278,7 +278,7 @@ class ServiceManagerProxy:
             elif val == b'\x01':
                 return True
             else:
-                raise Exception(f'IllegalBoolBytes{val.hex()})')
+                raise Exception(f'IllegalBoolBytes:{val.hex()}')
         else:
             return self.__codec.decode(tag, val)
 
@@ -327,7 +327,7 @@ class ServiceManagerProxy:
             m = {}
             for k, v in o.items():
                 if not isinstance(k, str):
-                    raise Exception(f'InvalidKeyType: {type(k)}')
+                    raise Exception(f'InvalidKeyType:{type(k)}')
                 m[k] = self.encode_any(v)
             return TypeTag.DICT, m
         elif isinstance(o, list) or isinstance(o, tuple):
@@ -378,13 +378,13 @@ class ServiceManagerProxy:
                 self.encode(step_used),
                 self.encode_any(result)
             ])
-        except Exception:
+        except Exception as e:
             e_str = traceback.format_exc()
             self.debug(f"Exception in INVOKE:\n{e_str}", TAG)
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
-                self.encode_any('ExceptionInInvoke')
+                self.encode_any(f'ExceptionInInvoke({str(e)})')
             ])
         finally:
             self.__readonly = self.__readonly_stack.pop(-1)
@@ -451,12 +451,9 @@ class ServiceManagerProxy:
                 raise Exception(f'InvalidMsg({msg}) exp={Message.SETVALUE}')
             if handler is not None:
                 if data[0]:
-                    if size > 0:
-                        handler(True, size)  # pass the size of new value
-                    else:
-                        handler(True, data[1])
+                    handler(True, data[1], size)
                 else:
-                    handler(False, 0)
+                    handler(False, 0, 0)
 
     def send_and_receive(self, msg: int, data: bytes) -> Tuple[int, Any]:
         self.__client.send(msg, data)
@@ -530,4 +527,3 @@ class ServiceManagerProxy:
 
     def close(self):
         self.__client.close()
-
