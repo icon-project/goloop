@@ -58,14 +58,14 @@ public class ServiceManager implements Agent {
         info.put(Info.TX_NONCE, BigInteger.valueOf(2));
         info.put(Info.CONTRACT_OWNER, context.getOrigin());
         Map<String, BigInteger> stepCosts = new HashMap<>(Map.of(
-                StepCost.GET, BigInteger.valueOf(40),
-                StepCost.REPLACE, BigInteger.valueOf(80),
-                StepCost.EVENT_LOG, BigInteger.valueOf(100),
-                StepCost.DEFAULT_GET, BigInteger.valueOf(2000),
-                StepCost.DEFAULT_SET, BigInteger.valueOf(20000),
-                StepCost.REPLACE_BASE, BigInteger.valueOf(64),
-                StepCost.DEFAULT_DELETE, BigInteger.valueOf(-10000),
-                StepCost.EVENT_LOG_BASE, BigInteger.valueOf(64)
+                StepCost.GET, BigInteger.valueOf(80),
+                StepCost.SET, BigInteger.valueOf(320),
+                StepCost.DELETE, BigInteger.valueOf(-240),
+                StepCost.EVENT_LOG, BigInteger.valueOf(200),
+                StepCost.GET_BASE, BigInteger.valueOf(2000),
+                StepCost.SET_BASE, BigInteger.valueOf(20000),
+                StepCost.DELETE_BASE, BigInteger.valueOf(3000),
+                StepCost.EVENT_LOG_BASE, BigInteger.valueOf(5000)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
         stepCost = new StepCost(stepCosts);
