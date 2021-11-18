@@ -113,7 +113,8 @@ class EventLogEmitter(object):
                 data.append(argument)
 
         # apply steps here
-        context.step_counter.apply_step(StepType.EVENT_LOG, event_size)
+        step_type = StepType.EVENT_LOG if context.step_counter.schema == 0 else StepType.LOG
+        context.step_counter.apply_step(step_type, event_size)
 
         # special handling of 'Rejected(str,str)' of governance
         if score_address == GOVERNANCE_SCORE_ADDRESS and \

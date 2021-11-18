@@ -27,14 +27,20 @@ class AutoValueEnum(Enum):
 
 
 class StepType(AutoValueEnum):
-    CONTRACT_CALL = auto()
+    SCHEMA = auto()
+    # version 0
     GET = auto()
     SET = auto()
-    REPLACE = auto()
+    REPLACE = auto()  # obsolete in v1
     DELETE = auto()
-    INPUT = auto()
-    EVENT_LOG = auto()
+    EVENT_LOG = auto()  # obsolete in v1
     API_CALL = auto()
+    # version 1
+    GET_BASE = auto()
+    SET_BASE = auto()
+    DELETE_BASE = auto()
+    LOG_BASE = auto()
+    LOG = auto()
 
 
 class OutOfStepException(IconServiceBaseException):
@@ -121,11 +127,28 @@ class IconScoreStepCounter(object):
         self._step_used: int = 0
         self._refund_handler = refund_handler
 
-        # cache the refund cost
-        # assuming cost_set is greater than cost_replace
-        cost_set: int = self.get_step_cost(StepType.SET)
-        cost_replace: int = self.get_step_cost(StepType.REPLACE)
-        self._refund_cost = cost_replace - cost_set
+        self._schema: int = self.get_step_cost(StepType.SCHEMA)
+        if self._schema == 0:
+            self._step_base = {}
+            # cache the refund cost (for v0)
+            # assuming cost_set is greater than cost_replace
+            cost_set: int = self.get_step_cost(StepType.SET)
+            cost_replace: int = self.get_step_cost(StepType.REPLACE)
+            self._refund_cost = cost_replace - cost_set
+        else:
+            self._step_base = {
+                StepType.GET: self.get_step_cost(StepType.GET_BASE),
+                StepType.SET: self.get_step_cost(StepType.SET_BASE),
+                StepType.DELETE: self.get_step_cost(StepType.DELETE_BASE),
+                StepType.LOG: self.get_step_cost(StepType.LOG_BASE)
+            }
+            # cache the refund base (for v1)
+            replace_base = (self.get_base_step(StepType.SET) + self.get_base_step(StepType.DELETE)) // 2
+            self._refund_base = replace_base - self.get_base_step(StepType.SET)
+
+    @property
+    def schema(self) -> int:
+        return self._schema
 
     @property
     def step_limit(self) -> int:
@@ -153,7 +176,8 @@ class IconScoreStepCounter(object):
     def apply_step(self, step_type: StepType, count: int) -> int:
         """ Increases steps for given step cost
         """
-        step: int = self._step_costs.get(step_type, 0) * count
+        base = self.get_base_step(step_type)
+        step: int = base + self.get_step_cost(step_type) * count
         if step == 0:
             return self._step_used
         return self.consume_step(step_type, step)
@@ -174,12 +198,18 @@ class IconScoreStepCounter(object):
         return step_used
 
     def refund_step(self, count: int) -> None:
-        steps: int = self._refund_cost * count
+        if self.schema == 0:
+            steps: int = self._refund_cost * count
+        else:
+            steps: int = self._refund_base + self.get_step_cost(StepType.DELETE) * count
         self.add_step(steps)
 
     def add_step(self, amount: int) -> None:
         # Assuming amount is always less than the current limit
         self._step_used += amount
+
+    def get_base_step(self, step_type: StepType) -> int:
+        return self._step_base.get(step_type, 0)
 
     def get_step_cost(self, step_type: StepType) -> int:
         return self._step_costs.get(step_type, 0)
