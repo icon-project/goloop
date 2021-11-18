@@ -21,13 +21,13 @@ import java.util.Map;
 
 public class StepCost {
     public static final String GET = "get";
-    public static final String REPLACE = "replace";
-    public static final String EVENT_LOG = "eventLog";
-    public static final String DEFAULT_GET = "defaultGet";
-    public static final String DEFAULT_SET = "defaultSet";
-    public static final String REPLACE_BASE = "replaceBase";
-    public static final String DEFAULT_DELETE = "defaultDelete";
-    public static final String EVENT_LOG_BASE = "eventLogBase";
+    public static final String SET = "set";
+    public static final String DELETE = "delete";
+    public static final String EVENT_LOG = "log";
+    public static final String GET_BASE = "getBase";
+    public static final String SET_BASE = "setBase";
+    public static final String DELETE_BASE = "deleteBase";
+    public static final String EVENT_LOG_BASE = "logBase";
 
     private final Map<String, BigInteger> costMap;
 
@@ -42,35 +42,44 @@ public class StepCost {
     public int value(String key) {
         return costMap.getOrDefault(key, BigInteger.ZERO).intValue();
     }
+
     public int get() {
         return value(GET);
     }
 
+    public int set() {
+        return value(SET);
+    }
+
+    public int delete() {
+        return value(DELETE);
+    }
+
     public int replace() {
-        return value(REPLACE);
+        return set() + delete();
     }
 
     public int eventLog() {
         return value(EVENT_LOG);
     }
 
-    public int defaultGet() {
-        return value(DEFAULT_GET);
+    public int getBase() {
+        return value(GET_BASE);
     }
 
-    public int defaultSet() {
-        return value(DEFAULT_SET);
+    public int setBase() {
+        return value(SET_BASE);
     }
 
-    public int replaceBase() {
-        return value(REPLACE_BASE);
-    }
-
-    public int defaultDelete() {
-        return value(DEFAULT_DELETE);
+    public int deleteBase() {
+        return value(DELETE_BASE);
     }
 
     public int eventLogBase() {
         return value(EVENT_LOG_BASE);
+    }
+
+    public int replaceBase() {
+        return (setBase() + deleteBase()) / 2;
     }
 }

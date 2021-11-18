@@ -96,9 +96,9 @@ public class DAppExecutor {
             } else {
                 var postOG = newRS.getGraph();
                 byte[] postCallGraphData = postOG.getGraphData();
-                var effectiveLen = Math.max(externalState.getStepCost().replaceBase(),
-                        postCallGraphData.length);
+                var effectiveLen = postCallGraphData.length;
                 threadInstrumentation.chargeEnergy(
+                        externalState.getStepCost().replaceBase() +
                         effectiveLen * externalState.getStepCost().replace());
                 if (null == stateToResume) {
                     // Save back the state before we return.
