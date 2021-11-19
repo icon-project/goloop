@@ -53,7 +53,7 @@ func (s *chainScore) tryChargeCall(iiss bool) error {
 	return nil
 }
 
-// Destroy : Allowed from score owner
+// Ex_disableScore disables the given score. Allowed only from score owner.
 func (s *chainScore) Ex_disableScore(address module.Address) error {
 	if err := s.tryChargeCall(false); err != nil {
 		return err
@@ -72,6 +72,7 @@ func (s *chainScore) Ex_disableScore(address module.Address) error {
 	return nil
 }
 
+// Ex_enableScore enables the given score. Allowed only from score owner.
 func (s *chainScore) Ex_enableScore(address module.Address) error {
 	if err := s.tryChargeCall(false); err != nil {
 		return err
@@ -357,7 +358,8 @@ func (s *chainScore) lockAddresses() {
 	}
 }
 
-// Governance functions : Functions which can be called by governance SCORE.
+// Ex_setRevision sets the system revision to the given number.
+// This can only be called by the governance SCORE.
 func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
@@ -473,6 +475,7 @@ func (s *chainScore) Ex_rejectScore(txHash []byte) error {
 	return scoreAs.RejectContract(txHash, auditTxHash)
 }
 
+// Ex_blockScore blocks the given score address.
 // Governance score would check the verification of the address
 func (s *chainScore) Ex_blockScore(address module.Address) error {
 	if err := s.tryChargeCall(false); err != nil {
@@ -495,6 +498,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	return nil
 }
 
+// Ex_unblockScore unblocks the given score address.
 // Governance score would check the verification of the address
 func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	if err := s.tryChargeCall(false); err != nil {
@@ -578,7 +582,6 @@ func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 	return stepLimitDB.Set(contextType, cost)
 }
 
-// User calls icx_call : Functions which can be called by anyone.
 func (s *chainScore) Ex_getRevision() (int64, error) {
 	if err := s.tryChargeCall(false); err != nil {
 		return 0, err
