@@ -24,8 +24,8 @@ const (
 	ConfigShowPatchTransaction = false
 )
 
-func MethodRepository() *jsonrpc.MethodRepository {
-	mr := jsonrpc.NewMethodRepository()
+func MethodRepository(cfg *jsonrpc.Config) *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository(cfg)
 
 	mr.RegisterMethod("icx_getLastBlock", getLastBlock)
 	mr.RegisterMethod("icx_getBlockByHeight", getBlockByHeight)
@@ -807,8 +807,8 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 	return result, nil
 }
 
-func DebugMethodRepository() *jsonrpc.MethodRepository {
-	mr := jsonrpc.NewMethodRepository()
+func DebugMethodRepository(cfg *jsonrpc.Config) *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository(cfg)
 
 	mr.RegisterMethod("debug_getTrace", getTrace)
 	mr.RegisterMethod("debug_estimateStep", estimateStep)

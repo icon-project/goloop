@@ -16,12 +16,14 @@ type MethodRepository struct {
 	mtx     sync.RWMutex
 	methods map[string]Handler
 	allowed map[string]bool
+	cfg     *Config
 }
 
-func NewMethodRepository() *MethodRepository {
+func NewMethodRepository(cfg *Config) *MethodRepository {
 	return &MethodRepository{
 		methods: make(map[string]Handler),
 		allowed: make(map[string]bool),
+		cfg:     cfg,
 	}
 }
 
@@ -120,7 +122,11 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 			}
 			return c.JSON(http.StatusBadRequest, resp)
 		}
-		if n > LimitOfBatch {
+		limitOfBatch := LimitOfBatch
+		if mr.cfg.LimitOfBatch > 0 {
+			limitOfBatch = mr.cfg.LimitOfBatch
+		}
+		if n > limitOfBatch {
 			resp := &Response{
 				Version: Version,
 				Error:   ErrInvalidRequest("too many request"),

@@ -2,7 +2,11 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,7 +18,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/server/metric"
-	"github.com/icon-project/goloop/server/v3"
+	v3 "github.com/icon-project/goloop/server/v3"
 )
 
 const (
@@ -185,9 +189,23 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	// group for websocket
 	ws := g.Group("")
 
+	// Config
+	cfg := &jsonrpc.Config{}
+	cfgFile := path.Join(cfg.AbsBaseDir(), "config.json")
+	if st, err := os.Stat(cfgFile); err != nil || !st.Mode().IsRegular() {
+		srv.logger.Printf("Error loading config: %s", err.Error())
+	}
+	b, err := ioutil.ReadFile(cfgFile)
+	if err != nil {
+		srv.logger.Printf("Error loading config: %s", err.Error())
+	}
+	if err = json.Unmarshal(b, cfg); err != nil {
+		srv.logger.Printf("Error loading config: %s", err.Error())
+	}
+
 	// v3 APIs
-	mr := v3.MethodRepository()
-	dmr := v3.DebugMethodRepository()
+	mr := v3.MethodRepository(cfg)
+	dmr := v3.DebugMethodRepository(cfg)
 	v3api := rpc.Group("/v3")
 	v3api.Use(JsonRpc(), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
