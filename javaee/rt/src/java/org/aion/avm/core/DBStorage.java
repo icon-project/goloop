@@ -63,19 +63,21 @@ public class DBStorage implements IDBStorage {
         }
         var stepCost = ctx.getStepCost();
         if (v == null) {
-            var db = stepCost.deleteBase();
-            if (tryCharge(db)) {
+            var rb = stepCost.replaceBase();
+            if (tryCharge(rb)) {
                 ctx.putStorage(k, null, prevSize -> {
                     if (prevSize > 0) {
-                        chargeImmediately(prevSize * stepCost.delete());
+                        chargeImmediately(stepCost.deleteBase() - rb
+                                + prevSize * stepCost.delete());
                     }
                 });
             } else {
                 var prev = ctx.getStorage(k);
                 if (prev != null) {
-                    chargeImmediately(db + prev.length * stepCost.delete());
+                    chargeImmediately(stepCost.deleteBase()
+                            + prev.length * stepCost.delete());
                 } else {
-                    chargeImmediately(db);
+                    chargeImmediately(rb);
                 }
                 ctx.putStorage(k, null, null);
             }

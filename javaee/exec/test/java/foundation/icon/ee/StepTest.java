@@ -66,7 +66,7 @@ public class StepTest extends SimpleTest {
         var step = score.invoke("set", (Object) null).getStepUsed()
                 .intValue() -  baseStep;
         System.out.println("step = " + step);
-        assertEquals(stepCost.deleteBase() + hashCost, step);
+        assertEquals(stepCost.replaceBase() + hashCost, step);
 
         // null -> non-null (length 0)
         var ba0 = new byte[0];
