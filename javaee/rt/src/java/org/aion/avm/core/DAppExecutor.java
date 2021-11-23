@@ -71,10 +71,8 @@ public class DAppExecutor {
         try {
             // It is now safe for us to bill for the cost of loading the graph (the cost is the same, whether this came from the caller or the disk).
             // (note that we do this under the try since aborts can happen here)
-            // Do not charge defaultGet as defaultGet is considered in default
-            // CALL value.
             threadInstrumentation.chargeEnergy(
-                    externalState.getStepCost().get() * rawGraphDataLength
+                    externalState.getStepCost().getStorage(rawGraphDataLength)
             );
 
             // Call the main within the DApp.

@@ -79,6 +79,10 @@ public class StepCost {
         return (setBase() + deleteBase()) / 2;
     }
 
+    public int getStorage(int prevLen) {
+        return getBase() + prevLen * get();
+    }
+
     public int setStorageSet(int newLen) {
         return setBase() + newLen * set();
     }
