@@ -23,11 +23,11 @@ public class StepCost {
     public static final String GET = "get";
     public static final String SET = "set";
     public static final String DELETE = "delete";
-    public static final String EVENT_LOG = "log";
+    public static final String LOG = "log";
     public static final String GET_BASE = "getBase";
     public static final String SET_BASE = "setBase";
     public static final String DELETE_BASE = "deleteBase";
-    public static final String EVENT_LOG_BASE = "logBase";
+    public static final String LOG_BASE = "logBase";
 
     private final Map<String, BigInteger> costMap;
 
@@ -55,8 +55,8 @@ public class StepCost {
         return value(DELETE);
     }
 
-    public int eventLog() {
-        return value(EVENT_LOG);
+    public int log() {
+        return value(LOG);
     }
 
     public int getBase() {
@@ -71,8 +71,8 @@ public class StepCost {
         return value(DELETE_BASE);
     }
 
-    public int eventLogBase() {
-        return value(EVENT_LOG_BASE);
+    public int logBase() {
+        return value(LOG_BASE);
     }
 
     public int replaceBase() {
@@ -89,5 +89,13 @@ public class StepCost {
 
     public int setStorageReplace(int prevLen, int newLen) {
         return replaceBase() + prevLen * delete() + newLen * set();
+    }
+
+    public int setStorageDelete(int prevLen) {
+        return deleteBase() + prevLen * delete();
+    }
+
+    public int eventLog(int len) {
+        return logBase() + len * log();
     }
 }

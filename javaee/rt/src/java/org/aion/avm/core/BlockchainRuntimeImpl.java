@@ -417,9 +417,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             }
         }
         var stepCost = externalState.getStepCost();
-        int evLogBase = stepCost.eventLogBase();
-        int evLog = stepCost.eventLog();
-        IInstrumentation.charge(evLogBase + len * evLog);
+        IInstrumentation.charge(stepCost.eventLog(len));
         externalState.log(bindexed, bdata);
     }
 
