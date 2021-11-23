@@ -7,10 +7,10 @@ RECV getAPI status=0 methods=[
 ]
 SEND invoke code=f8f6cd... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=7 hash=a0c4292658b03802cfa93064b96fd8ad1713baabd42639fbeb58f713ca25c220 graphLen=245 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04"foundation.icon.ee.CodecTest$Score\x00\x00\x00\x05\x03\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x0cpi.AnyDBImpl\x00\x00\x00\x06\x00\x00\x00\x08\x00\x86userDB\x01!foundation.icon.ee.CodecTest$User
-RECV result status=0 stepUsed=31289 ret=<null>
+RECV result status=0 stepUsed=98589 ret=<null>
 SEND invoke code=f8f6cd... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[] CID=1 EID=1 codeState=[7 a0c4292658b03802cfa93064b96fd8ad1713baabd42639fbeb58f713ca25c220 0]
 RECV getObjGraph flag=1 => next=7 hash=a0c4292658b03802cfa93064b96fd8ad1713baabd42639fbeb58f713ca25c220 graphLen=245 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04"foundation.icon.ee.CodecTest$Score\x00\x00\x00\x05\x03\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x0cpi.AnyDBImpl\x00\x00\x00\x06\x00\x00\x00\x08\x00\x86userDB\x01!foundation.icon.ee.CodecTest$User
 RECV setValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c isDelete=false c6410a83616161
 RECV getValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c => c6410a83616161
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| User{name='A', visitCount=10, desc='aaa'}
-RECV result status=0 stepUsed=61427 ret=<null>
+RECV result status=0 stepUsed=63427 ret=<null>

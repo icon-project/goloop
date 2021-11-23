@@ -27,35 +27,35 @@ RECV getAPI status=0 methods=[
 ]
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
-RECV result status=0 stepUsed=14989 ret=<null>
+RECV result status=0 stepUsed=33809 ret=<null>
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
-RECV result status=0 stepUsed=3466 ret=0
+RECV result status=0 stepUsed=5466 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mshort params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=0
+RECV result status=0 stepUsed=5466 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mint params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=0
+RECV result status=0 stepUsed=5466 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mlong params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=0
+RECV result status=0 stepUsed=5466 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mboolean params=[false] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=false
+RECV result status=0 stepUsed=5466 ret=false
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mchar params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=0
+RECV result status=0 stepUsed=5466 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=4066 ret=0
+RECV result status=0 stepUsed=6066 ret=0
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3796 ret=string
+RECV result status=0 stepUsed=5796 ret=string
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3575 ret=000102
+RECV result status=0 stepUsed=5575 ret=000102
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3766 ret=000002...
+RECV result status=0 stepUsed=5766 ret=000002...
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=<null>
+RECV result status=0 stepUsed=5466 ret=<null>
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[<null>] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=<null>
+RECV result status=0 stepUsed=5466 ret=<null>
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[<null>] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=<null>
+RECV result status=0 stepUsed=5466 ret=<null>
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[<null>] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3466 ret=<null>
+RECV result status=0 stepUsed=5466 ret=<null>
 SEND invoke code=fbc1da... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mvoid params=[] CID=1 EID=1 codeState=[2 56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 0]
-RECV result status=0 stepUsed=3463 ret=<null>
+RECV result status=0 stepUsed=5463 ret=<null>

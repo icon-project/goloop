@@ -161,6 +161,21 @@ func ValidateFlags(fs *pflag.FlagSet, flagNames ...string) error {
 	return nil
 }
 
+func CheckFlagsWithViper(vc *viper.Viper, fs *pflag.FlagSet, flagNames ...string) error {
+	missing := []string{}
+	for _, name := range flagNames {
+		flag := fs.Lookup(name)
+		if flag.Changed == false && vc.GetString(name) == flag.DefValue {
+			missing = append(missing, flag.Name)
+		}
+	}
+	if len(missing) > 0 {
+
+		return errors.Errorf("MissingFlags(%s)", strings.Join(missing, ","))
+	}
+	return nil
+}
+
 func ValidateFlagsWithViper(vc *viper.Viper, fs *pflag.FlagSet, flagNames ...string) error {
 	missingFlagNames := []string{}
 	fs.VisitAll(func(f *pflag.Flag) {

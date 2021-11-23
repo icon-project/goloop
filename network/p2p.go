@@ -397,8 +397,12 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 	isLeave = false
-	p2p.seeds.RemoveData(p.NetAddress())
-	p2p.roots.RemoveData(p.NetAddress())
+	if p.HasRole(p2pRoleRoot) {
+		p2p.roots.RemoveData(p.NetAddress())
+	}
+	if p.HasRole(p2pRoleSeed) {
+		p2p.seeds.RemoveData(p.NetAddress())
+	}
 
 	isLeave = !(p.ConnType() == p2pConnTypeNone)
 	switch p.ConnType() {
@@ -1522,6 +1526,14 @@ func (p2p *PeerToPeer) isTrustSeed(p *Peer) bool {
 }
 
 func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
+	ps := p2p.parents.GetByRole(pr, false)
+	for _, p := range ps {
+		if !(pr == p2pRoleSeed && p2p.isTrustSeed(p)) {
+			p2p.logger.Debugln("discoverParents", "not allowed connection", p.id)
+			p.Close("discoverParents not allowed connection")
+		}
+	}
+
 	n := p2p.getConnectionLimit(p2pConnTypeParent) - p2p.parents.Len()
 	if n < 1 {
 		p2p.logger.Traceln("discoverParents", "nothing to do")
@@ -1578,6 +1590,14 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 }
 
 func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
+	ps := p2p.uncles.GetByRole(ur, false)
+	for _, p := range ps {
+		if !(ur == p2pRoleSeed && p2p.isTrustSeed(p)) {
+			p2p.logger.Debugln("discoverUncles", "not allowed connection", p.id)
+			p.Close("discoverUncles not allowed connection")
+		}
+	}
+
 	n := p2p.getConnectionLimit(p2pConnTypeUncle) - p2p.uncles.Len()
 	if n < 1 {
 		p2p.logger.Traceln("discoverUncles", "nothing to do")

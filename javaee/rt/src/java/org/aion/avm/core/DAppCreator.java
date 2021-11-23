@@ -125,8 +125,8 @@ public class DAppCreator {
         byte[] rawGraphData = og.getGraphData();
         var effectiveLen = rawGraphData.length;
         threadInstrumentation.chargeEnergy(
-                externalState.getStepCost().replaceBase() +
-                effectiveLen * externalState.getStepCost().replace());
+                externalState.getStepCost().setStorageSet(effectiveLen)
+        );
         externalState.putObjectGraph(og);
 
         long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();

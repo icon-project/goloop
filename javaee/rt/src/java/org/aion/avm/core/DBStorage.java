@@ -63,25 +63,24 @@ public class DBStorage implements IDBStorage {
         }
         var stepCost = ctx.getStepCost();
         if (v == null) {
-            var db = stepCost.deleteBase();
-            if (tryCharge(db)) {
+            var rb = stepCost.replaceBase();
+            if (tryCharge(rb)) {
                 ctx.putStorage(k, null, prevSize -> {
                     if (prevSize > 0) {
-                        chargeImmediately(prevSize * stepCost.delete());
+                        chargeImmediately(stepCost.setStorageDelete(prevSize) - rb);
                     }
                 });
             } else {
                 var prev = ctx.getStorage(k);
                 if (prev != null) {
-                    chargeImmediately(db + prev.length * stepCost.delete());
+                    chargeImmediately(stepCost.setStorageDelete(prev.length));
                 } else {
-                    chargeImmediately(db);
+                    chargeImmediately(rb);
                 }
                 ctx.putStorage(k, null, null);
             }
         } else {
-            var s = v.length * stepCost.set();
-            if (tryCharge(stepCost.setBase() + s)) {
+            if (tryCharge(stepCost.setStorageSet(v.length))) {
                 ctx.putStorage(k, v, prevSize -> {
                     if (prevSize > 0) {
                         chargeImmediately(-stepCost.setBase() + stepCost.replaceBase()
@@ -91,9 +90,9 @@ public class DBStorage implements IDBStorage {
             } else {
                 var prev = ctx.getStorage(k);
                 if (prev != null) {
-                    chargeImmediately(stepCost.replaceBase() + s + prev.length * stepCost.delete());
+                    chargeImmediately(stepCost.setStorageReplace(prev.length, v.length));
                 } else {
-                    chargeImmediately(stepCost.setBase() + s);
+                    chargeImmediately(stepCost.setStorageSet(v.length));
                 }
                 ctx.putStorage(k, v, null);
             }
@@ -106,7 +105,7 @@ public class DBStorage implements IDBStorage {
         int len = 0;
         if (value != null)
             len = value.length;
-        charge(stepCost.getBase() + len * stepCost.get());
+        charge(stepCost.getStorage(len));
         return value;
     }
 

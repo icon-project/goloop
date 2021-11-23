@@ -61,11 +61,11 @@ public class ServiceManager implements Agent {
                 StepCost.GET, BigInteger.valueOf(80),
                 StepCost.SET, BigInteger.valueOf(320),
                 StepCost.DELETE, BigInteger.valueOf(-240),
-                StepCost.EVENT_LOG, BigInteger.valueOf(200),
+                StepCost.LOG, BigInteger.valueOf(200),
                 StepCost.GET_BASE, BigInteger.valueOf(2000),
                 StepCost.SET_BASE, BigInteger.valueOf(20000),
                 StepCost.DELETE_BASE, BigInteger.valueOf(3000),
-                StepCost.EVENT_LOG_BASE, BigInteger.valueOf(5000)
+                StepCost.LOG_BASE, BigInteger.valueOf(5000)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
         stepCost = new StepCost(stepCosts);

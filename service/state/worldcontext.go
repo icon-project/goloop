@@ -419,7 +419,22 @@ func (c *worldContext) SetContractInfo(si *ContractInfo) {
 
 func (c *worldContext) stepCostInfo() interface{} {
 	if c.systemInfo.stepCostInfo == nil {
-		c.systemInfo.stepCostInfo = common.MustEncodeAny(c.systemInfo.stepCosts)
+		stepCosts := make(map[string]interface{})
+		for k, v := range c.systemInfo.stepCosts {
+			switch k {
+			case StepTypeDefault:
+			case StepTypeContractCall:
+			case StepTypeContractCreate:
+			case StepTypeContractUpdate:
+			case StepTypeContractDestruct:
+			case StepTypeContractSet:
+			case StepTypeInput:
+				continue
+			default:
+				stepCosts[k] = v
+			}
+		}
+		c.systemInfo.stepCostInfo = common.MustEncodeAny(stepCosts)
 	}
 	return c.systemInfo.stepCostInfo
 }
