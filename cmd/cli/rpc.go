@@ -398,6 +398,9 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				}
 				return txId, nil
 			}
+			if err := CheckFlagsWithViper(vc, cmd.Flags(), "step_limit"); err != nil {
+				return err
+			}
 		}
 		var kb, pb []byte
 		var err error
