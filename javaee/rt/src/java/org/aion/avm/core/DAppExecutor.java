@@ -97,9 +97,9 @@ public class DAppExecutor {
                 var postOG = newRS.getGraph();
                 byte[] postCallGraphData = postOG.getGraphData();
                 var effectiveLen = postCallGraphData.length;
-                threadInstrumentation.chargeEnergy(
-                        externalState.getStepCost().replaceBase() +
-                        effectiveLen * externalState.getStepCost().replace());
+                var replaceOGCost = externalState.getStepCost()
+                        .setStorageReplace(rawGraphDataLength, effectiveLen);
+                threadInstrumentation.chargeEnergy(replaceOGCost);
                 if (null == stateToResume) {
                     // Save back the state before we return.
                     externalState.putObjectGraph(postOG);

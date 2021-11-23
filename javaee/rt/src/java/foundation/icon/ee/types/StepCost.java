@@ -55,10 +55,6 @@ public class StepCost {
         return value(DELETE);
     }
 
-    public int replace() {
-        return set() + delete();
-    }
-
     public int eventLog() {
         return value(EVENT_LOG);
     }
@@ -81,5 +77,13 @@ public class StepCost {
 
     public int replaceBase() {
         return (setBase() + deleteBase()) / 2;
+    }
+
+    public int setStorageSet(int newLen) {
+        return setBase() + newLen * set();
+    }
+
+    public int setStorageReplace(int prevLen, int newLen) {
+        return replaceBase() + prevLen * delete() + newLen * set();
     }
 }
