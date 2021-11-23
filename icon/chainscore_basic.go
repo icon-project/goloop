@@ -556,15 +556,32 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+	costZero := cost.Sign() == 0
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if stepCostDB.Get(costType) == nil {
-		stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	if stepCostDB.Get(costType) == nil && !costZero {
 		if err := stepTypes.Put(costType); err != nil {
 			return err
 		}
 	}
-	return stepCostDB.Set(costType, cost)
+	if costZero {
+		// remove the step type and cost
+		for i := 0; i < stepTypes.Size(); i++ {
+			if stepTypes.Get(i).String() == costType {
+				last := stepTypes.Pop().String()
+				if i < stepTypes.Size() {
+					if err := stepTypes.Set(i, last); err != nil {
+						return err
+					}
+				}
+				return stepCostDB.Delete(costType)
+			}
+		}
+		return nil
+	} else {
+		return stepCostDB.Set(costType, cost)
+	}
 }
 
 func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
