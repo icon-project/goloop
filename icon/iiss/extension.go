@@ -294,7 +294,7 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 			pj := pss.ToJSON()
 			pj["name"] = pb.Name()
 			preps = append(preps, pj)
-			sum.Add(sum, pss.BondedDelegation())
+			sum.Add(sum, pss.Power())
 			if len(preps) == mainPRepCount {
 				break
 			}
@@ -302,7 +302,7 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 	}
 
 	jso["blockHeight"] = blockHeight
-	jso["totalBondedDelegation"] = sum
+	jso["totalPower"] = sum
 	jso["totalDelegated"] = sum
 	jso["preps"] = preps
 	return jso, nil
@@ -332,12 +332,12 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 			pj := pss.ToJSON()
 			pj["name"] = pb.Name()
 			preps = append(preps, pj)
-			sum.Add(sum, pss.BondedDelegation())
+			sum.Add(sum, pss.Power())
 		}
 	}
 
 	jso["blockHeight"] = blockHeight
-	jso["totalBondedDelegation"] = sum
+	jso["totalPower"] = sum
 	jso["totalDelegated"] = sum
 	jso["preps"] = preps
 	return jso, nil
@@ -928,7 +928,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 				return err
 			}
 		}
-		// Reset the status of all active preps ordered by bondedDelegation
+		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
 		if err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, limit); err != nil {
 			return err

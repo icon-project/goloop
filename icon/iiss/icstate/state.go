@@ -587,14 +587,14 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetPRepsOrderedByDelegation() (PRepSet, error) {
+func (s *State) GetPRepsOrderedByPower() (PRepSet, error) {
 	preps := s.GetActivePReps()
-	return NewPRepsOrderedByBondedDelegation(preps, s.GetBondRequirement()), nil
+	return NewPRepsOrderedByPower(preps, s.GetBondRequirement()), nil
 }
 
 func (s *State) GetPRepsOnTermEnd(rev int) (PRepSet, error) {
 	if rev < icmodule.RevisionExtraMainPReps {
-		return s.GetPRepsOrderedByDelegation()
+		return s.GetPRepsOrderedByPower()
 	}
 	return s.getPRepsIncludingExtraMainPReps()
 }
@@ -645,7 +645,7 @@ func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, e
 }
 
 func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	preps, err := s.GetPRepsOrderedByDelegation()
+	preps, err := s.GetPRepsOrderedByPower()
 	if err != nil {
 		return nil, err
 	}

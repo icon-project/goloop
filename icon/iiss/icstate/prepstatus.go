@@ -192,6 +192,14 @@ func (ps *prepStatusData) GetBondedDelegation(bondRequirement int64) *big.Int {
 	}
 }
 
+// GetPower returns the power score of a PRep.
+// Power is the same as delegated of a given PRep before rev 14
+// and will be bondedDelegation since rev 14.
+// But the calculation formula for power can be changed in the future.
+func (ps *prepStatusData) GetPower(bondRequirement int64) *big.Int {
+	return ps.GetBondedDelegation(bondRequirement)
+}
+
 func (ps *prepStatusData) VTotal() int64 {
 	return ps.vTotal
 }
@@ -274,8 +282,7 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[s
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	//	jso["voted"] = ps.GetVotedAmount()
-	jso["bondedDelegation"] = ps.GetBondedDelegation(bondRequirement)
+	jso["power"] = ps.GetPower(bondRequirement)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)

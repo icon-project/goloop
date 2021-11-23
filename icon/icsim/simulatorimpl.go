@@ -521,6 +521,15 @@ func (sim *simulatorImpl) GetPRepStats(address module.Address) map[string]interf
 	return ps.GetStatsInJSON(sim.BlockHeight())
 }
 
+func (sim *simulatorImpl) GetNetworkInfo() map[string]interface{} {
+	es := sim.getExtensionState(true)
+	jso, err := es.State.GetNetworkInfoInJSON()
+	if err != nil {
+		return nil
+	}
+	return jso
+}
+
 func (sim *simulatorImpl) TermSnapshot() *icstate.TermSnapshot {
 	es := sim.getExtensionState(true)
 	return es.State.GetTermSnapshot()

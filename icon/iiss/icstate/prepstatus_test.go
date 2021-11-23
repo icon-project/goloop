@@ -712,4 +712,8 @@ func TestPrepStatusData_ToJSON(t *testing.T) {
 	status, ok := jso["status"].(int)
 	assert.True(t, ok)
 	assert.Equal(t, int(NotReady), status)
+
+	power, ok := jso["power"].(*big.Int)
+	assert.True(t, ok)
+	assert.Zero(t, power.Sign())
 }

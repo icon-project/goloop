@@ -12,8 +12,8 @@ import (
 )
 
 type PRepSnapshot struct {
-	owner            *common.Address
-	bondedDelegation *big.Int
+	owner *common.Address
+	power *big.Int
 }
 
 func (pss *PRepSnapshot) Owner() module.Address {
@@ -21,7 +21,11 @@ func (pss *PRepSnapshot) Owner() module.Address {
 }
 
 func (pss *PRepSnapshot) BondedDelegation() *big.Int {
-	return pss.bondedDelegation
+	return pss.power
+}
+
+func (pss *PRepSnapshot) Power() *big.Int {
+	return pss.power
 }
 
 func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
@@ -32,36 +36,36 @@ func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
 		return false
 	}
 	return pss.owner.Equal(other.owner) &&
-		pss.bondedDelegation.Cmp(other.bondedDelegation) == 0
+		pss.power.Cmp(other.power) == 0
 }
 
 func (pss *PRepSnapshot) Clone() *PRepSnapshot {
 	return &PRepSnapshot{
-		owner:            pss.owner,
-		bondedDelegation: pss.bondedDelegation,
+		owner: pss.owner,
+		power: pss.power,
 	}
 }
 
 func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
 	return map[string]interface{}{
-		"address":          pss.owner,
-		"bondedDelegation": pss.bondedDelegation,
-		"delegated":        pss.bondedDelegation,
+		"address":   pss.owner,
+		"power":     pss.power,
+		"delegated": pss.power,
 	}
 }
 
 func (pss *PRepSnapshot) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(pss.owner, pss.bondedDelegation)
+	return e.EncodeListOf(pss.owner, pss.power)
 }
 
 func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeListOf(&pss.owner, &pss.bondedDelegation)
+	return d.DecodeListOf(&pss.owner, &pss.power)
 }
 
-func NewPRepSnapshot(owner module.Address, bondedDelegation *big.Int) *PRepSnapshot {
+func NewPRepSnapshot(owner module.Address, power *big.Int) *PRepSnapshot {
 	return &PRepSnapshot{
-		owner:            common.AddressToPtr(owner),
-		bondedDelegation: bondedDelegation,
+		owner: common.AddressToPtr(owner),
+		power: power,
 	}
 }
 
@@ -262,22 +266,22 @@ func (term *termData) clone() termData {
 
 func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interface{} {
 	return map[string]interface{}{
-		"sequence":              term.sequence,
-		"startBlockHeight":      term.startHeight,
-		"endBlockHeight":        term.GetEndHeight(),
-		"totalSupply":           term.totalSupply,
-		"totalDelegated":        term.totalDelegated,
-		"totalBondedDelegation": term.getTotalBondedDelegation(),
-		"irep":                  term.irep,
-		"rrep":                  term.rrep,
-		"period":                term.period,
-		"rewardFund":            term.rewardFund.ToJSON(),
-		"bondRequirement":       term.bondRequirement,
-		"revision":              term.revision,
-		"isDecentralized":       term.isDecentralized,
-		"mainPRepCount":         term.mainPRepCount,
-		"iissVersion":           term.GetIISSVersion(),
-		"preps":                 term.prepsToJSON(blockHeight, state),
+		"sequence":         term.sequence,
+		"startBlockHeight": term.startHeight,
+		"endBlockHeight":   term.GetEndHeight(),
+		"totalSupply":      term.totalSupply,
+		"totalDelegated":   term.totalDelegated,
+		"totalPower":       term.getTotalPower(),
+		"irep":             term.irep,
+		"rrep":             term.rrep,
+		"period":           term.period,
+		"rewardFund":       term.rewardFund.ToJSON(),
+		"bondRequirement":  term.bondRequirement,
+		"revision":         term.revision,
+		"isDecentralized":  term.isDecentralized,
+		"mainPRepCount":    term.mainPRepCount,
+		"iissVersion":      term.GetIISSVersion(),
+		"preps":            term.prepsToJSON(blockHeight, state),
 	}
 }
 
@@ -298,12 +302,12 @@ func (term *termData) prepsToJSON(blockHeight int64, state *State) []interface{}
 	return jso
 }
 
-func (term *termData) getTotalBondedDelegation() *big.Int {
-	tbd := new(big.Int)
+func (term *termData) getTotalPower() *big.Int {
+	totalPower := new(big.Int)
 	for _, snapshot := range term.prepSnapshots {
-		tbd.Add(tbd, snapshot.BondedDelegation())
+		totalPower.Add(totalPower, snapshot.Power())
 	}
-	return tbd
+	return totalPower
 }
 
 func (term *termData) String() string {

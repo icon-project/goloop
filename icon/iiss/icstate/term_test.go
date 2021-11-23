@@ -71,7 +71,7 @@ func newDummyPReps(size int, br int64) PRepSet {
 	for i := 0; i < size; i++ {
 		preps[i] = newDummyPRep(i)
 	}
-	return NewPRepsOrderedByBondedDelegation(preps, br)
+	return NewPRepsOrderedByPower(preps, br)
 }
 
 func newDummyPRepSnapshots(size int) PRepSnapshots {
@@ -320,11 +320,11 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 	term.SetPRepSnapshots(prepSnapshots.Clone())
 	assert.Equal(t, term.GetElectedPRepCount(), len(prepSnapshots))
 
-	tbd := new(big.Int)
+	totalPower := new(big.Int)
 	for _, snapshot := range prepSnapshots {
-		tbd.Add(tbd, snapshot.BondedDelegation())
+		totalPower.Add(totalPower, snapshot.BondedDelegation())
 	}
-	assert.Zero(t, tbd.Cmp(term.getTotalBondedDelegation()))
+	assert.Zero(t, totalPower.Cmp(term.getTotalPower()))
 
 	for i := 0; i < size; i++ {
 		ps := term.GetPRepSnapshotByIndex(i)

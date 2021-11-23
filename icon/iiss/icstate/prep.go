@@ -78,7 +78,7 @@ type PRepSet interface {
 	Size() int
 	TotalBonded() *big.Int
 	TotalDelegated() *big.Int
-	GetTotalBondedDelegation(br int64) *big.Int
+	GetTotalPower(br int64) *big.Int
 	GetPRepByIndex(i int) *PRep
 	ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots
 }
@@ -147,12 +147,12 @@ func (p *prepsBase) TotalDelegated() *big.Int {
 	return p.totalDelegated
 }
 
-func (p *prepsBase) GetTotalBondedDelegation(br int64) *big.Int {
-	tbd := new(big.Int)
+func (p *prepsBase) GetTotalPower(br int64) *big.Int {
+	totalPower := new(big.Int)
 	for _, prep := range p.orderedPReps {
-		tbd.Add(tbd, prep.GetBondedDelegation(br))
+		totalPower.Add(totalPower, prep.GetPower(br))
 	}
-	return tbd
+	return totalPower
 }
 
 func (p *prepsBase) GetPRepByIndex(i int) *PRep {
@@ -171,7 +171,7 @@ func (p *prepsBase) ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshot
 	ret := make(PRepSnapshots, size)
 	for i := 0; i < size; i++ {
 		prep := p.orderedPReps[i]
-		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetBondedDelegation(br))
+		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetPower(br))
 	}
 	return ret
 }
@@ -203,15 +203,15 @@ func (p *prepsBase) adjustPRepSize(grade Grade, increment bool) {
 	}
 }
 
-func (p *prepsBase) sortByBondedDelegation(br int64) {
+func (p *prepsBase) sortByPower(br int64) {
 	sort.Slice(p.orderedPReps, func(i, j int) bool {
 		p0, p1 := p.orderedPReps[i], p.orderedPReps[j]
-		return lessByBondedDelegation(p0, p1, br)
+		return lessByPower(p0, p1, br)
 	})
 }
 
-func lessByBondedDelegation(p0, p1 *PRep, br int64) bool {
-	ret := p0.GetBondedDelegation(br).Cmp(p1.GetBondedDelegation(br))
+func lessByPower(p0, p1 *PRep, br int64) bool {
+	ret := p0.GetPower(br).Cmp(p1.GetPower(br))
 	if ret > 0 {
 		return true
 	} else if ret < 0 {
@@ -230,7 +230,7 @@ func lessByBondedDelegation(p0, p1 *PRep, br int64) bool {
 
 // ======================================================================
 
-func NewPRepsOrderedByBondedDelegation(prepList []*PRep, br int64) PRepSet {
+func NewPRepsOrderedByPower(prepList []*PRep, br int64) PRepSet {
 	preps := &prepsBase{
 		totalDelegated: new(big.Int),
 		totalBonded:    new(big.Int),
@@ -239,7 +239,7 @@ func NewPRepsOrderedByBondedDelegation(prepList []*PRep, br int64) PRepSet {
 	for _, prep := range prepList {
 		preps.appendPRep(prep)
 	}
-	preps.sortByBondedDelegation(br)
+	preps.sortByPower(br)
 	return preps
 }
 
@@ -251,7 +251,7 @@ type prepsIncludingExtraMainPRep struct {
 
 func (p *prepsIncludingExtraMainPRep) sort(
 	mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) {
-	p.sortByBondedDelegation(br)
+	p.sortByPower(br)
 	p.sortForExtraMainPRep(mainPRepCount, extraMainPRepCount, electedPRepCount, br)
 }
 
@@ -315,16 +315,13 @@ func lessByLRU(p0, p1 *PRep, br int64) bool {
 		return p0.LastHeight() < p1.LastHeight()
 	}
 
-	// Sort by bondedDelegation
-	cmp := p0.GetBondedDelegation(br).Cmp(p1.GetBondedDelegation(br))
-	if cmp > 0 {
-		return true
-	} else if cmp < 0 {
-		return false
+	// Sort by power
+	cmp := p0.GetPower(br).Cmp(p1.GetPower(br))
+	if cmp == 0 {
+		// Sort by address
+		return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
 	}
-
-	// Sort by address
-	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
+	return cmp > 0
 }
 
 func NewPRepsIncludingExtraMainPRep(

@@ -106,7 +106,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 	assert.Equal(t, size, prepSet.Size())
 
 	sort.Slice(preps, func(i, j int) bool {
-		return lessByBondedDelegation(preps[i], preps[j], br)
+		return lessByPower(preps[i], preps[j], br)
 	})
 
 	extraMainPRepIdxRange := []int{mainPRepCount - extraMainPRepCount, mainPRepCount}
@@ -117,7 +117,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 			continue
 		}
 		prep := prepSet.GetPRepByIndex(i)
-		assert.True(t, lessByBondedDelegation(prevPRep, prep, br))
+		assert.True(t, lessByPower(prevPRep, prep, br))
 		prevPRep = prep
 	}
 
@@ -151,13 +151,13 @@ func TestPRepSet_NewPReps(t *testing.T) {
 		preps[i] = prep
 	}
 
-	prepSet0 := NewPRepsOrderedByBondedDelegation(preps, br)
+	prepSet0 := NewPRepsOrderedByPower(preps, br)
 	prepSet1 := NewPRepsIncludingExtraMainPRep(
 		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
 	)
 
 	sort.Slice(preps, func(i, j int) bool {
-		return lessByBondedDelegation(preps[i], preps[j], br)
+		return lessByPower(preps[i], preps[j], br)
 	})
 
 	assert.Equal(t, len(preps), prepSet0.Size())

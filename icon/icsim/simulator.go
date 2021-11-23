@@ -80,6 +80,7 @@ type Simulator interface {
 	GetMainPReps() map[string]interface{}
 	GetSubPReps() map[string]interface{}
 	GetPReps() map[string]interface{}
+	GetNetworkInfo() map[string]interface{}
 	TermSnapshot() *icstate.TermSnapshot
 
 	Go(blocks int64, csi module.ConsensusInfo) error

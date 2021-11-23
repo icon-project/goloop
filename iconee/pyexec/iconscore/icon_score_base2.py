@@ -436,7 +436,7 @@ def _get_prep_info(type_: str) -> Tuple[List[PRepInfo], int]:
     for prep in preps.get("preps"):
         prep_info_list.append(PRepInfo(
             prep.get("address"),
-            prep.get("bondedDelegation"),
+            prep.get("power"),
             prep.get("name")
         ))
     return prep_info_list, end_block_height

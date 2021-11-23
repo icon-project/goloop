@@ -94,6 +94,18 @@ func estimateSlashed(slashRatio int, oldBonded *big.Int) *big.Int {
 	return slashed
 }
 
+func assertPower(t *testing.T, p map[string]interface{}) bool {
+	var ok bool
+	var power *big.Int
+
+	_, ok = p["bondedDelegation"]
+	assert.False(t, ok)
+	power, ok = p["power"].(*big.Int)
+	assert.True(t, ok)
+	assert.True(t, power.Sign() >= 0)
+	return true
+}
+
 func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -636,4 +648,76 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 		assert.Zero(t, prep.GetVFail(blockHeight))
 		assert.Zero(t, prep.GetVFailCont(blockHeight))
 	}
+}
+
+func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
+	const (
+		termPeriod                           = 100
+		mainPRepCount                        = 22
+		validationPenaltyCondition           = 5
+		consistentValidationPenaltyCondition = 3
+	)
+
+	var prep *icstate.PRep
+	var jso map[string]interface{}
+	var ok bool
+	var br = int64(5)
+
+	c := NewConfig()
+	c.MainPRepCount = mainPRepCount
+	c.TermPeriod = termPeriod
+	c.ValidationPenaltyCondition = validationPenaltyCondition
+	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
+
+	// Decentralization is activated
+	env := initEnv(t, c, icmodule.Revision13)
+	sim := env.sim
+
+	address := env.preps[0]
+
+	// Check getPRep
+	prep = sim.GetPRep(address)
+	jso = prep.ToJSON(sim.BlockHeight(), br)
+	assertPower(t, jso)
+
+	// Check getPReps
+	jso = sim.GetPReps()
+	_, ok = jso["totalBondedDelegated"]
+	assert.False(t, ok)
+	preps := jso["preps"].([]interface{})
+	for i := range preps {
+		assertPower(t, preps[i].(map[string]interface{}))
+	}
+
+	// Check getMainPReps
+	jso = sim.GetMainPReps()
+	_, ok = jso["totalPower"].(*big.Int)
+	assert.True(t, ok)
+	preps = jso["preps"].([]interface{})
+	for i := range preps {
+		assertPower(t, preps[i].(map[string]interface{}))
+	}
+
+	// Check getSubPReps
+	jso = sim.GetSubPReps()
+	_, ok = jso["totalPower"].(*big.Int)
+	assert.True(t, ok)
+	preps = jso["preps"].([]interface{})
+	for i := range preps {
+		assertPower(t, preps[i].(map[string]interface{}))
+	}
+
+	// Check getPRepTerm
+	jso = sim.GetPRepTerm()
+	_, ok = jso["totalPower"].(*big.Int)
+	assert.True(t, ok)
+	preps = jso["preps"].([]interface{})
+	for i := range preps {
+		assertPower(t, preps[i].(map[string]interface{}))
+	}
+
+	// Check getNetworkInfo
+	jso = sim.GetNetworkInfo()
+	_, ok = jso["totalPower"].(*big.Int)
+	assert.True(t, ok)
 }
