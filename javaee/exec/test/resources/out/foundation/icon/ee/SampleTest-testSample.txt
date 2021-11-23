@@ -20,11 +20,11 @@ RECV getAPI status=0 methods=[
 SEND invoke code=9620ab... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[MySampleToken MST 18 1000] CID=1 EID=1 codeState=<null>
 RECV setValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 isDelete=false 3635c9adc5dea00000
 RECV setObjGraph flag=1 next=30 hash=8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 graphLen=356 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x13example.SampleToken\x00\x00\x00\x08\x03\x00\x00\x00\x04\x00\x00\x00\x12\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00#Transfer(Address,Address,int,bytes)\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dtokenFallback\x0cpi.AnyDBImpl\x00\x00\x00\x1c\x00\x00\x00\x0a\x00\x88balances\x01\x14java.math.BigInteger\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0dMySampleToken\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x03MST\x14java.math.BigInteger\x00\x00\x00\x1b\x00\x00\x00\x0965\xc9\xad\xc5\xde\xa0\x00\x00
-RECV result status=0 stepUsed=98891 ret=<null>
+RECV result status=0 stepUsed=192831 ret=<null>
 SEND invoke code=9620ab... isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=balanceOf params=[000001...] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getObjGraph flag=1 => next=30 hash=8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 graphLen=356 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x13example.SampleToken\x00\x00\x00\x08\x03\x00\x00\x00\x04\x00\x00\x00\x12\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00#Transfer(Address,Address,int,bytes)\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dtokenFallback\x0cpi.AnyDBImpl\x00\x00\x00\x1c\x00\x00\x00\x0a\x00\x88balances\x01\x14java.math.BigInteger\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0dMySampleToken\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x03MST\x14java.math.BigInteger\x00\x00\x00\x1b\x00\x00\x00\x0965\xc9\xad\xc5\xde\xa0\x00\x00
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 3635c9adc5dea00000
-RECV result status=0 stepUsed=33946 ret=1000000000000000000000
+RECV result status=0 stepUsed=35946 ret=1000000000000000000000
 SEND invoke code=9620ab... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=transfer params=[000002... 1000000000000000000 48656c6c6f] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 3635c9adc5dea00000
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 3635c9adc5dea00000
@@ -32,7 +32,7 @@ RECV setValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 i
 RECV getValue 192e2a8afecff59dd1bf58752e7457575a859eaff36ef792ae7a8b1f87cafb76 => <null>
 RECV setValue 192e2a8afecff59dd1bf58752e7457575a859eaff36ef792ae7a8b1f87cafb76 isDelete=false 0de0b6b3a7640000
 RECV event indxed=[5472616e7366657228416464726573732c416464726573732c696e742c627974657329 000001000000000000000000000000000000000000 000002000000000000000000000000000000000000 0de0b6b3a7640000] data=[48656c6c6f]
-RECV result status=0 stepUsed=112465 ret=<null>
+RECV result status=0 stepUsed=114465 ret=<null>
 SEND invoke code=9620ab... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=transfer params=[000003... 1000000000000000000 48656c6c6f] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 3627e8f712373c0000
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 3627e8f712373c0000
@@ -40,15 +40,15 @@ RECV setValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 i
 RECV getValue 96ebcfe5f7d4e0ef4bcc4e51c908878abd0b4965a8233028ed703dbd39580e84 => <null>
 RECV setValue 96ebcfe5f7d4e0ef4bcc4e51c908878abd0b4965a8233028ed703dbd39580e84 isDelete=false 0de0b6b3a7640000
 RECV event indxed=[5472616e7366657228416464726573732c416464726573732c696e742c627974657329 000001000000000000000000000000000000000000 000003000000000000000000000000000000000000 0de0b6b3a7640000] data=[48656c6c6f]
-RECV result status=0 stepUsed=112465 ret=<null>
+RECV result status=0 stepUsed=114465 ret=<null>
 SEND invoke code=9620ab... isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=balanceOf params=[000002...] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getValue 192e2a8afecff59dd1bf58752e7457575a859eaff36ef792ae7a8b1f87cafb76 => 0de0b6b3a7640000
-RECV result status=0 stepUsed=33866 ret=1000000000000000000
+RECV result status=0 stepUsed=35866 ret=1000000000000000000
 SEND invoke code=9620ab... isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=balanceOf params=[000001...] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 361a08405e8fd80000
-RECV result status=0 stepUsed=33946 ret=998000000000000000000
+RECV result status=0 stepUsed=35946 ret=998000000000000000000
 SEND invoke code=9620ab... isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=totalSupply params=[] CID=1 EID=1 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
-RECV result status=0 stepUsed=28514 ret=1000000000000000000000
+RECV result status=0 stepUsed=30514 ret=1000000000000000000000
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='getInt', flags=2, indexed=0, inputs=[], output=1, outputDescriptor=I}
 Method{type=0, name='totalSupply2', flags=2, indexed=1, inputs=[Parameter{name='sc', descriptor=Lscore/Address;, type=5, optional=false}], output=1, outputDescriptor=Ljava/math/BigInteger;}
@@ -141,20 +141,20 @@ RECV setValue 5110fceff308bfc05834696894018a178660a329c917b6c72f32d742cfae56f7 i
 RECV getValue 5110fceff308bfc05834696894018a178660a329c917b6c72f32d742cfae56f7 => <null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: observed:0
 RECV setObjGraph flag=1 next=111 hash=49601ff34088d50735a6d70219bcdcb8953a2d6c33bb1fda54329f5ca4847afb graphLen=637 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x03\x00\x00\x00\x09\x03\x00\x00\x00\x0a\x03\x00\x00\x00\x0b\x03\x00\x00\x00\x0c\x03\x00\x00\x00\x0d\x03\x00\x00\x00\x0e\x03\x00\x00\x00\x0f\x03\x00\x00\x00\x10\x03\x00\x00\x00\x11\x03\x00\x00\x00\x12\x19collection.CollectionTest\x00\x00\x00\x13\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x010\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x040, 1\x10java.lang.String\x00\x00\x00\x0b\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x0c\x00\x00\x00\x09balanceOf\x10java.lang.String\x00\x00\x00\x0d\x00\x00\x00\x04dadb\x10java.lang.String\x00\x00\x00\x0e\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x0f\x00\x00\x00\x04dddb\x10java.lang.String\x00\x00\x00\x10\x00\x00\x00\x04test\x10java.lang.String\x00\x00\x00\x11\x00\x00\x00\x0btotalSupply\x10java.lang.String\x00\x00\x00\x12\x00\x00\x00\x03vdb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x011\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x021'\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x041, 2\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0210\x10java.lang.String\x00\x00\x00\x07\x00\x00\x00\x012\x10java.lang.String\x00\x00\x00\x08\x00\x00\x00\x0220\x10java.lang.String\x00\x00\x00\x09\x00\x00\x00\x02a0\x10java.lang.String\x00\x00\x00\x0a\x00\x00\x00\x02a1
-RECV result status=0 stepUsed=619717 ret=<null>
+RECV result status=0 stepUsed=781097 ret=<null>
 SEND invoke code=f4abe6... isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=getInt params=[] CID=2 EID=1 codeState=[111 49601ff34088d50735a6d70219bcdcb8953a2d6c33bb1fda54329f5ca4847afb 0]
 RECV getObjGraph flag=1 => next=111 hash=49601ff34088d50735a6d70219bcdcb8953a2d6c33bb1fda54329f5ca4847afb graphLen=637 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x03\x00\x00\x00\x09\x03\x00\x00\x00\x0a\x03\x00\x00\x00\x0b\x03\x00\x00\x00\x0c\x03\x00\x00\x00\x0d\x03\x00\x00\x00\x0e\x03\x00\x00\x00\x0f\x03\x00\x00\x00\x10\x03\x00\x00\x00\x11\x03\x00\x00\x00\x12\x19collection.CollectionTest\x00\x00\x00\x13\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x010\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x040, 1\x10java.lang.String\x00\x00\x00\x0b\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x0c\x00\x00\x00\x09balanceOf\x10java.lang.String\x00\x00\x00\x0d\x00\x00\x00\x04dadb\x10java.lang.String\x00\x00\x00\x0e\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x0f\x00\x00\x00\x04dddb\x10java.lang.String\x00\x00\x00\x10\x00\x00\x00\x04test\x10java.lang.String\x00\x00\x00\x11\x00\x00\x00\x0btotalSupply\x10java.lang.String\x00\x00\x00\x12\x00\x00\x00\x03vdb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x011\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x021'\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x041, 2\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0210\x10java.lang.String\x00\x00\x00\x07\x00\x00\x00\x012\x10java.lang.String\x00\x00\x00\x08\x00\x00\x00\x0220\x10java.lang.String\x00\x00\x00\x09\x00\x00\x00\x02a0\x10java.lang.String\x00\x00\x00\x0a\x00\x00\x00\x02a1
-RECV result status=0 stepUsed=50986 ret=11
+RECV result status=0 stepUsed=52986 ret=11
 SEND invoke code=f4abe6... isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=totalSupply2 params=[010001...] CID=2 EID=1 codeState=[111 49601ff34088d50735a6d70219bcdcb8953a2d6c33bb1fda54329f5ca4847afb 0]
-RECV call to=010001... value=0 stepLimit=999948538 method=totalSupply params=[]
-SEND invoke code=9620ab... isQuery=true from=010002... to=010001... value=0 stepLimit=999948538 method=totalSupply params=[] CID=1 EID=2 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
-RECV result status=0 stepUsed=28514 ret=1000000000000000000000
-SEND result status=0 stepUsed=28514 ret=1000000000000000000000 EID=3 prevEID=1
-RECV result status=0 stepUsed=80576 ret=1000000000000000000000
+RECV call to=010001... value=0 stepLimit=999946538 method=totalSupply params=[]
+SEND invoke code=9620ab... isQuery=true from=010002... to=010001... value=0 stepLimit=999946538 method=totalSupply params=[] CID=1 EID=2 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
+RECV result status=0 stepUsed=30514 ret=1000000000000000000000
+SEND result status=0 stepUsed=30514 ret=1000000000000000000000 EID=3 prevEID=1
+RECV result status=0 stepUsed=84576 ret=1000000000000000000000
 SEND invoke code=f4abe6... isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=balanceOf2 params=[010001... 000001...] CID=2 EID=1 codeState=[111 49601ff34088d50735a6d70219bcdcb8953a2d6c33bb1fda54329f5ca4847afb 0]
-RECV call to=010001... value=0 stepLimit=999948197 method=balanceOf params=[000001...]
-SEND invoke code=9620ab... isQuery=true from=010002... to=010001... value=0 stepLimit=999948197 method=balanceOf params=[000001...] CID=1 EID=2 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
+RECV call to=010001... value=0 stepLimit=999946197 method=balanceOf params=[000001...]
+SEND invoke code=9620ab... isQuery=true from=010002... to=010001... value=0 stepLimit=999946197 method=balanceOf params=[000001...] CID=1 EID=2 codeState=[30 8699cfb03a38c3fa2fba2e5886253dd8a760cc6aabda61d9160c07cf02dbb316 0]
 RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 361a08405e8fd80000
-RECV result status=0 stepUsed=33946 ret=998000000000000000000
-SEND result status=0 stepUsed=33946 ret=998000000000000000000 EID=3 prevEID=1
-RECV result status=0 stepUsed=86349 ret=998000000000000000000
+RECV result status=0 stepUsed=35946 ret=998000000000000000000
+SEND result status=0 stepUsed=35946 ret=998000000000000000000 EID=3 prevEID=1
+RECV result status=0 stepUsed=90349 ret=998000000000000000000
