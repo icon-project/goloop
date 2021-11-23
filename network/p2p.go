@@ -397,8 +397,12 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 	isLeave = false
-	p2p.seeds.RemoveData(p.NetAddress())
-	p2p.roots.RemoveData(p.NetAddress())
+	if p.HasRole(p2pRoleRoot) {
+		p2p.roots.RemoveData(p.NetAddress())
+	}
+	if p.HasRole(p2pRoleSeed) {
+		p2p.seeds.RemoveData(p.NetAddress())
+	}
 
 	isLeave = !(p.ConnType() == p2pConnTypeNone)
 	switch p.ConnType() {
