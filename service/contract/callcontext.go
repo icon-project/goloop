@@ -324,7 +324,7 @@ func (cc *callContext) waitResult(target *callFrame) (error, *codec.TypedObj, mo
 }
 
 func (cc *callContext) cleanUpFrames(target *callFrame, err error) {
-	cc.log.Warnf("cleanUpFrames() TX=<%#x> err=%+v", cc.GetInfo()[state.InfoTxHash], err)
+	cc.log.Warnf("cleanUpFrames() TX=<%#x> err=%+v", cc.TransactionID(), err)
 	l := common.Lock(&cc.lock)
 	defer l.Unlock()
 	achs := make([]AsyncContractHandler, 0, 16)

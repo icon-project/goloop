@@ -859,8 +859,7 @@ func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 	if err := s.checkGovernance(false); err != nil {
 		return err
 	}
-	info := s.cc.GetInfo()
-	auditTxHash := info[state.InfoTxHash].([]byte)
+	auditTxHash := s.cc.TransactionID()
 
 	ch := contract.NewCommonHandler(s.from, state.SystemAddress, big.NewInt(0), false, s.log)
 	ah := contract.NewAcceptHandler(ch, txHash, auditTxHash)
@@ -888,8 +887,7 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	}
 	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
-	info := s.cc.GetInfo()
-	auditTxHash := info[state.InfoTxHash].([]byte)
+	auditTxHash := s.cc.TransactionID()
 	if err := h2a.Delete(txHash); err != nil {
 		return err
 	}
