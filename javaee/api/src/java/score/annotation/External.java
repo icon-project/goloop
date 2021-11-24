@@ -146,6 +146,16 @@ import java.lang.annotation.Target;
  *         An array of <a href="#readable-property">readable property</a>
  *     </li>
  * </ul>
+ *
+ * <h1>Exception</h1>
+ * If an external method is called by an external transaction or an internal
+ * transaction and the method throws an exception, the transaction fails.
+ * If the exception is an instance of {@link score.UserRevertException} or its
+ * subclass, the failure code is decided by the exception. Refer to
+ * {@link score.UserRevertException} for details. Otherwise, system code
+ * {@code UnknownFailure(1)} is used as the failure code.
+ *
+ * @see score.UserRevertException
  */
 @Target(ElementType.METHOD)
 public @interface External {
