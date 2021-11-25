@@ -1665,3 +1665,64 @@ func newClaimed(id []byte, amount *big.Int) *Claimed {
 		amount: amount,
 	}
 }
+
+func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error {
+	term := es.State.GetTermSnapshot()
+	if term == nil || !term.IsDecentralized() || term.GetIISSVersion() < icstate.IISSVersion3 ||
+		term.GetEndHeight() != cc.BlockHeight() {
+		return nil
+	}
+
+	rf := term.RewardFund()
+	if rf.Iglobal.Sign() != 1 {
+		return nil
+	}
+	fs := []struct {
+		key  string
+		rate *big.Int
+	}{
+		{icstate.CPSKey, rf.Icps},
+		{icstate.RelayKey, rf.Irelay},
+	}
+	ns := es.State.GetNetworkScores()
+	div := big.NewInt(100 * MonthBlock)
+	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
+	from := cc.Treasury()
+	for _, k := range fs {
+		if k.rate.Sign() != 1 {
+			es.logger.Warnf("There is no reward fund for %s", k.key)
+			continue
+		}
+		to, ok := ns[k.key]
+		amount := new(big.Int).Mul(base, k.rate)
+		amount.Div(amount, div)
+		if ok {
+			if err := cc.Transfer(from, to, amount); err != nil {
+				return err
+			}
+			cc.OnEvent(state.SystemAddress,
+				[][]byte{[]byte("RewardFundTransferred(str,Address,Address,int)")},
+				[][]byte{
+					[]byte(k.key),
+					from.Bytes(),
+					to.Bytes(),
+					intconv.BigIntToBytes(amount),
+				},
+			)
+		} else {
+			if err := cc.Burn(from, amount); err != nil {
+				return err
+			}
+			cc.OnEvent(state.SystemAddress,
+				[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
+				[][]byte{
+					[]byte(k.key),
+					from.Bytes(),
+					intconv.BigIntToBytes(amount),
+				},
+			)
+			es.logger.Warnf("Burn %s for %s", amount, k.key)
+		}
+	}
+	return nil
+}

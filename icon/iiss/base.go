@@ -469,6 +469,9 @@ func (es *ExtensionStateImpl) OnBaseTx(cc icmodule.CallContext, data []byte) err
 	if err := es.HandleConsensusInfo(cc); err != nil {
 		return err
 	}
+	if err := es.transferRewardFund(cc); err != nil {
+		return err
+	}
 	if cc.Revision().Value() >= icmodule.RevisionICON2R2 {
 		if err := es.handleNetworkScoreTimer(cc); err != nil {
 			return err
