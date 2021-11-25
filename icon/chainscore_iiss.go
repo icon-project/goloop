@@ -600,8 +600,8 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 	if err != nil {
 		return false, err
 	}
-	rewardFund := es.State.GetRewardFund()
-	currentIglobal := rewardFund.Iglobal
+	rf := es.State.GetRewardFund()
+	currentIglobal := rf.Iglobal
 	min := new(big.Int).Mul(currentIglobal, big.NewInt(3))
 	min.Div(min, big.NewInt(4))
 	max := new(big.Int).Mul(currentIglobal, big.NewInt(5))
@@ -633,9 +633,9 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	rewardFund := es.State.GetRewardFund()
-	rewardFund.Iglobal = iglobal.Value()
-	return es.State.SetRewardFund(rewardFund)
+	rf := es.State.GetRewardFund()
+	rf.Iglobal = iglobal.Value()
+	return es.State.SetRewardFund(rf)
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *common.HexInt, irelay *common.HexInt, ivoter *common.HexInt) error {
@@ -646,12 +646,12 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	if err != nil {
 		return err
 	}
-	rewardFund := es.State.GetRewardFund()
-	rewardFund.Iprep = &iprep.Int
-	rewardFund.Icps = &icps.Int
-	rewardFund.Irelay = &irelay.Int
-	rewardFund.Ivoter = &ivoter.Int
-	return es.State.SetRewardFund(rewardFund)
+	rf := es.State.GetRewardFund()
+	rf.Iprep = &iprep.Int
+	rf.Icps = &icps.Int
+	rf.Irelay = &irelay.Int
+	rf.Ivoter = &ivoter.Int
+	return es.State.SetRewardFund(rf)
 }
 
 func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {
@@ -686,7 +686,12 @@ func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return es.State.GetNetworkScores(), nil
+	ns := es.State.GetNetworkScores()
+	jso := make(map[string]interface{})
+	for k, v := range ns {
+		jso[k] = v.String()
+	}
+	return jso, nil
 }
 
 func (s *chainScore) Ex_addTimer(blockHeight *common.HexInt) error {

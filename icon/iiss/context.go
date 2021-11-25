@@ -188,12 +188,12 @@ func (ctx *callContextImpl) Burn(address module.Address, amount *big.Int) error 
 		if err != nil {
 			return err
 		}
-		ctx.OnBurn(address, amount, ts)
+		ctx.onBurn(address, amount, ts)
 	}
 	return nil
 }
 
-func (ctx *callContextImpl) OnBurn(address module.Address, amount, ts *big.Int) {
+func (ctx *callContextImpl) onBurn(address module.Address, amount, ts *big.Int) {
 	rev := ctx.Revision().Value()
 	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string

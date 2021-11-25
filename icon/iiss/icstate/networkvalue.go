@@ -93,8 +93,8 @@ func (s *State) SetNetworkScore(role string, address module.Address) error {
 	return errors.IllegalArgumentError.New("invalid Network SCORE role")
 }
 
-func (s *State) GetNetworkScores() map[string]interface{} {
-	networkdScores := make(map[string]interface{})
+func (s *State) GetNetworkScores() map[string]module.Address {
+	networkdScores := make(map[string]module.Address)
 	db := containerdb.NewDictDB(
 		s.store,
 		1,
