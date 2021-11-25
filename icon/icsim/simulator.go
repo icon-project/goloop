@@ -71,6 +71,8 @@ type Simulator interface {
 	BlockHeight() int64
 	Revision() module.Revision
 	GetBalance(from module.Address) *big.Int
+	TotalBond() *big.Int
+	TotalStake() *big.Int
 	TotalSupply() *big.Int
 	ValidatorList() []module.Validator
 

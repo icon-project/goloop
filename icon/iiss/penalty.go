@@ -71,9 +71,6 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 }
 
 func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio int) error {
-	if ratio == 0 {
-		return nil
-	}
 	if ratio < 0 || 100 < ratio {
 		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
@@ -93,42 +90,43 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	for _, bonder := range bonders {
 		account := es.State.GetAccountState(bonder)
 		totalSlash := new(big.Int)
-
 		logger.Debugf("Before slashing: %s", account)
 
-		// from bonds
-		slashBond := account.SlashBond(owner, ratio)
-		totalSlash.Add(totalSlash, slashBond)
-		totalSlashBond.Add(totalSlashBond, slashBond)
-		logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
+		if ratio > 0 {
+			// from bonds
+			slashBond := account.SlashBond(owner, ratio)
+			totalSlash.Add(totalSlash, slashBond)
+			totalSlashBond.Add(totalSlashBond, slashBond)
+			logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
 
-		// from unbondings
-		slashUnbond, expire := account.SlashUnbond(owner, ratio)
-		totalSlash.Add(totalSlash, slashUnbond)
-		if expire != -1 {
-			timer := es.State.GetUnbondingTimerState(expire)
-			if timer != nil {
-				timer.Delete(owner)
-			} else {
-				return errors.Errorf("timer doesn't exist for height %d", expire)
+			// from unbondings
+			slashUnbond, expire := account.SlashUnbond(owner, ratio)
+			totalSlash.Add(totalSlash, slashUnbond)
+			if expire != -1 {
+				timer := es.State.GetUnbondingTimerState(expire)
+				if timer != nil {
+					timer.Delete(owner)
+				} else {
+					return errors.Errorf("timer doesn't exist for height %d", expire)
+				}
+			}
+
+			// from stake
+			if err := account.SlashStake(totalSlash); err != nil {
+				return err
+			}
+			totalStake.Sub(totalStake, totalSlash)
+
+			// add icstage.EventBond
+			delta := map[string]*big.Int{
+				icutils.ToKey(owner): new(big.Int).Neg(slashBond),
+			}
+			if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
+				return err
 			}
 		}
 
-		// from stake
-		if err := account.SlashStake(totalSlash); err != nil {
-			return err
-		}
-		totalStake.Sub(totalStake, totalSlash)
-
-		// add icstage.EventBond
-		delta := map[string]*big.Int{
-			icutils.ToKey(owner): new(big.Int).Neg(slashBond),
-		}
-		if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
-			return err
-		}
-
-		// event log
+		// Record Slashed eventlog
 		cc.OnEvent(
 			state.SystemAddress,
 			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},

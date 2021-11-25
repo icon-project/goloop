@@ -70,7 +70,7 @@ const (
 	DefaultValidationPenaltyCondition            = 660
 	DefaultConsistentValidationPenaltyCondition  = 5
 	DefaultConsistentValidationPenaltyMask       = 30
-	DefaultConsistentValidationPenaltySlashRatio = 10
+	DefaultConsistentValidationPenaltySlashRatio = 0 // 0% by default
 	DefaultDelegationSlotMax                     = 100
 	DefaultExtraMainPRepCount                    = 3
 	DefaultNonVotePenaltySlashRatio              = 10

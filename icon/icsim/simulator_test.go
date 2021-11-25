@@ -86,6 +86,14 @@ func checkValidatorList(vl0, vl1 []module.Validator) bool {
 	return true
 }
 
+func estimateSlashed(slashRatio int, oldBonded *big.Int) *big.Int {
+	slashed := new(big.Int)
+	if slashRatio > 0 {
+		slashed.Div(oldBonded, big.NewInt(int64(slashRatio)))
+	}
+	return slashed
+}
+
 func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -143,7 +151,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 
 	voted[0] = true
 	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.Go(c.TermPeriod - 5 - 3, csi)
+	err = sim.Go(c.TermPeriod-5-3, csi)
 	assert.NoError(t, err)
 
 	voted[0] = false
@@ -167,7 +175,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	prep = sim.GetPRep(env.preps[22])
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
-	assert.Equal(t, int64(95 + 2), prep.GetVTotal(blockHeight))
+	assert.Equal(t, int64(95+2), prep.GetVTotal(blockHeight))
 	assert.Equal(t, int64(5), prep.GetVFail(blockHeight))
 	assert.Equal(t, int64(0), prep.GetVFailCont(blockHeight))
 	assert.Zero(t, prep.GetVFailCont(blockHeight))
@@ -199,12 +207,14 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	var prep *icstate.PRep
 	var receipts []Receipt
 	var oldBonded, bonded, slashed *big.Int
+	var slashRatio = 0
 
 	c := NewConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
+	c.ConsistentValidationPenaltySlashRatio = slashRatio
 
 	voted = make([]bool, mainPRepCount)
 	for i := 0; i < len(voted); i++ {
@@ -256,6 +266,8 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	prep = sim.GetPRep(env.preps[0])
 	oldBonded = prep.Bonded()
+	oldTotalBond := sim.TotalBond()
+	oldTotalStake := sim.TotalStake()
 
 	for i := 0; i < consistentValidationPenaltyCondition; i++ {
 		// PenaltyCount is not reset after revision is 14
@@ -263,7 +275,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, i, prep.GetVPenaltyCount())
 
-		// Make the case when prep0 fails to vote for blocks to validate
+		// Create a scenario when prep0 fails to vote for blocks to validate
 		vl = sim.ValidatorList()
 		voted[0] = false
 		csi = newConsensusInfo(sim.Database(), vl, voted)
@@ -273,7 +285,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		// Check if prep0 got penalized after 5 blocks
 		prep = sim.GetPRep(vl[0].Address())
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
-		assert.Equal(t, i + 1, prep.GetVPenaltyCount())
+		assert.Equal(t, i+1, prep.GetVPenaltyCount())
 
 		// Check if prep22 acts as a validator instead of prep0
 		// prep22 was a sub prep before prep0 got penalized
@@ -285,11 +297,24 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Check if the bond of prep0 is slashed by 10%
+	// Check if the bond of prep0 is slashed by default ratio
 	prep = sim.GetPRep(env.preps[0])
 	bonded = prep.Bonded()
-	slashed = new(big.Int).Div(oldBonded, big.NewInt(10))
+	slashed = estimateSlashed(slashRatio, oldBonded)
+	if slashRatio > 0 {
+		assert.True(t, slashed.Sign() > 0)
+	} else {
+		assert.True(t, slashed.Sign() == 0)
+	}
 	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
+
+	// Check if totalBond is reduced by slashed amount
+	totalBond := sim.TotalBond()
+	assert.Zero(t, totalBond.Cmp(new(big.Int).Sub(oldTotalBond, slashed)))
+
+	// Check if totalStake is reduced by slashed amount
+	totalStake := sim.TotalStake()
+	assert.Zero(t, totalStake.Cmp(new(big.Int).Sub(oldTotalStake, slashed)))
 
 	vl = sim.ValidatorList()
 	assert.True(t, vl[0].Address().Equal(env.preps[0]))
@@ -317,7 +342,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		prep = sim.GetPRep(vl[0].Address())
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, penaltyCount, prep.GetVPenaltyCount())
-		slashed = new(big.Int).Div(oldBonded, big.NewInt(10))
+		slashed = estimateSlashed(slashRatio, oldBonded)
 		assert.Zero(t, prep.Bonded().Cmp(new(big.Int).Sub(oldBonded, slashed)))
 
 		// Check if prep22 acts as a validator instead of prep0
@@ -345,7 +370,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	for i := 0; i < 6; i++ {
 		prep = sim.GetPRep(env.preps[0])
-		assert.Equal(t, 6 - i, prep.GetVPenaltyCount())
+		assert.Equal(t, 6-i, prep.GetVPenaltyCount())
 
 		csi = newConsensusInfo(sim.Database(), vl, voted)
 		err = sim.GoToTermEnd(csi)
@@ -534,8 +559,8 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	assert.NoError(t, err)
 
 	// term 1
-	voted[1] = false  // prep1
-	voted[2] = false  // prep2
+	voted[1] = false // prep1
+	voted[2] = false // prep2
 	csi = newConsensusInfo(sim.Database(), vl0, voted)
 	err = sim.Go(validationPenaltyCondition, csi)
 	assert.NoError(t, err)
@@ -607,7 +632,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 		prep = sim.GetPRep(env.preps[i])
 		assert.Equal(t, icstate.GradeSub, prep.Grade())
 		assert.Equal(t, 0, prep.GetVPenaltyCount())
-		assert.Equal(t, int64(termPeriod - 7), prep.GetVTotal(blockHeight))
+		assert.Equal(t, int64(termPeriod-7), prep.GetVTotal(blockHeight))
 		assert.Zero(t, prep.GetVFail(blockHeight))
 		assert.Zero(t, prep.GetVFailCont(blockHeight))
 	}

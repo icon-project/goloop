@@ -17,8 +17,9 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/module"
 	"math/big"
+
+	"github.com/icon-project/goloop/module"
 
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
@@ -317,7 +318,7 @@ func (s *State) GetConsistentValidationPenaltySlashRatio() int {
 }
 
 func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
-	if value <= 0 {
+	if value < 0 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)

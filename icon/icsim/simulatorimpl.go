@@ -148,6 +148,16 @@ func (sim *simulatorImpl) Revision() module.Revision {
 	return sim.revision
 }
 
+func (sim *simulatorImpl) TotalBond() *big.Int {
+	es := sim.getExtensionState(true)
+	return es.State.GetTotalBond()
+}
+
+func (sim *simulatorImpl) TotalStake() *big.Int {
+	es := sim.getExtensionState(true)
+	return es.State.GetTotalStake()
+}
+
 func (sim *simulatorImpl) TotalSupply() *big.Int {
 	ws := state.NewReadOnlyWorldState(sim.wss)
 	as := ws.GetAccountState(state.SystemID)

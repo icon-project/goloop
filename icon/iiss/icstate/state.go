@@ -497,7 +497,7 @@ func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHe
 	return err
 }
 
-// Slash handles to reduce PRepStatus.bonded and PRepManager.totalBonded
+// Slash handles to reduce PRepStatus.bonded
 // Do not change PRep grade here
 // Caution: amount should not include the amount from unbonded
 func (s *State) Slash(owner module.Address, amount *big.Int) error {
