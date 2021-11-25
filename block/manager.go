@@ -403,38 +403,33 @@ func (it *importTask) onExecute(err error) {
 	})
 }
 
+func (it *importTask) _handleExecutionError(err error) {
+	var tr *transition
+	it.manager.log.Infof("error during import : %+v", err)
+	if it.flags&module.ImportByForce != 0 {
+		tr, err = it.in.sync(it.block.Result(), it.block.NextValidatorsHash(), it)
+		if err == nil {
+			it.in.dispose()
+			it.in = tr
+			return
+		}
+	}
+	it.stop()
+	it.cb(nil, err)
+}
+
 func (it *importTask) _onExecute(err error) {
 	if it.state == executingIn {
-		var tr *transition
 		if err != nil {
-			if it.flags&module.ImportByForce > 0 {
-				tr, err = it.in.sync(it.block.Result(), it.block.NextValidatorsHash(), it)
-				if err == nil {
-					it.in.dispose()
-					it.in = tr
-					return
-				}
-			}
-			it.stop()
-			it.cb(nil, err)
+			it._handleExecutionError(err)
 			return
 		}
 		err = it.in.verifyResult(it.block)
 		if err != nil {
-			// verification cannot fail in forced sync case
-			if it.flags&module.ImportByForce > 0 {
-				tr, err = it.in.sync(it.block.Result(), it.block.NextValidatorsHash(), it)
-				if err == nil {
-					it.in.dispose()
-					it.in = tr
-					return
-				}
-			}
-			it.stop()
-			it.cb(nil, err)
+			it._handleExecutionError(err)
 			return
 		}
-		validated := it.flags & module.ImportByForce > 0
+		validated := it.flags & module.ImportByForce != 0
 		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it, validated)
 		if err != nil {
 			it.stop()
