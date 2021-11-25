@@ -556,6 +556,9 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+	if !state.IsValidStepType(costType) {
+		return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", costType)
+	}
 	costZero := cost.Sign() == 0
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
