@@ -140,6 +140,10 @@ public class Throwable extends Object implements Serializable {
         this.stackTrace = backtrace;
     }
 
+    public java.lang.String getMessage() {
+        return this.message != null ? this.message.getUnderlying() : null;
+    }
+
     //=======================================================
     // Methods below are used by runtime and test code only!
     //========================================================

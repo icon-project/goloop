@@ -15,6 +15,16 @@ public class ManualRevertException extends AvmException {
         this.code = code;
     }
 
+    public ManualRevertException(int code, Throwable cause) {
+        super(cause);
+        this.code = code;
+    }
+
+    public ManualRevertException(int code, String message, Throwable cause) {
+        super(message, cause);
+        this.code = code;
+    }
+
     public int getCode() {
         return code;
     }

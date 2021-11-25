@@ -367,7 +367,7 @@ public class LoadedDApp {
             var shadow = esThrowable.unwrap();
             if (shadow instanceof s.score.UserRevertException) {
                 var e = (s.score.UserRevertException) shadow;
-                throw new ManualRevertException(Status.fromUserCode(e.avm_getCode()));
+                throw new ManualRevertException(Status.fromUserCode(e.avm_getCode()), e.getMessage(), cause);
             }
             throw new UncaughtException(((e.s.java.lang.Throwable) cause).unwrap().toString(), cause);
         } else {
