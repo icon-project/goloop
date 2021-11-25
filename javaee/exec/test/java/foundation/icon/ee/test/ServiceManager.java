@@ -44,6 +44,7 @@ public class ServiceManager implements Agent {
     private final Context context;
 
     private boolean isClassMeteringEnabled = true;
+    private boolean isFullLogEnabled = false;
 
     public ServiceManager(Connection conn) {
         proxy = new MyProxy(conn);
@@ -336,7 +337,8 @@ public class ServiceManager implements Agent {
                     }
                     // filter only Context.println
                     if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")
-                            || logMsg.startsWith("s.java.lang.Throwable PRT|")) {
+                            || logMsg.startsWith("s.java.lang.Throwable PRT|")
+                            || isFullLogEnabled) {
                         printf("RECV log level=%d %s%n", level, logMsg);
                     }
                     break;
@@ -601,6 +603,14 @@ public class ServiceManager implements Agent {
 
     public void enableClassMetering(boolean e) {
         isClassMeteringEnabled = e;
+    }
+
+    public boolean isFullLogEnabled() {
+        return isFullLogEnabled;
+    }
+
+    public void enableFullLog(boolean e) {
+        isFullLogEnabled = e;
     }
 
     public void close() {
