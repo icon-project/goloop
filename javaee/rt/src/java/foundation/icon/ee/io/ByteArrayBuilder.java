@@ -50,4 +50,8 @@ public class ByteArrayBuilder extends OutputStream {
     public int size() {
         return size;
     }
+
+    public void resize(int size) {
+        this.size = size;
+    }
 }
