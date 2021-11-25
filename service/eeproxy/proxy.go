@@ -558,7 +558,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		yn, cnt, sz, err := p.frame.ctx.ArrayDBContains(m.Prefix, m.Value, 0)
+		yn, cnt, sz, err := p.frame.ctx.ArrayDBContains(m.Prefix, m.Value, m.Limit)
 		if err != nil {
 			return err
 		}
