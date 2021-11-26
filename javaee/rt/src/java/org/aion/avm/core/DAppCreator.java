@@ -5,6 +5,7 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import foundation.icon.ee.util.StringConsumerOutputStream;
 import i.AvmError;
 import i.AvmException;
 import i.AvmThrowable;
@@ -19,6 +20,8 @@ import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.PrintStream;
 
 public class DAppCreator {
     private static final Logger logger = LoggerFactory.getLogger(DAppCreator.class);
@@ -80,6 +83,8 @@ public class DAppCreator {
             logger.trace("DApp deployment failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
                 e.printStackTrace();
+                var os = new StringConsumerOutputStream(logger::trace);
+                e.printStackTrace(new PrintStream(os));
             }
             long stepUsed = (runtimeSetup != null) ?
                     (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;

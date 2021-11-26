@@ -5,6 +5,7 @@ import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import foundation.icon.ee.util.StringConsumerOutputStream;
 import i.AvmError;
 import i.AvmException;
 import i.GenericPredefinedException;
@@ -16,6 +17,8 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.PrintStream;
 
 public class DAppExecutor {
     private static final Logger logger = LoggerFactory.getLogger(DAppExecutor.class);
@@ -114,6 +117,8 @@ public class DAppExecutor {
             logger.trace("DApp invocation failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
                 e.printStackTrace();
+                var os = new StringConsumerOutputStream(logger::trace);
+                e.printStackTrace(new PrintStream(os));
             }
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());
