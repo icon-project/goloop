@@ -906,7 +906,7 @@ func (s *ChainScore) Ex_blockScore(address module.Address) error {
 		return err
 	}
 	as := s.cc.GetAccountState(address.ID())
-	if as.IsBlocked() == false {
+	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
 	}
 	return nil
@@ -924,7 +924,7 @@ func (s *ChainScore) Ex_unblockScore(address module.Address) error {
 		return err
 	}
 	as := s.cc.GetAccountState(address.ID())
-	if as.IsBlocked() == true {
+	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
 	}
 	return nil
