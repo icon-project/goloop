@@ -460,17 +460,17 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 					resCh <- err
 					return
 				}
-				blkv0, err := e.cs.GetBlockByHeight(int(i))
-				if err != nil {
-					resCh <- err
-					return
+				ltxs := blk.NormalTransactions()
+				txCount := 0
+				for itr := ltxs.Iterator(); itr.Has() ; itr.Next() {
+					txCount += 1
 				}
 				resCh <- &BlockTransaction{
 					Height:        blk.Height(),
 					BlockHash:     blk.Hash(),
 					Result:        blk.Result(),
 					ValidatorHash: blk.NextValidatorsHash(),
-					TXCount:       int32(len(blkv0.NormalTransactions())),
+					TXCount:       int32(txCount),
 				}
 			}
 			from = last + 1
