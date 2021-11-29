@@ -214,9 +214,9 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void log(byte[][] indexed, byte[][] data) {
+    public void event(byte[][] indexed, byte[][] data) {
         try {
-            proxy.log(indexed, data);
+            proxy.event(indexed, data);
             logger.trace("[logEvent] {} {}", indexed, data);
         } catch (IOException e) {
             logger.debug("[logEvent] {}", e.getMessage());

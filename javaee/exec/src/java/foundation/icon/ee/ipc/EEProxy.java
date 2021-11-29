@@ -222,7 +222,7 @@ public class EEProxy extends Proxy {
         sendMessage(MsgType.LOG, level, msg);
     }
 
-    public void log(byte[][]indexed, byte[][] data) throws IOException {
+    public void event(byte[][]indexed, byte[][] data) throws IOException {
         logger.trace("[LOGEVENT] {}, {}", indexed, data);
         sendMessage(MsgType.EVENT, indexed, data);
     }
