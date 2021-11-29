@@ -61,7 +61,7 @@ const (
 	RevisionSetIRepViaNetworkProposal = Revision9
 	RevisionPreventDuplicatedEndpoint = Revision9
 
-	RevisionLockAddress = Revision10
+	//RevisionLockAddress = Revision10
 
 	RevisionFixInvalidUnstake = Revision11
 
@@ -76,14 +76,15 @@ const (
 	RevisionFixIllegalDelegation = RevisionICON2R0
 	RevisionStopICON1Support     = RevisionICON2R0
 
-	RevisionICON2R1     = Revision14
-	RevisionEnableIISS3 = RevisionICON2R1
-	RevisionEnableFee3  = RevisionICON2R1
+	RevisionICON2R1       = Revision14
+	RevisionEnableIISS3   = RevisionICON2R1
+	RevisionEnableFee3    = RevisionICON2R1
+	RevisionBlockAccounts = RevisionICON2R1
 
 	RevisionICON2R2      = Revision15
 	RevisionEnableJavaEE = RevisionICON2R2
 
-	RevisionICON2R3 = Revision16
+	RevisionICON2R3             = Revision16
 	RevisionEnableSetScoreOwner = RevisionICON2R3
 
 	// TODO: Fix a revision for enabling extra main preps

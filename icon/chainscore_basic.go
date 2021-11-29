@@ -262,13 +262,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
-		// It's handled in governanceHandler.handleRevisionChange
-		// if r1 < icmodule.RevisionFixInvalidUnstake && r2 >= icmodule.RevisionFixInvalidUnstake {
-		// 	migrate.WriteInvalidUnstakeFixedEventLogs(s.cc)
-		// }
-
-		if r1 < icmodule.RevisionLockAddress && r2 >= icmodule.RevisionLockAddress && s.cc.ChainID() == CIDForMainNet {
-			s.lockAddresses()
+		// The time when predefined accounts will be blocked is changed from rev10 to rev14
+		if r1 < icmodule.RevisionBlockAccounts && r2 >= icmodule.RevisionBlockAccounts && s.cc.ChainID() == CIDForMainNet {
+			s.blockAccounts()
 		}
 
 		// R0: IISS-2.x works on goloop engine, enabling some IISS-3.x related APIs.
@@ -327,7 +323,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 	return nil
 }
 
-func (s *chainScore) lockAddresses() {
+func (s *chainScore) blockAccounts() {
 	targets := []string{
 		"hx76dcc464a27d74ca7798dd789d2e1da8193219b4",
 		"hxac5c6e6f7a6e8ae1baba5f0cb512f7596b95f1fe",
@@ -341,7 +337,6 @@ func (s *chainScore) lockAddresses() {
 		"hx52c32d0b82f46596f697d8ba2afb39105f3a6360",
 		"hx985cf67b563fb908543385da806f297482f517b4",
 		"hxc0567bbcba511b84012103a2360825fddcd058ab",
-		"hx52c32d0b82f46596f697d8ba2afb39105f3a6360",
 		"hx20be21b8afbbc0ba46f0671508cfe797c7bb91be",
 		"hx19e551eae80f9b9dcfed1554192c91c96a9c71d1",
 		"hx0607341382dee5e039a87562dcb966e71881f336",
