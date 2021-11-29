@@ -560,6 +560,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		yn, cnt, sz, err := p.frame.ctx.ArrayDBContains(m.Prefix, m.Value, m.Limit)
 		if err != nil {
+			p.log.Tracef("Proxy[%p].Contains prefix=<%x> value=<%x> limit=<%d> err=%+v",
+				p, m.Prefix, m.Value, m.Limit, err)
 			return err
 		}
 		res := containsResponse{
@@ -567,7 +569,10 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			Count: cnt,
 			Size:  sz,
 		}
+		p.log.Tracef("Proxy[%p].Contains prefix=<%x> value=<%x> limit=<%d> yn=<%t> cnt=<%d> sz=<%d>",
+			p, m.Prefix, m.Value, m.Limit, yn, cnt, sz)
 		return p.conn.Send(msgCONTAINS, &res)
+
 	default:
 		p.log.Warnf("Proxy[%p].HandleMessage(msg=%d) UnknownMessage", msg)
 		return errors.ErrIllegalArgument
