@@ -41,7 +41,7 @@ const (
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision14
+	LatestRevision  = Revision15
 )
 
 const (
@@ -119,6 +119,10 @@ var revisionFlags = []module.Revision{
 	0,
 	// Revision13
 	module.LegacyFeeCharge | module.LegacyNoTimeout,
+	// Revision14
+	module.LegacyInputJSON | module.InputCostingWithJSON,
+	// Revision15
+	0,
 }
 
 func init() {
