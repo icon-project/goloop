@@ -144,8 +144,8 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	}
 
 	tsr := NewTxTimestampRangeFor(wc, tp.group)
-	txs := make([]*txElement, 0, configDefaultTxSliceCapacity)
-	expired := make([]*txElement, 0, configDefaultTxSliceCapacity)
+	txs := make([]module.Transaction, 0, configDefaultTxSliceCapacity)
+	dropped := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
 	txSize := int(0)
 	for e := tp.list.Front(); e != nil && txSize < maxBytes && len(txs) < maxCount; e = e.Next() {
@@ -155,7 +155,23 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 				if e.err == nil {
 					e.err = err
 				}
-				expired = append(expired, e)
+				dropped = append(dropped, e)
+			}
+			continue
+		}
+		if v, err := tp.txdb.Get(tx.ID()); err != nil && v != nil {
+			e.err = errors.InvalidStateError.New("AlreadyProcessed")
+			dropped = append(dropped, e)
+			continue
+		}
+		if err := tx.PreValidate(wc, true); err != nil {
+			if e.err == nil {
+				e.err = err
+				tp.log.Debugf("PREVALIDATE FAIL: id=%#x from=%s reason=%v",
+					tx.ID(), tx.From().String(), err)
+			}
+			if !transaction.NotEnoughBalanceError.Equals(err) || e.ts == 0 {
+				dropped = append(dropped, e)
 			}
 			continue
 		}
@@ -164,57 +180,18 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			break
 		}
 		txSize += len(bs)
-		txs = append(txs, e)
+		txs = append(txs, tx)
 	}
 	lock.Unlock()
 
-	// make list of valid transactions
-	validTxs := make([]module.Transaction, len(txs))
-	valNum := 0
-	invalidNum := 0
-	txSize = 0
-	for _, e := range txs {
-		tx := e.Value()
-		// TODO need to check transaction in parent transitions.
-		if v, err := tp.txdb.Get(tx.ID()); err == nil && v != nil {
-			e.err = errors.InvalidStateError.New("Already processed")
-			txs[invalidNum] = e
-			invalidNum += 1
-			continue
-		}
-		if err := tx.PreValidate(wc, true); err != nil {
-			// If returned error is critical(not usable in the future)
-			// then it should removed from the pool
-			// Otherwise, it remains in the pool
-			if e.err == nil {
-				e.err = err
-				tp.log.Debugf("PREVALIDATE FAIL: id=%#x reason=%v",
-					tx.ID(), err)
-			}
-			if !transaction.NotEnoughBalanceError.Equals(err) {
-				txs[invalidNum] = e
-				invalidNum += 1
-			}
-			continue
-		}
-		validTxs[valNum] = tx
-		txSize += len(tx.Bytes())
-		valNum++
-	}
-
-	if len(expired) > 0 {
-		txs = append(txs[0:invalidNum], expired...)
-		invalidNum += len(expired)
-	}
-
-	if invalidNum > 0 {
-		go tp.dropTransactions(txs[0:invalidNum])
+	if len(dropped) > 0 {
+		go tp.dropTransactions(dropped)
 	}
 
 	tp.log.Infof("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
-		valNum, invalidNum, poolSize, time.Now().Sub(startTS))
+		len(txs), len(dropped), poolSize, time.Now().Sub(startTS))
 
-	return validTxs[:valNum], txSize
+	return txs, txSize
 }
 
 func (tp *TransactionPool) CheckTxs(wc state.WorldContext) bool {
