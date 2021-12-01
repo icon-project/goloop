@@ -3,6 +3,6 @@ SEND getAPI 89b60d...
 RECV getAPI status=0 methods=[
     Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
 ]
-SEND invoke code=89b60d... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
+SEND invoke code=89b60d... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=2 hash=9d2ef70ebfaff999601736793750099d0c00b8c9211acec9ec3b890736d0a613 graphLen=58 graph=\x03\x00\x00\x00\x000foundation.icon.ee.CompilerTest$ScoreWithoutInit\x00\x00\x00\x01
 RECV result status=0 stepUsed=38609 ret=<null>

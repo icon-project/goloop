@@ -477,13 +477,13 @@ public class ServiceManager implements Agent {
             if (indexer != null) {
                 var index = indexer.getIndex(to);
                 proxy = allProxies.get(index);
-                printf("SEND invoke EE=%d code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
-                        index, getPrefix(code, 6), isReadOnly, from, to,
+                printf("SEND invoke EE=%d code=%s flag=%d from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
+                        index, getPrefix(code, 6), flag, from, to,
                         value, stepLimit, method, params, context.getShortCID(),
                         context.getContextEID(), codeState);
             } else {
-                printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
-                        getPrefix(code, 6), isReadOnly, from, to,
+                printf("SEND invoke code=%s flag=%d from=%s to=%s value=%d stepLimit=%d method=%s params=%s CID=%d EID=%d codeState=%s%n",
+                        getPrefix(code, 6), flag, from, to,
                         value, stepLimit, method, params, context.getShortCID(),
                         context.getContextEID(), codeState);
             }
