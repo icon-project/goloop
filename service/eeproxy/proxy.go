@@ -125,9 +125,16 @@ type versionMessage struct {
 	Type    string
 }
 
+type invokeFlag int
+
+const (
+	InvokeFlagReadOnly invokeFlag = 1 << iota
+	InvokeFlagTrace
+)
+
 type invokeMessage struct {
 	Code   string `codec:"code"`
-	IsQry  bool
+	Flag   invokeFlag
 	From   *common.Address `codec:"from"`
 	To     common.Address  `codec:"to"`
 	Value  common.HexInt   `codec:"value"`
@@ -179,8 +186,15 @@ type getAPIMessage struct {
 	Info   *scoreapi.Info
 }
 
+type logFlag int
+
+const (
+	LogFlagTrace logFlag = 1 << iota
+)
+
 type logMessage struct {
 	Level   log.Level
+	Flag    logFlag
 	Message string
 }
 
@@ -208,14 +222,14 @@ type containsResponse struct {
 	Size  int
 }
 
-func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
+func traceLevelOf(lv log.Level) (module.TraceLevel) {
 	switch lv {
 	case log.DebugLevel:
-		return module.TDebugLevel, true
+		return module.TDebugLevel
 	case log.TraceLevel:
-		return module.TTraceLevel, true
+		return module.TTraceLevel
 	default:
-		return module.TSystemLevel, false
+		return module.TSystemLevel
 	}
 }
 
@@ -228,7 +242,13 @@ func (p *proxy) Invoke(
 
 	var m invokeMessage
 	m.Code = code
-	m.IsQry = isQuery
+	m.Flag = 0
+	if isQuery {
+		m.Flag |= InvokeFlagReadOnly
+	}
+	if logger.IsTrace() {
+		m.Flag |= InvokeFlagTrace
+	}
 	m.From = common.AddressToPtr(from)
 	m.To.Set(to)
 	m.Value.Set(value)
@@ -497,8 +517,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.lock.Lock()
 		defer p.lock.Unlock()
 
-		if tl, ok := traceLevelOf(m.Level); ok {
-			p.log.TLog(tl, m.Message)
+		if (m.Flag & LogFlagTrace) != 0 {
+			p.log.TLog(traceLevelOf(m.Level), m.Message)
 		}
 		if p.frame != nil && p.frame.addr != nil {
 			p.log.Log(m.Level, p.scoreType, "|",

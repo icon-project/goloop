@@ -15,6 +15,7 @@ import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Strings;
+import org.aion.avm.core.IExternalState;
 import org.aion.avm.utilities.JarBuilder;
 import org.msgpack.core.MessagePack;
 import org.msgpack.value.ArrayValue;
@@ -331,7 +332,8 @@ public class ServiceManager implements Agent {
                 case EEProxy.MsgType.LOG: {
                     var data = msg.value.asArrayValue();
                     var level = data.get(0).asIntegerValue().asInt();
-                    var logMsg = data.get(1).asStringValue().asString();
+                    var flag = data.get(1).asIntegerValue().asInt();
+                    var logMsg = data.get(2).asStringValue().asString();
                     if (logger != null) {
                         logger.accept(logMsg);
                     }
@@ -424,12 +426,12 @@ public class ServiceManager implements Agent {
     }
 
     public Result sendInvokeAndWaitForResult(
-            String code, boolean isReadOnly,
+            String code, int flag,
             Address from, Address to, BigInteger value,
             BigInteger stepLimit, String method, Object[] params,
             Map<String, Object> info, byte[] cid, int eid,
             Object[] codeState) throws IOException {
-        proxy.sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from,
+        proxy.sendMessage(EEProxy.MsgType.INVOKE, code, flag, from,
             to, value, stepLimit, method, TypedObj.encodeAny(params),
             TypedObj.encodeAny(info), cid, eid, codeState);
         var msg = waitFor(EEProxy.MsgType.RESULT);
@@ -468,6 +470,10 @@ public class ServiceManager implements Agent {
                 };
             }
             var prevProxy = proxy;
+            int flag = 0;
+            if (isReadOnly) {
+                flag |= IExternalState.OPTION_READ_ONLY;
+            }
             if (indexer != null) {
                 var index = indexer.getIndex(to);
                 proxy = allProxies.get(index);
@@ -482,7 +488,7 @@ public class ServiceManager implements Agent {
                         context.getContextEID(), codeState);
             }
             var result = context.getContract(to).invoke(
-                    this, code, isReadOnly, from, to, value, stepLimit,
+                    this, code, flag, from, to, value, stepLimit,
                     method, params, info, context.getContractID(),
                     context.getContextEID(), codeState);
             proxy = prevProxy;

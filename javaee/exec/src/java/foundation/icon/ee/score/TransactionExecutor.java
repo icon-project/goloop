@@ -120,14 +120,14 @@ public class TransactionExecutor {
         return Validator.validate(jarBytes);
     }
 
-    private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
+    private InvokeResult handleInvoke(String code, int option, Address from, Address to,
                                       BigInteger value, BigInteger limit,
                                       String method, Object[] params,
                                       Map<String, Object> info, byte[] contractID,
                                       int eid, int nextHash, byte[] graphHash,
                                       int prevEID) throws IOException {
         if (logger.isTraceEnabled()) {
-            printInvokeParams(code, isQuery, from, to, value, limit, method, params);
+            printInvokeParams(code, option, from, to, value, limit, method, params);
             printGetInfo(info);
         }
         boolean isInstall = CMD_INSTALL.equals(method);
@@ -142,10 +142,6 @@ public class TransactionExecutor {
         @SuppressWarnings("unchecked")
         Map<String, BigInteger> stepCosts = (Map<String, BigInteger>) info.get(EEProxy.Info.STEP_COSTS);
 
-        int option = 0;
-        if (isQuery) {
-            option |= IExternalState.OPTION_READ_ONLY;
-        }
         ExternalState kernel = new ExternalState(proxy, option, code,
                 fileIO, contractID, blockHeight, blockTimestamp, owner,
                 stepCosts, nextHash, graphHash);
@@ -169,10 +165,10 @@ public class TransactionExecutor {
         }
     };
 
-    private void printInvokeParams(String code, boolean isQuery, Address from, Address to, BigInteger value,
+    private void printInvokeParams(String code, int option, Address from, Address to, BigInteger value,
                                    BigInteger limit, String method, Object[] params) {
         logger.trace(">>> code={}", code);
-        logger.trace("    isQuery={}", isQuery);
+        logger.trace("    option={}", option);
         logger.trace("    from={}", from);
         logger.trace("      to={}", to);
         logger.trace("    value={}", value);

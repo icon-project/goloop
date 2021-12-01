@@ -219,7 +219,7 @@ public class EEProxy extends Proxy {
     }
 
     public void log(int level, String msg) throws IOException {
-        sendMessage(MsgType.LOG, level, msg);
+        sendMessage(MsgType.LOG, level, 0, msg);
     }
 
     public void event(byte[][]indexed, byte[][] data) throws IOException {
@@ -258,7 +258,7 @@ public class EEProxy extends Proxy {
     }
 
     public interface OnInvokeListener {
-        InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
+        InvokeResult onInvoke(String code, int option, Address from, Address to,
                               BigInteger value, BigInteger limit,
                               String method, Object[] params,
                               Map<String, Object> info,
@@ -285,7 +285,7 @@ public class EEProxy extends Proxy {
         try {
             ArrayValue data = raw.asArrayValue();
             String code = data.get(0).asStringValue().asString();
-            boolean isQuery = data.get(1).asBooleanValue().getBoolean();
+            int option = data.get(1).asIntegerValue().asInt();
             Address from = getValueAsAddress(data.get(2));
             Address to = getValueAsAddress(data.get(3));
             BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
@@ -309,7 +309,7 @@ public class EEProxy extends Proxy {
 
             if (mOnInvokeListener != null) {
                 InvokeResult result = mOnInvokeListener.onInvoke(
-                        code, isQuery, from, to, value, limit, method, params,
+                        code, option, from, to, value, limit, method, params,
                         info, contractID, eid, nextHash, graphHash, prevEID);
                 sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
             } else {

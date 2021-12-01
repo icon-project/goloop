@@ -30,7 +30,7 @@ public interface InvokeHandler {
 
     Result invoke(
             ServiceManager sm,
-            String code, boolean isReadOnly,
+            String code, int flag,
             Address from, Address to, BigInteger value,
             BigInteger stepLimit, String method, Object[] params,
             Map<String, Object> info, byte[] cid, int eid,
