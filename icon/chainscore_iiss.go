@@ -600,29 +600,12 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 	if err != nil {
 		return false, err
 	}
-	rf := es.State.GetRewardFund()
-	currentIglobal := rf.Iglobal
-	min := new(big.Int).Mul(currentIglobal, big.NewInt(3))
-	min.Div(min, big.NewInt(4))
-	max := new(big.Int).Mul(currentIglobal, big.NewInt(5))
-	max.Div(max, big.NewInt(4))
-	if (iglobal.Cmp(min) < 0) || (iglobal.Cmp(max) > 0) {
-		return false, scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to validate IGlobal: iglobal=%v", iglobal.Value(),
-		)
-	}
 	cc := s.newCallContext(s.cc)
-	totalSupply := cc.GetTotalSupply()
-	rewardPerYear := new(big.Int).Mul(iglobal.Value(), big.NewInt(12))
-	maxRewardPerYear := new(big.Int).Mul(totalSupply, big.NewInt(115))
-	maxRewardPerYear.Div(totalSupply, big.NewInt(100))
-
-	if rewardPerYear.Cmp(maxRewardPerYear) > 0 {
-		return false, scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to validate IGlobal: iglobal=%v", iglobal.Value(),
-		)
+	if err = es.ValidateRewardFund(iglobal.Value(), cc.GetTotalSupply()); err != nil {
+		return false, err
+	} else {
+		return true, nil
 	}
-	return true, nil
 }
 
 func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {

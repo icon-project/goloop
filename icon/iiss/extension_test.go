@@ -89,3 +89,69 @@ func TestExtension_calculateRRep(t *testing.T) {
 		})
 	}
 }
+
+func TestExtension_validateRewardFund(t *testing.T) {
+	type test struct {
+		name           string
+		iglobal        *big.Int
+		totalSupply    *big.Int
+		currentIglobal *big.Int
+		err            bool
+	}
+
+	tests := [...]test{
+		{
+			"Inflation rate exceed 15%",
+			new(big.Int).SetInt64(125),
+			new(big.Int).SetInt64(1000),
+			new(big.Int).SetInt64(101),
+			true,
+		},
+		{
+			"Inflation rate 18%",
+			new(big.Int).SetInt64(150),
+			new(big.Int).SetInt64(1000),
+			new(big.Int).SetInt64(124),
+			true,
+		},
+		{
+			"Increase 10%",
+			new(big.Int).SetInt64(110),
+			new(big.Int).SetInt64(120000),
+			new(big.Int).SetInt64(100),
+			false,
+		},
+		{
+			"Decrease 10%",
+			new(big.Int).SetInt64(90),
+			new(big.Int).SetInt64(120000),
+			new(big.Int).SetInt64(100),
+			false,
+		},
+		{
+			"Increase 25%",
+			new(big.Int).SetInt64(125),
+			new(big.Int).SetInt64(120000),
+			new(big.Int).SetInt64(100),
+			true,
+		},
+		{
+			"Decrease 25%",
+			new(big.Int).SetInt64(75),
+			new(big.Int).SetInt64(120000),
+			new(big.Int).SetInt64(100),
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRewardFund(tt.iglobal, tt.currentIglobal, tt.totalSupply)
+			if tt.err {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}

@@ -773,6 +773,35 @@ func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRe
 	return nil
 }
 
+func (es *ExtensionStateImpl) ValidateRewardFund(iglobal *big.Int, totalSupply *big.Int) error {
+	rf := es.State.GetRewardFund()
+	return validateRewardFund(iglobal, rf.Iglobal, totalSupply)
+}
+
+const inflationLimit = 15
+
+func validateRewardFund(iglobal *big.Int, currentIglobal *big.Int, totalSupply *big.Int) error {
+	min := new(big.Int).Mul(currentIglobal, big.NewInt(3))
+	min.Div(min, big.NewInt(4))
+	max := new(big.Int).Mul(currentIglobal, big.NewInt(5))
+	max.Div(max, big.NewInt(4))
+	if (iglobal.Cmp(min) <= 0) || (iglobal.Cmp(max) >= 0) {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Failed to validate Iglobal: Out of range. Min:%d, Max: %d, Iglobal=%d", min, max, iglobal,
+		)
+	}
+	rewardPerYear := new(big.Int).Mul(iglobal, big.NewInt(12))
+	maxRewardPerYear := new(big.Int).Mul(totalSupply, big.NewInt(100+inflationLimit))
+	maxRewardPerYear.Div(maxRewardPerYear, big.NewInt(100))
+
+	if rewardPerYear.Cmp(maxRewardPerYear) == 1 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Failed to validate Iglobal: too much inflation %d > %d", rewardPerYear, maxRewardPerYear,
+		)
+	}
+	return nil
+}
+
 func (es *ExtensionStateImpl) OnExecutionBegin(wc icmodule.WorldContext) error {
 	term := es.State.GetTermSnapshot()
 	if term.IsDecentralized() {
