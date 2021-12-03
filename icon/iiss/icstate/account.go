@@ -156,8 +156,13 @@ func (a *accountData) Unbond() *big.Int {
 	return a.totalUnbond
 }
 
-func (a *accountData) GetBondsInJSON() []interface{} {
-	return a.bonds.ToJSON(module.JSONVersion3)
+func (a *accountData) GetBondInJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["bonds"] = a.bonds.ToJSON(module.JSONVersion3)
+	jso["unbonds"] = a.unbonds.ToJSON(module.JSONVersion3)
+	jso["totalBonded"] = a.totalBond
+	jso["votingPower"] = a.GetVotingPower()
+	return jso
 }
 
 func (a *accountData) GetUnbondsInJSON() []interface{} {

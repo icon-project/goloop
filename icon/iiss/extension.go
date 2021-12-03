@@ -669,14 +669,11 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 }
 
 func (es *ExtensionStateImpl) GetBond(address module.Address) (map[string]interface{}, error) {
-	account := es.State.GetAccountSnapshot(address)
-	if account == nil {
-		account = icstate.GetEmptyAccountSnapshot()
+	a := es.State.GetAccountSnapshot(address)
+	if a == nil {
+		a = icstate.GetEmptyAccountSnapshot()
 	}
-	return map[string]interface{}{
-		"bonds":   account.GetBondsInJSON(),
-		"unbonds": account.GetUnbondsInJSON(),
-	}, nil
+	return a.GetBondInJSON(), nil
 }
 
 func (es *ExtensionStateImpl) AddEventBond(blockHeight int64, from module.Address, delta map[string]*big.Int) (err error) {
