@@ -13,6 +13,7 @@ import foundation.icon.ee.types.ManualRevertException;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
+import foundation.icon.ee.util.LogMarker;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import foundation.icon.ee.util.ValueCodec;
@@ -316,7 +317,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public void avm_println(s.java.lang.String message) {
         if (this.enablePrintln) {
-            logger.trace("PRT| " + (message!=null ? message.toString() : "<null>"));
+            logger.trace(LogMarker.Trace, "PRT| " + (message!=null ? message.toString() : "<null>"));
         }
     }
 

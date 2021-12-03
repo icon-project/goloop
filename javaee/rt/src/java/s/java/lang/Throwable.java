@@ -1,5 +1,7 @@
 package s.java.lang;
 
+import foundation.icon.ee.util.LogMarker;
+import i.CommonInstrumentation;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import org.aion.avm.ClassNameExtractor;
@@ -12,6 +14,7 @@ import s.java.io.Serializable;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Our shadow implementation of java.lang.Throwable.
@@ -119,11 +122,11 @@ public class Throwable extends Object implements Serializable {
         }
         visited.add(this);
         final Logger logger = LoggerFactory.getLogger(Throwable.class);
-        logger.trace("PRT|");
-        logger.trace("PRT| " + caption + this);
+        logger.trace(LogMarker.Trace, "PRT|");
+        logger.trace(LogMarker.Trace, "PRT| " + caption + this);
         if (stackTrace != null) {
             for (StackTraceElement e : stackTrace) {
-                logger.trace("PRT|\tat " + e);
+                logger.trace(LogMarker.Trace, "PRT|\tat " + e);
             }
         }
 
