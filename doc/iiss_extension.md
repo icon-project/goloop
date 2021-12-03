@@ -250,13 +250,13 @@ Returns the delegation status of a given address
 
 #### Returns
 
-| Key            | VALUE Type | Required | Description                                                  |
-| :------------- | :--------- | :------- | :----------------------------------------------------------- |
-| totalDelegated | T_INT      | true     | The sum of delegation amount                                 |
-| votingPower    | T_INT      | true     | Remaining amount of stake that ICONist can delegate to other P-Reps |
-| delegations         | T_LIST(T_DICT) | true     | List of delegation dict (MAX: 100 entries) |
-| delegations.address | T_ADDR_EOA     | true     | Address of P-Rep to delegate             |
-| delegations.value   | T_INT          | true     | Delegation amount in loop                |
+| Key            | VALUE Type | Required | Description                                                                  |
+| :------------- | :--------- | :------- |:-----------------------------------------------------------------------------|
+| totalDelegated | T_INT      | true     | The sum of delegation amount                                                 |
+| votingPower    | T_INT      | true     | Remaining amount of stake that ICONist can delegate and bond to other P-Reps |
+| delegations         | T_LIST(T_DICT) | true     | List of delegation dict (MAX: 100 entries)                                   |
+| delegations.address | T_ADDR_EOA     | true     | Address of P-Rep to delegate                                                 |
+| delegations.value   | T_INT          | true     | Delegation amount in loop                                                    |
 
 ### setBond
 
@@ -339,6 +339,8 @@ Returns the bond status of a given address
   "jsonrpc": "2.0",
   "id": 1234,
   "result": {
+    "totalBonded": "0xa688906bd8b0000",
+    "votingPower": "0x3782dace9d90000",
     "bonds": [
       {
         "address": "hx1d6463e4628ee52a7f751e9d500a79222a7f3935",
@@ -367,15 +369,17 @@ Returns the bond status of a given address
 
 #### Returns
 
-| Key            | VALUE Type | Required | Description                                                  |
-| :------------- | :--------- | :------- | :----------------------------------------------------------- |
-| bonds | T_LIST(T_DICT) | true     | List of bond dict |
-| bonds.address | T_ADDR_EOA,T_ADDR_SCORE | true     | Address of P-Rep to delegate             |
-| bonds.value   | T_INT          | true     | Bond amount in loop                |
-| unbonds | T_LIST(T_DICT) | true     | List of unbond dict |
-| unbonds.address | T_ADDR_EOA,T_ADDR_SCORE | true     | Address of P-Rep to delegate             |
-| unbonds.value | T_INT          | true     | Unbonding amount in loop                |
-| unbonds.expireBlockHeight | T_INT          | true     | BlockHeight when unBonding will be done |
+| Key                       | VALUE Type | Required | Description                                                                  |
+|:--------------------------| :--------- | :------- |:-----------------------------------------------------------------------------|
+| totalBonded               | T_INT      | true     | The sum of bond amount                                                     |
+| votingPower               | T_INT      | true     | Remaining amount of stake that ICONist can delegate and bond to other P-Reps |
+| bonds                     | T_LIST(T_DICT) | true     | List of bond dict                                                            |
+| bonds.address             | T_ADDR_EOA,T_ADDR_SCORE | true     | Address of P-Rep to delegate                                                 |
+| bonds.value               | T_INT          | true     | Bond amount in loop                                                          |
+| unbonds                   | T_LIST(T_DICT) | true     | List of unbond dict                                                          |
+| unbonds.address           | T_ADDR_EOA,T_ADDR_SCORE | true     | Address of P-Rep to delegate                                                 |
+| unbonds.value             | T_INT          | true     | Unbonding amount in loop                                                     |
+| unbonds.expireBlockHeight | T_INT          | true     | BlockHeight when unBonding will be done                                      |
 
 ### claimIScore
 
