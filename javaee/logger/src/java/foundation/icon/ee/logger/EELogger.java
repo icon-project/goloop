@@ -27,7 +27,7 @@ import java.io.StringWriter;
 import java.util.Map;
 
 public class EELogger extends MarkerIgnoringBase {
-    private String name;
+    private final String name;
 
     private static final int LOG_LEVEL_TRACE = 0;
     private static final int LOG_LEVEL_DEBUG = 1;
@@ -35,10 +35,11 @@ public class EELogger extends MarkerIgnoringBase {
     private static final int LOG_LEVEL_WARN = 3;
     private static final int LOG_LEVEL_ERROR = 4;
 
-    private static String SYSTEM_PREFIX = "foundation.icon.ee.logger.";
-    private static String LOG_LEVEL_KEY = SYSTEM_PREFIX + "defaultLogLevel";
 
-    private static Map<String, Integer> LOG_MAP = Map.of(
+    private static final String SYSTEM_PREFIX = "foundation.icon.ee.logger.";
+    private static final String LOG_LEVEL_KEY = SYSTEM_PREFIX + "defaultLogLevel";
+
+    private static final Map<String, Integer> LOG_MAP = Map.of(
         "trace", LOG_LEVEL_TRACE,
         "debug", LOG_LEVEL_DEBUG,
         "info", LOG_LEVEL_INFO,
@@ -48,7 +49,7 @@ public class EELogger extends MarkerIgnoringBase {
         "panic", LOG_LEVEL_ERROR
     );
 
-    private Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
+    private static final Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
         LOG_LEVEL_TRACE, EEProxy.LOG_TRACE,
         LOG_LEVEL_DEBUG, EEProxy.LOG_DEBUG,
         LOG_LEVEL_INFO, EEProxy.LOG_INFO,
