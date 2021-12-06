@@ -52,6 +52,11 @@ class Message(object):
     CONTAINS = 16
 
 
+class InvokeFlag(object):
+    READ_ONLY = 1
+    TRACE = 2
+
+
 class Log(object):
     PANIC = 0
     FATAL = 1
@@ -95,6 +100,10 @@ class Log(object):
     @classmethod
     def to_py_level(cls, level: str) -> str:
         return cls.__to_py_levels.get(level, "info")
+
+
+class LogFlag(object):
+    TRACE = 1
 
 
 class Status(object):
@@ -352,7 +361,8 @@ class ServiceManagerProxy:
 
     def __handle_invoke(self, data):
         code = self.decode(TypeTag.STRING, data[0])
-        is_query = data[1]
+        option = data[1]
+        is_query = (option & InvokeFlag.READ_ONLY) != 0
         if data[2] is None:
             _from = None
         else:
@@ -521,7 +531,10 @@ class ServiceManagerProxy:
         ])
 
     def log(self, level: int, msg: str) -> None:
-        self.__client.send(Message.LOG, [int(level), str(msg)])
+        flag = 0
+        if level == Log.DEBUG or level == Log.TRACE:
+            flag = LogFlag.TRACE
+        self.__client.send(Message.LOG, [int(level), int(flag), str(msg)])
 
     def debug(self, msg: str, tag: str = 'LOG') -> None:
         self.log(Log.DEBUG, f"[{tag}] {msg}")
