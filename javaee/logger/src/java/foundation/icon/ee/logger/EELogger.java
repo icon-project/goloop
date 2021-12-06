@@ -17,8 +17,9 @@
 package foundation.icon.ee.logger;
 
 import foundation.icon.ee.ipc.EEProxy;
+import org.slf4j.Logger;
+import org.slf4j.Marker;
 import org.slf4j.helpers.FormattingTuple;
-import org.slf4j.helpers.MarkerIgnoringBase;
 import org.slf4j.helpers.MessageFormatter;
 
 import java.io.IOException;
@@ -26,8 +27,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Map;
 
-public class EELogger extends MarkerIgnoringBase {
-    private String name;
+public class EELogger implements Logger {
+    private final String name;
 
     private static final int LOG_LEVEL_TRACE = 0;
     private static final int LOG_LEVEL_DEBUG = 1;
@@ -35,10 +36,12 @@ public class EELogger extends MarkerIgnoringBase {
     private static final int LOG_LEVEL_WARN = 3;
     private static final int LOG_LEVEL_ERROR = 4;
 
-    private static String SYSTEM_PREFIX = "foundation.icon.ee.logger.";
-    private static String LOG_LEVEL_KEY = SYSTEM_PREFIX + "defaultLogLevel";
+    private static final int LOG_FLAG_GET_TRACE = 0x1;
 
-    private static Map<String, Integer> LOG_MAP = Map.of(
+    private static final String SYSTEM_PREFIX = "foundation.icon.ee.logger.";
+    private static final String LOG_LEVEL_KEY = SYSTEM_PREFIX + "defaultLogLevel";
+
+    private static final Map<String, Integer> LOG_MAP = Map.of(
         "trace", LOG_LEVEL_TRACE,
         "debug", LOG_LEVEL_DEBUG,
         "info", LOG_LEVEL_INFO,
@@ -48,7 +51,7 @@ public class EELogger extends MarkerIgnoringBase {
         "panic", LOG_LEVEL_ERROR
     );
 
-    private Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
+    private static final Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
         LOG_LEVEL_TRACE, EEProxy.LOG_TRACE,
         LOG_LEVEL_DEBUG, EEProxy.LOG_DEBUG,
         LOG_LEVEL_INFO, EEProxy.LOG_INFO,
@@ -74,8 +77,17 @@ public class EELogger extends MarkerIgnoringBase {
             return;
         }
         FormattingTuple tp = MessageFormatter.format(format, arg1, arg2);
-        log(level, tp.getMessage(), tp.getThrowable());
+        doLog(level, null, tp.getMessage(), tp.getThrowable());
     }
+
+    private void formatAndLog(int level, Marker marker, String format, Object arg1, Object arg2) {
+        if (!isLevelEnabled(level, marker)) {
+            return;
+        }
+        FormattingTuple tp = MessageFormatter.format(format, arg1, arg2);
+        doLog(level, marker, tp.getMessage(), tp.getThrowable());
+    }
+
 
     /**
      * For formatted messages, first substitute arguments and then log.
@@ -90,11 +102,32 @@ public class EELogger extends MarkerIgnoringBase {
             return;
         }
         FormattingTuple tp = MessageFormatter.arrayFormat(format, arguments);
-        log(level, tp.getMessage(), tp.getThrowable());
+        doLog(level, null, tp.getMessage(), tp.getThrowable());
+    }
+
+    private void formatAndLog(int level, Marker marker, String format, Object... arguments) {
+        if (!isLevelEnabled(level, marker)) {
+            return;
+        }
+        FormattingTuple tp = MessageFormatter.arrayFormat(format, arguments);
+        doLog(level, marker, tp.getMessage(), tp.getThrowable());
     }
 
     public boolean isLevelEnabled(int logLevel) {
         return (logLevel >= currentLogLevel);
+    }
+
+    public boolean isLevelEnabled(int logLevel, Marker marker) {
+        if (logLevel >= currentLogLevel) {
+            return true;
+        }
+        if (marker != null && marker.contains("TRACE")) {
+            EEProxy proxy;
+            if ((proxy = EEProxy.getProxy()) != null) {
+                return proxy.isTrace();
+            }
+        }
+        return false;
     }
 
     public static int setLogLevel(int logLevel) {
@@ -111,6 +144,17 @@ public class EELogger extends MarkerIgnoringBase {
         if (!isLevelEnabled(level)) {
             return;
         }
+        doLog(level, null, message, t);
+    }
+
+    private void log(int level, Marker marker, String message, Throwable t) {
+        if (!isLevelEnabled(level, marker)) {
+            return;
+        }
+        doLog(level, marker, message, t);
+    }
+
+    private void doLog(int level, Marker marker, String message, Throwable t) {
         StringBuilder strBuilder = new StringBuilder(String.valueOf(name));
         strBuilder.append(" ");
         if (t != null) {
@@ -126,7 +170,13 @@ public class EELogger extends MarkerIgnoringBase {
         EEProxy proxy;
         if ((proxy = EEProxy.getProxy()) != null) {
             try {
-                proxy.log(PROXY_LOG_MAP.getOrDefault(level, EEProxy.LOG_INFO), strBuilder.toString());
+                int flag = 0;
+                if (marker != null && marker.contains("TRACE")) {
+                    flag |= LOG_FLAG_GET_TRACE;
+                }
+                proxy.log(PROXY_LOG_MAP.getOrDefault(level, EEProxy.LOG_INFO),
+                        flag,
+                        strBuilder.toString());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -189,6 +239,36 @@ public class EELogger extends MarkerIgnoringBase {
     }
 
     @Override
+    public boolean isTraceEnabled(Marker marker) {
+        return isLevelEnabled(LOG_LEVEL_TRACE, marker);
+    }
+
+    @Override
+    public void trace(Marker marker, String msg) {
+        log(LOG_LEVEL_TRACE, marker, msg, null);
+    }
+
+    @Override
+    public void trace(Marker marker, String format, Object arg) {
+        formatAndLog(LOG_LEVEL_TRACE, marker, format, arg, null);
+    }
+
+    @Override
+    public void trace(Marker marker, String format, Object arg1, Object arg2) {
+        formatAndLog(LOG_LEVEL_TRACE, marker, format, arg1, arg2);
+    }
+
+    @Override
+    public void trace(Marker marker, String format, Object... arguments) {
+        formatAndLog(LOG_LEVEL_TRACE, marker, format, arguments);
+    }
+
+    @Override
+    public void trace(Marker marker, String msg, Throwable t) {
+        log(LOG_LEVEL_TRACE, marker, msg, t);
+    }
+
+    @Override
     public boolean isDebugEnabled() {
         return isLevelEnabled(LOG_LEVEL_DEBUG);
     }
@@ -216,6 +296,36 @@ public class EELogger extends MarkerIgnoringBase {
     @Override
     public void debug(String msg, Throwable t) {
         log(LOG_LEVEL_DEBUG, msg, t);
+    }
+
+    @Override
+    public boolean isDebugEnabled(Marker marker) {
+        return isLevelEnabled(LOG_LEVEL_DEBUG, marker);
+    }
+
+    @Override
+    public void debug(Marker marker, String msg) {
+        log(LOG_LEVEL_DEBUG, marker, msg, null);
+    }
+
+    @Override
+    public void debug(Marker marker, String format, Object arg) {
+        formatAndLog(LOG_LEVEL_DEBUG, marker, format, arg, null);
+    }
+
+    @Override
+    public void debug(Marker marker, String format, Object arg1, Object arg2) {
+        formatAndLog(LOG_LEVEL_DEBUG, marker, format, arg1, arg2);
+    }
+
+    @Override
+    public void debug(Marker marker, String format, Object... arguments) {
+        formatAndLog(LOG_LEVEL_DEBUG, marker, format, arguments);
+    }
+
+    @Override
+    public void debug(Marker marker, String msg, Throwable t) {
+        log(LOG_LEVEL_DEBUG, marker, msg, t);
     }
 
     @Override
@@ -249,6 +359,36 @@ public class EELogger extends MarkerIgnoringBase {
     }
 
     @Override
+    public boolean isInfoEnabled(Marker marker) {
+        return isLevelEnabled(LOG_LEVEL_INFO, marker);
+    }
+
+    @Override
+    public void info(Marker marker, String msg) {
+        log(LOG_LEVEL_INFO, marker, msg, null);
+    }
+
+    @Override
+    public void info(Marker marker, String format, Object arg) {
+        formatAndLog(LOG_LEVEL_INFO, marker, format, arg, null);
+    }
+
+    @Override
+    public void info(Marker marker, String format, Object arg1, Object arg2) {
+        formatAndLog(LOG_LEVEL_INFO, marker, format, arg1, arg2);
+    }
+
+    @Override
+    public void info(Marker marker, String format, Object... arguments) {
+        formatAndLog(LOG_LEVEL_INFO, marker, format, arguments);
+    }
+
+    @Override
+    public void info(Marker marker, String msg, Throwable t) {
+        log(LOG_LEVEL_INFO, marker, msg, t);
+    }
+
+    @Override
     public boolean isWarnEnabled() {
         return isLevelEnabled(LOG_LEVEL_WARN);
     }
@@ -279,6 +419,36 @@ public class EELogger extends MarkerIgnoringBase {
     }
 
     @Override
+    public boolean isWarnEnabled(Marker marker) {
+        return isLevelEnabled(LOG_LEVEL_WARN, marker);
+    }
+
+    @Override
+    public void warn(Marker marker, String msg) {
+        log(LOG_LEVEL_WARN, marker, msg, null);
+    }
+
+    @Override
+    public void warn(Marker marker, String format, Object arg) {
+        formatAndLog(LOG_LEVEL_WARN, marker, format, arg, null);
+    }
+
+    @Override
+    public void warn(Marker marker, String format, Object arg1, Object arg2) {
+        formatAndLog(LOG_LEVEL_WARN, marker, format, arg1, arg2);
+    }
+
+    @Override
+    public void warn(Marker marker, String format, Object... arguments) {
+        formatAndLog(LOG_LEVEL_WARN, marker, format, arguments);
+    }
+
+    @Override
+    public void warn(Marker marker, String msg, Throwable t) {
+        log(LOG_LEVEL_WARN, marker, msg, t);
+    }
+
+    @Override
     public boolean isErrorEnabled() {
         return isLevelEnabled(LOG_LEVEL_ERROR);
     }
@@ -306,5 +476,35 @@ public class EELogger extends MarkerIgnoringBase {
     @Override
     public void error(String msg, Throwable t) {
         log(LOG_LEVEL_ERROR, msg, t);
+    }
+
+    @Override
+    public boolean isErrorEnabled(Marker marker) {
+        return isLevelEnabled(LOG_LEVEL_ERROR, marker);
+    }
+
+    @Override
+    public void error(Marker marker, String msg) {
+        log(LOG_LEVEL_ERROR, marker, msg, null);
+    }
+
+    @Override
+    public void error(Marker marker, String format, Object arg) {
+        formatAndLog(LOG_LEVEL_ERROR, marker, format, arg, null);
+    }
+
+    @Override
+    public void error(Marker marker, String format, Object arg1, Object arg2) {
+        formatAndLog(LOG_LEVEL_ERROR, marker, format, arg1, arg2);
+    }
+
+    @Override
+    public void error(Marker marker, String format, Object... arguments) {
+        formatAndLog(LOG_LEVEL_ERROR, marker, format, arguments);
+    }
+
+    @Override
+    public void error(Marker marker, String msg, Throwable t) {
+        log(LOG_LEVEL_ERROR, marker, msg, t);
     }
 }

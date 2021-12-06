@@ -5,6 +5,7 @@ import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import foundation.icon.ee.util.LogMarker;
 import foundation.icon.ee.util.StringConsumerOutputStream;
 import i.AvmError;
 import i.AvmException;
@@ -117,7 +118,9 @@ public class DAppExecutor {
             logger.trace("DApp invocation failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
                 e.printStackTrace();
-                var os = new StringConsumerOutputStream(logger::trace);
+                var os = new StringConsumerOutputStream(s -> {
+                    logger.trace(LogMarker.Trace, s);
+                });
                 e.printStackTrace(new PrintStream(os));
             }
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();

@@ -5,7 +5,7 @@ RECV getAPI status=0 methods=[
     Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
     Method{type=0, name='method', flags=2, indexed=2, inputs=[Parameter{name='ttl', type=1, optional=false}, Parameter{name='ok', type=4, optional=false}, Parameter{name='addr', type=5, optional=true}], output=0}
 ]
-SEND invoke code=78a18f... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
+SEND invoke code=78a18f... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=4 hash=53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a graphLen=137 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02-foundation.icon.ee.IntercallRefTest$RefScoreA\x00\x00\x00\x03\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV result status=0 stepUsed=63889 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
@@ -15,25 +15,25 @@ RECV getAPI status=0 methods=[
     Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
     Method{type=0, name='method', flags=2, indexed=2, inputs=[Parameter{name='ttl', type=1, optional=false}, Parameter{name='ok', type=4, optional=false}, Parameter{name='addr', type=5, optional=true}], output=0}
 ]
-SEND invoke code=ddb579... isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[] CID=2 EID=1 codeState=<null>
+SEND invoke code=ddb579... flag=0 from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[] CID=2 EID=1 codeState=<null>
 RECV setObjGraph flag=1 next=4 hash=2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02-foundation.icon.ee.IntercallRefTest$RefScoreB\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV result status=0 stepUsed=63249 ret=<null>
-SEND invoke code=78a18f... isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[2 true 010002...] CID=1 EID=1 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 0]
+SEND invoke code=78a18f... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[2 true 010002...] CID=1 EID=1 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 0]
 RECV getObjGraph flag=1 => next=4 hash=53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a graphLen=137 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02-foundation.icon.ee.IntercallRefTest$RefScoreA\x00\x00\x00\x03\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(2 true cx0002000000000000000000000000000000000000)
 RECV call to=010002... value=0 stepLimit=999973856 method=method params=[1 false <null>]
-SEND invoke code=ddb579... isQuery=false from=010001... to=010002... value=0 stepLimit=999973856 method=method params=[1 false <null>] CID=2 EID=2 codeState=[4 2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 0]
+SEND invoke code=ddb579... flag=0 from=010001... to=010002... value=0 stepLimit=999973856 method=method params=[1 false <null>] CID=2 EID=2 codeState=[4 2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 0]
 RECV getObjGraph flag=1 => next=4 hash=2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02-foundation.icon.ee.IntercallRefTest$RefScoreB\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter B.method(1 false null)
 RECV call to=010001... value=0 stepLimit=999952254 method=method params=[0 false <null>]
-SEND invoke code=78a18f... isQuery=false from=010002... to=010001... value=0 stepLimit=999952254 method=method params=[0 false <null>] CID=1 EID=3 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 1]
+SEND invoke code=78a18f... flag=0 from=010002... to=010001... value=0 stepLimit=999952254 method=method params=[0 false <null>] CID=1 EID=3 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 1]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(0 false null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave A.method
 RECV result status=32 stepUsed=28823 ret=Reverted(0)
 SEND result status=32 stepUsed=28823 ret=Reverted(0) EID=4 prevEID=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception : score.UserRevertedException
 RECV call to=010001... value=0 stepLimit=999917568 method=method params=[0 true <null>]
-SEND invoke code=78a18f... isQuery=false from=010002... to=010001... value=0 stepLimit=999917568 method=method params=[0 true <null>] CID=1 EID=5 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 1]
+SEND invoke code=78a18f... flag=0 from=010002... to=010001... value=0 stepLimit=999917568 method=method params=[0 true <null>] CID=1 EID=5 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 1]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(0 true null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave A.method
 RECV result status=0 stepUsed=55733 ret=<null>
@@ -47,18 +47,18 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lClass1==lClass2 :
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass1 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass2 : true
 RECV call to=010002... value=0 stepLimit=999826808 method=method params=[1 true <null>]
-SEND invoke code=ddb579... isQuery=false from=010001... to=010002... value=0 stepLimit=999826808 method=method params=[1 true <null>] CID=2 EID=8 codeState=[4 2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 0]
+SEND invoke code=ddb579... flag=0 from=010001... to=010002... value=0 stepLimit=999826808 method=method params=[1 true <null>] CID=2 EID=8 codeState=[4 2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 0]
 RECV getObjGraph flag=1 => next=4 hash=2e6e39eeaee9e8f34684836ea74f9b5c064e92481d24b08ee7bc8340eabd3eb4 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02-foundation.icon.ee.IntercallRefTest$RefScoreB\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter B.method(1 true null)
 RECV call to=010001... value=0 stepLimit=999805216 method=method params=[0 false <null>]
-SEND invoke code=78a18f... isQuery=false from=010002... to=010001... value=0 stepLimit=999805216 method=method params=[0 false <null>] CID=1 EID=9 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 7]
+SEND invoke code=78a18f... flag=0 from=010002... to=010001... value=0 stepLimit=999805216 method=method params=[0 false <null>] CID=1 EID=9 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 7]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(0 false null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave A.method
 RECV result status=32 stepUsed=28823 ret=Reverted(0)
 SEND result status=32 stepUsed=28823 ret=Reverted(0) EID=10 prevEID=8
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception : score.UserRevertedException
 RECV call to=010001... value=0 stepLimit=999770530 method=method params=[0 true <null>]
-SEND invoke code=78a18f... isQuery=false from=010002... to=010001... value=0 stepLimit=999770530 method=method params=[0 true <null>] CID=1 EID=11 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 7]
+SEND invoke code=78a18f... flag=0 from=010002... to=010001... value=0 stepLimit=999770530 method=method params=[0 true <null>] CID=1 EID=11 codeState=[4 53768252b3503e8e84fd77a33bc9db97db7d57d9a9de56fcbc0fcd550fcb0a3a 7]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(0 true null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave A.method
 RECV result status=0 stepUsed=55733 ret=<null>

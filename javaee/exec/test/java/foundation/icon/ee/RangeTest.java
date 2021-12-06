@@ -163,7 +163,7 @@ public class RangeTest extends SimpleTest {
 
     static class MyInvokeHandler implements InvokeHandler {
         @Override
-        public Result invoke(ServiceManager sm, String code, boolean isReadOnly, Address from, Address to, BigInteger value, BigInteger stepLimit, String method, Object[] params, Map<String, Object> info, byte[] cid, int eid, Object[] codeState) throws IOException {
+        public Result invoke(ServiceManager sm, String code, int flag, Address from, Address to, BigInteger value, BigInteger stepLimit, String method, Object[] params, Map<String, Object> info, byte[] cid, int eid, Object[] codeState) throws IOException {
             if ("sumIH".equals(method)) {
                 BigInteger a = (BigInteger) params[0];
                 BigInteger b = (BigInteger) params[1];
@@ -173,7 +173,7 @@ public class RangeTest extends SimpleTest {
                 BigInteger b = (BigInteger) params[1];
                 return new Result(Status.Success, 10000000, a.subtract(b));
             }
-            return InvokeHandler.defaultHandler().invoke(sm, code, isReadOnly,
+            return InvokeHandler.defaultHandler().invoke(sm, code, flag,
                     from, to, value, stepLimit, method, params, info, cid, eid,
                     codeState);
         }

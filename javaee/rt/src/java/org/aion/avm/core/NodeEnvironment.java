@@ -20,7 +20,14 @@ import org.aion.avm.core.types.ClassInformationFactory;
 import org.aion.avm.core.util.MethodDescriptorCollector;
 import org.aion.avm.utilities.Utilities;
 import p.score.Address;
+import p.score.ArrayDB;
+import p.score.BranchDB;
+import p.score.ByteArrayObjectWriter;
 import p.score.Context;
+import p.score.DictDB;
+import p.score.ObjectReader;
+import p.score.ObjectWriter;
+import p.score.VarDB;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,8 +76,15 @@ public class NodeEnvironment {
         this.sharedClassLoader = new AvmSharedClassLoader(generatedShadowJDK);
         try {
             this.shadowApiClasses = new Class<?>[] {
-                Address.class,
-                Context.class,
+                    Address.class
+                    , ArrayDB.class
+                    , BranchDB.class
+                    , ByteArrayObjectWriter.class
+                    , Context.class
+                    , DictDB.class
+                    , ObjectReader.class
+                    , ObjectWriter.class
+                    , VarDB.class
             };
 
             Class<?>[] arrayWrapperClasses = new Class<?>[]{
@@ -194,7 +208,7 @@ public class NodeEnvironment {
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
-        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 98);
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 105);
 
         Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
         Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects

@@ -23,6 +23,7 @@ import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import i.RuntimeAssertionError;
+import org.aion.avm.core.IExternalState;
 import org.msgpack.core.MessageTypeCastException;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
@@ -51,6 +52,7 @@ public class EEProxy extends Proxy {
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
     private final ArrayList<IntConsumer> mPrevSizeCBs = new ArrayList<>();
+    private boolean isTrace = false;
 
     public static class MsgType {
         public static final int VERSION = 0;
@@ -218,11 +220,11 @@ public class EEProxy extends Proxy {
                 flags ? objectGraph.getGraphData() : null);
     }
 
-    public void log(int level, String msg) throws IOException {
-        sendMessage(MsgType.LOG, level, msg);
+    public void log(int level, int flag, String msg) throws IOException {
+        sendMessage(MsgType.LOG, level, flag, msg);
     }
 
-    public void log(byte[][]indexed, byte[][] data) throws IOException {
+    public void event(byte[][]indexed, byte[][] data) throws IOException {
         logger.trace("[LOGEVENT] {}, {}", indexed, data);
         sendMessage(MsgType.EVENT, indexed, data);
     }
@@ -258,7 +260,7 @@ public class EEProxy extends Proxy {
     }
 
     public interface OnInvokeListener {
-        InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
+        InvokeResult onInvoke(String code, int option, Address from, Address to,
                               BigInteger value, BigInteger limit,
                               String method, Object[] params,
                               Map<String, Object> info,
@@ -285,7 +287,7 @@ public class EEProxy extends Proxy {
         try {
             ArrayValue data = raw.asArrayValue();
             String code = data.get(0).asStringValue().asString();
-            boolean isQuery = data.get(1).asBooleanValue().getBoolean();
+            int option = data.get(1).asIntegerValue().asInt();
             Address from = getValueAsAddress(data.get(2));
             Address to = getValueAsAddress(data.get(3));
             BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
@@ -308,10 +310,13 @@ public class EEProxy extends Proxy {
             }
 
             if (mOnInvokeListener != null) {
+                boolean oldIsTrace = isTrace;
+                isTrace = (option & IExternalState.OPTION_TRACE) != 0;
                 InvokeResult result = mOnInvokeListener.onInvoke(
-                        code, isQuery, from, to, value, limit, method, params,
+                        code, option, from, to, value, limit, method, params,
                         info, contractID, eid, nextHash, graphHash, prevEID);
                 sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
+                isTrace = oldIsTrace;
             } else {
                 throw new IOException("no invoke handler");
             }
@@ -356,5 +361,9 @@ public class EEProxy extends Proxy {
             logger.warn(errMsg, e);
             throw new IOException("no invoke handler");
         }
+    }
+
+    public boolean isTrace() {
+        return isTrace;
     }
 }

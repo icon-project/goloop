@@ -152,7 +152,7 @@ public interface IExternalState {
     /**
      * Emits events log
      */
-    void log(byte[][] indexed, byte[][]data);
+    void event(byte[][] indexed, byte[][]data);
 
     /**
      * Returns the current fee sharing proportion of the SCORE.

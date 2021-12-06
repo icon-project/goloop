@@ -110,12 +110,12 @@ public class Contract {
 
     public Result invoke(
             ServiceManager sm,
-            String code, boolean isReadOnly,
+            String code, int flag,
             Address from, Address to, BigInteger value,
             BigInteger stepLimit, String method, Object[] params,
             Map<String, Object> info, byte[] cid, int eid,
             Object[] codeState) throws IOException {
-        return invokeHandler.invoke(sm, code, isReadOnly,
+        return invokeHandler.invoke(sm, code, flag,
                 from, to, value, stepLimit, method, params, info,
                 cid, eid, codeState);
     }
