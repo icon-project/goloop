@@ -46,6 +46,7 @@ type Config struct {
 	AutoStart        bool   `json:"auto_start,omitempty"`
 	ChildrenLimit    *int   `json:"children_limit,omitempty"`
 	NephewsLimit     *int   `json:"nephews_limit,omitempty"`
+	ValidateTxOnSend bool   `json:"validate_tx_on_send,omitempty"`
 
 	// runtime
 	Channel        string `json:"channel"`

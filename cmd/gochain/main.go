@@ -131,6 +131,7 @@ func main() {
 	flag.IntVar(&cfg.PatchTxPoolSize, "patch_tx_pool", 0, "Patch transaction pool size")
 	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of transactions in a block")
 	flag.StringVar(&cfg.NodeCache, "node_cache", chain.NodeCacheDefault, "Node cache (none,small,large)")
+	flag.BoolVar(&cfg.ValidateTxOnSend, "validate_tx_on_send", false, "Validate transaction on send")
 	cfg.ChildrenLimit = flag.Int("children_limit", -1, "Maximum number of child connections (-1: uses system default value)")
 	cfg.NephewsLimit = flag.Int("nephews_limit", -1, "Maximum number of nephew connections (-1: uses system default value)")
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
@@ -327,6 +328,14 @@ func Execute(cmd *cobra.Command, args []string) {
 		cfg.LogWriter = &lwCfg
 	} else {
 		cfg.LogWriter = nil
+	}
+
+	if *cfg.ChildrenLimit < 0 {
+		cfg.ChildrenLimit = nil
+	}
+
+	if *cfg.NephewsLimit < 0 {
+		cfg.NephewsLimit = nil
 	}
 
 	if saveFile != "" {

@@ -144,6 +144,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 				nephewsLimit, _ := fs.GetInt("nephews_limit")
 				param.NephewsLimit = &nephewsLimit
 			}
+			param.ValidateTxOnSend, _ = fs.GetBool("validate_tx_on_send")
 
 			var buf *bytes.Buffer
 			if len(genesisZip) > 0 {
@@ -182,7 +183,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.String("genesis_template", "", "Genesis template directory or file")
 	joinFlags.String("seed", "", "List of trust-seed ip-port, Comma separated string")
 	joinFlags.Uint("role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
-	joinFlags.String("db_type", "goleveldb", "Name of database system("+strings.Join(db.RegisteredBackendTypes(),", ")+")")
+	joinFlags.String("db_type", "goleveldb", "Name of database system("+strings.Join(db.RegisteredBackendTypes(), ", ")+")")
 	joinFlags.String("platform", "", "Name of service platform")
 	joinFlags.Int("concurrency", 1, "Maximum number of executors to be used for concurrency")
 	joinFlags.Int("normal_tx_pool", 0, "Size of normal transaction pool")
@@ -200,6 +201,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.Bool("auto_start", false, "Auto start")
 	joinFlags.Int("children_limit", -1, "Maximum number of child connections (-1: uses system default value)")
 	joinFlags.Int("nephews_limit", -1, "Maximum number of nephew connections (-1: uses system default value)")
+	joinFlags.Bool("validate_tx_on_send", false, "Validate transaction on send")
 
 	leaveCmd := &cobra.Command{
 		Use:   "leave CID",
@@ -407,9 +409,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 				}
 			} else {
 				param := &node.ConfigureParam{
-					Key:   args[1],
+					Key: args[1],
 				}
-				if len(args) == 2  {
+				if len(args) == 2 {
 					fs := cmd.Flags()
 					param.Value, _ = fs.GetString("value")
 					if len(param.Value) == 0 {
@@ -431,7 +433,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	}
 	rootCmd.AddCommand(configCmd)
 	configFlags := configCmd.Flags()
-	configFlags.String("value", "", "use if value starts with '-'.\n" +
+	configFlags.String("value", "", "use if value starts with '-'.\n"+
 		"(if the third arg is used, this flag will be ignored)")
 
 	rootCmd.Use = "chain TASK CID PARAM"

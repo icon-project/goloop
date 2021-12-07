@@ -574,6 +574,10 @@ components:
           type: integer
           default: -1
           description: "Maximum number of nephew connections(-1: uses system default value)"
+        validateTxOnSend:
+          type: boolean
+          default: false
+          description: "Validate transaction on send(false: no validation)"
       example:
         dbType: "goleveldb"
         seedAddress: "localhost:8080"

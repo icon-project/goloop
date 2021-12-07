@@ -412,7 +412,20 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 
 	sm := chain.ServiceManager()
 
-	hash, err := sm.SendTransaction(params.RawMessage())
+	var state []byte
+	if chain.ValidateTxOnSend() {
+		bm := chain.BlockManager()
+		if bm == nil {
+			return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+		}
+		block, err := bm.GetLastBlock()
+		if err != nil {
+			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+		}
+		state = block.Result()
+	}
+
+	hash, err := sm.SendTransaction(state, params.RawMessage())
 	if err != nil {
 		if service.TransactionPoolOverflowError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)
@@ -694,7 +707,16 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	hash, fc, err := bm.SendTransactionAndWait(params.RawMessage())
+	var state []byte
+	if chain.ValidateTxOnSend() {
+		block, err := bm.GetLastBlock()
+		if err != nil {
+			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+		}
+		state = block.Result()
+	}
+
+	hash, fc, err := bm.SendTransactionAndWait(state, params.RawMessage())
 	if err != nil {
 		if service.TransactionPoolOverflowError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)

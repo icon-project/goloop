@@ -214,7 +214,7 @@ func (t *Node) ImportFinalizeBlockByReader(r io.Reader) {
 func (t *Node) ProposeFinalizeBlockWithTX(
 	votes module.CommitVoteSet, txJson string,
 ) {
-	tid, err := t.SM.SendTransaction(txJson)
+	tid, err := t.SM.SendTransaction(nil, txJson)
 	assert.NoError(t, err)
 	bc := t.ProposeBlock(votes)
 	t.FinalizeBlock(bc)
@@ -227,7 +227,7 @@ func (t *Node) ProposeFinalizeBlockWithTX(
 func (t *Node) ProposeImportFinalizeBlockWithTX(
 	votes module.CommitVoteSet, txJson string,
 ) {
-	tid, err := t.SM.SendTransaction(txJson)
+	tid, err := t.SM.SendTransaction(nil, txJson)
 	assert.NoError(t, err)
 	bc := t.ProposeBlock(votes)
 	t.ImportBlock(bc, 0)
@@ -256,7 +256,7 @@ func (t *Node) Address() module.Address {
 func NodeInterconnect(nodes []*Node) {
 	l := len(nodes)
 	for i := 0; i < l; i++ {
-		for j := i+1; j < l; j++ {
+		for j := i + 1; j < l; j++ {
 			nodes[i].NM.Connect(nodes[j].NM)
 		}
 	}

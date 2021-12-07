@@ -32,9 +32,9 @@ import (
 type ServiceManager struct {
 	module.ServiceManager
 	dbase            db.Database
-	logger log.Logger
-	plt    base.Platform
-	cm     contract.ContractManager
+	logger           log.Logger
+	plt              base.Platform
+	cm               contract.ContractManager
 	em               eeproxy.Manager
 	chain            module.Chain
 	tsc              *service.TxTimestampChecker
@@ -207,7 +207,7 @@ func (sm *ServiceManager) ReceiptListFromResult(result []byte, g module.Transact
 	panic("implement me")
 }
 
-func (sm *ServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
+func (sm *ServiceManager) SendTransaction(result []byte, tx interface{}) ([]byte, error) {
 	t, err := transaction.NewTransactionFromJSON(([]byte)(tx.(string)))
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func (sm *ServiceManager) TransactionListFromSlice(txs []module.Transaction, ver
 	}
 }
 
-func (sm *ServiceManager) SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error) {
+func (sm *ServiceManager) SendTransactionAndWait(result []byte, tx interface{}) ([]byte, <-chan interface{}, error) {
 	panic("implement me")
 }
 

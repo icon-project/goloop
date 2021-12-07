@@ -41,8 +41,8 @@ type manager struct {
 	patchMetric  *metric.TxMetric
 	normalMetric *metric.TxMetric
 
-	plt base.Platform
-	db  db.Database
+	plt       base.Platform
+	db        db.Database
 	chain     module.Chain
 	txReactor *TransactionReactor
 	cm        contract.ContractManager
@@ -390,10 +390,18 @@ func newTransaction(txi interface{}) (transaction.Transaction, error) {
 	}
 }
 
-func (m *manager) SendTransactionAndWait(txi interface{}) ([]byte, <-chan interface{}, error) {
+func (m *manager) SendTransactionAndWait(result []byte, txi interface{}) ([]byte, <-chan interface{}, error) {
 	newTx, err := newTransaction(txi)
 	if err != nil {
 		return nil, nil, err
+	}
+	if err := m.tm.VerifyTx(newTx); err != nil {
+		return nil, nil, err
+	}
+	if m.chain.ValidateTxOnSend() {
+		if err := m.preValidateTx(result, newTx); err != nil {
+			return nil, nil, err
+		}
 	}
 	chn, err := m.tm.AddAndWait(newTx)
 	if err == nil {
@@ -413,13 +421,28 @@ func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
 	return m.tm.WaitResult(id)
 }
 
-func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
+func (m *manager) preValidateTx(result []byte, tx transaction.Transaction) error {
+	wc, err := m.trc.GetWorldContext(result, nil)
+	if err != nil {
+		return err
+	}
+	return tx.PreValidate(wc, false)
+}
+
+func (m *manager) SendTransaction(result []byte, txi interface{}) ([]byte, error) {
 	newTx, err := newTransaction(txi)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := m.tm.Add(newTx, true); err != nil {
+	if err := m.tm.VerifyTx(newTx); err != nil {
+		return nil, err
+	}
+	if m.chain.ValidateTxOnSend() {
+		if err := m.preValidateTx(result, newTx); err != nil {
+			return nil, err
+		}
+	}
+	if err := m.tm.Add(newTx, true, true); err != nil {
 		return nil, err
 	}
 

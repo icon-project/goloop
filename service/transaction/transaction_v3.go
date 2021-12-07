@@ -241,7 +241,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 		}
 		minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 		if tx.StepLimit.Cmp(minStep) < 0 {
-			return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)", tx.StepLimit, minStep)
+			return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)", &tx.StepLimit.Int, minStep)
 		}
 	}
 

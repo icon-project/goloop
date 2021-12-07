@@ -18,6 +18,7 @@ type trCacheItem struct {
 	database          *databaseAdaptor
 	transactionResult *transitionResult
 	worldSnapshot     state.WorldSnapshot
+	worldContext      state.WorldContext
 	normalReceipts    module.ReceiptList
 	patchReceipts     module.ReceiptList
 }
@@ -124,6 +125,10 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	return c.getWorldSnapshotInLock(result, vh)
+}
+
+func (c *transitionResultCache) getWorldSnapshotInLock(result []byte, vh []byte) (state.WorldSnapshot, error) {
 	item, err := c.getItemInLock(result)
 	if err != nil {
 		return nil, err
@@ -148,6 +153,25 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	}
 
 	return item.worldSnapshot, nil
+}
+
+func (c *transitionResultCache) GetWorldContext(result []byte, vh []byte) (state.WorldContext, error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	item, err := c.getItemInLock(result)
+	if err != nil {
+		return nil, err
+	}
+	if item.worldContext == nil {
+		wss, err := c.getWorldSnapshotInLock(result, nil)
+		if err != nil {
+			return nil, err
+		}
+		ws := state.NewReadOnlyWorldState(wss)
+		item.worldContext = state.NewWorldContext(ws, nil, nil, c.platform)
+	}
+	return item.worldContext, nil
 }
 
 func (c *transitionResultCache) Count() int {
