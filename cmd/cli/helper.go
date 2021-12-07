@@ -57,7 +57,7 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 	}
 	if parentVc != nil {
 		vc.Set("_parentvc_", parentVc)
-		parentVc.Set("_childvc_"+use, vc)
+		parentVc.Set("_childvc_"+c.Name(), vc)
 	} else {
 		viper.Set("_globalvc_"+c.CommandPath(), vc)
 	}
@@ -67,7 +67,7 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 
 func getViper(cmd *cobra.Command, parentVc *viper.Viper) *viper.Viper {
 	if parentVc != nil {
-		if vc, ok := parentVc.Get("_childvc_" + cmd.Use).(*viper.Viper); ok {
+		if vc, ok := parentVc.Get("_childvc_" + cmd.Name()).(*viper.Viper); ok {
 			return vc
 		}
 	}
