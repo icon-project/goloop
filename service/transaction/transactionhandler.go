@@ -173,7 +173,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	fid := cc.FrameID()
 	th.cc = cc
 	logger := trace.LoggerOf(cc.Logger())
-	logger.TSystemf("FRAME[%d] TRANSACTION start from=%s to=%s id=%#x", fid, th.to, th.from, th.cc.TransactionID())
+	logger.TSystemf("FRAME[%d] TRANSACTION start from=%s to=%s id=%#x", fid, th.from, th.to, th.cc.TransactionID())
 
 	status, addr, err := th.DoExecute(cc, estimate, isPatch)
 	if err != nil {
