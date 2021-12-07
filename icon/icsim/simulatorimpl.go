@@ -127,7 +127,10 @@ func (sim *simulatorImpl) initRevHandler() {
 		icmodule.Revision5: sim.handleRev5,
 		icmodule.Revision6: sim.handleRev6,
 		icmodule.Revision9: sim.handleRev9,
+		icmodule.Revision10: sim.handleRev10,
 		icmodule.Revision14: sim.handleRev14,
+		icmodule.Revision15: sim.handleRev15,
+		icmodule.Revision16: sim.handleRev16,
 	}
 }
 

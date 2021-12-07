@@ -68,27 +68,25 @@ const (
 	RevisionBurnV2 = Revision12
 
 	RevisionICON2R0              = Revision13
-	RevisionFixClaimIScore       = RevisionICON2R0
-	RevisionFixSetDelegation     = RevisionICON2R0
-	RevisionFixRLPBug            = RevisionICON2R0
-	RevisionResetPenaltyMask     = RevisionICON2R0
-	RevisionEnableBondAPIs       = RevisionICON2R0
-	RevisionFixIllegalDelegation = RevisionICON2R0
-	RevisionStopICON1Support     = RevisionICON2R0
+	RevisionFixClaimIScore       = Revision13
+	RevisionFixSetDelegation     = Revision13
+	RevisionFixRLPBug            = Revision13
+	RevisionResetPenaltyMask     = Revision13
+	RevisionEnableBondAPIs       = Revision13
+	RevisionFixIllegalDelegation = Revision13
+	RevisionStopICON1Support     = Revision13
 
 	RevisionICON2R1       = Revision14
-	RevisionEnableIISS3   = RevisionICON2R1
-	RevisionEnableFee3    = RevisionICON2R1
-	RevisionBlockAccounts = RevisionICON2R1
+	RevisionEnableIISS3   = Revision14
+	RevisionEnableFee3    = Revision14
+	RevisionBlockAccounts = Revision14
 
 	RevisionICON2R2      = Revision15
-	RevisionEnableJavaEE = RevisionICON2R2
+	RevisionEnableJavaEE = Revision15
 
 	RevisionICON2R3             = Revision16
-	RevisionEnableSetScoreOwner = RevisionICON2R3
-
-	// TODO: Fix a revision for enabling extra main preps
-	RevisionExtraMainPReps = 100
+	RevisionEnableSetScoreOwner = Revision16
+	RevisionExtraMainPReps      = Revision16
 )
 
 var revisionFlags = []module.Revision{

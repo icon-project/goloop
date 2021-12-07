@@ -3,6 +3,7 @@ package icsim
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -16,7 +17,7 @@ func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, r1, r2 int) 
 		return nil
 	}
 	for rev := r1 + 1; rev <= r2; rev++ {
-		if handler, ok  := sim.revHandlers[rev]; ok {
+		if handler, ok := sim.revHandlers[rev]; ok {
 			if err := handler(ws, r1, rev); err != nil {
 				return err
 			}
@@ -154,6 +155,10 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
+func (sim *simulatorImpl) handleRev10(ws state.WorldState, r1, r2 int) error {
+	return nil
+}
+
 func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 	as := ws.GetAccountState(state.SystemID)
@@ -176,6 +181,31 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	}
 	if err := es.ClearPRepIllegalDelegated(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
+	as := ws.GetAccountState(state.SystemID)
+
+	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(icon.EETypesJavaAndPython); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (sim *simulatorImpl) handleRev16(ws state.WorldState, r1, r2 int) error {
+	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	mainPRepCount := es.State.GetMainPRepCount()
+	subPRepCount := es.State.GetSubPRepCount()
+	extraMainPRepCount := es.State.GetExtraMainPRepCount()
+	if extraMainPRepCount > 0 {
+		if err := es.State.SetMainPRepCount(mainPRepCount + extraMainPRepCount); err != nil {
+			return err
+		}
+		if err := es.State.SetSubPRepCount(subPRepCount - extraMainPRepCount); err != nil {
+			return err
+		}
 	}
 	return nil
 }
