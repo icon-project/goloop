@@ -87,10 +87,9 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 	size := 200
 	br := int64(5)
-	mainPRepCount := 25
+	mainPRepCount := 22
+	subPRepCount := 78
 	extraMainPRepCount := 3
-	pureMainPRepCount := mainPRepCount - extraMainPRepCount
-	subPRepCount := 75
 
 	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
@@ -101,7 +100,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 	}
 
 	prepSet := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
+		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
 	assert.Equal(t, size, prepSet.Size())
 
@@ -109,7 +108,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 		return lessByPower(preps[i], preps[j], br)
 	})
 
-	extraMainPRepIdxRange := []int{mainPRepCount - extraMainPRepCount, mainPRepCount}
+	extraMainPRepIdxRange := []int{mainPRepCount, mainPRepCount + extraMainPRepCount}
 	prevPRep := prepSet.GetPRepByIndex(0)
 	for i := 1; i < size; i++ {
 		if i >= extraMainPRepIdxRange[0] && i < extraMainPRepIdxRange[1] {
@@ -121,27 +120,27 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 		prevPRep = prep
 	}
 
-	restPReps := make([]*PRep, extraMainPRepCount+subPRepCount)
+	restPReps := make([]*PRep, subPRepCount)
 	for i := 0; i < len(restPReps); i++ {
-		restPReps[i] = prepSet.GetPRepByIndex(pureMainPRepCount + i)
+		restPReps[i] = prepSet.GetPRepByIndex(mainPRepCount + i)
 	}
 	sort.Slice(restPReps, func(i, j int) bool {
 		return lessByLRU(restPReps[i], restPReps[j], br)
 	})
 
 	for i := 0; i < extraMainPRepCount; i++ {
-		assert.True(t, restPReps[i] == prepSet.GetPRepByIndex(i+pureMainPRepCount))
+		assert.True(t, restPReps[i] == prepSet.GetPRepByIndex(i+mainPRepCount))
 	}
 }
 
-// In the case when the number of extra main preps is 0,
+// In case of 0 ExtraMainPRepCount,
 // Check if both of two NewPReps functions return the same results
 func TestPRepSet_NewPReps(t *testing.T) {
 	size := 200
 	br := int64(5)
 	mainPRepCount := 25
-	extraMainPRepCount := 0
 	subPRepCount := 75
+	extraMainPRepCount := 0
 
 	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
@@ -153,7 +152,7 @@ func TestPRepSet_NewPReps(t *testing.T) {
 
 	prepSet0 := NewPRepsOrderedByPower(preps, br)
 	prepSet1 := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
+		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
 
 	sort.Slice(preps, func(i, j int) bool {
@@ -164,6 +163,41 @@ func TestPRepSet_NewPReps(t *testing.T) {
 	assert.Equal(t, len(preps), prepSet1.Size())
 
 	for i, prep := range preps {
+		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
+		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
+	}
+}
+
+func TestPRepSet_NewPReps2_withNoExtraPReps(t *testing.T) {
+	size := 23
+	br := int64(5)
+	mainPRepCount := 22
+	subPRepCount := 78
+	extraMainPRepCount := 3
+
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		prep := newDummyPRep(i)
+		prep.lastHeight = rand.Int63n(10000)
+		prep.lastState = getRandomVoteState()
+		preps[i] = prep
+	}
+
+	prepSet0 := NewPRepsOrderedByPower(preps, br)
+	prepSet1 := NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
+	)
+
+	// preps is sorted in descending order by power
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByPower(preps[i], preps[j], br)
+	})
+
+	assert.Equal(t, len(preps), prepSet0.Size())
+	assert.Equal(t, len(preps), prepSet1.Size())
+
+	for i := 0; i < mainPRepCount; i++ {
+		prep := preps[i]
 		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
 		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
 	}

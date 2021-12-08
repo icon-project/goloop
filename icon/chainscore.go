@@ -681,6 +681,7 @@ type config struct {
 	TermPeriod                            *common.HexInt `json:"termPeriod"`
 	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
 	SubPRepCount                          *common.HexInt `json:"subPRepCount"`
+	ExtraMainPRepCount                    *common.HexInt `json:"extraMainPRepCount"`
 	Irep                                  *common.HexInt `json:"irep,omitempty"`
 	Rrep                                  *common.HexInt `json:"rrep,omitempty"`
 	BondRequirement                       *common.HexInt `json:"bondRequirement,omitempty"`
@@ -700,12 +701,13 @@ type config struct {
 
 func (c *config) String() string {
 	return fmt.Sprintf(
-		"termPeriod=%s mainPReps=%s subPReps=%s "+
+		"termPeriod=%s mainPReps=%s subPReps=%s extraMainPReps=%s "+
 			"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
 			"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s nvsRatio=%s %s",
 		c.TermPeriod,
 		c.MainPRepCount,
 		c.SubPRepCount,
+		c.ExtraMainPRepCount,
 		c.Irep,
 		c.Rrep,
 		c.BondRequirement,
@@ -727,12 +729,13 @@ func (c *config) Format(f fmt.State, r rune) {
 		if f.Flag('+') {
 			fmt.Fprintf(
 				f,
-				"Config{termPeriod=%s mainPReps=%s subPReps=%s "+
+				"Config{termPeriod=%s mainPReps=%s subPReps=%s extraMainPReps=%s "+
 					"irep=%s rrep=%s br=%s upMultiplier=%s unstakeSlotMax=%s unboudingMax=%s "+
 					"vpCond=%s cvpCond=%s cvpMask=%s cvpsRatio=%s nvsRatio=%s %v}",
 				c.TermPeriod,
 				c.MainPRepCount,
 				c.SubPRepCount,
+				c.ExtraMainPRepCount,
 				c.Irep,
 				c.Rrep,
 				c.BondRequirement,
@@ -840,6 +843,7 @@ func newIconConfig() *config {
 		TermPeriod:                            common.NewHexInt(icmodule.DefaultTermPeriod),
 		MainPRepCount:                         common.NewHexInt(icmodule.DefaultMainPRepCount),
 		SubPRepCount:                          common.NewHexInt(icmodule.DefaultSubPRepCount),
+		ExtraMainPRepCount:                    common.NewHexInt(icmodule.DefaultExtraMainPRepCount),
 		Irep:                                  common.NewHexInt(icmodule.DefaultIRep),
 		Rrep:                                  common.NewHexInt(icmodule.DefaultRRep),
 		BondRequirement:                       common.NewHexInt(icmodule.DefaultBondRequirement),

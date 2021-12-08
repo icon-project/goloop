@@ -600,13 +600,12 @@ func (s *State) GetPRepsOnTermEnd(rev int) (PRepSet, error) {
 }
 
 func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
-	preps := s.GetActivePReps()
-	mainPRepCount := int(s.GetMainPRepCount())
-	extraMainPRepCount := int(s.GetExtraMainPRepCount())
-	subPRepCount := int(s.GetSubPRepCount())
-	br := s.GetBondRequirement()
 	return NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, extraMainPRepCount, mainPRepCount+subPRepCount, br,
+		s.GetActivePReps(),
+		int(s.GetMainPRepCount()),
+		int(s.GetSubPRepCount()),
+		int(s.GetExtraMainPRepCount()),
+		s.GetBondRequirement(),
 	), nil
 }
 

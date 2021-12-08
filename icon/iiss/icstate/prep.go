@@ -250,42 +250,51 @@ type prepsIncludingExtraMainPRep struct {
 }
 
 func (p *prepsIncludingExtraMainPRep) sort(
-	mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) {
+	mainPRepCount, subPRepCount, extraMainPRepCount int, br int64) {
 	p.sortByPower(br)
-	p.sortForExtraMainPRep(mainPRepCount, extraMainPRepCount, electedPRepCount, br)
+	p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 }
 
 func (p *prepsIncludingExtraMainPRep) sortForExtraMainPRep(
-	mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) {
-
-	// No need to consider extra main preps
-	pureMainPRepCount := mainPRepCount - extraMainPRepCount
+	mainPRepCount, subPRepCount, extraMainPRepCount int, br int64) {
+	// All counts are configuration values; Default: 22, 78, 3
 	size := len(p.orderedPReps)
-	if size <= pureMainPRepCount || extraMainPRepCount == 0 {
+	if size <= mainPRepCount || extraMainPRepCount == 0 {
+		// Not enough number of active preps to be extra main preps
 		return
 	}
 
-	// Copy the rest of preps excluding pure main preps to dubRestPReps slice
-	restPReps := p.orderedPReps[pureMainPRepCount:electedPRepCount]
-	dubRestPReps := make([]*PRep, len(restPReps))
-	copy(dubRestPReps, restPReps)
+	electedPRepCount := mainPRepCount + subPRepCount
+	if electedPRepCount > size {
+		electedPRepCount = size
+	}
 
-	// Sort restPReps by LRU logic
-	sortByLRU(restPReps, br)
+	subPRepCount = size - mainPRepCount
+	if subPRepCount < extraMainPRepCount {
+		extraMainPRepCount = subPRepCount
+	}
+
+	// Copy sub preps from orderedPReps to subPReps
+	subPReps := p.orderedPReps[mainPRepCount:electedPRepCount]
+	dupSubPReps := make([]*PRep, len(subPReps))
+	copy(dupSubPReps, subPReps)
+
+	// Sort subPReps by LRU logic
+	sortByLRU(subPReps, br)
 
 	// Add extra main preps to map
 	extraMainPReps := make(map[string]*PRep)
 	for i := 0; i < extraMainPRepCount; i++ {
-		prep := restPReps[i]
+		prep := subPReps[i]
 		extraMainPReps[icutils.ToKey(prep.Owner())] = prep
 	}
 
-	// Append sub preps
+	// Append remaining sub preps excluding extra main preps
 	i := extraMainPRepCount
-	for _, prep := range dubRestPReps {
-		// If prep is not a extra main prep
+	for _, prep := range dupSubPReps {
+		// If prep is not an extra main prep
 		if _, ok := extraMainPReps[icutils.ToKey(prep.Owner())]; !ok {
-			restPReps[i] = prep
+			subPReps[i] = prep
 			i++
 		}
 	}
@@ -324,8 +333,10 @@ func lessByLRU(p0, p1 *PRep, br int64) bool {
 	return cmp > 0
 }
 
+// mainPRepCount does not include extraMainPRepCount
+// Example: mainPRepCount: 22, subPRepCount: 78, extraMainPRepCount: 3
 func NewPRepsIncludingExtraMainPRep(
-	prepList []*PRep, mainPRepCount, extraMainPRepCount, electedPRepCount int, br int64) PRepSet {
+	prepList []*PRep, mainPRepCount, subPRepCount, extraMainPRepCount int, br int64) PRepSet {
 	preps := &prepsIncludingExtraMainPRep{
 		prepsBase: prepsBase{
 			totalDelegated: new(big.Int),
@@ -336,6 +347,6 @@ func NewPRepsIncludingExtraMainPRep(
 	for _, prep := range prepList {
 		preps.appendPRep(prep)
 	}
-	preps.sort(mainPRepCount, extraMainPRepCount, electedPRepCount, br)
+	preps.sort(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	return preps
 }
