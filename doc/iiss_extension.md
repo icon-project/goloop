@@ -354,12 +354,12 @@ Returns the bond status of a given address
     "unbonds": [
       {
         "address": "hx1d6463e4628ee52a7f751e9d500a79222a7f3935",
-        "unbonding": "0x3782dace9d90000",
+        "value": "0x3782dace9d90000",
         "expireBlockHeight": "0xa"
       },
       {
         "address": "hxb6bc0bf95d90cb3cd5b3abafd9682a62f36cc826",
-        "unbonding": "0x6f05b59d3b20000",
+        "value": "0x6f05b59d3b20000",
         "expireBlockHeight": "0xa"
       }
     ]
