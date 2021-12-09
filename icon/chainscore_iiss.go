@@ -339,7 +339,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
-	bonds, err := icstate.NewBonds(bondList)
+	bonds, err := icstate.NewBonds(bondList, s.cc.Revision().Value())
 	if err != nil {
 		return err
 	}
