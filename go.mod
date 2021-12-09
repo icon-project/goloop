@@ -2,11 +2,8 @@ module github.com/icon-project/goloop
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
-	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
-	github.com/dgraph-io/badger v1.5.4
-	github.com/dgryski/go-farm v0.0.0-20190416075124-e1214b5e05dc // indirect
 	github.com/evalphobia/logrus_fluent v0.5.4
 	github.com/fluent/fluent-logger-golang v1.4.0 // indirect
 	github.com/go-errors/errors v1.0.1
@@ -32,7 +29,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.11
-	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.22.3
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/tools v0.0.0-20190312170243-e65039ee4138

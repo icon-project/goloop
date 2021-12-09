@@ -19,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/network"
@@ -115,7 +116,7 @@ func main() {
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisStorage, "genesis_storage", "", "Genesis storage path")
 	flag.StringVar(&genesisPath, "genesis", "", "Genesis template directory or file")
-	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system (badgerdb, goleveldb, boltdb, mapdb)")
+	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", fmt.Sprintf("Name of database system (%s)", strings.Join(db.GetSupportedTypes(), ", ")))
 	flag.StringVar(&cfg.Platform, "platform", "", "Name of service platform (default: \"\")")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVarP(&eeSocket, "ee_socket", "s", "", "Execution engine socket path (default: .chain/<address>/ee.sock)")

@@ -18,8 +18,8 @@ func (*nullBucket) Get(key []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (*nullBucket) Has(key []byte) bool {
-	return false
+func (*nullBucket) Has(key []byte) (bool, error) {
+	return false, nil
 }
 
 func (*nullBucket) Set(key []byte, value []byte) error {

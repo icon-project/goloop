@@ -78,7 +78,7 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use: os.Args[0] + " <height>",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args)!=1 {
+			if len(args) != 1 {
 				return errors.New("requires one height argument")
 			}
 			_, err := strconv.ParseInt(args[0], 0, 64)
@@ -99,7 +99,8 @@ func main() {
 	flag := rootCmd.PersistentFlags()
 	flag.StringVar(&dbPath, "db_path", "", "DB path. For example, .chain/hxd81df51476cee82617f6fa658ebecc31d24ddce3/bfdc51/db/bfdc51/)")
 	flag.StringVar(&walPath, "wal_path", "", "WAL path. For example, .chain/hxd81df51476cee82617f6fa658ebecc31d24ddce3/bfdc51/wal/)")
-	flag.StringVar(&dbType, "db_type", "goleveldb", "Name of database system (badgerdb, goleveldb, boltdb, mapdb)")
+	flag.StringVar(&dbType, "db_type", "goleveldb",
+		fmt.Sprintf("Name of database system (%s)", strings.Join(db.GetSupportedTypes(), ", ")))
 	err := rootCmd.Execute()
 	if err != nil {
 		er(err)

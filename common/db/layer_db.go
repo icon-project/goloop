@@ -24,13 +24,13 @@ func (bk *layerBucket) Get(key []byte) ([]byte, error) {
 	return bk.real.Get(key)
 }
 
-func (bk *layerBucket) Has(key []byte) bool {
+func (bk *layerBucket) Has(key []byte) (bool, error) {
 	bk.lock.Lock()
 	defer bk.lock.Unlock()
 
 	if bk.data != nil {
 		if value, ok := bk.data[string(key)]; ok {
-			return value != nil
+			return len(value) > 0, nil
 		}
 	}
 	return bk.real.Has(key)

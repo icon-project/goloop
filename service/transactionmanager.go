@@ -177,7 +177,9 @@ func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
 		return rc, nil
 	}
 
-	if m.txBucket.Has(id) {
+	if has, err := m.txBucket.Has(id); err != nil {
+		return nil, err
+	} else if has {
 		return nil, ErrCommittedTransaction
 	}
 	return nil, errors.ErrNotFound
@@ -213,7 +215,9 @@ func (m *TransactionManager) VerifyTx(tx transaction.Transaction) error {
 	return nil
 }
 func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
-	if m.txBucket.Has(tx.ID()) {
+	if has, err := m.txBucket.Has(tx.ID()); err != nil {
+		return err
+	} else if has {
 		return ErrCommittedTransaction
 	}
 

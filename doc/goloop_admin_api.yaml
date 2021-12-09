@@ -492,7 +492,7 @@ components:
       properties:
         dbType:
           type: string
-          enum: [badgerdb, goleveldb, boltdb, mapdb]
+          enum: [goleveldb, rocksdb, mapdb]
           default: "goleveldb"
           description: "Name of database system, ReadOnly"
         seedAddress:

@@ -8,6 +8,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
+const GoLevelDBBackend BackendType = "goleveldb"
+
 func init() {
 	dbCreator := func(name string, dir string) (Database, error) {
 		return NewGoLevelDB(name, dir)
@@ -82,12 +84,8 @@ func (bucket *goLevelBucket) Get(key []byte) ([]byte, error) {
 	}
 }
 
-func (bucket *goLevelBucket) Has(key []byte) bool {
-	ret, err := bucket.db.Has(internalKey(bucket.id, key), nil)
-	if err != nil {
-		return false
-	}
-	return ret
+func (bucket *goLevelBucket) Has(key []byte) (bool, error) {
+	return bucket.db.Has(internalKey(bucket.id, key), nil)
 }
 
 func (bucket *goLevelBucket) Set(key []byte, value []byte) error {
