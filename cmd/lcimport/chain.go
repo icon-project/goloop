@@ -206,6 +206,10 @@ func (c *chainImpl) Logger() log.Logger {
 	return c.log
 }
 
+func (c *chainImpl) ValidateTxOnSend() bool {
+	return false
+}
+
 func NewChain(database db.Database, gns module.GenesisStorage, logger log.Logger) (*chainImpl, error) {
 	w := wallet.New()
 	return &chainImpl{
