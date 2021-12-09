@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -107,10 +108,11 @@ func TestNewBonds(t *testing.T) {
 		name      string
 		param     []interface{}
 		err       bool
+		len       int
 		totalBond int
 	}{
-		{"Nil param", nil, false, 0},
-		{"Empty param", []interface{}{}, false, 0},
+		{"Nil param", nil, false, 0, 0},
+		{"Empty param", []interface{}{}, false, 0, 0},
 		{
 			"Success",
 			[]interface{}{
@@ -124,7 +126,24 @@ func TestNewBonds(t *testing.T) {
 				},
 			},
 			false,
+			2,
 			v1 + v2,
+		},
+		{
+			"Bond zero value",
+			[]interface{}{
+				map[string]interface{}{
+					"Address": "hx1",
+					"Value":   fmt.Sprintf("0x%x", v1),
+				},
+				map[string]interface{}{
+					"Address": "hx2",
+					"Value":   "0x0",
+				},
+			},
+			false,
+			1,
+			v1,
 		},
 		{
 			"Duplicated Address",
@@ -139,6 +158,7 @@ func TestNewBonds(t *testing.T) {
 				},
 			},
 			true,
+			0,
 			0,
 		},
 		{
@@ -159,6 +179,7 @@ func TestNewBonds(t *testing.T) {
 			},
 			true,
 			0,
+			0,
 		},
 		{
 			"negative bond",
@@ -170,26 +191,30 @@ func TestNewBonds(t *testing.T) {
 			},
 			true,
 			0,
+			0,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			delegations, err := NewBonds(tt.param)
-			if tt.err {
-				assert.Error(t, err, "NewBonds() was not failed for %v.", tt.param)
-			} else {
-				assert.NoError(t, err, "NewBonds() was failed for %v. err=%v", tt.param, err)
+	revisions := []int{icmodule.Revision13, icmodule.Revision14}
+	for _, revision := range revisions {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("%s Rev%d", tt.name, revision), func(t *testing.T) {
+				bonds, err := NewBonds(tt.param, revision)
+				if tt.err {
+					assert.Error(t, err, "NewBonds() was not failed for %v.", tt.param)
+				} else {
+					assert.NoError(t, err, "NewBonds() was failed for %v. err=%v", tt.param, err)
 
-				got := delegations.ToJSON(module.JSONVersion3)
-				if len(tt.param) != len(got) {
-					t.Errorf("NewBonds() = %v, want %v", got, tt.param)
+					got := bonds.ToJSON(module.JSONVersion3)
+					if tt.len != len(got) {
+						if revision > icmodule.Revision13 || tt.len+1 != len(got) {
+							t.Errorf("Invalid bonds length %d. want %d", len(got), tt.len)
+						}
+					}
+					assert.Equal(t, int64(tt.totalBond), bonds.GetBondAmount().Int64())
 				}
-				if int64(tt.totalBond) != delegations.GetBondAmount().Int64() {
-					t.Errorf("NewBonds() = %v, want %v", got, tt.param)
-				}
-			}
-		})
+			})
+		}
 	}
 }
 

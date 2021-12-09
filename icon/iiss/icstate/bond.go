@@ -23,6 +23,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -61,6 +62,9 @@ func (b *Bond) Equal(b2 *Bond) bool {
 }
 
 func (b *Bond) ToJSON() map[string]interface{} {
+	if b.Value.Sign() == 0 {
+		return nil
+	}
 	jso := make(map[string]interface{})
 	jso["address"] = b.Address
 	jso["value"] = b.Value
@@ -204,10 +208,14 @@ func (bs *Bonds) ToJSON(v module.JSONVersion) []interface{} {
 	if !bs.Has() {
 		return nil
 	}
-	bonds := make([]interface{}, len(*bs))
+	bonds := make([]interface{}, 0)
 
-	for idx, b := range *bs {
-		bonds[idx] = b.ToJSON()
+	for _, b := range *bs {
+		jso := b.ToJSON()
+		if jso == nil {
+			continue
+		}
+		bonds = append(bonds, jso)
 	}
 	return bonds
 }
@@ -243,7 +251,7 @@ func (bs *Bonds) Iterator() VotingIterator {
 	return NewVotingIterator(bs.getVotings())
 }
 
-func NewBonds(param []interface{}) (Bonds, error) {
+func NewBonds(param []interface{}, revision int) (Bonds, error) {
 	count := len(param)
 	if count > getMaxBondsCount() {
 		return nil, errors.Errorf("Too many bonds %d", count)
@@ -267,6 +275,9 @@ func NewBonds(param []interface{}) (Bonds, error) {
 			return nil, scoreresult.InvalidParameterError.Errorf("Duplicated bond Address")
 		}
 		targets[target] = struct{}{}
+		if revision >= icmodule.Revision14 && bond.Amount().Sign() == 0 {
+			continue
+		}
 		bonds = append(bonds, bond)
 	}
 	return bonds, nil
