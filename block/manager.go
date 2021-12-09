@@ -70,10 +70,10 @@ type ServiceManager interface {
 	GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
 	TransactionListFromHash(hash []byte) module.TransactionList
 	ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error)
-	SendTransaction(tx interface{}) ([]byte, error)
+	SendTransaction(result []byte, tx interface{}) ([]byte, error)
 	ValidatorListFromHash(hash []byte) module.ValidatorList
 	TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList
-	SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error)
+	SendTransactionAndWait(result []byte, tx interface{}) ([]byte, <-chan interface{}, error)
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
 	ExportResult(result []byte, vh []byte, dst db.Database) error
 }
@@ -136,7 +136,7 @@ func (hl handlerList) upTo(version int) handlerList {
 }
 
 func (hl handlerList) forVersion(version int) (base.BlockHandler, bool) {
-	for i := len(hl)-1 ; i >= 0 ; i-- {
+	for i := len(hl) - 1; i >= 0; i-- {
 		if hl[i].Version() == version {
 			return hl[i], true
 		}
@@ -210,8 +210,8 @@ func (m *manager) newCandidate(bn *bnode) *blockCandidate {
 		m.bntr.TraceRef(bn)
 	}
 	return &blockCandidate{
-		Block:            bn.block.(base.Block),
-		m:                m,
+		Block: bn.block.(base.Block),
+		m:     m,
 	}
 }
 
@@ -429,7 +429,7 @@ func (it *importTask) _onExecute(err error) {
 			it._handleExecutionError(err)
 			return
 		}
-		validated := it.flags & module.ImportByForce != 0
+		validated := it.flags&module.ImportByForce != 0
 		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it.csi, it, validated)
 		if err != nil {
 			it.stop()
@@ -1319,11 +1319,11 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 	return loc, nil
 }
 
-func (m *manager) SendTransactionAndWait(txi interface{}) ([]byte, <-chan interface{}, error) {
+func (m *manager) SendTransactionAndWait(result []byte, txi interface{}) ([]byte, <-chan interface{}, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	id, rc, err := m.sm.SendTransactionAndWait(txi)
+	id, rc, err := m.sm.SendTransactionAndWait(result, txi)
 	if err == nil {
 		return id, rc, nil
 	}
@@ -1418,7 +1418,7 @@ func (m *manager) doGetBlockByHeight(
 	height int64,
 	hl handlerList,
 ) (module.Block, error) {
-	if  m.finalized != nil &&  height > m.finalized.block.Height() {
+	if m.finalized != nil && height > m.finalized.block.Height() {
 		return nil, errors.NotFoundError.Errorf("no block for %d", height)
 	}
 	// For now, assume all versions have same height to hash database structure

@@ -15,11 +15,11 @@ func (bk *proxyBucket) Get(key []byte) ([]byte, error) {
 	return nil, errors.New("ProxyIsNotRealized")
 }
 
-func (bk *proxyBucket) Has(key []byte) bool {
+func (bk *proxyBucket) Has(key []byte) (bool, error) {
 	if bk.real != nil {
 		return bk.real.Has(key)
 	}
-	return false
+	return false, nil
 }
 
 func (bk *proxyBucket) Set(key []byte, value []byte) error {

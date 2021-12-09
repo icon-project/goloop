@@ -85,8 +85,8 @@ type singleChain struct {
 	cs       module.Consensus
 	srv      *server.Manager
 	nt       module.NetworkTransport
-	nm  module.NetworkManager
-	plt base.Platform
+	nm       module.NetworkManager
+	plt      base.Platform
 
 	cid int
 	cfg Config
@@ -232,17 +232,21 @@ func (c *singleChain) TransactionTimeout() time.Duration {
 }
 
 func (c *singleChain) ChildrenLimit() int {
-	if c.cfg.ChildrenLimit != nil && *c.cfg.ChildrenLimit >= 0{
+	if c.cfg.ChildrenLimit != nil && *c.cfg.ChildrenLimit >= 0 {
 		return *c.cfg.ChildrenLimit
 	}
 	return ConfigDefaultChildrenLimit
 }
 
 func (c *singleChain) NephewsLimit() int {
-	if c.cfg.NephewsLimit != nil && *c.cfg.NephewsLimit >= 0{
+	if c.cfg.NephewsLimit != nil && *c.cfg.NephewsLimit >= 0 {
 		return *c.cfg.NephewsLimit
 	}
 	return ConfigDefaultNephewLimit
+}
+
+func (c *singleChain) ValidateTxOnSend() bool {
+	return c.cfg.ValidateTxOnSend
 }
 
 func (c *singleChain) State() (string, int64, error) {

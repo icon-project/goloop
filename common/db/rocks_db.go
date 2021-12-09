@@ -64,9 +64,9 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 	C.rocksdb_options_set_create_missing_column_families(opts, C.uchar(1))
 
 	var (
-		cErr  *C.char
-		cName = C.CString(path.Join(dir, name))
-		hdl   *C.rocksdb_t
+		cErr    *C.char
+		cName   = C.CString(path.Join(dir, name))
+		hdl     *C.rocksdb_t
 		buckets = make(map[BucketID]*RocksBucket)
 	)
 	defer C.free(unsafe.Pointer(cName))
@@ -200,7 +200,7 @@ func (db *RocksDB) getValue(cf *C.rocksdb_column_family_handle_t, k []byte) ([]b
 	return value, nil
 }
 
-func (db *RocksDB) hasValue(cf *C.rocksdb_column_family_handle_t, k []byte) bool {
+func (db *RocksDB) hasValue(cf *C.rocksdb_column_family_handle_t, k []byte) (bool, error) {
 	var (
 		cErr    *C.char
 		cValLen C.size_t
@@ -209,10 +209,10 @@ func (db *RocksDB) hasValue(cf *C.rocksdb_column_family_handle_t, k []byte) bool
 	cValue := C.rocksdb_get_cf(db.db, db.ro, cf, cKey, C.size_t(len(k)), &cValLen, &cErr)
 	if cErr != nil {
 		defer C.rocksdb_free(unsafe.Pointer(cErr))
-		return false
+		return false, errors.New(C.GoString(cErr))
 	}
 	defer C.rocksdb_free(unsafe.Pointer(cValue))
-	return cValue != nil
+	return cValue != nil, nil
 }
 
 func (db *RocksDB) setValue(cf *C.rocksdb_column_family_handle_t, k, v []byte) error {
@@ -254,7 +254,7 @@ func (b *RocksBucket) Get(key []byte) ([]byte, error) {
 	return b.db.getValue(b.cf, key)
 }
 
-func (b *RocksBucket) Has(key []byte) bool {
+func (b *RocksBucket) Has(key []byte) (bool, error) {
 	return b.db.hasValue(b.cf, key)
 }
 

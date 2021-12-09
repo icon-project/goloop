@@ -154,9 +154,6 @@ func (m *TransactionManager) OnTxDrops(drops []TxDrop) {
 func (m *TransactionManager) AddAndWait(tx transaction.Transaction) (
 	<-chan interface{}, error,
 ) {
-	if err := m.verifyTx(tx); err != nil {
-		return nil, err
-	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -180,22 +177,26 @@ func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
 		return rc, nil
 	}
 
-	if m.txBucket.Has(id) {
+	if has, err := m.txBucket.Has(id); err != nil {
+		return nil, err
+	} else if has {
 		return nil, ErrCommittedTransaction
 	}
 	return nil, errors.ErrNotFound
 }
 
-func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
-	if err := m.verifyTx(tx); err != nil {
-		return err
+func (m *TransactionManager) Add(tx transaction.Transaction, direct bool, verified bool) error {
+	if !verified {
+		if err := m.VerifyTx(tx); err != nil {
+			return err
+		}
 	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.addInLock(tx, direct)
 }
 
-func (m *TransactionManager) verifyTx(tx transaction.Transaction) error {
+func (m *TransactionManager) VerifyTx(tx transaction.Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -214,7 +215,9 @@ func (m *TransactionManager) verifyTx(tx transaction.Transaction) error {
 	return nil
 }
 func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
-	if m.txBucket.Has(tx.ID()) {
+	if has, err := m.txBucket.Has(tx.ID()); err != nil {
+		return err
+	} else if has {
 		return ErrCommittedTransaction
 	}
 

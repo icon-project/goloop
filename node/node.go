@@ -428,6 +428,9 @@ func (n *Node) JoinChain(
 		AutoStart:        p.AutoStart,
 		FilePath:         cfgFile,
 		NIDForP2P:        n.cfg.NIDForP2P,
+		ChildrenLimit:    p.ChildrenLimit,
+		NephewsLimit:     p.NephewsLimit,
+		ValidateTxOnSend: p.ValidateTxOnSend,
 	}
 
 	if err := n.saveChainConfig(cfg, cfgFile); err != nil {
@@ -769,6 +772,12 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 				return errors.Wrapf(err, "invalid value type")
 			} else {
 				c.cfg.NephewsLimit = &intVal
+			}
+		case "validateTxOnSend":
+			if bc, err := strconv.ParseBool(value); err != nil {
+				return errors.Wrapf(err, "InvalidValueType(exp=bool,val=%s)", value)
+			} else {
+				c.cfg.ValidateTxOnSend = bc
 			}
 		default:
 			return errors.Errorf("not found key %s", key)

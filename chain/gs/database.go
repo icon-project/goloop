@@ -16,8 +16,8 @@ func (d *writerDatabase) Get(key []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (d *writerDatabase) Has(key []byte) bool {
-	return false
+func (d *writerDatabase) Has(key []byte) (bool, error) {
+	return false, nil
 }
 
 func (d *writerDatabase) Set(key []byte, value []byte) error {
@@ -64,9 +64,9 @@ func (d *readerDatabase) Get(key []byte) ([]byte, error) {
 	return d.s.Get(key)
 }
 
-func (d *readerDatabase) Has(key []byte) bool {
+func (d *readerDatabase) Has(key []byte) (bool, error) {
 	v, err := d.s.Get(key)
-	return err == nil && v != nil
+	return len(v) > 0, err
 }
 
 func (d *readerDatabase) Set(key []byte, value []byte) error {

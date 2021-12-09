@@ -232,7 +232,7 @@ Returns block information by block hash.
 {
   "id": 1001,
   "jsonrpc": "2.0",
-  "method": "icx_getBlockByHeight",
+  "method": "icx_getBlockByHash",
   "params": {
       "hash": "8e25acc5b5c74375079d51828760821fc6f54283656620b1d5a715edcc0770c6"
   }

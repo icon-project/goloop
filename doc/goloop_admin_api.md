@@ -357,6 +357,9 @@ json:
   txTimeout: 0
   maxWaitTimeout: 0
   autoStart: false
+  platform: basic
+  childrenLimit: -1
+  nephewsLimit: -1
 genesisZip: string
 
 ```
@@ -382,6 +385,10 @@ genesisZip: string
 |»» maxWaitTimeout|body|integer|false|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 |»» txTimeout|body|integer|false|Transaction timeout in milli-second(0:uses system default value)|
 |»» autoStart|body|boolean|false|Start the chain automatically on node start|
+|»» platform|body|string|false|Platform to handle transactions(defined by extended software)|
+|»» childrenLimit|body|integer|false|Maximum number of child connections(-1: uses system default value)|
+|»» nephewsLimit|body|integer|false|Maximum number of nephew connections(-1: uses system default value)|
+|»» validateTxOnSend|body|boolean|false|Validate transaction on send(false: no validation)|
 |» genesisZip|body|string(binary)|true|Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'|
 
 #### Detailed descriptions
@@ -476,7 +483,10 @@ Return low-level information about a chain.
     "defaultWaitTimeout": 0,
     "txTimeout": 0,
     "maxWaitTimeout": 0,
-    "autoStart": false
+    "autoStart": false,
+    "platform": "basic",
+    "childrenLimit": -1,
+    "nephewsLimit": -1
   },
   "module": {
     "property1": {},
@@ -781,7 +791,10 @@ Return chain configuration.
   "defaultWaitTimeout": 0,
   "txTimeout": 0,
   "maxWaitTimeout": 0,
-  "autoStart": false
+  "autoStart": false,
+  "platform": "basic",
+  "childrenLimit": -1,
+  "nephewsLimit": -1
 }
 ```
 
@@ -909,7 +922,10 @@ This operation does not require authentication
     "defaultWaitTimeout": 0,
     "txTimeout": 0,
     "maxWaitTimeout": 0,
-    "autoStart": false
+    "autoStart": false,
+    "platform": "basic",
+    "childrenLimit": -1,
+    "nephewsLimit": -1
   },
   "module": {
     "property1": {},
@@ -957,7 +973,10 @@ This operation does not require authentication
   "defaultWaitTimeout": 0,
   "txTimeout": 0,
   "maxWaitTimeout": 0,
-  "autoStart": false
+  "autoStart": false,
+  "platform": "basic",
+  "childrenLimit": -1,
+  "nephewsLimit": -1
 }
 
 ```
@@ -981,6 +1000,10 @@ This operation does not require authentication
 |maxWaitTimeout|integer|false|none|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 |txTimeout|integer|false|none|Transaction timeout in milli-second(0:uses system default value)|
 |autoStart|boolean|false|none|Start the chain automatically on node start|
+|platform|string|false|none|Platform to handle transactions(defined by extended software)|
+|childrenLimit|integer|false|none|Maximum number of child connections(-1: uses system default value)|
+|nephewsLimit|integer|false|none|Maximum number of nephew connections(-1: uses system default value)|
+|validateTxOnSend|boolean|false|none|Validate transaction on send(false: no validation)|
 
 #### Enumerated Values
 

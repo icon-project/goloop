@@ -18,13 +18,6 @@ type LayerDB interface {
 
 type BackendType string
 
-const (
-	BadgerDBBackend  BackendType = "badgerdb"
-	GoLevelDBBackend BackendType = "goleveldb"
-	BoltDBBackend    BackendType = "boltdb"
-	MapDBBackend     BackendType = "mapdb"
-)
-
 type dbCreator func(name string, dir string) (Database, error)
 
 var backends = map[BackendType]dbCreator{}
@@ -63,4 +56,12 @@ func openDatabase(backend BackendType, name string, dir string) (Database, error
 	}
 
 	return dbCreator(name, dir)
+}
+
+func GetSupportedTypes() []string {
+	types := make([]string, 0, len(backends))
+	for be, _ := range backends {
+		types = append(types, string(be))
+	}
+	return types
 }

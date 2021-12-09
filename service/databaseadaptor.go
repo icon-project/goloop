@@ -63,7 +63,7 @@ func (ba *bucketAdaptor) Get(key []byte) ([]byte, error) {
 	return value, err
 }
 
-func (ba *bucketAdaptor) Has(key []byte) bool {
+func (ba *bucketAdaptor) Has(key []byte) (bool, error) {
 	return ba.bucket.Has(key)
 }
 

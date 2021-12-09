@@ -29,7 +29,7 @@ Goloop CLI
 Manage chains
 
 ### Usage
-` goloop chain `
+` goloop chain TASK CID PARAM `
 
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -120,7 +120,13 @@ Start to backup the channel
 Configure chain
 
 ### Usage
-` goloop chain config CID KEY VALUE `
+` goloop chain config CID KEY VALUE [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --value |  | false |  |  use if value starts with '-'.
+(if the third arg is used, this flag will be ignored) |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -291,13 +297,15 @@ Join chain
 |---|---|---|---|---|
 | --auto_start |  | false | false |  Auto start |
 | --channel |  | false |  |  Channel |
+| --children_limit |  | false | -1 |  Maximum number of child connections (-1: uses system default value) |
 | --concurrency |  | false | 1 |  Maximum number of executors to be used for concurrency |
-| --db_type |  | false | goleveldb |  Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
+| --db_type |  | false | goleveldb |  Name of database system(badgerdb, boltdb, goleveldb, mapdb, rocksdb) |
 | --default_wait_timeout |  | false | 0 |  Default wait timeout in milli-second (0: disable) |
 | --genesis |  | false |  |  Genesis storage path |
 | --genesis_template |  | false |  |  Genesis template directory or file |
 | --max_block_tx_bytes |  | false | 0 |  Max size of transactions in a block |
 | --max_wait_timeout |  | false | 0 |  Max wait timeout in milli-second (0: uses same value of default_wait_timeout) |
+| --nephews_limit |  | false | -1 |  Maximum number of nephew connections (-1: uses system default value) |
 | --node_cache |  | false | none |  Node cache (none,small,large) |
 | --normal_tx_pool |  | false | 0 |  Size of normal transaction pool |
 | --patch_tx_pool |  | false | 0 |  Size of patch transaction pool |
@@ -307,6 +315,7 @@ Join chain
 | --secure_suites |  | false | none,tls,ecdhe |  Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
 | --seed |  | false |  |  List of trust-seed ip-port, Comma separated string |
 | --tx_timeout |  | false | 0 |  Transaction timeout in milli-second (0: uses system default value) |
+| --validate_tx_on_send |  | false | false |  Validate transaction on send |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1549,7 +1558,7 @@ SendTransaction
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
-| --step_limit | GOLOOP_RPC_STEP_LIMIT | true | 0 |  StepLimit |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1563,7 +1572,9 @@ SendTransaction
 |---|---|
 | [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
 | [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
-| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
 | [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
 
 ### Parent command
@@ -1607,6 +1618,7 @@ SmartContract Call Transaction
 | --param |  | false | [] |  key=value, Function parameters, if '--raw' used, will overwrite |
 | --raw |  | false |  |  call with 'data' using raw json file or json-string |
 | --to |  | true |  |  ToAddress |
+| --value |  | false |  |  Value of transfer |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1618,7 +1630,7 @@ SmartContract Call Transaction
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
-| --step_limit | GOLOOP_RPC_STEP_LIMIT | true | 0 |  StepLimit |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1631,7 +1643,9 @@ SmartContract Call Transaction
 |---|---|
 | [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
 | [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
-| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
 | [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
 
 ## goloop rpc sendtx deploy
@@ -1659,7 +1673,7 @@ Deploy Transaction
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
-| --step_limit | GOLOOP_RPC_STEP_LIMIT | true | 0 |  StepLimit |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1672,13 +1686,15 @@ Deploy Transaction
 |---|---|
 | [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
 | [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
-| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
 | [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
 
 ## goloop rpc sendtx raw
 
 ### Description
-Send transaction with json file
+Send transaction with json file filling nid,from,timestamp and signature
 
 ### Usage
 ` goloop rpc sendtx raw FILE `
@@ -1693,7 +1709,7 @@ Send transaction with json file
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
-| --step_limit | GOLOOP_RPC_STEP_LIMIT | true | 0 |  StepLimit |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1706,7 +1722,81 @@ Send transaction with json file
 |---|---|
 | [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
 | [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
-| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
+| [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
+
+## goloop rpc sendtx raw2
+
+### Description
+Send transaction with json file filling timestamp and signature
+
+### Usage
+` goloop rpc sendtx raw2 FILE `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID | true |  |  Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
+| [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
+| [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
+
+## goloop rpc sendtx raw3
+
+### Description
+Send transaction with json file
+
+### Usage
+` goloop rpc sendtx raw3 FILE `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID | true |  |  Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
+| [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
 | [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
 
 ## goloop rpc sendtx transfer
@@ -1734,7 +1824,7 @@ Coin Transfer Transaction
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
 | --key_store | GOLOOP_RPC_KEY_STORE | true |  |  KeyStore file for wallet |
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
-| --step_limit | GOLOOP_RPC_STEP_LIMIT | true | 0 |  StepLimit |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Parent command
@@ -1747,7 +1837,9 @@ Coin Transfer Transaction
 |---|---|
 | [goloop rpc sendtx call](#goloop-rpc-sendtx-call) |  SmartContract Call Transaction |
 | [goloop rpc sendtx deploy](#goloop-rpc-sendtx-deploy) |  Deploy Transaction |
-| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file |
+| [goloop rpc sendtx raw](#goloop-rpc-sendtx-raw) |  Send transaction with json file filling nid,from,timestamp and signature |
+| [goloop rpc sendtx raw2](#goloop-rpc-sendtx-raw2) |  Send transaction with json file filling timestamp and signature |
+| [goloop rpc sendtx raw3](#goloop-rpc-sendtx-raw3) |  Send transaction with json file |
 | [goloop rpc sendtx transfer](#goloop-rpc-sendtx-transfer) |  Coin Transfer Transaction |
 
 ## goloop rpc totalsupply

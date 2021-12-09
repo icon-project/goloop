@@ -45,7 +45,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 
-		if err := r.tm.Add(tx, false); err != nil {
+		if err := r.tm.Add(tx, false, false); err != nil {
 			return false, err
 		}
 		return true, nil
@@ -57,7 +57,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 
-		if err := r.tm.Add(tx, false); err != nil {
+		if err := r.tm.Add(tx, false, false); err != nil {
 			r.log.Debugf("Fail to add transaction id=%#x from=%s err=%+v",
 				tx.ID(), peerId.String(), err)
 			return false, err

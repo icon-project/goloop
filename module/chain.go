@@ -31,6 +31,7 @@ type Chain interface {
 	TransactionTimeout() time.Duration
 	ChildrenLimit() int
 	NephewsLimit() int
+	ValidateTxOnSend() bool
 	Genesis() []byte
 	GenesisStorage() GenesisStorage
 	CommitVoteSetDecoder() CommitVoteSetDecoder

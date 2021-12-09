@@ -315,7 +315,7 @@ type ServiceManager interface {
 	ReceiptListFromResult(result []byte, g TransactionGroup) (ReceiptList, error)
 
 	// SendTransaction adds transaction to a transaction pool.
-	SendTransaction(tx interface{}) ([]byte, error)
+	SendTransaction(result []byte, tx interface{}) ([]byte, error)
 
 	// SendPatch sends a patch
 	SendPatch(patch Patch) error
@@ -357,7 +357,7 @@ type ServiceManager interface {
 	HasTransaction(id []byte) bool
 
 	// SendTransactionAndWait send transaction and return channel for result
-	SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error)
+	SendTransactionAndWait(result []byte, tx interface{}) ([]byte, <-chan interface{}, error)
 
 	// WaitTransactionResult return channel for result.
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)

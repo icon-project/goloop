@@ -703,7 +703,7 @@ func (sm *testServiceManager) TransactionListFromSlice(txs []module.Transaction,
 	return newTestTransactionList(ttxs)
 }
 
-func (sm *testServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
+func (sm *testServiceManager) SendTransaction(result []byte, tx interface{}) ([]byte, error) {
 	if ttx, ok := tx.(*testTransaction); ok {
 		if ttx.Data.CreateError != nil {
 			return nil, ttx.Data.CreateError

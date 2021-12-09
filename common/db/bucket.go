@@ -5,7 +5,7 @@ import "github.com/icon-project/goloop/common/errors"
 // Bucket
 type Bucket interface {
 	Get(key []byte) ([]byte, error)
-	Has(key []byte) bool
+	Has(key []byte) (bool, error)
 	Set(key []byte, value []byte) error
 	Delete(key []byte) error
 }
@@ -48,7 +48,7 @@ func nonNilBytes(bz []byte) []byte {
 
 func DoGet(bk Bucket, key []byte) ([]byte, error) {
 	v, err := bk.Get(key)
-	if v==nil && err==nil {
+	if v == nil && err == nil {
 		return nil, errors.NotFoundError.New("NotFound")
 	}
 	return v, err
