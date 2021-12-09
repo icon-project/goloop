@@ -159,7 +159,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			}
 			continue
 		}
-		if v, err := tp.txdb.Get(tx.ID()); err != nil && v != nil {
+		if v, err := tp.txdb.Get(tx.ID()); err != nil {
+			continue
+		} else if v != nil {
 			e.err = errors.InvalidStateError.New("AlreadyProcessed")
 			dropped = append(dropped, e)
 			continue
