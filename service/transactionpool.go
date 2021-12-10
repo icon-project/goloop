@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -66,7 +65,7 @@ type TransactionPool struct {
 	group module.TransactionGroup
 
 	size int
-	txdb db.Bucket
+	tim  TXIDManager
 
 	list *transactionList
 
@@ -78,11 +77,11 @@ type TransactionPool struct {
 	log     log.Logger
 }
 
-func NewTransactionPool(group module.TransactionGroup, size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
+func NewTransactionPool(group module.TransactionGroup, size int, tim TXIDManager, m Monitor, log log.Logger) *TransactionPool {
 	pool := &TransactionPool{
 		group:   group,
 		size:    size,
-		txdb:    txdb,
+		tim:     tim,
 		list:    newTransactionList(),
 		txm:     dummyTxWaiterManager{},
 		monitor: m,
@@ -159,9 +158,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			}
 			continue
 		}
-		if v, err := tp.txdb.Get(tx.ID()); err != nil {
+		if has, err := tp.tim.HasRecent(tx.ID()); err != nil {
 			continue
-		} else if v != nil {
+		} else if has {
 			e.err = errors.InvalidStateError.New("AlreadyProcessed")
 			dropped = append(dropped, e)
 			continue
@@ -356,7 +355,7 @@ func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.
 		tx := e.Value()
 		id := tx.ID()
 		if !bloom.Contains(id) {
-			if v, err := tp.txdb.Get(id); err == nil && v != nil {
+			if has, err := tp.tim.HasRecent(id); err == nil && has {
 				e.err = errors.InvalidStateError.New("Already processed")
 				invalids = append(invalids, e)
 				continue

@@ -57,7 +57,7 @@ func NewServiceManager(
 		cm:               cm,
 		em:               em,
 		chain:            c,
-		tsc:              nil,
+		tsc:              service.NewTimestampChecker(),
 		emptyTXs:         transaction.NewTransactionListFromSlice(dbase, nil),
 		nextBlockVersion: module.BlockVersion2,
 	}

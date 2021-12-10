@@ -84,10 +84,11 @@ type transitionContext struct {
 	cm    contract.ContractManager
 	eem   eeproxy.Manager
 	chain module.Chain
-	log log.Logger
-	plt base.Platform
-	tsc *TxTimestampChecker
+	log   log.Logger
+	plt   base.Platform
+	tsc   *TxTimestampChecker
 	sass  state.AccountSnapshot
+	tim   TXIDManager
 }
 
 func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
@@ -106,6 +107,7 @@ func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
 		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()
 		if tsThreshold > 0 {
 			tc.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
+			tc.tim.OnThresholdChange()
 		}
 		tc.sass = ass
 	}
@@ -144,6 +146,9 @@ type transition struct {
 	syncer ssync.Syncer
 
 	ti *module.TraceInfo
+
+	ptxIDs TXIDLogger
+	ntxIDs TXIDLogger
 }
 
 func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.TransactionList) *transition {
@@ -216,37 +221,41 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 }
 
 // all parameters should be valid.
-func newInitTransition(db db.Database,
+func newInitTransition(dbase db.Database,
 	result []byte,
 	validatorList module.ValidatorList,
 	cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
+	tim TXIDManager,
 ) (*transition, error) {
-	wss, err := newWorldSnapshot(db, plt, result, validatorList)
+	wss, err := newWorldSnapshot(dbase, plt, result, validatorList)
 	if err != nil {
 		return nil, err
 	}
 	tr := &transition{
 		id:                 new(transitionID),
-		patchTransactions:  transaction.NewTransactionListFromSlice(db, nil),
-		normalTransactions: transaction.NewTransactionListFromSlice(db, nil),
-		patchReceipts:      txresult.NewReceiptListFromHash(db, nil),
-		normalReceipts:     txresult.NewReceiptListFromHash(db, nil),
+		patchTransactions:  transaction.NewTransactionListFromSlice(dbase, nil),
+		normalTransactions: transaction.NewTransactionListFromSlice(dbase, nil),
+		patchReceipts:      txresult.NewReceiptListFromHash(dbase, nil),
+		normalReceipts:     txresult.NewReceiptListFromHash(dbase, nil),
 		bi:                 common.NewBlockInfo(0, 0),
 		transitionContext: &transitionContext{
-			db:    db,
+			db:    dbase,
 			cm:    cm,
 			eem:   em,
 			chain: chain,
 			log:   logger,
 			plt:   plt,
 			tsc:   tsc,
+			tim:   tim,
 		},
 		step:          stepComplete,
 		result:        result,
 		worldSnapshot: wss,
+		ptxIDs:        tim.NewLogger(module.TransactionGroupPatch, 0, 0),
+		ntxIDs:        tim.NewLogger(module.TransactionGroupNormal, 0, 0),
 	}
 	return tr, nil
 }
@@ -465,6 +474,16 @@ func (t *transition) doForceSync() {
 		}
 	}
 
+	t.initTXIDLoggers()
+	if _, err := t.validateTXIDs(t.patchTransactions, t.ptxIDs, true); err != nil {
+		t.reportExecution(err)
+		return
+	}
+	if _, err := t.validateTXIDs(t.normalTransactions, t.ntxIDs, true); err != nil {
+		t.reportExecution(err)
+		return
+	}
+
 	t.patchReceipts = sr.PatchReceipts
 	t.normalReceipts = sr.NormalReceipts
 	t.worldSnapshot = sr.Wss
@@ -479,8 +498,35 @@ func (t *transition) doForceSync() {
 	t.reportExecution(nil)
 }
 
+func (t *transition) initTXIDLoggers() {
+	if t.pbi != nil {
+		t.ptxIDs = t.parent.ptxIDs.NewLogger(t.pbi.Height(), t.pbi.Timestamp())
+	} else {
+		t.ptxIDs = t.parent.ptxIDs.NewLogger(0, 0)
+	}
+	t.ntxIDs = t.parent.ntxIDs.NewLogger(t.bi.Height(), t.bi.Timestamp())
+}
+
+func (t *transition) validateTXIDs(list module.TransactionList, logger TXIDLogger, force bool) (int, error) {
+	count := 0
+	for i := list.Iterator(); i.Has(); i.Next() {
+		tx, _, err := i.Get()
+		if err != nil {
+			return 0, err
+		}
+		if err := logger.Add(tx.ID()); err != nil {
+			if !force || !CommittedTransactionError.Equals(err) {
+				return count, err
+			}
+		}
+		count += 1
+	}
+	return count, nil
+}
+
 func (t *transition) doExecute(alreadyValidated bool) {
 	var normalCount, patchCount int
+	t.initTXIDLoggers()
 	if !alreadyValidated {
 		wc, err := t.newWorldContext(false)
 		if err != nil {
@@ -494,23 +540,28 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		} else {
 			tsr = NewDummyTimeStampRange()
 		}
-		patchCount, err = t.validateTxs(t.patchTransactions, wc, tsr)
+		patchCount, err = t.validateTxs(t.patchTransactions, wc, tsr, t.ptxIDs)
 		if err != nil {
 			t.reportValidation(err)
 			return
 		}
 		tsr = NewTxTimestampRangeFor(wc, module.TransactionGroupNormal)
-		normalCount, err = t.validateTxs(t.normalTransactions, wc, tsr)
+		normalCount, err = t.validateTxs(t.normalTransactions, wc, tsr, t.ntxIDs)
 		if err != nil {
 			t.reportValidation(err)
 			return
 		}
 	} else {
-		for i := t.patchTransactions.Iterator(); i.Has(); i.Next() {
-			patchCount++
+		var err error
+		patchCount, err = t.validateTXIDs(t.patchTransactions, t.ptxIDs, false)
+		if err != nil {
+			t.reportValidation(err)
+			return
 		}
-		for i := t.normalTransactions.Iterator(); i.Has(); i.Next() {
-			normalCount++
+		normalCount, err = t.validateTXIDs(t.normalTransactions, t.ntxIDs, false)
+		if err != nil {
+			t.reportValidation(err)
+			return
 		}
 	}
 
@@ -600,7 +651,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	t.reportExecution(nil)
 }
 
-func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) (int, error) {
+func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange, til TXIDLogger) (int, error) {
 	if l == nil {
 		return 0, nil
 	}
@@ -623,6 +674,9 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 			return 0, err
 		}
 		if err := tsr.CheckTx(tx); err != nil {
+			return 0, err
+		}
+		if err := til.Add(tx.ID()); err != nil {
 			return 0, err
 		}
 		if err := tx.PreValidate(wc, true); err != nil {
@@ -648,10 +702,16 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 }
 
 func (t *transition) finalizeNormalTransaction() error {
+	if err := t.ntxIDs.Commit(); err != nil {
+		return err
+	}
 	return t.normalTransactions.Flush()
 }
 
 func (t *transition) finalizePatchTransaction() error {
+	if err := t.ptxIDs.Commit(); err != nil {
+		return err
+	}
 	return t.patchTransactions.Flush()
 }
 
@@ -732,17 +792,11 @@ func NewInitTransition(
 	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
-	if tr, err := newInitTransition(
-		db,
-		result,
-		vl,
-		cm,
-		em,
-		chain,
-		logger,
-		plt,
-		tsc,
-	); err != nil {
+	tim, err := NewTXIDManager(db, tsc)
+	if err != nil {
+		return nil, err
+	}
+	if tr, err := newInitTransition(db, result, vl, cm, em, chain, logger, plt, tsc, tim); err != nil {
 		return nil, err
 	} else {
 		return tr, nil
