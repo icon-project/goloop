@@ -690,6 +690,19 @@ func (s *chainScore) Ex_addTimer(blockHeight *common.HexInt) error {
 	return nil
 }
 
+func (s *chainScore) Ex_removeTimer(blockHeight *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	ts := es.State.GetNetworkScoreTimerState(blockHeight.Int64())
+	ts.Delete(s.from)
+	return nil
+}
+
 func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err

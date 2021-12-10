@@ -366,6 +366,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
+	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonvotedPenaltySlashRatio()
 
 	preps, _ := s.GetPRepsOrderedByPower()
 	if preps != nil {
