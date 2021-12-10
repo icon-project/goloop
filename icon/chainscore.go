@@ -602,7 +602,7 @@ var chainMethods = []*chainMethod{
 			{"blockHeight", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R2, 0},
+	}, icmodule.RevisionICON2R3, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "penalizeNonvoters",
 		scoreapi.FlagExternal, 1,
