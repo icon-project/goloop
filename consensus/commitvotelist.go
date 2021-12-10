@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"sort"
 
@@ -158,4 +159,25 @@ func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 		return nil
 	}
 	return vl
+}
+
+func WALRecordBytesFromCommitVoteListBytes(
+	bs []byte, h int64, bid []byte, c codec.Codec,
+) ([]byte, error) {
+	cvl := &commitVoteList{}
+	if bs != nil {
+		_, err := c.UnmarshalFromBytes(bs, cvl)
+		if err != nil {
+			return nil, err
+		}
+	}
+	vlm := newVoteListMessage()
+	vlm.VoteList = cvl.voteList(h, bid)
+	rec := make([]byte, 2, 32)
+	binary.BigEndian.PutUint16(rec, vlm.subprotocol())
+	writer := bytes.NewBuffer(rec)
+	if err := c.Marshal(writer, vlm); err != nil {
+		return nil, err
+	}
+	return writer.Bytes(), nil
 }
