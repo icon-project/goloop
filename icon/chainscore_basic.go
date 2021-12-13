@@ -299,6 +299,10 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(EETypesJavaAndPython); err != nil {
 				return err
 			}
+		}
+
+		// Set slash ratio of Non Vote Penalty
+		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
 			iconConfig := s.loadIconConfig()
 			if err := es.State.SetNonvotedPenaltySlashRatio(int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
 				return err
