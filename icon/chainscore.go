@@ -605,7 +605,7 @@ var chainMethods = []*chainMethod{
 	}, icmodule.RevisionICON2R3, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "removeTimer",
-		scoreapi.FlagExternal, 0,
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"blockHeight", scoreapi.Integer, nil, nil},
 		},
