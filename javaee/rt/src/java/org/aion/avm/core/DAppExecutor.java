@@ -66,8 +66,7 @@ public class DAppExecutor {
                                                           dappAddress,
                                                           tx,
                                                           dapp.runtimeSetup,
-                                                          dapp,
-                                                          conf.enableContextPrintln);
+                                                          dapp);
         FrameContextImpl fc = new FrameContextImpl(externalState);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
@@ -116,13 +115,13 @@ public class DAppExecutor {
             }
         } catch (AvmException e) {
             logger.trace("DApp invocation failed: {}", e.getMessage());
-            if (conf.enableVerboseContractErrors) {
+            if (conf.testMode) {
                 e.printStackTrace();
-                var os = new StringConsumerOutputStream(s -> {
-                    logger.trace(LogMarker.Trace, s);
-                });
-                e.printStackTrace(new PrintStream(os));
             }
+            var os = new StringConsumerOutputStream(s -> {
+                logger.trace(LogMarker.Trace, s);
+            });
+            e.printStackTrace(new PrintStream(os));
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());
         } finally {

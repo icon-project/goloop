@@ -30,8 +30,7 @@ public class SimpleTest {
         Thread th = new Thread(() -> {
             try {
                 var conf = new AvmConfiguration();
-                conf.enableContextPrintln = true;
-                conf.enableVerboseContractErrors = true;
+                conf.testMode = true;
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
                         null,
@@ -51,8 +50,7 @@ public class SimpleTest {
         Thread th = new Thread(() -> {
             try {
                 var conf = new AvmConfiguration();
-                conf.enableContextPrintln = true;
-                conf.enableVerboseContractErrors = true;
+                conf.testMode = true;
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
                         null,

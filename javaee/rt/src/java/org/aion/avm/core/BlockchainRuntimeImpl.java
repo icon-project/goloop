@@ -52,7 +52,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final Transaction tx;
     private final IRuntimeSetup thisDAppSetup;
     private final LoadedDApp dApp;
-    private final boolean enablePrintln;
 
     private p.score.Address addressCache;
     private p.score.Address callerCache;
@@ -68,8 +67,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  Address transactionDestination,
                                  Transaction tx,
                                  IRuntimeSetup thisDAppSetup,
-                                 LoadedDApp dApp,
-                                 boolean enablePrintln) {
+                                 LoadedDApp dApp) {
         this.externalState = externalState;
         this.task = task;
         this.transactionSender = transactionSender;
@@ -77,7 +75,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.tx = tx;
         this.thisDAppSetup = thisDAppSetup;
         this.dApp = dApp;
-        this.enablePrintln = enablePrintln;
     }
 
     @Override
@@ -316,9 +313,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_println(s.java.lang.String message) {
-        if (this.enablePrintln) {
-            logger.trace(LogMarker.Trace, "PRT| " + (message!=null ? message.toString() : "<null>"));
-        }
+        logger.trace(LogMarker.Trace, "PRT| " + (message!=null ? message.toString() : "<null>"));
     }
 
     @Override

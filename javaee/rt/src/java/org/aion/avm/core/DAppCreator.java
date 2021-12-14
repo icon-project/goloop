@@ -61,8 +61,7 @@ public class DAppCreator {
                                                               dappAddress,
                                                               tx,
                                                               runtimeSetup,
-                                                              dapp,
-                                                              conf.enableContextPrintln);
+                                                              dapp);
             FrameContextImpl fc = new FrameContextImpl(externalState);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, dapp.getInternedClasses(), fc);
             previousRuntime = dapp.attachBlockchainRuntime(br);
@@ -82,13 +81,13 @@ public class DAppCreator {
             }
         } catch (AvmException e) {
             logger.trace("DApp deployment failed: {}", e.getMessage());
-            if (conf.enableVerboseContractErrors) {
+            if (conf.testMode) {
                 e.printStackTrace();
-                var os = new StringConsumerOutputStream(s -> {
-                    logger.trace(LogMarker.Trace, s);
-                });
-                e.printStackTrace(new PrintStream(os));
             }
+            var os = new StringConsumerOutputStream(s -> {
+                logger.trace(LogMarker.Trace, s);
+            });
+            e.printStackTrace(new PrintStream(os));
             long stepUsed = (runtimeSetup != null) ?
                     (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());

@@ -290,8 +290,7 @@ public class Transformer {
         }
 
         RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes,
-                conf.preserveDebuggability,
-                conf.enableVerboseContractErrors);
+                conf.preserveDebuggability);
         if (rawDapp == null) {
             throw new IllegalFormatException("bad jar");
         }
