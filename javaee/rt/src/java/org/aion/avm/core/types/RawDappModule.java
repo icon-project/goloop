@@ -1,7 +1,6 @@
 package org.aion.avm.core.types;
 
 import java.util.HashSet;
-import java.util.IllegalFormatCodePointException;
 import java.util.Map;
 
 import java.util.Set;
@@ -12,7 +11,6 @@ import org.aion.avm.core.ClassHierarchyForest;
 import org.aion.avm.core.ClassRenamer;
 import org.aion.avm.core.ClassRenamerBuilder;
 import org.aion.avm.core.dappreading.LoadedJar;
-import org.aion.avm.core.rejection.RejectedClassException;
 
 
 /**
