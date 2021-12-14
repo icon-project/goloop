@@ -16,7 +16,7 @@ type ErrorCode int
 func (c ErrorCode) New(msg string, data ...interface{}) *Error {
 	return &Error{
 		Code:    c,
-		Message: fmt.Sprintf("%s:%s", c.String(), msg),
+		Message: fmt.Sprintf("%s: %s", c.String(), msg),
 		Data:    firstOf(data...),
 	}
 }
