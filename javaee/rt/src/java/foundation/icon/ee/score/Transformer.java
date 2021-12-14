@@ -2,6 +2,7 @@ package foundation.icon.ee.score;
 
 import foundation.icon.ee.Agent;
 import foundation.icon.ee.types.IllegalFormatException;
+import i.AvmException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
@@ -289,11 +290,14 @@ public class Transformer {
             throw new IllegalFormatException("bad APIS");
         }
 
-        RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes,
-                conf.preserveDebuggability,
-                conf.enableVerboseContractErrors);
-        if (rawDapp == null) {
-            throw new IllegalFormatException("bad jar");
+        RawDappModule rawDapp;
+        try {
+            rawDapp = RawDappModule.readFromJar(codeBytes,
+                    conf.preserveDebuggability);
+        } catch (AvmException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new IllegalFormatException(t);
         }
         if (!rawDapp.classes.containsKey(rawDapp.mainClass)) {
             throw new IllegalFormatException("no main class");

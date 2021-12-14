@@ -46,6 +46,7 @@ type EncodeAndCloser interface {
 }
 
 type Decoder interface {
+	Skip(cnt int) error
 	Decode(o interface{}) error
 	DecodeMulti(objs ...interface{}) (int, error)
 	DecodeAll(objs ...interface{}) error
@@ -436,6 +437,13 @@ func (d *decoderImpl) Close() error {
 		return err
 	}
 	return d.real.Close()
+}
+
+func (d *decoderImpl) Skip(n int) error {
+	if err := d.flush(); err != nil {
+		return err
+	}
+	return d.real.Skip(n)
 }
 
 func (d *decoderImpl) Decode(o interface{}) error {

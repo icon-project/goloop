@@ -13,27 +13,20 @@ public class AvmConfiguration {
      * Some security violations will change into fatal assertion errors, instead of being rejected, if this is enabled.
      */
     public boolean preserveDebuggability;
+
     /**
-     * If set to true, will log details of uncaught contract exceptions to stderr.
-     * Enabling this is useful for local debugging cases.
+     * Print test debug information to stdout.
      */
-    public boolean enableVerboseContractErrors;
-    /**
-     * If set to true, will pass calls to Context.println to the underlying stdout console.
-     * If false, this call is still legal but will have no effect.
-     */
-    public boolean enableContextPrintln;
+    public boolean testMode;
 
     public AvmConfiguration() {
         // By default, none of our verbose options are enabled.
         this.preserveDebuggability = false;
-        this.enableVerboseContractErrors = false;
-        this.enableContextPrintln = false;
+        this.testMode = true;
     }
 
     public AvmConfiguration(AvmConfiguration conf) {
         this.preserveDebuggability = conf.preserveDebuggability;
-        this.enableVerboseContractErrors = conf.enableVerboseContractErrors;
-        this.enableContextPrintln = conf.enableContextPrintln;
+        this.testMode = conf.testMode;
     }
 }

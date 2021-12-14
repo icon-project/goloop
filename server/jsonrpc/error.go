@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -15,7 +16,7 @@ type ErrorCode int
 func (c ErrorCode) New(msg string, data ...interface{}) *Error {
 	return &Error{
 		Code:    c,
-		Message: fmt.Sprintf("%s : %s", c.String(), msg),
+		Message: fmt.Sprintf("%s: %s", c.String(), msg),
 		Data:    firstOf(data...),
 	}
 }
@@ -112,7 +113,8 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("jsonrpc: code: %d, message: %s, data: %+v", e.Code, e.Message, e.Data)
+	bs, _ := json.Marshal(e.Data)
+	return fmt.Sprintf("JSONRPCError(code=%d, message=%q, data=%s)", e.Code, e.Message, bs)
 }
 
 func firstOf(message ...interface{}) interface{} {

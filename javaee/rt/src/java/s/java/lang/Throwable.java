@@ -112,26 +112,28 @@ public class Throwable extends Object implements Serializable {
 
     public void avm_printStackTrace() {
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        printStackTrace("", visited);
+        var sb = new java.lang.StringBuilder();
+        buildStackTraceString(sb, "", visited);
+        final Logger logger = LoggerFactory.getLogger(Throwable.class);
+        logger.trace(LogMarker.Trace, "PRT| {}", sb);
     }
 
-    private void printStackTrace(java.lang.String caption,
+    private void buildStackTraceString(java.lang.StringBuilder sb,
+            java.lang.String caption,
             Set<Throwable> visited) {
         if (visited.contains(this)) {
             return;
         }
         visited.add(this);
-        final Logger logger = LoggerFactory.getLogger(Throwable.class);
-        logger.trace(LogMarker.Trace, "PRT|");
-        logger.trace(LogMarker.Trace, "PRT| " + caption + this);
+        sb.append(caption).append(this).append("\n");
         if (stackTrace != null) {
             for (StackTraceElement e : stackTrace) {
-                logger.trace(LogMarker.Trace, "PRT|\tat " + e);
+                sb.append("\tat ").append(e).append("\n");
             }
         }
 
         if (cause != null) {
-            cause.printStackTrace("Caused by: ", visited);
+            cause.buildStackTraceString(sb, "Caused by: ", visited);
         }
     }
 

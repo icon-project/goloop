@@ -1723,7 +1723,97 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	return common.NewConsensusInfo(pblk.Proposer(), vl, voted), nil
 }
 
-func GetLastHeight(dbase db.Database) (int64, error) {
+func GetBlockHeaderHashByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	headerHashByHeight, err := db.NewCodedBucket(
+		dbase, db.BlockHeaderHashByHeight, c,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return headerHashByHeight.GetBytes(height)
+}
+
+func GetBlockVersion(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) (int, error) {
+	headerHashByHeight, err := db.NewCodedBucket(
+		dbase, db.BlockHeaderHashByHeight, c,
+	)
+	if err != nil {
+		return -1, err
+	}
+	hash, err := headerHashByHeight.GetBytes(height + 1)
+	if err != nil {
+		return -1, err
+	}
+	headerBytes, err := db.DoGetWithBucketID(dbase, db.BytesByHash, hash)
+	if err != nil {
+		return -1, err
+	}
+
+	br := bytes.NewReader(headerBytes)
+	dec := c.NewDecoder(br)
+	defer func() {
+		_ = dec.Close()
+	}()
+	d2, err := dec.DecodeList()
+	if err != nil {
+		return -1, err
+	}
+	var version int
+	if err = d2.Decode(&version); err != nil {
+		return -1, err
+	}
+	return version, nil
+}
+
+func GetCommitVoteListBytesByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	headerHashByHeight, err := db.NewCodedBucket(
+		dbase, db.BlockHeaderHashByHeight, c,
+	)
+	if err != nil {
+		return nil, err
+	}
+	hash, err := headerHashByHeight.GetBytes(height + 1)
+	if err != nil {
+		return nil, err
+	}
+	headerBytes, err := db.DoGetWithBucketID(dbase, db.BytesByHash, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	br := bytes.NewReader(headerBytes)
+	dec := c.NewDecoder(br)
+	defer func() {
+		_ = dec.Close()
+	}()
+
+	d2, err := dec.DecodeList()
+	if err != nil {
+		return nil, err
+	}
+	if err = d2.Skip(5); err != nil {
+		return nil, err
+	}
+	var votesHash []byte
+	if err = d2.Decode(&votesHash); err != nil {
+		return nil, err
+	}
+	return db.DoGetWithBucketID(dbase, db.BytesByHash, votesHash)
+}
+
+func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
 	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
 		return 0, err
@@ -1733,10 +1823,14 @@ func GetLastHeight(dbase db.Database) (int64, error) {
 		return 0, err
 	}
 	var height int64
-	if _, err := dbCodec.UnmarshalFromBytes(bs, &height); err != nil {
+	if _, err := c.UnmarshalFromBytes(bs, &height); err != nil {
 		return 0, err
 	}
 	return height, nil
+}
+
+func GetLastHeight(dbase db.Database) (int64, error) {
+	return GetLastHeightWithCodec(dbase, dbCodec)
 }
 
 func GetLastHeightOf(dbase db.Database) int64 {
@@ -1744,12 +1838,12 @@ func GetLastHeightOf(dbase db.Database) int64 {
 	return height
 }
 
-func ResetDB(d db.Database, height int64) error {
+func ResetDB(d db.Database, c codec.Codec, height int64) error {
 	bk, err := d.GetBucket(db.ChainProperty)
 	if err != nil {
 		return err
 	}
-	err = bk.Set([]byte(keyLastBlockHeight), codec.MustMarshalToBytes(height))
+	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {
 		return err
 	}

@@ -2,9 +2,7 @@ package service
 
 import (
 	"sync"
-	"sync/atomic"
 
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -24,10 +22,9 @@ type TransactionManager struct {
 	log  log.Logger
 	lock sync.Mutex
 
-	txBucket     db.Bucket
+	tim          TXIDManager
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
-	lastTS       [2]int64
 
 	callback func()
 
@@ -48,7 +45,6 @@ func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPo
 
 func (m *TransactionManager) RemoveOldTxByBlockTS(group module.TransactionGroup, bts int64) {
 	ts := bts - m.tsc.TransactionThreshold(group)
-	atomic.StoreInt64(&m.lastTS[group], ts)
 	m.getTxPool(group).DropOldTXs(ts)
 }
 
@@ -176,8 +172,12 @@ func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
 		m.addWaiterInLock(id, rc)
 		return rc, nil
 	}
-
-	if has, err := m.txBucket.Has(id); err != nil {
+	if has, err := m.tim.HasRecent(id); err != nil {
+		return nil, err
+	} else if has {
+		return nil, ErrCommittedTransaction
+	}
+	if has, err := m.tim.HasLocator(id); err != nil {
 		return nil, err
 	} else if has {
 		return nil, ErrCommittedTransaction
@@ -204,10 +204,6 @@ func (m *TransactionManager) VerifyTx(tx transaction.Transaction) error {
 		return errors.InvalidNetworkError.Errorf(
 			"ValidateNetwork(nid=%#x) fail", m.nid)
 	}
-	lastTS := atomic.LoadInt64(&m.lastTS[tx.Group()])
-	if err := m.tsc.CheckWithCurrent(lastTS, tx); err != nil {
-		return err
-	}
 	if err := tx.Verify(); err != nil {
 		return InvalidTransactionError.Wrap(err,
 			"Failed to verify transaction")
@@ -215,10 +211,8 @@ func (m *TransactionManager) VerifyTx(tx transaction.Transaction) error {
 	return nil
 }
 func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
-	if has, err := m.txBucket.Has(tx.ID()); err != nil {
+	if err := m.tim.CheckTXForAdd(tx); err != nil {
 		return err
-	} else if has {
-		return ErrCommittedTransaction
 	}
 
 	pool := m.getTxPool(tx.Group())
@@ -262,13 +256,13 @@ func (m *TransactionManager) SetPoolCapacityMonitor(pcm PoolCapacityMonitor) {
 	m.normalTxPool.SetPoolCapacityMonitor(pcm)
 }
 
-func NewTransactionManager(nid int, tsc *TxTimestampChecker, ptp *TransactionPool, ntp *TransactionPool, bk db.Bucket, logger log.Logger) *TransactionManager {
+func NewTransactionManager(nid int, tsc *TxTimestampChecker, ptp *TransactionPool, ntp *TransactionPool, tim TXIDManager, logger log.Logger) *TransactionManager {
 	txm := &TransactionManager{
 		nid:          nid,
 		tsc:          tsc,
 		patchTxPool:  ptp,
 		normalTxPool: ntp,
-		txBucket:     bk,
+		tim:          tim,
 		log:          logger,
 		txWaiters:    map[hashValue][]chan<- interface{}{},
 	}

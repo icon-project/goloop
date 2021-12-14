@@ -847,7 +847,7 @@ type traceCallback struct {
 }
 
 type traceLog struct {
-	Level module.TraceLevel `json:"level""`
+	Level module.TraceLevel `json:"level"`
 	Msg   string            `json:"msg"`
 	Ts    int64             `json:"ts"`
 }

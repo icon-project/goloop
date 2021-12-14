@@ -69,29 +69,29 @@ func TestMethodRepository(t *testing.T) {
 
 	//unknownFields of request
 	unknownFieldsOnly := `{"foo":"bar"}`
-	unknownFieldsOnlyResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to unmarshal, unknown field 'foo'"},"id":null}`
+	unknownFieldsOnlyResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, unknown field 'foo'"},"id":null}`
 	invokeTest(t, mr, unknownFieldsOnly, unknownFieldsOnlyResp, http.StatusBadRequest)
 	unknownFields := `{"jsonrpc":"2.0","method":"hello","params":{"name":"icon"},"id":"1001","foo":"bar"}`
-	unknownFieldsResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
+	unknownFieldsResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
 	invokeTest(t, mr, unknownFields, unknownFieldsResp, http.StatusBadRequest)
 
 	//'jsonrpc' of request
-	requiredVersionResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to validate, required('jsonrpc')"},"id":"1001"}`
+	requiredVersionResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to validate, required('jsonrpc')"},"id":"1001"}`
 	omitVersion := `{"method":"noArgs","id":"1001"}`
 	invokeTest(t, mr, omitVersion, requiredVersionResp, http.StatusBadRequest)
 	nullVersion := `{"jsonrpc":null,"method":"noArgs","id":"1001"}`
 	invokeTest(t, mr, nullVersion, requiredVersionResp, http.StatusBadRequest)
 
 	invalidVersion := `{"jsonrpc":"2.1","method":"noArgs","id":"1001"}`
-	invalidVersionResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to validate, version('jsonrpc')"},"id":"1001"}`
+	invalidVersionResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to validate, version('jsonrpc')"},"id":"1001"}`
 	invokeTest(t, mr, invalidVersion, invalidVersionResp, http.StatusBadRequest)
 
 	invalidVersionType := `{"jsonrpc":2.0,"method":"noArgs","id":"1001"}`
-	invalidVersionTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to unmarshal, 'jsonrpc' must be string type"},"id":"1001"}`
+	invalidVersionTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, 'jsonrpc' must be string type"},"id":"1001"}`
 	invokeTest(t, mr, invalidVersionType, invalidVersionTypeResp, http.StatusBadRequest)
 
 	//'method' of request
-	requiredMethodResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to validate, required('method')"},"id":"1001"}`
+	requiredMethodResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to validate, required('method')"},"id":"1001"}`
 	omitMethod := `{"jsonrpc":"2.0","params":"bar","id":"1001"}`
 	invokeTest(t, mr, omitMethod, requiredMethodResp, http.StatusBadRequest)
 	nullMethod := `{"jsonrpc":"2.0","method":null,"params":"bar","id":"1001"}`
@@ -104,7 +104,7 @@ func TestMethodRepository(t *testing.T) {
 	invokeTest(t, mr, emptyMethod, methodNotFoundResp, http.StatusBadRequest)
 
 	invalidMethodType := `{"jsonrpc":"2.0","method":1,"id":"1001"}`
-	invalidMethodTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to unmarshal, 'method' must be string type"},"id":"1001"}`
+	invalidMethodTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, 'method' must be string type"},"id":"1001"}`
 	invokeTest(t, mr, invalidMethodType, invalidMethodTypeResp, http.StatusBadRequest)
 
 	//'id' of request
@@ -127,34 +127,34 @@ func TestMethodRepository(t *testing.T) {
 	invokeTest(t, mr, fractionalPartsId, fractionalPartsIdResp, http.StatusOK)
 
 	invalidIdType := `{"jsonrpc":"2.0","method":"noArgs","id":true}`
-	invalidIdTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to validate, id('id')"},"id":true}`
+	invalidIdTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to validate, id('id')"},"id":true}`
 	invokeTest(t, mr, invalidIdType, invalidIdTypeResp, http.StatusBadRequest)
 
 	//'params' of request
-	requiredParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to unmarshal, 'params' of request is required "},"id":"1001"}`
+	requiredParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to unmarshal, 'params' of request is required "},"id":"1001"}`
 	omitParams := `{"jsonrpc":"2.0","method":"hello","id":"1001"}`
 	invokeTest(t, mr, omitParams, requiredParamsResp, http.StatusBadRequest)
 	nullParams := `{"jsonrpc":"2.0","method":"hello","params":null,"id":"1001"}`
 	invokeTest(t, mr, nullParams, requiredParamsResp, http.StatusBadRequest)
 
 	invalidParamsType := `{"jsonrpc":"2.0","method":"hello","params":0,"id":"1001"}`
-	invalidParamsTypeResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to unmarshal, 'params' of request must be object type"},"id":"1001"}`
+	invalidParamsTypeResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to unmarshal, 'params' of request must be object type"},"id":"1001"}`
 	invokeTest(t, mr, invalidParamsType, invalidParamsTypeResp, http.StatusBadRequest)
 
 	unknownFieldsInParams := `{"jsonrpc":"2.0","method":"hello","params":{"name":"icon","foo":"bar"},"id":"1001"}`
-	unknownFieldsInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
+	unknownFieldsInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
 	invokeTest(t, mr, unknownFieldsInParams, unknownFieldsInParamsResp, http.StatusBadRequest)
 
 	emptyParamInParams := `{"jsonrpc":"2.0","method":"hello","params":{"name":""},"id":"1001"}`
-	emptyParamInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to validate, required('name')"},"id":"1001"}`
+	emptyParamInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to validate, required('name')"},"id":"1001"}`
 	invokeTest(t, mr, emptyParamInParams, emptyParamInParamsResp, http.StatusBadRequest)
 
 	invalidParamTypeInParams := `{"jsonrpc":"2.0","method":"hello","params":{"name":0},"id":"1001"}`
-	invalidParamTypeInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to unmarshal, 'name' must be string type"},"id":"1001"}`
+	invalidParamTypeInParamsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to unmarshal, 'name' must be string type"},"id":"1001"}`
 	invokeTest(t, mr, invalidParamTypeInParams, invalidParamTypeInParamsResp, http.StatusBadRequest)
 
 	unknownFieldsInParamsForNoArgs := `{"jsonrpc":"2.0","method":"noArgs","params":{"foo":"bar"},"id":"1001"}`
-	unknownFieldsInParamsForNoArgsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams : fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
+	unknownFieldsInParamsForNoArgsResp := `{"jsonrpc":"2.0","error":{"code":-32602,"message":"InvalidParams: fail to unmarshal, unknown field 'foo'"},"id":"1001"}`
 	invokeTest(t, mr, unknownFieldsInParamsForNoArgs, unknownFieldsInParamsForNoArgsResp, http.StatusBadRequest)
 
 	//batch
@@ -162,8 +162,8 @@ func TestMethodRepository(t *testing.T) {
 	emptyBatchResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest"},"id":null}`
 	invokeTest(t, mr, emptyBatch, emptyBatchResp, http.StatusBadRequest)
 
-	invalidRequestTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest : fail to unmarshal, request must be object type"},"id":null}`
-	invalidBatch := []string{`1`,`2`,`3`}
+	invalidRequestTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, request must be object type"},"id":null}`
+	invalidBatch := []string{`1`, `2`, `3`}
 	invalidBatchResp := []string{
 		invalidRequestTypeResp,
 		invalidRequestTypeResp,

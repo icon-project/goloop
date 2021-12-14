@@ -27,13 +27,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	cs "github.com/icon-project/goloop/consensus"
+	"github.com/icon-project/goloop/module"
 )
 
 var dbPath string
 var walPath string
 var dbType string
+var codecType string
+
+func codecForType(t string) codec.Codec {
+	if t == "mp" {
+		return codec.MP
+	}
+	return codec.RLP
+}
 
 func reset(height int64) error {
 	d, err := db.Open(dbPath, dbType, "")
@@ -45,48 +55,76 @@ func reset(height int64) error {
 			panic(err)
 		}
 	}()
-	curHeight, err := block.GetLastHeight(d)
+
+	cod := codecForType(codecType)
+	curHeight, err := block.GetLastHeightWithCodec(d, cod)
+	if curHeight <= height {
+		return errors.Errorf("invalid target height current=%d target=%d", curHeight, height)
+	}
+	ver, err := block.GetBlockVersion(d, cod, height)
+	if err != nil {
+		return err
+	}
+	if ver <= module.BlockVersion1 {
+		return errors.Errorf("unsupported block version=%d height=%d", ver, height)
+	}
+
 	fmt.Printf("Current block height : %v \n", curHeight)
 	fmt.Printf("Target block height  : %v \n", height)
 	fmt.Printf("Confirm reset? (y/n) ")
 	reader := bufio.NewReader(os.Stdin)
 	confirm, err := reader.ReadString('\n')
 	if err != nil {
-		return nil
+		return err
 	}
 	confirm = strings.Replace(confirm, "\n", "", -1)
 	if confirm != "y" {
 		return nil
 	}
-	err = block.ResetDB(d, height)
+
+	bid, err := block.GetBlockHeaderHashByHeight(d, cod, height)
 	if err != nil {
 		return err
 	}
-	err = cs.ResetWAL(height, walPath)
+
+	cvlBytes, err := block.GetCommitVoteListBytesByHeight(d, cod, height)
+	if err != nil {
+		return err
+	}
+
+	vlmBytes, err := cs.WALRecordBytesFromCommitVoteListBytes(
+		cvlBytes, height, bid, cod,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = block.ResetDB(d, cod, height)
+	if err != nil {
+		return err
+	}
+
+	err = cs.ResetWAL(height, walPath, vlmBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-
 func er(msg interface{}) {
-	fmt.Println("Error:", msg)
+	_, _ = fmt.Fprintln(os.Stderr, "Error:", msg)
 	os.Exit(1)
 }
-
 func main() {
-	rootCmd := &cobra.Command{
-		Use: os.Args[0] + " <height>",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return errors.New("requires one height argument")
-			}
-			_, err := strconv.ParseInt(args[0], 0, 64)
-			if err != nil {
-				return err
-			}
-			return nil
-		},
+	rootCmd := &cobra.Command{Use: os.Args[0] + " <height>", Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("requires one height argument")
+		}
+		_, err := strconv.ParseInt(args[0], 0, 64)
+		if err != nil {
+			return err
+		}
+		return nil
+	},
 		Run: func(cmd *cobra.Command, args []string) {
 			height, _ := strconv.ParseInt(args[0], 0, 64)
 			err := reset(height)
@@ -101,6 +139,7 @@ func main() {
 	flag.StringVar(&walPath, "wal_path", "", "WAL path. For example, .chain/hxd81df51476cee82617f6fa658ebecc31d24ddce3/bfdc51/wal/)")
 	flag.StringVar(&dbType, "db_type", "goleveldb",
 		fmt.Sprintf("Name of database system (%s)", strings.Join(db.GetSupportedTypes(), ", ")))
+	flag.StringVar(&codecType, "codec", "rlp", "Name of data codec (rlp, mp)")
 	err := rootCmd.Execute()
 	if err != nil {
 		er(err)

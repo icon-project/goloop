@@ -6,7 +6,6 @@ import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.LogMarker;
-import foundation.icon.ee.util.StringConsumerOutputStream;
 import i.AvmError;
 import i.AvmException;
 import i.GenericPredefinedException;
@@ -19,6 +18,7 @@ import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 public class DAppExecutor {
@@ -66,8 +66,7 @@ public class DAppExecutor {
                                                           dappAddress,
                                                           tx,
                                                           dapp.runtimeSetup,
-                                                          dapp,
-                                                          conf.enableContextPrintln);
+                                                          dapp);
         FrameContextImpl fc = new FrameContextImpl(externalState);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
@@ -116,13 +115,12 @@ public class DAppExecutor {
             }
         } catch (AvmException e) {
             logger.trace("DApp invocation failed: {}", e.getMessage());
-            if (conf.enableVerboseContractErrors) {
+            if (conf.testMode) {
                 e.printStackTrace();
-                var os = new StringConsumerOutputStream(s -> {
-                    logger.trace(LogMarker.Trace, s);
-                });
-                e.printStackTrace(new PrintStream(os));
             }
+            var bos = new ByteArrayOutputStream();
+            e.printStackTrace(new PrintStream(bos));
+            logger.trace(LogMarker.Trace, bos.toString());
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());
         } finally {

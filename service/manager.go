@@ -34,6 +34,7 @@ const ConfigTransitionResultCacheEntrySize = 1024 * 1024
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
+	tim          TXIDManager
 	tm           *TransactionManager
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
@@ -62,11 +63,6 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "SV",
 	})
-	bk, err := chain.Database().GetBucket(db.TransactionLocatorByHash)
-	if err != nil {
-		logger.Warnf("FAIL to get bucket(%s) %v\n", db.TransactionLocatorByHash, err)
-		return nil, err
-	}
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
@@ -75,12 +71,15 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
 	}
-	pTxPool := NewTransactionPool(module.TransactionGroupPatch,
-		chain.PatchTxPoolSize(), bk, pMetric, logger)
-	nTxPool := NewTransactionPool(module.TransactionGroupNormal,
-		chain.NormalTxPoolSize(), bk, nMetric, logger)
 	tsc := NewTimestampChecker()
-	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, bk, logger)
+	tim, err := NewTXIDManager(chain.Database(), tsc)
+	if err != nil {
+		logger.Warnf("FAIL to create TXIDManager : %v\n", err)
+		return nil, err
+	}
+	pTxPool := NewTransactionPool(module.TransactionGroupPatch, chain.PatchTxPoolSize(), tim, pMetric, logger)
+	nTxPool := NewTransactionPool(module.TransactionGroupNormal, chain.NormalTxPoolSize(), tim, nMetric, logger)
+	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, tim, logger)
 	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), plt, logger)
 
 	mgr := &manager{
@@ -99,6 +98,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 			logger),
 		log: logger,
 		tsc: tsc,
+		tim: tim,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, tm)
@@ -163,7 +163,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc, m.tim)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -279,8 +279,6 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			if err := tst.finalizeNormalTransaction(); err != nil {
 				return err
 			}
-			// Because transactionlist for transition is made only through peer and SendTransaction() call
-			// transactionlist has slice of transactions in case that finalize() is called
 			m.tm.RemoveTxs(module.TransactionGroupNormal, tst.normalTransactions)
 			m.tm.RemoveOldTxByBlockTS(module.TransactionGroupNormal, tst.bi.Timestamp())
 		}

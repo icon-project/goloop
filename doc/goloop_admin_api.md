@@ -409,9 +409,8 @@ Runtime-Configurable
 
 |Parameter|Value|
 |---|---|
-|»» dbType|badgerdb|
 |»» dbType|goleveldb|
-|»» dbType|boltdb|
+|»» dbType|rocksdb|
 |»» dbType|mapdb|
 |»» role|0|
 |»» role|1|
@@ -1009,9 +1008,8 @@ This operation does not require authentication
 
 |Property|Value|
 |---|---|
-|dbType|badgerdb|
 |dbType|goleveldb|
-|dbType|boltdb|
+|dbType|rocksdb|
 |dbType|mapdb|
 |role|0|
 |role|1|
