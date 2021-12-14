@@ -391,8 +391,14 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				return step, nil
 			}
 		} else {
+			save := vc.GetString("save")
 			rpcClientSendTx = func(w module.Wallet, p *v3.TransactionParam) (interface{}, error) {
 				txId, err := rpcClient.SendTransaction(w, p)
+				if len(save) > 0 {
+					if err := JsonPrettySaveFile(save, 0644, p); err != nil {
+						fmt.Fprintf(os.Stderr, "FAIL to save parameter file=%s err=%+v\n", save, err)
+					}
+				}
 				if err != nil {
 					return nil, err
 				}
@@ -519,6 +525,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootPFlags.Int("wait_interval", 1000, "Polling interval(msec) for wait transaction result")
 	rootPFlags.Int("wait_timeout", 10, "Timeout(sec) for wait transaction result")
 	rootPFlags.Bool("estimate", false, "Just estimate steps for the tx")
+	rootPFlags.String("save", "", "Store transaction to the file")
 	MarkAnnotationCustom(rootPFlags, "key_store", "nid")
 	BindPFlags(vc, rootCmd.PersistentFlags())
 	MarkAnnotationHidden(rootPFlags, "wait", "wait_interval", "wait_timeout")
