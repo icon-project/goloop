@@ -44,7 +44,7 @@ type TXIDManager interface {
 
 type TXIDLogger interface {
 	Has(id []byte) (bool, error)
-	Add(id []byte) error
+	Add(id []byte, force bool) error
 	Commit() error
 	NewLogger(height int64, ts int64) TXIDLogger
 }
@@ -336,11 +336,11 @@ func (l *txIDLogger) has(id string) (bool, error) {
 	return height != InvalidHeight && height < l.set.height, err
 }
 
-func (l *txIDLogger) Add(id []byte) error {
+func (l *txIDLogger) Add(id []byte, force bool) error {
 	ids := string(id)
 	if has, err := l.has(ids); err != nil {
 		return err
-	} else if has {
+	} else if has && !force {
 		return CommittedTransactionError.Errorf("Committed(id=%x)", id)
 	}
 	l.set.Add(ids)

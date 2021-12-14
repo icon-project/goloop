@@ -65,7 +65,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 
 		logger1 := logger.NewLogger(baseHeight+1, baseTS+MinuteInMicro)
 
-		err = logger1.Add(tid2)
+		err = logger1.Add(tid2, false)
 		assert.NoError(t, err)
 
 		err = logger.Commit()
@@ -81,10 +81,10 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, has)
 
-		err = logger2.Add(tid3)
+		err = logger2.Add(tid3, false)
 		assert.NoError(t, err)
 
-		err = logger2.Add(tid4)
+		err = logger2.Add(tid4, false)
 		assert.NoError(t, err)
 
 		err = logger1.Commit()
@@ -111,7 +111,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		err = logger2.Commit()
 		assert.NoError(t, err)
 
-		err = logger3.Add(tidOf(5))
+		err = logger3.Add(tidOf(5), false)
 		assert.NoError(t, err)
 
 		err = logger3.Commit()
@@ -148,10 +148,10 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, has)
 
-		err = logger.Add(tid1)
+		err = logger.Add(tid1, false)
 		assert.NoError(t, err)
 
-		err = logger.Add(tid2)
+		err = logger.Add(tid2, false)
 		assert.NoError(t, err)
 
 		logger2 := logger.NewLogger(baseHeight+1, baseTS+5*MinuteInMicro)
@@ -164,10 +164,10 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, has)
 
-		err = logger2.Add(tid3)
+		err = logger2.Add(tid3, false)
 		assert.NoError(t, err)
 
-		err = logger2.Add(tid4)
+		err = logger2.Add(tid4, false)
 		assert.NoError(t, err)
 
 		// first block is committed
@@ -213,7 +213,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		ts := baseTS
 
 		logger := mgr.NewLogger(module.TransactionGroupNormal, height, ts)
-		err = logger.Add(tid1)
+		err = logger.Add(tid1, false)
 		assert.NoError(t, err)
 		height += 1
 		ts += MinuteInMicro
@@ -221,7 +221,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		for i := 2; i <= 20; i++ {
 			nlogger := logger.NewLogger(height, ts)
 
-			err := nlogger.Add(tidOf(i))
+			err := nlogger.Add(tidOf(i), false)
 			assert.NoError(t, err)
 
 			err = logger.Commit()
@@ -256,7 +256,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 		history, err := NewTXIDManager(dbase, tsc)
 		assert.NoError(t, err)
 		logger := history.NewLogger(module.TransactionGroupNormal, baseHeight+1, baseTS)
-		err = logger.Add(tid1)
+		err = logger.Add(tid1, false)
 		assert.Error(t, err)
 	})
 }
