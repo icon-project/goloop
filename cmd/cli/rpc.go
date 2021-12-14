@@ -533,7 +533,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 
 	rawCmd := &cobra.Command{
 		Use:   "raw FILE",
-		Short: "Send transaction with json file filling nid,from,timestamp and signature",
+		Short: "Send transaction with json file filling nid,version,stepLimit,from and overwriting timestamp and signature",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := readFile(args[0])
@@ -575,7 +575,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 
 	raw2Cmd := &cobra.Command{
 		Use:   "raw2 FILE",
-		Short: "Send transaction with json file filling timestamp and signature",
+		Short: "Send transaction with json file overwriting timestamp and signature",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := readFile(args[0])
