@@ -31,6 +31,9 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 
 public class IRC3TokenScore extends Score {
+    private static final BigInteger MINT_STEP = BigInteger.valueOf(400000);
+    private static final BigInteger TRANSFER_STEP = BigInteger.valueOf(500000);
+
     public IRC3TokenScore(Score other) {
         super(other);
     }
@@ -92,14 +95,14 @@ public class IRC3TokenScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("_tokenId", new RpcValue(tokenId))
                 .build();
-        return invoke(wallet, "mint", params);
+        return invoke(wallet, "mint", params, null, MINT_STEP);
     }
 
     public Bytes burn(Wallet wallet, BigInteger tokenId) throws IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("_tokenId", new RpcValue(tokenId))
                 .build();
-        return invoke(wallet, "burn", params);
+        return invoke(wallet, "burn", params, null, MINT_STEP);
     }
 
     public Bytes approve(Wallet wallet, Address to, BigInteger tokenId) throws IOException {
@@ -107,7 +110,7 @@ public class IRC3TokenScore extends Score {
                 .put("_to", new RpcValue(to))
                 .put("_tokenId", new RpcValue(tokenId))
                 .build();
-        return invoke(wallet, "approve", params);
+        return invoke(wallet, "approve", params, null, MINT_STEP);
     }
 
     public Bytes transfer(Wallet wallet, Address to, BigInteger tokenId) throws IOException {
@@ -115,7 +118,7 @@ public class IRC3TokenScore extends Score {
                 .put("_to", new RpcValue(to))
                 .put("_tokenId", new RpcValue(tokenId))
                 .build();
-        return invoke(wallet, "transfer", params);
+        return invoke(wallet, "transfer", params, null, TRANSFER_STEP);
     }
 
     public Bytes transferFrom(Wallet wallet, Address from, Address to, BigInteger tokenId) throws IOException {
@@ -124,6 +127,6 @@ public class IRC3TokenScore extends Score {
                 .put("_to", new RpcValue(to))
                 .put("_tokenId", new RpcValue(tokenId))
                 .build();
-        return invoke(wallet, "transferFrom", params);
+        return invoke(wallet, "transferFrom", params, null, TRANSFER_STEP);
     }
 }

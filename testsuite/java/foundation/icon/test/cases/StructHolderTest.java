@@ -30,7 +30,7 @@ import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.Score;
 import foundation.icon.test.score.StructHolderScore;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag(Constants.TAG_JAVA_SCORE)
 public class StructHolderTest extends TestBase {
@@ -53,6 +54,14 @@ public class StructHolderTest extends TestBase {
         IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
         ownerWallet = KeyWallet.create();
+        BigInteger amount = ICX.multiply(BigInteger.valueOf(100));
+        txHandler.transfer(ownerWallet.getAddress(), amount);
+        ensureIcxBalance(txHandler, ownerWallet.getAddress(), BigInteger.ZERO, amount);
+    }
+
+    @AfterAll
+    static void shutdown() throws Exception {
+        txHandler.refundAll(ownerWallet);
     }
 
     private StructHolderScore deployScore() throws Exception {
@@ -90,7 +99,7 @@ public class StructHolderTest extends TestBase {
         LOG.info("getComplexStruct() : " + res.toString());
         if (!RpcItems.equals(complexStruct, res)) {
             // show diff
-            Assertions.assertEquals(complexStruct.toString(), res.toString());
+            assertEquals(complexStruct.toString(), res.toString());
         }
         LOG.infoExiting();
     }

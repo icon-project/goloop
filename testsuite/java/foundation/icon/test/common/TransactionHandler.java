@@ -45,6 +45,8 @@ import java.util.List;
 import static foundation.icon.test.common.Env.LOG;
 
 public class TransactionHandler {
+    private static final BigInteger STEP_MARGIN = BigInteger.valueOf(100000);
+
     private final IconService iconService;
     private final Env.Chain chain;
 
@@ -119,7 +121,7 @@ public class TransactionHandler {
                 .params(params)
                 .build();
         if (steps == null) {
-            steps = estimateStep(transaction);
+            steps = estimateStep(transaction).add(STEP_MARGIN);
         }
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
@@ -183,14 +185,14 @@ public class TransactionHandler {
 
     public Bytes invoke(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
         if (steps == null) {
-            steps = estimateStep(tx);
+            steps = estimateStep(tx).add(STEP_MARGIN);
         }
         return this.iconService.sendTransaction(new SignedTransaction(tx, wallet, steps)).execute();
     }
 
     public TransactionResult invokeAndWait(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
         if (steps == null) {
-            steps = estimateStep(tx);
+            steps = estimateStep(tx).add(STEP_MARGIN);
         }
         return this.iconService.sendTransactionAndWait(new SignedTransaction(tx, wallet, steps)).execute();
     }
@@ -245,7 +247,7 @@ public class TransactionHandler {
                 .value(amount)
                 .build();
         if (steps == null) {
-            steps = estimateStep(transaction).add(BigInteger.valueOf(10000));
+            steps = estimateStep(transaction).add(STEP_MARGIN);
         }
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
