@@ -62,13 +62,13 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON));
+        return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON), true);
     }
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params, BigInteger steps)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         return getScore(doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params,
-                steps, Constants.CONTENT_TYPE_PYTHON));
+                steps, Constants.CONTENT_TYPE_PYTHON), true);
     }
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params, BigInteger steps)
@@ -80,10 +80,10 @@ public class TransactionHandler {
             throws IOException, ResultTimeoutException, TransactionFailureException {
         if (scorePath.endsWith(".jar")) {
             byte[] data = Files.readAllBytes(Path.of(scorePath));
-            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_JAVA));
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_JAVA), false);
         } else {
             byte[] data = ZipFile.zipContent(scorePath);
-            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON), true);
         }
     }
 
@@ -95,7 +95,7 @@ public class TransactionHandler {
     public Score deploy(Wallet owner, Class<?>[] classes, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] jar = makeJar(classes[0].getName(), classes);
-        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
+        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA), false);
     }
 
     public byte[] makeJar(String name, Class<?>[] classes) {
@@ -127,13 +127,15 @@ public class TransactionHandler {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public Score getScore(Bytes txHash)
+    public Score getScore(Bytes txHash, boolean acceptScore)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         TransactionResult result = getResult(txHash);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
-        acceptScoreIfAuditEnabled(txHash);
+        if (acceptScore) {
+            acceptScoreIfAuditEnabled(txHash);
+        }
         return new Score(this, new Address(result.getScoreAddress()));
     }
 
