@@ -104,7 +104,7 @@ type BlockManager interface {
 
 	// SendAndWaitTransaction sends a transaction, and get a channel to
 	// to wait for the result of it.
-	SendTransactionAndWait(result []byte, txi interface{}) (tid []byte, rc <-chan interface{}, err error)
+	SendTransactionAndWait(result []byte, height int64, txi interface{}) (tid []byte, rc <-chan interface{}, err error)
 
 	// WaitTransactionResult check whether it knows about the transaction
 	// and wait for the result.
