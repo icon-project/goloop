@@ -57,6 +57,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_JAVA_SCORE)
 class JavaAPITest extends TestBase {
+    private static final BigInteger DEPLOY_STEP = BigInteger.valueOf(1_200_000_000);
+
     private static IconService iconService;
     private static TransactionHandler txHandler;
     private static SecureRandom secureRandom;
@@ -75,7 +77,7 @@ class JavaAPITest extends TestBase {
 
         // init wallets
         wallets = new KeyWallet[2];
-        BigInteger amount = ICX.multiply(BigInteger.valueOf(100));
+        BigInteger amount = ICX.multiply(BigInteger.valueOf(200));
         for (int i = 0; i < wallets.length; i++) {
             wallets[i] = KeyWallet.create();
             txHandler.transfer(wallets[i].getAddress(), amount);
@@ -551,7 +553,7 @@ class JavaAPITest extends TestBase {
                 .put("content", new RpcValue(jarBytes))
                 .build();
         var txres = txHandler.getResult(
-                score.invoke(ownerWallet, "deploySingle", params));
+                score.invoke(ownerWallet, "deploySingle", params, null, DEPLOY_STEP));
         assertSuccess(txres);
         TransactionResult.EventLog event = score.findEventLog(txres, "EmitScoreAddress(Address)");
         assertNotNull(event);
@@ -580,7 +582,7 @@ class JavaAPITest extends TestBase {
 
         LOG.infoEntering("invoke", "deploy APIs twice in a transaction");
         txres = txHandler.getResult(
-                score.invoke(ownerWallet, "deployMultiple", params));
+                score.invoke(ownerWallet, "deployMultiple", params, null, DEPLOY_STEP.multiply(BigInteger.TWO)));
         assertSuccess(txres);
         LOG.infoExiting();
 
@@ -593,7 +595,7 @@ class JavaAPITest extends TestBase {
                 .put("name", new RpcValue("Alice"))
                 .build();
         txres = txHandler.getResult(
-                score.invoke(ownerWallet, "updateSingle", params));
+                score.invoke(ownerWallet, "updateSingle", params, null, DEPLOY_STEP));
         assertSuccess(txres);
         LOG.infoExiting();
 
@@ -619,13 +621,13 @@ class JavaAPITest extends TestBase {
             System.arraycopy(garbage, 0, content, modLen, garbage.length);
             var hash = txHandler.doDeploy(ownerWallet, content,
                     Constants.CHAINSCORE_ADDRESS, null,
-                    Constants.DEFAULT_STEPS, Constants.CONTENT_TYPE_JAVA);
+                    DEPLOY_STEP, Constants.CONTENT_TYPE_JAVA);
             assertFailure(txHandler.getResult(hash));
         }
         LOG.infoExiting();
 
         LOG.infoEntering("deploy", "indirectly");
-        var deployScore = txHandler.deploy(ownerWallet, DeployScore.class, null);
+        var deployScore = txHandler.deploy(caller, DeployScore.class, null);
         LOG.info("scoreAddress = " + deployScore.getAddress());
         for (int i = 2; i <= 128; i *= 2) {
             int modLen = len / i;
@@ -638,7 +640,7 @@ class JavaAPITest extends TestBase {
                     .put("content", new RpcValue(content))
                     .build();
             var txres = txHandler.getResult(
-                    deployScore.invoke(ownerWallet, "deploySingle", params));
+                    deployScore.invoke(caller, "deploySingle", params, null, DEPLOY_STEP));
             assertFailure(txres);
             assertEquals(0x21, txres.getFailure().getCode().intValue());
         }

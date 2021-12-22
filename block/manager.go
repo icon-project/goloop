@@ -70,10 +70,10 @@ type ServiceManager interface {
 	GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error)
 	TransactionListFromHash(hash []byte) module.TransactionList
 	ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error)
-	SendTransaction(result []byte, tx interface{}) ([]byte, error)
+	SendTransaction(result []byte, height int64, tx interface{}) ([]byte, error)
 	ValidatorListFromHash(hash []byte) module.ValidatorList
 	TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList
-	SendTransactionAndWait(result []byte, tx interface{}) ([]byte, <-chan interface{}, error)
+	SendTransactionAndWait(result []byte, height int64, tx interface{}) ([]byte, <-chan interface{}, error)
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
 	ExportResult(result []byte, vh []byte, dst db.Database) error
 }
@@ -1319,11 +1319,11 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 	return loc, nil
 }
 
-func (m *manager) SendTransactionAndWait(result []byte, txi interface{}) ([]byte, <-chan interface{}, error) {
+func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interface{}) ([]byte, <-chan interface{}, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	id, rc, err := m.sm.SendTransactionAndWait(result, txi)
+	id, rc, err := m.sm.SendTransactionAndWait(result, height, txi)
 	if err == nil {
 		return id, rc, nil
 	}

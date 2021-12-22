@@ -19,6 +19,7 @@ package foundation.icon.test.score;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -52,7 +53,7 @@ public class StructHolderScore extends Score {
 
     public TransactionResult setSimpleStruct(Wallet from, RpcObject params)
             throws IOException, ResultTimeoutException {
-        return invokeAndWaitResult(from, "setSimpleStruct", params);
+        return invokeAndWaitResult(from, "setSimpleStruct", params, null, Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult setComplexStruct(Wallet from, RpcObject params)

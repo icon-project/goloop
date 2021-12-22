@@ -388,7 +388,7 @@ func newTransaction(txi interface{}) (transaction.Transaction, error) {
 	}
 }
 
-func (m *manager) SendTransactionAndWait(result []byte, txi interface{}) ([]byte, <-chan interface{}, error) {
+func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interface{}) ([]byte, <-chan interface{}, error) {
 	newTx, err := newTransaction(txi)
 	if err != nil {
 		return nil, nil, err
@@ -397,7 +397,7 @@ func (m *manager) SendTransactionAndWait(result []byte, txi interface{}) ([]byte
 		return nil, nil, err
 	}
 	if m.chain.ValidateTxOnSend() {
-		if err := m.preValidateTx(result, newTx); err != nil {
+		if err := m.preValidateTx(result, height, newTx); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -419,15 +419,24 @@ func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
 	return m.tm.WaitResult(id)
 }
 
-func (m *manager) preValidateTx(result []byte, tx transaction.Transaction) error {
+type worldContextWrapper struct {
+	state.WorldContext
+	height int64
+}
+
+func (wc *worldContextWrapper) BlockHeight() int64 {
+	return wc.height
+}
+
+func (m *manager) preValidateTx(result []byte, height int64, tx transaction.Transaction) error {
 	wc, err := m.trc.GetWorldContext(result, nil)
 	if err != nil {
 		return err
 	}
-	return tx.PreValidate(wc, false)
+	return tx.PreValidate(&worldContextWrapper{wc, height}, false)
 }
 
-func (m *manager) SendTransaction(result []byte, txi interface{}) ([]byte, error) {
+func (m *manager) SendTransaction(result []byte, height int64, txi interface{}) ([]byte, error) {
 	newTx, err := newTransaction(txi)
 	if err != nil {
 		return nil, err
@@ -436,7 +445,7 @@ func (m *manager) SendTransaction(result []byte, txi interface{}) ([]byte, error
 		return nil, err
 	}
 	if m.chain.ValidateTxOnSend() {
-		if err := m.preValidateTx(result, newTx); err != nil {
+		if err := m.preValidateTx(result, height, newTx); err != nil {
 			return nil, err
 		}
 	}

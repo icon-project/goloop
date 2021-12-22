@@ -413,6 +413,7 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 	sm := chain.ServiceManager()
 
 	var state []byte
+	var height int64
 	if chain.ValidateTxOnSend() {
 		bm := chain.BlockManager()
 		if bm == nil {
@@ -423,9 +424,10 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
 		state = block.Result()
+		height = block.Height() + 1
 	}
 
-	hash, err := sm.SendTransaction(state, params.RawMessage())
+	hash, err := sm.SendTransaction(state, height, params.RawMessage())
 	if err != nil {
 		if service.TransactionPoolOverflowError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)
@@ -708,15 +710,17 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	}
 
 	var state []byte
+	var height int64
 	if chain.ValidateTxOnSend() {
 		block, err := bm.GetLastBlock()
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
 		state = block.Result()
+		height = block.Height() + 1
 	}
 
-	hash, fc, err := bm.SendTransactionAndWait(state, params.RawMessage())
+	hash, fc, err := bm.SendTransactionAndWait(state, height, params.RawMessage())
 	if err != nil {
 		if service.TransactionPoolOverflowError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)

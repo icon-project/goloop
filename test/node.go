@@ -214,7 +214,7 @@ func (t *Node) ImportFinalizeBlockByReader(r io.Reader) {
 func (t *Node) ProposeFinalizeBlockWithTX(
 	votes module.CommitVoteSet, txJson string,
 ) {
-	tid, err := t.SM.SendTransaction(nil, txJson)
+	tid, err := t.SM.SendTransaction(nil, 0, txJson)
 	assert.NoError(t, err)
 	bc := t.ProposeBlock(votes)
 	t.FinalizeBlock(bc)
@@ -227,7 +227,7 @@ func (t *Node) ProposeFinalizeBlockWithTX(
 func (t *Node) ProposeImportFinalizeBlockWithTX(
 	votes module.CommitVoteSet, txJson string,
 ) {
-	tid, err := t.SM.SendTransaction(nil, txJson)
+	tid, err := t.SM.SendTransaction(nil, 0, txJson)
 	assert.NoError(t, err)
 	bc := t.ProposeBlock(votes)
 	t.ImportBlock(bc, 0)

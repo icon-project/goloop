@@ -238,7 +238,7 @@ func TestBlockManager_Propose_ReturnsValidBlock(t *testing.T) {
 	sm := s.sm
 	tx := newTestTransaction()
 	tx.Data.Effect.NextValidators = newRandomTestValidatorList(2)
-	_, err := sm.SendTransaction(nil, tx)
+	_, err := sm.SendTransaction(nil, 0, tx)
 	assert.NoError(t, err)
 	pid := getLastBlockID(t, bm)
 	br := proposeSync(bm, pid, newCommitVoteSet(true))

@@ -555,11 +555,11 @@ func (t *transition) validateTXIDs(list module.TransactionList, logger TXIDLogge
 }
 
 func (t *transition) doExecute(alreadyValidated bool) {
-	if err := t.ensureRecordTXIDs(false); err != nil {
-		t.reportValidation(err)
-		return
-	}
 	if !alreadyValidated {
+		if err := t.ensureRecordTXIDs(false); err != nil {
+			t.reportValidation(err)
+			return
+		}
 		wc, err := t.newWorldContext(false)
 		if err != nil {
 			t.reportValidation(err)
@@ -580,6 +580,11 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		tsr = NewTxTimestampRangeFor(wc, module.TransactionGroupNormal)
 		err = t.validateTxs(t.normalTransactions, wc, tsr)
 		if err != nil {
+			t.reportValidation(err)
+			return
+		}
+	} else {
+		if err := t.ensureRecordTXIDs(true); err != nil {
 			t.reportValidation(err)
 			return
 		}

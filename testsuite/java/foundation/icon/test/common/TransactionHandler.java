@@ -45,6 +45,8 @@ import java.util.List;
 import static foundation.icon.test.common.Env.LOG;
 
 public class TransactionHandler {
+    private static final BigInteger STEP_MARGIN = BigInteger.valueOf(100000);
+
     private final IconService iconService;
     private final Env.Chain chain;
 
@@ -60,13 +62,13 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON));
+        return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON), true);
     }
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params, BigInteger steps)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         return getScore(doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params,
-                steps, Constants.CONTENT_TYPE_PYTHON));
+                steps, Constants.CONTENT_TYPE_PYTHON), true);
     }
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params, BigInteger steps)
@@ -78,10 +80,10 @@ public class TransactionHandler {
             throws IOException, ResultTimeoutException, TransactionFailureException {
         if (scorePath.endsWith(".jar")) {
             byte[] data = Files.readAllBytes(Path.of(scorePath));
-            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_JAVA));
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_JAVA), false);
         } else {
             byte[] data = ZipFile.zipContent(scorePath);
-            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
+            return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON), true);
         }
     }
 
@@ -93,7 +95,7 @@ public class TransactionHandler {
     public Score deploy(Wallet owner, Class<?>[] classes, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] jar = makeJar(classes[0].getName(), classes);
-        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
+        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA), false);
     }
 
     public byte[] makeJar(String name, Class<?>[] classes) {
@@ -119,19 +121,21 @@ public class TransactionHandler {
                 .params(params)
                 .build();
         if (steps == null) {
-            steps = estimateStep(transaction);
+            steps = estimateStep(transaction).add(STEP_MARGIN);
         }
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public Score getScore(Bytes txHash)
+    public Score getScore(Bytes txHash, boolean acceptScore)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         TransactionResult result = getResult(txHash);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
-        acceptScoreIfAuditEnabled(txHash);
+        if (acceptScore) {
+            acceptScoreIfAuditEnabled(txHash);
+        }
         return new Score(this, new Address(result.getScoreAddress()));
     }
 
@@ -183,14 +187,14 @@ public class TransactionHandler {
 
     public Bytes invoke(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
         if (steps == null) {
-            steps = estimateStep(tx);
+            steps = estimateStep(tx).add(STEP_MARGIN);
         }
         return this.iconService.sendTransaction(new SignedTransaction(tx, wallet, steps)).execute();
     }
 
     public TransactionResult invokeAndWait(Wallet wallet, Transaction tx, BigInteger steps) throws IOException {
         if (steps == null) {
-            steps = estimateStep(tx);
+            steps = estimateStep(tx).add(STEP_MARGIN);
         }
         return this.iconService.sendTransactionAndWait(new SignedTransaction(tx, wallet, steps)).execute();
     }
@@ -211,7 +215,9 @@ public class TransactionHandler {
             try {
                 return iconService.getTransactionResult(txHash).execute();
             } catch (RpcError e) {
-                if (e.getCode() == -31002 || e.getCode() == -31003) { // pending or executing
+                if (e.getCode() == -31002 /* pending */
+                        || e.getCode() == -31003 /* executing */
+                        || e.getCode() == -31004 /* not found */) {
                     if (limitTime < System.currentTimeMillis()) {
                         throw new ResultTimeoutException(txHash);
                     }
@@ -224,6 +230,7 @@ public class TransactionHandler {
                     }
                     continue;
                 }
+                LOG.warning("RpcError: code(" + e.getCode() + ") message(" + e.getMessage() + ")");
                 throw e;
             }
         }
@@ -245,7 +252,7 @@ public class TransactionHandler {
                 .value(amount)
                 .build();
         if (steps == null) {
-            steps = estimateStep(transaction).add(BigInteger.valueOf(10000));
+            steps = estimateStep(transaction).add(STEP_MARGIN);
         }
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner, steps);
         return iconService.sendTransaction(signedTransaction).execute();
