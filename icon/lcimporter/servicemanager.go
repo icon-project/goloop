@@ -198,7 +198,7 @@ func (sm *ServiceManager) ReceiptListFromResult(result []byte, g module.Transact
 	return nil, errors.ErrInvalidState
 }
 
-func (sm *ServiceManager) SendTransaction(result []byte, tx interface{}) ([]byte, error) {
+func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interface{}) ([]byte, error) {
 	return nil, errors.ErrInvalidState
 }
 
@@ -260,7 +260,7 @@ func (sm *ServiceManager) HasTransaction(id []byte) bool {
 	return false
 }
 
-func (sm *ServiceManager) SendTransactionAndWait(result []byte, tx interface{}) ([]byte, <-chan interface{}, error) {
+func (sm *ServiceManager) SendTransactionAndWait(result []byte, height int64, tx interface{}) ([]byte, <-chan interface{}, error) {
 	return nil, nil, errors.ErrInvalidState
 }
 
