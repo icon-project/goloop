@@ -899,19 +899,24 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 		return nil
 	}
 
-	prevGlobal, err := es.Back1.GetGlobal()
+	prevGlobal, err := es.Back2.GetGlobal()
 	if err != nil {
 		return err
 	}
 	reward := new(big.Int).Set(iScore)
 	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
 		pg := prevGlobal.GetV2()
+		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
+		divider := big.NewInt(MonthBlock * 100)
 		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps())
-		rewardCPS.Mul(rewardCPS, big.NewInt(10)) // 10 = IScoreICXRation / 100
+		rewardCPS.Mul(rewardCPS, multiplier)
+		rewardCPS.Div(rewardCPS, divider)
 		reward.Add(reward, rewardCPS)
 		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay())
-		rewardRelay.Mul(rewardCPS, big.NewInt(10))
+		rewardRelay.Mul(rewardRelay, multiplier)
+		rewardRelay.Div(rewardRelay, divider)
 		reward.Add(reward, rewardRelay)
+		es.logger.Tracef("regulateIssue with cps: %d, relay: %d", rewardCPS, rewardRelay)
 	}
 
 	is, err := es.State.GetIssue()

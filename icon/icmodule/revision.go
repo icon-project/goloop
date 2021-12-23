@@ -35,13 +35,14 @@ const (
 	Revision14
 	Revision15
 	Revision16
+	Revision17
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision15
+	LatestRevision  = Revision17
 )
 
 const (
@@ -84,9 +85,11 @@ const (
 	RevisionICON2R2      = Revision15
 	RevisionEnableJavaEE = Revision15
 
-	RevisionICON2R3             = Revision16
-	RevisionEnableSetScoreOwner = Revision16
-	RevisionExtraMainPReps      = Revision16
+	RevisionFixIGlobal = Revision16
+
+	RevisionICON2R3             = Revision17
+	RevisionEnableSetScoreOwner = Revision17
+	RevisionExtraMainPReps      = Revision17
 )
 
 var revisionFlags = []module.Revision{

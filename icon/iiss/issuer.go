@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -273,7 +274,12 @@ func getIssueDataV1(
 }
 
 func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.TermSnapshot) *IssueResultJSON {
-	reward, remains := new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
+	var reward, remains *big.Int
+	if term.Revision() < icmodule.RevisionFixIGlobal {
+		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
+	} else {
+		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(MonthBlock), new(big.Int))
+	}
 	if remains.Sign() == 1 {
 		reward.Add(reward, intconv.BigIntOne)
 	}
