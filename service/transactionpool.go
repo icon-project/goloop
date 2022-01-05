@@ -241,11 +241,12 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
+	now := time.Now()
 	if tp.list.Len() == 0 {
+		tp.monitor.OnCommit(txs.Hash(), now, 0)
 		return
 	}
 
-	now := time.Now()
 	var duration time.Duration
 	var count int
 
@@ -267,6 +268,8 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 	if count > 0 {
 		tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 		tp.monitor.OnCommit(txs.Hash(), now, duration/time.Duration(count))
+	} else {
+		tp.monitor.OnCommit(txs.Hash(), now, 0)
 	}
 }
 
