@@ -39,14 +39,30 @@ const (
 	DefaultJsonrpcDurationsUpdateExpire = 10 * time.Second
 )
 
-func _registerMetricViewWithResponseTimeMeasure(ms stats.Measure, tks []tag.Key) {
+func init() {
+	createResponseTimeMeasure(msFailure)
+	createResponseTimeMeasure(msRetrieve)
+	createResponseTimeMeasure(msSendTx)
+	for _, ms := range msExecutes {
+		createResponseTimeMeasure(ms)
+	}
+	for _, ms := range msWaits {
+		createResponseTimeMeasure(ms)
+	}
+}
+
+func createResponseTimeMeasure(ms stats.Measure) *stats.Int64Measure {
 	msRespTime, ok := msRespTimes[ms]
 	if !ok {
 		msRespTime = stats.Int64(ms.Name()+"_response_time", ms.Description()+" response time", "ns")
 		msRespTimes[ms] = msRespTime
 	}
+	return msRespTime
+}
+
+func _registerMetricViewWithResponseTimeMeasure(ms stats.Measure, tks []tag.Key) {
 	RegisterMetricView(ms, view.Count(), tks)
-	RegisterMetricView(msRespTime, view.LastValue(), tks)
+	RegisterMetricView(msRespTimes[ms], view.LastValue(), tks)
 }
 
 func RegisterJsonrpc() {
@@ -91,7 +107,6 @@ func (m *JsonrpcMeasure) RemoveAndRecord(ctx context.Context, ts time.Time, expi
 	d := m.d.Add(ts)
 	stats.Record(ctx, m.ms.M(int64(d.d/time.Millisecond)))
 	m.d.Remove(expire)
-	//stats.Record(ctx, m.msRespTime.M(int64(m.d.Avg()/time.Millisecond)))
 	stats.Record(ctx, m.msRespTime.M(int64(m.d.Avg())))
 }
 
