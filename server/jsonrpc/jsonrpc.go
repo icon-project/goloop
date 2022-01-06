@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/go-playground/validator.v9"
 )
@@ -143,6 +145,14 @@ func (ctx *Context) Validator() echo.Validator {
 	return ctx.Echo().Validator
 }
 
+func (ctx *Context) MetricContext() context.Context {
+	if c, _ := ctx.Chain(); c == nil {
+		return metric.DefaultMetricContext()
+	} else {
+		return c.MetricContext()
+	}
+}
+
 type Params struct {
 	rawMessage json.RawMessage
 	validator  echo.Validator
@@ -156,7 +166,7 @@ func (p *Params) Convert(v interface{}) error {
 	if p.rawMessage == nil || string(p.rawMessage) == "null" {
 		nf := rv.Elem().NumField()
 		if nf > 0 {
-			return errors.New(UnmarshalFailPrefix+"'params' of request is required ")
+			return errors.New(UnmarshalFailPrefix + "'params' of request is required ")
 		} else {
 			return nil
 		}
@@ -178,8 +188,8 @@ func (p *Params) IsEmpty() bool {
 
 const (
 	UnmarshalFailPrefix = "fail to unmarshal, "
-	ValidateFailPrefix = "fail to validate, "
-	JsonErrorPrefix = "json: "
+	ValidateFailPrefix  = "fail to validate, "
+	JsonErrorPrefix     = "json: "
 )
 
 func UnmarshalWithValidate(data []byte, v interface{}, vd echo.Validator) error {
@@ -200,7 +210,7 @@ func UnmarshalWithValidate(data []byte, v interface{}, vd echo.Validator) error 
 			}
 		} else {
 			msg = err.Error()
-			if strings.HasPrefix(msg,JsonErrorPrefix) {
+			if strings.HasPrefix(msg, JsonErrorPrefix) {
 				msg = strings.ReplaceAll(msg[len(JsonErrorPrefix):], "\"", "'")
 			}
 		}
@@ -224,10 +234,10 @@ func UnmarshalWithValidate(data []byte, v interface{}, vd echo.Validator) error 
 				if idx := strings.Index(jt, ","); idx >= 0 {
 					jt = jt[:idx]
 				}
-				jt = "'"+jt+"'"
+				jt = "'" + jt + "'"
 				l, has := m[fe.Tag()]
 				if !has {
-					l = make([]string,0)
+					l = make([]string, 0)
 				}
 				l = append(l, jt)
 				m[fe.Tag()] = l
@@ -242,8 +252,7 @@ func UnmarshalWithValidate(data []byte, v interface{}, vd echo.Validator) error 
 			fmt.Printf(ValidateFailPrefix+"err:%T %+v", err, err)
 			msg = err.Error()
 		}
-		return errors.Wrap(err,ValidateFailPrefix + msg)
+		return errors.Wrap(err, ValidateFailPrefix+msg)
 	}
 	return nil
 }
-

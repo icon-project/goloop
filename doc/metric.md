@@ -7,6 +7,7 @@ Integrated with [prometheus](https://prometheus.io/)
   - _duration : time value (unit : msec)
   - _cnt : number of events
   - _sum : sum of values
+  - _response_time : moving average response time (unit : nsec)
   
 ## Consensus
 
@@ -64,3 +65,20 @@ Accumulated number and bytes of network packets
 | network_recv_sum | accumulated bytes of receive packets  |
 | network_send_cnt | accumulated number of send packets    |
 | network_send_sum | accumulated bytes of send packets     |
+
+## JsonRpc
+
+| Metric           | Description                           |
+|:-----------------|:--------------------------------------|
+| jsonrpc_failure_cnt | number of json-rpc failures  |
+| jsonrpc_failure_response_time | moving average response time of json-rpc failures |
+| jsonrpc_retrieve_cnt | number of json-rpc retrieve methods  |
+| jsonrpc_retrieve_response_time | moving average response time of json-rpc retrieve methods |
+| jsonrpc_send_transaction_cnt | number of json-rpc icx_sendTransaction method |
+| jsonrpc_send_transaction_response_time | moving average response time of json-rpc icx_sendTransaction methods |
+| jsonrpc_call_cnt | number of json-rpc icx_call method |
+| jsonrpc_call_response_time | moving average response time of json-rpc icx_call methods |
+| jsonrpc_get_trace_cnt | number of json-rpc debug_getTrace method |
+| jsonrpc_get_trace_response_time | moving average response time of json-rpc debug_getTrace methods |
+| jsonrpc_estimate_step_cnt | number of json-rpc debug_estimateStep method |
+| jsonrpc_estimate_step_response_time | moving average response time of json-rpc debug_estimateStep methods |

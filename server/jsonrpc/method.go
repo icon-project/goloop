@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
-
-	"github.com/labstack/echo/v4"
+	"time"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/server/metric"
+	"github.com/labstack/echo/v4"
 )
 
 type Handler func(ctx *Context, params *Params) (result interface{}, err error)
@@ -16,12 +17,14 @@ type MethodRepository struct {
 	mtx     sync.RWMutex
 	methods map[string]Handler
 	allowed map[string]bool
+	mtr     *metric.JsonrpcMetric
 }
 
 func NewMethodRepository() *MethodRepository {
 	return &MethodRepository{
 		methods: make(map[string]Handler),
 		allowed: make(map[string]bool),
+		mtr: metric.NewJsonrpcMetric(),
 	}
 }
 
@@ -59,9 +62,20 @@ func (mr *MethodRepository) IsAllowedNotification(method string) bool {
 
 func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response {
 	debug := ctx.IncludeDebug()
-
 	resp := &Response{Version: Version}
 	req := new(Request)
+	start := time.Now()
+	defer func() {
+		method := ""
+		if req.Method != nil {
+			method = *req.Method
+		}
+		var err error
+		if resp.Error != nil {
+			err = resp.Error
+		}
+		mr.mtr.OnHandle(ctx.MetricContext(), method, start, err)
+	}()
 	if err := UnmarshalWithValidate(raw, req, ctx.Validator()); err != nil {
 		resp.ID = req.ID
 		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
@@ -80,6 +94,9 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 	}
 
 	if req.ID == nil && !mr.IsAllowedNotification(*req.Method) {
+		//Ignore not-allowed notification request
+		resp.Error = ErrorCodeInvalidRequest.Wrap(
+			errors.Errorf("not allowed notification request"), debug)
 		return nil
 	}
 

@@ -32,6 +32,9 @@ var (
 	chainMetricCtxs  = make(map[string]context.Context)
 	chainMetricMtx   sync.RWMutex
 
+	beforeExportFuncs    = make([]func(), 0)
+	beforeExportFuncsMtx sync.RWMutex
+
 	mtOnce sync.Once
 )
 
@@ -69,6 +72,12 @@ func RegisterMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *vi
 	}
 	mViews[v.Name] = v
 	return v
+}
+
+func RegisterBeforeExportFunc(f func()) {
+	beforeExportFuncsMtx.Lock()
+	defer beforeExportFuncsMtx.Unlock()
+	beforeExportFuncs = append(beforeExportFuncs, f)
 }
 
 func GetMetricContext(p context.Context, mk *tag.Key, v string) context.Context {
@@ -133,6 +142,15 @@ func RemoveMetricContextByCID(cid int) {
 	}
 }
 
+func GetCIDFromMetricContext(ctx context.Context) (int, bool) {
+	if chainID, ok := tag.FromContext(ctx).Value(MetricKeyChain); ok {
+		if cid, err := strconv.ParseInt(chainID, 16, 32); err == nil {
+			return int(cid), true
+		}
+	}
+	return 0, false
+}
+
 func _resolveHostname(w module.Wallet) string {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
@@ -170,7 +188,17 @@ func PrometheusExporter() *prometheus.Exporter {
 	RegisterConsensus()
 	RegisterNetwork()
 	RegisterTransaction()
+	RegisterJsonrpc()
 	return pe
+}
+
+func BeforeExport() {
+	beforeExportFuncsMtx.RLock()
+	defer beforeExportFuncsMtx.RUnlock()
+
+	for _, f := range beforeExportFuncs {
+		f()
+	}
 }
 
 func ParseMetricData(r *view.Row, prev interface{}, cnt int) interface{} {
@@ -201,6 +229,8 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	mViewMtx.RLock()
 	defer mViewMtx.RUnlock()
 
+	BeforeExport()
+
 	chainID, ok := tag.FromContext(c.MetricContext()).Value(MetricKeyChain)
 	if !ok {
 		return nil
@@ -219,6 +249,7 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 			}
 		}
 	}
+
 	return m
 }
 
