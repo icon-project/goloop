@@ -269,6 +269,7 @@ func (p *prepsIncludingExtraMainPRep) sortForExtraMainPRep(
 		electedPRepCount = size
 	}
 
+	// extraMainPRepCount MUST be larger than zero
 	subPRepCount = size - mainPRepCount
 	if subPRepCount < extraMainPRepCount {
 		extraMainPRepCount = subPRepCount
@@ -284,13 +285,19 @@ func (p *prepsIncludingExtraMainPRep) sortForExtraMainPRep(
 
 	// Add extra main preps to map
 	extraMainPReps := make(map[string]*PRep)
-	for i := 0; i < extraMainPRepCount; i++ {
-		prep := subPReps[i]
-		extraMainPReps[icutils.ToKey(prep.Owner())] = prep
+	for _, prep := range subPReps {
+		if prep.GetPower(br).Sign() > 0 {
+			// Prevent the prep whose power is 0 from being an extra main prep
+			extraMainPReps[icutils.ToKey(prep.Owner())] = prep
+			if len(extraMainPReps) == extraMainPRepCount {
+				// All extra main preps are selected
+				break
+			}
+		}
 	}
 
 	// Append remaining sub preps excluding extra main preps
-	i := extraMainPRepCount
+	i := len(extraMainPReps)
 	for _, prep := range dupSubPReps {
 		// If prep is not an extra main prep
 		if _, ok := extraMainPReps[icutils.ToKey(prep.Owner())]; !ok {

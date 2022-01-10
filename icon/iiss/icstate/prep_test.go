@@ -135,7 +135,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 
 // In case of 0 ExtraMainPRepCount,
 // Check if both of two NewPReps functions return the same results
-func TestPRepSet_NewPReps(t *testing.T) {
+func TestPRepSet_NewPReps_WithZeroExtraPRepCount(t *testing.T) {
 	size := 200
 	br := int64(5)
 	mainPRepCount := 25
@@ -196,8 +196,49 @@ func TestPRepSet_NewPReps2_withNoExtraPReps(t *testing.T) {
 	assert.Equal(t, len(preps), prepSet0.Size())
 	assert.Equal(t, len(preps), prepSet1.Size())
 
-	for i := 0; i < mainPRepCount; i++ {
+	for i := 0; i < size; i++ {
 		prep := preps[i]
+		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
+		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
+	}
+}
+
+func TestPRepSet_ExtraMainPRepsWithZeroPower(t *testing.T) {
+	size := 30
+	br := int64(5)
+	mainPRepCount := 22
+	subPRepCount := 78
+	extraMainPRepCount := 3
+	zeroPowerPRepCount := 8
+
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		prep := newDummyPRep(i)
+		prep.lastHeight = rand.Int63n(10000)
+		prep.lastState = getRandomVoteState()
+		preps[i] = prep
+
+		// there are at least 8 preps with 0 power
+		if i < zeroPowerPRepCount {
+			prep.SetBonded(new(big.Int))
+			assert.Zero(t, prep.GetPower(br).Sign())
+		}
+	}
+
+	prepSet0 := NewPRepsOrderedByPower(preps, br)
+	prepSet1 := NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
+	)
+
+	// preps is sorted in descending order by power
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByPower(preps[i], preps[j], br)
+	})
+
+	assert.Equal(t, len(preps), prepSet0.Size())
+	assert.Equal(t, len(preps), prepSet1.Size())
+
+	for i, prep := range preps {
 		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
 		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
 	}
