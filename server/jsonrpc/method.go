@@ -20,11 +20,11 @@ type MethodRepository struct {
 	mtr     *metric.JsonrpcMetric
 }
 
-func NewMethodRepository() *MethodRepository {
+func NewMethodRepository(mtr *metric.JsonrpcMetric) *MethodRepository {
 	return &MethodRepository{
 		methods: make(map[string]Handler),
 		allowed: make(map[string]bool),
-		mtr: metric.NewJsonrpcMetric(),
+		mtr: mtr,
 	}
 }
 
@@ -135,6 +135,7 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 				Version: Version,
 				Error:   ErrInvalidRequest(),
 			}
+			mr.mtr.OnHandle(ctx.MetricContext(), "", time.Now(), resp.Error)
 			return c.JSON(http.StatusBadRequest, resp)
 		}
 		if n > LimitOfBatch {
@@ -142,6 +143,7 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 				Version: Version,
 				Error:   ErrInvalidRequest("too many request"),
 			}
+			mr.mtr.OnHandle(ctx.MetricContext(), "", time.Now(), resp.Error)
 			return c.JSON(http.StatusServiceUnavailable, resp)
 		}
 		var wg sync.WaitGroup

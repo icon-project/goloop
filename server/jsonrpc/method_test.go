@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +56,8 @@ func invokeBatchTest(t *testing.T, mr *MethodRepository, req, resp []string) {
 }
 
 func TestMethodRepository(t *testing.T) {
-	mr := NewMethodRepository()
+	mtr := metric.NewJsonrpcMetric(metric.DefaultJsonrpcDurationsExpire, metric.DefaultJsonrpcDurationsSize, true)
+	mr := NewMethodRepository(mtr)
 	mr.RegisterMethod("hello", hello)
 	mr.RegisterMethod("noArgs", noArgs)
 

@@ -35,6 +35,7 @@ type Manager struct {
 	jsonrpcIncludeDebug   int32
 	logger                log.Logger
 	metricsHandler        echo.HandlerFunc
+	mtr                   *metric.JsonrpcMetric
 }
 
 func NewManager(addr string,
@@ -55,7 +56,7 @@ func NewManager(addr string,
 	e.HTTPErrorHandler = HTTPErrorHandler
 	e.Validator = validator
 	logger := l.WithFields(log.Fields{log.FieldKeyModule: "SR"})
-
+	mtr := metric.NewJsonrpcMetric(metric.DefaultJsonrpcDurationsExpire, metric.DefaultJsonrpcDurationsSize, false)
 	m := &Manager{
 		e:                     e,
 		addr:                  addr,
@@ -66,6 +67,7 @@ func NewManager(addr string,
 		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
 		logger:                logger,
 		metricsHandler:        echo.WrapHandler(metric.PrometheusExporter()),
+		mtr:                   mtr,
 	}
 	m.SetMessageDump(jsonrpcDump)
 	m.SetIncludeDebug(jsonrpcIncludeDebug)
@@ -184,14 +186,14 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	})
 
 	// v3 APIs
-	mr := v3.MethodRepository()
+	mr := v3.MethodRepository(srv.mtr)
 	v3api := rpc.Group("/v3")
 	v3api.Use(JsonRpc(), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
 	v3api.POST("/", mr.Handle, ChainInjector(srv))
 	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
 
-	dmr := v3.DebugMethodRepository()
+	dmr := v3.DebugMethodRepository(srv.mtr)
 	v3dbg := rpc.Group("/v3d")
 	v3dbg.Use(srv.CheckDebug(), JsonRpc(), Chunk())
 	v3dbg.POST("", dmr.Handle, ChainInjector(srv))

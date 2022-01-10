@@ -11,181 +11,188 @@ import (
 )
 
 var (
-	mkMethod    = NewMetricKey("method")
-	msFailure   = stats.Int64("jsonrpc_failure", "jsonrpc failures", stats.UnitDimensionless)
-	failureMks  = []tag.Key{mkMethod}
-	msRetrieve  = stats.Int64("jsonrpc_retrieve", "jsonrpc retrieve methods", stats.UnitDimensionless)
-	retrieveMks = []tag.Key{mkMethod}
-	msSendTx    = stats.Int64("jsonrpc_send_transaction", "jsonrpc icx_sendTransaction method", stats.UnitDimensionless)
-	msExecutes  = map[string]*stats.Int64Measure{
-		"icx_call":           stats.Int64("jsonrpc_call", "jsonrpc icx_call method", stats.UnitDimensionless),
-		"debug_getTrace":     stats.Int64("jsonrpc_get_trace", "jsonrpc debug_getTrace method", stats.UnitDimensionless),
-		"debug_estimateStep": stats.Int64("jsonrpc_estimate_step", "jsonrpc debug_estimateStep method", stats.UnitDimensionless),
+	mkMethod  = NewMetricKey("method")
+	msFailure = &measure{
+		ms:    stats.Int64("jsonrpc_failure", "jsonrpc failures", "ns"),
+		msAvg: stats.Int64("jsonrpc_failure_avg", "moving average of jsonrpc failures", "ns"),
+		mks:   []tag.Key{mkMethod},
 	}
-	msWaits = map[string]*stats.Int64Measure{
-		"icx_sendTransactionAndWait": stats.Int64("jsonrpc_send_and_wait", "jsonrpc icx_sendTransactionAndWait method", stats.UnitDimensionless),
-		"icx_waitTransactionResult":  stats.Int64("jsonrpc_wait_result", "jsonrpc icx_waitTransactionResult method", stats.UnitDimensionless),
+	msRetrieve = &measure{
+		ms:    stats.Int64("jsonrpc_retrieve", "jsonrpc retrieve methods", "ns"),
+		msAvg: stats.Int64("jsonrpc_retrieve_avg", "moving average of jsonrpc retrieve methods", "ns"),
+		mks:   []tag.Key{mkMethod},
 	}
 	emptyMks = []tag.Key{}
-
-	msRespTimes = make(map[stats.Measure]*stats.Int64Measure)
-
+	msMap    = map[string]*measure{
+		"icx_getLastBlock":     msRetrieve,
+		"icx_getBlockByHeight": msRetrieve,
+		"icx_getBlockByHash":   msRetrieve,
+		"icx_call": {
+			stats.Int64("jsonrpc_call", "jsonrpc icx_call method", "ns"),
+			stats.Int64("jsonrpc_call_avg", "moving average of jsonrpc icx_call method", "ns"),
+			emptyMks,
+		},
+		"icx_getBalance":           msRetrieve,
+		"icx_getScoreApi":          msRetrieve,
+		"icx_getTotalSupply":       msRetrieve,
+		"icx_getTransactionResult": msRetrieve,
+		"icx_getTransactionByHash": msRetrieve,
+		"icx_sendTransaction": {
+			stats.Int64("jsonrpc_send_transaction", "jsonrpc icx_sendTransaction method", "ns"),
+			stats.Int64("jsonrpc_send_transaction_avg", "moving average of jsonrpc icx_sendTransaction methods", "ns"),
+			emptyMks,
+		},
+		"icx_sendTransactionAndWait": {
+			stats.Int64("jsonrpc_send_transaction_and_wait", "jsonrpc icx_sendTransactionAndWait method", "ns"),
+			stats.Int64("jsonrpc_send_transaction_and_wait_avg", "moving average of jsonrpc icx_sendTransactionAndWait method", "ns"),
+			emptyMks,
+		},
+		"icx_waitTransactionResult": {
+			stats.Int64("jsonrpc_wait_transaction_result", "jsonrpc icx_waitTransactionResult method", "ns"),
+			stats.Int64("jsonrpc_wait_transaction_result_avg", "moving average of jsonrpc icx_waitTransactionResult method", "ns"),
+			emptyMks,
+		},
+		"icx_getDataByHash":          msRetrieve,
+		"icx_getBlockHeaderByHeight": msRetrieve,
+		"icx_getVotesByHeight":       msRetrieve,
+		"icx_getProofForResult":      msRetrieve,
+		"icx_getProofForEvents":      msRetrieve,
+		"debug_getTrace": {
+			stats.Int64("jsonrpc_get_trace", "jsonrpc debug_getTrace method", "ns"),
+			stats.Int64("jsonrpc_get_trace_avg", "moving average of jsonrpc debug_getTrace method", "ns"),
+			emptyMks,
+		},
+		"debug_estimateStep": {
+			stats.Int64("jsonrpc_estimate_step", "jsonrpc debug_estimateStep method", "ns"),
+			stats.Int64("jsonrpc_estimate_step_avg", "moving average of jsonrpc debug_estimateStep method", "ns"),
+			emptyMks,
+		},
+	}
 	jms    = make([]*JsonrpcMetric, 0)
 	jmsMtx sync.RWMutex
 )
 
+type measure struct {
+	ms    *stats.Int64Measure
+	msAvg *stats.Int64Measure
+	mks   []tag.Key
+}
+
 const (
-	DefaultJsonrpcDurationsSize         = 20000
-	DefaultJsonrpcDurationsUpdateExpire = 10 * time.Second
+	DefaultJsonrpcDurationsSize   = 20000
+	DefaultJsonrpcDurationsExpire = 10 * time.Second
 )
 
-func init() {
-	createResponseTimeMeasure(msFailure)
-	createResponseTimeMeasure(msRetrieve)
-	createResponseTimeMeasure(msSendTx)
-	for _, ms := range msExecutes {
-		createResponseTimeMeasure(ms)
-	}
-	for _, ms := range msWaits {
-		createResponseTimeMeasure(ms)
-	}
-}
-
-func createResponseTimeMeasure(ms stats.Measure) *stats.Int64Measure {
-	msRespTime, ok := msRespTimes[ms]
-	if !ok {
-		msRespTime = stats.Int64(ms.Name()+"_response_time", ms.Description()+" response time", "ns")
-		msRespTimes[ms] = msRespTime
-	}
-	return msRespTime
-}
-
-func _registerMetricViewWithResponseTimeMeasure(ms stats.Measure, tks []tag.Key) {
-	RegisterMetricView(ms, view.Count(), tks)
-	RegisterMetricView(msRespTimes[ms], view.LastValue(), tks)
-}
-
 func RegisterJsonrpc() {
-	_registerMetricViewWithResponseTimeMeasure(msFailure, failureMks)
-	_registerMetricViewWithResponseTimeMeasure(msRetrieve, retrieveMks)
-	_registerMetricViewWithResponseTimeMeasure(msSendTx, emptyMks)
-	for _, ms := range msExecutes {
-		_registerMetricViewWithResponseTimeMeasure(ms, emptyMks)
-	}
-	for _, ms := range msWaits {
-		_registerMetricViewWithResponseTimeMeasure(ms, emptyMks)
+	RegisterMetricView(msFailure.ms, view.Count(), msFailure.mks)
+	RegisterMetricView(msFailure.msAvg, view.LastValue(), emptyMks)
+	RegisterMetricView(msRetrieve.ms, view.Count(), msRetrieve.mks)
+	RegisterMetricView(msRetrieve.msAvg, view.LastValue(), emptyMks)
+	for _, v := range msMap {
+		if v != msRetrieve {
+			RegisterMetricView(v.ms, view.Count(), v.mks)
+			RegisterMetricView(v.msAvg, view.LastValue(), emptyMks)
+		}
 	}
 
 	RegisterBeforeExportFunc(func() {
 		jmsMtx.RLock()
 		defer jmsMtx.RUnlock()
 		for _, jm := range jms {
-			jm.Remove(DefaultJsonrpcDurationsUpdateExpire)
+			jm.Remove()
 		}
 	})
 }
 
 type JsonrpcMeasure struct {
-	ms         *stats.Int64Measure
-	msRespTime *stats.Int64Measure
-	d          *Durations
-	m          map[string]context.Context
-	mtx        sync.RWMutex
-}
-
-func (m *JsonrpcMeasure) EnsureContext(ctx context.Context) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-	k := tag.FromContext(ctx).String()
-	if _, ok := m.m[k]; !ok {
-		m.m[k] = ctx
-	}
+	*measure
+	d   *Durations
+	ctx context.Context
+	mtx sync.RWMutex
 }
 
 func (m *JsonrpcMeasure) RemoveAndRecord(ctx context.Context, ts time.Time, expire time.Duration) {
-	m.EnsureContext(ctx)
 	d := m.d.Add(ts)
-	stats.Record(ctx, m.ms.M(int64(d.d/time.Millisecond)))
+	stats.Record(ctx, m.ms.M(int64(d.d)))
 	m.d.Remove(expire)
-	stats.Record(ctx, m.msRespTime.M(int64(m.d.Avg())))
+	stats.Record(ctx, m.msAvg.M(int64(m.d.Avg())))
 }
 
 func (m *JsonrpcMeasure) Remove(expire time.Duration) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 	m.d.Remove(expire)
-	for _, ctx := range m.m {
-		stats.Record(ctx, m.msRespTime.M(int64(m.d.Avg())))
-	}
+	stats.Record(m.ctx, m.msAvg.M(int64(m.d.Avg())))
 }
 
 type JsonrpcMetric struct {
-	expire time.Duration
-	//each ms.Name + chain
-	m   map[string]*JsonrpcMeasure
-	mtx sync.RWMutex
+	expire        time.Duration
+	durationsSize int
+	useDefault    bool
+	m             map[string]*JsonrpcMeasure
+	mtx           sync.RWMutex
 }
 
-func (m *JsonrpcMetric) EnsureMeasure(ctx context.Context, ms *stats.Int64Measure) *JsonrpcMeasure {
+func (m *JsonrpcMetric) EnsureMeasure(ctx context.Context, ms *measure) *JsonrpcMeasure {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	key := ms.Name()
-	chainID, ok := tag.FromContext(ctx).Value(MetricKeyChain)
-	if ok {
-		key += chainID
+	key := ms.ms.Name()
+	if chainId, ok := tag.FromContext(ctx).Value(MetricKeyChain); ok {
+		key += chainId
 	}
-
-	var jm *JsonrpcMeasure
-	jm, ok = m.m[key]
+	jm, ok := m.m[key]
 	if !ok {
 		jm = &JsonrpcMeasure{
-			ms:         ms,
-			msRespTime: msRespTimes[ms],
-			d:          NewDurations(DefaultJsonrpcDurationsSize),
-			m:          make(map[string]context.Context),
+			measure: ms,
+			d:   NewDurations(m.durationsSize),
+			ctx: ctx,
 		}
 		m.m[key] = jm
 	}
 	return jm
 }
 
-func (m *JsonrpcMetric) Remove(expire time.Duration) {
+func (m *JsonrpcMetric) Remove() {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 	for _, v := range m.m {
-		v.Remove(expire)
+		v.Remove(m.expire)
 	}
 }
 
 func (m *JsonrpcMetric) OnHandle(ctx context.Context, method string, ts time.Time, err error) {
-	var ms *stats.Int64Measure
-	var ok bool
-	if err != nil {
-		ms, ok = msFailure, true
+	var ms *measure
+	if err == nil {
+		ok := false
+		if ms, ok = msMap[method]; !ok {
+			if m.useDefault {
+				ms = msRetrieve
+			} else {
+				panic("not exists measure " + method)
+			}
+		}
+
+		if ms == msRetrieve {
+			ctx = GetMetricContext(ctx, &mkMethod, method)
+		}
+	} else {
+		ms = msFailure
 		ctx = GetMetricContext(ctx, &mkMethod, method)
 	}
-	ms, ok = msExecutes[method]
-	if !ok {
-		ms, ok = msWaits[method]
-	}
-	if !ok && method == "icx_sendTransaction" {
-		ms, ok = msSendTx, true
-	}
-	if !ok {
-		ms, ok = msRetrieve, true
-		ctx = GetMetricContext(ctx, &mkMethod, method)
-	}
+
 	jm := m.EnsureMeasure(ctx, ms)
 	jm.RemoveAndRecord(ctx, ts, m.expire)
 }
 
-func NewJsonrpcMetric() *JsonrpcMetric {
+func NewJsonrpcMetric(expire time.Duration, durationsSize int, useDefault bool) *JsonrpcMetric {
 	jmsMtx.Lock()
 	defer jmsMtx.Unlock()
 	jm := &JsonrpcMetric{
-		expire: DefaultJsonrpcDurationsUpdateExpire,
-		m:      make(map[string]*JsonrpcMeasure),
+		expire:        expire,
+		durationsSize: durationsSize,
+		useDefault:    useDefault,
+		m:             make(map[string]*JsonrpcMeasure),
 	}
 	jms = append(jms, jm)
 	return jm
@@ -198,7 +205,6 @@ type Durations struct {
 	size  int
 	count int
 	sum   time.Duration
-	avg   time.Duration
 	mtx   sync.RWMutex
 }
 
@@ -225,7 +231,6 @@ func (ds *Durations) Add(ts time.Time) *Duration {
 	ds.count += 1
 	ds.sum += d.d
 	ds.next = next
-	ds._avg()
 	return d
 }
 
@@ -240,14 +245,6 @@ func (ds *Durations) _pop() {
 	}
 }
 
-func (ds *Durations) _avg() {
-	if ds.count == 0 || ds.sum == 0 {
-		ds.avg = 0
-	} else {
-		ds.avg = ds.sum / time.Duration(ds.count)
-	}
-}
-
 func (ds *Durations) Remove(expire time.Duration) {
 	ds.mtx.Lock()
 	defer ds.mtx.Unlock()
@@ -259,7 +256,6 @@ func (ds *Durations) Remove(expire time.Duration) {
 		}
 		ds._pop()
 	}
-	ds._avg()
 }
 
 func (ds *Durations) Size() int {
@@ -281,7 +277,12 @@ func (ds *Durations) Sum() int64 {
 func (ds *Durations) Avg() time.Duration {
 	ds.mtx.RLock()
 	defer ds.mtx.RUnlock()
-	return ds.avg
+
+	if ds.count == 0 || ds.sum == 0 {
+		return 0
+	} else {
+		return ds.sum / time.Duration(ds.count)
+	}
 }
 
 func NewDurations(size int) *Durations {

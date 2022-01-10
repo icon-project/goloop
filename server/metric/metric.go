@@ -241,10 +241,12 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 		m[v.Name] = nil
 		rows, _ := view.RetrieveData(k)
 		for _, r := range rows {
+		tagLoop:
 			for _, t := range r.Tags {
 				if t.Key.Name() == MetricKeyChain.Name() && t.Value == chainID {
 					m[v.Name] = ParseMetricData(r, m[v.Name], i)
 					i++
+					break tagLoop
 				}
 			}
 		}
