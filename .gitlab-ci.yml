@@ -332,7 +332,8 @@ pages:doc:
     PAGES_SOURCE: "doc/dist"
   script:
     - cd doc
-    - npm install
+    - npm install yarn
+    - yarn install
     - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md
     - sed -i "s/base:.*/base:'\/pages\/${PAGES_PUBLIC//\//\\\/}\/',/" .vuepress/config.js
     - sed -i 's/\/\/EndOfSidebar/["documentation","Documentation"],\n\/\/EndOfSidebar/' .vuepress/config.js
