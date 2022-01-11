@@ -545,7 +545,7 @@ func (n *Node) PruneChain(cid int, dbt string, height int64) error {
 	return c.Prune(gs, dbt, height)
 }
 
-func (n *Node) BackupChain(cid int) (string, error) {
+func (n *Node) BackupChain(cid int, manual bool) (string, error) {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
@@ -554,6 +554,9 @@ func (n *Node) BackupChain(cid int) (string, error) {
 		return "", err
 	}
 
+	if manual {
+		return "manual", c.Backup("", nil)
+	}
 	backupDir := n.cfg.ResolveAbsolute(n.cfg.BackupDir)
 	if err := os.MkdirAll(backupDir, 0700); err != nil {
 		return "", errors.InvalidStateError.Wrapf(err,

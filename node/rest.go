@@ -109,6 +109,10 @@ type ChainPruneParam struct {
 	Height int64  `json:"height"`
 }
 
+type ChainBackupParam struct {
+	Manual bool `json:"manual,omitempty"`
+}
+
 type ConfigureParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -394,7 +398,11 @@ func (r *Rest) PruneChain(ctx echo.Context) error {
 
 func (r *Rest) BackupChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if name, err := r.n.BackupChain(c.CID()); err != nil {
+	param := &ChainBackupParam{}
+	if err := ctx.Bind(param); err != nil {
+		return echo.ErrBadRequest
+	}
+	if name, err := r.n.BackupChain(c.CID(), param.Manual); err != nil {
 		return err
 	} else {
 		return ctx.String(http.StatusOK, name)

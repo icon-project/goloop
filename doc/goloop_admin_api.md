@@ -704,11 +704,20 @@ This operation does not require authentication
 
 Backup chain data to the specific file
 
+> Body parameter
+
+```json
+{
+  "manual": true
+}
+```
+
 <h3 id="backup-chain-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
+|body|body|[BackupParam](#schemabackupparam)|false|options for backup|
 
 <h3 id="backup-chain-responses">Responses</h3>
 
@@ -1134,6 +1143,23 @@ This operation does not require authentication
 |---|---|---|---|---|
 |dbType|string|false|none|Database type|
 |height|int64|true|none|Block Height|
+
+<h2 id="tocSbackupparam">BackupParam</h2>
+
+<a id="schemabackupparam"></a>
+
+```json
+{
+  "manual": true
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|manual|boolean|false|none|Manual backup option|
 
 <h2 id="tocSbackuplist">BackupList</h2>
 

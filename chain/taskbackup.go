@@ -72,8 +72,10 @@ func (t *taskBackup) DetailOf(s State) string {
 		if total > 0 {
 			current := atomic.LoadInt32(&t.current)
 			return fmt.Sprintf("backup %d/%d", current, total)
-		} else {
+		} else if total == 0 {
 			return "backup started"
+		} else {
+			return "backup manual"
 		}
 	default:
 		if ss, ok := backupStates[s]; ok {
@@ -85,6 +87,12 @@ func (t *taskBackup) DetailOf(s State) string {
 }
 
 func (t *taskBackup) Start() (ret error) {
+	// On manual backup, it just releases the database.
+	if t.file == "" {
+		atomic.StoreInt32(&t.total, -1)
+		t.chain.releaseDatabase()
+		return nil
+	}
 	tmp, err := ioutil.TempFile(path.Dir(t.file), TemporalBackupFile)
 	if err != nil {
 		return errors.Wrap(err, "Fail to make temporal file")
@@ -257,6 +265,12 @@ func (t *taskBackup) _backup() error {
 }
 
 func (t *taskBackup) Stop() {
+	if t.file == "" {
+		// if it's manual backup we need to recover database
+		// and awake waiter.
+		t.chain.ensureDatabase()
+		t.result.SetValue(nil)
+	}
 	atomic.StoreInt32(&t.stop, 1)
 }
 
