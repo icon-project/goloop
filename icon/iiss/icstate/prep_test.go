@@ -52,6 +52,7 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 	br := int64(5)
 	mainPRepCount := 22
 	subPRepCount := 78
+	extraMainPRepCount := 0
 	electedPRepCount := mainPRepCount + subPRepCount
 	limit := 30
 	revision := icmodule.RevisionResetPenaltyMask
@@ -63,7 +64,7 @@ func TestPRepSet_OnTermEnd(t *testing.T) {
 	prep.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
 	assert.True(t, prep.GetVPenaltyCount() > 0)
 
-	err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, limit)
+	err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br)
 	assert.NoError(t, err)
 	assert.Equal(t, mainPRepCount, preps.GetPRepSize(GradeMain))
 	assert.Equal(t, subPRepCount, preps.GetPRepSize(GradeSub))

@@ -939,8 +939,13 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var preps icstate.PRepSet
 
 	revision := wc.Revision().Value()
+	br := es.State.GetBondRequirement()
 	mainPRepCount := int(es.State.GetMainPRepCount())
 	subPRepCount := int(es.State.GetSubPRepCount())
+	extraMainPRepCount := 0
+	if revision >= icmodule.RevisionExtraMainPReps {
+		extraMainPRepCount = int(es.State.GetExtraMainPRepCount())
+	}
 	electedPRepCount := mainPRepCount + subPRepCount
 
 	totalSupply := wc.GetTotalSupply()
@@ -961,7 +966,8 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 		}
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
-		if err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, limit); err != nil {
+
+		if err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
 			return err
 		}
 	} else {

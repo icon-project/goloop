@@ -49,6 +49,7 @@ func newDummyAddresses(start, size int) []module.Address {
 }
 
 type Env struct {
+	config  *config
 	bonders []module.Address
 	preps   []module.Address
 	users   []module.Address
@@ -186,7 +187,14 @@ func (env *Env) SetBonds() ([]Receipt, error) {
 
 	// One bonder delegates some amount of bond to one prep
 	for i, from := range bonders {
+		if i >= env.config.BondedPRepCount {
+			// Limit the number of bonded preps
+			break
+		}
 		balance := sim.GetBalance(from)
+		if balance.Sign() == 0 {
+			continue
+		}
 		bonds := []*icstate.Bond{
 			icstate.NewBond(common.AddressToPtr(preps[i]), balance),
 		}
@@ -234,6 +242,7 @@ func NewEnv(c *config, revision module.Revision) (*Env, error) {
 
 	sim := NewSimulator(revision, validators, balances, c)
 	env := &Env{
+		config:  c,
 		bonders: bonders,
 		preps:   preps,
 		users:   users,

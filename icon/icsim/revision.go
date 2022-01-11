@@ -194,18 +194,6 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev16(ws state.WorldState, r1, r2 int) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
-	mainPRepCount := es.State.GetMainPRepCount()
-	subPRepCount := es.State.GetSubPRepCount()
-	extraMainPRepCount := es.State.GetExtraMainPRepCount()
-	if extraMainPRepCount > 0 {
-		if err := es.State.SetMainPRepCount(mainPRepCount + extraMainPRepCount); err != nil {
-			return err
-		}
-		if err := es.State.SetSubPRepCount(subPRepCount - extraMainPRepCount); err != nil {
-			return err
-		}
-	}
+func (sim *simulatorImpl) handleRev17(ws state.WorldState, r1, r2 int) error {
 	return nil
 }

@@ -28,32 +28,33 @@ type config struct {
 	ConsistentValidationPenaltySlashRatio int
 	DelegationSlotMax                     int64
 	RewardFund
+	BondedPRepCount int
 }
 
 func NewConfig() *config {
 	return &config{
-		TermPeriod: icmodule.DecentralizedTermPeriod,
-		MainPRepCount: icmodule.DefaultMainPRepCount,
-		SubPRepCount: icmodule.DefaultSubPRepCount,
-		Irep: icmodule.InitialIRep,
-		Rrep: 0,
-		BondRequirement: 0,
-		UnbondingPeriodMultiplier: icmodule.DefaultUnbondingPeriodMultiplier,
-		UnstakeSlotMax: icmodule.InitialUnstakeSlotMax,
-		LockMinMultiplier: icmodule.DefaultLockMinMultiplier,
-		LockMaxMultiplier: icmodule.DefaultLockMaxMultiplier,
-		UnbondingMax: icmodule.DefaultUnbondingMax,
-		ValidationPenaltyCondition: icmodule.DefaultValidationPenaltyCondition,
-		ConsistentValidationPenaltyCondition: icmodule.DefaultConsistentValidationPenaltyCondition,
-		ConsistentValidationPenaltyMask: icmodule.DefaultConsistentValidationPenaltyMask,
+		TermPeriod:                            icmodule.DecentralizedTermPeriod,
+		MainPRepCount:                         icmodule.DefaultMainPRepCount,
+		SubPRepCount:                          icmodule.DefaultSubPRepCount,
+		Irep:                                  icmodule.InitialIRep,
+		Rrep:                                  0,
+		BondRequirement:                       0,
+		UnbondingPeriodMultiplier:             icmodule.DefaultUnbondingPeriodMultiplier,
+		UnstakeSlotMax:                        icmodule.InitialUnstakeSlotMax,
+		LockMinMultiplier:                     icmodule.DefaultLockMinMultiplier,
+		LockMaxMultiplier:                     icmodule.DefaultLockMaxMultiplier,
+		UnbondingMax:                          icmodule.DefaultUnbondingMax,
+		ValidationPenaltyCondition:            icmodule.DefaultValidationPenaltyCondition,
+		ConsistentValidationPenaltyCondition:  icmodule.DefaultConsistentValidationPenaltyCondition,
+		ConsistentValidationPenaltyMask:       icmodule.DefaultConsistentValidationPenaltyMask,
 		ConsistentValidationPenaltySlashRatio: icmodule.DefaultConsistentValidationPenaltySlashRatio,
-		DelegationSlotMax: icmodule.DefaultDelegationSlotMax,
+		DelegationSlotMax:                     icmodule.DefaultDelegationSlotMax,
 		RewardFund: RewardFund{
 			Iglobal: icmodule.DefaultIglobal,
-			Iprep: icmodule.DefaultIprep,
-			Ivoter: icmodule.DefaultIvoter,
-			Icps: icmodule.DefaultIcps,
-			Irelay: icmodule.DefaultIrelay,
+			Iprep:   icmodule.DefaultIprep,
+			Ivoter:  icmodule.DefaultIvoter,
+			Icps:    icmodule.DefaultIcps,
+			Irelay:  icmodule.DefaultIrelay,
 		},
 	}
 }

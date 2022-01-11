@@ -73,7 +73,7 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) error
+	OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br int64) error
 	GetPRepSize(grade Grade) int
 	Size() int
 	TotalBonded() *big.Int
@@ -92,7 +92,7 @@ type prepsBase struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepsBase) OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) error {
+func (p *prepsBase) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br int64) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -100,6 +100,10 @@ func (p *prepsBase) OnTermEnd(revision, mainPRepCount, subPRepCount, limit int) 
 	var newGrade Grade
 	for i, prep := range p.orderedPReps {
 		if i < mainPRepCount {
+			newGrade = GradeMain
+			mainPReps++
+		} else if i < mainPRepCount+extraMainPRepCount && prep.GetPower(br).Sign() > 0 {
+			// Prevent a prep with 0 power from being an extra main prep
 			newGrade = GradeMain
 			mainPReps++
 		} else if i < electedPRepCount {
