@@ -83,21 +83,24 @@ func (c *TxMetric) OnFinalize(hash []byte, ts time.Time) {
 
 	sHash := string(hash)
 	commit, ok := c.commits[sHash]
-	if !ok {
-		return
+	if ok {
+		delete(c.commits, sHash)
+		d := ts.Sub(commit.timestamp) + commit.duration
+		stats.Record(c.context, msFinLatency.M(int64(d/time.Millisecond)))
+	} else {
+		stats.Record(c.context, msFinLatency.M(0))
 	}
-	delete(c.commits, sHash)
-	d := ts.Sub(commit.timestamp) + commit.duration
-	stats.Record(c.context, msFinLatency.M(int64(d/time.Millisecond)))
 }
 
 func (c *TxMetric) OnCommit(hash []byte, ts time.Time, d time.Duration) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.commits[string(hash)] = &commitRecord{
-		timestamp: ts,
-		duration:  d,
+	if len(hash) > 0 {
+		c.commits[string(hash)] = &commitRecord{
+			timestamp: ts,
+			duration:  d,
+		}
 	}
 	stats.Record(c.context, msCommitLatency.M(int64(d/time.Millisecond)))
 }

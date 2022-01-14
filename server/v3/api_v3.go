@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/txresult"
@@ -24,8 +25,8 @@ const (
 	ConfigShowPatchTransaction = false
 )
 
-func MethodRepository() *jsonrpc.MethodRepository {
-	mr := jsonrpc.NewMethodRepository()
+func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository(mtr)
 
 	mr.RegisterMethod("icx_getLastBlock", getLastBlock)
 	mr.RegisterMethod("icx_getBlockByHeight", getBlockByHeight)
@@ -833,8 +834,8 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 	return result, nil
 }
 
-func DebugMethodRepository() *jsonrpc.MethodRepository {
-	mr := jsonrpc.NewMethodRepository()
+func DebugMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository(mtr)
 
 	mr.RegisterMethod("debug_getTrace", getTrace)
 	mr.RegisterMethod("debug_estimateStep", estimateStep)

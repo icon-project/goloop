@@ -353,9 +353,14 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		Short: "Start to backup the channel",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fs := cmd.Flags()
+			manual, _ := fs.GetBool("manual")
+			param := &node.ChainBackupParam{
+				Manual: manual,
+			}
 			var v string
 			reqUrl := node.UrlChain + "/" + args[0] + "/backup"
-			_, err := adminClient.PostWithJson(reqUrl, nil, &v)
+			_, err := adminClient.PostWithJson(reqUrl, param, &v)
 			if err != nil {
 				return err
 			}
@@ -364,6 +369,8 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		},
 	}
 	rootCmd.AddCommand(backupCmd)
+	backupFlags := backupCmd.Flags()
+	backupFlags.Bool("manual", false, "Manual backup mode (just release database)")
 
 	genesisCmd := &cobra.Command{
 		Use:   "genesis CID FILE",

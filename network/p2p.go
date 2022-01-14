@@ -1415,7 +1415,7 @@ Loop:
 				}
 				if !complete {
 					for _, na := range s.Array() {
-						if !p2p.hasNetAddressAndIn(na, false) {
+						if !p2p.hasNetAddress(na) {
 							p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", rr, na)
 							if err := p2p.dial(na); err != nil {
 								s.Remove(na)
@@ -1547,7 +1547,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 		})
 	} else {
 		peers = p2p.orphanages.Find(func(p *Peer) bool {
-			return !p.In() && p.HasRole(pr)
+			return p.HasRole(pr)
 		})
 	}
 	peers = append(peers, p2p.uncles.Array()...)
@@ -1612,7 +1612,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 		})
 	} else {
 		peers = p2p.orphanages.Find(func(p *Peer) bool {
-			return !p.In() && p.HasRole(ur)
+			return p.HasRole(ur)
 		})
 	}
 	if len(peers) < 1 {
