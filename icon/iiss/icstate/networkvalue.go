@@ -350,6 +350,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["irep"] = s.GetIRep()
 	jso["rrep"] = s.GetRRep()
 	jso["mainPRepCount"] = s.GetMainPRepCount()
+	jso["extraMainPRepCount"] = s.GetExtraMainPRepCount()
 	jso["subPRepCount"] = s.GetSubPRepCount()
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
