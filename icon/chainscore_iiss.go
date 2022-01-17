@@ -55,6 +55,25 @@ func (s *chainScore) toScoreResultError(code errors.Code, err error) error {
 	return code.Wrap(err, msg)
 }
 
+func (s *chainScore) checkNetworkScore(charge bool) error {
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	ns := es.State.GetNetworkScores()
+	for _, address := range ns {
+		if address.Equal(s.from) {
+			return nil
+		}
+	}
+	if charge {
+		if err := s.cc.ApplyCallSteps(); err != nil {
+			return err
+		}
+	}
+	return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+}
+
 func (s *chainScore) Ex_setIRep(value *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
@@ -678,7 +697,7 @@ func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
 }
 
 func (s *chainScore) Ex_addTimer(blockHeight *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
+	if err := s.checkNetworkScore(true); err != nil {
 		return err
 	}
 	es, err := s.getExtensionState()
@@ -691,7 +710,7 @@ func (s *chainScore) Ex_addTimer(blockHeight *common.HexInt) error {
 }
 
 func (s *chainScore) Ex_removeTimer(blockHeight *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
+	if err := s.checkNetworkScore(true); err != nil {
 		return err
 	}
 	es, err := s.getExtensionState()

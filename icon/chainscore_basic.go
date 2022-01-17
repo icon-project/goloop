@@ -307,6 +307,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if err := es.State.SetNonvotedPenaltySlashRatio(int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
+			if err := es.State.SetNetworkScore(icstate.GovernanceKey, govAddress); err != nil {
+				return err
+			}
 		}
 
 		// Enable ExtraMainPReps
