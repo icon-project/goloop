@@ -57,11 +57,12 @@ const (
 )
 
 const (
-	CPSKey   = "cps"
-	RelayKey = "relay"
+	CPSKey        = "cps"
+	RelayKey      = "relay"
+	GovernanceKey = "governance"
 )
 
-var NetworkScoreKeys = [2]string{CPSKey, RelayKey}
+var NetworkScoreKeys = [3]string{CPSKey, RelayKey, GovernanceKey}
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
@@ -88,6 +89,9 @@ func (s *State) SetNetworkScore(role string, address module.Address) error {
 				s.store,
 				1,
 				containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, DictNetworkScores))
+			if address == nil {
+				return db.Delete(role)
+			}
 			return db.Set(role, address)
 		}
 	}

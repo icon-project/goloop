@@ -580,7 +580,7 @@ var chainMethods = []*chainMethod{
 	}, icmodule.RevisionEnableSetScoreOwner, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setNetworkScore",
-		scoreapi.FlagExternal, 2,
+		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"role", scoreapi.String, nil, nil},
 			{"address", scoreapi.Address, nil, nil},
@@ -618,7 +618,23 @@ var chainMethods = []*chainMethod{
 			{"preps", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R2, 0},
+	}, icmodule.RevisionICON2R3, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setConsistentValidationSlashingRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"slashingRate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2R3, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setNonVoteSlashingRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"slashingRate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionICON2R3, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

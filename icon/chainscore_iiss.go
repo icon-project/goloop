@@ -728,6 +728,48 @@ func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
 	return nil
 }
 
+func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if err = es.State.SetConsistentValidationPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+		return err
+	}
+	cc := s.newCallContext(s.cc)
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("consistent_validation_penalty")},
+		[][]byte{
+			intconv.Int64ToBytes(slashingRate.Int64()),
+		},
+	)
+	return nil
+}
+
+func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if err = es.State.SetNonvotedPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+		return err
+	}
+	cc := s.newCallContext(s.cc)
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("nonvoted_penalty")},
+		[][]byte{
+			intconv.Int64ToBytes(slashingRate.Int64()),
+		},
+	)
+	return nil
+}
+
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
 }
