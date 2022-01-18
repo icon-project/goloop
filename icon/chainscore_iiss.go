@@ -679,8 +679,8 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 	if err != nil {
 		return err
 	}
-	if !owner.Equal(govAddress) {
-		return scoreresult.InvalidParameterError.Errorf("Only owned by governance can be designated")
+	if !owner.Equal(s.cc.Governance()) {
+		return scoreresult.InvalidParameterError.Errorf("Only scores owned by governance can be designated")
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
