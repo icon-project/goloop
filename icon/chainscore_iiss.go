@@ -669,9 +669,18 @@ func (s *chainScore) Ex_setScoreOwner(score module.Address, owner module.Address
 	}
 	return s.newCallContext(s.cc).SetScoreOwner(s.from, score, owner)
 }
+
 func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
+	}
+	cc := s.newCallContext(s.cc)
+	owner, err := cc.GetScoreOwner(address)
+	if err != nil {
+		return err
+	}
+	if !owner.Equal(govAddress) {
+		return scoreresult.InvalidParameterError.Errorf("Only owned by governance can be designated")
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
