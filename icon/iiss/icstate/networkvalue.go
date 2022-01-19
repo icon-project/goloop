@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
@@ -62,7 +63,7 @@ const (
 	GovernanceKey = "governance"
 )
 
-var NetworkScoreKeys = [3]string{CPSKey, RelayKey, GovernanceKey}
+var AdditionalNetworkScoreKeys = [3]string{CPSKey, RelayKey}
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
@@ -83,7 +84,10 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 }
 
 func (s *State) SetNetworkScore(role string, address module.Address) error {
-	for _, k := range NetworkScoreKeys {
+	if role == GovernanceKey {
+		return scoreresult.AccessDeniedError.New("Permission denied")
+	}
+	for _, k := range AdditionalNetworkScoreKeys {
 		if role == k {
 			db := containerdb.NewDictDB(
 				s.store,
@@ -95,23 +99,25 @@ func (s *State) SetNetworkScore(role string, address module.Address) error {
 			return db.Set(role, address)
 		}
 	}
-	return errors.IllegalArgumentError.New("invalid Network SCORE role")
+	return icmodule.IllegalArgumentError.New("invalid Network SCORE role")
 }
 
-func (s *State) GetNetworkScores() map[string]module.Address {
-	networkdScores := make(map[string]module.Address)
+func (s *State) GetNetworkScores(cc icmodule.CallContext) map[string]module.Address {
+	networkScores := map[string]module.Address{
+		GovernanceKey: cc.Governance(),
+	}
 	db := containerdb.NewDictDB(
 		s.store,
 		1,
 		containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, DictNetworkScores))
-	for _, k := range NetworkScoreKeys {
+	for _, k := range AdditionalNetworkScoreKeys {
 		v := db.Get(k)
 		if v == nil {
 			continue
 		}
-		networkdScores[k] = v.Address()
+		networkScores[k] = v.Address()
 	}
-	return networkdScores
+	return networkScores
 }
 
 func (s *State) GetIISSVersion() int {

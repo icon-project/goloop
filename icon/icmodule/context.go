@@ -32,4 +32,5 @@ type CallContext interface {
 	SumOfStepUsed() *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	CallOnTimer(to module.Address, params []byte) error
+	Governance() module.Address
 }

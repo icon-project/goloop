@@ -60,7 +60,7 @@ func (s *chainScore) checkNetworkScore(charge bool) error {
 	if err != nil {
 		return err
 	}
-	ns := es.State.GetNetworkScores()
+	ns := es.State.GetNetworkScores(s.newCallContext(s.cc))
 	for _, address := range ns {
 		if address.Equal(s.from) {
 			return nil
@@ -697,10 +697,10 @@ func (s *chainScore) Ex_getNetworkScores() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns := es.State.GetNetworkScores()
+	ns := es.State.GetNetworkScores(s.newCallContext(s.cc))
 	jso := make(map[string]interface{})
 	for k, v := range ns {
-		jso[k] = v.String()
+		jso[k] = v
 	}
 	return jso, nil
 }
