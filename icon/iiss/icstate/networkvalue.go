@@ -17,8 +17,9 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
+
+	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/module"
 
@@ -99,7 +100,7 @@ func (s *State) SetNetworkScore(role string, address module.Address) error {
 			return db.Set(role, address)
 		}
 	}
-	return icmodule.IllegalArgumentError.New("invalid Network SCORE role")
+	return icmodule.IllegalArgumentError.New("Invalid Network SCORE role")
 }
 
 func (s *State) GetNetworkScores(cc icmodule.CallContext) map[string]module.Address {
