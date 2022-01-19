@@ -63,7 +63,7 @@ const (
 	GovernanceKey = "governance"
 )
 
-var AdditionalNetworkScoreKeys = [3]string{CPSKey, RelayKey}
+var AdditionalNetworkScoreKeys = []string{CPSKey, RelayKey}
 
 func getValue(store containerdb.ObjectStoreState, key string) containerdb.Value {
 	return containerdb.NewVarDB(
