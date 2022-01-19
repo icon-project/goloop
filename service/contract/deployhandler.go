@@ -339,7 +339,7 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 				h.FID, as.ContractOwner(), h.From)
 			return scoreresult.ErrAccessDenied, nil, nil
 		}
-		if contract := as.Contract(); !h.eeType.AbleToUpdate(contract.EEType()) {
+		if contract := as.Contract(); contract != nil && !h.eeType.AbleToUpdate(contract.EEType()) {
 			return scoreresult.InvalidParameterError.Errorf("ProhibitToUpdate(old=%s,new=%s)",
 				contract.EEType(), h.eeType), nil, nil
 		}
