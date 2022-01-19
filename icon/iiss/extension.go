@@ -1719,7 +1719,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		{icstate.CPSKey, rf.Icps},
 		{icstate.RelayKey, rf.Irelay},
 	}
-	ns := es.State.GetNetworkScores()
+	ns := es.State.GetNetworkScores(cc)
 	div := big.NewInt(100 * MonthBlock)
 	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
 	from := cc.Treasury()
