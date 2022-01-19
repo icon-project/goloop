@@ -41,13 +41,13 @@ type WorldContext interface {
 
 type worldContext struct {
 	state.WorldState
-	blockHeight int64
+	blockHeight    int64
 	blockTimestamp int64
-	csi         module.ConsensusInfo
-	origin      module.Address
-	revision    module.Revision
-	stepPrice   *big.Int
-	txId        []byte
+	csi            module.ConsensusInfo
+	origin         module.Address
+	revision       module.Revision
+	stepPrice      *big.Int
+	txId           []byte
 }
 
 func (ctx *worldContext) addBalance(address module.Address, amount *big.Int) error {
@@ -63,7 +63,6 @@ func (ctx *worldContext) Revision() module.Revision {
 func (ctx *worldContext) BlockHeight() int64 {
 	return ctx.blockHeight
 }
-
 
 func (ctx *worldContext) Origin() module.Address {
 	return ctx.origin
@@ -205,12 +204,12 @@ func NewWorldContext(
 	csi module.ConsensusInfo, stepPrice *big.Int,
 ) WorldContext {
 	return &worldContext{
-		WorldState: ws,
-		blockHeight: blockHeight,
+		WorldState:     ws,
+		blockHeight:    blockHeight,
 		blockTimestamp: blockHeight * 2_000_000,
-		csi: csi,
-		revision: revision,
-		stepPrice: stepPrice,
+		csi:            csi,
+		revision:       revision,
+		stepPrice:      stepPrice,
 	}
 }
 
@@ -269,9 +268,13 @@ func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
 	return nil
 }
 
+func (ctx *callContext) Governance() module.Address {
+	return ctx.Governance()
+}
+
 func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
 	return &callContext{
 		WorldContext: wc,
-		from: from,
+		from:         from,
 	}
 }
