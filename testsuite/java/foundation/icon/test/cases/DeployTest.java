@@ -469,4 +469,55 @@ public class DeployTest extends TestBase {
         }
         LOG.infoExiting();
     }
+
+    @Test
+    public void testDeployMultipleWithoutAccept() throws Exception {
+        assumeTrue(chainScore.isAuditEnabled(), "audit is not enabled");
+
+        LOG.infoEntering("testDeployMultipleWithoutAccept");
+
+        KeyWallet owner = testWallets[0];
+        Address score = null;
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+
+        LOG.infoEntering("inital deploy");
+        try {
+            var txHash = txHandler.deployOnly(owner, HelloWorld.INSTALL_PATH, params);
+            var result = txHandler.getResult(txHash);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            score = new Address(result.getScoreAddress());
+        } catch (Exception e) {
+            fail(e);
+            return;
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy again");
+        try {
+            var txHash = txHandler.deployOnly(owner, score, HelloWorld.INSTALL_PATH, params);
+            var result = txHandler.getResult(txHash);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        } catch (Exception e) {
+            fail(e);
+            return;
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy again and accept");
+        try {
+            var txHash = txHandler.deployOnly(owner, score, HelloWorld.INSTALL_PATH, params);
+            var result = txHandler.getResult(txHash);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+            txHandler.acceptScoreIfAuditEnabled(txHash);
+        } catch (Exception e) {
+            fail(e);
+            return;
+        }
+        LOG.infoExiting();
+
+        LOG.infoExiting();
+    }
 }
