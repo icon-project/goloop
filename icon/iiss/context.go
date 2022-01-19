@@ -90,7 +90,6 @@ func (ctx *worldContextImpl) addBalance(address module.Address, amount *big.Int)
 	return setBalance(address, as, new(big.Int).Add(ob, amount))
 }
 
-
 func (ctx *worldContextImpl) GetTotalSupply() *big.Int {
 	as := ctx.GetAccountState(state.SystemID)
 	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
@@ -170,7 +169,7 @@ func NewWorldContext(ctx state.WorldContext) icmodule.WorldContext {
 
 type callContextImpl struct {
 	icmodule.WorldContext
-	cc contract.CallContext
+	cc   contract.CallContext
 	from module.Address
 }
 
@@ -244,10 +243,14 @@ func (ctx *callContextImpl) CallOnTimer(to module.Address, params []byte) error 
 	return nil
 }
 
+func (ctx *callContextImpl) Governance() module.Address {
+	return ctx.cc.Governance()
+}
+
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
 	return &callContextImpl{
 		WorldContext: NewWorldContext(cc),
-		cc: cc,
-		from: from,
+		cc:           cc,
+		from:         from,
 	}
 }
