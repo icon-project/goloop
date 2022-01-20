@@ -190,7 +190,7 @@ func TestMethodRepository(t *testing.T) {
 	}
 	invokeBatchTest(t, mr, mixedBatch, mixedBatchResp)
 
-	exceedLimitBatch := "[" + strings.Repeat(","+notification, LimitOfBatch+1)[1:] + "]"
+	exceedLimitBatch := "[" + strings.Repeat(","+notification, DefaultBatchLimit+1)[1:] + "]"
 	exceedLimitBatchResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest","data":"too many request"},"id":null}`
 	invokeTest(t, mr, exceedLimitBatch, exceedLimitBatchResp, http.StatusServiceUnavailable)
 }

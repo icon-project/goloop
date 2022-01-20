@@ -33,6 +33,7 @@ type Manager struct {
 	jsonrpcDefaultChannel string
 	jsonrpcMessageDump    int32
 	jsonrpcIncludeDebug   int32
+	jsonrpcBatchLimit     int32
 	logger                log.Logger
 	metricsHandler        echo.HandlerFunc
 	mtr                   *metric.JsonrpcMetric
@@ -42,6 +43,7 @@ func NewManager(addr string,
 	jsonrpcDump bool,
 	jsonrpcIncludeDebug bool,
 	jsonrpcDefaultChannel string,
+	jsonrpcBatchLimit int,
 	wallet module.Wallet,
 	l log.Logger) *Manager {
 
@@ -65,6 +67,7 @@ func NewManager(addr string,
 		wssm:                  newWSSessionManager(logger),
 		mtx:                   sync.RWMutex{},
 		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
+		jsonrpcBatchLimit:     int32(jsonrpcBatchLimit),
 		logger:                logger,
 		metricsHandler:        echo.WrapHandler(metric.PrometheusExporter()),
 		mtr:                   mtr,
@@ -151,6 +154,14 @@ func (srv *Manager) IncludeDebug() bool {
 	return atomicLoad(&srv.jsonrpcIncludeDebug)
 }
 
+func (srv *Manager) SetBatchLimit(limitOfBatch int) {
+	atomic.StoreInt32(&srv.jsonrpcBatchLimit, int32(limitOfBatch))
+}
+
+func (srv *Manager) BatchLimit() int {
+	return int(atomic.LoadInt32(&srv.jsonrpcBatchLimit))
+}
+
 func (srv *Manager) Start() error {
 	srv.logger.Infoln("starting the server")
 	// CORS middleware
@@ -181,6 +192,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	rpc.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
 			ctx.Set("includeDebug", srv.IncludeDebug())
+			ctx.Set("batchLimit", srv.BatchLimit())
 			return next(ctx)
 		}
 	})

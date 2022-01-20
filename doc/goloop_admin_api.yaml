@@ -662,6 +662,7 @@ components:
           eeInstances: 1
           rpcDefaultChannel: ""
           rpcIncludeDebug: false
+          rpcBatchLimit: 10
     SystemConfig:
       type: object
       properties:
@@ -674,10 +675,14 @@ components:
         rpcIncludeDebug:
           type: boolean
           description: "JSON-RPC Response with detail information"
+        rpcBatchLimit:
+          type: integer
+          description: "JSON-RPC batch limit"
       example:
         eeInstances: 1
         rpcDefaultChannel: ""
         rpcIncludeDebug: false
+        rpcBatchLimit: 10
     ConfigureParam:
       type: object
       properties:
