@@ -673,17 +673,19 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	cc := s.newCallContext(s.cc)
-	owner, err := cc.GetScoreOwner(address)
-	if err != nil {
-		return err
-	}
-	if !owner.Equal(s.cc.Governance()) {
-		return scoreresult.InvalidParameterError.Errorf("Only scores owned by governance can be designated")
-	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
+	}
+	if address != nil {
+		cc := s.newCallContext(s.cc)
+		owner, err := cc.GetScoreOwner(address)
+		if err != nil {
+			return err
+		}
+		if !common.AddressEqual(owner, s.cc.Governance()) {
+			return icmodule.IllegalArgumentError.Errorf("Only scores owned by governance can be designated")
+		}
 	}
 	return es.State.SetNetworkScore(role, address)
 }
