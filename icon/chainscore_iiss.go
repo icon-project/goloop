@@ -19,7 +19,6 @@ package icon
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -741,13 +740,9 @@ func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
 	}
 	cc := s.newCallContext(s.cc)
 	for _, p := range params {
-		prep := new(common.Address)
-		bs, err := json.Marshal(p)
-		if err != nil {
-			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
-		}
-		if err = json.Unmarshal(bs, prep); err != nil {
-			return scoreresult.IllegalFormatError.Wrapf(err, "Failed to get bonder list")
+		prep, ok := p.(module.Address)
+		if !ok {
+			return scoreresult.InvalidParameterError.Errorf("invalid parameter. not an address")
 		}
 		if err := es.PenalizeNonVoters(cc, prep); err != nil {
 			return err
@@ -760,11 +755,17 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+	if !slashingRate.IsInt64() {
+		return icmodule.IllegalArgumentError.Errorf("Invalid range")
+	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
 	}
 	if err = es.State.SetConsistentValidationPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+		if errors.IllegalArgumentError.Equals(err) {
+			return icmodule.IllegalArgumentError.Errorf("Invalid range")
+		}
 		return err
 	}
 	cc := s.newCallContext(s.cc)
@@ -781,11 +782,17 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+	if !slashingRate.IsInt64() {
+		return icmodule.IllegalArgumentError.Errorf("Invalid range")
+	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
 	}
 	if err = es.State.SetNonvotedPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+		if errors.IllegalArgumentError.Equals(err) {
+			return icmodule.IllegalArgumentError.Errorf("Invalid range")
+		}
 		return err
 	}
 	cc := s.newCallContext(s.cc)
