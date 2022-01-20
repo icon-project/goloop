@@ -50,7 +50,7 @@ const (
 	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
 	VarDelegationSlotMax                     = "delegation_slot_max"
 	DictNetworkScores                        = "network_scores"
-	VarNonvotedPenaltySlashRatio             = "nonvoted_penalty_slashRatio"
+	VarNonVotePenaltySlashRatio              = "nonvote_penalty_slashRatio"
 )
 
 const (
@@ -344,15 +344,15 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotedPenaltySlashRatio() int {
-	return int(getValue(s.store, VarNonvotedPenaltySlashRatio).Int64())
+func (s *State) GetNonVotePenaltySlashRatio() int {
+	return int(getValue(s.store, VarNonVotePenaltySlashRatio).Int64())
 }
 
-func (s *State) SetNonVotedPenaltySlashRatio(value int) error {
+func (s *State) SetNonVotePenaltySlashRatio(value int) error {
 	if value < 0 || value > 100 {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarNonvotedPenaltySlashRatio, value)
+	return setValue(s.store, VarNonVotePenaltySlashRatio, value)
 }
 
 func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
@@ -378,7 +378,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotedPenaltySlashRatio()
+	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRatio()
 
 	preps, _ := s.GetPRepsOrderedByPower()
 	if preps != nil {

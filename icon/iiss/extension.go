@@ -591,7 +591,7 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		},
 	)
 
-	return es.slash(cc, address, es.State.GetNonVotedPenaltySlashRatio())
+	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRatio())
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
