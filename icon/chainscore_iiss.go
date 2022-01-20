@@ -797,7 +797,7 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	}
 	cc := s.newCallContext(s.cc)
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("nonvoted_penalty")},
+		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("nonvote_penalty")},
 		[][]byte{
 			intconv.Int64ToBytes(slashingRate.Int64()),
 		},
