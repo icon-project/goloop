@@ -8,9 +8,12 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/ictest"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -151,22 +154,30 @@ func TestWorldContextImpl_SetScoreOwner_SanityCheck(t *testing.T) {
 
 	// Case: from is nil
 	err = wc.SetScoreOwner(nil, score, owner)
-	assert.Error(t, err)
+	assert.Equal(t, scoreresult.InvalidParameterError, errors.CodeOf(err))
 
-	invalidScores := []module.Address{
-		nil, common.MustNewAddressFromString("hx3"),
-	}
-	for _, invalidScore := range invalidScores {
-		err = wc.SetScoreOwner(from, invalidScore, owner)
-		assert.Error(t, err)
-	}
+	// Case: score is nil
+	err = wc.SetScoreOwner(from, nil, owner)
+	assert.Equal(t, scoreresult.InvalidParameterError, errors.CodeOf(err))
 
-	invalidOwners := []module.Address{nil}
-	for _, invalidOwner := range invalidOwners {
-		err = wc.SetScoreOwner(from, score, invalidOwner)
-		assert.Error(t, err)
-	}
+	// Case: score is not a contract address
+	err = wc.SetScoreOwner(from, common.MustNewAddressFromString("hx3"), owner)
+	assert.Equal(t, icmodule.IllegalArgumentError, errors.CodeOf(err))
 
-	err = wc.SetScoreOwner(from, score, owner)
-	assert.Error(t, err)
+	newOwners := []module.Address{
+		nil,
+		common.MustNewAddressFromString("cx1"),
+		common.MustNewAddressFromString("cx2"),
+		common.MustNewAddressFromString("hx2"),
+	}
+	errCodes := []errors.Code{
+		scoreresult.InvalidParameterError,
+		icmodule.IllegalArgumentError,
+		icmodule.IllegalArgumentError,
+		icmodule.IllegalArgumentError,
+	}
+	for i := range newOwners {
+		err = wc.SetScoreOwner(from, score, newOwners[i])
+		assert.Equal(t, errCodes[i], errors.CodeOf(err))
+	}
 }
