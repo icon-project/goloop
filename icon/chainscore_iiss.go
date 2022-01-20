@@ -789,7 +789,7 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetNonvotedPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	if err = es.State.SetNonVotedPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
