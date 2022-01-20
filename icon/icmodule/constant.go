@@ -70,10 +70,10 @@ const (
 	DefaultValidationPenaltyCondition            = 660
 	DefaultConsistentValidationPenaltyCondition  = 5
 	DefaultConsistentValidationPenaltyMask       = 30
-	DefaultConsistentValidationPenaltySlashRatio = 0 // 0% by default
+	DefaultConsistentValidationPenaltySlashRatio = 0  // 0%
 	DefaultDelegationSlotMax                     = 100
 	DefaultExtraMainPRepCount                    = 3
-	DefaultNonVotePenaltySlashRatio              = 10
+	DefaultNonVotePenaltySlashRatio              = 0  // 0%
 )
 
 // The following variables are read-only
