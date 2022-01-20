@@ -198,8 +198,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			iconConfig.ConsistentValidationPenaltyMask.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetConsistentValidationPenaltySlashRatio(
-			int(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
+		// 10% slashRatio is hardcoded for backward compatibility
+		if err := es.State.SetConsistentValidationPenaltySlashRatio(10); err != nil {
 			return err
 		}
 	}
@@ -304,7 +304,12 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		// Set slash ratio of Non Vote Penalty
 		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
 			iconConfig := s.loadIconConfig()
-			if err := es.State.SetNonVotePenaltySlashRatio(int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
+			if err := es.State.SetConsistentValidationPenaltySlashRatio(
+				int(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
+				return err
+			}
+			if err := es.State.SetNonVotePenaltySlashRatio(
+				int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
 		}
