@@ -138,7 +138,7 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 			mr.mtr.OnHandle(ctx.MetricContext(), "", time.Now(), resp.Error)
 			return c.JSON(http.StatusBadRequest, resp)
 		}
-		if n > LimitOfBatch {
+		if n > ctx.BatchLimit() {
 			resp := &Response{
 				Version: Version,
 				Error:   ErrInvalidRequest("too many request"),

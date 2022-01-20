@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	Version      = "2.0"
-	LimitOfBatch = 10
+	Version           = "2.0"
+	DefaultBatchLimit = 10
 )
 
 type Request struct {
@@ -131,6 +131,14 @@ func (ctx *Context) IncludeDebug() bool {
 	serverDebug := ctx.Get("includeDebug").(bool)
 	v, _ := ctx.opts.GetBool(IconOptionsDebug)
 	return v && serverDebug
+}
+
+func (ctx *Context) BatchLimit() int {
+	batchLimit, ok := ctx.Get("batchLimit").(int)
+	if !ok {
+		batchLimit = DefaultBatchLimit
+	}
+	return batchLimit
 }
 
 func (ctx *Context) GetTimeout(t time.Duration) time.Duration {

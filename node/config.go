@@ -9,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
 const (
@@ -108,6 +109,7 @@ type RuntimeConfig struct {
 	EEInstances       int    `json:"eeInstances"`
 	RPCDefaultChannel string `json:"rpcDefaultChannel"`
 	RPCIncludeDebug   bool   `json:"rpcIncludeDebug"`
+	RPCBatchLimit     int    `json:"rpcBatchLimit"`
 
 	FilePath string `json:"-"` // absolute path
 }
@@ -142,6 +144,7 @@ func (c *RuntimeConfig) save() error {
 func loadRuntimeConfig(baseDir string) (*RuntimeConfig, error) {
 	cfg := &RuntimeConfig{
 		EEInstances: DefaultEEInstances,
+		RPCBatchLimit: jsonrpc.DefaultBatchLimit,
 		FilePath:    path.Join(baseDir, "rconfig.json"),
 	}
 	if err := cfg.load(); err != nil {
