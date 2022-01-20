@@ -133,8 +133,11 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 	if from == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid sender")
 	}
-	if score == nil || !score.IsContract() {
+	if score == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid score address")
+	}
+	if !score.IsContract() {
+		return icmodule.IllegalArgumentError.Errorf("Invalid score address")
 	}
 	if newOwner == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid owner")
@@ -142,7 +145,7 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 
 	as := ctx.GetAccountState(score.ID())
 	if icutils.IsNil(as) || !as.IsContract() {
-		return scoreresult.InvalidParameterError.Errorf("Score not found")
+		return icmodule.IllegalArgumentError.Errorf("Score not found")
 	}
 
 	// Check if s.from is the owner of a given contract
