@@ -329,8 +329,8 @@ func (s *State) GetConsistentValidationPenaltySlashRatio() int {
 }
 
 func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
-	if value < 0 {
-		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
+	if value < 0 || value >= 100 {
+		return errors.IllegalArgumentError.New("Invalid range")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
 }
@@ -349,7 +349,7 @@ func (s *State) GetNonvotedPenaltySlashRatio() int {
 }
 
 func (s *State) SetNonvotedPenaltySlashRatio(value int) error {
-	if value <= 0 {
+	if value < 0 || value >= 100 {
 		return errors.IllegalArgumentError.New("ConsistentValidationPenaltySlashRatio must have positive value")
 	}
 	return setValue(s.store, VarNonvotedPenaltySlashRatio, value)

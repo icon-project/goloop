@@ -627,7 +627,7 @@ var chainMethods = []*chainMethod{
 			{"preps", scoreapi.ListTypeOf(1, scoreapi.Address), nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R2, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setConsistentValidationSlashingRate",
 		scoreapi.FlagExternal, 1,
