@@ -1022,7 +1022,14 @@ func (cs *consensus) enterNewHeight() {
 	}
 }
 
-func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
+func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
+	err := cs.doSendProposal(blockParts, polRound)
+	if err != nil {
+		cs.log.Debugf("%+v", err)
+	}
+}
+
+func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	msg := NewProposalMessage()
 	msg.Height = cs.height
 	msg.Round = cs.round
@@ -1107,7 +1114,14 @@ func (cs *consensus) voteTimestamp() int64 {
 	return timestamp
 }
 
-func (cs *consensus) sendVote(vt VoteType, blockParts *blockPartSet) error {
+func (cs *consensus) sendVote(vt VoteType, blockParts *blockPartSet) {
+	err := cs.doSendVote(vt, blockParts)
+	if err != nil {
+		cs.log.Debugf("%+v", err)
+	}
+}
+
+func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	if cs.validators.IndexOf(cs.c.Wallet().Address()) < 0 {
 		return nil
 	}
@@ -1149,8 +1163,8 @@ func (cs *consensus) sendVote(vt VoteType, blockParts *blockPartSet) error {
 	if err != nil {
 		cs.log.Warnf("sendVote: %+v\n", err)
 	}
-	cs.ReceiveVoteMessage(msg, true)
-	return nil
+	_, err = cs.ReceiveVoteMessage(msg, true)
+	return err
 }
 
 func getProposerIndex(
@@ -1688,7 +1702,10 @@ func (cs *consensus) Term() {
 
 	cs.started = false
 
-	cs.c.NetworkManager().UnregisterReactor(cs)
+	err := cs.c.NetworkManager().UnregisterReactor(cs)
+	if err != nil {
+		cs.log.Warnf("%+v", err)
+	}
 	if cs.syncer != nil {
 		cs.syncer.Stop()
 	}
