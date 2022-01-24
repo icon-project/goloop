@@ -425,7 +425,8 @@ func (f *fetcher) _doSend() {
 	msg.RequestID = f.requestID
 	msg.Height = f.height
 	bs := codec.MustMarshalToBytes(&msg)
-	f.cl.log.Debugf("Request RequestID:%d, Height:%d\n", f.requestID, f.height)
+	fidPre := common.HexPre(f.id.Bytes())
+	f.cl.log.Debugf("Request RequestID:%d Height:%d peer:%s\n", f.requestID, f.height, fidPre)
 	if f.timer != nil {
 		f.timer.Stop()
 		f.timer = nil
