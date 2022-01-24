@@ -61,9 +61,9 @@ func (br *blockResult) Consume() {
 	copy(fr.pendingResults, fr.pendingResults[1:])
 	fr.pendingResults[len(fr.pendingResults)-1] = nil
 	fr._reschedule()
-	if fr.consumeOffset > fr.heightSet.end || fr.nActivePeers == 0 && fr.pendingResults[0] == nil {
+	if fr.consumeOffset > fr.heightSet.end || len(fr.validPeers) == 0 && fr.pendingResults[0] == nil {
 		cb := fr.cb
-		cl.log.Tracef("OnEnd Consume %d nActivePeers:%d pendingResult[0]:%p\n", br.blk.Height(), fr.nActivePeers, fr.pendingResults[0])
+		cl.log.Tracef("OnEnd Consume %d validPeers:%d pendingResult[0]:%p\n", br.blk.Height(), len(fr.validPeers), fr.pendingResults[0])
 		fr._cancel()
 		go cb.OnEnd(nil)
 		return
@@ -106,7 +106,7 @@ func (br *blockResult) Reject() {
 			fr.pendingResults[i] = nil
 		}
 	}
-	if fr.nActivePeers != 0 {
+	if len(fr.validPeers) != 0 {
 		fr._reschedule()
 	} else {
 		cb := fr.cb
@@ -312,7 +312,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []
 				}
 			}
 		}
-		if fr.nActivePeers != 0 {
+		if len(fr.validPeers) != 0 {
 			fr._reschedule()
 		} else if fr.pendingResults[0] == nil {
 			cb := fr.cb
