@@ -399,14 +399,27 @@ func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (m
 	}
 
 	term := s.GetTermSnapshot()
-	newOwner, nextPssIdx := s.chooseNewMainPRep(term.prepSnapshots, vss.NextPRepSnapshotIndex())
+	index := vss.NextPRepSnapshotIndex()
+	newOwner, nextPssIdx := s.chooseNewMainPRep(term.prepSnapshots, index)
 	if nextPssIdx < 0 {
+		s.logData(blockHeight, node, i, term, vss, index)
 		return nil, errors.Errorf("Failed to choose a new validator: oldNode=%s", node)
 	}
 
 	vs := NewValidatorsStateWithSnapshot(vss)
 	vs.Set(blockHeight, i, nextPssIdx, s.GetNodeByOwner(newOwner))
 	return newOwner, s.SetValidatorsSnapshot(vs.GetSnapshot())
+}
+
+func (s *State) logData(
+	blockHeight int64, node module.Address, vssIdx int, term *TermSnapshot, vss* ValidatorsSnapshot, startIdx int) {
+	s.logger.Errorf("Extra main prep error start ===================================================")
+	s.logger.Errorf("bh=%d node=%s vssIdx=%d startIdx=%d", blockHeight, node, vssIdx, startIdx)
+	s.logger.Errorf("term=%s", term)
+	s.logger.Errorf("vss=%s", vss)
+	s.logger.Errorf("vssLen=%d", vss.Len())
+	s.logger.Errorf("pss=%s", term.prepSnapshots)
+	s.logger.Errorf("Extra main prep error end ===================================================")
 }
 
 // chooseNewMainPRep returns the owner address of a new validator from PRepSnapshots

@@ -3,6 +3,7 @@ package icstate
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -62,6 +63,10 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 	return d.DecodeListOf(&pss.owner, &pss.power)
 }
 
+func (pss *PRepSnapshot) String() string {
+	return fmt.Sprintf("[%s, %v]", pss.owner, pss.Power())
+}
+
 func NewPRepSnapshot(owner module.Address, power *big.Int) *PRepSnapshot {
 	return &PRepSnapshot{
 		owner: common.AddressToPtr(owner),
@@ -99,6 +104,14 @@ func (p PRepSnapshots) Clone() PRepSnapshots {
 	ret := make(PRepSnapshots, len(p))
 	copy(ret, p)
 	return ret
+}
+
+func (p PRepSnapshots) String() string {
+	data := make([]string, len(p))
+	for i := 0; i < len(data); i++ {
+		data[i] = p[i].String()
+	}
+	return strings.Join(data, ", ")
 }
 
 // =============================================================================
