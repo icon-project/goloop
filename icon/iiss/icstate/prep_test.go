@@ -25,10 +25,27 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func getRandomVoteState() VoteState {
 	return []VoteState{None, Success, Failure}[rand.Intn(3)]
+}
+
+func checkDuplicatePReps(t *testing.T, prepSet PRepSet, originPReps []*PRep) {
+	prepMap := make(map[string]int)
+	for i := 0; i < prepSet.Size(); i++ {
+		prep := prepSet.GetPRepByIndex(i)
+		_, ok := prepMap[icutils.ToKey(prep.Owner())]
+		assert.False(t, ok)
+		prepMap[icutils.ToKey(prep.Owner())] = 1
+	}
+	assert.Equal(t, len(prepMap), prepSet.Size())
+
+	for _, prep := range originPReps {
+		_, ok := prepMap[icutils.ToKey(prep.Owner())]
+		assert.True(t, ok)
+	}
 }
 
 func TestPRepSet_GetPRepByIndex(t *testing.T) {
@@ -104,6 +121,7 @@ func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
 		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
 	assert.Equal(t, size, prepSet.Size())
+	checkDuplicatePReps(t, prepSet, preps)
 
 	sort.Slice(preps, func(i, j int) bool {
 		return lessByPower(preps[i], preps[j], br)
@@ -155,6 +173,8 @@ func TestPRepSet_NewPReps_WithZeroExtraPRepCount(t *testing.T) {
 	prepSet1 := NewPRepsIncludingExtraMainPRep(
 		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
+	checkDuplicatePReps(t, prepSet0, preps)
+	checkDuplicatePReps(t, prepSet1, preps)
 
 	sort.Slice(preps, func(i, j int) bool {
 		return lessByPower(preps[i], preps[j], br)
@@ -188,6 +208,8 @@ func TestPRepSet_NewPReps2_withNoExtraPReps(t *testing.T) {
 	prepSet1 := NewPRepsIncludingExtraMainPRep(
 		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
+	checkDuplicatePReps(t, prepSet0, preps)
+	checkDuplicatePReps(t, prepSet1, preps)
 
 	// preps is sorted in descending order by power
 	sort.Slice(preps, func(i, j int) bool {
@@ -230,6 +252,8 @@ func TestPRepSet_ExtraMainPRepsWithZeroPower(t *testing.T) {
 	prepSet1 := NewPRepsIncludingExtraMainPRep(
 		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
 	)
+	checkDuplicatePReps(t, prepSet0, preps)
+	checkDuplicatePReps(t, prepSet1, preps)
 
 	// preps is sorted in descending order by power
 	sort.Slice(preps, func(i, j int) bool {
@@ -243,4 +267,29 @@ func TestPRepSet_ExtraMainPRepsWithZeroPower(t *testing.T) {
 		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
 		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
 	}
+}
+
+func TestPRepSet_WithLRUAndOneZeroPowerPRep(t *testing.T) {
+	size := 30
+	br := int64(5)
+	mainPRepCount := 22
+	subPRepCount := 78
+	extraMainPRepCount := 3
+	zeroPowerPRepIndex := mainPRepCount
+
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		prep := newDummyPRep(i)
+		prep.lastHeight = rand.Int63n(10000) + 1
+		prep.lastState = getRandomVoteState()
+		preps[i] = prep
+	}
+	preps[zeroPowerPRepIndex].lastHeight = 0
+	preps[zeroPowerPRepIndex].lastState = None
+	preps[zeroPowerPRepIndex].SetBonded(big.NewInt(0))
+
+	prepSet := NewPRepsIncludingExtraMainPRep(
+		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
+	)
+	checkDuplicatePReps(t, prepSet, preps)
 }

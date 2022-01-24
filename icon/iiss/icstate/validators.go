@@ -413,11 +413,10 @@ func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (m
 
 func (s *State) logData(
 	blockHeight int64, node module.Address, vssIdx int, term *TermSnapshot, vss* ValidatorsSnapshot, startIdx int) {
-	s.logger.Errorf("Extra main prep error start ===================================================")
+	s.logger.Errorf("Extra main prep error start =================================================")
 	s.logger.Errorf("bh=%d node=%s vssIdx=%d startIdx=%d", blockHeight, node, vssIdx, startIdx)
 	s.logger.Errorf("term=%s", term)
 	s.logger.Errorf("vss=%s", vss)
-	s.logger.Errorf("vssLen=%d", vss.Len())
 	s.logger.Errorf("pss=%s", term.prepSnapshots)
 	s.logger.Errorf("Extra main prep error end ===================================================")
 }
