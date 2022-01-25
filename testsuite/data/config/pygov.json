@@ -13,6 +13,7 @@
   "rpc_debug": true,
   "rpc_dump": true,
   "seed_addr": "",
+  "waitTimeout": 3000,
   "key_store": {
     "address": "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd",
     "id": "87323a66-289a-4ce2-88e4-00278deb5b84",
