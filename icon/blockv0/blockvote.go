@@ -166,7 +166,7 @@ type BlockVoteList struct {
 }
 
 func NewBlockVoteList(votes ...*BlockVote) *BlockVoteList {
-	return &BlockVoteList{ votes: votes }
+	return &BlockVoteList{votes: votes}
 }
 
 func (s *BlockVoteList) UnmarshalJSON(b []byte) error {
@@ -422,7 +422,7 @@ func (s *BlockVoteList) Add(idx int, vote interface{}) bool {
 	return false
 }
 
-func (s *BlockVoteList) String() string {
+func (s BlockVoteList) String() string {
 	jsn, err := s.MarshalJSON()
 	if err != nil {
 		return fmt.Sprintf("BlockVoteList{err:%+v}", err)
