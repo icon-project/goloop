@@ -148,10 +148,16 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	}
 	for _, p := range s.peers {
 		if p.id.Equal(id) {
+			p := p // capture loop var
 			if pi == ProtoCancelAllBlockRequests {
-				p.cancelCh <- struct{}{}
+				s.CallAfterUnlock(func() {
+					p.cancelCh <- struct{}{}
+				})
 			}
-			p.msgCh <- MessageItem{pi, b}
+			s.CallAfterUnlock(func() {
+				p.msgCh <- MessageItem{pi, b}
+			})
+			break
 		}
 	}
 }
