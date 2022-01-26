@@ -42,8 +42,8 @@ func newDummyPRepBase(i int) *PRepBaseState {
 func newDummyPRepStatus() *PRepStatusState {
 	ps := NewPRepStatus()
 	_ = ps.Activate()
-	ps.SetDelegated(big.NewInt(rand.Int63n(1000)))
-	ps.SetBonded(big.NewInt(rand.Int63n(1000)))
+	ps.SetDelegated(big.NewInt(rand.Int63n(1000) + 1))
+	ps.SetBonded(big.NewInt(rand.Int63n(1000) + 1))
 	return ps
 }
 
