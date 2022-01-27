@@ -90,6 +90,7 @@ const (
 	RevisionICON2R3             = Revision17
 	RevisionEnableSetScoreOwner = Revision17
 	RevisionExtraMainPReps      = Revision17
+	RevisionFixVotingReward     = Revision17
 )
 
 var revisionFlags = []module.Revision{

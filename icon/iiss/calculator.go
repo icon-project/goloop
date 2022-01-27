@@ -76,10 +76,10 @@ type Calculator struct {
 	temp        *icreward.State
 	stats       *statistics
 
-	lock        sync.Mutex
-	waiters     []*sync.Cond
-	err         error
-	result      *icreward.Snapshot
+	lock    sync.Mutex
+	waiters []*sync.Cond
+	err     error
+	result  *icreward.Snapshot
 }
 
 func (c *Calculator) Result() *icreward.Snapshot {
@@ -669,7 +669,12 @@ func (c *Calculator) calculateVotingReward() error {
 				prepInfo[idx].SetEndOffset(offset)
 			}
 			// update vInfo
-			vInfo.SetEnable(event.Target(), event.Status())
+			status := event.Status()
+			if c.global.GetRevision() >= icmodule.RevisionFixVotingReward && event.Status().IsDisabledTemporarily() {
+				// ICONist get voting reward when target PRep got turn skipping penalty
+				status = icstage.ESEnable
+			}
+			vInfo.SetEnable(event.Target(), status)
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			// update eventMap and vInfo
 			event := icstage.ToEventVote(obj)
