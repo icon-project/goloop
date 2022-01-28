@@ -23,7 +23,6 @@ type MessageItem struct {
 type speer struct {
 	id        module.PeerID
 	msgCh     chan MessageItem
-	cancelCh  chan struct{}
 	stoppedCh chan struct{}
 }
 
@@ -69,17 +68,17 @@ func (s *server) start() {
 	}
 }
 
+const msgChanSize = 10
+
 func (s *server) _addPeer(id module.PeerID) {
 	speer := &speer{
 		id:        id,
-		msgCh:     make(chan MessageItem),
-		cancelCh:  make(chan struct{}),
-		stoppedCh: make(chan struct{}),
+		msgCh:     make(chan MessageItem, msgChanSize),
+		stoppedCh: make(chan struct{}, 1),
 	}
 	s.peers = append(s.peers, speer)
 	h := newSConHandler(
-		speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id,
-		s.ph, s.bm, s.bpp, s.log,
+		speer.msgCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.bpp, s.log,
 	)
 	go h.handle()
 }
@@ -91,7 +90,7 @@ func (s *server) stop() {
 	if s.running {
 		s.running = false
 		for _, p := range s.peers {
-			close(p.cancelCh)
+			close(p.msgCh)
 			pp := p // to capture loop var
 			s.CallAfterUnlock(func() {
 				<-pp.stoppedCh
@@ -129,11 +128,7 @@ func (s *server) onLeave(id module.PeerID) {
 			s.peers[i] = s.peers[last]
 			s.peers[last] = nil
 			s.peers = s.peers[:last]
-			pp := p // to capture loop var
-			close(p.cancelCh)
-			s.CallAfterUnlock(func() {
-				<-pp.stoppedCh
-			})
+			close(p.msgCh)
 			return
 		}
 	}
@@ -149,11 +144,6 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	for _, p := range s.peers {
 		if p.id.Equal(id) {
 			p := p // capture loop var
-			if pi == ProtoCancelAllBlockRequests {
-				s.CallAfterUnlock(func() {
-					p.cancelCh <- struct{}{}
-				})
-			}
 			s.CallAfterUnlock(func() {
 				p.msgCh <- MessageItem{pi, b}
 			})
@@ -164,7 +154,6 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 
 type sconHandler struct {
 	msgCh     <-chan MessageItem
-	cancelCh  <-chan struct{}
 	stoppedCh chan<- struct{}
 	id        module.PeerID
 	ph        module.ProtocolHandler
@@ -181,7 +170,6 @@ type sconHandler struct {
 
 func newSConHandler(
 	msgCh <-chan MessageItem,
-	cancelCh <-chan struct{},
 	stoppedCh chan<- struct{},
 	id module.PeerID,
 	ph module.ProtocolHandler,
@@ -191,7 +179,6 @@ func newSConHandler(
 ) *sconHandler {
 	h := &sconHandler{
 		msgCh:     msgCh,
-		cancelCh:  cancelCh,
 		stoppedCh: stoppedCh,
 		id:        id,
 		ph:        ph,
@@ -208,12 +195,6 @@ func (h *sconHandler) cancelAllRequests() {
 	h.nextMsg = nil
 	h.buf = nil
 	h.nextItems = nil
-	for {
-		msgItem := <-h.msgCh
-		if msgItem.pi == ProtoCancelAllBlockRequests {
-			break
-		}
-	}
 }
 
 func (h *sconHandler) updateCurrentTask() {
@@ -284,85 +265,92 @@ func (h *sconHandler) updateNextMsg() {
 	h.nextMsg = codec.MustMarshalToBytes(&msg)
 }
 
-func (h *sconHandler) processRequestMsg(msgItem *MessageItem) {
+const maxNextItems = 10
+
+func (h *sconHandler) processMsg(msgItem *MessageItem) {
 	if msgItem.pi == ProtoBlockRequest {
 		var msg BlockRequest
 		_, err := codec.UnmarshalFromBytes(msgItem.b, &msg)
 		if err != nil {
-			// TODO log
+			h.log.Debugf("Fail to decode request %+v", err)
 			return
 		}
-		h.log.Debugf("Received BlockRequest %d\n", msg.Height)
-		h.nextItems = append(h.nextItems, &msg)
+		if len(h.nextItems) < maxNextItems {
+			h.log.Debugf("Received BlockRequest %d\n", msg.Height)
+			h.nextItems = append(h.nextItems, &msg)
+		} else {
+			h.log.Debugf("Received BlockRequest %d ignored\n", msg.Height)
+		}
+	} else if msgItem.pi == ProtoCancelAllBlockRequests {
+		h.cancelAllRequests()
+	} else {
+		h.log.Debugf("Unknown msg PI %x", msgItem.pi)
 	}
 }
 
-func (h *sconHandler) handle() {
-loop:
+func (h *sconHandler) processMsgs0Timeout() bool {
 	for {
 		select {
-		case _, more := <-h.cancelCh:
-			if !more {
-				break loop
+		case msgItem, ok := <-h.msgCh:
+			if !ok {
+				return false
 			}
-			h.cancelAllRequests()
-			continue loop
+			h.processMsg(&msgItem)
 		default:
+			return true
 		}
+	}
+}
 
+func (h *sconHandler) processMsgs(timeout time.Duration) bool {
+	if timeout > 0 {
+		timer := time.NewTimer(timeout)
+		select {
+		case msgItem, ok := <-h.msgCh:
+			if !timer.Stop() {
+				<-timer.C
+			}
+			if !ok {
+				return false
+			}
+			h.processMsg(&msgItem)
+		case <-timer.C:
+			return true
+		}
+	} else if timeout < 0 {
+		select {
+		case msgItem, ok := <-h.msgCh:
+			if !ok {
+				return false
+			}
+			h.processMsg(&msgItem)
+		}
+	}
+	return h.processMsgs0Timeout()
+}
+
+func (h *sconHandler) handle() {
+	timeout := time.Duration(0)
+	for {
+		if !h.processMsgs(timeout) {
+			break
+		}
 		h.updateNextMsg()
-		var err error
+
+		timeout = 0
 		if h.nextMsg != nil {
-			err = h.ph.Unicast(h.nextMsgPI, h.nextMsg, h.id)
+			err := h.ph.Unicast(h.nextMsgPI, h.nextMsg, h.id)
 			if err == nil {
-				// TODO: refactor
 				h.nextMsg = nil
-				h.updateNextMsg()
-			} else if !isTemporary(err) {
+			} else if isTemporary(err) {
+				h.log.Warnf("unicast temporary error %+v\n", err)
+				timeout = configSendInterval
+			} else {
 				h.log.Warnf("unicast error %+v\n", err)
 				h.cancelAllRequests()
 			}
-		}
-
-		// if packet is dropped too much, use ticker to slow down sending
-		if len(h.nextMsg) > 0 && err == nil {
-			select {
-			case _, more := <-h.cancelCh:
-				if !more {
-					break loop
-				}
-				h.cancelAllRequests()
-				continue loop
-			case msgItem := <-h.msgCh:
-				h.processRequestMsg(&msgItem)
-			default:
-			}
-		} else if len(h.nextMsg) > 0 && isTemporary(err) {
-			timer := time.NewTimer(configSendInterval)
-			select {
-			case _, more := <-h.cancelCh:
-				timer.Stop()
-				if !more {
-					break loop
-				}
-				h.cancelAllRequests()
-				continue loop
-			case msgItem := <-h.msgCh:
-				timer.Stop()
-				h.processRequestMsg(&msgItem)
-			case <-timer.C:
-			}
 		} else {
-			select {
-			case _, more := <-h.cancelCh:
-				if !more {
-					break loop
-				}
-				h.cancelAllRequests()
-				continue
-			case msgItem := <-h.msgCh:
-				h.processRequestMsg(&msgItem)
-			}
+			timeout = -1
 		}
 	}
 	h.stoppedCh <- struct{}{}
