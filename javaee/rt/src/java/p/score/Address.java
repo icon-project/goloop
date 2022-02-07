@@ -188,10 +188,13 @@ public final class Address extends s.java.lang.Object {
     }
 
     private void setUnderlying(byte[] raw) {
-        if (raw.length != avm_LENGTH) {
+        int offset = 0;
+        if (raw.length == avm_LENGTH - 1) {
+            offset = 1;
+        } else if (raw.length != avm_LENGTH) {
             throw new IllegalArgumentException();
         }
-        System.arraycopy(raw, 0, this.internalArray, 0, avm_LENGTH);
+        System.arraycopy(raw, 0, this.internalArray, offset, raw.length);
     }
 
     private byte[] copyOfInternal() {

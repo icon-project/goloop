@@ -148,6 +148,11 @@ public class TransactionHandler {
         return doDeploy(owner, data, to, params, null, Constants.CONTENT_TYPE_PYTHON);
     }
 
+    public Bytes deployOnly(Wallet owner, Address to, Class<?>[] classes, RpcObject params) throws IOException {
+        byte[] jar = makeJar(classes[0].getName(), classes);
+        return doDeploy(owner, jar, to, params, null, Constants.CONTENT_TYPE_JAVA);
+    }
+
     public IconService getIconService() {
         return this.iconService;
     }

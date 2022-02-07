@@ -67,6 +67,10 @@ public class Score {
         return null;
     }
 
+    protected Bytes updateScore(Wallet owner, Class<?>[] classes, RpcObject params) throws IOException {
+        return txHandler.deployOnly(owner, getAddress(), classes, params);
+    }
+
     public RpcItem call(String method, RpcObject params)
             throws IOException {
         if (params == null) {
