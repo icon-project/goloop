@@ -13,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 func TestCallContext_Call(t *testing.T) {
@@ -181,8 +182,12 @@ func (h *commonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	panic("implement me")
 }
 
-func (h *commonHandler) Init(fid int, logger log.Logger) {
+func (h *commonHandler) SetTraceLogger(logger *trace.Logger) {
 	// do nothing
+}
+
+func (h *commonHandler) TraceLogger() *trace.Logger {
+	return nil
 }
 
 func (h *commonHandler) Logger() log.Logger {
