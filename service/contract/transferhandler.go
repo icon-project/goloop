@@ -19,11 +19,11 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 }
 
 func (h *TransferHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	h.Log.TSystemf("FRAME[%d] TRANSFER start from=%s to=%s value=%s",
-		h.FID, h.From, h.To, h.Value)
+	h.Log.TSystemf("TRANSFER start from=%s to=%s value=%s",
+		h.From, h.To, h.Value)
 	defer func() {
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] TRANSFER done status=%s msg=%v", h.FID, err.Error(), err)
+			h.Log.TSystemf("TRANSFER done status=%s msg=%v", err.Error(), err)
 		}
 	}()
 

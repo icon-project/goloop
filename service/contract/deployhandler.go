@@ -248,12 +248,12 @@ func getIDWithSalt(id []byte, salt *big.Int) []byte {
 }
 
 func (h *DeployHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, score module.Address) {
-	h.Log.TSystemf("FRAME[%d] DEPLOY start to=%s", h.FID, h.To)
+	h.Log.TSystemf("DEPLOY start to=%s", h.To)
 	defer func() {
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] DEPLOY done status=%v", h.FID, err)
+			h.Log.TSystemf("DEPLOY done status=%v", err)
 		} else {
-			h.Log.TSystemf("FRAME[%d] DEPLOY done status=%s score=%s", h.FID, module.StatusSuccess, score)
+			h.Log.TSystemf("DEPLOY done status=%s score=%s", module.StatusSuccess, score)
 		}
 	}()
 
@@ -312,7 +312,7 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	}
 
 	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.From.String()) && h.preDefinedAddr == nil {
-		h.Log.TSystemf("FRAME[%d] DEPLOY not in whitelist from=%s", h.FID, h.From)
+		h.Log.TSystemf("DEPLOY not in whitelist from=%s", h.From)
 		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
@@ -335,8 +335,8 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 			return scoreresult.ErrContractNotFound, nil, nil
 		}
 		if as.IsContractOwner(h.From) == false {
-			h.Log.TSystemf("FRAME[%d] DEPLOY different owner exp=%s from=%s",
-				h.FID, as.ContractOwner(), h.From)
+			h.Log.TSystemf("DEPLOY different owner exp=%s from=%s",
+				as.ContractOwner(), h.From)
 			return scoreresult.ErrAccessDenied, nil, nil
 		}
 		if contract := as.Contract(); contract != nil && !h.eeType.AbleToUpdate(contract.EEType()) {
@@ -398,12 +398,12 @@ func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (err error, obj *codec.TypedObj, addr module.Address) {
-	h.Log.TSystemf("FRAME[%d] ACCEPT start txhash=0x%x audit=0x%x", h.FID, h.txHash, h.auditTxHash)
+	h.Log.TSystemf("ACCEPT start txhash=0x%x audit=0x%x", h.txHash, h.auditTxHash)
 	defer func() {
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] ACCEPT done status=%v", h.FID, err)
+			h.Log.TSystemf("ACCEPT done status=%v", err)
 		} else {
-			h.Log.TSystemf("FRAME[%d] ACCEPT done status=SUCCESS", h.FID)
+			h.Log.TSystem("ACCEPT done status=SUCCESS")
 		}
 	}()
 
@@ -520,10 +520,10 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) (ret error) {
 		return scoreresult.New(module.StatusContractNotFound,
 			"No pending contract")
 	}
-	h.Log.TSystemf("FRAME[%d] GETAPI start code=<%x>", h.FID, c.CodeHash())
+	h.Log.TSystemf("GETAPI start code=<%x>", c.CodeHash())
 	defer func() {
 		if ret != nil {
-			h.Log.TSystemf("FRAME[%d] GETAPI fail err=%+v", h.FID, ret)
+			h.Log.TSystemf("GETAPI fail err=%+v", ret)
 		}
 	}()
 
@@ -620,7 +620,7 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 
 func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	if status == nil {
-		h.Log.TSystemf("FRAME[%d] GETAPI done status=%s info=%v", h.FID, module.StatusSuccess, info)
+		h.Log.TSystemf("GETAPI done status=%s info=%v", module.StatusSuccess, info)
 		if err := h.as.MigrateForRevision(h.cc.Revision()); err != nil {
 			status = err
 		} else {
@@ -628,7 +628,7 @@ func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 		}
 	} else {
 		s, _ := scoreresult.StatusOf(status)
-		h.Log.TSystemf("FRAME[%d] GETAPI done status=%s msg=%s", h.FID, s, status.Error())
+		h.Log.TSystemf("GETAPI done status=%s msg=%s", s, status.Error())
 	}
 	h.cc.OnResult(status, new(big.Int), nil, nil)
 }

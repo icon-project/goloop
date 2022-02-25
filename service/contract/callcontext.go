@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"sync"
@@ -48,6 +49,7 @@ type (
 		NewExecution() int
 		GetReturnEID() int
 		FrameID() int
+		FrameLogger() *trace.Logger
 		GetCustomLogs(name string, ot reflect.Type) CustomLogs
 		SetFeeProportion(addr module.Address, portion int)
 		RedeemSteps(s *big.Int) (*big.Int, error)
@@ -100,6 +102,10 @@ type callContext struct {
 	log *trace.Logger
 }
 
+func prefixForFrame(id int) string {
+	return fmt.Sprintf("FRAME[%d] ", id)
+}
+
 func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	logger := trace.LoggerOf(ctx.Logger())
 	ti := ctx.TraceInfo()
@@ -110,13 +116,13 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 			}
 		}
 	}
-
+	frameLogger := logger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
 		isQuery: isQuery,
 		nextEID: initialEID,
 		nextFID: firstFID,
-		frame:   NewFrame(nil, nil, limit, isQuery),
+		frame:   NewFrame(nil, nil, limit, isQuery, frameLogger),
 
 		waiter: make(chan interface{}, 8),
 		log:    logger,
@@ -136,12 +142,13 @@ func (cc *callContext) Logger() log.Logger {
 func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callFrame {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
-	handler.Init(cc.nextFID, cc.Logger())
-	frame := NewFrame(cc.frame, handler, limit, false)
+	logger := cc.log.WithTPrefix(prefixForFrame(cc.nextFID))
+	handler.SetTraceLogger(logger)
+	frame := NewFrame(cc.frame, handler, limit, false, logger)
 	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
-	cc.log.TSystemf("FRAME[%d] START parent=FRAME[%d]", cc.nextFID, cc.frame.fid)
+	logger.TSystemf("START parent=FRAME[%d]", cc.frame.fid)
 	frame.fid = cc.nextFID
 	cc.nextFID += 1
 	cc.frame = frame
@@ -153,7 +160,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
-	cc.log.TSystemf("FRAME[%d] END success=%v steps=%d", frame.fid, success, &frame.stepUsed)
+	frame.log.TSystemf("END success=%v steps=%d", success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
@@ -179,6 +186,17 @@ func (cc *callContext) FrameID() int {
 	}
 }
 
+func (cc *callContext) FrameLogger() *trace.Logger {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	if cc.frame != nil {
+		return cc.frame.log
+	} else {
+		return cc.log
+	}
+}
+
 func (cc *callContext) enterQueryMode() {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
@@ -198,6 +216,10 @@ func (cc *callContext) addLogToFrame(addr module.Address, indexed [][]byte, data
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
+	cc.frame.log.TSystemf("EVENT score=%s sig=%s indexed=%v data=%v",
+		addr, indexed[0],
+		common.SliceOfHexBytes(indexed[1:]),
+		common.SliceOfHexBytes(data))
 	cc.frame.addLog(addr, indexed, data)
 	return nil
 }
@@ -411,10 +433,6 @@ func (cc *callContext) sendMessage(msg interface{}) error {
 }
 
 func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
-	cc.log.TSystemf("FRAME[%d] EVENT score=%s sig=%s indexed=%v data=%v",
-		cc.FrameID(), addr, indexed[0],
-		common.SliceOfHexBytes(indexed[1:]),
-		common.SliceOfHexBytes(data))
 	if err := cc.addLogToFrame(addr, indexed, data); err != nil {
 		cc.log.Errorf("Fail to log err=%+v", err)
 	}
@@ -491,7 +509,7 @@ func (cc *callContext) ApplySteps(t state.StepType, n int) bool {
 func (cc *callContext) applyStepsInLock(t state.StepType, n int) bool {
 	steps := big.NewInt(cc.StepsFor(t, n))
 	ok := cc.frame.deductSteps(steps)
-	cc.log.TSystemf("FRAME[%d] STEP apply type=%s count=%d cost=%s total=%s", cc.frame.fid, t, n, steps, &cc.frame.stepUsed)
+	cc.frame.log.TSystemf("STEP apply type=%s count=%d cost=%s total=%s", t, n, steps, &cc.frame.stepUsed)
 	return ok
 }
 
@@ -501,7 +519,7 @@ func (cc *callContext) ApplyCallSteps() error {
 
 	cc.calls += 1
 	if cc.calls-1 > InterCallLimit {
-		cc.log.TSystemf("FRAME[%d] too many inter-calls count=%d", cc.frame.fid, cc.calls-1)
+		cc.frame.log.TSystemf("CONTEXT too many inter-calls count=%d", cc.calls-1)
 		return scoreresult.IllegalFormatError.New("TooManyExternalCalls")
 	}
 	if ok := cc.applyStepsInLock(state.StepTypeContractCall, 1); !ok {
@@ -514,7 +532,7 @@ func (cc *callContext) DeductSteps(s *big.Int) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	ok := cc.frame.deductSteps(s)
-	cc.log.TSystemf("FRAME[%d] STEP apply cost=%s total=%d", cc.frame.fid, s, &cc.frame.stepUsed)
+	cc.frame.log.TSystemf("STEP apply cost=%s total=%d", s, &cc.frame.stepUsed)
 	return ok
 }
 

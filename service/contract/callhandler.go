@@ -162,22 +162,22 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 }
 
 func (h *CallHandler) TLogStart() {
-	h.Log.TSystemf("FRAME[%d] INVOKE start score=%s method=%s", h.FID, h.To, h.name)
+	h.Log.TSystemf("INVOKE start score=%s method=%s", h.To, h.name)
 }
 
 func (h *CallHandler) TLogDone(status error, steps *big.Int, result *codec.TypedObj) {
 	if h.Log.IsTrace() {
 		if status != nil {
 			s, _ := scoreresult.StatusOf(status)
-			h.Log.TSystemf("FRAME[%d] INVOKE done status=%s msg=%v steps=%s", h.FID, s, status, steps)
+			h.Log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
 		} else {
 			obj, _ := common.DecodeAnyForJSON(result)
 			if err := h.method.EnsureResult(result); err != nil {
-				h.Log.TSystemf("FRAME[%d] INVOKE done status=%s steps=%s result=%s warning=%s",
-					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj), err)
+				h.Log.TSystemf("INVOKE done status=%s steps=%s result=%s warning=%s",
+					module.StatusSuccess, steps, trace.ToJSON(obj), err)
 			} else {
-				h.Log.TSystemf("FRAME[%d] INVOKE done status=%s steps=%s result=%s",
-					h.FID, module.StatusSuccess, steps, trace.ToJSON(obj))
+				h.Log.TSystemf("INVOKE done status=%s steps=%s result=%s",
+					module.StatusSuccess, steps, trace.ToJSON(obj))
 			}
 		}
 	}
@@ -376,12 +376,12 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 	if h.Log.IsTrace() {
 		if status == nil {
 			po, _ := common.DecodeAnyForJSON(result)
-			h.Log.TSystemf("FRAME[%d] CALL done status=%s steps=%v result=%s",
-				h.FID, module.StatusSuccess, steps, trace.ToJSON(po))
+			h.Log.TSystemf("CALL done status=%s steps=%v result=%s",
+				module.StatusSuccess, steps, trace.ToJSON(po))
 		} else {
 			s, _ := scoreresult.StatusOf(status)
-			h.Log.TSystemf("FRAME[%d] CALL done status=%s steps=%v msg=%s",
-				h.FID, s, steps, status.Error())
+			h.Log.TSystemf("CALL done status=%s steps=%v msg=%s",
+				s, steps, status.Error())
 		}
 	}
 	if !h.isSysCall {
@@ -426,9 +426,9 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 			value, err = h.store.GetValue(key)
 		})
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] GETVALUE key=<%x> err=%+v", h.FID, key, err)
+			h.Log.TSystemf("GETVALUE key=<%x> err=%+v", key, err)
 		} else {
-			h.Log.TSystemf("FRAME[%d] GETVALUE key=<%x> value=<%x>", h.FID, key, value)
+			h.Log.TSystemf("GETVALUE key=<%x> value=<%x>", key, value)
 		}
 		return value, err
 	} else {
@@ -449,9 +449,9 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 			old, err = h.store.SetValue(key, value)
 		})
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] SETVALUE key=<%x> value=<%x> err=%+v", h.FID, key, value, err)
+			h.Log.TSystemf("SETVALUE key=<%x> value=<%x> err=%+v", key, value, err)
 		} else {
-			h.Log.TSystemf("FRAME[%d] SETVALUE key=<%x> value=<%x> old=<%x>", h.FID, key, value, old)
+			h.Log.TSystemf("SETVALUE key=<%x> value=<%x> old=<%x>", key, value, old)
 		}
 		return old, err
 	} else {
@@ -472,9 +472,9 @@ func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 			old, err = h.store.DeleteValue(key)
 		})
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] DELETE key=<%x> err=%+v", h.FID, key, err)
+			h.Log.TSystemf("DELETE key=<%x> err=%+v", key, err)
 		} else {
-			h.Log.TSystemf("FRAME[%d] DELETE key=<%x> old=<%x>", h.FID, key, old)
+			h.Log.TSystemf("DELETE key=<%x> old=<%x>", key, old)
 		}
 		return old, err
 	} else {
@@ -517,8 +517,8 @@ func (h *CallHandler) ArrayDBContains(prefix, value []byte, limit int64) (bool, 
 			}
 		}
 	})
-	h.Log.TSystemf("FRAME[%d] CONTAINS prefix=<%x> value=<%x> found=%v count=%d size=%d",
-		h.FID, prefix, value, found, count, size)
+	h.Log.TSystemf("CONTAINS prefix=<%x> value=<%x> found=%v count=%d size=%d",
+		prefix, value, found, count, size)
 	return found, count, size, nil
 }
 
@@ -528,7 +528,7 @@ func (h *CallHandler) GetInfo() *codec.TypedObj {
 
 func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 	value := h.cc.GetBalance(addr)
-	h.Log.TSystemf("FRAME[%d] GETBALANCE addr=%s value=%s", h.FID, addr, value)
+	h.Log.TSystemf("GETBALANCE addr=%s value=%s", addr, value)
 	return value
 }
 
@@ -545,8 +545,8 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 		// Given data is incorrect. This may not be able to  checked
 		// by execution environment. So we just ignore this and let
 		// them know the problem.
-		h.Log.TSystemf("FRAME[%d] EVENT drop event=(%s,%+v,%+v) err=%+v",
-			h.FID, addr, indexed, data, err)
+		h.Log.TSystemf("EVENT drop event=(%s,%+v,%+v) err=%+v",
+			addr, indexed, data, err)
 		h.Log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
 		return nil
@@ -565,8 +565,8 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 ) {
 	if h.Log.IsTrace() {
 		po, _ := common.DecodeAnyForJSON(dataObj)
-		h.Log.TSystemf("FRAME[%d] CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
-			h.FID, from, to, value, limit, dataType, trace.ToJSON(po))
+		h.Log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
+			from, to, value, limit, dataType, trace.ToJSON(po))
 	}
 
 	ctype := CTypeNone
@@ -601,7 +601,7 @@ func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
 }
 
 func (h *CallHandler) OnSetFeeProportion(addr module.Address, portion int) {
-	h.Log.TSystemf("FRAME[%d] CALL setFeeProportion addr=%s portion=%d", h.FID, addr, portion)
+	h.Log.TSystemf("CALL setFeeProportion addr=%s portion=%d", addr, portion)
 	h.cc.SetFeeProportion(addr, portion)
 }
 
