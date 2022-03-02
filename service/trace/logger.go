@@ -10,6 +10,7 @@ import (
 type Logger struct {
 	log.Logger
 	isTrace bool
+	prefix  string
 	onLog   func(lv module.TraceLevel, msg string)
 }
 
@@ -19,19 +20,19 @@ func (l *Logger) IsTrace() bool {
 
 func (l *Logger) TLog(lv module.TraceLevel, a ...interface{}) {
 	if l.isTrace {
-		l.onLog(lv, fmt.Sprint(a...))
+		l.onLog(lv, l.prefix+fmt.Sprint(a...))
 	}
 }
 
 func (l *Logger) TLogln(lv module.TraceLevel, a ...interface{}) {
 	if l.isTrace {
-		l.onLog(lv, fmt.Sprint(a...))
+		l.onLog(lv, l.prefix+fmt.Sprint(a...))
 	}
 }
 
 func (l *Logger) TLogf(lv module.TraceLevel, f string, a ...interface{}) {
 	if l.isTrace {
-		l.onLog(lv, fmt.Sprintf(f, a...))
+		l.onLog(lv, l.prefix+fmt.Sprintf(f, a...))
 	}
 }
 
@@ -75,6 +76,20 @@ func (l *Logger) WithFields(f log.Fields) log.Logger {
 	return &Logger{
 		Logger:  l.Logger.WithFields(f),
 		isTrace: l.isTrace,
+		prefix:  l.prefix,
+		onLog:   l.onLog,
+	}
+}
+
+func (l *Logger) TPrefix() string {
+	return l.prefix
+}
+
+func (l *Logger) WithTPrefix(prefix string) *Logger {
+	return &Logger{
+		Logger:  l.Logger,
+		isTrace: l.isTrace,
+		prefix:  prefix,
 		onLog:   l.onLog,
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -198,10 +197,9 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 
 	// Set up
 	cc := contract.NewCallContext(ctx, limit, false)
-	fid := cc.FrameID()
 	th.cc = cc
-	logger := trace.LoggerOf(cc.Logger())
-	logger.TSystemf("FRAME[%d] TRANSACTION start from=%s to=%s id=%#x", fid, th.from, th.to, th.cc.TransactionID())
+	logger := cc.FrameLogger()
+	logger.TSystemf("TRANSACTION start from=%s to=%s id=%#x", th.from, th.to, th.cc.TransactionID())
 
 	status, addr, err := th.DoExecute(cc, estimate, isPatch)
 	if err != nil {
@@ -213,14 +211,14 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	stepUsed := cc.StepUsed()
 	if isPatch {
 		stepPrice = new(big.Int)
-		logger.TSystemf("FRAME[%d] TRANSACTION reset stepPrice=0 msg=\"patch tx\"", fid)
+		logger.TSystem("TRANSACTION reset stepPrice=0 msg=\"patch tx\"")
 	}
 	minSteps := big.NewInt(cc.StepsFor(state.StepTypeDefault, 1))
 	if stepUsed.Cmp(minSteps) == -1 {
 		old := stepUsed
 		stepUsed = minSteps
-		logger.TSystemf("FRAME[%d] STEP reset value=%d old=%d msg=\"sustain minimum\"",
-			fid, minSteps, old)
+		logger.TSystemf("STEP reset value=%d old=%d msg=\"sustain minimum\"",
+			minSteps, old)
 	}
 
 	stepAll := stepUsed
@@ -229,12 +227,12 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		var err error
 		redeemed, err = cc.RedeemSteps(stepUsed)
 		if err != nil {
-			logger.TSystemf("FRAME[%d] TRANSACTION failed on RedeemSteps", fid)
+			logger.TSystem("TRANSACTION failed on RedeemSteps")
 			return nil, err
 		} else if redeemed != nil {
 			stepUsed = new(big.Int).Sub(stepUsed, redeemed)
-			logger.TSystemf("FRAME[%d] STEP redeemed value=%d redeemed=%d old=%d",
-				fid, stepUsed, redeemed, stepAll)
+			logger.TSystemf("STEP redeemed value=%d redeemed=%d old=%d",
+				stepUsed, redeemed, stepAll)
 		}
 	}
 	fee := new(big.Int).Mul(stepUsed, stepPrice)
@@ -243,7 +241,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	bal := as.GetBalance()
 	for bal.Cmp(fee) < 0 {
 		if cc.Revision().LegacyFeeCharge() {
-			logger.TSystemf("FRAME[%d] STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
+			logger.TSystemf("STEP reset value=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
 			if redeemed != nil {
 				cc.ClearRedeemLogs()
 			}
@@ -254,14 +252,14 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		}
 		if status == nil {
 			// rollback all changes
-			logger.TSystemf("FRAME[%d] TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d",
-				fid, bal, fee)
+			logger.TSystemf("TRANSACTION rollback reason=OutOfBalance balance=%d fee=%d",
+				bal, fee)
 			status = scoreresult.ErrOutOfBalance
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
 			if redeemed != nil {
 				cc.ClearRedeemLogs()
-				logger.TSystemf("FRAME[%d] STEP rollback value=%d", fid, stepAll)
+				logger.TSystemf("STEP rollback value=%d", stepAll)
 				stepUsed = stepAll
 			}
 			fee.Mul(stepUsed, stepPrice)
@@ -270,16 +268,16 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 				ctx.Reset(wcs)
 				bal = as.GetBalance()
 				cc.ClearRedeemLogs()
-				logger.TSystemf("FRAME[%d] STEP rollback value=%d", fid, stepAll)
+				logger.TSystemf("STEP rollback value=%d", stepAll)
 				stepUsed = stepAll
 			}
 			status = scoreresult.ErrOutOfBalance
-			logger.TSystemf("FRAME[%d] TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", fid, bal, fee)
+			logger.TSystemf("TRANSACTION setprice price=0 reason=OutOfBalance balance=%d fee=%d", bal, fee)
 			stepPrice = new(big.Int)
 			fee.SetInt64(0)
 		}
 	}
-	logger.TSystemf("FRAME[%d] TRANSACTION charge fee=%d steps=%d price=%d", fid, fee, stepUsed, stepPrice)
+	logger.TSystemf("TRANSACTION charge fee=%d steps=%d price=%d", fee, stepUsed, stepPrice)
 	as.SetBalance(new(big.Int).Sub(bal, fee))
 
 	// Make a receipt
@@ -294,7 +292,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	receipt.SetResult(s, stepAll, stepPrice, addr)
 	receipt.SetReason(status)
 
-	logger.TSystemf("FRAME[%d] TRANSACTION done status=%s steps=%s price=%s", fid, s, stepAll, stepPrice)
+	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepAll, stepPrice)
 
 	return receipt, nil
 }

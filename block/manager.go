@@ -1210,12 +1210,11 @@ func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 }
 
 type transactionInfo struct {
-	_txID    []byte
 	_txBlock module.Block
 	_index   int
 	_group   module.TransactionGroup
-	_mtr     module.Transaction
-	_rct     module.Receipt
+	_sm      ServiceManager
+	_rBlock  module.Block
 }
 
 func (txInfo *transactionInfo) Block() module.Block {
@@ -1230,15 +1229,31 @@ func (txInfo *transactionInfo) Group() module.TransactionGroup {
 	return txInfo._group
 }
 
-func (txInfo *transactionInfo) Transaction() module.Transaction {
-	return txInfo._mtr
+func (txInfo *transactionInfo) Transaction() (module.Transaction, error) {
+	var txs module.TransactionList
+	if txInfo._group == module.TransactionGroupNormal {
+		txs = txInfo._txBlock.NormalTransactions()
+	} else {
+		txs = txInfo._txBlock.PatchTransactions()
+	}
+	return txs.Get(txInfo._index)
 }
 
 func (txInfo *transactionInfo) GetReceipt() (module.Receipt, error) {
-	if txInfo._rct != nil {
-		return txInfo._rct, nil
+	if txInfo._rBlock != nil {
+		rl, err := txInfo._sm.ReceiptListFromResult(
+			txInfo._rBlock.Result(), txInfo._group)
+		if err != nil {
+			return nil, err
+		}
+		rct, err := rl.Get(txInfo._index)
+		if err != nil {
+			return nil, err
+		}
+		return rct, nil
+	} else {
+		return nil, ErrResultNotFinalized
 	}
-	return nil, ErrResultNotFinalized
 }
 
 func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) {
@@ -1249,32 +1264,15 @@ func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) 
 }
 
 func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) {
-	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
+	loc, err := m.getTransactionLocator(id)
 	if err != nil {
 		return nil, err
-	}
-	var loc transactionLocator
-	err = tlb.Get(db.Raw(id), &loc)
-	if err != nil {
-		return nil, errors.ErrNotFound
 	}
 	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", loc.BlockHeight)
 	}
 
-	var txs module.TransactionList
-	if loc.TransactionGroup == module.TransactionGroupNormal {
-		txs = block.NormalTransactions()
-	} else {
-		txs = block.PatchTransactions()
-	}
-	mtr, err := txs.Get(loc.IndexInGroup)
-	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err,
-			"transaction group=%d i=%d not in block h=%d",
-			loc.TransactionGroup, loc.IndexInGroup, loc.BlockHeight)
-	}
 	var rblock module.Block
 	if loc.TransactionGroup == module.TransactionGroupNormal {
 		if m.finalized.block.Height() < loc.BlockHeight+1 {
@@ -1288,21 +1286,12 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	} else {
 		rblock = block
 	}
-	var rct module.Receipt
-	if rblock != nil {
-		rl, err := m.sm.ReceiptListFromResult(
-			rblock.Result(), loc.TransactionGroup)
-		if err == nil {
-			rct, _ = rl.Get(loc.IndexInGroup)
-		}
-	}
 	return &transactionInfo{
-		_txID:    id,
 		_txBlock: block,
 		_index:   loc.IndexInGroup,
 		_group:   loc.TransactionGroup,
-		_mtr:     mtr,
-		_rct:     rct,
+		_sm:      m.sm,
+		_rBlock:  rblock,
 	}, nil
 }
 
@@ -1376,6 +1365,7 @@ func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
 				} else {
 					fc <- info
 				}
+				close(fc)
 				return true
 			}
 			return false

@@ -80,10 +80,10 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 	} else {
 		action = "None"
 	}
-	h.Log.TSystemf("FRAME[%d] DEPOSIT start to=%s action=%s", h.FID, h.To, action)
+	h.Log.TSystemf("DEPOSIT start to=%s action=%s", h.To, action)
 	defer func() {
 		if err != nil {
-			h.Log.TSystemf("FRAME[%d] DEPOSIT done status=%s msg=%v", h.FID, err.Error(), err)
+			h.Log.TSystemf("DEPOSIT done status=%s msg=%v", err.Error(), err)
 		}
 	}()
 

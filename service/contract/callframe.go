@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -25,6 +26,7 @@ type callFrame struct {
 	isQuery   bool
 	snapshot  state.WorldSnapshot
 	handler   ContractHandler
+	log       *trace.Logger
 	stepUsed  big.Int
 	stepLimit *big.Int
 	eventLogs list.List
@@ -32,7 +34,7 @@ type callFrame struct {
 	logsMap   map[string]CustomLogs
 }
 
-func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
+func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool, logger *trace.Logger) *callFrame {
 	frame := &callFrame{
 		parent:    p,
 		isQuery:   (p != nil && p.isQuery) || q,
@@ -41,6 +43,7 @@ func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
 		code2EID:  make(map[string]int),
 		eid:       unknownEID,
 		fid:       baseFID,
+		log:       logger,
 	}
 	frame.eventLogs.Init()
 	return frame

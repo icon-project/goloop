@@ -129,6 +129,6 @@ type TransactionInfo interface {
 	Block() Block
 	Index() int
 	Group() TransactionGroup
-	Transaction() Transaction
+	Transaction() (Transaction, error)
 	GetReceipt() (Receipt, error)
 }

@@ -26,7 +26,8 @@ const (
 type (
 	ContractHandler interface {
 		Prepare(ctx Context) (state.WorldContext, error)
-		Init(fid int, logger log.Logger)
+		SetTraceLogger(logger *trace.Logger)
+		TraceLogger() *trace.Logger
 	}
 
 	SyncContractHandler interface {
@@ -48,7 +49,6 @@ type (
 type CommonHandler struct {
 	From, To module.Address
 	Value    *big.Int
-	FID      int
 	Log      *trace.Logger
 
 	isInterCall bool
@@ -84,9 +84,12 @@ func (h *CommonHandler) ApplyStepsForInterCall(cc CallContext) error {
 	return nil
 }
 
-func (h *CommonHandler) Init(fid int, logger log.Logger) {
-	h.FID = fid
-	h.Log = trace.LoggerOf(logger)
+func (h *CommonHandler) SetTraceLogger(logger *trace.Logger) {
+	h.Log = logger
+}
+
+func (h *CommonHandler) TraceLogger() *trace.Logger {
+	return h.Log
 }
 
 func (h *CommonHandler) Logger() log.Logger {

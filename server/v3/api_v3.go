@@ -353,7 +353,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
 	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
-	result["txHash"] = "0x" + hex.EncodeToString(txInfo.Transaction().ID())
+	result["txHash"] = "0x" + hex.EncodeToString(param.Hash.Bytes())
 
 	return result, nil
 }
@@ -383,7 +383,10 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	tx := txInfo.Transaction()
+	tx, err := txInfo.Transaction()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
 	res, err := tx.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
