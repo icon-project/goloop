@@ -72,7 +72,7 @@ type SystemCallHandler struct {
 func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	h.cc = cc
 	h.revision = cc.Revision()
-	h.log = trace.LoggerOf(cc.Logger())
+	h.log = h.TraceLogger()
 
 	h.TLogStart()
 	defer func() {
@@ -90,25 +90,24 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 
 	if h.revision.Value() < icmodule.RevisionSystemSCORE {
 		if allowExtraParams(h.GetMethodName()) {
-			h.log.TSystemf("FRAME[%d] allow extra params", cc.FrameID())
+			h.log.TSystem("PATCH allow extra params")
 			h.AllowExtra()
 		}
 		if h.GetMethodName() == scoreapi.FallbackMethodName {
-			h.log.TSystemf("FRAME[%d] system contract is unavailable for fallback", cc.FrameID())
+			h.log.TSystem("PATCH system contract is unavailable for fallback")
 			return scoreresult.ContractNotFoundError.New("NoFallback")
 		}
 		as := cc.GetAccountState(state.SystemID)
 		apiInfo, _ := as.APIInfo()
 		m := apiInfo.GetMethod(h.GetMethodName())
 		if !cc.QueryMode() && m != nil && m.IsReadOnly() {
-			h.log.TSystemf("FRAME[%d] readonly methods cannot be called before rev9", cc.FrameID())
+			h.log.TSystem("PATCH readonly methods cannot be called before rev9")
 			return scoreresult.UnknownFailureError.New("ReadOnlyMethod")
 		}
 		defer func() {
 			if scoreresult.MethodNotPayableError.Equals(err) {
 				h.log.TSystemf(
-					"FRAME[%d] result patch from=%v to=%v",
-					cc.FrameID(),
+					"PATCH result from=%v to=%v",
 					err,
 					scoreresult.ErrInvalidParameter,
 				)
@@ -120,8 +119,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		defer func() {
 			if scoreresult.MethodNotFoundError.Equals(err) {
 				h.log.TSystemf(
-					"FRAME[%d] result patch from=%v to=%v",
-					cc.FrameID(),
+					"PATCH result from=%v to=%v",
 					err,
 					scoreresult.ErrContractNotFound,
 				)

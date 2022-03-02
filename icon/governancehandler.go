@@ -22,7 +22,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate/migrate"
 	"github.com/icon-project/goloop/module"
@@ -36,7 +35,6 @@ type governanceHandler struct {
 	ch    contract.ContractHandler
 	ctype int
 	call  *contract.DataCallJSON
-	fid   int
 	log   *trace.Logger
 }
 
@@ -47,9 +45,13 @@ func (g *governanceHandler) Prepare(ctx contract.Context) (state.WorldContext, e
 	return ctx.GetFuture(lq), nil
 }
 
-func (g *governanceHandler) Init(fid int, logger log.Logger) {
-	g.fid = fid
-	g.log = trace.LoggerOf(logger)
+func (g *governanceHandler) SetTraceLogger(logger *trace.Logger) {
+	g.ch.SetTraceLogger(logger)
+	g.log = logger
+}
+
+func (g *governanceHandler) TraceLogger() *trace.Logger {
+	return g.log
 }
 
 func applyGovernanceVariablesToSystem(cc contract.CallContext, govAs, sysAs containerdb.BytesStoreState) error {
@@ -104,8 +106,8 @@ func (g *governanceHandler) handleRevisionChange(cc contract.CallContext, r1, r2
 }
 
 func (g *governanceHandler) ExecuteSync(cc contract.CallContext) (error, *codec.TypedObj, module.Address) {
-	g.log.TSystemf("FRAME[%d] GOV start", g.fid)
-	defer g.log.TSystemf("FRAME[%d] GOV end", g.fid)
+	g.log.TSystem("GOV start")
+	defer g.log.TSystem("GOV end")
 
 	rev := cc.Revision().Value()
 
@@ -125,7 +127,7 @@ func (g *governanceHandler) ExecuteSync(cc contract.CallContext) (error, *codec.
 		sysAs := cc.GetAccountState(state.SystemID)
 		rev2 := int(scoredb.NewVarDB(sysAs, state.VarRevision).Int64())
 		if rev != rev2 {
-			g.log.TSystemf("FRAME[%d] GOV handleRevisionChange rev1=%d rev2=%d", g.fid, rev, rev2)
+			g.log.TSystemf("GOV handleRevisionChange rev1=%d rev2=%d", rev, rev2)
 			g.handleRevisionChange(cc, rev, rev2)
 		}
 	}
