@@ -80,7 +80,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 			// do not charge contractCall step for some external methods
 			if !doNotChargeContractCallStep(h.GetMethodName(), h.revision.Value()) {
 				// charge contractCall step if preprocessing is failed
-				if err2 := h.ApplyCallSteps(cc) ; err2 != nil {
+				if err2 := h.ApplyCallSteps(cc); err2 != nil {
 					err = err2
 				}
 			}
@@ -100,7 +100,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		as := cc.GetAccountState(state.SystemID)
 		apiInfo, _ := as.APIInfo()
 		m := apiInfo.GetMethod(h.GetMethodName())
-		if m != nil && m.IsReadOnly() {
+		if !cc.QueryMode() && m != nil && m.IsReadOnly() {
 			h.log.TSystemf("FRAME[%d] readonly methods cannot be called before rev9", cc.FrameID())
 			return scoreresult.UnknownFailureError.New("ReadOnlyMethod")
 		}
@@ -142,5 +142,5 @@ func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec
 }
 
 func newSystemHandler(ch CallHandler) contract.ContractHandler {
-	return &SystemCallHandler{ CallHandler: ch }
+	return &SystemCallHandler{CallHandler: ch}
 }
