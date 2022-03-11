@@ -903,7 +903,11 @@ func newIconConfig() *config {
 
 func (s *chainScore) loadIconConfig() *config {
 	iconConfig := newIconConfig()
-	f, err := os.Open(icmodule.ConfigFile)
+	confPath, ok := os.LookupEnv("ICON_CONFIG")
+	if !ok {
+		confPath = icmodule.ConfigFile
+	}
+	f, err := os.Open(confPath)
 	if err != nil {
 		s.log.Infof("Failed to open configuration file %+v. Use default config", err)
 		return iconConfig
