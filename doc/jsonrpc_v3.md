@@ -924,3 +924,155 @@ It's disabled by default. It can be enabled by setting `defaultWaitTimeout` as n
 * Same response value([Transaction Result](#T_RESULT)) as `icx_getTransactionResult` on success
 * Error code, message and data on failure
 * `data` field of failure will be transaction hash([T_HASH](#T_HASH)) on timeout
+
+## JSON-RPC Debug
+
+APIs for debug endpoint.
+* [debug_estimateStep](#debug_estimatestep)
+* [debug_getTrace](#debug_gettrace)
+
+### debug_getTrace
+
+Returns the trace logs of the transaction
+
+> Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1001",
+  "method": "debug_getTrace",
+  "params": {
+    "txHash": "0x4f4feed4a1d29779f84460d663e1ffb894d65dacfa3cc215a353a4b0d0d8f020"
+  }
+}
+```
+
+#### Parameters
+
+| KEY  | VALUE type        | Required | Description                   |
+|:-----|:------------------|:---------|:------------------------------|
+| hash | [T_HASH](#T_HASH) | required | Hash value of the transaction |
+
+> Example responses
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "logs": [
+      {
+        "level": 2,
+        "msg": "FRAME[1] TRANSACTION start from=hx92b7608c53825241069a280982c4d92e1b228c84 to=cx9e3cadcc1a4be3323ea23371b84575abb32703ae id=0x4f4feed4a1d29779f84460d663e1ffb894d65dacfa3cc215a353a4b0d0d8f020",
+        "ts": 0
+      },
+      {
+        "level": 2,
+        "msg": "FRAME[1] STEP apply type=default count=1 cost=100000 total=100000",
+        "ts": 108
+      },
+      {
+        "level": 2,
+        "msg": "FRAME[1] STEP apply type=input count=101 cost=20200 total=120200",
+        "ts": 112
+      },
+      {
+        "level": 2,
+        "msg": "FRAME[1] TRANSACTION charge fee=2054062500000000 steps=164325 price=12500000000",
+        "ts": 1097
+      },
+      {
+        "level": 2,
+        "msg": "FRAME[1] TRANSACTION done status=Success steps=164325 price=12500000000",
+        "ts": 1108
+      }
+    ],
+    "status": "0x1"
+  },
+  "id": 100
+}
+```
+
+#### Responses
+
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
+
+<a id="T_TRACELOGS">Trace Logs</a>
+
+| KEY  | VALUE type | Description                       |
+|:-----|:-----------|:----------------------------------|
+| logs | JSON array | Array of [Trace Log](#T_TRACELOG) |
+
+<a id="T_TRACELOG">Trace Log</a>
+
+| KEY   | VALUE type  | Description                                    |
+|:------|:------------|:-----------------------------------------------|
+| level | JSON number | Log level(0:Trace, 1:Debug, 2:System)          |
+| msg   | JSON string | Log message                                    |
+| ts    | JSON number | Time offset from the beginning in micro-second |
+
+### debug_estimateStep
+
+* Returns an estimated step of how much step is necessary to allow the transaction to complete. The transaction will not be added to the blockchain. Note that the estimation can be larger than the actual amount of step to be used by the transaction for several reasons such as node performance.
+
+> Request
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "debug_estimateStep",
+  "id": 1234,
+  "params": {
+    "version": "0x3",
+    "from": "hxbe258ceb872e08851f1f59694dac2558708ece11",
+    "to": "hx5bfdb090f43a808005ffc27c25b213145e80b7cd",
+    "value": "0xde0b6b3a7640000",
+    "timestamp": "0x563a6cf330136",
+    "nid": "0x3",
+    "nonce": "0x1"
+  }
+}
+```
+
+#### Parameters
+
+* The transaction information without stepLimit and signature
+
+| KEY       | VALUE type                                                 | Required | Description                                                                                          |
+|:----------|:-----------------------------------------------------------|:--------:|:-----------------------------------------------------------------------------------------------------|
+| version   | [T_INT](#T_INT)                                            | required | Protocol version ("0x3" for V3)                                                                      |
+| from      | [T_ADDR_EOA](#T_ADDR_EOA)                                  | required | EOA address that created the transaction                                                             |
+| to        | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | required | EOA address to receive coins, or SCORE address to execute the transaction.                           |
+| value     | [T_INT](#T_INT)                                            | optional | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop)             |
+| timestamp | [T_INT](#T_INT)                                            | required | Transaction creation time. timestamp is in microsecond.                                              |
+| nid       | [T_INT](#T_INT)                                            | required | Network ID ("0x1" for Mainnet, "0x2" for Testnet, etc)                                               |
+| nonce     | [T_INT](#T_INT)                                            | optional | An arbitrary number used to prevent transaction hash collision.                                      |
+| dataType  | [T_DATA_TYPE](#T_DATA_TYPE)                                | optional | Type of data. (call, deploy, or message)                                                             |
+| data      | JSON dict or JSON string                                   | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
+
+#### Response
+
+* The amount of an estimated step
+
+> Response - success
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1234,
+    "result": "0x109eb0"
+}
+
+```
+
+> Response - failure
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1234,
+    "error": {
+        "code": -32602,
+        "message": "JSON schema validation error: 'version' is a required property"
+    }
+}
+```

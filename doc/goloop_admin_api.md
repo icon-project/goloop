@@ -57,7 +57,8 @@ Return system information.
   "config": {
     "eeInstances": 1,
     "rpcDefaultChannel": "",
-    "rpcIncludeDebug": false
+    "rpcIncludeDebug": false,
+    "rpcBatchLimit": 10
   }
 }
 ```
@@ -91,7 +92,8 @@ Return system configuration.
 {
   "eeInstances": 1,
   "rpcDefaultChannel": "",
-  "rpcIncludeDebug": false
+  "rpcIncludeDebug": false,
+  "rpcBatchLimit": 10
 }
 ```
 
@@ -1065,7 +1067,8 @@ This operation does not require authentication
   "config": {
     "eeInstances": 1,
     "rpcDefaultChannel": "",
-    "rpcIncludeDebug": false
+    "rpcIncludeDebug": false,
+    "rpcBatchLimit": 10
   }
 }
 
@@ -1093,7 +1096,8 @@ This operation does not require authentication
 {
   "eeInstances": 1,
   "rpcDefaultChannel": "",
-  "rpcIncludeDebug": false
+  "rpcIncludeDebug": false,
+  "rpcBatchLimit": 10
 }
 
 ```
@@ -1105,6 +1109,7 @@ This operation does not require authentication
 |eeInstances|integer|false|none|eeInstances|
 |rpcDefaultChannel|string|false|none|default channel for legacy api|
 |rpcIncludeDebug|boolean|false|none|JSON-RPC Response with detail information|
+|rpcBatchLimit|integer|false|none|JSON-RPC batch limit|
 
 <h2 id="tocSconfigureparam">ConfigureParam</h2>
 
@@ -1159,7 +1164,7 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|manual|boolean|false|none|Manual backup option|
+|manual|boolean|false|none|Manual backup|
 
 <h2 id="tocSbackuplist">BackupList</h2>
 
