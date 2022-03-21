@@ -481,6 +481,7 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
 			if obj.Status().IsEnabled() == false && vInfo.IsElectedPRep(obj.Target()) {
+				c.log.Tracef("Calculate voted reward with %+v", obj)
 				vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 				from = keyOffset
 				vInfo.SetEnable(obj.Target(), obj.Status())
@@ -1420,7 +1421,8 @@ func (vi *votedInfo) CalculateReward(multiplier, divider *big.Int, period int) {
 		reward.Div(reward, divider)
 		reward.Div(reward, vi.totalBondedDelegation)
 
-		log.Tracef("VOTED REWARD %d = %d * %d * %d / (%d * %d)",
+		log.Tracef("VOTED REWARD %s %d = %d * %d * %d / (%d * %d)",
+			common.MustNewAddress([]byte(addrKey)),
 			reward, multiplier, period, prep.GetBondedDelegation(), divider, vi.totalBondedDelegation)
 
 		prep.SetIScore(new(big.Int).Add(prep.IScore(), reward))
