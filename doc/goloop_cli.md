@@ -82,7 +82,12 @@ Manage chains
 Start to backup the channel
 
 ### Usage
-` goloop chain backup CID `
+` goloop chain backup CID [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --manual |  | false | false |  Manual backup mode (just release database) |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
