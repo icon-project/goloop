@@ -770,13 +770,7 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 		}
 		return err
 	}
-	cc := s.newCallContext(s.cc)
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("consistent_validation_penalty")},
-		[][]byte{
-			intconv.Int64ToBytes(slashingRate.Int64()),
-		},
-	)
+	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", slashingRate.Int64())
 	return nil
 }
 
@@ -797,14 +791,15 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 		}
 		return err
 	}
-	cc := s.newCallContext(s.cc)
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChanged(string,int)"), []byte("nonvote_penalty")},
-		[][]byte{
-			intconv.Int64ToBytes(slashingRate.Int64()),
-		},
-	)
+	s.onSlashingRateChangedEvent("NonVotePenalty", slashingRate.Int64())
 	return nil
+}
+
+func (s *chainScore) onSlashingRateChangedEvent(name string, rate int64) {
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
+		[][]byte{intconv.Int64ToBytes(rate)},
+	)
 }
 
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
