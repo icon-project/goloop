@@ -16,7 +16,7 @@ TARGET:=client
 TARGET_SO=$(BUILD_DIR)/lib$(TARGET).$(LIB_SUFFIX)
 
 ifneq (, $(findstring Darwin, $(shell uname -s)))
-  JAVA_HOME ?= /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
+  JAVA_HOME ?= $(shell /usr/libexec/java_home -v 11.0)
   OS_DIR = darwin
   LIB_SUFFIX = dylib
 else
