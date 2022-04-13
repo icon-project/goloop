@@ -56,6 +56,7 @@ type Peer struct {
 	recvRole      PeerRoleFlag
 	children      *NetAddressSet
 	nephews       *NetAddressSet
+	pis           *ProtocolInfos
 	attr          map[string]interface{}
 	attrMtx       sync.RWMutex
 
@@ -91,6 +92,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 		nephews:     NewNetAddressSet(),
+		pis:         newProtocolInfos(),
 		attr:        make(map[string]interface{}),
 		dial:        dial,
 	}
@@ -546,6 +548,10 @@ func (p *Peer) HasCloseError(err error) bool {
 		}
 	}
 	return false
+}
+
+func (p *Peer) ProtocolInfos() *ProtocolInfos {
+	return p.pis
 }
 
 func (p *Peer) GetAttr(k string) (interface{}, bool) {

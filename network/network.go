@@ -24,6 +24,7 @@ type manager struct {
 	mtx sync.RWMutex
 
 	pd *PeerDispatcher
+	cn *ChannelNegotiator
 	//log
 	logger log.Logger
 
@@ -48,6 +49,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[uint16]*protocolHandler),
 		pd:               t.pd,
+		cn:               t.cn,
 		logger:           networkLogger,
 		mtr:              mtr,
 	}
@@ -169,6 +171,7 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
 		m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 		m.protocolHandlers[k] = ph
+		m.cn.addProtocol(m.channel, pi)
 	}
 	return ph, nil
 }
@@ -186,6 +189,7 @@ func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 			ph.Term()
 			m.p2p.unsetCbFunc(ph.protocol)
 			delete(m.protocolHandlers, k)
+			m.cn.removeProtocol(m.channel, module.ProtocolInfo(k))
 			return nil
 		}
 	}

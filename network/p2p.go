@@ -379,8 +379,10 @@ func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
 	//}
 	p2p.logger.Traceln("onEvent", evt, p)
 	if m, ok := p2p.onEventCbFuncs[evt]; ok {
-		for _, cbFunc := range m {
-			cbFunc(evt, p)
+		for k, cbFunc := range m {
+			if p.ProtocolInfos().Exists(module.ProtocolInfo(k)) {
+				cbFunc(evt, p)
+			}
 		}
 	}
 }
@@ -476,7 +478,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			return
 		}
 
-		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
+		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil && p.ProtocolInfos().Exists(pkt.protocol) {
 			if isOneHop || p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
