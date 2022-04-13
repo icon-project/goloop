@@ -2,6 +2,7 @@ ARG GOLANG_VERSION
 ARG ALPINE_VERSION
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
 RUN apk add make git build-base
+RUN if [[ $(uname -m | grep -E '^arm|^aarch' | wc -l) == 1 ]]; then apk add binutils-gold; fi
 ENV GO111MODULE on
 
 ARG GOLOOP_GOMOD_SHA
