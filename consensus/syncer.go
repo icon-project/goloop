@@ -282,7 +282,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 
 func (s *syncer) Start() error {
 	var err error
-	s.ph, err = s.nm.RegisterReactor("consensus.sync", module.ProtoConsensusSync, s, SyncerProtocols, ConfigSyncerPriority)
+	s.ph, err = s.nm.RegisterReactor("consensus.sync", module.ProtoConsensusSync, s, SyncerProtocols, ConfigSyncerPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		return err
 	}

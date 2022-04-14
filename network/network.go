@@ -132,7 +132,13 @@ func (m *manager) Stop() error {
 	return m._stop()
 }
 
-func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (m *manager) RegisterReactor(
+	name string,
+	pi module.ProtocolInfo,
+	reactor module.Reactor,
+	piList []module.ProtocolInfo,
+	priority uint8,
+	policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 
@@ -143,7 +149,7 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 	k := pi.Uint16()
 	ph, ok := m.protocolHandlers[k]
 	if ok {
-		if ph.getName() != name || ph.getPriority() != priority {
+		if ph.getName() != name || ph.getPriority() != priority || ph.getPolicy() != policy {
 			return nil, errors.WithStack(ErrIllegalArgument)
 		}
 		spis := ph.getSubProtocols()
@@ -168,7 +174,7 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 			m.logger.Debugln("RegisterReactor, p2p started")
 		}
 
-		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
+		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, policy, m.logger)
 		m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 		m.protocolHandlers[k] = ph
 		m.cn.addProtocol(m.channel, pi)
