@@ -607,7 +607,7 @@ func (cs *consensus) enterPropose() {
 			}
 			var err error
 			cvl := cs.lastVotes.CommitVoteSet()
-			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl,
+			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl, nil,
 				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()

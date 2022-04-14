@@ -337,6 +337,7 @@ type testTransitionResult struct {
 }
 
 type testTransition struct {
+	module.Transition
 	patchTransactions  *testTransactionList
 	normalTransactions *testTransactionList
 	baseValidators     *testValidatorList

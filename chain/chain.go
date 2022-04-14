@@ -648,6 +648,11 @@ func (c *singleChain) Logger() log.Logger {
 	return c.logger
 }
 
+func (c *singleChain) WalletFor(dsa string) module.BaseWallet {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewChain(
 	wallet module.Wallet,
 	transport module.NetworkTransport,

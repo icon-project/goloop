@@ -226,6 +226,8 @@ type Transition interface {
 
 	// Equal check equality of inputs of transition.
 	Equal(Transition) bool
+
+	BTPSection() BTPSection
 }
 
 type APIInfo interface {
@@ -351,6 +353,8 @@ type ServiceManager interface {
 
 	// GetNextBlockVersion returns version of next block
 	GetNextBlockVersion(result []byte) int
+
+	BTPDigestFromResult(result []byte) BTPDigest
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool

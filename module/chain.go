@@ -9,10 +9,14 @@ import (
 	"github.com/icon-project/goloop/common/log"
 )
 
-type Wallet interface {
-	Address() Address
+type BaseWallet interface {
 	Sign(data []byte) ([]byte, error)
 	PublicKey() []byte
+}
+
+type Wallet interface {
+	BaseWallet
+	Address() Address
 }
 
 type Chain interface {
@@ -60,6 +64,7 @@ type Chain interface {
 
 	MetricContext() context.Context
 	Logger() log.Logger
+	WalletFor(dsa string) BaseWallet
 }
 
 type Regulator interface {

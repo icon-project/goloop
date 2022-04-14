@@ -35,6 +35,7 @@ type BlockData interface {
 	ToJSON(version JSONVersion) (interface{}, error)
 	NewBlock(vl ValidatorList) Block
 	Hash() []byte
+	BTPDigest() BTPDigest
 }
 
 func BlockDataToBytes(blk BlockData) ([]byte, error) {
@@ -46,6 +47,8 @@ func BlockDataToBytes(blk BlockData) ([]byte, error) {
 type Block interface {
 	BlockData
 	NextValidators() ValidatorList
+	BTPSection() BTPSection
+	BTPBlockFor(nid int32) (BTPBlock, error)
 }
 
 type BlockCandidate interface {
@@ -78,7 +81,12 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Proposed block can be Commited or
 	// 	Finalized.
-	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler Canceler, err error)
+	Propose(
+		parentID []byte,
+		votes CommitVoteSet,
+		ntsdProofs []NetworkTypeSectionDecisionProof,
+		cb func(BlockCandidate, error),
+	) (canceler Canceler, err error)
 
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
@@ -123,6 +131,9 @@ type BlockManager interface {
 	// NewConsensusInfo returns a ConsensusInfo with blk's proposer and
 	// votes in blk.
 	NewConsensusInfo(blk Block) (ConsensusInfo, error)
+
+	// GetNextBTPBlockFrom returns a BTP block of nid (block.height >= height)
+	GetNextBTPBlockFrom(height int64, nid int32) BTPBlock
 }
 
 type TransactionInfo interface {
@@ -131,4 +142,21 @@ type TransactionInfo interface {
 	Group() TransactionGroup
 	Transaction() (Transaction, error)
 	GetReceipt() (Receipt, error)
+}
+
+type BTPBlock interface {
+	MainHeight() int64
+	Round() int32
+	NextProofContextHash() []byte
+	NetworkSectionToRoot() [][]byte
+	NetworkID() int32
+	MessageRootNumber() int64
+	MessagesRootSN() int64
+	UpdatedNextProofContextHash() bool
+	PrevNetworkSectionHash() []byte
+	MessageCount() int32
+	MessagesRoot() []byte
+	Proof() []byte
+	NextProofContext() []byte
+	Messages() [][]byte
 }

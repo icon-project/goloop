@@ -262,6 +262,21 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
+func (b *blockV2) BTPDigest() module.BTPDigest {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *blockV2) BTPSection() module.BTPSection {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *blockV2) BTPBlockFor(nid int32) (module.BTPBlock, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type blockBuilder struct {
 	vld   module.CommitVoteSetDecoder
 	block *blockV2

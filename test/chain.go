@@ -31,6 +31,7 @@ import (
 )
 
 type Chain struct {
+	module.Chain
 	t         *testing.T
 	database  db.Database
 	wallet    module.Wallet

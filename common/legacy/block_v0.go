@@ -185,6 +185,21 @@ func (b *blockV0) Hash() []byte {
 	return nil
 }
 
+func (b *blockV0) BTPDigest() module.BTPDigest {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *blockV0) BTPSection() module.BTPSection {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *blockV0) BTPBlockFor(nid int32) (module.BTPBlock, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type Block interface {
 	module.Block
 	Verify() error

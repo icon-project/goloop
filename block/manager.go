@@ -1028,6 +1028,7 @@ func (m *manager) finalizeGenesisBlock(
 func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
+	ntsdProofs []module.NetworkTypeSectionDecisionProof,
 	cb func(module.BlockCandidate, error),
 ) (canceler module.Canceler, err error) {
 	m.syncer.begin()
@@ -1711,6 +1712,11 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 		return nil, err
 	}
 	return common.NewConsensusInfo(pblk.Proposer(), vl, voted), nil
+}
+
+func (m *manager) GetNextBTPBlockFrom(height int64, nid int32) module.BTPBlock {
+	//TODO implement me
+	panic("implement me")
 }
 
 func GetBlockHeaderHashByHeight(

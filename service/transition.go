@@ -806,6 +806,11 @@ func (t *transition) Equal(tr module.Transition) bool {
 		t.pid == t2.pid
 }
 
+func (t *transition) BTPSection() module.BTPSection {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewInitTransition creates initial transition based on the last result.
 // It's only for development purpose. So, normally it should not be used.
 func NewInitTransition(

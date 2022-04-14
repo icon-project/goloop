@@ -628,6 +628,11 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (m *manager) BTPDigestFromResult(result []byte) module.BTPDigest {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *manager) HasTransaction(id []byte) bool {
 	return m.tm.HasTx(id)
 }
