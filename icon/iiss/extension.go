@@ -1279,13 +1279,8 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	// Subtract RegPRepFee from SystemAddress
-	err = cc.Withdraw(state.SystemAddress, icmodule.BigIntRegPRepFee)
-	if err != nil {
-		return err
-	}
-	// Burn regPRepFee
-	if err = cc.Burn(from, icmodule.BigIntRegPRepFee); err != nil {
+	// Burn regPRepFee that prep owner transferred to systemAddress(=chainScore)
+	if err = cc.Burn(state.SystemAddress, icmodule.BigIntRegPRepFee); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to burn regPRepFee: from=%v fee=%v",
@@ -1293,6 +1288,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 			icmodule.BigIntRegPRepFee,
 		)
 	}
+	cc.OnICXBurnedEvent(from, icmodule.BigIntRegPRepFee)
 
 	var irep *big.Int
 	irepHeight := int64(0)
