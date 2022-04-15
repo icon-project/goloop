@@ -131,10 +131,13 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).pd.registerPeerHandler(tph1, false)
 	nt2.(*transport).pd.registerPeerHandler(tph2, false)
 
+	nt1.(*transport).cn.addProtocol("test", p2pProtoControl)
+	nt2.(*transport).cn.addProtocol("test", p2pProtoControl)
+
 	assert.NoError(t, nt1.Listen(), "Transport1.Start fail")
 	assert.NoError(t, nt2.Listen(), "Transport2.Start fail")
 
-	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), ""), "Transport.Dial fail")
+	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), "test"), "Transport.Dial fail")
 
 	wg.Wait()
 	assert.NoError(t, nt1.Close(), "Transport1.Close fail")
