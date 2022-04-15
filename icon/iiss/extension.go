@@ -1751,6 +1751,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.Burn(from, amount); err != nil {
 				return err
 			}
+			cc.OnICXBurnedEvent(from, amount)
 			cc.OnEvent(state.SystemAddress,
 				[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
 				[][]byte{
