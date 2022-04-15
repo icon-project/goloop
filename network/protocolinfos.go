@@ -61,6 +61,8 @@ func (pis *ProtocolInfos) Set(piList []module.ProtocolInfo) {
 	pis.mtx.Lock()
 	defer pis.mtx.Unlock()
 
+	pis.m = make(map[byte][]module.ProtocolInfo)
+	pis.l = make([]module.ProtocolInfo, 0)
 	for _, pi := range piList {
 		l, ok := pis.m[pi.ID()]
 		if !ok {
@@ -68,10 +70,11 @@ func (pis *ProtocolInfos) Set(piList []module.ProtocolInfo) {
 			l[0] = pi
 		} else {
 			if pis.indexOf(l, pi) >= 0 {
-				return
+				continue
 			}
 			l = append(l, pi)
 		}
+		pis.m[pi.ID()] = l
 		pis.l = append(pis.l, pi)
 	}
 	for id, l := range pis.m {
