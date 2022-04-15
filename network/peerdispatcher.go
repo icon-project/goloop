@@ -13,9 +13,10 @@ import (
 
 type PeerDispatcher struct {
 	*peerHandler
-	peerHandlers *list.List
-	p2pMap       map[string]*PeerToPeer
-	mtx          sync.RWMutex
+	peerHandlers    *list.List
+	peerHandlersMtx sync.RWMutex
+	p2pMap          map[string]*PeerToPeer
+	p2pMapMtx       sync.RWMutex
 
 	mtr *metric.NetworkMetric
 }
@@ -27,10 +28,10 @@ func newPeerDispatcher(id module.PeerID, l log.Logger, peerHandlers ...PeerHandl
 		peerHandler:  newPeerHandler(l),
 		mtr:          metric.NewNetworkMetric(metric.DefaultMetricContext()),
 	}
-	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
+
 	pd.setSelfPeerID(id)
 
-	pd.registerPeerHandler(pd, true)
+	//listener or dialer => pd.dispatchPeer => front.onPeer => back.onPeer => pd.onPeer => p2p.onPeer
 	for _, ph := range peerHandlers {
 		pd.registerPeerHandler(ph, true)
 	}
@@ -38,8 +39,8 @@ func newPeerDispatcher(id module.PeerID, l log.Logger, peerHandlers ...PeerHandl
 }
 
 func (pd *PeerDispatcher) registerPeerToPeer(p2p *PeerToPeer) bool {
-	defer pd.mtx.Unlock()
-	pd.mtx.Lock()
+	pd.p2pMapMtx.Lock()
+	defer pd.p2pMapMtx.Unlock()
 
 	if _, ok := pd.p2pMap[p2p.channel]; ok {
 		return false
@@ -49,8 +50,9 @@ func (pd *PeerDispatcher) registerPeerToPeer(p2p *PeerToPeer) bool {
 }
 
 func (pd *PeerDispatcher) unregisterPeerToPeer(p2p *PeerToPeer) bool {
-	defer pd.mtx.Unlock()
-	pd.mtx.Lock()
+	pd.p2pMapMtx.Lock()
+	defer pd.p2pMapMtx.Unlock()
+
 	if t, ok := pd.p2pMap[p2p.channel]; !ok || t != p2p {
 		return false
 	}
@@ -59,28 +61,31 @@ func (pd *PeerDispatcher) unregisterPeerToPeer(p2p *PeerToPeer) bool {
 }
 
 func (pd *PeerDispatcher) getPeerToPeer(channel string) *PeerToPeer {
-	defer pd.mtx.RUnlock()
-	pd.mtx.RLock()
+	pd.p2pMapMtx.RLock()
+	defer pd.p2pMapMtx.RUnlock()
 
 	return pd.p2pMap[channel]
 }
 
 func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
+	pd.peerHandlersMtx.Lock()
+	defer pd.peerHandlersMtx.Unlock()
+
 	pd.logger.Traceln("registerPeerHandler", ph, pushBack)
+	ph.setSelfPeerID(pd.self)
 	if pushBack {
-		elm := pd.peerHandlers.PushBack(ph)
-		if prev := elm.Prev(); prev != nil {
-			ph.setNext(prev.Value.(PeerHandler))
-			ph.setSelfPeerID(pd.self)
+		if back := pd.peerHandlers.Back(); back != nil {
+			back.Value.(PeerHandler).setNext(ph)
 		}
+		pd.peerHandlers.PushBack(ph)
+		ph.setNext(pd)
 	} else {
-		f := pd.peerHandlers.Front()
-		elm := pd.peerHandlers.InsertAfter(ph, f)
-		pd.setNext(ph)
-		ph.setSelfPeerID(pd.self)
-		if next := elm.Next(); next != nil {
-			next.Value.(PeerHandler).setNext(ph)
+		if front := pd.peerHandlers.Front(); front != nil {
+			ph.setNext(front.Value.(PeerHandler))
+		} else {
+			ph.setNext(pd)
 		}
+		pd.peerHandlers.PushFront(ph)
 	}
 }
 
@@ -101,8 +106,11 @@ func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
 }
 
 func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
-	elm := pd.peerHandlers.Back()
-	ph := elm.Value.(PeerHandler)
+	pd.peerHandlersMtx.RLock()
+	defer pd.peerHandlersMtx.RUnlock()
+
+	front := pd.peerHandlers.Front()
+	ph := front.Value.(PeerHandler)
 	p.setMetric(pd.mtr)
 	p.setPacketCbFunc(ph.onPacket)
 	p.setErrorCbFunc(ph.onError)

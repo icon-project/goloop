@@ -128,8 +128,8 @@ func Test_transport(t *testing.T) {
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg, nt1.(*transport).logger)
 	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg, nt2.(*transport).logger)
 
-	nt1.(*transport).pd.registerPeerHandler(tph1, false)
-	nt2.(*transport).pd.registerPeerHandler(tph2, false)
+	nt1.(*transport).pd.registerPeerHandler(tph1, true)
+	nt2.(*transport).pd.registerPeerHandler(tph2, true)
 
 	nt1.(*transport).cn.addProtocol("test", p2pProtoControl)
 	nt2.(*transport).cn.addProtocol("test", p2pProtoControl)
