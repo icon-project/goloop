@@ -271,6 +271,7 @@ func (sim *simulatorImpl) onExecutionBegin(wc WorldContext) error {
 }
 
 func (sim *simulatorImpl) onBaseTx(wc WorldContext) error {
+
 	cc := NewCallContext(wc, state.SystemAddress)
 	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	return es.HandleConsensusInfo(cc)

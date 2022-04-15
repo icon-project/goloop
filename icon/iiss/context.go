@@ -198,6 +198,10 @@ func (ctx *callContextImpl) Burn(address module.Address, amount *big.Int) error 
 }
 
 func (ctx *callContextImpl) OnICXBurnedEvent(address module.Address, amount *big.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+
 	rev := ctx.Revision().Value()
 	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string

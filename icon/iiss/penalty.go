@@ -83,6 +83,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	bonders := pb.BonderList()
+	totalSlashAmount := new(big.Int)
 	totalSlashBond := new(big.Int)
 	totalStake := new(big.Int).Set(es.State.GetTotalStake())
 
@@ -116,6 +117,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 				return err
 			}
 			totalStake.Sub(totalStake, totalSlash)
+			totalSlashAmount.Add(totalSlashAmount, totalSlash)
 
 			// add icstage.EventBond
 			delta := map[string]*big.Int{
@@ -142,8 +144,11 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	if err := es.State.Slash(owner, totalSlashBond); err != nil {
 		return err
 	}
-	err := cc.Burn(state.SystemAddress, totalSlashBond)
+	if _, err := cc.AddTotalSupply(new(big.Int).Neg(totalSlashAmount)); err != nil {
+		return err
+	}
+	cc.OnICXBurnedEvent(state.SystemAddress, totalSlashAmount)
 
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
-	return err
+	return nil
 }
