@@ -602,12 +602,14 @@ func (s *chainScore) Ex_burn() error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
 	cc := s.newCallContext(s.cc)
-	return es.Burn(cc, s.value)
+	if err := cc.Burn(state.SystemAddress, s.value); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to burn: from=%v value=%v", cc.From(), s.value,
+		)
+	}
+	cc.OnICXBurnedEvent(cc.From(), s.value)
+	return nil
 }
 
 func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error) {

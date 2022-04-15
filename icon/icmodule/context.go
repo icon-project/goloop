@@ -29,6 +29,7 @@ type CallContext interface {
 	WorldContext
 	From() module.Address
 	Burn(address module.Address, amount *big.Int) error
+	OnICXBurnedEvent(address module.Address, amount *big.Int)
 	SumOfStepUsed() *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	CallOnTimer(to module.Address, params []byte) error
