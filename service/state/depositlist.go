@@ -131,13 +131,13 @@ func (dl depositList) getAvailableDeposit(bh int64) *big.Int {
 
 // PaySteps returns consumes virtual steps and also deposits.
 // It returns payed steps
-func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
+func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int) {
 	bh := pc.BlockHeight()
 	price := pc.StepPrice()
 
 	// Unable to pay with non positive price or empty deposit list.
 	if price.Sign() <= 0 || !dl.Has() {
-		return nil
+		return nil, nil
 	}
 
 	// pay steps with issued virtual steps
@@ -146,23 +146,26 @@ func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
 		dp := (*dl)[idx]
 		remains = dp.ConsumeSteps(bh, remains)
 		if remains.Sign() == 0 {
-			return steps
+			return steps, nil
 		}
 	}
 
 	// calculate fee to charge
 	deposit := dl.getAvailableDeposit(bh)
 	payableSteps := new(big.Int).Div(deposit, price)
-	var fee *big.Int
+	var stepsByDeposit *big.Int
+	var paidSteps *big.Int
 	if payableSteps.Cmp(remains) < 0 {
-		fee = new(big.Int).Mul(payableSteps, price)
-		remains = new(big.Int).Sub(remains, payableSteps)
+		stepsByDeposit = payableSteps
+		paidSteps = new(big.Int).Sub(steps, remains)
+		paidSteps = paidSteps.Add(paidSteps, stepsByDeposit)
 	} else {
-		fee = new(big.Int).Mul(remains, price)
-		remains = new(big.Int)
+		stepsByDeposit = remains
+		paidSteps = steps
 	}
+	fee := new(big.Int).Mul(stepsByDeposit, price)
 
-	// charge fee
+	// pay fee with deposits
 	for idx, _ := range *dl {
 		dp := (*dl)[idx]
 		fee = dp.ConsumeDepositLv1(bh, fee)
@@ -175,12 +178,12 @@ func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) *big.Int {
 			dp := (*dl)[idx]
 			fee = dp.ConsumeDepositLv2(bh, fee)
 			if fee.Sign() == 0 {
-				return steps
+				break
 			}
 		}
 	}
 
-	return new(big.Int).Sub(steps, remains)
+	return paidSteps, stepsByDeposit
 }
 
 func (dl depositList) ToJSON(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error) {
