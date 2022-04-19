@@ -142,7 +142,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	if err := es.State.Slash(owner, totalSlashBond); err != nil {
 		return err
 	}
-	err := cc.Burn(state.SystemAddress, totalSlashBond)
+	err := cc.HandleBurn(state.SystemAddress, totalSlashBond)
 
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return err

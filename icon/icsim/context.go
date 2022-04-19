@@ -222,21 +222,22 @@ func (ctx *callContext) From() module.Address {
 	return ctx.from
 }
 
-func (ctx *callContext) Burn(address module.Address, amount *big.Int) error {
+func (ctx *callContext) HandleBurn(requestor module.Address, amount *big.Int) error {
 	sign := amount.Sign()
 	if sign < 0 {
 		return errors.Errorf("Invalid amount: %v", amount)
 	}
 	if sign > 0 {
-		_, err := ctx.AddTotalSupply(new(big.Int).Neg(amount))
+		ts, err := ctx.AddTotalSupply(new(big.Int).Neg(amount))
 		if err != nil {
 			return err
 		}
+		ctx.onICXBurnedEvent(requestor, amount, ts)
 	}
 	return nil
 }
 
-func (ctx *callContext) OnBurn(address module.Address, amount, ts *big.Int) {
+func (ctx *callContext) onICXBurnedEvent(requestor module.Address, amount, ts *big.Int) {
 	rev := ctx.Revision().Value()
 	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string
@@ -251,7 +252,7 @@ func (ctx *callContext) OnBurn(address module.Address, amount, ts *big.Int) {
 		)
 	} else {
 		ctx.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), address.Bytes()},
+			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), requestor.Bytes()},
 			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
 		)
 	}
