@@ -75,8 +75,8 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
 
-	logger := es.Logger()
-	logger.Tracef("slash() start: addr=%s ratio=%d", owner, ratio)
+	logger := cc.FrameLogger()
+	logger.TSystemf("SLASH start owner=%s ratio=%d", owner, ratio)
 
 	pb := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
@@ -89,19 +89,21 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 
 	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
+		var expire int64
+		var slashBond, slashUnbond *big.Int
 		account := es.State.GetAccountState(bonder)
 		bonderStakeSlashed := new(big.Int)
-		logger.Debugf("Before slashing: %s", account)
+		logger.TSystemf("BONDER_SLASH start bonder=%s", bonder)
 
 		if ratio > 0 {
 			// from bonds
-			slashBond := account.SlashBond(owner, ratio)
+			slashBond = account.SlashBond(owner, ratio)
 			bonderStakeSlashed.Add(bonderStakeSlashed, slashBond)
 			totalSlashBond.Add(totalSlashBond, slashBond)
 			logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
 
 			// from unbondings
-			slashUnbond, expire := account.SlashUnbond(owner, ratio)
+			slashUnbond, expire = account.SlashUnbond(owner, ratio)
 			bonderStakeSlashed.Add(bonderStakeSlashed, slashUnbond)
 			if expire != -1 {
 				timer := es.State.GetUnbondingTimerState(expire)
@@ -133,8 +135,10 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
 			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(bonderStakeSlashed)},
 		)
-
-		logger.Debugf("After slashing: %s", account)
+		logger.TSystemf(
+			"BONDER_SLASH end bonder=%s stakeSlashed=%v bondSlashed=%v unbondSlashed=%v",
+			bonder, bonderStakeSlashed, slashBond, slashUnbond,
+		)
 	}
 
 	if err := es.State.SetTotalStake(totalStake.Sub(totalStake, totalStakeSlashed)); err != nil {
@@ -145,6 +149,9 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	}
 	err := cc.HandleBurn(state.SystemAddress, totalStakeSlashed)
 
-	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
+	logger.TSystemf(
+		"SLASH end owner=%s bondSlashed=%v stakeSlashed=%v",
+		owner, totalSlashBond, totalStakeSlashed,
+	)
 	return err
 }
