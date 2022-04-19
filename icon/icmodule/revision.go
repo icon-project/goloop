@@ -36,6 +36,7 @@ const (
 	Revision15
 	Revision16
 	Revision17
+	Revision18
 	RevisionReserved
 )
 
@@ -91,6 +92,8 @@ const (
 	RevisionEnableSetScoreOwner = Revision17
 	RevisionExtraMainPReps      = Revision17
 	RevisionFixVotingReward     = Revision17
+
+	RevisionFixTransferRewardFund = Revision18
 )
 
 var revisionFlags = []module.Revision{
