@@ -126,8 +126,8 @@ func (cn *ChannelNegotiator) resolveProtocols(p *Peer, channel string, protocols
 	}
 	ppis.Set(protocols)
 	ppis.Resolve(pis)
-	if ppis.Len() == 0 {
-		return errors.Errorf("not supported protocols")
+	if ppis.LenOfIDSet() < pis.LenOfIDSet() {
+		return errors.Errorf("not supported protocols exists")
 	}
 	return nil
 }

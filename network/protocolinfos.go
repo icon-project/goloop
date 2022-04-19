@@ -154,6 +154,10 @@ func (pis *ProtocolInfos) Len() int {
 	return len(pis.l)
 }
 
+func (pis *ProtocolInfos) LenOfIDSet() int {
+	return len(pis.m)
+}
+
 func newProtocolInfos() *ProtocolInfos {
 	return &ProtocolInfos{
 		m: make(map[byte][]module.ProtocolInfo),
