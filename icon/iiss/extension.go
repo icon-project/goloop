@@ -1745,6 +1745,13 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 				},
 			)
 		} else {
+			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
+				if err := cc.Withdraw(from, amount); err != nil {
+					return scoreresult.InvalidParameterError.Errorf(
+						"Not enough balance: from=%v value=%v", from, amount,
+					)
+				}
+			}
 			if err := cc.HandleBurn(from, amount); err != nil {
 				return err
 			}
