@@ -139,7 +139,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	if err := es.State.SetTotalStake(totalStake); err != nil {
 		return err
 	}
-	if err := es.State.Slash(owner, totalSlashBond); err != nil {
+	if err := es.State.ReducePRepBonded(owner, totalSlashBond); err != nil {
 		return err
 	}
 	err := cc.HandleBurn(state.SystemAddress, totalSlashBond)
