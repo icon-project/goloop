@@ -84,24 +84,25 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	}
 	bonders := pb.BonderList()
 	totalSlashBond := new(big.Int)
+	totalStakeSlashed := new(big.Int)
 	totalStake := new(big.Int).Set(es.State.GetTotalStake())
 
 	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
 		account := es.State.GetAccountState(bonder)
-		totalSlash := new(big.Int)
+		bonderStakeSlashed := new(big.Int)
 		logger.Debugf("Before slashing: %s", account)
 
 		if ratio > 0 {
 			// from bonds
 			slashBond := account.SlashBond(owner, ratio)
-			totalSlash.Add(totalSlash, slashBond)
+			bonderStakeSlashed.Add(bonderStakeSlashed, slashBond)
 			totalSlashBond.Add(totalSlashBond, slashBond)
 			logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
 
 			// from unbondings
 			slashUnbond, expire := account.SlashUnbond(owner, ratio)
-			totalSlash.Add(totalSlash, slashUnbond)
+			bonderStakeSlashed.Add(bonderStakeSlashed, slashUnbond)
 			if expire != -1 {
 				timer := es.State.GetUnbondingTimerState(expire)
 				if timer != nil {
@@ -112,10 +113,10 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 			}
 
 			// from stake
-			if err := account.SlashStake(totalSlash); err != nil {
+			if err := account.SlashStake(bonderStakeSlashed); err != nil {
 				return err
 			}
-			totalStake.Sub(totalStake, totalSlash)
+			totalStakeSlashed.Add(totalStakeSlashed, bonderStakeSlashed)
 
 			// add icstage.EventBond
 			delta := map[string]*big.Int{
@@ -130,19 +131,19 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		cc.OnEvent(
 			state.SystemAddress,
 			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
-			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(totalSlash)},
+			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(bonderStakeSlashed)},
 		)
 
 		logger.Debugf("After slashing: %s", account)
 	}
 
-	if err := es.State.SetTotalStake(totalStake); err != nil {
+	if err := es.State.SetTotalStake(totalStake.Sub(totalStake, totalStakeSlashed)); err != nil {
 		return err
 	}
 	if err := es.State.ReducePRepBonded(owner, totalSlashBond); err != nil {
 		return err
 	}
-	err := cc.HandleBurn(state.SystemAddress, totalSlashBond)
+	err := cc.HandleBurn(state.SystemAddress, totalStakeSlashed)
 
 	logger.Tracef("slash() end: totalSlashBond=%s", totalSlashBond)
 	return err
