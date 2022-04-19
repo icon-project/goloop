@@ -599,15 +599,26 @@ func (s *chainScore) Ex_validateIRep(irep *common.HexInt) (bool, error) {
 }
 
 func (s *chainScore) Ex_burn() error {
-	if err := s.tryChargeCall(true); err != nil {
+	var err error
+	if err = s.tryChargeCall(true); err != nil {
 		return err
 	}
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
+
 	cc := s.newCallContext(s.cc)
-	return es.Burn(cc, s.value)
+	from := s.from
+	amount := s.value
+
+	if err = cc.Withdraw(state.SystemAddress, amount); err != nil {
+		return scoreresult.InvalidParameterError.Errorf(
+			"Not enough value: from=%v value=%v", from, amount,
+		)
+	}
+	if err = cc.HandleBurn(from, amount); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err, "Failed to burn: from=%v value=%v", from, amount,
+		)
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error) {

@@ -1554,21 +1554,6 @@ func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.I
 	}
 }
 
-func (es *ExtensionStateImpl) Burn(cc icmodule.CallContext, amount *big.Int) error {
-	from := cc.From()
-	if err := cc.Withdraw(state.SystemAddress, amount); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(
-			"Not enough value: from=%v value=%v", from, amount,
-		)
-	}
-	if err := cc.HandleBurn(from, amount); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to burn: from=%v value=%v", from, amount,
-		)
-	}
-	return nil
-}
-
 func calculateIRep(preps icstate.PRepSet) *big.Int {
 	irep := new(big.Int)
 	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
