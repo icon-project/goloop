@@ -53,6 +53,9 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		logger:           networkLogger,
 		mtr:              mtr,
 	}
+	for _, pi := range m.p2p.supportedProtocols() {
+		m.cn.addProtocol(m.channel, pi)
+	}
 
 	//Create default protocolHandler for P2P topology management
 	m.roles[module.ROLE_SEED] = m.p2p.allowedSeeds

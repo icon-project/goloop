@@ -75,6 +75,7 @@ type JoinResponse struct {
 }
 
 var defaultProtocols = []module.ProtocolInfo{
+	module.ProtoP2P,
 	module.ProtoStateSync,
 	module.ProtoTransaction,
 	module.ProtoConsensus,

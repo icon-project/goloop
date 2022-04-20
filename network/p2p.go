@@ -60,6 +60,7 @@ const (
 
 var (
 	p2pProtoControl     = module.ProtocolInfo(0x0000)
+	p2pControlProtocols = []module.ProtocolInfo{p2pProtoControl}
 )
 
 var (
@@ -247,6 +248,10 @@ func (p2p *PeerToPeer) Stop() {
 	p2p.logger.Debugln("Stop", "Done")
 }
 
+func (p2p *PeerToPeer) supportedProtocols() []module.ProtocolInfo {
+	return p2pControlProtocols
+}
+
 func (p2p *PeerToPeer) dial(na NetAddress) error {
 	if err := p2p.dialer.Dial(string(na)); err != nil {
 		if err == ErrAlreadyDialing {
@@ -429,12 +434,14 @@ func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 
 //callback from Peer.receiveRoutine
 func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
-	//FIXME if !p2p.IsStarted() return
-	//TODO p2p.packet_dump
-	//p2p.logger.Traceln("onPacket", pkt, p)
-	if pkt.protocol == p2pProtoControl {
-		//TODO p2p.control.message_dump
-		//p2p.logger.Traceln("onPacket", pkt, p)
+	//if !p2p.IsStarted() {
+	//	return
+	//}
+	if !p.ProtocolInfos().Exists(pkt.protocol) {
+		p.CloseByError(ErrNotRegisteredProtocol)
+		return
+	}
+	if pkt.protocol.ID() == p2pProtoControl.ID() {
 		switch pkt.protocol {
 		case p2pProtoControl:
 			switch pkt.subProtocol {
@@ -453,6 +460,11 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			default:
 				p.CloseByError(ErrNotRegisteredProtocol)
 			}
+		default:
+			//cannot be reached
+			p2p.logger.Infoln("onPacket", "Close, not supported p2p control protocol", pkt.protocol, pkt.subProtocol)
+			p.CloseByError(ErrNotRegisteredProtocol)
+			return
 		}
 	} else {
 		if p.ConnType() == p2pConnTypeNone {
@@ -478,13 +490,15 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			return
 		}
 
-		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil && p.ProtocolInfos().Exists(pkt.protocol) {
+		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
 			if isOneHop || p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
 				p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
 			}
 		} else {
+			//cannot be reached
+			p2p.logger.Infoln("onPacket", "Close, not exists callback function", p.ID(), pkt.protocol, pkt.subProtocol)
 			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	}
