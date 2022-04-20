@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	p2pProtoChan         = module.ProtocolInfo(0x0000)
 	p2pProtoChanJoinReq  = module.ProtocolInfo(0x0500)
 	p2pProtoChanJoinResp = module.ProtocolInfo(0x0600)
 )
@@ -47,7 +48,7 @@ func (cn *ChannelNegotiator) onError(err error, p *Peer, pkt *Packet) {
 
 func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	switch pkt.protocol {
-	case p2pProtoControl:
+	case p2pProtoChan:
 		switch pkt.subProtocol {
 		case p2pProtoChanJoinReq:
 			cn.handleJoinRequest(pkt, p)
@@ -56,6 +57,8 @@ func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 		default:
 			p.CloseByError(ErrNotRegisteredProtocol)
 		}
+	default:
+		//ignore
 	}
 }
 
@@ -141,7 +144,7 @@ func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
 		return
 	}
 	m := &JoinRequest{Channel: p.Channel(), Addr: cn.netAddress, Protocols: pis.Array()}
-	cn.sendMessage(p2pProtoChanJoinReq, m, p)
+	cn.sendMessage(p2pProtoChan, p2pProtoChanJoinReq, m, p)
 	cn.logger.Traceln("sendJoinRequest", m, p)
 }
 
@@ -165,7 +168,7 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 	p.setNetAddress(rm.Addr)
 
 	m := &JoinResponse{Channel: p.Channel(), Addr: cn.netAddress, Protocols: p.ProtocolInfos().Array()}
-	cn.sendMessage(p2pProtoChanJoinResp, m, p)
+	cn.sendMessage(p2pProtoChan, p2pProtoChanJoinResp, m, p)
 
 	cn.nextOnPeer(p)
 }

@@ -79,7 +79,7 @@ type PeerID interface {
 }
 
 const (
-	ProtoUnknown ProtocolInfo = iota << 8
+	ProtoP2P ProtocolInfo = iota << 8
 	ProtoStateSync
 	ProtoTransaction
 	ProtoConsensus

@@ -59,7 +59,7 @@ const (
 )
 
 var (
-	p2pProtoControl = module.ProtocolInfo(0x0000)
+	p2pProtoControl     = module.ProtocolInfo(0x0000)
 )
 
 var (
@@ -635,7 +635,7 @@ func (p2p *PeerToPeer) stopRtt(p *Peer) {
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.Role()}
-	pkt := newPacket(p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -701,7 +701,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		m.Seeds = m.Seeds[:DefaultQueryElementLength]
 	}
 
-	rpkt := newPacket(p2pProtoQueryResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoQueryResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -778,7 +778,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	p2p.seeds.Merge(seeds...)
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -804,7 +804,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -1791,7 +1791,7 @@ type P2PConnectionResponse struct {
 
 func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(p2pProtoConnReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, p2p.encodeMsgpack(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -1928,7 +1928,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 			m.ConnType = p2pConnTypeNephew
 		}
 	}
-	rpkt := newPacket(p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {

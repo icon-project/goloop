@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	p2pProtoAuth                  = module.ProtocolInfo(0x0000)
 	p2pProtoAuthSecureRequest     = module.ProtocolInfo(0x0100)
 	p2pProtoAuthSecureResponse    = module.ProtocolInfo(0x0200)
 	p2pProtoAuthSignatureRequest  = module.ProtocolInfo(0x0300)
@@ -78,7 +79,7 @@ func (a *Authenticator) onError(err error, p *Peer, pkt *Packet) {
 //callback from Peer.receiveRoutine
 func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 	switch pkt.protocol {
-	case p2pProtoControl:
+	case p2pProtoAuth:
 		switch pkt.subProtocol {
 		case p2pProtoAuthSecureRequest:
 			a.handleSecureRequest(pkt, p)
@@ -263,7 +264,7 @@ func (a *Authenticator) sendSecureRequest(p *Peer) {
 	}
 
 	p.rtt.Start()
-	a.sendMessage(p2pProtoAuthSecureRequest, m, p)
+	a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureRequest, m, p)
 	a.logger.Traceln("sendSecureRequest", m, p)
 }
 
@@ -315,9 +316,9 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 	if m.SecureError == SecureErrorNone {
 		p.rtt.Start()
 		a.setWaitInfo(p2pProtoAuthSignatureRequest, p)
-		a.sendMessage(p2pProtoAuthSecureResponse, m, p)
+		a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureResponse, m, p)
 	} else {
-		a.sendMessage(p2pProtoAuthSecureResponse, m, p)
+		a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureResponse, m, p)
 		err := fmt.Errorf("handleSecureRequest error[%v]", m.SecureError)
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "SecureError", err)
 		p.CloseByError(err)
@@ -446,7 +447,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 		Rtt:       p.rtt.last,
 	}
 	a.setWaitInfo(p2pProtoAuthSignatureResponse, p)
-	a.sendMessage(p2pProtoAuthSignatureRequest, m, p)
+	a.sendMessage(p2pProtoAuth, p2pProtoAuthSignatureRequest, m, p)
 }
 
 func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
@@ -479,7 +480,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 		m = &SignatureResponse{Error: "selfAddress"}
 	}
 	p.setID(id)
-	a.sendMessage(p2pProtoAuthSignatureResponse, m, p)
+	a.sendMessage(p2pProtoAuth, p2pProtoAuthSignatureResponse, m, p)
 
 	if m.Error != "" {
 		err := fmt.Errorf("handleSignatureRequest error[%v]", m.Error)

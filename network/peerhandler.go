@@ -32,6 +32,10 @@ func (ph *peerHandler) onPeer(p *Peer) {
 	ph.nextOnPeer(p)
 }
 
+func (ph *peerHandler) onPacket(pkt *Packet, p *Peer) {
+	ph.logger.Traceln("onPacket", p, pkt)
+}
+
 func (ph *peerHandler) nextOnPeer(p *Peer) {
 	p.RemoveAttr("waitSubProtocolInfo")
 	if ph.next != nil {
@@ -59,8 +63,8 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
 }
 
-func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, m interface{}, p *Peer) {
-	pkt := newPacket(pi, ph.encode(m), ph.self)
+func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, spi module.ProtocolInfo, m interface{}, p *Peer) {
+	pkt := newPacket(pi, spi, ph.encode(m), ph.self)
 	err := p.sendDirect(pkt)
 	if err != nil {
 		ph.logger.Infoln("sendMessage", err)

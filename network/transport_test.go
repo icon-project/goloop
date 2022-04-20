@@ -21,6 +21,7 @@ const (
 )
 
 var (
+	ProtoTestTransport         = module.ProtocolInfo(0x0000)
 	ProtoTestTransportRequest  = module.ProtocolInfo(0xF300)
 	ProtoTestTransportResponse = module.ProtocolInfo(0xF400)
 )
@@ -48,7 +49,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.In() {
 		m := &testTransportRequest{Message: "Hello"}
-		ph.sendMessage(ProtoTestTransportRequest, m, p)
+		ph.sendMessage(ProtoTestTransport, ProtoTestTransportRequest, m, p)
 		ph.logger.Println("sendProtoTestTransportRequest", m, p)
 	}
 }
@@ -62,7 +63,7 @@ func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {
-	case p2pProtoControl:
+	case ProtoTestTransport:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
 			rm := &testTransportRequest{}
@@ -70,7 +71,7 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 			ph.logger.Println("handleProtoTestTransportRequest", rm, p)
 
 			m := &testTransportResponse{Message: "World"}
-			ph.sendMessage(ProtoTestTransportResponse, m, p)
+			ph.sendMessage(ProtoTestTransport, ProtoTestTransportResponse, m, p)
 
 			ph.nextOnPeer(p)
 		case ProtoTestTransportResponse:
@@ -131,16 +132,17 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).pd.registerPeerHandler(tph1, true)
 	nt2.(*transport).pd.registerPeerHandler(tph2, true)
 
-	nt1.(*transport).cn.addProtocol("test", p2pProtoControl)
-	nt2.(*transport).cn.addProtocol("test", p2pProtoControl)
+	nt1.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
+	nt2.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
 
 	assert.NoError(t, nt1.Listen(), "Transport1.Start fail")
 	assert.NoError(t, nt2.Listen(), "Transport2.Start fail")
 
-	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), "test"), "Transport.Dial fail")
+	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), testChannel), "Transport.Dial fail")
 
 	wg.Wait()
+
 	assert.NoError(t, nt1.Close(), "Transport1.Close fail")
-	assert.NoError(t, nt2.Close(), "Transport1.Close fail")
+	assert.NoError(t, nt2.Close(), "Transport2.Close fail")
 	time.Sleep(1 * time.Second)
 }
