@@ -294,11 +294,14 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 func getTotalSupply(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 	height := jsonrpc.HexInt("")
-	var param HeightParam
-	if err := params.Convert(&param); err != nil {
-		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	var emptyParam struct{}
+	if err := params.Convert(&emptyParam); err != nil {
+		var param HeightParam
+		if err = params.Convert(&param); err != nil {
+			return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+		}
+		height = param.Height
 	}
-	height = param.Height
 
 	chain, err := ctx.Chain()
 	if err != nil {
