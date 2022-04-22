@@ -187,9 +187,9 @@ func (c *ClientV3) GetScoreApi(param *v3.ScoreAddressParam) ([]interface{}, erro
 	return result, nil
 }
 
-func (c *ClientV3) GetTotalSupply() (*jsonrpc.HexInt, error) {
+func (c *ClientV3) GetTotalSupply(param *v3.HeightParam) (*jsonrpc.HexInt, error) {
 	var result jsonrpc.HexInt
-	_, err := c.Do("icx_getTotalSupply", nil, &result)
+	_, err := c.Do("icx_getTotalSupply", param, &result)
 	if err != nil {
 		return nil, err
 	}
