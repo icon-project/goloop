@@ -16,6 +16,8 @@
 
 package module
 
+import "github.com/icon-project/goloop/common/db"
+
 // Proof
 
 type BTPProofPart interface {
@@ -24,24 +26,18 @@ type BTPProofPart interface {
 
 type BTPProof interface {
 	Bytes() []byte
-	Add(pp BTPProofPart) error
+	Add(pp BTPProofPart)
 }
 
 type BTPProofContext interface {
 	Hash() []byte
 	Bytes() []byte
-	VerifyPart(d *NetworkTypeSectionDecision, pp BTPProofPart) error
-	Verify(d *NetworkTypeSectionDecision, p BTPProof) error
-	NewProofPart(d *NetworkTypeSectionDecision, w BaseWallet) (BTPProofPart, error)
+	VerifyPart(decisionHash []byte, pp BTPProofPart) error
+	Verify(decisionHash []byte, p BTPProof) error
+	VerifyByProofBytes(decisionHash []byte, proofBytes []byte) error
+	NewProofPart(decisionHash []byte, w BaseWallet) (BTPProofPart, error)
 	DSA() string
-}
-
-type NetworkTypeSectionDecision struct {
-	SrcNetworkID           []byte
-	DstType                int32
-	Height                 int64
-	Round                  int32
-	NetworkTypeSectionHash []byte
+	NewProof() BTPProof
 }
 
 type NetworkTypeSectionDecisionProof struct {
@@ -52,30 +48,35 @@ type NetworkTypeSectionDecisionProof struct {
 // Digest
 
 type BTPDigest interface {
+	Bytes() []byte
 	Hash() []byte
 	NetworkTypeDigests() []NetworkTypeDigest
 	Flush() error
+	FlushAll() error
 }
 
 type NetworkTypeDigest interface {
-	NetworkTypeID() int32
+	NetworkTypeID() int64
 	NetworkTypeSectionHash() []byte
 	NetworkDigests() []NetworkDigest
 }
 
 type NetworkDigest interface {
-	NetworkID() int32
+	NetworkID() int64
 	NetworkSectionHash() []byte
-	MessageList() MessageList
-}
-
-type MessageList interface {
 	MessagesRoot() []byte
-	Get(idx int) Message
-	Flush() error
+	MessageList() (BTPMessageList, error)
 }
 
-type Message interface {
+type BTPMessageList interface {
+	Bytes() []byte
+	MessagesRoot() []byte
+	Get(idx int) (BTPMessage, error)
+	Flush() error
+	FlushAll() error
+}
+
+type BTPMessage interface {
 	Hash() []byte
 	Bytes() []byte
 	Flush() error
@@ -84,25 +85,31 @@ type Message interface {
 // Section
 
 type BTPSection interface {
-	Digest() BTPDigest
+	Digest(dbase db.Database) BTPDigest
 	NetworkTypeSections() []NetworkTypeSection
 }
 
 type NetworkTypeSection interface {
-	NetworkTypeID() int32
+	NetworkTypeID() int64
 	Hash() []byte
 	NetworkSectionsRoot() []byte
 	NextProofContext() BTPProofContext
 	NetworkSections() []NetworkSection
+	NewDecision(height int64, round int32) BytesHasher
+}
+
+type BytesHasher interface {
+	Bytes() []byte
+	Hash() []byte
 }
 
 type NetworkSection interface {
 	Hash() []byte
-	NetworkID() int32
+	NetworkID() int64
 	MessageRootNumber() int64
 	MessageRootSN() int64
 	UpdatedNextProofContextHash() bool
 	PrevHash() []byte
-	MessageCount() int32
+	MessageCount() int64
 	MessagesRoot() []byte
 }
