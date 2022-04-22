@@ -176,6 +176,9 @@ func (b *Block) Hash() []byte {
 	if b._hash == nil {
 		bs := codec.BC.MustMarshalToBytes(b.headerFormat())
 		b._hash = crypto.SHA3Sum256(bs)
+		if id, ok := blockHashMap[string(b._hash)]; ok {
+			b._hash = []byte(id)
+		}
 	}
 	return b._hash
 }
@@ -867,7 +870,7 @@ func (b *Block) WriteHeaderTo(dbase db.Database) error {
 	if err != nil {
 		return err
 	}
-	if err = bk.Put(b.headerFormat()); err != nil {
+	if err = bk.Set(db.Raw(b.Hash()), b.headerFormat()); err != nil {
 		return err
 	}
 	if b.BlockVotes() != nil {

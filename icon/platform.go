@@ -53,6 +53,9 @@ type platform struct {
 }
 
 func (p *platform) NewContractManager(dbase db.Database, dir string, logger log.Logger) (contract.ContractManager, error) {
+	if err := blockv1.CheckAndApplyPatch(dbase); err != nil {
+		return nil, err
+	}
 	return newContractManager(p, dbase, dir, logger)
 }
 
