@@ -13,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 func validateAmount(amount *big.Int) error {
@@ -248,6 +249,10 @@ func (ctx *callContextImpl) CallOnTimer(to module.Address, params []byte) error 
 
 func (ctx *callContextImpl) Governance() module.Address {
 	return ctx.cc.Governance()
+}
+
+func (ctx *callContextImpl) FrameLogger() *trace.Logger {
+	return ctx.cc.FrameLogger()
 }
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
