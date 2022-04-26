@@ -130,3 +130,97 @@ func TestReceipt_DisableLogBloom(t *testing.T) {
 		})
 	}
 }
+
+func TestReceipt_Fee(t *testing.T) {
+	database := db.NewMapDB()
+	eoa1 := common.MustNewAddressFromString("hx9834234")
+	contract1 := common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+	contract2 := common.MustNewAddressFromString("cx0000000000000000000000000000000000000002")
+	contract3 := common.MustNewAddressFromString("cx0000000000000000000000000000000000000003")
+
+	t.Run("paid all by eoa", func(t *testing.T) {
+		r := NewReceipt(database, module.LatestRevision, contract1)
+		stepUsed := big.NewInt(1000)
+		stepPrice := big.NewInt(85)
+		r.SetResult(module.StatusSuccess, stepUsed, stepPrice, nil)
+
+		fee := new(big.Int).Mul(stepUsed, stepPrice)
+		assert.Equal(t, fee, r.Fee())
+		assert.Equal(t, fee, r.FeeByEOA())
+	})
+
+	t.Run("paid by eoa and contract", func(t *testing.T) {
+		r := NewReceipt(database, module.LatestRevision, contract1)
+		stepPrice := big.NewInt(85)
+
+		stepByVirtual := big.NewInt(100)
+		stepByDeposit := big.NewInt(120)
+		stepByContract := new(big.Int).Add(stepByVirtual, stepByDeposit)
+		stepByEOA := big.NewInt(780)
+		stepUsed := new(big.Int).Add(stepByContract, stepByEOA)
+
+		r.AddPayment(contract1, stepByContract, stepByDeposit)
+		r.AddPayment(eoa1, stepByEOA, stepByEOA)
+		r.SetResult(module.StatusSuccess, stepUsed, stepPrice, nil)
+
+		stepsForFee := new(big.Int).Add(stepByDeposit, stepByEOA)
+		fee := new(big.Int).Mul(stepsForFee, stepPrice)
+		feeByEOA := new(big.Int).Mul(stepByEOA, stepPrice)
+		assert.Equal(t, fee, r.Fee())
+		assert.Equal(t, feeByEOA, r.FeeByEOA())
+	})
+
+	t.Run("paid by virtual step only", func(t *testing.T) {
+		r := NewReceipt(database, module.LatestRevision, contract1)
+		stepPrice := big.NewInt(85)
+
+		stepByVirtual := big.NewInt(100)
+		stepByContract := stepByVirtual
+		stepByEOA := big.NewInt(0)
+		stepUsed := new(big.Int).Add(stepByContract, stepByEOA)
+
+		r.AddPayment(contract1, stepByVirtual, nil)
+		r.SetResult(module.StatusSuccess, stepUsed, stepPrice, nil)
+
+		fee := new(big.Int)
+		feeByEOA := new(big.Int).Mul(stepByEOA, stepPrice)
+		assert.Equal(t, fee, r.Fee())
+		assert.Equal(t, feeByEOA, r.FeeByEOA())
+	})
+
+	t.Run("paid by eoa and multiple contracts", func(t *testing.T) {
+		r := NewReceipt(database, module.LatestRevision, contract1)
+		stepPrice := big.NewInt(85)
+
+		stepByVirtual := big.NewInt(100)
+		stepByDeposit := big.NewInt(120)
+		stepByContract := new(big.Int).Add(stepByVirtual, stepByDeposit)
+
+		stepByVirtual2 := big.NewInt(0)
+		stepByDeposit2 := big.NewInt(200)
+		stepByContract2 := new(big.Int).Add(stepByVirtual2, stepByDeposit2)
+
+		stepByVirtual3 := big.NewInt(10)
+		stepByContract3 := stepByVirtual3
+
+		stepByEOA := big.NewInt(780)
+
+		stepUsed := new(big.Int).Add(stepByContract, stepByContract2)
+		stepUsed.Add(stepUsed, stepByContract3)
+		stepUsed.Add(stepUsed, stepByEOA)
+
+		r.AddPayment(contract1, stepByContract, stepByDeposit)
+		r.AddPayment(contract2, stepByContract2, stepByDeposit2)
+		r.AddPayment(contract3, stepByContract3, nil)
+		r.AddPayment(eoa1, stepByEOA, stepByEOA)
+		r.SetResult(module.StatusSuccess, stepUsed, stepPrice, nil)
+
+		stepForFee := new(big.Int).Add(stepByDeposit, stepByEOA)
+		stepForFee.Add(stepForFee, stepByDeposit2)
+		fee := new(big.Int).Mul(stepForFee, stepPrice)
+
+		feeByEOA := new(big.Int).Mul(stepByEOA, stepPrice)
+		assert.Equal(t, fee, r.Fee())
+		assert.Equal(t, feeByEOA, r.FeeByEOA())
+	})
+}

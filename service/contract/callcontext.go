@@ -626,31 +626,34 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 type stepPayers struct {
 	payer   module.Address
 	portion int
-	payed   *big.Int
+	steps   *big.Int
+	deposit *big.Int
 }
 
 func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
 	sp := new(big.Int).SetInt64(int64(p.portion))
 	sp.Mul(sp, s).Div(sp, big.NewInt(100))
 	as := cc.GetAccountState(p.payer.ID())
-	payed, err := as.PaySteps(cc, sp)
+	steps, deposit, err := as.PaySteps(cc, sp)
 	if err != nil {
 		return nil, err
 	}
-	if payed != nil && payed.Sign() > 0 {
-		p.payed = payed
+	if steps != nil && steps.Sign() > 0 {
+		p.steps = steps
+		p.deposit = deposit
 	}
-	return payed, nil
+	return steps, nil
 }
 
 func (p *stepPayers) GetLogs(r txresult.Receipt) bool {
-	if p.payed != nil {
-		r.AddPayment(p.payer, p.payed)
+	if p.steps != nil {
+		r.AddPayment(p.payer, p.steps, p.deposit)
 		return true
 	}
 	return false
 }
 
 func (p *stepPayers) ClearLogs() {
-	p.payed = nil
+	p.steps = nil
+	p.deposit = nil
 }

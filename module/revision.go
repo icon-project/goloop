@@ -31,6 +31,7 @@ const (
 	LegacyBalanceCheck
 	LegacyInputJSON
 	LegacyNoTimeout
+	FixLostFeeByDeposit
 	LastRevisionBit
 )
 

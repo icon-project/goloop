@@ -37,7 +37,7 @@ const (
 )
 
 var revisionFlags = []module.Revision{
-	0,
+	module.FixLostFeeByDeposit,
 	0,
 	0,
 	module.InputCostingWithJSON,

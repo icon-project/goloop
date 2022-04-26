@@ -99,7 +99,7 @@ type AccountState interface {
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
-	PaySteps(pc PayContext, steps *big.Int) (*big.Int, error)
+	PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int, error)
 	CanAcceptTx(pc PayContext) bool
 	CheckDeposit(pc PayContext) bool
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
@@ -886,12 +886,13 @@ func (s *accountStateImpl) WithdrawDeposit(dc DepositContext, id []byte, value *
 	return amount, fee, nil
 }
 
-func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
+func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int, error) {
 	if pc.FeeSharingEnabled() && s.deposits.Has() {
 		s.markDirty()
-		return s.deposits.PaySteps(pc, steps), nil
+		paidSteps, stepsByDeposit := s.deposits.PaySteps(pc, steps)
+		return paidSteps, stepsByDeposit, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
@@ -1037,8 +1038,8 @@ func (a *accountROState) WithdrawDeposit(dc DepositContext, id []byte, value *bi
 	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) PaySteps(pc PayContext, steps *big.Int) (*big.Int, error) {
-	return nil, errors.InvalidStateError.New("ReadOnlyState")
+func (a *accountROState) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int, error) {
+	return nil, nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func newAccountROState(dbase db.Database, snapshot AccountSnapshot) AccountState {

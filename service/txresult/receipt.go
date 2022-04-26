@@ -215,6 +215,8 @@ type receipt struct {
 	eventLogs trie.ImmutableForObject
 	logsBloom []byte
 	reason    error
+	// steps for fee
+	feeSteps *big.Int
 }
 
 func (r *receipt) SCOREAddress() module.Address {
@@ -402,10 +404,23 @@ func (r *receipt) GetProofOfEvent(i int) ([][]byte, error) {
 	return proof, nil
 }
 
-func (r *receipt) AddPayment(addr module.Address, steps *big.Int) {
+// AddPayment add payment information
+// addr is payer. steps is total steps paid by the payer.
+// feeSteps is amount of steps for fee.
+// ( steps - feeSteps ) is virtual steps paid by the payer.
+// feeSteps can be nil if there is no steps for fee
+func (r *receipt) AddPayment(addr module.Address, steps *big.Int, feeSteps *big.Int) {
 	ok := r.data.FeeDetail.AddPayment(addr, steps)
 	if ok && r.version < Version3 {
 		r.version = Version3
+	}
+	// cumulate steps for fee
+	if feeSteps != nil {
+		if r.feeSteps == nil {
+			r.feeSteps = feeSteps
+		} else {
+			r.feeSteps = new(big.Int).Add(r.feeSteps, feeSteps)
+		}
 	}
 }
 
@@ -483,7 +498,16 @@ func failureReasonByCode(status module.Status) *failureReason {
 type Receipt interface {
 	module.Receipt
 	AddLog(addr module.Address, indexed, data [][]byte)
-	AddPayment(addr module.Address, steps *big.Int)
+	// AddPayment adds payment information.
+	// addr is payer. steps is total steps paid by the payer.
+	// feeSteps is amount of steps for fee.
+	// ( steps - feeSteps ) is virtual steps paid by the payer.
+	// feeSteps can be nil if there is no steps for fee
+	AddPayment(addr module.Address, steps *big.Int, feeSteps *big.Int)
+	// FeeByEOA returns a fee paid by EOA (not including deposit).
+	FeeByEOA() *big.Int
+	// Fee returns total fee (excluding virtual steps).
+	Fee() *big.Int
 	DisableLogsBloom()
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
 	SetResult(status module.Status, used, price *big.Int, addr module.Address)
@@ -668,15 +692,29 @@ func (r *receipt) StepUsed() *big.Int {
 	return p
 }
 
-func (r *receipt) stepPayed() *big.Int {
+func (r *receipt) stepsPaidByEOA() *big.Int {
 	if r.data.FeeDetail.Has() {
-		return r.data.FeeDetail.PayedByEOA()
+		return r.data.FeeDetail.GetStepsPaidByEOA()
 	}
 	return r.data.StepUsed.Value()
 }
 
 func (r *receipt) Fee() *big.Int {
-	return new(big.Int).Mul(r.stepPayed(), r.data.StepPrice.Value())
+	var feeSteps *big.Int
+	if r.data.FeeDetail.Has() {
+		if r.feeSteps != nil {
+			feeSteps = r.feeSteps
+		} else {
+			return new(big.Int)
+		}
+	} else {
+		feeSteps = r.data.StepUsed.Value()
+	}
+	return new(big.Int).Mul(feeSteps, r.data.StepPrice.Value())
+}
+
+func (r *receipt) FeeByEOA() *big.Int {
+	return new(big.Int).Mul(r.stepsPaidByEOA(), r.data.StepPrice.Value())
 }
 
 func (r *receipt) Status() module.Status {

@@ -113,13 +113,14 @@ func (d feeDetail) Iterator() module.FeePaymentIterator {
 	}
 }
 
-func (d feeDetail) PayedByEOA() *big.Int {
+func (d feeDetail) GetStepsPaidByEOA() *big.Int {
+	steps := new(big.Int)
 	for _, v := range d {
 		if !v.Payer.IsContract() {
-			return v.Amount.Value()
+			steps.Add(steps, v.Amount.Value())
 		}
 	}
-	return new(big.Int)
+	return steps
 }
 
 type feePaymentItem struct {

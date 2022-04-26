@@ -180,8 +180,9 @@ func TestDepositList_WithdrawDepositV1(t *testing.T) {
 		steps = steps.Div(steps, dc.price)
 		depositSteps, depositRemain := new(big.Int).DivMod(amount, dc.price, new(big.Int))
 		steps = steps.Add(steps, depositSteps)
-		payed := dl.PaySteps(dc, steps)
-		assert.Equal(t, steps, payed)
+		paidSteps, stepsByDeposit := dl.PaySteps(dc, steps)
+		assert.Equal(t, steps, paidSteps)
+		assert.Equal(t, depositSteps, stepsByDeposit)
 
 		dc.height += dc.period
 
@@ -210,13 +211,17 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 		steps = steps.Div(steps, bigInt100)
 		steps = steps.Div(steps, dc.price)
 
+		depositSteps := new(big.Int)
+
 		for i := 0; i < 10; i++ {
 			dc.tid = tid1
 			err := dl.AddDeposit(dc, amount)
 			assert.NoError(t, err)
 
 			dc.height += 1
-			dl.PaySteps(dc, steps)
+			if _, ds := dl.PaySteps(dc, steps); ds != nil {
+				depositSteps.Add(depositSteps, ds)
+			}
 
 			dc.height += dc.period/2 - 1
 			dc.tid = tid2
@@ -230,7 +235,9 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 			assert.NoError(t, err)
 
 			dc.height += 1
-			dl.PaySteps(dc, steps)
+			if _, ds := dl.PaySteps(dc, steps); ds != nil {
+				depositSteps.Add(depositSteps, ds)
+			}
 
 			dc.height += dc.period/2 - 1
 			am, fee, err := dl.WithdrawDeposit(dc, tid1, nil)
@@ -238,6 +245,8 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 			assert.Equal(t, 0, fee.Sign())
 			assert.Equal(t, 0, am.Cmp(amount))
 		}
+
+		assert.Equal(t, 0, depositSteps.Sign())
 	})
 
 	t.Run("using two deposits", func(t *testing.T) {
@@ -258,7 +267,7 @@ func TestDepositList_WithdrawDeposit2(t *testing.T) {
 		steps.Mul(steps, big.NewInt(2))
 
 		dc.height += 1
-		payed := dl.PaySteps(dc, steps)
+		payed, _ := dl.PaySteps(dc, steps)
 		assert.Equal(t, 0, steps.Cmp(payed))
 	})
 }
@@ -368,17 +377,19 @@ func TestDepositList_WithdrawDepositV2(t *testing.T) {
 	})
 
 	t.Run("paying all and withdraw", func(t *testing.T) {
+		amount2 := big.NewInt(50010)
 		dl := newDepositList()
-		err := dl.AddDeposit(dc, amount)
+		err := dl.AddDeposit(dc, amount2)
 		assert.NoError(t, err)
 
 		assert.True(t, dl.CanPay(dc))
 
-		// use some steps
+		// try to pay more steps, but it's limited to the deposit
 		dc.height += 1
-		steps, remains := new(big.Int).DivMod(amount, dc.price, new(big.Int))
-		payed := dl.PaySteps(dc, steps)
+		steps, remains := new(big.Int).DivMod(amount2, dc.price, new(big.Int))
+		payed, depositSteps := dl.PaySteps(dc, new(big.Int).Add(big.NewInt(3), steps))
 		assert.Equal(t, steps, payed)
+		assert.Equal(t, payed, depositSteps)
 
 		dc.height += 1
 

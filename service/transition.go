@@ -626,6 +626,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	virtualFee := new(big.Int)
 
 	t.logsBloom.SetInt64(0)
+	fixLostFeeByDeposit := ctx.Revision().Has(module.FixLostFeeByDeposit)
 	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for _, r := range receipts {
 			used := r.StepUsed()
@@ -633,7 +634,11 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			r.SetCumulativeStepUsed(cumulativeSteps)
 
 			virtualFee.Add(virtualFee, new(big.Int).Mul(used, r.StepPrice()))
-			gatheredFee.Add(gatheredFee, r.Fee())
+			if fixLostFeeByDeposit {
+				gatheredFee.Add(gatheredFee, r.Fee())
+			} else {
+				gatheredFee.Add(gatheredFee, r.FeeByEOA())
+			}
 
 			t.logsBloom.Merge(r.LogsBloom())
 		}
