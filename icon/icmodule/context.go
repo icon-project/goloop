@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 type WorldContext interface {
@@ -33,4 +34,5 @@ type CallContext interface {
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	CallOnTimer(to module.Address, params []byte) error
 	Governance() module.Address
+	FrameLogger() *trace.Logger
 }

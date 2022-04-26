@@ -22,11 +22,13 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 var (
@@ -271,6 +273,10 @@ func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
 
 func (ctx *callContext) Governance() module.Address {
 	return ctx.Governance()
+}
+
+func (ctx *callContext) FrameLogger() *trace.Logger {
+	return trace.LoggerOf(log.GlobalLogger())
 }
 
 func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
