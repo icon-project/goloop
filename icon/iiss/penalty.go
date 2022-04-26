@@ -83,28 +83,24 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	bonders := pb.BonderList()
-	totalSlashBond := new(big.Int)
-	totalStakeSlashed := new(big.Int)
-	totalStake := new(big.Int).Set(es.State.GetTotalStake())
+	slashedBondSum := new(big.Int)
+	slashedStakeSum := new(big.Int)
 
 	// slash bonds deposited by all bonders
 	for _, bonder := range bonders {
 		var expire int64
-		var slashBond, slashUnbond *big.Int
+		var slashedBond, slashedUnbond *big.Int
+		slashedStake := new(big.Int)
 		account := es.State.GetAccountState(bonder)
-		bonderStakeSlashed := new(big.Int)
-		logger.TSystemf("BONDER_SLASH start bonder=%s", bonder)
+		logger.TSystemf("IISS bonder slash loop start bonder=%s", bonder)
 
 		if ratio > 0 {
-			// from bonds
-			slashBond = account.SlashBond(owner, ratio)
-			bonderStakeSlashed.Add(bonderStakeSlashed, slashBond)
-			totalSlashBond.Add(totalSlashBond, slashBond)
-			logger.Debugf("owner=%s ratio=%d slashBond=%s", owner, ratio, slashBond)
+			// bond
+			slashedBond = account.SlashBond(owner, ratio)
+			slashedBondSum.Add(slashedBondSum, slashedBond)
 
-			// from unbondings
-			slashUnbond, expire = account.SlashUnbond(owner, ratio)
-			bonderStakeSlashed.Add(bonderStakeSlashed, slashUnbond)
+			// unbond
+			slashedUnbond, expire = account.SlashUnbond(owner, ratio)
 			if expire != -1 {
 				timer := es.State.GetUnbondingTimerState(expire)
 				if timer != nil {
@@ -114,15 +110,16 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 				}
 			}
 
-			// from stake
-			if err := account.SlashStake(bonderStakeSlashed); err != nil {
+			// stake
+			slashedStake.Add(slashedBond, slashedUnbond)
+			if err := account.SlashStake(slashedStake); err != nil {
 				return err
 			}
-			totalStakeSlashed.Add(totalStakeSlashed, bonderStakeSlashed)
+			slashedStakeSum.Add(slashedStakeSum, slashedStake)
 
 			// add icstage.EventBond
 			delta := map[string]*big.Int{
-				icutils.ToKey(owner): new(big.Int).Neg(slashBond),
+				icutils.ToKey(owner): new(big.Int).Neg(slashedBond),
 			}
 			if err := es.AddEventBond(cc.BlockHeight(), bonder, delta); err != nil {
 				return err
@@ -133,25 +130,29 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		cc.OnEvent(
 			state.SystemAddress,
 			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
-			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(bonderStakeSlashed)},
+			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(slashedStake)},
 		)
+		// slashedStake is the same as the sum of slashedBond and slashedUnbond
 		logger.TSystemf(
-			"BONDER_SLASH end bonder=%s stakeSlashed=%v bondSlashed=%v unbondSlashed=%v",
-			bonder, bonderStakeSlashed, slashBond, slashUnbond,
+			"IISS bonder slash loop end bonder=%s slashedBond=%v slashedUnbond=%v slashedStake=%v",
+			bonder, slashedBond, slashedUnbond, slashedStake,
 		)
 	}
 
-	if err := es.State.SetTotalStake(totalStake.Sub(totalStake, totalStakeSlashed)); err != nil {
+	// newTotalStake = oldTotalStake - slashedStakeSum
+	oldTotalStake := es.State.GetTotalStake()
+	newTotalStake := new(big.Int).Sub(oldTotalStake, slashedStakeSum)
+	if err := es.State.SetTotalStake(newTotalStake); err != nil {
 		return err
 	}
-	if err := es.State.ReducePRepBonded(owner, totalSlashBond); err != nil {
+	if err := es.State.ReducePRepBonded(owner, slashedBondSum); err != nil {
 		return err
 	}
-	err := cc.HandleBurn(state.SystemAddress, totalStakeSlashed)
+	err := cc.HandleBurn(state.SystemAddress, slashedStakeSum)
 
 	logger.TSystemf(
-		"SLASH end owner=%s bondSlashed=%v stakeSlashed=%v",
-		owner, totalSlashBond, totalStakeSlashed,
+		"IISS slash end owner=%s slashedBondSum=%v slashedStakeSum=%v oldTotalStake=%v newTotalStake=%v",
+		owner, slashedBondSum, slashedStakeSum, oldTotalStake, newTotalStake,
 	)
 	return err
 }
