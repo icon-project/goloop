@@ -17,13 +17,16 @@
 package btp
 
 import (
+	"sort"
+
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/module"
 )
 
 type SectionBuilder interface {
 	SendMessage(nid int64, msg []byte)
 	EnsureSection(nid int64)
-	Build() module.BTPSection
+	Build() (module.BTPSection, error)
 }
 
 type StateView interface {
@@ -38,6 +41,90 @@ type StateView interface {
 	GetNetworkType(ntid int64) (*NetworkType, error)
 }
 
-func NewBuilder(view StateView) SectionBuilder {
-	return nil
+func NewSectionBuilder(view StateView) SectionBuilder {
+	return &sectionBuilder{
+		view:           view,
+		networkEntries: make(map[int64]*networkEntry),
+	}
+}
+
+type networkEntry struct {
+	messages [][]byte
+}
+
+type sectionBuilder struct {
+	view           StateView
+	networkEntries map[int64]*networkEntry
+}
+
+func (sb *sectionBuilder) SendMessage(nid int64, msg []byte) {
+	ne, ok := sb.networkEntries[nid]
+	if !ok {
+		ne = &networkEntry{}
+		sb.networkEntries[nid] = ne
+	}
+	ne.messages = append(ne.messages, msg)
+}
+
+func (sb *sectionBuilder) EnsureSection(nid int64) {
+	_, ok := sb.networkEntries[nid]
+	if !ok {
+		sb.networkEntries[nid] = &networkEntry{}
+	}
+}
+
+func (sb *sectionBuilder) Build() (module.BTPSection, error) {
+	nsMap := make(map[int64][]module.NetworkSection, len(sb.networkEntries))
+	for nid, ne := range sb.networkEntries {
+		nw, err := sb.view.GetNetwork(nid)
+		if err != nil {
+			return nil, err
+		}
+		ntid := nw.NetworkTypeID
+		nt, err := sb.view.GetNetworkType(ntid)
+		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID))
+		nsMap[ntid] = sortedInsertNS(nsMap[ntid], ns)
+	}
+	ntsSlice := make([]module.NetworkTypeSection, 0, len(nsMap))
+	for ntid, nsSlice := range nsMap {
+		nt, err := sb.view.GetNetworkType(ntid)
+		if err != nil {
+			return nil, err
+		}
+		nts := newNetworkTypeSection(ntid, nt, nsSlice)
+		ntsSlice = sortedInsertNTS(ntsSlice, nts)
+	}
+	return &btpSection{
+		networkTypeSections: ntsSlice,
+	}, nil
+}
+
+func sortedInsertNTS(
+	slice []module.NetworkTypeSection,
+	nts *networkTypeSection,
+) []module.NetworkTypeSection {
+	i := sort.Search(len(slice), func(i int) bool {
+		return slice[i].NetworkTypeID() >= nts.NetworkTypeID()
+	})
+	if i == len(slice) {
+		return append(slice, nts)
+	}
+	slice = append(slice[:i+1], slice[i:]...)
+	slice[i] = nts
+	return slice
+}
+
+func sortedInsertNS(
+	slice []module.NetworkSection,
+	ns *networkSection,
+) []module.NetworkSection {
+	i := sort.Search(len(slice), func(i int) bool {
+		return slice[i].NetworkID() >= ns.NetworkID()
+	})
+	if i == len(slice) {
+		return append(slice, ns)
+	}
+	slice = append(slice[:i+1], slice[i:]...)
+	slice[i] = ns
+	return slice
 }
