@@ -29,13 +29,20 @@ type BTPProof interface {
 	Add(pp BTPProofPart)
 }
 
+type WalletProvider interface {
+	// WalletFor returns key for keyType. keyType can be network type uid or
+	// DSA. For network type uid, network type specific key (usually address) is
+	// returned.  For DSA, public key for the DSA is returned.
+	WalletFor(keyType string) BaseWallet
+}
+
 type BTPProofContext interface {
 	Hash() []byte
 	Bytes() []byte
 	VerifyPart(decisionHash []byte, pp BTPProofPart) error
 	Verify(decisionHash []byte, p BTPProof) error
 	VerifyByProofBytes(decisionHash []byte, proofBytes []byte) error
-	NewProofPart(decisionHash []byte, w BaseWallet) (BTPProofPart, error)
+	NewProofPart(decisionHash []byte, wp WalletProvider) (BTPProofPart, error)
 	DSA() string
 	NewProof() BTPProof
 }
@@ -108,7 +115,7 @@ type NetworkSection interface {
 	NetworkID() int64
 	MessageRootNumber() int64
 	MessageRootSN() int64
-	UpdatedNextProofContextHash() bool
+	NextProofContextChanged() bool
 	PrevHash() []byte
 	MessageCount() int64
 	MessagesRoot() []byte

@@ -16,6 +16,8 @@
 
 package btp
 
+import "github.com/icon-project/goloop/common/codec"
+
 const (
 	EnabledNetworkTypeIDsKey = "enabledNetworkTypeIDs"
 	NetworkTypeCountKey      = "networkTypeCount"
@@ -25,32 +27,26 @@ const (
 	NetworkByIDKey           = "networkByID"
 )
 
-type NetworkTypeState int
-
-const (
-	NetworkTypeDisabled = NetworkTypeState(iota)
-	NetworkTypeEnabled
-)
-
-type NetworkState int
-
-const (
-	NetworkClosed = NetworkState(iota)
-	NetworkOpen
-)
-
 type NetworkType struct {
 	UID                  string
-	State                NetworkTypeState
+	Enabled              bool
 	NextProofContextHash []byte
 	NextProofContext     []byte
-	ConnectedNetworks    []int64
+	OpenNetworkIDs       []int64
+}
+
+func (nt *NetworkType) Bytes() []byte {
+	return codec.MustMarshalToBytes(nt)
 }
 
 type Network struct {
 	NetworkTypeID          int64
-	State                  NetworkState
+	Open                   bool
 	LastMessagesRootNumber int64
 	PrevNetworkSectionHash []byte
 	LastNetworkSectionHash []byte
+}
+
+func (nw *Network) Bytes() []byte {
+	return codec.MustMarshalToBytes(nw)
 }
