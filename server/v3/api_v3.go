@@ -201,7 +201,7 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	block, err := bm.GetLastBlock()
+	block, err := getBlock(bm, param.Height)
 	bi := common.NewBlockInfo(block.Height(), block.Timestamp())
 	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), bi)
 	if err != nil {
@@ -215,6 +215,16 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	} else {
 		return result, nil
 	}
+}
+
+func getBlock(bm module.BlockManager, height jsonrpc.HexInt) (block module.Block, err error) {
+	if height == "" {
+		block, err = bm.GetLastBlock()
+	} else {
+		h, _ := height.Int64()
+		block, err = bm.GetBlockByHeight(h)
+	}
+	return
 }
 
 func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -236,7 +246,7 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	}
 
 	var balance common.HexInt
-	block, err := bm.GetLastBlock()
+	block, err := getBlock(bm, param.Height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -263,7 +273,7 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	b, err := bm.GetLastBlock()
+	b, err := getBlock(bm, param.Height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -281,8 +291,18 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	}
 }
 
-func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
+func getTotalSupply(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
+	var param *HeightParam
+	var height jsonrpc.HexInt
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	} else {
+		if param != nil {
+			height = param.Height
+		}
+	}
+
 	chain, err := ctx.Chain()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
@@ -293,7 +313,7 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	b, err := bm.GetLastBlock()
+	b, err := getBlock(bm, height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}

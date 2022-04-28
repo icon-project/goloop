@@ -119,44 +119,6 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			},
 		},
 		&cobra.Command{
-			Use:   "balance ADDRESS",
-			Short: "GetBalance",
-			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				param := &v3.AddressParam{Address: jsonrpc.Address(args[0])}
-				balance, err := rpcClient.GetBalance(param)
-				if err != nil {
-					return err
-				}
-				return JsonPrettyPrintln(os.Stdout, balance)
-			},
-		},
-		&cobra.Command{
-			Use:   "scoreapi ADDRESS",
-			Short: "GetScoreApi",
-			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				param := &v3.ScoreAddressParam{Address: jsonrpc.Address(args[0])}
-				scoreApi, err := rpcClient.GetScoreApi(param)
-				if err != nil {
-					return err
-				}
-				return JsonPrettyPrintln(os.Stdout, scoreApi)
-			},
-		},
-		&cobra.Command{
-			Use:   "totalsupply",
-			Short: "GetTotalSupply",
-			Args:  cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, args []string) error {
-				supply, err := rpcClient.GetTotalSupply()
-				if err != nil {
-					return err
-				}
-				return JsonPrettyPrintln(os.Stdout, supply)
-			},
-		},
-		&cobra.Command{
 			Use:   "txresult HASH",
 			Short: "GetTransactionResult",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
@@ -182,6 +144,79 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				return JsonPrettyPrintln(os.Stdout, tx)
 			},
 		})
+
+	balanceCmd := &cobra.Command{
+		Use:   "balance ADDRESS",
+		Short: "GetBalance",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &v3.AddressParam{Address: jsonrpc.Address(args[0])}
+			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
+			if err != nil {
+				return err
+			}
+			if height != -1 {
+				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
+			}
+			balance, err := rpcClient.GetBalance(param)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyPrintln(os.Stdout, balance)
+		},
+	}
+	rootCmd.AddCommand(balanceCmd)
+	flags := balanceCmd.Flags()
+	flags.Int("height", -1, "BlockHeight")
+
+	scoreAPICmd := &cobra.Command{
+		Use:   "scoreapi ADDRESS",
+		Short: "GetScoreApi",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &v3.ScoreAddressParam{Address: jsonrpc.Address(args[0])}
+			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
+			if err != nil {
+				return err
+			}
+			if height != -1 {
+				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
+			}
+			scoreApi, err := rpcClient.GetScoreApi(param)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyPrintln(os.Stdout, scoreApi)
+		},
+	}
+	rootCmd.AddCommand(scoreAPICmd)
+	flags = scoreAPICmd.Flags()
+	flags.Int("height", -1, "BlockHeight")
+
+	tsCmd := &cobra.Command{
+		Use:   "totalsupply",
+		Short: "GetTotalSupply",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &v3.HeightParam{}
+			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
+			if err != nil {
+				return err
+			}
+			if height != -1 {
+				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
+			}
+			supply, err := rpcClient.GetTotalSupply(param)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyPrintln(os.Stdout, supply)
+		},
+	}
+	rootCmd.AddCommand(tsCmd)
+	flags = tsCmd.Flags()
+	flags.Int("height", -1, "BlockHeight")
+
 	callCmd := &cobra.Command{
 		Use:   "call",
 		Short: "Call",
@@ -191,6 +226,13 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				FromAddress: jsonrpc.Address(cmd.Flag("from").Value.String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
 				DataType:    "call", //refer server/v3/validation.go:27 isCall
+			}
+			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
+			if err != nil {
+				return err
+			}
+			if height != -1 {
+				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
 			}
 
 			dataM := make(map[string]interface{})
@@ -232,6 +274,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	callFlags := callCmd.Flags()
 	callFlags.String("from", "", "FromAddress")
 	callFlags.String("to", "", "ToAddress")
+	callFlags.Int("height", -1, "BlockHeight")
 	callFlags.String("method", "",
 		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
 	callFlags.StringToString("param", nil,

@@ -310,14 +310,15 @@ Does not make state transition (i.e., read-only).
 ```
 #### Parameters
 
-| KEY         | VALUE type                    | Description                                    |
-|:------------|:------------------------------|:-----------------------------------------------|
-| from        | [T_ADDR_EOA](#T_ADDR_EOA)     | Message sender's address.                      |
-| to          | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address that will handle the message.    |
-| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)   | `call` is the only possible data type.         |
-| data        | JSON object                   | See [Parameters - data](#sendtxparameterdata). |
-| data.method | JSON string                   | Name of the function.                          |
-| data.params | JSON object                   | Parameters to be passed to the function.       |
+| KEY         | VALUE type                    | Required | Description                                    |
+|:------------|:------------------------------|:---------|:-----------------------------------------------|
+| from        | [T_ADDR_EOA](#T_ADDR_EOA)     | required | Message sender's address.                      |
+| to          | [T_ADDR_SCORE](#T_ADDR_SCORE) | required | SCORE address that will handle the message.    |
+| height      | [T_INT](#T_INT)               | optional | Integer of a block height                      |
+| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)   | required | `call` is the only possible data type.         |
+| data        | JSON object                   | required | See [Parameters - data](#sendtxparameterdata). |
+| data.method | JSON string                   | required | Name of the function.                          |
+| data.params | JSON object                   | required | Parameters to be passed to the function.       |
 
 > Example responses
 
@@ -353,9 +354,10 @@ Returns the ICX balance of the given EOA or SCORE.
 ```
 #### Parameters
 
-| KEY     | VALUE type                                                 | Description             |
-|:--------|:-----------------------------------------------------------|:------------------------|
-| address | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Address of EOA or SCORE |
+| KEY     | VALUE type                                                 | Required | Description               |
+|:--------|:-----------------------------------------------------------|:---------|:--------------------------|
+| address | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | required | Address of EOA or SCORE   |
+| height  | [T_INT](#T_INT)                                            | optional | Integer of a block height |
 
 > Example responses
 
@@ -390,9 +392,10 @@ Returns SCORE's external API list.
 ```
 #### Parameters
 
-| KEY     | VALUE type                    | Description                  |
-|:--------|:------------------------------|:-----------------------------|
-| address | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address to be examined.|
+| KEY     | VALUE type                    | Required | Description                   |
+|:--------|:------------------------------|:---------|:------------------------------|
+| address | [T_ADDR_SCORE](#T_ADDR_SCORE) | required | SCORE address to be examined. |
+| height  | [T_INT](#T_INT)               | optional | Integer of a block height     |
 
 > Example responses
 
@@ -470,12 +473,14 @@ Returns total ICX coin supply that has been issued.
 {
   "id": 1001,
   "jsonrpc": "2.0",
-  "method": "icx_getTotalSupply",
+  "method": "icx_getTotalSupply"
 }
 ```
 #### Parameters
 
-None
+| KEY     | VALUE type      | Required | Description               |
+|:--------|:----------------|:---------|:--------------------------|
+| height  | [T_INT](#T_INT) | optional | Integer of a block height |
 
 > Example responses
 
