@@ -22,11 +22,13 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 var (
@@ -222,21 +224,22 @@ func (ctx *callContext) From() module.Address {
 	return ctx.from
 }
 
-func (ctx *callContext) Burn(address module.Address, amount *big.Int) error {
+func (ctx *callContext) HandleBurn(from module.Address, amount *big.Int) error {
 	sign := amount.Sign()
 	if sign < 0 {
 		return errors.Errorf("Invalid amount: %v", amount)
 	}
 	if sign > 0 {
-		_, err := ctx.AddTotalSupply(new(big.Int).Neg(amount))
+		ts, err := ctx.AddTotalSupply(new(big.Int).Neg(amount))
 		if err != nil {
 			return err
 		}
+		ctx.onICXBurnedEvent(from, amount, ts)
 	}
 	return nil
 }
 
-func (ctx *callContext) OnBurn(address module.Address, amount, ts *big.Int) {
+func (ctx *callContext) onICXBurnedEvent(from module.Address, amount, ts *big.Int) {
 	rev := ctx.Revision().Value()
 	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string
@@ -251,7 +254,7 @@ func (ctx *callContext) OnBurn(address module.Address, amount, ts *big.Int) {
 		)
 	} else {
 		ctx.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), address.Bytes()},
+			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), from.Bytes()},
 			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
 		)
 	}
@@ -270,6 +273,10 @@ func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
 
 func (ctx *callContext) Governance() module.Address {
 	return ctx.Governance()
+}
+
+func (ctx *callContext) FrameLogger() *trace.Logger {
+	return trace.LoggerOf(log.GlobalLogger())
 }
 
 func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {

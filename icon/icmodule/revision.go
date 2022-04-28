@@ -36,13 +36,14 @@ const (
 	Revision15
 	Revision16
 	Revision17
+	Revision18
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision17
+	LatestRevision  = Revision18
 )
 
 const (
@@ -91,6 +92,8 @@ const (
 	RevisionEnableSetScoreOwner = Revision17
 	RevisionExtraMainPReps      = Revision17
 	RevisionFixVotingReward     = Revision17
+
+	RevisionFixTransferRewardFund = Revision18
 )
 
 var revisionFlags = []module.Revision{
@@ -126,6 +129,12 @@ var revisionFlags = []module.Revision{
 	module.LegacyInputJSON | module.InputCostingWithJSON,
 	// Revision15
 	0,
+	// Revision16
+	0,
+	// Revision17
+	0,
+	// Revision18
+	module.FixLostFeeByDeposit,
 }
 
 func init() {

@@ -1285,7 +1285,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		return err
 	}
 	// Burn regPRepFee
-	if err = cc.Burn(from, icmodule.BigIntRegPRepFee); err != nil {
+	if err = cc.HandleBurn(from, icmodule.BigIntRegPRepFee); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err,
 			"Failed to burn regPRepFee: from=%v fee=%v",
@@ -1554,21 +1554,6 @@ func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.I
 	}
 }
 
-func (es *ExtensionStateImpl) Burn(cc icmodule.CallContext, amount *big.Int) error {
-	from := cc.From()
-	if err := cc.Withdraw(state.SystemAddress, amount); err != nil {
-		return scoreresult.InvalidParameterError.Errorf(
-			"Not enough value: from=%v value=%v", from, amount,
-		)
-	}
-	if err := cc.Burn(from, amount); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err, "Failed to burn: from=%v value=%v", from, amount,
-		)
-	}
-	return nil
-}
-
 func calculateIRep(preps icstate.PRepSet) *big.Int {
 	irep := new(big.Int)
 	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
@@ -1745,7 +1730,14 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 				},
 			)
 		} else {
-			if err := cc.Burn(from, amount); err != nil {
+			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
+				if err := cc.Withdraw(from, amount); err != nil {
+					return scoreresult.InvalidParameterError.Errorf(
+						"Not enough balance: from=%v value=%v", from, amount,
+					)
+				}
+			}
+			if err := cc.HandleBurn(from, amount); err != nil {
 				return err
 			}
 			cc.OnEvent(state.SystemAddress,
