@@ -41,6 +41,10 @@ type StateView interface {
 	GetNetworkType(ntid int64) (*NetworkType, error)
 }
 
+// NewSectionBuilder returns new SectionBuilder. view shall have the final value
+// for a transition except Network's PrevNetworkSectionHash and
+// LastNetworkSectionHash fields. The two fields shall have initial value
+// for the transition.
 func NewSectionBuilder(view StateView) SectionBuilder {
 	return &sectionBuilder{
 		view:           view,

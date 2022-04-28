@@ -628,7 +628,7 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
-func (m *manager) BTPDigestFromResult(result []byte) module.BTPDigest {
+func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
 	//TODO implement me
 	panic("implement me")
 }

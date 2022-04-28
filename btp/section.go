@@ -247,3 +247,9 @@ func (ns *networkSection) digest(
 	nd.dbase = dbase
 	return nd
 }
+
+// NewSection returns a new Section. view shall have the final value for a
+// transition.
+func NewSection(view StateView, digest module.BTPDigest) (module.BTPSection, error) {
+	return nil, nil
+}
