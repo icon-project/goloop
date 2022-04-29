@@ -457,7 +457,8 @@ Returns SCORE's external API list.
     - inputs : parameters in array
         + name : parameter name
         + type : parameter type (`int`, `str`, `bytes`, `bool`, `Address`)
-        + indexed : `0x1` if the parameter is indexed (when this is `eventlog`)
+        + default: the default value if the parameter has a default value (optional)
+        + indexed : `0x1` if the parameter is indexed (when this is `eventlog`) (optional)
     - outputs : return value
         + type : return value type (`int`, `str`, `bytes`, `bool`, `Address`, `dict`, `list`)
     - readonly : `0x1` if this is declared as `external(readonly=True)`
