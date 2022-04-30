@@ -55,6 +55,13 @@ make
 
 Output binaries are placed under `bin/` directory.
 
+### Mac M1 (Apple silicon)
+
+```export ROCKSDB_PATH="$(echo) $(brew --prefix rocksdb)"
+export SNAPPY_PATH="$(echo) $(brew --prefix snappy)"
+CGO_CFLAGS=-I$ROCKSDB_PATH/include CGO_LDFLAGS="-L$ROCKSDB_PATH/lib -L$SNAPPY_PATH/lib" make
+```
+
 
 ### Build python package
 
