@@ -48,7 +48,7 @@ type Block interface {
 	BlockData
 	NextValidators() ValidatorList
 	BTPSection() BTPSection
-	BTPBlockFor(nid int32) (BTPBlock, error)
+	BTPBlockFor(nid int64) (BTPBlock, error)
 }
 
 type BlockCandidate interface {
@@ -149,12 +149,12 @@ type BTPBlock interface {
 	Round() int32
 	NextProofContextHash() []byte
 	NetworkSectionToRoot() [][]byte
-	NetworkID() int32
+	NetworkID() int64
 	MessageRootNumber() int64
 	MessagesRootSN() int64
 	UpdatedNextProofContextHash() bool
 	PrevNetworkSectionHash() []byte
-	MessageCount() int32
+	MessageCount() int64
 	MessagesRoot() []byte
 	Proof() []byte
 	NextProofContext() []byte

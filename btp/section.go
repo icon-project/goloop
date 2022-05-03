@@ -19,32 +19,142 @@ package btp
 import (
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
-const srcNetworkUID = "icon"
+const (
+	srcNetworkUID = "icon"
+)
 
 type btpSection struct {
-	networkTypeSections []module.NetworkTypeSection
+	networkTypeSections networkTypeSectionSlice
+	digest              *btpSectionDigest
 }
 
-func (bs *btpSection) Digest(dbase db.Database) module.BTPDigest {
-	networkTypeDigests := make([]*networkTypeDigest, 0, len(bs.networkTypeSections))
-	for _, nts := range bs.networkTypeSections {
-		ntd := nts.(*networkTypeSection).digest(dbase)
-		networkTypeDigests = append(networkTypeDigests, ntd)
+func newBTPSection(ntsSlice networkTypeSectionSlice) *btpSection {
+	bs := &btpSection{
+		networkTypeSections: ntsSlice,
 	}
-	return &digest{
-		digestFormat: digestFormat{
-			NetworkTypeDigests: networkTypeDigests,
-		},
-		dbase: dbase,
+	bs.digest = &btpSectionDigest{
+		bs: bs,
 	}
+	return bs
+}
+
+func (bs *btpSection) Digest() module.BTPDigest {
+	return bs.digest
 }
 
 func (bs *btpSection) NetworkTypeSections() []module.NetworkTypeSection {
 	return bs.networkTypeSections
+}
+
+func (bs *btpSection) NetworkTypeSectionFor(ntid int64) module.NetworkTypeSection {
+	return bs.networkTypeSections.Search(ntid)
+}
+
+type btpSectionDigest struct {
+	bs                 *btpSection
+	bytes              []byte
+	hash               []byte
+	networkTypeDigests []module.NetworkTypeDigest
+	filter             module.BitSetFilter
+}
+
+func (bsd *btpSectionDigest) Bytes() []byte {
+	if bsd.bytes == nil {
+		e := codec.NewEncoderBytes(&bsd.bytes)
+		e2, _ := e.EncodeList()
+		for _, nts := range bsd.bs.networkTypeSections {
+			_ = nts.(*networkTypeSection).encodeDigest(e2)
+		}
+		_ = e.Close()
+	}
+	return bsd.bytes
+}
+
+func (bsd *btpSectionDigest) Hash() []byte {
+	if bsd.hash == nil {
+		bsd.hash = crypto.SHA3Sum256(bsd.Bytes())
+	}
+	return bsd.hash
+}
+
+func (bsd *btpSectionDigest) NetworkTypeDigests() []module.NetworkTypeDigest {
+	if bsd.networkTypeDigests == nil {
+		bsd.networkTypeDigests = make([]module.NetworkTypeDigest, 0, len(bsd.bs.networkTypeSections))
+		for _, ntd := range bsd.bs.networkTypeSections {
+			bsd.networkTypeDigests = append(bsd.networkTypeDigests, ntd.(*networkTypeSection))
+		}
+	}
+	return bsd.networkTypeDigests
+}
+
+func (bsd *btpSectionDigest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
+	return bsd.bs.networkTypeSections.Search(ntid).(*networkTypeSection)
+}
+
+func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
+	bk, err := dbase.GetBucket(db.BytesByHash)
+	if err != nil {
+		return err
+	}
+	err = bk.Set(bsd.Hash(), bsd.Bytes())
+	if err != nil {
+		return err
+	}
+	for _, nts := range bsd.bs.networkTypeSections {
+		err = nts.(*networkTypeSection).flushMessages(dbase)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bsd *btpSectionDigest) NetworkSectionFilter() module.BitSetFilter {
+	if bsd.filter == nil {
+		bsd.filter = module.MakeBitSetFilter(nidFilterBytes)
+		for _, nts := range bsd.bs.networkTypeSections {
+			nts.(*networkTypeSection).updateFilter(bsd.filter)
+		}
+	}
+	return bsd.filter
+}
+
+type networkTypeSection struct {
+	networkTypeID        int64
+	nextProofContext     module.BTPProofContext
+	nextProofContextHash []byte
+	networkSections      networkSectionSlice
+	networkSectionsRoot  []byte
+	networkDigests       []module.NetworkDigest
+	mod                  module.NetworkTypeModule
+	hash                 []byte
+}
+
+func newNetworkTypeSection(
+	ntid int64,
+	nt *NetworkType,
+	nsSlice networkSectionSlice,
+) (*networkTypeSection, error) {
+	mod := ntm.ForUID(nt.UID)
+	npc, err := mod.NewProofContextFromBytes(nt.NextProofContext)
+	if err != nil {
+		return nil, err
+	}
+	nts := &networkTypeSection{
+		networkTypeID:       ntid,
+		nextProofContext:    npc,
+		networkSections:     nsSlice,
+		networkSectionsRoot: mod.MerkleRoot(&nsSlice),
+		mod:                 mod,
+	}
+	ntsFormat := nts.networkTypeSectionFormat()
+	nts.hash = mod.Hash(codec.MustMarshalToBytes(&ntsFormat))
+	return nts, nil
 }
 
 type networkTypeSectionFormat struct {
@@ -52,33 +162,11 @@ type networkTypeSectionFormat struct {
 	NetworkSectionsRoot  []byte
 }
 
-type networkTypeSection struct {
-	format           networkTypeSectionFormat
-	networkTypeID    int64
-	nextProofContext module.BTPProofContext
-	networkSections  []module.NetworkSection
-	hash             []byte
-	mod              ntm.Module
-}
-
-func newNetworkTypeSection(
-	ntid int64,
-	nt *NetworkType,
-	nsSlice []module.NetworkSection,
-) *networkTypeSection {
-	nts := &networkTypeSection{}
-	nts.format.NextProofContextHash = nt.NextProofContextHash
-	hashes := make([][]byte, 0, len(nts.networkSections))
-	for _, ns := range nts.networkSections {
-		hashes = append(hashes, ns.Hash())
+func (nts *networkTypeSection) networkTypeSectionFormat() networkTypeSectionFormat {
+	return networkTypeSectionFormat{
+		NextProofContextHash: nts.nextProofContext.Hash(),
+		NetworkSectionsRoot:  nts.networkSectionsRoot,
 	}
-	mod := ntm.ForUID(nt.UID)
-	nts.format.NetworkSectionsRoot = mod.MerkleRoot(hashes)
-	nts.networkTypeID = ntid
-	nts.networkSections = nsSlice
-	nts.hash = mod.Hash(codec.MustMarshalToBytes(&nts.format))
-	nts.mod = mod
-	return nts
 }
 
 func (nts *networkTypeSection) NetworkTypeID() int64 {
@@ -90,7 +178,7 @@ func (nts *networkTypeSection) Hash() []byte {
 }
 
 func (nts *networkTypeSection) NetworkSectionsRoot() []byte {
-	return nts.format.NetworkSectionsRoot
+	return nts.networkSectionsRoot
 }
 
 func (nts *networkTypeSection) NextProofContext() module.BTPProofContext {
@@ -101,29 +189,37 @@ func (nts *networkTypeSection) NetworkSections() []module.NetworkSection {
 	return nts.networkSections
 }
 
-func (nts *networkTypeSection) RLPEncodeSelf(e codec.Encoder) error {
-	return e.Encode(&nts.format)
+func (nts *networkTypeSection) NetworkTypeSectionHash() []byte {
+	return nts.hash
 }
 
-func (nts *networkTypeSection) RLPDecodeSelf(d codec.Decoder) error {
-	return d.Decode(&nts.format)
+func (nts *networkTypeSection) NetworkDigests() []module.NetworkDigest {
+	if nts.networkDigests == nil {
+		nts.networkDigests = make([]module.NetworkDigest, 0, len(nts.networkSections))
+		for _, ns := range nts.networkSections {
+			nts.networkDigests = append(nts.networkDigests, ns.(*networkSection))
+		}
+	}
+	return nts.networkDigests
 }
 
-func (nts *networkTypeSection) digest(dbase db.Database) *networkTypeDigest {
-	ndSlice := make([]*networkDigest, 0, len(nts.networkSections))
-	for _, ns := range nts.networkSections {
-		ndSlice = append(ndSlice, ns.(*networkSection).digest(nts.mod, dbase))
+func (nts *networkTypeSection) NetworkDigestFor(nid int64) module.NetworkDigest {
+	ns := nts.networkSections.Search(nid)
+	if ns != nil {
+		return ns.(*networkSection)
 	}
-	ntd := &networkTypeDigest{
-		format: networkTypeDigestFormat{
-			NetworkTypeID:          nts.NetworkTypeID(),
-			NetworkTypeSectionHash: nts.hash,
-			NetworkDigests:         make([]networkDigest, 0, len(nts.networkSections)),
-		},
-		mod:   nts.mod,
-		dbase: dbase,
+	return nil
+}
+
+func (nts *networkTypeSection) NetworkSectionsRootWithMod(mod module.NetworkTypeModule) []byte {
+	if nts.mod == mod {
+		return nts.networkSectionsRoot
 	}
-	return ntd
+	return mod.MerkleRoot(nts.networkSections)
+}
+
+func (nts *networkTypeSection) NetworkSectionFor(nid int64) module.NetworkSection {
+	return nts.networkSections.Search(nid)
 }
 
 type networkTypeSectionDecision struct {
@@ -132,7 +228,7 @@ type networkTypeSectionDecision struct {
 	Height                 int64
 	Round                  int32
 	NetworkTypeSectionHash []byte
-	mod                    ntm.Module
+	mod                    module.NetworkTypeModule
 	bytes                  []byte
 	hash                   []byte
 }
@@ -162,6 +258,77 @@ func (nts *networkTypeSection) NewDecision(height int64, round int32) module.Byt
 	}
 }
 
+func (nts *networkTypeSection) updateFilter(f module.BitSetFilter) {
+	for _, ns := range nts.networkSections {
+		f.Set(ns.NetworkID())
+	}
+}
+
+func (nts *networkTypeSection) flushMessages(dbase db.Database) error {
+	for _, ns := range nts.networkSections {
+		err := ns.(*networkSection).flushMessages(dbase)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	err = e2.EncodeMulti(
+		nts.NetworkTypeID(),
+		nts.NetworkTypeSectionHash(),
+	)
+	if err != nil {
+		return err
+	}
+	for _, ns := range nts.networkSections {
+		err = ns.(*networkSection).encodeDigest(e2)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type networkSection struct {
+	networkID         int64
+	messageRootNumber int64
+	prevHash          []byte
+	messages          [][]byte
+	messageHashes     hashesCat
+	messagesRoot      []byte
+	mod               module.NetworkTypeModule
+	hash              []byte
+}
+
+func newNetworkSection(
+	nid int64,
+	nw *Network,
+	ne *networkEntry,
+	mod module.NetworkTypeModule,
+) *networkSection {
+	ns := &networkSection{
+		networkID:         nid,
+		messageRootNumber: nw.LastMessagesRootNumber,
+		prevHash:          nw.LastNetworkSectionHash,
+		messages:          ne.messages,
+	}
+	ns.messageHashes = makeHashesCat(len(ne.messages))
+	for _, msg := range ne.messages {
+		ns.messageHashes.Append(mod.Hash(msg))
+	}
+	ns.messagesRoot = mod.MerkleRoot(&ns.messageHashes)
+	ns.mod = mod
+	nsFormat := ns.networkSectionFormat()
+	ns.hash = mod.Hash(codec.MustMarshalToBytes(&nsFormat))
+	return ns
+}
+
 type networkSectionFormat struct {
 	NetworkID         int64
 	MessageRootNumber int64
@@ -170,86 +337,101 @@ type networkSectionFormat struct {
 	MessagesRoot      []byte
 }
 
-type networkSection struct {
-	format networkSectionFormat
-	hash   []byte
-}
-
-func newNetworkSection(
-	nid int64,
-	nw *Network,
-	ne *networkEntry,
-	mod ntm.Module,
-) *networkSection {
-	ns := &networkSection{}
-	ns.format.NetworkID = nid
-	ns.format.MessageRootNumber = nw.LastMessagesRootNumber
-	ns.format.PrevHash = nw.LastNetworkSectionHash
-	ns.format.MessageCount = int64(len(ne.messages))
-	hashes := make([][]byte, 0, len(ne.messages))
-	for _, msg := range ne.messages {
-		hashes = append(hashes, mod.Hash(msg))
+func (ns *networkSection) networkSectionFormat() networkSectionFormat {
+	return networkSectionFormat{
+		NetworkID:         ns.networkID,
+		MessageRootNumber: ns.messageRootNumber,
+		PrevHash:          ns.prevHash,
+		MessageCount:      int64(ns.messageHashes.Len()),
+		MessagesRoot:      ns.messagesRoot,
 	}
-	ns.format.MessagesRoot = mod.MerkleRoot(hashes)
-	ns.hash = mod.Hash(codec.MustMarshalToBytes(&ns.format))
-	return ns
 }
 
 func (ns *networkSection) NetworkID() int64 {
-	return ns.format.NetworkID
+	return ns.networkID
 }
 
 func (ns *networkSection) MessageRootNumber() int64 {
-	return ns.format.MessageRootNumber
+	return ns.messageRootNumber
 }
 
 func (ns *networkSection) MessageRootSN() int64 {
-	return ns.format.MessageRootNumber >> 1
+	return ns.messageRootNumber >> 1
 }
 
 func (ns *networkSection) NextProofContextChanged() bool {
-	return ns.format.MessageRootNumber&1 != 0
+	return ns.messageRootNumber&1 != 0
 }
 
 func (ns *networkSection) PrevHash() []byte {
-	return ns.format.PrevHash
+	return ns.prevHash
 }
 
 func (ns *networkSection) MessageCount() int64 {
-	return ns.format.MessageCount
+	return int64(ns.messageHashes.Len())
 }
 
 func (ns *networkSection) MessagesRoot() []byte {
-	return ns.format.MessagesRoot
+	return ns.messagesRoot
 }
 
 func (ns *networkSection) Hash() []byte {
 	return ns.hash
 }
 
-func (ns *networkSection) RLPEncodeSelf(e codec.Encoder) error {
-	return e.Encode(&ns.format)
+func (ns *networkSection) NetworkSectionHash() []byte {
+	return ns.hash
 }
 
-func (ns *networkSection) RLPDecodeSelf(d codec.Decoder) error {
-	return d.Decode(&ns.format)
+func (ns *networkSection) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
+	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(mod.UID()))
+	if err != nil {
+		return nil, err
+	}
+	bs, err := bk.Get(ns.messagesRoot)
+	if err != nil {
+		return nil, err
+	}
+	return newMessageList(bs, dbase, ns.mod), nil
 }
 
-func (ns *networkSection) digest(
-	mod ntm.Module,
-	dbase db.Database,
-) *networkDigest {
-	nd := &networkDigest{}
-	nd.format.NetworkID = ns.NetworkID()
-	nd.format.NetworkSectionHash = ns.Hash()
-	nd.format.MessagesRoot = ns.MessagesRoot()
-	nd.mod = mod
-	nd.dbase = dbase
-	return nd
+func (ns *networkSection) flushMessages(dbase db.Database) error {
+	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(ns.mod.UID()))
+	if err != nil {
+		return err
+	}
+	err = bk.Set(ns.messagesRoot, ns.messageHashes.Bytes)
+	if err != nil {
+		return err
+	}
+	bk, err = dbase.GetBucket(db.BytesByHashFor(ns.mod.UID()))
+	for i, msg := range ns.messages {
+		err = bk.Set(ns.messageHashes.Get(i), msg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ns *networkSection) encodeDigest(e codec.Encoder) error {
+	return e.EncodeListOf(
+		ns.NetworkID(),
+		ns.NetworkSectionHash(),
+		ns.MessagesRoot(),
+	)
 }
 
 // NewSection returns a new Section. view shall have the final value for a
 // transition.
-func NewSection(view StateView, digest module.BTPDigest) (module.BTPSection, error) {
-	return nil, nil
+func NewSection(
+	digest module.BTPDigest,
+	view StateView,
+	dbase db.Database,
+) (module.BTPSection, error) {
+	return &btpSectionFromDigest{
+		digest: digest,
+		view:   view,
+		dbase:  dbase,
+	}, nil
 }

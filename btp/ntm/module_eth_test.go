@@ -76,6 +76,16 @@ func toHashers(data [][]byte) []interface{ Hash() []byte } {
 	return hashers
 }
 
+type bytesList [][]byte
+
+func (b bytesList) Len() int {
+	return len(b)
+}
+
+func (b bytesList) Get(i int) []byte {
+	return b[i]
+}
+
 func TestEthModule_MerkleRoot(t *testing.T) {
 	assert := assert.New(t)
 	testCase := []struct {
@@ -157,9 +167,8 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
 		},
 	}
-	var mod ethModule
+	mod := ForUID(ethUID)
 	for _, c := range testCase {
-		assert.EqualValues(c.exp, mod.MerkleRoot(c.in), "in=%x", c.in)
-		assert.EqualValues(c.exp, mod.MerkleRootHashers(toHashers(c.in)))
+		assert.EqualValues(c.exp, mod.MerkleRoot(bytesList(c.in)), "in=%x", c.in)
 	}
 }

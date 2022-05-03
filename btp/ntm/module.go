@@ -16,25 +16,62 @@
 
 package ntm
 
-import "github.com/icon-project/goloop/module"
+import (
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/module"
+)
 
-// Module represents a network type module.
 type Module interface {
 	UID() string
 	Hash(data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error)
 	NewProofContext(pubKeys [][]byte) module.BTPProofContext
-	MerkleRoot(data [][]byte) []byte
-	MerkleRootHashCat(hashes []byte) []byte
 }
 
-var modules = make(map[string]Module)
+type networkTypeModule struct {
+	Module
+}
 
-func ForUID(uid string) Module {
+func (ntm *networkTypeModule) merkleRoot(data [][]byte) []byte {
+	encoderBuf := make([]byte, 0, 128)
+	for len(data) > 1 {
+		if len(data)%2 != 0 {
+			data = append(data, nil)
+		}
+		i, j := 0, 0
+		for ; i < len(data); i, j = i+2, j+1 {
+			e := codec.NewEncoderBytes(&encoderBuf)
+			log.Must(e.EncodeListOf(data[i], data[i+1]))
+			data[j] = ntm.Hash(encoderBuf)
+		}
+		data = data[:j]
+	}
+	return data[0]
+}
+
+func (ntm *networkTypeModule) MerkleRoot(data module.BytesList) []byte {
+	if data.Len() == 0 {
+		return nil
+	}
+	if data.Len() == 1 {
+		return data.Get(0)
+	}
+	evenedLen := (data.Len() + 1) &^ 1
+	dataBuf := make([][]byte, 0, evenedLen)
+	for i := 0; i < data.Len(); i++ {
+		dataBuf = append(dataBuf, data.Get(i))
+	}
+	return ntm.merkleRoot(dataBuf)
+}
+
+var modules = make(map[string]module.NetworkTypeModule)
+
+func ForUID(uid string) module.NetworkTypeModule {
 	return modules[uid]
 }
 
-func register(uid string, ntm Module) {
-	modules[uid] = ntm
+func register(uid string, mod Module) {
+	modules[uid] = &networkTypeModule{Module: mod}
 }

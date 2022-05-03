@@ -16,7 +16,9 @@
 
 package module
 
-import "github.com/icon-project/goloop/common/db"
+import (
+	"github.com/icon-project/goloop/common/db"
+)
 
 // Proof
 
@@ -58,42 +60,44 @@ type BTPDigest interface {
 	Bytes() []byte
 	Hash() []byte
 	NetworkTypeDigests() []NetworkTypeDigest
-	Flush() error
-	FlushAll() error
+	NetworkTypeDigestFor(ntid int64) NetworkTypeDigest
+	Flush(dbase db.Database) error
+	NetworkSectionFilter() BitSetFilter
 }
 
 type NetworkTypeDigest interface {
 	NetworkTypeID() int64
 	NetworkTypeSectionHash() []byte
 	NetworkDigests() []NetworkDigest
+	NetworkDigestFor(nid int64) NetworkDigest
+	NetworkSectionsRootWithMod(mod NetworkTypeModule) []byte
 }
 
 type NetworkDigest interface {
 	NetworkID() int64
 	NetworkSectionHash() []byte
 	MessagesRoot() []byte
-	MessageList() (BTPMessageList, error)
+	MessageList(dbase db.Database, mod NetworkTypeModule) (BTPMessageList, error)
 }
 
 type BTPMessageList interface {
 	Bytes() []byte
 	MessagesRoot() []byte
+	Len() int64
 	Get(idx int) (BTPMessage, error)
-	Flush() error
-	FlushAll() error
 }
 
 type BTPMessage interface {
 	Hash() []byte
 	Bytes() []byte
-	Flush() error
 }
 
 // Section
 
 type BTPSection interface {
-	Digest(dbase db.Database) BTPDigest
+	Digest() BTPDigest
 	NetworkTypeSections() []NetworkTypeSection
+	NetworkTypeSectionFor(ntid int64) NetworkTypeSection
 }
 
 type NetworkTypeSection interface {
@@ -101,7 +105,7 @@ type NetworkTypeSection interface {
 	Hash() []byte
 	NetworkSectionsRoot() []byte
 	NextProofContext() BTPProofContext
-	NetworkSections() []NetworkSection
+	NetworkSectionFor(nid int64) NetworkSection
 	NewDecision(height int64, round int32) BytesHasher
 }
 
@@ -119,4 +123,19 @@ type NetworkSection interface {
 	PrevHash() []byte
 	MessageCount() int64
 	MessagesRoot() []byte
+}
+
+type BytesList interface {
+	Len() int
+	Get(i int) []byte
+}
+
+// NetworkTypeModule represents a network type module.
+type NetworkTypeModule interface {
+	UID() string
+	Hash(data []byte) []byte
+	DSA() string
+	NewProofContextFromBytes(bs []byte) (BTPProofContext, error)
+	NewProofContext(pubKeys [][]byte) BTPProofContext
+	MerkleRoot(bytesList BytesList) []byte
 }

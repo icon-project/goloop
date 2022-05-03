@@ -272,7 +272,7 @@ func (b *blockV2) BTPSection() module.BTPSection {
 	panic("implement me")
 }
 
-func (b *blockV2) BTPBlockFor(nid int32) (module.BTPBlock, error) {
+func (b *blockV2) BTPBlockFor(nid int64) (module.BTPBlock, error) {
 	//TODO implement me
 	panic("implement me")
 }

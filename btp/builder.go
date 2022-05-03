@@ -78,7 +78,7 @@ func (sb *sectionBuilder) EnsureSection(nid int64) {
 }
 
 func (sb *sectionBuilder) Build() (module.BTPSection, error) {
-	nsMap := make(map[int64][]module.NetworkSection, len(sb.networkEntries))
+	nsMap := make(map[int64]networkSectionSlice, len(sb.networkEntries))
 	for nid, ne := range sb.networkEntries {
 		nw, err := sb.view.GetNetwork(nid)
 		if err != nil {
@@ -87,48 +87,87 @@ func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 		ntid := nw.NetworkTypeID
 		nt, err := sb.view.GetNetworkType(ntid)
 		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID))
-		nsMap[ntid] = sortedInsertNS(nsMap[ntid], ns)
+		nsMap[ntid] = nsMap[ntid].SortedInsert(ns)
 	}
-	ntsSlice := make([]module.NetworkTypeSection, 0, len(nsMap))
+	ntsSlice := networkTypeSectionSlice(make([]module.NetworkTypeSection, 0, len(nsMap)))
 	for ntid, nsSlice := range nsMap {
 		nt, err := sb.view.GetNetworkType(ntid)
 		if err != nil {
 			return nil, err
 		}
-		nts := newNetworkTypeSection(ntid, nt, nsSlice)
-		ntsSlice = sortedInsertNTS(ntsSlice, nts)
+		nts, err := newNetworkTypeSection(ntid, nt, nsSlice)
+		if err != nil {
+			return nil, err
+		}
+		ntsSlice = ntsSlice.SortedInsert(nts)
 	}
-	return &btpSection{
-		networkTypeSections: ntsSlice,
-	}, nil
+	return newBTPSection(ntsSlice), nil
 }
 
-func sortedInsertNTS(
-	slice []module.NetworkTypeSection,
-	nts *networkTypeSection,
-) []module.NetworkTypeSection {
-	i := sort.Search(len(slice), func(i int) bool {
-		return slice[i].NetworkTypeID() >= nts.NetworkTypeID()
-	})
-	if i == len(slice) {
-		return append(slice, nts)
-	}
-	slice = append(slice[:i+1], slice[i:]...)
-	slice[i] = nts
-	return slice
+type networkTypeSectionSlice []module.NetworkTypeSection
+
+func (ntss networkTypeSectionSlice) Len() int {
+	return len(ntss)
 }
 
-func sortedInsertNS(
-	slice []module.NetworkSection,
-	ns *networkSection,
-) []module.NetworkSection {
-	i := sort.Search(len(slice), func(i int) bool {
-		return slice[i].NetworkID() >= ns.NetworkID()
+func (ntss networkTypeSectionSlice) Get(i int) []byte {
+	return ntss[i].Hash()
+}
+
+func (ntss networkTypeSectionSlice) SortedInsert(
+	nts module.NetworkTypeSection,
+) networkTypeSectionSlice {
+	i := sort.Search(len(ntss), func(i int) bool {
+		return ntss[i].NetworkTypeID() >= nts.NetworkTypeID()
 	})
-	if i == len(slice) {
-		return append(slice, ns)
+	if i == len(ntss) {
+		return append(ntss, nts)
 	}
-	slice = append(slice[:i+1], slice[i:]...)
-	slice[i] = ns
-	return slice
+	ntss = append(ntss[:i+1], ntss[i:]...)
+	ntss[i] = nts
+	return ntss
+}
+
+func (ntss networkTypeSectionSlice) Search(ntid int64) module.NetworkTypeSection {
+	i := sort.Search(len(ntss), func(i int) bool {
+		return ntss[i].NetworkTypeID() >= ntid
+	})
+	if i < len(ntss) && ntss[i].NetworkTypeID() == ntid {
+		return ntss[i]
+	}
+	return nil
+}
+
+type networkSectionSlice []module.NetworkSection
+
+func (nss networkSectionSlice) Len() int {
+	return len(nss)
+}
+
+func (nss networkSectionSlice) Get(i int) []byte {
+	return nss[i].Hash()
+}
+
+func (nss networkSectionSlice) SortedInsert(
+	ns module.NetworkSection,
+) networkSectionSlice {
+	i := sort.Search(len(nss), func(i int) bool {
+		return nss[i].NetworkID() >= ns.NetworkID()
+	})
+	if i == len(nss) {
+		return append(nss, ns)
+	}
+	nss = append(nss[:i+1], nss[i:]...)
+	nss[i] = ns
+	return nss
+}
+
+func (nss networkSectionSlice) Search(nid int64) module.NetworkSection {
+	i := sort.Search(len(nss), func(i int) bool {
+		return nss[i].NetworkID() >= nid
+	})
+	if i < len(nss) && nss[i].NetworkID() == nid {
+		return nss[i]
+	}
+	return nil
 }

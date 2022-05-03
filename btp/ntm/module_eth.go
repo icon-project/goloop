@@ -19,7 +19,6 @@ package ntm
 import (
 	"golang.org/x/crypto/sha3"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -73,50 +72,6 @@ func (m *ethModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext,
 
 func (m *ethModule) NewProofContext(pubKeys [][]byte) module.BTPProofContext {
 	return newEthProofContext(pubKeys)
-}
-
-func (m *ethModule) merkleRoot(data [][]byte) []byte {
-	encoderBuf := make([]byte, 0, 128)
-	for len(data) > 1 {
-		if len(data)%2 != 0 {
-			data = append(data, nil)
-		}
-		i, j := 0, 0
-		for ; i < len(data); i, j = i+2, j+1 {
-			e := codec.NewEncoderBytes(&encoderBuf)
-			log.Must(e.EncodeListOf(data[i], data[i+1]))
-			data[j] = keccak256(encoderBuf)
-		}
-		data = data[:j]
-	}
-	return data[0]
-}
-
-func (m *ethModule) MerkleRoot(data [][]byte) []byte {
-	if len(data) == 0 {
-		return nil
-	}
-	if len(data) == 1 {
-		return data[0]
-	}
-	evenedLen := (len(data) + 1) &^ 1
-	dataBuf := make([][]byte, len(data), evenedLen)
-	copy(dataBuf, data)
-	return m.merkleRoot(dataBuf)
-}
-
-func (m *ethModule) MerkleRootHashers(hashers []interface{ Hash() []byte }) []byte {
-	evenedLen := (len(hashers) + 1) &^ 1
-	data := make([][]byte, 0, evenedLen)
-	for _, hasher := range hashers {
-		data = append(data, hasher.Hash())
-	}
-	return m.merkleRoot(data)
-}
-
-func (m *ethModule) MerkleRootHashCat(hashes []byte) []byte {
-	//TODO implement me
-	panic("implement me")
 }
 
 func init() {

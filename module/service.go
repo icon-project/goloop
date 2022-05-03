@@ -354,6 +354,7 @@ type ServiceManager interface {
 	// GetNextBlockVersion returns version of next block
 	GetNextBlockVersion(result []byte) int
 
+	// BTPSectionFromResult returns BTPSection for the result
 	BTPSectionFromResult(result []byte) (BTPSection, error)
 
 	// HasTransaction returns whether it has specified transaction in the pool
