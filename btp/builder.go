@@ -30,14 +30,7 @@ type SectionBuilder interface {
 }
 
 type StateView interface {
-	// GetNetwork returns Network. Requirement for the fields of the Network
-	// is different field by field. PrevNetworkSectionHash and
-	// LastNetworkSectionHash field shall have initial value before the
-	// transactions of a transition is executed. Other fields shall have
-	// final value after the transactions of a transition is executed.
 	GetNetwork(nid int64) (*Network, error)
-
-	// GetNetworkType returns final value of NetworkType
 	GetNetworkType(ntid int64) (*NetworkType, error)
 }
 
