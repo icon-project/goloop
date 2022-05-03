@@ -488,16 +488,20 @@ func (ns *networkSectionFromDigest) NetworkID() int64 {
 	return ns.nd.NetworkID()
 }
 
-func (ns *networkSectionFromDigest) MessageRootNumber() int64 {
-	return ns.nw.LastMessagesRootNumber
+func (ns *networkSectionFromDigest) UpdateNumber() int64 {
+	updateNumber := ns.FirstMessageSN() << 1
+	if ns.NextProofContextChanged() {
+		updateNumber |= 1
+	}
+	return updateNumber
 }
 
-func (ns *networkSectionFromDigest) MessageRootSN() int64 {
-	return ns.MessageRootNumber() >> 1
+func (ns *networkSectionFromDigest) FirstMessageSN() int64 {
+	return ns.nw.NextMessageSN - ns.MessageCount()
 }
 
 func (ns *networkSectionFromDigest) NextProofContextChanged() bool {
-	return ns.MessageRootNumber()&0x1 != 0
+	return ns.nw.NextProofContextChanged
 }
 
 func (ns *networkSectionFromDigest) PrevHash() []byte {

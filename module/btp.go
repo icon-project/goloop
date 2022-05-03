@@ -117,8 +117,9 @@ type BytesHasher interface {
 type NetworkSection interface {
 	Hash() []byte
 	NetworkID() int64
-	MessageRootNumber() int64
-	MessageRootSN() int64
+	// UpdateNumber returns FirstMessageSN() << 1 | NextProofContextChanged()
+	UpdateNumber() int64
+	FirstMessageSN() int64
 	NextProofContextChanged() bool
 	PrevHash() []byte
 	MessageCount() int64

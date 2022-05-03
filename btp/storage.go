@@ -40,11 +40,12 @@ func (nt *NetworkType) Bytes() []byte {
 }
 
 type Network struct {
-	NetworkTypeID          int64
-	Open                   bool
-	LastMessagesRootNumber int64
-	PrevNetworkSectionHash []byte
-	LastNetworkSectionHash []byte
+	NetworkTypeID           int64
+	Open                    bool
+	NextMessageSN           int64
+	NextProofContextChanged bool
+	PrevNetworkSectionHash  []byte
+	LastNetworkSectionHash  []byte
 }
 
 func (nw *Network) Bytes() []byte {

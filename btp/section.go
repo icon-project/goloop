@@ -296,14 +296,14 @@ func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
 }
 
 type networkSection struct {
-	networkID         int64
-	messageRootNumber int64
-	prevHash          []byte
-	messages          [][]byte
-	messageHashes     hashesCat
-	messagesRoot      []byte
-	mod               module.NetworkTypeModule
-	hash              []byte
+	networkID     int64
+	updateNumber  int64
+	prevHash      []byte
+	messages      [][]byte
+	messageHashes hashesCat
+	messagesRoot  []byte
+	mod           module.NetworkTypeModule
+	hash          []byte
 }
 
 func newNetworkSection(
@@ -312,11 +312,15 @@ func newNetworkSection(
 	ne *networkEntry,
 	mod module.NetworkTypeModule,
 ) *networkSection {
+	updateNumber := (nw.NextMessageSN - int64(len(ne.messages))) << 1
+	if nw.NextProofContextChanged {
+		updateNumber |= 1
+	}
 	ns := &networkSection{
-		networkID:         nid,
-		messageRootNumber: nw.LastMessagesRootNumber,
-		prevHash:          nw.LastNetworkSectionHash,
-		messages:          ne.messages,
+		networkID:    nid,
+		updateNumber: updateNumber,
+		prevHash:     nw.LastNetworkSectionHash,
+		messages:     ne.messages,
 	}
 	ns.messageHashes = makeHashesCat(len(ne.messages))
 	for _, msg := range ne.messages {
@@ -330,20 +334,20 @@ func newNetworkSection(
 }
 
 type networkSectionFormat struct {
-	NetworkID         int64
-	MessageRootNumber int64
-	PrevHash          []byte
-	MessageCount      int64
-	MessagesRoot      []byte
+	NetworkID    int64
+	UpdateNumber int64
+	PrevHash     []byte
+	MessageCount int64
+	MessagesRoot []byte
 }
 
 func (ns *networkSection) networkSectionFormat() networkSectionFormat {
 	return networkSectionFormat{
-		NetworkID:         ns.networkID,
-		MessageRootNumber: ns.messageRootNumber,
-		PrevHash:          ns.prevHash,
-		MessageCount:      int64(ns.messageHashes.Len()),
-		MessagesRoot:      ns.messagesRoot,
+		NetworkID:    ns.networkID,
+		UpdateNumber: ns.updateNumber,
+		PrevHash:     ns.prevHash,
+		MessageCount: int64(ns.messageHashes.Len()),
+		MessagesRoot: ns.messagesRoot,
 	}
 }
 
@@ -351,16 +355,16 @@ func (ns *networkSection) NetworkID() int64 {
 	return ns.networkID
 }
 
-func (ns *networkSection) MessageRootNumber() int64 {
-	return ns.messageRootNumber
+func (ns *networkSection) UpdateNumber() int64 {
+	return ns.updateNumber
 }
 
-func (ns *networkSection) MessageRootSN() int64 {
-	return ns.messageRootNumber >> 1
+func (ns *networkSection) FirstMessageSN() int64 {
+	return ns.updateNumber >> 1
 }
 
 func (ns *networkSection) NextProofContextChanged() bool {
-	return ns.messageRootNumber&1 != 0
+	return ns.updateNumber&1 != 0
 }
 
 func (ns *networkSection) PrevHash() []byte {

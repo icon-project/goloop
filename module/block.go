@@ -150,8 +150,8 @@ type BTPBlock interface {
 	NextProofContextHash() []byte
 	NetworkSectionToRoot() [][]byte
 	NetworkID() int64
-	MessageRootNumber() int64
-	MessagesRootSN() int64
+	UpdateNumber() int64
+	FirstMessageSN() int64
 	UpdatedNextProofContextHash() bool
 	PrevNetworkSectionHash() []byte
 	MessageCount() int64
