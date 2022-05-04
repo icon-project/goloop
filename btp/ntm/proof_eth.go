@@ -44,8 +44,8 @@ func (pp *ethProofPart) recover(hash []byte) (ethAddress, error) {
 }
 
 type ethProof struct {
-	Parts []ethProofPart
-	bytes []byte
+	Signatures []common.Signature
+	bytes      []byte
 }
 
 func (p *ethProof) Bytes() []byte {
@@ -56,7 +56,8 @@ func (p *ethProof) Bytes() []byte {
 }
 
 func (p *ethProof) Add(pp module.BTPProofPart) {
-	p.Parts = append(p.Parts, *pp.(*ethProofPart))
+	epp := pp.(*ethProofPart)
+	p.Signatures[epp.Index] = epp.Signature
 }
 
 type ethProofContext struct {
@@ -66,7 +67,9 @@ type ethProofContext struct {
 	addrToIndex map[string]int
 }
 
-func newEthProofContext(pubKeys [][]byte) *ethProofContext {
+func newEthProofContext(
+	pubKeys [][]byte,
+) *ethProofContext {
 	pp := &ethProofContext{
 		Validators:  make([]ethAddress, 0, len(pubKeys)),
 		addrToIndex: make(map[string]int, len(pubKeys)),
@@ -90,7 +93,9 @@ func (pc *ethProofContext) indexOf(address ethAddress) (int, bool) {
 	return idx, ok
 }
 
-func newEthProofContextFromBytes(bytes []byte) (*ethProofContext, error) {
+func newEthProofContextFromBytes(
+	bytes []byte,
+) (*ethProofContext, error) {
 	pc := &ethProofContext{}
 	_, err := codec.UnmarshalFromBytes(bytes, pc)
 	if err != nil {
@@ -130,11 +135,16 @@ func (pc *ethProofContext) VerifyPart(dHash []byte, pp module.BTPProofPart) erro
 
 func (pc *ethProofContext) Verify(dHash []byte, p module.BTPProof) error {
 	ep := p.(*ethProof)
-	if len(ep.Parts) <= 2*len(pc.Validators)/3 {
-		return errors.Errorf("not enough proof parts numValidator=%d numProofParts=%d", len(pc.Validators), len(ep.Parts))
-	}
-	set := make(map[int]struct{}, len(ep.Parts))
-	for _, epp := range ep.Parts {
+	set := make(map[int]struct{}, len(ep.Signatures))
+	valid := 0
+	for i, sig := range ep.Signatures {
+		if sig.Signature == nil {
+			continue
+		}
+		epp := ethProofPart{
+			Index:     i,
+			Signature: sig,
+		}
 		err := pc.VerifyPart(dHash, &epp)
 		if err != nil {
 			return err
@@ -145,6 +155,10 @@ func (pc *ethProofContext) Verify(dHash []byte, p module.BTPProof) error {
 		} else {
 			set[epp.Index] = struct{}{}
 		}
+		valid++
+	}
+	if valid <= 2*len(pc.Validators)/3 {
+		return errors.Errorf("not enough proof parts numValidator=%d numProofParts=%d", len(pc.Validators), len(ep.Signatures))
 	}
 	return nil
 }
@@ -188,5 +202,7 @@ func (pc *ethProofContext) DSA() string {
 }
 
 func (pc *ethProofContext) NewProof() module.BTPProof {
-	return &ethProof{}
+	return &ethProof{
+		Signatures: make([]common.Signature, len(pc.Validators)),
+	}
 }
