@@ -61,6 +61,14 @@ type BTPDigest interface {
 	Hash() []byte
 	NetworkTypeDigests() []NetworkTypeDigest
 	NetworkTypeDigestFor(ntid int64) NetworkTypeDigest
+
+	// Flush writes this BTPDigest and its connected objects.
+	// If a BTPDigest is created by a BTPSection and the BTPSection is created
+	// by btp.SectionBuilder, the BTPDigest has all the BTPMessageList's and
+	// the BTPMessage's in the section as its connected objects. Thus, they are
+	// all written when Flush is called. In other cases, a BTPDigest has no
+	// connected objects. Thus, only the BTPDigest itself is written when Flush
+	// is called.
 	Flush(dbase db.Database) error
 	NetworkSectionFilter() BitSetFilter
 }

@@ -44,6 +44,15 @@ type digest struct {
 	filter             module.BitSetFilter
 }
 
+func NewDigestFromBytes(bytes []byte) (module.BTPDigest, error) {
+	bd := &digest{}
+	_, err := codec.UnmarshalFromBytes(bytes, bd)
+	if err != nil {
+		return nil, err
+	}
+	return bd, nil
+}
+
 func (bd *digest) Bytes() []byte {
 	if bd.bytes == nil {
 		bd.bytes = codec.MustMarshalToBytes(bd.format)
@@ -76,14 +85,6 @@ func (bd *digest) Flush(dbase db.Database) error {
 	err = bk.Set(bd.Hash(), bd.Bytes())
 	if err != nil {
 		return err
-	}
-	for _, ntd := range bd.format.NetworkTypeDigests {
-		for _, nd := range ntd.format.NetworkDigests {
-			err := nd.messageList.flush()
-			if err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }
@@ -192,8 +193,8 @@ type networkDigestFormat struct {
 }
 
 type networkDigest struct {
-	format      networkDigestFormat
-	messageList *messageList
+	format        networkDigestFormat
+	messageHashes []byte
 }
 
 func (nd *networkDigest) NetworkID() int64 {
@@ -212,15 +213,18 @@ func (nd *networkDigest) MessageList(
 	dbase db.Database,
 	mod module.NetworkTypeModule,
 ) (module.BTPMessageList, error) {
-	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(mod.UID()))
-	if err != nil {
-		return nil, err
+	if nd.messageHashes == nil {
+		bk, err := dbase.GetBucket(db.ListByMerkleRootFor(mod.UID()))
+		if err != nil {
+			return nil, err
+		}
+		bs, err := bk.Get(nd.format.MessagesRoot)
+		if err != nil {
+			return nil, err
+		}
+		nd.messageHashes = bs
 	}
-	bs, err := bk.Get(nd.format.MessagesRoot)
-	if err != nil {
-		return nil, err
-	}
-	return newMessageList(bs, dbase, mod), nil
+	return newMessageList(nd.messageHashes, dbase, mod), nil
 }
 
 func (nd *networkDigest) RLPEncodeSelf(e codec.Encoder) error {
@@ -454,12 +458,14 @@ func (nts *networkTypeSectionFromDigest) NextProofContext() module.BTPProofConte
 func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) module.NetworkSection {
 	nw, err := nts.view.GetNetwork(nid)
 	log.Must(err)
-	return &networkSectionFromDigest{
-		dbase: nts.dbase,
-		mod:   nts.mod,
-		nw:    nw,
-		nd:    nts.ntd.NetworkDigestFor(nid),
-	}
+	ns, err := newNetworkSectionFromDigest(
+		nts.dbase,
+		nts.mod,
+		nw,
+		nts.ntd.NetworkDigestFor(nid),
+	)
+	log.Must(err)
+	return ns
 }
 
 func (nts *networkTypeSectionFromDigest) NewDecision(height int64, round int32) module.BytesHasher {
@@ -474,10 +480,36 @@ func (nts *networkTypeSectionFromDigest) NewDecision(height int64, round int32) 
 }
 
 type networkSectionFromDigest struct {
-	dbase db.Database
-	mod   module.NetworkTypeModule
-	nw    *Network
-	nd    module.NetworkDigest
+	dbase        db.Database
+	mod          module.NetworkTypeModule
+	nw           *Network
+	nd           module.NetworkDigest
+	updateNumber int64
+	messageCount int64
+}
+
+func newNetworkSectionFromDigest(
+	dbase db.Database,
+	mod module.NetworkTypeModule,
+	nw *Network,
+	nd module.NetworkDigest,
+) (*networkSectionFromDigest, error) {
+	ml, err := nd.MessageList(dbase, mod)
+	if err != nil {
+		return nil, err
+	}
+	updateNumber := (nw.NextMessageSN - ml.Len()) << 1
+	if nw.NextProofContextChanged {
+		updateNumber |= 1
+	}
+	return &networkSectionFromDigest{
+		dbase:        dbase,
+		mod:          mod,
+		nw:           nw,
+		nd:           nd,
+		updateNumber: updateNumber,
+		messageCount: ml.Len(),
+	}, nil
 }
 
 func (ns *networkSectionFromDigest) Hash() []byte {
@@ -489,11 +521,7 @@ func (ns *networkSectionFromDigest) NetworkID() int64 {
 }
 
 func (ns *networkSectionFromDigest) UpdateNumber() int64 {
-	updateNumber := ns.FirstMessageSN() << 1
-	if ns.NextProofContextChanged() {
-		updateNumber |= 1
-	}
-	return updateNumber
+	return ns.updateNumber
 }
 
 func (ns *networkSectionFromDigest) FirstMessageSN() int64 {
@@ -509,9 +537,7 @@ func (ns *networkSectionFromDigest) PrevHash() []byte {
 }
 
 func (ns *networkSectionFromDigest) MessageCount() int64 {
-	ml, err := ns.nd.MessageList(ns.dbase, ns.mod)
-	log.Must(err)
-	return ml.Len()
+	return ns.messageCount
 }
 
 func (ns *networkSectionFromDigest) MessagesRoot() []byte {
