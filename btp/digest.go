@@ -46,7 +46,7 @@ type digest struct {
 
 func NewDigestFromBytes(bytes []byte) (module.BTPDigest, error) {
 	bd := &digest{}
-	_, err := codec.UnmarshalFromBytes(bytes, bd)
+	_, err := codec.UnmarshalFromBytes(bytes, &bd.format)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func NewDigestFromBytes(bytes []byte) (module.BTPDigest, error) {
 
 func (bd *digest) Bytes() []byte {
 	if bd.bytes == nil {
-		bd.bytes = codec.MustMarshalToBytes(bd.format)
+		bd.bytes = codec.MustMarshalToBytes(&bd.format)
 	}
 	return bd.bytes
 }
@@ -106,7 +106,7 @@ func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
 			return bd.format.NetworkTypeDigests[i].NetworkTypeID() >= ntid
 		},
 	)
-	if i < len(bd.format.NetworkTypeDigests) && int64(i) == ntid {
+	if i < len(bd.format.NetworkTypeDigests) && bd.format.NetworkTypeDigests[i].NetworkTypeID() == ntid {
 		return &bd.format.NetworkTypeDigests[i]
 	}
 	return nil
@@ -166,7 +166,7 @@ func (ntd *networkTypeDigest) NetworkDigestFor(nid int64) module.NetworkDigest {
 			return ntd.format.NetworkDigests[i].NetworkID() >= nid
 		},
 	)
-	if i < len(ntd.format.NetworkDigests) && int64(i) == nid {
+	if i < len(ntd.format.NetworkDigests) && ntd.format.NetworkDigests[i].NetworkID() == nid {
 		return &ntd.format.NetworkDigests[i]
 	}
 	return nil
@@ -311,10 +311,6 @@ func (l *messageList) Get(idx int) (module.BTPMessage, error) {
 		data:  bs,
 		hash:  msgHash,
 	}
-	_, err = codec.UnmarshalFromBytes(bs, m)
-	if err != nil {
-		return nil, err
-	}
 	l.messages[idx] = m
 	return m, nil
 }
@@ -335,17 +331,6 @@ func (l *messageList) flush() error {
 		}
 	}
 	return nil
-}
-
-func (l *messageList) Add(msg []byte) {
-	m := &message{
-		dbase: l.dbase,
-		mod:   l.mod,
-		data:  msg,
-	}
-	l.hashesCat.Bytes = append(l.hashesCat.Bytes, m.Hash()...)
-	l.messages = append(l.messages, m)
-	l.messagesRoot = nil
 }
 
 func (l *messageList) Len() int64 {
@@ -378,6 +363,21 @@ func (m *message) flush() error {
 	return bk.Set(m.Hash(), m.Bytes())
 }
 
+// NewSection returns a new Section. view shall have the final value for a
+// transition.
+func NewSection(
+	digest module.BTPDigest,
+	view StateView,
+	dbase db.Database,
+) (module.BTPSection, error) {
+	return &btpSectionFromDigest{
+		digest:                digest,
+		view:                  view,
+		dbase:                 dbase,
+		networkTypeSectionFor: make(map[int64]*networkTypeSectionFromDigest),
+	}, nil
+}
+
 type btpSectionFromDigest struct {
 	digest                module.BTPDigest
 	view                  StateView
@@ -395,23 +395,26 @@ func (bs btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection
 		ntdSlice := bs.digest.NetworkTypeDigests()
 		ntsSlice := make([]module.NetworkTypeSection, 0, len(ntdSlice))
 		for _, ntd := range ntdSlice {
-			ntsSlice = append(
-				ntsSlice,
-				bs.NetworkTypeSectionFor(ntd.NetworkTypeID()),
-			)
+			nts, err := bs.NetworkTypeSectionFor(ntd.NetworkTypeID())
+			log.Must(err)
+			ntsSlice = append(ntsSlice, nts)
 		}
 		bs.networkTypeSections = ntsSlice
 	}
 	return bs.networkTypeSections
 }
 
-func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) module.NetworkTypeSection {
+func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
 	if bs.networkTypeSectionFor[ntid] == nil {
 		nt, err := bs.view.GetNetworkType(ntid)
-		log.Must(err)
+		if err != nil {
+			return nil, err
+		}
 		mod := ntm.ForUID(nt.UID)
 		npc, err := mod.NewProofContextFromBytes(nt.NextProofContext)
-		log.Must(err)
+		if err != nil {
+			return nil, err
+		}
 		nts := &networkTypeSectionFromDigest{
 			view:             bs.view,
 			dbase:            bs.dbase,
@@ -422,7 +425,7 @@ func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) module.NetworkT
 		}
 		bs.networkTypeSectionFor[ntid] = nts
 	}
-	return bs.networkTypeSectionFor[ntid]
+	return bs.networkTypeSectionFor[ntid], nil
 }
 
 type networkTypeSectionFromDigest struct {
@@ -447,30 +450,33 @@ func (nts *networkTypeSectionFromDigest) NetworkSectionsRoot() []byte {
 }
 
 func (nts *networkTypeSectionFromDigest) NextProofContext() module.BTPProofContext {
-	if nts.nextProofContext == nil {
-		npc, err := nts.mod.NewProofContextFromBytes(nts.nt.NextProofContext)
-		log.Must(err)
-		nts.nextProofContext = npc
-	}
 	return nts.nextProofContext
 }
 
-func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) module.NetworkSection {
+func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
 	nw, err := nts.view.GetNetwork(nid)
-	log.Must(err)
+	if err != nil {
+		return nil, err
+	}
 	ns, err := newNetworkSectionFromDigest(
 		nts.dbase,
 		nts.mod,
 		nw,
 		nts.ntd.NetworkDigestFor(nid),
 	)
-	log.Must(err)
-	return ns
+	if err != nil {
+		return nil, err
+	}
+	return ns, nil
 }
 
-func (nts *networkTypeSectionFromDigest) NewDecision(height int64, round int32) module.BytesHasher {
+func (nts *networkTypeSectionFromDigest) NewDecision(
+	srcNetworkUID []byte,
+	height int64,
+	round int32,
+) module.BytesHasher {
 	return &networkTypeSectionDecision{
-		SrcNetworkID:           []byte(srcNetworkUID),
+		SrcNetworkID:           srcNetworkUID,
 		DstType:                nts.ntd.NetworkTypeID(),
 		Height:                 height,
 		Round:                  round,

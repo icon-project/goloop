@@ -105,7 +105,7 @@ type BTPMessage interface {
 type BTPSection interface {
 	Digest() BTPDigest
 	NetworkTypeSections() []NetworkTypeSection
-	NetworkTypeSectionFor(ntid int64) NetworkTypeSection
+	NetworkTypeSectionFor(ntid int64) (NetworkTypeSection, error)
 }
 
 type NetworkTypeSection interface {
@@ -113,8 +113,8 @@ type NetworkTypeSection interface {
 	Hash() []byte
 	NetworkSectionsRoot() []byte
 	NextProofContext() BTPProofContext
-	NetworkSectionFor(nid int64) NetworkSection
-	NewDecision(height int64, round int32) BytesHasher
+	NetworkSectionFor(nid int64) (NetworkSection, error)
+	NewDecision(srcNetworkUID []byte, height int64, round int32) BytesHasher
 }
 
 type BytesHasher interface {
@@ -132,6 +132,16 @@ type NetworkSection interface {
 	PrevHash() []byte
 	MessageCount() int64
 	MessagesRoot() []byte
+}
+
+type BytesSlice [][]byte
+
+func (b *BytesSlice) Len() int {
+	return len(*b)
+}
+
+func (b *BytesSlice) Get(i int) []byte {
+	return (*b)[i]
 }
 
 type BytesList interface {

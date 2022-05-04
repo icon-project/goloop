@@ -21,11 +21,8 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-)
-
-const (
-	srcNetworkUID = "icon"
 )
 
 type btpSection struct {
@@ -51,8 +48,12 @@ func (bs *btpSection) NetworkTypeSections() []module.NetworkTypeSection {
 	return bs.networkTypeSections
 }
 
-func (bs *btpSection) NetworkTypeSectionFor(ntid int64) module.NetworkTypeSection {
-	return bs.networkTypeSections.Search(ntid)
+func (bs *btpSection) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
+	nts := bs.networkTypeSections.Search(ntid)
+	if nts == nil {
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
+	}
+	return nts, nil
 }
 
 type btpSectionDigest struct {
@@ -68,9 +69,10 @@ func (bsd *btpSectionDigest) Bytes() []byte {
 	if !bsd.bytesGenerated {
 		e := codec.NewEncoderBytes(&bsd.bytes)
 		if len(bsd.bs.networkTypeSections) > 0 {
-			e2, _ := e.EncodeList()
+			e2, _ := e.EncodeList()  // bd struct
+			e3, _ := e2.EncodeList() // ntd slice
 			for _, nts := range bsd.bs.networkTypeSections {
-				_ = nts.(*networkTypeSection).encodeDigest(e2)
+				_ = nts.(*networkTypeSection).encodeDigest(e3)
 			}
 		}
 		_ = e.Close()
@@ -221,8 +223,12 @@ func (nts *networkTypeSection) NetworkSectionsRootWithMod(mod module.NetworkType
 	return mod.MerkleRoot(nts.networkSections)
 }
 
-func (nts *networkTypeSection) NetworkSectionFor(nid int64) module.NetworkSection {
-	return nts.networkSections.Search(nid)
+func (nts *networkTypeSection) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
+	ns := nts.networkSections.Search(nid)
+	if ns == nil {
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
+	}
+	return ns, nil
 }
 
 type networkTypeSectionDecision struct {
@@ -250,9 +256,13 @@ func (d *networkTypeSectionDecision) Hash() []byte {
 	return d.hash
 }
 
-func (nts *networkTypeSection) NewDecision(height int64, round int32) module.BytesHasher {
+func (nts *networkTypeSection) NewDecision(
+	srcNetworkUID []byte,
+	height int64,
+	round int32,
+) module.BytesHasher {
 	return &networkTypeSectionDecision{
-		SrcNetworkID:           []byte(srcNetworkUID),
+		SrcNetworkID:           srcNetworkUID,
 		DstType:                nts.networkTypeID,
 		Height:                 height,
 		Round:                  round,
@@ -289,8 +299,12 @@ func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
 	if err != nil {
 		return err
 	}
+	e3, err := e2.EncodeList() // nd slice
+	if err != nil {
+		return err
+	}
 	for _, ns := range nts.networkSections {
-		err = ns.(*networkSection).encodeDigest(e2)
+		err = ns.(*networkSection).encodeDigest(e3)
 		if err != nil {
 			return err
 		}
@@ -403,6 +417,9 @@ func (ns *networkSection) MessageList(dbase db.Database, mod module.NetworkTypeM
 }
 
 func (ns *networkSection) flushMessages(dbase db.Database) error {
+	if ns.messagesRoot == nil {
+		return nil
+	}
 	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(ns.mod.UID()))
 	if err != nil {
 		return err
@@ -427,18 +444,4 @@ func (ns *networkSection) encodeDigest(e codec.Encoder) error {
 		ns.NetworkSectionHash(),
 		ns.MessagesRoot(),
 	)
-}
-
-// NewSection returns a new Section. view shall have the final value for a
-// transition.
-func NewSection(
-	digest module.BTPDigest,
-	view StateView,
-	dbase db.Database,
-) (module.BTPSection, error) {
-	return &btpSectionFromDigest{
-		digest: digest,
-		view:   view,
-		dbase:  dbase,
-	}, nil
 }
