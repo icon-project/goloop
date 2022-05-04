@@ -57,6 +57,7 @@ func (bs *btpSection) NetworkTypeSectionFor(ntid int64) module.NetworkTypeSectio
 
 type btpSectionDigest struct {
 	bs                 *btpSection
+	bytesGenerated     bool
 	bytes              []byte
 	hash               []byte
 	networkTypeDigests []module.NetworkTypeDigest
@@ -64,11 +65,13 @@ type btpSectionDigest struct {
 }
 
 func (bsd *btpSectionDigest) Bytes() []byte {
-	if bsd.bytes == nil {
+	if !bsd.bytesGenerated {
 		e := codec.NewEncoderBytes(&bsd.bytes)
-		e2, _ := e.EncodeList()
-		for _, nts := range bsd.bs.networkTypeSections {
-			_ = nts.(*networkTypeSection).encodeDigest(e2)
+		if len(bsd.bs.networkTypeSections) > 0 {
+			e2, _ := e.EncodeList()
+			for _, nts := range bsd.bs.networkTypeSections {
+				_ = nts.(*networkTypeSection).encodeDigest(e2)
+			}
 		}
 		_ = e.Close()
 	}
