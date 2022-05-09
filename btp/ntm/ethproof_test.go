@@ -43,7 +43,7 @@ func (w walletProvider) WalletFor(keyType string) module.BaseWallet {
 	return w.wallets[keyType]
 }
 
-func newWalletProvider() *walletProvider {
+func newSecp256k1WalletProvider() *walletProvider {
 	w := wallet.New()
 	wp := walletProvider{
 		wallets: map[string]module.BaseWallet{
@@ -53,7 +53,7 @@ func newWalletProvider() *walletProvider {
 	return &wp
 }
 
-func newTestSetup(t *testing.T, count int) *testSetup {
+func newEthTestSetup(t *testing.T, count int) *testSetup {
 	s := &testSetup{
 		assert:  assert.New(t),
 		count:   count,
@@ -91,7 +91,7 @@ func (s *testSetup) newProofOfLen(l int, msgHash []byte) module.BTPProof {
 }
 
 func TestEthProofContext_NewProofPart_OK(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	for i := 0; i < s.count; i++ {
 		pp, err := s.pc.NewProofPart(msgHash, s.wallets[i])
@@ -102,15 +102,15 @@ func TestEthProofContext_NewProofPart_OK(t *testing.T) {
 }
 
 func TestEthProofContext_NewProofPart_FailInvalidPK(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
-	wp := newWalletProvider()
+	wp := newSecp256k1WalletProvider()
 	_, err := s.pc.NewProofPart(msgHash, wp)
 	s.assert.Error(err)
 }
 
 func TestEthProofContext_VerifyPart_FailWrongMessage(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	pp, err := s.pc.NewProofPart(keccak256([]byte("abc")), s.wallets[0])
 	s.assert.NoError(err)
 	err = s.pc.VerifyPart(keccak256([]byte("abcd")), pp)
@@ -118,7 +118,7 @@ func TestEthProofContext_VerifyPart_FailWrongMessage(t *testing.T) {
 }
 
 func TestEthProofPart_codec(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	pp, err := s.pc.NewProofPart(msgHash, s.wallets[2])
 	s.assert.NoError(err)
@@ -132,7 +132,7 @@ func TestEthProofPart_codec(t *testing.T) {
 }
 
 func TestEthProof_codec(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(3, msgHash)
 	ep := p.(*ethProof)
@@ -145,7 +145,7 @@ func TestEthProof_codec(t *testing.T) {
 }
 
 func TestEthProofContext_codec(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(3, msgHash)
 	pcBytes := s.pc.Bytes()
@@ -186,7 +186,7 @@ func TestEthProofContext_Verify(t *testing.T) {
 		{true, 5, 7},
 	}
 	for _, c := range testCase {
-		s := newTestSetup(t, c.pkCount)
+		s := newEthTestSetup(t, c.pkCount)
 		p := s.newProofOfLen(c.ppCount, msgHash)
 		err := s.pc.Verify(msgHash, p)
 		if c.ok {
@@ -206,8 +206,8 @@ func TestEthProofContext_Verify(t *testing.T) {
 }
 
 func TestEthProofContext_Verify_FailInvalidPK(t *testing.T) {
-	s := newTestSetup(t, 4)
-	s2 := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
+	s2 := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(2, msgHash)
 	pp, err := s2.pc.NewProofPart(msgHash, s2.wallets[0])
@@ -217,7 +217,7 @@ func TestEthProofContext_Verify_FailInvalidPK(t *testing.T) {
 }
 
 func TestEthProofContext_Verify_FailDuplicatedPK(t *testing.T) {
-	s := newTestSetup(t, 4)
+	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(2, msgHash)
 	pp, err := s.pc.NewProofPart(msgHash, s.wallets[0])

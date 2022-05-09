@@ -44,7 +44,7 @@ func Test_keccak256(t *testing.T) {
 	assert.EqualValues(exp, keccak256(msg))
 }
 
-func Test_newAddressFromPubKey(t *testing.T) {
+func TestEthModule_newAddressFromPubKey(t *testing.T) {
 	assert := assert.New(t)
 
 	skHex := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"

@@ -26,9 +26,12 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	secp256k1DSA = "ecdsa/secp256k1"
+)
+
 type secp256k1proofContextModule interface {
 	UID() string
-	DSA() string
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }
 
@@ -201,9 +204,9 @@ func (pc *secp256k1ProofContext) NewProofPart(
 	if w != nil {
 		addr = w.PublicKey()
 	} else {
-		w = wp.WalletFor(pc.mod.DSA())
+		w = wp.WalletFor(secp256k1DSA)
 		if w == nil {
-			return nil, errors.Errorf("no wallet for uid=%s dsa=%s", pc.mod.UID(), pc.mod.DSA())
+			return nil, errors.Errorf("no wallet for uid=%s dsa=%s", pc.mod.UID(), secp256k1DSA)
 		}
 		var err error
 		addr, err = pc.mod.AddressFromPubKey(w.PublicKey())
@@ -228,7 +231,7 @@ func (pc *secp256k1ProofContext) NewProofPart(
 }
 
 func (pc *secp256k1ProofContext) DSA() string {
-	return pc.mod.DSA()
+	return secp256k1DSA
 }
 
 func (pc *secp256k1ProofContext) NewProof() module.BTPProof {

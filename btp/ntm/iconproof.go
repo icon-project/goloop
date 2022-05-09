@@ -16,14 +16,14 @@
 
 package ntm
 
-type ethProofPart = secp256k1ProofPart
-type ethProof = secp256k1Proof
-type ethProofContext = secp256k1ProofContext
+type iconProofPart = secp256k1ProofPart
+type iconProof = secp256k1Proof
+type iconProofContext = secp256k1ProofContext
 
-func newEthProofContext(keys [][]byte) (*secp256k1ProofContext, error) {
-	return newSecp256k1ProofContext(&ethModuleInstance, keys)
+func newIconProofContext(keys [][]byte) (*secp256k1ProofContext, error) {
+	return newSecp256k1ProofContext(&iconModuleInstance, keys)
 }
 
-func newEthProofContextFromBytes(bytes []byte) (*secp256k1ProofContext, error) {
-	return newSecp256k1ProofContextFromBytes(&ethModuleInstance, bytes)
+func newIconProofContextFromBytes(bytes []byte) (*secp256k1ProofContext, error) {
+	return newSecp256k1ProofContextFromBytes(&iconModuleInstance, bytes)
 }

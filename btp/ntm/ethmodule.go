@@ -25,7 +25,7 @@ import (
 
 const (
 	ethUID        = "eth"
-	ethDSA        = "ecdsa/secp256k1"
+	ethDSA        = secp256k1DSA
 	ethAddressLen = 20
 )
 
