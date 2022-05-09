@@ -160,4 +160,5 @@ type NetworkTypeModule interface {
 	// a slice of networkType specific keys (usually a slice of addresses).
 	NewProofContext(keys [][]byte) (BTPProofContext, error)
 	MerkleRoot(bytesList BytesList) []byte
+	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }

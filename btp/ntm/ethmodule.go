@@ -69,8 +69,8 @@ func (m *ethModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext,
 	return newEthProofContextFromBytes(bs)
 }
 
-func (m *ethModule) NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error) {
-	return newEthProofContext(pubKeys)
+func (m *ethModule) NewProofContext(keys [][]byte) (module.BTPProofContext, error) {
+	return newEthProofContext(keys)
 }
 
 func (m *ethModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {

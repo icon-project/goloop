@@ -31,6 +31,7 @@ type testSetup struct {
 	count   int
 	wallets []*walletProvider
 	pubKeys [][]byte
+	addrs   [][]byte
 	pc      *ethProofContext
 }
 
@@ -58,6 +59,7 @@ func newTestSetup(t *testing.T, count int) *testSetup {
 		count:   count,
 		wallets: make([]*walletProvider, 0, count),
 		pubKeys: make([][]byte, 0, count),
+		addrs:   make([][]byte, 0, count),
 	}
 	for i := 0; i < count; i++ {
 		w := wallet.New()
@@ -68,9 +70,12 @@ func newTestSetup(t *testing.T, count int) *testSetup {
 		}
 		s.wallets = append(s.wallets, &wp)
 		s.pubKeys = append(s.pubKeys, w.PublicKey())
+		addr, err := newEthAddressFromPubKey(s.pubKeys[i])
+		s.assert.NoError(err)
+		s.addrs = append(s.addrs, addr)
 	}
 	var err error
-	s.pc, err = newEthProofContext(s.pubKeys)
+	s.pc, err = newEthProofContext(s.addrs)
 	s.assert.NoError(err)
 	return s
 }

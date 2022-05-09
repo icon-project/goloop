@@ -76,18 +76,14 @@ type secp256k1ProofContext struct {
 
 func newSecp256k1ProofContext(
 	mod secp256k1proofContextModule,
-	pubKeys [][]byte,
+	keys [][]byte,
 ) (*secp256k1ProofContext, error) {
 	pp := &secp256k1ProofContext{
-		Validators:  make([][]byte, 0, len(pubKeys)),
-		addrToIndex: make(map[string]int, len(pubKeys)),
+		Validators:  make([][]byte, 0, len(keys)),
+		addrToIndex: make(map[string]int, len(keys)),
 		mod:         mod,
 	}
-	for i, pk := range pubKeys {
-		addr, err := newEthAddressFromPubKey(pk)
-		if err != nil {
-			return nil, err
-		}
+	for i, addr := range keys {
 		pp.Validators = append(pp.Validators, addr)
 		pp.addrToIndex[string(addr)] = i
 	}
@@ -201,14 +197,21 @@ func (pc *secp256k1ProofContext) NewProofPart(
 	wp module.WalletProvider,
 ) (module.BTPProofPart, error) {
 	w := wp.WalletFor(pc.mod.UID())
-	if w == nil {
+	var addr []byte
+	if w != nil {
+		addr = w.PublicKey()
+	} else {
 		w = wp.WalletFor(pc.mod.DSA())
+		if w == nil {
+			return nil, errors.Errorf("no wallet for uid=%s dsa=%s", pc.mod.UID(), pc.mod.DSA())
+		}
+		var err error
+		addr, err = pc.mod.AddressFromPubKey(w.PublicKey())
+		if err != nil {
+			return nil, err
+		}
 	}
 	sig, err := w.Sign(dHash)
-	if err != nil {
-		return nil, err
-	}
-	addr, err := pc.mod.AddressFromPubKey(w.PublicKey())
 	if err != nil {
 		return nil, err
 	}
