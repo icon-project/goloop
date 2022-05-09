@@ -57,6 +57,7 @@ type Peer struct {
 	children      *NetAddressSet
 	nephews       *NetAddressSet
 	pis           *ProtocolInfos
+	pisMtx        sync.RWMutex
 	attr          map[string]interface{}
 	attrMtx       sync.RWMutex
 
@@ -92,7 +93,6 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 		nephews:     NewNetAddressSet(),
-		pis:         newProtocolInfos(),
 		attr:        make(map[string]interface{}),
 		dial:        dial,
 	}
@@ -551,7 +551,17 @@ func (p *Peer) HasCloseError(err error) bool {
 }
 
 func (p *Peer) ProtocolInfos() *ProtocolInfos {
+	p.pisMtx.RLock()
+	defer p.pisMtx.RUnlock()
+
 	return p.pis
+}
+
+func (p *Peer) setProtocolInfos(pis *ProtocolInfos) {
+	p.pisMtx.Lock()
+	defer p.pisMtx.Unlock()
+
+	p.pis = pis
 }
 
 func (p *Peer) GetAttr(k string) (interface{}, bool) {
