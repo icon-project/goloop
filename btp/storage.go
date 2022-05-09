@@ -18,18 +18,8 @@ package btp
 
 import "github.com/icon-project/goloop/common/codec"
 
-const (
-	EnabledNetworkTypeIDsKey = "enabledNetworkTypeIDs"
-	NetworkTypeCountKey      = "networkTypeCount"
-	NetworkCountKey          = "networkCount"
-	NetworkTypeIDByUIDKey    = "networkTypeIDByUID"
-	NetworkTypeByIDKey       = "networkTypeByID"
-	NetworkByIDKey           = "networkByID"
-)
-
 type NetworkType struct {
 	UID                  string
-	Enabled              bool
 	NextProofContextHash []byte
 	NextProofContext     []byte
 	OpenNetworkIDs       []int64

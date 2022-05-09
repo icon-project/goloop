@@ -86,7 +86,6 @@ func TestSectionBuilder_Build_Basic(t *testing.T) {
 		networkTypes: map[int64]*NetworkType{
 			1: {
 				UID:                  "eth",
-				Enabled:              false,
 				NextProofContextHash: pc.Hash(),
 				NextProofContext:     pc.Bytes(),
 				OpenNetworkIDs:       []int64{1, 2},
@@ -165,14 +164,12 @@ func newComplexTestBuilderSetup(t *testing.T) *testBuilderSetup {
 		networkTypes: map[int64]*NetworkType{
 			1: {
 				UID:                  "eth",
-				Enabled:              false,
 				NextProofContextHash: pc.Hash(),
 				NextProofContext:     pc.Bytes(),
 				OpenNetworkIDs:       []int64{1, 2},
 			},
 			2: {
 				UID:                  "eth",
-				Enabled:              false,
 				NextProofContextHash: pc.Hash(),
 				NextProofContext:     pc.Bytes(),
 				OpenNetworkIDs:       []int64{3, 4},
