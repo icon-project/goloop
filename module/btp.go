@@ -156,6 +156,8 @@ type NetworkTypeModule interface {
 	Hash(data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (BTPProofContext, error)
-	NewProofContext(pubKeys [][]byte) (BTPProofContext, error)
+	// NewProofContext returns a new proof context. The parameter keys is
+	// a slice of networkType specific keys (usually a slice of addresses).
+	NewProofContext(keys [][]byte) (BTPProofContext, error)
 	MerkleRoot(bytesList BytesList) []byte
 }
