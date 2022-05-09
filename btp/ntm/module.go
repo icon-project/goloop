@@ -38,14 +38,15 @@ type networkTypeModule struct {
 func (ntm *networkTypeModule) merkleRoot(data [][]byte) []byte {
 	encoderBuf := make([]byte, 0, 128)
 	for len(data) > 1 {
-		if len(data)%2 != 0 {
-			data = append(data, nil)
-		}
 		i, j := 0, 0
 		for ; i < len(data); i, j = i+2, j+1 {
-			e := codec.NewEncoderBytes(&encoderBuf)
-			log.Must(e.EncodeListOf(data[i], data[i+1]))
-			data[j] = ntm.Hash(encoderBuf)
+			if i+1 < len(data) {
+				e := codec.NewEncoderBytes(&encoderBuf)
+				log.Must(e.EncodeListOf(data[i], data[i+1]))
+				data[j] = ntm.Hash(encoderBuf)
+			} else {
+				data[j] = data[i]
+			}
 		}
 		data = data[:j]
 	}
@@ -59,8 +60,7 @@ func (ntm *networkTypeModule) MerkleRoot(data module.BytesList) []byte {
 	if data.Len() == 1 {
 		return data.Get(0)
 	}
-	evenedLen := (data.Len() + 1) &^ 1
-	dataBuf := make([][]byte, 0, evenedLen)
+	dataBuf := make([][]byte, 0, data.Len())
 	for i := 0; i < data.Len(); i++ {
 		dataBuf = append(dataBuf, data.Get(i))
 	}

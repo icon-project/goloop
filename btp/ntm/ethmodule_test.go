@@ -104,7 +104,7 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 		{
 			keccak256OfRLPList(
 				keccak256OfRLPList(1, 2),
-				keccak256OfRLPList(3, nil),
+				3,
 			),
 			[][]byte{{1}, {2}, {3}},
 		},
@@ -121,10 +121,7 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 					keccak256OfRLPList(1, 2),
 					keccak256OfRLPList(3, 4),
 				),
-				keccak256OfRLPList(
-					keccak256OfRLPList(5, nil),
-					nil,
-				),
+				5,
 			),
 			[][]byte{{1}, {2}, {3}, {4}, {5}},
 		},
@@ -134,10 +131,7 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 					keccak256OfRLPList(1, 2),
 					keccak256OfRLPList(3, 4),
 				),
-				keccak256OfRLPList(
-					keccak256OfRLPList(5, 6),
-					nil,
-				),
+				keccak256OfRLPList(5, 6),
 			),
 			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}},
 		},
@@ -149,7 +143,7 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 				),
 				keccak256OfRLPList(
 					keccak256OfRLPList(5, 6),
-					keccak256OfRLPList(7, nil),
+					7,
 				),
 			),
 			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}},
