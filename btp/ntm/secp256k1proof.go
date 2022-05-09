@@ -1,0 +1,235 @@
+/*
+ * Copyright 2022 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package ntm
+
+import (
+	"bytes"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/module"
+)
+
+type secp256k1proofContextModule interface {
+	UID() string
+	DSA() string
+	AddressFromPubKey(pubKey []byte) ([]byte, error)
+}
+
+type secp256k1ProofPart struct {
+	Index     int
+	Signature common.Signature
+}
+
+func (pp *secp256k1ProofPart) Bytes() []byte {
+	return codec.MustMarshalToBytes(pp)
+}
+
+func (pp *secp256k1ProofPart) recover(mod secp256k1proofContextModule, hash []byte) ([]byte, error) {
+	pubKey, err := pp.Signature.RecoverPublicKey(hash)
+	if err != nil {
+		return nil, err
+	}
+	return mod.AddressFromPubKey(pubKey.SerializeUncompressed())
+}
+
+type secp256k1Proof struct {
+	Signatures []common.Signature
+	bytes      []byte
+}
+
+func (p *secp256k1Proof) Bytes() []byte {
+	if p.bytes == nil {
+		p.bytes = codec.MustMarshalToBytes(p)
+	}
+	return p.bytes
+}
+
+func (p *secp256k1Proof) Add(pp module.BTPProofPart) {
+	epp := pp.(*secp256k1ProofPart)
+	p.Signatures[epp.Index] = epp.Signature
+}
+
+type secp256k1ProofContext struct {
+	Validators  [][]byte
+	mod         secp256k1proofContextModule
+	bytes       []byte
+	hash        []byte
+	addrToIndex map[string]int
+}
+
+func newSecp256k1ProofContext(
+	mod secp256k1proofContextModule,
+	pubKeys [][]byte,
+) (*secp256k1ProofContext, error) {
+	pp := &secp256k1ProofContext{
+		Validators:  make([][]byte, 0, len(pubKeys)),
+		addrToIndex: make(map[string]int, len(pubKeys)),
+		mod:         mod,
+	}
+	for i, pk := range pubKeys {
+		addr, err := newEthAddressFromPubKey(pk)
+		if err != nil {
+			return nil, err
+		}
+		pp.Validators = append(pp.Validators, addr)
+		pp.addrToIndex[string(addr)] = i
+	}
+	return pp, nil
+}
+
+func (pc *secp256k1ProofContext) indexOf(address []byte) (int, bool) {
+	if pc.addrToIndex == nil {
+		pc.addrToIndex = make(map[string]int, len(pc.Validators))
+		for i, addr := range pc.Validators {
+			pc.addrToIndex[string(addr)] = i
+		}
+	}
+	idx, ok := pc.addrToIndex[string(address)]
+	return idx, ok
+}
+
+func newSecp256k1ProofContextFromBytes(
+	mod secp256k1proofContextModule,
+	bytes []byte,
+) (*secp256k1ProofContext, error) {
+	pc := &secp256k1ProofContext{
+		mod: mod,
+	}
+	_, err := codec.UnmarshalFromBytes(bytes, pc)
+	if err != nil {
+		return nil, err
+	}
+	return pc, nil
+}
+
+func (pc *secp256k1ProofContext) Hash() []byte {
+	if pc.hash == nil {
+		pc.hash = keccak256(pc.Bytes())
+	}
+	return pc.hash
+}
+
+func (pc *secp256k1ProofContext) Bytes() []byte {
+	if pc.bytes == nil {
+		pc.bytes = codec.MustMarshalToBytes(pc)
+	}
+	return pc.bytes
+}
+
+func (pc *secp256k1ProofContext) VerifyPart(dHash []byte, pp module.BTPProofPart) error {
+	epp := pp.(*secp256k1ProofPart)
+	if epp.Index < 0 || epp.Index >= len(pc.Validators) {
+		return errors.Errorf("invalid proof part index=%d numValidators=%d", epp.Index, len(pc.Validators))
+	}
+	addr, err := epp.recover(pc.mod, dHash)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(pc.Validators[epp.Index], addr) {
+		return errors.Errorf("invalid proof part index=%d addr=%x", epp.Index, addr)
+	}
+	return nil
+}
+
+func (pc *secp256k1ProofContext) NewProofPartFromBytes(ppBytes []byte) (module.BTPProofPart, error) {
+	var pp secp256k1ProofPart
+	_, err := codec.UnmarshalFromBytes(ppBytes, &pp)
+	if err != nil {
+		return nil, err
+	}
+	return &pp, err
+}
+
+func (pc *secp256k1ProofContext) Verify(dHash []byte, p module.BTPProof) error {
+	ep := p.(*secp256k1Proof)
+	set := make(map[int]struct{}, len(ep.Signatures))
+	valid := 0
+	for i, sig := range ep.Signatures {
+		if sig.Signature == nil {
+			continue
+		}
+		epp := secp256k1ProofPart{
+			Index:     i,
+			Signature: sig,
+		}
+		err := pc.VerifyPart(dHash, &epp)
+		if err != nil {
+			return err
+		}
+		if _, ok := set[epp.Index]; ok {
+			addr, _ := epp.recover(pc.mod, dHash)
+			return errors.Errorf("duplicated proof parts validator index=%d addr=%x", epp.Index, addr)
+		} else {
+			set[epp.Index] = struct{}{}
+		}
+		valid++
+	}
+	if valid <= 2*len(pc.Validators)/3 {
+		return errors.Errorf("not enough proof parts numValidator=%d numProofParts=%d", len(pc.Validators), len(ep.Signatures))
+	}
+	return nil
+}
+
+func (pc *secp256k1ProofContext) NewProofFromBytes(proofBytes []byte) (module.BTPProof, error) {
+	var p secp256k1Proof
+	_, err := codec.UnmarshalFromBytes(proofBytes, &p)
+	if err != nil {
+		return nil, err
+	}
+	return &p, err
+}
+
+func (pc *secp256k1ProofContext) NewProofPart(
+	dHash []byte,
+	wp module.WalletProvider,
+) (module.BTPProofPart, error) {
+	w := wp.WalletFor(pc.mod.UID())
+	if w == nil {
+		w = wp.WalletFor(pc.mod.DSA())
+	}
+	sig, err := w.Sign(dHash)
+	if err != nil {
+		return nil, err
+	}
+	addr, err := pc.mod.AddressFromPubKey(w.PublicKey())
+	if err != nil {
+		return nil, err
+	}
+	idx, ok := pc.indexOf(addr)
+	if !ok {
+		return nil, errors.Errorf("not validator addr=%x", addr)
+	}
+	pp := secp256k1ProofPart{
+		Index: idx,
+	}
+	err = pp.Signature.UnmarshalBinary(sig)
+	log.Must(err)
+	return &pp, nil
+}
+
+func (pc *secp256k1ProofContext) DSA() string {
+	return pc.mod.DSA()
+}
+
+func (pc *secp256k1ProofContext) NewProof() module.BTPProof {
+	return &secp256k1Proof{
+		Signatures: make([]common.Signature, len(pc.Validators)),
+	}
+}

@@ -69,7 +69,9 @@ func newTestSetup(t *testing.T, count int) *testSetup {
 		s.wallets = append(s.wallets, &wp)
 		s.pubKeys = append(s.pubKeys, w.PublicKey())
 	}
-	s.pc = newEthProofContext(s.pubKeys)
+	var err error
+	s.pc, err = newEthProofContext(s.pubKeys)
+	s.assert.NoError(err)
 	return s
 }
 
@@ -142,19 +144,12 @@ func TestEthProofContext_codec(t *testing.T) {
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(3, msgHash)
 	pcBytes := s.pc.Bytes()
-	var pc2 ethProofContext
-	codec.MustUnmarshalFromBytes(pcBytes, &pc2)
-	s.pc = &pc2
-	s.assert.NoError(s.pc.Verify(msgHash, p))
+	pc2, err := newEthProofContextFromBytes(pcBytes)
+	s.assert.NoError(err)
+	s.assert.NoError(pc2.Verify(msgHash, p))
+	s.pc = pc2
 	p2 := s.newProofOfLen(3, msgHash)
 	s.assert.NoError(s.pc.Verify(msgHash, p2))
-	pc3, err := newEthProofContextFromBytes(pcBytes)
-	s.assert.NoError(err)
-	s.assert.NoError(pc3.Verify(msgHash, p))
-	s.assert.NoError(pc3.Verify(msgHash, p2))
-	s.pc = pc3
-	p3 := s.newProofOfLen(3, msgHash)
-	s.assert.NoError(s.pc.Verify(msgHash, p3))
 }
 
 func TestEthProofContext_Verify(t *testing.T) {
@@ -194,7 +189,9 @@ func TestEthProofContext_Verify(t *testing.T) {
 		} else {
 			s.assert.Error(err, "Verify exp=%v ppCount=%d pkCount=%d", c.ok, c.ppCount, c.pkCount)
 		}
-		err = s.pc.VerifyByProofBytes(msgHash, p.Bytes())
+		p2, err := s.pc.NewProofFromBytes(p.Bytes())
+		s.assert.NoError(err)
+		err = s.pc.Verify(msgHash, p2)
 		if c.ok {
 			s.assert.NoError(err, "VerifyByProofBytes exp=%v ppCount=%d pkCount=%d bytes=%x", c.ok, c.ppCount, c.pkCount, p.Bytes())
 		} else {

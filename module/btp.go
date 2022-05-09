@@ -41,12 +41,13 @@ type WalletProvider interface {
 type BTPProofContext interface {
 	Hash() []byte
 	Bytes() []byte
-	VerifyPart(decisionHash []byte, pp BTPProofPart) error
-	Verify(decisionHash []byte, p BTPProof) error
-	VerifyByProofBytes(decisionHash []byte, proofBytes []byte) error
 	NewProofPart(decisionHash []byte, wp WalletProvider) (BTPProofPart, error)
-	DSA() string
+	NewProofPartFromBytes(ppBytes []byte) (BTPProofPart, error)
+	VerifyPart(decisionHash []byte, pp BTPProofPart) error
 	NewProof() BTPProof
+	NewProofFromBytes(proofBytes []byte) (BTPProof, error)
+	Verify(decisionHash []byte, p BTPProof) error
+	DSA() string
 }
 
 type NetworkTypeSectionDecisionProof struct {
@@ -155,6 +156,6 @@ type NetworkTypeModule interface {
 	Hash(data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (BTPProofContext, error)
-	NewProofContext(pubKeys [][]byte) BTPProofContext
+	NewProofContext(pubKeys [][]byte) (BTPProofContext, error)
 	MerkleRoot(bytesList BytesList) []byte
 }

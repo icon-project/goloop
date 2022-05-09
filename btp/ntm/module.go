@@ -27,7 +27,8 @@ type Module interface {
 	Hash(data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error)
-	NewProofContext(pubKeys [][]byte) module.BTPProofContext
+	NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error)
+	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }
 
 type networkTypeModule struct {

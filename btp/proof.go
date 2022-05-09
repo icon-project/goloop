@@ -20,11 +20,11 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func NewProofContextFromBytes(netType string, bs []byte) (module.BTPProofContext, error) {
+func NewProofContextFromBytes(ntUID string, bs []byte) (module.BTPProofContext, error) {
 	return nil, nil
 }
 
-func NewProofContext(netType string, pubKeys [][]byte) (module.BTPProofContext, error) {
+func NewProofContext(ntUID string, pubKeys [][]byte) (module.BTPProofContext, error) {
 	return nil, nil
 }
 

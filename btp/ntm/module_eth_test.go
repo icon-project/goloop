@@ -56,7 +56,8 @@ func Test_newAddressFromPubKey(t *testing.T) {
 	expAddrBytes, err := hex.DecodeString(expAddrHex)
 	assert.NoError(err)
 	pk := sk.PublicKey()
-	addr := newEthAddressFromPubKey(pk.SerializeUncompressed())
+	addr, err := newEthAddressFromPubKey(pk.SerializeUncompressed())
+	assert.NoError(err)
 	assert.EqualValues(expAddrBytes, addr)
 }
 

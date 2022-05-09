@@ -20,7 +20,6 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -38,19 +37,19 @@ func keccak256(data ...[]byte) []byte {
 	return d.Sum(nil)
 }
 
-type ethAddress []byte
-
-func newEthAddressFromPubKey(pubKey []byte) ethAddress {
+func newEthAddressFromPubKey(pubKey []byte) ([]byte, error) {
 	if len(pubKey) == crypto.PublicKeyLenCompressed {
 		pk, err := crypto.ParsePublicKey(pubKey)
 		if err != nil {
-			log.Panicf("%+v", err)
+			return nil, err
 		}
 		pubKey = pk.SerializeUncompressed()
 	}
 	digest := keccak256(pubKey[1:])
-	return digest[len(digest)-ethAddressLen:]
+	return digest[len(digest)-ethAddressLen:], nil
 }
+
+var ethModuleInstance ethModule
 
 type ethModule struct{}
 
@@ -70,8 +69,12 @@ func (m *ethModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext,
 	return newEthProofContextFromBytes(bs)
 }
 
-func (m *ethModule) NewProofContext(pubKeys [][]byte) module.BTPProofContext {
+func (m *ethModule) NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error) {
 	return newEthProofContext(pubKeys)
+}
+
+func (m *ethModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+	return newEthAddressFromPubKey(pubKey)
 }
 
 func init() {
