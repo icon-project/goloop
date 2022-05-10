@@ -29,12 +29,16 @@ const (
 	ethAddressLen = 20
 )
 
-func keccak256(data ...[]byte) []byte {
+func appendKeccak256(out []byte, data ...[]byte) []byte {
 	d := sha3.NewLegacyKeccak256()
 	for _, b := range data {
 		d.Write(b)
 	}
-	return d.Sum(nil)
+	return d.Sum(out)
+}
+
+func keccak256(data ...[]byte) []byte {
+	return appendKeccak256(nil, data...)
 }
 
 func newEthAddressFromPubKey(pubKey []byte) ([]byte, error) {
@@ -57,8 +61,8 @@ func (m *ethModule) UID() string {
 	return ethUID
 }
 
-func (m *ethModule) Hash(data []byte) []byte {
-	return keccak256(data)
+func (m *ethModule) AppendHash(out []byte, data []byte) []byte {
+	return appendKeccak256(out, data)
 }
 
 func (m *ethModule) DSA() string {

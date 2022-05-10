@@ -166,6 +166,7 @@ type MerkleNode struct {
 type NetworkTypeModule interface {
 	UID() string
 	Hash(data []byte) []byte
+	AppendHash(out []byte, data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (BTPProofContext, error)
 

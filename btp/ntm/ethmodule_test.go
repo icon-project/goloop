@@ -22,21 +22,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
-
-func rlpListOf(s ...interface{}) []byte {
-	var bs []byte
-	e := codec.NewEncoderBytes(&bs)
-	_ = e.EncodeListOf(s...)
-	return bs
-}
-
-func keccak256OfRLPList(s ...interface{}) []byte {
-	return keccak256(rlpListOf(s...))
-}
 
 func Test_keccak256(t *testing.T) {
 	assert := assert.New(t)
@@ -62,104 +50,95 @@ func TestEthModule_newAddressFromPubKey(t *testing.T) {
 	assert.EqualValues(expAddrBytes, addr)
 }
 
-type simpleHasher struct {
-	hash []byte
-}
-
-func (h simpleHasher) Hash() []byte {
-	return h.hash
-}
-
-func toHashers(data [][]byte) []interface{ Hash() []byte } {
-	hashers := make([]interface{ Hash() []byte }, 0, len(data))
-	for _, d := range data {
-		hashers = append(hashers, simpleHasher{d})
-	}
-	return hashers
-}
-
 func TestEthModule_MerkleRoot(t *testing.T) {
+	mod := ForUID(ethUID)
+	var h = func(b byte) []byte {
+		return mod.Hash([]byte{b})
+	}
 	assert := assert.New(t)
 	testCase := []struct {
 		exp []byte
 		in  module.BytesSlice
 	}{
 		{
-			[]byte{1},
-			[][]byte{{1}},
+			h(1),
+			[][]byte{h(1)},
 		},
 		{
-			keccak256OfRLPList(1, 2),
-			[][]byte{{1}, {2}},
+			keccak256(h(1), h(2)),
+			[][]byte{h(1), h(2)},
 		},
 		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(1, 2),
-				3,
+			keccak256(
+				keccak256(h(1), h(2)),
+				h(3),
 			),
-			[][]byte{{1}, {2}, {3}},
+			[][]byte{h(1), h(2), h(3)},
 		},
 		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(1, 2),
-				keccak256OfRLPList(3, 4),
+			keccak256(
+				keccak256(h(1), h(2)),
+				keccak256(h(3), h(4)),
 			),
-			[][]byte{{1}, {2}, {3}, {4}},
+			[][]byte{h(1), h(2), h(3), h(4)},
 		},
 		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(
-					keccak256OfRLPList(1, 2),
-					keccak256OfRLPList(3, 4),
+			keccak256(
+				keccak256(
+					keccak256(h(1), h(2)),
+					keccak256(h(3), h(4)),
 				),
-				5,
+				h(5),
 			),
-			[][]byte{{1}, {2}, {3}, {4}, {5}},
+			[][]byte{h(1), h(2), h(3), h(4), h(5)},
 		},
 		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(
-					keccak256OfRLPList(1, 2),
-					keccak256OfRLPList(3, 4),
+			keccak256(
+				keccak256(
+					keccak256(h(1), h(2)),
+					keccak256(h(3), h(4)),
 				),
-				keccak256OfRLPList(5, 6),
+				keccak256(h(5), h(6)),
 			),
-			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}},
+			[][]byte{h(1), h(2), h(3), h(4), h(5), h(6)},
 		},
 		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(
-					keccak256OfRLPList(1, 2),
-					keccak256OfRLPList(3, 4),
+			keccak256(
+				keccak256(
+					keccak256(h(1), h(2)),
+					keccak256(h(3), h(4)),
 				),
-				keccak256OfRLPList(
-					keccak256OfRLPList(5, 6),
-					7,
-				),
-			),
-			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}},
-		},
-		{
-			keccak256OfRLPList(
-				keccak256OfRLPList(
-					keccak256OfRLPList(1, 2),
-					keccak256OfRLPList(3, 4),
-				),
-				keccak256OfRLPList(
-					keccak256OfRLPList(5, 6),
-					keccak256OfRLPList(7, 8),
+				keccak256(
+					keccak256(h(5), h(6)),
+					h(7),
 				),
 			),
-			[][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
+			[][]byte{h(1), h(2), h(3), h(4), h(5), h(6), h(7)},
+		},
+		{
+			keccak256(
+				keccak256(
+					keccak256(h(1), h(2)),
+					keccak256(h(3), h(4)),
+				),
+				keccak256(
+					keccak256(h(5), h(6)),
+					keccak256(h(7), h(8)),
+				),
+			),
+			[][]byte{h(1), h(2), h(3), h(4), h(5), h(6), h(7), h(8)},
 		},
 	}
-	mod := ForUID(ethUID)
 	for _, c := range testCase {
 		assert.EqualValues(c.exp, mod.MerkleRoot(&c.in), "in=%x", c.in)
 	}
 }
 
 func TestEthModule_MerkleProof(t *testing.T) {
+	mod := ForUID(ethUID)
+	var h = func(b byte) []byte {
+		return mod.Hash([]byte{b})
+	}
 	assert := assert.New(t)
 	testCase := []struct {
 		exp  []module.MerkleNode
@@ -168,66 +147,65 @@ func TestEthModule_MerkleProof(t *testing.T) {
 	}{
 		{
 			[]module.MerkleNode{},
-			[][]byte{{0}},
+			[][]byte{h(0)},
 			0,
 		},
 		{
-			[]module.MerkleNode{{module.DirRight, []byte{1}}},
-			[][]byte{{0}, {1}},
+			[]module.MerkleNode{{module.DirRight, h(1)}},
+			[][]byte{h(0), h(1)},
 			0,
 		},
 		{
-			[]module.MerkleNode{{module.DirLeft, []byte{0}}},
-			[][]byte{{0}, {1}},
+			[]module.MerkleNode{{module.DirLeft, h(0)}},
+			[][]byte{h(0), h(1)},
 			1,
 		},
 		{
 			[]module.MerkleNode{
-				{module.DirRight, []byte{1}},
-				{module.DirRight, []byte{2}},
+				{module.DirRight, h(1)},
+				{module.DirRight, h(2)},
 			},
-			[][]byte{{0}, {1}, {2}},
+			[][]byte{h(0), h(1), h(2)},
 			0,
 		},
 		{
 			[]module.MerkleNode{
-				{module.DirLeft, []byte{0}},
-				{module.DirRight, []byte{2}},
+				{module.DirLeft, h(0)},
+				{module.DirRight, h(2)},
 			},
-			[][]byte{{0}, {1}, {2}},
+			[][]byte{h(0), h(1), h(2)},
 			1,
 		},
 		{
 			[]module.MerkleNode{
-				{module.DirLeft, keccak256OfRLPList(0, 1)},
+				{module.DirLeft, keccak256(h(0), h(1))},
 			},
-			[][]byte{{0}, {1}, {2}},
+			[][]byte{h(0), h(1), h(2)},
 			2,
 		},
 		{
 			[]module.MerkleNode{
-				{module.DirRight, []byte{1}},
-				{module.DirRight, keccak256OfRLPList(2, 3)},
-				{module.DirRight, []byte{4}},
+				{module.DirRight, h(1)},
+				{module.DirRight, keccak256(h(2), h(3))},
+				{module.DirRight, h(4)},
 			},
-			[][]byte{{0}, {1}, {2}, {3}, {4}},
+			[][]byte{h(0), h(1), h(2), h(3), h(4)},
 			0,
 		},
 		{
 			[]module.MerkleNode{
 				{
-					module.DirLeft, keccak256OfRLPList(
-						keccak256OfRLPList(0, 1),
-						keccak256OfRLPList(2, 3),
+					module.DirLeft, keccak256(
+						keccak256(h(0), h(1)),
+						keccak256(h(2), h(3)),
 					),
 				},
 			},
-			[][]byte{{0}, {1}, {2}, {3}, {4}},
+			[][]byte{h(0), h(1), h(2), h(3), h(4)},
 			4,
 		},
 	}
-	mod := ForUID(ethUID)
-	for _, c := range testCase {
-		assert.EqualValues(c.exp, mod.MerkleProof(&c.data, c.idx), "data=%x idx=%d", c.data, c.idx)
+	for i, c := range testCase {
+		assert.EqualValues(c.exp, mod.MerkleProof(&c.data, c.idx), "case=%d data=%x idx=%d", i, c.data, c.idx)
 	}
 }

@@ -38,6 +38,14 @@ func hashOfRLPList(mod module.NetworkTypeModule, s ...interface{}) []byte {
 	return mod.Hash(rlpListOf(s...))
 }
 
+func hashOfCat(mod module.NetworkTypeModule, s ...[]byte) []byte {
+	res := make([]byte, 0, 256)
+	for _, bs := range s {
+		res = append(res, bs...)
+	}
+	return mod.Hash(res)
+}
+
 type testStateView struct {
 	networks     map[int64]*Network
 	networkTypes map[int64]*NetworkType
@@ -231,7 +239,7 @@ func TestSectionBuilder_Build_Complex(t *testing.T) {
 	nts0Hash := hashOfRLPList(
 		s.mod,
 		s.pc.Hash(),
-		hashOfRLPList(
+		hashOfCat(
 			s.mod,
 			ns0Hash,
 			ns1Hash,
@@ -255,7 +263,7 @@ func TestSectionBuilder_Build_Complex(t *testing.T) {
 	nts1Hash := hashOfRLPList(
 		s.mod,
 		s.pc.Hash(),
-		hashOfRLPList(
+		hashOfCat(
 			s.mod,
 			ns2Hash,
 			ns3Hash,

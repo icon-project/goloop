@@ -19,14 +19,14 @@ package ntm
 import (
 	"math/bits"
 
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
+const hashLen = 32
+
 type Module interface {
 	UID() string
-	Hash(data []byte) []byte
+	AppendHash(out []byte, data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error)
 	NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error)
@@ -37,22 +37,23 @@ type networkTypeModule struct {
 	Module
 }
 
-func (ntm *networkTypeModule) merkleRoot(data [][]byte) []byte {
-	encoderBuf := make([]byte, 0, 128)
-	for len(data) > 1 {
+func (ntm *networkTypeModule) Hash(data []byte) []byte {
+	return ntm.AppendHash(nil, data)
+}
+
+func (ntm *networkTypeModule) merkleRoot(data []byte) []byte {
+	for len(data) > hashLen {
 		i, j := 0, 0
-		for ; i < len(data); i, j = i+2, j+1 {
-			if i+1 < len(data) {
-				e := codec.NewEncoderBytes(&encoderBuf)
-				log.Must(e.EncodeListOf(data[i], data[i+1]))
-				data[j] = ntm.Hash(encoderBuf)
+		for ; i < len(data); i, j = i+hashLen*2, j+hashLen {
+			if i+hashLen*2 <= len(data) {
+				ntm.AppendHash(data[:j], data[i:i+hashLen*2])
 			} else {
-				data[j] = data[i]
+				copy(data[j:j+hashLen], data[i:i+hashLen])
 			}
 		}
 		data = data[:j]
 	}
-	return data[0]
+	return data[:hashLen]
 }
 
 func (ntm *networkTypeModule) MerkleRoot(data module.BytesList) []byte {
@@ -62,35 +63,41 @@ func (ntm *networkTypeModule) MerkleRoot(data module.BytesList) []byte {
 	if data.Len() == 1 {
 		return data.Get(0)
 	}
-	dataBuf := make([][]byte, 0, data.Len())
+	dataBuf := make([]byte, 0, data.Len()*hashLen)
 	for i := 0; i < data.Len(); i++ {
-		dataBuf = append(dataBuf, data.Get(i))
+		dataBuf = append(dataBuf, data.Get(i)...)
 	}
 	return ntm.merkleRoot(dataBuf)
 }
 
-func (ntm *networkTypeModule) merkleProof(data [][]byte, idx int) []module.MerkleNode {
+func (ntm *networkTypeModule) merkleProof(data []byte, idx int) []module.MerkleNode {
 	proof := make([]module.MerkleNode, 0, bits.Len(uint(len(data))))
-	encoderBuf := make([]byte, 0, 128)
-	for len(data) > 1 {
+	for len(data) > hashLen {
 		i, j := 0, 0
-		for ; i < len(data); i, j = i+2, j+1 {
-			if i+1 < len(data) {
+		for ; i < len(data); i, j = i+hashLen*2, j+hashLen {
+			if i+hashLen*2 <= len(data) {
+				var val []byte
 				if idx == i {
-					proof = append(proof, module.MerkleNode{Dir: module.DirRight, Value: data[i+1]})
+					val = append(val, data[i+hashLen:i+hashLen*2]...)
+					proof = append(
+						proof,
+						module.MerkleNode{Dir: module.DirRight, Value: val},
+					)
 					idx = j
-				} else if idx == i+1 {
-					proof = append(proof, module.MerkleNode{Dir: module.DirLeft, Value: data[i]})
+				} else if idx == i+hashLen {
+					val = append(val, data[i:i+hashLen]...)
+					proof = append(
+						proof,
+						module.MerkleNode{Dir: module.DirLeft, Value: val},
+					)
 					idx = j
 				}
-				e := codec.NewEncoderBytes(&encoderBuf)
-				log.Must(e.EncodeListOf(data[i], data[i+1]))
-				data[j] = ntm.Hash(encoderBuf)
+				ntm.AppendHash(data[:j], data[i:i+hashLen*2])
 			} else {
 				if idx == i {
 					idx = j
 				}
-				data[j] = data[i]
+				copy(data[j:j+hashLen], data[i:i+hashLen])
 			}
 		}
 		data = data[:j]
@@ -105,11 +112,11 @@ func (ntm *networkTypeModule) MerkleProof(data module.BytesList, idx int) []modu
 	if data.Len() == 1 {
 		return []module.MerkleNode{}
 	}
-	dataBuf := make([][]byte, 0, data.Len())
+	dataBuf := make([]byte, 0, data.Len()*hashLen)
 	for i := 0; i < data.Len(); i++ {
-		dataBuf = append(dataBuf, data.Get(i))
+		dataBuf = append(dataBuf, data.Get(i)...)
 	}
-	return ntm.merkleProof(dataBuf, idx)
+	return ntm.merkleProof(dataBuf, idx*hashLen)
 }
 
 var modules = make(map[string]module.NetworkTypeModule)

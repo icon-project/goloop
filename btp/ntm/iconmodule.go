@@ -17,6 +17,8 @@
 package ntm
 
 import (
+	"golang.org/x/crypto/sha3"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -48,8 +50,10 @@ func (m *iconModule) UID() string {
 	return iconUID
 }
 
-func (m *iconModule) Hash(data []byte) []byte {
-	return crypto.SHA3Sum256(data)
+func (m *iconModule) AppendHash(out []byte, data []byte) []byte {
+	h := sha3.New256()
+	h.Write(data)
+	return h.Sum(out)
 }
 
 func (m *iconModule) DSA() string {
