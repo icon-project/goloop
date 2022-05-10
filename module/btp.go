@@ -126,6 +126,7 @@ type BytesHasher interface {
 type NetworkSection interface {
 	Hash() []byte
 	NetworkID() int64
+
 	// UpdateNumber returns FirstMessageSN() << 1 | NextProofContextChanged()
 	UpdateNumber() int64
 	FirstMessageSN() int64
@@ -150,15 +151,28 @@ type BytesList interface {
 	Get(i int) []byte
 }
 
-// NetworkTypeModule represents a network type module.
+type Dir int
+
+const (
+	DirLeft = Dir(iota)
+	DirRight
+)
+
+type MerkleNode struct {
+	Dir   Dir
+	Value []byte
+}
+
 type NetworkTypeModule interface {
 	UID() string
 	Hash(data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (BTPProofContext, error)
+
 	// NewProofContext returns a new proof context. The parameter keys is
 	// a slice of networkType specific keys (usually a slice of addresses).
 	NewProofContext(keys [][]byte) (BTPProofContext, error)
 	MerkleRoot(bytesList BytesList) []byte
+	MerkleProof(bytesList BytesList, idx int) []MerkleNode
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }

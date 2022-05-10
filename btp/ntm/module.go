@@ -17,6 +17,8 @@
 package ntm
 
 import (
+	"math/bits"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -65,6 +67,49 @@ func (ntm *networkTypeModule) MerkleRoot(data module.BytesList) []byte {
 		dataBuf = append(dataBuf, data.Get(i))
 	}
 	return ntm.merkleRoot(dataBuf)
+}
+
+func (ntm *networkTypeModule) merkleProof(data [][]byte, idx int) []module.MerkleNode {
+	proof := make([]module.MerkleNode, 0, bits.Len(uint(len(data))))
+	encoderBuf := make([]byte, 0, 128)
+	for len(data) > 1 {
+		i, j := 0, 0
+		for ; i < len(data); i, j = i+2, j+1 {
+			if i+1 < len(data) {
+				if idx == i {
+					proof = append(proof, module.MerkleNode{Dir: module.DirRight, Value: data[i+1]})
+					idx = j
+				} else if idx == i+1 {
+					proof = append(proof, module.MerkleNode{Dir: module.DirLeft, Value: data[i]})
+					idx = j
+				}
+				e := codec.NewEncoderBytes(&encoderBuf)
+				log.Must(e.EncodeListOf(data[i], data[i+1]))
+				data[j] = ntm.Hash(encoderBuf)
+			} else {
+				if idx == i {
+					idx = j
+				}
+				data[j] = data[i]
+			}
+		}
+		data = data[:j]
+	}
+	return proof
+}
+
+func (ntm *networkTypeModule) MerkleProof(data module.BytesList, idx int) []module.MerkleNode {
+	if data.Len() == 0 {
+		return nil
+	}
+	if data.Len() == 1 {
+		return []module.MerkleNode{}
+	}
+	dataBuf := make([][]byte, 0, data.Len())
+	for i := 0; i < data.Len(); i++ {
+		dataBuf = append(dataBuf, data.Get(i))
+	}
+	return ntm.merkleProof(dataBuf, idx)
 }
 
 var modules = make(map[string]module.NetworkTypeModule)
