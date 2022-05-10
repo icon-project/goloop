@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 func rlpListOf(s ...interface{}) []byte {
@@ -77,21 +78,11 @@ func toHashers(data [][]byte) []interface{ Hash() []byte } {
 	return hashers
 }
 
-type bytesList [][]byte
-
-func (b bytesList) Len() int {
-	return len(b)
-}
-
-func (b bytesList) Get(i int) []byte {
-	return b[i]
-}
-
 func TestEthModule_MerkleRoot(t *testing.T) {
 	assert := assert.New(t)
 	testCase := []struct {
 		exp []byte
-		in  [][]byte
+		in  module.BytesSlice
 	}{
 		{
 			[]byte{1},
@@ -164,6 +155,6 @@ func TestEthModule_MerkleRoot(t *testing.T) {
 	}
 	mod := ForUID(ethUID)
 	for _, c := range testCase {
-		assert.EqualValues(c.exp, mod.MerkleRoot(bytesList(c.in)), "in=%x", c.in)
+		assert.EqualValues(c.exp, mod.MerkleRoot(&c.in), "in=%x", c.in)
 	}
 }
