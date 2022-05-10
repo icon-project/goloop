@@ -155,12 +155,12 @@ func (nss networkSectionSlice) SortedInsert(
 	return nss
 }
 
-func (nss networkSectionSlice) Search(nid int64) module.NetworkSection {
+func (nss networkSectionSlice) Search(nid int64) (module.NetworkSection, int) {
 	i := sort.Search(len(nss), func(i int) bool {
 		return nss[i].NetworkID() >= nid
 	})
 	if i < len(nss) && nss[i].NetworkID() == nid {
-		return nss[i]
+		return nss[i], i
 	}
-	return nil
+	return nil, -1
 }

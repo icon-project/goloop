@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -114,12 +115,22 @@ func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
 
 type networkDigestSlice []networkDigest
 
-func (nds *networkDigestSlice) Len() int {
-	return len(*nds)
+func (nds networkDigestSlice) Len() int {
+	return len(nds)
 }
 
-func (nds *networkDigestSlice) Get(i int) []byte {
-	return (*nds)[i].NetworkSectionHash()
+func (nds networkDigestSlice) Get(i int) []byte {
+	return nds[i].NetworkSectionHash()
+}
+
+func (nds networkDigestSlice) Search(nid int64) int {
+	i := sort.Search(len(nds), func(i int) bool {
+		return nds[i].NetworkID() >= nid
+	})
+	if i < len(nds) && nds[i].NetworkID() == nid {
+		return i
+	}
+	return -1
 }
 
 type networkTypeDigestFormat struct {
@@ -159,14 +170,18 @@ func (ntd *networkTypeDigest) NetworkSectionsRootWithMod(mod module.NetworkTypeM
 	return ntd.networkSectionsRoot
 }
 
+func (ntd *networkTypeDigest) NetworkSectionToRootWithMod(mod module.NetworkTypeModule, nid int64) ([]module.MerkleNode, error) {
+	i := ntd.format.NetworkDigests.Search(nid)
+	if i >= 0 {
+		pf := mod.MerkleProof(&ntd.format.NetworkDigests, i)
+		return pf, nil
+	}
+	return nil, errors.Errorf("not found nid=%d", nid)
+}
+
 func (ntd *networkTypeDigest) NetworkDigestFor(nid int64) module.NetworkDigest {
-	i := sort.Search(
-		len(ntd.format.NetworkDigests),
-		func(i int) bool {
-			return ntd.format.NetworkDigests[i].NetworkID() >= nid
-		},
-	)
-	if i < len(ntd.format.NetworkDigests) && ntd.format.NetworkDigests[i].NetworkID() == nid {
+	i := ntd.format.NetworkDigests.Search(nid)
+	if i >= 0 {
 		return &ntd.format.NetworkDigests[i]
 	}
 	return nil
@@ -483,6 +498,10 @@ func (nts *networkTypeSectionFromDigest) NewDecision(
 		NetworkTypeSectionHash: nts.Hash(),
 		mod:                    nts.mod,
 	}
+}
+
+func (nts *networkTypeSectionFromDigest) NetworkSectionToRoot(nid int64) ([]module.MerkleNode, error) {
+	return nts.ntd.NetworkSectionToRootWithMod(nts.mod, nid)
 }
 
 type networkSectionFromDigest struct {

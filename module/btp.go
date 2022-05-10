@@ -80,6 +80,7 @@ type NetworkTypeDigest interface {
 	NetworkDigests() []NetworkDigest
 	NetworkDigestFor(nid int64) NetworkDigest
 	NetworkSectionsRootWithMod(mod NetworkTypeModule) []byte
+	NetworkSectionToRootWithMod(mod NetworkTypeModule, nid int64) ([]MerkleNode, error)
 }
 
 type NetworkDigest interface {
@@ -113,6 +114,7 @@ type NetworkTypeSection interface {
 	NetworkTypeID() int64
 	Hash() []byte
 	NetworkSectionsRoot() []byte
+	NetworkSectionToRoot(nid int64) ([]MerkleNode, error)
 	NextProofContext() BTPProofContext
 	NetworkSectionFor(nid int64) (NetworkSection, error)
 	NewDecision(srcNetworkUID []byte, height int64, round int32) BytesHasher

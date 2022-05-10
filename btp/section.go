@@ -186,6 +186,10 @@ func (nts *networkTypeSection) NetworkSectionsRoot() []byte {
 	return nts.networkSectionsRoot
 }
 
+func (nts *networkTypeSection) NetworkSectionToRoot(nid int64) ([]module.MerkleNode, error) {
+	return nts.NetworkSectionToRootWithMod(nts.mod, nid)
+}
+
 func (nts *networkTypeSection) NextProofContext() module.BTPProofContext {
 	return nts.nextProofContext
 }
@@ -209,7 +213,7 @@ func (nts *networkTypeSection) NetworkDigests() []module.NetworkDigest {
 }
 
 func (nts *networkTypeSection) NetworkDigestFor(nid int64) module.NetworkDigest {
-	ns := nts.networkSections.Search(nid)
+	ns, _ := nts.networkSections.Search(nid)
 	if ns != nil {
 		return ns.(*networkSection)
 	}
@@ -223,8 +227,16 @@ func (nts *networkTypeSection) NetworkSectionsRootWithMod(mod module.NetworkType
 	return mod.MerkleRoot(nts.networkSections)
 }
 
+func (nts *networkTypeSection) NetworkSectionToRootWithMod(mod module.NetworkTypeModule, nid int64) ([]module.MerkleNode, error) {
+	_, i := nts.networkSections.Search(nid)
+	if i < 0 {
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
+	}
+	return mod.MerkleProof(nts.networkSections, i), nil
+}
+
 func (nts *networkTypeSection) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
-	ns := nts.networkSections.Search(nid)
+	ns, _ := nts.networkSections.Search(nid)
 	if ns == nil {
 		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
 	}
