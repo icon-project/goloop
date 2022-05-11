@@ -25,7 +25,7 @@ func TestSignatureCoding(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	rsv, err := sig2.SerializeRSV()
+	rsv, err := sig2.Signature.SerializeRSV()
 	if err != nil {
 		t.Fail()
 	}
