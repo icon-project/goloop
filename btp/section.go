@@ -142,11 +142,11 @@ type networkTypeSection struct {
 
 func newNetworkTypeSection(
 	ntid int64,
-	nt *NetworkType,
+	nt NetworkTypeView,
 	nsSlice networkSectionSlice,
 ) (*networkTypeSection, error) {
-	mod := ntm.ForUID(nt.UID)
-	npc, err := mod.NewProofContextFromBytes(nt.NextProofContext)
+	mod := ntm.ForUID(nt.UID())
+	npc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
 	if err != nil {
 		return nil, err
 	}
@@ -337,18 +337,18 @@ type networkSection struct {
 
 func newNetworkSection(
 	nid int64,
-	nw *Network,
+	nw NetworkView,
 	ne *networkEntry,
 	mod module.NetworkTypeModule,
 ) *networkSection {
-	updateNumber := (nw.NextMessageSN - int64(len(ne.messages))) << 1
-	if nw.NextProofContextChanged {
+	updateNumber := (nw.NextMessageSN() - int64(len(ne.messages))) << 1
+	if nw.NextProofContextChanged() {
 		updateNumber |= 1
 	}
 	ns := &networkSection{
 		networkID:    nid,
 		updateNumber: updateNumber,
-		prevHash:     nw.LastNetworkSectionHash,
+		prevHash:     nw.LastNetworkSectionHash(),
 		messages:     ne.messages,
 	}
 	ns.messageHashes = makeHashesCat(len(ne.messages))

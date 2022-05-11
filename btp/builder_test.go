@@ -47,18 +47,23 @@ func hashOfCat(mod module.NetworkTypeModule, s ...[]byte) []byte {
 }
 
 type testStateView struct {
-	networks     map[int64]*Network
-	networkTypes map[int64]*NetworkType
+	networkTypeIDs []int64
+	networks       map[int64]*network
+	networkTypes   map[int64]*networkType
 }
 
-func (v *testStateView) GetNetwork(nid int64) (*Network, error) {
+func (v *testStateView) GetNetworkTypeIDs() ([]int64, error) {
+	return v.networkTypeIDs, nil
+}
+
+func (v *testStateView) GetNetworkView(nid int64) (NetworkView, error) {
 	if nw, ok := v.networks[nid]; ok {
 		return nw, nil
 	}
 	return nil, errors.ErrNotFound
 }
 
-func (v *testStateView) GetNetworkType(ntid int64) (*NetworkType, error) {
+func (v *testStateView) GetNetworkTypeView(ntid int64) (NetworkTypeView, error) {
 	if nt, ok := v.networkTypes[ntid]; ok {
 		return nt, nil
 	}
@@ -81,22 +86,22 @@ func TestSectionBuilder_Build_Basic(t *testing.T) {
 	pc, err := mod.NewProofContext(nil)
 	assert.NoError(err)
 	view := &testStateView{
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			2: {
-				NetworkTypeID:           1,
-				Open:                    true,
-				NextMessageSN:           2,
-				NextProofContextChanged: false,
-				PrevNetworkSectionHash:  nil,
-				LastNetworkSectionHash:  nil,
+				networkTypeID:           1,
+				open:                    true,
+				nextMessageSN:           2,
+				nextProofContextChanged: false,
+				prevNetworkSectionHash:  nil,
+				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
-				UID:                  "eth",
-				NextProofContextHash: pc.Hash(),
-				NextProofContext:     pc.Bytes(),
-				OpenNetworkIDs:       []int64{1, 2},
+				uid:                  "eth",
+				nextProofContextHash: pc.Hash(),
+				nextProofContext:     pc.Bytes(),
+				openNetworkIDs:       []int64{1, 2},
 			},
 		},
 	}
@@ -135,52 +140,52 @@ func newComplexTestBuilderSetup(t *testing.T) *testBuilderSetup {
 	pc, err := mod.NewProofContext(nil)
 	assert.NoError(err)
 	view := &testStateView{
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			1: {
-				NetworkTypeID:           1,
-				Open:                    true,
-				NextMessageSN:           1,
-				NextProofContextChanged: false,
-				PrevNetworkSectionHash:  nil,
-				LastNetworkSectionHash:  nil,
+				networkTypeID:           1,
+				open:                    true,
+				nextMessageSN:           1,
+				nextProofContextChanged: false,
+				prevNetworkSectionHash:  nil,
+				lastNetworkSectionHash:  nil,
 			},
 			2: {
-				NetworkTypeID:           1,
-				Open:                    true,
-				NextMessageSN:           2,
-				NextProofContextChanged: false,
-				PrevNetworkSectionHash:  nil,
-				LastNetworkSectionHash:  nil,
+				networkTypeID:           1,
+				open:                    true,
+				nextMessageSN:           2,
+				nextProofContextChanged: false,
+				prevNetworkSectionHash:  nil,
+				lastNetworkSectionHash:  nil,
 			},
 			3: {
-				NetworkTypeID:           2,
-				Open:                    true,
-				NextMessageSN:           3,
-				NextProofContextChanged: false,
-				PrevNetworkSectionHash:  nil,
-				LastNetworkSectionHash:  nil,
+				networkTypeID:           2,
+				open:                    true,
+				nextMessageSN:           3,
+				nextProofContextChanged: false,
+				prevNetworkSectionHash:  nil,
+				lastNetworkSectionHash:  nil,
 			},
 			4: {
-				NetworkTypeID:           2,
-				Open:                    true,
-				NextMessageSN:           3,
-				NextProofContextChanged: false,
-				PrevNetworkSectionHash:  nil,
-				LastNetworkSectionHash:  nil,
+				networkTypeID:           2,
+				open:                    true,
+				nextMessageSN:           3,
+				nextProofContextChanged: false,
+				prevNetworkSectionHash:  nil,
+				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
-				UID:                  "eth",
-				NextProofContextHash: pc.Hash(),
-				NextProofContext:     pc.Bytes(),
-				OpenNetworkIDs:       []int64{1, 2},
+				uid:                  "eth",
+				nextProofContextHash: pc.Hash(),
+				nextProofContext:     pc.Bytes(),
+				openNetworkIDs:       []int64{1, 2},
 			},
 			2: {
-				UID:                  "eth",
-				NextProofContextHash: pc.Hash(),
-				NextProofContext:     pc.Bytes(),
-				OpenNetworkIDs:       []int64{3, 4},
+				uid:                  "eth",
+				nextProofContextHash: pc.Hash(),
+				nextProofContext:     pc.Bytes(),
+				openNetworkIDs:       []int64{3, 4},
 			},
 		},
 	}
@@ -207,8 +212,8 @@ func (s *testBuilderSetup) updateView() {
 	for _, ntd := range d.NetworkTypeDigests() {
 		for _, nd := range ntd.NetworkDigests() {
 			if nw, ok := s.view.networks[nd.NetworkID()]; ok {
-				nw.PrevNetworkSectionHash = nw.LastNetworkSectionHash
-				nw.LastNetworkSectionHash = nd.NetworkSectionHash()
+				nw.prevNetworkSectionHash = nw.lastNetworkSectionHash
+				nw.lastNetworkSectionHash = nd.NetworkSectionHash()
 			}
 		}
 	}

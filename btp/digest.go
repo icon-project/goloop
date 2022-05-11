@@ -421,12 +421,12 @@ func (bs btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection
 
 func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
 	if bs.networkTypeSectionFor[ntid] == nil {
-		nt, err := bs.view.GetNetworkType(ntid)
+		nt, err := bs.view.GetNetworkTypeView(ntid)
 		if err != nil {
 			return nil, err
 		}
-		mod := ntm.ForUID(nt.UID)
-		npc, err := mod.NewProofContextFromBytes(nt.NextProofContext)
+		mod := ntm.ForUID(nt.UID())
+		npc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
 		if err != nil {
 			return nil, err
 		}
@@ -447,7 +447,7 @@ type networkTypeSectionFromDigest struct {
 	view             StateView
 	dbase            db.Database
 	mod              module.NetworkTypeModule
-	nt               *NetworkType
+	nt               NetworkTypeView
 	ntd              module.NetworkTypeDigest
 	nextProofContext module.BTPProofContext
 }
@@ -469,7 +469,7 @@ func (nts *networkTypeSectionFromDigest) NextProofContext() module.BTPProofConte
 }
 
 func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
-	nw, err := nts.view.GetNetwork(nid)
+	nw, err := nts.view.GetNetworkView(nid)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +507,7 @@ func (nts *networkTypeSectionFromDigest) NetworkSectionToRoot(nid int64) ([]modu
 type networkSectionFromDigest struct {
 	dbase        db.Database
 	mod          module.NetworkTypeModule
-	nw           *Network
+	nw           NetworkView
 	nd           module.NetworkDigest
 	updateNumber int64
 	messageCount int64
@@ -516,15 +516,15 @@ type networkSectionFromDigest struct {
 func newNetworkSectionFromDigest(
 	dbase db.Database,
 	mod module.NetworkTypeModule,
-	nw *Network,
+	nw NetworkView,
 	nd module.NetworkDigest,
 ) (*networkSectionFromDigest, error) {
 	ml, err := nd.MessageList(dbase, mod)
 	if err != nil {
 		return nil, err
 	}
-	updateNumber := (nw.NextMessageSN - ml.Len()) << 1
-	if nw.NextProofContextChanged {
+	updateNumber := (nw.NextMessageSN() - ml.Len()) << 1
+	if nw.NextProofContextChanged() {
 		updateNumber |= 1
 	}
 	return &networkSectionFromDigest{
@@ -538,7 +538,7 @@ func newNetworkSectionFromDigest(
 }
 
 func (ns *networkSectionFromDigest) Hash() []byte {
-	return ns.nw.LastNetworkSectionHash
+	return ns.nw.LastNetworkSectionHash()
 }
 
 func (ns *networkSectionFromDigest) NetworkID() int64 {
@@ -550,15 +550,15 @@ func (ns *networkSectionFromDigest) UpdateNumber() int64 {
 }
 
 func (ns *networkSectionFromDigest) FirstMessageSN() int64 {
-	return ns.nw.NextMessageSN - ns.MessageCount()
+	return ns.nw.NextMessageSN() - ns.MessageCount()
 }
 
 func (ns *networkSectionFromDigest) NextProofContextChanged() bool {
-	return ns.nw.NextProofContextChanged
+	return ns.nw.NextProofContextChanged()
 }
 
 func (ns *networkSectionFromDigest) PrevHash() []byte {
-	return ns.nw.PrevNetworkSectionHash
+	return ns.nw.PrevNetworkSectionHash()
 }
 
 func (ns *networkSectionFromDigest) MessageCount() int64 {

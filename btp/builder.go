@@ -29,11 +29,6 @@ type SectionBuilder interface {
 	Build() (module.BTPSection, error)
 }
 
-type StateView interface {
-	GetNetwork(nid int64) (*Network, error)
-	GetNetworkType(ntid int64) (*NetworkType, error)
-}
-
 // NewSectionBuilder returns new SectionBuilder. view shall have the final value
 // for a transition except Network's PrevNetworkSectionHash and
 // LastNetworkSectionHash fields. The two fields shall have initial value
@@ -73,18 +68,18 @@ func (sb *sectionBuilder) EnsureSection(nid int64) {
 func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 	nsMap := make(map[int64]networkSectionSlice, len(sb.networkEntries))
 	for nid, ne := range sb.networkEntries {
-		nw, err := sb.view.GetNetwork(nid)
+		nw, err := sb.view.GetNetworkView(nid)
 		if err != nil {
 			return nil, err
 		}
-		ntid := nw.NetworkTypeID
-		nt, err := sb.view.GetNetworkType(ntid)
-		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID))
+		ntid := nw.NetworkTypeID()
+		nt, err := sb.view.GetNetworkTypeView(ntid)
+		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID()))
 		nsMap[ntid] = nsMap[ntid].SortedInsert(ns)
 	}
 	ntsSlice := networkTypeSectionSlice(make([]module.NetworkTypeSection, 0, len(nsMap)))
 	for ntid, nsSlice := range nsMap {
-		nt, err := sb.view.GetNetworkType(ntid)
+		nt, err := sb.view.GetNetworkTypeView(ntid)
 		if err != nil {
 			return nil, err
 		}
