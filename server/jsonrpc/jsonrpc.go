@@ -184,6 +184,17 @@ func (p *Params) Convert(v interface{}) error {
 		} else {
 			return nil
 		}
+	} else {
+		rve := rv.Elem()
+		if rve.Kind() == reflect.Ptr {
+			value := reflect.New(rve.Type().Elem())
+			if err := UnmarshalWithValidate(p.rawMessage, value.Interface(), p.validator); err != nil {
+				return err
+			} else {
+				rve.Set(value)
+				return nil
+			}
+		}
 	}
 	return UnmarshalWithValidate(p.rawMessage, v, p.validator)
 }
