@@ -430,12 +430,16 @@ func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.Network
 		if err != nil {
 			return nil, err
 		}
+		ntd := bs.digest.NetworkTypeDigestFor(ntid)
+		if ntd == nil {
+			return nil, errors.Errorf("not found ntid=%d", ntid)
+		}
 		nts := &networkTypeSectionFromDigest{
 			view:             bs.view,
 			dbase:            bs.dbase,
 			mod:              mod,
 			nt:               nt,
-			ntd:              bs.digest.NetworkTypeDigestFor(ntid),
+			ntd:              ntd,
 			nextProofContext: npc,
 		}
 		bs.networkTypeSectionFor[ntid] = nts
@@ -473,12 +477,11 @@ func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) (module.Ne
 	if err != nil {
 		return nil, err
 	}
-	ns, err := newNetworkSectionFromDigest(
-		nts.dbase,
-		nts.mod,
-		nw,
-		nts.ntd.NetworkDigestFor(nid),
-	)
+	nd := nts.ntd.NetworkDigestFor(nid)
+	if nd == nil {
+		return nil, errors.Errorf("not found nid=%d", nid)
+	}
+	ns, err := newNetworkSectionFromDigest(nts.dbase, nts.mod, nw, nd)
 	if err != nil {
 		return nil, err
 	}
