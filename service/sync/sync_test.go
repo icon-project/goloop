@@ -167,7 +167,7 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	syncm2 := NewSyncManager(db2, nm2, dummyExBuilder, log.New())
 
 	nm.join(nm2)
-	ws := state.NewWorldState(db1, nil, nil, nil)
+	ws := state.NewWorldState(db1, nil, nil, nil, nil)
 	ac := ws.GetAccountState([]byte("ABC"))
 	ac.SetValue([]byte("ABC"), []byte("XYZ"))
 	vs := ws.GetValidatorState()
@@ -226,7 +226,7 @@ func TestSync_AccountSync(t *testing.T) {
 	var wss [cPeers]state.WorldState
 	var prevHash []byte
 	for i := 0; i < cPeers-cSyncPeers; i++ {
-		wss[i] = state.NewWorldState(databases[i], nil, nil, nil)
+		wss[i] = state.NewWorldState(databases[i], nil, nil, nil, nil)
 		for j := 0; j < 100; j++ {
 			v := []byte{testItems[j]}
 			ac := wss[i].GetAccountState(v)

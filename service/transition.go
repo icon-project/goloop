@@ -1,6 +1,7 @@
 package service
 
 import (
+	"container/list"
 	"fmt"
 	"math/big"
 	"sync"
@@ -209,7 +210,7 @@ func newTransition(
 }
 
 func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
-	var stateHash, extensionData []byte
+	var stateHash, extensionData, btpHash []byte
 	if len(result) > 0 {
 		tr, err := newTransitionResultFromBytes(result)
 		if err != nil {
@@ -217,9 +218,10 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 		}
 		stateHash = tr.StateHash
 		extensionData = tr.ExtensionData
+		btpHash = tr.BTPData
 	}
 	ess := plt.NewExtensionSnapshot(database, extensionData)
-	return state.NewWorldSnapshot(database, stateHash, vl, ess), nil
+	return state.NewWorldSnapshot(database, stateHash, vl, ess, btpHash), nil
 }
 
 // all parameters should be valid.
@@ -395,7 +397,7 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 			return nil, err
 		}
 	} else {
-		ws = state.NewWorldState(t.db, nil, nil, nil)
+		ws = state.NewWorldState(t.db, nil, nil, nil, nil)
 	}
 	if execution {
 		ws.EnableNodeCache()
@@ -533,6 +535,7 @@ func (t *transition) doForceSync() {
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
 	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
@@ -657,6 +660,16 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		return
 	}
 
+	bc := state.NewBTPContext(ctx.GetAccountState(state.SystemID))
+	// TODO check validator changed and write to state
+
+	// TODO load BTP message from ctx
+	var btpMsgs list.List
+	if err = ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
+		t.reportExecution(err)
+		return
+	}
+
 	t.worldSnapshot = ctx.GetSnapshot()
 
 	txDuration := time.Now().Sub(startTime)
@@ -675,6 +688,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
 

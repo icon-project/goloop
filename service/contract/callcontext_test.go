@@ -137,7 +137,7 @@ func newCallContext() CallContext {
 	return NewCallContext(
 		NewContext(
 			state.NewWorldContext(
-				state.NewWorldState(dbo, nil, nil, nil),
+				state.NewWorldState(dbo, nil, nil, nil, nil),
 				common.NewBlockInfo(0, 0),
 				nil,
 				dummyPlatformType{},

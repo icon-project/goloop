@@ -30,6 +30,7 @@ type transitionResult struct {
 	PatchReceiptHash  []byte
 	NormalReceiptHash []byte
 	ExtensionData     []byte
+	BTPData           []byte
 }
 
 func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {

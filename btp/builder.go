@@ -75,6 +75,9 @@ func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 		}
 		ntid := nw.NetworkTypeID()
 		nt, err := sb.view.GetNetworkTypeView(ntid)
+		if err != nil {
+			return nil, err
+		}
 		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID()))
 		nsMap[ntid] = nsMap[ntid].SortedInsert(ns)
 		if ns.NextProofContextChanged() {

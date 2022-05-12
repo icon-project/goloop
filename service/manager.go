@@ -663,7 +663,7 @@ func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	ess := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess, r.BTPData)
 	return e.Run()
 }
 
@@ -676,7 +676,7 @@ func (m *manager) ImportResult(result []byte, vh []byte, src db.Database) error 
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	es := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, es)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, es, r.BTPData)
 	return e.Run()
 }
 

@@ -93,6 +93,25 @@ func (wvs *worldVirtualState) GetExtensionState() ExtensionState {
 	return nil
 }
 
+func (wvs *worldVirtualState) GetBTPState() BTPState {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock != AccountNoLock {
+		wvs.realizeBaseInLock()
+
+		if wvs.committed != nil {
+			return wvs.committed.GetBTPSnapshot().NewState()
+		}
+		if wvs.worldLock == AccountWriteLock {
+			return wvs.real.GetBTPState()
+		} else {
+			return wvs.base.GetBTPSnapshot().NewState()
+		}
+	}
+	return nil
+}
+
 func (wvs *worldVirtualState) GetValidatorSnapshot() ValidatorSnapshot {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
@@ -567,6 +586,20 @@ func (wvss *worldVirtualSnapshot) GetExtensionSnapshot() ExtensionSnapshot {
 func (wvss *worldVirtualSnapshot) ExtensionData() []byte {
 	if wvss.base != nil {
 		return wvss.base.ExtensionData()
+	}
+	return nil
+}
+
+func (wvss *worldVirtualSnapshot) GetBTPSnapshot() BTPSnapshot {
+	if wvss.base != nil {
+		wvss.base.GetBTPSnapshot()
+	}
+	return nil
+}
+
+func (wvss *worldVirtualSnapshot) BTPData() []byte {
+	if wvss.base != nil {
+		return wvss.base.BTPData()
 	}
 	return nil
 }
