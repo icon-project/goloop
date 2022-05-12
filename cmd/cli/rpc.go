@@ -198,13 +198,15 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		Short: "GetTotalSupply",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			param := &v3.HeightParam{}
+			var param *v3.HeightParam
 			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
 			if err != nil {
 				return err
 			}
 			if height != -1 {
-				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
+				param = &v3.HeightParam{
+					Height: jsonrpc.HexInt(intconv.FormatInt(height)),
+				}
 			}
 			supply, err := rpcClient.GetTotalSupply(param)
 			if err != nil {
