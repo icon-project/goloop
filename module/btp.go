@@ -55,6 +55,11 @@ type NetworkTypeSectionDecisionProof struct {
 	Proof                  BTPProof
 }
 
+type BTPProofContextMap interface {
+	ProofContextFor(ntid int64) (BTPProofContext, error)
+	Update(btpSection BTPSection) BTPProofContextMap
+}
+
 // Digest
 
 type BTPDigest interface {

@@ -633,6 +633,11 @@ func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error)
 	panic("implement me")
 }
 
+func (m *manager) BTPProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *manager) HasTransaction(id []byte) bool {
 	return m.tm.HasTx(id)
 }
