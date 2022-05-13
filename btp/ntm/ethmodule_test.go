@@ -178,6 +178,7 @@ func TestEthModule_MerkleProof(t *testing.T) {
 		},
 		{
 			[]module.MerkleNode{
+				{module.DirRight, nil},
 				{module.DirLeft, keccak256(h(0), h(1))},
 			},
 			[][]byte{h(0), h(1), h(2)},
@@ -194,6 +195,8 @@ func TestEthModule_MerkleProof(t *testing.T) {
 		},
 		{
 			[]module.MerkleNode{
+				{module.DirRight, nil},
+				{module.DirRight, nil},
 				{
 					module.DirLeft, keccak256(
 						keccak256(h(0), h(1)),

@@ -95,6 +95,10 @@ func (ntm *networkTypeModule) merkleProof(data []byte, idx int) []module.MerkleN
 				ntm.AppendHash(data[:j], data[i:i+hashLen*2])
 			} else {
 				if idx == i {
+					proof = append(
+						proof,
+						module.MerkleNode{Dir: module.DirRight, Value: nil},
+					)
 					idx = j
 				}
 				copy(data[j:j+hashLen], data[i:i+hashLen])
