@@ -67,6 +67,7 @@ func (sb *sectionBuilder) EnsureSection(nid int64) {
 
 func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 	nsMap := make(map[int64]networkSectionSlice, len(sb.networkEntries))
+	npcChanged := make(map[int64]bool)
 	for nid, ne := range sb.networkEntries {
 		nw, err := sb.view.GetNetworkView(nid)
 		if err != nil {
@@ -76,6 +77,9 @@ func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 		nt, err := sb.view.GetNetworkTypeView(ntid)
 		ns := newNetworkSection(nid, nw, ne, ntm.ForUID(nt.UID()))
 		nsMap[ntid] = nsMap[ntid].SortedInsert(ns)
+		if ns.NextProofContextChanged() {
+			npcChanged[ntid] = true
+		}
 	}
 	ntsSlice := networkTypeSectionSlice(make([]module.NetworkTypeSection, 0, len(nsMap)))
 	for ntid, nsSlice := range nsMap {
@@ -83,7 +87,7 @@ func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 		if err != nil {
 			return nil, err
 		}
-		nts, err := newNetworkTypeSection(ntid, nt, nsSlice)
+		nts, err := newNetworkTypeSection(ntid, nt, nsSlice, npcChanged[ntid])
 		if err != nil {
 			return nil, err
 		}

@@ -137,6 +137,7 @@ type networkTypeSection struct {
 	networkSectionsRoot  []byte
 	networkDigests       []module.NetworkDigest
 	mod                  module.NetworkTypeModule
+	npcChanged           bool
 	hash                 []byte
 }
 
@@ -144,6 +145,7 @@ func newNetworkTypeSection(
 	ntid int64,
 	nt NetworkTypeView,
 	nsSlice networkSectionSlice,
+	npcChanged bool,
 ) (*networkTypeSection, error) {
 	mod := ntm.ForUID(nt.UID())
 	npc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
@@ -156,6 +158,7 @@ func newNetworkTypeSection(
 		networkSections:     nsSlice,
 		networkSectionsRoot: mod.MerkleRoot(&nsSlice),
 		mod:                 mod,
+		npcChanged:          npcChanged,
 	}
 	ntsFormat := nts.networkTypeSectionFormat()
 	nts.hash = mod.Hash(codec.MustMarshalToBytes(&ntsFormat))
@@ -200,6 +203,12 @@ func (nts *networkTypeSection) NetworkSections() []module.NetworkSection {
 
 func (nts *networkTypeSection) NetworkTypeSectionHash() []byte {
 	return nts.hash
+}
+
+// nextProofContextChanged returns true if NS.NextProofContextChanged() is true
+// for any child NS of this NTS.
+func (nts *networkTypeSection) nextProofContextChanged() bool {
+	return nts.npcChanged
 }
 
 func (nts *networkTypeSection) NetworkDigests() []module.NetworkDigest {
