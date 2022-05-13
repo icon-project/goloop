@@ -73,7 +73,7 @@ func (m *ethModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext,
 	return newEthProofContextFromBytes(bs)
 }
 
-func (m *ethModule) NewProofContext(keys [][]byte) (module.BTPProofContext, error) {
+func (m *ethModule) NewProofContext(keys [][]byte) module.BTPProofContext {
 	return newEthProofContext(keys)
 }
 

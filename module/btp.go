@@ -174,7 +174,7 @@ type NetworkTypeModule interface {
 
 	// NewProofContext returns a new proof context. The parameter keys is
 	// a slice of networkType specific keys (usually a slice of addresses).
-	NewProofContext(keys [][]byte) (BTPProofContext, error)
+	NewProofContext(keys [][]byte) BTPProofContext
 	MerkleRoot(bytesList BytesList) []byte
 	MerkleProof(bytesList BytesList, idx int) []MerkleNode
 	AddressFromPubKey(pubKey []byte) ([]byte, error)

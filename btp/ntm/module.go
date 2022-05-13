@@ -29,7 +29,7 @@ type Module interface {
 	AppendHash(out []byte, data []byte) []byte
 	DSA() string
 	NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error)
-	NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error)
+	NewProofContext(pubKeys [][]byte) module.BTPProofContext
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }
 

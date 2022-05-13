@@ -20,7 +20,7 @@ type ethProofPart = secp256k1ProofPart
 type ethProof = secp256k1Proof
 type ethProofContext = secp256k1ProofContext
 
-func newEthProofContext(keys [][]byte) (*secp256k1ProofContext, error) {
+func newEthProofContext(keys [][]byte) *secp256k1ProofContext {
 	return newSecp256k1ProofContext(&ethModuleInstance, keys)
 }
 

@@ -83,8 +83,7 @@ func TestSectionBuilder_Build_Empty(t *testing.T) {
 func TestSectionBuilder_Build_Basic(t *testing.T) {
 	assert := assert.New(t)
 	mod := ntm.ForUID("eth")
-	pc, err := mod.NewProofContext(nil)
-	assert.NoError(err)
+	pc := mod.NewProofContext(nil)
 	view := &testStateView{
 		networks: map[int64]*network{
 			2: {
@@ -137,8 +136,7 @@ type testBuilderSetup struct {
 func newComplexTestBuilderSetup(t *testing.T) *testBuilderSetup {
 	assert := assert.New(t)
 	mod := ntm.ForUID("eth")
-	pc, err := mod.NewProofContext(nil)
-	assert.NoError(err)
+	pc := mod.NewProofContext(nil)
 	view := &testStateView{
 		networks: map[int64]*network{
 			1: {

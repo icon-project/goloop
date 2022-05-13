@@ -64,7 +64,7 @@ func (m *iconModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext
 	return newIconProofContextFromBytes(bs)
 }
 
-func (m *iconModule) NewProofContext(pubKeys [][]byte) (module.BTPProofContext, error) {
+func (m *iconModule) NewProofContext(pubKeys [][]byte) module.BTPProofContext {
 	return newIconProofContext(pubKeys)
 }
 

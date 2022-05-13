@@ -20,7 +20,7 @@ type iconProofPart = secp256k1ProofPart
 type iconProof = secp256k1Proof
 type iconProofContext = secp256k1ProofContext
 
-func newIconProofContext(keys [][]byte) (*secp256k1ProofContext, error) {
+func newIconProofContext(keys [][]byte) *secp256k1ProofContext {
 	return newSecp256k1ProofContext(&iconModuleInstance, keys)
 }
 

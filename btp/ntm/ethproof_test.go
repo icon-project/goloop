@@ -74,9 +74,7 @@ func newEthTestSetup(t *testing.T, count int) *testSetup {
 		s.assert.NoError(err)
 		s.addrs = append(s.addrs, addr)
 	}
-	var err error
-	s.pc, err = newEthProofContext(s.addrs)
-	s.assert.NoError(err)
+	s.pc = newEthProofContext(s.addrs)
 	return s
 }
 

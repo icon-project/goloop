@@ -80,7 +80,7 @@ type secp256k1ProofContext struct {
 func newSecp256k1ProofContext(
 	mod secp256k1proofContextModule,
 	keys [][]byte,
-) (*secp256k1ProofContext, error) {
+) *secp256k1ProofContext {
 	pp := &secp256k1ProofContext{
 		Validators:  make([][]byte, 0, len(keys)),
 		addrToIndex: make(map[string]int, len(keys)),
@@ -90,7 +90,7 @@ func newSecp256k1ProofContext(
 		pp.Validators = append(pp.Validators, addr)
 		pp.addrToIndex[string(addr)] = i
 	}
-	return pp, nil
+	return pp
 }
 
 func (pc *secp256k1ProofContext) indexOf(address []byte) (int, bool) {
