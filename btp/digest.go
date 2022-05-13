@@ -63,7 +63,7 @@ func (bd *digest) Bytes() []byte {
 
 func (bd *digest) Hash() []byte {
 	if bd.hash == nil {
-		crypto.SHA3Sum256(bd.Bytes())
+		bd.hash = crypto.SHA3Sum256(bd.Bytes())
 	}
 	return bd.hash
 }
