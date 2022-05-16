@@ -21,7 +21,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -42,36 +41,36 @@ func newIconAddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return common.NewAccountAddress(digest[len(digest)-iconAddressIDLen:]).Bytes(), nil
 }
 
-var iconModuleInstance iconModule
+var iconModuleInstance *networkTypeModule
 
-type iconModule struct{}
+type iconModuleCore struct{}
 
-func (m *iconModule) UID() string {
+func (m *iconModuleCore) UID() string {
 	return iconUID
 }
 
-func (m *iconModule) AppendHash(out []byte, data []byte) []byte {
+func (m *iconModuleCore) AppendHash(out []byte, data []byte) []byte {
 	h := sha3.New256()
 	h.Write(data)
 	return h.Sum(out)
 }
 
-func (m *iconModule) DSA() string {
+func (m *iconModuleCore) DSA() string {
 	return iconDSA
 }
 
-func (m *iconModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error) {
-	return newIconProofContextFromBytes(bs)
+func (m *iconModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, error) {
+	return newSecp256k1ProofContextFromBytes(iconModuleInstance, bs)
 }
 
-func (m *iconModule) NewProofContext(pubKeys [][]byte) module.BTPProofContext {
-	return newIconProofContext(pubKeys)
+func (m *iconModuleCore) NewProofContext(keys [][]byte) proofContextCore {
+	return newSecp256k1ProofContext(iconModuleInstance, keys)
 }
 
-func (m *iconModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+func (m *iconModuleCore) AddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return newIconAddressFromPubKey(pubKey)
 }
 
 func init() {
-	register(iconUID, &iconModule{})
+	iconModuleInstance = register(iconUID, &iconModuleCore{})
 }

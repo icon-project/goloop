@@ -32,7 +32,7 @@ type testSetup struct {
 	wallets []*walletProvider
 	pubKeys [][]byte
 	addrs   [][]byte
-	pc      *ethProofContext
+	pc      module.BTPProofContext
 }
 
 type walletProvider struct {
@@ -43,17 +43,21 @@ func (w walletProvider) WalletFor(keyType string) module.BaseWallet {
 	return w.wallets[keyType]
 }
 
-func newSecp256k1WalletProvider() *walletProvider {
+func newSecp256k1WalletProvider() (*walletProvider, module.Wallet) {
 	w := wallet.New()
 	wp := walletProvider{
 		wallets: map[string]module.BaseWallet{
-			ethDSA: w,
+			secp256k1DSA: w,
 		},
 	}
-	return &wp
+	return &wp, w
 }
 
 func newEthTestSetup(t *testing.T, count int) *testSetup {
+	return newTestSetup(t, ethModuleInstance, count)
+}
+
+func newTestSetup(t *testing.T, mod *networkTypeModule, count int) *testSetup {
 	s := &testSetup{
 		assert:  assert.New(t),
 		count:   count,
@@ -62,19 +66,14 @@ func newEthTestSetup(t *testing.T, count int) *testSetup {
 		addrs:   make([][]byte, 0, count),
 	}
 	for i := 0; i < count; i++ {
-		w := wallet.New()
-		wp := walletProvider{
-			wallets: map[string]module.BaseWallet{
-				ethDSA: w,
-			},
-		}
-		s.wallets = append(s.wallets, &wp)
+		wp, w := newSecp256k1WalletProvider()
+		s.wallets = append(s.wallets, wp)
 		s.pubKeys = append(s.pubKeys, w.PublicKey())
 		addr, err := newEthAddressFromPubKey(s.pubKeys[i])
 		s.assert.NoError(err)
 		s.addrs = append(s.addrs, addr)
 	}
-	s.pc = newEthProofContext(s.addrs)
+	s.pc = mod.NewProofContext(s.addrs)
 	return s
 }
 
@@ -102,7 +101,7 @@ func TestEthProofContext_NewProofPart_OK(t *testing.T) {
 func TestEthProofContext_NewProofPart_FailInvalidPK(t *testing.T) {
 	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
-	wp := newSecp256k1WalletProvider()
+	wp, _ := newSecp256k1WalletProvider()
 	_, err := s.pc.NewProofPart(msgHash, wp)
 	s.assert.Error(err)
 }
@@ -120,11 +119,11 @@ func TestEthProofPart_codec(t *testing.T) {
 	msgHash := keccak256([]byte("abc"))
 	pp, err := s.pc.NewProofPart(msgHash, s.wallets[2])
 	s.assert.NoError(err)
-	epp := pp.(*ethProofPart)
+	epp := pp.(*secp256k1ProofPart)
 	ppBytes := codec.MustMarshalToBytes(epp)
 	s.assert.EqualValues(ppBytes, codec.MustMarshalToBytes(pp))
 	s.assert.EqualValues(ppBytes, pp.Bytes())
-	var epp2 ethProofPart
+	var epp2 secp256k1ProofPart
 	codec.MustUnmarshalFromBytes(ppBytes, &epp2)
 	s.assert.NoError(s.pc.VerifyPart(msgHash, &epp2))
 }
@@ -133,11 +132,11 @@ func TestEthProof_codec(t *testing.T) {
 	s := newEthTestSetup(t, 4)
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(3, msgHash)
-	ep := p.(*ethProof)
+	ep := p.(*secp256k1Proof)
 	pBytes := codec.MustMarshalToBytes(ep)
 	s.assert.EqualValues(pBytes, codec.MustMarshalToBytes(p))
 	s.assert.EqualValues(pBytes, p.Bytes())
-	var ep2 ethProof
+	var ep2 secp256k1Proof
 	codec.MustUnmarshalFromBytes(pBytes, &ep2)
 	s.assert.NoError(s.pc.Verify(msgHash, &ep2))
 }
@@ -147,7 +146,7 @@ func TestEthProofContext_codec(t *testing.T) {
 	msgHash := keccak256([]byte("abc"))
 	p := s.newProofOfLen(3, msgHash)
 	pcBytes := s.pc.Bytes()
-	pc2, err := newEthProofContextFromBytes(pcBytes)
+	pc2, err := ethModuleInstance.NewProofContextFromBytes(pcBytes)
 	s.assert.NoError(err)
 	s.assert.NoError(pc2.Verify(msgHash, p))
 	s.pc = pc2

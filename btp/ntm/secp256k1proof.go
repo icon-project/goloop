@@ -71,14 +71,13 @@ func (p *secp256k1Proof) Add(pp module.BTPProofPart) {
 
 type secp256k1ProofContext struct {
 	Validators  [][]byte
-	mod         secp256k1proofContextModule
+	mod         *networkTypeModule
 	bytes       []byte
-	hash        []byte
 	addrToIndex map[string]int
 }
 
 func newSecp256k1ProofContext(
-	mod secp256k1proofContextModule,
+	mod *networkTypeModule,
 	keys [][]byte,
 ) *secp256k1ProofContext {
 	pp := &secp256k1ProofContext{
@@ -105,7 +104,7 @@ func (pc *secp256k1ProofContext) indexOf(address []byte) (int, bool) {
 }
 
 func newSecp256k1ProofContextFromBytes(
-	mod secp256k1proofContextModule,
+	mod *networkTypeModule,
 	bytes []byte,
 ) (*secp256k1ProofContext, error) {
 	pc := &secp256k1ProofContext{
@@ -118,11 +117,8 @@ func newSecp256k1ProofContextFromBytes(
 	return pc, nil
 }
 
-func (pc *secp256k1ProofContext) Hash() []byte {
-	if pc.hash == nil {
-		pc.hash = keccak256(pc.Bytes())
-	}
-	return pc.hash
+func (pc *secp256k1ProofContext) NetworkTypeModule() module.NetworkTypeModule {
+	return pc.mod
 }
 
 func (pc *secp256k1ProofContext) Bytes() []byte {

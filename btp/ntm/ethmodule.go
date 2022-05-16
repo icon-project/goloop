@@ -20,7 +20,6 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -53,34 +52,34 @@ func newEthAddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return digest[len(digest)-ethAddressLen:], nil
 }
 
-var ethModuleInstance ethModule
+var ethModuleInstance *networkTypeModule
 
-type ethModule struct{}
+type ethModuleCore struct{}
 
-func (m *ethModule) UID() string {
+func (m *ethModuleCore) UID() string {
 	return ethUID
 }
 
-func (m *ethModule) AppendHash(out []byte, data []byte) []byte {
+func (m *ethModuleCore) AppendHash(out []byte, data []byte) []byte {
 	return appendKeccak256(out, data)
 }
 
-func (m *ethModule) DSA() string {
+func (m *ethModuleCore) DSA() string {
 	return ethDSA
 }
 
-func (m *ethModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error) {
-	return newEthProofContextFromBytes(bs)
+func (m *ethModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, error) {
+	return newSecp256k1ProofContextFromBytes(ethModuleInstance, bs)
 }
 
-func (m *ethModule) NewProofContext(keys [][]byte) module.BTPProofContext {
-	return newEthProofContext(keys)
+func (m *ethModuleCore) NewProofContext(keys [][]byte) proofContextCore {
+	return newSecp256k1ProofContext(ethModuleInstance, keys)
 }
 
-func (m *ethModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+func (m *ethModuleCore) AddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return newEthAddressFromPubKey(pubKey)
 }
 
 func init() {
-	register(ethUID, &ethModule{})
+	ethModuleInstance = register(ethUID, &ethModuleCore{})
 }

@@ -24,21 +24,53 @@ import (
 
 const hashLen = 32
 
-type Module interface {
+type moduleCore interface {
 	UID() string
 	AppendHash(out []byte, data []byte) []byte
 	DSA() string
-	NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error)
-	NewProofContext(pubKeys [][]byte) module.BTPProofContext
+	NewProofContextFromBytes(bs []byte) (proofContextCore, error)
+	NewProofContext(pubKeys [][]byte) proofContextCore
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 }
 
 type networkTypeModule struct {
-	Module
+	core moduleCore
+}
+
+func (ntm *networkTypeModule) UID() string {
+	return ntm.core.UID()
+}
+
+func (ntm *networkTypeModule) AppendHash(out []byte, data []byte) []byte {
+	return ntm.core.AppendHash(out, data)
+}
+
+func (ntm *networkTypeModule) DSA() string {
+	return ntm.core.DSA()
+}
+
+func (ntm *networkTypeModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error) {
+	pcCore, err := ntm.core.NewProofContextFromBytes(bs)
+	if err != nil {
+		return nil, err
+	}
+	return &proofContext{
+		core: pcCore,
+	}, nil
+}
+
+func (ntm *networkTypeModule) NewProofContext(keys [][]byte) module.BTPProofContext {
+	return &proofContext{
+		core: ntm.core.NewProofContext(keys),
+	}
+}
+
+func (ntm *networkTypeModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+	return ntm.core.AddressFromPubKey(pubKey)
 }
 
 func (ntm *networkTypeModule) Hash(data []byte) []byte {
-	return ntm.AppendHash(nil, data)
+	return ntm.core.AppendHash(nil, data)
 }
 
 func (ntm *networkTypeModule) merkleRoot(data []byte) []byte {
@@ -129,6 +161,8 @@ func ForUID(uid string) module.NetworkTypeModule {
 	return modules[uid]
 }
 
-func register(uid string, mod Module) {
-	modules[uid] = &networkTypeModule{Module: mod}
+func register(uid string, mod moduleCore) *networkTypeModule {
+	networkTypeModule := &networkTypeModule{core: mod}
+	modules[uid] = networkTypeModule
+	return networkTypeModule
 }
