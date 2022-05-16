@@ -212,11 +212,8 @@ func NewNetwork(ntid int64, name string, owner module.Address, nextProofContextC
 	}
 }
 
-func NewNetworkFromBytes(b []byte) (*Network, error) {
+func NewNetworkFromBytes(b []byte) *Network {
 	nw := new(Network)
-	_, err := codec.UnmarshalFromBytes(b, nw)
-	if err != nil {
-		return nil, err
-	}
-	return nw, nil
+	codec.MustUnmarshalFromBytes(b, nw)
+	return nw
 }

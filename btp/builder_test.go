@@ -50,6 +50,7 @@ type testStateView struct {
 	networkTypeIDs []int64
 	networks       map[int64]*Network
 	networkTypes   map[int64]*NetworkType
+	publicKey      map[string]map[string][]byte
 }
 
 func (v *testStateView) GetNetworkTypeIDs() ([]int64, error) {
@@ -66,6 +67,13 @@ func (v *testStateView) GetNetworkView(nid int64) (NetworkView, error) {
 func (v *testStateView) GetNetworkTypeView(ntid int64) (NetworkTypeView, error) {
 	if nt, ok := v.networkTypes[ntid]; ok {
 		return nt, nil
+	}
+	return nil, errors.ErrNotFound
+}
+
+func (v *testStateView) GetPublicKey(address module.Address, name string) ([]byte, error) {
+	if v1, ok := v.publicKey[string(address.Bytes())]; ok {
+		return v1[name], nil
 	}
 	return nil, errors.ErrNotFound
 }

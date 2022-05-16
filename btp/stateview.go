@@ -16,6 +16,8 @@
 
 package btp
 
+import "github.com/icon-project/goloop/module"
+
 type NetworkTypeView interface {
 	UID() string
 	NextProofContextHash() []byte
@@ -24,6 +26,8 @@ type NetworkTypeView interface {
 }
 
 type NetworkView interface {
+	Name() string
+	Owner() module.Address
 	NetworkTypeID() int64
 	Open() bool
 	NextMessageSN() int64
@@ -36,4 +40,5 @@ type StateView interface {
 	GetNetworkTypeIDs() ([]int64, error)
 	GetNetworkView(nid int64) (NetworkView, error)
 	GetNetworkTypeView(ntid int64) (NetworkTypeView, error)
+	GetPublicKey(address module.Address, name string) ([]byte, error)
 }

@@ -157,6 +157,10 @@ func (ntm *networkTypeModule) MerkleProof(data module.BytesList, idx int) []modu
 
 var modules = make(map[string]module.NetworkTypeModule)
 
+func Modules() map[string]module.NetworkTypeModule {
+	return modules
+}
+
 func ForUID(uid string) module.NetworkTypeModule {
 	return modules[uid]
 }

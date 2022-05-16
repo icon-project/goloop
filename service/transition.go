@@ -610,6 +610,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
+	ctx.GetBTPState().SetValidators(ctx.GetValidatorState())
+
 	if err := t.plt.OnExecutionBegin(ctx, t.log); err != nil {
 		t.reportExecution(err)
 		return
@@ -660,7 +662,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		return
 	}
 
-	bc := state.NewBTPContext(ctx.GetAccountState(state.SystemID))
+	bc := state.NewBTPContext(ctx)
 	// TODO check validator changed and write to state
 
 	// TODO load BTP message from ctx

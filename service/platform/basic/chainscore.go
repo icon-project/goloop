@@ -1031,6 +1031,14 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
 	}
 
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		if err = bs.CheckPublicKey(s.newBTPContext(), s.from); err != nil {
+			return err
+		}
+	}
+
 	if s.cc.MembershipEnabled() {
 		found := false
 		as := s.cc.GetAccountState(state.SystemID)
@@ -1444,8 +1452,7 @@ func (s *ChainScore) Ex_getBTPNetworkTypeId(name string) (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return 0, err
 	}
-	bc := state.NewBTPContext(s.cc.GetAccountState(state.SystemID))
-	return bc.GetNetworkTypeIdByName(name), nil
+	return s.newBTPContext().GetNetworkTypeIdByName(name), nil
 }
 
 func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error) {
@@ -1455,7 +1462,7 @@ func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 	if bs, err := s.getBTPState(); err != nil {
 		return 0, err
 	} else {
-		bc := state.NewBTPContext(s.cc.GetAccountState(state.SystemID))
+		bc := s.newBTPContext()
 		ntActivated := false
 		if bc.GetNetworkTypeIdByName(networkTypeName) <= 0 {
 			ntActivated = true
@@ -1494,8 +1501,7 @@ func (s *ChainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		bc := state.NewBTPContext(s.cc.GetAccountState(state.SystemID))
-		if ntid, err := bs.CloseNetwork(bc, nid); err != nil {
+		if ntid, err := bs.CloseNetwork(s.newBTPContext(), nid); err != nil {
 			return err
 		} else {
 			s.cc.OnEvent(state.SystemAddress,
@@ -1512,11 +1518,16 @@ func (s *ChainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
 }
 
 func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte) error {
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	if len(message) == 0 {
+		return scoreresult.ErrInvalidParameter
+	}
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		bc := state.NewBTPContext(s.cc.GetAccountState(state.SystemID))
-		if err = bs.HandleMessageSN(bc, s.from, networkId.Int64()); err != nil {
+		if err = bs.HandleMessageSN(s.newBTPContext(), s.from, networkId.Int64()); err != nil {
 			return err
 		}
 	}
@@ -1526,7 +1537,22 @@ func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 }
 
 func (s *ChainScore) Ex_setPublicKey(name string, pubKey []byte) error {
-	// TODO implement
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if s.from.IsContract() {
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	if len(pubKey) == 0 {
+		return scoreresult.ErrInvalidParameter
+	}
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		if err = bs.SetPublicKey(s.newBTPContext(), s.from, name, pubKey); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1536,4 +1562,8 @@ func (s *ChainScore) getBTPState() (*state.BTPStateImpl, error) {
 		return nil, scoreresult.UnknownFailureError.Errorf("BTP state is nil")
 	}
 	return btpState.(*state.BTPStateImpl), nil
+}
+
+func (s *ChainScore) newBTPContext() state.BTPContext {
+	return state.NewBTPContext(s.cc)
 }
