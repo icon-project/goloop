@@ -86,15 +86,12 @@ func dumpRLP(t *testing.T, indent string, data []byte) {
 		case q < 0x80:
 			t.Logf("%sbytes(0x%x:%d) : %x", indent, 1, 1, data[p:p+1])
 			p = p + 1
-		case q == 0x80:
-			t.Logf("%sbytes(0x0:0) nil?", indent)
-			p = p + 1
 		case q <= 0xb7:
 			l := int(q - 0x80)
 			t.Logf("%sbytes(0x%x:%d) : %x", indent, l, l, data[p+1:p+1+l])
 			p = p + 1 + l
 		case q <= 0xbf:
-			ll := int(q - 0xbf)
+			ll := int(q - 0xb7)
 			buf := make([]byte, 8)
 			lBytes := data[p+1 : p+1+ll]
 			copy(buf[8-ll:], lBytes)

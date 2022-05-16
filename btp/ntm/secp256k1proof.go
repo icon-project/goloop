@@ -19,8 +19,8 @@ package ntm
 import (
 	"bytes"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -37,7 +37,7 @@ type secp256k1proofContextModule interface {
 
 type secp256k1ProofPart struct {
 	Index     int
-	Signature common.Signature
+	Signature *crypto.Signature
 }
 
 func (pp *secp256k1ProofPart) Bytes() []byte {
@@ -53,7 +53,7 @@ func (pp *secp256k1ProofPart) recover(mod secp256k1proofContextModule, hash []by
 }
 
 type secp256k1Proof struct {
-	Signatures []common.Signature
+	Signatures []*crypto.Signature
 	bytes      []byte
 }
 
@@ -161,7 +161,7 @@ func (pc *secp256k1ProofContext) Verify(dHash []byte, p module.BTPProof) error {
 	set := make(map[int]struct{}, len(ep.Signatures))
 	valid := 0
 	for i, sig := range ep.Signatures {
-		if sig.Signature == nil {
+		if sig == nil {
 			continue
 		}
 		epp := secp256k1ProofPart{
@@ -225,7 +225,7 @@ func (pc *secp256k1ProofContext) NewProofPart(
 	pp := secp256k1ProofPart{
 		Index: idx,
 	}
-	err = pp.Signature.UnmarshalBinary(sig)
+	pp.Signature, err = crypto.ParseSignature(sig)
 	log.Must(err)
 	return &pp, nil
 }
@@ -236,6 +236,6 @@ func (pc *secp256k1ProofContext) DSA() string {
 
 func (pc *secp256k1ProofContext) NewProof() module.BTPProof {
 	return &secp256k1Proof{
-		Signatures: make([]common.Signature, len(pc.Validators)),
+		Signatures: make([]*crypto.Signature, len(pc.Validators)),
 	}
 }
