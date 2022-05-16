@@ -175,6 +175,9 @@ func (sig *Signature) RLPDecodeSelf(d codec.Decoder) error {
 	if err != nil {
 		return err
 	}
+	if bs == nil {
+		return codec.ErrNilValue
+	}
 	switch len(bs) {
 	case SignatureLenRawWithV:
 		sig.bytes = bs
