@@ -39,12 +39,6 @@ func (cs ContractState) String() string {
 	return status
 }
 
-const ASActive = 0
-const (
-	ASDisabled = 1 << iota
-	ASBlocked
-)
-
 const (
 	CTAppZip    = "application/zip"
 	CTAppJava   = "application/java"

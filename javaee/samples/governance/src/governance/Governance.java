@@ -114,4 +114,9 @@ public class Governance {
     public void setRoundLimitFactor(int factor) {
         system.setRoundLimitFactor(factor);
     }
+
+    @External
+    public void setUseSystemDeposit(Address address, boolean yn) {
+        system.setUseSystemDeposit(address, yn);
+    }
 }

@@ -47,6 +47,7 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class FeeSharingTest extends TestBase {
     private static TransactionHandler txHandler;
@@ -54,6 +55,7 @@ public class FeeSharingTest extends TestBase {
     private static GovScore.Fee fee;
     private static KeyWallet ownerWallet;
     private static KeyWallet aliceWallet;
+    private static ChainScore chainScore;
 
     @BeforeAll
     static void setup() throws Exception {
@@ -76,6 +78,7 @@ public class FeeSharingTest extends TestBase {
         ensureIcxBalance(txHandler, aliceWallet.getAddress(), BigInteger.ZERO, ICX);
 
         LOG.infoEntering("initSteps");
+        chainScore = new ChainScore(txHandler);
         govScore = new GovScore(txHandler);
         fee = govScore.getFee();
         StepTest.initStepCosts(govScore);
@@ -235,7 +238,6 @@ public class FeeSharingTest extends TestBase {
     }
 
     private void printDepositInfo(Address scoreAddress) throws IOException {
-        ChainScore chainScore = new ChainScore(txHandler);
         RpcItem status = chainScore.getScoreStatus(scoreAddress);
         RpcItem item = status.asObject().getItem("depositInfo");
         if (item != null) {
@@ -266,5 +268,140 @@ public class FeeSharingTest extends TestBase {
         } else {
             LOG.info("depositInfo NULL");
         }
+    }
+
+    @Tag(Constants.TAG_JAVA_GOV)
+    @Test
+    public void testJavaSystemDeposit() throws Exception {
+        testSystemDeposit(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    @Tag(Constants.TAG_PY_GOV)
+    @Test
+    public void testPythonSystemDeposit() throws Exception {
+        testSystemDeposit(Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    @Test
+    public void testSystemDeposit(String contentType) throws Exception {
+        LOG.infoEntering("testSystemDeposit:" + contentType);
+        var revision = chainScore.getRevision();
+        if (revision < 8) {
+            LOG.info("Nothing to test on revision=" + revision);
+            LOG.infoExiting();
+            return;
+        }
+
+        LOG.infoEntering("Ensure Revision 9");
+        if (revision == 8) {
+            LOG.info("setRevision(9)");
+            var result = govScore.setRevision(9);
+            assertSuccess(result);
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy contracts");
+        var feeScore1 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        var feeScore2 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        var feeScoreAlice = new FeeShareScore(feeScore1, aliceWallet);
+        LOG.infoExiting();
+
+        BigInteger aliceExpect = txHandler.getBalance(aliceWallet.getAddress());
+        BigInteger aliceBalance;
+        BigInteger systemDepositUsage = chainScore.call("getSystemDepositUsage", null).asInteger();
+
+        TransactionResult result;
+
+        LOG.infoEntering("Case1: LAYER1(NO DEPOSIT) LAYER2(NO DEPOSIT)");
+
+        LOG.info("Calling setValues(TEST) without system deposit");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+        aliceExpect = subtractFee(aliceExpect, result);
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case2: LAYER1(NO DEPOSIT) LAYER2(100% SYSTEM DEPOSIT)");
+
+        LOG.info("Set UseSystemDeposit on " + feeScore1.getAddress().toString());
+        // Fee of secondary contract is paid by the system
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), true);
+        feeScore2.addToWhitelist(feeScore1.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues()");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        int systemDepositCount = 0;
+        int userPaymentCount = 0;
+        var details = result.getStepUsedDetails().asObject();
+        for (var itr = details.keySet().iterator(); itr.hasNext(); ) {
+            var addr = itr.next();
+            var steps = details.getItem(addr).asInteger();
+            LOG.info("Payment payer=" + addr + " steps=" + steps.toString());
+            var fee = details.getItem(addr).asInteger().multiply(result.getStepPrice());
+            if (addr.equals("cx0000000000000000000000000000000000000000")) {
+                var nv = chainScore.call("getSystemDepositUsage", null).asInteger();
+                assertEquals(systemDepositUsage.add(fee), nv);
+                systemDepositUsage = nv;
+                systemDepositCount += 1;
+            } else if (addr.equals(aliceWallet.getAddress().toString())) {
+                var nv = txHandler.getBalance(aliceWallet.getAddress());
+                assertEquals(aliceBalance.subtract(fee), nv);
+                aliceBalance = nv;
+                userPaymentCount += 1;
+            } else {
+                assertTrue(false, "Unknown Address:" + addr);
+            }
+        }
+        assertEquals(1, systemDepositCount);
+        assertEquals(1, userPaymentCount);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case3: LAYER1(100% SYSTEM DEPOSIT) LAYER2(NO DEPOSIT)");
+
+        LOG.info("Set UseSystemDeposit only on " + feeScore2.getAddress().toString());
+        // All Fee is paid by system in the first contract
+        govScore.setUseSystemDeposit(feeScore1.getAddress(), true);
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), false);
+        feeScore1.addToWhitelist(aliceWallet.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues(TEST)");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        // check payment information
+        systemDepositCount = 0;
+        userPaymentCount = 0;
+        details = result.getStepUsedDetails().asObject();
+        assertNotNull(details);
+        for (var itr = details.keySet().iterator(); itr.hasNext(); ) {
+            var addr = itr.next();
+            var steps = details.getItem(addr).asInteger();
+            LOG.info("Payment payer=" + addr + " steps=" + steps.toString());
+            var fee = details.getItem(addr).asInteger().multiply(result.getStepPrice());
+            if (addr.equals("cx0000000000000000000000000000000000000000")) {
+                var nv = chainScore.call("getSystemDepositUsage", null).asInteger();
+                assertEquals(systemDepositUsage.add(fee), nv);
+                systemDepositUsage = nv;
+                systemDepositCount += 1;
+            } else if (addr.equals(aliceWallet.getAddress().toString())) {
+                assertTrue(fee.equals(BigInteger.ZERO));
+                userPaymentCount += 1;
+            } else {
+                assertTrue(false, "Unknown Address:" + addr);
+            }
+        }
+        assertEquals(1, systemDepositCount);
+        assertEquals(0, userPaymentCount);
+
+        LOG.infoExiting();
+
+        LOG.infoExiting();
     }
 }

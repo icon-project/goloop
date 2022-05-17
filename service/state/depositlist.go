@@ -130,7 +130,7 @@ func (dl depositList) getAvailableDeposit(bh int64) *big.Int {
 }
 
 // PaySteps returns consumes virtual steps and also deposits.
-// It returns payed steps
+// It returns paid steps
 func (dl *depositList) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int) {
 	bh := pc.BlockHeight()
 	price := pc.StepPrice()

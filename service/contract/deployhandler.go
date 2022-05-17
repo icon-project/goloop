@@ -633,7 +633,7 @@ func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	h.cc.OnResult(status, new(big.Int), nil, nil)
 }
 
-func (h *callGetAPIHandler) OnSetFeeProportion(addr module.Address, portion int) {
+func (h *callGetAPIHandler) OnSetFeeProportion(portion int) {
 	h.Log.Errorf("Unexpected call OnSetFeeProportion() from GetAPI()")
 }
 

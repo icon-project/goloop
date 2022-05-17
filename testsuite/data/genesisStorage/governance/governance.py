@@ -84,6 +84,10 @@ class SystemInterface(InterfaceScore):
     def setMinimizeBlockGen(self, yn: bool):
         pass
 
+    @interface
+    def setUseSystemDeposit(self, address: Address, yn: bool):
+        pass
+
 
 class Governance(IconScoreBase):
 
@@ -185,6 +189,10 @@ class Governance(IconScoreBase):
     @external
     def setMinimizeBlockGen(self, yn: bool):
         self.system_score.setMinimizeBlockGen(yn)
+
+    @external
+    def setUseSystemDeposit(self, address: Address, yn: bool):
+        self.system_score.setUseSystemDeposit(address, yn)
 
     @external(readonly=True)
     def updated(self) -> bool:

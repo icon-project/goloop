@@ -22,6 +22,8 @@ import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.jsonrpc.RpcArray;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
@@ -86,6 +88,23 @@ public class FeeShareScore extends Score {
                 "setValue",
                 (new RpcObject.Builder())
                         .put("value", new RpcValue(value))
+                        .build());
+    }
+
+    public TransactionResult setValues(String value, Address[] others) throws IOException, ResultTimeoutException {
+        RpcItem othersValue = null;
+        if (others != null) {
+            var builder = new RpcArray.Builder();
+            for (int i = 0; i < others.length; i++) {
+                builder.add(new RpcValue(others[i]));
+            }
+            othersValue = builder.build();
+        }
+        return invokeAndWaitResult(wallet,
+                "setValues",
+                (new RpcObject.Builder())
+                        .put("value", new RpcValue(value))
+                        .put("others", othersValue)
                         .build());
     }
 

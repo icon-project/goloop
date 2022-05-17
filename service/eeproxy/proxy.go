@@ -70,7 +70,7 @@ type CallContext interface {
 	OnResult(status error, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, dataType string, dataObj *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
-	OnSetFeeProportion(owner module.Address, portion int)
+	OnSetFeeProportion(portion int)
 	SetCode(code []byte) error
 	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
@@ -222,7 +222,7 @@ type containsResponse struct {
 	Size  int
 }
 
-func traceLevelOf(lv log.Level) (module.TraceLevel) {
+func traceLevelOf(lv log.Level) module.TraceLevel {
 	switch lv {
 	case log.DebugLevel:
 		return module.TDebugLevel
@@ -566,7 +566,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		if 0 <= proportion && proportion <= 100 {
-			p.frame.ctx.OnSetFeeProportion(p.frame.addr, proportion)
+			p.frame.ctx.OnSetFeeProportion(proportion)
 		} else {
 			p.log.Warnf("Proxy[%p].OnSetFeeProportion: invalid proportion=%d",
 				proportion)

@@ -270,7 +270,7 @@ func (h *asyncHandler) OnAPI(status error, info *scoreapi.Info) {
 	panic("implement me")
 }
 
-func (h *asyncHandler) OnSetFeeProportion(addr module.Address, portion int) {
+func (h *asyncHandler) OnSetFeeProportion(portion int) {
 	panic("implement me")
 }
 

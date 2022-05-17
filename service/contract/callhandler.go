@@ -600,9 +600,15 @@ func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
 	h.Log.Panicln("Unexpected OnAPI() call")
 }
 
-func (h *CallHandler) OnSetFeeProportion(addr module.Address, portion int) {
-	h.Log.TSystemf("CALL setFeeProportion addr=%s portion=%d", addr, portion)
-	h.cc.SetFeeProportion(addr, portion)
+func (h *CallHandler) OnSetFeeProportion(portion int) {
+	var payer module.Address
+	if h.as.UseSystemDeposit() {
+		payer = state.SystemAddress
+	} else {
+		payer = h.To
+	}
+	h.Log.TSystemf("CALL setFeeProportion contract=%s payer=%s portion=%d", h.To, payer, portion)
+	h.cc.SetFeeProportion(payer, portion)
 }
 
 func (h *CallHandler) SetCode(code []byte) error {
