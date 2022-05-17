@@ -17,6 +17,7 @@
 package basic
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -498,6 +499,38 @@ var chainMethods = []*chainMethod{
 		},
 		[]scoreapi.DataType{
 			scoreapi.Integer,
+		},
+	}, Revision9, 0},
+	// TODO remove getNetworkType, getNetwork, getPublicKey ?
+	{scoreapi.Method{
+		scoreapi.Function, "getBTPNetworkType",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"id", scoreapi.Integer, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getBTPNetwork",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"id", scoreapi.Integer, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPublicKey",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"name", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.String,
 		},
 	}, Revision9, 0},
 	{scoreapi.Method{
@@ -1453,6 +1486,83 @@ func (s *ChainScore) Ex_getBTPNetworkTypeId(name string) (int64, error) {
 		return 0, err
 	}
 	return s.newBTPContext().GetNetworkTypeIdByName(name), nil
+}
+
+func (s *ChainScore) Ex_getBTPNetworkType(id *common.HexInt) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	nt, err := s.newBTPContext().GetNetworkTypeView(id.Int64())
+	if err != nil {
+		return nil, err
+	}
+	jso := make(map[string]interface{})
+	jso["uid"] = nt.UID()
+	if len(nt.NextProofContextHash()) == 0 {
+		jso["nextProofContextHash"] = "0x0"
+	} else {
+		jso["nextProofContextHash"] = "0x" + hex.EncodeToString(nt.NextProofContextHash())
+	}
+	if len(nt.NextProofContext()) == 0 {
+		jso["nextProofContext"] = "0x0"
+	} else {
+		jso["nextProofContext"] = "0x" + hex.EncodeToString(nt.NextProofContext())
+	}
+	nids := nt.OpenNetworkIDs()
+	onids := make([]interface{}, len(nids))
+	for i, nid := range nids {
+		onids[i] = intconv.FormatInt(nid)
+	}
+	jso["openNetworkIDs"] = onids
+	return jso, nil
+}
+
+func (s *ChainScore) Ex_getBTPNetwork(id *common.HexInt) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	nw, err := s.newBTPContext().GetNetworkView(id.Int64())
+	if err != nil {
+		return nil, err
+	}
+
+	jso := make(map[string]interface{})
+	jso["name"] = nw.Name()
+	jso["owner"] = nw.Owner()
+	if nw.Open() {
+		jso["open"] = "0x1"
+	} else {
+		jso["open"] = "0x0"
+	}
+	jso["networkTypeId"] = intconv.FormatInt(nw.NetworkTypeID())
+	jso["nextMessageSN"] = intconv.FormatInt(nw.NextMessageSN())
+	if nw.NextProofContextChanged() {
+		jso["nextProofContextChanged"] = "0x1"
+	} else {
+		jso["nextProofContextChanged"] = "0x0"
+	}
+	if len(nw.PrevNetworkSectionHash()) == 0 {
+		jso["prevNetworkSectionHash"] = "0x0"
+	} else {
+		jso["prevNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.PrevNetworkSectionHash())
+	}
+	if len(nw.LastNetworkSectionHash()) == 0 {
+		jso["lastNetworkSectionHash"] = "0x0"
+	} else {
+		jso["lastNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.LastNetworkSectionHash())
+	}
+	return jso, nil
+}
+
+func (s *ChainScore) Ex_getPublicKey(address module.Address, name string) (string, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return "", err
+	}
+	pubKey, err := s.newBTPContext().GetPublicKey(address, name)
+	if err != nil {
+		return "", err
+	}
+	return "0x" + hex.EncodeToString(pubKey), nil
 }
 
 func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error) {
