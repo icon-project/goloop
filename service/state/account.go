@@ -108,7 +108,7 @@ type AccountState interface {
 	SetBlock(b bool)
 	IsBlocked() bool
 	UseSystemDeposit() bool
-	SetUseSystemDeposit(yn bool)
+	SetUseSystemDeposit(yn bool) error
 	ContractOwner() module.Address
 
 	GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error)
@@ -604,11 +604,15 @@ func (s *accountStateImpl) SetBlock(b bool) {
 	}
 }
 
-func (s *accountStateImpl) SetUseSystemDeposit(yn bool) {
+func (s *accountStateImpl) SetUseSystemDeposit(yn bool) error {
+	if !s.isContract {
+		return scoreresult.ContractNotFoundError.New("NotContract")
+	}
 	if asHasFlag(s.state, ASUseSystemDeposit) != yn {
 		s.state = s.state ^ ASUseSystemDeposit
 		s.markDirty()
 	}
+	return nil
 }
 
 func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
@@ -1002,8 +1006,9 @@ func (a *accountROState) SetBlock(b bool) {
 	log.Panic("accountROState().SetBlock() is invoked")
 }
 
-func (a *accountROState) SetUseSystemDeposit(b bool) {
+func (a *accountROState) SetUseSystemDeposit(b bool) error {
 	log.Panic("accountROState().SetUseSystemDeposit() is invoked")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) SetBalance(v *big.Int) {

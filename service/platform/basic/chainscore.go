@@ -1426,8 +1426,10 @@ func (s *ChainScore) Ex_setUseSystemDeposit(address module.Address, yn bool) err
 	if as.IsContract() != address.IsContract() {
 		return scoreresult.New(StatusIllegalArgument, "InvalidPrefixForAddress")
 	}
-	as.SetUseSystemDeposit(yn)
-	return nil
+	if !as.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "NotContract")
+	}
+	return as.SetUseSystemDeposit(yn)
 }
 
 func (s *ChainScore) Ex_getUseSystemDeposit(address module.Address) (bool, error) {
