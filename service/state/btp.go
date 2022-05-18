@@ -56,7 +56,7 @@ type BTPState interface {
 	GetSnapshot() BTPSnapshot
 	Reset(snapshot BTPSnapshot)
 	SetValidators(vs ValidatorState)
-	BuildAndApplySection(bc BTPContext, btpMsgs list.List) error
+	BuildAndApplySection(bc BTPContext, btpMsgs *list.List) error
 }
 
 type btpContext struct {
@@ -226,6 +226,7 @@ func (bd *btpData) setProofContextChanged(ntid int64) {
 }
 
 func (bd *btpData) setPubKeyChanged(address module.Address, name string) {
+	log.Tracef("BTP setPubKeyChanged %s %s", address, name)
 	if bd.pubKeyChanged == nil {
 		bd.pubKeyChanged = make(map[string][]string)
 	}
@@ -397,7 +398,7 @@ func (bs *BTPStateImpl) CloseNetwork(bc BTPContext, nid int64) (int64, error) {
 	return nw.NetworkTypeID(), nil
 }
 
-func (bs *BTPStateImpl) HandleMessageSN(bc BTPContext, from module.Address, nid int64) error {
+func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid int64) error {
 	store := bc.Store()
 	nwDB := scoredb.NewDictDB(store, NetworkByIDKey, 1)
 	nwValue := nwDB.Get(nid)
@@ -409,9 +410,10 @@ func (bs *BTPStateImpl) HandleMessageSN(bc BTPContext, from module.Address, nid 
 		return scoreresult.AccessDeniedError.Errorf("Only owner can send BTP message")
 	}
 	nw.IncreaseNextMessageSN()
-	if err := nwDB.Set(nid, nw); err != nil {
+	if err := nwDB.Set(nid, nw.Bytes()); err != nil {
 		return err
 	}
+	bs.setNetworkModified(nid)
 
 	return nil
 }
@@ -470,7 +472,7 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 		ntid := nts.NetworkTypeID()
 		log.Tracef("apply network type %d", ntid)
 		if _, ok := bs.proofContextChanged[nts.NetworkTypeID()]; ok {
-			if err := bs.updateProofContext(bc, ntid); err != nil {
+			if err := bs.updateNetworkType(bc, ntid); err != nil {
 				return err
 			}
 		}
@@ -481,7 +483,7 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 				log.Tracef("Failed to get network section for %d. %+v", nid, err)
 				return err
 			}
-			if err = bs.setNetworkSectionHash(bc, ns); err != nil {
+			if err = bs.updateNetwork(bc, ns); err != nil {
 				log.Tracef("Failed to set network section hash for %d. %+v, %+v", nid, err, ns)
 				return err
 			}
@@ -491,7 +493,7 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 	return nil
 }
 
-func (bs *BTPStateImpl) updateProofContext(bc BTPContext, ntid int64) error {
+func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 	bci := bc.(*btpContext)
 	if nt, ntDB := bci.getNetworkType(ntid); nt == nil {
 		return errors.NotFoundError.Errorf("not found ntid=%d", ntid)
@@ -506,35 +508,26 @@ func (bs *BTPStateImpl) updateProofContext(bc BTPContext, ntid int64) error {
 		log.Tracef("update proof context of nt %+v", nt)
 		nt.SetNextProofContext(proof.Bytes())
 		nt.SetNextProofContextHash(proof.Hash())
-		if err := ntDB.Set(ntid, nt.Bytes()); err != nil {
+		if err = ntDB.Set(ntid, nt.Bytes()); err != nil {
 			return err
-		}
-		for _, nid := range nt.OpenNetworkIDs() {
-			nw, nwDB := bci.getNetwork(nid)
-			if nw == nil {
-				return errors.NotFoundError.Errorf("not found nid=%d", nid)
-			}
-			log.Tracef("update proof context changed of nw %+v", nw)
-			if nw.Open() == false {
-				log.Tracef("close network %d is in network type %d as an open network", nid, ntid)
-				//continue
-			}
-			nw.SetNextProofContextChanged(true)
-			if err = nwDB.Set(nid, nw.Bytes()); err != nil {
-				return err
-			}
-			bs.setNetworkModified(nid)
 		}
 		return nil
 	}
 }
 
-func (bs *BTPStateImpl) setNetworkSectionHash(bc BTPContext, ns module.NetworkSection) error {
+func (bs *BTPStateImpl) updateNetwork(bc BTPContext, ns module.NetworkSection) error {
 	bci := bc.(*btpContext)
 	nid := ns.NetworkID()
 	if nw, nwDB := bci.getNetwork(nid); nw == nil {
 		return errors.NotFoundError.Errorf("not found nid=%d", nid)
 	} else {
+		pcChanged := false
+		if _, ok := bs.proofContextChanged[nw.NetworkTypeID()]; ok {
+			pcChanged = true
+		} else {
+			pcChanged = len(nw.LastNetworkSectionHash()) == 0
+		}
+		nw.SetNextProofContextChanged(pcChanged)
 		nw.SetPrevNetworkSectionHash(nw.LastNetworkSectionHash())
 		nw.SetLastNetworkSectionHash(ns.Hash())
 		return nwDB.Set(nid, nw.Bytes())
@@ -604,6 +597,7 @@ func (bs *BTPStateImpl) setValidatorChangedNetwork(bc BTPContext) error {
 		for key := range bs.validators {
 			// public key changed network types
 			if name, ok := bs.pubKeyChanged[key]; ok {
+				log.Tracef("BTP validator changed %s", name)
 				names = append(names, name...)
 			}
 		}
@@ -614,7 +608,7 @@ func (bs *BTPStateImpl) setValidatorChangedNetwork(bc BTPContext) error {
 	return nil
 }
 
-func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs list.List) error {
+func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) error {
 	sb := btp.NewSectionBuilder(bc)
 
 	// check validator change
@@ -628,6 +622,7 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs list.List) e
 
 	for i := btpMsgs.Front(); i != nil; i = i.Next() {
 		e := i.Value.(*bTPMsg)
+		log.Tracef("BTP message %+v", e)
 		sb.SendMessage(e.nid, e.message)
 	}
 

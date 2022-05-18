@@ -1637,13 +1637,13 @@ func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		if err = bs.HandleMessageSN(s.newBTPContext(), s.from, networkId.Int64()); err != nil {
+		nid := networkId.Int64()
+		if err = bs.HandleMessage(s.newBTPContext(), s.from, nid); err != nil {
 			return err
 		}
+		s.cc.OnBTPMessage(nid, message)
+		return nil
 	}
-	// TODO store BTP message
-	//s.cc.OnBTPMessage(networkId.Int64(), message)
-	return nil
 }
 
 func (s *ChainScore) Ex_setPublicKey(name string, pubKey []byte) error {

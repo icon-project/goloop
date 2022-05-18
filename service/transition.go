@@ -629,6 +629,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	virtualFee := new(big.Int)
+	btpMsgs := list.New()
 
 	t.logsBloom.SetInt64(0)
 	fixLostFeeByDeposit := ctx.Revision().Has(module.FixLostFeeByDeposit)
@@ -646,6 +647,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			}
 
 			t.logsBloom.Merge(r.LogsBloom())
+
+			if r.BTPMessages() != nil {
+				btpMsgs.PushBackList(r.BTPMessages())
+			}
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
@@ -663,10 +668,6 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	}
 
 	bc := state.NewBTPContext(ctx)
-	// TODO check validator changed and write to state
-
-	// TODO load BTP message from ctx
-	var btpMsgs list.List
 	if err = ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
 		t.reportExecution(err)
 		return

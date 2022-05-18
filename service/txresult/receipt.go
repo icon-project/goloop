@@ -1,6 +1,7 @@
 package txresult
 
 import (
+	"container/list"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -217,6 +218,7 @@ type receipt struct {
 	reason    error
 	// steps for fee
 	feeSteps *big.Int
+	btpMsgs  *list.List
 }
 
 func (r *receipt) SCOREAddress() module.Address {
@@ -385,6 +387,10 @@ func (r *receipt) LogsBloom() module.LogsBloom {
 	return &r.data.LogsBloom
 }
 
+func (r *receipt) BTPMessages() *list.List {
+	return r.btpMsgs
+}
+
 func (r *receipt) EventLogIterator() module.EventLogIterator {
 	if r.version >= Version2 {
 		return &eventLogIteratorV2{r.eventLogs.Iterator()}
@@ -498,6 +504,7 @@ func failureReasonByCode(status module.Status) *failureReason {
 type Receipt interface {
 	module.Receipt
 	AddLog(addr module.Address, indexed, data [][]byte)
+	AddBTPMessages(messages list.List)
 	// AddPayment adds payment information.
 	// addr is payer. steps is total steps paid by the payer.
 	// feeSteps is amount of steps for fee.
@@ -631,6 +638,13 @@ func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 
 	r.data.EventLogs = append(r.data.EventLogs, log)
 	r.data.LogsBloom.AddLog(&log.eventLogData.Addr, log.eventLogData.Indexed)
+}
+
+func (r *receipt) AddBTPMessages(messages list.List) {
+	if r.btpMsgs == nil {
+		r.btpMsgs = list.New()
+	}
+	r.btpMsgs.PushBackList(&messages)
 }
 
 func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {

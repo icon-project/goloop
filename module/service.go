@@ -1,6 +1,7 @@
 package module
 
 import (
+	"container/list"
 	"fmt"
 	"math/big"
 
@@ -169,6 +170,7 @@ type Receipt interface {
 	Check(r Receipt) error
 	ToJSON(version JSONVersion) (interface{}, error)
 	LogsBloom() LogsBloom
+	BTPMessages() *list.List
 	EventLogIterator() EventLogIterator
 	FeePaymentIterator() FeePaymentIterator
 	LogsBloomDisabled() bool

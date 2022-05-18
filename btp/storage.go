@@ -159,7 +159,6 @@ func (nw *Network) IncreaseNextMessageSN() {
 	nw.nextMessageSN++
 }
 
-// TODO reset
 func (nw *Network) SetNextProofContextChanged(yn bool) {
 	nw.nextProofContextChanged = yn
 }
