@@ -328,6 +328,9 @@ func (bs *BTPStateImpl) OpenNetwork(
 		if err = ntidDB.Set(networkTypeName, ntid); err != nil {
 			return
 		}
+		if err = scoredb.NewArrayDB(bc.Store(), ActiveNetworkTypeIDsKey).Put(ntid); err != nil {
+			return
+		}
 
 		var pc module.BTPProofContext
 		keys, allHasPubKey := bs.getPubKeysOfValidators(bc, mod)
@@ -449,7 +452,6 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 }
 
 func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error {
-	log.Tracef("Check pubKey for %s, %s", from)
 	openedNetworkTypes, err := bc.GetNetworkTypeIDs()
 	if err != nil {
 		return err
@@ -480,8 +482,7 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 			log.Tracef("apply network %d", nid)
 			ns, err := nts.NetworkSectionFor(nid)
 			if err != nil {
-				log.Tracef("Failed to get network section for %d. %+v", nid, err)
-				return err
+				continue
 			}
 			if err = bs.updateNetwork(bc, ns); err != nil {
 				log.Tracef("Failed to set network section hash for %d. %+v, %+v", nid, err, ns)
@@ -534,7 +535,7 @@ func (bs *BTPStateImpl) updateNetwork(bc BTPContext, ns module.NetworkSection) e
 	}
 }
 
-func (bs *BTPStateImpl) setNetworkTypeModified(bc BTPContext, names []string) error {
+func (bs *BTPStateImpl) setValidatorChanged(bc BTPContext, names []string) error {
 	modNames := make(map[string]bool, 0)
 	modules := ntm.Modules()
 	for _, name := range names {
@@ -578,10 +579,10 @@ func (bs *BTPStateImpl) compareValidators(v2 ValidatorState) bool {
 	return true
 }
 
-func (bs *BTPStateImpl) setValidatorChangedNetwork(bc BTPContext) error {
+func (bs *BTPStateImpl) handleValidatorChange(bc BTPContext) error {
 	names := make([]string, 0)
 	if bs.compareValidators(bc.GetValidatorState()) == false {
-		// all active network types
+		// validator list changed
 		ntids, err := bc.GetNetworkTypeIDs()
 		if err != nil {
 			return err
@@ -595,14 +596,14 @@ func (bs *BTPStateImpl) setValidatorChangedNetwork(bc BTPContext) error {
 		}
 	} else {
 		for key := range bs.validators {
-			// public key changed network types
 			if name, ok := bs.pubKeyChanged[key]; ok {
+				// public key of validator changed
 				log.Tracef("BTP validator changed %s", name)
 				names = append(names, name...)
 			}
 		}
 	}
-	if err := bs.setNetworkTypeModified(bc, names); err != nil {
+	if err := bs.setValidatorChanged(bc, names); err != nil {
 		return err
 	}
 	return nil
@@ -612,7 +613,7 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 	sb := btp.NewSectionBuilder(bc)
 
 	// check validator change
-	if err := bs.setValidatorChangedNetwork(bc); err != nil {
+	if err := bs.handleValidatorChange(bc); err != nil {
 		return err
 	}
 
