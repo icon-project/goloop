@@ -266,7 +266,10 @@ func (bss *btpSnapshot) Bytes() []byte {
 }
 
 func (bss *btpSnapshot) Flush() error {
-	return bss.digest.Flush(bss.dbase)
+	if bss.digest != nil {
+		return bss.digest.Flush(bss.dbase)
+	}
+	return nil
 }
 
 func (bss *btpSnapshot) NewState() BTPState {
