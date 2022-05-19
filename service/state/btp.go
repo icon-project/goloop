@@ -332,17 +332,13 @@ func (bs *BTPStateImpl) OpenNetwork(
 			return
 		}
 
-		var pc module.BTPProofContext
 		keys, allHasPubKey := bs.getPubKeysOfValidators(bc, mod)
 		if allHasPubKey != true {
 			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.UID())
 			log.Tracef("BTP error %+v", err)
 			return
 		}
-		if pc, err = mod.NewProofContext(keys); err != nil {
-			return
-		}
-		nt = btp.NewNetworkType(networkTypeName, pc)
+		nt = btp.NewNetworkType(networkTypeName, mod.NewProofContext(keys))
 	} else {
 		if nt, _ = bci.getNetworkType(ntid); nt == nil {
 			err = scoreresult.InvalidParameterError.Errorf("There is network type for %d", ntid)
@@ -501,15 +497,12 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 	} else {
 		mod := ntm.ForUID(nt.UID())
 		keys, _ := bs.getPubKeysOfValidators(bc, mod)
-		proof, err := mod.NewProofContext(keys)
-		if err != nil {
-			return err
-		}
+		proof := mod.NewProofContext(keys)
 
 		log.Tracef("update proof context of nt %+v", nt)
 		nt.SetNextProofContext(proof.Bytes())
 		nt.SetNextProofContextHash(proof.Hash())
-		if err = ntDB.Set(ntid, nt.Bytes()); err != nil {
+		if err := ntDB.Set(ntid, nt.Bytes()); err != nil {
 			return err
 		}
 		return nil
