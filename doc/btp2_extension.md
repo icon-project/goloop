@@ -66,9 +66,10 @@ Summarize the document to following items.
 
 #### Notification
 
-| Name   | Type   | Description                  |
-|:-------|:-------|:-----------------------------|
-| header | T_SIG  | Base64 encoded BTP Header    |
+| Name   | Type   | Description                                      |
+|:-------|:-------|:-------------------------------------------------|
+| header | T_SIG  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
+
 
 ## BTP JSON-RPC Methods
 
@@ -323,9 +324,9 @@ Get btp block header
 ```
 #### Responses
 
-| Name   | Type      | Description                |
-|:-------|:----------|:---------------------------|
-| result | T_SIG     | Base64 encoded BTP Header  |
+| Name   | Type   | Description                                      |
+|:-------|:-------|:-------------------------------------------------|
+| result | T_SIG  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
 
 > Failure Response
 
@@ -404,3 +405,99 @@ None
 |:--------|:--------|:---------------|:----------------------------|
 | 200     | OK      | Success        | Data : base64 encoded bytes |
 | default | Default | JSON-RPC Error | Error Response              |
+
+## BTPBlockHeader
+
+BTPBlockHeader is `B_LIST` of the following fields
+
+| Name                 | Type       | Comment                                                                                   |
+|:---------------------|:-----------|:------------------------------------------------------------------------------------------|
+| MainHeight           | B_INT      |                                                                                           |
+| Round                | B_INT      |                                                                                           |
+| NextProofContextHash | B_BYTES    |                                                                                           |
+| NetworkSectionToRoot | B_LIST     | list of MerkleNode for merkle path from H(NetworkSection) to NSRoot                       |
+| NetworkID            | B_INT      |                                                                                           |
+| UpdateNumber         | B_INT      | See [UpdateNumber](#updatenumber).                                                        |
+| Prev                 | B_BYTES(N) | H(NetworkSection) of prev BTP block                                                       |
+| MessageCount         | B_INT      |                                                                                           |
+| MessagesRoot         | B_BYTES(N) | Merkle root of Messages                                                                   |
+| Proof                | B_BYTES    | proof bytes of H(NetworkTypeSectionDecision)                                              |
+| NextProofContext     | B_BYTES(N) | nil if NextProofContextHash is the same as previous block's value. non-nil if Prev is nil |
+
+### MerkleNode
+
+`B_LIST` of the following fields
+
+| Name  | Type       | Comment                                |
+|:------|:-----------|:---------------------------------------|
+| Dir   | B_INT      | 0 for Left, 1 for Right                |
+| Value | B_BYTES(N) | Value for Dir. nil if there is no node |
+
+### MerkleRoot algorithm
+
+```
+func MerkleRoot(nodes ...[]byte) []byte {
+    l := len(node)
+    if l == 1 {
+        return nodes[0]
+    }
+    if l is odd {
+        return MerkleRoot(
+            Hash(cat(nodes[0], nodes[1])),
+            Hash(cat(nodes[2], nodes[3])),
+            ...,
+            Hash(cat(nodes[l-3], nodes[l-2])),
+            node[l-1],
+        )
+    } else {
+        return MerkleRoot(
+            Hash(cat(nodes[0], nodes[1])),
+            Hash(cat(nodes[2], nodes[3])),
+            ...,
+            Hash(cat(nodes[l-2], nodes[l-1])),
+        )
+    }
+}
+```
+
+### Example Merkle Proof
+
+```
+Data : [Hash(1), Hash(2), Hash(3)]
+Proof of 3rd node : [[Right, nil], [Left, Hash(cat(Hash(1), Hash(2)))]]
+```
+
+### UpdateNumber
+
+```
+UpdateNumber = FirstMessageSN << 1 | ProofContextChanged
+```
+
+| Name                | Comment                                                                                                                |
+|:--------------------|:-----------------------------------------------------------------------------------------------------------------------|
+| FirstMessageSN      | Starts from 0. Next message SN of previous NS. See below for example.                                                  |
+| ProofContextChanged | 1 if it is the first BTP block for a network or NextProofContextHash is different from the previous BTP block's value. |
+
+### Example of valid FirstMessageSN values
+
+```
+NetworkSection0: {
+    FirstMessageSN: 0,
+    MessageCount: 0,
+},
+NetworkSection1: {
+    FirstMessageSN: 0,
+    MessageCount: 5,
+    Prev: NetworkSection0.Hash,
+},
+NetworkSection2: {
+    FirstMessageSN: 5,
+    MessageCount: 0,
+    Prev: NetworkSection1.Hash,
+},
+NetworkSection3: {
+    FirstMessageSN: 5,
+    MessageCount: 1,
+    Prev: NetworkSection2.Hash,
+}
+```
