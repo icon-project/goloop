@@ -48,8 +48,8 @@ func hashOfCat(mod module.NetworkTypeModule, s ...[]byte) []byte {
 
 type testStateView struct {
 	networkTypeIDs []int64
-	networks       map[int64]*Network
-	networkTypes   map[int64]*NetworkType
+	networks       map[int64]*network
+	networkTypes   map[int64]*networkType
 	publicKey      map[string]map[string][]byte
 }
 
@@ -93,7 +93,7 @@ func TestSectionBuilder_Build_Basic(t *testing.T) {
 	mod := ntm.ForUID("eth")
 	pc := mod.NewProofContext(nil)
 	view := &testStateView{
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			2: {
 				networkTypeID:           1,
 				open:                    true,
@@ -103,7 +103,7 @@ func TestSectionBuilder_Build_Basic(t *testing.T) {
 				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
 				uid:                  "eth",
 				nextProofContextHash: pc.Hash(),
@@ -146,7 +146,7 @@ func newComplexTestBuilderSetup(t *testing.T) *testBuilderSetup {
 	mod := ntm.ForUID("eth")
 	pc := mod.NewProofContext(nil)
 	view := &testStateView{
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			1: {
 				networkTypeID:           1,
 				open:                    true,
@@ -180,7 +180,7 @@ func newComplexTestBuilderSetup(t *testing.T) *testBuilderSetup {
 				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
 				uid:                  "eth",
 				nextProofContextHash: pc.Hash(),

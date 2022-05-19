@@ -58,7 +58,7 @@ func TestProofContextMap_Basic(t *testing.T) {
 	pcs := newPCs(assert, count, "eth", "icon")
 	view := &testStateView{
 		networkTypeIDs: []int64{1, 2},
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			1: {
 				networkTypeID:           1,
 				open:                    true,
@@ -76,7 +76,7 @@ func TestProofContextMap_Basic(t *testing.T) {
 				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
 				uid:                  "eth",
 				nextProofContextHash: pcs[0].Hash(),
@@ -108,7 +108,7 @@ func TestProofContextMap_Basic(t *testing.T) {
 	pcs = newPCs(assert, count, "eth", "icon")
 
 	view = &testStateView{
-		networks: map[int64]*Network{
+		networks: map[int64]*network{
 			1: {
 				networkTypeID:           1,
 				open:                    true,
@@ -126,7 +126,7 @@ func TestProofContextMap_Basic(t *testing.T) {
 				lastNetworkSectionHash:  nil,
 			},
 		},
-		networkTypes: map[int64]*NetworkType{
+		networkTypes: map[int64]*networkType{
 			1: {
 				uid:                  "eth",
 				nextProofContextHash: pcs[0].Hash(),

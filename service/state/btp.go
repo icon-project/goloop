@@ -21,6 +21,8 @@ import (
 	"container/list"
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -116,21 +118,21 @@ func (bc *btpContext) GetPublicKey(from module.Address, name string) ([]byte, er
 	}
 }
 
-func (bc *btpContext) getNetwork(nid int64) (*btp.Network, *containerdb.DictDB) {
+func (bc *btpContext) getNetwork(nid int64) (*network, *containerdb.DictDB) {
 	dbase := scoredb.NewDictDB(bc.store, NetworkByIDKey, 1)
 	if value := dbase.Get(nid); value == nil {
 		return nil, dbase
 	} else {
-		return btp.NewNetworkFromBytes(value.Bytes()), dbase
+		return NewNetworkFromBytes(value.Bytes()), dbase
 	}
 }
 
-func (bc *btpContext) getNetworkType(ntid int64) (*btp.NetworkType, *containerdb.DictDB) {
+func (bc *btpContext) getNetworkType(ntid int64) (*networkType, *containerdb.DictDB) {
 	dbase := scoredb.NewDictDB(bc.store, NetworkTypeByIDKey, 1)
 	if value := dbase.Get(ntid); value == nil {
 		return nil, dbase
 	} else {
-		return btp.NewNetworkTypeFromBytes(value.Bytes()), dbase
+		return NewNetworkTypeFromBytes(value.Bytes()), dbase
 	}
 }
 
@@ -317,7 +319,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 		return
 	}
 	var varDB *containerdb.VarDB
-	var nt *btp.NetworkType
+	var nt *networkType
 	bci := bc.(*btpContext)
 	ntid, ntidDB := bci.getNetworkTypeIdByName(networkTypeName)
 	if ntid == 0 {
@@ -338,7 +340,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 			log.Tracef("BTP error %+v", err)
 			return
 		}
-		nt = btp.NewNetworkType(networkTypeName, mod.NewProofContext(keys))
+		nt = NewNetworkType(networkTypeName, mod.NewProofContext(keys))
 	} else {
 		if nt, _ = bci.getNetworkType(ntid); nt == nil {
 			err = scoreresult.InvalidParameterError.Errorf("There is network type for %d", ntid)
@@ -352,7 +354,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 		return
 	}
 
-	nw := btp.NewNetwork(ntid, name, owner, true)
+	nw := NewNetwork(ntid, name, owner, true)
 	nwDB := scoredb.NewDictDB(store, NetworkByIDKey, 1)
 	if err = nwDB.Set(nid, nw.Bytes()); err != nil {
 		return
@@ -375,7 +377,7 @@ func (bs *BTPStateImpl) CloseNetwork(bc BTPContext, nid int64) (int64, error) {
 	if nwValue == nil {
 		return 0, scoreresult.InvalidParameterError.Errorf("There is no network for %d", nid)
 	}
-	nw := btp.NewNetworkFromBytes(nwValue.Bytes())
+	nw := NewNetworkFromBytes(nwValue.Bytes())
 	nw.SetOpen(false)
 	if err := nwDB.Set(nid, nw.Bytes()); err != nil {
 		return 0, err
@@ -385,7 +387,7 @@ func (bs *BTPStateImpl) CloseNetwork(bc BTPContext, nid int64) (int64, error) {
 	if ntValue := ntDB.Get(nw.NetworkTypeID()); ntValue == nil {
 		return 0, scoreresult.InvalidParameterError.Errorf("There is no network type for %d", nw.NetworkTypeID())
 	} else {
-		nt := btp.NewNetworkTypeFromBytes(ntValue.Bytes())
+		nt := NewNetworkTypeFromBytes(ntValue.Bytes())
 		if err := nt.RemoveOpenNetworkID(nid); err != nil {
 			return 0, scoreresult.InvalidParameterError.Wrapf(err, "There is no open network %d in %d", nid, nw.NetworkTypeID())
 		}
@@ -404,7 +406,7 @@ func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid in
 	if nwValue == nil {
 		return scoreresult.InvalidParameterError.Errorf("There is no network for %d", nid)
 	}
-	nw := btp.NewNetworkFromBytes(nwValue.Bytes())
+	nw := NewNetworkFromBytes(nwValue.Bytes())
 	if !from.Equal(nw.Owner()) {
 		return scoreresult.AccessDeniedError.Errorf("Only owner can send BTP message")
 	}
@@ -649,4 +651,198 @@ func NewBTPMsg(nid int64, msg []byte) *bTPMsg {
 		nid:     nid,
 		message: msg,
 	}
+}
+
+type networkType struct {
+	uid                  string
+	nextProofContextHash []byte
+	nextProofContext     []byte
+	openNetworkIDs       []int64
+}
+
+func (nt *networkType) UID() string {
+	return nt.uid
+}
+
+func (nt *networkType) NextProofContextHash() []byte {
+	return nt.nextProofContextHash
+}
+
+func (nt *networkType) NextProofContext() []byte {
+	return nt.nextProofContext
+}
+
+func (nt *networkType) OpenNetworkIDs() []int64 {
+	return nt.openNetworkIDs
+}
+
+func (nt *networkType) SetNextProofContextHash(hash []byte) {
+	nt.nextProofContextHash = hash
+}
+
+func (nt *networkType) SetNextProofContext(bs []byte) {
+	nt.nextProofContext = bs
+}
+
+func (nt *networkType) AddOpenNetworkID(nid int64) {
+	nt.openNetworkIDs = append(nt.openNetworkIDs, nid)
+}
+
+func (nt *networkType) RemoveOpenNetworkID(nid int64) error {
+	for i, v := range nt.OpenNetworkIDs() {
+		if v == nid {
+			copy(nt.openNetworkIDs[i:], nt.openNetworkIDs[i+1:])
+			nt.openNetworkIDs[len(nt.openNetworkIDs)-1] = 0
+			nt.openNetworkIDs = nt.openNetworkIDs[:len(nt.openNetworkIDs)-1]
+			return nil
+		}
+	}
+	return errors.Errorf("There is no open network id %d", nid)
+}
+
+func (nt *networkType) Bytes() []byte {
+	return codec.MustMarshalToBytes(nt)
+}
+
+func (nt *networkType) RLPDecodeSelf(decoder codec.Decoder) error {
+	return decoder.DecodeListOf(
+		&nt.uid,
+		&nt.nextProofContextHash,
+		&nt.nextProofContext,
+		&nt.openNetworkIDs,
+	)
+}
+
+func (nt *networkType) RLPEncodeSelf(encoder codec.Encoder) error {
+	return encoder.EncodeListOf(
+		nt.uid,
+		nt.nextProofContextHash,
+		nt.nextProofContext,
+		nt.openNetworkIDs,
+	)
+}
+
+func NewNetworkType(uid string, proofContext module.BTPProofContext) *networkType {
+	nt := new(networkType)
+	nt.uid = uid
+	if proofContext != nil {
+		nt.nextProofContext = proofContext.Bytes()
+		nt.nextProofContextHash = proofContext.Hash()
+	}
+	return nt
+}
+
+func NewNetworkTypeFromBytes(b []byte) *networkType {
+	nt := new(networkType)
+	codec.MustUnmarshalFromBytes(b, nt)
+	return nt
+}
+
+type network struct {
+	name                    string
+	owner                   *common.Address
+	networkTypeID           int64
+	open                    bool
+	nextMessageSN           int64
+	nextProofContextChanged bool
+	prevNetworkSectionHash  []byte
+	lastNetworkSectionHash  []byte
+}
+
+func (nw *network) Name() string {
+	return nw.name
+}
+
+func (nw *network) Owner() module.Address {
+	return nw.owner
+}
+
+func (nw *network) NetworkTypeID() int64 {
+	return nw.networkTypeID
+}
+
+func (nw *network) Open() bool {
+	return nw.open
+}
+
+func (nw *network) NextMessageSN() int64 {
+	return nw.nextMessageSN
+}
+
+func (nw *network) NextProofContextChanged() bool {
+	return nw.nextProofContextChanged
+}
+
+func (nw *network) PrevNetworkSectionHash() []byte {
+	return nw.prevNetworkSectionHash
+}
+
+func (nw *network) LastNetworkSectionHash() []byte {
+	return nw.lastNetworkSectionHash
+}
+
+func (nw *network) SetOpen(yn bool) {
+	nw.open = yn
+}
+
+func (nw *network) IncreaseNextMessageSN() {
+	nw.nextMessageSN++
+}
+
+func (nw *network) SetNextProofContextChanged(yn bool) {
+	nw.nextProofContextChanged = yn
+}
+
+func (nw *network) SetPrevNetworkSectionHash(hash []byte) {
+	nw.prevNetworkSectionHash = hash
+}
+
+func (nw *network) SetLastNetworkSectionHash(hash []byte) {
+	nw.lastNetworkSectionHash = hash
+}
+
+func (nw *network) Bytes() []byte {
+	return codec.MustMarshalToBytes(nw)
+}
+
+func (nw *network) RLPDecodeSelf(decoder codec.Decoder) error {
+	return decoder.DecodeListOf(
+		&nw.name,
+		&nw.owner,
+		&nw.networkTypeID,
+		&nw.open,
+		&nw.nextMessageSN,
+		&nw.nextProofContextChanged,
+		&nw.prevNetworkSectionHash,
+		&nw.lastNetworkSectionHash,
+	)
+}
+
+func (nw *network) RLPEncodeSelf(encoder codec.Encoder) error {
+	return encoder.EncodeListOf(
+		nw.name,
+		nw.owner,
+		nw.networkTypeID,
+		nw.open,
+		nw.nextMessageSN,
+		nw.nextProofContextChanged,
+		nw.prevNetworkSectionHash,
+		nw.lastNetworkSectionHash,
+	)
+}
+
+func NewNetwork(ntid int64, name string, owner module.Address, nextProofContextChanged bool) *network {
+	return &network{
+		networkTypeID:           ntid,
+		name:                    name,
+		owner:                   common.AddressToPtr(owner),
+		open:                    true,
+		nextProofContextChanged: nextProofContextChanged,
+	}
+}
+
+func NewNetworkFromBytes(b []byte) *network {
+	nw := new(network)
+	codec.MustUnmarshalFromBytes(b, nw)
+	return nw
 }

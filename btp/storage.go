@@ -16,101 +16,34 @@
 
 package btp
 
-import (
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/module"
-)
+import "github.com/icon-project/goloop/module"
 
-type NetworkType struct {
+type networkType struct {
 	uid                  string
 	nextProofContextHash []byte
 	nextProofContext     []byte
 	openNetworkIDs       []int64
 }
 
-func (nt *NetworkType) UID() string {
+func (nt *networkType) UID() string {
 	return nt.uid
 }
 
-func (nt *NetworkType) NextProofContextHash() []byte {
+func (nt *networkType) NextProofContextHash() []byte {
 	return nt.nextProofContextHash
 }
 
-func (nt *NetworkType) NextProofContext() []byte {
+func (nt *networkType) NextProofContext() []byte {
 	return nt.nextProofContext
 }
 
-func (nt *NetworkType) OpenNetworkIDs() []int64 {
+func (nt *networkType) OpenNetworkIDs() []int64 {
 	return nt.openNetworkIDs
 }
 
-func (nt *NetworkType) SetNextProofContextHash(hash []byte) {
-	nt.nextProofContextHash = hash
-}
-
-func (nt *NetworkType) SetNextProofContext(bs []byte) {
-	nt.nextProofContext = bs
-}
-
-func (nt *NetworkType) AddOpenNetworkID(nid int64) {
-	nt.openNetworkIDs = append(nt.openNetworkIDs, nid)
-}
-
-func (nt *NetworkType) RemoveOpenNetworkID(nid int64) error {
-	for i, v := range nt.OpenNetworkIDs() {
-		if v == nid {
-			copy(nt.openNetworkIDs[i:], nt.openNetworkIDs[i+1:])
-			nt.openNetworkIDs[len(nt.openNetworkIDs)-1] = 0
-			nt.openNetworkIDs = nt.openNetworkIDs[:len(nt.openNetworkIDs)-1]
-			return nil
-		}
-	}
-	return errors.Errorf("There is no open network id %d", nid)
-}
-
-func (nt *NetworkType) Bytes() []byte {
-	return codec.MustMarshalToBytes(nt)
-}
-
-func (nt *NetworkType) RLPDecodeSelf(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
-		&nt.uid,
-		&nt.nextProofContextHash,
-		&nt.nextProofContext,
-		&nt.openNetworkIDs,
-	)
-}
-
-func (nt *NetworkType) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
-		nt.uid,
-		nt.nextProofContextHash,
-		nt.nextProofContext,
-		nt.openNetworkIDs,
-	)
-}
-
-func NewNetworkType(uid string, proofContext module.BTPProofContext) *NetworkType {
-	nt := new(NetworkType)
-	nt.uid = uid
-	if proofContext != nil {
-		nt.nextProofContext = proofContext.Bytes()
-		nt.nextProofContextHash = proofContext.Hash()
-	}
-	return nt
-}
-
-func NewNetworkTypeFromBytes(b []byte) *NetworkType {
-	nt := new(NetworkType)
-	codec.MustUnmarshalFromBytes(b, nt)
-	return nt
-}
-
-type Network struct {
+type network struct {
 	name                    string
-	owner                   *common.Address
+	owner                   module.Address
 	networkTypeID           int64
 	open                    bool
 	nextMessageSN           int64
@@ -119,100 +52,34 @@ type Network struct {
 	lastNetworkSectionHash  []byte
 }
 
-func (nw *Network) Name() string {
+func (nw *network) Name() string {
 	return nw.name
 }
 
-func (nw *Network) Owner() module.Address {
+func (nw *network) Owner() module.Address {
 	return nw.owner
 }
 
-func (nw *Network) NetworkTypeID() int64 {
+func (nw *network) NetworkTypeID() int64 {
 	return nw.networkTypeID
 }
 
-func (nw *Network) Open() bool {
+func (nw *network) Open() bool {
 	return nw.open
 }
 
-func (nw *Network) NextMessageSN() int64 {
+func (nw *network) NextMessageSN() int64 {
 	return nw.nextMessageSN
 }
 
-func (nw *Network) NextProofContextChanged() bool {
+func (nw *network) NextProofContextChanged() bool {
 	return nw.nextProofContextChanged
 }
 
-func (nw *Network) PrevNetworkSectionHash() []byte {
+func (nw *network) PrevNetworkSectionHash() []byte {
 	return nw.prevNetworkSectionHash
 }
 
-func (nw *Network) LastNetworkSectionHash() []byte {
+func (nw *network) LastNetworkSectionHash() []byte {
 	return nw.lastNetworkSectionHash
-}
-
-func (nw *Network) SetOpen(yn bool) {
-	nw.open = yn
-}
-
-func (nw *Network) IncreaseNextMessageSN() {
-	nw.nextMessageSN++
-}
-
-func (nw *Network) SetNextProofContextChanged(yn bool) {
-	nw.nextProofContextChanged = yn
-}
-
-func (nw *Network) SetPrevNetworkSectionHash(hash []byte) {
-	nw.prevNetworkSectionHash = hash
-}
-
-func (nw *Network) SetLastNetworkSectionHash(hash []byte) {
-	nw.lastNetworkSectionHash = hash
-}
-
-func (nw *Network) Bytes() []byte {
-	return codec.MustMarshalToBytes(nw)
-}
-
-func (nw *Network) RLPDecodeSelf(decoder codec.Decoder) error {
-	return decoder.DecodeListOf(
-		&nw.name,
-		&nw.owner,
-		&nw.networkTypeID,
-		&nw.open,
-		&nw.nextMessageSN,
-		&nw.nextProofContextChanged,
-		&nw.prevNetworkSectionHash,
-		&nw.lastNetworkSectionHash,
-	)
-}
-
-func (nw *Network) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(
-		nw.name,
-		nw.owner,
-		nw.networkTypeID,
-		nw.open,
-		nw.nextMessageSN,
-		nw.nextProofContextChanged,
-		nw.prevNetworkSectionHash,
-		nw.lastNetworkSectionHash,
-	)
-}
-
-func NewNetwork(ntid int64, name string, owner module.Address, nextProofContextChanged bool) *Network {
-	return &Network{
-		networkTypeID:           ntid,
-		name:                    name,
-		owner:                   common.AddressToPtr(owner),
-		open:                    true,
-		nextProofContextChanged: nextProofContextChanged,
-	}
-}
-
-func NewNetworkFromBytes(b []byte) *Network {
-	nw := new(Network)
-	codec.MustUnmarshalFromBytes(b, nw)
-	return nw
 }
