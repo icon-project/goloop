@@ -305,7 +305,7 @@ func NewWorldState(
 		ws.validators = ValidatorStateFromSnapshot(vs)
 	}
 	ws.extension.Reset(es)
-	ws.btp = NewBTPState(btpHash)
+	ws.btp = NewBTPState(database, btpHash)
 	return ws
 }
 
@@ -320,7 +320,7 @@ func NewWorldSnapshot(
 	}
 	ws.validators = vs
 	ws.extension = es
-	ws.btp = NewBTPSnapshot(btpData)
+	ws.btp = NewBTPSnapshot(dbase, btpData)
 	return ws
 }
 
@@ -346,7 +346,7 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws.mutableAccounts = make(map[string]AccountState)
 		ws.validators = ValidatorStateFromSnapshot(wss.GetValidatorSnapshot())
 		ws.extension.Reset(wss.GetExtensionSnapshot())
-		ws.btp = NewBTPState(wss.BTPData())
+		ws.btp = NewBTPState(wss.database, wss.BTPData())
 		return ws, nil
 	}
 	return nil, errors.ErrIllegalArgument
@@ -379,6 +379,6 @@ func NewWorldSnapshotWithBuilder(
 		ws.validators = vs
 	}
 	ws.extension = ess
-	ws.btp = NewBTPSnapshot(bh)
+	ws.btp = NewBTPSnapshot(ws.database, bh)
 	return ws, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -172,19 +173,25 @@ func NewBTPContext(ws WorldState) BTPContext {
 }
 
 type btpData struct {
+	dbase               db.Database
 	readonly            bool
 	validators          map[string]bool     // key: address
 	proofContextChanged map[int64]bool      // key: network type ID
 	pubKeyChanged       map[string][]string // key: address. value: names of network type or DSA
 	networkModified     map[int64]bool      // key: network ID
+	digest              module.BTPDigest
 	digestHash          []byte
 }
 
 func (bd *btpData) clone() *btpData {
 	n := new(btpData)
 
+	n.dbase = bd.dbase
 	n.readonly = bd.readonly
-	copy(n.digestHash, bd.digestHash)
+	n.digest = bd.digest
+	if bd.digestHash != nil {
+		copy(n.digestHash, bd.digestHash)
+	}
 
 	n.validators = make(map[string]bool)
 	for k, v := range bd.validators {
@@ -249,15 +256,17 @@ func (bd *btpData) setNetworkModified(nid int64) {
 
 type btpSnapshot struct {
 	*btpData
-	store containerdb.BytesStoreSnapshot
 }
 
 func (bss *btpSnapshot) Bytes() []byte {
+	if bss.digestHash == nil && bss.digest != nil {
+		bss.digestHash = bss.digest.Hash()
+	}
 	return bss.digestHash
 }
 
 func (bss *btpSnapshot) Flush() error {
-	return nil
+	return bss.digest.Flush(bss.dbase)
 }
 
 func (bss *btpSnapshot) NewState() BTPState {
@@ -267,9 +276,10 @@ func (bss *btpSnapshot) NewState() BTPState {
 	return state
 }
 
-func NewBTPSnapshot(hash []byte) BTPSnapshot {
+func NewBTPSnapshot(dbase db.Database, hash []byte) BTPSnapshot {
 	ss := new(btpSnapshot)
 	ss.btpData = new(btpData)
+	ss.dbase = dbase
 	ss.digestHash = hash
 	return ss
 }
@@ -488,7 +498,8 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 			}
 		}
 	}
-	bs.digestHash = btpSection.Digest().Hash()
+	bs.digest = btpSection.Digest()
+	bs.digestHash = bs.digest.Hash()
 	return nil
 }
 
@@ -634,9 +645,10 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 	}
 }
 
-func NewBTPState(hash []byte) BTPState {
+func NewBTPState(dbase db.Database, hash []byte) BTPState {
 	state := new(BTPStateImpl)
 	state.btpData = new(btpData)
+	state.dbase = dbase
 	state.digestHash = hash
 	return state
 }
