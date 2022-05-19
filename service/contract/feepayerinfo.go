@@ -31,8 +31,10 @@ type FeePayer struct {
 	payer     module.Address
 	portion   int
 	steps     *big.Int
+	baseSteps *big.Int
 	paidSteps *big.Int
 	feeSteps  *big.Int
+	parent    *FeePayer
 }
 
 func (p *FeePayer) PaySteps(ctx CallContext, steps *big.Int) (*big.Int, error) {
@@ -45,9 +47,7 @@ func (p *FeePayer) PaySteps(ctx CallContext, steps *big.Int) (*big.Int, error) {
 
 func (p *FeePayer) payWithSystemDeposit(ctx CallContext, steps *big.Int) (*big.Int, error) {
 	as := ctx.GetAccountState(state.SystemID)
-	if p.steps == nil {
-		p.steps = p.calcStepsToPay(steps)
-	}
+	p.ensureStepsToPay(steps)
 	tsVar := scoredb.NewVarDB(as, state.VarSystemDepositUsage)
 	usage := addBigInt(tsVar.BigInt(), new(big.Int).Mul(p.steps, ctx.StepPrice()))
 	if err := tsVar.Set(usage); err != nil {
@@ -59,9 +59,7 @@ func (p *FeePayer) payWithSystemDeposit(ctx CallContext, steps *big.Int) (*big.I
 
 func (p *FeePayer) payWithAccountDeposit(ctx CallContext, steps *big.Int) (*big.Int, error) {
 	acc := ctx.GetAccountState(p.payer.ID())
-	if p.steps == nil {
-		p.steps = p.calcStepsToPay(steps)
-	}
+	p.ensureStepsToPay(steps)
 	if paidSteps, feeSteps, err := acc.PaySteps(ctx, p.steps); err != nil {
 		return nil, err
 	} else {
@@ -72,20 +70,38 @@ func (p *FeePayer) payWithAccountDeposit(ctx CallContext, steps *big.Int) (*big.
 			p.paidSteps = new(big.Int)
 			p.feeSteps = nil
 		}
+		if p.paidSteps.Cmp(p.steps) < 0 && p.parent != nil {
+			p.parent.DelegateSteps(new(big.Int).Sub(p.steps, p.paidSteps))
+		}
 		return p.paidSteps, nil
 	}
 }
 
+var portionBase = big.NewInt(100)
+
 func (p *FeePayer) calcStepsToPay(s *big.Int) *big.Int {
 	steps := new(big.Int).Mul(s, big.NewInt(int64(p.portion)))
-	return steps.Div(steps, big.NewInt(100))
+	return steps.Div(steps, portionBase)
+}
+
+func (p *FeePayer) ensureStepsToPay(s *big.Int) *big.Int {
+	if p.steps == nil {
+		p.baseSteps = s
+		p.steps = p.calcStepsToPay(p.baseSteps)
+	}
+	return p.steps
 }
 
 func (p *FeePayer) ApplySteps(s *big.Int) *big.Int {
-	if p.steps == nil {
-		p.steps = p.calcStepsToPay(s)
-	}
+	p.ensureStepsToPay(s)
 	return new(big.Int).Sub(s, p.steps)
+}
+
+func (p *FeePayer) DelegateSteps(s *big.Int) {
+	if p.baseSteps != nil {
+		p.baseSteps = new(big.Int).Add(p.baseSteps, s)
+		p.steps = p.calcStepsToPay(p.baseSteps)
+	}
 }
 
 type FeePayerInfo []*FeePayer
@@ -114,6 +130,17 @@ func (p *FeePayerInfo) SetFeeProportion(payer module.Address, portion int) error
 	return nil
 }
 
+func (p *FeePayerInfo) setParentOfSub() {
+	sub, own := p.payers()
+	if own != nil && len(sub) > 0 {
+		for _, payer := range sub {
+			if payer.parent == nil {
+				payer.parent = own
+			}
+		}
+	}
+}
+
 func (p *FeePayerInfo) Apply(p2 FeePayerInfo, steps *big.Int) {
 	payers := make([]*FeePayer, 0, len(*p)+len(p2)+1)
 	sub, own := p.payers()
@@ -122,6 +149,7 @@ func (p *FeePayerInfo) Apply(p2 FeePayerInfo, steps *big.Int) {
 			payers = append(payers, payer)
 		}
 	}
+	p2.setParentOfSub()
 	for _, payer := range p2 {
 		if payer != nil {
 			steps = payer.ApplySteps(steps)
@@ -141,6 +169,9 @@ func (p *FeePayerInfo) PaySteps(ctx CallContext, steps *big.Int) (*big.Int, erro
 		paidSteps, err := payer.PaySteps(ctx, toPay)
 		if err != nil {
 			return nil, err
+		}
+		if paidSteps.Sign() == 0 {
+			continue
 		}
 		toPay = new(big.Int).Sub(toPay, paidSteps)
 	}
@@ -178,6 +209,9 @@ func (p *FeePayerInfo) GetLogs(r txresult.Receipt) bool {
 		return false
 	}
 	for _, p1 := range m {
+		if p1.paidSteps.Sign() == 0 {
+			continue
+		}
 		r.AddPayment(p1.payer, p1.paidSteps, p1.feeSteps)
 	}
 	return true

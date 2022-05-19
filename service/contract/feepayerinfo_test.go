@@ -197,6 +197,61 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		})
 		assert.Equal(t, expectedPayments, rct.payments)
 	})
+	t.Run("no_deposit_test", func(t *testing.T) {
+		// Scenario
+		//  fee payer info          | own   | frame | prop      |
+		//  base                    | 1098  | 1419  |           |
+		//      \-> call1           | 121   | 321   |           |
+		//          \-> call2       | 101   | 200   | c1 50%    |
+		//              \-> call2   | 99    | 99    | c2 100%   |
+		// c2 has no deposit
+		// c1 has 200 deposit
+		var base FeePayerInfo
+		var call1 FeePayerInfo
+		var call2 FeePayerInfo
+		var call3 FeePayerInfo
+
+		var err error
+
+		err = call3.SetFeeProportion(contract2, 100)
+		assert.NoError(t, err)
+		call2.Apply(call3, big.NewInt(99))
+
+		err = call2.SetFeeProportion(contract1, 50)
+		assert.NoError(t, err)
+		call1.Apply(call2, big.NewInt(200))
+
+		base.Apply(call1, big.NewInt(321))
+		err = base.SetFeeProportion(state.SystemAddress, 50)
+		assert.NoError(t, err)
+
+		cc := &payCallContext{
+			accounts: map[string]*payAccountState{
+				contract1IDStr: {
+					deposit: big.NewInt(201),
+				},
+				contract2IDStr: {
+					deposit: big.NewInt(0),
+				},
+			},
+			stepPrice: big.NewInt(10),
+		}
+		steps, err := base.PaySteps(cc, big.NewInt(1419))
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewInt(759), steps)
+
+		rct := new(payReceipt)
+		base.GetLogs(rct)
+
+		expectedPayments := []*feePayment{
+			{state.SystemAddress, big.NewInt(659), nil},
+			{contract1, big.NewInt(100), big.NewInt(100)},
+		}
+		sort.SliceStable(rct.payments, func(i, j int) bool {
+			return bytes.Compare(rct.payments[i].Payer.Bytes(), rct.payments[j].Payer.Bytes()) < 0
+		})
+		assert.Equal(t, expectedPayments, rct.payments)
+	})
 
 	t.Run("complex", func(t *testing.T) {
 		// Scenario
