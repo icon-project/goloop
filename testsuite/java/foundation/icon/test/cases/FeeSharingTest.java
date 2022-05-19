@@ -41,13 +41,16 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class FeeSharingTest extends TestBase {
     private static TransactionHandler txHandler;
@@ -308,7 +311,7 @@ public class FeeSharingTest extends TestBase {
 
         BigInteger aliceExpect = txHandler.getBalance(aliceWallet.getAddress());
         BigInteger aliceBalance;
-        BigInteger systemDepositUsage = chainScore.call("getSystemDepositUsage", null).asInteger();
+        BigInteger systemDepositUsage = chainScore.getSystemDepositUsage();
 
         TransactionResult result;
 
@@ -317,6 +320,7 @@ public class FeeSharingTest extends TestBase {
         LOG.info("Calling setValues(TEST) without system deposit");
         result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
         assertSuccess(result);
+        assertNull(result.getStepUsedDetails());
         aliceExpect = subtractFee(aliceExpect, result);
         aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
         assertEquals(aliceExpect, aliceBalance);
@@ -325,7 +329,7 @@ public class FeeSharingTest extends TestBase {
 
         LOG.infoEntering("Case2: LAYER1(NO DEPOSIT) LAYER2(100% SYSTEM DEPOSIT)");
 
-        LOG.info("Set UseSystemDeposit on " + feeScore1.getAddress().toString());
+        LOG.info("Set UseSystemDeposit on " + feeScore2.getAddress().toString());
         // Fee of secondary contract is paid by the system
         govScore.setUseSystemDeposit(feeScore2.getAddress(), true);
         feeScore2.addToWhitelist(feeScore1.getAddress(), BigInteger.valueOf(100));
@@ -335,73 +339,100 @@ public class FeeSharingTest extends TestBase {
         assertSuccess(result);
 
         LOG.info("Checking payment information");
-        int systemDepositCount = 0;
-        int userPaymentCount = 0;
-        var details = result.getStepUsedDetails().asObject();
-        for (var itr = details.keySet().iterator(); itr.hasNext(); ) {
-            var addr = itr.next();
-            var steps = details.getItem(addr).asInteger();
-            LOG.info("Payment payer=" + addr + " steps=" + steps.toString());
-            var fee = details.getItem(addr).asInteger().multiply(result.getStepPrice());
-            if (addr.equals("cx0000000000000000000000000000000000000000")) {
-                var nv = chainScore.call("getSystemDepositUsage", null).asInteger();
-                assertEquals(systemDepositUsage.add(fee), nv);
-                systemDepositUsage = nv;
-                systemDepositCount += 1;
-            } else if (addr.equals(aliceWallet.getAddress().toString())) {
-                var nv = txHandler.getBalance(aliceWallet.getAddress());
-                assertEquals(aliceBalance.subtract(fee), nv);
-                aliceBalance = nv;
-                userPaymentCount += 1;
-            } else {
-                assertTrue(false, "Unknown Address:" + addr);
-            }
-        }
-        assertEquals(1, systemDepositCount);
-        assertEquals(1, userPaymentCount);
+        var feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1,
+                aliceWallet.getAddress().toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        var sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+        aliceExpect = aliceExpect.subtract(feeMap.get(aliceWallet.getAddress().toString()));
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
 
         LOG.infoExiting();
 
         LOG.infoEntering("Case3: LAYER1(100% SYSTEM DEPOSIT) LAYER2(NO DEPOSIT)");
 
-        LOG.info("Set UseSystemDeposit only on " + feeScore2.getAddress().toString());
+        LOG.info("Set UseSystemDeposit only on " + feeScore1.getAddress().toString());
         // All Fee is paid by system in the first contract
         govScore.setUseSystemDeposit(feeScore1.getAddress(), true);
         govScore.setUseSystemDeposit(feeScore2.getAddress(), false);
         feeScore1.addToWhitelist(aliceWallet.getAddress(), BigInteger.valueOf(100));
 
-        LOG.info("Calling setValues(TEST)");
+        LOG.info("Calling setValues()");
         result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
         assertSuccess(result);
 
         LOG.info("Checking payment information");
-        // check payment information
-        systemDepositCount = 0;
-        userPaymentCount = 0;
-        details = result.getStepUsedDetails().asObject();
+        feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case4: NO -> SYSTEM -> SCORE -> NO");
+
+        var feeScore3 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        BigInteger depositAmount = IconAmount.of("5000", IconAmount.Unit.ICX).toLoop();
+        LOG.infoEntering("addDeposit", depositAmount.toString());
+        result = feeScore3.addDeposit(depositAmount);
+        assertSuccess(result);
+        var depositId = result.getTxHash();
+        LOG.infoExiting();
+
+        govScore.setUseSystemDeposit(feeScore1.getAddress(), false);
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), true);
+        feeScore3.addToWhitelist(feeScore2.getAddress(), BigInteger.valueOf(100));
+        feeScore1.addToWhitelist(feeScore3.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues()");
+        result = feeScoreAlice.setValues("TEST", new Address[]{
+                feeScore2.getAddress(), feeScore3.getAddress(), feeScore1.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1,
+                feeScore3.getAddress().toString(), 1,
+                aliceWallet.getAddress().toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+        aliceExpect = aliceExpect.subtract(feeMap.get(aliceWallet.getAddress().toString()));
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
+        LOG.infoExiting();
+
+        LOG.infoEntering("withdrawDeposit", depositId.toString());
+        result = feeScore3.withdrawDeposit(depositId);
+        assertSuccess(result);
+        LOG.infoExiting();
+
+        LOG.infoExiting();
+    }
+
+    private Map<String, BigInteger> checkPayment(TransactionResult result, Map<String, Integer> accMap) {
+        var details = result.getStepUsedDetails().asObject();
         assertNotNull(details);
-        for (var itr = details.keySet().iterator(); itr.hasNext(); ) {
-            var addr = itr.next();
+        Map<String, Integer> paymentCount = new HashMap<>();
+        Map<String, BigInteger> feeMap = new HashMap<>();
+        for (String addr : details.keySet()) {
             var steps = details.getItem(addr).asInteger();
             LOG.info("Payment payer=" + addr + " steps=" + steps.toString());
             var fee = details.getItem(addr).asInteger().multiply(result.getStepPrice());
-            if (addr.equals("cx0000000000000000000000000000000000000000")) {
-                var nv = chainScore.call("getSystemDepositUsage", null).asInteger();
-                assertEquals(systemDepositUsage.add(fee), nv);
-                systemDepositUsage = nv;
-                systemDepositCount += 1;
-            } else if (addr.equals(aliceWallet.getAddress().toString())) {
-                assertTrue(fee.equals(BigInteger.ZERO));
-                userPaymentCount += 1;
+            if (accMap.containsKey(addr)) {
+                paymentCount.put(addr, paymentCount.getOrDefault(addr, 0) + 1);
+                feeMap.put(addr, feeMap.getOrDefault(addr, BigInteger.ZERO).add(fee));
             } else {
-                assertTrue(false, "Unknown Address:" + addr);
+                fail("Unknown Address:" + addr);
             }
         }
-        assertEquals(1, systemDepositCount);
-        assertEquals(0, userPaymentCount);
-
-        LOG.infoExiting();
-
-        LOG.infoExiting();
+        assertEquals(paymentCount.size(), accMap.size());
+        for (String addr : paymentCount.keySet()) {
+            assertEquals(accMap.get(addr), paymentCount.get(addr));
+        }
+        return feeMap;
     }
 }
