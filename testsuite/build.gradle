@@ -206,6 +206,7 @@ task testPyScore(type: ChainTest, overwrite: true) {
     configFile = "./data/config/py.json"
     chainDir = ".chain/pyscore"
     logFile = ".chain/pyscore.log"
+    gsDir = "./data/genesisStorage/genesis_py.json"
     envFile = "./data/chainenv/py.props"
     dockerEnv = "pyscore"
 
