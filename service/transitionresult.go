@@ -17,6 +17,8 @@
 package service
 
 import (
+	"io"
+
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -33,6 +35,10 @@ type transitionResult struct {
 	BTPData           []byte
 }
 
+const (
+	ExFlagBTPData = 1 << iota
+)
+
 func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
 	tresult := new(transitionResult)
 	if len(bs) > 0 {
@@ -43,16 +49,68 @@ func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
 	return tresult, nil
 }
 
+func (tr *transitionResult) getExtensionFlags() int64 {
+	var flags int64 = 0
+	if len(tr.BTPData) > 0 {
+		flags |= ExFlagBTPData
+	}
+	return flags
+}
+
 func (tr *transitionResult) RLPEncodeSelf(e codec.Encoder) error {
 	e2, err := e.EncodeList()
 	if err != nil {
 		return err
 	}
 	err = e2.EncodeMulti(tr.StateHash, tr.PatchReceiptHash, tr.NormalReceiptHash)
-	if tr.ExtensionData == nil {
+	if err != nil {
 		return err
 	}
-	return e2.Encode(tr.ExtensionData)
+	exFlags := tr.getExtensionFlags()
+	if tr.ExtensionData == nil && exFlags == 0 {
+		return nil
+	}
+	if err := e2.Encode(tr.ExtensionData); err != nil {
+		return err
+	}
+	if exFlags != 0 {
+		if err := e2.Encode(exFlags); err != nil {
+			return err
+		}
+		if (exFlags & ExFlagBTPData) != 0 {
+			if err := e2.Encode(tr.BTPData); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (tr *transitionResult) RLPDecodeSelf(e codec.Decoder) error {
+	d2, err := e.DecodeList()
+	if err != nil {
+		return err
+	}
+	var exFlags int64
+	if _, err := d2.DecodeMulti(
+		&tr.StateHash, &tr.PatchReceiptHash, &tr.NormalReceiptHash,
+		&tr.ExtensionData, &exFlags); err == nil {
+		if exFlags == 0 {
+			return InvalidResultError.Errorf("UnnecessaryExFlag")
+		}
+		if exFlags&ExFlagBTPData != 0 {
+			if err := d2.Decode(&tr.BTPData); err != nil {
+				return InvalidResultError.Errorf("NoBTPDigest")
+			}
+			exFlags ^= ExFlagBTPData
+		}
+		if exFlags != 0 {
+			return InvalidResultError.Errorf("UnresolvedExtensionFlags(flag=%#x", exFlags)
+		}
+	} else if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }
 
 func (tr *transitionResult) Bytes() []byte {
