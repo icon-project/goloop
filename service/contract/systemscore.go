@@ -155,7 +155,8 @@ func CheckMethod(obj SystemScore) error {
 			t := m.Type.Out(j)
 			switch methodInfo.Outputs[j] {
 			case scoreapi.Integer:
-				if reflect.TypeOf(int(0)) != t && reflect.TypeOf(int64(0)) != t {
+				if reflect.TypeOf(int(0)) != t && reflect.TypeOf(int64(0)) != t &&
+					ptrOfHexIntType.AssignableTo(t) && ptrOfBigIntType.AssignableTo(t) {
 					invalid = true
 				}
 			case scoreapi.String:
