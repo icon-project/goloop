@@ -1,6 +1,6 @@
-package foundation.icon.ee.test;
+package foundation.icon.ee;
 
-import foundation.icon.ee.CodecTest;
+import foundation.icon.ee.test.SimpleTest;
 import org.junit.jupiter.api.Test;
 
 public class CodecTest2 extends SimpleTest {
