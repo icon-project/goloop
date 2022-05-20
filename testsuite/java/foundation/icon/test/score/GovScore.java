@@ -223,4 +223,12 @@ public class GovScore extends Score {
                 .build();
         return invokeAndWaitResult(getWallet(), "setDeployerWhiteListEnabled", params);
     }
+
+    public TransactionResult setUseSystemDeposit(Address address, boolean yn) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .put("yn", new RpcValue(yn))
+                .build();
+        return invokeAndWaitResult(getWallet(), "setUseSystemDeposit", params);
+    }
 }

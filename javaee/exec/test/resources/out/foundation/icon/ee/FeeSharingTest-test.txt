@@ -3,47 +3,49 @@ Method{type=0, name='addToWhitelist', flags=2, indexed=2, inputs=[Parameter{name
 Method{type=0, name='getProportion', flags=3, indexed=1, inputs=[Parameter{name='address', descriptor=Lscore/Address;, type=5, optional=false}], output=1, outputDescriptor=I}
 Method{type=0, name='getValue', flags=3, indexed=0, inputs=[], output=2, outputDescriptor=Ljava/lang/String;}
 Method{type=0, name='setValue', flags=2, indexed=1, inputs=[Parameter{name='value', descriptor=Ljava/lang/String;, type=2, optional=false}], output=0, outputDescriptor=V}
+Method{type=0, name='setValues', flags=2, indexed=2, inputs=[Parameter{name='value', descriptor=Ljava/lang/String;, type=2, optional=false}, Parameter{name='others', descriptor=[Lscore/Address;, type=21, optional=false}], output=0, outputDescriptor=V}
 Method{type=2, name='ValueSet', flags=0, indexed=1, inputs=[Parameter{name='address', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='proportion', descriptor=I, type=1, optional=false}], output=0, outputDescriptor=V}
-SEND getAPI 3c751c...
+SEND getAPI 5feb26...
 RECV getAPI status=0 methods=[
     Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0}
     Method{type=0, name='addToWhitelist', flags=2, indexed=2, inputs=[Parameter{name='address', type=5, optional=false}, Parameter{name='proportion', type=1, optional=false}], output=0}
     Method{type=0, name='getProportion', flags=3, indexed=1, inputs=[Parameter{name='address', type=5, optional=false}], output=1}
     Method{type=0, name='getValue', flags=3, indexed=0, inputs=[], output=2}
     Method{type=0, name='setValue', flags=2, indexed=1, inputs=[Parameter{name='value', type=2, optional=false}], output=0}
+    Method{type=0, name='setValues', flags=2, indexed=2, inputs=[Parameter{name='value', type=2, optional=false}, Parameter{name='others', type=21, optional=false}], output=0}
     Method{type=2, name='ValueSet', flags=0, indexed=1, inputs=[Parameter{name='address', type=5, optional=false}, Parameter{name='proportion', type=1, optional=false}], output=0, outputDescriptor=V}
 ]
-SEND invoke code=3c751c... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
-RECV setObjGraph flag=1 next=9 hash=6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb graphLen=342 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x14testcases.FeeSharing\x00\x00\x00\x06\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08No value\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0cNot an owner\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x15ValueSet(Address,int)\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09whitelist\x0cpi.AnyDBImpl\x00\x00\x00\x08\x00\x00\x00\x07\x00\x85value\x01\x10java.lang.String\x0cpi.AnyDBImpl\x00\x00\x00\x07\x00\x00\x00\x0b\x00\x89whitelist\x01\x11java.lang.Integer
-RECV result status=0 stepUsed=129769 ret=<null>
-SEND invoke code=3c751c... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getProportion params=[000001...] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
-RECV getObjGraph flag=1 => next=9 hash=6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb graphLen=342 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x14testcases.FeeSharing\x00\x00\x00\x06\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08No value\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0cNot an owner\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x15ValueSet(Address,int)\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09whitelist\x0cpi.AnyDBImpl\x00\x00\x00\x08\x00\x00\x00\x07\x00\x85value\x01\x10java.lang.String\x0cpi.AnyDBImpl\x00\x00\x00\x07\x00\x00\x00\x0b\x00\x89whitelist\x01\x11java.lang.Integer
+SEND invoke code=5feb26... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[] CID=1 EID=1 codeState=<null>
+RECV setObjGraph flag=1 next=10 hash=c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b graphLen=381 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x14testcases.FeeSharing\x00\x00\x00\x07\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08No value\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0cNot an owner\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x15ValueSet(Address,int)\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x09setValues\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x09whitelist\x0cpi.AnyDBImpl\x00\x00\x00\x09\x00\x00\x00\x07\x00\x85value\x01\x10java.lang.String\x0cpi.AnyDBImpl\x00\x00\x00\x08\x00\x00\x00\x0b\x00\x89whitelist\x01\x11java.lang.Integer
+RECV result status=0 stepUsed=142249 ret=<null>
+SEND invoke code=5feb26... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getProportion params=[000001...] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
+RECV getObjGraph flag=1 => next=10 hash=c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b graphLen=381 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x14testcases.FeeSharing\x00\x00\x00\x07\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08No value\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0cNot an owner\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x15ValueSet(Address,int)\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x09setValues\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x09whitelist\x0cpi.AnyDBImpl\x00\x00\x00\x09\x00\x00\x00\x07\x00\x85value\x01\x10java.lang.String\x0cpi.AnyDBImpl\x00\x00\x00\x08\x00\x00\x00\x0b\x00\x89whitelist\x01\x11java.lang.Integer
 RECV getValue 0284bc63ccd2802e5e04d255273ccf5bb41ab8f63e23051fe49eafaf0eb19eec => <null>
-RECV result status=0 stepUsed=33745 ret=0
-SEND invoke code=3c751c... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=36865 ret=0
+SEND invoke code=5feb26... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV getValue 79ea208012697d2f925d4f0e33a368466d99bf1b1c033d0d7190301bf8f57f82 => <null>
-RECV result status=0 stepUsed=31884 ret=No value
-SEND invoke code=3c751c... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=setValue params=[Value #1] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=35004 ret=No value
+SEND invoke code=5feb26... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=setValue params=[Value #1] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV setValue 79ea208012697d2f925d4f0e33a368466d99bf1b1c033d0d7190301bf8f57f82 isDelete=false 56616c7565202331
 RECV getValue 0284bc63ccd2802e5e04d255273ccf5bb41ab8f63e23051fe49eafaf0eb19eec => <null>
 RECV setProportion 0
 RECV event indxed=[56616c756553657428416464726573732c696e7429 000001000000000000000000000000000000000000] data=[00]
-RECV result status=0 stepUsed=76223 ret=<null>
-SEND invoke code=3c751c... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=79343 ret=<null>
+SEND invoke code=5feb26... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV getValue 79ea208012697d2f925d4f0e33a368466d99bf1b1c033d0d7190301bf8f57f82 => 56616c7565202331
-RECV result status=0 stepUsed=32864 ret=Value #1
-SEND invoke code=3c751c... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=addToWhitelist params=[000001... 100] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=35984 ret=Value #1
+SEND invoke code=5feb26... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=addToWhitelist params=[000001... 100] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV setValue 0284bc63ccd2802e5e04d255273ccf5bb41ab8f63e23051fe49eafaf0eb19eec isDelete=false 64
-RECV result status=0 stepUsed=52531 ret=<null>
-SEND invoke code=3c751c... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getProportion params=[000001...] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=55651 ret=<null>
+SEND invoke code=5feb26... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getProportion params=[000001...] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV getValue 0284bc63ccd2802e5e04d255273ccf5bb41ab8f63e23051fe49eafaf0eb19eec => 64
-RECV result status=0 stepUsed=33925 ret=100
-SEND invoke code=3c751c... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=setValue params=[Value #2] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=37045 ret=100
+SEND invoke code=5feb26... flag=0 from=000001... to=010001... value=0 stepLimit=1000000000 method=setValue params=[Value #2] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV setValue 79ea208012697d2f925d4f0e33a368466d99bf1b1c033d0d7190301bf8f57f82 isDelete=false 56616c7565202332
 RECV getValue 0284bc63ccd2802e5e04d255273ccf5bb41ab8f63e23051fe49eafaf0eb19eec => 64
 RECV setProportion 100
 RECV event indxed=[56616c756553657428416464726573732c696e7429 000001000000000000000000000000000000000000] data=[64]
-RECV result status=0 stepUsed=65983 ret=<null>
-SEND invoke code=3c751c... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[9 6f006eb81983dee4d97aef734108557083f09ff0b185e2af67111cf66f490cbb 0]
+RECV result status=0 stepUsed=69103 ret=<null>
+SEND invoke code=5feb26... flag=1 from=000001... to=010001... value=0 stepLimit=1000000000 method=getValue params=[] CID=1 EID=1 codeState=[10 c6dbf0b141bd918c7dead6c5a58cbc753c6497f7778191b37a30cce77a0d0c2b 0]
 RECV getValue 79ea208012697d2f925d4f0e33a368466d99bf1b1c033d0d7190301bf8f57f82 => 56616c7565202332
-RECV result status=0 stepUsed=32864 ret=Value #2
+RECV result status=0 stepUsed=35984 ret=Value #2

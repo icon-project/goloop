@@ -1,6 +1,12 @@
 from iconservice import *
 
 
+class FeeSharingInterface(InterfaceScore):
+    @interface
+    def setValues(self, value: str, others: List[Address]):
+        pass
+
+
 class FeeSharing(IconScoreBase):
 
     @eventlog(indexed=1)
@@ -48,7 +54,14 @@ class FeeSharing(IconScoreBase):
     def setValue(self, value: str):
         self._value.set(value)
 
-        proportion: int = self._whitelist[self.tx.origin]
+        proportion: int = self._whitelist[self.msg.sender]
         self.set_fee_sharing_proportion(proportion)
 
-        self.ValueSet(self.tx.origin, proportion)
+        self.ValueSet(self.msg.sender, proportion)
+
+    @external
+    def setValues(self, value: str, others: List[Address]):
+        self.setValue(value)
+        if others is not None and len(others) > 0:
+            other = self.create_interface_score(others[0], FeeSharingInterface)
+            other.setValues(value, others[1:])

@@ -24,6 +24,7 @@ type manager struct {
 	mtx sync.RWMutex
 
 	pd *PeerDispatcher
+	cn *ChannelNegotiator
 	//log
 	logger log.Logger
 
@@ -48,8 +49,12 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[uint16]*protocolHandler),
 		pd:               t.pd,
+		cn:               t.cn,
 		logger:           networkLogger,
 		mtr:              mtr,
+	}
+	for _, pi := range m.p2p.supportedProtocols() {
+		m.cn.addProtocol(m.channel, pi)
 	}
 
 	//Create default protocolHandler for P2P topology management
@@ -130,7 +135,13 @@ func (m *manager) Stop() error {
 	return m._stop()
 }
 
-func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (m *manager) RegisterReactor(
+	name string,
+	pi module.ProtocolInfo,
+	reactor module.Reactor,
+	piList []module.ProtocolInfo,
+	priority uint8,
+	policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 
@@ -141,7 +152,7 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 	k := pi.Uint16()
 	ph, ok := m.protocolHandlers[k]
 	if ok {
-		if ph.getName() != name || ph.getPriority() != priority {
+		if ph.getName() != name || ph.getPriority() != priority || ph.getPolicy() != policy {
 			return nil, errors.WithStack(ErrIllegalArgument)
 		}
 		spis := ph.getSubProtocols()
@@ -166,9 +177,10 @@ func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor m
 			m.logger.Debugln("RegisterReactor, p2p started")
 		}
 
-		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
+		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, policy, m.logger)
 		m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 		m.protocolHandlers[k] = ph
+		m.cn.addProtocol(m.channel, pi)
 	}
 	return ph, nil
 }
@@ -186,6 +198,7 @@ func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 			ph.Term()
 			m.p2p.unsetCbFunc(ph.protocol)
 			delete(m.protocolHandlers, k)
+			m.cn.removeProtocol(m.channel, module.ProtocolInfo(k))
 			return nil
 		}
 	}
@@ -352,37 +365,6 @@ func (m *manager) SetInitialRoles(roles ...module.Role) {
 		}
 	}
 	m.p2p.setRole(role)
-}
-
-type Error struct {
-	error
-	IsTemporary       bool
-	Operation         string
-	OperationArgument interface{}
-}
-
-func (e *Error) Temporary() bool { return e.IsTemporary }
-
-func (e *Error) Unwrap() error { return e.error }
-
-func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError {
-	return newNetworkError(err, "broadcast", bt)
-}
-func NewMulticastError(err error, role module.Role) module.NetworkError {
-	return newNetworkError(err, "multicast", role)
-}
-func NewUnicastError(err error, id module.PeerID) module.NetworkError {
-	return newNetworkError(err, "unicast", id)
-}
-func newNetworkError(err error, op string, opArg interface{}) module.NetworkError {
-	if err != nil {
-		isTemporary := false
-		if QueueOverflowError.Equals(err) {
-			isTemporary = true
-		}
-		return &Error{err, isTemporary, op, opArg}
-	}
-	return nil
 }
 
 func ChannelOfNetID(id int) string {

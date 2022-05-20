@@ -116,9 +116,8 @@ func (cc *callContext) OnAPI(status error, info *scoreapi.Info) {
 	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, info)
 }
 
-func (cc *callContext) OnSetFeeProportion(addr module.Address, portion int) {
-	fmt.Printf("CallContext.OnSetPortion(addr=%s,portion=%d)",
-		addr, portion)
+func (cc *callContext) OnSetFeeProportion(portion int) {
+	fmt.Printf("CallContext.OnSetPortion(portion=%d)", portion)
 }
 
 func (cc *callContext) SetCode(code []byte) error {

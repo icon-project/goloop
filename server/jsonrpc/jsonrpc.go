@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
+	"gopkg.in/go-playground/validator.v9"
+
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
-	"github.com/labstack/echo/v4"
-	"gopkg.in/go-playground/validator.v9"
 )
 
 const (
@@ -172,11 +173,27 @@ func (p *Params) Convert(v interface{}) error {
 		return errors.New("v is not pointer type or v is nil")
 	}
 	if p.rawMessage == nil || string(p.rawMessage) == "null" {
-		nf := rv.Elem().NumField()
+		rve := rv.Elem()
+		if rve.Kind() == reflect.Ptr {
+			rve.Set(reflect.Zero(rve.Type()))
+			return nil
+		}
+		nf := rve.NumField()
 		if nf > 0 {
 			return errors.New(UnmarshalFailPrefix + "'params' of request is required ")
 		} else {
 			return nil
+		}
+	} else {
+		rve := rv.Elem()
+		if rve.Kind() == reflect.Ptr {
+			value := reflect.New(rve.Type().Elem())
+			if err := UnmarshalWithValidate(p.rawMessage, value.Interface(), p.validator); err != nil {
+				return err
+			} else {
+				rve.Set(value)
+				return nil
+			}
 		}
 	}
 	return UnmarshalWithValidate(p.rawMessage, v, p.validator)

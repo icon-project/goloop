@@ -516,6 +516,11 @@ func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, erro
 		return nil, err
 	}
 	ass := wss.GetAccountSnapshot(addr.ID())
+	if (ass != nil && ass.IsContract()) != addr.IsContract() {
+		return nil, errors.IllegalArgumentError.Errorf(
+			"InvalidAddressPrefix(valid=%s)",
+			common.NewAddressWithTypeAndID(!addr.IsContract(), addr.ID()))
+	}
 	if ass == nil {
 		return big.NewInt(0), nil
 	}

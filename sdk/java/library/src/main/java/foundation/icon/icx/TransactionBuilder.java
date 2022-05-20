@@ -342,7 +342,7 @@ public final class TransactionBuilder {
      * @since 0.9.13
      */
     public static final class DepositBuilder {
-        private TransactionData transactionData;
+        private final TransactionData transactionData;
         private RpcObject.Builder dataBuilder;
 
         private DepositBuilder(TransactionData transactionData) {
@@ -367,8 +367,9 @@ public final class TransactionBuilder {
         /**
          * Withdraws the deposited ICX
          *
-         * @param id the deposit ID (txhash of the add deposit transaction)
+         * @param id the deposit ID (txHash of the add deposit transaction)
          * @return this
+         * @deprecated This method can be replaced by {@link #withdraw(BigInteger)} or {@link #withdraw()}.
          */
         public DepositBuilder withdraw(Bytes id) {
             if (dataBuilder != null) {
@@ -377,6 +378,38 @@ public final class TransactionBuilder {
             dataBuilder = new RpcObject.Builder()
                     .put("action", new RpcValue("withdraw"))
                     .put("id", new RpcValue(id));
+            return this;
+        }
+
+        /**
+         * Withdraws the deposited ICX by the specified amount
+         *
+         * @param amount the amount of deposit to withdraw
+         * @return this
+         * @since 2.0.0
+         */
+        public DepositBuilder withdraw(BigInteger amount) {
+            if (dataBuilder != null) {
+                throw new IllegalArgumentException("action already defined");
+            }
+            dataBuilder = new RpcObject.Builder()
+                    .put("action", new RpcValue("withdraw"))
+                    .put("amount", new RpcValue(amount));
+            return this;
+        }
+
+        /**
+         * Withdraws the whole deposited ICX
+         *
+         * @return this
+         * @since 2.0.0
+         */
+        public DepositBuilder withdraw() {
+            if (dataBuilder != null) {
+                throw new IllegalArgumentException("action already defined");
+            }
+            dataBuilder = new RpcObject.Builder()
+                    .put("action", new RpcValue("withdraw"));
             return this;
         }
 

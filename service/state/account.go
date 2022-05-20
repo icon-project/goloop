@@ -30,6 +30,20 @@ const (
 	AccountVersion = AccountVersion1
 )
 
+const (
+	ASDisabled = 1 << iota
+	ASBlocked
+	ASUseSystemDeposit
+)
+
+func asHasFlag(state, flag int) bool {
+	return state&flag != 0
+}
+
+func asIsActive(state int) bool {
+	return !asHasFlag(state, ASDisabled|ASBlocked)
+}
+
 var AccountType = reflect.TypeOf((*accountSnapshotImpl)(nil))
 
 // AccountSnapshot represents immutable account state
@@ -50,6 +64,7 @@ type AccountSnapshot interface {
 	NextContract() ContractSnapshot
 	IsDisabled() bool
 	IsBlocked() bool
+	UseSystemDeposit() bool
 	ContractOwner() module.Address
 
 	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
@@ -92,6 +107,8 @@ type AccountState interface {
 	IsDisabled() bool
 	SetBlock(b bool)
 	IsBlocked() bool
+	UseSystemDeposit() bool
+	SetUseSystemDeposit(yn bool) error
 	ContractOwner() module.Address
 
 	GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error)
@@ -140,7 +157,7 @@ func (s *accountSnapshotImpl) Version() int {
 }
 
 func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
-	if s.state == ASActive && s.curContract != nil && s.curContract.state == CSActive {
+	if asIsActive(s.state) && s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
@@ -158,6 +175,10 @@ func (s *accountSnapshotImpl) IsBlocked() bool {
 		return true
 	}
 	return false
+}
+
+func (s *accountSnapshotImpl) UseSystemDeposit() bool {
+	return s.state&ASUseSystemDeposit != 0
 }
 
 func (s *accountSnapshotImpl) GetBalance() *big.Int {
@@ -542,7 +563,7 @@ func (s *accountStateImpl) Version() int {
 }
 
 func (s *accountStateImpl) ActiveContract() Contract {
-	if s.state == ASActive &&
+	if asIsActive(s.state) &&
 		s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
@@ -563,6 +584,10 @@ func (s *accountStateImpl) IsBlocked() bool {
 	return false
 }
 
+func (s *accountStateImpl) UseSystemDeposit() bool {
+	return asHasFlag(s.state, ASUseSystemDeposit)
+}
+
 func (s *accountStateImpl) SetDisable(b bool) {
 	if s.isContract == true {
 		if ((s.state & ASDisabled) != 0) != b {
@@ -577,6 +602,17 @@ func (s *accountStateImpl) SetBlock(b bool) {
 		s.state = s.state ^ ASBlocked
 		s.markDirty()
 	}
+}
+
+func (s *accountStateImpl) SetUseSystemDeposit(yn bool) error {
+	if !s.isContract {
+		return scoreresult.ContractNotFoundError.New("NotContract")
+	}
+	if asHasFlag(s.state, ASUseSystemDeposit) != yn {
+		s.state = s.state ^ ASUseSystemDeposit
+		s.markDirty()
+	}
+	return nil
 }
 
 func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
@@ -968,6 +1004,11 @@ func (a *accountROState) SetContractOwner(owner module.Address) error {
 
 func (a *accountROState) SetBlock(b bool) {
 	log.Panic("accountROState().SetBlock() is invoked")
+}
+
+func (a *accountROState) SetUseSystemDeposit(b bool) error {
+	log.Panic("accountROState().SetUseSystemDeposit() is invoked")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) SetBalance(v *big.Int) {

@@ -1622,7 +1622,7 @@ func (cs *consensus) Start() error {
 		validators = &emptyAddressIndexer{}
 	}
 
-	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, CsProtocols, ConfigEnginePriority)
+	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, CsProtocols, ConfigEnginePriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	packetTestProtocolInfo = module.ProtocolInfo(0x0000)
+)
+
 func generatePacket(b []byte, len int) *Packet {
 	if b == nil {
 		if len < 0 {
@@ -25,7 +29,7 @@ func generatePacket(b []byte, len int) *Packet {
 			b = b[:len]
 		}
 	}
-	return newPacket(module.ProtocolInfo(0x0000), b, nil)
+	return newPacket(packetTestProtocolInfo, packetTestProtocolInfo, b, nil)
 }
 
 func Test_packet_PacketReader(t *testing.T) {
@@ -56,7 +60,7 @@ func Test_packet_PacketReader(t *testing.T) {
 
 func Test_packet_PacketReadWriter(t *testing.T) {
 	prw := NewPacketReadWriter()
-	pkt := newPacket(module.ProtocolInfo(0), []byte("test"), generatePeerID())
+	pkt := newPacket(packetTestProtocolInfo, packetTestProtocolInfo, []byte("test"), generatePeerID())
 	pkt.forceSend = false
 	pkt.timestamp = time.Now()
 	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")

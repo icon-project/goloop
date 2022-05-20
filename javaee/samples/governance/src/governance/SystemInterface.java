@@ -97,4 +97,8 @@ class SystemInterface {
     void setRoundLimitFactor(int factor) {
         Context.call(CHAIN_SCORE, "setRoundLimitFactor", factor);
     }
+
+    void setUseSystemDeposit(Address address, boolean yn) {
+        Context.call(CHAIN_SCORE, "setUseSystemDeposit", address, yn);
+    }
 }

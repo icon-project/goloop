@@ -59,7 +59,7 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 	return res
 }
 
-func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	r := &tReactorItem{
 		name:     name,
 		reactor:  reactor,
@@ -70,7 +70,7 @@ func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, 
 	return &tProtocolHandler{nm, r}, nil
 }
 
-func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	r := &tReactorItem{
 		name:     name,
 		reactor:  reactor,

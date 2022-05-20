@@ -58,6 +58,16 @@ public class FeeSharing {
         ValueSet(Context.getCaller(), proportion);
     }
 
+    @External
+    public void setValues(String value, Address[] others) {
+        this.setValue(value);
+        if (others != null && others.length > 0) {
+            var next = new Address[others.length-1];
+            System.arraycopy(others, 1, next, 0, next.length);
+            Context.call(others[0], "setValues", value, next);
+        }
+    }
+
     @EventLog(indexed=1)
     public void ValueSet(Address address, int proportion) {}
 }

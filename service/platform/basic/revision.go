@@ -38,15 +38,26 @@ const (
 )
 
 var revisionFlags = []module.Revision{
+	// Revision 0
 	module.FixLostFeeByDeposit,
+	// Revision 1
 	0,
+	// Revision 2
 	0,
+	// Revision 3
 	module.InputCostingWithJSON,
+	// Revision 4
 	0,
+	// Revision 5
 	0,
+	// Revision 6
 	module.ExpandErrorCode,
+	// Revision 7
 	module.UseChainID | module.UseMPTOnEvents,
+	// Revision 8
 	module.UseCompactAPIInfo,
+	// Revision 9
+	module.MultipleFeePayers,
 }
 
 func init() {

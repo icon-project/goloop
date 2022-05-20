@@ -322,12 +322,12 @@ func (s *stream) setPeerSeqByForce(seq uint16) {
 	s.peerSeq = seq
 }
 
-func registerReactorForStreams(nm module.NetworkManager, name string, pi module.ProtocolInfo, ureactor module.Reactor, piList []module.ProtocolInfo, priority uint8, clock common.Clock) (*streamReactor, error) {
+func registerReactorForStreams(nm module.NetworkManager, name string, pi module.ProtocolInfo, ureactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy, clock common.Clock) (*streamReactor, error) {
 	r := newReactor(clock, ureactor, piList[0])
 	r.Lock()
 	defer r.Unlock()
 
-	ph, err := nm.RegisterReactor(name, pi, r, piList, priority)
+	ph, err := nm.RegisterReactor(name, pi, r, piList, priority, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -352,8 +352,8 @@ func (m *manager) tryUnregisterStreamReactor(reactor module.Reactor) *streamReac
 	return nil
 }
 
-func (m *manager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	r, err := registerReactorForStreams(m, name, pi, reactor, piList, priority, &common.GoTimeClock{})
+func (m *manager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
+	r, err := registerReactorForStreams(m, name, pi, reactor, piList, priority, policy, &common.GoTimeClock{})
 	if err != nil {
 		return r, err
 	}

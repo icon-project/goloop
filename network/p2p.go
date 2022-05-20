@@ -59,7 +59,8 @@ const (
 )
 
 var (
-	p2pProtoControl = module.ProtocolInfo(0x0000)
+	p2pProtoControl     = module.ProtocolInfo(0x0000)
+	p2pControlProtocols = []module.ProtocolInfo{p2pProtoControl}
 )
 
 var (
@@ -247,6 +248,10 @@ func (p2p *PeerToPeer) Stop() {
 	p2p.logger.Debugln("Stop", "Done")
 }
 
+func (p2p *PeerToPeer) supportedProtocols() []module.ProtocolInfo {
+	return p2pControlProtocols
+}
+
 func (p2p *PeerToPeer) dial(na NetAddress) error {
 	if err := p2p.dialer.Dial(string(na)); err != nil {
 		if err == ErrAlreadyDialing {
@@ -379,8 +384,10 @@ func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
 	//}
 	p2p.logger.Traceln("onEvent", evt, p)
 	if m, ok := p2p.onEventCbFuncs[evt]; ok {
-		for _, cbFunc := range m {
-			cbFunc(evt, p)
+		for k, cbFunc := range m {
+			if p.ProtocolInfos().Exists(module.ProtocolInfo(k)) {
+				cbFunc(evt, p)
+			}
 		}
 	}
 }
@@ -427,12 +434,14 @@ func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 
 //callback from Peer.receiveRoutine
 func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
-	//FIXME if !p2p.IsStarted() return
-	//TODO p2p.packet_dump
-	//p2p.logger.Traceln("onPacket", pkt, p)
-	if pkt.protocol == p2pProtoControl {
-		//TODO p2p.control.message_dump
-		//p2p.logger.Traceln("onPacket", pkt, p)
+	//if !p2p.IsStarted() {
+	//	return
+	//}
+	if !p.ProtocolInfos().Exists(pkt.protocol) {
+		p.CloseByError(ErrNotRegisteredProtocol)
+		return
+	}
+	if pkt.protocol.ID() == p2pProtoControl.ID() {
 		switch pkt.protocol {
 		case p2pProtoControl:
 			switch pkt.subProtocol {
@@ -451,6 +460,11 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			default:
 				p.CloseByError(ErrNotRegisteredProtocol)
 			}
+		default:
+			//cannot be reached
+			p2p.logger.Infoln("onPacket", "Close, not supported p2p control protocol", pkt.protocol, pkt.subProtocol)
+			p.CloseByError(ErrNotRegisteredProtocol)
+			return
 		}
 	} else {
 		if p.ConnType() == p2pConnTypeNone {
@@ -483,6 +497,8 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 				p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
 			}
 		} else {
+			//cannot be reached
+			p2p.logger.Infoln("onPacket", "Close, not exists callback function", p.ID(), pkt.protocol, pkt.subProtocol)
 			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	}
@@ -633,7 +649,7 @@ func (p2p *PeerToPeer) stopRtt(p *Peer) {
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.Role()}
-	pkt := newPacket(p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -699,7 +715,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		m.Seeds = m.Seeds[:DefaultQueryElementLength]
 	}
 
-	rpkt := newPacket(p2pProtoQueryResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoQueryResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -776,7 +792,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	p2p.seeds.Merge(seeds...)
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -802,7 +818,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -1789,7 +1805,7 @@ type P2PConnectionResponse struct {
 
 func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(p2pProtoConnReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, p2p.encodeMsgpack(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -1926,7 +1942,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 			m.ConnType = p2pConnTypeNephew
 		}
 	}
-	rpkt := newPacket(p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {

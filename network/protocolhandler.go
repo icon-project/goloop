@@ -15,6 +15,7 @@ type protocolHandler struct {
 	reactor      module.Reactor
 	name         string
 	priority     uint8
+	policy       module.NotRegisteredProtocolPolicy
 	receiveQueue Queue
 	eventQueue   Queue
 	failureQueue Queue
@@ -32,6 +33,7 @@ func newProtocolHandler(
 	r module.Reactor,
 	name string,
 	priority uint8,
+	policy module.NotRegisteredProtocolPolicy,
 	l log.Logger) *protocolHandler {
 	phLogger := l.WithFields(log.Fields{LoggerFieldKeySubModule: name})
 	ph := &protocolHandler{
@@ -41,6 +43,7 @@ func newProtocolHandler(
 		reactor:      r,
 		name:         name,
 		priority:     priority,
+		policy:       policy,
 		receiveQueue: NewQueue(DefaultReceiveQueueSize),
 		eventQueue:   NewQueue(DefaultEventQueueSize),
 		failureQueue: NewQueue(DefaultFailureQueueSize),
@@ -100,6 +103,13 @@ func (ph *protocolHandler) getPriority() uint8 {
 	ph.mtx.RLock()
 
 	return ph.priority
+}
+
+func (ph *protocolHandler) getPolicy() module.NotRegisteredProtocolPolicy {
+	defer ph.mtx.RUnlock()
+	ph.mtx.RLock()
+
+	return ph.policy
 }
 
 func (ph *protocolHandler) getName() string {
@@ -167,15 +177,26 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 	//TODO protocolHandler.message_dump
 	//ph.logger.Traceln("onPacket", pkt, p)
 
-	if _, ok := ph.getSubProtocol(pkt.subProtocol); ok {
+	_, ok := ph.getSubProtocol(pkt.subProtocol)
+	if !ok {
+		switch ph.policy {
+		case module.NotRegisteredProtocolPolicyNone:
+			ok = true
+		case module.NotRegisteredProtocolPolicyDrop:
+			ph.logger.Debugln("onPacket", "not registered protocol drop", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
+		case module.NotRegisteredProtocolPolicyClose:
+			fallthrough
+		default:
+			p.CloseByError(ErrNotRegisteredProtocol)
+			ph.logger.Infoln("onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
+		}
+	}
+	if ok {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 		if ok = ph.receiveQueue.Push(ctx); !ok {
 			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
-	} else {
-		p.CloseByError(ErrNotRegisteredProtocol)
-		ph.logger.Infoln("onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 	}
 }
 
@@ -327,4 +348,3 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 	}
 	return nil
 }
-

@@ -17,6 +17,10 @@ type BlockHeightParam struct {
 	Height jsonrpc.HexInt `json:"height" validate:"required,t_int"`
 }
 
+type HeightParam struct {
+	Height jsonrpc.HexInt `json:"height,omitempty" validate:"optional,t_int"`
+}
+
 type BlockHashParam struct {
 	Hash jsonrpc.HexBytes `json:"hash" validate:"required,t_hash"`
 }
@@ -26,14 +30,17 @@ type CallParam struct {
 	ToAddress   jsonrpc.Address `json:"to" validate:"required,t_addr_score"`
 	DataType    string          `json:"dataType" validate:"required,call"`
 	Data        interface{}     `json:"data"`
+	Height      jsonrpc.HexInt  `json:"height,omitempty" validate:"optional,t_int"`
 }
 
 type AddressParam struct {
 	Address jsonrpc.Address `json:"address" validate:"required,t_addr"`
+	Height  jsonrpc.HexInt  `json:"height,omitempty" validate:"optional,t_int"`
 }
 
 type ScoreAddressParam struct {
 	Address jsonrpc.Address `json:"address" validate:"required,t_addr_score"`
+	Height  jsonrpc.HexInt  `json:"height,omitempty" validate:"optional,t_int"`
 }
 
 type TransactionHashParam struct {

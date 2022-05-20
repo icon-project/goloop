@@ -33,6 +33,7 @@ type callFrame struct {
 	btpMessages list.List
 	code2EID    map[string]int
 	logsMap     map[string]CustomLogs
+	feePayers   FeePayerInfo
 }
 
 func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool, logger *trace.Logger) *callFrame {
@@ -190,4 +191,8 @@ func (f *callFrame) getFrameData(name string, ot reflect.Type, top CustomLogs) C
 		f.logsMap[name] = obj
 		return obj
 	}
+}
+
+func (f *callFrame) applyFeePayerInfoOf(frame *callFrame) {
+	f.feePayers.Apply(frame.feePayers, frame.getStepUsed())
 }

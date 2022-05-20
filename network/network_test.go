@@ -63,7 +63,7 @@ type testReactor struct {
 func newTestReactor(name string, nm module.NetworkManager, pi module.ProtocolInfo, t *testing.T) *testReactor {
 	logger := nm.(*manager).logger.WithFields(log.Fields{"TestReactor": name})
 	r := &testReactor{name: name, nm: nm, logger: logger, t: t}
-	ph, err := nm.RegisterReactor(name, pi, r, testSubProtocols, testProtoPriority)
+	ph, err := nm.RegisterReactor(name, pi, r, testSubProtocols, testProtoPriority, module.NotRegisteredProtocolPolicyClose)
 	assert.NoError(t, err, "RegisterReactor")
 	r.ph = ph
 	r.p2p = nm.(*manager).p2p
@@ -203,7 +203,7 @@ type p2pConnInfo struct {
 	uncles   int
 	children int
 	nephews  int
-	others  int
+	others   int
 }
 
 func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
@@ -890,7 +890,7 @@ func Test_network_trustSeeds(t *testing.T) {
 	strTrustSeeds := strings.Join(trustSeeds, ",")
 	fmt.Println("strTrustSeeds: ", strTrustSeeds)
 
-	m["TestChild"], p = generateNetwork("TestChild", p, testNumChild, t)                                                    //8088~8091
+	m["TestChild"], p = generateNetwork("TestChild", p, testNumChild, t) //8088~8091
 	ch1 := make(chan context.Context, testNumChild)
 	for _, r := range m["TestChild"] {
 		r.ch = ch1
@@ -905,14 +905,14 @@ func Test_network_trustSeeds(t *testing.T) {
 
 	msg := m["TestValidator"][0].Broadcast("Test1")
 	err = wait(ch, ProtoTestNetworkBroadcast, msg,
-		testNumValidator - 1 + testNumCitizen, time.Second)
+		testNumValidator-1+testNumCitizen, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 	err = wait(ch1, ProtoTestNetworkBroadcast, msg, testNumChild, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1 child")
 
 	msg = m["TestValidator"][0].Multicast("Test2")
 	err = wait(ch, ProtoTestNetworkMulticast, msg,
-		testNumValidator - 1, time.Second)
+		testNumValidator-1, time.Second)
 	assert.NoError(t, err, "Multicast", "Test2")
 
 	msg = m["TestCitizen"][0].Multicast("Test3")

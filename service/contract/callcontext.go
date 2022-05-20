@@ -99,8 +99,6 @@ type callContext struct {
 	ioStart *time.Time
 	ioTime  time.Duration
 
-	payers *stepPayers
-
 	log *trace.Logger
 }
 
@@ -167,6 +165,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
 			frame.parent.applyBTPMessagesOf(frame)
+			frame.parent.applyFeePayerInfoOf(frame)
 		} else {
 			cc.Reset(frame.snapshot)
 		}
@@ -609,34 +608,23 @@ func (cc *callContext) SetFeeProportion(addr module.Address, portion int) {
 	defer cc.lock.Unlock()
 
 	if cc.frame.fid == firstFID {
-		if portion == 0 {
-			cc.payers = nil
-		} else {
-			cc.payers = &stepPayers{
-				payer: addr, portion: portion,
-			}
-		}
+		// delegate SetFeeProportion of the first frame to the base frame
+		cc.frame.parent.feePayers.SetFeeProportion(addr, portion)
+	} else if cc.Revision().Has(module.MultipleFeePayers) {
+		cc.frame.feePayers.SetFeeProportion(addr, portion)
 	}
 }
 
 func (cc *callContext) RedeemSteps(s *big.Int) (*big.Int, error) {
-	if cc.payers != nil {
-		return cc.payers.PaySteps(cc, s)
-	}
-	return nil, nil
+	return cc.frame.feePayers.PaySteps(cc, s)
 }
 
 func (cc *callContext) GetRedeemLogs(r txresult.Receipt) bool {
-	if cc.payers != nil {
-		return cc.payers.GetLogs(r)
-	}
-	return false
+	return cc.frame.feePayers.GetLogs(r)
 }
 
 func (cc *callContext) ClearRedeemLogs() {
-	if cc.payers != nil {
-		cc.payers.ClearLogs()
-	}
+	cc.frame.feePayers.ClearLogs()
 }
 
 func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
@@ -645,39 +633,4 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 
 	top, _ := cc.GetProperty(name).(CustomLogs)
 	return cc.frame.getFrameData(name, ot, top)
-}
-
-type stepPayers struct {
-	payer   module.Address
-	portion int
-	steps   *big.Int
-	deposit *big.Int
-}
-
-func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
-	sp := new(big.Int).SetInt64(int64(p.portion))
-	sp.Mul(sp, s).Div(sp, big.NewInt(100))
-	as := cc.GetAccountState(p.payer.ID())
-	steps, deposit, err := as.PaySteps(cc, sp)
-	if err != nil {
-		return nil, err
-	}
-	if steps != nil && steps.Sign() > 0 {
-		p.steps = steps
-		p.deposit = deposit
-	}
-	return steps, nil
-}
-
-func (p *stepPayers) GetLogs(r txresult.Receipt) bool {
-	if p.steps != nil {
-		r.AddPayment(p.payer, p.steps, p.deposit)
-		return true
-	}
-	return false
-}
-
-func (p *stepPayers) ClearLogs() {
-	p.steps = nil
-	p.deposit = nil
 }
