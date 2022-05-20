@@ -136,4 +136,32 @@ public class FeeShareScore extends Score {
         Bytes txHash = invoke(wallet, transaction);
         return getResult(txHash);
     }
+
+    public TransactionResult withdrawDeposit(BigInteger amount)
+            throws IOException, ResultTimeoutException {
+        Transaction transaction = TransactionBuilder.newBuilder()
+                .nid(getNetworkId())
+                .from(wallet.getAddress())
+                .to(getAddress())
+                .stepLimit(STEPS)
+                .deposit()
+                .withdraw(amount)
+                .build();
+        Bytes txHash = invoke(wallet, transaction);
+        return getResult(txHash);
+    }
+
+    public TransactionResult withdrawDeposit()
+            throws IOException, ResultTimeoutException {
+        Transaction transaction = TransactionBuilder.newBuilder()
+                .nid(getNetworkId())
+                .from(wallet.getAddress())
+                .to(getAddress())
+                .stepLimit(STEPS)
+                .deposit()
+                .withdraw()
+                .build();
+        Bytes txHash = invoke(wallet, transaction);
+        return getResult(txHash);
+    }
 }

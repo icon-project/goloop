@@ -27,7 +27,6 @@
         "auditEnabled": "0x0",
         "deployerWhiteListEnabled": "0x0",
         "revision": "0x8",
-        "depositTerm": "0x20",
         "feeSharingEnabled": "0x1",
         "fee": {
             "stepPrice": "0x0",
