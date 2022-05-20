@@ -115,9 +115,8 @@ func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) er
 	return scoreresult.IllegalFormatError.Errorf("NotCompatibleType(%s)", t)
 }
 
-func CheckMethod(obj SystemScore) error {
+func CheckMethod(obj SystemScore, methodInfo *scoreapi.Info) error {
 	numMethod := reflect.ValueOf(obj).NumMethod()
-	methodInfo := obj.GetAPI()
 	invalid := false
 	for i := 0; i < numMethod; i++ {
 		m := reflect.TypeOf(obj).Method(i)
