@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -54,9 +55,9 @@ type ServiceManager struct {
 	cb  ImportCallback
 	ps  BlockV1ProofStorage
 
-	lock     sync.Mutex
-	next     int64
-	last     int64
+	lock sync.Mutex
+	next int64
+	last int64
 
 	initialValidators module.ValidatorList
 	emptyTransactions module.TransactionList
@@ -282,6 +283,29 @@ func (sm *ServiceManager) ExecuteTransaction(result []byte, vh []byte, js []byte
 
 func (sm *ServiceManager) AddSyncRequest(id db.BucketID, key []byte) error {
 	return errors.ErrInvalidState
+}
+
+func (sm *ServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	return btp.ZeroBTPSection, nil
+}
+
+func (sm *ServiceManager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (sm *ServiceManager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BTPNetworkType, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (sm *ServiceManager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	return btp.ZeroProofContextMap, nil
 }
 
 func newValidatorListFromSlice(dbase db.Database, addrs []*common.Address) (module.ValidatorList, error) {

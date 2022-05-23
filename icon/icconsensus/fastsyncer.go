@@ -228,6 +228,10 @@ func (f *fastSyncer) OnEnd(err error) {
 	parent.Upgrade(f.bpp)
 }
 
+func (f *fastSyncer) GetBTPBlockHeaderAndProof(blk module.Block, nid int64, flag uint) (btpBlk module.BTPBlockHeader, proof []byte, err error) {
+	return nil, nil, errors.Wrapf(errors.ErrNotFound, "not found in fastSyncer nid=%d", nid)
+}
+
 type consensusReactor struct {
 	log log.Logger
 }

@@ -414,8 +414,8 @@ func (s *BlockVoteList) Timestamp() int64 {
 	return (ts[l/2-1] + ts[l/2]) / 2
 }
 
-func (s *BlockVoteList) CommitVoteSet() module.CommitVoteSet {
-	return s
+func (s *BlockVoteList) CommitVoteSet(pcm module.BTPProofContextMap) (module.CommitVoteSet, error) {
+	return s, nil
 }
 
 func (s *BlockVoteList) Add(idx int, vote interface{}) bool {
@@ -428,6 +428,26 @@ func (s BlockVoteList) String() string {
 		return fmt.Sprintf("BlockVoteList{err:%+v}", err)
 	}
 	return string(jsn)
+}
+
+func (s *BlockVoteList) VoteRound() int32 {
+	return 0
+}
+
+func (s *BlockVoteList) BlockVoteSetBytes() []byte {
+	return s.Bytes()
+}
+
+func (s *BlockVoteList) NTSDProofCount() int {
+	return 0
+}
+
+func (s *BlockVoteList) NTSDProofAt(i int) []byte {
+	return nil
+}
+
+func (s *BlockVoteList) NTSDProves() [][]byte {
+	return nil
 }
 
 func NewBlockVotesFromBytes(bs []byte) (*BlockVoteList, error) {

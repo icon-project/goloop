@@ -52,8 +52,8 @@ func (c *chainImpl) NID() int {
 }
 
 func (c *chainImpl) CID() int {
-	 cid, _ := c.gs.CID()
-	 return cid
+	cid, _ := c.gs.CID()
+	return cid
 }
 
 func (c *chainImpl) NetID() int {
@@ -100,7 +100,6 @@ func (c *chainImpl) NephewsLimit() int {
 	panic("implement me")
 }
 
-
 func (c *chainImpl) Genesis() []byte {
 	return c.gs.Genesis()
 }
@@ -138,8 +137,7 @@ func (nm *networkManager) RegisterReactorForStreams(name string, pi module.Proto
 }
 
 func (c *chainImpl) NetworkManager() module.NetworkManager {
-	return &networkManager {
-	}
+	return &networkManager{}
 }
 
 func (c *chainImpl) Regulator() module.Regulator {
@@ -208,6 +206,10 @@ func (c *chainImpl) Logger() log.Logger {
 
 func (c *chainImpl) ValidateTxOnSend() bool {
 	return false
+}
+
+func (c *chainImpl) WalletFor(dsa string) module.BaseWallet {
+	return nil
 }
 
 func NewChain(database db.Database, gns module.GenesisStorage, logger log.Logger) (*chainImpl, error) {

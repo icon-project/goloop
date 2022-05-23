@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	importBlockInterval = time.Second*1
+	importBlockInterval = time.Second * 1
 )
 
 type Importer struct {
@@ -81,7 +81,7 @@ func (i *Importer) Run() error {
 	if err != nil {
 		return err
 	}
-	result := <- i.waiter
+	result := <-i.waiter
 	switch obj := result.(type) {
 	case error:
 		return obj

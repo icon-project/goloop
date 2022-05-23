@@ -48,8 +48,24 @@ func (c *commitVoteSet) Timestamp() int64 {
 	return c.TimestampValue
 }
 
+func (c *commitVoteSet) VoteRound() int32 {
+	return 0
+}
+
+func (c *commitVoteSet) BlockVoteSetBytes() []byte {
+	return c.Bytes()
+}
+
+func (c *commitVoteSet) NTSDProofCount() int {
+	return 0
+}
+
+func (c *commitVoteSet) NTSDProofAt(i int) []byte {
+	return nil
+}
+
 func NewCommitVotes() *commitVoteSet {
-	now := time.Now().UnixNano()/int64(time.Millisecond)
+	now := time.Now().UnixNano() / int64(time.Millisecond)
 	return &commitVoteSet{
 		TimestampValue: now,
 	}
@@ -62,4 +78,3 @@ func DecodeCommitVotes(bs []byte) module.CommitVoteSet {
 	}
 	return vs
 }
-

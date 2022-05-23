@@ -39,7 +39,7 @@ func newWorldState(wss state.WorldSnapshot, readonly bool) state.WorldState {
 	stateHash := wss.StateHash()
 	vss := wss.GetValidatorSnapshot()
 	ess := wss.GetExtensionSnapshot()
-	return state.NewWorldState(dbase, stateHash, vss, ess)
+	return state.NewWorldState(dbase, stateHash, vss, ess, nil)
 }
 
 type transactionImpl struct {
@@ -92,7 +92,7 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 	if err != nil {
 		return err
 	}
-	ws := state.NewWorldState(dbase, nil, vss, nil)
+	ws := state.NewWorldState(dbase, nil, vss, nil, nil)
 	totalSupply := new(big.Int)
 
 	// Initialize balances

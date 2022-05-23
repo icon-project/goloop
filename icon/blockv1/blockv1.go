@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -98,7 +99,7 @@ type blockDetail interface {
 	BlockVotes() *blockv0.BlockVoteList
 	LeaderVotes() *blockv0.LeaderVoteList
 	NextValidatorsHash() []byte
-	NewBlock(vl module.ValidatorList) module.Block
+	NewBlock(tr module.Transition) module.Block
 	RepsRoot() []byte
 	NextRepsRoot() []byte
 }
@@ -255,6 +256,26 @@ func (b *Block) NextValidators() module.ValidatorList {
 	return b._nextValidators
 }
 
+func (b *Block) NetworkSectionFilter() module.BitSetFilter {
+	return module.BitSetFilter{}
+}
+
+func (b *Block) NTSHashEntryList() (module.NTSHashEntryList, error) {
+	return module.ZeroNTSHashEntryList{}, nil
+}
+
+func (b *Block) BTPDigest() (module.BTPDigest, error) {
+	return btp.ZeroDigest, nil
+}
+
+func (b *Block) BTPSection() (module.BTPSection, error) {
+	return btp.ZeroBTPSection, nil
+}
+
+func (b *Block) NextProofContextMap() (module.BTPProofContextMap, error) {
+	return btp.ZeroProofContextMap, nil
+}
+
 type blockV11 struct {
 	Block
 }
@@ -341,9 +362,9 @@ func (b *blockV11) NextValidatorsHash() []byte {
 	return nil
 }
 
-func (b *blockV11) NewBlock(vl module.ValidatorList) module.Block {
+func (b *blockV11) NewBlock(tr module.Transition) module.Block {
 	res := *b
-	res._nextValidators = vl
+	res._nextValidators = tr.NextValidators()
 	return &res
 }
 
@@ -446,9 +467,9 @@ func (b *blockV13) BlockVotes() *blockv0.BlockVoteList {
 	return b.blockVotes
 }
 
-func (b *blockV13) NewBlock(vl module.ValidatorList) module.Block {
+func (b *blockV13) NewBlock(tr module.Transition) module.Block {
 	res := *b
-	res._nextValidators = vl
+	res._nextValidators = tr.NextValidators()
 	return &res
 }
 

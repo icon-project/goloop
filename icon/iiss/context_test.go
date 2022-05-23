@@ -20,7 +20,7 @@ import (
 func newWorldContext() state.WorldContext {
 	dbase := db.NewMapDB()
 	plt := ictest.NewPlatform()
-	ws := state.NewWorldState(dbase, nil, nil, nil)
+	ws := state.NewWorldState(dbase, nil, nil, nil, nil)
 	return state.NewWorldContext(ws, nil, nil, plt)
 }
 
