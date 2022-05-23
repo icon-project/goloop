@@ -97,11 +97,12 @@ func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to mod
 	if err := score.Install(param); err != nil {
 		return err
 	}
-	if err := CheckMethod(score); err != nil {
+	apiInfo := score.GetAPI()
+	if err := CheckMethod(score, apiInfo); err != nil {
 		return err
 	}
 	sas.MigrateForRevision(cc.Revision())
-	sas.SetAPIInfo(score.GetAPI())
+	sas.SetAPIInfo(apiInfo)
 	return nil
 }
 

@@ -218,7 +218,7 @@ pack:goloop:
 IT:py:pyscore:
   <<: *IT__goloop
   variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_py.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
   script:

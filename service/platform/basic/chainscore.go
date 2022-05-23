@@ -953,8 +953,12 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
 		return nil
 	}
+	apiInfo := s.GetAPI()
+	if err := contract.CheckMethod(s, apiInfo); err != nil {
+		return scoreresult.Wrap(err, module.StatusIllegalFormat, "InvalidChainScoreImplementation")
+	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))
-	as.SetAPIInfo(s.GetAPI())
+	as.SetAPIInfo(apiInfo)
 	return nil
 }
 
