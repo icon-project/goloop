@@ -32,6 +32,7 @@ type javaExecutionEngine struct {
 	net, addr    string
 	cmd          *exec.Cmd
 	timer        *time.Timer
+	out          *io.PipeWriter
 
 	conn   ipc.Connection
 	logger log.Logger
@@ -58,8 +59,10 @@ func (e *javaExecutionEngine) start() error {
 	e.cmd = e.newCmd(out, out)
 	if err := e.cmd.Start(); err != nil {
 		e.logger.Error("Failed to start JAVA EEManager")
+		out.Close()
 		return err
 	}
+	e.out = out
 	e.timer = time.AfterFunc(time.Second*10, func() {
 		e.logger.Panic("Failed to execute Execution Engine Manager")
 	})
@@ -202,7 +205,9 @@ func (e *javaExecutionEngine) OnClose(conn ipc.Connection) bool {
 		if err := e.cmd.Process.Kill(); err != nil {
 			e.logger.Warnf("Failed to kill Java EEManager. err(%s), pid(%d)\n", err, e.cmd.Process.Pid)
 		}
+		e.cmd.Process.Wait()
 	}
+	e.out.Close()
 	e.conn = nil
 	e.managerProxy = nil
 

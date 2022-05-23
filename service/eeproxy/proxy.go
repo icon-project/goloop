@@ -628,6 +628,10 @@ func (p *proxy) OnClose() {
 			frame.ctx.OnResult(status, new(big.Int), nil)
 		})
 	}
+
+	if p.state != stateClosed {
+		p.state = stateClosed
+	}
 }
 
 func (p *proxy) Kill() error {
