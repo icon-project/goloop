@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -35,12 +36,116 @@ type blockV2HeaderFormat struct {
 	NormalTransactionsHash []byte
 	LogsBloom              []byte
 	Result                 []byte
+	NSFilter               []byte
+	NTSDProofHashListHash  []byte
+}
+
+func (bh *blockV2HeaderFormat) RLPEncodeSelf(e codec.Encoder) error {
+	if bh.NSFilter == nil && bh.NTSDProofHashListHash == nil {
+		return e.EncodeListOf(
+			bh.Version,
+			bh.Height,
+			bh.Timestamp,
+			bh.Proposer,
+			bh.PrevID,
+			bh.VotesHash,
+			bh.NextValidatorsHash,
+			bh.PatchTransactionsHash,
+			bh.NormalTransactionsHash,
+			bh.LogsBloom,
+			bh.Result,
+		)
+	}
+	return e.EncodeListOf(
+		bh.Version,
+		bh.Height,
+		bh.Timestamp,
+		bh.Proposer,
+		bh.PrevID,
+		bh.VotesHash,
+		bh.NextValidatorsHash,
+		bh.PatchTransactionsHash,
+		bh.NormalTransactionsHash,
+		bh.LogsBloom,
+		bh.Result,
+		bh.NSFilter,
+		bh.NTSDProofHashListHash,
+	)
+}
+
+func (bh *blockV2HeaderFormat) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	cnt, err := d2.DecodeMulti(
+		&bh.Version,
+		&bh.Height,
+		&bh.Timestamp,
+		&bh.Proposer,
+		&bh.PrevID,
+		&bh.VotesHash,
+		&bh.NextValidatorsHash,
+		&bh.PatchTransactionsHash,
+		&bh.NormalTransactionsHash,
+		&bh.LogsBloom,
+		&bh.Result,
+		&bh.NSFilter,
+		&bh.NTSDProofHashListHash,
+	)
+	if cnt == 11 && err == io.EOF {
+		bh.NSFilter = nil
+		bh.NTSDProofHashListHash = nil
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type blockV2BodyFormat struct {
-	PatchTransactions  [][]byte
-	NormalTransactions [][]byte
-	Votes              []byte
+	PatchTransactions                [][]byte
+	NormalTransactions               [][]byte
+	Votes                            []byte
+	NetworkTypeSectionDecisionProves [][]byte
+}
+
+func (bb *blockV2BodyFormat) RLPEncodeSelf(e codec.Encoder) error {
+	if bb.NetworkTypeSectionDecisionProves == nil {
+		return e.EncodeListOf(
+			bb.PatchTransactions,
+			bb.NormalTransactions,
+			bb.Votes,
+		)
+	}
+	return e.EncodeListOf(
+		bb.PatchTransactions,
+		bb.NormalTransactions,
+		bb.Votes,
+		bb.NetworkTypeSectionDecisionProves,
+	)
+}
+
+func (bb *blockV2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	cnt, err := d2.DecodeMulti(
+		&bb.PatchTransactions,
+		&bb.NormalTransactions,
+		&bb.Votes,
+		&bb.NetworkTypeSectionDecisionProves,
+	)
+	if cnt == 3 && err == io.EOF {
+		bb.NetworkTypeSectionDecisionProves = nil
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type blockV2Format struct {
@@ -61,6 +166,13 @@ type blockV2 struct {
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
 	_id                []byte
+	_btpSection        module.BTPSection
+	nsFilter           module.BitSetFilter
+	_btpDigest         module.BTPDigest
+	ntsdProofListHash  []byte
+	ntsdProofList      module.NTSDProofList
+	sm                 ServiceManager
+	dbase              db.Database
 }
 
 func (b *blockV2) Version() int {
@@ -155,6 +267,8 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 		NormalTransactionsHash: b.normalTransactions.Hash(),
 		LogsBloom:              b.logsBloom.CompressedBytes(),
 		Result:                 b.result,
+		NSFilter:               b.nsFilter.Bytes(),
+		NTSDProofHashListHash:  b.NTSDProofHashListHash(),
 	}
 }
 
@@ -198,19 +312,22 @@ func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
 	if err != nil {
 		return nil, err
 	}
+	ntsdProves, err := b.ntsdProofList.Proves()
+	if err != nil {
+		return nil, err
+	}
 	return &blockV2BodyFormat{
-		PatchTransactions:  ptBss,
-		NormalTransactions: ntBss,
-		Votes:              b.votes.Bytes(),
+		PatchTransactions:                ptBss,
+		NormalTransactions:               ntBss,
+		Votes:                            b.votes.Bytes(),
+		NetworkTypeSectionDecisionProves: ntsdProves,
 	}, nil
 }
 
-func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
-	if !bytes.Equal(b.nextValidatorsHash, vl.Hash()) {
-		return nil
-	}
+func (b *blockV2) NewBlock(tr module.Transition) module.Block {
 	blk := *b
-	blk._nextValidators = vl
+	blk._nextValidators = tr.NextValidators()
+	blk._btpSection = tr.BTPSection()
 	return &blk
 }
 
@@ -227,6 +344,9 @@ func (b *blockV2) FinalizeHeader(dbase db.Database) error {
 		return err
 	}
 	if err = hb.Set(db.Raw(b.Votes().Hash()), db.Raw(b.Votes().Bytes())); err != nil {
+		return err
+	}
+	if err = b.ntsdProofList.Flush(); err != nil {
 		return err
 	}
 	hh, err := db.NewCodedBucket(dbase, db.BlockHeaderHashByHeight, nil)
@@ -262,19 +382,42 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
-func (b *blockV2) BTPDigest() module.BTPDigest {
-	//TODO implement me
-	panic("implement me")
+func (b *blockV2) NetworkSectionFilter() module.BitSetFilter {
+	return b.nsFilter
 }
 
-func (b *blockV2) BTPSection() module.BTPSection {
-	//TODO implement me
-	panic("implement me")
+func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
+	if b._btpDigest == nil {
+		bs, err := b.BTPSection()
+		if err != nil {
+			return nil, err
+		}
+		b._btpDigest = bs.Digest()
+	}
+	return b._btpDigest, nil
 }
 
-func (b *blockV2) BTPBlockFor(nid int64) (module.BTPBlock, error) {
-	//TODO implement me
-	panic("implement me")
+func (b *blockV2) BTPSection() (module.BTPSection, error) {
+	if b._btpSection == nil {
+		bs, err := b.sm.BTPSectionFromResult(b.result)
+		if err != nil {
+			return nil, err
+		}
+		b._btpSection = bs
+	}
+	return b._btpSection, nil
+}
+
+func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
+	return b.sm.NextProofContextMapFromResult(b.result)
+}
+
+func (b *blockV2) NTSDProofHashListHash() []byte {
+	return b.ntsdProofListHash
+}
+
+func (b *blockV2) NTSDProofList() module.NTSDProofList {
+	return b.ntsdProofList
 }
 
 type blockBuilder struct {
@@ -306,7 +449,17 @@ func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
 	} else {
 		b.block._nextValidators = vs
 	}
+	b.block.nsFilter = module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap)
+	b.block.ntsdProofListHash = header.NTSDProofHashListHash
 	builder.RequestData(db.BytesByHash, header.VotesHash, voteSetBuilder{b})
+	if header.NTSDProofHashListHash == nil {
+		b.block.ntsdProofList = module.ZeroNTSDProofList{}
+	} else {
+		builder.RequestData(
+			db.BytesByHash, header.NTSDProofHashListHash,
+			&ntsdProofListBuilder{builder: b},
+		)
+	}
 	return nil
 }
 
@@ -319,9 +472,48 @@ func (b voteSetBuilder) OnData(value []byte, builder merkle.Builder) error {
 	return nil
 }
 
-func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder, hash []byte) module.Block {
+type ntsdProofListBuilder struct {
+	builder *blockBuilder
+	hashes  [][]byte
+	proves  [][]byte
+	nProves int
+}
+
+func (b *ntsdProofListBuilder) OnData(value []byte, builder merkle.Builder) error {
+	format := ntsdProofHashListFormat{}
+	codec.MustUnmarshalFromBytes(value, &format)
+	b.hashes = format.NtsdProofHashes
+	b.proves = make([][]byte, len(b.hashes))
+	for _, hash := range b.hashes {
+		builder.RequestData(db.BytesByHash, hash, &ntsdProofBuilder{b})
+	}
+	return nil
+}
+
+type ntsdProofBuilder struct {
+	builder *ntsdProofListBuilder
+}
+
+func (b *ntsdProofBuilder) OnData(value []byte, builder merkle.Builder) error {
+	valueHash := crypto.SHA3Sum256(value)
+	for i, hash := range b.builder.hashes {
+		if bytes.Equal(hash, valueHash) {
+			b.builder.proves[i] = value
+			b.builder.nProves++
+			if b.builder.nProves == len(b.builder.hashes) {
+				blk := b.builder.builder.block
+				blk.ntsdProofList = newNTSDProofList(blk.dbase, b.builder.proves)
+			}
+		}
+	}
+	return nil
+}
+
+func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder, c Chain, hash []byte) module.Block {
 	blk := new(blockV2)
 	blk._id = hash
+	blk.sm = c.ServiceManager()
+	blk.dbase = c.Database()
 	builder.RequestData(db.BytesByHash, hash, &blockBuilder{block: blk, vld: vld})
 	return blk
 }

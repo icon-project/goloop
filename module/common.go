@@ -44,6 +44,10 @@ type CommitVoteSet interface {
 	Bytes() []byte
 	Hash() []byte
 	Timestamp() int64
+
+	// VoteRound returns vote round if it is for block version >= 2. In other
+	// case, the value is ignored.
+	VoteRound() int32
 }
 
 type CommitVoteSetDecoder func([]byte) CommitVoteSet

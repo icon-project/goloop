@@ -119,6 +119,10 @@ func (vl *commitVoteList) voteList(h int64, bid []byte) *voteList {
 	return rvl
 }
 
+func (vl *commitVoteList) VoteRound() int32 {
+	return vl.Round
+}
+
 func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
 	vl := &commitVoteList{}
 	l := len(msgs)

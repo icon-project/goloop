@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/merkle"
@@ -635,12 +636,12 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 
 func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
 	//TODO implement me
-	panic("implement me")
+	return btp.ZeroBTPSection, nil
 }
 
-func (m *manager) BTPProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+func (m *manager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
 	//TODO implement me
-	panic("implement me")
+	return btp.ZeroProofContextMap, nil
 }
 
 func (m *manager) HasTransaction(id []byte) bool {

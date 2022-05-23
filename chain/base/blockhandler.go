@@ -57,6 +57,7 @@ type BlockHandler interface {
 		patchTransactions module.TransactionList,
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
+		bs module.BTPSection, ntsdProves [][]byte,
 	) Block
 	NewBlockFromHeaderReader(r io.Reader) (Block, error)
 	NewBlockDataFromReader(io.Reader) (BlockData, error)

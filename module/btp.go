@@ -48,16 +48,31 @@ type BTPProofContext interface {
 	NewProofFromBytes(proofBytes []byte) (BTPProof, error)
 	Verify(decisionHash []byte, p BTPProof) error
 	DSA() string
+	UID() string
+	NewDecision(
+		srcNetworkUID []byte,
+		ntid int64,
+		height int64,
+		round int32,
+		ntsHash []byte,
+	) BytesHasher
 }
 
-type NetworkTypeSectionDecisionProof struct {
-	NetworkTypeSectionHash []byte
-	Proof                  BTPProof
+type NTSDProofList interface {
+	Len() int
+	ProofAt(i int) ([]byte, error)
+	Proves() ([][]byte, error)
+	HashListHash() []byte
+	Flush() error
 }
 
 type BTPProofContextMap interface {
 	ProofContextFor(ntid int64) (BTPProofContext, error)
 	Update(btpSection BTPSection) BTPProofContextMap
+	Verify(
+		srcUID []byte, height int64, round int32, bd BTPDigest,
+		ntsdProves [][]byte,
+	) error
 }
 
 // Digest

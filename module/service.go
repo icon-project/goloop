@@ -359,8 +359,8 @@ type ServiceManager interface {
 	// BTPSectionFromResult returns BTPSection for the result
 	BTPSectionFromResult(result []byte) (BTPSection, error)
 
-	// BTPProofContextMapFromResult returns BTPProofContextMap for the result
-	BTPProofContextMapFromResult(result []byte) (BTPProofContextMap, error)
+	// NextProofContextMapFromResult returns BTPProofContextMap for the result
+	NextProofContextMapFromResult(result []byte) (BTPProofContextMap, error)
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool

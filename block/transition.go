@@ -288,6 +288,12 @@ func (ti *transitionImpl) verifyResult(block module.BlockData) error {
 	if !bytes.Equal(mtr.NextValidators().Hash(), block.NextValidatorsHash()) {
 		return errors.Errorf("bad next validators calc:%+v block:%+v", mtr.NextValidators().Hash(), block.NextValidatorsHash())
 	}
+	bs := mtr.BTPSection()
+	trNSF := bs.Digest().NetworkSectionFilter()
+	blkNSF := block.NetworkSectionFilter()
+	if !bytes.Equal(trNSF.Bytes(), blkNSF.Bytes()) {
+		return errors.Errorf("bad nsFilter calc:%x block:%x", trNSF, blkNSF)
+	}
 	return nil
 }
 

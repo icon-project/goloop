@@ -39,6 +39,7 @@ func (t transactionV3) String() string {
 }
 
 type blockV0Impl struct {
+	module.Block
 	Version            string             `json:"version"`
 	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
@@ -177,27 +178,12 @@ func (b *blockV0) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return nil, nil
 }
 
-func (b *blockV0) NewBlock(vl module.ValidatorList) module.Block {
+func (b *blockV0) NewBlock(tr module.Transition) module.Block {
 	return nil
 }
 
 func (b *blockV0) Hash() []byte {
 	return nil
-}
-
-func (b *blockV0) BTPDigest() module.BTPDigest {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (b *blockV0) BTPSection() module.BTPSection {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (b *blockV0) BTPBlockFor(nid int64) (module.BTPBlock, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 type Block interface {

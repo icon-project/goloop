@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -35,7 +36,7 @@ type blockV2Handler struct {
 func NewBlockV2Handler(chain base.Chain) base.BlockHandler {
 	return &blockV2Handler{
 		chain: chain,
-		sm: chain.ServiceManager(),
+		sm:    chain.ServiceManager(),
 	}
 }
 
@@ -66,6 +67,7 @@ func (b *blockV2Handler) NewBlock(
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, votes module.CommitVoteSet,
+	bs module.BTPSection, ntsdProves [][]byte,
 ) base.Block {
 	var prevID []byte
 	if prev != nil {
@@ -83,6 +85,10 @@ func (b *blockV2Handler) NewBlock(
 		nextValidatorsHash: nextValidators.Hash(),
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		nsFilter:           bs.Digest().NetworkSectionFilter(),
+		ntsdProofList:      newNTSDProofList(b.chain.Database(), ntsdProves),
+		sm:                 b.sm,
+		dbase:              b.chain.Database(),
 	}
 }
 
@@ -113,6 +119,10 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, erro
 	if err != nil {
 		return nil, err
 	}
+	ntsdProofHashes, err := newNTSDProofHashListFromHash(b.chain.Database(), header.NTSDProofHashListHash)
+	if err != nil {
+		return nil, err
+	}
 	return &blockV2{
 		height:             header.Height,
 		timestamp:          header.Timestamp,
@@ -125,6 +135,10 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, erro
 		nextValidatorsHash: nextValidators.Hash(),
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		nsFilter:           module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap),
+		ntsdProofList:      ntsdProofHashes,
+		sm:                 b.sm,
+		dbase:              b.chain.Database(),
 	}, nil
 }
 
@@ -185,6 +199,10 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, er
 	if err != nil {
 		return nil, err
 	}
+	ntsdProves := newNTSDProofList(b.chain.Database(), blockFormat.NetworkTypeSectionDecisionProves)
+	if !bytes.Equal(blockFormat.NTSDProofHashListHash, ntsdProves.HashListHash()) {
+		return nil, errors.Errorf("bad ntsd proof hash list hash hashInHeader=%x calculated=%x", blockFormat.NTSDProofHashListHash, ntsdProves.HashListHash())
+	}
 	return &blockV2{
 		height:             blockFormat.Height,
 		timestamp:          blockFormat.Timestamp,
@@ -197,6 +215,9 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, er
 		nextValidatorsHash: blockFormat.NextValidatorsHash,
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		ntsdProofList:      newNTSDProofList(b.chain.Database(), blockFormat.NetworkTypeSectionDecisionProves),
+		sm:                 b.sm,
+		dbase:              b.chain.Database(),
 	}, nil
 }
 

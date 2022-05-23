@@ -33,9 +33,35 @@ type BlockData interface {
 	Marshal(w io.Writer) error
 
 	ToJSON(version JSONVersion) (interface{}, error)
-	NewBlock(vl ValidatorList) Block
+	NewBlock(tr Transition) Block
 	Hash() []byte
-	BTPDigest() BTPDigest
+	NetworkSectionFilter() BitSetFilter
+
+	NTSDProofHashListHash() []byte
+	NTSDProofList() NTSDProofList
+}
+
+type ZeroNTSDProofList struct {
+}
+
+func (pl ZeroNTSDProofList) Len() int {
+	return 0
+}
+
+func (pl ZeroNTSDProofList) ProofAt(i int) ([]byte, error) {
+	return nil, nil
+}
+
+func (pl ZeroNTSDProofList) Proves() ([][]byte, error) {
+	return nil, nil
+}
+
+func (pl ZeroNTSDProofList) HashListHash() []byte {
+	return nil
+}
+
+func (pl ZeroNTSDProofList) Flush() error {
+	return nil
 }
 
 func BlockDataToBytes(blk BlockData) ([]byte, error) {
@@ -47,8 +73,9 @@ func BlockDataToBytes(blk BlockData) ([]byte, error) {
 type Block interface {
 	BlockData
 	NextValidators() ValidatorList
-	BTPSection() BTPSection
-	BTPBlockFor(nid int64) (BTPBlock, error)
+	BTPDigest() (BTPDigest, error)
+	BTPSection() (BTPSection, error)
+	NextProofContextMap() (BTPProofContextMap, error)
 }
 
 type BlockCandidate interface {
@@ -84,7 +111,7 @@ type BlockManager interface {
 	Propose(
 		parentID []byte,
 		votes CommitVoteSet,
-		ntsdProofs []NetworkTypeSectionDecisionProof,
+		ntsdProves [][]byte,
 		cb func(BlockCandidate, error),
 	) (canceler Canceler, err error)
 

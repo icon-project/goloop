@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/codec"
@@ -76,6 +77,8 @@ type ServiceManager interface {
 	SendTransactionAndWait(result []byte, height int64, tx interface{}) ([]byte, <-chan interface{}, error)
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
 	ExportResult(result []byte, vh []byte, dst db.Database) error
+	BTPSectionFromResult(result []byte) (module.BTPSection, error)
+	NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error)
 }
 
 type Chain interface {
@@ -96,6 +99,7 @@ type chainContext struct {
 	log     log.Logger
 	running bool
 	trtr    RefTracer
+	srcUID  []byte
 }
 
 type finalizationCB = func(module.Block) bool
@@ -118,6 +122,11 @@ type manager struct {
 	finalized       *bnode
 	finalizationCBs []finalizationCB
 	timestamper     module.Timestamper
+
+	// pcm for last finalized block verification
+	pcmForLastBlock module.BTPProofContextMap
+	// next pcm in the last finalized block's result
+	nextPCM module.BTPProofContextMap
 
 	handlers       handlerList
 	activeHandlers handlerList
@@ -192,6 +201,7 @@ type proposeTask struct {
 	parentBlock module.Block
 	votes       module.CommitVoteSet
 	csi         module.ConsensusInfo
+	ntsdProves  [][]byte
 }
 
 func (m *manager) addNode(par *bnode, bn *bnode) {
@@ -301,16 +311,9 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	var err error
-	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	csi, err := m.verifyBlock(block, bn.block)
 	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
-	}
-	var csi module.ConsensusInfo
-	if vt, err := m.verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
-	} else {
-		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, vt)
 	}
 	it := &importTask{
 		block: block,
@@ -378,8 +381,7 @@ func (it *importTask) _onValidate(err error) {
 		var bn *bnode
 		var ok bool
 		if bn, ok = it.manager.nmap[string(it.block.ID())]; !ok {
-			vl := it.in.mtransition().NextValidators()
-			validatedBlock := it.block.NewBlock(vl)
+			validatedBlock := it.block.NewBlock(it.in.mtransition())
 			bn = &bnode{
 				block:  validatedBlock,
 				in:     it.in.newTransition(nil),
@@ -444,21 +446,16 @@ func (it *importTask) _onExecute(err error) {
 func (m *manager) _propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
+	ntsdProves [][]byte,
 	cb func(module.BlockCandidate, error),
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
-	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	csi, _, err := m.verifyProof(bn.block, votes, ntsdProves)
 	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
-	}
-	var csi module.ConsensusInfo
-	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
 		return nil, err
-	} else {
-		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, voted)
 	}
 	pt := &proposeTask{
 		task: task{
@@ -468,6 +465,7 @@ func (m *manager) _propose(
 		parentBlock: bn.block,
 		votes:       votes,
 		csi:         csi,
+		ntsdProves:  ntsdProves,
 	}
 	pt.state = executingIn
 	bi := common.NewBlockInfo(bn.block.Height()+1, votes.Timestamp())
@@ -554,6 +552,8 @@ func (pt *proposeTask) _onExecute(err error) {
 		mtr.NormalTransactions(),
 		pmtr.NextValidators(),
 		pt.votes,
+		pmtr.BTPSection(),
+		pt.ntsdProves,
 	)
 	var bn *bnode
 	var ok bool
@@ -625,6 +625,9 @@ func NewManager(
 		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
 		}
+		if err := m.initializeCommon(); err != nil {
+			return nil, err
+		}
 		return m, nil
 	} else if err != nil {
 		return nil, err
@@ -639,9 +642,6 @@ func NewManager(
 		return nil, errors.InvalidNetworkError.Errorf(
 			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
 	}
-	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
-		lastFinalized.Result(),
-	))
 
 	var cid int
 	if gBlock, err := m.getBlockByHeight(0); err == nil {
@@ -693,7 +693,43 @@ func NewManager(
 		m.bntr.TraceNew(bn)
 	}
 	m.nmap[string(lastFinalized.ID())] = bn
+	if err := m.initializeCommon(); err != nil {
+		return nil, err
+	}
 	return m, nil
+}
+
+func (m *manager) initializeCommon() error {
+	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
+		m.finalized.block.Result(),
+	))
+	if err := m.initializePCM(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *manager) initializePCM() error {
+	lastBlk := m.finalized.block
+	nextPCM, err := lastBlk.NextProofContextMap()
+	if err != nil {
+		return err
+	}
+	m.nextPCM = nextPCM
+	if lastBlk.Height() > 0 {
+		blk, err := m.getBlockByHeight(lastBlk.Height() - 1)
+		if err != nil {
+			return err
+		}
+		pcm, err := blk.NextProofContextMap()
+		if err != nil {
+			return err
+		}
+		m.pcmForLastBlock = pcm
+	} else {
+		m.pcmForLastBlock = btp.ZeroProofContextMap
+	}
+	return nil
 }
 
 func (m *manager) Term() {
@@ -839,7 +875,7 @@ func (m *manager) finalizeGenesis() error {
 
 func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, error) {
 	ctx := merkle.NewCopyContext(src, m.db())
-	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), id)
+	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), m.chain, id)
 	if err := ctx.Run(); err != nil {
 		return nil, err
 	}
@@ -1009,6 +1045,8 @@ func (m *manager) finalizeGenesisBlock(
 		gtr.mtransition().NormalTransactions(),
 		gtr.mtransition().NextValidators(),
 		votes,
+		mtr.BTPSection(),
+		nil,
 	)
 	if configTraceBnode {
 		m.bntr.TraceNew(bn)
@@ -1028,7 +1066,7 @@ func (m *manager) finalizeGenesisBlock(
 func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
-	ntsdProofs []module.NetworkTypeSectionDecisionProof,
+	ntsdProves [][]byte,
 	cb func(module.BlockCandidate, error),
 ) (canceler module.Canceler, err error) {
 	m.syncer.begin()
@@ -1036,7 +1074,7 @@ func (m *manager) Propose(
 
 	m.log.Debugf("Propose(<%x>, %v)\n", parentID, votes)
 
-	pt, err := m._propose(parentID, votes, cb)
+	pt, err := m._propose(parentID, votes, ntsdProves, cb)
 	if err != nil {
 		return nil, err
 	}

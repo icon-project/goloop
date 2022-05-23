@@ -52,12 +52,47 @@ func (m *proofContextMap) Update(btpSection module.BTPSection) module.BTPProofCo
 	return res
 }
 
+func (m *proofContextMap) Verify(
+	srcUID []byte,
+	height int64,
+	round int32,
+	bd module.BTPDigest,
+	ntsdProves [][]byte,
+) error {
+	if len(bd.NetworkTypeDigests()) != len(ntsdProves) {
+		return errors.Errorf("invalid len networkTypeLen=%d provesLen=%d height=%d round=%d", len(bd.NetworkTypeDigests()), len(ntsdProves), height, round)
+	}
+	for i, ntd := range bd.NetworkTypeDigests() {
+		ntid := ntd.NetworkTypeID()
+		pc, ok := m.pcMap[ntid]
+		if !ok {
+			return errors.InvalidStateError.Errorf(
+				"no ProofContext in PCM index=%d ntid=%d height=%d round=%d",
+				i, ntid, height, round,
+			)
+		}
+		d := pc.NewDecision(srcUID, ntid, height, round, ntd.NetworkTypeSectionHash())
+		proof, err := pc.NewProofFromBytes(ntsdProves[i])
+		if err != nil {
+			return errors.Wrapf(
+				err, "new proof fail index=%d ntid=%d height=%d round=%d",
+				i, ntid, height, round,
+			)
+		}
+		err = pc.Verify(d.Hash(), proof)
+		if err != nil {
+			return errors.Wrapf(
+				err, "verify fail index=%d ntid=%d height=%d round=%d",
+				i, ntid, height, round,
+			)
+		}
+	}
+	return nil
+}
+
 func NewProofContextsMap(view StateView) (module.BTPProofContextMap, error) {
 	res := &proofContextMap{
 		pcMap: make(map[int64]module.BTPProofContext),
-	}
-	if view == nil {
-		return res, nil
 	}
 	ntidSlice, err := view.GetNetworkTypeIDs()
 	if err != nil {
@@ -76,4 +111,8 @@ func NewProofContextsMap(view StateView) (module.BTPProofContextMap, error) {
 		res.pcMap[ntid] = pc
 	}
 	return res, nil
+}
+
+var ZeroProofContextMap = &proofContextMap{
+	pcMap: make(map[int64]module.BTPProofContext),
 }

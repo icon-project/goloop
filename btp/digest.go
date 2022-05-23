@@ -29,9 +29,38 @@ import (
 )
 
 const (
-	hashLen        = 32
-	nidFilterBytes = 256 / 8
+	hashLen     = 32
+	NSFilterCap = 256 / 8
 )
+
+var ZeroDigest = zeroDigest{}
+
+type zeroDigest struct {
+}
+
+func (bd zeroDigest) Bytes() []byte {
+	return nil
+}
+
+func (bd zeroDigest) Hash() []byte {
+	return nil
+}
+
+func (bd zeroDigest) NetworkTypeDigests() []module.NetworkTypeDigest {
+	return nil
+}
+
+func (bd zeroDigest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
+	return nil
+}
+
+func (bd zeroDigest) Flush(dbase db.Database) error {
+	return nil
+}
+
+func (bd zeroDigest) NetworkSectionFilter() module.BitSetFilter {
+	return module.BitSetFilter{}
+}
 
 type digestFormat struct {
 	NetworkTypeDigests []networkTypeDigest
@@ -91,8 +120,8 @@ func (bd *digest) Flush(dbase db.Database) error {
 }
 
 func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
-	if bd.filter == nil {
-		bd.filter = module.MakeBitSetFilter(nidFilterBytes)
+	if bd.filter.Bytes() == nil {
+		bd.filter = module.MakeBitSetFilter(NSFilterCap)
 		for _, ntd := range bd.format.NetworkTypeDigests {
 			ntd.updateFilter(bd.filter)
 		}

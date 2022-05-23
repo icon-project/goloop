@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -825,7 +826,7 @@ func (t *transition) Equal(tr module.Transition) bool {
 
 func (t *transition) BTPSection() module.BTPSection {
 	//TODO implement me
-	panic("implement me")
+	return btp.ZeroBTPSection
 }
 
 // NewInitTransition creates initial transition based on the last result.

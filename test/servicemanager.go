@@ -17,6 +17,7 @@
 package test
 
 import (
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -245,4 +246,12 @@ func (sm *ServiceManager) WaitTransactionResult(id []byte) (<-chan interface{}, 
 
 func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database) error {
 	panic("implement me")
+}
+
+func (sm *ServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	return btp.ZeroBTPSection, nil
+}
+
+func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	return btp.ZeroProofContextMap, nil
 }

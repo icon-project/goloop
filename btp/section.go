@@ -30,6 +30,8 @@ type btpSection struct {
 	digest              *btpSectionDigest
 }
 
+var ZeroBTPSection = newBTPSection(nil)
+
 func newBTPSection(ntsSlice networkTypeSectionSlice) *btpSection {
 	bs := &btpSection{
 		networkTypeSections: ntsSlice,
@@ -120,8 +122,8 @@ func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
 }
 
 func (bsd *btpSectionDigest) NetworkSectionFilter() module.BitSetFilter {
-	if bsd.filter == nil {
-		bsd.filter = module.MakeBitSetFilter(nidFilterBytes)
+	if bsd.filter.Bytes() == nil {
+		bsd.filter = module.MakeBitSetFilter(NSFilterCap)
 		for _, nts := range bsd.bs.networkTypeSections {
 			nts.(*networkTypeSection).updateFilter(bsd.filter)
 		}
