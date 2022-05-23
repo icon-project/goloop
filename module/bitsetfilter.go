@@ -20,16 +20,44 @@ const (
 	byteBits = 8
 )
 
-type BitSetFilter []byte
-
-func MakeBitSetFilter(bytes int) BitSetFilter {
-	return make([]byte, bytes)
+type BitSetFilter struct {
+	s []byte
 }
 
-func (f BitSetFilter) Set(i int64) {
-	f[i/byteBits] |= 1 << (i % byteBits)
+func MakeBitSetFilter(capInBytes int) BitSetFilter {
+	return BitSetFilter{make([]byte, 0, capInBytes)}
 }
 
-func (f BitSetFilter) Test(i int64) bool {
-	return f[i/byteBits]&(1<<(i%byteBits)) != 0
+func BitSetFilterFromBytes(s []byte, capInBytes int) BitSetFilter {
+	f := MakeBitSetFilter(capInBytes)
+	copy(f.s[:len(s)], s)
+	return f
+}
+
+func (f *BitSetFilter) indexAndOffset(idx int64) (int, int) {
+	return (int(idx) / byteBits) % cap(f.s), int(idx) % byteBits
+}
+
+func (f *BitSetFilter) Set(idx int64) {
+	i, o := f.indexAndOffset(idx)
+	if i >= len(f.s) {
+		// increase len
+		f.s = f.s[:i+1]
+	}
+	f.s[i] |= 1 << o
+}
+
+func (f *BitSetFilter) Test(idx int64) bool {
+	if cap(f.s) == 0 {
+		return false
+	}
+	i, o := f.indexAndOffset(idx)
+	return (f.s[i] & (1 << o)) != 0
+}
+
+func (f *BitSetFilter) Bytes() []byte {
+	if len(f.s) == 0 {
+		return nil
+	}
+	return f.s
 }
