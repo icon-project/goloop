@@ -60,7 +60,6 @@ func (bs *btpSection) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSecti
 
 type btpSectionDigest struct {
 	bs                 *btpSection
-	bytesGenerated     bool
 	bytes              []byte
 	hash               []byte
 	networkTypeDigests []module.NetworkTypeDigest
@@ -68,23 +67,37 @@ type btpSectionDigest struct {
 }
 
 func (bsd *btpSectionDigest) Bytes() []byte {
-	if !bsd.bytesGenerated {
-		e := codec.NewEncoderBytes(&bsd.bytes)
-		if len(bsd.bs.networkTypeSections) > 0 {
-			e2, _ := e.EncodeList()  // bd struct
-			e3, _ := e2.EncodeList() // ntd slice
-			for _, nts := range bsd.bs.networkTypeSections {
-				_ = nts.(*networkTypeSection).encodeDigest(e3)
+	if bsd.bytes == nil {
+		if len(bsd.bs.networkTypeSections) == 0 {
+			bsd.bytes = make([]byte, 0)
+		} else {
+			e := codec.NewEncoderBytes(&bsd.bytes)
+			if len(bsd.bs.networkTypeSections) > 0 {
+				e2, _ := e.EncodeList()  // bd struct
+				e3, _ := e2.EncodeList() // ntd slice
+				for _, nts := range bsd.bs.networkTypeSections {
+					_ = nts.(*networkTypeSection).encodeDigest(e3)
+				}
 			}
+			_ = e.Close()
 		}
-		_ = e.Close()
+	}
+	if len(bsd.bytes) == 0 {
+		return nil
 	}
 	return bsd.bytes
 }
 
 func (bsd *btpSectionDigest) Hash() []byte {
 	if bsd.hash == nil {
-		bsd.hash = crypto.SHA3Sum256(bsd.Bytes())
+		if bsd.Bytes() == nil {
+			bsd.hash = make([]byte, 0)
+		} else {
+			bsd.hash = crypto.SHA3Sum256(bsd.Bytes())
+		}
+	}
+	if len(bsd.hash) == 0 {
+		return nil
 	}
 	return bsd.hash
 }
@@ -104,6 +117,9 @@ func (bsd *btpSectionDigest) NetworkTypeDigestFor(ntid int64) module.NetworkType
 }
 
 func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
+	if bsd.Hash() == nil {
+		return nil
+	}
 	bk, err := dbase.GetBucket(db.BytesByHash)
 	if err != nil {
 		return err

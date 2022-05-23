@@ -86,6 +86,7 @@ func TestSectionBuilder_Build_Empty(t *testing.T) {
 	assert.NoError(err)
 	bd := bs.Digest()
 	assert.EqualValues([]byte(nil), bd.Bytes())
+	assert.EqualValues([]byte(nil), bd.Hash())
 }
 
 func TestSectionBuilder_Build_Basic(t *testing.T) {

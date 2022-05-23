@@ -76,23 +76,39 @@ type digest struct {
 
 func NewDigestFromBytes(bytes []byte) (module.BTPDigest, error) {
 	bd := &digest{}
-	_, err := codec.UnmarshalFromBytes(bytes, &bd.format)
-	if err != nil {
-		return nil, err
+	if bytes != nil {
+		_, err := codec.UnmarshalFromBytes(bytes, &bd.format)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return bd, nil
 }
 
 func (bd *digest) Bytes() []byte {
 	if bd.bytes == nil {
-		bd.bytes = codec.MustMarshalToBytes(&bd.format)
+		if len(bd.format.NetworkTypeDigests) == 0 {
+			bd.bytes = make([]byte, 0)
+		} else {
+			bd.bytes = codec.MustMarshalToBytes(&bd.format)
+		}
+	}
+	if len(bd.bytes) == 0 {
+		return nil
 	}
 	return bd.bytes
 }
 
 func (bd *digest) Hash() []byte {
 	if bd.hash == nil {
-		bd.hash = crypto.SHA3Sum256(bd.Bytes())
+		if bd.Bytes() == nil {
+			bd.hash = make([]byte, 0)
+		} else {
+			bd.hash = crypto.SHA3Sum256(bd.Bytes())
+		}
+	}
+	if len(bd.hash) == 0 {
+		return nil
 	}
 	return bd.hash
 }

@@ -25,12 +25,20 @@ import (
 	"github.com/icon-project/goloop/common/db"
 )
 
+func TestDigest_ZeroValueDigest(t *testing.T) {
+	assert := assert.New(t)
+	bd, err := NewDigestFromBytes(nil)
+	assert.NoError(err)
+	assert.EqualValues([]byte(nil), bd.Bytes())
+	assert.EqualValues([]byte(nil), bd.Hash())
+}
+
 func TestDigest_FlushAndFromBytes(t *testing.T) {
 	assert := assert.New(t)
 	s := newComplexTestBuilderSetup(t)
 
 	d := s.bs.Digest()
-	//dumpRLP(t, "", d.Bytes())
+	//dumpRLP(t, "  ", d.Bytes())
 	mdb := db.NewMapDB()
 	err := d.Flush(mdb)
 	assert.NoError(err)
