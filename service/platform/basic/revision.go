@@ -34,7 +34,7 @@ const (
 const (
 	DefaultRevision = Revision4
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision9
+	LatestRevision  = Revision8
 )
 
 var revisionFlags = []module.Revision{
