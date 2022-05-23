@@ -45,6 +45,8 @@ import testcases.DeployScore;
 import testcases.HelloWorld;
 
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.List;
 
@@ -604,6 +606,22 @@ class JavaAPITest extends TestBase {
         res = apiScore.call("name", null);
         assertEquals("Alice", res.asString());
         LOG.infoExiting();
+    }
+
+    public static final String INVALID_JAR_PATH = "./data/resource/invalidJars";
+
+    @Test
+    public void deployInvalidJar2() throws Exception {
+        var files = new String[]{
+                "Case1.jar"
+        };
+        for (var file : files) {
+            byte[] content = Files.readAllBytes(Path.of(INVALID_JAR_PATH+"/"+file));
+            var hash = txHandler.doDeploy(ownerWallet, content,
+                    Constants.CHAINSCORE_ADDRESS, null,
+                    DEPLOY_STEP, Constants.CONTENT_TYPE_JAVA);
+            assertFailure(txHandler.getResult(hash));
+        }
     }
 
     @Test
