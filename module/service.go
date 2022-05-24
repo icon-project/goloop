@@ -229,6 +229,8 @@ type Transition interface {
 	// Equal check equality of inputs of transition.
 	Equal(Transition) bool
 
+	// BTPSection returns the BTPSection as a result of transaction processing.
+	// It may return empty one before cb.OnExecute is called back by Execute.
 	BTPSection() BTPSection
 }
 

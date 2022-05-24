@@ -59,7 +59,7 @@ type BTPState interface {
 	GetSnapshot() BTPSnapshot
 	Reset(snapshot BTPSnapshot)
 	SetValidators(vs ValidatorState)
-	BuildAndApplySection(bc BTPContext, btpMsgs *list.List) error
+	BuildAndApplySection(bc BTPContext, btpMsgs *list.List) (module.BTPSection, error)
 }
 
 type btpContext struct {
@@ -618,12 +618,12 @@ func (bs *BTPStateImpl) handleValidatorChange(bc BTPContext) error {
 	return nil
 }
 
-func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) error {
+func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) (module.BTPSection, error) {
 	sb := btp.NewSectionBuilder(bc)
 
 	// check validator change
 	if err := bs.handleValidatorChange(bc); err != nil {
-		return err
+		return nil, err
 	}
 
 	for nid := range bs.networkModified {
@@ -632,19 +632,16 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 
 	for i := btpMsgs.Front(); i != nil; i = i.Next() {
 		e := i.Value.(*bTPMsg)
-		log.Tracef("BTP message %+v", e)
 		sb.SendMessage(e.nid, e.message)
 	}
 
 	if section, err := sb.Build(); err != nil {
-		log.Tracef("Failed to build btp section")
-		return err
+		return nil, err
 	} else {
 		if err = bs.applyBTPSection(bc, section); err != nil {
-			log.Tracef("Failed to apply btp section")
-			return err
+			return nil, err
 		}
-		return nil
+		return section, nil
 	}
 }
 

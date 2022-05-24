@@ -123,6 +123,7 @@ type transition struct {
 	bi     module.BlockInfo
 	pbi    module.BlockInfo
 	csi    module.ConsensusInfo
+	bs     module.BTPSection
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -669,9 +670,11 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	}
 
 	bc := state.NewBTPContext(ctx)
-	if err = ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
+	if bs, err := ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
 		t.reportExecution(err)
 		return
+	} else {
+		t.bs = bs
 	}
 
 	t.worldSnapshot = ctx.GetSnapshot()
@@ -825,8 +828,11 @@ func (t *transition) Equal(tr module.Transition) bool {
 }
 
 func (t *transition) BTPSection() module.BTPSection {
-	//TODO implement me
-	return btp.ZeroBTPSection
+	if t.bs == nil {
+		//TODO return nil?
+		return btp.ZeroBTPSection
+	}
+	return t.bs
 }
 
 // NewInitTransition creates initial transition based on the last result.
