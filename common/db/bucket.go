@@ -1,6 +1,9 @@
 package db
 
-import "github.com/icon-project/goloop/common/errors"
+import (
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
+)
 
 // Bucket
 type Bucket interface {
@@ -11,6 +14,37 @@ type Bucket interface {
 }
 
 type BucketID string
+
+type Hasher interface {
+	Name() string
+	Hash(value []byte) []byte
+}
+
+type sha3Hasher struct{}
+
+func (h sha3Hasher) Name() string {
+	return "sha3"
+}
+
+func (h sha3Hasher) Hash(v []byte) []byte {
+	return crypto.SHA3Sum256(v)
+}
+
+var hasherMap = map[BucketID]Hasher{
+	MerkleTrie:  sha3Hasher{},
+	BytesByHash: sha3Hasher{},
+}
+
+func RegisterHasher(bk BucketID, hasher Hasher) {
+	if _, ok := hasherMap[bk]; ok {
+		panic("Duplicate BucketID")
+	}
+	hasherMap[bk] = hasher
+}
+
+func (bk BucketID) Hasher() Hasher {
+	return hasherMap[bk]
+}
 
 //	Bucket ID
 const (
