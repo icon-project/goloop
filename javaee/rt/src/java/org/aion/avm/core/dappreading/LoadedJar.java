@@ -34,10 +34,12 @@ public class LoadedJar {
             return safeLoadFromBytes(byteReader);
         } catch (SecurityException e) {
             // This might happen if the JAR has a signature but it is invalid
-            throw new IOException(e.getMessage());
+            throw new IOException(e);
         } catch (SizeException e) {
             // This can happen if the JAR contains a single class which is larger than MAX_CLASS_BYTES
-            throw new ZipException(e.getMessage());
+            throw new IOException(e);
+        } catch (IOException e) {
+            throw new ZipException(e.toString());
         }
     }
 

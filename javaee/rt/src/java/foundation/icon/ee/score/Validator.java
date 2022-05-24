@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipException;
 
 public class Validator {
     private static ValidationException fail(String fmt, Object... args) throws
@@ -41,19 +42,32 @@ public class Validator {
         throw new ValidationException(String.format(fmt, args));
     }
 
+    private static ValidationException fail(Exception cause, String fmt, Object... args) throws
+            ValidationException {
+        throw new ValidationException(String.format(fmt, args), cause);
+    }
+
     /**
      * Returns false if code is invalid.
+     *
      * @return false if code is invalid
-     * @throws IOException for other critical error
+     * @throws ZipException        for zip file error
      * @throws ValidationException for validation error
      */
-    public static Method[] validate(byte[] codeBytes) throws
-            IOException, ValidationException {
-        var apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
-        if (apisBytes == null) {
-            throw fail("Cannot get APIS");
+    public static Method[] validate(byte[] codeBytes) throws ValidationException, ZipException {
+        byte[] apisBytes;
+        LoadedJar jar;
+        try {
+            apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
+            if (apisBytes == null) {
+                throw fail("Cannot get APIS");
+            }
+            jar = LoadedJar.fromBytes(codeBytes);
+        } catch (ZipException e) {
+            throw e;
+        } catch (IOException e) {
+            throw fail(e, "Cannot get APIS");
         }
-        var jar = LoadedJar.fromBytes(codeBytes);
         var classMap = jar.classBytesByQualifiedNames;
         var structDB = new StructDB(classMap);
         Method[] eeMethods;
