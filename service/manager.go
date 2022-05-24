@@ -634,14 +634,64 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (m *manager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	nw, err := btpContext.GetNetwork(nid)
+	if err != nil {
+		return nil, err
+	}
+	return nw, nil
+}
+
+func (m *manager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BTPNetworkType, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	nt, err := btpContext.GetNetworkType(ntid)
+	if err != nil {
+		return nil, err
+	}
+	return nt, nil
+}
+
 func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
-	//TODO implement me
-	return btp.ZeroBTPSection, nil
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return nil, err
+	}
+	bk, err := m.db.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	digestBytes, err := bk.Get(wss.BTPData())
+	if err != nil {
+		return nil, err
+	}
+	digest, err := btp.NewDigestFromBytes(digestBytes)
+	if err != nil {
+		return nil, err
+	}
+	store, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, store)
+	return btp.NewSection(digest, btpContext, wss.Database())
 }
 
 func (m *manager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
-	//TODO implement me
-	return btp.ZeroProofContextMap, nil
+	store, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, store)
+	return btp.NewProofContextsMap(btpContext)
 }
 
 func (m *manager) HasTransaction(id []byte) bool {

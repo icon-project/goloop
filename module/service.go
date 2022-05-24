@@ -364,6 +364,10 @@ type ServiceManager interface {
 	// NextProofContextMapFromResult returns BTPProofContextMap for the result
 	NextProofContextMapFromResult(result []byte) (BTPProofContextMap, error)
 
+	BTPNetworkTypeFromResult(result []byte, ntid int64) (BTPNetworkType, error)
+
+	BTPNetworkFromResult(result []byte, nid int64) (BTPNetwork, error)
+
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
 
