@@ -669,7 +669,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		return
 	}
 
-	bc := state.NewBTPContext(ctx)
+	bc := state.NewBTPContext(ctx, ctx.GetAccountState(state.SystemID))
 	if bs, err := ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
 		t.reportExecution(err)
 		return

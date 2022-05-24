@@ -48,6 +48,7 @@ func Test_newTransitionResultFromBytes(t *testing.T) {
 		{"WithExtensionData", args{codec.BC.MustMarshalToBytes([][]byte{s1, r1, r2, e1})}, &transitionResult{s1, r1, r2, e1, nil}, false},
 		{"WithEmptyExFlags", args{codec.BC.MustMarshalToBytes([][]byte{s1, r1, r2, e1, flagZero})}, nil, true},
 		{"WithBTPData", args{codec.BC.MustMarshalToBytes([][]byte{s1, r1, r2, e1, flagBTPData, b1})}, &transitionResult{s1, r1, r2, e1, b1}, false},
+		{"WithNilBTPData", args{codec.BC.MustMarshalToBytes([][]byte{s1, r1, r2, e1, flagBTPData, nil})}, &transitionResult{s1, r1, r2, e1, nil}, false},
 		{"UnknownExFlags", args{codec.BC.MustMarshalToBytes([][]byte{s1, r1, r2, e1, flagUnknowns, b1})}, nil, true},
 	}
 	for _, tt := range tests {

@@ -19,6 +19,7 @@ package state
 import (
 	"bytes"
 	"container/list"
+	"encoding/hex"
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -26,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -47,6 +49,8 @@ type BTPContext interface {
 	Store() containerdb.BytesStoreState
 	GetValidatorState() ValidatorState
 	GetNetworkTypeIdByName(name string) int64
+	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
+	GetNetwork(ntid int64) (module.BTPNetwork, error)
 }
 
 type BTPSnapshot interface {
@@ -72,6 +76,9 @@ func (bc *btpContext) Store() containerdb.BytesStoreState {
 }
 
 func (bc *btpContext) GetValidatorState() ValidatorState {
+	if bc.ws == nil {
+		return nil
+	}
 	return bc.ws.GetValidatorState()
 }
 
@@ -89,6 +96,22 @@ func (bc *btpContext) GetNetworkView(nid int64) (btp.NetworkView, error) {
 }
 
 func (bc *btpContext) GetNetworkTypeView(ntid int64) (btp.NetworkTypeView, error) {
+	ret, _ := bc.getNetworkType(ntid)
+	if ret == nil {
+		return nil, errors.NotFoundError.Errorf("not found ntid=%d", ntid)
+	}
+	return ret, nil
+}
+
+func (bc *btpContext) GetNetwork(nid int64) (module.BTPNetwork, error) {
+	ret, _ := bc.getNetwork(nid)
+	if ret == nil {
+		return nil, errors.NotFoundError.Errorf("not found nid=%d", nid)
+	}
+	return ret, nil
+}
+
+func (bc *btpContext) GetNetworkType(ntid int64) (module.BTPNetworkType, error) {
 	ret, _ := bc.getNetworkType(ntid)
 	if ret == nil {
 		return nil, errors.NotFoundError.Errorf("not found ntid=%d", ntid)
@@ -165,10 +188,10 @@ func (bc *btpContext) getNewNetworkID() (int64, *containerdb.VarDB) {
 	return dbase.Int64() + 1, dbase
 }
 
-func NewBTPContext(ws WorldState) BTPContext {
+func NewBTPContext(ws WorldState, store containerdb.BytesStoreState) BTPContext {
 	return &btpContext{
 		ws:    ws,
-		store: ws.GetAccountState(SystemID),
+		store: store,
 	}
 }
 
@@ -448,7 +471,6 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 	if valid == false {
 		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
-	// TODO remove public key set with network type when set pubKey with dsa name
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	old := dbase.Get(from, name)
 	if err := dbase.Set(from, name, pubKey); err != nil {
@@ -687,6 +709,27 @@ func (nt *networkType) NextProofContext() []byte {
 func (nt *networkType) OpenNetworkIDs() []int64 {
 	return nt.openNetworkIDs
 }
+func (nt *networkType) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["uid"] = nt.UID()
+	if len(nt.NextProofContextHash()) == 0 {
+		jso["nextProofContextHash"] = "0x0"
+	} else {
+		jso["nextProofContextHash"] = "0x" + hex.EncodeToString(nt.NextProofContextHash())
+	}
+	if len(nt.NextProofContext()) == 0 {
+		jso["nextProofContext"] = "0x0"
+	} else {
+		jso["nextProofContext"] = "0x" + hex.EncodeToString(nt.NextProofContext())
+	}
+	nids := nt.OpenNetworkIDs()
+	onids := make([]interface{}, len(nids))
+	for i, nid := range nids {
+		onids[i] = intconv.FormatInt(nid)
+	}
+	jso["openNetworkIDs"] = onids
+	return jso
+}
 
 func (nt *networkType) SetNextProofContextHash(hash []byte) {
 	nt.nextProofContextHash = hash
@@ -791,6 +834,27 @@ func (nw *network) PrevNetworkSectionHash() []byte {
 
 func (nw *network) LastNetworkSectionHash() []byte {
 	return nw.lastNetworkSectionHash
+}
+
+func (nw *network) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["name"] = nw.Name()
+	jso["owner"] = nw.Owner()
+	jso["open"] = nw.Open()
+	jso["networkTypeId"] = intconv.FormatInt(nw.NetworkTypeID())
+	jso["nextMessageSN"] = intconv.FormatInt(nw.NextMessageSN())
+	jso["nextProofContextChanged"] = nw.NextProofContextChanged()
+	if len(nw.PrevNetworkSectionHash()) == 0 {
+		jso["prevNetworkSectionHash"] = "0x0"
+	} else {
+		jso["prevNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.PrevNetworkSectionHash())
+	}
+	if len(nw.LastNetworkSectionHash()) == 0 {
+		jso["lastNetworkSectionHash"] = "0x0"
+	} else {
+		jso["lastNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.LastNetworkSectionHash())
+	}
+	return jso
 }
 
 func (nw *network) SetOpen(yn bool) {

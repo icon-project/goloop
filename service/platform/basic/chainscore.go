@@ -1560,66 +1560,22 @@ func (s *ChainScore) Ex_getBTPNetworkType(id *common.HexInt) (map[string]interfa
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	nt, err := s.newBTPContext().GetNetworkTypeView(id.Int64())
+	nt, err := s.newBTPContext().GetNetworkType(id.Int64())
 	if err != nil {
 		return nil, err
 	}
-	jso := make(map[string]interface{})
-	jso["uid"] = nt.UID()
-	if len(nt.NextProofContextHash()) == 0 {
-		jso["nextProofContextHash"] = "0x0"
-	} else {
-		jso["nextProofContextHash"] = "0x" + hex.EncodeToString(nt.NextProofContextHash())
-	}
-	if len(nt.NextProofContext()) == 0 {
-		jso["nextProofContext"] = "0x0"
-	} else {
-		jso["nextProofContext"] = "0x" + hex.EncodeToString(nt.NextProofContext())
-	}
-	nids := nt.OpenNetworkIDs()
-	onids := make([]interface{}, len(nids))
-	for i, nid := range nids {
-		onids[i] = intconv.FormatInt(nid)
-	}
-	jso["openNetworkIDs"] = onids
-	return jso, nil
+	return nt.ToJSON(), nil
 }
 
 func (s *ChainScore) Ex_getBTPNetwork(id *common.HexInt) (map[string]interface{}, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	nw, err := s.newBTPContext().GetNetworkView(id.Int64())
+	nw, err := s.newBTPContext().GetNetwork(id.Int64())
 	if err != nil {
 		return nil, err
 	}
-
-	jso := make(map[string]interface{})
-	jso["name"] = nw.Name()
-	jso["owner"] = nw.Owner()
-	if nw.Open() {
-		jso["open"] = "0x1"
-	} else {
-		jso["open"] = "0x0"
-	}
-	jso["networkTypeId"] = intconv.FormatInt(nw.NetworkTypeID())
-	jso["nextMessageSN"] = intconv.FormatInt(nw.NextMessageSN())
-	if nw.NextProofContextChanged() {
-		jso["nextProofContextChanged"] = "0x1"
-	} else {
-		jso["nextProofContextChanged"] = "0x0"
-	}
-	if len(nw.PrevNetworkSectionHash()) == 0 {
-		jso["prevNetworkSectionHash"] = "0x0"
-	} else {
-		jso["prevNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.PrevNetworkSectionHash())
-	}
-	if len(nw.LastNetworkSectionHash()) == 0 {
-		jso["lastNetworkSectionHash"] = "0x0"
-	} else {
-		jso["lastNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.LastNetworkSectionHash())
-	}
-	return jso, nil
+	return nw.ToJSON(), nil
 }
 
 func (s *ChainScore) Ex_getPublicKey(address module.Address, name string) (string, error) {
@@ -1743,5 +1699,6 @@ func (s *ChainScore) getBTPState() (*state.BTPStateImpl, error) {
 }
 
 func (s *ChainScore) newBTPContext() state.BTPContext {
-	return state.NewBTPContext(s.cc)
+	store := s.cc.GetAccountState(state.SystemID)
+	return state.NewBTPContext(s.cc, store)
 }

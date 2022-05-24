@@ -217,3 +217,23 @@ type BTPBlockHeader interface {
 	NextProofContext() []byte
 	HeaderBytes() []byte
 }
+
+type BTPNetworkType interface {
+	UID() string
+	NextProofContextHash() []byte
+	NextProofContext() []byte
+	OpenNetworkIDs() []int64
+	ToJSON() map[string]interface{}
+}
+
+type BTPNetwork interface {
+	Name() string
+	Owner() Address
+	NetworkTypeID() int64
+	Open() bool
+	NextMessageSN() int64
+	NextProofContextChanged() bool
+	PrevNetworkSectionHash() []byte
+	LastNetworkSectionHash() []byte
+	ToJSON() map[string]interface{}
+}
