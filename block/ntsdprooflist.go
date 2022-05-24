@@ -97,7 +97,7 @@ func (pl *ntsdProofList) Flush() error {
 	if pl.hashListBytes() == nil {
 		return nil
 	}
-	err = cbk.Put(pl.hashListBytes())
+	err = cbk.Put(db.Raw(pl.hashListBytes()))
 	if err != nil {
 		return err
 	}
