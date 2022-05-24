@@ -130,6 +130,11 @@ public class ServiceManager implements Agent {
         return doMustDeploy(jar, null, params);
     }
 
+    public Result tryDeploy(byte[] jar, Object... params) {
+        return doDeploy(null, BigInteger.ZERO, stepLimit,
+                "application/java", jar, null, params);
+    }
+
     private Result deployInner(Address to, BigInteger value, BigInteger stepLimit,
             String contentType, byte[] content, Object[] params) {
         return doDeploy(to, value, stepLimit, contentType, content, null,
@@ -151,7 +156,22 @@ public class ServiceManager implements Agent {
         return mustDeploy(all, null, params);
     }
 
-    private Method[] getAPI(String path) throws IOException {
+    static class GetAPIResult {
+        public Method[] methods;
+        public int status;
+
+        public GetAPIResult(Method[]method) {
+            this.methods = method;
+            this.status = Status.Success;
+        }
+
+        public GetAPIResult(int status) {
+            this.methods = null;
+            this.status = status;
+        }
+    }
+
+    private GetAPIResult getAPI(String path) throws IOException {
         printf("SEND getAPI %s%n", getPrefix(path, 6));
         proxy.sendMessage(EEProxy.MsgType.GETAPI, path);
         var msg = waitFor(EEProxy.MsgType.GETAPI);
@@ -160,7 +180,7 @@ public class ServiceManager implements Agent {
         var status = arr.get(0).asIntegerValue().asInt();
         if (status!=0) {
             printf("RECV getAPI status=%d%n", status);
-            return null;
+            return new GetAPIResult(status);
         }
         var methods = arr.get(1);
         methods.writeTo(packer);
@@ -170,7 +190,7 @@ public class ServiceManager implements Agent {
             printf("    %s%n", m);
         }
         printf("]%n");
-        return res;
+        return new GetAPIResult(res);
     }
 
     private ContractAddress doMustDeploy(byte[] jar, InvokeHandler ih,
@@ -196,11 +216,11 @@ public class ServiceManager implements Agent {
         try (var cl = context.beginExecution()) {
             try {
                 context.writeFile(codeID + "/code.jar", jar);
-                Method[] methods = getAPI(codeID);
-                if (methods == null) {
-                    return new Result(Status.IllegalFormat, 0, null);
+                var r = getAPI(codeID);
+                if (r.methods == null) {
+                    return new Result(r.status, 0, null);
                 }
-                context.beginFrame(to, codeID, methods, ih);
+                context.beginFrame(to, codeID, r.methods, ih);
                 info.put(Info.CONTRACT_OWNER, context.getFrom());
                 var res = doInvoke(codeID, false, context.getFrom(), to, value, stepLimit, "<init>", params);
                 if (res.getStatus() == Status.Success) {
