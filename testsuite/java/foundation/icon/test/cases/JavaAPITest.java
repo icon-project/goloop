@@ -16,6 +16,7 @@
 
 package foundation.icon.test.cases;
 
+import foundation.icon.ee.types.Status;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -612,15 +613,25 @@ class JavaAPITest extends TestBase {
 
     @Test
     public void deployInvalidJar2() throws Exception {
-        var files = new String[]{
-                "Case1.jar"
+        class Case {
+            int code;
+            String file;
+
+            Case(int code, String file) {
+                this.code = code;
+                this.file = file;
+            }
+        }
+
+        var cases = new Case[]{
+                new Case(Status.PackageError, "Case1.jar"),
         };
-        for (var file : files) {
-            byte[] content = Files.readAllBytes(Path.of(INVALID_JAR_PATH+"/"+file));
+        for (var c : cases) {
+            byte[] content = Files.readAllBytes(Path.of(INVALID_JAR_PATH+"/"+c.file));
             var hash = txHandler.doDeploy(ownerWallet, content,
                     Constants.CHAINSCORE_ADDRESS, null,
                     DEPLOY_STEP, Constants.CONTENT_TYPE_JAVA);
-            assertFailure(txHandler.getResult(hash));
+            assertFailureCode(c.code, txHandler.getResult(hash));
         }
     }
 
