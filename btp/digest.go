@@ -274,7 +274,7 @@ func (nd *networkDigest) MessageList(
 	mod module.NetworkTypeModule,
 ) (module.BTPMessageList, error) {
 	if nd.messageHashes == nil {
-		bk, err := dbase.GetBucket(db.ListByMerkleRootFor(mod.UID()))
+		bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +356,7 @@ func (l *messageList) Get(idx int) (module.BTPMessage, error) {
 	if l.messages[idx] != nil {
 		return l.messages[idx], nil
 	}
-	bk, err := l.dbase.GetBucket(db.BytesByHashFor(l.mod.UID()))
+	bk, err := l.dbase.GetBucket(l.mod.BytesByHashBucket())
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,7 @@ func (l *messageList) Get(idx int) (module.BTPMessage, error) {
 }
 
 func (l *messageList) flush() error {
-	bk, err := l.dbase.GetBucket(db.ListByMerkleRootFor(l.mod.UID()))
+	bk, err := l.dbase.GetBucket(l.mod.ListByMerkleRootBucket())
 	if err != nil {
 		return err
 	}
@@ -416,7 +416,7 @@ func (m *message) Bytes() []byte {
 }
 
 func (m *message) flush() error {
-	bk, err := m.dbase.GetBucket(db.BytesByHashFor(m.mod.UID()))
+	bk, err := m.dbase.GetBucket(m.mod.BytesByHashBucket())
 	if err != nil {
 		return err
 	}

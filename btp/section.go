@@ -444,7 +444,7 @@ func (ns *networkSection) NetworkSectionHash() []byte {
 }
 
 func (ns *networkSection) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
-	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(mod.UID()))
+	bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ func (ns *networkSection) flushMessages(dbase db.Database) error {
 	if ns.messagesRoot == nil {
 		return nil
 	}
-	bk, err := dbase.GetBucket(db.ListByMerkleRootFor(ns.mod.UID()))
+	bk, err := dbase.GetBucket(ns.mod.ListByMerkleRootBucket())
 	if err != nil {
 		return err
 	}
@@ -467,7 +467,7 @@ func (ns *networkSection) flushMessages(dbase db.Database) error {
 	if err != nil {
 		return err
 	}
-	bk, err = dbase.GetBucket(db.BytesByHashFor(ns.mod.UID()))
+	bk, err = dbase.GetBucket(ns.mod.BytesByHashBucket())
 	for i, msg := range ns.messages {
 		err = bk.Set(ns.messageHashes.Get(i), msg)
 		if err != nil {

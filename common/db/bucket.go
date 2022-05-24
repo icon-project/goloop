@@ -63,30 +63,10 @@ const (
 	// ChainProperty is general key value map for chain property.
 	ChainProperty BucketID = "C"
 
-	// BytesByNetworkTypeHashBase is the base for the bucket that maps data from
-	// network type dependent hash(data)
-	BytesByNetworkTypeHashBase BucketID = "B"
-
-	// ListByNetworkTypeMerkleRootBase is the base for the bucket that maps list
+	// ListByMerkleRootBase is the base for the bucket that maps list
 	// from network type dependent merkle root(list)
-	ListByNetworkTypeMerkleRootBase BucketID = "L"
-
-	// NTSDecisionProofByNTSHashBase is the base for the bucket that maps
-	// NTSDecisionProof from NTSHash
-	NTSDecisionProofByNTSHashBase BucketID = "P"
+	ListByMerkleRootBase BucketID = "L"
 )
-
-func BytesByHashFor(uid string) BucketID {
-	return BytesByNetworkTypeHashBase + BucketID(uid)
-}
-
-func ListByMerkleRootFor(uid string) BucketID {
-	return ListByNetworkTypeMerkleRootBase + BucketID(uid)
-}
-
-func NTSDecisionProofByNTSHashFor(uid string) BucketID {
-	return NTSDecisionProofByNTSHashBase + BucketID(uid)
-}
 
 // internalKey returns key prefixed with the bucket's id.
 func internalKey(id BucketID, key []byte) []byte {

@@ -19,6 +19,7 @@ package ntm
 import (
 	"math/bits"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -31,6 +32,8 @@ type moduleCore interface {
 	NewProofContextFromBytes(bs []byte) (proofContextCore, error)
 	NewProofContext(pubKeys [][]byte) proofContextCore
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
+	BytesByHashBucket() db.BucketID
+	ListByMerkleRootBucket() db.BucketID
 }
 
 type networkTypeModule struct {
@@ -155,6 +158,14 @@ func (ntm *networkTypeModule) MerkleProof(data module.BytesList, idx int) []modu
 	return ntm.merkleProof(dataBuf, idx*hashLen)
 }
 
+func (ntm *networkTypeModule) BytesByHashBucket() db.BucketID {
+	return ntm.core.BytesByHashBucket()
+}
+
+func (ntm *networkTypeModule) ListByMerkleRootBucket() db.BucketID {
+	return ntm.core.ListByMerkleRootBucket()
+}
+
 var modules = make(map[string]module.NetworkTypeModule)
 
 func Modules() map[string]module.NetworkTypeModule {
@@ -165,8 +176,48 @@ func ForUID(uid string) module.NetworkTypeModule {
 	return modules[uid]
 }
 
+type simpleHasher struct {
+	mod module.NetworkTypeModule
+}
+
+func (h simpleHasher) Name() string {
+	return h.mod.UID() + "/hash"
+}
+
+func (h simpleHasher) Hash(value []byte) []byte {
+	return h.mod.Hash(value)
+}
+
+type catBytesList []byte
+
+func (l catBytesList) Len() int {
+	return len(l) / hashLen
+}
+
+func (l catBytesList) Get(i int) []byte {
+	return l[i*hashLen : i*hashLen+hashLen]
+}
+
+type merkleRootHasher struct {
+	mod module.NetworkTypeModule
+}
+
+func (h *merkleRootHasher) Name() string {
+	return h.mod.UID() + "/merkleRoot"
+}
+
+func (h *merkleRootHasher) Hash(value []byte) []byte {
+	return h.mod.MerkleRoot(catBytesList(value))
+}
+
 func register(uid string, mod moduleCore) *networkTypeModule {
 	networkTypeModule := &networkTypeModule{core: mod}
 	modules[uid] = networkTypeModule
+	db.RegisterHasher(mod.BytesByHashBucket(), &simpleHasher{
+		mod: networkTypeModule,
+	})
+	db.RegisterHasher(mod.ListByMerkleRootBucket(), &merkleRootHasher{
+		mod: networkTypeModule,
+	})
 	return networkTypeModule
 }

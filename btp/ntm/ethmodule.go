@@ -20,12 +20,16 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 )
 
 const (
 	ethUID        = "eth"
 	ethDSA        = secp256k1DSA
 	ethAddressLen = 20
+
+	ethBytesByHash = "e" + db.BytesByHash
+	ethListByRoot  = "e" + db.ListByMerkleRootBase
 )
 
 func appendKeccak256(out []byte, data ...[]byte) []byte {
@@ -78,6 +82,14 @@ func (m *ethModuleCore) NewProofContext(keys [][]byte) proofContextCore {
 
 func (m *ethModuleCore) AddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return newEthAddressFromPubKey(pubKey)
+}
+
+func (m *ethModuleCore) BytesByHashBucket() db.BucketID {
+	return ethBytesByHash
+}
+
+func (m *ethModuleCore) ListByMerkleRootBucket() db.BucketID {
+	return ethListByRoot
 }
 
 func init() {

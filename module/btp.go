@@ -198,4 +198,6 @@ type NetworkTypeModule interface {
 	MerkleRoot(bytesList BytesList) []byte
 	MerkleProof(bytesList BytesList, idx int) []MerkleNode
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
+	BytesByHashBucket() db.BucketID
+	ListByMerkleRootBucket() db.BucketID
 }

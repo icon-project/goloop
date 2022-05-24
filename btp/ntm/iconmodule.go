@@ -21,12 +21,16 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 )
 
 const (
 	iconUID          = "icon"
 	iconDSA          = secp256k1DSA
 	iconAddressIDLen = 20
+
+	iconBytesByHash = "i" + db.BytesByHash
+	iconListByRoot  = "i" + db.ListByMerkleRootBase
 )
 
 func newIconAddressFromPubKey(pubKey []byte) ([]byte, error) {
@@ -69,6 +73,14 @@ func (m *iconModuleCore) NewProofContext(keys [][]byte) proofContextCore {
 
 func (m *iconModuleCore) AddressFromPubKey(pubKey []byte) ([]byte, error) {
 	return newIconAddressFromPubKey(pubKey)
+}
+
+func (m *iconModuleCore) BytesByHashBucket() db.BucketID {
+	return iconBytesByHash
+}
+
+func (m *iconModuleCore) ListByMerkleRootBucket() db.BucketID {
+	return iconListByRoot
 }
 
 func init() {
