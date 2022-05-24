@@ -26,6 +26,21 @@ import (
 )
 
 func TestDigest_ZeroValueDigest(t *testing.T) {
+	// use only view
+	s := newComplexTestBuilderSetup(t)
+
+	assert := assert.New(t)
+	bd, err := NewDigestFromBytes(nil)
+	assert.NoError(err)
+	dbase := db.NewMapDB()
+	bs, err := NewSection(bd, s.view, dbase)
+	assert.EqualValues(0, len(bs.NetworkTypeSections()))
+	nts, err := bs.NetworkTypeSectionFor(0)
+	assert.Nil(nts)
+	assert.Error(err)
+}
+
+func TestDigest_EmptyDigest(t *testing.T) {
 	assert := assert.New(t)
 	bd, err := NewDigestFromBytes(nil)
 	assert.NoError(err)
