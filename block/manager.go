@@ -1752,11 +1752,6 @@ func (m *manager) newConsensusInfo(blk module.Block) (module.ConsensusInfo, erro
 	return common.NewConsensusInfo(pblk.Proposer(), vl, voted), nil
 }
 
-func (m *manager) GetNextBTPBlockFrom(height int64, nid int32) module.BTPBlock {
-	//TODO implement me
-	panic("implement me")
-}
-
 func GetBlockHeaderHashByHeight(
 	dbase db.Database,
 	c codec.Codec,

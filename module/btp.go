@@ -201,3 +201,19 @@ type NetworkTypeModule interface {
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
 }
+
+type BTPBlockHeader interface {
+	MainHeight() int64
+	Round() int32
+	NextProofContextHash() []byte
+	NetworkSectionToRoot() []MerkleNode
+	NetworkID() int64
+	UpdateNumber() int64
+	FirstMessageSN() int64
+	NextProofContextChanged() bool
+	PrevNetworkSectionHash() []byte
+	MessageCount() int64
+	MessagesRoot() []byte
+	NextProofContext() []byte
+	HeaderBytes() []byte
+}

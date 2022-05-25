@@ -158,9 +158,6 @@ type BlockManager interface {
 	// NewConsensusInfo returns a ConsensusInfo with blk's proposer and
 	// votes in blk.
 	NewConsensusInfo(blk Block) (ConsensusInfo, error)
-
-	// GetNextBTPBlockFrom returns a BTP block of nid (block.height >= height)
-	GetNextBTPBlockFrom(height int64, nid int32) BTPBlock
 }
 
 type TransactionInfo interface {
@@ -169,21 +166,4 @@ type TransactionInfo interface {
 	Group() TransactionGroup
 	Transaction() (Transaction, error)
 	GetReceipt() (Receipt, error)
-}
-
-type BTPBlock interface {
-	MainHeight() int64
-	Round() int32
-	NextProofContextHash() []byte
-	NetworkSectionToRoot() [][]byte
-	NetworkID() int64
-	UpdateNumber() int64
-	FirstMessageSN() int64
-	UpdatedNextProofContextHash() bool
-	PrevNetworkSectionHash() []byte
-	MessageCount() int64
-	MessagesRoot() []byte
-	Proof() []byte
-	NextProofContext() []byte
-	Messages() [][]byte
 }

@@ -18,9 +18,18 @@ package consensus
 
 import "github.com/icon-project/goloop/module"
 
-func NewBTPBlock(
-	height int64,
+const (
+	FlagBTPBlockHeader      = 0x1
+	FlagBTPBlockProof       = 0x2
+	FlagIncludeProofContext = 0x3
+)
+
+// GetBTPBlockHeaderAndProof returns header and proof according to the given
+// flag.
+func (cs *consensus) GetBTPBlockHeaderAndProof(
+	blk module.Block,
 	nid int64,
-) (module.BTPBlock, error) {
-	return nil, nil
+	flag uint,
+) (module.BTPBlockHeader, []byte, error) {
+	return nil, nil, nil
 }
