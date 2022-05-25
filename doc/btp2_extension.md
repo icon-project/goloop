@@ -421,7 +421,6 @@ BTPBlockHeader is `B_LIST` of the following fields
 | Prev                 | B_BYTES(N) | H(NetworkSection) of prev BTP block                                                       |
 | MessageCount         | B_INT      |                                                                                           |
 | MessagesRoot         | B_BYTES(N) | Merkle root of Messages                                                                   |
-| Proof                | B_BYTES    | proof bytes of H(NetworkTypeSectionDecision)                                              |
 | NextProofContext     | B_BYTES(N) | nil if NextProofContextHash is the same as previous block's value. non-nil if Prev is nil |
 
 ### MerkleNode
