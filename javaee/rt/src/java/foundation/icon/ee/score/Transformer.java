@@ -2,7 +2,9 @@ package foundation.icon.ee.score;
 
 import foundation.icon.ee.Agent;
 import foundation.icon.ee.types.IllegalFormatException;
+import foundation.icon.ee.types.Status;
 import i.AvmException;
+import i.GenericPredefinedException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
@@ -56,6 +58,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipException;
 
 public class Transformer {
     /**
@@ -278,8 +281,10 @@ public class Transformer {
     public void transform() {
         try {
             transformImpl();
+        } catch (ZipException e) {
+            throw new GenericPredefinedException(Status.PackageError, e);
         } catch (IOException e) {
-            RuntimeAssertionError.unexpected(e);
+            throw new IllegalFormatException(e);
         }
     }
 
@@ -290,15 +295,8 @@ public class Transformer {
             throw new IllegalFormatException("bad APIS");
         }
 
-        RawDappModule rawDapp;
-        try {
-            rawDapp = RawDappModule.readFromJar(codeBytes,
+        RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes,
                     conf.preserveDebuggability);
-        } catch (AvmException e) {
-            throw e;
-        } catch (Throwable t) {
-            throw new IllegalFormatException(t);
-        }
         if (!rawDapp.classes.containsKey(rawDapp.mainClass)) {
             throw new IllegalFormatException("no main class");
         }

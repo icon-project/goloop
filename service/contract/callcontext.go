@@ -482,6 +482,7 @@ func (cc *callContext) GetProxy(eeType state.EEType) eeproxy.Proxy {
 func (cc *callContext) Dispose() {
 	if cc.executor != nil {
 		cc.executor.Release()
+		cc.executor = nil
 	}
 }
 

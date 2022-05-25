@@ -16,6 +16,7 @@
 
 package foundation.icon.test.cases;
 
+import foundation.icon.ee.types.Status;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -45,6 +46,8 @@ import testcases.DeployScore;
 import testcases.HelloWorld;
 
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.List;
 
@@ -604,6 +607,32 @@ class JavaAPITest extends TestBase {
         res = apiScore.call("name", null);
         assertEquals("Alice", res.asString());
         LOG.infoExiting();
+    }
+
+    public static final String INVALID_JAR_PATH = "./data/resource/invalidJars";
+
+    @Test
+    public void deployInvalidJar2() throws Exception {
+        class Case {
+            int code;
+            String file;
+
+            Case(int code, String file) {
+                this.code = code;
+                this.file = file;
+            }
+        }
+
+        var cases = new Case[]{
+                new Case(Status.PackageError, "Case1.jar"),
+        };
+        for (var c : cases) {
+            byte[] content = Files.readAllBytes(Path.of(INVALID_JAR_PATH+"/"+c.file));
+            var hash = txHandler.doDeploy(ownerWallet, content,
+                    Constants.CHAINSCORE_ADDRESS, null,
+                    DEPLOY_STEP, Constants.CONTENT_TYPE_JAVA);
+            assertFailureCode(c.code, txHandler.getResult(hash));
+        }
     }
 
     @Test

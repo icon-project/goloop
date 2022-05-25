@@ -120,8 +120,10 @@ public class JarBuilder {
                 }
             }
             return null;
-        } catch (IllegalArgumentException | EOFException e) {
-            throw new ZipException(e.getClass().getName());
+        } catch (SecurityException e) {
+            throw new IOException(e);
+        } catch (IllegalArgumentException | IOException e) {
+            throw new ZipException(e.toString());
         }
     }
 
