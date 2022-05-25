@@ -660,7 +660,7 @@ func (m *manager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BT
 	return nt, nil
 }
 
-func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+func (m *manager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return nil, err
@@ -677,12 +677,20 @@ func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error)
 	if err != nil {
 		return nil, err
 	}
+	return digest, nil
+}
+
+func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	digest, err := m.BTPDigestFromResult(result)
+	if err != nil {
+		return nil, err
+	}
 	store, err := m.getSystemByteStoreState(result)
 	if err != nil {
 		return nil, err
 	}
 	btpContext := state.NewBTPContext(nil, store)
-	return btp.NewSection(digest, btpContext, wss.Database())
+	return btp.NewSection(digest, btpContext, m.db)
 }
 
 func (m *manager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {

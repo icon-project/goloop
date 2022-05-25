@@ -227,6 +227,7 @@ type BTPNetworkType interface {
 }
 
 type BTPNetwork interface {
+	StartHeight() int64
 	Name() string
 	Owner() Address
 	NetworkTypeID() int64

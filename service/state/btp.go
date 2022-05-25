@@ -47,6 +47,7 @@ const (
 type BTPContext interface {
 	btp.StateView
 	Store() containerdb.BytesStoreState
+	BlockHeight() int64
 	GetValidatorState() ValidatorState
 	GetNetworkTypeIdByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
@@ -67,7 +68,7 @@ type BTPState interface {
 }
 
 type btpContext struct {
-	ws    WorldState
+	wc    WorldContext
 	store containerdb.BytesStoreState
 }
 
@@ -75,11 +76,18 @@ func (bc *btpContext) Store() containerdb.BytesStoreState {
 	return bc.store
 }
 
+func (bc *btpContext) BlockHeight() int64 {
+	if bc.wc == nil {
+		return -1
+	}
+	return bc.wc.BlockHeight()
+}
+
 func (bc *btpContext) GetValidatorState() ValidatorState {
-	if bc.ws == nil {
+	if bc.wc == nil {
 		return nil
 	}
-	return bc.ws.GetValidatorState()
+	return bc.wc.GetValidatorState()
 }
 
 func (bc *btpContext) GetNetworkTypeIDs() ([]int64, error) {
@@ -188,9 +196,9 @@ func (bc *btpContext) getNewNetworkID() (int64, *containerdb.VarDB) {
 	return dbase.Int64() + 1, dbase
 }
 
-func NewBTPContext(ws WorldState, store containerdb.BytesStoreState) BTPContext {
+func NewBTPContext(wc WorldContext, store containerdb.BytesStoreState) BTPContext {
 	return &btpContext{
-		ws:    ws,
+		wc:    wc,
 		store: store,
 	}
 }
@@ -390,7 +398,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 		return
 	}
 
-	nw := NewNetwork(ntid, name, owner, true)
+	nw := NewNetwork(ntid, name, owner, bc.BlockHeight(), true)
 	nwDB := scoredb.NewDictDB(store, NetworkByIDKey, 1)
 	if err = nwDB.Set(nid, nw.Bytes()); err != nil {
 		return
@@ -711,14 +719,9 @@ func (nt *networkType) OpenNetworkIDs() []int64 {
 }
 func (nt *networkType) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["uid"] = nt.UID()
-	if len(nt.NextProofContextHash()) == 0 {
-		jso["nextProofContextHash"] = "0x0"
-	} else {
-		jso["nextProofContextHash"] = "0x" + hex.EncodeToString(nt.NextProofContextHash())
-	}
+	jso["networkTypeName"] = nt.UID()
 	if len(nt.NextProofContext()) == 0 {
-		jso["nextProofContext"] = "0x0"
+		jso["nextProofContext"] = nil
 	} else {
 		jso["nextProofContext"] = "0x" + hex.EncodeToString(nt.NextProofContext())
 	}
@@ -794,6 +797,7 @@ func NewNetworkTypeFromBytes(b []byte) *networkType {
 }
 
 type network struct {
+	startHeight             int64
 	name                    string
 	owner                   *common.Address
 	networkTypeID           int64
@@ -802,6 +806,10 @@ type network struct {
 	nextProofContextChanged bool
 	prevNetworkSectionHash  []byte
 	lastNetworkSectionHash  []byte
+}
+
+func (nw *network) StartHeight() int64 {
+	return nw.startHeight
 }
 
 func (nw *network) Name() string {
@@ -836,23 +844,31 @@ func (nw *network) LastNetworkSectionHash() []byte {
 	return nw.lastNetworkSectionHash
 }
 
+func formatBool(yn bool) string {
+	if yn {
+		return "0x1"
+	} else {
+		return "0x0"
+	}
+}
+
 func (nw *network) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["name"] = nw.Name()
-	jso["owner"] = nw.Owner()
-	jso["open"] = nw.Open()
-	jso["networkTypeId"] = intconv.FormatInt(nw.NetworkTypeID())
-	jso["nextMessageSN"] = intconv.FormatInt(nw.NextMessageSN())
-	jso["nextProofContextChanged"] = nw.NextProofContextChanged()
+	jso["startHeight"] = nw.startHeight
+	jso["networkTypeId"] = intconv.FormatInt(nw.networkTypeID)
+	jso["networkName"] = nw.name
+	jso["open"] = formatBool(nw.open)
+	jso["nextMessageSN"] = intconv.FormatInt(nw.nextMessageSN)
+	jso["nextProofContextChanged"] = formatBool(nw.nextProofContextChanged)
 	if len(nw.PrevNetworkSectionHash()) == 0 {
-		jso["prevNetworkSectionHash"] = "0x0"
+		jso["prevNSHash"] = nil
 	} else {
-		jso["prevNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.PrevNetworkSectionHash())
+		jso["prevNSHash"] = "0x" + hex.EncodeToString(nw.prevNetworkSectionHash)
 	}
 	if len(nw.LastNetworkSectionHash()) == 0 {
-		jso["lastNetworkSectionHash"] = "0x0"
+		jso["lastNSHash"] = nil
 	} else {
-		jso["lastNetworkSectionHash"] = "0x" + hex.EncodeToString(nw.LastNetworkSectionHash())
+		jso["lastNSHash"] = "0x" + hex.EncodeToString(nw.lastNetworkSectionHash)
 	}
 	return jso
 }
@@ -907,12 +923,13 @@ func (nw *network) RLPEncodeSelf(encoder codec.Encoder) error {
 	)
 }
 
-func NewNetwork(ntid int64, name string, owner module.Address, nextProofContextChanged bool) *network {
+func NewNetwork(ntid int64, name string, owner module.Address, startHeight int64, nextProofContextChanged bool) *network {
 	return &network{
 		networkTypeID:           ntid,
 		name:                    name,
 		owner:                   common.AddressToPtr(owner),
 		open:                    true,
+		startHeight:             startHeight,
 		nextProofContextChanged: nextProofContextChanged,
 	}
 }

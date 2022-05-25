@@ -361,6 +361,9 @@ type ServiceManager interface {
 	// BTPSectionFromResult returns BTPSection for the result
 	BTPSectionFromResult(result []byte) (BTPSection, error)
 
+	// BTPDigestFromResult returns BTPDigest for the result
+	BTPDigestFromResult(result []byte) (BTPDigest, error)
+
 	// NextProofContextMapFromResult returns BTPProofContextMap for the result
 	NextProofContextMapFromResult(result []byte) (BTPProofContextMap, error)
 
