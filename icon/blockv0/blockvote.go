@@ -366,8 +366,8 @@ func (s *BlockVoteList) VerifyBlock(block module.BlockData, validators module.Va
 				i,
 			)
 		}
+		voted[i] = true
 		if bytes.Equal(v.json.BlockHash, block.ID()) {
-			voted[i] = true
 			count++
 		}
 	}
