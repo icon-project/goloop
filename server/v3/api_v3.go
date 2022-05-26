@@ -2,6 +2,7 @@ package v3
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -853,7 +854,7 @@ func getBTPMessages(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 		}
-		res = append(res, "0x"+hex.EncodeToString(msg.Bytes()))
+		res = append(res, base64.StdEncoding.EncodeToString(msg.Bytes()))
 	}
 	return res, nil
 }
