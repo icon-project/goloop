@@ -28,7 +28,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -136,7 +135,6 @@ func (bc *btpContext) GetNetworkTypeIdByName(name string) int64 {
 }
 
 func (bc *btpContext) GetPublicKey(from module.Address, name string) ([]byte, error) {
-	log.Tracef("BTP Get pubKey for %s, %s", from, name)
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	if value := dbase.Get(from, name); value == nil {
 		if mod := ntm.ForUID(name); mod != nil {
@@ -205,7 +203,6 @@ func NewBTPContext(wc WorldContext, store containerdb.BytesStoreState) BTPContex
 
 type btpData struct {
 	dbase               db.Database
-	readonly            bool
 	validators          map[string]bool     // key: address
 	proofContextChanged map[int64]bool      // key: network type ID
 	pubKeyChanged       map[string][]string // key: address. value: names of network type or DSA
@@ -218,7 +215,6 @@ func (bd *btpData) clone() *btpData {
 	n := new(btpData)
 
 	n.dbase = bd.dbase
-	n.readonly = bd.readonly
 	n.digest = bd.digest
 	if bd.digestHash != nil {
 		copy(n.digestHash, bd.digestHash)
@@ -249,42 +245,6 @@ func (bd *btpData) clone() *btpData {
 	return n
 }
 
-func (bd *btpData) SetValidators(vs ValidatorState) {
-	vMap := make(map[string]bool)
-	for i := 0; i < vs.Len(); i++ {
-		v, _ := vs.Get(i)
-		vMap[string(v.Address().Bytes())] = true
-	}
-	bd.validators = vMap
-}
-
-func (bd *btpData) setProofContextChanged(ntid int64) {
-	if bd.proofContextChanged == nil {
-		bd.proofContextChanged = make(map[int64]bool)
-	}
-	bd.proofContextChanged[ntid] = true
-}
-
-func (bd *btpData) setPubKeyChanged(address module.Address, name string) {
-	log.Tracef("BTP setPubKeyChanged %s %s", address, name)
-	if bd.pubKeyChanged == nil {
-		bd.pubKeyChanged = make(map[string][]string)
-	}
-	key := string(address.Bytes())
-	if bd.pubKeyChanged[key] == nil {
-		bd.pubKeyChanged[key] = make([]string, 0)
-	}
-	bd.pubKeyChanged[key] = append(bd.pubKeyChanged[key], name)
-}
-
-func (bd *btpData) setNetworkModified(nid int64) {
-	log.Tracef("BTP setNetworkModified %d", nid)
-	if bd.networkModified == nil {
-		bd.networkModified = make(map[int64]bool)
-	}
-	bd.networkModified[nid] = true
-}
-
 type btpSnapshot struct {
 	*btpData
 }
@@ -306,7 +266,6 @@ func (bss *btpSnapshot) Flush() error {
 func (bss *btpSnapshot) NewState() BTPState {
 	state := new(BTPStateImpl)
 	state.btpData = bss.clone()
-	state.readonly = true
 	return state
 }
 
@@ -325,7 +284,6 @@ type BTPStateImpl struct {
 func (bs *BTPStateImpl) GetSnapshot() BTPSnapshot {
 	bss := new(btpSnapshot)
 	bss.btpData = bs.clone()
-	bss.readonly = false
 	return bss
 }
 
@@ -340,6 +298,40 @@ func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
 			bs.networkModified[k] = v
 		}
 	}
+}
+
+func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
+	vMap := make(map[string]bool)
+	for i := 0; i < vs.Len(); i++ {
+		v, _ := vs.Get(i)
+		vMap[string(v.Address().Bytes())] = true
+	}
+	bs.validators = vMap
+}
+
+func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
+	if bs.proofContextChanged == nil {
+		bs.proofContextChanged = make(map[int64]bool)
+	}
+	bs.proofContextChanged[ntid] = true
+}
+
+func (bs *BTPStateImpl) setPubKeyChanged(address module.Address, name string) {
+	if bs.pubKeyChanged == nil {
+		bs.pubKeyChanged = make(map[string][]string)
+	}
+	key := string(address.Bytes())
+	if bs.pubKeyChanged[key] == nil {
+		bs.pubKeyChanged[key] = make([]string, 0)
+	}
+	bs.pubKeyChanged[key] = append(bs.pubKeyChanged[key], name)
+}
+
+func (bs *BTPStateImpl) setNetworkModified(nid int64) {
+	if bs.networkModified == nil {
+		bs.networkModified = make(map[int64]bool)
+	}
+	bs.networkModified[nid] = true
 }
 
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
@@ -381,7 +373,6 @@ func (bs *BTPStateImpl) OpenNetwork(
 		keys, allHasPubKey := bs.getPubKeysOfValidators(bc, mod)
 		if allHasPubKey != true {
 			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.UID())
-			log.Tracef("BTP error %+v", err)
 			return
 		}
 		nt = NewNetworkType(networkTypeName, mod.NewProofContext(keys))
@@ -510,23 +501,19 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 }
 
 func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSection) error {
-	log.Tracef("apply btp section")
 	for _, nts := range btpSection.NetworkTypeSections() {
 		ntid := nts.NetworkTypeID()
-		log.Tracef("apply network type %d", ntid)
 		if _, ok := bs.proofContextChanged[nts.NetworkTypeID()]; ok {
 			if err := bs.updateNetworkType(bc, ntid); err != nil {
 				return err
 			}
 		}
 		for nid := range bs.networkModified {
-			log.Tracef("apply network %d", nid)
 			ns, err := nts.NetworkSectionFor(nid)
 			if err != nil {
 				continue
 			}
 			if err = bs.updateNetwork(bc, ns); err != nil {
-				log.Tracef("Failed to set network section hash for %d. %+v, %+v", nid, err, ns)
 				return err
 			}
 		}
@@ -545,7 +532,6 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 		keys, _ := bs.getPubKeysOfValidators(bc, mod)
 		proof := mod.NewProofContext(keys)
 
-		log.Tracef("update proof context of nt %+v", nt)
 		nt.SetNextProofContext(proof.Bytes())
 		nt.SetNextProofContextHash(proof.Hash())
 		if err := ntDB.Set(ntid, nt.Bytes()); err != nil {
@@ -637,7 +623,6 @@ func (bs *BTPStateImpl) handleValidatorChange(bc BTPContext) error {
 		for key := range bs.validators {
 			if name, ok := bs.pubKeyChanged[key]; ok {
 				// public key of validator changed
-				log.Tracef("BTP validator changed %s", name)
 				names = append(names, name...)
 			}
 		}
