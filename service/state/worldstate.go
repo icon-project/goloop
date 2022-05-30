@@ -10,7 +10,6 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/cache"
-	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 )
 
@@ -211,7 +210,7 @@ func (ws *worldStateImpl) ClearCache() {
 func (ws *worldStateImpl) EnableNodeCache() {
 	ws.nodeCacheEnabled = true
 	if cache := cache.WorldNodeCacheOf(ws.database); cache != nil {
-		ompt.SetCacheOfMutableForObject(ws.accounts, cache)
+		trie_manager.SetCacheOfMutableForObject(ws.accounts, cache)
 	}
 }
 

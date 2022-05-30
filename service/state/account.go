@@ -17,7 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/cache"
-	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -725,7 +724,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 func (s *accountStateImpl) attachCacheForStore() {
 	if s.useCache && s.store != nil {
 		if cache := cache.AccountNodeCacheOf(s.database, s.key); cache != nil {
-			ompt.SetCacheOfMutable(s.store, cache)
+			trie_manager.SetCacheOfMutable(s.store, cache)
 		}
 	}
 }
