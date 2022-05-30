@@ -2,6 +2,7 @@ package merkle
 
 import (
 	"container/list"
+	"fmt"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -79,7 +80,7 @@ func (b *merkleBuilder) Requests() RequestIterator {
 func (b *merkleBuilder) OnData(bid db.BucketID, value []byte) error {
 	hasher := bid.Hasher()
 	if hasher == nil {
-		return errors.New("Not found Hasher for bucketID")
+		return fmt.Errorf("not found Hasher for bucketID(%s)", bid)
 	}
 
 	reqMap := b.hasherMap[hasher.Name()]

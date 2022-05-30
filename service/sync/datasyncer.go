@@ -124,7 +124,7 @@ func (s *dataSyncer) onNodeData(p *peer, status errCode, t syncType, data [][]by
 	if status == NoError {
 		s.log.Debugf("DataSyncer: onNodeData count=%d from=%s", len(data), p)
 		for _, value := range data {
-			if err := s.bd.OnData(value); err != nil {
+			if err := s.bd.OnData(db.BytesByHash, value); err != nil {
 				s.log.Warnf("DataSyncer: FAIL on delivery data err=%+v", err)
 			}
 		}

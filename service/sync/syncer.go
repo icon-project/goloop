@@ -192,7 +192,7 @@ func (s *syncer) _onNodeData(builder merkle.Builder, reqValue map[string]bool, d
 	for _, d := range data {
 		key := crypto.SHA3Sum256(d)
 		if reqValue[string(key)] == true {
-			if err := builder.OnData(d); err != nil {
+			if err := builder.OnData(db.BytesByHash, d); err != nil {
 				s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
 			}
 			delete(reqValue, string(key))
