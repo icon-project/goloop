@@ -102,11 +102,11 @@ type BlockManager interface {
 	// shall be imported by ImportBlock before it is Committed or Finalized.
 	NewBlockDataFromReader(r io.Reader) (BlockData, error)
 
-	//	Propose proposes a Block following the parent Block.
-	//	The result is asynchronously notified by cb. canceler cancels the
-	//	operation. canceler returns true and cb is not called if the
-	//	cancellation was successful. The proposed block can be Committed or
-	// 	Finalized.
+	// Propose proposes a Block following the parent Block.
+	// The result is asynchronously notified by cb. canceler cancels the
+	// operation. canceler returns true and cb is not called if the
+	// cancellation was successful. The proposed block can be Committed or
+	// Finalized.
 	Propose(
 		parentID []byte,
 		votes CommitVoteSet,
@@ -114,19 +114,19 @@ type BlockManager interface {
 		cb func(BlockCandidate, error),
 	) (canceler Canceler, err error)
 
-	//	Import creates a Block from blockBytes and verifies the block.
-	//	The result is asynchronously notified by cb. canceler cancels the
-	//	operation. canceler returns true and cb is not called if the
-	//	cancellation was successful. The imported block can be Committed or
-	//	Finalized.
-	//  Perform forced state sync if the transition's execution result and block
-	//  result does not match and flags' ImportByForce bit is on.
+	// Import creates a Block from blockBytes and verifies the block.
+	// The result is asynchronously notified by cb. canceler cancels the
+	// operation. canceler returns true and cb is not called if the
+	// cancellation was successful. The imported block can be Committed or
+	// Finalized.
+	// Perform forced state sync if the transition's execution result and block
+	// result does not match and flags' ImportByForce bit is on.
 	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	Commit(BlockCandidate) error
 
-	//	Finalize updates world state according to BlockCandidate and removes non-finalized committed blocks with the same height as block from persistent storage.
+	// Finalize updates world state according to BlockCandidate and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(BlockCandidate) error
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
