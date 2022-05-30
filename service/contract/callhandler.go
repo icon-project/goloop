@@ -127,7 +127,7 @@ func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldCon
 	return wc, as
 }
 
-func (h *CallHandler) prepareContractStore(ctx Context, wc state.WorldContext, c state.Contract) error {
+func (h *CallHandler) prepareContractStore(ctx Context, wc state.WorldContext, c state.ContractState) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	if cs, err := ctx.ContractManager().PrepareContractStore(wc, c); err != nil {
@@ -150,7 +150,7 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return wc, nil
 }
 
-func (h *CallHandler) contract(as state.AccountState) state.Contract {
+func (h *CallHandler) contract(as state.AccountState) state.ContractState {
 	if as == nil || !as.IsContract() {
 		return nil
 	}
@@ -239,7 +239,7 @@ func (h *CallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallContext, sto
 	return h.invokeEEMethod(cc, c)
 }
 
-func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
+func (h *CallHandler) invokeEEMethod(cc CallContext, c state.ContractState) error {
 	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
 		return errors.ExecutionFailError.Errorf(
@@ -284,7 +284,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	return err
 }
 
-func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error {
+func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.ContractState) error {
 	h.isSysCall = true
 
 	var cid string

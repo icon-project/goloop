@@ -11,8 +11,9 @@ import (
 
 	"github.com/icon-project/goloop/common"
 
-	"github.com/icon-project/goloop/common/db"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/icon-project/goloop/common/db"
 )
 
 func TestNewWorldState(t *testing.T) {
@@ -63,7 +64,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	contractOwner.SetString("'0x12345")
 
 	type testStruct struct {
-		testStatus      ContractState
+		testStatus      ContractStatus
 		testContentType string
 		testEeType      EEType
 		testApiInfo     []byte
