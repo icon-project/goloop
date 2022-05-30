@@ -82,6 +82,7 @@ type BTPDigest interface {
 	Hash() []byte
 	NetworkTypeDigests() []NetworkTypeDigest
 	NetworkTypeDigestFor(ntid int64) NetworkTypeDigest
+	NetworkTypeIDFromNID(nid int64) (int64, error)
 
 	// Flush writes this BTPDigest and its connected objects.
 	// If a BTPDigest is created by a BTPSection and the BTPSection is created

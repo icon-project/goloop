@@ -25,32 +25,34 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-type btpSection struct {
+type btpSectionByBuilder struct {
 	networkTypeSections networkTypeSectionSlice
-	digest              *btpSectionDigest
+	digest              *digest
 }
 
 var ZeroBTPSection = newBTPSection(nil)
 
-func newBTPSection(ntsSlice networkTypeSectionSlice) *btpSection {
-	bs := &btpSection{
+func newBTPSection(ntsSlice networkTypeSectionSlice) *btpSectionByBuilder {
+	bs := &btpSectionByBuilder{
 		networkTypeSections: ntsSlice,
 	}
-	bs.digest = &btpSectionDigest{
-		bs: bs,
+	bs.digest = &digest{
+		digestCore: &btpSectionDigest{
+			bs: bs,
+		},
 	}
 	return bs
 }
 
-func (bs *btpSection) Digest() module.BTPDigest {
+func (bs *btpSectionByBuilder) Digest() module.BTPDigest {
 	return bs.digest
 }
 
-func (bs *btpSection) NetworkTypeSections() []module.NetworkTypeSection {
+func (bs *btpSectionByBuilder) NetworkTypeSections() []module.NetworkTypeSection {
 	return bs.networkTypeSections
 }
 
-func (bs *btpSection) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
+func (bs *btpSectionByBuilder) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
 	nts := bs.networkTypeSections.Search(ntid)
 	if nts == nil {
 		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
@@ -59,7 +61,7 @@ func (bs *btpSection) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSecti
 }
 
 type btpSectionDigest struct {
-	bs                 *btpSection
+	bs                 *btpSectionByBuilder
 	bytes              []byte
 	hash               []byte
 	networkTypeDigests []module.NetworkTypeDigest
@@ -76,7 +78,7 @@ func (bsd *btpSectionDigest) Bytes() []byte {
 				e2, _ := e.EncodeList()  // bd struct
 				e3, _ := e2.EncodeList() // ntd slice
 				for _, nts := range bsd.bs.networkTypeSections {
-					_ = nts.(*networkTypeSection).encodeDigest(e3)
+					_ = nts.(*networkTypeSectionByBuilder).encodeDigest(e3)
 				}
 			}
 			_ = e.Close()
@@ -106,14 +108,10 @@ func (bsd *btpSectionDigest) NetworkTypeDigests() []module.NetworkTypeDigest {
 	if bsd.networkTypeDigests == nil {
 		bsd.networkTypeDigests = make([]module.NetworkTypeDigest, 0, len(bsd.bs.networkTypeSections))
 		for _, ntd := range bsd.bs.networkTypeSections {
-			bsd.networkTypeDigests = append(bsd.networkTypeDigests, ntd.(*networkTypeSection))
+			bsd.networkTypeDigests = append(bsd.networkTypeDigests, ntd.(*networkTypeSectionByBuilder))
 		}
 	}
 	return bsd.networkTypeDigests
-}
-
-func (bsd *btpSectionDigest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
-	return bsd.bs.networkTypeSections.Search(ntid).(*networkTypeSection)
 }
 
 func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
@@ -129,7 +127,7 @@ func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
 		return err
 	}
 	for _, nts := range bsd.bs.networkTypeSections {
-		err = nts.(*networkTypeSection).flushMessages(dbase)
+		err = nts.(*networkTypeSectionByBuilder).flushMessages(dbase)
 		if err != nil {
 			return err
 		}
@@ -141,13 +139,13 @@ func (bsd *btpSectionDigest) NetworkSectionFilter() module.BitSetFilter {
 	if bsd.filter.Bytes() == nil {
 		bsd.filter = module.MakeBitSetFilter(NSFilterCap)
 		for _, nts := range bsd.bs.networkTypeSections {
-			nts.(*networkTypeSection).updateFilter(bsd.filter)
+			nts.(*networkTypeSectionByBuilder).updateFilter(bsd.filter)
 		}
 	}
 	return bsd.filter
 }
 
-type networkTypeSection struct {
+type networkTypeSectionByBuilder struct {
 	networkTypeID        int64
 	nextProofContext     module.BTPProofContext
 	nextProofContextHash []byte
@@ -164,13 +162,13 @@ func newNetworkTypeSection(
 	nt NetworkTypeView,
 	nsSlice networkSectionSlice,
 	npcChanged bool,
-) (*networkTypeSection, error) {
+) (*networkTypeSectionByBuilder, error) {
 	mod := ntm.ForUID(nt.UID())
 	npc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
 	if err != nil {
 		return nil, err
 	}
-	nts := &networkTypeSection{
+	nts := &networkTypeSectionByBuilder{
 		networkTypeID:       ntid,
 		nextProofContext:    npc,
 		networkSections:     nsSlice,
@@ -188,73 +186,73 @@ type networkTypeSectionFormat struct {
 	NetworkSectionsRoot  []byte
 }
 
-func (nts *networkTypeSection) networkTypeSectionFormat() networkTypeSectionFormat {
+func (nts *networkTypeSectionByBuilder) networkTypeSectionFormat() networkTypeSectionFormat {
 	return networkTypeSectionFormat{
 		NextProofContextHash: nts.nextProofContext.Hash(),
 		NetworkSectionsRoot:  nts.networkSectionsRoot,
 	}
 }
 
-func (nts *networkTypeSection) NetworkTypeID() int64 {
+func (nts *networkTypeSectionByBuilder) NetworkTypeID() int64 {
 	return nts.networkTypeID
 }
 
-func (nts *networkTypeSection) Hash() []byte {
+func (nts *networkTypeSectionByBuilder) Hash() []byte {
 	return nts.hash
 }
 
-func (nts *networkTypeSection) NetworkSectionsRoot() []byte {
+func (nts *networkTypeSectionByBuilder) NetworkSectionsRoot() []byte {
 	return nts.networkSectionsRoot
 }
 
-func (nts *networkTypeSection) NetworkSectionToRoot(nid int64) ([]module.MerkleNode, error) {
+func (nts *networkTypeSectionByBuilder) NetworkSectionToRoot(nid int64) ([]module.MerkleNode, error) {
 	return nts.NetworkSectionToRootWithMod(nts.mod, nid)
 }
 
-func (nts *networkTypeSection) NextProofContext() module.BTPProofContext {
+func (nts *networkTypeSectionByBuilder) NextProofContext() module.BTPProofContext {
 	return nts.nextProofContext
 }
 
-func (nts *networkTypeSection) NetworkSections() []module.NetworkSection {
+func (nts *networkTypeSectionByBuilder) NetworkSections() []module.NetworkSection {
 	return nts.networkSections
 }
 
-func (nts *networkTypeSection) NetworkTypeSectionHash() []byte {
+func (nts *networkTypeSectionByBuilder) NetworkTypeSectionHash() []byte {
 	return nts.hash
 }
 
 // nextProofContextChanged returns true if NS.NextProofContextChanged() is true
 // for any child NS of this NTS.
-func (nts *networkTypeSection) nextProofContextChanged() bool {
+func (nts *networkTypeSectionByBuilder) nextProofContextChanged() bool {
 	return nts.npcChanged
 }
 
-func (nts *networkTypeSection) NetworkDigests() []module.NetworkDigest {
+func (nts *networkTypeSectionByBuilder) NetworkDigests() []module.NetworkDigest {
 	if nts.networkDigests == nil {
 		nts.networkDigests = make([]module.NetworkDigest, 0, len(nts.networkSections))
 		for _, ns := range nts.networkSections {
-			nts.networkDigests = append(nts.networkDigests, ns.(*networkSection))
+			nts.networkDigests = append(nts.networkDigests, ns.(*networkSectionByBuilder))
 		}
 	}
 	return nts.networkDigests
 }
 
-func (nts *networkTypeSection) NetworkDigestFor(nid int64) module.NetworkDigest {
+func (nts *networkTypeSectionByBuilder) NetworkDigestFor(nid int64) module.NetworkDigest {
 	ns, _ := nts.networkSections.Search(nid)
 	if ns != nil {
-		return ns.(*networkSection)
+		return ns.(*networkSectionByBuilder)
 	}
 	return nil
 }
 
-func (nts *networkTypeSection) NetworkSectionsRootWithMod(mod module.NetworkTypeModule) []byte {
+func (nts *networkTypeSectionByBuilder) NetworkSectionsRootWithMod(mod module.NetworkTypeModule) []byte {
 	if nts.mod == mod {
 		return nts.networkSectionsRoot
 	}
 	return mod.MerkleRoot(nts.networkSections)
 }
 
-func (nts *networkTypeSection) NetworkSectionToRootWithMod(mod module.NetworkTypeModule, nid int64) ([]module.MerkleNode, error) {
+func (nts *networkTypeSectionByBuilder) NetworkSectionToRootWithMod(mod module.NetworkTypeModule, nid int64) ([]module.MerkleNode, error) {
 	_, i := nts.networkSections.Search(nid)
 	if i < 0 {
 		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
@@ -262,7 +260,7 @@ func (nts *networkTypeSection) NetworkSectionToRootWithMod(mod module.NetworkTyp
 	return mod.MerkleProof(nts.networkSections, i), nil
 }
 
-func (nts *networkTypeSection) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
+func (nts *networkTypeSectionByBuilder) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
 	ns, _ := nts.networkSections.Search(nid)
 	if ns == nil {
 		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
@@ -295,7 +293,7 @@ func (d *networkTypeSectionDecision) Hash() []byte {
 	return d.hash
 }
 
-func (nts *networkTypeSection) NewDecision(
+func (nts *networkTypeSectionByBuilder) NewDecision(
 	srcNetworkUID []byte,
 	height int64,
 	round int32,
@@ -310,15 +308,15 @@ func (nts *networkTypeSection) NewDecision(
 	}
 }
 
-func (nts *networkTypeSection) updateFilter(f module.BitSetFilter) {
+func (nts *networkTypeSectionByBuilder) updateFilter(f module.BitSetFilter) {
 	for _, ns := range nts.networkSections {
 		f.Set(ns.NetworkID())
 	}
 }
 
-func (nts *networkTypeSection) flushMessages(dbase db.Database) error {
+func (nts *networkTypeSectionByBuilder) flushMessages(dbase db.Database) error {
 	for _, ns := range nts.networkSections {
-		err := ns.(*networkSection).flushMessages(dbase)
+		err := ns.(*networkSectionByBuilder).flushMessages(dbase)
 		if err != nil {
 			return err
 		}
@@ -326,7 +324,7 @@ func (nts *networkTypeSection) flushMessages(dbase db.Database) error {
 	return nil
 }
 
-func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
+func (nts *networkTypeSectionByBuilder) encodeDigest(e codec.Encoder) error {
 	e2, err := e.EncodeList()
 	if err != nil {
 		return err
@@ -343,7 +341,7 @@ func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
 		return err
 	}
 	for _, ns := range nts.networkSections {
-		err = ns.(*networkSection).encodeDigest(e3)
+		err = ns.(*networkSectionByBuilder).encodeDigest(e3)
 		if err != nil {
 			return err
 		}
@@ -351,7 +349,7 @@ func (nts *networkTypeSection) encodeDigest(e codec.Encoder) error {
 	return nil
 }
 
-type networkSection struct {
+type networkSectionByBuilder struct {
 	networkID     int64
 	updateNumber  int64
 	prevHash      []byte
@@ -367,12 +365,12 @@ func newNetworkSection(
 	nw NetworkView,
 	ne *networkEntry,
 	mod module.NetworkTypeModule,
-) *networkSection {
+) *networkSectionByBuilder {
 	updateNumber := (nw.NextMessageSN() - int64(len(ne.messages))) << 1
 	if nw.NextProofContextChanged() {
 		updateNumber |= 1
 	}
-	ns := &networkSection{
+	ns := &networkSectionByBuilder{
 		networkID:    nid,
 		updateNumber: updateNumber,
 		prevHash:     nw.LastNetworkSectionHash(),
@@ -397,7 +395,7 @@ type networkSectionFormat struct {
 	MessagesRoot []byte
 }
 
-func (ns *networkSection) networkSectionFormat() networkSectionFormat {
+func (ns *networkSectionByBuilder) networkSectionFormat() networkSectionFormat {
 	return networkSectionFormat{
 		NetworkID:    ns.networkID,
 		UpdateNumber: ns.updateNumber,
@@ -407,43 +405,43 @@ func (ns *networkSection) networkSectionFormat() networkSectionFormat {
 	}
 }
 
-func (ns *networkSection) NetworkID() int64 {
+func (ns *networkSectionByBuilder) NetworkID() int64 {
 	return ns.networkID
 }
 
-func (ns *networkSection) UpdateNumber() int64 {
+func (ns *networkSectionByBuilder) UpdateNumber() int64 {
 	return ns.updateNumber
 }
 
-func (ns *networkSection) FirstMessageSN() int64 {
+func (ns *networkSectionByBuilder) FirstMessageSN() int64 {
 	return ns.updateNumber >> 1
 }
 
-func (ns *networkSection) NextProofContextChanged() bool {
+func (ns *networkSectionByBuilder) NextProofContextChanged() bool {
 	return ns.updateNumber&1 != 0
 }
 
-func (ns *networkSection) PrevHash() []byte {
+func (ns *networkSectionByBuilder) PrevHash() []byte {
 	return ns.prevHash
 }
 
-func (ns *networkSection) MessageCount() int64 {
+func (ns *networkSectionByBuilder) MessageCount() int64 {
 	return int64(ns.messageHashes.Len())
 }
 
-func (ns *networkSection) MessagesRoot() []byte {
+func (ns *networkSectionByBuilder) MessagesRoot() []byte {
 	return ns.messagesRoot
 }
 
-func (ns *networkSection) Hash() []byte {
+func (ns *networkSectionByBuilder) Hash() []byte {
 	return ns.hash
 }
 
-func (ns *networkSection) NetworkSectionHash() []byte {
+func (ns *networkSectionByBuilder) NetworkSectionHash() []byte {
 	return ns.hash
 }
 
-func (ns *networkSection) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
+func (ns *networkSectionByBuilder) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
 	bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
 	if err != nil {
 		return nil, err
@@ -455,7 +453,7 @@ func (ns *networkSection) MessageList(dbase db.Database, mod module.NetworkTypeM
 	return newMessageList(bs, dbase, ns.mod), nil
 }
 
-func (ns *networkSection) flushMessages(dbase db.Database) error {
+func (ns *networkSectionByBuilder) flushMessages(dbase db.Database) error {
 	if ns.messagesRoot == nil {
 		return nil
 	}
@@ -477,7 +475,7 @@ func (ns *networkSection) flushMessages(dbase db.Database) error {
 	return nil
 }
 
-func (ns *networkSection) encodeDigest(e codec.Encoder) error {
+func (ns *networkSectionByBuilder) encodeDigest(e codec.Encoder) error {
 	return e.EncodeListOf(
 		ns.NetworkID(),
 		ns.NetworkSectionHash(),

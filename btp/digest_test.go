@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestDigest_ZeroValueDigest(t *testing.T) {
@@ -48,6 +49,28 @@ func TestDigest_EmptyDigest(t *testing.T) {
 	assert.EqualValues([]byte(nil), bd.Hash())
 }
 
+func assertEqualDigest(t *testing.T, d1 module.BTPDigest, d2 module.BTPDigest) {
+	assert.Equal(t, len(d1.NetworkTypeDigests()), len(d2.NetworkTypeDigests()))
+	for i := 0; i < len(d1.NetworkTypeDigests()); i++ {
+		assertEqualNetworkTypeDigest(t, d1.NetworkTypeDigests()[i], d2.NetworkTypeDigests()[i])
+	}
+}
+
+func assertEqualNetworkTypeDigest(t *testing.T, ntd1 module.NetworkTypeDigest, ntd2 module.NetworkTypeDigest) {
+	assert.Equal(t, ntd1.NetworkTypeID(), ntd2.NetworkTypeID())
+	assert.EqualValues(t, ntd1.NetworkTypeSectionHash(), ntd2.NetworkTypeSectionHash())
+	assert.Equal(t, len(ntd1.NetworkDigests()), len(ntd2.NetworkDigests()))
+	for i := 0; i < len(ntd1.NetworkDigests()); i++ {
+		assertEqualNetworkDigest(t, ntd1.NetworkDigests()[i], ntd2.NetworkDigests()[i])
+	}
+}
+
+func assertEqualNetworkDigest(t *testing.T, nd1 module.NetworkDigest, nd2 module.NetworkDigest) {
+	assert.Equal(t, nd1.NetworkID(), nd2.NetworkID())
+	assert.Equal(t, nd1.NetworkSectionHash(), nd2.NetworkSectionHash())
+	assert.Equal(t, nd1.MessagesRoot(), nd2.MessagesRoot())
+}
+
 func TestDigest_FlushAndFromBytes(t *testing.T) {
 	assert := assert.New(t)
 	s := newComplexTestBuilderSetup(t)
@@ -64,6 +87,7 @@ func TestDigest_FlushAndFromBytes(t *testing.T) {
 	d2, err := NewDigestFromBytes(digestBytes)
 	assert.NoError(err)
 	assert.EqualValues(d2.Bytes(), d.Bytes())
+	assertEqualDigest(t, d2, d)
 
 	ml1, err := d2.NetworkTypeDigestFor(1).NetworkDigestFor(1).MessageList(mdb, s.mod)
 	assert.NoError(err)

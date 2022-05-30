@@ -37,7 +37,7 @@ func (m *proofContextMap) ProofContextFor(ntid int64) (module.BTPProofContext, e
 func (m *proofContextMap) Update(btpSection module.BTPSection) module.BTPProofContextMap {
 	res := m
 	for _, nts := range btpSection.NetworkTypeSections() {
-		if nts.(*networkTypeSection).nextProofContextChanged() {
+		if nts.(*networkTypeSectionByBuilder).nextProofContextChanged() {
 			if res == m {
 				res = &proofContextMap{
 					pcMap: make(map[int64]module.BTPProofContext),

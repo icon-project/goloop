@@ -17,14 +17,13 @@
 package btp
 
 import (
+	"io"
 	"sort"
 
-	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -33,76 +32,23 @@ const (
 	NSFilterCap = 256 / 8
 )
 
-var ZeroDigest = zeroDigest{}
-
-type zeroDigest struct {
-}
-
-func (bd zeroDigest) Bytes() []byte {
-	return nil
-}
-
-func (bd zeroDigest) Hash() []byte {
-	return nil
-}
-
-func (bd zeroDigest) NetworkTypeDigests() []module.NetworkTypeDigest {
-	return nil
-}
-
-func (bd zeroDigest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
-	return nil
-}
-
-func (bd zeroDigest) Flush(dbase db.Database) error {
-	return nil
-}
-
-func (bd zeroDigest) NetworkSectionFilter() module.BitSetFilter {
-	return module.BitSetFilter{}
-}
-
-type digestFormat struct {
-	NetworkTypeDigests []networkTypeDigest
+type digestCore interface {
+	Bytes() []byte
+	Hash() []byte
+	NetworkTypeDigests() []module.NetworkTypeDigest
+	Flush(dbase db.Database) error
 }
 
 type digest struct {
-	format             digestFormat
-	bytes              []byte
-	hash               []byte
-	networkTypeDigests []module.NetworkTypeDigest
-	filter             module.BitSetFilter
-}
-
-func NewDigestFromBytes(bytes []byte) (module.BTPDigest, error) {
-	bd := &digest{}
-	if bytes != nil {
-		_, err := codec.UnmarshalFromBytes(bytes, &bd.format)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return bd, nil
-}
-
-func (bd *digest) Bytes() []byte {
-	if bd.bytes == nil {
-		if len(bd.format.NetworkTypeDigests) == 0 {
-			bd.bytes = make([]byte, 0)
-		} else {
-			bd.bytes = codec.MustMarshalToBytes(&bd.format)
-		}
-	}
-	if len(bd.bytes) == 0 {
-		return nil
-	}
-	return bd.bytes
+	digestCore
+	hash   []byte
+	filter module.BitSetFilter
 }
 
 func (bd *digest) Hash() []byte {
 	if bd.hash == nil {
 		if bd.Bytes() == nil {
-			bd.hash = make([]byte, 0)
+			bd.hash = []byte{}
 		} else {
 			bd.hash = crypto.SHA3Sum256(bd.Bytes())
 		}
@@ -113,186 +59,131 @@ func (bd *digest) Hash() []byte {
 	return bd.hash
 }
 
-func (bd *digest) NetworkTypeDigests() []module.NetworkTypeDigest {
-	if bd.networkTypeDigests == nil {
-		bd.networkTypeDigests = make([]module.NetworkTypeDigest, 0, len(bd.format.NetworkTypeDigests))
-		for _, ntd := range bd.format.NetworkTypeDigests {
-			bd.networkTypeDigests = append(bd.networkTypeDigests, &ntd)
-		}
-	}
-	return bd.networkTypeDigests
-}
-
-func (bd *digest) Flush(dbase db.Database) error {
-	bk, err := dbase.GetBucket(db.BytesByHash)
-	if err != nil {
-		return err
-	}
-	err = bk.Set(bd.Hash(), bd.Bytes())
-	if err != nil {
-		return err
+func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
+	ntdSlice := bd.NetworkTypeDigests()
+	i := sort.Search(
+		len(ntdSlice),
+		func(i int) bool {
+			return ntdSlice[i].NetworkTypeID() >= ntid
+		},
+	)
+	if i < len(ntdSlice) && ntdSlice[i].NetworkTypeID() == ntid {
+		return ntdSlice[i]
 	}
 	return nil
+}
+
+func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
+	for _, ntd := range bd.NetworkTypeDigests() {
+		for _, nd := range ntd.NetworkDigests() {
+			if nd.NetworkID() == nid {
+				return ntd.NetworkTypeID(), nil
+			}
+		}
+	}
+	return 0, errors.Errorf("not found nid=%d", nid)
 }
 
 func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
 	if bd.filter.Bytes() == nil {
 		bd.filter = module.MakeBitSetFilter(NSFilterCap)
-		for _, ntd := range bd.format.NetworkTypeDigests {
-			ntd.updateFilter(bd.filter)
+		for _, ntd := range bd.NetworkTypeDigests() {
+			for _, nd := range ntd.NetworkDigests() {
+				bd.filter.Set(nd.NetworkID())
+			}
 		}
 	}
 	return bd.filter
 }
 
-func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
-	i := sort.Search(
-		len(bd.format.NetworkTypeDigests),
-		func(i int) bool {
-			return bd.format.NetworkTypeDigests[i].NetworkTypeID() >= ntid
-		},
-	)
-	if i < len(bd.format.NetworkTypeDigests) && bd.format.NetworkTypeDigests[i].NetworkTypeID() == ntid {
-		return &bd.format.NetworkTypeDigests[i]
+type networkTypeDigestCore interface {
+	NetworkTypeID() int64
+	NetworkTypeSectionHash() []byte
+	NetworkDigests() []module.NetworkDigest
+}
+
+type networkTypeDigest struct {
+	networkTypeDigestCore
+	networkSectionsRoot []byte
+}
+
+func (ntd *networkTypeDigest) NetworkDigestFor(nid int64) module.NetworkDigest {
+	ndSlice := networkDigestSlice(ntd.NetworkDigests())
+	i := ndSlice.Search(nid)
+	if i >= 0 {
+		return ndSlice[i]
 	}
 	return nil
 }
 
-type networkDigestSlice []networkDigest
-
-func (nds networkDigestSlice) Len() int {
-	return len(nds)
-}
-
-func (nds networkDigestSlice) Get(i int) []byte {
-	return nds[i].NetworkSectionHash()
-}
-
-func (nds networkDigestSlice) Search(nid int64) int {
-	i := sort.Search(len(nds), func(i int) bool {
-		return nds[i].NetworkID() >= nid
-	})
-	if i < len(nds) && nds[i].NetworkID() == nid {
-		return i
-	}
-	return -1
-}
-
-type networkTypeDigestFormat struct {
-	NetworkTypeID          int64
-	NetworkTypeSectionHash []byte
-	NetworkDigests         networkDigestSlice
-}
-
-type networkTypeDigest struct {
-	format              networkTypeDigestFormat
-	networkDigests      []module.NetworkDigest
-	networkSectionsRoot []byte
-}
-
-func (ntd *networkTypeDigest) NetworkTypeID() int64 {
-	return ntd.format.NetworkTypeID
-}
-
-func (ntd *networkTypeDigest) NetworkTypeSectionHash() []byte {
-	return ntd.format.NetworkTypeSectionHash
-}
-
-func (ntd *networkTypeDigest) NetworkDigests() []module.NetworkDigest {
-	if ntd.networkDigests == nil {
-		ntd.networkDigests = make([]module.NetworkDigest, 0, len(ntd.format.NetworkDigests))
-		for _, nd := range ntd.format.NetworkDigests {
-			ntd.networkDigests = append(ntd.networkDigests, &nd)
-		}
-	}
-	return ntd.networkDigests
-}
-
 func (ntd *networkTypeDigest) NetworkSectionsRootWithMod(mod module.NetworkTypeModule) []byte {
 	if ntd.networkSectionsRoot == nil {
-		ntd.networkSectionsRoot = mod.MerkleRoot(&ntd.format.NetworkDigests)
+		ndSlice := networkDigestSlice(ntd.NetworkDigests())
+		ntd.networkSectionsRoot = mod.MerkleRoot(&ndSlice)
 	}
 	return ntd.networkSectionsRoot
 }
 
 func (ntd *networkTypeDigest) NetworkSectionToRootWithMod(mod module.NetworkTypeModule, nid int64) ([]module.MerkleNode, error) {
-	i := ntd.format.NetworkDigests.Search(nid)
+	ndSlice := networkDigestSlice(ntd.NetworkDigests())
+	i := ndSlice.Search(nid)
 	if i >= 0 {
-		pf := mod.MerkleProof(&ntd.format.NetworkDigests, i)
+		pf := mod.MerkleProof(&ndSlice, i)
 		return pf, nil
 	}
 	return nil, errors.Errorf("not found nid=%d", nid)
 }
 
-func (ntd *networkTypeDigest) NetworkDigestFor(nid int64) module.NetworkDigest {
-	i := ntd.format.NetworkDigests.Search(nid)
-	if i >= 0 {
-		return &ntd.format.NetworkDigests[i]
+type networkDigestSlice []module.NetworkDigest
+
+func (nds *networkDigestSlice) Len() int {
+	return len(*nds)
+}
+
+func (nds *networkDigestSlice) Get(i int) []byte {
+	return (*nds)[i].NetworkSectionHash()
+}
+
+func (nds *networkDigestSlice) Search(nid int64) int {
+	i := sort.Search(len(*nds), func(i int) bool {
+		return (*nds)[i].NetworkID() >= nid
+	})
+	if i < len(*nds) && (*nds)[i].NetworkID() == nid {
+		return i
+	}
+	return -1
+}
+
+func (nds *networkDigestSlice) RLPEncodeSelf(e codec.Encoder) error {
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	for _, nd := range *nds {
+		err := e2.Encode(nd.(*networkDigestFromBytes))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (ntd *networkTypeDigest) updateFilter(f module.BitSetFilter) {
-	for _, nd := range ntd.networkDigests {
-		f.Set(nd.NetworkID())
+func (nds *networkDigestSlice) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
 	}
-}
-
-func (ntd *networkTypeDigest) RLPEncodeSelf(e codec.Encoder) error {
-	return e.Encode(&ntd.format)
-}
-
-func (ntd *networkTypeDigest) RLPDecodeSelf(d codec.Decoder) error {
-	return d.Decode(&ntd.format)
-}
-
-type networkDigestFormat struct {
-	NetworkID          int64
-	NetworkSectionHash []byte
-	MessagesRoot       []byte
-}
-
-type networkDigest struct {
-	format        networkDigestFormat
-	messageHashes []byte
-}
-
-func (nd *networkDigest) NetworkID() int64 {
-	return nd.format.NetworkID
-}
-
-func (nd *networkDigest) NetworkSectionHash() []byte {
-	return nd.format.NetworkSectionHash
-}
-
-func (nd *networkDigest) MessagesRoot() []byte {
-	return nd.format.MessagesRoot
-}
-
-func (nd *networkDigest) MessageList(
-	dbase db.Database,
-	mod module.NetworkTypeModule,
-) (module.BTPMessageList, error) {
-	if nd.messageHashes == nil {
-		bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
-		if err != nil {
-			return nil, err
+	ndSlice := make([]module.NetworkDigest, 0)
+	for {
+		var nd networkDigestFromBytes
+		err := d2.Decode(&nd)
+		if err == io.EOF {
+			break
 		}
-		bs, err := bk.Get(nd.format.MessagesRoot)
-		if err != nil {
-			return nil, err
-		}
-		nd.messageHashes = bs
+		ndSlice = append(ndSlice, &nd)
 	}
-	return newMessageList(nd.messageHashes, dbase, mod), nil
-}
-
-func (nd *networkDigest) RLPEncodeSelf(e codec.Encoder) error {
-	return e.Encode(&nd.format)
-}
-
-func (nd *networkDigest) RLPDecodeSelf(d codec.Decoder) error {
-	return d.Decode(&nd.format)
+	*nds = ndSlice
+	return nil
 }
 
 type hashesCat struct {
@@ -423,196 +314,25 @@ func (m *message) flush() error {
 	return bk.Set(m.Hash(), m.Bytes())
 }
 
-// NewSection returns a new Section. view shall have the final value for a
-// transition.
-func NewSection(
-	digest module.BTPDigest,
-	view StateView,
-	dbase db.Database,
-) (module.BTPSection, error) {
-	return &btpSectionFromDigest{
-		digest:                digest,
-		view:                  view,
-		dbase:                 dbase,
-		networkTypeSectionFor: make(map[int64]*networkTypeSectionFromDigest),
-	}, nil
+var ZeroDigest = &digest{
+	digestCore: zeroDigestCore{},
 }
 
-type btpSectionFromDigest struct {
-	digest                module.BTPDigest
-	view                  StateView
-	dbase                 db.Database
-	networkTypeSectionFor map[int64]*networkTypeSectionFromDigest
-	networkTypeSections   []module.NetworkTypeSection
+type zeroDigestCore struct {
 }
 
-func (bs btpSectionFromDigest) Digest() module.BTPDigest {
-	return bs.digest
+func (bd zeroDigestCore) Bytes() []byte {
+	return nil
 }
 
-func (bs btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection {
-	if bs.networkTypeSections == nil {
-		ntdSlice := bs.digest.NetworkTypeDigests()
-		ntsSlice := make([]module.NetworkTypeSection, 0, len(ntdSlice))
-		for _, ntd := range ntdSlice {
-			nts, err := bs.NetworkTypeSectionFor(ntd.NetworkTypeID())
-			log.Must(err)
-			ntsSlice = append(ntsSlice, nts)
-		}
-		bs.networkTypeSections = ntsSlice
-	}
-	return bs.networkTypeSections
+func (bd zeroDigestCore) Hash() []byte {
+	return nil
 }
 
-func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
-	if bs.networkTypeSectionFor[ntid] == nil {
-		nt, err := bs.view.GetNetworkTypeView(ntid)
-		if err != nil {
-			return nil, err
-		}
-		mod := ntm.ForUID(nt.UID())
-		npc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
-		if err != nil {
-			return nil, err
-		}
-		ntd := bs.digest.NetworkTypeDigestFor(ntid)
-		if ntd == nil {
-			return nil, errors.Errorf("not found ntid=%d", ntid)
-		}
-		nts := &networkTypeSectionFromDigest{
-			view:             bs.view,
-			dbase:            bs.dbase,
-			mod:              mod,
-			nt:               nt,
-			ntd:              ntd,
-			nextProofContext: npc,
-		}
-		bs.networkTypeSectionFor[ntid] = nts
-	}
-	return bs.networkTypeSectionFor[ntid], nil
+func (bd zeroDigestCore) NetworkTypeDigests() []module.NetworkTypeDigest {
+	return nil
 }
 
-type networkTypeSectionFromDigest struct {
-	view             StateView
-	dbase            db.Database
-	mod              module.NetworkTypeModule
-	nt               NetworkTypeView
-	ntd              module.NetworkTypeDigest
-	nextProofContext module.BTPProofContext
-}
-
-func (nts *networkTypeSectionFromDigest) NetworkTypeID() int64 {
-	return nts.ntd.NetworkTypeID()
-}
-
-func (nts *networkTypeSectionFromDigest) Hash() []byte {
-	return nts.ntd.NetworkTypeSectionHash()
-}
-
-func (nts *networkTypeSectionFromDigest) NetworkSectionsRoot() []byte {
-	return nts.ntd.NetworkSectionsRootWithMod(nts.mod)
-}
-
-func (nts *networkTypeSectionFromDigest) NextProofContext() module.BTPProofContext {
-	return nts.nextProofContext
-}
-
-func (nts *networkTypeSectionFromDigest) NetworkSectionFor(nid int64) (module.NetworkSection, error) {
-	nw, err := nts.view.GetNetworkView(nid)
-	if err != nil {
-		return nil, err
-	}
-	nd := nts.ntd.NetworkDigestFor(nid)
-	if nd == nil {
-		return nil, errors.Errorf("not found nid=%d", nid)
-	}
-	ns, err := newNetworkSectionFromDigest(nts.dbase, nts.mod, nw, nd)
-	if err != nil {
-		return nil, err
-	}
-	return ns, nil
-}
-
-func (nts *networkTypeSectionFromDigest) NewDecision(
-	srcNetworkUID []byte,
-	height int64,
-	round int32,
-) module.BytesHasher {
-	return &networkTypeSectionDecision{
-		SrcNetworkID:           srcNetworkUID,
-		DstType:                nts.ntd.NetworkTypeID(),
-		Height:                 height,
-		Round:                  round,
-		NetworkTypeSectionHash: nts.Hash(),
-		mod:                    nts.mod,
-	}
-}
-
-func (nts *networkTypeSectionFromDigest) NetworkSectionToRoot(nid int64) ([]module.MerkleNode, error) {
-	return nts.ntd.NetworkSectionToRootWithMod(nts.mod, nid)
-}
-
-type networkSectionFromDigest struct {
-	dbase        db.Database
-	mod          module.NetworkTypeModule
-	nw           NetworkView
-	nd           module.NetworkDigest
-	updateNumber int64
-	messageCount int64
-}
-
-func newNetworkSectionFromDigest(
-	dbase db.Database,
-	mod module.NetworkTypeModule,
-	nw NetworkView,
-	nd module.NetworkDigest,
-) (*networkSectionFromDigest, error) {
-	ml, err := nd.MessageList(dbase, mod)
-	if err != nil {
-		return nil, err
-	}
-	updateNumber := (nw.NextMessageSN() - ml.Len()) << 1
-	if nw.NextProofContextChanged() {
-		updateNumber |= 1
-	}
-	return &networkSectionFromDigest{
-		dbase:        dbase,
-		mod:          mod,
-		nw:           nw,
-		nd:           nd,
-		updateNumber: updateNumber,
-		messageCount: ml.Len(),
-	}, nil
-}
-
-func (ns *networkSectionFromDigest) Hash() []byte {
-	return ns.nw.LastNetworkSectionHash()
-}
-
-func (ns *networkSectionFromDigest) NetworkID() int64 {
-	return ns.nd.NetworkID()
-}
-
-func (ns *networkSectionFromDigest) UpdateNumber() int64 {
-	return ns.updateNumber
-}
-
-func (ns *networkSectionFromDigest) FirstMessageSN() int64 {
-	return ns.nw.NextMessageSN() - ns.MessageCount()
-}
-
-func (ns *networkSectionFromDigest) NextProofContextChanged() bool {
-	return ns.nw.NextProofContextChanged()
-}
-
-func (ns *networkSectionFromDigest) PrevHash() []byte {
-	return ns.nw.PrevNetworkSectionHash()
-}
-
-func (ns *networkSectionFromDigest) MessageCount() int64 {
-	return ns.messageCount
-}
-
-func (ns *networkSectionFromDigest) MessagesRoot() []byte {
-	return ns.nd.MessagesRoot()
+func (bd zeroDigestCore) Flush(dbase db.Database) error {
+	return nil
 }
