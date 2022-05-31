@@ -82,6 +82,9 @@ type BTPDigest interface {
 	Hash() []byte
 	NetworkTypeDigests() []NetworkTypeDigest
 	NetworkTypeDigestFor(ntid int64) NetworkTypeDigest
+
+	// NetworkTypeIDFromNID returns ntid for nid in this digest. Returns
+	// wrapped ErrNotFound if nid is not found in this digest.
 	NetworkTypeIDFromNID(nid int64) (int64, error)
 
 	// Flush writes this BTPDigest and its connected objects.

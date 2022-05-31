@@ -81,7 +81,7 @@ func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
 			}
 		}
 	}
-	return 0, errors.Errorf("not found nid=%d", nid)
+	return 0, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
 }
 
 func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
