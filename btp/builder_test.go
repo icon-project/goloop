@@ -71,13 +71,6 @@ func (v *testStateView) GetNetworkTypeView(ntid int64) (NetworkTypeView, error) 
 	return nil, errors.ErrNotFound
 }
 
-func (v *testStateView) GetPublicKey(address module.Address, name string) ([]byte, error) {
-	if v1, ok := v.publicKey[string(address.Bytes())]; ok {
-		return v1[name], nil
-	}
-	return nil, errors.ErrNotFound
-}
-
 func TestSectionBuilder_Build_Empty(t *testing.T) {
 	assert := assert.New(t)
 	view := &testStateView{}

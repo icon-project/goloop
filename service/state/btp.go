@@ -51,6 +51,7 @@ type BTPContext interface {
 	GetNetworkTypeIdByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
 	GetNetwork(ntid int64) (module.BTPNetwork, error)
+	GetPublicKey(address module.Address, name string) ([]byte, error)
 }
 
 type BTPSnapshot interface {

@@ -40,5 +40,4 @@ type StateView interface {
 	GetNetworkTypeIDs() ([]int64, error)
 	GetNetworkView(nid int64) (NetworkView, error)
 	GetNetworkTypeView(ntid int64) (NetworkTypeView, error)
-	GetPublicKey(address module.Address, name string) ([]byte, error)
 }
