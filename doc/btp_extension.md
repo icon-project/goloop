@@ -508,7 +508,7 @@ Currently, Core2 uses Merkle Patricia Trie to store the receipt and the events, 
 Core2 uses MsgPack and RLP with Null(RLPn) for binary encoding and decoding.
 
 * [MsgPack](https://msgpack.org)
-* RLPn is [RLP](https://github.com/ethereum/wiki/wiki/RLP) with Null (`[0xF8 0x00]`)
+* RLPn is [RLP](https://github.com/ethereum/wiki/wiki/RLP) with Null (`[0xF8 0x00]`) and zero (`[0x00]`)
 
 | Type      | Msgpack | RLPn     | Description                                                                                                                       |
 |:----------|:--------|:---------|:----------------------------------------------------------------------------------------------------------------------------------|
