@@ -47,6 +47,9 @@ func NewCodedBucket(database Database, id BucketID, c codec.Codec) (*CodedBucket
 func NewCodedBucketFromBucket(bk Bucket, hasher Hasher, c codec.Codec) *CodedBucket {
 	b := &CodedBucket{}
 	b.dbBucket = bk
+	if hasher == nil {
+		hasher = sha3Hasher{}
+	}
 	b.hasher = hasher
 	if c == nil {
 		c = codec.BC
