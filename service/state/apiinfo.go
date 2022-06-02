@@ -108,10 +108,22 @@ func (s *apiInfoStore) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (s *apiInfoStore) Resolve(bd merkle.Builder) error {
-	if s.bk != nil {
-		if len(s.hash) > 0 {
-			bd.RequestData(db.BytesByHash, s.hash, s)
+	if s.bk == nil {
+		return nil
+	}
+	if len(s.hash) > 0 {
+		value, err := s.bk.Get(s.hash)
+		if err != nil {
+			return err
 		}
+		if value == nil {
+			bd.RequestData(db.BytesByHash, s.hash, s)
+			return nil
+		}
+		if _, err = codec.UnmarshalFromBytes(value, &s.info); err != nil {
+			return err
+		}
+		s.bytes = value
 	}
 	return nil
 }
