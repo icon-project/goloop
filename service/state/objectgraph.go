@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/merkle"
 )
 
 type objectGraph struct {
@@ -125,6 +126,27 @@ func (o *objectGraph) Get(withData bool) (int, []byte, []byte, error) {
 	} else {
 		return o.nextHash, o.graphHash, nil, nil
 	}
+}
+
+func (o *objectGraph) Resolve(bd merkle.Builder) error {
+	if len(o.graphHash) > 0 {
+		v, err := o.bk.Get(o.graphHash)
+		if err != nil {
+			return err
+		}
+		if v == nil {
+			bd.RequestData(db.BytesByHash, o.graphHash, o)
+			return nil
+		}
+		o.graphData = v
+	}
+	return nil
+}
+
+func (o *objectGraph) OnData(data []byte, bd merkle.Builder) error {
+	o.graphData = data
+	o.needFlush = true
+	return nil
 }
 
 func (o *objectGraph) ResetDB(dbase db.Database) error {

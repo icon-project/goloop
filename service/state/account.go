@@ -454,6 +454,11 @@ func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
 			return err
 		}
 	}
+	if s.objGraph != nil {
+		if err := s.objGraph.Resolve(bd); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
