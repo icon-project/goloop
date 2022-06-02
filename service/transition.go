@@ -565,6 +565,12 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			t.reportValidation(err)
 			return
 		}
+
+		if err := t.plt.OnValidateTransactions(wc, t.patchTransactions, t.normalTransactions); err != nil {
+			t.reportValidation(err)
+			return
+		}
+
 		var tsr TimestampRange
 		if t.pbi != nil {
 			tsr = NewTimestampRange(t.pbi.Timestamp(),
@@ -585,6 +591,16 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		}
 	} else {
 		if err := t.ensureRecordTXIDs(true); err != nil {
+			t.reportValidation(err)
+			return
+		}
+
+		wc, err := t.newWorldContext(false)
+		if err != nil {
+			t.reportValidation(err)
+			return
+		}
+		if err := t.plt.OnValidateTransactions(wc, t.patchTransactions, t.normalTransactions); err != nil {
 			t.reportValidation(err)
 			return
 		}
