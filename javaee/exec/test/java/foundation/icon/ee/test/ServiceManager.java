@@ -42,7 +42,7 @@ public class ServiceManager implements Agent {
     private boolean isReadOnly = false;
     private Indexer indexer;
     private Consumer<String> logger;
-    private final Context context;
+    private Context context;
 
     private boolean isClassMeteringEnabled = true;
     private boolean isFullLogEnabled = false;
@@ -70,6 +70,8 @@ public class ServiceManager implements Agent {
                 StepCost.LOG_BASE, BigInteger.valueOf(5000)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
+        long revision = IExternalState.REVISION_PURGE_ENUM_CACHE;
+        info.put(Info.REVISION, revision);
         stepCost = new StepCost(stepCosts);
     }
 
@@ -662,5 +664,17 @@ public class ServiceManager implements Agent {
         public void handleMessages() throws IOException {
             waitFor(EEProxy.MsgType.RESULT);
         }
+    }
+
+    public State getStateCopy() {
+        return new State(context.getState());
+    }
+
+    public State getState() {
+        return context.getState();
+    }
+
+    public void setState(State state) {
+        context = new Context(context.getOrigin(), state);
     }
 }
