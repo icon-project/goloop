@@ -14,10 +14,6 @@ public class InternedClasses {
         this.internedClassWrappers = new IdentityHashMap<>();
     }
 
-    public InternedClasses(InternedClasses src) {
-        this.internedClassWrappers = new IdentityHashMap<>(src.internedClassWrappers);
-    }
-
     public <T> s.java.lang.Class<T> get(Class<T> underlyingClass) {
         s.java.lang.Class<?> internedClass = this.internedClassWrappers.get(underlyingClass);
         if (null == internedClass) {
@@ -25,5 +21,11 @@ public class InternedClasses {
             this.internedClassWrappers.put(underlyingClass, internedClass);
         }
         return (s.java.lang.Class<T>)internedClass;
+    }
+
+    public void purgeEnumCaches() {
+        for (var cls : internedClassWrappers.values()) {
+            cls.purgeEnumCache();
+        }
     }
 }

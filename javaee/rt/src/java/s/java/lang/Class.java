@@ -146,4 +146,9 @@ public final class Class<T> extends Object implements Serializable {
     public String getName() {
         return new s.java.lang.String(ClassNameExtractor.getOriginalClassName(v.getName()));
     }
+
+    public void purgeEnumCache() {
+        enumConstantDirectory = null;
+        enumConstants = null;
+    }
 }

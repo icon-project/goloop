@@ -19,7 +19,11 @@ public class Loader {
         var dapp = cache.remove(es.getCodeID(), da ->
                 da.hasSameGraphHash(es.getObjectGraphHash())
         );
-        if (dapp == null) {
+        if (dapp != null) {
+            if (es.purgeEnumCache()) {
+                dapp.getInternedClasses().purgeEnumCaches();
+            }
+        } else {
             byte[] code;
             try {
                 code = es.getTransformedCode();
