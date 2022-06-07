@@ -33,6 +33,7 @@ const (
 	LegacyNoTimeout
 	FixLostFeeByDeposit
 	MultipleFeePayers
+	PurgeEnumCache
 	LastRevisionBit
 )
 
