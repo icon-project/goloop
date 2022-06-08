@@ -677,4 +677,8 @@ public class ServiceManager implements Agent {
     public void setState(State state) {
         context = new Context(context.getOrigin(), state);
     }
+
+    public Map<String, Object> getInfo() {
+        return info;
+    }
 }

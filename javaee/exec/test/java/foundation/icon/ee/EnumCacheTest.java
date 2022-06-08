@@ -16,7 +16,11 @@
 
 package foundation.icon.ee;
 
+import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.Status;
+import org.aion.avm.core.IExternalState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Address;
@@ -108,5 +112,20 @@ public class EnumCacheTest extends SimpleTest {
         c.invoke("callDontUseValueOf");
         var nextHashAfter3 = sm.getState().getAccount(c.getAddress()).getContract().getNextHash();
         Assertions.assertEquals(nextHashAfter3, nextHashAfter);
+    }
+
+    @Test
+    void rerunFlag() {
+        var info = sm.getInfo();
+        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
+        info.put(EEProxy.Info.REVISION, flag);
+
+        var c = sm.mustDeploy(Score.class);
+        var res = c.tryInvoke("useValueOf");
+        Assertions.assertEquals(Status.FlagRerun, res.getStatus());
+
+        // contract is still in cache
+        res = c.tryInvoke("useValueOf");
+        Assertions.assertEquals(Status.Success, res.getStatus());
     }
 }
