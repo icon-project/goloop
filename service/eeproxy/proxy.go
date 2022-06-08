@@ -67,7 +67,7 @@ type CallContext interface {
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte) error
-	OnResult(status error, steps *big.Int, result *codec.TypedObj)
+	OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, dataType string, dataObj *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
 	OnSetFeeProportion(portion int)
@@ -297,6 +297,15 @@ func (p *proxy) GetAPI(ctx CallContext, code string) error {
 	return p.conn.Send(msgGETAPI, code)
 }
 
+const (
+	CodeBits = 24
+	CodeMask = (1 << CodeBits) - 1
+)
+
+func StatusToCodeAndFlag(code errors.Code) (errors.Code, int) {
+	return code & CodeMask, int(code >> CodeBits)
+}
+
 type resultMessage struct {
 	Status   errors.Code
 	StepUsed common.HexInt
@@ -399,6 +408,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 
 		var status error
 		var result *codec.TypedObj
+		var statusFlag int
+		m.Status, statusFlag = StatusToCodeAndFlag(m.Status)
 		if m.Status == errors.Success {
 			status = nil
 			result = m.Result
@@ -407,7 +418,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			status = m.Status.New(msg)
 			result = nil
 		}
-		frame.ctx.OnResult(status, &m.StepUsed.Int, result)
+		frame.ctx.OnResult(status, statusFlag, &m.StepUsed.Int, result)
 
 		return p.tryToBeReady()
 	case msgGETVALUE:
@@ -625,7 +636,7 @@ func (p *proxy) OnClose() {
 		frame := p.frame
 		status := errors.ExecutionFailError.New("ProxyIsClosed")
 		l.CallAfterUnlock(func() {
-			frame.ctx.OnResult(status, new(big.Int), nil)
+			frame.ctx.OnResult(status, 0, new(big.Int), nil)
 		})
 	}
 

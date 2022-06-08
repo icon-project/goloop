@@ -303,7 +303,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.ContractState) 
 
 	status, result, step := Invoke(score, h.method.Name, h.paramObj)
 	go func() {
-		h.ch.OnResult(status, step, result)
+		h.ch.OnResult(status, 0, step, result)
 	}()
 
 	return nil
@@ -394,7 +394,7 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 		h.Log.Tracef("Execution RESULT last=%d eid=%d", last, eid)
 		return h.conn.SendResult(h, status, steps, result, eid, last)
 	} else {
-		h.cc.OnResult(status, steps, result, nil)
+		h.cc.OnResult(status, 0, steps, result, nil)
 		return nil
 	}
 }
@@ -555,9 +555,9 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 	return nil
 }
 
-func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (h *CallHandler) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	h.TLogDone(status, steps, result)
-	h.cc.OnResult(status, steps, result, nil)
+	h.cc.OnResult(status, ResultFlag(flag), steps, result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
@@ -589,7 +589,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 			steps = limit
 		}
 		if err := h.SendResult(err, steps, nil); err != nil {
-			h.ch.OnResult(err, h.cc.StepAvailable(), nil)
+			h.ch.OnResult(err, 0, h.cc.StepAvailable(), nil)
 		}
 	} else {
 		h.cc.OnCall(handler, limit)
@@ -684,7 +684,7 @@ func (h *TransferAndCallHandler) DoExecuteAsync(cc CallContext, ch eeproxy.CallC
 						return err
 					}
 					go func() {
-						ch.OnResult(nil, new(big.Int), nil)
+						ch.OnResult(nil, 0, new(big.Int), nil)
 					}()
 					return nil
 				}

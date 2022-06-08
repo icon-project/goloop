@@ -90,7 +90,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			})
 			ctx.UpdateSystemInfo()
 			wvs := ctx.WorldVirtualState()
-			for trials := RetryCount + 1; trials > 0; trials -= 1 {
+			for retry := 0; ; retry++ {
 				rct, err := txh.Execute(ctx, false)
 				txh.Dispose()
 				if err == nil {
@@ -101,8 +101,14 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 					break
 				}
 
-				if !errors.ExecutionFailError.Equals(err) || trials <= 1 {
-					t.log.Debugf("Fail to execute transaction err=%+v", err)
+				if !errors.ExecutionFailError.Equals(err) && !errors.CriticalRerunError.Equals(err) {
+					t.log.Warnf("Fail to execute transaction err=%+v", err)
+					ec.Report(err)
+					break
+				}
+
+				if retry >= RetryCount {
+					t.log.Warnf("Fail to execute transaction retry=%d err=%+v", retry, err)
 					ec.Report(err)
 					break
 				}

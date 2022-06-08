@@ -23,12 +23,18 @@ const (
 	InterCallLimit = 1024
 )
 
+type ResultFlag int
+
+const (
+	ResultForceRerun ResultFlag = 1 << iota
+)
+
 type (
 	CallContext interface {
 		Context
 		QueryMode() bool
 		Call(handler ContractHandler, limit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address)
-		OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
+		OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(handler ContractHandler, limit *big.Int)
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
@@ -56,6 +62,8 @@ type (
 		GetRedeemLogs(r txresult.Receipt) bool
 		ClearRedeemLogs()
 		DoIOTask(func())
+		ResultFlags() ResultFlag
+		IsTrace() bool
 	}
 	callResultMessage struct {
 		status   error
@@ -87,6 +95,8 @@ type callContext struct {
 	executor *eeproxy.Executor
 	nextEID  int
 	nextFID  int
+
+	resultFlags ResultFlag
 
 	lock   sync.Mutex
 	frame  *callFrame
@@ -402,7 +412,7 @@ func (cc *callContext) handleResult(target *callFrame, status error, result *cod
 	if ach, ok := parent.handler.(AsyncContractHandler); ok {
 		err := ach.SendResult(status, current.getStepUsed(), result)
 		if err != nil {
-			cc.OnResult(err, parent.getStepAvailable(), nil, nil)
+			cc.OnResult(err, 0, parent.getStepAvailable(), nil, nil)
 		}
 		return true
 	} else {
@@ -410,7 +420,8 @@ func (cc *callContext) handleResult(target *callFrame, status error, result *cod
 	}
 }
 
-func (cc *callContext) OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) {
+func (cc *callContext) OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) {
+	cc.resultFlags |= flags
 	cc.sendMessage(&callResultMessage{
 		status:   status,
 		stepUsed: stepUsed,
@@ -610,4 +621,12 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 
 	top, _ := cc.GetProperty(name).(CustomLogs)
 	return cc.frame.getFrameData(name, ot, top)
+}
+
+func (cc *callContext) ResultFlags() ResultFlag {
+	return cc.resultFlags
+}
+
+func (cc *callContext) IsTrace() bool {
+	return cc.log.IsTrace()
 }
