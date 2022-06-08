@@ -8,4 +8,5 @@ public interface FrameContext {
     boolean waitForRefund();
     void setStatusFlag(int rerun);
     int getStatusFlag();
+    boolean isDeployFrame();
 }

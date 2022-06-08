@@ -106,7 +106,9 @@ public final class Class<T> extends Object implements Serializable {
                     enumConstants = constants;
                     var fc = IInstrumentation.attachedThreadInstrumentation.get().getFrameContext();
                     if (fc.getExternalState().forceEnumCache()) {
-                        fc.setStatusFlag(fc.getStatusFlag()|Status.FlagRerun);
+                        if (!fc.isDeployFrame()) {
+                            fc.setStatusFlag(fc.getStatusFlag()|Status.FlagRerun);
+                        }
                     }
                 }
             } catch (InvocationTargetException e) {
