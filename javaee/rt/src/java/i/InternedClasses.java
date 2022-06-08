@@ -1,5 +1,6 @@
 package i;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
 
@@ -9,6 +10,7 @@ import java.util.IdentityHashMap;
  */
 public class InternedClasses {
     private final IdentityHashMap<Class<?>, s.java.lang.Class<?>> internedClassWrappers;
+    private final ArrayList<s.java.lang.Class<?>> enums = new ArrayList<>();
 
     public InternedClasses() {
         this.internedClassWrappers = new IdentityHashMap<>();
@@ -19,12 +21,15 @@ public class InternedClasses {
         if (null == internedClass) {
             internedClass = new s.java.lang.Class<>(underlyingClass);
             this.internedClassWrappers.put(underlyingClass, internedClass);
+            if (underlyingClass.getSuperclass() == s.java.lang.Enum.class) {
+                enums.add(internedClass);
+            }
         }
         return (s.java.lang.Class<T>)internedClass;
     }
 
     public void purgeEnumCaches() {
-        for (var cls : internedClassWrappers.values()) {
+        for (var cls : enums) {
             cls.purgeEnumCache();
         }
     }
