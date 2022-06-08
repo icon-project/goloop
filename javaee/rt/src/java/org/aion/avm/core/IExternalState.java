@@ -192,4 +192,8 @@ public interface IExternalState {
     default boolean purgeEnumCache() {
         return (getRevision() & REVISION_PURGE_ENUM_CACHE) != 0;
     }
+
+    default boolean forceEnumCache() {
+        return !purgeEnumCache();
+    }
 }
