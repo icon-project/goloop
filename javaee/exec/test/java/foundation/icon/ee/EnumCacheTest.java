@@ -73,6 +73,27 @@ public class EnumCacheTest extends SimpleTest {
         }
     }
 
+    public static class Score2 {
+        int state;
+        final Address address;
+
+        public enum Dir {
+            N, E, W, S
+        }
+
+        public Score2() {
+            var v = Dir.valueOf("N");
+            address = Context.getAddress();
+        }
+
+        @External
+        public void f() {
+            // to include values() method
+            var vv = Dir.values();
+        }
+    }
+
+
     @Test
     void nextHashMustBeSame() {
         var c = sm.mustDeploy(Score.class);
@@ -127,5 +148,29 @@ public class EnumCacheTest extends SimpleTest {
         // contract is still in cache
         res = c.tryInvoke("useValueOf");
         Assertions.assertEquals(Status.Success, res.getStatus());
+    }
+
+    @Test
+    void rerunShallNotBeSetOnDeploy() {
+        var info = sm.getInfo();
+        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
+        info.put(EEProxy.Info.REVISION, flag);
+
+        var s1 = sm.getStateCopy();
+        var res = sm.tryDeploy(Score2.class);
+        Assertions.assertEquals(0, res.getStatus());
+    }
+
+    @Test
+    void sameStepCost() {
+        var info = sm.getInfo();
+        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
+        info.put(EEProxy.Info.REVISION, flag);
+
+        var res = sm.tryDeploy(Score2.class);
+        Assertions.assertEquals(0, res.getStatus());
+
+        var res2 = sm.tryDeploy(Score2.class);
+        Assertions.assertEquals(res.getStepUsed(), res2.getStepUsed());
     }
 }

@@ -132,6 +132,12 @@ public class ServiceManager implements Agent {
         return doMustDeploy(jar, null, params);
     }
 
+    public Result tryDeploy(Class<?> main, Object... params) {
+        byte[] jar = makeJar(main);
+        return doDeploy(null, BigInteger.ZERO, stepLimit,
+                "application/java", jar, null, params);
+    }
+
     public Result tryDeploy(byte[] jar, Object... params) {
         return doDeploy(null, BigInteger.ZERO, stepLimit,
                 "application/java", jar, null, params);
