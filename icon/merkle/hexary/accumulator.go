@@ -204,7 +204,7 @@ func NewAccumulator(
 	}
 	ba := &accumulator{
 		treeBucket:         treeBucket,
-		accumulatorBucket:  db.NewCodedBucketFromBucket(accumulatorBucket, nil),
+		accumulatorBucket:  db.NewCodedBucketFromBucket(accumulatorBucket, nil, nil),
 		accumulatorDataKey: []byte(accumulatorDataKey),
 	}
 	err := ba.accumulatorBucket.Get(db.Raw(accumulatorDataKey), &ba.data)
