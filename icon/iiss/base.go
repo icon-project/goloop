@@ -462,6 +462,11 @@ func RegisterBaseTx() {
 	})
 }
 
+func CheckBaseTX(tx module.Transaction) bool {
+	_, ok := transaction.Unwrap(tx).(*baseV3)
+	return ok
+}
+
 func (es *ExtensionStateImpl) OnBaseTx(cc icmodule.CallContext, data []byte) error {
 	if err := es.handleICXIssue(cc, data); err != nil {
 		return err

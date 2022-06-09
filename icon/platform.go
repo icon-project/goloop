@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/consensus"
@@ -115,6 +116,29 @@ func (p *platform) NewBaseTransaction(wc state.WorldContext) (module.Transaction
 func (p *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger) {
 	// Start background calculator if it's not started.
 	p.calculator.Start(ess, logger)
+}
+
+func checkBaseTX(txs module.TransactionList) bool {
+	tx, err := txs.Get(0)
+	if err == nil {
+		return iiss.CheckBaseTX(tx)
+	} else {
+		return false
+	}
+}
+
+func (p *platform) OnValidateTransactions(wc state.WorldContext, patches, txs module.TransactionList) error {
+	es := p.getExtensionState(wc, nil)
+	needBaseTX := es != nil && es.IsDecentralized()
+	if hasBaseTX := checkBaseTX(txs); needBaseTX == hasBaseTX {
+		return nil
+	} else {
+		if needBaseTX {
+			return errors.IllegalArgumentError.New("NoBaseTransaction")
+		} else {
+			return errors.IllegalArgumentError.New("InvalidBaseTransaction")
+		}
+	}
 }
 
 func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
