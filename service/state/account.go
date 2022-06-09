@@ -223,8 +223,8 @@ func (s *accountData) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
 
 func (s *accountData) String() string {
 	if s.IsContract() {
-		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v}",
-			s.balance, s.state, s.curContract, s.nextContract, s.store)
+		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v obj=%v}",
+			s.balance, s.state, s.curContract, s.nextContract, s.store, s.objGraph)
 	} else {
 		return fmt.Sprintf("Account{balance=%d state=%d}", s.balance, s.state)
 	}
@@ -497,6 +497,10 @@ func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
 		return nil
 	}
 	return s.nextContract
+}
+
+func (s *accountSnapshotImpl) Store() trie.Immutable {
+	return s.store
 }
 
 func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
