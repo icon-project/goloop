@@ -75,11 +75,11 @@ func (f *fastSyncer) Start() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, &f.r1, consensus.CsProtocols, consensus.ConfigEnginePriority)
+	_, err := f.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, &f.r1, consensus.CsProtocols, consensus.ConfigEnginePriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		return err
 	}
-	_, err = f.c.NetworkManager().RegisterReactor("consensus.sync", module.ProtoConsensusSync, &f.r2, consensus.SyncerProtocols, consensus.ConfigSyncerPriority)
+	_, err = f.c.NetworkManager().RegisterReactor("consensus.sync", module.ProtoConsensusSync, &f.r2, consensus.SyncerProtocols, consensus.ConfigSyncerPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		return err
 	}
