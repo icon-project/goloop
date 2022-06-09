@@ -80,17 +80,18 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 
 		ec.Ready()
 		go func(ctx contract.Context, wc state.WorldContext, txo transaction.Transaction, cnt int, rb *txresult.Receipt) {
-			ctx.SetTransactionInfo(&state.TransactionInfo{
-				Group:     txo.Group(),
-				Index:     int32(cnt),
-				Timestamp: txo.Timestamp(),
-				Nonce:     txo.Nonce(),
-				Hash:      txo.ID(),
-				From:      txo.From(),
-			})
-			ctx.UpdateSystemInfo()
 			wvs := ctx.WorldVirtualState()
+			wvss := wvs.GetSnapshot()
 			for retry := 0; ; retry++ {
+				ctx.SetTransactionInfo(&state.TransactionInfo{
+					Group:     txo.Group(),
+					Index:     int32(cnt),
+					Timestamp: txo.Timestamp(),
+					Nonce:     txo.Nonce(),
+					Hash:      txo.ID(),
+					From:      txo.From(),
+				})
+				ctx.UpdateSystemInfo()
 				rct, err := txh.Execute(ctx, false)
 				txh.Dispose()
 				if err == nil {
@@ -114,6 +115,11 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 				}
 
 				t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+				if err := wvs.Reset(wvss); err != nil {
+					t.log.Errorf("Fail to revert status on rerun err=%+v", err)
+					ec.Report(errors.CriticalUnknownError.Wrapf(err, "FailToResetForRetry"))
+					break
+				}
 
 				txh, err = txo.GetHandler(t.cm)
 				if err != nil {
