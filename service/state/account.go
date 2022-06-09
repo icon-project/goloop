@@ -221,18 +221,18 @@ func (s *accountData) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
 	return s.deposits.ToJSON(dc, v)
 }
 
-func (s *accountData) String() string {
+type accountSnapshotImpl struct {
+	accountData
+	objGraph *objectGraph
+}
+
+func (s *accountSnapshotImpl) String() string {
 	if s.IsContract() {
 		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v obj=%v}",
 			s.balance, s.state, s.curContract, s.nextContract, s.store, s.objGraph)
 	} else {
 		return fmt.Sprintf("Account{balance=%d state=%d}", s.balance, s.state)
 	}
-}
-
-type accountSnapshotImpl struct {
-	accountData
-	objGraph *objectGraph
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {
@@ -500,7 +500,7 @@ func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
 }
 
 func (s *accountSnapshotImpl) Store() trie.Immutable {
-	return s.store
+	return s.store.(trie.Immutable)
 }
 
 func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
