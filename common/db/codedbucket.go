@@ -20,12 +20,12 @@ import (
 	"bytes"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 )
 
 type CodedBucket struct {
 	dbBucket Bucket
+	hasher   Hasher
 	codec    codec.Codec
 }
 
@@ -36,6 +36,7 @@ func NewCodedBucket(database Database, id BucketID, c codec.Codec) (*CodedBucket
 		return nil, err
 	}
 	b.dbBucket = dbb
+	b.hasher = id.Hasher()
 	if c == nil {
 		c = codec.BC
 	}
@@ -43,9 +44,13 @@ func NewCodedBucket(database Database, id BucketID, c codec.Codec) (*CodedBucket
 	return b, nil
 }
 
-func NewCodedBucketFromBucket(bk Bucket, c codec.Codec) *CodedBucket {
+func NewCodedBucketFromBucket(bk Bucket, hasher Hasher, c codec.Codec) *CodedBucket {
 	b := &CodedBucket{}
 	b.dbBucket = bk
+	if hasher == nil {
+		hasher = sha3Hasher{}
+	}
+	b.hasher = hasher
 	if c == nil {
 		c = codec.BC
 	}
@@ -105,7 +110,7 @@ func (b *CodedBucket) Put(value interface{}) error {
 	if err != nil {
 		return err
 	}
-	keyBS := crypto.SHA3Sum256(valueBS)
+	keyBS := b.hasher.Hash(valueBS)
 	err = b.dbBucket.Set(keyBS, valueBS)
 	if err != nil {
 		err = errors.Wrap(err, "Fail to set KV DB")

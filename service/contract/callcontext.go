@@ -23,12 +23,18 @@ const (
 	InterCallLimit = 1024
 )
 
+type ResultFlag int
+
+const (
+	ResultForceRerun ResultFlag = 1 << iota
+)
+
 type (
 	CallContext interface {
 		Context
 		QueryMode() bool
 		Call(handler ContractHandler, limit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address)
-		OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
+		OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(handler ContractHandler, limit *big.Int)
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
@@ -56,6 +62,8 @@ type (
 		GetRedeemLogs(r txresult.Receipt) bool
 		ClearRedeemLogs()
 		DoIOTask(func())
+		ResultFlags() ResultFlag
+		IsTrace() bool
 	}
 	callResultMessage struct {
 		status   error
@@ -88,6 +96,8 @@ type callContext struct {
 	nextEID  int
 	nextFID  int
 
+	resultFlags ResultFlag
+
 	lock   sync.Mutex
 	frame  *callFrame
 	waiter chan interface{}
@@ -96,8 +106,6 @@ type callContext struct {
 	timer   <-chan time.Time
 	ioStart *time.Time
 	ioTime  time.Duration
-
-	payers *stepPayers
 
 	log *trace.Logger
 }
@@ -164,6 +172,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
+			frame.parent.applyFeePayerInfoOf(frame)
 		} else {
 			cc.Reset(frame.snapshot)
 		}
@@ -403,7 +412,7 @@ func (cc *callContext) handleResult(target *callFrame, status error, result *cod
 	if ach, ok := parent.handler.(AsyncContractHandler); ok {
 		err := ach.SendResult(status, current.getStepUsed(), result)
 		if err != nil {
-			cc.OnResult(err, parent.getStepAvailable(), nil, nil)
+			cc.OnResult(err, 0, parent.getStepAvailable(), nil, nil)
 		}
 		return true
 	} else {
@@ -411,7 +420,8 @@ func (cc *callContext) handleResult(target *callFrame, status error, result *cod
 	}
 }
 
-func (cc *callContext) OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) {
+func (cc *callContext) OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) {
+	cc.resultFlags |= flags
 	cc.sendMessage(&callResultMessage{
 		status:   status,
 		stepUsed: stepUsed,
@@ -465,6 +475,7 @@ func (cc *callContext) GetProxy(eeType state.EEType) eeproxy.Proxy {
 func (cc *callContext) Dispose() {
 	if cc.executor != nil {
 		cc.executor.Release()
+		cc.executor = nil
 	}
 }
 
@@ -585,34 +596,23 @@ func (cc *callContext) SetFeeProportion(addr module.Address, portion int) {
 	defer cc.lock.Unlock()
 
 	if cc.frame.fid == firstFID {
-		if portion == 0 {
-			cc.payers = nil
-		} else {
-			cc.payers = &stepPayers{
-				payer: addr, portion: portion,
-			}
-		}
+		// delegate SetFeeProportion of the first frame to the base frame
+		cc.frame.parent.feePayers.SetFeeProportion(addr, portion)
+	} else if cc.Revision().Has(module.MultipleFeePayers) {
+		cc.frame.feePayers.SetFeeProportion(addr, portion)
 	}
 }
 
 func (cc *callContext) RedeemSteps(s *big.Int) (*big.Int, error) {
-	if cc.payers != nil {
-		return cc.payers.PaySteps(cc, s)
-	}
-	return nil, nil
+	return cc.frame.feePayers.PaySteps(cc, s)
 }
 
 func (cc *callContext) GetRedeemLogs(r txresult.Receipt) bool {
-	if cc.payers != nil {
-		return cc.payers.GetLogs(r)
-	}
-	return false
+	return cc.frame.feePayers.GetLogs(r)
 }
 
 func (cc *callContext) ClearRedeemLogs() {
-	if cc.payers != nil {
-		cc.payers.ClearLogs()
-	}
+	cc.frame.feePayers.ClearLogs()
 }
 
 func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
@@ -623,37 +623,10 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 	return cc.frame.getFrameData(name, ot, top)
 }
 
-type stepPayers struct {
-	payer   module.Address
-	portion int
-	steps   *big.Int
-	deposit *big.Int
+func (cc *callContext) ResultFlags() ResultFlag {
+	return cc.resultFlags
 }
 
-func (p *stepPayers) PaySteps(cc CallContext, s *big.Int) (*big.Int, error) {
-	sp := new(big.Int).SetInt64(int64(p.portion))
-	sp.Mul(sp, s).Div(sp, big.NewInt(100))
-	as := cc.GetAccountState(p.payer.ID())
-	steps, deposit, err := as.PaySteps(cc, sp)
-	if err != nil {
-		return nil, err
-	}
-	if steps != nil && steps.Sign() > 0 {
-		p.steps = steps
-		p.deposit = deposit
-	}
-	return steps, nil
-}
-
-func (p *stepPayers) GetLogs(r txresult.Receipt) bool {
-	if p.steps != nil {
-		r.AddPayment(p.payer, p.steps, p.deposit)
-		return true
-	}
-	return false
-}
-
-func (p *stepPayers) ClearLogs() {
-	p.steps = nil
-	p.deposit = nil
+func (cc *callContext) IsTrace() bool {
+	return cc.log.IsTrace()
 }

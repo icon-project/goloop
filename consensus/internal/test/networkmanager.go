@@ -73,7 +73,7 @@ func (nm *NetworkManager) GetPeers() []module.PeerID {
 	return res
 }
 
-func (nm *NetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (nm *NetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	nm.Lock()
 	defer nm.Unlock()
 
@@ -87,8 +87,8 @@ func (nm *NetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, r
 	return &tProtocolHandler{nm, r}, nil
 }
 
-func (nm *NetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	return nm.RegisterReactor(name, pi, reactor, piList, priority)
+func (nm *NetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
+	return nm.RegisterReactor(name, pi, reactor, piList, priority, policy)
 }
 
 func (nm *NetworkManager) Join(nm2 *NetworkManager) {

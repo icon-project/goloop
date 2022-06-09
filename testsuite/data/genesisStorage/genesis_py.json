@@ -1,0 +1,22 @@
+{
+  "accounts": [
+    {
+      "address": "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd",
+      "balance": "0x2961fff8ca4a62327800000",
+      "name": "god"
+    },
+    {
+      "address": "hx1000000000000000000000000000000000000000",
+      "balance": "0x0",
+      "name": "treasury"
+    }
+  ],
+  "chain": {
+    "revision": "0x8",
+    "validatorList": [
+      "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"
+    ]
+  },
+  "message": "genesis for CI tests",
+  "nid": "0x1"
+}

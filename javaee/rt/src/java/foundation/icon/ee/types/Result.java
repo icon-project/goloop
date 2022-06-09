@@ -42,12 +42,20 @@ public class Result {
         this(status, BigInteger.valueOf(stepUsed), ret, 0, 0);
     }
 
+    public Result updateStatus(int status) {
+        return new Result(status, stepUsed, ret, eid, prevEID);
+    }
+
     public Result updateRet(Object ret) {
         return new Result(status, stepUsed, ret, eid, prevEID);
     }
 
     public int getStatus() {
         return status;
+    }
+
+    public int getStatusCode() {
+        return status & Status.CodeMask;
     }
 
     public BigInteger getStepUsed() {

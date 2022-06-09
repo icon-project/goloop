@@ -19,7 +19,6 @@ package foundation.icon.test.cases;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -41,12 +40,16 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class FeeSharingTest extends TestBase {
     private static TransactionHandler txHandler;
@@ -54,6 +57,7 @@ public class FeeSharingTest extends TestBase {
     private static GovScore.Fee fee;
     private static KeyWallet ownerWallet;
     private static KeyWallet aliceWallet;
+    private static ChainScore chainScore;
 
     @BeforeAll
     static void setup() throws Exception {
@@ -76,6 +80,7 @@ public class FeeSharingTest extends TestBase {
         ensureIcxBalance(txHandler, aliceWallet.getAddress(), BigInteger.ZERO, ICX);
 
         LOG.infoEntering("initSteps");
+        chainScore = new ChainScore(txHandler);
         govScore = new GovScore(txHandler);
         fee = govScore.getFee();
         StepTest.initStepCosts(govScore);
@@ -133,29 +138,36 @@ public class FeeSharingTest extends TestBase {
         LOG.infoEntering("invoke", "setValue() before adding deposit");
         FeeShareScore feeShareAlice = new FeeShareScore(feeShareOwner, aliceWallet);
         BigInteger aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        BigInteger treasuryBalance = txHandler.getBalance(Constants.TREASURY_ADDRESS);
         result = feeShareAlice.setValue("alice #1");
         assertSuccess(result);
         LOG.info("value: " + feeShareAlice.getValue());
         // check if the balance was decreased
-        aliceBalance = subtractFee(aliceBalance, result);
-        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance);
+        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), subtractFee(aliceBalance, result));
+        // check the treasury balance
+        treasuryBalance = ensureIcxBalance(Constants.TREASURY_ADDRESS, addFee(treasuryBalance, result));
         LOG.infoExiting();
 
-        // add deposit to SCORE
-        BigInteger depositAmount = IconAmount.of("5000", IconAmount.Unit.ICX).toLoop();
+        // add deposit 2000 to SCORE
+        BigInteger depositAmount = IconAmount.of("2000", IconAmount.Unit.ICX).toLoop();
         LOG.infoEntering("addDeposit", depositAmount.toString());
         result = feeShareOwner.addDeposit(depositAmount);
         assertSuccess(result);
-        ownerBalance = subtractFee(ownerBalance, result);
-        Bytes depositId = result.getTxHash();
         printDepositInfo(feeShareOwner.getAddress());
         // check eventlog validity
         assertTrue(EventLog.checkScenario(List.of(
                 new EventLog(feeShareOwner.getAddress().toString(),
                         "DepositAdded(bytes,Address,int,int)",
-                        depositId.toString(), ownerWallet.getAddress().toString(),
-                        "0x" + depositAmount.toString(16), "0x20")),
+                        "0x", ownerWallet.getAddress().toString(),
+                        "0x" + depositAmount.toString(16), "0x0")),
                 result));
+        // check the owner balance
+        ownerBalance = subtractFee(ownerBalance.subtract(depositAmount), result);
+        ensureIcxBalance(ownerWallet.getAddress(), ownerBalance);
+        // check the SCORE balance
+        ensureIcxBalance(feeShareOwner.getAddress(), BigInteger.ZERO);
+        // check the treasury balance
+        treasuryBalance = ensureIcxBalance(Constants.TREASURY_ADDRESS, addFee(treasuryBalance, result));
         LOG.infoExiting();
 
         // set value after adding deposit (user balance should be decreased by the proportion)
@@ -169,8 +181,11 @@ public class FeeSharingTest extends TestBase {
         // check if the balance was decreased by the proportion
         var stepUsedByScore = result.getStepUsed().multiply(proportion).divide(BigInteger.valueOf(100));
         var stepUsedByUser = result.getStepUsed().subtract(stepUsedByScore);
-        var fee = stepUsedByUser.multiply(result.getStepPrice());
-        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance.subtract(fee));
+        LOG.info("stepUsed proportion: [" + stepUsedByScore + ", " + stepUsedByUser + "]");
+        var depositRemain = depositAmount.subtract(stepUsedByScore.multiply(result.getStepPrice()));
+        var userFee = stepUsedByUser.multiply(result.getStepPrice());
+        aliceBalance = ensureIcxBalance(aliceWallet.getAddress(), aliceBalance.subtract(userFee));
+        treasuryBalance = ensureIcxBalance(Constants.TREASURY_ADDRESS, addFee(treasuryBalance, result));
         printDepositInfo(feeShareOwner.getAddress());
         // check eventlog validity
         assertTrue(EventLog.checkScenario(List.of(
@@ -180,26 +195,26 @@ public class FeeSharingTest extends TestBase {
                 result));
         LOG.infoExiting();
 
-        var penalty = stepUsedByScore.multiply(result.getStepPrice());
-        var returnAmount = depositAmount.subtract(penalty);
-
-        // withdraw the deposit
-        LOG.infoEntering("withdrawDeposit", depositId.toString());
-        result = feeShareOwner.withdrawDeposit(depositId);
+        // withdraw the whole deposit
+        LOG.infoEntering("withdrawDeposit", "amount=all");
+        result = feeShareOwner.withdrawDeposit();
         assertSuccess(result);
-        ownerBalance = subtractFee(ownerBalance, result);
         printDepositInfo(feeShareOwner.getAddress());
         // check eventlog validity
         assertTrue(EventLog.checkScenario(List.of(
                 new EventLog(feeShareOwner.getAddress().toString(),
                         "DepositWithdrawn(bytes,Address,int,int)",
-                        depositId.toString(), ownerWallet.getAddress().toString(),
-                        "0x" + returnAmount.toString(16), "0x" + penalty.toString(16))),
+                        "0x", ownerWallet.getAddress().toString(),
+                        "0x" + depositRemain.toString(16), "0x0")),
                 result));
-        LOG.infoExiting();
-
         // check the owner balance
-        assertEquals(ownerBalance.subtract(penalty), txHandler.getBalance(ownerWallet.getAddress()));
+        ownerBalance = subtractFee(ownerBalance.add(depositRemain), result);
+        ensureIcxBalance(ownerWallet.getAddress(), ownerBalance);
+        // check the SCORE balance
+        ensureIcxBalance(feeShareOwner.getAddress(), BigInteger.ZERO);
+        // check the treasury balance
+        treasuryBalance = ensureIcxBalance(Constants.TREASURY_ADDRESS, addFee(treasuryBalance, result));
+        LOG.infoExiting();
 
         // set value after withdrawing deposit (user balance should be decreased again)
         LOG.infoEntering("invoke", "setValue() after withdrawing deposit");
@@ -208,7 +223,14 @@ public class FeeSharingTest extends TestBase {
         LOG.info("value: " + feeShareAlice.getValue());
         // check if the balance was decreased
         ensureIcxBalance(aliceWallet.getAddress(), subtractFee(aliceBalance, result));
+        // check the treasury balance
+        ensureIcxBalance(Constants.TREASURY_ADDRESS, addFee(treasuryBalance, result));
         LOG.infoExiting();
+    }
+
+    private BigInteger addFee(BigInteger balance, TransactionResult result) {
+        BigInteger fee = result.getStepUsed().multiply(result.getStepPrice());
+        return balance.add(fee);
     }
 
     private BigInteger subtractFee(BigInteger balance, TransactionResult result) {
@@ -235,7 +257,6 @@ public class FeeSharingTest extends TestBase {
     }
 
     private void printDepositInfo(Address scoreAddress) throws IOException {
-        ChainScore chainScore = new ChainScore(txHandler);
         RpcItem status = chainScore.getScoreStatus(scoreAddress);
         RpcItem item = status.asObject().getItem("depositInfo");
         if (item != null) {
@@ -266,5 +287,167 @@ public class FeeSharingTest extends TestBase {
         } else {
             LOG.info("depositInfo NULL");
         }
+    }
+
+    @Tag(Constants.TAG_JAVA_GOV)
+    @Test
+    public void testJavaSystemDeposit() throws Exception {
+        testSystemDeposit(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    @Tag(Constants.TAG_PY_GOV)
+    @Test
+    public void testPythonSystemDeposit() throws Exception {
+        testSystemDeposit(Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    @Test
+    public void testSystemDeposit(String contentType) throws Exception {
+        LOG.infoEntering("testSystemDeposit:" + contentType);
+        var revision = chainScore.getRevision();
+        if (revision < 8) {
+            LOG.info("Nothing to test on revision=" + revision);
+            LOG.infoExiting();
+            return;
+        }
+
+        LOG.infoEntering("Ensure Revision 9");
+        if (revision == 8) {
+            LOG.info("setRevision(9)");
+            var result = govScore.setRevision(9);
+            assertSuccess(result);
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy contracts");
+        var feeScore1 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        var feeScore2 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        var feeScoreAlice = new FeeShareScore(feeScore1, aliceWallet);
+        LOG.infoExiting();
+
+        BigInteger aliceExpect = txHandler.getBalance(aliceWallet.getAddress());
+        BigInteger aliceBalance;
+        BigInteger systemDepositUsage = chainScore.getSystemDepositUsage();
+
+        TransactionResult result;
+
+        LOG.infoEntering("Case1: LAYER1(NO DEPOSIT) LAYER2(NO DEPOSIT)");
+
+        LOG.info("Calling setValues(TEST) without system deposit");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+        assertNull(result.getStepUsedDetails());
+        aliceExpect = subtractFee(aliceExpect, result);
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case2: LAYER1(NO DEPOSIT) LAYER2(100% SYSTEM DEPOSIT)");
+
+        LOG.info("Set UseSystemDeposit on " + feeScore2.getAddress().toString());
+        // Fee of secondary contract is paid by the system
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), true);
+        feeScore2.addToWhitelist(feeScore1.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues()");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        var feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1,
+                aliceWallet.getAddress().toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        var sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+        aliceExpect = aliceExpect.subtract(feeMap.get(aliceWallet.getAddress().toString()));
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case3: LAYER1(100% SYSTEM DEPOSIT) LAYER2(NO DEPOSIT)");
+
+        LOG.info("Set UseSystemDeposit only on " + feeScore1.getAddress().toString());
+        // All Fee is paid by system in the first contract
+        govScore.setUseSystemDeposit(feeScore1.getAddress(), true);
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), false);
+        feeScore1.addToWhitelist(aliceWallet.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues()");
+        result = feeScoreAlice.setValues("TEST", new Address[]{feeScore2.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+
+        LOG.infoExiting();
+
+        LOG.infoEntering("Case4: NO -> SYSTEM -> SCORE -> NO");
+
+        var feeScore3 = FeeShareScore.mustDeploy(txHandler, ownerWallet, contentType);
+        BigInteger depositAmount = IconAmount.of("1000", IconAmount.Unit.ICX).toLoop();
+        LOG.infoEntering("addDeposit", depositAmount.toString());
+        result = feeScore3.addDeposit(depositAmount);
+        assertSuccess(result);
+        LOG.infoExiting();
+
+        govScore.setUseSystemDeposit(feeScore1.getAddress(), false);
+        govScore.setUseSystemDeposit(feeScore2.getAddress(), true);
+        feeScore3.addToWhitelist(feeScore2.getAddress(), BigInteger.valueOf(100));
+        feeScore1.addToWhitelist(feeScore3.getAddress(), BigInteger.valueOf(100));
+
+        LOG.info("Calling setValues()");
+        result = feeScoreAlice.setValues("TEST", new Address[]{
+                feeScore2.getAddress(), feeScore3.getAddress(), feeScore1.getAddress()});
+        assertSuccess(result);
+
+        LOG.info("Checking payment information");
+        feeMap = checkPayment(result, Map.of(
+                Constants.CHAINSCORE_ADDRESS.toString(), 1,
+                feeScore3.getAddress().toString(), 1,
+                aliceWallet.getAddress().toString(), 1));
+        systemDepositUsage = systemDepositUsage.add(feeMap.get(Constants.CHAINSCORE_ADDRESS.toString()));
+        sdu = chainScore.getSystemDepositUsage();
+        assertEquals(systemDepositUsage, sdu);
+        aliceExpect = aliceExpect.subtract(feeMap.get(aliceWallet.getAddress().toString()));
+        aliceBalance = txHandler.getBalance(aliceWallet.getAddress());
+        assertEquals(aliceExpect, aliceBalance);
+        LOG.infoExiting();
+
+        LOG.infoEntering("withdrawDeposit");
+        result = feeScore3.withdrawDeposit();
+        assertSuccess(result);
+        LOG.infoExiting();
+
+        LOG.infoExiting();
+    }
+
+    private Map<String, BigInteger> checkPayment(TransactionResult result, Map<String, Integer> accMap) {
+        var details = result.getStepUsedDetails().asObject();
+        assertNotNull(details);
+        Map<String, Integer> paymentCount = new HashMap<>();
+        Map<String, BigInteger> feeMap = new HashMap<>();
+        for (String addr : details.keySet()) {
+            var steps = details.getItem(addr).asInteger();
+            LOG.info("Payment payer=" + addr + " steps=" + steps.toString());
+            var fee = details.getItem(addr).asInteger().multiply(result.getStepPrice());
+            if (accMap.containsKey(addr)) {
+                paymentCount.put(addr, paymentCount.getOrDefault(addr, 0) + 1);
+                feeMap.put(addr, feeMap.getOrDefault(addr, BigInteger.ZERO).add(fee));
+            } else {
+                fail("Unknown Address:" + addr);
+            }
+        }
+        assertEquals(paymentCount.size(), accMap.size());
+        for (String addr : paymentCount.keySet()) {
+            assertEquals(accMap.get(addr), paymentCount.get(addr));
+        }
+        return feeMap;
     }
 }

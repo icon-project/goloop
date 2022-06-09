@@ -22,7 +22,6 @@ import foundation.icon.ee.types.Method;
 import foundation.icon.ee.util.Containers;
 
 import java.io.IOException;
-import java.lang.reflect.InaccessibleObjectException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +38,15 @@ public class Context implements FileIO {
     public Context(Address origin) {
         originFrame = new OriginFrame(origin);
         frames.add(originFrame);
+    }
+
+    public Context(Address origin, State src) {
+        originFrame = new OriginFrame(origin, src);
+        frames.add(originFrame);
+    }
+
+    public State getState() {
+        return originFrame.getState();
     }
 
     // 0 is first, -1 is last

@@ -26,12 +26,12 @@ import (
 
 type NetworkManager struct {
 	module.NetworkManager
-	t         *testing.T
-	peers     []Peer
-	handlers  []*nmHandler
-	roles     map[string]module.Role
-	id        module.PeerID
-	rCh       chan packetEntry
+	t        *testing.T
+	peers    []Peer
+	handlers []*nmHandler
+	roles    map[string]module.Role
+	id       module.PeerID
+	rCh      chan packetEntry
 }
 
 func indexOf(pl []Peer, id module.PeerID) int {
@@ -111,7 +111,7 @@ func (n *NetworkManager) GetPeers() []module.PeerID {
 	return peerIDs
 }
 
-func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
 	h := &nmHandler{
 		n,
 		mpi,
@@ -124,8 +124,8 @@ func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, r
 	return h, nil
 }
 
-func (n *NetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	return n.RegisterReactor(name, pi, reactor, piList, priority)
+func (n *NetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
+	return n.RegisterReactor(name, pi, reactor, piList, priority, policy)
 }
 
 func (n *NetworkManager) UnregisterReactor(reactor module.Reactor) error {

@@ -19,10 +19,10 @@ package foundation.icon.ee.score;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Transaction;
+import i.AvmException;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
 import i.InstrumentationHelpers;
-import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppCreator;
 import org.aion.avm.core.DAppExecutor;
@@ -32,8 +32,6 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class AvmExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AvmExecutor.class);
@@ -104,7 +102,11 @@ public class AvmExecutor {
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(cid);
             LoadedDApp dapp = task.getReentrantDAppStack().tryGetLoadedDApp(cid);
             if (dapp == null) {
-                dapp = loader.load(kernel, conf);
+                try {
+                    dapp = loader.load(kernel, conf);
+                } catch (AvmException e) {
+                    return new Result(e.getCode(), 0, e.getResultMessage());
+                }
             }
             return DAppExecutor.call(kernel, dapp, stateToResume, task,
                     senderAddress, recipient, tx, conf);

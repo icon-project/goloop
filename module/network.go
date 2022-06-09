@@ -8,8 +8,8 @@ type NetworkManager interface {
 
 	GetPeers() []PeerID
 
-	RegisterReactor(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
-	RegisterReactorForStreams(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
+	RegisterReactor(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8, policy NotRegisteredProtocolPolicy) (ProtocolHandler, error)
+	RegisterReactorForStreams(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8, policy NotRegisteredProtocolPolicy) (ProtocolHandler, error)
 	UnregisterReactor(reactor Reactor) error
 
 	SetRole(version int64, role Role, peers ...PeerID)
@@ -79,7 +79,7 @@ type PeerID interface {
 }
 
 const (
-	ProtoUnknown ProtocolInfo = iota << 8
+	ProtoP2P ProtocolInfo = iota << 8
 	ProtoStateSync
 	ProtoTransaction
 	ProtoConsensus
@@ -104,6 +104,14 @@ func (pi ProtocolInfo) String() string {
 func (pi ProtocolInfo) Uint16() uint16 {
 	return uint16(pi)
 }
+
+type NotRegisteredProtocolPolicy byte
+
+const (
+	NotRegisteredProtocolPolicyNone NotRegisteredProtocolPolicy = iota
+	NotRegisteredProtocolPolicyDrop
+	NotRegisteredProtocolPolicyClose
+)
 
 type NetworkTransport interface {
 	Listen() error

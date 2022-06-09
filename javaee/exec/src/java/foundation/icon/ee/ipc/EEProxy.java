@@ -88,6 +88,7 @@ public class EEProxy extends Proxy {
         public static final String TX_NONCE = "T.nonce";
         public static final String STEP_COSTS = "StepCosts";
         public static final String CONTRACT_OWNER = "C.owner";
+        public static final String REVISION = "Revision";
     }
 
     public EEProxy(Connection client) {

@@ -206,6 +206,10 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 		return nil, err
 	}
 
+	if !estimate && !cc.IsTrace() && (cc.ResultFlags()&contract.ResultForceRerun) != 0 {
+		return nil, errors.CriticalRerunError.New("NeedToRerunTheTX")
+	}
+
 	// Try to charge fee
 	stepPrice := ctx.StepPrice()
 	stepUsed := cc.StepUsed()

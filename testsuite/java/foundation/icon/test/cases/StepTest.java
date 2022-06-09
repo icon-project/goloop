@@ -587,9 +587,11 @@ public class StepTest extends TestBase {
         Score score = txHandler.deploy(testWallets[1], Score.getFilePath("hello_world"), params);
         LOG.infoExiting();
 
+        var currentRevision = chainScore.getRevision();
+
         LOG.infoEntering("invoke", "HelloWorld.checkRevision() -> ChainSCORE.getRevision()");
         params = new RpcObject.Builder()
-                .put("code", new RpcValue(BigInteger.valueOf(5)))
+                .put("code", new RpcValue(BigInteger.valueOf(currentRevision)))
                 .build();
         StepTransaction stx = new StepTransaction();
         var usedFee = stx.call(testWallets[1], score.getAddress(),

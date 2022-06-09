@@ -94,7 +94,7 @@ func (r *TransactionReactor) OnLeave(id module.PeerID) {
 }
 
 func (r *TransactionReactor) Start(wallet module.Wallet) {
-	r.membership, _ = r.nm.RegisterReactor(ReactorName, module.ProtoTransaction, r, subProtocols, ReactorPriority)
+	r.membership, _ = r.nm.RegisterReactor(ReactorName, module.ProtoTransaction, r, subProtocols, ReactorPriority, module.NotRegisteredProtocolPolicyClose)
 	r.ts.Start(r.membership, wallet)
 	r.tm.SetPoolCapacityMonitor(r.ts)
 }

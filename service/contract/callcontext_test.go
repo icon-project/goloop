@@ -210,14 +210,14 @@ func (h *asyncHandler) ExecuteAsync(cc CallContext) error {
 			return nil
 		}
 	}
-	cc.OnResult(nil, big.NewInt(0), nil, nil)
+	cc.OnResult(nil, 0, big.NewInt(0), nil, nil)
 	return nil
 }
 
 func (h *asyncHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
 	if h.subcall != nil && !h.callSync {
 		h.cc.trail += "a"
-		h.cc.OnResult(status, steps, result, nil)
+		h.cc.OnResult(status, 0, steps, result, nil)
 	} else {
 	}
 	return nil
@@ -258,7 +258,7 @@ func (h *asyncHandler) OnEvent(addr module.Address, indexed, data [][]byte) erro
 	panic("implement me")
 }
 
-func (h *asyncHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (h *asyncHandler) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	panic("implement me")
 }
 
@@ -270,7 +270,7 @@ func (h *asyncHandler) OnAPI(status error, info *scoreapi.Info) {
 	panic("implement me")
 }
 
-func (h *asyncHandler) OnSetFeeProportion(addr module.Address, portion int) {
+func (h *asyncHandler) OnSetFeeProportion(portion int) {
 	panic("implement me")
 }
 

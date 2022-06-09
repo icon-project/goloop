@@ -91,6 +91,10 @@ public class ChainScore extends Score {
         return call("getScoreStatus", params).asObject();
     }
 
+    public BigInteger getSystemDepositUsage() throws IOException {
+        return call("getSystemDepositUsage", null).asInteger();
+    }
+
     public TransactionResult disableScore(Wallet wallet, Address address)
             throws IOException, ResultTimeoutException {
         RpcObject params = new RpcObject.Builder()

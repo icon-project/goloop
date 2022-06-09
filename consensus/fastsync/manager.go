@@ -121,7 +121,7 @@ func NewManager(
 	defer m.server.Unlock()
 	m.client.Lock()
 	defer m.client.Unlock()
-	ph, err := nm.RegisterReactorForStreams("fastsync", module.ProtoFastSync, m, protocols, configFastSyncPriority)
+	ph, err := nm.RegisterReactorForStreams("fastsync", module.ProtoFastSync, m, protocols, configFastSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		return nil, err
 	}

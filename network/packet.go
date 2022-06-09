@@ -108,8 +108,8 @@ func NewPacket(pi module.ProtocolInfo, spi module.ProtocolInfo, payload []byte) 
 	}
 }
 
-func newPacket(spi module.ProtocolInfo, payload []byte, src module.PeerID) *Packet {
-	pkt := NewPacket(p2pProtoControl, spi, payload)
+func newPacket(pi module.ProtocolInfo, spi module.ProtocolInfo, payload []byte, src module.PeerID) *Packet {
+	pkt := NewPacket(pi, spi, payload)
 	pkt.dest = p2pDestPeer
 	pkt.ttl = 1
 	pkt.src = src

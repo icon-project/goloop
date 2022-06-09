@@ -13,16 +13,16 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
-type ContractState int
+type ContractStatus int
 
 const (
-	CSInactive ContractState = 1 << iota
+	CSInactive ContractStatus = 1 << iota
 	CSActive
 	CSPending
 	CSRejected
 )
 
-func (cs ContractState) String() string {
+func (cs ContractStatus) String() string {
 	var status string
 	switch cs {
 	case CSInactive:
@@ -39,12 +39,6 @@ func (cs ContractState) String() string {
 	return status
 }
 
-const ASActive = 0
-const (
-	ASDisabled = 1 << iota
-	ASBlocked
-)
-
 const (
 	CTAppZip    = "application/zip"
 	CTAppJava   = "application/java"
@@ -60,14 +54,14 @@ type ContractSnapshot interface {
 	DeployTxHash() []byte
 	AuditTxHash() []byte
 	Params() []byte
-	Status() ContractState
+	Status() ContractStatus
 	Equal(s ContractSnapshot) bool
 }
 
-type contractSnapshotImpl struct {
+type contract struct {
 	bk           db.Bucket
-	isNew        bool
-	state        ContractState
+	needFlush    bool
+	state        ContractStatus
 	contentType  string
 	eeType       EEType
 	deployTxHash []byte
@@ -75,10 +69,11 @@ type contractSnapshotImpl struct {
 	codeHash     []byte
 	code         []byte
 	params       []byte
+	markDirty    func()
 }
 
-func (c *contractSnapshotImpl) Equal(s ContractSnapshot) bool {
-	if c2, ok := s.(*contractSnapshotImpl); ok {
+func (c *contract) Equal(s ContractSnapshot) bool {
+	if c2, ok := s.(*contract); ok {
 		if c == c2 {
 			return true
 		}
@@ -96,14 +91,14 @@ func (c *contractSnapshotImpl) Equal(s ContractSnapshot) bool {
 	return true
 }
 
-func (c *contractSnapshotImpl) CodeHash() []byte {
+func (c *contract) CodeHash() []byte {
 	if c == nil {
 		return nil
 	}
 	return c.codeHash
 }
 
-func (c *contractSnapshotImpl) Code() ([]byte, error) {
+func (c *contract) Code() ([]byte, error) {
 	if len(c.code) == 0 {
 		if len(c.codeHash) == 0 {
 			return nil, nil
@@ -121,19 +116,19 @@ func (c *contractSnapshotImpl) Code() ([]byte, error) {
 	return c.code, nil
 }
 
-func (c *contractSnapshotImpl) EEType() EEType {
+func (c *contract) EEType() EEType {
 	return c.eeType
 }
 
-func (c *contractSnapshotImpl) ContentType() string {
+func (c *contract) ContentType() string {
 	return c.contentType
 }
 
-func (c *contractSnapshotImpl) DeployTxHash() []byte {
+func (c *contract) DeployTxHash() []byte {
 	return c.deployTxHash
 }
 
-func (c *contractSnapshotImpl) CodeID() []byte {
+func (c *contract) CodeID() []byte {
 	if len(c.deployTxHash) > 0 {
 		return c.deployTxHash
 	} else {
@@ -141,15 +136,15 @@ func (c *contractSnapshotImpl) CodeID() []byte {
 	}
 }
 
-func (c *contractSnapshotImpl) AuditTxHash() []byte {
+func (c *contract) AuditTxHash() []byte {
 	return c.auditTxHash
 }
 
-func (c *contractSnapshotImpl) Params() []byte {
+func (c *contract) Params() []byte {
 	return c.params
 }
 
-func (c *contractSnapshotImpl) Status() ContractState {
+func (c *contract) Status() ContractStatus {
 	return c.state
 }
 
@@ -157,7 +152,7 @@ const (
 	contractSnapshotImplEntries = 7
 )
 
-func (c *contractSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
+func (c *contract) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		c.state,
 		c.contentType,
@@ -169,7 +164,7 @@ func (c *contractSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (c *contractSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
+func (c *contract) RLPDecodeSelf(d codec.Decoder) error {
 	return d.DecodeListOf(
 		&c.state,
 		&c.contentType,
@@ -181,36 +176,38 @@ func (c *contractSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	)
 }
 
-func (c *contractSnapshotImpl) flush() error {
-	if c.isNew == false {
+func (c *contract) flush() error {
+	if c.needFlush == false {
 		return nil
 	}
 	if err := c.bk.Set(c.codeHash, c.code); err != nil {
 		return err
 	}
-	c.isNew = false
+	c.needFlush = false
 	return nil
 }
 
-func (c *contractSnapshotImpl) OnData(bs []byte, builder merkle.Builder) error {
+func (c *contract) OnData(bs []byte, builder merkle.Builder) error {
 	c.code = bs
 	return nil
 }
 
-func (c *contractSnapshotImpl) Resolve(builder merkle.Builder) error {
-	code, err := c.bk.Get(c.codeHash)
-	if err != nil {
-		return err
-	}
-	if code == nil {
-		builder.RequestData(db.BytesByHash, c.codeHash, c)
-	} else {
-		c.code = code
+func (c *contract) Resolve(builder merkle.Builder) error {
+	if len(c.codeHash) > 0 {
+		code, err := c.bk.Get(c.codeHash)
+		if err != nil {
+			return err
+		}
+		if code == nil {
+			builder.RequestData(db.BytesByHash, c.codeHash, c)
+		} else {
+			c.code = code
+		}
 	}
 	return nil
 }
 
-func (c *contractSnapshotImpl) ResetDB(dbase db.Database) error {
+func (c *contract) ResetDB(dbase db.Database) error {
 	if c == nil {
 		return nil
 	}
@@ -222,22 +219,20 @@ func (c *contractSnapshotImpl) ResetDB(dbase db.Database) error {
 	}
 }
 
-func (c *contractSnapshotImpl) String() string {
+func (c *contract) String() string {
 	return fmt.Sprintf("Contract{hash=%#x ee=%s deploy=%#x audit=%#x}",
 		c.codeHash, c.eeType, c.deployTxHash, c.auditTxHash)
 }
 
-type Contract interface {
+type ContractState interface {
 	ContractSnapshot
 	SetCode([]byte) error
 }
 
-type contractImpl struct {
-	contractSnapshotImpl
-	markDirty func()
-}
-
-func (c *contractImpl) SetCode(code []byte) error {
+func (c *contract) SetCode(code []byte) error {
+	if c.markDirty == nil {
+		panic("SetCodeOnSnapshot")
+	}
 	if len(code) == 0 {
 		c.code = nil
 		c.codeHash = nil
@@ -250,22 +245,23 @@ func (c *contractImpl) SetCode(code []byte) error {
 	}
 	c.code = code
 	c.codeHash = codeHash
-	c.isNew = true
+	c.needFlush = true
 	c.markDirty()
 	return nil
 }
 
-func (c *contractImpl) getSnapshot() *contractSnapshotImpl {
+func (c *contract) getSnapshot() *contract {
+	return c.cloneWithMarkDirty(nil)
+}
+
+func (c *contract) cloneWithMarkDirty(markDirty func()) *contract {
 	if c == nil {
 		return nil
 	}
-	var snapshot contractSnapshotImpl
-	snapshot = c.contractSnapshotImpl
-	return &snapshot
-}
-
-func (c *contractImpl) reset(snapshot *contractSnapshotImpl) {
-	c.contractSnapshotImpl = *snapshot
+	nc := new(contract)
+	*nc = *c
+	nc.markDirty = markDirty
+	return nc
 }
 
 type contractROState struct {
@@ -277,18 +273,13 @@ func (c *contractROState) SetCode(code []byte) error {
 	return errors.InvalidStateError.New("ReadOnlyContract")
 }
 
-func newContractROState(snapshot ContractSnapshot) Contract {
+func newContractROState(snapshot ContractSnapshot) ContractState {
 	if snapshot == nil {
 		return nil
 	}
 	return &contractROState{snapshot}
 }
 
-func newContractState(snapshot *contractSnapshotImpl, markDirty func()) *contractImpl {
-	if snapshot == nil {
-		return nil
-	}
-	c := &contractImpl{markDirty: markDirty}
-	c.reset(snapshot)
-	return c
+func newContractState(snapshot *contract, markDirty func()) *contract {
+	return snapshot.cloneWithMarkDirty(markDirty)
 }

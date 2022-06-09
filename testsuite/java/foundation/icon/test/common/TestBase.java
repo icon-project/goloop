@@ -42,6 +42,12 @@ public class TestBase {
         LOG.info("Expected " + result.getFailure());
     }
 
+    protected static void assertFailureCode(int code, TransactionResult result) {
+        assertStatus(Constants.STATUS_FAILURE, result);
+        assertEquals(code, result.getFailure().getCode().intValue());
+        LOG.info("Expected " + result.getFailure());
+    }
+
     protected static void assertStatus(BigInteger status, TransactionResult result) {
         try {
             assertEquals(status, result.getStatus());

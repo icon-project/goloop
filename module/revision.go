@@ -32,6 +32,8 @@ const (
 	LegacyInputJSON
 	LegacyNoTimeout
 	FixLostFeeByDeposit
+	MultipleFeePayers
+	PurgeEnumCache
 	LastRevisionBit
 )
 

@@ -19,11 +19,17 @@ package foundation.icon.ee.test;
 import foundation.icon.ee.types.Address;
 
 public class OriginFrame implements Frame {
-    private State state = new State();
+    private State state;
     private Address address;
 
     public OriginFrame(Address address) {
         this.address = address;
+        this.state = new State();
+    }
+
+    public OriginFrame(Address address, State state) {
+        this.address = address;
+        this.state = state;
     }
 
     @Override

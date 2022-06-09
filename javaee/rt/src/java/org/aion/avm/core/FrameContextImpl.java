@@ -22,10 +22,18 @@ import i.IDBStorage;
 public class FrameContextImpl implements FrameContext {
     private final IExternalState externalState;
     private final IDBStorage dbs;
+    private int flag;
+    private boolean deployFrame;
 
     FrameContextImpl(IExternalState externalState) {
         this.externalState = externalState;
         this.dbs = new DBStorage(externalState);
+    }
+
+    FrameContextImpl(IExternalState externalState, boolean deploy) {
+        this.externalState = externalState;
+        this.dbs = new DBStorage(externalState);
+        this.deployFrame = deploy;
     }
 
     public IDBStorage getDBStorage() {
@@ -38,5 +46,17 @@ public class FrameContextImpl implements FrameContext {
 
     public boolean waitForRefund() {
         return externalState.waitForCallback();
+    }
+
+    public void setStatusFlag(int flag) {
+        this.flag = flag;
+    }
+
+    public int getStatusFlag() {
+        return flag;
+    }
+
+    public boolean isDeployFrame() {
+        return deployFrame;
     }
 }

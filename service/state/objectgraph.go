@@ -18,6 +18,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -159,6 +160,10 @@ func (o *objectGraph) ResetDB(dbase db.Database) error {
 		o.bk = bk
 		return nil
 	}
+}
+
+func (o *objectGraph) String() string {
+	return fmt.Sprintf("ObjectGraph{hash=%#x,next=%d}", o.graphHash, o.nextHash)
 }
 
 type objectGraphCache map[string]*objectGraph

@@ -102,7 +102,7 @@ func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) erro
 	return nil
 }
 
-func (cc *callContext) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (cc *callContext) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	fmt.Printf("CallContext.OnResult(%d,%s,[%+v])\n",
 		status, steps.String(), common.MustDecodeAny(result))
 }
@@ -116,9 +116,8 @@ func (cc *callContext) OnAPI(status error, info *scoreapi.Info) {
 	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, info)
 }
 
-func (cc *callContext) OnSetFeeProportion(addr module.Address, portion int) {
-	fmt.Printf("CallContext.OnSetPortion(addr=%s,portion=%d)",
-		addr, portion)
+func (cc *callContext) OnSetFeeProportion(portion int) {
+	fmt.Printf("CallContext.OnSetPortion(portion=%d)", portion)
 }
 
 func (cc *callContext) SetCode(code []byte) error {

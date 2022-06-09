@@ -489,6 +489,33 @@ var chainMethods = []*chainMethod{
 			scoreapi.Bool,
 		},
 	}, Revision8, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setUseSystemDeposit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"yn", scoreapi.Bool, nil, nil},
+		},
+		nil,
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getUseSystemDeposit",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getSystemDepositUsage",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision9, 0},
 }
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
@@ -844,8 +871,12 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
 		return nil
 	}
+	apiInfo := s.GetAPI()
+	if err := contract.CheckMethod(s, apiInfo); err != nil {
+		return scoreresult.Wrap(err, module.StatusIllegalFormat, "InvalidChainScoreImplementation")
+	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))
-	as.SetAPIInfo(s.GetAPI())
+	as.SetAPIInfo(apiInfo)
 	return nil
 }
 
@@ -1389,4 +1420,41 @@ func (s *ChainScore) Ex_setMinimizeBlockGen(b bool) error {
 	as := s.cc.GetAccountState(state.SystemID)
 	mbg := scoredb.NewVarDB(as, state.VarMinimizeBlockGen)
 	return mbg.Set(b)
+}
+
+func (s *ChainScore) Ex_setUseSystemDeposit(address module.Address, yn bool) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as.IsContract() != address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "InvalidPrefixForAddress")
+	}
+	if !as.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "NotContract")
+	}
+	return as.SetUseSystemDeposit(yn)
+}
+
+func (s *ChainScore) Ex_getUseSystemDeposit(address module.Address) (bool, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return false, err
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as.IsContract() != address.IsContract() {
+		return false, scoreresult.New(StatusIllegalArgument, "InvalidPrefixForAddress")
+	}
+	return as.UseSystemDeposit(), nil
+}
+
+func (s *ChainScore) Ex_getSystemDepositUsage() (*big.Int, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	usage := scoredb.NewVarDB(as, state.VarSystemDepositUsage).BigInt()
+	if usage == nil {
+		usage = new(big.Int)
+	}
+	return usage, nil
 }

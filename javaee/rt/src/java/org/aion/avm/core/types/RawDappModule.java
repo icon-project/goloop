@@ -1,5 +1,6 @@
 package org.aion.avm.core.types;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 
@@ -28,7 +29,7 @@ public class RawDappModule {
      * @param preserveDebuggability True if debug data within the JAR should be preserved.
      * @return The module, or null if the contents of the JAR were insufficient for a Dapp.
      */
-    public static RawDappModule readFromJar(byte[] jar, boolean preserveDebuggability) throws Exception {
+    public static RawDappModule readFromJar(byte[] jar, boolean preserveDebuggability) throws IOException {
         LoadedJar loadedJar = LoadedJar.fromBytes(jar);
         ClassHierarchyForest forest = ClassHierarchyForest.createForestFrom(loadedJar);
 

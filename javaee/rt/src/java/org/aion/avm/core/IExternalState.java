@@ -17,6 +17,8 @@ public interface IExternalState {
     int OPTION_READ_ONLY = 1;
     int OPTION_TRACE = 2;
 
+    long REVISION_PURGE_ENUM_CACHE = 1 << 22;
+
     /**
      *  Returns code ID
      *
@@ -184,4 +186,14 @@ public interface IExternalState {
     }
 
     StepCost getStepCost();
+
+    long getRevision();
+
+    default boolean purgeEnumCache() {
+        return (getRevision() & REVISION_PURGE_ENUM_CACHE) != 0;
+    }
+
+    default boolean forceEnumCache() {
+        return !purgeEnumCache();
+    }
 }

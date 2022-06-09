@@ -67,10 +67,10 @@ type CallContext interface {
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte) error
-	OnResult(status error, steps *big.Int, result *codec.TypedObj)
+	OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, dataType string, dataObj *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
-	OnSetFeeProportion(owner module.Address, portion int)
+	OnSetFeeProportion(portion int)
 	SetCode(code []byte) error
 	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
@@ -222,7 +222,7 @@ type containsResponse struct {
 	Size  int
 }
 
-func traceLevelOf(lv log.Level) (module.TraceLevel) {
+func traceLevelOf(lv log.Level) module.TraceLevel {
 	switch lv {
 	case log.DebugLevel:
 		return module.TDebugLevel
@@ -295,6 +295,15 @@ func (p *proxy) GetAPI(ctx CallContext, code string) error {
 	}
 	p.log = logger
 	return p.conn.Send(msgGETAPI, code)
+}
+
+const (
+	CodeBits = 24
+	CodeMask = (1 << CodeBits) - 1
+)
+
+func StatusToCodeAndFlag(code errors.Code) (errors.Code, int) {
+	return code & CodeMask, int(code >> CodeBits)
 }
 
 type resultMessage struct {
@@ -399,6 +408,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 
 		var status error
 		var result *codec.TypedObj
+		var statusFlag int
+		m.Status, statusFlag = StatusToCodeAndFlag(m.Status)
 		if m.Status == errors.Success {
 			status = nil
 			result = m.Result
@@ -407,7 +418,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			status = m.Status.New(msg)
 			result = nil
 		}
-		frame.ctx.OnResult(status, &m.StepUsed.Int, result)
+		frame.ctx.OnResult(status, statusFlag, &m.StepUsed.Int, result)
 
 		return p.tryToBeReady()
 	case msgGETVALUE:
@@ -566,7 +577,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		if 0 <= proportion && proportion <= 100 {
-			p.frame.ctx.OnSetFeeProportion(p.frame.addr, proportion)
+			p.frame.ctx.OnSetFeeProportion(proportion)
 		} else {
 			p.log.Warnf("Proxy[%p].OnSetFeeProportion: invalid proportion=%d",
 				proportion)
@@ -625,8 +636,12 @@ func (p *proxy) OnClose() {
 		frame := p.frame
 		status := errors.ExecutionFailError.New("ProxyIsClosed")
 		l.CallAfterUnlock(func() {
-			frame.ctx.OnResult(status, new(big.Int), nil)
+			frame.ctx.OnResult(status, 0, new(big.Int), nil)
 		})
+	}
+
+	if p.state != stateClosed {
+		p.state = stateClosed
 	}
 }
 

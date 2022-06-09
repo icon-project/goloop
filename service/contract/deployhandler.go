@@ -607,7 +607,7 @@ func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte)
 	return nil
 }
 
-func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (h *callGetAPIHandler) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	if status == nil {
 		h.Log.Panicln("Unexpected call OnResult() from GetAPI()")
 	}
@@ -630,10 +630,10 @@ func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 		s, _ := scoreresult.StatusOf(status)
 		h.Log.TSystemf("GETAPI done status=%s msg=%s", s, status.Error())
 	}
-	h.cc.OnResult(status, new(big.Int), nil, nil)
+	h.cc.OnResult(status, 0, new(big.Int), nil, nil)
 }
 
-func (h *callGetAPIHandler) OnSetFeeProportion(addr module.Address, portion int) {
+func (h *callGetAPIHandler) OnSetFeeProportion(portion int) {
 	h.Log.Errorf("Unexpected call OnSetFeeProportion() from GetAPI()")
 }
 

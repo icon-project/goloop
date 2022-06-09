@@ -59,6 +59,7 @@ func NewManager(addr string,
 	e.Validator = validator
 	logger := l.WithFields(log.Fields{log.FieldKeyModule: "SR"})
 	mtr := metric.NewJsonrpcMetric(metric.DefaultJsonrpcDurationsExpire, metric.DefaultJsonrpcDurationsSize, false)
+	e.Logger.SetOutput(l.WriterLevel(log.DebugLevel))
 	m := &Manager{
 		e:                     e,
 		addr:                  addr,

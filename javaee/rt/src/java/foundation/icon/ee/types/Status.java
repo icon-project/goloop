@@ -38,6 +38,12 @@ public class Status {
     public static final int UserReversionStart = 32;
     public static final int UserReversionEnd = 1000;
 
+    public final static int FlagShift = 24;
+    public final static int FlagMask = 0xFF000000;
+    public final static int CodeMask = 0x00FFFFFF;
+
+    public static final int FlagRerun = 0x01000000;
+
     public static int fromUserCode(int code) {
         code = code + UserReversionStart;
         return Math.max(UserReversionStart, Math.min(UserReversionEnd-1, code));
