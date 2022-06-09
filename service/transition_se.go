@@ -36,20 +36,21 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		}
 		t.log.Tracef("START TX <0x%x>", txo.ID())
 		ts := time.Now()
+		ctx.SetTransactionInfo(&state.TransactionInfo{
+			Group:     txo.Group(),
+			Index:     int32(cnt),
+			Timestamp: txo.Timestamp(),
+			Nonce:     txo.Nonce(),
+			Hash:      txo.ID(),
+			From:      txo.From(),
+		})
+		wcs := ctx.GetSnapshot()
 		for retry := 0; ; retry++ {
 			txh, err := txo.GetHandler(t.cm)
 			if err != nil {
 				t.log.Errorf("Fail to GetHandler err=%+v", err)
 				return err
 			}
-			ctx.SetTransactionInfo(&state.TransactionInfo{
-				Group:     txo.Group(),
-				Index:     int32(cnt),
-				Timestamp: txo.Timestamp(),
-				Nonce:     txo.Nonce(),
-				Hash:      txo.ID(),
-				From:      txo.From(),
-			})
 			ctx.UpdateSystemInfo()
 			rct, err := txh.Execute(ctx, false)
 			txh.Dispose()
@@ -69,6 +70,10 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return err
 			}
 			t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+			if err := ctx.Reset(wcs); err != nil {
+				t.log.Errorf("Fail to revert status on rerun err=%+v", err)
+				return errors.CriticalUnknownError.Wrapf(err, "FailToResetForRetry")
+			}
 			ts = time.Now()
 		}
 		duration := time.Now().Sub(ts)
