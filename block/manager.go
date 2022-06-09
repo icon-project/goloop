@@ -405,7 +405,7 @@ func (it *importTask) onExecute(err error) {
 
 func (it *importTask) _handleExecutionError(err error) {
 	var tr *transition
-	it.manager.log.Infof("error during import : %+v", err)
+	it.manager.log.Warnf("error during import : %+v", err)
 	if it.flags&module.ImportByForce != 0 {
 		tr, err = it.in.sync(it.block.Result(), it.block.NextValidatorsHash(), it)
 		if err == nil {
