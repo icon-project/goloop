@@ -130,13 +130,13 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 	return h.CallHandler.DoExecuteAsync(cc, h, nil)
 }
 
-func (h *SystemCallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (h *SystemCallHandler) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	if h.revision.Value() < icmodule.RevisionStopICON1Support {
 		if icmodule.IllegalArgumentError.Equals(status) {
 			status = errors.WithCode(status, scoreresult.IllegalFormatError)
 		}
 	}
-	h.CallHandler.OnResult(status, steps, result)
+	h.CallHandler.OnResult(status, flag, steps, result)
 }
 
 func newSystemHandler(ch CallHandler) contract.ContractHandler {
