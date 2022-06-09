@@ -528,27 +528,6 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, Revision9, 0},
-	// TODO remove getNetworkType, getNetwork, getPublicKey ?
-	{scoreapi.Method{
-		scoreapi.Function, "getBTPNetworkType",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"id", scoreapi.Integer, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, Revision9, 0},
-	{scoreapi.Method{
-		scoreapi.Function, "getBTPNetwork",
-		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
-		[]scoreapi.Parameter{
-			{"id", scoreapi.Integer, nil, nil},
-		},
-		[]scoreapi.DataType{
-			scoreapi.Dict,
-		},
-	}, Revision9, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getPublicKey",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 2,

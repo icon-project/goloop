@@ -19,6 +19,7 @@ package state
 import (
 	"bytes"
 	"container/list"
+	"encoding/base64"
 	"encoding/hex"
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
@@ -709,7 +710,7 @@ func (nt *networkType) ToJSON() map[string]interface{} {
 	if len(nt.NextProofContext()) == 0 {
 		jso["nextProofContext"] = nil
 	} else {
-		jso["nextProofContext"] = "0x" + hex.EncodeToString(nt.NextProofContext())
+		jso["nextProofContext"] = base64.StdEncoding.EncodeToString(nt.nextProofContext)
 	}
 	nids := nt.OpenNetworkIDs()
 	onids := make([]interface{}, len(nids))
@@ -841,17 +842,17 @@ func formatBool(yn bool) string {
 func (nw *network) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["startHeight"] = nw.startHeight
-	jso["networkTypeId"] = intconv.FormatInt(nw.networkTypeID)
+	jso["networkTypeID"] = intconv.FormatInt(nw.networkTypeID)
 	jso["networkName"] = nw.name
 	jso["open"] = formatBool(nw.open)
 	jso["nextMessageSN"] = intconv.FormatInt(nw.nextMessageSN)
 	jso["nextProofContextChanged"] = formatBool(nw.nextProofContextChanged)
-	if len(nw.PrevNetworkSectionHash()) == 0 {
+	if len(nw.prevNetworkSectionHash) == 0 {
 		jso["prevNSHash"] = nil
 	} else {
 		jso["prevNSHash"] = "0x" + hex.EncodeToString(nw.prevNetworkSectionHash)
 	}
-	if len(nw.LastNetworkSectionHash()) == 0 {
+	if len(nw.lastNetworkSectionHash) == 0 {
 		jso["lastNSHash"] = nil
 	} else {
 		jso["lastNSHash"] = "0x" + hex.EncodeToString(nw.lastNetworkSectionHash)

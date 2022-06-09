@@ -20,17 +20,17 @@ Summarize the document to following items.
 ```json
 {
   "height": "0x10",
-  "networkType" : "0x2",
-  "networkId" : "0x1"
+  "networkID": "0x1",
+  "proofFlag": "0x1"
 }
 ```
 #### Parameters
 
-| Name        | Type     | Required    | Description              |
-|:------------|:---------|:------------|:-------------------------|
-| height      | T_INT    | true        | Start height             |
-| networkType | T_INT    | true        | Destination network type |
-| networkId   | T_INT    | true        | Destination network ID   |
+| Name      | Type     | Required    | Description         |
+|:----------|:---------|:------------|:--------------------|
+| height    | T_INT    | true        | Start height        |
+| networkID | T_INT    | true        | Network ID          |
+| proofFlag | T_INT    | true        | Proof included flag |
 > Success Responses
 
 ```json
@@ -66,16 +66,17 @@ Summarize the document to following items.
 
 #### Notification
 
-| Name   | Type   | Description                                      |
-|:-------|:-------|:-------------------------------------------------|
-| header | T_SIG  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
+| Name   | Type      | Description                                      |
+|:-------|:----------|:-------------------------------------------------|
+| header | T_BASE64  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
+| proof  | T_BASE64  | Base64 encoded proof                             |
 
 
 ## BTP JSON-RPC Methods
 
-### btp_getNetworkInformation
+### btp_getNetworkInfo
 
-Get network id information.
+Get BTP network information.
 
 > Request
 
@@ -83,18 +84,18 @@ Get network id information.
 {
   "id": 1001,
   "jsonrpc": "2.0",
-  "method": "btp_getNetworkInformation",
+  "method": "btp_getNetworkInfo",
   "params": {
-    "networkId" : "0x3"
+    "id" : "0x3"
   }
 }
 ```
 #### Parameters
 
-| Name      | Type    | Required | Description            |
-|:----------|:--------|:---------|:-----------------------|
-| height    | T_INT   | false    | Block height           |
-| networkId | T_INT   | true     | Destination network id |
+| Name   | Type    | Required | Description       |
+|:-------|:--------|:---------|:------------------|
+| height | T_INT   | false    | Main block height |
+| id     | T_INT   | true     | Network ID        |
 
 
 > Sample responses
@@ -105,10 +106,12 @@ Get network id information.
   "jsonrpc": "2.0",
   "result": {
     "startHeight" : "0x11",
-    "networkTypeId" : "0x1",
+    "networkTypeID" : "0x1",
     "networkTypeName" : "eth",
-    "networkId" : "0x3",
-    "lastMessagesRootNumber" : "0x20",
+    "networkID" : "0x3",
+    "networkName" : "snow",
+    "open": "0x1",
+    "nextMessageSN" : "0x20",
     "prevNSHash" : "0x…",
     "lastNSHash" : "0x…"
   }
@@ -116,15 +119,17 @@ Get network id information.
 ```
 #### Responses
 
-| Name                  | Type      | Description                               |
-|:----------------------|:----------|:------------------------------------------|
-| startHeight           | T_INT     | Block height where btp message started    |
-| networkTypeId         | T_INT     | Network type id                           |
-| networkTypeName       | T_STRING  | Network type name                         |
-| networkId             | T_INT     | Network id                                |
-| lastMessageRootNumber | T_INT     | MessageRootSN and UpdateFlag              |
-| prevNSHash            | T_HASH    | Previous network hash                     |
-| lastNSHash            | T_HASH    | Last network hash                         |
+| Name            | Type      | Description                          |
+|:----------------|:----------|:-------------------------------------|
+| startHeight     | T_INT     | Block height where BTP block started |
+| networkTypeID   | T_INT     | Network type ID                      |
+| networkTypeName | T_STRING  | Network type name                    |
+| networkID       | T_INT     | Network ID                           |
+| networkName     | T_STRING  | Network name                         |
+| open            | T_INT     | Active state of network              |
+| nextMessageSN   | T_INT     | Next message SN                      |
+| prevNSHash      | T_HASH    | Previous network hash                |
+| lastNSHash      | T_HASH    | Last network hash                    |
 
 > Failure Response
 
@@ -149,7 +154,7 @@ Get network id information.
 
 ### btp_getNetworkType
 
-Get network types information.
+Get BTP network type information.
 
 > Request
 
@@ -157,19 +162,18 @@ Get network types information.
 {
   "id": 1001,
   "jsonrpc": "2.0",
-  "method": "icx_getNetworkType",
+  "method": "icx_getNetworkTypeInfo",
   "params": {
-    "height" : "0x11",
-    "networkTypeId" : "0x02"
+    "id" : "0x02"
   }
 }
 ```
 #### Parameters
 
-| Name          | Type    | Required | Description     |
-|:--------------|:--------|:---------|:----------------|
-| height        | T_INT   | true     | Block height    |
-| networkTypeId | T_INT   | true     | Network type ID |
+| Name   | Type    | Required | Description       |
+|:-------|:--------|:---------|:------------------|
+| height | T_INT   | false    | Main block height |
+| id     | T_INT   | true     | Network type ID   |
 
 
 
@@ -180,23 +184,21 @@ Get network types information.
   "id": 1001,
   "jsonrpc": "2.0",
   "result": {
-    "networkTypeId" : "0x2",
+    "networkTypeID" : "0x2",
     "networkTypeName" : "eth",
-    "activeNetworkType" : "0x1",
-    "connectedNetworks" : ["0x3","0x4"],
-    "proofContext" : "+QIRoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoCIc9dReCXYR967Ll8MBSUxzksWDY2BnoQi9Wd/7oEoWoPkCx+uBkmGXMdfppwKUS/jaqLBEcxWj4bVoq/WpxFRzoJBir1eJCOvvqV9urYfxHvZ9E4MTcrb9Or7uLXyOQN78oB9ED5ht8egUlm/SGXX1UlpRFz+VwwgN6EY2TH8LJUT7oKsA5iI9WcteAH3ApzQCwO9BGpSHECr7Od0DEGf9/IxAoOsZFmn1IS2/EGAB97IbYRQGIy3j19DS2Y0jWyNmyT5XoERkVHKeInAzSMZcSm22AIIawXF/ibDdskyEDabbdnO5oCxrQAjl/71HrhhG7jokBsviGC3RYglC34NbtOWzZaoHoJMWXQn5I+cRmWg76pmT8VrDO0DSWGMyv1X3GbkPo8w/oPEBG9Q+RjtCMovVi9K6XG08khJpsPtcHB6YkOlHTLa8oPPEZm2q+9Cssdo5l0YzKH7/+cV1h5pxp8baWeUUUssFoBIHc9BwAGJDsArHrh9kkvS6K8B6xmOzRDR0eKfzC9NcoFHqm63YUFSq9I+9gVJB+VDPGWvp6ZV1AejoXwXS/8rkoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoJl4/9qlwu2vrYvpyQ8ayLvfMOd3Tmc3KZT7FTTfJjJ3gA=="
+    "openNetworkIDs" : ["0x3","0x4"],
+    "nextProofContext" : "+QIRoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoCIc9dReCXYR967Ll8MBSUxzksWDY2BnoQi9Wd/7oEoWoPkCx+uBkmGXMdfppwKUS/jaqLBEcxWj4bVoq/WpxFRzoJBir1eJCOvvqV9urYfxHvZ9E4MTcrb9Or7uLXyOQN78oB9ED5ht8egUlm/SGXX1UlpRFz+VwwgN6EY2TH8LJUT7oKsA5iI9WcteAH3ApzQCwO9BGpSHECr7Od0DEGf9/IxAoOsZFmn1IS2/EGAB97IbYRQGIy3j19DS2Y0jWyNmyT5XoERkVHKeInAzSMZcSm22AIIawXF/ibDdskyEDabbdnO5oCxrQAjl/71HrhhG7jokBsviGC3RYglC34NbtOWzZaoHoJMWXQn5I+cRmWg76pmT8VrDO0DSWGMyv1X3GbkPo8w/oPEBG9Q+RjtCMovVi9K6XG08khJpsPtcHB6YkOlHTLa8oPPEZm2q+9Cssdo5l0YzKH7/+cV1h5pxp8baWeUUUssFoBIHc9BwAGJDsArHrh9kkvS6K8B6xmOzRDR0eKfzC9NcoFHqm63YUFSq9I+9gVJB+VDPGWvp6ZV1AejoXwXS/8rkoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoJl4/9qlwu2vrYvpyQ8ayLvfMOd3Tmc3KZT7FTTfJjJ3gA=="
   }
 }
 ```
 #### Responses
 
-| Name                | Type              | Description                         |
-|:--------------------|:------------------|:------------------------------------|
-| networkTypeId       | T_INT             | Network type id                     |
-| networkTypeName     | T_STRING          | Network type name                   |
-| activeNetworkType   | T_INT             | Active state of network type        |
-| connectedNetworks   | T_ARRAY of T_INT  | Network id included in network type |
-| proofContext        | T_BYTES           | Network type proof context          |
+| Name             | Type             | Description                         |
+|:-----------------|:-----------------|:------------------------------------|
+| networkTypeID    | T_INT            | Network type ID                     |
+| networkTypeName  | T_STRING         | Network type name                   |
+| openNetworkIDs   | T_ARRAY of T_INT | Network ID included in network type |
+| nextProofContext | T_BASE64         | Network type proof context          |
 
 
 > Failure Response
@@ -221,7 +223,7 @@ Get network types information.
 
 ### btp_getMessages
 
-Get BTP block messages.
+Get BTP messages.
 
 > Request
 
@@ -231,19 +233,17 @@ Get BTP block messages.
   "jsonrpc": "2.0",
   "method": "btp_getMessages",
   "params": {
-    "networkTypeId" : "0x02",
-    "networkId" : "0x03",
+    "networkID" : "0x03",
     "height": "0x11"
   }
 }
 ```
 #### Parameters
 
-| Name        | Type      | Required  | Description              |
-|:------------|:----------|:----------|:-------------------------|
-| networkType | T_INT     | true      | Destination network type |
-| networkId   | T_INT     | true      | Destination network ID   |
-| height      | T_INT     | true      | Block height             |
+| Name        | Type      | Required  | Description       |
+|:------------|:----------|:----------|:------------------|
+| height      | T_INT     | true      | Main block height |
+| networkID   | T_INT     | true      | BTP network ID    |
 
 
 > Sample responses
@@ -261,9 +261,9 @@ Get BTP block messages.
 ```
 #### Responses
 
-| Name   | Type             | Description                     |
-|:-------|:-----------------|:--------------------------------|
-| result | T_ARRAY of T_SIG | List of base64 encoded messages |
+| Name   | Type                 | Description                     |
+|:-------|:---------------------|:--------------------------------|
+| result | T_ARRAY of T_BASE64  | List of base64 encoded messages |
 
 > Failure Response
 
@@ -288,7 +288,7 @@ Get BTP block messages.
 
 ### btp_getHeader
 
-Get btp block header
+Get BTP block header
 
 > Request
 
@@ -299,18 +299,16 @@ Get btp block header
   "method": "btp_getHeader",
   "params": {
     "height": "0x11",
-    "networkTypeId" : "0x2",
-    "networkId" : "0x1"
+    "networkID" : "0x1"
   }
 }
 ```
 #### Parameters
 
-| Name           | Type    | Required | Description                 |
-|:---------------|:--------|:---------|:----------------------------|
-| height         | T_INT   | true     | Block height                |
-| networkTypeId  | T_INT   | true     | Destination network type ID |
-| networkId      | T_INT   | true     | Destination network ID      |
+| Name           | Type    | Required | Description       |
+|:---------------|:--------|:---------|:------------------|
+| height         | T_INT   | true     | Main block height |
+| networkID      | T_INT   | true     | Network ID        |
 
 
 > Sample responses
@@ -324,9 +322,9 @@ Get btp block header
 ```
 #### Responses
 
-| Name   | Type   | Description                                      |
-|:-------|:-------|:-------------------------------------------------|
-| result | T_SIG  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
+| Name   | Type      | Description                                      |
+|:-------|:----------|:-------------------------------------------------|
+| result | T_BASE64  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
 
 > Failure Response
 
@@ -347,6 +345,67 @@ Get btp block header
 |:--------|:--------|:---------------|:----------------------------|
 | 200     | OK      | Success        | Data : base64 encoded bytes |
 | default | Default | JSON-RPC Error | Error Response              |
+
+### btp_getProof
+
+Get BTP block proof
+
+> Request
+
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "method": "btp_getProof",
+  "params": {
+    "height": "0x11",
+    "networkID" : "0x1"
+  }
+}
+```
+#### Parameters
+
+| Name           | Type    | Required | Description       |
+|:---------------|:--------|:---------|:------------------|
+| height         | T_INT   | true     | Main block height |
+| networkID      | T_INT   | true     | Network ID        |
+
+
+> Sample responses
+
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "result": "+QIRoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoCIc9dReCXYR967Ll8MBSUxzksWDY2BnoQi9Wd/7oEoWoPkCx+uBkmGXMdfppwKUS/jaqLBEcxWj4bVoq/WpxFRzoJBir1eJCOvvqV9urYfxHvZ9E4MTcrb9Or7uLXyOQN78oB9ED5ht8egUlm/SGXX1UlpRFz+VwwgN6EY2TH8LJUT7oKsA5iI9WcteAH3ApzQCwO9BGpSHECr7Od0DEGf9/IxAoOsZFmn1IS2/EGAB97IbYRQGIy3j19DS2Y0jWyNmyT5XoERkVHKeInAzSMZcSm22AIIawXF/ibDdskyEDabbdnO5oCxrQAjl/71HrhhG7jokBsviGC3RYglC34NbtOWzZaoHoJMWXQn5I+cRmWg76pmT8VrDO0DSWGMyv1X3GbkPo8w/oPEBG9Q+RjtCMovVi9K6XG08khJpsPtcHB6YkOlHTLa8oPPEZm2q+9Cssdo5l0YzKH7/+cV1h5pxp8baWeUUUssFoBIHc9BwAGJDsArHrh9kkvS6K8B6xmOzRDR0eKfzC9NcoFHqm63YUFSq9I+9gVJB+VDPGWvp6ZV1AejoXwXS/8rkoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoJl4/9qlwu2vrYvpyQ8ayLvfMOd3Tmc3KZT7FTTfJjJ3gA=="
+}
+```
+#### Responses
+
+| Name   | Type      | Description                 |
+|:-------|:----------|:----------------------------|
+| result | T_BASE64  | Base64 encoded block proof  |
+
+> Failure Response
+
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32000,
+    "message": "Something went wrong."
+  }
+}
+```
+
+#### Default Responses
+
+| Status  | Meaning | Description    | Schema                      |
+|:--------|:--------|:---------------|:----------------------------|
+| 200     | OK      | Success        | Data : base64 encoded bytes |
+| default | Default | JSON-RPC Error | Error Response              |
+
 
 
 ### btp_getSourceInformation
@@ -373,18 +432,18 @@ None
   "id": 1001,
   "jsonrpc": "2.0",
   "result": {
-    "srcNetworkId" : "btp://0x1.icon/…",
-    "networkTypeIds" : ["0x1","0x2"]
+    "srcNetworkID" : "0x1.icon",
+    "networkTypeIDs" : ["0x1","0x2"]
   }
 
 }
 ```
 #### Responses
 
-| Name           | Type      | Description             |
-|:---------------|:----------|:------------------------|
-| srcNetworkId   | T_STRING  | Source network id       |
-| networkTypeIds | T_SIG     | List of network type id |
+| Name           | Type           | Description             |
+|:---------------|:---------------|:------------------------|
+| srcNetworkUID  | T_STRING       | Source network UID      |
+| networkTypeIDs | Array of T_INT | List of network type ID |
 
 > Failure Response
 
