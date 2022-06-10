@@ -280,6 +280,10 @@ func (sm *ServiceManager) ExecuteTransaction(result []byte, vh []byte, js []byte
 	return nil, errors.ErrInvalidState
 }
 
+func (sm *ServiceManager) AddSyncRequest(id db.BucketID, key []byte) error {
+	return errors.ErrInvalidState
+}
+
 func newValidatorListFromSlice(dbase db.Database, addrs []*common.Address) (module.ValidatorList, error) {
 	vls := make([]module.Validator, len(addrs))
 	for i, addr := range addrs {
