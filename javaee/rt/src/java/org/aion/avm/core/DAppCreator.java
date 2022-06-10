@@ -37,6 +37,7 @@ public class DAppCreator {
         IBlockchainRuntime previousRuntime = null;
         Result result;
         LoadedDApp dapp = null;
+        int flag = 0;
         try {
             Transformer transformer = new Transformer(
                     externalState,
@@ -62,7 +63,7 @@ public class DAppCreator {
                                                               tx,
                                                               runtimeSetup,
                                                               dapp);
-            FrameContextImpl fc = new FrameContextImpl(externalState);
+            FrameContextImpl fc = new FrameContextImpl(externalState, true);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, dapp.getInternedClasses(), fc);
             previousRuntime = dapp.attachBlockchainRuntime(br);
 
@@ -93,11 +94,12 @@ public class DAppCreator {
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {
-                InstrumentationHelpers.popExistingStackFrame(runtimeSetup);
+                flag = InstrumentationHelpers.popExistingStackFrame(runtimeSetup);
                 task.getReentrantDAppStack().popState();
                 dapp.attachBlockchainRuntime(previousRuntime);
             }
         }
+        result = result.updateStatus(result.getStatus()|flag);
         return result;
     }
 

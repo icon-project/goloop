@@ -51,6 +51,7 @@ const (
 	CriticalIOError
 	CriticalFormatError
 	CriticalHashError
+	CriticalRerunError
 )
 
 func IsCriticalCode(c Code) bool {

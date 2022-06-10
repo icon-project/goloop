@@ -80,17 +80,18 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 
 		ec.Ready()
 		go func(ctx contract.Context, wc state.WorldContext, txo transaction.Transaction, cnt int, rb *txresult.Receipt) {
-			ctx.SetTransactionInfo(&state.TransactionInfo{
-				Group:     txo.Group(),
-				Index:     int32(cnt),
-				Timestamp: txo.Timestamp(),
-				Nonce:     txo.Nonce(),
-				Hash:      txo.ID(),
-				From:      txo.From(),
-			})
-			ctx.UpdateSystemInfo()
 			wvs := ctx.WorldVirtualState()
-			for trials := RetryCount + 1; trials > 0; trials -= 1 {
+			wvss := wvs.GetSnapshot()
+			for retry := 0; ; retry++ {
+				ctx.SetTransactionInfo(&state.TransactionInfo{
+					Group:     txo.Group(),
+					Index:     int32(cnt),
+					Timestamp: txo.Timestamp(),
+					Nonce:     txo.Nonce(),
+					Hash:      txo.ID(),
+					From:      txo.From(),
+				})
+				ctx.UpdateSystemInfo()
 				rct, err := txh.Execute(ctx, false)
 				txh.Dispose()
 				if err == nil {
@@ -101,13 +102,24 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 					break
 				}
 
-				if !errors.ExecutionFailError.Equals(err) || trials <= 1 {
-					t.log.Debugf("Fail to execute transaction err=%+v", err)
+				if !errors.ExecutionFailError.Equals(err) && !errors.CriticalRerunError.Equals(err) {
+					t.log.Warnf("Fail to execute transaction err=%+v", err)
+					ec.Report(err)
+					break
+				}
+
+				if retry >= RetryCount {
+					t.log.Warnf("Fail to execute transaction retry=%d err=%+v", retry, err)
 					ec.Report(err)
 					break
 				}
 
 				t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+				if err := wvs.Reset(wvss); err != nil {
+					t.log.Errorf("Fail to revert status on rerun err=%+v", err)
+					ec.Report(errors.CriticalUnknownError.Wrapf(err, "FailToResetForRetry"))
+					break
+				}
 
 				txh, err = txo.GetHandler(t.cm)
 				if err != nil {

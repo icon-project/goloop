@@ -1,5 +1,6 @@
 package s.java.lang;
 
+import foundation.icon.ee.types.Status;
 import org.aion.avm.ClassNameExtractor;
 import a.ObjectArray;
 import i.AvmThrowable;
@@ -100,8 +101,16 @@ public final class Class<T> extends Object implements Serializable {
                 Method m = v.getDeclaredMethod("avm_values");
                 java.lang.Object value = m.invoke(null);
 
-                constants = (ObjectArray) value;
-                enumConstants = constants;
+                if (value instanceof ObjectArray) {
+                    constants = (ObjectArray) value;
+                    enumConstants = constants;
+                    var fc = IInstrumentation.attachedThreadInstrumentation.get().getFrameContext();
+                    if (fc.getExternalState().forceEnumCache()) {
+                        if (!fc.isDeployFrame()) {
+                            fc.setStatusFlag(fc.getStatusFlag()|Status.FlagRerun);
+                        }
+                    }
+                }
             } catch (InvocationTargetException e) {
                 // This can happen as a result of an out-of-energy exception - throw back any of our types.
                 if (e.getCause() instanceof AvmThrowable) {
@@ -145,5 +154,10 @@ public final class Class<T> extends Object implements Serializable {
 
     public String getName() {
         return new s.java.lang.String(ClassNameExtractor.getOriginalClassName(v.getName()));
+    }
+
+    public void purgeEnumCache() {
+        enumConstantDirectory = null;
+        enumConstants = null;
     }
 }

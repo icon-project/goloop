@@ -102,7 +102,7 @@ func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) erro
 	return nil
 }
 
-func (cc *callContext) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
+func (cc *callContext) OnResult(status error, flag int, steps *big.Int, result *codec.TypedObj) {
 	fmt.Printf("CallContext.OnResult(%d,%s,[%+v])\n",
 		status, steps.String(), common.MustDecodeAny(result))
 }

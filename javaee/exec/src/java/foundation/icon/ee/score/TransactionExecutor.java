@@ -135,10 +135,11 @@ public class TransactionExecutor {
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
         @SuppressWarnings("unchecked")
         Map<String, BigInteger> stepCosts = (Map<String, BigInteger>) info.get(EEProxy.Info.STEP_COSTS);
+        long revision = ((BigInteger) info.get(EEProxy.Info.REVISION)).longValue();
 
         ExternalState kernel = new ExternalState(proxy, option, code,
                 fileIO, contractID, blockHeight, blockTimestamp, owner,
-                stepCosts, nextHash, graphHash);
+                stepCosts, revision, nextHash, graphHash);
         Transaction tx = new Transaction(from, to, value, nonce,
                 limit.longValue(), method, params, txHash, txIndex, txTimestamp,
                 isInstall);

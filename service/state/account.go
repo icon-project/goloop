@@ -17,7 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/cache"
-	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -35,14 +34,6 @@ const (
 	ASBlocked
 	ASUseSystemDeposit
 )
-
-func asHasFlag(state, flag int) bool {
-	return state&flag != 0
-}
-
-func asIsActive(state int) bool {
-	return !asHasFlag(state, ASDisabled|ASBlocked)
-}
 
 var AccountType = reflect.TypeOf((*accountSnapshotImpl)(nil))
 
@@ -100,9 +91,9 @@ type AccountState interface {
 	ActivateNextContract() error
 	AcceptContract(txHash []byte, auditTxHash []byte) error
 	RejectContract(txHash []byte, auditTxHash []byte) error
-	Contract() Contract
-	ActiveContract() Contract
-	NextContract() Contract
+	Contract() ContractState
+	ActiveContract() ContractState
+	NextContract() ContractState
 	SetDisable(b bool)
 	IsDisabled() bool
 	SetBlock(b bool)
@@ -127,237 +118,95 @@ const (
 	ExDepositInfo
 )
 
-type accountSnapshotImpl struct {
-	version     int
-	balance     *common.HexInt
-	fIsContract bool
-	store       trie.Immutable
-	database    db.Database
+type accountStore interface {
+	Get(k []byte) ([]byte, error)
+}
 
+type accountData struct {
+	database      db.Database
+	version       int
+	balance       *big.Int
+	isContract    bool
 	state         int
 	contractOwner *common.Address
 	apiInfo       apiInfoStore
-	curContract   *contractSnapshotImpl
-	nextContract  *contractSnapshotImpl
-
-	objCache objectGraphCache
-	objGraph *objectGraph
-	deposits depositList
+	curContract   *contract
+	nextContract  *contract
+	store         accountStore
+	deposits      depositList
+	objCache      objectGraphCache
 }
 
-func (s *accountSnapshotImpl) ContractOwner() module.Address {
+func (s *accountData) ContractOwner() module.Address {
 	if s.contractOwner == nil {
 		return nil
 	}
 	return s.contractOwner
 }
 
-func (s *accountSnapshotImpl) Version() int {
+func (s *accountData) Version() int {
 	return s.version
 }
 
-func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
-	if asIsActive(s.state) && s.curContract != nil && s.curContract.state == CSActive {
-		return s.curContract
-	}
-	return nil
+func (s *accountData) IsDisabled() bool {
+	return s.state&ASDisabled != 0
 }
 
-func (s *accountSnapshotImpl) IsDisabled() bool {
-	if s.state&ASDisabled != 0 {
-		return true
-	}
-	return false
+func (s *accountData) IsBlocked() bool {
+	return s.state&ASBlocked != 0
 }
 
-func (s *accountSnapshotImpl) IsBlocked() bool {
-	if s.state&ASBlocked != 0 {
-		return true
-	}
-	return false
-}
-
-func (s *accountSnapshotImpl) UseSystemDeposit() bool {
+func (s *accountData) UseSystemDeposit() bool {
 	return s.state&ASUseSystemDeposit != 0
 }
 
-func (s *accountSnapshotImpl) GetBalance() *big.Int {
-	return &s.balance.Int
+func (s *accountData) IsActive() bool {
+	return s.state&(ASDisabled|ASBlocked) == 0
 }
 
-func (s *accountSnapshotImpl) IsContract() bool {
-	return s.fIsContract
+func (s *accountData) GetBalance() *big.Int {
+	return s.balance
 }
 
-func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
+func (s *accountData) IsContract() bool {
+	return s.isContract
+}
+
+func (s *accountData) GetValue(k []byte) ([]byte, error) {
 	if s.store == nil {
 		return nil, nil
 	}
 	return s.store.Get(k)
 }
 
-func (s *accountSnapshotImpl) IsEmpty() bool {
-	return s.balance.Sign() == 0 && s.store == nil && (!s.fIsContract) && s.state == 0
+func (s *accountData) IsEmpty() bool {
+	return s.balance.Sign() == 0 && s.store == nil && (!s.isContract) && s.state == 0
 }
 
-func (s *accountSnapshotImpl) Bytes() []byte {
-	b, err := codec.MarshalToBytes(s)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func (s *accountSnapshotImpl) Contract() ContractSnapshot {
-	if s.curContract == nil {
-		return nil
-	}
-	return s.curContract
-}
-
-func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
-	if s.nextContract == nil {
-		return nil
-	}
-	return s.nextContract
-}
-
-func (s *accountSnapshotImpl) Reset(database db.Database, data []byte) error {
-	s.database = database
-	_, err := codec.UnmarshalFromBytes(data, s)
-	return err
-}
-
-func (s *accountSnapshotImpl) Flush() error {
-	if err := s.apiInfo.Flush(); err != nil {
-		return err
-	}
-	if s.curContract != nil {
-		if err := s.curContract.flush(); err != nil {
-			return err
-		}
-	}
-	if s.nextContract != nil {
-		if err := s.nextContract.flush(); err != nil {
-			return err
-		}
-	}
-	if s.objGraph != nil {
-		if err := s.objGraph.flush(); err != nil {
-			return err
-		}
-	}
-	if sp, ok := s.store.(trie.Snapshot); ok {
-		return sp.Flush()
-	}
-	return nil
-}
-
-func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
-	if s2, ok := object.(*accountSnapshotImpl); ok {
-		if s == s2 {
-			return true
-		}
-		if s == nil || s2 == nil {
-			return false
-		}
-		if s.version != s2.version {
-			return false
-		}
-		if s.fIsContract != s2.fIsContract ||
-			s.balance.Cmp(&s2.balance.Int) != 0 || s.state != s2.state {
-			return false
-		}
-		if s.contractOwner.Equal(s2.contractOwner) == false {
-			return false
-		}
-		if s.curContract.Equal(s2.curContract) == false {
-			return false
-		}
-		if s.nextContract.Equal(s2.nextContract) == false {
-			return false
-		}
-		if s.apiInfo.Equal(&s2.apiInfo) == false {
-			return false
-		}
-		if s.objGraph.Equal(s2.objGraph) == false {
-			return false
-		}
-		if s.deposits.Equal(s2.deposits) == false {
-			return false
-		}
-		if s.store == s2.store {
-			return true
-		}
-		if s.store == nil || s2.store == nil {
-			return false
-		}
-		return s.store.Equal(s2.store, false)
-	} else {
-		log.Panicf("Replacing accountSnapshotImpl with other object(%T)", object)
-	}
-	return false
-}
-
-func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
-	if err := s.apiInfo.Resolve(bd); err != nil {
-		return err
-	}
-	if s.store != nil {
-		s.store.Resolve(bd)
-	}
-	if s.curContract != nil {
-		if err := s.curContract.Resolve(bd); err != nil {
-			return err
-		}
-	}
-	if s.nextContract != nil {
-		if err := s.nextContract.Resolve(bd); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *accountSnapshotImpl) StorageChangedAfter(ass AccountSnapshot) bool {
-	if s2, ok := ass.(*accountSnapshotImpl); ok {
-		if s.store == nil && s2.store == nil {
-			return false
-		}
-		if s.store == nil || s2.store == nil {
-			return true
-		}
-		if s2.store.Equal(s.store, false) {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *accountSnapshotImpl) IsContractOwner(owner module.Address) bool {
-	if s.fIsContract == false {
+func (s *accountData) IsContractOwner(owner module.Address) bool {
+	if !s.isContract || owner == nil || s.contractOwner == nil {
 		return false
 	}
 	return s.contractOwner.Equal(owner)
 }
 
-func (s *accountSnapshotImpl) APIInfo() (*scoreapi.Info, error) {
+func (s *accountData) APIInfo() (*scoreapi.Info, error) {
 	return s.apiInfo.Get()
 }
 
-func (s *accountSnapshotImpl) GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error) {
+func (s *accountData) GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error) {
 	og := s.objCache.Get(hash)
 	return og.Get(flags)
 }
 
-func (s *accountSnapshotImpl) CanAcceptTx(pc PayContext) bool {
+func (s *accountData) CanAcceptTx(pc PayContext) bool {
 	if s.IsContract() && (s.IsDisabled() || s.IsBlocked()) {
 		return false
 	}
 	return s.CheckDeposit(pc)
 }
 
-func (s *accountSnapshotImpl) CheckDeposit(pc PayContext) bool {
+func (s *accountData) CheckDeposit(pc PayContext) bool {
 	if pc.FeeSharingEnabled() {
 		if s.deposits.Has() {
 			return s.deposits.CanPay(pc)
@@ -366,16 +215,34 @@ func (s *accountSnapshotImpl) CheckDeposit(pc PayContext) bool {
 	return true
 }
 
-func (s *accountSnapshotImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
+func (s *accountData) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
 	map[string]interface{}, error,
 ) {
 	return s.deposits.ToJSON(dc, v)
 }
 
+type accountSnapshotImpl struct {
+	accountData
+	objGraph *objectGraph
+}
+
+func (s *accountSnapshotImpl) String() string {
+	if s.IsContract() {
+		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v obj=%v}",
+			s.balance, s.state, s.curContract, s.nextContract, s.store, s.objGraph)
+	} else {
+		return fmt.Sprintf("Account{balance=%d state=%d}", s.balance, s.state)
+	}
+}
+
+func (s *accountSnapshotImpl) Bytes() []byte {
+	return codec.BC.MustMarshalToBytes(s)
+}
+
 func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	var storeHash []byte
 	if s.store != nil {
-		storeHash = s.store.Hash()
+		storeHash = s.store.(trie.Immutable).Hash()
 	}
 
 	e2, err := e.EncodeList()
@@ -385,7 +252,7 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	if err := e2.EncodeMulti(
 		s.version,
 		s.balance,
-		s.fIsContract,
+		s.isContract,
 		storeHash,
 		s.state,
 		s.contractOwner,
@@ -426,6 +293,12 @@ func (s *accountSnapshotImpl) extensionFlag() int {
 	return flag
 }
 
+func (s *accountSnapshotImpl) Reset(database db.Database, data []byte) error {
+	s.database = database
+	_, err := codec.BC.UnmarshalFromBytes(data, s)
+	return err
+}
+
 func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
@@ -443,7 +316,7 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	}
 	if _, err := d2.DecodeMulti(
 		&s.balance,
-		&s.fIsContract,
+		&s.isContract,
 		&storeHash,
 		&s.state,
 		&s.contractOwner,
@@ -489,55 +362,167 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 
 func (s *accountSnapshotImpl) ClearCache() {
 	if s.store != nil {
-		s.store.ClearCache()
+		s.store.(trie.Immutable).ClearCache()
 	}
 }
 
-func (s *accountSnapshotImpl) String() string {
-	if s.IsContract() {
-		return fmt.Sprintf("Account{balance=%d state=%d cur=%v next=%v store=%v}",
-			s.balance, s.state, s.curContract, s.nextContract, s.store)
-	} else {
-		return fmt.Sprintf("Account{balance=%d state=%d}", s.balance, s.state)
+func (s *accountSnapshotImpl) Flush() error {
+	if err := s.apiInfo.Flush(); err != nil {
+		return err
 	}
+	if s.curContract != nil {
+		if err := s.curContract.flush(); err != nil {
+			return err
+		}
+	}
+	if s.nextContract != nil {
+		if err := s.nextContract.flush(); err != nil {
+			return err
+		}
+	}
+	if s.objGraph != nil {
+		if err := s.objGraph.flush(); err != nil {
+			return err
+		}
+	}
+	if sp, ok := s.store.(trie.Snapshot); ok {
+		return sp.Flush()
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
+	if s2, ok := object.(*accountSnapshotImpl); ok {
+		if s == s2 {
+			return true
+		}
+		if s == nil || s2 == nil {
+			return false
+		}
+		if s.version != s2.version {
+			return false
+		}
+		if s.isContract != s2.isContract ||
+			s.balance.Cmp(s2.balance) != 0 || s.state != s2.state {
+			return false
+		}
+		if s.contractOwner.Equal(s2.contractOwner) == false {
+			return false
+		}
+		if s.curContract.Equal(s2.curContract) == false {
+			return false
+		}
+		if s.nextContract.Equal(s2.nextContract) == false {
+			return false
+		}
+		if s.apiInfo.Equal(&s2.apiInfo) == false {
+			return false
+		}
+		if s.objGraph.Equal(s2.objGraph) == false {
+			return false
+		}
+		if s.deposits.Equal(s2.deposits) == false {
+			return false
+		}
+		if s.store == s2.store {
+			return true
+		}
+		if s.store == nil || s2.store == nil {
+			return false
+		}
+		return s.store.(trie.Immutable).Equal(s2.store.(trie.Immutable), false)
+	} else {
+		log.Panicf("Replacing accountSnapshot with other object(%T)", object)
+	}
+	return false
+}
+
+func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
+	if err := s.apiInfo.Resolve(bd); err != nil {
+		return err
+	}
+	if s.store != nil {
+		s.store.(trie.Immutable).Resolve(bd)
+	}
+	if s.curContract != nil {
+		if err := s.curContract.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	if s.nextContract != nil {
+		if err := s.nextContract.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	if s.objGraph != nil {
+		if err := s.objGraph.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) StorageChangedAfter(ass AccountSnapshot) bool {
+	if s2, ok := ass.(*accountSnapshotImpl); ok {
+		if s.store == nil && s2.store == nil {
+			return false
+		}
+		if s.store == nil || s2.store == nil {
+			return true
+		}
+		if s2.store.(trie.Immutable).Equal(s.store.(trie.Immutable), false) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *accountSnapshotImpl) Contract() ContractSnapshot {
+	if s.curContract == nil {
+		return nil
+	}
+	return s.curContract
+}
+
+func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
+	if s.IsActive() &&
+		s.curContract != nil && s.curContract.state == CSActive {
+		return s.curContract
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
+	if s.nextContract == nil {
+		return nil
+	}
+	return s.nextContract
+}
+
+func (s *accountSnapshotImpl) Store() trie.Immutable {
+	return s.store.(trie.Immutable)
 }
 
 func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
 	return &accountSnapshotImpl{
-		version:  AccountVersion,
-		balance:  common.HexIntZero,
-		database: dbase,
+		accountData: accountData{
+			version:  AccountVersion,
+			balance:  new(big.Int),
+			database: dbase,
+		},
 	}
 }
 
 type accountStateImpl struct {
+	accountData
+	store    trie.Mutable
 	last     *accountSnapshotImpl
 	key      []byte
 	useCache bool
-
-	version    int
-	database   db.Database
-	balance    *common.HexInt
-	isContract bool
-
-	state         int
-	contractOwner module.Address
-	apiInfo       apiInfoStore
-	curContract   *contractImpl
-	nextContract  *contractImpl
-	store         trie.Mutable
-
-	objCache objectGraphCache
-	deposits depositList
 }
 
 func (s *accountStateImpl) markDirty() {
 	s.last = nil
-}
-
-func (s *accountStateImpl) GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error) {
-	obj := s.objCache.Get(id)
-	return obj.Get(flags)
 }
 
 func (s *accountStateImpl) SetObjGraph(id []byte, flags bool, nextHash int, objGraph []byte) error {
@@ -551,41 +536,12 @@ func (s *accountStateImpl) SetObjGraph(id []byte, flags bool, nextHash int, objG
 	}
 }
 
-func (s *accountStateImpl) ContractOwner() module.Address {
-	if s.contractOwner == nil {
-		return nil
-	}
-	return s.contractOwner
-}
-
-func (s *accountStateImpl) Version() int {
-	return s.version
-}
-
-func (s *accountStateImpl) ActiveContract() Contract {
-	if asIsActive(s.state) &&
+func (s *accountStateImpl) ActiveContract() ContractState {
+	if s.IsActive() &&
 		s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
-}
-
-func (s *accountStateImpl) IsDisabled() bool {
-	if s.state&ASDisabled == ASDisabled {
-		return true
-	}
-	return false
-}
-
-func (s *accountStateImpl) IsBlocked() bool {
-	if s.state&ASBlocked == ASBlocked {
-		return true
-	}
-	return false
-}
-
-func (s *accountStateImpl) UseSystemDeposit() bool {
-	return asHasFlag(s.state, ASUseSystemDeposit)
 }
 
 func (s *accountStateImpl) SetDisable(b bool) {
@@ -608,27 +564,20 @@ func (s *accountStateImpl) SetUseSystemDeposit(yn bool) error {
 	if !s.isContract {
 		return scoreresult.ContractNotFoundError.New("NotContract")
 	}
-	if asHasFlag(s.state, ASUseSystemDeposit) != yn {
+	if ((s.state & ASUseSystemDeposit) != 0) != yn {
 		s.state = s.state ^ ASUseSystemDeposit
 		s.markDirty()
 	}
 	return nil
 }
 
-func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
-	if s.isContract == false {
-		return false
-	}
-	return s.contractOwner.Equal(owner)
-}
-
 func (s *accountStateImpl) SetContractOwner(owner module.Address) error {
 	if !s.isContract {
 		return scoreresult.ContractNotFoundError.New("NotContract")
 	}
-	if !common.AddressEqual(s.contractOwner, owner) {
+	if !s.contractOwner.Equal(owner) {
 		s.markDirty()
-		s.contractOwner = owner
+		s.contractOwner = common.AddressToPtr(owner)
 	}
 	return nil
 }
@@ -640,7 +589,7 @@ func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 	}
 	s.markDirty()
 	s.isContract = true
-	s.contractOwner = address
+	s.contractOwner = common.AddressToPtr(address)
 	return true
 }
 
@@ -662,11 +611,11 @@ func (s *accountStateImpl) DeployContract(code []byte, eeType EEType, contentTyp
 		}
 		old = s.nextContract.deployTxHash
 	}
-	s.nextContract = &contractImpl{contractSnapshotImpl{
-		bk: bk, isNew: true, state: state, contentType: contentType,
+	s.nextContract = &contract{
+		bk: bk, needFlush: true, state: state, contentType: contentType,
 		eeType: eeType, deployTxHash: txHash, codeHash: codeHash[:],
-		params: params, code: code},
-		s.markDirty,
+		params: params, code: code,
+		markDirty: s.markDirty,
 	}
 	s.markDirty()
 	return old, nil
@@ -717,16 +666,8 @@ func (s *accountStateImpl) RejectContract(
 	return nil
 }
 
-func (s *accountStateImpl) APIInfo() (*scoreapi.Info, error) {
-	return s.apiInfo.Get()
-}
-
 func (s *accountStateImpl) MigrateForRevision(rev module.Revision) error {
 	v := accountVersionForRevision(rev)
-	return s.migrate(v)
-}
-
-func (s *accountStateImpl) migrate(v int) error {
 	if v > s.version {
 		if s.version < AccountVersion2 && v >= AccountVersion2 {
 			if err := s.apiInfo.ResetDB(s.database); err != nil {
@@ -745,19 +686,11 @@ func (s *accountStateImpl) SetAPIInfo(apiInfo *scoreapi.Info) {
 	s.markDirty()
 }
 
-func (s *accountStateImpl) GetBalance() *big.Int {
-	return &s.balance.Int
-}
-
 func (s *accountStateImpl) SetBalance(v *big.Int) {
 	if s.balance.Cmp(v) != 0 {
-		s.balance = new(common.HexInt).SetValue(v)
+		s.balance = v
 		s.markDirty()
 	}
-}
-
-func (s *accountStateImpl) IsContract() bool {
-	return s.isContract
 }
 
 func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
@@ -777,19 +710,21 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		objGraph = s.objCache.Get(s.curContract.CodeID())
 	}
 	s.last = &accountSnapshotImpl{
-		database:      s.database,
-		version:       s.version,
-		balance:       s.balance,
-		fIsContract:   s.isContract,
-		store:         store,
-		state:         s.state,
-		contractOwner: common.AddressToPtr(s.contractOwner),
-		apiInfo:       s.apiInfo,
-		curContract:   s.curContract.getSnapshot(),
-		nextContract:  s.nextContract.getSnapshot(),
-		objGraph:      objGraph,
-		objCache:      s.objCache.Clone(),
-		deposits:      s.deposits.Clone(),
+		accountData: accountData{
+			database:      s.database,
+			version:       s.version,
+			balance:       s.balance,
+			isContract:    s.isContract,
+			store:         store,
+			state:         s.state,
+			contractOwner: s.contractOwner,
+			apiInfo:       s.apiInfo,
+			curContract:   s.curContract.getSnapshot(),
+			nextContract:  s.nextContract.getSnapshot(),
+			objCache:      s.objCache.Clone(),
+			deposits:      s.deposits.Clone(),
+		},
+		objGraph: objGraph,
 	}
 	return s.last
 }
@@ -798,7 +733,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 func (s *accountStateImpl) attachCacheForStore() {
 	if s.useCache && s.store != nil {
 		if cache := cache.AccountNodeCacheOf(s.database, s.key); cache != nil {
-			ompt.SetCacheOfMutable(s.store, cache)
+			trie_manager.SetCacheOfMutable(s.store, cache)
 		}
 	}
 }
@@ -815,7 +750,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.last = snapshot
 
 	s.balance = snapshot.balance
-	s.isContract = snapshot.fIsContract
+	s.isContract = snapshot.isContract
 	s.version = snapshot.version
 	s.apiInfo = snapshot.apiInfo
 	s.state = snapshot.state
@@ -826,14 +761,17 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.deposits = snapshot.deposits.Clone()
 	if snapshot.store == nil {
 		s.store = nil
+		s.accountData.store = nil
 		return nil
 	}
+	store := snapshot.store.(trie.Immutable)
 	if s.store == nil {
-		s.store = trie_manager.NewMutableFromImmutable(snapshot.store)
+		s.store = trie_manager.NewMutableFromImmutable(store)
+		s.accountData.store = s.store
 		s.attachCacheForStore()
 		return nil
 	}
-	if err := s.store.Reset(snapshot.store); err != nil {
+	if err := s.store.Reset(store); err != nil {
 		log.Panicf("Fail to make accountStateImpl err=%v", err)
 	}
 	return nil
@@ -843,17 +781,12 @@ func (s *accountStateImpl) Clear() {
 	*s = accountStateImpl{
 		key:      s.key,
 		useCache: s.useCache,
-		database: s.database,
-		version:  AccountVersion,
-		balance:  common.HexIntZero,
+		accountData: accountData{
+			database: s.database,
+			version:  AccountVersion,
+			balance:  new(big.Int),
+		},
 	}
-}
-
-func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
-	if s.store == nil {
-		return nil, nil
-	}
-	return s.store.Get(k)
 }
 
 func (s *accountStateImpl) SetValue(k, v []byte) ([]byte, error) {
@@ -862,6 +795,7 @@ func (s *accountStateImpl) SetValue(k, v []byte) ([]byte, error) {
 	}
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
+		s.accountData.store = s.store
 		s.attachCacheForStore()
 	}
 	if old, err := s.store.Set(k, v); err == nil {
@@ -884,14 +818,14 @@ func (s *accountStateImpl) DeleteValue(k []byte) ([]byte, error) {
 	}
 }
 
-func (s *accountStateImpl) Contract() Contract {
+func (s *accountStateImpl) Contract() ContractState {
 	if s.curContract == nil {
 		return nil
 	}
 	return s.curContract
 }
 
-func (s *accountStateImpl) NextContract() Contract {
+func (s *accountStateImpl) NextContract() ContractState {
 	if s.nextContract == nil {
 		return nil
 	}
@@ -931,31 +865,13 @@ func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *b
 	return nil, nil, nil
 }
 
-func (s *accountStateImpl) CanAcceptTx(pc PayContext) bool {
-	if s.IsContract() && (s.IsDisabled() || s.IsBlocked()) {
-		return false
-	}
-	return s.CheckDeposit(pc)
-}
-
-func (s *accountStateImpl) CheckDeposit(pc PayContext) bool {
-	if pc.FeeSharingEnabled() && s.deposits.Has() {
-		return s.deposits.CanPay(pc)
-	}
-	return true
-}
-
-func (s *accountStateImpl) GetDepositInfo(dc DepositContext, v module.JSONVersion) (
-	map[string]interface{}, error,
-) {
-	return s.deposits.ToJSON(dc, v)
-}
-
 func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []byte, useCache bool) AccountState {
 	s := &accountStateImpl{
+		accountData: accountData{
+			database: database,
+		},
 		key:      key,
 		useCache: useCache,
-		database: database,
 	}
 	if snapshot != nil {
 		if err := s.Reset(snapshot); err != nil {
@@ -963,22 +879,22 @@ func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []
 		}
 	} else {
 		s.version = AccountVersion
-		s.balance = common.HexIntZero
+		s.balance = new(big.Int)
 	}
 	return s
 }
 
 type accountROState struct {
 	AccountSnapshot
-	curContract  Contract
-	nextContract Contract
+	curContract  ContractState
+	nextContract ContractState
 }
 
-func (a *accountROState) Contract() Contract {
+func (a *accountROState) Contract() ContractState {
 	return a.curContract
 }
 
-func (a *accountROState) ActiveContract() Contract {
+func (a *accountROState) ActiveContract() ContractState {
 	if a.IsBlocked() == true || a.IsDisabled() == true {
 		return nil
 	}
@@ -989,7 +905,7 @@ func (a *accountROState) ActiveContract() Contract {
 	return nil
 }
 
-func (a *accountROState) NextContract() Contract {
+func (a *accountROState) NextContract() ContractState {
 	return a.nextContract
 }
 

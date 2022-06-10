@@ -47,6 +47,7 @@ public class ExternalState implements IExternalState {
     private final FileIO fileIO;
     private final byte[] contractID;
     private final StepCost stepCost;
+    private final long revision;
     private final int nextHash;
     private final byte[] graphHash;
     private int feeProportion;
@@ -54,7 +55,7 @@ public class ExternalState implements IExternalState {
     ExternalState(EEProxy proxy, int option, String codePath,
                   FileIO fileIO, byte[] contractID, BigInteger blockHeight,
                   BigInteger blockTimestamp, Address owner,
-                  Map<String, BigInteger> stepCosts, int nextHash,
+                  Map<String, BigInteger> stepCosts, long revision, int nextHash,
                   byte[] graphHash) {
         this.proxy = proxy;
         this.option = option;
@@ -65,6 +66,7 @@ public class ExternalState implements IExternalState {
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
         this.stepCost = new StepCost(stepCosts);
+        this.revision = revision;
         this.nextHash = nextHash;
         this.graphHash = graphHash;
     }
@@ -263,5 +265,10 @@ public class ExternalState implements IExternalState {
     @Override
     public StepCost getStepCost() {
         return stepCost;
+    }
+
+    @Override
+    public long getRevision() {
+        return revision;
     }
 }

@@ -35,6 +35,7 @@ type Platform interface {
 	OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, logger log.Logger)
 	ToRevision(value int) module.Revision
 	NewBaseTransaction(wc state.WorldContext) (module.Transaction, error)
+	OnValidateTransactions(wc state.WorldContext, patches, txs module.TransactionList) error
 	OnExecutionBegin(wc state.WorldContext, logger log.Logger) error
 	OnExecutionEnd(wc state.WorldContext, er ExecutionResult, logger log.Logger) error
 	OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error

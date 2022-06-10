@@ -539,6 +539,17 @@ func (m *mpt) Database() db.Database {
 	return m.db
 }
 
+func (m *mpt) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "MPT(hash=%#x)", m.Hash())
+	case 's':
+		fmt.Fprintf(f, "%#x", m.Hash())
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 func newMPTStatics(s *mptStatics) *mptStatics {
 	if logStatics {
 		if s == nil {

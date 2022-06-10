@@ -73,6 +73,10 @@ func (t *platform) OnExtensionSnapshotFinalization(ess state.ExtensionSnapshot, 
 	// do nothing
 }
 
+func (t *platform) OnValidateTransactions(wc state.WorldContext, patches, txs module.TransactionList) error {
+	return nil
+}
+
 func (t *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) error {
 	return nil
 }

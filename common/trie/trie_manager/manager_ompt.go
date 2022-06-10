@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/common/trie/ompt"
 )
 
@@ -30,4 +31,12 @@ func NewMutable(database db.Database, h []byte) trie.Mutable {
 
 func NewMutableFromImmutable(object trie.Immutable) trie.Mutable {
 	return ompt.NewMutableFromImmutable(object)
+}
+
+func SetCacheOfMutable(mutable trie.Mutable, cache *cache.NodeCache) {
+	ompt.SetCacheOfMutable(mutable, cache)
+}
+
+func SetCacheOfMutableForObject(mutable trie.MutableForObject, cache *cache.NodeCache) {
+	ompt.SetCacheOfMutableForObject(mutable, cache)
 }

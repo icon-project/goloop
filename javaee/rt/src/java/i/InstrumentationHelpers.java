@@ -25,16 +25,19 @@ public class InstrumentationHelpers {
         // Tell the underlying static instrumentation receiver to attach to this instrumentation.
         runtimeSetup.attach(instrumentation);
     }
-    public static void popExistingStackFrame(IRuntimeSetup runtimeSetup) {
+    public static int popExistingStackFrame(IRuntimeSetup runtimeSetup) {
         // Get the instrumentation for this thread (must be attached).
         IInstrumentation instrumentation = IInstrumentation.attachedThreadInstrumentation.get();
         RuntimeAssertionError.assertTrue(null != instrumentation);
-        
+
+        var flag = instrumentation.getFrameContext().getStatusFlag();
+
         // Tell the underlying static instrumentation receiver to detach to this instrumentation.
         runtimeSetup.detach(instrumentation);
         
         // Tell the instrumentation to discard this frame and return to the previous (if there was one).
         instrumentation.exitCurrentFrame();
+        return flag;
     }
 
     public static void temporarilyExitFrame(IRuntimeSetup runtimeSetup) {

@@ -35,7 +35,7 @@ type (
 		GenesisTo() module.Address
 		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error)
 		GetCallHandler(from, to module.Address, value *big.Int, ctype int, paramObj *codec.TypedObj) (ContractHandler, error)
-		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
+		PrepareContractStore(ws state.WorldState, contract state.ContractState) (ContractStore, error)
 		GetSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error)
 	}
 
@@ -246,7 +246,7 @@ func (cm *contractManager) storeContract(eeType state.EEType,
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
 func (cm *contractManager) PrepareContractStore(
-	ws state.WorldState, contract state.Contract) (ContractStore, error) {
+	ws state.WorldState, contract state.ContractState) (ContractStore, error) {
 	cm.lock.Lock()
 	codeHash := contract.CodeHash()
 	hashStr := string(codeHash)

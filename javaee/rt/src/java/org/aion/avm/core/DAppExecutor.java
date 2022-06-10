@@ -71,6 +71,7 @@ public class DAppExecutor {
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
+        int flag;
         try {
             // It is now safe for us to bill for the cost of loading the graph (the cost is the same, whether this came from the caller or the disk).
             // (note that we do this under the try since aborts can happen here)
@@ -125,12 +126,13 @@ public class DAppExecutor {
             result = new Result(e.getCode(), stepUsed, e.getResultMessage());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
-            InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);
+            flag = InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);
             // This state was only here while we were running, in case someone else needed to change it so now we can pop it.
             task.getReentrantDAppStack().popState();
             // Re-attach the previously detached IBlockchainRuntime instance.
             dapp.attachBlockchainRuntime(previousRuntime);
         }
+        result = result.updateStatus(result.getStatus()|flag);
         return result;
     }
 }
