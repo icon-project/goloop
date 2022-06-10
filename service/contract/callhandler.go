@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -620,7 +621,12 @@ func (h *CallHandler) SetCode(code []byte) error {
 }
 
 func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
-	return h.as.GetObjGraph(h.codeID, flags)
+	nid, hash, graph, err := h.as.GetObjGraph(h.codeID, flags)
+	if state.MissingGraphDataError.Equals(err) {
+		h.cc.AddSyncRequest(db.BytesByHash, hash)
+		return 0, nil, nil, err
+	}
+	return nid, hash, graph, err
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {

@@ -373,6 +373,9 @@ type ServiceManager interface {
 	// Then it returns the expected result of the transaction.
 	// It ignores supplied step limit.
 	ExecuteTransaction(result []byte, vh []byte, js []byte, bi BlockInfo) (Receipt, error)
+
+	// AddSyncRequest add sync request for specified data.
+	AddSyncRequest(id db.BucketID, key []byte) error
 }
 
 type TraceInfo struct {

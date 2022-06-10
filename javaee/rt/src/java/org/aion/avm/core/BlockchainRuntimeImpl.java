@@ -9,6 +9,7 @@ import a.ByteArray;
 import foundation.icon.ee.io.RLPDataReader;
 import foundation.icon.ee.io.RLPDataWriter;
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ManualRevertException;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
@@ -398,7 +399,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             bindexed[i] = ValueCodec.encode(v);
             len += bindexed[i].length;
             if (logger.isTraceEnabled()) {
-                logger.trace("indexed[{}]={}", i, bindexed[i]);
+                logger.trace("indexed[{}]={}", i, i == 0 ? new String(bindexed[i]) : Bytes.toHexString(bindexed[i]));
             }
         }
         byte[][] bdata = new byte[data.length()][];
@@ -409,7 +410,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             bdata[i] = ValueCodec.encode(v);
             len += bdata[i].length;
             if (logger.isTraceEnabled()) {
-                logger.trace("data[{}]={}", i, bdata[i]);
+                logger.trace("data[{}]={}", i, Bytes.toHexString(bdata[i]));
             }
         }
         var stepCost = externalState.getStepCost();

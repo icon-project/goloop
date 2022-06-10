@@ -171,14 +171,18 @@ public class TransactionExecutor {
         logger.trace("    method={}", method);
         logger.trace("    params=[");
         for (Object p : params) {
-            logger.trace("     - {}", p);
+            if (p instanceof byte[]) {
+                logger.trace("     - 0x{}", Bytes.toHexString((byte[]) p));
+            } else {
+                logger.trace("     - {}", p);
+            }
         }
         logger.trace("    ]");
     }
 
     private void printGetInfo(Map<String, Object> info) {
         logger.trace(">>> getInfo: info={}", info);
-        logger.trace("    txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
+        logger.trace("    txHash=0x{}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
         logger.trace("    txIndex={}", info.get(EEProxy.Info.TX_INDEX));
         logger.trace("    txFrom={}", info.get(EEProxy.Info.TX_FROM));
         logger.trace("    txTimestamp={}", info.get(EEProxy.Info.TX_TIMESTAMP));

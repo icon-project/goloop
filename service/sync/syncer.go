@@ -98,7 +98,7 @@ type syncer struct {
 	wss state.WorldSnapshot
 	prl module.ReceiptList
 	nrl module.ReceiptList
-	cb  func(syncing bool)
+	cb  func(syncer SyncerImpl, syncing bool)
 
 	waitingPeerCnt int
 	complete       syncType
@@ -310,6 +310,26 @@ func (s *syncer) onLeave(id module.PeerID) {
 	s.vpool.remove(id)
 }
 
+func parseMessage(pi module.ProtocolInfo, b []byte) (uint32, interface{}, error) {
+	switch pi {
+	case protoResult:
+		data := new(result)
+		if _, err := c.UnmarshalFromBytes(b, data); err != nil {
+			return 0, nil, err
+		}
+		return data.ReqID, data, nil
+	case protoNodeData:
+		data := new(nodeData)
+		if _, err := c.UnmarshalFromBytes(b, data); err != nil {
+			return 0, nil, err
+		}
+		return data.ReqID, data, nil
+	default:
+		return 0, nil, errors.IllegalArgumentError.Errorf(
+			"UnknownProtocol(proto=%d)", pi)
+	}
+}
+
 func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -319,25 +339,7 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 		return
 	}
 
-	var i interface{}
-	var reqID uint32
-	var err error
-	switch pi {
-	case protoResult:
-		data := new(result)
-		_, err = c.UnmarshalFromBytes(b, data)
-		reqID = data.ReqID
-		i = data
-	case protoNodeData:
-		data := new(nodeData)
-		_, err = c.UnmarshalFromBytes(b, data)
-		reqID = data.ReqID
-		i = data
-	default:
-		s.log.Info("Invalid protocol received(%d)\n", pi)
-		return
-	}
-
+	reqID, i, err := parseMessage(pi, b)
 	if err != nil || reqID != p.reqID {
 		s.log.Infof(
 			"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s)\n",
@@ -472,9 +474,9 @@ func (s *syncer) ForceSync() (*Result, error) {
 	s.log.Debugln("ForceSync")
 	startTime := time.Now()
 	s.startTime = startTime
-	s.cb(true)
+	s.cb(s, true)
 	defer func() {
-		s.cb(false)
+		s.cb(s, false)
 		syncDuration := time.Now().Sub(startTime)
 		elapsedMS := float64(syncDuration/time.Microsecond) / 1000
 		s.log.Infof("ForceSync : Elapsed: %9.3f ms\n", elapsedMS)
@@ -559,7 +561,7 @@ func (s *syncer) Finalize() error {
 
 func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte,
-	log log.Logger, cb func(syncing bool)) *syncer {
+	log log.Logger, cb func(syncer SyncerImpl, syncing bool)) *syncer {
 	log.Debugf("newSyncer ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 
@@ -568,8 +570,8 @@ func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 		pool:     p,
 		client:   c,
 		plt:      plt,
-		vpool:    newPeerPool(log),
-		ivpool:   newPeerPool(log),
+		vpool:    newPeerPool(),
+		ivpool:   newPeerPool(),
 		sentReq:  make(map[module.PeerID]*peer),
 		ah:       accountsHash,
 		prh:      pReceiptsHash,

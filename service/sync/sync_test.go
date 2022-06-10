@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -158,13 +161,35 @@ func (d dummyExtensionBuilderType) NewExtensionWithBuilder(builder merkle.Builde
 
 var dummyExBuilder Platform = dummyExtensionBuilderType{}
 
+func DBSet(database db.Database, id db.BucketID, k, v []byte) error {
+	bk, err := database.GetBucket(id)
+	if err != nil {
+		return err
+	}
+	return bk.Set(k, v)
+}
+
+func DBGet(database db.Database, id db.BucketID, k []byte) ([]byte, error) {
+	bk, err := database.GetBucket(id)
+	if err != nil {
+		return nil, err
+	}
+	return bk.Get(k)
+}
+
 func TestSync_SimpleAccountSync(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.DebugLevel)
 	db1 := db.NewMapDB()
 	db2 := db.NewMapDB()
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
-	_ = NewSyncManager(db1, nm, dummyExBuilder, log.New())
-	syncm2 := NewSyncManager(db2, nm2, dummyExBuilder, log.New())
+	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm.id.String()[2:]})
+	log2 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm2.id.String()[2:]})
+	syncm1 := NewSyncManager(db1, nm, dummyExBuilder, log1)
+	syncm2 := NewSyncManager(db2, nm2, dummyExBuilder, log2)
+	syncm1.Start()
+	syncm2.Start()
 
 	nm.join(nm2)
 	ws := state.NewWorldState(db1, nil, nil, nil)
@@ -178,26 +203,96 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	}
 	vs.Set(tvList)
 
+	value1 := []byte("My Test Is")
+	key1 := crypto.SHA3Sum256(value1)
+	err := DBSet(db1, db.BytesByHash, key1, value1)
+	assert.NoError(t, err)
+
+	err = syncm2.AddRequest(db.BytesByHash, key1)
+	assert.NoError(t, err)
+
 	ac2 := ws.GetAccountState([]byte("XYZ"))
 	ac2.SetValue([]byte("XYZ"), []byte("XYZ2"))
 
 	acHash := ws.GetSnapshot().StateHash()
-	log.Printf("acHash : %#x\n", acHash)
+	logger.Printf("acHash : %#x\n", acHash)
 	ws.GetSnapshot().Flush()
 	vh := ws.GetValidatorState().GetSnapshot().Hash()
 
 	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh, nil)
 	r, _ := syncer1.ForceSync()
 
-	log.Printf("END\n")
+	logger.Printf("END\n")
 	as := r.Wss.GetAccountSnapshot([]byte("ABC"))
 	v, err := as.GetValue([]byte("ABC"))
-	if err != nil {
-		t.Fatalf("err = %v\n", err)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("XYZ"), v)
+
+	time.Sleep(DataRequestRoundInterval + DataRequestNodeInterval)
+
+	value2, err := DBGet(db2, db.BytesByHash, key1)
+	assert.NoError(t, err)
+	assert.Equal(t, value1, value2)
+}
+
+func TestSync_DataSync(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.DebugLevel)
+
+	const cPeers int = 16
+	var databases [cPeers]db.Database
+	var nms [cPeers]*tNetworkManager
+	var syncM [cPeers]*Manager
+	for i := 0; i < cPeers; i++ {
+		databases[i] = db.NewMapDB()
+		nms[i] = newTNetworkManager(createAPeerID())
+		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, logger)
+		syncM[i].Start()
 	}
 
-	log.Printf("v = %v\n", v)
-	log.Printf("END OF TestSync_SimpleAccountSync\n")
+	for i := 0; i < cPeers; i++ {
+		for j := i; j < cPeers-1; j++ {
+			nms[i].join(nms[j+1])
+		}
+	}
+
+	var keys [][]byte
+	var values [][]byte
+	for i := 0; i < cPeers; i++ {
+		value := []byte(fmt.Sprintf("TEST Data %d", i))
+		key := crypto.SHA3Sum256(value)
+		err := DBSet(databases[i], db.BytesByHash, key, value)
+		assert.NoError(t, err)
+		keys = append(keys, key)
+		values = append(values, value)
+	}
+
+	for i := 0; i < cPeers; i++ {
+		for j := 0; j < cPeers; j++ {
+			err := syncM[i].AddRequest(db.BytesByHash, keys[j])
+			assert.NoError(t, err)
+		}
+	}
+
+	var checkedServers int
+	for try := 0; try < 6 && checkedServers < cPeers; try++ {
+		checkedServers = 0
+		for i := 0; i < cPeers; i++ {
+			checkedEntries := 0
+			for j := 0; j < cPeers; j++ {
+				value, err := DBGet(databases[i], db.BytesByHash, keys[j])
+				assert.NoError(t, err)
+				if bytes.Equal(value, values[j]) {
+					checkedEntries += 1
+				}
+			}
+			if checkedEntries == cPeers {
+				checkedServers += 1
+			}
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+	assert.Equal(t, cPeers, checkedServers)
 }
 
 func TestSync_AccountSync(t *testing.T) {
@@ -215,6 +310,7 @@ func TestSync_AccountSync(t *testing.T) {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
 		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, log.New())
+		syncM[i].Start()
 	}
 
 	for i := 0; i < cPeers; i++ {
@@ -231,6 +327,9 @@ func TestSync_AccountSync(t *testing.T) {
 			v := []byte{testItems[j]}
 			ac := wss[i].GetAccountState(v)
 			ac.SetValue(v, v)
+			k := crypto.SHA3Sum256(v)
+			err := DBSet(databases[i], db.BytesByHash, k, v)
+			assert.NoError(t, err)
 		}
 		ss := wss[i].GetSnapshot()
 		ss.Flush()
