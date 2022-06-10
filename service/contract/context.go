@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -22,6 +23,7 @@ type Context interface {
 	ContractManager() ContractManager
 	EEManager() eeproxy.Manager
 	GetPreInstalledScore(id string) ([]byte, error)
+	AddSyncRequest(id db.BucketID, key []byte)
 	Logger() log.Logger
 	PatchDecoder() module.PatchDecoder
 	TraceInfo() *module.TraceInfo
@@ -65,6 +67,14 @@ func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
 		return nil, err
 	}
 	return c.chain.GenesisStorage().Get(hash)
+}
+
+func (c *context) AddSyncRequest(id db.BucketID, key []byte) {
+	err := c.chain.ServiceManager().AddSyncRequest(id, key)
+	if err != nil {
+		c.log.Warnf("FAIL to add sync request id=%q key=%#x err=%+v",
+			id, key, err)
+	}
 }
 
 func (c *context) Logger() log.Logger {
