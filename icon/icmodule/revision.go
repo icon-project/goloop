@@ -37,6 +37,7 @@ const (
 	Revision16
 	Revision17
 	Revision18
+	Revision19
 	RevisionReserved
 )
 
@@ -135,6 +136,8 @@ var revisionFlags = []module.Revision{
 	0,
 	// Revision18
 	module.FixLostFeeByDeposit,
+	// Revision19
+	module.PurgeEnumCache,
 }
 
 func init() {
