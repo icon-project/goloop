@@ -937,6 +937,7 @@ func (s *chainScore) Install(param []byte) error {
 	var revision int
 	var validators []module.Validator
 	var handlers []contract.ContractHandler
+	blockInterval := int64(2000)
 	roundLimitFactor := int64(3)
 
 	switch s.cc.ChainID() {
@@ -1050,6 +1051,9 @@ func (s *chainScore) Install(param []byte) error {
 			}
 		}
 
+		if chainConfig.BlockInterval != nil {
+			blockInterval = chainConfig.BlockInterval.Value
+		}
 		if chainConfig.RoundLimitFactor != nil {
 			roundLimitFactor = chainConfig.RoundLimitFactor.Value
 		}
@@ -1076,7 +1080,7 @@ func (s *chainScore) Install(param []byte) error {
 	}
 
 	// set block interval 2 seconds
-	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(2000); err != nil {
+	if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(blockInterval); err != nil {
 		return err
 	}
 
