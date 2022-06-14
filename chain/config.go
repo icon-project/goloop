@@ -2,6 +2,7 @@ package chain
 
 import (
 	"encoding/json"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -106,6 +107,27 @@ func (c *Config) NetID() int {
 
 func (c *Config) GetChannel() string {
 	return GetChannel(c.Channel, c.NID)
+}
+
+// Save store configuration to c.FilePath
+func (c *Config) Save() error {
+	if c.FilePath == "" {
+		return nil
+	}
+	f, err := os.OpenFile(c.FilePath,
+		os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(&c); err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetChannel(channel string, nid int) string {
