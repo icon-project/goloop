@@ -265,6 +265,10 @@ func (t *taskPruning) _prune(gsfile, dbtype string, height int64) (rerr error) {
 	c.cfg.GenesisStorage = g
 	c.cfg.Genesis = g.Genesis()
 
+	if err := c.cfg.Save(); err != nil {
+		return errors.UnknownError.Wrap(err, "fail to store configuration")
+	}
+
 	return nil
 }
 
