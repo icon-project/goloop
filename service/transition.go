@@ -218,7 +218,10 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 		stateHash = tr.StateHash
 		extensionData = tr.ExtensionData
 	}
-	ess := plt.NewExtensionSnapshot(database, extensionData)
+	var ess state.ExtensionSnapshot
+	if plt != nil {
+		ess = plt.NewExtensionSnapshot(database, extensionData)
+	}
 	return state.NewWorldSnapshot(database, stateHash, vl, ess), nil
 }
 
