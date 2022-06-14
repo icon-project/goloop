@@ -208,13 +208,15 @@ func (p *FeePayerInfo) GetLogs(r txresult.Receipt) bool {
 	if len(m) == 0 {
 		return false
 	}
+	paymentCount := 0
 	for _, p1 := range m {
 		if p1.paidSteps.Sign() == 0 {
 			continue
 		}
 		r.AddPayment(p1.payer, p1.paidSteps, p1.feeSteps)
+		paymentCount++
 	}
-	return true
+	return paymentCount > 0
 }
 
 func (p *FeePayerInfo) ClearLogs() {

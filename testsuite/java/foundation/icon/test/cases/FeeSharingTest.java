@@ -220,6 +220,7 @@ public class FeeSharingTest extends TestBase {
         LOG.infoEntering("invoke", "setValue() after withdrawing deposit");
         result = feeShareAlice.setValue("alice #3");
         assertSuccess(result);
+        assertNull(result.getStepUsedDetails());
         LOG.info("value: " + feeShareAlice.getValue());
         // check if the balance was decreased
         ensureIcxBalance(aliceWallet.getAddress(), subtractFee(aliceBalance, result));
@@ -239,8 +240,10 @@ public class FeeSharingTest extends TestBase {
     }
 
     private void printStepUsedDetails(RpcItem stepUsedDetails, BigInteger proportion) {
-        if (proportion.intValue() == 0)
+        if (proportion.intValue() == 0) {
+            assertNull(stepUsedDetails);
             return;
+        }
         assertNotNull(stepUsedDetails);
         RpcObject details = stepUsedDetails.asObject();
         if (proportion.intValue() == 100) {

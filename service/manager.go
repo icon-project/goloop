@@ -110,12 +110,14 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 func (m *manager) Start() {
 	if m.txReactor != nil {
 		m.txReactor.Start(m.chain.Wallet())
+		m.syncer.Start()
 	}
 }
 
 func (m *manager) Term() {
 	if m.txReactor != nil {
 		m.txReactor.Stop()
+		m.syncer.Term()
 	}
 	m.chain = nil
 	m.cm = nil
@@ -781,4 +783,8 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	ctx.UpdateSystemInfo()
 
 	return txh.Execute(ctx, true)
+}
+
+func (m *manager) AddSyncRequest(id db.BucketID, key []byte) error {
+	return m.syncer.AddRequest(id, key)
 }

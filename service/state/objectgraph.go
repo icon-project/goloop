@@ -27,6 +27,10 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 )
 
+const (
+	MissingGraphDataError = iota + errors.CodeService + 500
+)
+
 type objectGraph struct {
 	bk        db.Bucket
 	needFlush bool
@@ -117,9 +121,9 @@ func (o *objectGraph) Get(withData bool) (int, []byte, []byte, error) {
 				return 0, nil, nil, err
 			}
 			if v == nil {
-				err = errors.NotFoundError.Errorf(
+				err = MissingGraphDataError.Errorf(
 					"NoValueInHash(hash=%#x)", o.graphHash)
-				return 0, nil, nil, err
+				return 0, o.graphHash, nil, err
 			}
 			o.graphData = v
 		}

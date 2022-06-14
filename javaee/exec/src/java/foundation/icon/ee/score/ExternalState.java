@@ -219,7 +219,6 @@ public class ExternalState implements IExternalState {
     public void event(byte[][] indexed, byte[][] data) {
         try {
             proxy.event(indexed, data);
-            logger.trace("[logEvent] {} {}", indexed, data);
         } catch (IOException e) {
             logger.debug("[logEvent] {}", e.getMessage());
             RuntimeAssertionError.unexpected(e);

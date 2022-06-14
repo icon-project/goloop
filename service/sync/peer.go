@@ -22,6 +22,10 @@ func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
 	p.log.Tracef("peer.onReceive pi(%s), p(%s)\n", pi, p)
 	var status errCode
 	var t syncType
+	if p.cb == nil {
+		p.log.Warnf("Received early than setting callback")
+		return false
+	}
 	switch pi {
 	case protoResult:
 		r := data.(*result)
@@ -35,7 +39,7 @@ func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
 		state = rd.Data
 		p.cb.onNodeData(p, status, t, state)
 	default:
-		p.log.Info("Received wrong type (%s)\n", pi)
+		p.log.Warnf("Received wrong type (%s)\n", pi)
 		return false
 	}
 	return true
@@ -46,23 +50,23 @@ func (p *peer) String() string {
 }
 
 type peerPool struct {
-	ch    chan module.PeerID
-	peers map[module.PeerID]*list.Element
-	pList *list.List //peer
-	log   log.Logger
+	peers map[string]*list.Element
+	pList *list.List // peer
 }
 
-func newPeerPool(log log.Logger) *peerPool {
+func newPeerPool() *peerPool {
 	return &peerPool{
-		ch:    make(chan module.PeerID),
-		peers: make(map[module.PeerID]*list.Element),
+		peers: make(map[string]*list.Element),
 		pList: list.New(),
-		log:   log,
 	}
 }
 
+func PeerIDToKey(p module.PeerID) string {
+	return string(p.Bytes())
+}
+
 func (pp *peerPool) push(p *peer) {
-	id := p.id
+	id := PeerIDToKey(p.id)
 	if e, ok := pp.peers[id]; ok == true {
 		pp.pList.Remove(e)
 		delete(pp.peers, id)
@@ -83,7 +87,6 @@ func (pp *peerPool) push(p *peer) {
 	}
 
 	pp.peers[id] = ne
-	p.log.Tracef("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
 }
 
 func (pp *peerPool) size() int {
@@ -97,20 +100,21 @@ func (pp *peerPool) pop() *peer {
 	e := pp.pList.Front()
 	peer := e.Value.(*peer)
 	pp.pList.Remove(e)
-	delete(pp.peers, peer.id)
+	delete(pp.peers, PeerIDToKey(peer.id))
 	return peer
 }
 
-func (pp *peerPool) remove(id module.PeerID) {
-	e := pp.peers[id]
+func (pp *peerPool) remove(id module.PeerID) *peer {
+	e := pp.peers[PeerIDToKey(id)]
 	if e == nil {
-		return
+		return nil
 	}
 	pp.pList.Remove(e)
+	return e.Value.(*peer)
 }
 
 func (pp *peerPool) getPeer(id module.PeerID) *peer {
-	e := pp.peers[id]
+	e := pp.peers[PeerIDToKey(id)]
 	if e == nil {
 		return nil
 	}
@@ -124,6 +128,15 @@ func (pp *peerPool) peerList() []*peer {
 		pList[i] = e.Value.(*peer)
 		i++
 	}
-	pp.log.Tracef("peerList len(%d)\n", pp.pList.Len())
 	return pList
+}
+
+func (pp *peerPool) clear() {
+	pp.pList.Init()
+	pp.peers = make(map[string]*list.Element)
+}
+
+func (pp *peerPool) has(id module.PeerID) bool {
+	_, ok := pp.peers[PeerIDToKey(id)]
+	return ok
 }
