@@ -519,7 +519,7 @@ var chainMethods = []*chainMethod{
 		},
 	}, Revision9, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getBTPNetworkTypeId",
+		scoreapi.Function, "getBTPNetworkTypeID",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
@@ -1528,7 +1528,7 @@ func (s *ChainScore) Ex_getSystemDepositUsage() (*big.Int, error) {
 	return usage, nil
 }
 
-func (s *ChainScore) Ex_getBTPNetworkTypeId(name string) (int64, error) {
+func (s *ChainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return 0, err
 	}
