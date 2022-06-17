@@ -104,11 +104,11 @@ public final class Context extends Object {
         return avm_call(null, value, targetAddress, method, params);
     }
 
-    public static<T> T avm_call(Class<T> cls,
-                                BigInteger value,
-                                Address targetAddress,
-                                String method,
-                                IObjectArray params) {
+    public static<T extends IObject> T avm_call(Class<T> cls,
+                                                BigInteger value,
+                                                Address targetAddress,
+                                                String method,
+                                                IObjectArray params) {
         @SuppressWarnings("unchecked")
         T res = (T)blockchainRuntime.avm_call(cls, value, targetAddress,
                 method, params);
