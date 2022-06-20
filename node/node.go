@@ -91,23 +91,6 @@ func (n *Node) loadChainConfig(chainDir string) (*chain.Config, error) {
 	return cfg, nil
 }
 
-func (n *Node) saveChainConfig(cfg *chain.Config, filename string) error {
-	f, err := os.OpenFile(filename,
-		os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(&cfg); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (n *Node) CanAdd(cid, nid int, channel string, overwrite bool) error {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
@@ -433,7 +416,7 @@ func (n *Node) JoinChain(
 		ValidateTxOnSend: p.ValidateTxOnSend,
 	}
 
-	if err := n.saveChainConfig(cfg, cfgFile); err != nil {
+	if err := cfg.Save(); err != nil {
 		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
@@ -796,7 +779,7 @@ func (n *Node) ConfigureChain(cid int, key string, value string) error {
 		} else {
 			c.refresh = true
 		}
-		if err = n.saveChainConfig(c.cfg, c.cfg.FilePath); err != nil {
+		if err = c.cfg.Save(); err != nil {
 			return err
 		}
 		return nil
