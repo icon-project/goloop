@@ -239,7 +239,7 @@ func (t *Node) ProposeImportFinalizeBlockWithTX(
 }
 
 func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
-	return consensus.NewCommitVoteList(consensus.NewPrecommitMessage(
+	return consensus.NewCommitVoteList(nil, consensus.NewPrecommitMessage(
 		t.Chain.Wallet(),
 		t.LastBlock.Height(),
 		0,

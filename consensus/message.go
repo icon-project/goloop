@@ -1,8 +1,8 @@
 package consensus
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -104,7 +104,7 @@ func (msg *ProposalMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
-	if msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
+	if msg.BlockPartSetID.Count() <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
@@ -149,71 +149,33 @@ func (msg *BlockPartMessage) String() string {
 	return fmt.Sprintf("BlockPartMessage{H:%d,I:%d}", msg.Height, msg.Index)
 }
 
-type VoteType byte
+type blockVoteByteser struct {
+	msg *voteMessage
+}
 
-const (
-	VoteTypePrevote VoteType = iota
-	VoteTypePrecommit
-	numberOfVoteTypes
-)
-
-func (vt VoteType) String() string {
-	switch vt {
-	case VoteTypePrevote:
-		return "PreVote"
-	case VoteTypePrecommit:
-		return "PreCommit"
-	default:
-		return "Unknown"
+func (v *blockVoteByteser) bytes() []byte {
+	bv := struct {
+		blockVoteBase
+		Timestamp int64
+	}{
+		v.msg.blockVoteBase,
+		v.msg.Timestamp,
 	}
-}
-
-type voteBase struct {
-	_HR
-	Type           VoteType
-	BlockID        []byte
-	BlockPartSetID *PartSetID
-}
-
-func (vb *voteBase) Equal(v2 *voteBase) bool {
-	return vb.Height == v2.Height && vb.Round == v2.Round && vb.Type == v2.Type &&
-		bytes.Equal(vb.BlockID, v2.BlockID) &&
-		vb.BlockPartSetID.Equal(v2.BlockPartSetID)
-}
-
-func (vb voteBase) String() string {
-	return fmt.Sprintf("{%s H:%d R:%d BID:%v BPSID:%v}", vb.Type, vb.Height, vb.Round, common.HexPre(vb.BlockID), vb.BlockPartSetID)
-}
-
-type vote struct {
-	voteBase
-	Timestamp int64
-}
-
-func (v *vote) Equal(v2 *vote) bool {
-	return v.voteBase.Equal(&v2.voteBase) && v.Timestamp == v2.Timestamp
-}
-
-func (v *vote) bytes() []byte {
-	bs, err := msgCodec.MarshalToBytes(v)
-	if err != nil {
-		panic(err)
-	}
-	return bs
-}
-
-func (v *vote) String() string {
-	return fmt.Sprintf("Vote{%s H=%d R=%d bid=%v}", v.Type, v.Height, v.Round, common.HexPre(v.BlockID))
+	return msgCodec.MustMarshalToBytes(&bv)
 }
 
 type voteMessage struct {
 	signedBase
-	vote
+	voteBase
+	Timestamp      int64
+	NTSDProofParts [][]byte
 }
 
 func newVoteMessage() *voteMessage {
 	msg := &voteMessage{}
-	msg.signedBase._byteser = msg
+	msg.signedBase._byteser = &blockVoteByteser{
+		msg: msg,
+	}
 	return msg
 }
 
@@ -242,6 +204,10 @@ func NewPrecommitMessage(
 	)
 }
 
+func (msg *voteMessage) EqualExceptSigs(msg2 *voteMessage) bool {
+	return msg.voteBase.Equal(&msg2.voteBase) && msg.Timestamp == msg2.Timestamp
+}
+
 func (msg *voteMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
@@ -249,7 +215,48 @@ func (msg *voteMessage) Verify() error {
 	if msg.Type < VoteTypePrevote || msg.Type > numberOfVoteTypes {
 		return errors.New("bad field value")
 	}
+	if msg.Type == VoteTypePrevote && len(msg.NTSVoteBases) > 0 {
+		return errors.Errorf(
+			"prevote with NTSVotes len=%d", len(msg.NTSVoteBases),
+		)
+	}
+	if len(msg.NTSVoteBases) != len(msg.NTSDProofParts) {
+		return errors.Errorf("NTS loop len mismatch NTSVoteBasesLen=%d NTSDProofPartsLen=%d", len(msg.NTSVoteBases), len(msg.NTSDProofParts))
+	}
+	verifyProofCount := msg.Type == VoteTypePrecommit && msg.BlockPartSetID != nil
+	if verifyProofCount && int(msg.BlockPartSetID.AppData()) != len(msg.NTSDProofParts) {
+		return errors.Errorf("NTS loop len mismatch appData=%d NTSDProofPartsLen=%d", msg.BlockPartSetID.AppData(), len(msg.NTSDProofParts))
+	}
 	return msg.signedBase.verify()
+}
+
+func (msg *voteMessage) VerifyNTSDProofParts(
+	pcm module.BTPProofContextMap,
+	srcUID []byte,
+	expValIndex int,
+) error {
+	for i, nvb := range msg.NTSVoteBases {
+		pc, err := pcm.ProofContextFor(nvb.NetworkTypeID)
+		if err != nil {
+			return err
+		}
+		ntsd := pc.NewDecision(
+			srcUID, nvb.NetworkTypeID,
+			msg.Height, msg.Round, nvb.NetworkTypeSectionHash,
+		)
+		pp, err := pc.NewProofPartFromBytes(msg.NTSDProofParts[i])
+		if err != nil {
+			return err
+		}
+		idx, err := pc.VerifyPart(ntsd.Hash(), pp)
+		if err != nil {
+			return err
+		}
+		if expValIndex != idx {
+			return errors.Errorf("invalid validator index exp=%d actual=%d ntid=%d", expValIndex, idx, nvb.NetworkTypeID)
+		}
+	}
+	return nil
 }
 
 func (msg *voteMessage) subprotocol() uint16 {
@@ -258,6 +265,76 @@ func (msg *voteMessage) subprotocol() uint16 {
 
 func (msg *voteMessage) String() string {
 	return fmt.Sprintf("VoteMessage{%s,H:%d,R:%d,BlockID:%v,Addr:%v}", msg.Type, msg.Height, msg.Round, common.HexPre(msg.BlockID), common.HexPre(msg.address().ID()))
+}
+
+func (msg *voteMessage) RLPEncodeSelf(e codec.Encoder) error {
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	err = e2.EncodeMulti(
+		&msg.Signature,
+		&msg.Height,
+		&msg.Round,
+		&msg.Type,
+		&msg.BlockID,
+		&msg.BlockPartSetID,
+		&msg.Timestamp,
+	)
+	if err != nil {
+		return err
+	}
+	if len(msg.NTSVoteBases) == 0 {
+		return nil
+	}
+	e3, err := e2.EncodeList()
+	if err != nil {
+		return err
+	}
+	for i, ntsVote := range msg.NTSVoteBases {
+		err = e3.EncodeMulti(
+			&ntsVote.NetworkTypeID,
+			&ntsVote.NetworkTypeSectionHash,
+			msg.NTSDProofParts[i],
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (msg *voteMessage) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	var ntsVotes []struct {
+		ntsVoteBase
+		NTSDProofPart []byte
+	}
+	cnt, err := d2.DecodeMulti(
+		&msg.Signature,
+		&msg.Height,
+		&msg.Round,
+		&msg.Type,
+		&msg.BlockID,
+		&msg.BlockPartSetID,
+		&msg.Timestamp,
+		&ntsVotes,
+	)
+	if cnt == 7 && err == io.EOF {
+		msg.NTSVoteBases = nil
+		msg.NTSDProofParts = nil
+		return nil
+	}
+	msg.NTSVoteBases = make([]ntsVoteBase, 0, len(ntsVotes))
+	msg.NTSDProofParts = make([][]byte, 0, len(ntsVotes))
+	for _, ntsVote := range ntsVotes {
+		msg.NTSVoteBases = append(msg.NTSVoteBases, ntsVote.ntsVoteBase)
+		msg.NTSDProofParts = append(msg.NTSDProofParts, ntsVote.NTSDProofPart)
+	}
+	return err
 }
 
 type peerRoundState struct {

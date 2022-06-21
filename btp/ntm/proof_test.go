@@ -93,7 +93,7 @@ func TestEthProofContext_NewProofPart_OK(t *testing.T) {
 	for i := 0; i < s.count; i++ {
 		pp, err := s.pc.NewProofPart(msgHash, s.wallets[i])
 		s.assert.NoError(err)
-		err = s.pc.VerifyPart(msgHash, pp)
+		_, err = s.pc.VerifyPart(msgHash, pp)
 		s.assert.NoError(err)
 	}
 }
@@ -110,7 +110,7 @@ func TestEthProofContext_VerifyPart_FailWrongMessage(t *testing.T) {
 	s := newEthTestSetup(t, 4)
 	pp, err := s.pc.NewProofPart(keccak256([]byte("abc")), s.wallets[0])
 	s.assert.NoError(err)
-	err = s.pc.VerifyPart(keccak256([]byte("abcd")), pp)
+	_, err = s.pc.VerifyPart(keccak256([]byte("abcd")), pp)
 	s.assert.Error(err)
 }
 
@@ -125,7 +125,8 @@ func TestEthProofPart_codec(t *testing.T) {
 	s.assert.EqualValues(ppBytes, pp.Bytes())
 	var epp2 secp256k1ProofPart
 	codec.MustUnmarshalFromBytes(ppBytes, &epp2)
-	s.assert.NoError(s.pc.VerifyPart(msgHash, &epp2))
+	_, err = s.pc.VerifyPart(msgHash, &epp2)
+	s.assert.NoError(err)
 }
 
 func TestEthProof_codec(t *testing.T) {

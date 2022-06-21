@@ -26,7 +26,8 @@ type proofContextCore interface {
 	Bytes() []byte
 	NewProofPart(decisionHash []byte, wp module.WalletProvider) (module.BTPProofPart, error)
 	NewProofPartFromBytes(ppBytes []byte) (module.BTPProofPart, error)
-	VerifyPart(decisionHash []byte, pp module.BTPProofPart) error
+	// VerifyPart returns validator index and error
+	VerifyPart(decisionHash []byte, pp module.BTPProofPart) (int, error)
 	NewProof() module.BTPProof
 	NewProofFromBytes(proofBytes []byte) (module.BTPProof, error)
 	Verify(decisionHash []byte, p module.BTPProof) error
@@ -57,7 +58,7 @@ func (pc *proofContext) NewProofPartFromBytes(ppBytes []byte) (module.BTPProofPa
 	return pc.core.NewProofPartFromBytes(ppBytes)
 }
 
-func (pc *proofContext) VerifyPart(decisionHash []byte, pp module.BTPProofPart) error {
+func (pc *proofContext) VerifyPart(decisionHash []byte, pp module.BTPProofPart) (int, error) {
 	return pc.core.VerifyPart(decisionHash, pp)
 }
 

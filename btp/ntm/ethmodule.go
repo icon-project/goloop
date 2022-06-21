@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -90,6 +91,10 @@ func (m *ethModuleCore) BytesByHashBucket() db.BucketID {
 
 func (m *ethModuleCore) ListByMerkleRootBucket() db.BucketID {
 	return ethListByRoot
+}
+
+func (m *ethModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
+	return newSecp256k1ProofFromBytes(bs)
 }
 
 func init() {

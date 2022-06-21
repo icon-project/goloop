@@ -92,8 +92,18 @@ func reset(height int64) error {
 		return err
 	}
 
+	result, err := block.GetBlockResultByHeight(d, cod, height)
+	if err != nil {
+		return err
+	}
+
+	bd, err := block.GetBTPDigestByHeight(d, cod, height, result)
+	if err != nil {
+		return err
+	}
+
 	vlmBytes, err := cs.WALRecordBytesFromCommitVoteListBytes(
-		cvlBytes, height, bid, cod,
+		cvlBytes, height, bid, result, bd, d, cod,
 	)
 	if err != nil {
 		return err

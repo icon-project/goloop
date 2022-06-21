@@ -21,7 +21,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
 )
 
 func Test_newTransitionResultFromBytes(t *testing.T) {
@@ -63,4 +66,11 @@ func Test_newTransitionResultFromBytes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_NewBTPContext(t *testing.T) {
+	dbase := db.NewMapDB()
+	ctx, err := NewBTPContext(dbase, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, ctx)
 }

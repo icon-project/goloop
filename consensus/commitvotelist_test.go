@@ -24,7 +24,8 @@ func TestCommitVoteList_Timestamp(t *testing.T) {
 			v.Timestamp = t
 			msgs[i] = v
 		}
-		cvl := newCommitVoteList(msgs)
+		cvl, err := newCommitVoteList(nil, msgs)
+		assert.NoError(t, err)
 		assert.Equal(t, cvl.Timestamp(), c.out)
 	}
 }

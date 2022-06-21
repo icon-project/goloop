@@ -29,6 +29,8 @@ type BTPProofPart interface {
 type BTPProof interface {
 	Bytes() []byte
 	Add(pp BTPProofPart)
+	ValidatorCount() int
+	ProofPartAt(i int) BTPProofPart
 }
 
 type WalletProvider interface {
@@ -43,7 +45,7 @@ type BTPProofContext interface {
 	Bytes() []byte
 	NewProofPart(decisionHash []byte, wp WalletProvider) (BTPProofPart, error)
 	NewProofPartFromBytes(ppBytes []byte) (BTPProofPart, error)
-	VerifyPart(decisionHash []byte, pp BTPProofPart) error
+	VerifyPart(decisionHash []byte, pp BTPProofPart) (int, error)
 	NewProof() BTPProof
 	NewProofFromBytes(proofBytes []byte) (BTPProof, error)
 	Verify(decisionHash []byte, p BTPProof) error
@@ -59,11 +61,8 @@ type BTPProofContext interface {
 }
 
 type NTSDProofList interface {
-	Len() int
-	ProofAt(i int) ([]byte, error)
-	Proves() ([][]byte, error)
-	HashListHash() []byte
-	Flush() error
+	NTSDProofCount() int
+	NTSDProofAt(i int) []byte
 }
 
 type BTPProofContextMap interface {
@@ -71,7 +70,7 @@ type BTPProofContextMap interface {
 	Update(btpSection BTPSection) BTPProofContextMap
 	Verify(
 		srcUID []byte, height int64, round int32, bd BTPDigest,
-		ntsdProves [][]byte,
+		ntsdProves NTSDProofList,
 	) error
 }
 
@@ -96,6 +95,7 @@ type BTPDigest interface {
 	// is called.
 	Flush(dbase db.Database) error
 	NetworkSectionFilter() BitSetFilter
+	NTSHashEntryList
 }
 
 type NetworkTypeDigest interface {
@@ -204,6 +204,7 @@ type NetworkTypeModule interface {
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
+	NewProofFromBytes(bs []byte) (BTPProof, error)
 }
 
 type BTPBlockHeader interface {

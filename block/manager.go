@@ -201,7 +201,6 @@ type proposeTask struct {
 	parentBlock module.Block
 	votes       module.CommitVoteSet
 	csi         module.ConsensusInfo
-	ntsdProves  [][]byte
 }
 
 func (m *manager) addNode(par *bnode, bn *bnode) {
@@ -311,7 +310,7 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	csi, err := m.verifyBlock(block, bn.block)
+	csi, err := m.verifyNewBlock(block, bn.block)
 	if err != nil {
 		return nil, err
 	}
@@ -446,14 +445,13 @@ func (it *importTask) _onExecute(err error) {
 func (m *manager) _propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
-	ntsdProves [][]byte,
 	cb func(module.BlockCandidate, error),
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
-	csi, _, err := m.verifyProof(bn.block, votes, ntsdProves)
+	csi, _, err := m.verifyProofForLastBlock(bn.block, votes)
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +463,6 @@ func (m *manager) _propose(
 		parentBlock: bn.block,
 		votes:       votes,
 		csi:         csi,
-		ntsdProves:  ntsdProves,
 	}
 	pt.state = executingIn
 	bi := common.NewBlockInfo(bn.block.Height()+1, votes.Timestamp())
@@ -553,7 +550,6 @@ func (pt *proposeTask) _onExecute(err error) {
 		pmtr.NextValidators(),
 		pt.votes,
 		pmtr.BTPSection(),
-		pt.ntsdProves,
 	)
 	var bn *bnode
 	var ok bool
@@ -598,6 +594,7 @@ func NewManager(
 			sm:      chain.ServiceManager(),
 			log:     logger,
 			running: true,
+			srcUID:  []byte(fmt.Sprintf("0x%x.icon", chain.NID())),
 		},
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(configCacheCap),
@@ -1046,13 +1043,12 @@ func (m *manager) finalizeGenesisBlock(
 		gtr.mtransition().NextValidators(),
 		votes,
 		mtr.BTPSection(),
-		nil,
 	)
 	if configTraceBnode {
 		m.bntr.TraceNew(bn)
 	}
 	m.nmap[string(bn.block.ID())] = bn
-	err = m.finalize(bn)
+	err = m.finalize(bn, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1066,7 +1062,6 @@ func (m *manager) finalizeGenesisBlock(
 func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
-	ntsdProves [][]byte,
 	cb func(module.BlockCandidate, error),
 ) (canceler module.Canceler, err error) {
 	m.syncer.begin()
@@ -1074,7 +1069,7 @@ func (m *manager) Propose(
 
 	m.log.Debugf("Propose(<%x>, %v)\n", parentID, votes)
 
-	pt, err := m._propose(parentID, votes, ntsdProves, cb)
+	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
 		return nil, err
 	}
@@ -1097,10 +1092,10 @@ func (m *manager) Finalize(block module.BlockCandidate) error {
 	if bn == nil || bn.parent != m.finalized {
 		return errors.Errorf("InvalidStatusForBlock(id=<%x>", block.ID())
 	}
-	return m.finalize(bn)
+	return m.finalize(bn, true)
 }
 
-func (m *manager) finalize(bn *bnode) error {
+func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 	// TODO notify import/propose error due to finalization
 	// TODO update nmap
 	block := bn.block
@@ -1149,6 +1144,15 @@ func (m *manager) finalize(bn *bnode) error {
 	}
 	if err = chainProp.Set(db.Raw(keyLastBlockHeight), block.Height()); err != nil {
 		return err
+	}
+
+	if updatePCM {
+		bs, err := m.finalized.block.BTPSection()
+		if err != nil {
+			return err
+		}
+		m.pcmForLastBlock = m.nextPCM
+		m.nextPCM = m.nextPCM.Update(bs)
 	}
 
 	m.log.Debugf("Finalize(%x)\n", block.ID())
@@ -1802,11 +1806,7 @@ func GetBlockVersion(
 	return version, nil
 }
 
-func GetCommitVoteListBytesByHeight(
-	dbase db.Database,
-	c codec.Codec,
-	height int64,
-) ([]byte, error) {
+func getHeaderField(dbase db.Database, c codec.Codec, height int64, index int) ([]byte, error) {
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
 	)
@@ -1832,14 +1832,60 @@ func GetCommitVoteListBytesByHeight(
 	if err != nil {
 		return nil, err
 	}
-	if err = d2.Skip(5); err != nil {
+	if index > 0 {
+		if err = d2.Skip(index); err != nil {
+			return nil, err
+		}
+	}
+	var str []byte
+	if err = d2.Decode(&str); err != nil {
 		return nil, err
 	}
-	var votesHash []byte
-	if err = d2.Decode(&votesHash); err != nil {
+	return str, nil
+}
+
+func GetCommitVoteListBytesByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	votesHash, err := getHeaderField(dbase, c, height, 5)
+	if err != nil {
 		return nil, err
 	}
 	return db.DoGetWithBucketID(dbase, db.BytesByHash, votesHash)
+}
+
+func GetBlockResultByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	return getHeaderField(dbase, c, height, 10)
+}
+
+func GetBTPDigestByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+	result []byte,
+) (module.BTPDigest, error) {
+	dh, err := service.BTPDigestHashFromResult(result)
+	if err != nil {
+		return nil, err
+	}
+	if dh == nil {
+		return btp.ZeroDigest, nil
+	}
+	bk, err := dbase.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	bs, err := bk.Get(dh)
+	if err != nil {
+		return nil, err
+	}
+	return btp.NewDigestFromBytes(bs)
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {

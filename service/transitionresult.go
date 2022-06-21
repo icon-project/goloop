@@ -21,9 +21,11 @@ import (
 
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -124,4 +126,27 @@ func (tr *transitionResult) Bytes() []byte {
 
 func NewWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
 	return newWorldSnapshot(database, plt, result, vl)
+}
+
+func NewBTPContext(dbase db.Database, result []byte) (state.BTPContext, error) {
+	wss, err := NewWorldSnapshot(dbase, nil, result, nil)
+	if err != nil {
+		return nil, err
+	}
+	acss := wss.GetAccountSnapshot(state.SystemID)
+	var as containerdb.BytesStoreState
+	if acss == nil {
+		as = containerdb.EmptyBytesStoreState
+	} else {
+		as = scoredb.NewStateStoreWith(acss)
+	}
+	return state.NewBTPContext(nil, as), nil
+}
+
+func BTPDigestHashFromResult(result []byte) ([]byte, error) {
+	r, err := newTransitionResultFromBytes(result)
+	if err != nil {
+		return nil, err
+	}
+	return r.BTPData, nil
 }

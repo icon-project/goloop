@@ -75,7 +75,7 @@ func ProposeBlock(
 ) (bc module.BlockCandidate, err error, cbError error) {
 	ch := make(chan cbResult)
 	_, err = bm.Propose(
-		prevID, votes, nil, func(bc module.BlockCandidate, err error) {
+		prevID, votes, func(bc module.BlockCandidate, err error) {
 			ch <- cbResult{bc, err}
 		},
 	)

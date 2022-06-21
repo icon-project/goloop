@@ -148,7 +148,7 @@ type cbResult struct {
 
 func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *blockResult {
 	ch := make(chan cbResult)
-	_, err := bm.Propose(pid, vs, nil, func(blk module.BlockCandidate, err error) {
+	_, err := bm.Propose(pid, vs, func(blk module.BlockCandidate, err error) {
 		ch <- cbResult{blk, err}
 	})
 	if err != nil {
@@ -269,7 +269,7 @@ func TestBlockManager_Propose_Cancel(t *testing.T) {
 	blk := br.blk
 	pid = blk.ID()
 
-	canceler, err := s.bm.Propose(pid, newCommitVoteSet(true), nil, func(blk module.BlockCandidate, err error) {
+	canceler, err := s.bm.Propose(pid, newCommitVoteSet(true), func(blk module.BlockCandidate, err error) {
 		assert.Fail(t, "canceled proposal cb was called")
 	})
 	assert.Nil(t, err, "propose return error")

@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -81,6 +82,10 @@ func (m *iconModuleCore) BytesByHashBucket() db.BucketID {
 
 func (m *iconModuleCore) ListByMerkleRootBucket() db.BucketID {
 	return iconListByRoot
+}
+
+func (m *iconModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
+	return newSecp256k1ProofFromBytes(bs)
 }
 
 func init() {

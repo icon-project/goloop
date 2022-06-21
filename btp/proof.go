@@ -29,7 +29,7 @@ type proofContextMap struct {
 func (m *proofContextMap) ProofContextFor(ntid int64) (module.BTPProofContext, error) {
 	pc, ok := m.pcMap[ntid]
 	if !ok {
-		return nil, errors.Errorf("not found ntid=%d", ntid)
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
 	}
 	return pc, nil
 }
@@ -57,35 +57,44 @@ func (m *proofContextMap) Verify(
 	height int64,
 	round int32,
 	bd module.BTPDigest,
-	ntsdProves [][]byte,
+	ntsdProves module.NTSDProofList,
 ) error {
-	if len(bd.NetworkTypeDigests()) != len(ntsdProves) {
-		return errors.Errorf("invalid len networkTypeLen=%d provesLen=%d height=%d round=%d", len(bd.NetworkTypeDigests()), len(ntsdProves), height, round)
+	cnt := 0
+	for _, ntd := range bd.NetworkTypeDigests() {
+		if _, ok := m.pcMap[ntd.NetworkTypeID()]; ok {
+			cnt++
+		}
 	}
-	for i, ntd := range bd.NetworkTypeDigests() {
+	if cnt != ntsdProves.NTSDProofCount() {
+		return errors.Errorf(
+			"invalid len networkTypeLen=%d expProvesLen=%d provesLen=%d height=%d round=%d",
+			len(bd.NetworkTypeDigests()), cnt, ntsdProves.NTSDProofCount(),
+			height, round,
+		)
+	}
+	i := 0
+	for _, ntd := range bd.NetworkTypeDigests() {
 		ntid := ntd.NetworkTypeID()
 		pc, ok := m.pcMap[ntid]
 		if !ok {
-			return errors.InvalidStateError.Errorf(
-				"no ProofContext in PCM index=%d ntid=%d height=%d round=%d",
-				i, ntid, height, round,
-			)
+			continue
 		}
 		d := pc.NewDecision(srcUID, ntid, height, round, ntd.NetworkTypeSectionHash())
-		proof, err := pc.NewProofFromBytes(ntsdProves[i])
+		proof, err := pc.NewProofFromBytes(ntsdProves.NTSDProofAt(i))
 		if err != nil {
 			return errors.Wrapf(
-				err, "new proof fail index=%d ntid=%d height=%d round=%d",
+				err, "new proof fail voteIndex=%d ntid=%d height=%d round=%d",
 				i, ntid, height, round,
 			)
 		}
 		err = pc.Verify(d.Hash(), proof)
 		if err != nil {
 			return errors.Wrapf(
-				err, "verify fail index=%d ntid=%d height=%d round=%d",
+				err, "verify fail voteIndex=%d ntid=%d height=%d round=%d",
 				i, ntid, height, round,
 			)
 		}
+		i++
 	}
 	return nil
 }

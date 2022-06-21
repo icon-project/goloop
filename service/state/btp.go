@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"encoding/base64"
 	"encoding/hex"
+
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -99,7 +100,7 @@ func (bc *btpContext) GetNetworkTypeIDs() ([]int64, error) {
 func (bc *btpContext) GetNetworkView(nid int64) (btp.NetworkView, error) {
 	ret, _ := bc.getNetwork(nid)
 	if ret == nil {
-		return nil, errors.NotFoundError.Errorf("not found nid=%d", nid)
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
 	}
 	return ret, nil
 }
@@ -107,7 +108,7 @@ func (bc *btpContext) GetNetworkView(nid int64) (btp.NetworkView, error) {
 func (bc *btpContext) GetNetworkTypeView(ntid int64) (btp.NetworkTypeView, error) {
 	ret, _ := bc.getNetworkType(ntid)
 	if ret == nil {
-		return nil, errors.NotFoundError.Errorf("not found ntid=%d", ntid)
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
 	}
 	return ret, nil
 }
@@ -115,7 +116,7 @@ func (bc *btpContext) GetNetworkTypeView(ntid int64) (btp.NetworkTypeView, error
 func (bc *btpContext) GetNetwork(nid int64) (module.BTPNetwork, error) {
 	ret, _ := bc.getNetwork(nid)
 	if ret == nil {
-		return nil, errors.NotFoundError.Errorf("not found nid=%d", nid)
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found nid=%d", nid)
 	}
 	return ret, nil
 }
@@ -123,7 +124,7 @@ func (bc *btpContext) GetNetwork(nid int64) (module.BTPNetwork, error) {
 func (bc *btpContext) GetNetworkType(ntid int64) (module.BTPNetworkType, error) {
 	ret, _ := bc.getNetworkType(ntid)
 	if ret == nil {
-		return nil, errors.NotFoundError.Errorf("not found ntid=%d", ntid)
+		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
 	}
 	return ret, nil
 }

@@ -57,6 +57,15 @@ type secp256k1Proof struct {
 	bytes      []byte
 }
 
+func newSecp256k1ProofFromBytes(bs []byte) (*secp256k1Proof, error) {
+	var p secp256k1Proof
+	_, err := codec.UnmarshalFromBytes(bs, &p)
+	if err != nil {
+		return nil, err
+	}
+	return &p, err
+}
+
 func (p *secp256k1Proof) Bytes() []byte {
 	if p.bytes == nil {
 		p.bytes = codec.MustMarshalToBytes(p)
@@ -67,6 +76,17 @@ func (p *secp256k1Proof) Bytes() []byte {
 func (p *secp256k1Proof) Add(pp module.BTPProofPart) {
 	epp := pp.(*secp256k1ProofPart)
 	p.Signatures[epp.Index] = epp.Signature
+}
+
+func (p *secp256k1Proof) ValidatorCount() int {
+	return len(p.Signatures)
+}
+
+func (p *secp256k1Proof) ProofPartAt(i int) module.BTPProofPart {
+	if p.Signatures[i] == nil {
+		return nil
+	}
+	return &secp256k1ProofPart{i, p.Signatures[i]}
 }
 
 type secp256k1ProofContext struct {
@@ -128,19 +148,20 @@ func (pc *secp256k1ProofContext) Bytes() []byte {
 	return pc.bytes
 }
 
-func (pc *secp256k1ProofContext) VerifyPart(dHash []byte, pp module.BTPProofPart) error {
+// VerifyPart returns validator index and error
+func (pc *secp256k1ProofContext) VerifyPart(dHash []byte, pp module.BTPProofPart) (int, error) {
 	epp := pp.(*secp256k1ProofPart)
 	if epp.Index < 0 || epp.Index >= len(pc.Validators) {
-		return errors.Errorf("invalid proof part index=%d numValidators=%d", epp.Index, len(pc.Validators))
+		return -1, errors.Errorf("invalid proof part index=%d numValidators=%d", epp.Index, len(pc.Validators))
 	}
 	addr, err := epp.recover(pc.mod, dHash)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	if !bytes.Equal(pc.Validators[epp.Index], addr) {
-		return errors.Errorf("invalid proof part index=%d addr=%x", epp.Index, addr)
+		return -1, errors.Errorf("invalid proof part index=%d addr=%x", epp.Index, addr)
 	}
-	return nil
+	return epp.Index, nil
 }
 
 func (pc *secp256k1ProofContext) NewProofPartFromBytes(ppBytes []byte) (module.BTPProofPart, error) {
@@ -164,16 +185,15 @@ func (pc *secp256k1ProofContext) Verify(dHash []byte, p module.BTPProof) error {
 			Index:     i,
 			Signature: sig,
 		}
-		err := pc.VerifyPart(dHash, &epp)
+		_, err := pc.VerifyPart(dHash, &epp)
 		if err != nil {
 			return err
 		}
 		if _, ok := set[epp.Index]; ok {
 			addr, _ := epp.recover(pc.mod, dHash)
 			return errors.Errorf("duplicated proof parts validator index=%d addr=%x", epp.Index, addr)
-		} else {
-			set[epp.Index] = struct{}{}
 		}
+		set[epp.Index] = struct{}{}
 		valid++
 	}
 	if valid <= 2*len(pc.Validators)/3 {
@@ -183,12 +203,7 @@ func (pc *secp256k1ProofContext) Verify(dHash []byte, p module.BTPProof) error {
 }
 
 func (pc *secp256k1ProofContext) NewProofFromBytes(proofBytes []byte) (module.BTPProof, error) {
-	var p secp256k1Proof
-	_, err := codec.UnmarshalFromBytes(proofBytes, &p)
-	if err != nil {
-		return nil, err
-	}
-	return &p, err
+	return newSecp256k1ProofFromBytes(proofBytes)
 }
 
 func (pc *secp256k1ProofContext) NewProofPart(

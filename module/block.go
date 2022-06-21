@@ -37,32 +37,34 @@ type BlockData interface {
 	NewBlock(tr Transition) Block
 	Hash() []byte
 	NetworkSectionFilter() BitSetFilter
-
-	NTSDProofHashListHash() []byte
-	NTSDProofList() NTSDProofList
+	NTSHashEntryList() (NTSHashEntryList, error)
+	BTPDigest() (BTPDigest, error)
 }
 
-type ZeroNTSDProofList struct {
+type NTSHashEntryList interface {
+	NTSHashEntryListFormat() []NTSHashEntryFormat
+	NTSHashEntryCount() int
+	NTSHashEntryAt(i int) NTSHashEntryFormat
 }
 
-func (pl ZeroNTSDProofList) Len() int {
+type NTSHashEntryFormat struct {
+	NetworkTypeID          int64
+	NetworkTypeSectionHash []byte
+}
+
+type ZeroNTSHashEntryList struct {
+}
+
+func (z ZeroNTSHashEntryList) NTSHashEntryListFormat() []NTSHashEntryFormat {
+	return nil
+}
+
+func (z ZeroNTSHashEntryList) NTSHashEntryCount() int {
 	return 0
 }
 
-func (pl ZeroNTSDProofList) ProofAt(i int) ([]byte, error) {
-	return nil, nil
-}
-
-func (pl ZeroNTSDProofList) Proves() ([][]byte, error) {
-	return nil, nil
-}
-
-func (pl ZeroNTSDProofList) HashListHash() []byte {
-	return nil
-}
-
-func (pl ZeroNTSDProofList) Flush() error {
-	return nil
+func (z ZeroNTSHashEntryList) NTSHashEntryAt(i int) NTSHashEntryFormat {
+	return NTSHashEntryFormat{}
 }
 
 func BlockDataToBytes(blk BlockData) ([]byte, error) {
@@ -110,7 +112,6 @@ type BlockManager interface {
 	Propose(
 		parentID []byte,
 		votes CommitVoteSet,
-		ntsdProves [][]byte,
 		cb func(BlockCandidate, error),
 	) (canceler Canceler, err error)
 

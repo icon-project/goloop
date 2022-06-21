@@ -34,6 +34,7 @@ type moduleCore interface {
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
+	NewProofFromBytes(bs []byte) (module.BTPProof, error)
 }
 
 type networkTypeModule struct {
@@ -164,6 +165,10 @@ func (ntm *networkTypeModule) BytesByHashBucket() db.BucketID {
 
 func (ntm *networkTypeModule) ListByMerkleRootBucket() db.BucketID {
 	return ntm.core.ListByMerkleRootBucket()
+}
+
+func (ntm *networkTypeModule) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
+	return ntm.core.NewProofFromBytes(bs)
 }
 
 var modules = make(map[string]module.NetworkTypeModule)

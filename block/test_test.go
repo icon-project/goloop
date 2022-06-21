@@ -857,6 +857,18 @@ func (vs *testCommitVoteSet) VoteRound() int32 {
 	return 0
 }
 
+func (vs *testCommitVoteSet) BlockVoteSetBytes() []byte {
+	return vs.Bytes()
+}
+
+func (vs *testCommitVoteSet) NTSDProofCount() int {
+	return 0
+}
+
+func (vs *testCommitVoteSet) NTSDProofAt(i int) []byte {
+	return nil
+}
+
 func newRandomTestValidatorList(n int) *testValidatorList {
 	wallets := newWallets(n)
 	validators := make([]*testValidator, n)

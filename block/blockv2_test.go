@@ -45,13 +45,8 @@ type blockV2BodyFormat1 struct {
 	Votes              []byte
 }
 
-type blockV2Format1 struct {
-	blockV2HeaderFormat1
-	blockV2BodyFormat1
-}
-
 func TestBlockV2_EncodeAsFormat1IfPossible(t *testing.T) {
-	blockHeaderFormat1 := blockV2HeaderFormat1{
+	blockV2HeaderFormat1 := blockV2HeaderFormat1{
 		Version:                module.BlockVersion2,
 		Height:                 1,
 		Timestamp:              10,
@@ -64,7 +59,11 @@ func TestBlockV2_EncodeAsFormat1IfPossible(t *testing.T) {
 		LogsBloom:              []byte("logsBloom"),
 		Result:                 []byte("result"),
 	}
-	blockHeaderFormat2 := blockV2HeaderFormat{
+	blockV2BodyFormat1 := blockV2BodyFormat1{
+		NormalTransactions: [][]byte{[]byte("tx1")},
+		Votes:              []byte("votes"),
+	}
+	blockV2HeaderFormat := blockV2HeaderFormat{
 		Version:                module.BlockVersion2,
 		Height:                 1,
 		Timestamp:              10,
@@ -77,11 +76,20 @@ func TestBlockV2_EncodeAsFormat1IfPossible(t *testing.T) {
 		LogsBloom:              []byte("logsBloom"),
 		Result:                 []byte("result"),
 		NSFilter:               nil,
-		NTSDProofHashListHash:  nil,
+	}
+	blockV2BodyFormat := blockV2BodyFormat{
+		NormalTransactions: [][]byte{[]byte("tx1")},
+		Votes:              []byte("votes"),
+		BTPDigest:          nil,
 	}
 	assert.EqualValues(
 		t,
-		codec.MustMarshalToBytes(&blockHeaderFormat1),
-		codec.MustMarshalToBytes(&blockHeaderFormat2),
+		codec.MustMarshalToBytes(&blockV2HeaderFormat1),
+		codec.MustMarshalToBytes(&blockV2HeaderFormat),
+	)
+	assert.EqualValues(
+		t,
+		codec.MustMarshalToBytes(&blockV2BodyFormat1),
+		codec.MustMarshalToBytes(&blockV2BodyFormat),
 	)
 }

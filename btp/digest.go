@@ -41,8 +41,9 @@ type digestCore interface {
 
 type digest struct {
 	digestCore
-	hash   []byte
-	filter module.BitSetFilter
+	hash                   []byte
+	filter                 module.BitSetFilter
+	ntsHashEntryListFormat []module.NTSHashEntryFormat
 }
 
 func (bd *digest) Hash() []byte {
@@ -94,6 +95,32 @@ func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
 		}
 	}
 	return bd.filter
+}
+
+func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
+	if bd.ntsHashEntryListFormat == nil {
+		ntdSlice := bd.NetworkTypeDigests()
+		ntsHashEntries := make([]module.NTSHashEntryFormat, 0, len(ntdSlice))
+		for _, ntd := range ntdSlice {
+			ntsHashEntries = append(ntsHashEntries, module.NTSHashEntryFormat{
+				NetworkTypeID:          ntd.NetworkTypeID(),
+				NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
+			})
+		}
+	}
+	return bd.ntsHashEntryListFormat
+}
+
+func (bd *digest) NTSHashEntryCount() int {
+	return len(bd.NetworkTypeDigests())
+}
+
+func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
+	ntd := bd.NetworkTypeDigests()[i]
+	return module.NTSHashEntryFormat{
+		NetworkTypeID:          ntd.NetworkTypeID(),
+		NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
+	}
 }
 
 type networkTypeDigestCore interface {
