@@ -22,6 +22,7 @@ require (
 	github.com/vmihailenco/msgpack/v4 v4.3.11
 	go.opencensus.io v0.22.3
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6
 	golang.org/x/tools v0.0.0-20190312170243-e65039ee4138
 	gopkg.in/go-playground/validator.v9 v9.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
