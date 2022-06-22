@@ -442,15 +442,7 @@ func (ns *networkSectionByBuilder) NetworkSectionHash() []byte {
 }
 
 func (ns *networkSectionByBuilder) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
-	bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
-	if err != nil {
-		return nil, err
-	}
-	bs, err := bk.Get(ns.messagesRoot)
-	if err != nil {
-		return nil, err
-	}
-	return newMessageList(bs, dbase, ns.mod), nil
+	return newMessageList(ns.messageHashes.Bytes, dbase, mod), nil
 }
 
 func (ns *networkSectionByBuilder) flushMessages(dbase db.Database) error {
