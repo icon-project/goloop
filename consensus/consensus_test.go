@@ -174,7 +174,7 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 			consensus.NewVoteMessage(
 				h[i].Wallet(),
 				consensus.VoteTypePrevote, 3, 0, blk.ID(),
-				ps.ID(), blk.Timestamp()+1,
+				ps.ID(), blk.Timestamp()+1, nil, nil,
 			),
 			func(rb bool, e error) {
 				assert.True(t, rb)
@@ -189,7 +189,7 @@ func TestConsensus_BasicConsensus(t *testing.T) {
 			consensus.NewVoteMessage(
 				h[i].Wallet(),
 				consensus.VoteTypePrecommit, 3, 0, blk.ID(),
-				ps.ID(), blk.Timestamp()+1,
+				ps.ID(), blk.Timestamp()+1, nil, nil,
 			),
 			func(rb bool, e error) {
 				assert.True(t, rb)

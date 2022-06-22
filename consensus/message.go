@@ -183,6 +183,8 @@ func NewVoteMessage(
 	w module.Wallet,
 	voteType VoteType, height int64, round int32, id []byte,
 	partSetID *PartSetID, ts int64,
+	ntsHashEntries []module.NTSHashEntryFormat,
+	ntsdProofParts [][]byte,
 ) *voteMessage {
 	vm := newVoteMessage()
 	vm.Height = height
@@ -192,6 +194,10 @@ func NewVoteMessage(
 	vm.BlockPartSetID = partSetID
 	vm.Timestamp = ts
 	_ = vm.sign(w)
+	for _, ntsHashEntry := range ntsHashEntries {
+		vm.NTSVoteBases = append(vm.NTSVoteBases, ntsVoteBase(ntsHashEntry))
+	}
+	vm.NTSDProofParts = ntsdProofParts
 	return vm
 }
 
@@ -200,7 +206,7 @@ func NewPrecommitMessage(
 	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
 ) *voteMessage {
 	return NewVoteMessage(
-		w, VoteTypePrecommit, height, round, id, partSetID, ts,
+		w, VoteTypePrecommit, height, round, id, partSetID, ts, nil, nil,
 	)
 }
 

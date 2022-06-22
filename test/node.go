@@ -17,6 +17,7 @@
 package test
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
@@ -239,18 +241,56 @@ func (t *Node) ProposeImportFinalizeBlockWithTX(
 }
 
 func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
-	return consensus.NewCommitVoteList(nil, consensus.NewPrecommitMessage(
+	var pcm module.BTPProofContextMap
+	var ntsHashEntries []module.NTSHashEntryFormat
+	var ntsdProofParts [][]byte
+	if t.LastBlock.Height() > 1 {
+		blk, err := t.BM.GetBlockByHeight(t.LastBlock.Height() - 1)
+		assert.NoError(t, err)
+		pcm, err = blk.NextProofContextMap()
+		assert.NoError(t, err)
+		bd, err := t.LastBlock.BTPDigest()
+		assert.NoError(t, err)
+		ntsdProofParts = make([][]byte, 0)
+		for _, ntd := range bd.NetworkTypeDigests() {
+			if pc, err := pcm.ProofContextFor(ntd.NetworkTypeID()); err == nil {
+				ntsd := pc.NewDecision(
+					[]byte(fmt.Sprintf("0x%x.icon", t.Chain.NID())),
+					ntd.NetworkTypeID(),
+					t.LastBlock.Height(),
+					t.LastBlock.Votes().VoteRound(),
+					ntd.NetworkTypeSectionHash(),
+				)
+				pp, err := pc.NewProofPart(ntsd.Hash(), t.Chain)
+				assert.NoError(t, err)
+				ntsHashEntries = append(ntsHashEntries, module.NTSHashEntryFormat{
+					NetworkTypeID:          ntd.NetworkTypeID(),
+					NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
+				})
+				ntsdProofParts = append(ntsdProofParts, pp.Bytes())
+			}
+		}
+	}
+	precommit := consensus.NewVoteMessage(
 		t.Chain.Wallet(),
+		consensus.VoteTypePrecommit,
 		t.LastBlock.Height(),
 		0,
 		t.LastBlock.ID(),
 		nil,
 		t.LastBlock.Timestamp()+1,
-	))
+		ntsHashEntries,
+		ntsdProofParts,
+	)
+	return consensus.NewCommitVoteList(pcm, precommit)
 }
 
 func (t *Node) Address() module.Address {
 	return t.Chain.Wallet().Address()
+}
+
+func (t *Node) CommonAddress() *common.Address {
+	return t.Address().(*common.Address)
 }
 
 func NodeInterconnect(nodes []*Node) {

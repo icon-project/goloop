@@ -19,6 +19,7 @@ package test
 import (
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -192,6 +193,18 @@ func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (sm *ServiceManager) getSystemByteStoreState(result []byte) (containerdb.BytesStoreState, error) {
+	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
+	if err != nil {
+		return nil, err
+	}
+	ass := ws.GetAccountSnapshot(state.SystemID)
+	if ass == nil {
+		return containerdb.EmptyBytesStoreState, nil
+	}
+	return scoredb.NewStateStoreWith(ass), nil
+}
+
 func (sm *ServiceManager) ImportResult(result []byte, vh []byte, src db.Database) error {
 	panic("implement me")
 }
@@ -253,5 +266,10 @@ func (sm *ServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection
 }
 
 func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
-	return btp.ZeroProofContextMap, nil
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	return btp.NewProofContextsMap(btpContext)
 }

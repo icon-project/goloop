@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 type VoteType byte
@@ -51,10 +52,7 @@ type blockVoteBase struct {
 	BlockPartSetID *PartSetID
 }
 
-type ntsVoteBase struct {
-	NetworkTypeID          int64
-	NetworkTypeSectionHash []byte
-}
+type ntsVoteBase module.NTSHashEntryFormat
 
 func (ntsVote ntsVoteBase) String() string {
 	return fmt.Sprintf(
