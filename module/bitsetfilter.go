@@ -30,7 +30,7 @@ func MakeBitSetFilter(capInBytes int) BitSetFilter {
 
 func BitSetFilterFromBytes(s []byte, capInBytes int) BitSetFilter {
 	f := MakeBitSetFilter(capInBytes)
-	copy(f.s[:len(s)], s)
+	f.s = append(f.s, s...)
 	return f
 }
 
@@ -47,7 +47,7 @@ func (f *BitSetFilter) Set(idx int64) {
 	f.s[i] |= 1 << o
 }
 
-func (f *BitSetFilter) Test(idx int64) bool {
+func (f BitSetFilter) Test(idx int64) bool {
 	if cap(f.s) == 0 {
 		return false
 	}
@@ -55,7 +55,7 @@ func (f *BitSetFilter) Test(idx int64) bool {
 	return (f.s[i] & (1 << o)) != 0
 }
 
-func (f *BitSetFilter) Bytes() []byte {
+func (f BitSetFilter) Bytes() []byte {
 	if len(f.s) == 0 {
 		return nil
 	}
