@@ -19,6 +19,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -37,12 +38,18 @@ import (
 
 const VarTest = "test"
 
+type callJSON struct {
+	From *common.Address `json:"from,omitempty"`
+	Data json.RawMessage `json:"data"`
+}
+
 type transactionJSON struct {
 	TimeStamp        common.HexInt64   `json:"timestamp"`
 	Type             string            `json:"type"`
 	Validators       []*common.Address `json:"validators,omitempty"`
 	NextBlockVersion *common.HexInt32  `json:"nextBlockVersion,omitempty"`
 	VarTest          *string           `json:"varTest,omitempty"`
+	Call             *callJSON         `json:"call,omitempty"`
 }
 
 type Transaction struct {
@@ -106,6 +113,33 @@ func (t *Transaction) SetVarTest(v *string) *Transaction {
 	return t
 }
 
+func (t *Transaction) CallFrom(from *common.Address, method string, params map[string]string) *Transaction {
+	paramsStr, err := json.Marshal(params)
+	if err != nil {
+		panic(err)
+	}
+	data := fmt.Sprintf("{\"method\":\"%s\", \"params\":%s}", method, paramsStr)
+	raw := json.RawMessage(data)
+	t.json.Call = &callJSON{
+		from,
+		raw,
+	}
+	return t
+}
+
+func (t *Transaction) Call(method string, params map[string]string) *Transaction {
+	paramsStr, err := json.Marshal(params)
+	if err != nil {
+		panic(err)
+	}
+	data := fmt.Sprintf("{\"method\":\"%s\", \"params\":%s}", method, paramsStr)
+	raw := json.RawMessage(data)
+	t.json.Call = &callJSON{
+		Data: raw,
+	}
+	return t
+}
+
 func (t *Transaction) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{state.WorldIDStr, state.AccountWriteLock},
@@ -114,6 +148,7 @@ func (t *Transaction) Prepare(ctx contract.Context) (state.WorldContext, error) 
 }
 
 func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), t.To())
 	if t.json.Validators != nil {
 		var vl []module.Validator
 		for _, addr := range t.json.Validators {
@@ -139,7 +174,27 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		prop := scoredb.NewVarDB(as, VarTest)
 		prop.Set(*t.json.VarTest)
 	}
-	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), t.To())
+	if t.json.Call != nil {
+		cc := contract.NewCallContext(ctx, big.NewInt((1<<63)-1), false)
+		var from *common.Address
+		if t.json.Call.From != nil {
+			from = t.json.Call.From
+		} else {
+			from = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+		}
+		ch, err := ctx.ContractManager().GetHandler(
+			from,
+			state.SystemAddress,
+			big.NewInt(0),
+			contract.CTypeCall,
+			t.json.Call.Data,
+		)
+		if err != nil {
+			return nil, err
+		}
+		_, _, _, _ = cc.Call(ch, big.NewInt((1<<63)-1))
+		cc.GetBTPMessages(r)
+	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }
@@ -186,7 +241,7 @@ func (t *Transaction) Version() int {
 func (t *Transaction) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := map[string]interface{}{
 		"timestamp": &t.json.TimeStamp,
-		"type": "test",
+		"type":      "test",
 	}
 	if t.json.Validators != nil {
 		res["validators"] = t.json.Validators
@@ -196,6 +251,15 @@ func (t *Transaction) ToJSON(version module.JSONVersion) (interface{}, error) {
 	}
 	if t.json.VarTest != nil {
 		res["varTest"] = t.json.VarTest
+	}
+	if t.json.Call != nil {
+		call := map[string]interface{}{
+			"data": t.json.Call.Data,
+		}
+		if t.json.Call.From != nil {
+			call["from"] = t.json.Call.From
+		}
+		res["callData"] = call
 	}
 	return res, nil
 }
@@ -255,7 +319,7 @@ func (t *Transaction) ClearCache() {
 
 func checkJSONTX(tx map[string]interface{}) bool {
 	val, ok := tx["type"]
-	return ok && val=="test"
+	return ok && val == "test"
 }
 
 func parseJSONTX(js []byte, raw bool) (transaction.Transaction, error) {
@@ -271,7 +335,7 @@ var once sync.Once
 func RegisterTransactionFactory() {
 	once.Do(func() {
 		transaction.RegisterFactory(&transaction.Factory{
-			Priority: 5,
+			Priority:  5,
 			CheckJSON: checkJSONTX,
 			ParseJSON: parseJSONTX,
 		})
