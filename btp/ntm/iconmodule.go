@@ -88,6 +88,10 @@ func (m *iconModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
 	return newSecp256k1ProofFromBytes(bs)
 }
 
+func (m *iconModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
+	return m.AddressFromPubKey(key)
+}
+
 func init() {
 	iconModuleInstance = register(iconUID, &iconModuleCore{})
 }

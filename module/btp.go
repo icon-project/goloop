@@ -205,6 +205,7 @@ type NetworkTypeModule interface {
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
 	NewProofFromBytes(bs []byte) (BTPProof, error)
+	NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error)
 }
 
 type BTPBlockHeader interface {

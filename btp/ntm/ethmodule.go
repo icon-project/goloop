@@ -97,6 +97,10 @@ func (m *ethModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
 	return newSecp256k1ProofFromBytes(bs)
 }
 
+func (m *ethModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
+	return m.AddressFromPubKey(key)
+}
+
 func init() {
 	ethModuleInstance = register(ethUID, &ethModuleCore{})
 }
