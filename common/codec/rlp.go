@@ -2,6 +2,8 @@ package codec
 
 import (
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -447,4 +449,48 @@ func (c *rlpCodec) NewEncoder(w io.Writer) EncodeAndCloser {
 	return NewEncoder(&rlpWriter{
 		writer: w,
 	})
+}
+
+func DumpRLP(indent string, data []byte) string {
+	p := 0
+	var res string
+	for p < len(data) {
+		switch q := data[p]; {
+		case q < 0x80:
+			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, 1, 1, data[p:p+1])
+			p = p + 1
+		case q <= 0xb7:
+			l := int(q - 0x80)
+			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, l, l, data[p+1:p+1+l])
+			p = p + 1 + l
+		case q <= 0xbf:
+			ll := int(q - 0xb7)
+			buf := make([]byte, 8)
+			lBytes := data[p+1 : p+1+ll]
+			copy(buf[8-ll:], lBytes)
+			l := int(binary.BigEndian.Uint64(buf))
+			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, l, l, data[p+1+ll:p+1+ll+l])
+			p = p + 1 + ll + l
+		case q <= 0xf7:
+			l := int(q - 0xc0)
+			res += fmt.Sprintf("%slist(0x%x:%d) [\n", indent, l, l)
+			res += DumpRLP(indent+"  ", data[p+1:p+1+l])
+			res += fmt.Sprintf("%s]\n", indent)
+			p = p + 1 + l
+		case q == 0xf8 && data[p+1] == 0:
+			res += fmt.Sprintf("%slist(0x0:0) [] nil?\n", indent)
+			p = p + 2
+		default:
+			ll := int(q - 0xf7)
+			buf := make([]byte, 8)
+			lBytes := data[p+1 : p+1+ll]
+			copy(buf[8-ll:], lBytes)
+			l := int(binary.BigEndian.Uint64(buf))
+			res += fmt.Sprintf("%slist(0x%x:%d) [\n", indent, l, l)
+			res += DumpRLP(indent+"  ", data[p+1+ll:p+1+ll+l])
+			res += fmt.Sprintf("%s]\n", indent)
+			p = p + 1 + ll + l
+		}
+	}
+	return res
 }
