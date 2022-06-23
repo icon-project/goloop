@@ -1623,7 +1623,7 @@ func (cs *consensus) applyLastVote(
 	prevValidators addressIndexer,
 ) error {
 	blk := cs.lastBlock
-	cvl, ok := cvs.(*commitVoteList)
+	cvl, ok := cvs.(*CommitVoteList)
 	if !ok {
 		if vs, ok := cvs.(VoteSet); ok {
 			cs.lastVotes = vs
@@ -1914,7 +1914,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		var bps PartSet
 		var vl *voteList
-		if cvl, ok := cvs.(*commitVoteList); ok {
+		if cvl, ok := cvs.(*CommitVoteList); ok {
 			var cnt int
 			if h == 0 {
 				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
@@ -2036,7 +2036,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		return
 	}
 
-	votes := cvl.(*commitVoteList)
+	votes := cvl.(*CommitVoteList)
 	ntsHashEntries, err := blk.NTSHashEntryList()
 	if err != nil {
 		cs.log.Warnf("fail to get NTSHashEntryList: %+v", err)

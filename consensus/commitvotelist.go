@@ -105,15 +105,12 @@ func (bvl *blockCommitVoteList) VoteRound() int32 {
 	return bvl.Round
 }
 
-type ntsVoteList struct {
-}
-
-type commitVoteList struct {
+type CommitVoteList struct {
 	blockCommitVoteList
 	NTSDProves [][]byte
 }
 
-func (vl *commitVoteList) RLPEncodeSelf(e codec.Encoder) error {
+func (vl *CommitVoteList) RLPEncodeSelf(e codec.Encoder) error {
 	if len(vl.NTSDProves) == 0 {
 		return e.EncodeListOf(vl.Round, vl.BlockPartSetID, vl.Items)
 	}
@@ -125,7 +122,7 @@ func (vl *commitVoteList) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (vl *commitVoteList) RLPDecodeSelf(d codec.Decoder) error {
+func (vl *CommitVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -143,31 +140,31 @@ func (vl *commitVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	return err
 }
 
-func (vl *commitVoteList) Bytes() []byte {
+func (vl *CommitVoteList) Bytes() []byte {
 	if vl.bytes == nil {
 		vl.bytes = vlCodec.MustMarshalToBytes(vl)
 	}
 	return vl.bytes
 }
 
-func (vl *commitVoteList) Hash() []byte {
+func (vl *CommitVoteList) Hash() []byte {
 	return crypto.SHA3Sum256(vl.Bytes())
 }
 
-func (vl *commitVoteList) NTSDProofCount() int {
+func (vl *CommitVoteList) NTSDProofCount() int {
 	return len(vl.NTSDProves)
 }
 
-func (vl *commitVoteList) NTSDProofAt(i int) []byte {
+func (vl *CommitVoteList) NTSDProofAt(i int) []byte {
 	return vl.NTSDProves[i]
 }
 
-func (vl *commitVoteList) String() string {
+func (vl *CommitVoteList) String() string {
 	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d,len(NTS)=%d)",
 		vl.Round, vl.BlockPartSetID, len(vl.Items), len(vl.NTSDProves))
 }
 
-func (vl *commitVoteList) toVoteListWithBlock(
+func (vl *CommitVoteList) toVoteListWithBlock(
 	blk module.Block,
 	prevResult []byte,
 	dbase db.Database,
@@ -181,9 +178,9 @@ func (vl *commitVoteList) toVoteListWithBlock(
 	)
 }
 
-// toVoteList converts commitVoteList to voteList. result is the result in
+// toVoteList converts CommitVoteList to voteList. result is the result in
 // height-1 block. Note that there should be no NTS votes if prevResult is nil.
-func (vl *commitVoteList) toVoteList(
+func (vl *CommitVoteList) toVoteList(
 	height int64, bid []byte, prevResult []byte,
 	ntsHashEntries module.NTSHashEntryList, dbase db.Database,
 ) (*voteList, error) {
@@ -224,13 +221,13 @@ func (vl *commitVoteList) toVoteList(
 	return rvl, nil
 }
 
-// newCommitVoteList returns a new commitVoteList.
+// newCommitVoteList returns a new CommitVoteList.
 // pcm must be the pcm for height of the msgs. i.e. nextPCM in block height-1.
 func newCommitVoteList(
 	pcm module.BTPProofContextMap,
 	msgs []*voteMessage,
-) (*commitVoteList, error) {
-	vl := &commitVoteList{}
+) (*CommitVoteList, error) {
+	vl := &CommitVoteList{}
 	l := len(msgs)
 	if l == 0 {
 		return vl, nil
@@ -286,7 +283,7 @@ func NewEmptyCommitVoteList() module.CommitVoteSet {
 
 // NewCommitVoteSetFromBytes returns VoteList from serialized bytes
 func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
-	vl := &commitVoteList{}
+	vl := &CommitVoteList{}
 	if bs == nil {
 		return vl
 	}
@@ -302,7 +299,7 @@ func WALRecordBytesFromCommitVoteListBytes(
 	ntsHashEntries module.NTSHashEntryList,
 	dbase db.Database, c codec.Codec,
 ) ([]byte, error) {
-	cvl := &commitVoteList{}
+	cvl := &CommitVoteList{}
 	if bs != nil {
 		_, err := c.UnmarshalFromBytes(bs, cvl)
 		if err != nil {

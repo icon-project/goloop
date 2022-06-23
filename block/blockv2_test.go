@@ -63,7 +63,7 @@ func TestBlockV2_EncodeAsFormat1IfPossible(t *testing.T) {
 		NormalTransactions: [][]byte{[]byte("tx1")},
 		Votes:              []byte("votes"),
 	}
-	blockV2HeaderFormat := blockV2HeaderFormat{
+	blockV2HeaderFormat := V2HeaderFormat{
 		Version:                module.BlockVersion2,
 		Height:                 1,
 		Timestamp:              10,
@@ -77,7 +77,7 @@ func TestBlockV2_EncodeAsFormat1IfPossible(t *testing.T) {
 		Result:                 []byte("result"),
 		NSFilter:               nil,
 	}
-	blockV2BodyFormat := blockV2BodyFormat{
+	blockV2BodyFormat := V2BodyFormat{
 		NormalTransactions: [][]byte{[]byte("tx1")},
 		Votes:              []byte("votes"),
 		BTPDigest:          nil,

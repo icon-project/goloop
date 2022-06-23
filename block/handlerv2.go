@@ -94,7 +94,7 @@ func (b *blockV2Handler) NewBlock(
 }
 
 func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, error) {
-	var header blockV2HeaderFormat
+	var header V2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
 		return nil, err
@@ -153,12 +153,12 @@ func newTransactionListFromBSS(
 
 func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, error) {
 	sm := b.sm
-	var headerFormat blockV2HeaderFormat
+	var headerFormat V2HeaderFormat
 	err := v2Codec.Unmarshal(r, &headerFormat)
 	if err != nil {
 		return nil, err
 	}
-	var bodyFormat blockV2BodyFormat
+	var bodyFormat V2BodyFormat
 	err = v2Codec.Unmarshal(r, &bodyFormat)
 	if err != nil {
 		return nil, err

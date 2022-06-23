@@ -24,7 +24,7 @@ var v2Codec = codec.BC
 
 const blockV2String = "2.0"
 
-type blockV2HeaderFormat struct {
+type V2HeaderFormat struct {
 	Version                int
 	Height                 int64
 	Timestamp              int64
@@ -39,7 +39,7 @@ type blockV2HeaderFormat struct {
 	NSFilter               []byte
 }
 
-func (bh *blockV2HeaderFormat) RLPEncodeSelf(e codec.Encoder) error {
+func (bh *V2HeaderFormat) RLPEncodeSelf(e codec.Encoder) error {
 	if bh.NSFilter == nil {
 		return e.EncodeListOf(
 			bh.Version,
@@ -71,7 +71,7 @@ func (bh *blockV2HeaderFormat) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (bh *blockV2HeaderFormat) RLPDecodeSelf(d codec.Decoder) error {
+func (bh *V2HeaderFormat) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -97,14 +97,14 @@ func (bh *blockV2HeaderFormat) RLPDecodeSelf(d codec.Decoder) error {
 	return err
 }
 
-type blockV2BodyFormat struct {
+type V2BodyFormat struct {
 	PatchTransactions  [][]byte
 	NormalTransactions [][]byte
 	Votes              []byte
 	BTPDigest          []byte
 }
 
-func (bb *blockV2BodyFormat) RLPEncodeSelf(e codec.Encoder) error {
+func (bb *V2BodyFormat) RLPEncodeSelf(e codec.Encoder) error {
 	if bb.BTPDigest == nil {
 		return e.EncodeListOf(
 			bb.PatchTransactions,
@@ -120,7 +120,7 @@ func (bb *blockV2BodyFormat) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (bb *blockV2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
+func (bb *V2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -235,12 +235,12 @@ func (b *blockV2) Marshal(w io.Writer) error {
 	return b.MarshalBody(w)
 }
 
-func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
+func (b *blockV2) _headerFormat() *V2HeaderFormat {
 	var proposerBS []byte
 	if b.proposer != nil {
 		proposerBS = b.proposer.Bytes()
 	}
-	return &blockV2HeaderFormat{
+	return &V2HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
 		Timestamp:              b.timestamp,
@@ -287,7 +287,7 @@ func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 	return res, nil
 }
 
-func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
+func (b *blockV2) _bodyFormat() (*V2BodyFormat, error) {
 	ptBss, err := bssFromTransactionList(b.patchTransactions)
 	if err != nil {
 		return nil, err
@@ -300,7 +300,7 @@ func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &blockV2BodyFormat{
+	return &V2BodyFormat{
 		PatchTransactions:  ptBss,
 		NormalTransactions: ntBss,
 		Votes:              b.votes.Bytes(),
@@ -403,7 +403,7 @@ type blockBuilder struct {
 }
 
 func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
-	header := new(blockV2HeaderFormat)
+	header := new(V2HeaderFormat)
 	err := v2Codec.Unmarshal(bytes.NewReader(value), header)
 	if err != nil {
 		return err
@@ -446,4 +446,28 @@ func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder
 	blk.sm = c.ServiceManager()
 	builder.RequestData(db.BytesByHash, hash, &blockBuilder{block: blk, vld: vld})
 	return blk
+}
+
+func NewBlockReaderFromFormat(hf *V2HeaderFormat, bf *V2BodyFormat) io.Reader {
+	var buf bytes.Buffer
+	err := v2Codec.Marshal(&buf, hf)
+	if err != nil {
+		log.Panicf("fail to marshal: %+v", err)
+	}
+	err = v2Codec.Marshal(&buf, bf)
+	if err != nil {
+		log.Panicf("fail to marshal: %+v", err)
+	}
+	return &buf
+}
+
+func FormatFromBlock(blk module.Block) (*V2HeaderFormat, *V2BodyFormat, error) {
+	if v2, ok := blk.(*blockV2); ok {
+		bodyFmt, err := v2._bodyFormat()
+		if err != nil {
+			return nil, nil, err
+		}
+		return v2._headerFormat(), bodyFmt, nil
+	}
+	return nil, nil, errors.Errorf("not block v2 height=%d version=%d", blk.Height(), blk.Version())
 }

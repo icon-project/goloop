@@ -110,7 +110,7 @@ func (vs *voteSet) getOverTwoThirdsRoundDecisionDigest() ([]byte, *PartSetID, bo
 	}
 }
 
-func (vs *voteSet) commitVoteListForOverTwoThirds(pcm module.BTPProofContextMap) (*commitVoteList, error) {
+func (vs *voteSet) commitVoteListForOverTwoThirds(pcm module.BTPProofContextMap) (*CommitVoteList, error) {
 	if len(vs.msgs) == 0 {
 		return newCommitVoteList(nil, nil)
 	}

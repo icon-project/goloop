@@ -17,12 +17,16 @@
 package block_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -105,4 +109,74 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 	v := t.NewVoteListForLastBlock()
 	assert.EqualValues(1, v.NTSDProofCount())
 	t.ProposeFinalizeBlock(v)
+}
+
+func getReaderForBlock(t *testing.T, blk module.Block) io.Reader {
+	var buf bytes.Buffer
+	err := blk.Marshal(&buf)
+	assert.NoError(t, err)
+	return &buf
+}
+
+func TestBlockManager_BTPImport(t_ *testing.T) {
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddValidatorNodes(1))
+	defer f.Close()
+
+	vNode := f.Nodes[0]
+	vNode.ProposeFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(),
+		test.NewTx().Call("setRevision", map[string]string{
+			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+		}).CallFrom(vNode.CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", vNode.Chain.WalletFor("eth").PublicKey()),
+		}).Call("openBTPNetwork", map[string]string{
+			"networkTypeName": "eth",
+			"name":            "eth-test",
+			"owner":           vNode.CommonAddress().String(),
+		}).String(),
+	)
+	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
+
+	vNode.ProposeFinalizeBlock(vNode.NewVoteListForLastBlock())
+	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
+
+	// send message
+	testMsg := ([]byte)("test message")
+	vNode.ProposeFinalizeBlockWithTX(
+		vNode.NewVoteListForLastBlock(),
+		test.NewTx().CallFrom(vNode.CommonAddress(), "sendBTPMessage", map[string]string{
+			"networkId": "0x1",
+			"message":   fmt.Sprintf("0x%x", testMsg),
+		}).String(),
+	)
+	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
+
+	// generate result block (BTPDigest has 1 NTS)
+	vNode.ProposeFinalizeBlock(vNode.NewVoteListForLastBlock())
+	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
+	bd, _ := f.LastBlock.BTPDigest()
+	assert.Equal(1, len(bd.NetworkTypeDigests()))
+
+	// generate block that has the vote of the result block.
+	// the vote must have 1 NTSDProof
+	oriCvl := vNode.NewVoteListForLastBlock()
+	cvl := vNode.NewVoteListForLastBlock()
+	t_.Logf("original vote = %s", codec.DumpRLP("  ", oriCvl.Bytes()))
+	vNode.ProposeFinalizeBlock(vNode.NewVoteListForLastBlock())
+
+	// fail import with modified vote
+	h, b, err := block.FormatFromBlock(vNode.LastBlock)
+	assert.NoError(err)
+	cvl.(*consensus.CommitVoteList).NTSDProves = nil
+	t_.Logf("modified vote = %s", codec.DumpRLP("  ", cvl.Bytes()))
+	h.VotesHash = cvl.Hash()
+	b.Votes = cvl.Bytes()
+	_, err, cbErr := test.ImportBlockByReader(f.T, f.BM, block.NewBlockReaderFromFormat(h, b), 0)
+	assert.Error(err)
+	assert.NoError(cbErr)
+
+	// success import with original vote
+	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
 }
