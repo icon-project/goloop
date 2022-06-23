@@ -1155,6 +1155,8 @@ func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 		m.nextPCM = m.nextPCM.Update(bs)
 	}
 
+	m.cache.Put(m.finalized.block)
+
 	m.log.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
 		cb := m.finalizationCBs[i]
