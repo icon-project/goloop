@@ -49,7 +49,7 @@ type transactionJSON struct {
 	Validators       []*common.Address `json:"validators,omitempty"`
 	NextBlockVersion *common.HexInt32  `json:"nextBlockVersion,omitempty"`
 	VarTest          *string           `json:"varTest,omitempty"`
-	Call             *callJSON         `json:"call,omitempty"`
+	Call             []callJSON        `json:"call"`
 }
 
 type Transaction struct {
@@ -120,10 +120,10 @@ func (t *Transaction) CallFrom(from *common.Address, method string, params map[s
 	}
 	data := fmt.Sprintf("{\"method\":\"%s\", \"params\":%s}", method, paramsStr)
 	raw := json.RawMessage(data)
-	t.json.Call = &callJSON{
+	t.json.Call = append(t.json.Call, callJSON{
 		from,
 		raw,
-	}
+	})
 	return t
 }
 
@@ -134,9 +134,9 @@ func (t *Transaction) Call(method string, params map[string]string) *Transaction
 	}
 	data := fmt.Sprintf("{\"method\":\"%s\", \"params\":%s}", method, paramsStr)
 	raw := json.RawMessage(data)
-	t.json.Call = &callJSON{
+	t.json.Call = append(t.json.Call, callJSON{
 		Data: raw,
-	}
+	})
 	return t
 }
 
@@ -174,11 +174,11 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		prop := scoredb.NewVarDB(as, VarTest)
 		prop.Set(*t.json.VarTest)
 	}
-	if t.json.Call != nil {
+	for _, c := range t.json.Call {
 		cc := contract.NewCallContext(ctx, big.NewInt((1<<63)-1), false)
 		var from *common.Address
-		if t.json.Call.From != nil {
-			from = t.json.Call.From
+		if c.From != nil {
+			from = c.From
 		} else {
 			from = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 		}
@@ -187,7 +187,7 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 			state.SystemAddress,
 			big.NewInt(0),
 			contract.CTypeCall,
-			t.json.Call.Data,
+			c.Data,
 		)
 		if err != nil {
 			return nil, err
@@ -252,15 +252,17 @@ func (t *Transaction) ToJSON(version module.JSONVersion) (interface{}, error) {
 	if t.json.VarTest != nil {
 		res["varTest"] = t.json.VarTest
 	}
-	if t.json.Call != nil {
+	var calls []interface{}
+	for _, c := range t.json.Call {
 		call := map[string]interface{}{
-			"data": t.json.Call.Data,
+			"data": c.Data,
 		}
-		if t.json.Call.From != nil {
-			call["from"] = t.json.Call.From
+		if c.From != nil {
+			call["from"] = c.From
 		}
-		res["callData"] = call
+		calls = append(calls, call)
 	}
+	res["callData"] = calls
 	return res, nil
 }
 
