@@ -46,23 +46,14 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 
 	t.ProposeFinalizeBlockWithTX(
 		consensus.NewEmptyCommitVoteList(),
-		test.NewTx().SetValidatorsNode(t).String(),
-	)
-	t.ProposeFinalizeBlockWithTX(
-		consensus.NewEmptyCommitVoteList(),
-		test.NewTx().Call("setRevision", map[string]string{
+		test.NewTx().SetValidatorsNode(
+			t,
+		).Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-		}).String(),
-	)
-	t.ProposeFinalizeBlockWithTX(
-		consensus.NewEmptyCommitVoteList(),
-		test.NewTx().CallFrom(t.CommonAddress(), "setPublicKey", map[string]string{
+		}).CallFrom(t.CommonAddress(), "setPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", t.Chain.WalletFor("eth").PublicKey()),
-		}).String())
-	t.ProposeFinalizeBlockWithTX(
-		t.NewVoteListForLastBlock(),
-		test.NewTx().Call("openBTPNetwork", map[string]string{
+		}).Call("openBTPNetwork", map[string]string{
 			"networkTypeName": "eth",
 			"name":            "eth-test",
 			"owner":           t.CommonAddress().String(),
@@ -72,7 +63,8 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(0, bd.NTSHashEntryCount())
 
-	t.ProposeFinalizeBlock(t.NewVoteListForLastBlock())
+	// advance one block for tx result
+	t.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 	bd, err = t.LastBlock.BTPDigest()
 	assert.NoError(err)
 	assert.EqualValues(1, bd.NTSHashEntryCount())
@@ -85,7 +77,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 
 	testMsg := ([]byte)("test message")
 	t.ProposeFinalizeBlockWithTX(
-		t.NewVoteListForLastBlock(),
+		consensus.NewEmptyCommitVoteList(),
 		test.NewTx().CallFrom(t.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
@@ -95,6 +87,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(0, bd.NTSHashEntryCount())
 
+	// advance one block for tx result
 	t.ProposeFinalizeBlock(t.NewVoteListForLastBlock())
 	bd, err = t.LastBlock.BTPDigest()
 	assert.NoError(err)
@@ -109,5 +102,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(testMsg, msg.Bytes())
 
-	t.ProposeFinalizeBlock(t.NewVoteListForLastBlock())
+	v := t.NewVoteListForLastBlock()
+	assert.EqualValues(1, v.NTSDProofCount())
+	t.ProposeFinalizeBlock(v)
 }
