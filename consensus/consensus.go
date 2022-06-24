@@ -47,7 +47,7 @@ const (
 	ConfigEnginePriority = 2
 	ConfigSyncerPriority = 3
 
-	configBlockPartSize               = 1024 * 100
+	ConfigBlockPartSize               = 1024 * 100
 	configCommitCacheCap              = 60
 	configRoundWALID                  = "round"
 	configRoundWALDataSize            = 1024 * 500
@@ -216,7 +216,7 @@ func New(
 		timestamper:  timestamper,
 		nid:          codec.MustMarshalToBytes(c.NID()),
 		bpp:          bpp,
-		srcUID:       []byte(fmt.Sprintf("0x%x.icon", c.NID())),
+		srcUID:       module.GetSourceNetworkUID(c),
 		lastVoteData: lastVoteData,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
@@ -348,6 +348,7 @@ func (cs *consensus) OnReceive(
 	msg, err := UnmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		cs.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
+		cs.log.Warnf("message: %s", codec.DumpRLP("  ", bs))
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
@@ -360,7 +361,7 @@ func (cs *consensus) OnReceive(
 		err = cs.ReceiveProposalMessage(m, false)
 	case *BlockPartMessage:
 		_, err = cs.ReceiveBlockPartMessage(m, false)
-	case *voteMessage:
+	case *VoteMessage:
 		_, err = cs.ReceiveVoteMessage(m, false)
 	case *voteListMessage:
 		err = cs.ReceiveVoteListMessage(m, false)
@@ -447,7 +448,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 	return bp.Index(), nil
 }
 
-func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error) {
+func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, error) {
 	lastPC :=
 		msg.Height == cs.height-1 &&
 			cs.step <= stepTransactionWait &&
@@ -509,7 +510,7 @@ func (cs *consensus) ReceiveVoteListMessage(msg *voteListMessage, unicast bool) 
 	return err
 }
 
-func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
+func (cs *consensus) handlePrevoteMessage(msg *VoteMessage, prevotes *voteSet) {
 	if cs.step >= stepCommit {
 		return
 	}
@@ -541,7 +542,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 	}
 }
 
-func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) {
+func (cs *consensus) handlePrecommitMessage(msg *VoteMessage, precommits *voteSet) {
 	if msg.Round < cs.round && cs.step < stepCommit {
 		if psid, _ := precommits.getOverTwoThirdsPartSetID(); psid != nil {
 			cs.enterCommit(precommits, psid, msg.Round)
@@ -650,7 +651,7 @@ func (cs *consensus) enterPropose() {
 						return
 					}
 
-					psb := newPartSetBuffer(configBlockPartSize)
+					psb := NewPartSetBuffer(ConfigBlockPartSize)
 					cs.log.Must(blk.MarshalHeader(psb))
 					cs.log.Must(blk.MarshalBody(psb))
 					bd, err := blk.BTPDigest()
@@ -1331,7 +1332,7 @@ func (cs *consensus) applyRoundWAL() error {
 				round = m.round()
 				rstep = stepPropose
 			}
-		case *voteMessage:
+		case *VoteMessage:
 			if m.height() != cs.height {
 				continue
 			}
@@ -1691,6 +1692,15 @@ func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
 	return cs.applyLastVote(cvs, prevValidators)
 }
 
+func StartConsensusWithLastVotes(cs module.Consensus, lastVoteData *LastVoteData) error {
+	return cs.(*consensus).StartWithLastVote(lastVoteData)
+}
+
+func (cs *consensus) StartWithLastVote(lastVoteData *LastVoteData) error {
+	cs.lastVoteData = lastVoteData
+	return cs.Start()
+}
+
 func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -1937,7 +1947,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 					return nil, err
 				}
 			}
-			psb := newPartSetBuffer(configBlockPartSize)
+			psb := NewPartSetBuffer(ConfigBlockPartSize)
 			cs.log.Must(b.MarshalHeader(psb))
 			cs.log.Must(b.MarshalBody(psb))
 			bps = psb.PartSet(uint16(cnt))

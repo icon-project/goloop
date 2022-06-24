@@ -31,7 +31,7 @@ func (vl voteList) String() string {
 	return res
 }
 
-func (vl *voteList) AddVote(msg *voteMessage) {
+func (vl *voteList) AddVote(msg *VoteMessage) {
 	index := -1
 	for i, p := range vl.Prototypes {
 		if p.Equal(&msg.voteBase) {
@@ -55,7 +55,7 @@ func (vl *voteList) Len() int {
 	return len(vl.VoteItems)
 }
 
-func (vl *voteList) Get(i int) *voteMessage {
+func (vl *voteList) Get(i int) *VoteMessage {
 	msg := newVoteMessage()
 	proto := &vl.Prototypes[vl.VoteItems[i].PrototypeIndex]
 	msg.voteBase = *proto

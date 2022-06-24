@@ -19,7 +19,7 @@ type counter struct {
 }
 
 type voteSet struct {
-	msgs     []*voteMessage
+	msgs     []*VoteMessage
 	maxIndex int
 	mask     *bitArray
 	round    int32
@@ -29,7 +29,7 @@ type voteSet struct {
 }
 
 // return true if added
-func (vs *voteSet) add(index int, v *voteMessage) bool {
+func (vs *voteSet) add(index int, v *VoteMessage) bool {
 	omsg := vs.msgs[index]
 	if omsg != nil {
 		if omsg.EqualExceptSigs(v) {
@@ -119,7 +119,7 @@ func (vs *voteSet) commitVoteListForOverTwoThirds(pcm module.BTPProofContextMap)
 	if !ok {
 		return nil, nil
 	}
-	var msgs []*voteMessage
+	var msgs []*VoteMessage
 	for _, msg := range vs.msgs {
 		if msg != nil && bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 			msgs = append(msgs, msg)
@@ -194,7 +194,7 @@ func (vs *voteSet) CommitVoteSet(pcm module.BTPProofContextMap) (module.CommitVo
 	return vs.commitVoteListForOverTwoThirds(pcm)
 }
 
-func (vs *voteSet) checkAndAdd(idx int, msg *voteMessage) bool {
+func (vs *voteSet) checkAndAdd(idx int, msg *VoteMessage) bool {
 	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
 	if !ok || msg.Round != vs.getRound() || !bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 		return false
@@ -203,12 +203,12 @@ func (vs *voteSet) checkAndAdd(idx int, msg *voteMessage) bool {
 }
 
 func (vs *voteSet) Add(idx int, msg interface{}) bool {
-	return vs.checkAndAdd(idx, msg.(*voteMessage))
+	return vs.checkAndAdd(idx, msg.(*VoteMessage))
 }
 
 func newVoteSet(nValidators int) *voteSet {
 	return &voteSet{
-		msgs:     make([]*voteMessage, nValidators),
+		msgs:     make([]*VoteMessage, nValidators),
 		maxIndex: -1,
 		mask:     newBitArray(nValidators),
 		round:    -1,
@@ -222,7 +222,7 @@ type heightVoteSet struct {
 	_votes       map[int32][numberOfVoteTypes]*voteSet
 }
 
-func (hvs *heightVoteSet) add(index int, v *voteMessage) (bool, *voteSet) {
+func (hvs *heightVoteSet) add(index int, v *VoteMessage) (bool, *voteSet) {
 	vs := hvs.votesFor(v.Round, v.Type)
 	return vs.add(index, v), vs
 }

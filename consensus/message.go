@@ -150,7 +150,7 @@ func (msg *BlockPartMessage) String() string {
 }
 
 type blockVoteByteser struct {
-	msg *voteMessage
+	msg *VoteMessage
 }
 
 func (v *blockVoteByteser) bytes() []byte {
@@ -164,19 +164,73 @@ func (v *blockVoteByteser) bytes() []byte {
 	return msgCodec.MustMarshalToBytes(&bv)
 }
 
-type voteMessage struct {
+type VoteMessage struct {
 	signedBase
 	voteBase
 	Timestamp      int64
 	NTSDProofParts [][]byte
 }
 
-func newVoteMessage() *voteMessage {
-	msg := &voteMessage{}
+func newVoteMessage() *VoteMessage {
+	msg := &VoteMessage{}
 	msg.signedBase._byteser = &blockVoteByteser{
 		msg: msg,
 	}
 	return msg
+}
+
+func NewVoteMessageFromBlock(
+	w module.Wallet,
+	wp module.WalletProvider,
+	blk module.BlockData,
+	round int32,
+	voteType VoteType,
+	bpsID *PartSetID,
+	ts int64,
+	nid int,
+	pcm module.BTPProofContextMap,
+) (*VoteMessage, error) {
+	vm := newVoteMessage()
+	vm.Height = blk.Height()
+	vm.Round = round
+	vm.Type = voteType
+	vm.BlockID = blk.ID()
+	vm.BlockPartSetID = bpsID
+	vm.Timestamp = ts
+	_ = vm.sign(w)
+	bd, err := blk.BTPDigest()
+	if err != nil {
+		return nil, err
+	}
+	if pcm == nil {
+		return vm, nil
+	}
+	for _, ntd := range bd.NetworkTypeDigests() {
+		pc, err := pcm.ProofContextFor(ntd.NetworkTypeID())
+		if errors.Is(err, errors.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		vm.NTSVoteBases = append(vm.NTSVoteBases, ntsVoteBase{
+			NetworkTypeID:          ntd.NetworkTypeID(),
+			NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
+		})
+		ntsd := pc.NewDecision(
+			module.SourceNetworkUID(nid),
+			ntd.NetworkTypeID(),
+			blk.Height(),
+			round,
+			ntd.NetworkTypeSectionHash(),
+		)
+		pp, err := pc.NewProofPart(ntsd.Hash(), wp)
+		if err != nil {
+			return nil, err
+		}
+		vm.NTSDProofParts = append(vm.NTSDProofParts, pp.Bytes())
+	}
+	return vm, nil
 }
 
 func NewVoteMessage(
@@ -185,7 +239,7 @@ func NewVoteMessage(
 	partSetID *PartSetID, ts int64,
 	ntsHashEntries []module.NTSHashEntryFormat,
 	ntsdProofParts [][]byte,
-) *voteMessage {
+) *VoteMessage {
 	vm := newVoteMessage()
 	vm.Height = height
 	vm.Round = round
@@ -204,17 +258,17 @@ func NewVoteMessage(
 func NewPrecommitMessage(
 	w module.Wallet,
 	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
-) *voteMessage {
+) *VoteMessage {
 	return NewVoteMessage(
 		w, VoteTypePrecommit, height, round, id, partSetID, ts, nil, nil,
 	)
 }
 
-func (msg *voteMessage) EqualExceptSigs(msg2 *voteMessage) bool {
+func (msg *VoteMessage) EqualExceptSigs(msg2 *VoteMessage) bool {
 	return msg.voteBase.Equal(&msg2.voteBase) && msg.Timestamp == msg2.Timestamp
 }
 
-func (msg *voteMessage) Verify() error {
+func (msg *VoteMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
@@ -236,7 +290,7 @@ func (msg *voteMessage) Verify() error {
 	return msg.signedBase.verify()
 }
 
-func (msg *voteMessage) VerifyNTSDProofParts(
+func (msg *VoteMessage) VerifyNTSDProofParts(
 	pcm module.BTPProofContextMap,
 	srcUID []byte,
 	expValIndex int,
@@ -265,15 +319,15 @@ func (msg *voteMessage) VerifyNTSDProofParts(
 	return nil
 }
 
-func (msg *voteMessage) subprotocol() uint16 {
+func (msg *VoteMessage) subprotocol() uint16 {
 	return uint16(ProtoVote)
 }
 
-func (msg *voteMessage) String() string {
+func (msg *VoteMessage) String() string {
 	return fmt.Sprintf("VoteMessage{%s,H:%d,R:%d,BlockID:%v,Addr:%v}", msg.Type, msg.Height, msg.Round, common.HexPre(msg.BlockID), common.HexPre(msg.address().ID()))
 }
 
-func (msg *voteMessage) RLPEncodeSelf(e codec.Encoder) error {
+func (msg *VoteMessage) RLPEncodeSelf(e codec.Encoder) error {
 	e2, err := e.EncodeList()
 	if err != nil {
 		return err
@@ -310,7 +364,7 @@ func (msg *voteMessage) RLPEncodeSelf(e codec.Encoder) error {
 	return nil
 }
 
-func (msg *voteMessage) RLPDecodeSelf(d codec.Decoder) error {
+func (msg *VoteMessage) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err

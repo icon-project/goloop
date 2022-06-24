@@ -17,7 +17,6 @@
 package test
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -255,7 +254,7 @@ func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
 		for _, ntd := range bd.NetworkTypeDigests() {
 			if pc, err := pcm.ProofContextFor(ntd.NetworkTypeID()); err == nil {
 				ntsd := pc.NewDecision(
-					[]byte(fmt.Sprintf("0x%x.icon", t.Chain.NID())),
+					module.GetSourceNetworkUID(t.Chain),
 					ntd.NetworkTypeID(),
 					t.LastBlock.Height(),
 					t.LastBlock.Votes().VoteRound(),

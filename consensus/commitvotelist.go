@@ -225,7 +225,7 @@ func (vl *CommitVoteList) toVoteList(
 // pcm must be the pcm for height of the msgs. i.e. nextPCM in block height-1.
 func newCommitVoteList(
 	pcm module.BTPProofContextMap,
-	msgs []*voteMessage,
+	msgs []*VoteMessage,
 ) (*CommitVoteList, error) {
 	vl := &CommitVoteList{}
 	l := len(msgs)
@@ -271,7 +271,7 @@ func newCommitVoteList(
 	return vl, nil
 }
 
-func NewCommitVoteList(pcm module.BTPProofContextMap, msgs ...*voteMessage) module.CommitVoteSet {
+func NewCommitVoteList(pcm module.BTPProofContextMap, msgs ...*VoteMessage) module.CommitVoteSet {
 	cvl, _ := newCommitVoteList(pcm, msgs)
 	return cvl
 }

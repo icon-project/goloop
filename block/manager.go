@@ -594,7 +594,7 @@ func NewManager(
 			sm:      chain.ServiceManager(),
 			log:     logger,
 			running: true,
-			srcUID:  []byte(fmt.Sprintf("0x%x.icon", chain.NID())),
+			srcUID:  module.GetSourceNetworkUID(chain),
 		},
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(configCacheCap),

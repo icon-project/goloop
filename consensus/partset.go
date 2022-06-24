@@ -234,7 +234,7 @@ func (b *partSetBuffer) PartSet(appData uint16) PartSet {
 	return b.ps
 }
 
-func newPartSetBuffer(sz int) PartSetBuffer {
+func NewPartSetBuffer(sz int) PartSetBuffer {
 	return &partSetBuffer{ps: new(partSet), size: sz}
 }
 

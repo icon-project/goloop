@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -97,4 +98,12 @@ type GenesisStorageWriter interface {
 	WriteGenesis(gtx []byte) error
 	WriteData(value []byte) ([]byte, error)
 	Close() error
+}
+
+func SourceNetworkUID(nid int) []byte {
+	return []byte(fmt.Sprintf("0x%x.icon", nid))
+}
+
+func GetSourceNetworkUID(c interface{ NID() int }) []byte {
+	return SourceNetworkUID(c.NID())
 }
