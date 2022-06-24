@@ -27,7 +27,7 @@ func (cs *consensus) ntsVoteCount(bd module.BTPDigest, prevResult []byte) (int, 
 	count := 0
 	for _, ntd := range bd.NetworkTypeDigests() {
 		_, err := cs.c.ServiceManager().BTPNetworkTypeFromResult(prevResult, ntd.NetworkTypeID())
-		if errors.Is(errors.ErrNotFound, err) {
+		if errors.Is(err, errors.ErrNotFound) {
 			continue
 		}
 		if err != nil {
@@ -44,7 +44,7 @@ func (cs *consensus) ntsVoteCountWithPCM(bd module.BTPDigest, pcm module.BTPProo
 	count := 0
 	for _, ntd := range bd.NetworkTypeDigests() {
 		_, err := pcm.ProofContextFor(ntd.NetworkTypeID())
-		if errors.Is(errors.ErrNotFound, err) {
+		if errors.Is(err, errors.ErrNotFound) {
 			continue
 		}
 		if err != nil {
