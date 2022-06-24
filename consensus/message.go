@@ -298,7 +298,7 @@ func (msg *voteMessage) RLPEncodeSelf(e codec.Encoder) error {
 		return err
 	}
 	for i, ntsVote := range msg.NTSVoteBases {
-		err = e3.EncodeMulti(
+		err = e3.EncodeListOf(
 			&ntsVote.NetworkTypeID,
 			&ntsVote.NetworkTypeSectionHash,
 			msg.NTSDProofParts[i],
