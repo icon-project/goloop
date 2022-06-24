@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
@@ -192,7 +193,10 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		if err != nil {
 			return nil, err
 		}
-		_, _, _, _ = cc.Call(ch, big.NewInt((1<<63)-1))
+		err, _, _, _ = cc.Call(ch, big.NewInt((1<<63)-1))
+		if err != nil {
+			log.Errorf("error in test transaction: tx from=%s tx data=%s err=%+v", c.From, c.Data, err)
+		}
 		cc.GetBTPMessages(r)
 	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
