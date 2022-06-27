@@ -158,6 +158,7 @@ type blockV2 struct {
 	nsFilter           module.BitSetFilter
 	_btpDigest         module.BTPDigest
 	sm                 ServiceManager
+	_nextPCM           module.BTPProofContextMap
 }
 
 func (b *blockV2) Version() int {
@@ -390,7 +391,14 @@ func (b *blockV2) BTPSection() (module.BTPSection, error) {
 }
 
 func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
-	return b.sm.NextProofContextMapFromResult(b.result)
+	if b._nextPCM == nil {
+		nextPCM, err := b.sm.NextProofContextMapFromResult(b.result)
+		if err != nil {
+			return nil, err
+		}
+		b._nextPCM = nextPCM
+	}
+	return b._nextPCM, nil
 }
 
 func (b *blockV2) NTSHashEntryList() (module.NTSHashEntryList, error) {
