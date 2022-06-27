@@ -188,8 +188,9 @@ func (vl *CommitVoteList) toVoteList(
 	if err != nil {
 		return nil, err
 	}
-	proofParts := make([][][]byte, len(vl.Items))
+	proofParts := make([ /*itemIdx*/ ][ /*ntsdProofIdx*/ ][]byte, len(vl.Items))
 	ntsVoteBases := make([]ntsVoteBase, 0, ntsHashEntries.NTSHashEntryCount())
+	ntsdProofIndex := 0
 	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
 		ntsHashEntry := ntsHashEntries.NTSHashEntryAt(i)
 		nt, err := bCtx.GetNetworkType(ntsHashEntry.NetworkTypeID)
@@ -200,14 +201,15 @@ func (vl *CommitVoteList) toVoteList(
 			return nil, err
 		}
 		mod := ntm.ForUID(nt.UID())
-		pf, err := mod.NewProofFromBytes(vl.NTSDProves[i])
+		pf, err := mod.NewProofFromBytes(vl.NTSDProves[ntsdProofIndex])
 		if err != nil {
 			return nil, err
 		}
 		for j := range vl.Items {
-			proofParts[j] = append(proofParts[j], pf.ProofPartAt(i).Bytes())
+			proofParts[j] = append(proofParts[j], pf.ProofPartAt(j).Bytes())
 		}
 		ntsVoteBases = append(ntsVoteBases, ntsVoteBase(ntsHashEntry))
+		ntsdProofIndex++
 	}
 	rvl := newVoteList()
 	msg := newVoteMessage()
