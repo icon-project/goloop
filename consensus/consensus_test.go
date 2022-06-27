@@ -381,4 +381,72 @@ func TestConsensus_BTPBasic(t_ *testing.T) {
 			break
 		}
 	}
+
+	f.UpdateLastBlock()
+	assert.EqualValues(4, f.LastBlock.Height())
+	bbh, pfBytes, err := f.CS.GetBTPBlockHeaderAndProof(
+		f.LastBlock, 1,
+		module.FlagBTPBlockHeader|module.FlagBTPBlockProof,
+	)
+	assert.NoError(err)
+	assert.EqualValues(1, bbh.NetworkID())
+	assert.EqualValues(0, bbh.FirstMessageSN())
+	prevBlk, err := f.BM.GetBlockByHeight(f.LastBlock.Height() - 1)
+	assert.NoError(err)
+	pcm, err := prevBlk.NextProofContextMap()
+	assert.NoError(err)
+	pc, err := pcm.ProofContextFor(1)
+	assert.NoError(err)
+	pf, err := pc.NewProofFromBytes(pfBytes)
+	assert.NoError(err)
+	bd, err = blk.BTPDigest()
+	ntsd := pc.NewDecision(module.SourceNetworkUID(1), 1, 4, 0, bd.NetworkTypeDigestFor(1).NetworkTypeSectionHash())
+	err = pc.Verify(ntsd.Hash(), pf)
+	assert.NoError(err)
+}
+
+func TestConsensus_BTPBlockBasic(t_ *testing.T) {
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	h := make([]*test.SimplePeerHandler, 3)
+	for i := 0; i < len(h); i++ {
+		_, h[i] = f.NM.NewPeerForWithAddress(module.ProtoConsensus, f.Validators[i+1].Chain.Wallet())
+	}
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	})
+	for _, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
+		})
+	}
+	f.ProposeFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(),
+		tx.Call("openBTPNetwork", map[string]string{
+			"networkTypeName": "eth",
+			"name":            "eth-test",
+			"owner":           f.CommonAddress().String(),
+		}).String(),
+	)
+	f.ProposeFinalizeBlock(f.NewCommitVoteListForLastBlock(0, 0))
+
+	cvl := f.NewCommitVoteListForLastBlock(0, 0)
+
+	err := consensus.StartConsensusWithLastVotes(f.CS, &consensus.LastVoteData{
+		Height:     f.LastBlock.Height(),
+		VotesBytes: cvl.Bytes(),
+	})
+	assert.NoError(err)
+	assert.EqualValues(2, f.LastBlock.Height())
+	bbh, _, err := f.CS.GetBTPBlockHeaderAndProof(
+		f.LastBlock, 1,
+		module.FlagBTPBlockHeader,
+	)
+	assert.NoError(err)
+	assert.EqualValues(1, bbh.NetworkID())
+	assert.EqualValues(0, bbh.FirstMessageSN())
 }

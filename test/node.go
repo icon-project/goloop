@@ -180,6 +180,12 @@ func (t *Node) ImportBlockByReader(
 	return bc
 }
 
+func (t *Node) UpdateLastBlock() {
+	lastBlock, err := t.BM.GetLastBlock()
+	assert.NoError(t, err)
+	t.LastBlock = lastBlock
+}
+
 func (t *Node) FinalizeBlock(bc module.BlockCandidate) {
 	prevBlock := t.LastBlock
 	FinalizeBlock(t.T, t.BM, bc)
