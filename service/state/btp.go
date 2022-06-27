@@ -53,7 +53,7 @@ type BTPContext interface {
 	GetNetworkTypeIdByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
 	GetNetwork(ntid int64) (module.BTPNetwork, error)
-	GetPublicKey(address module.Address, name string) ([]byte, error)
+	GetPublicKey(address module.Address, name string) ([]byte, bool, error)
 }
 
 type BTPSnapshot interface {
@@ -137,17 +137,17 @@ func (bc *btpContext) GetNetworkTypeIdByName(name string) int64 {
 	return ret
 }
 
-func (bc *btpContext) GetPublicKey(from module.Address, name string) ([]byte, error) {
+func (bc *btpContext) GetPublicKey(from module.Address, name string) ([]byte, bool, error) {
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	if value := dbase.Get(from, name); value == nil {
 		if mod := ntm.ForUID(name); mod != nil {
 			if value = dbase.Get(from, mod.DSA()); value != nil {
-				return value.Bytes(), nil
+				return value.Bytes(), true, nil
 			}
 		}
-		return nil, errors.NotFoundError.Errorf("not found public key %s, %s", from, name)
+		return nil, false, errors.NotFoundError.Errorf("not found public key %s, %s", from, name)
 	} else {
-		return value.Bytes(), nil
+		return value.Bytes(), false, nil
 	}
 }
 
@@ -342,7 +342,13 @@ func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.Network
 	validators := bc.GetValidatorState()
 	for i := 0; i < validators.Len(); i++ {
 		v, _ := validators.Get(i)
-		if key, err := bc.GetPublicKey(v.Address(), mod.UID()); err == nil {
+		if key, fromDSA, err := bc.GetPublicKey(v.Address(), mod.UID()); err == nil {
+			if fromDSA {
+				key, err = mod.NetworkTypeKeyFromDSAKey(key)
+				if err != nil {
+					continue
+				}
+			}
 			keys = append(keys, key)
 		}
 	}
@@ -496,7 +502,7 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 		if err != nil {
 			return err
 		}
-		if _, err = bc.GetPublicKey(from, ntView.UID()); err != nil {
+		if _, _, err = bc.GetPublicKey(from, ntView.UID()); err != nil {
 			return err
 		}
 	}

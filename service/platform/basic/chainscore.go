@@ -1539,7 +1539,7 @@ func (s *ChainScore) Ex_getPublicKey(address module.Address, name string) (strin
 	if err := s.tryChargeCall(); err != nil {
 		return "", err
 	}
-	pubKey, err := s.newBTPContext().GetPublicKey(address, name)
+	pubKey, _, err := s.newBTPContext().GetPublicKey(address, name)
 	if err != nil {
 		return "", err
 	}
