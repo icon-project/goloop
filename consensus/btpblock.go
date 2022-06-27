@@ -39,19 +39,29 @@ func (cs *consensus) GetBTPBlockHeaderAndProof(
 	if err != nil {
 		return nil, nil, err
 	}
-	if flag&module.FlagBTPBlockHeader != 0 {
-		cvs, err := cs.GetVotesByHeight(blk.Height())
+	var cvs module.CommitVoteSet
+	if flag&module.FlagBTPBlockHeader != 0 || flag&module.FlagBTPBlockProof != 0 {
+		cvs, err = cs.GetVotesByHeight(blk.Height())
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+	if flag&module.FlagBTPBlockHeader != 0 {
 		btpBlk, err = block.NewBTPBlockHeader(blk.Height(), cvs.VoteRound(), nts, nid, flag)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 	if flag&module.FlagBTPBlockProof != 0 {
-		//TODO implement me
-		panic("implement me")
+		prevBlk, err := cs.c.BlockManager().GetBlockByHeight(blk.Height() - 1)
+		if err != nil {
+			return btpBlk, nil, err
+		}
+		idx, err := cs.ntsdIndexFor(ntid, bd, prevBlk.Result())
+		if err != nil {
+			return btpBlk, nil, err
+		}
+		proof = cvs.NTSDProofAt(idx)
 	}
 	return btpBlk, proof, nil
 }

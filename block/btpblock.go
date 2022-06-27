@@ -126,7 +126,7 @@ func NewBTPBlockHeader(
 	bb.format.PrevNetworkSectionHash = ns.PrevHash()
 	bb.format.MessageCount = ns.MessageCount()
 	bb.format.MessagesRoot = ns.MessagesRoot()
-	if flag&module.FlagNextProofContext != 0 {
+	if flag&module.FlagNextProofContext != 0 || ns.NextProofContextChanged() {
 		bb.format.NextProofContext = nts.NextProofContext().Bytes()
 	}
 	return bb, nil

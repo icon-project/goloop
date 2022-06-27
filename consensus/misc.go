@@ -54,3 +54,19 @@ func (cs *consensus) ntsVoteCountWithPCM(bd module.BTPDigest, pcm module.BTPProo
 	}
 	return count, nil
 }
+
+func (cs *consensus) ntsdIndexFor(ntid int64, bd module.BTPDigest, prevResult []byte) (int, error) {
+	for i, ntd := range bd.NetworkTypeDigests() {
+		_, err := cs.c.ServiceManager().BTPNetworkTypeFromResult(prevResult, ntd.NetworkTypeID())
+		if errors.Is(err, errors.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return -1, err
+		}
+		if ntid == ntd.NetworkTypeID() {
+			return i, nil
+		}
+	}
+	return -1, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
+}
