@@ -193,6 +193,9 @@ func (vl *CommitVoteList) toVoteList(
 	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
 		ntsHashEntry := ntsHashEntries.NTSHashEntryAt(i)
 		nt, err := bCtx.GetNetworkType(ntsHashEntry.NetworkTypeID)
+		if errors.Is(err, errors.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
