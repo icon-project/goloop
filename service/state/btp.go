@@ -576,7 +576,7 @@ func (bs *BTPStateImpl) setValidatorChanged(bc BTPContext, names []string) error
 		if mod := ntm.ForUID(name); mod == nil {
 			for _, mod = range modules {
 				if mod.DSA() == name {
-					modNames[name] = true
+					modNames[mod.UID()] = true
 				}
 			}
 		} else {
