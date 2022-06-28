@@ -89,7 +89,7 @@ type ProofEventsParam struct {
 }
 
 type BTPQueryParam struct {
-	Height jsonrpc.HexInt `json:"height" validate:"required,t_int"`
+	Height jsonrpc.HexInt `json:"height,omitempty" validate:"optional,t_int"`
 	Id     jsonrpc.HexInt `json:"id" validate:"required,t_int"`
 }
 

@@ -152,7 +152,7 @@ Get BTP network information.
 | default | Default | JSON-RPC Error | Error Response              |
 
 
-### btp_getNetworkType
+### btp_getNetworkTypeInfo
 
 Get BTP network type information.
 

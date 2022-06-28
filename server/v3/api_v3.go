@@ -716,7 +716,7 @@ func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	block, err := bm.GetBlockByHeight(height)
+	block, err := getBlock(bm, param.Height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err,
 			"fail to get a block for height=%d", height)
@@ -767,7 +767,7 @@ func getBTPNetworkTypeInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	block, err := bm.GetBlockByHeight(height)
+	block, err := getBlock(bm, param.Height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
