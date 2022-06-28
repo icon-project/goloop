@@ -236,7 +236,7 @@ func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes
 	pkt.priority = ph.getPriority()
 	pkt.src = m.PeerID()
 	pkt.forceSend = true
-	p := m.p2p.getPeer(id, true)
+	p := m.p2p.getPeerByProtocol(id, pkt.protocol, true)
 	return p.sendPacket(pkt)
 }
 

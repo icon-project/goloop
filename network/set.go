@@ -220,7 +220,7 @@ func (s *PeerSet) Remove(p *Peer) bool {
 			}
 		}
 
-		last := len(s.arr)-1
+		last := len(s.arr) - 1
 		for i, tp := range s.arr {
 			if tp.In() == p.In() && tp.ID().Equal(p.ID()) {
 				s.arr[i] = s.arr[last]
@@ -313,6 +313,19 @@ func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 	return l
 }
 
+func (s *PeerSet) GetByProtocol(pi module.ProtocolInfo) []*Peer {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	l := make([]*Peer, 0, len(s.arr))
+	for _, p := range s.arr {
+		if p.ProtocolInfos().Exists(pi) {
+			l = append(l, p)
+		}
+	}
+	return l
+}
+
 func (s *PeerSet) NetAddresses() []NetAddress {
 	return s.addrs.Array()
 }
@@ -350,6 +363,18 @@ func (s *PeerSet) Len() int {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	return len(s.arr)
+}
+
+func (s *PeerSet) LenByProtocol(pi module.ProtocolInfo) int {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+	l := 0
+	for _, p := range s.arr {
+		if p.ProtocolInfos().Exists(pi) {
+			l++
+		}
+	}
+	return l
 }
 
 func (s *PeerSet) IsEmpty() bool {
