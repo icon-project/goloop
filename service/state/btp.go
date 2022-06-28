@@ -916,6 +916,7 @@ func (nw *network) Bytes() []byte {
 
 func (nw *network) RLPDecodeSelf(decoder codec.Decoder) error {
 	return decoder.DecodeListOf(
+		&nw.startHeight,
 		&nw.name,
 		&nw.owner,
 		&nw.networkTypeID,
@@ -929,6 +930,7 @@ func (nw *network) RLPDecodeSelf(decoder codec.Decoder) error {
 
 func (nw *network) RLPEncodeSelf(encoder codec.Encoder) error {
 	return encoder.EncodeListOf(
+		nw.startHeight,
 		nw.name,
 		nw.owner,
 		nw.networkTypeID,
