@@ -510,26 +510,17 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 	return nil
 }
 
-func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSection) error {
-	for _, nts := range btpSection.NetworkTypeSections() {
-		ntid := nts.NetworkTypeID()
-		if _, ok := bs.proofContextChanged[nts.NetworkTypeID()]; ok {
-			if err := bs.updateNetworkType(bc, ntid); err != nil {
-				return err
-			}
-		}
-		for nid := range bs.networkModified {
-			ns, err := nts.NetworkSectionFor(nid)
-			if err != nil {
-				continue
-			}
-			if err = bs.updateNetwork(bc, ns); err != nil {
-				return err
-			}
+func (bs *BTPStateImpl) update(bc BTPContext) error {
+	for ntid := range bs.proofContextChanged {
+		if err := bs.updateNetworkType(bc, ntid); err != nil {
+			return err
 		}
 	}
-	bs.digest = btpSection.Digest()
-	bs.digestHash = bs.digest.Hash()
+	for nid := range bs.networkModified {
+		if err := bs.updateNetwork(bc, nid); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -551,9 +542,8 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 	}
 }
 
-func (bs *BTPStateImpl) updateNetwork(bc BTPContext, ns module.NetworkSection) error {
+func (bs *BTPStateImpl) updateNetwork(bc BTPContext, nid int64) error {
 	bci := bc.(*btpContext)
-	nid := ns.NetworkID()
 	if nw, nwDB := bci.getNetwork(nid); nw == nil {
 		return errors.NotFoundError.Errorf("not found nid=%d", nid)
 	} else {
@@ -564,6 +554,34 @@ func (bs *BTPStateImpl) updateNetwork(bc BTPContext, ns module.NetworkSection) e
 			pcChanged = len(nw.LastNetworkSectionHash()) == 0
 		}
 		nw.SetNextProofContextChanged(pcChanged)
+		return nwDB.Set(nid, nw.Bytes())
+	}
+}
+
+func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSection) error {
+	for _, nts := range btpSection.NetworkTypeSections() {
+		for nid := range bs.networkModified {
+			ns, err := nts.NetworkSectionFor(nid)
+			if err != nil {
+				continue
+			}
+			if err = bs.applyNetwork(bc, ns); err != nil {
+				return err
+			}
+		}
+	}
+
+	bs.digest = btpSection.Digest()
+	bs.digestHash = bs.digest.Hash()
+	return nil
+}
+
+func (bs *BTPStateImpl) applyNetwork(bc BTPContext, ns module.NetworkSection) error {
+	bci := bc.(*btpContext)
+	nid := ns.NetworkID()
+	if nw, nwDB := bci.getNetwork(nid); nw == nil {
+		return errors.NotFoundError.Errorf("not found nid=%d", nid)
+	} else {
 		nw.SetPrevNetworkSectionHash(nw.LastNetworkSectionHash())
 		nw.SetLastNetworkSectionHash(ns.Hash())
 		return nwDB.Set(nid, nw.Bytes())
@@ -658,6 +676,10 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 	for i := btpMsgs.Front(); i != nil; i = i.Next() {
 		e := i.Value.(*bTPMsg)
 		sb.SendMessage(e.nid, e.message)
+	}
+
+	if err := bs.update(bc); err != nil {
+		return nil, err
 	}
 
 	if section, err := sb.Build(); err != nil {
