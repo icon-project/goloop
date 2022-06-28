@@ -871,7 +871,7 @@ func formatBool(yn bool) string {
 
 func (nw *network) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["startHeight"] = nw.startHeight
+	jso["startHeight"] = intconv.FormatInt(nw.startHeight)
 	jso["networkTypeID"] = intconv.FormatInt(nw.networkTypeID)
 	jso["networkName"] = nw.name
 	jso["open"] = formatBool(nw.open)
