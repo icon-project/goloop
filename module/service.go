@@ -371,6 +371,8 @@ type ServiceManager interface {
 
 	BTPNetworkFromResult(result []byte, nid int64) (BTPNetwork, error)
 
+	BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error)
+
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
 

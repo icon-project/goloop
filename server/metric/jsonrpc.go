@@ -60,6 +60,9 @@ var (
 		"btp_getNetworkInfo":         msRetrieve,
 		"btp_getNetworkTypeInfo":     msRetrieve,
 		"btp_getMessages":            msRetrieve,
+		"btp_getHeader":              msRetrieve,
+		"btp_getProof":               msRetrieve,
+		"btp_getSourceInformation":   msRetrieve,
 		"debug_getTrace": {
 			stats.Int64("jsonrpc_get_trace", "jsonrpc debug_getTrace method", "ns"),
 			stats.Int64("jsonrpc_get_trace_avg", "moving average of jsonrpc debug_getTrace method", "ns"),

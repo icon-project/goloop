@@ -662,6 +662,19 @@ func (m *manager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BT
 	return nt, nil
 }
 
+func (m *manager) BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	ntids, err := btpContext.GetNetworkTypeIDs()
+	if err != nil {
+		return nil, err
+	}
+	return ntids, nil
+}
+
 func (m *manager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {

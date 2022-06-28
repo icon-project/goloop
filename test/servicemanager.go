@@ -291,6 +291,19 @@ func (sm *ServiceManager) BTPNetworkTypeFromResult(result []byte, ntid int64) (m
 	return nt, nil
 }
 
+func (sm *ServiceManager) BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error) {
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	ntids, err := btpContext.GetNetworkTypeIDs()
+	if err != nil {
+		return nil, err
+	}
+	return ntids, nil
+}
+
 func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
 	sbss, err := sm.getSystemByteStoreState(result)
 	if err != nil {

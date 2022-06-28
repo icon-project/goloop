@@ -50,9 +50,10 @@ type BTPContext interface {
 	Store() containerdb.BytesStoreState
 	BlockHeight() int64
 	GetValidatorState() ValidatorState
-	GetNetworkTypeIdByName(name string) int64
+	GetNetworkTypeIDs() ([]int64, error)
+	GetNetworkTypeIDByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
-	GetNetwork(ntid int64) (module.BTPNetwork, error)
+	GetNetwork(nid int64) (module.BTPNetwork, error)
 	GetPublicKey(address module.Address, name string) ([]byte, bool, error)
 }
 
@@ -129,7 +130,7 @@ func (bc *btpContext) GetNetworkType(ntid int64) (module.BTPNetworkType, error) 
 	return ret, nil
 }
 
-func (bc *btpContext) GetNetworkTypeIdByName(name string) int64 {
+func (bc *btpContext) GetNetworkTypeIDByName(name string) int64 {
 	if ntm.ForUID(name) == nil {
 		return -1
 	}
@@ -485,7 +486,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		return err
 	}
 
-	if (old == nil || bytes.Compare(pubKey, old.Bytes()) != 0) && 0 != bc.GetNetworkTypeIdByName(mod.UID()) {
+	if (old == nil || bytes.Compare(pubKey, old.Bytes()) != 0) && 0 != bc.GetNetworkTypeIDByName(mod.UID()) {
 		bs.setPubKeyChanged(from, name)
 	}
 

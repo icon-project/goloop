@@ -1532,7 +1532,7 @@ func (s *ChainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return 0, err
 	}
-	return s.newBTPContext().GetNetworkTypeIdByName(name), nil
+	return s.newBTPContext().GetNetworkTypeIDByName(name), nil
 }
 
 func (s *ChainScore) Ex_getPublicKey(address module.Address, name string) (string, error) {
@@ -1555,7 +1555,7 @@ func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 	} else {
 		bc := s.newBTPContext()
 		ntActivated := false
-		if bc.GetNetworkTypeIdByName(networkTypeName) <= 0 {
+		if bc.GetNetworkTypeIDByName(networkTypeName) <= 0 {
 			ntActivated = true
 		}
 		ntid, nid, err := bs.OpenNetwork(bc, networkTypeName, name, owner)
