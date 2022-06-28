@@ -1203,6 +1203,9 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 		var ntsdProofParts [][]byte
 		if vt == VoteTypePrecommit && blockParts != nil {
 			ntsHashEntries, err := blockParts.block.NTSHashEntryList()
+			if err != nil {
+				return err
+			}
 			ntsVoteBases, ntsdProofParts, err = cs.ntsVoteBaseAndDecisionProofParts(ntsHashEntries)
 			if err != nil {
 				return err
@@ -1642,7 +1645,7 @@ func (cs *consensus) applyLastVote(
 		if err != nil {
 			return err
 		}
-		vl, err = cvl.toVoteListWithBlock(blk, prevBlk.Result(), cs.c.Database())
+		vl, err = cvl.toVoteListWithBlock(blk, prevBlk, cs.c.Database())
 	}
 	if err != nil {
 		return err
@@ -1934,7 +1937,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 				if err != nil {
 					return nil, err
 				}
-				vl, err = cvl.toVoteListWithBlock(b, prev.Result(), cs.c.Database())
+				vl, err = cvl.toVoteListWithBlock(b, prev, cs.c.Database())
 				if err != nil {
 					return nil, err
 				}
@@ -2047,11 +2050,9 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	}
 
 	votes := cvl.(*CommitVoteList)
-	ntsHashEntries, err := blk.NTSHashEntryList()
-	if err != nil {
-		cs.log.Warnf("fail to get NTSHashEntryList: %+v", err)
-	}
-	vl, err := votes.toVoteList(blk.Height(), blk.ID(), cs.lastBlock.Result(), ntsHashEntries, cs.c.Database())
+	vl, err := votes.toVoteListWithBlock(
+		blk, cs.lastBlock, cs.c.Database(),
+	)
 	if err != nil {
 		cs.log.Warnf("fail to convert to voteList: %+v", err)
 	}

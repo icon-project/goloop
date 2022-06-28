@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
@@ -1888,6 +1889,19 @@ func GetBTPDigestByHeight(
 		return nil, err
 	}
 	return btp.NewDigestFromBytes(bs)
+}
+
+func GetNextValidatorsByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) (module.ValidatorList, error) {
+	validatorsHash, err := getHeaderField(dbase, c, height, 6)
+	if err != nil {
+		return nil, err
+	}
+	vl, err := state.ValidatorSnapshotFromHash(dbase, validatorsHash)
+	return vl, nil
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {

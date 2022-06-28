@@ -102,8 +102,13 @@ func reset(height int64) error {
 		return err
 	}
 
+	vl, err := block.GetNextValidatorsByHeight(d, cod, height)
+	if err != nil {
+		return err
+	}
+
 	vlmBytes, err := cs.WALRecordBytesFromCommitVoteListBytes(
-		cvlBytes, height, bid, result, bd, d, cod,
+		cvlBytes, height, bid, result, vl, bd, d, cod,
 	)
 	if err != nil {
 		return err

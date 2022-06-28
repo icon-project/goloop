@@ -165,30 +165,41 @@ func (vl *CommitVoteList) String() string {
 }
 
 func (vl *CommitVoteList) toVoteListWithBlock(
-	blk module.Block,
-	prevResult []byte,
+	blk module.BlockData,
+	prevBlk module.Block,
 	dbase db.Database,
 ) (*voteList, error) {
 	ntsHashEntries, err := blk.NTSHashEntryList()
 	if err != nil {
 		return nil, err
 	}
+	if prevBlk == nil {
+		return vl.toVoteList(
+			blk.Height(), blk.ID(), nil, nil, ntsHashEntries, dbase,
+		)
+	}
 	return vl.toVoteList(
-		blk.Height(), blk.ID(), prevResult, ntsHashEntries, dbase,
+		blk.Height(), blk.ID(), prevBlk.Result(), prevBlk.NextValidators(), ntsHashEntries, dbase,
 	)
 }
 
 // toVoteList converts CommitVoteList to voteList. result is the result in
 // height-1 block. Note that there should be no NTS votes if prevResult is nil.
+// validators is the nextValidators in height-1 block.
 func (vl *CommitVoteList) toVoteList(
 	height int64, bid []byte, prevResult []byte,
+	validators module.ValidatorList,
 	ntsHashEntries module.NTSHashEntryList, dbase db.Database,
 ) (*voteList, error) {
 	bCtx, err := service.NewBTPContext(dbase, prevResult)
 	if err != nil {
 		return nil, err
 	}
-	proofParts := make([ /*itemIdx*/ ][ /*ntsdProofIdx*/ ][]byte, len(vl.Items))
+	valLen := 0
+	if validators != nil {
+		valLen = validators.Len()
+	}
+	proofParts := make([] /*valIdx*/ [] /*ntsdProofIdx*/ []byte, valLen)
 	ntsVoteBases := make([]ntsVoteBase, 0, ntsHashEntries.NTSHashEntryCount())
 	ntsdProofIndex := 0
 	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
@@ -205,8 +216,13 @@ func (vl *CommitVoteList) toVoteList(
 		if err != nil {
 			return nil, err
 		}
-		for j := range vl.Items {
-			proofParts[j] = append(proofParts[j], pf.ProofPartAt(j).Bytes())
+		for v := 0; v < pf.ValidatorCount(); v++ {
+			var bys []byte
+			pp := pf.ProofPartAt(v)
+			if pp != nil {
+				bys = pp.Bytes()
+				proofParts[v] = append(proofParts[v], bys)
+			}
 		}
 		ntsVoteBases = append(ntsVoteBases, ntsVoteBase(ntsHashEntry))
 		ntsdProofIndex++
@@ -217,10 +233,14 @@ func (vl *CommitVoteList) toVoteList(
 	msg.Round = vl.Round
 	msg.Type = VoteTypePrecommit
 	msg.SetRoundDecision(bid, vl.BlockPartSetID, ntsVoteBases)
-	for i, item := range vl.Items {
+	if len(vl.Items) > 0 && validators == nil {
+		return nil, errors.Errorf("nil validators with voteListItems len(vl.Items)=%d", len(vl.Items))
+	}
+	for _, item := range vl.Items {
 		msg.Timestamp = item.Timestamp
 		msg.setSignature(item.Signature)
-		msg.NTSDProofParts = proofParts[i]
+		vIdx := validators.IndexOf(msg.address())
+		msg.NTSDProofParts = proofParts[vIdx]
 		rvl.AddVote(msg)
 	}
 	return rvl, nil
@@ -301,6 +321,7 @@ func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 
 func WALRecordBytesFromCommitVoteListBytes(
 	bs []byte, h int64, bid []byte, result []byte,
+	validators module.ValidatorList,
 	ntsHashEntries module.NTSHashEntryList,
 	dbase db.Database, c codec.Codec,
 ) ([]byte, error) {
@@ -312,7 +333,7 @@ func WALRecordBytesFromCommitVoteListBytes(
 		}
 	}
 	vlm := newVoteListMessage()
-	vl, err := cvl.toVoteList(h, bid, result, ntsHashEntries, dbase)
+	vl, err := cvl.toVoteList(h, bid, result, validators, ntsHashEntries, dbase)
 	if err != nil {
 		return nil, err
 	}
