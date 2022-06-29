@@ -244,7 +244,7 @@ func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
 			h[0], h[1], h[2], f.Chain.Wallet(),
 		).Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-		}).CallFrom(f.CommonAddress(), "setPublicKey", map[string]string{
+		}).CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", f.Chain.WalletFor("eth").PublicKey()),
 		}).Call("openBTPNetwork", map[string]string{
@@ -289,7 +289,7 @@ func TestConsensus_BTPBasic(t_ *testing.T) {
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	})
 	for _, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
 		})
@@ -419,7 +419,7 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	})
 	for _, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
 		})
@@ -462,7 +462,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 		"yn": fmt.Sprintf("0x1"),
 	})
 	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
 		})
@@ -489,10 +489,10 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 
 	wp := test.NewWalletProvider()
 	wp2 := test.NewWalletProvider()
-	tx = test.NewTx().CallFrom(f.CommonAddress(), "setPublicKey", map[string]string{
+	tx = test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 		"name":   "eth",
 		"pubKey": fmt.Sprintf("0x%x", wp.WalletFor("eth").PublicKey()),
-	}).CallFrom(f.Nodes[1].CommonAddress(), "setPublicKey", map[string]string{
+	}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
 		"name":   "eth",
 		"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor("eth").PublicKey()),
 	}).SetTimestamp(blk.Timestamp())

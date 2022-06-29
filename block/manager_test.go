@@ -54,7 +54,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 			t,
 		).Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-		}).CallFrom(t.CommonAddress(), "setPublicKey", map[string]string{
+		}).CallFrom(t.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", t.Chain.WalletFor("eth").PublicKey()),
 		}).Call("openBTPNetwork", map[string]string{
@@ -128,7 +128,7 @@ func TestBlockManager_BTPImport(t_ *testing.T) {
 		consensus.NewEmptyCommitVoteList(),
 		test.NewTx().Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-		}).CallFrom(vNode.CommonAddress(), "setPublicKey", map[string]string{
+		}).CallFrom(vNode.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", vNode.Chain.WalletFor("eth").PublicKey()),
 		}).Call("openBTPNetwork", map[string]string{
@@ -191,7 +191,7 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	})
 	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
 		})
@@ -211,10 +211,10 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 	wp2 := test.NewWalletProvider()
 	f.ProposeFinalizeBlockWithTX(
 		f.NewCommitVoteListForLastBlock(0, 0),
-		test.NewTx().CallFrom(f.CommonAddress(), "setPublicKey", map[string]string{
+		test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor("eth").PublicKey()),
-		}).CallFrom(f.Nodes[1].CommonAddress(), "setPublicKey", map[string]string{
+		}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   "eth",
 			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor("eth").PublicKey()),
 		}).String(),
