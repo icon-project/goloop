@@ -529,7 +529,7 @@ var chainMethods = []*chainMethod{
 		},
 	}, Revision9, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getPublicKey",
+		scoreapi.Function, "getBTPPublicKey",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
@@ -569,7 +569,7 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, Revision9, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "setPublicKey",
+		scoreapi.Function, "setBTPPublicKey",
 		scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
 			{"name", scoreapi.String, nil, nil},
@@ -1535,7 +1535,7 @@ func (s *ChainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 	return s.newBTPContext().GetNetworkTypeIDByName(name), nil
 }
 
-func (s *ChainScore) Ex_getPublicKey(address module.Address, name string) (string, error) {
+func (s *ChainScore) Ex_getBTPPublicKey(address module.Address, name string) (string, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return "", err
 	}
@@ -1627,16 +1627,19 @@ func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 	}
 }
 
-func (s *ChainScore) Ex_setPublicKey(name string, pubKey []byte) error {
+func (s *ChainScore) Ex_setBTPPublicKey(name string, pubKey []byte) error {
 	if s.from.IsContract() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if len(pubKey) == 0 {
-		return scoreresult.ErrInvalidParameter
+		return scoreresult.InvalidParameterError.Errorf("Invalid pubKey")
 	}
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
+		if !bs.IsNetworkTypeUID(name) && !bs.IsDSAName(name) {
+			return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
+		}
 		if err = bs.SetPublicKey(s.newBTPContext(), s.from, name, pubKey); err != nil {
 			return err
 		}

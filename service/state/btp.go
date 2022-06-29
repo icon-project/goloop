@@ -209,7 +209,7 @@ type btpData struct {
 	dbase               db.Database
 	validators          map[string]bool     // key: address
 	proofContextChanged map[int64]bool      // key: network type ID
-	pubKeyChanged       map[string][]string // key: address. value: names of network type or DSA
+	pubKeyChanged       map[string][]string // key: address. value: slice of network type UID
 	networkModified     map[int64]bool      // key: network ID
 	digest              module.BTPDigest
 	digestHash          []byte
@@ -464,32 +464,55 @@ func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid in
 	return nil
 }
 
+func (bs *BTPStateImpl) IsNetworkTypeUID(name string) bool {
+	return ntm.ForUID(name) != nil
+}
+
+func (bs *BTPStateImpl) IsDSAName(name string) bool {
+	for _, mod := range ntm.Modules() {
+		if mod.DSA() == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name string, pubKey []byte) error {
 	var mod module.NetworkTypeModule
-	valid := false
+	uids := make([]string, 0)
+	dsa := true
 	if mod = ntm.ForUID(name); mod == nil {
 		for _, mod = range ntm.Modules() {
 			if mod.DSA() == name {
-				valid = true
-				break
+				uids = append(uids, mod.UID())
 			}
 		}
 	} else {
-		valid = true
+		dsa = false
+		uids = append(uids, name)
 	}
-	if valid == false {
+	if len(uids) == 0 {
 		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	old := dbase.Get(from, name)
+	if old != nil && bytes.Compare(old.Bytes(), pubKey) == 0 {
+		return nil
+	}
+
+	// find public key changed network type
+	for _, uid := range uids {
+		if 0 != bc.GetNetworkTypeIDByName(uid) {
+			old = dbase.Get(from, uid)
+			if old == nil || (!dsa && bytes.Compare(pubKey, old.Bytes()) != 0) {
+				bs.setPubKeyChanged(from, uid)
+			}
+		}
+	}
+
 	if err := dbase.Set(from, name, pubKey); err != nil {
 		return err
 	}
-
-	if (old == nil || bytes.Compare(pubKey, old.Bytes()) != 0) && 0 != bc.GetNetworkTypeIDByName(mod.UID()) {
-		bs.setPubKeyChanged(from, name)
-	}
-
 	return nil
 }
 
@@ -589,22 +612,8 @@ func (bs *BTPStateImpl) applyNetwork(bc BTPContext, ns module.NetworkSection) er
 }
 
 func (bs *BTPStateImpl) setValidatorChanged(bc BTPContext, names []string) error {
-	modNames := make(map[string]bool, 0)
-	modules := ntm.Modules()
-	for _, name := range names {
-		if mod := ntm.ForUID(name); mod == nil {
-			for _, mod = range modules {
-				if mod.DSA() == name {
-					modNames[mod.UID()] = true
-				}
-			}
-		} else {
-			modNames[name] = true
-		}
-	}
-
 	bci := bc.(*btpContext)
-	for name := range modNames {
+	for _, name := range names {
 		ntid, _ := bci.getNetworkTypeIdByName(name)
 		nt, err := bc.GetNetworkTypeView(ntid)
 		bs.setProofContextChanged(ntid)
@@ -650,7 +659,7 @@ func (bs *BTPStateImpl) handleValidatorChange(bc BTPContext) error {
 	} else {
 		for key := range bs.validators {
 			if name, ok := bs.pubKeyChanged[key]; ok {
-				// public key of validator changed
+				// public key changed
 				names = append(names, name...)
 			}
 		}
