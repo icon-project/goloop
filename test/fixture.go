@@ -159,3 +159,20 @@ func (f *Fixture) NewCommitVoteListForLastBlock(round int32, ntsVoteCount int) m
 	votes, pcm := f.newPrecommitsAndPCM(f.LastBlock, round, ntsVoteCount)
 	return consensus.NewCommitVoteList(pcm, votes...)
 }
+
+func (f *Fixture) SendTransactionToAll(tx interface{ String() string }) {
+	for _, node := range f.Nodes {
+		_, err := node.SM.SendTransaction(nil, 0, tx.String())
+		assert.NoError(f.T, err)
+	}
+}
+
+func (f *Fixture) SendTransactionToProposer(tx interface{ String() string }) {
+	blk, err := f.BM.GetLastBlock()
+	assert.NoError(f.T, err)
+	h := blk.Height() + 1
+	r := 0
+	idx := int((h + int64(r)) % int64(len(f.Validators)))
+	_, err = f.Validators[idx].SM.SendTransaction(nil, 0, tx.String())
+	assert.NoError(f.T, err)
+}

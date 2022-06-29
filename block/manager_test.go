@@ -180,3 +180,65 @@ func TestBlockManager_BTPImport(t_ *testing.T) {
 	// success import with original vote
 	f.ImportFinalizeBlockByReader(getReaderForBlock(vNode.T, vNode.LastBlock))
 }
+
+func TestManager_ChangePubKey(t_ *testing.T) {
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	// 1
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	})
+	for i, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
+		})
+		t_.Logf("register eth key index=%d key=%x", i, v.Chain.WalletFor("eth").PublicKey())
+	}
+	f.ProposeFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(),
+		tx.Call("openBTPNetwork", map[string]string{
+			"networkTypeName": "eth",
+			"name":            "eth-test",
+			"owner":           f.CommonAddress().String(),
+		}).String(),
+	)
+
+	// 2
+	wp := test.NewWalletProvider()
+	wp2 := test.NewWalletProvider()
+	f.ProposeFinalizeBlockWithTX(
+		f.NewCommitVoteListForLastBlock(0, 0),
+		test.NewTx().CallFrom(f.CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor("eth").PublicKey()),
+		}).CallFrom(f.Nodes[1].CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor("eth").PublicKey()),
+		}).String(),
+	)
+	t_.Logf("register eth key index=%d key=%x", 0, wp.WalletFor("eth").PublicKey())
+	t_.Logf("register eth key index=%d key=%x", 1, wp2.WalletFor("eth").PublicKey())
+
+	// 3
+	testMsg := ([]byte)("test message")
+	f.ProposeFinalizeBlockWithTX(
+		f.NewCommitVoteListForLastBlock(0, 1),
+		test.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
+			"networkId": "0x1",
+			"message":   fmt.Sprintf("0x%x", testMsg),
+		}).String(),
+	)
+	bs, err := f.LastBlock.BTPSection()
+	assert.NoError(err)
+	nts, err := bs.NetworkTypeSectionFor(1)
+	assert.NoError(err)
+	ns, err := nts.NetworkSectionFor(1)
+	assert.NoError(err)
+	assert.True(ns.NextProofContextChanged())
+
+	_, err = nts.NextProofContext().NewProofPart(make([]byte, 32), wp)
+	assert.NoError(err)
+}

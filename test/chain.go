@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )
@@ -45,6 +46,7 @@ type Chain struct {
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
 	gsBytes   []byte
+	bwMap     map[string]module.BaseWallet
 }
 
 func (c *Chain) Database() db.Database {
@@ -235,6 +237,9 @@ func (a *addrWallet) PublicKey() []byte {
 }
 
 func (c *Chain) WalletFor(dsa string) module.BaseWallet {
+	if bw, ok := c.bwMap[dsa]; ok {
+		return bw
+	}
 	switch dsa {
 	case "ecdsa/secp256k1":
 		return c.wallet
@@ -245,6 +250,31 @@ func (c *Chain) WalletFor(dsa string) module.BaseWallet {
 		}
 	}
 	return nil
+}
+
+func (c *Chain) SetWalletFor(keyType string, bw module.BaseWallet) {
+	c.bwMap[keyType] = bw
+}
+
+type walletProvider struct {
+	wallet module.Wallet
+}
+
+func (wp *walletProvider) WalletFor(dsa string) module.BaseWallet {
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return wp.wallet
+	case "eth", "icon":
+		return &addrWallet{
+			mod: ntm.ForUID(dsa),
+			w:   wp.wallet,
+		}
+	}
+	return nil
+}
+
+func NewWalletProvider() module.WalletProvider {
+	return &walletProvider{wallet.New()}
 }
 
 func NewChain(
@@ -268,5 +298,6 @@ func NewChain(
 		gs:        gs.NewFromTx(gsBytes),
 		cvd:       cvd,
 		gsBytes:   gsBytes,
+		bwMap:     make(map[string]module.BaseWallet),
 	}, nil
 }

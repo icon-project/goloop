@@ -43,6 +43,7 @@ type ServiceManager struct {
 	emptyTXs         module.TransactionList
 	nextBlockVersion int
 	pool             []module.Transaction
+	txWaiters        []func()
 }
 
 func NewServiceManager(
@@ -127,7 +128,11 @@ func (sm *ServiceManager) Finalize(transition module.Transition, opt int) error 
 }
 
 func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
-	panic("implement me")
+	if len(sm.pool) > 0 {
+		return false
+	}
+	sm.txWaiters = append(sm.txWaiters, cb)
+	return true
 }
 
 func (sm *ServiceManager) GetChainID(result []byte) (int64, error) {
@@ -227,6 +232,11 @@ func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interf
 		return nil, err
 	}
 	sm.pool = append(sm.pool, t)
+	txWaiters := sm.txWaiters
+	sm.txWaiters = nil
+	for _, cb := range txWaiters {
+		cb()
+	}
 	return t.ID(), nil
 }
 

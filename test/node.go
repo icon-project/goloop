@@ -298,6 +298,12 @@ func (t *Node) CommonAddress() *common.Address {
 	return t.Address().(*common.Address)
 }
 
+func (t *Node) WaitForBlock(h int64) module.Block {
+	chn, err := t.BM.WaitForBlock(h)
+	assert.NoError(t.T, err)
+	return <-chn
+}
+
 func NodeInterconnect(nodes []*Node) {
 	l := len(nodes)
 	for i := 0; i < l; i++ {

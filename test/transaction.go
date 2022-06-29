@@ -84,6 +84,11 @@ type addresser interface {
 	Address() module.Address
 }
 
+func (t *Transaction) SetTimestamp(ts int64) *Transaction {
+	t.json.TimeStamp = common.HexInt64{Value: ts}
+	return t
+}
+
 func (t *Transaction) SetValidatorsAddresser(addrs ...addresser) *Transaction {
 	t.json.Validators = make([]*common.Address, len(addrs))
 	for i, a := range addrs {

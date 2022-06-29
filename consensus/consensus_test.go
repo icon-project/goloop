@@ -450,3 +450,75 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 	assert.EqualValues(1, bbh.NetworkID())
 	assert.EqualValues(0, bbh.FirstMessageSN())
 }
+
+func TestConsensus_ChangeBTPKey(t_ *testing.T) {
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	}).Call("setMinimizeBlockGen", map[string]string{
+		"yn": fmt.Sprintf("0x1"),
+	})
+	for i, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setPublicKey", map[string]string{
+			"name":   "eth",
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("eth").PublicKey()),
+		})
+		t_.Logf("register eth key index=%d key=%x", i, v.Chain.WalletFor("eth").PublicKey())
+	}
+	tx.Call("openBTPNetwork", map[string]string{
+		"networkTypeName": "eth",
+		"name":            "eth-test",
+		"owner":           f.CommonAddress().String(),
+	})
+
+	f.SendTransactionToProposer(tx)
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(err)
+	}
+
+	blk := f.WaitForBlock(2)
+	bd, err := blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+
+	wp := test.NewWalletProvider()
+	wp2 := test.NewWalletProvider()
+	tx = test.NewTx().CallFrom(f.CommonAddress(), "setPublicKey", map[string]string{
+		"name":   "eth",
+		"pubKey": fmt.Sprintf("0x%x", wp.WalletFor("eth").PublicKey()),
+	}).CallFrom(f.Nodes[1].CommonAddress(), "setPublicKey", map[string]string{
+		"name":   "eth",
+		"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor("eth").PublicKey()),
+	}).SetTimestamp(blk.Timestamp())
+	f.SendTransactionToProposer(tx)
+
+	blk = f.WaitForBlock(3)
+	_, err = blk.NormalTransactions().Get(0)
+	assert.NoError(err)
+
+	blk = f.WaitForBlock(4)
+	bd, err = blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+
+	testMsg := ([]byte)("test message")
+	tx = test.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
+		"networkId": "0x1",
+		"message":   fmt.Sprintf("0x%x", testMsg),
+	}).SetTimestamp(blk.Timestamp())
+	f.SendTransactionToProposer(tx)
+
+	blk = f.WaitForBlock(5)
+	_, err = blk.NormalTransactions().Get(0)
+	assert.NoError(err)
+
+	f.Nodes[0].Chain.SetWalletFor("eth", wp.WalletFor("eth"))
+	f.Nodes[1].Chain.SetWalletFor("eth", wp2.WalletFor("eth"))
+	blk = f.WaitForBlock(6)
+}
