@@ -1627,9 +1627,6 @@ func (s *ChainScore) Ex_setBTPPublicKey(name string, pubKey []byte) error {
 	if s.from.IsContract() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
-	if len(pubKey) == 0 {
-		return scoreresult.InvalidParameterError.Errorf("Invalid pubKey")
-	}
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {

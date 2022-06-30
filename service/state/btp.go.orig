@@ -496,17 +496,12 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 	if len(uids) == 0 {
 		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
-
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
-
-	if len(pubKey) == 0 {
-		return dbase.Delete(from, name)
-	}
-
 	old := dbase.Get(from, name)
 	if old != nil && bytes.Compare(old.Bytes(), pubKey) == 0 {
 		return nil
 	}
+
 	// find public key changed network type
 	for _, uid := range uids {
 		if 0 != bc.GetNetworkTypeIDByName(uid) {
@@ -516,6 +511,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 			}
 		}
 	}
+
 	if err := dbase.Set(from, name, pubKey); err != nil {
 		return err
 	}
