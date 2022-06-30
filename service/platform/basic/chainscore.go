@@ -17,7 +17,6 @@
 package basic
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -536,7 +535,7 @@ var chainMethods = []*chainMethod{
 			{"name", scoreapi.String, nil, nil},
 		},
 		[]scoreapi.DataType{
-			scoreapi.String,
+			scoreapi.Bytes,
 		},
 	}, Revision9, 0},
 	{scoreapi.Method{
@@ -1535,15 +1534,12 @@ func (s *ChainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 	return s.newBTPContext().GetNetworkTypeIDByName(name), nil
 }
 
-func (s *ChainScore) Ex_getBTPPublicKey(address module.Address, name string) (string, error) {
+func (s *ChainScore) Ex_getBTPPublicKey(address module.Address, name string) ([]byte, error) {
 	if err := s.tryChargeCall(); err != nil {
-		return "", err
+		return nil, err
 	}
-	pubKey, _, err := s.newBTPContext().GetPublicKey(address, name)
-	if err != nil {
-		return "", err
-	}
-	return "0x" + hex.EncodeToString(pubKey), nil
+	pubKey, _ := s.newBTPContext().GetPublicKey(address, name, true)
+	return pubKey, nil
 }
 
 func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error) {

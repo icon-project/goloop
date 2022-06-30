@@ -21,7 +21,6 @@ import (
 	"container/list"
 	"encoding/base64"
 	"encoding/hex"
-
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -54,7 +53,7 @@ type BTPContext interface {
 	GetNetworkTypeIDByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
 	GetNetwork(nid int64) (module.BTPNetwork, error)
-	GetPublicKey(address module.Address, name string) ([]byte, bool, error)
+	GetPublicKey(address module.Address, name string, exactMatch bool) ([]byte, bool)
 }
 
 type BTPSnapshot interface {
@@ -138,17 +137,19 @@ func (bc *btpContext) GetNetworkTypeIDByName(name string) int64 {
 	return ret
 }
 
-func (bc *btpContext) GetPublicKey(from module.Address, name string) ([]byte, bool, error) {
+func (bc *btpContext) GetPublicKey(from module.Address, name string, exactMatch bool) (pubKey []byte, fromDSA bool) {
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	if value := dbase.Get(from, name); value == nil {
-		if mod := ntm.ForUID(name); mod != nil {
-			if value = dbase.Get(from, mod.DSA()); value != nil {
-				return value.Bytes(), true, nil
+		if !exactMatch {
+			if mod := ntm.ForUID(name); mod != nil {
+				if value = dbase.Get(from, mod.DSA()); value != nil {
+					return value.Bytes(), true
+				}
 			}
 		}
-		return nil, false, errors.NotFoundError.Errorf("not found public key %s, %s", from, name)
+		return nil, false
 	} else {
-		return value.Bytes(), false, nil
+		return value.Bytes(), false
 	}
 }
 
@@ -339,11 +340,12 @@ func (bs *BTPStateImpl) setNetworkModified(nid int64) {
 }
 
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
+	var err error
 	keys := make([][]byte, 0)
 	validators := bc.GetValidatorState()
 	for i := 0; i < validators.Len(); i++ {
 		v, _ := validators.Get(i)
-		if key, fromDSA, err := bc.GetPublicKey(v.Address(), mod.UID()); err == nil {
+		if key, fromDSA := bc.GetPublicKey(v.Address(), mod.UID(), false); key != nil {
 			if fromDSA {
 				key, err = mod.NetworkTypeKeyFromDSAKey(key)
 				if err != nil {
@@ -526,8 +528,8 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 		if err != nil {
 			return err
 		}
-		if _, _, err = bc.GetPublicKey(from, ntView.UID()); err != nil {
-			return err
+		if key, _ := bc.GetPublicKey(from, ntView.UID(), false); key == nil {
+			return errors.NotFoundError.Errorf("not found pubKey for %s", from)
 		}
 	}
 	return nil
