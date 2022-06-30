@@ -245,18 +245,28 @@ type messageList struct {
 
 func newMessageList(
 	messageHashes []byte,
+	messageBytes [][]byte,
 	dbase db.Database,
 	mod module.NetworkTypeModule,
 ) *messageList {
-	l := &messageList{
-		hashesCat: hashesCat{
-			Bytes: messageHashes,
-		},
-		dbase:    dbase,
-		mod:      mod,
-		messages: make([]*message, len(messageHashes)/hashLen),
+	hashesCat := hashesCat{
+		Bytes: messageHashes,
 	}
-	return l
+	messages := make([]*message, len(messageHashes)/hashLen)
+	for i, bytes := range messageBytes {
+		messages[i] = &message{
+			dbase: dbase,
+			mod:   mod,
+			data:  bytes,
+			hash:  hashesCat.Get(i),
+		}
+	}
+	return &messageList{
+		hashesCat: hashesCat,
+		dbase:     dbase,
+		mod:       mod,
+		messages:  messages,
+	}
 }
 
 func (l *messageList) Bytes() []byte {

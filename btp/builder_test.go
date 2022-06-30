@@ -229,6 +229,14 @@ func TestSectionBuilder_Build_Complex(t *testing.T) {
 	assert.EqualValues(2, ntsSlice[1].NetworkTypeID())
 
 	assert.EqualValues(1, s.bs.Digest().NetworkTypeDigestFor(1).NetworkDigestFor(1).NetworkID())
+	ntd := s.bs.Digest().NetworkTypeDigestFor(1).NetworkDigestFor(1)
+	ml, err := ntd.MessageList(nil, ntm.ForUID("eth"))
+	assert.NoError(err)
+	assert.EqualValues(1, ml.Len())
+	msg, err := ml.Get(0)
+	assert.NoError(err)
+	assert.EqualValues("a", msg.Bytes())
+
 	assert.EqualValues(2, s.bs.Digest().NetworkTypeDigestFor(1).NetworkDigestFor(2).NetworkID())
 
 	ns0, _ := ntsSlice[0].NetworkSectionFor(1)

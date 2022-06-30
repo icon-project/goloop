@@ -196,7 +196,7 @@ func (nd *networkDigestFromBytes) MessageList(
 		}
 		nd.messageHashes = bs
 	}
-	return newMessageList(nd.messageHashes, dbase, mod), nil
+	return newMessageList(nd.messageHashes, nil, dbase, mod), nil
 }
 
 func (nd *networkDigestFromBytes) RLPEncodeSelf(e codec.Encoder) error {

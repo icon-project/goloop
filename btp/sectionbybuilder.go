@@ -426,7 +426,7 @@ func (ns *networkSectionByBuilder) NetworkSectionHash() []byte {
 }
 
 func (ns *networkSectionByBuilder) MessageList(dbase db.Database, mod module.NetworkTypeModule) (module.BTPMessageList, error) {
-	return newMessageList(ns.messageHashes.Bytes, dbase, mod), nil
+	return newMessageList(ns.messageHashes.Bytes, ns.messages, dbase, mod), nil
 }
 
 func (ns *networkSectionByBuilder) flushMessages(dbase db.Database) error {
