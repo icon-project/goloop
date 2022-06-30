@@ -135,16 +135,6 @@ func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
 	return nil
 }
 
-func (bsd *btpSectionDigest) NetworkSectionFilter() module.BitSetFilter {
-	if bsd.filter.Bytes() == nil {
-		bsd.filter = module.MakeBitSetFilter(NSFilterCap)
-		for _, nts := range bsd.bs.networkTypeSections {
-			nts.(*networkTypeSectionByBuilder).updateFilter(bsd.filter)
-		}
-	}
-	return bsd.filter
-}
-
 type networkTypeSectionByBuilder struct {
 	networkTypeID        int64
 	nextProofContext     module.BTPProofContext
@@ -305,12 +295,6 @@ func (nts *networkTypeSectionByBuilder) NewDecision(
 		Round:                  round,
 		NetworkTypeSectionHash: nts.hash,
 		mod:                    nts.mod,
-	}
-}
-
-func (nts *networkTypeSectionByBuilder) updateFilter(f module.BitSetFilter) {
-	for _, ns := range nts.networkSections {
-		f.Set(ns.NetworkID())
 	}
 }
 

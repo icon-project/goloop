@@ -17,7 +17,6 @@
 package btp
 
 import (
-	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,7 +75,6 @@ func TestDigest_FlushAndFromBytes(t *testing.T) {
 	s := newComplexTestBuilderSetup(t)
 
 	d := s.bs.Digest()
-	//dumpRLP(t, "  ", d.Bytes())
 	mdb := db.NewMapDB()
 	err := d.Flush(mdb)
 	assert.NoError(err)
@@ -104,7 +102,6 @@ func TestDigest_Sections(t *testing.T) {
 	s.updateView()
 
 	d := s.bs.Digest()
-	//dumpRLP(t, "", d.Bytes())
 	mdb := db.NewMapDB()
 	err := d.Flush(mdb)
 	assert.NoError(err)
@@ -124,46 +121,4 @@ func TestDigest_Sections(t *testing.T) {
 	ns, _ := nts.NetworkSectionFor(1)
 	nsFromBS2, _ := ntsFromBS2.NetworkSectionFor(1)
 	assert.EqualValues(ns.Hash(), nsFromBS2.Hash())
-}
-
-func dumpRLP(t *testing.T, indent string, data []byte) {
-	p := 0
-	for p < len(data) {
-		switch q := data[p]; {
-		case q < 0x80:
-			t.Logf("%sbytes(0x%x:%d) : %x", indent, 1, 1, data[p:p+1])
-			p = p + 1
-		case q <= 0xb7:
-			l := int(q - 0x80)
-			t.Logf("%sbytes(0x%x:%d) : %x", indent, l, l, data[p+1:p+1+l])
-			p = p + 1 + l
-		case q <= 0xbf:
-			ll := int(q - 0xb7)
-			buf := make([]byte, 8)
-			lBytes := data[p+1 : p+1+ll]
-			copy(buf[8-ll:], lBytes)
-			l := int(binary.BigEndian.Uint64(buf))
-			t.Logf("%sbytes(0x%x:%d) : %x", indent, l, l, data[p+1+ll:p+1+ll+l])
-			p = p + 1 + ll + l
-		case q <= 0xf7:
-			l := int(q - 0xc0)
-			t.Logf("%slist(0x%x:%d) {", indent, l, l)
-			dumpRLP(t, indent+"  ", data[p+1:p+1+l])
-			t.Logf("%s}", indent)
-			p = p + 1 + l
-		case q == 0xf8 && data[p+1] == 0:
-			t.Logf("%slist(0x0:0) {} nil?", indent)
-			p = p + 2
-		default:
-			ll := int(q - 0xf7)
-			buf := make([]byte, 8)
-			lBytes := data[p+1 : p+1+ll]
-			copy(buf[8-ll:], lBytes)
-			l := int(binary.BigEndian.Uint64(buf))
-			t.Logf("%slist(0x%x:%d) {", indent, l, l)
-			dumpRLP(t, indent+"  ", data[p+1+ll:p+1+ll+l])
-			t.Logf("%s}", indent)
-			p = p + 1 + ll + l
-		}
-	}
 }
