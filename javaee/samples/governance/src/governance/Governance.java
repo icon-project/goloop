@@ -119,4 +119,14 @@ public class Governance {
     public void setUseSystemDeposit(Address address, boolean yn) {
         system.setUseSystemDeposit(address, yn);
     }
+
+    @External
+    public BigInteger openBTPNetwork(String networkTypeName, String name, Address owner) {
+        return system.openBTPMessage(networkTypeName, name, owner);
+    }
+
+    @External
+    public void closeBTPNetwork(BigInteger id) {
+        system.closeBTPMessage(id);
+    }
 }

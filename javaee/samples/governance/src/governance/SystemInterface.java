@@ -101,4 +101,12 @@ class SystemInterface {
     void setUseSystemDeposit(Address address, boolean yn) {
         Context.call(CHAIN_SCORE, "setUseSystemDeposit", address, yn);
     }
+
+    BigInteger openBTPMessage(String networkTypeName, String name, Address owner) {
+        return (BigInteger) Context.call(CHAIN_SCORE, "openBTPNetwork", networkTypeName, name, owner);
+    }
+
+    void closeBTPMessage(BigInteger id) {
+        Context.call(CHAIN_SCORE, "closeBTPNetwork", id);
+    }
 }
