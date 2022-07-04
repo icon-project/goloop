@@ -231,4 +231,20 @@ public class GovScore extends Score {
                 .build();
         return invokeAndWaitResult(getWallet(), "setUseSystemDeposit", params);
     }
+
+    public TransactionResult openBTPNetwork(String networkTypeName, String name, Address owner) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("networkTypeName", new RpcValue(networkTypeName))
+                .put("name", new RpcValue(name))
+                .put("owner", new RpcValue(owner))
+                .build();
+        return invokeAndWaitResult(getWallet(), "openBTPNetwork", params);
+    }
+
+    public TransactionResult closeBTPNetwork(BigInteger id) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("id", new RpcValue(id))
+                .build();
+        return invokeAndWaitResult(getWallet(), "closeBTPNetwork", params);
+    }
 }

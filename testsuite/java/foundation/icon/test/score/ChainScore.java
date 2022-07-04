@@ -120,12 +120,28 @@ public class ChainScore extends Score {
         return invokeAndWaitResult(wallet, "setBTPPublicKey", params, null, Constants.DEFAULT_STEPS);
     }
 
-    public byte[] getBTPPublicKey(Address address, String name) throws IOException, ResultTimeoutException {
+    public byte[] getBTPPublicKey(Address address, String name) throws IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .put("name", new RpcValue(name))
                 .build();
         RpcItem ret = call("getBTPPublicKey", params);
         return ret == null ? null : ret.asByteArray();
+    }
+
+    public BigInteger getBTPNetworkTypeID(String name) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue(name))
+                .build();
+        RpcItem ret = call("getBTPNetworkTypeID", params);
+        return ret.asInteger();
+    }
+
+    public TransactionResult sendBTPMessage(Wallet wallet, BigInteger networkId, byte[] message) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("networkId", new RpcValue(networkId))
+                .put("message", new RpcValue(message))
+                .build();
+        return invokeAndWaitResult(wallet, "sendBTPMessage", params, null, Constants.DEFAULT_STEPS);
     }
 }
