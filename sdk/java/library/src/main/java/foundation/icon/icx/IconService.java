@@ -21,6 +21,9 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.BlockNotification;
+import foundation.icon.icx.data.BTPNetworkInfo;
+import foundation.icon.icx.data.BTPNetworkTypeInfo;
+import foundation.icon.icx.data.BTPSourceInfo;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.Converters;
@@ -79,6 +82,9 @@ public class IconService {
         addConverterFactory(Converters.newFactory(Base64[][].class, Converters.BASE64_ARRAY_ARRAY));
         addConverterFactory(Converters.newFactory(
                 Base64.class, Converters.BASE64));
+        addConverterFactory(Converters.newFactory(BTPNetworkInfo.class, Converters.BTP_NETWORK_INFO));
+        addConverterFactory(Converters.newFactory(BTPNetworkTypeInfo.class, Converters.BTP_NETWORK_TYPE_INFO));
+        addConverterFactory(Converters.newFactory(BTPSourceInfo.class, Converters.BTP_SOURCE_INFO));
     }
 
     public void setProvider(Provider provider) {
@@ -390,6 +396,131 @@ public class IconService {
     public Monitor<BlockNotification> monitorBlocks(BigInteger height) {
         MonitorSpec ms = new BlockMonitorSpec(height, null);
         return provider.monitor(ms, findConverter(BlockNotification.class));
+    }
+
+    // Below APIs are additional features for BTP 2.0
+
+    /**
+     * Gets BTP network information
+     *
+     * @param id BTP network ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<BTPNetworkInfo> btpGetNetworkInfo(BigInteger id) {
+        return btpGetNetworkInfo(null, id);
+    }
+
+    /**
+     * Gets BTP network information
+     *
+     * @param height Main block height
+     * @param id BTP network ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<BTPNetworkInfo> btpGetNetworkInfo(BigInteger height, BigInteger id) {
+        long requestId = System.currentTimeMillis();
+        RpcObject.Builder params = new RpcObject.Builder()
+                .put("id", new RpcValue(id));
+        if (height != null) {
+            params.put("height", new RpcValue(height));
+        }
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getNetworkInfo", params.build());
+        return provider.request(request, findConverter(BTPNetworkInfo.class));
+    }
+
+    /**
+     * Gets BTP network type information
+     *
+     * @param id BTP network type ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<BTPNetworkTypeInfo> btpGetNetworkTypeInfo(BigInteger id) {
+        return btpGetNetworkTypeInfo(null, id);
+    }
+    /**
+     * Gets BTP network type information
+     *
+     * @param height the block number
+     * @param id BTP network type ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<BTPNetworkTypeInfo> btpGetNetworkTypeInfo(BigInteger height, BigInteger id) {
+        long requestId = System.currentTimeMillis();
+        RpcObject.Builder params = new RpcObject.Builder()
+                .put("id", new RpcValue(id));
+        if (height != null) {
+                params.put("height", new RpcValue(height));
+        }
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getNetworkTypeInfo", params.build());
+        return provider.request(request, findConverter(BTPNetworkTypeInfo.class));
+    }
+
+    /**
+     * Gets BTP messages
+     *
+     * @param height the block number
+     * @param networkID BTP network ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<Base64[]> btpGetMessages(BigInteger height, BigInteger networkID) {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("height", new RpcValue(height))
+                .put("networkID", new RpcValue(networkID))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getMessages", params);
+        return provider.request(request, findConverter(Base64[].class));
+    }
+
+    /**
+     * Gets BTP block header
+     *
+     * @param height the block number
+     * @param networkID BTP network ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<Base64> btpGetHeader(BigInteger height, BigInteger networkID) {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("height", new RpcValue(height))
+                .put("networkID", new RpcValue(networkID))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getHeader", params);
+        return provider.request(request, findConverter(Base64.class));
+    }
+
+    /**
+     * Gets BTP block proof
+     *
+     * @param height the block number
+     * @param networkID BTP network ID
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<Base64> btpGetProof(BigInteger height, BigInteger networkID) {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("height", new RpcValue(height))
+                .put("networkID", new RpcValue(networkID))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getProof", params);
+        return provider.request(request, findConverter(Base64.class));
+    }
+
+    /**
+     * Gets the last block
+     *
+     * @return a {@code Block} object
+     */
+    public Request<BTPSourceInfo> btpGetSourceInformation() {
+        long requestId = System.currentTimeMillis();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "btp_getSourceInformation", null);
+        return provider.request(request, findConverter(BTPSourceInfo.class));
     }
 
     /**

@@ -148,6 +148,7 @@ public class HttpProvider implements Provider {
     private void generateUrlMap() {
         urlMap = new HashMap<>();
         urlMap.put("icx", serverUri + "/api/v" + version + "/" + channel);
+        urlMap.put("btp", serverUri + "/api/v" + version + "/" + channel);
         urlMap.put("debug", serverUri + "/api/v" + version + "d/" + channel);
     }
 

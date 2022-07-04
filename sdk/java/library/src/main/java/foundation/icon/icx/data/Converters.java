@@ -260,6 +260,48 @@ public final class Converters {
         }
     };
 
+    public static final RpcConverter<BTPNetworkInfo> BTP_NETWORK_INFO
+            = new RpcConverter<BTPNetworkInfo>() {
+
+        @Override
+        public BTPNetworkInfo convertTo(RpcItem rpcItem) {
+            return new BTPNetworkInfo(rpcItem.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(BTPNetworkInfo object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
+    public static final RpcConverter<BTPNetworkTypeInfo> BTP_NETWORK_TYPE_INFO
+            = new RpcConverter<BTPNetworkTypeInfo>() {
+
+        @Override
+        public BTPNetworkTypeInfo convertTo(RpcItem rpcItem) {
+            return new BTPNetworkTypeInfo(rpcItem.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(BTPNetworkTypeInfo object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
+    public static final RpcConverter<BTPSourceInfo> BTP_SOURCE_INFO
+            = new RpcConverter<BTPSourceInfo>() {
+
+        @Override
+        public BTPSourceInfo convertTo(RpcItem rpcItem) {
+            return new BTPSourceInfo(rpcItem.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(BTPSourceInfo object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
     public static <TT> RpcConverterFactory newFactory(
             final Class<TT> typeFor, final RpcConverter<TT> converter) {
         return new RpcConverterFactory() {
