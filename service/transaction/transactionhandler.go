@@ -290,6 +290,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 	s, _ := scoreresult.StatusOf(status)
 	if status == nil {
 		cc.GetEventLogs(receipt)
+		cc.GetBTPMessages(receipt)
 	}
 	if redeemed := cc.GetRedeemLogs(receipt); redeemed && stepToPay.Sign() != 0 {
 		receipt.AddPayment(th.from, stepToPay, stepToPay)

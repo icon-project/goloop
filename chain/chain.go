@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
@@ -646,6 +647,36 @@ func (c *singleChain) Reset() error {
 
 func (c *singleChain) Logger() log.Logger {
 	return c.logger
+}
+
+type addrWallet struct {
+	mod module.NetworkTypeModule
+	w   module.Wallet
+}
+
+func (a *addrWallet) Sign(data []byte) ([]byte, error) {
+	return a.w.Sign(data)
+}
+
+func (a *addrWallet) PublicKey() []byte {
+	addr, err := a.mod.AddressFromPubKey(a.w.PublicKey())
+	if err != nil {
+		return nil
+	}
+	return addr
+}
+
+func (c *singleChain) WalletFor(dsa string) module.BaseWallet {
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return c.wallet
+	case "eth", "icon":
+		return &addrWallet{
+			mod: ntm.ForUID(dsa),
+			w:   c.wallet,
+		}
+	}
+	return nil
 }
 
 func NewChain(

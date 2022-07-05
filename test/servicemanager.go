@@ -17,7 +17,9 @@
 package test
 
 import (
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -41,6 +43,7 @@ type ServiceManager struct {
 	emptyTXs         module.TransactionList
 	nextBlockVersion int
 	pool             []module.Transaction
+	txWaiters        []func()
 }
 
 func NewServiceManager(
@@ -125,7 +128,11 @@ func (sm *ServiceManager) Finalize(transition module.Transition, opt int) error 
 }
 
 func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
-	panic("implement me")
+	if len(sm.pool) > 0 {
+		return false
+	}
+	sm.txWaiters = append(sm.txWaiters, cb)
+	return true
 }
 
 func (sm *ServiceManager) GetChainID(result []byte) (int64, error) {
@@ -191,6 +198,18 @@ func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (sm *ServiceManager) getSystemByteStoreState(result []byte) (containerdb.BytesStoreState, error) {
+	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
+	if err != nil {
+		return nil, err
+	}
+	ass := ws.GetAccountSnapshot(state.SystemID)
+	if ass == nil {
+		return containerdb.EmptyBytesStoreState, nil
+	}
+	return scoredb.NewStateStoreWith(ass), nil
+}
+
 func (sm *ServiceManager) ImportResult(result []byte, vh []byte, src db.Database) error {
 	panic("implement me")
 }
@@ -213,6 +232,11 @@ func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interf
 		return nil, err
 	}
 	sm.pool = append(sm.pool, t)
+	txWaiters := sm.txWaiters
+	sm.txWaiters = nil
+	for _, cb := range txWaiters {
+		cb()
+	}
 	return t.ID(), nil
 }
 
@@ -245,4 +269,56 @@ func (sm *ServiceManager) WaitTransactionResult(id []byte) (<-chan interface{}, 
 
 func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database) error {
 	panic("implement me")
+}
+
+func (sm *ServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	return btp.ZeroBTPSection, nil
+}
+
+func (sm *ServiceManager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	nw, err := btpContext.GetNetwork(nid)
+	if err != nil {
+		return nil, err
+	}
+	return nw, nil
+}
+
+func (sm *ServiceManager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BTPNetworkType, error) {
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	nt, err := btpContext.GetNetworkType(ntid)
+	if err != nil {
+		return nil, err
+	}
+	return nt, nil
+}
+
+func (sm *ServiceManager) BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error) {
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	ntids, err := btpContext.GetNetworkTypeIDs()
+	if err != nil {
+		return nil, err
+	}
+	return ntids, nil
+}
+
+func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	sbss, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, sbss)
+	return btp.NewProofContextsMap(btpContext)
 }

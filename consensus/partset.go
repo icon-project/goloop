@@ -28,16 +28,32 @@ type PartSet interface {
 	NewReader() io.Reader
 	AddPart(Part) error
 	GetMask() *bitArray
+	AppData() uint16
 }
 
 type PartSetBuffer interface {
 	io.Writer
-	PartSet() PartSet
+	PartSet(appData uint16) PartSet
 }
 
+const (
+	countWidth = 16
+	countMask  = (1 << countWidth) - 1
+)
+
 type PartSetID struct {
-	Count uint16
-	Hash  []byte
+	// CountWord: MSB AppData(16) Count(16)
+	// Use bitfield not to break existing message protocol
+	CountWord uint32
+	Hash      []byte
+}
+
+func (id *PartSetID) Count() uint16 {
+	return uint16(id.CountWord) & countMask
+}
+
+func (id *PartSetID) AppData() uint16 {
+	return uint16(id.CountWord >> countWidth)
 }
 
 func (id *PartSetID) Equal(id2 *PartSetID) bool {
@@ -47,25 +63,26 @@ func (id *PartSetID) Equal(id2 *PartSetID) bool {
 	if id == nil || id2 == nil {
 		return false
 	}
-	return id.Count == id2.Count && bytes.Equal(id.Hash, id2.Hash)
+	return id.CountWord == id2.CountWord && bytes.Equal(id.Hash, id2.Hash)
 }
 
 func (id PartSetID) String() string {
-	return fmt.Sprintf("{Count:%v,Hash:%v}", id.Count, common.HexPre(id.Hash))
+	return fmt.Sprintf("{CountWord:%x,Hash:%v}", id.CountWord, common.HexPre(id.Hash))
 }
 
 // TODO need to prepare proofs for each parts.
 type partSet struct {
-	added int
-	parts []*part
-	tree  trie.Immutable
-	ba    *bitArray
+	added   int
+	parts   []*part
+	tree    trie.Immutable
+	ba      *bitArray
+	appData uint16
 }
 
 func (ps *partSet) ID() *PartSetID {
 	return &PartSetID{
-		Count: uint16(len(ps.parts)),
-		Hash:  ps.Hash(),
+		CountWord: (uint32(ps.appData) << countWidth) | uint32(len(ps.parts)),
+		Hash:      ps.Hash(),
 	}
 }
 
@@ -101,6 +118,10 @@ func (ps *partSet) GetMask() *bitArray {
 		return &bitArray{0, nil}
 	}
 	return ps.ba
+}
+
+func (ps *partSet) AppData() uint16 {
+	return ps.appData
 }
 
 type blockPartsReader struct {
@@ -185,7 +206,7 @@ func (b *partSetBuffer) Write(p []byte) (n int, err error) {
 	return written, nil
 }
 
-func (b *partSetBuffer) PartSet() PartSet {
+func (b *partSetBuffer) PartSet(appData uint16) PartSet {
 	if b.part != nil {
 		b.part.data = b.part.data[0:b.offset]
 		b.ps.parts = append(b.ps.parts, b.part)
@@ -209,18 +230,20 @@ func (b *partSetBuffer) PartSet() PartSet {
 	}
 	b.ps.ba = newBitArray(b.ps.added)
 	b.ps.ba.Flip()
+	b.ps.appData = appData
 	return b.ps
 }
 
-func newPartSetBuffer(sz int) PartSetBuffer {
+func NewPartSetBuffer(sz int) PartSetBuffer {
 	return &partSetBuffer{ps: new(partSet), size: sz}
 }
 
 func NewPartSetFromID(h *PartSetID) PartSet {
 	return &partSet{
-		parts: make([]*part, h.Count),
-		tree:  trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
-		ba:    newBitArray(int(h.Count)),
+		parts:   make([]*part, h.Count()),
+		tree:    trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
+		ba:      newBitArray(int(h.Count())),
+		appData: h.AppData(),
 	}
 }
 

@@ -50,13 +50,14 @@ type BlockData interface {
 
 type BlockHandler interface {
 	Version() int
-	// propose or genesis
+	// NewBlock returns a new block. It is used for propose or genesis.
 	NewBlock(
 		height int64, ts int64, proposer module.Address, prev module.Block,
 		logsBloom module.LogsBloom, result []byte,
 		patchTransactions module.TransactionList,
 		normalTransactions module.TransactionList,
 		nextValidators module.ValidatorList, votes module.CommitVoteSet,
+		bs module.BTPSection,
 	) Block
 	NewBlockFromHeaderReader(r io.Reader) (Block, error)
 	NewBlockDataFromReader(io.Reader) (BlockData, error)
@@ -75,4 +76,5 @@ type Chain interface {
 	BlockManager() module.BlockManager
 	Regulator() module.Regulator
 	Wallet() module.Wallet
+	WalletFor(dsa string) module.BaseWallet
 }

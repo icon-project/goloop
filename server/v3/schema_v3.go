@@ -87,3 +87,13 @@ type ProofEventsParam struct {
 	Index     jsonrpc.HexInt   `json:"index" validate:"required,t_int"`
 	Events    []jsonrpc.HexInt `json:"events" validate:"gt=0,dive,t_int"`
 }
+
+type BTPQueryParam struct {
+	Height jsonrpc.HexInt `json:"height,omitempty" validate:"optional,t_int"`
+	Id     jsonrpc.HexInt `json:"id" validate:"required,t_int"`
+}
+
+type BTPMessagesParam struct {
+	Height    jsonrpc.HexInt `json:"height" validate:"required,t_int"`
+	NetworkId jsonrpc.HexInt `json:"networkID" validate:"required,t_int"`
+}

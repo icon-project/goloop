@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -337,6 +338,7 @@ type testTransitionResult struct {
 }
 
 type testTransition struct {
+	module.Transition
 	patchTransactions  *testTransactionList
 	normalTransactions *testTransactionList
 	baseValidators     *testValidatorList
@@ -534,6 +536,10 @@ func (tr *testTransition) Equal(t2 module.Transition) bool {
 		common.ConsensusInfoEqual(tr._csi, tr2._csi)
 }
 
+func (tr *testTransition) BTPSection() module.BTPSection {
+	return btp.ZeroBTPSection
+}
+
 type testServiceManager struct {
 	module.ServiceManager
 	transactions [][]*testTransaction
@@ -727,6 +733,14 @@ func (sm *testServiceManager) GetNextBlockVersion(result []byte) int {
 	return module.BlockVersion2
 }
 
+func (sm *testServiceManager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	return btp.ZeroProofContextMap, nil
+}
+
+func (sm *testServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	return btp.ZeroBTPSection, nil
+}
+
 type testValidator struct {
 	Address_ *common.Address
 }
@@ -837,6 +851,22 @@ func (vs *testCommitVoteSet) Hash() []byte {
 
 func (vs *testCommitVoteSet) Timestamp() int64 {
 	return vs.Timestamp_
+}
+
+func (vs *testCommitVoteSet) VoteRound() int32 {
+	return 0
+}
+
+func (vs *testCommitVoteSet) BlockVoteSetBytes() []byte {
+	return vs.Bytes()
+}
+
+func (vs *testCommitVoteSet) NTSDProofCount() int {
+	return 0
+}
+
+func (vs *testCommitVoteSet) NTSDProofAt(i int) []byte {
+	return nil
 }
 
 func newRandomTestValidatorList(n int) *testValidatorList {

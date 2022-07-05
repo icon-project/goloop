@@ -20,10 +20,12 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -35,7 +37,7 @@ type blockV2Handler struct {
 func NewBlockV2Handler(chain base.Chain) base.BlockHandler {
 	return &blockV2Handler{
 		chain: chain,
-		sm: chain.ServiceManager(),
+		sm:    chain.ServiceManager(),
 	}
 }
 
@@ -66,6 +68,7 @@ func (b *blockV2Handler) NewBlock(
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, votes module.CommitVoteSet,
+	bs module.BTPSection,
 ) base.Block {
 	var prevID []byte
 	if prev != nil {
@@ -83,11 +86,15 @@ func (b *blockV2Handler) NewBlock(
 		nextValidatorsHash: nextValidators.Hash(),
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		nsFilter:           bs.Digest().NetworkSectionFilter(),
+		sm:                 b.sm,
+		_btpSection:        bs,
+		_btpDigest:         bs.Digest(),
 	}
 }
 
 func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, error) {
-	var header blockV2HeaderFormat
+	var header V2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
 	if err != nil {
 		return nil, err
@@ -125,6 +132,8 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, erro
 		nextValidatorsHash: nextValidators.Hash(),
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		nsFilter:           module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap),
+		sm:                 b.sm,
 	}, nil
 }
 
@@ -144,59 +153,78 @@ func newTransactionListFromBSS(
 
 func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, error) {
 	sm := b.sm
-	var blockFormat blockV2Format
-	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
+	var headerFormat V2HeaderFormat
+	err := v2Codec.Unmarshal(r, &headerFormat)
 	if err != nil {
 		return nil, err
 	}
-	err = v2Codec.Unmarshal(r, &blockFormat.blockV2BodyFormat)
+	var bodyFormat V2BodyFormat
+	err = v2Codec.Unmarshal(r, &bodyFormat)
 	if err != nil {
 		return nil, err
 	}
 	patches, err := newTransactionListFromBSS(
 		sm,
-		blockFormat.PatchTransactions,
+		bodyFormat.PatchTransactions,
 		module.BlockVersion2,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
+	if !bytes.Equal(patches.Hash(), headerFormat.PatchTransactionsHash) {
 		return nil, errors.New("bad patch transactions hash")
 	}
 	normalTxs, err := newTransactionListFromBSS(
 		sm,
-		blockFormat.NormalTransactions,
+		bodyFormat.NormalTransactions,
 		module.BlockVersion2,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
+	if !bytes.Equal(normalTxs.Hash(), headerFormat.NormalTransactionsHash) {
 		return nil, errors.New("bad normal transactions hash")
 	}
 	// nextValidators may be nil
-	nextValidators := sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
-	votes := b.chain.CommitVoteSetDecoder()(blockFormat.Votes)
-	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
+	nextValidators := sm.ValidatorListFromHash(headerFormat.NextValidatorsHash)
+	votes := b.chain.CommitVoteSetDecoder()(bodyFormat.Votes)
+	if !bytes.Equal(votes.Hash(), headerFormat.VotesHash) {
 		return nil, errors.New("bad vote list hash")
 	}
-	proposer, err := newProposer(blockFormat.Proposer)
+	bd, err := btp.NewDigestFromBytes(bodyFormat.BTPDigest)
+	if err != nil {
+		return nil, err
+	}
+	bdHashInResult, err := service.BTPDigestHashFromResult(headerFormat.Result)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(bdHashInResult, bd.Hash()) {
+		return nil, errors.Errorf("bad digestHash header=%x calc=%x", bdHashInResult, bd.Hash())
+	}
+	filter := bd.NetworkSectionFilter()
+	if !bytes.Equal(headerFormat.NSFilter, filter.Bytes()) {
+		return nil, errors.Errorf("bad nsFilter header=%x fromBD=%x", headerFormat.NSFilter, filter.Bytes())
+	}
+	proposer, err := newProposer(headerFormat.Proposer)
 	if err != nil {
 		return nil, err
 	}
 	return &blockV2{
-		height:             blockFormat.Height,
-		timestamp:          blockFormat.Timestamp,
+		height:             headerFormat.Height,
+		timestamp:          headerFormat.Timestamp,
 		proposer:           proposer,
-		prevID:             blockFormat.PrevID,
-		logsBloom:          txresult.NewLogsBloomFromCompressed(blockFormat.LogsBloom),
-		result:             blockFormat.Result,
+		prevID:             headerFormat.PrevID,
+		logsBloom:          txresult.NewLogsBloomFromCompressed(headerFormat.LogsBloom),
+		result:             headerFormat.Result,
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
-		nextValidatorsHash: blockFormat.NextValidatorsHash,
+		nextValidatorsHash: headerFormat.NextValidatorsHash,
 		_nextValidators:    nextValidators,
 		votes:              votes,
+		nsFilter:           module.BitSetFilterFromBytes(headerFormat.NSFilter, btp.NSFilterCap),
+		_btpDigest:         bd,
+		sm:                 b.sm,
 	}, nil
 }
 

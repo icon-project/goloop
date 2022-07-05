@@ -40,10 +40,17 @@ type MemberList interface {
 }
 
 type CommitVoteSet interface {
+	// VerifyBlock verifies a block with block votes
 	VerifyBlock(block BlockData, validators ValidatorList) ([]bool, error)
+	BlockVoteSetBytes() []byte
 	Bytes() []byte
 	Hash() []byte
 	Timestamp() int64
+
+	// VoteRound returns vote round if it is for block version >= 2. In other
+	// case, the value is ignored.
+	VoteRound() int32
+	NTSDProofList
 }
 
 type CommitVoteSetDecoder func([]byte) CommitVoteSet

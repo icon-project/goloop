@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -46,7 +47,7 @@ const (
 	ConfigEnginePriority = 2
 	ConfigSyncerPriority = 3
 
-	configBlockPartSize               = 1024 * 100
+	ConfigBlockPartSize               = 1024 * 100
 	configCommitCacheCap              = 60
 	configRoundWALID                  = "round"
 	configRoundWALDataSize            = 1024 * 500
@@ -115,12 +116,15 @@ func (bps *blockPartSet) Assign(oth *blockPartSet) {
 	}
 }
 
+// Set sets content of bps. Transfers ownership of bc to bps.
 func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
 	bps.PartSet = ps
 	bps.block = blk
-	if bps.validatedBlock == bc {
-		return
-	}
+	bps.SetValidatedBlock(bc)
+}
+
+// SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
+func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
 	if bps.validatedBlock != nil {
 		bps.validatedBlock.Dispose()
 	}
@@ -143,6 +147,7 @@ type consensus struct {
 	timestamper module.Timestamper
 	nid         []byte
 	bpp         fastsync.BlockProofProvider
+	srcUID      []byte
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -163,6 +168,8 @@ type consensus struct {
 	syncing            bool
 	started            bool
 	cancelBlockRequest module.Canceler
+	pcmForLastBlock    module.BTPProofContextMap
+	nextPCM            module.BTPProofContextMap
 
 	timer *time.Timer
 
@@ -209,6 +216,7 @@ func New(
 		timestamper:  timestamper,
 		nid:          codec.MustMarshalToBytes(c.NID()),
 		bpp:          bpp,
+		srcUID:       module.GetSourceNetworkUID(c),
 		lastVoteData: lastVoteData,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
@@ -258,6 +266,10 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	cs.commitRound = -1
 	cs.syncing = true
 	cs.metric.OnHeight(cs.height)
+	bs, err := prevBlock.BTPSection()
+	cs.log.Must(err)
+	cs.pcmForLastBlock = cs.nextPCM
+	cs.nextPCM = cs.nextPCM.Update(bs)
 }
 
 func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *voteSet) {
@@ -336,6 +348,7 @@ func (cs *consensus) OnReceive(
 	msg, err := UnmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		cs.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
+		cs.log.Warnf("message: %s", codec.DumpRLP("  ", bs))
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
@@ -348,7 +361,7 @@ func (cs *consensus) OnReceive(
 		err = cs.ReceiveProposalMessage(m, false)
 	case *BlockPartMessage:
 		_, err = cs.ReceiveBlockPartMessage(m, false)
-	case *voteMessage:
+	case *VoteMessage:
 		_, err = cs.ReceiveVoteMessage(m, false)
 	case *voteListMessage:
 		err = cs.ReceiveVoteListMessage(m, false)
@@ -435,7 +448,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 	return bp.Index(), nil
 }
 
-func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error) {
+func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, error) {
 	lastPC :=
 		msg.Height == cs.height-1 &&
 			cs.step <= stepTransactionWait &&
@@ -444,6 +457,12 @@ func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, er
 		if cs.prevValidators != nil {
 			index := cs.prevValidators.IndexOf(msg.address())
 			if index >= 0 {
+				err := msg.VerifyNTSDProofParts(
+					cs.pcmForLastBlock, cs.srcUID, index,
+				)
+				if err != nil {
+					return -1, err
+				}
 				cs.lastVotes.Add(index, msg)
 			}
 		}
@@ -455,6 +474,10 @@ func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, er
 	index := cs.validators.IndexOf(msg.address())
 	if index < 0 {
 		return -1, errors.Errorf("bad voter %v", msg.address())
+	}
+	err := msg.VerifyNTSDProofParts(cs.nextPCM, cs.srcUID, index)
+	if err != nil {
+		return -1, err
 	}
 	added, votes := cs.hvs.add(index, msg)
 	if !added {
@@ -487,7 +510,7 @@ func (cs *consensus) ReceiveVoteListMessage(msg *voteListMessage, unicast bool) 
 	return err
 }
 
-func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
+func (cs *consensus) handlePrevoteMessage(msg *VoteMessage, prevotes *voteSet) {
 	if cs.step >= stepCommit {
 		return
 	}
@@ -519,7 +542,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 	}
 }
 
-func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) {
+func (cs *consensus) handlePrecommitMessage(msg *VoteMessage, precommits *voteSet) {
 	if msg.Round < cs.round && cs.step < stepCommit {
 		if psid, _ := precommits.getOverTwoThirdsPartSetID(); psid != nil {
 			cs.enterCommit(precommits, psid, msg.Round)
@@ -606,7 +629,10 @@ func (cs *consensus) enterPropose() {
 				}
 			}
 			var err error
-			cvl := cs.lastVotes.CommitVoteSet()
+			cvl, err := cs.lastVotes.CommitVoteSet(cs.pcmForLastBlock)
+			if err != nil {
+				cs.log.Panicf("fail to make CommitVoteSet: %+v", err)
+			}
 			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl,
 				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
@@ -625,10 +651,18 @@ func (cs *consensus) enterPropose() {
 						return
 					}
 
-					psb := newPartSetBuffer(configBlockPartSize)
+					psb := NewPartSetBuffer(ConfigBlockPartSize)
 					cs.log.Must(blk.MarshalHeader(psb))
 					cs.log.Must(blk.MarshalBody(psb))
-					bps := psb.PartSet()
+					bd, err := blk.BTPDigest()
+					if err != nil {
+						cs.log.Panicf("cannot get BTPDigest for proposing block: %+v\n", err)
+					}
+					cnt, err := cs.ntsVoteCountWithPCM(bd, cs.nextPCM)
+					if err != nil {
+						cs.log.Panicf("cannot get ntsVoteCount for proposing block: %+v\n", err)
+					}
+					bps := psb.PartSet(uint16(cnt))
 
 					cs.sendProposal(bps, -1)
 					cs.currentBlockParts.Set(bps, blk, blk)
@@ -708,7 +742,7 @@ func (cs *consensus) enterPrevote() {
 					}
 
 					if err == nil {
-						cs.currentBlockParts.validatedBlock = blk
+						cs.currentBlockParts.SetValidatedBlock(blk)
 						if cs.hrs.step <= stepPrevoteWait {
 							cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
 						}
@@ -893,7 +927,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
-				cs.currentBlockParts.validatedBlock = blk
+				cs.currentBlockParts.SetValidatedBlock(blk)
 				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
@@ -1121,6 +1155,39 @@ func (cs *consensus) sendVote(vt VoteType, blockParts *blockPartSet) {
 	}
 }
 
+func (cs *consensus) ntsVoteBaseAndDecisionProofParts(
+	ntsHashEntries module.NTSHashEntryList,
+) ([]ntsVoteBase, [][]byte, error) {
+	ntsVoteBases := make([]ntsVoteBase, 0, ntsHashEntries.NTSHashEntryCount())
+	ntsdProofParts := make([][]byte, 0, ntsHashEntries.NTSHashEntryCount())
+	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
+		ntsHashEntry := ntsHashEntries.NTSHashEntryAt(i)
+		ntid := ntsHashEntry.NetworkTypeID
+		pc, err := cs.nextPCM.ProofContextFor(ntid)
+		if errors.Is(err, errors.ErrNotFound) {
+			// do not vote for first NTS
+			continue
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		ntsVoteBases = append(ntsVoteBases, ntsVoteBase(ntsHashEntry))
+		ntsd := pc.NewDecision(
+			cs.srcUID,
+			ntsHashEntry.NetworkTypeID,
+			cs.height,
+			cs.round,
+			ntsHashEntry.NetworkTypeSectionHash,
+		)
+		pp, err := pc.NewProofPart(ntsd.Hash(), cs.c)
+		if err != nil {
+			return nil, nil, err
+		}
+		ntsdProofParts = append(ntsdProofParts, pp.Bytes())
+	}
+	return ntsVoteBases, ntsdProofParts, nil
+}
+
 func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	if cs.validators.IndexOf(cs.c.Wallet().Address()) < 0 {
 		return nil
@@ -1132,11 +1199,22 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	msg.Type = vt
 
 	if blockParts != nil {
-		msg.BlockID = blockParts.block.ID()
-		msg.BlockPartSetID = blockParts.ID()
+		var ntsVoteBases []ntsVoteBase
+		var ntsdProofParts [][]byte
+		if vt == VoteTypePrecommit && blockParts != nil {
+			ntsHashEntries, err := blockParts.block.NTSHashEntryList()
+			if err != nil {
+				return err
+			}
+			ntsVoteBases, ntsdProofParts, err = cs.ntsVoteBaseAndDecisionProofParts(ntsHashEntries)
+			if err != nil {
+				return err
+			}
+		}
+		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID(), ntsVoteBases)
+		msg.NTSDProofParts = ntsdProofParts
 	} else {
-		msg.BlockID = cs.nid
-		msg.BlockPartSetID = nil
+		msg.SetRoundDecision(cs.nid, nil, nil)
 	}
 	msg.Timestamp = cs.voteTimestamp()
 
@@ -1257,7 +1335,7 @@ func (cs *consensus) applyRoundWAL() error {
 				round = m.round()
 				rstep = stepPropose
 			}
-		case *voteMessage:
+		case *VoteMessage:
 			if m.height() != cs.height {
 				continue
 			}
@@ -1549,7 +1627,7 @@ func (cs *consensus) applyLastVote(
 	prevValidators addressIndexer,
 ) error {
 	blk := cs.lastBlock
-	cvl, ok := cvs.(*commitVoteList)
+	cvl, ok := cvs.(*CommitVoteList)
 	if !ok {
 		if vs, ok := cvs.(VoteSet); ok {
 			cs.lastVotes = vs
@@ -1557,7 +1635,21 @@ func (cs *consensus) applyLastVote(
 		}
 		return errors.ErrInvalidState
 	}
-	vl := cvl.voteList(blk.Height(), blk.ID())
+	var prevBlk module.Block
+	var err error
+	var vl *voteList
+	if blk.Height() == 0 {
+		vl, err = cvl.toVoteListWithBlock(blk, nil, cs.c.Database())
+	} else {
+		prevBlk, err = cs.c.BlockManager().GetBlockByHeight(blk.Height() - 1)
+		if err != nil {
+			return err
+		}
+		vl, err = cvl.toVoteListWithBlock(blk, prevBlk, cs.c.Database())
+	}
+	if err != nil {
+		return err
+	}
 	vs := newVoteSet(prevValidators.Len())
 	for i := 0; i < vl.Len(); i++ {
 		msg := vl.Get(i)
@@ -1603,6 +1695,15 @@ func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
 	return cs.applyLastVote(cvs, prevValidators)
 }
 
+func StartConsensusWithLastVotes(cs module.Consensus, lastVoteData *LastVoteData) error {
+	return cs.(*consensus).StartWithLastVote(lastVoteData)
+}
+
+func (cs *consensus) StartWithLastVote(lastVoteData *LastVoteData) error {
+	cs.lastVoteData = lastVoteData
+	return cs.Start()
+}
+
 func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -1612,14 +1713,20 @@ func (cs *consensus) Start() error {
 		return err
 	}
 	var validators addressIndexer
+	var pcMap module.BTPProofContextMap
 	if lastBlock.Height() > 0 {
 		prevBlock, err := cs.c.BlockManager().GetBlockByHeight(lastBlock.Height() - 1)
 		if err != nil {
 			return err
 		}
 		validators = prevBlock.NextValidators()
+		pcMap, err = prevBlock.NextProofContextMap()
+		if err != nil {
+			return err
+		}
 	} else {
 		validators = &emptyAddressIndexer{}
+		pcMap = btp.ZeroProofContextMap
 	}
 
 	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, CsProtocols, ConfigEnginePriority, module.NotRegisteredProtocolPolicyClose)
@@ -1627,6 +1734,7 @@ func (cs *consensus) Start() error {
 		return err
 	}
 
+	cs.nextPCM = pcMap
 	cs.resetForNewHeight(lastBlock, newVoteSet(0))
 	cs.prevValidators = validators
 	if err := cs.applyWAL(validators); err != nil {
@@ -1775,9 +1883,13 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 
 	if h == cs.height && !cs.currentBlockParts.PartSet.IsComplete() {
 		pcs := cs.hvs.votesFor(cs.commitRound, VoteTypePrecommit)
+		cvl, err := pcs.commitVoteListForOverTwoThirds(cs.nextPCM)
+		if err != nil {
+			return nil, err
+		}
 		return &commit{
 			height:       h,
-			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
+			commitVotes:  cvl,
 			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts.PartSet,
 		}, nil
@@ -1785,9 +1897,13 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 
 	if h == cs.height {
 		pcs := cs.hvs.votesFor(cs.commitRound, VoteTypePrecommit)
+		cvl, err := pcs.commitVoteListForOverTwoThirds(cs.nextPCM)
+		if err != nil {
+			return nil, err
+		}
 		c = &commit{
 			height:       h,
-			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
+			commitVotes:  cvl,
 			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts.PartSet,
 		}
@@ -1798,7 +1914,10 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		var cvs module.CommitVoteSet
 		if h == cs.height-1 {
-			cvs = cs.lastVotes.CommitVoteSet()
+			cvs, err = cs.lastVotes.CommitVoteSet(cs.pcmForLastBlock)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			nb, err := cs.c.BlockManager().GetBlockByHeight(h + 1)
 			if err != nil {
@@ -1808,12 +1927,33 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		var bps PartSet
 		var vl *voteList
-		if cvl, ok := cvs.(*commitVoteList); ok {
-			vl = cvl.voteList(h, b.ID())
-			psb := newPartSetBuffer(configBlockPartSize)
+		if cvl, ok := cvs.(*CommitVoteList); ok {
+			var cnt int
+			if h == 0 {
+				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
+				cnt = 0
+			} else {
+				prev, err := cs.c.BlockManager().GetBlockByHeight(h - 1)
+				if err != nil {
+					return nil, err
+				}
+				vl, err = cvl.toVoteListWithBlock(b, prev, cs.c.Database())
+				if err != nil {
+					return nil, err
+				}
+				bd, err := b.BTPDigest()
+				if err != nil {
+					return nil, err
+				}
+				cnt, err = cs.ntsVoteCount(bd, prev.Result())
+				if err != nil {
+					return nil, err
+				}
+			}
+			psb := NewPartSetBuffer(ConfigBlockPartSize)
 			cs.log.Must(b.MarshalHeader(psb))
 			cs.log.Must(b.MarshalBody(psb))
-			bps = psb.PartSet()
+			bps = psb.PartSet(uint16(cnt))
 		}
 		c = &commit{
 			height:       h,
@@ -1909,8 +2049,13 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		return
 	}
 
-	votes := cvl.(*commitVoteList)
-	vl := votes.voteList(blk.Height(), blk.ID())
+	votes := cvl.(*CommitVoteList)
+	vl, err := votes.toVoteListWithBlock(
+		blk, cs.lastBlock, cs.c.Database(),
+	)
+	if err != nil {
+		cs.log.Warnf("fail to convert to voteList: %+v", err)
+	}
 	for i := 0; i < vl.Len(); i++ {
 		m := vl.Get(i)
 		index := cs.validators.IndexOf(m.address())

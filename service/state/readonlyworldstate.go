@@ -14,10 +14,15 @@ type readOnlyWorldState struct {
 	accounts       map[string]AccountState
 	validatorState ValidatorState
 	extensionState ExtensionState
+	btp            BTPState
 }
 
 func (ws *readOnlyWorldState) GetExtensionState() ExtensionState {
 	return ws.extensionState
+}
+
+func (ws *readOnlyWorldState) GetBTPState() BTPState {
+	return ws.btp
 }
 
 func (ws *readOnlyWorldState) GetAccountState(id []byte) AccountState {
@@ -103,11 +108,20 @@ func newReadOnlyExtensionState(ess ExtensionSnapshot) ExtensionState {
 	}
 }
 
+func newReadOnlyBTPState(bss BTPSnapshot) BTPState {
+	if bss == nil {
+		return nil
+	} else {
+		return bss.NewState()
+	}
+}
+
 func NewReadOnlyWorldState(wss WorldSnapshot) WorldState {
 	return &readOnlyWorldState{
 		WorldSnapshot:  wss,
 		accounts:       make(map[string]AccountState),
 		validatorState: newReadOnlyValidatorState(wss.GetValidatorSnapshot()),
 		extensionState: newReadOnlyExtensionState(wss.GetExtensionSnapshot()),
+		btp:            newReadOnlyBTPState(wss.GetBTPSnapshot()),
 	}
 }

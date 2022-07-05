@@ -23,14 +23,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )
 
 type Chain struct {
+	module.Chain
 	t         *testing.T
 	database  db.Database
 	wallet    module.Wallet
@@ -43,6 +46,7 @@ type Chain struct {
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
 	gsBytes   []byte
+	bwMap     map[string]module.BaseWallet
 }
 
 func (c *Chain) Database() db.Database {
@@ -215,6 +219,64 @@ func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 	c.sm = sm
 }
 
+type addrWallet struct {
+	mod module.NetworkTypeModule
+	w   module.Wallet
+}
+
+func (a *addrWallet) Sign(data []byte) ([]byte, error) {
+	return a.w.Sign(data)
+}
+
+func (a *addrWallet) PublicKey() []byte {
+	addr, err := a.mod.AddressFromPubKey(a.w.PublicKey())
+	if err != nil {
+		return nil
+	}
+	return addr
+}
+
+func (c *Chain) WalletFor(dsa string) module.BaseWallet {
+	if bw, ok := c.bwMap[dsa]; ok {
+		return bw
+	}
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return c.wallet
+	case "eth", "icon":
+		return &addrWallet{
+			mod: ntm.ForUID(dsa),
+			w:   c.wallet,
+		}
+	}
+	return nil
+}
+
+func (c *Chain) SetWalletFor(keyType string, bw module.BaseWallet) {
+	c.bwMap[keyType] = bw
+}
+
+type walletProvider struct {
+	wallet module.Wallet
+}
+
+func (wp *walletProvider) WalletFor(dsa string) module.BaseWallet {
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return wp.wallet
+	case "eth", "icon":
+		return &addrWallet{
+			mod: ntm.ForUID(dsa),
+			w:   wp.wallet,
+		}
+	}
+	return nil
+}
+
+func NewWalletProvider() module.WalletProvider {
+	return &walletProvider{wallet.New()}
+}
+
 func NewChain(
 	t *testing.T,
 	w module.Wallet,
@@ -236,5 +298,6 @@ func NewChain(
 		gs:        gs.NewFromTx(gsBytes),
 		cvd:       cvd,
 		gsBytes:   gsBytes,
+		bwMap:     make(map[string]module.BaseWallet),
 	}, nil
 }

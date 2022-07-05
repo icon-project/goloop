@@ -158,6 +158,12 @@ func (n *NetworkManager) NewPeerFor(mpi module.ProtocolInfo) (*SimplePeer, *Simp
 	return p, h
 }
 
+func (n *NetworkManager) NewPeerForWithAddress(mpi module.ProtocolInfo, w module.Wallet) (*SimplePeer, *SimplePeerHandler) {
+	p := NewPeerWithAddress(n.t, w).Connect(n)
+	h := p.RegisterProto(mpi)
+	return p, h
+}
+
 func (n *NetworkManager) Connect(n2 *NetworkManager) {
 	PeerConnect(n, n2)
 }

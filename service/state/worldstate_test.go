@@ -23,7 +23,7 @@ func TestNewWorldState(t *testing.T) {
 	testid := []byte("test")
 
 	database := db.NewMapDB()
-	ws := NewWorldState(database, nil, nil, nil)
+	ws := NewWorldState(database, nil, nil, nil, nil)
 	as := ws.GetAccountState(testid)
 
 	as.SetBalance(balance1)
@@ -98,7 +98,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 
 	db := db.NewMapDB()
-	ws := NewWorldState(db, nil, nil, nil)
+	ws := NewWorldState(db, nil, nil, nil, nil)
 	as := ws.GetAccountState(contractAddr.ID())
 
 	as.SetBalance(balance1)
@@ -164,7 +164,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	wsSnapshot.Flush()
 	hash := wsSnapshot.StateHash()
 
-	ws2 := NewWorldState(db, hash, nil, nil)
+	ws2 := NewWorldState(db, hash, nil, nil, nil)
 	as2 := ws2.GetAccountState(contractAddr.ID())
 	if as2.IsContractOwner(contractOwner) == false {
 		log.Panicf("Invalid contractOwner. %s\n", contractOwner)
@@ -255,7 +255,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	wsSnapshot.Flush()
 	hash = wsSnapshot.StateHash()
 
-	ws3 := NewWorldState(db, hash, nil, nil)
+	ws3 := NewWorldState(db, hash, nil, nil, nil)
 	as3 := ws3.GetAccountState(contractAddr.ID())
 	if as3.IsContractOwner(contractOwner) == false {
 		log.Panicf("Invalid contractOwner. %s\n", contractOwner)
@@ -285,7 +285,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	wsSnapshot = ws3.GetSnapshot()
 	wsSnapshot.Flush()
 	hash = wsSnapshot.StateHash()
-	ws4 := NewWorldState(db, hash, nil, nil)
+	ws4 := NewWorldState(db, hash, nil, nil, nil)
 	as4 := ws4.GetAccountState(contractAddr.ID())
 	if as4.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")

@@ -19,9 +19,11 @@ type WorldSnapshot interface {
 	GetAccountSnapshot(id []byte) AccountSnapshot
 	GetValidatorSnapshot() ValidatorSnapshot
 	GetExtensionSnapshot() ExtensionSnapshot
+	GetBTPSnapshot() BTPSnapshot
 	Flush() error
 	StateHash() []byte
 	ExtensionData() []byte
+	BTPData() []byte
 	Database() db.Database
 }
 
@@ -33,6 +35,7 @@ type WorldState interface {
 	GetSnapshot() WorldSnapshot
 	GetValidatorState() ValidatorState
 	GetExtensionState() ExtensionState
+	GetBTPState() BTPState
 	Reset(snapshot WorldSnapshot) error
 	ClearCache()
 	EnableNodeCache()
@@ -46,6 +49,7 @@ type worldSnapshotImpl struct {
 	accounts   trie.ImmutableForObject
 	validators ValidatorSnapshot
 	extension  ExtensionSnapshot
+	btp        BTPSnapshot
 }
 
 func (ws *worldSnapshotImpl) GetValidatorSnapshot() ValidatorSnapshot {
@@ -63,11 +67,27 @@ func (ws *worldSnapshotImpl) ExtensionData() []byte {
 	return nil
 }
 
+func (ws *worldSnapshotImpl) GetBTPSnapshot() BTPSnapshot {
+	return ws.btp
+}
+
+func (ws *worldSnapshotImpl) BTPData() []byte {
+	if ws.btp != nil {
+		return ws.btp.Bytes()
+	}
+	return nil
+}
+
 func (ws *worldSnapshotImpl) StateHash() []byte {
 	return ws.accounts.Hash()
 }
 
 func (ws *worldSnapshotImpl) Flush() error {
+	if ws.btp != nil {
+		if err := ws.btp.Flush(); err != nil {
+			return err
+		}
+	}
 	if ass, ok := ws.accounts.(trie.SnapshotForObject); ok {
 		if err := ass.Flush(); err != nil {
 			return err
@@ -111,6 +131,7 @@ type worldStateImpl struct {
 	mutableAccounts map[string]AccountState
 	validators      ValidatorState
 	extension       extensionStateHolder
+	btp             BTPState
 
 	nodeCacheEnabled bool
 }
@@ -121,6 +142,10 @@ func (ws *worldStateImpl) GetValidatorState() ValidatorState {
 
 func (ws *worldStateImpl) GetExtensionState() ExtensionState {
 	return ws.extension.GetState()
+}
+
+func (ws *worldStateImpl) GetBTPState() BTPState {
+	return ws.btp
 }
 
 func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
@@ -148,6 +173,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	}
 	ws.validators.Reset(snapshot.GetValidatorSnapshot())
 	ws.extension.Reset(snapshot.GetExtensionSnapshot())
+	ws.btp.Reset(snapshot.GetBTPSnapshot())
 	return nil
 }
 
@@ -261,10 +287,13 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		accounts:   ws.accounts.GetSnapshot(),
 		validators: ws.validators.GetSnapshot(),
 		extension:  ws.extension.GetSnapshot(),
+		btp:        ws.btp.GetSnapshot(),
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot) WorldState {
+func NewWorldState(
+	database db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot, btpHash []byte,
+) WorldState {
 	ws := new(worldStateImpl)
 	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, AccountType)
@@ -275,10 +304,13 @@ func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot,
 		ws.validators = ValidatorStateFromSnapshot(vs)
 	}
 	ws.extension.Reset(es)
+	ws.btp = NewBTPState(database, btpHash)
 	return ws
 }
 
-func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot) WorldSnapshot {
+func NewWorldSnapshot(
+	dbase db.Database, stateHash []byte, vs ValidatorSnapshot, es ExtensionSnapshot, btpData []byte,
+) WorldSnapshot {
 	ws := new(worldSnapshotImpl)
 	ws.database = dbase
 	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash, AccountType)
@@ -287,6 +319,7 @@ func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot,
 	}
 	ws.validators = vs
 	ws.extension = es
+	ws.btp = NewBTPSnapshot(dbase, btpData)
 	return ws
 }
 
@@ -297,9 +330,10 @@ func NewWorldSnapshotWithNewValidators(dbase db.Database, snapshot WorldSnapshot
 			accounts:   ws.accounts,
 			validators: vss,
 			extension:  ws.extension,
+			btp:        ws.btp,
 		}
 	} else {
-		return NewWorldSnapshot(dbase, snapshot.StateHash(), vss, ws.GetExtensionSnapshot())
+		return NewWorldSnapshot(dbase, snapshot.StateHash(), vss, snapshot.GetExtensionSnapshot(), snapshot.BTPData())
 	}
 }
 
@@ -311,6 +345,7 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws.mutableAccounts = make(map[string]AccountState)
 		ws.validators = ValidatorStateFromSnapshot(wss.GetValidatorSnapshot())
 		ws.extension.Reset(wss.GetExtensionSnapshot())
+		ws.btp = NewBTPState(wss.database, wss.BTPData())
 		return ws, nil
 	}
 	return nil, errors.ErrIllegalArgument
@@ -330,7 +365,9 @@ func (r *validatorSnapshotRequester) OnData(value []byte, builder merkle.Builder
 	return nil
 }
 
-func NewWorldSnapshotWithBuilder(builder merkle.Builder, sh []byte, vh []byte, ess ExtensionSnapshot) (WorldSnapshot, error) {
+func NewWorldSnapshotWithBuilder(
+	builder merkle.Builder, sh []byte, vh []byte, ess ExtensionSnapshot, bh []byte,
+) (WorldSnapshot, error) {
 	ws := new(worldSnapshotImpl)
 	ws.database = builder.Database()
 	ws.accounts = trie_manager.NewImmutableForObject(ws.database, sh, AccountType)
@@ -341,5 +378,6 @@ func NewWorldSnapshotWithBuilder(builder merkle.Builder, sh []byte, vh []byte, e
 		ws.validators = vs
 	}
 	ws.extension = ess
+	ws.btp = NewBTPSnapshot(ws.database, bh)
 	return ws, nil
 }

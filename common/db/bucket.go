@@ -62,6 +62,10 @@ const (
 
 	// ChainProperty is general key value map for chain property.
 	ChainProperty BucketID = "C"
+
+	// ListByMerkleRootBase is the base for the bucket that maps list
+	// from network type dependent merkle root(list)
+	ListByMerkleRootBase BucketID = "L"
 )
 
 // internalKey returns key prefixed with the bucket's id.

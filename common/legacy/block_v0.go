@@ -39,6 +39,7 @@ func (t transactionV3) String() string {
 }
 
 type blockV0Impl struct {
+	module.Block
 	Version            string             `json:"version"`
 	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
@@ -177,7 +178,7 @@ func (b *blockV0) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return nil, nil
 }
 
-func (b *blockV0) NewBlock(vl module.ValidatorList) module.Block {
+func (b *blockV0) NewBlock(tr module.Transition) module.Block {
 	return nil
 }
 

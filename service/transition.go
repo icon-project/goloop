@@ -1,11 +1,13 @@
 package service
 
 import (
+	"container/list"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -121,6 +123,7 @@ type transition struct {
 	bi     module.BlockInfo
 	pbi    module.BlockInfo
 	csi    module.ConsensusInfo
+	bs     module.BTPSection
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -209,7 +212,7 @@ func newTransition(
 }
 
 func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
-	var stateHash, extensionData []byte
+	var stateHash, extensionData, btpHash []byte
 	if len(result) > 0 {
 		tr, err := newTransitionResultFromBytes(result)
 		if err != nil {
@@ -217,12 +220,13 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 		}
 		stateHash = tr.StateHash
 		extensionData = tr.ExtensionData
+		btpHash = tr.BTPData
 	}
 	var ess state.ExtensionSnapshot
 	if plt != nil {
 		ess = plt.NewExtensionSnapshot(database, extensionData)
 	}
-	return state.NewWorldSnapshot(database, stateHash, vl, ess), nil
+	return state.NewWorldSnapshot(database, stateHash, vl, ess, btpHash), nil
 }
 
 // all parameters should be valid.
@@ -398,7 +402,7 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 			return nil, err
 		}
 	} else {
-		ws = state.NewWorldState(t.db, nil, nil, nil)
+		ws = state.NewWorldState(t.db, nil, nil, nil, nil)
 	}
 	if execution {
 		ws.EnableNodeCache()
@@ -536,6 +540,7 @@ func (t *transition) doForceSync() {
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
 	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
@@ -626,6 +631,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
+	ctx.GetBTPState().SetValidators(ctx.GetValidatorState())
+
 	if err := t.plt.OnExecutionBegin(ctx, t.log); err != nil {
 		t.reportExecution(err)
 		return
@@ -643,6 +650,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	virtualFee := new(big.Int)
+	btpMsgs := list.New()
 
 	t.logsBloom.SetInt64(0)
 	fixLostFeeByDeposit := ctx.Revision().Has(module.FixLostFeeByDeposit)
@@ -660,6 +668,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			}
 
 			t.logsBloom.Merge(r.LogsBloom())
+
+			if r.BTPMessages() != nil {
+				btpMsgs.PushBackList(r.BTPMessages())
+			}
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
@@ -674,6 +686,14 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	if err := t.plt.OnExecutionEnd(ctx, er, t.log); err != nil {
 		t.reportExecution(err)
 		return
+	}
+
+	bc := state.NewBTPContext(ctx, ctx.GetAccountState(state.SystemID))
+	if bs, err := ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
+		t.reportExecution(err)
+		return
+	} else {
+		t.bs = bs
 	}
 
 	t.worldSnapshot = ctx.GetSnapshot()
@@ -694,6 +714,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
 
@@ -823,6 +844,14 @@ func (t *transition) Equal(tr module.Transition) bool {
 		common.BlockInfoEqual(t.pbi, t2.pbi) &&
 		common.ConsensusInfoEqual(t.csi, t2.csi) &&
 		t.pid == t2.pid
+}
+
+func (t *transition) BTPSection() module.BTPSection {
+	if t.bs == nil {
+		//TODO return nil?
+		return btp.ZeroBTPSection
+	}
+	return t.bs
 }
 
 // NewInitTransition creates initial transition based on the last result.

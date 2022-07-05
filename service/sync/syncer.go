@@ -508,7 +508,8 @@ func (s *syncer) ForceSync() (*Result, error) {
 	builder := merkle.NewBuilder(s.database)
 	s.builder[syncWorldState.toIndex()] = builder
 	s.reqValue[syncWorldState.toIndex()] = make(map[string]bool)
-	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh, ess); err == nil {
+	// TODO need to sync BTP Data (with new syncer?)
+	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh, ess, nil); err == nil {
 		s.wss = wss
 	} else {
 		return nil, err

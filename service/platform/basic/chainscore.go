@@ -25,6 +25,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -515,6 +516,65 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getBTPNetworkTypeID",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"name", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getBTPPublicKey",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"name", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bytes,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "openBTPNetwork",
+		scoreapi.FlagExternal, 3,
+		[]scoreapi.Parameter{
+			{"networkTypeName", scoreapi.String, nil, nil},
+			{"name", scoreapi.String, nil, nil},
+			{"owner", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "closeBTPNetwork",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"id", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "sendBTPMessage",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"networkId", scoreapi.Integer, nil, nil},
+			{"message", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, Revision9, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setBTPPublicKey",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"name", scoreapi.String, nil, nil},
+			{"pubKey", scoreapi.Bytes, nil, nil},
+		},
+		nil,
 	}, Revision9, 0},
 }
 
@@ -1013,6 +1073,14 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
 	}
 
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		if err = bs.CheckPublicKey(s.newBTPContext(), s.from); err != nil {
+			return err
+		}
+	}
+
 	if s.cc.MembershipEnabled() {
 		found := false
 		as := s.cc.GetAccountState(state.SystemID)
@@ -1457,4 +1525,130 @@ func (s *ChainScore) Ex_getSystemDepositUsage() (*big.Int, error) {
 		usage = new(big.Int)
 	}
 	return usage, nil
+}
+
+func (s *ChainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return 0, err
+	}
+	return s.newBTPContext().GetNetworkTypeIDByName(name), nil
+}
+
+func (s *ChainScore) Ex_getBTPPublicKey(address module.Address, name string) ([]byte, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return nil, err
+	}
+	pubKey, _ := s.newBTPContext().GetPublicKey(address, name, true)
+	return pubKey, nil
+}
+
+func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error) {
+	if err := s.checkGovernance(true); err != nil {
+		return 0, err
+	}
+	if bs, err := s.getBTPState(); err != nil {
+		return 0, err
+	} else {
+		bc := s.newBTPContext()
+		ntActivated := false
+		if bc.GetNetworkTypeIDByName(networkTypeName) <= 0 {
+			ntActivated = true
+		}
+		ntid, nid, err := bs.OpenNetwork(bc, networkTypeName, name, owner)
+		if err != nil {
+			return 0, err
+		}
+		if ntActivated {
+			s.cc.OnEvent(state.SystemAddress,
+				[][]byte{
+					[]byte("BTPNetworkTypeActivated(str,int)"),
+					[]byte(networkTypeName),
+					intconv.Int64ToBytes(ntid),
+				},
+				nil,
+			)
+		}
+		s.cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("BTPNetworkOpened(int,int)"),
+				intconv.Int64ToBytes(ntid),
+				intconv.Int64ToBytes(nid),
+			},
+			nil,
+		)
+		return nid, nil
+	}
+}
+
+func (s *ChainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	nid := id.Int64()
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		if ntid, err := bs.CloseNetwork(s.newBTPContext(), nid); err != nil {
+			return err
+		} else {
+			s.cc.OnEvent(state.SystemAddress,
+				[][]byte{
+					[]byte("BTPNetworkClosed(int,int)"),
+					intconv.Int64ToBytes(ntid),
+					intconv.Int64ToBytes(nid),
+				},
+				nil,
+			)
+		}
+	}
+	return nil
+}
+
+func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte) error {
+	if err := s.tryChargeCall(); err != nil {
+		return err
+	}
+	if len(message) == 0 {
+		return scoreresult.ErrInvalidParameter
+	}
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		nid := networkId.Int64()
+		if err = bs.HandleMessage(s.newBTPContext(), s.from, nid); err != nil {
+			return err
+		}
+		s.cc.OnBTPMessage(nid, message)
+		return nil
+	}
+}
+
+func (s *ChainScore) Ex_setBTPPublicKey(name string, pubKey []byte) error {
+	if s.from.IsContract() {
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	if bs, err := s.getBTPState(); err != nil {
+		return err
+	} else {
+		if !bs.IsNetworkTypeUID(name) && !bs.IsDSAName(name) {
+			return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
+		}
+		if err = bs.SetPublicKey(s.newBTPContext(), s.from, name, pubKey); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ChainScore) getBTPState() (*state.BTPStateImpl, error) {
+	btpState := s.cc.GetBTPState()
+	if btpState == nil {
+		return nil, scoreresult.UnknownFailureError.Errorf("BTP state is nil")
+	}
+	return btpState.(*state.BTPStateImpl), nil
+}
+
+func (s *ChainScore) newBTPContext() state.BTPContext {
+	store := s.cc.GetAccountState(state.SystemID)
+	return state.NewBTPContext(s.cc, store)
 }

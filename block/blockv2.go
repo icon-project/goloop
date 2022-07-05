@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -23,7 +24,7 @@ var v2Codec = codec.BC
 
 const blockV2String = "2.0"
 
-type blockV2HeaderFormat struct {
+type V2HeaderFormat struct {
 	Version                int
 	Height                 int64
 	Timestamp              int64
@@ -35,17 +36,109 @@ type blockV2HeaderFormat struct {
 	NormalTransactionsHash []byte
 	LogsBloom              []byte
 	Result                 []byte
+	NSFilter               []byte
 }
 
-type blockV2BodyFormat struct {
+func (bh *V2HeaderFormat) RLPEncodeSelf(e codec.Encoder) error {
+	if bh.NSFilter == nil {
+		return e.EncodeListOf(
+			bh.Version,
+			bh.Height,
+			bh.Timestamp,
+			bh.Proposer,
+			bh.PrevID,
+			bh.VotesHash,
+			bh.NextValidatorsHash,
+			bh.PatchTransactionsHash,
+			bh.NormalTransactionsHash,
+			bh.LogsBloom,
+			bh.Result,
+		)
+	}
+	return e.EncodeListOf(
+		bh.Version,
+		bh.Height,
+		bh.Timestamp,
+		bh.Proposer,
+		bh.PrevID,
+		bh.VotesHash,
+		bh.NextValidatorsHash,
+		bh.PatchTransactionsHash,
+		bh.NormalTransactionsHash,
+		bh.LogsBloom,
+		bh.Result,
+		bh.NSFilter,
+	)
+}
+
+func (bh *V2HeaderFormat) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	cnt, err := d2.DecodeMulti(
+		&bh.Version,
+		&bh.Height,
+		&bh.Timestamp,
+		&bh.Proposer,
+		&bh.PrevID,
+		&bh.VotesHash,
+		&bh.NextValidatorsHash,
+		&bh.PatchTransactionsHash,
+		&bh.NormalTransactionsHash,
+		&bh.LogsBloom,
+		&bh.Result,
+		&bh.NSFilter,
+	)
+	if cnt == 11 && err == io.EOF {
+		bh.NSFilter = nil
+		return nil
+	}
+	return err
+}
+
+type V2BodyFormat struct {
 	PatchTransactions  [][]byte
 	NormalTransactions [][]byte
 	Votes              []byte
+	BTPDigest          []byte
 }
 
-type blockV2Format struct {
-	blockV2HeaderFormat
-	blockV2BodyFormat
+func (bb *V2BodyFormat) RLPEncodeSelf(e codec.Encoder) error {
+	if bb.BTPDigest == nil {
+		return e.EncodeListOf(
+			bb.PatchTransactions,
+			bb.NormalTransactions,
+			bb.Votes,
+		)
+	}
+	return e.EncodeListOf(
+		bb.PatchTransactions,
+		bb.NormalTransactions,
+		bb.Votes,
+		bb.BTPDigest,
+	)
+}
+
+func (bb *V2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
+	d2, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	cnt, err := d2.DecodeMulti(
+		&bb.PatchTransactions,
+		&bb.NormalTransactions,
+		&bb.Votes,
+		&bb.BTPDigest,
+	)
+	if cnt == 3 && err == io.EOF {
+		bb.BTPDigest = nil
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type blockV2 struct {
@@ -61,6 +154,11 @@ type blockV2 struct {
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
 	_id                []byte
+	_btpSection        module.BTPSection
+	nsFilter           module.BitSetFilter
+	_btpDigest         module.BTPDigest
+	sm                 ServiceManager
+	_nextPCM           module.BTPProofContextMap
 }
 
 func (b *blockV2) Version() int {
@@ -138,12 +236,12 @@ func (b *blockV2) Marshal(w io.Writer) error {
 	return b.MarshalBody(w)
 }
 
-func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
+func (b *blockV2) _headerFormat() *V2HeaderFormat {
 	var proposerBS []byte
 	if b.proposer != nil {
 		proposerBS = b.proposer.Bytes()
 	}
-	return &blockV2HeaderFormat{
+	return &V2HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
 		Timestamp:              b.timestamp,
@@ -155,6 +253,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 		NormalTransactionsHash: b.normalTransactions.Hash(),
 		LogsBloom:              b.logsBloom.CompressedBytes(),
 		Result:                 b.result,
+		NSFilter:               b.nsFilter.Bytes(),
 	}
 }
 
@@ -189,7 +288,7 @@ func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 	return res, nil
 }
 
-func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
+func (b *blockV2) _bodyFormat() (*V2BodyFormat, error) {
 	ptBss, err := bssFromTransactionList(b.patchTransactions)
 	if err != nil {
 		return nil, err
@@ -198,19 +297,22 @@ func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &blockV2BodyFormat{
+	bd, err := b.BTPDigest()
+	if err != nil {
+		return nil, err
+	}
+	return &V2BodyFormat{
 		PatchTransactions:  ptBss,
 		NormalTransactions: ntBss,
 		Votes:              b.votes.Bytes(),
+		BTPDigest:          bd.Bytes(),
 	}, nil
 }
 
-func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
-	if !bytes.Equal(b.nextValidatorsHash, vl.Hash()) {
-		return nil
-	}
+func (b *blockV2) NewBlock(tr module.Transition) module.Block {
 	blk := *b
-	blk._nextValidators = vl
+	blk._nextValidators = tr.NextValidators()
+	blk._btpSection = tr.BTPSection()
 	return &blk
 }
 
@@ -262,13 +364,54 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
+func (b *blockV2) NetworkSectionFilter() module.BitSetFilter {
+	return b.nsFilter
+}
+
+func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
+	if b._btpDigest == nil {
+		bs, err := b.BTPSection()
+		if err != nil {
+			return nil, err
+		}
+		b._btpDigest = bs.Digest()
+	}
+	return b._btpDigest, nil
+}
+
+func (b *blockV2) BTPSection() (module.BTPSection, error) {
+	if b._btpSection == nil {
+		bs, err := b.sm.BTPSectionFromResult(b.result)
+		if err != nil {
+			return nil, err
+		}
+		b._btpSection = bs
+	}
+	return b._btpSection, nil
+}
+
+func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
+	if b._nextPCM == nil {
+		nextPCM, err := b.sm.NextProofContextMapFromResult(b.result)
+		if err != nil {
+			return nil, err
+		}
+		b._nextPCM = nextPCM
+	}
+	return b._nextPCM, nil
+}
+
+func (b *blockV2) NTSHashEntryList() (module.NTSHashEntryList, error) {
+	return b.BTPDigest()
+}
+
 type blockBuilder struct {
 	vld   module.CommitVoteSetDecoder
 	block *blockV2
 }
 
 func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
-	header := new(blockV2HeaderFormat)
+	header := new(V2HeaderFormat)
 	err := v2Codec.Unmarshal(bytes.NewReader(value), header)
 	if err != nil {
 		return err
@@ -291,6 +434,7 @@ func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
 	} else {
 		b.block._nextValidators = vs
 	}
+	b.block.nsFilter = module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap)
 	builder.RequestData(db.BytesByHash, header.VotesHash, voteSetBuilder{b})
 	return nil
 }
@@ -304,9 +448,34 @@ func (b voteSetBuilder) OnData(value []byte, builder merkle.Builder) error {
 	return nil
 }
 
-func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder, hash []byte) module.Block {
+func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder, c Chain, hash []byte) module.Block {
 	blk := new(blockV2)
 	blk._id = hash
+	blk.sm = c.ServiceManager()
 	builder.RequestData(db.BytesByHash, hash, &blockBuilder{block: blk, vld: vld})
 	return blk
+}
+
+func NewBlockReaderFromFormat(hf *V2HeaderFormat, bf *V2BodyFormat) io.Reader {
+	var buf bytes.Buffer
+	err := v2Codec.Marshal(&buf, hf)
+	if err != nil {
+		log.Panicf("fail to marshal: %+v", err)
+	}
+	err = v2Codec.Marshal(&buf, bf)
+	if err != nil {
+		log.Panicf("fail to marshal: %+v", err)
+	}
+	return &buf
+}
+
+func FormatFromBlock(blk module.Block) (*V2HeaderFormat, *V2BodyFormat, error) {
+	if v2, ok := blk.(*blockV2); ok {
+		bodyFmt, err := v2._bodyFormat()
+		if err != nil {
+			return nil, nil, err
+		}
+		return v2._headerFormat(), bodyFmt, nil
+	}
+	return nil, nil, errors.Errorf("not block v2 height=%d version=%d", blk.Height(), blk.Version())
 }

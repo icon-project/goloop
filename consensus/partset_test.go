@@ -29,7 +29,7 @@ func (*testBlock) MarshalBody(w io.Writer) error {
 
 func TestBlockParts(t *testing.T) {
 	blk := new(testBlock)
-	psb := newPartSetBuffer(1024)
+	psb := NewPartSetBuffer(1024)
 	if err := blk.MarshalHeader(psb); err != nil {
 		t.Errorf("Fail to marshal header err=%+v", err)
 		return
@@ -38,7 +38,7 @@ func TestBlockParts(t *testing.T) {
 		t.Errorf("Fail to marshal body err=%+v", err)
 		return
 	}
-	ps := psb.PartSet()
+	ps := psb.PartSet(0)
 
 	hdr := ps.ID()
 	log.Printf("ID : %+v", hdr)

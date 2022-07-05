@@ -7,17 +7,19 @@ import (
 )
 
 type VoteSet interface {
-	CommitVoteSet() module.CommitVoteSet
+	// CommitVoteSet converts VoteSet to CommitVoteSet.
+	CommitVoteSet(pcm module.BTPProofContextMap) (module.CommitVoteSet, error)
 	Add(idx int, vote interface{}) bool
 }
 
 type counter struct {
-	partsID *PartSetID
-	count   int
+	roundDecisionDigest []byte
+	partsID             *PartSetID
+	count               int
 }
 
 type voteSet struct {
-	msgs     []*voteMessage
+	msgs     []*VoteMessage
 	maxIndex int
 	mask     *bitArray
 	round    int32
@@ -27,18 +29,18 @@ type voteSet struct {
 }
 
 // return true if added
-func (vs *voteSet) add(index int, v *voteMessage) bool {
+func (vs *voteSet) add(index int, v *VoteMessage) bool {
 	omsg := vs.msgs[index]
 	if omsg != nil {
-		if omsg.vote.Equal(&v.vote) {
+		if omsg.EqualExceptSigs(v) {
 			return false
 		}
-		psid, ok := vs.getOverTwoThirdsPartSetID()
-		if ok && psid != nil && psid.Equal(omsg.BlockPartSetID) {
+		rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
+		if ok && rdd != nil && bytes.Equal(rdd, omsg.RoundDecisionDigest()) {
 			return false
 		}
 		for i, c := range vs.counters {
-			if c.partsID.Equal(omsg.BlockPartSetID) {
+			if bytes.Equal(c.roundDecisionDigest, omsg.RoundDecisionDigest()) {
 				vs.counters[i].count--
 				if vs.counters[i].count == 0 {
 					last := len(vs.counters) - 1
@@ -54,14 +56,14 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	vs.msgs[index] = v
 	found := false
 	for i, c := range vs.counters {
-		if c.partsID.Equal(v.BlockPartSetID) {
+		if bytes.Equal(c.roundDecisionDigest, v.RoundDecisionDigest()) {
 			vs.counters[i].count++
 			found = true
 			break
 		}
 	}
 	if !found {
-		vs.counters = append(vs.counters, counter{v.BlockPartSetID, 1})
+		vs.counters = append(vs.counters, counter{v.RoundDecisionDigest(), v.BlockPartSetID, 1})
 	}
 	vs.count++
 	vs.maxIndex = -1
@@ -79,8 +81,15 @@ func (vs *voteSet) getRound() int32 {
 	return vs.round
 }
 
-// returns true if has +2/3 for nil or a block
+// returns true if vs has +2/3 for nil or a block
 func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
+	_, psid, ok := vs.getOverTwoThirdsRoundDecisionDigest()
+	return psid, ok
+}
+
+// getOverTwoThirdsRoundDecisionDigest returns true if vs has +2/3 for nil or
+// non-nil decision
+func (vs *voteSet) getOverTwoThirdsRoundDecisionDigest() ([]byte, *PartSetID, bool) {
 	var max int
 	if vs.maxIndex < 0 {
 		max = 0
@@ -94,38 +103,39 @@ func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 		max = vs.counters[vs.maxIndex].count
 	}
 	if max > len(vs.msgs)*2/3 {
-		return vs.counters[vs.maxIndex].partsID, true
+		counter := vs.counters[vs.maxIndex]
+		return counter.roundDecisionDigest, counter.partsID, true
 	} else {
-		return nil, false
+		return nil, nil, false
 	}
 }
 
-func (vs *voteSet) commitVoteListForOverTwoThirds() *commitVoteList {
+func (vs *voteSet) commitVoteListForOverTwoThirds(pcm module.BTPProofContextMap) (*CommitVoteList, error) {
 	if len(vs.msgs) == 0 {
-		return newCommitVoteList(nil)
+		return newCommitVoteList(nil, nil)
 	}
 
-	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
 	if !ok {
-		return nil
+		return nil, nil
 	}
-	var msgs []*voteMessage
+	var msgs []*VoteMessage
 	for _, msg := range vs.msgs {
-		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+		if msg != nil && bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 			msgs = append(msgs, msg)
 		}
 	}
-	return newCommitVoteList(msgs)
+	return newCommitVoteList(pcm, msgs)
 }
 
 func (vs *voteSet) voteListForOverTwoThirds() *voteList {
-	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
 	if !ok {
 		return nil
 	}
 	rvl := newVoteList()
 	for _, msg := range vs.msgs {
-		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+		if msg != nil && bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 			rvl.AddVote(msg)
 		}
 	}
@@ -133,13 +143,13 @@ func (vs *voteSet) voteListForOverTwoThirds() *voteList {
 }
 
 func (vs *voteSet) voteSetForOverTwoThird() *voteSet {
-	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
 	if !ok {
 		return nil
 	}
 	rvs := newVoteSet(len(vs.msgs))
 	for i, msg := range vs.msgs {
-		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+		if msg != nil && bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 			rvs.add(i, msg)
 		}
 	}
@@ -180,25 +190,25 @@ func (vs *voteSet) getMask() *bitArray {
 	return vs.mask
 }
 
-func (vs *voteSet) CommitVoteSet() module.CommitVoteSet {
-	return vs.commitVoteListForOverTwoThirds()
+func (vs *voteSet) CommitVoteSet(pcm module.BTPProofContextMap) (module.CommitVoteSet, error) {
+	return vs.commitVoteListForOverTwoThirds(pcm)
 }
 
-func (vs *voteSet) checkAndAdd(idx int, msg *voteMessage) bool {
-	psid, ok := vs.getOverTwoThirdsPartSetID()
-	if !ok || msg.Round != vs.getRound() || !msg.BlockPartSetID.Equal(psid) {
+func (vs *voteSet) checkAndAdd(idx int, msg *VoteMessage) bool {
+	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
+	if !ok || msg.Round != vs.getRound() || !bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 		return false
 	}
 	return vs.add(idx, msg)
 }
 
 func (vs *voteSet) Add(idx int, msg interface{}) bool {
-	return vs.checkAndAdd(idx, msg.(*voteMessage))
+	return vs.checkAndAdd(idx, msg.(*VoteMessage))
 }
 
 func newVoteSet(nValidators int) *voteSet {
 	return &voteSet{
-		msgs:     make([]*voteMessage, nValidators),
+		msgs:     make([]*VoteMessage, nValidators),
 		maxIndex: -1,
 		mask:     newBitArray(nValidators),
 		round:    -1,
@@ -212,7 +222,7 @@ type heightVoteSet struct {
 	_votes       map[int32][numberOfVoteTypes]*voteSet
 }
 
-func (hvs *heightVoteSet) add(index int, v *voteMessage) (bool, *voteSet) {
+func (hvs *heightVoteSet) add(index int, v *VoteMessage) (bool, *voteSet) {
 	vs := hvs.votesFor(v.Round, v.Type)
 	return vs.add(index, v), vs
 }

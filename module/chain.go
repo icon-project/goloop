@@ -3,16 +3,21 @@ package module
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 )
 
-type Wallet interface {
-	Address() Address
+type BaseWallet interface {
 	Sign(data []byte) ([]byte, error)
 	PublicKey() []byte
+}
+
+type Wallet interface {
+	BaseWallet
+	Address() Address
 }
 
 type Chain interface {
@@ -60,6 +65,7 @@ type Chain interface {
 
 	MetricContext() context.Context
 	Logger() log.Logger
+	WalletFor(dsa string) BaseWallet
 }
 
 type Regulator interface {
@@ -92,4 +98,12 @@ type GenesisStorageWriter interface {
 	WriteGenesis(gtx []byte) error
 	WriteData(value []byte) ([]byte, error)
 	Close() error
+}
+
+func SourceNetworkUID(nid int) []byte {
+	return []byte(fmt.Sprintf("0x%x.icon", nid))
+}
+
+func GetSourceNetworkUID(c interface{ NID() int }) []byte {
+	return SourceNetworkUID(c.NID())
 }
