@@ -48,6 +48,7 @@ type BlockV1ProofStorage interface {
 }
 
 type ServiceManager struct {
+	module.ServiceManager
 	ch  module.Chain
 	ex  *Executor
 	log log.Logger
