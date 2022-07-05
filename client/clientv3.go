@@ -339,6 +339,15 @@ func (c *ClientV3) MonitorEvent(param *server.EventRequest, cb func(v *server.Ev
 	}, cancelCh)
 }
 
+func (c *ClientV3) MonitorBtp(param *server.BTPRequest, cb func(v *server.BTPNotification), cancelCh <-chan bool) error {
+	resp := &server.BTPNotification{}
+	return c.Monitor("/btp", param, resp, func(v interface{}) {
+		if en, ok := v.(*server.BTPNotification); ok {
+			cb(en)
+		}
+	}, cancelCh)
+}
+
 func (c *ClientV3) Monitor(reqUrl string, reqPtr, respPtr interface{},
 	cb func(v interface{}), cancelCh <-chan bool) error {
 	if cb == nil {

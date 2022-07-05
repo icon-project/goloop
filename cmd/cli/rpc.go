@@ -978,5 +978,52 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 	monitorEventFlags.StringSlice("indexed", nil, "Indexed Arguments of Event, comma-separated string")
 	monitorEventFlags.StringSlice("data", nil, "Not indexed Arguments of Event, comma-separated string")
 	monitorEventFlags.String("raw", "", "EventFilter raw json file or json-string")
+
+	monitorBTPCmd := &cobra.Command{
+		Use:   "btp HEIGHT",
+		Short: "MonitorBTP",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &server.BTPRequest{}
+			if len(args) > 0 {
+				height, err := intconv.ParseInt(args[0], 64)
+				if err != nil {
+					return err
+				}
+				param.Height = common.HexInt64{Value: height}
+			}
+
+			if nid := cmd.Flag("networkID").Value.String(); nid != "" {
+				networkId, err := intconv.ParseInt(nid, 64)
+				if err != nil {
+					return err
+				}
+				param.NetworkId = common.HexInt64{Value: networkId}
+			}
+			if pf := cmd.Flag("proofFlag").Value.String(); pf != "" {
+				proofFlag, err := intconv.ParseInt(pf, 64)
+				if err != nil {
+					return err
+				}
+				param.ProofFlag = common.HexInt64{Value: proofFlag}
+			}
+
+			OnInterrupt(rpcClient.Cleanup)
+			err := rpcClient.MonitorBtp(param, func(v *server.BTPNotification) {
+				JsonPrettyPrintln(os.Stdout, v)
+			}, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	rootCmd.AddCommand(monitorBTPCmd)
+	monitorBTPFlags := monitorBTPCmd.Flags()
+	monitorBTPFlags.String("networkID", "",
+		"BTP Network ID")
+	monitorBTPFlags.String("proofFlag", "",
+		"Proof Included for BTP Header")
+
 	return rootCmd
 }

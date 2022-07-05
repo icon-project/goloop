@@ -32,10 +32,7 @@ import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.*;
 import foundation.icon.icx.transport.jsonrpc.RpcConverter.RpcConverterFactory;
-import foundation.icon.icx.transport.monitor.BlockMonitorSpec;
-import foundation.icon.icx.transport.monitor.EventMonitorSpec;
-import foundation.icon.icx.transport.monitor.Monitor;
-import foundation.icon.icx.transport.monitor.MonitorSpec;
+import foundation.icon.icx.transport.monitor.*;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -570,6 +567,20 @@ public class IconService {
         }
 
         throw new IllegalArgumentException("Could not locate response converter for:'" + type + "'");
+    }
+
+    /**
+     * Gets a monitor for BTP notification
+     *
+     * @param height the start height
+     * @param networkId the btp network id
+     * @param proofFlag Proof Included for BTP Header
+     * @return a {@code Monitor} object
+     *
+     */
+    public Monitor<BlockNotification> monitorBTP(BigInteger height, BigInteger networkId, BigInteger proofFlag) {
+        MonitorSpec ms = new BTPMonitorSpec(height, networkId, proofFlag);
+        return provider.monitor(ms, findConverter(BlockNotification.class));
     }
 
     /**
