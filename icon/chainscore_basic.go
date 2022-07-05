@@ -750,3 +750,28 @@ func (s *chainScore) Ex_getFeeSharingConfig() (map[string]interface{}, error) {
 	fsConfig["depositIssueRate"] = s.cc.DepositIssueRate()
 	return fsConfig, nil
 }
+
+func (s *chainScore) Ex_setUseSystemDeposit(address module.Address, yn bool) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as.IsContract() != address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "InvalidPrefixForAddress")
+	}
+	if !as.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "NotContract")
+	}
+	return as.SetUseSystemDeposit(yn)
+}
+
+func (s *chainScore) Ex_getUseSystemDeposit(address module.Address) (bool, error) {
+	if err := s.tryChargeCall(false); err != nil {
+		return false, err
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if as.IsContract() != address.IsContract() {
+		return false, scoreresult.New(StatusIllegalArgument, "InvalidPrefixForAddress")
+	}
+	return as.UseSystemDeposit(), nil
+}

@@ -644,6 +644,25 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionICON2R3, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setUseSystemDeposit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"yn", scoreapi.Bool, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getUseSystemDeposit",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, icmodule.RevisionBTP2, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
