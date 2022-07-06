@@ -132,6 +132,36 @@ type Transaction struct {
 	TxIndex     jsonrpc.HexInt   `json:"txIndex" validate:"required,t_int"`
 }
 
+//refer service/state/btp.go:887 network.ToJSON
+//refer server/v3/api_v3.go:692 getBTPNetworkInfo
+type BTPNetworkInfo struct {
+	StartHeight             jsonrpc.HexInt   `json:"startHeight"`
+	NetworkTypeID           jsonrpc.HexInt   `json:"networkTypeID"`
+	NetworkName             string           `json:"networkName"`
+	Open                    jsonrpc.HexInt   `json:"open"`
+	NextMessageSN           jsonrpc.HexInt   `json:"nextMessageSN"`
+	NextProofContextChanged jsonrpc.HexInt   `json:"nextProofContextChanged"`
+	PrevNSHash              jsonrpc.HexBytes `json:"prevNSHash"`
+	LastNSHash              jsonrpc.HexBytes `json:"lastNSHash"`
+	NetworkID               jsonrpc.HexInt   `json:"networkID"`
+	NetworkTypeName         string           `json:"networkTypeName"`
+}
+
+//refer service/state/btp.go:752 networkType.ToJSON
+//refer server/v3/api_v3.go:743 getBTPNetworkTypeInfo
+type BTPNetworkTypeInfo struct {
+	NetworkTypeName  string           `json:"networkTypeName"`
+	NextProofContext jsonrpc.HexBytes `json:"nextProofContext"`
+	OpenNetworkIDs   []jsonrpc.HexInt `json:"openNetworkIDs"`
+	NetworkTypeID    jsonrpc.HexInt   `json:"networkTypeID"`
+}
+
+//refer server/v3/api_v3.go:953 getBTPSourceInformation
+type BTPSourceInformation struct {
+	SrcNetworkUID  string           `json:"srcNetworkUID"`
+	NetworkTypeIDs []jsonrpc.HexInt `json:"networkTypeIDs"`
+}
+
 func (c *ClientV3) GetLastBlock() (*Block, error) {
 	blk := &Block{}
 	_, err := c.Do("icx_getLastBlock", nil, blk)
@@ -319,6 +349,58 @@ func (c *ClientV3) GetProofForEvents(param *v3.ProofEventsParam) ([][][]byte, er
 		return nil, err
 	}
 	return result, nil
+}
+
+func (c *ClientV3) GetBTPNetworkInfo(param *v3.BTPQueryParam) (*BTPNetworkInfo, error) {
+	ni := &BTPNetworkInfo{}
+	if _, err := c.Do("btp_getNetworkInfo", param, ni); err != nil {
+		return nil, err
+	}
+	return ni, nil
+}
+
+func (c *ClientV3) GetBTPNetworkTypeInfo(param *v3.BTPQueryParam) (*BTPNetworkTypeInfo, error) {
+	nti := &BTPNetworkTypeInfo{}
+	if _, err := c.Do("btp_getNetworkTypeInfo", param, nti); err != nil {
+		return nil, err
+	}
+	return nti, nil
+}
+
+func (c *ClientV3) GetBTPMessages(param *v3.BTPMessagesParam) ([]string, error) {
+	var msgs []string
+	if _, err := c.Do("btp_getMessages", param, &msgs); err != nil {
+		return nil, err
+	}
+	return msgs, nil
+}
+
+func (c *ClientV3) GetBTPHeader(param *v3.BTPMessagesParam) (string, error) {
+	//refer block/btpblock.go:90 HeaderBytes, btpBlockHeaderFormat
+	//refer server/v3/api_v3.go:865 getBTPHeader
+	var s string
+	if _, err := c.Do("btp_getHeader", param, &s); err != nil {
+		return "", err
+	}
+	return s, nil
+}
+
+func (c *ClientV3) GetBTPProof(param *v3.BTPMessagesParam) (string, error) {
+	//refer btp/ntm/secp256k1proof.go:55 secp256k1Proof
+	//refer server/v3/api_v3.go:909 getBTPProof
+	var s string
+	if _, err := c.Do("btp_getProof", param, &s); err != nil {
+		return "", err
+	}
+	return s, nil
+}
+
+func (c *ClientV3) GetBTPSourceInformation() (*BTPSourceInformation, error) {
+	si := &BTPSourceInformation{}
+	if _, err := c.Do("btp_getSourceInformation", nil, si); err != nil {
+		return nil, err
+	}
+	return si, nil
 }
 
 func (c *ClientV3) MonitorBlock(param *server.BlockRequest, cb func(v *server.BlockNotification), cancelCh <-chan bool) error {

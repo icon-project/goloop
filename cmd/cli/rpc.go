@@ -400,7 +400,140 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				return JsonPrettyPrintln(os.Stdout, raw)
 			},
 		})
+
+	rootCmd.AddCommand(
+		&cobra.Command{
+			Use:   "btpnetwork ID [HEIGHT]",
+			Short: "GetBTPNetworkInfo",
+			Args:  ArgsWithDefaultErrorFunc(cobra.RangeArgs(1, 2)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				p, err := newBTPQueryParam(args)
+				if err != nil {
+					return err
+				}
+				r, err := rpcClient.GetBTPNetworkInfo(p)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		},
+		&cobra.Command{
+			Use:   "btpnetworktype ID [HEIGHT]",
+			Short: "GetBTPNetworkTypeInfo",
+			Args:  ArgsWithDefaultErrorFunc(cobra.RangeArgs(1, 2)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				p, err := newBTPQueryParam(args)
+				if err != nil {
+					return err
+				}
+				r, err := rpcClient.GetBTPNetworkTypeInfo(p)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		},
+		&cobra.Command{
+			Use:   "btpmessages NETWORK_ID HEIGHT",
+			Short: "GetBTPMessages",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(2)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				p, err := newBTPMessagesParam(args)
+				if err != nil {
+					return err
+				}
+				r, err := rpcClient.GetBTPMessages(p)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		},
+		&cobra.Command{
+			Use:   "btpheader NETWORK_ID HEIGHT",
+			Short: "GetBTPHeader",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(2)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				p, err := newBTPMessagesParam(args)
+				if err != nil {
+					return err
+				}
+				r, err := rpcClient.GetBTPHeader(p)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		},
+		&cobra.Command{
+			Use:   "btpproof NETWORK_ID HEIGHT",
+			Short: "GetBTPProof",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(2)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				p, err := newBTPMessagesParam(args)
+				if err != nil {
+					return err
+				}
+				r, err := rpcClient.GetBTPProof(p)
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		},
+		&cobra.Command{
+			Use:   "btpsource",
+			Short: "GetBTPSourceInformation",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(0)),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				r, err := rpcClient.GetBTPSourceInformation()
+				if err != nil {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, r)
+			},
+		})
 	return rootCmd, vc
+}
+
+func newHexIntByString(s string) (i jsonrpc.HexInt, err error) {
+	var n int64
+	if n, err = intconv.ParseInt(s, 64); err != nil {
+		return
+	}
+	i = jsonrpc.HexInt(intconv.FormatInt(n))
+	return
+}
+
+func newBTPQueryParam(args []string) (p *v3.BTPQueryParam, err error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("invalid args")
+	}
+	p = &v3.BTPQueryParam{}
+	if p.Id, err = newHexIntByString(args[0]); err != nil {
+		return nil, err
+	}
+	if len(args) > 1 {
+		if p.Height, err = newHexIntByString(args[1]); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+func newBTPMessagesParam(args []string) (p *v3.BTPMessagesParam, err error) {
+	if len(args) < 2 {
+		return nil, fmt.Errorf("invalid args")
+	}
+	p = &v3.BTPMessagesParam{}
+	if p.NetworkId, err = newHexIntByString(args[0]); err != nil {
+		return nil, err
+	}
+	if p.Height, err = newHexIntByString(args[1]); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Command {
