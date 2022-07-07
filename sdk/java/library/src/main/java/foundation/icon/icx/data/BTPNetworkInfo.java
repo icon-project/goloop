@@ -82,6 +82,14 @@ public class BTPNetworkInfo {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof BTPNetworkInfo)) return false;
+        BTPNetworkInfo o = (BTPNetworkInfo) obj;
+        return properties.equals(o.properties);
+    }
+
+    @Override
     public String toString() {
         return "BTPNetworkInfo{" +
                 "properties=" + properties +

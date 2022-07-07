@@ -58,6 +58,13 @@ public class RpcArray implements RpcItem, Iterable<RpcItem> {
         return items == null || items.isEmpty();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof  RpcArray)) return false;
+        RpcArray obj = (RpcArray) o;
+        return items.equals(obj.items);
+    }
     /**
      * Builder for RpcArray
      */
