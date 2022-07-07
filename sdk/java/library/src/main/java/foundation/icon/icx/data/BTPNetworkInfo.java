@@ -70,7 +70,10 @@ public class BTPNetworkInfo {
 
     public Bytes getPrevNSHash() {
         RpcItem item = properties.getItem("prevNSHash");
-        return item != null ? item.asBytes() : null;
+        if (item == null || item.isEmpty()) {
+            return null;
+        }
+        return item.asBytes();
     }
 
     public Bytes getLastNSHash() {
