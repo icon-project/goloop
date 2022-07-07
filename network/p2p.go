@@ -1243,6 +1243,21 @@ func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 	return arr
 }
 
+func (p2p *PeerToPeer) getPeersByProtocol(pi module.ProtocolInfo, onlyJoin bool) []*Peer {
+	arr := make([]*Peer, 0)
+	arr = append(arr, p2p.parents.GetByProtocol(pi)...)
+	arr = append(arr, p2p.uncles.GetByProtocol(pi)...)
+	arr = append(arr, p2p.children.GetByProtocol(pi)...)
+	arr = append(arr, p2p.nephews.GetByProtocol(pi)...)
+	arr = append(arr, p2p.friends.GetByProtocol(pi)...)
+	arr = append(arr, p2p.others.GetByProtocol(pi)...)
+
+	if !onlyJoin {
+		arr = append(arr, p2p.orphanages.GetByProtocol(pi)...)
+	}
+	return arr
+}
+
 func (p2p *PeerToPeer) findPeers(f func(p *Peer) bool) []*Peer {
 	arr := make([]*Peer, 0)
 	arr = append(arr, p2p.parents.Find(f)...)

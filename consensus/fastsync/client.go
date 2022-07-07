@@ -166,7 +166,7 @@ func (cl *client) fetchBlocks(
 	fr.cb = cb
 	fr.maxActive = configMaxActive
 
-	peerIDs := cl.nm.GetPeers()
+	peerIDs := cl.ph.GetPeers()
 	fr.validPeers = make([]*peer, len(peerIDs))
 	for i, id := range peerIDs {
 		fr.validPeers[i] = &peer{id, 0, nil}
