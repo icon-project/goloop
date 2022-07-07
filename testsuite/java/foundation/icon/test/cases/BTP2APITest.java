@@ -283,15 +283,15 @@ public class BTP2APITest extends TestBase {
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, NT_ICON, nWallet.getAddress().getBody());
         assertSuccess(result);
-
         height = result.getBlockHeight();
+
         checkNetworkType(height, ntidIcon);
         checkNetwork(height, nidIcon, true);
         checkHeader(height.add(BigInteger.ONE), nidIcon);
 
         // eth network and network type are not changed
-        assertEquals(iconService.btpGetNetworkTypeInfo(height, ntidEth), iconService.btpGetNetworkTypeInfo(ntidEth));
-        assertEquals(iconService.btpGetNetworkInfo(height, nidEth), iconService.btpGetNetworkInfo(nidEth));
+        checkNetworkNotChanged(height, ntidEth);
+        checkNetworkNotChanged(height, nidEth);
         LOG.infoExiting();
 
         LOG.infoEntering("Modify public key with network type 'eth'");
@@ -299,12 +299,14 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, NT_ETH, nWallet.getAddress().getBody());
         assertSuccess(result);
         height = result.getBlockHeight();
+
         checkNetworkType(height, ntidEth);
         checkNetwork(height, nidEth, true);
         checkHeader(height.add(BigInteger.ONE), nidEth);
+
         // icon network and network type are not changed
-        assertEquals(iconService.btpGetNetworkTypeInfo(height, ntidEth), iconService.btpGetNetworkTypeInfo(ntidEth));
-        assertEquals(iconService.btpGetNetworkInfo(height, nidEth), iconService.btpGetNetworkInfo(nidEth));
+        checkNetworkTypeNotChanged(height, ntidIcon);
+        checkNetworkNotChanged(height, nidIcon);
         LOG.infoExiting();
 
         LOG.infoEntering("Modify public key with DSA: there is no change");
@@ -312,11 +314,12 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
+
         // there is no change
-        assertEquals(iconService.btpGetNetworkTypeInfo(height, ntidEth), iconService.btpGetNetworkTypeInfo(ntidEth));
-        assertEquals(iconService.btpGetNetworkInfo(height, nidEth), iconService.btpGetNetworkInfo(nidEth));
-        assertEquals(iconService.btpGetNetworkTypeInfo(height, ntidIcon), iconService.btpGetNetworkTypeInfo(ntidIcon));
-        assertEquals(iconService.btpGetNetworkInfo(height, nidIcon), iconService.btpGetNetworkInfo(nidIcon));
+        checkNetworkTypeNotChanged(height, ntidEth);
+        checkNetworkNotChanged(height, nidEth);
+        checkNetworkTypeNotChanged(height, ntidIcon);
+        checkNetworkNotChanged(height, nidIcon);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
@@ -339,6 +342,7 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoEntering("Open BTP Networks for test");
         BigInteger nid = openBTPNetwork(NT_ICON, "icon", wallet.getAddress());
+        var ntid = iconService.btpGetNetworkInfo(nid).execute().getNetworkTypeID();
         LOG.infoExiting();
 
         var firstSN = 0;
@@ -349,6 +353,7 @@ public class BTP2APITest extends TestBase {
         byte[][] firstMsgs = {msg};
         result = chainScore.sendBTPMessage(wallet, nid, msg);
         var height = result.getBlockHeight();
+        checkNetworkTypeNotChanged(height, ntid);
         checkNetwork(height, nid, msgCount);
         height = height.add(BigInteger.ONE);
         checkHeader(height, nid, firstSN, msgCount);
@@ -361,6 +366,7 @@ public class BTP2APITest extends TestBase {
         byte[][] secondMsgs = {msg};
         result = chainScore.sendBTPMessage(wallet, nid, msg);
         height = result.getBlockHeight();
+        checkNetworkTypeNotChanged(height, ntid);
         checkNetwork(height, nid, msgCount);
         height = height.add(BigInteger.ONE);
         checkHeader(height, nid, firstSN, msgCount);
@@ -481,6 +487,12 @@ public class BTP2APITest extends TestBase {
         assertNotEquals(oInfo.getNextProofContext(), nInfo.getNextProofContext());
     }
 
+    private void checkNetworkTypeNotChanged(BigInteger height, BigInteger ntid) throws Exception {
+        BTPNetworkTypeInfo oInfo = iconService.btpGetNetworkTypeInfo(height, ntid).execute();
+        BTPNetworkTypeInfo nInfo = iconService.btpGetNetworkTypeInfo(height.add(BigInteger.ONE), ntid).execute();
+        assertEquals(oInfo, nInfo);
+    }
+
     // for openBTPNetwork
     private void checkNetwork(BigInteger nid, String name, BigInteger ntid, BigInteger startHeight) throws Exception {
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
@@ -494,25 +506,31 @@ public class BTP2APITest extends TestBase {
 
     // for closeBTPNetwork and public key modification
     private void checkNetwork(BigInteger height, BigInteger nid, boolean open) throws Exception {
-        BTPNetworkInfo pInfo = iconService.btpGetNetworkInfo(height, nid).execute();
+        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
         if (open) {
             assertEquals(BigInteger.ONE, nInfo.getOpen());
-            assertEquals(pInfo.getLastNSHash(), nInfo.getPrevNSHash());
+            assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
         } else {
             assertEquals(BigInteger.ZERO, nInfo.getOpen());
-            assertEquals(pInfo.getPrevNSHash(), nInfo.getPrevNSHash());
-            assertEquals(pInfo.getLastNSHash(), nInfo.getLastNSHash());
+            assertEquals(oInfo.getPrevNSHash(), nInfo.getPrevNSHash());
+            assertEquals(oInfo.getLastNSHash(), nInfo.getLastNSHash());
         }
     }
 
     // for sendBTPMessage
     private void checkNetwork(BigInteger height, BigInteger nid, int msgCount) throws Exception {
-        BTPNetworkInfo pInfo = iconService.btpGetNetworkInfo(height, nid).execute();
+        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
         assertEquals(BigInteger.ONE, nInfo.getOpen());
-        assertEquals(pInfo.getLastNSHash(), nInfo.getPrevNSHash());
-        assertEquals(pInfo.getNextMessageSN().add(BigInteger.valueOf(msgCount)), nInfo.getNextMessageSN());
+        assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
+        assertEquals(oInfo.getNextMessageSN().add(BigInteger.valueOf(msgCount)), nInfo.getNextMessageSN());
+    }
+
+    private void checkNetworkNotChanged(BigInteger height, BigInteger nid) throws Exception {
+        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
+        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(height.add(BigInteger.ONE), nid).execute();
+        assertEquals(oInfo, nInfo);
     }
 
     // for openBTPHeader and public key modification
