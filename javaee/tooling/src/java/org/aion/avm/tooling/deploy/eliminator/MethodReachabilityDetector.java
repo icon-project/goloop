@@ -1,6 +1,7 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
 import foundation.icon.ee.struct.Member;
+import i.PackageConstants;
 import org.objectweb.asm.Opcodes;
 
 import java.util.LinkedList;
@@ -91,9 +92,17 @@ public class MethodReachabilityDetector {
                         default:
                             throw new Exception("This is not an invoke method opcode");
                     }
+                } else if (!canAccessClass(invocation.className)) {
+                    throw new UnsupportedOperationException(
+                            "Unsupported JCL class detected: " + invocation.className);
                 }
             }
         }
+    }
+
+    private boolean canAccessClass(String className) {
+        return className.startsWith(PackageConstants.kPublicApiSlashPrefix)
+                || className.startsWith("[");
     }
 
     /* The logic about what should be marked reachable when we've tried to invoke method M in structure S (which can be a class or an interface)
