@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag(Constants.TAG_PY_GOV)
 @Tag(Constants.TAG_JAVA_GOV)
@@ -72,8 +73,6 @@ public class BTP2APITest extends TestBase {
     private static Env.Node node = Env.nodes[0];
     private static SecureRandom secureRandom;
 
-    final int requiredRevision = 9;
-
     private byte[] getRandomBytes(int size) {
         byte[] bytes = new byte[size];
         secureRandom.nextBytes(bytes);
@@ -82,7 +81,7 @@ public class BTP2APITest extends TestBase {
     }
 
     @BeforeAll
-    static void init() {
+    static void init() throws Exception {
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
@@ -90,11 +89,13 @@ public class BTP2APITest extends TestBase {
         secureRandom = new SecureRandom();
         chainScore = new ChainScore(txHandler);
         govScore = new GovScore(txHandler);
+
+        assumeTrue(checkRevision());
     }
 
-    private Boolean checkRevision(int requiredRevision) throws Exception {
+    private static Boolean checkRevision() throws Exception {
         int revision = chainScore.getRevision();
-        if (revision < requiredRevision) {
+        if (revision < 9) {
             LOG.info("Ignore this test at revision : " + revision);
             return false;
         }
@@ -104,11 +105,7 @@ public class BTP2APITest extends TestBase {
     @Test
     @Order(100)
     public void managePublicKey() throws Exception {
-        LOG.infoEntering("managePublicKey");
-        if (!checkRevision(requiredRevision)) {
-            LOG.infoExiting();
-            return;
-        }
+        LOG.infoEntering("Public key management");
         KeyWallet caller = KeyWallet.create();
 
         class Case {
@@ -168,11 +165,7 @@ public class BTP2APITest extends TestBase {
     @Test
     @Order(101)
     public void manageBTPNetwork() throws Exception {
-        LOG.infoEntering("manageBTPNetwork");
-        if (!this.checkRevision(requiredRevision)) {
-            LOG.infoExiting();
-            return;
-        }
+        LOG.infoEntering("BTPNetwork management");
         KeyWallet wallet = node.wallet;
         TransactionResult result;
 
@@ -242,11 +235,7 @@ public class BTP2APITest extends TestBase {
     @Test
     @Order(102)
     public void modifyPublicKey() throws Exception {
-        LOG.infoEntering("Modify public key");
-        if (!this.checkRevision(requiredRevision)) {
-            LOG.infoExiting();
-            return;
-        }
+        LOG.infoEntering("Modify public key while BTP network is working");
         // check count of validator >= 4
         if (4 > Env.nodes.length) {
             LOG.infoExiting("Not enough validator < 4");
@@ -332,10 +321,6 @@ public class BTP2APITest extends TestBase {
     @Order(103)
     public void sendBTPMessage() throws Exception {
         LOG.infoEntering("Send BTP message");
-        if (!this.checkRevision(requiredRevision)) {
-            LOG.infoExiting();
-            return;
-        }
 
         KeyWallet wallet = node.wallet;
         TransactionResult result;
