@@ -97,4 +97,18 @@ public class ClassRejectionTest extends SimpleTest {
             System.out.println(e.getMessage());
         }
     }
+
+    public static class LambdaPredicate {
+        public LambdaPredicate() {
+            var list = List.of("a", "b");
+            list.removeIf(e -> e.equals("a"));
+        }
+    }
+
+    @Test
+    public void testLambda() {
+        Assertions.assertThrows(
+                UnsupportedOperationException.class,
+                () -> makeRelJar(LambdaPredicate.class));
+    }
 }
