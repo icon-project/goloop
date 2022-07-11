@@ -348,3 +348,7 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 	}
 	return nil
 }
+
+func (ph *protocolHandler) GetPeers() []module.PeerID {
+	return ph.m.getPeersByProtocol(ph.protocol)
+}

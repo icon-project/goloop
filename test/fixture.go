@@ -38,10 +38,7 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 	f := &Fixture{
 		BaseConfig: cf,
 	}
-	if *cf.AddDefaultNode {
-		node := f.AddNode()
-		f.Node = node
-	}
+	var gs string
 	if cf.AddValidatorNodes > 0 {
 		wallets := make([]module.Wallet, cf.AddValidatorNodes)
 		for i := range wallets {
@@ -54,7 +51,7 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 			}
 			validators += fmt.Sprintf(`"%s"`, w.Address())
 		}
-		gs := fmt.Sprintf(`{
+		gs = fmt.Sprintf(`{
 			"accounts": [
 				{
 					"name" : "treasury",
@@ -76,6 +73,10 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 		for i := range wallets {
 			f.AddNode(UseGenesis(gs), UseWallet(wallets[i]))
 		}
+	}
+	if *cf.AddDefaultNode {
+		node := f.AddNode(UseGenesis(gs))
+		f.Node = node
 	}
 	return f
 }

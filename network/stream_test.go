@@ -114,6 +114,10 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	return errors.Errorf("Unknown peer")
 }
 
+func (ph *tProtocolHandler) GetPeers() []module.PeerID {
+	return ph.nm.GetPeers()
+}
+
 func createAPeerID() module.PeerID {
 	return NewPeerIDFromAddress(wallet.New().Address())
 }

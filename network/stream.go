@@ -159,6 +159,10 @@ func (r *streamReactor) Unicast(pi module.ProtocolInfo, b []byte, id module.Peer
 	return s.send(pi, b)
 }
 
+func (r *streamReactor) GetPeers() []module.PeerID {
+	return r.ph.GetPeers()
+}
+
 func newStream(r *streamReactor, id module.PeerID) *stream {
 	return &stream{
 		r:  r,
@@ -332,7 +336,7 @@ func registerReactorForStreams(nm module.NetworkManager, name string, pi module.
 		return nil, err
 	}
 	r.ph = ph
-	for _, id := range nm.GetPeers() {
+	for _, id := range ph.GetPeers() {
 		r.streams = append(r.streams, newStream(r, id))
 	}
 	return r, err

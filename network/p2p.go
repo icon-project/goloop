@@ -844,10 +844,9 @@ func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 }
 
 func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
-	for _, p := range peers.Array() {
-		//p2p.packetRw.WriteTo(p.writer)
+	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+	for _, p := range peers.GetByProtocol(pkt.protocol) {
 		if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
-			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			p2p.logger.Infoln("sendToPeers", err, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	}
@@ -856,7 +855,7 @@ func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
 func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte) {
 	src := pkt.src
 
-	ps := p2p.friends.Array()
+	ps := p2p.friends.GetByProtocol(pkt.protocol)
 	nr := p2p.allowedRoots.Len() - 1
 	if nr < 1 {
 		nr = len(ps)
@@ -973,7 +972,7 @@ Loop:
 				r := p2p.Role()
 				switch pkt.dest {
 				case p2pDestPeer:
-					p := p2p.getPeer(pkt.destPeer, true)
+					p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol, true)
 					_ = p.send(ctx)
 				case p2pDestAny:
 					if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
@@ -998,25 +997,25 @@ Loop:
 						}
 						p2p.sendToPeers(ctx, p2p.children)
 						p2p.sendToPeers(ctx, p2p.others)
-						c.alternate = p2p.nephews.Len()
+						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
 				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 					} else {
 						p2p.sendToPeers(ctx, p2p.parents)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
 				case p2pRoleSeed:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 						if r == p2pRoleRoot {
 							p2p.sendToPeers(ctx, p2p.children)
-							c.alternate = p2p.nephews.Len()
+							c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 						}
 					} else {
 						p2p.sendToPeers(ctx, p2p.parents)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
 					//TODO multicast Routing or Flooding
@@ -1080,20 +1079,20 @@ Loop:
 				case p2pDestPeer:
 				case p2pDestAny:
 					p2p.sendToPeers(ctx, p2p.nephews)
-					c.alternate = p2p.nephews.Len()
+					c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "nephews", c.alternate, pkt.protocol, pkt.subProtocol)
 				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					p2p.sendToPeers(ctx, p2p.uncles)
-					c.alternate = p2p.uncles.Len()
+					c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "uncles", c.alternate, pkt.protocol, pkt.subProtocol)
 				case p2pRoleSeed: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					r := p2p.Role()
 					if !r.Has(p2pRoleRoot) {
 						p2p.sendToPeers(ctx, p2p.uncles)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					} else if r == p2pRoleRoot {
 						p2p.sendToPeers(ctx, p2p.nephews)
-						c.alternate = p2p.nephews.Len()
+						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
 				}
@@ -1222,6 +1221,13 @@ func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) (p *Peer) {
 	return nil
 }
 
+func (p2p *PeerToPeer) getPeerByProtocol(id module.PeerID, pi module.ProtocolInfo, onlyJoin bool) (p *Peer) {
+	if p = p2p.getPeer(id, onlyJoin); p == nil || !p.ProtocolInfos().Exists(pi) {
+		return nil
+	}
+	return p
+}
+
 func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 	arr := make([]*Peer, 0)
 	arr = append(arr, p2p.parents.Array()...)
@@ -1233,6 +1239,21 @@ func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 
 	if !onlyJoin {
 		arr = append(arr, p2p.orphanages.Array()...)
+	}
+	return arr
+}
+
+func (p2p *PeerToPeer) getPeersByProtocol(pi module.ProtocolInfo, onlyJoin bool) []*Peer {
+	arr := make([]*Peer, 0)
+	arr = append(arr, p2p.parents.GetByProtocol(pi)...)
+	arr = append(arr, p2p.uncles.GetByProtocol(pi)...)
+	arr = append(arr, p2p.children.GetByProtocol(pi)...)
+	arr = append(arr, p2p.nephews.GetByProtocol(pi)...)
+	arr = append(arr, p2p.friends.GetByProtocol(pi)...)
+	arr = append(arr, p2p.others.GetByProtocol(pi)...)
+
+	if !onlyJoin {
+		arr = append(arr, p2p.orphanages.GetByProtocol(pi)...)
 	}
 	return arr
 }
@@ -1284,8 +1305,21 @@ func (p2p *PeerToPeer) connections() map[PeerConnectionType]int {
 	return m
 }
 
+func (p2p *PeerToPeer) connectionsByProtocol(pi module.ProtocolInfo) map[PeerConnectionType]int {
+	m := make(map[PeerConnectionType]int)
+	m[p2pConnTypeParent] = p2p.parents.LenByProtocol(pi)
+	m[p2pConnTypeChildren] = p2p.children.LenByProtocol(pi)
+	m[p2pConnTypeUncle] = p2p.uncles.LenByProtocol(pi)
+	m[p2pConnTypeNephew] = p2p.nephews.LenByProtocol(pi)
+	m[p2pConnTypeFriend] = p2p.friends.LenByProtocol(pi)
+	m[p2pConnTypeOther] = p2p.others.LenByProtocol(pi)
+	m[p2pConnTypeNone] = p2p.orphanages.LenByProtocol(pi)
+
+	return m
+}
+
 func (p2p *PeerToPeer) available(pkt *Packet) bool {
-	m := p2p.connections()
+	m := p2p.connectionsByProtocol(pkt.protocol)
 
 	u := m[p2pConnTypeParent]
 	u += m[p2pConnTypeUncle]
@@ -1298,8 +1332,7 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 
 	switch pkt.dest {
 	case p2pDestPeer:
-		p := p2p.getPeer(pkt.destPeer, true)
-		if p == nil {
+		if p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol, true); p == nil {
 			return false
 		}
 	case p2pDestAny:
