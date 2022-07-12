@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -294,12 +295,31 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		Use:   "reset CID",
 		Short: "Chain data reset",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-		RunE:  opFunc("reset"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &node.ChainResetParam{}
+			var err error
+
+			if param.Height, err = cmd.Flags().GetInt64("height"); err != nil {
+				return err
+			}
+			if param.BlockHash, err = hex.DecodeString(cmd.Flag("block_hash").Value.String()); err != nil {
+				return err
+			}
+
+			var v string
+			reqUrl := node.UrlChain + "/" + args[0] + "/reset"
+			if _, err = adminClient.PostWithJson(reqUrl, param, &v); err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
 	}
 	rootCmd.AddCommand(resetCmd)
 	resetFlags := resetCmd.Flags()
 	resetFlags.Int64("height", 0, "Block Height")
 	resetFlags.String("block_hash", "", "Hash of the block at the given height")
+	MarkAnnotationRequired(resetFlags, "height", "block_hash")
 
 	importCmd := &cobra.Command{
 		Use:   "import CID",
