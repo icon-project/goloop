@@ -549,7 +549,7 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 	}
 	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
 	if nidVar.Bytes() == nil {
-		return 0, errors.ErrNotFound
+		return 0, errors.NotFoundError.New("no network ID")
 	}
 	return nidVar.Int64(), nil
 }
@@ -561,7 +561,7 @@ func (m *manager) GetChainID(result []byte) (int64, error) {
 	}
 	nidVar := scoredb.NewVarDB(as, state.VarChainID)
 	if nidVar.Bytes() == nil {
-		return 0, errors.ErrNotFound
+		return 0, errors.NotFoundError.New("no chain ID")
 	}
 	return nidVar.Int64(), nil
 }

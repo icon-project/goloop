@@ -284,17 +284,22 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			RunE:  opFunc("stop"),
 		},
 		&cobra.Command{
-			Use:   "reset CID",
-			Short: "Chain data reset",
-			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-			RunE:  opFunc("reset"),
-		},
-		&cobra.Command{
 			Use:   "verify CID",
 			Short: "Chain data verify",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("verify"),
 		})
+
+	resetCmd := &cobra.Command{
+		Use:   "reset CID",
+		Short: "Chain data reset",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE:  opFunc("reset"),
+	}
+	rootCmd.AddCommand(resetCmd)
+	resetFlags := resetCmd.Flags()
+	resetFlags.Int64("height", 0, "Block Height")
+	resetFlags.String("block_hash", "", "Hash of the block at the given height")
 
 	importCmd := &cobra.Command{
 		Use:   "import CID",

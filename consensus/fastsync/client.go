@@ -23,7 +23,7 @@ type client struct {
 	common.Mutex
 	nm  module.NetworkManager
 	ph  module.ProtocolHandler
-	bm  module.BlockManager
+	bm  module.BlockDataFactory
 	log log.Logger
 
 	fetchID uint16
@@ -135,7 +135,7 @@ type fetchRequest struct {
 }
 
 func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
-	bm module.BlockManager, logger log.Logger) *client {
+	bm module.BlockDataFactory, logger log.Logger) *client {
 	cl := &client{}
 	cl.nm = nm
 	cl.ph = ph

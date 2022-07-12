@@ -482,7 +482,7 @@ func (n *Node) StopChain(cid int) error {
 	return c.Stop()
 }
 
-func (n *Node) ResetChain(cid int) error {
+func (n *Node) ResetChain(cid int, height int64, blockHash []byte) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
@@ -490,7 +490,9 @@ func (n *Node) ResetChain(cid int) error {
 	if err != nil {
 		return err
 	}
-	return c.Reset()
+	chainDir := c.cfg.AbsBaseDir()
+	gs := path.Join(chainDir, ChainGenesisZipFileName)
+	return c.Reset(gs, height, blockHash)
 }
 
 func (n *Node) VerifyChain(cid int) error {

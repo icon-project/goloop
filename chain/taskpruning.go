@@ -118,7 +118,7 @@ func (t *taskPruning) _exportGenesis(blk module.Block, votes module.CommitVoteSe
 			os.Remove(gsfile)
 		}
 	}()
-	if err := t.chain.bm.ExportGenesis(blk, gsw); err != nil {
+	if err := t.chain.bm.ExportGenesis(blk, votes, gsw); err != nil {
 		return errors.Wrap(err, "fail on exporting genesis storage")
 	}
 	return nil

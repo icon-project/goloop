@@ -1303,7 +1303,7 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 	loc := new(transactionLocator)
 	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
-		return nil, errors.ErrNotFound
+		return nil, errors.NotFoundError.Errorf("not found tx id=%x", id)
 	}
 	return loc, nil
 }
@@ -1515,14 +1515,15 @@ func hasBits(v int, bits int) bool {
 	return (v & bits) == bits
 }
 
-func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWriter) error {
+func (m *manager) ExportGenesis(blk module.Block, votes module.CommitVoteSet, gsw module.GenesisStorageWriter) error {
 	height := blk.Height()
 
-	var votes module.CommitVoteSet
-	if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
-		return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
-	} else {
-		votes = nblk.Votes()
+	if votes == nil {
+		if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
+			return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
+		} else {
+			votes = nblk.Votes()
+		}
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())
@@ -1829,9 +1830,16 @@ func GetLastHeightOf(dbase db.Database) int64 {
 }
 
 func ResetDB(d db.Database, c codec.Codec, height int64) error {
-	bk, err := d.GetBucket(db.ChainProperty)
+	return SetLastHeight(d, c, height)
+}
+
+func SetLastHeight(dbase db.Database, c codec.Codec, height int64) error {
+	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
 		return err
+	}
+	if c == nil {
+		c = dbCodec
 	}
 	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {
