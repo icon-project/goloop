@@ -116,7 +116,7 @@ func (sm *ServiceManager) PatchTransition(transition module.Transition, patches 
 	return transition
 }
 
-func (sm *ServiceManager) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte) module.Transition {
+func (sm *ServiceManager) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte, noBuffer bool) module.Transition {
 	panic("implement me")
 }
 

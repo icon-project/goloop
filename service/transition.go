@@ -893,18 +893,19 @@ func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 }
 
 type SyncManager interface {
-	NewSyncer(ah, prh, nrh, vh, ed []byte) ssync.Syncer
+	NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) ssync.Syncer
 }
 
 func NewSyncTransition(
 	tr module.Transition,
 	sm SyncManager,
 	result []byte, vl []byte,
+	noBuffer bool,
 ) module.Transition {
 	tst := tr.(*transition)
 	ntr := newTransition(tst.parent, tst.patchTransactions, tst.normalTransactions, tst.bi, tst.csi, true)
 	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData)
+	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, noBuffer)
 	return ntr
 }
 

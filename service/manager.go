@@ -258,18 +258,9 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	return patchTransition(pt, bi, patchTxList)
 }
 
-func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte) module.Transition {
+func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte, noBuffer bool) module.Transition {
 	m.log.Debugf("CreateSyncTransition result(%#x), vlHash(%#x)\n", result, vlHash)
-	tr, ok := t.(*transition)
-	if !ok {
-		m.log.Panicf("Illegal transition for CreateSyncTransition type=%T", t)
-		return nil
-	}
-	ntr := newTransition(tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, true)
-	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
-		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)
-	return ntr
+	return NewSyncTransition(t, m.syncer, result, vlHash, noBuffer)
 }
 
 // Finalize finalizes data related to the transition. It usually stores

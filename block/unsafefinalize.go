@@ -82,7 +82,7 @@ func UnsafeFinalize(
 		return err
 	}
 	tr = sm.PatchTransition(tr, blk.PatchTransactions(), blk)
-	syncTr := sm.CreateSyncTransition(tr, blk.Result(), blk.NextValidatorsHash())
+	syncTr := sm.CreateSyncTransition(tr, blk.Result(), blk.NextValidatorsHash(), true)
 	r := &finalizeRequest{
 		sm:       sm,
 		syncTr:   syncTr,
