@@ -118,6 +118,18 @@ func (pis *ProtocolInfos) Exists(pi module.ProtocolInfo) bool {
 	return false
 }
 
+func (pis *ProtocolInfos) ExistsByID(piList ...module.ProtocolInfo) bool {
+	pis.mtx.RLock()
+	defer pis.mtx.RUnlock()
+
+	for _, pi := range piList {
+		if l, ok := pis.m[pi.ID()]; !ok || len(l) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (pis *ProtocolInfos) Array() []module.ProtocolInfo {
 	pis.mtx.RLock()
 	defer pis.mtx.RUnlock()
