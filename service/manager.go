@@ -693,7 +693,8 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	defer txh.Dispose()
 
 	var wc state.WorldContext
-	if wss, err := m.trc.GetWorldSnapshot(result, vh); err == nil {
+	wss, err := m.trc.GetWorldSnapshot(result, vh)
+	if err == nil {
 		ws, err := state.WorldStateFromSnapshot(wss)
 		if err != nil {
 			return nil, err
@@ -713,7 +714,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	})
 	ctx.UpdateSystemInfo()
 
-	return txh.Execute(ctx, true)
+	return txh.Execute(ctx, wss, true)
 }
 
 func (m *manager) AddSyncRequest(id db.BucketID, key []byte) error {
