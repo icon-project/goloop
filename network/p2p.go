@@ -2075,6 +2075,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 				rc = p2pConnTypeParent
 			case p2pConnTypeNephew:
 				rejectResp = true
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
@@ -2085,6 +2087,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 			switch resp.ConnType {
 			case p2pConnTypeNephew:
 				rc = p2pConnTypeUncle
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
