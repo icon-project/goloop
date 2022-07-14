@@ -100,7 +100,6 @@ type ChainConfig struct {
 }
 
 type ChainResetParam struct {
-	DBType    string          `json:"dbType,omitempty"`
 	Height    int64           `json:"height,omitempty"`
 	BlockHash common.HexBytes `json:"blockHash,omitempty"`
 }
@@ -365,7 +364,7 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 	if err := ctx.Bind(param); err != nil {
 		return echo.ErrBadRequest
 	}
-	if param.Height < 1 {
+	if param.Height < 0 {
 		return echo.ErrBadRequest
 	}
 	if err := r.n.ResetChain(c.CID(), param.Height, param.BlockHash); err != nil {

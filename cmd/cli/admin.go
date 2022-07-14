@@ -298,12 +298,25 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			param := &node.ChainResetParam{}
 			var err error
-
-			if param.Height, err = cmd.Flags().GetInt64("height"); err != nil {
+			fs := cmd.Flags()
+			if param.Height, err = fs.GetInt64("height"); err != nil {
 				return err
 			}
-			if param.BlockHash, err = hex.DecodeString(cmd.Flag("block_hash").Value.String()); err != nil {
-				return err
+			blockHash := cmd.Flag("block_hash").Value.String()
+			if blockHash[:2] == "0x" {
+				blockHash = blockHash[2:]
+			}
+			if len(blockHash) > 0 {
+				if param.BlockHash, err = hex.DecodeString(blockHash); err != nil {
+					return err
+				}
+			}
+			if param.Height < 0 {
+				return fmt.Errorf("height should be zero or positive value")
+			} else if param.Height == 0 && len(blockHash) > 0 {
+				return fmt.Errorf("block_hash should be empty value")
+			} else if param.Height > 0 && len(blockHash) == 0 {
+				return fmt.Errorf("block_hash required")
 			}
 
 			var v string
@@ -318,8 +331,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	rootCmd.AddCommand(resetCmd)
 	resetFlags := resetCmd.Flags()
 	resetFlags.Int64("height", 0, "Block Height")
-	resetFlags.String("block_hash", "", "Hash of the block at the given height")
-	MarkAnnotationRequired(resetFlags, "height", "block_hash")
+	resetFlags.String("block_hash", "", "Hash of the block at the given height, If height is zero, shall be empty")
 
 	importCmd := &cobra.Command{
 		Use:   "import CID",
