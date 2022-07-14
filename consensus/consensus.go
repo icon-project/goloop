@@ -288,6 +288,11 @@ func (cs *consensus) resetForNewRound(round int32) {
 
 func (cs *consensus) resetForNewStep(step step) {
 	cs.endStep()
+	if cs.step < stepPropose && step > stepPropose {
+		now := time.Now()
+		cs.nextProposeTime = now
+		cs.c.Regulator().OnPropose(now)
+	}
 	cs.beginStep(step)
 }
 
