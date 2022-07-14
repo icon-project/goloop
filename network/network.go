@@ -107,6 +107,11 @@ func (m *manager) Term() {
 	for _, ph := range m.protocolHandlers {
 		m.logger.Debugln("Term", ph.name)
 		ph.Term()
+		m.cn.removeProtocol(m.channel, ph.protocol)
+	}
+
+	for _, pi := range m.p2p.supportedProtocols() {
+		m.cn.removeProtocol(m.channel, pi)
 	}
 }
 

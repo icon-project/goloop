@@ -101,7 +101,7 @@ func (pis *ProtocolInfos) Remove(pi module.ProtocolInfo) {
 				pis.m[pi.ID()] = l
 			}
 			idx = pis.indexOf(pis.l, pi)
-			pis.remove(pis.l, idx)
+			pis.l = pis.remove(pis.l, idx)
 		}
 	}
 }
