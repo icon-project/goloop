@@ -303,10 +303,10 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 				return err
 			}
 			blockHash := cmd.Flag("block_hash").Value.String()
-			if blockHash[:2] == "0x" {
-				blockHash = blockHash[2:]
-			}
 			if len(blockHash) > 0 {
+				if len(blockHash) >= 2 && blockHash[:2] == "0x" {
+					blockHash = blockHash[2:]
+				}
 				if param.BlockHash, err = hex.DecodeString(blockHash); err != nil {
 					return err
 				}
