@@ -21,16 +21,16 @@ Summarize the document to following items.
 {
   "height": "0x10",
   "networkID": "0x1",
-  "proofFlag": "0x1"
+  "proofFlag": true
 }
 ```
 #### Parameters
 
-| Name      | Type     | Required    | Description         |
-|:----------|:---------|:------------|:--------------------|
-| height    | T_INT    | true        | Start height        |
-| networkID | T_INT    | true        | Network ID          |
-| proofFlag | T_INT    | true        | Proof included flag |
+| Name      | Type    | Required    | Description                          |
+|:----------|:--------|:------------|:-------------------------------------|
+| height    | T_INT   | true        | Start height                         |
+| networkID | T_INT   | true        | Network ID                           |
+| proofFlag | T_BOOLEAN | true        | Proof included flag|
 > Success Responses
 
 ```json

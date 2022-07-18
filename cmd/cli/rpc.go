@@ -1126,7 +1126,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				param.Height = common.HexInt64{Value: height}
 			}
 
-			if nid := cmd.Flag("networkID").Value.String(); nid != "" {
+			if nid := cmd.Flag("networkId").Value.String(); nid != "" {
 				networkId, err := intconv.ParseInt(nid, 64)
 				if err != nil {
 					return err
@@ -1138,7 +1138,14 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				if err != nil {
 					return err
 				}
-				param.ProofFlag = common.HexInt64{Value: proofFlag}
+
+				if proofFlag == 1 {
+					param.ProofFlag = true
+				} else if proofFlag == 0 {
+					param.ProofFlag = false
+				} else {
+					return errors.Errorf("InvalidParameter (proofFlag)")
+				}
 			}
 
 			OnInterrupt(rpcClient.Cleanup)
@@ -1153,10 +1160,10 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 	}
 	rootCmd.AddCommand(monitorBTPCmd)
 	monitorBTPFlags := monitorBTPCmd.Flags()
-	monitorBTPFlags.String("networkID", "",
+	monitorBTPFlags.String("networkId", "",
 		"BTP Network ID")
 	monitorBTPFlags.String("proofFlag", "",
-		"Proof Included for BTP Header")
+		"Proof Included for BTP Header(include proof : 0x1, only btp header : 0x0)")
 
 	return rootCmd
 }
