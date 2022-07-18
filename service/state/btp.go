@@ -503,6 +503,10 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 
+	if len(pubKey) == 0 {
+		return dbase.Delete(from, name)
+	}
+
 	old := dbase.Get(from, name)
 	if old != nil && bytes.Compare(old.Bytes(), pubKey) == 0 {
 		return nil

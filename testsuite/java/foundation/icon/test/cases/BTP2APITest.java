@@ -129,7 +129,12 @@ public class BTP2APITest extends TestBase {
                 new Case(true, false, NT_ICON, true, "Set with Network type `icon`"),
                 new Case(true, true, DSA_SECP256K1, true, "Set with DSA"),
                 new Case(true, false, "InvalidName", false, "Set with Invalid name"),
-                new Case(false, false, NT_ETH, false, "Delete"),
+                new Case(false, false, "InvalidName", false, "Delete with Invalid name"),
+                new Case(false, true, DSA_SECP256K1, true, "Delete with DSA"),
+                new Case(false, true, DSA_SECP256K1, true, "Delete empty with DSA"),
+                new Case(false, false, NT_ICON, true, "Delete with Network type `icon`"),
+                new Case(false, false, NT_ETH, true, "Delete with Network type `eth`"),
+                new Case(false, false, NT_ETH, true, "Delete empty with Network type `eth`"),
         };
 
         byte[] pubKeyDSA = caller.getPublicKey().toByteArray();
@@ -368,12 +373,13 @@ public class BTP2APITest extends TestBase {
     }
 
     private void resetNodePublicKeys() throws IOException, ResultTimeoutException {
+        byte[] pubKeyEmpty = new byte[0];
         for (int i = 0; i < Env.nodes.length; i++) {
             KeyWallet w = Env.nodes[i].wallet;
             TransactionResult result;
             // clear public key of network type
             for (String name: NT_NAMES) {
-                result = chainScore.setBTPPublicKey(w, name, w.getAddress().getBody());
+                result = chainScore.setBTPPublicKey(w, name, pubKeyEmpty);
                 assertSuccess(result);
             }
             // set public key with dsa
