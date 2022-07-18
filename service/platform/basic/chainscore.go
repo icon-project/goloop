@@ -1633,6 +1633,9 @@ func (s *ChainScore) Ex_setBTPPublicKey(name string, pubKey []byte) error {
 		if !bs.IsNetworkTypeUID(name) && !bs.IsDSAName(name) {
 			return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 		}
+		if len(pubKey) == 0 {
+			return scoreresult.InvalidParameterError.Errorf("Invalid pubKey %v", pubKey)
+		}
 		if err = bs.SetPublicKey(s.newBTPContext(), s.from, name, pubKey); err != nil {
 			return err
 		}
