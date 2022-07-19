@@ -45,7 +45,7 @@ const (
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision19
+	LatestRevision  = Revision20
 )
 
 const (
