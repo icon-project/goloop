@@ -52,6 +52,14 @@ public class RpcObject implements RpcItem {
         return items == null || items.isEmpty();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof  RpcObject)) return false;
+        RpcObject obj = (RpcObject) o;
+        return items.equals(obj.items);
+    }
+
     /**
      * Builder for RpcObject
      */

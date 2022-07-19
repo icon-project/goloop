@@ -88,6 +88,14 @@ class SystemInterface(InterfaceScore):
     def setUseSystemDeposit(self, address: Address, yn: bool):
         pass
 
+    @interface
+    def openBTPNetwork(self, networkTypeName: str, name: str, owner: Address):
+        pass
+
+    @interface
+    def closeBTPNetwork(self, id: int):
+        pass
+
 
 class Governance(IconScoreBase):
 
@@ -198,3 +206,11 @@ class Governance(IconScoreBase):
     @external(readonly=True)
     def updated(self) -> bool:
         return True
+
+    @external
+    def openBTPNetwork(self, networkTypeName: str, name: str, owner: Address):
+        self.system_score.openBTPNetwork(networkTypeName, name, owner)
+
+    @external
+    def closeBTPNetwork(self, id: int):
+        self.system_score.closeBTPNetwork(id)

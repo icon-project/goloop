@@ -342,20 +342,24 @@ func (bs *BTPStateImpl) setNetworkModified(nid int64) {
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
 	var err error
 	keys := make([][]byte, 0)
+	invalidKey := false
 	validators := bc.GetValidatorState()
 	for i := 0; i < validators.Len(); i++ {
 		v, _ := validators.Get(i)
-		if key, fromDSA := bc.GetPublicKey(v.Address(), mod.UID(), false); key != nil {
+		key, fromDSA := bc.GetPublicKey(v.Address(), mod.UID(), false)
+		if key != nil {
 			if fromDSA {
 				key, err = mod.NetworkTypeKeyFromDSAKey(key)
 				if err != nil {
-					continue
+					invalidKey = true
 				}
 			}
-			keys = append(keys, key)
+		} else {
+			invalidKey = true
 		}
+		keys = append(keys, key)
 	}
-	return keys, len(keys) == validators.Len()
+	return keys, !invalidKey
 }
 
 func (bs *BTPStateImpl) OpenNetwork(

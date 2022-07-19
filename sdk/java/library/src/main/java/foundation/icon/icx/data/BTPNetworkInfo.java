@@ -70,12 +70,23 @@ public class BTPNetworkInfo {
 
     public Bytes getPrevNSHash() {
         RpcItem item = properties.getItem("prevNSHash");
-        return item != null ? item.asBytes() : null;
+        if (item == null || item.isEmpty()) {
+            return null;
+        }
+        return item.asBytes();
     }
 
     public Bytes getLastNSHash() {
         RpcItem item = properties.getItem("lastNSHash");
         return item != null ? item.asBytes() : null;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof BTPNetworkInfo)) return false;
+        BTPNetworkInfo o = (BTPNetworkInfo) obj;
+        return properties.equals(o.properties);
     }
 
     @Override
