@@ -43,7 +43,7 @@ func newIconAddressFromPubKey(pubKey []byte) ([]byte, error) {
 		pubKey = pk.SerializeUncompressed()
 	}
 	digest := crypto.SHA3Sum256(pubKey[1:])
-	return common.NewAccountAddress(digest[len(digest)-iconAddressIDLen:]).ID(), nil
+	return common.NewAccountAddress(digest[len(digest)-iconAddressIDLen:]).Bytes(), nil
 }
 
 var iconModuleInstance *networkTypeModule
