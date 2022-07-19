@@ -102,6 +102,16 @@ public class BTP2APITest extends TestBase {
         return true;
     }
 
+    private byte[] ntPubKeyFromWallet(KeyWallet wallet) {
+        var address = wallet.getAddress();
+        var body = address.getBody();
+        var prefix = address.getPrefix();
+        byte[] raw = new byte[body.length + 1];
+        raw[0] = (byte) prefix.ordinal();
+        System.arraycopy(body, 0, raw, 1, body.length);
+        return raw;
+    }
+
     @Test
     @Order(100)
     public void managePublicKey() throws Exception {
@@ -138,7 +148,7 @@ public class BTP2APITest extends TestBase {
         };
 
         byte[] pubKeyDSA = caller.getPublicKey().toByteArray();
-        byte[] pubKeyNT = caller.getAddress().getBody();
+        byte[] pubKeyNT = ntPubKeyFromWallet(caller);
         byte[] pubKeyEmpty = new byte[0];
 
         for (Case c : cases) {
@@ -270,7 +280,7 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoEntering("Modify public key with network type 'icon'");
         nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ICON, nWallet.getAddress().getBody());
+        result = chainScore.setBTPPublicKey(wallet, NT_ICON, ntPubKeyFromWallet(nWallet));
         assertSuccess(result);
         height = result.getBlockHeight();
 
@@ -285,7 +295,7 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoEntering("Modify public key with network type 'eth'");
         nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ETH, nWallet.getAddress().getBody());
+        result = chainScore.setBTPPublicKey(wallet, NT_ETH, ntPubKeyFromWallet(nWallet));
         assertSuccess(result);
         height = result.getBlockHeight();
 
