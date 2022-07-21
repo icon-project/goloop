@@ -348,9 +348,11 @@ func WriteFromPath(w io.Writer, p string) error {
 		writer: gsw,
 		path:   genesisDir,
 	}, genesisObj)
+	if err != nil {
+		return errors.Wrap(err, "Fail to process content")
+	}
 
 	// write genesis data at last
-
 	genesis, err = json.Marshal(genesisObj)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal JSON")
