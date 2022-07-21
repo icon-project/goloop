@@ -250,11 +250,14 @@ func (g *genesisV3) Execute(ctx contract.Context, wcs state.WorldSnapshot, estim
 		if info.Balance == nil {
 			continue
 		}
+		balance := &info.Balance.Int
 		addr := scoredb.NewVarDB(as, info.Name)
 		addr.Set(&info.Address)
 		ac := ctx.GetAccountState(info.Address.ID())
-		ac.SetBalance(&info.Balance.Int)
-		totalSupply.Add(&totalSupply, &info.Balance.Int)
+		ac.SetBalance(balance)
+		totalSupply.Add(&totalSupply, balance)
+
+		cc.FrameLogger().OnBalanceChange(module.Genesis, nil, &info.Address, balance)
 	}
 
 	nid := g.NID()

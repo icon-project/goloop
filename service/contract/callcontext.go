@@ -63,7 +63,7 @@ type (
 		ClearRedeemLogs()
 		DoIOTask(func())
 		ResultFlags() ResultFlag
-		IsTrace() bool
+		GetTraceMode() module.TraceMode
 	}
 	callResultMessage struct {
 		status   error
@@ -115,16 +115,8 @@ func prefixForFrame(id int) string {
 }
 
 func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
-	logger := trace.LoggerOf(ctx.Logger())
-	ti := ctx.TraceInfo()
-	if ti != nil {
-		if info := ctx.TransactionInfo(); info != nil {
-			if info.Group == ti.Group && int(info.Index) == ti.Index {
-				logger = trace.NewLogger(logger.Logger, ti.Callback)
-			}
-		}
-	}
-	frameLogger := logger.WithTPrefix(prefixForFrame(baseFID))
+	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction, ctx.TransactionInfo())
+	frameLogger := traceLogger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
 		isQuery: isQuery,
@@ -133,7 +125,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 		frame:   NewFrame(nil, nil, limit, isQuery, frameLogger),
 
 		waiter: make(chan interface{}, 8),
-		log:    logger,
+		log:    traceLogger,
 	}
 }
 
@@ -156,7 +148,7 @@ func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callF
 	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
-	logger.TSystemf("START parent=FRAME[%d]", cc.frame.fid)
+	logger.OnEnter(cc.frame.fid)
 	frame.fid = cc.nextFID
 	cc.nextFID += 1
 	cc.frame = frame
@@ -168,7 +160,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
-	frame.log.TSystemf("END success=%v steps=%d", success, &frame.stepUsed)
+	cc.frame.log.OnLeave(success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
@@ -620,6 +612,6 @@ func (cc *callContext) ResultFlags() ResultFlag {
 	return cc.resultFlags
 }
 
-func (cc *callContext) IsTrace() bool {
-	return cc.log.IsTrace()
+func (cc *callContext) GetTraceMode() module.TraceMode {
+	return cc.log.GetTraceMode()
 }

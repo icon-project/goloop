@@ -213,6 +213,14 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	v3dbg.POST("/", dmr.Handle, ChainInjector(srv))
 	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
+	// Rosetta APIs
+	rmr := v3.RosettaMethodRepository(srv.mtr)
+	rosetta := rpc.Group("/rosetta")
+	rosetta.Use(srv.CheckDebug(), JsonRpc(), Chunk())
+	rosetta.POST("", rmr.Handle, ChainInjector(srv))
+	rosetta.POST("/", rmr.Handle, ChainInjector(srv))
+	rosetta.POST("/:channel", rmr.Handle, ChainInjector(srv))
+
 	// group for websocket
 	ws := g.Group("")
 	ws.GET("/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
