@@ -1551,9 +1551,6 @@ func (m *manager) ExportGenesis(blk module.Block, votes module.CommitVoteSet, gs
 	if err := gsw.WriteGenesis(g); err != nil {
 		return errors.Wrap(err, "fail to write genesis")
 	}
-	defer func() {
-		m.log.Must(gsw.Close())
-	}()
 
 	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
 		return errors.Wrap(err, "fail to write votes")
