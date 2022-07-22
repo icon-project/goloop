@@ -1,3 +1,4 @@
+//go:build rocksdb
 // +build rocksdb
 
 /*
@@ -75,7 +76,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 	if cfs := C.rocksdb_list_column_families(opts, cName, &cfsLen, &cErr); cErr != nil {
 		errMsg := C.GoString(cErr)
 		C.rocksdb_free(unsafe.Pointer(cErr))
-		log.Infoln("fail to rocksdb_list_column_families", errMsg)
+		log.Traceln("fail to rocksdb_list_column_families", errMsg)
 
 		//ignore and try open
 		cErr = nil
@@ -88,7 +89,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 		}
 	} else {
 		numOfCfs := int(cfsLen)
-		log.Infoln("rocksdb_list_column_families returns num:", numOfCfs)
+		log.Traceln("rocksdb_list_column_families returns num:", numOfCfs)
 
 		cfOpts := make([]*C.rocksdb_options_t, numOfCfs)
 		for i := 0; i < numOfCfs; i++ {
