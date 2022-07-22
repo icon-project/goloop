@@ -98,6 +98,7 @@ func (b *merkleBuilder) OnData(value []byte) error {
 			}
 		}
 		b.requests.Remove(e)
+		delete(b.requestMap, reqID)
 		return nil
 	} else {
 		return errors.New("IllegalArguments")
