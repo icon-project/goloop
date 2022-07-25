@@ -25,6 +25,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+// CAUTION:
+// ICON MODULE IS JUST FOR TEST PURPOSE. In product, please USE ETH MODULE since
+// icon score can easily verify eth proof.
+
 const (
 	iconUID          = "icon"
 	iconDSA          = secp256k1DSA
