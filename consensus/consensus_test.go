@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
@@ -628,4 +630,89 @@ func testSetWrongBTPKey(uid string, t_ *testing.T) {
 	votes, err := f.CS.GetVotesByHeight(blk.Height())
 	assert.NoError(err)
 	assert.EqualValues(3, len(votes.(*consensus.CommitVoteList).Items))
+}
+
+func TestConsensus_RevokeValidator(t_ *testing.T) {
+	const dsa = "ecdsa/secp256k1"
+	const uid = "eth"
+	const uid2 = "icon"
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	}).Call("setMinimizeBlockGen", map[string]string{
+		"yn": fmt.Sprintf("0x1"),
+	})
+	for i, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
+			"name":   dsa,
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
+		})
+		t_.Logf("register key index=%d %s=%x %s=%x %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey(), uid, v.Chain.WalletFor(uid).PublicKey(), uid2, v.Chain.WalletFor(uid2).PublicKey())
+	}
+	tx.Call("openBTPNetwork", map[string]string{
+		"networkTypeName": uid,
+		"name":            fmt.Sprintf("%s-test", uid),
+		"owner":           f.CommonAddress().String(),
+	})
+	f.SendTransactionToProposer(tx)
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(err)
+	}
+
+	blk := f.WaitForBlock(2)
+	bd, err := blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+
+	f.SendTransactionToProposer(
+		f.NewTx().Call("revokeValidator", map[string]string{
+			"address": f.Nodes[0].CommonAddress().String(),
+		}),
+	)
+	blk = f.WaitForNextBlock()
+	assert.EqualValues(4, blk.NextValidators().Len())
+
+	tx = f.NewTx().Call("openBTPNetwork", map[string]string{
+		"networkTypeName": uid2,
+		"name":            fmt.Sprintf("%s-test", uid2),
+		"owner":           f.CommonAddress().String(),
+	})
+	f.SendTransactionToProposer(tx)
+	blk = f.WaitForNextBlock()
+	assert.EqualValues(3, blk.NextValidators().Len())
+	bs, err := blk.BTPSection()
+	nts, err := bs.NetworkTypeSectionFor(1)
+	assert.NoError(err)
+	_ = nts.NextProofContext()
+	bysl := nts.NextProofContext().Bytes()
+	log.Infof("%s", codec.DumpRLP("  ", bysl))
+
+	blk = f.WaitForNextBlock()
+	assert.EqualValues(3, blk.NextValidators().Len())
+	bs, err = blk.BTPSection()
+	nts, err = bs.NetworkTypeSectionFor(2)
+	assert.NoError(err)
+	_ = nts.NextProofContext()
+	bysl = nts.NextProofContext().Bytes()
+	log.Infof("%s", codec.DumpRLP("  ", bysl))
+
+	f.SendTransactionToAll(f.NewTx())
+	f.WaitForNextBlock()
+	f.WaitForNextBlock()
+
+	testMsg := ([]byte)("test message")
+	f.SendTransactionToAll(
+		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
+			"networkId": "0x1",
+			"message":   fmt.Sprintf("0x%x", testMsg),
+		}),
+	)
+	f.WaitForNextBlock()
+	f.WaitForNextBlock()
 }
