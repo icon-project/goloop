@@ -208,10 +208,10 @@ func NewBTPContext(wc WorldContext, store containerdb.BytesStoreState) BTPContex
 
 type btpData struct {
 	dbase               db.Database
-	validators          map[string]bool     // key: address
-	proofContextChanged map[int64]bool      // key: network type ID
-	pubKeyChanged       map[string][]string // key: address. value: slice of network type UID
-	networkModified     map[int64]bool      // key: network ID
+	validators          []module.Address
+	proofContextChanged map[int64]bool     // key: network type ID
+	pubKeyChanged       map[string][]int64 // key: string(address.Bytes()). value: slice of network type ID
+	networkModified     map[int64]bool     // key: network ID
 	digest              module.BTPDigest
 	digestHash          []byte
 }
@@ -225,7 +225,8 @@ func (bd *btpData) clone() *btpData {
 		copy(n.digestHash, bd.digestHash)
 	}
 
-	n.validators = make(map[string]bool)
+	size := len(bd.validators)
+	n.validators = make([]module.Address, size, size)
 	for k, v := range bd.validators {
 		n.validators[k] = v
 	}
@@ -235,9 +236,9 @@ func (bd *btpData) clone() *btpData {
 		n.proofContextChanged[k] = v
 	}
 
-	n.pubKeyChanged = make(map[string][]string)
+	n.pubKeyChanged = make(map[string][]int64)
 	for k, v := range bd.pubKeyChanged {
-		nv := make([]string, len(v))
+		nv := make([]int64, len(v))
 		copy(nv, v)
 		n.pubKeyChanged[k] = nv
 	}
@@ -306,12 +307,13 @@ func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
 }
 
 func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
-	vMap := make(map[string]bool)
+	size := vs.Len()
+	vSlice := make([]module.Address, size, size)
 	for i := 0; i < vs.Len(); i++ {
 		v, _ := vs.Get(i)
-		vMap[string(v.Address().Bytes())] = true
+		vSlice[i] = v.Address()
 	}
-	bs.validators = vMap
+	bs.validators = vSlice
 }
 
 func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
@@ -321,15 +323,15 @@ func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
 	bs.proofContextChanged[ntid] = true
 }
 
-func (bs *BTPStateImpl) setPubKeyChanged(address module.Address, name string) {
+func (bs *BTPStateImpl) addPubKeyChanged(address module.Address, ntid int64) {
 	if bs.pubKeyChanged == nil {
-		bs.pubKeyChanged = make(map[string][]string)
+		bs.pubKeyChanged = make(map[string][]int64)
 	}
 	key := string(address.Bytes())
 	if bs.pubKeyChanged[key] == nil {
-		bs.pubKeyChanged[key] = make([]string, 0)
+		bs.pubKeyChanged[key] = make([]int64, 0)
 	}
-	bs.pubKeyChanged[key] = append(bs.pubKeyChanged[key], name)
+	bs.pubKeyChanged[key] = append(bs.pubKeyChanged[key], ntid)
 }
 
 func (bs *BTPStateImpl) setNetworkModified(nid int64) {
@@ -507,12 +509,23 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 	if old != nil && bytes.Compare(old.Bytes(), pubKey) == 0 {
 		return nil
 	}
-	// find public key changed network type
+	// find public key changed active network type
 	for _, uid := range uids {
+		ntid := bc.GetNetworkTypeIDByName(uid)
+		if ntid == 0 {
+			continue
+		}
+		nt, err := bc.GetNetworkType(ntid)
+		if err != nil {
+			return err
+		}
+		if len(nt.OpenNetworkIDs()) == 0 {
+			continue
+		}
 		if 0 != bc.GetNetworkTypeIDByName(uid) {
 			old = dbase.Get(from, uid)
 			if old == nil || (!dsa && bytes.Compare(pubKey, old.Bytes()) != 0) {
-				bs.setPubKeyChanged(from, uid)
+				bs.addPubKeyChanged(from, ntid)
 			}
 		}
 	}
@@ -622,10 +635,47 @@ func (bs *BTPStateImpl) applyNetwork(bc BTPContext, ns module.NetworkSection) er
 	}
 }
 
-func (bs *BTPStateImpl) setValidatorChanged(bc BTPContext, names []string) error {
-	bci := bc.(*btpContext)
-	for _, name := range names {
-		ntid, _ := bci.getNetworkTypeIdByName(name)
+func (bs *BTPStateImpl) validatorsEqual(v2 ValidatorState) bool {
+	if len(bs.validators) != v2.Len() {
+		return false
+	}
+
+	for i := 0; i < v2.Len(); i++ {
+		v, _ := v2.Get(i)
+		if !bs.validators[i].Equal(v.Address()) {
+			return false
+		}
+	}
+	return true
+}
+
+func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
+	vcNtids := make([]int64, 0)
+	if bs.validatorsEqual(bc.GetValidatorState()) == false {
+		ntids, err := bc.GetNetworkTypeIDs()
+		if err != nil {
+			return err
+		}
+		for _, ntid := range ntids {
+			// TODO read from snapshot?
+			ntView, err := bc.GetNetworkTypeView(ntid)
+			if err != nil {
+				return err
+			}
+			if len(ntView.OpenNetworkIDs()) > 0 {
+				vcNtids = append(vcNtids, ntid)
+			}
+		}
+	} else {
+		for _, v := range bs.validators {
+			if ntids, ok := bs.pubKeyChanged[string(v.Bytes())]; ok {
+				vcNtids = append(vcNtids, ntids...)
+			}
+		}
+	}
+
+	// apply validator change
+	for _, ntid := range vcNtids {
 		nt, err := bc.GetNetworkTypeView(ntid)
 		bs.setProofContextChanged(ntid)
 		if err != nil {
@@ -638,54 +688,10 @@ func (bs *BTPStateImpl) setValidatorChanged(bc BTPContext, names []string) error
 	return nil
 }
 
-func (bs *BTPStateImpl) compareValidators(v2 ValidatorState) bool {
-	if len(bs.validators) != v2.Len() {
-		return false
-	}
-
-	for i := 0; i < v2.Len(); i++ {
-		v, _ := v2.Get(i)
-		if _, ok := bs.validators[string(v.Address().Bytes())]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func (bs *BTPStateImpl) handleValidatorChange(bc BTPContext) error {
-	names := make([]string, 0)
-	if bs.compareValidators(bc.GetValidatorState()) == false {
-		// validator list changed
-		ntids, err := bc.GetNetworkTypeIDs()
-		if err != nil {
-			return err
-		}
-		for _, ntid := range ntids {
-			ntView, err := bc.GetNetworkTypeView(ntid)
-			if err != nil {
-				return err
-			}
-			names = append(names, ntView.UID())
-		}
-	} else {
-		for key := range bs.validators {
-			if name, ok := bs.pubKeyChanged[key]; ok {
-				// public key changed
-				names = append(names, name...)
-			}
-		}
-	}
-	if err := bs.setValidatorChanged(bc, names); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) (module.BTPSection, error) {
 	sb := btp.NewSectionBuilder(bc)
 
-	// check validator change
-	if err := bs.handleValidatorChange(bc); err != nil {
+	if err := bs.checkAndApplyValidatorChange(bc); err != nil {
 		return nil, err
 	}
 

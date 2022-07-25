@@ -255,7 +255,7 @@ public class BTP2APITest extends TestBase {
         KeyWallet wallet = node.wallet;
         TransactionResult result;
 
-        LOG.infoEntering("Open BTP Networks for test");
+        LOG.infoEntering("Open BTP Networks 'ethereum' and 'icon' for test");
         BigInteger nidEth = openBTPNetwork(NT_ETH, "ethereum", wallet.getAddress());
         BigInteger nidIcon = openBTPNetwork(NT_ICON, "icon", wallet.getAddress());
         var ntidEth = iconService.btpGetNetworkInfo(nidEth).execute().getNetworkTypeID();
@@ -285,12 +285,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, NT_ICON, ntPubKeyFromWallet(nWallet));
         assertSuccess(result);
         height = result.getBlockHeight();
-
         LOG.info("Network type 'icon' and their network changed");
         checkNetworkType(height, ntidIcon);
         checkNetwork(height, nidIcon, true);
         checkHeader(height.add(BigInteger.ONE), nidIcon);
-
         LOG.info("Network type 'eth' and their network not changed");
         checkNetworkNotChanged(height, ntidEth);
         checkNetworkNotChanged(height, nidEth);
@@ -300,12 +298,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, NT_ICON, pubKeyEmpty);
         assertSuccess(result);
         height = result.getBlockHeight();
-
         LOG.info("Network type 'icon' and their network changed");
         checkNetworkType(height, ntidIcon);
         checkNetwork(height, nidIcon, true);
         checkHeader(height.add(BigInteger.ONE), nidIcon);
-
         LOG.info("Network type 'eth' and their network not changed");
         checkNetworkNotChanged(height, ntidEth);
         checkNetworkNotChanged(height, nidEth);
@@ -316,12 +312,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, NT_ETH, ntPubKeyFromWallet(nWallet));
         assertSuccess(result);
         height = result.getBlockHeight();
-
         LOG.info("Network type 'eth' and their network changed");
         checkNetworkType(height, ntidEth);
         checkNetwork(height, nidEth, true);
         checkHeader(height.add(BigInteger.ONE), nidEth);
-
         LOG.info("Network type 'icon' and their network not changed");
         checkNetworkTypeNotChanged(height, ntidIcon);
         checkNetworkNotChanged(height, nidIcon);
@@ -332,12 +326,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, NT_ETH, pubKeyEmpty);
         assertSuccess(result);
         height = result.getBlockHeight();
-
         LOG.info("Network type 'eth' and their network changed");
         checkNetworkType(height, ntidEth);
         checkNetwork(height, nidEth, true);
         checkHeader(height.add(BigInteger.ONE), nidEth);
-
         LOG.info("Network type 'icon' and their network not changed");
         checkNetworkTypeNotChanged(height, ntidIcon);
         checkNetworkNotChanged(height, nidIcon);
@@ -348,21 +340,30 @@ public class BTP2APITest extends TestBase {
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, NT_ICON, ntPubKeyFromWallet(nWallet));
         assertSuccess(result);
-
         LOG.info("Modify public key with DSA");
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
-
         LOG.info("Network type 'eth' changed");
         checkNetworkType(height, ntidEth);
         checkNetwork(height, nidEth, true);
         checkHeader(height.add(BigInteger.ONE), nidEth);
-
         LOG.info("Network type 'icon' not changed");
         checkNetworkTypeNotChanged(height, ntidIcon);
         checkNetworkNotChanged(height, nidIcon);
+        LOG.infoExiting();
+
+        LOG.infoEntering("Change public key for network type that has no open network");
+        LOG.info("Close network 'ethereum'");
+        closeBTPNetwork(ntidEth);
+        LOG.info("Modify public key with DSA");
+        nWallet = KeyWallet.create();
+        result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
+        assertSuccess(result);
+        height = result.getBlockHeight();
+        LOG.info("Network type 'eth' not changed");
+        checkNetworkType(height, ntidEth);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
