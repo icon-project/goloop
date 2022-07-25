@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
@@ -172,7 +173,17 @@ func (f *Fixture) SendTransactionToProposer(tx interface{ String() string }) {
 	assert.NoError(f.T, err)
 	h := blk.Height() + 1
 	r := 0
-	idx := int((h + int64(r)) % int64(len(f.Validators)))
-	_, err = f.Validators[idx].SM.SendTransaction(nil, 0, tx.String())
-	assert.NoError(f.T, err)
+	idx := int((h + int64(r)) % int64(blk.NextValidators().Len()))
+	val, ok := blk.NextValidators().Get(idx)
+	assert.True(f.T, ok)
+	found := false
+	for i, v := range f.Validators {
+		if bytes.Equal(val.Address().Bytes(), v.Chain.Wallet().Address().Bytes()) {
+			log.Infof("SendTransaction tx=%s val=%s", tx.String(), f.Validators[i].CommonAddress())
+			_, err = f.Validators[i].SM.SendTransaction(nil, 0, tx.String())
+			assert.NoError(f.T, err)
+			found = true
+		}
+	}
+	assert.True(f.T, found)
 }
