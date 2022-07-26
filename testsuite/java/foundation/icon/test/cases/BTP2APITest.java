@@ -212,8 +212,8 @@ public class BTP2APITest extends TestBase {
 
         var cases = new Case[]{
                 new Case(true, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
-                new Case(true, NT_ETH, DSA_SECP256K1, "bsc", wallet),
                 new Case(false, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
+                new Case(true, NT_ETH, DSA_SECP256K1, "bsc", wallet),
                 new Case(true, NT_ICON, DSA_SECP256K1, "ICON", wallet),
                 new Case(true, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
                 new Case(false, NT_ETH, DSA_SECP256K1, "bsc", wallet),
@@ -517,6 +517,10 @@ public class BTP2APITest extends TestBase {
         }
         List<BigInteger> nIds = nInfo.getOpenNetworkIDs();
         assertEquals(oIds, nIds);
+        if (nIds.size() == 0) {
+            LOG.info("Check inactive network type");
+            assertNull(nInfo.getNextProofContext());
+        }
     }
 
     // for public key modification

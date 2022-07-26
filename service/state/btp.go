@@ -207,13 +207,14 @@ func NewBTPContext(wc WorldContext, store containerdb.BytesStoreState) BTPContex
 }
 
 type btpData struct {
-	dbase               db.Database
-	validators          []module.Address
-	proofContextChanged map[int64]bool     // key: network type ID
-	pubKeyChanged       map[string][]int64 // key: string(address.Bytes()). value: slice of network type ID
-	networkModified     map[int64]bool     // key: network ID
-	digest              module.BTPDigest
-	digestHash          []byte
+	dbase                  db.Database
+	validators             []module.Address
+	proofContextChanged    map[int64]bool     // key: networkType ID
+	pubKeyChanged          map[string][]int64 // key: string(Address.Bytes()). value: slice of networkType ID
+	networkModified        map[int64]bool     // key: network ID
+	inactivatedNetworkType map[int64]bool     // key: networkType ID
+	digest                 module.BTPDigest
+	digestHash             []byte
 }
 
 func (bd *btpData) clone() *btpData {
@@ -341,6 +342,13 @@ func (bs *BTPStateImpl) setNetworkModified(nid int64) {
 	bs.networkModified[nid] = true
 }
 
+func (bs *BTPStateImpl) setInactivatedNetworkType(ntid int64, yn bool) {
+	if bs.inactivatedNetworkType == nil {
+		bs.inactivatedNetworkType = make(map[int64]bool)
+	}
+	bs.inactivatedNetworkType[ntid] = yn
+}
+
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
 	var err error
 	keys := make([][]byte, 0)
@@ -420,6 +428,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 	}
 
 	bs.setNetworkModified(nid)
+	bs.setInactivatedNetworkType(ntid, false)
 	return
 }
 
@@ -435,21 +444,25 @@ func (bs *BTPStateImpl) CloseNetwork(bc BTPContext, nid int64) (int64, error) {
 	if err := nwDB.Set(nid, nw.Bytes()); err != nil {
 		return 0, err
 	}
+	ntid := nw.NetworkTypeID()
 
 	ntDB := scoredb.NewDictDB(store, NetworkTypeByIDKey, 1)
-	if ntValue := ntDB.Get(nw.NetworkTypeID()); ntValue == nil {
-		return 0, scoreresult.InvalidParameterError.Errorf("There is no network type for %d", nw.NetworkTypeID())
+	if ntValue := ntDB.Get(ntid); ntValue == nil {
+		return 0, scoreresult.InvalidParameterError.Errorf("There is no network type for %d", ntid)
 	} else {
 		nt := NewNetworkTypeFromBytes(ntValue.Bytes())
 		if err := nt.RemoveOpenNetworkID(nid); err != nil {
-			return 0, scoreresult.InvalidParameterError.Wrapf(err, "There is no open network %d in %d", nid, nw.NetworkTypeID())
+			return 0, scoreresult.InvalidParameterError.Wrapf(err, "There is no open network %d in %d", nid, ntid)
 		}
-		if err := ntDB.Set(nw.NetworkTypeID(), nt.Bytes()); err != nil {
+		if err := ntDB.Set(ntid, nt.Bytes()); err != nil {
 			return 0, err
+		}
+		if len(nt.OpenNetworkIDs()) == 0 {
+			bs.setInactivatedNetworkType(ntid, true)
 		}
 	}
 
-	return nw.NetworkTypeID(), nil
+	return ntid, nil
 }
 
 func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid int64) error {
@@ -563,6 +576,13 @@ func (bs *BTPStateImpl) update(bc BTPContext) error {
 			return err
 		}
 	}
+	for ntid, yn := range bs.inactivatedNetworkType {
+		if yn {
+			if err := bs.updateNetworkType(bc, ntid); err != nil {
+				return err
+			}
+		}
+	}
 	for nid := range bs.networkModified {
 		if err := bs.updateNetwork(bc, nid); err != nil {
 			return err
@@ -576,12 +596,17 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 	if nt, ntDB := bci.getNetworkType(ntid); nt == nil {
 		return errors.NotFoundError.Errorf("not found ntid=%d", ntid)
 	} else {
-		mod := ntm.ForUID(nt.UID())
-		keys, _ := bs.getPubKeysOfValidators(bc, mod)
-		proof := mod.NewProofContext(keys)
+		if len(nt.OpenNetworkIDs()) > 0 {
+			mod := ntm.ForUID(nt.UID())
+			keys, _ := bs.getPubKeysOfValidators(bc, mod)
+			proof := mod.NewProofContext(keys)
 
-		nt.SetNextProofContext(proof.Bytes())
-		nt.SetNextProofContextHash(proof.Hash())
+			nt.SetNextProofContext(proof.Bytes())
+			nt.SetNextProofContextHash(proof.Hash())
+		} else {
+			nt.SetNextProofContext(nil)
+			nt.SetNextProofContextHash(nil)
+		}
 		if err := ntDB.Set(ntid, nt.Bytes()); err != nil {
 			return err
 		}
@@ -657,14 +682,7 @@ func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
 			return err
 		}
 		for _, ntid := range ntids {
-			// TODO read from snapshot?
-			ntView, err := bc.GetNetworkTypeView(ntid)
-			if err != nil {
-				return err
-			}
-			if len(ntView.OpenNetworkIDs()) > 0 {
-				vcNtids = append(vcNtids, ntid)
-			}
+			vcNtids = append(vcNtids, ntid)
 		}
 	} else {
 		for _, v := range bs.validators {
@@ -677,10 +695,10 @@ func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
 	// apply validator change
 	for _, ntid := range vcNtids {
 		nt, err := bc.GetNetworkTypeView(ntid)
-		bs.setProofContextChanged(ntid)
 		if err != nil {
 			return err
 		}
+		bs.setProofContextChanged(ntid)
 		for _, nid := range nt.OpenNetworkIDs() {
 			bs.setNetworkModified(nid)
 		}
@@ -697,6 +715,12 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 
 	for nid := range bs.networkModified {
 		sb.EnsureSection(nid)
+	}
+
+	for ntid, yn := range bs.inactivatedNetworkType {
+		if yn {
+			sb.NotifyInactivated(ntid)
+		}
 	}
 
 	for i := btpMsgs.Front(); i != nil; i = i.Next() {
