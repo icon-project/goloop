@@ -1163,11 +1163,15 @@ func (cs *consensus) ntsVoteBaseAndDecisionProofParts(
 	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
 		ntsHashEntry := ntsHashEntries.NTSHashEntryAt(i)
 		ntid := ntsHashEntry.NetworkTypeID
-		pc, err := cs.nextPCM.ProofContextFor(ntid)
+		_, err := cs.pcmForLastBlock.ProofContextFor(ntid)
 		if errors.Is(err, errors.ErrNotFound) {
 			// do not vote for first NTS
 			continue
 		}
+		if err != nil {
+			return nil, nil, err
+		}
+		pc, err := cs.nextPCM.ProofContextFor(ntid)
 		if err != nil {
 			return nil, nil, err
 		}

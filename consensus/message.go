@@ -179,6 +179,8 @@ func newVoteMessage() *VoteMessage {
 	return msg
 }
 
+// NewVoteMessageFromBlock creates a new VoteMessage from block data.
+// pcm is blk.Height()-1's nextPCM
 func NewVoteMessageFromBlock(
 	w module.Wallet,
 	wp module.WalletProvider,

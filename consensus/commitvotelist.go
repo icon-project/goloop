@@ -211,6 +211,9 @@ func (vl *CommitVoteList) toVoteList(
 		if err != nil {
 			return nil, err
 		}
+		if nt.NextProofContext() == nil {
+			continue
+		}
 		mod := ntm.ForUID(nt.UID())
 		pf, err := mod.NewProofFromBytes(vl.NTSDProves[ntsdProofIndex])
 		if err != nil {
