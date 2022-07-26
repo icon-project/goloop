@@ -204,6 +204,7 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		}
 		cc.GetBTPMessages(r)
 	}
+	log.Infof("Execute transaction tx=%s", t)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }

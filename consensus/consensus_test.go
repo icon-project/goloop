@@ -716,3 +716,79 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	f.WaitForNextBlock()
 	f.WaitForNextBlock()
 }
+
+func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
+	const dsa = "ecdsa/secp256k1"
+	const uid = "eth"
+	const uid2 = "icon"
+	assert := assert.New(t_)
+	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	}).Call("setMinimizeBlockGen", map[string]string{
+		"yn": fmt.Sprintf("0x1"),
+	})
+	for i, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
+			"name":   dsa,
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
+		})
+		t_.Logf("register key index=%d %s=%x %s=%x %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey(), uid, v.Chain.WalletFor(uid).PublicKey(), uid2, v.Chain.WalletFor(uid2).PublicKey())
+	}
+	tx.Call("openBTPNetwork", map[string]string{
+		"networkTypeName": uid,
+		"name":            fmt.Sprintf("%s-test", uid),
+		"owner":           f.CommonAddress().String(),
+	})
+	f.SendTransactionToProposer(tx)
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(err)
+	}
+
+	blk := f.WaitForBlock(2)
+	bd, err := blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+
+	f.SendTransactionToProposer(
+		f.NewTx().Call("closeBTPNetwork", map[string]string{
+			"id": "0x1",
+		}),
+	)
+	blk = f.WaitForNextBlock()
+	blk = f.WaitForNextBlock()
+
+	f.SendTransactionToAll(
+		f.NewTx().Call("revokeValidator", map[string]string{
+			"address": f.Nodes[0].CommonAddress().String(),
+		}),
+	)
+	blk = f.WaitForNextBlock()
+	assert.EqualValues(4, blk.NextValidators().Len())
+
+	f.SendTransactionToAll(
+		f.NewTx().Call("openBTPNetwork", map[string]string{
+			"networkTypeName": uid,
+			"name":            fmt.Sprintf("%s-test", uid),
+			"owner":           f.CommonAddress().String(),
+		}),
+	)
+	blk = f.WaitForNextBlock()
+	assert.EqualValues(3, blk.NextValidators().Len())
+
+	blk = f.WaitForNextBlock() // 7
+	bs, err := blk.BTPSection()
+	nts, err := bs.NetworkTypeSectionFor(1)
+	assert.NoError(err)
+	bysl := nts.NextProofContext().Bytes()
+	log.Infof("NextProofContext=%s", codec.DumpRLP("  ", bysl))
+
+	f.SendTransactionToAll(f.NewTx())
+	f.WaitForNextBlock()
+	f.WaitForNextBlock()
+}
