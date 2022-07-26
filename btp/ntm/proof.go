@@ -36,14 +36,19 @@ type proofContextCore interface {
 
 type proofContext struct {
 	core proofContextCore
-	hash []byte
+	hash *[]byte
 }
 
 func (pc *proofContext) Hash() []byte {
 	if pc.hash == nil {
-		pc.hash = pc.core.NetworkTypeModule().Hash(pc.core.Bytes())
+		var hash []byte
+		pcBytes := pc.core.Bytes()
+		if pcBytes != nil {
+			hash = pc.core.NetworkTypeModule().Hash(pcBytes)
+		}
+		pc.hash = &hash
 	}
-	return pc.hash
+	return *pc.hash
 }
 
 func (pc *proofContext) Bytes() []byte {

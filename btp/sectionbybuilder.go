@@ -27,14 +27,16 @@ import (
 
 type btpSectionByBuilder struct {
 	networkTypeSections networkTypeSectionSlice
+	inactivatedNTs      []int64
 	digest              *digest
 }
 
-var ZeroBTPSection = newBTPSection(nil)
+var ZeroBTPSection = newBTPSection(nil, nil)
 
-func newBTPSection(ntsSlice networkTypeSectionSlice) *btpSectionByBuilder {
+func newBTPSection(ntsSlice networkTypeSectionSlice, inactivatedNTs []int64) *btpSectionByBuilder {
 	bs := &btpSectionByBuilder{
 		networkTypeSections: ntsSlice,
+		inactivatedNTs:      inactivatedNTs,
 	}
 	bs.digest = &digest{
 		digestCore: &btpSectionDigest{
@@ -143,7 +145,7 @@ type networkTypeSectionByBuilder struct {
 	networkSectionsRoot  []byte
 	networkDigests       []module.NetworkDigest
 	mod                  module.NetworkTypeModule
-	npcChanged           bool
+	nsNPCChanged         bool
 	hash                 []byte
 }
 
@@ -164,7 +166,7 @@ func newNetworkTypeSection(
 		networkSections:     nsSlice,
 		networkSectionsRoot: mod.MerkleRoot(&nsSlice),
 		mod:                 mod,
-		npcChanged:          npcChanged,
+		nsNPCChanged:        npcChanged,
 	}
 	ntsFormat := nts.networkTypeSectionFormat()
 	nts.hash = mod.Hash(codec.MustMarshalToBytes(&ntsFormat))
@@ -209,12 +211,6 @@ func (nts *networkTypeSectionByBuilder) NetworkSections() []module.NetworkSectio
 
 func (nts *networkTypeSectionByBuilder) NetworkTypeSectionHash() []byte {
 	return nts.hash
-}
-
-// nextProofContextChanged returns true if NS.NextProofContextChanged() is true
-// for any child NS of this NTS.
-func (nts *networkTypeSectionByBuilder) nextProofContextChanged() bool {
-	return nts.npcChanged
 }
 
 func (nts *networkTypeSectionByBuilder) NetworkDigests() []module.NetworkDigest {

@@ -130,9 +130,11 @@ func newSecp256k1ProofContextFromBytes(
 	pc := &secp256k1ProofContext{
 		mod: mod,
 	}
-	_, err := codec.UnmarshalFromBytes(bytes, pc)
-	if err != nil {
-		return nil, err
+	if bytes != nil {
+		_, err := codec.UnmarshalFromBytes(bytes, pc)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return pc, nil
 }
@@ -142,6 +144,9 @@ func (pc *secp256k1ProofContext) NetworkTypeModule() module.NetworkTypeModule {
 }
 
 func (pc *secp256k1ProofContext) Bytes() []byte {
+	if pc.Validators == nil {
+		return nil
+	}
 	if pc.bytes == nil {
 		pc.bytes = codec.MustMarshalToBytes(pc)
 	}
