@@ -520,6 +520,8 @@ public class BTP2APITest extends TestBase {
         if (nIds.size() == 0) {
             LOG.info("Check inactive network type");
             assertNull(nInfo.getNextProofContext());
+        } else {
+            assertNotNull(nInfo.getNextProofContext());
         }
     }
 

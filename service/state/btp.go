@@ -407,6 +407,9 @@ func (bs *BTPStateImpl) OpenNetwork(
 			err = scoreresult.InvalidParameterError.Errorf("There is no network type for %d", ntid)
 			return
 		}
+		if len(nt.OpenNetworkIDs()) == 0 {
+			bs.setProofContextChanged(ntid)
+		}
 	}
 
 	store := bc.Store()
