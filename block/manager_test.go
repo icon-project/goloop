@@ -56,7 +56,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 		).Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 		}).CallFrom(t.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", t.Chain.WalletFor(dsa).PublicKey()),
 		}).Call("openBTPNetwork", map[string]string{
 			"networkTypeName": "eth",
@@ -131,7 +131,7 @@ func TestBlockManager_BTPImport(t_ *testing.T) {
 		test.NewTx().Call("setRevision", map[string]string{
 			"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 		}).CallFrom(vNode.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", vNode.Chain.WalletFor(dsa).PublicKey()),
 		}).Call("openBTPNetwork", map[string]string{
 			"networkTypeName": "eth",
@@ -195,7 +195,7 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 	})
 	for i, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
 		t_.Logf("register eth key index=%d key=%x", i, v.Chain.WalletFor(dsa).PublicKey())
@@ -215,10 +215,10 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 	f.ProposeFinalizeBlockWithTX(
 		f.NewCommitVoteListForLastBlock(0, 0),
 		test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
 		}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 		}).String(),
 	)

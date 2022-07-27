@@ -116,53 +116,49 @@ public class BTP2APITest extends TestBase {
     @Order(100)
     public void managePublicKey() throws Exception {
         LOG.infoEntering("Public key management");
-        KeyWallet caller = KeyWallet.create();
+        KeyWallet caller1 = KeyWallet.create();
+        KeyWallet caller2 = KeyWallet.create();
 
         class Case {
-            final boolean add;
-            final boolean withDSA;
+            final KeyWallet caller;
             final String name;
             final boolean success;
             final String title;
+            final byte[] pubKey;
 
-            public Case(boolean add, boolean withDSA, String name, boolean success, String title) {
-                this.add = add;
-                this.withDSA = withDSA;
+            public Case(KeyWallet caller, String name, byte[] pubKey, boolean success, String title) {
+                this.caller = caller;
                 this.name = name;
+                this.pubKey = pubKey;
                 this.success = success;
                 this.title = title;
             }
         }
 
-        var cases = new Case[]{
-                new Case(true, false, NT_ETH, true, "Set with Network type `eth`"),
-                new Case(true, false, NT_ICON, true, "Set with Network type `icon`"),
-                new Case(true, true, DSA_SECP256K1, true, "Set with DSA"),
-                new Case(true, false, "InvalidName", false, "Set with Invalid name"),
-                new Case(false, false, "InvalidName", false, "Delete with Invalid name"),
-                new Case(false, true, DSA_SECP256K1, true, "Delete with DSA"),
-                new Case(false, true, DSA_SECP256K1, true, "Delete empty with DSA"),
-                new Case(false, false, NT_ICON, true, "Delete with Network type `icon`"),
-                new Case(false, false, NT_ETH, true, "Delete with Network type `eth`"),
-                new Case(false, false, NT_ETH, true, "Delete empty with Network type `eth`"),
-        };
-
-        byte[] pubKeyDSA = caller.getPublicKey().toByteArray();
-        byte[] pubKeyNT = ntPubKeyFromWallet(caller);
         byte[] pubKeyEmpty = new byte[0];
+
+        var cases = new Case[]{
+                new Case(caller1, NT_ICON, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
+                new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
+                new Case(caller1, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), true, "Set public key"),
+//                new Case(caller2, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), false, "Set public key with already exist"),
+                new Case(caller1, DSA_SECP256K1, caller2.getPublicKey().toByteArray(), true, "Modify public key"),
+                new Case(caller1, NT_ICON, pubKeyEmpty, false, "Delete with Invalid name"),
+                new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
+                new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete empty public key"),
+        };
 
         for (Case c : cases) {
             LOG.infoEntering(c.title);
-            byte[] pubKey = c.add ? (c.withDSA ? pubKeyDSA : pubKeyNT) : pubKeyEmpty;
             TransactionResult result;
-            result = chainScore.setBTPPublicKey(caller, c.name, pubKey);
+            result = chainScore.setBTPPublicKey(caller1, c.name, c.pubKey);
             if (c.success) {
                 assertSuccess(result);
-                byte[] retPubKey = chainScore.getBTPPublicKey(caller.getAddress(), c.name);
-                if (c.add) {
-                    assertArrayEquals(pubKey, retPubKey);
-                } else {
+                byte[] retPubKey = chainScore.getBTPPublicKey(caller1.getAddress(), c.name);
+                if (c.pubKey.equals(pubKeyEmpty)) {
                     assertArrayEquals(null, retPubKey);
+                } else {
+                    assertArrayEquals(c.pubKey, retPubKey);
                 }
             } else {
                 assertFailure(result);
@@ -266,7 +262,7 @@ public class BTP2APITest extends TestBase {
 
         byte[] pubKeyEmpty = new byte[0];
 
-        LOG.infoEntering("Modify public key with DSA: all network type and network changed");
+        LOG.infoEntering("Modify public key : all network type and network changed");
         KeyWallet nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
@@ -280,90 +276,58 @@ public class BTP2APITest extends TestBase {
         }
         LOG.infoExiting();
 
-        LOG.infoEntering("Set public key with network type 'icon'");
-        nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ICON, ntPubKeyFromWallet(nWallet));
+        LOG.infoEntering("Set public key with same one");
+        result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
-        LOG.info("Network type 'icon' and their network changed");
-        checkNetworkType(height, ntidIcon);
-        checkNetwork(height, nidIcon, true);
-        checkHeader(height.add(BigInteger.ONE), nidIcon);
-        LOG.info("Network type 'eth' and their network not changed");
-        checkNetworkNotChanged(height, ntidEth);
-        checkNetworkNotChanged(height, nidEth);
+        for (BigInteger ntid: ntids) {
+            checkNetworkTypeNotChanged(height, ntid);
+        }
+        for (BigInteger nid: nids) {
+            checkNetworkNotChanged(height, nid);
+        }
         LOG.infoExiting();
 
-        LOG.infoEntering("Delete public key with network type 'icon'");
-        result = chainScore.setBTPPublicKey(wallet, NT_ICON, pubKeyEmpty);
+        LOG.infoEntering("Delete public key");
+        result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, pubKeyEmpty);
         assertSuccess(result);
         height = result.getBlockHeight();
-        LOG.info("Network type 'icon' and their network changed");
-        checkNetworkType(height, ntidIcon);
-        checkNetwork(height, nidIcon, true);
-        checkHeader(height.add(BigInteger.ONE), nidIcon);
-        LOG.info("Network type 'eth' and their network not changed");
-        checkNetworkNotChanged(height, ntidEth);
-        checkNetworkNotChanged(height, nidEth);
+        for (BigInteger ntid: ntids) {
+            checkNetworkType(height, ntid);
+        }
+        for (BigInteger nid: nids) {
+            checkNetwork(height, nid, true);
+        }
         LOG.infoExiting();
 
-        LOG.infoEntering("Set public key with network type 'eth'");
-        nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ETH, ntPubKeyFromWallet(nWallet));
-        assertSuccess(result);
-        height = result.getBlockHeight();
-        LOG.info("Network type 'eth' and their network changed");
-        checkNetworkType(height, ntidEth);
-        checkNetwork(height, nidEth, true);
-        checkHeader(height.add(BigInteger.ONE), nidEth);
-        LOG.info("Network type 'icon' and their network not changed");
-        checkNetworkTypeNotChanged(height, ntidIcon);
-        checkNetworkNotChanged(height, nidIcon);
-        LOG.infoExiting();
-
-        LOG.infoEntering("Delete public key with network type 'eth'");
-        nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ETH, pubKeyEmpty);
-        assertSuccess(result);
-        height = result.getBlockHeight();
-        LOG.info("Network type 'eth' and their network changed");
-        checkNetworkType(height, ntidEth);
-        checkNetwork(height, nidEth, true);
-        checkHeader(height.add(BigInteger.ONE), nidEth);
-        LOG.info("Network type 'icon' and their network not changed");
-        checkNetworkTypeNotChanged(height, ntidIcon);
-        checkNetworkNotChanged(height, nidIcon);
-        LOG.infoExiting();
-
-        LOG.infoEntering("Modify public key with DSA");
-        LOG.info("Set public key with network type 'icon'");
-        nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, NT_ICON, ntPubKeyFromWallet(nWallet));
-        assertSuccess(result);
-        LOG.info("Modify public key with DSA");
+        LOG.infoEntering("Modify public key with new one");
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
-        LOG.info("Network type 'eth' changed");
-        checkNetworkType(height, ntidEth);
-        checkNetwork(height, nidEth, true);
-        checkHeader(height.add(BigInteger.ONE), nidEth);
-        LOG.info("Network type 'icon' not changed");
-        checkNetworkTypeNotChanged(height, ntidIcon);
-        checkNetworkNotChanged(height, nidIcon);
+        for (BigInteger ntid: ntids) {
+            checkNetworkType(height, ntid);
+        }
+        for (BigInteger nid: nids) {
+            checkNetwork(height, nid, true);
+            checkHeader(height.add(BigInteger.ONE), nid);
+        }
         LOG.infoExiting();
 
         LOG.infoEntering("Change public key for network type that has no open network");
         LOG.info("Close network 'ethereum'");
         closeBTPNetwork(nidEth);
-        LOG.info("Modify public key with DSA");
+        LOG.info("Modify public key");
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
         LOG.info("Network type 'eth' not changed");
         checkNetworkTypeNotChanged(height, ntidEth);
+        checkNetworkNotChanged(height, nidEth);
+        LOG.info("Network type 'icon' changed");
+        checkNetworkTypeNotChanged(height, ntidIcon);
+        checkNetworkNotChanged(height, nidIcon);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");

@@ -290,10 +290,11 @@ func TestConsensus_BTPBasic(t_ *testing.T) {
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	})
+	const dsa = "ecdsa/secp256k1"
 	for _, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("ecdsa/secp256k1").PublicKey()),
+			"name":   dsa,
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
 	}
 	f.ProposeFinalizeBlockWithTX(
@@ -420,10 +421,11 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	})
+	const dsa = "ecdsa/secp256k1"
 	for _, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   "eth",
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor("ecdsa/secp256k1").PublicKey()),
+			"name":   dsa,
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
 	}
 	f.ProposeFinalizeBlockWithTX(
@@ -467,7 +469,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	})
 	for i, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   uid,
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
 		t_.Logf("register %s key index=%d key=%x", uid, i, v.Chain.WalletFor(dsa).PublicKey())
@@ -494,7 +496,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	wp := test.NewWalletProvider()
 	wp2 := test.NewWalletProvider()
 	tx = test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
-		"name":   uid,
+		"name":   dsa,
 		"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
 	}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
 		"name":   uid,
@@ -541,7 +543,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	})
 	for i, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   uid,
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
 		t_.Logf("register %s key index=%d key=%x", uid, i, v.Chain.WalletFor(dsa).PublicKey())
@@ -568,10 +570,10 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	wp2 := test.NewWalletProvider()
 	f.SendTransactionToProposer(
 		f.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   uid,
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
 		}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   uid,
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 		}),
 	)
@@ -604,7 +606,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	// set wrong pub key
 	f.SendTransactionToProposer(
 		f.NewTx().CallFrom(f.Nodes[0].CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   uid,
+			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 		}),
 	)

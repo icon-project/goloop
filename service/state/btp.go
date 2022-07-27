@@ -21,7 +21,6 @@ import (
 	"container/list"
 	"encoding/base64"
 	"encoding/hex"
-
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -54,7 +53,7 @@ type BTPContext interface {
 	GetNetworkTypeIDByName(name string) int64
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
 	GetNetwork(nid int64) (module.BTPNetwork, error)
-	GetPublicKey(address module.Address, name string, exactMatch bool) ([]byte, bool)
+	GetPublicKey(address module.Address, name string) []byte
 }
 
 type BTPSnapshot interface {
@@ -138,19 +137,12 @@ func (bc *btpContext) GetNetworkTypeIDByName(name string) int64 {
 	return ret
 }
 
-func (bc *btpContext) GetPublicKey(from module.Address, name string, exactMatch bool) (pubKey []byte, fromDSA bool) {
+func (bc *btpContext) GetPublicKey(from module.Address, name string) []byte {
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	if value := dbase.Get(from, name); value == nil {
-		if !exactMatch {
-			if mod := ntm.ForUID(name); mod != nil {
-				if value = dbase.Get(from, mod.DSA()); value != nil {
-					return value.Bytes(), true
-				}
-			}
-		}
-		return nil, false
+		return nil
 	} else {
-		return value.Bytes(), false
+		return value.Bytes()
 	}
 }
 
@@ -357,13 +349,11 @@ func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.Network
 	validators := bc.GetValidatorState()
 	for i := 0; i < validators.Len(); i++ {
 		v, _ := validators.Get(i)
-		key, fromDSA := bc.GetPublicKey(v.Address(), mod.UID(), false)
+		key := bc.GetPublicKey(v.Address(), mod.DSA())
 		if key != nil {
-			if fromDSA {
-				key, err = mod.NetworkTypeKeyFromDSAKey(key)
-				if err != nil {
-					invalidKey = true
-				}
+			key, err = mod.NetworkTypeKeyFromDSAKey(key)
+			if err != nil {
+				invalidKey = true
 			}
 		} else {
 			invalidKey = true
@@ -399,13 +389,13 @@ func (bs *BTPStateImpl) OpenNetwork(
 
 		keys, allHasPubKey := bs.getPubKeysOfValidators(bc, mod)
 		if allHasPubKey != true {
-			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.UID())
+			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.DSA())
 			return
 		}
 		var pc module.BTPProofContext
 		pc, err = mod.NewProofContext(keys)
 		if err != nil {
-			// TODO: handle error
+			err = scoreresult.UnknownFailureError.Wrapf(err, "Failed to make proof context")
 			return
 		}
 		nt = NewNetworkType(networkTypeName, pc)
@@ -495,35 +485,23 @@ func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid in
 	return nil
 }
 
-func (bs *BTPStateImpl) IsNetworkTypeUID(name string) bool {
-	return ntm.ForUID(name) != nil
-}
-
-func (bs *BTPStateImpl) IsDSAName(name string) bool {
-	for _, mod := range ntm.Modules() {
-		if mod.DSA() == name {
-			return true
+func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name string, pubKey []byte) error {
+	dsa := ntm.DSAModuleForName(name)
+	if dsa == nil {
+		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
+	}
+	if len(pubKey) != 0 {
+		if err := dsa.Verify(pubKey); err != nil {
+			return scoreresult.InvalidParameterError.Errorf("Invalid pubKey %+v", err)
 		}
 	}
-	return false
-}
 
-func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name string, pubKey []byte) error {
 	var mod module.NetworkTypeModule
 	uids := make([]string, 0)
-	dsa := true
-	if mod = ntm.ForUID(name); mod == nil {
-		for _, mod = range ntm.Modules() {
-			if mod.DSA() == name {
-				uids = append(uids, mod.UID())
-			}
+	for _, mod = range ntm.Modules() {
+		if mod.DSA() == name {
+			uids = append(uids, mod.UID())
 		}
-	} else {
-		dsa = false
-		uids = append(uids, name)
-	}
-	if len(uids) == 0 {
-		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
 
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
@@ -545,12 +523,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		if len(nt.OpenNetworkIDs()) == 0 {
 			continue
 		}
-		if 0 != bc.GetNetworkTypeIDByName(uid) {
-			old = dbase.Get(from, uid)
-			if old == nil || (!dsa && bytes.Compare(pubKey, old.Bytes()) != 0) {
-				bs.addPubKeyChanged(from, ntid)
-			}
-		}
+		bs.addPubKeyChanged(from, ntid)
 	}
 
 	if len(pubKey) == 0 {
@@ -573,8 +546,9 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 		if err != nil {
 			return err
 		}
-		if key, _ := bc.GetPublicKey(from, ntView.UID(), false); key == nil {
-			return errors.NotFoundError.Errorf("not found pubKey for %s", from)
+		mod := ntm.ForUID(ntView.UID())
+		if key := bc.GetPublicKey(from, mod.DSA()); key == nil {
+			return errors.NotFoundError.Errorf("not found pubKey for %s", mod.DSA())
 		}
 	}
 	return nil
@@ -611,7 +585,6 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 			keys, _ := bs.getPubKeysOfValidators(bc, mod)
 			proof, err := mod.NewProofContext(keys)
 			if err != nil {
-				// TODO: handle error
 				return err
 			}
 
