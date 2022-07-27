@@ -363,7 +363,7 @@ public class BTP2APITest extends TestBase {
         assertSuccess(result);
         height = result.getBlockHeight();
         LOG.info("Network type 'eth' not changed");
-        checkNetworkType(height, ntidEth);
+        checkNetworkTypeNotChanged(height, ntidEth);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
