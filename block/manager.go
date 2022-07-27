@@ -869,8 +869,8 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 
 func (m *manager) finalizePrunedBlock() error {
 	s := m.chain.GenesisStorage()
-	g := new(gs.PrunedGenesis)
-	if err := json.Unmarshal(s.Genesis(), g); err != nil {
+	g, err := gs.NewPrunedGenesis(s.Genesis())
+	if err != nil {
 		return transaction.InvalidGenesisError.Wrap(err, "InvalidGenesis")
 	}
 	d := gs.NewDatabaseWithStorage(s)

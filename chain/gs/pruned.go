@@ -32,7 +32,7 @@ func (g *PrunedGenesis) Verify() error {
 	return nil
 }
 
-func newPrunedGenesis(js []byte) (*PrunedGenesis, error) {
+func NewPrunedGenesis(js []byte) (*PrunedGenesis, error) {
 	g := new(PrunedGenesis)
 	if err := json.Unmarshal(js, g); err != nil {
 		return nil, err

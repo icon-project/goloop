@@ -37,7 +37,7 @@ type genesisStorage struct {
 
 func (gs *genesisStorage) ensureTypeAndIDs() error {
 	if gs.cid == 0 {
-		if pg, err := newPrunedGenesis(gs.Genesis()); err == nil {
+		if pg, err := NewPrunedGenesis(gs.Genesis()); err == nil {
 			gs.cid = int(pg.CID.Value)
 			gs.nid = int(pg.NID.Value)
 			gs.gType = module.GenesisPruned
