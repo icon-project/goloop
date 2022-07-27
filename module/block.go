@@ -118,7 +118,7 @@ type BlockManager interface {
 	ExportBlocks(from, to int64, dst db.Database, on func(height int64) error) error
 
 	// ExportGenesis exports genesis to the writer based on the block.
-	ExportGenesis(blk Block, votes CommitVoteSet, writer GenesisStorageWriter) error
+	ExportGenesis(blk BlockData, votes CommitVoteSet, writer GenesisStorageWriter) error
 
 	// GetGenesisVotes returns available votes from genesis storage.
 	// They are available only when it starts from genesis.

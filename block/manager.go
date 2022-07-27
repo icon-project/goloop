@@ -1515,7 +1515,7 @@ func hasBits(v int, bits int) bool {
 	return (v & bits) == bits
 }
 
-func (m *manager) ExportGenesis(blk module.Block, votes module.CommitVoteSet, gsw module.GenesisStorageWriter) error {
+func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet, gsw module.GenesisStorageWriter) error {
 	height := blk.Height()
 
 	if votes == nil {
