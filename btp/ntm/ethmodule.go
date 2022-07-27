@@ -76,7 +76,7 @@ func (m *ethModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, e
 	return newSecp256k1ProofContextFromBytes(ethModuleInstance, bs)
 }
 
-func (m *ethModuleCore) NewProofContext(keys [][]byte) proofContextCore {
+func (m *ethModuleCore) NewProofContext(keys [][]byte) (proofContextCore, error) {
 	return newSecp256k1ProofContext(ethModuleInstance, keys)
 }
 
@@ -97,7 +97,7 @@ func (m *ethModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
 }
 
 func (m *ethModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
-	return m.AddressFromPubKey(key)
+	return key, nil
 }
 
 func init() {

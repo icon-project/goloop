@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/block"
-	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
@@ -670,11 +669,6 @@ func (c *singleChain) WalletFor(dsa string) module.BaseWallet {
 	switch dsa {
 	case "ecdsa/secp256k1":
 		return c.wallet
-	case "eth", "icon":
-		return &addrWallet{
-			mod: ntm.ForUID(dsa),
-			w:   c.wallet,
-		}
 	}
 	return nil
 }

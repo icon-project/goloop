@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"encoding/base64"
 	"encoding/hex"
+
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -401,7 +402,13 @@ func (bs *BTPStateImpl) OpenNetwork(
 			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.UID())
 			return
 		}
-		nt = NewNetworkType(networkTypeName, mod.NewProofContext(keys))
+		var pc module.BTPProofContext
+		pc, err = mod.NewProofContext(keys)
+		if err != nil {
+			// TODO: handle error
+			return
+		}
+		nt = NewNetworkType(networkTypeName, pc)
 	} else {
 		if nt, _ = bci.getNetworkType(ntid); nt == nil {
 			err = scoreresult.InvalidParameterError.Errorf("There is no network type for %d", ntid)
@@ -602,7 +609,11 @@ func (bs *BTPStateImpl) updateNetworkType(bc BTPContext, ntid int64) error {
 		if len(nt.OpenNetworkIDs()) > 0 {
 			mod := ntm.ForUID(nt.UID())
 			keys, _ := bs.getPubKeysOfValidators(bc, mod)
-			proof := mod.NewProofContext(keys)
+			proof, err := mod.NewProofContext(keys)
+			if err != nil {
+				// TODO: handle error
+				return err
+			}
 
 			nt.SetNextProofContext(proof.Bytes())
 			nt.SetNextProofContextHash(proof.Hash())

@@ -71,7 +71,7 @@ func (m *iconModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, 
 	return newSecp256k1ProofContextFromBytes(iconModuleInstance, bs)
 }
 
-func (m *iconModuleCore) NewProofContext(keys [][]byte) proofContextCore {
+func (m *iconModuleCore) NewProofContext(keys [][]byte) (proofContextCore, error) {
 	return newSecp256k1ProofContext(iconModuleInstance, keys)
 }
 
@@ -92,7 +92,7 @@ func (m *iconModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
 }
 
 func (m *iconModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
-	return m.AddressFromPubKey(key)
+	return key, nil
 }
 
 func init() {

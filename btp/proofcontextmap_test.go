@@ -46,7 +46,9 @@ func newPCs(assert *assert.Assertions, count int, uids ...string) []module.BTPPr
 		}
 	}
 	for i, uid := range uids {
-		pcs[i] = ntm.ForUID(uid).NewProofContext(addrs[i])
+		var err error
+		pcs[i], err = ntm.ForUID(uid).NewProofContext(addrs[i])
+		assert.NoError(err)
 	}
 	return pcs
 }

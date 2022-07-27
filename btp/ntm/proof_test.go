@@ -73,7 +73,9 @@ func newTestSetup(t *testing.T, mod *networkTypeModule, count int) *testSetup {
 		s.assert.NoError(err)
 		s.addrs = append(s.addrs, addr)
 	}
-	s.pc = mod.NewProofContext(s.addrs)
+	var err error
+	s.pc, err = mod.NewProofContext(s.pubKeys)
+	assert.NoError(t, err)
 	return s
 }
 

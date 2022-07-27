@@ -30,7 +30,7 @@ type moduleCore interface {
 	AppendHash(out []byte, data []byte) []byte
 	DSAModule() module.DSAModule
 	NewProofContextFromBytes(bs []byte) (proofContextCore, error)
-	NewProofContext(pubKeys [][]byte) proofContextCore
+	NewProofContext(pubKeys [][]byte) (proofContextCore, error)
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
@@ -64,10 +64,14 @@ func (ntm *networkTypeModule) NewProofContextFromBytes(bs []byte) (module.BTPPro
 	}, nil
 }
 
-func (ntm *networkTypeModule) NewProofContext(keys [][]byte) module.BTPProofContext {
-	return &proofContext{
-		core: ntm.core.NewProofContext(keys),
+func (ntm *networkTypeModule) NewProofContext(keys [][]byte) (module.BTPProofContext, error) {
+	core, err := ntm.core.NewProofContext(keys)
+	if err != nil {
+		return nil, err
 	}
+	return &proofContext{
+		core: core,
+	}, nil
 }
 
 func (ntm *networkTypeModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
