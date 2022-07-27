@@ -17,6 +17,8 @@
 package chain
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path"
 
@@ -24,10 +26,15 @@ import (
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service"
+)
+
+const (
+	TempSuffix = ".tmp"
 )
 
 type taskReset struct {
@@ -48,6 +55,9 @@ var resetStates = map[State]string{
 }
 
 func (t *taskReset) String() string {
+	if t.height != 0 {
+		return fmt.Sprintf("Reset(height=%d,blockHash=%#x)", t.height, t.blockHash)
+	}
 	return "Reset"
 }
 
@@ -118,7 +128,7 @@ func (t *taskReset) _fetchBlock(fsm fastsync.Manager, h int64, hash []byte) (mod
 	return blk, votes, nil
 }
 
-func (t *taskReset) _prepareBlocks() (module.BlockData, module.CommitVoteSet, error) {
+func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.BlockData, module.CommitVoteSet, error) {
 	c := t.chain
 	defer c.releaseManagers()
 
@@ -148,15 +158,15 @@ func (t *taskReset) _prepareBlocks() (module.BlockData, module.CommitVoteSet, er
 		return nil, nil, err
 	}
 
-	blk, votes, err := t._fetchBlock(fsm, t.height, t.blockHash)
+	blk, votes, err := t._fetchBlock(fsm, height, blockHash)
 	if err != nil {
 		return nil, nil, err
 	}
-	pBlk, _, err := t._fetchBlock(fsm, t.height-1, blk.PrevID())
+	pBlk, _, err := t._fetchBlock(fsm, height-1, blk.PrevID())
 	if err != nil {
 		return nil, nil, err
 	}
-	ppBlk, _, err := t._fetchBlock(fsm, t.height-2, pBlk.PrevID())
+	ppBlk, _, err := t._fetchBlock(fsm, height-2, pBlk.PrevID())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,15 +181,18 @@ func (t *taskReset) _prepareBlocks() (module.BlockData, module.CommitVoteSet, er
 		return nil, nil, err
 	}
 
-	if err = block.SetLastHeight(c.Database(), nil, t.height); err != nil {
+	if err = block.SetLastHeight(c.Database(), nil, height); err != nil {
 		return nil, nil, err
 	}
 
 	return blk, votes, nil
 }
 
-func (t *taskReset) _exportGenesis(blk module.Block, votes module.CommitVoteSet, gsfile string) (rerr error) {
-	_ = os.RemoveAll(gsfile)
+func (t *taskReset) _exportGenesis(blk module.BlockData, votes module.CommitVoteSet, gsfile string) (rerr error) {
+	if err := t.chain.prepareManagers(); err != nil {
+		return err
+	}
+	defer t.chain.releaseManagers()
 	fd, err := os.OpenFile(gsfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL|os.O_TRUNC, 0700)
 	if err != nil {
 		return err
@@ -198,95 +211,257 @@ func (t *taskReset) _exportGenesis(blk module.Block, votes module.CommitVoteSet,
 	return nil
 }
 
-func (t *taskReset) _makePrunedGenesis(blkData module.BlockData, votes module.CommitVoteSet) (err error) {
-	c := t.chain
-	if err := c.prepareManagers(); err != nil {
-		return err
-	}
-	defer c.releaseManagers()
-
-	blk, err := t.chain.bm.GetBlockByHeight(blkData.Height())
+func (t *taskReset) _exportBlocks(dbDirNew string, dbTypeNew string, height int64, blockHash []byte, votes module.CommitVoteSet) (rblk module.Block, rvotes module.CommitVoteSet, ret error) {
+	// open database for export
+	_ = os.RemoveAll(dbDirNew)
+	newDB, err := t.chain.openDatabase(dbDirNew, dbTypeNew)
 	if err != nil {
-		return err
-	}
-	if cid, err := c.sm.GetChainID(blk.Result()); err != nil {
-		return errors.InvalidStateError.New("No ChainID is recorded (require Revision 8)")
-	} else {
-		if cid != int64(c.CID()) {
-			return errors.InvalidStateError.Errorf("Invalid chain ID real=%d exp=%d", cid, c.CID())
-		}
-	}
-
-	gsTmp := t.gsfile + ".tmp"
-	if err := t._exportGenesis(blk, votes, gsTmp); err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer func() {
-		if err != nil {
-			_ = os.Remove(gsTmp)
+		log.Must(newDB.Close())
+		if ret != nil {
+			log.Must(os.RemoveAll(dbDirNew))
 		}
 	}()
 
-	_, err = os.Stat(t.gsfile)
-	if err == nil {
-		gsbk := t.gsfile + ".bk"
-		_ = os.RemoveAll(gsbk)
-		if err := os.Rename(t.gsfile, gsbk); err != nil {
-			return errors.UnknownError.Wrapf(err, "fail on backup %s to %s",
-				t.gsfile, gsbk)
+	// prepare managers
+	if err := t.chain.prepareManagers(); err != nil {
+		return nil, nil, err
+	}
+	defer t.chain.releaseManagers()
+
+	// check block hash with height
+	blk, err := t.chain.bm.GetBlockByHeight(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !bytes.Equal(blk.ID(), blockHash) {
+		return nil, nil, errors.InvalidStateError.Errorf("BlockIDInvalid(exp=%#x,real=%#x)",
+			blockHash, blk.ID())
+	}
+
+	// copy blocks for new genesis
+	if err := t.chain.bm.ExportBlocks(height, height, newDB, func(height int64) error {
+		return nil
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	// use given votes or get votes from the next block
+	if votes == nil {
+		if nblk, err := t.chain.bm.GetBlockByHeight(height + 1); err != nil {
+			return nil, nil, err
+		} else {
+			votes = nblk.Votes()
+		}
+	}
+	return blk, votes, nil
+}
+
+func (t *taskReset) _syncBlocks(height int64, blockHash []byte, votes module.CommitVoteSet) (rblk module.BlockData, rvotes module.CommitVoteSet, rrb Revertible, ret error) {
+	logger := t.chain.Logger()
+	logger.Debugf("syncBlocks: START height=%d blockHash=%#x", height, blockHash)
+	defer logger.Debugf("syncBlocks: DONE err=%+v", ret)
+	rblk, rvotes, rrb, ret = t._syncBlocksWithDB(height, blockHash, votes)
+	if ret == nil {
+		return
+	}
+	logger.Debugf("syncBlocks: syncBlocksWithDB fails err=%v continue with syncBlocksWithNetwork", ret)
+	return t._syncBlocksWithNetwork(height, blockHash)
+}
+
+func (t *taskReset) _syncBlocksWithDB(height int64, blockHash []byte, votes module.CommitVoteSet) (rblk module.BlockData, rvotes module.CommitVoteSet, rrb Revertible, ret error) {
+	var rb Revertible
+	defer func() {
+		if ret != nil {
+			rb.RevertOrCommit(true)
+		} else {
+			rrb = rb
+		}
+	}()
+
+	// prepare database for exporting blocks
+	chainDir := t.chain.cfg.AbsBaseDir()
+	dbDir := path.Join(chainDir, DefaultDBDir)
+
+	dbDirNew := dbDir + TempSuffix
+	dbTypeNew := t.chain.cfg.DBType
+	rblk, rvotes, ret = t._exportBlocks(dbDirNew, dbTypeNew, height, blockHash, votes)
+	if ret != nil {
+		return
+	}
+	rb.Append(func(revert bool) {
+		if revert {
+			log.Must(os.RemoveAll(dbDirNew))
+		}
+	})
+
+	// replace with new database
+	t.chain.releaseDatabase()
+	rb.Append(func(revert bool) {
+		if revert {
+			t.chain.ensureDatabase()
+		}
+	})
+	if ret = rb.Delete(dbDir); ret != nil {
+		return
+	}
+	if ret = rb.Rename(dbDirNew, dbDir); ret != nil {
+		return
+	}
+	t.chain.ensureDatabase()
+	rb.Append(func(revert bool) {
+		if revert {
+			t.chain.releaseDatabase()
+		}
+	})
+
+	// remove other directories
+	contractDir := path.Join(chainDir, DefaultContractDir)
+	if ret = rb.Delete(contractDir); ret != nil {
+		return
+	}
+	walDir := path.Join(chainDir, DefaultWALDir)
+	if ret = rb.Delete(walDir); ret != nil {
+		return
+	}
+	cacheDir := path.Join(chainDir, DefaultCacheDir)
+	if ret = rb.Delete(cacheDir); ret != nil {
+		return
+	}
+	return
+}
+
+func (t *taskReset) _syncBlocksWithNetwork(height int64, blockHash []byte) (rblk module.BlockData, rvotes module.CommitVoteSet, rrb Revertible, ret error) {
+	c := t.chain
+	chainDir := c.cfg.AbsBaseDir()
+
+	// prepare revert
+	var rb Revertible
+	defer func() {
+		if ret != nil {
+			rb.RevertOrCommit(true)
+		} else {
+			rrb = rb
+		}
+	}()
+
+	// reset database
+	c.releaseDatabase()
+	rb.Append(func(revert bool) {
+		if revert {
+			c.ensureDatabase()
+		}
+	})
+	dbDir := path.Join(chainDir, DefaultDBDir)
+	if ret = rb.Delete(dbDir); ret != nil {
+		return
+	}
+	c.ensureDatabase()
+	rb.Append(func(revert bool) {
+		if revert {
+			c.releaseDatabase()
+			log.Must(os.RemoveAll(dbDir))
+		}
+	})
+
+	// remove other directories
+	contractDir := path.Join(chainDir, DefaultContractDir)
+	if ret = rb.Delete(contractDir); ret != nil {
+		return
+	}
+	WALDir := path.Join(chainDir, DefaultWALDir)
+	if ret = rb.Delete(WALDir); ret != nil {
+		return
+	}
+	CacheDir := path.Join(chainDir, DefaultCacheDir)
+	if ret = rb.Delete(CacheDir); ret != nil {
+		return
+	}
+
+	rblk, rvotes, ret = t._prepareBlocks(height, blockHash)
+	return
+}
+
+func (t *taskReset) _resetToGenesis() (ret error) {
+	gsType, err := t.chain.GenesisStorage().Type()
+	if err != nil {
+		return err
+	}
+	switch gsType {
+	case module.GenesisNormal:
+		return t._cleanUp()
+	case module.GenesisPruned:
+		c := t.chain
+		genesis, err := gs.NewPrunedGenesis(c.GenesisStorage().Genesis())
+		if err != nil {
+			return err
+		}
+		votesBytes, err := c.GenesisStorage().Get(genesis.Votes.Bytes())
+		if err != nil {
+			return err
+		}
+		votes := c.CommitVoteSetDecoder()(votesBytes)
+		_, _, rb, err := t._syncBlocks(genesis.Height.Value, genesis.Block.Bytes(), votes)
+		if err != nil {
+			return err
 		}
 		defer func() {
-			if err != nil {
-				_ = os.RemoveAll(t.gsfile)
-				_ = os.Rename(gsbk, t.gsfile)
-			} else {
-				_ = os.RemoveAll(gsbk)
-			}
+			rb.RevertOrCommit(ret != nil)
 		}()
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return errors.UnknownError.Wrapf(err, "cannot stat %s", t.gsfile)
+		return nil
+	default:
+		return errors.InvalidStateError.Errorf("UnknownGenesisType(type=%d)", gsType)
 	}
-	if err := os.Rename(gsTmp, t.gsfile); err != nil {
-		return errors.UnknownError.Errorf("fail to rename %s to %s",
-			gsTmp, t.gsfile)
-	}
+}
 
-	// replace genesis
-	fd, err := os.Open(t.gsfile)
+func loadGenesisStorage(file string) (g module.GenesisStorage, ret error) {
+	fd, err := os.OpenFile(file, os.O_RDONLY, 0)
 	if err != nil {
-		return errors.UnknownError.Wrapf(err, "fail to open file=%s", t.gsfile)
+		return nil, err
 	}
-	g, err := gs.NewFromFile(fd)
+	return gs.NewFromFile(fd)
+}
+
+func (t *taskReset) _resetToHeight(height int64, blockHash []byte) (ret error) {
+	blk, votes, rb, err := t._syncBlocks(height, blockHash, nil)
 	if err != nil {
-		return errors.UnknownError.Wrapf(err, "fail to parse gs=%s", t.gsfile)
+		return err
 	}
+	defer func() {
+		rb.RevertOrCommit(ret != nil)
+	}()
 
-	c.cfg.GenesisStorage = g
-	c.cfg.Genesis = g.Genesis()
+	// create pruned genesis
+	if err := rb.Delete(t.gsfile); err != nil {
+		return err
+	}
+	if err := t._exportGenesis(blk, votes, t.gsfile); err != nil {
+		return err
+	}
+	rb.Append(func(revert bool) {
+		if revert {
+			_ = os.Remove(t.gsfile)
+		}
+	})
 
+	// reload new genesis
+	g, err := loadGenesisStorage(t.gsfile)
+	if err != nil {
+		return err
+	}
+	t.chain.cfg.GenesisStorage = g
+	t.chain.cfg.Genesis = g.Genesis()
 	return nil
 }
 
 func (t *taskReset) _reset() (ret error) {
-	err := t._cleanUp()
-	if err != nil {
-		return err
-	}
 	if t.height == 0 {
-		return nil
+		return t._resetToGenesis()
+	} else {
+		return t._resetToHeight(t.height, t.blockHash)
 	}
-
-	// do clean up again on failure
-	defer func() {
-		if ret != nil {
-			_ = t._cleanUp()
-		}
-	}()
-	blk, votes, err := t._prepareBlocks()
-	if err != nil {
-		return err
-	}
-	return t._makePrunedGenesis(blk, votes)
 }
 
 func (t *taskReset) Stop() {

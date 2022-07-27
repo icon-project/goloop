@@ -1555,7 +1555,7 @@ func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet
 	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
 		return errors.Wrap(err, "fail to write votes")
 	}
-	return m._exportBlocks(height, height, gs.NewDatabaseWithWriter(gsw), exportHashable, nil)
+	return nil
 }
 
 func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64) error) error {
