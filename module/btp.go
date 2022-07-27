@@ -206,6 +206,7 @@ type NetworkTypeModule interface {
 	ListByMerkleRootBucket() db.BucketID
 	NewProofFromBytes(bs []byte) (BTPProof, error)
 	NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error)
+	DSAModule() DSAModule
 }
 
 type BTPBlockHeader interface {
@@ -243,4 +244,11 @@ type BTPNetwork interface {
 	PrevNetworkSectionHash() []byte
 	LastNetworkSectionHash() []byte
 	ToJSON() map[string]interface{}
+}
+
+type DSAModule interface {
+	Name() string
+
+	// Verify verifies format of public key.
+	Verify(pubKey []byte) error
 }

@@ -28,7 +28,7 @@ const hashLen = 32
 type moduleCore interface {
 	UID() string
 	AppendHash(out []byte, data []byte) []byte
-	DSA() string
+	DSAModule() module.DSAModule
 	NewProofContextFromBytes(bs []byte) (proofContextCore, error)
 	NewProofContext(pubKeys [][]byte) proofContextCore
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
@@ -51,7 +51,7 @@ func (ntm *networkTypeModule) AppendHash(out []byte, data []byte) []byte {
 }
 
 func (ntm *networkTypeModule) DSA() string {
-	return ntm.core.DSA()
+	return ntm.core.DSAModule().Name()
 }
 
 func (ntm *networkTypeModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error) {
@@ -174,6 +174,10 @@ func (ntm *networkTypeModule) NewProofFromBytes(bs []byte) (module.BTPProof, err
 
 func (ntm *networkTypeModule) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
 	return ntm.core.NetworkTypeKeyFromDSAKey(key)
+}
+
+func (ntm *networkTypeModule) DSAModule() module.DSAModule {
+	return ntm.core.DSAModule()
 }
 
 var modules = make(map[string]module.NetworkTypeModule)

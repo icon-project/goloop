@@ -31,7 +31,6 @@ import (
 
 const (
 	iconUID          = "icon"
-	iconDSA          = secp256k1DSA
 	iconAddressIDLen = 20
 
 	iconBytesByHash = "i" + db.BytesByHash
@@ -64,8 +63,8 @@ func (m *iconModuleCore) AppendHash(out []byte, data []byte) []byte {
 	return h.Sum(out)
 }
 
-func (m *iconModuleCore) DSA() string {
-	return iconDSA
+func (m *iconModuleCore) DSAModule() module.DSAModule {
+	return secp256k1DSAModuleInstance
 }
 
 func (m *iconModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, error) {

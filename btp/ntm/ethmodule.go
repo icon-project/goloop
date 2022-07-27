@@ -26,7 +26,6 @@ import (
 
 const (
 	ethUID        = "eth"
-	ethDSA        = secp256k1DSA
 	ethAddressLen = 20
 
 	ethBytesByHash = "e" + db.BytesByHash
@@ -69,8 +68,8 @@ func (m *ethModuleCore) AppendHash(out []byte, data []byte) []byte {
 	return appendKeccak256(out, data)
 }
 
-func (m *ethModuleCore) DSA() string {
-	return ethDSA
+func (m *ethModuleCore) DSAModule() module.DSAModule {
+	return secp256k1DSAModuleInstance
 }
 
 func (m *ethModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, error) {

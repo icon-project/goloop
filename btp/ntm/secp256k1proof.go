@@ -26,10 +26,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const (
-	secp256k1DSA = "ecdsa/secp256k1"
-)
-
 type secp256k1proofContextModule interface {
 	UID() string
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
