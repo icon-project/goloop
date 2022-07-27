@@ -356,7 +356,7 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoEntering("Change public key for network type that has no open network");
         LOG.info("Close network 'ethereum'");
-        closeBTPNetwork(ntidEth);
+        closeBTPNetwork(nidEth);
         LOG.info("Modify public key with DSA");
         nWallet = KeyWallet.create();
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
