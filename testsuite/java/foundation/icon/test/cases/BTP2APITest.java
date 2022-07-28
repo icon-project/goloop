@@ -136,25 +136,31 @@ public class BTP2APITest extends TestBase {
         }
 
         byte[] pubKeyEmpty = new byte[0];
+        var caller1PubKey = caller1.getPublicKey().toByteArray();
+        var caller2PubKey = caller2.getPublicKey().toByteArray();
 
         var cases = new Case[]{
                 new Case(caller1, NT_ICON, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
                 new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
-                new Case(caller1, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), true, "Set public key"),
-                new Case(caller2, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), false, "Set public key with already exist"),
-                new Case(caller1, DSA_SECP256K1, caller2.getPublicKey().toByteArray(), true, "Modify public key"),
+                new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set public key"),
+                new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set same public key again"),
+                new Case(caller1, DSA_SECP256K1, caller2PubKey, true, "Modify public key"),
+                new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Restore public key"),
+                new Case(caller2, DSA_SECP256K1, caller1PubKey, false, "Set public key with already exist"),
+                new Case(caller2, DSA_SECP256K1, caller2PubKey, true, "Set with deleted public key"),
                 new Case(caller1, NT_ICON, pubKeyEmpty, false, "Delete with Invalid name"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
+                new Case(caller2, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete empty public key"),
         };
 
         for (Case c : cases) {
             LOG.infoEntering(c.title);
             TransactionResult result;
-            result = chainScore.setBTPPublicKey(caller1, c.name, c.pubKey);
+            result = chainScore.setBTPPublicKey(c.caller, c.name, c.pubKey);
             if (c.success) {
                 assertSuccess(result);
-                byte[] retPubKey = chainScore.getBTPPublicKey(caller1.getAddress(), c.name);
+                byte[] retPubKey = chainScore.getBTPPublicKey(c.caller.getAddress(), c.name);
                 if (c.pubKey.equals(pubKeyEmpty)) {
                     assertArrayEquals(null, retPubKey);
                 } else {

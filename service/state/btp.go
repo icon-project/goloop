@@ -505,16 +505,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		}
 	}
 
-	var mod module.NetworkTypeModule
-	uids := make([]string, 0)
-	for _, mod = range ntm.Modules() {
-		if mod.DSA() == name {
-			uids = append(uids, mod.UID())
-		}
-	}
-
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
-
 	oPubKey := dbase.Get(from, name)
 	if oPubKey != nil && bytes.Compare(oPubKey.Bytes(), pubKey) == 0 {
 		return nil
@@ -539,19 +530,22 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 	}
 
 	// find public key changed active network type
-	for _, uid := range uids {
-		ntid := bc.GetNetworkTypeIDByName(uid)
-		if ntid == 0 {
-			continue
+	var mod module.NetworkTypeModule
+	for _, mod = range ntm.Modules() {
+		if mod.DSA() == name {
+			ntid := bc.GetNetworkTypeIDByName(mod.UID())
+			if ntid == 0 {
+				continue
+			}
+			nt, err := bc.GetNetworkType(ntid)
+			if err != nil {
+				return err
+			}
+			if len(nt.OpenNetworkIDs()) == 0 {
+				continue
+			}
+			bs.addPubKeyChanged(from, ntid)
 		}
-		nt, err := bc.GetNetworkType(ntid)
-		if err != nil {
-			return err
-		}
-		if len(nt.OpenNetworkIDs()) == 0 {
-			continue
-		}
-		bs.addPubKeyChanged(from, ntid)
 	}
 
 	return nil
