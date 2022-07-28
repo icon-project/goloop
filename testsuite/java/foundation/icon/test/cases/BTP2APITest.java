@@ -332,8 +332,9 @@ public class BTP2APITest extends TestBase {
         checkNetworkTypeNotChanged(height, ntidEth);
         checkNetworkNotChanged(height, nidEth);
         LOG.info("Network type 'icon' changed");
-        checkNetworkTypeNotChanged(height, ntidIcon);
-        checkNetworkNotChanged(height, nidIcon);
+        checkNetworkType(height, ntidIcon);
+        checkNetwork(height, nidIcon, true);
+        checkHeader(height.add(BigInteger.ONE), nidIcon);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
