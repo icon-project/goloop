@@ -338,7 +338,7 @@ public class BTP2APITest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
-        resetNodePublicKeys();
+        setNodePublicKeys();
         LOG.infoExiting();
 
         LOG.infoExiting();
@@ -394,22 +394,6 @@ public class BTP2APITest extends TestBase {
             LOG.info(w.getAddress() + " : " + pubKey);
             TransactionResult result;
             result = chainScore.setBTPPublicKey(w, DSA_SECP256K1, pubKey.toByteArray());
-            assertSuccess(result);
-        }
-    }
-
-    private void resetNodePublicKeys() throws IOException, ResultTimeoutException {
-        byte[] pubKeyEmpty = new byte[0];
-        for (int i = 0; i < Env.nodes.length; i++) {
-            KeyWallet w = Env.nodes[i].wallet;
-            TransactionResult result;
-            // clear public key of network type
-            for (String name: NT_NAMES) {
-                result = chainScore.setBTPPublicKey(w, name, pubKeyEmpty);
-                assertSuccess(result);
-            }
-            // set public key with dsa
-            result = chainScore.setBTPPublicKey(w, DSA_SECP256K1, w.getPublicKey().toByteArray());
             assertSuccess(result);
         }
     }
