@@ -20,6 +20,7 @@ import (
 	"math/bits"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -75,6 +76,9 @@ func (ntm *networkTypeModule) NewProofContext(keys [][]byte) (module.BTPProofCon
 }
 
 func (ntm *networkTypeModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+	if len(pubKey) == 0 {
+		return nil, errors.Errorf("zero length pubKey")
+	}
 	return ntm.core.AddressFromPubKey(pubKey)
 }
 

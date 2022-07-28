@@ -180,6 +180,7 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		prop := scoredb.NewVarDB(as, VarTest)
 		prop.Set(*t.json.VarTest)
 	}
+	var chainScoreError error
 	for _, c := range t.json.Call {
 		cc := contract.NewCallContext(ctx, big.NewInt((1<<63)-1), false)
 		var from *common.Address
@@ -201,10 +202,11 @@ func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Rec
 		err, _, _, _ = cc.Call(ch, big.NewInt((1<<63)-1))
 		if err != nil {
 			log.Errorf("error in test transaction: tx from=%s tx data=%s err=%+v", c.From, c.Data, err)
+			chainScoreError = err
 		}
 		cc.GetBTPMessages(r)
 	}
-	log.Infof("Execute transaction tx=%s", t)
+	log.Infof("Execute transaction tx=%s chainScoreError=%+v", t, chainScoreError)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }

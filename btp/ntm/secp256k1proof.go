@@ -102,12 +102,16 @@ func newSecp256k1ProofContext(
 		mod:         mod,
 	}
 	for i, key := range keys {
-		addr, err := mod.AddressFromPubKey(key)
-		if err != nil {
-			return nil, errors.Wrapf(err, "fail to converted key to address index=%d key=%x", i, key)
+		var addr []byte
+		var err error
+		if key != nil {
+			addr, err = mod.AddressFromPubKey(key)
+			if err != nil {
+				return nil, errors.Wrapf(err, "fail to converted key to address index=%d key=%x", i, key)
+			}
+			pp.addrToIndex[string(addr)] = i
 		}
 		pp.Validators = append(pp.Validators, addr)
-		pp.addrToIndex[string(addr)] = i
 	}
 	return pp, nil
 }
@@ -116,7 +120,9 @@ func (pc *secp256k1ProofContext) indexOf(address []byte) (int, bool) {
 	if pc.addrToIndex == nil {
 		pc.addrToIndex = make(map[string]int, len(pc.Validators))
 		for i, addr := range pc.Validators {
-			pc.addrToIndex[string(addr)] = i
+			if addr != nil {
+				pc.addrToIndex[string(addr)] = i
+			}
 		}
 	}
 	idx, ok := pc.addrToIndex[string(address)]
