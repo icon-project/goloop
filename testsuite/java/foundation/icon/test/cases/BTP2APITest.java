@@ -141,7 +141,7 @@ public class BTP2APITest extends TestBase {
                 new Case(caller1, NT_ICON, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
                 new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
                 new Case(caller1, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), true, "Set public key"),
-//                new Case(caller2, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), false, "Set public key with already exist"),
+                new Case(caller2, DSA_SECP256K1, caller1.getPublicKey().toByteArray(), false, "Set public key with already exist"),
                 new Case(caller1, DSA_SECP256K1, caller2.getPublicKey().toByteArray(), true, "Modify public key"),
                 new Case(caller1, NT_ICON, pubKeyEmpty, false, "Delete with Invalid name"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),

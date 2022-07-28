@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
@@ -42,6 +43,7 @@ const (
 	NetworkIDKey            = "networkID"
 	NetworkByIDKey          = "networkByID"
 	PubKeyByNameKey         = "pubKeyByName"
+	PubKeyOwner             = "pubKeyOwner"
 )
 
 type BTPContext interface {
@@ -490,9 +492,16 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 	if dsa == nil {
 		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
+	ownerDB := scoredb.NewDictDB(bc.Store(), PubKeyOwner, 1)
+	ownerKey := crypto.SHA3Sum256(pubKey)
 	if len(pubKey) != 0 {
 		if err := dsa.Verify(pubKey); err != nil {
 			return scoreresult.InvalidParameterError.Errorf("Invalid pubKey %+v", err)
+		}
+		if value := ownerDB.Get(ownerKey); value != nil {
+			if !value.Address().Equal(from) {
+				return scoreresult.InvalidParameterError.Errorf("Already exist pubkey")
+			}
 		}
 	}
 
@@ -506,10 +515,29 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 
-	old := dbase.Get(from, name)
-	if old != nil && bytes.Compare(old.Bytes(), pubKey) == 0 {
+	oPubKey := dbase.Get(from, name)
+	if oPubKey != nil && bytes.Compare(oPubKey.Bytes(), pubKey) == 0 {
 		return nil
 	}
+
+	if oPubKey != nil {
+		if err := ownerDB.Delete(crypto.SHA3Sum256(oPubKey.Bytes())); err != nil {
+			return err
+		}
+	}
+	if len(pubKey) == 0 {
+		if err := dbase.Delete(from, name); err != nil {
+			return err
+		}
+	} else {
+		if err := dbase.Set(from, name, pubKey); err != nil {
+			return err
+		}
+		if err := ownerDB.Set(ownerKey, from); err != nil {
+			return err
+		}
+	}
+
 	// find public key changed active network type
 	for _, uid := range uids {
 		ntid := bc.GetNetworkTypeIDByName(uid)
@@ -526,13 +554,6 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		bs.addPubKeyChanged(from, ntid)
 	}
 
-	if len(pubKey) == 0 {
-		return dbase.Delete(from, name)
-	} else {
-		if err := dbase.Set(from, name, pubKey); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
