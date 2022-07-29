@@ -144,5 +144,5 @@ func NewService(c module.Chain, plt base.Platform, pm eeproxy.Manager, baseDir s
 func (s *defaultService) NewSyncTransition(tr module.Transition, result []byte,
 	vl []byte,
 ) module.Transition {
-	return service.NewSyncTransition(tr, s.syncMan, result, vl)
+	return service.NewSyncTransition(tr, s.syncMan, result, vl, false)
 }
