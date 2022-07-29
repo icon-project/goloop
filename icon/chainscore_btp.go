@@ -21,6 +21,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
@@ -53,8 +54,7 @@ func (s *chainScore) Ex_getNodePublicKey(address module.Address) ([]byte, error)
 	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
-	pubKey := s.newBTPContext().GetPublicKey(address, iconDSA)
-	return pubKey, nil
+	return s.newBTPContext().GetPublicKey(address, iconDSA), nil
 }
 
 func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, update bool) error {
@@ -73,26 +73,30 @@ func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, upd
 	if jso, err := es.GetPRepInJSON(prep, s.cc.BlockHeight()); err != nil {
 		return scoreresult.New(module.StatusInvalidParameter, "prep is not P-Rep")
 	} else {
+		mod := ntm.ForUID(iconBTPUID)
+		a, err := mod.AddressFromPubKey(pubKey)
+		if err != nil {
+			return err
+		}
+		addr := common.MustNewAddress(a)
 		if update {
 			if !s.from.Equal(prep) {
 				return scoreresult.New(module.StatusAccessDenied, "Only the P-Rep can update its own public key")
 			}
-		} else {
-			if len(pubKey) > 0 {
-				mod := ntm.ForUID(iconBTPUID)
-				id, err := mod.AddressFromPubKey(pubKey)
-				if err != nil {
+			if !addr.Equal(jso["nodeAddress"].(module.Address)) {
+				prepInfo := &icstate.PRepInfo{Node: addr}
+				if err = es.SetPRep(s.newCallContext(s.cc), prepInfo); err != nil {
 					return err
 				}
-				addr := common.MustNewAddress(id)
-				if !addr.Equal(jso["nodeAddress"].(module.Address)) {
-					return scoreresult.Errorf(module.StatusInvalidParameter,
-						"Public key and node address of P-Rep do not match. %s!=%s", addr, jso["nodeAddress"])
-				}
-				if v := bc.GetPublicKey(addr, iconDSA); v != nil {
-					return scoreresult.New(module.StatusInvalidParameter,
-						"There is public key already. To update public key, set update true")
-				}
+			}
+		} else {
+			if v := bc.GetPublicKey(addr, iconDSA); v != nil {
+				return scoreresult.New(module.StatusInvalidParameter,
+					"There is public key already. To update public key, set update true")
+			}
+			if !addr.Equal(jso["nodeAddress"].(module.Address)) {
+				return scoreresult.Errorf(module.StatusInvalidParameter,
+					"Public key and node address of P-Rep do not match. %s!=%s", addr, jso["nodeAddress"])
 			}
 		}
 	}
