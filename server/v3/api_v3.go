@@ -761,7 +761,7 @@ func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	block, err := getBlock(bm, param.Height)
+	block, err := getBlock(chain, bm, param.Height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err,
 			"fail to get a block for height=%d", height)
@@ -812,7 +812,7 @@ func getBTPNetworkTypeInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	block, err := getBlock(bm, param.Height)
+	block, err := getBlock(chain, bm, param.Height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
@@ -856,6 +856,10 @@ func getBTPMessages(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	sm := chain.ServiceManager()
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
 	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
@@ -934,6 +938,9 @@ func getBTPHeader(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
@@ -978,6 +985,9 @@ func getBTPProof(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
