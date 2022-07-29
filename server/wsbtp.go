@@ -45,12 +45,12 @@ func (wm *wsSessionManager) RunBtpSession(ctx echo.Context) error {
 		return nil
 	}
 
-	//network check
-	if br.NetworkId.Value == 0 {
-		_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams),
-			fmt.Sprintf("Invalid network id"))
-		return nil
-	}
+	_ = wss.response(0, "")
+
+	ech := make(chan error)
+	go readLoop(wss.c, ech)
+
+	var bch <-chan module.Block
 
 	block, err := bm.GetLastBlock()
 	nw, err := sm.BTPNetworkFromResult(block.Result(), br.NetworkId.Value)
@@ -59,10 +59,6 @@ func (wm *wsSessionManager) RunBtpSession(ctx echo.Context) error {
 		return nil
 	}
 
-	ech := make(chan error)
-	go readLoop(wss.c, ech)
-
-	var bch <-chan module.Block
 loop:
 	for {
 		bch, err = bm.WaitForBlock(h)
