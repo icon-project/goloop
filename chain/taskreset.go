@@ -116,6 +116,11 @@ func (t *taskReset) _cleanUp() error {
 	if err := os.RemoveAll(ContractDir); err != nil {
 		return err
 	}
+
+	TmpDir := path.Join(chainDir, DefaultTmpDBDir)
+	if err := os.RemoveAll(TmpDir); err != nil {
+		return err
+	}
 	return nil
 }
 

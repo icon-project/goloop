@@ -130,7 +130,7 @@ func (sm *ServiceManager) PatchTransition(tr module.Transition, patches module.T
 	return tr
 }
 
-func (sm *ServiceManager) CreateSyncTransition(tr module.Transition, result []byte, vlHash []byte) module.Transition {
+func (sm *ServiceManager) CreateSyncTransition(tr module.Transition, result []byte, vlHash []byte, noBuffer bool) module.Transition {
 	return createSyncTransition(tr.(*transition))
 }
 
