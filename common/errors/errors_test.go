@@ -136,18 +136,18 @@ func TestIs(t *testing.T) {
 	e := Errorc(IllegalArgumentError, "IllegalArgument")
 
 	e2 := Wrap(e, "MyTest")
-	if Is(e, e2) {
+	if Is(e, e2) || errors.Is(e, e2) {
 		t.Error("Fail to check !Is(origin, Wrap(origin)) is FALSE")
 	}
-	if !Is(e2, e) {
-		t.Error("Fail to check Is(Wrap(origin) origin) is TRUE")
+	if !Is(e2, e) || !errors.Is(e2, e) {
+		t.Error("Fail to check Is(Wrap(origin), origin) is TRUE")
 	}
 
 	e3 := Wrapc(e, UnsupportedError, "MyTest2")
-	if Is(e, e3) {
+	if Is(e, e3) || errors.Is(e, e3) {
 		t.Error("Fail to check !Is(origin, Wrapc(origin)) is FALSE")
 	}
-	if !Is(e3, e) {
-		t.Error("Fail to check Is(Wrapc(origin) origin) is TRUE")
+	if !Is(e3, e) || !errors.Is(e3, e) {
+		t.Error("Fail to check Is(Wrapc(origin), origin) is TRUE")
 	}
 }

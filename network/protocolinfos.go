@@ -101,7 +101,7 @@ func (pis *ProtocolInfos) Remove(pi module.ProtocolInfo) {
 				pis.m[pi.ID()] = l
 			}
 			idx = pis.indexOf(pis.l, pi)
-			pis.remove(pis.l, idx)
+			pis.l = pis.remove(pis.l, idx)
 		}
 	}
 }
@@ -116,6 +116,18 @@ func (pis *ProtocolInfos) Exists(pi module.ProtocolInfo) bool {
 		}
 	}
 	return false
+}
+
+func (pis *ProtocolInfos) ExistsByID(piList ...module.ProtocolInfo) bool {
+	pis.mtx.RLock()
+	defer pis.mtx.RUnlock()
+
+	for _, pi := range piList {
+		if l, ok := pis.m[pi.ID()]; !ok || len(l) == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (pis *ProtocolInfos) Array() []module.ProtocolInfo {

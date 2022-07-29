@@ -153,7 +153,7 @@ func (t *Transaction) Prepare(ctx contract.Context) (state.WorldContext, error) 
 	return ctx.GetFuture(lq), nil
 }
 
-func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
+func (t *Transaction) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), t.To())
 	if t.json.Validators != nil {
 		var vl []module.Validator

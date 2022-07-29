@@ -507,7 +507,7 @@ func (c *singleChain) _runTask(task chainTask, wait bool) error {
 
 func (c *singleChain) _waitResultOf(task chainTask) error {
 	result := task.Wait()
-	c.logger.Infof("DONE %s err=%v", task.String(), result)
+	c.logger.Infof("DONE %s err=%+v", task.String(), result)
 
 	if result == nil {
 		c._transitOrTerminate(Finished, nil, Started, Stopping)
@@ -639,8 +639,13 @@ func (c *singleChain) Verify() error {
 	return errors.UnsupportedError.New("UnsupportedFeatureVerify")
 }
 
-func (c *singleChain) Reset() error {
-	task := newTaskReset(c)
+func (c *singleChain) Reset(gs string, height int64, blockHash []byte) error {
+	if len(gs) == 0 {
+		chainDir := c.cfg.AbsBaseDir()
+		const chainGenesisZipFileName = "genesis.zip"
+		gs = path.Join(chainDir, chainGenesisZipFileName)
+	}
+	task := newTaskReset(c, gs, height, blockHash)
 	return c._runTask(task, false)
 }
 

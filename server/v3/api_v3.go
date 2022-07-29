@@ -83,6 +83,18 @@ func fillTransactions(blockJson interface{}, b module.Block, v module.JSONVersio
 	return nil
 }
 
+func checkBaseHeight(c module.Chain, height int64) error {
+	if height < 0 {
+		return errors.NotFoundError.Errorf("NegativeHeight(height=%d)", height)
+	}
+	base := c.GenesisStorage().Height()
+	if height < base {
+		return errors.NotFoundError.Errorf(
+			"PrunedBlock(height=%d,base=%d)", height, base)
+	}
+	return nil
+}
+
 func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 	var param struct{}
@@ -133,6 +145,10 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+
 	bm := chain.BlockManager()
 	if bm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
@@ -180,6 +196,9 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
+	if err := checkBaseHeight(chain, block.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 
 	blockJson, err := block.ToJSON(module.JSONVersion3)
 	if err != nil {
@@ -211,7 +230,13 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	block, err := getBlock(bm, param.Height)
+	block, err := getBlock(chain, bm, param.Height)
+	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
 	bi := common.NewBlockInfo(block.Height(), block.Timestamp())
 	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), bi)
 	if err != nil {
@@ -227,11 +252,14 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	}
 }
 
-func getBlock(bm module.BlockManager, height jsonrpc.HexInt) (block module.Block, err error) {
+func getBlock(chain module.Chain, bm module.BlockManager, height jsonrpc.HexInt) (block module.Block, err error) {
 	if height == "" {
 		block, err = bm.GetLastBlock()
 	} else {
 		h, _ := height.Int64()
+		if err := checkBaseHeight(chain, h); err != nil {
+			return nil, err
+		}
 		block, err = bm.GetBlockByHeight(h)
 	}
 	return
@@ -256,7 +284,7 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	}
 
 	var balance common.HexInt
-	block, err := getBlock(bm, param.Height)
+	block, err := getBlock(chain, bm, param.Height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -283,7 +311,7 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	if bm == nil || sm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
-	b, err := getBlock(bm, param.Height)
+	b, err := getBlock(chain, bm, param.Height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -323,7 +351,7 @@ func getTotalSupply(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	b, err := getBlock(bm, height)
+	b, err := getBlock(chain, bm, height)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -368,6 +396,9 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	blk := txInfo.Block()
+	if err := checkBaseHeight(chain, blk.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 	receipt, err := txInfo.GetReceipt()
 	if block.ResultNotFinalizedError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeExecuting.New("Executing")
@@ -522,6 +553,10 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+
 	bm := chain.BlockManager()
 	if bm == nil {
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
@@ -557,6 +592,10 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	chain, err := ctx.Chain()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
 
 	cs := chain.Consensus()
@@ -601,6 +640,9 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	if err := checkBaseHeight(chain, block.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
 
 	blockResult := block.Result()
@@ -651,6 +693,9 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	if err := checkBaseHeight(chain, block.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
 
 	blockResult := block.Result()
@@ -1054,7 +1099,7 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	return waitTransactionResultOnChannel(ctx, bm, hash, debug, timeout, maxLimit, fc)
+	return waitTransactionResultOnChannel(ctx, chain, bm, hash, debug, timeout, maxLimit, fc)
 }
 
 func waitTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -1098,13 +1143,10 @@ func waitTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	return waitTransactionResultOnChannel(ctx, bm, hash, debug, timeout, maxLimit, fc)
+	return waitTransactionResultOnChannel(ctx, chain, bm, hash, debug, timeout, maxLimit, fc)
 }
 
-func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager,
-	id []byte, debug bool, timeout time.Duration, maxLimit bool,
-	fc <-chan interface{},
-) (interface{}, error) {
+func waitTransactionResultOnChannel(ctx *jsonrpc.Context, chain module.Chain, bm module.BlockManager, id []byte, debug bool, timeout time.Duration, maxLimit bool, fc <-chan interface{}) (interface{}, error) {
 	tc := time.After(timeout)
 
 	var err error
@@ -1145,12 +1187,15 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 		return nil, nil
 	}
 
+	blk := txInfo.Block()
+	if err := checkBaseHeight(chain, blk.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 	res, err := receipt.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	result := res.(map[string]interface{})
-	blk := txInfo.Block()
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
 	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
@@ -1258,6 +1303,9 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	}
 
 	blk := txInfo.Block()
+	if err := checkBaseHeight(chain, blk.Height()); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
 	_, err = txInfo.GetReceipt()
 	if block.ResultNotFinalizedError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeExecuting.New("Executing")

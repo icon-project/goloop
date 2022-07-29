@@ -23,7 +23,7 @@ type client struct {
 	common.Mutex
 	nm  module.NetworkManager
 	ph  module.ProtocolHandler
-	bm  module.BlockManager
+	bm  module.BlockDataFactory
 	log log.Logger
 
 	fetchID uint16
@@ -135,7 +135,7 @@ type fetchRequest struct {
 }
 
 func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
-	bm module.BlockManager, logger log.Logger) *client {
+	bm module.BlockDataFactory, logger log.Logger) *client {
 	cl := &client{}
 	cl.nm = nm
 	cl.ph = ph
@@ -166,7 +166,7 @@ func (cl *client) fetchBlocks(
 	fr.cb = cb
 	fr.maxActive = configMaxActive
 
-	peerIDs := cl.nm.GetPeers()
+	peerIDs := cl.ph.GetPeers()
 	fr.validPeers = make([]*peer, len(peerIDs))
 	for i, id := range peerIDs {
 		fr.validPeers[i] = &peer{id, 0, nil}

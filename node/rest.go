@@ -99,6 +99,11 @@ type ChainConfig struct {
 	ValidateTxOnSend bool   `json:"validateTxOnSend,omitempty"`
 }
 
+type ChainResetParam struct {
+	Height    int64           `json:"height,omitempty"`
+	BlockHash common.HexBytes `json:"blockHash,omitempty"`
+}
+
 type ChainImportParam struct {
 	DBPath string `json:"dbPath"`
 	Height int64  `json:"height"`
@@ -355,7 +360,14 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 
 func (r *Rest) ResetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.ResetChain(c.CID()); err != nil {
+	param := &ChainResetParam{}
+	if err := ctx.Bind(param); err != nil {
+		return echo.ErrBadRequest
+	}
+	if param.Height < 0 {
+		return echo.ErrBadRequest
+	}
+	if err := r.n.ResetChain(c.CID(), param.Height, param.BlockHash); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

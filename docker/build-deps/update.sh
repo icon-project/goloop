@@ -28,22 +28,28 @@ get_label() {
     echo $LABEL
 }
 
-get_dockerfile() {
-  local TARGET=$1
-  case $TARGET in
-  build)
-    echo Dockerfile
-  ;;
-  *)
-    echo ${TARGET}.Dockerfile
-  ;;
+dockerfile_for() {
+  local TARGET="$1"
+  shift 1
+  local PREFIX=""
+  if [ "$#" -gt 0 ] ; then
+    PREFIX="$1/docker/build-deps/"
+    shift 1
+  fi
+  case ${TARGET} in
+    build)
+      echo "${PREFIX}Dockerfile"
+      ;;
+    *)
+      echo "${PREFIX}${TARGET}.Dockerfile"
+      ;;
   esac
 }
 
 get_hash_of_dir() {
     local TARGET=$1
     local SRC_DIR=$2
-    local DOCKERFILE=${SRC_DIR}/docker/build-deps/$(get_dockerfile ${TARGET})
+    local DOCKERFILE=$(dockerfile_for ${TARGET} ${SRC_DIR})
     local SUM
     local HASH_OF_DIR
     case $TARGET in
@@ -72,6 +78,9 @@ get_hash_of_dir() {
     ;;
     build)
         SUM=$(get_hash_of_files \
+          "${SRC_DIR}/go.mod" "${SRC_DIR}/go.sum" \
+          "$(dockerfile_for go ${SRC_DIR})" \
+          "$(dockerfile_for rocksdb ${SRC_DIR})" \
           "${DOCKERFILE}") \
         HASH_OF_DIR="go${GOLANG_VERSION}-rocksdb${ROCKSDB_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
     ;;
@@ -184,7 +193,7 @@ update_image() {
         cd ${BUILD_DIR}
         extra_files cp ${TARGET} ${SRC_DIR}
 
-        local DOCKERFILE=$(get_dockerfile ${TARGET})
+        local DOCKERFILE=$(dockerfile_for ${TARGET})
         echo "Building image ${TARGET_IMAGE} for ${HASH_OF_DIR}"
         docker build \
             --build-arg ${LABEL}=${HASH_OF_DIR} \

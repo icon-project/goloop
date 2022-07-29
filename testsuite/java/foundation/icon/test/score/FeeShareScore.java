@@ -123,20 +123,6 @@ public class FeeShareScore extends Score {
         return getResult(txHash);
     }
 
-    public TransactionResult withdrawDeposit(Bytes depositId)
-            throws IOException, ResultTimeoutException {
-        Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(getNetworkId())
-                .from(wallet.getAddress())
-                .to(getAddress())
-                .stepLimit(STEPS)
-                .deposit()
-                .withdraw(depositId)
-                .build();
-        Bytes txHash = invoke(wallet, transaction);
-        return getResult(txHash);
-    }
-
     public TransactionResult withdrawDeposit(BigInteger amount)
             throws IOException, ResultTimeoutException {
         Transaction transaction = TransactionBuilder.newBuilder()

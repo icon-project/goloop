@@ -300,6 +300,11 @@ func (cs *consensus) resetForNewRound(round int32) {
 
 func (cs *consensus) resetForNewStep(step step) {
 	cs.endStep()
+	if cs.step < stepPropose && step > stepPropose {
+		now := time.Now()
+		cs.nextProposeTime = now
+		cs.c.Regulator().OnPropose(now)
+	}
 	cs.beginStep(step)
 }
 
@@ -1864,7 +1869,7 @@ func (cs *consensus) getVotesByHeight(height int64) (module.CommitVoteSet, error
 		return nil, err
 	}
 	if c.commitVotes == nil {
-		return nil, errors.ErrNotFound
+		return nil, errors.NotFoundError.Errorf("not found vote height=%d", height)
 	}
 	return c.commitVotes, nil
 }
@@ -1877,7 +1882,7 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 
 func (cs *consensus) getCommit(h int64) (*commit, error) {
 	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
-		return nil, errors.ErrNotFound
+		return nil, errors.NotFoundError.Errorf("not found commit height=%d", h)
 	}
 
 	c := cs.commitCache.GetByHeight(h)

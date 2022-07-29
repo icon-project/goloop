@@ -287,7 +287,7 @@ func (s *syncer) Start() error {
 		return err
 	}
 
-	peerIDs := s.nm.GetPeers()
+	peerIDs := s.ph.GetPeers()
 	s.peers = make([]*peer, len(peerIDs))
 	for i, peerID := range peerIDs {
 		s.log.Debugf("Start: starting peer list %v\n", common.HexPre(peerID.Bytes()))

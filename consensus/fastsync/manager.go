@@ -56,7 +56,7 @@ func (m *manager) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 }
 
 func (m *manager) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	panic("not implemented")
+	log.Warnf("OnFailure pi=%d: %+v", pi, err)
 }
 
 func (m *manager) OnJoin(id module.PeerID) {
@@ -111,10 +111,35 @@ func NewManager(
 	logger log.Logger,
 ) (Manager, error) {
 	m := &manager{
-		nm : nm,
+		nm: nm,
 	}
 	m.server = newServer(nm, nil, bm, bpp, logger)
 	m.client = newClient(nm, nil, bm, logger)
+
+	// lock to prevent enter server.onJoin / client.onJoin
+	m.server.Lock()
+	defer m.server.Unlock()
+	m.client.Lock()
+	defer m.client.Unlock()
+	ph, err := nm.RegisterReactorForStreams("fastsync", module.ProtoFastSync, m, protocols, configFastSyncPriority, module.NotRegisteredProtocolPolicyClose)
+	if err != nil {
+		return nil, err
+	}
+	m.server.ph = ph
+	m.client.ph = ph
+	return m, nil
+}
+
+func NewManagerOnlyForClient(
+	nm module.NetworkManager,
+	bdf module.BlockDataFactory,
+	logger log.Logger,
+) (Manager, error) {
+	m := &manager{
+		nm: nm,
+	}
+	m.server = newServer(nm, nil, nil, nil, logger)
+	m.client = newClient(nm, nil, bdf, logger)
 
 	// lock to prevent enter server.onJoin / client.onJoin
 	m.server.Lock()

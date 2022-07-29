@@ -114,26 +114,33 @@ func (cn *ChannelNegotiator) ProtocolInfos(channel string) *ProtocolInfos {
 	return cn.m[channel]
 }
 
-func (cn *ChannelNegotiator) resolveProtocols(p *Peer, channel string, protocols []module.ProtocolInfo) (*ProtocolInfos, error) {
+func (cn *ChannelNegotiator) resolveProtocols(p *Peer, channel string, protocols []module.ProtocolInfo) error {
 	if p.Channel() != channel {
-		return nil, errors.Errorf("invalid channel")
+		return errors.Errorf("invalid channel")
 	}
 
 	pis := cn.ProtocolInfos(channel)
 	if pis == nil {
-		return nil, errors.Errorf("not exists channel")
+		return errors.Errorf("not exists channel")
 	}
 
 	rpis := newProtocolInfos()
 	if len(protocols) == 0 {
 		protocols = defaultProtocols
+		p.PutAttr(AttrP2PLegacy, true)
 	}
 	rpis.Set(protocols)
 	rpis.Resolve(pis)
-	if rpis.LenOfIDSet() < pis.LenOfIDSet() {
-		return nil, errors.Errorf("not supported protocols exists")
+
+	if !rpis.ExistsByID(module.ProtoP2P) {
+		return errors.Errorf("not support p2p protocol")
 	}
-	return rpis, nil
+	if pis.ExistsByID(defaultProtocols...) {
+		p.PutAttr(AttrSupportDefaultProtocols, rpis.ExistsByID(defaultProtocols...))
+		cn.logger.Debugln("support defaultProtocols :", rpis.ExistsByID(defaultProtocols...))
+	}
+	p.setProtocolInfos(rpis)
+	return nil
 }
 
 func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
@@ -160,14 +167,12 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 	}
 	cn.logger.Traceln("handleJoinRequest", rm, p)
 
-	pis, err := cn.resolveProtocols(p, rm.Channel, rm.Protocols)
-	if err != nil {
+	if err := cn.resolveProtocols(p, rm.Channel, rm.Protocols); err != nil {
 		err = fmt.Errorf("handleJoinRequest error[%v]", err.Error())
 		cn.logger.Infoln("handleJoinRequest", p.ConnString(), "ChannelNegotiatorError", err)
 		p.CloseByError(err)
 		return
 	}
-	p.setProtocolInfos(pis)
 	p.setNetAddress(rm.Addr)
 
 	m := &JoinResponse{Channel: p.Channel(), Addr: cn.netAddress, Protocols: p.ProtocolInfos().Array()}
@@ -187,14 +192,12 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 	}
 	cn.logger.Traceln("handleJoinResponse", rm, p)
 
-	pis, err := cn.resolveProtocols(p, rm.Channel, rm.Protocols)
-	if err != nil {
+	if err := cn.resolveProtocols(p, rm.Channel, rm.Protocols); err != nil {
 		err = fmt.Errorf("handleJoinResponse error[%v]", err.Error())
 		cn.logger.Infoln("handleJoinResponse", p.ConnString(), "ChannelNegotiatorError", err)
 		p.CloseByError(err)
 		return
 	}
-	p.setProtocolInfos(pis)
 	p.setNetAddress(rm.Addr)
 
 	cn.nextOnPeer(p)

@@ -194,7 +194,7 @@ func (c *Chain) IsStopped() bool {
 	panic("implement me")
 }
 
-func (c *Chain) Reset() error {
+func (c *Chain) Reset(gs string, height int64, blockHash []byte) error {
 	panic("implement me")
 }
 
