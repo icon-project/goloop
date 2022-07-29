@@ -53,7 +53,7 @@ func (s *chainScore) Ex_getNodePublicKey(address module.Address) ([]byte, error)
 	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
-	pubKey, _ := s.newBTPContext().GetPublicKey(address, iconDSA, true)
+	pubKey := s.newBTPContext().GetPublicKey(address, iconDSA)
 	return pubKey, nil
 }
 
@@ -89,7 +89,7 @@ func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, upd
 					return scoreresult.Errorf(module.StatusInvalidParameter,
 						"Public key and node address of P-Rep do not match. %s!=%s", addr, jso["nodeAddress"])
 				}
-				if v, ok := bc.GetPublicKey(addr, iconDSA, true); v != nil && ok {
+				if v := bc.GetPublicKey(addr, iconDSA); v != nil {
 					return scoreresult.New(module.StatusInvalidParameter,
 						"There is public key already. To update public key, set update true")
 				}
