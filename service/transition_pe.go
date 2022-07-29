@@ -92,7 +92,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 					From:      txo.From(),
 				})
 				ctx.UpdateSystemInfo()
-				rct, err := txh.Execute(ctx, false)
+				rct, err := txh.Execute(ctx, wvss, false)
 				txh.Dispose()
 				if err == nil {
 					err = t.plt.OnTransactionEnd(ctx, t.log, rct)

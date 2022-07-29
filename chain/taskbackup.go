@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
@@ -138,7 +139,9 @@ func (t *taskBackup) Start() (ret error) {
 func zipWrite(writer *zip.Writer, p, n string, on func(int64) error) error {
 	p2 := path.Join(p, n)
 	st, err := os.Stat(p2)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
 		return errors.Wrap(err, "writeToZip: FAIL on os.State")
 	}
 	if st.Mode().IsRegular() {
@@ -190,7 +193,9 @@ func zipWrite(writer *zip.Writer, p, n string, on func(int64) error) error {
 
 func countFiles(p string) (int, error) {
 	st, err := os.Stat(p)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 	if !st.IsDir() {

@@ -55,7 +55,13 @@ type Chain interface {
 	IsStarted() bool
 	IsStopped() bool
 
-	Reset() error
+	// Reset resets chain. height must be 0 or greater than 1.
+	// If height == 0, blockHash shall be nil or zero length
+	// bytes and the function cleans up database and file systems for the chain.
+	// If height > 1, blockHash shall be the hash of correct block with the
+	// height and the function cleans up database and file systems for the chain
+	// and prepare pruned genesis block of the height.
+	Reset(gs string, height int64, blockHash []byte) error
 	Verify() error
 
 	MetricContext() context.Context

@@ -75,6 +75,7 @@ type syncer struct {
 	client   *client
 	database db.Database
 	plt      Platform
+	noBuffer bool
 
 	pool     *peerPool
 	vpool    *peerPool
@@ -470,6 +471,14 @@ func (s *syncer) onResult(status errCode, p *peer) {
 	}
 }
 
+func (s *syncer) newMerkleBuilder() merkle.Builder {
+	if s.noBuffer {
+		return merkle.NewBuilderWithRawDatabase(s.database)
+	} else {
+		return merkle.NewBuilder(s.database)
+	}
+}
+
 func (s *syncer) ForceSync() (*Result, error) {
 	s.log.Debugln("ForceSync")
 	startTime := time.Now()
@@ -496,7 +505,7 @@ func (s *syncer) ForceSync() (*Result, error) {
 
 	var ess state.ExtensionSnapshot
 	if len(s.ed) > 0 {
-		eb := merkle.NewBuilder(s.database)
+		eb := s.newMerkleBuilder()
 		s.builder[syncExtensionState.toIndex()] = eb
 		s.reqValue[syncExtensionState.toIndex()] = make(map[string]bool)
 		ess = s.plt.NewExtensionWithBuilder(eb, s.ed)
@@ -505,7 +514,7 @@ func (s *syncer) ForceSync() (*Result, error) {
 		s.Complete(syncExtensionState)
 	}
 
-	builder := merkle.NewBuilder(s.database)
+	builder := s.newMerkleBuilder()
 	s.builder[syncWorldState.toIndex()] = builder
 	s.reqValue[syncWorldState.toIndex()] = make(map[string]bool)
 	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh, ess); err == nil {
@@ -517,7 +526,7 @@ func (s *syncer) ForceSync() (*Result, error) {
 
 	rf := func(t syncType, rl *module.ReceiptList, rh []byte) {
 		if len(rh) != 0 {
-			builder := merkle.NewBuilder(s.database)
+			builder := s.newMerkleBuilder()
 			s.builder[t.toIndex()] = builder
 			s.reqValue[t.toIndex()] = make(map[string]bool)
 			*rl = txresult.NewReceiptListWithBuilder(builder, rh)
@@ -561,7 +570,7 @@ func (s *syncer) Finalize() error {
 
 func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte,
-	log log.Logger, cb func(syncer SyncerImpl, syncing bool)) *syncer {
+	log log.Logger, noBuffer bool, cb func(syncer SyncerImpl, syncing bool)) *syncer {
 	log.Debugf("newSyncer ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 
@@ -570,6 +579,7 @@ func newSyncer(database db.Database, c *client, p *peerPool, plt Platform,
 		pool:     p,
 		client:   c,
 		plt:      plt,
+		noBuffer: noBuffer,
 		vpool:    newPeerPool(),
 		ivpool:   newPeerPool(),
 		sentReq:  make(map[module.PeerID]*peer),

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -284,17 +285,53 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			RunE:  opFunc("stop"),
 		},
 		&cobra.Command{
-			Use:   "reset CID",
-			Short: "Chain data reset",
-			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-			RunE:  opFunc("reset"),
-		},
-		&cobra.Command{
 			Use:   "verify CID",
 			Short: "Chain data verify",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("verify"),
 		})
+
+	resetCmd := &cobra.Command{
+		Use:   "reset CID",
+		Short: "Chain data reset",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &node.ChainResetParam{}
+			var err error
+			fs := cmd.Flags()
+			if param.Height, err = fs.GetInt64("height"); err != nil {
+				return err
+			}
+			blockHash := cmd.Flag("block_hash").Value.String()
+			if len(blockHash) > 0 {
+				if len(blockHash) >= 2 && blockHash[:2] == "0x" {
+					blockHash = blockHash[2:]
+				}
+				if param.BlockHash, err = hex.DecodeString(blockHash); err != nil {
+					return err
+				}
+			}
+			if param.Height < 0 {
+				return fmt.Errorf("height should be zero or positive value")
+			} else if param.Height == 0 && len(blockHash) > 0 {
+				return fmt.Errorf("block_hash should be empty value")
+			} else if param.Height > 0 && len(blockHash) == 0 {
+				return fmt.Errorf("block_hash required")
+			}
+
+			var v string
+			reqUrl := node.UrlChain + "/" + args[0] + "/reset"
+			if _, err = adminClient.PostWithJson(reqUrl, param, &v); err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(resetCmd)
+	resetFlags := resetCmd.Flags()
+	resetFlags.Int64("height", 0, "Block Height")
+	resetFlags.String("block_hash", "", "Hash of the block at the given height, If height is zero, shall be empty")
 
 	importCmd := &cobra.Command{
 		Use:   "import CID",

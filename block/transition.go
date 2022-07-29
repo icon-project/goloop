@@ -265,7 +265,7 @@ func (ti *transitionImpl) propose(bi module.BlockInfo, csi module.ConsensusInfo,
 }
 
 func (ti *transitionImpl) sync(result []byte, vlHash []byte, cb transitionCallback) (*transition, error) {
-	cmtr := ti._chainContext.sm.CreateSyncTransition(ti._mtransition, result, vlHash)
+	cmtr := ti._chainContext.sm.CreateSyncTransition(ti._mtransition, result, vlHash, false)
 	if cmtr == nil {
 		return nil, errors.New("fail to createSyncTransition")
 	}

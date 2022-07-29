@@ -37,6 +37,7 @@ type merkleBuilder struct {
 	store      db.Database
 	requests   *list.List
 	requestMap map[string]*list.Element
+	onDataMark *list.Element
 }
 
 type requestIterator struct {
@@ -79,6 +80,10 @@ func (b *merkleBuilder) OnData(value []byte) error {
 	reqID := string(key)
 	if e, ok := b.requestMap[reqID]; ok {
 		req := e.Value.(*request)
+		b.onDataMark = e
+		defer func() {
+			b.onDataMark = nil
+		}()
 		for i, requester := range req.requesters {
 			bkID := req.bucketIDs[i]
 			bk, err := b.store.GetBucket(bkID)
@@ -93,6 +98,7 @@ func (b *merkleBuilder) OnData(value []byte) error {
 			}
 		}
 		b.requests.Remove(e)
+		delete(b.requestMap, reqID)
 		return nil
 	} else {
 		return errors.New("IllegalArguments")
@@ -114,7 +120,12 @@ func (b *merkleBuilder) RequestData(id db.BucketID, key []byte, requester DataRe
 			bucketIDs:  []db.BucketID{id},
 			requesters: []DataRequester{requester},
 		}
-		e := b.requests.PushBack(req)
+		if b.onDataMark != nil {
+			e = b.requests.InsertAfter(req, b.onDataMark)
+			b.onDataMark = e
+		} else {
+			e = b.requests.PushBack(req)
+		}
 		b.requestMap[reqID] = e
 	}
 }

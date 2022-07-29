@@ -113,7 +113,7 @@ func (t *Transaction) Prepare(ctx contract.Context) (state.WorldContext, error) 
 	return ctx.GetFuture(lq), nil
 }
 
-func (t *Transaction) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
+func (t *Transaction) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
 	if t.json.Validators != nil {
 		var vl []module.Validator
 		for _, addr := range t.json.Validators {
@@ -186,7 +186,7 @@ func (t *Transaction) Version() int {
 func (t *Transaction) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := map[string]interface{}{
 		"timestamp": &t.json.TimeStamp,
-		"type": "test",
+		"type":      "test",
 	}
 	if t.json.Validators != nil {
 		res["validators"] = t.json.Validators
@@ -255,7 +255,7 @@ func (t *Transaction) ClearCache() {
 
 func checkJSONTX(tx map[string]interface{}) bool {
 	val, ok := tx["type"]
-	return ok && val=="test"
+	return ok && val == "test"
 }
 
 func parseJSONTX(js []byte, raw bool) (transaction.Transaction, error) {
@@ -271,7 +271,7 @@ var once sync.Once
 func RegisterTransactionFactory() {
 	once.Do(func() {
 		transaction.RegisterFactory(&transaction.Factory{
-			Priority: 5,
+			Priority:  5,
 			CheckJSON: checkJSONTX,
 			ParseJSON: parseJSONTX,
 		})

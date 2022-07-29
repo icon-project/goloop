@@ -16,7 +16,10 @@ import (
 
 type Handler interface {
 	Prepare(ctx contract.Context) (state.WorldContext, error)
-	Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error)
+	// Execute executes transaction in the Handler.
+	// wcs is a snapshot of the current state.
+	// estimate would be true if it's executed for estimating steps.
+	Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error)
 	Dispose()
 }
 
@@ -185,10 +188,7 @@ func (th *transactionHandler) DoExecute(cc contract.CallContext, estimate, isPat
 	return status, addr, nil
 }
 
-func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
-	// Make a copy of initial state
-	wcs := ctx.GetSnapshot()
-
+func (th *transactionHandler) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
 	isPatch := th.group == module.TransactionGroupPatch
 	limit := th.stepLimit
 	if invokeLimit := ctx.GetStepLimit(state.StepLimitTypeInvoke); isPatch || estimate || limit.Cmp(invokeLimit) > 0 {
@@ -239,6 +239,12 @@ func (th *transactionHandler) Execute(ctx contract.Context, estimate bool) (txre
 			logger.TSystemf("STEP redeemed value=%d redeemed=%d old=%d",
 				stepToPay, redeemed, old)
 		}
+	}
+	if stepPrice == nil {
+		logger.Debugf("MKSONG StepPrice is NIL")
+	}
+	if stepToPay == nil {
+		logger.Debugf("MKSONG StepToPay is NIL")
 	}
 	fee := new(big.Int).Mul(stepToPay, stepPrice)
 

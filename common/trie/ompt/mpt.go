@@ -506,7 +506,6 @@ func (m *mpt) Resolve(bd merkle.Builder) {
 
 type nodeRequester struct {
 	mpt  *mpt
-	node *node
 	hash []byte
 }
 
@@ -515,7 +514,6 @@ func (r *nodeRequester) OnData(bs []byte, bd merkle.Builder) error {
 	if err != nil {
 		return err
 	}
-	*r.node = node
 	return node.resolve(r.mpt, bd)
 }
 
@@ -529,7 +527,6 @@ func (m *mpt) resolve(d merkle.Builder, pNode *node) {
 		hash := node.hash()
 		d.RequestData(db.MerkleTrie, hash, &nodeRequester{
 			mpt:  m,
-			node: pNode,
 			hash: hash,
 		})
 	}

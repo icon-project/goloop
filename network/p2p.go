@@ -55,6 +55,8 @@ const (
 	DefaultDuplicatedPeerTime   = 1 * time.Second
 	DefaultMaxRetryClose        = 10
 	AttrP2PConnectionRequest    = "P2PConnectionRequest"
+	AttrP2PLegacy               = "P2PLegacy"
+	AttrSupportDefaultProtocols = "SupportDefaultProtocols"
 	DefaultQueryElementLength   = 200
 )
 
@@ -91,7 +93,7 @@ type PeerToPeer struct {
 	uncles     *PeerSet
 	nephews    *PeerSet
 	friends    *PeerSet //Only for root, parents and uncles is empty
-	others     *PeerSet //Only for root, assume peer is root
+	others     *PeerSet //Ambiguous connection, different states or different protocol set
 	orphanages *PeerSet //Not joined
 	transiting *PeerSet
 	reject     *PeerSet
@@ -1451,12 +1453,6 @@ Loop:
 						p2p.tryTransitPeerConnection(p, p2pConnTypeNone)
 					}
 				}
-				if p2p.others.Len() > 0 {
-					ps := p2p.others.Array()
-					for _, p := range ps {
-						p2p.tryTransitPeerConnection(p, p2pConnTypeNone)
-					}
-				}
 
 				complete := p2p.discoverParents(rr)
 				if complete {
@@ -1817,6 +1813,9 @@ func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnection
 		p2p.sendP2PConnectionRequest(p2pConnTypeNone, p)
 		return true
 	default:
+		if p.EqualsAttr(AttrSupportDefaultProtocols, false) {
+			return false
+		}
 		if !p2p.reject.Contains(p) && !p2p.transiting.Contains(p) {
 			p.PutAttr(AttrP2PConnectionRequest, connType)
 			p2p.transiting.Add(p)
@@ -1948,6 +1947,10 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	} else if invalidReq {
 		p2p.logger.Infoln("handleP2PConnectionRequest", "invalid reqConnType", req.ConnType, "from", p.ID(), p.ConnType())
 	} else {
+		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
+			rc = p2pConnTypeOther
+			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
+		}
 		switch rc {
 		case p2pConnTypeParent:
 			if !p2p.updatePeerConnectionType(p, p2pConnTypeParent) &&
@@ -1968,11 +1971,13 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	m := &P2PConnectionResponse{ReqConnType: req.ConnType, ConnType: p.ConnType()}
 	if m.ConnType == p2pConnTypeOther {
 		//for legacy which is not supported p2pConnTypeOther response
-		switch req.ConnType {
-		case p2pConnTypeParent:
-			m.ConnType = p2pConnTypeChildren
-		case p2pConnTypeUncle:
-			m.ConnType = p2pConnTypeNephew
+		if p.EqualsAttr(AttrP2PLegacy, true) {
+			switch req.ConnType {
+			case p2pConnTypeParent:
+				m.ConnType = p2pConnTypeChildren
+			case p2pConnTypeUncle:
+				m.ConnType = p2pConnTypeNephew
+			}
 		}
 	}
 	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
@@ -2070,6 +2075,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 				rc = p2pConnTypeParent
 			case p2pConnTypeNephew:
 				rejectResp = true
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
@@ -2080,6 +2087,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 			switch resp.ConnType {
 			case p2pConnTypeNephew:
 				rc = p2pConnTypeUncle
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
@@ -2102,6 +2111,10 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	} else {
 		p2p.logger.Debugln("handleP2PConnectionResponse", "resolvedConnType", strPeerConnectionType[resp.ConnType],
 			"from", p.ID(), p.ConnType())
+		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
+			rc = p2pConnTypeOther
+			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
+		}
 		switch rc {
 		case p2pConnTypeFriend, p2pConnTypeOther, p2pConnTypeNone:
 			p2p.updatePeerConnectionType(p, rc)

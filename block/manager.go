@@ -869,8 +869,8 @@ func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, er
 
 func (m *manager) finalizePrunedBlock() error {
 	s := m.chain.GenesisStorage()
-	g := new(gs.PrunedGenesis)
-	if err := json.Unmarshal(s.Genesis(), g); err != nil {
+	g, err := gs.NewPrunedGenesis(s.Genesis())
+	if err != nil {
 		return transaction.InvalidGenesisError.Wrap(err, "InvalidGenesis")
 	}
 	d := gs.NewDatabaseWithStorage(s)
@@ -1303,7 +1303,7 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 	loc := new(transactionLocator)
 	err = tlb.Get(db.Raw(id), loc)
 	if err != nil {
-		return nil, errors.ErrNotFound
+		return nil, errors.NotFoundError.Errorf("not found tx id=%x", id)
 	}
 	return loc, nil
 }
@@ -1515,14 +1515,15 @@ func hasBits(v int, bits int) bool {
 	return (v & bits) == bits
 }
 
-func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWriter) error {
+func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet, gsw module.GenesisStorageWriter) error {
 	height := blk.Height()
 
-	var votes module.CommitVoteSet
-	if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
-		return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
-	} else {
-		votes = nblk.Votes()
+	if votes == nil {
+		if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
+			return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
+		} else {
+			votes = nblk.Votes()
+		}
 	}
 
 	cid, err := m.sm.GetChainID(blk.Result())
@@ -1550,14 +1551,11 @@ func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWrite
 	if err := gsw.WriteGenesis(g); err != nil {
 		return errors.Wrap(err, "fail to write genesis")
 	}
-	defer func() {
-		m.log.Must(gsw.Close())
-	}()
 
 	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
 		return errors.Wrap(err, "fail to write votes")
 	}
-	return m._exportBlocks(height, height, gs.NewDatabaseWithWriter(gsw), exportHashable, nil)
+	return nil
 }
 
 func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64) error) error {
@@ -1829,9 +1827,16 @@ func GetLastHeightOf(dbase db.Database) int64 {
 }
 
 func ResetDB(d db.Database, c codec.Codec, height int64) error {
-	bk, err := d.GetBucket(db.ChainProperty)
+	return SetLastHeight(d, c, height)
+}
+
+func SetLastHeight(dbase db.Database, c codec.Codec, height int64) error {
+	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
 		return err
+	}
+	if c == nil {
+		c = dbCodec
 	}
 	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {

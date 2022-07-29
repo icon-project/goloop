@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 )
@@ -311,22 +312,37 @@ type Unwrapper interface {
 	Unwrap() error
 }
 
+func Unwrap(err error) error {
+	switch obj := err.(type) {
+	case interface{ Unwrap() error }:
+		return obj.Unwrap()
+	case interface{ Cause() error }:
+		return obj.Cause()
+	default:
+		return nil
+	}
+}
+
 // Is checks whether err is caused by the target.
 func Is(err, target error) bool {
-	cause := FindCause(err, func(err error) bool {
+	if target == nil {
 		return err == target
-	})
-	return cause != nil
+	}
+	isComparable := reflect.TypeOf(target).Comparable()
+	for {
+		if isComparable && err == target {
+			return true
+		}
+		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
+			return true
+		}
+		if err = Unwrap(err); err == nil {
+			return false
+		}
+	}
 }
 
 func FindCause(err error, cb func(err error) bool) error {
-	type causer interface {
-		Cause() error
-	}
-
-	type unwrapper interface {
-		Unwrap() error
-	}
 	for {
 		if err == nil {
 			return nil
@@ -334,14 +350,7 @@ func FindCause(err error, cb func(err error) bool) error {
 		if cb(err) {
 			return err
 		}
-		switch obj := err.(type) {
-		case causer:
-			err = obj.Cause()
-		case unwrapper:
-			err = obj.Unwrap()
-		default:
-			return nil
-		}
+		err = Unwrap(err)
 	}
 }
 

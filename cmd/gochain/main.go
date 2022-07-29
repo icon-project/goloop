@@ -159,6 +159,16 @@ func main() {
 	flag.Int64Var(&importMaxHeight, "import_max_height", 0, "Import max height")
 	flag.StringVar(&importDataSource, "import_data_source", "datasource/", "Import data source")
 
+	resetCmd := &cobra.Command{
+		Use:   "reset CID",
+		Short: "Chain data reset",
+		Run:   Execute,
+	}
+	resetFlags := resetCmd.Flags()
+	resetFlags.Int64("height", 0, "Block Height")
+	resetFlags.String("block_hash", "", "Hash of the block at the given height")
+	cmd.AddCommand(resetCmd)
+
 	cmd.Run = Execute
 	cmd.Execute()
 }
@@ -483,6 +493,18 @@ func Execute(cmd *cobra.Command, args []string) {
 		err = c.Import(importDataSource, importMaxHeight)
 		if err != nil {
 			log.Panicf("FAIL to import Chain err=%+v", err)
+		}
+	} else if cmd.Name() == "reset" {
+		flags := cmd.Flags()
+		height, _ := flags.GetInt64("height")
+		blockHashStr, _ := flags.GetString("block_hash")
+		blockHash, err := hex.DecodeString(blockHashStr)
+		if err != nil {
+			log.Panicf("FAIL to decode blockHash hash=%s err=%+v", blockHashStr, err)
+		}
+		err = c.Reset("", height, blockHash)
+		if err != nil {
+			log.Panicf("FAIL to reset Chain err=%+v", err)
 		}
 	} else {
 		err = c.Start()
