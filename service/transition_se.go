@@ -52,7 +52,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return err
 			}
 			ctx.UpdateSystemInfo()
-			rct, err := txh.Execute(ctx, false)
+			rct, err := txh.Execute(ctx, wcs, false)
 			txh.Dispose()
 			if err == nil {
 				err = t.plt.OnTransactionEnd(ctx, t.log, rct)

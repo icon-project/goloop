@@ -82,13 +82,20 @@ func (m *manager) PeerID() module.PeerID {
 	return m.p2p.ID()
 }
 
-func (m *manager) GetPeers() []module.PeerID {
-	arr := m.p2p.getPeers(true)
-	l := make([]module.PeerID, len(arr))
-	for i, p := range arr {
+func toPeerIDs(ps []*Peer) []module.PeerID {
+	l := make([]module.PeerID, len(ps))
+	for i, p := range ps {
 		l[i] = p.ID()
 	}
 	return l
+}
+
+func (m *manager) GetPeers() []module.PeerID {
+	return toPeerIDs(m.p2p.getPeers(true))
+}
+
+func (m *manager) getPeersByProtocol(pi module.ProtocolInfo) []module.PeerID {
+	return toPeerIDs(m.p2p.getPeersByProtocol(pi, true))
 }
 
 func (m *manager) Term() {
@@ -100,6 +107,11 @@ func (m *manager) Term() {
 	for _, ph := range m.protocolHandlers {
 		m.logger.Debugln("Term", ph.name)
 		ph.Term()
+		m.cn.removeProtocol(m.channel, ph.protocol)
+	}
+
+	for _, pi := range m.p2p.supportedProtocols() {
+		m.cn.removeProtocol(m.channel, pi)
 	}
 }
 
@@ -236,7 +248,7 @@ func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes
 	pkt.priority = ph.getPriority()
 	pkt.src = m.PeerID()
 	pkt.forceSend = true
-	p := m.p2p.getPeer(id, true)
+	p := m.p2p.getPeerByProtocol(id, pkt.protocol, true)
 	return p.sendPacket(pkt)
 }
 

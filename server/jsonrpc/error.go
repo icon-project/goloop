@@ -74,11 +74,11 @@ func (c ErrorCode) String() string {
 		return "SystemTimeout"
 	default:
 		switch {
-		case c >= ErrorCodeServer && c < ErrorCodeServer+1000:
+		case c < ErrorCodeServer && c > ErrorCodeServer-1000:
 			return fmt.Sprintf("ServerError(%d)", c)
-		case c >= ErrorCodeSystem && c < ErrorCodeSystem+1000:
+		case c < ErrorCodeSystem && c > ErrorCodeSystem-1000:
 			return fmt.Sprintf("SystemError(%d)", c)
-		case c >= ErrorCodeScore && c < ErrorCodeScore+1000:
+		case c <= ErrorCodeScore && c > ErrorCodeScore-1000:
 			return fmt.Sprintf("SCOREError(%d)", c)
 		}
 		return fmt.Sprintf("UnknownError(%d)", c)

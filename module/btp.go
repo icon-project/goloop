@@ -34,10 +34,8 @@ type BTPProof interface {
 }
 
 type WalletProvider interface {
-	// WalletFor returns key for keyType. keyType can be network type uid or
-	// DSA. For network type uid, network type specific key (usually address) is
-	// returned.  For DSA, public key for the DSA is returned.
-	WalletFor(keyType string) BaseWallet
+	// WalletFor returns public key for dsa.
+	WalletFor(dsa string) BaseWallet
 }
 
 type BTPProofContext interface {
@@ -198,7 +196,7 @@ type NetworkTypeModule interface {
 
 	// NewProofContext returns a new proof context. The parameter keys is
 	// a slice of networkType specific keys (usually a slice of addresses).
-	NewProofContext(keys [][]byte) BTPProofContext
+	NewProofContext(keys [][]byte) (BTPProofContext, error)
 	MerkleRoot(bytesList BytesList) []byte
 	MerkleProof(bytesList BytesList, idx int) []MerkleNode
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
@@ -206,6 +204,7 @@ type NetworkTypeModule interface {
 	ListByMerkleRootBucket() db.BucketID
 	NewProofFromBytes(bs []byte) (BTPProof, error)
 	NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error)
+	DSAModule() DSAModule
 }
 
 type BTPBlockHeader interface {
@@ -243,4 +242,11 @@ type BTPNetwork interface {
 	PrevNetworkSectionHash() []byte
 	LastNetworkSectionHash() []byte
 	ToJSON() map[string]interface{}
+}
+
+type DSAModule interface {
+	Name() string
+
+	// Verify verifies format of public key.
+	Verify(pubKey []byte) error
 }

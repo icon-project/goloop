@@ -30,7 +30,7 @@ func (bk *layerBucket) Has(key []byte) (bool, error) {
 
 	if bk.data != nil {
 		if value, ok := bk.data[string(key)]; ok {
-			return len(value) > 0, nil
+			return value != nil, nil
 		}
 	}
 	return bk.real.Has(key)

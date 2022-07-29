@@ -25,9 +25,12 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+// CAUTION:
+// ICON MODULE IS JUST FOR TEST PURPOSE. In product, please USE ETH MODULE since
+// icon score can easily verify eth proof.
+
 const (
 	iconUID          = "icon"
-	iconDSA          = secp256k1DSA
 	iconAddressIDLen = 20
 
 	iconBytesByHash = "i" + db.BytesByHash
@@ -60,15 +63,15 @@ func (m *iconModuleCore) AppendHash(out []byte, data []byte) []byte {
 	return h.Sum(out)
 }
 
-func (m *iconModuleCore) DSA() string {
-	return iconDSA
+func (m *iconModuleCore) DSAModule() module.DSAModule {
+	return secp256k1DSAModuleInstance
 }
 
 func (m *iconModuleCore) NewProofContextFromBytes(bs []byte) (proofContextCore, error) {
 	return newSecp256k1ProofContextFromBytes(iconModuleInstance, bs)
 }
 
-func (m *iconModuleCore) NewProofContext(keys [][]byte) proofContextCore {
+func (m *iconModuleCore) NewProofContext(keys [][]byte) (proofContextCore, error) {
 	return newSecp256k1ProofContext(iconModuleInstance, keys)
 }
 
@@ -89,7 +92,7 @@ func (m *iconModuleCore) NewProofFromBytes(bs []byte) (module.BTPProof, error) {
 }
 
 func (m *iconModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
-	return m.AddressFromPubKey(key)
+	return key, nil
 }
 
 func init() {

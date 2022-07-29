@@ -1538,8 +1538,7 @@ func (s *ChainScore) Ex_getBTPPublicKey(address module.Address, name string) ([]
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	pubKey, _ := s.newBTPContext().GetPublicKey(address, name, true)
-	return pubKey, nil
+	return s.newBTPContext().GetPublicKey(address, name), nil
 }
 
 func (s *ChainScore) Ex_openBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error) {
@@ -1630,9 +1629,6 @@ func (s *ChainScore) Ex_setBTPPublicKey(name string, pubKey []byte) error {
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		if !bs.IsNetworkTypeUID(name) && !bs.IsDSAName(name) {
-			return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
-		}
 		if err = bs.SetPublicKey(s.newBTPContext(), s.from, name, pubKey); err != nil {
 			return err
 		}

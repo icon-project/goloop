@@ -55,6 +55,8 @@ const (
 	DefaultDuplicatedPeerTime   = 1 * time.Second
 	DefaultMaxRetryClose        = 10
 	AttrP2PConnectionRequest    = "P2PConnectionRequest"
+	AttrP2PLegacy               = "P2PLegacy"
+	AttrSupportDefaultProtocols = "SupportDefaultProtocols"
 	DefaultQueryElementLength   = 200
 )
 
@@ -91,7 +93,7 @@ type PeerToPeer struct {
 	uncles     *PeerSet
 	nephews    *PeerSet
 	friends    *PeerSet //Only for root, parents and uncles is empty
-	others     *PeerSet //Only for root, assume peer is root
+	others     *PeerSet //Ambiguous connection, different states or different protocol set
 	orphanages *PeerSet //Not joined
 	transiting *PeerSet
 	reject     *PeerSet
@@ -844,10 +846,9 @@ func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 }
 
 func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
-	for _, p := range peers.Array() {
-		//p2p.packetRw.WriteTo(p.writer)
+	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+	for _, p := range peers.GetByProtocol(pkt.protocol) {
 		if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
-			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			p2p.logger.Infoln("sendToPeers", err, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	}
@@ -856,7 +857,7 @@ func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
 func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte) {
 	src := pkt.src
 
-	ps := p2p.friends.Array()
+	ps := p2p.friends.GetByProtocol(pkt.protocol)
 	nr := p2p.allowedRoots.Len() - 1
 	if nr < 1 {
 		nr = len(ps)
@@ -973,7 +974,7 @@ Loop:
 				r := p2p.Role()
 				switch pkt.dest {
 				case p2pDestPeer:
-					p := p2p.getPeer(pkt.destPeer, true)
+					p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol, true)
 					_ = p.send(ctx)
 				case p2pDestAny:
 					if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
@@ -998,25 +999,25 @@ Loop:
 						}
 						p2p.sendToPeers(ctx, p2p.children)
 						p2p.sendToPeers(ctx, p2p.others)
-						c.alternate = p2p.nephews.Len()
+						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
 				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 					} else {
 						p2p.sendToPeers(ctx, p2p.parents)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
 				case p2pRoleSeed:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 						if r == p2pRoleRoot {
 							p2p.sendToPeers(ctx, p2p.children)
-							c.alternate = p2p.nephews.Len()
+							c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 						}
 					} else {
 						p2p.sendToPeers(ctx, p2p.parents)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
 					//TODO multicast Routing or Flooding
@@ -1080,20 +1081,20 @@ Loop:
 				case p2pDestPeer:
 				case p2pDestAny:
 					p2p.sendToPeers(ctx, p2p.nephews)
-					c.alternate = p2p.nephews.Len()
+					c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "nephews", c.alternate, pkt.protocol, pkt.subProtocol)
 				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					p2p.sendToPeers(ctx, p2p.uncles)
-					c.alternate = p2p.uncles.Len()
+					c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "uncles", c.alternate, pkt.protocol, pkt.subProtocol)
 				case p2pRoleSeed: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 					r := p2p.Role()
 					if !r.Has(p2pRoleRoot) {
 						p2p.sendToPeers(ctx, p2p.uncles)
-						c.alternate = p2p.uncles.Len()
+						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					} else if r == p2pRoleRoot {
 						p2p.sendToPeers(ctx, p2p.nephews)
-						c.alternate = p2p.nephews.Len()
+						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
 				}
@@ -1222,6 +1223,13 @@ func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) (p *Peer) {
 	return nil
 }
 
+func (p2p *PeerToPeer) getPeerByProtocol(id module.PeerID, pi module.ProtocolInfo, onlyJoin bool) (p *Peer) {
+	if p = p2p.getPeer(id, onlyJoin); p == nil || !p.ProtocolInfos().Exists(pi) {
+		return nil
+	}
+	return p
+}
+
 func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 	arr := make([]*Peer, 0)
 	arr = append(arr, p2p.parents.Array()...)
@@ -1233,6 +1241,21 @@ func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
 
 	if !onlyJoin {
 		arr = append(arr, p2p.orphanages.Array()...)
+	}
+	return arr
+}
+
+func (p2p *PeerToPeer) getPeersByProtocol(pi module.ProtocolInfo, onlyJoin bool) []*Peer {
+	arr := make([]*Peer, 0)
+	arr = append(arr, p2p.parents.GetByProtocol(pi)...)
+	arr = append(arr, p2p.uncles.GetByProtocol(pi)...)
+	arr = append(arr, p2p.children.GetByProtocol(pi)...)
+	arr = append(arr, p2p.nephews.GetByProtocol(pi)...)
+	arr = append(arr, p2p.friends.GetByProtocol(pi)...)
+	arr = append(arr, p2p.others.GetByProtocol(pi)...)
+
+	if !onlyJoin {
+		arr = append(arr, p2p.orphanages.GetByProtocol(pi)...)
 	}
 	return arr
 }
@@ -1284,8 +1307,21 @@ func (p2p *PeerToPeer) connections() map[PeerConnectionType]int {
 	return m
 }
 
+func (p2p *PeerToPeer) connectionsByProtocol(pi module.ProtocolInfo) map[PeerConnectionType]int {
+	m := make(map[PeerConnectionType]int)
+	m[p2pConnTypeParent] = p2p.parents.LenByProtocol(pi)
+	m[p2pConnTypeChildren] = p2p.children.LenByProtocol(pi)
+	m[p2pConnTypeUncle] = p2p.uncles.LenByProtocol(pi)
+	m[p2pConnTypeNephew] = p2p.nephews.LenByProtocol(pi)
+	m[p2pConnTypeFriend] = p2p.friends.LenByProtocol(pi)
+	m[p2pConnTypeOther] = p2p.others.LenByProtocol(pi)
+	m[p2pConnTypeNone] = p2p.orphanages.LenByProtocol(pi)
+
+	return m
+}
+
 func (p2p *PeerToPeer) available(pkt *Packet) bool {
-	m := p2p.connections()
+	m := p2p.connectionsByProtocol(pkt.protocol)
 
 	u := m[p2pConnTypeParent]
 	u += m[p2pConnTypeUncle]
@@ -1298,8 +1334,7 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 
 	switch pkt.dest {
 	case p2pDestPeer:
-		p := p2p.getPeer(pkt.destPeer, true)
-		if p == nil {
+		if p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol, true); p == nil {
 			return false
 		}
 	case p2pDestAny:
@@ -1414,12 +1449,6 @@ Loop:
 
 				if p2p.friends.Len() > 0 {
 					ps := p2p.friends.Array()
-					for _, p := range ps {
-						p2p.tryTransitPeerConnection(p, p2pConnTypeNone)
-					}
-				}
-				if p2p.others.Len() > 0 {
-					ps := p2p.others.Array()
 					for _, p := range ps {
 						p2p.tryTransitPeerConnection(p, p2pConnTypeNone)
 					}
@@ -1784,6 +1813,9 @@ func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnection
 		p2p.sendP2PConnectionRequest(p2pConnTypeNone, p)
 		return true
 	default:
+		if p.EqualsAttr(AttrSupportDefaultProtocols, false) {
+			return false
+		}
 		if !p2p.reject.Contains(p) && !p2p.transiting.Contains(p) {
 			p.PutAttr(AttrP2PConnectionRequest, connType)
 			p2p.transiting.Add(p)
@@ -1915,6 +1947,10 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	} else if invalidReq {
 		p2p.logger.Infoln("handleP2PConnectionRequest", "invalid reqConnType", req.ConnType, "from", p.ID(), p.ConnType())
 	} else {
+		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
+			rc = p2pConnTypeOther
+			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
+		}
 		switch rc {
 		case p2pConnTypeParent:
 			if !p2p.updatePeerConnectionType(p, p2pConnTypeParent) &&
@@ -1935,11 +1971,13 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	m := &P2PConnectionResponse{ReqConnType: req.ConnType, ConnType: p.ConnType()}
 	if m.ConnType == p2pConnTypeOther {
 		//for legacy which is not supported p2pConnTypeOther response
-		switch req.ConnType {
-		case p2pConnTypeParent:
-			m.ConnType = p2pConnTypeChildren
-		case p2pConnTypeUncle:
-			m.ConnType = p2pConnTypeNephew
+		if p.EqualsAttr(AttrP2PLegacy, true) {
+			switch req.ConnType {
+			case p2pConnTypeParent:
+				m.ConnType = p2pConnTypeChildren
+			case p2pConnTypeUncle:
+				m.ConnType = p2pConnTypeNephew
+			}
 		}
 	}
 	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
@@ -2037,6 +2075,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 				rc = p2pConnTypeParent
 			case p2pConnTypeNephew:
 				rejectResp = true
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
@@ -2047,6 +2087,8 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 			switch resp.ConnType {
 			case p2pConnTypeNephew:
 				rc = p2pConnTypeUncle
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
 			case p2pConnTypeNone:
 				rc = p2pConnTypeNone
 				rejectResp = true
@@ -2069,6 +2111,10 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	} else {
 		p2p.logger.Debugln("handleP2PConnectionResponse", "resolvedConnType", strPeerConnectionType[resp.ConnType],
 			"from", p.ID(), p.ConnType())
+		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
+			rc = p2pConnTypeOther
+			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
+		}
 		switch rc {
 		case p2pConnTypeFriend, p2pConnTypeOther, p2pConnTypeNone:
 			p2p.updatePeerConnectionType(p, rc)

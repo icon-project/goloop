@@ -132,6 +132,10 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	return errors.Errorf("Unknown peer")
 }
 
+func (ph *tProtocolHandler) GetPeers() []module.PeerID {
+	return ph.nm.GetPeers()
+}
+
 func createAPeerID() module.PeerID {
 	return network.NewPeerIDFromAddress(wallet.New().Address())
 }
@@ -219,7 +223,7 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	ws.GetSnapshot().Flush()
 	vh := ws.GetValidatorState().GetSnapshot().Hash()
 
-	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh, nil)
+	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh, nil, false)
 	r, _ := syncer1.ForceSync()
 
 	logger.Printf("END\n")
@@ -346,7 +350,7 @@ func TestSync_AccountSync(t *testing.T) {
 	for i := 0; i < cSyncPeers; i++ {
 		func(index int) {
 			syncM[cPeers-cSyncPeers+index].
-				NewSyncer(prevHash, nil, nil, nil, nil).
+				NewSyncer(prevHash, nil, nil, nil, nil, false).
 				ForceSync()
 			log.Printf("Finish (%d)\n", index)
 		}(i)
@@ -408,7 +412,7 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 	nHash := normalReceiptsList.Hash()
 	normalReceiptsList.Flush()
 
-	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil, nil)
+	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil, nil, false)
 	syncer.ForceSync()
 	syncer.Finalize()
 

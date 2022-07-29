@@ -228,3 +228,7 @@ func (h *nmHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 	}
 	return errors.New("no peer")
 }
+
+func (h *nmHandler) GetPeers() []module.PeerID {
+	return h.n.GetPeers()
+}

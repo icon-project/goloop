@@ -61,7 +61,7 @@ func (s *server) start() {
 
 	if !s.running {
 		s.running = true
-		pids := s.nm.GetPeers()
+		pids := s.ph.GetPeers()
 		for _, id := range pids {
 			s._addPeer(id)
 		}

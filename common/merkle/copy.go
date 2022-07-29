@@ -5,6 +5,10 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
+const (
+	MaxNumberOfItemsToCopyInRow = 50
+)
+
 type CopyContext struct {
 	builder Builder
 	src     db.Database
@@ -19,6 +23,7 @@ func (e *CopyContext) Builder() Builder {
 func (e *CopyContext) Run() error {
 	for e.builder.UnresolvedCount() > 0 {
 		itr := e.builder.Requests()
+		processed := 0
 		for itr.Next() {
 			found := false
 			for _, id := range itr.BucketIDs() {
@@ -41,6 +46,16 @@ func (e *CopyContext) Run() error {
 			}
 			if !found {
 				return errors.NotFoundError.Errorf("FailToFindValue(key=%x", itr.Key())
+			}
+
+			// Prevent massive memory usage by cumulated requests.
+			// New requests are inserted before the next, so if it continues
+			// to process the next, then the number of requests increases until
+			// it reaches the end of the iteration.
+			// It could be very big if we sync large tree structure.
+			// So, let's stop after process some items.
+			if processed += 1; processed >= MaxNumberOfItemsToCopyInRow {
+				break
 			}
 		}
 	}

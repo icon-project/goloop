@@ -281,7 +281,7 @@ type TransitionManager interface {
 	// bi is the block info of the block that contains the patches,
 	// or nil if the patches are already prevalidated.
 	PatchTransition(transition Transition, patches TransactionList, bi BlockInfo) Transition
-	CreateSyncTransition(transition Transition, result []byte, vlHash []byte) Transition
+	CreateSyncTransition(transition Transition, result []byte, vlHash []byte, noBuffer bool) Transition
 	// Finalize finalizes data related to the transition. It usually stores
 	// data to a persistent storage. opt indicates which data are finalized.
 	// It should be called for every transition.

@@ -35,6 +35,7 @@ type ProtocolHandler interface {
 	Broadcast(pi ProtocolInfo, b []byte, bt BroadcastType) error
 	Multicast(pi ProtocolInfo, b []byte, role Role) error
 	Unicast(pi ProtocolInfo, b []byte, id PeerID) error
+	GetPeers() []PeerID
 }
 
 type BroadcastType byte

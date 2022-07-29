@@ -127,10 +127,11 @@ func (m *Manager) AddRequest(id db.BucketID, key []byte) error {
 	return m.ds.AddRequest(id, key)
 }
 
-func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte) Syncer {
+func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) Syncer {
 	return newSyncer(
 		m.db, m.client, m.pool, m.plt,
 		ah, prh, nrh, vh, ed, m.log,
+		noBuffer,
 		m.SetSyncHandler)
 }
 

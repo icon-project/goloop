@@ -37,7 +37,7 @@ type genesisStorage struct {
 
 func (gs *genesisStorage) ensureTypeAndIDs() error {
 	if gs.cid == 0 {
-		if pg, err := newPrunedGenesis(gs.Genesis()); err == nil {
+		if pg, err := NewPrunedGenesis(gs.Genesis()); err == nil {
 			gs.cid = int(pg.CID.Value)
 			gs.nid = int(pg.NID.Value)
 			gs.gType = module.GenesisPruned
@@ -348,9 +348,11 @@ func WriteFromPath(w io.Writer, p string) error {
 		writer: gsw,
 		path:   genesisDir,
 	}, genesisObj)
+	if err != nil {
+		return errors.Wrap(err, "Fail to process content")
+	}
 
 	// write genesis data at last
-
 	genesis, err = json.Marshal(genesisObj)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal JSON")

@@ -34,17 +34,31 @@ func (m *proofContextMap) ProofContextFor(ntid int64) (module.BTPProofContext, e
 	return pc, nil
 }
 
+func (m *proofContextMap) copy() *proofContextMap {
+	res := &proofContextMap{
+		pcMap: make(map[int64]module.BTPProofContext),
+	}
+	for k, v := range m.pcMap {
+		res.pcMap[k] = v
+	}
+	return res
+}
+
 func (m *proofContextMap) Update(btpSection module.BTPSection) module.BTPProofContextMap {
 	res := m
-	for _, nts := range btpSection.NetworkTypeSections() {
-		if nts.(*networkTypeSectionByBuilder).nextProofContextChanged() {
+	for _, ntid := range btpSection.(*btpSectionByBuilder).inactivatedNTs {
+		if _, ok := res.pcMap[ntid]; ok {
 			if res == m {
-				res = &proofContextMap{
-					pcMap: make(map[int64]module.BTPProofContext),
-				}
-				for k, v := range m.pcMap {
-					res.pcMap[k] = v
-				}
+				res = m.copy()
+			}
+			delete(res.pcMap, ntid)
+		}
+	}
+	for _, nts_ := range btpSection.NetworkTypeSections() {
+		nts := nts_.(*networkTypeSectionByBuilder)
+		if nts.nsNPCChanged {
+			if res == m {
+				res = m.copy()
 			}
 			res.pcMap[nts.NetworkTypeID()] = nts.NextProofContext()
 		}
@@ -113,11 +127,14 @@ func NewProofContextsMap(view StateView) (module.BTPProofContextMap, error) {
 			return nil, err
 		}
 		mod := ntm.ForUID(nt.UID())
-		pc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
-		if err != nil {
-			return nil, err
+		pcBytes := nt.NextProofContext()
+		if pcBytes != nil {
+			pc, err := mod.NewProofContextFromBytes(nt.NextProofContext())
+			if err != nil {
+				return nil, err
+			}
+			res.pcMap[ntid] = pc
 		}
-		res.pcMap[ntid] = pc
 	}
 	return res, nil
 }

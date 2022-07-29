@@ -211,7 +211,13 @@ func (vl *CommitVoteList) toVoteList(
 		if err != nil {
 			return nil, err
 		}
+		if nt.NextProofContext() == nil {
+			continue
+		}
 		mod := ntm.ForUID(nt.UID())
+		if len(vl.NTSDProves) <= ntsdProofIndex {
+			return nil, errors.Errorf("NTS count mismatch len(NTDSProves)=%d NTSHashEntryCount=%d", len(vl.NTSDProves), ntsHashEntries.NTSHashEntryCount())
+		}
 		pf, err := mod.NewProofFromBytes(vl.NTSDProves[ntsdProofIndex])
 		if err != nil {
 			return nil, err

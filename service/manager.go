@@ -259,18 +259,9 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	return patchTransition(pt, bi, patchTxList)
 }
 
-func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte) module.Transition {
+func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte, noBuffer bool) module.Transition {
 	m.log.Debugf("CreateSyncTransition result(%#x), vlHash(%#x)\n", result, vlHash)
-	tr, ok := t.(*transition)
-	if !ok {
-		m.log.Panicf("Illegal transition for CreateSyncTransition type=%T", t)
-		return nil
-	}
-	ntr := newTransition(tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, tr.csi, true)
-	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
-		r.PatchReceiptHash, r.NormalReceiptHash, vlHash, r.ExtensionData)
-	return ntr
+	return NewSyncTransition(t, m.syncer, result, vlHash, noBuffer)
 }
 
 // Finalize finalizes data related to the transition. It usually stores
@@ -550,7 +541,7 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 	}
 	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
 	if nidVar.Bytes() == nil {
-		return 0, errors.ErrNotFound
+		return 0, errors.NotFoundError.New("no network ID")
 	}
 	return nidVar.Int64(), nil
 }
@@ -562,7 +553,7 @@ func (m *manager) GetChainID(result []byte) (int64, error) {
 	}
 	nidVar := scoredb.NewVarDB(as, state.VarChainID)
 	if nidVar.Bytes() == nil {
-		return 0, errors.ErrNotFound
+		return 0, errors.NotFoundError.New("no chain ID")
 	}
 	return nidVar.Int64(), nil
 }
@@ -775,7 +766,8 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	defer txh.Dispose()
 
 	var wc state.WorldContext
-	if wss, err := m.trc.GetWorldSnapshot(result, vh); err == nil {
+	wss, err := m.trc.GetWorldSnapshot(result, vh)
+	if err == nil {
 		ws, err := state.WorldStateFromSnapshot(wss)
 		if err != nil {
 			return nil, err
@@ -795,7 +787,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	})
 	ctx.UpdateSystemInfo()
 
-	return txh.Execute(ctx, true)
+	return txh.Execute(ctx, wss, true)
 }
 
 func (m *manager) AddSyncRequest(id db.BucketID, key []byte) error {

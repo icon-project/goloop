@@ -34,7 +34,7 @@ public class MethodDependencyVisitor extends MethodVisitor {
             methodsCalled.add(new MethodInvocation(ownerHandle.getOwner(),
                     ownerHandle.getName() + ownerHandle.getDesc(), Opcodes.INVOKEDYNAMIC));
         } else if (!name.equals("makeConcatWithConstants")) {
-            throw new RuntimeException("Unsure how to handle this Invoke Dynamic instruction");
+            throw new UnsupportedOperationException("Unsupported invokedynamic instruction: " + name);
         }
     }
 

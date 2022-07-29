@@ -26,6 +26,7 @@ import (
 type SectionBuilder interface {
 	SendMessage(nid int64, msg []byte)
 	EnsureSection(nid int64)
+	NotifyInactivated(ntid int64)
 	Build() (module.BTPSection, error)
 }
 
@@ -45,8 +46,9 @@ type networkEntry struct {
 }
 
 type sectionBuilder struct {
-	view           StateView
-	networkEntries map[int64]*networkEntry
+	view                    StateView
+	inactivatedNetworkTypes []int64
+	networkEntries          map[int64]*networkEntry
 }
 
 func (sb *sectionBuilder) SendMessage(nid int64, msg []byte) {
@@ -63,6 +65,10 @@ func (sb *sectionBuilder) EnsureSection(nid int64) {
 	if !ok {
 		sb.networkEntries[nid] = &networkEntry{}
 	}
+}
+
+func (sb *sectionBuilder) NotifyInactivated(ntid int64) {
+	sb.inactivatedNetworkTypes = append(sb.inactivatedNetworkTypes, ntid)
 }
 
 func (sb *sectionBuilder) Build() (module.BTPSection, error) {
@@ -96,7 +102,7 @@ func (sb *sectionBuilder) Build() (module.BTPSection, error) {
 		}
 		ntsSlice = ntsSlice.SortedInsert(nts)
 	}
-	return newBTPSection(ntsSlice), nil
+	return newBTPSection(ntsSlice, sb.inactivatedNetworkTypes), nil
 }
 
 type networkTypeSectionSlice []module.NetworkTypeSection

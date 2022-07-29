@@ -20,6 +20,7 @@ import (
 	"math/bits"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -28,9 +29,9 @@ const hashLen = 32
 type moduleCore interface {
 	UID() string
 	AppendHash(out []byte, data []byte) []byte
-	DSA() string
+	DSAModule() module.DSAModule
 	NewProofContextFromBytes(bs []byte) (proofContextCore, error)
-	NewProofContext(pubKeys [][]byte) proofContextCore
+	NewProofContext(pubKeys [][]byte) (proofContextCore, error)
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
 	BytesByHashBucket() db.BucketID
 	ListByMerkleRootBucket() db.BucketID
@@ -51,7 +52,7 @@ func (ntm *networkTypeModule) AppendHash(out []byte, data []byte) []byte {
 }
 
 func (ntm *networkTypeModule) DSA() string {
-	return ntm.core.DSA()
+	return ntm.core.DSAModule().Name()
 }
 
 func (ntm *networkTypeModule) NewProofContextFromBytes(bs []byte) (module.BTPProofContext, error) {
@@ -64,13 +65,20 @@ func (ntm *networkTypeModule) NewProofContextFromBytes(bs []byte) (module.BTPPro
 	}, nil
 }
 
-func (ntm *networkTypeModule) NewProofContext(keys [][]byte) module.BTPProofContext {
-	return &proofContext{
-		core: ntm.core.NewProofContext(keys),
+func (ntm *networkTypeModule) NewProofContext(keys [][]byte) (module.BTPProofContext, error) {
+	core, err := ntm.core.NewProofContext(keys)
+	if err != nil {
+		return nil, err
 	}
+	return &proofContext{
+		core: core,
+	}, nil
 }
 
 func (ntm *networkTypeModule) AddressFromPubKey(pubKey []byte) ([]byte, error) {
+	if len(pubKey) == 0 {
+		return nil, errors.Errorf("zero length pubKey")
+	}
 	return ntm.core.AddressFromPubKey(pubKey)
 }
 
@@ -174,6 +182,10 @@ func (ntm *networkTypeModule) NewProofFromBytes(bs []byte) (module.BTPProof, err
 
 func (ntm *networkTypeModule) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
 	return ntm.core.NetworkTypeKeyFromDSAKey(key)
+}
+
+func (ntm *networkTypeModule) DSAModule() module.DSAModule {
+	return ntm.core.DSAModule()
 }
 
 var modules = make(map[string]module.NetworkTypeModule)

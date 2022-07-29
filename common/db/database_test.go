@@ -17,21 +17,14 @@
 package db
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func testDatabase_GetSetDelete(t *testing.T, backend BackendType) {
-	dir, err := ioutil.TempDir("", string(backend))
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(dir)
-
-	testDB, _ := openDatabase(backend, "test", dir)
+func testDatabase_GetSetDelete(t *testing.T, creator dbCreator) {
+	dir := t.TempDir()
+	testDB, _ := creator("test", dir)
 	defer testDB.Close()
 
 	key := []byte("hello")
@@ -76,36 +69,41 @@ func testDatabase_GetSetDelete(t *testing.T, backend BackendType) {
 	err = bucket.Set(key2, []byte{})
 	assert.NoError(t, err)
 
-	// HAS returns false
+	// HAS returns true
 	has, err = bucket.Has(key2)
 	assert.NoError(t, err)
 	assert.True(t, has)
+
+	// GET returns non-nil(empty)
+	value, err = bucket.Get(key2)
+	assert.NoError(t, err)
+	assert.True(t, value != nil)
+	assert.Zero(t, len(value))
 }
 
 func TestDatabase_GetSetDelete(t *testing.T) {
-	for be, _ := range backends {
-		t.Run(string(be), func(t *testing.T) {
+	for name, be := range backends {
+		t.Run(string(name), func(t *testing.T) {
 			testDatabase_GetSetDelete(t, be)
 		})
 	}
+	t.Run("layerdb", func(t *testing.T) {
+		var creator dbCreator = func(name string, dir string) (Database, error) {
+			origin := NewMapDB()
+			return NewLayerDB(origin), nil
+		}
+		testDatabase_GetSetDelete(t, creator)
+	})
 }
 
-func testDatabase_SetReopenGet(t *testing.T, backend BackendType) {
-	if backend == MapDBBackend {
-		return
-	}
-	dir, err := ioutil.TempDir("", string(backend))
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(dir)
-
+func testDatabase_SetReopenGet(t *testing.T, creator dbCreator) {
+	dir := t.TempDir()
 	key := []byte("hello")
 	key2 := []byte("hell")
 	value := []byte("world")
 
 	buckets := []BucketID{"hello", MerkleTrie, BytesByHash}
-	testDB, err := openDatabase(backend, "test", dir)
+	testDB, err := creator("test", dir)
 	assert.NoError(t, err)
 	defer func() {
 		if testDB != nil {
@@ -123,7 +121,7 @@ func testDatabase_SetReopenGet(t *testing.T, backend BackendType) {
 	testDB = nil
 	assert.NoError(t, err)
 
-	testDB, err = openDatabase(backend, "test", dir)
+	testDB, err = creator("test", dir)
 
 	for _, id := range buckets {
 		bucket, err := testDB.GetBucket(id)
@@ -143,9 +141,12 @@ func testDatabase_SetReopenGet(t *testing.T, backend BackendType) {
 }
 
 func TestDatabase_SetReopenGet(t *testing.T) {
-	for be, _ := range backends {
-		t.Run(string(be), func(t *testing.T) {
-			testDatabase_SetReopenGet(t, be)
+	for name, creator := range backends {
+		if name == MapDBBackend {
+			continue
+		}
+		t.Run(string(name), func(t *testing.T) {
+			testDatabase_SetReopenGet(t, creator)
 		})
 	}
 }

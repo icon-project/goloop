@@ -91,6 +91,10 @@ const (
 	ImportByForce = 0x1
 )
 
+type BlockDataFactory interface {
+	NewBlockDataFromReader(r io.Reader) (BlockData, error)
+}
+
 type BlockManager interface {
 	GetBlockByHeight(height int64) (Block, error)
 	GetLastBlock() (Block, error)
@@ -151,7 +155,7 @@ type BlockManager interface {
 	ExportBlocks(from, to int64, dst db.Database, on func(height int64) error) error
 
 	// ExportGenesis exports genesis to the writer based on the block.
-	ExportGenesis(blk Block, writer GenesisStorageWriter) error
+	ExportGenesis(blk BlockData, votes CommitVoteSet, writer GenesisStorageWriter) error
 
 	// GetGenesisData returns available votes from genesis storage.
 	// They are available only when it starts from genesis.

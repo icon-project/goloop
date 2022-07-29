@@ -26,10 +26,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const (
-	secp256k1DSA = "ecdsa/secp256k1"
-)
-
 type secp256k1proofContextModule interface {
 	UID() string
 	AddressFromPubKey(pubKey []byte) ([]byte, error)
@@ -99,24 +95,34 @@ type secp256k1ProofContext struct {
 func newSecp256k1ProofContext(
 	mod *networkTypeModule,
 	keys [][]byte,
-) *secp256k1ProofContext {
+) (*secp256k1ProofContext, error) {
 	pp := &secp256k1ProofContext{
 		Validators:  make([][]byte, 0, len(keys)),
 		addrToIndex: make(map[string]int, len(keys)),
 		mod:         mod,
 	}
-	for i, addr := range keys {
+	for i, key := range keys {
+		var addr []byte
+		var err error
+		if key != nil {
+			addr, err = mod.AddressFromPubKey(key)
+			if err != nil {
+				return nil, errors.Wrapf(err, "fail to converted key to address index=%d key=%x", i, key)
+			}
+			pp.addrToIndex[string(addr)] = i
+		}
 		pp.Validators = append(pp.Validators, addr)
-		pp.addrToIndex[string(addr)] = i
 	}
-	return pp
+	return pp, nil
 }
 
 func (pc *secp256k1ProofContext) indexOf(address []byte) (int, bool) {
 	if pc.addrToIndex == nil {
 		pc.addrToIndex = make(map[string]int, len(pc.Validators))
 		for i, addr := range pc.Validators {
-			pc.addrToIndex[string(addr)] = i
+			if addr != nil {
+				pc.addrToIndex[string(addr)] = i
+			}
 		}
 	}
 	idx, ok := pc.addrToIndex[string(address)]
@@ -130,9 +136,11 @@ func newSecp256k1ProofContextFromBytes(
 	pc := &secp256k1ProofContext{
 		mod: mod,
 	}
-	_, err := codec.UnmarshalFromBytes(bytes, pc)
-	if err != nil {
-		return nil, err
+	if bytes != nil {
+		_, err := codec.UnmarshalFromBytes(bytes, pc)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return pc, nil
 }
@@ -142,6 +150,9 @@ func (pc *secp256k1ProofContext) NetworkTypeModule() module.NetworkTypeModule {
 }
 
 func (pc *secp256k1ProofContext) Bytes() []byte {
+	if pc.Validators == nil {
+		return nil
+	}
 	if pc.bytes == nil {
 		pc.bytes = codec.MustMarshalToBytes(pc)
 	}
@@ -210,20 +221,13 @@ func (pc *secp256k1ProofContext) NewProofPart(
 	dHash []byte,
 	wp module.WalletProvider,
 ) (module.BTPProofPart, error) {
-	w := wp.WalletFor(pc.mod.UID())
-	var addr []byte
-	if w != nil {
-		addr = w.PublicKey()
-	} else {
-		w = wp.WalletFor(secp256k1DSA)
-		if w == nil {
-			return nil, errors.Errorf("no wallet for uid=%s dsa=%s", pc.mod.UID(), secp256k1DSA)
-		}
-		var err error
-		addr, err = pc.mod.AddressFromPubKey(w.PublicKey())
-		if err != nil {
-			return nil, err
-		}
+	w := wp.WalletFor(secp256k1DSA)
+	if w == nil {
+		return nil, errors.Errorf("no wallet for uid=%s dsa=%s", pc.mod.UID(), secp256k1DSA)
+	}
+	addr, err := pc.mod.AddressFromPubKey(w.PublicKey())
+	if err != nil {
+		return nil, err
 	}
 	sig, err := w.Sign(dHash)
 	if err != nil {
