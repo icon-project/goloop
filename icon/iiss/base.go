@@ -122,7 +122,7 @@ func (tx *baseV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	return wc, nil
 }
 
-func (tx *baseV3) Execute(ctx contract.Context, estimate bool) (txresult.Receipt, error) {
+func (tx *baseV3) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
 	if estimate {
 		return nil, errors.InvalidStateError.New("EstimationNotAllowed")
 	}
