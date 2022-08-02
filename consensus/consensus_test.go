@@ -844,3 +844,70 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	bysl := nts.NextProofContext().Bytes()
 	log.Infof("%s", codec.DumpRLP("  ", bysl))
 }
+
+func TestConsensus_Restart(t *testing.T) {
+	const dsa = "ecdsa/secp256k1"
+	const uid = "eth"
+	assert := assert.New(t)
+	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer func() {
+		if f != nil {
+			f.Close()
+		}
+	}()
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	}).Call("setMinimizeBlockGen", map[string]string{
+		"yn": fmt.Sprintf("0x1"),
+	})
+	for i, v := range f.Validators {
+		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
+			"name":   dsa,
+			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
+		})
+		t.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
+	}
+	tx.Call("openBTPNetwork", map[string]string{
+		"networkTypeName": uid,
+		"name":            fmt.Sprintf("%s-test", uid),
+		"owner":           f.CommonAddress().String(),
+	})
+	f.SendTransactionToProposer(tx)
+
+	test.NodeInterconnect(f.Nodes)
+	for _, n := range f.Nodes {
+		err := n.CS.Start()
+		assert.NoError(err)
+	}
+
+	blk := f.WaitForBlock(2)
+	bd, err := blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+
+	testMsg := ([]byte)("test message")
+	f.SendTransactionToProposer(
+		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
+			"networkId": "0x1",
+			"message":   fmt.Sprintf("0x%x", testMsg),
+		}),
+	)
+	blk = f.WaitForNextNthBlock(2)
+	bs, err := blk.BTPSection()
+	assert.EqualValues(4, blk.Height())
+	assert.NoError(err)
+	assert.EqualValues(1, len(bs.NetworkTypeSections()))
+
+	bd, err = blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
+	f.Close()
+	oldF := f
+	f = nil
+
+	f2 := test.NewFixture(t, test.UseWallet(oldF.Chain.Wallet()), test.UseDB(oldF.Chain.Database()), test.UseGenesis(string(oldF.Chain.Genesis())))
+	defer f2.Close()
+	err = f2.CS.Start()
+	assert.NoError(err)
+}

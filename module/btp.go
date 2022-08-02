@@ -63,9 +63,14 @@ type NTSDProofList interface {
 	NTSDProofAt(i int) []byte
 }
 
+type BTPProofContextMapUpdateSource interface {
+	BTPSection() (BTPSection, error)
+	NextProofContextMap() (BTPProofContextMap, error)
+}
+
 type BTPProofContextMap interface {
 	ProofContextFor(ntid int64) (BTPProofContext, error)
-	Update(btpSection BTPSection) BTPProofContextMap
+	Update(src BTPProofContextMapUpdateSource) (BTPProofContextMap, error)
 	Verify(
 		srcUID []byte, height int64, round int32, bd BTPDigest,
 		ntsdProves NTSDProofList,

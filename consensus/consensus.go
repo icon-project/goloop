@@ -266,10 +266,10 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	cs.commitRound = -1
 	cs.syncing = true
 	cs.metric.OnHeight(cs.height)
-	bs, err := prevBlock.BTPSection()
-	cs.log.Must(err)
 	cs.pcmForLastBlock = cs.nextPCM
-	cs.nextPCM = cs.nextPCM.Update(bs)
+	nextPCM, err := cs.nextPCM.Update(prevBlock)
+	cs.log.Must(err)
+	cs.nextPCM = nextPCM
 }
 
 func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *voteSet) {
@@ -1168,15 +1168,11 @@ func (cs *consensus) ntsVoteBaseAndDecisionProofParts(
 	for i := 0; i < ntsHashEntries.NTSHashEntryCount(); i++ {
 		ntsHashEntry := ntsHashEntries.NTSHashEntryAt(i)
 		ntid := ntsHashEntry.NetworkTypeID
-		_, err := cs.pcmForLastBlock.ProofContextFor(ntid)
+		pc, err := cs.nextPCM.ProofContextFor(ntid)
 		if errors.Is(err, errors.ErrNotFound) {
 			// do not vote for first NTS
 			continue
 		}
-		if err != nil {
-			return nil, nil, err
-		}
-		pc, err := cs.nextPCM.ProofContextFor(ntid)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -53,6 +53,18 @@ func newPCs(assert *assert.Assertions, count int, uids ...string) []module.BTPPr
 	return pcs
 }
 
+type sectionPCMUpdateSource struct {
+	btpSection module.BTPSection
+}
+
+func (s sectionPCMUpdateSource) BTPSection() (module.BTPSection, error) {
+	return s.btpSection, nil
+}
+
+func (s sectionPCMUpdateSource) NextProofContextMap() (module.BTPProofContextMap, error) {
+	return nil, nil
+}
+
 func TestProofContextMap_Basic(t *testing.T) {
 	const count = 4
 	assert := assert.New(t)
@@ -148,7 +160,8 @@ func TestProofContextMap_Basic(t *testing.T) {
 	builder.EnsureSection(2)
 	bs, err := builder.Build()
 	assert.NoError(err)
-	pcm2 := pcm.Update(bs)
+	pcm2, err := pcm.Update(sectionPCMUpdateSource{bs})
+	assert.NoError(err)
 
 	_, err = pcm2.ProofContextFor(0)
 	assert.Error(err)

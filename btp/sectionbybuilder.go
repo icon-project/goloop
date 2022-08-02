@@ -18,6 +18,7 @@ package btp
 
 import (
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -64,46 +65,38 @@ func (bs *btpSectionByBuilder) NetworkTypeSectionFor(ntid int64) (module.Network
 
 type btpSectionDigest struct {
 	bs                 *btpSectionByBuilder
-	bytes              []byte
-	hash               []byte
+	bytes              cache.ByteSlice
+	hash               cache.ByteSlice
 	networkTypeDigests []module.NetworkTypeDigest
 	filter             module.BitSetFilter
 }
 
 func (bsd *btpSectionDigest) Bytes() []byte {
-	if bsd.bytes == nil {
+	return bsd.bytes.Get(func() []byte {
 		if len(bsd.bs.networkTypeSections) == 0 {
-			bsd.bytes = make([]byte, 0)
-		} else {
-			e := codec.NewEncoderBytes(&bsd.bytes)
-			if len(bsd.bs.networkTypeSections) > 0 {
-				e2, _ := e.EncodeList()  // bd struct
-				e3, _ := e2.EncodeList() // ntd slice
-				for _, nts := range bsd.bs.networkTypeSections {
-					_ = nts.(*networkTypeSectionByBuilder).encodeDigest(e3)
-				}
-			}
-			_ = e.Close()
+			return nil
 		}
-	}
-	if len(bsd.bytes) == 0 {
-		return nil
-	}
-	return bsd.bytes
+		var bytes []byte
+		e := codec.NewEncoderBytes(&bytes)
+		if len(bsd.bs.networkTypeSections) > 0 {
+			e2, _ := e.EncodeList()  // bd struct
+			e3, _ := e2.EncodeList() // ntd slice
+			for _, nts := range bsd.bs.networkTypeSections {
+				_ = nts.(*networkTypeSectionByBuilder).encodeDigest(e3)
+			}
+		}
+		_ = e.Close()
+		return bytes
+	})
 }
 
 func (bsd *btpSectionDigest) Hash() []byte {
-	if bsd.hash == nil {
+	return bsd.hash.Get(func() []byte {
 		if bsd.Bytes() == nil {
-			bsd.hash = make([]byte, 0)
-		} else {
-			bsd.hash = crypto.SHA3Sum256(bsd.Bytes())
+			return nil
 		}
-	}
-	if len(bsd.hash) == 0 {
-		return nil
-	}
-	return bsd.hash
+		return crypto.SHA3Sum256(bsd.Bytes())
+	})
 }
 
 func (bsd *btpSectionDigest) NetworkTypeDigests() []module.NetworkTypeDigest {

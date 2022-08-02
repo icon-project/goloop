@@ -20,6 +20,7 @@ import (
 	"io"
 	"sort"
 
+	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -41,23 +42,18 @@ type digestCore interface {
 
 type digest struct {
 	digestCore
-	hash                   []byte
+	hash                   cache.ByteSlice
 	filter                 module.BitSetFilter
 	ntsHashEntryListFormat []module.NTSHashEntryFormat
 }
 
 func (bd *digest) Hash() []byte {
-	if bd.hash == nil {
+	return bd.hash.Get(func() []byte {
 		if bd.Bytes() == nil {
-			bd.hash = []byte{}
-		} else {
-			bd.hash = crypto.SHA3Sum256(bd.Bytes())
+			return nil
 		}
-	}
-	if len(bd.hash) == 0 {
-		return nil
-	}
-	return bd.hash
+		return crypto.SHA3Sum256(bd.Bytes())
+	})
 }
 
 func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {

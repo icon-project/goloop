@@ -17,6 +17,7 @@
 package ntm
 
 import (
+	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 )
@@ -36,19 +37,17 @@ type proofContextCore interface {
 
 type proofContext struct {
 	core proofContextCore
-	hash *[]byte
+	hash cache.ByteSlice
 }
 
 func (pc *proofContext) Hash() []byte {
-	if pc.hash == nil {
-		var hash []byte
+	return pc.hash.Get(func() []byte {
 		pcBytes := pc.core.Bytes()
-		if pcBytes != nil {
-			hash = pc.core.NetworkTypeModule().Hash(pcBytes)
+		if pcBytes == nil {
+			return nil
 		}
-		pc.hash = &hash
-	}
-	return *pc.hash
+		return pc.core.NetworkTypeModule().Hash(pcBytes)
+	})
 }
 
 func (pc *proofContext) Bytes() []byte {
