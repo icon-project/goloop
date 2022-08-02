@@ -271,8 +271,34 @@ func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database
 	panic("implement me")
 }
 
+func (sm *ServiceManager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
+	dh, err := service.BTPDigestHashFromResult(result)
+	bk, err := sm.dbase.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	digestBytes, err := bk.Get(dh)
+	if err != nil {
+		return nil, err
+	}
+	digest, err := btp.NewDigestFromBytes(digestBytes)
+	if err != nil {
+		return nil, err
+	}
+	return digest, nil
+}
+
 func (sm *ServiceManager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
-	return btp.ZeroBTPSection, nil
+	digest, err := sm.BTPDigestFromResult(result)
+	if err != nil {
+		return nil, err
+	}
+	store, err := sm.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, store)
+	return btp.NewSection(digest, btpContext, sm.dbase)
 }
 
 func (sm *ServiceManager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
