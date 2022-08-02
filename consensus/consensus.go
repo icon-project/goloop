@@ -266,10 +266,10 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	cs.commitRound = -1
 	cs.syncing = true
 	cs.metric.OnHeight(cs.height)
-	bs, err := prevBlock.BTPSection()
-	cs.log.Must(err)
 	cs.pcmForLastBlock = cs.nextPCM
-	cs.nextPCM = cs.nextPCM.Update(bs)
+	nextPCM, err := cs.nextPCM.Update(prevBlock)
+	cs.log.Must(err)
+	cs.nextPCM = nextPCM
 }
 
 func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *voteSet) {

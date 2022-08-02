@@ -44,26 +44,37 @@ func (m *proofContextMap) copy() *proofContextMap {
 	return res
 }
 
-func (m *proofContextMap) Update(btpSection module.BTPSection) module.BTPProofContextMap {
+func (m *proofContextMap) Update(src module.BTPProofContextMapUpdateSource) (module.BTPProofContextMap, error) {
 	res := m
-	for _, ntid := range btpSection.(*btpSectionByBuilder).inactivatedNTs {
-		if _, ok := res.pcMap[ntid]; ok {
-			if res == m {
-				res = m.copy()
-			}
-			delete(res.pcMap, ntid)
-		}
+	btpSection, err := src.BTPSection()
+	if err != nil {
+		return nil, err
 	}
-	for _, nts_ := range btpSection.NetworkTypeSections() {
-		nts := nts_.(*networkTypeSectionByBuilder)
-		if nts.nsNPCChanged {
-			if res == m {
-				res = m.copy()
+	if btpSectionByBuilder, ok := btpSection.(*btpSectionByBuilder); ok {
+		for _, ntid := range btpSectionByBuilder.inactivatedNTs {
+			if _, ok := res.pcMap[ntid]; ok {
+				if res == m {
+					res = m.copy()
+				}
+				delete(res.pcMap, ntid)
 			}
-			res.pcMap[nts.NetworkTypeID()] = nts.NextProofContext()
 		}
+		for _, nts_ := range btpSectionByBuilder.NetworkTypeSections() {
+			nts := nts_.(*networkTypeSectionByBuilder)
+			if nts.nsNPCChanged {
+				if res == m {
+					res = m.copy()
+				}
+				res.pcMap[nts.NetworkTypeID()] = nts.NextProofContext()
+			}
+		}
+		return res, nil
 	}
-	return res
+	npcm, err := src.NextProofContextMap()
+	if err != nil {
+		return nil, err
+	}
+	return npcm, nil
 }
 
 func (m *proofContextMap) Verify(

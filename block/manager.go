@@ -1148,12 +1148,12 @@ func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 	}
 
 	if updatePCM {
-		bs, err := m.finalized.block.BTPSection()
+		nextPCM, err := m.nextPCM.Update(m.finalized.block)
 		if err != nil {
 			return err
 		}
 		m.pcmForLastBlock = m.nextPCM
-		m.nextPCM = m.nextPCM.Update(bs)
+		m.nextPCM = nextPCM
 	}
 
 	m.cache.Put(m.finalized.block)
