@@ -19,6 +19,7 @@ package ntm
 import (
 	"bytes"
 
+	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -88,7 +89,7 @@ func (p *secp256k1Proof) ProofPartAt(i int) module.BTPProofPart {
 type secp256k1ProofContext struct {
 	Validators  [][]byte
 	mod         *networkTypeModule
-	bytes       []byte
+	bytes       cache.ByteSlice
 	addrToIndex map[string]int
 }
 
@@ -150,13 +151,12 @@ func (pc *secp256k1ProofContext) NetworkTypeModule() module.NetworkTypeModule {
 }
 
 func (pc *secp256k1ProofContext) Bytes() []byte {
-	if pc.Validators == nil {
-		return nil
-	}
-	if pc.bytes == nil {
-		pc.bytes = codec.MustMarshalToBytes(pc)
-	}
-	return pc.bytes
+	return pc.bytes.Get(func() []byte {
+		if pc.Validators == nil {
+			return nil
+		}
+		return codec.MustMarshalToBytes(pc)
+	})
 }
 
 // VerifyPart returns validator index and error
