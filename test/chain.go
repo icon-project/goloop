@@ -61,7 +61,8 @@ func (c *Chain) NID() int {
 }
 
 func (c *Chain) CID() int {
-	return 1
+	cid, _ := c.gs.CID()
+	return cid
 }
 
 func (c *Chain) NetID() int {
