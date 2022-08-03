@@ -32,11 +32,11 @@ import java.math.BigInteger;
  * a {@link Boolean}, a {@link Byte}, a {@link Short}, a {@link Character},
  * a {@link Integer}, a {@link Float}, a {@link Long}, a {@link Double},
  * a {@link BigInteger}, a {@link String}, byte array or an {@link Address}.
- * They are written by corresponding write methods. The following is an
+ * They are written by corresponding {@code write} methods. The following is an
  * example of writing simple objects.
  * <blockquote><pre>
- *      objectWriter.writeString("a string");
- *      objectWriter.writeInt(0);
+ *      objectWriter.write("a string");
+ *      objectWriter.write(0);
  * </pre></blockquote>
  *
  * <p>A container object is a list or a map. A container may have another
@@ -48,7 +48,7 @@ import java.math.BigInteger;
  * method writes a list of two elements.
  * <blockquote><pre>
  *      objectWriter.beginList(2);
- *          objectWriter.writeInt(0);
+ *          objectWriter.write(0);
  *          objectWriter.beginList(0);
  *          objectWriter.end();
  *      objectWriter.end();
@@ -60,8 +60,8 @@ import java.math.BigInteger;
  * method writes a map of one element.
  * <blockquote><pre>
  *      objectWriter.beginMap(1);
- *          objectWriter.writeString("key");
- *          objectWriter.writeString("value");
+ *          objectWriter.write("key");
+ *          objectWriter.write("value");
  *      objectWriter.end();
  * </pre></blockquote>
  *
@@ -77,8 +77,8 @@ import java.math.BigInteger;
  * For example, the following is error.
  * <blockquote><pre>
  *  public static void writeObject(ObjectWriter w, UserClass obj) {
- *      w.writeString(obj.name);
- *      w.writeString(obj.description);
+ *      w.write(obj.name);
+ *      w.write(obj.description);
  *  }
  * </pre></blockquote>
  * Instead, write a list with multiple elements if you want to write multiple
@@ -86,8 +86,8 @@ import java.math.BigInteger;
  * <blockquote><pre>
  *  public static void writeObject(ObjectWriter w, UserClass obj) {
  *      w.beginList(2);
- *          w.writeString(obj.name);
- *          w.writeString(obj.description);
+ *          w.write(obj.name);
+ *          w.write(obj.description);
  *      w.end();
  *  }
  * </pre></blockquote>

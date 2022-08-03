@@ -424,12 +424,12 @@ public interface ObjectReader {
     boolean beginNullableMap();
 
     /**
-     * Returns true if this reader has next object to read.
+     * Returns true if this reader has next an object to read.
      * If the reader is reading a container, this method returns true if the top
      * most container has more object to read,
      * returns false otherwise.
      *
-     * @return true if this reader has next object to read.
+     * @return true if this reader has next an object to read.
      * @throws IllegalStateException if this reader was already invalidated.
      */
     boolean hasNext();

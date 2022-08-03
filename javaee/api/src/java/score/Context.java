@@ -393,11 +393,11 @@ public final class Context {
 
     /**
      * Sets the proportion of transaction fees that the SCORE will pay.
-     * {@code proportion} should be between 0 to 100.
+     * {@code proportion} should be between 0 and 100.
      * If this method is invoked multiple times, the last proportion value will be used.
      *
      * @param proportion the desired proportion of transaction fees that the SCORE will pay
-     * @throws IllegalArgumentException if the proportion is not between 0 to 100
+     * @throws IllegalArgumentException if the proportion is not between 0 and 100
      */
     public static void setFeeSharingProportion(int proportion) {
     }
