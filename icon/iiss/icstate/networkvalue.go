@@ -51,6 +51,7 @@ const (
 	VarDelegationSlotMax                     = "delegation_slot_max"
 	DictNetworkScores                        = "network_scores"
 	VarNonVotePenaltySlashRatio              = "nonvote_penalty_slashRatio"
+	ArrayBTPDSA                              = "btp_dsa"
 )
 
 const (
@@ -355,6 +356,44 @@ func (s *State) SetNonVotePenaltySlashRatio(value int) error {
 	return setValue(s.store, VarNonVotePenaltySlashRatio, value)
 }
 
+func (s *State) SetBTPDSA(value string) error {
+	db := containerdb.NewArrayDB(
+		s.store,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, ArrayBTPDSA),
+	)
+	if err := db.Put(value); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *State) GetBTPDSA() []interface{} {
+	db := containerdb.NewArrayDB(
+		s.store,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, ArrayBTPDSA),
+	)
+	ret := make([]interface{}, 0, db.Size())
+	for i := 0; i < db.Size(); i++ {
+		v := db.Get(i)
+		ret = append(ret, v.String())
+	}
+	return ret
+}
+
+func (s *State) GetBTPDSAIndex(value string) int {
+	db := containerdb.NewArrayDB(
+		s.store,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.ArrayDBPrefix, ArrayBTPDSA),
+	)
+	for i := 0; i < db.Size(); i++ {
+		v := db.Get(i)
+		if value == v.String() {
+			return i
+		}
+	}
+	return -1
+}
+
 func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
@@ -379,6 +418,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
 	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRatio()
+	jso["btpDSA"] = s.GetBTPDSA()
 
 	preps, _ := s.GetPRepsOrderedByPower()
 	if preps != nil {
