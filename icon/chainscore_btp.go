@@ -54,10 +54,12 @@ func (s *chainScore) Ex_getNodePublicKey(address module.Address) ([]byte, error)
 	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
-	return s.newBTPContext().GetPublicKey(address, iconDSA), nil
+	dsaName := iconDSA
+	return s.newBTPContext().GetPublicKey(address, dsaName), nil
 }
 
 func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, update bool) error {
+	dsaName := iconDSA
 	if s.from.IsContract() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
@@ -90,7 +92,7 @@ func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, upd
 				}
 			}
 		} else {
-			if v := bc.GetPublicKey(addr, iconDSA); v != nil {
+			if v := bc.GetPublicKey(addr, dsaName); v != nil {
 				return scoreresult.New(module.StatusInvalidParameter,
 					"There is public key already. To update public key, set update true")
 			}
@@ -104,9 +106,13 @@ func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, upd
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		if err = bs.SetPublicKey(bc, s.from, iconDSA, pubKey); err != nil {
+		if err = bs.SetPublicKey(bc, s.from, dsaName, pubKey); err != nil {
 			return err
 		}
+	}
+
+	if err = es.SetPublicKey(s.newCallContext(s.cc), dsaName); err != nil {
+		return err
 	}
 	return nil
 }
@@ -128,6 +134,13 @@ func (s *chainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 			return 0, err
 		}
 		if ntActivated {
+			var es *iiss.ExtensionStateImpl
+			if es, err = s.getExtensionState(); err != nil {
+				return 0, err
+			}
+			if err = es.OpenBTPNetwork(s.newCallContext(s.cc), bc, networkTypeName); err != nil {
+				return 0, err
+			}
 			s.cc.OnEvent(state.SystemAddress,
 				[][]byte{
 					[]byte("BTPNetworkTypeActivated(str,int)"),

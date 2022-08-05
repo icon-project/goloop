@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/trace"
 )
 
@@ -35,4 +36,5 @@ type CallContext interface {
 	CallOnTimer(to module.Address, params []byte) error
 	Governance() module.Address
 	FrameLogger() *trace.Logger
+	TransactionInfo() *state.TransactionInfo
 }

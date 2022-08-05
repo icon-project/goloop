@@ -48,13 +48,14 @@ func (d *DSA) Equal(o icobject.Impl) bool {
 	}
 }
 
-func (d *DSA) Clone() *DSA {
+func (d *DSA) Updated(index int) *DSA {
+	n := new(DSA)
 	if d == nil {
-		return nil
+		n.mask = 1 << index
+	} else {
+		n.mask = d.mask & (1 << index)
 	}
-	return &DSA{
-		mask: d.mask,
-	}
+	return n
 }
 
 func (d *DSA) Format(f fmt.State, c rune) {
@@ -101,13 +102,14 @@ func (p *PublicKey) Equal(o icobject.Impl) bool {
 	}
 }
 
-func (p *PublicKey) Clone() *PublicKey {
+func (p *PublicKey) Updated(index int) *PublicKey {
+	n := new(PublicKey)
 	if p == nil {
-		return nil
+		n.mask = 1 << index
+	} else {
+		n.mask = p.mask & (1 << index)
 	}
-	return &PublicKey{
-		mask: p.mask,
-	}
+	return n
 }
 
 func (p *PublicKey) Format(f fmt.State, c rune) {

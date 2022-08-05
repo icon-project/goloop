@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -1752,4 +1753,61 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		}
 	}
 	return nil
+}
+
+func (es *ExtensionStateImpl) OpenBTPNetwork(cc icmodule.CallContext, bc state.BTPContext, ntName string) error {
+	dsaName := ntm.ForUID(ntName).DSA()
+	ntids, err := bc.GetNetworkTypeIDs()
+	if err != nil {
+		return err
+	}
+
+	dsaActivated := true
+	for _, ntid := range ntids {
+		if nt, err := bc.GetNetworkType(ntid); err != nil {
+			return err
+		} else {
+			if nt.UID() == ntName {
+				continue
+			}
+			if ntm.ForUID(nt.UID()).DSA() == dsaName {
+				dsaActivated = false
+				break
+			}
+		}
+	}
+
+	if dsaActivated {
+		dsaIdx := es.State.GetBTPDSAIndex(dsaName)
+		if dsaIdx == -1 {
+			if err = es.State.SetBTPDSA(dsaName); err != nil {
+				return err
+			}
+			dsaIdx = es.State.GetBTPDSAIndex(dsaName)
+		}
+		term := es.State.GetTermSnapshot()
+		return es.Front.AddBTPDSA(
+			int(cc.BlockHeight()-term.StartHeight()),
+			int(cc.TransactionInfo().Index),
+			dsaIdx,
+		)
+	}
+	return nil
+}
+
+func (es *ExtensionStateImpl) SetPublicKey(cc icmodule.CallContext, dsaName string) error {
+	dsaIdx := es.State.GetBTPDSAIndex(dsaName)
+	if dsaIdx == -1 {
+		if err := es.State.SetBTPDSA(dsaName); err != nil {
+			return err
+		}
+		dsaIdx = es.State.GetBTPDSAIndex(dsaName)
+	}
+	term := es.State.GetTermSnapshot()
+	return es.Front.AddBTPPublicKey(
+		int(cc.BlockHeight()-term.StartHeight()),
+		int(cc.TransactionInfo().Index),
+		cc.From(),
+		dsaIdx,
+	)
 }

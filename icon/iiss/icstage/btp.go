@@ -114,7 +114,7 @@ func (b *BTPPublicKey) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "BTPPublicKey{address=%s value=%+v}", b.from, b.index)
+			fmt.Fprintf(f, "BTPPublicKey{address=%s index=%+v}", b.from, b.index)
 		} else {
 			fmt.Fprintf(f, "BTPPublicKey{%s %v}", b.from, b.index)
 		}

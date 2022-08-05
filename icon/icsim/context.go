@@ -279,6 +279,10 @@ func (ctx *callContext) FrameLogger() *trace.Logger {
 	return trace.LoggerOf(log.GlobalLogger())
 }
 
+func (ctx *callContext) TransactionInfo() *state.TransactionInfo {
+	panic("implement me")
+}
+
 func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
 	return &callContext{
 		WorldContext: wc,

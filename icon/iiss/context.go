@@ -255,6 +255,10 @@ func (ctx *callContextImpl) FrameLogger() *trace.Logger {
 	return ctx.cc.FrameLogger()
 }
 
+func (ctx *callContextImpl) TransactionInfo() *state.TransactionInfo {
+	return ctx.cc.TransactionInfo()
+}
+
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
 	return &callContextImpl{
 		WorldContext: NewWorldContext(cc),
