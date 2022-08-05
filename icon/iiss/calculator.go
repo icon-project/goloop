@@ -460,7 +460,7 @@ func (c *Calculator) calculateVotedReward() error {
 	// Calculate reward with a new configuration from next block
 	from := -1
 	multiplier, divider := varForVotedReward(c.global)
-	vInfo, err := c.loadVotedInfo()
+	vInfo, err := c.loadVotedInfo(c.global.GetRevision())
 	if err != nil {
 		return err
 	}
@@ -534,10 +534,18 @@ func (c *Calculator) calculateVotedReward() error {
 	return nil
 }
 
-func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
+func (c *Calculator) loadVotedInfo(revision int) (*votedInfo, error) {
 	electedPRepCount := c.global.GetElectedPRepCount()
 	bondRequirement := c.global.GetBondRequirement()
 	vInfo := newVotedInfo(electedPRepCount)
+
+	var dsa *icreward.DSA
+	var err error
+	if revision >= icmodule.RevisionBTP2 {
+		if dsa, err = c.base.GetDSA(); err != nil {
+			return nil, err
+		}
+	}
 
 	prefix := icreward.VotedKey.Build()
 	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
@@ -552,6 +560,15 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 		addr, err := common.NewAddress(keySplit[1])
 		if err != nil {
 			return nil, err
+		}
+		if revision >= icmodule.RevisionBTP2 {
+			pubKey, err := c.base.GetPublicKey(addr)
+			if err != nil {
+				return nil, err
+			}
+			if !pubKey.HasAll(dsa.Mask()) {
+				continue
+			}
 		}
 		obj := icreward.ToVoted(o)
 		data := newVotedData(obj.Clone()) // Clone Voted instance as we will modify it later
@@ -631,7 +648,7 @@ func (c *Calculator) calculateVotingReward() error {
 	if err != nil {
 		return err
 	}
-	vInfo, err := c.loadVotedInfo()
+	vInfo, err := c.loadVotedInfo(c.global.GetRevision())
 	if err != nil {
 		return err
 	}

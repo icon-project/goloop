@@ -32,6 +32,10 @@ func (d *DSA) Version() int {
 	return 0
 }
 
+func (d *DSA) Mask() int64 {
+	return d.mask
+}
+
 func (d *DSA) RLPDecodeFields(decoder codec.Decoder) error {
 	return decoder.Decode(&d.mask)
 }
@@ -110,6 +114,10 @@ func (p *PublicKey) Updated(index int) *PublicKey {
 		n.mask = p.mask & (1 << index)
 	}
 	return n
+}
+
+func (p *PublicKey) HasAll(dsaMask int64) bool {
+	return dsaMask == (dsaMask & p.mask)
 }
 
 func (p *PublicKey) Format(f fmt.State, c rune) {

@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/module"
 )
 
 type Snapshot struct {
@@ -37,6 +38,35 @@ func (ss *Snapshot) Flush() error {
 
 func (ss *Snapshot) Bytes() []byte {
 	return ss.store.Hash()
+}
+
+func (ss *Snapshot) GetDSA() (*DSA, error) {
+	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
+		obj, err := sso.Get(DSAKey)
+		if err != nil {
+			return nil, err
+		}
+		if obj == nil {
+			return NewDSA(), nil
+		}
+		return ToDSA(obj), nil
+	}
+	return nil, nil
+}
+
+func (ss *Snapshot) GetPublicKey(addr module.Address) (*PublicKey, error) {
+	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
+		key := PubKeyKey.Append(addr).Build()
+		obj, err := sso.Get(key)
+		if err != nil {
+			return nil, err
+		}
+		if obj == nil {
+			return NewPublicKey(), nil
+		}
+		return ToPublicKey(obj), nil
+	}
+	return nil, nil
 }
 
 func (ss *Snapshot) Filter(prefix []byte) trie.IteratorForObject {
@@ -63,4 +93,3 @@ func NewSnapshotWithBuilder(builder merkle.Builder, hash []byte) *Snapshot {
 		store: icobject.NewObjectStoreSnapshot(t),
 	}
 }
-
