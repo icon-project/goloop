@@ -40,6 +40,7 @@ var (
 	EventKey        = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
 	BlockProduceKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
 	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BTPKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
 	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
 	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
 	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
@@ -173,7 +174,7 @@ func (s *State) getValidatorIndex(addr module.Address) (int, error) {
 		if err := vm.Set(addr, idx); err != nil {
 			return 0, err
 		}
-		if err := vs.Set(idx+1); err != nil {
+		if err := vs.Set(idx + 1); err != nil {
 			return 0, err
 		}
 		return int(idx), nil
@@ -252,6 +253,20 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	return err
 }
 
+func (s *State) AddBTPDSA(offset int, index int, value int) error {
+	key := BTPKey.Append(offset, index).Build()
+	obj := NewBTPDSA(value)
+	_, err := s.store.Set(key, icobject.New(TypeBTPDSA, obj))
+	return err
+}
+
+func (s *State) AddBTPPublicKey(offset int, index int, from module.Address, value int) error {
+	key := BTPKey.Append(offset, index).Build()
+	obj := NewBTPPublicKey(common.AddressToPtr(from), value)
+	_, err := s.store.Set(key, icobject.New(TypeBTPPublicKey, obj))
+	return err
+}
+
 func (s *State) ClearCache() {
 	s.store.ClearCache()
 }
@@ -268,6 +283,6 @@ func NewState(database db.Database) *State {
 	database = icobject.AttachObjectFactory(database, NewObjectImpl)
 	t := trie_manager.NewMutableForObject(database, nil, icobject.ObjectType)
 	return &State{
-		store:          icobject.NewObjectStoreState(t),
+		store: icobject.NewObjectStoreState(t),
 	}
 }

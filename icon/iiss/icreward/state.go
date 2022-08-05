@@ -24,12 +24,19 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	btpDSAKey = "btp_dsa"
+)
+
 var (
 	VotedKey           = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
 	DelegatingKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
 	BondingKey         = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
 	IScoreKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
 	BugDisabledPRepKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
+	PubKeyKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x60})
+	HashKey            = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x80})
+	DSAKey             = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(btpDSAKey).Build()).Build()
 )
 
 type State struct {
@@ -124,6 +131,34 @@ func (s *State) SetBonding(addr module.Address, bonding *Bonding) error {
 		_, err := s.store.Set(key, icobject.New(TypeBonding, bonding))
 		return err
 	}
+}
+
+func (s *State) GetDSA() (*DSA, error) {
+	obj, err := s.store.Get(DSAKey)
+	if err != nil {
+		return nil, err
+	}
+	return ToDSA(obj), nil
+}
+
+func (s *State) SetDSA(value *DSA) error {
+	_, err := s.store.Set(DSAKey, icobject.New(TypeDSA, value))
+	return err
+}
+
+func (s *State) GetPublicKey(addr module.Address) (*PublicKey, error) {
+	key := PubKeyKey.Append(addr).Build()
+	obj, err := s.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToPublicKey(obj), nil
+}
+
+func (s *State) SetPublicKey(addr module.Address, value *PublicKey) error {
+	key := PubKeyKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypePublicKey, value))
+	return err
 }
 
 func (s *State) AddBugDisabledPRep(addr module.Address, value *BugDisabledPRep) error {
