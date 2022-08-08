@@ -143,6 +143,10 @@ public class TransactionHandler {
         return deployOnly(owner, Constants.CHAINSCORE_ADDRESS, scorePath, params);
     }
 
+    public Bytes deployOnly(Wallet owner, Address to, byte[] content, RpcObject params, String type) throws IOException {
+        return doDeploy(owner, content, to, params, null, type);
+    }
+
     public Bytes deployOnly(Wallet owner, Address to, String scorePath, RpcObject params) throws IOException {
         byte[] data = ZipFile.zipContent(scorePath);
         return doDeploy(owner, data, to, params, null, Constants.CONTENT_TYPE_PYTHON);
