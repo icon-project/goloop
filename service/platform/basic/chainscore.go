@@ -1076,8 +1076,8 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 	if bs, err := s.getBTPState(); err != nil {
 		return err
 	} else {
-		if err = bs.CheckPublicKey(s.newBTPContext(), s.from); err != nil {
-			return err
+		if err = bs.CheckPublicKey(s.newBTPContext(), address); err != nil {
+			return scoreresult.New(StatusIllegalArgument, "address should have proper public keys")
 		}
 	}
 

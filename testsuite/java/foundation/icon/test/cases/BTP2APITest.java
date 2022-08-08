@@ -387,6 +387,17 @@ public class BTP2APITest extends TestBase {
         LOG.infoExiting();
     }
 
+    @Test
+    @Order(110)
+    public void grantValidator() throws Exception {
+        LOG.infoEntering("Grant validator without public keys");
+        KeyWallet wallet = KeyWallet.create();
+        TransactionResult result;
+        result = govScore.grantValidator(wallet.getAddress());
+        assertFailure(result);
+        LOG.infoExiting();
+    }
+
     private void setNodePublicKeys() throws IOException, ResultTimeoutException {
         for (int i = 0; i < Env.nodes.length; i++) {
             KeyWallet w = Env.nodes[i].wallet;

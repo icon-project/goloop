@@ -44,6 +44,9 @@ const (
 	NetworkByIDKey          = "networkByID"
 	PubKeyByNameKey         = "pubKeyByName"
 	PubKeyOwner             = "pubKeyOwner"
+	PubKeyMaskByNameKey     = "pubKeyMaskByName"
+	DSAArrayKey             = "dsaArray"
+	ActiveDSAMaskKey        = "activeDSAMask"
 )
 
 type BTPContext interface {
@@ -56,6 +59,9 @@ type BTPContext interface {
 	GetNetworkType(ntid int64) (module.BTPNetworkType, error)
 	GetNetwork(nid int64) (module.BTPNetwork, error)
 	GetPublicKey(address module.Address, name string) []byte
+	GetPublicKeyMask(address module.Address) int64
+	GetDSAIndex(name string) int
+	GetActiveDSAMask() int64
 }
 
 type BTPSnapshot interface {
@@ -146,6 +152,29 @@ func (bc *btpContext) GetPublicKey(from module.Address, name string) []byte {
 	} else {
 		return value.Bytes()
 	}
+}
+
+func (bc *btpContext) GetPublicKeyMask(address module.Address) int64 {
+	dbase := scoredb.NewDictDB(bc.Store(), PubKeyMaskByNameKey, 1)
+	if value := dbase.Get(address); value == nil {
+		return 0
+	} else {
+		return value.Int64()
+	}
+}
+
+func (bc *btpContext) GetDSAIndex(name string) int {
+	dbase := scoredb.NewArrayDB(bc.Store(), DSAArrayKey)
+	for i := 0; i < dbase.Size(); i++ {
+		if name == dbase.Get(i).String() {
+			return i
+		}
+	}
+	return -1
+}
+
+func (bc *btpContext) GetActiveDSAMask() int64 {
+	return scoredb.NewVarDB(bc.Store(), ActiveDSAMaskKey).Int64()
 }
 
 func (bc *btpContext) getNetwork(nid int64) (*network, *containerdb.DictDB) {
@@ -388,6 +417,18 @@ func (bs *BTPStateImpl) OpenNetwork(
 		if err = scoredb.NewArrayDB(bc.Store(), ActiveNetworkTypeIDsKey).Put(ntid); err != nil {
 			return
 		}
+		dsaIdx := bc.GetDSAIndex(mod.DSA())
+		if dsaIdx == -1 {
+			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.DSA())
+			return
+		}
+		dsaMask := bc.GetActiveDSAMask()
+		if (dsaMask & (1 << dsaIdx)) == 0 {
+			activeDSADB := scoredb.NewVarDB(bc.Store(), ActiveDSAMaskKey)
+			if err = activeDSADB.Set(dsaMask | (1 << dsaIdx)); err != nil {
+				return
+			}
+		}
 
 		keys, allHasPubKey := bs.getPubKeysOfValidators(bc, mod)
 		if allHasPubKey != true {
@@ -511,6 +552,13 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		return nil
 	}
 
+	pubKeyMaskDB := scoredb.NewDictDB(bc.Store(), PubKeyMaskByNameKey, 1)
+	pubKeyMask := int64(0)
+	if value := pubKeyMaskDB.Get(from); value != nil {
+		pubKeyMask = value.Int64()
+	}
+	dsaIdx := bc.GetDSAIndex(name)
+
 	if oPubKey != nil {
 		if err := ownerDB.Delete(crypto.SHA3Sum256(oPubKey.Bytes())); err != nil {
 			return err
@@ -520,11 +568,26 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		if err := dbase.Delete(from, name); err != nil {
 			return err
 		}
+		if dsaIdx != -1 {
+			if err := pubKeyMaskDB.Set(from, pubKeyMask & ^(1<<dsaIdx)); err != nil {
+				return err
+			}
+		}
 	} else {
 		if err := dbase.Set(from, name, pubKey); err != nil {
 			return err
 		}
 		if err := ownerDB.Set(ownerKey, from); err != nil {
+			return err
+		}
+		if dsaIdx == -1 {
+			dsaArrayDB := scoredb.NewArrayDB(bc.Store(), DSAArrayKey)
+			if err := dsaArrayDB.Put(name); err != nil {
+				return err
+			}
+			dsaIdx = bc.GetDSAIndex(name)
+		}
+		if err := pubKeyMaskDB.Set(from, pubKeyMask|(1<<dsaIdx)); err != nil {
 			return err
 		}
 	}
@@ -552,19 +615,10 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 }
 
 func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error {
-	openedNetworkTypes, err := bc.GetNetworkTypeIDs()
-	if err != nil {
-		return err
-	}
-	for _, ntid := range openedNetworkTypes {
-		ntView, err := bc.GetNetworkTypeView(ntid)
-		if err != nil {
-			return err
-		}
-		mod := ntm.ForUID(ntView.UID())
-		if key := bc.GetPublicKey(from, mod.DSA()); key == nil {
-			return errors.NotFoundError.Errorf("not found pubKey for %s", mod.DSA())
-		}
+	dsaMask := bc.GetActiveDSAMask()
+	pubKeyMask := bc.GetPublicKeyMask(from)
+	if (pubKeyMask & dsaMask) != dsaMask {
+		return errors.NotFoundError.Errorf("not enough pubKey %b != %b", pubKeyMask, dsaMask)
 	}
 	return nil
 }
