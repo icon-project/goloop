@@ -1778,36 +1778,22 @@ func (es *ExtensionStateImpl) OpenBTPNetwork(cc icmodule.CallContext, bc state.B
 	}
 
 	if dsaActivated {
-		dsaIdx := es.State.GetBTPDSAIndex(dsaName)
-		if dsaIdx == -1 {
-			if err = es.State.SetBTPDSA(dsaName); err != nil {
-				return err
-			}
-			dsaIdx = es.State.GetBTPDSAIndex(dsaName)
-		}
 		term := es.State.GetTermSnapshot()
 		return es.Front.AddBTPDSA(
 			int(cc.BlockHeight()-term.StartHeight()),
 			int(cc.TransactionInfo().Index),
-			dsaIdx,
+			bc.GetDSAIndex(dsaName),
 		)
 	}
 	return nil
 }
 
-func (es *ExtensionStateImpl) SetPublicKey(cc icmodule.CallContext, dsaName string) error {
-	dsaIdx := es.State.GetBTPDSAIndex(dsaName)
-	if dsaIdx == -1 {
-		if err := es.State.SetBTPDSA(dsaName); err != nil {
-			return err
-		}
-		dsaIdx = es.State.GetBTPDSAIndex(dsaName)
-	}
+func (es *ExtensionStateImpl) SetPublicKey(cc icmodule.CallContext, bc state.BTPContext, dsaName string) error {
 	term := es.State.GetTermSnapshot()
 	return es.Front.AddBTPPublicKey(
 		int(cc.BlockHeight()-term.StartHeight()),
 		int(cc.TransactionInfo().Index),
 		cc.From(),
-		dsaIdx,
+		bc.GetDSAIndex(dsaName),
 	)
 }

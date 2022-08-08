@@ -111,7 +111,7 @@ func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, upd
 		}
 	}
 
-	if err = es.SetPublicKey(s.newCallContext(s.cc), dsaName); err != nil {
+	if err = es.SetPublicKey(s.newCallContext(s.cc), bc, dsaName); err != nil {
 		return err
 	}
 	return nil
