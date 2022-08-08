@@ -86,7 +86,7 @@ func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to mod
 	cm := cc.ContractManager()
 	sas := cc.GetAccountState(to.ID())
 	sas.InitContractAccount(owner)
-	sas.DeployContract(nil, state.SystemEE, state.CTAppSystem, nil, tid)
+	sas.DeployContract([]byte(contentID), state.SystemEE, state.CTAppSystem, nil, tid)
 	if err := sas.AcceptContract(tid, tid); err != nil {
 		return err
 	}
