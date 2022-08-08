@@ -247,4 +247,12 @@ public class GovScore extends Score {
                 .build();
         return invokeAndWaitResult(getWallet(), "closeBTPNetwork", params);
     }
+
+    public TransactionResult grantValidator(Address address) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return invokeAndWaitResult(getWallet(), "grantValidator", params);
+    }
+
 }
