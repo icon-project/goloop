@@ -57,6 +57,7 @@ var (
 		"icx_getVotesByHeight":       msRetrieve,
 		"icx_getProofForResult":      msRetrieve,
 		"icx_getProofForEvents":      msRetrieve,
+		"icx_getScoreStatus":         msRetrieve,
 		"debug_getTrace": {
 			stats.Int64("jsonrpc_get_trace", "jsonrpc debug_getTrace method", "ns"),
 			stats.Int64("jsonrpc_get_trace_avg", "moving average of jsonrpc debug_getTrace method", "ns"),
@@ -145,8 +146,8 @@ func (m *JsonrpcMetric) EnsureMeasure(ctx context.Context, ms *measure) *Jsonrpc
 	if !ok {
 		jm = &JsonrpcMeasure{
 			measure: ms,
-			d:   NewDurations(m.durationsSize),
-			ctx: ctx,
+			d:       NewDurations(m.durationsSize),
+			ctx:     ctx,
 		}
 		m.m[key] = jm
 	}

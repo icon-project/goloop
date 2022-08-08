@@ -321,6 +321,15 @@ func (c *ClientV3) GetProofForEvents(param *v3.ProofEventsParam) ([][][]byte, er
 	return result, nil
 }
 
+func (c *ClientV3) GetScoreStatus(param *v3.ScoreAddressParam) (interface{}, error) {
+	var result interface{}
+	_, err := c.Do("icx_getScoreStatus", param, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *ClientV3) MonitorBlock(param *server.BlockRequest, cb func(v *server.BlockNotification), cancelCh <-chan bool) error {
 	resp := &server.BlockNotification{}
 	return c.Monitor("/block", param, resp, func(v interface{}) {
