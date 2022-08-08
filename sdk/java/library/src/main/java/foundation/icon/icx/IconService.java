@@ -26,6 +26,7 @@ import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.Converters;
 import foundation.icon.icx.data.EventNotification;
 import foundation.icon.icx.data.ScoreApi;
+import foundation.icon.icx.data.ScoreStatus;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.*;
 import foundation.icon.icx.transport.jsonrpc.RpcConverter.RpcConverterFactory;
@@ -79,6 +80,7 @@ public class IconService {
         addConverterFactory(Converters.newFactory(Base64[][].class, Converters.BASE64_ARRAY_ARRAY));
         addConverterFactory(Converters.newFactory(
                 Base64.class, Converters.BASE64));
+        addConverterFactory(Converters.newFactory(ScoreStatus.class, Converters.SCORE_STATUS));
     }
 
     public void setProvider(Provider provider) {
@@ -379,6 +381,22 @@ public class IconService {
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
                 requestId, "icx_getProofForEvents", params);
         return provider.request(request, findConverter(Base64[][].class));
+    }
+
+    /**
+     * Get status of the contract
+     *
+     * @param contract the address of the contract
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<ScoreStatus> getScoreStatus(Address contract) {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(contract))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "icx_getScoreStatus", params);
+        return provider.request(request, findConverter(ScoreStatus.class));
     }
 
     /**
