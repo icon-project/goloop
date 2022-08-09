@@ -290,11 +290,9 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.ContractState) 
 
 	var cid string
 	if code, err := c.Code(); err != nil {
-		if len(code) == 0 {
-			cid = CID_CHAIN
-		} else {
-			cid = string(cid)
-		}
+		return scoreresult.ContractNotFoundError.AttachTo(err)
+	} else {
+		cid = string(code)
 	}
 
 	score, err := cc.ContractManager().GetSystemScore(cid, cc, h.From, h.Value)

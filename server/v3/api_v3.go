@@ -46,6 +46,7 @@ func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getVotesByHeight", getVotesByHeight)
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
 	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
+	mr.RegisterMethod("icx_getScoreStatus", getScoreStatus)
 
 	mr.SetAllowedNotification("icx_sendTransaction")
 	mr.SetAllowedNotification("icx_sendTransactionAndWait")
@@ -722,6 +723,42 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		proofs = append(proofs, proof)
 	}
 	return proofs, nil
+}
+
+func getScoreStatus(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	var param ScoreAddressParam
+	debug := ctx.IncludeDebug()
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+	b, err := getBlock(chain, bm, param.Height)
+	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	s, err := sm.GetSCOREStatus(b.Result(), param.Address.Address())
+	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	jso, err := s.ToJSON(b.Height(), module.JSONVersion3)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	return jso, nil
 }
 
 // convert TransactionList to []Transaction
