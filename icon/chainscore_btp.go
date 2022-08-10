@@ -50,68 +50,92 @@ func (s *chainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 const iconBTPUID = "icon"
 const iconDSA = "ecdsa/secp256k1"
 
-func (s *chainScore) Ex_getNodePublicKey(address module.Address) ([]byte, error) {
+func (s *chainScore) Ex_getPRepNodePublicKey(address module.Address) ([]byte, error) {
 	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
-	dsaName := iconDSA
-	return s.newBTPContext().GetPublicKey(address, dsaName), nil
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	prep := es.GetPRep(address)
+	if prep == nil {
+		return nil, scoreresult.New(module.StatusAccessDenied, "address is not P-Rep")
+	}
+
+	return s.newBTPContext().GetPublicKey(prep.NodeAddress(), iconDSA), nil
 }
 
-func (s *chainScore) Ex_setNodePublicKey(prep module.Address, pubKey []byte, update bool) error {
-	dsaName := iconDSA
+func (s *chainScore) Ex_setPRepNodePublicKey(pubKey []byte) error {
+	return s.setPRepNodePublicKey(nil, pubKey)
+}
+
+func (s *chainScore) Ex_registerPRepNodePublicKey(address module.Address, pubKey []byte) error {
+	return s.setPRepNodePublicKey(address, pubKey)
+}
+
+func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte) error {
 	if s.from.IsContract() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if len(pubKey) == 0 {
 		return scoreresult.New(module.StatusInvalidParameter, "Invalid pubKey")
 	}
-	var err error
-	var es *iiss.ExtensionStateImpl
-	if es, err = s.getExtensionState(); err != nil {
+	es, err := s.getExtensionState()
+	if err != nil {
 		return err
 	}
+	register := true
+	if address == nil {
+		register = false
+		address = s.from
+	}
+	prep := es.GetPRep(address)
+	if prep == nil {
+		return scoreresult.New(module.StatusInvalidParameter, "address is not P-Rep")
+	}
+	nodeAddress := prep.NodeAddress()
+
+	mod := ntm.ForUID(iconBTPUID)
+	a, err := mod.AddressFromPubKey(pubKey)
+	if err != nil {
+		return err
+	}
+	pubKeyAddr := common.MustNewAddress(a)
+
 	bc := s.newBTPContext()
-	if jso, err := es.GetPRepInJSON(prep, s.cc.BlockHeight()); err != nil {
-		return scoreresult.New(module.StatusInvalidParameter, "prep is not P-Rep")
-	} else {
-		mod := ntm.ForUID(iconBTPUID)
-		a, err := mod.AddressFromPubKey(pubKey)
-		if err != nil {
-			return err
-		}
-		addr := common.MustNewAddress(a)
-		if update {
-			if !s.from.Equal(prep) {
-				return scoreresult.New(module.StatusAccessDenied, "Only the P-Rep can update its own public key")
-			}
-			if !addr.Equal(jso["nodeAddress"].(module.Address)) {
-				prepInfo := &icstate.PRepInfo{Node: addr}
-				if err = es.SetPRep(s.newCallContext(s.cc), prepInfo); err != nil {
-					return err
-				}
-			}
-		} else {
-			if v := bc.GetPublicKey(addr, dsaName); v != nil {
-				return scoreresult.New(module.StatusInvalidParameter,
-					"There is public key already. To update public key, set update true")
-			}
-			if !addr.Equal(jso["nodeAddress"].(module.Address)) {
-				return scoreresult.Errorf(module.StatusInvalidParameter,
-					"Public key and node address of P-Rep do not match. %s!=%s", addr, jso["nodeAddress"])
-			}
-		}
-	}
-
-	if bs, err := s.getBTPState(); err != nil {
+	bs, err := s.getBTPState()
+	if err != nil {
 		return err
+	}
+
+	if register {
+		if v := bc.GetPublicKey(pubKeyAddr, iconDSA); v != nil {
+			return scoreresult.New(module.StatusInvalidParameter,
+				"There is public key already. To update public key, user setPRepNodePublicKey")
+		}
+		if !pubKeyAddr.Equal(nodeAddress) {
+			return scoreresult.Errorf(module.StatusInvalidParameter,
+				"Public key and node address of P-Rep do not match. %s!=%s", pubKeyAddr, nodeAddress)
+		}
 	} else {
-		if err = bs.SetPublicKey(bc, s.from, dsaName, pubKey); err != nil {
-			return err
+		if !pubKeyAddr.Equal(nodeAddress) {
+			// remove old public key
+			if err = bs.SetPublicKey(bc, nodeAddress, iconDSA, []byte{}); err != nil {
+				return err
+			}
+			// update node address of P-Rep
+			prepInfo := &icstate.PRepInfo{Node: pubKeyAddr}
+			if err = es.SetPRep(s.newCallContext(s.cc), prepInfo); err != nil {
+				return err
+			}
 		}
 	}
 
-	if err = es.SetPublicKey(s.newCallContext(s.cc), bc, dsaName); err != nil {
+	if err = bs.SetPublicKey(bc, pubKeyAddr, iconDSA, pubKey); err != nil {
+		return err
+	}
+	if err = es.OnSetPublicKey(s.newCallContext(s.cc), prep.Owner(), bc.GetDSAIndex(iconDSA)); err != nil {
 		return err
 	}
 	return nil
@@ -138,7 +162,7 @@ func (s *chainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 			if es, err = s.getExtensionState(); err != nil {
 				return 0, err
 			}
-			if err = es.OpenBTPNetwork(s.newCallContext(s.cc), bc, networkTypeName); err != nil {
+			if err = es.OnOpenBTPNetwork(s.newCallContext(s.cc), bc, networkTypeName); err != nil {
 				return 0, err
 			}
 			s.cc.OnEvent(state.SystemAddress,

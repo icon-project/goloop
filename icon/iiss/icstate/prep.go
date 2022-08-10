@@ -31,6 +31,14 @@ func (p *PRep) IRep() *big.Int {
 	return pb.IRep()
 }
 
+func (p *PRep) NodeAddress() module.Address {
+	pb := p.getPRepBaseState()
+	if pb == nil {
+		return nil
+	}
+	return pb.GetNode(p.owner)
+}
+
 func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
 	pb := p.getPRepBaseState()
 	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))

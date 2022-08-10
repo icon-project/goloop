@@ -265,6 +265,10 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 	return
 }
 
+func (es *ExtensionStateImpl) GetPRep(address module.Address) *icstate.PRep {
+	return es.State.GetPRepByOwner(address)
+}
+
 func (es *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
 	prep := es.State.GetPRepByOwner(address)
 	if prep == nil {
@@ -1755,7 +1759,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 	return nil
 }
 
-func (es *ExtensionStateImpl) OpenBTPNetwork(cc icmodule.CallContext, bc state.BTPContext, ntName string) error {
+func (es *ExtensionStateImpl) OnOpenBTPNetwork(cc icmodule.CallContext, bc state.BTPContext, ntName string) error {
 	dsaName := ntm.ForUID(ntName).DSA()
 	ntids, err := bc.GetNetworkTypeIDs()
 	if err != nil {
@@ -1788,12 +1792,12 @@ func (es *ExtensionStateImpl) OpenBTPNetwork(cc icmodule.CallContext, bc state.B
 	return nil
 }
 
-func (es *ExtensionStateImpl) SetPublicKey(cc icmodule.CallContext, bc state.BTPContext, dsaName string) error {
+func (es *ExtensionStateImpl) OnSetPublicKey(cc icmodule.CallContext, from module.Address, dsaIndex int) error {
 	term := es.State.GetTermSnapshot()
 	return es.Front.AddBTPPublicKey(
 		int(cc.BlockHeight()-term.StartHeight()),
 		int(cc.TransactionInfo().Index),
-		cc.From(),
-		bc.GetDSAIndex(dsaName),
+		from,
+		dsaIndex,
 	)
 }

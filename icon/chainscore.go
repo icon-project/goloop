@@ -674,7 +674,7 @@ var chainMethods = []*chainMethod{
 		},
 	}, icmodule.RevisionBTP2, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "getNodePublicKey",
+		scoreapi.Function, "getPRepNodePublicKey",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
 			{"address", scoreapi.Address, nil, nil},
@@ -684,12 +684,19 @@ var chainMethods = []*chainMethod{
 		},
 	}, icmodule.RevisionBTP2, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "setNodePublicKey",
+		scoreapi.Function, "setPRepNodePublicKey",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"pubKey", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "registerPRepNodePublicKey",
 		scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
-			{"prep", scoreapi.Address, nil, nil},
+			{"address", scoreapi.Address, nil, nil},
 			{"pubKey", scoreapi.Bytes, nil, nil},
-			{"update", scoreapi.Bool, []byte{0}, nil},
 		},
 		nil,
 	}, icmodule.RevisionBTP2, 0},
