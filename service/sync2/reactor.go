@@ -5,6 +5,7 @@ package sync2
 import (
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -22,15 +23,75 @@ const (
 	syncTypeReserved
 )
 
-type ReactorV1 struct {
-	mutex    sync.Mutex
-	log      log.Logger
-	database db.Database
-	ph       module.ProtocolHandler
+type ReactorCommon struct {
+	mutex   sync.Mutex
+	version byte
+	log     log.Logger
+	ph      module.ProtocolHandler
 
-	version   byte
 	server    *server
 	readyPool *peerPool
+	watchers  []PeerWatcher
+	sender    DataSender
+}
+
+// peer joined using protocol v1
+func (r *ReactorCommon) OnJoin(id module.PeerID) {
+	r.log.Tracef("OnJoin() peer id(%v), version(%d)\n", id, r.version)
+	locker := common.LockForAutoCall(&r.mutex)
+	defer locker.Unlock()
+
+	if r.readyPool.has(id) {
+		return
+	}
+	p := newPeer(id, r.sender, r.log)
+	r.readyPool.push(p)
+
+	watchers := r.watchers
+	locker.CallAfterUnlock(func() {
+		for _, watcher := range watchers {
+			watcher.OnPeerJoin(p)
+		}
+	})
+}
+
+// peer left using protocol v1
+func (r *ReactorCommon) OnLeave(id module.PeerID) {
+	r.log.Tracef("OnLeave() peer id(%v)\n", id)
+	locker := common.LockForAutoCall(&r.mutex)
+	defer locker.Unlock()
+
+	p := r.readyPool.remove(id)
+	watchers := r.watchers
+
+	locker.CallAfterUnlock(func() {
+		for _, w := range watchers {
+			w.OnPeerLeave(p)
+		}
+	})
+}
+
+func (r *ReactorCommon) ExistReadyPeer() bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	return r.readyPool.size() > 0
+}
+
+func (r *ReactorCommon) GetVersion() byte {
+	return r.version
+}
+
+func (r *ReactorCommon) WatchPeers(watcher PeerWatcher) []*peer {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.watchers = append(r.watchers, watcher)
+	return r.readyPool.peerList()
+}
+
+type ReactorV1 struct {
+	ReactorCommon
 }
 
 func (r *ReactorV1) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
@@ -107,41 +168,6 @@ func (r *ReactorV1) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	r.log.Tracef("OnFailure() err(%+v), pi(%s)\n", err, pi)
 }
 
-// peer joined using protocol v1
-func (r *ReactorV1) OnJoin(id module.PeerID) {
-	r.log.Tracef("OnJoin() peer id(%v), version(%d)\n", id, r.version)
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	var dataSender DataSender = r
-	peer := newPeer(id, dataSender, r.log)
-	r.readyPool.push(peer)
-}
-
-// peer left using protocol v1
-func (r *ReactorV1) OnLeave(id module.PeerID) {
-	r.log.Tracef("OnLeave() peer id(%v)\n", id)
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	r.readyPool.remove(id)
-}
-
-func (r *ReactorV1) ExistReadyPeer() bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	return r.readyPool.size() > 0
-}
-
-func (r *ReactorV1) GetVersion() byte {
-	return r.version
-}
-
-func (r *ReactorV1) GetPeers() []*peer {
-	return r.readyPool.peerList()
-}
-
 func (r *ReactorV1) RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	var keys [][]byte
 	for _, data := range reqData {
@@ -157,17 +183,15 @@ func (r *ReactorV1) RequestData(peer module.PeerID, reqID uint32, reqData []Buck
 	return r.ph.Unicast(protoRequestNodeData, b, peer)
 }
 
-func newReactorV1(database db.Database, logger log.Logger, version byte) *ReactorV1 {
-
-	server := newServer(database, logger)
-
+func newReactorV1(server *server, logger log.Logger) *ReactorV1 {
 	reactor := &ReactorV1{
-		log:       logger,
-		database:  database,
-		version:   version,
-		server:    server,
-		readyPool: newPeerPool(),
+		ReactorCommon: ReactorCommon{
+			log:       logger,
+			version:   protoV1,
+			server:    server,
+			readyPool: newPeerPool(),
+		},
 	}
-
+	reactor.sender = reactor
 	return reactor
 }

@@ -3,23 +3,13 @@
 package sync2
 
 import (
-	"sync"
-
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
 type ReactorV2 struct {
-	mutex    sync.Mutex
-	log      log.Logger
-	database db.Database
-	ph       module.ProtocolHandler
-
-	version   byte
-	server    *server
-	readyPool *peerPool
+	ReactorCommon
 }
 
 func (r *ReactorV2) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
@@ -77,41 +67,6 @@ func (r *ReactorV2) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	r.log.Tracef("OnFailure() err(%+v), pi(%s)\n", err, pi)
 }
 
-// peer joined using protocol v2
-func (r *ReactorV2) OnJoin(id module.PeerID) {
-	r.log.Debugf("OnJoin() peer id(%v), version(%d)\n", id, r.version)
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	var dataSender DataSender = r
-	peer := newPeer(id, dataSender, r.log)
-	r.readyPool.push(peer)
-}
-
-// peer left using protocol v2
-func (r *ReactorV2) OnLeave(id module.PeerID) {
-	r.log.Debugf("OnLeave() peer id(%v)\n", id)
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	r.readyPool.remove(id)
-}
-
-func (r *ReactorV2) ExistReadyPeer() bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	return r.readyPool.size() > 0
-}
-
-func (r *ReactorV2) GetVersion() byte {
-	return r.version
-}
-
-func (r *ReactorV2) GetPeers() []*peer {
-	return r.readyPool.peerList()
-}
-
 func (r *ReactorV2) RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	msg := &requestData{reqID, reqData}
 	b, _ := c.MarshalToBytes(msg)
@@ -119,16 +74,16 @@ func (r *ReactorV2) RequestData(peer module.PeerID, reqID uint32, reqData []Buck
 	return r.ph.Unicast(protoV2Request, b, peer)
 }
 
-func newReactorV2(database db.Database, logger log.Logger, version byte) *ReactorV2 {
-	server := newServer(database, logger)
-
+func newReactorV2(s *server, logger log.Logger) *ReactorV2 {
 	reactor := &ReactorV2{
-		log:       logger,
-		database:  database,
-		version:   version,
-		server:    server,
-		readyPool: newPeerPool(),
+		ReactorCommon: ReactorCommon{
+			log:       logger,
+			version:   protoV2,
+			server:    s,
+			readyPool: newPeerPool(),
+		},
 	}
+	reactor.sender = reactor
 
 	return reactor
 }

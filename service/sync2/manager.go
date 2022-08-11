@@ -29,10 +29,15 @@ type Syncer interface {
 	Finalize() error
 }
 
+type PeerWatcher interface {
+	OnPeerJoin(p *peer)
+	OnPeerLeave(p *peer)
+}
+
 type SyncReactor interface {
 	ExistReadyPeer() bool
 	GetVersion() byte
-	GetPeers() []*peer
+	WatchPeers(watcher PeerWatcher) []*peer
 }
 
 type Platform interface {
@@ -90,7 +95,8 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 
-	reactorV1 := newReactorV1(database, logger, protoV1)
+	server := newServer(database, logger)
+	reactorV1 := newReactorV1(server, logger)
 	ph, err := nm.RegisterReactorForStreams("statesync", module.ProtoStateSync, reactorV1, protocol, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		logger.Panicf("Failed to register reactorV1 for stateSync\n")
@@ -99,7 +105,7 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	reactorV1.ph = ph
 	m.reactors = append(m.reactors, reactorV1)
 
-	reactorV2 := newReactorV2(database, logger, protoV2)
+	reactorV2 := newReactorV2(server, logger)
 	pi2 := module.NewProtocolInfo(module.ProtoStateSync.ID(), 1)
 	ph2, err := nm.RegisterReactorForStreams("statesync2", pi2, reactorV2, protocolv2, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {

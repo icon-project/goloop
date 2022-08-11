@@ -59,7 +59,7 @@ func (r *mockReactor) GetVersion() byte {
 	return r.version
 }
 
-func (r *mockReactor) GetPeers() []*peer {
+func (r *mockReactor) WatchPeers(w PeerWatcher) []*peer {
 	return r.readyPool.peerList()
 }
 
@@ -233,7 +233,8 @@ func TestSyncProcessorStateAdvance(t *testing.T) {
 	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
 
 	// when start sync
-	sp1.StartSync()
+	err = sp1.StartSync()
+	assert.NoError(t, err)
 	builder.Flush(true)
 
 	// then

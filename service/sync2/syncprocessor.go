@@ -262,19 +262,37 @@ func (s *syncProcessor) cleanup() {
 	s.checkedPool = nil
 }
 
+func (s *syncProcessor) OnPeerJoin(p *peer) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.readyPool.push(p)
+}
+
+func (s *syncProcessor) OnPeerLeave(p *peer) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if p2 := s.readyPool.remove(p.id); p2 != nil {
+		return
+	}
+	if p2 := s.sentPool.remove(p.id); p2 != nil {
+		return
+	}
+	if p2 := s.checkedPool.remove(p.id); p2 != nil {
+		return
+	}
+}
+
 func (s *syncProcessor) initReadyPool() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	var peers []*peer
-
 	for _, reactor := range s.reactors {
-		pList := reactor.GetPeers()
-		peers = append(peers, pList...)
-	}
-
-	for _, p := range peers {
-		s.readyPool.push(p)
+		pList := reactor.WatchPeers(s)
+		for _, p := range pList {
+			s.readyPool.push(p)
+		}
 	}
 }
 
