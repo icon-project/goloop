@@ -13,18 +13,22 @@ import (
 
 const (
 	configSyncPriority      = 3
-	configExpiredTime       = 500             // in millisecond
-	configMaxExpiredTime    = 1200            // in millisecond
-	configDiscoveryInterval = 2 * time.Second // second
+	configExpiredTime       = 500         // in millisecond
+	configMaxExpiredTime    = 1200        // in millisecond
+	configDiscoveryInterval = time.Second // second
 )
 
-var c = codec.MP
+var (
+	c         = codec.MP
+	afterFunc = time.AfterFunc
+)
 
 type RequestCallback func(ver byte, dataLen int, id module.PeerID)
 
 type Syncer interface {
 	GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder
 	SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merkle.Builder) (*Result, error)
+	ForceSync() (*Result, error)
 	Stop()
 	Finalize() error
 }
@@ -35,7 +39,6 @@ type PeerWatcher interface {
 }
 
 type SyncReactor interface {
-	ExistReadyPeer() bool
 	GetVersion() byte
 	WatchPeers(watcher PeerWatcher) []*peer
 }
@@ -45,7 +48,7 @@ type Platform interface {
 }
 
 type Manager struct {
-	log log.Logger
+	logger log.Logger
 
 	db       db.Database
 	plt      Platform
@@ -62,9 +65,14 @@ type Result struct {
 	// BPTData
 }
 
+func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) Syncer {
+	return newSyncerWithHashes(
+		m.db, m.reactors, m.plt, ah, prh, nrh, vh, ed, m.logger, noBuffer)
+}
+
 func (m *Manager) GetSyncer() Syncer {
 	if m.syncer == nil {
-		syncer := newSyncer(m.db, m.reactors, m.plt, m.log)
+		syncer := newSyncer(m.db, m.reactors, m.plt, m.logger)
 		m.syncer = syncer
 	}
 
@@ -92,11 +100,9 @@ func (m *Manager) Term() {
 
 func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform, logger log.Logger) *Manager {
 	logger = logger.WithFields(log.Fields{log.FieldKeyModule: "statesync2"})
-	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 
-	server := newServer(database, logger)
-	reactorV1 := newReactorV1(server, logger)
+	reactorV1 := newReactorV1(database, logger)
 	ph, err := nm.RegisterReactorForStreams("statesync", module.ProtoStateSync, reactorV1, protocol, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
 		logger.Panicf("Failed to register reactorV1 for stateSync\n")
@@ -105,7 +111,7 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	reactorV1.ph = ph
 	m.reactors = append(m.reactors, reactorV1)
 
-	reactorV2 := newReactorV2(server, logger)
+	reactorV2 := newReactorV2(database, logger)
 	pi2 := module.NewProtocolInfo(module.ProtoStateSync.ID(), 1)
 	ph2, err := nm.RegisterReactorForStreams("statesync2", pi2, reactorV2, protocolv2, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
@@ -117,11 +123,11 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 
 	m.db = database
 	m.plt = plt
-	m.log = logger
+	m.logger = logger
 
 	m.ds = newDataSyncer(m.db, m.reactors, logger)
 
-	syncer := newSyncer(m.db, m.reactors, m.plt, m.log)
+	syncer := newSyncer(m.db, m.reactors, m.plt, m.logger)
 	m.syncer = syncer
 
 	return m

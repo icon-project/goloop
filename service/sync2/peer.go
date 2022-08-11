@@ -18,10 +18,11 @@ type DataSender interface {
 type DataHandler func(sender *peer, data []BucketIDAndBytes)
 
 type peer struct {
-	log     log.Logger
+	logger  log.Logger
 	lock    sync.Mutex
 	id      module.PeerID
 	reqID   uint32
+	timer   *time.Timer
 	expired time.Duration
 	sender  DataSender
 	reqMap  map[uint32]DataHandler
@@ -32,7 +33,7 @@ func newPeer(id module.PeerID, sender DataSender, logger log.Logger) *peer {
 		id:      id,
 		sender:  sender,
 		expired: configExpiredTime,
-		log:     logger,
+		logger:  logger,
 		reqMap:  make(map[uint32]DataHandler),
 	}
 }
@@ -46,8 +47,13 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 	defer p.lock.Unlock()
 
 	if err := p.sender.RequestData(p.id, p.reqID, reqData); err == nil {
+		p.logger.Tracef("RequestData() peer id(%v), reqID(%v)", p.id, p.reqID)
 		p.reqMap[p.reqID] = handler
 		p.reqID += 1
+		p.timer = time.AfterFunc(p.expired*time.Millisecond, func() {
+			delete(p.reqMap, p.reqID)
+			handler(p, nil)
+		})
 		return nil
 	} else {
 		return err
@@ -55,18 +61,30 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 }
 
 func (p *peer) OnData(reqID uint32, data []BucketIDAndBytes) error {
-	p.log.Debugf("OnData()")
+	p.logger.Tracef("OnData() peer id(%v), reqID(%v)", p.id, reqID)
 	locker := common.LockForAutoCall(&p.lock)
 	defer locker.Unlock()
 
 	if handler, ok := p.reqMap[reqID]; ok {
+		p.timer.Stop()
 		delete(p.reqMap, reqID)
 		locker.CallAfterUnlock(func() {
 			handler(p, data)
 		})
 		return nil
 	} else {
-		p.log.Debugf("OnData() notFound %v", reqID)
 		return errors.NotFoundError.Errorf("UnknownRequestID(req=%d)", reqID)
+	}
+}
+
+func (p *peer) Reset() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.reqID = 0
+	p.reqMap = make(map[uint32]DataHandler)
+	if p.timer != nil {
+		p.timer.Stop()
+		p.timer = nil
 	}
 }

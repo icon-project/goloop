@@ -24,7 +24,7 @@ func PeerIDToKey(p module.PeerID) string {
 
 func (pp *peerPool) push(p *peer) {
 	id := PeerIDToKey(p.id)
-	if e, ok := pp.peers[id]; ok == true {
+	if e, ok := pp.peers[id]; ok {
 		pp.pList.Remove(e)
 		delete(pp.peers, id)
 	}

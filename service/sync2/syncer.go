@@ -3,13 +3,14 @@ package sync2
 import (
 	"context"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 )
 
 type syncer struct {
-	log log.Logger
+	logger log.Logger
 
 	database   db.Database
 	plt        Platform
@@ -39,16 +40,17 @@ type syncer struct {
 	nrl module.ReceiptList
 }
 
-func (s *syncer) GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
-	s.log.Debugf("newSyncer ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
-		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
-
+func (s *syncer) setHashes(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) {
 	s.ah = accountsHash
 	s.prh = pReceiptsHash
 	s.nrh = nReceiptsHash
 	s.vlh = validatorListHash
 	s.ed = extensionData
+}
 
+func (s *syncer) GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
+	s.logger.Debugf("GetBuilder ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
+		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 	builder := merkle.NewBuilder(s.database)
 	ess := s.plt.NewExtensionWithBuilder(builder, extensionData)
 
@@ -64,14 +66,15 @@ func (s *syncer) GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validato
 
 // start Sync
 func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merkle.Builder) (*Result, error) {
-	s.log.Debugln("SyncWithBuilders")
+	s.logger.Debugln("SyncWithBuilders")
 	egrp, _ := errgroup.WithContext(context.Background())
 
 	for _, builder := range buildersV1 {
 		// sync processor with v1,v2 protocol
-		sp := newSyncProcessor(builder, s.reactors, s.log, false)
-		egrp.Go(sp.StartSync)
-		s.processors = append(s.processors, sp)
+		sp := newSyncProcessor(builder, s.reactors, s.logger, false)
+		sproc := sp.(*syncProcessor)
+		egrp.Go(sproc.doSync)
+		s.processors = append(s.processors, sproc)
 	}
 
 	var reactorsV2 []SyncReactor
@@ -83,9 +86,10 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 
 	for _, builder := range buildersV2 {
 		// sync processor with v2 protocol
-		sp := newSyncProcessor(builder, reactorsV2, s.log, false)
-		egrp.Go(sp.StartSync)
-		s.processors = append(s.processors, sp)
+		sp := newSyncProcessor(builder, reactorsV2, s.logger, false)
+		sproc := sp.(*syncProcessor)
+		egrp.Go(sproc.doSync)
+		s.processors = append(s.processors, sproc)
 	}
 
 	if err := egrp.Wait(); err != nil {
@@ -95,8 +99,17 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 	result := &Result{
 		s.wss, s.prl, s.nrl,
 	}
-	s.log.Debugln("SyncWithBuilder done!")
+	s.logger.Debugln("SyncWithBuilder done!")
 	return result, nil
+}
+
+func (s *syncer) ForceSync() (*Result, error) {
+	var builders []merkle.Builder
+
+	builder := s.GetBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
+	builders = append(builders, builder)
+
+	return s.SyncWithBuilders(builders, nil)
 }
 
 // stop Sync
@@ -108,17 +121,17 @@ func (s *syncer) Stop() {
 
 // finalize Sync
 func (s *syncer) Finalize() error {
-	s.log.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)\n",
+	s.logger.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)\n",
 		s.ah, s.prh, s.nrh, s.vlh, s.ed)
 
 	for i, sp := range s.processors {
-		builder := sp.GetBuilder()
-		if builder == nil {
+		sproc := sp.(*syncProcessor)
+		if sproc.builder == nil {
 			continue
 		} else {
-			s.log.Tracef("Flush %v\n", sp)
-			if err := builder.Flush(true); err != nil {
-				s.log.Errorf("Failed to flush for %d builder err(%+v)\n", i, err)
+			s.logger.Tracef("Flush %v\n", sp)
+			if err := sproc.builder.Flush(true); err != nil {
+				s.logger.Errorf("Failed to flush for %d builder err(%+v)\n", i, err)
 				return err
 			}
 		}
@@ -128,12 +141,29 @@ func (s *syncer) Finalize() error {
 	return nil
 }
 
-func newSyncer(database db.Database, reactors []SyncReactor, plt Platform, log log.Logger) Syncer {
+func newSyncer(database db.Database, reactors []SyncReactor, plt Platform, logger log.Logger) Syncer {
 	s := &syncer{
-		log:      log,
+		logger:   logger,
 		database: database,
 		reactors: reactors,
 		plt:      plt,
+	}
+
+	return s
+}
+
+func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platform,
+	ah []byte, prh []byte, nrh []byte, vlh []byte, ed []byte, logger log.Logger, noBuffer bool) Syncer {
+	s := &syncer{
+		logger:   logger,
+		database: database,
+		reactors: reactors,
+		plt:      plt,
+		ah:       ah,
+		vlh:      vlh,
+		prh:      prh,
+		nrh:      nrh,
+		ed:       ed,
 	}
 
 	return s

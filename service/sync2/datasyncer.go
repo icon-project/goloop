@@ -32,7 +32,7 @@ const (
 )
 
 type dataSyncer struct {
-	log      log.Logger
+	logger   log.Logger
 	builder  merkle.Builder
 	reactors []SyncReactor
 	sp       SyncProcessor
@@ -46,9 +46,14 @@ func (r onDataHandler) OnData(value []byte, builder merkle.Builder) error {
 }
 
 func (s *dataSyncer) Start() {
-	sp := newSyncProcessor(s.builder, s.reactors, s.log, true)
-	go sp.StartSync()
-	s.sp = sp
+	sp := newSyncProcessor(s.builder, s.reactors, s.logger, true)
+	sproc := sp.(SyncProcessor)
+	sproc.Start(func(err error) {
+		if err != nil {
+			s.logger.Warnf("DataSyncer finished by error(%v)", err)
+		}
+	})
+	s.sp = sproc
 }
 
 func (s *dataSyncer) Term() {
@@ -61,7 +66,7 @@ func (s *dataSyncer) AddRequest(id db.BucketID, key []byte) error {
 
 func newDataSyncer(database db.Database, reactors []SyncReactor, logger log.Logger) *dataSyncer {
 	s := &dataSyncer{
-		log:      logger,
+		logger:   logger,
 		builder:  merkle.NewBuilderWithRawDatabase(database),
 		reactors: reactors,
 	}

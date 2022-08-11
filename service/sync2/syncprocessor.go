@@ -10,45 +10,28 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 )
 
-const packetSize = 10
-
-type syncState int
-
 const (
-	InitState syncState = iota
-	SentState
-	HasState
-	NoDataState
-	DoneState
-)
+	configChannelSize int = 10
+	configPackSize    int = 10
+	configRoundLimit  int = 500
 
-var (
-	ErrNoPeers       = errors.New("no peers")
-	ErrUpdatedPeers  = errors.New("updated peers")
-	ErrEmptyResponse = errors.New("empty response")
+	WakeUp string = "WAKE_UP"
+	Done   string = "DONE"
 )
 
 type SyncProcessor interface {
-	StartSync() error
+	Start(cb func(err error))
 	Stop()
-	GetBuilder() merkle.Builder
 	AddRequest(id db.BucketID, key []byte) error
 }
 
 type syncProcessor struct {
-	mutex sync.Mutex
-	log   log.Logger
-	state syncState
+	mutex      sync.Mutex
+	logger     log.Logger
+	notifyDone sync.Once
 
-	builder    merkle.Builder
-	reactors   []SyncReactor
-	spCh       chan error    // channel for syncer processor
-	notiCh     chan struct{} // notification channel for peer updated
-	dsCh       chan bool     // channel for data syncer processor
-	stopCh     chan bool     // channel for sync processor stop
-	ticker     *time.Ticker
-	tickerDone chan bool
-	datasyncer bool
+	builder  merkle.Builder
+	reactors []SyncReactor
 
 	// reactor ready+sent+checked
 	// ready --> sent -(no valid)-> checked -(no ready/sent) -> ready
@@ -56,206 +39,25 @@ type syncProcessor struct {
 	readyPool   *peerPool
 	sentPool    *peerPool
 	checkedPool *peerPool
-}
 
-// Waiting for requests to be added when data syncer
-func (s *syncProcessor) waitBuilderRequest() error {
-	s.log.Debugln("waitBuilderRequest() waiting for requests...")
-	select {
-	case requestOk := <-s.dsCh:
-		s.mutex.Lock()
-		count := s.builder.UnresolvedCount()
-		s.mutex.Unlock()
-		if !requestOk || count == 0 {
-			s.log.Warnf("waitRequest() no request added")
-			return errors.ErrInvalidState
-		}
-	case <-s.stopCh:
-		s.mutex.Lock()
-		count := s.builder.UnresolvedCount()
-		s.mutex.Unlock()
-		s.updateState(DoneState)
-		return s.onDone(count, errors.ErrInterrupted)
-	}
+	msgCh      chan interface{}
+	timer      *time.Timer
+	awaking    bool
+	datasyncer bool
 
-	return nil
-}
-
-// on Init State
-func (s *syncProcessor) init() error {
-	s.log.Debugln("init state")
-
-	if s.datasyncer {
-		if err := s.waitBuilderRequest(); err != nil {
-			return err
-		}
-	} else {
-		count := s.builder.UnresolvedCount()
-		if count == 0 {
-			s.updateState(DoneState)
-			return s.onDone(count, nil)
-		}
-	}
-
-	if err := s.sendRequests(); err != nil {
-		return err
-	}
-
-	// transition to SentState
-	s.updateState(SentState)
-	return s.onSent()
-}
-
-// on Sent State
-func (s *syncProcessor) onSent() error {
-	s.log.Debugln("onSent() sentRequest state")
-
-	var err error
-
-	for {
-		select {
-		case <-s.notiCh:
-			s.log.Debugf("onSent() received notification that updated peer")
-			return ErrUpdatedPeers
-		default:
-			// nothing to do
-		}
-
-		// waiting response
-		s.log.Debugln("onSent() waiting response... ")
-		select {
-		case err = <-s.spCh:
-			s.log.Debugf("onSent() response err(%v)", err)
-		case <-s.stopCh:
-			err = errors.ErrInterrupted
-		}
-
-		switch err {
-		case errors.ErrInterrupted:
-			s.updateState(DoneState)
-			return s.onDone(s.builder.UnresolvedCount(), err)
-		case ErrEmptyResponse:
-			if s.getPeerSize() == 0 {
-				// transition to NoDataState
-				s.updateState(NoDataState)
-				return s.onNoData()
-			}
-			continue
-		case ErrNoPeers:
-			return err
-		}
-
-		count := s.builder.UnresolvedCount()
-		s.log.Debugf("onSent() unresolvedCount(%d)", count)
-		if count > 0 {
-			// transition to HasState
-			s.updateState(HasState)
-			if err := s.onData(); err != nil {
-				return err
-			}
-		} else {
-			if s.datasyncer {
-				return nil
-			}
-			s.updateState(DoneState)
-			return s.onDone(count, nil)
-		}
-	}
-}
-
-// on Has State
-func (s *syncProcessor) onData() error {
-	s.log.Debugln("onData state")
-
-	err := s.sendRequests()
-
-	// transition to SentState
-	s.updateState(SentState)
-	return err
-}
-
-// on NoData State : transition to InitState after swap peerpool
-func (s *syncProcessor) onNoData() error {
-	s.log.Debugln("onNoData state")
-
-	s.mutex.Lock()
-	s.readyPool, s.checkedPool = s.checkedPool, s.readyPool
-	s.mutex.Unlock()
-
-	return ErrNoPeers
-}
-
-// on Done State
-func (s *syncProcessor) onDone(count int, err error) error {
-	s.log.Debugln("onDone state")
-
-	s.ticker.Stop()
-	s.tickerDone <- true
-
-	s.log.Debugf("onDone() unresolved count : %d\n", count)
-	if count == 0 {
-		s.log.Infoln("Finished by no more request data")
-	} else {
-		s.log.Infof("Finished by error(%v)", err)
-	}
-
-	return err
-}
-
-func (s *syncProcessor) updateState(state syncState) {
-	s.state = state
-}
-
-func (s *syncProcessor) getPeerSize() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return s.readyPool.size() + s.sentPool.size()
-}
-
-func (s *syncProcessor) checkPeers() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	var chMsg error
-
-	if (s.readyPool.size() + s.sentPool.size()) == 0 {
-		s.readyPool, s.checkedPool = s.checkedPool, s.readyPool
-		chMsg = ErrNoPeers
-	} else {
-		if s.checkedPool.size() > 0 {
-			for _, p := range s.checkedPool.peerList() {
-				s.readyPool.push(p)
-			}
-			s.checkedPool.clear()
-			chMsg = ErrUpdatedPeers
-		}
-	}
-
-	return chMsg
-}
-
-func (s *syncProcessor) observePeers() {
-	for {
-		select {
-		case <-s.tickerDone:
-			return
-		case <-s.ticker.C:
-			chMsg := s.checkPeers()
-			switch chMsg {
-			case ErrNoPeers:
-				s.spCh <- chMsg
-			case ErrUpdatedPeers:
-				s.notiCh <- struct{}{}
-			}
-		}
-	}
+	reqIter  merkle.RequestIterator
+	reqCount int
 }
 
 func (s *syncProcessor) cleanup() {
-	s.log.Debugln("cleanup")
+	s.logger.Debugln("cleanup")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	s.stopTimerInLock()
+	for _, p := range s.sentPool.peerList() {
+		p.Reset()
+	}
 
 	s.readyPool = nil
 	s.sentPool = nil
@@ -266,6 +68,10 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if s.readyPool == nil {
+		return
+	}
+
 	s.readyPool.push(p)
 }
 
@@ -273,10 +79,16 @@ func (s *syncProcessor) OnPeerLeave(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if s.readyPool == nil || s.sentPool == nil || s.checkedPool == nil {
+		return
+	}
+
 	if p2 := s.readyPool.remove(p.id); p2 != nil {
+		s.prepareWakeupInLock()
 		return
 	}
 	if p2 := s.sentPool.remove(p.id); p2 != nil {
+		s.prepareWakeupInLock()
 		return
 	}
 	if p2 := s.checkedPool.remove(p.id); p2 != nil {
@@ -296,82 +108,128 @@ func (s *syncProcessor) initReadyPool() {
 	}
 }
 
-// start sync procoessor
-func (s *syncProcessor) StartSync() error {
-	s.log.Debugln("start sync")
+func (s *syncProcessor) Start(cb func(err error)) {
+	go s.run(cb)
+}
+
+func (s *syncProcessor) run(cb func(err error)) {
+	var err error
+
+	defer func() {
+		cb(err)
+	}()
+
+	err = s.doSync()
+}
+
+func (s *syncProcessor) stopTimer() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.awaking {
+		s.awaking = false
+	}
+
+	s.stopTimerInLock()
+}
+
+func (s *syncProcessor) stopTimerInLock() {
+	if s.timer != nil {
+		s.timer.Stop()
+		s.timer = nil
+	}
+}
+
+func (s *syncProcessor) processMessage(msg interface{}) (bool, error) {
+	switch msgType := msg.(type) {
+	case string:
+		switch msgType {
+		case Done:
+			if !s.datasyncer {
+				s.logger.Infof("processMessage() done sync processor")
+				return true, nil
+			}
+		case WakeUp:
+			s.stopTimer()
+			s.sendRequests()
+		}
+	case error:
+		err := msgType
+		switch err {
+		case errors.ErrInterrupted:
+			s.stopTimer()
+			s.logger.Infof("processMessage() stop sync processor by %v", err)
+			return true, err
+		default:
+			s.logger.Panicf("processMessage() undefined err(%v)\n", err)
+		}
+	default:
+		s.logger.Warnf("processMessage() unknown type(%v)\n", msgType)
+	}
+
+	return false, nil
+}
+
+func (s *syncProcessor) doSync() error {
 	defer s.cleanup()
 
+	var msg interface{}
 	s.initReadyPool()
 
-	s.ticker = time.NewTicker(configDiscoveryInterval)
-
-	go s.observePeers()
-
 	for {
-		s.updateState(InitState)
-		err := s.init()
+		s.mutex.Lock()
+		count := s.builder.UnresolvedCount()
+		s.logger.Tracef("doSync() unresolvedCount(%d)", count)
+		peerSize := s.readyPool.size()
+		s.mutex.Unlock()
 
-		switch err {
-		case ErrNoPeers:
-			timer := time.NewTimer(configDiscoveryInterval)
-			s.log.Infof("wait %f seconds for init to restart cause %v", (configDiscoveryInterval.Seconds()), err)
-			<-timer.C
-			continue
-		case ErrUpdatedPeers:
-			continue
-		case errors.ErrInterrupted:
+		if (s.datasyncer && count == 0) || peerSize == 0 || len(s.msgCh) > 0 {
+			s.logger.Tracef("doSync() waiting message from channel... count(%d), peerSize(%d), msgChLen(%d)", count, peerSize, len(s.msgCh))
+			msg = <-s.msgCh
+		} else if count > 0 {
+			msg = WakeUp
+		} else {
+			msg = nil
+		}
+		s.logger.Tracef("doSync() peerSize(%v), msgCh(%d), msg(%v)", peerSize, len(s.msgCh), msg)
+
+		if done, err := s.processMessage(msg); done {
 			return err
-		case errors.ErrInvalidState:
-			if s.datasyncer {
-				continue
-			}
-		default:
-			if !s.datasyncer {
-				return nil
-			}
 		}
 	}
 }
 
 // stop sync processor
 func (s *syncProcessor) Stop() {
-	s.log.Debugln("stop sync")
-	s.stopCh <- true
-}
-
-func (s *syncProcessor) GetBuilder() merkle.Builder {
-	return s.builder
-}
-
-func (s *syncProcessor) addRequest(id db.BucketID, key []byte) (bool, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if id.Hasher() == nil {
-		return false, errors.IllegalArgumentError.Errorf("InvalidBucket(id=%q)", id)
-	}
-	bk, err := s.builder.Database().GetBucket(id)
-	if err != nil {
-		return false, err
-	}
-	if value, err := bk.Get(key); err != nil {
-		return false, err
-	} else if len(value) != 0 {
-		return false, nil
-	}
-	s.log.Infof("DataSyncer: REQUEST id=%s key=%#x", id, key)
-	s.builder.RequestData(id, key, onDataHandler(func() {
-		s.log.Infof("DataSyncer: ADD id=%s key=%#x", id, key)
-	}))
-
-	return true, nil
+	s.logger.Debugln("Stop() sync processor")
+	s.msgCh <- errors.ErrInterrupted
 }
 
 func (s *syncProcessor) AddRequest(id db.BucketID, key []byte) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if s.builder != nil {
-		ok, err := s.addRequest(id, key)
-		if ok {
-			s.dsCh <- true
+		if id.Hasher() == nil {
+			return errors.IllegalArgumentError.Errorf("InvalidBucket(id=%q)", id)
+		}
+		bk, err := s.builder.Database().GetBucket(id)
+		if err != nil {
+			return err
+		}
+		if value, err := bk.Get(key); err != nil {
+			return err
+		} else if value != nil {
+			return nil
+		}
+		s.logger.Infof("AddRequest() REQUEST id=%s key=%#x", id, key)
+		s.builder.RequestData(id, key, onDataHandler(func() {
+			s.logger.Infof("AddRequest() ADD id=%s key=%#x", id, key)
+		}))
+
+		if !s.awaking {
+			s.awaking = true
+			s.msgCh <- WakeUp
 		}
 		return err
 	} else {
@@ -379,74 +237,143 @@ func (s *syncProcessor) AddRequest(id db.BucketID, key []byte) error {
 	}
 }
 
-func (s *syncProcessor) sendRequest(pack []BucketIDAndBytes) {
-	s.log.Debugln("sendRequest()")
-
-	peer := s.readyPool.pop()
-	if err := peer.RequestData(pack, s.HandleData); err == nil {
-		s.sentPool.push(peer)
-	} else {
-		s.log.Infof("Request failed by %v", err)
-		s.readyPool.push(peer)
-	}
-}
-
-// syncProcessor --> peer --> PeerHandler(Reactor) --> module.PeerHandler
-func (s *syncProcessor) sendRequests() error {
-	s.log.Debugln("sendRequests()")
+// syncProcessor --> peer --> PeerHandler(Reactor) --> module.ProtocolHandler
+func (s *syncProcessor) sendRequests() {
+	s.logger.Debugln("sendRequests()")
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	peers := s.readyPool.size()
-	if peers == 0 {
-		s.log.Warn("sendRequests() No peers")
-		return ErrNoPeers
+	for _, pack := range s.getPacks() {
+		peer := s.readyPool.pop()
+		if err := peer.RequestData(pack, s.HandleData); err == nil {
+			s.sentPool.push(peer)
+		} else {
+			s.logger.Infof("Request failed by %v", err)
+			s.checkedPool.push(peer)
+		}
+	}
+}
+
+func (s *syncProcessor) next() bool {
+	if s.reqIter == nil {
+		s.reqIter = s.builder.Requests()
+	}
+	if s.reqCount < configRoundLimit && s.reqIter.Next() {
+		s.reqCount += 1
+		return true
 	}
 
-	itr := s.builder.Requests()
+	s.reqCount = 0
+	s.reqIter = nil
+	return false
+}
 
-	var sent int
-	pack := make([]BucketIDAndBytes, 0, packetSize)
-	for itr.Next() {
+func (s *syncProcessor) getPacks() [][]BucketIDAndBytes {
+	peerSize := s.readyPool.size()
+	if peerSize == 0 {
+		s.logger.Warn("getPacks() No peers to request")
+		return nil
+	}
+
+	var packs [][]BucketIDAndBytes
+
+	pack := make([]BucketIDAndBytes, 0, configPackSize)
+	for s.next() {
 		reqData := BucketIDAndBytes{
-			BkID:  itr.BucketIDs()[0],
-			Bytes: itr.Key(),
+			BkID:  s.reqIter.BucketIDs()[0],
+			Bytes: s.reqIter.Key(),
 		}
 		pack = append(pack, reqData)
-		if len(pack) == packetSize {
-			s.sendRequest(pack)
-			pack = make([]BucketIDAndBytes, 0, packetSize)
-			sent += 1
+
+		if len(pack) == configPackSize {
+			packs = append(packs, pack)
+			pack = make([]BucketIDAndBytes, 0, configPackSize)
 		}
 
-		if sent == peers {
+		if len(packs) == peerSize && s.reqCount < configRoundLimit {
 			break
 		}
 	}
 
-	if len(pack) > 0 && sent < peers {
-		s.sendRequest(pack)
+	if len(pack) > 0 {
+		packs = append(packs, pack)
 	}
 
-	return nil
+	return packs
+}
+
+func (s *syncProcessor) wakeup() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.timer == nil {
+		s.logger.Infof("wakeup() timer(%v) already cancelled", s.timer)
+		return
+	}
+
+	readyPoolSize := s.readyPool.size()
+	sentPoolSize := s.sentPool.size()
+
+	if s.checkedPool.size() > 0 {
+		if (readyPoolSize + sentPoolSize) == 0 {
+			s.readyPool, s.checkedPool = s.checkedPool, s.readyPool
+		} else if sentPoolSize == 0 { // no request to receive data from peer
+			for _, p := range s.checkedPool.peerList() {
+				s.readyPool.push(p)
+			}
+			s.checkedPool.clear()
+		}
+	}
+
+	s.stopTimerInLock()
+
+	s.msgCh <- WakeUp
+}
+
+func (s *syncProcessor) prepareWakeupInLock() {
+	if s.timer != nil {
+		s.logger.Infof("prepareWakeUpInLock() timer already started")
+		return
+	}
+
+	if s.awaking {
+		s.logger.Infof("prepareWakeUpInLock() awaking...")
+		return
+	}
+
+	if len(s.msgCh) == configChannelSize {
+		s.logger.Panicf("prepareWakeUpInLock() message channel is full"+
+			" len(msgCh) :%v, cap(msgCh) :%v", len(s.msgCh), cap(s.msgCh))
+		return
+	}
+
+	var timeInterval = configDiscoveryInterval
+	if s.readyPool.size() > 0 && s.sentPool.size() == 0 {
+		s.logger.Errorf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
+		timeInterval = 0
+	}
+
+	s.awaking = true
+	s.logger.Infof("prepareWakeUpInLock() wakeup after %f seconds", (timeInterval.Seconds()))
+	s.timer = afterFunc(timeInterval, s.wakeup)
 }
 
 // HandleData handle data from peer. If it expires timeout, data would
 // be nil.
 func (s *syncProcessor) HandleData(sender *peer, data []BucketIDAndBytes) {
-	s.log.Debugln("HandleData()")
-	var spChMsg error
-
+	s.logger.Tracef("HandleData() sender id(%v)", sender.id)
 	s.mutex.Lock()
-	defer func() {
-		s.mutex.Unlock()
-		s.spCh <- spChMsg
-	}()
+	defer s.mutex.Unlock()
+
+	if s.sentPool == nil {
+		s.logger.Warnf("HandleData() sendPool is %v", s.sentPool)
+		return
+	}
 
 	p := s.sentPool.remove(sender.id)
 	if p == nil {
-		spChMsg = ErrEmptyResponse
+		s.logger.Warnf("HandleData() peer(%v) not in sentPool", sender.id)
 		return
 	}
 
@@ -455,33 +382,39 @@ func (s *syncProcessor) HandleData(sender *peer, data []BucketIDAndBytes) {
 		if err := s.builder.OnData(item.BkID, item.Bytes); err == nil {
 			received += 1
 		} else {
-			s.log.Errorf("HandleData() failed builder.OnData err(%v)\n", err)
+			s.logger.Errorf("HandleData() failed builder.OnData err(%v)", err)
 		}
 	}
 
-	s.log.Debugln("HandleData() received :", received)
+	count := s.builder.UnresolvedCount()
+	if count == 0 {
+		s.notifyDone.Do(func() {
+			s.logger.Infof("HandleData() notify Done")
+			s.msgCh <- Done
+		})
+		return
+	}
+
+	s.logger.Tracef("HandleData() received : %d", received)
 	if received > 0 {
 		s.readyPool.push(p)
 	} else {
 		s.checkedPool.push(p)
-		spChMsg = ErrEmptyResponse
 	}
+
+	s.prepareWakeupInLock()
 }
 
-func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Logger, datasyncer bool) SyncProcessor {
+func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Logger, datasyncer bool) interface{} {
 
 	return &syncProcessor{
-		log:         log,
+		logger:      log,
 		builder:     builder,
 		reactors:    reactors,
 		readyPool:   newPeerPool(),
 		sentPool:    newPeerPool(),
 		checkedPool: newPeerPool(),
-		spCh:        make(chan error),
-		notiCh:      make(chan struct{}),
-		dsCh:        make(chan bool),
-		stopCh:      make(chan bool),
-		tickerDone:  make(chan bool),
+		msgCh:       make(chan interface{}, configChannelSize),
 		datasyncer:  datasyncer,
 	}
 }
