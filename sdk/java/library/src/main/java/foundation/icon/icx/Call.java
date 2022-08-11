@@ -23,6 +23,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcItemCreator;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
+import java.math.BigInteger;
+
 import static foundation.icon.icx.TransactionBuilder.checkArgument;
 
 /**
@@ -61,6 +63,7 @@ public final class Call<T> {
         private Address from;
         private Address to;
         private String method;
+        private BigInteger height;
         private RpcItem params;
 
         public Builder() {
@@ -80,6 +83,11 @@ public final class Call<T> {
 
         public Builder method(String method) {
             this.method = method;
+            return this;
+        }
+
+        public Builder height(BigInteger height) {
+            this.height = height;
             return this;
         }
 
@@ -125,6 +133,9 @@ public final class Call<T> {
             // optional
             if (from != null) {
                 propertiesBuilder.put("from", new RpcValue(from));
+            }
+            if (height != null) {
+                propertiesBuilder.put("height", new RpcValue(height));
             }
 
             return new Call<>(propertiesBuilder.build(), responseType);
