@@ -42,6 +42,10 @@ func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.Ty
 		return scoreresult.InvalidParameterError.Errorf(
 			"InvalidAddress(%s)", h.From.String()), nil, nil
 	}
+	if h.Value.Sign() == -1 {
+		return scoreresult.InvalidParameterError.Errorf(
+			"InvalidValue(value=%s)", h.Value.String()), nil, nil
+	}
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(h.Value) < 0 {
 		return scoreresult.ErrOutOfBalance, nil, nil
