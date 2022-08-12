@@ -201,6 +201,11 @@ func (ctx *worldContext) SetScoreOwner(from module.Address, score module.Address
 	return as.SetContractOwner(owner)
 }
 
+func (ctx *worldContext) GetBTPContext() state.BTPContext {
+	as := ctx.GetAccountState(state.SystemID)
+	return state.NewBTPContext(nil, as)
+}
+
 func NewWorldContext(
 	ws state.WorldState, blockHeight int64, revision module.Revision,
 	csi module.ConsensusInfo, stepPrice *big.Int,

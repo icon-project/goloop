@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
 )
 
 var (
@@ -578,7 +579,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	br := s.GetBondRequirement()
 
 	if revision >= icmodule.RevisionDecentralize && s.allPRepCache.Size() >= predefinedMainPRepCount {
-		prep := preps.GetPRepByIndex(predefinedMainPRepCount - 1)
+		prep := preps.GetByIndex(predefinedMainPRepCount - 1).PRep()
 		if prep == nil {
 			return false
 		}
@@ -587,26 +588,22 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetPRepsOrderedByPower() (PRepSet, error) {
-	preps := s.GetActivePReps()
-	return NewPRepsOrderedByPower(preps, s.GetBondRequirement()), nil
-}
-
-func (s *State) GetPRepsOnTermEnd(rev int) (PRepSet, error) {
-	if rev < icmodule.RevisionExtraMainPReps {
-		return s.GetPRepsOrderedByPower()
+func (s *State) GetPRepSet(bc state.BTPContext) PRepSet {
+	dsaMask := int64(0)
+	if bc != nil {
+		dsaMask = bc.GetActiveDSAMask()
 	}
-	return s.getPRepsIncludingExtraMainPReps()
-}
-
-func (s *State) getPRepsIncludingExtraMainPReps() (PRepSet, error) {
-	return NewPRepsIncludingExtraMainPRep(
-		s.GetActivePReps(),
-		int(s.GetMainPRepCount()),
-		int(s.GetSubPRepCount()),
-		int(s.GetExtraMainPRepCount()),
-		s.GetBondRequirement(),
-	), nil
+	preps := s.GetActivePReps()
+	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
+	for _, prep := range preps {
+		pubKeyMask := int64(0)
+		if bc != nil {
+			pubKeyMask = bc.GetPublicKeyMask(prep.NodeAddress())
+		}
+		entry := NewPRepSetEntry(prep, pubKeyMask&dsaMask == dsaMask)
+		prepSetEntries = append(prepSetEntries, entry)
+	}
+	return NewPRepSet(prepSetEntries)
 }
 
 func (s *State) GetActivePReps() []*PRep {
@@ -644,10 +641,9 @@ func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, e
 }
 
 func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
-	preps, err := s.GetPRepsOrderedByPower()
-	if err != nil {
-		return nil, err
-	}
+	br := s.GetBondRequirement()
+	prepSet := s.GetPRepSet(nil)
+	prepSet.SortByGrade(br)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -656,7 +652,7 @@ func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]in
 		return nil, errors.IllegalArgumentError.Errorf("end(%d) < 0", end)
 	}
 
-	size := preps.Size()
+	size := prepSet.Size()
 	if start > end {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
 	}
@@ -672,17 +668,16 @@ func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]in
 
 	jso := make(map[string]interface{})
 	prepList := make([]interface{}, 0, end)
-	br := s.GetBondRequirement()
 
 	for i := start - 1; i < end; i++ {
-		prep := preps.GetPRepByIndex(i)
+		prep := prepSet.GetByIndex(i).PRep()
 		prepList = append(prepList, prep.ToJSON(blockHeight, br))
 	}
 
 	jso["startRanking"] = start
 	jso["blockHeight"] = blockHeight
 	jso["totalStake"] = s.GetTotalStake()
-	jso["totalDelegated"] = preps.TotalDelegated()
+	jso["totalDelegated"] = prepSet.TotalDelegated()
 	jso["preps"] = prepList
 	return jso, nil
 }

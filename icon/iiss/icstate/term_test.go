@@ -2,12 +2,10 @@ package icstate
 
 import (
 	"math/big"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -21,57 +19,6 @@ func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSna
 	status.SetBonded(big.NewInt(bond))
 
 	return NewPRepSnapshot(owner, status.GetBondedDelegation(5))
-}
-
-func newDummyAddress(value int) module.Address {
-	bs := make([]byte, common.AddressBytes)
-	for i := 0; value != 0 && i < 8; i++ {
-		bs[common.AddressBytes-1-i] = byte(value & 0xFF)
-		value >>= 8
-	}
-	return common.MustNewAddress(bs)
-}
-
-func newDummyPRepBase(i int) *PRepBaseState {
-	info := newDummyPRepInfo(i)
-	pb := NewPRepBaseState()
-	pb.UpdateInfo(info)
-	return pb
-}
-
-func newDummyPRepStatus() *PRepStatusState {
-	ps := NewPRepStatus()
-	_ = ps.Activate()
-	ps.SetDelegated(big.NewInt(rand.Int63n(1000) + 1))
-	ps.SetBonded(big.NewInt(rand.Int63n(1000) + 1))
-	return ps
-}
-
-func newDummyPRep(i int) *PRep {
-	owner := newDummyAddress(i)
-	pb := newDummyPRepBase(i)
-	ps := newDummyPRepStatus()
-	return &PRep{
-		owner:           owner,
-		pb:              pb,
-		PRepStatusState: ps,
-	}
-}
-
-func newDummyPRepSlice(size int) []*PRep {
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		preps[i] = newDummyPRep(i)
-	}
-	return preps
-}
-
-func newDummyPReps(size int, br int64) PRepSet {
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		preps[i] = newDummyPRep(i)
-	}
-	return NewPRepsOrderedByPower(preps, br)
 }
 
 func newDummyPRepSnapshots(size int) PRepSnapshots {
@@ -90,8 +37,8 @@ func newDummyPRepSnapshots(size int) PRepSnapshots {
 func newTermState(sequence int, period int64) *TermState {
 	return &TermState{
 		termData: termData{
-			sequence: sequence,
-			period: period,
+			sequence:   sequence,
+			period:     period,
 			rewardFund: NewRewardFund(),
 		},
 	}
@@ -143,7 +90,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 	size := 150
 	electedPRepCount := 100
 	br := int64(5)
-	preps := newDummyPReps(size, br)
+	preps := newDummyPRepSet(size)
 	snapshots := preps.ToPRepSnapshots(electedPRepCount, br)
 
 	cases := []struct {
@@ -192,7 +139,7 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 
-			preps := newDummyPReps(in.size, br)
+			preps := newDummyPRepSet(in.size)
 			snapshots := preps.ToPRepSnapshots(in.electedPRepCount, br)
 			count := icutils.Min(in.size, in.electedPRepCount)
 			assert.Equal(t, count, len(snapshots))
@@ -206,7 +153,7 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 	electedPRepCount := size
 	var pss0, pss1 PRepSnapshots
 
-	preps := newDummyPReps(size, br)
+	preps := newDummyPRepSet(size)
 	pss0 = preps.ToPRepSnapshots(electedPRepCount, br)
 
 	bs, err := codec.BC.MarshalToBytes(pss0)
@@ -226,61 +173,6 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 	assert.True(t, pss0.Equal(pss1))
 }
 
-// ============================================================
-
-/*
-func TestTerm_Equal(t *testing.T) {
-	t0 := NewTerm(0, 10)
-	tSequence := t0.Clone()
-	tSequence.sequence = t0.sequence + 1
-	tSet := tSequence.Clone()
-	tSet.Set(t0)
-	tSH := t0.Clone()
-	tSH.startHeight = t0.startHeight + 1
-	tPeriod := t0.Clone()
-	tPeriod.period = t0.period + 1
-	tIrep := t0.Clone()
-	tIrep.irep = new(big.Int).SetInt64(t0.irep.Int64() + 1)
-	tRrep := t0.Clone()
-	tRrep.rrep = new(big.Int).SetInt64(t0.rrep.Int64() + 1)
-	tTS := t0.Clone()
-	tTS.totalSupply = new(big.Int).SetInt64(t0.totalSupply.Int64() + 1)
-	tTD := t0.Clone()
-	tTD.totalDelegated = new(big.Int).SetInt64(t0.totalDelegated.Int64() + 1)
-	tSnapshots := t0.Clone()
-	tSnapshots.SetPRepSnapshots(newDummyPRepSnapshots(100))
-
-	cases := []struct {
-		name   string
-		t0, t1 *Term
-		result bool
-	}{
-		{"nil comp", nil, nil, true},
-		{"same instance", t0, t0, true},
-		{"clone", t0, t0.Clone(), true},
-		{"NewTerm() with same param", t0, NewTerm(0, 10), true},
-		{"nil to instance", nil, t0, false},
-		{"instance to nil", t0, nil, false},
-		{"Set()", t0, tSet, true},
-		{"diff sequence", t0, tSequence, false},
-		{"diff startHeight", t0, tSH, false},
-		{"diff period", t0, tPeriod, false},
-		{"diff IRep", t0, tIrep, false},
-		{"diff RRep", t0, tRrep, false},
-		{"diff totalSupply", t0, tTS, false},
-		{"diff totalDelegated", t0, tTD, false},
-		{"diff prepSnapshots", t0, tSnapshots, false},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.result, c.t0.Equal(c.t1), "%v\n%v", c.t0, c.t1)
-		})
-	}
-}
-
- */
-
 func TestTerm_Bytes(t *testing.T) {
 	term := newTermState(0, 10)
 
@@ -297,21 +189,6 @@ func TestTerm_Bytes(t *testing.T) {
 	assert.Equal(t, serialized, o2.Bytes())
 	assert.True(t, o1.Equal(o2))
 }
-
-/*
-func TestTerm_Clone(t *testing.T) {
-	term := NewTerm(0, 43120)
-	term2 := term.Clone()
-	assert.True(t, term.Equal(term2))
-
-	size := 100
-	prepSnapshots := newDummyPRepSnapshots(size)
-	term.SetPRepSnapshots(prepSnapshots)
-	term2 = term.Clone()
-	assert.True(t, term.Equal(term2))
-	assert.True(t, term.prepSnapshots.Equal(term2.prepSnapshots))
-}
- */
 
 func TestTerm_TotalBondedDelegation(t *testing.T) {
 	size := 100

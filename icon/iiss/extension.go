@@ -939,7 +939,6 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 
 func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
-	var preps icstate.PRepSet
 
 	revision := wc.Revision().Value()
 	br := es.State.GetBondRequirement()
@@ -953,31 +952,25 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
+	prepSet := es.State.GetPRepSet(wc.GetBTPContext())
+	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
-		if preps, err = es.State.GetPRepsOnTermEnd(revision); err != nil {
-			return err
-		}
-		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, preps)
+		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
 	}
 
 	if isDecentralized {
-		if preps == nil {
-			if preps, err = es.State.GetPRepsOnTermEnd(revision); err != nil {
-				return err
-			}
-		}
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
 
-		if err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
+		if err = prepSet.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
 			return err
 		}
 	} else {
-		preps = nil
+		prepSet = nil
 	}
 
-	return es.moveOnToNextTerm(preps, totalSupply, revision, electedPRepCount)
+	return es.moveOnToNextTerm(prepSet, totalSupply, revision, electedPRepCount)
 }
 
 func (es *ExtensionStateImpl) moveOnToNextTerm(
@@ -1559,15 +1552,15 @@ func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.I
 	}
 }
 
-func calculateIRep(preps icstate.PRepSet) *big.Int {
+func calculateIRep(prepSet icstate.PRepSet) *big.Int {
 	irep := new(big.Int)
-	mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
+	mainPRepCount := prepSet.GetPRepSize(icstate.GradeMain)
 	totalDelegated := new(big.Int)
 	totalWeightedIrep := new(big.Int)
 	value := new(big.Int)
 
 	for i := 0; i < mainPRepCount; i++ {
-		prep := preps.GetPRepByIndex(i)
+		prep := prepSet.GetByIndex(i).PRep()
 		totalWeightedIrep.Add(totalWeightedIrep, value.Mul(prep.IRep(), prep.Delegated()))
 		totalDelegated.Add(totalDelegated, prep.Delegated())
 	}

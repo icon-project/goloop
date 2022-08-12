@@ -165,6 +165,11 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 	return as.SetContractOwner(newOwner)
 }
 
+func (ctx *worldContextImpl) GetBTPContext() state.BTPContext {
+	as := ctx.GetAccountState(state.SystemID)
+	return state.NewBTPContext(ctx.WorldContext, as)
+}
+
 func NewWorldContext(ctx state.WorldContext) icmodule.WorldContext {
 	return &worldContextImpl{
 		WorldContext: ctx,

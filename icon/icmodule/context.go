@@ -25,6 +25,7 @@ type WorldContext interface {
 	StepPrice() *big.Int
 	GetScoreOwner(score module.Address) (module.Address, error)
 	SetScoreOwner(from module.Address, score module.Address, owner module.Address) error
+	GetBTPContext() state.BTPContext
 }
 
 type CallContext interface {
