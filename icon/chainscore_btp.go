@@ -126,7 +126,7 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 			}
 			// update node address of P-Rep
 			prepInfo := &icstate.PRepInfo{Node: pubKeyAddr}
-			if err = es.SetPRep(s.newCallContext(s.cc), prepInfo); err != nil {
+			if err = es.SetPRep(s.newCallContext(s.cc), prepInfo, true); err != nil {
 				return err
 			}
 		}

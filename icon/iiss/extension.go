@@ -1328,12 +1328,20 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 	return nil
 }
 
-func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRepInfo) error {
+func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRepInfo, fromBTP bool) error {
 	var err error
 	var nodeUpdate bool
 	from := cc.From()
 	blockHeight := cc.BlockHeight()
 	revision := cc.Revision().Value()
+
+	if !fromBTP && revision >= icmodule.RevisionBTP2 && info.Node != nil {
+		prep := es.GetPRep(from)
+		if !info.Node.Equal(prep.NodeAddress()) {
+			return scoreresult.InvalidParameterError.Errorf(
+				"Can't modify node address by setPRep method of chain SCORE")
+		}
+	}
 
 	if err = info.Validate(revision, false); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(

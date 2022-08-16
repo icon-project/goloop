@@ -418,7 +418,7 @@ func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, wc WorldContext, 
 	from := args[0].(module.Address)
 	info := args[1].(*icstate.PRepInfo)
 	cc := NewCallContext(wc, from)
-	return es.SetPRep(cc, info)
+	return es.SetPRep(cc, info, false)
 }
 
 func (sim *simulatorImpl) GetDelegation(from module.Address) map[string]interface{} {
