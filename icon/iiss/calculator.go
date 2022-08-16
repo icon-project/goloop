@@ -460,7 +460,7 @@ func (c *Calculator) calculateVotedReward() error {
 	// Calculate reward with a new configuration from next block
 	from := -1
 	multiplier, divider := varForVotedReward(c.global)
-	vInfo, err := c.loadVotedInfo(c.global.GetRevision())
+	vInfo, err := c.loadVotedInfo()
 	if err != nil {
 		return err
 	}
@@ -534,17 +534,15 @@ func (c *Calculator) calculateVotedReward() error {
 	return nil
 }
 
-func (c *Calculator) loadVotedInfo(revision int) (*votedInfo, error) {
+func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 	electedPRepCount := c.global.GetElectedPRepCount()
 	bondRequirement := c.global.GetBondRequirement()
 	vInfo := newVotedInfo(electedPRepCount)
 
 	var dsa *icreward.DSA
 	var err error
-	if revision >= icmodule.RevisionBTP2 {
-		if dsa, err = c.base.GetDSA(); err != nil {
-			return nil, err
-		}
+	if dsa, err = c.base.GetDSA(); err != nil {
+		return nil, err
 	}
 
 	prefix := icreward.VotedKey.Build()
@@ -561,18 +559,15 @@ func (c *Calculator) loadVotedInfo(revision int) (*votedInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		if revision >= icmodule.RevisionBTP2 {
-			pubKey, err := c.base.GetPublicKey(addr)
-			if err != nil {
-				return nil, err
-			}
-			if !pubKey.HasAll(dsa.Mask()) {
-				continue
-			}
-		}
 		obj := icreward.ToVoted(o)
 		data := newVotedData(obj.Clone()) // Clone Voted instance as we will modify it later
 		data.UpdateBondedDelegation(bondRequirement)
+		pubKey, err := c.base.GetPublicKey(addr)
+		if err != nil {
+			return nil, err
+		}
+		// if dsa is not set, all data.Pubkey() will be true
+		data.SetPubKey(pubKey.HasAll(dsa.Mask()))
 		vInfo.AddVotedData(addr, data)
 	}
 	vInfo.Sort()
@@ -648,7 +643,7 @@ func (c *Calculator) calculateVotingReward() error {
 	if err != nil {
 		return err
 	}
-	vInfo, err := c.loadVotedInfo(c.global.GetRevision())
+	vInfo, err := c.loadVotedInfo()
 	if err != nil {
 		return err
 	}
@@ -1207,9 +1202,18 @@ type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
 	status icstage.EnableStatus
+	pubKey bool
 }
 
 func (vd *votedData) Compare(vd2 *votedData) int {
+	if vd.pubKey != vd2.pubKey {
+		if vd.pubKey {
+			return 1
+		} else {
+			return -1
+		}
+	}
+
 	dv := new(big.Int)
 	if vd.Enable() {
 		dv = vd.GetBondedDelegation()
@@ -1293,6 +1297,14 @@ func (vd *votedData) UpdateToWrite() {
 
 func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
 	vd.voted.UpdateBondedDelegation(bondRequirement)
+}
+
+func (vd *votedData) SetPubKey(yn bool) {
+	vd.pubKey = yn
+}
+
+func (vd *votedData) PubKey() bool {
+	return vd.pubKey
 }
 
 func newVotedData(d *icreward.Voted) *votedData {
@@ -1409,27 +1421,27 @@ func (vi *votedInfo) UpdateBonded(votes icstage.VoteList) {
 func (vi *votedInfo) Sort() {
 	// sort prep list with bondedDelegation amount
 	size := len(vi.preps)
-	temp := make(map[votedData]string, size)
-	tempKeys := make([]votedData, size)
+	keys := make(map[votedData]string, size)
+	vDataSlice := make([]votedData, size)
 	i := 0
 	for key, data := range vi.preps {
-		temp[*data] = key
-		tempKeys[i] = *data
+		keys[*data] = key
+		vDataSlice[i] = *data
 		i += 1
 	}
-	sort.Slice(tempKeys, func(i, j int) bool {
-		ret := tempKeys[i].Compare(&tempKeys[j])
+	sort.Slice(vDataSlice, func(i, j int) bool {
+		ret := vDataSlice[i].Compare(&vDataSlice[j])
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
 			return false
 		}
-		return bytes.Compare([]byte(temp[tempKeys[i]]), []byte(temp[tempKeys[j]])) > 0
+		return bytes.Compare([]byte(keys[vDataSlice[i]]), []byte(keys[vDataSlice[j]])) > 0
 	})
 
 	rank := make([]string, size)
-	for idx, v := range tempKeys {
-		rank[idx] = temp[v]
+	for idx, v := range vDataSlice {
+		rank[idx] = keys[v]
 	}
 	vi.rank = rank
 }
@@ -1441,7 +1453,7 @@ func (vi *votedInfo) UpdateTotalBondedDelegation() {
 			break
 		}
 		vData := vi.preps[addrKey]
-		if vData.Enable() {
+		if vData.Enable() && vData.PubKey() {
 			total.Add(total, vData.GetBondedDelegation())
 		}
 	}
@@ -1469,6 +1481,9 @@ func (vi *votedInfo) CalculateReward(multiplier, divider *big.Int, period int) {
 		}
 		prep := vi.preps[addrKey]
 		if prep.Enable() == false {
+			continue
+		}
+		if prep.PubKey() == false {
 			continue
 		}
 
