@@ -35,7 +35,7 @@ public interface RpcItem {
 
     default RpcArray asArray() {
         if (this instanceof RpcArray) return (RpcArray) this;
-        throw new RpcValueException("This item can not be converted to RpcValue");
+        throw new RpcValueException("This item can not be converted to RpcArray");
     }
 
     default RpcValue asValue() {
