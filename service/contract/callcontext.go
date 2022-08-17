@@ -206,13 +206,6 @@ func (cc *callContext) FrameLogger() *trace.Logger {
 	}
 }
 
-func (cc *callContext) enterQueryMode() {
-	cc.lock.Lock()
-	defer cc.lock.Unlock()
-
-	cc.frame.enterQueryMode(cc)
-}
-
 func (cc *callContext) isInAsyncFrame() bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
