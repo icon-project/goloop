@@ -92,6 +92,11 @@ func (v *voteBase) RoundDecisionDigest() []byte {
 			BlockPartSetID: v.BlockPartSetID,
 			NTSVoteBases:   v.NTSVoteBases,
 		}
+		// Sometimes we make zero length array for NTSVoteBases. Normalize for
+		// consistent hash value.
+		if len(format.NTSVoteBases) == 0 {
+			format.NTSVoteBases = nil
+		}
 		v.decisionDigest = crypto.SHA3Sum256(codec.MustMarshalToBytes(&format))
 	}
 	return v.decisionDigest
