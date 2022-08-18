@@ -157,6 +157,10 @@ func (ldb *layerDB) WithFlags(flags Flags) Context {
 	return &layerDBContext{ldb, flags}
 }
 
+func (ldb *layerDB) Unwrap() Database {
+	return ldb.real
+}
+
 func NewLayerDB(database Database) LayerDB {
 	ldb := &layerDB{
 		real:    database,
@@ -166,5 +170,16 @@ func NewLayerDB(database Database) LayerDB {
 		return &layerDBContext{ldb, ctx.Flags()}
 	} else {
 		return ldb
+	}
+}
+
+func Unwrap(database Database) Database {
+	type unwrapper interface {
+		Unwrap() Database
+	}
+	if layeredDB, ok := database.(unwrapper); ok {
+		return layeredDB.Unwrap()
+	} else {
+		return database
 	}
 }
