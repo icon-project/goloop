@@ -19,6 +19,7 @@ package lcimporter
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/chain/base"
@@ -392,7 +393,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 			if vs != rs {
 				return errors.Errorf("InvalidValidatorLen(exp=%d,calc=%d)", rs, vs)
 			}
-			for i:=0 ; i< rs; i++ {
+			for i := 0; i < rs; i++ {
 				rep := reps.Get(i)
 				val, _ := validators.Get(i)
 				if !rep.Equal(val.Address()) {
@@ -462,7 +463,7 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 				}
 				ltxs := blk.NormalTransactions()
 				txCount := 0
-				for itr := ltxs.Iterator(); itr.Has() ; itr.Next() {
+				for itr := ltxs.Iterator(); itr.Has(); itr.Next() {
 					txCount += 1
 				}
 				resCh <- &BlockTransaction{
@@ -622,4 +623,36 @@ func (e *BlockConverter) doExecute(
 
 func (e *BlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
 	return e.cs.GetVotesByHeight(int(h))
+}
+
+func (e *BlockConverter) TraceMode() module.TraceMode {
+	return module.TraceModeInvoke
+}
+
+func (e *BlockConverter) GetReceipt(txIndex int) module.Receipt {
+	return nil
+}
+
+func (e *BlockConverter) OnTransactionStart(txIndex int32, txHash []byte) error {
+	return nil
+}
+
+func (e *BlockConverter) OnTransactionRerun(txIndex int32, txHash []byte) error {
+	return nil
+}
+
+func (e *BlockConverter) OnTransactionEnd(txIndex int32, txHash []byte) error {
+	return nil
+}
+
+func (e *BlockConverter) OnEnter() error {
+	return nil
+}
+
+func (e *BlockConverter) OnLeave(success bool) error {
+	return nil
+}
+
+func (e *BlockConverter) OnBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) error {
+	return nil
 }
