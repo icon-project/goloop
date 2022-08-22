@@ -272,12 +272,14 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 	if (iPrep != nil && !iPrep.Equal(prep)) || (iResult != nil && !iResult.Equal(result)) {
 		return scoreresult.InvalidParameterError.Errorf("Invalid issue data \n%+v\n%+v", iResult, result)
 	}
+
+	issueAmount := result.GetIssue()
 	// transfer issued ICX to treasury
-	if err = cc.Deposit(cc.Treasury(), result.GetIssue()); err != nil {
+	if err = cc.Deposit(cc.Treasury(), issueAmount, module.Issue); err != nil {
 		return err
 	}
 	// increase total supply
-	if _, err = cc.AddTotalSupply(result.GetIssue()); err != nil {
+	if _, err = cc.AddTotalSupply(issueAmount); err != nil {
 		return err
 	}
 
@@ -327,7 +329,7 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 }
 
 func (tx *baseV3) Dispose() {
-	//panic("implement me")
+	// panic("implement me")
 }
 
 func (tx *baseV3) Group() module.TransactionGroup {

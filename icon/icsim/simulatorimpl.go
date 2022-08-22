@@ -380,7 +380,7 @@ func (sim *simulatorImpl) registerPRep(es *iiss.ExtensionStateImpl, wc WorldCont
 	from := args[0].(module.Address)
 	info := args[1].(*icstate.PRepInfo)
 	cc := NewCallContext(wc, from)
-	if err := cc.Transfer(from, state.SystemAddress, icmodule.BigIntRegPRepFee); err != nil {
+	if err := cc.Transfer(from, state.SystemAddress, icmodule.BigIntRegPRepFee, module.RegPRep); err != nil {
 		return err
 	}
 	return es.RegisterPRep(cc, info)

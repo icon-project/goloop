@@ -154,7 +154,7 @@ func (p *platform) OnExecutionBegin(wc state.WorldContext, logger log.Logger) er
 	if es == nil {
 		return nil
 	}
-	return es.OnExecutionBegin(iiss.NewWorldContext(wc))
+	return es.OnExecutionBegin(iiss.NewWorldContext(wc, logger))
 }
 
 func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult, logger log.Logger) error {
@@ -173,7 +173,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 	} else {
 		totalFee = er.TotalFee()
 	}
-	return es.OnExecutionEnd(iiss.NewWorldContext(wc), totalFee, p.calculator.Get())
+	return es.OnExecutionEnd(iiss.NewWorldContext(wc, logger), totalFee, p.calculator.Get())
 }
 
 func (p *platform) OnTransactionEnd(wc state.WorldContext, logger log.Logger, rct txresult.Receipt) error {
@@ -195,7 +195,7 @@ func (p *platform) Term() {
 }
 
 func (p *platform) DefaultBlockVersionFor(cid int) int {
-	if  cid == CIDForMainNet || cid == CIDForTestNet {
+	if cid == CIDForMainNet || cid == CIDForTestNet {
 		return module.BlockVersion1
 	}
 	return basic.Platform.DefaultBlockVersionFor(cid)

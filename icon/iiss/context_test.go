@@ -27,7 +27,7 @@ func newWorldContext() state.WorldContext {
 func TestWorldContextImpl_GetBalance(t *testing.T) {
 	address := common.MustNewAddressFromString("hx1")
 	wc := newWorldContext()
-	iwc := NewWorldContext(wc)
+	iwc := NewWorldContext(wc, nil)
 
 	initBalance := icutils.ToLoop(100)
 	as := wc.GetAccountState(address.ID())
@@ -40,7 +40,7 @@ func TestWorldContextImpl_Deposit(t *testing.T) {
 	var err error
 	address := common.MustNewAddressFromString("hx1")
 	wc := newWorldContext()
-	iwc := NewWorldContext(wc)
+	iwc := NewWorldContext(wc, nil)
 
 	balance := iwc.GetBalance(address)
 	assert.NotNil(t, balance)
@@ -49,7 +49,7 @@ func TestWorldContextImpl_Deposit(t *testing.T) {
 	var sum int64
 	for i := int64(0); i < 10; i++ {
 		amount := big.NewInt(i)
-		err = iwc.Deposit(address, amount)
+		err = iwc.Deposit(address, amount, module.Genesis)
 		assert.NoError(t, err)
 
 		sum += i
@@ -57,10 +57,10 @@ func TestWorldContextImpl_Deposit(t *testing.T) {
 		assert.Equal(t, sum, balance.Int64())
 	}
 
-	err = iwc.Deposit(address, big.NewInt(-100))
+	err = iwc.Deposit(address, big.NewInt(-100), module.Genesis)
 	assert.Error(t, err)
 
-	err = iwc.Deposit(address, big.NewInt(0))
+	err = iwc.Deposit(address, big.NewInt(0), module.Genesis)
 	assert.NoError(t, err)
 	assert.Equal(t, sum, balance.Int64())
 }
@@ -69,22 +69,22 @@ func TestWorldContextImpl_Withdraw(t *testing.T) {
 	var err error
 	address := common.MustNewAddressFromString("hx1")
 	wc := newWorldContext()
-	iwc := NewWorldContext(wc)
+	iwc := NewWorldContext(wc, nil)
 
 	balance := iwc.GetBalance(address)
 	assert.NotNil(t, balance)
 	assert.Zero(t, balance.Int64())
 
 	expectedBalance := int64(50)
-	err = iwc.Deposit(address, big.NewInt(expectedBalance))
+	err = iwc.Deposit(address, big.NewInt(expectedBalance), module.Genesis)
 	assert.NoError(t, err)
 
 	// Subtract 100 from 50
-	err = iwc.Withdraw(address, big.NewInt(100))
+	err = iwc.Withdraw(address, big.NewInt(100), module.Stake)
 	assert.Error(t, err)
 
 	for i := 0; i < 5; i++ {
-		err = iwc.Withdraw(address, big.NewInt(10))
+		err = iwc.Withdraw(address, big.NewInt(10), module.Stake)
 		assert.NoError(t, err)
 
 		expectedBalance -= 10
@@ -94,11 +94,11 @@ func TestWorldContextImpl_Withdraw(t *testing.T) {
 	assert.Zero(t, balance.Sign())
 
 	// Negative amount is not allowed
-	err = iwc.Withdraw(address, big.NewInt(-100))
+	err = iwc.Withdraw(address, big.NewInt(-100), module.Stake)
 	assert.Error(t, err)
 
 	// Subtract 100 from 0
-	err = iwc.Withdraw(address, big.NewInt(100))
+	err = iwc.Withdraw(address, big.NewInt(100), module.Stake)
 	assert.Error(t, err)
 }
 
@@ -107,18 +107,18 @@ func TestWorldContextImpl_Transfer(t *testing.T) {
 	from := common.MustNewAddressFromString("hx1")
 	to := common.MustNewAddressFromString("hx2")
 	wc := newWorldContext()
-	iwc := NewWorldContext(wc)
+	iwc := NewWorldContext(wc, nil)
 
 	initBalance := int64(100)
-	err = iwc.Deposit(from, big.NewInt(initBalance))
+	err = iwc.Deposit(from, big.NewInt(initBalance), module.Genesis)
 	assert.NoError(t, err)
-	err = iwc.Deposit(to, big.NewInt(initBalance))
+	err = iwc.Deposit(to, big.NewInt(initBalance), module.Genesis)
 	assert.NoError(t, err)
 
 	// transfer 30 from "from" to "to"
 	// from: 100 - 30 = 70
 	// to: 100 + 30 = 130
-	err = iwc.Transfer(from, to, big.NewInt(30))
+	err = iwc.Transfer(from, to, big.NewInt(30), module.Transfer)
 	assert.NoError(t, err)
 	assert.Zero(t, big.NewInt(70).Cmp(iwc.GetBalance(from)))
 	assert.Zero(t, big.NewInt(130).Cmp(iwc.GetBalance(to)))
@@ -127,7 +127,7 @@ func TestWorldContextImpl_Transfer(t *testing.T) {
 func TestWorldContextImpl_TotalSupply(t *testing.T) {
 	var err error
 	wc := newWorldContext()
-	iwc := NewWorldContext(wc)
+	iwc := NewWorldContext(wc, nil)
 
 	ts := iwc.GetTotalSupply()
 	assert.NotNil(t, ts)
@@ -150,7 +150,7 @@ func TestWorldContextImpl_SetScoreOwner_SanityCheck(t *testing.T) {
 	score := common.MustNewAddressFromString("cx1")
 	owner := common.MustNewAddressFromString("hx2")
 
-	wc := NewWorldContext(newWorldContext())
+	wc := NewWorldContext(newWorldContext(), nil)
 
 	// Case: from is nil
 	err = wc.SetScoreOwner(nil, score, owner)

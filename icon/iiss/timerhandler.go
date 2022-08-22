@@ -19,6 +19,7 @@ package iiss
 import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 )
 
 func (es *ExtensionStateImpl) handleTimerJob(wc icmodule.WorldContext) (err error) {
@@ -42,7 +43,7 @@ func (es *ExtensionStateImpl) handleTimerJob(wc icmodule.WorldContext) (err erro
 
 func (es *ExtensionStateImpl) handleUnstakingTimer(wc icmodule.WorldContext, ts *icstate.TimerSnapshot, h int64) error {
 	es.logger.Tracef("handleUnstakingTimer() start: bh=%d", h)
-	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
+	for itr := ts.Iterator(); itr.Has(); itr.Next() {
 		a, _ := itr.Get()
 		ea := es.State.GetAccountState(a)
 		es.logger.Tracef("account %s: %s", a, ea)
@@ -50,7 +51,7 @@ func (es *ExtensionStateImpl) handleUnstakingTimer(wc icmodule.WorldContext, ts 
 		if err != nil {
 			return err
 		}
-		if err = wc.Deposit(a, ra); err != nil {
+		if err = wc.Deposit(a, ra, module.Unstake); err != nil {
 			return err
 		}
 		blockHeight := wc.BlockHeight()
@@ -65,7 +66,7 @@ func (es *ExtensionStateImpl) handleUnstakingTimer(wc icmodule.WorldContext, ts 
 
 func (es *ExtensionStateImpl) handleUnbondingTimer(ts *icstate.TimerSnapshot, h int64) error {
 	es.logger.Tracef("handleUnbondingTimer() start: bh=%d", h)
-	for itr := ts.Iterator() ; itr.Has() ; itr.Next() {
+	for itr := ts.Iterator(); itr.Has(); itr.Next() {
 		a, _ := itr.Get()
 		es.logger.Tracef("account : %s", a)
 		as := es.State.GetAccountState(a)

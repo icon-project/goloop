@@ -15,9 +15,9 @@ type WorldContext interface {
 	TransactionID() []byte
 	ConsensusInfo() module.ConsensusInfo
 	GetBalance(address module.Address) *big.Int
-	Deposit(address module.Address, amount *big.Int) error
-	Withdraw(address module.Address, amount *big.Int) error
-	Transfer(from module.Address, to module.Address, amount *big.Int) error
+	Deposit(address module.Address, amount *big.Int, opType module.OpType) error
+	Withdraw(address module.Address, amount *big.Int, opType module.OpType) error
+	Transfer(from module.Address, to module.Address, amount *big.Int, opType module.OpType) error
 	GetTotalSupply() *big.Int
 	AddTotalSupply(amount *big.Int) (*big.Int, error)
 	SetValidators(validators []module.Validator) error
