@@ -99,7 +99,7 @@ func (c *contract) CodeHash() []byte {
 }
 
 func (c *contract) Code() ([]byte, error) {
-	if len(c.code) == 0 {
+	if c.code == nil {
 		if len(c.codeHash) == 0 {
 			return nil, nil
 		}
@@ -107,7 +107,7 @@ func (c *contract) Code() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(code) == 0 {
+		if code == nil {
 			return nil, errors.NotFoundError.Errorf(
 				"FAIL to find code by codeHash(%x)", c.codeHash)
 		}

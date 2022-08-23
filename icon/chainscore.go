@@ -586,7 +586,7 @@ var chainMethods = []*chainMethod{
 			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R2, icmodule.RevisionICON2R2},
+	}, icmodule.RevisionICON2R2, icmodule.RevisionICON2R3 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNetworkScore",
 		scoreapi.FlagExternal, 1,

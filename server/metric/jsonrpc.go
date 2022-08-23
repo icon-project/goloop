@@ -57,6 +57,7 @@ var (
 		"icx_getVotesByHeight":       msRetrieve,
 		"icx_getProofForResult":      msRetrieve,
 		"icx_getProofForEvents":      msRetrieve,
+		"icx_getScoreStatus":         msRetrieve,
 		"btp_getNetworkInfo":         msRetrieve,
 		"btp_getNetworkTypeInfo":     msRetrieve,
 		"btp_getMessages":            msRetrieve,

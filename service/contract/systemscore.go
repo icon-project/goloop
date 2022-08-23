@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	CID_CHAIN = "CID_CHAINSCORE"
+	CID_CHAIN = ""
 )
 
 type SystemScoreModule struct {

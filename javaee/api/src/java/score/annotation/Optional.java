@@ -27,7 +27,7 @@ import java.lang.annotation.Target;
  * If optional parameters were omitted when the external method is called, the value of optional parameters
  * would be their zero values.
  * The zero value is:
- *     0 for numeric types,
+ *     0 for numeric types (including BigInteger),
  *     false for the boolean type, and
  *     null for Object types.
  */

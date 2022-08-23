@@ -300,6 +300,16 @@ public final class Converters {
         public RpcItem convertFrom(BTPSourceInfo object) {
             return RpcItemCreator.create(object);
         }
+    public static final RpcConverter<ScoreStatus> SCORE_STATUS = new RpcConverter<ScoreStatus>() {
+        @Override
+        public ScoreStatus convertTo(RpcItem object) {
+            return new ScoreStatus(object.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(ScoreStatus object) {
+            return RpcItemCreator.create(object);
+        }
     };
 
     public static <TT> RpcConverterFactory newFactory(

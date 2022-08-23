@@ -178,6 +178,6 @@ public class Bytes {
 
     private boolean isValidHex(String value) {
         String v = cleanHexPrefix(value);
-        return v.matches("^[0-9a-fA-F]+$");
+        return v.matches("^[0-9a-fA-F]*$");
     }
 }

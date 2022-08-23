@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -578,6 +579,90 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 		return nil, NoActiveContractError.Errorf("Account(%s) doesn't have active contract", addr)
 	}
 	return info, nil
+}
+
+type scoreStatus struct {
+	ass state.AccountSnapshot
+}
+
+func contractToJSON(c state.ContractSnapshot, version module.JSONVersion) interface{} {
+	ret := make(map[string]interface{})
+	ret["status"] = c.Status().String()
+	if txHash := c.DeployTxHash(); txHash != nil {
+		ret["deployTxHash"] = fmt.Sprintf("%#x", txHash)
+	}
+	if txHash := c.AuditTxHash(); txHash != nil {
+		ret["auditTxHash"] = fmt.Sprintf("%#x", txHash)
+	}
+	ret["type"] = c.EEType()
+	ret["codeHash"] = fmt.Sprintf("%#x", c.CodeHash())
+	return ret
+}
+
+// dummyDepositContext conforms to state.DepositContext. But it implements
+// only one interface BlockHeight which is used during GetDepositInfo
+// of the state.AccountState or state.AccountSnapshot
+type dummyDepositContext struct {
+	state.DepositContext
+	height int64
+}
+
+func (c dummyDepositContext) BlockHeight() int64 {
+	return c.height
+}
+
+func boolToJSON(v bool) interface{} {
+	if v {
+		return "0x1"
+	} else {
+		return "0x0"
+	}
+}
+
+func (s *scoreStatus) ToJSON(height int64, version module.JSONVersion) (interface{}, error) {
+	ret := make(map[string]interface{})
+	if owner := s.ass.ContractOwner(); owner != nil {
+		ret["owner"] = owner
+	}
+	if c := s.ass.Contract(); c != nil {
+		ret["current"] = contractToJSON(c, version)
+	}
+	if c := s.ass.NextContract(); c != nil {
+		ret["next"] = contractToJSON(c, version)
+	}
+	dc := dummyDepositContext{height: height}
+	if di, err := s.ass.GetDepositInfo(dc, version); err != nil {
+		return nil, scoreresult.New(module.StatusUnknownFailure, "FailOnDepositInfo")
+	} else if di != nil {
+		ret["depositInfo"] = di
+	}
+	if s.ass.IsDisabled() {
+		ret["disabled"] = "0x1"
+	}
+	if s.ass.IsBlocked() {
+		ret["blocked"] = "0x1"
+	}
+	if s.ass.UseSystemDeposit() {
+		ret["useSystemDeposit"] = "0x1"
+	}
+	return ret, nil
+}
+
+func (m *manager) GetSCOREStatus(result []byte, addr module.Address) (module.SCOREStatus, error) {
+	if !addr.IsContract() {
+		return nil, errors.IllegalArgumentError.Errorf("Given Address(%s) isn't contract", addr)
+	}
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return nil, err
+	}
+	ass := wss.GetAccountSnapshot(addr.ID())
+	if ass == nil || !ass.IsContract() {
+		return nil, errors.NotFoundError.Errorf("NoValidContract(addr=%s)", addr)
+	}
+	return &scoreStatus{
+		ass: ass,
+	}, nil
 }
 
 func (m *manager) GetMembers(result []byte) (module.MemberList, error) {

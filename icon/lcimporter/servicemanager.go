@@ -373,6 +373,10 @@ func (sm *ServiceManager) GetStatus() string {
 	}
 }
 
+func (sm *ServiceManager) GetSCOREStatus(result []byte, addr module.Address) (module.SCOREStatus, error) {
+	return nil, common.ErrInvalidState
+}
+
 func NewServiceManagerWithExecutor(chain module.Chain, ex *Executor, ps BlockV1ProofStorage, vs []*common.Address, cb ImportCallback) (*ServiceManager, error) {
 	logger := chain.Logger()
 	dbase := chain.Database()
