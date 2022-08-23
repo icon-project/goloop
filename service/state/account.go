@@ -865,7 +865,7 @@ func (s *accountStateImpl) PaySteps(pc PayContext, steps *big.Int) (*big.Int, *b
 	return nil, nil, nil
 }
 
-func newAccountState(database db.Database, snapshot *accountSnapshotImpl, key []byte, useCache bool) AccountState {
+func newAccountState(database db.Database, snapshot AccountSnapshot, key []byte, useCache bool) AccountState {
 	s := &accountStateImpl{
 		accountData: accountData{
 			database: database,

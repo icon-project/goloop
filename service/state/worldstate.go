@@ -134,14 +134,10 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	ws.accounts.Reset(snapshot.accounts)
 	for _, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
-		value, err := ws.accounts.Get(key)
-		if err != nil {
-			log.Errorf("Fail to read account value. err=%+v\n", err)
-		}
-		if value == nil {
+		if value := ws.getAccountSnapshotWithKey(key); value == nil {
 			as.Clear()
 		} else {
-			if err := as.Reset(value.(AccountSnapshot)); err != nil {
+			if err := as.Reset(value); err != nil {
 				return err
 			}
 		}
@@ -167,15 +163,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 		return a
 	}
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key)
-	if err != nil {
-		log.Errorf("Fail to get account for %x err=%+v", key, err)
-		return nil
-	}
-	var as *accountSnapshotImpl
-	if obj != nil {
-		as = obj.(*accountSnapshotImpl)
-	}
+	as := ws.getAccountSnapshotWithKey(key)
 	ac := newAccountState(ws.database, as, key, ws.nodeCacheEnabled)
 	ws.mutableAccounts[ids] = ac
 	return ac
@@ -229,6 +217,19 @@ func (ws *worldStateImpl) EnableAccountNodeCache(id []byte) bool {
 	return false
 }
 
+func (ws *worldStateImpl) getAccountSnapshotWithKey(key []byte) AccountSnapshot {
+	obj, err := ws.accounts.Get(key)
+	if err != nil {
+		log.Errorf("Fail to get account for %x err=%+v", key, err)
+		return nil
+	}
+	if obj == nil {
+		return nil
+	} else {
+		return obj.(AccountSnapshot)
+	}
+}
+
 func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
@@ -238,16 +239,11 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	}
 
 	key := addressIDToKey(id)
-	obj, err := ws.accounts.Get(key)
-	if err != nil {
-		log.Errorf("Fail to get account for %x err=%+v", key, err)
-		return nil
+	if ass := ws.getAccountSnapshotWithKey(key); ass != nil {
+		return ass
+	} else {
+		return newAccountSnapshot(ws.database)
 	}
-	if obj != nil {
-		return obj.(*accountSnapshotImpl)
-	}
-
-	return newAccountSnapshot(ws.database)
 }
 
 func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
