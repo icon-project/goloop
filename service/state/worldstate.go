@@ -109,6 +109,7 @@ type worldStateImpl struct {
 	database        db.Database
 	accounts        trie.MutableForObject
 	mutableAccounts map[string]AccountState
+	lastAccounts    map[string]AccountSnapshot
 	validators      ValidatorState
 	extension       extensionStateHolder
 
@@ -132,14 +133,16 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 		return errors.InvalidStateError.New("InvalidSnapshotWithDifferentDB")
 	}
 	ws.accounts.Reset(snapshot.accounts)
-	for _, as := range ws.mutableAccounts {
+	for ids, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
 		if value := ws.getAccountSnapshotWithKey(key); value == nil {
 			as.Clear()
+			delete(ws.lastAccounts, ids)
 		} else {
 			if err := as.Reset(value); err != nil {
 				return err
 			}
+			ws.lastAccounts[ids] = value
 		}
 	}
 	ws.validators.Reset(snapshot.GetValidatorSnapshot())
@@ -166,13 +169,24 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	as := ws.getAccountSnapshotWithKey(key)
 	ac := newAccountState(ws.database, as, key, ws.nodeCacheEnabled)
 	ws.mutableAccounts[ids] = ac
+	ws.lastAccounts[ids] = as
 	return ac
 }
 
 func (ws *worldStateImpl) flushAccountCacheInLock() {
-	for _, as := range ws.mutableAccounts {
+	for ids, as := range ws.mutableAccounts {
 		key := as.(*accountStateImpl).key
 		s := as.GetSnapshot()
+		if ass, _ := ws.lastAccounts[ids]; ass != nil {
+			if ass == s {
+				continue
+			}
+		} else {
+			if s.IsEmpty() {
+				continue
+			}
+		}
+		ws.lastAccounts[ids] = s
 		if s.IsEmpty() {
 			if _, err := ws.accounts.Delete(key); err != nil {
 				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
@@ -193,6 +207,7 @@ func (ws *worldStateImpl) ClearCache() {
 	ws.accounts.ClearCache()
 	ws.extension.ClearCache()
 	ws.mutableAccounts = make(map[string]AccountState)
+	ws.lastAccounts = make(map[string]AccountSnapshot)
 }
 
 func (ws *worldStateImpl) EnableNodeCache() {
@@ -265,6 +280,7 @@ func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot,
 	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, AccountType)
 	ws.mutableAccounts = make(map[string]AccountState)
+	ws.lastAccounts = make(map[string]AccountSnapshot)
 	if vs == nil {
 		ws.validators, _ = ValidatorStateFromHash(database, nil)
 	} else {
@@ -305,6 +321,7 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws.database = wss.database
 		ws.accounts = trie_manager.NewMutableFromImmutableForObject(wss.accounts)
 		ws.mutableAccounts = make(map[string]AccountState)
+		ws.lastAccounts = make(map[string]AccountSnapshot)
 		ws.validators = ValidatorStateFromSnapshot(wss.GetValidatorSnapshot())
 		ws.extension.Reset(wss.GetExtensionSnapshot())
 		return ws, nil
