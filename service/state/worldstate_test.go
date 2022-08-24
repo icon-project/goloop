@@ -362,9 +362,44 @@ func BenchmarkWorldStateImpl_GetSnapshotN(b *testing.B) {
 				as.SetBalance(big.NewInt(int64(idx * 10)))
 			}
 			ws.GetSnapshot()
-			b.StartTimer()
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				ws.GetSnapshot()
+			}
+		})
+	}
+}
+
+func BenchmarkWorldStateImpl_ResetN(b *testing.B) {
+	runs := []struct{ accounts int }{
+		{1000},
+		{2000},
+	}
+
+	for _, run := range runs {
+		b.Run(fmt.Sprint(run.accounts), func(b *testing.B) {
+			dbase := db.NewMapDB()
+			addrs := make([]module.Address, run.accounts)
+			for i := 0; i < len(addrs); i++ {
+				addrs[i] = common.MustNewAddressFromString(fmt.Sprintf("hx%040d", i))
+			}
+			ws := NewWorldState(dbase, nil, nil, nil)
+			for idx, addr := range addrs[0 : len(addrs)/2] {
+				as := ws.GetAccountState(addr.ID())
+				as.SetBalance(big.NewInt(int64(idx * 10)))
+			}
+			for _, addr := range addrs[len(addrs)/2:] {
+				ws.GetAccountState(addr.ID())
+			}
+
+			wss := ws.GetSnapshot()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				for idx, addr := range addrs[len(addrs)/2:] {
+					as := ws.GetAccountState(addr.ID())
+					as.SetBalance(big.NewInt(int64(idx * 10)))
+				}
+				ws.Reset(wss)
 			}
 		})
 	}
