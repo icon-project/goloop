@@ -144,7 +144,8 @@ func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, erro
 
 func (tx *transactionV2) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
-	trans := new(big.Int).Add(&tx.Value.Int, version2FixedFee)
+	amount := &tx.Value.Int
+	trans := new(big.Int).Add(amount, version2FixedFee)
 	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(trans) < 0 {
@@ -160,9 +161,11 @@ func (tx *transactionV2) Execute(ctx contract.Context, wcs state.WorldSnapshot, 
 		as2 = ctx.GetAccountState(state.LostID)
 	}
 	bal2 := as2.GetBalance()
-	as2.SetBalance(new(big.Int).Add(bal2, &tx.Value.Int))
+	as2.SetBalance(new(big.Int).Add(bal2, amount))
 
 	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
+	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction, ctx.TransactionInfo())
+	traceLogger.OnBalanceChange(module.Transfer, tx.From(), tx.To(), amount)
 	return r, nil
 }
 
