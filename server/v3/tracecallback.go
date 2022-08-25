@@ -78,8 +78,10 @@ func (t *traceCallback) result(blk module.Block) interface{} {
 			}
 		}
 	} else if t.mode == module.TraceModeBalanceChange {
-		result["blockHash"] = "0x" + hex.EncodeToString(blk.Hash())
-		result["blockHeight"] = fmt.Sprintf("0x%x", blk.Height())
+		result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
+		result["prevBlockHash"] = "0x" + hex.EncodeToString(blk.PrevID())
+		result["blockHeight"] = fmt.Sprintf("%#x", blk.Height())
+		result["timestamp"] = fmt.Sprintf("%#x", blk.Timestamp())
 		balanceChanges := trace.BalanceTracerToJSON(t.bt)
 		if balanceChanges != nil {
 			result["balanceChanges"] = balanceChanges
