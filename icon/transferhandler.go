@@ -89,5 +89,6 @@ func (h *TransferHandler) DoExecuteSync(cc contract.CallContext) (err error, ro 
 		cc.OnEvent(h.From, indexed, make([][]byte, 0))
 	}
 
+	h.Log.OnBalanceChange(module.Transfer, h.From, h.To, h.Value)
 	return nil, nil, nil
 }
