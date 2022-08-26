@@ -21,6 +21,7 @@ import (
 	"container/list"
 	"encoding/base64"
 	"encoding/hex"
+
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
@@ -230,18 +231,24 @@ func NewBTPContext(wc WorldContext, store containerdb.BytesStoreState) BTPContex
 	}
 }
 
+type ntModFlag int
+
+const (
+	proofContextChanged ntModFlag = 1 << iota
+	inactivated
+)
+
 type btpData struct {
-	dbase                  db.Database
-	validators             []module.Address
-	proofContextChanged    map[int64]bool     // key: networkType ID
-	pubKeyChanged          map[string][]int64 // key: string(Address.Bytes()). value: slice of networkType ID
-	networkModified        map[int64]bool     // key: network ID
-	inactivatedNetworkType map[int64]bool     // key: networkType ID
-	digest                 module.BTPDigest
-	digestHash             []byte
+	dbase           db.Database
+	validators      []module.Address
+	pubKeyChanged   map[string][]int64  // key: string(Address.Bytes()). value: slice of networkType ID
+	ntModified      map[int64]ntModFlag // key: networkType ID
+	networkModified map[int64]bool      // key: network ID
+	digest          module.BTPDigest
+	digestHash      []byte
 }
 
-func (bd *btpData) clone() *btpData {
+func (bd *btpData) Clone() *btpData {
 	n := new(btpData)
 
 	n.dbase = bd.dbase
@@ -256,9 +263,9 @@ func (bd *btpData) clone() *btpData {
 		n.validators[k] = v
 	}
 
-	n.proofContextChanged = make(map[int64]bool)
-	for k, v := range bd.proofContextChanged {
-		n.proofContextChanged[k] = v
+	n.ntModified = make(map[int64]ntModFlag)
+	for k, v := range bd.ntModified {
+		n.ntModified[k] = v
 	}
 
 	n.pubKeyChanged = make(map[string][]int64)
@@ -296,7 +303,7 @@ func (bss *btpSnapshot) Flush() error {
 
 func (bss *btpSnapshot) NewState() BTPState {
 	state := new(BTPStateImpl)
-	state.btpData = bss.clone()
+	state.btpData = bss.Clone()
 	return state
 }
 
@@ -314,7 +321,7 @@ type BTPStateImpl struct {
 
 func (bs *BTPStateImpl) GetSnapshot() BTPSnapshot {
 	bss := new(btpSnapshot)
-	bss.btpData = bs.clone()
+	bss.btpData = bs.Clone()
 	return bss
 }
 
@@ -323,12 +330,7 @@ func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
 	if !ok {
 		return
 	}
-	if ss.networkModified != nil {
-		bs.networkModified = make(map[int64]bool)
-		for k, v := range ss.networkModified {
-			bs.networkModified[k] = v
-		}
-	}
+	bs.btpData = ss.Clone()
 }
 
 func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
@@ -342,10 +344,21 @@ func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
 }
 
 func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
-	if bs.proofContextChanged == nil {
-		bs.proofContextChanged = make(map[int64]bool)
+	if bs.ntModified == nil {
+		bs.ntModified = make(map[int64]ntModFlag)
 	}
-	bs.proofContextChanged[ntid] = true
+	bs.ntModified[ntid] |= proofContextChanged
+}
+
+func (bs *BTPStateImpl) setInactivatedNetworkType(ntid int64, yn bool) {
+	if bs.ntModified == nil {
+		bs.ntModified = make(map[int64]ntModFlag)
+	}
+	if yn {
+		bs.ntModified[ntid] |= inactivated
+	} else {
+		bs.ntModified[ntid] &= ^inactivated
+	}
 }
 
 func (bs *BTPStateImpl) addPubKeyChanged(address module.Address, ntid int64) {
@@ -364,13 +377,6 @@ func (bs *BTPStateImpl) setNetworkModified(nid int64) {
 		bs.networkModified = make(map[int64]bool)
 	}
 	bs.networkModified[nid] = true
-}
-
-func (bs *BTPStateImpl) setInactivatedNetworkType(ntid int64, yn bool) {
-	if bs.inactivatedNetworkType == nil {
-		bs.inactivatedNetworkType = make(map[int64]bool)
-	}
-	bs.inactivatedNetworkType[ntid] = yn
 }
 
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
@@ -624,18 +630,15 @@ func (bs *BTPStateImpl) CheckPublicKey(bc BTPContext, from module.Address) error
 }
 
 func (bs *BTPStateImpl) update(bc BTPContext) error {
-	for ntid := range bs.proofContextChanged {
+	for ntid, v := range bs.ntModified {
+		if v == 0 {
+			continue
+		}
 		if err := bs.updateNetworkType(bc, ntid); err != nil {
 			return err
 		}
 	}
-	for ntid, yn := range bs.inactivatedNetworkType {
-		if yn {
-			if err := bs.updateNetworkType(bc, ntid); err != nil {
-				return err
-			}
-		}
-	}
+
 	for nid := range bs.networkModified {
 		if err := bs.updateNetwork(bc, nid); err != nil {
 			return err
@@ -676,10 +679,10 @@ func (bs *BTPStateImpl) updateNetwork(bc BTPContext, nid int64) error {
 		return errors.NotFoundError.Errorf("not found nid=%d", nid)
 	} else {
 		pcChanged := false
-		if _, ok := bs.proofContextChanged[nw.NetworkTypeID()]; ok {
+		if len(nw.LastNetworkSectionHash()) == 0 {
 			pcChanged = true
-		} else {
-			pcChanged = len(nw.LastNetworkSectionHash()) == 0
+		} else if v, _ := bs.ntModified[nw.NetworkTypeID()]; v != 0 {
+			pcChanged = true
 		}
 		nw.SetNextProofContextChanged(pcChanged)
 		return nwDB.Set(nid, nw.Bytes())
@@ -773,8 +776,8 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 		sb.EnsureSection(nid)
 	}
 
-	for ntid, yn := range bs.inactivatedNetworkType {
-		if yn {
+	for ntid, v := range bs.ntModified {
+		if v&inactivated != 0 {
 			sb.NotifyInactivated(ntid)
 		}
 	}
