@@ -872,6 +872,13 @@ func (n *Node) Configure(key string, value string) error {
 			n.rcfg.RPCIncludeDebug = boolVal
 		}
 		n.srv.SetIncludeDebug(n.rcfg.RPCIncludeDebug)
+	case "rpcRosetta":
+		if boolVal, err := strconv.ParseBool(value); err != nil {
+			return errors.Wrapf(err, "invalid value type")
+		} else {
+			n.rcfg.RPCRosetta = boolVal
+		}
+		n.srv.SetRosetta(n.rcfg.RPCRosetta)
 	case "rpcBatchLimit":
 		if intVal, err := strconv.Atoi(value); err != nil {
 			return errors.Wrapf(err, "invalid value type")
