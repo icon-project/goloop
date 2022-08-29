@@ -340,7 +340,9 @@ func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool,
 		}
 	}
 
-	t.log.Debugf("ExecuteForTrace() end")
+	// no need to validate the tx again for trace
+	t.step = stepValidated
+
 	return t.startExecution(func() error {
 		if t.syncer != nil {
 			return errors.InvalidStateError.New("TraceWithSyncTransition")
