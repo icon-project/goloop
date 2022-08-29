@@ -131,7 +131,7 @@ func (l *Logger) OnTransactionRerun(txInfo *state.TransactionInfo) {
 	}
 }
 
-func (l *Logger) OnTransactionEnd(txInfo *state.TransactionInfo, treasury module.Address) {
+func (l *Logger) OnTransactionEnd(txInfo *state.TransactionInfo, traceRct module.Receipt, treasury module.Address) {
 	if l.cb == nil {
 		return
 	}
@@ -140,12 +140,30 @@ func (l *Logger) OnTransactionEnd(txInfo *state.TransactionInfo, treasury module
 		return
 	}
 
+	finalRct := l.cb.GetReceipt(int(txInfo.Index))
+	l.checkReceipts(traceRct, finalRct)
+
 	txHashHex := hex.EncodeToString(txInfo.Hash)
-	l.onFee(txInfo, treasury, l.cb.GetReceipt(int(txInfo.Index)))
+	l.onFee(txInfo, treasury, finalRct)
 
 	if err := l.cb.OnTransactionEnd(txInfo.Index, txInfo.Hash); err != nil {
 		l.Warnf("OnTransactionEnd() error: txIndex=%d txHash=%s err=%#v",
 			txInfo.Index, txHashHex, err)
+	}
+}
+
+func (l *Logger) checkReceipts(traceRct, finalRct module.Receipt) {
+	if traceRct == nil {
+		l.Errorf("Trace receipt is nil in Logger.OnTransactionEnd()")
+		return
+	}
+	if finalRct == nil {
+		l.Errorf("Final receipt is nil in Logger.OnTransactionEnd()")
+		return
+	}
+	if traceRct.Status() != finalRct.Status() {
+		l.Errorf("Different status between trace and final receipts: trace=%d final=%d",
+			traceRct.Status(), finalRct.Status())
 	}
 }
 

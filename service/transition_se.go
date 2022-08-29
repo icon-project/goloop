@@ -82,7 +82,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			traceLogger.OnTransactionRerun(txInfo)
 		}
 
-		traceLogger.OnTransactionEnd(txInfo, ctx.Treasury())
+		traceLogger.OnTransactionEnd(txInfo, rctBuf[txInfo.Index], ctx.Treasury())
 		duration := time.Now().Sub(ts)
 		t.log.Tracef("END   TX <0x%x> duration=%s", txo.ID(), duration)
 		cnt++
