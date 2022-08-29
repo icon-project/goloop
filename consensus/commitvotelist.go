@@ -25,10 +25,10 @@ type blockCommitVoteItem struct {
 }
 
 type blockCommitVoteList struct {
-	Round          int32
-	BlockPartSetID *PartSetID
-	Items          []blockCommitVoteItem
-	bytes          []byte
+	Round                         int32
+	BlockPartSetIDAndNTSVoteCount *PartSetIDAndAppData
+	Items                         []blockCommitVoteItem
+	bytes                         []byte
 }
 
 func (bvl *blockCommitVoteList) BlockVoteSetBytes() []byte {
@@ -51,7 +51,7 @@ func (bvl *blockCommitVoteList) VerifyBlock(block module.BlockData, validators m
 	msg.Height = block.Height()
 	msg.Round = bvl.Round
 	msg.Type = VoteTypePrecommit
-	msg.SetRoundDecision(block.ID(), bvl.BlockPartSetID, nil)
+	msg.SetRoundDecision(block.ID(), bvl.BlockPartSetIDAndNTSVoteCount, nil)
 	for i, item := range bvl.Items {
 		msg.Timestamp = item.Timestamp
 		msg.setSignature(item.Signature)
@@ -80,7 +80,7 @@ func enoughVote(voted int, voters int) bool {
 
 func (bvl *blockCommitVoteList) String() string {
 	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d)",
-		bvl.Round, bvl.BlockPartSetID, len(bvl.Items))
+		bvl.Round, bvl.BlockPartSetIDAndNTSVoteCount, len(bvl.Items))
 }
 
 func (bvl *blockCommitVoteList) Timestamp() int64 {
@@ -112,11 +112,11 @@ type CommitVoteList struct {
 
 func (vl *CommitVoteList) RLPEncodeSelf(e codec.Encoder) error {
 	if len(vl.NTSDProves) == 0 {
-		return e.EncodeListOf(vl.Round, vl.BlockPartSetID, vl.Items)
+		return e.EncodeListOf(vl.Round, vl.BlockPartSetIDAndNTSVoteCount, vl.Items)
 	}
 	return e.EncodeListOf(
 		vl.Round,
-		vl.BlockPartSetID,
+		vl.BlockPartSetIDAndNTSVoteCount,
 		vl.Items,
 		vl.NTSDProves,
 	)
@@ -129,7 +129,7 @@ func (vl *CommitVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	}
 	cnt, err := d2.DecodeMulti(
 		&vl.Round,
-		&vl.BlockPartSetID,
+		&vl.BlockPartSetIDAndNTSVoteCount,
 		&vl.Items,
 		&vl.NTSDProves,
 	)
@@ -161,7 +161,7 @@ func (vl *CommitVoteList) NTSDProofAt(i int) []byte {
 
 func (vl *CommitVoteList) String() string {
 	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d,len(NTS)=%d)",
-		vl.Round, vl.BlockPartSetID, len(vl.Items), len(vl.NTSDProves))
+		vl.Round, vl.BlockPartSetIDAndNTSVoteCount, len(vl.Items), len(vl.NTSDProves))
 }
 
 func (vl *CommitVoteList) toVoteListWithBlock(
@@ -238,7 +238,7 @@ func (vl *CommitVoteList) toVoteList(
 	msg.Height = height
 	msg.Round = vl.Round
 	msg.Type = VoteTypePrecommit
-	msg.SetRoundDecision(bid, vl.BlockPartSetID, ntsVoteBases)
+	msg.SetRoundDecision(bid, vl.BlockPartSetIDAndNTSVoteCount, ntsVoteBases)
 	if len(vl.Items) > 0 && validators == nil {
 		return nil, errors.Errorf("nil validators with voteListItems len(vl.Items)=%d", len(vl.Items))
 	}
@@ -264,7 +264,7 @@ func newCommitVoteList(
 		return vl, nil
 	}
 	vl.Round = msgs[0].Round
-	vl.BlockPartSetID = msgs[0].BlockPartSetID
+	vl.BlockPartSetIDAndNTSVoteCount = msgs[0].BlockPartSetIDAndNTSVoteCount
 	vl.Items = make([]blockCommitVoteItem, l)
 	rdd := msgs[0].RoundDecisionDigest()
 	for i := 0; i < l; i++ {

@@ -119,6 +119,21 @@ func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
 	}
 }
 
+func (bd *digest) NTSVoteCount(pcm module.BTPProofContextMap) (int, error) {
+	count := 0
+	for _, ntd := range bd.NetworkTypeDigests() {
+		_, err := pcm.ProofContextFor(ntd.NetworkTypeID())
+		if errors.Is(err, errors.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return -1, err
+		}
+		count++
+	}
+	return count, nil
+}
+
 type networkTypeDigestCore interface {
 	NetworkTypeID() int64
 	NetworkTypeSectionHash() []byte

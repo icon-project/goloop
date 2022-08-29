@@ -130,7 +130,7 @@ func (f *Fixture) newPrecommitsAndPCM(blk module.BlockData, round int32, ntsVote
 	pb := consensus.NewPartSetBuffer(consensus.ConfigBlockPartSize)
 	_, err = pb.Write(buf.Bytes())
 	assert.NoError(f.T, err)
-	ps := pb.PartSet(uint16(ntsVoteCount))
+	ps := pb.PartSet()
 	bpsID := ps.ID()
 	var votes []*consensus.VoteMessage
 	for _, v := range f.Validators {
@@ -140,7 +140,7 @@ func (f *Fixture) newPrecommitsAndPCM(blk module.BlockData, round int32, ntsVote
 			blk,
 			round,
 			consensus.VoteTypePrecommit,
-			bpsID,
+			bpsID.WithAppData(uint16(ntsVoteCount)),
 			blk.Timestamp()+1,
 			f.Chain.NID(),
 			pcm,

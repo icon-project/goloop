@@ -13,9 +13,9 @@ type VoteSet interface {
 }
 
 type counter struct {
-	roundDecisionDigest []byte
-	partsID             *PartSetID
-	count               int
+	roundDecisionDigest    []byte
+	partsIDAndNTSVoteCount *PartSetIDAndAppData
+	count                  int
 }
 
 type voteSet struct {
@@ -63,7 +63,7 @@ func (vs *voteSet) add(index int, v *VoteMessage) bool {
 		}
 	}
 	if !found {
-		vs.counters = append(vs.counters, counter{v.RoundDecisionDigest(), v.BlockPartSetID, 1})
+		vs.counters = append(vs.counters, counter{v.RoundDecisionDigest(), v.BlockPartSetIDAndNTSVoteCount, 1})
 	}
 	vs.count++
 	vs.maxIndex = -1
@@ -104,7 +104,7 @@ func (vs *voteSet) getOverTwoThirdsRoundDecisionDigest() ([]byte, *PartSetID, bo
 	}
 	if max > len(vs.msgs)*2/3 {
 		counter := vs.counters[vs.maxIndex]
-		return counter.roundDecisionDigest, counter.partsID, true
+		return counter.roundDecisionDigest, counter.partsIDAndNTSVoteCount.ID(), true
 	} else {
 		return nil, nil, false
 	}
@@ -173,7 +173,7 @@ func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
 	for _, msg := range vs.msgs {
 		evidence := msg != nil &&
 			msg.Round >= minRound &&
-			msg.BlockPartSetID == nil &&
+			msg.BlockPartSetIDAndNTSVoteCount == nil &&
 			bytes.Equal(nid, msg.BlockID)
 		if evidence {
 			rvl.AddVote(msg)

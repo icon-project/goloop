@@ -170,7 +170,12 @@ func (pc *secp256k1ProofContext) VerifyPart(dHash []byte, pp module.BTPProofPart
 		return -1, err
 	}
 	if !bytes.Equal(pc.Validators[epp.Index], addr) {
-		return -1, errors.Errorf("invalid proof part index=%d addr=%x", epp.Index, addr)
+		idx, ok := pc.indexOf(addr)
+		if ok {
+			return -1, errors.Errorf("invalid proof part. maybe vote index is wrong? vote.index=%d vote.addr=%x pc.validators[%d]=%x pc.validators[%d]=%x", epp.Index, addr, epp.Index, pc.Validators[epp.Index], idx, addr)
+		} else {
+			return -1, errors.Errorf("invalid proof part. not a validator. vote.index=%d vote.addr=%x pc.validators[%d]=%x", epp.Index, addr, epp.Index, pc.Validators[epp.Index])
+		}
 	}
 	return epp.Index, nil
 }

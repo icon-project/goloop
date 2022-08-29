@@ -47,9 +47,9 @@ func (vt VoteType) String() string {
 
 type blockVoteBase struct {
 	_HR
-	Type           VoteType
-	BlockID        []byte
-	BlockPartSetID *PartSetID
+	Type                          VoteType
+	BlockID                       []byte
+	BlockPartSetIDAndNTSVoteCount *PartSetIDAndAppData
 }
 
 type ntsVoteBase module.NTSHashEntryFormat
@@ -69,28 +69,28 @@ type voteBase struct {
 }
 
 type roundDecision struct {
-	BlockID        []byte
-	BlockPartSetID *PartSetID
-	NTSVoteBases   []ntsVoteBase
+	BlockID                       []byte
+	BlockPartSetIDAndNTSVoteCount *PartSetIDAndAppData
+	NTSVoteBases                  []ntsVoteBase
 }
 
-func (v *voteBase) SetRoundDecision(bid []byte, bpsID *PartSetID, ntsVoteBases []ntsVoteBase) {
+func (v *voteBase) SetRoundDecision(bid []byte, bpsIDAndNTSVoteCount *PartSetIDAndAppData, ntsVoteBases []ntsVoteBase) {
 	v.BlockID = bid
-	v.BlockPartSetID = bpsID
+	v.BlockPartSetIDAndNTSVoteCount = bpsIDAndNTSVoteCount
 	v.NTSVoteBases = ntsVoteBases
 	v.decisionDigest = nil
 }
 
 // RoundDecisionDigest returns digest for a vote. The digest values of two
-// votes are different if their BlockID, BlockPartSetID, len(NTSVotes),
+// votes are different if their BlockID, BlockPartSetIDAndNTSVoteCount, len(NTSVotes),
 // NTSVotes[i].NetworkTypeID or NTSVotes[i].NetworkTypeSectionHash is
 // different where 0 <= i < len(NTSVotes).
 func (v *voteBase) RoundDecisionDigest() []byte {
 	if v.decisionDigest == nil {
 		format := roundDecision{
-			BlockID:        v.BlockID,
-			BlockPartSetID: v.BlockPartSetID,
-			NTSVoteBases:   v.NTSVoteBases,
+			BlockID:                       v.BlockID,
+			BlockPartSetIDAndNTSVoteCount: v.BlockPartSetIDAndNTSVoteCount,
+			NTSVoteBases:                  v.NTSVoteBases,
 		}
 		// Sometimes we make zero length array for NTSVoteBases. Normalize for
 		// consistent hash value.
@@ -117,7 +117,7 @@ func (v voteBase) String() string {
 			v.Height,
 			v.Round,
 			common.HexPre(v.BlockID),
-			v.BlockPartSetID,
+			v.BlockPartSetIDAndNTSVoteCount,
 		)
 	}
 	return fmt.Sprintf(
@@ -126,7 +126,7 @@ func (v voteBase) String() string {
 		v.Height,
 		v.Round,
 		common.HexPre(v.BlockID),
-		v.BlockPartSetID,
+		v.BlockPartSetIDAndNTSVoteCount,
 		v.NTSVoteBases,
 	)
 }
