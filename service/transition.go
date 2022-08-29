@@ -340,7 +340,6 @@ func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool,
 		}
 	}
 
-	t.log.Debugf("ExecuteForTrace() end")
 	return t.startExecution(func() error {
 		if t.syncer != nil {
 			return errors.InvalidStateError.New("TraceWithSyncTransition")

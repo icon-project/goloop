@@ -8,8 +8,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/labstack/echo/v4"
-
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -1092,17 +1090,12 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 }
 
 func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
-	logger := ctx.Logger()
-	logger.SetLevel(0)
-
-	logger.Debug("getTraceForRosetta() start")
 	debug := ctx.IncludeDebug()
 
 	var param RosettaTraceParam
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
 	}
-	logger.Infof("param=%#v", param)
 
 	chain, err := ctx.Chain()
 	if err != nil {
@@ -1115,10 +1108,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	blk, txInfo, err := findBlockAndTxInfoByRosettaTraceParam(bm, sm, param, logger, debug)
-	logger.Infof("blk=%#v txInfo=%#v", blk, txInfo)
-
-	logger.Infof("blk=%#v txInfo=%#v err=%#v", blk, txInfo, err)
+	blk, txInfo, err := findBlockAndTxInfoByRosettaTraceParam(bm, sm, param, debug)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
@@ -1143,7 +1133,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 
 	rl, err := sm.ReceiptListFromResult(nblk.Result(), module.TransactionGroupNormal)
 	if err != nil {
-		logger.Errorf("ReceiptListFromResult error: err=%#v", err)
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
 	cb := &traceCallback{
@@ -1154,7 +1144,6 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 	}
 	canceller, err := tr2.ExecuteForTrace(newTraceInfo(txInfo, cb, len(param.Tx) > 0))
 	if err != nil {
-		logger.Infof("getTraceForRosetta() error: err=%#v", err)
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
@@ -1164,13 +1153,11 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		case <-timer:
 			canceller()
 			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
-				"Not enough time to get result of %x", param.Tx.Bytes())
+				"Not enough time to get result of %+v", param)
 		case <-cb.channel:
-			logger.Infof("getTraceForRosetta() end")
 			return cb.result(blk), nil
 		}
 	}
-	logger.Infof("getTraceForRosetta() end on error")
 	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
 }
 
@@ -1178,7 +1165,6 @@ func findBlockAndTxInfoByRosettaTraceParam(
 	bm module.BlockManager,
 	sm module.ServiceManager,
 	param RosettaTraceParam,
-	logger echo.Logger,
 	debug bool,
 ) (module.Block, module.TransactionInfo, error) {
 	var blk module.Block
@@ -1192,7 +1178,6 @@ func findBlockAndTxInfoByRosettaTraceParam(
 		}
 
 		txInfo, err = bm.GetTransactionInfo(txBytes)
-		logger.Infof("txInfo=%#v err=%#v", txInfo, err)
 		if errors.NotFoundError.Equals(err) {
 			if sm.HasTransaction(param.Tx.Bytes()) {
 				return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
