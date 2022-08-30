@@ -33,6 +33,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.score.BTP2;
 import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.GovScore;
 import org.junit.jupiter.api.BeforeAll;
@@ -57,8 +58,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@Tag(Constants.TAG_PY_GOV)
-@Tag(Constants.TAG_JAVA_GOV)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BTP2APITest extends TestBase {
     private static final String DSA_SECP256K1 = "ecdsa/secp256k1";
@@ -112,6 +111,8 @@ public class BTP2APITest extends TestBase {
         return raw;
     }
 
+    @Tag(Constants.TAG_PY_GOV)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     @Order(100)
     public void managePublicKey() throws Exception {
@@ -174,6 +175,8 @@ public class BTP2APITest extends TestBase {
         LOG.infoExiting();
     }
 
+    @Tag(Constants.TAG_PY_GOV)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     @Order(101)
     public void manageBTPNetwork() throws Exception {
@@ -244,6 +247,8 @@ public class BTP2APITest extends TestBase {
         }
     }
 
+    @Tag(Constants.TAG_PY_GOV)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     @Order(102)
     public void modifyPublicKey() throws Exception {
@@ -343,6 +348,9 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoExiting();
     }
+
+    @Tag(Constants.TAG_PY_GOV)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     @Order(103)
     public void sendBTPMessage() throws Exception {
@@ -387,6 +395,43 @@ public class BTP2APITest extends TestBase {
         LOG.infoExiting();
     }
 
+    @Tag(Constants.TAG_JAVA_GOV)
+    @Test
+    @Order(104)
+    public void sendBTPMessageAndRevert() throws Exception {
+        KeyWallet wallet = node.wallet;
+        TransactionResult result;
+
+        LOG.infoEntering("Deploy SCOREs for test");
+        var bmc = txHandler.deploy(wallet, testcases.BTP2BMC.class, null);
+        BTP2 testScore = BTP2.install(txHandler, wallet, bmc.getAddress());
+        LOG.infoExiting();
+
+        LOG.infoEntering("Open BTP Networks for test");
+        BigInteger nid = openBTPNetwork(NT_ICON, "icon", bmc.getAddress());
+        BigInteger nidRevert = openBTPNetwork(NT_ICON, "icon", bmc.getAddress());
+        LOG.infoExiting();
+
+        LOG.infoEntering("Send BTP message and revert");
+        byte[] msg = getRandomBytes(10);
+        int msgCount = 3;
+        result = testScore.sendAndRevert(wallet, nid, msg, BigInteger.valueOf(msgCount), nidRevert);
+        var height = result.getBlockHeight();
+        checkNetwork(height, nid, msgCount);
+        checkNetworkNotChanged(height, nidRevert);
+
+        height = height.add(BigInteger.ONE);
+        checkHeader(height, nid, 0, msgCount);
+        byte[][] msgs = new byte[msgCount][];
+        for (int i = 0; i < msgCount; i++) {
+            msgs[i] = msg;
+        }
+        checkMessage(height, nid, msgs);
+        LOG.infoExiting();
+    }
+
+    @Tag(Constants.TAG_PY_GOV)
+    @Tag(Constants.TAG_JAVA_GOV)
     @Test
     @Order(110)
     public void grantValidator() throws Exception {
