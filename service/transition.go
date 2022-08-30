@@ -409,6 +409,14 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
 }
 
+func (t *transition) newContractContext(wc state.WorldContext) contract.Context {
+	priority := eeproxy.ForTransaction
+	if t.ti != nil {
+		priority = eeproxy.ForQuery
+	}
+	return contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti, priority)
+}
+
 func (t *transition) reportValidation(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
@@ -621,7 +629,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
+	ctx := t.newContractContext(wc)
 	ctx.ClearCache()
 	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 

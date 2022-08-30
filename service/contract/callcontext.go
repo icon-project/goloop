@@ -451,11 +451,7 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 
 func (cc *callContext) ReserveExecutor() error {
 	if cc.executor == nil {
-		priority := eeproxy.ForTransaction
-		if cc.isQuery {
-			priority = eeproxy.ForQuery
-		}
-		cc.executor = cc.EEManager().GetExecutor(priority)
+		cc.executor = cc.EEManager().GetExecutor(cc.EEPriority())
 	}
 	return nil
 }

@@ -31,6 +31,7 @@ type Context interface {
 	GetProperty(name string) interface{}
 	SetProperty(name string, value interface{})
 	GetEnabledEETypes() state.EETypes
+	EEPriority() eeproxy.RequestPriority
 }
 
 type context struct {
@@ -38,13 +39,34 @@ type context struct {
 	chain module.Chain
 	cm    ContractManager
 	eem   eeproxy.Manager
+	eep   eeproxy.RequestPriority
 	log   log.Logger
 	ti    *module.TraceInfo
 	props map[string]interface{}
 }
 
-func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger, ti *module.TraceInfo) *context {
-	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log, ti: ti, props: make(map[string]interface{})}
+func NewContext(
+	wc state.WorldContext,
+	cm ContractManager,
+	eem eeproxy.Manager,
+	chain module.Chain,
+	log log.Logger,
+	ti *module.TraceInfo,
+	eep eeproxy.RequestPriority,
+) *context {
+	if ti != nil {
+		eep = eeproxy.ForQuery
+	}
+	return &context{
+		WorldContext: wc,
+		cm:           cm,
+		eem:          eem,
+		chain:        chain,
+		log:          log,
+		ti:           ti,
+		eep:          eep,
+		props:        make(map[string]interface{}),
+	}
 }
 func (c *context) ContractManager() ContractManager {
 	return c.cm
@@ -110,4 +132,8 @@ func (c *context) GetEnabledEETypes() state.EETypes {
 		}
 	}
 	return c.cm.DefaultEnabledEETypes()
+}
+
+func (c *context) EEPriority() eeproxy.RequestPriority {
+	return c.eep
 }
