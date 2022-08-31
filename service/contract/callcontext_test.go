@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/trace"
@@ -147,6 +148,7 @@ func newCallContext() CallContext {
 			newDummyChain(),
 			log.New(),
 			nil,
+			eeproxy.ForTransaction,
 		),
 		nil,
 		false,

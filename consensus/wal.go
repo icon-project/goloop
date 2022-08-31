@@ -95,7 +95,7 @@ func readWALInfo(id string) (*walInfo, error) {
 
 	dir, err := os.Open(groupDir)
 	if err != nil {
-		return nil, errors.Wrapf(os.ErrNotExist, "no dir %v for wal %v", groupDir, id)
+		return nil, errors.Wrapf(os.ErrNotExist, "cannot open dir=%v wal=%v err=%v", groupDir, id, err)
 	}
 	defer func() {
 		log.Must(dir.Close())

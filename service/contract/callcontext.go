@@ -91,7 +91,6 @@ const (
 
 type callContext struct {
 	Context
-	isQuery  bool
 	executor *eeproxy.Executor
 	nextEID  int
 	nextFID  int
@@ -119,7 +118,6 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	frameLogger := traceLogger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
-		isQuery: isQuery,
 		nextEID: initialEID,
 		nextFID: firstFID,
 		frame:   NewFrame(nil, nil, limit, isQuery, frameLogger),
@@ -443,11 +441,7 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 
 func (cc *callContext) ReserveExecutor() error {
 	if cc.executor == nil {
-		priority := eeproxy.ForTransaction
-		if cc.isQuery {
-			priority = eeproxy.ForQuery
-		}
-		cc.executor = cc.EEManager().GetExecutor(priority)
+		cc.executor = cc.EEManager().GetExecutor(cc.EEPriority())
 	}
 	return nil
 }
