@@ -160,7 +160,7 @@ func (tx *transactionV2) Execute(ctx contract.Context, wcs state.WorldSnapshot, 
 	as2.SetBalance(new(big.Int).Add(bal2, amount))
 
 	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
-	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction, ctx.TransactionInfo())
+	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
 	traceLogger.OnBalanceChange(module.Transfer, tx.From(), tx.To(), amount)
 	return r, nil
 }

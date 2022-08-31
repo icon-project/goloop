@@ -63,7 +63,6 @@ type (
 		ClearRedeemLogs()
 		DoIOTask(func())
 		ResultFlags() ResultFlag
-		GetTraceMode() module.TraceMode
 	}
 	callResultMessage struct {
 		status   error
@@ -114,7 +113,7 @@ func prefixForFrame(id int) string {
 }
 
 func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
-	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction, ctx.TransactionInfo())
+	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
 	frameLogger := traceLogger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
@@ -146,7 +145,7 @@ func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callF
 	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
-	logger.OnEnter(cc.frame.fid)
+	logger.OnFrameEnter(cc.frame.fid)
 	frame.fid = cc.nextFID
 	cc.nextFID += 1
 	cc.frame = frame
@@ -158,7 +157,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
-	cc.frame.log.OnLeave(success, &frame.stepUsed)
+	cc.frame.log.OnFrameExit(success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
@@ -604,8 +603,4 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 
 func (cc *callContext) ResultFlags() ResultFlag {
 	return cc.resultFlags
-}
-
-func (cc *callContext) GetTraceMode() module.TraceMode {
-	return cc.log.GetTraceMode()
 }

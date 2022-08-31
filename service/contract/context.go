@@ -26,7 +26,7 @@ type Context interface {
 	GetPreInstalledScore(id string) ([]byte, error)
 	AddSyncRequest(id db.BucketID, key []byte)
 	Logger() log.Logger
-	GetTraceLogger(phase module.ExecutionPhase, param interface{}) *trace.Logger
+	GetTraceLogger(phase module.ExecutionPhase) *trace.Logger
 	PatchDecoder() module.PatchDecoder
 	TraceInfo() *module.TraceInfo
 	ChainID() int
@@ -57,10 +57,8 @@ func NewContext(
 	ti *module.TraceInfo,
 	eep eeproxy.RequestPriority,
 ) *context {
-	var cb module.TraceCallback
 	if ti != nil {
 		eep = eeproxy.ForQuery
-		cb = ti.Callback
 	}
 	return &context{
 		WorldContext: wc,
@@ -68,7 +66,7 @@ func NewContext(
 		eem:          eem,
 		chain:        chain,
 		ti:           ti,
-		tlog:         trace.NewLogger(log, cb),
+		tlog:         trace.NewLogger(log, ti),
 		eep:          eep,
 		props:        make(map[string]interface{}),
 	}
@@ -109,7 +107,7 @@ func (c *context) Logger() log.Logger {
 	return c.tlog.Logger
 }
 
-func (c *context) GetTraceLogger(phase module.ExecutionPhase, param interface{}) *trace.Logger {
+func (c *context) GetTraceLogger(phase module.ExecutionPhase) *trace.Logger {
 	ti := c.TraceInfo()
 	if ti != nil {
 		if ti.Range == module.TraceRangeBlock {
@@ -119,7 +117,8 @@ func (c *context) GetTraceLogger(phase module.ExecutionPhase, param interface{})
 		switch phase {
 		case module.EPhaseTransaction:
 			if ti.Range == module.TraceRangeTransaction {
-				if txInfo, ok := param.(*state.TransactionInfo); ok {
+				txInfo := c.TransactionInfo()
+				if txInfo != nil {
 					if txInfo.Group == ti.Group && int(txInfo.Index) == ti.Index {
 						return c.tlog
 					}

@@ -99,12 +99,12 @@ func (t *transaction) toJSON() map[string]interface{} {
 	}
 }
 
-type balanceTracer struct {
+type BalanceTracer struct {
 	txs      []*transaction
 	curFrame *callFrame
 }
 
-func (bt *balanceTracer) add(opType module.OpType, from, to module.Address, amount *big.Int) error {
+func (bt *BalanceTracer) add(opType module.OpType, from, to module.Address, amount *big.Int) error {
 	curFrame := bt.curFrame
 	op := &operation{
 		depth:  curFrame.depth,
@@ -117,7 +117,7 @@ func (bt *balanceTracer) add(opType module.OpType, from, to module.Address, amou
 	return nil
 }
 
-func (bt *balanceTracer) getCurrentTx() (*transaction, error) {
+func (bt *BalanceTracer) getCurrentTx() (*transaction, error) {
 	txCount := len(bt.txs)
 	if txCount == 0 {
 		return nil, errors.InvalidStateError.New("No transaction")
@@ -125,7 +125,7 @@ func (bt *balanceTracer) getCurrentTx() (*transaction, error) {
 	return bt.txs[txCount-1], nil
 }
 
-func (bt *balanceTracer) checkCurrentTx(curTx *transaction, txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) checkCurrentTx(curTx *transaction, txIndex int32, txHash []byte) error {
 	if curTx.index != txIndex || bytes.Compare(curTx.hash, txHash) != 0 {
 		return errors.InvalidStateError.Errorf(
 			"Invalid txHash: curTxHash=%s hash=%s",
@@ -134,7 +134,7 @@ func (bt *balanceTracer) checkCurrentTx(curTx *transaction, txIndex int32, txHas
 	return nil
 }
 
-func (bt *balanceTracer) OnTransactionStart(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionStart(txIndex int32, txHash []byte) error {
 	if bt.curFrame != nil {
 		return errors.InvalidStateError.Errorf(
 			"Invalid curFrame: txIndex=%d txHash=%s curFrame=%#v",
@@ -147,7 +147,7 @@ func (bt *balanceTracer) OnTransactionStart(txIndex int32, txHash []byte) error 
 	return nil
 }
 
-func (bt *balanceTracer) OnTransactionRerun(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionRerun(txIndex int32, txHash []byte) error {
 	curTx, err := bt.getCurrentTx()
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func (bt *balanceTracer) OnTransactionRerun(txIndex int32, txHash []byte) error 
 	return nil
 }
 
-func (bt *balanceTracer) OnTransactionEnd(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionEnd(txIndex int32, txHash []byte) error {
 	curTx, err := bt.getCurrentTx()
 	if err != nil {
 		return err
@@ -178,9 +178,9 @@ func (bt *balanceTracer) OnTransactionEnd(txIndex int32, txHash []byte) error {
 	return nil
 }
 
-func (bt *balanceTracer) OnEnter() error {
+func (bt *BalanceTracer) OnFrameEnter() error {
 	if bt.curFrame == nil {
-		return errors.InvalidStateError.Errorf("RosettaCallback Not Ready")
+		return errors.InvalidStateError.Errorf("BalanceTracer Not Ready")
 	}
 	parent := bt.curFrame
 	bt.curFrame = &callFrame{
@@ -191,7 +191,7 @@ func (bt *balanceTracer) OnEnter() error {
 	return nil
 }
 
-func (bt *balanceTracer) OnLeave(success bool) error {
+func (bt *BalanceTracer) OnFrameExit(success bool) error {
 	curFrame := bt.curFrame
 	if curFrame == nil {
 		return errors.InvalidStateError.New("curFrame Not Ready")
@@ -206,11 +206,11 @@ func (bt *balanceTracer) OnLeave(success bool) error {
 	return nil
 }
 
-func (bt *balanceTracer) OnBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) error {
+func (bt *BalanceTracer) OnBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) error {
 	return bt.add(opType, from, to, amount)
 }
 
-func (bt *balanceTracer) toJSON() interface{} {
+func (bt *BalanceTracer) ToJSON() interface{} {
 	size := len(bt.txs)
 	if size == 0 {
 		return nil
@@ -222,13 +222,6 @@ func (bt *balanceTracer) toJSON() interface{} {
 	return jso
 }
 
-func NewBalanceTracer(capacity int) module.BalanceTracer {
-	return &balanceTracer{txs: make([]*transaction, 0, capacity)}
-}
-
-func BalanceTracerToJSON(bt module.BalanceTracer) interface{} {
-	if tracer, ok := bt.(*balanceTracer); ok {
-		return tracer.toJSON()
-	}
-	return nil
+func NewBalanceTracer(capacity int) *BalanceTracer {
+	return &BalanceTracer{txs: make([]*transaction, 0, capacity)}
 }

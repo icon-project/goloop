@@ -682,9 +682,9 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
-	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd, nil)
+	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd)
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
-	if err := t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
+	if err = t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
 		t.reportExecution(err)
 		return
 	}

@@ -246,7 +246,7 @@ func (p *proxy) Invoke(
 	if isQuery {
 		m.Flag |= InvokeFlagReadOnly
 	}
-	if logger.GetTraceMode() == module.TraceModeInvoke {
+	if logger.TraceMode() == module.TraceModeInvoke {
 		m.Flag |= InvokeFlagTrace
 	}
 	m.From = common.AddressToPtr(from)

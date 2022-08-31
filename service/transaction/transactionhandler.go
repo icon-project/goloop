@@ -178,7 +178,7 @@ func (th *transactionHandler) Execute(ctx contract.Context, wcs state.WorldSnaps
 		return nil, err
 	}
 
-	isTrace := cc.GetTraceMode() != module.TraceModeNone
+	isTrace := logger.TraceMode() != module.TraceModeNone
 	if !estimate && !isTrace && (cc.ResultFlags()&contract.ResultForceRerun) != 0 {
 		return nil, errors.CriticalRerunError.New("NeedToRerunTheTX")
 	}

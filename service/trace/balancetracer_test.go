@@ -23,8 +23,6 @@ func newRandomHash(size int) []byte {
 func TestNewBalanceTracer(t *testing.T) {
 	var err error
 	bt := NewBalanceTracer(10)
-	_, ok := bt.(*balanceTracer)
-	assert.True(t, ok)
 
 	txIndex := int32(0)
 	txHash := newRandomHash(32)
@@ -37,16 +35,16 @@ func TestNewBalanceTracer(t *testing.T) {
 	err = bt.OnBalanceChange(module.Transfer, from, to, amount)
 	assert.NoError(t, err)
 
-	err = bt.OnEnter()
+	err = bt.OnFrameEnter()
 	assert.NoError(t, err)
 
-	err = bt.OnLeave(true)
+	err = bt.OnFrameExit(true)
 	assert.NoError(t, err)
 
 	err = bt.OnTransactionEnd(txIndex, txHash)
 	assert.NoError(t, err)
 
-	jso, ok := BalanceTracerToJSON(bt).([]interface{})
+	jso, ok := bt.ToJSON().([]interface{})
 	assert.True(t, ok)
 	assert.NotNil(t, jso)
 	assert.Equal(t, 1, len(jso))
@@ -69,13 +67,11 @@ func TestEmpyBalanceTracer_ErrorCase(t *testing.T) {
 	txHash := newRandomHash(32)
 
 	bt := NewBalanceTracer(10)
-	_, ok := bt.(*balanceTracer)
-	assert.True(t, ok)
 
-	err = bt.OnEnter()
+	err = bt.OnFrameEnter()
 	assert.Error(t, err)
 
-	err = bt.OnLeave(true)
+	err = bt.OnFrameExit(true)
 	assert.Error(t, err)
 
 	err = bt.OnTransactionEnd(txIndex, txHash)
@@ -92,8 +88,6 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 	score := common.MustNewAddressFromString("cx33")
 
 	bt := NewBalanceTracer(10)
-	_, ok := bt.(*balanceTracer)
-	assert.True(t, ok)
 
 	err = bt.OnTransactionStart(txIndex, txHash)
 	assert.NoError(t, err)
@@ -107,13 +101,13 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 	err = bt.OnBalanceChange(module.Burn, from, nil, big.NewInt(3000))
 	assert.NoError(t, err)
 
-	err = bt.OnEnter()
+	err = bt.OnFrameEnter()
 	assert.NoError(t, err)
 
 	err = bt.OnBalanceChange(module.Transfer, from, score, big.NewInt(1000))
 	assert.NoError(t, err)
 
-	err = bt.OnEnter()
+	err = bt.OnFrameEnter()
 	assert.NoError(t, err)
 
 	err = bt.OnBalanceChange(module.Claim, treasury, score, big.NewInt(2000))
@@ -122,10 +116,10 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 	err = bt.OnBalanceChange(module.Burn, score, nil, big.NewInt(3000))
 	assert.NoError(t, err)
 
-	err = bt.OnLeave(true)
+	err = bt.OnFrameExit(true)
 	assert.NoError(t, err)
 
-	err = bt.OnLeave(true)
+	err = bt.OnFrameExit(true)
 	assert.NoError(t, err)
 
 	err = bt.OnTransactionEnd(txIndex, txHash)
