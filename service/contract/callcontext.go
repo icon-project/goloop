@@ -91,7 +91,6 @@ const (
 
 type callContext struct {
 	Context
-	isQuery  bool
 	executor *eeproxy.Executor
 	nextEID  int
 	nextFID  int
@@ -127,7 +126,6 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	frameLogger := logger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
-		isQuery: isQuery,
 		nextEID: initialEID,
 		nextFID: firstFID,
 		frame:   NewFrame(nil, nil, limit, isQuery, frameLogger),
