@@ -103,6 +103,12 @@ func (l *Logger) WithTPrefix(prefix string) *Logger {
 
 func (l *Logger) OnTransactionStart(txIndex int32, txHash []byte) {
 	if l.TraceMode() == module.TraceModeBalanceChange {
+		if txHash == nil {
+			// nil txHash means that it is a virtual transaction to trace balance changes caused by unstaking
+			// blockHash is used for txHash of this virtual transaction
+			txHash = l.traceBlock.ID()
+		}
+
 		if err := l.cb.OnTransactionStart(txIndex, txHash); err != nil {
 			l.Warnf("OnTransactionStart() error: txIndex=%d txHash=%#x err=%#v",
 				txIndex, txHash, err)
@@ -122,9 +128,16 @@ func (l *Logger) OnTransactionRerun(txIndex int32, txHash []byte) {
 func (l *Logger) OnTransactionEnd(
 	txIndex int32, txHash []byte, from module.Address, traceRct module.Receipt, treasury module.Address) {
 	if l.TraceMode() == module.TraceModeBalanceChange {
-		finalRct := l.traceBlock.GetReceipt(int(txIndex))
-		l.checkReceipts(traceRct, finalRct)
-		l.onFee(from, treasury, finalRct)
+		if txHash != nil {
+			// Common transaction
+			finalRct := l.traceBlock.GetReceipt(int(txIndex))
+			l.checkReceipts(traceRct, finalRct)
+			l.onFee(from, treasury, finalRct)
+		} else {
+			// nil txHash means that it is a virtual transaction to trace balance changes caused by unstaking timer
+			// blockHash is used for txHash of this virtual transaction
+			txHash = l.traceBlock.ID()
+		}
 
 		if err := l.cb.OnTransactionEnd(txIndex, txHash); err != nil {
 			l.Warnf("OnTransactionEnd() error: txIndex=%d txHash=%#x err=%#v",

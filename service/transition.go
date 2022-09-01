@@ -682,9 +682,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
-	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd)
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
-	if err = t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
+	if err = t.callPlatformOnExecutionEnd(ctx, er); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -711,6 +710,19 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	t.result = tresult.Bytes()
 
 	t.reportExecution(nil)
+}
+
+func (t *transition) callPlatformOnExecutionEnd(ctx contract.Context, er base.ExecutionResult) error {
+	txIndex := int32(t.ntxCount)
+	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd)
+	traceLogger.OnTransactionStart(txIndex, nil)
+
+	if err := t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
+		return err
+	}
+
+	traceLogger.OnTransactionEnd(txIndex, nil, nil, nil, nil)
+	return nil
 }
 
 func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) error {
