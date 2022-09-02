@@ -74,7 +74,7 @@ type TraceCallback interface {
 	OnLog(level TraceLevel, msg string)
 	OnEnd(e error)
 
-	OnTransactionStart(txIndex int32, txHash []byte) error
+	OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error
 	OnTransactionRerun(txIndex int32, txHash []byte) error
 	OnTransactionEnd(txIndex int32, txHash []byte) error
 	OnFrameEnter() error

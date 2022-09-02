@@ -82,8 +82,9 @@ func (c *callFrame) toJSON() []map[string]interface{} {
 }
 
 type transaction struct {
-	index int32
-	hash  []byte
+	index     int32
+	hash      []byte
+	isBlockTx bool
 	*callFrame
 }
 
@@ -92,9 +93,14 @@ func (t *transaction) resetCallFrame() {
 }
 
 func (t *transaction) toJSON() map[string]interface{} {
+	var prefix = "0x"
+	if t.isBlockTx {
+		prefix = "bx"
+	}
+
 	return map[string]interface{}{
 		"txIndex": fmt.Sprintf("%#x", t.index),
-		"txHash":  "0x" + hex.EncodeToString(t.hash),
+		"txHash":  prefix + hex.EncodeToString(t.hash),
 		"ops":     t.callFrame.toJSON(),
 	}
 }
@@ -134,14 +140,14 @@ func (bt *BalanceTracer) checkCurrentTx(curTx *transaction, txIndex int32, txHas
 	return nil
 }
 
-func (bt *BalanceTracer) OnTransactionStart(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error {
 	if bt.curFrame != nil {
 		return errors.InvalidStateError.Errorf(
 			"Invalid curFrame: txIndex=%d txHash=%s curFrame=%#v",
 			txIndex, hex.EncodeToString(txHash), bt.curFrame)
 	}
 	frame := &callFrame{}
-	tx := &transaction{index: txIndex, hash: txHash, callFrame: frame}
+	tx := &transaction{index: txIndex, hash: txHash, isBlockTx: isBlockTx, callFrame: frame}
 	bt.txs = append(bt.txs, tx)
 	bt.curFrame = frame
 	return nil

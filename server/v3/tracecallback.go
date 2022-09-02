@@ -87,11 +87,11 @@ func (t *traceCallback) balanceChangeToJSON(blk module.Block) interface{} {
 	return result
 }
 
-func (t *traceCallback) OnTransactionStart(txIndex int32, txHash []byte) error {
+func (t *traceCallback) OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error {
 	if t.bt != nil {
 		t.lock.Lock()
 		defer t.lock.Unlock()
-		return t.bt.OnTransactionStart(txIndex, txHash)
+		return t.bt.OnTransactionStart(txIndex, txHash, isBlockTx)
 	}
 	return nil
 }

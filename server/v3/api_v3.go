@@ -1192,30 +1192,31 @@ func findBlockAndTxInfoByRosettaTraceParam(
 	var err error
 
 	if len(param.Tx) > 0 {
-		txBytes := param.Tx.Bytes()
-		if blk, err = bm.GetBlock(txBytes); err == nil {
-			return blk, nil, nil
-		}
-
-		txInfo, err = bm.GetTransactionInfo(txBytes)
-		if errors.NotFoundError.Equals(err) {
-			if sm.HasTransaction(param.Tx.Bytes()) {
-				return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
+		if param.Tx[0:2] == "bx" {
+			if blk, err = bm.GetBlock(param.Tx.Bytes()); err != nil {
+				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 			}
-			return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
-		} else if err != nil {
-			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		} else {
+			txInfo, err = bm.GetTransactionInfo(param.Tx.Bytes())
+			if errors.NotFoundError.Equals(err) {
+				if sm.HasTransaction(param.Tx.Bytes()) {
+					return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
+				}
+				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+			} else if err != nil {
+				return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			}
+			if txInfo.Group() == module.TransactionGroupPatch {
+				return nil, nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
+			}
+			_, err = txInfo.GetReceipt()
+			if block.ResultNotFinalizedError.Equals(err) {
+				return nil, nil, jsonrpc.ErrorCodeExecuting.New("Executing")
+			} else if err != nil {
+				return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			}
+			blk = txInfo.Block()
 		}
-		if txInfo.Group() == module.TransactionGroupPatch {
-			return nil, nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
-		}
-		_, err = txInfo.GetReceipt()
-		if block.ResultNotFinalizedError.Equals(err) {
-			return nil, nil, jsonrpc.ErrorCodeExecuting.New("Executing")
-		} else if err != nil {
-			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-		}
-		blk = txInfo.Block()
 	} else if len(param.Block) > 0 {
 		blk, err = bm.GetBlock(param.Block.Bytes())
 	} else if len(param.Height) > 0 {

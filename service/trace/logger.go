@@ -103,15 +103,16 @@ func (l *Logger) WithTPrefix(prefix string) *Logger {
 
 func (l *Logger) OnTransactionStart(txIndex int32, txHash []byte) {
 	if l.TraceMode() == module.TraceModeBalanceChange {
-		if txHash == nil {
+		isBlockTx := txHash == nil
+		if isBlockTx {
 			// nil txHash means that it is a virtual transaction to trace balance changes caused by unstaking
 			// blockHash is used for txHash of this virtual transaction
 			txHash = l.traceBlock.ID()
 		}
 
-		if err := l.cb.OnTransactionStart(txIndex, txHash); err != nil {
-			l.Warnf("OnTransactionStart() error: txIndex=%d txHash=%#x err=%#v",
-				txIndex, txHash, err)
+		if err := l.cb.OnTransactionStart(txIndex, txHash, isBlockTx); err != nil {
+			l.Warnf("OnTransactionStart() error: txIndex=%d txHash=%#x isBlockTx=%t err=%#v",
+				txIndex, txHash, isBlockTx, err)
 		}
 	}
 }

@@ -26,7 +26,7 @@ func TestNewBalanceTracer(t *testing.T) {
 
 	txIndex := int32(0)
 	txHash := newRandomHash(32)
-	err = bt.OnTransactionStart(txIndex, txHash)
+	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)
 
 	from := common.MustNewAddressFromString("hx100")
@@ -89,7 +89,7 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 
 	bt := NewBalanceTracer(10)
 
-	err = bt.OnTransactionStart(txIndex, txHash)
+	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)
 
 	err = bt.OnBalanceChange(module.Transfer, from, to, big.NewInt(1000))

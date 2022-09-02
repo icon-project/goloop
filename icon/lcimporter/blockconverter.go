@@ -636,7 +636,7 @@ func (e *BlockConverter) GetReceipt(txIndex int) module.Receipt {
 	return nil
 }
 
-func (e *BlockConverter) OnTransactionStart(txIndex int32, txHash []byte) error {
+func (e *BlockConverter) OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error {
 	return nil
 }
 
