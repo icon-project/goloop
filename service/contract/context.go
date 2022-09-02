@@ -26,13 +26,14 @@ type Context interface {
 	GetPreInstalledScore(id string) ([]byte, error)
 	AddSyncRequest(id db.BucketID, key []byte)
 	Logger() log.Logger
-	GetTraceLogger(phase module.ExecutionPhase, param interface{}) *trace.Logger
+	GetTraceLogger(phase module.ExecutionPhase) *trace.Logger
 	PatchDecoder() module.PatchDecoder
 	TraceInfo() *module.TraceInfo
 	ChainID() int
 	GetProperty(name string) interface{}
 	SetProperty(name string, value interface{})
 	GetEnabledEETypes() state.EETypes
+	EEPriority() eeproxy.RequestPriority
 }
 
 type context struct {
@@ -40,25 +41,33 @@ type context struct {
 	chain     module.Chain
 	cm        ContractManager
 	eem       eeproxy.Manager
+	eep       eeproxy.RequestPriority
 	ti        *module.TraceInfo
 	tlog      *trace.Logger
 	tlogDummy *trace.Logger
 	props     map[string]interface{}
 }
 
-func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger, ti *module.TraceInfo) *context {
-	var cb module.TraceCallback
+func NewContext(
+	wc state.WorldContext,
+	cm ContractManager,
+	eem eeproxy.Manager,
+	chain module.Chain,
+	log log.Logger,
+	ti *module.TraceInfo,
+	eep eeproxy.RequestPriority,
+) *context {
 	if ti != nil {
-		cb = ti.Callback
+		eep = eeproxy.ForQuery
 	}
-
 	return &context{
 		WorldContext: wc,
 		cm:           cm,
 		eem:          eem,
 		chain:        chain,
 		ti:           ti,
-		tlog:         trace.NewLogger(log, cb),
+		tlog:         trace.NewLogger(log, ti),
+		eep:          eep,
 		props:        make(map[string]interface{}),
 	}
 }
@@ -98,7 +107,7 @@ func (c *context) Logger() log.Logger {
 	return c.tlog.Logger
 }
 
-func (c *context) GetTraceLogger(phase module.ExecutionPhase, param interface{}) *trace.Logger {
+func (c *context) GetTraceLogger(phase module.ExecutionPhase) *trace.Logger {
 	ti := c.TraceInfo()
 	if ti != nil {
 		if ti.Range == module.TraceRangeBlock {
@@ -108,7 +117,8 @@ func (c *context) GetTraceLogger(phase module.ExecutionPhase, param interface{})
 		switch phase {
 		case module.EPhaseTransaction:
 			if ti.Range == module.TraceRangeTransaction {
-				if txInfo, ok := param.(*state.TransactionInfo); ok {
+				txInfo := c.TransactionInfo()
+				if txInfo != nil {
 					if txInfo.Group == ti.Group && int(txInfo.Index) == ti.Index {
 						return c.tlog
 					}
@@ -156,4 +166,8 @@ func (c *context) GetEnabledEETypes() state.EETypes {
 		}
 	}
 	return c.cm.DefaultEnabledEETypes()
+}
+
+func (c *context) EEPriority() eeproxy.RequestPriority {
+	return c.eep
 }

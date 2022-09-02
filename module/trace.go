@@ -11,11 +11,20 @@ const (
 )
 
 type TraceInfo struct {
+	TraceMode  TraceMode
+	TraceBlock TraceBlock
+
 	Range TraceRange
 	// Group and Index are valid only if Range is TraceRangeTransaction
-	Group    TransactionGroup
-	Index    int
+	Group TransactionGroup
+	Index int
+
 	Callback TraceCallback
+}
+
+type TraceBlock interface {
+	ID() []byte
+	GetReceipt(txIndex int) Receipt
 }
 
 type TraceLevel int
@@ -61,20 +70,14 @@ const (
 	EPhaseExecutionEnd
 )
 
-type BalanceTracer interface {
-	OnTransactionStart(txIndex int32, txHash []byte) error
-	OnTransactionRerun(txIndex int32, txHash []byte) error
-	OnTransactionEnd(txIndex int32, txHash []byte) error
-	OnEnter() error
-	OnLeave(success bool) error
-	OnBalanceChange(opType OpType, from, to Address, amount *big.Int) error
-}
-
 type TraceCallback interface {
-	TraceMode() TraceMode
 	OnLog(level TraceLevel, msg string)
 	OnEnd(e error)
 
-	GetReceipt(txIndex int) Receipt
-	BalanceTracer
+	OnTransactionStart(txIndex int32, txHash []byte) error
+	OnTransactionRerun(txIndex int32, txHash []byte) error
+	OnTransactionEnd(txIndex int32, txHash []byte) error
+	OnFrameEnter() error
+	OnFrameExit(success bool) error
+	OnBalanceChange(opType OpType, from, to Address, amount *big.Int) error
 }

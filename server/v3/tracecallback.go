@@ -13,14 +13,12 @@ import (
 )
 
 type traceCallback struct {
-	mode    module.TraceMode
 	lock    sync.Mutex
 	logs    []interface{}
 	last    error
 	ts      time.Time
 	channel chan interface{}
-	bt      module.BalanceTracer
-	rl      module.ReceiptList
+	bt      *trace.BalanceTracer
 }
 
 type traceLog struct {
@@ -29,15 +27,7 @@ type traceLog struct {
 	Ts    int64             `json:"ts"`
 }
 
-func (t *traceCallback) TraceMode() module.TraceMode {
-	return t.mode
-}
-
 func (t *traceCallback) OnLog(level module.TraceLevel, msg string) {
-	if t.mode != module.TraceModeInvoke {
-		return
-	}
-
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -59,99 +49,96 @@ func (t *traceCallback) OnEnd(e error) {
 	close(t.channel)
 }
 
-func (t *traceCallback) result(blk module.Block) interface{} {
+func (t *traceCallback) invokeTraceToJSON() interface{} {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	result := map[string]interface{}{}
-
-	if t.mode == module.TraceModeInvoke {
-		result["logs"] = t.logs
-		if t.last == nil {
-			result["status"] = "0x1"
-		} else {
-			result["status"] = "0x0"
-			status, _ := scoreresult.StatusOf(t.last)
-			result["failure"] = map[string]interface{}{
-				"code":    status,
-				"message": t.last.Error(),
-			}
-		}
-	} else if t.mode == module.TraceModeBalanceChange {
-		result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
-		result["prevBlockHash"] = "0x" + hex.EncodeToString(blk.PrevID())
-		result["blockHeight"] = fmt.Sprintf("%#x", blk.Height())
-		result["timestamp"] = fmt.Sprintf("%#x", blk.Timestamp())
-		balanceChanges := trace.BalanceTracerToJSON(t.bt)
-		if balanceChanges != nil {
-			result["balanceChanges"] = balanceChanges
+	result := map[string]interface{}{
+		"logs": t.logs,
+	}
+	if t.last == nil {
+		result["status"] = "0x1"
+	} else {
+		result["status"] = "0x0"
+		status, _ := scoreresult.StatusOf(t.last)
+		result["failure"] = map[string]interface{}{
+			"code":    status,
+			"message": t.last.Error(),
 		}
 	}
+	return result
+}
 
+func (t *traceCallback) balanceChangeToJSON(blk module.Block) interface{} {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	result := map[string]interface{}{
+		"blockHash":     "0x" + hex.EncodeToString(blk.ID()),
+		"prevBlockHash": "0x" + hex.EncodeToString(blk.PrevID()),
+		"blockHeight":   fmt.Sprintf("%#x", blk.Height()),
+		"timestamp":     fmt.Sprintf("%#x", blk.Timestamp()),
+	}
+
+	balanceChanges := t.bt.ToJSON()
+	if balanceChanges != nil {
+		result["balanceChanges"] = balanceChanges
+	}
 	return result
 }
 
 func (t *traceCallback) OnTransactionStart(txIndex int32, txHash []byte) error {
-	if t.mode != module.TraceModeBalanceChange {
-		return nil
+	if t.bt != nil {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		return t.bt.OnTransactionStart(txIndex, txHash)
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.bt.OnTransactionStart(txIndex, txHash)
+	return nil
 }
 
 func (t *traceCallback) OnTransactionRerun(txIndex int32, txHash []byte) error {
-	var err error
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	if t.mode == module.TraceModeInvoke {
-		t.logs = nil
-	} else if t.mode == module.TraceModeBalanceChange {
-		err = t.bt.OnTransactionRerun(txIndex, txHash)
+
+	t.logs = nil
+	if t.bt != nil {
+		return t.bt.OnTransactionRerun(txIndex, txHash)
 	}
-	return err
+	return nil
 }
 
 func (t *traceCallback) OnTransactionEnd(txIndex int32, txHash []byte) error {
-	if t.mode != module.TraceModeBalanceChange {
-		return nil
+	if t.bt != nil {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		return t.bt.OnTransactionEnd(txIndex, txHash)
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.bt.OnTransactionEnd(txIndex, txHash)
+	return nil
 }
 
-func (t *traceCallback) OnEnter() error {
-	if t.mode != module.TraceModeBalanceChange {
-		return nil
+func (t *traceCallback) OnFrameEnter() error {
+	if t.bt != nil {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		return t.bt.OnFrameEnter()
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.bt.OnEnter()
+	return nil
 }
 
-func (t *traceCallback) OnLeave(success bool) error {
-	if t.mode != module.TraceModeBalanceChange {
-		return nil
+func (t *traceCallback) OnFrameExit(success bool) error {
+	if t.bt != nil {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		return t.bt.OnFrameExit(success)
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.bt.OnLeave(success)
+	return nil
 }
 
 func (t *traceCallback) OnBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) error {
-	if t.mode != module.TraceModeBalanceChange {
-		return nil
+	if t.bt != nil {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		return t.bt.OnBalanceChange(opType, from, to, amount)
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.bt.OnBalanceChange(opType, from, to, amount)
-}
-
-func (t *traceCallback) GetReceipt(txIndex int) module.Receipt {
-	if t.rl == nil {
-		return nil
-	}
-	rct, _ := t.rl.Get(txIndex)
-	return rct
+	return nil
 }

@@ -484,7 +484,7 @@ func (m *manager) Call(resultHash []byte,
 	if err != nil {
 		return nil, err
 	}
-	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil))
+	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil, eeproxy.ForQuery))
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
@@ -779,7 +779,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	} else {
 		return nil, err
 	}
-	ctx := contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil)
+	ctx := contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil, eeproxy.ForQuery)
 	ctx.SetTransactionInfo(&state.TransactionInfo{
 		Group:     module.TransactionGroupNormal,
 		Index:     0,

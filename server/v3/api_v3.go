@@ -1010,11 +1010,17 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	tr2 = sm.PatchTransition(tr2, nblk.PatchTransactions(), nblk)
 
 	cb := &traceCallback{
-		mode:    module.TraceModeInvoke,
 		logs:    make([]interface{}, 0, 100),
 		channel: make(chan interface{}, 10),
 	}
-	canceller, err := tr2.ExecuteForTrace(newTraceInfo(txInfo, cb, true))
+	ti := module.TraceInfo{
+		TraceMode: module.TraceModeInvoke,
+		Range:     module.TraceRangeTransaction,
+		Group:     txInfo.Group(),
+		Index:     txInfo.Index(),
+		Callback:  cb,
+	}
+	canceller, err := tr2.ExecuteForTrace(ti)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -1027,7 +1033,7 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
 				"Not enough time to get result of %x", param.Hash.Bytes())
 		case <-cb.channel:
-			return cb.result(nil), nil
+			return cb.invokeTraceToJSON(), nil
 		}
 	}
 	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
@@ -1137,12 +1143,26 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 	}
 
 	cb := &traceCallback{
-		mode:    module.TraceModeBalanceChange,
 		channel: make(chan interface{}, 10),
-		rl:      rl,
 		bt:      trace.NewBalanceTracer(10),
 	}
-	canceller, err := tr2.ExecuteForTrace(newTraceInfo(txInfo, cb, len(param.Tx) > 0))
+	ti := module.TraceInfo{
+		TraceMode:  module.TraceModeBalanceChange,
+		TraceBlock: trace.NewTraceBlock(blk.ID(), rl),
+		Callback:   cb,
+	}
+	if txInfo != nil {
+		ti.Range = module.TraceRangeTransaction
+		ti.Group = module.TransactionGroupNormal
+		ti.Index = txInfo.Index()
+	} else {
+		if len(param.Tx) > 0 {
+			ti.Range = module.TraceRangeBlockTransaction
+		} else {
+			ti.Range = module.TraceRangeBlock
+		}
+	}
+	canceller, err := tr2.ExecuteForTrace(ti)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -1155,7 +1175,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
 				"Not enough time to get result of %+v", param)
 		case <-cb.channel:
-			return cb.result(blk), nil
+			return cb.balanceChangeToJSON(blk), nil
 		}
 	}
 	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
@@ -1209,27 +1229,6 @@ func findBlockAndTxInfoByRosettaTraceParam(
 		}
 	}
 	return blk, txInfo, err
-}
-
-func newTraceInfo(
-	txInfo module.TransactionInfo,
-	cb module.TraceCallback,
-	isTxTrace bool,
-) module.TraceInfo {
-	ti := module.TraceInfo{Callback: cb}
-	if txInfo != nil {
-		ti.Range = module.TraceRangeTransaction
-		ti.Group = txInfo.Group()
-		ti.Index = txInfo.Index()
-	} else {
-		if isTxTrace {
-			// Virtual transaction indicated by blockHash to handle timers on execution end
-			ti.Range = module.TraceRangeBlockTransaction
-		} else {
-			ti.Range = module.TraceRangeBlock
-		}
-	}
-	return ti
 }
 
 func RosettaMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {

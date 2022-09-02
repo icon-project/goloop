@@ -47,16 +47,15 @@ type Engine interface {
 type Executor struct {
 	priority RequestPriority
 	manager  *executorManager
-	typeMap  map[string]int
-	proxies  []*proxy
+	proxies  map[string]*proxy
 }
 
 func (e *Executor) Get(name string) Proxy {
-	t, ok := e.typeMap[name]
-	if !ok {
+	if p, ok := e.proxies[name]; ok {
+		return p
+	} else {
 		return nil
 	}
-	return e.proxies[t]
 }
 
 func (e *Executor) Release() {
@@ -92,8 +91,7 @@ type executorManager struct {
 
 	server ipc.Server
 
-	typeMap map[string]int
-	engines []*engine
+	engines map[string]*engine
 
 	executorLimit  int
 	executorStates [numberOfPriorities]executorState
@@ -101,23 +99,21 @@ type executorManager struct {
 	log log.Logger
 }
 
-func (em *executorManager) onReady(t string, p *proxy) error {
+func (em *executorManager) onReady(p *proxy) error {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
-	i, ok := em.typeMap[t]
+	e, ok := em.engines[p.scoreType]
 	if !ok {
-		em.log.Warnf("InvalidApplicationType(%s)", t)
-		return InvalidAppTypeError.Errorf("InvalidApplicationType:%s", t)
+		em.log.Warnf("InvalidApplicationType(%s)", p.scoreType)
+		return InvalidAppTypeError.Errorf("InvalidApplicationType:%s", p.scoreType)
 	}
-
-	e := em.engines[i]
 
 	if p.detach() {
 		if e.active > em.executorLimit {
 			e.active -= 1
 			em.log.Infof("Stop proxy=%s-%s (target=%d,active=%d)",
-				t, p.uid, em.executorLimit, e.active)
+				p.scoreType, p.uid, em.executorLimit, e.active)
 			return ScaleDownError.Errorf("ScalingDown(target=%d,active=%d)",
 				em.executorLimit, e.active)
 		}
@@ -190,12 +186,12 @@ func (em *executorManager) Close() error {
 }
 
 func (em *executorManager) createExecutorInLock(pr RequestPriority) *Executor {
-	ps := make([]*proxy, len(em.engines))
-	for i, e := range em.engines {
+	ps := make(map[string]*proxy)
+	for name, e := range em.engines {
 		if e.ready == nil {
 			return nil
 		}
-		ps[i] = e.ready
+		ps[name] = e.ready
 	}
 	for i, p := range ps {
 		p.detach()
@@ -206,7 +202,6 @@ func (em *executorManager) createExecutorInLock(pr RequestPriority) *Executor {
 		priority: pr,
 		manager:  em,
 		proxies:  ps,
-		typeMap:  em.typeMap,
 	}
 }
 
@@ -307,14 +302,12 @@ func NewManager(net, addr string, l log.Logger, engines ...Engine) (Manager, err
 		em.executorStates[i].waiter = sync.NewCond(&em.lock)
 	}
 
-	em.engines = make([]*engine, len(engines))
-	em.typeMap = make(map[string]int)
-	for i, e := range engines {
+	em.engines = make(map[string]*engine)
+	for _, e := range engines {
 		if err := e.Init(net, addr); err != nil {
 			return nil, err
 		}
-		em.engines[i] = &engine{engine: e}
-		em.typeMap[e.Type()] = i
+		em.engines[e.Type()] = &engine{engine: e}
 	}
 	return em, nil
 }

@@ -410,6 +410,14 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
 }
 
+func (t *transition) newContractContext(wc state.WorldContext) contract.Context {
+	priority := eeproxy.ForTransaction
+	if t.ti != nil {
+		priority = eeproxy.ForQuery
+	}
+	return contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti, priority)
+}
+
 func (t *transition) reportValidation(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
@@ -622,7 +630,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
+	ctx := t.newContractContext(wc)
 	ctx.ClearCache()
 	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 
@@ -674,9 +682,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tb := tr.GetBalance()
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
-	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd, nil)
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
-	if err := t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
+	if err = t.callPlatformOnExecutionEnd(ctx, er); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -703,6 +710,19 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	t.result = tresult.Bytes()
 
 	t.reportExecution(nil)
+}
+
+func (t *transition) callPlatformOnExecutionEnd(ctx contract.Context, er base.ExecutionResult) error {
+	txIndex := int32(t.ntxCount)
+	traceLogger := ctx.GetTraceLogger(module.EPhaseExecutionEnd)
+	traceLogger.OnTransactionStart(txIndex, nil)
+
+	if err := t.plt.OnExecutionEnd(ctx, er, traceLogger); err != nil {
+		return err
+	}
+
+	traceLogger.OnTransactionEnd(txIndex, nil, nil, nil, nil)
+	return nil
 }
 
 func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) error {

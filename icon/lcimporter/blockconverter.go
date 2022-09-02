@@ -187,7 +187,10 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	if height < 0 {
 		return nil, errors.Errorf("InvalidHeight(height=%d)", height)
 	}
-	logger := trace.NewLogger(e.log, e)
+	ti := &module.TraceInfo{
+		Callback: e,
+	}
+	logger := trace.NewLogger(e.log, ti)
 	if height > 0 {
 		var prevV0 blockv0.Block
 		var err error
@@ -645,11 +648,11 @@ func (e *BlockConverter) OnTransactionEnd(txIndex int32, txHash []byte) error {
 	return nil
 }
 
-func (e *BlockConverter) OnEnter() error {
+func (e *BlockConverter) OnFrameEnter() error {
 	return nil
 }
 
-func (e *BlockConverter) OnLeave(success bool) error {
+func (e *BlockConverter) OnFrameExit(success bool) error {
 	return nil
 }
 
