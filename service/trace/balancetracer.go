@@ -71,14 +71,14 @@ func (c *callFrame) mergeOpsToParent() {
 
 func (c *callFrame) toJSON() []map[string]interface{} {
 	size := len(c.ops)
-	if size == 0 {
-		return nil
+	if size > 0 {
+		jso := make([]map[string]interface{}, size)
+		for i, op := range c.ops {
+			jso[i] = op.toJSON()
+		}
+		return jso
 	}
-	jso := make([]map[string]interface{}, size)
-	for i, op := range c.ops {
-		jso[i] = op.toJSON()
-	}
-	return jso
+	return nil
 }
 
 type transaction struct {
@@ -93,16 +93,19 @@ func (t *transaction) resetCallFrame() {
 }
 
 func (t *transaction) toJSON() map[string]interface{} {
-	var prefix = "0x"
-	if t.isBlockTx {
-		prefix = "bx"
+	ops := t.callFrame.toJSON()
+	if ops != nil {
+		prefix := "0x"
+		if t.isBlockTx {
+			prefix = "bx"
+		}
+		return map[string]interface{}{
+			"txIndex": fmt.Sprintf("%#x", t.index),
+			"txHash":  prefix + hex.EncodeToString(t.hash),
+			"ops":     ops,
+		}
 	}
-
-	return map[string]interface{}{
-		"txIndex": fmt.Sprintf("%#x", t.index),
-		"txHash":  prefix + hex.EncodeToString(t.hash),
-		"ops":     t.callFrame.toJSON(),
-	}
+	return nil
 }
 
 type BalanceTracer struct {
@@ -217,13 +220,11 @@ func (bt *BalanceTracer) OnBalanceChange(opType module.OpType, from, to module.A
 }
 
 func (bt *BalanceTracer) ToJSON() interface{} {
-	size := len(bt.txs)
-	if size == 0 {
-		return nil
-	}
-	jso := make([]interface{}, size)
-	for i, tx := range bt.txs {
-		jso[i] = tx.toJSON()
+	jso := make([]interface{}, 0, len(bt.txs))
+	for _, tx := range bt.txs {
+		if txJso := tx.toJSON(); txJso != nil {
+			jso = append(jso, txJso)
+		}
 	}
 	return jso
 }
