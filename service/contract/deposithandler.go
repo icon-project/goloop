@@ -188,7 +188,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 				intconv.BigIntToBytes(fee),
 			})
 
-			h.Log.OnBalanceChange(module.FSWithdraw, nil, h.To, amount)
+			h.Log.OnBalanceChange(module.FSWithdraw, nil, h.From, amount)
 			h.Log.OnBalanceChange(module.FSFee, nil, cc.Treasury(), fee)
 			return nil, nil, nil
 		}
