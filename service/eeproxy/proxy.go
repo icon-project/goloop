@@ -88,7 +88,7 @@ type Proxy interface {
 }
 
 type proxyManager interface {
-	onReady(t string, p *proxy) error
+	onReady(p *proxy) error
 	kill(u string) error
 }
 
@@ -334,7 +334,7 @@ func (p *proxy) Release() {
 	p.state = stateIdle
 	if p.tryToBeReadyInLock() {
 		l.CallAfterUnlock(func() {
-			p.mgr.onReady(p.scoreType, p)
+			p.mgr.onReady(p)
 		})
 	}
 }
@@ -379,7 +379,7 @@ func (p *proxy) tryToBeReady() error {
 	}
 	if p.tryToBeReadyInLock() {
 		l.CallAfterUnlock(func() {
-			p.mgr.onReady(p.scoreType, p)
+			p.mgr.onReady(p)
 		})
 	}
 	return nil
@@ -705,7 +705,7 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgSETFEEPCT, p)
 	c.SetHandler(msgCONTAINS, p)
 
-	if err := m.onReady(t, p); err != nil {
+	if err := m.onReady(p); err != nil {
 		p.state = stateStopped
 		return nil, err
 	}

@@ -386,6 +386,13 @@ func (t *taskReset) _syncBlocksWithNetwork(height int64, blockHash []byte) (rblk
 	}
 
 	rblk, rvotes, ret = t._prepareBlocks(height, blockHash)
+	rb.Append(func(revert bool) {
+		if revert {
+			log.Must(os.RemoveAll(contractDir))
+			log.Must(os.RemoveAll(WALDir))
+			log.Must(os.RemoveAll(CacheDir))
+		}
+	})
 	return
 }
 

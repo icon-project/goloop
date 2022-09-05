@@ -339,6 +339,9 @@ func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool,
 		return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
 	}
 
+	// no need to validate the tx again for trace
+	t.step = stepValidated
+
 	return t.startExecution(func() error {
 		if t.syncer != nil {
 			return errors.InvalidStateError.New("TraceWithSyncTransition")
@@ -404,6 +407,14 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 		ws.EnableNodeCache()
 	}
 	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
+}
+
+func (t *transition) newContractContext(wc state.WorldContext) contract.Context {
+	priority := eeproxy.ForTransaction
+	if t.ti != nil {
+		priority = eeproxy.ForQuery
+	}
+	return contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti, priority)
 }
 
 func (t *transition) reportValidation(e error) bool {
@@ -618,7 +629,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
+	ctx := t.newContractContext(wc)
 	ctx.ClearCache()
 	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 
