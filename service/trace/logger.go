@@ -168,7 +168,9 @@ func (l *Logger) onFee(from, to module.Address, rct module.Receipt) {
 		feePayerCnt := 0
 		for it := rct.FeePaymentIterator(); it.Has(); log.Must(it.Next()) {
 			feePayment, _ := it.Get()
-			l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, feePayment.Amount()))
+			if feePayment.Payer().Equal(from) {
+				l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, feePayment.Amount()))
+			}
 			feePayerCnt++
 		}
 		if feePayerCnt == 0 {
