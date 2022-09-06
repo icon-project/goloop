@@ -238,6 +238,10 @@ const (
 	inactivated
 )
 
+func (f ntModFlag) hasFlag(flag ntModFlag) bool {
+	return (f & flag) == flag
+}
+
 type btpData struct {
 	dbase           db.Database
 	validators      []module.Address
@@ -304,6 +308,7 @@ func (bss *btpSnapshot) Flush() error {
 func (bss *btpSnapshot) NewState() BTPState {
 	state := new(BTPStateImpl)
 	state.btpData = bss.Clone()
+	state.last = bss
 	return state
 }
 
@@ -317,12 +322,20 @@ func NewBTPSnapshot(dbase db.Database, hash []byte) BTPSnapshot {
 
 type BTPStateImpl struct {
 	*btpData
+	last *btpSnapshot
+}
+
+func (bs *BTPStateImpl) markDirty() {
+	bs.last = nil
 }
 
 func (bs *BTPStateImpl) GetSnapshot() BTPSnapshot {
-	bss := new(btpSnapshot)
-	bss.btpData = bs.Clone()
-	return bss
+	if bs.last != nil {
+		return bs.last
+	}
+	bs.last = new(btpSnapshot)
+	bs.last.btpData = bs.Clone()
+	return bs.last
 }
 
 func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
@@ -330,6 +343,10 @@ func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
 	if !ok {
 		return
 	}
+	if bs.last == ss {
+		return
+	}
+	bs.last = ss
 	bs.btpData = ss.Clone()
 }
 
@@ -341,13 +358,17 @@ func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
 		vSlice[i] = v.Address()
 	}
 	bs.validators = vSlice
+	bs.markDirty()
 }
 
 func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
 	if bs.ntModified == nil {
 		bs.ntModified = make(map[int64]ntModFlag)
 	}
-	bs.ntModified[ntid] |= proofContextChanged
+	if !bs.ntModified[ntid].hasFlag(proofContextChanged) {
+		bs.ntModified[ntid] |= proofContextChanged
+		bs.markDirty()
+	}
 }
 
 func (bs *BTPStateImpl) setInactivatedNetworkType(ntid int64, yn bool) {
@@ -355,9 +376,15 @@ func (bs *BTPStateImpl) setInactivatedNetworkType(ntid int64, yn bool) {
 		bs.ntModified = make(map[int64]ntModFlag)
 	}
 	if yn {
-		bs.ntModified[ntid] |= inactivated
+		if !bs.ntModified[ntid].hasFlag(inactivated) {
+			bs.ntModified[ntid] |= inactivated
+			bs.markDirty()
+		}
 	} else {
-		bs.ntModified[ntid] &= ^inactivated
+		if bs.ntModified[ntid].hasFlag(inactivated) {
+			bs.ntModified[ntid] &= ^inactivated
+			bs.markDirty()
+		}
 	}
 }
 
@@ -370,13 +397,17 @@ func (bs *BTPStateImpl) addPubKeyChanged(address module.Address, ntid int64) {
 		bs.pubKeyChanged[key] = make([]int64, 0)
 	}
 	bs.pubKeyChanged[key] = append(bs.pubKeyChanged[key], ntid)
+	bs.markDirty()
 }
 
 func (bs *BTPStateImpl) setNetworkModified(nid int64) {
 	if bs.networkModified == nil {
 		bs.networkModified = make(map[int64]bool)
 	}
-	bs.networkModified[nid] = true
+	if !bs.networkModified[nid] {
+		bs.networkModified[nid] = true
+		bs.markDirty()
+	}
 }
 
 func (bs *BTPStateImpl) getPubKeysOfValidators(bc BTPContext, mod module.NetworkTypeModule) ([][]byte, bool) {
@@ -704,6 +735,7 @@ func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSect
 
 	bs.digest = btpSection.Digest()
 	bs.digestHash = bs.digest.Hash()
+	bs.markDirty()
 	return nil
 }
 
