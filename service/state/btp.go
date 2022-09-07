@@ -74,7 +74,7 @@ type BTPSnapshot interface {
 type BTPState interface {
 	GetSnapshot() BTPSnapshot
 	Reset(snapshot BTPSnapshot)
-	SetValidators(vs ValidatorState)
+	StoreValidators(vs ValidatorState)
 	BuildAndApplySection(bc BTPContext, btpMsgs *list.List) (module.BTPSection, error)
 }
 
@@ -243,34 +243,20 @@ func (f ntModFlag) hasFlag(flag ntModFlag) bool {
 }
 
 type btpData struct {
-	dbase           db.Database
-	validators      []module.Address
-	pubKeyChanged   map[string][]int64  // key: string(Address.Bytes()). value: slice of networkType ID
-	ntModified      map[int64]ntModFlag // key: networkType ID
-	networkModified map[int64]bool      // key: network ID
-	digest          module.BTPDigest
-	digestHash      []byte
+	dbase         db.Database
+	validators    ValidatorSnapshot
+	pubKeyChanged map[string][]int64  // key: string(Address.Bytes()). value: slice of networkType ID
+	ntModified    map[int64]ntModFlag // key: networkType ID
+	nwModified    map[int64]bool      // key: network ID
+	digest        module.BTPDigest
+	digestHash    []byte
 }
 
 func (bd *btpData) Clone() *btpData {
 	n := new(btpData)
 
 	n.dbase = bd.dbase
-	n.digest = bd.digest
-	if bd.digestHash != nil {
-		copy(n.digestHash, bd.digestHash)
-	}
-
-	size := len(bd.validators)
-	n.validators = make([]module.Address, size, size)
-	for k, v := range bd.validators {
-		n.validators[k] = v
-	}
-
-	n.ntModified = make(map[int64]ntModFlag)
-	for k, v := range bd.ntModified {
-		n.ntModified[k] = v
-	}
+	n.validators = bd.validators
 
 	n.pubKeyChanged = make(map[string][]int64)
 	for k, v := range bd.pubKeyChanged {
@@ -279,9 +265,19 @@ func (bd *btpData) Clone() *btpData {
 		n.pubKeyChanged[k] = nv
 	}
 
-	n.networkModified = make(map[int64]bool)
-	for k, v := range bd.networkModified {
-		n.networkModified[k] = v
+	n.ntModified = make(map[int64]ntModFlag)
+	for k, v := range bd.ntModified {
+		n.ntModified[k] = v
+	}
+
+	n.nwModified = make(map[int64]bool)
+	for k, v := range bd.nwModified {
+		n.nwModified[k] = v
+	}
+
+	n.digest = bd.digest
+	if bd.digestHash != nil {
+		copy(n.digestHash, bd.digestHash)
 	}
 
 	return n
@@ -350,15 +346,24 @@ func (bs *BTPStateImpl) Reset(snapshot BTPSnapshot) {
 	bs.btpData = ss.Clone()
 }
 
-func (bs *BTPStateImpl) SetValidators(vs ValidatorState) {
-	size := vs.Len()
-	vSlice := make([]module.Address, size, size)
-	for i := 0; i < vs.Len(); i++ {
-		v, _ := vs.Get(i)
-		vSlice[i] = v.Address()
-	}
-	bs.validators = vSlice
+func (bs *BTPStateImpl) StoreValidators(vs ValidatorState) {
+	bs.validators = vs.GetSnapshot()
 	bs.markDirty()
+}
+
+func (bs *BTPStateImpl) equalValidators(vs2 ValidatorState) bool {
+	if bs.validators.Len() != vs2.Len() {
+		return false
+	}
+
+	for i := 0; i < bs.validators.Len(); i++ {
+		v1, _ := bs.validators.Get(i)
+		v2, _ := vs2.Get(i)
+		if !v1.Address().Equal(v2.Address()) {
+			return false
+		}
+	}
+	return true
 }
 
 func (bs *BTPStateImpl) setProofContextChanged(ntid int64) {
@@ -401,11 +406,11 @@ func (bs *BTPStateImpl) addPubKeyChanged(address module.Address, ntid int64) {
 }
 
 func (bs *BTPStateImpl) setNetworkModified(nid int64) {
-	if bs.networkModified == nil {
-		bs.networkModified = make(map[int64]bool)
+	if bs.nwModified == nil {
+		bs.nwModified = make(map[int64]bool)
 	}
-	if !bs.networkModified[nid] {
-		bs.networkModified[nid] = true
+	if !bs.nwModified[nid] {
+		bs.nwModified[nid] = true
 		bs.markDirty()
 	}
 }
@@ -670,7 +675,7 @@ func (bs *BTPStateImpl) update(bc BTPContext) error {
 		}
 	}
 
-	for nid := range bs.networkModified {
+	for nid := range bs.nwModified {
 		if err := bs.updateNetwork(bc, nid); err != nil {
 			return err
 		}
@@ -722,7 +727,7 @@ func (bs *BTPStateImpl) updateNetwork(bc BTPContext, nid int64) error {
 
 func (bs *BTPStateImpl) applyBTPSection(bc BTPContext, btpSection module.BTPSection) error {
 	for _, nts := range btpSection.NetworkTypeSections() {
-		for nid := range bs.networkModified {
+		for nid := range bs.nwModified {
 			ns, err := nts.NetworkSectionFor(nid)
 			if err != nil {
 				continue
@@ -751,23 +756,9 @@ func (bs *BTPStateImpl) applyNetwork(bc BTPContext, ns module.NetworkSection) er
 	}
 }
 
-func (bs *BTPStateImpl) validatorsEqual(v2 ValidatorState) bool {
-	if len(bs.validators) != v2.Len() {
-		return false
-	}
-
-	for i := 0; i < v2.Len(); i++ {
-		v, _ := v2.Get(i)
-		if !bs.validators[i].Equal(v.Address()) {
-			return false
-		}
-	}
-	return true
-}
-
 func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
 	vcNtids := make([]int64, 0)
-	if bs.validatorsEqual(bc.GetValidatorState()) == false {
+	if bs.equalValidators(bc.GetValidatorState()) == false {
 		ntids, err := bc.GetNetworkTypeIDs()
 		if err != nil {
 			return err
@@ -776,8 +767,9 @@ func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
 			vcNtids = append(vcNtids, ntid)
 		}
 	} else {
-		for _, v := range bs.validators {
-			if ntids, ok := bs.pubKeyChanged[string(v.Bytes())]; ok {
+		for i := 0; i < bs.validators.Len(); i++ {
+			v, _ := bs.validators.Get(i)
+			if ntids, ok := bs.pubKeyChanged[string(v.Address().Bytes())]; ok {
 				vcNtids = append(vcNtids, ntids...)
 			}
 		}
@@ -804,7 +796,7 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 		return nil, err
 	}
 
-	for nid := range bs.networkModified {
+	for nid := range bs.nwModified {
 		sb.EnsureSection(nid)
 	}
 
