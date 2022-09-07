@@ -161,6 +161,7 @@ import java.lang.annotation.Target;
 public @interface External {
     /**
      * The method will have read-only access to the state DB if this value is {@code true}.
+     * @return {@code true} if read only
      */
     boolean readonly() default false;
 }
