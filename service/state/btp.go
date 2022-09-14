@@ -252,11 +252,11 @@ type btpData struct {
 	digestHash    []byte
 }
 
-func (bd *btpData) Clone() *btpData {
-	n := new(btpData)
-
-	n.dbase = bd.dbase
-	n.validators = bd.validators
+func (bd *btpData) Clone() btpData {
+	n := btpData{
+		dbase:      bd.dbase,
+		validators: bd.validators,
+	}
 
 	n.pubKeyChanged = make(map[string][]int64)
 	for k, v := range bd.pubKeyChanged {
@@ -284,7 +284,7 @@ func (bd *btpData) Clone() *btpData {
 }
 
 type btpSnapshot struct {
-	*btpData
+	btpData
 }
 
 func (bss *btpSnapshot) Bytes() []byte {
@@ -302,22 +302,23 @@ func (bss *btpSnapshot) Flush() error {
 }
 
 func (bss *btpSnapshot) NewState() BTPState {
-	state := new(BTPStateImpl)
-	state.btpData = bss.Clone()
-	state.last = bss
-	return state
+	return &BTPStateImpl{
+		btpData: bss.Clone(),
+		last:    bss,
+	}
 }
 
 func NewBTPSnapshot(dbase db.Database, hash []byte) BTPSnapshot {
-	ss := new(btpSnapshot)
-	ss.btpData = new(btpData)
-	ss.dbase = dbase
-	ss.digestHash = hash
-	return ss
+	return &btpSnapshot{
+		btpData: btpData{
+			dbase:      dbase,
+			digestHash: hash,
+		},
+	}
 }
 
 type BTPStateImpl struct {
-	*btpData
+	btpData
 	last *btpSnapshot
 }
 
@@ -329,8 +330,9 @@ func (bs *BTPStateImpl) GetSnapshot() BTPSnapshot {
 	if bs.last != nil {
 		return bs.last
 	}
-	bs.last = new(btpSnapshot)
-	bs.last.btpData = bs.Clone()
+	bs.last = &btpSnapshot{
+		btpData: bs.Clone(),
+	}
 	return bs.last
 }
 
@@ -826,11 +828,12 @@ func (bs *BTPStateImpl) BuildAndApplySection(bc BTPContext, btpMsgs *list.List) 
 }
 
 func NewBTPState(dbase db.Database, hash []byte) BTPState {
-	state := new(BTPStateImpl)
-	state.btpData = new(btpData)
-	state.dbase = dbase
-	state.digestHash = hash
-	return state
+	return &BTPStateImpl{
+		btpData: btpData{
+			dbase:      dbase,
+			digestHash: hash,
+		},
+	}
 }
 
 type bTPMsg struct {
