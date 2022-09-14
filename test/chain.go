@@ -215,6 +215,10 @@ func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 	c.sm = sm
 }
 
+func (c *Chain) DoDBTask(f func(database db.Database)) {
+	panic("implement me")
+}
+
 func NewChain(
 	t *testing.T,
 	w module.Wallet,
