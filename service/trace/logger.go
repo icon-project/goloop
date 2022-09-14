@@ -101,67 +101,76 @@ func (l *Logger) WithTPrefix(prefix string) *Logger {
 	}
 }
 
-func (l *Logger) OnTransactionStart(txIndex int32, txHash []byte) {
-	if l.TraceMode() == module.TraceModeBalanceChange {
-		if err := l.cb.OnTransactionStart(txIndex, txHash); err != nil {
-			l.Warnf("OnTransactionStart() error: txIndex=%d txHash=%#x err=%#v",
-				txIndex, txHash, err)
-		}
+func (l *Logger) OnTransactionStart(txIndex int, txHash []byte) {
+	traceMode := l.TraceMode()
+	if traceMode == module.TraceModeNone {
+		return
+	}
+
+	isBlockTx := txHash == nil
+	if isBlockTx && traceMode == module.TraceModeBalanceChange && l.traceBlock != nil {
+		txHash = l.traceBlock.ID()
+	}
+
+	if err := l.cb.OnTransactionStart(txIndex, txHash, isBlockTx); err != nil {
+		l.Warnf("OnTransactionStart() error: txIndex=%d txHash=%#x isBlockTx=%t err=%#v",
+			txIndex, txHash, isBlockTx, err)
 	}
 }
 
-func (l *Logger) OnTransactionRerun(txIndex int32, txHash []byte) {
-	if l.TraceMode() == module.TraceModeBalanceChange {
-		if err := l.cb.OnTransactionRerun(txIndex, txHash); err != nil {
-			l.Warnf("OnTransactionRerun() error: txIndex=%d txHash=%#x err=%#v",
-				txIndex, txHash, err)
+func (l *Logger) OnTransactionReset() {
+	if l.TraceMode() != module.TraceModeNone {
+		if err := l.cb.OnTransactionReset(); err != nil {
+			l.Warnf("OnTransactionReset() error: err=%#v", err)
 		}
 	}
 }
 
 func (l *Logger) OnTransactionEnd(
-	txIndex int32, txHash []byte, from module.Address, traceRct module.Receipt, treasury module.Address) {
-	if l.TraceMode() == module.TraceModeBalanceChange {
-		finalRct := l.traceBlock.GetReceipt(int(txIndex))
-		l.checkReceipts(traceRct, finalRct)
-		l.onFee(from, treasury, finalRct)
+	txIndex int, txHash []byte, from module.Address, treasury module.Address) {
+	traceMode := l.TraceMode()
+	if traceMode == module.TraceModeNone {
+		return
+	}
 
-		if err := l.cb.OnTransactionEnd(txIndex, txHash); err != nil {
-			l.Warnf("OnTransactionEnd() error: txIndex=%d txHash=%#x err=%#v",
-				txIndex, txHash, err)
+	if traceMode == module.TraceModeBalanceChange {
+		if txHash != nil {
+			// Common transaction
+			finalRct := l.traceBlock.GetReceipt(txIndex)
+			if finalRct.Status() != module.StatusSuccess {
+				if err := l.cb.OnTransactionReset(); err != nil {
+					l.Warnf("OnTransactionReset() error: err=%#v", err)
+				}
+			}
+			l.onFee(from, treasury, finalRct)
+		} else {
+			// In case of blockTransaction, use blockHash as a txHash
+			txHash = l.traceBlock.ID()
 		}
 	}
-}
 
-func (l *Logger) checkReceipts(traceRct, finalRct module.Receipt) {
-	if traceRct == nil {
-		l.Errorf("Trace receipt is nil in Logger.OnTransactionEnd()")
-		return
-	}
-	if finalRct == nil {
-		l.Errorf("Final receipt is nil in Logger.OnTransactionEnd()")
-		return
-	}
-	if traceRct.Status() != finalRct.Status() {
-		l.Errorf("Different status between trace and final receipts: trace=%d final=%d",
-			traceRct.Status(), finalRct.Status())
+	if err := l.cb.OnTransactionEnd(txIndex, txHash); err != nil {
+		l.Warnf("OnTransactionEnd() error: txIndex=%d txHash=%#x err=%#v",
+			txIndex, txHash, err)
 	}
 }
 
 func (l *Logger) onFee(from, to module.Address, rct module.Receipt) {
-	if rct != nil {
-		stepPrice := rct.StepPrice()
-		feePayerCnt := 0
-		for it := rct.FeePaymentIterator(); it.Has(); log.Must(it.Next()) {
-			feePayment, _ := it.Get()
-			if feePayment.Payer().Equal(from) {
-				l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, feePayment.Amount()))
-			}
-			feePayerCnt++
+	if from == nil || to == nil || rct == nil {
+		return
+	}
+
+	stepPrice := rct.StepPrice()
+	feePayerCnt := 0
+	for it := rct.FeePaymentIterator(); it.Has(); log.Must(it.Next()) {
+		feePayment, _ := it.Get()
+		if feePayment.Payer().Equal(from) {
+			l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, feePayment.Amount()))
 		}
-		if feePayerCnt == 0 {
-			l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, rct.StepUsed()))
-		}
+		feePayerCnt++
+	}
+	if feePayerCnt == 0 {
+		l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, rct.StepUsed()))
 	}
 }
 

@@ -87,27 +87,27 @@ func (t *traceCallback) balanceChangeToJSON(blk module.Block) interface{} {
 	return result
 }
 
-func (t *traceCallback) OnTransactionStart(txIndex int32, txHash []byte) error {
+func (t *traceCallback) OnTransactionStart(txIndex int, txHash []byte, isBlockTx bool) error {
 	if t.bt != nil {
 		t.lock.Lock()
 		defer t.lock.Unlock()
-		return t.bt.OnTransactionStart(txIndex, txHash)
+		return t.bt.OnTransactionStart(txIndex, txHash, isBlockTx)
 	}
 	return nil
 }
 
-func (t *traceCallback) OnTransactionRerun(txIndex int32, txHash []byte) error {
+func (t *traceCallback) OnTransactionReset() error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	t.logs = nil
 	if t.bt != nil {
-		return t.bt.OnTransactionRerun(txIndex, txHash)
+		return t.bt.OnTransactionReset()
 	}
 	return nil
 }
 
-func (t *traceCallback) OnTransactionEnd(txIndex int32, txHash []byte) error {
+func (t *traceCallback) OnTransactionEnd(txIndex int, txHash []byte) error {
 	if t.bt != nil {
 		t.lock.Lock()
 		defer t.lock.Unlock()

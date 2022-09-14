@@ -20,13 +20,20 @@ func newRandomHash(size int) []byte {
 	return bs
 }
 
+func getCurrentFrameOpsLength(bt *BalanceTracer) int {
+	if bt.curFrame != nil {
+		return len(bt.curFrame.ops)
+	}
+	return 0
+}
+
 func TestNewBalanceTracer(t *testing.T) {
 	var err error
 	bt := NewBalanceTracer(10)
 
-	txIndex := int32(0)
+	txIndex := 0
 	txHash := newRandomHash(32)
-	err = bt.OnTransactionStart(txIndex, txHash)
+	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)
 
 	from := common.MustNewAddressFromString("hx100")
@@ -63,7 +70,7 @@ func TestNewBalanceTracer(t *testing.T) {
 
 func TestEmpyBalanceTracer_ErrorCase(t *testing.T) {
 	var err error
-	txIndex := int32(0)
+	txIndex := 0
 	txHash := newRandomHash(32)
 
 	bt := NewBalanceTracer(10)
@@ -80,7 +87,7 @@ func TestEmpyBalanceTracer_ErrorCase(t *testing.T) {
 
 func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 	var err error
-	txIndex := int32(0)
+	txIndex := 0
 	txHash := newRandomHash(32)
 	treasury := common.MustNewAddressFromString("hx10")
 	from := common.MustNewAddressFromString("hx11")
@@ -89,7 +96,7 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 
 	bt := NewBalanceTracer(10)
 
-	err = bt.OnTransactionStart(txIndex, txHash)
+	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)
 
 	err = bt.OnBalanceChange(module.Transfer, from, to, big.NewInt(1000))
@@ -124,6 +131,79 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 
 	err = bt.OnTransactionEnd(txIndex, txHash)
 	assert.NoError(t, err)
+}
+
+func TestEmpyBalanceTracer_OnTransactionReset(t *testing.T) {
+	var err error
+	txIndex := 0
+	txHash := newRandomHash(32)
+	treasury := common.MustNewAddressFromString("hx10")
+	from := common.MustNewAddressFromString("hx11")
+	to := common.MustNewAddressFromString("hx22")
+	score := common.MustNewAddressFromString("cx33")
+
+	bt := NewBalanceTracer(10)
+
+	err = bt.OnTransactionStart(txIndex, txHash, false)
+	assert.NoError(t, err)
+
+	// Frame 1
+	err = bt.OnFrameEnter()
+	assert.NoError(t, err)
+
+	err = bt.OnBalanceChange(module.Transfer, from, to, big.NewInt(1000))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, getCurrentFrameOpsLength(bt))
+
+	// Enter Frame 1-1
+	err = bt.OnFrameEnter()
+	assert.NoError(t, err)
+
+	err = bt.OnBalanceChange(module.Claim, treasury, from, big.NewInt(2000))
+	assert.NoError(t, err)
+
+	err = bt.OnBalanceChange(module.Burn, from, nil, big.NewInt(3000))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, getCurrentFrameOpsLength(bt))
+
+	// Exit from Frame 1-1
+	err = bt.OnFrameExit(true)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, getCurrentFrameOpsLength(bt))
+
+	// Enter Frame 1-2
+	err = bt.OnFrameEnter()
+	assert.NoError(t, err)
+
+	err = bt.OnBalanceChange(module.Transfer, from, score, big.NewInt(1000))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, getCurrentFrameOpsLength(bt))
+
+	// Exit from Frame 1-2
+	err = bt.OnFrameExit(false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, getCurrentFrameOpsLength(bt))
+
+	// Exit from Frame 1
+	err = bt.OnFrameExit(true)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, getCurrentFrameOpsLength(bt))
+
+	err = bt.OnTransactionReset()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 0, getCurrentFrameOpsLength(bt))
+
+	err = bt.OnTransactionEnd(txIndex, txHash)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 0, getCurrentFrameOpsLength(bt))
 }
 
 func TestOpTypeToString(t *testing.T) {
