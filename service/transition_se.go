@@ -48,7 +48,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		ctx.SetTransactionInfo(txInfo)
 		wcs := ctx.GetSnapshot()
 		traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
-		traceLogger.OnTransactionStart(txInfo.Index, txInfo.Hash)
+		traceLogger.OnTransactionStart(cnt, txo.ID())
 
 		for retry := 0; ; retry++ {
 			txh, err := txo.GetHandler(t.cm)
@@ -79,11 +79,10 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return errors.CriticalUnknownError.Wrapf(err, "FailToResetForRetry")
 			}
 			ts = time.Now()
-			traceLogger.OnTransactionRerun(txInfo.Index, txInfo.Hash)
+			traceLogger.OnTransactionReset()
 		}
 
-		traceLogger.OnTransactionEnd(
-			txInfo.Index, txInfo.Hash, txInfo.From, rctBuf[txInfo.Index], ctx.Treasury())
+		traceLogger.OnTransactionEnd(cnt, txo.ID(), txInfo.From, ctx.Treasury())
 		duration := time.Now().Sub(ts)
 		t.log.Tracef("END   TX <0x%x> duration=%s", txo.ID(), duration)
 		cnt++

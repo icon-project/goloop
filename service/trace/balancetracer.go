@@ -82,14 +82,10 @@ func (c *callFrame) toJSON() []map[string]interface{} {
 }
 
 type transaction struct {
-	index     int32
+	index     int
 	hash      []byte
 	isBlockTx bool
 	*callFrame
-}
-
-func (t *transaction) resetCallFrame() {
-	t.callFrame = &callFrame{}
 }
 
 func (t *transaction) toJSON() map[string]interface{} {
@@ -134,20 +130,21 @@ func (bt *BalanceTracer) getCurrentTx() (*transaction, error) {
 	return bt.txs[txCount-1], nil
 }
 
-func (bt *BalanceTracer) checkCurrentTx(curTx *transaction, txIndex int32, txHash []byte) error {
-	if curTx.index != txIndex || bytes.Compare(curTx.hash, txHash) != 0 {
-		return errors.InvalidStateError.Errorf(
-			"Invalid txHash: curTxHash=%s hash=%s",
-			hex.EncodeToString(curTx.hash), hex.EncodeToString(txHash))
+func (bt *BalanceTracer) checkCurrentTx(curTx *transaction, txIndex int, txHash []byte) error {
+	if curTx != nil {
+		if curTx.index != txIndex || bytes.Compare(curTx.hash, txHash) != 0 {
+			return errors.InvalidStateError.Errorf(
+				"Invalid txHash: curTxHash=%#x hash=%#x", curTx.hash, txHash)
+		}
 	}
 	return nil
 }
 
-func (bt *BalanceTracer) OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error {
+func (bt *BalanceTracer) OnTransactionStart(txIndex int, txHash []byte, isBlockTx bool) error {
 	if bt.curFrame != nil {
 		return errors.InvalidStateError.Errorf(
-			"Invalid curFrame: txIndex=%d txHash=%s curFrame=%#v",
-			txIndex, hex.EncodeToString(txHash), bt.curFrame)
+			"Invalid curFrame: txIndex=%d txHash=%#x curFrame=%#v",
+			txIndex, txHash, bt.curFrame)
 	}
 	frame := &callFrame{}
 	tx := &transaction{index: txIndex, hash: txHash, isBlockTx: isBlockTx, callFrame: frame}
@@ -156,21 +153,19 @@ func (bt *BalanceTracer) OnTransactionStart(txIndex int32, txHash []byte, isBloc
 	return nil
 }
 
-func (bt *BalanceTracer) OnTransactionRerun(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionReset() error {
 	curTx, err := bt.getCurrentTx()
 	if err != nil {
 		return err
 	}
-	if err = bt.checkCurrentTx(curTx, txIndex, txHash); err != nil {
-		return err
-	}
+
 	frame := &callFrame{}
 	curTx.callFrame = frame
 	bt.curFrame = frame
 	return nil
 }
 
-func (bt *BalanceTracer) OnTransactionEnd(txIndex int32, txHash []byte) error {
+func (bt *BalanceTracer) OnTransactionEnd(txIndex int, txHash []byte) error {
 	curTx, err := bt.getCurrentTx()
 	if err != nil {
 		return err
