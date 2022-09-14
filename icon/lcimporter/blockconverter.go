@@ -19,7 +19,6 @@ package lcimporter
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/chain/base"
@@ -58,6 +57,8 @@ type BlockConverter struct {
 
 	stopCh chan<- struct{}
 	resCh  <-chan interface{}
+
+	module.TraceCallback
 }
 
 type Transition struct {
@@ -626,36 +627,4 @@ func (e *BlockConverter) doExecute(
 
 func (e *BlockConverter) GetBlockVotes(h int64) (*blockv0.BlockVoteList, error) {
 	return e.cs.GetVotesByHeight(int(h))
-}
-
-func (e *BlockConverter) TraceMode() module.TraceMode {
-	return module.TraceModeInvoke
-}
-
-func (e *BlockConverter) GetReceipt(txIndex int) module.Receipt {
-	return nil
-}
-
-func (e *BlockConverter) OnTransactionStart(txIndex int32, txHash []byte, isBlockTx bool) error {
-	return nil
-}
-
-func (e *BlockConverter) OnTransactionRerun(txIndex int32, txHash []byte) error {
-	return nil
-}
-
-func (e *BlockConverter) OnTransactionEnd(txIndex int32, txHash []byte) error {
-	return nil
-}
-
-func (e *BlockConverter) OnFrameEnter() error {
-	return nil
-}
-
-func (e *BlockConverter) OnFrameExit(success bool) error {
-	return nil
-}
-
-func (e *BlockConverter) OnBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) error {
-	return nil
 }
