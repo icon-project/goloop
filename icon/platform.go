@@ -44,6 +44,7 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -173,6 +174,13 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 	} else {
 		totalFee = er.TotalFee()
 	}
+
+	txInfo := wc.TransactionInfo()
+	txIndex := int(txInfo.Index)
+	tlogger := trace.LoggerOf(logger)
+	tlogger.OnTransactionStart(txIndex, nil)
+	defer tlogger.OnTransactionEnd(txIndex, nil, nil, nil)
+
 	return es.OnExecutionEnd(iiss.NewWorldContext(wc, logger), totalFee, p.calculator.Get())
 }
 
