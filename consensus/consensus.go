@@ -659,15 +659,7 @@ func (cs *consensus) enterPropose() {
 					psb := NewPartSetBuffer(ConfigBlockPartSize)
 					cs.log.Must(blk.MarshalHeader(psb))
 					cs.log.Must(blk.MarshalBody(psb))
-					bd, err := blk.BTPDigest()
-					if err != nil {
-						cs.log.Panicf("cannot get BTPDigest for proposing block: %+v\n", err)
-					}
-					cnt, err := cs.ntsVoteCountWithPCM(bd, cs.nextPCM)
-					if err != nil {
-						cs.log.Panicf("cannot get ntsVoteCount for proposing block: %+v\n", err)
-					}
-					bps := psb.PartSet(uint16(cnt))
+					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
 					cs.currentBlockParts.Set(bps, blk, blk)
@@ -1216,7 +1208,7 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 				return err
 			}
 		}
-		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID(), ntsVoteBases)
+		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID().WithAppData(uint16(len(ntsVoteBases))), ntsVoteBases)
 		msg.NTSDProofParts = ntsdProofParts
 	} else {
 		msg.SetRoundDecision(cs.nid, nil, nil)
@@ -1933,10 +1925,8 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		var bps PartSet
 		var vl *voteList
 		if cvl, ok := cvs.(*CommitVoteList); ok {
-			var cnt int
 			if h == 0 {
 				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
-				cnt = 0
 			} else {
 				prev, err := cs.c.BlockManager().GetBlockByHeight(h - 1)
 				if err != nil {
@@ -1946,19 +1936,11 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 				if err != nil {
 					return nil, err
 				}
-				bd, err := b.BTPDigest()
-				if err != nil {
-					return nil, err
-				}
-				cnt, err = cs.ntsVoteCount(bd, prev.Result())
-				if err != nil {
-					return nil, err
-				}
 			}
 			psb := NewPartSetBuffer(ConfigBlockPartSize)
 			cs.log.Must(b.MarshalHeader(psb))
 			cs.log.Must(b.MarshalBody(psb))
-			bps = psb.PartSet(uint16(cnt))
+			bps = psb.PartSet()
 		}
 		c = &commit{
 			height:       h,

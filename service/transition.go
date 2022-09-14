@@ -631,7 +631,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
-	ctx.GetBTPState().SetValidators(ctx.GetValidatorState())
+	ctx.GetBTPState().StoreValidators(ctx.GetValidatorState())
 
 	if err := t.plt.OnExecutionBegin(ctx, t.log); err != nil {
 		t.reportExecution(err)

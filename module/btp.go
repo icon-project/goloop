@@ -99,6 +99,10 @@ type BTPDigest interface {
 	Flush(dbase db.Database) error
 	NetworkSectionFilter() BitSetFilter
 	NTSHashEntryList
+
+	// NTSVoteCount returns NTS vote count for this digest.
+	// pcm is the nextPCM in block(h-1) where the digest is in block(h).
+	NTSVoteCount(pcm BTPProofContextMap) (int, error)
 }
 
 type NetworkTypeDigest interface {

@@ -249,6 +249,7 @@ func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
 	var pcm module.BTPProofContextMap
 	var ntsHashEntries []module.NTSHashEntryFormat
 	var ntsdProofParts [][]byte
+	var ntsVoteCount int
 	if t.LastBlock.Height() > 1 {
 		blk, err := t.BM.GetBlockByHeight(t.LastBlock.Height() - 1)
 		assert.NoError(t, err)
@@ -275,6 +276,8 @@ func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
 				ntsdProofParts = append(ntsdProofParts, pp.Bytes())
 			}
 		}
+		ntsVoteCount, err = bd.NTSVoteCount(pcm)
+		assert.NoError(t, err)
 	}
 	precommit := consensus.NewVoteMessage(
 		t.Chain.Wallet(),
@@ -286,6 +289,7 @@ func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
 		t.LastBlock.Timestamp()+1,
 		ntsHashEntries,
 		ntsdProofParts,
+		ntsVoteCount,
 	)
 	return consensus.NewCommitVoteList(pcm, precommit)
 }

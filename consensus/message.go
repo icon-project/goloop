@@ -104,7 +104,7 @@ func (msg *ProposalMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
-	if msg.BlockPartSetID.Count() <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
+	if msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
@@ -187,7 +187,7 @@ func NewVoteMessageFromBlock(
 	blk module.BlockData,
 	round int32,
 	voteType VoteType,
-	bpsID *PartSetID,
+	bpsIDAndNTSVoteCount *PartSetIDAndAppData,
 	ts int64,
 	nid int,
 	pcm module.BTPProofContextMap,
@@ -197,7 +197,7 @@ func NewVoteMessageFromBlock(
 	vm.Round = round
 	vm.Type = voteType
 	vm.BlockID = blk.ID()
-	vm.BlockPartSetID = bpsID
+	vm.BlockPartSetIDAndNTSVoteCount = bpsIDAndNTSVoteCount
 	vm.Timestamp = ts
 	_ = vm.sign(w)
 	bd, err := blk.BTPDigest()
@@ -235,19 +235,21 @@ func NewVoteMessageFromBlock(
 	return vm, nil
 }
 
+// NewVoteMessage returns a new VoteMessage. Used only for test.
 func NewVoteMessage(
 	w module.Wallet,
 	voteType VoteType, height int64, round int32, id []byte,
 	partSetID *PartSetID, ts int64,
 	ntsHashEntries []module.NTSHashEntryFormat,
 	ntsdProofParts [][]byte,
+	ntsVoteCount int,
 ) *VoteMessage {
 	vm := newVoteMessage()
 	vm.Height = height
 	vm.Round = round
 	vm.Type = voteType
 	vm.BlockID = id
-	vm.BlockPartSetID = partSetID
+	vm.BlockPartSetIDAndNTSVoteCount = partSetID.WithAppData(uint16(ntsVoteCount))
 	vm.Timestamp = ts
 	_ = vm.sign(w)
 	for _, ntsHashEntry := range ntsHashEntries {
@@ -255,15 +257,6 @@ func NewVoteMessage(
 	}
 	vm.NTSDProofParts = ntsdProofParts
 	return vm
-}
-
-func NewPrecommitMessage(
-	w module.Wallet,
-	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
-) *VoteMessage {
-	return NewVoteMessage(
-		w, VoteTypePrecommit, height, round, id, partSetID, ts, nil, nil,
-	)
 }
 
 func (msg *VoteMessage) EqualExceptSigs(msg2 *VoteMessage) bool {
@@ -285,9 +278,9 @@ func (msg *VoteMessage) Verify() error {
 	if len(msg.NTSVoteBases) != len(msg.NTSDProofParts) {
 		return errors.Errorf("NTS loop len mismatch NTSVoteBasesLen=%d NTSDProofPartsLen=%d", len(msg.NTSVoteBases), len(msg.NTSDProofParts))
 	}
-	verifyProofCount := msg.Type == VoteTypePrecommit && msg.BlockPartSetID != nil
-	if verifyProofCount && int(msg.BlockPartSetID.AppData()) != len(msg.NTSDProofParts) {
-		return errors.Errorf("NTS loop len mismatch appData=%d NTSDProofPartsLen=%d", msg.BlockPartSetID.AppData(), len(msg.NTSDProofParts))
+	verifyProofCount := msg.Type == VoteTypePrecommit && msg.BlockPartSetIDAndNTSVoteCount != nil
+	if verifyProofCount && int(msg.BlockPartSetIDAndNTSVoteCount.AppData()) != len(msg.NTSDProofParts) {
+		return errors.Errorf("NTS loop len mismatch appData=%d NTSDProofPartsLen=%d", msg.BlockPartSetIDAndNTSVoteCount.AppData(), len(msg.NTSDProofParts))
 	}
 	return msg.signedBase.verify()
 }
@@ -340,7 +333,7 @@ func (msg *VoteMessage) RLPEncodeSelf(e codec.Encoder) error {
 		&msg.Round,
 		&msg.Type,
 		&msg.BlockID,
-		&msg.BlockPartSetID,
+		&msg.BlockPartSetIDAndNTSVoteCount,
 		&msg.Timestamp,
 	)
 	if err != nil {
@@ -381,7 +374,7 @@ func (msg *VoteMessage) RLPDecodeSelf(d codec.Decoder) error {
 		&msg.Round,
 		&msg.Type,
 		&msg.BlockID,
-		&msg.BlockPartSetID,
+		&msg.BlockPartSetIDAndNTSVoteCount,
 		&msg.Timestamp,
 		&ntsVotes,
 	)

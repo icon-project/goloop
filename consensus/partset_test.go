@@ -38,7 +38,7 @@ func TestBlockParts(t *testing.T) {
 		t.Errorf("Fail to marshal body err=%+v", err)
 		return
 	}
-	ps := psb.PartSet(0)
+	ps := psb.PartSet()
 
 	hdr := ps.ID()
 	log.Printf("ID : %+v", hdr)

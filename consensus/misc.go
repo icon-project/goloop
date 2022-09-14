@@ -41,23 +41,6 @@ func (cs *consensus) ntsVoteCount(bd module.BTPDigest, prevResult []byte) (int, 
 	return count, nil
 }
 
-// ntsVoteCount returns number of NTS vote for block(height).
-// bd is the digest for height. pcm is nextPCM in block(height-1).
-func (cs *consensus) ntsVoteCountWithPCM(bd module.BTPDigest, pcm module.BTPProofContextMap) (int, error) {
-	count := 0
-	for _, ntd := range bd.NetworkTypeDigests() {
-		_, err := pcm.ProofContextFor(ntd.NetworkTypeID())
-		if errors.Is(err, errors.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return -1, err
-		}
-		count++
-	}
-	return count, nil
-}
-
 func (cs *consensus) ntsdIndexFor(ntid int64, bd module.BTPDigest, prevResult []byte) (int, error) {
 	for i, ntd := range bd.NetworkTypeDigests() {
 		nt, err := cs.c.ServiceManager().BTPNetworkTypeFromResult(prevResult, ntd.NetworkTypeID())
