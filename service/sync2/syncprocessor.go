@@ -405,8 +405,7 @@ func (s *syncProcessor) HandleData(sender *peer, data []BucketIDAndBytes) {
 	s.prepareWakeupInLock()
 }
 
-func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Logger, datasyncer bool) interface{} {
-
+func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Logger, datasyncer bool) *syncProcessor {
 	return &syncProcessor{
 		logger:      log,
 		builder:     builder,

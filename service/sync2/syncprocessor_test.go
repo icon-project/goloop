@@ -193,8 +193,7 @@ func TestSyncProcessorState(t *testing.T) {
 	// when create syncProcessor
 	builder = merkle.NewBuilder(dstdb)
 	builder.RequestData(db.BytesByHash, key1, req1)
-	sp := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
-	sproc := sp.(*syncProcessor)
+	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
 
 	// then unresolved count is 1
 	expected1 := 1
@@ -257,8 +256,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 
 	// create data syncProcessor
 	builder := merkle.NewBuilder(dstdb)
-	sp1 := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, true)
-	sproc := sp1.(SyncProcessor)
+	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, true)
 
 	wg.Add(1)
 	sproc.Start(func(err error) {
@@ -350,8 +348,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	// when async start finished by done
 	builder := merkle.NewBuilder(dstdb)
 	builder.RequestData(db.BytesByHash, key1, req1)
-	sp1 := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
-	sproc := sp1.(SyncProcessor)
+	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
 
 	sproc.Start(doneCb)
 	wg.Add(1)
@@ -367,8 +364,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	// when async start finished by external stop call
 	builder2 := merkle.NewBuilder(dstdb2)
 	builder2.RequestData(db.BytesByHash, key1, req1)
-	sp2 := newSyncProcessor(builder2, syncer1.reactors, syncer1.logger, false)
-	sproc2 := sp2.(SyncProcessor)
+	sproc2 := newSyncProcessor(builder2, syncer1.reactors, syncer1.logger, false)
 
 	sproc2.Start(doneCb)
 	wg.Add(1)

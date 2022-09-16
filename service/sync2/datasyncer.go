@@ -47,17 +47,19 @@ func (r onDataHandler) OnData(value []byte, builder merkle.Builder) error {
 
 func (s *dataSyncer) Start() {
 	sp := newSyncProcessor(s.builder, s.reactors, s.logger, true)
-	sproc := sp.(SyncProcessor)
-	sproc.Start(func(err error) {
+	sp.Start(func(err error) {
 		if err != nil {
 			s.logger.Warnf("DataSyncer finished by error(%v)", err)
 		}
 	})
-	s.sp = sproc
+	s.sp = sp
 }
 
 func (s *dataSyncer) Term() {
-	s.sp.Stop()
+	if s.sp != nil {
+		s.sp.Stop()
+		s.sp = nil
+	}
 }
 
 func (s *dataSyncer) AddRequest(id db.BucketID, key []byte) error {

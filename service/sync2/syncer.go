@@ -72,9 +72,8 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 	for _, builder := range buildersV1 {
 		// sync processor with v1,v2 protocol
 		sp := newSyncProcessor(builder, s.reactors, s.logger, false)
-		sproc := sp.(*syncProcessor)
-		egrp.Go(sproc.doSync)
-		s.processors = append(s.processors, sproc)
+		egrp.Go(sp.doSync)
+		s.processors = append(s.processors, sp)
 	}
 
 	var reactorsV2 []SyncReactor
@@ -87,9 +86,8 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 	for _, builder := range buildersV2 {
 		// sync processor with v2 protocol
 		sp := newSyncProcessor(builder, reactorsV2, s.logger, false)
-		sproc := sp.(*syncProcessor)
-		egrp.Go(sproc.doSync)
-		s.processors = append(s.processors, sproc)
+		egrp.Go(sp.doSync)
+		s.processors = append(s.processors, sp)
 	}
 
 	if err := egrp.Wait(); err != nil {
