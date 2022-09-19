@@ -164,6 +164,7 @@ public final class Context {
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
+     * @see score.annotation.Keep
      */
     public static<T> T call(Class<T> cls, BigInteger value,
             Address targetAddress, String method, Object... params) {
@@ -182,6 +183,7 @@ public final class Context {
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
+     * @see score.annotation.Keep
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
@@ -201,6 +203,7 @@ public final class Context {
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
+     * @see score.annotation.Keep
      */
     public static<T> T call(Class<T> cls, Address targetAddress, String method,
             Object... params) {
@@ -218,6 +221,7 @@ public final class Context {
      * @throws RevertedException if call target reverts the newly created frame
      * @throws UserRevertedException if call target reverts the newly created frame by calling {@link Context#revert}
      * @throws ArithmeticException if returned value is out of range
+     * @see score.annotation.Keep
      */
     public static Object call(Address targetAddress, String method, Object... params) {
         return null;
@@ -240,6 +244,7 @@ public final class Context {
      * @param params parameters
      * @return the newly created SCORE address
      * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, etc.
+     * @see score.annotation.Keep
      */
     public static Address deploy(byte[] content, Object... params) {
         return null;
@@ -253,6 +258,7 @@ public final class Context {
      * @param params parameters
      * @return the target SCORE address
      * @throws IllegalArgumentException if the arguments are invalid, e.g. corrupted content, etc.
+     * @see score.annotation.Keep
      */
     public static Address deploy(Address targetAddress, byte[] content, Object... params) {
         return null;

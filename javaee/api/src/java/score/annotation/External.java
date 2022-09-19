@@ -155,6 +155,7 @@ import java.lang.annotation.Target;
  * {@link score.UserRevertException} for details. Otherwise, system code
  * {@code UnknownFailure(1)} is used as the failure code.
  *
+ * @see Keep
  * @see score.UserRevertException
  */
 @Target(ElementType.METHOD)
