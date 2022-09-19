@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type Logger struct {
@@ -127,7 +128,8 @@ func (l *Logger) OnTransactionReset() {
 }
 
 func (l *Logger) OnTransactionEnd(
-	txIndex int, txHash []byte, from module.Address, treasury module.Address) {
+	txIndex int, txHash []byte, from module.Address, treasury module.Address,
+	revision module.Revision, rct txresult.Receipt) {
 	traceMode := l.TraceMode()
 	if traceMode == module.TraceModeNone {
 		return
@@ -142,7 +144,11 @@ func (l *Logger) OnTransactionEnd(
 					l.Warnf("OnTransactionReset() error: err=%#v", err)
 				}
 			}
-			l.onFee(from, treasury, finalRct)
+			feeByDeposit := new(big.Int)
+			if revision.Has(module.FixLostFeeByDeposit) {
+				feeByDeposit = feeByDeposit.Sub(rct.Fee(), rct.FeeByEOA())
+			}
+			l.onFee(from, treasury, finalRct, feeByDeposit)
 		} else {
 			// In case of blockTransaction, use blockHash as a txHash
 			txHash = l.traceBlock.ID()
@@ -155,7 +161,7 @@ func (l *Logger) OnTransactionEnd(
 	}
 }
 
-func (l *Logger) onFee(from, to module.Address, rct module.Receipt) {
+func (l *Logger) onFee(from, to module.Address, rct module.Receipt, feeByDeposit *big.Int) {
 	if from == nil || to == nil || rct == nil {
 		return
 	}
@@ -171,6 +177,9 @@ func (l *Logger) onFee(from, to module.Address, rct module.Receipt) {
 	}
 	if feePayerCnt == 0 {
 		l.OnBalanceChange(module.Fee, from, to, new(big.Int).Mul(stepPrice, rct.StepUsed()))
+	}
+	if feeByDeposit.Sign() > 0 {
+		l.OnBalanceChange(module.FSFee, nil, to, feeByDeposit)
 	}
 }
 
