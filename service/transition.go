@@ -713,7 +713,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 }
 
 func (t *transition) onPlatformExecutionEnd(ctx contract.Context, er base.ExecutionResult) error {
-	ctx.SetTransactionInfo(&state.TransactionInfo{Index: int32(t.ntxCount)})
+	ctx.SetTransactionInfo(&state.TransactionInfo{
+		Index: int32(t.ntxCount),
+		Hash:  []byte{},
+	})
 	return t.plt.OnExecutionEnd(ctx, er, ctx.GetTraceLogger(module.EPhaseExecutionEnd))
 }
 
