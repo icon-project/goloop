@@ -1095,6 +1095,8 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	return steps, nil
 }
 
+const CIDForMainNet = 0x1
+
 func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -1114,7 +1116,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
 	}
 
-	blk, txInfo, err := findBlockAndTxInfoByRosettaTraceParam(bm, sm, param, debug)
+	blk, txInfo, err := findBlockAndTxInfoByRosettaTraceParam(chain.CID(), bm, sm, param, debug)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
@@ -1142,9 +1144,13 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
+	var replacer trace.TxHashReplacer
+	if chain.CID() == CIDForMainNet {
+		replacer = trace.ReplaceMissingTxHash
+	}
 	cb := &traceCallback{
 		channel: make(chan interface{}, 10),
-		bt:      trace.NewBalanceTracer(10),
+		bt:      trace.NewBalanceTracer(10, replacer),
 	}
 	ti := module.TraceInfo{
 		TraceMode:  module.TraceModeBalanceChange,
@@ -1182,6 +1188,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 }
 
 func findBlockAndTxInfoByRosettaTraceParam(
+	cid int,
 	bm module.BlockManager,
 	sm module.ServiceManager,
 	param RosettaTraceParam,
@@ -1197,7 +1204,7 @@ func findBlockAndTxInfoByRosettaTraceParam(
 				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 			}
 		} else {
-			txInfo, err = bm.GetTransactionInfo(param.Tx.Bytes())
+			txInfo, err = getTransactionInfo(param.Tx.Bytes(), cid, bm, sm)
 			if errors.NotFoundError.Equals(err) {
 				if sm.HasTransaction(param.Tx.Bytes()) {
 					return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
@@ -1230,6 +1237,60 @@ func findBlockAndTxInfoByRosettaTraceParam(
 		}
 	}
 	return blk, txInfo, err
+}
+
+type missingTransactionInfo struct {
+	blk   module.Block
+	index int
+	sm    module.ServiceManager
+	nblk  module.Block
+}
+
+func (m *missingTransactionInfo) Block() module.Block {
+	return m.blk
+}
+
+func (m *missingTransactionInfo) Index() int {
+	return m.index
+}
+
+func (m *missingTransactionInfo) Group() module.TransactionGroup {
+	return module.TransactionGroupNormal
+}
+
+func (m *missingTransactionInfo) Transaction() (module.Transaction, error) {
+	return nil, errors.UnsupportedError.Errorf("Not implemented")
+}
+
+func (m *missingTransactionInfo) GetReceipt() (module.Receipt, error) {
+	if m.nblk != nil {
+		rl, err := m.sm.ReceiptListFromResult(
+			m.nblk.Result(), m.Group())
+		if err != nil {
+			return nil, err
+		}
+		rct, err := rl.Get(m.index)
+		if err != nil {
+			return nil, err
+		}
+		return rct, nil
+	} else {
+		return nil, block.ErrResultNotFinalized
+	}
+}
+
+func getTransactionInfo(
+	txHash []byte, cid int, bm module.BlockManager, sm module.ServiceManager) (module.TransactionInfo, error) {
+	if cid == CIDForMainNet {
+		height, index, ok := trace.GetMissingTxLocator(txHash)
+		if ok {
+			if blk, err := bm.GetBlockByHeight(height); err == nil {
+				nblk, _ := bm.GetBlockByHeight(height + 1)
+				return &missingTransactionInfo{blk, index, sm, nblk}, nil
+			}
+		}
+	}
+	return bm.GetTransactionInfo(txHash)
 }
 
 func RosettaMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
