@@ -136,6 +136,7 @@ func (bd *digest) NTSVoteCount(pcm module.BTPProofContextMap) (int, error) {
 
 type networkTypeDigestCore interface {
 	NetworkTypeID() int64
+	UID() string
 	NetworkTypeSectionHash() []byte
 	NetworkDigests() []module.NetworkDigest
 }

@@ -107,6 +107,7 @@ type BTPDigest interface {
 
 type NetworkTypeDigest interface {
 	NetworkTypeID() int64
+	UID() string
 	NetworkTypeSectionHash() []byte
 	NetworkDigests() []NetworkDigest
 	NetworkDigestFor(nid int64) NetworkDigest

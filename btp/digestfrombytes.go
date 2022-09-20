@@ -19,9 +19,11 @@ package btp
 import (
 	"io"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -127,6 +129,7 @@ func (bd *digestCoreFromBytes) Flush(dbase db.Database) error {
 
 type networkTypeDigestFormat struct {
 	NetworkTypeID          int64
+	UID                    string
 	NetworkTypeSectionHash []byte
 	NetworkDigests         networkDigestSlice
 }
@@ -138,6 +141,10 @@ type networkTypeDigestCoreFromBytes struct {
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeID() int64 {
 	return ntd.format.NetworkTypeID
+}
+
+func (ntd *networkTypeDigestCoreFromBytes) UID() string {
+	return ntd.format.UID
 }
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeSectionHash() []byte {

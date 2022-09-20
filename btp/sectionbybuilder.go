@@ -132,6 +132,7 @@ func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
 
 type networkTypeSectionByBuilder struct {
 	networkTypeID        int64
+	uid                  string
 	nextProofContext     module.BTPProofContext
 	nextProofContextHash []byte
 	networkSections      networkSectionSlice
@@ -155,6 +156,7 @@ func newNetworkTypeSection(
 	}
 	nts := &networkTypeSectionByBuilder{
 		networkTypeID:       ntid,
+		uid:                 nt.UID(),
 		nextProofContext:    npc,
 		networkSections:     nsSlice,
 		networkSectionsRoot: mod.MerkleRoot(&nsSlice),
@@ -180,6 +182,10 @@ func (nts *networkTypeSectionByBuilder) networkTypeSectionFormat() networkTypeSe
 
 func (nts *networkTypeSectionByBuilder) NetworkTypeID() int64 {
 	return nts.networkTypeID
+}
+
+func (nts *networkTypeSectionByBuilder) UID() string {
+	return nts.uid
 }
 
 func (nts *networkTypeSectionByBuilder) Hash() []byte {
@@ -304,6 +310,7 @@ func (nts *networkTypeSectionByBuilder) encodeDigest(e codec.Encoder) error {
 	}
 	err = e2.EncodeMulti(
 		nts.NetworkTypeID(),
+		nts.UID(),
 		nts.NetworkTypeSectionHash(),
 	)
 	if err != nil {
