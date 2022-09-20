@@ -179,7 +179,7 @@ func (p *platform) OnExecutionEnd(wc state.WorldContext, er base.ExecutionResult
 	txIndex := int(txInfo.Index)
 	tlogger := trace.LoggerOf(logger)
 	tlogger.OnTransactionStart(txIndex, nil)
-	defer tlogger.OnTransactionEnd(txIndex, nil, nil, nil)
+	defer tlogger.OnTransactionEnd(txIndex, nil, nil, wc.Treasury(), wc.Revision(), nil)
 
 	return es.OnExecutionEnd(iiss.NewWorldContext(wc, logger), totalFee, p.calculator.Get())
 }
