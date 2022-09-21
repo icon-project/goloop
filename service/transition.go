@@ -18,7 +18,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
-	ssync "github.com/icon-project/goloop/service/sync"
+	ssync "github.com/icon-project/goloop/service/sync2"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )

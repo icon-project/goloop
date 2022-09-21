@@ -13,7 +13,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
-	ssync "github.com/icon-project/goloop/service/sync"
+	ssync "github.com/icon-project/goloop/service/sync2"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/errors"
