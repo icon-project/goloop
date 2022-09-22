@@ -63,8 +63,6 @@ public class BTP2APITest extends TestBase {
     private static final String DSA_SECP256K1 = "ecdsa/secp256k1";
     private static final String NT_ETH = "eth";
     private static final String NT_ICON = "icon";
-    private static final String[] NT_NAMES = {NT_ETH, NT_ICON};
-
     private static TransactionHandler txHandler;
     private static IconService iconService;
     private static ChainScore chainScore;
@@ -278,10 +276,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         BigInteger height = result.getBlockHeight();
-        for (BigInteger ntid: ntids) {
+        for (BigInteger ntid : ntids) {
             checkNetworkType(height, ntid);
         }
-        for (BigInteger nid: nids) {
+        for (BigInteger nid : nids) {
             checkNetwork(height, nid, true);
             checkHeader(height.add(BigInteger.ONE), nid);
         }
@@ -291,10 +289,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
-        for (BigInteger ntid: ntids) {
+        for (BigInteger ntid : ntids) {
             checkNetworkTypeNotChanged(height, ntid);
         }
-        for (BigInteger nid: nids) {
+        for (BigInteger nid : nids) {
             checkNetworkNotChanged(height, nid);
         }
         LOG.infoExiting();
@@ -303,10 +301,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, pubKeyEmpty);
         assertSuccess(result);
         height = result.getBlockHeight();
-        for (BigInteger ntid: ntids) {
+        for (BigInteger ntid : ntids) {
             checkNetworkType(height, ntid);
         }
-        for (BigInteger nid: nids) {
+        for (BigInteger nid : nids) {
             checkNetwork(height, nid, true);
         }
         LOG.infoExiting();
@@ -316,10 +314,10 @@ public class BTP2APITest extends TestBase {
         result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
         assertSuccess(result);
         height = result.getBlockHeight();
-        for (BigInteger ntid: ntids) {
+        for (BigInteger ntid : ntids) {
             checkNetworkType(height, ntid);
         }
-        for (BigInteger nid: nids) {
+        for (BigInteger nid : nids) {
             checkNetwork(height, nid, true);
             checkHeader(height.add(BigInteger.ONE), nid);
         }
@@ -364,31 +362,33 @@ public class BTP2APITest extends TestBase {
         var ntid = iconService.btpGetNetworkInfo(nid).execute().getNetworkTypeID();
         LOG.infoExiting();
 
-        var firstSN = 0;
+        var msgSN = 0;
         var msgCount = 1;
 
-        LOG.infoEntering("Send first BTP message");
+        LOG.infoEntering("Send first BTP message to " + nid);
         byte[] msg = getRandomBytes(10);
         byte[][] firstMsgs = {msg};
         result = chainScore.sendBTPMessage(wallet, nid, msg);
+        checkEventLog(result.getEventLogs(), nid, msgSN);
         var height = result.getBlockHeight();
         checkNetworkTypeNotChanged(height, ntid);
         checkNetwork(height, nid, msgCount);
         height = height.add(BigInteger.ONE);
-        checkHeader(height, nid, firstSN, msgCount);
-        firstSN = firstSN + msgCount;
+        checkHeader(height, nid, msgSN, msgCount);
         checkMessage(height, nid, firstMsgs);
+        msgSN = msgSN + msgCount;
         LOG.infoExiting();
 
         LOG.infoEntering("Send BTP message again");
         msg = getRandomBytes(20);
         byte[][] secondMsgs = {msg};
         result = chainScore.sendBTPMessage(wallet, nid, msg);
+        checkEventLog(result.getEventLogs(), nid, msgSN);
         height = result.getBlockHeight();
         checkNetworkTypeNotChanged(height, ntid);
         checkNetwork(height, nid, msgCount);
         height = height.add(BigInteger.ONE);
-        checkHeader(height, nid, firstSN, msgCount);
+        checkHeader(height, nid, msgSN, msgCount);
         checkMessage(height, nid, secondMsgs);
         LOG.infoExiting();
 
@@ -615,5 +615,19 @@ public class BTP2APITest extends TestBase {
         for (int i = 0; i < msgs.length; i++) {
             assertArrayEquals(msgs[i], msgsB64[i].decode());
         }
+    }
+
+    private void checkEventLog(List<TransactionResult.EventLog> eventLogs, BigInteger nid, int msgSN) {
+        boolean checked = false;
+        for (TransactionResult.EventLog el : eventLogs) {
+            if (el.getIndexed().get(0).asString().equals("BTPMessage(int,int)") &&
+                    el.getIndexed().get(1).asInteger().equals(nid) &&
+                    el.getIndexed().get(2).asInteger().equals(BigInteger.valueOf(msgSN))
+            ) {
+                checked = true;
+                break;
+            }
+        }
+        assertTrue(checked);
     }
 }
