@@ -1012,6 +1012,7 @@ func (nw *network) ToJSON() map[string]interface{} {
 	jso["networkTypeID"] = intconv.FormatInt(nw.networkTypeID)
 	jso["networkName"] = nw.name
 	jso["open"] = formatBool(nw.open)
+	jso["owner"] = nw.owner
 	jso["nextMessageSN"] = intconv.FormatInt(nw.nextMessageSN)
 	jso["nextProofContextChanged"] = formatBool(nw.nextProofContextChanged)
 	if len(nw.prevNetworkSectionHash) == 0 {
