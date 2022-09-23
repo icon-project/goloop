@@ -1173,7 +1173,7 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	timer := time.After(time.Second * 10)
+	timer := time.After(time.Second * 60)
 	for {
 		select {
 		case <-timer:
