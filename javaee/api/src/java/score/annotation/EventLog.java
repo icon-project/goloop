@@ -36,6 +36,7 @@ import java.lang.annotation.Target;
 public @interface EventLog {
     /**
      * The number of indexed parameters of the applied method declaration (maximum 3).
+     * @return the number of indexed parameters
      */
     int indexed() default 0;
 }

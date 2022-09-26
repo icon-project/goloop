@@ -15,6 +15,7 @@ import (
 func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
 	skipping := ctx.SkipTransactionEnabled()
 	cnt := 0
+
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
 			return ErrTransitionInterrupted
@@ -36,15 +37,19 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		}
 		t.log.Tracef("START TX <0x%x>", txo.ID())
 		ts := time.Now()
-		ctx.SetTransactionInfo(&state.TransactionInfo{
+		txInfo := &state.TransactionInfo{
 			Group:     txo.Group(),
 			Index:     int32(cnt),
 			Timestamp: txo.Timestamp(),
 			Nonce:     txo.Nonce(),
 			Hash:      txo.ID(),
 			From:      txo.From(),
-		})
+		}
+		ctx.SetTransactionInfo(txInfo)
 		wcs := ctx.GetSnapshot()
+		traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
+		traceLogger.OnTransactionStart(cnt, txo.ID())
+
 		for retry := 0; ; retry++ {
 			txh, err := txo.GetHandler(t.cm)
 			if err != nil {
@@ -55,11 +60,10 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			rct, err := txh.Execute(ctx, wcs, false)
 			txh.Dispose()
 			if err == nil {
-				err = t.plt.OnTransactionEnd(ctx, t.log, rct)
-			}
-			if err == nil {
-				rctBuf[cnt] = rct
-				break
+				if err = t.plt.OnTransactionEnd(ctx, t.log, rct); err == nil {
+					rctBuf[cnt] = rct
+					break
+				}
 			}
 			if !errors.ExecutionFailError.Equals(err) && !errors.CriticalRerunError.Equals(err) {
 				t.log.Warnf("Fail to execute transaction err=%+v", err)
@@ -75,7 +79,10 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return errors.CriticalUnknownError.Wrapf(err, "FailToResetForRetry")
 			}
 			ts = time.Now()
+			traceLogger.OnTransactionReset()
 		}
+
+		traceLogger.OnTransactionEnd(cnt, txo.ID(), txInfo.From, ctx.Treasury(), ctx.Revision(), rctBuf[cnt])
 		duration := time.Now().Sub(ts)
 		t.log.Tracef("END   TX <0x%x> duration=%s", txo.ID(), duration)
 		cnt++

@@ -206,7 +206,8 @@ func (th *transactionHandler) Execute(ctx contract.Context, wcs state.WorldSnaps
 		return nil, err
 	}
 
-	if !estimate && !cc.IsTrace() && (cc.ResultFlags()&contract.ResultForceRerun) != 0 {
+	isTrace := logger.TraceMode() != module.TraceModeNone
+	if !estimate && !isTrace && (cc.ResultFlags()&contract.ResultForceRerun) != 0 {
 		return nil, errors.CriticalRerunError.New("NeedToRerunTheTX")
 	}
 
@@ -304,7 +305,6 @@ func (th *transactionHandler) Execute(ctx contract.Context, wcs state.WorldSnaps
 	receipt.SetReason(status)
 
 	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepUsed, stepPrice)
-
 	return receipt, nil
 }
 
