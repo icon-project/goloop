@@ -14,9 +14,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
-	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
 var (
@@ -71,16 +69,18 @@ func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []Buck
 	var dummyData []BucketIDAndBytes
 
 	r.logger.Debugf("mockReactor(%v) RequestData() reqData(%v)", r.version, reqData)
+	bkID := reqData[0].BkID
 	key := string(reqData[0].Bytes)
+	hasher := bkID.Hasher()
 
 	switch key {
-	case string(crypto.SHA3Sum256(value1)):
+	case string(hasher.Hash(value1)):
 		dummyData = []BucketIDAndBytes{
-			{db.BytesByHash, value1},
+			{bkID, value1},
 		}
-	case string(crypto.SHA3Sum256(value2)):
+	case string(hasher.Hash(value2)):
 		dummyData = []BucketIDAndBytes{
-			{db.BytesByHash, value2},
+			{bkID, value2},
 		}
 	}
 
@@ -110,11 +110,13 @@ func (req *requestor) OnData(v []byte, builder merkle.Builder) error {
 
 	req2 := &requestor2{
 		logger: req.logger,
-		id:     db.BytesByHash,
+		id:     req.id,
 	}
 
-	key2 := crypto.SHA3Sum256(value2)
-	builder.RequestData(db.BytesByHash, key2, req2)
+	hasher := req.id.Hasher()
+
+	key2 := hasher.Hash(value2)
+	builder.RequestData(req.id, key2, req2)
 	return nil
 }
 
@@ -170,18 +172,7 @@ func TestSyncProcessorState(t *testing.T) {
 		id:     db.BytesByHash,
 	}
 
-	// given
-	ws := state.NewWorldState(srcdb, nil, nil, nil)
-	ac := ws.GetAccountState([]byte("ABC"))
-	ac.SetValue([]byte("ABC"), []byte("XYZ"))
-	vs := ws.GetValidatorState()
-
-	tvList := []module.Validator{
-		&testValidator{addr: wallet.New().Address()},
-		&testValidator{addr: wallet.New().Address()},
-	}
-	vs.Set(tvList)
-
+	// given test hashes on srcdb
 	key1 := crypto.SHA3Sum256(value1)
 	err := DBSet(srcdb, db.BytesByHash, key1, value1)
 	assert.NoError(t, err)
@@ -207,6 +198,101 @@ func TestSyncProcessorState(t *testing.T) {
 
 	// then
 	bk, _ := dstdb.GetBucket(db.BytesByHash)
+	expected2 := value1
+	actual2, _ := bk.Get(key1)
+	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected : %v, actual : %v", expected2, actual2)
+
+	expected3 := value2
+	actual3, _ := bk.Get(key2)
+	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected : %v, actual : %v", expected3, actual3)
+}
+
+const TestHasher db.BucketID = "T"
+
+type testHasher struct {
+}
+
+func (h testHasher) Name() string {
+	return "testhash"
+}
+
+func (h testHasher) Hash(v []byte) []byte {
+	// use different hash algorithm
+	// return crypto.SHA3Sum256(v)
+	return crypto.SHASum256(v)
+}
+
+func TestSyncProcessorBTPData(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.FatalLevel)
+
+	afterFunc = func(d time.Duration, f func()) *time.Timer {
+		return time.AfterFunc(time.Millisecond, f)
+	}
+
+	hasher := testHasher{}
+	db.RegisterHasher(TestHasher, hasher)
+
+	srcdb := db.NewMapDB()
+	dstdb := db.NewMapDB()
+	nm1 := newTNetworkManager(createAPeerID())
+	nm2 := newTNetworkManager(createAPeerID())
+	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
+
+	var builder merkle.Builder
+
+	reactor1 := &mockReactor{
+		logger:    log1,
+		version:   protoV2,
+		readyPool: newPeerPool(),
+	}
+	reactor2 := &mockReactor{
+		logger:    log1,
+		version:   protoV2,
+		readyPool: newPeerPool(),
+	}
+
+	syncer1 := &syncer{
+		logger:   log1,
+		database: srcdb,
+		reactors: []SyncReactor{reactor1, reactor2},
+		plt:      dummyExBuilder,
+	}
+
+	reactor1.OnJoin(nm1.id)
+	reactor2.OnJoin(nm2.id)
+
+	req1 := &requestor{
+		logger: log1,
+		id:     TestHasher,
+	}
+
+	// given test hashes on srcdb
+	key1 := crypto.SHASum256(value1)
+	err := DBSet(srcdb, TestHasher, key1, value1)
+	assert.NoError(t, err)
+
+	key2 := crypto.SHASum256(value2)
+	err = DBSet(srcdb, TestHasher, key2, value2)
+	assert.NoError(t, err)
+
+	// when create syncProcessor
+	builder = merkle.NewBuilder(dstdb)
+	builder.RequestData(TestHasher, key1, req1)
+	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
+
+	// then unresolved count is 1
+	expected1 := 1
+	actual1 := sproc.builder.UnresolvedCount()
+	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
+
+	// when start sync
+	err = sproc.doSync()
+	assert.NoError(t, err)
+	builder.Flush(true)
+
+	// then
+	bk, _ := dstdb.GetBucket(TestHasher)
 	expected2 := value1
 	actual2, _ := bk.Get(key1)
 	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected : %v, actual : %v", expected2, actual2)

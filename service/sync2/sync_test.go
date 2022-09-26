@@ -242,7 +242,7 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 	nm1.join(nm2)
 
 	// given
-	ws := state.NewWorldState(srcdb, nil, nil, nil)
+	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
 	ac := ws.GetAccountState([]byte("ABC"))
 	ac.SetValue([]byte("ABC"), []byte("XYZ"))
 	vs := ws.GetValidatorState()
@@ -438,7 +438,7 @@ func TestSyncAccountSync(t *testing.T) {
 	var wss [cPeers]state.WorldState
 	var prevHash []byte
 	for i := 0; i < cPeers-cSyncPeers; i++ {
-		wss[i] = state.NewWorldState(databases[i], nil, nil, nil)
+		wss[i] = state.NewWorldState(databases[i], nil, nil, nil, nil)
 		for j := 0; j < len(testItems); j++ {
 			v := []byte{testItems[j]}
 			ac := wss[i].GetAccountState(v)
@@ -463,7 +463,7 @@ func TestSyncAccountSync(t *testing.T) {
 		testName := "ForceSync_" + strconv.Itoa(i)
 		t.Run(testName, func(t *testing.T) {
 			syncM[cPeers-cSyncPeers+i].
-				NewSyncer(prevHash, nil, nil, nil, nil, false).
+				NewSyncer(prevHash, nil, nil, nil, nil, nil, false).
 				ForceSync()
 			t.Logf("Finish (%d)\n", i)
 		})
@@ -531,7 +531,7 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 	nHash := normalReceiptsList.Hash()
 	normalReceiptsList.Flush()
 
-	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil, nil, false)
+	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil, nil, nil, false)
 	syncer.ForceSync()
 	syncer.Finalize()
 

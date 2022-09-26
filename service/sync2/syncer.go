@@ -5,6 +5,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -38,23 +39,16 @@ type syncer struct {
 	wss state.WorldSnapshot
 	prl module.ReceiptList
 	nrl module.ReceiptList
+	bd  module.BTPDigest
 }
 
-func (s *syncer) setHashes(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) {
-	s.ah = accountsHash
-	s.prh = pReceiptsHash
-	s.nrh = nReceiptsHash
-	s.vlh = validatorListHash
-	s.ed = extensionData
-}
-
-func (s *syncer) GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
-	s.logger.Debugf("GetBuilder ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
+func (s *syncer) GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
+	s.logger.Debugf("GetStateBuilder ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 	builder := merkle.NewBuilder(s.database)
 	ess := s.plt.NewExtensionWithBuilder(builder, extensionData)
 
-	if wss, err := state.NewWorldSnapshotWithBuilder(builder, accountsHash, validatorListHash, ess); err == nil {
+	if wss, err := state.NewWorldSnapshotWithBuilder(builder, accountsHash, validatorListHash, ess, nil); err == nil {
 		s.wss = wss
 	}
 
@@ -64,12 +58,27 @@ func (s *syncer) GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validato
 	return builder
 }
 
-// start Sync
-func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merkle.Builder) (*Result, error) {
+func (s *syncer) GetBTPBuilder(btpHash []byte) merkle.Builder {
+	s.logger.Debugf("GetBTPBuilder bh(%#x)", btpHash)
+	builder := merkle.NewBuilder(s.database)
+
+	btpDigest, err := btp.NewDigestWithBuilder(builder, btpHash)
+	if err == nil {
+		s.bd = btpDigest
+	} else {
+		s.logger.Errorf("Failed NewDigestWithBuilder. err(%+v)", err)
+		return nil
+	}
+
+	return builder
+}
+
+// SyncWithBuilders start Sync
+func (s *syncer) SyncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
 	s.logger.Debugln("SyncWithBuilders")
 	egrp, _ := errgroup.WithContext(context.Background())
 
-	for _, builder := range buildersV1 {
+	for _, builder := range stateBuilders {
 		// sync processor with v1,v2 protocol
 		sp := newSyncProcessor(builder, s.reactors, s.logger, false)
 		egrp.Go(sp.doSync)
@@ -83,7 +92,7 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 		}
 	}
 
-	for _, builder := range buildersV2 {
+	for _, builder := range btpBuilders {
 		// sync processor with v2 protocol
 		sp := newSyncProcessor(builder, reactorsV2, s.logger, false)
 		egrp.Go(sp.doSync)
@@ -94,30 +103,44 @@ func (s *syncer) SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merk
 		return nil, err
 	}
 
+	var btpData module.BTPDigest
+	if s.bd == nil {
+		btpData = btp.ZeroDigest
+	} else {
+		btpData = s.bd
+	}
+
 	result := &Result{
-		s.wss, s.prl, s.nrl,
+		s.wss, s.prl, s.nrl, btpData,
 	}
 	s.logger.Debugln("SyncWithBuilder done!")
 	return result, nil
 }
 
 func (s *syncer) ForceSync() (*Result, error) {
-	var builders []merkle.Builder
+	var stateBuilders, btpBuilders []merkle.Builder
 
-	builder := s.GetBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
-	builders = append(builders, builder)
+	stateBuilder := s.GetStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
+	stateBuilders = append(stateBuilders, stateBuilder)
 
-	return s.SyncWithBuilders(builders, nil)
+	if s.bh != nil {
+		btpBuilder := s.GetBTPBuilder(s.bh)
+		if btpBuilder != nil {
+			btpBuilders = append(btpBuilders, btpBuilder)
+		}
+	}
+
+	return s.SyncWithBuilders(stateBuilders, btpBuilders)
 }
 
-// stop Sync
+// Stop sync
 func (s *syncer) Stop() {
 	for _, sp := range s.processors {
 		sp.Stop()
 	}
 }
 
-// finalize Sync
+// Finalize Sync
 func (s *syncer) Finalize() error {
 	s.logger.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)\n",
 		s.ah, s.prh, s.nrh, s.vlh, s.ed)
@@ -151,7 +174,7 @@ func newSyncer(database db.Database, reactors []SyncReactor, plt Platform, logge
 }
 
 func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platform,
-	ah []byte, prh []byte, nrh []byte, vlh []byte, ed []byte, logger log.Logger, noBuffer bool) Syncer {
+	ah, prh, nrh, vlh, ed, bh []byte, logger log.Logger, noBuffer bool) Syncer {
 	s := &syncer{
 		logger:   logger,
 		database: database,
@@ -162,6 +185,7 @@ func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platf
 		prh:      prh,
 		nrh:      nrh,
 		ed:       ed,
+		bh:       bh,
 	}
 
 	return s

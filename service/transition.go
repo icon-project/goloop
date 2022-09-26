@@ -137,6 +137,7 @@ type transition struct {
 	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
+	btpDigest      module.BTPDigest
 	logsBloom      txresult.LogsBloom
 
 	transactionCount int
@@ -547,12 +548,13 @@ func (t *transition) doForceSync() {
 	t.patchReceipts = sr.PatchReceipts
 	t.normalReceipts = sr.NormalReceipts
 	t.worldSnapshot = sr.Wss
+	t.btpDigest = sr.BTPDigest
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
-		t.worldSnapshot.BTPData(),
+		t.btpDigest.Hash(),
 	}
 	t.result = tresult.Bytes()
 	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
@@ -942,7 +944,7 @@ func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 }
 
 type SyncManager interface {
-	NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) ssync.Syncer
+	NewSyncer(ah, prh, nrh, vh, ed, bh []byte, noBuffer bool) ssync.Syncer
 }
 
 func NewSyncTransition(
@@ -954,7 +956,7 @@ func NewSyncTransition(
 	tst := tr.(*transition)
 	ntr := newTransition(tst.parent, tst.patchTransactions, tst.normalTransactions, tst.bi, tst.csi, true)
 	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, noBuffer)
+	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, r.BTPData, noBuffer)
 	return ntr
 }
 

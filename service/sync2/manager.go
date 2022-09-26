@@ -26,7 +26,7 @@ var (
 type RequestCallback func(ver byte, dataLen int, id module.PeerID)
 
 type Syncer interface {
-	GetBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder
+	GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder
 	SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merkle.Builder) (*Result, error)
 	ForceSync() (*Result, error)
 	Stop()
@@ -62,12 +62,12 @@ type Result struct {
 	Wss            state.WorldSnapshot
 	PatchReceipts  module.ReceiptList
 	NormalReceipts module.ReceiptList
-	// BPTData
+	BTPDigest      module.BTPDigest
 }
 
-func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) Syncer {
+func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed, bh []byte, noBuffer bool) Syncer {
 	return newSyncerWithHashes(
-		m.db, m.reactors, m.plt, ah, prh, nrh, vh, ed, m.logger, noBuffer)
+		m.db, m.reactors, m.plt, ah, prh, nrh, vh, ed, bh, m.logger, noBuffer)
 }
 
 func (m *Manager) GetSyncer() Syncer {
@@ -80,7 +80,7 @@ func (m *Manager) GetSyncer() Syncer {
 }
 
 func (m *Manager) GetSyncBuilders(ah, prh, nrh, vlh, ed []byte) []merkle.Builder {
-	builder := m.syncer.GetBuilder(ah, prh, nrh, vlh, ed)
+	builder := m.syncer.GetStateBuilder(ah, prh, nrh, vlh, ed)
 	m.builders = append(m.builders, builder)
 
 	return m.builders

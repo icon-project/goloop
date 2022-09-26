@@ -249,7 +249,7 @@ func (s *syncProcessor) sendRequests() {
 		if err := peer.RequestData(pack, s.HandleData); err == nil {
 			s.sentPool.push(peer)
 		} else {
-			s.logger.Infof("Request failed by %v", err)
+			s.logger.Infof("Request failed by %+v", err)
 			s.checkedPool.push(peer)
 		}
 	}
