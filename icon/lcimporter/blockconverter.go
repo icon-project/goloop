@@ -57,6 +57,8 @@ type BlockConverter struct {
 
 	stopCh chan<- struct{}
 	resCh  <-chan interface{}
+
+	module.TraceCallback
 }
 
 type Transition struct {
@@ -186,7 +188,10 @@ func (e *BlockConverter) initTransitionFor(height int64) (*Transition, error) {
 	if height < 0 {
 		return nil, errors.Errorf("InvalidHeight(height=%d)", height)
 	}
-	logger := trace.NewLogger(e.log, e)
+	ti := &module.TraceInfo{
+		Callback: e,
+	}
+	logger := trace.NewLogger(e.log, ti)
 	if height > 0 {
 		var prevV0 blockv0.Block
 		var err error
@@ -392,7 +397,7 @@ func (e *BlockConverter) checkResult(tr *Transition) error {
 			if vs != rs {
 				return errors.Errorf("InvalidValidatorLen(exp=%d,calc=%d)", rs, vs)
 			}
-			for i:=0 ; i< rs; i++ {
+			for i := 0; i < rs; i++ {
 				rep := reps.Get(i)
 				val, _ := validators.Get(i)
 				if !rep.Equal(val.Address()) {
@@ -462,7 +467,7 @@ func (e *BlockConverter) execute(from, to int64, firstNForcedResults []*BlockTra
 				}
 				ltxs := blk.NormalTransactions()
 				txCount := 0
-				for itr := ltxs.Iterator(); itr.Has() ; itr.Next() {
+				for itr := ltxs.Iterator(); itr.Has(); itr.Next() {
 					txCount += 1
 				}
 				resCh <- &BlockTransaction{

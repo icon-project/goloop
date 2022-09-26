@@ -73,14 +73,15 @@ func (t *traceCallback) balanceChangeToJSON(blk module.Block) interface{} {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
+	height := blk.Height()
 	result := map[string]interface{}{
 		"blockHash":     "0x" + hex.EncodeToString(blk.ID()),
 		"prevBlockHash": "0x" + hex.EncodeToString(blk.PrevID()),
-		"blockHeight":   fmt.Sprintf("%#x", blk.Height()),
+		"blockHeight":   fmt.Sprintf("%#x", height),
 		"timestamp":     fmt.Sprintf("%#x", blk.Timestamp()),
 	}
 
-	balanceChanges := t.bt.ToJSON()
+	balanceChanges := t.bt.ToJSON(height)
 	if balanceChanges != nil {
 		result["balanceChanges"] = balanceChanges
 	}

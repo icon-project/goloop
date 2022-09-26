@@ -753,11 +753,11 @@ func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRe
 	}
 
 	/* annual amount of beta1 + beta2 <= totalSupply * IrepInflationLimit / 100
-	annual amount of beta1 + beta2
-	= (1/2 * irep * MainPRepCount + 1/2 * irep * VotedRewardMultiplier) * MonthPerYear
-	= irep * (MAIN_PREP_COUNT + VotedRewardMultiplier) * MonthPerBlock / 2
-	<= totalSupply * IrepInflationLimit / 100
-	irep <= totalSupply * IrepInflationLimit * 2 / (100 * MonthBlock * (MAIN_PREP_COUNT + PERCENTAGE_FOR_BETA_2))
+	   annual amount of beta1 + beta2
+	   = (1/2 * irep * MainPRepCount + 1/2 * irep * VotedRewardMultiplier) * MonthPerYear
+	   = irep * (MAIN_PREP_COUNT + VotedRewardMultiplier) * MonthPerBlock / 2
+	   <= totalSupply * IrepInflationLimit / 100
+	   irep <= totalSupply * IrepInflationLimit * 2 / (100 * MonthBlock * (MAIN_PREP_COUNT + PERCENTAGE_FOR_BETA_2))
 	*/
 	limit := new(big.Int).Mul(term.TotalSupply(), new(big.Int).SetInt64(IrepInflationLimit*2))
 	divider := new(big.Int).SetInt64(int64(100 * MonthPerYear * (term.MainPRepCount() + icmodule.VotedRewardMultiplier)))
@@ -1108,7 +1108,7 @@ func (es *ExtensionStateImpl) applyCalculationResult(calculator *Calculator, blo
 		return err
 	}
 
-	//switch icstage back
+	// switch icstage back
 	es.Back2 = es.Back1
 	es.Back1 = icstage.NewState(es.database) // ss.Byte() nil 확인
 	return nil
@@ -1208,7 +1208,7 @@ func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err
 	tSupply := cc.GetTotalSupply()
 	oldTotalStake := ia.GetTotalStake()
 
-	//update IISS account
+	// update IISS account
 	expireHeight := cc.BlockHeight() + es.State.GetUnstakeLockPeriod(revision, tSupply)
 	var tl []icstate.TimerJobInfo
 	switch stakeInc.Sign() {
@@ -1259,7 +1259,7 @@ func (es *ExtensionStateImpl) SetStake(cc icmodule.CallContext, v *big.Int) (err
 			totalStake, oldTotalStake, from,
 		)
 	} else if sign > 0 {
-		if err = cc.Withdraw(from, diff); err != nil {
+		if err = cc.Withdraw(from, diff, module.Stake); err != nil {
 			return err
 		}
 	}
@@ -1280,7 +1280,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 	}
 
 	// Subtract RegPRepFee from SystemAddress
-	err = cc.Withdraw(state.SystemAddress, icmodule.BigIntRegPRepFee)
+	err = cc.Withdraw(state.SystemAddress, icmodule.BigIntRegPRepFee, module.RegPRep)
 	if err != nil {
 		return err
 	}
@@ -1454,7 +1454,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	icx, remains := new(big.Int).DivMod(iScore, icmodule.BigIntIScoreICXRatio, new(big.Int))
 	claim := new(big.Int).Sub(iScore, remains)
 
-	if err = cc.Transfer(cc.Treasury(), from, icx); err != nil {
+	if err = cc.Transfer(cc.Treasury(), from, icx, module.Claim); err != nil {
 		return scoreresult.InvalidInstanceError.Errorf(
 			"Failed to transfer: from=%v to=%v amount=%v",
 			cc.Treasury(), from, icx,
@@ -1717,7 +1717,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		amount := new(big.Int).Mul(base, k.rate)
 		amount.Div(amount, div)
 		if ok {
-			if err := cc.Transfer(from, to, amount); err != nil {
+			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
 				return err
 			}
 			cc.OnEvent(state.SystemAddress,
@@ -1731,7 +1731,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
-				if err := cc.Withdraw(from, amount); err != nil {
+				if err := cc.Withdraw(from, amount, module.Burn); err != nil {
 					return scoreresult.InvalidParameterError.Errorf(
 						"Not enough balance: from=%v value=%v", from, amount,
 					)

@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -835,7 +836,7 @@ func reproduceUnstakeBug(cc icmodule.CallContext, logger log.Logger, bugInfo map
 		address := cc.Origin()
 		v := new(big.Int)
 		v.SetString(amount, 10)
-		_ = cc.Deposit(address, v)
+		_ = cc.Deposit(address, v, module.Ghost)
 		logger.Tracef("%s get %d illegal icx", address, v)
 	}
 }

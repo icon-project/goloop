@@ -608,7 +608,7 @@ func (s *chainScore) Ex_burn() error {
 	from := s.from
 	amount := s.value
 
-	if err = cc.Withdraw(state.SystemAddress, amount); err != nil {
+	if err = cc.Withdraw(state.SystemAddress, amount, module.Burn); err != nil {
 		return scoreresult.InvalidParameterError.Errorf(
 			"Not enough value: from=%v value=%v", from, amount,
 		)

@@ -87,7 +87,7 @@ func (ctx *worldContext) GetBalance(address module.Address) *big.Int {
 	return account.GetBalance()
 }
 
-func (ctx *worldContext) Deposit(address module.Address, amount *big.Int) error {
+func (ctx *worldContext) Deposit(address module.Address, amount *big.Int, opType module.OpType) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (ctx *worldContext) Deposit(address module.Address, amount *big.Int) error 
 	return ctx.addBalance(address, amount)
 }
 
-func (ctx *worldContext) Withdraw(address module.Address, amount *big.Int) error {
+func (ctx *worldContext) Withdraw(address module.Address, amount *big.Int, opType module.OpType) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
@@ -107,7 +107,8 @@ func (ctx *worldContext) Withdraw(address module.Address, amount *big.Int) error
 	return ctx.addBalance(address, new(big.Int).Neg(amount))
 }
 
-func (ctx *worldContext) Transfer(from module.Address, to module.Address, amount *big.Int) (err error) {
+func (ctx *worldContext) Transfer(
+	from module.Address, to module.Address, amount *big.Int, opType module.OpType) (err error) {
 	if err = validateAmount(amount); err != nil {
 		return
 	}

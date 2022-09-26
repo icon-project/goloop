@@ -156,16 +156,20 @@ func (tx *transactionV2) Execute(ctx contract.Context, wcs state.WorldSnapshot, 
 	as1.SetBalance(new(big.Int).Sub(bal1, trans))
 
 	as2 := ctx.GetAccountState(tx.To().ID())
+	opType := module.Transfer
+	recipient := tx.To()
 	if as2.IsContract() {
 		ctx.Logger().Debugf("LOST transfer addr=%s", tx.To().String())
 		as2 = ctx.GetAccountState(state.LostID)
+		opType = module.Lost
+		recipient = state.LostAddress
 	}
 	bal2 := as2.GetBalance()
 	as2.SetBalance(new(big.Int).Add(bal2, amount))
 
 	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
 	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
-	traceLogger.OnBalanceChange(module.Transfer, tx.From(), tx.To(), amount)
+	traceLogger.OnBalanceChange(opType, tx.From(), recipient, amount)
 	return r, nil
 }
 

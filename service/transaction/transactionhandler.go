@@ -111,7 +111,7 @@ func (th *transactionHandler) checkBalance(cc contract.CallContext) error {
 	return nil
 }
 
-var blockedAccount = map[string]bool {
+var blockedAccount = map[string]bool{
 	"hx76dcc464a27d74ca7798dd789d2e1da8193219b4": true,
 	"hxac5c6e6f7a6e8ae1baba5f0cb512f7596b95f1fe": true,
 	"hx966f5f9e2ab5b80a0f2125378e85d17a661352f4": true,

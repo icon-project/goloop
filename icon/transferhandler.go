@@ -73,9 +73,13 @@ func (h *TransferHandler) DoExecuteSync(cc contract.CallContext) (err error, ro 
 	as1.SetBalance(new(big.Int).Sub(bal1, h.Value))
 
 	as2 := cc.GetAccountState(h.To.ID())
+	opType := module.Transfer
+	recipient := h.To
 	if as2.IsContract() {
 		cc.Logger().Debugf("LOST transfer address=%s", h.To.String())
 		as2 = cc.GetAccountState(state.LostID)
+		opType = module.Lost
+		recipient = state.LostAddress
 	}
 	bal2 := as2.GetBalance()
 	as2.SetBalance(new(big.Int).Add(bal2, h.Value))
@@ -89,5 +93,6 @@ func (h *TransferHandler) DoExecuteSync(cc contract.CallContext) (err error, ro 
 		cc.OnEvent(h.From, indexed, make([][]byte, 0))
 	}
 
+	h.Log.OnBalanceChange(opType, h.From, recipient, h.Value)
 	return nil, nil, nil
 }

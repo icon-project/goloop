@@ -29,8 +29,9 @@ func getCurrentFrameOpsLength(bt *BalanceTracer) int {
 
 func TestNewBalanceTracer(t *testing.T) {
 	var err error
-	bt := NewBalanceTracer(10)
+	bt := NewBalanceTracer(10, nil)
 
+	height := rand.Int63()
 	txIndex := 0
 	txHash := newRandomHash(32)
 	err = bt.OnTransactionStart(txIndex, txHash, false)
@@ -51,7 +52,7 @@ func TestNewBalanceTracer(t *testing.T) {
 	err = bt.OnTransactionEnd(txIndex, txHash)
 	assert.NoError(t, err)
 
-	jso, ok := bt.ToJSON().([]interface{})
+	jso, ok := bt.ToJSON(height).([]interface{})
 	assert.True(t, ok)
 	assert.NotNil(t, jso)
 	assert.Equal(t, 1, len(jso))
@@ -73,7 +74,7 @@ func TestEmpyBalanceTracer_ErrorCase(t *testing.T) {
 	txIndex := 0
 	txHash := newRandomHash(32)
 
-	bt := NewBalanceTracer(10)
+	bt := NewBalanceTracer(10, nil)
 
 	err = bt.OnFrameEnter()
 	assert.Error(t, err)
@@ -94,7 +95,7 @@ func TestEmpyBalanceTracer_NormalCase(t *testing.T) {
 	to := common.MustNewAddressFromString("hx22")
 	score := common.MustNewAddressFromString("cx33")
 
-	bt := NewBalanceTracer(10)
+	bt := NewBalanceTracer(10, nil)
 
 	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)
@@ -142,7 +143,7 @@ func TestEmpyBalanceTracer_OnTransactionReset(t *testing.T) {
 	to := common.MustNewAddressFromString("hx22")
 	score := common.MustNewAddressFromString("cx33")
 
-	bt := NewBalanceTracer(10)
+	bt := NewBalanceTracer(10, nil)
 
 	err = bt.OnTransactionStart(txIndex, txHash, false)
 	assert.NoError(t, err)

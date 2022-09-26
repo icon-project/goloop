@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -36,6 +37,7 @@ func setBalance(address module.Address, as state.AccountState, balance *big.Int)
 
 type worldContextImpl struct {
 	state.WorldContext
+	tlog *trace.Logger
 }
 
 func (ctx *worldContextImpl) Origin() module.Address {
@@ -47,27 +49,50 @@ func (ctx *worldContextImpl) GetBalance(address module.Address) *big.Int {
 	return account.GetBalance()
 }
 
-func (ctx *worldContextImpl) Deposit(address module.Address, amount *big.Int) error {
+func (ctx *worldContextImpl) Logger() log.Logger {
+	return ctx.tlog
+}
+
+func (ctx *worldContextImpl) TraceLogger() *trace.Logger {
+	return ctx.tlog
+}
+
+func (ctx *worldContextImpl) onBalanceChange(opType module.OpType, from, to module.Address, amount *big.Int) {
+	if ctx.tlog != nil {
+		ctx.tlog.OnBalanceChange(opType, from, to, amount)
+	}
+}
+
+func (ctx *worldContextImpl) Deposit(address module.Address, amount *big.Int, opType module.OpType) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
 	if amount.Sign() == 0 {
 		return nil
 	}
-	return ctx.addBalance(address, amount)
+	err := ctx.addBalance(address, amount)
+	if err == nil {
+		ctx.onBalanceChange(opType, nil, address, amount)
+	}
+	return err
 }
 
-func (ctx *worldContextImpl) Withdraw(address module.Address, amount *big.Int) error {
+func (ctx *worldContextImpl) Withdraw(address module.Address, amount *big.Int, opType module.OpType) error {
 	if err := validateAmount(amount); err != nil {
 		return err
 	}
 	if amount.Sign() == 0 {
 		return nil
 	}
-	return ctx.addBalance(address, new(big.Int).Neg(amount))
+	err := ctx.addBalance(address, new(big.Int).Neg(amount))
+	if err == nil {
+		ctx.onBalanceChange(opType, address, nil, amount)
+	}
+	return err
 }
 
-func (ctx *worldContextImpl) Transfer(from module.Address, to module.Address, amount *big.Int) (err error) {
+func (ctx *worldContextImpl) Transfer(
+	from module.Address, to module.Address, amount *big.Int, opType module.OpType) (err error) {
 	if err = validateAmount(amount); err != nil {
 		return
 	}
@@ -82,6 +107,7 @@ func (ctx *worldContextImpl) Transfer(from module.Address, to module.Address, am
 	if err = ctx.addBalance(to, amount); err != nil {
 		return
 	}
+	ctx.onBalanceChange(opType, from, to, amount)
 	return
 }
 
@@ -165,9 +191,11 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 	return as.SetContractOwner(newOwner)
 }
 
-func NewWorldContext(ctx state.WorldContext) icmodule.WorldContext {
+func NewWorldContext(ctx state.WorldContext, logger log.Logger) icmodule.WorldContext {
+	tlog := trace.LoggerOf(logger)
 	return &worldContextImpl{
 		WorldContext: ctx,
+		tlog:         tlog,
 	}
 }
 
@@ -257,7 +285,7 @@ func (ctx *callContextImpl) FrameLogger() *trace.Logger {
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {
 	return &callContextImpl{
-		WorldContext: NewWorldContext(cc),
+		WorldContext: NewWorldContext(cc, cc.FrameLogger()),
 		cc:           cc,
 		from:         from,
 	}

@@ -11,6 +11,8 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type TxHashReplacer func(height int64, txHash []byte) []byte
+
 var opTypeNames = []string{
 	"GENESIS",
 	"TRANSFER",
@@ -107,6 +109,7 @@ func (t *transaction) toJSON() map[string]interface{} {
 type BalanceTracer struct {
 	txs      []*transaction
 	curFrame *callFrame
+	thr      TxHashReplacer
 }
 
 func (bt *BalanceTracer) add(opType module.OpType, from, to module.Address, amount *big.Int) error {
@@ -173,7 +176,6 @@ func (bt *BalanceTracer) OnTransactionEnd(txIndex int, txHash []byte) error {
 	if err = bt.checkCurrentTx(curTx, txIndex, txHash); err != nil {
 		return err
 	}
-
 	depth := bt.curFrame.depth
 	if depth != 0 {
 		return errors.InvalidStateError.Errorf("Invalid callFrame depth: %d", depth)
@@ -214,9 +216,12 @@ func (bt *BalanceTracer) OnBalanceChange(opType module.OpType, from, to module.A
 	return bt.add(opType, from, to, amount)
 }
 
-func (bt *BalanceTracer) ToJSON() interface{} {
+func (bt *BalanceTracer) ToJSON(height int64) interface{} {
 	jso := make([]interface{}, 0, len(bt.txs))
 	for _, tx := range bt.txs {
+		if bt.thr != nil {
+			tx.hash = bt.thr(height, tx.hash)
+		}
 		if txJso := tx.toJSON(); txJso != nil {
 			jso = append(jso, txJso)
 		}
@@ -224,6 +229,9 @@ func (bt *BalanceTracer) ToJSON() interface{} {
 	return jso
 }
 
-func NewBalanceTracer(capacity int) *BalanceTracer {
-	return &BalanceTracer{txs: make([]*transaction, 0, capacity)}
+func NewBalanceTracer(capacity int, thr TxHashReplacer) *BalanceTracer {
+	return &BalanceTracer{
+		txs: make([]*transaction, 0, capacity),
+		thr: thr,
+	}
 }

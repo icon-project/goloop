@@ -12,6 +12,7 @@ var (
 	scoreAddressRegex = regexp.MustCompile("^cx[0-9a-f]{40}$")
 	hexInt            = regexp.MustCompile("^0x(0|[1-9a-f][0-9a-f]*)$")
 	hashRegex         = regexp.MustCompile("^0x[0-9a-f]{64}$")
+	rosettaHashRegex  = regexp.MustCompile("^[0b]x[0-9a-f]{64}$")
 )
 
 type Validator struct {
@@ -32,6 +33,7 @@ func NewValidator() *Validator {
 	v.RegisterValidation("t_addr_score", isScoreAddress)
 	v.RegisterValidation("t_int", isHexInt)
 	v.RegisterValidation("t_hash", isHash)
+	v.RegisterValidation("t_rhash", isRosettaHash)
 
 	v.RegisterAlias("t_sig", "base64")
 	v.RegisterAlias("t_addr", "t_addr_eoa|t_addr_score")
@@ -78,4 +80,8 @@ func isHexInt(fl validator.FieldLevel) bool {
 
 func isHash(fl validator.FieldLevel) bool {
 	return hashRegex.MatchString(fl.Field().String())
+}
+
+func isRosettaHash(fl validator.FieldLevel) bool {
+	return rosettaHashRegex.MatchString(fl.Field().String())
 }
