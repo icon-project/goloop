@@ -1,0 +1,25 @@
+name: Code Coverage with Codecov
+
+on:
+  push:
+    branches:
+      - feature/120-code-coverage-codecov
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  Coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: GO test
+      run: |
+        go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
