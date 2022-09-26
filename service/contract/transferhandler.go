@@ -69,6 +69,7 @@ func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.Ty
 		cc.OnEvent(h.From, indexed, make([][]byte, 0))
 	}
 
+	h.Log.OnBalanceChange(module.Transfer, h.From, h.To, h.Value)
 	return nil, nil, nil
 }
 

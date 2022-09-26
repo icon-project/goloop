@@ -384,22 +384,3 @@ type ServiceManager interface {
 	// AddSyncRequest add sync request for specified data.
 	AddSyncRequest(id db.BucketID, key []byte) error
 }
-
-type TraceInfo struct {
-	Group    TransactionGroup
-	Index    int
-	Callback TraceCallback
-}
-
-type TraceLevel int
-
-const (
-	TDebugLevel TraceLevel = iota
-	TTraceLevel
-	TSystemLevel
-)
-
-type TraceCallback interface {
-	OnLog(level TraceLevel, msg string)
-	OnEnd(e error)
-}
