@@ -11,6 +11,7 @@ import (
 
 type ReactorV2 struct {
 	ReactorCommon
+	database db.Database
 }
 
 func (r *ReactorV2) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
@@ -34,17 +35,17 @@ func (r *ReactorV2) _resolveData(bnbs []BucketIDAndBytes) (errCode, []BucketIDAn
 		var v []byte
 		var bucket db.Bucket
 
-		switch bnb.BkID {
-		case db.MerkleTrie:
-			bucket = r.merkleTrie
-		case db.BytesByHash:
-			bucket = r.bytesByHash
-		default:
-			bucket = nil
+		if hash := bnb.BkID.Hasher(); hash == nil {
+			r.logger.Warnf("INVALID bucket id=%s (no hasher)", bnb.BkID)
 			continue
 		}
-
+		bucket, err = r.database.GetBucket(bnb.BkID)
+		if err != nil {
+			r.logger.Errorf("FAIL to get bucket id=%s", bnb.BkID)
+			continue
+		}
 		if v, err = bucket.Get(bnb.Bytes); err == nil && v != nil {
+			r.logger.Tracef("RESOLVED id=%s key=%#x value=%#x", bnb.BkID, bnb.Bytes, v)
 			rbnb := BucketIDAndBytes{BkID: bnb.BkID, Bytes: v}
 			resData = append(resData, rbnb)
 		}
@@ -129,24 +130,13 @@ func (r *ReactorV2) RequestData(peer module.PeerID, reqID uint32, reqData []Buck
 }
 
 func newReactorV2(database db.Database, logger log.Logger) *ReactorV2 {
-	merkleTrie, err := database.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicf("Failed to get bucket for MerkleTrie err(%s)\n", err)
-	}
-
-	bytesByHash, err := database.GetBucket(db.BytesByHash)
-	if err != nil {
-		log.Panicf("Failed to get bucket for BytesByHash err(%s)\n", err)
-	}
-
 	reactor := &ReactorV2{
 		ReactorCommon: ReactorCommon{
-			logger:      logger,
-			version:     protoV2,
-			merkleTrie:  merkleTrie,
-			bytesByHash: bytesByHash,
-			readyPool:   newPeerPool(),
+			logger:    logger,
+			version:   protoV2,
+			readyPool: newPeerPool(),
 		},
+		database: database,
 	}
 	reactor.sender = reactor
 

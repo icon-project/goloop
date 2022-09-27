@@ -28,12 +28,10 @@ type ReactorCommon struct {
 	logger log.Logger
 	ph     module.ProtocolHandler
 
-	version     byte
-	merkleTrie  db.Bucket
-	bytesByHash db.Bucket
-	readyPool   *peerPool
-	watchers    []PeerWatcher
-	sender      DataSender
+	version   byte
+	readyPool *peerPool
+	watchers  []PeerWatcher
+	sender    DataSender
 }
 
 func (r *ReactorCommon) OnJoin(id module.PeerID) {
@@ -84,6 +82,8 @@ func (r *ReactorCommon) WatchPeers(watcher PeerWatcher) []*peer {
 
 type ReactorV1 struct {
 	ReactorCommon
+	merkleTrie  db.Bucket
+	bytesByHash db.Bucket
 }
 
 func (r *ReactorV1) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
@@ -263,12 +263,12 @@ func newReactorV1(database db.Database, logger log.Logger) *ReactorV1 {
 
 	reactor := &ReactorV1{
 		ReactorCommon: ReactorCommon{
-			logger:      logger,
-			version:     protoV1,
-			merkleTrie:  merkleTrie,
-			bytesByHash: bytesByHash,
-			readyPool:   newPeerPool(),
+			logger:    logger,
+			version:   protoV1,
+			readyPool: newPeerPool(),
 		},
+		merkleTrie:  merkleTrie,
+		bytesByHash: bytesByHash,
 	}
 	reactor.sender = reactor
 	return reactor
