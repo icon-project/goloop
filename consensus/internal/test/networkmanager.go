@@ -118,7 +118,7 @@ func (nm *NetworkManager) receivePacket(pi module.ProtocolInfo, b []byte, from m
 		if ri.accept(pi) {
 			r := ri.reactor
 			nm.jobs <- func() {
-				r.OnReceive(pi, b, from)
+				_, _ = r.OnReceive(pi, b, from)
 			}
 		}
 	}

@@ -70,7 +70,7 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	return true
 }
 
-// returns true if has +2/3 votes
+// returns true if the voteSet has +2/3 votes
 func (vs *voteSet) hasOverTwoThirds() bool {
 	return vs.count > len(vs.msgs)*2/3
 }
@@ -79,7 +79,7 @@ func (vs *voteSet) getRound() int32 {
 	return vs.round
 }
 
-// returns true if has +2/3 for nil or a block
+// returns true if the voteSet has +2/3 for nil or a block
 func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 	var max int
 	if vs.maxIndex < 0 {
@@ -204,8 +204,6 @@ func newVoteSet(nValidators int) *voteSet {
 		round:    -1,
 	}
 }
-
-type roundVoteSet = [numberOfVoteTypes]*voteSet
 
 type heightVoteSet struct {
 	_nValidators int

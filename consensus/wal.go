@@ -28,7 +28,7 @@ const (
 )
 
 const (
-	maxUint64        uint64      = ^uint64(0)
+	maxUint64                    = ^uint64(0)
 	walPermission    os.FileMode = 0600
 	walDirPermission os.FileMode = 0700
 	headerLen                    = 8
@@ -44,7 +44,7 @@ type WALWriter interface {
 
 type WALReader interface {
 	ReadBytes() ([]byte, error)
-	// multiple Close is safe
+	// Close closes reader. Multiple call of Close is safe.
 	Close() error
 	// CloseAndRepair closes and repairs UnexpectedEOF or CorruptedWAL by
 	// truncating.
@@ -148,7 +148,7 @@ func readWALInfo(id string) (*walInfo, error) {
 	}, nil
 }
 
-// id is in the form /wal/dir/prefix
+// OpenWALForWrite opens WALWriter. id is in the form /wal/dir/prefix
 func OpenWALForWrite(id string, cfg *WALConfig) (WALWriter, error) {
 	w := &walWriter{
 		id:  id,
@@ -329,18 +329,18 @@ func (w *walWriter) doHousekeeping() {
 	} else {
 		eud := w.eldestUnsyncData
 		if eud != nil && eud.Add(w.cfg.SyncInterval).Before(time.Now()) {
-			w.sync()
+			log.Must(w.sync())
 		}
 	}
 	//log.Printf("wi.totalSize=%v cfg.TotalLimit=%v\n", wi.totalSize, w.cfg.TotalLimit)
 	for wi.totalSize > w.cfg.TotalLimit {
-		path := fileFor(w.id, wi.headIdx)
-		fInfo, err := os.Stat(path)
+		pth := fileFor(w.id, wi.headIdx)
+		fInfo, err := os.Stat(pth)
 		if err != nil {
 			err = errors.WithStack(err)
 			panic(err)
 		}
-		err = os.Remove(path)
+		err = os.Remove(pth)
 		if err != nil {
 			err = errors.WithStack(err)
 			panic(err)
@@ -373,7 +373,7 @@ func OpenWALForRead(id string) (WALReader, error) {
 	defer func() {
 		for _, f := range files {
 			if f != nil {
-				f.Close()
+				log.Must(f.Close())
 			}
 		}
 	}()
