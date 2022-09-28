@@ -552,24 +552,25 @@ func (bs *BTPStateImpl) CloseNetwork(bc BTPContext, nid int64) (int64, error) {
 	return ntid, nil
 }
 
-func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid int64) error {
+func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid int64) (int64, error) {
 	store := bc.Store()
 	nwDB := scoredb.NewDictDB(store, NetworkByIDKey, 1)
 	nwValue := nwDB.Get(nid)
 	if nwValue == nil {
-		return scoreresult.InvalidParameterError.Errorf("There is no network for %d", nid)
+		return 0, scoreresult.InvalidParameterError.Errorf("There is no network for %d", nid)
 	}
 	nw := NewNetworkFromBytes(nwValue.Bytes())
 	if !from.Equal(nw.Owner()) {
-		return scoreresult.AccessDeniedError.Errorf("Only owner can send BTP message")
+		return 0, scoreresult.AccessDeniedError.Errorf("Only owner can send BTP message")
 	}
+	sn := nw.nextMessageSN
 	nw.IncreaseNextMessageSN()
 	if err := nwDB.Set(nid, nw.Bytes()); err != nil {
-		return err
+		return 0, err
 	}
 	bs.setNetworkModified(nid)
 
-	return nil
+	return sn, nil
 }
 
 func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name string, pubKey []byte) error {
@@ -1011,6 +1012,7 @@ func (nw *network) ToJSON() map[string]interface{} {
 	jso["networkTypeID"] = intconv.FormatInt(nw.networkTypeID)
 	jso["networkName"] = nw.name
 	jso["open"] = formatBool(nw.open)
+	jso["owner"] = nw.owner
 	jso["nextMessageSN"] = intconv.FormatInt(nw.nextMessageSN)
 	jso["nextProofContextChanged"] = formatBool(nw.nextProofContextChanged)
 	if len(nw.prevNetworkSectionHash) == 0 {

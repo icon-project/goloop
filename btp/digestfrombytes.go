@@ -19,9 +19,11 @@ package btp
 import (
 	"io"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -127,6 +129,7 @@ func (bd *digestCoreFromBytes) Flush(dbase db.Database) error {
 
 type networkTypeDigestFormat struct {
 	NetworkTypeID          int64
+	UID                    string
 	NetworkTypeSectionHash []byte
 	NetworkDigests         networkDigestSlice
 }
@@ -138,6 +141,10 @@ type networkTypeDigestCoreFromBytes struct {
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeID() int64 {
 	return ntd.format.NetworkTypeID
+}
+
+func (ntd *networkTypeDigestCoreFromBytes) UID() string {
+	return ntd.format.UID
 }
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeSectionHash() []byte {
@@ -205,4 +212,68 @@ func (nd *networkDigestFromBytes) RLPEncodeSelf(e codec.Encoder) error {
 
 func (nd *networkDigestFromBytes) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&nd.format)
+}
+
+type dummyHandler struct{}
+
+func (h dummyHandler) OnData(value []byte, builder merkle.Builder) error {
+	return nil
+}
+
+type messageDataHandler struct {
+	mod module.NetworkTypeModule
+}
+
+func (h *messageDataHandler) OnData(value []byte, builder merkle.Builder) error {
+	hc := &hashesCat{
+		Bytes: value,
+	}
+	bkid := h.mod.BytesByHashBucket()
+	for i := 0; i < hc.Len(); i++ {
+		builder.RequestData(bkid, hc.Get(i), dummyHandler{})
+	}
+	return nil
+}
+
+type digestDataHandler struct {
+	core   *digestCoreFromBytes
+	digest *digest
+}
+
+func (h *digestDataHandler) OnData(value []byte, builder merkle.Builder) error {
+	h.core.bytes = value
+	_, err := codec.UnmarshalFromBytes(value, &h.core.format)
+	if err != nil {
+		return err
+	}
+	ntds := h.core.NetworkTypeDigests()
+	for _, ntd := range ntds {
+		nds := ntd.NetworkDigests()
+		for _, nd := range nds {
+			root := nd.MessagesRoot()
+			mod := ntm.ForUID(ntd.UID())
+			bk := mod.ListByMerkleRootBucket()
+			builder.RequestData(bk, root, &messageDataHandler{
+				mod: mod,
+			})
+		}
+	}
+	return nil
+}
+
+func NewDigestWithBuilder(builder merkle.Builder, hash []byte) (module.BTPDigest, error) {
+	if hash == nil {
+		return ZeroDigest, nil
+	}
+	core := &digestCoreFromBytes{
+		hash: hash,
+	}
+	ret := &digest{
+		digestCore: core,
+	}
+	builder.RequestData(db.BytesByHash, hash, &digestDataHandler{
+		core:   core,
+		digest: ret,
+	})
+	return ret, nil
 }

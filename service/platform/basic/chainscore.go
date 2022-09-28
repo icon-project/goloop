@@ -1604,6 +1604,7 @@ func (s *ChainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
 }
 
 func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte) error {
+	s.log.Tracef("%s send BTP Message(%v) to Network(%d)", s.from, common.HexPre(message), networkId)
 	if err := s.tryChargeCall(); err != nil {
 		return err
 	}
@@ -1614,10 +1615,19 @@ func (s *ChainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 		return err
 	} else {
 		nid := networkId.Int64()
-		if err = bs.HandleMessage(s.newBTPContext(), s.from, nid); err != nil {
+		sn, err := bs.HandleMessage(s.newBTPContext(), s.from, nid)
+		if err != nil {
 			return err
 		}
 		s.cc.OnBTPMessage(nid, message)
+		s.cc.OnEvent(state.SystemAddress,
+			[][]byte{
+				[]byte("BTPMessage(int,int)"),
+				intconv.Int64ToBytes(nid),
+				intconv.Int64ToBytes(sn),
+			},
+			nil,
+		)
 		return nil
 	}
 }
