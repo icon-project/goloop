@@ -549,6 +549,18 @@ func (t *transition) doForceSync() {
 	t.normalReceipts = sr.NormalReceipts
 	t.worldSnapshot = sr.Wss
 	t.btpDigest = sr.BTPDigest
+
+	// update BTPSection with BTPDigest
+	ass := sr.Wss.GetAccountSnapshot(state.SystemID)
+	abs := scoredb.NewStateStoreWith(ass)
+	bc := state.NewBTPContext(nil, abs)
+	if bs, err := btp.NewSection(sr.BTPDigest, bc, t.db); err != nil {
+		t.reportExecution(err)
+		return
+	} else {
+		t.bs = bs
+	}
+
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),

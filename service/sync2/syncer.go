@@ -60,6 +60,10 @@ func (s *syncer) GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, val
 
 func (s *syncer) GetBTPBuilder(btpHash []byte) merkle.Builder {
 	s.logger.Debugf("GetBTPBuilder bh(%#x)", btpHash)
+	if len(btpHash) == 0 {
+		s.bd = btp.ZeroDigest
+		return nil
+	}
 	builder := merkle.NewBuilder(s.database)
 
 	btpDigest, err := btp.NewDigestWithBuilder(builder, btpHash)
@@ -123,11 +127,9 @@ func (s *syncer) ForceSync() (*Result, error) {
 	stateBuilder := s.GetStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
 	stateBuilders = append(stateBuilders, stateBuilder)
 
-	if s.bh != nil {
-		btpBuilder := s.GetBTPBuilder(s.bh)
-		if btpBuilder != nil {
-			btpBuilders = append(btpBuilders, btpBuilder)
-		}
+	btpBuilder := s.GetBTPBuilder(s.bh)
+	if btpBuilder != nil {
+		btpBuilders = append(btpBuilders, btpBuilder)
 	}
 
 	return s.SyncWithBuilders(stateBuilders, btpBuilders)
