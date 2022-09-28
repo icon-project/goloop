@@ -222,6 +222,10 @@ func (h testHasher) Hash(v []byte) []byte {
 	return crypto.SHASum256(v)
 }
 
+func init() {
+	db.RegisterHasher(TestHasher, testHasher{})
+}
+
 func TestSyncProcessorBTPData(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
@@ -229,9 +233,6 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	afterFunc = func(d time.Duration, f func()) *time.Timer {
 		return time.AfterFunc(time.Millisecond, f)
 	}
-
-	hasher := testHasher{}
-	db.RegisterHasher(TestHasher, hasher)
 
 	srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()
@@ -358,7 +359,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 	// waiting finish request data sync
 	var try int
 	for {
-		if builder.UnresolvedCount() == 0 {
+		if getUnresolvedCount(sproc, builder) == 0 {
 			break
 		} else if try >= 100 {
 			t.Logf("data syncer failed. tried(%v)", try)

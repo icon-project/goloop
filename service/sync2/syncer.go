@@ -79,7 +79,7 @@ func (s *syncer) GetBTPBuilder(btpHash []byte) merkle.Builder {
 
 // SyncWithBuilders start Sync
 func (s *syncer) SyncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
-	s.logger.Debugln("SyncWithBuilders")
+	s.logger.Debugln("SyncWithBuilders()")
 	egrp, _ := errgroup.WithContext(context.Background())
 
 	for _, builder := range stateBuilders {
@@ -107,17 +107,10 @@ func (s *syncer) SyncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 		return nil, err
 	}
 
-	var btpData module.BTPDigest
-	if s.bd == nil {
-		btpData = btp.ZeroDigest
-	} else {
-		btpData = s.bd
-	}
-
 	result := &Result{
-		s.wss, s.prl, s.nrl, btpData,
+		s.wss, s.prl, s.nrl, s.bd,
 	}
-	s.logger.Debugln("SyncWithBuilder done!")
+	s.logger.Debugln("SyncWithBuilders() done!")
 	return result, nil
 }
 
@@ -144,8 +137,8 @@ func (s *syncer) Stop() {
 
 // Finalize Sync
 func (s *syncer) Finalize() error {
-	s.logger.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)\n",
-		s.ah, s.prh, s.nrh, s.vlh, s.ed)
+	s.logger.Debugf("Finalize : ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x), bh(%#x)\n",
+		s.ah, s.prh, s.nrh, s.vlh, s.ed, s.bh)
 
 	for i, sp := range s.processors {
 		sproc := sp.(*syncProcessor)

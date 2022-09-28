@@ -221,6 +221,13 @@ func DBGet(database db.Database, id db.BucketID, k []byte) ([]byte, error) {
 	return bk.Get(k)
 }
 
+func getUnresolvedCount(sp *syncProcessor, builder merkle.Builder) int {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	return builder.UnresolvedCount()
+}
+
 func TestSyncSimpleAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
@@ -290,8 +297,9 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 
 	var try int
 	var dsBuilder merkle.Builder = manager2.ds.builder
+	var sp = manager2.ds.sp.(*syncProcessor)
 	for {
-		if dsBuilder.UnresolvedCount() == 0 {
+		if getUnresolvedCount(sp, dsBuilder) == 0 {
 			break
 		} else if try >= 10 {
 			t.Logf("datasyncer sync failed. tried(%v)", try)
@@ -360,10 +368,10 @@ func TestSyncDataSync(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	waitFinish := func(builder merkle.Builder, idx int) {
+	waitFinish := func(sp *syncProcessor, builder merkle.Builder, idx int) {
 		var try int = 0
 		for {
-			if builder.UnresolvedCount() == 0 {
+			if getUnresolvedCount(sp, builder) == 0 {
 				break
 			} else if try >= 50 {
 				t.Logf("syncM[%d] sync failed. try count(%d)", idx, try)
@@ -379,7 +387,8 @@ func TestSyncDataSync(t *testing.T) {
 	for i := 0; i < cPeers; i++ {
 		wg.Add(1)
 		builder := syncM[i].ds.builder
-		go waitFinish(builder, i)
+		sp := syncM[i].ds.sp.(*syncProcessor)
+		go waitFinish(sp, builder, i)
 	}
 	wg.Wait()
 
