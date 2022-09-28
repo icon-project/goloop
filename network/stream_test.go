@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,9 +29,14 @@ type tPacket struct {
 	id module.PeerID
 }
 
+var tNMMu sync.Mutex
+
 type tNetworkManager struct {
+	// immutable
 	module.NetworkManager
-	id           module.PeerID
+	id module.PeerID
+
+	// mutable
 	reactorItems []*tReactorItem
 	peers        []*tNetworkManager
 	drop         bool
@@ -47,6 +53,9 @@ func newTNetworkManager(id module.PeerID) *tNetworkManager {
 }
 
 func (nm *tNetworkManager) GetPeers() []module.PeerID {
+	tNMMu.Lock()
+	defer tNMMu.Unlock()
+
 	res := make([]module.PeerID, len(nm.peers))
 	for i := range nm.peers {
 		res[i] = nm.peers[i].id
@@ -55,6 +64,9 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 }
 
 func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
+	tNMMu.Lock()
+	defer tNMMu.Unlock()
+
 	r := &tReactorItem{
 		name:     name,
 		reactor:  reactor,
@@ -70,23 +82,34 @@ func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.Prot
 }
 
 func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
+	tNMMu.Lock()
 	nm.peers = append(nm.peers, nm2)
 	nm2.peers = append(nm2.peers, nm)
-	for _, r := range nm.reactorItems {
+	reactorItems := append([]*tReactorItem(nil), nm.reactorItems...)
+	reactorItems2 := append([]*tReactorItem(nil), nm2.reactorItems...)
+	tNMMu.Unlock()
+
+	for _, r := range reactorItems {
 		r.reactor.OnJoin(nm2.id)
 	}
-	for _, r := range nm2.reactorItems {
+	for _, r := range reactorItems2 {
 		r.reactor.OnJoin(nm.id)
 	}
 }
 
 func (nm *tNetworkManager) onReceiveUnicast(pi module.ProtocolInfo, b []byte, from module.PeerID) {
+	tNMMu.Lock()
+	defer tNMMu.Unlock()
 	nm.recvBuf = append(nm.recvBuf, &tPacket{pi, b, from})
 }
 
 func (nm *tNetworkManager) processRecvBuf() {
-	for _, p := range nm.recvBuf {
-		for _, r := range nm.reactorItems {
+	tNMMu.Lock()
+	recvBuf := append([]*tPacket(nil), nm.recvBuf...)
+	reactorItems := append([]*tReactorItem(nil), nm.reactorItems...)
+	tNMMu.Unlock()
+	for _, p := range recvBuf {
+		for _, r := range reactorItems {
 			r.reactor.OnReceive(p.pi, p.b, p.id)
 		}
 	}
