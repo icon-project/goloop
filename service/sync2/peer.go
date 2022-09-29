@@ -46,13 +46,13 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if err := p.sender.RequestData(p.id, p.reqID, reqData); err == nil {
-		p.logger.Tracef("RequestData() peer id(%v), reqID(%v)", p.id, p.reqID)
-		p.reqMap[p.reqID] = handler
+	reqID := p.reqID
+	if err := p.sender.RequestData(p.id, reqID, reqData); err == nil {
+		p.logger.Tracef("RequestData() peer id(%v), reqID(%v)", p.id, reqID)
+		p.reqMap[reqID] = handler
 		p.reqID += 1
 		p.timer = time.AfterFunc(p.expired*time.Millisecond, func() {
-			delete(p.reqMap, p.reqID)
-			handler(p, nil)
+			_ = p.OnData(reqID, nil)
 		})
 		return nil
 	} else {
