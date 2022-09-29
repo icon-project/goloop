@@ -3,6 +3,7 @@ package sync
 import (
 	"container/list"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/log"
@@ -10,6 +11,7 @@ import (
 )
 
 type peer struct {
+	lock    sync.Mutex
 	id      module.PeerID
 	reqID   uint32
 	expired time.Duration
@@ -43,6 +45,13 @@ func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
 		return false
 	}
 	return true
+}
+
+func (p *peer) IsValidRequest(reqID uint32) bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.reqID == reqID
 }
 
 func (p *peer) String() string {

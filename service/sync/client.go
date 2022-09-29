@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/log"
@@ -9,13 +8,15 @@ import (
 )
 
 type client struct {
-	ph    module.ProtocolHandler
-	mutex sync.Mutex
-	log   log.Logger
+	ph  module.ProtocolHandler
+	log log.Logger
 }
 
 func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
 	expiredCb func(pi module.ProtocolInfo, b []byte, p *peer)) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	reqID := p.reqID + 1
 	msg := &hasNode{reqID, wsHash, vh, prHash, nrHash}
 	b, _ := c.MarshalToBytes(msg)
@@ -39,6 +40,9 @@ func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
 
 func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
 	expiredCb func(pi module.ProtocolInfo, b []byte, p *peer)) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	reqID := p.reqID + 1
 	msg := &requestNodeData{reqID, t, hash}
 	b, _ := c.MarshalToBytes(msg)
@@ -50,7 +54,7 @@ func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
 	p.reqID = reqID
 	cl.log.Tracef("requestNodeData with peer(%s)\n", p)
 	p.timer = time.AfterFunc(time.Millisecond*p.expired, func() {
-		nd := &nodeData{p.reqID, ErrTimeExpired, t, hash}
+		nd := &nodeData{reqID, ErrTimeExpired, t, hash}
 		b, _ := c.MarshalToBytes(nd)
 		cl.log.Tracef("requestNodeData time expired, peer(%s)\n", p)
 		if p.expired < configMaxExpiredTime {

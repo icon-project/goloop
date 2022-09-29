@@ -140,7 +140,7 @@ func (s *dataSyncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
 		s.log.Warnf("DataSyncer: FAIL to parse message err=%+v", err)
 		return
 	}
-	if p.reqID != reqID {
+	if !p.IsValidRequest(reqID) {
 		return
 	}
 	p2 := s.sent.remove(p.id)
