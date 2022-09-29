@@ -2,10 +2,9 @@ package merkle
 
 import (
 	"container/list"
-	"fmt"
+	"errors"
 
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 )
 
 type DataRequester interface {
@@ -26,6 +25,14 @@ type Builder interface {
 	Database() db.Database
 	Flush(write bool) error
 }
+
+var (
+	// ErrNoHasher will be returned if supplied BucketID doesn't have valid
+	// hash function for verifying the received data.
+	ErrNoHasher = errors.New("NoHasher")
+	// ErrNoRequester will be returned if there is nobody who want the data.
+	ErrNoRequester = errors.New("NoRequester")
+)
 
 type request struct {
 	key        []byte
@@ -80,7 +87,7 @@ func (b *merkleBuilder) Requests() RequestIterator {
 func (b *merkleBuilder) OnData(bid db.BucketID, value []byte) error {
 	hasher := bid.Hasher()
 	if hasher == nil {
-		return fmt.Errorf("not found Hasher for bucketID(%s)", bid)
+		return ErrNoHasher
 	}
 
 	reqMap := b.hasherMap[hasher.Name()]
@@ -109,7 +116,7 @@ func (b *merkleBuilder) OnData(bid db.BucketID, value []byte) error {
 		delete(reqMap, reqID)
 		return nil
 	} else {
-		return errors.New("IllegalArguments")
+		return ErrNoRequester
 	}
 }
 
