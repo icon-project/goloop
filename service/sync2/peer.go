@@ -15,7 +15,7 @@ type DataSender interface {
 	RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error
 }
 
-type DataHandler func(sender *peer, data []BucketIDAndBytes)
+type DataHandler func(reqID uint32, sender *peer, data []BucketIDAndBytes)
 
 type peer struct {
 	logger  log.Logger
@@ -69,7 +69,7 @@ func (p *peer) OnData(reqID uint32, data []BucketIDAndBytes) error {
 		p.timer.Stop()
 		delete(p.reqMap, reqID)
 		locker.CallAfterUnlock(func() {
-			handler(p, data)
+			handler(reqID, p, data)
 		})
 		return nil
 	} else {

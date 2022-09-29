@@ -361,8 +361,8 @@ func (s *syncProcessor) prepareWakeupInLock() {
 
 // HandleData handle data from peer. If it expires timeout, data would
 // be nil.
-func (s *syncProcessor) HandleData(sender *peer, data []BucketIDAndBytes) {
-	s.logger.Tracef("HandleData() sender id(%v)", sender.id)
+func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAndBytes) {
+	s.logger.Tracef("HandleData() reqID=%d sender=%v", reqID, sender.id)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
