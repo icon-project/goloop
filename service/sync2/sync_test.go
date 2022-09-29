@@ -263,8 +263,8 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 	logger.Printf("account hash : (%x)\n", acHash)
 
 	// when start sync
-	builders2 := manager2.GetSyncBuilders(acHash, nil, nil, nil, nil)
-
+	builder := manager2.syncer.GetStateBuilder(acHash, nil, nil, nil, nil)
+	builders2 := []merkle.Builder{builder}
 	for _, builder := range builders2 {
 		t.Logf("builder unresolved : %d\n", builder.UnresolvedCount())
 	}

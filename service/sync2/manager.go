@@ -55,7 +55,6 @@ type Manager struct {
 	syncer   Syncer
 	ds       *dataSyncer
 	reactors []SyncReactor
-	builders []merkle.Builder
 }
 
 type Result struct {
@@ -77,13 +76,6 @@ func (m *Manager) GetSyncer() Syncer {
 	}
 
 	return m.syncer
-}
-
-func (m *Manager) GetSyncBuilders(ah, prh, nrh, vlh, ed []byte) []merkle.Builder {
-	builder := m.syncer.GetStateBuilder(ah, prh, nrh, vlh, ed)
-	m.builders = append(m.builders, builder)
-
-	return m.builders
 }
 
 func (m *Manager) AddRequest(id db.BucketID, key []byte) error {
