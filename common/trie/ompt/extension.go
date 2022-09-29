@@ -249,7 +249,7 @@ func (n *extension) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj tri
 	}()
 
 	if n.hashValue != nil {
-		if !bytes.Equal(proof[0], n.serialized) {
+		if len(proof) < 1 || !bytes.Equal(proof[0], n.serialized) {
 			return n, nil, common.ErrIllegalArgument
 		}
 		proof = proof[1:]

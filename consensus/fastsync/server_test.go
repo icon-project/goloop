@@ -29,7 +29,7 @@ type serverTestSetUp struct {
 
 func createABytes(l int) []byte {
 	b := make([]byte, l)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return b
 }
 
@@ -75,7 +75,7 @@ func TestServer_Success(t *testing.T) {
 		ev = <-s.r2.ch
 		ev := ev.(tReceiveEvent)
 		var msg BlockData
-		codec.UnmarshalFromBytes(ev.b, &msg)
+		codec.MustUnmarshalFromBytes(ev.b, &msg)
 		t.Logf("ev : %v\n", msg)
 		copy(data[recv:], msg.Data)
 		recv += len(msg.Data)

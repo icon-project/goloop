@@ -220,10 +220,9 @@ func (n *leaf) prove(m *mpt, keys []byte, proof [][]byte) (node, trie.Object, er
 	defer n.mutex.Unlock()
 
 	if n.hashValue != nil {
-		if !bytes.Equal(proof[0], n.serialized) {
+		if len(proof) != 1 || !bytes.Equal(proof[0], n.serialized) {
 			return n, nil, common.ErrIllegalArgument
 		}
-		proof = proof[1:]
 	}
 
 	_, match := compareKeys(n.keys, keys)

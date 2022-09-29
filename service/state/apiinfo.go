@@ -68,15 +68,12 @@ func (s *apiInfoStore) Equal(s2 *apiInfoStore) bool {
 }
 
 func (s *apiInfoStore) Flush() error {
-	if s.dirty {
-		if s.bk != nil {
-			h := s.getHash()
-			err := s.bk.Set(h, s.bytes)
-			if err != nil {
-				return errors.CriticalIOError.Wrap(err, "FailToSetAPIInfo")
-			}
+	if s.dirty && s.bk != nil {
+		h := s.getHash()
+		err := s.bk.Set(h, s.bytes)
+		if err != nil {
+			return errors.CriticalIOError.Wrap(err, "FailToSetAPIInfo")
 		}
-		s.dirty = false
 	}
 	return nil
 }
@@ -134,6 +131,5 @@ func (s *apiInfoStore) OnData(value []byte, builder merkle.Builder) error {
 		return errors.CriticalFormatError.Wrapf(err, "InvalidAPIInfo(hash=%x)", s.hash)
 	}
 	s.bytes = value
-	s.dirty = true
 	return nil
 }
