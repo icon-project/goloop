@@ -3,7 +3,7 @@ apply plugin: 'java-library'
 dependencies {
     implementation project(':api')
 
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation 'org.ow2.asm:asm:7.0'
@@ -12,12 +12,12 @@ dependencies {
     implementation 'org.ow2.asm:asm-util:7.0'
 
     testImplementation(
-        'junit:junit:4.12',
-        'org.junit.jupiter:junit-jupiter-api:5.4.2'
+        'junit:junit:4.13.2',
+        'org.junit.jupiter:junit-jupiter-api:5.9.0'
     )
     testRuntime(
-        'org.junit.jupiter:junit-jupiter-engine:5.4.2',
-        'org.junit.vintage:junit-vintage-engine:5.4.2'
+        'org.junit.jupiter:junit-jupiter-engine:5.9.0',
+        'org.junit.vintage:junit-vintage-engine:5.9.0'
     )
 }
 
