@@ -66,6 +66,10 @@ func (s *dataSyncer) AddRequest(id db.BucketID, key []byte) error {
 	return s.sp.AddRequest(id, key)
 }
 
+func (s *dataSyncer) UnresolvedCount() int {
+	return s.sp.UnresolvedCount()
+}
+
 func newDataSyncer(database db.Database, reactors []SyncReactor, logger log.Logger) *dataSyncer {
 	s := &dataSyncer{
 		logger:   logger,

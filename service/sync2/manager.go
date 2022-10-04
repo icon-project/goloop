@@ -70,6 +70,10 @@ func (m *Manager) AddRequest(id db.BucketID, key []byte) error {
 	return m.ds.AddRequest(id, key)
 }
 
+func (m *Manager) UnresolvedRequestCount() int {
+	return m.ds.UnresolvedCount()
+}
+
 func (m *Manager) Start() {
 	m.ds.Start()
 }

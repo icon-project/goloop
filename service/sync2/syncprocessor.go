@@ -23,6 +23,7 @@ type SyncProcessor interface {
 	Start(cb func(err error))
 	Stop()
 	AddRequest(id db.BucketID, key []byte) error
+	UnresolvedCount() int
 }
 
 type syncProcessor struct {
@@ -235,6 +236,12 @@ func (s *syncProcessor) AddRequest(id db.BucketID, key []byte) error {
 	} else {
 		return errors.InvalidStateError.Errorf("Terminated")
 	}
+}
+
+func (s *syncProcessor) UnresolvedCount() int {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.builder.UnresolvedCount()
 }
 
 // syncProcessor --> peer --> PeerHandler(Reactor) --> module.ProtocolHandler

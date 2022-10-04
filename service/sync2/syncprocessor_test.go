@@ -359,7 +359,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 	// waiting finish request data sync
 	var try int
 	for {
-		if getUnresolvedCount(sproc, builder) == 0 {
+		if sproc.UnresolvedCount() == 0 {
 			break
 		} else if try >= 100 {
 			t.Logf("data syncer failed. tried(%v)", try)
