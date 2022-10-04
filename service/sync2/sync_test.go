@@ -269,19 +269,9 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 	ws.GetSnapshot().Flush()
 	logger.Printf("account hash : (%x)\n", acHash)
 
-	// when start sync
-	builder := manager2.syncer.GetStateBuilder(acHash, nil, nil, nil, nil)
-	builders2 := []merkle.Builder{builder}
-	for _, builder := range builders2 {
-		t.Logf("builder unresolved : %d\n", builder.UnresolvedCount())
-	}
-	syncer := manager2.GetSyncer()
-	result, err := syncer.SyncWithBuilders(builders2, nil)
-	if err != nil {
-		t.Errorf("Sync Processor failed : err(%v)", err)
-	} else {
-		t.Logf("wss : %x, prl : %x, nrl : %x\n", result.Wss.StateHash(), result.PatchReceipts.Hash(), result.NormalReceipts.Hash())
-	}
+	syncer2 := manager2.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+	result, err := syncer2.ForceSync()
+	assert.NoError(t, err)
 
 	// then
 	as := result.Wss.GetAccountSnapshot([]byte("ABC"))

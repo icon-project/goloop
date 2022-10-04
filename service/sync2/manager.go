@@ -26,8 +26,6 @@ var (
 type RequestCallback func(ver byte, dataLen int, id module.PeerID)
 
 type Syncer interface {
-	GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder
-	SyncWithBuilders(buildersV1 []merkle.Builder, buildersV2 []merkle.Builder) (*Result, error)
 	ForceSync() (*Result, error)
 	Stop()
 	Finalize() error
@@ -52,7 +50,6 @@ type Manager struct {
 
 	db       db.Database
 	plt      Platform
-	syncer   Syncer
 	ds       *dataSyncer
 	reactors []SyncReactor
 }
@@ -67,15 +64,6 @@ type Result struct {
 func (m *Manager) NewSyncer(ah, prh, nrh, vh, ed, bh []byte, noBuffer bool) Syncer {
 	return newSyncerWithHashes(
 		m.db, m.reactors, m.plt, ah, prh, nrh, vh, ed, bh, m.logger, noBuffer)
-}
-
-func (m *Manager) GetSyncer() Syncer {
-	if m.syncer == nil {
-		syncer := newSyncer(m.db, m.reactors, m.plt, m.logger)
-		m.syncer = syncer
-	}
-
-	return m.syncer
 }
 
 func (m *Manager) AddRequest(id db.BucketID, key []byte) error {
@@ -118,9 +106,5 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	m.logger = logger
 
 	m.ds = newDataSyncer(m.db, m.reactors, logger)
-
-	syncer := newSyncer(m.db, m.reactors, m.plt, m.logger)
-	m.syncer = syncer
-
 	return m
 }

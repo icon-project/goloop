@@ -42,7 +42,7 @@ type syncer struct {
 	bd  module.BTPDigest
 }
 
-func (s *syncer) GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
+func (s *syncer) getStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
 	s.logger.Debugf("GetStateBuilder ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 	builder := merkle.NewBuilder(s.database)
@@ -58,7 +58,7 @@ func (s *syncer) GetStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, val
 	return builder
 }
 
-func (s *syncer) GetBTPBuilder(btpHash []byte) merkle.Builder {
+func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 	s.logger.Debugf("GetBTPBuilder bh(%#x)", btpHash)
 	if len(btpHash) == 0 {
 		s.bd = btp.ZeroDigest
@@ -77,8 +77,8 @@ func (s *syncer) GetBTPBuilder(btpHash []byte) merkle.Builder {
 	return builder
 }
 
-// SyncWithBuilders start Sync
-func (s *syncer) SyncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
+// syncWithBuilders start Sync
+func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
 	s.logger.Debugln("SyncWithBuilders()")
 	egrp, _ := errgroup.WithContext(context.Background())
 
@@ -117,15 +117,15 @@ func (s *syncer) SyncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 func (s *syncer) ForceSync() (*Result, error) {
 	var stateBuilders, btpBuilders []merkle.Builder
 
-	stateBuilder := s.GetStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
+	stateBuilder := s.getStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
 	stateBuilders = append(stateBuilders, stateBuilder)
 
-	btpBuilder := s.GetBTPBuilder(s.bh)
+	btpBuilder := s.getBTPBuilder(s.bh)
 	if btpBuilder != nil {
 		btpBuilders = append(btpBuilders, btpBuilder)
 	}
 
-	return s.SyncWithBuilders(stateBuilders, btpBuilders)
+	return s.syncWithBuilders(stateBuilders, btpBuilders)
 }
 
 // Stop sync
@@ -155,17 +155,6 @@ func (s *syncer) Finalize() error {
 
 	s.processors = make([]SyncProcessor, 0)
 	return nil
-}
-
-func newSyncer(database db.Database, reactors []SyncReactor, plt Platform, logger log.Logger) Syncer {
-	s := &syncer{
-		logger:   logger,
-		database: database,
-		reactors: reactors,
-		plt:      plt,
-	}
-
-	return s
 }
 
 func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platform,
