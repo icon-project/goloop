@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -164,6 +165,7 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	for _, p := range ph.nm.peers {
 		if p.id.Equal(id) {
 			for _, r := range p.joinReactors {
+				runtime.Gosched()
 				r.reactor.OnReceive(pi, b, ph.nm.id)
 			}
 			return nil

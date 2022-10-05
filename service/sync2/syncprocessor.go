@@ -151,7 +151,6 @@ func (s *syncProcessor) processMessage(msg interface{}) (bool, error) {
 				return true, nil
 			}
 		case WakeUp:
-			s.stopTimer()
 			s.sendRequests()
 		}
 	case error:
@@ -200,7 +199,7 @@ func (s *syncProcessor) doSync() error {
 	}
 }
 
-// stop sync processor
+// Stop sync processor
 func (s *syncProcessor) Stop() {
 	s.logger.Debugln("Stop() sync processor")
 	s.msgCh <- errors.ErrInterrupted
@@ -229,8 +228,7 @@ func (s *syncProcessor) AddRequest(id db.BucketID, key []byte) error {
 		}))
 
 		if !s.awaking {
-			s.awaking = true
-			s.msgCh <- WakeUp
+			s.prepareWakeupInLock()
 		}
 		return err
 	} else {
@@ -333,32 +331,33 @@ func (s *syncProcessor) wakeup() {
 		}
 	}
 
-	s.stopTimerInLock()
-
 	s.msgCh <- WakeUp
+	s.stopTimerInLock()
+	s.awaking = false
 }
 
 func (s *syncProcessor) prepareWakeupInLock() {
-	if s.timer != nil {
-		s.logger.Infof("prepareWakeUpInLock() timer already started")
-		return
-	}
+	var timeInterval = configDiscoveryInterval
 
-	if s.awaking {
-		s.logger.Infof("prepareWakeUpInLock() awaking...")
-		return
+	if s.readyPool.size() == 0 && s.sentPool.size() > 0 {
+		if s.timer != nil {
+			s.logger.Infof("prepareWakeUpInLock() timer already started")
+			return
+		}
+
+		if s.awaking {
+			s.logger.Infof("prepareWakeUpInLock() awaking...")
+			return
+		}
+	} else {
+		s.logger.Errorf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
+		timeInterval = time.Millisecond
 	}
 
 	if len(s.msgCh) == configChannelSize {
 		s.logger.Panicf("prepareWakeUpInLock() message channel is full"+
 			" len(msgCh) :%v, cap(msgCh) :%v", len(s.msgCh), cap(s.msgCh))
 		return
-	}
-
-	var timeInterval = configDiscoveryInterval
-	if s.readyPool.size() > 0 && s.sentPool.size() == 0 {
-		s.logger.Errorf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
-		timeInterval = 0
 	}
 
 	s.awaking = true
