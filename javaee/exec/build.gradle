@@ -7,13 +7,13 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:1.7.26'
 
     testCompile(
-        'org.junit.jupiter:junit-jupiter-api:5.4.2',
+        'org.junit.jupiter:junit-jupiter-api:5.9.0',
         'org.ow2.asm:asm:7.0',
         'org.ow2.asm:asm-util:7.0'
     )
 
     testImplementation(
-        'org.junit.jupiter:junit-jupiter-engine:5.4.2',
+        'org.junit.jupiter:junit-jupiter-engine:5.9.0',
         project(':samples'),
         project(':logger'),
         files(project(':rt').sourceSets.test.output),
