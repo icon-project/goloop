@@ -11,6 +11,8 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 )
 
+const TestHasher db.BucketID = "T"
+
 type testHasher struct {
 }
 
@@ -23,6 +25,10 @@ func (h testHasher) Hash(v []byte) []byte {
 	return crypto.SHA3Sum256([]byte("0x123"))
 }
 
+func init() {
+	db.RegisterHasher(TestHasher, testHasher{})
+}
+
 type requestor struct {
 	id db.BucketID
 }
@@ -33,9 +39,6 @@ func (req requestor) OnData(v []byte, builder merkle.Builder) error {
 }
 
 func TestMerkleBuilderSameKey(t *testing.T) {
-	const TestHasher db.BucketID = "T"
-	hasher := testHasher{}
-	db.RegisterHasher(TestHasher, hasher)
 
 	mapdb := db.NewMapDB()
 	builder := merkle.NewBuilder(mapdb)
