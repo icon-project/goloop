@@ -30,12 +30,16 @@ const (
 )
 
 func (e errCode) String() string {
-	return errorToString[e]
-}
-
-var errorToString = map[errCode]string{
-	NoError:   "No Error",
-	ErrNoData: "No data",
+	switch e {
+	case NoError:
+		return "NoError"
+	case ErrTimeExpired:
+		return "ErrTimeExpired"
+	case ErrNoData:
+		return "ErrNoData"
+	default:
+		return fmt.Sprintf("Unknown(%d)", e)
+	}
 }
 
 type hasNode struct {
