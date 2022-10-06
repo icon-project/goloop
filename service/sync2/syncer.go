@@ -85,7 +85,7 @@ func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 	for _, builder := range stateBuilders {
 		// sync processor with v1,v2 protocol
 		sp := newSyncProcessor(builder, s.reactors, s.logger, false)
-		egrp.Go(sp.doSync)
+		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
 
@@ -99,7 +99,7 @@ func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 	for _, builder := range btpBuilders {
 		// sync processor with v2 protocol
 		sp := newSyncProcessor(builder, reactorsV2, s.logger, false)
-		egrp.Go(sp.doSync)
+		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
 

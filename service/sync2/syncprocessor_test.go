@@ -187,7 +187,7 @@ func TestSyncProcessorState(t *testing.T) {
 	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
 
 	// when start sync
-	err = sproc.doSync()
+	err = sproc.DoSync()
 	assert.NoError(t, err)
 	builder.Flush(true)
 
@@ -283,7 +283,7 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
 
 	// when start sync
-	err = sproc.doSync()
+	err = sproc.DoSync()
 	assert.NoError(t, err)
 	builder.Flush(true)
 

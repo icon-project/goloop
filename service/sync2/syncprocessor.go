@@ -117,7 +117,7 @@ func (s *syncProcessor) run(cb func(err error)) {
 		cb(err)
 	}()
 
-	err = s.doSync()
+	err = s.DoSync()
 }
 
 func (s *syncProcessor) stopTimer() {
@@ -167,7 +167,7 @@ func (s *syncProcessor) processMessage(msg interface{}) (bool, error) {
 	return false, nil
 }
 
-func (s *syncProcessor) doSync() error {
+func (s *syncProcessor) DoSync() error {
 	defer s.cleanup()
 
 	var msg interface{}
