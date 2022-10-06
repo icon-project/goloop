@@ -15,7 +15,7 @@ type ReactorV2 struct {
 }
 
 func (r *ReactorV2) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
-	r.logger.Tracef("OnReceive() pi(%d), peer id(%v)\n", pi, id)
+	r.logger.Tracef("OnReceive() pi=%d, peerid=%v", pi, id)
 
 	switch pi {
 	case protoV2Request:
@@ -60,13 +60,13 @@ func (r *ReactorV2) _resolveData(bnbs []BucketIDAndBytes) (errCode, []BucketIDAn
 func (r *ReactorV2) request(msg []byte, id module.PeerID) *responseData {
 	req := new(requestData)
 	if _, err := c.UnmarshalFromBytes(msg, &req); err != nil {
-		r.logger.Info("Failed to unmarshal error(%+v), (%#x)\n", err, msg)
+		r.logger.Infof("Failed to unmarshal error=%+v, msg=%#x", err, msg)
 		return nil
 	}
 
-	r.logger.Tracef("request() requestData : reqID(%d), dataLen(%d)\n", req.ReqID, len(req.Data))
+	r.logger.Tracef("request() requestData reqID=%d, dataLen=%d", req.ReqID, len(req.Data))
 	status, data := r._resolveData(req.Data)
-	r.logger.Tracef("request() responseData : dataLen(%d), status(%d), peer(%v)\n", len(data), status, id)
+	r.logger.Tracef("request() responseData dataLen=%d, status=%d, peer=%v", len(data), status, id)
 	res := &responseData{req.ReqID, status, data}
 
 	return res
@@ -77,30 +77,29 @@ func (r *ReactorV2) onRequest(msg []byte, id module.PeerID) {
 
 	b, err := c.MarshalToBytes(res)
 	if err != nil {
-		r.logger.Warnf("Failed to marshal for responseData(%v)\n", res)
+		r.logger.Warnf("Failed to marshal for responseData=%v", res)
 		return
 	}
-	r.logger.Tracef("responseData ReqID(%d), Status(%d), peer(%s)\n", res.ReqID, res.Status, id)
+	r.logger.Tracef("onRequest() responseData ReqID=%d, Status=%d, peer=%v", res.ReqID, res.Status, id)
 	if err = r.ph.Unicast(protoV2Response, b, id); err != nil {
-		r.logger.Infof("Failed to send data peerID(%s)\n", id)
+		r.logger.Infof("onRequest() Failed to send data peer=%v", id)
 	}
 }
 
 func (r *ReactorV2) processMsg(msg []byte, id module.PeerID) (*responseData, error) {
-	r.logger.Tracef("processMsg() msg(%#x), peer id(%v)\n", msg, id)
+	r.logger.Tracef("processMsg() msg=%#x, peerid=%v", msg, id)
 	data := new(responseData)
 	_, err := c.UnmarshalFromBytes(msg, data)
 
 	if err != nil {
-		r.logger.Infof(
-			"Failed onReceive. err(%v), receivedReqID(%d)\n", err, data.ReqID)
+		r.logger.Infof("Failed onReceive. ReqID=%d, err=%v", data.ReqID, err)
 		return nil, errors.New("parse responseData failed")
 	}
 	return data, nil
 }
 
 func (r *ReactorV2) onResponse(msg []byte, id module.PeerID) {
-	r.logger.Tracef("onResponse() peer id(%v)", id)
+	r.logger.Tracef("onResponse() peer=%v", id)
 	d, err := r.processMsg(msg, id)
 	if err != nil {
 		return
@@ -108,16 +107,16 @@ func (r *ReactorV2) onResponse(msg []byte, id module.PeerID) {
 
 	peer := r.readyPool.getPeer(id)
 	if err := peer.OnData(d.ReqID, d.Status, d.Data); err != nil {
-		r.logger.Warnf("onResponse() notFound err(%v)", err)
+		r.logger.Warnf("onResponse() notFound err=%v", err)
 	}
 }
 
 func (r *ReactorV2) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	r.logger.Tracef("OnFailure() err(%+v), pi(%s)\n", err, pi)
+	r.logger.Tracef("OnFailure() pi=%s, err=%+v", pi, err)
 }
 
 func (r *ReactorV2) RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
-	r.logger.Tracef("requestData() peerid(%v), reqID(%d)\n", peer, reqID)
+	r.logger.Tracef("requestData() peer=%v, reqID=%d", peer, reqID)
 	msg := &requestData{reqID, reqData}
 	b, _ := c.MarshalToBytes(msg)
 

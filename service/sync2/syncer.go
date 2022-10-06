@@ -43,7 +43,7 @@ type syncer struct {
 }
 
 func (s *syncer) getStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
-	s.logger.Debugf("GetStateBuilder ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x)",
+	s.logger.Debugf("GetStateBuilder ah=%#x, prh=%#x, nrh=%#x, vlh=%#x, ed=%#x",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
 	builder := merkle.NewBuilder(s.database)
 	ess := s.plt.NewExtensionWithBuilder(builder, extensionData)
@@ -59,7 +59,7 @@ func (s *syncer) getStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, val
 }
 
 func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
-	s.logger.Debugf("GetBTPBuilder bh(%#x)", btpHash)
+	s.logger.Debugf("GetBTPBuilder bh=%#x", btpHash)
 	if len(btpHash) == 0 {
 		s.bd = btp.ZeroDigest
 		return nil
@@ -70,7 +70,7 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 	if err == nil {
 		s.bd = btpDigest
 	} else {
-		s.logger.Errorf("Failed NewDigestWithBuilder. err(%+v)", err)
+		s.logger.Errorf("Failed NewDigestWithBuilder. err=%+v", err)
 		return nil
 	}
 
@@ -137,7 +137,7 @@ func (s *syncer) Stop() {
 
 // Finalize Sync
 func (s *syncer) Finalize() error {
-	s.logger.Debugf("Finalize : ah(%#x), prh(%#x), nrh(%#x), vlh(%#x), ed(%#x), bh(%#x)\n",
+	s.logger.Debugf("Finalize : ah=%#x, prh=%#x, nrh=%#x, vlh=%#x, ed=%#x, bh=%#x",
 		s.ah, s.prh, s.nrh, s.vlh, s.ed, s.bh)
 
 	for i, sp := range s.processors {
@@ -145,9 +145,9 @@ func (s *syncer) Finalize() error {
 		if sproc.builder == nil {
 			continue
 		} else {
-			s.logger.Tracef("Flush %v\n", sp)
+			s.logger.Tracef("Flush syncprocessor=%v", sp)
 			if err := sproc.builder.Flush(true); err != nil {
-				s.logger.Errorf("Failed to flush for %d builder err(%+v)\n", i, err)
+				s.logger.Errorf("Failed to flush for %d builder err=%+v", i, err)
 				return err
 			}
 		}

@@ -43,7 +43,7 @@ func newPeer(id module.PeerID, sender DataSender, logger log.Logger) *peer {
 }
 
 func (p *peer) String() string {
-	return fmt.Sprintf("peer id(%s), reqID(%d)", p.id, p.reqID)
+	return fmt.Sprintf("peer=%v, reqID=%d", p.id, p.reqID)
 }
 
 func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) error {
@@ -51,7 +51,7 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 	defer p.lock.Unlock()
 
 	reqID := p.reqID
-	p.logger.Tracef("RequestData() peer id(%v), reqID(%v), reqData(%d)", p.id, reqID, len(reqData))
+	p.logger.Tracef("RequestData() peer=%v, reqID=%v, reqData=%d", p.id, reqID, len(reqData))
 	if err := p.sender.RequestData(p.id, reqID, reqData); err == nil {
 		p.reqID += 1
 		p.reqMap[reqID] = peerRequest{
@@ -79,7 +79,7 @@ func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) err
 		})
 		return nil
 	} else {
-		p.logger.Debugf("OnData() peer id(%v), reqID(%v): unknown request", p.id, reqID)
+		p.logger.Debugf("OnData() peer=%v, reqID=%v: unknown request", p.id, reqID)
 		return errors.NotFoundError.Errorf("UnknownRequestID(req=%d)", reqID)
 	}
 }

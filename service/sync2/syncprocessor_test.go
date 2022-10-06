@@ -30,13 +30,13 @@ type mockReactor struct {
 }
 
 func (r *mockReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
-	r.logger.Debugf("mockReactor(%v) OnReceive() peer id(%v)\n", r.version, id)
+	r.logger.Debugf("mockReactor(%v) OnReceive() peer=%v", r.version, id)
 
 	go func() {
 		d := new(responseData)
 		_, err := c.UnmarshalFromBytes(b, d)
 		if err != nil {
-			r.logger.Errorf("invaild data %v", err)
+			r.logger.Errorf("invaild data error=%+v", err)
 			return
 		}
 
@@ -46,7 +46,7 @@ func (r *mockReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 }
 
 func (r *mockReactor) OnJoin(id module.PeerID) {
-	r.logger.Debugf("mockReactor(%v) OnJoin() peer id(%v)\n", r.version, id)
+	r.logger.Debugf("mockReactor(%v) OnJoin() peer=%v", r.version, id)
 
 	var dataSender DataSender = r
 	peer := newPeer(id, dataSender, r.logger)
@@ -62,13 +62,13 @@ func (r *mockReactor) WatchPeers(w PeerWatcher) []*peer {
 }
 
 func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
-	r.logger.Debugf("mockReactor(%v) RequestData() reqID(%d)", r.version, reqID)
+	r.logger.Debugf("mockReactor(%v) RequestData() reqID=%d", r.version, reqID)
 
 	peer := r.readyPool.getPeer(id)
 	dummyPeer := peer
 	var dummyData []BucketIDAndBytes
 
-	r.logger.Debugf("mockReactor(%v) RequestData() reqData(%v)", r.version, reqData)
+	r.logger.Debugf("mockReactor(%v) RequestData() reqData=%v", r.version, reqData)
 	bkID := reqData[0].BkID
 	key := string(reqData[0].Bytes)
 	hasher := bkID.Hasher()
@@ -84,7 +84,7 @@ func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []Buck
 		}
 	}
 
-	r.logger.Debugf("mockReactor(%v) request dummy data(%v)\n", r.version, dummyData)
+	r.logger.Debugf("mockReactor(%v) request dummy data=%v", r.version, dummyData)
 	// create dummy response
 	resDummy := &responseData{
 		ReqID:  reqID,
@@ -93,7 +93,7 @@ func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []Buck
 	}
 	b, _ := c.MarshalToBytes(resDummy)
 
-	r.logger.Debugf("mockReactor(%v) request dummy peer id(%v)\n", r.version, dummyPeer.id)
+	r.logger.Debugf("mockReactor(%v) request dummy peer=%v", r.version, dummyPeer.id)
 
 	r.OnReceive(protoV2Request, b, dummyPeer.id)
 
@@ -106,7 +106,7 @@ type requestor struct {
 }
 
 func (req *requestor) OnData(v []byte, builder merkle.Builder) error {
-	req.logger.Debugf("requestor1 bucket id : %v, value : %x\n", req.id, v)
+	req.logger.Debugf("requestor1 bucket id=%v, value=%#x", req.id, v)
 
 	req2 := &requestor2{
 		logger: req.logger,
@@ -126,7 +126,7 @@ type requestor2 struct {
 }
 
 func (req *requestor2) OnData(v []byte, builder merkle.Builder) error {
-	req.logger.Debugf("requestor2 bucket id : %v, value : %x\n", req.id, v)
+	req.logger.Debugf("requestor2 bucket id=%v, value=%#x", req.id, v)
 	return nil
 }
 
@@ -184,7 +184,7 @@ func TestSyncProcessorState(t *testing.T) {
 	// then unresolved count is 1
 	expected1 := 1
 	actual1 := sproc.UnresolvedCount()
-	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
+	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
 
 	// when start sync
 	err = sproc.DoSync()
@@ -195,11 +195,11 @@ func TestSyncProcessorState(t *testing.T) {
 	bk, _ := dstdb.GetBucket(db.BytesByHash)
 	expected2 := value1
 	actual2, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected : %v, actual : %v", expected2, actual2)
+	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
 
 	expected3 := value2
 	actual3, _ := bk.Get(key2)
-	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected : %v, actual : %v", expected3, actual3)
+	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
 }
 
 const TestHasher db.BucketID = "T"
@@ -280,7 +280,7 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	// then unresolved count is 1
 	expected1 := 1
 	actual1 := sproc.builder.UnresolvedCount()
-	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
+	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
 
 	// when start sync
 	err = sproc.DoSync()
@@ -291,11 +291,11 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	bk, _ := dstdb.GetBucket(TestHasher)
 	expected2 := value1
 	actual2, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected : %v, actual : %v", expected2, actual2)
+	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
 
 	expected3 := value2
 	actual3, _ := bk.Get(key2)
-	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected : %v, actual : %v", expected3, actual3)
+	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
 }
 
 func TestSyncProcessorDataSyncer(t *testing.T) {
@@ -343,7 +343,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 	wg.Add(1)
 	sproc.Start(func(err error) {
 		expectedError := errors.ErrInterrupted.Error()
-		assert.Errorf(t, err, expectedError, "sync finished expected : %v, actual : %v", expectedError, err)
+		assert.Errorf(t, err, expectedError, "sync finished expected=%v, actual=%v", expectedError, err)
 		wg.Done()
 	})
 
@@ -369,7 +369,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 	bk, _ := dstdb.GetBucket(db.BytesByHash)
 	expected1 := value1
 	actual1, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected1, actual1, "Sync Result expected : %v, actual : %v", expected1, actual1)
+	assert.EqualValuesf(t, expected1, actual1, "Sync Result expected=%v, actual=%v", expected1, actual1)
 
 	// when stop data syncer
 	time.AfterFunc(10*time.Millisecond, sproc.Stop)
@@ -438,7 +438,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	wg.Wait()
 
 	// then done with nil
-	assert.NoErrorf(t, doneErr, "done error expected : NoError, actual : %v", doneErr)
+	assert.NoErrorf(t, doneErr, "done error expected=NoError, actual=%v", doneErr)
 
 	// given
 	dstdb2 := db.NewMapDB()
@@ -456,7 +456,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 
 	// then done with ErrInterrupted
 	expectedError := errors.ErrInterrupted
-	assert.EqualErrorf(t, doneErr, expectedError.Error(), "done error expected : %v, actual : %v", errors.ErrInterrupted, doneErr)
+	assert.EqualErrorf(t, doneErr, expectedError.Error(), "done error expected=%v, actual=%v", errors.ErrInterrupted, doneErr)
 }
 
 type mockRequester struct {
@@ -483,7 +483,7 @@ func TestSyncProcessorRequestData(t *testing.T) {
 		checkedPool: newPeerPool(),
 	}
 
-	logger.Debugf("reqIter : %+v", sp1.reqIter)
+	logger.Debugf("reqIter=%+v", sp1.reqIter)
 
 	key1 := crypto.SHA3Sum256(value1)
 	err := DBSet(srcdb, db.BytesByHash, key1, value1)
@@ -497,7 +497,7 @@ func TestSyncProcessorRequestData(t *testing.T) {
 
 	getDataSize := func() int {
 		dataSize := sp1.readyPool.size() * configPackSize
-		logger.Debugf("dataSize: %v", dataSize)
+		logger.Debugf("dataSize=%v", dataSize)
 		if dataSize > configRoundLimit {
 			dataSize = configRoundLimit
 		}
@@ -559,46 +559,46 @@ func TestSyncProcessorRequestData(t *testing.T) {
 
 	// when request data == 2, packs == 1, peerSize == 10
 	peers := sp1.readyPool.size()
-	logger.Debugf("peers : %d", peers)
+	logger.Debugf("readyPool=%d", peers)
 
 	builder.RequestData(db.BytesByHash, key1, &mockRequester{})
 	builder.RequestData(db.BytesByHash, key2, &mockRequester{})
-	logger.Debugf("unresolve count : %v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	packs := sp1.getPacks()
 
 	// then request data == 2
 	expected1 := 1
 	actual1 := len(packs)
-	assert.EqualValuesf(t, expected1, actual1, "pack size expected : %v, actual : %v\n", expected1, actual1)
+	assert.EqualValuesf(t, expected1, actual1, "pack size expected=%v, actual=%v", expected1, actual1)
 
 	expected2 := 2
 	actual2 := reqDataSize(packs)
-	assert.EqualValuesf(t, expected2, actual2, "request data size expected : %v, actual : %v\n", expected2, actual2)
+	assert.EqualValuesf(t, expected2, actual2, "request data size expected=%v, actual=%v", expected2, actual2)
 
 	// when received data 1 -> request data == 31, packs == 4, peerSize == 10
 	requestDataSize := uint32(31 - builder.UnresolvedCount())
-	logger.Debugf("value2 : %#x", value2)
+	logger.Debugf("value2=%#x", value2)
 	addRequestData(1, requestDataSize)
-	logger.Debugf("unresolve count : %v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	packs = sp1.getPacks()
 
 	// then request data == 31
 	expected3 := int(math.Ceil(float64(31) / float64(configPackSize)))
 	actual3 := len(packs)
-	assert.EqualValuesf(t, expected3, actual3, "pack size expected : %v, actual : %v\n", expected3, actual3)
+	assert.EqualValuesf(t, expected3, actual3, "pack size expected=%v, actual=%v", expected3, actual3)
 
 	expected4 := 31
 	actual4 := reqDataSize(packs)
-	assert.EqualValuesf(t, expected4, actual4, "request data size expected : %v, actual : %v\n", expected4, actual4)
+	assert.EqualValuesf(t, expected4, actual4, "request data size expected=%v, actual=%v", expected4, actual4)
 
 	// when received data 1 -> request data == 505, packs == 51, peerSize == 9
 	start := requestDataSize + 1
 	end := uint32(505) - 2
 	addRequestData(start, end)
 	removePeers(1)
-	logger.Debugf("unresolve count : %v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	packs = sp1.getPacks()
 
@@ -606,22 +606,22 @@ func TestSyncProcessorRequestData(t *testing.T) {
 	dataSize := getDataSize()
 	expected5 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 	actual5 := len(packs)
-	assert.EqualValuesf(t, expected5, actual5, "pack size expected : %v, actual : %v\n", expected5, actual5)
+	assert.EqualValuesf(t, expected5, actual5, "pack size expected=%v, actual=%v", expected5, actual5)
 
 	expected6 := dataSize
 	actual6 := reqDataSize(packs)
-	assert.EqualValuesf(t, expected6, actual6, "request data size expected : %v, actual : %v\n", expected6, actual6)
+	assert.EqualValuesf(t, expected6, actual6, "request data size expected=%v, actual=%v", expected6, actual6)
 
 	onData(packs)
 
 	// when request data == 505, packs == 10, peerSize == 10
 	addPeers(1)
-	logger.Debugf("unresolve count : %v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	for sp1.reqCount > 0 {
-		logger.Debugf("reqCount : %v", sp1.reqCount)
+		logger.Debugf("reqCount=%v", sp1.reqCount)
 		remainCount := configRoundLimit - sp1.reqCount
-		logger.Debugf("remainCount : %v", remainCount)
+		logger.Debugf("remainCount=%v", remainCount)
 
 		packs = sp1.getPacks()
 
@@ -630,27 +630,27 @@ func TestSyncProcessorRequestData(t *testing.T) {
 			dataSize := getDataSize()
 			expected7 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 			actual7 := len(packs)
-			assert.EqualValuesf(t, expected7, actual7, "pack size expected : %v, actual : %v\n", expected7, actual7)
+			assert.EqualValuesf(t, expected7, actual7, "pack size expected=%v, actual=%v", expected7, actual7)
 
 			expected8 := dataSize
 			actual8 := reqDataSize(packs)
-			assert.EqualValuesf(t, expected8, actual8, "request data size expected : %v, actual : %v\n", expected8, actual8)
+			assert.EqualValuesf(t, expected8, actual8, "request data size expected=%v, actual=%v", expected8, actual8)
 		} else {
 			// then request data == 10, packs == 10
 			dataSize := remainCount
 			expected9 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 			actual9 := len(packs)
-			assert.EqualValuesf(t, expected9, actual9, "pack size expected : %v, actual : %v\n", expected9, actual9)
+			assert.EqualValuesf(t, expected9, actual9, "pack size expected=%v, actual=%v", expected9, actual9)
 
 			expected10 := remainCount
 			actual10 := reqDataSize(packs)
-			assert.EqualValuesf(t, expected10, actual10, "request data size expected : %v, actual : %v\n", expected10, actual10)
+			assert.EqualValuesf(t, expected10, actual10, "request data size expected=%v, actual=%v", expected10, actual10)
 		}
 
 		onData(packs)
 	}
 
-	logger.Debugf("unresolve count : %v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	// when request data == 5, packs == 1, peerSize == 10
 	packs = sp1.getPacks()
@@ -658,9 +658,9 @@ func TestSyncProcessorRequestData(t *testing.T) {
 	// then request data == 5, packs == 1
 	expected11 := 1
 	actual11 := len(packs)
-	assert.EqualValuesf(t, expected11, actual11, "pack size expected : %v, actual : %v\n", expected11, actual11)
+	assert.EqualValuesf(t, expected11, actual11, "pack size expected=%v, actual=%v", expected11, actual11)
 
 	expected12 := 5
 	actual12 := reqDataSize(packs)
-	assert.EqualValuesf(t, expected12, actual12, "request data size expected : %v, actual : %v\n", expected12, actual12)
+	assert.EqualValuesf(t, expected12, actual12, "request data size expected=%v, actual=%v", expected12, actual12)
 }

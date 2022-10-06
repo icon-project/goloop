@@ -33,7 +33,7 @@ type requestData struct {
 }
 
 func (r *requestData) String() string {
-	return fmt.Sprintf("ReqID(%d), Data(%+v)", r.ReqID, r.Data)
+	return fmt.Sprintf("ReqID=%d, Data=%+v", r.ReqID, r.Data)
 }
 
 type responseData struct {
@@ -43,6 +43,6 @@ type responseData struct {
 }
 
 func (r *responseData) String() string {
-	return fmt.Sprintf("ReqID(%d), Status(%d), Data(%+v)",
+	return fmt.Sprintf("ReqID=%d, Status=%d, Data=%+v",
 		r.ReqID, r.Status, r.Data)
 }

@@ -52,7 +52,7 @@ type syncProcessor struct {
 }
 
 func (s *syncProcessor) cleanup() {
-	s.logger.Debugln("cleanup")
+	s.logger.Infoln("cleanup()")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -158,10 +158,10 @@ func (s *syncProcessor) processMessage(msg interface{}) (bool, error) {
 			s.logger.Infof("processMessage() stop sync processor by %v", err)
 			return true, err
 		default:
-			s.logger.Panicf("processMessage() undefined err(%v)\n", err)
+			s.logger.Panicf("processMessage() undefined err=%v", err)
 		}
 	default:
-		s.logger.Warnf("processMessage() unknown type(%v)\n", msgType)
+		s.logger.Warnf("processMessage() unknownType=%v", msgType)
 	}
 
 	return false, nil
@@ -176,19 +176,19 @@ func (s *syncProcessor) DoSync() error {
 	for {
 		s.mutex.Lock()
 		count := s.builder.UnresolvedCount()
-		s.logger.Tracef("doSync() unresolvedCount(%d)", count)
+		s.logger.Tracef("doSync() unresolvedCount=%d", count)
 		peerSize := s.readyPool.size()
 		s.mutex.Unlock()
 
 		if (s.datasyncer && count == 0) || peerSize == 0 || len(s.msgCh) > 0 {
-			s.logger.Tracef("doSync() waiting message from channel... count(%d), peerSize(%d), msgChLen(%d)", count, peerSize, len(s.msgCh))
+			s.logger.Tracef("doSync() waiting message from channel... count=%d, readyPool=%d, msgChLen=%d", count, peerSize, len(s.msgCh))
 			msg = <-s.msgCh
 		} else if count > 0 {
 			msg = WakeUp
 		} else {
 			msg = nil
 		}
-		s.logger.Tracef("doSync() peerSize(%v), msgCh(%d), msg(%v)", peerSize, len(s.msgCh), msg)
+		s.logger.Tracef("doSync() readypool=%v, len(msgCh)=%d, msg=%v", peerSize, len(s.msgCh), msg)
 
 		if done, err := s.processMessage(msg); done {
 			return err
@@ -198,7 +198,7 @@ func (s *syncProcessor) DoSync() error {
 
 // Stop sync processor
 func (s *syncProcessor) Stop() {
-	s.logger.Debugln("Stop() sync processor")
+	s.logger.Infoln("Stop() sync processor")
 	s.msgCh <- errors.ErrInterrupted
 }
 
@@ -219,9 +219,9 @@ func (s *syncProcessor) AddRequest(id db.BucketID, key []byte) error {
 		} else if value != nil {
 			return nil
 		}
-		s.logger.Infof("AddRequest() REQUEST id=%s key=%#x", id, key)
+		s.logger.Debugln("AddRequest() REQUEST id=%s key=%#x", id, key)
 		s.builder.RequestData(id, key, onDataHandler(func() {
-			s.logger.Infof("AddRequest() ADD id=%s key=%#x", id, key)
+			s.logger.Debugln("AddRequest() ADD id=%s key=%#x", id, key)
 		}))
 
 		if !s.awaking {
@@ -311,7 +311,7 @@ func (s *syncProcessor) wakeup() {
 	defer s.mutex.Unlock()
 
 	if s.timer == nil {
-		s.logger.Infof("wakeup() timer(%v) already cancelled", s.timer)
+		s.logger.Infof("wakeup() timer=%v already cancelled", s.timer)
 		return
 	}
 
@@ -348,13 +348,13 @@ func (s *syncProcessor) prepareWakeupInLock() {
 			return
 		}
 	} else {
-		s.logger.Debugf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
+		s.logger.Debugf("prepareWakeUpInLock() readyPool=%d, sentPool=%d", s.readyPool.size(), s.sentPool.size())
 		timeInterval = time.Millisecond
 	}
 
 	if len(s.msgCh) == configChannelSize {
 		s.logger.Panicf("prepareWakeUpInLock() message channel is full"+
-			" len(msgCh) :%v, cap(msgCh) :%v", len(s.msgCh), cap(s.msgCh))
+			" len(msgCh)=%v, cap(msgCh)=%v", len(s.msgCh), cap(s.msgCh))
 		return
 	}
 
@@ -376,7 +376,7 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 
 	p := s.sentPool.remove(sender.id)
 	if p == nil {
-		s.logger.Debugf("HandleData() peer(%v) not in sentPool", sender.id)
+		s.logger.Debugf("HandleData() peer=%v not in sentPool", sender.id)
 		return
 	}
 
@@ -386,7 +386,7 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 			received += 1
 		} else {
 			if err != merkle.ErrNoRequester {
-				s.logger.Warnf("HandleData() failed builder.OnData err(%v) bk=%s value=%#x", err, item.BkID, item.Bytes)
+				s.logger.Warnf("HandleData() failed builder.OnData err=%v bk=%s value=%#x", err, item.BkID, item.Bytes)
 			}
 		}
 	}

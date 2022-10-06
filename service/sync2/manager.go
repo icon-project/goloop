@@ -89,7 +89,7 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	reactorV1 := newReactorV1(database, logger)
 	ph, err := nm.RegisterReactorForStreams("statesync", module.ProtoStateSync, reactorV1, protocol, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
-		logger.Panicf("Failed to register reactorV1 for stateSync\n")
+		logger.Panicf("Failed to register reactorV1 for stateSync")
 		return nil
 	}
 	reactorV1.ph = ph
@@ -99,7 +99,7 @@ func NewSyncManager(database db.Database, nm module.NetworkManager, plt Platform
 	pi2 := module.NewProtocolInfo(module.ProtoStateSync.ID(), 1)
 	ph2, err := nm.RegisterReactorForStreams("statesync2", pi2, reactorV2, protocolv2, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
 	if err != nil {
-		logger.Panicf("Failed to register reactorV2 for stateSync2\n")
+		logger.Panicf("Failed to register reactorV2 for stateSync2")
 		return nil
 	}
 	reactorV2.ph = ph2
