@@ -76,15 +76,3 @@ func (p *peer) OnData(reqID uint32, data []BucketIDAndBytes) error {
 		return errors.NotFoundError.Errorf("UnknownRequestID(req=%d)", reqID)
 	}
 }
-
-func (p *peer) Reset() {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	p.reqID = 0
-	p.reqMap = make(map[uint32]DataHandler)
-	if p.timer != nil {
-		p.timer.Stop()
-		p.timer = nil
-	}
-}

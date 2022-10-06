@@ -57,10 +57,6 @@ func (s *syncProcessor) cleanup() {
 	defer s.mutex.Unlock()
 
 	s.stopTimerInLock()
-	for _, p := range s.sentPool.peerList() {
-		p.Reset()
-	}
-
 	s.readyPool = nil
 	s.sentPool = nil
 	s.checkedPool = nil
