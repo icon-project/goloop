@@ -216,17 +216,15 @@ func (r *ReactorV1) onResponseNodeData(msg []byte, id module.PeerID) {
 		return
 	}
 
-	if d.Status != NoError {
-		r.logger.Warnf("onResponseNodeData() peer id(%v), status(%v)", id, d.Status)
-		return
-	}
-
 	var data []BucketIDAndBytes
-	for _, b := range d.Data {
-		data = append(data, BucketIDAndBytes{BkID: db.BytesByHash, Bytes: b})
+	if d.Status == NoError {
+		data = make([]BucketIDAndBytes, 0, len(d.Data))
+		for _, b := range d.Data {
+			data = append(data, BucketIDAndBytes{BkID: db.BytesByHash, Bytes: b})
+		}
 	}
 	peer := r.readyPool.getPeer(id)
-	if err := peer.OnData(d.ReqID, data); err != nil {
+	if err := peer.OnData(d.ReqID, d.Status, data); err != nil {
 		r.logger.Warnf("onResponseNodeData() notFound err(%v)", err)
 	}
 }

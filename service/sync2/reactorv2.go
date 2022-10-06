@@ -106,13 +106,8 @@ func (r *ReactorV2) onResponse(msg []byte, id module.PeerID) {
 		return
 	}
 
-	if d.Status != NoError {
-		r.logger.Warnf("onResponse() peer id(%v), status(%v)", id, d.Status)
-		return
-	}
-
 	peer := r.readyPool.getPeer(id)
-	if err := peer.OnData(d.ReqID, d.Data); err != nil {
+	if err := peer.OnData(d.ReqID, d.Status, d.Data); err != nil {
 		r.logger.Warnf("onResponse() notFound err(%v)", err)
 	}
 }

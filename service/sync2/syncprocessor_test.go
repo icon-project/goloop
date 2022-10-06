@@ -41,7 +41,7 @@ func (r *mockReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 		}
 
 		p := r.readyPool.getPeer(id)
-		p.OnData(d.ReqID, d.Data)
+		p.OnData(d.ReqID, NoError, d.Data)
 	}()
 }
 
