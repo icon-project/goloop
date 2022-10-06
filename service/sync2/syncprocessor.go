@@ -1,6 +1,7 @@
 package sync2
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -251,10 +252,11 @@ func (s *syncProcessor) sendRequests() {
 
 	for _, pack := range s.getPacks() {
 		peer := s.readyPool.pop()
+		s.logger.Tracef("RequestData() peer=%v pack=%d", peer.id, len(pack))
 		if err := peer.RequestData(pack, s.HandleData); err == nil {
 			s.sentPool.push(peer)
 		} else {
-			s.logger.Infof("Request failed by %+v", err)
+			s.logger.Debugf("RequestData() failed by %+v", err)
 			s.checkedPool.push(peer)
 		}
 	}
@@ -341,16 +343,16 @@ func (s *syncProcessor) prepareWakeupInLock() {
 
 	if s.readyPool.size() == 0 && s.sentPool.size() > 0 {
 		if s.timer != nil {
-			s.logger.Infof("prepareWakeUpInLock() timer already started")
+			s.logger.Debugf("prepareWakeUpInLock() timer already started")
 			return
 		}
 
 		if s.awaking {
-			s.logger.Infof("prepareWakeUpInLock() awaking...")
+			s.logger.Debugf("prepareWakeUpInLock() awaking...")
 			return
 		}
 	} else {
-		s.logger.Errorf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
+		s.logger.Debugf("prepareWakeUpInLock() sentPool(%d)", s.sentPool.size())
 		timeInterval = time.Millisecond
 	}
 
@@ -368,18 +370,17 @@ func (s *syncProcessor) prepareWakeupInLock() {
 // HandleData handle data from peer. If it expires timeout, data would
 // be nil.
 func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAndBytes) {
-	s.logger.Tracef("HandleData() reqID=%d sender=%v", reqID, sender.id)
+	s.logger.Tracef("HandleData() reqID=%d sender=%v data=%d", reqID, sender.id, len(data))
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	if s.sentPool == nil {
-		s.logger.Warnf("HandleData() sendPool is %v", s.sentPool)
 		return
 	}
 
 	p := s.sentPool.remove(sender.id)
 	if p == nil {
-		s.logger.Warnf("HandleData() peer(%v) not in sentPool", sender.id)
+		s.logger.Debugf("HandleData() peer(%v) not in sentPool", sender.id)
 		return
 	}
 
@@ -388,7 +389,9 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 		if err := s.builder.OnData(item.BkID, item.Bytes); err == nil {
 			received += 1
 		} else {
-			s.logger.Errorf("HandleData() failed builder.OnData err(%v)", err)
+			if err != merkle.ErrNoRequester {
+				s.logger.Warnf("HandleData() failed builder.OnData err(%v) bk=%s value=%#x", err, item.BkID, item.Bytes)
+			}
 		}
 	}
 
@@ -411,9 +414,8 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 	s.prepareWakeupInLock()
 }
 
-func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Logger, datasyncer bool) *syncProcessor {
-	return &syncProcessor{
-		logger:      log,
+func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, logger log.Logger, datasyncer bool) *syncProcessor {
+	sp := &syncProcessor{
 		builder:     builder,
 		reactors:    reactors,
 		readyPool:   newPeerPool(),
@@ -422,4 +424,8 @@ func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, log log.Lo
 		msgCh:       make(chan interface{}, configChannelSize),
 		datasyncer:  datasyncer,
 	}
+	sp.logger = logger.WithFields(log.Fields{
+		log.FieldKeyPrefix: fmt.Sprintf("SyncProcessor[%p] ", sp),
+	})
+	return sp
 }
