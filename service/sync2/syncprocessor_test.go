@@ -157,12 +157,7 @@ func TestSyncProcessorState(t *testing.T) {
 		readyPool: newPeerPool(),
 	}
 
-	syncer1 := &syncer{
-		logger:   log1,
-		database: srcdb,
-		reactors: []SyncReactor{reactor1, reactor2},
-		plt:      dummyExBuilder,
-	}
+	reactors := []SyncReactor{reactor1, reactor2}
 
 	reactor1.OnJoin(nm1.id)
 	reactor2.OnJoin(nm2.id)
@@ -184,11 +179,11 @@ func TestSyncProcessorState(t *testing.T) {
 	// when create syncProcessor
 	builder = merkle.NewBuilder(dstdb)
 	builder.RequestData(db.BytesByHash, key1, req1)
-	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
+	sproc := newSyncProcessor(builder, reactors, log1, false)
 
 	// then unresolved count is 1
 	expected1 := 1
-	actual1 := sproc.builder.UnresolvedCount()
+	actual1 := sproc.UnresolvedCount()
 	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected : %v, actual : %v", expected1, actual1)
 
 	// when start sync
