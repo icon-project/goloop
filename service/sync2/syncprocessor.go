@@ -390,6 +390,12 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 			}
 		}
 	}
+	s.logger.Tracef("HandleData() req=%d data=%d received=%d ", reqID, len(data), received)
+	if received > 0 {
+		s.readyPool.push(p)
+	} else {
+		s.checkedPool.push(p)
+	}
 
 	count := s.builder.UnresolvedCount()
 	if count == 0 {
@@ -399,14 +405,6 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 		})
 		return
 	}
-
-	s.logger.Tracef("HandleData() received : %d", received)
-	if received > 0 {
-		s.readyPool.push(p)
-	} else {
-		s.checkedPool.push(p)
-	}
-
 	s.prepareWakeupInLock()
 }
 
