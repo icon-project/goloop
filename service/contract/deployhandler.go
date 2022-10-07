@@ -477,6 +477,17 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (err error, obj *codec.Typed
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return err, nil, nil
 	}
+
+	if cc.Revision().Has(module.ContractSetEvent) {
+		cc.OnEvent(state.SystemAddress, [][]byte{
+			[]byte("ContractSet(Address,Address,str,bytes)"),
+			scoreAddr.Bytes(),
+			h.From.Bytes(),
+		}, [][]byte{
+			[]byte(next.EEType()),
+			next.CodeHash(),
+		})
+	}
 	return nil, nil, nil
 }
 
