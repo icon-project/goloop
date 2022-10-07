@@ -183,6 +183,14 @@ public final class Context extends Object {
         return blockchainRuntime.avm_recoverKey(alg, msg, signature, compressed);
     }
 
+    public static ByteArray avm_aggregate(String type, ByteArray prevAgg, ByteArray values) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_aggregate
+                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_aggregate_per_bytes * (values != null ? values.length() : 0)
+                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_aggregate_per_bytes * (prevAgg != null ? prevAgg.length() : 0));
+        return blockchainRuntime.avm_aggregate(type, prevAgg, values);
+    }
+
     public static Address avm_getAddressFromKey(ByteArray publicKey) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getAddressFromKey);
         return blockchainRuntime.avm_getAddressFromKey(publicKey);
