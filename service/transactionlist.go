@@ -151,6 +151,8 @@ func (l *transactionList) Add(tx transaction.Transaction, ts bool) error {
 			insertPos.srcPrev = e
 		} else {
 			l.srcMapToLast[uidBk][uidSlot] = e
+			e.srcPrev = t2
+			t2.srcNext = e
 		}
 	} else {
 		l.srcMapToLast[uidBk][uidSlot] = e
