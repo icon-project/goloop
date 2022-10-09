@@ -19,7 +19,7 @@ jobs:
 
     - name: GO test
       run: |
-        go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
+        go test ./... -race -covermode=atomic -coverprofile=coverage.out
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
