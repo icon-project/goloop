@@ -60,7 +60,7 @@ func (r *ReactorV2) _resolveData(bnbs []BucketIDAndBytes) (errCode, []BucketIDAn
 func (r *ReactorV2) request(msg []byte, id module.PeerID) *responseData {
 	req := new(requestData)
 	if _, err := c.UnmarshalFromBytes(msg, &req); err != nil {
-		r.logger.Infof("Failed to unmarshal error=%+v, msg=%#x", err, msg)
+		r.logger.Infof("Failed to unmarshal error=%+v, len(msg)=%d", err, len(msg))
 		return nil
 	}
 
@@ -87,7 +87,7 @@ func (r *ReactorV2) onRequest(msg []byte, id module.PeerID) {
 }
 
 func (r *ReactorV2) processMsg(msg []byte, id module.PeerID) (*responseData, error) {
-	r.logger.Tracef("processMsg() msg=%#x, peerid=%v", msg, id)
+	r.logger.Tracef("processMsg() len(msg)=%d, peerid=%v", len(msg), id)
 	data := new(responseData)
 	_, err := c.UnmarshalFromBytes(msg, data)
 

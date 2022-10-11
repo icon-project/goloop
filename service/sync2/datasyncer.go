@@ -49,7 +49,7 @@ func (s *dataSyncer) Start() {
 	sp := newSyncProcessor(s.builder, s.reactors, s.logger, true)
 	sp.Start(func(err error) {
 		if err != nil {
-			s.logger.Warnf("DataSyncer finished by error=%+v", err)
+			s.logger.Infof("DataSyncer finished by error=%+v", err)
 		}
 	})
 	s.sp = sp

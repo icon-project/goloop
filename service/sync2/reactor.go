@@ -105,7 +105,7 @@ func (r *ReactorV1) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID
 func (r *ReactorV1) hasNode(msg []byte, id module.PeerID) *result {
 	hr := new(hasNode)
 	if _, err := c.UnmarshalFromBytes(msg, &hr); err != nil {
-		r.logger.Tracef("Failed to unmarshal data msg=%#x", msg)
+		r.logger.Tracef("Failed to unmarshal data len(msg)=%d", len(msg))
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func (r *ReactorV1) _resolveNode(hashes [][]byte) (errCode, [][]byte) {
 func (r *ReactorV1) requestNode(msg []byte, id module.PeerID) *nodeData {
 	req := new(requestNodeData)
 	if _, err := c.UnmarshalFromBytes(msg, &req); err != nil {
-		r.logger.Info("Failed to unmarshal msg=%#x, error=%+v", msg, err)
+		r.logger.Info("Failed to unmarshal len(msg)=%d, error=%+v", len(msg), err)
 		return nil
 	}
 
