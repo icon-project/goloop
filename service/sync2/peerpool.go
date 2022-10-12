@@ -33,7 +33,7 @@ func (pp *peerPool) push(p *peer) {
 	pushed := false
 	for e := pp.pList.Front(); e != nil; e = e.Next() {
 		lp := e.Value.(*peer)
-		if p.expired < lp.expired {
+		if p.getExpired() < lp.getExpired() {
 			ne = pp.pList.InsertBefore(p, e)
 			pushed = true
 			break

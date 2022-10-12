@@ -46,6 +46,13 @@ func (p *peer) String() string {
 	return fmt.Sprintf("peer=%v, reqID=%d", p.id, p.reqID)
 }
 
+func (p *peer) getExpired() time.Duration {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.expired
+}
+
 func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -71,6 +78,10 @@ func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) err
 	defer locker.Unlock()
 
 	p.logger.Tracef("OnData() peer=%s reqID=%d status=%s data=%d", p.id, reqID, status, len(data))
+	if status == ErrTimeExpired && p.expired < configMaxExpiredTime {
+		p.expired += 100
+	}
+
 	if request, ok := p.reqMap[reqID]; ok {
 		delete(p.reqMap, reqID)
 		request.timer.Stop()
