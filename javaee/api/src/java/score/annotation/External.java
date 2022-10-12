@@ -155,12 +155,14 @@ import java.lang.annotation.Target;
  * {@link score.UserRevertException} for details. Otherwise, system code
  * {@code UnknownFailure(1)} is used as the failure code.
  *
+ * @see Keep
  * @see score.UserRevertException
  */
 @Target(ElementType.METHOD)
 public @interface External {
     /**
      * The method will have read-only access to the state DB if this value is {@code true}.
+     * @return {@code true} if read only
      */
     boolean readonly() default false;
 }

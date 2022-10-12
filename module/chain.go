@@ -22,6 +22,7 @@ type Wallet interface {
 
 type Chain interface {
 	Database() db.Database
+	DoDBTask(func(database db.Database))
 	Wallet() Wallet
 	NID() int
 	CID() int

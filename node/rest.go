@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -35,6 +37,10 @@ const (
 	ParamID     = "id"
 	UrlUserRes  = "/:" + ParamID
 	TaskID      = "task"
+
+	UrlDB    = "/db"
+	ParamBK  = "bucket"
+	ParamKey = "key"
 )
 
 type Rest struct {
@@ -205,6 +211,7 @@ func RegisterRest(n *Node) {
 	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem))
 	r.RegisterUserHandlers(n.cliSrv.e.Group(UrlUser))
 	r.RegisterStatsHandlers(n.cliSrv.e.Group(UrlStats))
+	r.RegisterDBHandlers(n.cliSrv.e.Group(UrlDB))
 
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
 	_ = RegisterInspectFunc("network", network.Inspect)
@@ -653,6 +660,51 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 		}
 	}
 	return json.NewEncoder(resp).Encode(&v)
+}
+
+func (r *Rest) RegisterDBHandlers(g *echo.Group) {
+	bg := g.Group("/:"+ParamCID+"/:"+ParamBK, r.ChainInjector, r.BucketInjector)
+	bg.GET("/:"+ParamKey, r.BucketGetValue)
+}
+
+func (r *Rest) BucketInjector(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		chain := ctx.Get("chain").(*Chain)
+		bkID := db.BucketID(ctx.Param(ParamBK))
+		var ret error
+		chain.DoDBTask(func(database db.Database) {
+			if database == nil {
+				ret = ctx.String(http.StatusServiceUnavailable, "NoDatabase")
+				return
+			}
+			bk, err := database.GetBucket(bkID)
+			if err != nil {
+				ret = ctx.String(http.StatusInternalServerError, "BucketFailure")
+				return
+			}
+			ctx.Set("bucket", bk)
+			ret = next(ctx)
+			return
+		})
+		return ret
+	}
+}
+
+func (r *Rest) BucketGetValue(ctx echo.Context) error {
+	bk := ctx.Get("bucket").(db.Bucket)
+	keyStr := ctx.Param(ParamKey)
+	key, err := hex.DecodeString(keyStr)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, "InvalidKey(key:"+keyStr+")")
+	}
+	value, err := bk.Get(key)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
+	if value == nil {
+		return ctx.JSON(http.StatusOK, nil)
+	}
+	return ctx.JSON(http.StatusOK, value)
 }
 
 func EqualsSyscallErrno(err error, sen syscall.Errno) bool {

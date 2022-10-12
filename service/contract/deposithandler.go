@@ -155,6 +155,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 			intconv.BigIntToBytes(h.Value),
 			intconv.Int64ToBytes(term),
 		})
+		h.Log.OnBalanceChange(module.FSDeposit, h.From, nil, h.Value)
 		return nil, nil, nil
 	case DepositActionWithdraw:
 		if h.Value != nil && h.Value.Sign() != 0 {
@@ -186,6 +187,9 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 				intconv.BigIntToBytes(amount),
 				intconv.BigIntToBytes(fee),
 			})
+
+			h.Log.OnBalanceChange(module.FSWithdraw, nil, h.From, amount)
+			h.Log.OnBalanceChange(module.FSFee, nil, cc.Treasury(), fee)
 			return nil, nil, nil
 		}
 	default:

@@ -29,13 +29,14 @@ import java.lang.annotation.Target;
  * Possible data types for method parameters are {@code int}, {@code boolean}, {@code byte[]},
  * {@code BigInteger}, {@code String}, and {@code Address}.
  *
- * <p>It is recommended to declare a method without a implementation body.
+ * <p>It is recommended to declare a method without an implementation body.
  * Even if the applied method has the body, it does not be executed in runtime.
  */
 @Target(ElementType.METHOD)
 public @interface EventLog {
     /**
      * The number of indexed parameters of the applied method declaration (maximum 3).
+     * @return the number of indexed parameters
      */
     int indexed() default 0;
 }

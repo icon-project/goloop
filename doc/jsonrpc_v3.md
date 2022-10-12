@@ -931,6 +931,119 @@ It's disabled by default. It can be enabled by setting `defaultWaitTimeout` as n
 * Error code, message and data on failure
 * `data` field of failure will be transaction hash([T_HASH](#T_HASH)) on timeout
 
+### icx_getScoreStatus
+
+It returns status information of the smart contract.
+
+> Request
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "method": "icx_getScoreStatus",
+  "params": {
+    "address": "cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32"
+  }
+}
+```
+#### Parameters
+
+| KEY     | VALUE type                    | Required | Description                   |
+|:--------|:------------------------------|:---------|:------------------------------|
+| address | [T_ADDR_SCORE](#T_ADDR_SCORE) | required | SCORE address to be examined. |
+| height  | [T_INT](#T_INT)               | optional | Integer of a block height     |
+
+> Example responses
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1001,
+  "result": {
+      "current": {
+        "auditTxHash": "0x5ba8712782563fec86bbd6381a5a38c40ed74fc945f2f5c43321354d66343c0a",
+        "codeHash": "0x7c7e4e67727a5f6c11f03dab37333e50ed6d47c243b4e486eaaa05d407fd3c84",
+        "deployTxHash": "0x5ba8712782563fec86bbd6381a5a38c40ed74fc945f2f5c43321354d66343c0a",
+        "type": "python",
+        "status": "active"
+      },
+      "depositInfo": {
+        "availableDeposit": "0x10f0cf064dd59200000",
+        "availableVirtualStep": "0x0",
+        "deposits": [
+          {
+            "depositRemain": "0x10f0cf064dd59200000"
+          }
+        ]
+      },
+      "owner": "hxff9221db215ce1a511cbe0a12ff9eb70be4e5764",
+      "useSystemDeposit": "0x1"
+  }
+}
+```
+#### Response
+
+| Status | Meaning | Description | Schema      |
+|:-------|:--------|:------------|:------------|
+| 200    | OK      | Success     | ScoreStatus |
+
+* [SCORE Status](#T_SCORE_STATUS) as result on success
+* Error code, message and data on failure
+* Given address isn't valid contract address, it returns failure.
+
+<a id="T_SCORE_STATUS">SCORE Status</a>
+
+| KEY              | VALUE type                          | Description                         |
+|:-----------------|:------------------------------------|:------------------------------------|
+| owner            | [T_ADDR_SCORE](#T_ADDR_SCORE)       | Owner of the score                  |
+| blocked          | [T_BOOL](#T_BOOL)                   | `0x1` if it's blocked by governance |
+| disabled         | [T_BOOL](#T_BOOL)                   | `0x1` if it's disabled by owner     |
+| useSystemDeposit | [T_BOOL](#T_BOOL)                   | `0x1` if it uses system deposit     |
+| current          | [Contract Status](#ContractStatus)  | Current contract                    |
+| next             | [Contract Status](#ContractStatus)  | Next contract to be audited         |
+| depositInfo      | [Deposit Information](#DepositInfo) | Deposit information                 |
+
+
+<a id="ContractStatus">Contract Status</a>
+
+| KEY          | VALUE type            | Description                                  |
+|:-------------|:----------------------|:---------------------------------------------|
+| status       | [T_STRING](#T_STRING) | Status of the contract                       |
+| deployTxHash | [T_HASH](#T_HASH)     | TX Hash for deploy                           |
+| auditTxHash  | [T_HASH](#T_HASH)     | TX Hash for audit                            |
+| type         | [T_STRING](#T_STRING) | Type of the code (one of system,java,python) |
+| codeHash     | [T_HASH](#T_HASH)     | Hash of the code                             |
+
+
+<a id="DepositInfo">Deposit Information</a>
+
+| KEY                  | VALUE type                     | Description                         |
+|:---------------------|:-------------------------------|:------------------------------------|
+| availableDeposit     | [T_INT](#T_INT)                | Available deposit amount            |
+| availableVirtualStep | [T_INT](#T_INT)                | Available virtual steps(deprecated) |
+| deposits             | a list of [Deposit](#Deposit)s | Remaining deposits                  |
+
+
+<a id="Deposit">Deposit</a>
+
+* Deposit V1
+
+| KEY               | VALUE type        | Description              |
+|:------------------|:------------------|:-------------------------|
+| id                | [T_HASH](#T_HASH) | ID of deposit            |
+| depositRemain     | [T_INT](#T_INT)   | Available deposit amount |
+| depositUsed       | [T_INT](#T_INT)   | Used deposit amount      |
+| expires           | [T_INT](#T_INT)   | Expiration block height  |
+| virtualStepIssued | [T_INT](#T_INT)   | Issued virtual steps     |
+| virtualStepUsed   | [T_INT](#T_INT)   | Used virtual steps       |
+
+
+* Deposit V2
+
+| KEY           | VALUE type      | Description              |
+|:--------------|:----------------|:-------------------------|
+| depositRemain | [T_INT](#T_INT) | Available deposit amount |
+
+
 ## JSON-RPC Debug
 
 APIs for debug endpoint.

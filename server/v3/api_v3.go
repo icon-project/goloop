@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 	"unsafe"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -49,6 +49,7 @@ func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getVotesByHeight", getVotesByHeight)
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
 	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
+	mr.RegisterMethod("icx_getScoreStatus", getScoreStatus)
 
 	mr.RegisterMethod("btp_getNetworkInfo", getBTPNetworkInfo)
 	mr.RegisterMethod("btp_getNetworkTypeInfo", getBTPNetworkTypeInfo)
@@ -734,6 +735,42 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	return proofs, nil
 }
 
+func getScoreStatus(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	var param ScoreAddressParam
+	debug := ctx.IncludeDebug()
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+	b, err := getBlock(chain, bm, param.Height)
+	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	s, err := sm.GetSCOREStatus(b.Result(), param.Address.Address())
+	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	jso, err := s.ToJSON(b.Height(), module.JSONVersion3)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	return jso, nil
+}
+
 func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -1223,62 +1260,6 @@ func DebugMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository 
 	return mr
 }
 
-type traceCallback struct {
-	lock    sync.Mutex
-	logs    []interface{}
-	last    error
-	ts      time.Time
-	channel chan interface{}
-}
-
-type traceLog struct {
-	Level module.TraceLevel `json:"level"`
-	Msg   string            `json:"msg"`
-	Ts    int64             `json:"ts"`
-}
-
-func (t *traceCallback) OnLog(level module.TraceLevel, msg string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	ts := time.Now()
-	if len(t.logs) == 0 {
-		t.ts = ts
-	}
-	dur := ts.Sub(t.ts) / time.Microsecond
-	t.logs = append(t.logs, traceLog{level, msg, int64(dur)})
-}
-
-func (t *traceCallback) OnEnd(e error) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	t.last = e
-
-	t.channel <- e
-	close(t.channel)
-}
-
-func (t *traceCallback) result() interface{} {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	result := map[string]interface{}{
-		"logs": t.logs,
-	}
-	if t.last == nil {
-		result["status"] = "0x1"
-	} else {
-		result["status"] = "0x0"
-		status, _ := scoreresult.StatusOf(t.last)
-		result["failure"] = map[string]interface{}{
-			"code":    status,
-			"message": t.last.Error(),
-		}
-	}
-	return result
-}
-
 func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -1313,7 +1294,7 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 	}
 
 	blk := txInfo.Block()
-	if err := checkBaseHeight(chain, blk.Height()); err != nil {
+	if err = checkBaseHeight(chain, blk.Height()); err != nil {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	}
 	_, err = txInfo.GetReceipt()
@@ -1344,11 +1325,14 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 		logs:    make([]interface{}, 0, 100),
 		channel: make(chan interface{}, 10),
 	}
-	canceller, err := tr2.ExecuteForTrace(module.TraceInfo{
-		Group:    txInfo.Group(),
-		Index:    txInfo.Index(),
-		Callback: cb,
-	})
+	ti := module.TraceInfo{
+		TraceMode: module.TraceModeInvoke,
+		Range:     module.TraceRangeTransaction,
+		Group:     txInfo.Group(),
+		Index:     txInfo.Index(),
+		Callback:  cb,
+	}
+	canceller, err := tr2.ExecuteForTrace(ti)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -1361,7 +1345,7 @@ func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error)
 			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
 				"Not enough time to get result of %x", param.Hash.Bytes())
 		case <-cb.channel:
-			return cb.result(), nil
+			return cb.invokeTraceToJSON(), nil
 		}
 	}
 	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
@@ -1421,4 +1405,148 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	steps := new(common.HexInt)
 	steps.Set(rct.StepUsed())
 	return steps, nil
+}
+
+func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param RosettaTraceParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	blk, txInfo, err := findBlockAndTxInfoByRosettaTraceParam(bm, sm, param, debug)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+
+	csi, err := bm.NewConsensusInfo(blk)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	nblk, err := bm.GetBlockByHeight(blk.Height() + 1)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr1, err := sm.CreateInitialTransition(blk.Result(), blk.NextValidators())
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk, csi, true)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr2 = sm.PatchTransition(tr2, nblk.PatchTransactions(), nblk)
+
+	rl, err := sm.ReceiptListFromResult(nblk.Result(), module.TransactionGroupNormal)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	cb := &traceCallback{
+		channel: make(chan interface{}, 10),
+		bt:      trace.NewBalanceTracer(10),
+	}
+	ti := module.TraceInfo{
+		TraceMode:  module.TraceModeBalanceChange,
+		TraceBlock: trace.NewTraceBlock(blk.ID(), rl),
+		Callback:   cb,
+	}
+	if txInfo != nil {
+		ti.Range = module.TraceRangeTransaction
+		ti.Group = module.TransactionGroupNormal
+		ti.Index = txInfo.Index()
+	} else {
+		if len(param.Tx) > 0 {
+			ti.Range = module.TraceRangeBlockTransaction
+		} else {
+			ti.Range = module.TraceRangeBlock
+		}
+	}
+	canceller, err := tr2.ExecuteForTrace(ti)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	timer := time.After(time.Second * 10)
+	for {
+		select {
+		case <-timer:
+			canceller()
+			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
+				"Not enough time to get result of %+v", param)
+		case <-cb.channel:
+			return cb.balanceChangeToJSON(blk), nil
+		}
+	}
+	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
+}
+
+func findBlockAndTxInfoByRosettaTraceParam(
+	bm module.BlockManager,
+	sm module.ServiceManager,
+	param RosettaTraceParam,
+	debug bool,
+) (module.Block, module.TransactionInfo, error) {
+	var blk module.Block
+	var txInfo module.TransactionInfo
+	var err error
+
+	if len(param.Tx) > 0 {
+		txBytes := param.Tx.Bytes()
+		if blk, err = bm.GetBlock(txBytes); err == nil {
+			return blk, nil, nil
+		}
+
+		txInfo, err = bm.GetTransactionInfo(txBytes)
+		if errors.NotFoundError.Equals(err) {
+			if sm.HasTransaction(param.Tx.Bytes()) {
+				return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
+			}
+			return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		} else if err != nil {
+			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
+		if txInfo.Group() == module.TransactionGroupPatch {
+			return nil, nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
+		}
+		_, err = txInfo.GetReceipt()
+		if block.ResultNotFinalizedError.Equals(err) {
+			return nil, nil, jsonrpc.ErrorCodeExecuting.New("Executing")
+		} else if err != nil {
+			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
+		blk = txInfo.Block()
+	} else if len(param.Block) > 0 {
+		blk, err = bm.GetBlock(param.Block.Bytes())
+	} else if len(param.Height) > 0 {
+		blk, err = bm.GetBlockByHeight(param.Height.Value())
+	} else {
+		// Last block
+		if blk, err = bm.GetLastBlock(); err == nil && blk.Height() > 0 {
+			// Transactions in the last block are not finalized in onTheNext blockchain,
+			// so the previous one of the last block is actually considered the last block in rosetta_getTrace()
+			blk, err = bm.GetBlockByHeight(blk.Height() - 1)
+		}
+	}
+	return blk, txInfo, err
+}
+
+func RosettaMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository(mtr)
+
+	mr.RegisterMethod("rosetta_getTrace", getTraceForRosetta)
+
+	return mr
 }

@@ -167,7 +167,7 @@ func (h *CallHandler) TLogStart() {
 }
 
 func (h *CallHandler) TLogDone(status error, steps *big.Int, result *codec.TypedObj) {
-	if h.Log.IsTrace() {
+	if h.Log.TraceMode() == module.TraceModeInvoke {
 		if status != nil {
 			s, _ := scoreresult.StatusOf(status)
 			h.Log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
@@ -290,11 +290,9 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.ContractState) 
 
 	var cid string
 	if code, err := c.Code(); err != nil {
-		if len(code) == 0 {
-			cid = CID_CHAIN
-		} else {
-			cid = string(cid)
-		}
+		return scoreresult.ContractNotFoundError.AttachTo(err)
+	} else {
+		cid = string(code)
 	}
 
 	score, err := cc.ContractManager().GetSystemScore(cid, cc, h.From, h.Value)
@@ -374,7 +372,7 @@ func (h *CallHandler) AllowExtra() {
 }
 
 func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
-	if h.Log.IsTrace() {
+	if h.Log.TraceMode() == module.TraceModeInvoke {
 		if status == nil {
 			po, _ := common.DecodeAnyForJSON(result)
 			h.Log.TSystemf("CALL done status=%s steps=%v result=%s",
@@ -564,7 +562,7 @@ func (h *CallHandler) OnResult(status error, flag int, steps *big.Int, result *c
 func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, dataType string, dataObj *codec.TypedObj,
 ) {
-	if h.Log.IsTrace() {
+	if h.Log.TraceMode() == module.TraceModeInvoke {
 		po, _ := common.DecodeAnyForJSON(dataObj)
 		h.Log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v dataType=%s data=%s",
 			from, to, value, limit, dataType, trace.ToJSON(po))

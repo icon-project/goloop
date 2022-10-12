@@ -17,6 +17,7 @@
 package test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,11 +29,15 @@ import (
 )
 
 type SimplePeer struct {
-	t         *testing.T
-	id        module.PeerID
-	p         Peer
-	handlers  []*SimplePeerHandler
-	w         module.Wallet
+	// immutable
+	t  *testing.T
+	id module.PeerID
+	w  module.Wallet
+
+	// mutable
+	mu       sync.Mutex
+	p        Peer
+	handlers []*SimplePeerHandler
 }
 
 func NewPeer(t *testing.T) *SimplePeer {
@@ -61,15 +66,22 @@ func (p *SimplePeer) Address() module.Address {
 }
 
 func (p *SimplePeer) attach(p2 Peer) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.p = p2
 }
 
 func (p *SimplePeer) detach(p2 Peer) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.p = nil
 }
 
 func (p *SimplePeer) notifyPacket(pk *Packet, cb func(rebroadcast bool, err error)) {
-	for _, h := range p.handlers {
+	p.mu.Lock()
+	handlers := append([]*SimplePeerHandler(nil), p.handlers...)
+	p.mu.Unlock()
+	for _, h := range handlers {
 		if h.mpi == pk.MPI {
 			rCh := h.rCh
 			Go(func() {
@@ -95,6 +107,8 @@ func (p *SimplePeer) RegisterProto(mpi module.ProtocolInfo) *SimplePeerHandler {
 		mpi: mpi,
 		rCh: make(chan packetEntry, chanSize),
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.handlers = append(p.handlers, h)
 	return h
 }
@@ -131,7 +145,10 @@ func (h *SimplePeerHandler) Unicast(
 		pi,
 		bs,
 	}
-	h.p.p.notifyPacket(pk, cb)
+	h.p.mu.Lock()
+	p := h.p.p
+	h.p.mu.Unlock()
+	p.notifyPacket(pk, cb)
 }
 
 func (h *SimplePeerHandler) AssertReceiveUnicast(pi module.ProtocolInfo, m interface{}) {
@@ -175,7 +192,10 @@ func (h *SimplePeerHandler) Multicast(
 		pi,
 		bs,
 	}
-	h.p.p.notifyPacket(pk, cb)
+	h.p.mu.Lock()
+	p := h.p.p
+	h.p.mu.Unlock()
+	p.notifyPacket(pk, cb)
 }
 
 func (h *SimplePeerHandler) Broadcast(
@@ -193,5 +213,8 @@ func (h *SimplePeerHandler) Broadcast(
 		pi,
 		bs,
 	}
-	h.p.p.notifyPacket(pk, cb)
+	h.p.mu.Lock()
+	p := h.p.p
+	h.p.mu.Unlock()
+	p.notifyPacket(pk, cb)
 }

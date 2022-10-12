@@ -77,6 +77,7 @@ type chainTask interface {
 type singleChain struct {
 	wallet module.Wallet
 
+	dbLock   sync.RWMutex
 	database db.Database
 	vld      module.CommitVoteSetDecoder
 	pd       module.PatchDecoder
@@ -369,6 +370,11 @@ func (c *singleChain) openDatabase(dbDir, dbType string) (db.Database, error) {
 }
 
 func (c *singleChain) ensureDatabase() {
+	c.dbLock.Lock()
+	defer c.dbLock.Unlock()
+	if c.database != nil {
+		return
+	}
 	chainDir := c.cfg.AbsBaseDir()
 	if err := c.prepareDatabase(chainDir); err != nil {
 		c.logger.Panicf("Fail to open database chainDir=%s err=%+v",
@@ -397,6 +403,8 @@ func (c *singleChain) prepareDatabase(chainDir string) error {
 }
 
 func (c *singleChain) releaseDatabase() {
+	c.dbLock.Lock()
+	defer c.dbLock.Unlock()
 	if c.database != nil {
 		c.database.Close()
 		c.database = nil
@@ -676,6 +684,13 @@ func (c *singleChain) WalletFor(dsa string) module.BaseWallet {
 		return c.wallet
 	}
 	return nil
+}
+
+func (c *singleChain) DoDBTask(task func(database db.Database)) {
+	c.dbLock.RLock()
+	defer c.dbLock.RUnlock()
+
+	task(c.database)
 }
 
 func NewChain(

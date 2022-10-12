@@ -547,6 +547,17 @@ func (m *mpt) Format(f fmt.State, verb rune) {
 	}
 }
 
+func (m *mpt) clone() *mpt {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	return &mpt{
+		mptBase: m.mptBase,
+		root:    m.root,
+		s:       newMPTStatics(m.s),
+	}
+}
+
 func newMPTStatics(s *mptStatics) *mptStatics {
 	if logStatics {
 		if s == nil {
@@ -578,11 +589,7 @@ func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 
 func MPTFromImmutable(immutable trie.ImmutableForObject) *mpt {
 	if m, ok := immutable.(*mpt); ok {
-		return &mpt{
-			mptBase: m.mptBase,
-			root:    m.root,
-			s:       newMPTStatics(m.s),
-		}
+		return m.clone()
 	}
 	return nil
 }

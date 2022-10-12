@@ -65,7 +65,6 @@ type (
 		ClearRedeemLogs()
 		DoIOTask(func())
 		ResultFlags() ResultFlag
-		IsTrace() bool
 	}
 	callResultMessage struct {
 		status   error
@@ -93,7 +92,6 @@ const (
 
 type callContext struct {
 	Context
-	isQuery  bool
 	executor *eeproxy.Executor
 	nextEID  int
 	nextFID  int
@@ -117,25 +115,16 @@ func prefixForFrame(id int) string {
 }
 
 func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
-	logger := trace.LoggerOf(ctx.Logger())
-	ti := ctx.TraceInfo()
-	if ti != nil {
-		if info := ctx.TransactionInfo(); info != nil {
-			if info.Group == ti.Group && int(info.Index) == ti.Index {
-				logger = trace.NewLogger(logger.Logger, ti.Callback)
-			}
-		}
-	}
-	frameLogger := logger.WithTPrefix(prefixForFrame(baseFID))
+	traceLogger := ctx.GetTraceLogger(module.EPhaseTransaction)
+	frameLogger := traceLogger.WithTPrefix(prefixForFrame(baseFID))
 	return &callContext{
 		Context: ctx,
-		isQuery: isQuery,
 		nextEID: initialEID,
 		nextFID: firstFID,
 		frame:   NewFrame(nil, nil, limit, isQuery, frameLogger),
 
 		waiter: make(chan interface{}, 8),
-		log:    logger,
+		log:    traceLogger,
 	}
 }
 
@@ -158,7 +147,7 @@ func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callF
 	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
-	logger.TSystemf("START parent=FRAME[%d]", cc.frame.fid)
+	logger.OnFrameEnter(cc.frame.fid)
 	frame.fid = cc.nextFID
 	cc.nextFID += 1
 	cc.frame = frame
@@ -170,7 +159,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
-	frame.log.TSystemf("END success=%v steps=%d", success, &frame.stepUsed)
+	cc.frame.log.OnFrameExit(success, &frame.stepUsed)
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
@@ -207,13 +196,6 @@ func (cc *callContext) FrameLogger() *trace.Logger {
 	} else {
 		return cc.log
 	}
-}
-
-func (cc *callContext) enterQueryMode() {
-	cc.lock.Lock()
-	defer cc.lock.Unlock()
-
-	cc.frame.enterQueryMode(cc)
 }
 
 func (cc *callContext) isInAsyncFrame() bool {
@@ -476,11 +458,7 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 
 func (cc *callContext) ReserveExecutor() error {
 	if cc.executor == nil {
-		priority := eeproxy.ForTransaction
-		if cc.isQuery {
-			priority = eeproxy.ForQuery
-		}
-		cc.executor = cc.EEManager().GetExecutor(priority)
+		cc.executor = cc.EEManager().GetExecutor(cc.EEPriority())
 	}
 	return nil
 }
@@ -649,8 +627,4 @@ func (cc *callContext) GetCustomLogs(name string, ot reflect.Type) CustomLogs {
 
 func (cc *callContext) ResultFlags() ResultFlag {
 	return cc.resultFlags
-}
-
-func (cc *callContext) IsTrace() bool {
-	return cc.log.IsTrace()
 }

@@ -267,6 +267,10 @@ func NewWalletProvider() module.WalletProvider {
 	return &walletProvider{wallet.New()}
 }
 
+func (c *Chain) DoDBTask(f func(database db.Database)) {
+	panic("implement me")
+}
+
 func NewChain(
 	t *testing.T,
 	w module.Wallet,

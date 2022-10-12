@@ -10,20 +10,17 @@ import (
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/transaction"
-
-	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/txresult"
-
-	"github.com/icon-project/goloop/service/eeproxy"
-	ssync "github.com/icon-project/goloop/service/sync"
-
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
+	ssync "github.com/icon-project/goloop/service/sync"
+	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -327,21 +324,28 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 }
 
 func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool, err error) {
+	t.log.Debugf("ExecuteForTrace() start: ti=%#v", ti)
 	if ti.Callback == nil {
 		return nil, errors.IllegalArgumentError.New("TraceCallbackIsNil")
 	}
-	switch ti.Group {
-	case module.TransactionGroupNormal:
-		if _, err := t.normalTransactions.Get(ti.Index); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+
+	if ti.Range == module.TraceRangeTransaction {
+		switch ti.Group {
+		case module.TransactionGroupNormal:
+			if _, err := t.normalTransactions.Get(ti.Index); err != nil {
+				return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+			}
+		case module.TransactionGroupPatch:
+			if _, err := t.patchTransactions.Get(ti.Index); err != nil {
+				return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+			}
+		default:
+			return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
 		}
-	case module.TransactionGroupPatch:
-		if _, err := t.patchTransactions.Get(ti.Index); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
-		}
-	default:
-		return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
 	}
+
+	// no need to validate the tx again for trace
+	t.step = stepValidated
 
 	return t.startExecution(func() error {
 		if t.syncer != nil {
@@ -408,6 +412,14 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 		ws.EnableNodeCache()
 	}
 	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
+}
+
+func (t *transition) newContractContext(wc state.WorldContext) contract.Context {
+	priority := eeproxy.ForTransaction
+	if t.ti != nil {
+		priority = eeproxy.ForQuery
+	}
+	return contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti, priority)
 }
 
 func (t *transition) reportValidation(e error) bool {
@@ -623,7 +635,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
+	ctx := t.newContractContext(wc)
 	ctx.ClearCache()
 	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 
@@ -683,7 +695,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
-	if err := t.plt.OnExecutionEnd(ctx, er, t.log); err != nil {
+	if err = t.onPlatformExecutionEnd(ctx, er); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -719,6 +731,14 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	t.result = tresult.Bytes()
 
 	t.reportExecution(nil)
+}
+
+func (t *transition) onPlatformExecutionEnd(ctx contract.Context, er base.ExecutionResult) error {
+	ctx.SetTransactionInfo(&state.TransactionInfo{
+		Index: int32(t.ntxCount),
+		Hash:  []byte{},
+	})
+	return t.plt.OnExecutionEnd(ctx, er, ctx.GetTraceLogger(module.EPhaseExecutionEnd))
 }
 
 func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) error {

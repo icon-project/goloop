@@ -390,7 +390,7 @@ func (d *depositV2) ConsumeSteps(height int64, steps *big.Int) *big.Int {
 
 func (d *depositV2) ConsumeDepositLv1(height int64, amount *big.Int) *big.Int {
 	if d.DepositRemain.Cmp(amount) <= 0 {
-		remains := new(big.Int).Sub(d.DepositRemain, amount)
+		remains := new(big.Int).Sub(amount, d.DepositRemain)
 		d.DepositRemain = new(big.Int)
 		return remains
 	} else {

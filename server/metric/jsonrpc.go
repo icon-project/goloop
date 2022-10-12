@@ -57,6 +57,7 @@ var (
 		"icx_getVotesByHeight":       msRetrieve,
 		"icx_getProofForResult":      msRetrieve,
 		"icx_getProofForEvents":      msRetrieve,
+		"icx_getScoreStatus":         msRetrieve,
 		"btp_getNetworkInfo":         msRetrieve,
 		"btp_getNetworkTypeInfo":     msRetrieve,
 		"btp_getMessages":            msRetrieve,
@@ -71,6 +72,11 @@ var (
 		"debug_estimateStep": {
 			stats.Int64("jsonrpc_estimate_step", "jsonrpc debug_estimateStep method", "ns"),
 			stats.Int64("jsonrpc_estimate_step_avg", "moving average of jsonrpc debug_estimateStep method", "ns"),
+			emptyMks,
+		},
+		"rosetta_getTrace": {
+			stats.Int64("jsonrpc_rosetta_trace_", "jsonrpc rosetta_getTrace method", "ns"),
+			stats.Int64("jsonrpc_rosetta_trace_avg", "moving average of jsonrpc rosetta_getTTrace method", "ns"),
 			emptyMks,
 		},
 	}

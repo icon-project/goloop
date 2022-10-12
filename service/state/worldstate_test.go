@@ -2,18 +2,18 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"math/big"
 	"strings"
 	"testing"
 
-	"github.com/icon-project/goloop/module"
-
-	"github.com/icon-project/goloop/common"
-
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestNewWorldState(t *testing.T) {
@@ -295,5 +295,112 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 	if v := as4.Version(); v != AccountVersion {
 		log.Panicf("Not valid version. %d\n", v)
+	}
+}
+
+func TestWorldStateImpl_GetSnapshot(t *testing.T) {
+	assert := assert.New(t)
+
+	dbase := db.NewMapDB()
+	addr1 := common.MustNewAddressFromString("hx01")
+	addr2 := common.MustNewAddressFromString("hx02")
+	v1, err := ValidatorFromAddress(addr1)
+	assert.NoError(err)
+
+	vss, err := ValidatorSnapshotFromSlice(dbase, []module.Validator{v1})
+	assert.NoError(err)
+
+	ws := NewWorldState(dbase, nil, vss, nil)
+
+	var wss WorldSnapshot
+	wss1 := ws.GetSnapshot()
+
+	// GetSnapshot returns same snapshot with no operation
+	wss = ws.GetSnapshot()
+	assert.Equal(wss1, wss)
+
+	// GetSnapshot returns same snapshot after GetAccountState()
+	_ = ws.GetAccountState(addr1.ID())
+	wss = ws.GetSnapshot()
+	assert.Equal(wss1, wss)
+
+	// GetSnapshot returns different snapshot after balance change
+	as2 := ws.GetAccountState(addr2.ID())
+	as2.SetBalance(big.NewInt(3))
+	wss2 := ws.GetSnapshot()
+	assert.NotEqual(wss1, wss2)
+
+	// GetSnapshot returns different snapshot after storage change
+	_, err = as2.SetValue([]byte("TestKey"), []byte("TestValue"))
+	assert.NoError(err)
+	wss3 := ws.GetSnapshot()
+	assert.NotEqual(wss2, wss3)
+
+	// GetSnapshot returns same snapshot after reset
+	err = ws.Reset(wss1)
+	assert.NoError(err)
+	wss = ws.GetSnapshot()
+	assert.Equal(wss1, wss)
+}
+
+func BenchmarkWorldStateImpl_GetSnapshotN(b *testing.B) {
+	runs := []struct{ accounts int }{
+		{1000},
+		{2000},
+	}
+
+	for _, run := range runs {
+		b.Run(fmt.Sprint(run.accounts), func(b *testing.B) {
+			dbase := db.NewMapDB()
+			addrs := make([]module.Address, run.accounts)
+			for i := 0; i < len(addrs); i++ {
+				addrs[i] = common.MustNewAddressFromString(fmt.Sprintf("hx%040d", i))
+			}
+			ws := NewWorldState(dbase, nil, nil, nil)
+			for idx, addr := range addrs {
+				as := ws.GetAccountState(addr.ID())
+				as.SetBalance(big.NewInt(int64(idx * 10)))
+			}
+			ws.GetSnapshot()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				ws.GetSnapshot()
+			}
+		})
+	}
+}
+
+func BenchmarkWorldStateImpl_ResetN(b *testing.B) {
+	runs := []struct{ accounts int }{
+		{1000},
+		{2000},
+	}
+
+	for _, run := range runs {
+		b.Run(fmt.Sprint(run.accounts), func(b *testing.B) {
+			dbase := db.NewMapDB()
+			addrs := make([]module.Address, run.accounts)
+			for i := 0; i < len(addrs); i++ {
+				addrs[i] = common.MustNewAddressFromString(fmt.Sprintf("hx%040d", i))
+			}
+			ws := NewWorldState(dbase, nil, nil, nil)
+			for idx, addr := range addrs[0 : len(addrs)/2] {
+				as := ws.GetAccountState(addr.ID())
+				as.SetBalance(big.NewInt(int64(idx * 10)))
+			}
+			for _, addr := range addrs[len(addrs)/2:] {
+				ws.GetAccountState(addr.ID())
+			}
+
+			wss := ws.GetSnapshot()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				for idx, addr := range addrs[len(addrs)/2:] {
+					as := ws.GetAccountState(addr.ID())
+					as.SetBalance(big.NewInt(int64(idx * 10)))
+				}
+				ws.Reset(wss)
+			}
+		})
 	}
 }

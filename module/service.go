@@ -238,6 +238,10 @@ type APIInfo interface {
 	ToJSON(JSONVersion) (interface{}, error)
 }
 
+type SCOREStatus interface {
+	ToJSON(height int64, version JSONVersion) (interface{}, error)
+}
+
 // Options for finalize
 const (
 	FinalizeNormalTransaction = 1 << iota
@@ -346,6 +350,9 @@ type ServiceManager interface {
 	// GetAPIInfo returns API info of the contract
 	GetAPIInfo(result []byte, addr Address) (APIInfo, error)
 
+	// GetSCOREStatus returns status of the contract
+	GetSCOREStatus(result []byte, addr Address) (SCOREStatus, error)
+
 	// GetMembers returns network member list
 	GetMembers(result []byte) (MemberList, error)
 
@@ -397,23 +404,4 @@ type ServiceManager interface {
 
 	// AddSyncRequest add sync request for specified data.
 	AddSyncRequest(id db.BucketID, key []byte) error
-}
-
-type TraceInfo struct {
-	Group    TransactionGroup
-	Index    int
-	Callback TraceCallback
-}
-
-type TraceLevel int
-
-const (
-	TDebugLevel TraceLevel = iota
-	TTraceLevel
-	TSystemLevel
-)
-
-type TraceCallback interface {
-	OnLog(level TraceLevel, msg string)
-	OnEnd(e error)
 }

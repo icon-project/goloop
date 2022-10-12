@@ -341,10 +341,10 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	}
 
 	reqID, i, err := parseMessage(pi, b)
-	if err != nil || reqID != p.reqID {
+	if err != nil || !p.IsValidRequest(reqID) {
 		s.log.Infof(
-			"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s)\n",
-			err, reqID, p.reqID, pi)
+			"Failed onReceive. err(%v), receivedReqID(%d), pi(%s)\n",
+			err, reqID, pi)
 		return
 	}
 	p.timer.Stop()
@@ -370,6 +370,9 @@ func (s *syncer) Stop() {
 }
 
 func (s *syncer) _updateValidPool() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if s.ivpool.size() == 0 {
 		return
 	}
@@ -391,9 +394,9 @@ func (s *syncer) _updateValidPool() {
 }
 
 func (s *syncer) _requestIfNotEnough(p *peer) {
-	s.log.Tracef("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	s.log.Tracef("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
 	if s.vpool.size() < configMaxPeerForSync && s.vpool.size() != s.pool.size() {
 		err := s.client.hasNode(
 			p, s.ah, s.prh,

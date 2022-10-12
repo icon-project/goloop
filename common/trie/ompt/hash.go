@@ -95,6 +95,9 @@ func (h *hash) getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, e
 }
 
 func (h *hash) prove(m *mpt, kb []byte, items [][]byte) (node, trie.Object, error) {
+	if len(items) < 1 {
+		return h, nil, common.ErrIllegalArgument
+	}
 	b := items[0]
 	h2 := calcHash(b)
 	if !bytes.Equal(h.value, h2) {
