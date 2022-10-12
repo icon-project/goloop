@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
@@ -60,7 +61,10 @@ type blockV2 struct {
 	nextValidatorsHash []byte
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
-	_id                []byte
+
+	// mutable data
+	mu  sync.Mutex
+	_id []byte
 }
 
 func (b *blockV2) Version() int {
@@ -68,6 +72,9 @@ func (b *blockV2) Version() int {
 }
 
 func (b *blockV2) ID() []byte {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._id == nil {
 		bs := v2Codec.MustMarshalToBytes(b._headerFormat())
 		b._id = crypto.SHA3Sum256(bs)
