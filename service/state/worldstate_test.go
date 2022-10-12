@@ -310,7 +310,7 @@ func TestWorldStateImpl_GetSnapshot(t *testing.T) {
 	vss, err := ValidatorSnapshotFromSlice(dbase, []module.Validator{v1})
 	assert.NoError(err)
 
-	ws := NewWorldState(dbase, nil, vss, nil)
+	ws := NewWorldState(dbase, nil, vss, nil, nil)
 
 	var wss WorldSnapshot
 	wss1 := ws.GetSnapshot()
@@ -356,7 +356,7 @@ func BenchmarkWorldStateImpl_GetSnapshotN(b *testing.B) {
 			for i := 0; i < len(addrs); i++ {
 				addrs[i] = common.MustNewAddressFromString(fmt.Sprintf("hx%040d", i))
 			}
-			ws := NewWorldState(dbase, nil, nil, nil)
+			ws := NewWorldState(dbase, nil, nil, nil, nil)
 			for idx, addr := range addrs {
 				as := ws.GetAccountState(addr.ID())
 				as.SetBalance(big.NewInt(int64(idx * 10)))
@@ -383,7 +383,7 @@ func BenchmarkWorldStateImpl_ResetN(b *testing.B) {
 			for i := 0; i < len(addrs); i++ {
 				addrs[i] = common.MustNewAddressFromString(fmt.Sprintf("hx%040d", i))
 			}
-			ws := NewWorldState(dbase, nil, nil, nil)
+			ws := NewWorldState(dbase, nil, nil, nil, nil)
 			for idx, addr := range addrs[0 : len(addrs)/2] {
 				as := ws.GetAccountState(addr.ID())
 				as.SetBalance(big.NewInt(int64(idx * 10)))
