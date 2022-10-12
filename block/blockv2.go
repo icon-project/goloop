@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
@@ -153,12 +154,15 @@ type blockV2 struct {
 	nextValidatorsHash []byte
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
-	_id                []byte
-	_btpSection        module.BTPSection
 	nsFilter           module.BitSetFilter
-	_btpDigest         module.BTPDigest
 	sm                 ServiceManager
-	_nextPCM           module.BTPProofContextMap
+
+	// mutable data
+	mu          sync.Mutex
+	_id         []byte
+	_btpSection module.BTPSection
+	_btpDigest  module.BTPDigest
+	_nextPCM    module.BTPProofContextMap
 }
 
 func (b *blockV2) Version() int {
@@ -166,6 +170,9 @@ func (b *blockV2) Version() int {
 }
 
 func (b *blockV2) ID() []byte {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._id == nil {
 		bs := v2Codec.MustMarshalToBytes(b._headerFormat())
 		b._id = crypto.SHA3Sum256(bs)
@@ -369,6 +376,9 @@ func (b *blockV2) NetworkSectionFilter() module.BitSetFilter {
 }
 
 func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._btpDigest == nil {
 		bs, err := b.BTPSection()
 		if err != nil {
@@ -380,6 +390,9 @@ func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
 }
 
 func (b *blockV2) BTPSection() (module.BTPSection, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._btpSection == nil {
 		bs, err := b.sm.BTPSectionFromResult(b.result)
 		if err != nil {
@@ -391,6 +404,9 @@ func (b *blockV2) BTPSection() (module.BTPSection, error) {
 }
 
 func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._nextPCM == nil {
 		nextPCM, err := b.sm.NextProofContextMapFromResult(b.result)
 		if err != nil {
