@@ -23,6 +23,16 @@ const (
 	UrlAdmin          = "/admin"
 )
 
+type Config struct {
+	ServerAddress         string
+	JSONRPCDump           bool
+	JSONRPCIncludeDebug   bool
+	JSONRPCRosetta        bool
+	JSONRPCDefaultChannel string
+	JSONRPCBatchLimit     int
+	WSMaxSession          int
+}
+
 type Manager struct {
 	e                     *echo.Echo
 	addr                  string
@@ -40,12 +50,8 @@ type Manager struct {
 	mtr                   *metric.JsonrpcMetric
 }
 
-func NewManager(addr string,
-	jsonrpcDump bool,
-	jsonrpcIncludeDebug bool,
-	jsonrpcRosetta bool,
-	jsonrpcDefaultChannel string,
-	jsonrpcBatchLimit int,
+func NewManager(
+	config *Config,
 	wallet module.Wallet,
 	l log.Logger) *Manager {
 
@@ -64,20 +70,20 @@ func NewManager(addr string,
 	e.Logger.SetOutput(l.WriterLevel(log.DebugLevel))
 	m := &Manager{
 		e:                     e,
-		addr:                  addr,
+		addr:                  config.ServerAddress,
 		wallet:                wallet,
 		chains:                make(map[string]module.Chain),
-		wssm:                  newWSSessionManager(logger),
+		wssm:                  newWSSessionManager(logger, config.WSMaxSession),
 		mtx:                   sync.RWMutex{},
-		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
-		jsonrpcBatchLimit:     int32(jsonrpcBatchLimit),
+		jsonrpcDefaultChannel: config.JSONRPCDefaultChannel,
+		jsonrpcBatchLimit:     int32(config.JSONRPCBatchLimit),
 		logger:                logger,
 		metricsHandler:        echo.WrapHandler(metric.PrometheusExporter()),
 		mtr:                   mtr,
 	}
-	m.SetMessageDump(jsonrpcDump)
-	m.SetIncludeDebug(jsonrpcIncludeDebug)
-	m.SetRosetta(jsonrpcRosetta)
+	m.SetMessageDump(config.JSONRPCDump)
+	m.SetIncludeDebug(config.JSONRPCIncludeDebug)
+	m.SetRosetta(config.JSONRPCRosetta)
 	return m
 }
 
@@ -172,6 +178,10 @@ func (srv *Manager) SetBatchLimit(limitOfBatch int) {
 
 func (srv *Manager) BatchLimit() int {
 	return int(atomic.LoadInt32(&srv.jsonrpcBatchLimit))
+}
+
+func (srv *Manager) SetWSMaxSession(limit int) {
+	srv.wssm.SetMaxSession(limit)
 }
 
 func (srv *Manager) Start() error {
