@@ -83,10 +83,7 @@ func (p *SimplePeer) notifyPacket(pk *Packet, cb func(rebroadcast bool, err erro
 	p.mu.Unlock()
 	for _, h := range handlers {
 		if h.mpi == pk.MPI {
-			rCh := h.rCh
-			Go(func() {
-				rCh <- packetEntry{pk, cb}
-			})
+			h.rCh <- packetEntry{pk, cb}
 		}
 	}
 }
