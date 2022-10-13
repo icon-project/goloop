@@ -134,10 +134,6 @@ func TestSyncProcessorState(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
-
 	srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
@@ -225,10 +221,6 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
-
 	srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
@@ -301,10 +293,6 @@ func TestSyncProcessorBTPData(t *testing.T) {
 func TestSyncProcessorDataSyncer(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
-
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
 
 	srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()

@@ -40,13 +40,14 @@ type syncProcessor struct {
 
 	timer      *time.Timer
 	datasyncer bool
+	migrateDur time.Duration
 
 	reqIter  merkle.RequestIterator
 	reqCount int
 }
 
-func (s *syncProcessor) onTerm() {
-	s.logger.Infoln("onTerm()")
+func (s *syncProcessor) onTermInLock() {
+	s.logger.Infoln("onTermInLock()")
 
 	s.stopTimerInLock()
 	s.readyPool = nil
@@ -74,11 +75,11 @@ func (s *syncProcessor) OnPeerLeave(p *peer) {
 	}
 
 	if p2 := s.readyPool.remove(p.id); p2 != nil {
-		s.scheduleMigrationInLock()
+		s.onPoolChangeInLock()
 		return
 	}
 	if p2 := s.sentPool.remove(p.id); p2 != nil {
-		s.scheduleMigrationInLock()
+		s.onPoolChangeInLock()
 		return
 	}
 	if p2 := s.checkedPool.remove(p.id); p2 != nil {
@@ -87,6 +88,13 @@ func (s *syncProcessor) OnPeerLeave(p *peer) {
 }
 
 func (s *syncProcessor) onInitInLock() {
+	// init pool migrate duration
+	if s.datasyncer {
+		s.migrateDur = configDataSyncMigrationInterval * time.Second
+	} else {
+		s.migrateDur = configMigrationInterval * time.Second
+	}
+
 	// init readyPool
 	for _, reactor := range s.reactors {
 		pList := reactor.WatchPeers(s)
@@ -140,12 +148,12 @@ func (s *syncProcessor) DoSync() error {
 		}
 
 		s.logger.Tracef("DoSync() readyPool=%d, sentPool=%d", s.readyPool.size(), s.sentPool.size())
-		for count > 0 && s.readyPool.size() > 0 {
-			sizeOfPacks := s.sendRequestsInLock()
-			// break loop when end of requestIterator
-			if count > configPackSize && sizeOfPacks[len(sizeOfPacks)-1] < configPackSize {
-				s.logger.Tracef("DoSync() break sendRequests. sizeOfPacks=%v", sizeOfPacks)
-				break
+		if count > 0 && s.readyPool.size() > 0 {
+			for !s.sendRequestsInLock() {
+				if s.readyPool.size() == 0 {
+					break
+				}
+				s.logger.Tracef("DoSync() retry sendRequest. readyPool=%d", s.readyPool.size())
 			}
 		}
 
@@ -154,7 +162,7 @@ func (s *syncProcessor) DoSync() error {
 		s.waiter.Wait()
 	}
 
-	s.onTerm()
+	s.onTermInLock()
 	return err
 }
 
@@ -205,27 +213,25 @@ func (s *syncProcessor) UnresolvedCount() int {
 
 // sendRequestsInLock
 //
-// returns slice has each pack size
+// returns true if succeed sendRequest, false if no send.
 // syncProcessor --> peer --> PeerHandler(Reactor) --> module.ProtocolHandler
-func (s *syncProcessor) sendRequestsInLock() []int {
+func (s *syncProcessor) sendRequestsInLock() bool {
 	s.logger.Debugln("sendRequests()")
-
-	var sizeOfPacks []int
+	var sent bool
 
 	for _, pack := range s.getPacks() {
 		peer := s.readyPool.pop()
 		s.logger.Tracef("sendRequests() peer=%v pack=%d", peer.id, len(pack))
 		if err := peer.RequestData(pack, s.HandleData); err == nil {
 			s.sentPool.push(peer)
+			sent = true
 		} else {
 			s.logger.Debugf("sendRequests() failed by %+v", err)
 			s.checkedPool.push(peer)
 		}
-
-		sizeOfPacks = append(sizeOfPacks, len(pack))
 	}
 
-	return sizeOfPacks
+	return sent
 }
 
 func (s *syncProcessor) next() bool {
@@ -284,27 +290,38 @@ func (s *syncProcessor) migrate() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if s.checkedPool == nil {
+		return
+	}
+
 	s.logger.Tracef("migrate() checkPool=%d", s.checkedPool.size())
 	if s.checkedPool.size() > 0 {
-		for _, p := range s.checkedPool.peerList() {
-			s.readyPool.push(p)
+		if s.readyPool.size() == 0 {
+			s.readyPool, s.checkedPool = s.checkedPool, s.readyPool
+		} else {
+			for _, p := range s.checkedPool.peerList() {
+				s.readyPool.push(p)
+			}
+			s.checkedPool.clear()
 		}
-		s.checkedPool.clear()
 	}
 
 	s.timer = nil
 	s.wakeupInLock()
 }
 
-func (s *syncProcessor) scheduleMigrationInLock() {
-	if s.timer != nil {
-		s.logger.Debugf("scheduleMigrationInLock() timer=%v exist", s.timer)
+func (s *syncProcessor) onPoolChangeInLock() {
+	if s.readyPool.size() > 0 {
+		s.wakeupInLock()
 		return
 	}
-
-	if s.checkedPool.size() > 0 && s.sentPool.size() == 0 {
-		s.logger.Tracef("scheduleMigrationInLock() migrate timer start. duration=%v", configMigrationInterval)
-		s.timer = afterFunc(configMigrationInterval, s.migrate)
+	if s.sentPool.size() == 0 && s.checkedPool.size() > 0 {
+		if s.timer != nil {
+			s.logger.Debugf("onPoolChangeInLock() timer=%v exist", s.timer)
+		} else {
+			s.logger.Tracef("onPoolChangeInLock() migrate timer start. duration=%v", s.migrateDur)
+			s.timer = time.AfterFunc(s.migrateDur, s.migrate)
+		}
 	}
 }
 
@@ -343,11 +360,10 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 	s.logger.Tracef("HandleData() reqID=%d data=%d received=%d hasError=%v", reqID, len(data), received, hasError)
 	if len(data) > 0 && !hasError {
 		s.readyPool.push(p)
-		s.wakeupInLock()
 	} else {
 		s.checkedPool.push(p)
-		s.scheduleMigrationInLock()
 	}
+	s.onPoolChangeInLock()
 }
 
 func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, logger log.Logger, datasyncer bool) *syncProcessor {

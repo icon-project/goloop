@@ -1,8 +1,6 @@
 package sync2
 
 import (
-	"time"
-
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -12,15 +10,15 @@ import (
 )
 
 const (
-	configSyncPriority      = 3
-	configExpiredTime       = 500         // in millisecond
-	configMaxExpiredTime    = 1200        // in millisecond
-	configMigrationInterval = time.Second // second
+	configSyncPriority              = 3
+	configExpiredTime               = 500  // in millisecond
+	configMaxExpiredTime            = 1200 // in millisecond
+	configMigrationInterval         = 1    // second
+	configDataSyncMigrationInterval = 3    // second
 )
 
 var (
-	c         = codec.MP
-	afterFunc = time.AfterFunc
+	c = codec.MP
 )
 
 type RequestCallback func(ver byte, dataLen int, id module.PeerID)

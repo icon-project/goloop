@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"runtime"
 	"strconv"
 	"sync"
@@ -227,10 +228,6 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
-
 	srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
@@ -305,10 +302,6 @@ func TestSyncDataSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
-
 	// given 16 peers
 	const cPeers int = 16
 	var databases [cPeers]db.Database
@@ -343,9 +336,12 @@ func TestSyncDataSync(t *testing.T) {
 	}
 
 	// when addRequest all data to peers
+	rkeys := append([][]byte(nil), keys...)
+
 	for i := 0; i < cPeers; i++ {
+		rand.Shuffle(len(rkeys), func(i, j int) { rkeys[i], rkeys[j] = rkeys[j], rkeys[i] })
 		for j := 0; j < reqSize; j++ {
-			err := syncM[i].AddRequest(db.BytesByHash, keys[j])
+			err := syncM[i].AddRequest(db.BytesByHash, rkeys[j])
 			assert.NoError(t, err)
 		}
 	}
@@ -395,10 +391,6 @@ func TestSyncDataSync(t *testing.T) {
 func TestSyncAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
-
-	afterFunc = func(d time.Duration, f func()) *time.Timer {
-		return time.AfterFunc(time.Millisecond, f)
-	}
 
 	var testItems [1000]byte
 	for i := range testItems {
