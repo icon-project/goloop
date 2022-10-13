@@ -46,6 +46,9 @@ func BlockDataToBytes(blk BlockData) ([]byte, error) {
 type Block interface {
 	BlockData
 	NextValidators() ValidatorList
+
+	// Copy returns goroutine safe copy
+	Copy() Block
 }
 
 type BlockCandidate interface {

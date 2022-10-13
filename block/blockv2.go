@@ -269,6 +269,11 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
+func (b *blockV2) Copy() module.Block {
+	// blockV2 is safe to be used in multiple goroutine
+	return b
+}
+
 type blockBuilder struct {
 	vld   module.CommitVoteSetDecoder
 	block *blockV2
