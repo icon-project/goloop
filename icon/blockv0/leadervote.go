@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 )
@@ -134,6 +135,18 @@ type LeaderVoteList struct {
 	root  []byte
 	hash  []byte
 	bytes []byte
+}
+
+func (s *LeaderVoteList) Copy() *LeaderVoteList {
+	if s == nil {
+		return nil
+	}
+	jsn, err := s.MarshalJSON()
+	log.Must(err)
+	var res LeaderVoteList
+	err = res.UnmarshalJSON(jsn)
+	log.Must(err)
+	return &res
 }
 
 func (s *LeaderVoteList) UnmarshalJSON(b []byte) error {

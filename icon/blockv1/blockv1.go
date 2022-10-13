@@ -101,6 +101,7 @@ type blockDetail interface {
 	NewBlock(vl module.ValidatorList) module.Block
 	RepsRoot() []byte
 	NextRepsRoot() []byte
+	copy() module.Block
 }
 
 type Block struct {
@@ -255,6 +256,10 @@ func (b *Block) NextValidators() module.ValidatorList {
 	return b._nextValidators
 }
 
+func (b *Block) Copy() module.Block {
+	return b.copy()
+}
+
 type blockV11 struct {
 	Block
 }
@@ -353,6 +358,12 @@ func (b *blockV11) RepsRoot() []byte {
 
 func (b *blockV11) NextRepsRoot() []byte {
 	return nil
+}
+
+func (b *blockV11) copy() module.Block {
+	res := *b
+	res.blockDetail = &res
+	return &res
 }
 
 type blockV13 struct {
@@ -458,6 +469,14 @@ func (b *blockV13) RepsRoot() []byte {
 
 func (b *blockV13) NextRepsRoot() []byte {
 	return b.nextRepsRoot
+}
+
+func (b *blockV13) copy() module.Block {
+	res := *b
+	res.blockDetail = &res
+	res.blockVotes = b.blockVotes.Copy()
+	res.leaderVotes = b.leaderVotes.Copy()
+	return &res
 }
 
 func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {

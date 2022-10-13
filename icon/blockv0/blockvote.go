@@ -29,6 +29,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/merkle"
 	"github.com/icon-project/goloop/module"
 )
@@ -167,6 +168,18 @@ type BlockVoteList struct {
 
 func NewBlockVoteList(votes ...*BlockVote) *BlockVoteList {
 	return &BlockVoteList{votes: votes}
+}
+
+func (s *BlockVoteList) Copy() *BlockVoteList {
+	if s == nil {
+		return nil
+	}
+	jsn, err := json.Marshal(s.votes)
+	log.Must(err)
+	var res BlockVoteList
+	err = res.UnmarshalJSON(jsn)
+	log.Must(err)
+	return &res
 }
 
 func (s *BlockVoteList) UnmarshalJSON(b []byte) error {
