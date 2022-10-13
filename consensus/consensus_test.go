@@ -543,10 +543,11 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	f.WaitForNextBlock()
 
 	// set wrong pub key
+	wrongWP := test.NewWalletProvider()
 	f.SendTransactionToProposer(
 		f.NewTx().CallFrom(f.Nodes[0].CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
+			"pubKey": fmt.Sprintf("0x%x", wrongWP.WalletFor(dsa).PublicKey()),
 		}),
 	)
 	f.WaitForNextNthBlock(2)
