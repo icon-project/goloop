@@ -21,8 +21,18 @@ type MessageItem struct {
 }
 
 type speer struct {
-	id        module.PeerID
-	msgCh     chan MessageItem
+	id    module.PeerID
+	msgCh chan MessageItem
+
+	// toStopCh notifies moderators to stop.
+	// Notified from server.stop and server.onLeave
+	toStopCh chan struct{}
+
+	// stopCh notifies message sender server.onReceive not to send more
+	// and handler sconHandler.handle to stop.
+	stopCh chan struct{}
+
+	// stoppedCh is notified by message handler when it ends.
 	stoppedCh chan struct{}
 }
 
@@ -71,16 +81,25 @@ func (s *server) start() {
 const msgChanSize = 10
 
 func (s *server) _addPeer(id module.PeerID) {
+	toStopCh := make(chan struct{}, 1)
+	stopCh := make(chan struct{})
 	speer := &speer{
 		id:        id,
 		msgCh:     make(chan MessageItem, msgChanSize),
+		toStopCh:  toStopCh,
+		stopCh:    stopCh,
 		stoppedCh: make(chan struct{}, 1),
 	}
 	s.peers = append(s.peers, speer)
 	h := newSConHandler(
-		speer.msgCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.bpp, s.log,
+		speer.msgCh, stopCh, speer.stoppedCh,
+		speer.id, s.ph, s.bm, s.bpp, s.log,
 	)
 	go h.handle()
+	go func() {
+		<-toStopCh
+		close(stopCh)
+	}()
 }
 
 func (s *server) stop() {
@@ -90,7 +109,8 @@ func (s *server) stop() {
 	if s.running {
 		s.running = false
 		for _, p := range s.peers {
-			close(p.msgCh)
+			p.toStopCh <- struct{}{}
+			// wait for handle goroutine to end
 			pp := p // to capture loop var
 			s.CallAfterUnlock(func() {
 				<-pp.stoppedCh
@@ -128,7 +148,7 @@ func (s *server) onLeave(id module.PeerID) {
 			s.peers[i] = s.peers[last]
 			s.peers[last] = nil
 			s.peers = s.peers[:last]
-			close(p.msgCh)
+			p.toStopCh <- struct{}{}
 			return
 		}
 	}
@@ -145,7 +165,11 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 		if p.id.Equal(id) {
 			p := p // capture loop var
 			s.CallAfterUnlock(func() {
-				p.msgCh <- MessageItem{pi, b}
+				// do not send message if stopCh is closed
+				select {
+				case <-p.stopCh:
+				case p.msgCh <- MessageItem{pi, b}:
+				}
 			})
 			break
 		}
@@ -154,6 +178,7 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 
 type sconHandler struct {
 	msgCh     <-chan MessageItem
+	stopCh    <-chan struct{}
 	stoppedCh chan<- struct{}
 	id        module.PeerID
 	ph        module.ProtocolHandler
@@ -170,6 +195,7 @@ type sconHandler struct {
 
 func newSConHandler(
 	msgCh <-chan MessageItem,
+	stopCh <-chan struct{},
 	stoppedCh chan<- struct{},
 	id module.PeerID,
 	ph module.ProtocolHandler,
@@ -179,6 +205,7 @@ func newSConHandler(
 ) *sconHandler {
 	h := &sconHandler{
 		msgCh:     msgCh,
+		stopCh:    stopCh,
 		stoppedCh: stoppedCh,
 		id:        id,
 		ph:        ph,
@@ -291,6 +318,8 @@ func (h *sconHandler) processMsg(msgItem *MessageItem) {
 func (h *sconHandler) processMsgs0Timeout() bool {
 	for {
 		select {
+		case <-h.stopCh:
+			return false
 		case msgItem, ok := <-h.msgCh:
 			if !ok {
 				return false
@@ -306,6 +335,8 @@ func (h *sconHandler) processMsgs(timeout time.Duration) bool {
 	if timeout > 0 {
 		timer := time.NewTimer(timeout)
 		select {
+		case <-h.stopCh:
+			return false
 		case msgItem, ok := <-h.msgCh:
 			if !timer.Stop() {
 				<-timer.C
@@ -319,6 +350,8 @@ func (h *sconHandler) processMsgs(timeout time.Duration) bool {
 		}
 	} else if timeout < 0 {
 		select {
+		case <-h.stopCh:
+			return false
 		case msgItem, ok := <-h.msgCh:
 			if !ok {
 				return false

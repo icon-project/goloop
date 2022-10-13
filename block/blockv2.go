@@ -371,6 +371,11 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
+func (b *blockV2) Copy() module.Block {
+	// blockV2 is safe to be used in multiple goroutine
+	return b
+}
+
 func (b *blockV2) NetworkSectionFilter() module.BitSetFilter {
 	return b.nsFilter
 }
