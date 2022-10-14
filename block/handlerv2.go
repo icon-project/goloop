@@ -72,17 +72,19 @@ func (b *blockV2Handler) NewBlock(
 		prevID = prev.ID()
 	}
 	return &blockV2{
-		height:             height,
-		timestamp:          ts,
-		proposer:           proposer,
-		prevID:             prevID,
-		logsBloom:          logsBloom,
-		result:             result,
-		patchTransactions:  patchTransactions,
-		normalTransactions: normalTransactions,
-		nextValidatorsHash: nextValidators.Hash(),
-		_nextValidators:    nextValidators,
-		votes:              votes,
+		blockV2Immut: blockV2Immut{
+			height:             height,
+			timestamp:          ts,
+			proposer:           proposer,
+			prevID:             prevID,
+			logsBloom:          logsBloom,
+			result:             result,
+			patchTransactions:  patchTransactions,
+			normalTransactions: normalTransactions,
+			nextValidatorsHash: nextValidators.Hash(),
+			_nextValidators:    nextValidators,
+			votes:              votes,
+		},
 	}
 }
 
@@ -114,17 +116,19 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, erro
 		return nil, err
 	}
 	return &blockV2{
-		height:             header.Height,
-		timestamp:          header.Timestamp,
-		proposer:           proposer,
-		prevID:             header.PrevID,
-		logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
-		result:             header.Result,
-		patchTransactions:  patches,
-		normalTransactions: normalTxs,
-		nextValidatorsHash: nextValidators.Hash(),
-		_nextValidators:    nextValidators,
-		votes:              votes,
+		blockV2Immut: blockV2Immut{
+			height:             header.Height,
+			timestamp:          header.Timestamp,
+			proposer:           proposer,
+			prevID:             header.PrevID,
+			logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
+			result:             header.Result,
+			patchTransactions:  patches,
+			normalTransactions: normalTxs,
+			nextValidatorsHash: nextValidators.Hash(),
+			_nextValidators:    nextValidators,
+			votes:              votes,
+		},
 	}, nil
 }
 
@@ -186,17 +190,19 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, er
 		return nil, err
 	}
 	return &blockV2{
-		height:             blockFormat.Height,
-		timestamp:          blockFormat.Timestamp,
-		proposer:           proposer,
-		prevID:             blockFormat.PrevID,
-		logsBloom:          txresult.NewLogsBloomFromCompressed(blockFormat.LogsBloom),
-		result:             blockFormat.Result,
-		patchTransactions:  patches,
-		normalTransactions: normalTxs,
-		nextValidatorsHash: blockFormat.NextValidatorsHash,
-		_nextValidators:    nextValidators,
-		votes:              votes,
+		blockV2Immut: blockV2Immut{
+			height:             blockFormat.Height,
+			timestamp:          blockFormat.Timestamp,
+			proposer:           proposer,
+			prevID:             blockFormat.PrevID,
+			logsBloom:          txresult.NewLogsBloomFromCompressed(blockFormat.LogsBloom),
+			result:             blockFormat.Result,
+			patchTransactions:  patches,
+			normalTransactions: normalTxs,
+			nextValidatorsHash: blockFormat.NextValidatorsHash,
+			_nextValidators:    nextValidators,
+			votes:              votes,
+		},
 	}, nil
 }
 

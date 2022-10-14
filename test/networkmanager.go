@@ -51,12 +51,24 @@ func indexOf(pl []Peer, id module.PeerID) int {
 
 func NewNetworkManager(t *testing.T, a module.Address) *NetworkManager {
 	const chLen = 1024
-	return &NetworkManager{
+	n := &NetworkManager{
 		t:     t,
 		roles: make(map[string]module.Role),
 		id:    network.NewPeerIDFromAddress(a),
 		rCh:   make(chan packetEntry, chLen),
 	}
+	go n.handlePacketLoop()
+	return n
+}
+
+func (n *NetworkManager) handlePacketLoop() {
+	for p := range n.rCh {
+		n.handlePacket(p.pk, p.cb)
+	}
+}
+
+func (n *NetworkManager) Close() {
+	close(n.rCh)
 }
 
 func (n *NetworkManager) attach(p Peer) {
@@ -65,14 +77,14 @@ func (n *NetworkManager) attach(p Peer) {
 
 	if indexOf(n.peers, p.ID()) < 0 {
 		n.peers = append(n.peers, p)
-		handlers := append([]*nmHandler(nil), n.handlers...)
+		var reactors []module.Reactor
+		for _, h := range n.handlers {
+			reactors = append(reactors, h.reactor)
+		}
 		al.Unlock()
 
-		for _, h := range handlers {
-			reactor := h.reactor
-			Go(func() {
-				reactor.OnJoin(p.ID())
-			})
+		for _, reactor := range reactors {
+			reactor.OnJoin(p.ID())
 		}
 	}
 }
@@ -87,32 +99,35 @@ func (n *NetworkManager) detach(p Peer) {
 		n.peers[last] = nil
 		n.peers = n.peers[:last]
 
-		handlers := append([]*nmHandler(nil), n.handlers...)
+		var reactors []module.Reactor
+		for _, h := range n.handlers {
+			reactors = append(reactors, h.reactor)
+		}
 		al.Unlock()
 
-		for _, h := range handlers {
-			reactor := h.reactor
-			Go(func() {
-				reactor.OnLeave(p.ID())
-			})
+		for _, reactor := range reactors {
+			reactor.OnLeave(p.ID())
 		}
 	}
 }
 
 func (n *NetworkManager) notifyPacket(pk *Packet, cb func(rebroadcast bool, err error)) {
-	al := common.Lock(&nmMu)
-	handlers := append([]*nmHandler(nil), n.handlers...)
-	al.Unlock()
+	n.rCh <- packetEntry{pk, cb}
+}
 
-	for _, h := range handlers {
+func (n *NetworkManager) handlePacket(pk *Packet, cb func(rebroadcast bool, err error)) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
+	for _, h := range n.handlers {
 		if pk.MPI == h.mpi {
 			reactor := h.reactor
-			Go(func() {
-				rb, err := reactor.OnReceive(pk.PI, pk.Data, pk.Src)
-				if cb != nil {
-					cb(rb, err)
-				}
-			})
+			al.Unlock()
+
+			rb, err := reactor.OnReceive(pk.PI, pk.Data, pk.Src)
+			if cb != nil {
+				cb(rb, err)
+			}
 			return
 		}
 	}

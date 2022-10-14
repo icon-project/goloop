@@ -36,7 +36,7 @@ type Chain struct {
 	wallet    module.Wallet
 	log       log.Logger
 	regulator module.Regulator
-	nm        module.NetworkManager
+	nm        *NetworkManager
 	bm        module.BlockManager
 	sm        module.ServiceManager
 	cs        module.Consensus
@@ -217,6 +217,10 @@ func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 
 func (c *Chain) DoDBTask(f func(database db.Database)) {
 	panic("implement me")
+}
+
+func (c *Chain) Close() {
+	c.nm.Close()
 }
 
 func NewChain(

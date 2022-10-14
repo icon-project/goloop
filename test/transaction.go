@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"sync"
+	"sync/atomic"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -48,7 +49,7 @@ type transactionJSON struct {
 type Transaction struct {
 	json transactionJSON
 
-	id []byte
+	id atomic.Value
 }
 
 func NewTx() *Transaction {
@@ -152,10 +153,12 @@ func (t *Transaction) Group() module.TransactionGroup {
 }
 
 func (t *Transaction) ID() []byte {
-	if t.id == nil {
-		t.id = crypto.SHA3Sum256(t.Bytes())
+	id := t.id.Load()
+	if id == nil {
+		id = crypto.SHA3Sum256(t.Bytes())
+		t.id.Store(id)
 	}
-	return t.id
+	return id.([]byte)
 }
 
 func (t *Transaction) From() module.Address {

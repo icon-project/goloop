@@ -21,8 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -113,7 +113,7 @@ func NewNode(t *testing.T, o ...FixtureOption) *Node {
 		Chain:     c,
 		Base:      base,
 		em:        em,
-		NM:        c.nm.(*NetworkManager),
+		NM:        c.nm,
 		SM:        c.sm,
 		BM:        c.bm,
 		CS:        c.cs,
@@ -129,7 +129,9 @@ func (t *Node) Close() {
 	err = os.RemoveAll(t.Base)
 	assert.NoError(t, err)
 	t.CS.Term()
-	ResetJobChan()
+	time.AfterFunc(time.Second*5, func() {
+		t.Chain.Close()
+	})
 }
 
 func (t *Node) GetLastBlock() module.Block {
@@ -259,36 +261,5 @@ func NodeInterconnect(nodes []*Node) {
 		for j := i + 1; j < l; j++ {
 			nodes[i].NM.Connect(nodes[j].NM)
 		}
-	}
-}
-
-var jobChan chan func()
-var lock sync.Mutex
-
-const jobChLen = 1024
-
-func Go(f func()) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if jobChan == nil {
-		jobChan = make(chan func(), jobChLen)
-		jc := jobChan
-		go func() {
-			for job := range jc {
-				job()
-			}
-		}()
-	}
-	jobChan <- f
-}
-
-func ResetJobChan() {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if jobChan != nil {
-		close(jobChan)
-		jobChan = nil
 	}
 }

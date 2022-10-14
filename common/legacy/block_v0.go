@@ -51,6 +51,7 @@ type blockV0Impl struct {
 }
 
 type blockV0 struct {
+	module.Block
 	*blockV0Impl
 	transactionList module.TransactionList
 }
@@ -201,5 +202,5 @@ func ParseBlockV0(b []byte) (Block, error) {
 		trs[i] = tx.Transaction
 	}
 	transactionList := transaction.NewTransactionListV1FromSlice(trs)
-	return &blockV0{blk, transactionList}, nil
+	return &blockV0{blockV0Impl: blk, transactionList: transactionList}, nil
 }

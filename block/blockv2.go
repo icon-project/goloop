@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
@@ -48,7 +49,7 @@ type blockV2Format struct {
 	blockV2BodyFormat
 }
 
-type blockV2 struct {
+type blockV2Immut struct {
 	height             int64
 	timestamp          int64
 	proposer           module.Address
@@ -60,7 +61,17 @@ type blockV2 struct {
 	nextValidatorsHash []byte
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
-	_id                []byte
+}
+
+type blockV2Mut struct {
+	_id []byte
+}
+
+type blockV2 struct {
+	blockV2Immut
+
+	mu sync.Mutex
+	blockV2Mut
 }
 
 func (b *blockV2) Version() int {
@@ -68,6 +79,9 @@ func (b *blockV2) Version() int {
 }
 
 func (b *blockV2) ID() []byte {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._id == nil {
 		bs := v2Codec.MustMarshalToBytes(b._headerFormat())
 		b._id = crypto.SHA3Sum256(bs)
@@ -209,7 +223,10 @@ func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
 	if !bytes.Equal(b.nextValidatorsHash, vl.Hash()) {
 		return nil
 	}
-	blk := *b
+	blk := blockV2{
+		blockV2Immut: b.blockV2Immut,
+		blockV2Mut:   b.blockV2Mut,
+	}
 	blk._nextValidators = vl
 	return &blk
 }
@@ -260,6 +277,11 @@ func (b *blockV2) VerifyTimestamp(
 		return errors.New("non-increasing timestamp")
 	}
 	return nil
+}
+
+func (b *blockV2) Copy() module.Block {
+	// blockV2 is safe to be used in multiple goroutine
+	return b
 }
 
 type blockBuilder struct {
