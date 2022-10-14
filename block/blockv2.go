@@ -395,7 +395,7 @@ func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
 	defer b.mu.Unlock()
 
 	if b._btpDigest == nil {
-		bs, err := b.BTPSection()
+		bs, err := b.btpSectionInLock()
 		if err != nil {
 			return nil, err
 		}
@@ -404,10 +404,7 @@ func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
 	return b._btpDigest, nil
 }
 
-func (b *blockV2) BTPSection() (module.BTPSection, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
+func (b *blockV2) btpSectionInLock() (module.BTPSection, error) {
 	if b._btpSection == nil {
 		bs, err := b.sm.BTPSectionFromResult(b.result)
 		if err != nil {
@@ -416,6 +413,13 @@ func (b *blockV2) BTPSection() (module.BTPSection, error) {
 		b._btpSection = bs
 	}
 	return b._btpSection, nil
+}
+
+func (b *blockV2) BTPSection() (module.BTPSection, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.btpSectionInLock()
 }
 
 func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
