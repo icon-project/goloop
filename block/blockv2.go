@@ -142,7 +142,7 @@ func (bb *V2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
 	return nil
 }
 
-type blockV2 struct {
+type blockV2Immut struct {
 	height             int64
 	timestamp          int64
 	proposer           module.Address
@@ -156,13 +156,20 @@ type blockV2 struct {
 	votes              module.CommitVoteSet
 	nsFilter           module.BitSetFilter
 	sm                 ServiceManager
+}
 
-	// mutable data
-	mu          sync.Mutex
+type blockV2Mut struct {
 	_id         []byte
 	_btpSection module.BTPSection
 	_btpDigest  module.BTPDigest
 	_nextPCM    module.BTPProofContextMap
+}
+
+type blockV2 struct {
+	blockV2Immut
+
+	mu sync.Mutex
+	blockV2Mut
 }
 
 func (b *blockV2) Version() int {
@@ -317,7 +324,10 @@ func (b *blockV2) _bodyFormat() (*V2BodyFormat, error) {
 }
 
 func (b *blockV2) NewBlock(tr module.Transition) module.Block {
-	blk := *b
+	blk := blockV2{
+		blockV2Immut: b.blockV2Immut,
+		blockV2Mut:   b.blockV2Mut,
+	}
 	blk._nextValidators = tr.NextValidators()
 	blk._btpSection = tr.BTPSection()
 	return &blk
