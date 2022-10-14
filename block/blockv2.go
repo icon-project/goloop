@@ -49,7 +49,7 @@ type blockV2Format struct {
 	blockV2BodyFormat
 }
 
-type blockV2 struct {
+type blockV2Immut struct {
 	height             int64
 	timestamp          int64
 	proposer           module.Address
@@ -61,10 +61,17 @@ type blockV2 struct {
 	nextValidatorsHash []byte
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
+}
 
-	// mutable data
-	mu  sync.Mutex
+type blockV2Mut struct {
 	_id []byte
+}
+
+type blockV2 struct {
+	blockV2Immut
+
+	mu sync.Mutex
+	blockV2Mut
 }
 
 func (b *blockV2) Version() int {
@@ -216,7 +223,10 @@ func (b *blockV2) NewBlock(vl module.ValidatorList) module.Block {
 	if !bytes.Equal(b.nextValidatorsHash, vl.Hash()) {
 		return nil
 	}
-	blk := *b
+	blk := blockV2{
+		blockV2Immut: b.blockV2Immut,
+		blockV2Mut:   b.blockV2Mut,
+	}
 	blk._nextValidators = vl
 	return &blk
 }
