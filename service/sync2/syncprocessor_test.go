@@ -177,30 +177,69 @@ func TestSyncProcessorState(t *testing.T) {
 	err = DBSet(srcdb, db.BytesByHash, key2, value2)
 	assert.NoError(t, err)
 
-	// when create syncProcessor
-	builder = merkle.NewBuilder(dstdb)
-	builder.RequestData(db.BytesByHash, key1, req1)
-	sproc := newSyncProcessor(builder, reactors, log1, false)
+	// test case
+	tests := map[string]struct {
+		sr []SyncReactor
+	}{
+		"tc_reactorV1": {sr: []SyncReactor{reactor1}},
+		"tc_reactorV2": {sr: reactors},
+	}
 
-	// then unresolved count is 1
-	expected1 := 1
-	actual1 := sproc.UnresolvedCount()
-	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// when create syncProcessor
+			builder = merkle.NewBuilder(dstdb)
+			builder.RequestData(db.BytesByHash, key1, req1)
+			sproc := newSyncProcessor(builder, tc.sr, log1, false)
 
-	// when start sync
-	err = sproc.DoSync()
-	assert.NoError(t, err)
-	builder.Flush(true)
+			// then unresolved count is 1
+			expected1 := 1
+			actual1 := sproc.UnresolvedCount()
+			assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
 
-	// then
-	bk, _ := dstdb.GetBucket(db.BytesByHash)
-	expected2 := value1
-	actual2, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+			// when start sync
+			err = sproc.DoSync()
+			assert.NoError(t, err)
+			builder.Flush(true)
 
-	expected3 := value2
-	actual3, _ := bk.Get(key2)
-	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+			// then
+			bk, _ := dstdb.GetBucket(db.BytesByHash)
+			expected2 := value1
+			actual2, _ := bk.Get(key1)
+			assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+
+			expected3 := value2
+			actual3, _ := bk.Get(key2)
+			assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+		})
+
+	}
+	/*
+		// when create syncProcessor
+		builder = merkle.NewBuilder(dstdb)
+		builder.RequestData(db.BytesByHash, key1, req1)
+		sproc := newSyncProcessor(builder, reactors, log1, false)
+
+		// then unresolved count is 1
+		expected1 := 1
+		actual1 := sproc.UnresolvedCount()
+		assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+
+		// when start sync
+		err = sproc.DoSync()
+		assert.NoError(t, err)
+		builder.Flush(true)
+
+		// then
+		bk, _ := dstdb.GetBucket(db.BytesByHash)
+		expected2 := value1
+		actual2, _ := bk.Get(key1)
+		assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+
+		expected3 := value2
+		actual3, _ := bk.Get(key2)
+		assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+	*/
 }
 
 const TestHasher db.BucketID = "T"

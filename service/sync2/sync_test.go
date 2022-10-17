@@ -224,23 +224,34 @@ func DBGet(database db.Database, id db.BucketID, k []byte) ([]byte, error) {
 	return bk.Get(k)
 }
 
+func newSyncManagerV1(database db.Database, nm module.NetworkManager, plt Platform, logger log.Logger) *Manager {
+	logger = logger.WithFields(log.Fields{log.FieldKeyModule: "statesync"})
+	m := new(Manager)
+
+	reactorV1 := newReactorV1(database, logger)
+	ph, err := nm.RegisterReactorForStreams("statesync", module.ProtoStateSync, reactorV1, protocol, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
+	if err != nil {
+		logger.Panicf("Failed to register reactorV1 for stateSync")
+		return nil
+	}
+	reactorV1.ph = ph
+	m.reactors = append(m.reactors, reactorV1)
+
+	m.db = database
+	m.plt = plt
+	m.logger = logger
+
+	m.ds = newDataSyncer(m.db, m.reactors, logger)
+	return m
+}
+
 func TestSyncSimpleAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
 	srcdb := db.NewMapDB()
-	dstdb := db.NewMapDB()
-	nm1 := newTNetworkManager(createAPeerID())
-	nm2 := newTNetworkManager(createAPeerID())
-	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
-	log2 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm2.id.String()[2:]})
 
-	NewSyncManager(srcdb, nm1, dummyExBuilder, log1)
-
-	manager2 := NewSyncManager(dstdb, nm2, dummyExBuilder, log2)
-	nm1.join(nm2)
-
-	// given
+	// given init db for source sync manager
 	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
 	ac := ws.GetAccountState([]byte("ABC"))
 	ac.SetValue([]byte("ABC"), []byte("XYZ"))
@@ -261,46 +272,95 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 	ws.GetSnapshot().Flush()
 	logger.Printf("account hash : (%x)\n", acHash)
 
-	syncer2 := manager2.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
-	result, err := syncer2.ForceSync()
-	assert.NoError(t, err)
-
-	// then
-	as := result.Wss.GetAccountSnapshot([]byte("ABC"))
-	v, err := as.GetValue([]byte("ABC"))
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("XYZ"), v)
-
-	// when start data syncer
-	manager2.Start()
-
-	err = manager2.AddRequest(db.BytesByHash, key1)
-	assert.NoError(t, err)
-
-	var try int
-	for {
-		if manager2.UnresolvedRequestCount() == 0 {
-			break
-		} else if try >= 10 {
-			t.Logf("datasyncer sync failed. tried(%v)", try)
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-		try += 1
+	// test table
+	tests := map[string]struct {
+		getSrcMgr func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager
+		getDstMgr func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager
+	}{
+		"useProtocolV1": {
+			getSrcMgr: func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager {
+				return newSyncManagerV1(database, srcnm, dummyExBuilder, srcLog)
+			},
+			getDstMgr: func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager {
+				return NewSyncManager(database, dstnm, dummyExBuilder, dstLog)
+			},
+		},
+		"useProtocoV2": {
+			getSrcMgr: func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager {
+				return NewSyncManager(database, srcnm, dummyExBuilder, srcLog)
+			},
+			getDstMgr: func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager {
+				return NewSyncManager(database, dstnm, dummyExBuilder, dstLog)
+			},
+		},
 	}
 
-	// then
-	expected1 := value1
-	actual1, err := DBGet(dstdb, db.BytesByHash, key1)
-	assert.NoError(t, err)
-	assert.Equal(t, expected1, actual1)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			dstdb := db.NewMapDB()
+			srcNM := newTNetworkManager(createAPeerID())
+			dstNM := newTNetworkManager(createAPeerID())
+			srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+			dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
 
-	manager2.Term()
+			tc.getSrcMgr(srcdb, srcNM, srcLog)
+			dstMgr := tc.getDstMgr(dstdb, dstNM, dstLog)
+
+			srcNM.join(dstNM)
+			syncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+			// when forceSync
+			result, err := syncer.ForceSync()
+			assert.NoError(t, err)
+
+			// then
+			as := result.Wss.GetAccountSnapshot([]byte("ABC"))
+			v, err := as.GetValue([]byte("ABC"))
+			assert.NoError(t, err)
+			assert.Equal(t, []byte("XYZ"), v)
+
+			// when start data syncer
+			dstMgr.Start()
+
+			err = dstMgr.AddRequest(db.BytesByHash, key1)
+			assert.NoError(t, err)
+
+			var try int
+			for {
+				if dstMgr.UnresolvedRequestCount() == 0 {
+					break
+				} else if try >= 10 {
+					t.Logf("datasyncer sync failed. tried(%v)", try)
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+				try += 1
+			}
+
+			// then
+			expected1 := value1
+			actual1, err := DBGet(dstdb, db.BytesByHash, key1)
+			assert.NoError(t, err)
+			assert.Equal(t, expected1, actual1)
+
+			dstMgr.Term()
+		})
+	}
+}
+
+func getRandomSyncManager(database db.Database, nm module.NetworkManager, logger log.Logger) *Manager {
+	if rand.Intn(2) == 0 {
+		return newSyncManagerV1(database, nm, dummyExBuilder, logger)
+	} else {
+		return NewSyncManager(database, nm, dummyExBuilder, logger)
+	}
 }
 
 func TestSyncDataSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
+
+	rand.Seed(time.Now().UnixNano())
 
 	// given 16 peers
 	const cPeers int = 16
@@ -312,7 +372,7 @@ func TestSyncDataSync(t *testing.T) {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
 		slog[i] = logger.WithFields(log.Fields{log.FieldKeyWallet: nms[i].id.String()[2:]})
-		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, slog[i])
+		syncM[i] = getRandomSyncManager(databases[i], nms[i], slog[i])
 		syncM[i].Start()
 	}
 
@@ -392,6 +452,8 @@ func TestSyncAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
+	rand.Seed(time.Now().UnixNano())
+
 	var testItems [1000]byte
 	for i := range testItems {
 		testItems[i] = byte(i)
@@ -407,7 +469,7 @@ func TestSyncAccountSync(t *testing.T) {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
 		slog[i] = logger.WithFields(log.Fields{log.FieldKeyWallet: nms[i].id.String()[2:]})
-		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, slog[i])
+		syncM[i] = getRandomSyncManager(databases[i], nms[i], slog[i])
 		syncM[i].Start()
 	}
 
