@@ -69,17 +69,18 @@ public abstract class Proxy {
 
     public void sendMessage(int msgType, Object... args) throws IOException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-        packer.packArrayHeader(2);
-        packer.packInt(msgType);
-        if (args.length == 1) {
-            packObject(args[0], packer);
-        } else {
-            packer.packArrayHeader(args.length);
-            for (Object obj : args) {
-                packObject(obj, packer);
+        try (packer) {
+            packer.packArrayHeader(2);
+            packer.packInt(msgType);
+            if (args.length == 1) {
+                packObject(args[0], packer);
+            } else {
+                packer.packArrayHeader(args.length);
+                for (Object obj : args) {
+                    packObject(obj, packer);
+                }
             }
         }
-        packer.close();
         client.send(packer.toByteArray());
     }
 

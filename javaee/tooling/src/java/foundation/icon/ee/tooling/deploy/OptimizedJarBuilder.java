@@ -127,14 +127,15 @@ public class OptimizedJarBuilder {
 
     private byte[] writeApi(byte[] jarBytes) throws IOException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-        packer.packArrayHeader(callables.size());
-        for (Method m : callables) {
-            if (debugModeEnabled) {
-                System.out.println(m);
+        try (packer) {
+            packer.packArrayHeader(callables.size());
+            for (Method m : callables) {
+                if (debugModeEnabled) {
+                    System.out.println(m);
+                }
+                MethodPacker.writeTo(m, packer, true);
             }
-            MethodPacker.writeTo(m, packer, true);
         }
-        packer.close();
 
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
         Map<String, byte[]> classMap = Utilities.extractClasses(jis, Utilities.NameStyle.DOT_NAME);

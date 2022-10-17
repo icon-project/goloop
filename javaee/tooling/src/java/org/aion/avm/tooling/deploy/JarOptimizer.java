@@ -170,10 +170,8 @@ public class JarOptimizer {
     }
 
     private void writeOptimizedJar(String jarName, byte[] jarBytes) {
-        try {
-            DataOutputStream dout = new DataOutputStream(new FileOutputStream(jarName));
+        try (DataOutputStream dout = new DataOutputStream(new FileOutputStream(jarName))) {
             dout.write(jarBytes);
-            dout.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
