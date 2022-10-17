@@ -2,8 +2,13 @@ package crypto
 
 import (
 	"encoding/hex"
+	"math/rand"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -83,4 +88,67 @@ func TestPrintSignature(t *testing.T) {
 	if strings.Compare(sig.String(), str) != 0 {
 		t.Errorf("fail to print signaure(no V)")
 	}
+}
+
+func TestRace(t *testing.T) {
+	const SubRoutineCount = 4
+	const RepeatCount = 5
+
+	var lock sync.Mutex
+	cond := sync.NewCond(&lock)
+
+	var readyWG sync.WaitGroup
+	readyWG.Add(SubRoutineCount)
+	wait := func() {
+		lock.Lock()
+		defer lock.Unlock()
+		readyWG.Done()
+		cond.Wait()
+	}
+
+	startAll := func() {
+		lock.Lock()
+		defer lock.Unlock()
+		cond.Broadcast()
+	}
+
+	var finishWG sync.WaitGroup
+	subRoutine := func(idx int) {
+		wait()
+		for i := 0; i < RepeatCount; i++ {
+			priv, pub := GenerateKeyPair()
+			sig, err := NewSignature(testHash, priv)
+
+			pub1, err := sig.RecoverPublicKey(testHash)
+			if err != nil {
+				t.Errorf("error recover public key:%s", err)
+				return
+			}
+
+			if !pub.Equal(pub1) {
+				t.Errorf("recovered public key is not same")
+			}
+			r := sig.Verify(testHash, pub)
+			assert.True(t, r)
+			delay := time.Millisecond * time.Duration(rand.Intn(10))
+			time.Sleep(delay)
+		}
+		finishWG.Done()
+	}
+
+	// start subroutines
+	finishWG.Add(SubRoutineCount)
+	for i := 0; i < SubRoutineCount; i++ {
+		go subRoutine(i)
+	}
+
+	// wait until the subroutines reach wait()
+	readyWG.Wait()
+	time.Sleep(10 * time.Millisecond)
+
+	// start subroutines
+	startAll()
+
+	// wait for DONE
+	finishWG.Wait()
 }
