@@ -22,7 +22,7 @@ import (
 
 var v2Codec = codec.BC
 
-const blockV2String = "2.0"
+const V2String = "2.0"
 
 type blockV2HeaderFormat struct {
 	Version                int
@@ -174,7 +174,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 
 func (b *blockV2) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := make(map[string]interface{})
-	res["version"] = blockV2String
+	res["version"] = V2String
 	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
 	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
 	res["time_stamp"] = b.Timestamp()

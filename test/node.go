@@ -129,6 +129,7 @@ func (t *Node) Close() {
 	err = os.RemoveAll(t.Base)
 	assert.NoError(t, err)
 	t.CS.Term()
+	t.BM.Term()
 	time.AfterFunc(time.Second*5, func() {
 		t.Chain.Close()
 	})

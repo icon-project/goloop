@@ -27,7 +27,7 @@ const (
 const (
 	keyLastBlockHeight = "block.lastHeight"
 	genesisHeight      = 0
-	configCacheCap     = 10
+	ConfigCacheCap     = 10
 )
 
 type transactionLocator struct {
@@ -598,7 +598,7 @@ func NewManager(
 			running: true,
 		},
 		nmap:        make(map[string]*bnode),
-		cache:       newCache(configCacheCap),
+		cache:       newCache(ConfigCacheCap),
 		timestamper: timestamper,
 		handlers:    handlers,
 	}
@@ -1703,13 +1703,16 @@ func GetBlockVersion(
 	c codec.Codec,
 	height int64,
 ) (int, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
 	)
 	if err != nil {
 		return -1, err
 	}
-	hash, err := headerHashByHeight.GetBytes(height + 1)
+	hash, err := headerHashByHeight.GetBytes(height)
 	if err != nil {
 		return -1, err
 	}
@@ -1739,6 +1742,9 @@ func GetCommitVoteListBytesByHeight(
 	c codec.Codec,
 	height int64,
 ) ([]byte, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
 	)
@@ -1775,6 +1781,9 @@ func GetCommitVoteListBytesByHeight(
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
 		return 0, err
