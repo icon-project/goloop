@@ -148,13 +148,11 @@ func (s *syncProcessor) DoSync() error {
 		}
 
 		s.logger.Tracef("DoSync() readyPool=%d, sentPool=%d", s.readyPool.size(), s.sentPool.size())
-		if count > 0 && s.readyPool.size() > 0 {
-			for !s.sendRequestsInLock() {
-				if s.readyPool.size() == 0 {
-					break
-				}
-				s.logger.Tracef("DoSync() retry sendRequest. readyPool=%d", s.readyPool.size())
+		for count > 0 && s.readyPool.size() > 0 {
+			if s.sendRequestsInLock() {
+				break
 			}
+			s.logger.Tracef("DoSync() retry sendRequest. readyPool=%d", s.readyPool.size())
 		}
 
 		s.logger.Tracef("DoSync() waiting signal. unresolvedCount=%d, readyPool=%d, sentPool=%d",
