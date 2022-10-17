@@ -15,7 +15,7 @@ const (
 	configSyncPriority              = 3
 	configExpiredTime               = 500  // in millisecond
 	configMaxExpiredTime            = 1200 // in millisecond
-	configMigrationInterval         = 500 * time.Millisecond
+	configMigrationInterval         = 300 * time.Millisecond
 	configDataSyncMigrationInterval = 3000 * time.Millisecond
 )
 

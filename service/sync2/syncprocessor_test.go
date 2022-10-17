@@ -541,7 +541,8 @@ func TestSyncProcessorRequestData(t *testing.T) {
 		return size
 	}
 
-	// given peerSize = 10, packSize = configPackSize(10), roundLimit = configRoundLimit(500)
+	// given peerSize = 10, packSize = configPackSize(50), roundLimit = configRoundLimit(500)
+	logger.Debugf("configPackSize=%d, configRoundLimit=%d", configPackSize, configRoundLimit)
 	peerSize := 10
 	addPeers(peerSize)
 
@@ -558,53 +559,59 @@ func TestSyncProcessorRequestData(t *testing.T) {
 	// then request data == 2
 	expected1 := 1
 	actual1 := len(packs)
+	logger.Debugf("pack size : expected=%v, actual=%v", expected1, actual1)
 	assert.EqualValuesf(t, expected1, actual1, "pack size expected=%v, actual=%v", expected1, actual1)
 
 	expected2 := 2
 	actual2 := reqDataSize(packs)
+	logger.Debugf("request data size : expected=%v, actual=%v", expected2, actual2)
 	assert.EqualValuesf(t, expected2, actual2, "request data size expected=%v, actual=%v", expected2, actual2)
 
-	// when received data 1 -> request data == 31, packs == 4, peerSize == 10
-	requestDataSize := uint32(31 - builder.UnresolvedCount())
+	// when received data 1 -> request data == 151, packs == 4, peerSize == 10
+	requestDataSize := uint32(151 - builder.UnresolvedCount())
 	logger.Debugf("value2=%#x", value2)
 	addRequestData(1, requestDataSize)
 	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
 
 	packs = sp1.getPacks()
 
-	// then request data == 31
-	expected3 := int(math.Ceil(float64(31) / float64(configPackSize)))
+	// then request data == 151
+	expected3 := int(math.Ceil(float64(151) / float64(configPackSize)))
 	actual3 := len(packs)
+	logger.Debugf("pack size : expected=%v, actual=%v", expected3, actual3)
 	assert.EqualValuesf(t, expected3, actual3, "pack size expected=%v, actual=%v", expected3, actual3)
 
-	expected4 := 31
+	expected4 := 151
 	actual4 := reqDataSize(packs)
+	logger.Debugf("request data size : expected=%v, actual=%v", expected4, actual4)
 	assert.EqualValuesf(t, expected4, actual4, "request data size expected=%v, actual=%v", expected4, actual4)
 
-	// when received data 1 -> request data == 505, packs == 51, peerSize == 9
+	// when received data 1 -> request data == 515, packs == 11, peerSize == 5
 	start := requestDataSize + 1
-	end := uint32(505) - 2
+	end := uint32(515) - 2
 	addRequestData(start, end)
-	removePeers(1)
-	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
+	removePeers(6)
+	logger.Debugf("unresolve count=%v, readyPool=%d", builder.UnresolvedCount(), sp1.readyPool.size())
 
 	packs = sp1.getPacks()
 
-	// then request data == 90, packs == 9
+	// then request data == 200, packs == 4, peerSize == 4
 	dataSize := getDataSize()
 	expected5 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 	actual5 := len(packs)
+	logger.Debugf("pack size : expected=%v, actual=%v", expected5, actual5)
 	assert.EqualValuesf(t, expected5, actual5, "pack size expected=%v, actual=%v", expected5, actual5)
 
 	expected6 := dataSize
 	actual6 := reqDataSize(packs)
+	logger.Debugf("request data size : expected=%v, actual=%v", expected6, actual6)
 	assert.EqualValuesf(t, expected6, actual6, "request data size expected=%v, actual=%v", expected6, actual6)
 
 	onData(packs)
 
-	// when request data == 505, packs == 10, peerSize == 10
+	// when request data == 315, packs == 10, peerSize == 5
 	addPeers(1)
-	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
+	logger.Debugf("unresolve count=%v, readyPool=%d", builder.UnresolvedCount(), sp1.readyPool.size())
 
 	for sp1.reqCount > 0 {
 		logger.Debugf("reqCount=%v", sp1.reqCount)
@@ -614,41 +621,72 @@ func TestSyncProcessorRequestData(t *testing.T) {
 		packs = sp1.getPacks()
 
 		if remainCount >= sp1.readyPool.size()*configPackSize { // readyPoolSize * configPackSize
-			// then request data == 100, packs == 10
+			// then request data == 250, packs == 5
 			dataSize := getDataSize()
 			expected7 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 			actual7 := len(packs)
+			logger.Debugf("pack size : expected=%v, actual=%v", expected7, actual7)
 			assert.EqualValuesf(t, expected7, actual7, "pack size expected=%v, actual=%v", expected7, actual7)
 
 			expected8 := dataSize
 			actual8 := reqDataSize(packs)
+			logger.Debugf("request data size : expected=%v, actual=%v", expected8, actual8)
 			assert.EqualValuesf(t, expected8, actual8, "request data size expected=%v, actual=%v", expected8, actual8)
 		} else {
-			// then request data == 10, packs == 10
+			// then request data == 50, packs == 1
 			dataSize := remainCount
 			expected9 := int(math.Ceil(float64(dataSize) / float64(configPackSize)))
 			actual9 := len(packs)
+			logger.Debugf("pack size : expected=%v, actual=%v", expected9, actual9)
 			assert.EqualValuesf(t, expected9, actual9, "pack size expected=%v, actual=%v", expected9, actual9)
 
 			expected10 := remainCount
 			actual10 := reqDataSize(packs)
+			logger.Debugf("request data size : expected=%v, actual=%v", expected10, actual10)
 			assert.EqualValuesf(t, expected10, actual10, "request data size expected=%v, actual=%v", expected10, actual10)
 		}
 
 		onData(packs)
 	}
 
-	logger.Debugf("unresolve count=%v", builder.UnresolvedCount())
+	// given request data == 50, peerSize == 1
+	start = end + 1
+	end = start + 34
+	addRequestData(start, end)
+	removePeers(4)
 
-	// when request data == 5, packs == 1, peerSize == 10
+	logger.Debugf("unresolve count=%v, readyPool=%d", builder.UnresolvedCount(), sp1.readyPool.size())
+	logger.Debugf("reqCount=%v", sp1.reqCount)
+
+	// when request data == 50, packs == 1, peerSize == 1
 	packs = sp1.getPacks()
 
-	// then request data == 5, packs == 1
+	// then request data == 50, packs == 1
 	expected11 := 1
 	actual11 := len(packs)
+	logger.Debugf("pack size : expected=%v, actual=%v", expected11, actual11)
 	assert.EqualValuesf(t, expected11, actual11, "pack size expected=%v, actual=%v", expected11, actual11)
 
-	expected12 := 5
+	expected12 := 50
 	actual12 := reqDataSize(packs)
+	logger.Debugf("request data size : expected=%v, actual=%v", expected12, actual12)
 	assert.EqualValuesf(t, expected12, actual12, "request data size expected=%v, actual=%v", expected12, actual12)
+
+	// given add 4 peers, builder reached end of requests
+	addPeers(4)
+	logger.Debugf("unresolve count=%v, readyPool=%d", builder.UnresolvedCount(), sp1.readyPool.size())
+
+	// when request data == 50, packs == 1, peerSize == 5
+	packs = sp1.getPacks()
+
+	// then request data == 50, packs == 1, packs must not empty
+	expected13 := 1
+	actual13 := len(packs)
+	logger.Debugf("pack size : expected=%v, actual=%v", expected11, actual11)
+	assert.EqualValuesf(t, expected13, actual13, "pack size expected=%v, actual=%v", expected13, actual13)
+
+	expected14 := 50
+	actual14 := reqDataSize(packs)
+	logger.Debugf("request data size : expected=%v, actual=%v", expected14, actual14)
+	assert.EqualValuesf(t, expected12, actual12, "request data size expected=%v, actual=%v", expected14, actual14)
 }

@@ -249,26 +249,31 @@ func (s *syncProcessor) next() bool {
 func (s *syncProcessor) getPacks() [][]BucketIDAndBytes {
 	peerSize := s.readyPool.size()
 	if peerSize == 0 {
-		s.logger.Warn("getPacks() No peers to request")
+		s.logger.Panic("getPacks() No peers to request")
 		return nil
 	}
 
 	var packs [][]BucketIDAndBytes
 
 	pack := make([]BucketIDAndBytes, 0, configPackSize)
-	for s.next() {
-		reqData := BucketIDAndBytes{
-			BkID:  s.reqIter.BucketIDs()[0],
-			Bytes: s.reqIter.Key(),
-		}
-		pack = append(pack, reqData)
 
-		if len(pack) == configPackSize {
-			packs = append(packs, pack)
-			pack = make([]BucketIDAndBytes, 0, configPackSize)
-		}
+	for {
+		if s.next() {
+			reqData := BucketIDAndBytes{
+				BkID:  s.reqIter.BucketIDs()[0],
+				Bytes: s.reqIter.Key(),
+			}
+			pack = append(pack, reqData)
 
-		if len(packs) == peerSize && s.reqCount < configRoundLimit {
+			if len(pack) == configPackSize {
+				packs = append(packs, pack)
+				pack = make([]BucketIDAndBytes, 0, configPackSize)
+			}
+
+			if len(packs) == peerSize && s.reqCount < configRoundLimit {
+				break
+			}
+		} else if len(pack) > 0 || len(packs) > 0 {
 			break
 		}
 	}
