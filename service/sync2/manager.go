@@ -1,6 +1,8 @@
 package sync2
 
 import (
+	"time"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -13,8 +15,8 @@ const (
 	configSyncPriority              = 3
 	configExpiredTime               = 500  // in millisecond
 	configMaxExpiredTime            = 1200 // in millisecond
-	configMigrationInterval         = 1    // second
-	configDataSyncMigrationInterval = 3    // second
+	configMigrationInterval         = 500 * time.Millisecond
+	configDataSyncMigrationInterval = 3000 * time.Millisecond
 )
 
 var (

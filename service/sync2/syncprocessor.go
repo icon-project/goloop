@@ -90,9 +90,9 @@ func (s *syncProcessor) OnPeerLeave(p *peer) {
 func (s *syncProcessor) onInitInLock() {
 	// init pool migrate duration
 	if s.datasyncer {
-		s.migrateDur = configDataSyncMigrationInterval * time.Second
+		s.migrateDur = configDataSyncMigrationInterval
 	} else {
-		s.migrateDur = configMigrationInterval * time.Second
+		s.migrateDur = configMigrationInterval
 	}
 
 	// init readyPool

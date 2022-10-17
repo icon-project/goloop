@@ -2,6 +2,7 @@ package sync2
 
 import (
 	"context"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -86,6 +87,14 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 	return builder
 }
 
+func timeElapsed(name string, logger log.Logger) func() {
+	logger.Infof("%s start", name)
+	start := time.Now()
+	return func() {
+		logger.Infof("%s elapsed=%v", name, time.Since(start))
+	}
+}
+
 // syncWithBuilders start Sync
 func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
 	s.logger.Debugln("SyncWithBuilders()")
@@ -124,6 +133,7 @@ func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 }
 
 func (s *syncer) ForceSync() (*Result, error) {
+	defer timeElapsed("ForceSync", s.logger)()
 	var stateBuilders, btpBuilders []merkle.Builder
 
 	stateBuilder := s.getStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
