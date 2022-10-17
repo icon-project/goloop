@@ -59,7 +59,11 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     private IObject[] collect(int offset) {
         var oa = new IObject[data.length / 2];
         int dst = 0;
-        for (int i = 0; i < data.length; i += 2) {
+        var es = IInstrumentation.getCurrentFrameContext().getExternalState();
+        if (!es.fixMapValues()) {
+            offset = 0;
+        }
+        for (int i = offset; i < data.length; i += 2) {
             oa[dst++] = data[i];
         }
         return oa;

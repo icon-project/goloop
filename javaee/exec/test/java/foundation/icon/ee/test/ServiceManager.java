@@ -70,7 +70,8 @@ public class ServiceManager implements Agent {
                 StepCost.LOG_BASE, BigInteger.valueOf(5000)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
-        long revision = IExternalState.REVISION_PURGE_ENUM_CACHE;
+        long revision = IExternalState.REVISION_PURGE_ENUM_CACHE |
+                IExternalState.REVISION_FIX_MAP_VALUES;
         info.put(Info.REVISION, revision);
         stepCost = new StepCost(stepCosts);
     }
