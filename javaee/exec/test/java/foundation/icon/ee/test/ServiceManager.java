@@ -687,4 +687,16 @@ public class ServiceManager implements Agent {
     public Map<String, Object> getInfo() {
         return info;
     }
+
+    public void setRevisionFlag(long flag) {
+        var info = getInfo();
+        long f = (Long)info.get(EEProxy.Info.REVISION) | flag;
+        info.put(EEProxy.Info.REVISION, f);
+    }
+
+    public void unsetRevisionFlag(long flag) {
+        var info = getInfo();
+        long f = (Long)info.get(EEProxy.Info.REVISION) & ~flag;
+        info.put(EEProxy.Info.REVISION, f);
+    }
 }
