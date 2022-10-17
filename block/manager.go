@@ -735,31 +735,6 @@ func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 	return nil, errors.NotFoundError.Errorf("block not found %x", id)
 }
 
-func (m *manager) doGetBlockByHash(hash []byte) (module.Block, error) {
-	hb, err := m.bucketFor(db.BytesByHash)
-	if err != nil {
-		return nil, err
-	}
-	headerBytes, err := hb.GetBytes(db.Raw(hash))
-	if err != nil {
-		return nil, err
-	}
-	if headerBytes == nil {
-		return nil, errors.InvalidStateError.Errorf("nil header")
-	}
-	v, r, err := PeekVersion(bytes.NewReader(headerBytes))
-	h, ok := m.activeHandlers.forVersion(v)
-	if !ok {
-		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
-	}
-	blk, err := h.NewBlockFromHeaderReader(r)
-	if err != nil {
-		return nil, err
-	}
-	m.cache.Put(blk)
-	return blk.Copy(), err
-}
-
 func (m *manager) Import(
 	r io.Reader,
 	flags int,
