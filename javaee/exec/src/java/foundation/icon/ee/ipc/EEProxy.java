@@ -337,6 +337,9 @@ public class EEProxy extends Proxy {
 
         // handle result
         Value raw = doHandleMessages();
+        if (raw==null) {
+            throw new IOException("close message");
+        }
         ArrayValue data = raw.asArrayValue();
         int status = data.get(0).asIntegerValue().asInt();
         BigInteger stepUsed = new BigInteger(getValueAsByteArray(data.get(1)));
