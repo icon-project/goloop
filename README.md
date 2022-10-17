@@ -1,5 +1,5 @@
 # Goloop
-
+[![codecov](https://codecov.io/gh/icon-project/goloop/branch/master/graph/badge.svg?token=5DUTFEGMFY)](https://codecov.io/gh/icon-project/goloop)
 Official Blockchain Architecture Implementation of the ICON 2.0 Protocol.
 
 Welcome to the Goloop github repository. Goloop is a smart contract enabled enterprise-grade blockchain software written in Go with many unique features providing a secure, immutable and scalable environment to develop decentralized applications.

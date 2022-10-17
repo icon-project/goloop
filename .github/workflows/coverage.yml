@@ -1,0 +1,28 @@
+name: Code Coverage with Codecov
+
+on:
+  push:
+    branches:
+      - feature/120-code-coverage-codecov
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  Coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.8
+
+    - name: GO test
+      run: |
+        go test ./... -short -race -timeout=1m -covermode=atomic -coverprofile=coverage.out
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
