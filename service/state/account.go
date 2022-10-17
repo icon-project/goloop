@@ -502,7 +502,8 @@ func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
 }
 
 func (s *accountSnapshotImpl) Store() trie.Immutable {
-	return s.store.(trie.Immutable)
+	store, _ := s.store.(trie.Immutable)
+	return store
 }
 
 func newAccountSnapshot(dbase db.Database) *accountSnapshotImpl {
