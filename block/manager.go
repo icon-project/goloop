@@ -24,8 +24,6 @@ const (
 	configTraceBnode = false
 )
 
-var dbCodec = codec.BC
-
 const (
 	keyLastBlockHeight = "block.lastHeight"
 	genesisHeight      = 0
@@ -1818,7 +1816,7 @@ func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
 }
 
 func GetLastHeight(dbase db.Database) (int64, error) {
-	return GetLastHeightWithCodec(dbase, dbCodec)
+	return GetLastHeightWithCodec(dbase, nil)
 }
 
 func GetLastHeightOf(dbase db.Database) int64 {
@@ -1836,7 +1834,7 @@ func SetLastHeight(dbase db.Database, c codec.Codec, height int64) error {
 		return err
 	}
 	if c == nil {
-		c = dbCodec
+		c = codec.RLP
 	}
 	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {
