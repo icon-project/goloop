@@ -18,6 +18,7 @@ public interface IExternalState {
     int OPTION_TRACE = 2;
 
     long REVISION_PURGE_ENUM_CACHE = 1 << 22;
+    long REVISION_FIX_MAP_VALUES = 1 << 24;
 
     /**
      *  Returns code ID
@@ -195,5 +196,9 @@ public interface IExternalState {
 
     default boolean forceEnumCache() {
         return !purgeEnumCache();
+    }
+
+    default boolean fixMapValues() {
+        return (getRevision() & REVISION_FIX_MAP_VALUES) != 0;
     }
 }

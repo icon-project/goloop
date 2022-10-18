@@ -308,6 +308,17 @@ func (c *singleChain) _transitOrTerminate(to State, err error, froms ...State) {
 	}
 }
 
+func (c *singleChain) _setStoppedFrom(froms ...State) {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
+	if !c._transitInLock(Stopped, nil, froms...) {
+		c._handleTerminateInLock()
+	} else {
+		c.task = nil
+	}
+}
+
 func (c *singleChain) _transit(to State, err error, froms ...State) bool {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
@@ -520,8 +531,7 @@ func (c *singleChain) _waitResultOf(task chainTask) error {
 	if result == nil {
 		c._transitOrTerminate(Finished, nil, Started, Stopping)
 	} else if errors.InterruptedError.Equals(result) {
-		c.task = nil
-		c._transitOrTerminate(Stopped, nil, Stopping)
+		c._setStoppedFrom(Stopping)
 	} else {
 		c._transitOrTerminate(Failed, result, Started, Stopping)
 	}

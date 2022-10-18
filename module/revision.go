@@ -35,6 +35,7 @@ const (
 	MultipleFeePayers
 	PurgeEnumCache
 	ContractSetEvent
+	FixMapValues
 	LastRevisionBit
 )
 

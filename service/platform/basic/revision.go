@@ -39,7 +39,7 @@ const (
 
 var revisionFlags = []module.Revision{
 	// Revision 0
-	module.FixLostFeeByDeposit | module.PurgeEnumCache,
+	module.FixLostFeeByDeposit | module.PurgeEnumCache | module.FixMapValues,
 	// Revision 1
 	0,
 	// Revision 2

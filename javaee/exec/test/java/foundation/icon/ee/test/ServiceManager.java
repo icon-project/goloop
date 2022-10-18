@@ -70,7 +70,8 @@ public class ServiceManager implements Agent {
                 StepCost.LOG_BASE, BigInteger.valueOf(5000)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
-        long revision = IExternalState.REVISION_PURGE_ENUM_CACHE;
+        long revision = IExternalState.REVISION_PURGE_ENUM_CACHE |
+                IExternalState.REVISION_FIX_MAP_VALUES;
         info.put(Info.REVISION, revision);
         stepCost = new StepCost(stepCosts);
     }
@@ -686,5 +687,17 @@ public class ServiceManager implements Agent {
 
     public Map<String, Object> getInfo() {
         return info;
+    }
+
+    public void setRevisionFlag(long flag) {
+        var info = getInfo();
+        long f = (Long)info.get(EEProxy.Info.REVISION) | flag;
+        info.put(EEProxy.Info.REVISION, f);
+    }
+
+    public void unsetRevisionFlag(long flag) {
+        var info = getInfo();
+        long f = (Long)info.get(EEProxy.Info.REVISION) & ~flag;
+        info.put(EEProxy.Info.REVISION, f);
     }
 }

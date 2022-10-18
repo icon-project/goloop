@@ -26,9 +26,9 @@ type wsSessionManager struct {
 	sessions   []*wsSession
 }
 
-func newWSSessionManager(logger log.Logger) *wsSessionManager {
+func newWSSessionManager(logger log.Logger, maxSession int) *wsSessionManager {
 	return &wsSessionManager{
-		maxSession: configMaxSession,
+		maxSession: maxSession,
 		logger:     logger,
 	}
 }
@@ -72,6 +72,10 @@ func (wm *wsSessionManager) StopAllSessions() {
 	wm.Lock()
 	defer wm.Unlock()
 
+	wm.stopAllSessionsInLock()
+}
+
+func (wm *wsSessionManager) stopAllSessionsInLock() {
 	for i := 0; i < len(wm.sessions); i++ {
 		wss := wm.sessions[i]
 		if wss.c != nil {
@@ -91,6 +95,16 @@ func (wm *wsSessionManager) StopSessionsForChain(chain module.Chain) {
 		if wss.chain == chain {
 			wm.stopSessionAt(i)
 		}
+	}
+}
+
+func (wm *wsSessionManager) SetMaxSession(limit int) {
+	wm.Lock()
+	defer wm.Unlock()
+
+	wm.maxSession = limit
+	if limit <= 0 {
+		wm.stopAllSessionsInLock()
 	}
 }
 
@@ -154,7 +168,7 @@ func (wss *wsSession) WriteJSON(v interface{}) error {
 	return wss.c.WriteJSON(v)
 }
 
-const configMaxSession = 10
+const DefaultWSMaxSession = 10
 
 type WSResponse struct {
 	Code    int    `json:"code"`

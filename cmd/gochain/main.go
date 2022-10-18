@@ -44,6 +44,7 @@ type GoChainConfig struct {
 	RPCBatchLimit int    `json:"rpc_batch_limit,omitempty"`
 	EEInstances   int    `json:"ee_instances"`
 	Engines       string `json:"engines"`
+	WSMaxSession  int    `json:"ws_max_session"`
 
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
@@ -151,6 +152,7 @@ func main() {
 	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
 	flag.Int64Var(&cfg.TxTimeout, "tx_timeout", 0, "Transaction timeout in milli-second (0: uses system default value)")
 	flag.StringVar(&cfg.Engines, "engines", "python", "Execution engines, comma-separated (python,java)")
+	flag.IntVar(&cfg.WSMaxSession, "ws_max_session", server.DefaultWSMaxSession, "Websocket session limit (use -1 to disable)")
 	flag.StringVar(&lwCfg.Filename, "log_writer_filename", "", "Log filename")
 	flag.IntVar(&lwCfg.MaxSize, "log_writer_maxsize", 100, "Log file max size")
 	flag.IntVar(&lwCfg.MaxAge, "log_writer_maxage", 0, "Log file max age")
@@ -483,9 +485,15 @@ func Execute(cmd *cobra.Command, args []string) {
 
 	pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances)
 
-	// TODO : server-chain setting
-	srv := server.NewManager(
-		cfg.RPCAddr, cfg.RPCDump, cfg.RPCDebug, cfg.RPCRosetta, "", cfg.RPCBatchLimit, wallet, logger)
+	config := &server.Config{
+		ServerAddress:       cfg.RPCAddr,
+		JSONRPCDump:         cfg.RPCDump,
+		JSONRPCIncludeDebug: cfg.RPCDebug,
+		JSONRPCRosetta:      cfg.RPCRosetta,
+		JSONRPCBatchLimit:   cfg.RPCBatchLimit,
+		WSMaxSession:        cfg.WSMaxSession,
+	}
+	srv := server.NewManager(config, wallet, logger)
 	hex.EncodeToString(wallet.Address().ID())
 	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
 	err = c.Init()

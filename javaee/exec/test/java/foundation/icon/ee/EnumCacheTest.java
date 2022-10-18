@@ -137,10 +137,7 @@ public class EnumCacheTest extends SimpleTest {
 
     @Test
     void rerunFlag() {
-        var info = sm.getInfo();
-        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
-        info.put(EEProxy.Info.REVISION, flag);
-
+        sm.unsetRevisionFlag(IExternalState.REVISION_PURGE_ENUM_CACHE);
         var c = sm.mustDeploy(Score.class);
         var res = c.tryInvoke("useValueOf");
         Assertions.assertEquals(Status.FlagRerun, res.getStatus());
@@ -152,10 +149,7 @@ public class EnumCacheTest extends SimpleTest {
 
     @Test
     void rerunShallNotBeSetOnDeploy() {
-        var info = sm.getInfo();
-        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
-        info.put(EEProxy.Info.REVISION, flag);
-
+        sm.unsetRevisionFlag(IExternalState.REVISION_PURGE_ENUM_CACHE);
         var s1 = sm.getStateCopy();
         var res = sm.tryDeploy(Score2.class);
         Assertions.assertEquals(0, res.getStatus());
@@ -163,9 +157,7 @@ public class EnumCacheTest extends SimpleTest {
 
     @Test
     void sameStepCost() {
-        var info = sm.getInfo();
-        long flag = (Long)info.get(EEProxy.Info.REVISION) & ~IExternalState.REVISION_PURGE_ENUM_CACHE;
-        info.put(EEProxy.Info.REVISION, flag);
+        sm.unsetRevisionFlag(IExternalState.REVISION_PURGE_ENUM_CACHE);
 
         var res = sm.tryDeploy(Score2.class);
         Assertions.assertEquals(0, res.getStatus());

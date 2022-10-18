@@ -64,14 +64,14 @@ func ParseSignature(sig []byte) (*Signature, error) {
 // If the format of a source signature is different,
 // call ParseSignature instead.
 func ParseSignatureVRS(sig []byte) (*Signature, error) {
-	if len(sig) != 65 {
+	if len(sig) != SignatureLenRawWithV {
 		return nil, errors.New("wrong raw signature format")
 	}
 
 	var s Signature
-	s.bytes = append(s.bytes, sig[1:33]...)
-	s.bytes = append(s.bytes, sig[33:]...)
-	s.bytes[64] = sig[0]
+	s.bytes = append(s.bytes, sig[1:]...)
+	s.bytes = append(s.bytes, sig[:1]...)
+	s.hasV = true
 	return &s, nil
 }
 
