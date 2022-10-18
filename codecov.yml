@@ -1,5 +1,6 @@
 codecov:
-  require_ci_to_pass: false
+  require_ci_to_pass: true
+
 comment:
   behavior: default
   layout: "reach, diff, flags, files"
@@ -12,17 +13,16 @@ ignore:
 
 coverage:
   precision: 2
-  range:
-  - 80.0
-  - 100.0
+  range: 50..80
   round: down
   status:
     project: no
     patch: # patch status only measures lines adjusted in the pull request or single commit
       default:
-        target: 80% # target of an exact coverage number such as 75% or 100%
-        threshold: 2% # Allow the coverage to drop by X%, and posting a success status.
+        target: 70% # target of an exact coverage number such as 75% or 100%
+        threshold: 3% # Allow the coverage to drop by X%, and posting a success status.
         base: auto
     changes: no # Codecov will detect changes in coverage that are NOT included in the commit/pull diff
+
 github_checks:
   annotations: true
