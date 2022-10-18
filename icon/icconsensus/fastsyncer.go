@@ -217,6 +217,10 @@ func (f *fastSyncer) OnEnd(err error) {
 	ul := common.Lock(&f.mu)
 	defer ul.Unlock()
 
+	if !f.running {
+		return
+	}
+
 	if f.height < f.to {
 		f.log.Warnf("fast syncer failed: %+v", err)
 		go f.RepeatTryFetch()
