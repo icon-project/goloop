@@ -24,12 +24,10 @@ const (
 	configTraceBnode = false
 )
 
-var dbCodec = codec.BC
-
 const (
 	keyLastBlockHeight = "block.lastHeight"
 	genesisHeight      = 0
-	configCacheCap     = 10
+	ConfigCacheCap     = 10
 )
 
 type transactionLocator struct {
@@ -600,7 +598,7 @@ func NewManager(
 			running: true,
 		},
 		nmap:        make(map[string]*bnode),
-		cache:       newCache(configCacheCap),
+		cache:       newCache(ConfigCacheCap),
 		timestamper: timestamper,
 		handlers:    handlers,
 	}
@@ -735,31 +733,6 @@ func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 		return blk.Copy(), nil
 	}
 	return nil, errors.NotFoundError.Errorf("block not found %x", id)
-}
-
-func (m *manager) doGetBlockByHash(hash []byte) (module.Block, error) {
-	hb, err := m.bucketFor(db.BytesByHash)
-	if err != nil {
-		return nil, err
-	}
-	headerBytes, err := hb.GetBytes(db.Raw(hash))
-	if err != nil {
-		return nil, err
-	}
-	if headerBytes == nil {
-		return nil, errors.InvalidStateError.Errorf("nil header")
-	}
-	v, r, err := PeekVersion(bytes.NewReader(headerBytes))
-	h, ok := m.activeHandlers.forVersion(v)
-	if !ok {
-		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
-	}
-	blk, err := h.NewBlockFromHeaderReader(r)
-	if err != nil {
-		return nil, err
-	}
-	m.cache.Put(blk)
-	return blk.Copy(), err
 }
 
 func (m *manager) Import(
@@ -1730,13 +1703,16 @@ func GetBlockVersion(
 	c codec.Codec,
 	height int64,
 ) (int, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
 	)
 	if err != nil {
 		return -1, err
 	}
-	hash, err := headerHashByHeight.GetBytes(height + 1)
+	hash, err := headerHashByHeight.GetBytes(height)
 	if err != nil {
 		return -1, err
 	}
@@ -1766,6 +1742,9 @@ func GetCommitVoteListBytesByHeight(
 	c codec.Codec,
 	height int64,
 ) ([]byte, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
 	)
@@ -1802,6 +1781,9 @@ func GetCommitVoteListBytesByHeight(
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
 		return 0, err
@@ -1818,7 +1800,7 @@ func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
 }
 
 func GetLastHeight(dbase db.Database) (int64, error) {
-	return GetLastHeightWithCodec(dbase, dbCodec)
+	return GetLastHeightWithCodec(dbase, nil)
 }
 
 func GetLastHeightOf(dbase db.Database) int64 {
@@ -1836,7 +1818,7 @@ func SetLastHeight(dbase db.Database, c codec.Codec, height int64) error {
 		return err
 	}
 	if c == nil {
-		c = dbCodec
+		c = codec.RLP
 	}
 	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {
