@@ -17,8 +17,11 @@
 package test
 
 import (
+	"sync"
+
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -40,6 +43,7 @@ type ServiceManager struct {
 	em               eeproxy.Manager
 	chain            module.Chain
 	tsc              *service.TxTimestampChecker
+	mu               sync.Mutex
 	emptyTXs         module.TransactionList
 	nextBlockVersion int
 	pool             []module.Transaction
@@ -71,6 +75,9 @@ func (sm *ServiceManager) TransactionFromBytes(b []byte, blockVersion int) (modu
 }
 
 func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo, csi module.ConsensusInfo) (module.Transition, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
 	txs := transaction.NewTransactionListFromSlice(sm.dbase, sm.pool)
 	sm.pool = nil
 	return service.NewTransition(
@@ -128,6 +135,9 @@ func (sm *ServiceManager) Finalize(transition module.Transition, opt int) error 
 }
 
 func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
 	if len(sm.pool) > 0 {
 		return false
 	}
@@ -231,9 +241,16 @@ func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interf
 	if err != nil {
 		return nil, err
 	}
+
+	locker := common.Lock(&sm.mu)
+	defer locker.Unlock()
+
 	sm.pool = append(sm.pool, t)
 	txWaiters := sm.txWaiters
 	sm.txWaiters = nil
+
+	locker.Unlock()
+
 	for _, cb := range txWaiters {
 		cb()
 	}
