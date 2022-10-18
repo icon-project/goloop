@@ -28,32 +28,32 @@ import (
 )
 
 func TestPeekVersionBytesReader(t *testing.T) {
-	hf := blockV2HeaderFormat{
+	hf := V2HeaderFormat{
 		Version: 1,
-		Result: []byte{1, 2},
+		Result:  []byte{1, 2},
 	}
 	bs := codec.MustMarshalToBytes(hf)
 
 	v, r, err := PeekVersion(bytes.NewReader(bs))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, v)
-	var hf2 blockV2HeaderFormat
+	var hf2 V2HeaderFormat
 	err = codec.Unmarshal(r, &hf2)
 	assert.Nil(t, err)
 	assert.Equal(t, hf, hf2)
 }
 
 func TestPeekVersionBufIOReader(t *testing.T) {
-	hf := blockV2HeaderFormat{
+	hf := V2HeaderFormat{
 		Version: 1,
-		Result: []byte{1, 2},
+		Result:  []byte{1, 2},
 	}
 	bs := codec.MustMarshalToBytes(hf)
 
 	v, r, err := PeekVersion(bufio.NewReader(bytes.NewReader(bs)))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, v)
-	var hf2 blockV2HeaderFormat
+	var hf2 V2HeaderFormat
 	err = codec.Unmarshal(r, &hf2)
 	assert.Nil(t, err)
 	assert.Equal(t, hf, hf2)
@@ -73,16 +73,16 @@ func (r *testReader) Read(p []byte) (n int, err error) {
 }
 
 func TestPeekVersionTestReader(t *testing.T) {
-	hf := blockV2HeaderFormat{
+	hf := V2HeaderFormat{
 		Version: 1,
-		Result: []byte{1, 2},
+		Result:  []byte{1, 2},
 	}
 	bs := codec.MustMarshalToBytes(hf)
 
 	v, r, err := PeekVersion(&testReader{bs})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, v)
-	var hf2 blockV2HeaderFormat
+	var hf2 V2HeaderFormat
 	err = codec.Unmarshal(r, &hf2)
 	assert.Nil(t, err)
 	assert.Equal(t, hf, hf2)

@@ -1,4 +1,6 @@
 node0.url=http://localhost:9082
+node0.wallet=keystore_god.json
+node0.walletPassword=gochain
 node0.channel0.nid=0x3
 node0.channel0.name=default
 

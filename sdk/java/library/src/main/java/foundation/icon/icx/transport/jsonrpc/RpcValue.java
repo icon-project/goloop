@@ -80,6 +80,14 @@ public class RpcValue implements RpcItem {
         return value == null;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof  RpcValue)) return false;
+        RpcValue obj = (RpcValue) o;
+        return value.equals(obj.value);
+    }
+
     /**
      * Returns the value as string
      *

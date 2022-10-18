@@ -1,6 +1,7 @@
 package module
 
 import (
+	"container/list"
 	"fmt"
 	"math/big"
 
@@ -169,6 +170,7 @@ type Receipt interface {
 	Check(r Receipt) error
 	ToJSON(version JSONVersion) (interface{}, error)
 	LogsBloom() LogsBloom
+	BTPMessages() *list.List
 	EventLogIterator() EventLogIterator
 	FeePaymentIterator() FeePaymentIterator
 	LogsBloomDisabled() bool
@@ -226,6 +228,10 @@ type Transition interface {
 
 	// Equal check equality of inputs of transition.
 	Equal(Transition) bool
+
+	// BTPSection returns the BTPSection as a result of transaction processing.
+	// It may return empty one before cb.OnExecute is called back by Execute.
+	BTPSection() BTPSection
 }
 
 type APIInfo interface {
@@ -358,6 +364,21 @@ type ServiceManager interface {
 
 	// GetNextBlockVersion returns version of next block
 	GetNextBlockVersion(result []byte) int
+
+	// BTPSectionFromResult returns BTPSection for the result
+	BTPSectionFromResult(result []byte) (BTPSection, error)
+
+	// BTPDigestFromResult returns BTPDigest for the result
+	BTPDigestFromResult(result []byte) (BTPDigest, error)
+
+	// NextProofContextMapFromResult returns BTPProofContextMap for the result
+	NextProofContextMapFromResult(result []byte) (BTPProofContextMap, error)
+
+	BTPNetworkTypeFromResult(result []byte, ntid int64) (BTPNetworkType, error)
+
+	BTPNetworkFromResult(result []byte, nid int64) (BTPNetwork, error)
+
+	BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error)
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool

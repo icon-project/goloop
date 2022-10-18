@@ -247,6 +247,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	ws := g.Group("")
 	ws.GET("/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
 	ws.GET("/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
+	ws.GET("/v3/:channel/btp", srv.wssm.RunBtpSession, ChainInjector(srv))
 }
 
 func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {

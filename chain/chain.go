@@ -671,6 +671,31 @@ func (c *singleChain) Logger() log.Logger {
 	return c.logger
 }
 
+type addrWallet struct {
+	mod module.NetworkTypeModule
+	w   module.Wallet
+}
+
+func (a *addrWallet) Sign(data []byte) ([]byte, error) {
+	return a.w.Sign(data)
+}
+
+func (a *addrWallet) PublicKey() []byte {
+	addr, err := a.mod.AddressFromPubKey(a.w.PublicKey())
+	if err != nil {
+		return nil
+	}
+	return addr
+}
+
+func (c *singleChain) WalletFor(dsa string) module.BaseWallet {
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return c.wallet
+	}
+	return nil
+}
+
 func (c *singleChain) DoDBTask(task func(database db.Database)) {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()

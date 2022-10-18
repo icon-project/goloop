@@ -10,6 +10,7 @@ type VoteItem struct {
 	PrototypeIndex int16
 	Timestamp      int64
 	Signature      common.Signature
+	NTSDProofParts [][]byte
 }
 
 type voteList struct {
@@ -30,7 +31,7 @@ func (vl voteList) String() string {
 	return res
 }
 
-func (vl *voteList) AddVote(msg *voteMessage) {
+func (vl *voteList) AddVote(msg *VoteMessage) {
 	index := -1
 	for i, p := range vl.Prototypes {
 		if p.Equal(&msg.voteBase) {
@@ -46,6 +47,7 @@ func (vl *voteList) AddVote(msg *voteMessage) {
 		PrototypeIndex: int16(index),
 		Timestamp:      msg.Timestamp,
 		Signature:      msg.Signature,
+		NTSDProofParts: msg.NTSDProofParts,
 	})
 }
 
@@ -53,11 +55,13 @@ func (vl *voteList) Len() int {
 	return len(vl.VoteItems)
 }
 
-func (vl *voteList) Get(i int) *voteMessage {
+func (vl *voteList) Get(i int) *VoteMessage {
 	msg := newVoteMessage()
-	msg.voteBase = vl.Prototypes[vl.VoteItems[i].PrototypeIndex]
+	proto := &vl.Prototypes[vl.VoteItems[i].PrototypeIndex]
+	msg.voteBase = *proto
 	msg.Timestamp = vl.VoteItems[i].Timestamp
 	msg.setSignature(vl.VoteItems[i].Signature)
+	msg.NTSDProofParts = vl.VoteItems[i].NTSDProofParts
 	return msg
 }
 

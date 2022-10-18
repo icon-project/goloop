@@ -24,6 +24,7 @@ import java.math.BigInteger;
 public interface RpcItem {
 
     boolean isEmpty();
+    boolean equals(Object o);
     default boolean isNull() {
         return false;
     }

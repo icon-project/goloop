@@ -348,7 +348,8 @@ public final class Context {
     /**
      * Returns {@code true} if the given signature for the given message by
      * the given public key is correct.
-     * @param alg signature algorithm. One of ed25519 and ecdsa-secp256k1
+     * @param alg signature algorithm. One of ed25519, ecdsa-secp256k1 and
+     *            bls12-381-g2
      * @param msg message
      * @param sig signature
      * @param pubKey public key
@@ -370,6 +371,19 @@ public final class Context {
      * @throws IllegalArgumentException if the algorithm is unsupported.
      */
     public static byte[] recoverKey(String alg, byte[] msg, byte[] sig, boolean compressed) {
+        return null;
+    }
+
+    /**
+     * Aggregates cryptographic values. This method can be used to aggregate
+     * public keys or signatures.
+     * @param type value type. bls12-381-g1 is supported.
+     * @param prevAgg previous aggregation. null if there is no previous
+     *                aggregation.
+     * @param values concatenated values to be aggregated.
+     * @return aggregation of previous aggregation and values.
+     */
+    public static byte[] aggregate(String type, byte[] prevAgg, byte[] values) {
         return null;
     }
 

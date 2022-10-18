@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/codec"
@@ -14,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
@@ -74,6 +76,8 @@ type ServiceManager interface {
 	SendTransactionAndWait(result []byte, height int64, tx interface{}) ([]byte, <-chan interface{}, error)
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
 	ExportResult(result []byte, vh []byte, dst db.Database) error
+	BTPSectionFromResult(result []byte) (module.BTPSection, error)
+	NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error)
 }
 
 type Chain interface {
@@ -94,6 +98,7 @@ type chainContext struct {
 	log     log.Logger
 	running bool
 	trtr    RefTracer
+	srcUID  []byte
 }
 
 type finalizationCB = func(module.Block) bool
@@ -116,6 +121,11 @@ type manager struct {
 	finalized       *bnode
 	finalizationCBs []finalizationCB
 	timestamper     module.Timestamper
+
+	// pcm for last finalized block verification
+	pcmForLastBlock module.BTPProofContextMap
+	// next pcm in the last finalized block's result
+	nextPCM module.BTPProofContextMap
 
 	handlers       handlerList
 	activeHandlers handlerList
@@ -299,16 +309,9 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	var err error
-	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	csi, err := m.verifyNewBlock(block, bn.block)
 	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
-	}
-	var csi module.ConsensusInfo
-	if vt, err := m.verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
-	} else {
-		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, vt)
 	}
 	it := &importTask{
 		block: block,
@@ -376,8 +379,7 @@ func (it *importTask) _onValidate(err error) {
 		var bn *bnode
 		var ok bool
 		if bn, ok = it.manager.nmap[string(it.block.ID())]; !ok {
-			vl := it.in.mtransition().NextValidators()
-			validatedBlock := it.block.NewBlock(vl)
+			validatedBlock := it.block.NewBlock(it.in.mtransition())
 			bn = &bnode{
 				block:  validatedBlock,
 				in:     it.in.newTransition(nil),
@@ -448,15 +450,9 @@ func (m *manager) _propose(
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
-	validators, err := bn.block.(base.BlockVersionSpec).GetVoters(m.handlerContext)
+	csi, _, err := m.verifyProofForLastBlock(bn.block, votes)
 	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err, "fail to get validators")
-	}
-	var csi module.ConsensusInfo
-	if voted, err := votes.VerifyBlock(bn.block, validators); err != nil {
 		return nil, err
-	} else {
-		csi = common.NewConsensusInfo(bn.block.Proposer(), validators, voted)
 	}
 	pt := &proposeTask{
 		task: task{
@@ -552,6 +548,7 @@ func (pt *proposeTask) _onExecute(err error) {
 		mtr.NormalTransactions(),
 		pmtr.NextValidators(),
 		pt.votes,
+		pmtr.BTPSection(),
 	)
 	var bn *bnode
 	var ok bool
@@ -596,6 +593,7 @@ func NewManager(
 			sm:      chain.ServiceManager(),
 			log:     logger,
 			running: true,
+			srcUID:  module.GetSourceNetworkUID(chain),
 		},
 		nmap:        make(map[string]*bnode),
 		cache:       newCache(ConfigCacheCap),
@@ -623,6 +621,9 @@ func NewManager(
 		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
 		}
+		if err := m.initializeCommon(); err != nil {
+			return nil, err
+		}
 		return m, nil
 	} else if err != nil {
 		return nil, err
@@ -637,9 +638,6 @@ func NewManager(
 		return nil, errors.InvalidNetworkError.Errorf(
 			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
 	}
-	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
-		lastFinalized.Result(),
-	))
 
 	var cid int
 	if gBlock, err := m.getBlockByHeight(0); err == nil {
@@ -691,7 +689,43 @@ func NewManager(
 		m.bntr.TraceNew(bn)
 	}
 	m.nmap[string(lastFinalized.ID())] = bn
+	if err := m.initializeCommon(); err != nil {
+		return nil, err
+	}
 	return m, nil
+}
+
+func (m *manager) initializeCommon() error {
+	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
+		m.finalized.block.Result(),
+	))
+	if err := m.initializePCM(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *manager) initializePCM() error {
+	lastBlk := m.finalized.block
+	nextPCM, err := lastBlk.NextProofContextMap()
+	if err != nil {
+		return err
+	}
+	m.nextPCM = nextPCM
+	if lastBlk.Height() > 0 {
+		blk, err := m.getBlockByHeight(lastBlk.Height() - 1)
+		if err != nil {
+			return err
+		}
+		pcm, err := blk.NextProofContextMap()
+		if err != nil {
+			return err
+		}
+		m.pcmForLastBlock = pcm
+	} else {
+		m.pcmForLastBlock = btp.ZeroProofContextMap
+	}
+	return nil
 }
 
 func (m *manager) Term() {
@@ -812,7 +846,7 @@ func (m *manager) finalizeGenesis() error {
 
 func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, error) {
 	ctx := merkle.NewCopyContext(src, m.db())
-	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), id)
+	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), m.chain, id)
 	if err := ctx.Run(); err != nil {
 		return nil, err
 	}
@@ -982,12 +1016,13 @@ func (m *manager) finalizeGenesisBlock(
 		gtr.mtransition().NormalTransactions(),
 		gtr.mtransition().NextValidators(),
 		votes,
+		mtr.BTPSection(),
 	)
 	if configTraceBnode {
 		m.bntr.TraceNew(bn)
 	}
 	m.nmap[string(bn.block.ID())] = bn
-	err = m.finalize(bn)
+	err = m.finalize(bn, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1031,10 +1066,10 @@ func (m *manager) Finalize(block module.BlockCandidate) error {
 	if bn == nil || bn.parent != m.finalized {
 		return errors.Errorf("InvalidStatusForBlock(id=<%x>", block.ID())
 	}
-	return m.finalize(bn)
+	return m.finalize(bn, true)
 }
 
-func (m *manager) finalize(bn *bnode) error {
+func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 	// TODO notify import/propose error due to finalization
 	// TODO update nmap
 	block := bn.block
@@ -1084,6 +1119,17 @@ func (m *manager) finalize(bn *bnode) error {
 	if err = chainProp.Set(db.Raw(keyLastBlockHeight), block.Height()); err != nil {
 		return err
 	}
+
+	if updatePCM {
+		nextPCM, err := m.nextPCM.Update(m.finalized.block)
+		if err != nil {
+			return err
+		}
+		m.pcmForLastBlock = m.nextPCM
+		m.nextPCM = nextPCM
+	}
+
+	m.cache.Put(m.finalized.block)
 
 	m.log.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
@@ -1737,11 +1783,7 @@ func GetBlockVersion(
 	return version, nil
 }
 
-func GetCommitVoteListBytesByHeight(
-	dbase db.Database,
-	c codec.Codec,
-	height int64,
-) ([]byte, error) {
+func getHeaderField(dbase db.Database, c codec.Codec, height int64, index int) ([]byte, error) {
 	if c == nil {
 		c = codec.RLP
 	}
@@ -1770,14 +1812,73 @@ func GetCommitVoteListBytesByHeight(
 	if err != nil {
 		return nil, err
 	}
-	if err = d2.Skip(5); err != nil {
+	if index > 0 {
+		if err = d2.Skip(index); err != nil {
+			return nil, err
+		}
+	}
+	var str []byte
+	if err = d2.Decode(&str); err != nil {
 		return nil, err
 	}
-	var votesHash []byte
-	if err = d2.Decode(&votesHash); err != nil {
+	return str, nil
+}
+
+func GetCommitVoteListBytesByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	votesHash, err := getHeaderField(dbase, c, height, 5)
+	if err != nil {
 		return nil, err
 	}
 	return db.DoGetWithBucketID(dbase, db.BytesByHash, votesHash)
+}
+
+func GetBlockResultByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) ([]byte, error) {
+	return getHeaderField(dbase, c, height, 10)
+}
+
+func GetBTPDigestByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+	result []byte,
+) (module.BTPDigest, error) {
+	dh, err := service.BTPDigestHashFromResult(result)
+	if err != nil {
+		return nil, err
+	}
+	if dh == nil {
+		return btp.ZeroDigest, nil
+	}
+	bk, err := dbase.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	bs, err := bk.Get(dh)
+	if err != nil {
+		return nil, err
+	}
+	return btp.NewDigestFromBytes(bs)
+}
+
+func GetNextValidatorsByHeight(
+	dbase db.Database,
+	c codec.Codec,
+	height int64,
+) (module.ValidatorList, error) {
+	validatorsHash, err := getHeaderField(dbase, c, height, 6)
+	if err != nil {
+		return nil, err
+	}
+	vl, err := state.ValidatorSnapshotFromHash(dbase, validatorsHash)
+	return vl, nil
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {

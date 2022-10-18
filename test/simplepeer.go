@@ -162,7 +162,9 @@ func (h *SimplePeerHandler) Receive(
 	outMsg interface{},
 ) *Packet {
 	pe := <-h.rCh
-	assert.Equal(h.p.t, pi, pe.pk.PI)
+	if !assert.Equal(h.p.t, pi, pe.pk.PI) {
+		h.p.t.Logf("data=%s", codec.DumpRLP("  ", pe.pk.Data))
+	}
 	if expMsg != nil {
 		bs := codec.MustMarshalToBytes(expMsg)
 		assert.Equal(h.p.t, bs, pe.pk.Data)

@@ -22,6 +22,7 @@ import foundation.icon.icx.crypto.KeystoreException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -118,14 +119,12 @@ public class Env {
         }
     }
 
-    private static KeyWallet readWalletFromFile(String path, String password) throws IOException {
-        try {
-            File file = new File(path);
-            return KeyWallet.load(password, file);
-        } catch (KeystoreException e) {
-            e.printStackTrace();
-            throw new IOException("Key load failed!");
+    private static KeyWallet loadWallet(String path, String password) throws IOException, KeystoreException {
+        Path walletPath = Path.of(path);
+        if (!walletPath.isAbsolute()) {
+            walletPath = Path.of(dataPath, path).toAbsolutePath();
         }
+        return KeyWallet.load(password, walletPath.toFile());
     }
 
     private static Map<String, Chain> readChains(Properties props) {
@@ -141,31 +140,34 @@ public class Env {
                 }
                 break;
             }
-            String godWalletPath = dataPath + props.getProperty(chainName + ".godWallet");
-            String godPassword = props.getProperty(chainName + ".godPassword");
+            String godWalletPath = props.getProperty(chainName + ".godWallet");
             KeyWallet godWallet = null;
             try {
-                godWallet = readWalletFromFile(godWalletPath, godPassword);
-            } catch (IOException ex) {
-                System.out.println("FAIL to read god wallet. path = " + godWalletPath);
-                throw new IllegalArgumentException("FAIL to read god wallet. path = " + godWalletPath);
+                godWallet = loadWallet(godWalletPath, props.getProperty(chainName + ".godPassword"));
+            } catch (IOException | KeystoreException e) {
+                e.printStackTrace();
+                String message = String.format("FAIL to load god wallet, path: %s, err: %s", godWalletPath, e.getMessage());
+                System.out.println(message);
+                throw new IllegalArgumentException(message);
             }
             String govWalletPath = props.getProperty(chainName + ".govWallet");
-            String govPassword = props.getProperty(chainName + ".govPassword");
             KeyWallet governorWallet = null;
             if (govWalletPath == null) {
                 try {
                     governorWallet = KeyWallet.create();
-                } catch (Exception ex) {
-                    System.out.println("FAIL to create wallet for governor!");
-                    throw new IllegalArgumentException("FAIL to create wallet for governor!");
+                } catch (Exception e) {
+                    String message = String.format("FAIL to create governor wallet, err: %s", e.getMessage());
+                    System.out.println(message);
+                    throw new IllegalArgumentException(message);
                 }
             } else {
                 try {
-                    governorWallet = readWalletFromFile(dataPath + govWalletPath, govPassword);
-                } catch (IOException ex) {
-                    System.out.println("FAIL to read governor wallet. path = " + dataPath + govWalletPath);
-                    throw new IllegalArgumentException("FAIL to read governor wallet. path = " + govWalletPath);
+                    governorWallet = loadWallet(govWalletPath, props.getProperty(chainName + ".govPassword"));
+                } catch (IOException | KeystoreException e) {
+                    e.printStackTrace();
+                    String message = String.format("FAIL to load governor wallet, path: %s, err: %s", govWalletPath, e.getMessage());
+                    System.out.println(message);
+                    throw new IllegalArgumentException(message);
                 }
             }
             Chain chain = new Chain(props, chainName + ".", parseInt(nid), godWallet, governorWallet);
@@ -186,18 +188,18 @@ public class Env {
                 }
                 break;
             }
-            String nodeWalletName = props.getProperty(nodeName + ".wallet");
+            String nodeWalletPath = props.getProperty(nodeName + ".wallet");
             KeyWallet nodeWallet = null;
-            if (nodeWalletName != null) {
-                String nodeWalletPassword = props.getProperty(nodeName + ".walletPassword");
+            if (nodeWalletPath != null) {
                 try {
-                    nodeWallet = readWalletFromFile(dataPath + nodeWalletName, nodeWalletPassword);
-                } catch (IOException ex) {
-                    System.out.println("FAIL to read node wallet. path = " + nodeWalletName);
-                    throw new IllegalArgumentException("FAIL to read node wallet. path = " + nodeWalletName);
+                    nodeWallet = loadWallet(nodeWalletPath, props.getProperty(nodeName + ".walletPassword"));
+                } catch (IOException | KeystoreException e) {
+                    e.printStackTrace();
+                    String message = String.format("FAIL to load node wallet, path: %s, err: %s", nodeWalletPath, e.getMessage());
+                    System.out.println(message);
+                    throw new IllegalArgumentException(message);
                 }
             }
-
             Node node = new Node(url, nodeWallet);
 
             // read channel env

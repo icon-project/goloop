@@ -138,8 +138,8 @@ func (c *transitionResultCache) getWorldSnapshotInLock(result []byte, vh []byte)
 			item.database,
 			item.transactionResult.StateHash,
 			nil,
-			c.platform.NewExtensionSnapshot(
-				c.database, item.transactionResult.ExtensionData),
+			c.platform.NewExtensionSnapshot(c.database, item.transactionResult.ExtensionData),
+			item.transactionResult.BTPData,
 		)
 	}
 	c.reclaimInLock()

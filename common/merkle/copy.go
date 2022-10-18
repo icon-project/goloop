@@ -36,7 +36,7 @@ func (e *CopyContext) Run() error {
 					return err
 				}
 				if v1 != nil {
-					err := e.builder.OnData(v1)
+					err := e.builder.OnData(id, v1)
 					if err != nil {
 						return err
 					}

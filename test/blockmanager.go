@@ -65,7 +65,7 @@ func GetLastBlock(t *testing.T, bm module.BlockManager) module.Block {
 }
 
 type cbResult struct {
-	bc module.BlockCandidate
+	bc    module.BlockCandidate
 	cbErr error
 }
 
@@ -75,14 +75,14 @@ func ProposeBlock(
 ) (bc module.BlockCandidate, err error, cbError error) {
 	ch := make(chan cbResult)
 	_, err = bm.Propose(
-		prevID, votes, func (bc module.BlockCandidate, err error) {
-			ch <- cbResult{ bc, err }
+		prevID, votes, func(bc module.BlockCandidate, err error) {
+			ch <- cbResult{bc, err}
 		},
 	)
 	if err != nil {
 		return nil, err, nil
 	}
-	res := <- ch
+	res := <-ch
 	return res.bc, nil, res.cbErr
 }
 
@@ -94,13 +94,13 @@ func ImportBlockByReader(
 	_, err = bm.Import(
 		r, flag, func(bc module.BlockCandidate, err error) {
 			assert.NoError(t, err)
-			ch <- cbResult{ bc, err }
+			ch <- cbResult{bc, err}
 		},
 	)
 	if err != nil {
 		return nil, err, nil
 	}
-	res := <- ch
+	res := <-ch
 	return res.bc, nil, res.cbErr
 }
 
@@ -112,13 +112,13 @@ func ImportBlock(
 	_, err = bm.ImportBlock(
 		bc, flag, func(bc module.BlockCandidate, err error) {
 			assert.NoError(t, err)
-			ch <- cbResult{ bc, err }
+			ch <- cbResult{bc, err}
 		},
 	)
 	if err != nil {
 		return nil, err, nil
 	}
-	res := <- ch
+	res := <-ch
 	return res.bc, nil, res.cbErr
 }
 

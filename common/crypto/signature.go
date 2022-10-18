@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/haltingstate/secp256k1-go"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 const (
@@ -157,4 +159,35 @@ func (sig *Signature) String() string {
 		return "0x" + hex.EncodeToString(sig.bytes)
 	}
 	return "0x" + hex.EncodeToString(sig.bytes[:SignatureLenRaw]) + "[no V]"
+}
+
+func (sig *Signature) RLPEncodeSelf(e codec.Encoder) error {
+	bs, err := sig.SerializeRSV()
+	if err != nil {
+		return err
+	}
+	return e.Encode(bs)
+}
+
+func (sig *Signature) RLPDecodeSelf(d codec.Decoder) error {
+	var bs []byte
+	err := d.Decode(&bs)
+	if err != nil {
+		return err
+	}
+	if bs == nil {
+		return codec.ErrNilValue
+	}
+	switch len(bs) {
+	case SignatureLenRawWithV:
+		sig.bytes = bs
+		sig.hasV = true
+	case SignatureLenRaw:
+		sig.bytes = append(sig.bytes, bs...)
+		sig.bytes = append(sig.bytes, 0x00) // no meaning
+		sig.hasV = false
+	default:
+		return errors.New("wrong raw signature format")
+	}
+	return nil
 }
