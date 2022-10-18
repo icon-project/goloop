@@ -148,11 +148,8 @@ func (s *syncProcessor) DoSync() error {
 		}
 
 		s.logger.Tracef("DoSync() readyPool=%d, sentPool=%d", s.readyPool.size(), s.sentPool.size())
-		for count > 0 && s.readyPool.size() > 0 {
-			if s.sendRequestsInLock() {
-				break
-			}
-			s.logger.Tracef("DoSync() retry sendRequest. readyPool=%d", s.readyPool.size())
+		if count > 0 && s.readyPool.size() > 0 {
+			s.sendRequestsInLock()
 		}
 
 		s.logger.Tracef("DoSync() waiting signal. unresolvedCount=%d, readyPool=%d, sentPool=%d",
@@ -209,27 +206,24 @@ func (s *syncProcessor) UnresolvedCount() int {
 	return s.builder.UnresolvedCount()
 }
 
-// sendRequestsInLock
-//
-// returns true if succeed sendRequest, false if no send.
 // syncProcessor --> peer --> PeerHandler(Reactor) --> module.ProtocolHandler
-func (s *syncProcessor) sendRequestsInLock() bool {
+func (s *syncProcessor) sendRequestsInLock() {
 	s.logger.Debugln("sendRequests()")
-	var sent bool
 
-	for _, pack := range s.getPacks() {
+	packs := s.getPacks()
+	for len(packs) >= 1 && s.readyPool.size() > 0 {
 		peer := s.readyPool.pop()
-		s.logger.Tracef("sendRequests() peer=%v pack=%d", peer.id, len(pack))
-		if err := peer.RequestData(pack, s.HandleData); err == nil {
+		s.logger.Tracef("sendRequests() peer=%v pack=%d", peer.id, len(packs[0]))
+		if err := peer.RequestData(packs[0], s.HandleData); err == nil {
 			s.sentPool.push(peer)
-			sent = true
+			packs = packs[1:]
 		} else {
 			s.logger.Debugf("sendRequests() failed by %+v", err)
 			s.checkedPool.push(peer)
 		}
 	}
 
-	return sent
+	s.onPoolChangeInLock()
 }
 
 func (s *syncProcessor) next() bool {
@@ -314,11 +308,16 @@ func (s *syncProcessor) migrate() {
 }
 
 func (s *syncProcessor) onPoolChangeInLock() {
+	if s.sentPool.size() > 0 {
+		return
+	}
+
 	if s.readyPool.size() > 0 {
 		s.wakeupInLock()
 		return
 	}
-	if s.sentPool.size() == 0 && s.checkedPool.size() > 0 {
+
+	if s.checkedPool.size() > 0 {
 		if s.timer != nil {
 			s.logger.Debugf("onPoolChangeInLock() timer=%v exist", s.timer)
 		} else {
