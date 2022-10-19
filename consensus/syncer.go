@@ -339,14 +339,14 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 			}
 		}
 	case *voteListMessage:
-		s.engine.ReceiveVoteListMessage(m, true)
+		err = s.engine.ReceiveVoteListMessage(m, true)
+		if err != nil {
+			return false, err
+		}
 		rs := s.engine.GetRoundState()
 		s.log.Tracef("roundState=%+v\n", *rs)
 	default:
 		s.log.Warnf("received unknown message %v\n", msg)
-	}
-	if err != nil {
-		return false, err
 	}
 	return true, nil
 }

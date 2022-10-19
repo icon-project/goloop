@@ -17,21 +17,27 @@
 package test
 
 import (
+	"sync"
 	"testing"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 )
 
+var nmMu sync.Mutex
+
 type NetworkManager struct {
 	module.NetworkManager
-	t        *testing.T
+	t   *testing.T
+	id  module.PeerID
+	rCh chan packetEntry
+
+	// mutable data
 	peers    []Peer
 	handlers []*nmHandler
 	roles    map[string]module.Role
-	id       module.PeerID
-	rCh      chan packetEntry
 }
 
 func indexOf(pl []Peer, id module.PeerID) int {
@@ -45,65 +51,92 @@ func indexOf(pl []Peer, id module.PeerID) int {
 
 func NewNetworkManager(t *testing.T, a module.Address) *NetworkManager {
 	const chLen = 1024
-	return &NetworkManager{
+	n := &NetworkManager{
 		t:     t,
 		roles: make(map[string]module.Role),
 		id:    network.NewPeerIDFromAddress(a),
 		rCh:   make(chan packetEntry, chLen),
 	}
+	go n.handlePacketLoop()
+	return n
+}
+
+func (n *NetworkManager) handlePacketLoop() {
+	for p := range n.rCh {
+		n.handlePacket(p.pk, p.cb)
+	}
+}
+
+func (n *NetworkManager) Close() {
+	close(n.rCh)
 }
 
 func (n *NetworkManager) attach(p Peer) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	if indexOf(n.peers, p.ID()) < 0 {
 		n.peers = append(n.peers, p)
-		n.notifyJoin(p)
+		var reactors []module.Reactor
+		for _, h := range n.handlers {
+			reactors = append(reactors, h.reactor)
+		}
+		al.Unlock()
+
+		for _, reactor := range reactors {
+			reactor.OnJoin(p.ID())
+		}
 	}
 }
 
 func (n *NetworkManager) detach(p Peer) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	if i := indexOf(n.peers, p.ID()); i >= 0 {
-		n.notifyLeave(p)
 		last := len(n.peers) - 1
 		n.peers[i] = n.peers[last]
 		n.peers[last] = nil
 		n.peers = n.peers[:last]
+
+		var reactors []module.Reactor
+		for _, h := range n.handlers {
+			reactors = append(reactors, h.reactor)
+		}
+		al.Unlock()
+
+		for _, reactor := range reactors {
+			reactor.OnLeave(p.ID())
+		}
 	}
 }
 
 func (n *NetworkManager) notifyPacket(pk *Packet, cb func(rebroadcast bool, err error)) {
+	n.rCh <- packetEntry{pk, cb}
+}
+
+func (n *NetworkManager) handlePacket(pk *Packet, cb func(rebroadcast bool, err error)) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	for _, h := range n.handlers {
 		if pk.MPI == h.mpi {
 			reactor := h.reactor
-			Go(func() {
-				rb, err := reactor.OnReceive(pk.PI, pk.Data, pk.Src)
-				if cb != nil {
-					cb(rb, err)
-				}
-			})
+			al.Unlock()
+
+			rb, err := reactor.OnReceive(pk.PI, pk.Data, pk.Src)
+			if cb != nil {
+				cb(rb, err)
+			}
 			return
 		}
 	}
 }
 
-func (n *NetworkManager) notifyJoin(p Peer) {
-	for _, h := range n.handlers {
-		reactor := h.reactor
-		Go(func() {
-			reactor.OnJoin(p.ID())
-		})
-	}
-}
-
-func (n *NetworkManager) notifyLeave(p Peer) {
-	for _, h := range n.handlers {
-		reactor := h.reactor
-		Go(func() {
-			reactor.OnLeave(p.ID())
-		})
-	}
-}
-
 func (n *NetworkManager) GetPeers() []module.PeerID {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	peerIDs := make([]module.PeerID, len(n.peers))
 	for i, p := range n.peers {
 		peerIDs[i] = p.ID()
@@ -112,6 +145,9 @@ func (n *NetworkManager) GetPeers() []module.PeerID {
 }
 
 func (n *NetworkManager) RegisterReactor(name string, mpi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	h := &nmHandler{
 		n,
 		mpi,
@@ -129,6 +165,9 @@ func (n *NetworkManager) RegisterReactorForStreams(name string, pi module.Protoc
 }
 
 func (n *NetworkManager) UnregisterReactor(reactor module.Reactor) error {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	for i, h := range n.handlers {
 		if h.reactor == reactor {
 			last := len(n.handlers) - 1
@@ -142,6 +181,9 @@ func (n *NetworkManager) UnregisterReactor(reactor module.Reactor) error {
 }
 
 func (n *NetworkManager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	for k, v := range n.roles {
 		if v == role {
 			delete(n.roles, k)
@@ -182,38 +224,53 @@ type nmHandler struct {
 }
 
 func (h *nmHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
-	for _, p := range h.n.peers {
-		pk := &Packet{
-			SendTypeBroadcast,
-			h.n.id,
-			bt,
-			h.mpi,
-			pi,
-			b,
-		}
+	al := common.Lock(&nmMu)
+	pk := &Packet{
+		SendTypeBroadcast,
+		h.n.id,
+		bt,
+		h.mpi,
+		pi,
+		b,
+	}
+	peers := append([]Peer(nil), h.n.peers...)
+	al.Unlock()
+
+	for _, p := range peers {
 		p.notifyPacket(pk, nil)
 	}
 	return nil
 }
 
 func (h *nmHandler) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
+	var peers []Peer
+	pk := &Packet{
+		SendTypeMulticast,
+		h.n.id,
+		role,
+		h.mpi,
+		pi,
+		b,
+	}
 	for _, p := range h.n.peers {
 		if h.n.roles[string(p.ID().Bytes())] == role {
-			pk := &Packet{
-				SendTypeMulticast,
-				h.n.id,
-				role,
-				h.mpi,
-				pi,
-				b,
-			}
-			p.notifyPacket(pk, nil)
+			peers = append(peers, p)
 		}
+	}
+	al.Unlock()
+	for _, p := range peers {
+		p.notifyPacket(pk, nil)
 	}
 	return nil
 }
 
 func (h *nmHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
+	al := common.Lock(&nmMu)
+	defer al.Unlock()
+
 	if idx := indexOf(h.n.peers, id); idx >= 0 {
 		pk := &Packet{
 			SendTypeUnicast,
@@ -223,7 +280,10 @@ func (h *nmHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 			pi,
 			b,
 		}
-		h.n.peers[idx].notifyPacket(pk, nil)
+		p := h.n.peers[idx]
+		al.Unlock()
+
+		p.notifyPacket(pk, nil)
 		return nil
 	}
 	return errors.New("no peer")

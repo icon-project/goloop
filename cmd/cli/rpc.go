@@ -400,6 +400,29 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				return JsonPrettyPrintln(os.Stdout, raw)
 			},
 		})
+	scoreStatusCmd := &cobra.Command{
+		Use:   "scorestatus ADDRESS",
+		Short: "Get status of the smart contract",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &v3.ScoreAddressParam{Address: jsonrpc.Address(args[0])}
+			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
+			if err != nil {
+				return err
+			}
+			if height != -1 {
+				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
+			}
+			scoreStatus, err := rpcClient.GetScoreStatus(param)
+			if err != nil {
+				return err
+			}
+			return JsonPrettyPrintln(os.Stdout, scoreStatus)
+		},
+	}
+	rootCmd.AddCommand(scoreStatusCmd)
+	flags = scoreStatusCmd.Flags()
+	flags.Int("height", -1, "BlockHeight")
 
 	rootCmd.AddCommand(
 		&cobra.Command{
@@ -494,30 +517,6 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				return JsonPrettyPrintln(os.Stdout, r)
 			},
 		})
-
-	scoreStatusCmd := &cobra.Command{
-		Use:   "scorestatus ADDRESS",
-		Short: "Get status of the smart contract",
-		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			param := &v3.ScoreAddressParam{Address: jsonrpc.Address(args[0])}
-			height, err := intconv.ParseInt(cmd.Flag("height").Value.String(), 64)
-			if err != nil {
-				return err
-			}
-			if height != -1 {
-				param.Height = jsonrpc.HexInt(intconv.FormatInt(height))
-			}
-			scoreStatus, err := rpcClient.GetScoreStatus(param)
-			if err != nil {
-				return err
-			}
-			return JsonPrettyPrintln(os.Stdout, scoreStatus)
-		},
-	}
-	rootCmd.AddCommand(scoreStatusCmd)
-	flags = scoreStatusCmd.Flags()
-	flags.Int("height", -1, "BlockHeight")
 	return rootCmd, vc
 }
 

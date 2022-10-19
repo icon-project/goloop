@@ -72,7 +72,7 @@ func (vs *voteSet) add(index int, v *VoteMessage) bool {
 	return true
 }
 
-// returns true if has +2/3 votes
+// returns true if the voteSet has +2/3 votes
 func (vs *voteSet) hasOverTwoThirds() bool {
 	return vs.count > len(vs.msgs)*2/3
 }
@@ -214,8 +214,6 @@ func newVoteSet(nValidators int) *voteSet {
 		round:    -1,
 	}
 }
-
-type roundVoteSet = [numberOfVoteTypes]*voteSet
 
 type heightVoteSet struct {
 	_nValidators int

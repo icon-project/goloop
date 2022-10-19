@@ -13,7 +13,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
-	ssync "github.com/icon-project/goloop/service/sync"
+	ssync "github.com/icon-project/goloop/service/sync2"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -485,7 +485,7 @@ func (m *manager) Call(resultHash []byte,
 	if err != nil {
 		return nil, err
 	}
-	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil))
+	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil, eeproxy.ForQuery))
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
@@ -861,7 +861,7 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 	} else {
 		return nil, err
 	}
-	ctx := contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil)
+	ctx := contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil, eeproxy.ForQuery)
 	ctx.SetTransactionInfo(&state.TransactionInfo{
 		Group:     module.TransactionGroupNormal,
 		Index:     0,

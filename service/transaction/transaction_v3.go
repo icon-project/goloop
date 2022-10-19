@@ -168,6 +168,9 @@ func (tx *transactionV3) Verify() error {
 	if tx.Value != nil && tx.Value.Sign() < 0 {
 		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 	}
+	if tx.StepLimit.Sign() < 0 {
+		return InvalidTxValue.Errorf("InvalidTxStepLimit(%s)", tx.StepLimit.String())
+	}
 
 	// character level size of data element <= 512KB
 	n, err := countBytesOfCompactJSON(tx.Data)

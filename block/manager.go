@@ -751,7 +751,7 @@ func (m *manager) GetBlock(id []byte) (module.Block, error) {
 func (m *manager) getBlock(id []byte) (module.Block, error) {
 	blk := m.cache.Get(id)
 	if blk != nil {
-		return blk, nil
+		return blk.Copy(), nil
 	}
 	return m.doGetBlock(id)
 }
@@ -766,7 +766,7 @@ func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 			return nil, err
 		}
 		m.cache.Put(blk)
-		return blk, nil
+		return blk.Copy(), nil
 	}
 	return nil, errors.NotFoundError.Errorf("block not found %x", id)
 }
@@ -793,7 +793,7 @@ func (m *manager) doGetBlockByHash(hash []byte) (module.Block, error) {
 		return nil, err
 	}
 	m.cache.Put(blk)
-	return blk, err
+	return blk.Copy(), err
 }
 
 func (m *manager) Import(
@@ -1445,7 +1445,7 @@ func (m *manager) getBlockByHeightWithHandlerList(
 ) (module.Block, error) {
 	blk := m.cache.GetByHeight(height)
 	if blk != nil {
-		return blk, nil
+		return blk.Copy(), nil
 	}
 	return m.doGetBlockByHeight(height, hl)
 }
@@ -1486,7 +1486,7 @@ func (m *manager) doGetBlockByHeight(
 		return nil, err
 	}
 	m.cache.Put(blk)
-	return blk, err
+	return blk.Copy(), err
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {

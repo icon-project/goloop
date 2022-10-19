@@ -74,6 +74,11 @@ var (
 			stats.Int64("jsonrpc_estimate_step_avg", "moving average of jsonrpc debug_estimateStep method", "ns"),
 			emptyMks,
 		},
+		"rosetta_getTrace": {
+			stats.Int64("jsonrpc_rosetta_trace_", "jsonrpc rosetta_getTrace method", "ns"),
+			stats.Int64("jsonrpc_rosetta_trace_avg", "moving average of jsonrpc rosetta_getTTrace method", "ns"),
+			emptyMks,
+		},
 	}
 	jms    = make([]*JsonrpcMetric, 0)
 	jmsMtx sync.RWMutex

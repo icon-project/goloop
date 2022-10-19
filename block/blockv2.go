@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
@@ -141,7 +142,7 @@ func (bb *V2BodyFormat) RLPDecodeSelf(d codec.Decoder) error {
 	return nil
 }
 
-type blockV2 struct {
+type blockV2Immut struct {
 	height             int64
 	timestamp          int64
 	proposer           module.Address
@@ -153,12 +154,22 @@ type blockV2 struct {
 	nextValidatorsHash []byte
 	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
-	_id                []byte
-	_btpSection        module.BTPSection
 	nsFilter           module.BitSetFilter
-	_btpDigest         module.BTPDigest
 	sm                 ServiceManager
-	_nextPCM           module.BTPProofContextMap
+}
+
+type blockV2Mut struct {
+	_id         []byte
+	_btpSection module.BTPSection
+	_btpDigest  module.BTPDigest
+	_nextPCM    module.BTPProofContextMap
+}
+
+type blockV2 struct {
+	blockV2Immut
+
+	mu sync.Mutex
+	blockV2Mut
 }
 
 func (b *blockV2) Version() int {
@@ -166,6 +177,9 @@ func (b *blockV2) Version() int {
 }
 
 func (b *blockV2) ID() []byte {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._id == nil {
 		bs := v2Codec.MustMarshalToBytes(b._headerFormat())
 		b._id = crypto.SHA3Sum256(bs)
@@ -310,7 +324,10 @@ func (b *blockV2) _bodyFormat() (*V2BodyFormat, error) {
 }
 
 func (b *blockV2) NewBlock(tr module.Transition) module.Block {
-	blk := *b
+	blk := blockV2{
+		blockV2Immut: b.blockV2Immut,
+		blockV2Mut:   b.blockV2Mut,
+	}
 	blk._nextValidators = tr.NextValidators()
 	blk._btpSection = tr.BTPSection()
 	return &blk
@@ -364,13 +381,21 @@ func (b *blockV2) VerifyTimestamp(
 	return nil
 }
 
+func (b *blockV2) Copy() module.Block {
+	// blockV2 is safe to be used in multiple goroutine
+	return b
+}
+
 func (b *blockV2) NetworkSectionFilter() module.BitSetFilter {
 	return b.nsFilter
 }
 
 func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._btpDigest == nil {
-		bs, err := b.BTPSection()
+		bs, err := b.btpSectionInLock()
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +404,7 @@ func (b *blockV2) BTPDigest() (module.BTPDigest, error) {
 	return b._btpDigest, nil
 }
 
-func (b *blockV2) BTPSection() (module.BTPSection, error) {
+func (b *blockV2) btpSectionInLock() (module.BTPSection, error) {
 	if b._btpSection == nil {
 		bs, err := b.sm.BTPSectionFromResult(b.result)
 		if err != nil {
@@ -390,7 +415,17 @@ func (b *blockV2) BTPSection() (module.BTPSection, error) {
 	return b._btpSection, nil
 }
 
+func (b *blockV2) BTPSection() (module.BTPSection, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.btpSectionInLock()
+}
+
 func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b._nextPCM == nil {
 		nextPCM, err := b.sm.NextProofContextMapFromResult(b.result)
 		if err != nil {

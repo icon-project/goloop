@@ -5,6 +5,9 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven {
+            url "https://artifacts.consensys.net/public/maven/maven/"
+        }
     }
 }
 
@@ -23,15 +26,15 @@ subprojects {
 sourceSets.test.java.srcDirs = ["java"]
 
 dependencies {
-    implementation "org.msgpack:jackson-dataformat-msgpack:0.8.16"
+    implementation "org.msgpack:jackson-dataformat-msgpack:0.8.17"
     implementation "com.squareup.okhttp3:okhttp:3.11.0"
     implementation project(':sdk')
     implementation project(':api')
     implementation project(':rt')
     implementation project(':tooling')
     implementation project(':samples')
-    testImplementation "org.junit.jupiter:junit-jupiter:5.4.2"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.2"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.9.0"
+    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.9.0"
     testImplementation files(project(':rt').sourceSets.test.output)
 }
 

@@ -10,20 +10,17 @@ import (
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/icon-project/goloop/service/transaction"
-
-	"github.com/icon-project/goloop/service/contract"
-	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/txresult"
-
-	"github.com/icon-project/goloop/service/eeproxy"
-	ssync "github.com/icon-project/goloop/service/sync"
-
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
+	ssync "github.com/icon-project/goloop/service/sync2"
+	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -140,6 +137,7 @@ type transition struct {
 	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
+	btpDigest      module.BTPDigest
 	logsBloom      txresult.LogsBloom
 
 	transactionCount int
@@ -327,21 +325,28 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 }
 
 func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool, err error) {
+	t.log.Debugf("ExecuteForTrace() start: ti=%#v", ti)
 	if ti.Callback == nil {
 		return nil, errors.IllegalArgumentError.New("TraceCallbackIsNil")
 	}
-	switch ti.Group {
-	case module.TransactionGroupNormal:
-		if _, err := t.normalTransactions.Get(ti.Index); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+
+	if ti.Range == module.TraceRangeTransaction {
+		switch ti.Group {
+		case module.TransactionGroupNormal:
+			if _, err := t.normalTransactions.Get(ti.Index); err != nil {
+				return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+			}
+		case module.TransactionGroupPatch:
+			if _, err := t.patchTransactions.Get(ti.Index); err != nil {
+				return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+			}
+		default:
+			return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
 		}
-	case module.TransactionGroupPatch:
-		if _, err := t.patchTransactions.Get(ti.Index); err != nil {
-			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
-		}
-	default:
-		return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
 	}
+
+	// no need to validate the tx again for trace
+	t.step = stepValidated
 
 	return t.startExecution(func() error {
 		if t.syncer != nil {
@@ -408,6 +413,14 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 		ws.EnableNodeCache()
 	}
 	return state.NewWorldContext(ws, t.bi, t.csi, t.plt), nil
+}
+
+func (t *transition) newContractContext(wc state.WorldContext) contract.Context {
+	priority := eeproxy.ForTransaction
+	if t.ti != nil {
+		priority = eeproxy.ForQuery
+	}
+	return contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti, priority)
 }
 
 func (t *transition) reportValidation(e error) bool {
@@ -535,12 +548,25 @@ func (t *transition) doForceSync() {
 	t.patchReceipts = sr.PatchReceipts
 	t.normalReceipts = sr.NormalReceipts
 	t.worldSnapshot = sr.Wss
+	t.btpDigest = sr.BTPDigest
+
+	// update BTPSection with BTPDigest
+	ass := sr.Wss.GetAccountSnapshot(state.SystemID)
+	abs := scoredb.NewStateStoreWith(ass)
+	bc := state.NewBTPContext(nil, abs)
+	if bs, err := btp.NewSection(sr.BTPDigest, bc, t.db); err != nil {
+		t.reportExecution(err)
+		return
+	} else {
+		t.bs = bs
+	}
+
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
-		t.worldSnapshot.BTPData(),
+		t.btpDigest.Hash(),
 	}
 	t.result = tresult.Bytes()
 	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
@@ -623,7 +649,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
+	ctx := t.newContractContext(wc)
 	ctx.ClearCache()
 	ctx.SetProperty(contract.PropInitialSnapshot, ctx.GetSnapshot())
 
@@ -683,7 +709,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	tr.SetBalance(new(big.Int).Add(tb, gatheredFee))
 
 	er := NewExecutionResult(t.patchReceipts, t.normalReceipts, virtualFee, gatheredFee)
-	if err := t.plt.OnExecutionEnd(ctx, er, t.log); err != nil {
+	if err = t.onPlatformExecutionEnd(ctx, er); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -719,6 +745,14 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	t.result = tresult.Bytes()
 
 	t.reportExecution(nil)
+}
+
+func (t *transition) onPlatformExecutionEnd(ctx contract.Context, er base.ExecutionResult) error {
+	ctx.SetTransactionInfo(&state.TransactionInfo{
+		Index: int32(t.ntxCount),
+		Hash:  []byte{},
+	})
+	return t.plt.OnExecutionEnd(ctx, er, ctx.GetTraceLogger(module.EPhaseExecutionEnd))
 }
 
 func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) error {
@@ -922,7 +956,7 @@ func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 }
 
 type SyncManager interface {
-	NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) ssync.Syncer
+	NewSyncer(ah, prh, nrh, vh, ed, bh []byte, noBuffer bool) ssync.Syncer
 }
 
 func NewSyncTransition(
@@ -934,7 +968,7 @@ func NewSyncTransition(
 	tst := tr.(*transition)
 	ntr := newTransition(tst.parent, tst.patchTransactions, tst.normalTransactions, tst.bi, tst.csi, true)
 	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, noBuffer)
+	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, r.BTPData, noBuffer)
 	return ntr
 }
 

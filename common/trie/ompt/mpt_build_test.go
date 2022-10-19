@@ -2,13 +2,14 @@ package ompt
 
 import (
 	"bytes"
+	"log"
+	"reflect"
+	"testing"
+
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
-	"log"
-	"reflect"
-	"testing"
 )
 
 type TestObject struct {
@@ -147,11 +148,11 @@ func TestMerkleBuild(t *testing.T) {
 			key := req.Key()
 			log.Printf("Get Value for Key=<%x>", key)
 			if v, err := bkTrie.Get(key); err == nil && v != nil {
-				builder.OnData(v)
+				builder.OnData(db.MerkleTrie, v)
 				continue
 			}
 			if v, err := bkBytes.Get(key); err == nil && v != nil {
-				builder.OnData(v)
+				builder.OnData(db.BytesByHash, v)
 				continue
 			}
 			t.Errorf("Fail to get bytes for key=<%x>", key)

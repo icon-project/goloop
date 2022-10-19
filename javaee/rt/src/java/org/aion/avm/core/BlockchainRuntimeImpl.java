@@ -347,6 +347,20 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public ByteArray avm_aggregate(s.java.lang.String type, ByteArray prevAgg,
+            ByteArray values) {
+        Objects.requireNonNull(type, "Type can't be NULL");
+        Objects.requireNonNull(values, "Values can't be NULL");
+        byte[] pa = null;
+        if (prevAgg!=null) {
+            pa = prevAgg.getUnderlying();
+        }
+        return new ByteArray(Crypto.aggregate(
+                type.getUnderlying(), pa, values.getUnderlying()
+        ));
+    }
+
+    @Override
     public p.score.Address avm_getAddressFromKey(ByteArray publicKey) {
         Objects.requireNonNull(publicKey, "publicKey is NULL");
         return new p.score.Address(Crypto.getAddressBytesFromKey(publicKey.getUnderlying()));

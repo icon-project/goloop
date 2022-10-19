@@ -118,6 +118,9 @@ func (key *PublicKey) String() string {
 
 // GenerateKeyPair generates a private and public key pair.
 func GenerateKeyPair() (privKey *PrivateKey, pubKey *PublicKey) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
 	pub, priv := secp256k1.GenerateKeyPair()
 	privKey = &PrivateKey{priv}
 	pubKey, _ = ParsePublicKey(pub)
