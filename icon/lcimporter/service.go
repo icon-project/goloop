@@ -28,7 +28,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/sync"
+	"github.com/icon-project/goloop/service/sync2"
 )
 
 type Service interface {
@@ -137,7 +137,7 @@ func NewService(c module.Chain, plt base.Platform, pm eeproxy.Manager, baseDir s
 			BaseDir: baseDir,
 			pm:      pm,
 		},
-		syncMan: sync.NewSyncManager(c.Database(), c.NetworkManager(), plt, c.Logger()),
+		syncMan: sync2.NewSyncManager(c.Database(), c.NetworkManager(), plt, c.Logger()),
 	}, nil
 }
 
