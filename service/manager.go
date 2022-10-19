@@ -756,11 +756,15 @@ func (m *manager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
 	if err != nil {
 		return nil, err
 	}
+	btpData := wss.BTPData()
+	if len(btpData) == 0 {
+		return btp.ZeroDigest, nil
+	}
 	bk, err := m.db.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
 	}
-	digestBytes, err := bk.Get(wss.BTPData())
+	digestBytes, err := bk.Get(btpData)
 	if err != nil {
 		return nil, err
 	}
