@@ -19,6 +19,10 @@ package state
 import "github.com/icon-project/goloop/common"
 
 const (
+	VarBlockedScores  = "blocked_scores"
+)
+
+const (
 	LostIDStr = "\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 

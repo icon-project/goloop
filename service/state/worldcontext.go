@@ -25,7 +25,6 @@ const (
 	VarRevision       = "revision"
 	VarMembers        = "members"
 	VarDeployers      = "deployers"
-	VarBlockedScores  = "blocked_scores"
 	VarLicenses       = "licenses"
 	VarTotalSupply    = "total_supply"
 
