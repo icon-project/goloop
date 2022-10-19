@@ -369,6 +369,7 @@ func (b *blockV11) NextValidatorsHash() []byte {
 
 func (b *blockV11) NewBlock(tr module.Transition) module.Block {
 	res := *b
+	res.blockDetail = &res
 	res._nextValidators = tr.NextValidators()
 	return &res
 }
@@ -480,6 +481,9 @@ func (b *blockV13) BlockVotes() *blockv0.BlockVoteList {
 
 func (b *blockV13) NewBlock(tr module.Transition) module.Block {
 	res := *b
+	res.blockVotes = b.blockVotes.Copy()
+	res.leaderVotes = b.leaderVotes.Copy()
+	res.blockDetail = &res
 	res._nextValidators = tr.NextValidators()
 	return &res
 }
