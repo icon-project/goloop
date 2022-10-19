@@ -20,21 +20,21 @@ func (ba *bitArray) Len() int {
 }
 
 func (ba *bitArray) Set(idx int) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] | (1 << uint(idx%wordBits))
 }
 
 func (ba *bitArray) Unset(idx int) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] &^ (1 << uint(idx%wordBits))
 }
 
 func (ba *bitArray) Put(idx int, v bool) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	if v {
@@ -45,7 +45,7 @@ func (ba *bitArray) Put(idx int, v bool) {
 }
 
 func (ba *bitArray) Get(idx int) bool {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return false
 	}
 	return ba.Words[idx/wordBits]&(1<<uint(idx%wordBits)) != 0
@@ -64,7 +64,7 @@ func (ba *bitArray) Flip() {
 func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 	lba := len(ba.Words)
 	lba2 := len(ba2.Words)
-	if lba > lba2 {
+	if ba.NumBits > ba2.NumBits {
 		ba.Words = ba.Words[:lba2]
 		ba.NumBits = ba2.NumBits
 		lba = lba2
@@ -107,8 +107,7 @@ func (ba bitArray) String() string {
 
 func (ba *bitArray) Equal(ba2 *bitArray) bool {
 	lba := len(ba.Words)
-	lba2 := len(ba2.Words)
-	if lba != lba2 {
+	if ba.NumBits != ba2.NumBits {
 		return false
 	}
 	for i := 0; i < lba; i++ {
