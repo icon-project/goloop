@@ -98,6 +98,10 @@ func (vs *tCommitVoteSet) Bytes() []byte {
 	return vs.b
 }
 
+func (vs *tCommitVoteSet) VoteRound() int32 {
+	return 0
+}
+
 type tBlockManager struct {
 	module.BlockManager
 	bmap map[int64]module.Block

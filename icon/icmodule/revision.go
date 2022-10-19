@@ -38,13 +38,14 @@ const (
 	Revision17
 	Revision18
 	Revision19
+	Revision20
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision18
+	LatestRevision  = Revision20
 )
 
 const (
@@ -95,6 +96,8 @@ const (
 	RevisionFixVotingReward     = Revision17
 
 	RevisionFixTransferRewardFund = Revision18
+
+	RevisionBTP2 = Revision20
 )
 
 var revisionFlags = []module.Revision{
@@ -138,6 +141,8 @@ var revisionFlags = []module.Revision{
 	module.FixLostFeeByDeposit,
 	// Revision19
 	module.PurgeEnumCache,
+	// Revision20
+	module.MultipleFeePayers,
 }
 
 func init() {

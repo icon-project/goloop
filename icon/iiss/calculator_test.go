@@ -483,41 +483,21 @@ func TestVotedInfo_updateBonded(t *testing.T) {
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 }
 
-func TestVotedInfo_SortAndUpdateTotalBondedDelegation(t *testing.T) {
-	d := newVotedInfo(100)
+func TestVotedInfo_SortAndUpdateTotalBondedDelegationAndCalculateReward(t *testing.T) {
+	maxRank := 50
+	maxIndex := int64(100)
+	vInfo := newVotedInfo(maxRank)
 	total := int64(0)
-	more := int64(10)
-	maxIndex := int64(d.MaxRankForReward()) + more
+	rankCount := 0
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(true, i, 0, 0, i)
-		d.AddVotedData(addr, data)
-		if i > more {
-			total += i
+		data := newVotedDataForTest(true, i, i, 5, 0)
+		if rankCount < maxRank {
+			total += i * 2
+			rankCount++
+			data.SetPubKey(true)
 		}
-	}
-	d.Sort()
-	d.UpdateTotalBondedDelegation()
-	assert.Equal(t, total, d.TotalBondedDelegation().Int64())
-
-	for i, rank := range d.Rank() {
-		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", maxIndex-int64(i)))
-		assert.Equal(t, string(addr.Bytes()), rank)
-	}
-}
-
-func TestVotedInfo_calculateReward(t *testing.T) {
-	vInfo := newVotedInfo(100)
-	total := int64(0)
-	more := int64(10)
-	maxIndex := int64(vInfo.MaxRankForReward()) + more
-	for i := int64(1); i <= maxIndex; i += 1 {
-		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(true, i, 0, 0, 0)
 		vInfo.AddVotedData(addr, data)
-		if i > more {
-			total += i
-		}
 	}
 	vInfo.Sort()
 	vInfo.UpdateTotalBondedDelegation()
@@ -530,16 +510,25 @@ func TestVotedInfo_calculateReward(t *testing.T) {
 
 	vInfo.CalculateReward(variable, divider, period)
 
-	for i, addrKey := range vInfo.Rank() {
-		expect := big.NewInt(maxIndex - int64(i))
-		if i >= vInfo.MaxRankForReward() {
-			expect.SetInt64(0)
+	for i, rank := range vInfo.Rank() {
+		// check sort
+		var addr *common.Address
+		if i < maxRank {
+			addr = common.MustNewAddressFromString(fmt.Sprintf("hx%d", maxRank-i))
 		} else {
+			addr = common.MustNewAddressFromString(fmt.Sprintf("hx%d", int(maxIndex)+maxRank-i))
+		}
+		assert.Equal(t, string(addr.Bytes()), rank, addr.String())
+
+		// check reward
+		expect := big.NewInt(0)
+		if i < maxRank {
+			expect.SetInt64(int64(maxRank-i) * 2)
 			expect.Mul(expect, variable)
 			expect.Mul(expect, bigIntPeriod)
 			expect.Div(expect, vInfo.TotalBondedDelegation())
 		}
-		assert.Equal(t, expect.Int64(), vInfo.PReps()[addrKey].IScore().Int64())
+		assert.Equal(t, expect.Int64(), vInfo.PReps()[rank].IScore().Int64(), i)
 	}
 }
 
@@ -820,11 +809,10 @@ func TestCalculator_WaitResult(t *testing.T) {
 		assert.True(t, err == errors.ErrInvalidState)
 		toTC <- "done"
 	}()
-	time.Sleep(time.Millisecond*10)
+	time.Sleep(time.Millisecond * 10)
 
 	c.setResult(nil, errors.ErrInvalidState)
 	assert.Equal(t, "done", <-toTC)
-
 
 	c = &Calculator{
 		startHeight: 3414,
@@ -839,7 +827,7 @@ func TestCalculator_WaitResult(t *testing.T) {
 		assert.NoError(t, err)
 		toTC <- "done"
 	}()
-	time.Sleep(time.Millisecond*20)
+	time.Sleep(time.Millisecond * 20)
 
 	mdb := db.NewMapDB()
 	rss := icreward.NewSnapshot(mdb, nil)

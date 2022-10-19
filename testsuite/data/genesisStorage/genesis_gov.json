@@ -27,7 +27,7 @@
     "chain": {
         "auditEnabled": "0x0",
         "deployerWhiteListEnabled": "0x0",
-        "revision": "0x8",
+        "revision": "0x9",
         "feeSharingEnabled": "0x1",
         "validatorList": [
             "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"

@@ -51,6 +51,17 @@ func (g Grade) String() string {
 	}
 }
 
+func (g Grade) Cmp(g2 Grade) int {
+	switch {
+	case g == g2:
+		return 0
+	case g < g2:
+		return 1
+	default:
+		return -1
+	}
+}
+
 type Status int
 
 const (

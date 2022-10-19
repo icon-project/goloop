@@ -7,12 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
-	ssync "github.com/icon-project/goloop/service/sync"
+	ssync "github.com/icon-project/goloop/service/sync2"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -711,6 +712,87 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (m *manager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	nw, err := btpContext.GetNetwork(nid)
+	if err != nil {
+		return nil, err
+	}
+	return nw, nil
+}
+
+func (m *manager) BTPNetworkTypeFromResult(result []byte, ntid int64) (module.BTPNetworkType, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	nt, err := btpContext.GetNetworkType(ntid)
+	if err != nil {
+		return nil, err
+	}
+	return nt, nil
+}
+
+func (m *manager) BTPNetworkTypeIDsFromResult(result []byte) ([]int64, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, as)
+	ntids, err := btpContext.GetNetworkTypeIDs()
+	if err != nil {
+		return nil, err
+	}
+	return ntids, nil
+}
+
+func (m *manager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return nil, err
+	}
+	bk, err := m.db.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	digestBytes, err := bk.Get(wss.BTPData())
+	if err != nil {
+		return nil, err
+	}
+	digest, err := btp.NewDigestFromBytes(digestBytes)
+	if err != nil {
+		return nil, err
+	}
+	return digest, nil
+}
+
+func (m *manager) BTPSectionFromResult(result []byte) (module.BTPSection, error) {
+	digest, err := m.BTPDigestFromResult(result)
+	if err != nil {
+		return nil, err
+	}
+	store, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, store)
+	return btp.NewSection(digest, btpContext, m.db)
+}
+
+func (m *manager) NextProofContextMapFromResult(result []byte) (module.BTPProofContextMap, error) {
+	store, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	btpContext := state.NewBTPContext(nil, store)
+	return btp.NewProofContextsMap(btpContext)
+}
+
 func (m *manager) HasTransaction(id []byte) bool {
 	return m.tm.HasTx(id)
 }
@@ -736,7 +818,7 @@ func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	ess := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess, r.BTPData)
 	return e.Run()
 }
 
@@ -749,7 +831,7 @@ func (m *manager) ImportResult(result []byte, vh []byte, src db.Database) error 
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	es := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
-	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, es)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, es, r.BTPData)
 	return e.Run()
 }
 

@@ -17,279 +17,343 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 )
 
 func getRandomVoteState() VoteState {
 	return []VoteState{None, Success, Failure}[rand.Intn(3)]
 }
 
-func checkDuplicatePReps(t *testing.T, prepSet PRepSet, originPReps []*PRep) {
-	prepMap := make(map[string]int)
-	for i := 0; i < prepSet.Size(); i++ {
-		prep := prepSet.GetPRepByIndex(i)
-		_, ok := prepMap[icutils.ToKey(prep.Owner())]
-		assert.False(t, ok)
-		prepMap[icutils.ToKey(prep.Owner())] = 1
+func newDummyAddress(value int) module.Address {
+	bs := make([]byte, common.AddressBytes)
+	for i := 0; value != 0 && i < 8; i++ {
+		bs[common.AddressBytes-1-i] = byte(value & 0xFF)
+		value >>= 8
 	}
-	assert.Equal(t, len(prepMap), prepSet.Size())
+	return common.MustNewAddress(bs)
+}
 
-	for _, prep := range originPReps {
-		_, ok := prepMap[icutils.ToKey(prep.Owner())]
-		assert.True(t, ok)
+func newDummyPRepBase(i int) *PRepBaseState {
+	info := newDummyPRepInfo(i)
+	pb := NewPRepBaseState()
+	pb.UpdateInfo(info)
+	return pb
+}
+
+func newDummyPRepStatus(value int) *PRepStatusState {
+	ps := NewPRepStatus()
+	_ = ps.Activate()
+	ps.SetDelegated(big.NewInt(rand.Int63n(1000) + 1))
+	ps.SetBonded(big.NewInt(rand.Int63n(1000) + 1))
+	return ps
+}
+
+func newDummyPRep(i int) *PRep {
+	owner := newDummyAddress(i)
+	pb := newDummyPRepBase(i)
+	ps := newDummyPRepStatus(i)
+	return &PRep{
+		owner:           owner,
+		pb:              pb,
+		PRepStatusState: ps,
 	}
 }
 
-func TestPRepSet_GetPRepByIndex(t *testing.T) {
-	br := int64(5)
-	preps := newDummyPReps(10, br)
+type dummyPRepSetEntry struct {
+	prep      *PRep
+	status    Status
+	grade     Grade
+	power     *big.Int
+	delegated *big.Int
+	bonded    *big.Int
+	owner     module.Address
+	pubKey    bool
+}
 
-	prevBd := big.NewInt(-1)
-	for i := 0; i < preps.Size(); i++ {
-		prep := preps.GetPRepByIndex(i)
-		info := prep.info()
-		assert.Equal(t, "KOR", *info.Country)
+func (d *dummyPRepSetEntry) PRep() *PRep {
+	return d.prep
+}
 
-		bd := prep.GetBondedDelegation(br)
-		assert.True(t, prevBd.Cmp(bd) <= 0)
+func (d *dummyPRepSetEntry) Status() Status {
+	return Active
+}
+
+func (d *dummyPRepSetEntry) Grade() Grade {
+	return d.grade
+}
+
+func (d *dummyPRepSetEntry) Power(_ int64) *big.Int {
+	return d.power
+}
+
+func (d *dummyPRepSetEntry) Delegated() *big.Int {
+	return d.delegated
+}
+
+func (d *dummyPRepSetEntry) Bonded() *big.Int {
+	return d.bonded
+}
+
+func (d *dummyPRepSetEntry) Owner() module.Address {
+	return d.prep.Owner()
+}
+
+func (d *dummyPRepSetEntry) PubKey() bool {
+	return d.pubKey
+}
+
+func newDummyPRepSetEntry(
+	prep *PRep, grade Grade, power, delegated, bonded int, pubKey bool,
+) *dummyPRepSetEntry {
+	return &dummyPRepSetEntry{
+		prep:      prep,
+		grade:     grade,
+		power:     big.NewInt(int64(power)),
+		delegated: big.NewInt(int64(delegated)),
+		bonded:    big.NewInt(int64(bonded)),
+		pubKey:    pubKey,
 	}
 }
 
-func TestPRepSet_OnTermEnd(t *testing.T) {
-	var err error
-	size := 150
-	br := int64(5)
-	mainPRepCount := 22
-	subPRepCount := 78
-	extraMainPRepCount := 0
-	electedPRepCount := mainPRepCount + subPRepCount
-	limit := 30
-	revision := icmodule.RevisionResetPenaltyMask
-
-	preps := newDummyPReps(size, br)
-	assert.Equal(t, size, preps.Size())
-
-	prep := preps.GetPRepByIndex(0)
-	prep.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
-	assert.True(t, prep.GetVPenaltyCount() > 0)
-
-	err = preps.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br)
-	assert.NoError(t, err)
-	assert.Equal(t, mainPRepCount, preps.GetPRepSize(GradeMain))
-	assert.Equal(t, subPRepCount, preps.GetPRepSize(GradeSub))
-	assert.Equal(t, size-mainPRepCount-subPRepCount, preps.GetPRepSize(GradeCandidate))
-
+func newDummyPRepSet(size int) PRepSet {
+	prepSetEntries := make([]PRepSetEntry, size)
 	for i := 0; i < size; i++ {
-		prep = preps.GetPRepByIndex(i)
-		if revision == icmodule.RevisionResetPenaltyMask {
-			assert.Zero(t, prep.GetVPenaltyCount())
-		}
-		if i < mainPRepCount {
-			assert.Equal(t, GradeMain, prep.Grade())
-		} else if i < electedPRepCount {
-			assert.Equal(t, GradeSub, prep.Grade())
-		} else {
-			assert.Equal(t, GradeCandidate, prep.Grade())
-		}
+		prepSetEntries[i] = NewPRepSetEntry(newDummyPRep(i), false)
+	}
+	prepSet := NewPRepSet(prepSetEntries)
+	return prepSet
+}
+
+func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
+	br := int64(5)
+	prep1 := newDummyPRep(1)
+	prep1.lastState = None
+	prep1.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
+	prep2 := newDummyPRep(2)
+	prep2.lastState = None
+	prep3 := newDummyPRep(3)
+	prep3.lastState = None
+	prep3.lastHeight = 1
+	prep4 := newDummyPRep(4)
+	prep4.lastState = Success
+	prep5 := newDummyPRep(5)
+	prep5.lastState = None
+	prep5.lastHeight = 2
+	prep6 := newDummyPRep(6)
+	prepSetEntries := []PRepSetEntry{
+		&dummyPRepSetEntry{
+			prep:      prep1,
+			grade:     GradeMain,
+			power:     big.NewInt(1),
+			delegated: big.NewInt(1),
+			bonded:    big.NewInt(1),
+			pubKey:    true,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep2,
+			grade:     GradeSub,
+			power:     big.NewInt(2),
+			delegated: big.NewInt(2),
+			bonded:    big.NewInt(2),
+			pubKey:    false,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep3,
+			grade:     GradeSub,
+			power:     big.NewInt(3),
+			delegated: big.NewInt(3),
+			bonded:    big.NewInt(3),
+			pubKey:    false,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep4,
+			grade:     GradeMain,
+			power:     big.NewInt(4),
+			delegated: big.NewInt(4),
+			bonded:    big.NewInt(4),
+			pubKey:    false,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep5,
+			grade:     GradeCandidate,
+			power:     big.NewInt(3),
+			delegated: big.NewInt(3),
+			bonded:    big.NewInt(3),
+			pubKey:    true,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep6,
+			grade:     GradeCandidate,
+			power:     big.NewInt(0),
+			delegated: big.NewInt(0),
+			bonded:    big.NewInt(0),
+			pubKey:    true,
+		},
+	}
+
+	prepSet := NewPRepSet(prepSetEntries)
+	assert.Equal(t, 2, prepSet.GetPRepSize(GradeMain))
+	assert.Equal(t, 2, prepSet.GetPRepSize(GradeSub))
+	assert.Equal(t, 2, prepSet.GetPRepSize(GradeCandidate))
+	assert.Equal(t, 6, prepSet.Size())
+	assert.Equal(t, big.NewInt(13), prepSet.TotalBonded())
+	assert.Equal(t, big.NewInt(13), prepSet.TotalDelegated())
+	assert.Equal(t, big.NewInt(13), prepSet.GetTotalPower(br))
+
+	tests := []struct {
+		name       string
+		rev        int
+		main       int
+		sub        int
+		extra      int
+		expect     []*PRep
+		expectMain int
+		expectSub  int
+	}{
+		{
+			"Sort by power",
+			icmodule.RevisionResetPenaltyMask,
+			1, 2, 0,
+			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
+			1, 2,
+		},
+		{
+			"Sort by power",
+			icmodule.RevisionEnableIISS3,
+			1, 2, 0,
+			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
+			1, 2,
+		},
+		{
+			"Sort by power + extra main prep",
+			icmodule.RevisionExtraMainPReps,
+			1, 2, 1,
+			[]*PRep{prep4, prep3, prep5, prep2, prep1, prep6},
+			2, 1,
+		},
+		{
+			"Sort by power + extra main prep with zero count",
+			icmodule.RevisionExtraMainPReps,
+			1, 2, 0,
+			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
+			1, 2,
+		},
+		{
+			"Sort by power + pubKey + extra main prep",
+			icmodule.RevisionBTP2,
+			1, 2, 1,
+			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
+			2, 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s rev=%d", tt.name, tt.rev), func(t *testing.T) {
+			prepSet.Sort(tt.main, tt.sub, tt.extra, br, tt.rev)
+			err := prepSet.OnTermEnd(tt.rev, tt.main, tt.sub, tt.extra, 0, br)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectMain, prepSet.GetPRepSize(GradeMain))
+			assert.Equal(t, tt.expectSub, prepSet.GetPRepSize(GradeSub))
+
+			for j := 0; j < prepSet.Size(); j++ {
+				// check sort order
+				aEntry := prepSet.GetByIndex(j)
+				ePRep := tt.expect[j]
+				ao := aEntry.Owner()
+				eo := ePRep.Owner()
+				assert.True(t, ao.Equal(eo), fmt.Sprintf("e:%s a:%s", eo, ao))
+
+				// check grade of P-Rep
+				switch {
+				case j < tt.expectMain:
+					if tt.rev >= icmodule.RevisionBTP2 &&
+						(aEntry.PubKey() == false || aEntry.Power(br).Sign() == 0) {
+						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
+					} else {
+						assert.Equal(t, GradeMain, aEntry.PRep().Grade())
+					}
+				case j < tt.expectMain+tt.expectSub:
+					if tt.rev >= icmodule.RevisionBTP2 &&
+						(aEntry.PubKey() == false || aEntry.Power(br).Sign() == 0) {
+						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
+					} else {
+						assert.Equal(t, GradeSub, aEntry.PRep().Grade())
+					}
+				default:
+					assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
+				}
+
+				if tt.rev == icmodule.RevisionResetPenaltyMask {
+					assert.Zero(t, aEntry.PRep().GetVPenaltyCount())
+				}
+			}
+		})
 	}
 }
 
-func TestPRepSet_NewPRepsIncludingExtraMainPRep(t *testing.T) {
-	size := 200
+func TestPRepSet_SortByGrade(t *testing.T) {
 	br := int64(5)
-	mainPRepCount := 22
-	subPRepCount := 78
-	extraMainPRepCount := 3
-
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		prep := newDummyPRep(i)
-		prep.lastHeight = rand.Int63n(10000)
-		prep.lastState = getRandomVoteState()
-		preps[i] = prep
+	prep1 := newDummyPRep(1)
+	prep2 := newDummyPRep(2)
+	prep3 := newDummyPRep(3)
+	prep4 := newDummyPRep(4)
+	prep5 := newDummyPRep(5)
+	prepSetEntries := []PRepSetEntry{
+		&dummyPRepSetEntry{
+			prep:      prep1,
+			grade:     GradeMain,
+			power:     big.NewInt(1),
+			delegated: big.NewInt(1),
+			bonded:    big.NewInt(1),
+		},
+		&dummyPRepSetEntry{
+			prep:      prep2,
+			grade:     GradeSub,
+			power:     big.NewInt(2),
+			delegated: big.NewInt(2),
+			bonded:    big.NewInt(2),
+		},
+		&dummyPRepSetEntry{
+			prep:      prep3,
+			grade:     GradeSub,
+			power:     big.NewInt(3),
+			delegated: big.NewInt(3),
+			bonded:    big.NewInt(3),
+		},
+		&dummyPRepSetEntry{
+			prep:      prep4,
+			grade:     GradeMain,
+			power:     big.NewInt(4),
+			delegated: big.NewInt(4),
+			bonded:    big.NewInt(4),
+		},
+		&dummyPRepSetEntry{
+			prep:      prep5,
+			grade:     GradeCandidate,
+			power:     big.NewInt(3),
+			delegated: big.NewInt(3),
+			bonded:    big.NewInt(3),
+		},
 	}
+	expect := []*PRep{prep4, prep1, prep3, prep2, prep5}
 
-	prepSet := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
-	)
-	assert.Equal(t, size, prepSet.Size())
-	checkDuplicatePReps(t, prepSet, preps)
+	prepSet := NewPRepSet(prepSetEntries)
 
-	sort.Slice(preps, func(i, j int) bool {
-		return lessByPower(preps[i], preps[j], br)
-	})
-
-	extraMainPRepIdxRange := []int{mainPRepCount, mainPRepCount + extraMainPRepCount}
-	prevPRep := prepSet.GetPRepByIndex(0)
-	for i := 1; i < size; i++ {
-		if i >= extraMainPRepIdxRange[0] && i < extraMainPRepIdxRange[1] {
-			// Skip extra main preps
-			continue
-		}
-		prep := prepSet.GetPRepByIndex(i)
-		assert.True(t, lessByPower(prevPRep, prep, br))
-		prevPRep = prep
+	prepSet.SortByGrade(br)
+	for j := 0; j < prepSet.Size(); j++ {
+		rEntry := prepSet.GetByIndex(j)
+		ePRep := expect[j]
+		ro := rEntry.Owner()
+		eo := ePRep.Owner()
+		assert.True(t, ro.Equal(eo), fmt.Sprintf("e:%s r:%s", eo, ro))
 	}
-
-	restPReps := make([]*PRep, subPRepCount)
-	for i := 0; i < len(restPReps); i++ {
-		restPReps[i] = prepSet.GetPRepByIndex(mainPRepCount + i)
-	}
-	sort.Slice(restPReps, func(i, j int) bool {
-		return lessByLRU(restPReps[i], restPReps[j], br)
-	})
-
-	for i := 0; i < extraMainPRepCount; i++ {
-		assert.True(t, restPReps[i] == prepSet.GetPRepByIndex(i+mainPRepCount))
-	}
-}
-
-// In case of 0 ExtraMainPRepCount,
-// Check if both of two NewPReps functions return the same results
-func TestPRepSet_NewPReps_WithZeroExtraPRepCount(t *testing.T) {
-	size := 200
-	br := int64(5)
-	mainPRepCount := 25
-	subPRepCount := 75
-	extraMainPRepCount := 0
-
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		prep := newDummyPRep(i)
-		prep.lastHeight = rand.Int63n(10000)
-		prep.lastState = getRandomVoteState()
-		preps[i] = prep
-	}
-
-	prepSet0 := NewPRepsOrderedByPower(preps, br)
-	prepSet1 := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
-	)
-	checkDuplicatePReps(t, prepSet0, preps)
-	checkDuplicatePReps(t, prepSet1, preps)
-
-	sort.Slice(preps, func(i, j int) bool {
-		return lessByPower(preps[i], preps[j], br)
-	})
-
-	assert.Equal(t, len(preps), prepSet0.Size())
-	assert.Equal(t, len(preps), prepSet1.Size())
-
-	for i, prep := range preps {
-		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
-		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
-	}
-}
-
-func TestPRepSet_NewPReps2_withNoExtraPReps(t *testing.T) {
-	size := 23
-	br := int64(5)
-	mainPRepCount := 22
-	subPRepCount := 78
-	extraMainPRepCount := 3
-
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		prep := newDummyPRep(i)
-		prep.lastHeight = rand.Int63n(10000)
-		prep.lastState = getRandomVoteState()
-		preps[i] = prep
-	}
-
-	prepSet0 := NewPRepsOrderedByPower(preps, br)
-	prepSet1 := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
-	)
-	checkDuplicatePReps(t, prepSet0, preps)
-	checkDuplicatePReps(t, prepSet1, preps)
-
-	// preps is sorted in descending order by power
-	sort.Slice(preps, func(i, j int) bool {
-		return lessByPower(preps[i], preps[j], br)
-	})
-
-	assert.Equal(t, len(preps), prepSet0.Size())
-	assert.Equal(t, len(preps), prepSet1.Size())
-
-	for i := 0; i < size; i++ {
-		prep := preps[i]
-		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
-		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
-	}
-}
-
-func TestPRepSet_ExtraMainPRepsWithZeroPower(t *testing.T) {
-	size := 30
-	br := int64(5)
-	mainPRepCount := 22
-	subPRepCount := 78
-	extraMainPRepCount := 3
-	zeroPowerPRepCount := 8
-
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		prep := newDummyPRep(i)
-		prep.lastHeight = rand.Int63n(10000)
-		prep.lastState = getRandomVoteState()
-		preps[i] = prep
-
-		// there are at least 8 preps with 0 power
-		if i < zeroPowerPRepCount {
-			prep.SetBonded(new(big.Int))
-			assert.Zero(t, prep.GetPower(br).Sign())
-		}
-	}
-
-	prepSet0 := NewPRepsOrderedByPower(preps, br)
-	prepSet1 := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
-	)
-	checkDuplicatePReps(t, prepSet0, preps)
-	checkDuplicatePReps(t, prepSet1, preps)
-
-	// preps is sorted in descending order by power
-	sort.Slice(preps, func(i, j int) bool {
-		return lessByPower(preps[i], preps[j], br)
-	})
-
-	assert.Equal(t, len(preps), prepSet0.Size())
-	assert.Equal(t, len(preps), prepSet1.Size())
-
-	for i, prep := range preps {
-		assert.Equal(t, prep, prepSet0.GetPRepByIndex(i))
-		assert.Equal(t, prep, prepSet1.GetPRepByIndex(i))
-	}
-}
-
-func TestPRepSet_WithLRUAndOneZeroPowerPRep(t *testing.T) {
-	size := 30
-	br := int64(5)
-	mainPRepCount := 22
-	subPRepCount := 78
-	extraMainPRepCount := 3
-	zeroPowerPRepIndex := mainPRepCount
-
-	preps := make([]*PRep, size)
-	for i := 0; i < size; i++ {
-		prep := newDummyPRep(i)
-		prep.lastHeight = rand.Int63n(10000) + 1
-		prep.lastState = getRandomVoteState()
-		preps[i] = prep
-	}
-	preps[zeroPowerPRepIndex].lastHeight = 0
-	preps[zeroPowerPRepIndex].lastState = None
-	preps[zeroPowerPRepIndex].SetBonded(big.NewInt(0))
-
-	prepSet := NewPRepsIncludingExtraMainPRep(
-		preps, mainPRepCount, subPRepCount, extraMainPRepCount, br,
-	)
-	checkDuplicatePReps(t, prepSet, preps)
 }

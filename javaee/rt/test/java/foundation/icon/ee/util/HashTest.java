@@ -16,8 +16,6 @@
 
 package foundation.icon.ee.util;
 
-import foundation.icon.ee.util.Strings;
-import foundation.icon.ee.util.xxhash.XxHash;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 

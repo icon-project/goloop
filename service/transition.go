@@ -1,11 +1,13 @@
 package service
 
 import (
+	"container/list"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -16,7 +18,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
-	ssync "github.com/icon-project/goloop/service/sync"
+	ssync "github.com/icon-project/goloop/service/sync2"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -118,6 +120,7 @@ type transition struct {
 	bi     module.BlockInfo
 	pbi    module.BlockInfo
 	csi    module.ConsensusInfo
+	bs     module.BTPSection
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -134,6 +137,7 @@ type transition struct {
 	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
+	btpDigest      module.BTPDigest
 	logsBloom      txresult.LogsBloom
 
 	transactionCount int
@@ -206,7 +210,7 @@ func newTransition(
 }
 
 func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl module.ValidatorList) (state.WorldSnapshot, error) {
-	var stateHash, extensionData []byte
+	var stateHash, extensionData, btpHash []byte
 	if len(result) > 0 {
 		tr, err := newTransitionResultFromBytes(result)
 		if err != nil {
@@ -214,12 +218,13 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 		}
 		stateHash = tr.StateHash
 		extensionData = tr.ExtensionData
+		btpHash = tr.BTPData
 	}
 	var ess state.ExtensionSnapshot
 	if plt != nil {
 		ess = plt.NewExtensionSnapshot(database, extensionData)
 	}
-	return state.NewWorldSnapshot(database, stateHash, vl, ess), nil
+	return state.NewWorldSnapshot(database, stateHash, vl, ess, btpHash), nil
 }
 
 // all parameters should be valid.
@@ -402,7 +407,7 @@ func (t *transition) newWorldContext(execution bool) (state.WorldContext, error)
 			return nil, err
 		}
 	} else {
-		ws = state.NewWorldState(t.db, nil, nil, nil)
+		ws = state.NewWorldState(t.db, nil, nil, nil, nil)
 	}
 	if execution {
 		ws.EnableNodeCache()
@@ -543,11 +548,25 @@ func (t *transition) doForceSync() {
 	t.patchReceipts = sr.PatchReceipts
 	t.normalReceipts = sr.NormalReceipts
 	t.worldSnapshot = sr.Wss
+	t.btpDigest = sr.BTPDigest
+
+	// update BTPSection with BTPDigest
+	ass := sr.Wss.GetAccountSnapshot(state.SystemID)
+	abs := scoredb.NewStateStoreWith(ass)
+	bc := state.NewBTPContext(nil, abs)
+	if bs, err := btp.NewSection(sr.BTPDigest, bc, t.db); err != nil {
+		t.reportExecution(err)
+		return
+	} else {
+		t.bs = bs
+	}
+
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.btpDigest.Hash(),
 	}
 	t.result = tresult.Bytes()
 	t.log.Debugf("ForceSyncDone(result=%#x)", t.result)
@@ -638,6 +657,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.log.Debugf("Transition.doExecute: height=%d csi=%v", ctx.BlockHeight(), ctx.ConsensusInfo())
 
+	ctx.GetBTPState().StoreValidators(ctx.GetValidatorState())
+
 	if err := t.plt.OnExecutionBegin(ctx, t.log); err != nil {
 		t.reportExecution(err)
 		return
@@ -655,6 +676,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	virtualFee := new(big.Int)
+	btpMsgs := list.New()
 
 	t.logsBloom.SetInt64(0)
 	fixLostFeeByDeposit := ctx.Revision().Has(module.FixLostFeeByDeposit)
@@ -672,6 +694,10 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			}
 
 			t.logsBloom.Merge(r.LogsBloom())
+
+			if r.BTPMessages() != nil {
+				btpMsgs.PushBackList(r.BTPMessages())
+			}
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
@@ -686,6 +712,14 @@ func (t *transition) doExecute(alreadyValidated bool) {
 	if err = t.onPlatformExecutionEnd(ctx, er); err != nil {
 		t.reportExecution(err)
 		return
+	}
+
+	bc := state.NewBTPContext(ctx, ctx.GetAccountState(state.SystemID))
+	if bs, err := ctx.GetBTPState().BuildAndApplySection(bc, btpMsgs); err != nil {
+		t.reportExecution(err)
+		return
+	} else {
+		t.bs = bs
 	}
 
 	t.worldSnapshot = ctx.GetSnapshot()
@@ -706,6 +740,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
 		t.worldSnapshot.ExtensionData(),
+		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
 
@@ -845,6 +880,14 @@ func (t *transition) Equal(tr module.Transition) bool {
 		t.pid == t2.pid
 }
 
+func (t *transition) BTPSection() module.BTPSection {
+	if t.bs == nil {
+		//TODO return nil?
+		return btp.ZeroBTPSection
+	}
+	return t.bs
+}
+
 // NewInitTransition creates initial transition based on the last result.
 // It's only for development purpose. So, normally it should not be used.
 func NewInitTransition(
@@ -913,7 +956,7 @@ func FinalizeTransition(tr module.Transition, opt int, noFlush bool) error {
 }
 
 type SyncManager interface {
-	NewSyncer(ah, prh, nrh, vh, ed []byte, noBuffer bool) ssync.Syncer
+	NewSyncer(ah, prh, nrh, vh, ed, bh []byte, noBuffer bool) ssync.Syncer
 }
 
 func NewSyncTransition(
@@ -925,7 +968,7 @@ func NewSyncTransition(
 	tst := tr.(*transition)
 	ntr := newTransition(tst.parent, tst.patchTransactions, tst.normalTransactions, tst.bi, tst.csi, true)
 	r, _ := newTransitionResultFromBytes(result)
-	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, noBuffer)
+	ntr.syncer = sm.NewSyncer(r.StateHash, r.PatchReceiptHash, r.NormalReceiptHash, vl, r.ExtensionData, r.BTPData, noBuffer)
 	return ntr
 }
 

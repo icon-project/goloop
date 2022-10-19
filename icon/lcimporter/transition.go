@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
@@ -105,6 +106,10 @@ func (t *transition) PatchReceipts() module.ReceiptList {
 
 func (t *transition) NormalReceipts() module.ReceiptList {
 	return t.receipts
+}
+
+func (t *transition) BTPSection() module.BTPSection {
+	return btp.ZeroBTPSection
 }
 
 func newTransactionSliceFromList(txl module.TransactionList) ([]*BlockTransaction, error) {
@@ -222,9 +227,9 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 		return err
 	}
 
-	if len(txs)>0 {
+	if len(txs) > 0 {
 		from := txs[0].Height
-		if tx := txs[0] ; tx.IsLast() {
+		if tx := txs[0]; tx.IsLast() {
 			mh, err := t.ex.GetMerkleHeader(tx.Height)
 			if err != nil {
 				return err
@@ -242,7 +247,7 @@ func (t *transition) doExecute(cb module.TransitionCallback, check bool) (ret er
 					return err
 				}
 			}
-			next := txs[len(txs)-1].Height+1
+			next := txs[len(txs)-1].Height + 1
 			mh, err := t.ex.GetMerkleHeader(from)
 			if err != nil {
 				return err
@@ -371,12 +376,12 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	case stepInitial, stepProposed:
 		check := t.state == stepInitial
 		t.state = stepExecuting
-		t.chn = make(chan interface{},2)
+		t.chn = make(chan interface{}, 2)
 		go t.doExecute(cb, check)
 		return t.cancel, nil
 	case stepNeedSync:
 		t.state = stepExecuting
-		t.chn = make(chan interface{},2)
+		t.chn = make(chan interface{}, 2)
 		go t.doSync(cb)
 		return t.cancel, nil
 	default:
@@ -463,7 +468,7 @@ func (t *transition) finalizeResult() (ret error) {
 		t.log.Warnf("T_%p.FinalizeResult(next=%d,last=%d)", t, next, last)
 	}
 	if last == 0 {
-		if err := t.ex.FinalizeTransactions(next-1); err != nil {
+		if err := t.ex.FinalizeTransactions(next - 1); err != nil {
 			return err
 		}
 	} else if next == last+2 {

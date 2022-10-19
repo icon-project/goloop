@@ -37,6 +37,7 @@ type (
 		OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(handler ContractHandler, limit *big.Int)
 		OnEvent(addr module.Address, indexed, data [][]byte)
+		OnBTPMessage(nid int64, message []byte)
 		GetBalance(module.Address) *big.Int
 		ReserveExecutor() error
 		GetProxy(eeType state.EEType) eeproxy.Proxy
@@ -49,6 +50,7 @@ type (
 		DeductSteps(s *big.Int) bool
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
+		GetBTPMessages(r txresult.Receipt)
 		EnterQueryMode()
 		SetFrameCodeID(id []byte)
 		GetLastEIDOf(id []byte) int
@@ -161,6 +163,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	if !frame.isQuery {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
+			frame.parent.applyBTPMessagesOf(frame)
 			frame.parent.applyFeePayerInfoOf(frame)
 		} else {
 			cc.Reset(frame.snapshot)
@@ -212,6 +215,15 @@ func (cc *callContext) addLogToFrame(addr module.Address, indexed [][]byte, data
 		common.SliceOfHexBytes(indexed[1:]),
 		common.SliceOfHexBytes(data))
 	cc.frame.addLog(addr, indexed, data)
+	return nil
+}
+
+func (cc *callContext) addBTPMsgToFrame(nid int64, message []byte) error {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	log.Tracef("BTP MSG nid=%d message=%v", nid, common.HexPre(message))
+	cc.frame.addBTPMessage(nid, message)
 	return nil
 }
 
@@ -430,6 +442,12 @@ func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 	}
 }
 
+func (cc *callContext) OnBTPMessage(nid int64, message []byte) {
+	if err := cc.addBTPMsgToFrame(nid, message); err != nil {
+		cc.log.Errorf("Fail to add BTP message err=%+v", err)
+	}
+}
+
 func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 	if ass := cc.GetAccountSnapshot(addr.ID()); ass != nil {
 		return ass.GetBalance()
@@ -529,6 +547,12 @@ func (cc *callContext) GetEventLogs(r txresult.Receipt) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	cc.frame.getEventLogs(r)
+}
+
+func (cc *callContext) GetBTPMessages(r txresult.Receipt) {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	cc.frame.getBTPMessages(r)
 }
 
 func (cc *callContext) EnterQueryMode() {

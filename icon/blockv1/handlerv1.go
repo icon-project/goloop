@@ -49,6 +49,7 @@ func (b *handler) NewBlock(
 	patchTransactions module.TransactionList,
 	normalTransactions module.TransactionList,
 	nextValidators module.ValidatorList, blockVote module.CommitVoteSet,
+	bs module.BTPSection,
 ) base.Block {
 	// called for genesis in product
 	// called for propose only in test

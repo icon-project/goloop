@@ -70,11 +70,11 @@ func (v *Voted) SetBondedDelegation(value *big.Int) {
 
 func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
 	if bondRequirement == 0 {
-		// IISSVersion1: bondedDelegation = delegated
-		// IISSVersion2 and bondRequirement is disabled: bondedDelegation = delegated + bonded
+		// IISS 2: bondedDelegation = delegated
+		// IISS 3 and bondRequirement is disabled: bondedDelegation = delegated + bonded
 		v.bondedDelegation = new(big.Int).Add(v.delegated, v.bonded)
 	} else {
-		// IISSVersion2 and bondRequirement is enabled
+		// IISS 3 and bondRequirement is enabled
 		voted := new(big.Int).Add(v.delegated, v.bonded)
 		bondedDelegation := new(big.Int).Mul(v.bonded, big.NewInt(100))
 		bondedDelegation.Div(bondedDelegation, big.NewInt(int64(bondRequirement)))

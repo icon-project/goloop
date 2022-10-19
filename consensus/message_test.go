@@ -22,7 +22,17 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/module"
 )
+
+func NewPrecommitMessage(
+	w module.Wallet,
+	height int64, round int32, id []byte, partSetID *PartSetID, ts int64,
+) *VoteMessage {
+	return NewVoteMessage(
+		w, VoteTypePrecommit, height, round, id, partSetID, ts, nil, nil, 0,
+	)
+}
 
 func TestNewPrecommitMessage(t *testing.T) {
 	w := wallet.New()

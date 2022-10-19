@@ -47,7 +47,7 @@ func (s *skipPatch) Verify(vl module.ValidatorList, roundLimit int64, nid int) e
 		if vset[index] {
 			return errors.Errorf("duplicated validator %v", msg.address())
 		}
-		if msg.BlockPartSetID != nil {
+		if msg.BlockPartSetIDAndNTSVoteCount != nil {
 			return errors.Errorf("BPSID is not nil for validator %v", msg.address())
 		}
 		if !bytes.Equal(msg.BlockID, nidBytes) {

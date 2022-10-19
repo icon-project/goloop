@@ -93,3 +93,13 @@ type RosettaTraceParam struct {
 	Block  jsonrpc.HexBytes `json:"block,omitempty" validate:"optional,t_hash"`
 	Height jsonrpc.HexInt   `json:"height,omitempty" validate:"optional,gte=0,t_int"`
 }
+
+type BTPQueryParam struct {
+	Height jsonrpc.HexInt `json:"height,omitempty" validate:"optional,t_int"`
+	Id     jsonrpc.HexInt `json:"id" validate:"required,t_int"`
+}
+
+type BTPMessagesParam struct {
+	Height    jsonrpc.HexInt `json:"height" validate:"required,t_int"`
+	NetworkId jsonrpc.HexInt `json:"networkID" validate:"required,t_int"`
+}

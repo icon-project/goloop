@@ -35,9 +35,48 @@ type PartSetBuffer interface {
 	PartSet() PartSet
 }
 
+const (
+	countWidth = 16
+	countMask  = (1 << countWidth) - 1
+)
+
+type PartSetIDAndAppData struct {
+	// CountWord: MSB AppData(16) Count(16)
+	// Use bitfield not to break existing message protocol
+	CountWord uint32
+	Hash      []byte
+}
+
+func (ida *PartSetIDAndAppData) ID() *PartSetID {
+	if ida == nil {
+		return nil
+	}
+	return &PartSetID{
+		uint16(ida.CountWord & countMask),
+		ida.Hash,
+	}
+}
+
+func (ida *PartSetIDAndAppData) AppData() uint16 {
+	if ida == nil {
+		return 0
+	}
+	return uint16(ida.CountWord >> countWidth)
+}
+
 type PartSetID struct {
 	Count uint16
 	Hash  []byte
+}
+
+func (id *PartSetID) WithAppData(appData uint16) *PartSetIDAndAppData {
+	if id == nil {
+		return nil
+	}
+	return &PartSetIDAndAppData{
+		CountWord: uint32(appData)<<countWidth | uint32(id.Count),
+		Hash:      id.Hash,
+	}
 }
 
 func (id *PartSetID) Equal(id2 *PartSetID) bool {
@@ -51,15 +90,15 @@ func (id *PartSetID) Equal(id2 *PartSetID) bool {
 }
 
 func (id PartSetID) String() string {
-	return fmt.Sprintf("{Count:%v,Hash:%v}", id.Count, common.HexPre(id.Hash))
+	return fmt.Sprintf("{Count:%d,Hash:%v}", id.Count, common.HexPre(id.Hash))
 }
 
 // TODO need to prepare proofs for each parts.
 type partSet struct {
-	added int
-	parts []*part
-	tree  trie.Immutable
-	ba    *bitArray
+	added   int
+	parts   []*part
+	tree    trie.Immutable
+	ba      *bitArray
 }
 
 func (ps *partSet) ID() *PartSetID {
@@ -212,7 +251,7 @@ func (b *partSetBuffer) PartSet() PartSet {
 	return b.ps
 }
 
-func newPartSetBuffer(sz int) PartSetBuffer {
+func NewPartSetBuffer(sz int) PartSetBuffer {
 	return &partSetBuffer{ps: new(partSet), size: sz}
 }
 

@@ -326,7 +326,7 @@ func (s *chainScore) Ex_setPRep(name *string, email *string, website *string, co
 		WebSite:     website,
 		Node:        node,
 	}
-	return es.SetPRep(s.newCallContext(s.cc), info)
+	return es.SetPRep(s.newCallContext(s.cc), info, false)
 }
 
 func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {

@@ -18,13 +18,14 @@ func TestCommitVoteList_Timestamp(t *testing.T) {
 		{[]int64{2, 3, 6, 100}, 4},
 	}
 	for _, c := range cases {
-		msgs := make([]*voteMessage, len(c.in))
+		msgs := make([]*VoteMessage, len(c.in))
 		for i, t := range c.in {
 			v := newVoteMessage()
 			v.Timestamp = t
 			msgs[i] = v
 		}
-		cvl := newCommitVoteList(msgs)
+		cvl, err := newCommitVoteList(nil, msgs)
+		assert.NoError(t, err)
 		assert.Equal(t, cvl.Timestamp(), c.out)
 	}
 }

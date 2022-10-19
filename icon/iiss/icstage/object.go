@@ -32,6 +32,8 @@ const (
 	TypeEventVotedReward
 	TypeEventDelegationV2
 	TypeEventDelegated
+	TypeBTPDSA
+	TypeBTPPublicKey
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -54,6 +56,10 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return NewGlobal(tag.Version())
 	case TypeEventVotedReward:
 		return newEventVotedReward(tag), nil
+	case TypeBTPDSA:
+		return newBTPDSA(tag), nil
+	case TypeBTPPublicKey:
+		return newBTPPublicKey(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -107,4 +113,18 @@ func ToEventDelegationV2(obj trie.Object) *EventDelegationV2 {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*EventDelegationV2)
+}
+
+func ToBTPDSA(obj trie.Object) *BTPDSA {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*BTPDSA)
+}
+
+func ToBTPPublicKey(obj trie.Object) *BTPPublicKey {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*BTPPublicKey)
 }

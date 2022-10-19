@@ -142,6 +142,7 @@ public interface IBlockchainRuntime {
             ByteArray pubKey);
     ByteArray avm_recoverKey(String alg, ByteArray msg, ByteArray sig,
             boolean compressed);
+    ByteArray avm_aggregate(String type, ByteArray prevAgg, ByteArray values);
 
     /**
      * Returns the address that is associated with the given public key

@@ -191,6 +191,11 @@ func (ctx *worldContextImpl) SetScoreOwner(from module.Address, score module.Add
 	return as.SetContractOwner(newOwner)
 }
 
+func (ctx *worldContextImpl) GetBTPContext() state.BTPContext {
+	as := ctx.GetAccountState(state.SystemID)
+	return state.NewBTPContext(ctx.WorldContext, as)
+}
+
 func NewWorldContext(ctx state.WorldContext, logger log.Logger) icmodule.WorldContext {
 	tlog := trace.LoggerOf(logger)
 	return &worldContextImpl{
@@ -281,6 +286,10 @@ func (ctx *callContextImpl) Governance() module.Address {
 
 func (ctx *callContextImpl) FrameLogger() *trace.Logger {
 	return ctx.cc.FrameLogger()
+}
+
+func (ctx *callContextImpl) TransactionInfo() *state.TransactionInfo {
+	return ctx.cc.TransactionInfo()
 }
 
 func NewCallContext(cc contract.CallContext, from module.Address) icmodule.CallContext {

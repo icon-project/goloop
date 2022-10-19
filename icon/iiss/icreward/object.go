@@ -28,6 +28,8 @@ const (
 	TypeBonding
 	TypeIScore
 	TypeBugDisabledPRep
+	TypeDSA
+	TypePublicKey
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -42,6 +44,10 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 		return newIScore(tag), nil
 	case TypeBugDisabledPRep:
 		return newBugDisabledPRep(tag), nil
+	case TypeDSA:
+		return newDSA(tag), nil
+	case TypePublicKey:
+		return newPublicKey(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -81,4 +87,18 @@ func ToBugDisabledPRep(obj trie.Object) *BugDisabledPRep {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*BugDisabledPRep)
+}
+
+func ToDSA(obj trie.Object) *DSA {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*DSA)
+}
+
+func ToPublicKey(obj trie.Object) *PublicKey {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*PublicKey)
 }

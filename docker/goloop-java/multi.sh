@@ -14,7 +14,7 @@ GOLOOP_DOCKER_MOUNT=${GOLOOP_DOCKER_MOUNT:-${GOLOOP_DATA}}
 GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop}
 GOLOOP_GENESIS_STORAGE=${GOLOOP_DATA}/gs.zip
 GOLOOP_RPC_DUMP=${GOLOOP_RPC_DUMP:-false}
-
+GOLOOP_CHANNEL=${GOLOOP_CHANNEL:-test}
 GSTOOL=${GSTOOL:-../../bin/gstool}
 
 function create(){
@@ -99,7 +99,7 @@ function join(){
     ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
 
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel test
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel ${GOLOOP_CHANNEL}
     done
 }
 
@@ -117,7 +117,15 @@ function env(){
     cp ${ENVFILE} ${ENVFILE}.backup
     grep "^chain" ${ENVFILE}.backup | sed -e "s/chain0.nid=.*/chain0.nid=${GENESIS_NID}/" > ${ENVFILE}
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        echo -e "\nnode${i}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080\nnode${i}.channel0.nid=${GENESIS_NID}\nnode${i}.channel0.name=test" >> ${ENVFILE}
+        NODE_PREFIX="node${i}"
+        echo -e "${NODE_PREFIX}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080" >> ${ENVFILE}
+        echo -e "${NODE_PREFIX}.channel0.nid=${GENESIS_NID}" >> ${ENVFILE}
+        echo -e "${NODE_PREFIX}.channel0.name=${GOLOOP_CHANNEL}" >> ${ENVFILE}
+        GOLOOP_NODE_DIR="${GOLOOP_DATA}/${i}"
+        GOLOOP_KEY_STORE="${GOLOOP_NODE_DIR}/keystore.json"
+        GOLOOP_KEY_SECRET="${GOLOOP_NODE_DIR}/secret"
+        echo -e "${NODE_PREFIX}.wallet=${GOLOOP_KEY_STORE}" >> ${ENVFILE}
+        echo -e "${NODE_PREFIX}.walletPassword=$(cat ${GOLOOP_KEY_SECRET})" >> ${ENVFILE}
     done
 }
 

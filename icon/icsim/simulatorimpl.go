@@ -39,7 +39,7 @@ func newWorldState(wss state.WorldSnapshot, readonly bool) state.WorldState {
 	stateHash := wss.StateHash()
 	vss := wss.GetValidatorSnapshot()
 	ess := wss.GetExtensionSnapshot()
-	return state.NewWorldState(dbase, stateHash, vss, ess)
+	return state.NewWorldState(dbase, stateHash, vss, ess, nil)
 }
 
 type transactionImpl struct {
@@ -92,7 +92,7 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 	if err != nil {
 		return err
 	}
-	ws := state.NewWorldState(dbase, nil, vss, nil)
+	ws := state.NewWorldState(dbase, nil, vss, nil, nil)
 	totalSupply := new(big.Int)
 
 	// Initialize balances
@@ -418,7 +418,7 @@ func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, wc WorldContext, 
 	from := args[0].(module.Address)
 	info := args[1].(*icstate.PRepInfo)
 	cc := NewCallContext(wc, from)
-	return es.SetPRep(cc, info)
+	return es.SetPRep(cc, info, false)
 }
 
 func (sim *simulatorImpl) GetDelegation(from module.Address) map[string]interface{} {

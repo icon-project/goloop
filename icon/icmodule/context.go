@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/trace"
 )
 
@@ -24,6 +25,7 @@ type WorldContext interface {
 	StepPrice() *big.Int
 	GetScoreOwner(score module.Address) (module.Address, error)
 	SetScoreOwner(from module.Address, score module.Address, owner module.Address) error
+	GetBTPContext() state.BTPContext
 }
 
 type CallContext interface {
@@ -35,4 +37,5 @@ type CallContext interface {
 	CallOnTimer(to module.Address, params []byte) error
 	Governance() module.Address
 	FrameLogger() *trace.Logger
+	TransactionInfo() *state.TransactionInfo
 }

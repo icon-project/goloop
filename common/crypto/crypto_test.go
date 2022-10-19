@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 var (
@@ -151,4 +153,29 @@ func TestRace(t *testing.T) {
 
 	// wait for DONE
 	finishWG.Wait()
+}
+
+func TestSignature_RLPEncodeSelf(t *testing.T) {
+	priv, pub := GenerateKeyPair()
+	sig, err := NewSignature(testHash, priv)
+	assert.NoError(t, err)
+
+	bs := codec.MustMarshalToBytes(&sig)
+	var sig2 Signature
+	codec.MustUnmarshalFromBytes(bs, &sig2)
+	rpub, err := sig.RecoverPublicKey(testHash)
+	assert.NoError(t, err)
+	rpub2, err := sig2.RecoverPublicKey(testHash)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, pub.SerializeCompressed(), rpub.SerializeCompressed())
+	assert.EqualValues(t, rpub.SerializeCompressed(), rpub2.SerializeCompressed())
+}
+
+func TestSignature_RLPEncodeSelf_nil(t *testing.T) {
+	var psig *Signature
+	bs := codec.MustMarshalToBytes(psig)
+	var psig2 *Signature
+	codec.MustUnmarshalFromBytes(bs, &psig2)
+	assert.Nil(t, psig2)
 }

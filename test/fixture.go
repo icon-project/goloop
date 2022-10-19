@@ -17,10 +17,15 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -31,6 +36,7 @@ type Fixture struct {
 
 	// all nodes
 	Nodes      []*Node
+	Validators []*Node
 }
 
 func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
@@ -71,7 +77,8 @@ func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
 			}
 		}`, validators)
 		for i := range wallets {
-			f.AddNode(UseGenesis(gs), UseWallet(wallets[i]))
+			node := f.AddNode(UseGenesis(gs), UseWallet(wallets[i]))
+			f.Validators = append(f.Validators, node)
 		}
 	}
 	if *cf.AddDefaultNode {
@@ -105,4 +112,78 @@ func (f *Fixture) Close() {
 	for _, n := range f.Nodes {
 		n.Close()
 	}
+}
+
+func (f *Fixture) newPrecommitsAndPCM(blk module.BlockData, round int32, ntsVoteCount int) ([]*consensus.VoteMessage, module.BTPProofContextMap) {
+	var pcm module.BTPProofContextMap
+	if blk.Height() == 0 {
+		pcm = nil
+	} else {
+		prevBlk, err := f.BM.GetBlockByHeight(blk.Height() - 1)
+		assert.NoError(f.T, err)
+		pcm, err = prevBlk.NextProofContextMap()
+		assert.NoError(f.T, err)
+	}
+	var buf bytes.Buffer
+	err := blk.Marshal(&buf)
+	assert.NoError(f.T, err)
+	pb := consensus.NewPartSetBuffer(consensus.ConfigBlockPartSize)
+	_, err = pb.Write(buf.Bytes())
+	assert.NoError(f.T, err)
+	ps := pb.PartSet()
+	bpsID := ps.ID()
+	var votes []*consensus.VoteMessage
+	for _, v := range f.Validators {
+		vote, err := consensus.NewVoteMessageFromBlock(
+			v.Chain.Wallet(),
+			v.Chain,
+			blk,
+			round,
+			consensus.VoteTypePrecommit,
+			bpsID.WithAppData(uint16(ntsVoteCount)),
+			blk.Timestamp()+1,
+			f.Chain.NID(),
+			pcm,
+		)
+		assert.NoError(f.T, err)
+		votes = append(votes, vote)
+	}
+	return votes, pcm
+}
+
+func (f *Fixture) NewPrecommitList(blk module.BlockData, round int32, ntsVoteCount int) []*consensus.VoteMessage {
+	votes, _ := f.newPrecommitsAndPCM(blk, round, ntsVoteCount)
+	return votes
+}
+
+func (f *Fixture) NewCommitVoteListForLastBlock(round int32, ntsVoteCount int) module.CommitVoteSet {
+	votes, pcm := f.newPrecommitsAndPCM(f.LastBlock, round, ntsVoteCount)
+	return consensus.NewCommitVoteList(pcm, votes...)
+}
+
+func (f *Fixture) SendTransactionToAll(tx interface{ String() string }) {
+	for _, node := range f.Nodes {
+		_, err := node.SM.SendTransaction(nil, 0, tx.String())
+		assert.NoError(f.T, err)
+	}
+}
+
+func (f *Fixture) SendTransactionToProposer(tx interface{ String() string }) {
+	blk, err := f.BM.GetLastBlock()
+	assert.NoError(f.T, err)
+	h := blk.Height() + 1
+	r := 0
+	idx := int((h + int64(r)) % int64(blk.NextValidators().Len()))
+	val, ok := blk.NextValidators().Get(idx)
+	assert.True(f.T, ok)
+	found := false
+	for i, v := range f.Validators {
+		if bytes.Equal(val.Address().Bytes(), v.Chain.Wallet().Address().Bytes()) {
+			log.Infof("SendTransaction tx=%s val=%s", tx.String(), f.Validators[i].CommonAddress())
+			_, err = f.Validators[i].SM.SendTransaction(nil, 0, tx.String())
+			assert.NoError(f.T, err)
+			found = true
+		}
+	}
+	assert.True(f.T, found)
 }

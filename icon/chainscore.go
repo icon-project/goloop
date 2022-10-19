@@ -644,6 +644,91 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionICON2R3, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setUseSystemDeposit",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"yn", scoreapi.Bool, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getUseSystemDeposit",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getBTPNetworkTypeID",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"name", scoreapi.String, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepNodePublicKey",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bytes,
+		},
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setPRepNodePublicKey",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"pubKey", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "registerPRepNodePublicKey",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+			{"pubKey", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "openBTPNetwork",
+		scoreapi.FlagExternal, 3,
+		[]scoreapi.Parameter{
+			{"networkTypeName", scoreapi.String, nil, nil},
+			{"name", scoreapi.String, nil, nil},
+			{"owner", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "closeBTPNetwork",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"id", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "sendBTPMessage",
+		scoreapi.FlagExternal, 2,
+		[]scoreapi.Parameter{
+			{"networkId", scoreapi.Integer, nil, nil},
+			{"message", scoreapi.Bytes, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionBTP2, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
@@ -182,6 +183,12 @@ func (t *Node) ImportBlockByReader(
 	return bc
 }
 
+func (t *Node) UpdateLastBlock() {
+	lastBlock, err := t.BM.GetLastBlock()
+	assert.NoError(t, err)
+	t.LastBlock = lastBlock
+}
+
 func (t *Node) FinalizeBlock(bc module.BlockCandidate) {
 	prevBlock := t.LastBlock
 	FinalizeBlock(t.T, t.BM, bc)
@@ -242,18 +249,84 @@ func (t *Node) ProposeImportFinalizeBlockWithTX(
 }
 
 func (t *Node) NewVoteListForLastBlock() module.CommitVoteSet {
-	return consensus.NewCommitVoteList(consensus.NewPrecommitMessage(
+	var pcm module.BTPProofContextMap
+	var ntsHashEntries []module.NTSHashEntryFormat
+	var ntsdProofParts [][]byte
+	var ntsVoteCount int
+	if t.LastBlock.Height() > 1 {
+		blk, err := t.BM.GetBlockByHeight(t.LastBlock.Height() - 1)
+		assert.NoError(t, err)
+		pcm, err = blk.NextProofContextMap()
+		assert.NoError(t, err)
+		bd, err := t.LastBlock.BTPDigest()
+		assert.NoError(t, err)
+		ntsdProofParts = make([][]byte, 0)
+		for _, ntd := range bd.NetworkTypeDigests() {
+			if pc, err := pcm.ProofContextFor(ntd.NetworkTypeID()); err == nil {
+				ntsd := pc.NewDecision(
+					module.GetSourceNetworkUID(t.Chain),
+					ntd.NetworkTypeID(),
+					t.LastBlock.Height(),
+					t.LastBlock.Votes().VoteRound(),
+					ntd.NetworkTypeSectionHash(),
+				)
+				pp, err := pc.NewProofPart(ntsd.Hash(), t.Chain)
+				assert.NoError(t, err)
+				ntsHashEntries = append(ntsHashEntries, module.NTSHashEntryFormat{
+					NetworkTypeID:          ntd.NetworkTypeID(),
+					NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
+				})
+				ntsdProofParts = append(ntsdProofParts, pp.Bytes())
+			}
+		}
+		ntsVoteCount, err = bd.NTSVoteCount(pcm)
+		assert.NoError(t, err)
+	}
+	precommit := consensus.NewVoteMessage(
 		t.Chain.Wallet(),
+		consensus.VoteTypePrecommit,
 		t.LastBlock.Height(),
 		0,
 		t.LastBlock.ID(),
 		nil,
 		t.LastBlock.Timestamp()+1,
-	))
+		ntsHashEntries,
+		ntsdProofParts,
+		ntsVoteCount,
+	)
+	return consensus.NewCommitVoteList(pcm, precommit)
 }
 
 func (t *Node) Address() module.Address {
 	return t.Chain.Wallet().Address()
+}
+
+func (t *Node) CommonAddress() *common.Address {
+	return t.Address().(*common.Address)
+}
+
+func (t *Node) WaitForBlock(h int64) module.Block {
+	chn, err := t.BM.WaitForBlock(h)
+	assert.NoError(t.T, err)
+	return <-chn
+}
+
+func (t *Node) WaitForNextBlock() module.Block {
+	blk, err := t.BM.GetLastBlock()
+	assert.NoError(t.T, err)
+	return t.WaitForBlock(blk.Height() + 1)
+}
+
+func (t *Node) WaitForNextNthBlock(n int) module.Block {
+	blk, err := t.BM.GetLastBlock()
+	assert.NoError(t.T, err)
+	return t.WaitForBlock(blk.Height() + int64(n))
+}
+
+func (t *Node) NewTx() *Transaction {
+	blk, err := t.BM.GetLastBlock()
+	assert.NoError(t.T, err)
+	return NewTx().SetTimestamp(blk.Timestamp())
 }
 
 func NodeInterconnect(nodes []*Node) {

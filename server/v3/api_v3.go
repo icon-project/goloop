@@ -2,6 +2,7 @@ package v3
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -9,9 +10,11 @@ import (
 	"unsafe"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/server/metric"
@@ -47,6 +50,13 @@ func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
 	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
 	mr.RegisterMethod("icx_getScoreStatus", getScoreStatus)
+
+	mr.RegisterMethod("btp_getNetworkInfo", getBTPNetworkInfo)
+	mr.RegisterMethod("btp_getNetworkTypeInfo", getBTPNetworkTypeInfo)
+	mr.RegisterMethod("btp_getMessages", getBTPMessages)
+	mr.RegisterMethod("btp_getHeader", getBTPHeader)
+	mr.RegisterMethod("btp_getProof", getBTPProof)
+	mr.RegisterMethod("btp_getSourceInformation", getBTPSourceInformation)
 
 	mr.SetAllowedNotification("icx_sendTransaction")
 	mr.SetAllowedNotification("icx_sendTransactionAndWait")
@@ -759,6 +769,308 @@ func getScoreStatus(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	return jso, nil
+}
+
+func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param BTPQueryParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	height, err := param.Height.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	nid, err := param.Id.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+	block, err := getBlock(chain, bm, param.Height)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err,
+			"fail to get a block for height=%d", height)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	blockResult := block.Result()
+	nw, err := sm.BTPNetworkFromResult(blockResult, nid)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	nt, err := sm.BTPNetworkTypeFromResult(blockResult, nw.NetworkTypeID())
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	res := nw.ToJSON()
+	res["networkID"] = intconv.FormatInt(nid)
+	res["networkTypeName"] = nt.UID()
+	return res, nil
+}
+
+func getBTPNetworkTypeInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param BTPQueryParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	height, err := param.Height.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	ntid, err := param.Id.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+	block, err := getBlock(chain, bm, param.Height)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	blockResult := block.Result()
+	nt, err := sm.BTPNetworkTypeFromResult(blockResult, ntid)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	res := nt.ToJSON()
+	res["networkTypeID"] = intconv.FormatInt(ntid)
+	return res, nil
+}
+
+func getBTPMessages(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param BTPMessagesParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	height, err := param.Height.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	nid, err := param.NetworkId.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+	block, err := bm.GetBlockByHeight(height)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	res := make([]string, 0)
+	blockResult := block.Result()
+	bDigest, err := sm.BTPDigestFromResult(blockResult)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	if bDigest == nil {
+		return res, nil
+	}
+	nw, err := sm.BTPNetworkFromResult(blockResult, nid)
+	if err != nil || nw == nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	ntid := nw.NetworkTypeID()
+	nt, err := sm.BTPNetworkTypeFromResult(blockResult, ntid)
+	if err != nil || nt == nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	ntDigest := bDigest.NetworkTypeDigestFor(ntid)
+	if ntDigest == nil {
+		return res, nil
+	}
+	nwDigest := ntDigest.NetworkDigestFor(nid)
+	if nwDigest == nil {
+		return res, nil
+	}
+	ml, err := nwDigest.MessageList(chain.Database(), ntm.ForUID(nt.UID()))
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	size := int(ml.Len())
+	for i := 0; i < size; i++ {
+		msg, err := ml.Get(i)
+		if err != nil {
+			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
+		res = append(res, base64.StdEncoding.EncodeToString(msg.Bytes()))
+	}
+	return res, nil
+}
+
+func getBTPHeader(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param BTPMessagesParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	height, err := param.Height.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	nid, err := param.NetworkId.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	bm := chain.BlockManager()
+	cs := chain.Consensus()
+	if bm == nil || cs == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+	block, err := bm.GetBlockByHeight(height)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	btpBlock, _, err := cs.GetBTPBlockHeaderAndProof(block, nid, module.FlagBTPBlockHeader)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a BTP block header for height=%d, nid=%d", height, nid)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	return base64.StdEncoding.EncodeToString(btpBlock.HeaderBytes()), nil
+}
+
+func getBTPProof(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param BTPMessagesParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	height, err := param.Height.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	nid, err := param.NetworkId.Int64()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	bm := chain.BlockManager()
+	cs := chain.Consensus()
+	if bm == nil || cs == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	if err := checkBaseHeight(chain, height); err != nil {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+	block, err := bm.GetBlockByHeight(height)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a block for height=%d", height)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	_, proof, err := cs.GetBTPBlockHeaderAndProof(block, nid, module.FlagBTPBlockProof)
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err, "fail to get a BTP block proof for height=%d, nid=%d", height, nid)
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	return base64.StdEncoding.EncodeToString(proof), nil
+}
+
+func getBTPSourceInformation(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+	if bm == nil || sm == nil {
+		return nil, jsonrpc.ErrorCodeServer.New("Stopped")
+	}
+
+	block, err := bm.GetLastBlock()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+	ntids, err := sm.BTPNetworkTypeIDsFromResult(block.Result())
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	res := make(map[string]interface{})
+	res["srcNetworkUID"] = intconv.FormatInt(int64(chain.NID())) + ".icon"
+	ontids := make([]interface{}, len(ntids))
+	for i, ntid := range ntids {
+		ontids[i] = intconv.FormatInt(ntid)
+	}
+	res["networkTypeIDs"] = ontids
+	return res, nil
 }
 
 // convert TransactionList to []Transaction

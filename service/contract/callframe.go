@@ -19,20 +19,21 @@ type eventLog struct {
 }
 
 type callFrame struct {
-	parent    *callFrame
-	fid       int
-	eid       int
-	code      string
-	isQuery   bool
-	snapshot  state.WorldSnapshot
-	handler   ContractHandler
-	log       *trace.Logger
-	stepUsed  big.Int
-	stepLimit *big.Int
-	eventLogs list.List
-	code2EID  map[string]int
-	logsMap   map[string]CustomLogs
-	feePayers FeePayerInfo
+	parent      *callFrame
+	fid         int
+	eid         int
+	code        string
+	isQuery     bool
+	snapshot    state.WorldSnapshot
+	handler     ContractHandler
+	log         *trace.Logger
+	stepUsed    big.Int
+	stepLimit   *big.Int
+	eventLogs   list.List
+	btpMessages list.List
+	code2EID    map[string]int
+	logsMap     map[string]CustomLogs
+	feePayers   FeePayerInfo
 }
 
 func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool, logger *trace.Logger) *callFrame {
@@ -47,6 +48,7 @@ func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool, logger *trace
 		log:       logger,
 	}
 	frame.eventLogs.Init()
+	frame.btpMessages.Init()
 	return frame
 }
 
@@ -107,11 +109,30 @@ func (f *callFrame) getEventLogs(r txresult.Receipt) {
 	}
 }
 
+func (f *callFrame) addBTPMessage(nid int64, message []byte) {
+	if f.isQuery {
+		return
+	}
+	bm := state.NewBTPMsg(nid, message)
+	f.btpMessages.PushBack(bm)
+}
+
+func (f *callFrame) applyBTPMessagesOf(frame *callFrame) {
+	if f != nil {
+		f.btpMessages.PushBackList(&frame.btpMessages)
+	}
+}
+
+func (f *callFrame) getBTPMessages(r txresult.Receipt) {
+	r.AddBTPMessages(f.btpMessages)
+}
+
 func (f *callFrame) enterQueryMode(cc *callContext) {
 	if !f.isQuery {
 		cc.Reset(f.snapshot)
 		f.snapshot = nil
 		f.eventLogs.Init()
+		f.btpMessages.Init()
 		f.isQuery = true
 	}
 }

@@ -16,6 +16,7 @@
 
 package foundation.icon.ee.util;
 
+import foundation.icon.ee.util.bls12381.BLS12381;
 import foundation.icon.ee.util.xxhash.XxHash;
 import i.RuntimeAssertionError;
 import org.bouncycastle.asn1.x9.X9ECParameters;
@@ -108,6 +109,11 @@ public class Crypto {
                 var recovered = recoverKey(msg, sig, pk.length==33);
                 return Arrays.equals(recovered, pk);
             }
+            case "bls12-381-g2": {
+                require(pk.length == BLS12381.G1_LEN, "invalid public key length");
+                require(sig.length == BLS12381.G2_LEN, "invalid signature length");
+                return BLS12381.verifyG2Signature(pk, sig, msg);
+            }
         }
         throw new IllegalArgumentException("Unsupported algorithm " + alg);
     }
@@ -121,6 +127,17 @@ public class Crypto {
             }
         }
         throw new IllegalArgumentException("Unsupported algorithm " + alg);
+    }
+
+    public static byte[] aggregate(String type, byte[] prevAgg, byte[] values) {
+        switch (type) {
+            case "bls12-381-g1": {
+                require(prevAgg == null || prevAgg.length == BLS12381.G1_LEN, "invalid prevAgg");
+                require(values.length % BLS12381.G1_LEN == 0, "invalid values length");
+                return BLS12381.aggregateG1Values(prevAgg, values);
+            }
+        }
+        throw new IllegalArgumentException("Unsupported type " + type);
     }
 
     public static byte[] recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
