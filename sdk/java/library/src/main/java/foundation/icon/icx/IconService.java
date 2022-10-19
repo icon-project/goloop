@@ -39,7 +39,11 @@ import foundation.icon.icx.transport.jsonrpc.RpcConverter.RpcConverterFactory;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.icx.transport.monitor.*;
+import foundation.icon.icx.transport.monitor.BTPMonitorSpec;
+import foundation.icon.icx.transport.monitor.BlockMonitorSpec;
+import foundation.icon.icx.transport.monitor.EventMonitorSpec;
+import foundation.icon.icx.transport.monitor.Monitor;
+import foundation.icon.icx.transport.monitor.MonitorSpec;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
