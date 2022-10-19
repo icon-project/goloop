@@ -356,7 +356,7 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 		return nil, nil
 	}
 	tst, ok := t.(*transition)
-	if !ok || tst.step != stepComplete {
+	if !ok || !tst.completed() {
 		return nil, errors.ErrIllegalArgument
 	}
 	return tst, nil

@@ -345,13 +345,12 @@ func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool,
 		}
 	}
 
-	// no need to validate the tx again for trace
-	t.step = stepValidated
-
 	return t.startExecution(func() error {
 		if t.syncer != nil {
 			return errors.InvalidStateError.New("TraceWithSyncTransition")
 		}
+		// no need to validate the tx again for trace so jump to stepExecuting
+		t.step = stepExecuting
 		t.ti = &ti
 		t.cb = &transitionCallbackForTrace{info: t.ti}
 		return nil
@@ -478,6 +477,12 @@ func (t *transition) canceled() bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	return t.step == stepCanceled
+}
+
+func (t *transition) completed() bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	return t.step == stepComplete
 }
 
 func (t *transition) ensureRecordTXIDs(force bool) error {
@@ -881,8 +886,13 @@ func (t *transition) Equal(tr module.Transition) bool {
 }
 
 func (t *transition) BTPSection() module.BTPSection {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.step != stepComplete {
+		return nil
+	}
 	if t.bs == nil {
-		//TODO return nil?
 		return btp.ZeroBTPSection
 	}
 	return t.bs
