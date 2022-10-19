@@ -21,26 +21,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-// ntsVoteCount returns number of NTS vote for block(height).
-// bd is the digest for height. prevResult is result in block(height-1).
-func (cs *consensus) ntsVoteCount(bd module.BTPDigest, prevResult []byte) (int, error) {
-	count := 0
-	for _, ntd := range bd.NetworkTypeDigests() {
-		nt, err := cs.c.ServiceManager().BTPNetworkTypeFromResult(prevResult, ntd.NetworkTypeID())
-		if errors.Is(err, errors.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return -1, err
-		}
-		if nt.NextProofContext() == nil {
-			continue
-		}
-		count++
-	}
-	return count, nil
-}
-
 func (cs *consensus) ntsdIndexFor(ntid int64, bd module.BTPDigest, prevResult []byte) (int, error) {
 	for i, ntd := range bd.NetworkTypeDigests() {
 		nt, err := cs.c.ServiceManager().BTPNetworkTypeFromResult(prevResult, ntd.NetworkTypeID())
