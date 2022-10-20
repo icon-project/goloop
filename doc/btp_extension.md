@@ -49,15 +49,17 @@ Summarize the document to following items.
         "hxb51a65420ce5199e538f21fc614eacf4234454fe"
       ]
     }
-  ]
+  ],
+  "logs": "0x1"
 }
 ```
 #### Parameters
 
-| Name         | Type  | Required | Description                                                                                              |
-|:-------------|:------|:---------|:---------------------------------------------------------------------------------------------------------|
-| height       | T_INT | true     | Start height                                                                                             |
-| eventFilters | Array | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters))                       |
+| Name         | Type   | Required | Description                                                                        |
+|:-------------|:-------|:---------|:-----------------------------------------------------------------------------------|
+| height       | T_INT  | true     | Start height                                                                       |
+| eventFilters | Array  | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters)) |
+| logs         | T_BOOL | false    | Whether it includes logs                                                           |
 
 > Success Responses
 
@@ -98,7 +100,18 @@ Summarize the document to following items.
     [
       ["0x0"]
     ]
-  ]
+  ],
+  "logs": [
+    [
+      [
+        {
+          "scoreAddress": "cx38fd2687b202caf4bd1bda55223578f39dbb6561",
+          "indexed": [ "EventTriggered(int)", "0x2" ],
+          "data": []
+        }
+      ]
+    ]
+  ],
 }
 ```
 
@@ -110,6 +123,7 @@ Summarize the document to following items.
 | height  | T_INT  | true     | The height of the new block                                                                                                  |
 | indexes | Array  | false    | Array of array of [index](#resultindex)es of the results of filtered events in the block ordered by EventFilter and index    |
 | events  | Array  | false    | Array of array of [events](#eventlist), the array of event indexes in the result, ordered by EventFilter and index           |
+| logs    | Array  | false    | Array of array of [logs](#loglist), the array of event logs in the result, ordered by EventFilter and index                  |
 
 
 ### Events

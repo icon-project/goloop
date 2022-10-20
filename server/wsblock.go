@@ -13,6 +13,7 @@ import (
 type BlockRequest struct {
 	Height       common.HexInt64 `json:"height"`
 	EventFilters []*EventFilter  `json:"eventFilters,omitempty"`
+	Logs         common.HexInt32 `json:"logs,omitempty"`
 	bn           BlockNotification
 }
 
@@ -21,6 +22,7 @@ type BlockNotification struct {
 	Height  common.HexInt64       `json:"height"`
 	Indexes [][]common.HexInt32   `json:"indexes,omitempty"`
 	Events  [][][]common.HexInt32 `json:"events,omitempty"`
+	Logs    [][][]module.EventLog `json:"logs,omitempty"`
 }
 
 func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
@@ -31,7 +33,7 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	}
 	defer wm.StopSession(wss)
 
-	if err := br.compile(); err != nil {
+	if err := br.Compile(); err != nil {
 		_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams), err.Error())
 		return nil
 	}
@@ -58,9 +60,11 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	var bch <-chan module.Block
 	indexes := make([][]common.HexInt32, len(br.EventFilters))
 	events := make([][][]common.HexInt32, len(br.EventFilters))
-	for i := range br.EventFilters {
+	eventLogs := make([][][]module.EventLog, len(br.EventFilters))
+	for i := 0; i < len(indexes); i++ {
 		indexes[i] = make([]common.HexInt32, 0)
 		events[i] = make([][]common.HexInt32, 0)
+		eventLogs[i] = make([][]module.EventLog, 0)
 	}
 	var rl module.ReceiptList
 loop:
@@ -90,6 +94,12 @@ loop:
 				for i := range events {
 					events[i] = events[i][:0]
 				}
+				if br.Logs.Value != 0 {
+					br.bn.Logs = eventLogs[:0]
+					for i := range eventLogs {
+						eventLogs[i] = eventLogs[i][:0]
+					}
+				}
 			}
 			lb := blk.LogsBloom()
 			for i, f := range br.EventFilters {
@@ -106,13 +116,19 @@ loop:
 						if err != nil {
 							break loop
 						}
-						if es, ok := f.match(r); ok {
+						if es, logs, err := f.MatchEvents(r, br.Logs.Value != 0); err == nil && len(es) > 0 {
 							if len(br.bn.Indexes) < 1 {
 								br.bn.Indexes = indexes[:]
 								br.bn.Events = events[:]
+								if br.Logs.Value != 0 {
+									br.bn.Logs = eventLogs[:]
+								}
 							}
 							br.bn.Indexes[i] = append(br.bn.Indexes[i], common.HexInt32{Value: index})
 							br.bn.Events[i] = append(br.bn.Events[i], es)
+							if br.Logs.Value != 0 {
+								br.bn.Logs[i] = append(br.bn.Logs[i], logs)
+							}
 						}
 						index++
 					}
@@ -129,9 +145,12 @@ loop:
 	return nil
 }
 
-func (r *BlockRequest) compile() error {
+func (r *BlockRequest) Compile() error {
 	for i, f := range r.EventFilters {
-		if err := f.compile(); err != nil {
+		if f == nil {
+			return fmt.Errorf("null filter idx:%d", i)
+		}
+		if err := f.Compile(); err != nil {
 			return fmt.Errorf("fail to compile idx:%d, err:%v", i, err)
 		}
 	}
