@@ -51,14 +51,6 @@ func (m *proofContextMap) Update(src module.BTPProofContextMapUpdateSource) (mod
 		return nil, err
 	}
 	if btpSectionByBuilder, ok := btpSection.(*btpSectionByBuilder); ok {
-		for _, ntid := range btpSectionByBuilder.inactivatedNTs {
-			if _, ok := res.pcMap[ntid]; ok {
-				if res == m {
-					res = m.copy()
-				}
-				delete(res.pcMap, ntid)
-			}
-		}
 		for _, nts_ := range btpSectionByBuilder.NetworkTypeSections() {
 			nts := nts_.(*networkTypeSectionByBuilder)
 			if nts.nsNPCChanged {
@@ -66,6 +58,14 @@ func (m *proofContextMap) Update(src module.BTPProofContextMapUpdateSource) (mod
 					res = m.copy()
 				}
 				res.pcMap[nts.NetworkTypeID()] = nts.NextProofContext()
+			}
+		}
+		for _, ntid := range btpSectionByBuilder.inactivatedNTs {
+			if _, ok := res.pcMap[ntid]; ok {
+				if res == m {
+					res = m.copy()
+				}
+				delete(res.pcMap, ntid)
 			}
 		}
 		return res, nil
