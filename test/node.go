@@ -337,3 +337,16 @@ func NodeInterconnect(nodes []*Node) {
 		}
 	}
 }
+
+func NodeWaitForBlock(nodes []*Node, h int64) module.Block {
+	var blk module.Block
+	for _, n := range nodes {
+		b := n.WaitForBlock(h)
+		if blk == nil {
+			blk = b
+		} else {
+			assert.Equal(n.T, blk.ID(), b.ID())
+		}
+	}
+	return blk
+}

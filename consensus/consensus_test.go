@@ -851,3 +851,47 @@ func TestConsensus_Restart(t *testing.T) {
 	err = f2.CS.Start()
 	assert.NoError(err)
 }
+
+func TestConsensus_Sync(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(t, test.AddValidatorNodes(4))
+	defer func() {
+		if f != nil {
+			f.Close()
+		}
+	}()
+
+	tx := test.NewTx().Call("setRevision", map[string]string{
+		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
+	}).Call("setMinimizeBlockGen", map[string]string{
+		"yn": fmt.Sprintf("0x1"),
+	})
+	f.SendTransactionToProposer(tx)
+
+	validators := f.Nodes[:4]
+	test.NodeInterconnect(validators)
+	for _, v := range validators {
+		err := v.CS.Start()
+		assert.NoError(err)
+	}
+
+	blk := test.NodeWaitForBlock(validators, 2)
+	assert.EqualValues(2, blk.Height())
+
+	for h := int64(4); h <= 10; h += 2 {
+		f.SendTransactionToAll(validators[0].NewTx())
+		blk = test.NodeWaitForBlock(validators, h)
+	}
+
+	nd := f.Nodes[4]
+	blk = nd.GetLastBlock()
+	assert.EqualValues(0, blk.Height())
+
+	for _, n := range validators {
+		nd.NM.Connect(n.NM)
+	}
+	err := nd.CS.Start()
+	assert.NoError(err)
+	blk = nd.WaitForBlock(10)
+	assert.EqualValues(10, blk.Height())
+}
