@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -130,6 +131,12 @@ func (f *EventFilter) compile() error {
 	name, pts := txresult.DecomposeEventSignature(f.Signature)
 	if len(name) == 0 || pts == nil || len(pts) < f.numOfArgs {
 		return errors.NewBase(errors.IllegalArgumentError, "bad event signature")
+	}
+	for idx, pt := range pts {
+		dt := scoreapi.DataTypeOf(pt)
+		if !dt.UsableForEvent() {
+			return errors.IllegalArgumentError.Errorf("InvalidParameterType(idx=%d,type=%s)", idx, pt)
+		}
 	}
 	lb.AddIndexedOfLog(0, []byte(f.Signature))
 	idx := 0
