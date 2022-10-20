@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
@@ -45,7 +46,9 @@ type Chain struct {
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
 	gsBytes   []byte
-	bwMap     map[string]module.BaseWallet
+
+	mu    sync.Mutex
+	bwMap map[string]module.BaseWallet
 }
 
 func (c *Chain) Database() db.Database {
@@ -237,6 +240,9 @@ func (a *addrWallet) PublicKey() []byte {
 }
 
 func (c *Chain) WalletFor(dsa string) module.BaseWallet {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if bw, ok := c.bwMap[dsa]; ok {
 		return bw
 	}
@@ -248,6 +254,9 @@ func (c *Chain) WalletFor(dsa string) module.BaseWallet {
 }
 
 func (c *Chain) SetWalletFor(keyType string, bw module.BaseWallet) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.bwMap[keyType] = bw
 }
 
