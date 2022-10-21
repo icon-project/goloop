@@ -15,3 +15,44 @@
  */
 
 package ntm
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/module"
+)
+
+func testModuleBasics(t *testing.T, uid, dsa string) {
+	assert := assert.New(t)
+	const count = 4
+	mod := ForUID(uid)
+	assert.EqualValues(uid, mod.UID())
+	assert.EqualValues(dsa, mod.DSA())
+
+	wallets := make([]module.Wallet, 0, count)
+	addrs := make([][]byte, 0, count)
+	for i := 0; i < count; i++ {
+		w := wallet.New()
+		wallets = append(wallets, w)
+		addr, err := mod.AddressFromPubKey(w.PublicKey())
+		assert.NoError(err)
+		addrs = append(addrs, addr)
+	}
+	ctx, err := mod.NewProofContext(addrs)
+	assert.NoError(err)
+	assert.EqualValues(uid, ctx.UID())
+	assert.EqualValues(dsa, ctx.DSA())
+	assert.EqualValues(mod.Hash(ctx.Bytes()), ctx.Hash())
+	ctxBytes := ctx.Bytes()
+	ctx2, err := mod.NewProofContextFromBytes(ctxBytes)
+	assert.NoError(err)
+	assert.EqualValues(ctx.Bytes(), ctx2.Bytes())
+}
+
+func TestModule_Basics(t *testing.T) {
+	testModuleBasics(t, "eth", "ecdsa/secp256k1")
+	testModuleBasics(t, "icon", "ecdsa/secp256k1")
+}
