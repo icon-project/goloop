@@ -737,6 +737,12 @@ func (m *manager) Term() {
 	m.removeNode(m.finalized)
 	m.finalized = nil
 	m.running = false
+	for i := 0; i < len(m.finalizationCBs); i++ {
+		cb := m.finalizationCBs[i]
+		m.syncer.callLater(func() {
+			cb(nil)
+		})
+	}
 }
 
 func (m *manager) GetBlock(id []byte) (module.Block, error) {
@@ -1378,6 +1384,10 @@ func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
 	fc := make(chan interface{}, 1)
 	if rBlockHeight > m.finalized.block.Height() {
 		m.finalizationCBs = append(m.finalizationCBs, func(blk module.Block) bool {
+			if blk == nil {
+				close(fc)
+				return true
+			}
 			if blk.Height() == rBlockHeight {
 				if info, err := m.getTransactionInfo(id); err != nil {
 					fc <- err
@@ -1484,8 +1494,13 @@ func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	}
 
 	m.finalizationCBs = append(m.finalizationCBs, func(blk module.Block) bool {
+		if blk == nil {
+			close(bch)
+			return true
+		}
 		if blk.Height() == height {
 			bch <- blk
+			close(bch)
 			return true
 		}
 		return false
