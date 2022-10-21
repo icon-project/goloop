@@ -27,6 +27,7 @@ type syncer struct {
 	plt        Platform
 	reactors   []SyncReactor
 	processors []SyncProcessor
+	noBuffer   bool
 
 	ah  []byte // account hash
 	vlh []byte // validator list hash
@@ -42,10 +43,18 @@ type syncer struct {
 	bd  module.BTPDigest
 }
 
+func (s *syncer) newMerkleBuilder() merkle.Builder {
+	if s.noBuffer {
+		return merkle.NewBuilderWithRawDatabase(s.database)
+	} else {
+		return merkle.NewBuilder(s.database)
+	}
+}
+
 func (s *syncer) getStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
 	s.logger.Debugf("GetStateBuilder ah=%#x, prh=%#x, nrh=%#x, vlh=%#x, ed=%#x",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
-	builder := merkle.NewBuilder(s.database)
+	builder := s.newMerkleBuilder()
 	ess := s.plt.NewExtensionWithBuilder(builder, extensionData)
 
 	if wss, err := state.NewWorldSnapshotWithBuilder(builder, accountsHash, validatorListHash, ess, nil); err == nil {
@@ -64,7 +73,7 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 		s.bd = btp.ZeroDigest
 		return nil
 	}
-	builder := merkle.NewBuilder(s.database)
+	builder := s.newMerkleBuilder()
 
 	btpDigest, err := btp.NewDigestWithBuilder(builder, btpHash)
 	if err == nil {
@@ -162,6 +171,7 @@ func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platf
 	s := &syncer{
 		logger:   logger,
 		database: database,
+		noBuffer: noBuffer,
 		reactors: reactors,
 		plt:      plt,
 		ah:       ah,
