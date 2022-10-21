@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/base64"
 	"fmt"
+
 	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/common"
@@ -68,7 +69,10 @@ loop:
 		select {
 		case err = <-ech:
 			break loop
-		case blk := <-bch:
+		case blk, ok := <-bch:
+			if !ok {
+				break loop
+			}
 			if nw.StartHeight()+1 <= h {
 				chain, ok := ctx.Get("chain").(module.Chain)
 				if chain == nil || !ok {

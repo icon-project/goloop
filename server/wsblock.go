@@ -72,7 +72,10 @@ loop:
 		select {
 		case err = <-ech:
 			break loop
-		case blk := <-bch:
+		case blk, ok := <-bch:
+			if !ok {
+				break loop
+			}
 			br.bn.Height = common.HexInt64{Value: h}
 			br.bn.Hash = blk.ID()
 			if rl != nil {

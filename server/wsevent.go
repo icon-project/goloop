@@ -82,7 +82,10 @@ loop:
 		select {
 		case err = <-ech:
 			break loop
-		case blk := <-bch:
+		case blk, ok := <-bch:
+			if !ok {
+				break loop
+			}
 			if !blk.LogsBloom().Contain(er.lb) {
 				h++
 				continue loop
