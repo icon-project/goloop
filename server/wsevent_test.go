@@ -17,6 +17,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -488,6 +489,221 @@ func TestEventFilter_MatchEvents(t *testing.T) {
 					}
 				})
 			}
+		})
+	}
+}
+
+func TestEventFilters_MatchEvents(t *testing.T) {
+	type args struct {
+		name    string
+		filters EventFilters
+		want    []int
+	}
+	tests := []struct {
+		name   string
+		events []*testEventLog
+		args   []args
+	}{
+		{
+			"EmptyEvents",
+			[]*testEventLog{},
+			[]args{
+				{
+					"Single",
+					EventFilters{
+						&EventFilter{
+							Signature: "TestEvent()",
+						},
+					},
+					[]int{},
+				},
+				{
+					"NoFilter",
+					EventFilters{},
+					[]int{},
+				},
+				{
+					"NilFilters",
+					nil,
+					[]int{},
+				},
+			},
+		},
+		{
+			"SomeEvents",
+			[]*testEventLog{
+				newTestEventLog("cx01", "TestEventA()", nil, nil),
+				newTestEventLog("cx02", "TestEventB(int,bytes)", [][]string{{"int", "0x1"}}, [][]string{{"bytes", "0x12ab"}}),
+				newTestEventLog("cx03", "TestEventB(int,bytes)", [][]string{{"int", "0x2"}}, [][]string{{"bytes", "0x12ab"}}),
+				newTestEventLog("cx02", "TestEventB(int,bytes)", [][]string{{"int", "0x3"}}, [][]string{nil}),
+				newTestEventLog("cx02", "TestEventB(int,bytes)", [][]string{{"int", "0x3"}}, [][]string{{"bytes", "0x12ab"}}),
+				newTestEventLog("cx03", "TestEventB(int,bytes)", [][]string{{"int", "0x3"}}, [][]string{{"bytes", "0x12ab"}}),
+				newTestEventLog("cx03", "TestEventB(int,bytes)", [][]string{{"int", "0x4"}}, [][]string{nil}),
+			},
+			[]args{
+				{
+					"NilFilters",
+					nil,
+					[]int{},
+				},
+				{
+					"Filter1",
+					EventFilters{
+						{
+							Signature: "TestEventB(int,bytes)",
+							Indexed:   []*string{stringPtr("0x3")},
+						},
+					},
+					[]int{3, 4, 5},
+				},
+				{
+					"Filter2",
+					EventFilters{
+						{
+							Addr:      common.MustNewAddressFromString("cx02"),
+							Signature: "TestEventB(int,bytes)",
+						},
+					},
+					[]int{1, 3, 4},
+				},
+				{
+					"Filter1Or2",
+					EventFilters{
+						{
+							Signature: "TestEventB(int,bytes)",
+							Indexed:   []*string{stringPtr("0x3")},
+						},
+						{
+							Addr:      common.MustNewAddressFromString("cx02"),
+							Signature: "TestEventB(int,bytes)",
+						},
+					},
+					[]int{1, 3, 4, 5},
+				},
+				{
+					"Filter1And2",
+					EventFilters{
+						{
+							Addr:      common.MustNewAddressFromString("cx02"),
+							Signature: "TestEventB(int,bytes)",
+							Indexed:   []*string{stringPtr("0x3")},
+						},
+					},
+					[]int{3, 4},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rct := newTestReceipt(tt.events)
+			for _, arg := range tt.args {
+				t.Run(arg.name, func(t *testing.T) {
+					for _, filter := range arg.filters {
+						err := filter.Compile()
+						assert.NoError(t, err)
+					}
+					got1, got2, err := arg.filters.MatchEvents(rct, true)
+					assert.NoError(t, err)
+
+					assert.Equal(t, len(arg.want), len(got1))
+					assert.Equal(t, len(arg.want), len(got2))
+					for idx, value := range arg.want {
+						assert.Equal(t, value, int(got1[idx].Value))
+						assert.Equal(t, tt.events[value], got2[idx])
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestEventRequest_Compile(t *testing.T) {
+	type fields struct {
+		EventFilter EventFilter
+		Height      common.HexInt64
+		Logs        common.HexInt32
+		Filters     EventFilters
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    EventFilters
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"LegacySuccess",
+			fields{
+				EventFilter: EventFilter{
+					Signature: "TestEvent()",
+				},
+			},
+			EventFilters{
+				&EventFilter{
+					Signature: "TestEvent()",
+				},
+			},
+			assert.NoError,
+		},
+		{
+			"LegacyFail",
+			fields{
+				EventFilter: EventFilter{
+					Signature: "TestEvent(",
+				},
+			},
+			nil,
+			assert.Error,
+		},
+		{
+			"MultiAndSingle",
+			fields{
+				EventFilter: EventFilter{
+					Signature: "TestEvent(",
+				},
+				Filters: EventFilters{
+					&EventFilter{
+						Signature: "TestEvent2()",
+					},
+				},
+			},
+			nil,
+			assert.Error,
+		},
+		{
+			"MultiFilters",
+			fields{
+				Filters: EventFilters{
+					&EventFilter{
+						Signature: "TestEvent2()",
+					},
+				},
+			},
+			EventFilters{
+				&EventFilter{
+					Signature: "TestEvent2()",
+				},
+			},
+			assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &EventRequest{
+				EventFilter: tt.fields.EventFilter,
+				Height:      tt.fields.Height,
+				Logs:        tt.fields.Logs,
+				Filters:     tt.fields.Filters,
+			}
+			got, err := f.Compile()
+			if !tt.wantErr(t, err, fmt.Sprintf("Compile()")) {
+				return
+			}
+			for _, filter := range tt.want {
+				filter.Compile()
+			}
+			assert.EqualValuesf(t, tt.want, got, "Compile()")
 		})
 	}
 }

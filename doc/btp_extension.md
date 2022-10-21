@@ -154,10 +154,10 @@ Summarize the document to following items.
 | height                            | T_INT  | true     | Start height                                                                                                                                                                       |
 | addr                              | T_ADDR | false    | SCORE address of Event                                                                                                                                                             |
 | logs                              | T_BOOL | false    | Whether it includes JSON log data (default: false)                                                                                                                                 |
-| event                             | String | true     | Event signature                                                                                                                                                                    |
+| event                             | String | false    | Event signature                                                                                                                                                                    |
 | <a id="eventsindexed">indexed</a> | Array  | false    | Array of arguments to match with indexed parameters of event. null matches any value.                                                                                              |
 | data                              | Array  | false    | Array of arguments to match with not indexed parameters of event. null matches any value. If indexed parameters of event are exists, require ['indexed'](#eventsindexed) parameter |
-
+| eventFilters                      | Array  | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters)) All events that match any of filters will be notified.                                          |
 
 
 > Success Responses
