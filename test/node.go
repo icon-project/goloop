@@ -22,7 +22,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -131,9 +130,7 @@ func (t *Node) Close() {
 	assert.NoError(t, err)
 	t.CS.Term()
 	t.BM.Term()
-	time.AfterFunc(time.Second*5, func() {
-		t.Chain.Close()
-	})
+	t.Chain.Close()
 }
 
 func (t *Node) GetLastBlock() module.Block {
