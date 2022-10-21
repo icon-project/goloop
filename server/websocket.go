@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"sync"
 
@@ -14,43 +15,58 @@ import (
 	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
+type WebSocketConn interface {
+	Close() error
+	WriteJSON(v interface{}) error
+	ReadMessage() (messageType int, p []byte, err error)
+	NextReader() (messageType int, r io.Reader, err error)
+}
+
+type WebSocketUpgrader interface {
+	Upgrade(ctx echo.Context) (WebSocketConn, error)
+}
+
 type wsSession struct {
-	c     *websocket.Conn
+	lock  sync.Mutex
+	c     WebSocketConn
 	chain module.Chain
 }
 
 type wsSessionManager struct {
 	sync.Mutex
+	upgrader   WebSocketUpgrader
 	maxSession int
 	logger     log.Logger
 	sessions   []*wsSession
 }
 
 func newWSSessionManager(logger log.Logger, maxSession int) *wsSessionManager {
+	return newWSSessionManagerWithUpgrader(logger, maxSession, NewWebSocketUpgrader())
+}
+
+func newWSSessionManagerWithUpgrader(logger log.Logger, maxSession int, upgrader WebSocketUpgrader) *wsSessionManager {
 	return &wsSessionManager{
+		upgrader:   upgrader,
 		maxSession: maxSession,
 		logger:     logger,
 	}
 }
 
-func (wm *wsSessionManager) NewSession(c *websocket.Conn, chain module.Chain) *wsSession {
+func (wm *wsSessionManager) NewSession(c WebSocketConn, chain module.Chain) *wsSession {
 	wm.Lock()
 	defer wm.Unlock()
 
 	if len(wm.sessions) >= wm.maxSession {
 		return nil
 	}
-	wss := &wsSession{c, chain}
+	wss := &wsSession{c: c, chain: chain}
 	wm.sessions = append(wm.sessions, wss)
 	return wss
 }
 
 func (wm *wsSessionManager) stopSessionAt(i int) {
 	wss := wm.sessions[i]
-	if wss.c != nil {
-		wss.c.Close()
-		wss.c = nil
-	}
+	wss.Close()
 	last := len(wm.sessions) - 1
 	wm.sessions[i] = wm.sessions[last]
 	wm.sessions[last] = nil
@@ -78,10 +94,7 @@ func (wm *wsSessionManager) StopAllSessions() {
 func (wm *wsSessionManager) stopAllSessionsInLock() {
 	for i := 0; i < len(wm.sessions); i++ {
 		wss := wm.sessions[i]
-		if wss.c != nil {
-			wss.c.Close()
-			wss.c = nil
-		}
+		wss.Close()
 	}
 	wm.sessions = nil
 }
@@ -109,13 +122,12 @@ func (wm *wsSessionManager) SetMaxSession(limit int) {
 }
 
 func (wm *wsSessionManager) initSession(ctx echo.Context, reqPtr interface{}) (*wsSession, error) {
-	u := Upgrader()
-	c, err := u.Upgrade(ctx.Response(), ctx.Request(), nil)
+	chain, err := wm.chain(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	chain, err := wm.chain(ctx)
+	c, err := wm.upgrader.Upgrade(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +177,27 @@ func (wss *wsSession) response(code int, msg string) error {
 }
 
 func (wss *wsSession) WriteJSON(v interface{}) error {
-	return wss.c.WriteJSON(v)
+	wss.lock.Lock()
+	defer wss.lock.Unlock()
+
+	if wss.c != nil {
+		return wss.c.WriteJSON(v)
+	} else {
+		return io.ErrUnexpectedEOF
+	}
+}
+
+func (wss *wsSession) Close() error {
+	wss.lock.Lock()
+	defer wss.lock.Unlock()
+
+	if wss.c != nil {
+		err := wss.c.Close()
+		wss.c = nil
+		return err
+	} else {
+		return nil
+	}
 }
 
 const DefaultWSMaxSession = 10
@@ -175,15 +207,26 @@ type WSResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-func Upgrader() *websocket.Upgrader {
-	return &websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
+// websocketUpgrader is implementation of WebSocketUpgrader
+type websocketUpgrader struct {
+	upgrader websocket.Upgrader
+}
+
+func (u *websocketUpgrader) Upgrade(ctx echo.Context) (WebSocketConn, error) {
+	return u.upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+}
+
+func NewWebSocketUpgrader() WebSocketUpgrader {
+	return &websocketUpgrader{
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
 		},
 	}
 }
 
-func readLoop(c *websocket.Conn, ech chan<- error) {
+func readLoop(c WebSocketConn, ech chan<- error) {
 	for {
 		if _, _, err := c.NextReader(); err != nil {
 			ech <- err
