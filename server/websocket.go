@@ -143,7 +143,7 @@ func (wm *wsSessionManager) initSession(ctx echo.Context, reqPtr interface{}) (*
 		}
 		c.WriteJSON(&wsResponse)
 		c.Close()
-		return nil, err
+		return nil, errors.New("too many monitor")
 	}
 	return wss, nil
 }
