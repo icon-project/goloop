@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -137,7 +138,9 @@ func (wm *wsSessionManager) initSession(ctx echo.Context, reqPtr interface{}) (*
 		wm.logger.Warnf("%+v\n", err)
 		return nil, err
 	}
-	if err := json.Unmarshal(msgBS, reqPtr); err != nil {
+	jd := json.NewDecoder(bytes.NewBuffer(msgBS))
+	jd.DisallowUnknownFields()
+	if err := jd.Decode(reqPtr); err != nil {
 		wsResponse := WSResponse{
 			Code:    int(jsonrpc.ErrorCodeJsonParse),
 			Message: "bad event request",

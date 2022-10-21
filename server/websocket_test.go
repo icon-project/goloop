@@ -339,8 +339,8 @@ func TestWSSessionManager_InvalidRequest(t *testing.T) {
 		cs = append(cs, cx)
 		t1 <- "NEW"
 		go func() {
-			assert.Equal(t, "REQUEST", <-cx)
-			err := conn.clientWrite([]byte("{ \"height\": abcd }"))
+			request := <-cx
+			err := conn.clientWrite([]byte(request))
 			assert.NoError(t, err)
 
 			bs, err := conn.clientRead()
@@ -350,6 +350,8 @@ func TestWSSessionManager_InvalidRequest(t *testing.T) {
 			err = json.Unmarshal(bs, &res)
 			assert.NoError(t, err)
 			t1 <- fmt.Sprint("RESULT:", res.Code)
+
+			conn.Close()
 		}()
 	})
 	s1 := make(chan string, 1)
@@ -371,10 +373,17 @@ func TestWSSessionManager_InvalidRequest(t *testing.T) {
 	)
 	go wm.RunEventSession(newTestContext(chain))
 	assert.Equal(t, "NEW", <-t1)
-	cs[0] <- "REQUEST"
-
+	cs[0] <- `{ "height": invalid }`
 	assert.Equal(t, fmt.Sprint("RESULT:", int(jsonrpc.ErrorCodeJsonParse)), <-t1)
+
+	go wm.RunEventSession(newTestContext(chain))
+	assert.Equal(t, "NEW", <-t1)
+	cs[1] <- `{ "height": "0x1",  "unknownField": "0x1" }`
+	assert.Equal(t, fmt.Sprint("RESULT:", int(jsonrpc.ErrorCodeJsonParse)), <-t1)
+
 	close(s1)
+
+	wm.StopAllSessions()
 }
 
 func TestWSSessionManager_MaxSession(t *testing.T) {
