@@ -12,7 +12,6 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/server/v3"
 )
@@ -57,14 +56,10 @@ func NewManager(
 
 	e := echo.New()
 
-	validator := jsonrpc.NewValidator()
-	v3.RegisterValidationRule(validator)
-
 	e.HideBanner = true
 	e.HidePort = true
 
 	e.HTTPErrorHandler = HTTPErrorHandler
-	e.Validator = validator
 	logger := l.WithFields(log.Fields{log.FieldKeyModule: "SR"})
 	mtr := metric.NewJsonrpcMetric(metric.DefaultJsonrpcDurationsExpire, metric.DefaultJsonrpcDurationsSize, false)
 	e.Logger.SetOutput(l.WriterLevel(log.DebugLevel))
