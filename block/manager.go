@@ -1056,10 +1056,6 @@ func (m *manager) Propose(
 	return pt, nil
 }
 
-func (m *manager) Commit(block module.BlockCandidate) error {
-	return nil
-}
-
 func (m *manager) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
 	return db.NewCodedBucket(m.db(), id, nil)
 }

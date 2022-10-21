@@ -133,8 +133,6 @@ type BlockManager interface {
 	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
-	Commit(BlockCandidate) error
-
 	// Finalize updates world state according to BlockCandidate and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(BlockCandidate) error
 
