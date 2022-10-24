@@ -40,7 +40,7 @@ type syncProcessor struct {
 
 	datasyncer      bool
 	migrateDur      time.Duration
-	migrateTimerMap map[*peer]*time.Timer
+	migrateTimerMap map[string]*time.Timer
 
 	reqIter  merkle.RequestIterator
 	reqCount int
@@ -120,12 +120,9 @@ func (s *syncProcessor) run(cb func(err error)) {
 }
 
 func (s *syncProcessor) stopMigrateTimerInLock() {
-	for p, timer := range s.migrateTimerMap {
-		if timer != nil {
-			timer.Stop()
-			timer = nil
-		}
-		delete(s.migrateTimerMap, p)
+	for id, timer := range s.migrateTimerMap {
+		timer.Stop()
+		delete(s.migrateTimerMap, id)
 	}
 }
 
@@ -302,7 +299,7 @@ func (s *syncProcessor) migrate(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	delete(s.migrateTimerMap, p)
+	delete(s.migrateTimerMap, p.id.String())
 
 	if s.checkedPool == nil || s.checkedPool.size() == 0 {
 		return
@@ -316,12 +313,10 @@ func (s *syncProcessor) migrate(p *peer) {
 }
 
 func (s *syncProcessor) checkedPoolRemoveInLock(p *peer) bool {
-	timer := s.migrateTimerMap[p]
-	if timer != nil {
+	if timer, ok := s.migrateTimerMap[p.id.String()]; ok {
 		timer.Stop()
-		timer = nil
+		delete(s.migrateTimerMap, p.id.String())
 	}
-	delete(s.migrateTimerMap, p)
 
 	return s.checkedPool.remove(p.id) != nil
 }
@@ -331,7 +326,7 @@ func (s *syncProcessor) checkedPoolPushInLock(p *peer) {
 	timer := time.AfterFunc(s.migrateDur, func() {
 		s.migrate(p)
 	})
-	s.migrateTimerMap[p] = timer
+	s.migrateTimerMap[p.id.String()] = timer
 }
 
 // HandleData handle data from peer. If it expires timeout, data would
@@ -383,7 +378,7 @@ func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, logger log
 		sentPool:        newPeerPool(),
 		checkedPool:     newPeerPool(),
 		datasyncer:      datasyncer,
-		migrateTimerMap: make(map[*peer]*time.Timer),
+		migrateTimerMap: make(map[string]*time.Timer),
 	}
 	sp.waiter = sync.NewCond(&sp.mutex)
 
