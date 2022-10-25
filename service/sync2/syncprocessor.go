@@ -352,7 +352,7 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 
 	p := s.sentPool.remove(sender.id)
 	if p == nil {
-		s.logger.Debugf("HandleData() peer=%v not in sentPool", sender.id)
+		s.logger.Debugf("HandleData() sender=%v not in sentPool", sender.id)
 		return
 	}
 

@@ -43,7 +43,7 @@ func newPeer(id module.PeerID, sender DataSender, logger log.Logger) *peer {
 }
 
 func (p *peer) String() string {
-	return fmt.Sprintf("peer=%v, reqID=%d", p.id, p.reqID)
+	return fmt.Sprintf("{id=%v, expired=%d}", p.id, p.expired)
 }
 
 func (p *peer) getExpired() time.Duration {
@@ -58,7 +58,7 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 	defer p.lock.Unlock()
 
 	reqID := p.reqID
-	p.logger.Tracef("RequestData() peer=%v, reqID=%v, reqData=%d", p.id, reqID, len(reqData))
+	p.logger.Tracef("RequestData() peer=%v, reqID=%v, reqData=%d", p, reqID, len(reqData))
 	if err := p.sender.RequestData(p.id, reqID, reqData); err == nil {
 		p.reqID += 1
 		p.reqMap[reqID] = peerRequest{
@@ -77,7 +77,7 @@ func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) err
 	locker := common.LockForAutoCall(&p.lock)
 	defer locker.Unlock()
 
-	p.logger.Tracef("OnData() peer=%s reqID=%d status=%s data=%d", p.id, reqID, status, len(data))
+	p.logger.Tracef("OnData() peer=%s reqID=%d status=%s data=%d", p, reqID, status, len(data))
 	if status == ErrTimeExpired && p.expired < configMaxExpiredTime {
 		p.expired += 200 * time.Millisecond
 	}
