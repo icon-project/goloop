@@ -17,6 +17,7 @@ package containerdb
 
 import (
 	"io"
+	"math"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -86,7 +87,7 @@ func AppendRawKeys(key []byte, keys ...interface{}) []byte {
 	return kbytes
 }
 
-func rlpReadSize(b []byte, slen int) (uint64, error) {
+func rlpReadSize(b []byte, slen int) (int, error) {
 	if slen > len(b) {
 		return 0, errors.IllegalArgumentError.Errorf(
 			"NotEnoughBytes(exp=%d,real=%d)", slen, len(b))
@@ -110,10 +111,10 @@ func rlpReadSize(b []byte, slen int) (uint64, error) {
 	case 8:
 		s = uint64(b[0])<<56 | uint64(b[1])<<48 | uint64(b[2])<<40 | uint64(b[3])<<32 | uint64(b[4])<<24 | uint64(b[5])<<16 | uint64(b[6])<<8 | uint64(b[7])
 	}
-	if s < 56 || b[0] == 0 {
+	if s < 56 || b[0] == 0 || s > math.MaxInt {
 		return 0, errors.IllegalArgumentError.New("InvalidSizeField")
 	}
-	return s, nil
+	return int(s), nil
 }
 
 func rlpParseBytes(bs []byte) ([]byte, []byte, error) {
@@ -139,7 +140,7 @@ func rlpParseBytes(bs []byte) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 		data = data[ts:]
-		if uint64(len(data)) < size {
+		if len(data) < size {
 			return nil, nil, errors.IllegalArgumentError.Errorf(
 				"NotEnoughBytes(exp=%d,real=%d)", size, len(data))
 		}

@@ -29,7 +29,9 @@ func (c bytesWrapper) MarshalToBytes(v interface{}) ([]byte, error) {
 
 func (c bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
 	buf := bytes.NewBuffer(b)
-	if err := c.NewDecoder(buf).Decode(v); err != nil {
+	dec := c.NewDecoder(buf)
+	dec.SetMaxBytes(len(b))
+	if err := dec.Decode(v); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

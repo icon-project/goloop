@@ -53,6 +53,7 @@ type Decoder interface {
 	DecodeBytes() ([]byte, error)
 	DecodeList() (Decoder, error)
 	DecodeListOf(objs ...interface{}) error
+	SetMaxBytes(sz int) bool
 }
 
 type DecodeAndCloser interface {
@@ -501,6 +502,17 @@ func (d *decoderImpl) DecodeListOf(objs ...interface{}) error {
 		}
 	}
 	return d.flush()
+}
+
+func (d *decoderImpl) SetMaxBytes(sz int) bool {
+	type setMaxByteser interface {
+		SetMaxBytes(sz int)
+	}
+	if ri, ok := d.real.(setMaxByteser); ok {
+		ri.SetMaxBytes(sz)
+		return true
+	}
+	return false
 }
 
 var readSelferType = reflect.TypeOf((*ReadSelfer)(nil)).Elem()

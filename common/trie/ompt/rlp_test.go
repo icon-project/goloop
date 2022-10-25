@@ -66,3 +66,19 @@ func Test_rlpEncode(t *testing.T) {
 		})
 	}
 }
+
+func FuzzRLPParseBytes(f *testing.F) {
+	f.Add([]byte("\x80"))
+	f.Add([]byte("\x20"))
+	f.Add([]byte("\x82\xab\x78"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		rlpParseBytes(data)
+	})
+}
+
+func FuzzRLPParseList(f *testing.F) {
+	f.Add([]byte("\xc0"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		rlpParseList(data)
+	})
+}
