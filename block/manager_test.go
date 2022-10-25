@@ -91,6 +91,7 @@ func TestBlockManager_ImportBlock_OK(t *testing.T) {
 
 	ch := make(chan module.BlockCandidate)
 	nd2 := test.NewNode(t)
+	defer nd2.Close()
 	_, err := nd2.BM.ImportBlock(blk, 0, func(bc module.BlockCandidate, err error) {
 		ch <- bc
 	})
@@ -334,4 +335,156 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 
 	_, err = nts.NextProofContext().NewProofPart(make([]byte, 32), wp)
 	assert.NoError(err)
+}
+
+func TestManager_WaitForBlock(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	ch0, err := nd.BM.WaitForBlock(0)
+	assert.NoError(err)
+	blk := <-ch0
+	assert.EqualValues(0, blk.Height())
+
+	ch1, err := nd.BM.WaitForBlock(1)
+	assert.NoError(err)
+	select {
+	case <-ch1:
+		assert.Fail("Shall not happen")
+	default:
+	}
+
+	ch2, err := nd.BM.WaitForBlock(2)
+	assert.NoError(err)
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk = <-ch1
+	assert.EqualValues(1, blk.Height())
+
+	select {
+	case <-ch2:
+		assert.Fail("Shall not happen")
+	default:
+	}
+
+	nd.BM.Term()
+	blk = <-ch2
+	assert.Nil(blk)
+}
+
+func TestManager_WaitTransactionResult(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	tx := nd.NewTx()
+	nd.ProposeFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(), tx.String(),
+	)
+	ch, err := nd.BM.WaitTransactionResult(tx.ID())
+	assert.NoError(err)
+
+	select {
+	case <-ch:
+		assert.Fail("shall not receive")
+	default:
+	}
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	ti := (<-ch).(module.TransactionInfo)
+	tx2, err := ti.Transaction()
+	assert.NoError(err)
+	assert.Equal(tx.ID(), tx2.ID())
+}
+
+type genesisBuffer struct {
+	gtx  []byte
+	data map[string][]byte
+}
+
+func newGenesisBuffer() *genesisBuffer {
+	return &genesisBuffer{
+		data: make(map[string][]byte),
+	}
+}
+
+func (gb *genesisBuffer) WriteGenesis(gtx []byte) error {
+	gb.gtx = gtx
+	return nil
+}
+
+func (gb *genesisBuffer) WriteData(value []byte) ([]byte, error) {
+	hv := crypto.SHA3Sum256(value)
+	gb.data[string(hv)] = value
+	return hv, nil
+}
+
+func (gb *genesisBuffer) Close() error {
+	return nil
+}
+
+type genesisStorage struct {
+	gType  module.GenesisType
+	cid    int
+	nid    int
+	height int64
+	gtx    []byte
+	data   map[string][]byte
+}
+
+func newGenesisStorage(gType module.GenesisType, cid, nid int, height int64, gb *genesisBuffer) *genesisStorage {
+	return &genesisStorage{
+		gType:  gType,
+		cid:    cid,
+		nid:    nid,
+		height: height,
+		gtx:    gb.gtx,
+		data:   gb.data,
+	}
+}
+
+func (gs *genesisStorage) CID() (int, error) {
+	return gs.cid, nil
+}
+
+func (gs *genesisStorage) NID() (int, error) {
+	return gs.nid, nil
+}
+
+func (gs *genesisStorage) Height() int64 {
+	return gs.height
+}
+
+func (gs *genesisStorage) Type() (module.GenesisType, error) {
+	return gs.gType, nil
+}
+
+func (gs *genesisStorage) Genesis() []byte {
+	return gs.gtx
+}
+
+func (gs *genesisStorage) Get(key []byte) ([]byte, error) {
+	return gs.data[string(key)], nil
+}
+
+func TestManager_ExportGenesis(t *testing.T) {
+	assert := assert.New(t)
+
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk := nd.GetLastBlock()
+	gb := newGenesisBuffer()
+	err := nd.BM.ExportGenesis(blk, consensus.NewEmptyCommitVoteList(), gb)
+	assert.NoError(err)
+	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 1, gb)
+
+	db := nd.Chain.Database()
+	nd2 := test.NewNode(t, test.UseGenesisStorage(gs), test.UseDB(db))
+	defer nd2.Close()
+	blk2, _, err := nd2.BM.GetGenesisData()
+	assert.NoError(err)
+	assert.EqualValues(blk.ID(), blk2.ID())
 }

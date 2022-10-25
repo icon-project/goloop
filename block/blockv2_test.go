@@ -31,6 +31,7 @@ import (
 
 func TestBlockV2_ToJSON(t *testing.T) {
 	nd := test.NewNode(t)
+	defer nd.Close()
 	assert := assert.New(t)
 
 	blk, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))

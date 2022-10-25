@@ -281,7 +281,7 @@ func (sm *ServiceManager) SendTransactionAndWait(result []byte, height int64, tx
 }
 
 func (sm *ServiceManager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
-	panic("implement me")
+	return nil, service.ErrCommittedTransaction
 }
 
 func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database) error {
