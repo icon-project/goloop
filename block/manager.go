@@ -732,6 +732,10 @@ func (m *manager) Term() {
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return
+	}
+
 	m.log.Debugf("Term block manager\n")
 
 	m.removeNode(m.finalized)
@@ -748,6 +752,10 @@ func (m *manager) Term() {
 func (m *manager) GetBlock(id []byte) (module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
+	}
 
 	return m.getBlock(id)
 }
@@ -783,6 +791,10 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	m.log.Debugf("Import(%x)\n", r)
 
 	v, r, err := PeekVersion(r)
@@ -811,6 +823,10 @@ func (m *manager) ImportBlock(
 ) (module.Canceler, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
+	}
 
 	m.log.Debugf("ImportBlock(%x)\n", block.ID())
 
@@ -1047,6 +1063,10 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	m.log.Debugf("Propose(<%x>, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
@@ -1063,6 +1083,10 @@ func (m *manager) bucketFor(id db.BucketID) (*db.CodedBucket, error) {
 func (m *manager) Finalize(block module.BlockCandidate) error {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return errors.New("not running")
+	}
 
 	bn := m.nmap[string(block.ID())]
 	if bn == nil || bn.parent != m.finalized {
@@ -1219,6 +1243,10 @@ func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	v, r, err := PeekVersion(r)
 	if err != nil {
 		return nil, err
@@ -1281,6 +1309,10 @@ func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	return m.getTransactionInfo(id)
 }
 
@@ -1333,6 +1365,10 @@ func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interf
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, nil, errors.New("not running")
+	}
+
 	id, rc, err := m.sm.SendTransactionAndWait(result, height, txi)
 	if err == nil {
 		return id, rc, nil
@@ -1349,6 +1385,10 @@ func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interf
 func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
+	}
 
 	ch, err := m.sm.WaitTransactionResult(id)
 	if err == nil {
@@ -1411,6 +1451,10 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	return m.getBlockByHeight(height)
 }
 
@@ -1472,12 +1516,20 @@ func (m *manager) GetLastBlock() (module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return nil, errors.New("not running")
+	}
+
 	return m.finalized.block, nil
 }
 
 func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
+	}
 
 	bch := make(chan module.Block, 1)
 
@@ -1504,15 +1556,19 @@ func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	return bch, nil
 }
 
-func (m *manager) WaitForTransaction(parentID []byte, cb func()) bool {
+func (m *manager) WaitForTransaction(parentID []byte, cb func()) (bool, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	if !m.running {
+		return false, errors.New("not running")
+	}
+
 	bn := m.nmap[string(parentID)]
 	if bn == nil {
-		return false
+		return false, nil
 	}
-	return m.sm.WaitForTransaction(bn.in.mtransition(), bn.block, cb)
+	return m.sm.WaitForTransaction(bn.in.mtransition(), bn.block, cb), nil
 }
 
 func (m *manager) DupBlockCandidate(bc *blockCandidate) *blockCandidate {
@@ -1546,10 +1602,17 @@ func hasBits(v int, bits int) bool {
 }
 
 func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet, gsw module.GenesisStorageWriter) error {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	if !m.running {
+		return errors.New("not running")
+	}
+
 	height := blk.Height()
 
 	if votes == nil {
-		if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
+		if nblk, err := m.getBlockByHeight(height + 1); err != nil {
 			return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
 		} else {
 			votes = nblk.Votes()
@@ -1589,10 +1652,17 @@ func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet
 }
 
 func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64) error) error {
-	return m._exportBlocks(from, to, dst, exportAll, on)
+	return m.ExportBlocksWithFlag(from, to, dst, exportAll, on)
 }
 
-func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
+func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
+	al := common.Lock(&m.syncer)
+	defer al.Unlock()
+
+	if !m.running {
+		return errors.New("not running")
+	}
+
 	ctx := merkle.NewCopyContext(m.db(), dst)
 	if hasBits(flag, exportValidator) && from > 0 {
 		// export the block for validators
@@ -1614,19 +1684,29 @@ func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int, on fu
 			}
 		}
 	}
+	al.Unlock()
+
 	for h := from; h <= to; h++ {
 		if on != nil {
 			if err := on(h); err != nil {
 				return err
 			}
 		}
-		blk, err := m.GetBlockByHeight(h)
+		m.syncer.begin()
+		if !m.running {
+			return errors.New("not running")
+		}
+
+		blk, err := m.getBlockByHeight(h)
 		if err != nil {
+			m.syncer.end()
 			return errors.Wrapf(err, "fail to get a block height=%d", h)
 		}
 		if err := m._export(blk, ctx, flag); err != nil {
+			m.syncer.end()
 			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
 		}
+		m.syncer.end()
 	}
 	return nil
 }
@@ -1694,6 +1774,13 @@ func (m *manager) _export(blk module.Block, ctx *merkle.CopyContext, flag int) e
 }
 
 func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	if !m.running {
+		return nil, nil, errors.New("not running")
+	}
+
 	storage := m.chain.GenesisStorage()
 	if genesisType, err := storage.Type(); err != nil {
 		return nil, nil, err
@@ -1711,7 +1798,7 @@ func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get votes for hash=%x", genesis.Votes)
 	}
 	voteSetDecoder := m.chain.CommitVoteSetDecoder()
-	block, err := m.GetBlock(genesis.Block)
+	block, err := m.getBlock(genesis.Block)
 	if err != nil {
 		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get block for id=%x", genesis.Block)
 	}
@@ -1721,6 +1808,10 @@ func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 func (m *manager) NewConsensusInfo(blk module.Block) (module.ConsensusInfo, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
+	}
 
 	return m.newConsensusInfo(blk)
 }

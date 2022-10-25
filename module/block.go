@@ -143,7 +143,7 @@ type BlockManager interface {
 	// bi.Timestamp() - TimestampThreshold and current time +
 	// TimestampThreshold. If such a transaction is available now, the function
 	// returns false and callback cb is not called.
-	WaitForTransaction(parentID []byte, cb func()) bool
+	WaitForTransaction(parentID []byte, cb func()) (bool, error)
 
 	// SendTransactionAndWait sends a transaction, and get a channel to
 	// to wait for the result of it.

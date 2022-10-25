@@ -1006,7 +1006,7 @@ func (cs *consensus) enterTransactionWait() {
 
 	if waitTx {
 		hrs := cs.hrs
-		callback := cs.c.BlockManager().WaitForTransaction(cs.lastBlock.ID(), func() {
+		callback, err := cs.c.BlockManager().WaitForTransaction(cs.lastBlock.ID(), func() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
@@ -1016,6 +1016,7 @@ func (cs *consensus) enterTransactionWait() {
 
 			cs.enterPropose()
 		})
+		cs.log.Must(err)
 		if callback {
 			cs.notifySyncer()
 			return
