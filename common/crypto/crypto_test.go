@@ -220,3 +220,39 @@ func TestSignature_RLPEncodeSelf_nil(t *testing.T) {
 	codec.MustUnmarshalFromBytes(bs, &psig2)
 	assert.Nil(t, psig2)
 }
+
+func BenchmarkSignature_NewSignatureAndRecover(b *testing.B) {
+	priv, pub := GenerateKeyPair()
+	for i := 0; i < b.N; i++ {
+		sig, err := NewSignature(testHash, priv)
+		assert.NoError(b, err)
+		pk, err := sig.RecoverPublicKey(testHash)
+		assert.NoError(b, err)
+		assert.True(b, pk.Equal(pub))
+	}
+}
+
+func BenchmarkSignature_RecoverPublicKey(b *testing.B) {
+	priv, pub := GenerateKeyPair()
+	sig, err := NewSignature(testHash, priv)
+	assert.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pk, err := sig.RecoverPublicKey(testHash)
+		assert.NoError(b, err)
+		assert.True(b, pk.Equal(pub))
+	}
+}
+
+func BenchmarkSignature_Verify(b *testing.B) {
+	priv, pub := GenerateKeyPair()
+	sig, err := NewSignature(testHash, priv)
+	assert.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := sig.Verify(testHash, pub)
+		assert.True(b, result)
+	}
+}
