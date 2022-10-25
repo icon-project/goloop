@@ -3,7 +3,6 @@ package crypto
 import (
 	"encoding/hex"
 	"math/rand"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -40,56 +39,98 @@ func TestSignAndVerify(t *testing.T) {
 	if sig.Verify(hash, pub) {
 		t.Errorf("Verify always works!")
 	}
+
+	// test signature without V
+	rs, err := sig.SerializeRS()
+	assert.NoError(t, err)
+
+	sig2, err := ParseSignature(rs)
+	assert.NoError(t, err)
+
+	assert.True(t, sig2.Verify(testHash, pub))
+
+	// forged signature
+	rs[0] ^= 0xff
+	sig3, err := ParseSignature(rs)
+	assert.NoError(t, err)
+
+	assert.False(t, sig3.Verify(testHash, pub))
 }
 
 func TestVerifySignature(t *testing.T) {
-	sig, _ := ParseSignature(testSignature)
-	pub, _ := ParsePublicKey(testPublicKey)
-	// pub, _ := ParsePublicKey(testPublicKeyComp)
-	if !sig.Verify(testHash, pub) {
-		t.Errorf("Verify failed")
-	}
+	sig, err := ParseSignature(testSignature)
+	assert.NoError(t, err)
+	pub, err := ParsePublicKey(testPublicKey)
+	assert.NoError(t, err)
+	result := sig.Verify(testHash, pub)
+	assert.True(t, result, "Verify failed")
 }
 
 func TestRecoverPublicKey(t *testing.T) {
+	sig, err := ParseSignature(testSignature)
+	assert.NoError(t, err)
+	pub, err := ParsePublicKey(testPublicKey)
+	assert.NoError(t, err)
+	pk2, err := sig.RecoverPublicKey(testHash)
+	assert.NoError(t, err)
+	assert.True(t, pub.Equal(pk2))
+
+	pk3, err := sig.RecoverPublicKey(nil)
+	assert.Error(t, err)
+	assert.Nil(t, pk3)
+
+	rs, err := sig.SerializeRS()
+	assert.NoError(t, err)
+	sig2, err := ParseSignature(rs)
+	pk4, err := sig2.RecoverPublicKey(testHash)
+	assert.Error(t, err)
+	assert.Nil(t, pk4)
+}
+
+func TestRecoverPublicKeyAfterSign(t *testing.T) {
 	priv, pub := GenerateKeyPair()
 	sig, err := NewSignature(testHash, priv)
+	assert.NoError(t, err, "fail to make signature")
 
 	pub1, err := sig.RecoverPublicKey(testHash)
+	assert.NoError(t, err, "fail to recover public key")
+	assert.True(t, pub1.Equal(pub), "recovered public key is not same")
+
+	// making invalid signature
+	rsv, err := sig.SerializeRSV()
+	assert.NoError(t, err, "fail on SerializeRS()")
+	rsv[1] = rsv[1] ^ 0x0f
+
+	// ensure that it fails with invalid signature
+	sig2, err := ParseSignature(rsv)
+	assert.NoError(t, err)
+	pub2, err := sig2.RecoverPublicKey(testHash)
 	if err != nil {
-		t.Errorf("error recover public key:%s", err)
-		return
+		assert.Nil(t, pub2)
+	} else {
+		assert.False(t, pub2.Equal(pub))
 	}
 
-	if !pub.Equal(pub1) {
-		t.Errorf("recovered public key is not same")
-	}
-
-	sig.bytes[0] = sig.bytes[0] ^ 0x0f
-	pub2, err := sig.RecoverPublicKey(testHash)
-	if err == nil && pub.Equal(pub2) {
-		t.Errorf("Public key recovery always works!")
-	}
+	sig3, err := ParseSignature(rsv[:SignatureLenRaw])
+	assert.NoError(t, err)
+	result := sig3.Verify(testHash, pub)
+	assert.False(t, result)
 }
 
 func TestPrintSignature(t *testing.T) {
-	sig, _ := ParseSignature(testSignature)
+	sig, err := ParseSignature(testSignature)
+	assert.NoError(t, err)
+
 	str := "0x" + hex.EncodeToString(testSignature)
-	if strings.Compare(sig.String(), str) != 0 {
-		t.Errorf("fail to print signature")
-	}
+	assert.Equal(t, str, sig.String())
 
 	sig, _ = ParseSignature(testSignature[:64])
 	str = "0x" + hex.EncodeToString(testSignature[:64]) + "[no V]"
-	if strings.Compare(sig.String(), str) != 0 {
-		t.Errorf("fail to print signaure(no V)")
-	}
+	assert.Equal(t, str, sig.String())
 
 	sig, _ = ParseSignature([]byte("invalid"))
 	str = "[empty]"
-	if strings.Compare(sig.String(), str) != 0 {
-		t.Errorf("fail to print signaure(no V)")
-	}
+	assert.Equal(t, str, sig.String())
 }
 
 func TestRace(t *testing.T) {
