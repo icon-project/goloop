@@ -94,11 +94,6 @@ func (bh *btpBlockHeader) HeaderBytes() []byte {
 	return bh.bytes
 }
 
-func (bh *btpBlockHeader) MessageList() (module.BTPMessageList, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 // NewBTPBlockHeader returns a new BTPBlockHeader for the height and nid. If flag's
 // IncludeNextProofContext bit is on, the header includes NextProofContext.
 func NewBTPBlockHeader(
