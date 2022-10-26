@@ -1,8 +1,29 @@
+/*
+ * Copyright 2022 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Package errors is replacement package for standard errors package.
+// It attaches error code and stack information to the error object.
 package errors
 
 import (
+	serrors "errors"
 	"fmt"
+	"io"
 	"reflect"
+	"runtime"
 
 	"github.com/pkg/errors"
 )
@@ -84,28 +105,73 @@ func (c Code) AttachTo(e error) error {
 }
 
 func (c Code) Equals(e error) bool {
-	if e == nil {
-		return false
-	}
 	return CodeOf(e) == c
 }
 
-/*------------------------------------------------------------------------------
-Simple mapping to github.com/pkg/errors for easy stack print
-*/
-
 // New makes an error including a stack without any code
 // If you want to make base error without stack
+type stack []uintptr
+
+func (s *stack) StackTrace() errors.StackTrace {
+	f := make([]errors.Frame, len(*s))
+	for i := 0; i < len(f); i++ {
+		f[i] = errors.Frame((*s)[i])
+	}
+	return f
+}
+
+func callers(skip int) *stack {
+	const depth = 16
+	var pcs [depth]uintptr
+	n := runtime.Callers(skip, pcs[:])
+	var st stack = pcs[0:n]
+	return &st
+}
+
+type withStack struct {
+	error
+	*stack
+}
+
+func (e *withStack) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
+}
+
+func (e *withStack) Unwrap() error {
+	return Unwrap(e.error)
+}
+
 func New(msg string) error {
-	return errors.New(msg)
+	return &withStack{
+		error: serrors.New(msg),
+		stack: callers(3),
+	}
 }
 
 func Errorf(f string, args ...interface{}) error {
-	return errors.Errorf(f, args...)
+	return &withStack{
+		error: fmt.Errorf(f, args...),
+		stack: callers(3),
+	}
+}
+
+type wrappedWithStack struct {
+	wrapped
+	*stack
+}
+
+func (e *wrappedWithStack) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
 }
 
 func WithStack(e error) error {
-	return errors.WithStack(e)
+	if e == nil {
+		return nil
+	}
+	return &wrappedWithStack{
+		wrapped: wrap(e),
+		stack:   callers(3),
+	}
 }
 
 /*------------------------------------------------------------------------------
@@ -114,169 +180,194 @@ Base error only with message and code
 For general usage, you may return this directly.
 */
 
-type baseError struct {
-	code Code
-	msg  string
-}
-
-func (e *baseError) Error() string {
-	return e.msg
-}
-
-func (e *baseError) ErrorCode() Code {
-	return e.code
-}
-
-func (e *baseError) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v', 's', 'q':
-		fmt.Fprintf(f, "E%04d:%s", e.code, e.msg)
+func formatError(e error, f fmt.State, c rune) {
+	for {
+		e = formatErrorOne(e, f, c)
+		if e == nil {
+			return
+		}
+		io.WriteString(f, "\nWrapping ")
 	}
 }
 
-func (e *baseError) Equals(err error) bool {
-	return CodeOf(err) == e.code
+func formatErrorOne(e error, f fmt.State, c rune) error {
+	switch c {
+	case 's':
+		io.WriteString(f, e.Error())
+	case 'q':
+		fmt.Fprintf(f, "%q", e.Error())
+	case 'v':
+		if coder, ok := CoderOf(e); ok {
+			fmt.Fprintf(f, "E%04d:%s", coder.ErrorCode(), e.Error())
+		} else {
+			io.WriteString(f, e.Error())
+		}
+		if f.Flag('+') {
+			if tracer, ok := StackTracerOf(e); ok {
+				tracer.StackTrace().Format(f, c)
+				return Unwrap(tracer.(ErrorWithStack))
+			} else {
+				return Unwrap(e)
+			}
+		}
+	}
+	return nil
 }
 
-func NewBase(code Code, msg string) *baseError {
-	return &baseError{code, msg}
+type code int
+
+func (c code) ErrorCode() Code {
+	return Code(c)
+}
+
+type message string
+
+func (e message) Error() string {
+	return string(e)
+}
+
+type codedError struct {
+	code
+	message
+}
+
+func (e *codedError) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
+}
+
+func NewBase(c Code, msg string) *codedError {
+	return &codedError{code(c), message(msg)}
 }
 
 /*------------------------------------------------------------------------------
 Coded error object
 */
 
-type codedError struct {
-	code Code
+type withCodeAndStack struct {
 	error
+	code
+	*stack
 }
 
-func (e *codedError) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "E%04d:%+v", e.code, e.error)
-			return
-		}
-		fallthrough
-	case 's', 'q':
-		fmt.Fprintf(f, "E%04d:%s", e.code, e.Error())
+func (e *withCodeAndStack) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
+}
+
+func (e *withCodeAndStack) Unwrap() error {
+	return Unwrap(e.error)
+}
+
+func Errorc(c Code, msg string) error {
+	return &withCodeAndStack{
+		error: serrors.New(msg),
+		code:  code(c),
+		stack: callers(3),
 	}
 }
 
-func (e *codedError) ErrorCode() Code {
-	return e.code
-}
-
-func (e *codedError) Unwrap() error {
-	return e.error
-}
-
-func Errorc(code Code, msg string) error {
-	return &codedError{
-		code:  code,
-		error: errors.New(msg),
+func Errorcf(c Code, f string, args ...interface{}) error {
+	return &withCodeAndStack{
+		error: fmt.Errorf(f, args...),
+		code:  code(c),
+		stack: callers(3),
 	}
 }
 
-func Errorcf(code Code, f string, args ...interface{}) error {
-	return &codedError{
-		code:  code,
-		error: errors.Errorf(f, args...),
-	}
+type wrappedWithCode struct {
+	wrapped
+	code
 }
 
-func WithCode(err error, code Code) error {
+func (e *wrappedWithCode) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
+}
+
+func WithCode(err error, c Code) error {
 	if err == nil {
 		return nil
 	}
-	if _, ok := CoderOf(err); ok {
-		return Wrapc(err, code, err.Error())
-	}
-	return &codedError{
-		code:  code,
-		error: err,
+	return &wrappedWithCode{
+		wrapped: wrap(err),
+		code:    code(c),
 	}
 }
 
-type messageError struct {
+type wrapped struct {
 	error
-	origin error
 }
 
-func (e *messageError) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "%+v", e.error)
-			fmt.Fprintf(f, "\nWrapping %+v", e.origin)
-			return
-		}
-		fallthrough
-	case 's', 'q':
-		fmt.Fprintf(f, "%s", e.error)
-	}
+func (e *wrapped) Unwrap() error {
+	return e.error
 }
 
-func (e *messageError) Unwrap() error {
-	return e.origin
+func wrap(e error) wrapped {
+	return wrapped{e}
+}
+
+type wrappedWithMessage struct {
+	wrapped
+	message
+	*stack
+}
+
+func (e *wrappedWithMessage) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
 }
 
 func Wrap(e error, msg string) error {
-	return &messageError{
-		error:  errors.New(msg),
-		origin: e,
+	if e == nil {
+		return nil
+	}
+	return &wrappedWithMessage{
+		wrapped: wrap(e),
+		message: message(msg),
+		stack:   callers(3),
 	}
 }
 
 func Wrapf(e error, f string, args ...interface{}) error {
-	return &messageError{
-		error:  errors.Errorf(f, args...),
-		origin: e,
+	if e == nil {
+		return nil
+	}
+	return &wrappedWithMessage{
+		wrapped: wrap(e),
+		message: message(fmt.Sprintf(f, args...)),
+		stack:   callers(3),
 	}
 }
 
-type wrappedError struct {
-	error
-	code   Code
-	origin error
+type wrappedWithCodeMessage struct {
+	wrapped
+	code
+	message
+	*stack
 }
 
-func (e *wrappedError) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "E%04d:%+v", e.code, e.error)
-			fmt.Fprintf(f, "\nWrapping %+v", e.origin)
-			return
-		}
-		fallthrough
-	case 'q', 's':
-		fmt.Fprintf(f, "E%04d:%s", e.code, e.error)
-	}
-}
-
-func (e *wrappedError) Unwrap() error {
-	return e.origin
-}
-
-func (e *wrappedError) ErrorCode() Code {
-	return e.code
+func (e *wrappedWithCodeMessage) Format(f fmt.State, c rune) {
+	formatError(e, f, c)
 }
 
 func Wrapc(e error, c Code, msg string) error {
-	return &wrappedError{
-		error:  errors.New(msg),
-		code:   c,
-		origin: e,
+	if e == nil {
+		return nil
+	}
+	return &wrappedWithCodeMessage{
+		wrapped: wrap(e),
+		code:    code(c),
+		message: message(msg),
+		stack:   callers(3),
 	}
 }
 
 func Wrapcf(e error, c Code, f string, args ...interface{}) error {
-	return &wrappedError{
-		error:  errors.Errorf(f, args...),
-		code:   c,
-		origin: e,
+	if e == nil {
+		return nil
+	}
+	return &wrappedWithCodeMessage{
+		wrapped: wrap(e),
+		code:    code(c),
+		message: message(fmt.Sprintf(f, args...)),
+		stack:   callers(3),
 	}
 }
 
@@ -305,6 +396,26 @@ func CodeOf(e error) Code {
 		return coder.ErrorCode()
 	}
 	return UnknownError
+}
+
+type StackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+type ErrorWithStack interface {
+	error
+	StackTracer
+}
+
+func StackTracerOf(e error) (StackTracer, bool) {
+	tr := FindCause(e, func(err error) bool {
+		_, ok := err.(StackTracer)
+		return ok
+	})
+	if tr != nil {
+		return tr.(StackTracer), true
+	}
+	return nil, false
 }
 
 // Unwrapper is interface to unwrap the error to get the origin error.
@@ -359,5 +470,35 @@ func ToString(e error) string {
 		return ""
 	} else {
 		return fmt.Sprintf("%v", e)
+	}
+}
+
+type withFormat struct {
+	error
+}
+
+func (e *withFormat) Unwrap() error {
+	return Unwrap(e.error)
+}
+
+func (e *withFormat) Format(f fmt.State, c rune) {
+	formatError(e.error, f, c)
+}
+
+func (e *withFormat) String() string {
+	return e.error.Error()
+}
+
+// Error returns wrapped error providing formatter to show error code
+// and stacks properly.
+func Error(e error) error {
+	if e == nil {
+		return nil
+	}
+	switch obj := e.(type) {
+	case *withStack, *wrappedWithCodeMessage, *codedError, *withCodeAndStack, *wrappedWithCode, *wrappedWithMessage, *wrappedWithStack, *withFormat:
+		return obj
+	default:
+		return &withFormat{e}
 	}
 }
