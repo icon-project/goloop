@@ -163,8 +163,8 @@ type BlockManager interface {
 	// They are available only when it starts from genesis.
 	GetGenesisData() (Block, CommitVoteSet, error)
 
-	// NewConsensusInfo returns a ConsensusInfo with blk's proposer and
-	// votes in blk.
+	// NewConsensusInfo returns a ConsensusInfo with proposer of previous block
+	// of blk and votes in blk.
 	NewConsensusInfo(blk Block) (ConsensusInfo, error)
 }
 
