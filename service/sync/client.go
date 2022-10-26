@@ -26,7 +26,7 @@ func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
 	}
 	p.reqID = reqID
 	cl.log.Tracef("hasNode reqID = %d\n", reqID)
-	p.timer = time.AfterFunc(time.Millisecond*p.expired, func() {
+	p.timer = time.AfterFunc(time.Millisecond*time.Duration(p.expired), func() {
 		r := &result{reqID, ErrTimeExpired}
 		b, _ := c.MarshalToBytes(r)
 		cl.log.Tracef("hasNode time expired for p(%s)\n", p)
@@ -53,7 +53,7 @@ func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
 
 	p.reqID = reqID
 	cl.log.Tracef("requestNodeData with peer(%s)\n", p)
-	p.timer = time.AfterFunc(time.Millisecond*p.expired, func() {
+	p.timer = time.AfterFunc(time.Millisecond*time.Duration(p.expired), func() {
 		nd := &nodeData{reqID, ErrTimeExpired, t, hash}
 		b, _ := c.MarshalToBytes(nd)
 		cl.log.Tracef("requestNodeData time expired, peer(%s)\n", p)
