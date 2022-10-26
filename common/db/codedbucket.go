@@ -84,7 +84,7 @@ func (b *CodedBucket) GetBytes(key interface{}) ([]byte, error) {
 	}
 	bs, err := b.dbBucket.Get(keyBS)
 	if bs == nil && err == nil {
-		err = errors.NotFoundError.Wrap(err, "Not found")
+		err = errors.NotFoundError.New("NotFound")
 	}
 	return bs, err
 }
