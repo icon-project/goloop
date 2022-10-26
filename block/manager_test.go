@@ -120,7 +120,7 @@ func TestFreeFunctions(t *testing.T) {
 	// add one more block
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 
-	cvlBytes, err := block.GetCommitVoteListBytesByHeight(db, nil, 1)
+	cvlBytes, err := block.GetCommitVoteListBytesForHeight(db, nil, 1)
 	assert.NoError(err)
 	assert.EqualValues(consensus.NewEmptyCommitVoteList().Bytes(), cvlBytes)
 

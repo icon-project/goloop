@@ -1895,7 +1895,7 @@ func getHeaderField(dbase db.Database, c codec.Codec, height int64, index int) (
 	if err != nil {
 		return nil, err
 	}
-	hash, err := headerHashByHeight.GetBytes(height + 1)
+	hash, err := headerHashByHeight.GetBytes(height)
 	if err != nil {
 		return nil, err
 	}
@@ -1926,12 +1926,12 @@ func getHeaderField(dbase db.Database, c codec.Codec, height int64, index int) (
 	return str, nil
 }
 
-func GetCommitVoteListBytesByHeight(
+func GetCommitVoteListBytesForHeight(
 	dbase db.Database,
 	c codec.Codec,
 	height int64,
 ) ([]byte, error) {
-	votesHash, err := getHeaderField(dbase, c, height, 5)
+	votesHash, err := getHeaderField(dbase, c, height+1, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -1946,12 +1946,14 @@ func GetBlockResultByHeight(
 	return getHeaderField(dbase, c, height, 10)
 }
 
-func GetBTPDigestByHeight(
+func GetBTPDigestFromResult(
 	dbase db.Database,
 	c codec.Codec,
-	height int64,
 	result []byte,
 ) (module.BTPDigest, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	dh, err := service.BTPDigestHashFromResult(result)
 	if err != nil {
 		return nil, err
@@ -1975,6 +1977,9 @@ func GetNextValidatorsByHeight(
 	c codec.Codec,
 	height int64,
 ) (module.ValidatorList, error) {
+	if c == nil {
+		c = codec.RLP
+	}
 	validatorsHash, err := getHeaderField(dbase, c, height, 6)
 	if err != nil {
 		return nil, err
