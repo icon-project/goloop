@@ -308,18 +308,6 @@ func (t *Node) WaitForBlock(h int64) module.Block {
 	return <-chn
 }
 
-func (t *Node) WaitForNextBlock() module.Block {
-	blk, err := t.BM.GetLastBlock()
-	assert.NoError(t.T, err)
-	return t.WaitForBlock(blk.Height() + 1)
-}
-
-func (t *Node) WaitForNextNthBlock(n int) module.Block {
-	blk, err := t.BM.GetLastBlock()
-	assert.NoError(t.T, err)
-	return t.WaitForBlock(blk.Height() + int64(n))
-}
-
 func (t *Node) NewTx() *Transaction {
 	blk, err := t.BM.GetLastBlock()
 	assert.NoError(t.T, err)

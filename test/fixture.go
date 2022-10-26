@@ -37,6 +37,7 @@ type Fixture struct {
 	// all nodes
 	Nodes      []*Node
 	Validators []*Node
+	Height     int64
 }
 
 func NewFixture(t *testing.T, o ...FixtureOption) *Fixture {
@@ -102,7 +103,7 @@ func (f *Fixture) AddNode(o ...FixtureOption) *Node {
 
 func (f *Fixture) AddNodes(n int, o ...FixtureOption) []*Node {
 	nodes := make([]*Node, n)
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		nodes[i] = f.AddNode(o...)
 	}
 	return nodes
@@ -186,4 +187,20 @@ func (f *Fixture) SendTransactionToProposer(tx interface{ String() string }) {
 		}
 	}
 	assert.True(f.T, found)
+}
+
+func (f *Fixture) WaitForBlock(h int64) module.Block {
+	res := NodeWaitForBlock(f.Nodes, h)
+	if f.Height < h {
+		f.Height = h
+	}
+	return res
+}
+
+func (f *Fixture) WaitForNextBlock() module.Block {
+	return f.WaitForNextNthBlock(1)
+}
+
+func (f *Fixture) WaitForNextNthBlock(n int) module.Block {
+	return f.WaitForBlock(f.Height + int64(n))
 }

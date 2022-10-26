@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -132,6 +133,20 @@ func TestFreeFunctions(t *testing.T) {
 	err = block.ResetDB(db, nil, 1)
 	assert.NoError(err)
 	assert.EqualValues(1, block.GetLastHeightOf(db))
+
+	res, err := block.GetBlockResultByHeight(db, nil, 1)
+	assert.NoError(err)
+	assert.EqualValues(1, blk.Height())
+	assert.EqualValues(blk.Result(), res)
+
+	bd, err := block.GetBTPDigestFromResult(db, nil, res)
+	assert.NoError(err)
+	assert.EqualValues([]byte(nil), bd.Bytes())
+
+	vl, err := block.GetNextValidatorsByHeight(db, nil, 1)
+	assert.NoError(err)
+	assert.EqualValues(0, vl.Len())
+	assert.EqualValues([]byte(nil), vl.Bytes())
 }
 
 func TestBlockManager_BTPDigest(t_ *testing.T) {
@@ -485,6 +500,32 @@ func TestManager_ExportGenesis(t *testing.T) {
 	nd2 := test.NewNode(t, test.UseGenesisStorage(gs), test.UseDB(db))
 	defer nd2.Close()
 	blk2, _, err := nd2.BM.GetGenesisData()
+	assert.NoError(err)
+	assert.EqualValues(blk.ID(), blk2.ID())
+}
+
+func TestManager_ExportBlocks(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	dbase := db.NewMapDB()
+	ch := make(chan int64, 3)
+	err := nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
+		ch <- h
+		return nil
+	})
+	assert.NoError(err)
+	assert.EqualValues(0, <-ch)
+	assert.EqualValues(1, <-ch)
+	assert.EqualValues(2, <-ch)
+	block.ResetDB(dbase, nil, 1)
+
+	nd2 := test.NewNode(t, test.UseDB(dbase))
+	blk, err := nd.BM.GetBlockByHeight(1)
+	assert.NoError(err)
+	blk2, err := nd2.BM.GetBlockByHeight(1)
 	assert.NoError(err)
 	assert.EqualValues(blk.ID(), blk2.ID())
 }

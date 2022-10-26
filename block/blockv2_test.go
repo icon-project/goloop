@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
@@ -45,4 +46,20 @@ func TestBlockV2_ToJSON(t *testing.T) {
 	assert.EqualValues(hex.EncodeToString(blk.PrevID()), mp["prev_block_hash"])
 	assert.EqualValues(hex.EncodeToString(blk.ID()), mp["block_hash"])
 	assert.EqualValues(1, mp["height"])
+}
+
+func TestBlockV2_ZeroBTPDigest(t *testing.T) {
+	nd := test.NewNode(t)
+	defer nd.Close()
+	assert := assert.New(t)
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk := nd.GetLastBlock()
+	bd, err := blk.BTPDigest()
+	assert.NoError(err)
+	assert.EqualValues(btp.ZeroDigest.Bytes(), bd.Bytes())
+	assert.EqualValues([]byte(nil), bd.Bytes())
+	assert.EqualValues(btp.ZeroDigest.Hash(), bd.Hash())
+	assert.EqualValues([]byte(nil), bd.Hash())
+	assert.EqualValues(0, len(bd.NetworkTypeDigests()))
 }

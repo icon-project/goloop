@@ -233,12 +233,17 @@ func TestConsensus_BasicConsensus2(t *testing.T) {
 	assert.EqualValues(t, 4, f.CS.GetStatus().Height)
 }
 
-func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
+type btpTest struct {
+	*testing.T
+	*assert.Assertions
+	*test.Fixture
+}
+
+func newBTPTest(t *testing.T) *btpTest {
 	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
 	assert := assert.New(t)
 	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
 
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
@@ -264,6 +269,22 @@ func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
 		err := n.CS.Start()
 		assert.NoError(err)
 	}
+	return &btpTest{
+		T:          t,
+		Assertions: assert,
+		Fixture:    f,
+	}
+}
+
+func (tst *btpTest) Close() {
+	tst.Fixture.Close()
+}
+
+func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
+	tst := newBTPTest(t)
+	defer tst.Close()
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -276,36 +297,10 @@ func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
 }
 
 func TestConsensus_BTPBasic(t *testing.T) {
-	const dsa = "ecdsa/secp256k1"
-	const uid = "eth"
-	assert := assert.New(t)
-	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t)
+	defer tst.Close()
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -392,40 +387,28 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, bbh.NetworkID())
 	assert.EqualValues(0, bbh.FirstMessageSN())
+	assert.EqualValues(2, bbh.MainHeight())
+	assert.EqualValues(true, bbh.NextProofContextChanged())
+	assert.EqualValues(1, bbh.UpdateNumber())
+	assert.EqualValues(0, bbh.MessageCount())
+	assert.EqualValues([]byte(nil), bbh.MessagesRoot())
+	assert.EqualValues([]byte(nil), bbh.PrevNetworkSectionHash())
+	blk := f.LastBlock
+	pcm, err := blk.NextProofContextMap()
+	assert.NoError(err)
+	pc, err := pcm.ProofContextFor(1)
+	assert.NoError(err)
+	assert.EqualValues(pc.Bytes(), bbh.NextProofContext())
+	assert.EqualValues(pc.Hash(), bbh.NextProofContextHash())
+	assert.EqualValues(0, len(bbh.NetworkSectionToRoot()))
 }
 
 func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
-	assert := assert.New(t_)
-	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t_.Logf("register %s key index=%d key=%x", uid, i, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t_)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -434,14 +417,14 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 
 	wp := test.NewWalletProvider()
 	wp2 := test.NewWalletProvider()
-	tx = test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
+	tx := test.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 		"name":   dsa,
 		"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
 	}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
 		"name":   uid,
 		"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 	}).SetTimestamp(blk.Timestamp())
-	f.SendTransactionToProposer(tx)
+	f.SendTransactionToAll(tx)
 
 	blk = f.WaitForBlock(3)
 	_, err = blk.NormalTransactions().Get(0)
@@ -457,7 +440,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 		"networkId": "0x1",
 		"message":   fmt.Sprintf("0x%x", testMsg),
 	}).SetTimestamp(blk.Timestamp())
-	f.SendTransactionToProposer(tx)
+	f.SendTransactionToAll(tx)
 
 	blk = f.WaitForBlock(5)
 	_, err = blk.NormalTransactions().Get(0)
@@ -469,36 +452,10 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 }
 
 func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
-	const uid = "eth"
 	const dsa = "ecdsa/secp256k1"
-	assert := assert.New(t_)
-	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t_.Logf("register %s key index=%d key=%x", uid, i, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t_)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -507,7 +464,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 
 	wp := test.NewWalletProvider()
 	wp2 := test.NewWalletProvider()
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
@@ -527,7 +484,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
@@ -544,7 +501,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 
 	// set wrong pub key
 	wrongWP := test.NewWalletProvider()
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().CallFrom(f.Nodes[0].CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wrongWP.WalletFor(dsa).PublicKey()),
@@ -553,7 +510,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	f.WaitForNextNthBlock(2)
 
 	// send message
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
@@ -569,37 +526,10 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 }
 
 func TestConsensus_RevokeValidator(t_ *testing.T) {
-	const dsa = "ecdsa/secp256k1"
-	const uid = "eth"
 	const uid2 = "icon"
-	assert := assert.New(t_)
-	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t_.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t_)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -614,7 +544,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	blk = f.WaitForNextBlock()
 	assert.EqualValues(4, blk.NextValidators().Len())
 
-	tx = f.NewTx().Call("openBTPNetwork", map[string]string{
+	tx := f.NewTx().Call("openBTPNetwork", map[string]string{
 		"networkTypeName": uid2,
 		"name":            fmt.Sprintf("%s-test", uid2),
 		"owner":           f.CommonAddress().String(),
@@ -654,43 +584,17 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 }
 
 func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
-	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
-	assert := assert.New(t_)
-	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t_.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t_)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().Call("closeBTPNetwork", map[string]string{
 			"id": "0x1",
 		}),
@@ -730,36 +634,9 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 
 func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
-	const uid = "eth"
-	const uid2 = "icon"
-	assert := assert.New(t_)
-	f := test.NewFixture(t_, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer f.Close()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t_.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t_)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -786,40 +663,9 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 }
 
 func TestConsensus_Restart(t *testing.T) {
-	const dsa = "ecdsa/secp256k1"
-	const uid = "eth"
-	assert := assert.New(t)
-	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
-	defer func() {
-		if f != nil {
-			f.Close()
-		}
-	}()
-
-	tx := test.NewTx().Call("setRevision", map[string]string{
-		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
-	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
-	})
-	for i, v := range f.Validators {
-		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
-			"name":   dsa,
-			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
-		})
-		t.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
-	}
-	tx.Call("openBTPNetwork", map[string]string{
-		"networkTypeName": uid,
-		"name":            fmt.Sprintf("%s-test", uid),
-		"owner":           f.CommonAddress().String(),
-	})
-	f.SendTransactionToProposer(tx)
-
-	test.NodeInterconnect(f.Nodes)
-	for _, n := range f.Nodes {
-		err := n.CS.Start()
-		assert.NoError(err)
-	}
+	tst := newBTPTest(t)
+	f := tst.Fixture
+	assert := tst.Assertions
 
 	blk := f.WaitForBlock(2)
 	bd, err := blk.BTPDigest()
@@ -827,7 +673,7 @@ func TestConsensus_Restart(t *testing.T) {
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToProposer(
+	f.SendTransactionToAll(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
