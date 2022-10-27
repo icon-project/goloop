@@ -2,6 +2,7 @@ package sync2
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -22,6 +23,7 @@ const (
 )
 
 type syncer struct {
+	mutex  sync.Mutex
 	logger log.Logger
 
 	database   db.Database
@@ -95,10 +97,9 @@ func timeElapsed(name string, logger log.Logger) func() {
 	}
 }
 
-// syncWithBuilders start Sync
-func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) (*Result, error) {
-	s.logger.Debugln("SyncWithBuilders()")
-	egrp, _ := errgroup.WithContext(context.Background())
+func (s *syncer) newSyncProcessorWithBuilders(egrp *errgroup.Group, stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	for _, builder := range stateBuilders {
 		// sync processor with v1,v2 protocol
@@ -120,18 +121,9 @@ func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
-
-	if err := egrp.Wait(); err != nil {
-		return nil, err
-	}
-
-	result := &Result{
-		s.wss, s.prl, s.nrl, s.bd,
-	}
-	s.logger.Debugln("SyncWithBuilders() done!")
-	return result, nil
 }
 
+// ForceSync start
 func (s *syncer) ForceSync() (*Result, error) {
 	defer timeElapsed("ForceSync", s.logger)()
 	var stateBuilders, btpBuilders []merkle.Builder
@@ -144,14 +136,32 @@ func (s *syncer) ForceSync() (*Result, error) {
 		btpBuilders = append(btpBuilders, btpBuilder)
 	}
 
-	return s.syncWithBuilders(stateBuilders, btpBuilders)
+	egrp, _ := errgroup.WithContext(context.Background())
+
+	s.newSyncProcessorWithBuilders(egrp, stateBuilders, btpBuilders)
+
+	if err := egrp.Wait(); err != nil {
+		return nil, err
+	}
+
+	result := &Result{
+		s.wss, s.prl, s.nrl, s.bd,
+	}
+	s.logger.Debugln("ForceSync() done!")
+	return result, nil
 }
 
-// Stop sync
+// Stop ForceSync
 func (s *syncer) Stop() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.logger.Tracef("Stop()")
 	for _, sp := range s.processors {
 		sp.Stop()
 	}
+
+	s.processors = nil
 }
 
 // Finalize Sync
@@ -172,7 +182,7 @@ func (s *syncer) Finalize() error {
 		}
 	}
 
-	s.processors = make([]SyncProcessor, 0)
+	s.processors = nil
 	return nil
 }
 

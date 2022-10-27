@@ -270,7 +270,7 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 
 	acHash := ws.GetSnapshot().StateHash()
 	ws.GetSnapshot().Flush()
-	logger.Printf("account hash : (%x)\n", acHash)
+	t.Logf("account hash : (%x)", acHash)
 
 	// test table
 	tests := map[string]struct {
@@ -346,6 +346,69 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 			dstMgr.Term()
 		})
 	}
+}
+
+func TestSyncSimpleStateSyncStop(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.FatalLevel)
+
+	srcdb := db.NewMapDB()
+	dstdb := db.NewMapDB()
+	srcNM := newTNetworkManager(createAPeerID())
+	dstNM := newTNetworkManager(createAPeerID())
+	srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+	dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
+
+	newSyncManagerV1(srcdb, srcNM, dummyExBuilder, srcLog)
+	dstMgr := NewSyncManager(dstdb, dstNM, dummyExBuilder, dstLog)
+
+	srcNM.join(dstNM)
+
+	// given init db for source sync manager
+	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
+	for i := range [100]int{} {
+		v := []byte{byte(i)}
+		ac := ws.GetAccountState(v)
+		ac.SetValue(v, v)
+	}
+	vs := ws.GetValidatorState()
+
+	tvList := []module.Validator{
+		&testValidator{addr: wallet.New().Address()},
+		&testValidator{addr: wallet.New().Address()},
+	}
+	vs.Set(tvList)
+
+	acHash := ws.GetSnapshot().StateHash()
+	ws.GetSnapshot().Flush()
+	t.Logf("account hash : (%x)", acHash)
+
+	sSyncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+	var wg sync.WaitGroup
+
+	// start forceSync
+	wg.Add(1)
+	go func() {
+		result, err := sSyncer.ForceSync()
+		t.Logf("ForceSync result=%v, err=%v", result, err)
+
+		// then result is nil, err is ErrInterrupted
+		assert.Nilf(t, result, "sync stop. result=%v", result)
+		assert.EqualErrorf(t, err, errors.ErrInterrupted.Error(), "sync stop. err=%v", err)
+
+		wg.Done()
+	}()
+
+	// when stop syncer
+	wg.Add(1)
+	time.AfterFunc(time.Millisecond, func() {
+		t.Logf("call syncer Stop")
+		sSyncer.Stop()
+		wg.Done()
+	})
+
+	wg.Wait()
 }
 
 func getRandomSyncManager(database db.Database, nm module.NetworkManager, logger log.Logger) *Manager {
