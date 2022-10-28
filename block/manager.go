@@ -569,7 +569,6 @@ func (pt *proposeTask) _onExecute(err error) {
 	pt.stop()
 	pt.state = validatedOut
 	pt.cb(pt.manager.newCandidate(bn), nil)
-	return
 }
 
 // NewManager creates BlockManager.
@@ -861,120 +860,9 @@ func (m *manager) finalizeGenesis() error {
 			m.chain.CommitVoteSetDecoder()(nil))
 		return err
 	case module.GenesisPruned:
-		return m.finalizePrunedBlock()
+		return errors.InvalidStateError.Errorf("start with PrunedGenesis without reset")
 	}
 	return errors.InvalidStateError.Errorf("InvalidGenesisType(type=%d)", gt)
-}
-
-func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, error) {
-	ctx := merkle.NewCopyContext(src, m.db())
-	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), m.chain, id)
-	if err := ctx.Run(); err != nil {
-		return nil, err
-	}
-
-	if err := m.sm.ImportResult(blk.Result(), blk.NextValidatorsHash(), ctx.SourceDB()); err != nil {
-		return nil, transaction.InvalidGenesisError.Wrap(err, "ImportResultFailure")
-	}
-
-	hb, err := m.bucketFor(db.BlockHeaderHashByHeight)
-	if err != nil {
-		return nil, errors.CriticalUnknownError.Wrap(err, "UnknownBucketError")
-	}
-	if err := hb.Set(blk.Height(), db.Raw(blk.ID())); err != nil {
-		return nil, errors.CriticalUnknownError.Wrap(err, "FailOnBlockIndex")
-	}
-
-	if err = WriteTransactionLocators(
-		m.db(),
-		blk.Height(),
-		blk.PatchTransactions(),
-		blk.NormalTransactions(),
-	); err != nil {
-		return nil, err
-	}
-	return blk, nil
-}
-
-func (m *manager) finalizePrunedBlock() error {
-	s := m.chain.GenesisStorage()
-	g, err := gs.NewPrunedGenesis(s.Genesis())
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "InvalidGenesis")
-	}
-	d := gs.NewDatabaseWithStorage(s)
-
-	blk, err := m._importBlockByID(d, g.Block)
-	if err != nil {
-		return err
-	}
-
-	pblk, err := m._importBlockByID(d, blk.PrevID())
-	if err != nil {
-		return err
-	}
-	if ppid := pblk.PrevID(); len(ppid) > 0 {
-		_, err := m._importBlockByID(d, ppid)
-		if err != nil {
-			return transaction.InvalidGenesisError.Wrap(err, "NoVoterInformation")
-		}
-	}
-
-	m.activeHandlers = m.handlers.upTo(blk.Version())
-	csi, err := m.newConsensusInfo(blk)
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetConsensusInfo")
-	}
-
-	cid, err := m.sm.GetChainID(blk.Result())
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetChainID")
-	}
-	if cid != int64(g.CID.Value) {
-		return transaction.InvalidGenesisError.Errorf("InvalidChainID(cid=%d,state_cid=%d)",
-			g.CID.Value, cid)
-	}
-
-	nid, err := m.sm.GetNetworkID(blk.Result())
-	if err != nil {
-		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetChainID")
-	}
-	if nid != int64(g.NID.Value) {
-		return transaction.InvalidGenesisError.Errorf("InvalidNetworkID(nid=%d,state_nid=%d)",
-			g.NID.Value, nid)
-	}
-
-	if bk, err := m.bucketFor(db.ChainProperty); err != nil {
-		return errors.InvalidStateError.Wrap(err, "BucketForChainProperty")
-	} else {
-		if err := bk.Set(db.Raw(keyLastBlockHeight), blk.Height()); err != nil {
-			return errors.CriticalUnknownError.Wrap(err, "FailOnSetLast")
-		}
-	}
-
-	mtr, _ := m.sm.CreateInitialTransition(blk.Result(), blk.NextValidators())
-	if mtr == nil {
-		return err
-	}
-	tr := newInitialTransition(mtr, m.chainContext)
-	bn := &bnode{
-		block: blk,
-		in:    tr,
-	}
-	if err := m.sm.Finalize(mtr, module.FinalizeResult); err != nil {
-		return err
-	}
-	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, csi, nil, true)
-	if err != nil {
-		return err
-	}
-	m.finalized = bn
-	bn.nRef++
-	if configTraceBnode {
-		m.bntr.TraceNew(bn)
-	}
-	m.nmap[string(blk.ID())] = bn
-	return nil
 }
 
 func (m *manager) finalizeGenesisBlock(
@@ -1211,19 +1099,6 @@ func WriteTransactionLocators(
 		}
 	}
 	return nil
-}
-
-func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
-	hb, err := m.bucketFor(db.BytesByHash)
-	if err != nil {
-		return nil
-	}
-	bs, err := hb.GetBytes(db.Raw(hash))
-	if err != nil {
-		return nil
-	}
-	dec := m.chain.CommitVoteSetDecoder()
-	return dec(bs)
 }
 
 func newProposer(bs []byte) (module.Address, error) {

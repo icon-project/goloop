@@ -7,18 +7,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/transaction"
-	"github.com/icon-project/goloop/service/txresult"
 )
 
 var v2Codec = codec.BC
@@ -438,57 +433,6 @@ func (b *blockV2) NextProofContextMap() (module.BTPProofContextMap, error) {
 
 func (b *blockV2) NTSHashEntryList() (module.NTSHashEntryList, error) {
 	return b.BTPDigest()
-}
-
-type blockBuilder struct {
-	vld   module.CommitVoteSetDecoder
-	block *blockV2
-}
-
-func (b *blockBuilder) OnData(value []byte, builder merkle.Builder) error {
-	header := new(V2HeaderFormat)
-	err := v2Codec.Unmarshal(bytes.NewReader(value), header)
-	if err != nil {
-		return err
-	}
-	b.block.height = header.Height
-	b.block.timestamp = header.Timestamp
-	if addr, err := newProposer(header.Proposer); err != nil {
-		return err
-	} else {
-		b.block.proposer = addr
-	}
-	b.block.prevID = header.PrevID
-	b.block.logsBloom = txresult.NewLogsBloomFromCompressed(header.LogsBloom)
-	b.block.patchTransactions = transaction.NewTransactionListWithBuilder(builder, header.PatchTransactionsHash)
-	b.block.normalTransactions = transaction.NewTransactionListWithBuilder(builder, header.NormalTransactionsHash)
-	b.block.nextValidatorsHash = header.NextValidatorsHash
-	b.block.result = header.Result
-	if vs, err := state.NewValidatorSnapshotWithBuilder(builder, header.NextValidatorsHash); err != nil {
-		return err
-	} else {
-		b.block._nextValidators = vs
-	}
-	b.block.nsFilter = module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap)
-	builder.RequestData(db.BytesByHash, header.VotesHash, voteSetBuilder{b})
-	return nil
-}
-
-type voteSetBuilder struct {
-	builder *blockBuilder
-}
-
-func (b voteSetBuilder) OnData(value []byte, builder merkle.Builder) error {
-	b.builder.block.votes = b.builder.vld(value)
-	return nil
-}
-
-func newBlockWithBuilder(builder merkle.Builder, vld module.CommitVoteSetDecoder, c Chain, hash []byte) module.Block {
-	blk := new(blockV2)
-	blk._id = hash
-	blk.sm = c.ServiceManager()
-	builder.RequestData(db.BytesByHash, hash, &blockBuilder{block: blk, vld: vld})
-	return blk
 }
 
 func NewBlockReaderFromFormat(hf *V2HeaderFormat, bf *V2BodyFormat) io.Reader {
