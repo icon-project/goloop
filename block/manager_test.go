@@ -528,6 +528,7 @@ func TestManager_ExportBlocks(t *testing.T) {
 	block.ResetDB(dbase, nil, 1)
 
 	nd2 := test.NewNode(t, test.UseDB(dbase))
+	defer nd2.Close()
 	blk, err := nd.BM.GetBlockByHeight(1)
 	assert.NoError(err)
 	blk2, err := nd2.BM.GetBlockByHeight(1)
