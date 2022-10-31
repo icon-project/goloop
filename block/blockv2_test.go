@@ -35,12 +35,13 @@ func TestBlockV2_ToJSON(t *testing.T) {
 	defer nd.Close()
 	assert := assert.New(t)
 
-	blk, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
+	_, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
 	assert.Error(err)
 
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
-	blk = nd.GetLastBlock()
+	blk := nd.GetLastBlock()
 	mp_, err := blk.ToJSON(module.JSONVersion3)
+	assert.NoError(err)
 	mp := mp_.(map[string]interface{})
 	assert.EqualValues(block.V2String, mp["version"])
 	assert.EqualValues(hex.EncodeToString(blk.PrevID()), mp["prev_block_hash"])

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -130,12 +129,12 @@ func readWALInfo(id string) (*walInfo, error) {
 		}
 	}
 
-	nFiles := maxIndex - minIndex + 1
+	nFiles := int64(maxIndex) - int64(minIndex) + 1
 	if nFiles < 0 {
 		nFiles = 0
 	}
 	fileSizes := make([]int64, nFiles)
-	for i := uint64(0); i < nFiles; i++ {
+	for i := uint64(0); i < uint64(nFiles); i++ {
 		fileSizes[i] = fileSizeFor[i+minIndex]
 	}
 
@@ -351,7 +350,6 @@ func (w *walWriter) doHousekeeping() {
 }
 
 type walReader struct {
-	mutex       sync.Mutex
 	files       []*os.File
 	reader      io.Reader
 	validOffset int64

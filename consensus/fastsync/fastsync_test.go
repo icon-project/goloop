@@ -60,7 +60,7 @@ func (b *tBlock) NextValidators() module.ValidatorList {
 }
 
 func (b *tBlock) Votes() module.CommitVoteSet {
-	return &tCommitVoteSet{b: b.Prev}
+	return newTCommitVoteSet(b.Prev)
 }
 
 func (b *tBlock) MarshalHeader(w io.Writer) error {

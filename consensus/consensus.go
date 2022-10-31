@@ -1928,6 +1928,9 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		if cvl, ok := cvs.(*CommitVoteList); ok {
 			if h == 0 {
 				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
+				if err != nil {
+					return nil, err
+				}
 			} else {
 				prev, err := cs.c.BlockManager().GetBlockByHeight(h - 1)
 				if err != nil {

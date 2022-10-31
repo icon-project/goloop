@@ -41,5 +41,6 @@ func TestBlockDataFactory_Basics(t *testing.T) {
 	err = blk.Marshal(buf)
 	assert.NoError(err)
 	bd, err := bdf.NewBlockDataFromReader(buf)
+	assert.NoError(err)
 	assert.EqualValues(blk.ID(), bd.ID())
 }

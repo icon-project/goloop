@@ -34,7 +34,6 @@ import (
 
 type Chain struct {
 	module.Chain
-	t         *testing.T
 	database  db.Database
 	wallet    module.Wallet
 	log       log.Logger
@@ -220,23 +219,6 @@ func (c *Chain) SetBlockManager(bm module.BlockManager) {
 
 func (c *Chain) SetServiceManager(sm module.ServiceManager) {
 	c.sm = sm
-}
-
-type addrWallet struct {
-	mod module.NetworkTypeModule
-	w   module.Wallet
-}
-
-func (a *addrWallet) Sign(data []byte) ([]byte, error) {
-	return a.w.Sign(data)
-}
-
-func (a *addrWallet) PublicKey() []byte {
-	addr, err := a.mod.AddressFromPubKey(a.w.PublicKey())
-	if err != nil {
-		return nil
-	}
-	return addr
 }
 
 func (c *Chain) WalletFor(dsa string) module.BaseWallet {

@@ -50,11 +50,11 @@ func TestBlockManager_GetBlock(t *testing.T) {
 	defer nd.Close()
 	assert := assert.New(t)
 
-	blk, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
+	_, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
 	assert.Error(err)
 
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
-	blk = nd.GetLastBlock()
+	blk := nd.GetLastBlock()
 	blk2, err := nd.BM.GetBlock(blk.ID())
 	assert.NoError(err)
 	assert.EqualValues(blk.ID(), blk2.ID())
@@ -490,14 +490,19 @@ func TestManager_ExportGenesis(t *testing.T) {
 	defer nd.Close()
 
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 	blk := nd.GetLastBlock()
 	gb := newGenesisBuffer()
 	err := nd.BM.ExportGenesis(blk, consensus.NewEmptyCommitVoteList(), gb)
 	assert.NoError(err)
-	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 1, gb)
+	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 2, gb)
+	dbase := db.NewMapDB()
+	err = nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
+		return nil
+	})
+	assert.NoError(err)
 
-	db := nd.Chain.Database()
-	nd2 := test.NewNode(t, test.UseGenesisStorage(gs), test.UseDB(db))
+	nd2 := test.NewNode(t, test.UseGenesisStorage(gs), test.UseDB(dbase))
 	defer nd2.Close()
 	blk2, _, err := nd2.BM.GetGenesisData()
 	assert.NoError(err)

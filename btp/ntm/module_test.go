@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/wallet"
-	"github.com/icon-project/goloop/module"
 )
 
 func testModuleBasics(t *testing.T, uid, dsa string) {
@@ -32,11 +31,9 @@ func testModuleBasics(t *testing.T, uid, dsa string) {
 	assert.EqualValues(uid, mod.UID())
 	assert.EqualValues(dsa, mod.DSA())
 
-	wallets := make([]module.Wallet, 0, count)
 	addrs := make([][]byte, 0, count)
 	for i := 0; i < count; i++ {
 		w := wallet.New()
-		wallets = append(wallets, w)
 		addr, err := mod.AddressFromPubKey(w.PublicKey())
 		assert.NoError(err)
 		addrs = append(addrs, addr)

@@ -248,7 +248,7 @@ func newBTPTest(t *testing.T) *btpTest {
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
+		"yn": "0x1",
 	})
 	for i, v := range f.Validators {
 		tx.CallFrom(v.CommonAddress(), "setBTPPublicKey", map[string]string{
@@ -448,7 +448,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 
 	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
 	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
-	blk = f.WaitForBlock(6)
+	_ = f.WaitForBlock(6)
 }
 
 func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
@@ -553,6 +553,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	blk = f.WaitForNextBlock()
 	assert.EqualValues(3, blk.NextValidators().Len())
 	bs, err := blk.BTPSection()
+	assert.NoError(err)
 	nts, err := bs.NetworkTypeSectionFor(1)
 	assert.NoError(err)
 	_ = nts.NextProofContext()
@@ -562,6 +563,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	blk = f.WaitForNextBlock()
 	assert.EqualValues(3, blk.NextValidators().Len())
 	bs, err = blk.BTPSection()
+	assert.NoError(err)
 	nts, err = bs.NetworkTypeSectionFor(2)
 	assert.NoError(err)
 	_ = nts.NextProofContext()
@@ -599,8 +601,8 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 			"id": "0x1",
 		}),
 	)
-	blk = f.WaitForNextBlock()
-	blk = f.WaitForNextBlock()
+	_ = f.WaitForNextBlock()
+	_ = f.WaitForNextBlock()
 
 	f.SendTransactionToAll(
 		f.NewTx().Call("revokeValidator", map[string]string{
@@ -622,6 +624,7 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 
 	blk = f.WaitForNextBlock() // 7
 	bs, err := blk.BTPSection()
+	assert.NoError(err)
 	nts, err := bs.NetworkTypeSectionFor(1)
 	assert.NoError(err)
 	bysl := nts.NextProofContext().Bytes()
@@ -655,6 +658,7 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	blk = f.WaitForNextBlock()
 	assert.EqualValues(4, blk.NextValidators().Len())
 	bs, err := blk.BTPSection()
+	assert.NoError(err)
 	nts, err := bs.NetworkTypeSectionFor(1)
 	assert.NoError(err)
 	_ = nts.NextProofContext()
@@ -710,7 +714,7 @@ func TestConsensus_Sync(t *testing.T) {
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
 	}).Call("setMinimizeBlockGen", map[string]string{
-		"yn": fmt.Sprintf("0x1"),
+		"yn": "0x1",
 	})
 	f.SendTransactionToProposer(tx)
 
@@ -726,7 +730,7 @@ func TestConsensus_Sync(t *testing.T) {
 
 	for h := int64(4); h <= 10; h += 2 {
 		f.SendTransactionToAll(validators[0].NewTx())
-		blk = test.NodeWaitForBlock(validators, h)
+		_ = test.NodeWaitForBlock(validators, h)
 	}
 
 	nd := f.Nodes[4]

@@ -76,14 +76,6 @@ func (s sectionPCMUpdateSource) NextProofContextMap() (module.BTPProofContextMap
 
 type ntsdProofList [][]byte
 
-func ntsdProofListFromProves(proves []module.BTPProof) ntsdProofList {
-	var res ntsdProofList
-	for _, p := range proves {
-		res = append(res, p.Bytes())
-	}
-	return res
-}
-
 func (l ntsdProofList) NTSDProofCount() int {
 	return len(l)
 }

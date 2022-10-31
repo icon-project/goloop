@@ -17,7 +17,6 @@
 package consensus_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -28,7 +27,8 @@ import (
 )
 
 func TestWAL(t *testing.T) {
-	base, err := ioutil.TempDir("", "goloop-waltest")
+	base, err := os.MkdirTemp("", "goloop-waltest")
+	assert.NoError(t, err)
 	id := base + "/testwal"
 	ww, err := consensus.OpenWALForWrite(id, &consensus.WALConfig{
 		FileLimit:            1024 * 400,

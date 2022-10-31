@@ -320,6 +320,9 @@ func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database
 
 func (sm *ServiceManager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
 	dh, err := service.BTPDigestHashFromResult(result)
+	if err != nil {
+		return nil, err
+	}
 	bk, err := sm.dbase.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err

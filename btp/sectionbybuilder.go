@@ -68,7 +68,6 @@ type btpSectionDigest struct {
 	bytes              cache.ByteSlice
 	hash               cache.ByteSlice
 	networkTypeDigests []module.NetworkTypeDigest
-	filter             module.BitSetFilter
 }
 
 func (bsd *btpSectionDigest) Bytes() []byte {
@@ -134,7 +133,6 @@ type networkTypeSectionByBuilder struct {
 	networkTypeID        int64
 	uid                  string
 	nextProofContext     module.BTPProofContext
-	nextProofContextHash []byte
 	networkSections      networkSectionSlice
 	networkSectionsRoot  []byte
 	networkDigests       []module.NetworkDigest
@@ -438,6 +436,9 @@ func (ns *networkSectionByBuilder) flushMessages(dbase db.Database) error {
 		return err
 	}
 	bk, err = dbase.GetBucket(ns.mod.BytesByHashBucket())
+	if err != nil {
+		return err
+	}
 	for i, msg := range ns.messages {
 		err = bk.Set(ns.messageHashes.Get(i), msg)
 		if err != nil {

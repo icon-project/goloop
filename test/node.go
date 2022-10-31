@@ -18,7 +18,6 @@ package test
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -60,7 +59,7 @@ type NodeContext struct {
 
 func NewNode(t *testing.T, o ...FixtureOption) *Node {
 	cf := NewFixtureConfig(t, o...)
-	base, err := ioutil.TempDir("", cf.Prefix)
+	base, err := os.MkdirTemp("", cf.Prefix)
 	assert.NoError(t, err)
 	dbase := cf.Dbase()
 	logger := log.New()

@@ -1375,6 +1375,9 @@ func (m *manager) doGetBlockByHeight(
 	}
 	br := bytes.NewReader(headerBytes)
 	v, r, err := PeekVersion(br)
+	if err != nil {
+		return nil, err
+	}
 	h, ok := hl.forVersion(v)
 	if !ok {
 		return nil, errors.UnsupportedError.Errorf("unsupported block version %d", v)
@@ -1859,8 +1862,7 @@ func GetNextValidatorsByHeight(
 	if err != nil {
 		return nil, err
 	}
-	vl, err := state.ValidatorSnapshotFromHash(dbase, validatorsHash)
-	return vl, nil
+	return state.ValidatorSnapshotFromHash(dbase, validatorsHash)
 }
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
