@@ -277,7 +277,9 @@ func newBTPTest(t *testing.T) *btpTest {
 }
 
 func (tst *btpTest) Close() {
-	tst.Fixture.Close()
+	if tst.Fixture != nil {
+		tst.Fixture.Close()
+	}
 }
 
 func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
@@ -407,6 +409,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
 	tst := newBTPTest(t_)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -454,6 +457,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
 	tst := newBTPTest(t_)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -528,6 +532,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 func TestConsensus_RevokeValidator(t_ *testing.T) {
 	const uid2 = "icon"
 	tst := newBTPTest(t_)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -588,6 +593,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 	const uid = "eth"
 	tst := newBTPTest(t_)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -638,6 +644,7 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
 	tst := newBTPTest(t_)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -668,6 +675,7 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 
 func TestConsensus_Restart(t *testing.T) {
 	tst := newBTPTest(t)
+	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
 
@@ -694,7 +702,7 @@ func TestConsensus_Restart(t *testing.T) {
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 	f.Close()
 	oldF := f
-	f = nil
+	tst.Fixture = nil
 
 	f2 := test.NewFixture(t, test.UseWallet(oldF.Chain.Wallet()), test.UseDB(oldF.Chain.Database()), test.UseGenesis(string(oldF.Chain.Genesis())))
 	defer f2.Close()
