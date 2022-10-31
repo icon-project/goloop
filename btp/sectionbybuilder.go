@@ -40,7 +40,7 @@ func newBTPSection(ntsSlice networkTypeSectionSlice, inactivatedNTs []int64) *bt
 		inactivatedNTs:      inactivatedNTs,
 	}
 	bs.digest = &digest{
-		digestCore: &btpSectionDigest{
+		core: &btpSectionDigest{
 			bs: bs,
 		},
 	}

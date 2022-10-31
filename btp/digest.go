@@ -19,10 +19,9 @@ package btp
 import (
 	"io"
 	"sort"
+	"sync"
 
-	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -41,23 +40,45 @@ type digestCore interface {
 }
 
 type digest struct {
-	digestCore
-	hash                   cache.ByteSlice
+	mu                     sync.Mutex
+	core                   digestCore
 	filter                 module.BitSetFilter
 	ntsHashEntryListFormat []module.NTSHashEntryFormat
 }
 
+func (bd *digest) Bytes() []byte {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	return bd.core.Bytes()
+}
+
 func (bd *digest) Hash() []byte {
-	return bd.hash.Get(func() []byte {
-		if bd.Bytes() == nil {
-			return nil
-		}
-		return crypto.SHA3Sum256(bd.Bytes())
-	})
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	return bd.core.Hash()
+}
+
+func (bd *digest) NetworkTypeDigests() []module.NetworkTypeDigest {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	return bd.core.NetworkTypeDigests()
+}
+
+func (bd *digest) Flush(dbase db.Database) error {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	return bd.core.Flush(dbase)
 }
 
 func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
-	ntdSlice := bd.NetworkTypeDigests()
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	ntdSlice := bd.core.NetworkTypeDigests()
 	i := sort.Search(
 		len(ntdSlice),
 		func(i int) bool {
@@ -71,7 +92,10 @@ func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
 }
 
 func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
-	for _, ntd := range bd.NetworkTypeDigests() {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	for _, ntd := range bd.core.NetworkTypeDigests() {
 		for _, nd := range ntd.NetworkDigests() {
 			if nd.NetworkID() == nid {
 				return ntd.NetworkTypeID(), nil
@@ -82,9 +106,12 @@ func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
 }
 
 func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
 	if bd.filter.Bytes() == nil {
 		bd.filter = module.MakeBitSetFilter(NSFilterCap)
-		for _, ntd := range bd.NetworkTypeDigests() {
+		for _, ntd := range bd.core.NetworkTypeDigests() {
 			for _, nd := range ntd.NetworkDigests() {
 				bd.filter.Set(nd.NetworkID())
 			}
@@ -94,8 +121,11 @@ func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
 }
 
 func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
 	if bd.ntsHashEntryListFormat == nil {
-		ntdSlice := bd.NetworkTypeDigests()
+		ntdSlice := bd.core.NetworkTypeDigests()
 		ntsHashEntries := make([]module.NTSHashEntryFormat, 0, len(ntdSlice))
 		for _, ntd := range ntdSlice {
 			ntsHashEntries = append(ntsHashEntries, module.NTSHashEntryFormat{
@@ -109,11 +139,17 @@ func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
 }
 
 func (bd *digest) NTSHashEntryCount() int {
-	return len(bd.NetworkTypeDigests())
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	return len(bd.core.NetworkTypeDigests())
 }
 
 func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
-	ntd := bd.NetworkTypeDigests()[i]
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	ntd := bd.core.NetworkTypeDigests()[i]
 	return module.NTSHashEntryFormat{
 		NetworkTypeID:          ntd.NetworkTypeID(),
 		NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
@@ -121,8 +157,11 @@ func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
 }
 
 func (bd *digest) NTSVoteCount(pcm module.BTPProofContextMap) (int, error) {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
 	count := 0
-	for _, ntd := range bd.NetworkTypeDigests() {
+	for _, ntd := range bd.core.NetworkTypeDigests() {
 		_, err := pcm.ProofContextFor(ntd.NetworkTypeID())
 		if errors.Is(err, errors.ErrNotFound) {
 			continue
@@ -339,7 +378,7 @@ func (m *message) Bytes() []byte {
 }
 
 var ZeroDigest = &digest{
-	digestCore: zeroDigestCore{},
+	core: zeroDigestCore{},
 }
 
 type zeroDigestCore struct {

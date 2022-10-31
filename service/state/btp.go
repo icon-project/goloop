@@ -289,7 +289,7 @@ type btpSnapshot struct {
 
 func (bss *btpSnapshot) Bytes() []byte {
 	if bss.digestHash == nil && bss.digest != nil {
-		bss.digestHash = bss.digest.Hash()
+		return bss.digest.Hash()
 	}
 	return bss.digestHash
 }
