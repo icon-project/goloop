@@ -39,6 +39,7 @@ const (
 	Revision18
 	Revision19
 	Revision20
+	Revision21
 	RevisionReserved
 )
 
@@ -97,7 +98,13 @@ const (
 
 	RevisionFixTransferRewardFund = Revision18
 
-	RevisionBTP2 = Revision20
+	// Unused
+	// RevisionJavaPurgeEnumCache = Revision19
+
+	// Unused
+	// RevisionJavaFixMapValues = Revision20
+
+	RevisionBTP2 = Revision21
 )
 
 var revisionFlags = []module.Revision{
@@ -142,6 +149,8 @@ var revisionFlags = []module.Revision{
 	// Revision19
 	module.PurgeEnumCache,
 	// Revision20
+	module.FixMapValues,
+	// Revision21
 	module.MultipleFeePayers,
 }
 
