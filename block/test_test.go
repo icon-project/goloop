@@ -20,10 +20,8 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-const (
-	gheight           int64 = 0
-	defaultValidators       = 1
-)
+const gheight int64 = 0
+const defaultValidators = 1
 
 type testChain struct {
 	module.Chain
@@ -252,11 +250,6 @@ func (l *testTransactionList) effect() *testTransactionEffect {
 	return l._effect
 }
 
-func (l *testTransactionList) receipts() []*testReceipt {
-	l.updateCache()
-	return l._receipts
-}
-
 func (l *testTransactionList) updateCache() {
 	if l._effect == nil {
 		l._effect = &testTransactionEffect{}
@@ -354,10 +347,6 @@ type testTransition struct {
 
 func (tr *testTransition) setExeChan(ch chan struct{}) {
 	tr._exeChan = ch
-}
-
-func (tr *testTransition) exeChan() chan<- struct{} {
-	return tr._exeChan
 }
 
 func (tr *testTransition) PatchTransactions() module.TransactionList {

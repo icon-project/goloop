@@ -42,6 +42,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import testcases.APITest;
+import testcases.BLSTestScore;
 import testcases.DeployScore;
 import testcases.HelloWorld;
 
@@ -539,6 +540,19 @@ class JavaAPITest extends TestBase {
         RpcItem address = apiScore.call("getAddressFromKeyQuery", params);
         LOG.info("expected (" + caller.getAddress() + "), got (" + address.asAddress() + ")");
         assertEquals(caller.getAddress(), address.asAddress());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testAPIForBLS() throws Exception {
+        LOG.infoEntering("deploy", "blsTestScore");
+        Score blsScore = txHandler.deploy(ownerWallet, BLSTestScore.class, null);
+        LOG.info("scoreAddr = " + blsScore.getAddress());
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "test");
+        var tr = blsScore.invokeAndWaitResult(caller, "test", null);
+        assertSuccess(tr);
         LOG.infoExiting();
     }
 

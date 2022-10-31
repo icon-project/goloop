@@ -29,7 +29,7 @@ func (rt *RefTracer) objectsString() string {
 		if i>0 {
 			buf.WriteString(" ")
 		}
-		buf.WriteString(fmt.Sprintf("%s", stringfy(rc)))
+		buf.WriteString(stringfy(rc))
 	}
 	return buf.String()
 }

@@ -30,6 +30,7 @@ const (
 
 func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository(mtr)
+	RegisterValidationRule(mr.Validator())
 
 	mr.RegisterMethod("icx_getLastBlock", getLastBlock)
 	mr.RegisterMethod("icx_getBlockByHeight", getBlockByHeight)
@@ -1253,6 +1254,7 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, chain module.Chain, bm
 
 func DebugMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository(mtr)
+	RegisterValidationRule(mr.Validator())
 
 	mr.RegisterMethod("debug_getTrace", getTrace)
 	mr.RegisterMethod("debug_estimateStep", estimateStep)

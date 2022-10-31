@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/platform/basic"
@@ -49,11 +50,11 @@ func TestBlockManager_GetBlock(t *testing.T) {
 	defer nd.Close()
 	assert := assert.New(t)
 
-	blk, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
+	_, err := nd.BM.GetBlock(make([]byte, crypto.HashLen))
 	assert.Error(err)
 
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
-	blk = nd.GetLastBlock()
+	blk := nd.GetLastBlock()
 	blk2, err := nd.BM.GetBlock(blk.ID())
 	assert.NoError(err)
 	assert.EqualValues(blk.ID(), blk2.ID())
@@ -91,6 +92,7 @@ func TestBlockManager_ImportBlock_OK(t *testing.T) {
 
 	ch := make(chan module.BlockCandidate)
 	nd2 := test.NewNode(t)
+	defer nd2.Close()
 	_, err := nd2.BM.ImportBlock(blk, 0, func(bc module.BlockCandidate, err error) {
 		ch <- bc
 	})
@@ -119,7 +121,7 @@ func TestFreeFunctions(t *testing.T) {
 	// add one more block
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 
-	cvlBytes, err := block.GetCommitVoteListBytesByHeight(db, nil, 1)
+	cvlBytes, err := block.GetCommitVoteListBytesForHeight(db, nil, 1)
 	assert.NoError(err)
 	assert.EqualValues(consensus.NewEmptyCommitVoteList().Bytes(), cvlBytes)
 
@@ -131,6 +133,20 @@ func TestFreeFunctions(t *testing.T) {
 	err = block.ResetDB(db, nil, 1)
 	assert.NoError(err)
 	assert.EqualValues(1, block.GetLastHeightOf(db))
+
+	res, err := block.GetBlockResultByHeight(db, nil, 1)
+	assert.NoError(err)
+	assert.EqualValues(1, blk.Height())
+	assert.EqualValues(blk.Result(), res)
+
+	bd, err := block.GetBTPDigestFromResult(db, nil, res)
+	assert.NoError(err)
+	assert.EqualValues([]byte(nil), bd.Bytes())
+
+	vl, err := block.GetNextValidatorsByHeight(db, nil, 1)
+	assert.NoError(err)
+	assert.EqualValues(0, vl.Len())
+	assert.EqualValues([]byte(nil), vl.Bytes())
 }
 
 func TestBlockManager_BTPDigest(t_ *testing.T) {
@@ -334,4 +350,187 @@ func TestManager_ChangePubKey(t_ *testing.T) {
 
 	_, err = nts.NextProofContext().NewProofPart(make([]byte, 32), wp)
 	assert.NoError(err)
+}
+
+func TestManager_WaitForBlock(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	ch0, err := nd.BM.WaitForBlock(0)
+	assert.NoError(err)
+	blk := <-ch0
+	assert.EqualValues(0, blk.Height())
+
+	ch1, err := nd.BM.WaitForBlock(1)
+	assert.NoError(err)
+	select {
+	case <-ch1:
+		assert.Fail("Shall not happen")
+	default:
+	}
+
+	ch2, err := nd.BM.WaitForBlock(2)
+	assert.NoError(err)
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk = <-ch1
+	assert.EqualValues(1, blk.Height())
+
+	select {
+	case <-ch2:
+		assert.Fail("Shall not happen")
+	default:
+	}
+
+	nd.BM.Term()
+	blk = <-ch2
+	assert.Nil(blk)
+}
+
+func TestManager_WaitTransactionResult(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	tx := nd.NewTx()
+	nd.ProposeFinalizeBlockWithTX(
+		consensus.NewEmptyCommitVoteList(), tx.String(),
+	)
+	ch, err := nd.BM.WaitTransactionResult(tx.ID())
+	assert.NoError(err)
+
+	select {
+	case <-ch:
+		assert.Fail("shall not receive")
+	default:
+	}
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	ti := (<-ch).(module.TransactionInfo)
+	tx2, err := ti.Transaction()
+	assert.NoError(err)
+	assert.Equal(tx.ID(), tx2.ID())
+}
+
+type genesisBuffer struct {
+	gtx  []byte
+	data map[string][]byte
+}
+
+func newGenesisBuffer() *genesisBuffer {
+	return &genesisBuffer{
+		data: make(map[string][]byte),
+	}
+}
+
+func (gb *genesisBuffer) WriteGenesis(gtx []byte) error {
+	gb.gtx = gtx
+	return nil
+}
+
+func (gb *genesisBuffer) WriteData(value []byte) ([]byte, error) {
+	hv := crypto.SHA3Sum256(value)
+	gb.data[string(hv)] = value
+	return hv, nil
+}
+
+func (gb *genesisBuffer) Close() error {
+	return nil
+}
+
+type genesisStorage struct {
+	gType  module.GenesisType
+	cid    int
+	nid    int
+	height int64
+	gtx    []byte
+	data   map[string][]byte
+}
+
+func newGenesisStorage(gType module.GenesisType, cid, nid int, height int64, gb *genesisBuffer) *genesisStorage {
+	return &genesisStorage{
+		gType:  gType,
+		cid:    cid,
+		nid:    nid,
+		height: height,
+		gtx:    gb.gtx,
+		data:   gb.data,
+	}
+}
+
+func (gs *genesisStorage) CID() (int, error) {
+	return gs.cid, nil
+}
+
+func (gs *genesisStorage) NID() (int, error) {
+	return gs.nid, nil
+}
+
+func (gs *genesisStorage) Height() int64 {
+	return gs.height
+}
+
+func (gs *genesisStorage) Type() (module.GenesisType, error) {
+	return gs.gType, nil
+}
+
+func (gs *genesisStorage) Genesis() []byte {
+	return gs.gtx
+}
+
+func (gs *genesisStorage) Get(key []byte) ([]byte, error) {
+	return gs.data[string(key)], nil
+}
+
+func TestManager_ExportGenesis(t *testing.T) {
+	assert := assert.New(t)
+
+	nd := test.NewNode(t)
+	defer nd.Close()
+
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk := nd.GetLastBlock()
+	gb := newGenesisBuffer()
+	err := nd.BM.ExportGenesis(blk, consensus.NewEmptyCommitVoteList(), gb)
+	assert.NoError(err)
+	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 2, gb)
+	dbase := db.NewMapDB()
+	err = nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
+		return nil
+	})
+	assert.NoError(err)
+
+	nd2 := test.NewNode(t, test.UseGenesisStorage(gs), test.UseDB(dbase))
+	defer nd2.Close()
+	blk2, _, err := nd2.BM.GetGenesisData()
+	assert.NoError(err)
+	assert.EqualValues(blk.ID(), blk2.ID())
+}
+
+func TestManager_ExportBlocks(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	dbase := db.NewMapDB()
+	ch := make(chan int64, 3)
+	err := nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
+		ch <- h
+		return nil
+	})
+	assert.NoError(err)
+	assert.EqualValues(0, <-ch)
+	assert.EqualValues(1, <-ch)
+	assert.EqualValues(2, <-ch)
+	block.ResetDB(dbase, nil, 1)
+
+	nd2 := test.NewNode(t, test.UseDB(dbase))
+	blk, err := nd.BM.GetBlockByHeight(1)
+	assert.NoError(err)
+	blk2, err := nd2.BM.GetBlockByHeight(1)
+	assert.NoError(err)
+	assert.EqualValues(blk.ID(), blk2.ID())
 }

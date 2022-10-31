@@ -32,7 +32,6 @@ type blockGenerator struct {
 	t  *testing.T
 	sm *testServiceManager
 	bm module.BlockManager
-	n  int64
 }
 
 func newBlockGenerator(t *testing.T, gtx *testTransaction) *blockGenerator {
@@ -132,13 +131,6 @@ func (br *blockResult) assertError(t *testing.T) {
 	assert.NotNil(t, br.err, "return error")
 	assert.Nil(t, br.cberr, "cb error")
 	assert.False(t, br.cbCalled, "cb called")
-}
-
-func (br *blockResult) assertCBError(t *testing.T) {
-	assert.Nil(t, br.blk, "block")
-	assert.Nil(t, br.err, "return error")
-	assert.NotNil(t, br.cberr, "cb error")
-	assert.True(t, br.cbCalled, "cb called")
 }
 
 type cbResult struct {

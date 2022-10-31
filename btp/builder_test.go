@@ -50,7 +50,6 @@ type testStateView struct {
 	networkTypeIDs []int64
 	networks       map[int64]*network
 	networkTypes   map[int64]*networkType
-	publicKey      map[string]map[string][]byte
 }
 
 func (v *testStateView) GetNetworkTypeIDs() ([]int64, error) {

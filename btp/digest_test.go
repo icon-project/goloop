@@ -34,6 +34,7 @@ func TestDigest_ZeroValueDigest(t *testing.T) {
 	assert.NoError(err)
 	dbase := db.NewMapDB()
 	bs, err := NewSection(bd, s.view, dbase)
+	assert.NoError(err)
 	assert.EqualValues(0, len(bs.NetworkTypeSections()))
 	nts, err := bs.NetworkTypeSectionFor(0)
 	assert.Nil(nts)

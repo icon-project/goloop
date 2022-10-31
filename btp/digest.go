@@ -103,6 +103,7 @@ func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
 				NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
 			})
 		}
+		bd.ntsHashEntryListFormat = ntsHashEntries
 	}
 	return bd.ntsHashEntryListFormat
 }
@@ -315,24 +316,6 @@ func (l *messageList) Get(idx int) (module.BTPMessage, error) {
 	return m, nil
 }
 
-func (l *messageList) flush() error {
-	bk, err := l.dbase.GetBucket(l.mod.ListByMerkleRootBucket())
-	if err != nil {
-		return err
-	}
-	err = bk.Set(l.MessagesRoot(), l.Bytes())
-	if err != nil {
-		return err
-	}
-	for _, m := range l.messages {
-		err = m.flush()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (l *messageList) Len() int64 {
 	return int64(l.hashesCat.Len())
 }
@@ -353,14 +336,6 @@ func (m *message) Hash() []byte {
 
 func (m *message) Bytes() []byte {
 	return m.data
-}
-
-func (m *message) flush() error {
-	bk, err := m.dbase.GetBucket(m.mod.BytesByHashBucket())
-	if err != nil {
-		return err
-	}
-	return bk.Set(m.Hash(), m.Bytes())
 }
 
 var ZeroDigest = &digest{

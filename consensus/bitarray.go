@@ -6,9 +6,9 @@ import (
 	"math/rand"
 )
 
-type word = uint
+type word = uint64
 
-const wordBits = 32 << (^uint(0) >> 63) // either 32 or 64
+const wordBits = 64
 
 type bitArray struct {
 	NumBits int
@@ -20,21 +20,21 @@ func (ba *bitArray) Len() int {
 }
 
 func (ba *bitArray) Set(idx int) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] | (1 << uint(idx%wordBits))
 }
 
 func (ba *bitArray) Unset(idx int) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] &^ (1 << uint(idx%wordBits))
 }
 
 func (ba *bitArray) Put(idx int, v bool) {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return
 	}
 	if v {
@@ -45,7 +45,7 @@ func (ba *bitArray) Put(idx int, v bool) {
 }
 
 func (ba *bitArray) Get(idx int) bool {
-	if idx > ba.NumBits {
+	if idx >= ba.NumBits {
 		return false
 	}
 	return ba.Words[idx/wordBits]&(1<<uint(idx%wordBits)) != 0
@@ -64,7 +64,7 @@ func (ba *bitArray) Flip() {
 func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 	lba := len(ba.Words)
 	lba2 := len(ba2.Words)
-	if lba > lba2 {
+	if ba.NumBits > ba2.NumBits {
 		ba.Words = ba.Words[:lba2]
 		ba.NumBits = ba2.NumBits
 		lba = lba2
@@ -77,14 +77,14 @@ func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 func (ba *bitArray) PickRandom() int {
 	var count int
 	for i := 0; i < len(ba.Words); i++ {
-		count = count + bits.OnesCount(ba.Words[i])
+		count = count + bits.OnesCount64(ba.Words[i])
 	}
 	if count == 0 {
 		return -1
 	}
 	pick := rand.Intn(count)
 	for i := 0; i < len(ba.Words); i++ {
-		c := bits.OnesCount(ba.Words[i])
+		c := bits.OnesCount64(ba.Words[i])
 		if pick < c {
 			for idx := i * wordBits; idx < ba.NumBits; idx++ {
 				if ba.Get(idx) {
@@ -107,8 +107,7 @@ func (ba bitArray) String() string {
 
 func (ba *bitArray) Equal(ba2 *bitArray) bool {
 	lba := len(ba.Words)
-	lba2 := len(ba2.Words)
-	if lba != lba2 {
+	if ba.NumBits != ba2.NumBits {
 		return false
 	}
 	for i := 0; i < lba; i++ {

@@ -17,7 +17,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 	cnt := 0
 
 	for i := l.Iterator(); i.Has(); i.Next() {
-		if t.step == stepCanceled {
+		if t.canceled() {
 			return ErrTransitionInterrupted
 		}
 		txi, _, err := i.Get()

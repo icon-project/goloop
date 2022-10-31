@@ -35,3 +35,11 @@ func (s *syncer) end() {
 		cb()
 	}
 }
+
+func (s *syncer) Lock() {
+	s.begin()
+}
+
+func (s *syncer) Unlock() {
+	s.end()
+}

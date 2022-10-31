@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/server/metric"
-	"github.com/labstack/echo/v4"
 )
 
 type Handler func(ctx *Context, params *Params) (result interface{}, err error)
@@ -17,6 +18,7 @@ type MethodRepository struct {
 	mtx     sync.RWMutex
 	methods map[string]Handler
 	allowed map[string]bool
+	v       *Validator
 	mtr     *metric.JsonrpcMetric
 }
 
@@ -24,8 +26,13 @@ func NewMethodRepository(mtr *metric.JsonrpcMetric) *MethodRepository {
 	return &MethodRepository{
 		methods: make(map[string]Handler),
 		allowed: make(map[string]bool),
-		mtr: mtr,
+		v:       NewValidator(),
+		mtr:     mtr,
 	}
+}
+
+func (mr *MethodRepository) Validator() *Validator {
+	return mr.v
 }
 
 func (mr *MethodRepository) RegisterMethod(method string, handler Handler) {
@@ -76,7 +83,7 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 		}
 		mr.mtr.OnHandle(ctx.MetricContext(), method, start, err)
 	}()
-	if err := UnmarshalWithValidate(raw, req, ctx.Validator()); err != nil {
+	if err := UnmarshalWithValidate(raw, req, mr.v); err != nil {
 		resp.ID = req.ID
 		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
@@ -102,7 +109,7 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 
 	p := &Params{
 		rawMessage: req.Params,
-		validator:  ctx.Validator(),
+		validator:  mr.v,
 	}
 	res, err := method(ctx, p)
 	if err != nil {

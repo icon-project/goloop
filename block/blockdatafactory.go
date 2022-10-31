@@ -25,13 +25,11 @@ import (
 )
 
 type blockDataFactory struct {
-	sm       module.ServiceManager
 	handlers handlerList
 }
 
 func NewBlockDataFactory(
 	c module.Chain,
-	sm module.ServiceManager,
 	handlers []base.BlockHandler,
 ) (module.BlockDataFactory, error) {
 	if handlers == nil {
@@ -39,7 +37,6 @@ func NewBlockDataFactory(
 	}
 
 	return &blockDataFactory{
-		sm:       sm,
 		handlers: handlers,
 	}, nil
 }

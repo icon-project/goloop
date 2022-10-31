@@ -14,7 +14,7 @@ type peer struct {
 	lock    sync.Mutex
 	id      module.PeerID
 	reqID   uint32
-	expired time.Duration
+	expired int
 	timer   *time.Timer
 	cb      Callback
 	log     log.Logger

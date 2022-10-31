@@ -434,6 +434,14 @@ var outputTypeTag = map[TypeTag]struct {
 	TDict:    {codec.TypeDict, true},
 }
 
+func (t DataType) UsableForEvent() bool {
+	if t.IsList() || t == Unknown {
+		return false
+	}
+	_, ok := inputTypeTag[t.Tag()]
+	return ok
+}
+
 func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bool) error {
 	if obj == nil {
 		obj = codec.Nil

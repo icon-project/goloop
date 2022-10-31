@@ -56,7 +56,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			return err
 		}
 
-		if t.step == stepCanceled {
+		if t.canceled() {
 			return ErrTransitionInterrupted
 		}
 

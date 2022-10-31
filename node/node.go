@@ -955,6 +955,7 @@ func NewNode(
 	}()
 
 	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), nil)
+	cliSrv.e.Logger.SetOutput(l.WriterLevel(log.DebugLevel))
 
 	n := &Node{
 		w:        w,

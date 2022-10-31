@@ -2,6 +2,7 @@ package sync2
 
 import (
 	"context"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -27,6 +28,7 @@ type syncer struct {
 	plt        Platform
 	reactors   []SyncReactor
 	processors []SyncProcessor
+	noBuffer   bool
 
 	ah  []byte // account hash
 	vlh []byte // validator list hash
@@ -42,10 +44,18 @@ type syncer struct {
 	bd  module.BTPDigest
 }
 
+func (s *syncer) newMerkleBuilder() merkle.Builder {
+	if s.noBuffer {
+		return merkle.NewBuilderWithRawDatabase(s.database)
+	} else {
+		return merkle.NewBuilder(s.database)
+	}
+}
+
 func (s *syncer) getStateBuilder(accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData []byte) merkle.Builder {
 	s.logger.Debugf("GetStateBuilder ah=%#x, prh=%#x, nrh=%#x, vlh=%#x, ed=%#x",
 		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash, extensionData)
-	builder := merkle.NewBuilder(s.database)
+	builder := s.newMerkleBuilder()
 	ess := s.plt.NewExtensionWithBuilder(builder, extensionData)
 
 	if wss, err := state.NewWorldSnapshotWithBuilder(builder, accountsHash, validatorListHash, ess, nil); err == nil {
@@ -64,7 +74,7 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 		s.bd = btp.ZeroDigest
 		return nil
 	}
-	builder := merkle.NewBuilder(s.database)
+	builder := s.newMerkleBuilder()
 
 	btpDigest, err := btp.NewDigestWithBuilder(builder, btpHash)
 	if err == nil {
@@ -75,6 +85,14 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 	}
 
 	return builder
+}
+
+func timeElapsed(name string, logger log.Logger) func() {
+	logger.Infof("%s start", name)
+	start := time.Now()
+	return func() {
+		logger.Infof("%s elapsed=%v", name, time.Since(start))
+	}
 }
 
 // syncWithBuilders start Sync
@@ -115,6 +133,7 @@ func (s *syncer) syncWithBuilders(stateBuilders []merkle.Builder, btpBuilders []
 }
 
 func (s *syncer) ForceSync() (*Result, error) {
+	defer timeElapsed("ForceSync", s.logger)()
 	var stateBuilders, btpBuilders []merkle.Builder
 
 	stateBuilder := s.getStateBuilder(s.ah, s.prh, s.nrh, s.vlh, s.ed)
@@ -162,6 +181,7 @@ func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platf
 	s := &syncer{
 		logger:   logger,
 		database: database,
+		noBuffer: noBuffer,
 		reactors: reactors,
 		plt:      plt,
 		ah:       ah,

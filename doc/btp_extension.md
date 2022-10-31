@@ -49,15 +49,17 @@ Summarize the document to following items.
         "hxb51a65420ce5199e538f21fc614eacf4234454fe"
       ]
     }
-  ]
+  ],
+  "logs": "0x1"
 }
 ```
 #### Parameters
 
-| Name         | Type  | Required | Description                                                                                              |
-|:-------------|:------|:---------|:---------------------------------------------------------------------------------------------------------|
-| height       | T_INT | true     | Start height                                                                                             |
-| eventFilters | Array | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters))                       |
+| Name         | Type   | Required | Description                                                                        |
+|:-------------|:-------|:---------|:-----------------------------------------------------------------------------------|
+| height       | T_INT  | true     | Start height                                                                       |
+| eventFilters | Array  | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters)) |
+| logs         | T_BOOL | false    | Whether it includes logs                                                           |
 
 > Success Responses
 
@@ -98,7 +100,18 @@ Summarize the document to following items.
     [
       ["0x0"]
     ]
-  ]
+  ],
+  "logs": [
+    [
+      [
+        {
+          "scoreAddress": "cx38fd2687b202caf4bd1bda55223578f39dbb6561",
+          "indexed": [ "EventTriggered(int)", "0x2" ],
+          "data": []
+        }
+      ]
+    ]
+  ],
 }
 ```
 
@@ -110,6 +123,7 @@ Summarize the document to following items.
 | height  | T_INT  | true     | The height of the new block                                                                                                  |
 | indexes | Array  | false    | Array of array of [index](#resultindex)es of the results of filtered events in the block ordered by EventFilter and index    |
 | events  | Array  | false    | Array of array of [events](#eventlist), the array of event indexes in the result, ordered by EventFilter and index           |
+| logs    | Array  | false    | Array of array of [logs](#loglist), the array of event logs in the result, ordered by EventFilter and index                  |
 
 
 ### Events
@@ -140,10 +154,10 @@ Summarize the document to following items.
 | height                            | T_INT  | true     | Start height                                                                                                                                                                       |
 | addr                              | T_ADDR | false    | SCORE address of Event                                                                                                                                                             |
 | logs                              | T_BOOL | false    | Whether it includes JSON log data (default: false)                                                                                                                                 |
-| event                             | String | true     | Event signature                                                                                                                                                                    |
+| event                             | String | false    | Event signature                                                                                                                                                                    |
 | <a id="eventsindexed">indexed</a> | Array  | false    | Array of arguments to match with indexed parameters of event. null matches any value.                                                                                              |
 | data                              | Array  | false    | Array of arguments to match with not indexed parameters of event. null matches any value. If indexed parameters of event are exists, require ['indexed'](#eventsindexed) parameter |
-
+| eventFilters                      | Array  | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters)) All events that match any of filters will be notified.                                          |
 
 
 > Success Responses

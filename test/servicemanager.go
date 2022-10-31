@@ -22,9 +22,11 @@ import (
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
@@ -32,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type ServiceManager struct {
@@ -281,15 +284,45 @@ func (sm *ServiceManager) SendTransactionAndWait(result []byte, height int64, tx
 }
 
 func (sm *ServiceManager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
-	panic("implement me")
+	return nil, service.ErrCommittedTransaction
+}
+
+type transitionResult struct {
+	StateHash         []byte
+	PatchReceiptHash  []byte
+	NormalReceiptHash []byte
+	ExtensionData     []byte
+	BTPData           []byte
+}
+
+func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
+	tresult := new(transitionResult)
+	if len(bs) > 0 {
+		if _, err := codec.UnmarshalFromBytes(bs, tresult); err != nil {
+			return nil, err
+		}
+	}
+	return tresult, nil
 }
 
 func (sm *ServiceManager) ExportResult(result []byte, vh []byte, dst db.Database) error {
-	panic("implement me")
+	r, err := newTransitionResultFromBytes(result)
+	if err != nil {
+		return err
+	}
+	e := merkle.NewCopyContext(sm.dbase, dst)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
+	ess := sm.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh, ess, r.BTPData)
+	return e.Run()
 }
 
 func (sm *ServiceManager) BTPDigestFromResult(result []byte) (module.BTPDigest, error) {
 	dh, err := service.BTPDigestHashFromResult(result)
+	if err != nil {
+		return nil, err
+	}
 	bk, err := sm.dbase.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err

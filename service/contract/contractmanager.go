@@ -27,6 +27,11 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	FileSizeLimit    = 1 * 1024 * 1024
+	ContentSizeLimit = 2 * 1024 * 1024
+)
+
 type (
 	cStatus int
 
@@ -373,6 +378,7 @@ func storePython(dst string, code []byte, log log.Logger) (ret error) {
 		return scoreresult.IllegalFormatError.New("NoPackageFile")
 	}
 	pkgBase, _ := path.Split(pkg)
+	var totalSize int64
 	for _, zFile := range zipReader.File {
 		if zFile.FileInfo().IsDir() {
 			continue
@@ -385,6 +391,16 @@ func storePython(dst string, code []byte, log log.Logger) (ret error) {
 		if strings.Contains(dir, "__MACOSX") ||
 			strings.Contains(dir, "__pycache__") {
 			continue
+		}
+		sz := zFile.FileInfo().Size()
+		if sz > FileSizeLimit {
+			return scoreresult.IllegalFormatError.Errorf("OversizeFile(file=%s,size=%d,limit=%d)",
+				zFile.Name, sz, FileSizeLimit)
+		}
+		totalSize += sz
+		if totalSize > ContentSizeLimit {
+			return scoreresult.IllegalFormatError.Errorf("OversizeContent(size=%d,limit=%d)",
+				totalSize, ContentSizeLimit)
 		}
 		in, err := zFile.Open()
 		if err != nil {
@@ -399,7 +415,7 @@ func storePython(dst string, code []byte, log log.Logger) (ret error) {
 		if err != nil {
 			return errors.WithCode(err, errors.CriticalIOError)
 		}
-		if _, err := io.Copy(out, in); err != nil {
+		if _, err := io.CopyN(out, in, sz); err != nil {
 			return errors.WithCode(err, errors.CriticalIOError)
 		}
 	}

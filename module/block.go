@@ -133,8 +133,6 @@ type BlockManager interface {
 	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
-	Commit(BlockCandidate) error
-
 	// Finalize updates world state according to BlockCandidate and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(BlockCandidate) error
 
@@ -145,7 +143,7 @@ type BlockManager interface {
 	// bi.Timestamp() - TimestampThreshold and current time +
 	// TimestampThreshold. If such a transaction is available now, the function
 	// returns false and callback cb is not called.
-	WaitForTransaction(parentID []byte, cb func()) bool
+	WaitForTransaction(parentID []byte, cb func()) (bool, error)
 
 	// SendTransactionAndWait sends a transaction, and get a channel to
 	// to wait for the result of it.
@@ -165,8 +163,8 @@ type BlockManager interface {
 	// They are available only when it starts from genesis.
 	GetGenesisData() (Block, CommitVoteSet, error)
 
-	// NewConsensusInfo returns a ConsensusInfo with blk's proposer and
-	// votes in blk.
+	// NewConsensusInfo returns a ConsensusInfo with proposer of previous block
+	// of blk and votes in blk.
 	NewConsensusInfo(blk Block) (ConsensusInfo, error)
 }
 

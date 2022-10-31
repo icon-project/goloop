@@ -18,11 +18,9 @@ package test
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -61,7 +59,7 @@ type NodeContext struct {
 
 func NewNode(t *testing.T, o ...FixtureOption) *Node {
 	cf := NewFixtureConfig(t, o...)
-	base, err := ioutil.TempDir("", cf.Prefix)
+	base, err := os.MkdirTemp("", cf.Prefix)
 	assert.NoError(t, err)
 	dbase := cf.Dbase()
 	logger := log.New()
@@ -131,9 +129,7 @@ func (t *Node) Close() {
 	assert.NoError(t, err)
 	t.CS.Term()
 	t.BM.Term()
-	time.AfterFunc(time.Second*5, func() {
-		t.Chain.Close()
-	})
+	t.Chain.Close()
 }
 
 func (t *Node) GetLastBlock() module.Block {
@@ -311,18 +307,6 @@ func (t *Node) WaitForBlock(h int64) module.Block {
 	return <-chn
 }
 
-func (t *Node) WaitForNextBlock() module.Block {
-	blk, err := t.BM.GetLastBlock()
-	assert.NoError(t.T, err)
-	return t.WaitForBlock(blk.Height() + 1)
-}
-
-func (t *Node) WaitForNextNthBlock(n int) module.Block {
-	blk, err := t.BM.GetLastBlock()
-	assert.NoError(t.T, err)
-	return t.WaitForBlock(blk.Height() + int64(n))
-}
-
 func (t *Node) NewTx() *Transaction {
 	blk, err := t.BM.GetLastBlock()
 	assert.NoError(t.T, err)
@@ -336,4 +320,17 @@ func NodeInterconnect(nodes []*Node) {
 			nodes[i].NM.Connect(nodes[j].NM)
 		}
 	}
+}
+
+func NodeWaitForBlock(nodes []*Node, h int64) module.Block {
+	var blk module.Block
+	for _, n := range nodes {
+		b := n.WaitForBlock(h)
+		if blk == nil {
+			blk = b
+		} else {
+			assert.Equal(n.T, blk.ID(), b.ID())
+		}
+	}
+	return blk
 }

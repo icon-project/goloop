@@ -148,7 +148,7 @@ func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.Block
 	if err != nil {
 		return nil, nil, err
 	}
-	bdf, err := block.NewBlockDataFactory(c, c.sm, nil)
+	bdf, err := block.NewBlockDataFactory(c, nil)
 	if err != nil {
 		return nil, nil, err
 	}

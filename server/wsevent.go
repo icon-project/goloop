@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -17,7 +18,11 @@ type EventRequest struct {
 	EventFilter
 	Height common.HexInt64 `json:"height"`
 	Logs   common.HexInt32 `json:"logs,omitempty""`
+
+	Filters EventFilters `json:"eventFilters,omitempty"`
 }
+
+type EventFilters []*EventFilter
 
 type EventFilter struct {
 	Addr       *common.Address `json:"addr,omitempty"`
@@ -39,6 +44,61 @@ type EventNotification struct {
 	Logs   []module.EventLog `json:"logs,omitempty"`
 }
 
+// FilteredByLogBloom returns applicable event filters.
+// If there is no event filters, then it returns false along with filters.
+func (fs EventFilters) FilteredByLogBloom(lb module.LogsBloom) (EventFilters, bool) {
+	filters := make([]*EventFilter, len(fs))
+	contained := false
+	for idx, filter := range fs {
+		if filter == nil {
+			continue
+		}
+		if lb.Contain(filter.lb) {
+			filters[idx] = filter
+			contained = true
+		}
+	}
+	return filters, contained
+}
+
+func (fs EventFilters) MatchEvents(r module.Receipt, includeLogs bool) ([]common.HexInt32, []module.EventLog, error) {
+	var indexes []common.HexInt32
+	var logs []module.EventLog
+	if err := fs.filterEvents(r, func(fi, idx int, log module.EventLog) {
+		indexes = append(indexes, common.HexInt32{Value: int32(idx)})
+		if includeLogs {
+			logs = append(logs, log)
+		}
+	}); err != nil {
+		return nil, nil, err
+	} else {
+		return indexes, logs, nil
+	}
+}
+
+func (fs EventFilters) filterEvents(r module.Receipt, v func(fi, idx int, log module.EventLog)) error {
+	filters, contained := fs.FilteredByLogBloom(r.LogsBloom())
+	if !contained {
+		return nil
+	}
+	for it, idx := r.EventLogIterator(), 0; it.Has(); _, idx = it.Next(), idx+1 {
+		el, err := it.Get()
+		if err != nil {
+			return err
+		}
+		for fi, f := range filters {
+			if f == nil {
+				continue
+			}
+			if f.MatchLog(el) {
+				v(fi, idx, el)
+				break
+			}
+		}
+	}
+	return nil
+}
+
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 	var er EventRequest
 	wss, err := wm.initSession(ctx, &er)
@@ -47,7 +107,8 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 	}
 	defer wm.StopSession(wss)
 
-	if err := er.compile(); err != nil {
+	filters, err := er.Compile()
+	if err != nil {
 		_ = wss.response(int(jsonrpc.ErrorCodeInvalidParams), "bad event request parameter")
 		return nil
 	}
@@ -82,10 +143,13 @@ loop:
 		select {
 		case err = <-ech:
 			break loop
-		case blk := <-bch:
-			if !blk.LogsBloom().Contain(er.lb) {
-				h++
-				continue loop
+		case blk, ok := <-bch:
+			if !ok {
+				break loop
+			}
+			filters2, contained := filters.FilteredByLogBloom(blk.LogsBloom())
+			if !contained {
+				break
 			}
 			rl, err := sm.ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 			if err != nil {
@@ -97,7 +161,7 @@ loop:
 				if err != nil {
 					break loop
 				}
-				if es, el, err := er.matchWithLogs(r, er.Logs.Value != 0); err == nil && len(es) > 0 {
+				if es, el, err := filters2.MatchEvents(r, er.Logs.Value != 0); err == nil && len(es) > 0 {
 					var en EventNotification
 					en.Height.Value = h
 					en.Hash = blk.ID()
@@ -118,7 +182,7 @@ loop:
 	return nil
 }
 
-func (f *EventFilter) compile() error {
+func (f *EventFilter) Compile() error {
 	lb := txresult.NewLogsBloom(nil)
 	if f.Addr != nil {
 		lb.AddAddressOfLog(f.Addr)
@@ -127,6 +191,12 @@ func (f *EventFilter) compile() error {
 	name, pts := txresult.DecomposeEventSignature(f.Signature)
 	if len(name) == 0 || pts == nil || len(pts) < f.numOfArgs {
 		return errors.NewBase(errors.IllegalArgumentError, "bad event signature")
+	}
+	for idx, pt := range pts {
+		dt := scoreapi.DataTypeOf(pt)
+		if !dt.UsableForEvent() {
+			return errors.IllegalArgumentError.Errorf("InvalidParameterType(idx=%d,type=%s)", idx, pt)
+		}
 	}
 	lb.AddIndexedOfLog(0, []byte(f.Signature))
 	idx := 0
@@ -169,10 +239,10 @@ func bytesEqual(b1 []byte, b2 []byte) bool {
 	return bytes.Equal(b1, b2)
 }
 
-func (f *EventFilter) matchWithLogs(r module.Receipt, includeLogs bool) ([]common.HexInt32, []module.EventLog, error) {
+func (f *EventFilter) MatchEvents(r module.Receipt, includeLogs bool) ([]common.HexInt32, []module.EventLog, error) {
 	var indexes []common.HexInt32
 	var logs []module.EventLog
-	if err := f.filterFunc(r, func(idx int, log module.EventLog) {
+	if err := f.filterEvents(r, func(idx int, log module.EventLog) {
 		indexes = append(indexes, common.HexInt32{Value: int32(idx)})
 		if includeLogs {
 			logs = append(logs, log)
@@ -183,50 +253,69 @@ func (f *EventFilter) matchWithLogs(r module.Receipt, includeLogs bool) ([]commo
 	return indexes, logs, nil
 }
 
-func (f *EventFilter) match(r module.Receipt) ([]common.HexInt32, bool) {
-	eventIndexes := make([]common.HexInt32, 0)
-	if err := f.filterFunc(r, func(idx int, log module.EventLog) {
-		eventIndexes = append(eventIndexes, common.HexInt32{int32(idx)})
-	}); err != nil {
-		return []common.HexInt32{}, false
+func (f *EventFilter) MatchLog(el module.EventLog) bool {
+	if bytes.Equal([]byte(f.Signature), el.Indexed()[0]) {
+		if f.Addr != nil && !el.Address().Equal(f.Addr) {
+			return false
+		}
+		if f.numOfArgs > 0 {
+			if len(el.Indexed()) <= len(f.indexedBSs) {
+				return false
+			}
+			if len(el.Data()) < len(f.dataBSs) {
+				return false
+			}
+
+			for i, arg := range f.indexedBSs {
+				if arg != nil && !bytesEqual(arg, el.Indexed()[i+1]) {
+					return false
+				}
+			}
+			for i, arg := range f.dataBSs {
+				if arg != nil && !bytesEqual(arg, el.Data()[i]) {
+					return false
+				}
+			}
+		}
+		return true
 	} else {
-		return eventIndexes, len(eventIndexes) > 0
+		return false
 	}
-	return eventIndexes, false
 }
 
-func (f *EventFilter) filterFunc(r module.Receipt, v func(idx int, log module.EventLog)) error {
+func (f *EventFilter) filterEvents(r module.Receipt, v func(idx int, log module.EventLog)) error {
 	if r.LogsBloom().Contain(f.lb) {
-	loop:
 		for it, idx := r.EventLogIterator(), 0; it.Has(); _, idx = it.Next(), idx+1 {
 			el, err := it.Get()
 			if err != nil {
 				return err
 			}
 
-			if bytes.Equal([]byte(f.Signature), el.Indexed()[0]) {
-				if f.Addr != nil && !el.Address().Equal(f.Addr) {
-					continue loop
-				}
-				if f.numOfArgs > 0 {
-					if (len(el.Indexed()) + len(el.Data())) <= f.numOfArgs {
-						continue loop
-					}
-
-					for i, arg := range f.indexedBSs {
-						if arg != nil && !bytesEqual(arg, el.Indexed()[i+1]) {
-							continue loop
-						}
-					}
-					for i, arg := range f.dataBSs {
-						if arg != nil && !bytesEqual(arg, el.Data()[i]) {
-							continue loop
-						}
-					}
-				}
+			if f.MatchLog(el) {
 				v(idx, el)
 			}
 		}
 	}
 	return nil
+}
+
+func (f *EventRequest) Compile() (EventFilters, error) {
+	var filters []*EventFilter
+	if len(f.Filters) > 0 {
+		if len(f.Signature) != 0 {
+			return nil, errors.New("both eventFilters and event is used")
+		}
+		filters = f.Filters
+	} else {
+		filters = []*EventFilter{&f.EventFilter}
+	}
+	for idx, filter := range filters {
+		if filter == nil {
+			return nil, fmt.Errorf("invalid filter idx:%d", idx)
+		}
+		if err := filter.Compile(); err != nil {
+			return nil, err
+		}
+	}
+	return filters, nil
 }

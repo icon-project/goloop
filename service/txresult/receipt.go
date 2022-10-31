@@ -14,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
@@ -791,14 +792,15 @@ func NewReceipt(database db.Database, revision module.Revision, to module.Addres
 	return r
 }
 
+var reSignature = regexp.MustCompile(`^(\w+)\(((?:\w+)(?:,(?:\w+))*)?\)$`)
+
 func DecomposeEventSignature(s string) (string, []string) {
-	reg := regexp.MustCompile(`^(\w+)\(((?:\w+)(?:,(?:\w+))*)\)$`)
-	if reg == nil {
+	matches := reSignature.FindStringSubmatch(s)
+	if matches == nil {
 		return "", nil
 	}
-	matches := reg.FindStringSubmatch(s)
-	if len(matches) < 2 {
-		return "", nil
+	if len(matches[2]) == 0 {
+		return matches[1], []string{}
 	}
 	return matches[1], strings.Split(matches[2], ",")
 }
@@ -815,13 +817,15 @@ func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 	switch t {
 	case "Address":
 		var addr common.Address
-		if err := addr.SetString(v); err != nil {
+		if err := addr.SetStringStrict(v); err != nil {
 			return nil, err
 		}
 		return addr.Bytes(), nil
 	case "int":
 		var ivalue common.HexInt
-		ivalue.SetString(v, 0)
+		if err := intconv.ParseBigInt(ivalue.Value(), v); err != nil {
+			return nil, err
+		}
 		return ivalue.Bytes(), nil
 	case "str":
 		return []byte(v), nil
@@ -833,8 +837,10 @@ func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 	case "bool":
 		if v == "0x1" {
 			return []byte{1}, nil
+		} else if v == "0x0" {
+			return []byte{0}, nil
 		}
-		return []byte{0}, nil
+		return nil, errors.Errorf("IllegalFormatForBool(%s)", v)
 	default:
 		return nil, errors.Errorf("UnknownType(%s)For(%s)", t, v)
 	}

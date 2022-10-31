@@ -1006,7 +1006,7 @@ func (cs *consensus) enterTransactionWait() {
 
 	if waitTx {
 		hrs := cs.hrs
-		callback := cs.c.BlockManager().WaitForTransaction(cs.lastBlock.ID(), func() {
+		callback, err := cs.c.BlockManager().WaitForTransaction(cs.lastBlock.ID(), func() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
@@ -1016,6 +1016,7 @@ func (cs *consensus) enterTransactionWait() {
 
 			cs.enterPropose()
 		})
+		cs.log.Must(err)
 		if callback {
 			cs.notifySyncer()
 			return
@@ -1927,6 +1928,9 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		if cvl, ok := cvs.(*CommitVoteList); ok {
 			if h == 0 {
 				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
+				if err != nil {
+					return nil, err
+				}
 			} else {
 				prev, err := cs.c.BlockManager().GetBlockByHeight(h - 1)
 				if err != nil {
