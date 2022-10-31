@@ -17,6 +17,7 @@
 package test
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/icon-project/goloop/btp"
@@ -25,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
@@ -81,7 +83,19 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	txs := transaction.NewTransactionListFromSlice(sm.dbase, sm.pool)
+	bk, err := sm.dbase.GetBucket(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
+	var filtered []module.Transaction
+	for _, t := range sm.pool {
+		bs, err := bk.Get(t.ID())
+		if bs != nil && err == nil {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	txs := transaction.NewTransactionListFromSlice(sm.dbase, filtered)
 	sm.pool = nil
 	return service.NewTransition(
 		parent,
@@ -248,6 +262,20 @@ func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interf
 	locker := common.Lock(&sm.mu)
 	defer locker.Unlock()
 
+	bk, err := sm.dbase.GetBucket(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
+	bs, err := bk.Get(t.ID())
+	if bs != nil && err == nil {
+		return nil, errors.Errorf("Already committed TX %x", t.ID())
+	}
+
+	for _, pt := range sm.pool {
+		if bytes.Equal(pt.ID(), t.ID()) {
+			return nil, errors.Errorf("Already existing TX %x", t.ID())
+		}
+	}
 	sm.pool = append(sm.pool, t)
 	txWaiters := sm.txWaiters
 	sm.txWaiters = nil
