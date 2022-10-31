@@ -3,7 +3,6 @@ name: Code Coverage with Codecov
 on:
   push:
     branches:
-      - feature/120-code-coverage-codecov
       - master
   pull_request:
     branches:
@@ -22,7 +21,7 @@ jobs:
 
     - name: GO test
       run: |
-        go test ./... -short -race -timeout=1m -covermode=atomic -coverprofile=coverage.out
+        go test ./... -short -race -timeout=3m -covermode=atomic -coverprofile=coverage.out
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
