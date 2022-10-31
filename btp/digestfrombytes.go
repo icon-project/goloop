@@ -88,7 +88,7 @@ func NewDigestFromHashAndBytes(
 		}
 	}
 	return &digest{
-		digestCore: core,
+		core: core,
 	}, nil
 }
 
@@ -269,7 +269,7 @@ func NewDigestWithBuilder(builder merkle.Builder, hash []byte) (module.BTPDigest
 		hash: hash,
 	}
 	ret := &digest{
-		digestCore: core,
+		core: core,
 	}
 	builder.RequestData(db.BytesByHash, hash, &digestDataHandler{
 		core:   core,
