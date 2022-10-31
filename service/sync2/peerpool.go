@@ -62,11 +62,13 @@ func (pp *peerPool) pop() *peer {
 }
 
 func (pp *peerPool) remove(id module.PeerID) *peer {
-	e := pp.peers[PeerIDToKey(id)]
+	key := PeerIDToKey(id)
+	e := pp.peers[key]
 	if e == nil {
 		return nil
 	}
 	pp.pList.Remove(e)
+	delete(pp.peers, key)
 	return e.Value.(*peer)
 }
 
