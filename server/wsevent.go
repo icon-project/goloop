@@ -129,7 +129,7 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 
 	_ = wss.response(0, "")
 
-	ech := make(chan error)
+	ech := make(chan error, 1)
 	wss.RunLoop(ech)
 
 	var bch <-chan module.Block
