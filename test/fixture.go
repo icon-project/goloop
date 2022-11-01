@@ -162,14 +162,15 @@ func (f *Fixture) NewCommitVoteListForLastBlock(round int32, ntsVoteCount int) m
 	return consensus.NewCommitVoteList(pcm, votes...)
 }
 
-func (f *Fixture) SendTransactionToAll(tx interface{ String() string }) {
+func (f *Fixture) SendTransactionToAll(tx StringerTransaction) {
+	log.Infof("SendTransactionToAll tx=%s", tx.String())
 	for _, node := range f.Nodes {
 		_, err := node.SM.SendTransaction(nil, 0, tx.String())
 		assert.NoError(f.T, err)
 	}
 }
 
-func (f *Fixture) SendTransactionToProposer(tx interface{ String() string }) {
+func (f *Fixture) SendTransactionToProposer(tx StringerTransaction) {
 	blk, err := f.BM.GetLastBlock()
 	assert.NoError(f.T, err)
 	h := blk.Height() + 1
@@ -203,4 +204,50 @@ func (f *Fixture) WaitForNextBlock() module.Block {
 
 func (f *Fixture) WaitForNextNthBlock(n int) module.Block {
 	return f.WaitForBlock(f.Height + int64(n))
+}
+
+func (f *Fixture) TXInBlock(tx StringerTransaction, blk module.Block) bool {
+	for it := blk.NormalTransactions().Iterator(); it.Has(); {
+		t, _, err := it.Get()
+		assert.NoError(f.T, err)
+		if bytes.Equal(tx.ID(), t.ID()) {
+			return true
+		}
+		err = it.Next()
+		assert.NoError(f.T, err)
+	}
+	return false
+}
+
+func (f *Fixture) SendTXToAllAndWaitForBlock(tx StringerTransaction) module.Block {
+	blk, err := f.BM.GetLastBlock()
+	assert.NoError(f.T, err)
+	h := blk.Height()
+
+	f.SendTransactionToAll(tx)
+	for {
+		blk := f.WaitForBlock(h)
+		if f.TXInBlock(tx, blk) {
+			f.Height = blk.Height()
+			return blk
+		}
+		h++
+	}
+}
+
+func (f *Fixture) SendTXToAllAndWaitForResultBlock(tx StringerTransaction) module.Block {
+	blk, err := f.BM.GetLastBlock()
+	assert.NoError(f.T, err)
+	h := blk.Height()
+
+	f.SendTransactionToAll(tx)
+	for {
+		blk := f.WaitForBlock(h)
+		if f.TXInBlock(tx, blk) {
+			blk = f.WaitForBlock(h + 1)
+			f.Height = blk.Height()
+			return blk
+		}
+		h++
+	}
 }
