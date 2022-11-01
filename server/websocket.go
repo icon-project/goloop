@@ -203,6 +203,17 @@ func (wss *wsSession) Close() error {
 	}
 }
 
+func (wss *wsSession) RunLoop(ech chan<- error) {
+	wss.lock.Lock()
+	defer wss.lock.Unlock()
+
+	if wss.c != nil {
+		go readLoop(wss.c, ech)
+	} else {
+		ech <- errors.New("AlreadyClosed")
+	}
+}
+
 const DefaultWSMaxSession = 10
 
 type WSResponse struct {
