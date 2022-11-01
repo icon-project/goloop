@@ -139,7 +139,7 @@ func rlpParseBytes(bs []byte) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 		data = data[ts:]
-		if len(data) < int(size) {
+		if uint64(len(data)) < size {
 			return nil, nil, errors.IllegalArgumentError.Errorf(
 				"NotEnoughBytes(exp=%d,real=%d)", size, len(data))
 		}
@@ -197,8 +197,4 @@ func ToBytes(v interface{}) []byte {
 		log.Panicf("UnknownType(%T)", v)
 		return []byte{}
 	}
-}
-
-func must(b []byte, e error) error {
-	return errors.WithCode(e, errors.CriticalIOError)
 }
