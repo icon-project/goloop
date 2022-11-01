@@ -293,8 +293,7 @@ func TestConsensus_NoNTSVoteCountForFirstNTS(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
-	f.SendTransactionToAll(f.NewTx())
-	blk = f.WaitForBlock(3)
+	blk = f.SendTXToAllAndWaitForBlock(f.NewTx())
 	assert.EqualValues(0, blk.Votes().NTSDProofCount())
 }
 
@@ -312,13 +311,12 @@ func TestConsensus_BTPBasic(t *testing.T) {
 	assert.EqualValues(1, bd.NetworkTypeDigestFor(1).NetworkDigestFor(1).NetworkID())
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
 		}),
 	)
-	blk = f.WaitForNextNthBlock(2) // wait for result block
 	assert.EqualValues(4, blk.Height())
 	bd, err = blk.BTPDigest()
 	assert.NoError(err)
@@ -427,13 +425,11 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 		"name":   uid,
 		"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 	}).SetTimestamp(blk.Timestamp())
-	f.SendTransactionToAll(tx)
-
-	blk = f.WaitForBlock(3)
+	blk = f.SendTXToAllAndWaitForBlock(tx)
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
-	blk = f.WaitForBlock(4)
+	blk = f.WaitForNextBlock()
 	bd, err = blk.BTPDigest()
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
@@ -443,15 +439,13 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 		"networkId": "0x1",
 		"message":   fmt.Sprintf("0x%x", testMsg),
 	}).SetTimestamp(blk.Timestamp())
-	f.SendTransactionToAll(tx)
-
-	blk = f.WaitForBlock(5)
+	blk = f.SendTXToAllAndWaitForBlock(tx)
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
 	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
 	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
-	_ = f.WaitForBlock(6)
+	_ = f.WaitForNextBlock()
 }
 
 func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
@@ -468,7 +462,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 
 	wp := test.NewWalletProvider()
 	wp2 := test.NewWalletProvider()
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
@@ -477,8 +471,6 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 			"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 		}),
 	)
-
-	blk = f.WaitForNextBlock()
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
@@ -488,14 +480,12 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
 		}),
 	)
-
-	blk = f.WaitForNextBlock()
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
@@ -505,24 +495,20 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 
 	// set wrong pub key
 	wrongWP := test.NewWalletProvider()
-	f.SendTransactionToAll(
+	f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().CallFrom(f.Nodes[0].CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", wrongWP.WalletFor(dsa).PublicKey()),
 		}),
 	)
-	f.WaitForNextNthBlock(2)
 
 	// send message
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
 		}),
 	)
-	f.WaitForNextNthBlock(2)
-
-	blk, err = f.BM.GetLastBlock()
 	assert.NoError(err)
 	votes, err := f.CS.GetVotesByHeight(blk.Height())
 	assert.NoError(err)
@@ -541,12 +527,11 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().Call("revokeValidator", map[string]string{
 			"address": f.Nodes[0].CommonAddress().String(),
 		}),
 	)
-	blk = f.WaitForNextBlock()
 	assert.EqualValues(4, blk.NextValidators().Len())
 
 	tx := f.NewTx().Call("openBTPNetwork", map[string]string{
@@ -554,8 +539,10 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 		"name":            fmt.Sprintf("%s-test", uid2),
 		"owner":           f.CommonAddress().String(),
 	})
-	f.SendTransactionToAll(tx)
-	blk = f.WaitForNextBlock()
+	_ = f.SendTXToAllAndWaitForBlock(tx)
+	// prepare the case when the above tx is included in blk.Height() + 2
+	blk, err = f.BM.GetBlockByHeight(blk.Height() + 1)
+	assert.NoError(err)
 	assert.EqualValues(3, blk.NextValidators().Len())
 	bs, err := blk.BTPSection()
 	assert.NoError(err)
@@ -575,19 +562,15 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	bysl = nts.NextProofContext().Bytes()
 	log.Infof("%s", codec.DumpRLP("  ", bysl))
 
-	f.SendTransactionToAll(f.NewTx())
-	f.WaitForNextBlock()
-	f.WaitForNextBlock()
+	f.SendTXToAllAndWaitForResultBlock(f.NewTx())
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToAll(
+	f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
 		}),
 	)
-	f.WaitForNextBlock()
-	f.WaitForNextBlock()
 }
 
 func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
@@ -602,33 +585,32 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
-	f.SendTransactionToAll(
+	f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().Call("closeBTPNetwork", map[string]string{
 			"id": "0x1",
 		}),
 	)
-	_ = f.WaitForNextBlock()
-	_ = f.WaitForNextBlock()
 
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().Call("revokeValidator", map[string]string{
 			"address": f.Nodes[0].CommonAddress().String(),
 		}),
 	)
-	blk = f.WaitForNextBlock()
 	assert.EqualValues(4, blk.NextValidators().Len())
+	revokeHeight := blk.Height()
 
-	f.SendTransactionToAll(
+	_ = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().Call("openBTPNetwork", map[string]string{
 			"networkTypeName": uid,
 			"name":            fmt.Sprintf("%s-test", uid),
 			"owner":           f.CommonAddress().String(),
 		}),
 	)
-	blk = f.WaitForNextBlock()
+	blk, err = f.BM.GetBlockByHeight(revokeHeight + 1)
+	assert.NoError(err)
 	assert.EqualValues(3, blk.NextValidators().Len())
 
-	blk = f.WaitForNextBlock() // 7
+	blk = f.WaitForNextBlock()
 	bs, err := blk.BTPSection()
 	assert.NoError(err)
 	nts, err := bs.NetworkTypeSectionFor(1)
@@ -636,9 +618,7 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 	bysl := nts.NextProofContext().Bytes()
 	log.Infof("NextProofContext=%s", codec.DumpRLP("  ", bysl))
 
-	f.SendTransactionToAll(f.NewTx())
-	f.WaitForNextBlock()
-	f.WaitForNextBlock()
+	f.SendTXToAllAndWaitForResultBlock(f.NewTx())
 }
 
 func TestConsensus_OpenSetNilKey(t_ *testing.T) {
@@ -653,13 +633,12 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "setBTPPublicKey", map[string]string{
 			"name":   dsa,
 			"pubKey": "0x",
 		}),
 	)
-	blk = f.WaitForNextBlock()
 	assert.EqualValues(4, blk.NextValidators().Len())
 
 	blk = f.WaitForNextBlock()
@@ -685,13 +664,12 @@ func TestConsensus_Restart(t *testing.T) {
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
 	testMsg := ([]byte)("test message")
-	f.SendTransactionToAll(
+	blk = f.SendTXToAllAndWaitForResultBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 			"networkId": "0x1",
 			"message":   fmt.Sprintf("0x%x", testMsg),
 		}),
 	)
-	blk = f.WaitForNextNthBlock(2)
 	bs, err := blk.BTPSection()
 	assert.EqualValues(4, blk.Height())
 	assert.NoError(err)
@@ -736,6 +714,7 @@ func TestConsensus_Sync(t *testing.T) {
 	blk := test.NodeWaitForBlock(validators, 2)
 	assert.EqualValues(2, blk.Height())
 
+	// just increase block heights
 	for h := int64(4); h <= 10; h += 2 {
 		f.SendTransactionToAll(validators[0].NewTx())
 		_ = test.NodeWaitForBlock(validators, h)

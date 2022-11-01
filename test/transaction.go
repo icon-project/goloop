@@ -38,6 +38,11 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
+type StringerTransaction interface {
+	module.Transaction
+	String() string
+}
+
 const VarTest = "test"
 
 type callJSON struct {
