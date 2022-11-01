@@ -210,7 +210,7 @@ func (r *ReactorV1) onRequestNodeData(msg []byte, id module.PeerID) {
 	}
 	r.logger.Tracef("responseNode ReqID=%d, Status=%d, Type=%d to peer=%v", res.ReqID, res.Status, res.Type, id)
 	if err = r.ph.Unicast(protoNodeData, b, id); err != nil {
-		r.logger.Info("Failed to send data peerID=%v", id)
+		r.logger.Infof("Failed to send data peerID=%v, err=%+v", id, err)
 	}
 }
 

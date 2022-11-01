@@ -43,6 +43,7 @@ type tPacket struct {
 
 type tNetworkManager struct {
 	module.NetworkManager
+	mutex        sync.Mutex
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	joinReactors []*tReactorItem
@@ -66,6 +67,24 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 		res[i] = nm.peers[i].id
 	}
 	return res
+}
+
+func (nm *tNetworkManager) getPeer(id module.PeerID) *tNetworkManager {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	for _, p := range nm.peers {
+		if p.id.Equal(id) {
+			return p
+		}
+	}
+	return nil
+}
+
+func (nm *tNetworkManager) appendPeer(nm2 *tNetworkManager) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+	nm.peers = append(nm.peers, nm2)
 }
 
 func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
@@ -93,10 +112,7 @@ func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.Prot
 	//return registerReactorForStreams(nm, name, reactor, piList, priority, &common.GoTimeClock{})
 }
 
-func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
-	nm.peers = append(nm.peers, nm2)
-	nm2.peers = append(nm2.peers, nm)
-
+func getPiVer(nm *tNetworkManager, nm2 *tNetworkManager) byte {
 	var nmPiVer, nm2PiVer, piVer byte
 
 	for _, r := range nm.reactorItems {
@@ -124,17 +140,90 @@ func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
 		}(nmPiVer, nm2PiVer)
 	}
 
+	return piVer
+}
+
+func deletePeer(srcnm *tNetworkManager, dstnm *tNetworkManager) {
+	srcnm.mutex.Lock()
+	defer srcnm.mutex.Unlock()
+
+	for i, peer := range srcnm.peers {
+		if peer.id.Equal(dstnm.id) {
+			copy(srcnm.peers[i:], srcnm.peers[i+1:])
+			srcnm.peers[len(srcnm.peers)-1] = nil
+			srcnm.peers = srcnm.peers[:len(srcnm.peers)-1]
+			break
+		}
+	}
+}
+
+func deleteJoinReactor(nm *tNetworkManager, i int) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	copy(nm.joinReactors[i:], nm.joinReactors[i+1:])
+	nm.joinReactors[len(nm.joinReactors)-1] = nil
+	nm.joinReactors = nm.joinReactors[:len(nm.joinReactors)-1]
+}
+
+func (nm *tNetworkManager) appendJoinReactor(reactor *tReactorItem) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	nm.joinReactors = append(nm.joinReactors, reactor)
+}
+
+func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
+	nm.appendPeer(nm2)
+	nm2.appendPeer(nm)
+
+	piVer := getPiVer(nm, nm2)
+
 	for _, r := range nm.reactorItems {
 		if piVer == r.pi.Version() {
-			nm.joinReactors = append(nm.joinReactors, r)
+			nm.appendJoinReactor(r)
 			r.reactor.OnJoin(nm2.id)
 		}
 	}
+
 	for _, r := range nm2.reactorItems {
 		if piVer == r.pi.Version() {
-			nm2.joinReactors = append(nm2.joinReactors, r)
+			nm2.appendJoinReactor(r)
 			r.reactor.OnJoin(nm.id)
 		}
+	}
+}
+
+func (nm *tNetworkManager) leave(nm2 *tNetworkManager) {
+	deletePeer(nm, nm2)
+	deletePeer(nm2, nm)
+
+	piVer := getPiVer(nm, nm2)
+
+	for i, r := range nm.joinReactors {
+		if piVer == r.pi.Version() {
+			deleteJoinReactor(nm, i)
+			r.reactor.OnLeave(nm2.id)
+			break
+		}
+	}
+
+	for i, r := range nm2.joinReactors {
+		if piVer == r.pi.Version() {
+			deleteJoinReactor(nm2, i)
+			r.reactor.OnLeave(nm.id)
+			break
+		}
+	}
+}
+
+func (nm *tNetworkManager) callOnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	for _, r := range nm.joinReactors {
+		runtime.Gosched()
+		r.reactor.OnReceive(pi, b, id)
 	}
 }
 
@@ -163,15 +252,12 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	if ph.nm.drop {
 		return nil
 	}
-	for _, p := range ph.nm.peers {
-		if p.id.Equal(id) {
-			for _, r := range p.joinReactors {
-				runtime.Gosched()
-				r.reactor.OnReceive(pi, b, ph.nm.id)
-			}
-			return nil
-		}
+
+	if p := ph.nm.getPeer(id); p != nil {
+		p.callOnReceive(pi, b, ph.nm.id)
+		return nil
 	}
+
 	return errors.Errorf("Unknown peer")
 }
 
@@ -365,8 +451,9 @@ func TestSyncSimpleStateSyncStop(t *testing.T) {
 	srcNM.join(dstNM)
 
 	// given init db for source sync manager
+	const dataSize = 100
 	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
-	for i := range [100]int{} {
+	for i := range [dataSize]int{} {
 		v := []byte{byte(i)}
 		ac := ws.GetAccountState(v)
 		ac.SetValue(v, v)
@@ -408,6 +495,93 @@ func TestSyncSimpleStateSyncStop(t *testing.T) {
 		wg.Done()
 	})
 
+	wg.Wait()
+}
+
+func TestSyncSimpleStateSyncJoinAndLeave(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.FatalLevel)
+
+	srcdb := db.NewMapDB()
+	dstdb := db.NewMapDB()
+	srcNM := newTNetworkManager(createAPeerID())
+	dstNM := newTNetworkManager(createAPeerID())
+	newNM := newTNetworkManager(createAPeerID())
+	srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+	dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
+	newLog := logger.WithFields(log.Fields{log.FieldKeyWallet: newNM.id.String()[2:]})
+
+	newSyncManagerV1(srcdb, srcNM, dummyExBuilder, srcLog)
+	dstMgr := NewSyncManager(dstdb, dstNM, dummyExBuilder, dstLog)
+
+	srcNM.join(dstNM)
+
+	// given init db for source sync manager
+	const dataSize = 100
+	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
+	for i := range [dataSize]int{} {
+		v := []byte{byte(i)}
+		ac := ws.GetAccountState(v)
+		ac.SetValue(v, v)
+	}
+	vs := ws.GetValidatorState()
+
+	tvList := []module.Validator{
+		&testValidator{addr: wallet.New().Address()},
+		&testValidator{addr: wallet.New().Address()},
+	}
+	vs.Set(tvList)
+
+	ws.GetSnapshot().Flush()
+	acHash := ws.GetSnapshot().StateHash()
+	t.Logf("account hash : (%x)", acHash)
+
+	sSyncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+	var wg sync.WaitGroup
+
+	// start forceSync
+	wg.Add(1)
+	go func() {
+		result, err := sSyncer.ForceSync()
+		t.Logf("ForceSync result=%v, err=%v", result, err)
+
+		// then
+		expected := acHash
+		actual := result.Wss.StateHash()
+		t.Logf("src acHash=%#x, result acHash=%#x", expected, actual)
+		assert.EqualValuesf(t, expected, actual, "result accountHash expected=%v, actual=%v", expected, actual)
+
+		for i := 0; i < dataSize; i++ {
+			key := []byte{byte(i)}
+			ac := ws.GetAccountState(key)
+			expected, err := ac.GetValue(key)
+			assert.NoError(t, err)
+			rac := result.Wss.GetAccountSnapshot(key)
+			actual, err := rac.GetValue(key)
+			assert.NoError(t, err)
+			assert.EqualValuesf(t, expected, actual, "account state expected=%v, actual=%v", expected, actual)
+		}
+		wg.Done()
+	}()
+
+	// when join new peer
+	wg.Add(1)
+	newSyncManagerV1(srcdb, newNM, dummyExBuilder, newLog)
+
+	time.AfterFunc(time.Millisecond, func() {
+		t.Logf("join peerid=%v", newNM.id)
+		newNM.join(dstNM)
+		wg.Done()
+	})
+
+	// when leave peer
+	wg.Add(1)
+	time.AfterFunc(10*time.Millisecond, func() {
+		t.Logf("leave peerid=%v", srcNM.id)
+		srcNM.leave(dstNM)
+		wg.Done()
+	})
 	wg.Wait()
 }
 
