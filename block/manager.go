@@ -1730,7 +1730,7 @@ func GetBlockVersion(
 	height int64,
 ) (int, error) {
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
@@ -1765,7 +1765,7 @@ func GetBlockVersion(
 
 func getHeaderField(dbase db.Database, c codec.Codec, height int64, index int) ([]byte, error) {
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	headerHashByHeight, err := db.NewCodedBucket(
 		dbase, db.BlockHeaderHashByHeight, c,
@@ -1830,7 +1830,7 @@ func GetBTPDigestFromResult(
 	result []byte,
 ) (module.BTPDigest, error) {
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	dh, err := service.BTPDigestHashFromResult(result)
 	if err != nil {
@@ -1856,7 +1856,7 @@ func GetNextValidatorsByHeight(
 	height int64,
 ) (module.ValidatorList, error) {
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	validatorsHash, err := getHeaderField(dbase, c, height, 6)
 	if err != nil {
@@ -1867,7 +1867,7 @@ func GetNextValidatorsByHeight(
 
 func GetLastHeightWithCodec(dbase db.Database, c codec.Codec) (int64, error) {
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	bk, err := dbase.GetBucket(db.ChainProperty)
 	if err != nil {
@@ -1903,7 +1903,7 @@ func SetLastHeight(dbase db.Database, c codec.Codec, height int64) error {
 		return err
 	}
 	if c == nil {
-		c = codec.RLP
+		c = codec.BC
 	}
 	err = bk.Set([]byte(keyLastBlockHeight), c.MustMarshalToBytes(height))
 	if err != nil {
