@@ -19,6 +19,7 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -54,17 +55,20 @@ func NewConsensusInfo(
 	return &consensusInfo{proposer, voters, voted}
 }
 
-func ValidatorListEqual(vl1, vl2 module.ValidatorList) bool {
-	if vl1 == vl2 {
+func validatorListEqual(vl1, vl2 module.ValidatorList) bool {
+	if vl1 == nil && vl2 == nil {
 		return true
 	}
 	if vl1 == nil || vl2 == nil {
 		return false
 	}
+	if reflect.TypeOf(vl1).Comparable() && vl1 == vl2 {
+		return true
+	}
 	return bytes.Equal(vl1.Hash(), vl2.Hash())
 }
 
-func compareVoted(voted1, voted2 []bool) bool {
+func votedEqual(voted1, voted2 []bool) bool {
 	if len(voted1) != len(voted2) {
 		return false
 	}
@@ -77,13 +81,16 @@ func compareVoted(voted1, voted2 []bool) bool {
 }
 
 func ConsensusInfoEqual(csi1, csi2 module.ConsensusInfo) bool {
-	if csi1 == csi2 {
+	if csi1 == nil && csi2 == nil {
 		return true
 	}
 	if csi1 == nil || csi2 == nil {
 		return false
 	}
+	if reflect.TypeOf(csi1).Comparable() && csi1 == csi2 {
+		return true
+	}
 	return AddressEqual(csi1.Proposer(), csi2.Proposer()) &&
-		ValidatorListEqual(csi1.Voters(), csi2.Voters()) &&
-		compareVoted(csi1.Voted(), csi2.Voted())
+		validatorListEqual(csi1.Voters(), csi2.Voters()) &&
+		votedEqual(csi1.Voted(), csi2.Voted())
 }
