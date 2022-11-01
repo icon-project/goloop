@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/ictest"
@@ -138,4 +139,33 @@ func TestHandler_BlockVersionChange(t_ *testing.T) {
 
 	t.ProposeImportFinalizeBlock(t.NewVoteListForLastBlock())
 	t.AssertLastBlock(t.PrevBlock, module.BlockVersion2)
+}
+
+func TestNewBlockManager_DefaultIsV1AndPrevBlockOfLastBlockIsNonGenesisV2(t *testing.T) {
+	nd := test.NewNode(t, ictest.UseBMForBlockV1)
+	defer nd.Close()
+	assert := assert.New(t)
+
+	nilVotes := (*blockv0.BlockVoteList)(nil)
+	nd.ProposeFinalizeBlockWithTX(
+		nilVotes,
+		`{
+			"type": "test",
+			"timestamp": "0x0",
+			"nextBlockVersion": "0x2"
+		}`,
+	)
+	assert.EqualValues(module.BlockVersion1, nd.LastBlock.Version())
+	nd.ProposeFinalizeBlock(nilVotes)
+	assert.EqualValues(module.BlockVersion1, nd.LastBlock.Version())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	assert.EqualValues(module.BlockVersion2, nd.LastBlock.Version())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	assert.EqualValues(module.BlockVersion2, nd.LastBlock.Version())
+	blk := nd.LastBlock
+
+	nd2 := test.NewNode(t, ictest.UseBMForBlockV1, test.UseDB(nd.Chain.Database()))
+	blk2, err := nd2.BM.GetLastBlock()
+	assert.NoError(err)
+	assert.Equal(blk.ID(), blk2.ID())
 }
