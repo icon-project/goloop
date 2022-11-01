@@ -408,19 +408,17 @@ func NewPRepSet(prepList []PRepSetEntry) PRepSet {
 	}
 
 	for _, entry := range prepList {
-		if entry.Status() == Active {
-			prepSet.totalBonded.Add(prepSet.totalBonded, entry.Bonded())
-			prepSet.totalDelegated.Add(prepSet.totalDelegated, entry.Delegated())
-			switch entry.Grade() {
-			case GradeMain:
-				prepSet.mainPReps += 1
-			case GradeSub:
-				prepSet.subPReps += 1
-			case GradeCandidate:
-				// Nothing to do
-			default:
-				panic(errors.Errorf("Invalid grade: %d", entry.Grade()))
-			}
+		prepSet.totalBonded.Add(prepSet.totalBonded, entry.Bonded())
+		prepSet.totalDelegated.Add(prepSet.totalDelegated, entry.Delegated())
+		switch entry.Grade() {
+		case GradeMain:
+			prepSet.mainPReps += 1
+		case GradeSub:
+			prepSet.subPReps += 1
+		case GradeCandidate:
+			// Nothing to do
+		default:
+			panic(errors.Errorf("Invalid grade: %d", entry.Grade()))
 		}
 	}
 	return prepSet

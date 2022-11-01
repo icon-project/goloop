@@ -593,7 +593,7 @@ func (s *State) GetPRepSet(bc state.BTPContext) PRepSet {
 	if bc != nil {
 		dsaMask = bc.GetActiveDSAMask()
 	}
-	preps := s.GetActivePReps()
+	preps := s.GetPReps(true)
 	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
 	for _, prep := range preps {
 		pubKeyMask := int64(0)
@@ -606,15 +606,18 @@ func (s *State) GetPRepSet(bc state.BTPContext) PRepSet {
 	return NewPRepSet(prepSetEntries)
 }
 
-func (s *State) GetActivePReps() []*PRep {
+func (s *State) GetPReps(activeOnly bool) []*PRep {
 	size := s.allPRepCache.Size()
-	preps := make([]*PRep, size)
+	preps := make([]*PRep, 0)
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
 		prep := s.GetPRepByOwner(owner)
+		if activeOnly && !prep.IsActive() {
+			continue
+		}
 		if prep != nil {
-			preps[i] = prep
+			preps = append(preps, prep)
 		}
 	}
 	return preps

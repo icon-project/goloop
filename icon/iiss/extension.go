@@ -1649,7 +1649,7 @@ func (es *ExtensionStateImpl) handlePRepIllegalDelegated(blockHeight int64, txSu
 }
 
 func (es *ExtensionStateImpl) ClearPRepIllegalDelegated() error {
-	preps := es.State.GetActivePReps()
+	preps := es.State.GetPReps(false)
 	for _, prep := range preps {
 		if prep.EffectiveDelegated() != nil {
 			if es.illegalDelegated == nil {
