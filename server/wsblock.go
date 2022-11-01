@@ -55,7 +55,7 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	_ = wss.response(0, "")
 
 	ech := make(chan error)
-	go readLoop(wss.c, ech)
+	wss.RunLoop(ech)
 
 	var bch <-chan module.Block
 	indexes := make([][]common.HexInt32, len(br.EventFilters))
