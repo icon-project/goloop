@@ -3,6 +3,7 @@
 package sync2
 
 import (
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -59,7 +60,7 @@ func (r *ReactorV2) _resolveData(bnbs []BucketIDAndBytes) (errCode, []BucketIDAn
 
 func (r *ReactorV2) request(msg []byte, id module.PeerID) *responseData {
 	req := new(requestData)
-	if _, err := c.UnmarshalFromBytes(msg, &req); err != nil {
+	if _, err := codec.UnmarshalFromBytes(msg, &req); err != nil {
 		r.logger.Infof("Failed to unmarshal error=%+v, len(msg)=%d", err, len(msg))
 		return nil
 	}
@@ -75,7 +76,7 @@ func (r *ReactorV2) request(msg []byte, id module.PeerID) *responseData {
 func (r *ReactorV2) onRequest(msg []byte, id module.PeerID) {
 	res := r.request(msg, id)
 
-	b, err := c.MarshalToBytes(res)
+	b, err := codec.MarshalToBytes(res)
 	if err != nil {
 		r.logger.Warnf("Failed to marshal for responseData=%v", res)
 		return
@@ -89,7 +90,7 @@ func (r *ReactorV2) onRequest(msg []byte, id module.PeerID) {
 func (r *ReactorV2) processMsg(msg []byte, id module.PeerID) (*responseData, error) {
 	r.logger.Tracef("processMsg() len(msg)=%d, peerid=%v", len(msg), id)
 	data := new(responseData)
-	_, err := c.UnmarshalFromBytes(msg, data)
+	_, err := codec.UnmarshalFromBytes(msg, data)
 
 	if err != nil {
 		r.logger.Infof("Failed onReceive. ReqID=%d, err=%v", data.ReqID, err)
@@ -118,7 +119,7 @@ func (r *ReactorV2) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 func (r *ReactorV2) RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	r.logger.Tracef("requestData() peer=%v, reqID=%d", peer, reqID)
 	msg := &requestData{reqID, reqData}
-	b, _ := c.MarshalToBytes(msg)
+	b, _ := codec.MarshalToBytes(msg)
 
 	return r.ph.Unicast(protoV2Request, b, peer)
 }
