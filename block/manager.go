@@ -620,7 +620,10 @@ func NewManager(
 		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
 		}
-		if err := m.initializeCommon(); err != nil {
+		m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
+			m.finalized.block.Result(),
+		))
+		if err := m.initializePCM(); err != nil {
 			return nil, err
 		}
 		return m, nil
@@ -637,6 +640,9 @@ func NewManager(
 		return nil, errors.InvalidNetworkError.Errorf(
 			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
 	}
+	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
+		lastFinalized.Result(),
+	))
 
 	var cid int
 	if gBlock, err := m.getBlockByHeight(0); err == nil {
@@ -688,20 +694,10 @@ func NewManager(
 		m.bntr.TraceNew(bn)
 	}
 	m.nmap[string(lastFinalized.ID())] = bn
-	if err := m.initializeCommon(); err != nil {
+	if err := m.initializePCM(); err != nil {
 		return nil, err
 	}
 	return m, nil
-}
-
-func (m *manager) initializeCommon() error {
-	m.activeHandlers = m.handlers.upTo(m.sm.GetNextBlockVersion(
-		m.finalized.block.Result(),
-	))
-	if err := m.initializePCM(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (m *manager) initializePCM() error {
