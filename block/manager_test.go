@@ -497,7 +497,7 @@ func TestManager_ExportGenesis(t *testing.T) {
 	assert.NoError(err)
 	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 2, gb)
 	dbase := db.NewMapDB()
-	err = nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
+	err = nd.BM.ExportBlocks(2, 2, dbase, func(h int64) error {
 		return nil
 	})
 	assert.NoError(err)
