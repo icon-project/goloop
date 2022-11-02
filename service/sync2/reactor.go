@@ -80,6 +80,26 @@ func (r *ReactorCommon) WatchPeers(watcher PeerWatcher) []*peer {
 	return r.readyPool.peerList()
 }
 
+func (r *ReactorCommon) UnwatchPeers(watcher PeerWatcher) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	for i, w := range r.watchers {
+		if w == watcher {
+			if len(r.watchers) > 1 {
+				watchers := make([]PeerWatcher, len(r.watchers)-1)
+				copy(watchers, r.watchers[:i])
+				copy(watchers[i:], r.watchers[i+1:])
+				r.watchers = watchers
+			} else {
+				r.watchers = nil
+			}
+			return true
+		}
+	}
+	return false
+}
+
 type ReactorV1 struct {
 	ReactorCommon
 	merkleTrie  db.Bucket

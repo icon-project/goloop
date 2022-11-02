@@ -78,7 +78,6 @@ type PeerToPeer struct {
 	channel          string
 	sendQueue        *WeightQueue
 	alternateQueue   Queue
-	sendTicker       *time.Ticker
 	onPacketCbFuncs  map[uint16]packetCbFunc
 	onFailureCbFuncs map[uint16]failureCbFunc
 	onEventCbFuncs   map[string]map[uint16]eventCbFunc
@@ -98,10 +97,6 @@ type PeerToPeer struct {
 	transiting *PeerSet
 	reject     *PeerSet
 	connMtx    sync.RWMutex
-
-	//Discovery
-	discoveryTicker *time.Ticker
-	seedTicker      *time.Ticker
 
 	//NetAddresses  //if value of map is duplicated, then old will be removed.
 	trustSeeds *NetAddressSet //map[DialNetAddress]NetAddress
@@ -145,7 +140,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		channel:          channel,
 		sendQueue:        NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
 		alternateQueue:   NewQueue(DefaultSendQueueSize),
-		sendTicker:       time.NewTicker(DefaultAlternateSendPeriod),
 		onPacketCbFuncs:  make(map[uint16]packetCbFunc),
 		onFailureCbFuncs: make(map[uint16]failureCbFunc),
 		onEventCbFuncs:   make(map[string]map[uint16]eventCbFunc),
@@ -153,18 +147,16 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		packetRw:         NewPacketReadWriter(),
 		dialer:           d,
 		//
-		self:            self,
-		parents:         NewPeerSet(),
-		children:        NewPeerSet(),
-		uncles:          NewPeerSet(),
-		nephews:         NewPeerSet(),
-		friends:         NewPeerSet(),
-		others:          NewPeerSet(),
-		orphanages:      NewPeerSet(),
-		transiting:      NewPeerSet(),
-		reject:          NewPeerSet(),
-		discoveryTicker: time.NewTicker(DefaultDiscoveryPeriod),
-		seedTicker:      time.NewTicker(DefaultSeedPeriod),
+		self:       self,
+		parents:    NewPeerSet(),
+		children:   NewPeerSet(),
+		uncles:     NewPeerSet(),
+		nephews:    NewPeerSet(),
+		friends:    NewPeerSet(),
+		others:     NewPeerSet(),
+		orphanages: NewPeerSet(),
+		transiting: NewPeerSet(),
+		reject:     NewPeerSet(),
 		//
 		trustSeeds: NewNetAddressSet(),
 		seeds:      NewNetAddressSet(),
@@ -1051,6 +1043,8 @@ Loop:
 
 func (p2p *PeerToPeer) alternateSendRoutine() {
 	var m = make(map[uint64]context.Context)
+	sendTicker := time.NewTicker(DefaultAlternateSendPeriod)
+	defer sendTicker.Stop()
 Loop:
 	for {
 		select {
@@ -1071,7 +1065,7 @@ Loop:
 				}
 				m[pkt.hashOfPacket] = ctx
 			}
-		case <-p2p.sendTicker.C:
+		case <-sendTicker.C:
 			for _, ctx := range m {
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				c := ctx.Value(p2pContextKeyCounter).(*Counter)
@@ -1390,6 +1384,12 @@ func (p2p *PeerToPeer) resolveRole(r PeerRoleFlag, id module.PeerID, onlyUnSet b
 
 //Dial to seeds, roots, nodes and create p2p connection
 func (p2p *PeerToPeer) discoverRoutine() {
+	discoveryTicker := time.NewTicker(DefaultDiscoveryPeriod)
+	seedTicker := time.NewTicker(DefaultSeedPeriod)
+	defer func() {
+		seedTicker.Stop()
+		discoveryTicker.Stop()
+	}()
 	for na, _ := range p2p.trustSeeds.Map() {
 		p2p.logger.Debugln("discoverRoutine", "initialize", "dial to trustSeed", na)
 		p2p.dial(na)
@@ -1400,7 +1400,7 @@ Loop:
 		case <-p2p.stopCh:
 			p2p.logger.Debugln("discoverRoutine", "stop")
 			break Loop
-		case <-p2p.seedTicker.C:
+		case <-seedTicker.C:
 			r := p2p.Role()
 			if p2p.query(r) {
 				dialed := 0
@@ -1435,7 +1435,7 @@ Loop:
 					}
 				}
 			}
-		case <-p2p.discoveryTicker.C:
+		case <-discoveryTicker.C:
 			r := p2p.Role()
 			if r.Has(p2pRoleRoot) {
 				p2p.discoverFriends()

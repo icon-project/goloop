@@ -51,6 +51,12 @@ func (s *syncProcessor) onTermInLock() {
 
 	s.stopMigrateTimerInLock()
 
+	for _, r := range s.reactors {
+		if ok := r.UnwatchPeers(s); !ok {
+			s.logger.Error("UnwatchPeers Failed")
+		}
+	}
+
 	s.readyPool = nil
 	s.sentPool = nil
 	s.checkedPool = nil

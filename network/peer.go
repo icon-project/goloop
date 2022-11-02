@@ -451,6 +451,7 @@ func (p *Peer) sendRoutine() {
 	// 	log.Println("Peer.sendRoutine end", p.String())
 	// }()
 	secondTick := time.NewTicker(time.Second)
+	defer secondTick.Stop()
 Loop:
 	for {
 		select {
