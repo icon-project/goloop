@@ -628,6 +628,7 @@ func (r *Rest) StreamStats(ctx echo.Context) error {
 	resp.Flush()
 
 	tick := time.NewTicker(time.Duration(intervalSec) * time.Second)
+	defer tick.Stop()
 	for streaming {
 		select {
 		case <-tick.C:

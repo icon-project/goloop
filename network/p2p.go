@@ -1051,6 +1051,7 @@ Loop:
 
 func (p2p *PeerToPeer) alternateSendRoutine() {
 	var m = make(map[uint64]context.Context)
+	defer p2p.sendTicker.Stop()
 Loop:
 	for {
 		select {
@@ -1390,6 +1391,10 @@ func (p2p *PeerToPeer) resolveRole(r PeerRoleFlag, id module.PeerID, onlyUnSet b
 
 //Dial to seeds, roots, nodes and create p2p connection
 func (p2p *PeerToPeer) discoverRoutine() {
+	defer func() {
+		p2p.seedTicker.Stop()
+		p2p.discoveryTicker.Stop()
+	}()
 	for na, _ := range p2p.trustSeeds.Map() {
 		p2p.logger.Debugln("discoverRoutine", "initialize", "dial to trustSeed", na)
 		p2p.dial(na)
