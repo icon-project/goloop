@@ -39,6 +39,7 @@ type PeerWatcher interface {
 type SyncReactor interface {
 	GetVersion() byte
 	WatchPeers(watcher PeerWatcher) []*peer
+	UnwatchPeers(watcher PeerWatcher) bool
 }
 
 type Platform interface {
