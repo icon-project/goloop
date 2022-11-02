@@ -17,12 +17,12 @@ coverage:
   round: down
   status:
     project: no
-    patch: # patch status only measures lines adjusted in the pull request or single commit
+    patch:
       default:
-        target: 70% # target of an exact coverage number such as 75% or 100%
-        threshold: 3% # Allow the coverage to drop by X%, and posting a success status.
+        target: auto
+        threshold: 3%
         base: auto
-    changes: no # Codecov will detect changes in coverage that are NOT included in the commit/pull diff
+    changes: no
 
 github_checks:
-  annotations: true
+  annotations: false
