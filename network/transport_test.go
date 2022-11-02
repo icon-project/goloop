@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/hex"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -16,8 +17,7 @@ import (
 )
 
 const (
-	testChannel                = "testchannel"
-	testTransportRandomAddress = ":0"
+	testChannel = "testchannel"
 )
 
 var (
@@ -110,6 +110,18 @@ func walletFromGeneratedPrivateKey() module.Wallet {
 	return &testWallet{w}
 }
 
+func getAvailableLocalhostAddress(t *testing.T) string {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		assert.FailNow(t, err.Error(), "fail to getAvailableLocalhostAddress")
+	}
+	addr := ln.Addr().String()
+	if err = ln.Close(); err != nil {
+		assert.FailNow(t, err.Error(), "fail to close listener ", addr)
+	}
+	return addr
+}
+
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
 
@@ -117,13 +129,13 @@ func Test_transport(t *testing.T) {
 	l1 := log.WithFields(log.Fields{
 		log.FieldKeyWallet: hex.EncodeToString(w1.Address().ID()),
 	})
-	nt1 := NewTransport(":8080", w1, l1)
+	nt1 := NewTransport(getAvailableLocalhostAddress(t), w1, l1)
 
 	w2 := walletFromGeneratedPrivateKey()
 	l2 := log.WithFields(log.Fields{
 		log.FieldKeyWallet: hex.EncodeToString(w2.Address().ID()),
 	})
-	nt2 := NewTransport(":8081", w2, l2)
+	nt2 := NewTransport(getAvailableLocalhostAddress(t), w2, l2)
 
 	wg.Add(1)
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg, nt1.(*transport).logger)
@@ -135,10 +147,15 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
 	nt2.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
 
-	assert.NoError(t, nt1.Listen(), "Transport1.Start fail")
-	assert.NoError(t, nt2.Listen(), "Transport2.Start fail")
-
-	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), testChannel), "Transport.Dial fail")
+	if err := nt1.Listen(); err != nil {
+		assert.FailNow(t, err.Error(), "Transport1.Start fail")
+	}
+	if err := nt2.Listen(); err != nil {
+		assert.FailNow(t, err.Error(), "Transport2.Start fail")
+	}
+	if err := nt2.Dial(nt1.GetListenAddress(), testChannel); err != nil {
+		assert.FailNow(t, err.Error(), "Transport.Dial fail")
+	}
 
 	wg.Wait()
 
