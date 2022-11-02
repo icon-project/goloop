@@ -61,6 +61,11 @@ func (r *mockReactor) WatchPeers(w PeerWatcher) []*peer {
 	return r.readyPool.peerList()
 }
 
+func (r *mockReactor) UnwatchPeers(watcher PeerWatcher) bool {
+	/* do nothing */
+	return true
+}
+
 func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	r.logger.Debugf("mockReactor(%v) RequestData() reqID=%d", r.version, reqID)
 
