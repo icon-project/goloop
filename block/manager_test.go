@@ -535,3 +535,25 @@ func TestManager_ExportBlocks(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(blk.ID(), blk2.ID())
 }
+
+func TestManager_GetTransactionInfo(t *testing.T) {
+	assert := assert.New(t)
+	nd := test.NewNode(t)
+	defer nd.Close()
+	tx := nd.NewTx()
+	nd.ProposeFinalizeBlockWithTX(consensus.NewEmptyCommitVoteList(), tx.String())
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	ti, err := nd.BM.GetTransactionInfo(tx.ID())
+	assert.NoError(err)
+	blk, err := nd.BM.GetBlockByHeight(1)
+	assert.NoError(err)
+	assert.EqualValues(blk.ID(), ti.Block().ID())
+	assert.EqualValues(0, ti.Index())
+	assert.EqualValues(module.TransactionGroupNormal, ti.Group())
+	tx2, err := ti.Transaction()
+	assert.NoError(err)
+	assert.EqualValues(tx.ID(), tx2.ID())
+	rct, err := ti.GetReceipt()
+	assert.NoError(err)
+	assert.EqualValues(module.StatusSuccess, rct.Status())
+}
