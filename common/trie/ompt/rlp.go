@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	ge "github.com/go-errors/errors"
 	"github.com/icon-project/goloop/common"
+	cerrors "github.com/icon-project/goloop/common/errors"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 
 func rlpReadSize(b []byte, slen byte) (uint64, error) {
 	if int(slen) > len(b) {
-		return 0, ge.Wrap(errRLPInvalidEncoding, 0)
+		return 0, errRLPNotEnoughBytes
 	}
 	var s uint64
 	switch slen {
@@ -37,7 +37,7 @@ func rlpReadSize(b []byte, slen byte) (uint64, error) {
 		s = uint64(b[0])<<56 | uint64(b[1])<<48 | uint64(b[2])<<40 | uint64(b[3])<<32 | uint64(b[4])<<24 | uint64(b[5])<<16 | uint64(b[6])<<8 | uint64(b[7])
 	}
 	if s < 56 || b[0] == 0 {
-		return 0, ge.Wrap(errRLPInvalidEncoding, 0)
+		return 0, cerrors.WithStack(errRLPInvalidEncoding)
 	}
 	return s, nil
 }
@@ -64,7 +64,7 @@ func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 		contentsize = uint64(b - 0x80)
 		// Reject strings that should've been single bytes.
 		if contentsize == 1 && len(buf) > 1 && buf[1] < 128 {
-			return false, 0, 0, ge.Wrap(errRLPInvalidEncoding, 0)
+			return false, 0, 0, cerrors.WithStack(errRLPInvalidEncoding)
 		}
 	case b < 0xC0:
 		tagsize = uint64(b-0xB7) + 1
@@ -120,7 +120,7 @@ func rlpParseList(b []byte) ([][]byte, error) {
 		return nil, err
 	}
 	if !islist {
-		return nil, ge.Wrap(errRLPInvalidEncoding, 0)
+		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
 		return nil, errRLPNotEnoughBytes
@@ -147,7 +147,7 @@ func rlpParseBytes(b []byte) ([]byte, error) {
 		return nil, err
 	}
 	if islist {
-		return nil, ge.Wrap(errRLPInvalidEncoding, 0)
+		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
 		return nil, errRLPNotEnoughBytes

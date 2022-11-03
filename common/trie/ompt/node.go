@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
@@ -222,13 +223,13 @@ func nodeFromHash(h []byte) node {
 func deserialize(h, serialized []byte, state nodeState) (node, error) {
 	blist, err := rlpParseList(serialized)
 	if err != nil {
-		log.Panicln("FAIL to parse bytes from hash", err)
+		return nil, errors.Wrap(err, "fail to deserialize node")
 	}
 	switch len(blist) {
 	case 2:
 		keyheader, err := rlpParseBytes(blist[0])
 		if err != nil {
-			log.Panicln("Illegal data to decode")
+			return nil, errors.New("fail to parse header of node")
 		}
 		if (keyheader[0] & 0x20) == 0 {
 			// extension
@@ -240,7 +241,6 @@ func deserialize(h, serialized []byte, state nodeState) (node, error) {
 		// branch
 		return newBranch(h, serialized, blist, state)
 	default:
-		log.Panicln("FAIL to parse bytes from hash for MPT")
-		return nil, nil
+		return nil, errors.Errorf("unknown node data items=%d", len(blist))
 	}
 }
