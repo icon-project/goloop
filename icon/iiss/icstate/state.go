@@ -578,7 +578,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	predefinedMainPRepCount := int(s.GetMainPRepCount())
 	br := s.GetBondRequirement()
 
-	if revision >= icmodule.RevisionDecentralize && s.allPRepCache.Size() >= predefinedMainPRepCount {
+	if revision >= icmodule.RevisionDecentralize && preps.Size() >= predefinedMainPRepCount {
 		prep := preps.GetByIndex(predefinedMainPRepCount - 1).PRep()
 		if prep == nil {
 			return false
