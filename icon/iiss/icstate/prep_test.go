@@ -269,7 +269,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 			2, 0,
 		},
 		{
-			"Too big sub prep, extra main prep with zero extra main prep",
+			"Too big sub prep, extra main prep with zero main prep",
 			icmodule.RevisionBTP2,
 			0, 6, 10,
 			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
