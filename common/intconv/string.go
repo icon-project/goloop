@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 func FormatBigInt(i *big.Int) string {

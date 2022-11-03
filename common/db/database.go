@@ -3,7 +3,7 @@ package db
 import (
 	"sort"
 
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type Database interface {

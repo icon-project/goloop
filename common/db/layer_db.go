@@ -3,7 +3,7 @@ package db
 import (
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type layerBucket struct {

@@ -1,6 +1,6 @@
 package db
 
-import "github.com/pkg/errors"
+import "github.com/icon-project/goloop/common/errors"
 
 type proxyBucket struct {
 	database *proxyDB
