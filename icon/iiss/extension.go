@@ -983,7 +983,12 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 	if preps != nil {
 		br := es.State.GetBondRequirement()
 		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
-		pss := preps.ToPRepSnapshots(electedPRepCount, br)
+		var pss icstate.PRepSnapshots
+		if revision < icmodule.RevisionBTP2 {
+			pss = preps.ToPRepSnapshots(electedPRepCount, br)
+		} else {
+			pss = preps.ToPRepSnapshots(preps.GetElectedPRepSize(), br)
+		}
 
 		nextTerm.SetMainPRepCount(mainPRepCount)
 		nextTerm.SetPRepSnapshots(pss)

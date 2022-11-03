@@ -83,6 +83,7 @@ func NewPRep(owner module.Address, state *State) *PRep {
 type PRepSet interface {
 	OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br int64) error
 	GetPRepSize(grade Grade) int
+	GetElectedPRepSize() int
 	Size() int
 	TotalBonded() *big.Int
 	TotalDelegated() *big.Int
@@ -101,7 +102,7 @@ type PRepSetEntry interface {
 	Delegated() *big.Int
 	Bonded() *big.Int
 	Owner() module.Address
-	PubKey() bool
+	HasPubKey() bool
 }
 
 type prepSetEntry struct {
@@ -137,7 +138,7 @@ func (p *prepSetEntry) Owner() module.Address {
 	return p.prep.Owner()
 }
 
-func (p *prepSetEntry) PubKey() bool {
+func (p *prepSetEntry) HasPubKey() bool {
 	return p.pubKey
 }
 
@@ -165,7 +166,7 @@ func (p *prepSetImpl) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMain
 	var newGrade Grade
 	for i, entry := range p.entries {
 		if revision >= icmodule.RevisionBTP2 &&
-			(entry.Power(br).Sign() == 0 || entry.PubKey() == false) {
+			(entry.Power(br).Sign() == 0 || entry.HasPubKey() == false) {
 			newGrade = GradeCandidate
 		} else if i < mainPRepCount {
 			newGrade = GradeMain
@@ -206,6 +207,10 @@ func (p *prepSetImpl) GetPRepSize(grade Grade) int {
 	default:
 		panic(errors.Errorf("Invalid grade: %d", grade))
 	}
+}
+
+func (p *prepSetImpl) GetElectedPRepSize() int {
+	return p.mainPReps + p.subPReps
 }
 
 func (p *prepSetImpl) Size() int {
@@ -255,10 +260,25 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	} else {
 		if rev < icmodule.RevisionBTP2 {
 			p.sort(br, nil)
+			p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 		} else {
 			p.sort(br, cmpPubKey)
+			var electable int
+			p.visitAll(func(idx int, e1 PRepSetEntry) bool {
+				if e1.Power(br).Sign() > 0 && e1.HasPubKey() {
+					electable += 1
+					return true
+				} else {
+					return false
+				}
+			})
+			if electable > mainPRepCount {
+				if electable < mainPRepCount+subPRepCount {
+					subPRepCount = electable - mainPRepCount
+				}
+				p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
+			}
 		}
-		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	}
 }
 
@@ -274,8 +294,8 @@ func (p *prepSetImpl) sort(br int64, cmp func(i, j PRepSetEntry) int) {
 }
 
 func cmpPubKey(e0, e1 PRepSetEntry) int {
-	if e0.PubKey() != e1.PubKey() {
-		if e0.PubKey() {
+	if e0.HasPubKey() != e1.HasPubKey() {
+		if e0.HasPubKey() {
 			return 1
 		}
 		return -1
@@ -363,6 +383,14 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 		if _, ok := extraMainPReps[icutils.ToKey(entry.Owner())]; !ok {
 			subPRepEntries[i] = entry
 			i++
+		}
+	}
+}
+
+func (p *prepSetImpl) visitAll(visit func(idx int, e1 PRepSetEntry) bool) {
+	for i, e := range p.entries {
+		if ok := visit(i, e); !ok {
+			return
 		}
 	}
 }
