@@ -154,8 +154,6 @@ func (nts *networkTypeSectionFromDigest) NetworkSectionToRoot(nid int64) ([]modu
 }
 
 type networkSectionFromDigest struct {
-	dbase        db.Database
-	mod          module.NetworkTypeModule
 	nw           NetworkView
 	nd           module.NetworkDigest
 	updateNumber int64
@@ -177,8 +175,6 @@ func newNetworkSectionFromDigest(
 		updateNumber |= 1
 	}
 	return &networkSectionFromDigest{
-		dbase:        dbase,
-		mod:          mod,
 		nw:           nw,
 		nd:           nd,
 		updateNumber: updateNumber,

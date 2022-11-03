@@ -71,6 +71,7 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 	}
 
 	s.readyPool.push(p)
+	s.wakeupInLock()
 }
 
 func (s *syncProcessor) OnPeerLeave(p *peer) {
@@ -305,7 +306,7 @@ func (s *syncProcessor) migrate(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	delete(s.migrateTimerMap, p.id.String())
+	delete(s.migrateTimerMap, PeerIDToKey(p.id))
 
 	if s.checkedPool == nil || s.checkedPool.size() == 0 {
 		return
@@ -319,9 +320,10 @@ func (s *syncProcessor) migrate(p *peer) {
 }
 
 func (s *syncProcessor) checkedPoolRemoveInLock(p *peer) bool {
-	if timer, ok := s.migrateTimerMap[p.id.String()]; ok {
+	key := PeerIDToKey(p.id)
+	if timer, ok := s.migrateTimerMap[key]; ok {
 		timer.Stop()
-		delete(s.migrateTimerMap, p.id.String())
+		delete(s.migrateTimerMap, key)
 	}
 
 	return s.checkedPool.remove(p.id) != nil
@@ -332,7 +334,7 @@ func (s *syncProcessor) checkedPoolPushInLock(p *peer) {
 	timer := time.AfterFunc(s.migrateDur, func() {
 		s.migrate(p)
 	})
-	s.migrateTimerMap[p.id.String()] = timer
+	s.migrateTimerMap[PeerIDToKey(p.id)] = timer
 }
 
 // HandleData handle data from peer. If it expires timeout, data would

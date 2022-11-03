@@ -14,6 +14,7 @@ type Database interface {
 type LayerDB interface {
 	Database
 	Flush(write bool) error
+	Unwrap() Database
 }
 
 type BackendType string

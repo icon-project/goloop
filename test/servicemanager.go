@@ -250,7 +250,19 @@ func (sm *ServiceManager) TransactionListFromHash(hash []byte) module.Transactio
 }
 
 func (sm *ServiceManager) ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error) {
-	panic("implement me")
+	tr := new(transitionResult)
+	if len(result) > 0 {
+		if _, err := codec.UnmarshalFromBytes(result, tr); err != nil {
+			return nil, err
+		}
+	}
+	if g == module.TransactionGroupNormal {
+		return txresult.NewReceiptListFromHash(sm.dbase, tr.NormalReceiptHash), nil
+	} else if g == module.TransactionGroupPatch {
+		return txresult.NewReceiptListFromHash(sm.dbase, tr.PatchReceiptHash), nil
+	} else {
+		return nil, errors.Errorf("unsupported transaction group")
+	}
 }
 
 func (sm *ServiceManager) SendTransaction(result []byte, height int64, tx interface{}) ([]byte, error) {
