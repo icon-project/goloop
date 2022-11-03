@@ -107,7 +107,7 @@ func (d *dummyPRepSetEntry) Owner() module.Address {
 	return d.prep.Owner()
 }
 
-func (d *dummyPRepSetEntry) PubKey() bool {
+func (d *dummyPRepSetEntry) HasPubKey() bool {
 	return d.pubKey
 }
 
@@ -254,6 +254,27 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
+		{
+			"Sort by power + pubKey + extra main prep with zero count",
+			icmodule.RevisionBTP2,
+			1, 2, 0,
+			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
+			1, 1,
+		},
+		{
+			"Too big sub prep, extra main prep",
+			icmodule.RevisionBTP2,
+			1, 6, 10,
+			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
+			2, 0,
+		},
+		{
+			"Too big sub prep, extra main prep with zero extra main prep",
+			icmodule.RevisionBTP2,
+			0, 6, 10,
+			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
+			2, 0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -276,14 +297,14 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 				switch {
 				case j < tt.expectMain:
 					if tt.rev >= icmodule.RevisionBTP2 &&
-						(aEntry.PubKey() == false || aEntry.Power(br).Sign() == 0) {
+						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
 						assert.Equal(t, GradeMain, aEntry.PRep().Grade())
 					}
 				case j < tt.expectMain+tt.expectSub:
 					if tt.rev >= icmodule.RevisionBTP2 &&
-						(aEntry.PubKey() == false || aEntry.Power(br).Sign() == 0) {
+						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
 						assert.Equal(t, GradeSub, aEntry.PRep().Grade())
