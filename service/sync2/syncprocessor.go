@@ -71,6 +71,7 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 	}
 
 	s.readyPool.push(p)
+	s.wakeupInLock()
 }
 
 func (s *syncProcessor) OnPeerLeave(p *peer) {
