@@ -4,7 +4,6 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
 	github.com/evalphobia/logrus_fluent v0.5.4
-	github.com/go-errors/errors v1.0.1
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.1
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
