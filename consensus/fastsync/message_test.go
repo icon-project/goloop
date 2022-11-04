@@ -94,3 +94,24 @@ func TestBlockRequest_SendV2ReceiveV2(t *testing.T) {
 		msgV2Another,
 	)
 }
+
+func FuzzBlockRequest(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockRequest
+		codec.UnmarshalFromBytes(data, &msg)
+	})
+}
+
+func FuzzBlockMetadata(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockMetadata
+		codec.UnmarshalFromBytes(data, &msg)
+	})
+}
+
+func FuzzBlockData(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockData
+		codec.UnmarshalFromBytes(data, &msg)
+	})
+}

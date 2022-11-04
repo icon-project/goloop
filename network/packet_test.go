@@ -77,3 +77,12 @@ func Test_packet_PacketReadWriter(t *testing.T) {
 
 	//prw.rd.WriteTo()
 }
+
+func FuzzPacketReadFrom(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		buf := bytes.NewBuffer(data)
+		var pk Packet
+		n, _ := pk.ReadFrom(buf)
+		assert.LessOrEqual(t, n, int64(len(data)))
+	})
+}
