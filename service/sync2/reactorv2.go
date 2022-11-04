@@ -100,6 +100,9 @@ func (r *ReactorV2) processMsg(msg []byte, id module.PeerID) (*responseData, err
 }
 
 func (r *ReactorV2) onResponse(msg []byte, id module.PeerID) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	r.logger.Tracef("onResponse() peer=%v", id)
 	d, err := r.processMsg(msg, id)
 	if err != nil {
@@ -107,8 +110,12 @@ func (r *ReactorV2) onResponse(msg []byte, id module.PeerID) {
 	}
 
 	peer := r.readyPool.getPeer(id)
-	if err := peer.OnData(d.ReqID, d.Status, d.Data); err != nil {
-		r.logger.Warnf("onResponse() notFound err=%v", err)
+	if peer != nil {
+		if err := peer.OnData(d.ReqID, d.Status, d.Data); err != nil {
+			r.logger.Warnf("onResponse() notFound err=%v", err)
+		}
+	} else {
+		r.logger.Warnf("onResponse() notFound peerID=%v", id)
 	}
 }
 

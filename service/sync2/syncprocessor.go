@@ -47,7 +47,7 @@ type syncProcessor struct {
 }
 
 func (s *syncProcessor) onTermInLock() {
-	s.logger.Infoln("onTermInLock()")
+	s.logger.Debugln("onTermInLock()")
 
 	s.stopMigrateTimerInLock()
 
@@ -145,7 +145,7 @@ func (s *syncProcessor) DoSync() error {
 	for {
 		if s.builder == nil {
 			err = errors.ErrInterrupted
-			s.logger.Infof("DoSync() stop syncProcessor by %v", err)
+			s.logger.Debugf("DoSync() stop syncProcessor by %v", err)
 			break
 		}
 
@@ -153,7 +153,7 @@ func (s *syncProcessor) DoSync() error {
 		s.logger.Tracef("DoSync() unresolvedCount=%d", count)
 
 		if count == 0 && !s.datasyncer {
-			s.logger.Infof("DoSync() done syncProcessor")
+			s.logger.Debugf("DoSync() done syncProcessor")
 			break
 		}
 
@@ -173,7 +173,7 @@ func (s *syncProcessor) DoSync() error {
 
 // Stop sync processor
 func (s *syncProcessor) Stop() {
-	s.logger.Infoln("Stop() sync processor")
+	s.logger.Debugln("Stop() sync processor")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

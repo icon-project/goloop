@@ -9,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
@@ -90,16 +91,21 @@ func (s *syncer) getBTPBuilder(btpHash []byte) merkle.Builder {
 }
 
 func timeElapsed(name string, logger log.Logger) func() {
-	logger.Infof("%s start", name)
+	logger.Infof("%s Start", name)
 	start := time.Now()
 	return func() {
-		logger.Infof("%s elapsed=%v", name, time.Since(start))
+		logger.Infof("%s Done elapsed=%v", name, time.Since(start))
 	}
 }
 
-func (s *syncer) newSyncProcessorWithBuilders(egrp *errgroup.Group, stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) {
+func (s *syncer) newSyncProcessorWithBuilders(
+	egrp *errgroup.Group, stateBuilders []merkle.Builder, btpBuilders []merkle.Builder) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	if s.reactors == nil {
+		return errors.ErrInvalidState
+	}
 
 	for _, builder := range stateBuilders {
 		// sync processor with v1,v2 protocol
@@ -121,6 +127,8 @@ func (s *syncer) newSyncProcessorWithBuilders(egrp *errgroup.Group, stateBuilder
 		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
+
+	return nil
 }
 
 // ForceSync start
@@ -138,7 +146,9 @@ func (s *syncer) ForceSync() (*Result, error) {
 
 	egrp, _ := errgroup.WithContext(context.Background())
 
-	s.newSyncProcessorWithBuilders(egrp, stateBuilders, btpBuilders)
+	if err := s.newSyncProcessorWithBuilders(egrp, stateBuilders, btpBuilders); err != nil {
+		return nil, err
+	}
 
 	if err := egrp.Wait(); err != nil {
 		return nil, err
@@ -147,7 +157,6 @@ func (s *syncer) ForceSync() (*Result, error) {
 	result := &Result{
 		s.wss, s.prl, s.nrl, s.bd,
 	}
-	s.logger.Debugln("ForceSync() done!")
 	return result, nil
 }
 
@@ -156,11 +165,12 @@ func (s *syncer) Stop() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.logger.Tracef("Stop()")
+	s.logger.Infof("Stop()")
 	for _, sp := range s.processors {
 		sp.Stop()
 	}
 
+	s.reactors = nil
 	s.processors = nil
 }
 
