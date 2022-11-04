@@ -104,7 +104,7 @@ func (msg *ProposalMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
-	if msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
+	if msg.BlockPartSetID == nil || msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
