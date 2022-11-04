@@ -122,6 +122,7 @@ func testDatabase_SetReopenGet(t *testing.T, creator dbCreator) {
 	assert.NoError(t, err)
 
 	testDB, err = creator("test", dir)
+	assert.NoError(t, err)
 
 	for _, id := range buckets {
 		bucket, err := testDB.GetBucket(id)

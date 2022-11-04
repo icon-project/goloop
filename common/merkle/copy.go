@@ -13,7 +13,6 @@ type CopyContext struct {
 	builder Builder
 	src     db.Database
 	dst     db.Database
-	stopped uint32
 }
 
 func (e *CopyContext) Builder() Builder {

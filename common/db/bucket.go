@@ -76,14 +76,6 @@ func internalKey(id BucketID, key []byte) []byte {
 	return buf
 }
 
-// nonNilBytes returns empty []byte if bz is nil
-func nonNilBytes(bz []byte) []byte {
-	if bz == nil {
-		return []byte{}
-	}
-	return bz
-}
-
 func DoGet(bk Bucket, key []byte) ([]byte, error) {
 	v, err := bk.Get(key)
 	if v == nil && err == nil {

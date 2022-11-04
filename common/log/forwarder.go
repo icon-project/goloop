@@ -43,7 +43,7 @@ func (c *ForwarderConfig) UnmarshalByOptions(v interface{}) error {
 
 func (c *ForwarderConfig) NetworkAndHostPort(defaultNet string) (network string, hostPort string, err error) {
 	addr := c.Address
-	if strings.Index(addr, "://") < 0 {
+	if !strings.Contains(addr, "://") {
 		addr = defaultNet + "://" + addr
 	}
 	fmt.Println(c.Address)

@@ -116,7 +116,6 @@ var (
 )
 
 type encoderImpl struct {
-	isMap bool
 	real  Writer
 	child *encoderImpl
 }
