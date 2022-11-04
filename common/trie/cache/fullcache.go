@@ -48,8 +48,7 @@ type nodeItem struct {
 }
 
 func (c *FullCache) getNode(h []byte) []byte {
-	key := string(h)
-	if e, ok := c.hash2e[key]; ok {
+	if e, ok := c.hash2e[string(h)]; ok {
 		c.lru.MoveToBack(e)
 		atomic.AddInt32(&c.hits, 1)
 		return e.Value.(*nodeItem).value
@@ -59,8 +58,7 @@ func (c *FullCache) getNode(h []byte) []byte {
 }
 
 func (c *FullCache) putNode(h, v []byte) {
-	key := string(h)
-	if e, ok := c.hash2e[key]; ok {
+	if e, ok := c.hash2e[string(h)]; ok {
 		c.lru.MoveToBack(e)
 	} else {
 		if c.lru.Len() >= fullCacheLRUSize {
@@ -69,6 +67,7 @@ func (c *FullCache) putNode(h, v []byte) {
 			atomic.AddInt32(&c.out, 1)
 			delete(c.hash2e, e.Value.(*nodeItem).key)
 		}
+		key := string(h)
 		item := &nodeItem{
 			key:   key,
 			value: v,
