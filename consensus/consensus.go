@@ -353,7 +353,6 @@ func (cs *consensus) OnReceive(
 	msg, err := UnmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		cs.log.Warnf("malformed consensus message: OnReceive(subprotocol:%v, from:%v): %+v\n", sp, common.HexPre(id.Bytes()), err)
-		cs.log.Warnf("message: %s", codec.DumpRLP("  ", bs))
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
