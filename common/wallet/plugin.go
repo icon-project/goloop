@@ -33,8 +33,6 @@ type walletImpl interface {
 
 const builderName = "NewWallet"
 
-type builder func(params map[string]string) (interface{}, error)
-
 type pluginWallet struct {
 	walletImpl
 

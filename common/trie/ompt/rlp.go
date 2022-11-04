@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/icon-project/goloop/common"
 	cerrors "github.com/icon-project/goloop/common/errors"
 )
 
@@ -40,10 +39,6 @@ func rlpReadSize(b []byte, slen byte) (uint64, error) {
 		return 0, cerrors.WithStack(errRLPInvalidEncoding)
 	}
 	return s, nil
-}
-
-func rlpIsList(buf []byte) bool {
-	return buf[0] >= 0xc0
 }
 
 func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
@@ -88,32 +83,6 @@ func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 	return islist, tagsize, contentsize, err
 }
 
-func rlpLen(b []byte) (int, error) {
-	islist, tsize, csize, err := rlpParseHeader(b)
-	if err != nil {
-		return 0, err
-	}
-	if !islist {
-		return 0, cerrors.WithStack(common.ErrIllegalArgument)
-	}
-	if uint64(len(b)) < tsize+csize {
-		return 0, cerrors.WithStack(errRLPNotEnoughBytes)
-	}
-	b = b[tsize : tsize+csize]
-	var items = 0
-	for ; len(b) > 0; items++ {
-		_, tsize, csize, err := rlpParseHeader(b)
-		if err != nil {
-			return 0, err
-		}
-		if uint64(len(b)) < tsize+csize {
-			return 0, cerrors.WithStack(errRLPNotEnoughBytes)
-		}
-		b = b[tsize+csize:]
-	}
-	return items, nil
-}
-
 func rlpParseList(b []byte) ([][]byte, error) {
 	islist, tsize, csize, err := rlpParseHeader(b)
 	if err != nil {
@@ -153,33 +122,6 @@ func rlpParseBytes(b []byte) ([]byte, error) {
 		return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	return b[tsize : tsize+csize], nil
-}
-
-// rlpDecodeOne decodes RLP encoded bytes. If it's not an list,
-// it returns just []byte. Otherwise, it tries to decode children too.
-func rlpDecodeOne(b []byte) (interface{}, []byte, error) {
-	islist, tsize, csize, err := rlpParseHeader(b)
-	if err != nil {
-		return nil, nil, err
-	}
-	if uint64(len(b)) < tsize+csize {
-		return nil, nil, cerrors.WithStack(errRLPNotEnoughBytes)
-	}
-	trailing := b[tsize+csize:]
-	b = b[tsize : tsize+csize]
-	if islist {
-		var list = []interface{}{}
-		for len(b) > 0 {
-			obj, remains, err := rlpDecodeOne(b)
-			if err != nil {
-				return nil, nil, err
-			}
-			list = append(list, obj)
-			b = remains
-		}
-		return list, trailing, nil
-	}
-	return b, trailing, nil
 }
 
 func rlpCountBytesForSize(b int) int {
@@ -241,10 +183,6 @@ func rlpEncodeList(blist [][]byte) []byte {
 		bidx = bidx[len(b):]
 	}
 	return buf
-}
-
-func rlpEncodeObjects(olist ...interface{}) ([]byte, error) {
-	return rlpEncode(olist)
 }
 
 type RLPEncoder interface {

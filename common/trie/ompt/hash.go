@@ -41,11 +41,6 @@ func (h *hash) flush(m *mpt, nibs []byte) error {
 	return nil
 }
 
-func (h *hash) serialize() []byte {
-	log.Panicln("FAIL to serialize hash itself")
-	return nil
-}
-
 func (h *hash) realize(m *mpt) (node, error) {
 	return m.realize(h.value, nil)
 }

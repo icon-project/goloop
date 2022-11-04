@@ -184,7 +184,7 @@ func TestCache(t *testing.T) {
 	immutable := manager.NewImmutable(root)
 	for k, v := range testPool {
 		value, _ := immutable.Get([]byte(k))
-		if bytes.Compare(value, []byte(v)) != 0 {
+		if !bytes.Equal(value, []byte(v)) {
 			t.Errorf("Wrong value. expected [%x] but [%x]", v, value)
 		}
 	}
@@ -750,7 +750,7 @@ func TestObject(t *testing.T) {
 	for i, v := range mutableSnaps {
 		hash1 := v.Hash()
 		hash2 := mutableObjSnaps[i].Hash()
-		if bytes.Compare(hash1, hash2) != 0 {
+		if !bytes.Equal(hash1, hash2) {
 			t.Errorf("expected %x but got %x", hash1, hash2)
 		}
 	}

@@ -463,11 +463,6 @@ func TestObjectIterate(t *testing.T) {
 }
 
 func Test_mpt_Filter(t *testing.T) {
-	type fields struct {
-	}
-	type args struct {
-		prefix []byte
-	}
 	tests := []struct {
 		name   string
 		data   []string

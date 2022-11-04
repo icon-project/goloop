@@ -66,6 +66,7 @@ func TestNodeCache_Index(t *testing.T) {
 	data, ok = cache.Get(n2[0:3], h2)
 
 	assert.False(t, ok)
+	assert.Nil(t, data)
 }
 
 func Benchmark_NodeCache(b *testing.B) {
@@ -76,21 +77,21 @@ func Benchmark_NodeCache(b *testing.B) {
 	n2 := bytesToNibs(h2)
 
 	b.Run("long", func(b *testing.B) {
-		for i := 0 ; i<1000 ; i = i+1 {
+		for i := 0; i < 1000; i = i + 1 {
 			cache.Put(n2[0:3], h2, d2)
 			cache.Get(n2[0:3], h2)
 		}
 	})
 
 	b.Run("long2", func(b *testing.B) {
-		for i := 0 ; i<1000 ; i = i+1 {
+		for i := 0; i < 1000; i = i + 1 {
 			cache.Put(n2[0:8], h2, d2)
 			cache.Get(n2[0:8], h2)
 		}
 	})
 
 	b.Run("short", func(b *testing.B) {
-		for i := 0 ; i<1000 ; i = i+1 {
+		for i := 0; i < 1000; i = i + 1 {
 			cache.Put(n2[0:2], h2, d2)
 			cache.Get(n2[0:2], h2)
 		}
