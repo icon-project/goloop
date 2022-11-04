@@ -15,7 +15,7 @@ var (
 
 func rlpReadSize(b []byte, slen byte) (uint64, error) {
 	if int(slen) > len(b) {
-		return 0, errRLPNotEnoughBytes
+		return 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	var s uint64
 	switch slen {
@@ -48,7 +48,7 @@ func rlpIsList(buf []byte) bool {
 
 func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 	if len(buf) == 0 {
-		return false, 0, 0, errRLPNotEnoughBytes
+		return false, 0, 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	b := buf[0]
 	var tagsize uint64
@@ -83,7 +83,7 @@ func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 	}
 	// Reject values larger than the input slice.
 	if contentsize > uint64(len(buf))-tagsize {
-		return false, 0, 0, errRLPNotEnoughBytes
+		return false, 0, 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	return islist, tagsize, contentsize, err
 }
@@ -94,10 +94,10 @@ func rlpLen(b []byte) (int, error) {
 		return 0, err
 	}
 	if !islist {
-		return 0, common.ErrIllegalArgument
+		return 0, cerrors.WithStack(common.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
-		return 0, errRLPNotEnoughBytes
+		return 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	b = b[tsize : tsize+csize]
 	var items = 0
@@ -107,7 +107,7 @@ func rlpLen(b []byte) (int, error) {
 			return 0, err
 		}
 		if uint64(len(b)) < tsize+csize {
-			return 0, errRLPNotEnoughBytes
+			return 0, cerrors.WithStack(errRLPNotEnoughBytes)
 		}
 		b = b[tsize+csize:]
 	}
@@ -123,7 +123,7 @@ func rlpParseList(b []byte) ([][]byte, error) {
 		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
-		return nil, errRLPNotEnoughBytes
+		return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	b = b[tsize : tsize+csize]
 	var items = [][]byte{}
@@ -133,7 +133,7 @@ func rlpParseList(b []byte) ([][]byte, error) {
 			return nil, err
 		}
 		if uint64(len(b)) < tsize+csize {
-			return nil, errRLPNotEnoughBytes
+			return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 		}
 		items = append(items, b[:tsize+csize])
 		b = b[tsize+csize:]
@@ -150,7 +150,7 @@ func rlpParseBytes(b []byte) ([]byte, error) {
 		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
-		return nil, errRLPNotEnoughBytes
+		return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	return b[tsize : tsize+csize], nil
 }
@@ -163,7 +163,7 @@ func rlpDecodeOne(b []byte) (interface{}, []byte, error) {
 		return nil, nil, err
 	}
 	if uint64(len(b)) < tsize+csize {
-		return nil, nil, errRLPNotEnoughBytes
+		return nil, nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	trailing := b[tsize+csize:]
 	b = b[tsize : tsize+csize]
