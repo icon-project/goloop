@@ -2,8 +2,9 @@ package common
 
 import (
 	"bytes"
-	"compress/lzw"
 	"io/ioutil"
+
+	"github.com/icon-project/goloop/common/lzw"
 )
 
 func Compress(bs []byte) []byte {
