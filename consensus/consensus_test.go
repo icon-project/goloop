@@ -22,7 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -550,7 +549,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	assert.NoError(err)
 	_ = nts.NextProofContext()
 	bysl := nts.NextProofContext().Bytes()
-	log.Infof("%s", codec.DumpRLP("  ", bysl))
+	log.Infof("%s", test.DumpRLP("  ", bysl))
 
 	blk = f.WaitForNextBlock()
 	assert.EqualValues(3, blk.NextValidators().Len())
@@ -560,7 +559,7 @@ func TestConsensus_RevokeValidator(t_ *testing.T) {
 	assert.NoError(err)
 	_ = nts.NextProofContext()
 	bysl = nts.NextProofContext().Bytes()
-	log.Infof("%s", codec.DumpRLP("  ", bysl))
+	log.Infof("%s", test.DumpRLP("  ", bysl))
 
 	f.SendTXToAllAndWaitForResultBlock(f.NewTx())
 
@@ -616,7 +615,7 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 	nts, err := bs.NetworkTypeSectionFor(1)
 	assert.NoError(err)
 	bysl := nts.NextProofContext().Bytes()
-	log.Infof("NextProofContext=%s", codec.DumpRLP("  ", bysl))
+	log.Infof("NextProofContext=%s", test.DumpRLP("  ", bysl))
 
 	f.SendTXToAllAndWaitForResultBlock(f.NewTx())
 }
@@ -649,7 +648,7 @@ func TestConsensus_OpenSetNilKey(t_ *testing.T) {
 	assert.NoError(err)
 	_ = nts.NextProofContext()
 	bysl := nts.NextProofContext().Bytes()
-	log.Infof("%s", codec.DumpRLP("  ", bysl))
+	log.Infof("%s", test.DumpRLP("  ", bysl))
 }
 
 func TestConsensus_Restart(t *testing.T) {

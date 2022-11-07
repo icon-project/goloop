@@ -26,7 +26,6 @@ import (
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/btp/ntm"
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
@@ -271,14 +270,14 @@ func TestBlockManager_BTPImport(t_ *testing.T) {
 	// the vote must have 1 NTSDProof
 	oriCvl := vNode.NewVoteListForLastBlock()
 	cvl := vNode.NewVoteListForLastBlock()
-	t_.Logf("original vote = %s", codec.DumpRLP("  ", oriCvl.Bytes()))
+	t_.Logf("original vote = %s", test.DumpRLP("  ", oriCvl.Bytes()))
 	vNode.ProposeFinalizeBlock(vNode.NewVoteListForLastBlock())
 
 	// fail import with modified vote
 	h, b, err := block.FormatFromBlock(vNode.LastBlock)
 	assert.NoError(err)
 	cvl.(*consensus.CommitVoteList).NTSDProves = nil
-	t_.Logf("modified vote = %s", codec.DumpRLP("  ", cvl.Bytes()))
+	t_.Logf("modified vote = %s", test.DumpRLP("  ", cvl.Bytes()))
 	h.VotesHash = cvl.Hash()
 	b.Votes = cvl.Bytes()
 	_, err, cbErr := test.ImportBlockByReader(f.T, f.BM, block.NewBlockReaderFromFormat(h, b), 0)

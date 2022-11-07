@@ -163,7 +163,7 @@ func (h *SimplePeerHandler) Receive(
 ) *Packet {
 	pe := <-h.rCh
 	if !assert.Equal(h.p.t, pi, pe.pk.PI) {
-		h.p.t.Logf("data=%s", codec.DumpRLP("  ", pe.pk.Data))
+		h.p.t.Logf("data=%s", DumpRLP("  ", pe.pk.Data))
 	}
 	if expMsg != nil {
 		bs := codec.MustMarshalToBytes(expMsg)
