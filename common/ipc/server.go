@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"path"
-	"sync"
 
 	"github.com/icon-project/goloop/common/log"
 )
@@ -29,7 +28,6 @@ type Server interface {
 }
 
 type server struct {
-	mutex    sync.Mutex
 	listener net.Listener
 	handler  ConnectionHandler
 }

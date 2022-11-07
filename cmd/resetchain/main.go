@@ -23,12 +23,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	cs "github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )

@@ -164,6 +164,10 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 			}
 			var b2 []byte
 			b2, err = codec.MarshalToBytes(want)
+			if err != nil {
+				t.Error(err)
+				return
+			}
 			if !bytes.Equal(b2, b) {
 				t.Errorf("Encoded = [%x] wanted = [%x]", b, want)
 			}

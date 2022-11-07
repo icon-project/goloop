@@ -1,9 +1,10 @@
+//go:build ignore
 // +build ignore
 
 package ipc
 
 import (
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 	"testing"
 	"time"
 )

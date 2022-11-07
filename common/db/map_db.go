@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pkg/errors"
-
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 )
 

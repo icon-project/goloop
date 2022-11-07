@@ -11,9 +11,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 )

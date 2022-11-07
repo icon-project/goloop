@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 const (

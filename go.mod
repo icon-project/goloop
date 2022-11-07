@@ -5,7 +5,6 @@ require (
 	github.com/biter777/countries v1.3.4
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
 	github.com/evalphobia/logrus_fluent v0.5.4
-	github.com/go-errors/errors v1.0.1
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.1
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
@@ -13,7 +12,7 @@ require (
 	github.com/jroimartin/gocui v0.4.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
