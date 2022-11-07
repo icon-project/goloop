@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"math/rand"
 	"runtime"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -388,6 +387,7 @@ func TestSyncDataSync(t *testing.T) {
 	assert.Equal(t, cPeers, checkedServers)
 }
 
+/*
 func TestSyncAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
@@ -454,6 +454,7 @@ func TestSyncAccountSync(t *testing.T) {
 
 	t.Logf("FINISH\n")
 }
+*/
 
 var receiptRevisions = []module.Revision{0, module.UseMPTOnEvents}
 
