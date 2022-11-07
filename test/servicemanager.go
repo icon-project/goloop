@@ -96,7 +96,7 @@ func (sm *ServiceManager) ProposeTransition(parent module.Transition, bi module.
 		filtered = append(filtered, t)
 	}
 	txs := transaction.NewTransactionListFromSlice(sm.dbase, filtered)
-	sm.pool = nil
+	sm.pool = filtered
 	return service.NewTransition(
 		parent,
 		sm.emptyTXs,
@@ -148,7 +148,21 @@ func (sm *ServiceManager) CreateSyncTransition(transition module.Transition, res
 }
 
 func (sm *ServiceManager) Finalize(transition module.Transition, opt int) error {
-	return service.FinalizeTransition(transition, opt, false)
+	res := service.FinalizeTransition(transition, opt, false)
+	bk, err := sm.dbase.GetBucket(db.TransactionLocatorByHash)
+	if err != nil {
+		return err
+	}
+	var filtered []module.Transaction
+	for _, t := range sm.pool {
+		bs, err := bk.Get(t.ID())
+		if bs != nil && err == nil {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	sm.pool = filtered
+	return res
 }
 
 func (sm *ServiceManager) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
