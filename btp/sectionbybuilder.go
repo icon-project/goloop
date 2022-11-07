@@ -130,15 +130,15 @@ func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
 }
 
 type networkTypeSectionByBuilder struct {
-	networkTypeID        int64
-	uid                  string
-	nextProofContext     module.BTPProofContext
-	networkSections      networkSectionSlice
-	networkSectionsRoot  []byte
-	networkDigests       []module.NetworkDigest
-	mod                  module.NetworkTypeModule
-	nsNPCChanged         bool
-	hash                 []byte
+	networkTypeID       int64
+	uid                 string
+	nextProofContext    module.BTPProofContext
+	networkSections     networkSectionSlice
+	networkSectionsRoot []byte
+	networkDigests      []module.NetworkDigest
+	mod                 module.NetworkTypeModule
+	nsNPCChanged        bool
+	hash                []byte
 }
 
 func newNetworkTypeSection(

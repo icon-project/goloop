@@ -54,10 +54,10 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 	cf := &FixtureConfig{
 		T:      t,
 		Prefix: "goloop-block-fixture",
-		Dbase:  func() db.Database {
+		Dbase: func() db.Database {
 			return db.NewMapDB()
 		},
-		CVSD:   consensus.NewCommitVoteSetFromBytes,
+		CVSD: consensus.NewCommitVoteSetFromBytes,
 		NewPlatform: func(ctx *NodeContext) base.Platform {
 			return basic.Platform
 		},

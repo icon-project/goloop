@@ -26,7 +26,7 @@ func stringfy(rc RefCounter) string {
 func (rt *RefTracer) objectsString() string {
 	var buf bytes.Buffer
 	for i, rc := range rt.refCounters {
-		if i>0 {
+		if i > 0 {
 			buf.WriteString(" ")
 		}
 		buf.WriteString(stringfy(rc))
