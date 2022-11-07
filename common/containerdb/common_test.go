@@ -166,3 +166,13 @@ func TestAppendKeys(t *testing.T) {
 		})
 	}
 }
+
+func FuzzSplitKeys(f *testing.F) {
+	f.Add([]byte("\x02"))
+	f.Add([]byte("\x81\x12"))
+	f.Add([]byte("\xbf\xf70000000"))
+	f.Add([]byte("\xff\xf70000000"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		SplitKeys(data)
+	})
+}

@@ -150,7 +150,7 @@ func (p *peer) doSync() (module.ProtocolInfo, Message) {
 		p.log.Tracef("Votes for round %v\n", e.Round())
 		return ProtoVoteList, msg
 	} else if p.Round < e.Round() {
-		vl := e.GetVotes(e.Round() - 1, p.PrevotesMask, p.PrecommitsMask)
+		vl := e.GetVotes(e.Round()-1, p.PrevotesMask, p.PrecommitsMask)
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil

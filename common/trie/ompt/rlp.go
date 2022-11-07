@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/icon-project/goloop/common"
 	cerrors "github.com/icon-project/goloop/common/errors"
 )
 
@@ -15,7 +14,7 @@ var (
 
 func rlpReadSize(b []byte, slen byte) (uint64, error) {
 	if int(slen) > len(b) {
-		return 0, errRLPNotEnoughBytes
+		return 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	var s uint64
 	switch slen {
@@ -42,13 +41,9 @@ func rlpReadSize(b []byte, slen byte) (uint64, error) {
 	return s, nil
 }
 
-func rlpIsList(buf []byte) bool {
-	return buf[0] >= 0xc0
-}
-
 func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 	if len(buf) == 0 {
-		return false, 0, 0, errRLPNotEnoughBytes
+		return false, 0, 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	b := buf[0]
 	var tagsize uint64
@@ -83,35 +78,9 @@ func rlpParseHeader(buf []byte) (bool, uint64, uint64, error) {
 	}
 	// Reject values larger than the input slice.
 	if contentsize > uint64(len(buf))-tagsize {
-		return false, 0, 0, errRLPNotEnoughBytes
+		return false, 0, 0, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	return islist, tagsize, contentsize, err
-}
-
-func rlpLen(b []byte) (int, error) {
-	islist, tsize, csize, err := rlpParseHeader(b)
-	if err != nil {
-		return 0, err
-	}
-	if !islist {
-		return 0, common.ErrIllegalArgument
-	}
-	if uint64(len(b)) < tsize+csize {
-		return 0, errRLPNotEnoughBytes
-	}
-	b = b[tsize : tsize+csize]
-	var items = 0
-	for ; len(b) > 0; items++ {
-		_, tsize, csize, err := rlpParseHeader(b)
-		if err != nil {
-			return 0, err
-		}
-		if uint64(len(b)) < tsize+csize {
-			return 0, errRLPNotEnoughBytes
-		}
-		b = b[tsize+csize:]
-	}
-	return items, nil
 }
 
 func rlpParseList(b []byte) ([][]byte, error) {
@@ -123,7 +92,7 @@ func rlpParseList(b []byte) ([][]byte, error) {
 		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
-		return nil, errRLPNotEnoughBytes
+		return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	b = b[tsize : tsize+csize]
 	var items = [][]byte{}
@@ -133,7 +102,7 @@ func rlpParseList(b []byte) ([][]byte, error) {
 			return nil, err
 		}
 		if uint64(len(b)) < tsize+csize {
-			return nil, errRLPNotEnoughBytes
+			return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 		}
 		items = append(items, b[:tsize+csize])
 		b = b[tsize+csize:]
@@ -150,36 +119,9 @@ func rlpParseBytes(b []byte) ([]byte, error) {
 		return nil, cerrors.WithStack(cerrors.ErrIllegalArgument)
 	}
 	if uint64(len(b)) < tsize+csize {
-		return nil, errRLPNotEnoughBytes
+		return nil, cerrors.WithStack(errRLPNotEnoughBytes)
 	}
 	return b[tsize : tsize+csize], nil
-}
-
-// rlpDecodeOne decodes RLP encoded bytes. If it's not an list,
-// it returns just []byte. Otherwise, it tries to decode children too.
-func rlpDecodeOne(b []byte) (interface{}, []byte, error) {
-	islist, tsize, csize, err := rlpParseHeader(b)
-	if err != nil {
-		return nil, nil, err
-	}
-	if uint64(len(b)) < tsize+csize {
-		return nil, nil, errRLPNotEnoughBytes
-	}
-	trailing := b[tsize+csize:]
-	b = b[tsize : tsize+csize]
-	if islist {
-		var list = []interface{}{}
-		for len(b) > 0 {
-			obj, remains, err := rlpDecodeOne(b)
-			if err != nil {
-				return nil, nil, err
-			}
-			list = append(list, obj)
-			b = remains
-		}
-		return list, trailing, nil
-	}
-	return b, trailing, nil
 }
 
 func rlpCountBytesForSize(b int) int {
@@ -241,10 +183,6 @@ func rlpEncodeList(blist [][]byte) []byte {
 		bidx = bidx[len(b):]
 	}
 	return buf
-}
-
-func rlpEncodeObjects(olist ...interface{}) ([]byte, error) {
-	return rlpEncode(olist)
 }
 
 type RLPEncoder interface {

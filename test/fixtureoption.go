@@ -31,7 +31,7 @@ func UseConfig(cf2 *FixtureConfig) FixtureOption {
 
 func UseDB(dbase db.Database) FixtureOption {
 	return UseConfig(&FixtureConfig{
-		Dbase: func() db.Database{
+		Dbase: func() db.Database {
 			return dbase
 		},
 	})

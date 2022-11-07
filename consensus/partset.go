@@ -95,10 +95,10 @@ func (id PartSetID) String() string {
 
 // TODO need to prepare proofs for each parts.
 type partSet struct {
-	added   int
-	parts   []*part
-	tree    trie.Immutable
-	ba      *bitArray
+	added int
+	parts []*part
+	tree  trie.Immutable
+	ba    *bitArray
 }
 
 func (ps *partSet) ID() *PartSetID {

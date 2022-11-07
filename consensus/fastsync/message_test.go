@@ -27,11 +27,11 @@ import (
 func TestBlockRequest_EncodeAsV1IfPossible(t *testing.T) {
 	msgV1 := BlockRequestV1{
 		RequestID: 1,
-		Height: 1,
+		Height:    1,
 	}
 	msgV2 := BlockRequestV2{
-		RequestID: 1,
-		Height: 1,
+		RequestID:   1,
+		Height:      1,
 		ProofOption: 0,
 	}
 	assert.Equal(t,
@@ -43,15 +43,15 @@ func TestBlockRequest_EncodeAsV1IfPossible(t *testing.T) {
 func TestBlockRequest_SendV1ReceiveV2(t *testing.T) {
 	msgV1 := BlockRequestV1{
 		RequestID: 1,
-		Height: 1,
+		Height:    1,
 	}
 	bsV1 := codec.MustMarshalToBytes(&msgV1)
 	var msgV2 BlockRequestV2
 	codec.MustUnmarshalFromBytes(bsV1, &msgV2)
 	assert.Equal(t,
 		BlockRequestV2{
-			RequestID: 1,
-			Height: 1,
+			RequestID:   1,
+			Height:      1,
 			ProofOption: 0,
 		},
 		msgV2,
@@ -60,8 +60,8 @@ func TestBlockRequest_SendV1ReceiveV2(t *testing.T) {
 
 func TestBlockRequest_SendV2ReceiveV1(t *testing.T) {
 	msgV2 := BlockRequestV2{
-		RequestID: 1,
-		Height: 1,
+		RequestID:   1,
+		Height:      1,
 		ProofOption: 1,
 	}
 	bsV2 := codec.MustMarshalToBytes(&msgV2)
@@ -70,7 +70,7 @@ func TestBlockRequest_SendV2ReceiveV1(t *testing.T) {
 	assert.Equal(t,
 		BlockRequestV1{
 			RequestID: 1,
-			Height: 1,
+			Height:    1,
 		},
 		msgV1,
 	)
@@ -78,8 +78,8 @@ func TestBlockRequest_SendV2ReceiveV1(t *testing.T) {
 
 func TestBlockRequest_SendV2ReceiveV2(t *testing.T) {
 	msgV2 := BlockRequestV2{
-		RequestID: 1,
-		Height: 1,
+		RequestID:   1,
+		Height:      1,
 		ProofOption: 1,
 	}
 	bsV2 := codec.MustMarshalToBytes(&msgV2)
@@ -87,10 +87,31 @@ func TestBlockRequest_SendV2ReceiveV2(t *testing.T) {
 	codec.MustUnmarshalFromBytes(bsV2, &msgV2Another)
 	assert.Equal(t,
 		BlockRequestV2{
-			RequestID: 1,
-			Height: 1,
+			RequestID:   1,
+			Height:      1,
 			ProofOption: 1,
 		},
 		msgV2Another,
 	)
+}
+
+func FuzzBlockRequest(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockRequest
+		codec.UnmarshalFromBytes(data, &msg)
+	})
+}
+
+func FuzzBlockMetadata(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockMetadata
+		codec.UnmarshalFromBytes(data, &msg)
+	})
+}
+
+func FuzzBlockData(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var msg BlockData
+		codec.UnmarshalFromBytes(data, &msg)
+	})
 }

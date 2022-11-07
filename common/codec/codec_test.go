@@ -242,3 +242,21 @@ func TestEmbeddedInterface(t *testing.T) {
 	_, err := UnmarshalFromBytes(bs, &s)
 	assert.NoError(t, err)
 }
+
+func FuzzUnmarshalFromBytes(f *testing.F) {
+	type Test struct {
+		FInt       int
+		FBytes     []byte
+		FPtrString *string
+		FList      []string
+		FString    string
+	}
+	f.Add([]byte{0x02})
+	f.Add([]byte("Hellow this\xc0"))
+	f.Fuzz(func(t *testing.T, bs []byte) {
+		var buf Test
+		_, _ = UnmarshalFromBytes(bs, &buf)
+		var v4v Struct4
+		_, _ = UnmarshalFromBytes(bs, &v4v)
+	})
+}

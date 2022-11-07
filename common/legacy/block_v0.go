@@ -98,7 +98,7 @@ func (b *blockV0) Verify() error {
 	bs = append(bs, ts...)
 	bhash := crypto.SHA3Sum256(bs)
 
-	if bytes.Compare(bhash, b.BlockHash) != 0 {
+	if !bytes.Equal(bhash, b.BlockHash) {
 		log.Warnln("RECORDED  ", b.BlockHash)
 		log.Warnln("CALCULATED", hex.EncodeToString(bhash))
 		return errors.New("HASH is incorrect")
@@ -119,7 +119,7 @@ func (b *blockV0) Verify() error {
 	}
 
 	mrh := b.NormalTransactions().Hash()
-	if bytes.Compare(mrh, b.MerkleTreeRootHash) != 0 {
+	if !bytes.Equal(mrh, b.MerkleTreeRootHash) {
 		log.Warnln("MerkleRootHash STORE", hex.EncodeToString(b.MerkleTreeRootHash))
 		log.Warnln("MerkleRootHash CALC ", hex.EncodeToString(mrh))
 		return errors.New("MerkleTreeRootHash is different")

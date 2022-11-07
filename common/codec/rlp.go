@@ -2,8 +2,6 @@ package codec
 
 import (
 	"bytes"
-	"encoding/binary"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -15,19 +13,36 @@ import (
 var rlpCodecObject rlpCodec
 var RLP = bytesWrapper{&rlpCodecObject}
 
+// MaxSizeForBytes is size limit for bytes buffer.
+// msgpack decoder already has limit to 1 MB
+const MaxSizeForBytes = 1e6
+
 type rlpCodec struct {
 }
 
 type rlpReader struct {
 	reader io.Reader
+	maxSB  int // maxSB is max size of bytes buffer on ReadBytes() or ReadRaw()
 }
 
 func sizeToBytes(s int) []byte {
 	return intconv.SizeToBytes(uint64(s))
 }
 
-func bytesToSize(bs []byte) int {
-	return int(intconv.BytesToSize(bs))
+func bytesToSize(bs []byte) (int, error) {
+	if value := int(intconv.BytesToSize(bs)); value < 0 {
+		return 0, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(size=%d)", value)
+	} else {
+		return value, nil
+	}
+}
+
+func minSize(sz1, sz2 int) int {
+	if sz1 < sz2 {
+		return sz1
+	} else {
+		return sz2
+	}
 }
 
 func (r *rlpReader) skipN(sz int) error {
@@ -44,7 +59,7 @@ func (r *rlpReader) readSize(buffer []byte) (int, error) {
 	if err := r.readAll(buffer); err != nil {
 		return 0, err
 	}
-	return bytesToSize(buffer), nil
+	return bytesToSize(buffer)
 }
 
 func (r *rlpReader) readAll(buffer []byte) error {
@@ -111,6 +126,7 @@ func (r *rlpReader) readList() (Reader, error) {
 		size := tag - 0xC0
 		return &rlpReader{
 			reader: io.LimitReader(r.reader, int64(size)),
+			maxSB:  minSize(r.maxSB, size),
 		}, nil
 	default:
 		sz := tag - 0xF7
@@ -123,6 +139,7 @@ func (r *rlpReader) readList() (Reader, error) {
 		}
 		return &rlpReader{
 			reader: io.LimitReader(r.reader, int64(sz2)),
+			maxSB:  minSize(r.maxSB, sz2),
 		}, nil
 	}
 }
@@ -156,6 +173,9 @@ func (r *rlpReader) readBytes() ([]byte, error) {
 		sz2, err := r.readSize(header[1 : 1+sz])
 		if err != nil {
 			return nil, err
+		}
+		if sz2 > r.maxSB {
+			return nil, cerrors.Wrapf(ErrInvalidFormat, "InvalidSize(%d>%d)", sz2, r.maxSB)
 		}
 		buffer := make([]byte, sz2)
 		if err := r.readAll(buffer); err != nil {
@@ -221,6 +241,9 @@ func (r *rlpReader) ReadBytes() ([]byte, error) {
 }
 
 func (r *rlpReader) readMore(org []byte, size int) ([]byte, error) {
+	if size+len(org) > r.maxSB {
+		return nil, cerrors.Wrapf(ErrInvalidFormat, "IllegalFormat(%d>%d)", size+len(org), r.maxSB)
+	}
 	buffer := make([]byte, len(org)+size)
 	copy(buffer, org)
 	if err := r.readAll(buffer[len(org):]); err != nil {
@@ -259,6 +282,10 @@ func (r *rlpReader) ReadRaw() ([]byte, error) {
 		}
 		return r.readMore(header[0:1+sz], sz2)
 	}
+}
+
+func (r *rlpReader) SetMaxBytes(sz int) {
+	r.maxSB = sz
 }
 
 type rlpParent struct {
@@ -442,6 +469,7 @@ func (c *rlpCodec) Name() string {
 func (c *rlpCodec) NewDecoder(r io.Reader) DecodeAndCloser {
 	return NewDecoder(&rlpReader{
 		reader: r,
+		maxSB:  MaxSizeForBytes,
 	})
 }
 
@@ -451,46 +479,3 @@ func (c *rlpCodec) NewEncoder(w io.Writer) EncodeAndCloser {
 	})
 }
 
-func DumpRLP(indent string, data []byte) string {
-	p := 0
-	var res string
-	for p < len(data) {
-		switch q := data[p]; {
-		case q < 0x80:
-			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, 1, 1, data[p:p+1])
-			p = p + 1
-		case q <= 0xb7:
-			l := int(q - 0x80)
-			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, l, l, data[p+1:p+1+l])
-			p = p + 1 + l
-		case q <= 0xbf:
-			ll := int(q - 0xb7)
-			buf := make([]byte, 8)
-			lBytes := data[p+1 : p+1+ll]
-			copy(buf[8-ll:], lBytes)
-			l := int(binary.BigEndian.Uint64(buf))
-			res += fmt.Sprintf("%sbytes(0x%x:%d) : %x\n", indent, l, l, data[p+1+ll:p+1+ll+l])
-			p = p + 1 + ll + l
-		case q <= 0xf7:
-			l := int(q - 0xc0)
-			res += fmt.Sprintf("%slist(0x%x:%d) [\n", indent, l, l)
-			res += DumpRLP(indent+"  ", data[p+1:p+1+l])
-			res += fmt.Sprintf("%s]\n", indent)
-			p = p + 1 + l
-		case q == 0xf8 && data[p+1] == 0:
-			res += fmt.Sprintf("%slist(0x0:0) [] nil?\n", indent)
-			p = p + 2
-		default:
-			ll := int(q - 0xf7)
-			buf := make([]byte, 8)
-			lBytes := data[p+1 : p+1+ll]
-			copy(buf[8-ll:], lBytes)
-			l := int(binary.BigEndian.Uint64(buf))
-			res += fmt.Sprintf("%slist(0x%x:%d) [\n", indent, l, l)
-			res += DumpRLP(indent+"  ", data[p+1+ll:p+1+ll+l])
-			res += fmt.Sprintf("%s]\n", indent)
-			p = p + 1 + ll + l
-		}
-	}
-	return res
-}

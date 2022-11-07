@@ -212,7 +212,7 @@ func (t *Transaction) Execute(ctx contract.Context, wcs state.WorldSnapshot, est
 		}
 		cc.GetBTPMessages(r)
 	}
-	log.Infof("Execute transaction tx=%s chainScoreError=%+v", t, chainScoreError)
+	log.Infof("Execute transaction height=%d tx=%s chainScoreError=%+v", ctx.BlockHeight(), t, chainScoreError)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }

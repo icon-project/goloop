@@ -23,8 +23,8 @@ var protocols = []module.ProtocolInfo{
 }
 
 type BlockRequestV1 struct {
-	RequestID   uint32
-	Height      int64
+	RequestID uint32
+	Height    int64
 }
 
 type BlockRequestV2 struct {
