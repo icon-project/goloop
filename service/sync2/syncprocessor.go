@@ -65,7 +65,7 @@ func (s *syncProcessor) onTermInLock() {
 func (s *syncProcessor) OnPeerJoin(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.logger.Tracef("OnPeerJoin() peer=%v", p)
+	s.logger.Tracef("OnPeerJoin() peer=%v", p.id)
 
 	if s.readyPool == nil {
 		return
@@ -78,7 +78,7 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 func (s *syncProcessor) OnPeerLeave(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.logger.Tracef("OnPeerLeave() peer=%v", p)
+	s.logger.Tracef("OnPeerLeave() peer=%v", p.id)
 
 	if s.readyPool == nil || s.sentPool == nil || s.checkedPool == nil {
 		return
