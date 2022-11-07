@@ -99,6 +99,9 @@ func (dl *depositList) AddDeposit(dc DepositContext, value *big.Int) error {
 // It returns amount of deposit, fee to be charged and error object
 func (dl *depositList) WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error) {
 	deposits := *dl
+	if value != nil && value.Sign() < 0 {
+		return nil, nil, scoreresult.InvalidRequestError.Errorf("InvalidAmount(value=%d)", value)
+	}
 	for idx, dp := range deposits {
 		if dp.IsIdentifiedBy(id) {
 			amount, penalty, removal, err :=
