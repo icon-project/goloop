@@ -125,16 +125,16 @@ build:java:
   tags:
     - docker-build
 
-pack:goloop:py:
-  <<: *pack
-  variables:
-    IMAGE_BASE: "goloop/base-py:${CI_COMMIT_REF_NAME}"
-  script:
-    - sh docker/base/build.sh py
-    - sh docker/goloop-py/build.sh
-  dependencies:
-    - build:go
-    - build:pyee
+# pack:goloop:py:
+#   <<: *pack
+#   variables:
+#     IMAGE_BASE: "goloop/base-py:${CI_COMMIT_REF_NAME}"
+#   script:
+#     - sh docker/base/build.sh py
+#     - sh docker/goloop-py/build.sh
+#   dependencies:
+#     - build:go
+#     - build:pyee
 
 pack:goloop:java:
   <<: *pack
@@ -215,32 +215,32 @@ pack:goloop:
   except:
     - tags
 
-IT:py:pyscore:
-  <<: *IT__goloop
-  variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_py.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
-    GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
-  script:
-    - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
-
-IT:py:pygov:
-  <<: *IT__goloop
-  variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
-    GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
-  script:
-    - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
-
-IT:py:pyaudit:
-  <<: *IT__goloop
-  variables:
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
-    GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
-  script:
-    - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+# IT:py:pyscore:
+#   <<: *IT__goloop
+#   variables:
+#     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_py.json"
+#     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
+#     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
+#   script:
+#     - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+# 
+# IT:py:pygov:
+#   <<: *IT__goloop
+#   variables:
+#     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
+#     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
+#     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
+#   script:
+#     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+# 
+# IT:py:pyaudit:
+#   <<: *IT__goloop
+#   variables:
+#     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
+#     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/pygov.props"
+#     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
+#   script:
+#     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
 IT:java:javascore:
   <<: *IT__goloop
