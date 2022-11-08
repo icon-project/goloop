@@ -320,23 +320,6 @@ public class BTP2APITest extends TestBase {
         }
         LOG.infoExiting();
 
-        LOG.infoEntering("Change public key for network type that has no open network");
-        LOG.info("Close network 'ethereum'");
-        closeBTPNetwork(nidEth);
-        LOG.info("Modify public key");
-        nWallet = KeyWallet.create();
-        result = chainScore.setBTPPublicKey(wallet, DSA_SECP256K1, nWallet.getPublicKey().toByteArray());
-        assertSuccess(result);
-        height = result.getBlockHeight();
-        LOG.info("Network type 'eth' not changed");
-        checkNetworkTypeNotChanged(height, ntidEth);
-        checkNetworkNotChanged(height, nidEth);
-        LOG.info("Network type 'icon' changed");
-        checkNetworkType(height, ntidBSC);
-        checkNetwork(height, nidBSC, true);
-        checkHeader(height.add(BigInteger.ONE), nidBSC);
-        LOG.infoExiting();
-
         LOG.infoEntering("Reset public keys");
         setNodePublicKeys();
         LOG.infoExiting();
