@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type Adder struct {
@@ -36,6 +38,26 @@ func (s *Adder) Sum() int {
 			panic("creator was called when cache value is not zero")
 		}
 		return s.a + s.b
+	})
+}
+
+func (s *Adder) TrySumOK() (int, error) {
+	return s.sum.TryGet(func() (int, error) {
+		var zero atomic.Value
+		if s.sum.val != zero {
+			panic("creator was called when cache value is not zero")
+		}
+		return s.a + s.b, nil
+	})
+}
+
+func (s *Adder) TrySumFail() (int, error) {
+	return s.sum.TryGet(func() (int, error) {
+		var zero atomic.Value
+		if s.sum.val != zero {
+			panic("creator was called when cache value is not zero")
+		}
+		return 0, errors.New("error")
 	})
 }
 
@@ -65,4 +87,31 @@ func TestCache_Basics(t *testing.T) {
 	}
 	assert.Equal(2, adder.Sum())
 	assert.Equal(2, adder.Sum())
+}
+
+func TestCache_TryGetOK(t *testing.T) {
+	assert := assert.New(t)
+	adder := Adder{
+		a: 1,
+		b: 1,
+	}
+	sum, err := adder.TrySumOK()
+	assert.NoError(err)
+	assert.Equal(2, sum)
+}
+
+func TestCache_TryGetFail(t *testing.T) {
+	assert := assert.New(t)
+	adder := Adder{
+		a: 1,
+		b: 1,
+	}
+	_, err := adder.TrySumFail()
+	assert.Error(err)
+	sum, err := adder.TrySumOK()
+	assert.NoError(err)
+	assert.Equal(2, sum)
+	sum, err = adder.TrySumOK()
+	assert.NoError(err)
+	assert.Equal(2, sum)
 }
