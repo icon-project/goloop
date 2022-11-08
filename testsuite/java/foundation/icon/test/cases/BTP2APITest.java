@@ -62,7 +62,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 public class BTP2APITest extends TestBase {
     private static final String DSA_SECP256K1 = "ecdsa/secp256k1";
     private static final String NT_ETH = "eth";
-    private static final String NT_ICON = "icon";
     private static TransactionHandler txHandler;
     private static IconService iconService;
     private static ChainScore chainScore;
@@ -139,7 +138,7 @@ public class BTP2APITest extends TestBase {
         var caller2PubKey = caller2.getPublicKey().toByteArray();
 
         var cases = new Case[]{
-                new Case(caller1, NT_ICON, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
+                new Case(caller1, NT_ETH, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
                 new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set same public key again"),
@@ -147,7 +146,7 @@ public class BTP2APITest extends TestBase {
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Restore public key"),
                 new Case(caller2, DSA_SECP256K1, caller1PubKey, false, "Set public key with already exist"),
                 new Case(caller2, DSA_SECP256K1, caller2PubKey, true, "Set with deleted public key"),
-                new Case(caller1, NT_ICON, pubKeyEmpty, false, "Delete with Invalid name"),
+                new Case(caller1, NT_ETH, pubKeyEmpty, false, "Delete with Invalid name"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
                 new Case(caller2, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete empty public key"),
@@ -217,10 +216,8 @@ public class BTP2APITest extends TestBase {
                 new Case(true, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
                 new Case(false, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
                 new Case(true, NT_ETH, DSA_SECP256K1, "bsc", wallet),
-                new Case(true, NT_ICON, DSA_SECP256K1, "ICON", wallet),
                 new Case(true, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
                 new Case(false, NT_ETH, DSA_SECP256K1, "bsc", wallet),
-                new Case(false, NT_ICON, DSA_SECP256K1, "ICON", wallet),
                 new Case(false, NT_ETH, DSA_SECP256K1, "ethereum", wallet),
         };
 
@@ -260,13 +257,13 @@ public class BTP2APITest extends TestBase {
         KeyWallet wallet = node.wallet;
         TransactionResult result;
 
-        LOG.infoEntering("Open BTP Networks 'ethereum' and 'icon' for test");
+        LOG.infoEntering("Open BTP Networks 'ethereum' and 'bsc' for test");
         BigInteger nidEth = openBTPNetwork(NT_ETH, "ethereum", wallet.getAddress());
-        BigInteger nidIcon = openBTPNetwork(NT_ICON, "icon", wallet.getAddress());
+        BigInteger nidBSC = openBTPNetwork(NT_ETH, "bsc", wallet.getAddress());
         var ntidEth = iconService.btpGetNetworkInfo(nidEth).execute().getNetworkTypeID();
-        var ntidIcon = iconService.btpGetNetworkInfo(nidIcon).execute().getNetworkTypeID();
-        BigInteger[] ntids = {ntidEth, ntidIcon};
-        BigInteger[] nids = {nidEth, nidIcon};
+        var ntidBSC = iconService.btpGetNetworkInfo(nidBSC).execute().getNetworkTypeID();
+        BigInteger[] ntids = {ntidEth, ntidBSC};
+        BigInteger[] nids = {nidEth, nidBSC};
         LOG.infoExiting();
 
         byte[] pubKeyEmpty = new byte[0];
@@ -335,9 +332,9 @@ public class BTP2APITest extends TestBase {
         checkNetworkTypeNotChanged(height, ntidEth);
         checkNetworkNotChanged(height, nidEth);
         LOG.info("Network type 'icon' changed");
-        checkNetworkType(height, ntidIcon);
-        checkNetwork(height, nidIcon, true);
-        checkHeader(height.add(BigInteger.ONE), nidIcon);
+        checkNetworkType(height, ntidBSC);
+        checkNetwork(height, nidBSC, true);
+        checkHeader(height.add(BigInteger.ONE), nidBSC);
         LOG.infoExiting();
 
         LOG.infoEntering("Reset public keys");
@@ -358,7 +355,7 @@ public class BTP2APITest extends TestBase {
         TransactionResult result;
 
         LOG.infoEntering("Open BTP Networks for test");
-        BigInteger nid = openBTPNetwork(NT_ICON, "icon", wallet.getAddress());
+        BigInteger nid = openBTPNetwork(NT_ETH, "send_msg_test", wallet.getAddress());
         var ntid = iconService.btpGetNetworkInfo(nid).execute().getNetworkTypeID();
         LOG.infoExiting();
 
@@ -408,8 +405,8 @@ public class BTP2APITest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("Open BTP Networks for test");
-        BigInteger nid = openBTPNetwork(NT_ICON, "icon", bmc.getAddress());
-        BigInteger nidRevert = openBTPNetwork(NT_ICON, "icon", bmc.getAddress());
+        BigInteger nid = openBTPNetwork(NT_ETH, "send_msg", bmc.getAddress());
+        BigInteger nidRevert = openBTPNetwork(NT_ETH, "send_msg_revert", bmc.getAddress());
         LOG.infoExiting();
 
         LOG.infoEntering("Send BTP message and revert");
