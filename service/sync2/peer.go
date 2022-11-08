@@ -63,7 +63,7 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 		p.reqID += 1
 		p.reqMap[reqID] = peerRequest{
 			handler: handler,
-			timer: time.AfterFunc(p.expired*time.Millisecond, func() {
+			timer: time.AfterFunc(p.expired, func() {
 				_ = p.OnData(reqID, ErrTimeExpired, nil)
 			}),
 		}
@@ -79,7 +79,7 @@ func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) err
 
 	p.logger.Tracef("OnData() peer=%s reqID=%d status=%s data=%d", p.id, reqID, status, len(data))
 	if status == ErrTimeExpired && p.expired < configMaxExpiredTime {
-		p.expired += 200
+		p.expired += 200 * time.Millisecond
 	}
 
 	if request, ok := p.reqMap[reqID]; ok {
