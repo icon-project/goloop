@@ -675,14 +675,7 @@ func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, en
 	}
 	for i := start - 1; i < end; i++ {
 		prep := prepSet.GetByIndex(i).PRep()
-		prepJSO := prep.ToJSON(blockHeight, br)
-		if dsaMask != 0 {
-			if (prep.GetDSAMask() & dsaMask) == dsaMask {
-				prepJSO["hasPublicKey"] = "0x1"
-			} else {
-				prepJSO["hasPublicKey"] = "0x0"
-			}
-		}
+		prepJSO := prep.ToJSON(blockHeight, br, dsaMask)
 		prepList = append(prepList, prepJSO)
 	}
 
