@@ -683,7 +683,7 @@ Returns P-Rep register information
 
 ### getPReps
 
-Returns the status of all registered P-Rep candidates in descending order by delegated ICX amount
+Returns the status of all registered P-Rep candidates in descending order by power amount
 
 - Unregistered or disqualified P-Reps are not included
 
@@ -728,43 +728,48 @@ Returns the status of all registered P-Rep candidates in descending order by del
     "totalStake": "0x193e5939a08ce9dbd480000000",
     "preps": [
       {
-        "status": "0x0",
-        "grade": "0x2",
-        "address": "hxe7af5fcfd8dfc67530a01a0e403882687528dfcb",
-        "name": "banana",
-        "country": "KOR",
+        "address": "hx7101544346685b37c7bbb56c2c9b8ed56f2895e2",
+        "bonded": "0x186a0",
         "city": "Seoul",
-        "email": "banana@email.com",
-        "website": "https://icon.banana.com",
+        "country": "KOR",
+        "delegated": "0x186a0",
         "details": "https://icon.banana.com/json",
-        "p2pEndpoint": "123.45.67.89:7100",
-        "nodeAddress": "hxe7af5fcfd8dfc67530a01a0e403882687528dfcb",
+        "email": "banana@email.com",
+        "grade": "0x0",
         "irep": "0xa968163f0a57b400000",
-        "irepUpdateBlockHeight": "0x847ea",
-        "stake": "0x38372",
-        "delegated": "0x74287392847",
-        "totalBlocks": "0x83261e7",
-        "validatedBlocks": "0x83258a9"
+        "irepUpdateBlockHeight": "0x0",
+        "lastHeight": "0x20",
+        "name": "banana",
+        "nodeAddress": "hx7101544346685b37c7bbb56c2c9b8ed56f2895e2",
+        "p2pEndpoint": "123.12.12.23:8080",
+        "penalty": "0x0",
+        "power": "0x30d40",
+        "status": "0x0",
+        "totalBlocks": "0xf9",
+        "validatedBlocks": "0xf9",
+        "website": "https://icon.banana.com"
       },
       {
-        "status": "0x0",
-        "grade": "0x2",
-        "name": "ABC Node",
-        "address": "hx1d6463e4628ee52a7f751e9d500a79222a7f3935",
-        "country": "USA",
+        "address": "hx7d18a6a813b421ce0fcec3fcd175011eeea639ed",
+        "bonded": "0xc350",
         "city": "New York",
-        "email": "banana@email.com",
-        "website": "https://icon.banana.com",
-        "details": "https://icon.banana.com/json",
-        "p2pEndpoint": "123.45.67.89:7100",
-        "nodeAddress": "hx1d6463e4628ee52a7f751e9d500a79222a7f3935",
-        "irep": "0xc350",
-        "irepUpdateBlockHeight": "0x1100",
-        "lastGenerateBlockHeight": "0x1200",
-        "stake": "0x28a857425466f800000",
-        "delegated": "0x9ed194db19b238c000000",
-        "totalBlocks": "0x2720",
-        "validatedBlocks": "0x2348"
+        "country": "USA",
+        "delegated": "0xc350",
+        "details": "https://icon.abcnode.com/json",
+        "email": "iconabcnode@email.com",
+        "grade": "0x0",
+        "irep": "0xa968163f0a57b400000",
+        "irepUpdateBlockHeight": "0x0",
+        "lastHeight": "0x20",
+        "name": "ABC Node",
+        "nodeAddress": "hx7d18a6a813b421ce0fcec3fcd175011eeea639ed",
+        "p2pEndpoint": "123.45.67.89:8081",
+        "penalty": "0x0",
+        "power": "0x186a0",
+        "status": "0x0",
+        "totalBlocks": "0xf9",
+        "validatedBlocks": "0xf9",
+        "website": "https://icon.abcnode.com"
       },
       ...
     ]
