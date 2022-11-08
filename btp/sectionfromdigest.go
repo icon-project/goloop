@@ -17,7 +17,10 @@
 package btp
 
 import (
+	"sync"
+
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -40,19 +43,21 @@ func NewSection(
 }
 
 type btpSectionFromDigest struct {
-	digest                module.BTPDigest
-	view                  StateView
-	dbase                 db.Database
+	digest module.BTPDigest
+	view   StateView
+	dbase  db.Database
+
+	mu                    sync.Mutex
 	networkTypeSectionFor map[int64]*networkTypeSectionFromDigest
-	networkTypeSections   []module.NetworkTypeSection
+	networkTypeSections   atomic.Cache[[]module.NetworkTypeSection]
 }
 
-func (bs btpSectionFromDigest) Digest() module.BTPDigest {
+func (bs *btpSectionFromDigest) Digest() module.BTPDigest {
 	return bs.digest
 }
 
-func (bs btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection {
-	if bs.networkTypeSections == nil {
+func (bs *btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection {
+	return bs.networkTypeSections.Get(func() []module.NetworkTypeSection {
 		ntdSlice := bs.digest.NetworkTypeDigests()
 		ntsSlice := make([]module.NetworkTypeSection, 0, len(ntdSlice))
 		for _, ntd := range ntdSlice {
@@ -60,12 +65,14 @@ func (bs btpSectionFromDigest) NetworkTypeSections() []module.NetworkTypeSection
 			log.Must(err)
 			ntsSlice = append(ntsSlice, nts)
 		}
-		bs.networkTypeSections = ntsSlice
-	}
-	return bs.networkTypeSections
+		return ntsSlice
+	})
 }
 
-func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
+func (bs *btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.NetworkTypeSection, error) {
+	bs.mu.Lock()
+	defer bs.mu.Unlock()
+
 	if bs.networkTypeSectionFor[ntid] == nil {
 		nt, err := bs.view.GetNetworkTypeView(ntid)
 		if err != nil {
@@ -94,6 +101,7 @@ func (bs btpSectionFromDigest) NetworkTypeSectionFor(ntid int64) (module.Network
 }
 
 type networkTypeSectionFromDigest struct {
+	// immutables
 	view             StateView
 	dbase            db.Database
 	mod              module.NetworkTypeModule
@@ -154,6 +162,7 @@ func (nts *networkTypeSectionFromDigest) NetworkSectionToRoot(nid int64) ([]modu
 }
 
 type networkSectionFromDigest struct {
+	// immutables
 	nw           NetworkView
 	nd           module.NetworkDigest
 	updateNumber int64

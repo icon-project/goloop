@@ -17,16 +17,22 @@
 package btp
 
 import (
+	"sync"
+
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
 type proofContextMap struct {
+	mu    sync.Mutex
 	pcMap map[int64]module.BTPProofContext
 }
 
 func (m *proofContextMap) ProofContextFor(ntid int64) (module.BTPProofContext, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	pc, ok := m.pcMap[ntid]
 	if !ok {
 		return nil, errors.Wrapf(errors.ErrNotFound, "not found ntid=%d", ntid)
@@ -45,6 +51,9 @@ func (m *proofContextMap) copy() *proofContextMap {
 }
 
 func (m *proofContextMap) Update(src module.BTPProofContextMapUpdateSource) (module.BTPProofContextMap, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	res := m
 	btpSection, err := src.BTPSection()
 	if err != nil {
@@ -84,6 +93,9 @@ func (m *proofContextMap) Verify(
 	bd module.BTPDigest,
 	ntsdProves module.NTSDProofList,
 ) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	cnt := 0
 	for _, ntd := range bd.NetworkTypeDigests() {
 		if _, ok := m.pcMap[ntd.NetworkTypeID()]; ok {

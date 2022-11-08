@@ -19,8 +19,8 @@ package btp
 import (
 	"io"
 	"sort"
-	"sync"
 
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -40,44 +40,28 @@ type digestCore interface {
 }
 
 type digest struct {
-	mu                     sync.Mutex
 	core                   digestCore
-	filter                 module.BitSetFilter
-	ntsHashEntryListFormat []module.NTSHashEntryFormat
+	filter                 atomic.Cache[module.BitSetFilter]
+	ntsHashEntryListFormat atomic.Cache[[]module.NTSHashEntryFormat]
 }
 
 func (bd *digest) Bytes() []byte {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	return bd.core.Bytes()
 }
 
 func (bd *digest) Hash() []byte {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	return bd.core.Hash()
 }
 
 func (bd *digest) NetworkTypeDigests() []module.NetworkTypeDigest {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	return bd.core.NetworkTypeDigests()
 }
 
 func (bd *digest) Flush(dbase db.Database) error {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	return bd.core.Flush(dbase)
 }
 
 func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	ntdSlice := bd.core.NetworkTypeDigests()
 	i := sort.Search(
 		len(ntdSlice),
@@ -92,9 +76,6 @@ func (bd *digest) NetworkTypeDigestFor(ntid int64) module.NetworkTypeDigest {
 }
 
 func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	for _, ntd := range bd.core.NetworkTypeDigests() {
 		for _, nd := range ntd.NetworkDigests() {
 			if nd.NetworkID() == nid {
@@ -106,25 +87,19 @@ func (bd *digest) NetworkTypeIDFromNID(nid int64) (int64, error) {
 }
 
 func (bd *digest) NetworkSectionFilter() module.BitSetFilter {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
-	if bd.filter.Bytes() == nil {
-		bd.filter = module.MakeBitSetFilter(NSFilterCap)
+	return bd.filter.Get(func() module.BitSetFilter {
+		filter := module.MakeBitSetFilter(NSFilterCap)
 		for _, ntd := range bd.core.NetworkTypeDigests() {
 			for _, nd := range ntd.NetworkDigests() {
-				bd.filter.Set(nd.NetworkID())
+				filter.Set(nd.NetworkID())
 			}
 		}
-	}
-	return bd.filter
+		return filter
+	})
 }
 
 func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
-	if bd.ntsHashEntryListFormat == nil {
+	return bd.ntsHashEntryListFormat.Get(func() []module.NTSHashEntryFormat {
 		ntdSlice := bd.core.NetworkTypeDigests()
 		ntsHashEntries := make([]module.NTSHashEntryFormat, 0, len(ntdSlice))
 		for _, ntd := range ntdSlice {
@@ -133,22 +108,15 @@ func (bd *digest) NTSHashEntryListFormat() []module.NTSHashEntryFormat {
 				NetworkTypeSectionHash: ntd.NetworkTypeSectionHash(),
 			})
 		}
-		bd.ntsHashEntryListFormat = ntsHashEntries
-	}
-	return bd.ntsHashEntryListFormat
+		return ntsHashEntries
+	})
 }
 
 func (bd *digest) NTSHashEntryCount() int {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	return len(bd.core.NetworkTypeDigests())
 }
 
 func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	ntd := bd.core.NetworkTypeDigests()[i]
 	return module.NTSHashEntryFormat{
 		NetworkTypeID:          ntd.NetworkTypeID(),
@@ -157,9 +125,6 @@ func (bd *digest) NTSHashEntryAt(i int) module.NTSHashEntryFormat {
 }
 
 func (bd *digest) NTSVoteCount(pcm module.BTPProofContextMap) (int, error) {
-	bd.mu.Lock()
-	defer bd.mu.Unlock()
-
 	count := 0
 	for _, ntd := range bd.core.NetworkTypeDigests() {
 		_, err := pcm.ProofContextFor(ntd.NetworkTypeID())
