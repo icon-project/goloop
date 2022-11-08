@@ -269,12 +269,18 @@ func (es *ExtensionStateImpl) GetPRep(address module.Address) *icstate.PRep {
 	return es.State.GetPRepByOwner(address)
 }
 
-func (es *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight int64) (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetPRepInJSON(cc icmodule.CallContext, address module.Address) (map[string]interface{}, error) {
 	prep := es.State.GetPRepByOwner(address)
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	return prep.ToJSON(blockHeight, es.State.GetBondRequirement()), nil
+	var dsaMask int64
+	if cc.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := cc.GetBTPContext(); bc != nil {
+			dsaMask = bc.GetActiveDSAMask()
+		}
+	}
+	return prep.ToJSON(cc.BlockHeight(), es.State.GetBondRequirement(), dsaMask), nil
 }
 
 func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {

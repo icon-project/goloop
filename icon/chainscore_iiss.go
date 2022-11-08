@@ -242,7 +242,7 @@ func (s *chainScore) Ex_getPRep(address module.Address) (map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
-	res, err := es.GetPRepInJSON(address, s.cc.BlockHeight())
+	res, err := es.GetPRepInJSON(s.newCallContext(s.cc), address)
 	if err != nil {
 		return nil, scoreresult.InvalidInstanceError.Wrap(err, "Failed to get PRep")
 	} else {

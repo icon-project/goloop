@@ -308,7 +308,7 @@ func (term *termData) prepsToJSON(blockHeight int64, state *State) []interface{}
 		}
 		grade := prep.Grade()
 		if grade == GradeMain || grade == GradeSub {
-			prepInJSON := prep.ToJSON(blockHeight, br)
+			prepInJSON := prep.ToJSON(blockHeight, br, 0)
 			jso = append(jso, prepInJSON)
 		}
 	}

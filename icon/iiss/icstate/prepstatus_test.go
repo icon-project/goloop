@@ -699,7 +699,7 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 
 func TestPrepStatusData_ToJSON(t *testing.T) {
 	ps := NewPRepStatus()
-	jso := ps.ToJSON(100, 5)
+	jso := ps.ToJSON(100, 5, 0)
 
 	penalty, ok := jso["penalty"].(int64)
 	assert.True(t, ok)

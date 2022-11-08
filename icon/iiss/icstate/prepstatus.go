@@ -293,7 +293,7 @@ func (ps *prepStatusData) clone() prepStatusData {
 	}
 }
 
-func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64, dsaMask int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
@@ -305,6 +305,9 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64) map[s
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)
+	if dsaMask != 0 {
+		jso["hasPublicKey"] = (ps.GetDSAMask() & dsaMask) == dsaMask
+	}
 	return jso
 }
 

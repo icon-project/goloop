@@ -39,9 +39,9 @@ func (p *PRep) NodeAddress() module.Address {
 	return pb.GetNode(p.owner)
 }
 
-func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64) map[string]interface{} {
+func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64, activeDSAMask int64) map[string]interface{} {
 	pb := p.getPRepBaseState()
-	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement))
+	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement, activeDSAMask))
 	jso["address"] = p.owner
 	return jso
 }
