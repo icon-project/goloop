@@ -136,7 +136,6 @@ type networkTypeDigestFormat struct {
 
 type networkTypeDigestCoreFromBytes struct {
 	format              networkTypeDigestFormat
-	networkSectionsRoot []byte
 }
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeID() int64 {
@@ -161,7 +160,6 @@ func (ntd *networkTypeDigestCoreFromBytes) RLPEncodeSelf(e codec.Encoder) error 
 
 func (ntd *networkTypeDigestCoreFromBytes) RLPDecodeSelf(d codec.Decoder) error {
 	err := d.Decode(&ntd.format)
-	ntd.networkSectionsRoot = nil
 	return err
 }
 
