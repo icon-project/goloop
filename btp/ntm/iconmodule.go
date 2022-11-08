@@ -17,6 +17,8 @@
 package ntm
 
 import (
+	"sync"
+
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common"
@@ -95,6 +97,12 @@ func (m *iconModuleCore) NetworkTypeKeyFromDSAKey(key []byte) ([]byte, error) {
 	return key, nil
 }
 
-func init() {
-	iconModuleInstance = register(iconUID, &iconModuleCore{})
+var once sync.Once
+
+// InitIconModule initializes icon module. This function shall be
+// used only in test code
+func InitIconModule() {
+	once.Do(func() {
+		iconModuleInstance = register(iconUID, &iconModuleCore{})
+	})
 }
