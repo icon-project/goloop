@@ -588,16 +588,17 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetPRepSet(bc state.BTPContext) PRepSet {
+func (s *State) GetPRepSet(bc state.BTPContext, revision int) PRepSet {
+	checkMask := bc != nil && revision >= icmodule.RevisionBTP2
 	dsaMask := int64(0)
-	if bc != nil {
+	if checkMask {
 		dsaMask = bc.GetActiveDSAMask()
 	}
 	preps := s.GetPReps(true)
 	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
 	for _, prep := range preps {
 		pubKeyMask := int64(0)
-		if bc != nil {
+		if checkMask {
 			pubKeyMask = bc.GetPublicKeyMask(prep.NodeAddress())
 		}
 		entry := NewPRepSetEntry(prep, pubKeyMask&dsaMask == dsaMask)
@@ -643,10 +644,10 @@ func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, e
 	return jso, nil
 }
 
-func (s *State) GetPRepsInJSON(blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {
+func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
-	prepSet := s.GetPRepSet(nil)
-	prepSet.SortByGrade(br, revision)
+	prepSet := s.GetPRepSet(bc, revision)
+	prepSet.SortForQuery(br, revision)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)

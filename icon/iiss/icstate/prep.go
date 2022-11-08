@@ -91,7 +91,7 @@ type PRepSet interface {
 	GetByIndex(i int) PRepSetEntry
 	ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots
 	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br int64, revision int)
-	SortByGrade(br int64, revision int)
+	SortForQuery(br int64, revision int)
 }
 
 type PRepSetEntry interface {
@@ -282,9 +282,9 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	}
 }
 
-func (p *prepSetImpl) SortByGrade(br int64, revision int) {
+func (p *prepSetImpl) SortForQuery(br int64, revision int) {
 	if revision >= icmodule.RevisionBTP2 {
-		p.sort(br, cmpGrade)
+		p.sort(br, cmpPubKey)
 	} else {
 		p.sort(br, nil)
 	}
@@ -305,10 +305,6 @@ func cmpPubKey(e0, e1 PRepSetEntry) int {
 		return -1
 	}
 	return 0
-}
-
-func cmpGrade(e0, e1 PRepSetEntry) int {
-	return e0.Grade().Cmp(e1.Grade())
 }
 
 func lessByPower(e0, e1 PRepSetEntry, br int64, cmp func(i, j PRepSetEntry) int) bool {
