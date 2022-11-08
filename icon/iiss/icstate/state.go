@@ -643,10 +643,10 @@ func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, e
 	return jso, nil
 }
 
-func (s *State) GetPRepsInJSON(blockHeight int64, start, end int) (map[string]interface{}, error) {
+func (s *State) GetPRepsInJSON(blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	prepSet := s.GetPRepSet(nil)
-	prepSet.SortByGrade(br)
+	prepSet.SortByGrade(br, revision)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)

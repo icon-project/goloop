@@ -498,7 +498,7 @@ func (sim *simulatorImpl) GetPRepTerm() map[string]interface{} {
 
 func (sim *simulatorImpl) GetPReps() map[string]interface{} {
 	es := sim.getExtensionState(true)
-	jso, _ := es.State.GetPRepsInJSON(sim.BlockHeight(), 0, 0)
+	jso, _ := es.State.GetPRepsInJSON(sim.BlockHeight(), 0, 0, sim.revision.Value())
 	return jso
 }
 
