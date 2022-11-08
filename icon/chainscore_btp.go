@@ -135,6 +135,7 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 	if err = bs.SetPublicKey(bc, pubKeyAddr, iconDSA, pubKey); err != nil {
 		return err
 	}
+	prep.SetDSAMask(bc.GetPublicKeyMask(pubKeyAddr))
 	if err = es.OnSetPublicKey(s.newCallContext(s.cc), prep.Owner(), bc.GetDSAIndex(iconDSA)); err != nil {
 		return err
 	}

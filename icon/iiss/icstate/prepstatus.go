@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 	"math/bits"
 
@@ -121,6 +122,7 @@ type prepStatusData struct {
 	vPenaltyMask uint32
 	lastState    VoteState
 	lastHeight   int64
+	dsaMask      int64
 
 	effectiveDelegated *big.Int
 }
@@ -243,6 +245,10 @@ func (ps *prepStatusData) GetVFailCont(blockHeight int64) int64 {
 	return ps.vFailCont
 }
 
+func (ps *prepStatusData) GetDSAMask() int64 {
+	return ps.dsaMask
+}
+
 func (ps *prepStatusData) getSafeHeightDiff(blockHeight int64) int64 {
 	diff := blockHeight - ps.lastHeight
 	if diff < 0 {
@@ -265,10 +271,11 @@ func (ps *prepStatusData) equal(other *prepStatusData) bool {
 		ps.vFailCont == other.vFailCont &&
 		ps.vPenaltyMask == other.vPenaltyMask &&
 		ps.lastState == other.lastState &&
-		ps.lastHeight == other.lastHeight
+		ps.lastHeight == other.lastHeight &&
+		ps.dsaMask == other.dsaMask
 }
 
-func (ps prepStatusData) clone() prepStatusData {
+func (ps *prepStatusData) clone() prepStatusData {
 	return prepStatusData{
 		grade:        ps.grade,
 		status:       ps.status,
@@ -280,6 +287,7 @@ func (ps prepStatusData) clone() prepStatusData {
 		vPenaltyMask: ps.vPenaltyMask,
 		lastState:    ps.lastState,
 		lastHeight:   ps.lastHeight,
+		dsaMask:      ps.dsaMask,
 
 		effectiveDelegated: ps.effectiveDelegated,
 	}
@@ -337,12 +345,13 @@ func (ps *prepStatusData) IsEmpty() bool {
 		ps.vTotal == 0 &&
 		ps.lastState == None &&
 		ps.lastHeight == 0 &&
-		ps.status == NotReady
+		ps.status == NotReady &&
+		ps.dsaMask == 0
 }
 
 func (ps *prepStatusData) String() string {
 	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s ed=%d",
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s ed=%d dm=%d",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -355,6 +364,7 @@ func (ps *prepStatusData) String() string {
 		ps.bonded,
 		ps.getVoted(),
 		ps.effectiveDelegated,
+		ps.dsaMask,
 	)
 }
 
@@ -366,9 +376,9 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			format = "PRepStatus{" +
 				"status=%s grade=%s lastState=%s lastHeight=%d " +
 				"vFail=%d vTotal=%d vPenaltyCount=%d vFailCont=%d " +
-				"delegated=%s bonded=%s effectiveDelegated=%d}"
+				"delegated=%s bonded=%s effectiveDelegated=%d dsaMask=%d}"
 		} else {
-			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d}"
+			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d %d}"
 		}
 		_, _ = fmt.Fprintf(
 			f, format,
@@ -383,6 +393,7 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			ps.delegated,
 			ps.bonded,
 			ps.effectiveDelegated,
+			ps.dsaMask,
 		)
 	case 's':
 		_, _ = fmt.Fprint(f, ps.String())
@@ -399,7 +410,7 @@ func (ps *PRepStatusSnapshot) Version() int {
 }
 
 func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeAll(
+	if n, err := decoder.DecodeMulti(
 		&ps.grade,
 		&ps.status,
 		&ps.delegated,
@@ -410,11 +421,16 @@ func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&ps.vPenaltyMask,
 		&ps.lastState,
 		&ps.lastHeight,
-	)
+		&ps.dsaMask,
+	); err == nil || (n == 10 && err == io.EOF) {
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
+	if err := encoder.EncodeMulti(
 		ps.grade,
 		ps.status,
 		ps.delegated,
@@ -425,7 +441,13 @@ func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 		ps.vPenaltyMask,
 		ps.lastState,
 		ps.lastHeight,
-	)
+	); err != nil {
+		return err
+	}
+	if ps.dsaMask == 0 {
+		return nil
+	}
+	return encoder.Encode(ps.dsaMask)
 }
 
 func (ps *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
@@ -447,6 +469,7 @@ var emptyPRepStatusSnapshot = &PRepStatusSnapshot{
 		lastState:  None,
 		lastHeight: 0,
 		status:     NotReady,
+		dsaMask:    0,
 	},
 }
 
@@ -484,18 +507,6 @@ func (ps *PRepStatusState) GetSnapshot() *PRepStatusSnapshot {
 	return ps.last
 }
 
-func (ps *PRepStatusState) IsEmpty() bool {
-	return ps.grade == GradeCandidate &&
-		ps.delegated.Sign() == 0 &&
-		ps.bonded.Sign() == 0 &&
-		ps.vFail == 0 &&
-		ps.vFailCont == 0 &&
-		ps.vTotal == 0 &&
-		ps.lastState == None &&
-		ps.lastHeight == 0 &&
-		ps.status == NotReady
-}
-
 func (ps *PRepStatusState) SetDelegated(delegated *big.Int) {
 	ps.delegated = delegated
 	ps.setDirty()
@@ -528,6 +539,13 @@ func (ps *PRepStatusState) Activate() error {
 func (ps *PRepStatusState) SetVTotal(t int64) {
 	ps.vTotal = t
 	ps.setDirty()
+}
+
+func (ps *PRepStatusState) SetDSAMask(m int64) {
+	if ps.dsaMask != m {
+		ps.dsaMask = m
+		ps.setDirty()
+	}
 }
 
 func (ps *PRepStatusState) resetVFailCont() {

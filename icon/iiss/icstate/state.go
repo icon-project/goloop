@@ -589,18 +589,14 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 }
 
 func (s *State) GetPRepSet(bc state.BTPContext, revision int) PRepSet {
-	checkMask := bc != nil && revision >= icmodule.RevisionBTP2
-	dsaMask := int64(0)
-	if checkMask {
+	var dsaMask int64
+	if bc != nil && revision >= icmodule.RevisionBTP2 {
 		dsaMask = bc.GetActiveDSAMask()
 	}
 	preps := s.GetPReps(true)
 	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
 	for _, prep := range preps {
-		pubKeyMask := int64(0)
-		if checkMask {
-			pubKeyMask = bc.GetPublicKeyMask(prep.NodeAddress())
-		}
+		pubKeyMask := prep.GetDSAMask()
 		entry := NewPRepSetEntry(prep, pubKeyMask&dsaMask == dsaMask)
 		prepSetEntries = append(prepSetEntries, entry)
 	}
@@ -673,9 +669,21 @@ func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, en
 	jso := make(map[string]interface{})
 	prepList := make([]interface{}, 0, end)
 
+	var dsaMask int64
+	if bc != nil && revision >= icmodule.RevisionBTP2 {
+		dsaMask = bc.GetActiveDSAMask()
+	}
 	for i := start - 1; i < end; i++ {
 		prep := prepSet.GetByIndex(i).PRep()
-		prepList = append(prepList, prep.ToJSON(blockHeight, br))
+		prepJSO := prep.ToJSON(blockHeight, br)
+		if dsaMask != 0 {
+			if (prep.GetDSAMask() & dsaMask) == dsaMask {
+				prepJSO["hasPublicKey"] = "0x1"
+			} else {
+				prepJSO["hasPublicKey"] = "0x0"
+			}
+		}
+		prepList = append(prepList, prepJSO)
 	}
 
 	jso["startRanking"] = start
