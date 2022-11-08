@@ -365,16 +365,33 @@ func TestPRepSet_SortByGrade(t *testing.T) {
 			bonded:    big.NewInt(3),
 		},
 	}
-	expect := []*PRep{prep4, prep1, prep3, prep2, prep5}
 
 	prepSet := NewPRepSet(prepSetEntries)
 
-	prepSet.SortByGrade(br)
-	for j := 0; j < prepSet.Size(); j++ {
-		rEntry := prepSet.GetByIndex(j)
-		ePRep := expect[j]
-		ro := rEntry.Owner()
-		eo := ePRep.Owner()
-		assert.True(t, ro.Equal(eo), fmt.Sprintf("e:%s r:%s", eo, ro))
+	tests := []struct {
+		revision int
+		expect   []*PRep
+	}{
+		{
+			icmodule.RevisionBTP2 - 1,
+			[]*PRep{prep4, prep5, prep3, prep2, prep1},
+		},
+		{
+			icmodule.RevisionBTP2,
+			[]*PRep{prep4, prep1, prep3, prep2, prep5},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("rev=%d", tt.revision), func(t *testing.T) {
+			prepSet.SortByGrade(br, tt.revision)
+			for j := 0; j < prepSet.Size(); j++ {
+				rEntry := prepSet.GetByIndex(j)
+				ePRep := tt.expect[j]
+				ro := rEntry.Owner()
+				eo := ePRep.Owner()
+				assert.True(t, ro.Equal(eo), fmt.Sprintf("e:%s r:%s", eo, ro))
+			}
+		})
 	}
 }
