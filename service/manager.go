@@ -794,7 +794,7 @@ func (m *manager) NextProofContextMapFromResult(result []byte) (module.BTPProofC
 		return nil, err
 	}
 	btpContext := state.NewBTPContext(nil, store)
-	return btp.NewProofContextsMap(btpContext)
+	return btp.NewProofContextMap(btpContext)
 }
 
 func (m *manager) HasTransaction(id []byte) bool {

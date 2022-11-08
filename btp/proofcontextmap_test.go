@@ -138,7 +138,7 @@ func newPCMTest(t *testing.T) *pcmTest {
 			},
 		},
 	}
-	pcm, err := NewProofContextsMap(view)
+	pcm, err := NewProofContextMap(view)
 	assert.NoError(err)
 
 	return &pcmTest{

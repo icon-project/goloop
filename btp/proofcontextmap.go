@@ -124,7 +124,7 @@ func (m *proofContextMap) Verify(
 	return nil
 }
 
-func NewProofContextsMap(view StateView) (module.BTPProofContextMap, error) {
+func NewProofContextMap(view StateView) (module.BTPProofContextMap, error) {
 	res := &proofContextMap{
 		pcMap: make(map[int64]module.BTPProofContext),
 	}
