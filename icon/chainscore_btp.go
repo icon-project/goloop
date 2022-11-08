@@ -20,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -60,7 +61,7 @@ func (s *chainScore) Ex_getPRepNodePublicKey(address module.Address) ([]byte, er
 	}
 	prep := es.GetPRep(address)
 	if prep == nil {
-		return nil, scoreresult.New(module.StatusAccessDenied, "address is not P-Rep")
+		return nil, icmodule.IllegalArgumentError.New("address is not P-Rep")
 	}
 
 	return s.newBTPContext().GetPublicKey(prep.NodeAddress(), iconDSA), nil
@@ -79,7 +80,7 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if len(pubKey) == 0 {
-		return scoreresult.New(module.StatusInvalidParameter, "Invalid pubKey")
+		return icmodule.IllegalArgumentError.New("Invalid pubKey")
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
@@ -92,7 +93,7 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 	}
 	prep := es.GetPRep(address)
 	if prep == nil {
-		return scoreresult.New(module.StatusInvalidParameter, "address is not P-Rep")
+		return icmodule.IllegalArgumentError.New("address is not P-Rep")
 	}
 	nodeAddress := prep.NodeAddress()
 
@@ -111,11 +112,10 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 
 	if register {
 		if v := bc.GetPublicKey(pubKeyAddr, iconDSA); v != nil {
-			return scoreresult.New(module.StatusInvalidParameter,
-				"There is public key already. To update public key, user setPRepNodePublicKey")
+			return icmodule.IllegalArgumentError.New("There is public key already. To update public key, use setPRepNodePublicKey")
 		}
 		if !pubKeyAddr.Equal(nodeAddress) {
-			return scoreresult.Errorf(module.StatusInvalidParameter,
+			return icmodule.IllegalArgumentError.Errorf(
 				"Public key and node address of P-Rep do not match. %s!=%s", pubKeyAddr, nodeAddress)
 		}
 	} else {
@@ -216,7 +216,7 @@ func (s *chainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 		return err
 	}
 	if len(message) == 0 {
-		return scoreresult.New(module.StatusInvalidParameter, "Invalid BTP message")
+		return icmodule.IllegalArgumentError.New("Invalid BTP message")
 	}
 	if bs, err := s.getBTPState(); err != nil {
 		return err
