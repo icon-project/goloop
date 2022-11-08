@@ -321,76 +321,85 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}
 }
 
-func TestPRepSet_SortByGrade(t *testing.T) {
+func TestPRepSet_SortForQuery(t *testing.T) {
 	br := int64(5)
 	prep1 := newDummyPRep(1)
-	prep2 := newDummyPRep(2)
-	prep3 := newDummyPRep(3)
-	prep4 := newDummyPRep(4)
-	prep5 := newDummyPRep(5)
+	prep2 := newDummyPRep(1)
+	prep3 := newDummyPRep(1)
+	prep4 := newDummyPRep(1)
+	prep5 := newDummyPRep(1)
+	prep6 := newDummyPRep(1)
 	prepSetEntries := []PRepSetEntry{
 		&dummyPRepSetEntry{
 			prep:      prep1,
-			grade:     GradeMain,
 			power:     big.NewInt(1),
 			delegated: big.NewInt(1),
 			bonded:    big.NewInt(1),
+			pubKey:    true,
 		},
 		&dummyPRepSetEntry{
 			prep:      prep2,
-			grade:     GradeSub,
 			power:     big.NewInt(2),
 			delegated: big.NewInt(2),
 			bonded:    big.NewInt(2),
+			pubKey:    false,
 		},
 		&dummyPRepSetEntry{
 			prep:      prep3,
-			grade:     GradeSub,
 			power:     big.NewInt(3),
 			delegated: big.NewInt(3),
 			bonded:    big.NewInt(3),
+			pubKey:    false,
 		},
 		&dummyPRepSetEntry{
 			prep:      prep4,
-			grade:     GradeMain,
 			power:     big.NewInt(4),
 			delegated: big.NewInt(4),
 			bonded:    big.NewInt(4),
+			pubKey:    false,
 		},
 		&dummyPRepSetEntry{
 			prep:      prep5,
-			grade:     GradeCandidate,
 			power:     big.NewInt(3),
 			delegated: big.NewInt(3),
 			bonded:    big.NewInt(3),
+			pubKey:    true,
+		},
+		&dummyPRepSetEntry{
+			prep:      prep6,
+			power:     big.NewInt(0),
+			delegated: big.NewInt(0),
+			bonded:    big.NewInt(0),
+			pubKey:    true,
 		},
 	}
 
 	prepSet := NewPRepSet(prepSetEntries)
 
 	tests := []struct {
-		revision int
-		expect   []*PRep
+		rev    int
+		expect []*PRep
 	}{
 		{
 			icmodule.RevisionBTP2 - 1,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1},
+			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 		},
 		{
 			icmodule.RevisionBTP2,
-			[]*PRep{prep4, prep1, prep3, prep2, prep5},
+			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("rev=%d", tt.revision), func(t *testing.T) {
-			prepSet.SortByGrade(br, tt.revision)
+		t.Run(fmt.Sprintf("rev=%d", tt.rev), func(t *testing.T) {
+			prepSet.SortForQuery(br, tt.rev)
 			for j := 0; j < prepSet.Size(); j++ {
-				rEntry := prepSet.GetByIndex(j)
+				// check sort order
+				aEntry := prepSet.GetByIndex(j)
 				ePRep := tt.expect[j]
-				ro := rEntry.Owner()
+				ao := aEntry.Owner()
 				eo := ePRep.Owner()
-				assert.True(t, ro.Equal(eo), fmt.Sprintf("e:%s r:%s", eo, ro))
+				assert.True(t, ao.Equal(eo), fmt.Sprintf("%d: e:%s a:%s", j, eo, ao))
 			}
 		})
 	}

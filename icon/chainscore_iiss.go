@@ -268,8 +268,7 @@ func (s *chainScore) Ex_getPReps(startRanking, endRanking *common.HexInt) (map[s
 	if err != nil {
 		return nil, err
 	}
-	blockHeight := s.cc.BlockHeight()
-	jso, err := es.State.GetPRepsInJSON(blockHeight, start, end, s.cc.Revision().Value())
+	jso, err := es.GetPRepsInJSON(s.newCallContext(s.cc), start, end)
 	if err != nil {
 		return nil, scoreresult.InvalidParameterError.Wrapf(
 			err, "Failed to get PReps: start=%d end=%d", start, end,

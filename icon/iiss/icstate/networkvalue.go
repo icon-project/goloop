@@ -380,7 +380,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
 	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRatio()
 
-	preps := s.GetPRepSet(nil)
+	preps := s.GetPRepSet(nil, 0)
 	if preps != nil {
 		jso["totalBonded"] = preps.TotalBonded()
 		jso["totalDelegated"] = preps.TotalDelegated()

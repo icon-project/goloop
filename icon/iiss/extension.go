@@ -277,6 +277,10 @@ func (es *ExtensionStateImpl) GetPRepInJSON(address module.Address, blockHeight 
 	return prep.ToJSON(blockHeight, es.State.GetBondRequirement()), nil
 }
 
+func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {
+	return es.State.GetPRepsInJSON(cc.GetBTPContext(), cc.BlockHeight(), start, end, cc.Revision().Value())
+}
+
 func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
@@ -952,7 +956,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
-	prepSet := es.State.GetPRepSet(wc.GetBTPContext())
+	prepSet := es.State.GetPRepSet(wc.GetBTPContext(), revision)
 	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached

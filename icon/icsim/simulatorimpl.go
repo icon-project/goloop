@@ -496,9 +496,16 @@ func (sim *simulatorImpl) GetPRepTerm() map[string]interface{} {
 	return jso
 }
 
+func (sim *simulatorImpl) newCallContext() icmodule.CallContext {
+	wss := sim.wss
+	ws := newWorldState(wss, false)
+	wc := NewWorldContext(ws, sim.blockHeight+1, sim.revision, nil, sim.stepPrice)
+	return NewCallContext(wc, state.SystemAddress)
+}
+
 func (sim *simulatorImpl) GetPReps() map[string]interface{} {
 	es := sim.getExtensionState(true)
-	jso, _ := es.State.GetPRepsInJSON(sim.BlockHeight(), 0, 0, sim.revision.Value())
+	jso, _ := es.GetPRepsInJSON(sim.newCallContext(), 0, 0)
 	return jso
 }
 
