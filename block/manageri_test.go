@@ -312,7 +312,7 @@ func TestBlockManager_Import_BadTimestamp(t *testing.T) {
 	blk := s.bg.getBlock(2)
 	assert.NotNil(t, blk)
 	blk.(*blockV2).timestamp = blk.(*blockV2).timestamp + 10
-	blk.(*blockV2)._id = nil
+	blk.(*blockV2)._id.UnsafePurge()
 	r = getReaderForBlock(t, blk)
 	br = importSync(s.bm, r)
 	// TODO: check if the observed error is the expected error
@@ -337,7 +337,7 @@ func TestBlockManager_Import_NonAscendingTimestamp(t *testing.T) {
 	oriTimestamp := blk.(*blockV2).timestamp
 	blk.(*blockV2).timestamp = votes.Timestamp()
 	oriID := blk.(*blockV2)._id
-	blk.(*blockV2)._id = nil
+	blk.(*blockV2)._id.UnsafePurge()
 	r = getReaderForBlock(t, blk)
 	prevHash := blk.ID()
 	blk.(*blockV2).votes = oriVotes
@@ -351,7 +351,7 @@ func TestBlockManager_Import_NonAscendingTimestamp(t *testing.T) {
 	blk = s.bg.getBlock(3)
 	assert.NotNil(t, blk)
 	blk.(*blockV2).prevID = prevHash
-	blk.(*blockV2)._id = nil
+	blk.(*blockV2)._id.UnsafePurge()
 	r = getReaderForBlock(t, blk)
 	br = importSync(s.bm, r)
 	// TODO: check if the observed error is the expected error
