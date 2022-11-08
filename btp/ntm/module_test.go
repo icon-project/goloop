@@ -50,6 +50,7 @@ func testModuleBasics(t *testing.T, uid, dsa string) {
 }
 
 func TestModule_Basics(t *testing.T) {
+	InitIconModule()
 	testModuleBasics(t, "eth", "ecdsa/secp256k1")
 	testModuleBasics(t, "icon", "ecdsa/secp256k1")
 }

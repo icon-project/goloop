@@ -20,6 +20,7 @@ import (
 	"io"
 
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -136,7 +137,6 @@ type networkTypeDigestFormat struct {
 
 type networkTypeDigestCoreFromBytes struct {
 	format              networkTypeDigestFormat
-	networkSectionsRoot []byte
 }
 
 func (ntd *networkTypeDigestCoreFromBytes) NetworkTypeID() int64 {
@@ -161,7 +161,6 @@ func (ntd *networkTypeDigestCoreFromBytes) RLPEncodeSelf(e codec.Encoder) error 
 
 func (ntd *networkTypeDigestCoreFromBytes) RLPDecodeSelf(d codec.Decoder) error {
 	err := d.Decode(&ntd.format)
-	ntd.networkSectionsRoot = nil
 	return err
 }
 
@@ -172,8 +171,9 @@ type networkDigestFormat struct {
 }
 
 type networkDigestFromBytes struct {
-	format        networkDigestFormat
-	messageHashes []byte
+	format networkDigestFormat
+
+	messageHashes atomic.Cache[[]byte]
 }
 
 func (nd *networkDigestFromBytes) NetworkID() int64 {
@@ -192,7 +192,7 @@ func (nd *networkDigestFromBytes) MessageList(
 	dbase db.Database,
 	mod module.NetworkTypeModule,
 ) (module.BTPMessageList, error) {
-	if nd.messageHashes == nil {
+	hashes, err := nd.messageHashes.TryGet(func() ([]byte, error) {
 		bk, err := dbase.GetBucket(mod.ListByMerkleRootBucket())
 		if err != nil {
 			return nil, err
@@ -201,9 +201,12 @@ func (nd *networkDigestFromBytes) MessageList(
 		if err != nil {
 			return nil, err
 		}
-		nd.messageHashes = bs
+		return bs, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return newMessageList(nd.messageHashes, nil, dbase, mod), nil
+	return newMessageList(hashes, nil, dbase, mod), nil
 }
 
 func (nd *networkDigestFromBytes) RLPEncodeSelf(e codec.Encoder) error {

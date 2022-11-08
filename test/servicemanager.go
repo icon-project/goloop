@@ -450,5 +450,5 @@ func (sm *ServiceManager) NextProofContextMapFromResult(result []byte) (module.B
 		return nil, err
 	}
 	btpContext := state.NewBTPContext(nil, sbss)
-	return btp.NewProofContextsMap(btpContext)
+	return btp.NewProofContextMap(btpContext)
 }

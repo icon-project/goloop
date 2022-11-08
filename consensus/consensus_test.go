@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -515,6 +516,7 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 }
 
 func TestConsensus_RevokeValidator(t_ *testing.T) {
+	ntm.InitIconModule()
 	const uid2 = "icon"
 	tst := newBTPTest(t_)
 	defer tst.Close()

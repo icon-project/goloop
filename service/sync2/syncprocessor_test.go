@@ -425,9 +425,8 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	builder.RequestData(db.BytesByHash, key1, req1)
 	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
 
-	sproc.Start(doneCb)
 	wg.Add(1)
-
+	sproc.Start(doneCb)
 	wg.Wait()
 
 	// then done with nil
@@ -441,8 +440,8 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	builder2.RequestData(db.BytesByHash, key1, req1)
 	sproc2 := newSyncProcessor(builder2, syncer1.reactors, syncer1.logger, false)
 
-	sproc2.Start(doneCb)
 	wg.Add(1)
+	sproc2.Start(doneCb)
 
 	sproc2.Stop()
 	wg.Wait()

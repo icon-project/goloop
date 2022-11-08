@@ -18,7 +18,7 @@ package btp
 
 import (
 	"github.com/icon-project/goloop/btp/ntm"
-	"github.com/icon-project/goloop/common/cache"
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -27,6 +27,7 @@ import (
 )
 
 type btpSectionByBuilder struct {
+	// immutables
 	networkTypeSections networkTypeSectionSlice
 	inactivatedNTs      []int64
 	digest              *digest
@@ -64,10 +65,11 @@ func (bs *btpSectionByBuilder) NetworkTypeSectionFor(ntid int64) (module.Network
 }
 
 type btpSectionDigest struct {
-	bs                 *btpSectionByBuilder
-	bytes              cache.ByteSlice
-	hash               cache.ByteSlice
-	networkTypeDigests []module.NetworkTypeDigest
+	bs *btpSectionByBuilder
+
+	bytes              atomic.Cache[[]byte]
+	hash               atomic.Cache[[]byte]
+	networkTypeDigests atomic.Cache[[]module.NetworkTypeDigest]
 }
 
 func (bsd *btpSectionDigest) Bytes() []byte {
@@ -99,13 +101,13 @@ func (bsd *btpSectionDigest) Hash() []byte {
 }
 
 func (bsd *btpSectionDigest) NetworkTypeDigests() []module.NetworkTypeDigest {
-	if bsd.networkTypeDigests == nil {
-		bsd.networkTypeDigests = make([]module.NetworkTypeDigest, 0, len(bsd.bs.networkTypeSections))
+	return bsd.networkTypeDigests.Get(func() []module.NetworkTypeDigest {
+		networkTypeDigests := make([]module.NetworkTypeDigest, 0, len(bsd.bs.networkTypeSections))
 		for _, ntd := range bsd.bs.networkTypeSections {
-			bsd.networkTypeDigests = append(bsd.networkTypeDigests, ntd.(*networkTypeSectionByBuilder))
+			networkTypeDigests = append(networkTypeDigests, ntd.(*networkTypeSectionByBuilder))
 		}
-	}
-	return bsd.networkTypeDigests
+		return networkTypeDigests
+	})
 }
 
 func (bsd *btpSectionDigest) Flush(dbase db.Database) error {
@@ -135,10 +137,11 @@ type networkTypeSectionByBuilder struct {
 	nextProofContext    module.BTPProofContext
 	networkSections     networkSectionSlice
 	networkSectionsRoot []byte
-	networkDigests      []module.NetworkDigest
 	mod                 module.NetworkTypeModule
 	nsNPCChanged        bool
 	hash                []byte
+
+	networkDigests atomic.Cache[[]module.NetworkDigest]
 }
 
 func newNetworkTypeSection(
@@ -211,13 +214,13 @@ func (nts *networkTypeSectionByBuilder) NetworkTypeSectionHash() []byte {
 }
 
 func (nts *networkTypeSectionByBuilder) NetworkDigests() []module.NetworkDigest {
-	if nts.networkDigests == nil {
-		nts.networkDigests = make([]module.NetworkDigest, 0, len(nts.networkSections))
+	return nts.networkDigests.Get(func() []module.NetworkDigest {
+		networkDigests := make([]module.NetworkDigest, 0, len(nts.networkSections))
 		for _, ns := range nts.networkSections {
-			nts.networkDigests = append(nts.networkDigests, ns.(*networkSectionByBuilder))
+			networkDigests = append(networkDigests, ns.(*networkSectionByBuilder))
 		}
-	}
-	return nts.networkDigests
+		return networkDigests
+	})
 }
 
 func (nts *networkTypeSectionByBuilder) NetworkDigestFor(nid int64) module.NetworkDigest {
@@ -258,22 +261,21 @@ type networkTypeSectionDecision struct {
 	Round                  int32
 	NetworkTypeSectionHash []byte
 	mod                    module.NetworkTypeModule
-	bytes                  []byte
-	hash                   []byte
+
+	bytes atomic.Cache[[]byte]
+	hash  atomic.Cache[[]byte]
 }
 
 func (d *networkTypeSectionDecision) Bytes() []byte {
-	if d.bytes == nil {
-		d.bytes = codec.MustMarshalToBytes(d)
-	}
-	return d.bytes
+	return d.bytes.Get(func() []byte {
+		return codec.MustMarshalToBytes(d)
+	})
 }
 
 func (d *networkTypeSectionDecision) Hash() []byte {
-	if d.hash == nil {
-		d.hash = d.mod.Hash(d.Bytes())
-	}
-	return d.hash
+	return d.hash.Get(func() []byte {
+		return d.mod.Hash(d.Bytes())
+	})
 }
 
 func (nts *networkTypeSectionByBuilder) NewDecision(
@@ -328,6 +330,7 @@ func (nts *networkTypeSectionByBuilder) encodeDigest(e codec.Encoder) error {
 }
 
 type networkSectionByBuilder struct {
+	// immutables
 	networkID     int64
 	updateNumber  int64
 	prevHash      []byte

@@ -22,6 +22,7 @@ import (
 
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -75,25 +76,21 @@ func (b *blockV2Handler) NewBlock(
 		prevID = prev.ID()
 	}
 	return &blockV2{
-		blockV2Immut: blockV2Immut{
-			height:             height,
-			timestamp:          ts,
-			proposer:           proposer,
-			prevID:             prevID,
-			logsBloom:          logsBloom,
-			result:             result,
-			patchTransactions:  patchTransactions,
-			normalTransactions: normalTransactions,
-			nextValidatorsHash: nextValidators.Hash(),
-			_nextValidators:    nextValidators,
-			votes:              votes,
-			nsFilter:           bs.Digest().NetworkSectionFilter(),
-			sm:                 b.sm,
-		},
-		blockV2Mut: blockV2Mut{
-			_btpSection: bs,
-			_btpDigest:  bs.Digest(),
-		},
+		height:             height,
+		timestamp:          ts,
+		proposer:           proposer,
+		prevID:             prevID,
+		logsBloom:          logsBloom,
+		result:             result,
+		patchTransactions:  patchTransactions,
+		normalTransactions: normalTransactions,
+		nextValidatorsHash: nextValidators.Hash(),
+		_nextValidators:    nextValidators,
+		votes:              votes,
+		nsFilter:           bs.Digest().NetworkSectionFilter(),
+		sm:                 b.sm,
+		_btpSection:        atomic.MakeCache(bs),
+		_btpDigest:         atomic.MakeCache(bs.Digest()),
 	}
 }
 
@@ -125,21 +122,19 @@ func (b *blockV2Handler) NewBlockFromHeaderReader(r io.Reader) (base.Block, erro
 		return nil, err
 	}
 	return &blockV2{
-		blockV2Immut: blockV2Immut{
-			height:             header.Height,
-			timestamp:          header.Timestamp,
-			proposer:           proposer,
-			prevID:             header.PrevID,
-			logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
-			result:             header.Result,
-			patchTransactions:  patches,
-			normalTransactions: normalTxs,
-			nextValidatorsHash: nextValidators.Hash(),
-			_nextValidators:    nextValidators,
-			votes:              votes,
-			nsFilter:           module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap),
-			sm:                 b.sm,
-		},
+		height:             header.Height,
+		timestamp:          header.Timestamp,
+		proposer:           proposer,
+		prevID:             header.PrevID,
+		logsBloom:          txresult.NewLogsBloomFromCompressed(header.LogsBloom),
+		result:             header.Result,
+		patchTransactions:  patches,
+		normalTransactions: normalTxs,
+		nextValidatorsHash: nextValidators.Hash(),
+		_nextValidators:    nextValidators,
+		votes:              votes,
+		nsFilter:           module.BitSetFilterFromBytes(header.NSFilter, btp.NSFilterCap),
+		sm:                 b.sm,
 	}, nil
 }
 
@@ -217,24 +212,20 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, er
 		return nil, err
 	}
 	return &blockV2{
-		blockV2Immut: blockV2Immut{
-			height:             headerFormat.Height,
-			timestamp:          headerFormat.Timestamp,
-			proposer:           proposer,
-			prevID:             headerFormat.PrevID,
-			logsBloom:          txresult.NewLogsBloomFromCompressed(headerFormat.LogsBloom),
-			result:             headerFormat.Result,
-			patchTransactions:  patches,
-			normalTransactions: normalTxs,
-			nextValidatorsHash: headerFormat.NextValidatorsHash,
-			_nextValidators:    nextValidators,
-			votes:              votes,
-			nsFilter:           module.BitSetFilterFromBytes(headerFormat.NSFilter, btp.NSFilterCap),
-			sm:                 b.sm,
-		},
-		blockV2Mut: blockV2Mut{
-			_btpDigest: bd,
-		},
+		height:             headerFormat.Height,
+		timestamp:          headerFormat.Timestamp,
+		proposer:           proposer,
+		prevID:             headerFormat.PrevID,
+		logsBloom:          txresult.NewLogsBloomFromCompressed(headerFormat.LogsBloom),
+		result:             headerFormat.Result,
+		patchTransactions:  patches,
+		normalTransactions: normalTxs,
+		nextValidatorsHash: headerFormat.NextValidatorsHash,
+		_nextValidators:    nextValidators,
+		votes:              votes,
+		nsFilter:           module.BitSetFilterFromBytes(headerFormat.NSFilter, btp.NSFilterCap),
+		sm:                 b.sm,
+		_btpDigest:         atomic.MakeCache(bd),
 	}, nil
 }
 

@@ -13,8 +13,8 @@ import (
 
 const (
 	configSyncPriority              = 3
-	configExpiredTime               = 500  // in millisecond
-	configMaxExpiredTime            = 1200 // in millisecond
+	configExpiredTime               = 500 * time.Millisecond
+	configMaxExpiredTime            = 1300 * time.Millisecond
 	configMigrationInterval         = 200 * time.Millisecond
 	configDataSyncMigrationInterval = 3000 * time.Millisecond
 )

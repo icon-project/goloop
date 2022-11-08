@@ -97,6 +97,7 @@ type pcmTest struct {
 }
 
 func newPCMTest(t *testing.T) *pcmTest {
+	ntm.InitIconModule()
 	uids := []string{"eth", "icon"}
 	const count = 4
 	assert := assert.New(t)
@@ -137,7 +138,7 @@ func newPCMTest(t *testing.T) *pcmTest {
 			},
 		},
 	}
-	pcm, err := NewProofContextsMap(view)
+	pcm, err := NewProofContextMap(view)
 	assert.NoError(err)
 
 	return &pcmTest{
