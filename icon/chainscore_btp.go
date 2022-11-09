@@ -17,8 +17,8 @@
 package icon
 
 import (
-	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
@@ -48,7 +48,6 @@ func (s *chainScore) Ex_getBTPNetworkTypeID(name string) (int64, error) {
 	return s.newBTPContext().GetNetworkTypeIDByName(name), nil
 }
 
-const iconBTPUID = "icon"
 const iconDSA = "ecdsa/secp256k1"
 
 func (s *chainScore) Ex_getPRepNodePublicKey(address module.Address) ([]byte, error) {
@@ -97,12 +96,11 @@ func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte)
 	}
 	nodeAddress := prep.NodeAddress()
 
-	mod := ntm.ForUID(iconBTPUID)
-	a, err := mod.AddressFromPubKey(pubKey)
+	pk, err := crypto.ParsePublicKey(pubKey)
 	if err != nil {
-		return err
+		return icmodule.IllegalArgumentError.Wrap(err, "Failed to parse public key")
 	}
-	pubKeyAddr := common.MustNewAddress(a)
+	pubKeyAddr := common.NewAccountAddressFromPublicKey(pk)
 
 	bc := s.newBTPContext()
 	bs, err := s.getBTPState()
