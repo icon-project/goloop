@@ -240,7 +240,6 @@ func (h *messageDataHandler) OnData(value []byte, builder merkle.Builder) error 
 
 type digestDataHandler struct {
 	core   *digestCoreFromBytes
-	digest *digest
 }
 
 func (h *digestDataHandler) OnData(value []byte, builder merkle.Builder) error {
@@ -276,7 +275,6 @@ func NewDigestWithBuilder(builder merkle.Builder, hash []byte) (module.BTPDigest
 	}
 	builder.RequestData(db.BytesByHash, hash, &digestDataHandler{
 		core:   core,
-		digest: ret,
 	})
 	return ret, nil
 }
