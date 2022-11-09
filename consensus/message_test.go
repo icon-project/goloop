@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 )
@@ -93,4 +94,83 @@ func FuzzNewVoteListMessage(f *testing.F) {
 			msg.Verify()
 		}
 	})
+}
+
+type walletProvider struct {
+	wallet module.Wallet
+}
+
+func (wp *walletProvider) WalletFor(dsa string) module.BaseWallet {
+	switch dsa {
+	case "ecdsa/secp256k1":
+		return wp.wallet
+	}
+	return nil
+}
+
+func TestVoteMessage_VerifyOK(t *testing.T) {
+	assert := assert.New(t)
+	wp := &walletProvider{wallet.New()}
+	psb := NewPartSetBuffer(10)
+	_, _ = psb.Write(make([]byte, 10))
+	ps := psb.PartSet()
+	msg := newVoteMessage()
+	msg.Height = 1
+	msg.Round = 0
+	msg.Type = VoteTypePrecommit
+	msg.BlockID = []byte("abc")
+	msg.BlockPartSetIDAndNTSVoteCount = ps.ID().WithAppData(0)
+	msg.NTSVoteBases = nil
+	msg.Timestamp = 10
+	msg.NTSDProofParts = nil
+	_ = msg.sign(wp.wallet)
+	assert.NoError(msg.Verify())
+}
+
+func TestVoteMessage_VerifyMismatchBetweenAppDataAndNTSDProofPartsLen(t *testing.T) {
+	assert := assert.New(t)
+	wp := &walletProvider{wallet.New()}
+	w := wp.wallet
+	psb := NewPartSetBuffer(10)
+	_, _ = psb.Write(make([]byte, 10))
+	ps := psb.PartSet()
+	msg := newVoteMessage()
+	msg.Height = 1
+	msg.Round = 0
+	msg.Type = VoteTypePrecommit
+	msg.BlockID = []byte("abc")
+	msg.BlockPartSetIDAndNTSVoteCount = ps.ID().WithAppData(0)
+	msg.NTSVoteBases = []ntsVoteBase{
+		{1, []byte("abc")},
+	}
+	msg.Timestamp = 10
+	msg.NTSDProofParts = make([][]byte, 1)
+	pc, _ := ntm.ForUID("eth").NewProofContext([][]byte{w.PublicKey()})
+	pp, _ := pc.NewProofPart([]byte("abc"), wp)
+	msg.NTSDProofParts[0] = pp.Bytes()
+	_ = msg.sign(w)
+	assert.Error(msg.Verify())
+}
+
+func TestVoteMessage_VerifyMismatchBetweenNTSVoteBasesAndNTSDProofParts(t *testing.T) {
+	assert := assert.New(t)
+	wp := &walletProvider{wallet.New()}
+	w := wp.wallet
+	psb := NewPartSetBuffer(10)
+	_, _ = psb.Write(make([]byte, 10))
+	ps := psb.PartSet()
+	msg := newVoteMessage()
+	msg.Height = 1
+	msg.Round = 0
+	msg.Type = VoteTypePrecommit
+	msg.BlockID = []byte("abc")
+	msg.BlockPartSetIDAndNTSVoteCount = ps.ID().WithAppData(1)
+	msg.NTSVoteBases = []ntsVoteBase{}
+	msg.Timestamp = 10
+	msg.NTSDProofParts = make([][]byte, 1)
+	pc, _ := ntm.ForUID("eth").NewProofContext([][]byte{w.PublicKey()})
+	pp, _ := pc.NewProofPart([]byte("abc"), wp)
+	msg.NTSDProofParts[0] = pp.Bytes()
+	_ = msg.sign(w)
+	assert.Error(msg.Verify())
 }
