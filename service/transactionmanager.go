@@ -123,12 +123,6 @@ func (m *TransactionManager) removeWaitersInLock(id []byte) []chan<- interface{}
 	return nil
 }
 
-func (m *TransactionManager) removeWaiters(id []byte) []chan<- interface{} {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	return m.removeWaitersInLock(id)
-}
-
 type TxDrop struct {
 	ID  []byte
 	Err error

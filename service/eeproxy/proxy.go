@@ -610,12 +610,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	}
 }
 
-func (p *proxy) setState(s proxyState) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	p.state = s
-}
-
 func (p *proxy) close() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()

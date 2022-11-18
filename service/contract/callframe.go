@@ -78,10 +78,6 @@ func (f *callFrame) getStepAvailable() *big.Int {
 	return tmp.Sub(f.stepLimit, &f.stepUsed)
 }
 
-func (f *callFrame) getStepLimit() *big.Int {
-	return f.stepLimit
-}
-
 func (f *callFrame) addLog(addr module.Address, indexed, data [][]byte) {
 	if f.isQuery {
 		return

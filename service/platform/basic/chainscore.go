@@ -892,10 +892,6 @@ func (s *ChainScore) Ex_enableScore(address module.Address) error {
 	return nil
 }
 
-func (s *ChainScore) fromGovernance() bool {
-	return s.cc.Governance().Equal(s.from)
-}
-
 func (s *ChainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
 	if r1 >= r2 {
 		return nil

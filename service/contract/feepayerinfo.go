@@ -145,9 +145,7 @@ func (p *FeePayerInfo) Apply(p2 FeePayerInfo, steps *big.Int) {
 	payers := make([]*FeePayer, 0, len(*p)+len(p2)+1)
 	sub, own := p.payers()
 	if len(sub) > 0 {
-		for _, payer := range sub {
-			payers = append(payers, payer)
-		}
+		payers = append(payers, sub...)
 	}
 	p2.setParentOfSub()
 	for _, payer := range p2 {

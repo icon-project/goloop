@@ -364,20 +364,6 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 	return nil, errors.ErrIllegalArgument
 }
 
-type validatorSnapshotRequester struct {
-	ws *worldSnapshotImpl
-	vh []byte
-}
-
-func (r *validatorSnapshotRequester) OnData(value []byte, builder merkle.Builder) error {
-	if vs, err := ValidatorSnapshotFromHash(builder.Database(), r.vh); err != nil {
-		return err
-	} else {
-		r.ws.validators = vs
-	}
-	return nil
-}
-
 func NewWorldSnapshotWithBuilder(
 	builder merkle.Builder, sh []byte, vh []byte, ess ExtensionSnapshot, bh []byte,
 ) (WorldSnapshot, error) {

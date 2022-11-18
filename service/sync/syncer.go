@@ -106,11 +106,6 @@ type syncer struct {
 	startTime      time.Time
 }
 
-type Request struct {
-	reqID uint32
-	pi    module.ProtocolInfo
-}
-
 type Callback interface {
 	onResult(status errCode, p *peer)
 	onNodeData(p *peer, status errCode, t syncType, data [][]byte)
@@ -489,7 +484,7 @@ func (s *syncer) ForceSync() (*Result, error) {
 	s.cb(s, true)
 	defer func() {
 		s.cb(s, false)
-		syncDuration := time.Now().Sub(startTime)
+		syncDuration := time.Since(startTime)
 		elapsedMS := float64(syncDuration/time.Microsecond) / 1000
 		s.log.Infof("ForceSync : Elapsed: %9.3f ms\n", elapsedMS)
 	}()
@@ -566,7 +561,7 @@ func (s *syncer) Finalize() error {
 			}
 		}
 	}
-	syncDuration := time.Now().Sub(s.startTime)
+	syncDuration := time.Since(s.startTime)
 	elapsedMS := float64(syncDuration/time.Microsecond) / 1000
 	s.log.Infof("Finalize : Elapsed: %9.3f ms\n", elapsedMS)
 	return nil

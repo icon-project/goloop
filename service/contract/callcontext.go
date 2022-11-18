@@ -275,7 +275,7 @@ func (cc *callContext) DoIOTask(f func()) {
 	f()
 
 	cc.lock.Lock()
-	cc.ioTime += time.Now().Sub(start)
+	cc.ioTime += time.Since(start)
 	cc.ioStart = nil
 	cc.lock.Unlock()
 }

@@ -148,10 +148,6 @@ func (c *contract) Status() ContractStatus {
 	return c.state
 }
 
-const (
-	contractSnapshotImplEntries = 7
-)
-
 func (c *contract) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		c.state,

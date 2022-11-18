@@ -593,7 +593,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	oPubKey := dbase.Get(from, name)
-	if oPubKey != nil && bytes.Compare(oPubKey.Bytes(), pubKey) == 0 {
+	if oPubKey != nil && bytes.Equal(oPubKey.Bytes(), pubKey) {
 		return nil
 	}
 
@@ -766,9 +766,7 @@ func (bs *BTPStateImpl) checkAndApplyValidatorChange(bc BTPContext) error {
 		if err != nil {
 			return err
 		}
-		for _, ntid := range ntids {
-			vcNtids = append(vcNtids, ntid)
-		}
+		vcNtids = append(vcNtids, ntids...)
 	} else {
 		for i := 0; i < bs.validators.Len(); i++ {
 			v, _ := bs.validators.Get(i)

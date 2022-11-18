@@ -173,7 +173,7 @@ func (o *objectGraph) String() string {
 type objectGraphCache map[string]*objectGraph
 
 func (o objectGraphCache) Clone() objectGraphCache {
-	if o == nil || len(o) == 0 {
+	if len(o) == 0 {
 		return nil
 	}
 	n := make(map[string]*objectGraph, len(o))
