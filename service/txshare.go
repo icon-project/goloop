@@ -242,7 +242,7 @@ func (ts *TransactionShare) handleTxRequest() {
 		}
 	}
 	if next {
-		delay := handleTxRequestIntervalBase - time.Now().Sub(current)
+		delay := handleTxRequestIntervalBase - time.Since(current)
 		ts.handlerTimer.Reset(durationMax(delay, handleTxRequestIntervalMin))
 	}
 }

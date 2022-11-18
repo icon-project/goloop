@@ -312,7 +312,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 					"FAIL to install pre-installed score. addr=%s", &acc.Address)
 			}
 		} else if score.ContentID != "" {
-			if strings.HasPrefix(score.ContentID, contentIdHash) == true {
+			if strings.HasPrefix(score.ContentID, contentIdHash) {
 				contentHash := strings.TrimPrefix(score.ContentID, contentIdHash)
 				content, err := cc.GetPreInstalledScore(contentHash)
 				if err != nil {
@@ -326,7 +326,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 					return InvalidGenesisError.Wrapf(status,
 						"FAIL to install pre-installed score. addr=%s", &acc.Address)
 				}
-			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
+			} else if strings.HasPrefix(score.ContentID, contentIdCid) {
 				// TODO implement for contentCid
 				return InvalidGenesisError.New("CID prefix is't Unsupported")
 			} else {

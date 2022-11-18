@@ -37,6 +37,9 @@ func testReceiptJSONByRev(t *testing.T, rev module.Revision) {
 		t.Errorf("Fail on ToJSON err=%+v", err)
 	}
 	jb, err := json.MarshalIndent(jso, "", "    ")
+	if err != nil {
+		t.Errorf("FAIL to json.MarshalIndent() err=%+v", err)
+	}
 
 	fmt.Printf("JSON: %s\n", jb)
 
@@ -69,6 +72,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 
 	evj := ev.ToJSON(module.JSONVersion3)
 	evs, err := json.Marshal(evj)
+	assert.NoError(t, err)
 	t.Logf("JSON:%s", evs)
 
 	bs, err := codec.MarshalToBytes(&ev)
@@ -83,6 +87,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 	evj = ev2.ToJSON(module.JSONVersion3)
 	assert.NoError(t, err)
 	evs2, err := json.Marshal(evj)
+	assert.NoError(t, err)
 	t.Logf("JSON:%s", evs2)
 
 	assert.Equal(t, evs, evs2)
