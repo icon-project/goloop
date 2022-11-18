@@ -474,12 +474,12 @@ BTPBlockHeader is `B_LIST` of the following fields
 | MainHeight           | B_INT      |                                                                                           |
 | Round                | B_INT      |                                                                                           |
 | NextProofContextHash | B_BYTES    |                                                                                           |
-| NetworkSectionToRoot | B_LIST     | list of MerkleNode for merkle path from H(NetworkSection) to NSRoot                       |
+| NetworkSectionToRoot | B_LIST     | list of MerkleNode for merkle path from NetworkSection hash to NSRoot                     |
 | NetworkID            | B_INT      |                                                                                           |
 | UpdateNumber         | B_INT      | See [UpdateNumber](#updatenumber).                                                        |
-| Prev                 | B_BYTES(N) | H(NetworkSection) of prev BTP block                                                       |
+| Prev                 | B_BYTES(N) | NetworkSection hash of prev BTP block                                                     |
 | MessageCount         | B_INT      |                                                                                           |
-| MessagesRoot         | B_BYTES(N) | Merkle root of Messages                                                                   |
+| MessagesRoot         | B_BYTES(N) | Merkle root of Message hashes                                                             |
 | NextProofContext     | B_BYTES(N) | nil if NextProofContextHash is the same as previous block's value. non-nil if Prev is nil |
 
 ### MerkleNode
@@ -538,24 +538,91 @@ UpdateNumber = FirstMessageSN << 1 | ProofContextChanged
 
 ### Example of valid FirstMessageSN values
 
+| NS  | FirstMessageSN | MessageCount | Prev |
+|-----|----------------|--------------|------|
+| NS0 | 0              | 0            | nil  |
+| NS1 | 0              | 5            | NS0  |
+| NS2 | 5              | 0            | NS1  |
+| NS3 | 5              | 1            | NS2  |
+| NS4 | 6              | 0            | NS3  |
+
+## NetworkTypeSectionDecision
+
+`B_LIST` of the following fields
+
+| Name                   | Type    | Comment                              |
+|:-----------------------|:--------|:-------------------------------------|
+| SrcNetworkUID          | B_BYTES | globally unique ID of source network |
+| DstNetworkTypeID       | B_INT   |                                      |
+| Height                 | B_INT   |                                      |
+| Round                  | B_INT   |                                      |
+| NetworkTypeSectionHash | B_BYTES | NetworkTypeSection hash              |
+
+## NetworkTypeSection
+
+`B_LIST` of the following fields
+
+| Name                 | Type    | Comment                                                               |
+|:---------------------|:--------|:----------------------------------------------------------------------|
+| NextProofContextHash | B_BYTES | NextProofContext hash                                                 |
+| NetworkSectionsRoot  | B_BYTES | MerkleRoot(sorted list of updated NetworkSections in NetworkID order) |
+
+## NetworkSection
+
+`B_LIST` of the following fields
+
+| Name         | Type       | Comment                                                              |
+|:-------------|:-----------|:---------------------------------------------------------------------|
+| NetworkID    | B_INT      |                                                                      |
+| UpdateNumber | B_INT      | FirstMessageSN and NPCUpdateFlag. See [UpdateNumber](#updatenumber). |
+| Prev         | B_BYTES(N) | NetworkSection hash of prev BTP block                                |
+| MessageCount | B_INT      |                                                                      |
+| MessagesRoot | B_BYTES(N) | MerkleRoot of messages or nil                                        |
+
+## ETH Network Types Extensions
+
+### ETH ProofContext
+
+`B_LIST` of `B_LIST` that enumerates all validator addresses.
+
 ```
-NetworkSection0: {
-    FirstMessageSN: 0,
-    MessageCount: 0,
-},
-NetworkSection1: {
-    FirstMessageSN: 0,
-    MessageCount: 5,
-    Prev: NetworkSection0.Hash,
-},
-NetworkSection2: {
-    FirstMessageSN: 5,
-    MessageCount: 0,
-    Prev: NetworkSection1.Hash,
-},
-NetworkSection3: {
-    FirstMessageSN: 5,
-    MessageCount: 1,
-    Prev: NetworkSection2.Hash,
-}
+    [[
+        <address_of_1_th_validator>,
+        <address_of_2_th_validator>,
+        ...,
+        <address_of_n_th_validator>
+    ] <zero or more extension fileds> ]
+```
+
+For example,
+```
+    [[
+        0x542a03b06d1de074d0c2b1baf5ec5af00abf3306,
+        0x02b260fc84009494832f6789682d4cd04fdc8478,
+        0xe20d766f72d0110d6455d2813403a4441f42204a,
+        0x4748ed3d00c7cfc4ad5231610b3f48adc107c82b
+    ]]
+```
+
+### ETH Proof
+
+`B_LIST` of `B_LIST` that enumerates all signature entries. i-th signature entry is a signature of i-th validator for hash of NetworkTypeSectionDecision or nil.
+
+```
+    [[
+        <signature_of_1_th_validator_or_nil>,
+        <signature_of_2_th_validator_or_nil>,
+        ...
+        <signature_of_n_th_validator_or_nil>,
+    ] <zero or more extension fields> ]
+```
+
+For example,
+```
+    [[
+        0x9c0257114eb9399a2985f8e75dad7600c5d89fe3824ffa99ec1c3eb8bf3b0501,
+        0x38e47a7b719dce63662aeaf43440326f551b8a7ee198cee35cb5d517f2d296a2,
+        nil,
+        0xa2c791857d936d97cc584df15995fb9e6a3aff25630796d718e2f8ba105b0488
+    ]]
 ```
